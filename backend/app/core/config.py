@@ -43,6 +43,31 @@ class Settings(BaseSettings):
     cors_origins_str: str = Field(default="*", validation_alias="CORS_ORIGINS")
     debug: bool = False
 
+    wikipedia_user_agent: str = Field(
+        default="MesozoicaBot/1.0 (dev; contact@mesozoica.app)",
+        validation_alias="WIKIPEDIA_USER_AGENT",
+    )
+    wikipedia_dinosaur_category: str = Field(
+        default="Category:Dinosaur_genera",
+        validation_alias="WIKIPEDIA_DINOSAUR_CATEGORY",
+    )
+    wikipedia_base_url: str = Field(
+        default="https://en.wikipedia.org",
+        validation_alias="WIKIPEDIA_BASE_URL",
+    )
+    wikipedia_request_delay_ms: int = Field(
+        default=200,
+        validation_alias="WIKIPEDIA_REQUEST_DELAY_MS",
+    )
+    wikipedia_sync_max_pages: int | None = Field(
+        default=None,
+        validation_alias="WIKIPEDIA_SYNC_MAX_PAGES",
+    )
+    wikipedia_sync_failure_threshold: float = Field(
+        default=0.10,
+        validation_alias="WIKIPEDIA_SYNC_FAILURE_THRESHOLD",
+    )
+
     @property
     def cors_origins(self) -> list[str]:
         return [origin.strip() for origin in self.cors_origins_str.split(",") if origin.strip()]
@@ -56,6 +81,13 @@ class Settings(BaseSettings):
     def normalize_database_url(cls, value: Any) -> Any:
         if isinstance(value, str) and value.startswith("postgres://"):
             return value.replace("postgres://", "postgresql://", 1)
+        return value
+
+    @field_validator("wikipedia_sync_max_pages", mode="before")
+    @classmethod
+    def empty_max_pages_is_none(cls, value: Any) -> Any:
+        if value in ("", None):
+            return None
         return value
 
 
@@ -78,6 +110,12 @@ if _is_production:
         raise ValueError(
             "CORS_ORIGINS must be set to explicit origins in production. "
             "Cannot use '*' when credentials are allowed."
+        )
+    _ua = (os.getenv("WIKIPEDIA_USER_AGENT") or "").strip()
+    if not _ua:
+        raise ValueError(
+            "WIKIPEDIA_USER_AGENT environment variable is required in production "
+            "for Wikipedia cron jobs."
         )
 else:
     if not os.getenv("SECRET_KEY"):

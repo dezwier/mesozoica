@@ -1,0 +1,11 @@
+# Railway cron service: runs scheduled jobs from app/crons/crons.yaml.
+# In Railway dashboard: add a cron service with config file path backend/railway.cron.toml
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+startCommand = "python -m app.crons.runner"
+cronSchedule = "0 * * * *"
+restartPolicyType = "NEVER"

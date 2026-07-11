@@ -11,10 +11,11 @@ Every major element in the game exists as a collectible, flippable "Card" or Ite
  * **Dinosaurs (Card 4):** The ultimate reward. Fully assembled, historically accurate species populated entirely via automated live data snapshots.
 ## 3. Data Pipeline & Wikipedia Engine
 To maintain absolute scientific realism, the database relies on an automated scraping engine rather than manual data entry.
- * **The Wikipedia API Script:** A Python/FastAPI background script that periodically queries Wikipedia's paleontology categories.
- * **Data Extraction:** Parses full text articles, taxonomy infoboxes, discovery timelines, geographic ranges, and creative-commons imagery.
- * **Cladogram Parsing:** Extracts phylogenetic data to dynamically build evolutionary relationships.
- * **Snapshot Schema:** The script can be rerun to pull fresh snapshots, automatically updating the master database with newly discovered species or updated scientific consensus without breaking existing user inventory links.
+ * **The Wikipedia API Script:** A Python cron job (`app/crons/jobs/wikipedia_dinosaur_sync.py`) that weekly queries `Category:Dinosaur_genera` on English Wikipedia.
+ * **Data Extraction:** Parses full Parsoid HTML articles, infobox quick-facts (temporal range, taxonomy, diet), short descriptions, and lead paragraphs.
+ * **Cladogram Parsing:** Extracts phylogenetic data from the infobox biota table (Kingdom → Genus, plus Species when present) into JSON for the Tree of Life.
+ * **Snapshot Schema:** The sync can be rerun safely — it skips up-to-date records, refreshes stale ones by Wikipedia revision date, and preserves `insert_date` and `main_image_url` on updates.
+ * **Manual run:** `make run-wikipedia-sync` or `python -m app.crons.runner --job wikipedia_dinosaur_sync`
 ## 4. App Architecture & Screens
 ### 🏛️ Screen 1: The Map (Discovery)
  * **Visuals:** Dark, tactical, modern satellite map interface highlighting real-world geological boundaries and known dig sites.
@@ -44,14 +45,15 @@ To maintain absolute scientific realism, the database relies on an automated scr
 ```
 mesozoica/
 ├── backend/          # FastAPI + PostgreSQL (deployed on Railway)
-│   ├── app/          # core/, api/v1/, models/, schemas/, services/
-│   ├── alembic/      # DB migrations (wired; no domain tables yet)
+│   ├── app/          # core/, api/v1/, models/, schemas/, services/, crons/
+│   ├── alembic/      # DB migrations
 │   ├── tests/
 │   ├── Dockerfile
-│   └── railway.toml
+│   ├── railway.toml          # API service
+│   └── railway.cron.toml     # Cron service (Wikipedia sync)
 ├── flutter/          # Flutter mobile app (iOS & Android)
 │   └── lib/          # config/, models/, screens/, services/, widgets/
-├── Makefile          # make run-backend, run-flutter, test-all
+├── Makefile          # make run-backend, run-wikipedia-sync, test-all
 ├── railway.toml      # Monorepo Railway service roots
 └── prd.md
 ```
@@ -60,7 +62,8 @@ mesozoica/
  * **Location:** `backend/` — layered structure: thin routers in `api/v1/endpoints/`, business logic in `services/`, SQLModel tables in `models/`.
  * **Database:** PostgreSQL on Railway. PostGIS extensions planned for spatial mapping/location querying (not enabled in scaffold).
  * **Deployment:** Railway Dockerfile build; `alembic upgrade head` runs on startup; health at `/health`, readiness at `/ready`.
- * **Data Sync:** Custom Python Cron-jobs / Celery tasks for the Wikipedia API snapshot generation (future).
+ * **Data Sync:** Cron runner at `app/crons/runner.py` loads schedules from `app/crons/crons.yaml`. Deploy as a separate Railway cron service via `backend/railway.cron.toml` (hourly trigger; jobs define their own UTC schedules).
+ * **Dinosaur table:** `dinosaur` — name, birth/death (Ma), period, cladogram (JSON), diet_type, short/long descriptions, full article HTML, article_date, insert_date, main_image_url (manual fill).
 ### Frontend
  * **Framework:** Flutter (Dart) for high-performance, cross-platform fluid UI rendering (iOS and Android).
  * **Location:** `flutter/` — domain folders mirror PRD screens (`screens/`, `services/`, `widgets/`).
@@ -69,7 +72,7 @@ mesozoica/
  * **Fractal Engine:** Custom canvas painting or CustomPainter in Flutter to handle the smooth, mathematical scaling of the Fern Fractal Tree of Life (future).
 ## 6. Future Expansion Ideas (Keep Adding Below)
  * [ ] **PostGIS spatial queries:** Enable PostGIS on Railway Postgres for excavation-site proximity search.
- * [ ] **Wikipedia snapshot cron:** Background job to ingest paleontology data into the master database.
+ * [x] **Wikipedia snapshot cron (dinosaur slice):** Weekly sync of `Category:Dinosaur_genera` into the `dinosaur` table.
  * [ ] **Authentication:** User accounts and inventory persistence.
  * [ ] **Carbon Dating System:** Introduce a decay mechanic where users must balance isotopes to verify fossil age.
  * [ ] **Continental Drift Simulator:** A toggle on the map screen to view what the current dig site looked like 100 million years ago via Pangea/Laurasia tectonic tracking.
@@ -80,25 +83,29 @@ mesozoica/
 make backend-install
 cp backend/.env.example backend/.env   # set DATABASE_URL to Railway Postgres or any PostgreSQL
 make run-backend                       # http://localhost:8000/docs
+make run-wikipedia-sync                # one-off Wikipedia dinosaur ingest
 
 cd flutter && flutter pub get
 make run-flutter
 make test-all                          # backend pytest + flutter test
 ```
 No docker-compose — point `backend/.env` at a managed Postgres instance (Railway plugin or other).
+
+Wikipedia sync env vars (see `backend/.env.example`): `WIKIPEDIA_USER_AGENT` (required in production), `WIKIPEDIA_DINOSAUR_CATEGORY`, `WIKIPEDIA_REQUEST_DELAY_MS`, optional `WIKIPEDIA_SYNC_MAX_PAGES` for dev caps.
 ### Railway deployment
 1. Create a Railway project and add a **PostgreSQL** database.
 2. Add a **backend** service with root directory `backend` (declared in root `railway.toml`).
 3. Link `DATABASE_URL` from Postgres to the backend service.
-4. Set variables: `SECRET_KEY`, `ENVIRONMENT=production`, `CORS_ORIGINS` (explicit origins, no `*`).
+4. Set variables: `SECRET_KEY`, `ENVIRONMENT=production`, `CORS_ORIGINS` (explicit origins, no `*`), `WIKIPEDIA_USER_AGENT`.
 5. Deploy — Dockerfile runs migrations then starts uvicorn on `$PORT`.
+6. Add a **cron** service with config file path `backend/railway.cron.toml`; link the same `DATABASE_URL`.
 ### Implementation status
 | Area | Status |
 |------|--------|
 | Backend scaffold (FastAPI, health, Alembic wired) | Done |
 | Flutter scaffold (MaterialApp shell, app config) | Done |
-| Domain models & DB migrations | Not started |
+| Domain models & DB migrations | Partial (dinosaur table) |
 | Map / Lab / Museum / Tree of Life screens | Not started |
-| Wikipedia data pipeline | Not started |
+| Wikipedia data pipeline | Partial (dinosaur sync cron) |
 | PostGIS / spatial queries | Not started |
 | Auth & user inventory | Not started |

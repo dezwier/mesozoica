@@ -26,7 +26,7 @@ else:
 
 import pytest  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
-from sqlmodel import SQLModel  # noqa: E402
+from sqlmodel import SQLModel, Session  # noqa: E402
 
 from app.core.database import engine, init_db  # noqa: E402
 from app.main import app  # noqa: E402
@@ -44,3 +44,9 @@ def _reset_db_between_tests():
 @pytest.fixture
 def client():
     return TestClient(app)
+
+
+@pytest.fixture
+def session():
+    with Session(engine) as db_session:
+        yield db_session

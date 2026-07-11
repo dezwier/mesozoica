@@ -1,0 +1,12 @@
+# Central cron job registry (UTC schedules). Loaded by `python -m app.crons.runner`.
+#
+# Railway cron service cronSchedule must fire at least as often as the finest
+# job granularity below. Use "0 * * * *" on the platform for weekly jobs.
+
+jobs:
+  - id: wikipedia_dinosaur_sync
+    enabled: true
+    schedule: "0 3 * * 0"
+    params:
+      dry_run: false
+      max_pages: null
