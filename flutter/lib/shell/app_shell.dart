@@ -21,13 +21,6 @@ class _AppShellState extends State<AppShell> {
   int _index = _dinoTabIndex;
   final _dinoScreenKey = GlobalKey<DinoScreenState>();
 
-  late final List<Widget> _screens = [
-    const MapScreen(),
-    const TreeScreen(),
-    DinoScreen(key: _dinoScreenKey),
-    const ProfileScreen(),
-  ];
-
   void _onDestinationSelected(int index) {
     if (index == _index && index == _dinoTabIndex) {
       _dinoScreenKey.currentState?.scrollToTop();
@@ -60,7 +53,12 @@ class _AppShellState extends State<AppShell> {
       ),
       body: IndexedStack(
         index: _index,
-        children: _screens,
+        children: [
+          const MapScreen(),
+          TreeScreen(isActive: _index == 1),
+          DinoScreen(key: _dinoScreenKey),
+          const ProfileScreen(),
+        ],
       ),
       bottomNavigationBar: DecoratedBox(
         decoration: BoxDecoration(
