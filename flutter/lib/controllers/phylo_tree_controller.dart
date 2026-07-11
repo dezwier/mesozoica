@@ -4,8 +4,8 @@ import '../config/app_config.dart';
 import '../models/dinosaur.dart';
 import '../models/phylo_tree.dart';
 import '../services/dinosaur_service.dart';
+import '../services/fractal_tree_layout.dart';
 import '../services/phylo_tree_builder.dart';
-import '../services/phylo_tree_layout.dart';
 
 class PhyloTreeController extends ChangeNotifier {
   PhyloTreeController({
@@ -23,7 +23,7 @@ class PhyloTreeController extends ChangeNotifier {
   bool _loaded = false;
   String? _error;
   PhyloTreeNode? _root;
-  PhyloTreeLayout? _layout;
+  FractalTreeLayout? _layout;
   int _placedCount = 0;
   int _unplacedCount = 0;
   int _totalGenera = 0;
@@ -32,7 +32,7 @@ class PhyloTreeController extends ChangeNotifier {
   bool get loaded => _loaded;
   String? get error => _error;
   PhyloTreeNode? get root => _root;
-  PhyloTreeLayout? get layout => _layout;
+  FractalTreeLayout? get layout => _layout;
   int get placedCount => _placedCount;
   int get unplacedCount => _unplacedCount;
   int get totalGenera => _totalGenera;
@@ -50,9 +50,10 @@ class PhyloTreeController extends ChangeNotifier {
     try {
       final dinosaurs = await _fetchAllDinosaurs();
       final result = _builder.build(dinosaurs);
-      final layout = PhyloTreeLayout(
-        leafSpacing: dinosaurs.length > 200 ? 36 : 48,
-        levelSpacing: 72,
+
+      final layout = FractalTreeLayout(
+        baseLength: dinosaurs.length > 200 ? 64 : 80,
+        decay: 0.82,
       )..compute(result.root);
 
       _root = result.root;
@@ -65,7 +66,7 @@ class PhyloTreeController extends ChangeNotifier {
 
       if (kDebugMode) {
         debugPrint(
-          'PhyloTreeController: built tree with $_totalGenera genera '
+          'PhyloTreeController: fractal tree with $_totalGenera genera '
           '($_placedCount placed, $_unplacedCount unplaced)',
         );
       }

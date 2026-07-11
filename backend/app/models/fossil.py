@@ -5,7 +5,7 @@ from __future__ import annotations
 from decimal import Decimal
 from typing import Optional
 
-from sqlalchemy import Column, ForeignKey, Numeric
+from sqlalchemy import Column, ForeignKey, Numeric, Text
 from sqlmodel import Field, SQLModel
 
 
@@ -31,3 +31,20 @@ class Fossil(SQLModel, table=True):
     geological_formation: Optional[str] = Field(default=None, max_length=255)
     min_age_ma: Optional[Decimal] = Field(default=None, sa_column=Column(Numeric(5, 2)))
     max_age_ma: Optional[Decimal] = Field(default=None, sa_column=Column(Numeric(5, 2)))
+    early_interval: Optional[str] = Field(default=None, max_length=100)
+    family: Optional[str] = Field(default=None, max_length=100)
+    collection_name: Optional[str] = Field(default=None, max_length=255)
+    collection_dates: Optional[str] = Field(default=None, max_length=100)
+    stratcomments: Optional[str] = Field(default=None, sa_column=Column(Text))
+    lithdescript: Optional[str] = Field(default=None, max_length=500)
+    collectors: Optional[str] = Field(default=None, max_length=500)
+    museum: Optional[str] = Field(default=None, max_length=100)
+    pres_mode: Optional[str] = Field(default=None, max_length=50)
+    preservation_quality: Optional[str] = Field(default=None, max_length=50)
+    abund_value: Optional[int] = Field(default=None)
+    abund_unit: Optional[str] = Field(default=None, max_length=50)
+    description: Optional[str] = Field(
+        default=None,
+        sa_column=Column(Text),
+        description="Human-readable site summary from PBDB location and stratigraphy notes",
+    )

@@ -63,6 +63,7 @@ def _run_dinosaur_llm_enrich(params: dict[str, Any]) -> int:
 def _run_pbdb_fossil_sync(params: dict[str, Any]) -> int:
     return pbdb_fossil_sync.run_sync_job(
         dry_run=bool(params.get("dry_run", False)),
+        overwrite=bool(params.get("overwrite", False)),
         dinos=params.get("dinos"),
     )
 
@@ -123,7 +124,8 @@ def main(argv: list[str] | None = None) -> int:
         "--overwrite",
         action="store_true",
         help="Re-fetch Wikipedia records even when already up to date (wikipedia_dinosaur_sync). "
-        "Re-run LLM enrichment even when llm_enriched=true (dinosaur_llm_enrich).",
+        "Re-run LLM enrichment even when llm_enriched=true (dinosaur_llm_enrich). "
+        "Re-fetch PBDB fossil occurrences even when already synced (pbdb_fossil_sync).",
     )
     parser.add_argument(
         "--dinos",

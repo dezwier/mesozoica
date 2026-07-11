@@ -11,7 +11,13 @@ from sqlmodel import Session, select
 
 from app.models.dinosaur import Dinosaur
 from app.models.fossil import Fossil
-from app.services.pbdb_service.sync import sync_exit_code, sync_fossils, SyncCounters, SyncSummary
+from app.services.pbdb_service.sync import (
+    build_fossil_description,
+    sync_exit_code,
+    sync_fossils,
+    SyncCounters,
+    SyncSummary,
+)
 
 
 def _dinosaur(
@@ -35,6 +41,7 @@ def _tyrannosaurus_record(*, occurrence_no: str = "139292", formation: str = "Sc
         "accepted_name": "Tyrannosaurus rex",
         "primary_name": "Tyrannosaurus",
         "species_name": "rex",
+        "family": "Tyrannosauridae",
         "lat": "51.906399",
         "lng": "-113.028900",
         "cc": "CA",
@@ -42,6 +49,22 @@ def _tyrannosaurus_record(*, occurrence_no: str = "139292", formation: str = "Sc
         "formation": formation,
         "min_ma": 66,
         "max_ma": 72.2,
+        "early_interval": "Late Maastrichtian",
+        "collection_name": "Knudsen's Coulee (NMC 9954)",
+        "collection_aka": "East of Huxley",
+        "collection_dates": "1946, 1962",
+        "geogcomments": (
+            "center of section 10, township 34, range 22, W. 4th meridian; "
+            "7 miles east of Huxley, AB in Knudsen's Coulee"
+        ),
+        "stratcomments": "52 m above base (Kneehills Tuff)",
+        "lithdescript": "concretionary zone in the basal part of a channel sandstone",
+        "collectors": "C. M. Sternberg, W. Langston",
+        "museum": "GSC",
+        "pres_mode": "body",
+        "preservation_quality": "medium",
+        "abund_value": "1",
+        "abund_unit": "specimens",
     }
 
 
@@ -93,11 +116,27 @@ def test_sync_inserts_new_fossil(session: Session):
     assert fossil.geological_formation == "Scollard"
     assert fossil.min_age_ma == Decimal("66.00")
     assert fossil.max_age_ma == Decimal("72.20")
+    assert fossil.early_interval == "Late Maastrichtian"
+    assert fossil.family == "Tyrannosauridae"
+    assert fossil.collection_name == "Knudsen's Coulee (NMC 9954)"
+    assert fossil.collection_dates == "1946, 1962"
+    assert fossil.stratcomments == "52 m above base (Kneehills Tuff)"
+    assert fossil.lithdescript == "concretionary zone in the basal part of a channel sandstone"
+    assert fossil.collectors == "C. M. Sternberg, W. Langston"
+    assert fossil.museum == "GSC"
+    assert fossil.pres_mode == "body"
+    assert fossil.preservation_quality == "medium"
+    assert fossil.abund_value == 1
+    assert fossil.abund_unit == "specimens"
+    assert fossil.description is not None
+    assert "Huxley" in fossil.description
+    assert "Kneehills Tuff" in fossil.description
+    assert "Lithology:" in fossil.description
     assert summary.counters.fetched == 1
     assert summary.counters.updated == 0
 
 
-def test_sync_updates_existing_fossil(session: Session):
+def test_sync_updates_existing_fossil_when_overwrite(session: Session):
     dinosaur = _dinosaur()
     session.add(dinosaur)
     session.commit()
@@ -113,13 +152,40 @@ def test_sync_updates_existing_fossil(session: Session):
     session.commit()
 
     client = _mock_client({"Tyrannosaurus": [_tyrannosaurus_record(formation="Scollard")]})
-    summary = sync_fossils(session, client=client, dry_run=False)
+    summary = sync_fossils(session, client=client, dry_run=False, overwrite=True)
     session.commit()
 
     fossil = session.get(Fossil, 139292)
     assert fossil is not None
     assert fossil.geological_formation == "Scollard"
     assert summary.counters.updated == 1
+    assert summary.counters.fetched == 0
+
+
+def test_sync_skips_existing_fossil_without_overwrite(session: Session):
+    dinosaur = _dinosaur()
+    session.add(dinosaur)
+    session.commit()
+    session.refresh(dinosaur)
+
+    existing = Fossil(
+        id=139292,
+        dinosaur_id=dinosaur.id,
+        identified_name="Tyrannosaurus rex",
+        geological_formation="Old Formation",
+    )
+    session.add(existing)
+    session.commit()
+
+    client = _mock_client({"Tyrannosaurus": [_tyrannosaurus_record(formation="Scollard")]})
+    summary = sync_fossils(session, client=client, dry_run=False, overwrite=False)
+    session.commit()
+
+    fossil = session.get(Fossil, 139292)
+    assert fossil is not None
+    assert fossil.geological_formation == "Old Formation"
+    assert summary.counters.unchanged == 1
+    assert summary.counters.updated == 0
     assert summary.counters.fetched == 0
 
 
@@ -178,6 +244,40 @@ def test_sync_dry_run_does_not_write(session: Session):
     assert fossils == []
     assert summary.dry_run is True
     assert summary.counters.fetched == 1
+
+
+def test_sync_dry_run_counts_unchanged_without_overwrite(session: Session):
+    dinosaur = _dinosaur()
+    session.add(dinosaur)
+    session.commit()
+    session.refresh(dinosaur)
+
+    existing = Fossil(
+        id=139292,
+        dinosaur_id=dinosaur.id,
+        identified_name="Tyrannosaurus rex",
+        geological_formation="Old Formation",
+    )
+    session.add(existing)
+    session.commit()
+
+    client = _mock_client({"Tyrannosaurus": [_tyrannosaurus_record(formation="Scollard")]})
+    summary = sync_fossils(session, client=client, dry_run=True, overwrite=False)
+
+    assert summary.counters.unchanged == 1
+    assert summary.counters.updated == 0
+
+
+def test_build_fossil_description_composes_site_summary():
+    description = build_fossil_description(_tyrannosaurus_record())
+    assert description is not None
+    assert "Huxley" in description
+    assert "Kneehills Tuff" in description
+    assert "Lithology:" in description
+
+
+def test_build_fossil_description_returns_none_without_text():
+    assert build_fossil_description({"occurrence_no": "1"}) is None
 
 
 def test_sync_exit_code_zero_on_success():

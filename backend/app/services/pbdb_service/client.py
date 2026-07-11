@@ -15,7 +15,7 @@ PBDB_BASE_URL = "https://paleobiodb.org/data1.2"
 PBDB_USER_AGENT = "MesozoicaBot/1.0 (dev; contact@mesozoica.app)"
 PBDB_REQUEST_DELAY_MS = 300
 PBDB_PAGE_LIMIT = 500
-PBDB_SHOW_BLOCKS = "coords,loc,strat,ident"
+PBDB_SHOW_BLOCKS = "full"
 
 
 class PbdbClient:

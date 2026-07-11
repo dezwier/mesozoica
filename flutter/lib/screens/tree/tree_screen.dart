@@ -4,7 +4,7 @@ import 'package:provider/provider.dart';
 import '../../controllers/phylo_tree_controller.dart';
 import '../../models/dinosaur.dart';
 import '../../widgets/cards/dinosaur_turnable_card.dart';
-import '../../widgets/tree/phylo_fern_view.dart';
+import '../../widgets/tree/fractal_fern_view.dart';
 
 class TreeScreen extends StatefulWidget {
   const TreeScreen({
@@ -103,7 +103,7 @@ class _TreeScreenState extends State<TreeScreen> {
     }
 
     final layout = treeController.layout;
-    if (layout == null || layout.nodes.isEmpty) {
+    if (layout == null || layout.root.children.isEmpty) {
       return Center(
         child: Text(
           'No phylogeny data available yet.',
@@ -115,7 +115,7 @@ class _TreeScreenState extends State<TreeScreen> {
     return Column(
       children: [
         Expanded(
-          child: PhyloFernView(
+          child: FractalFernView(
             layout: layout,
             onGenusTap: _onGenusTap,
           ),

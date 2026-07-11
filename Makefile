@@ -28,7 +28,8 @@ help:
 	@echo "  make run-dinosaur-enrich CRON_EXTRA='--overwrite'"
 	@echo "  make run-dinosaur-enrich CRON_EXTRA='--dinos Tyrannosaurus --overwrite'"
 	@echo "  make run-fossil-sync CRON_EXTRA='--dinos Tyrannosaurus'"
-	@echo "  make run-fossil-sync CRON_EXTRA='--dry-run'"
+	@echo "  make run-fossil-sync CRON_EXTRA='--overwrite'"
+	@echo "  make run-fossil-sync CRON_EXTRA='--dinos Tyrannosaurus --overwrite'"
 
 backend-install:
 	cd backend && python3 -m pip install --upgrade pip && pip install -r requirements.txt -r requirements-dev.txt
