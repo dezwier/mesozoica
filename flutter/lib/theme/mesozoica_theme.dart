@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 class MesozoicaTheme {
   MesozoicaTheme._();
 
-  static const ThemeMode defaultThemeMode = ThemeMode.dark;
+  static const ThemeMode defaultThemeMode = ThemeMode.light;
 
   static ThemeData get light => ThemeData(
         useMaterial3: true,

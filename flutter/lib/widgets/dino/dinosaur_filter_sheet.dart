@@ -160,30 +160,30 @@ class _DinosaurFilterSheetState extends State<DinosaurFilterSheet> {
                   color: colorScheme.onSurfaceVariant,
                 ),
               ),
-              RangeSlider(
-                values: _pendingRange,
-                min: GeologicTimeline.mesozoicYoungerMa,
-                max: GeologicTimeline.mesozoicOlderMa,
-                divisions: divisions,
-                labels: RangeLabels(
-                  '${_pendingRange.start.round()} Ma',
-                  '${_pendingRange.end.round()} Ma',
+              Transform(
+                alignment: Alignment.center,
+                transform: Matrix4.identity()..scaleByDouble(-1.0, 1.0, 1.0, 1.0),
+                child: RangeSlider(
+                  values: _pendingRange,
+                  min: GeologicTimeline.mesozoicYoungerMa,
+                  max: GeologicTimeline.mesozoicOlderMa,
+                  divisions: divisions,
+                  onChanged: (values) {
+                    setState(() => _pendingRange = values);
+                  },
                 ),
-                onChanged: (values) {
-                  setState(() => _pendingRange = values);
-                },
               ),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    '${GeologicTimeline.mesozoicYoungerMa.round()} Ma',
+                    '${GeologicTimeline.mesozoicOlderMa.round()} Ma',
                     style: theme.textTheme.labelSmall?.copyWith(
                       color: colorScheme.onSurfaceVariant,
                     ),
                   ),
                   Text(
-                    '${GeologicTimeline.mesozoicOlderMa.round()} Ma',
+                    '${GeologicTimeline.mesozoicYoungerMa.round()} Ma',
                     style: theme.textTheme.labelSmall?.copyWith(
                       color: colorScheme.onSurfaceVariant,
                     ),

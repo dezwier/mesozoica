@@ -9,11 +9,13 @@ class DinosaurCardHeader extends StatelessWidget {
     required this.dinosaur,
     this.titleFontSize = 18,
     this.subtitleFontSize = 11,
+    this.centered = false,
   });
 
   final DinosaurSummary dinosaur;
   final double titleFontSize;
   final double subtitleFontSize;
+  final bool centered;
 
   String? _subtitle() {
     final title = dinosaur.wikipediaTitle.trim();
@@ -25,14 +27,17 @@ class DinosaurCardHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cardTheme = DinoCardTheme.of(context);
     final subtitle = _subtitle();
 
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment:
+          centered ? CrossAxisAlignment.center : CrossAxisAlignment.start,
       children: [
         Text(
           dinosaur.name.toUpperCase(),
-          style: DinoCardTheme.titleStyle(fontSize: titleFontSize),
+          textAlign: centered ? TextAlign.center : TextAlign.start,
+          style: cardTheme.titleStyle(fontSize: titleFontSize),
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
         ),
@@ -40,7 +45,8 @@ class DinosaurCardHeader extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             subtitle,
-            style: DinoCardTheme.subtitleStyle(fontSize: subtitleFontSize),
+            textAlign: centered ? TextAlign.center : TextAlign.start,
+            style: cardTheme.subtitleStyle(fontSize: subtitleFontSize),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),

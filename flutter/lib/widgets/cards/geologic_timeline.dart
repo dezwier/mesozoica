@@ -13,6 +13,7 @@ class GeologicTimeline extends StatelessWidget {
     this.minMa = mesozoicOlderMa,
     this.maxMa = mesozoicYoungerMa,
     this.axis = GeologicTimelineAxis.vertical,
+    this.scale = 1.0,
   });
 
   static const double mesozoicOlderMa = 252;
@@ -23,6 +24,7 @@ class GeologicTimeline extends StatelessWidget {
   final double minMa;
   final double maxMa;
   final GeologicTimelineAxis axis;
+  final double scale;
 
   static const _periods = [
     _PeriodRange('Triassic', startMa: 252, endMa: 201),
@@ -43,46 +45,39 @@ class GeologicTimeline extends StatelessWidget {
     final endPos = rangeEnd != null ? _positionForMa(rangeEnd) : null;
     final sameMa = birth != null && death != null && birth == death;
 
-    return Column(
-      crossAxisAlignment: axis == GeologicTimelineAxis.vertical
-          ? CrossAxisAlignment.end
-          : CrossAxisAlignment.start,
-      children: [
-        Text('TIME', style: DinoCardTheme.sectionLabelStyle(fontSize: 11)),
-        const SizedBox(height: 8),
-        Expanded(
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              if (axis == GeologicTimelineAxis.horizontal) {
-                return _HorizontalTimeline(
-                  width: constraints.maxWidth,
-                  height: constraints.maxHeight,
-                  startPos: startPos,
-                  endPos: endPos,
-                  sameMa: sameMa,
-                  minMa: minMa,
-                  maxMa: maxMa,
-                  positionForMa: _positionForMa,
-                );
-              }
-              return _VerticalTimeline(
-                width: constraints.maxWidth,
-                height: constraints.maxHeight,
-                startPos: startPos,
-                endPos: endPos,
-                sameMa: sameMa,
-                positionForMa: _positionForMa,
-              );
-            },
-          ),
-        ),
-      ],
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (axis == GeologicTimelineAxis.horizontal) {
+          return _HorizontalTimeline(
+            cardTheme: DinoCardTheme.of(context),
+            scale: scale,
+            width: constraints.maxWidth,
+            height: constraints.maxHeight,
+            startPos: startPos,
+            endPos: endPos,
+            sameMa: sameMa,
+            minMa: minMa,
+            maxMa: maxMa,
+            positionForMa: _positionForMa,
+          );
+        }
+        return _VerticalTimeline(
+          cardTheme: DinoCardTheme.of(context),
+          width: constraints.maxWidth,
+          height: constraints.maxHeight,
+          startPos: startPos,
+          endPos: endPos,
+          sameMa: sameMa,
+          positionForMa: _positionForMa,
+        );
+      },
     );
   }
 }
 
 class _VerticalTimeline extends StatelessWidget {
   const _VerticalTimeline({
+    required this.cardTheme,
     required this.width,
     required this.height,
     required this.startPos,
@@ -91,6 +86,7 @@ class _VerticalTimeline extends StatelessWidget {
     required this.positionForMa,
   });
 
+  final DinoCardTheme cardTheme;
   final double width;
   final double height;
   final double? startPos;
@@ -120,9 +116,9 @@ class _VerticalTimeline extends StatelessWidget {
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                   colors: [
-                    DinoCardTheme.cardAccent.withValues(alpha: 0.35),
-                    DinoCardTheme.cardAccent,
-                    DinoCardTheme.cardAccent.withValues(alpha: 0.85),
+                    cardTheme.cardAccent.withValues(alpha: 0.35),
+                    cardTheme.cardAccent,
+                    cardTheme.cardAccent.withValues(alpha: 0.85),
                   ],
                 ),
               ),
@@ -136,10 +132,10 @@ class _VerticalTimeline extends StatelessWidget {
                 width: 11,
                 height: _minRangeExtent,
                 decoration: BoxDecoration(
-                  color: DinoCardTheme.cardAccent.withValues(alpha: 0.35),
+                  color: cardTheme.cardAccent.withValues(alpha: 0.35),
                   borderRadius: BorderRadius.circular(3),
                   border: Border.all(
-                    color: DinoCardTheme.cardAccent.withValues(alpha: 0.7),
+                    color: cardTheme.cardAccent.withValues(alpha: 0.7),
                   ),
                 ),
               ),
@@ -152,10 +148,10 @@ class _VerticalTimeline extends StatelessWidget {
               child: Container(
                 width: 11,
                 decoration: BoxDecoration(
-                  color: DinoCardTheme.cardAccent.withValues(alpha: 0.35),
+                  color: cardTheme.cardAccent.withValues(alpha: 0.35),
                   borderRadius: BorderRadius.circular(3),
                   border: Border.all(
-                    color: DinoCardTheme.cardAccent.withValues(alpha: 0.7),
+                    color: cardTheme.cardAccent.withValues(alpha: 0.7),
                   ),
                 ),
               ),
@@ -164,7 +160,10 @@ class _VerticalTimeline extends StatelessWidget {
             Positioned(
               left: 27,
               top: (1 - startPos!.clamp(0.0, 1.0)) * height - 5,
-              child: const _TimelineDot(color: DinoCardTheme.cardAccent),
+              child: _TimelineDot(
+                color: cardTheme.cardAccent,
+                borderColor: cardTheme.cardTextPrimary,
+              ),
             ),
           for (final period in GeologicTimeline._periods)
             Positioned(
@@ -172,7 +171,10 @@ class _VerticalTimeline extends StatelessWidget {
                   10,
               left: 0,
               right: 0,
-              child: _VerticalPeriodLabel(name: period.name),
+              child: _VerticalPeriodLabel(
+                name: period.name,
+                cardTheme: cardTheme,
+              ),
             ),
         ],
       ),
@@ -182,6 +184,8 @@ class _VerticalTimeline extends StatelessWidget {
 
 class _HorizontalTimeline extends StatelessWidget {
   const _HorizontalTimeline({
+    required this.cardTheme,
+    required this.scale,
     required this.width,
     required this.height,
     required this.startPos,
@@ -192,6 +196,8 @@ class _HorizontalTimeline extends StatelessWidget {
     required this.positionForMa,
   });
 
+  final DinoCardTheme cardTheme;
+  final double scale;
   final double width;
   final double height;
   final double? startPos;
@@ -201,17 +207,13 @@ class _HorizontalTimeline extends StatelessWidget {
   final double maxMa;
   final double? Function(double ma) positionForMa;
 
-  static const _horizontalInset = 14.0;
-  static const _barTop = 30.0;
-  static const _barHeight = 6.0;
-  static const _minRangeWidth = 12.0;
-  static const _rangeIndicatorHeight = 14.0;
-  static const _maLabelStyle = TextStyle(
-    color: Color(0x80FFFFFF),
-    fontSize: 9,
-  );
-
   static const _boundaryMas = [252.0, 201.0, 145.0, 66.0];
+
+  double get _horizontalInset => 14.0 * scale;
+  double get _barTop => 30.0 * scale;
+  double get _barHeight => 6.0 * scale;
+  double get _minRangeWidth => 12.0 * scale;
+  double get _rangeIndicatorHeight => 14.0 * scale;
 
   double _xForMa(double ma, double trackWidth) {
     final pos = positionForMa(ma)!;
@@ -237,7 +239,7 @@ class _HorizontalTimeline extends StatelessWidget {
               child: Container(
                 height: _barHeight,
                 decoration: BoxDecoration(
-                  color: DinoCardTheme.cardAccent
+                  color: cardTheme.cardAccent
                       .withValues(alpha: 0.28 + i * 0.12),
                   borderRadius: BorderRadius.horizontal(
                     left: i == 0 ? const Radius.circular(2) : Radius.zero,
@@ -258,10 +260,10 @@ class _HorizontalTimeline extends StatelessWidget {
               child: Container(
                 height: _rangeIndicatorHeight,
                 decoration: BoxDecoration(
-                  color: DinoCardTheme.cardTextPrimary.withValues(alpha: 0.2),
+                  color: cardTheme.cardTextPrimary.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(3),
                   border: Border.all(
-                    color: DinoCardTheme.cardTextPrimary.withValues(alpha: 0.55),
+                    color: cardTheme.cardTextPrimary.withValues(alpha: 0.55),
                   ),
                 ),
               ),
@@ -275,10 +277,10 @@ class _HorizontalTimeline extends StatelessWidget {
               child: Container(
                 height: _rangeIndicatorHeight,
                 decoration: BoxDecoration(
-                  color: DinoCardTheme.cardTextPrimary.withValues(alpha: 0.2),
+                  color: cardTheme.cardTextPrimary.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(3),
                   border: Border.all(
-                    color: DinoCardTheme.cardTextPrimary.withValues(alpha: 0.55),
+                    color: cardTheme.cardTextPrimary.withValues(alpha: 0.55),
                   ),
                 ),
               ),
@@ -287,20 +289,24 @@ class _HorizontalTimeline extends StatelessWidget {
             Positioned(
               left: _horizontalInset +
                   (1 - startPos!.clamp(0.0, 1.0)) * trackWidth -
-                  5,
+                  5 * scale,
               top: _barTop - (_rangeIndicatorHeight - _barHeight) / 2,
-              child: const _TimelineDot(color: DinoCardTheme.cardTextPrimary),
+              child: _TimelineDot(
+                scale: scale,
+                color: cardTheme.cardTextPrimary,
+                borderColor: cardTheme.cardTextPrimary,
+              ),
             ),
           for (final ma in _boundaryMas)
             Positioned(
               left: ma == minMa
-                  ? _horizontalInset - 2
+                  ? _horizontalInset - 2 * scale
                   : ma == maxMa
                       ? null
-                      : _xForMa(ma, trackWidth) - 16,
-              right: ma == maxMa ? _horizontalInset - 2 : null,
-              top: _barTop + _barHeight + 4,
-              width: ma == minMa || ma == maxMa ? null : 32,
+                      : _xForMa(ma, trackWidth) - 16 * scale,
+              right: ma == maxMa ? _horizontalInset - 2 * scale : null,
+              top: _barTop + _barHeight + 4 * scale,
+              width: ma == minMa || ma == maxMa ? null : 32 * scale,
               child: Text(
                 '${ma.round()} Ma',
                 textAlign: ma == maxMa
@@ -308,17 +314,22 @@ class _HorizontalTimeline extends StatelessWidget {
                     : ma == minMa
                         ? TextAlign.left
                         : TextAlign.center,
-                style: _maLabelStyle.copyWith(
-                  color: DinoCardTheme.cardTextPrimary.withValues(alpha: 0.5),
+                style: TextStyle(
+                  color: cardTheme.timelineAnnotationColor(),
+                  fontSize: 9 * scale,
                 ),
               ),
             ),
           for (final period in GeologicTimeline._periods)
             Positioned(
-              left: _xForMa(period.midMa, trackWidth) - 32,
-              top: 8,
-              width: 64,
-              child: _HorizontalPeriodLabel(name: period.name),
+              left: _xForMa(period.midMa, trackWidth) - 32 * scale,
+              top: 8 * scale,
+              width: 64 * scale,
+              child: _HorizontalPeriodLabel(
+                name: period.name,
+                cardTheme: cardTheme,
+                fontSize: 10 * scale,
+              ),
             ),
         ],
       ),
@@ -337,28 +348,39 @@ class _PeriodRange {
 }
 
 class _TimelineDot extends StatelessWidget {
-  const _TimelineDot({required this.color});
+  const _TimelineDot({
+    this.scale = 1.0,
+    required this.color,
+    required this.borderColor,
+  });
 
+  final double scale;
   final Color color;
+  final Color borderColor;
 
   @override
   Widget build(BuildContext context) {
+    final size = 12.0 * scale;
     return Container(
-      width: 12,
-      height: 12,
+      width: size,
+      height: size,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         color: color,
-        border: Border.all(color: DinoCardTheme.cardTextPrimary, width: 1),
+        border: Border.all(color: borderColor, width: 1),
       ),
     );
   }
 }
 
 class _VerticalPeriodLabel extends StatelessWidget {
-  const _VerticalPeriodLabel({required this.name});
+  const _VerticalPeriodLabel({
+    required this.name,
+    required this.cardTheme,
+  });
 
   final String name;
+  final DinoCardTheme cardTheme;
 
   @override
   Widget build(BuildContext context) {
@@ -369,7 +391,7 @@ class _VerticalPeriodLabel extends StatelessWidget {
             name,
             textAlign: TextAlign.end,
             style: TextStyle(
-              color: DinoCardTheme.cardAccent.withValues(alpha: 0.9),
+              color: cardTheme.periodLabelColor(),
               fontSize: 9,
               fontWeight: FontWeight.w600,
             ),
@@ -381,7 +403,7 @@ class _VerticalPeriodLabel extends StatelessWidget {
           height: 6,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: DinoCardTheme.cardAccent.withValues(alpha: 0.8),
+            color: cardTheme.cardAccent.withValues(alpha: 0.8),
           ),
         ),
       ],
@@ -390,9 +412,15 @@ class _VerticalPeriodLabel extends StatelessWidget {
 }
 
 class _HorizontalPeriodLabel extends StatelessWidget {
-  const _HorizontalPeriodLabel({required this.name});
+  const _HorizontalPeriodLabel({
+    required this.name,
+    required this.cardTheme,
+    required this.fontSize,
+  });
 
   final String name;
+  final DinoCardTheme cardTheme;
+  final double fontSize;
 
   @override
   Widget build(BuildContext context) {
@@ -400,8 +428,8 @@ class _HorizontalPeriodLabel extends StatelessWidget {
       name,
       textAlign: TextAlign.center,
       style: TextStyle(
-        color: DinoCardTheme.cardAccent.withValues(alpha: 0.9),
-        fontSize: 10,
+        color: cardTheme.periodLabelColor(),
+        fontSize: fontSize,
         fontWeight: FontWeight.w600,
       ),
     );

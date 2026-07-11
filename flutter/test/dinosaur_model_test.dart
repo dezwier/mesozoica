@@ -93,5 +93,15 @@ void main() {
 
     expect(withPeriod.displayPeriod, 'Late Cretaceous, 70 Ma');
     expect(withoutPeriod.displayPeriod, '70 Ma');
+    expect(withPeriod.displayPeriodName, 'Late Cretaceous');
+    expect(withoutPeriod.displayPeriodName, '—');
+
+    const withMaInPeriod = DinosaurSummary(
+      id: 3,
+      name: 'Example',
+      wikipediaTitle: 'Example',
+      period: 'Early Cretaceous, 105 - 100 Ma',
+    );
+    expect(withMaInPeriod.displayPeriodName, 'Early Cretaceous');
   });
 }

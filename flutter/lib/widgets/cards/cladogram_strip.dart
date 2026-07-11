@@ -3,88 +3,132 @@ import 'package:flutter/material.dart';
 import '../../models/dinosaur.dart';
 import '../../theme/dino_card_theme.dart';
 
+class _CladogramLayout {
+  const _CladogramLayout({required this.scale});
+
+  final double scale;
+
+  double get rowHeight => 34 * scale;
+  double get indentStep => 14 * scale;
+  double get rankLineHeight => 10 * scale;
+  double get labelGap => 2 * scale;
+  double get nameLineHeight => 14 * scale;
+  double get dotSize => 8 * scale;
+  double get dotNameGap => 8 * scale;
+
+  double get contentBlockHeight =>
+      rankLineHeight + labelGap + nameLineHeight;
+
+  double get rowPaddingTop => (rowHeight - contentBlockHeight) / 2;
+
+  double dotYForIndex(int index) =>
+      index * rowHeight +
+      rowPaddingTop +
+      rankLineHeight +
+      labelGap +
+      nameLineHeight / 2;
+
+  double dotXForDepth(int depth) => depth * indentStep + dotSize / 2;
+}
+
 /// Vertical phylogenetic list with indented dots aligned to taxon names.
 class CladogramStrip extends StatelessWidget {
   const CladogramStrip({
     super.key,
     required this.nodes,
+    this.scale = 1.0,
+    this.centered = false,
   });
 
   final List<CladogramNode> nodes;
+  final double scale;
+  final bool centered;
 
-  static const double kRowHeight = 34;
-  static const double kIndentStep = 14;
-  static const double kRankLineHeight = 10;
-  static const double kLabelGap = 2;
-  static const double kNameLineHeight = 14;
-  static const double kDotSize = 8;
-  static const double kDotNameGap = 8;
+  Widget _buildTree({
+    required DinoCardTheme cardTheme,
+    required _CladogramLayout layout,
+    required double? width,
+  }) {
+    final height = nodes.length * layout.rowHeight;
 
-  static double get _contentBlockHeight =>
-      kRankLineHeight + kLabelGap + kNameLineHeight;
-
-  static double get _rowPaddingTop => (kRowHeight - _contentBlockHeight) / 2;
-
-  static double dotYForIndex(int index) =>
-      index * kRowHeight +
-      _rowPaddingTop +
-      kRankLineHeight +
-      kLabelGap +
-      kNameLineHeight / 2;
-
-  static double dotXForDepth(int depth) => depth * kIndentStep + kDotSize / 2;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text('CLADOGRAM', style: DinoCardTheme.sectionLabelStyle(fontSize: 10)),
-        const SizedBox(height: 8),
-        if (nodes.isEmpty)
-          Text('—', style: DinoCardTheme.bodyStyle(fontSize: 13))
-        else
-          Expanded(
-            child: Align(
-              alignment: Alignment.topLeft,
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  final height = nodes.length * kRowHeight;
-
-                  return SizedBox(
-                    width: constraints.maxWidth,
-                    height: height,
-                    child: Stack(
-                      children: [
-                        CustomPaint(
-                          size: Size(constraints.maxWidth, height),
-                          painter: _CladogramConnectorPainter(
-                            nodeCount: nodes.length,
-                          ),
-                        ),
-                        Column(
-                          mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            for (var i = 0; i < nodes.length; i++)
-                              SizedBox(
-                                height: kRowHeight,
-                                child: _CladogramNodeRow(
-                                  node: nodes[i],
-                                  isLast: i == nodes.length - 1,
-                                  depth: i,
-                                ),
-                              ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  );
-                },
+    return SizedBox(
+      width: width,
+      height: height,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Positioned.fill(
+            child: CustomPaint(
+              painter: _CladogramConnectorPainter(
+                layout: layout,
+                nodeCount: nodes.length,
+                lineColor: cardTheme.cardAccent.withValues(alpha: 0.18),
               ),
             ),
           ),
-      ],
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              for (var i = 0; i < nodes.length; i++)
+                SizedBox(
+                  height: layout.rowHeight,
+                  child: _CladogramNodeRow(
+                    node: nodes[i],
+                    isLast: i == nodes.length - 1,
+                    depth: i,
+                    cardTheme: cardTheme,
+                    layout: layout,
+                    centered: centered,
+                  ),
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cardTheme = DinoCardTheme.of(context);
+    final layout = _CladogramLayout(scale: scale);
+
+    if (nodes.isEmpty) {
+      return Align(
+        alignment: centered ? Alignment.topCenter : Alignment.topLeft,
+        child: Text(
+          '—',
+          textAlign: centered ? TextAlign.center : TextAlign.start,
+          style: cardTheme.bodyStyle(fontSize: 13 * scale),
+        ),
+      );
+    }
+
+    if (!centered) {
+      return Align(
+        alignment: Alignment.topLeft,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            return _buildTree(
+              cardTheme: cardTheme,
+              layout: layout,
+              width: constraints.maxWidth,
+            );
+          },
+        ),
+      );
+    }
+
+    return Align(
+      alignment: Alignment.topCenter,
+      child: IntrinsicWidth(
+        child: _buildTree(
+          cardTheme: cardTheme,
+          layout: layout,
+          width: null,
+        ),
+      ),
     );
   }
 }
@@ -94,62 +138,80 @@ class _CladogramNodeRow extends StatelessWidget {
     required this.node,
     required this.isLast,
     required this.depth,
+    required this.cardTheme,
+    required this.layout,
+    required this.centered,
   });
 
   final CladogramNode node;
   final bool isLast;
   final int depth;
+  final DinoCardTheme cardTheme;
+  final _CladogramLayout layout;
+  final bool centered;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.only(left: depth * CladogramStrip.kIndentStep),
+      padding: EdgeInsets.only(left: depth * layout.indentStep),
       child: SizedBox(
-        height: CladogramStrip.kRowHeight,
+        height: layout.rowHeight,
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Padding(
-              padding: const EdgeInsets.only(
-                left: CladogramStrip.kDotSize + CladogramStrip.kDotNameGap,
+              padding: EdgeInsets.only(
+                left: layout.dotSize + layout.dotNameGap,
               ),
               child: Text(
                 node.rankLabel,
-                style: DinoCardTheme.rankLabelStyle(),
+                style: cardTheme.rankLabelStyle(fontSize: 8 * layout.scale),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
             ),
-            const SizedBox(height: CladogramStrip.kLabelGap),
+            SizedBox(height: layout.labelGap),
             Row(
+              mainAxisSize: centered ? MainAxisSize.min : MainAxisSize.max,
               children: [
                 Container(
-                  width: CladogramStrip.kDotSize,
-                  height: CladogramStrip.kDotSize,
+                  width: layout.dotSize,
+                  height: layout.dotSize,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     color: isLast
-                        ? DinoCardTheme.cardTextPrimary
-                        : DinoCardTheme.cardAccent.withValues(alpha: 0.7),
+                        ? cardTheme.cardTextPrimary
+                        : cardTheme.cardAccent.withValues(alpha: 0.7),
                   ),
                 ),
-                const SizedBox(width: CladogramStrip.kDotNameGap),
-                Expanded(
-                  child: Text(
+                SizedBox(width: layout.dotNameGap),
+                if (centered)
+                  Text(
                     node.name.toUpperCase(),
                     style: TextStyle(
-                      color: isLast
-                          ? DinoCardTheme.cardTextPrimary
-                          : DinoCardTheme.cardAccent.withValues(alpha: 0.85),
-                      fontSize: isLast ? 12 : 10.5,
+                      color: cardTheme.cladogramNodeColor(isLast: isLast),
+                      fontSize: (isLast ? 12 : 10.5) * layout.scale,
                       fontWeight: isLast ? FontWeight.w700 : FontWeight.w500,
                       letterSpacing: 0.3,
                     ),
                     maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                    softWrap: false,
+                  )
+                else
+                  Expanded(
+                    child: Text(
+                      node.name.toUpperCase(),
+                      style: TextStyle(
+                        color: cardTheme.cladogramNodeColor(isLast: isLast),
+                        fontSize: (isLast ? 12 : 10.5) * layout.scale,
+                        fontWeight: isLast ? FontWeight.w700 : FontWeight.w500,
+                        letterSpacing: 0.3,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
-                ),
               ],
             ),
           ],
@@ -160,27 +222,33 @@ class _CladogramNodeRow extends StatelessWidget {
 }
 
 class _CladogramConnectorPainter extends CustomPainter {
-  _CladogramConnectorPainter({required this.nodeCount});
+  _CladogramConnectorPainter({
+    required this.layout,
+    required this.nodeCount,
+    required this.lineColor,
+  });
 
+  final _CladogramLayout layout;
   final int nodeCount;
+  final Color lineColor;
 
   @override
   void paint(Canvas canvas, Size size) {
     if (nodeCount <= 1) return;
 
     final linePaint = Paint()
-      ..color = DinoCardTheme.cardAccent.withValues(alpha: 0.18)
+      ..color = lineColor
       ..strokeWidth = 1
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round
       ..strokeJoin = StrokeJoin.round;
 
     for (var i = 0; i < nodeCount - 1; i++) {
-      final parentX = CladogramStrip.dotXForDepth(i);
-      final parentY = CladogramStrip.dotYForIndex(i);
+      final parentX = layout.dotXForDepth(i);
+      final parentY = layout.dotYForIndex(i);
       final childLeftX =
-          CladogramStrip.dotXForDepth(i + 1) - CladogramStrip.kDotSize / 2;
-      final childY = CladogramStrip.dotYForIndex(i + 1);
+          layout.dotXForDepth(i + 1) - layout.dotSize / 2;
+      final childY = layout.dotYForIndex(i + 1);
 
       final path = Path()
         ..moveTo(parentX, parentY)
@@ -192,6 +260,8 @@ class _CladogramConnectorPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _CladogramConnectorPainter oldDelegate) {
-    return oldDelegate.nodeCount != nodeCount;
+    return oldDelegate.nodeCount != nodeCount ||
+        oldDelegate.lineColor != lineColor ||
+        oldDelegate.layout.scale != layout.scale;
   }
 }

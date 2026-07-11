@@ -2,44 +2,82 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
-/// Dark museum card palette aligned with the reference mockup.
+/// Museum card palette — dark and light variants aligned with [MesozoicaTheme].
 class DinoCardTheme {
-  DinoCardTheme._();
+  const DinoCardTheme._({
+    required this.isLight,
+    required this.cardBackground,
+    required this.cardAccent,
+    required this.cardTextPrimary,
+    required this.cardTextSecondary,
+    required this.cardTextMuted,
+    required this.shadowColor,
+    required this.iconButtonBackground,
+  });
 
   static const double borderRadius = 16;
 
   /// Matches [frontPlaceholderAsset] (493×677) so the cover image is not cropped.
   static const double cardAspectRatio = 493 / 677;
 
-  static const Color cardBackground = Color(0xFF1A1A1A);
-  static const Color cardAccent = Color(0xFFC5944E);
-  static const Color cardTextPrimary = Colors.white;
-  static const Color cardTextSecondary = Color(0xFFC5944E);
-
   static const String frontPlaceholderAsset =
       'assets/images/cards/dinosaur_card_front_placeholder.png';
 
-  static List<BoxShadow> boxShadow({double flipAngleRadians = 0}) {
+  static const String titleFontFamily = 'tt_ramilas';
+
+  static const DinoCardTheme dark = DinoCardTheme._(
+    isLight: false,
+    cardBackground: Color(0xFF1A1A1A),
+    cardAccent: Color(0xFFC5944E),
+    cardTextPrimary: Colors.white,
+    cardTextSecondary: Color(0xFFC5944E),
+    cardTextMuted: Color(0x73FFFFFF),
+    shadowColor: Colors.black,
+    iconButtonBackground: Color(0x73000000),
+  );
+
+  static const DinoCardTheme light = DinoCardTheme._(
+    isLight: true,
+    cardBackground: Color(0xFFFAF7F2),
+    cardAccent: Color(0xFFC5944E),
+    cardTextPrimary: Color(0xFF3E2723),
+    cardTextSecondary: Color(0xFF5D4037),
+    cardTextMuted: Color(0xFF4E342E),
+    shadowColor: Color(0xFF3E2723),
+    iconButtonBackground: Color(0x33000000),
+  );
+
+  final bool isLight;
+  final Color cardBackground;
+  final Color cardAccent;
+  final Color cardTextPrimary;
+  final Color cardTextSecondary;
+  final Color cardTextMuted;
+  final Color shadowColor;
+  final Color iconButtonBackground;
+
+  static DinoCardTheme of(BuildContext context) {
+    return Theme.of(context).brightness == Brightness.dark ? dark : light;
+  }
+
+  List<BoxShadow> boxShadow({double flipAngleRadians = 0}) {
     final depth =
         0.20 + (0.05 * math.sin(flipAngleRadians.abs()).clamp(0.0, 1.0));
     return [
       BoxShadow(
-        color: Colors.black.withValues(alpha: depth * 0.45),
+        color: shadowColor.withValues(alpha: depth * 0.45),
         blurRadius: 34,
         spreadRadius: 2,
       ),
       BoxShadow(
-        color: Colors.black.withValues(alpha: depth),
+        color: shadowColor.withValues(alpha: depth),
         blurRadius: 16,
         spreadRadius: 0,
       ),
     ];
   }
 
-  static BoxDecoration chromeDecoration(
-    BuildContext context, {
-    double flipAngleRadians = 0,
-  }) {
+  BoxDecoration chromeDecoration({double flipAngleRadians = 0}) {
     return BoxDecoration(
       color: cardBackground,
       borderRadius: BorderRadius.circular(borderRadius),
@@ -47,15 +85,11 @@ class DinoCardTheme {
     );
   }
 
-  static BoxDecoration cardFaceDecoration() {
-    return const BoxDecoration(
-      color: cardBackground,
-    );
+  BoxDecoration cardFaceDecoration() {
+    return BoxDecoration(color: cardBackground);
   }
 
-  static const String titleFontFamily = 'tt_ramilas';
-
-  static TextStyle titleStyle({double fontSize = 18}) {
+  TextStyle titleStyle({double fontSize = 18}) {
     return TextStyle(
       fontFamily: titleFontFamily,
       color: cardTextPrimary,
@@ -66,7 +100,7 @@ class DinoCardTheme {
     );
   }
 
-  static TextStyle subtitleStyle({double fontSize = 11}) {
+  TextStyle subtitleStyle({double fontSize = 11}) {
     return TextStyle(
       color: cardTextSecondary,
       fontSize: fontSize,
@@ -76,7 +110,7 @@ class DinoCardTheme {
     );
   }
 
-  static TextStyle statLabelStyle({double fontSize = 9}) {
+  TextStyle statLabelStyle({double fontSize = 9}) {
     return TextStyle(
       color: cardTextSecondary,
       fontSize: fontSize,
@@ -86,7 +120,7 @@ class DinoCardTheme {
     );
   }
 
-  static TextStyle statValueStyle({double fontSize = 12}) {
+  TextStyle statValueStyle({double fontSize = 12}) {
     return TextStyle(
       color: cardTextPrimary,
       fontSize: fontSize,
@@ -95,7 +129,7 @@ class DinoCardTheme {
     );
   }
 
-  static TextStyle bodyStyle({double fontSize = 11}) {
+  TextStyle bodyStyle({double fontSize = 11}) {
     return TextStyle(
       color: cardTextPrimary.withValues(alpha: 0.92),
       fontSize: fontSize,
@@ -103,7 +137,7 @@ class DinoCardTheme {
     );
   }
 
-  static TextStyle sectionLabelStyle({double fontSize = 9}) {
+  TextStyle sectionLabelStyle({double fontSize = 9}) {
     return TextStyle(
       color: cardTextSecondary,
       fontSize: fontSize,
@@ -112,9 +146,9 @@ class DinoCardTheme {
     );
   }
 
-  static TextStyle rankLabelStyle({double fontSize = 8}) {
+  TextStyle rankLabelStyle({double fontSize = 8}) {
     return TextStyle(
-      color: cardTextPrimary.withValues(alpha: 0.45),
+      color: cardTextMuted,
       fontSize: fontSize,
       fontWeight: FontWeight.w500,
       letterSpacing: 0.6,
@@ -122,15 +156,51 @@ class DinoCardTheme {
     );
   }
 
-  // Legacy helpers kept for any remaining theme-aware call sites.
-  static Color labelColor(BuildContext context) => cardTextSecondary;
+  /// Non-highlighted cladogram taxon names.
+  Color cladogramNodeColor({required bool isLast}) {
+    if (isLast) return cardTextPrimary;
+    return isLight ? cardTextSecondary : cardAccent.withValues(alpha: 0.85);
+  }
 
-  static Color titleColor(BuildContext context) => cardTextPrimary;
+  /// Small timeline annotations (e.g. "252 Ma").
+  Color timelineAnnotationColor() {
+    return isLight ? cardTextMuted : cardTextPrimary.withValues(alpha: 0.5);
+  }
 
-  static Color accentColor(BuildContext context) => cardAccent;
+  /// Period names on the geologic timeline.
+  Color periodLabelColor() {
+    return isLight ? cardTextSecondary : cardAccent.withValues(alpha: 0.9);
+  }
 
-  static Color lineColor(BuildContext context) =>
-      cardAccent.withValues(alpha: 0.55);
+  /// Bottom overlay on the card front illustration.
+  LinearGradient frontOverlayGradient() {
+    if (isLight) {
+      return LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [
+          Colors.transparent,
+          cardBackground.withValues(alpha: 0.12),
+          cardBackground.withValues(alpha: 0.30),
+          cardBackground.withValues(alpha: 0.55),
+          cardBackground.withValues(alpha: 0.76),
+          cardBackground.withValues(alpha: 0.92),
+          cardBackground,
+        ],
+        stops: const [0.0, 0.12, 0.28, 0.40, 0.55, 0.82, 1.0],
+      );
+    }
 
-  static Color placeholderSurface(BuildContext context) => cardBackground;
+    return LinearGradient(
+      begin: Alignment.topCenter,
+      end: Alignment.bottomCenter,
+      colors: [
+        Colors.transparent,
+        cardBackground.withValues(alpha: 0.55),
+        cardBackground.withValues(alpha: 0.85),
+        cardBackground,
+      ],
+      stops: const [0.0, 0.18, 0.42, 1.0],
+    );
+  }
 }

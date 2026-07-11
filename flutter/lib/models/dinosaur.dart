@@ -111,6 +111,20 @@ class DinosaurSummary {
     }
     return '—';
   }
+
+  /// Period name only — omits Ma range (for card front).
+  String get displayPeriodName {
+    final name = period?.trim();
+    if (name == null || name.isEmpty) return '—';
+    final commaIndex = name.indexOf(',');
+    if (commaIndex > 0) {
+      final suffix = name.substring(commaIndex + 1).trim();
+      if (RegExp(r'\d').hasMatch(suffix) && suffix.contains('Ma')) {
+        return name.substring(0, commaIndex).trim();
+      }
+    }
+    return name;
+  }
 }
 
 class DinosaurListResponse {

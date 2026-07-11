@@ -11,8 +11,11 @@ class DinosaurCardBack extends StatelessWidget {
 
   final DinosaurSummary dinosaur;
 
+  static const _contentScale = 1.15;
+
   @override
   Widget build(BuildContext context) {
+    final cardTheme = DinoCardTheme.of(context);
     final nodes = dinosaur.cladogramNodes();
     final description = dinosaur.shortDescription != null &&
             dinosaur.shortDescription!.trim().isNotEmpty
@@ -22,32 +25,41 @@ class DinosaurCardBack extends StatelessWidget {
     return AspectRatio(
       aspectRatio: DinoCardTheme.cardAspectRatio,
       child: ColoredBox(
-        color: DinoCardTheme.cardBackground,
+        color: cardTheme.cardBackground,
         child: Padding(
           padding: const EdgeInsets.fromLTRB(18, 18, 18, 14),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              DinosaurCardHeader(dinosaur: dinosaur),
+              DinosaurCardHeader(
+                dinosaur: dinosaur,
+                titleFontSize: 22,
+                subtitleFontSize: 13,
+                centered: true,
+              ),
               const SizedBox(height: 8),
               Text(
                 description,
-                maxLines: 3,
-                overflow: TextOverflow.ellipsis,
-                style: DinoCardTheme.bodyStyle(fontSize: 11),
+                textAlign: TextAlign.center,
+                style: cardTheme.bodyStyle(fontSize: 13),
               ),
               const SizedBox(height: 10),
               SizedBox(
-                height: 88,
+                height: 102,
                 child: GeologicTimeline(
                   birth: dinosaur.birth,
                   death: dinosaur.death,
                   axis: GeologicTimelineAxis.horizontal,
+                  scale: _contentScale,
                 ),
               ),
               const SizedBox(height: 10),
               Expanded(
-                child: CladogramStrip(nodes: nodes),
+                child: CladogramStrip(
+                  nodes: nodes,
+                  scale: _contentScale,
+                  centered: true,
+                ),
               ),
             ],
           ),

@@ -13,6 +13,8 @@ class DinosaurCardFront extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cardTheme = DinoCardTheme.of(context);
+
     return AspectRatio(
       aspectRatio: DinoCardTheme.cardAspectRatio,
       child: Stack(
@@ -26,37 +28,30 @@ class DinosaurCardFront extends StatelessWidget {
             child: Align(
               alignment: Alignment.bottomCenter,
               child: FractionallySizedBox(
-                heightFactor: 0.62,
+                heightFactor: 0.45,
                 widthFactor: 1,
                 child: DecoratedBox(
                   decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [
-                        Colors.transparent,
-                        DinoCardTheme.cardBackground.withValues(alpha: 0.85),
-                        DinoCardTheme.cardBackground,
-                      ],
-                      stops: const [0.0, 0.35, 1.0],
-                    ),
+                    gradient: cardTheme.frontOverlayGradient(),
                   ),
                   child: ClipRect(
                     child: Padding(
-                      padding: const EdgeInsets.fromLTRB(18, 0, 18, 14),
+                      padding: const EdgeInsets.fromLTRB(18, 0, 18, 16),
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.end,
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                        crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
                           DinosaurCardHeader(
                             dinosaur: dinosaur,
-                            titleFontSize: 15,
-                            subtitleFontSize: 9,
+                            titleFontSize: 17,
+                            subtitleFontSize: 10,
+                            centered: true,
                           ),
-                          const SizedBox(height: 6),
+                          const SizedBox(height: 8),
                           DinosaurCardFacts(
                             dinosaur: dinosaur,
                             compact: true,
+                            centered: true,
                           ),
                         ],
                       ),
@@ -70,12 +65,12 @@ class DinosaurCardFront extends StatelessWidget {
             top: 12,
             right: 12,
             child: Material(
-              color: Colors.black.withValues(alpha: 0.45),
+              color: cardTheme.iconButtonBackground,
               shape: const CircleBorder(),
               clipBehavior: Clip.antiAlias,
               child: IconButton(
                 icon: const Icon(Icons.info_outline, size: 18),
-                color: DinoCardTheme.cardAccent,
+                color: cardTheme.cardAccent,
                 tooltip: 'Read article',
                 visualDensity: VisualDensity.compact,
                 onPressed: () => DinosaurArticleDrawer.show(
