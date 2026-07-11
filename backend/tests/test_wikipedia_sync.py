@@ -151,6 +151,7 @@ def test_sync_skips_up_to_date(session: Session, monkeypatch):
         wikipedia_page_id=30467,
         wikipedia_title="Tyrannosaurus",
         cladogram={"kingdom": "Animalia"},
+        article="<p>Cached article body</p>",
         article_date=datetime(2026, 7, 8, tzinfo=timezone.utc),
         insert_date=datetime(2025, 1, 1, tzinfo=timezone.utc),
         main_image_url="https://example.com/image.jpg",
@@ -215,6 +216,49 @@ def test_sync_updates_stale_preserves_insert_date(session: Session, fixture_html
     assert existing.main_image_url == "https://example.com/kept.jpg"
     assert existing.period == "Late Cretaceous"
     assert existing.llm_enriched is False
+
+
+def test_sync_refreshes_incomplete_stub(session: Session, fixture_html, monkeypatch):
+    existing = Dinosaur(
+        name="Brachiosaurus",
+        wikipedia_page_id=12345,
+        wikipedia_title="Brachiosaurus",
+        cladogram={},
+        article=None,
+        article_date=datetime(2026, 7, 8, tzinfo=timezone.utc),
+        insert_date=datetime(2025, 1, 1, tzinfo=timezone.utc),
+    )
+    session.add(existing)
+    session.commit()
+
+    client = MagicMock()
+    client.page_with_html.return_value = {"html": fixture_html}
+
+    monkeypatch.setattr(
+        "app.services.wikipedia_service.sync.list_category_articles",
+        lambda *_args, **_kwargs: [CategoryMember(page_id=12345, title="Brachiosaurus")],
+    )
+    monkeypatch.setattr(
+        "app.services.wikipedia_service.sync.fetch_page_metadata",
+        lambda *_args, **_kwargs: _metadata(
+            page_id=12345,
+            title="Brachiosaurus",
+            ts=datetime(2026, 7, 8, tzinfo=timezone.utc),
+        ),
+    )
+    monkeypatch.setattr(
+        "app.services.wikipedia_service.sync.parse_article_html",
+        lambda html: _parsed(html),
+    )
+
+    summary = sync_dinosaurs(session, client=client)
+    session.refresh(existing)
+
+    assert summary.counters.updated == 1
+    assert existing.period == "Late Cretaceous"
+    assert existing.cladogram["genus"] == "Tyrannosaurus"
+    assert existing.article is not None
+    client.page_with_html.assert_called_once()
 
 
 def test_sync_stale_update_resets_llm_enriched(session: Session, fixture_html, monkeypatch):
