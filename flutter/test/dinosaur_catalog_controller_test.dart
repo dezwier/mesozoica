@@ -49,6 +49,7 @@ void main() {
     expect(capturedUri!.queryParameters.containsKey('q'), isFalse);
     expect(capturedUri!.queryParameters.containsKey('ma_younger'), isFalse);
     expect(capturedUri!.queryParameters.containsKey('ma_older'), isFalse);
+    expect(capturedUri!.queryParameters['has_custom_image'], 'true');
     expect(controller.items.map((d) => d.name), ['Velociraptor', 'Tyrannosaurus']);
 
     controller.dispose();
@@ -94,6 +95,7 @@ void main() {
     expect(capturedUri!.queryParameters['q'], 'tyranno');
     expect(capturedUri!.queryParameters.containsKey('ma_younger'), isFalse);
     expect(capturedUri!.queryParameters.containsKey('ma_older'), isFalse);
+    expect(capturedUri!.queryParameters['has_custom_image'], 'true');
     expect(controller.hasActiveFilters, isTrue);
     expect(controller.total, 1);
     expect(controller.items.single.name, 'Tyrannosaurus');
@@ -130,6 +132,7 @@ void main() {
     expect(capturedUris.last.queryParameters.containsKey('q'), isFalse);
     expect(capturedUris.last.queryParameters.containsKey('ma_younger'), isFalse);
     expect(capturedUris.last.queryParameters['sort'], 'random');
+    expect(capturedUris.last.queryParameters['has_custom_image'], 'true');
     expect(controller.hasActiveFilters, isFalse);
 
     controller.dispose();
@@ -158,6 +161,36 @@ void main() {
 
     expect(capturedUri!.queryParameters.containsKey('ma_younger'), isFalse);
     expect(capturedUri!.queryParameters.containsKey('ma_older'), isFalse);
+    expect(capturedUri!.queryParameters['has_custom_image'], 'true');
+
+    controller.dispose();
+  });
+
+  test('onlyCustomImage false omits has_custom_image param', () async {
+    Uri? capturedUri;
+    final service = DinosaurService(
+      client: MockClient((request) async {
+        capturedUri = request.url;
+        return http.Response(
+          jsonEncode({
+            'items': [],
+            'total': 0,
+            'limit': 20,
+            'offset': 0,
+            'has_next': false,
+          }),
+          200,
+        );
+      }),
+    );
+
+    final controller = DinosaurCatalogController(service: service);
+    await controller.applyFilters(
+      const DinosaurCatalogFilters(onlyCustomImage: false),
+    );
+
+    expect(capturedUri!.queryParameters.containsKey('has_custom_image'), isFalse);
+    expect(controller.hasActiveFilters, isTrue);
 
     controller.dispose();
   });

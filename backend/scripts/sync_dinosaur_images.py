@@ -15,6 +15,7 @@ from app.models.dinosaur import Dinosaur
 from app.services.dinosaur_image_service.sync import (
     build_curated_image_url,
     match_image_files,
+    resolve_local_source_dir_for_sync,
     resolve_public_base_url_for_sync,
     scan_local_image_files,
     upload_file_to_railway,
@@ -39,7 +40,7 @@ def run_sync(*, dry_run: bool = False) -> int:
     if not dry_run:
         require_railway_database()
 
-    source_dir = settings.resolved_dinosaur_images_dir
+    source_dir = resolve_local_source_dir_for_sync()
     public_base_url = resolve_public_base_url_for_sync()
     sync_secret = settings.dinosaur_image_sync_secret
 

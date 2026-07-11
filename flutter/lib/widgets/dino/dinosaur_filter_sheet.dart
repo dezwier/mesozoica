@@ -46,6 +46,7 @@ class _DinosaurFilterSheetState extends State<DinosaurFilterSheet> {
   late final TextEditingController _searchController;
   late String _pendingSearch;
   late RangeValues _pendingRange;
+  late bool _pendingOnlyCustomImage;
   bool _applied = false;
 
   @override
@@ -57,6 +58,7 @@ class _DinosaurFilterSheetState extends State<DinosaurFilterSheet> {
       widget.initialFilters.maYounger,
       widget.initialFilters.maOlder,
     );
+    _pendingOnlyCustomImage = widget.initialFilters.onlyCustomImage;
   }
 
   @override
@@ -73,6 +75,7 @@ class _DinosaurFilterSheetState extends State<DinosaurFilterSheet> {
         searchQuery: _pendingSearch.trim(),
         maYounger: _pendingRange.start,
         maOlder: _pendingRange.end,
+        onlyCustomImage: _pendingOnlyCustomImage,
       ),
     );
   }
@@ -82,6 +85,7 @@ class _DinosaurFilterSheetState extends State<DinosaurFilterSheet> {
       searchQuery: _pendingSearch.trim(),
       maYounger: _pendingRange.start,
       maOlder: _pendingRange.end,
+      onlyCustomImage: _pendingOnlyCustomImage,
     );
   }
 
@@ -93,6 +97,7 @@ class _DinosaurFilterSheetState extends State<DinosaurFilterSheet> {
         GeologicTimeline.mesozoicYoungerMa,
         GeologicTimeline.mesozoicOlderMa,
       );
+      _pendingOnlyCustomImage = true;
     });
   }
 
@@ -146,6 +151,22 @@ class _DinosaurFilterSheetState extends State<DinosaurFilterSheet> {
                   ),
                 ),
               _buildSearchField(context),
+              const SizedBox(height: 16),
+              CheckboxListTile(
+                contentPadding: EdgeInsets.zero,
+                controlAffinity: ListTileControlAffinity.leading,
+                value: _pendingOnlyCustomImage,
+                onChanged: (value) {
+                  setState(() => _pendingOnlyCustomImage = value ?? true);
+                },
+                title: const Text('Custom image only'),
+                subtitle: Text(
+                  'Hide cards using the placeholder illustration',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
               const SizedBox(height: 20),
               Text(
                 'Time range',

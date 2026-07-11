@@ -24,6 +24,7 @@ def get_dinosaurs(
     q: str | None = Query(default=None),
     ma_younger: float | None = Query(default=None),
     ma_older: float | None = Query(default=None),
+    has_custom_image: bool = Query(default=False),
 ) -> DinosaurListResponse:
     if sort not in ("name", "random"):
         raise ValidationError("sort must be one of: name, random")
@@ -36,6 +37,7 @@ def get_dinosaurs(
         q=q,
         ma_younger=ma_younger,
         ma_older=ma_older,
+        has_custom_image=has_custom_image,
     )
     items = [DinosaurSummary.model_validate(row) for row in rows]
     return DinosaurListResponse(

@@ -17,6 +17,7 @@ from app.services.dinosaur_image_service.sync import (
     is_curated_image_url,
     match_image_files,
     normalize_public_base_url,
+    resolve_local_source_dir_for_sync,
     resolve_public_base_url_for_sync,
     scan_local_image_files,
     upload_file_to_railway,
@@ -74,6 +75,18 @@ def test_normalize_public_base_url():
     assert normalize_public_base_url("https://example.com/") == "https://example.com"
     with pytest.raises(ValueError):
         normalize_public_base_url("")
+
+
+def test_resolve_local_source_dir_for_sync_ignores_server_path(monkeypatch, tmp_path: Path):
+    repo_images = tmp_path / "dinosaur-images"
+    repo_images.mkdir()
+    (repo_images / "Eoraptor.png").write_bytes(b"x")
+
+    monkeypatch.setenv("DINOSAUR_IMAGES_DIR", "/data/dinosaur-images")
+    monkeypatch.setenv("DINOSAUR_IMAGES_SOURCE_DIR", str(repo_images))
+
+    assert resolve_local_source_dir_for_sync() == repo_images.resolve()
+    assert scan_local_image_files(resolve_local_source_dir_for_sync())
 
 
 def test_resolve_public_base_url_for_sync_defaults_to_production(monkeypatch):
@@ -175,6 +188,7 @@ def test_run_sync_updates_main_image_url(
     monkeypatch.setattr(config_module.settings, "dinosaur_images_dir", str(images_dir))
     monkeypatch.setattr(config_module.settings, "public_base_url", "https://example.com")
     monkeypatch.setattr(config_module.settings, "dinosaur_image_sync_secret", "secret")
+    monkeypatch.setenv("DINOSAUR_IMAGES_SOURCE_DIR", str(images_dir))
     monkeypatch.setattr(
         sync_module,
         "upload_file_to_railway",

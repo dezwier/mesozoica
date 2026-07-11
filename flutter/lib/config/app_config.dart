@@ -49,6 +49,7 @@ class AppConfig {
     String? q,
     double? maYounger,
     double? maOlder,
+    bool hasCustomImage = false,
   }) {
     final params = <String, String>{
       'limit': '$limit',
@@ -65,6 +66,9 @@ class AppConfig {
     if (maYounger != null && maOlder != null) {
       params['ma_younger'] = '$maYounger';
       params['ma_older'] = '$maOlder';
+    }
+    if (hasCustomImage) {
+      params['has_custom_image'] = 'true';
     }
     return Uri.parse('$baseApiUrl/api/v1/dinosaurs').replace(
       queryParameters: params,

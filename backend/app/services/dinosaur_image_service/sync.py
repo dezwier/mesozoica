@@ -109,6 +109,22 @@ def upload_file_to_railway(
         )
 
 
+def resolve_local_source_dir_for_sync() -> Path:
+    """Repo `dinosaur-images/` folder — local source files for sync.
+
+    Intentionally ignores DINOSAUR_IMAGES_DIR, which is the server-side storage
+    path injected by Railway (e.g. /data/dinosaur-images).
+    """
+    override = os.getenv("DINOSAUR_IMAGES_SOURCE_DIR", "").strip()
+    backend_dir = Path(__file__).resolve().parents[3]
+    if override:
+        path = Path(override)
+        if path.is_absolute():
+            return path
+        return (backend_dir / path).resolve()
+    return (backend_dir.parent / "dinosaur-images").resolve()
+
+
 def resolve_public_base_url_for_sync() -> str:
     """Prefer explicit PUBLIC_BASE_URL; fall back to Railway domain or production default."""
     explicit = settings.public_base_url.strip()

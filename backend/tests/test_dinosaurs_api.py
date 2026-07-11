@@ -306,3 +306,38 @@ def test_list_dinosaurs_filter_random_stable_with_seed(client, session):
 def test_list_dinosaurs_filter_ma_requires_both_params(client, session):
     response = client.get("/api/v1/dinosaurs?ma_younger=66")
     assert response.status_code == 400
+
+
+def test_list_dinosaurs_filter_has_custom_image(client, session):
+    session.add_all(
+        [
+            Dinosaur(
+                name="Tyrannosaurus",
+                wikipedia_page_id=6001,
+                wikipedia_title="Tyrannosaurus",
+                main_image_url="https://mesozoica-production.up.railway.app/media/dinosaurs/Tyrannosaurus.webp",
+            ),
+            Dinosaur(
+                name="Stegosaurus",
+                wikipedia_page_id=6002,
+                wikipedia_title="Stegosaurus",
+                main_image_url="https://upload.wikimedia.org/wikipedia/commons/stego.jpg",
+            ),
+            Dinosaur(
+                name="Brachiosaurus",
+                wikipedia_page_id=6003,
+                wikipedia_title="Brachiosaurus",
+            ),
+        ]
+    )
+    session.commit()
+
+    response = client.get("/api/v1/dinosaurs?has_custom_image=true&sort=name")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["total"] == 1
+    assert body["items"][0]["name"] == "Tyrannosaurus"
+
+    all_response = client.get("/api/v1/dinosaurs?sort=name")
+    assert all_response.status_code == 200
+    assert all_response.json()["total"] == 3

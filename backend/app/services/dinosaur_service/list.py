@@ -10,6 +10,7 @@ from sqlmodel import Session, col, func as sqlmodel_func, select
 
 from app.core.exceptions import NotFoundError, ValidationError
 from app.models.dinosaur import Dinosaur
+from app.services.dinosaur_image_service.sync import CURATED_MEDIA_PATH
 
 SortOption = Literal["name", "random"]
 _MAX_SEED_LEN = 64
@@ -27,6 +28,7 @@ def list_dinosaurs(
     q: str | None = None,
     ma_younger: float | None = None,
     ma_older: float | None = None,
+    has_custom_image: bool = False,
 ) -> tuple[list[Dinosaur], int]:
     """Return paginated dinosaur rows ordered by name or seed-stable random."""
     capped_limit = max(1, min(limit, 500))
@@ -43,6 +45,7 @@ def list_dinosaurs(
         ma_younger=younger,
         ma_older=older,
         time_filter_active=effective_time_filter,
+        has_custom_image=has_custom_image,
     )
 
     total = session.exec(
@@ -100,8 +103,14 @@ def _filtered_select(
     ma_younger: float | None,
     ma_older: float | None,
     time_filter_active: bool,
+    has_custom_image: bool,
 ):
     stmt = select(Dinosaur)
+    if has_custom_image:
+        stmt = stmt.where(
+            col(Dinosaur.main_image_url).is_not(None),
+            col(Dinosaur.main_image_url).contains(CURATED_MEDIA_PATH),
+        )
     if normalized_q is not None:
         pattern = f"%{normalized_q}%"
         stmt = stmt.where(
