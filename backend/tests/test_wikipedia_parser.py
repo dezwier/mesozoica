@@ -49,3 +49,83 @@ def test_parse_single_ma_sets_birth_and_death():
     assert parsed.birth == 70.5
     assert parsed.death == 70.5
     assert parsed.period == "Late Cretaceous"
+
+
+def test_parse_genus_strips_author_from_italic_cell():
+    html = """
+    <table class="infobox biota">
+      <tr><td>Genus:</td><td><i>Brachiosaurus</i> Riggs, 1903</td></tr>
+    </table>
+    """
+    parsed = parse_article_html(html)
+    assert parsed.cladogram["genus"] == "Brachiosaurus"
+
+
+def test_parse_genus_strips_author_from_plain_text_cell():
+    html = """
+    <table class="infobox biota">
+      <tr><td>Genus:</td><td>Brachiosaurus Riggs, 1903</td></tr>
+    </table>
+    """
+    parsed = parse_article_html(html)
+    assert parsed.cladogram["genus"] == "Brachiosaurus"
+
+
+def test_parse_genus_strips_author_with_initials():
+    html = """
+    <table class="infobox biota">
+      <tr><td>Genus:</td><td><i>Apatosaurus</i> C. A. Gilmore, 1924</td></tr>
+    </table>
+    """
+    parsed = parse_article_html(html)
+    assert parsed.cladogram["genus"] == "Apatosaurus"
+
+
+def test_parse_genus_ignores_authority_span():
+    html = """
+    <table class="infobox biota">
+      <tr><td>Genus:</td><td><i>Tyrannosaurus</i> <span class="authority">Osborn, 1905</span></td></tr>
+    </table>
+    """
+    parsed = parse_article_html(html)
+    assert parsed.cladogram["genus"] == "Tyrannosaurus"
+
+
+def test_parse_genus_strips_et_al_in_separate_italic_tag():
+    html = """
+    <table class="infobox biota">
+      <tr><td>Genus:</td><td><i>Abelisaurus</i> <i>et al.</i>, 2020</td></tr>
+    </table>
+    """
+    parsed = parse_article_html(html)
+    assert parsed.cladogram["genus"] == "Abelisaurus"
+
+
+def test_parse_genus_strips_author_et_al_with_year():
+    html = """
+    <table class="infobox biota">
+      <tr><td>Genus:</td><td>Abelisaurus Bonaparte et al., 1990</td></tr>
+    </table>
+    """
+    parsed = parse_article_html(html)
+    assert parsed.cladogram["genus"] == "Abelisaurus"
+
+
+def test_parse_genus_strips_et_all_typo():
+    html = """
+    <table class="infobox biota">
+      <tr><td>Genus:</td><td><i>Abelisaurus</i> Bonaparte et all., 1990</td></tr>
+    </table>
+    """
+    parsed = parse_article_html(html)
+    assert parsed.cladogram["genus"] == "Abelisaurus"
+
+
+def test_parse_genus_strips_authority_inside_single_italic_tag():
+    html = """
+    <table class="infobox biota">
+      <tr><td>Genus:</td><td><i>Abelisaurus Bonaparte et al., 1990</i></td></tr>
+    </table>
+    """
+    parsed = parse_article_html(html)
+    assert parsed.cladogram["genus"] == "Abelisaurus"

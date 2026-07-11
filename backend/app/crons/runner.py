@@ -24,6 +24,7 @@ from croniter import croniter
 from app.crons.config import CronJobDef, load_cron_config
 from app.crons.jobs import dinosaur_llm_enrich, wikipedia_dinosaur_sync
 from app.crons.logging_config import configure_cron_logging
+from app.crons.railway_guard import require_railway_database
 
 logger = logging.getLogger(__name__)
 
@@ -100,6 +101,7 @@ def run_scheduled_pass(now: datetime | None = None) -> int:
 
 def main(argv: list[str] | None = None) -> int:
     configure_cron_logging()
+    require_railway_database()
     parser = argparse.ArgumentParser(description="Run scheduled jobs from app/crons/crons.yaml")
     parser.add_argument(
         "--job",

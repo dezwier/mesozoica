@@ -17,6 +17,8 @@ class DinosaurCardBack extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final lineage = dinosaur.cladogramLineage();
+    final titleColor = DinoCardTheme.titleColor(context);
+    final labelColor = DinoCardTheme.labelColor(context);
 
     return Padding(
       padding: const EdgeInsets.all(16),
@@ -25,8 +27,8 @@ class DinosaurCardBack extends StatelessWidget {
         children: [
           Text(
             dinosaur.name.toUpperCase(),
-            style: const TextStyle(
-              color: DinoCardTheme.titleWhite,
+            style: TextStyle(
+              color: titleColor,
               fontSize: 18,
               fontWeight: FontWeight.w700,
               letterSpacing: 1.0,
@@ -39,8 +41,8 @@ class DinosaurCardBack extends StatelessWidget {
               dinosaur.shortDescription!,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: DinoCardTheme.subtitleMuted,
+              style: TextStyle(
+                color: labelColor,
                 fontSize: 12,
               ),
             ),

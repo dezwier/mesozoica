@@ -1,32 +1,54 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
-/// Museum-style card chrome separate from app theme.
+/// Card chrome aligned with archipelago dictionary cards — surface fill, soft shadow, no border.
 class DinoCardTheme {
   DinoCardTheme._();
 
-  static const Color background = Color(0xFF121110);
-  static const Color backgroundElevated = Color(0xFF1C1B1F);
-  static const Color borderBronze = Color(0xFF8B6914);
-  static const Color borderGold = Color(0xFFCD7F32);
-  static const Color labelBronze = Color(0xFFB8860B);
-  static const Color titleWhite = Color(0xFFF5F5F5);
-  static const Color subtitleMuted = Color(0xFFBCAAA4);
-  static const Color timelineAccent = Color(0xFFFF8C42);
-  static const Color cladogramLine = Color(0xFFCD7F32);
+  static const double borderRadius = 16;
 
-  static const double borderRadius = 14;
-  static const double borderWidth = 1.5;
+  static List<BoxShadow> boxShadow({double flipAngleRadians = 0}) {
+    final depth =
+        0.20 + (0.05 * math.sin(flipAngleRadians.abs()).clamp(0.0, 1.0));
+    return [
+      BoxShadow(
+        color: Colors.black.withValues(alpha: depth * 0.45),
+        blurRadius: 34,
+        spreadRadius: 2,
+      ),
+      BoxShadow(
+        color: Colors.black.withValues(alpha: depth),
+        blurRadius: 16,
+        spreadRadius: 0,
+      ),
+    ];
+  }
 
-  static BoxDecoration get chromeDecoration => BoxDecoration(
-        color: background,
-        borderRadius: BorderRadius.circular(borderRadius),
-        border: Border.all(color: borderGold, width: borderWidth),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x66000000),
-            blurRadius: 12,
-            offset: Offset(0, 6),
-          ),
-        ],
-      );
+  static BoxDecoration chromeDecoration(
+    BuildContext context, {
+    double flipAngleRadians = 0,
+  }) {
+    final scheme = Theme.of(context).colorScheme;
+    return BoxDecoration(
+      color: scheme.surface,
+      borderRadius: BorderRadius.circular(borderRadius),
+      boxShadow: boxShadow(flipAngleRadians: flipAngleRadians),
+    );
+  }
+
+  static Color labelColor(BuildContext context) =>
+      Theme.of(context).colorScheme.onSurfaceVariant;
+
+  static Color titleColor(BuildContext context) =>
+      Theme.of(context).colorScheme.onSurface;
+
+  static Color accentColor(BuildContext context) =>
+      Theme.of(context).colorScheme.primary;
+
+  static Color lineColor(BuildContext context) =>
+      Theme.of(context).colorScheme.outline.withValues(alpha: 0.55);
+
+  static Color placeholderSurface(BuildContext context) =>
+      Theme.of(context).colorScheme.surfaceContainerHighest;
 }

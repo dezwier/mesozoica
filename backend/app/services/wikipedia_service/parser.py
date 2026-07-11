@@ -84,8 +84,69 @@ def _normalize_rank(label: str) -> str | None:
 def _clean_taxon_value(text: str) -> str:
     text = re.sub(r"[†‡]", "", text)
     text = re.sub(r"\s+", " ", text).strip()
-    text = re.sub(r"\s+[A-Z][A-Za-z.-]+(?:\s+(?:et al\.|& al\.))?,?\s+\d{4}$", "", text)
-    return text.strip()
+    return _strip_taxonomic_authority(text)
+
+
+def _strip_taxonomic_authority(text: str) -> str:
+    """Remove author/year suffixes from plain-text taxon values."""
+    text = text.strip()
+    if not text:
+        return text
+
+    # Parenthetical authority, e.g. "Name (Osborn, 1905)".
+    text = re.sub(r"\s*\([^)]*\b\d{3,4}\b[^)]*\)\s*$", "", text).strip()
+
+    # Repeatedly strip trailing authority fragments (with or without year).
+    # Case-sensitive: lowercase species epithets like "rex" must not match.
+    trailing_authority = re.compile(
+        r"\s+(?:"
+        r"(?:[A-Z][A-Za-z.-]*(?:\s+[A-Z]\.?)*(?:\s+(?:&|and)\s+[A-Z][A-Za-z.-]*)*\s+)?"
+        r"(?i:(?:et\s+al\.?|et\s+all\.?))"
+        r"(?:,\s*)?"
+        r"(?:\d{3,4})?"
+        r"|"
+        r"(?:[A-Z][A-Za-z.-]*(?:\s+[A-Z]\.?)*(?:\s+(?:&|and)\s+[A-Z][A-Za-z.-]*)*)"
+        r"(?:,\s*|\s+)\d{3,4}"
+        r")\s*$",
+    )
+    while True:
+        stripped = trailing_authority.sub("", text).strip()
+        if stripped == text:
+            break
+        text = stripped
+
+    return text
+
+
+_AUTHORITY_ITALIC_FRAGMENT = re.compile(
+    r"^(?:et\s+al\.?|et\s+all\.?|\d{3,4})$",
+    re.IGNORECASE,
+)
+
+
+def _finalize_taxon_name(text: str) -> str:
+    return _strip_taxonomic_authority(text)
+
+
+def _extract_infobox_taxon_value(cell) -> str:
+    """Extract taxon name from an infobox cell, omitting finder/author citations."""
+    fragment = BeautifulSoup(str(cell), "html.parser")
+    for tag in fragment.select(".authority, .taxon-auth"):
+        tag.decompose()
+
+    italic_parts = [
+        re.sub(r"[†‡]", "", tag.get_text(" ", strip=True))
+        for tag in fragment.find_all("i")
+    ]
+    italic_parts = [
+        part
+        for part in italic_parts
+        if part and not _AUTHORITY_ITALIC_FRAGMENT.match(part.strip())
+    ]
+    if italic_parts:
+        return _finalize_taxon_name(" ".join(italic_parts))
+
+    return _finalize_taxon_name(fragment.get_text(" ", strip=True))
 
 
 def _extract_infobox_text(html: str) -> str:
@@ -160,7 +221,7 @@ def _parse_cladogram(soup: BeautifulSoup) -> dict[str, Any]:
         if len(cells) < 2:
             continue
         label = cells[0].get_text(" ", strip=True)
-        value = _clean_taxon_value(cells[1].get_text(" ", strip=True))
+        value = _extract_infobox_taxon_value(cells[1])
         if not value:
             continue
 
@@ -190,7 +251,7 @@ def _parse_diet_from_infobox(soup: BeautifulSoup) -> str | None:
             continue
         label = cells[0].get_text(" ", strip=True).lower()
         if label.startswith("diet"):
-            return _clean_taxon_value(cells[1].get_text(" ", strip=True)) or None
+            return _extract_infobox_taxon_value(cells[1]) or None
     return None
 
 

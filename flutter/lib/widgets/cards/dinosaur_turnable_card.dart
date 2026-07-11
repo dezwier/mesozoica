@@ -20,7 +20,7 @@ class DinosaurTurnableCard extends StatelessWidget {
       resetIdentity: dinosaur.id,
       borderRadius: DinoCardTheme.borderRadius,
       outerPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: DinoCardTheme.chromeDecoration,
+      decoration: DinoCardTheme.chromeDecoration(context),
       front: DinosaurCardFront(dinosaur: dinosaur),
       back: DinosaurCardBack(dinosaur: dinosaur),
     );

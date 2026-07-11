@@ -20,8 +20,8 @@ class DinosaurCardFront extends StatelessWidget {
             CachedNetworkImage(
               imageUrl: dinosaur.mainImageUrl!,
               fit: BoxFit.cover,
-              placeholder: (context, url) => const _ImagePlaceholder(),
-              errorWidget: (context, url, error) => const _ImagePlaceholder(),
+              placeholder: (context, url) => _ImagePlaceholder(),
+              errorWidget: (context, url, error) => _ImagePlaceholder(),
             )
           else
             const _ImagePlaceholder(),
@@ -50,7 +50,7 @@ class DinosaurCardFront extends StatelessWidget {
                 Text(
                   dinosaur.name.toUpperCase(),
                   style: const TextStyle(
-                    color: DinoCardTheme.titleWhite,
+                    color: Colors.white,
                     fontSize: 20,
                     fontWeight: FontWeight.w700,
                     letterSpacing: 1.2,
@@ -63,8 +63,8 @@ class DinosaurCardFront extends StatelessWidget {
                     dinosaur.shortDescription!,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: DinoCardTheme.subtitleMuted,
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.82),
                       fontSize: 12,
                     ),
                   ),
@@ -84,12 +84,12 @@ class _ImagePlaceholder extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: DinoCardTheme.backgroundElevated,
+      color: DinoCardTheme.placeholderSurface(context),
       alignment: Alignment.center,
       child: Icon(
         Icons.image_not_supported_outlined,
         size: 56,
-        color: DinoCardTheme.subtitleMuted.withValues(alpha: 0.6),
+        color: DinoCardTheme.labelColor(context).withValues(alpha: 0.6),
       ),
     );
   }

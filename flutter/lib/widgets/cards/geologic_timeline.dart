@@ -29,13 +29,17 @@ class GeologicTimeline extends StatelessWidget {
     final startPos = rangeStart != null ? _positionForMa(rangeStart) : null;
     final endPos = rangeEnd != null ? _positionForMa(rangeEnd) : null;
 
+    final labelColor = DinoCardTheme.labelColor(context);
+    final accentColor = DinoCardTheme.accentColor(context);
+    final lineColor = DinoCardTheme.lineColor(context);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
-        const Text(
+        Text(
           'TIME',
           style: TextStyle(
-            color: DinoCardTheme.labelBronze,
+            color: labelColor,
             fontSize: 10,
             fontWeight: FontWeight.w600,
             letterSpacing: 0.8,
@@ -57,9 +61,9 @@ class GeologicTimeline extends StatelessWidget {
                       begin: Alignment.topCenter,
                       end: Alignment.bottomCenter,
                       colors: [
-                        DinoCardTheme.cladogramLine.withValues(alpha: 0.4),
-                        DinoCardTheme.cladogramLine,
-                        DinoCardTheme.timelineAccent,
+                        lineColor.withValues(alpha: 0.35),
+                        lineColor,
+                        accentColor,
                       ],
                     ),
                   ),
@@ -73,9 +77,8 @@ class GeologicTimeline extends StatelessWidget {
                   child: Container(
                     width: 10,
                     decoration: BoxDecoration(
-                      color: DinoCardTheme.timelineAccent.withValues(alpha: 0.35),
+                      color: accentColor.withValues(alpha: 0.25),
                       borderRadius: BorderRadius.circular(4),
-                      border: Border.all(color: DinoCardTheme.timelineAccent),
                     ),
                   ),
                 )
@@ -83,22 +86,22 @@ class GeologicTimeline extends StatelessWidget {
                 Positioned(
                   top: (1 - startPos.clamp(0.0, 1.0)) * 140 - 4,
                   right: 16,
-                  child: _TimelineDot(),
+                  child: _TimelineDot(color: accentColor),
                 ),
               Positioned(
                 top: 0,
                 right: 0,
-                child: _TimelineLabel('${minMa.round()} Ma'),
+                child: _TimelineLabel('${minMa.round()} Ma', color: labelColor),
               ),
               Positioned(
                 top: 52,
                 right: 0,
-                child: _TimelineLabel('201 Ma'),
+                child: _TimelineLabel('201 Ma', color: labelColor),
               ),
               Positioned(
                 bottom: 0,
                 right: 0,
-                child: _TimelineLabel('${maxMa.round()} Ma'),
+                child: _TimelineLabel('${maxMa.round()} Ma', color: labelColor),
               ),
             ],
           ),
@@ -109,6 +112,10 @@ class GeologicTimeline extends StatelessWidget {
 }
 
 class _TimelineDot extends StatelessWidget {
+  const _TimelineDot({required this.color});
+
+  final Color color;
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -116,29 +123,24 @@ class _TimelineDot extends StatelessWidget {
       height: 12,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: DinoCardTheme.timelineAccent,
-        boxShadow: [
-          BoxShadow(
-            color: DinoCardTheme.timelineAccent.withValues(alpha: 0.6),
-            blurRadius: 8,
-          ),
-        ],
+        color: color,
       ),
     );
   }
 }
 
 class _TimelineLabel extends StatelessWidget {
-  const _TimelineLabel(this.text);
+  const _TimelineLabel(this.text, {required this.color});
 
   final String text;
+  final Color color;
 
   @override
   Widget build(BuildContext context) {
     return Text(
       text,
-      style: const TextStyle(
-        color: DinoCardTheme.subtitleMuted,
+      style: TextStyle(
+        color: color,
         fontSize: 9,
       ),
     );

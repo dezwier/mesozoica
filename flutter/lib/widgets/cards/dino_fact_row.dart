@@ -16,12 +16,15 @@ class DinoFactRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final labelColor = DinoCardTheme.labelColor(context);
+    final titleColor = DinoCardTheme.titleColor(context);
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 16, color: DinoCardTheme.labelBronze),
+          Icon(icon, size: 16, color: labelColor),
           const SizedBox(width: 8),
           Expanded(
             child: Column(
@@ -29,8 +32,8 @@ class DinoFactRow extends StatelessWidget {
               children: [
                 Text(
                   label.toUpperCase(),
-                  style: const TextStyle(
-                    color: DinoCardTheme.labelBronze,
+                  style: TextStyle(
+                    color: labelColor,
                     fontSize: 10,
                     fontWeight: FontWeight.w600,
                     letterSpacing: 0.8,
@@ -39,8 +42,8 @@ class DinoFactRow extends StatelessWidget {
                 const SizedBox(height: 2),
                 Text(
                   value,
-                  style: const TextStyle(
-                    color: DinoCardTheme.titleWhite,
+                  style: TextStyle(
+                    color: titleColor,
                     fontSize: 13,
                     height: 1.25,
                   ),

@@ -47,55 +47,27 @@ class DinosaurSummary {
     );
   }
 
-  /// Taxonomic lineage from [fromRank] through genus, preserving cladogram order.
+  /// Taxonomic lineage from [fromRank] through genus, in original cladogram order.
   List<String> cladogramLineage({String fromRank = 'Dinosauria'}) {
-    const rankOrder = [
-      'kingdom',
-      'phylum',
-      'division',
-      'class',
-      'order',
-      'family',
-      'subfamily',
-      'tribe',
-      'genus',
-    ];
-
     final entries = <MapEntry<String, String>>[];
     for (final entry in cladogram.entries) {
-      final key = entry.key;
       final value = entry.value?.toString().trim();
       if (value == null || value.isEmpty) continue;
-      entries.add(MapEntry(key, value));
+      entries.add(MapEntry(entry.key, value));
     }
 
-    final cladeEntries = entries.where((e) => e.key.startsWith('clade')).toList()
-      ..sort((a, b) => a.key.compareTo(b.key));
-
-    final rankEntries = <MapEntry<String, String>>[];
-    for (final rank in rankOrder) {
-      final match = entries.where((e) => e.key == rank);
-      if (match.isNotEmpty) {
-        rankEntries.add(match.first);
-      }
-    }
-
-    final combined = <MapEntry<String, String>>[...cladeEntries, ...rankEntries];
-    final seen = <String>{};
-    final ordered = <String>[];
-    for (final entry in combined) {
-      if (seen.add(entry.value)) {
-        ordered.add(entry.value);
-      }
-    }
-
-    final startIndex = ordered.indexWhere(
-      (value) => value.toLowerCase().contains(fromRank.toLowerCase()),
+    final startIndex = entries.indexWhere(
+      (entry) => entry.value.toLowerCase().contains(fromRank.toLowerCase()),
     );
-    if (startIndex >= 0) {
-      return ordered.sublist(startIndex);
+    if (startIndex < 0) return [];
+
+    final lineage = <String>[];
+    for (final entry in entries.sublist(startIndex)) {
+      if (entry.key == 'species') break;
+      lineage.add(entry.value);
+      if (entry.key == 'genus') break;
     }
-    return ordered;
+    return lineage;
   }
 
   String get displayPeriod {

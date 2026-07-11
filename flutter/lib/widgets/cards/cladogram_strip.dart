@@ -13,19 +13,27 @@ class CladogramStrip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (lineage.isEmpty) {
-      return const Text(
+      return Text(
         '—',
-        style: TextStyle(color: DinoCardTheme.subtitleMuted, fontSize: 12),
+        style: TextStyle(
+          color: DinoCardTheme.labelColor(context),
+          fontSize: 12,
+        ),
       );
     }
+
+    final labelColor = DinoCardTheme.labelColor(context);
+    final titleColor = DinoCardTheme.titleColor(context);
+    final accentColor = DinoCardTheme.accentColor(context);
+    final lineColor = DinoCardTheme.lineColor(context);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           'CLADOGRAM',
           style: TextStyle(
-            color: DinoCardTheme.labelBronze,
+            color: labelColor,
             fontSize: 10,
             fontWeight: FontWeight.w600,
             letterSpacing: 0.8,
@@ -46,20 +54,14 @@ class CladogramStrip extends StatelessWidget {
                       height: 8,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: isLast
-                            ? DinoCardTheme.timelineAccent
-                            : DinoCardTheme.cladogramLine,
-                        border: Border.all(
-                          color: DinoCardTheme.borderGold,
-                          width: 1,
-                        ),
+                        color: isLast ? accentColor : lineColor,
                       ),
                     ),
                     if (!isLast)
                       Container(
                         width: 2,
                         height: 18,
-                        color: DinoCardTheme.cladogramLine.withValues(alpha: 0.7),
+                        color: lineColor,
                       ),
                   ],
                 ),
@@ -71,9 +73,7 @@ class CladogramStrip extends StatelessWidget {
                   child: Text(
                     lineage[index].toUpperCase(),
                     style: TextStyle(
-                      color: isLast
-                          ? DinoCardTheme.titleWhite
-                          : DinoCardTheme.subtitleMuted,
+                      color: isLast ? titleColor : labelColor,
                       fontSize: isLast ? 12 : 10,
                       fontWeight: isLast ? FontWeight.w700 : FontWeight.w500,
                       letterSpacing: 0.4,

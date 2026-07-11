@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import 'config/app_config.dart';
 import 'controllers/dinosaur_catalog_controller.dart';
+import 'controllers/theme_controller.dart';
 import 'shell/app_shell.dart';
 import 'theme/mesozoica_theme.dart';
 
@@ -17,15 +18,20 @@ class MesozoicaApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
+        ChangeNotifierProvider(create: (_) => ThemeController()),
         ChangeNotifierProvider(create: (_) => DinosaurCatalogController()),
       ],
-      child: MaterialApp(
-        title: 'Mesozoica',
-        debugShowCheckedModeBanner: AppConfig.isDebugMode,
-        theme: MesozoicaTheme.light,
-        darkTheme: MesozoicaTheme.dark,
-        themeMode: MesozoicaTheme.defaultThemeMode,
-        home: const AppShell(),
+      child: Consumer<ThemeController>(
+        builder: (context, themeController, _) {
+          return MaterialApp(
+            title: 'Mesozoica',
+            debugShowCheckedModeBanner: AppConfig.isDebugMode,
+            theme: MesozoicaTheme.light,
+            darkTheme: MesozoicaTheme.dark,
+            themeMode: themeController.themeMode,
+            home: const AppShell(),
+          );
+        },
       ),
     );
   }
