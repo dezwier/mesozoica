@@ -57,6 +57,7 @@ class DinosaurCatalogController extends ChangeNotifier {
   bool _loadingMore = false;
   String? _error;
   String? _seed;
+  int _loadSeq = 0;
   int _offset = 0;
   bool _hasMore = false;
   int _total = 0;
@@ -73,20 +74,28 @@ class DinosaurCatalogController extends ChangeNotifier {
   bool get hasActiveFilters => _filters.hasActiveFilters;
 
   Future<void> load({bool force = false}) async {
-    if (_loading) return;
     if (!force && _items.isNotEmpty) return;
+
+    final seq = ++_loadSeq;
+    final keepExistingItems = force && _items.isNotEmpty;
+    final hasSearch = _filters.searchQuery.trim().isNotEmpty;
 
     _loading = true;
     _error = null;
-    _seed = _newSeed();
+    if (!hasSearch) {
+      _seed = _newSeed();
+    }
     _offset = 0;
     _hasMore = false;
-    _items = [];
-    _total = 0;
+    if (!keepExistingItems) {
+      _items = [];
+      _total = 0;
+    }
     notifyListeners();
 
     try {
       final response = await _fetchPage(offset: 0);
+      if (seq != _loadSeq) return;
       _items = response.items;
       _offset = response.items.length;
       _hasMore = response.hasMore;
@@ -96,12 +105,14 @@ class DinosaurCatalogController extends ChangeNotifier {
         final preview = _items.take(5).map((d) => d.name).join(', ');
         debugPrint(
           'DinosaurCatalogController: loaded ${_items.length}/$_total dinos '
-          '(seed=$_seed) → $preview',
+          '(sort=${hasSearch ? 'name' : 'random'}, seed=$_seed) → $preview',
         );
       }
     } on DinosaurServiceException catch (error) {
+      if (seq != _loadSeq) return;
       _error = error.message;
     } catch (error) {
+      if (seq != _loadSeq) return;
       _error =
           'Could not reach the API at ${AppConfig.baseApiUrl}. '
           'Check your connection or try again later.';
@@ -109,8 +120,10 @@ class DinosaurCatalogController extends ChangeNotifier {
         debugPrint('DinosaurCatalogController.load failed: $error');
       }
     } finally {
-      _loading = false;
-      notifyListeners();
+      if (seq == _loadSeq) {
+        _loading = false;
+        notifyListeners();
+      }
     }
   }
 
@@ -155,18 +168,20 @@ class DinosaurCatalogController extends ChangeNotifier {
   }
 
   Future<DinosaurListResponse> _fetchPage({required int offset}) {
+    final hasSearch = _filters.searchQuery.trim().isNotEmpty;
     final seed = _seed;
-    if (seed == null || seed.isEmpty) {
+    if (!hasSearch && (seed == null || seed.isEmpty)) {
       throw StateError('Catalog seed missing before fetch');
     }
     return _service.fetchDinosaurs(
       limit: pageSize,
       offset: offset,
-      sort: 'random',
-      seed: seed,
-      q: _filters.searchQuery.trim().isEmpty ? null : _filters.searchQuery.trim(),
-      maYounger: _filters.hasTimeFilter ? _filters.maYounger : null,
-      maOlder: _filters.hasTimeFilter ? _filters.maOlder : null,
+      sort: hasSearch ? 'name' : 'random',
+      seed: hasSearch ? null : seed,
+      q: hasSearch ? _filters.searchQuery.trim() : null,
+      maYounger:
+          !hasSearch && _filters.hasTimeFilter ? _filters.maYounger : null,
+      maOlder: !hasSearch && _filters.hasTimeFilter ? _filters.maOlder : null,
     );
   }
 

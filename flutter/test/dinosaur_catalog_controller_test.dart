@@ -54,7 +54,7 @@ void main() {
     controller.dispose();
   });
 
-  test('applyFilters sends q and ma params while keeping random sort', () async {
+  test('applyFilters uses name sort when searching', () async {
     Uri? capturedUri;
     final service = DinosaurService(
       client: MockClient((request) async {
@@ -89,13 +89,14 @@ void main() {
     );
 
     expect(capturedUri, isNotNull);
-    expect(capturedUri!.queryParameters['sort'], 'random');
-    expect(capturedUri!.queryParameters['seed'], isNotEmpty);
+    expect(capturedUri!.queryParameters['sort'], 'name');
+    expect(capturedUri!.queryParameters.containsKey('seed'), isFalse);
     expect(capturedUri!.queryParameters['q'], 'tyranno');
-    expect(capturedUri!.queryParameters['ma_younger'], '70.0');
-    expect(capturedUri!.queryParameters['ma_older'], '80.0');
+    expect(capturedUri!.queryParameters.containsKey('ma_younger'), isFalse);
+    expect(capturedUri!.queryParameters.containsKey('ma_older'), isFalse);
     expect(controller.hasActiveFilters, isTrue);
     expect(controller.total, 1);
+    expect(controller.items.single.name, 'Tyrannosaurus');
 
     controller.dispose();
   });

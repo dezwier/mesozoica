@@ -5,7 +5,7 @@ from __future__ import annotations
 import hashlib
 from typing import Literal
 
-from sqlalchemy import func
+from sqlalchemy import func, or_
 from sqlmodel import Session, col, func as sqlmodel_func, select
 
 from app.core.exceptions import NotFoundError, ValidationError
@@ -36,11 +36,13 @@ def list_dinosaurs(
         ma_younger=ma_younger,
         ma_older=ma_older,
     )
+    # Name search scans the full catalog; time range applies only when browsing.
+    effective_time_filter = time_filter_active and normalized_q is None
     filtered = _filtered_select(
         normalized_q=normalized_q,
         ma_younger=younger,
         ma_older=older,
-        time_filter_active=time_filter_active,
+        time_filter_active=effective_time_filter,
     )
 
     total = session.exec(
@@ -101,7 +103,13 @@ def _filtered_select(
 ):
     stmt = select(Dinosaur)
     if normalized_q is not None:
-        stmt = stmt.where(col(Dinosaur.name).ilike(f"%{normalized_q}%"))
+        pattern = f"%{normalized_q}%"
+        stmt = stmt.where(
+            or_(
+                col(Dinosaur.name).ilike(pattern),
+                col(Dinosaur.wikipedia_title).ilike(pattern),
+            )
+        )
     if time_filter_active:
         assert ma_younger is not None and ma_older is not None
         stmt = stmt.where(

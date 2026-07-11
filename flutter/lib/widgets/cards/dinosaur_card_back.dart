@@ -53,12 +53,11 @@ class DinosaurCardBack extends StatelessWidget {
                   scale: _contentScale,
                 ),
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 0),
               Expanded(
                 child: CladogramStrip(
                   nodes: nodes,
                   scale: _contentScale,
-                  centered: true,
                 ),
               ),
             ],

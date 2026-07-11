@@ -37,7 +37,7 @@ class CladogramStrip extends StatelessWidget {
     super.key,
     required this.nodes,
     this.scale = 1.0,
-    this.centered = false,
+    this.centered = true,
   });
 
   final List<CladogramNode> nodes;

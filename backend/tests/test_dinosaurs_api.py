@@ -260,8 +260,27 @@ def test_list_dinosaurs_filter_combined(client, session):
     assert response.status_code == 200
     body = response.json()
     names = {item["name"] for item in body["items"]}
-    assert names == {"Stegosaurus", "Brachiosaurus"}
-    assert body["total"] == 2
+    assert names == {"Tyrannosaurus", "Stegosaurus", "Brachiosaurus"}
+    assert body["total"] == 3
+
+
+def test_list_dinosaurs_search_ignores_time_filter_for_undated_rows(client, session):
+    session.add(
+        Dinosaur(
+            name="Brachiosaurus",
+            wikipedia_page_id=5001,
+            wikipedia_title="Brachiosaurus",
+        )
+    )
+    session.commit()
+
+    response = client.get(
+        "/api/v1/dinosaurs?q=brachiosaurus&ma_younger=150&ma_older=160&sort=name"
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["total"] == 1
+    assert body["items"][0]["name"] == "Brachiosaurus"
 
 
 def test_list_dinosaurs_filter_random_stable_with_seed(client, session):
