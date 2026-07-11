@@ -23,8 +23,16 @@ class _DinoScreenState extends State<DinoScreen> {
     _scrollController.addListener(_onScroll);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      context.read<DinosaurCatalogController>().load();
+      context.read<DinosaurCatalogController>().refresh();
     });
+  }
+
+  @override
+  void reassemble() {
+    super.reassemble();
+    if (mounted) {
+      context.read<DinosaurCatalogController>().refresh();
+    }
   }
 
   @override

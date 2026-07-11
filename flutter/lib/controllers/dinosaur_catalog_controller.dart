@@ -48,6 +48,13 @@ class DinosaurCatalogController extends ChangeNotifier {
       _offset = response.items.length;
       _hasMore = response.hasMore;
       _error = null;
+      if (kDebugMode) {
+        final preview = _items.take(5).map((d) => d.name).join(', ');
+        debugPrint(
+          'DinosaurCatalogController: loaded ${_items.length} random dinos '
+          '(seed=$_seed) → $preview',
+        );
+      }
     } on DinosaurServiceException catch (error) {
       _error = error.message;
     } catch (error) {
@@ -93,11 +100,15 @@ class DinosaurCatalogController extends ChangeNotifier {
   Future<void> refresh() => load(force: true);
 
   Future<DinosaurListResponse> _fetchPage({required int offset}) {
+    final seed = _seed;
+    if (seed == null || seed.isEmpty) {
+      throw StateError('Catalog seed missing before fetch');
+    }
     return _service.fetchDinosaurs(
       limit: pageSize,
       offset: offset,
       sort: 'random',
-      seed: _seed,
+      seed: seed,
     );
   }
 

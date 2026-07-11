@@ -17,6 +17,12 @@ class GeologicTimeline extends StatelessWidget {
   final double minMa;
   final double maxMa;
 
+  static const _periods = [
+    _PeriodMarker('Triassic', 250),
+    _PeriodMarker('Jurassic', 201),
+    _PeriodMarker('Cretaceous', 66),
+  ];
+
   double? _positionForMa(double ma) {
     if (ma < maxMa || ma > minMa) return null;
     return (ma - maxMa) / (minMa - maxMa);
@@ -29,86 +35,95 @@ class GeologicTimeline extends StatelessWidget {
     final startPos = rangeStart != null ? _positionForMa(rangeStart) : null;
     final endPos = rangeEnd != null ? _positionForMa(rangeEnd) : null;
 
-    final labelColor = DinoCardTheme.labelColor(context);
-    final accentColor = DinoCardTheme.accentColor(context);
-    final lineColor = DinoCardTheme.lineColor(context);
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
-        Text(
-          'TIME',
-          style: TextStyle(
-            color: labelColor,
-            fontSize: 10,
-            fontWeight: FontWeight.w600,
-            letterSpacing: 0.8,
-          ),
-        ),
+        Text('TIME', style: DinoCardTheme.sectionLabelStyle(fontSize: 10)),
         const SizedBox(height: 8),
-        SizedBox(
-          width: 48,
-          height: 140,
-          child: Stack(
-            children: [
-              Align(
-                alignment: Alignment.center,
-                child: Container(
-                  width: 4,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(2),
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [
-                        lineColor.withValues(alpha: 0.35),
-                        lineColor,
-                        accentColor,
-                      ],
+        Expanded(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final timelineHeight = constraints.maxHeight;
+
+              return SizedBox(
+                width: constraints.maxWidth,
+                height: timelineHeight,
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    Positioned(
+                      left: 32,
+                      top: 0,
+                      bottom: 0,
+                      child: Container(
+                        width: 3,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(2),
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              DinoCardTheme.cardAccent.withValues(alpha: 0.35),
+                              DinoCardTheme.cardAccent,
+                              DinoCardTheme.cardAccent.withValues(alpha: 0.85),
+                            ],
+                          ),
+                        ),
+                      ),
                     ),
-                  ),
+                    if (startPos != null && endPos != null)
+                      Positioned(
+                        left: 28,
+                        top: (1 - startPos.clamp(0.0, 1.0)) * timelineHeight,
+                        bottom: endPos.clamp(0.0, 1.0) * timelineHeight,
+                        child: Container(
+                          width: 11,
+                          decoration: BoxDecoration(
+                            color: DinoCardTheme.cardAccent.withValues(alpha: 0.35),
+                            borderRadius: BorderRadius.circular(3),
+                            border: Border.all(
+                              color:
+                                  DinoCardTheme.cardAccent.withValues(alpha: 0.7),
+                            ),
+                          ),
+                        ),
+                      )
+                    else if (startPos != null)
+                      Positioned(
+                        left: 27,
+                        top: (1 - startPos.clamp(0.0, 1.0)) * timelineHeight - 5,
+                        child: _TimelineDot(color: DinoCardTheme.cardAccent),
+                      ),
+                    for (final period in _periods)
+                      Positioned(
+                        top: (1 -
+                                    _positionForMa(period.ma.toDouble())!
+                                        .clamp(0.0, 1.0)) *
+                                timelineHeight -
+                            10,
+                        left: 0,
+                        right: 0,
+                        child: _PeriodLabel(
+                          name: period.name,
+                          ma: period.ma,
+                        ),
+                      ),
+                  ],
                 ),
-              ),
-              if (startPos != null && endPos != null)
-                Positioned(
-                  top: (1 - startPos.clamp(0.0, 1.0)) * 140,
-                  bottom: endPos.clamp(0.0, 1.0) * 140,
-                  right: 18,
-                  child: Container(
-                    width: 10,
-                    decoration: BoxDecoration(
-                      color: accentColor.withValues(alpha: 0.25),
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                  ),
-                )
-              else if (startPos != null)
-                Positioned(
-                  top: (1 - startPos.clamp(0.0, 1.0)) * 140 - 4,
-                  right: 16,
-                  child: _TimelineDot(color: accentColor),
-                ),
-              Positioned(
-                top: 0,
-                right: 0,
-                child: _TimelineLabel('${minMa.round()} Ma', color: labelColor),
-              ),
-              Positioned(
-                top: 52,
-                right: 0,
-                child: _TimelineLabel('201 Ma', color: labelColor),
-              ),
-              Positioned(
-                bottom: 0,
-                right: 0,
-                child: _TimelineLabel('${maxMa.round()} Ma', color: labelColor),
-              ),
-            ],
+              );
+            },
           ),
         ),
       ],
     );
   }
+}
+
+class _PeriodMarker {
+  const _PeriodMarker(this.name, this.ma);
+
+  final String name;
+  final int ma;
 }
 
 class _TimelineDot extends StatelessWidget {
@@ -119,30 +134,59 @@ class _TimelineDot extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 12,
-      height: 12,
+      width: 11,
+      height: 11,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         color: color,
+        border: Border.all(color: DinoCardTheme.cardTextPrimary, width: 1),
       ),
     );
   }
 }
 
-class _TimelineLabel extends StatelessWidget {
-  const _TimelineLabel(this.text, {required this.color});
+class _PeriodLabel extends StatelessWidget {
+  const _PeriodLabel({required this.name, required this.ma});
 
-  final String text;
-  final Color color;
+  final String name;
+  final int ma;
 
   @override
   Widget build(BuildContext context) {
-    return Text(
-      text,
-      style: TextStyle(
-        color: color,
-        fontSize: 9,
-      ),
+    return Row(
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                name,
+                style: TextStyle(
+                  color: DinoCardTheme.cardAccent.withValues(alpha: 0.9),
+                  fontSize: 9,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              Text(
+                '$ma Ma',
+                style: TextStyle(
+                  color: DinoCardTheme.cardTextPrimary.withValues(alpha: 0.75),
+                  fontSize: 9,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 10),
+        Container(
+          width: 6,
+          height: 6,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: DinoCardTheme.cardAccent.withValues(alpha: 0.8),
+          ),
+        ),
+      ],
     );
   }
 }

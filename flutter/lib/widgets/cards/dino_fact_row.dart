@@ -1,52 +1,47 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../theme/dino_card_theme.dart';
 
 class DinoFactRow extends StatelessWidget {
   const DinoFactRow({
     super.key,
-    required this.icon,
+    required this.iconAsset,
     required this.label,
     required this.value,
   });
 
-  final IconData icon;
+  final String iconAsset;
   final String label;
   final String value;
 
   @override
   Widget build(BuildContext context) {
-    final labelColor = DinoCardTheme.labelColor(context);
-    final titleColor = DinoCardTheme.titleColor(context);
-
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 16, color: labelColor),
-          const SizedBox(width: 8),
+          SvgPicture.asset(
+            iconAsset,
+            width: 18,
+            height: 18,
+          ),
+          const SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   label.toUpperCase(),
-                  style: TextStyle(
-                    color: labelColor,
-                    fontSize: 10,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: 0.8,
-                  ),
+                  style: DinoCardTheme.statLabelStyle(fontSize: 10),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   value,
-                  style: TextStyle(
-                    color: titleColor,
-                    fontSize: 13,
-                    height: 1.25,
-                  ),
+                  style: DinoCardTheme.statValueStyle(fontSize: 13),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),

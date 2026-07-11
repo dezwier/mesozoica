@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 import '../config/app_config.dart';
@@ -23,6 +24,9 @@ class DinosaurService {
       sort: sort,
       seed: seed,
     );
+    if (kDebugMode) {
+      debugPrint('DinosaurService GET $uri');
+    }
     final response = await _client.get(uri).timeout(const Duration(seconds: 15));
 
     if (response.statusCode != 200) {

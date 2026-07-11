@@ -2,11 +2,19 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
-/// Card chrome aligned with archipelago dictionary cards — surface fill, soft shadow, no border.
+/// Dark museum card palette aligned with the reference mockup.
 class DinoCardTheme {
   DinoCardTheme._();
 
   static const double borderRadius = 16;
+
+  static const Color cardBackground = Color(0xFF1A1A1A);
+  static const Color cardAccent = Color(0xFFC5944E);
+  static const Color cardTextPrimary = Colors.white;
+  static const Color cardTextSecondary = Color(0xFFC5944E);
+
+  static const String frontPlaceholderAsset =
+      'assets/images/cards/dinosaur_card_front_placeholder.png';
 
   static List<BoxShadow> boxShadow({double flipAngleRadians = 0}) {
     final depth =
@@ -29,26 +37,84 @@ class DinoCardTheme {
     BuildContext context, {
     double flipAngleRadians = 0,
   }) {
-    final scheme = Theme.of(context).colorScheme;
     return BoxDecoration(
-      color: scheme.surface,
+      color: cardBackground,
       borderRadius: BorderRadius.circular(borderRadius),
       boxShadow: boxShadow(flipAngleRadians: flipAngleRadians),
     );
   }
 
-  static Color labelColor(BuildContext context) =>
-      Theme.of(context).colorScheme.onSurfaceVariant;
+  static BoxDecoration cardFaceDecoration() {
+    return const BoxDecoration(
+      color: cardBackground,
+    );
+  }
 
-  static Color titleColor(BuildContext context) =>
-      Theme.of(context).colorScheme.onSurface;
+  static TextStyle titleStyle({double fontSize = 18}) {
+    return TextStyle(
+      color: cardTextPrimary,
+      fontSize: fontSize,
+      fontWeight: FontWeight.w700,
+      letterSpacing: 1.0,
+      height: 1.1,
+    );
+  }
 
-  static Color accentColor(BuildContext context) =>
-      Theme.of(context).colorScheme.primary;
+  static TextStyle subtitleStyle({double fontSize = 11}) {
+    return TextStyle(
+      color: cardTextSecondary,
+      fontSize: fontSize,
+      fontWeight: FontWeight.w600,
+      letterSpacing: 0.8,
+      height: 1.2,
+    );
+  }
+
+  static TextStyle statLabelStyle({double fontSize = 9}) {
+    return TextStyle(
+      color: cardTextSecondary,
+      fontSize: fontSize,
+      fontWeight: FontWeight.w600,
+      letterSpacing: 0.8,
+      height: 1.1,
+    );
+  }
+
+  static TextStyle statValueStyle({double fontSize = 12}) {
+    return TextStyle(
+      color: cardTextPrimary,
+      fontSize: fontSize,
+      fontWeight: FontWeight.w500,
+      height: 1.25,
+    );
+  }
+
+  static TextStyle bodyStyle({double fontSize = 11}) {
+    return TextStyle(
+      color: cardTextPrimary.withValues(alpha: 0.92),
+      fontSize: fontSize,
+      height: 1.35,
+    );
+  }
+
+  static TextStyle sectionLabelStyle({double fontSize = 9}) {
+    return TextStyle(
+      color: cardTextSecondary,
+      fontSize: fontSize,
+      fontWeight: FontWeight.w600,
+      letterSpacing: 0.8,
+    );
+  }
+
+  // Legacy helpers kept for any remaining theme-aware call sites.
+  static Color labelColor(BuildContext context) => cardTextSecondary;
+
+  static Color titleColor(BuildContext context) => cardTextPrimary;
+
+  static Color accentColor(BuildContext context) => cardAccent;
 
   static Color lineColor(BuildContext context) =>
-      Theme.of(context).colorScheme.outline.withValues(alpha: 0.55);
+      cardAccent.withValues(alpha: 0.55);
 
-  static Color placeholderSurface(BuildContext context) =>
-      Theme.of(context).colorScheme.surfaceContainerHighest;
+  static Color placeholderSurface(BuildContext context) => cardBackground;
 }
