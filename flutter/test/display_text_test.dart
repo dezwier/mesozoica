@@ -10,4 +10,13 @@ void main() {
     expect(canonicalTaxonName('  Sauropodomorpha '), 'Sauropodomorpha');
     expect(taxonMergeKey('†Sauropodomorpha'), 'sauropodomorpha');
   });
+
+  test('displayTaxonName strips trailing author and year', () {
+    expect(displayTaxonName('Allosaurinae Marsh , 1878'), 'Allosaurinae');
+    expect(displayTaxonName('Brachiosaurus Riggs, 1903'), 'Brachiosaurus');
+    expect(
+      displayTaxonName('Abelisaurus Bonaparte et al., 1990'),
+      'Abelisaurus',
+    );
+  });
 }

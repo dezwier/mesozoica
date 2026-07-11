@@ -102,11 +102,11 @@ def _strip_taxonomic_authority(text: str) -> str:
         r"\s+(?:"
         r"(?:[A-Z][A-Za-z.-]*(?:\s+[A-Z]\.?)*(?:\s+(?:&|and)\s+[A-Z][A-Za-z.-]*)*\s+)?"
         r"(?i:(?:et\s+al\.?|et\s+all\.?))"
-        r"(?:,\s*)?"
+        r"(?:\s*,\s*)?"
         r"(?:\d{3,4})?"
         r"|"
         r"(?:[A-Z][A-Za-z.-]*(?:\s+[A-Z]\.?)*(?:\s+(?:&|and)\s+[A-Z][A-Za-z.-]*)*)"
-        r"(?:,\s*|\s+)\d{3,4}"
+        r"(?:\s*,\s*|\s+)\d{3,4}"
         r")\s*$",
     )
     while True:

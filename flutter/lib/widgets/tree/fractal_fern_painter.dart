@@ -183,14 +183,8 @@ class FractalFernPainter extends CustomPainter {
       fontWeight: FontWeight.w700,
       letterSpacing: 0,
     );
-    final shallowCladeStyle = TextStyle(
-      color: labelColor,
-      fontSize: FractalLabelPlacer.shallowCladeScreenFontSize,
-      fontWeight: FontWeight.w700,
-      letterSpacing: 0,
-    );
     final cladeStyle = TextStyle(
-      color: labelMutedColor,
+      color: labelColor,
       fontSize: FractalLabelPlacer.cladeScreenFontSize,
       fontWeight: FontWeight.w500,
       letterSpacing: 0,
@@ -203,7 +197,6 @@ class FractalFernPainter extends CustomPainter {
       zoomScale: zoomScale,
       genusStyle: genusStyle,
       cladeStyle: cladeStyle,
-      shallowCladeStyle: shallowCladeStyle,
     );
 
     final placed = _labelPlacer.placeWithoutOverlap(

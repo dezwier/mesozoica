@@ -183,7 +183,7 @@ void main() {
     );
   });
 
-  test('orders internal clades before genus leaves at the same parent', () {
+  test('orders all leaves before branches, then by nest depth and A-Z', () {
     final result = builder.build([
       _dino(
         id: 1,
@@ -218,13 +218,13 @@ void main() {
     final theropoda = result.root.findChildByName('Theropoda');
     expect(theropoda, isNotNull);
     expect(theropoda!.children, hasLength(3));
-    expect(theropoda.children.first.name, 'Coelurosauria');
-    expect(theropoda.children.first.children, isNotEmpty);
-    expect(theropoda.children[1].name, 'Allosaurus');
-    expect(theropoda.children[2].name, 'Zuniceratops');
+    expect(
+      theropoda.children.map((child) => child.name).toList(),
+      ['Allosaurus', 'Zuniceratops', 'Coelurosauria'],
+    );
   });
 
-  test('orders shallower internal clades before deeper ones', () {
+  test('orders branches with shallower nesting before deeper ones', () {
     final result = builder.build([
       _dino(
         id: 1,
@@ -253,6 +253,37 @@ void main() {
     expect(theropoda, isNotNull);
     expect(theropoda!.children, hasLength(2));
     expect(theropoda.children.first.name, 'Carnosauria');
+    expect(theropoda.children.first.branchNestDepth, 1);
     expect(theropoda.children[1].name, 'Coelurosauria');
+    expect(theropoda.children[1].branchNestDepth, 2);
+  });
+
+  test('sorts leaves alphabetically within the leaf group', () {
+    final result = builder.build([
+      _dino(
+        id: 1,
+        name: 'Zuniceratops',
+        cladogram: {
+          'clade': 'Dinosauria',
+          'clade_2': 'Theropoda',
+          'genus': 'Zuniceratops',
+        },
+      ),
+      _dino(
+        id: 2,
+        name: 'Allosaurus',
+        cladogram: {
+          'clade': 'Dinosauria',
+          'clade_2': 'Theropoda',
+          'genus': 'Allosaurus',
+        },
+      ),
+    ]);
+
+    final theropoda = result.root.findChildByName('Theropoda');
+    expect(
+      theropoda!.children.map((child) => child.name).toList(),
+      ['Allosaurus', 'Zuniceratops'],
+    );
   });
 }

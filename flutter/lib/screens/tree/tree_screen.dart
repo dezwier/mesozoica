@@ -4,6 +4,8 @@ import 'package:provider/provider.dart';
 import '../../controllers/phylo_tree_controller.dart';
 import '../../models/dinosaur.dart';
 import '../../widgets/cards/dinosaur_turnable_card.dart';
+import '../../widgets/dino/dinosaur_filter_fab.dart';
+import '../../widgets/dino/dinosaur_filter_sheet.dart';
 import '../../widgets/tree/fractal_fern_view.dart';
 
 class TreeScreen extends StatefulWidget {
@@ -47,6 +49,19 @@ class _TreeScreenState extends State<TreeScreen> {
 
   void _dismissCard() {
     setState(() => _selectedDinosaur = null);
+  }
+
+  void _openFilterSheet(PhyloTreeController treeController) {
+    DinosaurFilterSheet.show(
+      context,
+      initialFilters: treeController.filters,
+      catalogTotal:
+          treeController.totalGenera > 0 ? treeController.totalGenera : null,
+      onApply: (filters) {
+        setState(() => _selectedDinosaur = null);
+        treeController.applyFilters(filters);
+      },
+    );
   }
 
   @override
@@ -106,63 +121,32 @@ class _TreeScreenState extends State<TreeScreen> {
     if (layout == null || layout.root.children.isEmpty) {
       return Center(
         child: Text(
-          'No phylogeny data available yet.',
+          treeController.hasActiveFilters
+              ? 'No dinosaurs match these filters.'
+              : 'No phylogeny data available yet.',
           style: Theme.of(context).textTheme.bodyLarge,
         ),
       );
     }
 
-    return Column(
+    return Stack(
       children: [
-        Expanded(
+        Positioned.fill(
           child: FractalFernView(
             layout: layout,
             onGenusTap: _onGenusTap,
           ),
         ),
-        _TreeFooter(
-          totalGenera: treeController.totalGenera,
-          unplacedCount: treeController.unplacedCount,
-        ),
-      ],
-    );
-  }
-}
-
-class _TreeFooter extends StatelessWidget {
-  const _TreeFooter({
-    required this.totalGenera,
-    required this.unplacedCount,
-  });
-
-  final int totalGenera;
-  final int unplacedCount;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final parts = <String>['$totalGenera genera'];
-    if (unplacedCount > 0) {
-      parts.add('$unplacedCount unplaced');
-    }
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: BoxDecoration(
-        border: Border(
-          top: BorderSide(
-            color: scheme.outlineVariant.withValues(alpha: 0.45),
+        Positioned(
+          right: 12,
+          bottom: 12,
+          child: DinosaurFilterFab(
+            heroTag: 'tree_filter_fab',
+            hasActiveFilters: treeController.hasActiveFilters,
+            onPressed: () => _openFilterSheet(treeController),
           ),
         ),
-      ),
-      child: Text(
-        parts.join(' · '),
-        textAlign: TextAlign.center,
-        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: scheme.onSurfaceVariant,
-            ),
-      ),
+      ],
     );
   }
 }

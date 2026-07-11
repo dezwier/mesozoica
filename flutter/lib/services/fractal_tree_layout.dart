@@ -37,11 +37,11 @@ class FractalTreeLayout {
   static const fullCircleFan = math.pi * 2;
 
   FractalTreeLayout({
-    this.baseLength = 84,
-    this.decay = 0.83,
+    this.baseLength = 86,
+    this.decay = 0.835,
     this.rootFanRadians = fullCircleFan,
-    this.branchCurveFactor = 0.21,
-    this.siblingAngleGap = 0.02,
+    this.branchCurveFactor = 0.22,
+    this.siblingAngleGap = 0.03,
     this.minStrokeWidth = 1.2,
     this.maxStrokeWidth = 10,
     this.boundsPadding = 48,

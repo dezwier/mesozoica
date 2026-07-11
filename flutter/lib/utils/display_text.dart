@@ -19,7 +19,30 @@ String canonicalTaxonName(String value) {
     '',
   );
   text = text.replaceAll(RegExp(r'\s*\([^)]*\?\s*[^)]*\)\s*$'), '');
+  text = _stripTaxonomicAuthority(text);
   text = text.replaceAll(RegExp(r'\s+'), ' ').trim();
+  return text;
+}
+
+String _stripTaxonomicAuthority(String text) {
+  final trailingAuthority = RegExp(
+    r'\s+(?:'
+    r'(?:[A-Z][A-Za-z.-]*(?:\s+[A-Z]\.?)*(?:\s+(?:&|and)\s+[A-Z][A-Za-z.-]*)*\s+)?'
+    r'(?:et\s+al\.?|et\s+all\.?)'
+    r'(?:\s*,\s*)?'
+    r'(?:\d{3,4})?'
+    r'|'
+    r'(?:[A-Z][A-Za-z.-]*(?:\s+[A-Z]\.?)*(?:\s+(?:&|and)\s+[A-Z][A-Za-z.-]*)*)'
+    r'(?:\s*,\s*|\s+)\d{3,4}'
+    r')\s*$',
+    caseSensitive: true,
+  );
+
+  while (true) {
+    final stripped = text.replaceAll(trailingAuthority, '').trim();
+    if (stripped == text) break;
+    text = stripped;
+  }
   return text;
 }
 

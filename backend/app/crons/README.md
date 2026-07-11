@@ -1,0 +1,105 @@
+# Cron jobs
+
+Scheduled background jobs for Mesozoica. Config lives in [`crons.yaml`](crons.yaml); the runner is [`runner.py`](runner.py).
+
+Cron jobs **always use the Railway Postgres database** — not a local DB. Run them via `make` (which wraps `railway run`) or from the Railway cron service.
+
+## Jobs
+
+| ID | Schedule (UTC) | Description |
+|----|----------------|-------------|
+| `wikipedia_dinosaur_sync` | `0 3 * * 0` (Sun 03:00) | Sync dinosaur records from Wikipedia |
+| `dinosaur_llm_enrich` | `0 4 * * 0` (Sun 04:00) | LLM enrichment (Gemini) for dinosaurs |
+| `pbdb_fossil_sync` | `0 5 * * 0` (Sun 05:00) | Sync fossil occurrences from PBDB |
+
+Railway `cronSchedule` must fire at least as often as the finest job granularity (use `0 * * * *` for weekly jobs).
+
+## Make targets (recommended)
+
+From the repo root:
+
+```bash
+# Run all due jobs (schedule-aware)
+make run-cron
+
+# Run a single job
+make run-wikipedia-sync
+make run-dinosaur-enrich
+make run-fossil-sync
+
+# Pass extra runner flags via CRON_EXTRA
+make run-wikipedia-sync CRON_EXTRA='--overwrite'
+make run-wikipedia-sync CRON_EXTRA='--dinos Tyrannosaurus Giganotosaurus'
+
+make run-dinosaur-enrich CRON_EXTRA='--overwrite'
+make run-dinosaur-enrich CRON_EXTRA='--dinos Tyrannosaurus --overwrite'
+
+make run-fossil-sync CRON_EXTRA='--dinos Tyrannosaurus'
+make run-fossil-sync CRON_EXTRA='--overwrite'
+make run-fossil-sync CRON_EXTRA='--dinos Tyrannosaurus --overwrite'
+
+# Target a specific Railway service
+make run-fossil-sync RAILWAY_SERVICE=my-service CRON_EXTRA='--dinos Herrerasaurus'
+```
+
+## Direct commands
+
+Equivalent `railway run` invocations from `backend/`:
+
+```bash
+cd backend
+
+# All due jobs
+RAILWAY_RUN=1 railway run python -m app.crons.runner
+
+# Single job
+RAILWAY_RUN=1 railway run python -m app.crons.runner --job wikipedia_dinosaur_sync
+RAILWAY_RUN=1 railway run python -m app.crons.runner --job dinosaur_llm_enrich
+RAILWAY_RUN=1 railway run python -m app.crons.runner --job pbdb_fossil_sync
+
+# Flags
+RAILWAY_RUN=1 railway run python -m app.crons.runner --job wikipedia_dinosaur_sync --overwrite
+RAILWAY_RUN=1 railway run python -m app.crons.runner --job pbdb_fossil_sync --dinos Tyrannosaurus
+RAILWAY_RUN=1 railway run python -m app.crons.runner --job dinosaur_llm_enrich --dinos Tyrannosaurus --overwrite
+```
+
+### CLI flags
+
+| Flag | Effect |
+|------|--------|
+| `--job ID` | Run one job immediately (ignores schedule) |
+| `--overwrite` | Re-fetch / re-enrich even when already up to date |
+| `--dinos NAME …` | Limit to specific Wikipedia titles (space- or comma-separated) |
+
+## Config overrides
+
+**Overlay file** — merge extra YAML on top of `crons.yaml`:
+
+```bash
+export CRON_CONFIG_PATH=/path/to/crons.local.yaml
+RAILWAY_RUN=1 railway run python -m app.crons.runner --job wikipedia_dinosaur_sync
+```
+
+**Per-job enable/disable** via environment (job id uppercased, `-` → `_`):
+
+```bash
+export CRON_WIKIPEDIA_DINOSAUR_SYNC_ENABLED=false
+export CRON_PBDB_FOSSIL_SYNC_ENABLED=1
+```
+
+**Emergency local run** (tests only — still requires non-local `DATABASE_URL`):
+
+```bash
+ALLOW_LOCAL_CRON=1 python -m app.crons.runner --job wikipedia_dinosaur_sync
+```
+
+## Typical workflows
+
+```bash
+# Full weekly pipeline for one dinosaur (dev/debug)
+make run-wikipedia-sync CRON_EXTRA='--dinos Tyrannosaurus --overwrite'
+make run-dinosaur-enrich  CRON_EXTRA='--dinos Tyrannosaurus --overwrite'
+make run-fossil-sync     CRON_EXTRA='--dinos Tyrannosaurus --overwrite'
+
+# Dry-run is configured in crons.yaml params (dry_run: true), or via a local overlay
+```

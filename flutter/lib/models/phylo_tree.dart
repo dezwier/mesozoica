@@ -38,17 +38,40 @@ class PhyloTreeNode {
     return maxDepth;
   }
 
-  /// Branch nodes first (shallowest subtree, then A–Z), then genus leaves A–Z.
+  /// Levels of internal branching below this node (0 for terminal leaves).
+  ///
+  /// A branch whose children are all leaves has depth 1; each additional
+  /// branch generation below increments by one.
+  int get branchNestDepth {
+    if (children.isEmpty) return 0;
+
+    var maxBelow = 0;
+    for (final child in children) {
+      if (child.children.isEmpty) {
+        if (maxBelow < 1) maxBelow = 1;
+      } else {
+        final below = 1 + child.branchNestDepth;
+        if (below > maxBelow) maxBelow = below;
+      }
+    }
+    return maxBelow;
+  }
+
+  bool get isTerminalLeaf => children.isEmpty;
+
+  /// All leaves first (A–Z), then branches by ascending nest depth (A–Z).
   static int compareChildDisplayOrder(PhyloTreeNode a, PhyloTreeNode b) {
-    final aIsBranch = a.children.isNotEmpty;
-    final bIsBranch = b.children.isNotEmpty;
-    if (aIsBranch != bIsBranch) {
-      return aIsBranch ? -1 : 1;
+    final aIsLeaf = a.isTerminalLeaf;
+    final bIsLeaf = b.isTerminalLeaf;
+    if (aIsLeaf != bIsLeaf) {
+      return aIsLeaf ? -1 : 1;
     }
-    if (aIsBranch) {
-      final nesting = a.maxDescendantDepth.compareTo(b.maxDescendantDepth);
-      if (nesting != 0) return nesting;
+    if (aIsLeaf) {
+      return taxonMergeKey(a.name).compareTo(taxonMergeKey(b.name));
     }
+
+    final nesting = a.branchNestDepth.compareTo(b.branchNestDepth);
+    if (nesting != 0) return nesting;
     return taxonMergeKey(a.name).compareTo(taxonMergeKey(b.name));
   }
 

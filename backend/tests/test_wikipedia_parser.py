@@ -75,6 +75,16 @@ def test_parse_genus_strips_author_from_plain_text_cell():
     assert parsed.cladogram["genus"] == "Brachiosaurus"
 
 
+def test_parse_subfamily_strips_author_with_space_before_comma():
+    html = """
+    <table class="infobox biota">
+      <tr><td>Subfamily:</td><td>Allosaurinae Marsh , 1878</td></tr>
+    </table>
+    """
+    parsed = parse_article_html(html)
+    assert parsed.cladogram["subfamily"] == "Allosaurinae"
+
+
 def test_parse_genus_strips_author_with_initials():
     html = """
     <table class="infobox biota">

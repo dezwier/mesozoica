@@ -5,10 +5,12 @@ class DinosaurFilterFab extends StatelessWidget {
     super.key,
     required this.onPressed,
     this.hasActiveFilters = false,
+    this.heroTag = 'dino_filter_fab',
   });
 
   final VoidCallback onPressed;
   final bool hasActiveFilters;
+  final Object heroTag;
 
   @override
   Widget build(BuildContext context) {
@@ -18,7 +20,7 @@ class DinosaurFilterFab extends StatelessWidget {
       clipBehavior: Clip.none,
       children: [
         FloatingActionButton.small(
-          heroTag: 'dino_filter_fab',
+          heroTag: heroTag,
           onPressed: onPressed,
           tooltip: 'Filter',
           backgroundColor: colorScheme.surfaceContainerHighest,

@@ -55,9 +55,8 @@ class FractalLabelPlacer {
   final int maxLabels;
 
   /// Fixed on-screen font sizes (logical pixels).
-  static const double genusScreenFontSize = 16;
-  static const double shallowCladeScreenFontSize = 17.5;
-  static const double cladeScreenFontSize = 14.5;
+  static const double genusScreenFontSize = 20;
+  static const double cladeScreenFontSize = 18.5;
 
   /// Converts screen pixels to tree-space units for a given [zoomScale].
   static double treeUnits(double screenPixels, double zoomScale) =>
@@ -75,7 +74,6 @@ class FractalLabelPlacer {
     required double zoomScale,
     required TextStyle genusStyle,
     required TextStyle cladeStyle,
-    required TextStyle shallowCladeStyle,
   }) {
     final candidates = <FractalLabelCandidate>[];
     final minScreenLen = minScreenLengthForLabel(zoomScale);
@@ -97,9 +95,7 @@ class FractalLabelPlacer {
           );
           if (screenLen >= minScreenLen) {
             final isGenus = node.isGenus;
-            final style = isGenus
-                ? genusStyle
-                : (node.depth <= 2 ? shallowCladeStyle : cladeStyle);
+            final style = isGenus ? genusStyle : cladeStyle;
 
             final textPainter = TextPainter(
               text: TextSpan(
@@ -150,7 +146,7 @@ class FractalLabelPlacer {
       final textPainter = TextPainter(
         text: TextSpan(
           text: displayTaxonName(root.label),
-          style: shallowCladeStyle,
+          style: cladeStyle,
         ),
         textDirection: TextDirection.ltr,
       )..layout();
