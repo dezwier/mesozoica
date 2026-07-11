@@ -333,8 +333,19 @@ def _rewrite_media_urls(soup: BeautifulSoup) -> None:
     """Make image and asset URLs absolute so they load outside Wikipedia."""
     for img in soup.find_all("img"):
         src = img.get("src")
-        if isinstance(src, str):
+        if not isinstance(src, str) or not src.strip():
+            resource = img.get("resource")
+            if isinstance(resource, str) and resource.strip():
+                img["src"] = _absolute_media_url(resource)
+            else:
+                srcset = img.get("srcset")
+                if isinstance(srcset, str):
+                    first = srcset.split(",")[0].strip().split()
+                    if first:
+                        img["src"] = _absolute_media_url(first[0])
+        else:
             img["src"] = _absolute_media_url(src)
+
         srcset = img.get("srcset")
         if isinstance(srcset, str):
             img["srcset"] = _rewrite_srcset(srcset)
@@ -343,6 +354,14 @@ def _rewrite_media_urls(soup: BeautifulSoup) -> None:
         srcset = source.get("srcset")
         if isinstance(srcset, str):
             source["srcset"] = _rewrite_srcset(srcset)
+
+
+def _sanitize_images_for_display(soup: BeautifulSoup) -> None:
+    """Remove intrinsic Wikipedia dimensions that break mobile HTML renderers."""
+    for img in soup.find_all("img"):
+        for attr in ("width", "height"):
+            if attr in img.attrs:
+                del img[attr]
 
 
 def _rewrite_srcset(srcset: str) -> str:
@@ -380,10 +399,7 @@ def _remove_reader_mode_chrome(soup: BeautifulSoup) -> None:
             node.decompose()
 
     for heading in soup.find_all(["h2", "h3"]):
-        heading_id = (heading.get("id") or "").lower()
-        span = heading.find("span", class_="mw-headline")
-        if span is not None and span.get("id"):
-            heading_id = str(span["id"]).lower()
+        heading_id = _heading_section_id(heading)
         if heading_id not in _SECTION_HEADING_IDS:
             continue
         section_nodes = [heading]
@@ -395,6 +411,19 @@ def _remove_reader_mode_chrome(soup: BeautifulSoup) -> None:
             node.decompose()
 
 
+def _heading_section_id(heading) -> str:
+    attrs = heading.attrs
+    heading_id = ""
+    if attrs is not None:
+        heading_id = str(attrs.get("id") or "")
+    span = heading.find("span", class_="mw-headline")
+    if span is not None:
+        span_attrs = span.attrs
+        if span_attrs is not None and span_attrs.get("id"):
+            heading_id = str(span_attrs["id"])
+    return heading_id.lower()
+
+
 def prepare_article_for_display(html: str | None) -> str | None:
     """Strip Wikipedia chrome and rewrite media URLs for in-app reading."""
     if not html or not html.strip():
@@ -402,6 +431,7 @@ def prepare_article_for_display(html: str | None) -> str | None:
     soup = BeautifulSoup(html, "html.parser")
     _rewrite_links(soup, f"{_WIKI_SITE}/wiki/")
     _rewrite_media_urls(soup)
+    _sanitize_images_for_display(soup)
     _remove_reader_mode_chrome(soup)
     body = soup.body if soup.body is not None else soup
     rendered = body.decode_contents().strip()

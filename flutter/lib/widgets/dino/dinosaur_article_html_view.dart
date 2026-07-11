@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import 'dinosaur_article_widget_factory.dart';
+
 class DinosaurArticleHtmlView extends StatelessWidget {
   const DinosaurArticleHtmlView({
     super.key,
@@ -31,6 +33,7 @@ class DinosaurArticleHtmlView extends StatelessWidget {
             baseUrl: Uri.parse('https://en.wikipedia.org/'),
             textStyle: bodyStyle,
             renderMode: RenderMode.sliverList,
+            factoryBuilder: DinosaurArticleWidgetFactory.new,
             onTapUrl: _launchUrl,
             customStylesBuilder: (element) =>
                 _styleForElement(element.localName, element.classes, colorScheme),

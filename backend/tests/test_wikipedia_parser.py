@@ -158,3 +158,35 @@ def test_prepare_article_rewrites_protocol_relative_image_src():
     prepared = prepare_article_for_display(html)
     assert prepared is not None
     assert 'src="https://upload.wikimedia.org/wikipedia/commons/thumb/a/ab/Tyrannosaurus.jpg/220px-Tyrannosaurus.jpg"' in prepared
+
+
+def test_prepare_article_strips_intrinsic_image_dimensions():
+    html = """
+    <img src="//upload.wikimedia.org/wikipedia/commons/thumb/a/ab/Tyrannosaurus.jpg/220px-Tyrannosaurus.jpg"
+         width="4928" height="3264" />
+    """
+    prepared = prepare_article_for_display(html)
+    assert prepared is not None
+    assert "width=" not in prepared
+    assert "height=" not in prepared
+
+
+def test_prepare_article_resolves_resource_when_src_missing():
+    html = """
+    <img resource="./File:Tyrannosaurus_Rex_Holotype.jpg" />
+    """
+    prepared = prepare_article_for_display(html)
+    assert prepared is not None
+    assert "Special:FilePath/Tyrannosaurus_Rex_Holotype.jpg" in prepared
+
+
+def test_prepare_article_handles_headings_without_attrs():
+    html = """
+    <p>Lead paragraph about Tyrannosaurus.</p>
+    <h2><span class="mw-headline" id="References">References</span></h2>
+    <ol class="references"><li>Ref one</li></ol>
+    """
+    prepared = prepare_article_for_display(html)
+    assert prepared is not None
+    assert "Lead paragraph about Tyrannosaurus." in prepared
+    assert "Ref one" not in prepared

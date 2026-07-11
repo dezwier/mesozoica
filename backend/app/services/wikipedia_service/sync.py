@@ -7,7 +7,7 @@ import time
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 
-from sqlmodel import Session, select
+from sqlmodel import Session, select, update
 
 from app.core.config import settings
 from app.models.dinosaur import Dinosaur
@@ -65,6 +65,31 @@ def _clear_llm_enrichment_fields(dinosaur: Dinosaur) -> None:
     dinosaur.llm_enriched = False
 
 
+def _bulk_clear_llm_enrichment_fields(session: Session, *, dry_run: bool) -> int:
+    """Clear LLM-only columns on every dinosaur row (used with --overwrite)."""
+    if dry_run:
+        stmt = select(Dinosaur).where(
+            (Dinosaur.length.is_not(None))  # type: ignore[union-attr]
+            | (Dinosaur.mass.is_not(None))  # type: ignore[union-attr]
+            | (Dinosaur.location.is_not(None))  # type: ignore[union-attr]
+            | (Dinosaur.short_description.is_not(None))  # type: ignore[union-attr]
+            | (Dinosaur.llm_enriched.is_(True))  # type: ignore[attr-defined]
+        )
+        return len(list(session.exec(stmt).all()))
+
+    result = session.exec(
+        update(Dinosaur).values(
+            length=None,
+            mass=None,
+            location=None,
+            short_description=None,
+            llm_enriched=False,
+        )
+    )
+    session.commit()
+    return int(result.rowcount or 0)
+
+
 def _apply_parsed(existing: Dinosaur | None, *, title: str, page_id: int, metadata, parsed) -> Dinosaur:
     now = datetime.now(timezone.utc)
     if existing is None:
@@ -115,11 +140,26 @@ def sync_dinosaurs(
     cap = max_pages if max_pages is not None else settings.wikipedia_sync_max_pages
     start = time.monotonic()
     counters = SyncCounters()
+    interrupted = False
+    processed = 0
 
     own_client = client is None
     wiki = client or WikipediaClient()
     members: list[CategoryMember] = []
     try:
+        if overwrite and not dry_run:
+            cleared = _bulk_clear_llm_enrichment_fields(session, dry_run=False)
+            logger.info(
+                "wikipedia_sync: cleared LLM fields on %d dinosaur row(s) before overwrite refresh",
+                cleared,
+            )
+        elif overwrite and dry_run:
+            would_clear = _bulk_clear_llm_enrichment_fields(session, dry_run=True)
+            logger.info(
+                "wikipedia_sync: dry_run would clear LLM fields on %d dinosaur row(s)",
+                would_clear,
+            )
+
         members = list_category_articles(wiki, cat, max_pages=cap)
         total = len(members)
         logger.info(
@@ -129,39 +169,52 @@ def sync_dinosaurs(
             overwrite,
         )
 
-        for index, member in enumerate(members, start=1):
-            prefix = f"wikipedia_sync: [{index}/{total}] {member.title}"
-            try:
-                outcome = _process_member(
-                    session,
-                    wiki,
-                    member,
-                    dry_run=dry_run,
-                    overwrite=overwrite,
-                )
-                if outcome == "fetch_new":
-                    counters.fetched += 1
-                    logger.info("%s action=fetch reason=new", prefix)
-                elif outcome == "fetch_update_stale":
-                    counters.updated += 1
-                    logger.info("%s action=fetch reason=stale", prefix)
-                elif outcome == "fetch_update_overwrite":
-                    counters.updated += 1
-                    logger.info("%s action=fetch reason=overwrite", prefix)
-                elif outcome == "skip_current":
-                    counters.skipped += 1
-                    logger.info("%s action=skip reason=up_to_date", prefix)
-                elif outcome == "skip_disambiguation":
-                    counters.disambiguation += 1
-                    counters.skipped += 1
-                    logger.warning("%s action=skip reason=disambiguation", prefix)
-            except Exception as exc:
-                counters.failed += 1
-                logger.error("%s action=failed error=%s", prefix, exc)
-                session.rollback()
+        try:
+            for index, member in enumerate(members, start=1):
+                processed = index
+                prefix = f"wikipedia_sync: [{index}/{total}] {member.title}"
+                try:
+                    outcome = _process_member(
+                        session,
+                        wiki,
+                        member,
+                        dry_run=dry_run,
+                        overwrite=overwrite,
+                    )
+                    if outcome == "fetch_new":
+                        counters.fetched += 1
+                        logger.info("%s action=fetch reason=new", prefix)
+                    elif outcome == "fetch_update_stale":
+                        counters.updated += 1
+                        logger.info("%s action=fetch reason=stale", prefix)
+                    elif outcome == "fetch_update_overwrite":
+                        counters.updated += 1
+                        logger.info("%s action=fetch reason=overwrite", prefix)
+                    elif outcome == "skip_current":
+                        counters.skipped += 1
+                        logger.info("%s action=skip reason=up_to_date", prefix)
+                    elif outcome == "skip_disambiguation":
+                        counters.disambiguation += 1
+                        counters.skipped += 1
+                        logger.warning("%s action=skip reason=disambiguation", prefix)
 
-        if not dry_run:
-            session.commit()
+                    if not dry_run and outcome in (
+                        "fetch_new",
+                        "fetch_update_stale",
+                        "fetch_update_overwrite",
+                    ):
+                        session.commit()
+                except Exception as exc:
+                    counters.failed += 1
+                    logger.error("%s action=failed error=%s", prefix, exc)
+                    session.rollback()
+        except KeyboardInterrupt:
+            interrupted = True
+            logger.warning(
+                "wikipedia_sync: interrupted at [%d/%d]; progress committed through last successful record",
+                processed,
+                total,
+            )
     finally:
         if own_client:
             wiki.close()
@@ -176,7 +229,7 @@ def sync_dinosaurs(
     )
     logger.info(
         "wikipedia_sync: finished fetched=%d updated=%d skipped=%d failed=%d "
-        "disambiguation=%d overwrite=%s dry_run=%s elapsed_s=%.1f",
+        "disambiguation=%d overwrite=%s dry_run=%s interrupted=%s elapsed_s=%.1f",
         counters.fetched,
         counters.updated,
         counters.skipped,
@@ -184,8 +237,11 @@ def sync_dinosaurs(
         counters.disambiguation,
         overwrite,
         dry_run,
+        interrupted,
         elapsed,
     )
+    if interrupted:
+        raise KeyboardInterrupt
     return summary
 
 
