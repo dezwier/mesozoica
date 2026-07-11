@@ -5,18 +5,18 @@ from app.services.dinosaur_enrichment_service.validate import validate_llm_enric
 
 def test_validate_llm_enrichment_accepts_llm_payload():
     raw = {
-        "length": "12 m (39 ft)",
-        "mass": "7 t",
+        "length": "12 m",
+        "mass": "5-10 t",
         "location": "western North America",
         "diet_type": "carnivore",
         "short_description": (
-            "This colossal 17.5-meter titanosaur from the Late Cretaceous "
-            "roamed the Ibero-Armorican Island."
+            "A towering Late Cretaceous apex predator whose bone-crushing bite "
+            "made it the most famous dinosaur of all time."
         ),
     }
     result = validate_llm_enrichment(raw)
-    assert result.length == "12 m (39 ft)"
-    assert result.mass == "7 t"
+    assert result.length == "12 m"
+    assert result.mass == "5-10 t"
     assert result.location == "western North America"
     assert result.diet_type == "carnivore"
 

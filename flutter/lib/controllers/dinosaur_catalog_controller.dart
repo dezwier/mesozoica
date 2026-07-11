@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 
+import '../config/app_config.dart';
 import '../models/dinosaur.dart';
 import '../services/dinosaur_service.dart';
 
@@ -33,7 +34,9 @@ class DinosaurCatalogController extends ChangeNotifier {
     } on DinosaurServiceException catch (error) {
       _error = error.message;
     } catch (error) {
-      _error = 'Could not reach the API. Is the backend running?';
+      _error =
+          'Could not reach the API at ${AppConfig.baseApiUrl}. '
+          'Check your connection or try again later.';
       if (kDebugMode) {
         debugPrint('DinosaurCatalogController.load failed: $error');
       }

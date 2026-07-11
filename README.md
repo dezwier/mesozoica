@@ -33,7 +33,15 @@ cd flutter && flutter pub get
 make run-flutter
 ```
 
-Point `flutter/lib/config/app_config.dart` at your backend URL (localhost by default).
+Point `flutter/lib/config/app_config.dart` at your backend URL. By default the app uses the deployed Railway API (`https://mesozoica-production.up.railway.app`). For local backend dev:
+
+```bash
+# iOS Simulator / macOS
+flutter run --dart-define=USE_LOCAL_API=true
+
+# Android Emulator
+flutter run --dart-define=USE_LOCAL_API=true --dart-define=API_BASE_URL=http://10.0.2.2:8000
+```
 
 ### Tests
 
