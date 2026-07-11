@@ -12,6 +12,7 @@ class DinoFactRow extends StatelessWidget {
     this.compact = false,
     this.centered = false,
     this.maxValueLines = 2,
+    this.maxLines,
   });
 
   final String iconAsset;
@@ -20,6 +21,7 @@ class DinoFactRow extends StatelessWidget {
   final bool compact;
   final bool centered;
   final int maxValueLines;
+  final int? maxLines;
 
   @override
   Widget build(BuildContext context) {
@@ -28,7 +30,8 @@ class DinoFactRow extends StatelessWidget {
     final labelSize = compact ? 8.0 : 10.0;
     final valueSize = compact ? 11.0 : 13.0;
     final rowPadding = compact ? 10.0 : 8.0;
-    final valueLines = compact ? 2 : maxValueLines;
+    final valueLines =
+        maxLines ?? (compact ? (centered ? 3 : 2) : maxValueLines);
 
     return Padding(
       padding: EdgeInsets.only(bottom: rowPadding),
@@ -53,9 +56,8 @@ class DinoFactRow extends StatelessWidget {
                 Text(
                   value,
                   style: cardTheme.statValueStyle(fontSize: valueSize),
-                  maxLines: centered ? null : valueLines,
-                  overflow:
-                      centered ? TextOverflow.visible : TextOverflow.ellipsis,
+                  maxLines: valueLines,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),

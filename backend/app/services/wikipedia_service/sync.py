@@ -9,6 +9,7 @@ from datetime import datetime, timezone
 
 from sqlmodel import Session, select, update
 
+from app.services.dinosaur_name_filter import dino_name_match_clause, find_dinosaurs_by_names
 from app.core.config import settings
 from app.models.dinosaur import Dinosaur
 from app.services.wikipedia_service.category import CategoryMember, list_category_articles
@@ -84,8 +85,24 @@ def _clear_llm_enrichment_fields(dinosaur: Dinosaur) -> None:
     dinosaur.llm_enriched = False
 
 
-def _bulk_clear_llm_enrichment_fields(session: Session, *, dry_run: bool) -> int:
-    """Clear LLM-only columns on every dinosaur row (used with --overwrite)."""
+def _bulk_clear_llm_enrichment_fields(
+    session: Session,
+    *,
+    dry_run: bool,
+    dinos: list[str] | None = None,
+) -> int:
+    """Clear LLM-only columns on dinosaur rows (used with --overwrite)."""
+    if dinos:
+        if dry_run:
+            stmt = select(Dinosaur).where(dino_name_match_clause(dinos))
+            return len(list(session.exec(stmt).all()))
+        rows = find_dinosaurs_by_names(session, dinos)
+        for row in rows:
+            _clear_llm_enrichment_fields(row)
+            session.add(row)
+        session.commit()
+        return len(rows)
+
     if dry_run:
         stmt = select(Dinosaur).where(
             (Dinosaur.length.is_not(None))  # type: ignore[union-attr]
@@ -153,6 +170,7 @@ def sync_dinosaurs(
     max_pages: int | None = None,
     dry_run: bool = False,
     overwrite: bool = False,
+    dinos: list[str] | None = None,
     client: WikipediaClient | None = None,
 ) -> SyncSummary:
     """Sync dinosaur records from Wikipedia category into the database."""
@@ -168,25 +186,37 @@ def sync_dinosaurs(
     members: list[CategoryMember] = []
     try:
         if overwrite and not dry_run:
-            cleared = _bulk_clear_llm_enrichment_fields(session, dry_run=False)
+            cleared = _bulk_clear_llm_enrichment_fields(
+                session, dry_run=False, dinos=dinos
+            )
+            scope = f"{len(dinos)} targeted" if dinos else "all"
             logger.info(
-                "wikipedia_sync: cleared LLM fields on %d dinosaur row(s) before overwrite refresh",
+                "wikipedia_sync: cleared LLM fields on %d dinosaur row(s) (%s) before overwrite refresh",
                 cleared,
+                scope,
             )
         elif overwrite and dry_run:
-            would_clear = _bulk_clear_llm_enrichment_fields(session, dry_run=True)
+            would_clear = _bulk_clear_llm_enrichment_fields(
+                session, dry_run=True, dinos=dinos
+            )
+            scope = f"{len(dinos)} targeted" if dinos else "all"
             logger.info(
-                "wikipedia_sync: dry_run would clear LLM fields on %d dinosaur row(s)",
+                "wikipedia_sync: dry_run would clear LLM fields on %d dinosaur row(s) (%s)",
                 would_clear,
+                scope,
             )
 
-        members = list_category_articles(wiki, cat, max_pages=cap)
+        if dinos:
+            members = [CategoryMember(page_id=0, title=title) for title in dinos]
+        else:
+            members = list_category_articles(wiki, cat, max_pages=cap)
         total = len(members)
         logger.info(
-            "wikipedia_sync: starting category=%s total_candidates=%d overwrite=%s",
+            "wikipedia_sync: starting category=%s total_candidates=%d overwrite=%s dinos=%s",
             cat,
             total,
             overwrite,
+            dinos,
         )
 
         try:

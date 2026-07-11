@@ -221,3 +221,35 @@ def test_enrich_prioritizes_custom_image_candidates(session: Session):
     assert summary.counters.enriched == 1
     mock_api.assert_called_once()
     assert mock_api.call_args.kwargs["log_context"] == "Beta"
+
+
+def test_enrich_dinos_limits_candidates(session: Session):
+    session.add_all(
+        [
+            Dinosaur(
+                name="Tyrannosaurus",
+                wikipedia_page_id=8001,
+                wikipedia_title="Tyrannosaurus",
+                cladogram={},
+                article="<p>Big carnivore.</p>",
+            ),
+            Dinosaur(
+                name="Velociraptor",
+                wikipedia_page_id=8002,
+                wikipedia_title="Velociraptor",
+                cladogram={},
+                article="<p>Small theropod.</p>",
+            ),
+        ]
+    )
+    session.commit()
+
+    with patch(
+        "app.services.dinosaur_enrichment_service.sync.call_gemini_api",
+        return_value=(_llm_response(), {}),
+    ) as mock_api:
+        summary = enrich_dinosaurs(session, dry_run=False, dinos=["Velociraptor"])
+
+    assert summary.counters.enriched == 1
+    mock_api.assert_called_once()
+    assert mock_api.call_args.kwargs["log_context"] == "Velociraptor"

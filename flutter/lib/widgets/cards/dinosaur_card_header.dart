@@ -10,19 +10,21 @@ class DinosaurCardHeader extends StatelessWidget {
     this.titleFontSize = 18,
     this.subtitleFontSize = 11,
     this.centered = false,
+    this.useFrontTitleStyle = false,
   });
 
   final DinosaurSummary dinosaur;
   final double titleFontSize;
   final double subtitleFontSize;
   final bool centered;
+  final bool useFrontTitleStyle;
 
   String? _subtitle() {
     final title = dinosaur.wikipediaTitle.trim();
     if (title.isEmpty || title.toLowerCase() == dinosaur.name.toLowerCase()) {
       return null;
     }
-    return title.replaceAll('_', ' ').toUpperCase();
+    return title.replaceAll('_', ' ');
   }
 
   @override
@@ -35,9 +37,11 @@ class DinosaurCardHeader extends StatelessWidget {
           centered ? CrossAxisAlignment.center : CrossAxisAlignment.start,
       children: [
         Text(
-          dinosaur.name.toUpperCase(),
+          dinosaur.name,
           textAlign: centered ? TextAlign.center : TextAlign.start,
-          style: cardTheme.titleStyle(fontSize: titleFontSize),
+          style: useFrontTitleStyle
+              ? cardTheme.frontTitleStyle(fontSize: titleFontSize)
+              : cardTheme.titleStyle(fontSize: titleFontSize),
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
         ),

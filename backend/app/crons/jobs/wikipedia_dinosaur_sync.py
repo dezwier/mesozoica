@@ -4,6 +4,7 @@ Wikipedia dinosaur sync job.
 Run manually:
   python -m app.crons.runner --job wikipedia_dinosaur_sync
   python -m app.crons.runner --job wikipedia_dinosaur_sync --overwrite
+  python -m app.crons.runner --job wikipedia_dinosaur_sync --dinos Tyrannosaurus Giganotosaurus
 """
 
 from __future__ import annotations
@@ -20,6 +21,7 @@ def run_sync_job(
     overwrite: bool = False,
     max_pages: int | None = None,
     category: str | None = None,
+    dinos: list[str] | None = None,
 ) -> int:
     with Session(engine) as session:
         summary = sync_dinosaurs(
@@ -28,5 +30,6 @@ def run_sync_job(
             max_pages=max_pages,
             dry_run=dry_run,
             overwrite=overwrite,
+            dinos=dinos,
         )
     return sync_exit_code(summary)

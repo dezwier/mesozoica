@@ -12,7 +12,7 @@ class DinoCardTheme {
     required this.cardTextSecondary,
     required this.cardTextMuted,
     required this.shadowColor,
-    required this.iconButtonBackground,
+    required this.frontTitleColor,
   });
 
   static const double borderRadius = 16;
@@ -33,7 +33,7 @@ class DinoCardTheme {
     cardTextSecondary: Color(0xFFC5944E),
     cardTextMuted: Color(0x73FFFFFF),
     shadowColor: Colors.black,
-    iconButtonBackground: Color(0x73000000),
+    frontTitleColor: Color(0xFFA08B7A),
   );
 
   static const DinoCardTheme light = DinoCardTheme._(
@@ -44,7 +44,7 @@ class DinoCardTheme {
     cardTextSecondary: Color(0xFF5D4037),
     cardTextMuted: Color(0xFF4E342E),
     shadowColor: Color(0xFF3E2723),
-    iconButtonBackground: Color(0x33000000),
+    frontTitleColor: Color.fromARGB(255, 48, 40, 36),
   );
 
   final bool isLight;
@@ -54,7 +54,7 @@ class DinoCardTheme {
   final Color cardTextSecondary;
   final Color cardTextMuted;
   final Color shadowColor;
-  final Color iconButtonBackground;
+  final Color frontTitleColor;
 
   static DinoCardTheme of(BuildContext context) {
     return Theme.of(context).brightness == Brightness.dark ? dark : light;
@@ -89,15 +89,19 @@ class DinoCardTheme {
     return BoxDecoration(color: cardBackground);
   }
 
-  TextStyle titleStyle({double fontSize = 18}) {
+  TextStyle titleStyle({double fontSize = 18, Color? color}) {
     return TextStyle(
       fontFamily: titleFontFamily,
-      color: cardTextPrimary,
+      color: color ?? cardTextPrimary,
       fontSize: fontSize,
       fontWeight: FontWeight.w700,
       letterSpacing: 1.0,
       height: 1.1,
     );
+  }
+
+  TextStyle frontTitleStyle({double fontSize = 28}) {
+    return titleStyle(fontSize: fontSize, color: frontTitleColor);
   }
 
   TextStyle subtitleStyle({double fontSize = 11}) {

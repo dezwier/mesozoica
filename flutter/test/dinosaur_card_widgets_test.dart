@@ -48,7 +48,7 @@ void main() {
 
     expect(find.byType(DinosaurCardImage), findsOneWidget);
     expect(find.byIcon(Icons.info_outline), findsOneWidget);
-    expect(find.text('TYRANNOSAURUS REX'), findsOneWidget);
+    expect(find.text('Tyrannosaurus rex'), findsOneWidget);
     expect(find.text('LOCATION'), findsOneWidget);
     expect(find.text('PERIOD'), findsOneWidget);
   });
@@ -115,7 +115,7 @@ void main() {
       ),
     );
 
-    expect(find.text('TYRANNOSAURUS REX'), findsOneWidget);
+    expect(find.text('Tyrannosaurus rex'), findsOneWidget);
     expect(find.text('LOCATION'), findsNothing);
     expect(find.text('PERIOD'), findsNothing);
     expect(find.text('TIME'), findsNothing);

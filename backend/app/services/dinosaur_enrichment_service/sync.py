@@ -9,6 +9,7 @@ from dataclasses import dataclass, field
 from sqlalchemy import case
 from sqlmodel import Session, col, select
 
+from app.services.dinosaur_name_filter import dino_name_match_clause
 from app.core.config import settings
 from app.models.dinosaur import Dinosaur
 from app.services.dinosaur_enrichment_service.prompt import build_enrichment_prompt
@@ -51,10 +52,13 @@ def _select_candidates(
     *,
     overwrite: bool,
     max_records: int | None,
+    dinos: list[str] | None = None,
 ) -> list[Dinosaur]:
     stmt = select(Dinosaur).where(Dinosaur.article.is_not(None))  # type: ignore[union-attr]
     if not overwrite:
         stmt = stmt.where(Dinosaur.llm_enriched.is_(False))  # type: ignore[attr-defined]
+    if dinos:
+        stmt = stmt.where(dino_name_match_clause(dinos))
     custom_image_priority = case(
         (
             col(Dinosaur.main_image_url).is_not(None)
@@ -85,6 +89,7 @@ def enrich_dinosaurs(
     dry_run: bool = False,
     overwrite: bool = False,
     max_records: int | None = None,
+    dinos: list[str] | None = None,
 ) -> EnrichSummary:
     """Enrich dinosaur records via Gemini API."""
     if not settings.google_gemini_api_key:
@@ -95,13 +100,16 @@ def enrich_dinosaurs(
 
     start = time.monotonic()
     counters = EnrichCounters()
-    candidates = _select_candidates(session, overwrite=overwrite, max_records=cap)
+    candidates = _select_candidates(
+        session, overwrite=overwrite, max_records=cap, dinos=dinos
+    )
     total = len(candidates)
 
     logger.info(
-        "dinosaur_enrich: starting total_candidates=%d overwrite=%s",
+        "dinosaur_enrich: starting total_candidates=%d overwrite=%s dinos=%s",
         total,
         overwrite,
+        dinos,
     )
 
     for index, dinosaur in enumerate(candidates, start=1):

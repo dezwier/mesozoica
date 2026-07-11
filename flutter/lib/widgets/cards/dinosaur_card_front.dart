@@ -41,11 +41,12 @@ class DinosaurCardFront extends StatelessWidget {
                         children: [
                           DinosaurCardHeader(
                             dinosaur: dinosaur,
-                            titleFontSize: 17,
+                            titleFontSize: 28,
                             subtitleFontSize: 10,
                             centered: true,
+                            useFrontTitleStyle: true,
                           ),
-                          const SizedBox(height: 8),
+                          const SizedBox(height: 14),
                           DinosaurCardFacts(
                             dinosaur: dinosaur,
                             compact: true,
@@ -62,19 +63,14 @@ class DinosaurCardFront extends StatelessWidget {
           Positioned(
             top: 12,
             right: 12,
-            child: Material(
-              color: cardTheme.iconButtonBackground,
-              shape: const CircleBorder(),
-              clipBehavior: Clip.antiAlias,
-              child: IconButton(
-                icon: const Icon(Icons.info_outline, size: 18),
-                color: cardTheme.cardAccent,
-                tooltip: 'Read article',
-                visualDensity: VisualDensity.compact,
-                onPressed: () => DinosaurArticleDrawer.show(
-                  context,
-                  dinosaur: dinosaur,
-                ),
+            child: IconButton(
+              icon: const Icon(Icons.info_outline, size: 18),
+              color: Colors.white,
+              tooltip: 'Read article',
+              visualDensity: VisualDensity.compact,
+              onPressed: () => DinosaurArticleDrawer.show(
+                context,
+                dinosaur: dinosaur,
               ),
             ),
           ),

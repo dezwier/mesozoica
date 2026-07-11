@@ -4,6 +4,7 @@ Dinosaur LLM enrichment job.
 Run manually:
   python -m app.crons.runner --job dinosaur_llm_enrich
   python -m app.crons.runner --job dinosaur_llm_enrich --overwrite
+  python -m app.crons.runner --job dinosaur_llm_enrich --dinos Tyrannosaurus --overwrite
 """
 
 from __future__ import annotations
@@ -22,6 +23,7 @@ def run_enrich_job(
     dry_run: bool = False,
     overwrite: bool = False,
     max_records: int | None = None,
+    dinos: list[str] | None = None,
 ) -> int:
     _require_gemini_key_in_production()
     with Session(engine) as session:
@@ -30,6 +32,7 @@ def run_enrich_job(
             dry_run=dry_run,
             overwrite=overwrite,
             max_records=max_records,
+            dinos=dinos,
         )
     return enrich_exit_code(summary)
 

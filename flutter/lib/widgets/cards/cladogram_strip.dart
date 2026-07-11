@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../models/dinosaur.dart';
 import '../../theme/dino_card_theme.dart';
+import '../../utils/display_text.dart';
 
 class _CladogramLayout {
   const _CladogramLayout({required this.scale});
@@ -122,7 +123,6 @@ class CladogramStrip extends StatelessWidget {
         if (needsScroll) {
           return _CladogramScrollFade(
             height: maxHeight,
-            fadeColor: cardTheme.cardBackground,
             centered: centered,
             width: centered ? null : maxWidth,
             child: tree,
@@ -145,14 +145,12 @@ const _cladogramScrollFadeHeight = 12.0;
 class _CladogramScrollFade extends StatefulWidget {
   const _CladogramScrollFade({
     required this.height,
-    required this.fadeColor,
     required this.centered,
     required this.child,
     this.width,
   });
 
   final double height;
-  final Color fadeColor;
   final bool centered;
   final double? width;
   final Widget child;
@@ -215,59 +213,32 @@ class _CladogramScrollFadeState extends State<_CladogramScrollFade> {
 
     return SizedBox(
       height: widget.height,
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          SingleChildScrollView(
-            controller: _controller,
-            physics: const ClampingScrollPhysics(),
-            child: scrollChild,
-          ),
-          if (_showTopFade)
-            _CladogramScrollFadeOverlay(
-              fadeColor: widget.fadeColor,
-              atTop: true,
-            ),
-          if (_showBottomFade)
-            _CladogramScrollFadeOverlay(
-              fadeColor: widget.fadeColor,
-              atTop: false,
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-class _CladogramScrollFadeOverlay extends StatelessWidget {
-  const _CladogramScrollFadeOverlay({
-    required this.fadeColor,
-    required this.atTop,
-  });
-
-  final Color fadeColor;
-  final bool atTop;
-
-  @override
-  Widget build(BuildContext context) {
-    return Positioned(
-      top: atTop ? 0 : null,
-      bottom: atTop ? null : 0,
-      left: 0,
-      right: 0,
-      height: _cladogramScrollFadeHeight,
-      child: IgnorePointer(
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: atTop ? Alignment.topCenter : Alignment.bottomCenter,
-              end: atTop ? Alignment.bottomCenter : Alignment.topCenter,
-              colors: [
-                fadeColor,
-                fadeColor.withValues(alpha: 0),
-              ],
-            ),
-          ),
+      child: ShaderMask(
+        shaderCallback: (bounds) {
+          final fadeFraction =
+              (_cladogramScrollFadeHeight / widget.height).clamp(0.0, 0.5);
+          return LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              _showTopFade ? Colors.transparent : Colors.white,
+              Colors.white,
+              Colors.white,
+              _showBottomFade ? Colors.transparent : Colors.white,
+            ],
+            stops: [
+              0.0,
+              fadeFraction,
+              1.0 - fadeFraction,
+              1.0,
+            ],
+          ).createShader(bounds);
+        },
+        blendMode: BlendMode.dstIn,
+        child: SingleChildScrollView(
+          controller: _controller,
+          physics: const ClampingScrollPhysics(),
+          child: scrollChild,
         ),
       ),
     );
@@ -329,7 +300,7 @@ class _CladogramNodeRow extends StatelessWidget {
                 SizedBox(width: layout.dotNameGap),
                 if (centered)
                   Text(
-                    node.name.toUpperCase(),
+                    capitalizeLeadingLetter(node.name),
                     style: TextStyle(
                       color: cardTheme.cladogramNodeColor(isLast: isLast),
                       fontSize: (isLast ? 12 : 10.5) * layout.scale,
@@ -342,7 +313,7 @@ class _CladogramNodeRow extends StatelessWidget {
                 else
                   Expanded(
                     child: Text(
-                      node.name.toUpperCase(),
+                      capitalizeLeadingLetter(node.name),
                       style: TextStyle(
                         color: cardTheme.cladogramNodeColor(isLast: isLast),
                         fontSize: (isLast ? 12 : 10.5) * layout.scale,

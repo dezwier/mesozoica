@@ -13,6 +13,7 @@ class DinosaurCardImage extends StatelessWidget {
   final String? imageUrl;
 
   static const _curatedMediaPath = '/media/dinosaurs/';
+  static const _fadeInDuration = Duration(milliseconds: 500);
 
   static bool isCuratedCardImageUrl(String? url) {
     if (url == null || url.trim().isEmpty) {
@@ -26,23 +27,50 @@ class DinosaurCardImage extends StatelessWidget {
     final curatedUrl = isCuratedCardImageUrl(imageUrl) ? imageUrl!.trim() : null;
 
     if (curatedUrl == null) {
-      return Image.asset(
-        DinoCardTheme.frontPlaceholderAsset,
-        fit: BoxFit.cover,
-      );
+      return const _FadingPlaceholderImage();
     }
 
     return CachedNetworkImage(
       imageUrl: curatedUrl,
       fit: BoxFit.cover,
+      fadeInDuration: _fadeInDuration,
+      fadeInCurve: Curves.easeIn,
+      placeholderFadeInDuration: Duration.zero,
       httpHeaders: const {
         'User-Agent': 'Mesozoica/1.0 (mobile app; dinosaur catalog)',
       },
-      placeholder: (context, url) => Image.asset(
-        DinoCardTheme.frontPlaceholderAsset,
-        fit: BoxFit.cover,
-      ),
-      errorWidget: (context, url, error) => Image.asset(
+      placeholder: (context, url) => const SizedBox.shrink(),
+      errorWidget: (context, url, error) => const _FadingPlaceholderImage(),
+    );
+  }
+}
+
+class _FadingPlaceholderImage extends StatefulWidget {
+  const _FadingPlaceholderImage();
+
+  @override
+  State<_FadingPlaceholderImage> createState() =>
+      _FadingPlaceholderImageState();
+}
+
+class _FadingPlaceholderImageState extends State<_FadingPlaceholderImage>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: DinosaurCardImage._fadeInDuration,
+  )..forward();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FadeTransition(
+      opacity: CurvedAnimation(parent: _controller, curve: Curves.easeIn),
+      child: Image.asset(
         DinoCardTheme.frontPlaceholderAsset,
         fit: BoxFit.cover,
       ),

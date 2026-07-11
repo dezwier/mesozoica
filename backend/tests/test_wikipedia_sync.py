@@ -513,3 +513,80 @@ def test_sync_exit_code_threshold():
 
     summary_ok = SyncSummary(category="Category:Dinosaur_genera", total_candidates=10, counters=SyncCounters(failed=0, fetched=10))
     assert sync_exit_code(summary_ok) == 0
+
+
+def test_sync_dinos_skips_category_listing(session: Session, fixture_html, monkeypatch):
+    client = MagicMock()
+    client.page_with_html.return_value = {"html": fixture_html}
+
+    list_category_called = False
+
+    def fake_list_category(*_args, **_kwargs):
+        nonlocal list_category_called
+        list_category_called = True
+        return []
+
+    monkeypatch.setattr(
+        "app.services.wikipedia_service.sync.list_category_articles",
+        fake_list_category,
+    )
+    monkeypatch.setattr(
+        "app.services.wikipedia_service.sync.fetch_page_metadata",
+        lambda *_args, **_kwargs: _metadata(title="Giganotosaurus", page_id=555),
+    )
+    monkeypatch.setattr(
+        "app.services.wikipedia_service.sync.parse_article_html",
+        lambda html: _parsed(html),
+    )
+
+    summary = sync_dinosaurs(
+        session,
+        client=client,
+        dry_run=False,
+        dinos=["Giganotosaurus"],
+    )
+    session.commit()
+
+    assert list_category_called is False
+    assert summary.counters.fetched == 1
+    row = session.exec(select(Dinosaur).where(Dinosaur.wikipedia_page_id == 555)).first()
+    assert row is not None
+    assert row.name == "Giganotosaurus"
+
+
+def test_sync_overwrite_targeted_dinos_only_clears_those_rows(session: Session, monkeypatch):
+    synced = Dinosaur(
+        name="Tyrannosaurus",
+        wikipedia_page_id=30467,
+        wikipedia_title="Tyrannosaurus",
+        cladogram={"kingdom": "Animalia"},
+        length="12 m",
+        mass="7 t",
+        llm_enriched=True,
+    )
+    untouched = Dinosaur(
+        name="Velociraptor",
+        wikipedia_page_id=99999,
+        wikipedia_title="Velociraptor",
+        cladogram={"kingdom": "Animalia"},
+        length="2 m",
+        mass="15 kg",
+        llm_enriched=True,
+    )
+    session.add(synced)
+    session.add(untouched)
+    session.commit()
+
+    sync_dinosaurs(
+        session,
+        client=MagicMock(),
+        overwrite=True,
+        dinos=["Tyrannosaurus"],
+    )
+    session.refresh(synced)
+    session.refresh(untouched)
+
+    assert synced.length is None
+    assert synced.llm_enriched is False
+    assert untouched.length == "2 m"
+    assert untouched.llm_enriched is True

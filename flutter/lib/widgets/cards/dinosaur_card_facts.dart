@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../models/dinosaur.dart';
+import '../../utils/display_text.dart';
 import 'dino_fact_row.dart';
 
 class DinosaurCardFacts extends StatelessWidget {
@@ -15,21 +16,21 @@ class DinosaurCardFacts extends StatelessWidget {
   final bool compact;
   final bool centered;
 
-  String _orDash(String? value) =>
-      value != null && value.trim().isNotEmpty ? value.trim() : '—';
-
   Widget _locationRow() => DinoFactRow(
         iconAsset: 'assets/images/cards/icons/location.svg',
         label: 'Location',
-        value: _orDash(dinosaur.location),
+        value: displayFactValue(dinosaur.location),
         compact: compact,
         centered: centered,
+        maxLines: compact && centered ? 5 : null,
       );
 
   Widget _periodRow() => DinoFactRow(
         iconAsset: 'assets/images/cards/icons/period.svg',
         label: 'Period',
-        value: dinosaur.displayPeriodName,
+        value: displayFactValue(
+          dinosaur.displayPeriodName == '—' ? null : dinosaur.displayPeriodName,
+        ),
         compact: compact,
         centered: centered,
       );
@@ -37,10 +38,13 @@ class DinosaurCardFacts extends StatelessWidget {
   Widget _dietRow() => DinoFactRow(
         iconAsset: 'assets/images/cards/icons/diet.svg',
         label: 'Diet',
-        value: _orDash(dinosaur.dietType),
+        value: displayFactValue(dinosaur.dietType),
         compact: compact,
         centered: centered,
       );
+
+  String _orDash(String? value) =>
+      value != null && value.trim().isNotEmpty ? value.trim() : '—';
 
   Widget _lengthRow() => DinoFactRow(
         iconAsset: 'assets/images/cards/icons/length.svg',
@@ -61,40 +65,42 @@ class DinosaurCardFacts extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (compact) {
-      final locationPeriodColumn = Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _locationRow(),
-          _periodRow(),
-        ],
-      );
-      final lengthMassColumn = Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _lengthRow(),
-          _massRow(),
-        ],
-      );
-      final dietColumn = Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _dietRow(),
-        ],
-      );
-
       return SizedBox(
         width: double.infinity,
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(child: locationPeriodColumn),
+            Expanded(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _dietRow(),
+                  _lengthRow(),
+                ],
+              ),
+            ),
             const SizedBox(width: 10),
-            Expanded(child: lengthMassColumn),
+            Expanded(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _periodRow(),
+                  _massRow(),
+                ],
+              ),
+            ),
             const SizedBox(width: 10),
-            Expanded(child: dietColumn),
+            Expanded(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _locationRow(),
+                ],
+              ),
+            ),
           ],
         ),
       );

@@ -22,6 +22,7 @@ from typing import Any, Callable
 from croniter import croniter
 
 from app.crons.config import CronJobDef, load_cron_config
+from app.services.dinosaur_name_filter import parse_dino_names
 from app.crons.jobs import dinosaur_llm_enrich, wikipedia_dinosaur_sync
 from app.crons.logging_config import configure_cron_logging
 from app.crons.railway_guard import require_railway_database
@@ -45,6 +46,7 @@ def _run_wikipedia_dinosaur_sync(params: dict[str, Any]) -> int:
         overwrite=bool(params.get("overwrite", False)),
         max_pages=int(max_pages) if max_pages is not None else None,
         category=params.get("category"),
+        dinos=params.get("dinos"),
     )
 
 
@@ -54,6 +56,7 @@ def _run_dinosaur_llm_enrich(params: dict[str, Any]) -> int:
         dry_run=bool(params.get("dry_run", False)),
         overwrite=bool(params.get("overwrite", False)),
         max_records=int(max_records) if max_records is not None else None,
+        dinos=params.get("dinos"),
     )
 
 
@@ -114,11 +117,21 @@ def main(argv: list[str] | None = None) -> int:
         help="Re-fetch Wikipedia records even when already up to date (wikipedia_dinosaur_sync). "
         "Re-run LLM enrichment even when llm_enriched=true (dinosaur_llm_enrich).",
     )
+    parser.add_argument(
+        "--dinos",
+        metavar="NAME",
+        nargs="+",
+        help="Limit to specific dinosaurs by Wikipedia title (e.g. Tyrannosaurus). "
+        "Pass multiple names or comma-separated names in one argument.",
+    )
     args = parser.parse_args(argv)
 
     overrides: dict[str, Any] = {}
     if args.overwrite:
         overrides["overwrite"] = True
+    dinos = parse_dino_names(args.dinos)
+    if dinos:
+        overrides["dinos"] = dinos
 
     if args.job:
         cfg = load_cron_config()
