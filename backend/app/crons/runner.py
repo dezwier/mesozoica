@@ -23,7 +23,7 @@ from croniter import croniter
 
 from app.crons.config import CronJobDef, load_cron_config
 from app.services.dinosaur_name_filter import parse_dino_names
-from app.crons.jobs import dinosaur_llm_enrich, wikipedia_dinosaur_sync
+from app.crons.jobs import dinosaur_llm_enrich, pbdb_fossil_sync, wikipedia_dinosaur_sync
 from app.crons.logging_config import configure_cron_logging
 from app.crons.railway_guard import require_railway_database
 
@@ -60,9 +60,17 @@ def _run_dinosaur_llm_enrich(params: dict[str, Any]) -> int:
     )
 
 
+def _run_pbdb_fossil_sync(params: dict[str, Any]) -> int:
+    return pbdb_fossil_sync.run_sync_job(
+        dry_run=bool(params.get("dry_run", False)),
+        dinos=params.get("dinos"),
+    )
+
+
 _JOB_HANDLERS: dict[str, Callable[[dict[str, Any]], int]] = {
     "wikipedia_dinosaur_sync": _run_wikipedia_dinosaur_sync,
     "dinosaur_llm_enrich": _run_dinosaur_llm_enrich,
+    "pbdb_fossil_sync": _run_pbdb_fossil_sync,
 }
 
 
