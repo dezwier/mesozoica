@@ -1,0 +1,123 @@
+import logging
+import os
+import traceback
+from contextlib import asynccontextmanager
+
+from fastapi import FastAPI, HTTPException, Request, status
+from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+
+from app.api.v1 import api_router
+from app.core.config import settings
+from app.core.database import check_connection, init_db
+from app.core.exceptions import MesozoicaException, NotFoundError, ValidationError
+
+logger = logging.getLogger(__name__)
+
+API_VERSION = os.getenv("API_VERSION", "0.1.0")
+IS_DEVELOPMENT = settings.environment.lower() in ("development", "dev", "local")
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    init_db()
+    yield
+
+
+def _register_exception_handlers(app: FastAPI) -> None:
+    @app.exception_handler(RequestValidationError)
+    async def validation_exception_handler(
+        request: Request, exc: RequestValidationError
+    ):
+        logger.error("Validation error on %s %s: %s", request.method, request.url.path, exc.errors())
+        return JSONResponse(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            content={"detail": exc.errors()},
+        )
+
+    @app.exception_handler(MesozoicaException)
+    async def mesozoica_exception_handler(request: Request, exc: MesozoicaException):
+        if isinstance(exc, ValidationError):
+            status_code = status.HTTP_400_BAD_REQUEST
+        elif isinstance(exc, NotFoundError):
+            status_code = status.HTTP_404_NOT_FOUND
+        else:
+            status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
+
+        logger.warning(
+            "Application exception on %s %s: %s: %s",
+            request.method,
+            request.url.path,
+            type(exc).__name__,
+            exc,
+        )
+        return JSONResponse(
+            status_code=status_code,
+            content={"detail": str(exc), "type": type(exc).__name__},
+        )
+
+    @app.exception_handler(Exception)
+    async def global_exception_handler(request: Request, exc: Exception):
+        logger.error(
+            "Unhandled exception on %s %s",
+            request.method,
+            request.url.path,
+            exc_info=exc,
+        )
+        if IS_DEVELOPMENT:
+            return JSONResponse(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                content={
+                    "detail": str(exc),
+                    "type": type(exc).__name__,
+                    "traceback": traceback.format_exc(),
+                },
+            )
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={
+                "detail": "An internal server error occurred.",
+                "type": "InternalServerError",
+            },
+        )
+
+
+def create_app() -> FastAPI:
+    app = FastAPI(
+        title="Mesozoica API",
+        version=API_VERSION,
+        lifespan=lifespan,
+    )
+
+    _register_exception_handlers(app)
+
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=settings.cors_origins,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
+    @app.get("/")
+    async def root():
+        return {
+            "message": "Mesozoica API",
+            "status": "running",
+            "docs": {"swagger": "/docs", "redoc": "/redoc"},
+        }
+
+    @app.get("/health")
+    async def health():
+        return {"status": "healthy"}
+
+    @app.get("/ready")
+    async def ready():
+        ok, message = await check_connection()
+        if not ok:
+            raise HTTPException(status_code=503, detail=message)
+        return {"status": "ready"}
+
+    app.include_router(api_router, prefix=settings.api_v1_prefix)
+    return app
