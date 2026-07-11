@@ -84,6 +84,31 @@ class Settings(BaseSettings):
         validation_alias="DINOSAUR_ENRICH_REQUEST_DELAY_MS",
     )
 
+    dinosaur_images_dir: str = Field(
+        default="../dinosaur-images",
+        validation_alias="DINOSAUR_IMAGES_DIR",
+    )
+    public_base_url: str = Field(
+        default="http://127.0.0.1:8000",
+        validation_alias="PUBLIC_BASE_URL",
+    )
+    railway_dinosaur_images_volume: str = Field(
+        default="dinosaur-images",
+        validation_alias="RAILWAY_DINOSAUR_IMAGES_VOLUME",
+    )
+    dinosaur_image_sync_secret: str = Field(
+        default="",
+        validation_alias="DINOSAUR_IMAGE_SYNC_SECRET",
+    )
+
+    @property
+    def resolved_dinosaur_images_dir(self) -> Path:
+        path = Path(self.dinosaur_images_dir)
+        if path.is_absolute():
+            return path
+        backend_dir = Path(__file__).parent.parent.parent
+        return (backend_dir / path).resolve()
+
     @property
     def cors_origins(self) -> list[str]:
         return [origin.strip() for origin in self.cors_origins_str.split(",") if origin.strip()]

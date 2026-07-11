@@ -14,9 +14,11 @@ To maintain absolute scientific realism, the database relies on an automated scr
  * **The Wikipedia API Script:** A Python cron job (`app/crons/jobs/wikipedia_dinosaur_sync.py`) that weekly queries `Category:Dinosaur_genera` on English Wikipedia.
  * **Data Extraction:** Parses full Parsoid HTML articles, infobox quick-facts (temporal range, taxonomy, diet), and lead paragraphs. Short descriptions are **not** set here — they are produced by the LLM enrichment cron.
  * **Cladogram Parsing:** Extracts phylogenetic data from the infobox biota table (Kingdom → Genus, plus Species when present) into JSON for the Tree of Life.
- * **Lead Image:** Wikipedia sync fetches the page lead image via MediaWiki `pageimages` and stores it in `main_image_url` on insert; existing non-null URLs are preserved on update.
+ * **Lead Image:** Wikipedia sync fetches the page lead image via MediaWiki `pageimages` and stores it in `main_image_url` on insert; existing non-null URLs are preserved on update. Card fronts use **curated** images only (see below); Wikipedia URLs are not shown on the card front.
+ * **Curated Card Images:** Source files live in repo `dinosaur-images/` (filename stem = `dinosaur.name`, e.g. `Tyrannosaurus.webp`). `make sync-dinosaur-images` uploads files to a Railway volume via `railway volume files upload` and sets `main_image_url` to `{PUBLIC_BASE_URL}/media/dinosaurs/{filename}`. The FastAPI backend serves files from the mounted volume at `/media/dinosaurs/`.
  * **Snapshot Schema:** The sync can be rerun safely — it skips up-to-date records, refreshes stale ones by Wikipedia revision date, preserves `insert_date` and `main_image_url` on updates, and resets `llm_enriched=false` when article content is refreshed.
  * **Manual run:** `make run-wikipedia-sync` or `python -m app.crons.runner --job wikipedia_dinosaur_sync`
+ * **Curated image sync:** `make sync-dinosaur-images` or `python -m scripts.sync_dinosaur_images` (supports `--dry-run`)
  * **The LLM Enrichment Engine:** A second Python cron (`app/crons/jobs/dinosaur_llm_enrich.py`) runs after the Wikipedia sync. For each dinosaur with `llm_enriched=false`, it sends the full record (including article text) to Google Gemini and fills `length`, `mass`, `location`, `diet_type`, and a catchy one-sentence `short_description`. Sets `llm_enriched=true` on success. Re-runs automatically when Wikipedia sync refreshes a stale article.
  * **LLM manual run:** `make run-dinosaur-enrich` or `python -m app.crons.runner --job dinosaur_llm_enrich`
 ## 4. App Architecture & Screens
@@ -34,7 +36,7 @@ Four bottom tabs using an `IndexedStack` shell (mesosoica-style brown/sandstone 
 The **Dino** tab lists every dinosaur from `GET /api/v1/dinosaurs` as museum-style flippable cards (Y-axis 3D rotation — tap left/right half or horizontal drag, ported from archipelago `TurnableYAxisCard` mechanics).
 
 **Front face**
- * Wikipedia lead image (`main_image_url`) full-bleed with gradient overlay
+ * Curated card image from Railway (`/media/dinosaurs/{name}`) full-bleed with gradient overlay; bundled placeholder when no curated image is synced
  * Species name in caps; optional one-line `short_description`
 
 **Back face**
@@ -70,11 +72,13 @@ These remain part of the long-term vision but are deferred until core catalog + 
 mesozoica/
 ├── backend/          # FastAPI + PostgreSQL (deployed on Railway)
 │   ├── app/          # core/, api/v1/, models/, schemas/, services/, crons/
+│   ├── scripts/      # sync_dinosaur_images.py (curated card image upload)
 │   ├── alembic/      # DB migrations
 │   ├── tests/
 │   ├── Dockerfile
 │   ├── railway.toml          # API service
 │   └── railway.cron.toml     # Cron service (Wikipedia sync)
+├── dinosaur-images/  # Curated card images (gitignored binaries; synced to Railway volume)
 ├── flutter/          # Flutter mobile app (iOS & Android)
 │   └── lib/          # config/, controllers/, models/, screens/, services/, shell/, theme/, widgets/
 ├── Makefile          # make run-backend, run-wikipedia-sync, test-all
@@ -85,9 +89,10 @@ mesozoica/
  * **Language/Framework:** FastAPI (Python) for rapid, high-performance asynchronous API endpoints and data parsing.
  * **Location:** `backend/` — layered structure: thin routers in `api/v1/endpoints/`, business logic in `services/`, SQLModel tables in `models/`.
  * **Database:** PostgreSQL on Railway. PostGIS extensions planned for spatial mapping/location querying (not enabled in scaffold).
- * **Deployment:** Railway Dockerfile build; `alembic upgrade head` runs on startup; health at `/health`, readiness at `/ready`.
+ * **Deployment:** Railway Dockerfile build; `alembic upgrade head` runs on startup; health at `/health`, readiness at `/ready`. Attach a Railway volume named `dinosaur-images` mounted at `/data/dinosaur-images` on the backend service for curated card images.
+ * **Static media:** `GET /media/dinosaurs/{filename}` serves curated card images from `DINOSAUR_IMAGES_DIR` (volume mount in production, repo `dinosaur-images/` in local dev).
  * **Data Sync:** Cron runner at `app/crons/runner.py` loads schedules from `app/crons/crons.yaml`. Deploy as a separate Railway cron service via `backend/railway.cron.toml` (hourly trigger; jobs define their own UTC schedules).
- * **Dinosaur table:** `dinosaur` — name, birth/death (Ma), period, cladogram (JSON), diet_type, length, mass, location, short_description (LLM-only), long_description, full article HTML, article_date, insert_date, main_image_url (Wikipedia lead image), llm_enriched (bool).
+ * **Dinosaur table:** `dinosaur` — name, birth/death (Ma), period, cladogram (JSON), diet_type, length, mass, location, short_description (LLM-only), long_description, full article HTML, article_date, insert_date, main_image_url (curated Railway URL after sync; Wikipedia URL as metadata fallback), llm_enriched (bool).
  * **Dinosaur read API:** `GET /api/v1/dinosaurs` (paginated list, optional `q`, `ma_younger`, `ma_older` filters, card summary fields), `GET /api/v1/dinosaurs/{id}` (single summary).
 ### Frontend
  * **Framework:** Flutter (Dart) for high-performance, cross-platform fluid UI rendering (iOS and Android).
@@ -102,7 +107,8 @@ mesozoica/
  * [x] **LLM enrichment cron (dinosaur slice):** Weekly Gemini enrichment of length, mass, location, diet_type, and short_description.
  * [x] **Dinosaur read API:** Paginated list + detail endpoints for Flutter catalog.
  * [x] **Dino catalog filtering:** Floating filter FAB with name search and Mesozoic Ma range slider.
- * [x] **Wikipedia lead image auto-fill:** Populate `main_image_url` during sync.
+ * [x] **Wikipedia lead image auto-fill:** Populate `main_image_url` during sync (metadata; card front uses curated images).
+ * [x] **Curated card images:** Repo folder + Railway volume sync + static serving on card front.
  * [ ] **Authentication:** User accounts and inventory persistence.
  * [ ] **Carbon Dating System:** Introduce a decay mechanic where users must balance isotopes to verify fossil age.
  * [ ] **Continental Drift Simulator:** A toggle on the map screen to view what the current dig site looked like 100 million years ago via Pangea/Laurasia tectonic tracking.
@@ -115,6 +121,7 @@ cp backend/.env.example backend/.env   # set DATABASE_URL to Railway Postgres or
 make run-backend                       # http://localhost:8000/docs
 make run-wikipedia-sync                # one-off Wikipedia dinosaur ingest
 make run-dinosaur-enrich               # one-off Gemini dinosaur enrichment
+make sync-dinosaur-images              # upload curated card images to Railway volume + DB
 
 cd flutter && flutter pub get
 make run-flutter
@@ -125,13 +132,17 @@ No docker-compose — point `backend/.env` at a managed Postgres instance (Railw
 Wikipedia sync env vars (see `backend/.env.example`): `WIKIPEDIA_USER_AGENT` (required in production), `WIKIPEDIA_DINOSAUR_CATEGORY`, `WIKIPEDIA_REQUEST_DELAY_MS`, optional `WIKIPEDIA_SYNC_MAX_PAGES` for dev caps.
 
 Gemini enrichment env vars: `GOOGLE_GEMINI_API_KEY` (required in production for enrich cron), `GEMINI_MODEL`, `GEMINI_TEMPERATURE`, optional `DINOSAUR_ENRICH_MAX_RECORDS`, `DINOSAUR_ENRICH_FAILURE_THRESHOLD`, `DINOSAUR_ENRICH_REQUEST_DELAY_MS`, `DINOSAUR_ENRICH_ARTICLE_MAX_CHARS`.
+
+Curated card image env vars (backend service): `DINOSAUR_IMAGES_DIR` (default `/data/dinosaur-images` in production), `PUBLIC_BASE_URL` (public API base for stored URLs), `RAILWAY_DINOSAUR_IMAGES_VOLUME` (default `dinosaur-images`, used by sync script).
 ### Railway deployment
 1. Create a Railway project and add a **PostgreSQL** database.
 2. Add a **backend** service with root directory `backend` (declared in root `railway.toml`).
 3. Link `DATABASE_URL` from Postgres to the backend service.
-4. Set variables: `SECRET_KEY`, `ENVIRONMENT=production`, `CORS_ORIGINS` (explicit origins, no `*`), `WIKIPEDIA_USER_AGENT`, `GOOGLE_GEMINI_API_KEY`.
-5. Deploy — Dockerfile runs migrations then starts uvicorn on `$PORT`.
-6. Add a **cron** service with config file path `backend/railway.cron.toml`; link the same `DATABASE_URL`.
+4. Set variables: `SECRET_KEY`, `ENVIRONMENT=production`, `CORS_ORIGINS` (explicit origins, no `*`), `WIKIPEDIA_USER_AGENT`, `GOOGLE_GEMINI_API_KEY`, `PUBLIC_BASE_URL`, `DINOSAUR_IMAGES_DIR=/data/dinosaur-images`.
+5. Attach a **volume** named `dinosaur-images` to the backend service; mount at `/data/dinosaur-images`.
+6. Deploy — Dockerfile runs migrations then starts uvicorn on `$PORT`.
+7. Add a **cron** service with config file path `backend/railway.cron.toml`; link the same `DATABASE_URL`.
+8. Add curated images to local `dinosaur-images/` and run `make sync-dinosaur-images`.
 ### Implementation status
 | Area | Status |
 |------|--------|
@@ -142,6 +153,7 @@ Gemini enrichment env vars: `GOOGLE_GEMINI_API_KEY` (required in production for 
 | Dinosaur read API | Done |
 | Dino catalog + turnable cards | Done (skeleton UI, full card layout) |
 | Dino catalog filtering (search + time range) | Done |
+| Curated card images (Railway volume + sync) | Done |
 | Wikipedia data pipeline | Partial (dinosaur sync cron + lead image) |
 | LLM enrichment pipeline | Partial (dinosaur enrich cron) |
 | Map / Tree interactive features | Not started |

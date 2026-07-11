@@ -5,6 +5,7 @@ import '../../theme/dino_card_theme.dart';
 import '../dino/dinosaur_article_drawer.dart';
 import 'dinosaur_card_facts.dart';
 import 'dinosaur_card_header.dart';
+import 'dinosaur_card_image.dart';
 
 class DinosaurCardFront extends StatelessWidget {
   const DinosaurCardFront({super.key, required this.dinosaur});
@@ -20,10 +21,7 @@ class DinosaurCardFront extends StatelessWidget {
       child: Stack(
         fit: StackFit.expand,
         children: [
-          Image.asset(
-            DinoCardTheme.frontPlaceholderAsset,
-            fit: BoxFit.cover,
-          ),
+          DinosaurCardImage(imageUrl: dinosaur.mainImageUrl),
           Positioned.fill(
             child: Align(
               alignment: Alignment.bottomCenter,

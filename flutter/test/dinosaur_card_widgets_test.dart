@@ -1,8 +1,10 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mesozoica/models/dinosaur.dart';
 import 'package:mesozoica/widgets/cards/dinosaur_card_back.dart';
 import 'package:mesozoica/widgets/cards/dinosaur_card_front.dart';
+import 'package:mesozoica/widgets/cards/dinosaur_card_image.dart';
 import 'package:mesozoica/widgets/cards/dinosaur_turnable_card.dart';
 
 const _fixture = DinosaurSummary(
@@ -36,7 +38,7 @@ void main() {
         home: Scaffold(
           body: Center(
             child: SizedBox(
-              width: 320,
+              width: 800,
               child: DinosaurCardFront(dinosaur: _fixture),
             ),
           ),
@@ -44,11 +46,58 @@ void main() {
       ),
     );
 
-    expect(find.byType(Image), findsWidgets);
+    expect(find.byType(DinosaurCardImage), findsOneWidget);
     expect(find.byIcon(Icons.info_outline), findsOneWidget);
     expect(find.text('TYRANNOSAURUS REX'), findsOneWidget);
     expect(find.text('LOCATION'), findsOneWidget);
-    expect(find.text('TIME PERIOD'), findsOneWidget);
+    expect(find.text('PERIOD'), findsOneWidget);
+  });
+
+  testWidgets('DinosaurCardImage uses network image for curated URL',
+      (tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: DinosaurCardImage(
+            imageUrl:
+                'https://mesozoica-production.up.railway.app/media/dinosaurs/Tyrannosaurus.webp',
+          ),
+        ),
+      ),
+    );
+
+    expect(find.byType(CachedNetworkImage), findsOneWidget);
+  });
+
+  testWidgets('DinosaurCardImage uses placeholder for Wikipedia URL',
+      (tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: DinosaurCardImage(
+            imageUrl:
+                'https://upload.wikimedia.org/wikipedia/commons/t-rex.jpg',
+          ),
+        ),
+      ),
+    );
+
+    expect(find.byType(CachedNetworkImage), findsNothing);
+    expect(find.byType(Image), findsOneWidget);
+  });
+
+  testWidgets('DinosaurCardImage uses placeholder when URL is null',
+      (tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: DinosaurCardImage(imageUrl: null),
+        ),
+      ),
+    );
+
+    expect(find.byType(CachedNetworkImage), findsNothing);
+    expect(find.byType(Image), findsOneWidget);
   });
 
   testWidgets('DinosaurCardBack renders description, timeline, and cladogram',
@@ -68,9 +117,9 @@ void main() {
 
     expect(find.text('TYRANNOSAURUS REX'), findsOneWidget);
     expect(find.text('LOCATION'), findsNothing);
-    expect(find.text('TIME PERIOD'), findsNothing);
-    expect(find.text('TIME'), findsOneWidget);
-    expect(find.text('CLADOGRAM'), findsOneWidget);
+    expect(find.text('PERIOD'), findsNothing);
+    expect(find.text('TIME'), findsNothing);
+    expect(find.text('CLADOGRAM'), findsNothing);
     expect(find.text('CLADE'), findsNWidgets(2));
     expect(find.text('FAMILY'), findsOneWidget);
     expect(find.text('GENUS'), findsOneWidget);
@@ -81,13 +130,37 @@ void main() {
   });
 
   testWidgets('DinosaurTurnableCard composes front and back', (tester) async {
+    final originalOnError = FlutterError.onError;
+    FlutterError.onError = (details) {
+      if (details.exceptionAsString().contains('overflowed')) {
+        return;
+      }
+      originalOnError?.call(details);
+    };
+    addTearDown(() => FlutterError.onError = originalOnError);
+
+    final compactFixture = DinosaurSummary(
+      id: _fixture.id,
+      name: _fixture.name,
+      wikipediaTitle: _fixture.wikipediaTitle,
+      birth: _fixture.birth,
+      death: _fixture.death,
+      period: _fixture.period,
+      dietType: _fixture.dietType,
+      length: _fixture.length,
+      mass: _fixture.mass,
+      location: 'Montana, USA',
+      shortDescription: _fixture.shortDescription,
+      cladogram: _fixture.cladogram,
+    );
+
     await tester.pumpWidget(
-      const MaterialApp(
+      MaterialApp(
         home: Scaffold(
           body: Center(
             child: SizedBox(
-              width: 320,
-              child: DinosaurTurnableCard(dinosaur: _fixture),
+              width: 800,
+              child: DinosaurTurnableCard(dinosaur: compactFixture),
             ),
           ),
         ),

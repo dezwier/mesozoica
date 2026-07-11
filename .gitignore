@@ -4,3 +4,9 @@ __pycache__/
 .env
 *.db
 .DS_Store
+
+# Curated dinosaur card images (local source; synced to Railway volume)
+dinosaur-images/*.webp
+dinosaur-images/*.jpg
+dinosaur-images/*.jpeg
+dinosaur-images/*.png

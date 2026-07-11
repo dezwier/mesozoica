@@ -7,6 +7,7 @@ from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 
 from app.api.v1 import api_router
 from app.core.config import settings
@@ -120,4 +121,13 @@ def create_app() -> FastAPI:
         return {"status": "ready"}
 
     app.include_router(api_router, prefix=settings.api_v1_prefix)
+
+    images_dir = settings.resolved_dinosaur_images_dir
+    images_dir.mkdir(parents=True, exist_ok=True)
+    app.mount(
+        "/media/dinosaurs",
+        StaticFiles(directory=str(images_dir)),
+        name="dinosaur-images",
+    )
+
     return app

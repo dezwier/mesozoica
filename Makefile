@@ -6,7 +6,7 @@ RAILWAY_SERVICE ?=
 RAILWAY_SERVICE_FLAG = $(if $(RAILWAY_SERVICE),--service $(RAILWAY_SERVICE),)
 CRON_EXTRA ?=
 
-.PHONY: help backend-install backend-test run-backend flutter-test run-flutter test-all run-cron run-wikipedia-sync run-dinosaur-enrich
+.PHONY: help backend-install backend-test run-backend flutter-test run-flutter test-all run-cron run-wikipedia-sync run-dinosaur-enrich sync-dinosaur-images
 
 help:
 	@echo "Available targets:"
@@ -16,6 +16,7 @@ help:
 	@echo "  run-cron            Run due cron jobs on Railway"
 	@echo "  run-wikipedia-sync  Wikipedia dinosaur sync on Railway"
 	@echo "  run-dinosaur-enrich LLM dinosaur enrichment on Railway"
+	@echo "  sync-dinosaur-images Upload curated card images to Railway volume + DB"
 	@echo "  flutter-test        Run Flutter tests"
 	@echo "  run-flutter         Start Flutter app"
 	@echo "  test-all            Run backend and Flutter tests"
@@ -42,6 +43,9 @@ run-wikipedia-sync:
 
 run-dinosaur-enrich:
 	cd backend && RAILWAY_RUN=1 railway run $(RAILWAY_SERVICE_FLAG) python -m app.crons.runner --job dinosaur_llm_enrich $(CRON_EXTRA)
+
+sync-dinosaur-images:
+	cd backend && RAILWAY_RUN=1 railway run $(RAILWAY_SERVICE_FLAG) python -m scripts.sync_dinosaur_images $(CRON_EXTRA)
 
 flutter-test:
 	cd flutter && flutter test
