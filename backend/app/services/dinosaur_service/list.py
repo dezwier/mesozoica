@@ -2,10 +2,17 @@
 
 from __future__ import annotations
 
-from sqlmodel import Session, func, select
+import hashlib
+from typing import Literal
 
-from app.core.exceptions import NotFoundError
+from sqlalchemy import String, cast, func
+from sqlmodel import Session, func as sqlmodel_func, select
+
+from app.core.exceptions import NotFoundError, ValidationError
 from app.models.dinosaur import Dinosaur
+
+SortOption = Literal["name", "random"]
+_MAX_SEED_LEN = 64
 
 
 def list_dinosaurs(
@@ -13,12 +20,28 @@ def list_dinosaurs(
     *,
     limit: int = 200,
     offset: int = 0,
+    sort: SortOption = "name",
+    seed: str | None = None,
 ) -> tuple[list[Dinosaur], int]:
-    """Return paginated dinosaur rows ordered by name."""
+    """Return paginated dinosaur rows ordered by name or seed-stable random."""
     capped_limit = max(1, min(limit, 500))
     capped_offset = max(0, offset)
 
-    total = session.exec(select(func.count()).select_from(Dinosaur)).one()
+    total = session.exec(select(sqlmodel_func.count()).select_from(Dinosaur)).one()
+
+    if sort == "random":
+        normalized_seed = (seed or "").strip()
+        if not normalized_seed:
+            raise ValidationError("seed is required when sort=random")
+        normalized_seed = normalized_seed[:_MAX_SEED_LEN]
+        rows = _list_dinosaurs_random(
+            session,
+            seed=normalized_seed,
+            offset=capped_offset,
+            limit=capped_limit,
+        )
+        return rows, int(total)
+
     rows = session.exec(
         select(Dinosaur)
         .order_by(Dinosaur.name)
@@ -26,6 +49,28 @@ def list_dinosaurs(
         .limit(capped_limit)
     ).all()
     return list(rows), int(total)
+
+
+def _list_dinosaurs_random(
+    session: Session,
+    *,
+    seed: str,
+    offset: int,
+    limit: int,
+) -> list[Dinosaur]:
+    dialect_name = session.get_bind().dialect.name
+    if dialect_name == "postgresql":
+        order = func.md5(func.concat(cast(Dinosaur.id, String), seed))
+        rows = session.exec(
+            select(Dinosaur).order_by(order).offset(offset).limit(limit)
+        ).all()
+        return list(rows)
+
+    all_rows = session.exec(select(Dinosaur)).all()
+    all_rows.sort(
+        key=lambda row: hashlib.md5(f"{row.id}{seed}".encode()).hexdigest()
+    )
+    return all_rows[offset : offset + limit]
 
 
 def get_dinosaur_by_id(session: Session, dinosaur_id: int) -> Dinosaur:

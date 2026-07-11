@@ -33,6 +33,7 @@ class DinosaurListResponse(BaseModel):
     total: int
     limit: int
     offset: int
+    has_next: bool
 
 
 class DinosaurArticleResponse(BaseModel):

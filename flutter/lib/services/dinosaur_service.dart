@@ -14,8 +14,15 @@ class DinosaurService {
   Future<DinosaurListResponse> fetchDinosaurs({
     int limit = 200,
     int offset = 0,
+    String sort = 'name',
+    String? seed,
   }) async {
-    final uri = AppConfig.dinosaursUri(limit: limit, offset: offset);
+    final uri = AppConfig.dinosaursUri(
+      limit: limit,
+      offset: offset,
+      sort: sort,
+      seed: seed,
+    );
     final response = await _client.get(uri).timeout(const Duration(seconds: 15));
 
     if (response.statusCode != 200) {

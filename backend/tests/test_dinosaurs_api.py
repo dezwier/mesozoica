@@ -46,6 +46,7 @@ def test_list_dinosaurs_empty(client):
     assert body["total"] == 0
     assert body["limit"] == 200
     assert body["offset"] == 0
+    assert body["has_next"] is False
 
 
 def test_list_dinosaurs_returns_summary_fields(client, session):
@@ -86,6 +87,49 @@ def test_list_dinosaurs_pagination(client, session):
     assert body["offset"] == 1
     assert len(body["items"]) == 2
     assert body["items"][0]["name"] == "Stegosaurus"
+
+
+def test_list_dinosaurs_random_requires_seed(client, session):
+    for index, name in enumerate(["Brachiosaurus", "Stegosaurus", "Velociraptor"]):
+        session.add(
+            Dinosaur(
+                name=name,
+                wikipedia_page_id=2000 + index,
+                wikipedia_title=name,
+            )
+        )
+    session.commit()
+
+    response = client.get("/api/v1/dinosaurs?sort=random")
+    assert response.status_code == 400
+
+
+def test_list_dinosaurs_random_stable_order_with_seed(client, session):
+    for index, name in enumerate(["Brachiosaurus", "Stegosaurus", "Velociraptor"]):
+        session.add(
+            Dinosaur(
+                name=name,
+                wikipedia_page_id=3000 + index,
+                wikipedia_title=name,
+            )
+        )
+    session.commit()
+
+    seed = "test-seed-123"
+    first = client.get(
+        f"/api/v1/dinosaurs?sort=random&seed={seed}&limit=1&offset=0"
+    ).json()
+    second = client.get(
+        f"/api/v1/dinosaurs?sort=random&seed={seed}&limit=1&offset=1"
+    ).json()
+    repeat = client.get(
+        f"/api/v1/dinosaurs?sort=random&seed={seed}&limit=1&offset=0"
+    ).json()
+
+    assert first["items"][0]["name"] == repeat["items"][0]["name"]
+    assert first["items"][0]["name"] != second["items"][0]["name"]
+    assert first["has_next"] is True
+    assert second["has_next"] is True
 
 
 def test_get_dinosaur_by_id(client, session):

@@ -41,9 +41,24 @@ class AppConfig {
 
   static Uri get healthUri => Uri.parse('$baseApiUrl/health');
 
-  static Uri dinosaursUri({int limit = 200, int offset = 0}) => Uri.parse(
-        '$baseApiUrl/api/v1/dinosaurs?limit=$limit&offset=$offset',
-      );
+  static Uri dinosaursUri({
+    int limit = 200,
+    int offset = 0,
+    String sort = 'name',
+    String? seed,
+  }) {
+    final params = <String, String>{
+      'limit': '$limit',
+      'offset': '$offset',
+      'sort': sort,
+    };
+    if (seed != null && seed.isNotEmpty) {
+      params['seed'] = seed;
+    }
+    return Uri.parse('$baseApiUrl/api/v1/dinosaurs').replace(
+      queryParameters: params,
+    );
+  }
 
   static Uri dinosaurArticleUri(int id) =>
       Uri.parse('$baseApiUrl/api/v1/dinosaurs/$id/article');

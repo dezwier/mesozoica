@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -12,12 +14,36 @@ class DinoScreen extends StatefulWidget {
 }
 
 class _DinoScreenState extends State<DinoScreen> {
+  final ScrollController _scrollController = ScrollController();
+  Timer? _scrollDebounceTimer;
+
   @override
   void initState() {
     super.initState();
+    _scrollController.addListener(_onScroll);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       context.read<DinosaurCatalogController>().load();
+    });
+  }
+
+  @override
+  void dispose() {
+    _scrollDebounceTimer?.cancel();
+    _scrollController
+      ..removeListener(_onScroll)
+      ..dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    _scrollDebounceTimer?.cancel();
+    _scrollDebounceTimer = Timer(const Duration(milliseconds: 200), () {
+      if (!_scrollController.hasClients) return;
+      final position = _scrollController.position;
+      if (position.pixels >= position.maxScrollExtent * 0.8) {
+        context.read<DinosaurCatalogController>().loadMore();
+      }
     });
   }
 
@@ -49,7 +75,7 @@ class _DinoScreenState extends State<DinoScreen> {
                   ),
                   const SizedBox(height: 16),
                   FilledButton.icon(
-                    onPressed: () => catalog.load(force: true),
+                    onPressed: () => catalog.refresh(),
                     icon: const Icon(Icons.refresh),
                     label: const Text('Retry'),
                   ),
@@ -69,12 +95,20 @@ class _DinoScreenState extends State<DinoScreen> {
         }
 
         return RefreshIndicator(
-          onRefresh: () => catalog.load(force: true),
+          onRefresh: catalog.refresh,
           child: ListView.builder(
+            controller: _scrollController,
             physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.only(top: 8, bottom: 24),
-            itemCount: catalog.items.length,
+            itemCount: catalog.items.length + (catalog.isLoadingMore ? 1 : 0),
             itemBuilder: (context, index) {
+              if (index >= catalog.items.length) {
+                return const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 24),
+                  child: Center(child: CircularProgressIndicator()),
+                );
+              }
+
               final dinosaur = catalog.items[index];
               return DinosaurTurnableCard(dinosaur: dinosaur);
             },

@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlmodel import Session
 
 from app.core.database import get_session
+from app.core.exceptions import ValidationError
 from app.schemas.dinosaur import DinosaurArticleResponse, DinosaurListResponse, DinosaurSummary
 from app.services.dinosaur_service import get_dinosaur_by_id, list_dinosaurs
 from app.services.wikipedia_service.parser import prepare_article_for_display
@@ -18,13 +19,25 @@ def get_dinosaurs(
     session: Session = Depends(get_session),
     limit: int = Query(default=200, ge=1, le=500),
     offset: int = Query(default=0, ge=0),
+    sort: str = Query(default="name"),
+    seed: str | None = Query(default=None),
 ) -> DinosaurListResponse:
-    rows, total = list_dinosaurs(session, limit=limit, offset=offset)
+    if sort not in ("name", "random"):
+        raise ValidationError("sort must be one of: name, random")
+    rows, total = list_dinosaurs(
+        session,
+        limit=limit,
+        offset=offset,
+        sort=sort,  # type: ignore[arg-type]
+        seed=seed,
+    )
+    items = [DinosaurSummary.model_validate(row) for row in rows]
     return DinosaurListResponse(
-        items=[DinosaurSummary.model_validate(row) for row in rows],
+        items=items,
         total=total,
         limit=limit,
         offset=offset,
+        has_next=offset + len(items) < total,
     )
 
 

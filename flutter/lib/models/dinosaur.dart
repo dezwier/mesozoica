@@ -90,22 +90,33 @@ class DinosaurListResponse {
     required this.total,
     required this.limit,
     required this.offset,
+    required this.hasNext,
   });
 
   final List<DinosaurSummary> items;
   final int total;
   final int limit;
   final int offset;
+  final bool hasNext;
+
+  bool get hasMore => hasNext;
 
   factory DinosaurListResponse.fromJson(Map<String, dynamic> json) {
     final rawItems = json['items'] as List<dynamic>? ?? [];
+    final items = rawItems
+        .map((item) => DinosaurSummary.fromJson(item as Map<String, dynamic>))
+        .toList();
+    final total = json['total'] as int? ?? rawItems.length;
+    final limit = json['limit'] as int? ?? rawItems.length;
+    final offset = json['offset'] as int? ?? 0;
+    final hasNext = json['has_next'] as bool? ??
+        (offset + items.length < total);
     return DinosaurListResponse(
-      items: rawItems
-          .map((item) => DinosaurSummary.fromJson(item as Map<String, dynamic>))
-          .toList(),
-      total: json['total'] as int? ?? rawItems.length,
-      limit: json['limit'] as int? ?? rawItems.length,
-      offset: json['offset'] as int? ?? 0,
+      items: items,
+      total: total,
+      limit: limit,
+      offset: offset,
+      hasNext: hasNext,
     );
   }
 }
