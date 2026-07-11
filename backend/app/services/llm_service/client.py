@@ -29,6 +29,8 @@ def call_gemini_api(
     temperature: Optional[float] = None,
     timeout_seconds: Optional[int] = None,
     log_context: Optional[str] = None,
+    thinking_budget: Optional[int] = None,
+    thinking_level: Optional[str] = None,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     """
     Call Gemini generateContent and return (parsed_json, token_usage).
@@ -55,6 +57,12 @@ def call_gemini_api(
     }
     if response_mime_type_json:
         generation_config["responseMimeType"] = "application/json"
+    if thinking_budget is not None:
+        generation_config["thinkingConfig"] = {"thinkingBudget": int(thinking_budget)}
+    elif thinking_level:
+        generation_config["thinkingConfig"] = {
+            "thinkingLevel": str(thinking_level).strip().lower()
+        }
 
     payload: dict[str, Any] = {
         "contents": [{"parts": [{"text": prompt}]}],
@@ -125,7 +133,15 @@ def call_gemini_api(
             if finish_reason == "MAX_TOKENS":
                 logger.warning(
                     "Gemini hit output token limit (finishReason=MAX_TOKENS); "
-                    "response may be truncated",
+                    "response may be truncated%s",
+                    f" ({log_context})" if log_context else "",
+                )
+                if attempt < MAX_JSON_PARSE_ATTEMPTS:
+                    time.sleep(min(3.0, 0.6 * attempt))
+                    continue
+                raise RuntimeError(
+                    "LLM response truncated by output token limit after "
+                    f"{MAX_JSON_PARSE_ATTEMPTS} attempts"
                 )
             if "content" not in candidate or "parts" not in candidate["content"]:
                 raise RuntimeError("LLM response missing content or parts")

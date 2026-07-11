@@ -85,29 +85,18 @@ class DinosaurCardFacts extends StatelessWidget {
         ],
       );
 
-      if (centered) {
-        return Row(
-          mainAxisSize: MainAxisSize.min,
+      return SizedBox(
+        width: double.infinity,
+        child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            locationPeriodColumn,
+            Expanded(child: locationPeriodColumn),
             const SizedBox(width: 10),
-            lengthMassColumn,
+            Expanded(child: lengthMassColumn),
             const SizedBox(width: 10),
-            dietColumn,
+            Expanded(child: dietColumn),
           ],
-        );
-      }
-
-      return Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(child: locationPeriodColumn),
-          const SizedBox(width: 10),
-          Expanded(child: lengthMassColumn),
-          const SizedBox(width: 10),
-          Expanded(child: dietColumn),
-        ],
+        ),
       );
     }
 

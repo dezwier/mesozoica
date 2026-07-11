@@ -33,7 +33,6 @@ class DinoFactRow extends StatelessWidget {
     return Padding(
       padding: EdgeInsets.only(bottom: rowPadding),
       child: Row(
-        mainAxisSize: centered ? MainAxisSize.min : MainAxisSize.max,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SvgPicture.asset(
@@ -42,8 +41,8 @@ class DinoFactRow extends StatelessWidget {
             height: iconSize,
           ),
           const SizedBox(width: 10),
-          if (centered)
-            Column(
+          Expanded(
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
@@ -54,30 +53,13 @@ class DinoFactRow extends StatelessWidget {
                 Text(
                   value,
                   style: cardTheme.statValueStyle(fontSize: valueSize),
-                  maxLines: valueLines,
-                  overflow: TextOverflow.ellipsis,
+                  maxLines: centered ? null : valueLines,
+                  overflow:
+                      centered ? TextOverflow.visible : TextOverflow.ellipsis,
                 ),
               ],
-            )
-          else
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    label.toUpperCase(),
-                    style: cardTheme.statLabelStyle(fontSize: labelSize),
-                  ),
-                  const SizedBox(height: 3),
-                  Text(
-                    value,
-                    style: cardTheme.statValueStyle(fontSize: valueSize),
-                    maxLines: valueLines,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-              ),
             ),
+          ),
         ],
       ),
     );

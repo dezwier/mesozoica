@@ -67,6 +67,29 @@ def test_enrich_writes_fields_and_sets_flag(session: Session):
     assert row.short_description is not None
 
 
+def test_enrich_disables_gemini_thinking(session: Session):
+    row = Dinosaur(
+        name="Tyrannosaurus",
+        wikipedia_page_id=30468,
+        wikipedia_title="Tyrannosaurus",
+        cladogram={"genus": "Tyrannosaurus"},
+        article="<p>Tyrannosaurus was a large carnivore found in North America.</p>",
+        article_date=datetime(2026, 7, 8, tzinfo=timezone.utc),
+    )
+    session.add(row)
+    session.commit()
+
+    with patch(
+        "app.services.dinosaur_enrichment_service.sync.call_gemini_api",
+        return_value=(_llm_response(), {"prompt_tokens": 100, "output_tokens": 50}),
+    ) as mock_api:
+        enrich_dinosaurs(session, dry_run=False)
+
+    mock_api.assert_called_once()
+    assert mock_api.call_args.kwargs["thinking_budget"] == 0
+    assert mock_api.call_args.kwargs["max_output_tokens"] == 4096
+
+
 def test_enrich_skips_already_enriched(session: Session):
     row = Dinosaur(
         name="Velociraptor",

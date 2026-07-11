@@ -18,6 +18,10 @@ from app.services.llm_service.client import call_gemini_api
 
 logger = logging.getLogger("dinosaur_enrich")
 
+# Small JSON payload; disable Gemini 2.5 thinking so output tokens are not consumed
+# by internal reasoning (which caused truncated JSON at the old 2048 cap).
+_DINOSAUR_ENRICH_MAX_OUTPUT_TOKENS = 4096
+
 
 @dataclass
 class EnrichCounters:
@@ -118,7 +122,8 @@ def enrich_dinosaurs(
                 user_prompt,
                 system_instruction=system_instruction,
                 response_mime_type_json=True,
-                max_output_tokens=2048,
+                max_output_tokens=_DINOSAUR_ENRICH_MAX_OUTPUT_TOKENS,
+                thinking_budget=0,
                 timeout_seconds=120,
                 log_context=dinosaur.name,
             )
