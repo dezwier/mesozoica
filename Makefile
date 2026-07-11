@@ -6,7 +6,7 @@ RAILWAY_SERVICE ?=
 RAILWAY_SERVICE_FLAG = $(if $(RAILWAY_SERVICE),--service $(RAILWAY_SERVICE),)
 CRON_EXTRA ?=
 
-.PHONY: help backend-install backend-test run-backend flutter-test run-flutter test-all run-cron run-wikipedia-sync run-dinosaur-enrich sync-dinosaur-images
+.PHONY: help backend-install backend-test run-backend flutter-test run-flutter test-all run-cron run-wikipedia-sync run-dinosaur-enrich run-fossil-sync sync-dinosaur-images
 
 help:
 	@echo "Available targets:"
@@ -16,6 +16,7 @@ help:
 	@echo "  run-cron            Run due cron jobs on Railway"
 	@echo "  run-wikipedia-sync  Wikipedia dinosaur sync on Railway"
 	@echo "  run-dinosaur-enrich LLM dinosaur enrichment on Railway"
+	@echo "  run-fossil-sync       PBDB fossil occurrence sync on Railway"
 	@echo "  sync-dinosaur-images Upload curated card images to Railway volume + DB"
 	@echo "  flutter-test        Run Flutter tests"
 	@echo "  run-flutter         Start Flutter app"
@@ -26,6 +27,8 @@ help:
 	@echo "  make run-wikipedia-sync CRON_EXTRA='--dinos Tyrannosaurus Giganotosaurus'"
 	@echo "  make run-dinosaur-enrich CRON_EXTRA='--overwrite'"
 	@echo "  make run-dinosaur-enrich CRON_EXTRA='--dinos Tyrannosaurus --overwrite'"
+	@echo "  make run-fossil-sync CRON_EXTRA='--dinos Tyrannosaurus'"
+	@echo "  make run-fossil-sync CRON_EXTRA='--dry-run'"
 
 backend-install:
 	cd backend && python3 -m pip install --upgrade pip && pip install -r requirements.txt -r requirements-dev.txt
@@ -45,6 +48,9 @@ run-wikipedia-sync:
 
 run-dinosaur-enrich:
 	cd backend && RAILWAY_RUN=1 railway run $(RAILWAY_SERVICE_FLAG) python -m app.crons.runner --job dinosaur_llm_enrich $(CRON_EXTRA)
+
+run-fossil-sync:
+	cd backend && RAILWAY_RUN=1 railway run $(RAILWAY_SERVICE_FLAG) python -m app.crons.runner --job pbdb_fossil_sync $(CRON_EXTRA)
 
 sync-dinosaur-images:
 	cd backend && RAILWAY_RUN=1 railway run $(RAILWAY_SERVICE_FLAG) python -m scripts.sync_dinosaur_images $(CRON_EXTRA)
