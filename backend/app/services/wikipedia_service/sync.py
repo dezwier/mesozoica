@@ -52,6 +52,15 @@ def _is_stale(db_date: datetime | None, wiki_date: datetime) -> bool:
     return wiki_aware > db_aware
 
 
+def _is_incomplete(existing: Dinosaur) -> bool:
+    """True when a row looks synced but is missing core Wikipedia payload."""
+    if not (existing.article or "").strip():
+        return True
+    if not existing.cladogram:
+        return True
+    return False
+
+
 def _get_by_page_id(session: Session, page_id: int) -> Dinosaur | None:
     return session.exec(select(Dinosaur).where(Dinosaur.wikipedia_page_id == page_id)).first()
 
@@ -187,6 +196,9 @@ def sync_dinosaurs(
                     elif outcome == "fetch_update_stale":
                         counters.updated += 1
                         logger.info("%s action=fetch reason=stale", prefix)
+                    elif outcome == "fetch_update_incomplete":
+                        counters.updated += 1
+                        logger.info("%s action=fetch reason=incomplete", prefix)
                     elif outcome == "fetch_update_overwrite":
                         counters.updated += 1
                         logger.info("%s action=fetch reason=overwrite", prefix)
@@ -201,6 +213,7 @@ def sync_dinosaurs(
                     if not dry_run and outcome in (
                         "fetch_new",
                         "fetch_update_stale",
+                        "fetch_update_incomplete",
                         "fetch_update_overwrite",
                     ):
                         session.commit()
@@ -259,7 +272,8 @@ def _process_member(
 
     existing = _get_by_page_id(session, metadata.page_id)
     is_stale = _is_stale(existing.article_date if existing else None, metadata.article_date)
-    if existing and not overwrite and not is_stale:
+    incomplete = existing is not None and _is_incomplete(existing)
+    if existing and not overwrite and not is_stale and not incomplete:
         return "skip_current"
 
     payload = wiki.page_with_html(member.title)
@@ -269,7 +283,11 @@ def _process_member(
     if dry_run:
         if existing is None:
             return "fetch_new"
-        return "fetch_update_overwrite" if overwrite and not is_stale else "fetch_update_stale"
+        if overwrite and not is_stale:
+            return "fetch_update_overwrite"
+        if incomplete:
+            return "fetch_update_incomplete"
+        return "fetch_update_stale"
 
     if existing is None:
         session.add(row)
@@ -278,6 +296,8 @@ def _process_member(
     session.add(row)
     if overwrite and not is_stale:
         return "fetch_update_overwrite"
+    if incomplete:
+        return "fetch_update_incomplete"
     return "fetch_update_stale"
 
 
