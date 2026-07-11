@@ -56,6 +56,15 @@ def _get_by_page_id(session: Session, page_id: int) -> Dinosaur | None:
     return session.exec(select(Dinosaur).where(Dinosaur.wikipedia_page_id == page_id)).first()
 
 
+def _clear_llm_enrichment_fields(dinosaur: Dinosaur) -> None:
+    """Drop LLM-only fields so stale enrichment is not shown after a Wikipedia refresh."""
+    dinosaur.length = None
+    dinosaur.mass = None
+    dinosaur.location = None
+    dinosaur.short_description = None
+    dinosaur.llm_enriched = False
+
+
 def _apply_parsed(existing: Dinosaur | None, *, title: str, page_id: int, metadata, parsed) -> Dinosaur:
     now = datetime.now(timezone.utc)
     if existing is None:
@@ -88,7 +97,7 @@ def _apply_parsed(existing: Dinosaur | None, *, title: str, page_id: int, metada
     existing.article_date = metadata.article_date
     if existing.main_image_url is None and metadata.image_url:
         existing.main_image_url = metadata.image_url
-    existing.llm_enriched = False
+    _clear_llm_enrichment_fields(existing)
     return existing
 
 

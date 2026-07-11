@@ -101,3 +101,38 @@ def test_get_dinosaur_by_id(client, session):
 def test_get_dinosaur_not_found(client):
     response = client.get("/api/v1/dinosaurs/99999")
     assert response.status_code == 404
+
+
+def test_get_dinosaur_article(client, session):
+    row = _seed_tyrannosaurus(session)
+
+    response = client.get(f"/api/v1/dinosaurs/{row.id}/article")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["id"] == row.id
+    assert body["name"] == "Tyrannosaurus"
+    assert body["wikipedia_title"] == "Tyrannosaurus"
+    assert body["article"] == "<p>html</p>"
+    assert body["article_date"] is not None
+
+
+def test_get_dinosaur_article_not_found(client):
+    response = client.get("/api/v1/dinosaurs/99999/article")
+    assert response.status_code == 404
+
+
+def test_get_dinosaur_article_empty_when_no_html(client, session):
+    row = Dinosaur(
+        name="EmptyArticle",
+        wikipedia_page_id=999,
+        wikipedia_title="EmptyArticle",
+        article=None,
+    )
+    session.add(row)
+    session.commit()
+    session.refresh(row)
+
+    response = client.get(f"/api/v1/dinosaurs/{row.id}/article")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["article"] is None

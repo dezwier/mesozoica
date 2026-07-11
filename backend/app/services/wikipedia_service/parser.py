@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 from typing import Any
-from urllib.parse import unquote
+from urllib.parse import quote, unquote
 
 from bs4 import BeautifulSoup
 
@@ -299,6 +299,113 @@ def rewrite_article_links(html: str, base_url: str = "https://en.wikipedia.org/w
     soup = BeautifulSoup(html, "html.parser")
     _rewrite_links(soup, base_url)
     return str(soup)
+
+
+_WIKI_SITE = "https://en.wikipedia.org"
+_COMMONS_FILE_PATH = "https://commons.wikimedia.org/wiki/Special:FilePath/"
+
+_READER_MODE_SELECTORS = (
+    ".navbox",
+    ".vertical-navbox",
+    ".sisterproject",
+    ".metadata",
+    ".ambox",
+    ".references",
+    ".mw-references-wrap",
+    ".mw-editsection",
+    ".noprint",
+    '[role="navigation"]',
+)
+
+_SECTION_HEADING_IDS = frozenset(
+    {
+        "references",
+        "notes",
+        "bibliography",
+        "external_links",
+        "see_also",
+        "further_reading",
+    }
+)
+
+
+def _rewrite_media_urls(soup: BeautifulSoup) -> None:
+    """Make image and asset URLs absolute so they load outside Wikipedia."""
+    for img in soup.find_all("img"):
+        src = img.get("src")
+        if isinstance(src, str):
+            img["src"] = _absolute_media_url(src)
+        srcset = img.get("srcset")
+        if isinstance(srcset, str):
+            img["srcset"] = _rewrite_srcset(srcset)
+
+    for source in soup.find_all("source"):
+        srcset = source.get("srcset")
+        if isinstance(srcset, str):
+            source["srcset"] = _rewrite_srcset(srcset)
+
+
+def _rewrite_srcset(srcset: str) -> str:
+    parts: list[str] = []
+    for chunk in srcset.split(","):
+        chunk = chunk.strip()
+        if not chunk:
+            continue
+        tokens = chunk.split()
+        if not tokens:
+            continue
+        tokens[0] = _absolute_media_url(tokens[0])
+        parts.append(" ".join(tokens))
+    return ", ".join(parts)
+
+
+def _absolute_media_url(url: str) -> str:
+    cleaned = url.strip()
+    if cleaned.startswith("//"):
+        return f"https:{cleaned}"
+    if cleaned.startswith("/"):
+        return f"{_WIKI_SITE}{cleaned}"
+    if cleaned.startswith("./"):
+        path = unquote(cleaned[2:]).replace(" ", "_")
+        if path.startswith("File:"):
+            filename = path[len("File:") :]
+            return f"{_COMMONS_FILE_PATH}{quote(filename, safe='')}"
+        return f"{_WIKI_SITE}/wiki/{path}"
+    return cleaned
+
+
+def _remove_reader_mode_chrome(soup: BeautifulSoup) -> None:
+    for selector in _READER_MODE_SELECTORS:
+        for node in soup.select(selector):
+            node.decompose()
+
+    for heading in soup.find_all(["h2", "h3"]):
+        heading_id = (heading.get("id") or "").lower()
+        span = heading.find("span", class_="mw-headline")
+        if span is not None and span.get("id"):
+            heading_id = str(span["id"]).lower()
+        if heading_id not in _SECTION_HEADING_IDS:
+            continue
+        section_nodes = [heading]
+        sibling = heading.find_next_sibling()
+        while sibling is not None and sibling.name not in ("h2", "h3"):
+            section_nodes.append(sibling)
+            sibling = sibling.find_next_sibling()
+        for node in section_nodes:
+            node.decompose()
+
+
+def prepare_article_for_display(html: str | None) -> str | None:
+    """Strip Wikipedia chrome and rewrite media URLs for in-app reading."""
+    if not html or not html.strip():
+        return None
+    soup = BeautifulSoup(html, "html.parser")
+    _rewrite_links(soup, f"{_WIKI_SITE}/wiki/")
+    _rewrite_media_urls(soup)
+    _remove_reader_mode_chrome(soup)
+    body = soup.body if soup.body is not None else soup
+    rendered = body.decode_contents().strip()
+    return rendered or None
 
 
 def parse_article_html(html: str) -> ParsedArticle:

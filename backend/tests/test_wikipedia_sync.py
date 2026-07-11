@@ -252,6 +252,54 @@ def test_sync_stale_update_resets_llm_enriched(session: Session, fixture_html, m
     session.refresh(existing)
 
     assert existing.llm_enriched is False
+    assert existing.length is None
+    assert existing.mass is None
+    assert existing.location is None
+    assert existing.short_description is None
+
+
+def test_sync_overwrite_clears_llm_fields(session: Session, fixture_html, monkeypatch):
+    existing = Dinosaur(
+        name="Tyrannosaurus",
+        wikipedia_page_id=30467,
+        wikipedia_title="Tyrannosaurus",
+        cladogram={"kingdom": "Animalia", "genus": "Tyrannosaurus et al."},
+        article_date=datetime(2026, 7, 8, tzinfo=timezone.utc),
+        insert_date=datetime(2025, 1, 1, tzinfo=timezone.utc),
+        length="12 m",
+        mass="7 t",
+        location="North America",
+        short_description="Old LLM blurb.",
+        llm_enriched=True,
+    )
+    session.add(existing)
+    session.commit()
+
+    client = MagicMock()
+    client.page_with_html.return_value = {"html": fixture_html}
+
+    monkeypatch.setattr(
+        "app.services.wikipedia_service.sync.list_category_articles",
+        lambda *_args, **_kwargs: [CategoryMember(page_id=30467, title="Tyrannosaurus")],
+    )
+    monkeypatch.setattr(
+        "app.services.wikipedia_service.sync.fetch_page_metadata",
+        lambda *_args, **_kwargs: _metadata(ts=datetime(2026, 7, 8, tzinfo=timezone.utc)),
+    )
+    monkeypatch.setattr(
+        "app.services.wikipedia_service.sync.parse_article_html",
+        lambda html: _parsed(html),
+    )
+
+    sync_dinosaurs(session, client=client, overwrite=True)
+    session.refresh(existing)
+
+    assert existing.cladogram["genus"] == "Tyrannosaurus"
+    assert existing.length is None
+    assert existing.mass is None
+    assert existing.location is None
+    assert existing.short_description is None
+    assert existing.llm_enriched is False
 
 
 def test_sync_overwrite_refetches_up_to_date(session: Session, fixture_html, monkeypatch):

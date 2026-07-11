@@ -2,7 +2,11 @@
 
 from pathlib import Path
 
-from app.services.wikipedia_service.parser import parse_article_html, rewrite_article_links
+from app.services.wikipedia_service.parser import (
+    parse_article_html,
+    prepare_article_for_display,
+    rewrite_article_links,
+)
 
 _FIXTURE = Path(__file__).parent / "fixtures" / "wikipedia" / "tyrannosaurus_infobox.html"
 
@@ -129,3 +133,28 @@ def test_parse_genus_strips_authority_inside_single_italic_tag():
     """
     parsed = parse_article_html(html)
     assert parsed.cladogram["genus"] == "Abelisaurus"
+
+
+def test_prepare_article_strips_navbox_and_references():
+    html = """
+    <table class="infobox biota"><tr><td>Genus:</td><td><i>Tyrannosaurus</i></td></tr></table>
+    <p>Lead paragraph about Tyrannosaurus.</p>
+    <div class="navbox">Navigation box</div>
+    <h2><span class="mw-headline" id="References">References</span></h2>
+    <ol class="references"><li>Ref one</li></ol>
+    """
+    prepared = prepare_article_for_display(html)
+    assert prepared is not None
+    assert "Lead paragraph about Tyrannosaurus." in prepared
+    assert "navbox" not in prepared
+    assert "Ref one" not in prepared
+
+
+def test_prepare_article_rewrites_protocol_relative_image_src():
+    html = """
+    <p>Body text.</p>
+    <img src="//upload.wikimedia.org/wikipedia/commons/thumb/a/ab/Tyrannosaurus.jpg/220px-Tyrannosaurus.jpg" />
+    """
+    prepared = prepare_article_for_display(html)
+    assert prepared is not None
+    assert 'src="https://upload.wikimedia.org/wikipedia/commons/thumb/a/ab/Tyrannosaurus.jpg/220px-Tyrannosaurus.jpg"' in prepared

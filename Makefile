@@ -1,7 +1,9 @@
 SHELL := /bin/bash
 
-# Railway service that has DATABASE_URL + cron env vars linked.
-RAILWAY_SERVICE ?= backend
+# Optional override: make run-wikipedia-sync RAILWAY_SERVICE=my-service
+# Default: uses the service from `cd backend && railway link`
+RAILWAY_SERVICE ?=
+RAILWAY_SERVICE_FLAG = $(if $(RAILWAY_SERVICE),--service $(RAILWAY_SERVICE),)
 CRON_EXTRA ?=
 
 .PHONY: help backend-install backend-test run-backend flutter-test run-flutter test-all run-cron run-wikipedia-sync run-dinosaur-enrich
@@ -33,13 +35,13 @@ run-backend:
 
 # Cron jobs: railway run injects Railway DATABASE_URL and secrets.
 run-cron:
-	cd backend && RAILWAY_RUN=1 railway run --service $(RAILWAY_SERVICE) python -m app.crons.runner $(CRON_EXTRA)
+	cd backend && RAILWAY_RUN=1 railway run $(RAILWAY_SERVICE_FLAG) python -m app.crons.runner $(CRON_EXTRA)
 
 run-wikipedia-sync:
-	cd backend && RAILWAY_RUN=1 railway run --service $(RAILWAY_SERVICE) python -m app.crons.runner --job wikipedia_dinosaur_sync $(CRON_EXTRA)
+	cd backend && RAILWAY_RUN=1 railway run $(RAILWAY_SERVICE_FLAG) python -m app.crons.runner --job wikipedia_dinosaur_sync $(CRON_EXTRA)
 
 run-dinosaur-enrich:
-	cd backend && RAILWAY_RUN=1 railway run --service $(RAILWAY_SERVICE) python -m app.crons.runner --job dinosaur_llm_enrich $(CRON_EXTRA)
+	cd backend && RAILWAY_RUN=1 railway run $(RAILWAY_SERVICE_FLAG) python -m app.crons.runner --job dinosaur_llm_enrich $(CRON_EXTRA)
 
 flutter-test:
 	cd flutter && flutter test

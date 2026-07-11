@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict
@@ -32,3 +33,15 @@ class DinosaurListResponse(BaseModel):
     total: int
     limit: int
     offset: int
+
+
+class DinosaurArticleResponse(BaseModel):
+    """Reader-mode Wikipedia article for a single dinosaur."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    name: str
+    wikipedia_title: str
+    article: str | None = None
+    article_date: datetime | None = None

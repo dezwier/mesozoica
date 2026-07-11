@@ -45,6 +45,9 @@ class AppConfig {
         '$baseApiUrl/api/v1/dinosaurs?limit=$limit&offset=$offset',
       );
 
+  static Uri dinosaurArticleUri(int id) =>
+      Uri.parse('$baseApiUrl/api/v1/dinosaurs/$id/article');
+
   static Future<bool> checkApiHealth() async {
     try {
       final response = await http.get(healthUri).timeout(const Duration(seconds: 15));

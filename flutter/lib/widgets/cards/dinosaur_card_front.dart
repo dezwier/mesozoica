@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../../models/dinosaur.dart';
 import '../../theme/dino_card_theme.dart';
+import '../dino/dinosaur_article_drawer.dart';
 
 class DinosaurCardFront extends StatelessWidget {
   const DinosaurCardFront({super.key, required this.dinosaur});
@@ -70,6 +71,25 @@ class DinosaurCardFront extends StatelessWidget {
                   ),
                 ],
               ],
+            ),
+          ),
+          Positioned(
+            top: 12,
+            right: 12,
+            child: Material(
+              color: Colors.black.withValues(alpha: 0.45),
+              shape: const CircleBorder(),
+              clipBehavior: Clip.antiAlias,
+              child: IconButton(
+                icon: const Icon(Icons.info_outline, size: 20),
+                color: Colors.white,
+                tooltip: 'Read article',
+                visualDensity: VisualDensity.compact,
+                onPressed: () => DinosaurArticleDrawer.show(
+                  context,
+                  dinosaur: dinosaur,
+                ),
+              ),
             ),
           ),
         ],
