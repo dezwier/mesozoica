@@ -105,28 +105,169 @@ class CladogramStrip extends StatelessWidget {
       );
     }
 
-    if (!centered) {
-      return Align(
-        alignment: Alignment.topLeft,
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            return _buildTree(
-              cardTheme: cardTheme,
-              layout: layout,
-              width: constraints.maxWidth,
-            );
-          },
-        ),
-      );
-    }
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final contentHeight = nodes.length * layout.rowHeight;
+        final maxHeight = constraints.maxHeight;
+        final maxWidth = constraints.maxWidth;
+        final needsScroll =
+            maxHeight.isFinite && contentHeight > maxHeight + 0.5;
 
-    return Align(
-      alignment: Alignment.topCenter,
-      child: IntrinsicWidth(
-        child: _buildTree(
+        final tree = _buildTree(
           cardTheme: cardTheme,
           layout: layout,
-          width: null,
+          width: centered ? null : maxWidth,
+        );
+
+        if (needsScroll) {
+          return _CladogramScrollFade(
+            height: maxHeight,
+            fadeColor: cardTheme.cardBackground,
+            centered: centered,
+            width: centered ? null : maxWidth,
+            child: tree,
+          );
+        }
+
+        return Align(
+          alignment: centered ? Alignment.topCenter : Alignment.topLeft,
+          child: centered
+              ? IntrinsicWidth(child: tree)
+              : SizedBox(width: maxWidth, child: tree),
+        );
+      },
+    );
+  }
+}
+
+const _cladogramScrollFadeHeight = 12.0;
+
+class _CladogramScrollFade extends StatefulWidget {
+  const _CladogramScrollFade({
+    required this.height,
+    required this.fadeColor,
+    required this.centered,
+    required this.child,
+    this.width,
+  });
+
+  final double height;
+  final Color fadeColor;
+  final bool centered;
+  final double? width;
+  final Widget child;
+
+  @override
+  State<_CladogramScrollFade> createState() => _CladogramScrollFadeState();
+}
+
+class _CladogramScrollFadeState extends State<_CladogramScrollFade> {
+  final ScrollController _controller = ScrollController();
+  bool _showTopFade = false;
+  bool _showBottomFade = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller.addListener(_updateFades);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _updateFades());
+  }
+
+  @override
+  void didUpdateWidget(covariant _CladogramScrollFade oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _updateFades());
+  }
+
+  @override
+  void dispose() {
+    _controller.removeListener(_updateFades);
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _updateFades() {
+    if (!_controller.hasClients) return;
+
+    final position = _controller.position;
+    final showTop = position.pixels > 0.5;
+    final showBottom = position.pixels < position.maxScrollExtent - 0.5;
+
+    if (showTop == _showTopFade && showBottom == _showBottomFade) return;
+
+    setState(() {
+      _showTopFade = showTop;
+      _showBottomFade = showBottom;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    Widget scrollChild = widget.child;
+    if (widget.centered) {
+      scrollChild = Align(
+        alignment: Alignment.topCenter,
+        child: IntrinsicWidth(child: widget.child),
+      );
+    } else if (widget.width != null) {
+      scrollChild = SizedBox(width: widget.width, child: widget.child);
+    }
+
+    return SizedBox(
+      height: widget.height,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          SingleChildScrollView(
+            controller: _controller,
+            physics: const ClampingScrollPhysics(),
+            child: scrollChild,
+          ),
+          if (_showTopFade)
+            _CladogramScrollFadeOverlay(
+              fadeColor: widget.fadeColor,
+              atTop: true,
+            ),
+          if (_showBottomFade)
+            _CladogramScrollFadeOverlay(
+              fadeColor: widget.fadeColor,
+              atTop: false,
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CladogramScrollFadeOverlay extends StatelessWidget {
+  const _CladogramScrollFadeOverlay({
+    required this.fadeColor,
+    required this.atTop,
+  });
+
+  final Color fadeColor;
+  final bool atTop;
+
+  @override
+  Widget build(BuildContext context) {
+    return Positioned(
+      top: atTop ? 0 : null,
+      bottom: atTop ? null : 0,
+      left: 0,
+      right: 0,
+      height: _cladogramScrollFadeHeight,
+      child: IgnorePointer(
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: atTop ? Alignment.topCenter : Alignment.bottomCenter,
+              end: atTop ? Alignment.bottomCenter : Alignment.topCenter,
+              colors: [
+                fadeColor,
+                fadeColor.withValues(alpha: 0),
+              ],
+            ),
+          ),
         ),
       ),
     );

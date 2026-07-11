@@ -148,7 +148,9 @@ class DinoCardTheme {
 
   TextStyle rankLabelStyle({double fontSize = 8}) {
     return TextStyle(
-      color: cardTextMuted,
+      color: isLight
+          ? cardTextSecondary.withValues(alpha: 0.55)
+          : cardTextMuted,
       fontSize: fontSize,
       fontWeight: FontWeight.w500,
       letterSpacing: 0.6,
