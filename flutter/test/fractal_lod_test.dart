@@ -85,5 +85,17 @@ void main() {
       expect(FractalLodPolicy.screenLength(80, 0.5), 40);
       expect(FractalLodPolicy.screenLength(100, 2), 200);
     });
+
+    test('nodeZoomBoost grows with zoom scale', () {
+      expect(FractalLodPolicy.nodeZoomBoost(1), 1);
+      expect(
+        FractalLodPolicy.nodeZoomBoost(10),
+        greaterThan(FractalLodPolicy.nodeZoomBoost(1)),
+      );
+      expect(
+        FractalLodPolicy.nodeZoomBoost(100),
+        greaterThan(FractalLodPolicy.nodeZoomBoost(10)),
+      );
+    });
   });
 }

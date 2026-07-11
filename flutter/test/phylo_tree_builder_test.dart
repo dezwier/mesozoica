@@ -182,4 +182,77 @@ void main() {
       containsAll(['Brachiosaurus', 'Diplodocus']),
     );
   });
+
+  test('orders internal clades before genus leaves at the same parent', () {
+    final result = builder.build([
+      _dino(
+        id: 1,
+        name: 'Allosaurus',
+        cladogram: {
+          'clade': 'Dinosauria',
+          'clade_2': 'Theropoda',
+          'genus': 'Allosaurus',
+        },
+      ),
+      _dino(
+        id: 2,
+        name: 'Tyrannosaurus',
+        cladogram: {
+          'clade': 'Dinosauria',
+          'clade_2': 'Theropoda',
+          'clade_3': 'Coelurosauria',
+          'genus': 'Tyrannosaurus',
+        },
+      ),
+      _dino(
+        id: 3,
+        name: 'Zuniceratops',
+        cladogram: {
+          'clade': 'Dinosauria',
+          'clade_2': 'Theropoda',
+          'genus': 'Zuniceratops',
+        },
+      ),
+    ]);
+
+    final theropoda = result.root.findChildByName('Theropoda');
+    expect(theropoda, isNotNull);
+    expect(theropoda!.children, hasLength(3));
+    expect(theropoda.children.first.name, 'Coelurosauria');
+    expect(theropoda.children.first.children, isNotEmpty);
+    expect(theropoda.children[1].name, 'Allosaurus');
+    expect(theropoda.children[2].name, 'Zuniceratops');
+  });
+
+  test('orders shallower internal clades before deeper ones', () {
+    final result = builder.build([
+      _dino(
+        id: 1,
+        name: 'Tyrannosaurus',
+        cladogram: {
+          'clade': 'Dinosauria',
+          'clade_2': 'Theropoda',
+          'clade_3': 'Coelurosauria',
+          'clade_4': 'Maniraptoriformes',
+          'genus': 'Tyrannosaurus',
+        },
+      ),
+      _dino(
+        id: 2,
+        name: 'Allosaurus',
+        cladogram: {
+          'clade': 'Dinosauria',
+          'clade_2': 'Theropoda',
+          'clade_3': 'Carnosauria',
+          'genus': 'Allosaurus',
+        },
+      ),
+    ]);
+
+    final theropoda = result.root.findChildByName('Theropoda');
+    expect(theropoda, isNotNull);
+    expect(theropoda!.children, hasLength(2));
+    expect(theropoda.children.first.name, 'Carnosauria');
+    expect(theropoda.children[1].name, 'Coelurosauria');
+  });
 }

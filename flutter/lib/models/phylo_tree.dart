@@ -38,6 +38,27 @@ class PhyloTreeNode {
     return maxDepth;
   }
 
+  /// Branch nodes first (shallowest subtree, then A–Z), then genus leaves A–Z.
+  static int compareChildDisplayOrder(PhyloTreeNode a, PhyloTreeNode b) {
+    final aIsBranch = a.children.isNotEmpty;
+    final bIsBranch = b.children.isNotEmpty;
+    if (aIsBranch != bIsBranch) {
+      return aIsBranch ? -1 : 1;
+    }
+    if (aIsBranch) {
+      final nesting = a.maxDescendantDepth.compareTo(b.maxDescendantDepth);
+      if (nesting != 0) return nesting;
+    }
+    return taxonMergeKey(a.name).compareTo(taxonMergeKey(b.name));
+  }
+
+  void sortChildrenRecursively() {
+    children.sort(compareChildDisplayOrder);
+    for (final child in children) {
+      child.sortChildrenRecursively();
+    }
+  }
+
   PhyloTreeNode? findChildByName(String childName) {
     final key = taxonMergeKey(childName);
     for (final child in children) {

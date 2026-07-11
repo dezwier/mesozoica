@@ -154,8 +154,14 @@ class FractalFernPainter extends CustomPainter {
   }
 
   void _paintGenusDot(Canvas canvas, FractalLayoutNode node) {
-    final radius = _treeUnits(_genusDotScreenRadius);
-    final ringWidth = _treeUnits(1.5);
+    final radius = FractalLodPolicy.nodeTreeUnitsWithBoost(
+      screenPixels: _genusDotScreenRadius,
+      zoomScale: zoomScale,
+    );
+    final ringWidth = FractalLodPolicy.nodeTreeUnitsWithBoost(
+      screenPixels: 1.5,
+      zoomScale: zoomScale,
+    );
     final paint = Paint()..color = genusLeafColor;
     canvas.drawCircle(node.position, radius, paint);
     canvas.drawCircle(

@@ -29,7 +29,7 @@ class PhyloTreeBuilder {
       totalGenera++;
     }
 
-    _sortChildren(root);
+    root.sortChildrenRecursively();
 
     return PhyloTreeBuildResult(
       root: root,
@@ -73,13 +73,6 @@ class PhyloTreeBuilder {
       }
 
       current = child;
-    }
-  }
-
-  void _sortChildren(PhyloTreeNode node) {
-    node.children.sort((a, b) => a.name.compareTo(b.name));
-    for (final child in node.children) {
-      _sortChildren(child);
     }
   }
 }

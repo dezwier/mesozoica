@@ -147,8 +147,10 @@ class FractalTreeLayout {
 
     var currentAngle = angleMin;
     final childLayouts = <FractalLayoutNode>[];
+    final sortedChildren = [...node.children]
+      ..sort(PhyloTreeNode.compareChildDisplayOrder);
 
-    for (final child in node.children) {
+    for (final child in sortedChildren) {
       final span = allocatable * child.leafCount / totalLeaves;
       childLayouts.add(
         _layoutNode(
@@ -160,7 +162,7 @@ class FractalTreeLayout {
         ),
       );
       currentAngle += span;
-      if (child != node.children.last) {
+      if (child != sortedChildren.last) {
         currentAngle += siblingAngleGap;
       }
     }
@@ -254,11 +256,24 @@ class FractalLodPolicy {
         .clamp(1.0, 1.4);
   }
 
+  /// Nodes grow more noticeably when zoomed in (+30% per decade, max +100%).
+  static double nodeZoomBoost(double zoomScale) {
+    return (1.0 + math.log(zoomScale.clamp(1.0, 200)) / math.ln10 * 0.30)
+        .clamp(1.0, 2.0);
+  }
+
   static double treeUnitsWithBoost({
     required double screenPixels,
     required double zoomScale,
   }) {
     return treeUnits(screenPixels * subtleZoomBoost(zoomScale), zoomScale);
+  }
+
+  static double nodeTreeUnitsWithBoost({
+    required double screenPixels,
+    required double zoomScale,
+  }) {
+    return treeUnits(screenPixels * nodeZoomBoost(zoomScale), zoomScale);
   }
 
   static double screenLength(double branchLength, double zoomScale) =>
@@ -306,7 +321,7 @@ class FractalLodPolicy {
     required int maxLeaves,
     required bool isGenus,
   }) {
-    return treeUnitsWithBoost(
+    return nodeTreeUnitsWithBoost(
       screenPixels: leafBlobScreenRadius(
         leafCount: leafCount,
         maxLeaves: maxLeaves,
