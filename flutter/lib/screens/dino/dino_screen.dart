@@ -12,10 +12,10 @@ class DinoScreen extends StatefulWidget {
   const DinoScreen({super.key});
 
   @override
-  State<DinoScreen> createState() => _DinoScreenState();
+  State<DinoScreen> createState() => DinoScreenState();
 }
 
-class _DinoScreenState extends State<DinoScreen> {
+class DinoScreenState extends State<DinoScreen> {
   final ScrollController _scrollController = ScrollController();
   Timer? _scrollDebounceTimer;
 
@@ -44,6 +44,15 @@ class _DinoScreenState extends State<DinoScreen> {
       ..removeListener(_onScroll)
       ..dispose();
     super.dispose();
+  }
+
+  void scrollToTop() {
+    if (!_scrollController.hasClients) return;
+    _scrollController.animateTo(
+      0,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOut,
+    );
   }
 
   void _onScroll() {

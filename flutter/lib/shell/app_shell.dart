@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../widgets/common/gradient_app_bar.dart';
 import '../controllers/theme_controller.dart';
 import '../screens/dino/dino_screen.dart';
 import '../screens/map/map_screen.dart';
@@ -15,22 +16,36 @@ class AppShell extends StatefulWidget {
 }
 
 class _AppShellState extends State<AppShell> {
-  int _index = 2;
+  static const _dinoTabIndex = 2;
 
-  static const _screens = <Widget>[
-    MapScreen(),
-    TreeScreen(),
-    DinoScreen(),
-    ProfileScreen(),
+  int _index = _dinoTabIndex;
+  final _dinoScreenKey = GlobalKey<DinoScreenState>();
+
+  late final List<Widget> _screens = [
+    const MapScreen(),
+    const TreeScreen(),
+    DinoScreen(key: _dinoScreenKey),
+    const ProfileScreen(),
   ];
+
+  void _onDestinationSelected(int index) {
+    if (index == _index && index == _dinoTabIndex) {
+      _dinoScreenKey.currentState?.scrollToTop();
+      return;
+    }
+    setState(() => _index = index);
+  }
 
   @override
   Widget build(BuildContext context) {
     final themeController = context.watch<ThemeController>();
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(_titleForIndex(_index)),
+      appBar: GradientAppBar(
+        title: Padding(
+          padding: const EdgeInsets.only(left: 12),
+          child: Image.asset('assets/images/logo.png', height: 32),
+        ),
         actions: [
           IconButton(
             tooltip: themeController.isDark ? 'Light mode' : 'Dark mode',
@@ -47,42 +62,46 @@ class _AppShellState extends State<AppShell> {
         index: _index,
         children: _screens,
       ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _index,
-        onDestinationSelected: (index) => setState(() => _index = index),
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.map_outlined),
-            selectedIcon: Icon(Icons.map),
-            label: 'Map',
+      bottomNavigationBar: DecoratedBox(
+        decoration: BoxDecoration(
+          border: Border(
+            top: BorderSide(
+              color: Theme.of(context)
+                  .colorScheme
+                  .outlineVariant
+                  .withValues(alpha: 0.45),
+              width: 1,
+            ),
           ),
-          NavigationDestination(
-            icon: Icon(Icons.account_tree_outlined),
-            selectedIcon: Icon(Icons.account_tree),
-            label: 'Tree',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.style_outlined),
-            selectedIcon: Icon(Icons.style),
-            label: 'Dino',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.person_outlined),
-            selectedIcon: Icon(Icons.person),
-            label: 'Profile',
-          ),
-        ],
+        ),
+        child: NavigationBar(
+          selectedIndex: _index,
+          onDestinationSelected: _onDestinationSelected,
+          destinations: const [
+            NavigationDestination(
+              icon: Icon(Icons.map_outlined),
+              selectedIcon: Icon(Icons.map),
+              label: 'Map',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.account_tree_outlined),
+              selectedIcon: Icon(Icons.account_tree),
+              label: 'Tree',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.style_outlined),
+              selectedIcon: Icon(Icons.style),
+              label: 'Dino',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.person_outlined),
+              selectedIcon: Icon(Icons.person),
+              label: 'Profile',
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  String _titleForIndex(int index) {
-    return switch (index) {
-      0 => 'Map',
-      1 => 'Tree',
-      2 => 'Dinosaur Catalog',
-      3 => 'Profile',
-      _ => 'Mesozoica',
-    };
-  }
 }
