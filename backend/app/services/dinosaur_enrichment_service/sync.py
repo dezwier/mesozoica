@@ -6,12 +6,14 @@ import logging
 import time
 from dataclasses import dataclass, field
 
-from sqlmodel import Session, select
+from sqlalchemy import case
+from sqlmodel import Session, col, select
 
 from app.core.config import settings
 from app.models.dinosaur import Dinosaur
 from app.services.dinosaur_enrichment_service.prompt import build_enrichment_prompt
 from app.services.dinosaur_enrichment_service.validate import validate_llm_enrichment
+from app.services.dinosaur_image_service.sync import CURATED_MEDIA_PATH
 from app.services.llm_service.client import call_gemini_api
 
 logger = logging.getLogger("dinosaur_enrich")
@@ -49,7 +51,15 @@ def _select_candidates(
     stmt = select(Dinosaur).where(Dinosaur.article.is_not(None))  # type: ignore[union-attr]
     if not overwrite:
         stmt = stmt.where(Dinosaur.llm_enriched.is_(False))  # type: ignore[attr-defined]
-    stmt = stmt.order_by(Dinosaur.id)  # type: ignore[arg-type]
+    custom_image_priority = case(
+        (
+            col(Dinosaur.main_image_url).is_not(None)
+            & col(Dinosaur.main_image_url).contains(CURATED_MEDIA_PATH),
+            0,
+        ),
+        else_=1,
+    )
+    stmt = stmt.order_by(custom_image_priority, Dinosaur.id)  # type: ignore[arg-type]
     if max_records is not None:
         stmt = stmt.limit(max_records)
     return list(session.exec(stmt).all())

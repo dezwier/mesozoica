@@ -156,3 +156,45 @@ def test_enrich_requires_api_key(monkeypatch, session: Session):
     )
     with pytest.raises(RuntimeError, match="GOOGLE_GEMINI_API_KEY"):
         enrich_dinosaurs(session)
+
+
+def test_enrich_prioritizes_custom_image_candidates(session: Session):
+    session.add_all(
+        [
+            Dinosaur(
+                name="Alpha",
+                wikipedia_page_id=7001,
+                wikipedia_title="Alpha",
+                cladogram={},
+                article="<p>First in id order, no custom image.</p>",
+            ),
+            Dinosaur(
+                name="Beta",
+                wikipedia_page_id=7002,
+                wikipedia_title="Beta",
+                cladogram={},
+                article="<p>Has a curated card image.</p>",
+                main_image_url=(
+                    "https://mesozoica-production.up.railway.app/media/dinosaurs/Beta.webp"
+                ),
+            ),
+            Dinosaur(
+                name="Gamma",
+                wikipedia_page_id=7003,
+                wikipedia_title="Gamma",
+                cladogram={},
+                article="<p>Later id, no custom image.</p>",
+            ),
+        ]
+    )
+    session.commit()
+
+    with patch(
+        "app.services.dinosaur_enrichment_service.sync.call_gemini_api",
+        return_value=(_llm_response(), {}),
+    ) as mock_api:
+        summary = enrich_dinosaurs(session, dry_run=False, max_records=1)
+
+    assert summary.counters.enriched == 1
+    mock_api.assert_called_once()
+    assert mock_api.call_args.kwargs["log_context"] == "Beta"

@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import '../config/app_config.dart';
 import '../models/dinosaur.dart';
 import '../services/dinosaur_service.dart';
+import '../widgets/cards/dinosaur_card_image.dart';
 import '../widgets/cards/geologic_timeline.dart';
 
 class DinosaurCatalogFilters {
@@ -53,6 +54,7 @@ class DinosaurCatalogController extends ChangeNotifier {
       : _service = service ?? DinosaurService();
 
   static const pageSize = 20;
+  static const _clientScanPageSize = 500;
 
   final DinosaurService _service;
   final Random _random = Random();
@@ -67,6 +69,7 @@ class DinosaurCatalogController extends ChangeNotifier {
   bool _hasMore = false;
   int _total = 0;
   DinosaurCatalogFilters _filters = DinosaurCatalogFilters.defaults;
+  bool _useClientCustomImageFilter = false;
 
   List<DinosaurSummary> get items => List.unmodifiable(_items);
   bool get loading => _loading;
@@ -87,6 +90,7 @@ class DinosaurCatalogController extends ChangeNotifier {
 
     _loading = true;
     _error = null;
+    _useClientCustomImageFilter = false;
     if (!hasSearch) {
       _seed = _newSeed();
     }
@@ -133,7 +137,10 @@ class DinosaurCatalogController extends ChangeNotifier {
   }
 
   Future<void> loadMore() async {
-    if (_loading || _loadingMore || !_hasMore || _seed == null) return;
+    if (_loading || _loadingMore || !_hasMore || _useClientCustomImageFilter) {
+      return;
+    }
+    if (_seed == null) return;
 
     _loadingMore = true;
     notifyListeners();
@@ -172,13 +179,17 @@ class DinosaurCatalogController extends ChangeNotifier {
     await load(force: true);
   }
 
-  Future<DinosaurListResponse> _fetchPage({required int offset}) {
+  Future<DinosaurListResponse> _fetchPage({required int offset}) async {
+    if (_filters.onlyCustomImage && _useClientCustomImageFilter) {
+      return _fetchAllCuratedClientSide();
+    }
+
     final hasSearch = _filters.searchQuery.trim().isNotEmpty;
     final seed = _seed;
     if (!hasSearch && (seed == null || seed.isEmpty)) {
       throw StateError('Catalog seed missing before fetch');
     }
-    return _service.fetchDinosaurs(
+    final response = await _service.fetchDinosaurs(
       limit: pageSize,
       offset: offset,
       sort: hasSearch ? 'name' : 'random',
@@ -188,6 +199,68 @@ class DinosaurCatalogController extends ChangeNotifier {
           !hasSearch && _filters.hasTimeFilter ? _filters.maYounger : null,
       maOlder: !hasSearch && _filters.hasTimeFilter ? _filters.maOlder : null,
       hasCustomImage: _filters.onlyCustomImage,
+    );
+
+    if (_filters.onlyCustomImage &&
+        offset == 0 &&
+        !_serverHonorsCustomImageFilter(response)) {
+      _useClientCustomImageFilter = true;
+      if (kDebugMode) {
+        debugPrint(
+          'DinosaurCatalogController: API ignored has_custom_image; '
+          'scanning catalog client-side',
+        );
+      }
+      return _fetchAllCuratedClientSide();
+    }
+
+    return response;
+  }
+
+  bool _serverHonorsCustomImageFilter(DinosaurListResponse response) {
+    return !response.items.any(
+      (dinosaur) =>
+          !DinosaurCardImage.isCuratedCardImageUrl(dinosaur.mainImageUrl),
+    );
+  }
+
+  Future<DinosaurListResponse> _fetchAllCuratedClientSide() async {
+    final hasSearch = _filters.searchQuery.trim().isNotEmpty;
+    final curated = <DinosaurSummary>[];
+    var offset = 0;
+    var hasMore = true;
+
+    while (hasMore) {
+      final response = await _service.fetchDinosaurs(
+        limit: _clientScanPageSize,
+        offset: offset,
+        sort: 'name',
+        q: hasSearch ? _filters.searchQuery.trim() : null,
+        maYounger:
+            !hasSearch && _filters.hasTimeFilter ? _filters.maYounger : null,
+        maOlder: !hasSearch && _filters.hasTimeFilter ? _filters.maOlder : null,
+      );
+      curated.addAll(
+        response.items.where(
+          (dinosaur) =>
+              DinosaurCardImage.isCuratedCardImageUrl(dinosaur.mainImageUrl),
+        ),
+      );
+      offset += response.items.length;
+      hasMore = response.hasMore;
+      if (response.items.isEmpty) break;
+    }
+
+    if (!hasSearch && curated.length > 1) {
+      curated.shuffle(_random);
+    }
+
+    return DinosaurListResponse(
+      items: curated,
+      total: curated.length,
+      limit: curated.length,
+      offset: 0,
+      hasNext: false,
     );
   }
 

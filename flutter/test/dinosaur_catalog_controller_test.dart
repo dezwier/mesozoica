@@ -7,6 +7,9 @@ import 'package:mesozoica/controllers/dinosaur_catalog_controller.dart';
 import 'package:mesozoica/services/dinosaur_service.dart';
 
 void main() {
+  const curatedImageUrl =
+      'https://mesozoica-production.up.railway.app/media/dinosaurs/Tyrannosaurus.webp';
+
   test('fetchDinosaurs requests random sort with seed', () async {
     Uri? capturedUri;
     final service = DinosaurService(
@@ -20,12 +23,14 @@ void main() {
                 'name': 'Velociraptor',
                 'wikipedia_title': 'Velociraptor',
                 'cladogram': {},
+                'main_image_url': curatedImageUrl,
               },
               {
                 'id': 1,
                 'name': 'Tyrannosaurus',
                 'wikipedia_title': 'Tyrannosaurus',
                 'cladogram': {},
+                'main_image_url': curatedImageUrl,
               },
             ],
             'total': 2,
@@ -68,6 +73,7 @@ void main() {
                 'name': 'Tyrannosaurus',
                 'wikipedia_title': 'Tyrannosaurus',
                 'cladogram': {},
+                'main_image_url': curatedImageUrl,
               },
             ],
             'total': 1,
@@ -191,6 +197,89 @@ void main() {
 
     expect(capturedUri!.queryParameters.containsKey('has_custom_image'), isFalse);
     expect(controller.hasActiveFilters, isTrue);
+
+    controller.dispose();
+  });
+
+  test('onlyCustomImage scans client-side when API ignores filter', () async {
+    final capturedUris = <Uri>[];
+    final service = DinosaurService(
+      client: MockClient((request) async {
+        capturedUris.add(request.url);
+        final limit = int.parse(request.url.queryParameters['limit'] ?? '20');
+        final offset = int.parse(request.url.queryParameters['offset'] ?? '0');
+        if (limit == 20 && offset == 0) {
+          return http.Response(
+            jsonEncode({
+              'items': [
+                {
+                  'id': 1,
+                  'name': 'Alpha',
+                  'wikipedia_title': 'Alpha',
+                  'cladogram': {},
+                },
+                {
+                  'id': 2,
+                  'name': 'Beta',
+                  'wikipedia_title': 'Beta',
+                  'cladogram': {},
+                  'main_image_url': curatedImageUrl,
+                },
+              ],
+              'total': 3,
+              'limit': 20,
+              'offset': 0,
+              'has_next': true,
+            }),
+            200,
+          );
+        }
+        return http.Response(
+          jsonEncode({
+            'items': [
+              {
+                'id': 2,
+                'name': 'Beta',
+                'wikipedia_title': 'Beta',
+                'cladogram': {},
+                'main_image_url': curatedImageUrl,
+              },
+              {
+                'id': 3,
+                'name': 'Gamma',
+                'wikipedia_title': 'Gamma',
+                'cladogram': {},
+                'main_image_url': curatedImageUrl,
+              },
+              {
+                'id': 1,
+                'name': 'Alpha',
+                'wikipedia_title': 'Alpha',
+                'cladogram': {},
+              },
+            ],
+            'total': 3,
+            'limit': 500,
+            'offset': 0,
+            'has_next': false,
+          }),
+          200,
+        );
+      }),
+    );
+
+    final controller = DinosaurCatalogController(service: service);
+    await controller.load();
+
+    expect(capturedUris.length, 2);
+    expect(capturedUris.first.queryParameters['has_custom_image'], 'true');
+    expect(capturedUris.last.queryParameters.containsKey('has_custom_image'), isFalse);
+    expect(controller.total, 2);
+    expect(
+      controller.items.map((d) => d.name).toSet(),
+      {'Beta', 'Gamma'},
+    );
+    expect(controller.hasMore, isFalse);
 
     controller.dispose();
   });
