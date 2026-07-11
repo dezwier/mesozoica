@@ -29,22 +29,30 @@ const _fixture = DinosaurSummary(
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  testWidgets('DinosaurCardFront renders placeholder art and info button',
+  testWidgets('DinosaurCardFront renders art, title, facts, and info button',
       (tester) async {
     await tester.pumpWidget(
       const MaterialApp(
         home: Scaffold(
-          body: DinosaurCardFront(dinosaur: _fixture),
+          body: Center(
+            child: SizedBox(
+              width: 320,
+              child: DinosaurCardFront(dinosaur: _fixture),
+            ),
+          ),
         ),
       ),
     );
 
     expect(find.byType(Image), findsWidgets);
     expect(find.byIcon(Icons.info_outline), findsOneWidget);
-    expect(find.text('TYRANNOSAURUS REX'), findsNothing);
+    expect(find.text('TYRANNOSAURUS REX'), findsOneWidget);
+    expect(find.text('LOCATION'), findsOneWidget);
+    expect(find.text('TIME PERIOD'), findsOneWidget);
   });
 
-  testWidgets('DinosaurCardBack renders facts and description', (tester) async {
+  testWidgets('DinosaurCardBack renders description, timeline, and cladogram',
+      (tester) async {
     await tester.pumpWidget(
       const MaterialApp(
         home: Scaffold(
@@ -59,10 +67,13 @@ void main() {
     );
 
     expect(find.text('TYRANNOSAURUS REX'), findsOneWidget);
-    expect(find.text('LOCATION'), findsOneWidget);
-    expect(find.text('TIME PERIOD'), findsOneWidget);
-    expect(find.text('CLADOGRAM'), findsOneWidget);
+    expect(find.text('LOCATION'), findsNothing);
+    expect(find.text('TIME PERIOD'), findsNothing);
     expect(find.text('TIME'), findsOneWidget);
+    expect(find.text('CLADOGRAM'), findsOneWidget);
+    expect(find.text('CLADE'), findsNWidgets(2));
+    expect(find.text('FAMILY'), findsOneWidget);
+    expect(find.text('GENUS'), findsOneWidget);
     expect(
       find.textContaining('largest terrestrial predators'),
       findsOneWidget,

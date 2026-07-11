@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../../models/dinosaur.dart';
 import '../../theme/dino_card_theme.dart';
 import 'cladogram_strip.dart';
-import 'dino_fact_row.dart';
+import 'dinosaur_card_header.dart';
 import 'geologic_timeline.dart';
 
 class DinosaurCardBack extends StatelessWidget {
@@ -11,24 +11,16 @@ class DinosaurCardBack extends StatelessWidget {
 
   final DinosaurSummary dinosaur;
 
-  String _orDash(String? value) =>
-      value != null && value.trim().isNotEmpty ? value.trim() : '—';
-
-  String? _subtitle() {
-    final title = dinosaur.wikipediaTitle.trim();
-    if (title.isEmpty || title.toLowerCase() == dinosaur.name.toLowerCase()) {
-      return null;
-    }
-    return title.replaceAll('_', ' ').toUpperCase();
-  }
-
   @override
   Widget build(BuildContext context) {
-    final lineage = dinosaur.cladogramLineage();
-    final subtitle = _subtitle();
+    final nodes = dinosaur.cladogramNodes();
+    final description = dinosaur.shortDescription != null &&
+            dinosaur.shortDescription!.trim().isNotEmpty
+        ? dinosaur.shortDescription!.trim()
+        : '—';
 
     return AspectRatio(
-      aspectRatio: 3 / 4,
+      aspectRatio: DinoCardTheme.cardAspectRatio,
       child: ColoredBox(
         color: DinoCardTheme.cardBackground,
         child: Padding(
@@ -36,101 +28,31 @@ class DinosaurCardBack extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _Header(
-                name: dinosaur.name,
-                subtitle: subtitle,
-              ),
-              const SizedBox(height: 14),
-              DinoFactRow(
-                iconAsset: 'assets/images/cards/icons/location.svg',
-                label: 'Location',
-                value: _orDash(dinosaur.location),
-              ),
-              DinoFactRow(
-                iconAsset: 'assets/images/cards/icons/period.svg',
-                label: 'Time Period',
-                value: dinosaur.displayPeriod,
-              ),
-              DinoFactRow(
-                iconAsset: 'assets/images/cards/icons/diet.svg',
-                label: 'Diet',
-                value: _orDash(dinosaur.dietType),
-              ),
-              DinoFactRow(
-                iconAsset: 'assets/images/cards/icons/length.svg',
-                label: 'Length',
-                value: _orDash(dinosaur.length),
-              ),
-              DinoFactRow(
-                iconAsset: 'assets/images/cards/icons/mass.svg',
-                label: 'Mass',
-                value: _orDash(dinosaur.mass),
-              ),
-              const SizedBox(height: 10),
-              Expanded(
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Expanded(
-                      flex: 3,
-                      child: CladogramStrip(lineage: lineage),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      flex: 2,
-                      child: GeologicTimeline(
-                        birth: dinosaur.birth,
-                        death: dinosaur.death,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 10),
+              DinosaurCardHeader(dinosaur: dinosaur),
+              const SizedBox(height: 8),
               Text(
-                dinosaur.shortDescription != null &&
-                        dinosaur.shortDescription!.trim().isNotEmpty
-                    ? dinosaur.shortDescription!.trim()
-                    : '—',
+                description,
                 maxLines: 3,
                 overflow: TextOverflow.ellipsis,
                 style: DinoCardTheme.bodyStyle(fontSize: 11),
+              ),
+              const SizedBox(height: 10),
+              SizedBox(
+                height: 88,
+                child: GeologicTimeline(
+                  birth: dinosaur.birth,
+                  death: dinosaur.death,
+                  axis: GeologicTimelineAxis.horizontal,
+                ),
+              ),
+              const SizedBox(height: 10),
+              Expanded(
+                child: CladogramStrip(nodes: nodes),
               ),
             ],
           ),
         ),
       ),
-    );
-  }
-}
-
-class _Header extends StatelessWidget {
-  const _Header({required this.name, this.subtitle});
-
-  final String name;
-  final String? subtitle;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          name.toUpperCase(),
-          style: DinoCardTheme.titleStyle(fontSize: 18),
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-        ),
-        if (subtitle != null) ...[
-          const SizedBox(height: 4),
-          Text(
-            subtitle!,
-            style: DinoCardTheme.subtitleStyle(fontSize: 11),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ],
-      ],
     );
   }
 }

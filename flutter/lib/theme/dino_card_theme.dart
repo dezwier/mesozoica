@@ -8,6 +8,9 @@ class DinoCardTheme {
 
   static const double borderRadius = 16;
 
+  /// Matches [frontPlaceholderAsset] (493×677) so the cover image is not cropped.
+  static const double cardAspectRatio = 493 / 677;
+
   static const Color cardBackground = Color(0xFF1A1A1A);
   static const Color cardAccent = Color(0xFFC5944E);
   static const Color cardTextPrimary = Colors.white;
@@ -50,8 +53,11 @@ class DinoCardTheme {
     );
   }
 
+  static const String titleFontFamily = 'tt_ramilas';
+
   static TextStyle titleStyle({double fontSize = 18}) {
     return TextStyle(
+      fontFamily: titleFontFamily,
       color: cardTextPrimary,
       fontSize: fontSize,
       fontWeight: FontWeight.w700,
@@ -103,6 +109,16 @@ class DinoCardTheme {
       fontSize: fontSize,
       fontWeight: FontWeight.w600,
       letterSpacing: 0.8,
+    );
+  }
+
+  static TextStyle rankLabelStyle({double fontSize = 8}) {
+    return TextStyle(
+      color: cardTextPrimary.withValues(alpha: 0.45),
+      fontSize: fontSize,
+      fontWeight: FontWeight.w500,
+      letterSpacing: 0.6,
+      height: 1.1,
     );
   }
 

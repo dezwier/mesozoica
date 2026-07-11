@@ -180,3 +180,110 @@ def test_get_dinosaur_article_empty_when_no_html(client, session):
     assert response.status_code == 200
     body = response.json()
     assert body["article"] is None
+
+
+def _seed_timed_dinos(session: Session) -> None:
+    """T-rex Cretaceous, Stegosaurus Jurassic, Brachiosaurus Jurassic."""
+    session.add_all(
+        [
+            Dinosaur(
+                name="Tyrannosaurus",
+                wikipedia_page_id=4001,
+                wikipedia_title="Tyrannosaurus",
+                birth=77.0,
+                death=66.0,
+            ),
+            Dinosaur(
+                name="Stegosaurus",
+                wikipedia_page_id=4002,
+                wikipedia_title="Stegosaurus",
+                birth=155.0,
+                death=150.0,
+            ),
+            Dinosaur(
+                name="Brachiosaurus",
+                wikipedia_page_id=4003,
+                wikipedia_title="Brachiosaurus",
+                birth=154.0,
+                death=153.0,
+            ),
+            Dinosaur(
+                name="UnknownPeriod",
+                wikipedia_page_id=4004,
+                wikipedia_title="UnknownPeriod",
+            ),
+        ]
+    )
+    session.commit()
+
+
+def test_list_dinosaurs_filter_by_name(client, session):
+    _seed_timed_dinos(session)
+
+    response = client.get("/api/v1/dinosaurs?q=saurus")
+    assert response.status_code == 200
+    body = response.json()
+    names = {item["name"] for item in body["items"]}
+    assert names == {"Tyrannosaurus", "Stegosaurus", "Brachiosaurus"}
+    assert body["total"] == 3
+
+
+def test_list_dinosaurs_filter_by_time_overlap(client, session):
+    _seed_timed_dinos(session)
+
+    response = client.get(
+        "/api/v1/dinosaurs?ma_younger=70&ma_older=80&sort=name"
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["total"] == 1
+    assert body["items"][0]["name"] == "Tyrannosaurus"
+
+
+def test_list_dinosaurs_filter_excludes_missing_dates_when_narrowed(client, session):
+    _seed_timed_dinos(session)
+
+    response = client.get(
+        "/api/v1/dinosaurs?ma_younger=66&ma_older=252&sort=name"
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["total"] == 4
+
+
+def test_list_dinosaurs_filter_combined(client, session):
+    _seed_timed_dinos(session)
+
+    response = client.get(
+        "/api/v1/dinosaurs?q=saurus&ma_younger=150&ma_older=160&sort=name"
+    )
+    assert response.status_code == 200
+    body = response.json()
+    names = {item["name"] for item in body["items"]}
+    assert names == {"Stegosaurus", "Brachiosaurus"}
+    assert body["total"] == 2
+
+
+def test_list_dinosaurs_filter_random_stable_with_seed(client, session):
+    _seed_timed_dinos(session)
+
+    seed = "filter-seed-456"
+    first = client.get(
+        f"/api/v1/dinosaurs?sort=random&seed={seed}&q=saurus&limit=1&offset=0"
+    ).json()
+    second = client.get(
+        f"/api/v1/dinosaurs?sort=random&seed={seed}&q=saurus&limit=1&offset=1"
+    ).json()
+    repeat = client.get(
+        f"/api/v1/dinosaurs?sort=random&seed={seed}&q=saurus&limit=1&offset=0"
+    ).json()
+
+    assert first["total"] == 3
+    assert first["items"][0]["name"] == repeat["items"][0]["name"]
+    assert first["items"][0]["name"] != second["items"][0]["name"]
+    assert first["has_next"] is True
+
+
+def test_list_dinosaurs_filter_ma_requires_both_params(client, session):
+    response = client.get("/api/v1/dinosaurs?ma_younger=66")
+    assert response.status_code == 400

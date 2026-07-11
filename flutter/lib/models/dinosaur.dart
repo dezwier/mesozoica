@@ -1,3 +1,15 @@
+class CladogramNode {
+  const CladogramNode({
+    required this.rankKey,
+    required this.rankLabel,
+    required this.name,
+  });
+
+  final String rankKey;
+  final String rankLabel;
+  final String name;
+}
+
 class DinosaurSummary {
   const DinosaurSummary({
     required this.id,
@@ -47,8 +59,12 @@ class DinosaurSummary {
     );
   }
 
+  static String cladogramRankLabel(String rankKey) {
+    return rankKey.replaceAll(RegExp(r'_\d+$'), '').toUpperCase();
+  }
+
   /// Taxonomic lineage from [fromRank] through genus, in original cladogram order.
-  List<String> cladogramLineage({String fromRank = 'Dinosauria'}) {
+  List<CladogramNode> cladogramNodes({String fromRank = 'Dinosauria'}) {
     final entries = <MapEntry<String, String>>[];
     for (final entry in cladogram.entries) {
       final value = entry.value?.toString().trim();
@@ -61,24 +77,37 @@ class DinosaurSummary {
     );
     if (startIndex < 0) return [];
 
-    final lineage = <String>[];
+    final nodes = <CladogramNode>[];
     for (final entry in entries.sublist(startIndex)) {
       if (entry.key == 'species') break;
-      lineage.add(entry.value);
+      nodes.add(
+        CladogramNode(
+          rankKey: entry.key,
+          rankLabel: cladogramRankLabel(entry.key),
+          name: entry.value,
+        ),
+      );
       if (entry.key == 'genus') break;
     }
-    return lineage;
+    return nodes;
+  }
+
+  List<String> cladogramLineage({String fromRank = 'Dinosauria'}) {
+    return cladogramNodes(fromRank: fromRank).map((node) => node.name).toList();
   }
 
   String get displayPeriod {
-    if (period != null && period!.isNotEmpty) {
-      if (birth != null && death != null) {
-        return '$period, ${birth!.round()} – ${death!.round()} Ma';
-      }
-      return period!;
-    }
     if (birth != null && death != null) {
-      return '${birth!.round()} – ${death!.round()} Ma';
+      final maLabel = birth!.round() == death!.round()
+          ? '${birth!.round()} Ma'
+          : '${birth!.round()} – ${death!.round()} Ma';
+      if (period != null && period!.isNotEmpty) {
+        return '$period, $maLabel';
+      }
+      return maLabel;
+    }
+    if (period != null && period!.isNotEmpty) {
+      return period!;
     }
     return '—';
   }

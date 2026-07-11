@@ -46,6 +46,9 @@ class AppConfig {
     int offset = 0,
     String sort = 'name',
     String? seed,
+    String? q,
+    double? maYounger,
+    double? maOlder,
   }) {
     final params = <String, String>{
       'limit': '$limit',
@@ -54,6 +57,14 @@ class AppConfig {
     };
     if (seed != null && seed.isNotEmpty) {
       params['seed'] = seed;
+    }
+    final trimmedQuery = q?.trim();
+    if (trimmedQuery != null && trimmedQuery.isNotEmpty) {
+      params['q'] = trimmedQuery;
+    }
+    if (maYounger != null && maOlder != null) {
+      params['ma_younger'] = '$maYounger';
+      params['ma_older'] = '$maOlder';
     }
     return Uri.parse('$baseApiUrl/api/v1/dinosaurs').replace(
       queryParameters: params,

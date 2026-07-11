@@ -44,6 +44,12 @@ The **Dino** tab lists every dinosaur from `GET /api/v1/dinosaurs` as museum-sty
 
 Card chrome uses a separate dark museum palette (charcoal background, bronze/gold border) distinct from the app shell theme.
 
+**Filtering**
+ * Floating filter FAB (archipelago-style, bottom-right) opens a draggable bottom drawer.
+ * **Name search** — case-insensitive substring match on species name (`q` query param).
+ * **Time range slider** — dual-handle Mesozoic window **66 Ma → 252 Ma**; filters dinosaurs whose `[death, birth]` interval overlaps the selected range (`ma_younger`, `ma_older` query params). Rows missing dates are excluded only when the window is narrowed from the full range.
+ * Server-side filtered pagination via `GET /api/v1/dinosaurs?q&ma_younger&ma_older`; random sort with seed is preserved within the filtered result set.
+
 ### Future game screens (not in v0 nav)
 These remain part of the long-term vision but are deferred until core catalog + map/tree are built:
 
@@ -82,7 +88,7 @@ mesozoica/
  * **Deployment:** Railway Dockerfile build; `alembic upgrade head` runs on startup; health at `/health`, readiness at `/ready`.
  * **Data Sync:** Cron runner at `app/crons/runner.py` loads schedules from `app/crons/crons.yaml`. Deploy as a separate Railway cron service via `backend/railway.cron.toml` (hourly trigger; jobs define their own UTC schedules).
  * **Dinosaur table:** `dinosaur` — name, birth/death (Ma), period, cladogram (JSON), diet_type, length, mass, location, short_description (LLM-only), long_description, full article HTML, article_date, insert_date, main_image_url (Wikipedia lead image), llm_enriched (bool).
- * **Dinosaur read API:** `GET /api/v1/dinosaurs` (paginated list, card summary fields), `GET /api/v1/dinosaurs/{id}` (single summary).
+ * **Dinosaur read API:** `GET /api/v1/dinosaurs` (paginated list, optional `q`, `ma_younger`, `ma_older` filters, card summary fields), `GET /api/v1/dinosaurs/{id}` (single summary).
 ### Frontend
  * **Framework:** Flutter (Dart) for high-performance, cross-platform fluid UI rendering (iOS and Android).
  * **Location:** `flutter/` — domain folders mirror tabs (`screens/map`, `screens/tree`, `screens/dino`, `screens/profile`), shared `shell/app_shell.dart`, card widgets under `widgets/cards/`.
@@ -95,6 +101,7 @@ mesozoica/
  * [x] **Wikipedia snapshot cron (dinosaur slice):** Weekly sync of `Category:Dinosaur_genera` into the `dinosaur` table.
  * [x] **LLM enrichment cron (dinosaur slice):** Weekly Gemini enrichment of length, mass, location, diet_type, and short_description.
  * [x] **Dinosaur read API:** Paginated list + detail endpoints for Flutter catalog.
+ * [x] **Dino catalog filtering:** Floating filter FAB with name search and Mesozoic Ma range slider.
  * [x] **Wikipedia lead image auto-fill:** Populate `main_image_url` during sync.
  * [ ] **Authentication:** User accounts and inventory persistence.
  * [ ] **Carbon Dating System:** Introduce a decay mechanic where users must balance isotopes to verify fossil age.
@@ -134,6 +141,7 @@ Gemini enrichment env vars: `GOOGLE_GEMINI_API_KEY` (required in production for 
 | 4-tab shell (Map, Tree, Dino, Profile) | Done (Map/Tree/Profile placeholders) |
 | Dinosaur read API | Done |
 | Dino catalog + turnable cards | Done (skeleton UI, full card layout) |
+| Dino catalog filtering (search + time range) | Done |
 | Wikipedia data pipeline | Partial (dinosaur sync cron + lead image) |
 | LLM enrichment pipeline | Partial (dinosaur enrich cron) |
 | Map / Tree interactive features | Not started |

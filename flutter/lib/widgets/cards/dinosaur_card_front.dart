@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import '../../models/dinosaur.dart';
 import '../../theme/dino_card_theme.dart';
 import '../dino/dinosaur_article_drawer.dart';
+import 'dinosaur_card_facts.dart';
+import 'dinosaur_card_header.dart';
 
 class DinosaurCardFront extends StatelessWidget {
   const DinosaurCardFront({super.key, required this.dinosaur});
@@ -12,13 +14,57 @@ class DinosaurCardFront extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AspectRatio(
-      aspectRatio: 3 / 4,
+      aspectRatio: DinoCardTheme.cardAspectRatio,
       child: Stack(
         fit: StackFit.expand,
         children: [
           Image.asset(
             DinoCardTheme.frontPlaceholderAsset,
             fit: BoxFit.cover,
+          ),
+          Positioned.fill(
+            child: Align(
+              alignment: Alignment.bottomCenter,
+              child: FractionallySizedBox(
+                heightFactor: 0.62,
+                widthFactor: 1,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.transparent,
+                        DinoCardTheme.cardBackground.withValues(alpha: 0.85),
+                        DinoCardTheme.cardBackground,
+                      ],
+                      stops: const [0.0, 0.35, 1.0],
+                    ),
+                  ),
+                  child: ClipRect(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(18, 0, 18, 14),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          DinosaurCardHeader(
+                            dinosaur: dinosaur,
+                            titleFontSize: 15,
+                            subtitleFontSize: 9,
+                          ),
+                          const SizedBox(height: 6),
+                          DinosaurCardFacts(
+                            dinosaur: dinosaur,
+                            compact: true,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
           ),
           Positioned(
             top: 12,

@@ -17,12 +17,18 @@ class DinosaurService {
     int offset = 0,
     String sort = 'name',
     String? seed,
+    String? q,
+    double? maYounger,
+    double? maOlder,
   }) async {
     final uri = AppConfig.dinosaursUri(
       limit: limit,
       offset: offset,
       sort: sort,
       seed: seed,
+      q: q,
+      maYounger: maYounger,
+      maOlder: maOlder,
     );
     if (kDebugMode) {
       debugPrint('DinosaurService GET $uri');
