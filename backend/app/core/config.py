@@ -68,6 +68,22 @@ class Settings(BaseSettings):
         validation_alias="WIKIPEDIA_SYNC_FAILURE_THRESHOLD",
     )
 
+    google_gemini_api_key: str = Field(default="", validation_alias="GOOGLE_GEMINI_API_KEY")
+    gemini_model: str = Field(default="gemini-2.5-flash", validation_alias="GEMINI_MODEL")
+    gemini_temperature: float = Field(default=0.0, validation_alias="GEMINI_TEMPERATURE")
+    dinosaur_enrich_max_records: int | None = Field(
+        default=None,
+        validation_alias="DINOSAUR_ENRICH_MAX_RECORDS",
+    )
+    dinosaur_enrich_failure_threshold: float = Field(
+        default=0.10,
+        validation_alias="DINOSAUR_ENRICH_FAILURE_THRESHOLD",
+    )
+    dinosaur_enrich_request_delay_ms: int = Field(
+        default=500,
+        validation_alias="DINOSAUR_ENRICH_REQUEST_DELAY_MS",
+    )
+
     @property
     def cors_origins(self) -> list[str]:
         return [origin.strip() for origin in self.cors_origins_str.split(",") if origin.strip()]
@@ -86,6 +102,13 @@ class Settings(BaseSettings):
     @field_validator("wikipedia_sync_max_pages", mode="before")
     @classmethod
     def empty_max_pages_is_none(cls, value: Any) -> Any:
+        if value in ("", None):
+            return None
+        return value
+
+    @field_validator("dinosaur_enrich_max_records", mode="before")
+    @classmethod
+    def empty_enrich_max_records_is_none(cls, value: Any) -> Any:
         if value in ("", None):
             return None
         return value

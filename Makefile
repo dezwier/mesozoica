@@ -1,6 +1,6 @@
 SHELL := /bin/bash
 
-.PHONY: help backend-install backend-test run-backend flutter-test run-flutter test-all run-cron run-wikipedia-sync
+.PHONY: help backend-install backend-test run-backend flutter-test run-flutter test-all run-cron run-wikipedia-sync run-dinosaur-enrich
 
 help:
 	@echo "Available targets:"
@@ -9,6 +9,7 @@ help:
 	@echo "  run-backend         Start FastAPI dev server"
 	@echo "  run-cron            Run all due cron jobs"
 	@echo "  run-wikipedia-sync  Run Wikipedia dinosaur sync once"
+	@echo "  run-dinosaur-enrich Run dinosaur LLM enrichment once"
 	@echo "  flutter-test        Run Flutter tests"
 	@echo "  run-flutter         Start Flutter app"
 	@echo "  test-all            Run backend and Flutter tests"
@@ -27,6 +28,9 @@ run-cron:
 
 run-wikipedia-sync:
 	cd backend && python -m app.crons.runner --job wikipedia_dinosaur_sync
+
+run-dinosaur-enrich:
+	cd backend && python -m app.crons.runner --job dinosaur_llm_enrich
 
 flutter-test:
 	cd flutter && flutter test

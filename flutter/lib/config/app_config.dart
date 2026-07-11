@@ -18,6 +18,10 @@ class AppConfig {
 
   static Uri get healthUri => Uri.parse('$baseApiUrl/health');
 
+  static Uri dinosaursUri({int limit = 200, int offset = 0}) => Uri.parse(
+        '$baseApiUrl/api/v1/dinosaurs?limit=$limit&offset=$offset',
+      );
+
   static Future<bool> checkApiHealth() async {
     try {
       final response = await http.get(healthUri).timeout(const Duration(seconds: 5));

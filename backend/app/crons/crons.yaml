@@ -9,4 +9,13 @@ jobs:
     schedule: "0 3 * * 0"
     params:
       dry_run: false
+      overwrite: false
       max_pages: null
+
+  - id: dinosaur_llm_enrich
+    enabled: true
+    schedule: "0 4 * * 0"
+    params:
+      dry_run: false
+      overwrite: false
+      max_records: null

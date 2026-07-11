@@ -11,11 +11,27 @@ from bs4 import BeautifulSoup
 
 _WIKI_BASE = "https://en.wikipedia.org/wiki/"
 _MA_RANGE_RE = re.compile(
+    r"(\d+(?:\.\d+)?)\s*[–\-—]\s*(\d+(?:\.\d+)?)\s*Ma\b",
+    re.IGNORECASE,
+)
+_MA_RANGE_HTML_RE = re.compile(
     r"(\d+(?:\.\d+)?)\s*[–\-—]\s*(\d+(?:\.\d+)?)\s*(?:<[^>]+>)*\s*Ma",
+    re.IGNORECASE,
+)
+_MA_SINGLE_RE = re.compile(
+    r"(\d+(?:\.\d+)?)\s*Ma\b",
+    re.IGNORECASE,
+)
+_MA_SINGLE_HTML_RE = re.compile(
+    r"(\d+(?:\.\d+)?)\s*(?:<[^>]+>)*\s*Ma",
     re.IGNORECASE,
 )
 _PERIOD_RE = re.compile(
     r"Temporal range:\s*(?:<[^>]+>|\s)*([^,<(]+)",
+    re.IGNORECASE,
+)
+_PERIOD_TEXT_RE = re.compile(
+    r"Temporal range:\s*([^,]+?)(?:\s*,|\s+\d|\s*$)",
     re.IGNORECASE,
 )
 _TAXON_RANKS = (
@@ -78,22 +94,58 @@ def _extract_infobox_text(html: str) -> str:
     return str(box) if box else ""
 
 
-def _parse_ma_range(infobox_html: str) -> tuple[float | None, float | None]:
-    match = _MA_RANGE_RE.search(infobox_html)
-    if not match:
-        return None, None
-    earliest = float(match.group(1))
-    latest = float(match.group(2))
-    return max(earliest, latest), min(earliest, latest)
+def _infobox_plain_text(soup: BeautifulSoup) -> str:
+    box = soup.select_one("table.infobox.biota")
+    if not box:
+        return ""
+    return box.get_text(" ", strip=True)
 
 
-def _parse_period(infobox_html: str) -> str | None:
+def _temporal_search_window(source: str, *, max_len: int = 500) -> str:
+    idx = source.lower().find("temporal range")
+    if idx >= 0:
+        return source[idx : idx + max_len]
+    return source[:max_len]
+
+
+def _parse_ma_range(infobox_html: str, infobox_text: str = "") -> tuple[float | None, float | None]:
+    for source in (infobox_text, infobox_html):
+        if not source:
+            continue
+        pattern = _MA_RANGE_RE if source == infobox_text else _MA_RANGE_HTML_RE
+        match = pattern.search(_temporal_search_window(source))
+        if match:
+            earliest = float(match.group(1))
+            latest = float(match.group(2))
+            return max(earliest, latest), min(earliest, latest)
+
+    for source in (infobox_text, infobox_html):
+        if not source:
+            continue
+        pattern = _MA_SINGLE_RE if source == infobox_text else _MA_SINGLE_HTML_RE
+        match = pattern.search(_temporal_search_window(source))
+        if match:
+            value = float(match.group(1))
+            return value, value
+
+    return None, None
+
+
+def _parse_period(infobox_html: str, infobox_text: str = "") -> str | None:
     match = _PERIOD_RE.search(infobox_html)
-    if not match:
-        return None
-    period = match.group(1).strip()
-    period = re.sub(r"\s+", " ", period)
-    return period or None
+    if match:
+        period = match.group(1).strip()
+        period = re.sub(r"\s+", " ", period)
+        if period:
+            return period
+
+    if infobox_text:
+        text_match = _PERIOD_TEXT_RE.search(infobox_text)
+        if text_match:
+            period = re.sub(r"\s+", " ", text_match.group(1).strip())
+            if period:
+                return period
+    return None
 
 
 def _parse_cladogram(soup: BeautifulSoup) -> dict[str, Any]:
@@ -192,8 +244,9 @@ def parse_article_html(html: str) -> ParsedArticle:
     """Extract dinosaur fields from full Parsoid HTML."""
     soup = BeautifulSoup(html, "html.parser")
     infobox_html = _extract_infobox_text(html)
-    birth, death = _parse_ma_range(infobox_html)
-    period = _parse_period(infobox_html)
+    infobox_text = _infobox_plain_text(soup)
+    birth, death = _parse_ma_range(infobox_html, infobox_text)
+    period = _parse_period(infobox_html, infobox_text)
     cladogram = _parse_cladogram(soup)
     diet = _parse_diet_from_infobox(soup) or _parse_diet_from_lead(soup)
     long_description = _first_lead_paragraph(soup)

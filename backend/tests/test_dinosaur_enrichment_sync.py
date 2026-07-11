@@ -1,0 +1,194 @@
+"""Tests for dinosaur enrichment sync orchestration."""
+
+from __future__ import annotations
+
+from datetime import datetime, timezone
+from unittest.mock import patch
+
+import pytest
+from sqlmodel import Session, select
+
+from app.models.dinosaur import Dinosaur
+from app.services.dinosaur_enrichment_service.sync import (
+    EnrichCounters,
+    EnrichSummary,
+    enrich_dinosaurs,
+    enrich_exit_code,
+)
+
+
+def _llm_response():
+    return {
+        "length": "12 m",
+        "mass": "7 t",
+        "location": "North America",
+        "diet_type": "carnivore",
+        "short_description": (
+            "A towering Late Cretaceous apex predator whose bone-crushing bite "
+            "made it the most famous dinosaur of all time."
+        ),
+    }
+
+
+@pytest.fixture(autouse=True)
+def gemini_key(monkeypatch):
+    monkeypatch.setenv("GOOGLE_GEMINI_API_KEY", "test-key")
+    monkeypatch.setattr(
+        "app.services.dinosaur_enrichment_service.sync.settings.google_gemini_api_key",
+        "test-key",
+    )
+
+
+def test_enrich_writes_fields_and_sets_flag(session: Session):
+    row = Dinosaur(
+        name="Tyrannosaurus",
+        wikipedia_page_id=30467,
+        wikipedia_title="Tyrannosaurus",
+        cladogram={"genus": "Tyrannosaurus"},
+        article="<p>Tyrannosaurus was a large carnivore found in North America.</p>",
+        article_date=datetime(2026, 7, 8, tzinfo=timezone.utc),
+    )
+    session.add(row)
+    session.commit()
+
+    with patch(
+        "app.services.dinosaur_enrichment_service.sync.call_gemini_api",
+        return_value=(_llm_response(), {"prompt_tokens": 100, "output_tokens": 50}),
+    ), patch(
+        "app.services.dinosaur_enrichment_service.sync.build_enrichment_prompt",
+        return_value=("sys", "prompt", {"length_hint": "12 m", "mass_hint": "7 t"}),
+    ):
+        summary = enrich_dinosaurs(session, dry_run=False)
+
+    session.refresh(row)
+    assert summary.counters.enriched == 1
+    assert row.llm_enriched is True
+    assert row.length == "12 m"
+    assert row.mass == "7 t"
+    assert row.location == "North America"
+    assert row.diet_type == "carnivore"
+    assert row.short_description is not None
+
+
+def test_enrich_skips_already_enriched(session: Session):
+    row = Dinosaur(
+        name="Velociraptor",
+        wikipedia_page_id=999,
+        wikipedia_title="Velociraptor",
+        cladogram={},
+        article="<p>Small theropod.</p>",
+        llm_enriched=True,
+        short_description="Already done.",
+    )
+    session.add(row)
+    session.commit()
+
+    with patch("app.services.dinosaur_enrichment_service.sync.call_gemini_api") as mock_api:
+        summary = enrich_dinosaurs(session, dry_run=False)
+
+    mock_api.assert_not_called()
+    assert summary.counters.enriched == 0
+    assert summary.total_candidates == 0
+
+
+def test_enrich_uses_size_hints_when_llm_omits_length_mass(session: Session):
+    row = Dinosaur(
+        name="Abrosaurus",
+        wikipedia_page_id=9001,
+        wikipedia_title="Abrosaurus",
+        cladogram={},
+        article="<p>measuring no more than 9.1 metres (30 ft) long.</p>",
+    )
+    session.add(row)
+    session.commit()
+
+    llm_without_sizes = {
+        "length": None,
+        "mass": None,
+        "location": "China",
+        "diet_type": "herbivore",
+        "short_description": "A compact Early Jurassic sauropod from China with a distinctive boxy skull.",
+    }
+
+    with patch(
+        "app.services.dinosaur_enrichment_service.sync.call_gemini_api",
+        return_value=(llm_without_sizes, {}),
+    ), patch(
+        "app.services.dinosaur_enrichment_service.sync.build_enrichment_prompt",
+        return_value=("sys", "prompt", {"length_hint": "9.1 m"}),
+    ):
+        enrich_dinosaurs(session, dry_run=False)
+
+    session.refresh(row)
+    assert row.length == "9.1 m"
+    assert row.mass is None
+
+
+def test_enrich_overwrite_refreshes_enriched(session: Session):
+    row = Dinosaur(
+        name="Velociraptor",
+        wikipedia_page_id=999,
+        wikipedia_title="Velociraptor",
+        cladogram={},
+        article="<p>Small theropod.</p>",
+        llm_enriched=True,
+        short_description="Old description that is long enough to pass validation checks.",
+        length="2 m",
+    )
+    session.add(row)
+    session.commit()
+
+    with patch(
+        "app.services.dinosaur_enrichment_service.sync.call_gemini_api",
+        return_value=(_llm_response(), {}),
+    ):
+        summary = enrich_dinosaurs(session, dry_run=False, overwrite=True)
+
+    session.refresh(row)
+    assert summary.counters.enriched == 1
+    assert row.length == "12 m"
+
+
+def test_enrich_failure_does_not_set_flag(session: Session):
+    row = Dinosaur(
+        name="BadData",
+        wikipedia_page_id=1001,
+        wikipedia_title="BadData",
+        cladogram={},
+        article="<p>Some article.</p>",
+    )
+    session.add(row)
+    session.commit()
+
+    with patch(
+        "app.services.dinosaur_enrichment_service.sync.call_gemini_api",
+        side_effect=RuntimeError("API failed"),
+    ):
+        summary = enrich_dinosaurs(session, dry_run=False)
+
+    session.refresh(row)
+    assert summary.counters.failed == 1
+    assert row.llm_enriched is False
+
+
+def test_enrich_exit_code_threshold():
+    summary = EnrichSummary(
+        total_candidates=10,
+        counters=EnrichCounters(enriched=8, failed=2),
+    )
+    assert enrich_exit_code(summary) == 1
+
+    summary_ok = EnrichSummary(
+        total_candidates=10,
+        counters=EnrichCounters(enriched=10, failed=0),
+    )
+    assert enrich_exit_code(summary_ok) == 0
+
+
+def test_enrich_requires_api_key(monkeypatch, session: Session):
+    monkeypatch.setattr(
+        "app.services.dinosaur_enrichment_service.sync.settings.google_gemini_api_key",
+        "",
+    )
+    with pytest.raises(RuntimeError, match="GOOGLE_GEMINI_API_KEY"):
+        enrich_dinosaurs(session)

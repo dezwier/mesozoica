@@ -22,7 +22,8 @@ from typing import Any, Callable
 from croniter import croniter
 
 from app.crons.config import CronJobDef, load_cron_config
-from app.crons.jobs import wikipedia_dinosaur_sync
+from app.crons.jobs import dinosaur_llm_enrich, wikipedia_dinosaur_sync
+from app.crons.logging_config import configure_cron_logging
 
 logger = logging.getLogger(__name__)
 
@@ -40,23 +41,37 @@ def _run_wikipedia_dinosaur_sync(params: dict[str, Any]) -> int:
     max_pages = params.get("max_pages")
     return wikipedia_dinosaur_sync.run_sync_job(
         dry_run=bool(params.get("dry_run", False)),
+        overwrite=bool(params.get("overwrite", False)),
         max_pages=int(max_pages) if max_pages is not None else None,
         category=params.get("category"),
     )
 
 
+def _run_dinosaur_llm_enrich(params: dict[str, Any]) -> int:
+    max_records = params.get("max_records")
+    return dinosaur_llm_enrich.run_enrich_job(
+        dry_run=bool(params.get("dry_run", False)),
+        overwrite=bool(params.get("overwrite", False)),
+        max_records=int(max_records) if max_records is not None else None,
+    )
+
+
 _JOB_HANDLERS: dict[str, Callable[[dict[str, Any]], int]] = {
     "wikipedia_dinosaur_sync": _run_wikipedia_dinosaur_sync,
+    "dinosaur_llm_enrich": _run_dinosaur_llm_enrich,
 }
 
 
-def run_single_job(job: CronJobDef) -> int:
+def run_single_job(job: CronJobDef, param_overrides: dict[str, Any] | None = None) -> int:
     handler = _JOB_HANDLERS.get(job.id)
     if handler is None:
         logger.error("Unknown cron job id: %s", job.id)
         return 1
+    params = dict(job.params or {})
+    if param_overrides:
+        params.update(param_overrides)
     logger.info("Running cron job %s", job.id)
-    return handler(job.params or {})
+    return handler(params)
 
 
 def run_scheduled_pass(now: datetime | None = None) -> int:
@@ -84,14 +99,24 @@ def run_scheduled_pass(now: datetime | None = None) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
-    logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
+    configure_cron_logging()
     parser = argparse.ArgumentParser(description="Run scheduled jobs from app/crons/crons.yaml")
     parser.add_argument(
         "--job",
         metavar="ID",
         help="Run a single job by id (ignores schedule). E.g. wikipedia_dinosaur_sync.",
     )
+    parser.add_argument(
+        "--overwrite",
+        action="store_true",
+        help="Re-fetch Wikipedia records even when already up to date (wikipedia_dinosaur_sync). "
+        "Re-run LLM enrichment even when llm_enriched=true (dinosaur_llm_enrich).",
+    )
     args = parser.parse_args(argv)
+
+    overrides: dict[str, Any] = {}
+    if args.overwrite:
+        overrides["overwrite"] = True
 
     if args.job:
         cfg = load_cron_config()
@@ -99,7 +124,7 @@ def main(argv: list[str] | None = None) -> int:
         if job is None:
             logger.error("No job with id %r in cron config", args.job)
             return 1
-        return run_single_job(job)
+        return run_single_job(job, overrides or None)
 
     return run_scheduled_pass()
 

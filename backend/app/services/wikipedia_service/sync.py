@@ -68,11 +68,11 @@ def _apply_parsed(existing: Dinosaur | None, *, title: str, page_id: int, metada
             period=parsed.period,
             cladogram=parsed.cladogram,
             diet_type=parsed.diet_type,
-            short_description=metadata.description,
             long_description=parsed.long_description,
             article=parsed.article_html,
             article_date=metadata.article_date,
             insert_date=now,
+            main_image_url=metadata.image_url,
         )
         return row
 
@@ -83,10 +83,12 @@ def _apply_parsed(existing: Dinosaur | None, *, title: str, page_id: int, metada
     existing.period = parsed.period
     existing.cladogram = parsed.cladogram
     existing.diet_type = parsed.diet_type
-    existing.short_description = metadata.description
     existing.long_description = parsed.long_description
     existing.article = parsed.article_html
     existing.article_date = metadata.article_date
+    if existing.main_image_url is None and metadata.image_url:
+        existing.main_image_url = metadata.image_url
+    existing.llm_enriched = False
     return existing
 
 
@@ -96,6 +98,7 @@ def sync_dinosaurs(
     category: str | None = None,
     max_pages: int | None = None,
     dry_run: bool = False,
+    overwrite: bool = False,
     client: WikipediaClient | None = None,
 ) -> SyncSummary:
     """Sync dinosaur records from Wikipedia category into the database."""
@@ -110,18 +113,32 @@ def sync_dinosaurs(
     try:
         members = list_category_articles(wiki, cat, max_pages=cap)
         total = len(members)
-        logger.info("wikipedia_sync: starting category=%s total_candidates=%d", cat, total)
+        logger.info(
+            "wikipedia_sync: starting category=%s total_candidates=%d overwrite=%s",
+            cat,
+            total,
+            overwrite,
+        )
 
         for index, member in enumerate(members, start=1):
-            prefix = f"[{index}/{total}] {member.title}"
+            prefix = f"wikipedia_sync: [{index}/{total}] {member.title}"
             try:
-                outcome = _process_member(session, wiki, member, dry_run=dry_run)
+                outcome = _process_member(
+                    session,
+                    wiki,
+                    member,
+                    dry_run=dry_run,
+                    overwrite=overwrite,
+                )
                 if outcome == "fetch_new":
                     counters.fetched += 1
                     logger.info("%s action=fetch reason=new", prefix)
-                elif outcome == "fetch_update":
+                elif outcome == "fetch_update_stale":
                     counters.updated += 1
                     logger.info("%s action=fetch reason=stale", prefix)
+                elif outcome == "fetch_update_overwrite":
+                    counters.updated += 1
+                    logger.info("%s action=fetch reason=overwrite", prefix)
                 elif outcome == "skip_current":
                     counters.skipped += 1
                     logger.info("%s action=skip reason=up_to_date", prefix)
@@ -150,12 +167,13 @@ def sync_dinosaurs(
     )
     logger.info(
         "wikipedia_sync: finished fetched=%d updated=%d skipped=%d failed=%d "
-        "disambiguation=%d dry_run=%s elapsed_s=%.1f",
+        "disambiguation=%d overwrite=%s dry_run=%s elapsed_s=%.1f",
         counters.fetched,
         counters.updated,
         counters.skipped,
         counters.failed,
         counters.disambiguation,
+        overwrite,
         dry_run,
         elapsed,
     )
@@ -168,13 +186,15 @@ def _process_member(
     member: CategoryMember,
     *,
     dry_run: bool,
+    overwrite: bool,
 ) -> str:
     metadata = fetch_page_metadata(wiki, member.title)
     if metadata.is_disambiguation:
         return "skip_disambiguation"
 
     existing = _get_by_page_id(session, metadata.page_id)
-    if existing and not _is_stale(existing.article_date, metadata.article_date):
+    is_stale = _is_stale(existing.article_date if existing else None, metadata.article_date)
+    if existing and not overwrite and not is_stale:
         return "skip_current"
 
     payload = wiki.page_with_html(member.title)
@@ -182,14 +202,18 @@ def _process_member(
     row = _apply_parsed(existing, title=metadata.title, page_id=metadata.page_id, metadata=metadata, parsed=parsed)
 
     if dry_run:
-        return "fetch_new" if existing is None else "fetch_update"
+        if existing is None:
+            return "fetch_new"
+        return "fetch_update_overwrite" if overwrite and not is_stale else "fetch_update_stale"
 
     if existing is None:
         session.add(row)
         return "fetch_new"
 
     session.add(row)
-    return "fetch_update"
+    if overwrite and not is_stale:
+        return "fetch_update_overwrite"
+    return "fetch_update_stale"
 
 
 def sync_exit_code(summary: SyncSummary) -> int:

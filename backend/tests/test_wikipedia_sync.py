@@ -24,13 +24,20 @@ def fixture_html():
     )
 
 
-def _metadata(*, page_id: int = 30467, title: str = "Tyrannosaurus", ts: datetime | None = None):
+def _metadata(
+    *,
+    page_id: int = 30467,
+    title: str = "Tyrannosaurus",
+    ts: datetime | None = None,
+    image_url: str | None = None,
+):
     return PageMetadata(
         page_id=page_id,
         title=title,
         description="Genus of Late Cretaceous theropod",
         is_disambiguation=False,
         article_date=ts or datetime(2026, 7, 8, tzinfo=timezone.utc),
+        image_url=image_url,
     )
 
 
@@ -68,8 +75,74 @@ def test_sync_inserts_new_record(session: Session, fixture_html, monkeypatch):
 
     row = session.exec(select(Dinosaur).where(Dinosaur.wikipedia_page_id == 30467)).first()
     assert row is not None
-    assert row.short_description == "Genus of Late Cretaceous theropod"
+    assert row.short_description is None
+    assert row.llm_enriched is False
     assert summary.counters.fetched == 1
+
+
+def test_sync_inserts_main_image_url_from_metadata(session: Session, fixture_html, monkeypatch):
+    client = MagicMock()
+    client.page_with_html.return_value = {"html": fixture_html}
+
+    monkeypatch.setattr(
+        "app.services.wikipedia_service.sync.list_category_articles",
+        lambda *_args, **_kwargs: [CategoryMember(page_id=30467, title="Tyrannosaurus")],
+    )
+    monkeypatch.setattr(
+        "app.services.wikipedia_service.sync.fetch_page_metadata",
+        lambda *_args, **_kwargs: _metadata(
+            image_url="https://upload.wikimedia.org/wikipedia/commons/t-rex.jpg",
+        ),
+    )
+    monkeypatch.setattr(
+        "app.services.wikipedia_service.sync.parse_article_html",
+        lambda html: _parsed(html),
+    )
+
+    sync_dinosaurs(session, client=client, dry_run=False)
+    session.commit()
+
+    row = session.exec(select(Dinosaur).where(Dinosaur.wikipedia_page_id == 30467)).first()
+    assert row is not None
+    assert row.main_image_url == "https://upload.wikimedia.org/wikipedia/commons/t-rex.jpg"
+
+
+def test_sync_stale_update_fills_null_main_image_url(session: Session, fixture_html, monkeypatch):
+    existing = Dinosaur(
+        name="Tyrannosaurus",
+        wikipedia_page_id=30467,
+        wikipedia_title="Tyrannosaurus",
+        cladogram={"kingdom": "Animalia"},
+        article_date=datetime(2025, 1, 1, tzinfo=timezone.utc),
+        insert_date=datetime(2024, 6, 1, tzinfo=timezone.utc),
+        main_image_url=None,
+    )
+    session.add(existing)
+    session.commit()
+
+    client = MagicMock()
+    client.page_with_html.return_value = {"html": fixture_html}
+
+    monkeypatch.setattr(
+        "app.services.wikipedia_service.sync.list_category_articles",
+        lambda *_args, **_kwargs: [CategoryMember(page_id=30467, title="Tyrannosaurus")],
+    )
+    monkeypatch.setattr(
+        "app.services.wikipedia_service.sync.fetch_page_metadata",
+        lambda *_args, **_kwargs: _metadata(
+            ts=datetime(2026, 7, 8, tzinfo=timezone.utc),
+            image_url="https://upload.wikimedia.org/wikipedia/commons/t-rex.jpg",
+        ),
+    )
+    monkeypatch.setattr(
+        "app.services.wikipedia_service.sync.parse_article_html",
+        lambda html: _parsed(html),
+    )
+
+    sync_dinosaurs(session, client=client)
+    session.refresh(existing)
+
+    assert existing.main_image_url == "https://upload.wikimedia.org/wikipedia/commons/t-rex.jpg"
 
 
 def test_sync_skips_up_to_date(session: Session, monkeypatch):
@@ -141,6 +214,82 @@ def test_sync_updates_stale_preserves_insert_date(session: Session, fixture_html
     assert existing.insert_date.replace(tzinfo=None) == insert_date.replace(tzinfo=None)
     assert existing.main_image_url == "https://example.com/kept.jpg"
     assert existing.period == "Late Cretaceous"
+    assert existing.llm_enriched is False
+
+
+def test_sync_stale_update_resets_llm_enriched(session: Session, fixture_html, monkeypatch):
+    existing = Dinosaur(
+        name="Tyrannosaurus",
+        wikipedia_page_id=30467,
+        wikipedia_title="Tyrannosaurus",
+        cladogram={"kingdom": "Animalia"},
+        article_date=datetime(2025, 1, 1, tzinfo=timezone.utc),
+        insert_date=datetime(2024, 6, 1, tzinfo=timezone.utc),
+        llm_enriched=True,
+        short_description="Previously enriched catchy description for museum visitors.",
+        length="12 m",
+    )
+    session.add(existing)
+    session.commit()
+
+    client = MagicMock()
+    client.page_with_html.return_value = {"html": fixture_html}
+
+    monkeypatch.setattr(
+        "app.services.wikipedia_service.sync.list_category_articles",
+        lambda *_args, **_kwargs: [CategoryMember(page_id=30467, title="Tyrannosaurus")],
+    )
+    monkeypatch.setattr(
+        "app.services.wikipedia_service.sync.fetch_page_metadata",
+        lambda *_args, **_kwargs: _metadata(ts=datetime(2026, 7, 8, tzinfo=timezone.utc)),
+    )
+    monkeypatch.setattr(
+        "app.services.wikipedia_service.sync.parse_article_html",
+        lambda html: _parsed(html),
+    )
+
+    sync_dinosaurs(session, client=client)
+    session.refresh(existing)
+
+    assert existing.llm_enriched is False
+
+
+def test_sync_overwrite_refetches_up_to_date(session: Session, fixture_html, monkeypatch):
+    existing = Dinosaur(
+        name="Tyrannosaurus",
+        wikipedia_page_id=30467,
+        wikipedia_title="Tyrannosaurus",
+        cladogram={"kingdom": "Animalia"},
+        article_date=datetime(2026, 7, 8, tzinfo=timezone.utc),
+        insert_date=datetime(2025, 1, 1, tzinfo=timezone.utc),
+        main_image_url="https://example.com/image.jpg",
+    )
+    session.add(existing)
+    session.commit()
+
+    client = MagicMock()
+    client.page_with_html.return_value = {"html": fixture_html}
+
+    monkeypatch.setattr(
+        "app.services.wikipedia_service.sync.list_category_articles",
+        lambda *_args, **_kwargs: [CategoryMember(page_id=30467, title="Tyrannosaurus")],
+    )
+    monkeypatch.setattr(
+        "app.services.wikipedia_service.sync.fetch_page_metadata",
+        lambda *_args, **_kwargs: _metadata(ts=datetime(2026, 7, 8, tzinfo=timezone.utc)),
+    )
+    monkeypatch.setattr(
+        "app.services.wikipedia_service.sync.parse_article_html",
+        lambda html: _parsed(html),
+    )
+
+    summary = sync_dinosaurs(session, client=client, overwrite=True)
+    session.refresh(existing)
+
+    assert summary.counters.updated == 1
+    assert summary.counters.skipped == 0
+    assert existing.period == "Late Cretaceous"
+    client.page_with_html.assert_called_once()
 
 
 def test_sync_exit_code_threshold():
