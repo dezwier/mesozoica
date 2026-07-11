@@ -65,6 +65,16 @@ def _get_by_page_id(session: Session, page_id: int) -> Dinosaur | None:
     return session.exec(select(Dinosaur).where(Dinosaur.wikipedia_page_id == page_id)).first()
 
 
+def _find_existing(session: Session, *, page_id: int, title: str) -> Dinosaur | None:
+    """Match by Wikipedia page id, then fall back to title for legacy stub rows."""
+    by_page_id = _get_by_page_id(session, page_id)
+    if by_page_id is not None:
+        return by_page_id
+    return session.exec(
+        select(Dinosaur).where(Dinosaur.wikipedia_title == title)
+    ).first()
+
+
 def _clear_llm_enrichment_fields(dinosaur: Dinosaur) -> None:
     """Drop LLM-only fields so stale enrichment is not shown after a Wikipedia refresh."""
     dinosaur.length = None
@@ -120,6 +130,7 @@ def _apply_parsed(existing: Dinosaur | None, *, title: str, page_id: int, metada
         return row
 
     existing.name = title
+    existing.wikipedia_page_id = page_id
     existing.wikipedia_title = title
     existing.birth = parsed.birth
     existing.death = parsed.death
@@ -270,7 +281,7 @@ def _process_member(
     if metadata.is_disambiguation:
         return "skip_disambiguation"
 
-    existing = _get_by_page_id(session, metadata.page_id)
+    existing = _find_existing(session, page_id=metadata.page_id, title=metadata.title)
     is_stale = _is_stale(existing.article_date if existing else None, metadata.article_date)
     incomplete = existing is not None and _is_incomplete(existing)
     if existing and not overwrite and not is_stale and not incomplete:

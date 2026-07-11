@@ -261,6 +261,52 @@ def test_sync_refreshes_incomplete_stub(session: Session, fixture_html, monkeypa
     client.page_with_html.assert_called_once()
 
 
+def test_sync_updates_stub_matched_by_title_when_page_id_differs(
+    session: Session, fixture_html, monkeypatch
+):
+    existing = Dinosaur(
+        name="Allosaurus",
+        wikipedia_page_id=99999,
+        wikipedia_title="Allosaurus",
+        cladogram={},
+        article=None,
+        article_date=datetime(2026, 7, 8, tzinfo=timezone.utc),
+        insert_date=datetime(2025, 1, 1, tzinfo=timezone.utc),
+    )
+    session.add(existing)
+    session.commit()
+
+    client = MagicMock()
+    client.page_with_html.return_value = {"html": fixture_html}
+
+    monkeypatch.setattr(
+        "app.services.wikipedia_service.sync.list_category_articles",
+        lambda *_args, **_kwargs: [CategoryMember(page_id=1347, title="Allosaurus")],
+    )
+    monkeypatch.setattr(
+        "app.services.wikipedia_service.sync.fetch_page_metadata",
+        lambda *_args, **_kwargs: _metadata(
+            page_id=1347,
+            title="Allosaurus",
+            ts=datetime(2026, 7, 8, tzinfo=timezone.utc),
+        ),
+    )
+    monkeypatch.setattr(
+        "app.services.wikipedia_service.sync.parse_article_html",
+        lambda html: _parsed(html),
+    )
+
+    summary = sync_dinosaurs(session, client=client)
+    session.refresh(existing)
+
+    assert summary.counters.updated == 1
+    assert summary.counters.fetched == 0
+    assert existing.wikipedia_page_id == 1347
+    assert existing.period == "Late Cretaceous"
+    assert existing.article is not None
+    assert len(session.exec(select(Dinosaur)).all()) == 1
+
+
 def test_sync_stale_update_resets_llm_enriched(session: Session, fixture_html, monkeypatch):
     existing = Dinosaur(
         name="Tyrannosaurus",
