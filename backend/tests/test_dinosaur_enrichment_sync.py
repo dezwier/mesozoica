@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from unittest.mock import patch
 
 import pytest
-from sqlmodel import Session, select
+from sqlmodel import Session
 
 from app.models.dinosaur import Dinosaur
 from app.services.dinosaur_enrichment_service.sync import (
@@ -54,9 +54,6 @@ def test_enrich_writes_fields_and_sets_flag(session: Session):
     with patch(
         "app.services.dinosaur_enrichment_service.sync.call_gemini_api",
         return_value=(_llm_response(), {"prompt_tokens": 100, "output_tokens": 50}),
-    ), patch(
-        "app.services.dinosaur_enrichment_service.sync.build_enrichment_prompt",
-        return_value=("sys", "prompt", {"length_hint": "12 m", "mass_hint": "7 t"}),
     ):
         summary = enrich_dinosaurs(session, dry_run=False)
 
@@ -91,39 +88,6 @@ def test_enrich_skips_already_enriched(session: Session):
     assert summary.total_candidates == 0
 
 
-def test_enrich_uses_size_hints_when_llm_omits_length_mass(session: Session):
-    row = Dinosaur(
-        name="Abrosaurus",
-        wikipedia_page_id=9001,
-        wikipedia_title="Abrosaurus",
-        cladogram={},
-        article="<p>measuring no more than 9.1 metres (30 ft) long.</p>",
-    )
-    session.add(row)
-    session.commit()
-
-    llm_without_sizes = {
-        "length": None,
-        "mass": None,
-        "location": "China",
-        "diet_type": "herbivore",
-        "short_description": "A compact Early Jurassic sauropod from China with a distinctive boxy skull.",
-    }
-
-    with patch(
-        "app.services.dinosaur_enrichment_service.sync.call_gemini_api",
-        return_value=(llm_without_sizes, {}),
-    ), patch(
-        "app.services.dinosaur_enrichment_service.sync.build_enrichment_prompt",
-        return_value=("sys", "prompt", {"length_hint": "9.1 m"}),
-    ):
-        enrich_dinosaurs(session, dry_run=False)
-
-    session.refresh(row)
-    assert row.length == "9.1 m"
-    assert row.mass is None
-
-
 def test_enrich_overwrite_refreshes_enriched(session: Session):
     row = Dinosaur(
         name="Velociraptor",
@@ -132,7 +96,7 @@ def test_enrich_overwrite_refreshes_enriched(session: Session):
         cladogram={},
         article="<p>Small theropod.</p>",
         llm_enriched=True,
-        short_description="Old description that is long enough to pass validation checks.",
+        short_description="Old description.",
         length="2 m",
     )
     session.add(row)

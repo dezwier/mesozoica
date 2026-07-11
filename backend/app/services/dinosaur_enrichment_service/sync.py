@@ -55,15 +55,10 @@ def _select_candidates(
     return list(session.exec(stmt).all())
 
 
-def _apply_enrichment(
-    dinosaur: Dinosaur,
-    raw: dict,
-    *,
-    size_hints: dict[str, str],
-) -> None:
+def _apply_enrichment(dinosaur: Dinosaur, raw: dict) -> None:
     validated = validate_llm_enrichment(raw)
-    dinosaur.length = validated.length or size_hints.get("length_hint")
-    dinosaur.mass = validated.mass or size_hints.get("mass_hint")
+    dinosaur.length = validated.length
+    dinosaur.mass = validated.mass
     dinosaur.location = validated.location
     dinosaur.diet_type = validated.diet_type
     dinosaur.short_description = validated.short_description
@@ -108,7 +103,7 @@ def enrich_dinosaurs(
                 logger.info("%s action=skip reason=no_article", prefix)
                 continue
 
-            system_instruction, user_prompt, size_hints = build_enrichment_prompt(dinosaur)
+            system_instruction, user_prompt = build_enrichment_prompt(dinosaur)
             raw, _usage = call_gemini_api(
                 user_prompt,
                 system_instruction=system_instruction,
@@ -124,7 +119,7 @@ def enrich_dinosaurs(
                 logger.info("%s action=enrich reason=dry_run", prefix)
             else:
                 was_enriched = dinosaur.llm_enriched
-                _apply_enrichment(dinosaur, raw, size_hints=size_hints)
+                _apply_enrichment(dinosaur, raw)
                 session.add(dinosaur)
                 session.commit()
                 counters.enriched += 1
