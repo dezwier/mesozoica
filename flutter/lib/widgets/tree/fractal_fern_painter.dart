@@ -9,6 +9,7 @@ import '../../services/fractal_tree_layout.dart';
 class FractalFernPainter extends CustomPainter {
   FractalFernPainter({
     required this.layout,
+    required this.viewTransform,
     required this.zoomScale,
     required this.visibleTreeRect,
     required this.viewportCenterTree,
@@ -21,6 +22,7 @@ class FractalFernPainter extends CustomPainter {
   });
 
   final FractalTreeLayout layout;
+  final Matrix4 viewTransform;
   final double zoomScale;
   final Rect visibleTreeRect;
   final Offset viewportCenterTree;
@@ -33,7 +35,7 @@ class FractalFernPainter extends CustomPainter {
 
   static const _labelPlacer = FractalLabelPlacer();
 
-  static const _genusDotScreenRadius = 5.0;
+  static const _genusDotScreenRadius = 5.5;
   static const _rootGlowScreenRadius = 56.0;
 
   double _treeUnits(double screenPixels) =>
@@ -44,6 +46,9 @@ class FractalFernPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
+    canvas.save();
+    canvas.clipRect(Offset.zero & size);
+    canvas.transform(viewTransform.storage);
     canvas.translate(-layout.bounds.left, -layout.bounds.top);
 
     _paintRootGlow(canvas, layout.root);
@@ -51,6 +56,7 @@ class FractalFernPainter extends CustomPainter {
     _paintBranches(canvas, layout.root);
 
     _paintDynamicLabels(canvas);
+    canvas.restore();
   }
 
   void _paintRootGlow(Canvas canvas, FractalLayoutNode root) {
@@ -120,6 +126,8 @@ class FractalFernPainter extends CustomPainter {
 
     final ratio = node.strokeWidth / layout.maxStrokeWidth;
     final paint = Paint()
+      ..isAntiAlias = true
+      ..filterQuality = FilterQuality.high
       ..color = branchColor.withValues(alpha: 0.3 + 0.6 * ratio)
       ..strokeWidth = _treeUnits(node.strokeWidth)
       ..style = PaintingStyle.stroke
@@ -163,26 +171,23 @@ class FractalFernPainter extends CustomPainter {
   void _paintDynamicLabels(Canvas canvas) {
     if (visibleTreeRect.isEmpty) return;
 
-    double treeFont(double screenSize) =>
-        FractalLabelPlacer.treeUnits(screenSize, zoomScale);
-
     final genusStyle = TextStyle(
       color: genusLeafColor,
-      fontSize: treeFont(FractalLabelPlacer.genusScreenFontSize),
+      fontSize: FractalLabelPlacer.genusScreenFontSize,
       fontWeight: FontWeight.w700,
-      letterSpacing: 0.2,
+      letterSpacing: 0,
     );
     final shallowCladeStyle = TextStyle(
       color: labelColor,
-      fontSize: treeFont(FractalLabelPlacer.shallowCladeScreenFontSize),
+      fontSize: FractalLabelPlacer.shallowCladeScreenFontSize,
       fontWeight: FontWeight.w700,
-      letterSpacing: 0.2,
+      letterSpacing: 0,
     );
     final cladeStyle = TextStyle(
       color: labelMutedColor,
-      fontSize: treeFont(FractalLabelPlacer.cladeScreenFontSize),
+      fontSize: FractalLabelPlacer.cladeScreenFontSize,
       fontWeight: FontWeight.w500,
-      letterSpacing: 0.2,
+      letterSpacing: 0,
     );
 
     final candidates = _labelPlacer.collectCandidates(
@@ -199,14 +204,35 @@ class FractalFernPainter extends CustomPainter {
       candidates,
       zoomScale: zoomScale,
     );
-    for (final (candidate, rect) in placed) {
-      candidate.textPainter.paint(canvas, rect.topLeft);
+    for (final label in placed) {
+      _paintCrispLabel(
+        canvas,
+        label.candidate.textPainter,
+        label.candidate.anchor,
+        label.screenOffset,
+      );
     }
+  }
+
+  /// Paints text at native screen resolution — immune to zoom blur.
+  void _paintCrispLabel(
+    Canvas canvas,
+    TextPainter textPainter,
+    Offset anchor,
+    Offset screenOffset,
+  ) {
+    if (zoomScale <= 0) return;
+    canvas.save();
+    canvas.translate(anchor.dx, anchor.dy);
+    canvas.scale(1 / zoomScale, 1 / zoomScale);
+    textPainter.paint(canvas, screenOffset);
+    canvas.restore();
   }
 
   @override
   bool shouldRepaint(covariant FractalFernPainter oldDelegate) {
     return oldDelegate.layout != layout ||
+        oldDelegate.viewTransform != viewTransform ||
         (oldDelegate.zoomScale - zoomScale).abs() > 0.001 ||
         oldDelegate.visibleTreeRect != visibleTreeRect ||
         (oldDelegate.viewportCenterTree - viewportCenterTree).distance > 0.5 ||

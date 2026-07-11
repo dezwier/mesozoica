@@ -1,3 +1,5 @@
+import '../utils/display_text.dart';
+
 class CladogramNode {
   const CladogramNode({
     required this.rankKey,
@@ -67,8 +69,8 @@ class DinosaurSummary {
   List<CladogramNode> cladogramNodes({String fromRank = 'Dinosauria'}) {
     final entries = <MapEntry<String, String>>[];
     for (final entry in cladogram.entries) {
-      final value = entry.value?.toString().trim();
-      if (value == null || value.isEmpty) continue;
+      final value = canonicalTaxonName(entry.value?.toString() ?? '');
+      if (value.isEmpty) continue;
       entries.add(MapEntry(entry.key, value));
     }
 

@@ -1,5 +1,6 @@
 import '../models/dinosaur.dart';
 import '../models/phylo_tree.dart';
+import '../utils/display_text.dart';
 
 /// Merges per-dinosaur cladogram lineages into a single phylogenetic trie.
 class PhyloTreeBuilder {
@@ -54,11 +55,13 @@ class PhyloTreeBuilder {
     for (var i = startIndex; i < nodes.length; i++) {
       final node = nodes[i];
       final isLast = i == nodes.length - 1;
+      final name = canonicalTaxonName(node.name);
+      if (name.isEmpty) continue;
 
-      var child = current.findChildByName(node.name);
+      var child = current.findChildByName(name);
       if (child == null) {
         child = PhyloTreeNode(
-          name: node.name,
+          name: name,
           rankKey: node.rankKey,
           depth: current.depth + 1,
         );

@@ -135,4 +135,51 @@ void main() {
     expect(genusNode?.dinosaurs, hasLength(2));
     expect(genusNode?.dinosaurs.map((d) => d.id), containsAll([1, 2]));
   });
+
+  test('merges clade variants with different whitespace or markers', () {
+    final result = builder.build([
+      _dino(
+        id: 1,
+        name: 'Brachiosaurus',
+        cladogram: {
+          'clade': 'Dinosauria',
+          'clade_2': 'Saurischia',
+          'clade_3': 'Sauropodomorpha',
+          'genus': 'Brachiosaurus',
+        },
+      ),
+      _dino(
+        id: 2,
+        name: 'Diplodocus',
+        cladogram: {
+          'clade': 'Dinosauria',
+          'clade_2': 'Saurischia',
+          'clade_3': ' † Sauropodomorpha ',
+          'genus': 'Diplodocus',
+        },
+      ),
+      _dino(
+        id: 3,
+        name: 'Allosaurus',
+        cladogram: {
+          'clade': 'Dinosauria',
+          'clade_2': 'Saurischia',
+          'clade_3': 'Theropoda',
+          'genus': 'Allosaurus',
+        },
+      ),
+    ]);
+
+    final saurischia = result.root.findChildByName('Saurischia');
+    expect(saurischia, isNotNull);
+    expect(saurischia!.children, hasLength(2));
+
+    final sauropodomorpha = saurischia.findChildByName('Sauropodomorpha');
+    expect(sauropodomorpha, isNotNull);
+    expect(sauropodomorpha!.children, hasLength(2));
+    expect(
+      sauropodomorpha.children.map((child) => child.name),
+      containsAll(['Brachiosaurus', 'Diplodocus']),
+    );
+  });
 }

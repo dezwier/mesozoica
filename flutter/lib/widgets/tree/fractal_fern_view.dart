@@ -164,19 +164,13 @@ class _FractalFernViewState extends State<FractalFernView> {
 
         return GestureDetector(
           onTapUp: _handleTapUp,
-          child: InteractiveViewer(
-            transformationController: _transformController,
-            constrained: false,
-            boundaryMargin: const EdgeInsets.all(240),
-            minScale: 0.01,
-            maxScale: 20,
-            child: RepaintBoundary(
-              child: SizedBox(
-                width: canvasSize.width,
-                height: canvasSize.height,
+          child: Stack(
+            children: [
+              Positioned.fill(
                 child: CustomPaint(
                   painter: FractalFernPainter(
                     layout: widget.layout,
+                    viewTransform: _transform,
                     zoomScale: _zoomScale,
                     visibleTreeRect: _visibleTreeRect,
                     viewportCenterTree: _viewportCenterTree,
@@ -187,10 +181,22 @@ class _FractalFernViewState extends State<FractalFernView> {
                     leafColor: cardTheme.cardAccent,
                     genusLeafColor: genusLeafColor,
                   ),
-                  size: canvasSize,
                 ),
               ),
-            ),
+              Positioned.fill(
+                child: InteractiveViewer(
+                  transformationController: _transformController,
+                  constrained: false,
+                  boundaryMargin: const EdgeInsets.all(double.infinity),
+                  minScale: 0.005,
+                  maxScale: 200,
+                  child: SizedBox(
+                    width: canvasSize.width,
+                    height: canvasSize.height,
+                  ),
+                ),
+              ),
+            ],
           ),
         );
       },

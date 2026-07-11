@@ -7,7 +7,7 @@ void main() {
       expect(
         FractalLodPolicy.shouldCollapse(
           branchLength: 80,
-          zoomScale: 0.05,
+          zoomScale: 0.04,
           hasChildren: true,
         ),
         isTrue,

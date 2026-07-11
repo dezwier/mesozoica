@@ -37,10 +37,11 @@ class FractalTreeLayout {
   static const fullCircleFan = math.pi * 2;
 
   FractalTreeLayout({
-    this.baseLength = 80,
-    this.decay = 0.82,
+    this.baseLength = 84,
+    this.decay = 0.83,
     this.rootFanRadians = fullCircleFan,
-    this.branchCurveFactor = 0.2,
+    this.branchCurveFactor = 0.21,
+    this.siblingAngleGap = 0.02,
     this.minStrokeWidth = 1.2,
     this.maxStrokeWidth = 10,
     this.boundsPadding = 48,
@@ -50,6 +51,8 @@ class FractalTreeLayout {
   final double decay;
   final double rootFanRadians;
   final double branchCurveFactor;
+  /// Extra radians inserted between sibling wedges to widen the fan.
+  final double siblingAngleGap;
   final double minStrokeWidth;
   final double maxStrokeWidth;
   final double boundsPadding;
@@ -117,7 +120,7 @@ class FractalTreeLayout {
         isRoot ? 0.0 : _branchLengthForDepth(depth);
     final branchPath = isRoot
         ? null
-        : _buildBranchPath(parentPos, position);
+        : _buildBranchPath(parentPos, position, depth);
 
     final isGenus = node.isGenus && node.dinosaurs.isNotEmpty;
     final strokeWidth = _strokeWidthFor(node.leafCount);
@@ -137,11 +140,16 @@ class FractalTreeLayout {
     }
 
     final totalLeaves = node.leafCount;
+    final childCount = node.children.length;
+    final wedgeSpan = angleMax - angleMin;
+    final totalGap = siblingAngleGap * math.max(0, childCount - 1);
+    final allocatable = math.max(0, wedgeSpan - totalGap);
+
     var currentAngle = angleMin;
     final childLayouts = <FractalLayoutNode>[];
 
     for (final child in node.children) {
-      final span = (angleMax - angleMin) * child.leafCount / totalLeaves;
+      final span = allocatable * child.leafCount / totalLeaves;
       childLayouts.add(
         _layoutNode(
           node: child,
@@ -152,6 +160,9 @@ class FractalTreeLayout {
         ),
       );
       currentAngle += span;
+      if (child != node.children.last) {
+        currentAngle += siblingAngleGap;
+      }
     }
 
     return FractalLayoutNode(
@@ -181,7 +192,7 @@ class FractalTreeLayout {
     return parent + Offset(math.sin(mid) * len, -math.cos(mid) * len);
   }
 
-  Path _buildBranchPath(Offset from, Offset to) {
+  Path _buildBranchPath(Offset from, Offset to, int depth) {
     final dx = to.dx - from.dx;
     final dy = to.dy - from.dy;
     final length = math.sqrt(dx * dx + dy * dy);
@@ -191,19 +202,32 @@ class FractalTreeLayout {
         ..lineTo(to.dx, to.dy);
     }
 
-    final perpX = -dy / length;
-    final perpY = dx / length;
-    final curveOffset = length * branchCurveFactor;
-    final sign = from.dx <= to.dx ? 1.0 : -1.0;
+    final ux = dx / length;
+    final uy = dy / length;
+    final perpX = -uy;
+    final perpY = ux;
+    final depthCurveBoost = 1.0 + depth * 0.04;
+    final bow = length * branchCurveFactor * depthCurveBoost * 0.45;
 
-    final control = Offset(
-      (from.dx + to.dx) / 2 + perpX * curveOffset * sign,
-      (from.dy + to.dy) / 2 + perpY * curveOffset * sign * 0.35,
+    final control1 = Offset(
+      from.dx + ux * length * 0.28 + perpX * bow,
+      from.dy + uy * length * 0.28 + perpY * bow,
+    );
+    final control2 = Offset(
+      from.dx + ux * length * 0.72 + perpX * bow,
+      from.dy + uy * length * 0.72 + perpY * bow,
     );
 
     return Path()
       ..moveTo(from.dx, from.dy)
-      ..quadraticBezierTo(control.dx, control.dy, to.dx, to.dy);
+      ..cubicTo(
+        control1.dx,
+        control1.dy,
+        control2.dx,
+        control2.dy,
+        to.dx,
+        to.dy,
+      );
   }
 
   double _strokeWidthFor(int leafCount) {
@@ -216,18 +240,18 @@ class FractalTreeLayout {
 class FractalLodPolicy {
   const FractalLodPolicy._();
 
-  static const double collapseThreshold = 6;
+  static const double collapseThreshold = 4;
   static const double labelThreshold = 18;
   static const double genusTapThreshold = 12;
 
   /// Converts on-screen pixels to tree-space units at [zoomScale].
   static double treeUnits(double screenPixels, double zoomScale) =>
-      screenPixels / zoomScale.clamp(0.01, 20);
+      screenPixels / zoomScale.clamp(0.001, 500);
 
-  /// Slight thickening when zoomed in (+8% per decade, max +20%).
+  /// Grows slightly when zoomed in (+12% per decade, max +40%).
   static double subtleZoomBoost(double zoomScale) {
-    return (1.0 + math.log(zoomScale.clamp(0.25, 12)) / math.ln10 * 0.08)
-        .clamp(1.0, 1.2);
+    return (1.0 + math.log(zoomScale.clamp(0.25, 200)) / math.ln10 * 0.12)
+        .clamp(1.0, 1.4);
   }
 
   static double treeUnitsWithBoost({
@@ -270,8 +294,8 @@ class FractalLodPolicy {
     required int maxLeaves,
     required bool isGenus,
   }) {
-    final base = (isGenus ? 5.0 : 3.5) +
-        3 * math.sqrt(leafCount / math.max(1, maxLeaves));
+    final base = (isGenus ? 5.5 : 4.0) +
+        3.5 * math.sqrt(leafCount / math.max(1, maxLeaves));
     return base;
   }
 

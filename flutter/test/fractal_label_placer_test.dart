@@ -95,6 +95,6 @@ void main() {
     ], zoomScale: 1);
 
     expect(placed, hasLength(2));
-    expect(placed[0].$2.overlaps(placed[1].$2), isFalse);
+    expect(placed[0].treeRect(1).overlaps(placed[1].treeRect(1)), isFalse);
   });
 }

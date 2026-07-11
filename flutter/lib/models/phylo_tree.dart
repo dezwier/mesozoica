@@ -1,4 +1,5 @@
 import 'dinosaur.dart';
+import '../utils/display_text.dart';
 
 /// A node in the merged phylogenetic trie built from per-dinosaur cladograms.
 class PhyloTreeNode {
@@ -38,8 +39,9 @@ class PhyloTreeNode {
   }
 
   PhyloTreeNode? findChildByName(String childName) {
+    final key = taxonMergeKey(childName);
     for (final child in children) {
-      if (child.name == childName) return child;
+      if (taxonMergeKey(child.name) == key) return child;
     }
     return null;
   }

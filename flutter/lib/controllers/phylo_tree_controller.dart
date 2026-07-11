@@ -52,10 +52,11 @@ class PhyloTreeController extends ChangeNotifier {
       final result = _builder.build(dinosaurs);
 
       final layout = FractalTreeLayout(
-        baseLength: dinosaurs.length > 200 ? 64 : 80,
-        decay: 0.82,
+        baseLength: dinosaurs.length > 200 ? 68 : 84,
+        decay: 0.83,
         rootFanRadians: FractalTreeLayout.fullCircleFan,
-        branchCurveFactor: 0.2,
+        branchCurveFactor: 0.21,
+        siblingAngleGap: 0.02,
       )..compute(result.root);
 
       _root = result.root;

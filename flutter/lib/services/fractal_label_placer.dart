@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/rendering.dart';
 
+import '../utils/display_text.dart';
 import 'fractal_tree_layout.dart';
 
 /// A label waiting for non-overlapping placement.
@@ -21,28 +22,49 @@ class FractalLabelCandidate {
   final bool isGenus;
 }
 
+/// A label positioned in screen pixels relative to its anchor.
+class PlacedLabel {
+  const PlacedLabel({
+    required this.candidate,
+    required this.screenOffset,
+  });
+
+  final FractalLabelCandidate candidate;
+  final Offset screenOffset;
+
+  Rect treeRect(double zoomScale) {
+    final tp = candidate.textPainter;
+    final z = zoomScale.clamp(0.001, 500.0);
+    return Rect.fromLTWH(
+      candidate.anchor.dx + screenOffset.dx / z,
+      candidate.anchor.dy + screenOffset.dy / z,
+      tp.width / z,
+      tp.height / z,
+    );
+  }
+}
+
 /// Picks and places labels for the visible viewport without overlap.
 class FractalLabelPlacer {
   const FractalLabelPlacer({
     this.labelPadding = 3,
-    this.maxLabels = 48,
+    this.maxLabels = 64,
   });
 
   final double labelPadding;
   final int maxLabels;
 
   /// Fixed on-screen font sizes (logical pixels).
-  static const double genusScreenFontSize = 13;
-  static const double shallowCladeScreenFontSize = 14.5;
-  static const double cladeScreenFontSize = 12;
-  static const double maxLabelScreenWidth = 130;
+  static const double genusScreenFontSize = 16;
+  static const double shallowCladeScreenFontSize = 17.5;
+  static const double cladeScreenFontSize = 14.5;
 
   /// Converts screen pixels to tree-space units for a given [zoomScale].
   static double treeUnits(double screenPixels, double zoomScale) =>
-      screenPixels / zoomScale.clamp(0.01, 20);
+      screenPixels / zoomScale.clamp(0.001, 500.0);
 
   static double minScreenLengthForLabel(double zoomScale) {
-    return (14 / zoomScale.clamp(0.05, 8)).clamp(4, 28);
+    return (10 / zoomScale.clamp(0.05, 200)).clamp(3, 24);
   }
 
   /// Collects label candidates visible in [visibleTreeRect].
@@ -80,13 +102,12 @@ class FractalLabelPlacer {
                 : (node.depth <= 2 ? shallowCladeStyle : cladeStyle);
 
             final textPainter = TextPainter(
-              text: TextSpan(text: node.label, style: style),
+              text: TextSpan(
+                text: displayTaxonName(node.label),
+                style: style,
+              ),
               textDirection: TextDirection.ltr,
-              maxLines: 1,
-              ellipsis: '…',
-            )..layout(
-                maxWidth: treeUnits(maxLabelScreenWidth, zoomScale),
-              );
+            )..layout();
 
             final dist = (node.position - viewportCenterTree).distance;
             final priority = _priority(
@@ -127,7 +148,10 @@ class FractalLabelPlacer {
     // Root label when visible.
     if (expandedVisible.contains(root.position)) {
       final textPainter = TextPainter(
-        text: TextSpan(text: root.label, style: shallowCladeStyle),
+        text: TextSpan(
+          text: displayTaxonName(root.label),
+          style: shallowCladeStyle,
+        ),
         textDirection: TextDirection.ltr,
       )..layout();
       candidates.add(
@@ -162,27 +186,37 @@ class FractalLabelPlacer {
     return score;
   }
 
-  /// Returns placed labels as (candidate, top-left rect).
-  List<(FractalLabelCandidate, Rect)> placeWithoutOverlap(
+  /// Returns placed labels with screen-pixel offsets from each anchor.
+  List<PlacedLabel> placeWithoutOverlap(
     List<FractalLabelCandidate> candidates, {
     required double zoomScale,
   }) {
     final placed = <Rect>[];
-    final result = <(FractalLabelCandidate, Rect)>[];
-    final pad = treeUnits(labelPadding, zoomScale);
+    final result = <PlacedLabel>[];
+    final z = zoomScale.clamp(0.001, 500.0);
+    final padTree = labelPadding / z;
 
     for (final candidate in candidates) {
-      final rect = _findOpenRect(candidate, placed, zoomScale: zoomScale);
-      if (rect == null) continue;
-      placed.add(rect.inflate(pad));
-      result.add((candidate, rect));
+      final screenOffset = _findOpenOffset(candidate, placed, zoomScale: z);
+      if (screenOffset == null) continue;
+
+      final treeRect = Rect.fromLTWH(
+        candidate.anchor.dx + screenOffset.dx / z,
+        candidate.anchor.dy + screenOffset.dy / z,
+        candidate.textPainter.width / z,
+        candidate.textPainter.height / z,
+      );
+      placed.add(treeRect.inflate(padTree));
+      result.add(
+        PlacedLabel(candidate: candidate, screenOffset: screenOffset),
+      );
     }
     return result;
   }
 
-  Rect? _findOpenRect(
+  Offset? _findOpenOffset(
     FractalLabelCandidate candidate,
-    List<Rect> placed, {
+    List<Rect> placedTree, {
     required double zoomScale,
   }) {
     final tp = candidate.textPainter;
@@ -190,31 +224,39 @@ class FractalLabelPlacer {
     final h = tp.height;
     final anchor = candidate.anchor;
     final isRoot = candidate.node.parentPosition == null;
-    final pad = treeUnits(labelPadding, zoomScale);
-    double s(double screen) => treeUnits(screen, zoomScale);
+    final padTree = labelPadding / zoomScale;
 
     final offsets = isRoot
-        ? [Offset(0, s(12))]
-        : [
-            Offset(-w / 2, -s(18) - h),
-            Offset(-w / 2, s(10)),
-            Offset(-w - s(8), -h / 2),
-            Offset(s(8), -h / 2),
-            Offset(-w / 2, -s(28) - h),
-            Offset(-w / 2, s(22)),
-            Offset(-w / 2 - s(12), -s(18) - h),
-            Offset(w / 2 + s(12), -s(18) - h),
-          ];
+        ? [const Offset(0, 12)]
+        : candidate.isGenus
+            ? [
+                Offset(-w / 2, -20 - h),
+                Offset(-w / 2, 14),
+                Offset(-w - 12, -h / 2),
+                Offset(14, -h / 2),
+                Offset(-w / 2, -32 - h),
+                Offset(-w / 2, 26),
+              ]
+            : [
+                Offset(-w / 2, -18 - h),
+                Offset(-w / 2, 10),
+                Offset(-w - 8, -h / 2),
+                Offset(8, -h / 2),
+                Offset(-w / 2, -28 - h),
+                Offset(-w / 2, 22),
+                Offset(-w / 2 - 12, -18 - h),
+                Offset(w / 2 + 12, -18 - h),
+              ];
 
-    for (final delta in offsets) {
-      final rect = Rect.fromLTWH(
-        anchor.dx + delta.dx,
-        anchor.dy + delta.dy,
-        w,
-        h,
+    for (final screenOffset in offsets) {
+      final treeRect = Rect.fromLTWH(
+        anchor.dx + screenOffset.dx / zoomScale,
+        anchor.dy + screenOffset.dy / zoomScale,
+        w / zoomScale,
+        h / zoomScale,
       );
-      if (!_overlapsAny(rect.inflate(pad), placed)) {
-        return rect;
+      if (!_overlapsAny(treeRect.inflate(padTree), placedTree)) {
+        return screenOffset;
       }
     }
     return null;
