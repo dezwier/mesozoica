@@ -3,26 +3,44 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 
+import '../../services/fractal_label_placer.dart';
 import '../../services/fractal_tree_layout.dart';
 
 class FractalFernPainter extends CustomPainter {
   FractalFernPainter({
     required this.layout,
     required this.zoomScale,
+    required this.visibleTreeRect,
+    required this.viewportCenterTree,
     required this.branchColor,
     required this.labelColor,
     required this.labelMutedColor,
     required this.rootGlowColor,
     required this.leafColor,
+    required this.genusLeafColor,
   });
 
   final FractalTreeLayout layout;
   final double zoomScale;
+  final Rect visibleTreeRect;
+  final Offset viewportCenterTree;
   final Color branchColor;
   final Color labelColor;
   final Color labelMutedColor;
   final Color rootGlowColor;
   final Color leafColor;
+  final Color genusLeafColor;
+
+  static const _labelPlacer = FractalLabelPlacer();
+
+  static const _genusDotScreenRadius = 5.0;
+  static const _rootGlowScreenRadius = 56.0;
+
+  double _treeUnits(double screenPixels) =>
+      FractalLodPolicy.treeUnitsWithBoost(
+        screenPixels: screenPixels,
+        zoomScale: zoomScale,
+      );
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -30,15 +48,15 @@ class FractalFernPainter extends CustomPainter {
 
     _paintRootGlow(canvas, layout.root);
 
-    _paintSubtree(
-      canvas,
-      layout.root,
-      parentExpanded: true,
-    );
+    _paintBranches(canvas, layout.root);
+
+    _paintDynamicLabels(canvas);
   }
 
   void _paintRootGlow(Canvas canvas, FractalLayoutNode root) {
-    final glowRadius = 56 + layout.maxStrokeWidth * 2;
+    if (!visibleTreeRect.inflate(80).contains(root.position)) return;
+
+    final glowRadius = _treeUnits(_rootGlowScreenRadius + layout.maxStrokeWidth);
     final paint = Paint()
       ..shader = ui.Gradient.radial(
         root.position,
@@ -49,33 +67,9 @@ class FractalFernPainter extends CustomPainter {
         ],
       );
     canvas.drawCircle(root.position, glowRadius, paint);
-
-    final rootLabel = TextPainter(
-      text: TextSpan(
-        text: root.label,
-        style: TextStyle(
-          color: labelColor,
-          fontSize: 14,
-          fontWeight: FontWeight.w700,
-          letterSpacing: 0.3,
-        ),
-      ),
-      textDirection: TextDirection.ltr,
-    )..layout();
-    rootLabel.paint(
-      canvas,
-      Offset(
-        root.position.dx - rootLabel.width / 2,
-        root.position.dy + 10,
-      ),
-    );
   }
 
-  void _paintSubtree(
-    Canvas canvas,
-    FractalLayoutNode node, {
-    required bool parentExpanded,
-  }) {
+  void _paintBranches(Canvas canvas, FractalLayoutNode node) {
     for (final child in node.children) {
       _paintNode(canvas, child);
     }
@@ -89,22 +83,35 @@ class FractalFernPainter extends CustomPainter {
     );
 
     if (collapsed) {
-      _paintLeafBlob(canvas, node);
+      if (_isNearVisible(node.position)) {
+        _paintLeafBlob(canvas, node);
+      }
       return;
     }
 
-    _paintBranch(canvas, node);
+    if (_branchIntersectsVisible(node)) {
+      _paintBranch(canvas, node);
+    }
 
-    if (FractalLodPolicy.shouldShowLabel(
-      branchLength: node.branchLength,
-      zoomScale: zoomScale,
-    )) {
-      _paintLabel(canvas, node);
-    } else if (node.isGenus) {
+    if (node.isGenus && _isNearVisible(node.position)) {
       _paintGenusDot(canvas, node);
     }
 
-    _paintSubtree(canvas, node, parentExpanded: true);
+    _paintBranches(canvas, node);
+  }
+
+  bool _isNearVisible(Offset position) {
+    return visibleTreeRect.inflate(40).contains(position);
+  }
+
+  bool _branchIntersectsVisible(FractalLayoutNode node) {
+    if (node.parentPosition == null) return true;
+    final parent = node.parentPosition!;
+    final clip = visibleTreeRect.inflate(24);
+    if (clip.contains(node.position) || clip.contains(parent)) return true;
+    return clip.intersect(
+      Rect.fromPoints(parent, node.position),
+    ).isEmpty == false;
   }
 
   void _paintBranch(Canvas canvas, FractalLayoutNode node) {
@@ -114,7 +121,7 @@ class FractalFernPainter extends CustomPainter {
     final ratio = node.strokeWidth / layout.maxStrokeWidth;
     final paint = Paint()
       ..color = branchColor.withValues(alpha: 0.3 + 0.6 * ratio)
-      ..strokeWidth = node.strokeWidth
+      ..strokeWidth = _treeUnits(node.strokeWidth)
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round
       ..strokeJoin = StrokeJoin.round;
@@ -128,111 +135,106 @@ class FractalFernPainter extends CustomPainter {
       branchLength: node.branchLength,
       zoomScale: zoomScale,
       maxLeaves: layout.root.treeNode.leafCount,
+      isGenus: node.isGenus,
     );
 
     final paint = Paint()
-      ..color = leafColor.withValues(
-        alpha: node.isGenus ? 0.95 : 0.75,
+      ..color = (node.isGenus ? genusLeafColor : leafColor).withValues(
+        alpha: node.isGenus ? 1 : 0.75,
       );
     canvas.drawCircle(node.position, radius, paint);
-
-    if (node.isGenus &&
-        FractalLodPolicy.shouldShowLabel(
-          branchLength: node.branchLength,
-          zoomScale: zoomScale,
-        )) {
-      _paintLabel(canvas, node, isGenus: true);
-    }
   }
 
   void _paintGenusDot(Canvas canvas, FractalLayoutNode node) {
-    final paint = Paint()..color = leafColor;
-    canvas.drawCircle(node.position, 3.5, paint);
+    final radius = _treeUnits(_genusDotScreenRadius);
+    final ringWidth = _treeUnits(1.5);
+    final paint = Paint()..color = genusLeafColor;
+    canvas.drawCircle(node.position, radius, paint);
+    canvas.drawCircle(
+      node.position,
+      radius,
+      Paint()
+        ..color = genusLeafColor.withValues(alpha: 0.35)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = ringWidth,
+    );
   }
 
-  void _paintLabel(
-    Canvas canvas,
-    FractalLayoutNode node, {
-    bool isGenus = false,
-  }) {
-    final isGenusNode = isGenus || node.isGenus;
-    final fontSize = isGenusNode ? 10.5 : (node.depth <= 2 ? 12.0 : 9.5);
-    final color = isGenusNode ? labelColor : labelMutedColor;
-    final fontWeight =
-        node.depth <= 1 ? FontWeight.w700 : FontWeight.w500;
+  void _paintDynamicLabels(Canvas canvas) {
+    if (visibleTreeRect.isEmpty) return;
 
-    final textPainter = TextPainter(
-      text: TextSpan(
-        text: node.label,
-        style: TextStyle(
-          color: color,
-          fontSize: fontSize,
-          fontWeight: fontWeight,
-          letterSpacing: 0.2,
-        ),
-      ),
-      textDirection: TextDirection.ltr,
-      maxLines: 1,
-      ellipsis: '…',
-    )..layout(maxWidth: 100);
+    double treeFont(double screenSize) =>
+        FractalLabelPlacer.treeUnits(screenSize, zoomScale);
 
-    final angle = _labelAngle(node);
-    final offset = Offset(
-      node.position.dx - textPainter.width / 2,
-      node.position.dy - 16 - (isGenusNode ? 4 : 0),
+    final genusStyle = TextStyle(
+      color: genusLeafColor,
+      fontSize: treeFont(FractalLabelPlacer.genusScreenFontSize),
+      fontWeight: FontWeight.w700,
+      letterSpacing: 0.2,
+    );
+    final shallowCladeStyle = TextStyle(
+      color: labelColor,
+      fontSize: treeFont(FractalLabelPlacer.shallowCladeScreenFontSize),
+      fontWeight: FontWeight.w700,
+      letterSpacing: 0.2,
+    );
+    final cladeStyle = TextStyle(
+      color: labelMutedColor,
+      fontSize: treeFont(FractalLabelPlacer.cladeScreenFontSize),
+      fontWeight: FontWeight.w500,
+      letterSpacing: 0.2,
     );
 
-    if (angle.abs() > 0.01) {
-      canvas.save();
-      canvas.translate(node.position.dx, node.position.dy);
-      canvas.rotate(angle * 0.15);
-      canvas.translate(-node.position.dx, -node.position.dy);
-      textPainter.paint(canvas, offset);
-      canvas.restore();
-    } else {
-      textPainter.paint(canvas, offset);
-    }
-  }
+    final candidates = _labelPlacer.collectCandidates(
+      root: layout.root,
+      visibleTreeRect: visibleTreeRect,
+      viewportCenterTree: viewportCenterTree,
+      zoomScale: zoomScale,
+      genusStyle: genusStyle,
+      cladeStyle: cladeStyle,
+      shallowCladeStyle: shallowCladeStyle,
+    );
 
-  double _labelAngle(FractalLayoutNode node) {
-    final parent = node.parentPosition;
-    if (parent == null) return 0;
-    return math.atan2(node.position.dx - parent.dx, parent.dy - node.position.dy);
+    final placed = _labelPlacer.placeWithoutOverlap(
+      candidates,
+      zoomScale: zoomScale,
+    );
+    for (final (candidate, rect) in placed) {
+      candidate.textPainter.paint(canvas, rect.topLeft);
+    }
   }
 
   @override
   bool shouldRepaint(covariant FractalFernPainter oldDelegate) {
     return oldDelegate.layout != layout ||
-        (oldDelegate.zoomScale - zoomScale).abs() > 0.02 ||
+        (oldDelegate.zoomScale - zoomScale).abs() > 0.001 ||
+        oldDelegate.visibleTreeRect != visibleTreeRect ||
+        (oldDelegate.viewportCenterTree - viewportCenterTree).distance > 0.5 ||
         oldDelegate.branchColor != branchColor ||
         oldDelegate.labelColor != labelColor ||
         oldDelegate.labelMutedColor != labelMutedColor ||
         oldDelegate.rootGlowColor != rootGlowColor ||
-        oldDelegate.leafColor != leafColor;
+        oldDelegate.leafColor != leafColor ||
+        oldDelegate.genusLeafColor != genusLeafColor;
   }
 }
 
-/// Fits the fractal tree in [viewportSize] with root near the bottom.
+/// Fits the fractal tree in [viewportSize], centered.
 Matrix4 fitFractalTransform({
   required Rect bounds,
   required Size viewportSize,
-  double bottomPadding = 56,
+  double viewportPadding = 48,
 }) {
   if (bounds.isEmpty || viewportSize.isEmpty) return Matrix4.identity();
 
   final contentWidth = bounds.width;
   final contentHeight = bounds.height;
-  final scaleX = viewportSize.width / contentWidth;
-  final scaleY = (viewportSize.height - bottomPadding) / contentHeight;
+  final scaleX = (viewportSize.width - viewportPadding * 2) / contentWidth;
+  final scaleY = (viewportSize.height - viewportPadding * 2) / contentHeight;
   final scale = math.min(scaleX, scaleY).clamp(0.01, 2.0);
 
-  final treeCenterX = contentWidth / 2;
-  final treeBottom = contentHeight;
-  final viewCenterX = viewportSize.width / 2;
-  final viewBottom = viewportSize.height - bottomPadding;
-
-  final tx = viewCenterX - treeCenterX * scale;
-  final ty = viewBottom - treeBottom * scale;
+  final tx = (viewportSize.width - contentWidth * scale) / 2;
+  final ty = (viewportSize.height - contentHeight * scale) / 2;
 
   return Matrix4.identity()
     ..setEntry(0, 0, scale)

@@ -34,11 +34,13 @@ class FractalLayoutNode {
 
 /// Polar wedge fractal layout — OneZoom-style, full tree in fixed coordinates.
 class FractalTreeLayout {
+  static const fullCircleFan = math.pi * 2;
+
   FractalTreeLayout({
     this.baseLength = 80,
     this.decay = 0.82,
-    this.rootFanRadians = 2.44,
-    this.branchCurveFactor = 0.28,
+    this.rootFanRadians = fullCircleFan,
+    this.branchCurveFactor = 0.2,
     this.minStrokeWidth = 1.2,
     this.maxStrokeWidth = 10,
     this.boundsPadding = 48,
@@ -218,6 +220,23 @@ class FractalLodPolicy {
   static const double labelThreshold = 18;
   static const double genusTapThreshold = 12;
 
+  /// Converts on-screen pixels to tree-space units at [zoomScale].
+  static double treeUnits(double screenPixels, double zoomScale) =>
+      screenPixels / zoomScale.clamp(0.01, 20);
+
+  /// Slight thickening when zoomed in (+8% per decade, max +20%).
+  static double subtleZoomBoost(double zoomScale) {
+    return (1.0 + math.log(zoomScale.clamp(0.25, 12)) / math.ln10 * 0.08)
+        .clamp(1.0, 1.2);
+  }
+
+  static double treeUnitsWithBoost({
+    required double screenPixels,
+    required double zoomScale,
+  }) {
+    return treeUnits(screenPixels * subtleZoomBoost(zoomScale), zoomScale);
+  }
+
   static double screenLength(double branchLength, double zoomScale) =>
       branchLength * zoomScale;
 
@@ -246,14 +265,30 @@ class FractalLodPolicy {
     return screenLength(branchLength, zoomScale) >= genusTapThreshold;
   }
 
+  static double leafBlobScreenRadius({
+    required int leafCount,
+    required int maxLeaves,
+    required bool isGenus,
+  }) {
+    final base = (isGenus ? 5.0 : 3.5) +
+        3 * math.sqrt(leafCount / math.max(1, maxLeaves));
+    return base;
+  }
+
   static double leafBlobRadius({
     required int leafCount,
     required double branchLength,
     required double zoomScale,
     required int maxLeaves,
+    required bool isGenus,
   }) {
-    final base = 2.5 + 4 * math.sqrt(leafCount / math.max(1, maxLeaves));
-    final zoomBoost = (screenLength(branchLength, zoomScale) / 20).clamp(0.8, 2.0);
-    return base * zoomBoost;
+    return treeUnitsWithBoost(
+      screenPixels: leafBlobScreenRadius(
+        leafCount: leafCount,
+        maxLeaves: maxLeaves,
+        isGenus: isGenus,
+      ),
+      zoomScale: zoomScale,
+    );
   }
 }

@@ -63,15 +63,14 @@ FractalLayoutNode? _findByName(FractalLayoutNode node, String name) {
 }
 
 void main() {
-  test('root is at origin and children grow upward', () {
+  test('root is at origin and children spread outward', () {
     final root = _buildSampleTree();
     final layout = FractalTreeLayout()..compute(root);
 
     expect(layout.root.position, Offset.zero);
-    expect(layout.root.position.dy, 0);
 
     for (final child in layout.root.children) {
-      expect(child.position.dy, lessThan(0));
+      expect(child.position.distance, greaterThan(0));
     }
   });
 
@@ -90,11 +89,14 @@ void main() {
     );
   });
 
-  test('internal node sits above its parent', () {
+  test('internal node is offset from its parent', () {
     final layout = FractalTreeLayout()..compute(_buildSampleTree());
     final theropoda = _findByName(layout.root, 'Theropoda')!;
 
-    expect(theropoda.position.dy, lessThan(theropoda.parentPosition!.dy));
+    expect(
+      (theropoda.position - theropoda.parentPosition!).distance,
+      greaterThan(0),
+    );
   });
 
   test('bounds encompass all nodes', () {
