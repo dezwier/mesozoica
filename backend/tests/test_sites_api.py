@@ -102,6 +102,63 @@ def test_list_sites_empty(client):
     assert body["total"] == 0
 
 
+def test_list_sites_random_requires_seed(client, session):
+    _seed_site_type(session)
+    response = client.get("/api/v1/sites?sort=random")
+    assert response.status_code == 400
+
+
+def test_list_sites_random_stable_order_with_seed(client, session):
+    site_type = _seed_site_type(session)
+    for site_id in (50001, 50002, 50003):
+        session.add(
+            SiteClean(
+                site_id=site_id,
+                formation=f"Formation {site_id}",
+                site_type_id=site_type.id,
+            )
+        )
+    session.commit()
+
+    seed = "stable-seed"
+    first = client.get(
+        f"/api/v1/sites?sort=random&seed={seed}&limit=1&offset=0"
+    ).json()["items"][0]["site_id"]
+    second = client.get(
+        f"/api/v1/sites?sort=random&seed={seed}&limit=1&offset=1"
+    ).json()["items"][0]["site_id"]
+    first_again = client.get(
+        f"/api/v1/sites?sort=random&seed={seed}&limit=1&offset=0"
+    ).json()["items"][0]["site_id"]
+
+    assert first == first_again
+    assert first != second
+
+
+def test_list_sites_random_shuffles_same_formation_sites(client, session):
+    site_type = _seed_site_type(session)
+    for site_id in (50011, 50012, 50013):
+        session.add(
+            SiteClean(
+                site_id=site_id,
+                formation="Shared Formation",
+                site_type_id=site_type.id,
+            )
+        )
+    session.commit()
+
+    seed = "shuffle-seed"
+    ordered = [
+        client.get(
+            f"/api/v1/sites?sort=random&seed={seed}&limit=1&offset={offset}"
+        ).json()["items"][0]["site_id"]
+        for offset in range(3)
+    ]
+
+    assert ordered != [50011, 50012, 50013]
+    assert sorted(ordered) == [50011, 50012, 50013]
+
+
 def test_list_sites_returns_summary_fields(client, session):
     site_type = _seed_site_type(session)
     site = _seed_hell_creek_site(session, site_type)

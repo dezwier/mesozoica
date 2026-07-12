@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -13,9 +14,10 @@ class MapController extends ChangeNotifier {
       : _service = service ?? SiteService();
 
   static const pageSize = 500;
-  static const _catalogSeed = 'map-catalog';
 
   final SiteService _service;
+  final Random _random = Random();
+  String? _seed;
 
   List<SiteSummary> _geoSites = [];
   bool _loading = false;
@@ -52,7 +54,10 @@ class MapController extends ChangeNotifier {
       _loadedCatalog = 0;
       _totalCatalog = 0;
       _loadingComplete = false;
+      _seed = _newSeed();
     }
+
+    _seed ??= _newSeed();
 
     final seq = ++_loadSeq;
     _loading = true;
@@ -175,12 +180,20 @@ class MapController extends ChangeNotifier {
   }
 
   Future<SiteListResponse> _fetchPage({required int offset}) async {
+    final seed = _seed;
+    if (seed == null || seed.isEmpty) {
+      throw StateError('Map catalog seed missing before fetch');
+    }
     return _service.fetchSites(
       limit: pageSize,
       offset: offset,
       sort: 'random',
-      seed: _catalogSeed,
+      seed: seed,
     );
+  }
+
+  String _newSeed() {
+    return '${DateTime.now().microsecondsSinceEpoch}_${_random.nextInt(1 << 32)}';
   }
 
   List<SiteSummary> _withCoordinates(List<SiteSummary> sites) {

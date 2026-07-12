@@ -161,9 +161,7 @@ def _list_sites_random(
 ) -> list[SiteRow]:
     dialect_name = session.get_bind().dialect.name
     if dialect_name == "postgresql":
-        order = func.md5(
-            func.concat(func.coalesce(SiteClean.formation, ""), seed)
-        )
+        order = func.md5(func.concat(SiteClean.site_id, seed))
         rows = session.exec(
             filtered.order_by(order).offset(offset).limit(limit)
         ).all()
@@ -172,7 +170,7 @@ def _list_sites_random(
     all_rows = session.exec(filtered).all()
     all_rows.sort(
         key=lambda row: hashlib.md5(
-            f"{row[0].formation or row[0].site_id}{seed}".encode()
+            f"{row[0].site_id}{seed}".encode()
         ).hexdigest()
     )
     return [_row_from_tuple(row) for row in all_rows[offset : offset + limit]]
