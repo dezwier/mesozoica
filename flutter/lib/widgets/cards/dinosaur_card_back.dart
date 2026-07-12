@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../models/dinosaur.dart';
 import '../../theme/dino_card_theme.dart';
 import 'cladogram_strip.dart';
+import 'dinosaur_card_facts.dart';
 import 'dinosaur_card_header.dart';
 import 'dinosaur_card_image.dart';
 import 'geologic_timeline.dart';
@@ -18,10 +19,6 @@ class DinosaurCardBack extends StatelessWidget {
   Widget build(BuildContext context) {
     final cardTheme = DinoCardTheme.of(context);
     final nodes = dinosaur.cladogramNodes();
-    final description = dinosaur.shortDescription != null &&
-            dinosaur.shortDescription!.trim().isNotEmpty
-        ? dinosaur.shortDescription!.trim()
-        : '—';
 
     return AspectRatio(
       aspectRatio: DinoCardTheme.cardAspectRatio,
@@ -34,7 +31,7 @@ class DinosaurCardBack extends StatelessWidget {
             child: DinosaurCardImage(imageUrl: dinosaur.mainImageUrl),
           ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(18, 18, 18, 14),
+            padding: const EdgeInsets.fromLTRB(18, 30, 18, 14),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -44,12 +41,6 @@ class DinosaurCardBack extends StatelessWidget {
                   subtitleFontSize: 13,
                   centered: true,
                   useFrontTitleStyle: true,
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  description,
-                  textAlign: TextAlign.center,
-                  style: cardTheme.bodyStyle(fontSize: 13),
                 ),
                 const SizedBox(height: 10),
                 SizedBox(
@@ -61,11 +52,33 @@ class DinosaurCardBack extends StatelessWidget {
                     scale: _contentScale,
                   ),
                 ),
-                const SizedBox(height: 0),
+                const SizedBox(height: 8),
                 Expanded(
-                  child: CladogramStrip(
-                    nodes: nodes,
-                    scale: _contentScale,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 6),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: SingleChildScrollView(
+                            physics: const ClampingScrollPhysics(),
+                            child: DinosaurCardFacts(
+                              dinosaur: dinosaur,
+                              compact: true,
+                              vertical: true,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: CladogramStrip(
+                            nodes: nodes,
+                            scale: _contentScale,
+                            centered: false,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ],

@@ -11,7 +11,7 @@ Curated card-front images for the Mesozoica catalog. Files here are synced to Ra
 ## Sync to Railway
 
 1. Add or update image files in this folder (`mesozoica/dinosaur-images/` in your repo).
-2. On the **backend** Railway service (not Postgres): mount a volume at `/data/dinosaur-images`, set `DINOSAUR_IMAGES_DIR=/data/dinosaur-images`, and set `DINOSAUR_IMAGE_SYNC_SECRET`.
+2. On the **backend** Railway service (not Postgres): mount a volume at `/data` (recommended) or `/data/dinosaur-images`, set `CURATED_IMAGES_DATA_ROOT=/data` and/or `DINOSAUR_IMAGES_DIR=/data/dinosaur-images`, and set `DINOSAUR_IMAGE_SYNC_SECRET`.
 3. Run from the repo root — reads **local** files here, uploads to the **deployed** Railway API:
 
 ```bash

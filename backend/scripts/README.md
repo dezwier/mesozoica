@@ -74,12 +74,25 @@ python -m scripts.sync_fossil_images --dry-run
 | `FOSSIL_IMAGES_SOURCE_DIR` | Local fossil image folder (default: repo `fossil-images/`) |
 | `DINOSAUR_IMAGE_SYNC_SECRET` | Required for dinosaur uploads; sent as `X-Dinosaur-Image-Sync-Key` |
 | `FOSSIL_IMAGE_SYNC_SECRET` | Required for fossil uploads; sent as `X-Fossil-Image-Sync-Key` |
+| `CURATED_IMAGES_DATA_ROOT` | Shared Railway volume root (e.g. `/data`); defaults fossil storage to `/data/fossil-images` when `FOSSIL_IMAGES_DIR` is unset |
 | `PUBLIC_BASE_URL` | API base for curated image URLs (non-localhost) |
 | `RAILWAY_PUBLIC_DOMAIN` | Fallback API host when `PUBLIC_BASE_URL` is unset |
 | `RAILWAY_RUN=1` | Set by `make` so `railway run` is allowed |
 | `ALLOW_LOCAL_CRON=1` | Bypass Railway guard (same as cron jobs; tests only) |
 
 `DINOSAUR_IMAGES_DIR` and `FOSSIL_IMAGES_DIR` are **server-side** storage paths on Railway — not used as the local sync source.
+
+### Railway volume layout (recommended)
+
+Mount **one** volume at `/data` and set:
+
+```bash
+CURATED_IMAGES_DATA_ROOT=/data
+DINOSAUR_IMAGES_DIR=/data/dinosaur-images   # optional if root is set
+FOSSIL_IMAGES_DIR=/data/fossil-images      # optional if root is set
+```
+
+Served URLs stay separate: `/media/dinosaurs/...` and `/media/fossils/...`.
 
 ## Typical workflow
 

@@ -14,6 +14,7 @@ class DinoFactRow extends StatelessWidget {
     this.maxValueLines = 2,
     this.maxLines,
     this.wrapValue = false,
+    this.rowPadding,
   });
 
   final String iconAsset;
@@ -24,6 +25,7 @@ class DinoFactRow extends StatelessWidget {
   final int maxValueLines;
   final int? maxLines;
   final bool wrapValue;
+  final double? rowPadding;
 
   @override
   Widget build(BuildContext context) {
@@ -31,12 +33,12 @@ class DinoFactRow extends StatelessWidget {
     final iconSize = compact ? 14.0 : 18.0;
     final labelSize = compact ? 8.0 : 10.0;
     final valueSize = compact ? 11.0 : 13.0;
-    final rowPadding = compact ? 10.0 : 8.0;
+    final effectiveRowPadding = rowPadding ?? (compact ? 10.0 : 8.0);
     final valueLines =
         maxLines ?? (compact ? (centered ? 3 : 2) : maxValueLines);
 
     return Padding(
-      padding: EdgeInsets.only(bottom: rowPadding),
+      padding: EdgeInsets.only(bottom: effectiveRowPadding),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

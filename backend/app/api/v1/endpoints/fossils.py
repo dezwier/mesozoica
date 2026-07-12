@@ -8,7 +8,7 @@ from sqlmodel import Session
 from app.core.database import get_session
 from app.core.exceptions import ValidationError
 from app.schemas.fossil import FossilListResponse, FossilSummary
-from app.services.fossil_service.list import fossil_row_to_summary, list_fossils
+from app.services.fossil_service.list import fossil_row_to_summary, get_fossil_by_id, list_fossils
 
 router = APIRouter(prefix="/fossils", tags=["fossils"])
 
@@ -46,3 +46,12 @@ def get_fossils(
         offset=offset,
         has_next=offset + len(items) < total,
     )
+
+
+@router.get("/{fossil_id}", response_model=FossilSummary)
+def get_fossil(
+    fossil_id: int,
+    session: Session = Depends(get_session),
+) -> FossilSummary:
+    row = get_fossil_by_id(session, fossil_id)
+    return fossil_row_to_summary(row)

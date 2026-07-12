@@ -282,6 +282,26 @@ def test_list_fossils_filter_ma_requires_both_params(client):
     assert response.status_code == 400
 
 
+def test_get_fossil_by_id(client, session):
+    dinosaur = _seed_tyrannosaurus(session)
+    fossil = _seed_hell_creek_fossil(session, dinosaur)
+
+    response = client.get(f"/api/v1/fossils/{fossil.id}")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["id"] == fossil.id
+    assert body["dinosaur_id"] == dinosaur.id
+    assert body["identified_name"] == "Tyrannosaurus rex"
+    assert body["geological_formation"] == "Hell Creek Formation"
+    assert body["dinosaur_name"] == "Tyrannosaurus"
+    assert body["dinosaur_main_image_url"].endswith("Tyrannosaurus.webp")
+
+
+def test_get_fossil_not_found(client):
+    response = client.get("/api/v1/fossils/99999")
+    assert response.status_code == 404
+
+
 def test_list_fossils_filter_has_custom_image(client, session):
     curated_dino = _seed_tyrannosaurus(session)
     uncurated_dino = Dinosaur(

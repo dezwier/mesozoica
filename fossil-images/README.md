@@ -10,7 +10,7 @@ Curated card-front images for the Mesozoica fossil catalog. Files here are synce
 ## Sync to Railway
 
 1. Add or update image files in this folder (`mesozoica/fossil-images/` in your repo).
-2. On the **backend** Railway service: mount a volume at `/data/fossil-images`, set `FOSSIL_IMAGES_DIR=/data/fossil-images`, and set `FOSSIL_IMAGE_SYNC_SECRET`.
+2. On the **backend** Railway service: mount a volume at `/data` (recommended) or `/data/fossil-images`, set `CURATED_IMAGES_DATA_ROOT=/data` and/or `FOSSIL_IMAGES_DIR=/data/fossil-images`, and set `FOSSIL_IMAGE_SYNC_SECRET`.
 3. Run from the repo root — reads **local** files here, uploads to the **deployed** Railway API:
 
 ```bash

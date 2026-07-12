@@ -47,9 +47,15 @@ class FossilCardFront extends StatelessWidget {
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: cardTheme.shadowColor.withValues(alpha: 0.35),
-                      blurRadius: 8,
-                      offset: const Offset(0, 3),
+                      color: Colors.black.withValues(alpha: 0.42),
+                      blurRadius: 5,
+                      offset: const Offset(0, 2),
+                    ),
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.22),
+                      blurRadius: 16,
+                      spreadRadius: 1,
+                      offset: const Offset(0, 6),
                     ),
                   ],
                 ),
@@ -78,7 +84,7 @@ class FossilCardFront extends StatelessWidget {
                         18,
                         0,
                         18,
-                        math.max(8, titleFontSize * 0.45),
+                        math.max(14, titleFontSize * 0.55),
                       ),
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.end,
@@ -89,6 +95,7 @@ class FossilCardFront extends StatelessWidget {
                             titleFontSize: titleFontSize,
                             centered: true,
                             useFrontTitleStyle: true,
+                            showOccurrenceSubtitle: true,
                           ),
                         ],
                       ),

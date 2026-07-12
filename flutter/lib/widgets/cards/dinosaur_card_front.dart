@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import '../../models/dinosaur.dart';
 import '../../theme/dino_card_theme.dart';
 import '../dino/dinosaur_article_drawer.dart';
-import 'dinosaur_card_facts.dart';
 import 'dinosaur_card_header.dart';
 import 'dinosaur_card_image.dart';
 
@@ -28,6 +27,12 @@ class DinosaurCardFront extends StatelessWidget {
   final double overlayHeightFactor;
 
   bool get _showArticleButton => showArticleButton ?? showFacts;
+
+  String get _description =>
+      dinosaur.shortDescription != null &&
+              dinosaur.shortDescription!.trim().isNotEmpty
+          ? dinosaur.shortDescription!.trim()
+          : '—';
 
   @override
   Widget build(BuildContext context) {
@@ -70,10 +75,12 @@ class DinosaurCardFront extends StatelessWidget {
                           ),
                           if (showFacts) ...[
                             const SizedBox(height: 14),
-                            DinosaurCardFacts(
-                              dinosaur: dinosaur,
-                              compact: true,
-                              centered: true,
+                            Text(
+                              _description,
+                              textAlign: TextAlign.center,
+                              style: cardTheme.bodyStyle(fontSize: 12),
+                              maxLines: 4,
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ],
                         ],

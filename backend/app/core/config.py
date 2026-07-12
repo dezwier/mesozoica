@@ -88,6 +88,10 @@ class Settings(BaseSettings):
         default="../dinosaur-images",
         validation_alias="DINOSAUR_IMAGES_DIR",
     )
+    curated_images_data_root: str = Field(
+        default="",
+        validation_alias="CURATED_IMAGES_DATA_ROOT",
+    )
     public_base_url: str = Field(
         default="http://127.0.0.1:8000",
         validation_alias="PUBLIC_BASE_URL",
@@ -116,19 +120,25 @@ class Settings(BaseSettings):
 
     @property
     def resolved_dinosaur_images_dir(self) -> Path:
-        path = Path(self.dinosaur_images_dir)
-        if path.is_absolute():
-            return path
-        backend_dir = Path(__file__).parent.parent.parent
-        return (backend_dir / path).resolve()
+        from app.services.curated_image_service.common import resolve_curated_storage_dir
+
+        return resolve_curated_storage_dir(
+            configured_dir=self.dinosaur_images_dir,
+            default_relative="../dinosaur-images",
+            data_root=self.curated_images_data_root,
+            subdir_name="dinosaur-images",
+        )
 
     @property
     def resolved_fossil_images_dir(self) -> Path:
-        path = Path(self.fossil_images_dir)
-        if path.is_absolute():
-            return path
-        backend_dir = Path(__file__).parent.parent.parent
-        return (backend_dir / path).resolve()
+        from app.services.curated_image_service.common import resolve_curated_storage_dir
+
+        return resolve_curated_storage_dir(
+            configured_dir=self.fossil_images_dir,
+            default_relative="../fossil-images",
+            data_root=self.curated_images_data_root,
+            subdir_name="fossil-images",
+        )
 
     @property
     def cors_origins(self) -> list[str]:

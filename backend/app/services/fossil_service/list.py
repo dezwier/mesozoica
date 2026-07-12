@@ -10,7 +10,7 @@ from typing import Literal
 from sqlalchemy import func, or_
 from sqlmodel import Session, col, func as sqlmodel_func, select
 
-from app.core.exceptions import ValidationError
+from app.core.exceptions import NotFoundError, ValidationError
 from app.models.dinosaur import Dinosaur
 from app.models.fossil import Fossil
 from app.services.dinosaur_image_service.sync import CURATED_MEDIA_PATH as DINOSAUR_CURATED_MEDIA_PATH
@@ -84,6 +84,17 @@ def list_fossils(
         .limit(capped_limit)
     ).all()
     return [_row_from_tuple(row) for row in rows], int(total)
+
+
+def get_fossil_by_id(session: Session, fossil_id: int) -> FossilRow:
+    row = session.exec(
+        select(Fossil, Dinosaur.name, Dinosaur.main_image_url)
+        .join(Dinosaur, col(Fossil.dinosaur_id) == col(Dinosaur.id))
+        .where(col(Fossil.id) == fossil_id)
+    ).first()
+    if row is None:
+        raise NotFoundError(f"Fossil {fossil_id} not found")
+    return _row_from_tuple(row)
 
 
 def _normalize_filters(

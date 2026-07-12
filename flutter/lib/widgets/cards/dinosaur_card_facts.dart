@@ -9,12 +9,16 @@ class DinosaurCardFacts extends StatelessWidget {
     super.key,
     required this.dinosaur,
     this.compact = false,
+    this.vertical = false,
     this.centered = false,
   });
 
   final DinosaurSummary dinosaur;
   final bool compact;
+  final bool vertical;
   final bool centered;
+
+  double? get _rowPadding => vertical ? 22 : null;
 
   Widget _locationRow() => DinoFactRow(
         iconAsset: 'assets/images/cards/icons/location.svg',
@@ -22,6 +26,7 @@ class DinosaurCardFacts extends StatelessWidget {
         value: displayFactValue(dinosaur.location),
         compact: compact,
         centered: centered,
+        rowPadding: _rowPadding,
         maxLines: compact && centered ? 5 : null,
       );
 
@@ -33,6 +38,7 @@ class DinosaurCardFacts extends StatelessWidget {
         ),
         compact: compact,
         centered: centered,
+        rowPadding: _rowPadding,
       );
 
   Widget _dietRow() => DinoFactRow(
@@ -41,6 +47,7 @@ class DinosaurCardFacts extends StatelessWidget {
         value: displayFactValue(dinosaur.dietType),
         compact: compact,
         centered: centered,
+        rowPadding: _rowPadding,
       );
 
   String _orDash(String? value) =>
@@ -52,6 +59,7 @@ class DinosaurCardFacts extends StatelessWidget {
         value: _orDash(dinosaur.length),
         compact: compact,
         centered: centered,
+        rowPadding: _rowPadding,
       );
 
   Widget _massRow() => DinoFactRow(
@@ -60,10 +68,25 @@ class DinosaurCardFacts extends StatelessWidget {
         value: _orDash(dinosaur.mass),
         compact: compact,
         centered: centered,
+        rowPadding: _rowPadding,
       );
 
   @override
   Widget build(BuildContext context) {
+    if (vertical) {
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _locationRow(),
+          _periodRow(),
+          _dietRow(),
+          _lengthRow(),
+          _massRow(),
+        ],
+      );
+    }
+
     if (compact) {
       return SizedBox(
         width: double.infinity,

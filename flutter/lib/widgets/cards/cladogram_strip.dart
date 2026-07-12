@@ -10,7 +10,6 @@ class _CladogramLayout {
   final double scale;
 
   double get rowHeight => 34 * scale;
-  double get indentStep => 14 * scale;
   double get rankLineHeight => 10 * scale;
   double get labelGap => 2 * scale;
   double get nameLineHeight => 14 * scale;
@@ -22,17 +21,17 @@ class _CladogramLayout {
 
   double get rowPaddingTop => (rowHeight - contentBlockHeight) / 2;
 
+  double get dotX => dotSize / 2;
+
   double dotYForIndex(int index) =>
       index * rowHeight +
       rowPaddingTop +
       rankLineHeight +
       labelGap +
       nameLineHeight / 2;
-
-  double dotXForDepth(int depth) => depth * indentStep + dotSize / 2;
 }
 
-/// Vertical phylogenetic list with indented dots aligned to taxon names.
+/// Vertical phylogenetic list with dots connected by straight vertical lines.
 class CladogramStrip extends StatelessWidget {
   const CladogramStrip({
     super.key,
@@ -77,7 +76,6 @@ class CladogramStrip extends StatelessWidget {
                   child: _CladogramNodeRow(
                     node: nodes[i],
                     isLast: i == nodes.length - 1,
-                    depth: i,
                     cardTheme: cardTheme,
                     layout: layout,
                     centered: centered,
@@ -249,7 +247,6 @@ class _CladogramNodeRow extends StatelessWidget {
   const _CladogramNodeRow({
     required this.node,
     required this.isLast,
-    required this.depth,
     required this.cardTheme,
     required this.layout,
     required this.centered,
@@ -257,49 +254,59 @@ class _CladogramNodeRow extends StatelessWidget {
 
   final CladogramNode node;
   final bool isLast;
-  final int depth;
   final DinoCardTheme cardTheme;
   final _CladogramLayout layout;
   final bool centered;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.only(left: depth * layout.indentStep),
-      child: SizedBox(
-        height: layout.rowHeight,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: EdgeInsets.only(
-                left: layout.dotSize + layout.dotNameGap,
-              ),
-              child: Text(
-                node.rankLabel,
-                style: cardTheme.rankLabelStyle(fontSize: 8 * layout.scale),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
+    return SizedBox(
+      height: layout.rowHeight,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: EdgeInsets.only(
+              left: layout.dotSize + layout.dotNameGap,
             ),
-            SizedBox(height: layout.labelGap),
-            Row(
-              mainAxisSize: centered ? MainAxisSize.min : MainAxisSize.max,
-              children: [
-                Container(
-                  width: layout.dotSize,
-                  height: layout.dotSize,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: isLast
-                        ? cardTheme.cardTextPrimary
-                        : cardTheme.cardAccent.withValues(alpha: 0.7),
-                  ),
+            child: Text(
+              node.rankLabel,
+              style: cardTheme.rankLabelStyle(fontSize: 8 * layout.scale),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          SizedBox(height: layout.labelGap),
+          Row(
+            mainAxisSize: centered ? MainAxisSize.min : MainAxisSize.max,
+            children: [
+              Container(
+                width: layout.dotSize,
+                height: layout.dotSize,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: isLast
+                      ? cardTheme.cardTextPrimary
+                      : cardTheme.cardAccent.withValues(alpha: 0.7),
                 ),
-                SizedBox(width: layout.dotNameGap),
-                if (centered)
-                  Text(
+              ),
+              SizedBox(width: layout.dotNameGap),
+              if (centered)
+                Text(
+                  capitalizeLeadingLetter(node.name),
+                  style: TextStyle(
+                    color: cardTheme.cladogramNodeColor(isLast: isLast),
+                    fontSize: (isLast ? 12 : 10.5) * layout.scale,
+                    fontWeight: isLast ? FontWeight.w700 : FontWeight.w500,
+                    letterSpacing: 0.3,
+                  ),
+                  maxLines: 1,
+                  softWrap: false,
+                )
+              else
+                Expanded(
+                  child: Text(
                     capitalizeLeadingLetter(node.name),
                     style: TextStyle(
                       color: cardTheme.cladogramNodeColor(isLast: isLast),
@@ -308,26 +315,12 @@ class _CladogramNodeRow extends StatelessWidget {
                       letterSpacing: 0.3,
                     ),
                     maxLines: 1,
-                    softWrap: false,
-                  )
-                else
-                  Expanded(
-                    child: Text(
-                      capitalizeLeadingLetter(node.name),
-                      style: TextStyle(
-                        color: cardTheme.cladogramNodeColor(isLast: isLast),
-                        fontSize: (isLast ? 12 : 10.5) * layout.scale,
-                        fontWeight: isLast ? FontWeight.w700 : FontWeight.w500,
-                        letterSpacing: 0.3,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
+                    overflow: TextOverflow.ellipsis,
                   ),
-              ],
-            ),
-          ],
-        ),
+                ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -356,17 +349,15 @@ class _CladogramConnectorPainter extends CustomPainter {
       ..strokeJoin = StrokeJoin.round;
 
     for (var i = 0; i < nodeCount - 1; i++) {
-      final parentX = layout.dotXForDepth(i);
+      final x = layout.dotX;
       final parentY = layout.dotYForIndex(i);
-      final childLeftX =
-          layout.dotXForDepth(i + 1) - layout.dotSize / 2;
       final childY = layout.dotYForIndex(i + 1);
 
-      final path = Path()
-        ..moveTo(parentX, parentY)
-        ..lineTo(parentX, childY)
-        ..lineTo(childLeftX, childY);
-      canvas.drawPath(path, linePaint);
+      canvas.drawLine(
+        Offset(x, parentY),
+        Offset(x, childY),
+        linePaint,
+      );
     }
   }
 

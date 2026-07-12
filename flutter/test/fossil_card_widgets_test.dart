@@ -63,6 +63,7 @@ void main() {
     expect(find.byType(FossilCardImage), findsOneWidget);
     expect(find.byType(DinosaurCardImage), findsOneWidget);
     expect(find.text('Tyrannosaurus rex'), findsOneWidget);
+    expect(find.text('Occurrence No #100001'), findsOneWidget);
     expect(find.text('LOCATION'), findsNothing);
   });
 
