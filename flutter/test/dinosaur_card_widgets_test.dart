@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mesozoica/models/dinosaur.dart';
 import 'package:mesozoica/widgets/cards/dinosaur_card_back.dart';
+import 'package:mesozoica/widgets/cards/dinosaur_card_edge_facts.dart';
 import 'package:mesozoica/widgets/cards/dinosaur_card_front.dart';
 import 'package:mesozoica/widgets/cards/dinosaur_card_image.dart';
 import 'package:mesozoica/widgets/cards/dinosaur_turnable_card.dart';
@@ -53,8 +54,33 @@ void main() {
       find.textContaining('largest terrestrial predators'),
       findsOneWidget,
     );
+    expect(find.byType(DinosaurCardEdgeFacts), findsOneWidget);
+    expect(find.textContaining('Hell Creek Formation'), findsOneWidget);
+    expect(find.textContaining('Late Cretaceous'), findsOneWidget);
     expect(find.text('LOCATION'), findsNothing);
     expect(find.text('PERIOD'), findsNothing);
+  });
+
+  testWidgets('DinosaurCardFront hides edge facts when showFacts is false',
+      (tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: SizedBox(
+              width: 800,
+              child: DinosaurCardFront(
+                dinosaur: _fixture,
+                showFacts: false,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(find.byType(DinosaurCardEdgeFacts), findsNothing);
+    expect(find.textContaining('Hell Creek Formation'), findsNothing);
   });
 
   testWidgets('DinosaurCardImage uses network image for curated URL',
@@ -104,7 +130,7 @@ void main() {
     expect(find.byType(Image), findsOneWidget);
   });
 
-  testWidgets('DinosaurCardBack renders attributes, timeline, and cladogram',
+  testWidgets('DinosaurCardBack renders timeline, cladogram, and fossil list',
       (tester) async {
     await tester.pumpWidget(
       const MaterialApp(
@@ -120,8 +146,8 @@ void main() {
     );
 
     expect(find.text('Tyrannosaurus rex'), findsOneWidget);
-    expect(find.text('LOCATION'), findsOneWidget);
-    expect(find.text('PERIOD'), findsOneWidget);
+    expect(find.text('LOCATION'), findsNothing);
+    expect(find.text('PERIOD'), findsNothing);
     expect(find.text('TIME'), findsNothing);
     expect(find.text('CLADOGRAM'), findsNothing);
     expect(find.text('CLADE'), findsNWidgets(2));
@@ -131,6 +157,7 @@ void main() {
       find.textContaining('largest terrestrial predators'),
       findsNothing,
     );
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
   });
 
   testWidgets('DinosaurTurnableCard composes front and back', (tester) async {

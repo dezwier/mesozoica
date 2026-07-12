@@ -11,6 +11,7 @@ class DinoFactRow extends StatelessWidget {
     required this.value,
     this.compact = false,
     this.centered = false,
+    this.edge = false,
     this.maxValueLines = 2,
     this.maxLines,
     this.wrapValue = false,
@@ -22,6 +23,7 @@ class DinoFactRow extends StatelessWidget {
   final String value;
   final bool compact;
   final bool centered;
+  final bool edge;
   final int maxValueLines;
   final int? maxLines;
   final bool wrapValue;
@@ -30,12 +32,45 @@ class DinoFactRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cardTheme = DinoCardTheme.of(context);
-    final iconSize = compact ? 14.0 : 18.0;
+    final iconSize = edge ? 11.0 : (compact ? 14.0 : 18.0);
     final labelSize = compact ? 8.0 : 10.0;
-    final valueSize = compact ? 11.0 : 13.0;
-    final effectiveRowPadding = rowPadding ?? (compact ? 10.0 : 8.0);
+    final valueSize = edge ? 9.0 : (compact ? 11.0 : 13.0);
+    final effectiveRowPadding = rowPadding ?? (edge ? 8.0 : (compact ? 10.0 : 8.0));
     final valueLines =
-        maxLines ?? (compact ? (centered ? 3 : 2) : maxValueLines);
+        maxLines ?? (edge ? 1 : (compact ? (centered ? 3 : 2) : maxValueLines));
+
+    if (edge) {
+      return Padding(
+        padding: EdgeInsets.only(bottom: effectiveRowPadding),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SvgPicture.asset(
+              iconAsset,
+              width: iconSize,
+              height: iconSize,
+              colorFilter: ColorFilter.mode(
+                cardTheme.cardTextPrimary.withValues(alpha: 0.65),
+                BlendMode.srcIn,
+              ),
+            ),
+            const SizedBox(width: 5),
+            Expanded(
+              child: Text(
+                value,
+                style: cardTheme.statValueStyle(fontSize: valueSize).copyWith(
+                  color: cardTheme.cardTextPrimary.withValues(alpha: 0.68),
+                  fontWeight: FontWeight.w400,
+                ),
+                maxLines: valueLines,
+                overflow: TextOverflow.ellipsis,
+                softWrap: false,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
 
     return Padding(
       padding: EdgeInsets.only(bottom: effectiveRowPadding),

@@ -20,6 +20,7 @@ class FossilService {
     double? maYounger,
     double? maOlder,
     bool hasCustomImage = false,
+    int? dinosaurId,
   }) async {
     final uri = AppConfig.fossilsUri(
       limit: limit,
@@ -30,6 +31,7 @@ class FossilService {
       maYounger: maYounger,
       maOlder: maOlder,
       hasCustomImage: hasCustomImage,
+      dinosaurId: dinosaurId,
     );
     if (kDebugMode) {
       debugPrint('FossilService GET $uri');
@@ -48,6 +50,43 @@ class FossilService {
       throw const FossilServiceException('Invalid fossils response');
     }
     return FossilListResponse.fromJson(decoded);
+  }
+
+  Future<FossilListResponse> fetchFossilsForDinosaur(
+    int dinosaurId, {
+    int limit = 200,
+    int offset = 0,
+  }) async {
+    return fetchFossils(
+      limit: limit,
+      offset: offset,
+      sort: 'name',
+      dinosaurId: dinosaurId,
+    );
+  }
+
+  Future<FossilSummary> fetchFossilById(int id) async {
+    final uri = AppConfig.fossilUri(id);
+    if (kDebugMode) {
+      debugPrint('FossilService GET $uri');
+    }
+    final response =
+        await _client.get(uri).timeout(const Duration(seconds: 15));
+
+    if (response.statusCode == 404) {
+      throw FossilServiceException('Fossil not found');
+    }
+    if (response.statusCode != 200) {
+      throw FossilServiceException(
+        'Failed to load fossil (${response.statusCode})',
+      );
+    }
+
+    final decoded = jsonDecode(response.body);
+    if (decoded is! Map<String, dynamic>) {
+      throw const FossilServiceException('Invalid fossil response');
+    }
+    return FossilSummary.fromJson(decoded);
   }
 
   void dispose() {

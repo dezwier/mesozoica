@@ -39,6 +39,7 @@ def list_fossils(
     ma_younger: float | None = None,
     ma_older: float | None = None,
     has_custom_image: bool = False,
+    dinosaur_id: int | None = None,
 ) -> tuple[list[FossilRow], int]:
     """Return paginated fossil rows joined with dinosaur catalog fields."""
     capped_limit = max(1, min(limit, 500))
@@ -55,6 +56,7 @@ def list_fossils(
         ma_older=older,
         time_filter_active=effective_time_filter,
         has_custom_image=has_custom_image,
+        dinosaur_id=dinosaur_id,
     )
 
     total = session.exec(
@@ -129,11 +131,14 @@ def _filtered_select(
     ma_older: float | None,
     time_filter_active: bool,
     has_custom_image: bool,
+    dinosaur_id: int | None = None,
 ):
     stmt = (
         select(Fossil, Dinosaur.name, Dinosaur.main_image_url)
         .join(Dinosaur, col(Fossil.dinosaur_id) == col(Dinosaur.id))
     )
+    if dinosaur_id is not None:
+        stmt = stmt.where(col(Fossil.dinosaur_id) == dinosaur_id)
     if has_custom_image:
         stmt = stmt.where(
             col(Dinosaur.main_image_url).is_not(None),

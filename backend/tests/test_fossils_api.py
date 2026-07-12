@@ -302,6 +302,47 @@ def test_get_fossil_not_found(client):
     assert response.status_code == 404
 
 
+def test_list_fossils_filter_by_dinosaur_id(client, session):
+    tyrannosaurus = _seed_tyrannosaurus(session)
+    hell_creek = _seed_hell_creek_fossil(session, tyrannosaurus)
+
+    brachiosaurus = Dinosaur(
+        name="Brachiosaurus",
+        wikipedia_page_id=6001,
+        wikipedia_title="Brachiosaurus",
+    )
+    session.add(brachiosaurus)
+    session.commit()
+    session.refresh(brachiosaurus)
+    session.add(
+        Fossil(
+            id=100070,
+            dinosaur_id=brachiosaurus.id,
+            identified_name="Brachiosaurus altithorax",
+        )
+    )
+    session.commit()
+
+    response = client.get(
+        f"/api/v1/fossils?dinosaur_id={tyrannosaurus.id}&sort=name"
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["total"] == 1
+    assert body["items"][0]["id"] == hell_creek.id
+    assert body["items"][0]["dinosaur_id"] == tyrannosaurus.id
+
+
+def test_list_fossils_filter_by_unknown_dinosaur_id(client, session):
+    _seed_tyrannosaurus(session)
+
+    response = client.get("/api/v1/fossils?dinosaur_id=99999&sort=name")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["total"] == 0
+    assert body["items"] == []
+
+
 def test_list_fossils_filter_has_custom_image(client, session):
     curated_dino = _seed_tyrannosaurus(session)
     uncurated_dino = Dinosaur(

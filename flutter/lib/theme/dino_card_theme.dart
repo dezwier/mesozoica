@@ -17,8 +17,8 @@ class DinoCardTheme {
 
   static const double borderRadius = 16;
 
-  /// Matches [frontPlaceholderAsset] (493×677) so the cover image is not cropped.
-  static const double cardAspectRatio = 493 / 677;
+  /// Matches [frontPlaceholderAsset] (1086×1448) so the cover image is not cropped.
+  static const double cardAspectRatio = 1086 / 1448;
 
   static const String frontPlaceholderAsset =
       'assets/images/cards/dinosaur_card_front_placeholder.png';

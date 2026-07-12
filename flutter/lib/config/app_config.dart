@@ -90,6 +90,7 @@ class AppConfig {
     double? maYounger,
     double? maOlder,
     bool hasCustomImage = false,
+    int? dinosaurId,
   }) {
     final params = <String, String>{
       'limit': '$limit',
@@ -110,10 +111,16 @@ class AppConfig {
     if (hasCustomImage) {
       params['has_custom_image'] = 'true';
     }
+    if (dinosaurId != null) {
+      params['dinosaur_id'] = '$dinosaurId';
+    }
     return Uri.parse('$baseApiUrl/api/v1/fossils').replace(
       queryParameters: params,
     );
   }
+
+  static Uri fossilUri(int id) =>
+      Uri.parse('$baseApiUrl/api/v1/fossils/$id');
 
   static Future<bool> checkApiHealth() async {
     try {

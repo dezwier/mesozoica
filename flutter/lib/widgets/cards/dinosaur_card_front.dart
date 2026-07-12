@@ -7,6 +7,7 @@ import '../../theme/dino_card_theme.dart';
 import '../dino/dinosaur_article_drawer.dart';
 import 'dinosaur_card_header.dart';
 import 'dinosaur_card_image.dart';
+import 'dinosaur_card_edge_facts.dart';
 
 class DinosaurCardFront extends StatelessWidget {
   const DinosaurCardFront({
@@ -44,6 +45,28 @@ class DinosaurCardFront extends StatelessWidget {
         fit: StackFit.expand,
         children: [
           DinosaurCardImage(imageUrl: dinosaur.mainImageUrl),
+          if (showFacts)
+            Positioned(
+              left: 0,
+              top: 44,
+              bottom: 0,
+              width: 88,
+              child: Column(
+                children: [
+                  Expanded(
+                    flex: ((1 - overlayHeightFactor) * 100).round().clamp(1, 100),
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: DinosaurCardEdgeFacts(dinosaur: dinosaur),
+                    ),
+                  ),
+                  Expanded(
+                    flex: (overlayHeightFactor * 100).round().clamp(1, 100),
+                    child: const SizedBox.shrink(),
+                  ),
+                ],
+              ),
+            ),
           Positioned.fill(
             child: Align(
               alignment: Alignment.bottomCenter,

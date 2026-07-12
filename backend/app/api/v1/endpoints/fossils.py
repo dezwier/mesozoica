@@ -24,6 +24,7 @@ def get_fossils(
     ma_younger: float | None = Query(default=None),
     ma_older: float | None = Query(default=None),
     has_custom_image: bool = Query(default=False),
+    dinosaur_id: int | None = Query(default=None, ge=1),
 ) -> FossilListResponse:
     if sort not in ("name", "random"):
         raise ValidationError("sort must be one of: name, random")
@@ -37,6 +38,7 @@ def get_fossils(
         ma_younger=ma_younger,
         ma_older=ma_older,
         has_custom_image=has_custom_image,
+        dinosaur_id=dinosaur_id,
     )
     items = [fossil_row_to_summary(row) for row in rows]
     return FossilListResponse(

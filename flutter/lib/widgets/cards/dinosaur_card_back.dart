@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../../models/dinosaur.dart';
 import '../../theme/dino_card_theme.dart';
 import 'cladogram_strip.dart';
-import 'dinosaur_card_facts.dart';
+import 'dinosaur_card_fossil_list.dart';
 import 'dinosaur_card_header.dart';
 import 'dinosaur_card_image.dart';
 import 'geologic_timeline.dart';
@@ -60,21 +60,21 @@ class DinosaurCardBack extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Expanded(
+                          flex: 45,
                           child: SingleChildScrollView(
                             physics: const ClampingScrollPhysics(),
-                            child: DinosaurCardFacts(
-                              dinosaur: dinosaur,
-                              compact: true,
-                              vertical: true,
+                            child: CladogramStrip(
+                              nodes: nodes,
+                              scale: _contentScale,
+                              centered: false,
                             ),
                           ),
                         ),
                         const SizedBox(width: 14),
                         Expanded(
-                          child: CladogramStrip(
-                            nodes: nodes,
-                            scale: _contentScale,
-                            centered: false,
+                          flex: 55,
+                          child: DinosaurCardFossilList(
+                            dinosaurId: dinosaur.id,
                           ),
                         ),
                       ],
