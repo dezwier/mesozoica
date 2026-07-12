@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../models/fossil.dart';
 import '../../theme/dino_card_theme.dart';
+import 'dinosaur_card_dialog.dart';
 import 'dinosaur_card_image.dart';
 import 'fossil_card_header.dart';
 import 'fossil_card_image.dart';
@@ -38,31 +39,41 @@ class FossilCardFront extends StatelessWidget {
             width: math.max(72, MediaQuery.sizeOf(context).width * dinosaurInsetWidthFactor),
             child: AspectRatio(
               aspectRatio: DinoCardTheme.cardAspectRatio,
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.85),
-                    width: 1.5,
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () => showDinosaurCardDialog(
+                    context,
+                    dinosaurId: fossil.dinosaurId,
                   ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.42),
-                      blurRadius: 5,
-                      offset: const Offset(0, 2),
+                  borderRadius: BorderRadius.circular(10),
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.85),
+                        width: 1.5,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.42),
+                          blurRadius: 5,
+                          offset: const Offset(0, 2),
+                        ),
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.22),
+                          blurRadius: 16,
+                          spreadRadius: 1,
+                          offset: const Offset(0, 6),
+                        ),
+                      ],
                     ),
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.22),
-                      blurRadius: 16,
-                      spreadRadius: 1,
-                      offset: const Offset(0, 6),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(8.5),
+                      child: DinosaurCardImage(
+                        imageUrl: fossil.dinosaurMainImageUrl,
+                      ),
                     ),
-                  ],
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(8.5),
-                  child: DinosaurCardImage(
-                    imageUrl: fossil.dinosaurMainImageUrl,
                   ),
                 ),
               ),

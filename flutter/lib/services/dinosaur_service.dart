@@ -50,6 +50,30 @@ class DinosaurService {
     return DinosaurListResponse.fromJson(decoded);
   }
 
+  Future<DinosaurSummary> fetchDinosaurById(int id) async {
+    final uri = AppConfig.dinosaurUri(id);
+    if (kDebugMode) {
+      debugPrint('DinosaurService GET $uri');
+    }
+    final response =
+        await _client.get(uri).timeout(const Duration(seconds: 15));
+
+    if (response.statusCode == 404) {
+      throw DinosaurServiceException('Dinosaur not found');
+    }
+    if (response.statusCode != 200) {
+      throw DinosaurServiceException(
+        'Failed to load dinosaur (${response.statusCode})',
+      );
+    }
+
+    final decoded = jsonDecode(response.body);
+    if (decoded is! Map<String, dynamic>) {
+      throw const DinosaurServiceException('Invalid dinosaur response');
+    }
+    return DinosaurSummary.fromJson(decoded);
+  }
+
   Future<DinosaurArticle> fetchDinosaurArticle(int id) async {
     final uri = AppConfig.dinosaurArticleUri(id);
     final response =

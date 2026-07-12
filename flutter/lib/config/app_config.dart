@@ -78,6 +78,9 @@ class AppConfig {
   static Uri dinosaurArticleUri(int id) =>
       Uri.parse('$baseApiUrl/api/v1/dinosaurs/$id/article');
 
+  static Uri dinosaurUri(int id) =>
+      Uri.parse('$baseApiUrl/api/v1/dinosaurs/$id');
+
   static Uri fossilsUri({
     int limit = 200,
     int offset = 0,
