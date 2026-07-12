@@ -79,6 +79,9 @@ def _tyrannosaurus_record(*, occurrence_no: str = "139292", formation: str = "Sc
         "preservation_quality": "medium",
         "abund_value": "1",
         "abund_unit": "specimens",
+        "common_body_parts": "skull, vertebrae",
+        "articulated_parts": "some",
+        "component_comments": "partial skull material in sandstone matrix",
     }
 
 
@@ -147,6 +150,9 @@ def test_sync_inserts_new_fossil(session: Session):
     assert fossil.preservation_quality == "medium"
     assert fossil.abund_value == 1
     assert fossil.abund_unit == "specimens"
+    assert fossil.common_body_parts == "skull, vertebrae"
+    assert fossil.articulated_parts == "some"
+    assert fossil.component_comments == "partial skull material in sandstone matrix"
     assert fossil.description is None
     assert fossil.accepted_name == "Tyrannosaurus rex"
     assert fossil.accepted_no == 54833

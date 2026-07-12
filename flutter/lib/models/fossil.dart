@@ -72,6 +72,13 @@ class FossilSummary {
     this.fossilsfrom1,
     this.sizeClasses,
     this.recordType,
+    this.articulatedParts,
+    this.associatedParts,
+    this.commonBodyParts,
+    this.rareBodyParts,
+    this.feedPredTraces,
+    this.artifacts,
+    this.componentComments,
     this.diet,
     this.environment,
     this.taxonEnvironment,
@@ -146,6 +153,13 @@ class FossilSummary {
   final String? fossilsfrom1;
   final String? sizeClasses;
   final String? recordType;
+  final String? articulatedParts;
+  final String? associatedParts;
+  final String? commonBodyParts;
+  final String? rareBodyParts;
+  final String? feedPredTraces;
+  final String? artifacts;
+  final String? componentComments;
   final String? diet;
   final String? environment;
   final String? taxonEnvironment;
@@ -221,6 +235,13 @@ class FossilSummary {
       fossilsfrom1: json['fossilsfrom1'] as String?,
       sizeClasses: json['size_classes'] as String?,
       recordType: json['record_type'] as String?,
+      articulatedParts: json['articulated_parts'] as String?,
+      associatedParts: json['associated_parts'] as String?,
+      commonBodyParts: json['common_body_parts'] as String?,
+      rareBodyParts: json['rare_body_parts'] as String?,
+      feedPredTraces: json['feed_pred_traces'] as String?,
+      artifacts: json['artifacts'] as String?,
+      componentComments: json['component_comments'] as String?,
       diet: json['diet'] as String?,
       environment: json['environment'] as String?,
       taxonEnvironment: json['taxon_environment'] as String?,
@@ -366,6 +387,32 @@ class FossilSummary {
       FossilStoredField(label: 'Fossils from 1', value: displayFactValue(fossilsfrom1)),
       FossilStoredField(label: 'Size classes', value: displayFactValue(sizeClasses)),
       FossilStoredField(label: 'Record type', value: displayFactValue(recordType)),
+      FossilStoredField(
+        label: 'Common body parts',
+        value: displayFactValue(commonBodyParts),
+      ),
+      FossilStoredField(
+        label: 'Rare body parts',
+        value: displayFactValue(rareBodyParts),
+      ),
+      FossilStoredField(
+        label: 'Articulated parts',
+        value: displayFactValue(articulatedParts),
+      ),
+      FossilStoredField(
+        label: 'Associated parts',
+        value: displayFactValue(associatedParts),
+      ),
+      FossilStoredField(
+        label: 'Feed/pred traces',
+        value: displayFactValue(feedPredTraces),
+      ),
+      FossilStoredField(label: 'Artifacts', value: displayFactValue(artifacts)),
+      FossilStoredField(
+        label: 'Component comments',
+        value: displayFactValue(componentComments),
+        maxValueLines: 4,
+      ),
       FossilStoredField(label: 'Diet', value: displayFactValue(diet)),
       FossilStoredField(label: 'Environment', value: displayFactValue(environment)),
       FossilStoredField(

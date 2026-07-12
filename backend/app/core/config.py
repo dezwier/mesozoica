@@ -70,6 +70,18 @@ class Settings(BaseSettings):
 
     google_gemini_api_key: str = Field(default="", validation_alias="GOOGLE_GEMINI_API_KEY")
     gemini_model: str = Field(default="gemini-2.5-flash", validation_alias="GEMINI_MODEL")
+    gemini_image_model: str = Field(
+        default="imagen-4.0-ultra-generate-001",
+        validation_alias="GEMINI_IMAGE_MODEL",
+    )
+    gemini_image_max_article_chars: int = Field(
+        default=1200,
+        validation_alias="GEMINI_IMAGE_MAX_ARTICLE_CHARS",
+    )
+    gemini_image_max_fossil_json_chars: int = Field(
+        default=3500,
+        validation_alias="GEMINI_IMAGE_MAX_FOSSIL_JSON_CHARS",
+    )
     gemini_temperature: float = Field(default=0.0, validation_alias="GEMINI_TEMPERATURE")
     dinosaur_enrich_max_records: int | None = Field(
         default=None,

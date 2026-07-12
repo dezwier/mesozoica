@@ -89,6 +89,15 @@ class Fossil(SQLModel, table=True):
     size_classes: Optional[str] = Field(default=None, max_length=100)
     record_type: Optional[str] = Field(default=None, max_length=20)
 
+    # PBDB comps block (collection body-part composition)
+    articulated_parts: Optional[str] = Field(default=None, max_length=100)
+    associated_parts: Optional[str] = Field(default=None, max_length=255)
+    common_body_parts: Optional[str] = Field(default=None, max_length=255)
+    rare_body_parts: Optional[str] = Field(default=None, max_length=255)
+    feed_pred_traces: Optional[str] = Field(default=None, max_length=255)
+    artifacts: Optional[str] = Field(default=None, max_length=255)
+    component_comments: Optional[str] = Field(default=None, sa_column=Column(Text))
+
     # Ecology
     diet: Optional[str] = Field(default=None, max_length=100)
     environment: Optional[str] = Field(default=None, max_length=255)

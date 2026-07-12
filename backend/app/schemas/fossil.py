@@ -67,6 +67,13 @@ class FossilSummary(BaseModel):
     fossilsfrom1: str | None = None
     size_classes: str | None = None
     record_type: str | None = None
+    articulated_parts: str | None = None
+    associated_parts: str | None = None
+    common_body_parts: str | None = None
+    rare_body_parts: str | None = None
+    feed_pred_traces: str | None = None
+    artifacts: str | None = None
+    component_comments: str | None = None
     diet: str | None = None
     environment: str | None = None
     taxon_environment: str | None = None

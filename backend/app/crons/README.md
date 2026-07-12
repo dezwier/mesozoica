@@ -11,6 +11,8 @@ Cron jobs **always use the Railway Postgres database** — not a local DB. Run t
 | `wikipedia_dinosaur_sync` | `0 3 * * 0` (Sun 03:00) | Sync dinosaur records from Wikipedia |
 | `dinosaur_llm_enrich` | `0 4 * * 0` (Sun 04:00) | LLM enrichment (Gemini) for dinosaurs |
 | `pbdb_fossil_sync` | `0 5 * * 0` (Sun 05:00) | Sync fossil occurrences from PBDB |
+| `dinosaur_image_generate` | `0 6 * * 0` (disabled) | Generate dinosaur card images via Gemini Imagen |
+| `fossil_image_generate` | `0 7 * * 0` (disabled) | Generate fossil card images via Gemini Imagen |
 
 Railway `cronSchedule` must fire at least as often as the finest job granularity (use `0 * * * *` for weekly jobs).
 
@@ -26,6 +28,8 @@ make run-cron
 make run-wikipedia-sync
 make run-dinosaur-enrich
 make run-fossil-sync
+make run-dinosaur-image-gen
+make run-fossil-image-gen
 
 # Pass extra runner flags via CRON_EXTRA
 make run-wikipedia-sync CRON_EXTRA='--overwrite'
@@ -38,6 +42,11 @@ make run-fossil-sync CRON_EXTRA='--dinos Tyrannosaurus'
 make run-fossil-sync CRON_EXTRA='--overwrite'
 make run-fossil-sync CRON_EXTRA='--stale-days 7'
 make run-fossil-sync CRON_EXTRA='--dinos Tyrannosaurus --overwrite'
+
+make run-dinosaur-image-gen CRON_EXTRA='--max-items 5'
+make run-dinosaur-image-gen CRON_EXTRA='--dinos Tyrannosaurus --dry-run'
+make run-fossil-image-gen CRON_EXTRA='--max-items 10'
+make run-fossil-image-gen CRON_EXTRA='--dinos Tyrannosaurus --dry-run'
 
 # Target a specific Railway service
 make run-fossil-sync RAILWAY_SERVICE=my-service CRON_EXTRA='--dinos Herrerasaurus'
@@ -57,6 +66,8 @@ RAILWAY_RUN=1 railway run python -m app.crons.runner
 RAILWAY_RUN=1 railway run python -m app.crons.runner --job wikipedia_dinosaur_sync
 RAILWAY_RUN=1 railway run python -m app.crons.runner --job dinosaur_llm_enrich
 RAILWAY_RUN=1 railway run python -m app.crons.runner --job pbdb_fossil_sync
+RAILWAY_RUN=1 railway run python -m app.crons.runner --job dinosaur_image_generate
+RAILWAY_RUN=1 railway run python -m app.crons.runner --job fossil_image_generate
 
 # Flags
 RAILWAY_RUN=1 railway run python -m app.crons.runner --job wikipedia_dinosaur_sync --overwrite
@@ -73,6 +84,8 @@ RAILWAY_RUN=1 railway run python -m app.crons.runner --job dinosaur_llm_enrich -
 | `--dinos NAME …` | Limit to specific Wikipedia titles (space- or comma-separated) |
 | `--stale-days N` | PBDB sync: only genera not synced in the last N days (ignored with `--overwrite`) |
 | `--since ISO8601` | PBDB sync: only genera with `fossils_insert_time` null or before this UTC time |
+| `--max-items N` | Image generation: cap successful generations per run |
+| `--dry-run` | Image generation: list candidates without calling Imagen or writing files |
 
 ## Config overrides
 

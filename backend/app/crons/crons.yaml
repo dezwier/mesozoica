@@ -27,3 +27,17 @@ jobs:
       dry_run: false
       overwrite: false
       stale_days: 7
+
+  - id: dinosaur_image_generate
+    enabled: false
+    schedule: "0 6 * * 0"
+    params:
+      dry_run: false
+      max_items: null
+
+  - id: fossil_image_generate
+    enabled: false
+    schedule: "0 7 * * 0"
+    params:
+      dry_run: false
+      max_items: null

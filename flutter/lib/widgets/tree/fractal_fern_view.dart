@@ -140,10 +140,6 @@ class FractalFernViewState extends State<FractalFernView>
     }
   }
 
-  bool _shouldCenterCardOnScreen(FractalLayoutNode node) {
-    return _tapRevealedNode == node && _shouldKeepTapRevealedCard();
-  }
-
   bool _isFocusedOnNode(FractalLayoutNode node, double targetScale) {
     if (_viewportSize.isEmpty) return false;
     final screen = _treeToScreen(node.position, widget.layout.bounds);
@@ -379,7 +375,6 @@ class FractalFernViewState extends State<FractalFernView>
           card: desired,
           isExiting: false,
           needsFadeIn: wasExiting || entry.value.needsFadeIn,
-          centerOnScreen: _shouldCenterCardOnScreen(node),
         );
       } else if (!entry.value.isExiting) {
         next[entry.key] = entry.value.copyWith(isExiting: true);
@@ -395,7 +390,6 @@ class FractalFernViewState extends State<FractalFernView>
           key: entry.key,
           card: entry.value,
           needsFadeIn: true,
-          centerOnScreen: _shouldCenterCardOnScreen(entry.value.candidate.node),
         ),
       );
     }
@@ -558,7 +552,6 @@ class FractalFernViewState extends State<FractalFernView>
                   visible: !tracked.isExiting,
                   needsFadeIn: tracked.needsFadeIn,
                   zoomScale: _zoomScale,
-                  centerOnScreen: tracked.centerOnScreen,
                   viewportSize: _viewportSize,
                   treeToScreen: (point) => _treeToScreen(point, bounds),
                   onFadeInComplete: () => _markFadeInComplete(tracked.key),
@@ -578,27 +571,23 @@ class _TrackedGenusCard {
     required this.card,
     this.isExiting = false,
     this.needsFadeIn = false,
-    this.centerOnScreen = false,
   });
 
   final String key;
   final PlacedGenusCard card;
   final bool isExiting;
   final bool needsFadeIn;
-  final bool centerOnScreen;
 
   _TrackedGenusCard copyWith({
     PlacedGenusCard? card,
     bool? isExiting,
     bool? needsFadeIn,
-    bool? centerOnScreen,
   }) {
     return _TrackedGenusCard(
       key: key,
       card: card ?? this.card,
       isExiting: isExiting ?? this.isExiting,
       needsFadeIn: needsFadeIn ?? this.needsFadeIn,
-      centerOnScreen: centerOnScreen ?? this.centerOnScreen,
     );
   }
 }
@@ -610,7 +599,6 @@ class _FadingInlineGenusCardLayer extends StatefulWidget {
     required this.visible,
     required this.needsFadeIn,
     required this.zoomScale,
-    required this.centerOnScreen,
     required this.viewportSize,
     required this.treeToScreen,
     required this.onFadeInComplete,
@@ -621,7 +609,6 @@ class _FadingInlineGenusCardLayer extends StatefulWidget {
   final bool visible;
   final bool needsFadeIn;
   final double zoomScale;
-  final bool centerOnScreen;
   final Size viewportSize;
   final Offset Function(Offset treePoint) treeToScreen;
   final VoidCallback onFadeInComplete;
@@ -711,12 +698,9 @@ class _FadingInlineGenusCardLayerState extends State<_FadingInlineGenusCardLayer
     );
     final halfW = size.width / 2;
     final halfH = size.height / 2;
-    final left = widget.centerOnScreen
-        ? (widget.viewportSize.width - size.width) / 2
-        : widget.treeToScreen(anchor).dx - halfW;
-    final top = widget.centerOnScreen
-        ? (widget.viewportSize.height - size.height) / 2
-        : widget.treeToScreen(anchor).dy - halfH;
+    final screenAnchor = widget.treeToScreen(anchor);
+    final left = screenAnchor.dx - halfW;
+    final top = screenAnchor.dy - halfH;
 
     final showFacts = FractalLodPolicy.genusCardShowsFacts(widget.zoomScale);
 
