@@ -4,8 +4,10 @@ import 'package:provider/provider.dart';
 import 'config/app_config.dart';
 import 'controllers/dinosaur_catalog_controller.dart';
 import 'controllers/fossil_catalog_controller.dart';
+import 'controllers/map_controller.dart';
 import 'controllers/phylo_tree_controller.dart';
 import 'controllers/theme_controller.dart';
+import 'services/location_service.dart';
 import 'shell/app_shell.dart';
 import 'theme/mesozoica_theme.dart';
 
@@ -24,6 +26,8 @@ class MesozoicaApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => DinosaurCatalogController()),
         ChangeNotifierProvider(create: (_) => FossilCatalogController()),
         ChangeNotifierProvider(create: (_) => PhyloTreeController()),
+        ChangeNotifierProvider(create: (_) => MapController()),
+        ChangeNotifierProvider(create: (_) => LocationService()),
       ],
       child: Consumer<ThemeController>(
         builder: (context, themeController, _) {

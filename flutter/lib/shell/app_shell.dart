@@ -17,6 +17,7 @@ class AppShell extends StatefulWidget {
 }
 
 class _AppShellState extends State<AppShell> {
+  static const _mapTabIndex = 0;
   static const _dinoTabIndex = 2;
   static const _fossilTabIndex = 3;
 
@@ -61,7 +62,7 @@ class _AppShellState extends State<AppShell> {
       body: IndexedStack(
         index: _index,
         children: [
-          const MapScreen(),
+          MapScreen(isActive: _index == _mapTabIndex),
           TreeScreen(isActive: _index == 1),
           DinoScreen(key: _dinoScreenKey),
           FossilScreen(key: _fossilScreenKey),
