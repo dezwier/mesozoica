@@ -1,0 +1,34 @@
+"""Normalized fossil collection site records derived from PBDB fossil data."""
+
+from __future__ import annotations
+
+from decimal import Decimal
+from typing import Optional
+
+from sqlalchemy import Column, ForeignKey, Numeric
+from sqlmodel import Field, SQLModel
+
+
+class SiteClean(SQLModel, table=True):
+    """One row per PBDB collection locality (collection_no)."""
+
+    __tablename__ = "site_clean"
+
+    site_id: int = Field(primary_key=True, description="PBDB collection_no")
+    latitude: Optional[Decimal] = Field(default=None, sa_column=Column(Numeric(9, 6)))
+    longitude: Optional[Decimal] = Field(default=None, sa_column=Column(Numeric(9, 6)))
+    country_code: Optional[str] = Field(default=None, max_length=2)
+    state: Optional[str] = Field(default=None, max_length=100)
+    rock_type: Optional[str] = Field(default=None, max_length=100)
+    formation: Optional[str] = Field(default=None, max_length=255)
+    min_age_ma: Optional[Decimal] = Field(default=None, sa_column=Column(Numeric(5, 2)))
+    max_age_ma: Optional[Decimal] = Field(default=None, sa_column=Column(Numeric(5, 2)))
+    site_type_id: Optional[int] = Field(
+        default=None,
+        sa_column=Column(
+            "site_type_id",
+            ForeignKey("site_type.id", ondelete="SET NULL"),
+            nullable=True,
+            index=True,
+        ),
+    )

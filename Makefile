@@ -6,7 +6,7 @@ RAILWAY_SERVICE ?=
 RAILWAY_SERVICE_FLAG = $(if $(RAILWAY_SERVICE),--service $(RAILWAY_SERVICE),)
 CRON_EXTRA ?=
 
-.PHONY: help backend-install backend-test run-backend flutter-test run-flutter test-all run-cron run-wikipedia-sync run-dinosaur-enrich run-fossil-sync run-dinosaur-image-gen run-fossil-image-gen sync-dinosaur-images sync-fossil-images
+.PHONY: help backend-install backend-test run-backend flutter-test run-flutter test-all run-cron run-wikipedia-sync run-dinosaur-enrich run-fossil-sync run-fossil-clean-sync run-dinosaur-image-gen run-fossil-image-gen sync-dinosaur-images sync-fossil-images sync-site-type-images
 
 help:
 	@echo "Available targets:"
@@ -17,10 +17,12 @@ help:
 	@echo "  run-wikipedia-sync  Wikipedia dinosaur sync on Railway"
 	@echo "  run-dinosaur-enrich LLM dinosaur enrichment on Railway"
 	@echo "  run-fossil-sync       PBDB fossil occurrence sync on Railway"
+	@echo "  run-fossil-clean-sync Rebuild site_clean and fossil_clean tables on Railway"
 	@echo "  run-dinosaur-image-gen Generate dinosaur card images via Gemini Imagen (local repo folder)"
 	@echo "  run-fossil-image-gen   Generate fossil card images via Gemini Imagen (local repo folder)"
 	@echo "  sync-dinosaur-images Upload curated card images to Railway volume + DB"
 	@echo "  sync-fossil-images   Upload curated fossil card images to Railway volume + DB"
+	@echo "  sync-site-type-images Upload curated site-type card images to Railway volume + DB"
 	@echo "  flutter-test        Run Flutter tests"
 	@echo "  run-flutter         Start Flutter app"
 	@echo "  test-all            Run backend and Flutter tests"
@@ -60,6 +62,9 @@ run-dinosaur-enrich:
 run-fossil-sync:
 	cd backend && RAILWAY_RUN=1 railway run $(RAILWAY_SERVICE_FLAG) python -m app.crons.runner --job pbdb_fossil_sync $(CRON_EXTRA)
 
+run-fossil-clean-sync:
+	cd backend && RAILWAY_RUN=1 railway run $(RAILWAY_SERVICE_FLAG) python -m app.crons.runner --job fossil_clean_sync $(CRON_EXTRA)
+
 run-dinosaur-image-gen:
 	cd backend && RAILWAY_RUN=1 railway run $(RAILWAY_SERVICE_FLAG) python -m app.crons.runner --job dinosaur_image_generate $(CRON_EXTRA)
 
@@ -71,6 +76,9 @@ sync-dinosaur-images:
 
 sync-fossil-images:
 	cd backend && RAILWAY_RUN=1 railway run $(RAILWAY_SERVICE_FLAG) python -m scripts.sync_fossil_images $(CRON_EXTRA)
+
+sync-site-type-images:
+	cd backend && RAILWAY_RUN=1 railway run $(RAILWAY_SERVICE_FLAG) python -m scripts.sync_site_type_images $(CRON_EXTRA)
 
 flutter-test:
 	cd flutter && flutter test

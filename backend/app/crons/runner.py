@@ -26,6 +26,7 @@ from app.services.dinosaur_name_filter import parse_dino_names
 from app.crons.jobs import (
     dinosaur_image_generate,
     dinosaur_llm_enrich,
+    fossil_clean_sync,
     fossil_image_generate,
     pbdb_fossil_sync,
     wikipedia_dinosaur_sync,
@@ -113,12 +114,20 @@ def _run_fossil_image_generate(params: dict[str, Any]) -> int:
     )
 
 
+def _run_fossil_clean_sync(params: dict[str, Any]) -> int:
+    return fossil_clean_sync.run_sync_job(
+        dry_run=bool(params.get("dry_run", False)),
+        dinos=params.get("dinos"),
+    )
+
+
 _JOB_HANDLERS: dict[str, Callable[[dict[str, Any]], int]] = {
     "wikipedia_dinosaur_sync": _run_wikipedia_dinosaur_sync,
     "dinosaur_llm_enrich": _run_dinosaur_llm_enrich,
     "pbdb_fossil_sync": _run_pbdb_fossil_sync,
     "dinosaur_image_generate": _run_dinosaur_image_generate,
     "fossil_image_generate": _run_fossil_image_generate,
+    "fossil_clean_sync": _run_fossil_clean_sync,
 }
 
 
@@ -210,7 +219,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--dry-run",
         action="store_true",
-        help="Preview image generation candidates without calling Imagen or writing files.",
+        help="Preview work without writing (image generation jobs, fossil_clean_sync).",
     )
     args = parser.parse_args(argv)
 

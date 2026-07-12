@@ -7,6 +7,7 @@ import '../screens/dino/dino_screen.dart';
 import '../screens/fossil/fossil_screen.dart';
 import '../screens/map/map_screen.dart';
 import '../screens/profile/profile_screen.dart';
+import '../screens/site/site_screen.dart';
 import '../screens/tree/tree_screen.dart';
 
 class AppShell extends StatefulWidget {
@@ -18,14 +19,21 @@ class AppShell extends StatefulWidget {
 
 class _AppShellState extends State<AppShell> {
   static const _mapTabIndex = 0;
-  static const _dinoTabIndex = 2;
-  static const _fossilTabIndex = 3;
+  static const _siteTabIndex = 1;
+  static const _fossilTabIndex = 2;
+  static const _dinoTabIndex = 3;
+  static const _treeTabIndex = 4;
 
   int _index = _dinoTabIndex;
+  final _siteScreenKey = GlobalKey<SiteScreenState>();
   final _dinoScreenKey = GlobalKey<DinoScreenState>();
   final _fossilScreenKey = GlobalKey<FossilScreenState>();
 
   void _onDestinationSelected(int index) {
+    if (index == _index && index == _siteTabIndex) {
+      _siteScreenKey.currentState?.scrollToTop();
+      return;
+    }
     if (index == _index && index == _dinoTabIndex) {
       _dinoScreenKey.currentState?.scrollToTop();
       return;
@@ -63,9 +71,10 @@ class _AppShellState extends State<AppShell> {
         index: _index,
         children: [
           MapScreen(isActive: _index == _mapTabIndex),
-          TreeScreen(isActive: _index == 1),
-          DinoScreen(key: _dinoScreenKey),
+          SiteScreen(key: _siteScreenKey),
           FossilScreen(key: _fossilScreenKey),
+          DinoScreen(key: _dinoScreenKey),
+          TreeScreen(isActive: _index == _treeTabIndex),
           const ProfileScreen(),
         ],
       ),
@@ -91,9 +100,14 @@ class _AppShellState extends State<AppShell> {
               label: 'Map',
             ),
             NavigationDestination(
-              icon: Icon(Icons.account_tree_outlined),
-              selectedIcon: Icon(Icons.account_tree),
-              label: 'Tree',
+              icon: Icon(Icons.place_outlined),
+              selectedIcon: Icon(Icons.place),
+              label: 'Site',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.terrain_outlined),
+              selectedIcon: Icon(Icons.terrain),
+              label: 'Fossil',
             ),
             NavigationDestination(
               icon: Icon(Icons.style_outlined),
@@ -101,9 +115,9 @@ class _AppShellState extends State<AppShell> {
               label: 'Dino',
             ),
             NavigationDestination(
-              icon: Icon(Icons.terrain_outlined),
-              selectedIcon: Icon(Icons.terrain),
-              label: 'Fossil',
+              icon: Icon(Icons.account_tree_outlined),
+              selectedIcon: Icon(Icons.account_tree),
+              label: 'Tree',
             ),
             NavigationDestination(
               icon: Icon(Icons.person_outlined),

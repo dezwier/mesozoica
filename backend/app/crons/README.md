@@ -13,6 +13,7 @@ Cron jobs **always use the Railway Postgres database** — not a local DB. Run t
 | `pbdb_fossil_sync` | `0 5 * * 0` (Sun 05:00) | Sync fossil occurrences from PBDB |
 | `dinosaur_image_generate` | `0 6 * * 0` (disabled) | Generate dinosaur card images via Gemini Imagen |
 | `fossil_image_generate` | `0 7 * * 0` (disabled) | Generate fossil card images via Gemini Imagen |
+| `fossil_clean_sync` | `0 8 * * 0` (disabled) | Rebuild `site_clean` and `fossil_clean` derived tables |
 
 Railway `cronSchedule` must fire at least as often as the finest job granularity (use `0 * * * *` for weekly jobs).
 
@@ -28,6 +29,7 @@ make run-cron
 make run-wikipedia-sync
 make run-dinosaur-enrich
 make run-fossil-sync
+make run-fossil-clean-sync
 make run-dinosaur-image-gen
 make run-fossil-image-gen
 
@@ -42,6 +44,10 @@ make run-fossil-sync CRON_EXTRA='--dinos Tyrannosaurus'
 make run-fossil-sync CRON_EXTRA='--overwrite'
 make run-fossil-sync CRON_EXTRA='--stale-days 7'
 make run-fossil-sync CRON_EXTRA='--dinos Tyrannosaurus --overwrite'
+
+make run-fossil-clean-sync
+make run-fossil-clean-sync CRON_EXTRA='--dry-run'
+make run-fossil-clean-sync CRON_EXTRA='--dinos Tyrannosaurus'
 
 make run-dinosaur-image-gen CRON_EXTRA='--max-items 5'
 make run-dinosaur-image-gen CRON_EXTRA='--dinos Tyrannosaurus --dry-run'
@@ -68,6 +74,7 @@ RAILWAY_RUN=1 railway run python -m app.crons.runner --job dinosaur_llm_enrich
 RAILWAY_RUN=1 railway run python -m app.crons.runner --job pbdb_fossil_sync
 RAILWAY_RUN=1 railway run python -m app.crons.runner --job dinosaur_image_generate
 RAILWAY_RUN=1 railway run python -m app.crons.runner --job fossil_image_generate
+RAILWAY_RUN=1 railway run python -m app.crons.runner --job fossil_clean_sync
 
 # Flags
 RAILWAY_RUN=1 railway run python -m app.crons.runner --job wikipedia_dinosaur_sync --overwrite
@@ -85,7 +92,7 @@ RAILWAY_RUN=1 railway run python -m app.crons.runner --job dinosaur_llm_enrich -
 | `--stale-days N` | PBDB sync: only genera not synced in the last N days (ignored with `--overwrite`) |
 | `--since ISO8601` | PBDB sync: only genera with `fossils_insert_time` null or before this UTC time |
 | `--max-items N` | Image generation: cap successful generations per run |
-| `--dry-run` | Image generation: list candidates without calling Imagen or writing files |
+| `--dry-run` | Image generation: list candidates without calling Imagen or writing files; fossil clean sync: compute without DB writes |
 
 ## Config overrides
 
@@ -116,6 +123,7 @@ ALLOW_LOCAL_CRON=1 python -m app.crons.runner --job wikipedia_dinosaur_sync
 make run-wikipedia-sync CRON_EXTRA='--dinos Tyrannosaurus --overwrite'
 make run-dinosaur-enrich  CRON_EXTRA='--dinos Tyrannosaurus --overwrite'
 make run-fossil-sync     CRON_EXTRA='--dinos Tyrannosaurus --overwrite'
+make run-fossil-clean-sync CRON_EXTRA='--dinos Tyrannosaurus'
 
 # Dry-run is configured in crons.yaml params (dry_run: true), or via a local overlay
 ```

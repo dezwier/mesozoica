@@ -26,6 +26,9 @@ class DinoCardTheme {
   static const String fossilPlaceholderAsset =
       'assets/images/cards/fossil_card_front_placeholder.png';
 
+  static const String sitePlaceholderAsset =
+      'assets/images/cards/site_card_front_placeholder.png';
+
   static const String titleFontFamily = 'tt_ramilas';
 
   static const DinoCardTheme dark = DinoCardTheme._(

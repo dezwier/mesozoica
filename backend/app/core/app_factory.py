@@ -138,4 +138,12 @@ def create_app() -> FastAPI:
         name="fossil-images",
     )
 
+    site_type_images_dir = settings.resolved_site_type_images_dir
+    site_type_images_dir.mkdir(parents=True, exist_ok=True)
+    app.mount(
+        "/media/site-types",
+        StaticFiles(directory=str(site_type_images_dir)),
+        name="site-type-images",
+    )
+
     return app

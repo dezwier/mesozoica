@@ -41,3 +41,9 @@ jobs:
     params:
       dry_run: false
       max_items: null
+
+  - id: fossil_clean_sync
+    enabled: false
+    schedule: "0 8 * * 0"
+    params:
+      dry_run: false

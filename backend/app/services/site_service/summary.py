@@ -1,0 +1,42 @@
+"""Map joined site rows to API schemas."""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from decimal import Decimal
+
+from app.models.site_clean import SiteClean
+from app.models.site_type import SiteType
+from app.schemas.site import SiteSummary
+
+
+@dataclass(frozen=True)
+class SiteRow:
+    site: SiteClean
+    site_type: SiteType | None
+
+
+def site_row_to_summary(row: SiteRow) -> SiteSummary:
+    site = row.site
+    site_type = row.site_type
+    return SiteSummary(
+        site_id=site.site_id,
+        latitude=_decimal_to_float(site.latitude),
+        longitude=_decimal_to_float(site.longitude),
+        country_code=site.country_code,
+        state=site.state,
+        rock_type=site.rock_type,
+        formation=site.formation,
+        min_age_ma=_decimal_to_float(site.min_age_ma),
+        max_age_ma=_decimal_to_float(site.max_age_ma),
+        site_type_id=site.site_type_id,
+        site_type_period=site_type.period if site_type else None,
+        site_type_rock_type=site_type.rock_type if site_type else None,
+        main_image_url=site_type.main_image_url if site_type else None,
+    )
+
+
+def _decimal_to_float(value: Decimal | float | int | None) -> float | None:
+    if value is None:
+        return None
+    return float(value)

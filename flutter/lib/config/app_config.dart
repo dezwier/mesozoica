@@ -122,6 +122,48 @@ class AppConfig {
   static Uri fossilUri(int id) =>
       Uri.parse('$baseApiUrl/api/v1/fossils/$id');
 
+  static Uri sitesUri({
+    int limit = 200,
+    int offset = 0,
+    String sort = 'name',
+    String? seed,
+    String? q,
+    double? maYounger,
+    double? maOlder,
+    bool hasCustomImage = false,
+  }) {
+    final params = <String, String>{
+      'limit': '$limit',
+      'offset': '$offset',
+      'sort': sort,
+    };
+    if (seed != null && seed.isNotEmpty) {
+      params['seed'] = seed;
+    }
+    final trimmedQuery = q?.trim();
+    if (trimmedQuery != null && trimmedQuery.isNotEmpty) {
+      params['q'] = trimmedQuery;
+    }
+    if (maYounger != null && maOlder != null) {
+      params['ma_younger'] = '$maYounger';
+      params['ma_older'] = '$maOlder';
+    }
+    if (hasCustomImage) {
+      params['has_custom_image'] = 'true';
+    }
+    return Uri.parse('$baseApiUrl/api/v1/sites').replace(
+      queryParameters: params,
+    );
+  }
+
+  static Uri siteUri(int id) => Uri.parse('$baseApiUrl/api/v1/sites/$id');
+
+  static Uri siteFossilsUri(int siteId) =>
+      Uri.parse('$baseApiUrl/api/v1/sites/$siteId/fossils');
+
+  static Uri siteDinosaursUri(int siteId) =>
+      Uri.parse('$baseApiUrl/api/v1/sites/$siteId/dinosaurs');
+
   static Future<bool> checkApiHealth() async {
     try {
       final response = await http.get(healthUri).timeout(const Duration(seconds: 15));

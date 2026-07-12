@@ -1,0 +1,185 @@
+class SiteSummary {
+  const SiteSummary({
+    required this.siteId,
+    this.latitude,
+    this.longitude,
+    this.countryCode,
+    this.state,
+    this.rockType,
+    this.formation,
+    this.minAgeMa,
+    this.maxAgeMa,
+    this.siteTypeId,
+    this.siteTypePeriod,
+    this.siteTypeRockType,
+    this.mainImageUrl,
+  });
+
+  final int siteId;
+  final double? latitude;
+  final double? longitude;
+  final String? countryCode;
+  final String? state;
+  final String? rockType;
+  final String? formation;
+  final double? minAgeMa;
+  final double? maxAgeMa;
+  final int? siteTypeId;
+  final String? siteTypePeriod;
+  final String? siteTypeRockType;
+  final String? mainImageUrl;
+
+  String get displayTitle {
+    final trimmed = formation?.trim();
+    if (trimmed != null && trimmed.isNotEmpty) {
+      return trimmed;
+    }
+    return 'Site #$siteId';
+  }
+
+  String get displaySubtitle => 'Collection #$siteId';
+
+  String get displayCoordinates {
+    if (latitude == null || longitude == null) return '—';
+    return '${latitude!.toStringAsFixed(2)}, ${longitude!.toStringAsFixed(2)}';
+  }
+
+  String get displayCountry {
+    final parts = <String>[];
+    final trimmedState = state?.trim();
+    if (trimmedState != null && trimmedState.isNotEmpty) {
+      parts.add(trimmedState);
+    }
+    final trimmedCountry = countryCode?.trim();
+    if (trimmedCountry != null && trimmedCountry.isNotEmpty) {
+      parts.add(trimmedCountry);
+    }
+    if (parts.isEmpty) return '—';
+    return parts.join(', ');
+  }
+
+  factory SiteSummary.fromJson(Map<String, dynamic> json) {
+    return SiteSummary(
+      siteId: json['site_id'] as int,
+      latitude: (json['latitude'] as num?)?.toDouble(),
+      longitude: (json['longitude'] as num?)?.toDouble(),
+      countryCode: json['country_code'] as String?,
+      state: json['state'] as String?,
+      rockType: json['rock_type'] as String?,
+      formation: json['formation'] as String?,
+      minAgeMa: (json['min_age_ma'] as num?)?.toDouble(),
+      maxAgeMa: (json['max_age_ma'] as num?)?.toDouble(),
+      siteTypeId: json['site_type_id'] as int?,
+      siteTypePeriod: json['site_type_period'] as String?,
+      siteTypeRockType: json['site_type_rock_type'] as String?,
+      mainImageUrl: json['main_image_url'] as String?,
+    );
+  }
+}
+
+class SiteListResponse {
+  const SiteListResponse({
+    required this.items,
+    required this.total,
+    required this.limit,
+    required this.offset,
+    required this.hasNext,
+  });
+
+  final List<SiteSummary> items;
+  final int total;
+  final int limit;
+  final int offset;
+  final bool hasNext;
+
+  bool get hasMore => hasNext;
+
+  factory SiteListResponse.fromJson(Map<String, dynamic> json) {
+    final rawItems = json['items'];
+    return SiteListResponse(
+      items: rawItems is List
+          ? rawItems
+              .whereType<Map<String, dynamic>>()
+              .map(SiteSummary.fromJson)
+              .toList()
+          : const [],
+      total: json['total'] as int? ?? 0,
+      limit: json['limit'] as int? ?? 0,
+      offset: json['offset'] as int? ?? 0,
+      hasNext: json['has_next'] as bool? ?? false,
+    );
+  }
+}
+
+class SiteFossilThumb {
+  const SiteFossilThumb({
+    required this.id,
+    this.mainImageUrl,
+  });
+
+  final int id;
+  final String? mainImageUrl;
+
+  factory SiteFossilThumb.fromJson(Map<String, dynamic> json) {
+    return SiteFossilThumb(
+      id: json['id'] as int,
+      mainImageUrl: json['main_image_url'] as String?,
+    );
+  }
+}
+
+class SiteDinosaurThumb {
+  const SiteDinosaurThumb({
+    required this.id,
+    required this.name,
+    this.mainImageUrl,
+  });
+
+  final int id;
+  final String name;
+  final String? mainImageUrl;
+
+  factory SiteDinosaurThumb.fromJson(Map<String, dynamic> json) {
+    return SiteDinosaurThumb(
+      id: json['id'] as int,
+      name: json['name'] as String,
+      mainImageUrl: json['main_image_url'] as String?,
+    );
+  }
+}
+
+class SiteFossilThumbListResponse {
+  const SiteFossilThumbListResponse({required this.items});
+
+  final List<SiteFossilThumb> items;
+
+  factory SiteFossilThumbListResponse.fromJson(Map<String, dynamic> json) {
+    final rawItems = json['items'];
+    return SiteFossilThumbListResponse(
+      items: rawItems is List
+          ? rawItems
+              .whereType<Map<String, dynamic>>()
+              .map(SiteFossilThumb.fromJson)
+              .toList()
+          : const [],
+    );
+  }
+}
+
+class SiteDinosaurThumbListResponse {
+  const SiteDinosaurThumbListResponse({required this.items});
+
+  final List<SiteDinosaurThumb> items;
+
+  factory SiteDinosaurThumbListResponse.fromJson(Map<String, dynamic> json) {
+    final rawItems = json['items'];
+    return SiteDinosaurThumbListResponse(
+      items: rawItems is List
+          ? rawItems
+              .whereType<Map<String, dynamic>>()
+              .map(SiteDinosaurThumb.fromJson)
+              .toList()
+          : const [],
+    );
+  }
+}

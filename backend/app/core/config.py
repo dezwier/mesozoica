@@ -134,6 +134,30 @@ class Settings(BaseSettings):
         validation_alias="FOSSIL_IMAGE_SYNC_SECRET",
     )
 
+    site_type_images_dir: str = Field(
+        default="../site-type-images",
+        validation_alias="SITE_TYPE_IMAGES_DIR",
+    )
+    railway_site_type_images_volume: str = Field(
+        default="site-type-images",
+        validation_alias="RAILWAY_SITE_TYPE_IMAGES_VOLUME",
+    )
+    site_type_image_sync_secret: str = Field(
+        default="",
+        validation_alias="SITE_TYPE_IMAGE_SYNC_SECRET",
+    )
+
+    @property
+    def resolved_site_type_images_dir(self) -> Path:
+        from app.services.curated_image_service.common import resolve_curated_storage_dir
+
+        return resolve_curated_storage_dir(
+            configured_dir=self.site_type_images_dir,
+            default_relative="../site-type-images",
+            data_root=self.curated_images_data_root,
+            subdir_name="site-type-images",
+        )
+
     @property
     def resolved_dinosaur_images_dir(self) -> Path:
         from app.services.curated_image_service.common import resolve_curated_storage_dir
