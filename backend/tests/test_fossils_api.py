@@ -258,19 +258,33 @@ def test_list_fossils_filter_ma_requires_both_params(client):
 
 
 def test_list_fossils_filter_has_custom_image(client, session):
-    dinosaur = _seed_tyrannosaurus(session)
+    curated_dino = _seed_tyrannosaurus(session)
+    uncurated_dino = Dinosaur(
+        name="Stegosaurus",
+        wikipedia_page_id=6002,
+        wikipedia_title="Stegosaurus",
+        main_image_url="https://upload.wikimedia.org/wikipedia/commons/stego.jpg",
+    )
+    session.add(uncurated_dino)
+    session.commit()
+    session.refresh(uncurated_dino)
+
     session.add_all(
         [
             Fossil(
                 id=100060,
-                dinosaur_id=dinosaur.id,
-                identified_name="Curated fossil",
-                main_image_url="https://mesozoica-production.up.railway.app/media/fossils/100060.webp",
+                dinosaur_id=curated_dino.id,
+                identified_name="Tyrannosaurus site A",
             ),
             Fossil(
                 id=100061,
-                dinosaur_id=dinosaur.id,
-                identified_name="Uncurated fossil",
+                dinosaur_id=curated_dino.id,
+                identified_name="Tyrannosaurus site B",
+            ),
+            Fossil(
+                id=100062,
+                dinosaur_id=uncurated_dino.id,
+                identified_name="Stegosaurus site",
             ),
         ]
     )
@@ -279,9 +293,10 @@ def test_list_fossils_filter_has_custom_image(client, session):
     response = client.get("/api/v1/fossils?has_custom_image=true&sort=name")
     assert response.status_code == 200
     body = response.json()
-    assert body["total"] == 1
-    assert body["items"][0]["identified_name"] == "Curated fossil"
+    assert body["total"] == 2
+    names = {item["identified_name"] for item in body["items"]}
+    assert names == {"Tyrannosaurus site A", "Tyrannosaurus site B"}
 
     all_response = client.get("/api/v1/fossils?sort=name")
     assert all_response.status_code == 200
-    assert all_response.json()["total"] == 2
+    assert all_response.json()["total"] == 3

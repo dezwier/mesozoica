@@ -161,7 +161,7 @@ class _FossilFilterSheetState extends State<FossilFilterSheet> {
                 },
                 title: const Text('Custom image only'),
                 subtitle: Text(
-                  'Hide cards using the placeholder illustration',
+                  'Only show fossils whose dinosaur has a custom card image',
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: colorScheme.onSurfaceVariant,
                   ),

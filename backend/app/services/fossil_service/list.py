@@ -13,7 +13,7 @@ from sqlmodel import Session, col, func as sqlmodel_func, select
 from app.core.exceptions import ValidationError
 from app.models.dinosaur import Dinosaur
 from app.models.fossil import Fossil
-from app.services.fossil_image_service.sync import CURATED_MEDIA_PATH
+from app.services.dinosaur_image_service.sync import CURATED_MEDIA_PATH as DINOSAUR_CURATED_MEDIA_PATH
 
 SortOption = Literal["name", "random"]
 _MAX_SEED_LEN = 64
@@ -125,8 +125,8 @@ def _filtered_select(
     )
     if has_custom_image:
         stmt = stmt.where(
-            col(Fossil.main_image_url).is_not(None),
-            col(Fossil.main_image_url).contains(CURATED_MEDIA_PATH),
+            col(Dinosaur.main_image_url).is_not(None),
+            col(Dinosaur.main_image_url).contains(DINOSAUR_CURATED_MEDIA_PATH),
         )
     if normalized_q is not None:
         pattern = f"%{normalized_q}%"

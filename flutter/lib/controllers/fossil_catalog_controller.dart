@@ -5,7 +5,7 @@ import 'package:flutter/foundation.dart';
 import '../config/app_config.dart';
 import '../models/fossil.dart';
 import '../services/fossil_service.dart';
-import '../widgets/cards/fossil_card_image.dart';
+import '../widgets/cards/dinosaur_card_image.dart';
 import '../widgets/cards/geologic_timeline.dart';
 
 class FossilCatalogFilters {
@@ -219,7 +219,8 @@ class FossilCatalogController extends ChangeNotifier {
 
   bool _serverHonorsCustomImageFilter(FossilListResponse response) {
     return !response.items.any(
-      (fossil) => !FossilCardImage.isCuratedCardImageUrl(fossil.mainImageUrl),
+      (fossil) =>
+          !DinosaurCardImage.isCuratedCardImageUrl(fossil.dinosaurMainImageUrl),
     );
   }
 
@@ -241,8 +242,9 @@ class FossilCatalogController extends ChangeNotifier {
       );
       curated.addAll(
         response.items.where(
-          (fossil) =>
-              FossilCardImage.isCuratedCardImageUrl(fossil.mainImageUrl),
+          (fossil) => DinosaurCardImage.isCuratedCardImageUrl(
+            fossil.dinosaurMainImageUrl,
+          ),
         ),
       );
       offset += response.items.length;
