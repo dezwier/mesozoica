@@ -1,18 +1,22 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter_compass/flutter_compass.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 
-/// Foreground-only user location for the map tab.
+/// Foreground-only user location and compass heading for the map tab.
 class LocationService extends ChangeNotifier {
   LatLng? _currentLocation;
+  double _headingDeg = 0;
   bool _isLoading = false;
   String? _error;
   StreamSubscription<Position>? _locationSub;
+  StreamSubscription<double>? _headingSub;
   bool _isActive = false;
 
   LatLng? get currentLocation => _currentLocation;
+  double get headingDeg => _headingDeg;
   bool get isLoading => _isLoading;
   String? get error => _error;
   bool get hasLocation => _currentLocation != null;
@@ -21,6 +25,7 @@ class LocationService extends ChangeNotifier {
   Future<void> start() async {
     if (_isActive) return;
     _isActive = true;
+    _startHeading();
     await _initialize();
   }
 
@@ -29,6 +34,34 @@ class LocationService extends ChangeNotifier {
     _isActive = false;
     _locationSub?.cancel();
     _locationSub = null;
+    _headingSub?.cancel();
+    _headingSub = null;
+  }
+
+  void _startHeading() {
+    _headingSub?.cancel();
+    final events = FlutterCompass.events;
+    if (events == null) {
+      if (kDebugMode) {
+        debugPrint('LocationService: compass not available on this device');
+      }
+      return;
+    }
+
+    _headingSub = events
+        .where((event) => event.heading != null)
+        .map((event) => (event.heading! + 360) % 360)
+        .listen(
+      (heading) {
+        _headingDeg = heading;
+        notifyListeners();
+      },
+      onError: (Object error) {
+        if (kDebugMode) {
+          debugPrint('LocationService heading stream error: $error');
+        }
+      },
+    );
   }
 
   Future<void> _initialize() async {

@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
@@ -9,6 +11,8 @@ class LocationMarkerLayer extends StatelessWidget {
     super.key,
     required this.currentLocation,
     required this.cameraCenter,
+    required this.headingDeg,
+    required this.rotateMap,
     required this.mapReady,
     required this.isCenteredOnCurrent,
     this.onTapCenter,
@@ -16,6 +20,8 @@ class LocationMarkerLayer extends StatelessWidget {
 
   final LatLng? currentLocation;
   final LatLng? cameraCenter;
+  final double headingDeg;
+  final bool rotateMap;
   final bool mapReady;
   final bool isCenteredOnCurrent;
   final VoidCallback? onTapCenter;
@@ -27,15 +33,37 @@ class LocationMarkerLayer extends StatelessWidget {
     return MarkerLayer(
       rotate: false,
       markers: [
-        if (currentLocation != null)
+        if (currentLocation != null && !rotateMap)
           Marker(
             point: currentLocation!,
             width: MapConfig.markerSize,
             height: MapConfig.markerSize,
-            child: Icon(
-              Icons.navigation,
-              size: MapConfig.markerIconSize,
-              color: primary,
+            child: Transform.rotate(
+              angle: (headingDeg - 180) * math.pi / 360,
+              alignment: Alignment.center,
+              child: Transform.rotate(
+                angle: (headingDeg + 180) * math.pi / 360,
+                child: Icon(
+                  Icons.navigation,
+                  size: MapConfig.markerIconSize,
+                  color: primary,
+                ),
+              ),
+            ),
+          ),
+        if (currentLocation != null && rotateMap && mapReady)
+          Marker(
+            point: currentLocation!,
+            width: MapConfig.markerSize,
+            height: MapConfig.markerSize,
+            child: Transform.rotate(
+              angle: headingDeg * math.pi / 180,
+              alignment: Alignment.center,
+              child: Icon(
+                Icons.navigation,
+                size: MapConfig.markerIconSize,
+                color: primary,
+              ),
             ),
           ),
         if (mapReady &&

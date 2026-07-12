@@ -5,8 +5,8 @@ import 'package:latlong2/latlong.dart';
 class MapConfig {
   MapConfig._();
 
-  static const double initialZoom = 4.0;
-  static const double minZoom = 4.0;
+  static const double initialZoom = 3.0;
+  static const double minZoom = 3.0;
   static const double maxZoom = 16.4;
   static const double centerOnMeZoom = 10.0;
   static const double markerDetailZoom = 8.0;
@@ -31,7 +31,7 @@ class MapConfig {
   }
 
   static double fossilMarkerSize(double zoom, {bool selected = false}) {
-    final base = (zoom + 1).clamp(6.0, 12.0);
-    return selected ? base + 3 : base;
+    final base = (zoom + 3).clamp(12.0, 22.0);
+    return selected ? base + 4 : base;
   }
 }

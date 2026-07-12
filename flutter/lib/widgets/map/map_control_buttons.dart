@@ -8,6 +8,8 @@ class MapControlButtons extends StatelessWidget {
     required this.currentZoom,
     required this.onZoomChanged,
     required this.onCenterLocation,
+    required this.rotateMap,
+    required this.onToggleRotation,
     this.onRefresh,
     this.isRefreshing = false,
   });
@@ -15,6 +17,8 @@ class MapControlButtons extends StatelessWidget {
   final double currentZoom;
   final ValueChanged<double> onZoomChanged;
   final VoidCallback onCenterLocation;
+  final bool rotateMap;
+  final VoidCallback onToggleRotation;
   final VoidCallback? onRefresh;
   final bool isRefreshing;
 
@@ -44,6 +48,16 @@ class MapControlButtons extends StatelessWidget {
                     )
                   : const Icon(Icons.refresh),
             ),
+          FloatingActionButton.small(
+            heroTag: 'toggle_rotation',
+            onPressed: onToggleRotation,
+            tooltip: rotateMap
+                ? 'Fixed plan: rotate marker with phone'
+                : 'Rotating map: keep marker pointing up',
+            child: Icon(
+              rotateMap ? Icons.navigation_outlined : Icons.explore_outlined,
+            ),
+          ),
           FloatingActionButton.small(
             heroTag: 'center_location',
             onPressed: onCenterLocation,

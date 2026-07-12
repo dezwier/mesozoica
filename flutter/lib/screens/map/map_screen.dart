@@ -34,6 +34,7 @@ class _MapScreenState extends State<MapScreen> {
   bool _mapReady = false;
   double _zoomLevel = MapConfig.initialZoom;
   bool _centeredOnUser = false;
+  bool _rotateMap = false;
 
   @override
   void initState() {
@@ -82,6 +83,24 @@ class _MapScreenState extends State<MapScreen> {
     }
   }
 
+  void _updateMapRotation(double headingDeg) {
+    if (!_rotateMap || !_mapReady) return;
+    try {
+      _mapController.rotate(-headingDeg);
+    } catch (_) {
+      // Map controller not ready yet.
+    }
+  }
+
+  void _toggleRotationMode(double headingDeg) {
+    setState(() {
+      _rotateMap = !_rotateMap;
+      if (_mapReady) {
+        _mapController.rotate(_rotateMap ? -headingDeg : 0);
+      }
+    });
+  }
+
   void _setInitialCamera({
     required LocationService locationService,
   }) {
@@ -98,8 +117,8 @@ class _MapScreenState extends State<MapScreen> {
 
   void _centerOnLocation(LocationService locationService) {
     final location = locationService.currentLocation;
-    if (location == null) return;
-    _mapController.move(location, MapConfig.centerOnMeZoom);
+    if (location == null || !_mapReady) return;
+    _mapController.move(location, _mapController.camera.zoom);
   }
 
   void _onZoomChanged(double zoom) {
@@ -149,6 +168,7 @@ class _MapScreenState extends State<MapScreen> {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (!mounted) return;
           _setInitialCamera(locationService: locationService);
+          _updateMapRotation(locationService.headingDeg);
         });
 
         final startCenter =
@@ -173,6 +193,9 @@ class _MapScreenState extends State<MapScreen> {
                 onMapReady: () {
                   if (!mounted) return;
                   setState(() => _mapReady = true);
+                  if (_rotateMap) {
+                    _mapController.rotate(-locationService.headingDeg);
+                  }
                 },
                 interactionOptions: const fm.InteractionOptions(
                   flags: fm.InteractiveFlag.pinchZoom |
@@ -194,6 +217,8 @@ class _MapScreenState extends State<MapScreen> {
                 LocationMarkerLayer(
                   currentLocation: locationService.currentLocation,
                   cameraCenter: _safeCameraCenter(),
+                  headingDeg: locationService.headingDeg,
+                  rotateMap: _rotateMap,
                   mapReady: _mapReady,
                   isCenteredOnCurrent:
                       _isCenteredOnCurrent(locationService),
@@ -268,6 +293,9 @@ class _MapScreenState extends State<MapScreen> {
               currentZoom: _zoomLevel,
               onZoomChanged: _onZoomChanged,
               onCenterLocation: () => _centerOnLocation(locationService),
+              rotateMap: _rotateMap,
+              onToggleRotation: () =>
+                  _toggleRotationMode(locationService.headingDeg),
               onRefresh: mapData.refresh,
               isRefreshing: mapData.loading,
             ),
