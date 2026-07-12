@@ -8,6 +8,7 @@ from decimal import Decimal
 from app.models.site_clean import SiteClean
 from app.models.site_type import SiteType
 from app.schemas.site import SiteSummary
+from app.services.site_service.site_type_fallback import effective_site_type
 
 
 @dataclass(frozen=True)
@@ -16,9 +17,17 @@ class SiteRow:
     site_type: SiteType | None
 
 
-def site_row_to_summary(row: SiteRow) -> SiteSummary:
+def site_row_to_summary(
+    row: SiteRow,
+    *,
+    types_by_period: dict[str, list[SiteType]] | None = None,
+) -> SiteSummary:
     site = row.site
-    site_type = row.site_type
+    site_type = (
+        effective_site_type(site, row.site_type, types_by_period)
+        if types_by_period is not None
+        else row.site_type
+    )
     return SiteSummary(
         site_id=site.site_id,
         latitude=_decimal_to_float(site.latitude),

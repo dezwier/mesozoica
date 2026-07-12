@@ -4,12 +4,18 @@ import 'package:mesozoica/theme/mesozoica_theme.dart';
 import 'package:mesozoica/widgets/map/period_marker_color.dart';
 
 void main() {
-  test('periodMarkerColor maps periods to theme browns lightest to darkest', () {
+  test('periodMarkerColor maps periods to theme colors', () {
     final scheme = MesozoicaTheme.light.colorScheme;
 
     expect(periodMarkerColor('cretaceous', scheme), scheme.primary);
-    expect(periodMarkerColor('jurassic', scheme), scheme.secondary);
-    expect(periodMarkerColor('triassic', scheme), scheme.tertiary);
+    expect(
+      periodMarkerColor('jurassic', scheme),
+      const Color.fromARGB(255, 195, 195, 195),
+    );
+    expect(
+      periodMarkerColor('triassic', scheme),
+      const Color.fromARGB(255, 221, 133, 0),
+    );
     expect(periodMarkerColor('Cretaceous', scheme), scheme.primary);
     expect(periodMarkerColor(null, scheme), scheme.primary);
   });

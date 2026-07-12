@@ -13,6 +13,7 @@ class MapController extends ChangeNotifier {
       : _service = service ?? SiteService();
 
   static const pageSize = 500;
+  static const _catalogSeed = 'map-catalog';
 
   final SiteService _service;
 
@@ -80,6 +81,31 @@ class MapController extends ChangeNotifier {
   void clearSelection() {
     if (_selectedSite == null) return;
     _selectedSite = null;
+    notifyListeners();
+  }
+
+  /// Loads the latest site row so formation and other card fields are current.
+  Future<SiteSummary> siteForDisplay(SiteSummary site) async {
+    try {
+      final fresh = await _service.fetchSiteById(site.siteId);
+      _replaceCachedSite(fresh);
+      return fresh;
+    } on SiteServiceException {
+      return site;
+    } catch (_) {
+      return site;
+    }
+  }
+
+  void _replaceCachedSite(SiteSummary site) {
+    final index = _geoSites.indexWhere((s) => s.siteId == site.siteId);
+    if (index < 0) return;
+    final updated = [..._geoSites];
+    updated[index] = site;
+    _geoSites = updated;
+    if (_selectedSite?.siteId == site.siteId) {
+      _selectedSite = site;
+    }
     notifyListeners();
   }
 
@@ -152,7 +178,8 @@ class MapController extends ChangeNotifier {
     return _service.fetchSites(
       limit: pageSize,
       offset: offset,
-      sort: 'name',
+      sort: 'random',
+      seed: _catalogSeed,
     );
   }
 

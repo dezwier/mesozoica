@@ -281,4 +281,54 @@ void main() {
 
     controller.dispose();
   });
+
+  test('siteForDisplay fetches fresh site and updates cache', () async {
+    var detailCalls = 0;
+    final service = SiteService(
+      client: MockClient((request) async {
+        if (request.url.pathSegments.contains('sites') &&
+            request.url.pathSegments.length == 4) {
+          detailCalls++;
+          return http.Response(
+            jsonEncode({
+              'site_id': 1,
+              'latitude': 10.0,
+              'longitude': 20.0,
+              'formation': 'Hell Creek Formation',
+            }),
+            200,
+          );
+        }
+        return http.Response(
+          jsonEncode({
+            'items': [
+              siteJson(
+                siteId: 1,
+                latitude: 10.0,
+                longitude: 20.0,
+              ),
+            ],
+            'total': 1,
+            'limit': 500,
+            'offset': 0,
+            'has_next': false,
+          }),
+          200,
+        );
+      }),
+    );
+
+    final controller = MapController(service: service);
+    controller.load();
+    await pumpUntilIdle();
+
+    expect(controller.geoSites.single.formation, isNull);
+
+    final displaySite = await controller.siteForDisplay(controller.geoSites.single);
+    expect(detailCalls, 1);
+    expect(displaySite.formation, 'Hell Creek Formation');
+    expect(controller.geoSites.single.formation, 'Hell Creek Formation');
+
+    controller.dispose();
+  });
 }

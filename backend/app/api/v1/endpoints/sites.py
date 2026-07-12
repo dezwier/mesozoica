@@ -20,6 +20,7 @@ from app.services.site_service import (
     list_site_dinosaurs,
     list_site_fossils,
     list_sites,
+    load_site_types_by_period,
     site_row_to_summary,
 )
 
@@ -51,7 +52,8 @@ def get_sites(
         ma_older=ma_older,
         has_custom_image=has_custom_image,
     )
-    items = [site_row_to_summary(row) for row in rows]
+    types_by_period = load_site_types_by_period(session)
+    items = [site_row_to_summary(row, types_by_period=types_by_period) for row in rows]
     return SiteListResponse(
         items=items,
         total=total,
@@ -67,7 +69,8 @@ def get_site(
     session: Session = Depends(get_session),
 ) -> SiteSummary:
     row = get_site_by_id(session, site_id)
-    return site_row_to_summary(row)
+    types_by_period = load_site_types_by_period(session)
+    return site_row_to_summary(row, types_by_period=types_by_period)
 
 
 @router.get("/{site_id}/fossils", response_model=SiteFossilThumbListResponse)

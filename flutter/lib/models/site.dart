@@ -1,4 +1,5 @@
 import '../utils/display_text.dart';
+import '../utils/period_for_ages.dart';
 
 class SiteSummary {
   const SiteSummary({
@@ -60,8 +61,17 @@ class SiteSummary {
     return parts.join(', ');
   }
 
+  /// Site type period when set, otherwise inferred from [minAgeMa]/[maxAgeMa].
+  String? get effectivePeriod {
+    final fromType = siteTypePeriod?.trim();
+    if (fromType != null && fromType.isNotEmpty) {
+      return fromType.toLowerCase();
+    }
+    return periodForAges(minAgeMa, maxAgeMa);
+  }
+
   String get displayPeriod {
-    final periodName = siteTypePeriod?.trim();
+    final periodName = effectivePeriod;
     final capitalizedPeriod = periodName != null && periodName.isNotEmpty
         ? capitalizeLeadingLetter(periodName)
         : null;

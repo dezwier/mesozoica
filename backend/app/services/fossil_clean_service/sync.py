@@ -28,6 +28,11 @@ from app.services.fossil_clean_service.rules import (
     rock_type_for_site,
     sub_category,
 )
+from app.services.site_service.site_type_fallback import (
+    load_site_types_by_period,
+    period_to_type_ids,
+    pick_site_type_id_for_period,
+)
 
 logger = logging.getLogger("fossil_clean_sync")
 
@@ -147,11 +152,18 @@ def _write_site_types(
 def _finalize_site_rows(
     drafts: list[_SiteDraft],
     site_type_ids: dict[tuple[str, str], int],
+    period_to_ids: dict[str, list[int]],
 ) -> list[SiteClean]:
     rows: list[SiteClean] = []
     for draft in drafts:
         if draft.period and draft.site.rock_type:
             draft.site.site_type_id = site_type_ids.get((draft.period, draft.site.rock_type))
+        elif draft.period and not (draft.site.rock_type or "").strip():
+            draft.site.site_type_id = pick_site_type_id_for_period(
+                site_id=draft.site.site_id,
+                period=draft.period,
+                period_to_type_ids=period_to_ids,
+            )
         else:
             draft.site.site_type_id = None
         rows.append(draft.site)
@@ -284,7 +296,8 @@ def sync_clean_tables(
         if fossil_ids:
             session.exec(delete(FossilClean).where(col(FossilClean.fossil_id).in_(fossil_ids)))
         site_type_ids = _write_site_types(session, site_type_pairs, full_refresh=False)
-        site_rows = _finalize_site_rows(site_drafts, site_type_ids)
+        period_to_ids = period_to_type_ids(load_site_types_by_period(session))
+        site_rows = _finalize_site_rows(site_drafts, site_type_ids, period_to_ids)
         for site_row in site_rows:
             session.merge(site_row)
         session.flush()
@@ -294,7 +307,8 @@ def sync_clean_tables(
         session.exec(delete(FossilClean))
         session.exec(delete(SiteClean))
         site_type_ids = _write_site_types(session, site_type_pairs, full_refresh=True)
-        site_rows = _finalize_site_rows(site_drafts, site_type_ids)
+        period_to_ids = period_to_type_ids(load_site_types_by_period(session))
+        site_rows = _finalize_site_rows(site_drafts, site_type_ids, period_to_ids)
         for site_row in site_rows:
             session.add(site_row)
         session.flush()

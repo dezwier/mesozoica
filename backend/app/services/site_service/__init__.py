@@ -6,6 +6,7 @@ from app.services.site_service.related import (
     list_site_dinosaurs,
     list_site_fossils,
 )
+from app.services.site_service.site_type_fallback import load_site_types_by_period
 from app.services.site_service.summary import site_row_to_summary
 
 __all__ = [
@@ -14,5 +15,6 @@ __all__ = [
     "list_site_dinosaurs",
     "list_site_fossils",
     "list_sites",
+    "load_site_types_by_period",
     "site_row_to_summary",
 ]

@@ -159,6 +159,32 @@ def test_get_site_not_found(client):
     assert response.status_code == 404
 
 
+def test_get_site_without_rock_type_uses_period_fallback_image(client, session):
+    site_type = _seed_site_type(session)
+    session.add(
+        SiteClean(
+            site_id=50003,
+            latitude=Decimal("40.000000"),
+            longitude=Decimal("-100.000000"),
+            formation="Age-only Formation",
+            min_age_ma=Decimal("72.00"),
+            max_age_ma=Decimal("84.00"),
+            rock_type=None,
+            site_type_id=None,
+        )
+    )
+    session.commit()
+
+    response = client.get("/api/v1/sites/50003")
+    assert response.status_code == 200
+    item = response.json()
+    assert item["rock_type"] is None
+    assert item["site_type_id"] is None
+    assert item["site_type_period"] == "cretaceous"
+    assert item["site_type_rock_type"] == site_type.rock_type
+    assert item["main_image_url"].endswith("/media/site-types/1.png")
+
+
 def test_site_related_fossils_and_dinosaurs(client, session):
     site_type = _seed_site_type(session)
     site = _seed_hell_creek_site(session, site_type)

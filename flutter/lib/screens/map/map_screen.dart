@@ -156,7 +156,9 @@ class _MapScreenState extends State<MapScreen> {
   Future<void> _onSiteTap(SiteSummary site) async {
     final mapData = context.read<map_data.MapController>();
     mapData.selectSite(site);
-    await showSiteMapCardDialog(context, site);
+    final displaySite = await mapData.siteForDisplay(site);
+    if (!mounted) return;
+    await showSiteMapCardDialog(context, displaySite);
     if (!mounted) return;
     mapData.clearSelection();
   }
