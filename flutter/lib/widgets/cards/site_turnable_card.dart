@@ -11,9 +11,9 @@ class SiteTurnableCard extends StatelessWidget {
     super.key,
     required this.site,
     this.turnable = true,
-    this.titleFontSize = 28,
+    this.titleFontSize = 36,
     this.subtitleFontSize = 10,
-    this.overlayHeightFactor = 0.35,
+    this.overlayHeightFactor = 0.38,
   });
 
   final SiteSummary site;

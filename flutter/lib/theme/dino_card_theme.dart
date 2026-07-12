@@ -110,6 +110,70 @@ class DinoCardTheme {
     return titleStyle(fontSize: fontSize, color: frontTitleColor);
   }
 
+  /// Title on the card front image — light tone with shadow for readability.
+  TextStyle frontOverlayTitleStyle({double fontSize = 28}) {
+    return TextStyle(
+      fontFamily: titleFontFamily,
+      color: const Color(0xFFF8F4EE),
+      fontSize: fontSize,
+      fontWeight: FontWeight.w700,
+      letterSpacing: 1.0,
+      height: 1.1,
+      shadows: const [
+        Shadow(
+          color: Color(0x8C000000),
+          blurRadius: 8,
+          offset: Offset(0, 1),
+        ),
+        Shadow(
+          color: Color(0x59000000),
+          blurRadius: 14,
+          offset: Offset(0, 2),
+        ),
+      ],
+    );
+  }
+
+  /// Subtitle paired with [frontOverlayTitleStyle] on the card image.
+  TextStyle frontOverlaySubtitleStyle({double fontSize = 10}) {
+    return TextStyle(
+      color: const Color(0xE6F0E8DF),
+      fontSize: fontSize,
+      fontWeight: FontWeight.w600,
+      letterSpacing: 0.8,
+      height: 1.2,
+      shadows: const [
+        Shadow(
+          color: Color(0x73000000),
+          blurRadius: 6,
+          offset: Offset(0, 1),
+        ),
+      ],
+    );
+  }
+
+  /// Description text on the card front image.
+  TextStyle frontOverlayBodyStyle({double fontSize = 13}) {
+    return TextStyle(
+      color: const Color.fromARGB(230, 255, 255, 255),
+      fontSize: fontSize,
+      fontWeight: FontWeight.w800,
+      height: 1.4,
+      shadows: const [
+        Shadow(
+          color: Color(0x73000000),
+          blurRadius: 6,
+          offset: Offset(0, 1),
+        ),
+        Shadow(
+          color: Color(0x40000000),
+          blurRadius: 10,
+          offset: Offset(0, 2),
+        ),
+      ],
+    );
+  }
+
   TextStyle subtitleStyle({double fontSize = 11}) {
     return TextStyle(
       color: cardTextSecondary,
@@ -184,6 +248,20 @@ class DinoCardTheme {
     return isLight ? cardTextSecondary : cardAccent.withValues(alpha: 0.9);
   }
 
+  /// Frosted stat panel on card fronts.
+  BoxDecoration factPanelDecoration() {
+    return BoxDecoration(
+      color: isLight
+          ? cardBackground.withValues(alpha: 0.72)
+          : cardBackground.withValues(alpha: 0.7),
+      borderRadius: BorderRadius.circular(10),
+      border: Border.all(
+        color: cardAccent.withValues(alpha: 0.35),
+        width: 1,
+      ),
+    );
+  }
+
   /// Bottom overlay on the card front illustration.
   LinearGradient frontOverlayGradient() {
     if (isLight) {
@@ -192,14 +270,14 @@ class DinoCardTheme {
         end: Alignment.bottomCenter,
         colors: [
           Colors.transparent,
-          cardBackground.withValues(alpha: 0.12),
-          cardBackground.withValues(alpha: 0.30),
-          cardBackground.withValues(alpha: 0.55),
-          cardBackground.withValues(alpha: 0.76),
-          cardBackground.withValues(alpha: 0.92),
+          Colors.transparent,
+          cardBackground.withValues(alpha: 0.18),
+          cardBackground.withValues(alpha: 0.42),
+          cardBackground.withValues(alpha: 0.68),
+          cardBackground.withValues(alpha: 0.88),
           cardBackground,
         ],
-        stops: const [0.0, 0.12, 0.28, 0.40, 0.55, 0.82, 1.0],
+        stops: const [0.0, 0.42, 0.55, 0.68, 0.80, 0.92, 1.0],
       );
     }
 
@@ -208,11 +286,12 @@ class DinoCardTheme {
       end: Alignment.bottomCenter,
       colors: [
         Colors.transparent,
-        cardBackground.withValues(alpha: 0.55),
-        cardBackground.withValues(alpha: 0.85),
+        Colors.transparent,
+        cardBackground.withValues(alpha: 0.62),
+        cardBackground.withValues(alpha: 0.88),
         cardBackground,
       ],
-      stops: const [0.0, 0.18, 0.42, 1.0],
+      stops: const [0.0, 0.48, 0.68, 0.86, 1.0],
     );
   }
 }

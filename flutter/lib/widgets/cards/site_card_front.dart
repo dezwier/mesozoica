@@ -12,9 +12,9 @@ class SiteCardFront extends StatelessWidget {
   const SiteCardFront({
     super.key,
     required this.site,
-    this.titleFontSize = 28,
+    this.titleFontSize = 36,
     this.subtitleFontSize = 10,
-    this.overlayHeightFactor = 0.35,
+    this.overlayHeightFactor = 0.38,
   });
 
   final SiteSummary site;
@@ -24,8 +24,6 @@ class SiteCardFront extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cardTheme = DinoCardTheme.of(context);
-
     return AspectRatio(
       aspectRatio: DinoCardTheme.cardAspectRatio,
       child: Stack(
@@ -33,10 +31,16 @@ class SiteCardFront extends StatelessWidget {
         children: [
           SiteCardImage(imageUrl: site.mainImageUrl),
           Positioned(
-            right: 0,
-            top: 24,
-            width: 144,
-            child: SiteCardEdgeFacts(site: site),
+            left: 18,
+            right: 18,
+            top: 20,
+            child: SiteCardHeader(
+              site: site,
+              titleFontSize: titleFontSize,
+              subtitleFontSize: subtitleFontSize,
+              centered: true,
+              overlayOnImage: true,
+            ),
           ),
           Positioned.fill(
             child: Align(
@@ -44,32 +48,19 @@ class SiteCardFront extends StatelessWidget {
               child: FractionallySizedBox(
                 heightFactor: overlayHeightFactor,
                 widthFactor: 1,
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    gradient: cardTheme.frontOverlayGradient(),
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(
+                    18,
+                    10,
+                    18,
+                    math.max(14, titleFontSize * 0.55),
                   ),
-                  child: ClipRect(
-                    child: Padding(
-                      padding: EdgeInsets.fromLTRB(
-                        18,
-                        0,
-                        18,
-                        math.max(14, titleFontSize * 0.55),
-                      ),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          SiteCardHeader(
-                            site: site,
-                            titleFontSize: titleFontSize,
-                            subtitleFontSize: subtitleFontSize,
-                            centered: true,
-                            useFrontTitleStyle: true,
-                          ),
-                        ],
-                      ),
-                    ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      SiteCardEdgeFacts(site: site),
+                    ],
                   ),
                 ),
               ),

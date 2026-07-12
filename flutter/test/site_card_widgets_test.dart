@@ -77,6 +77,9 @@ void main() {
     expect(find.textContaining('Montana'), findsOneWidget);
     expect(find.textContaining('Cretaceous, 66 – 68 Ma'), findsOneWidget);
     expect(find.textContaining('Sandstone'), findsOneWidget);
+    expect(find.text('COORDINATES'), findsOneWidget);
+    expect(find.text('COUNTRY'), findsOneWidget);
+    expect(find.text('ROCK TYPE'), findsOneWidget);
   });
 
   testWidgets('SiteCardBack and SiteTurnableCard build without error',

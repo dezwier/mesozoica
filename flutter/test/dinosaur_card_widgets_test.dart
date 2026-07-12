@@ -57,8 +57,8 @@ void main() {
     expect(find.byType(DinosaurCardEdgeFacts), findsOneWidget);
     expect(find.textContaining('Hell Creek Formation'), findsOneWidget);
     expect(find.textContaining('Late Cretaceous'), findsOneWidget);
-    expect(find.text('LOCATION'), findsNothing);
-    expect(find.text('PERIOD'), findsNothing);
+    expect(find.text('LOCATION'), findsOneWidget);
+    expect(find.text('PERIOD'), findsOneWidget);
   });
 
   testWidgets('DinosaurCardFront hides edge facts when showFacts is false',

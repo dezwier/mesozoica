@@ -13,9 +13,9 @@ class DinosaurCardFront extends StatelessWidget {
     super.key,
     required this.dinosaur,
     this.showFacts = true,
-    this.titleFontSize = 28,
+    this.titleFontSize = 36,
     this.subtitleFontSize = 10,
-    this.overlayHeightFactor = 0.45,
+    this.overlayHeightFactor = 0.52,
   });
 
   final DinosaurSummary dinosaur;
@@ -40,55 +40,45 @@ class DinosaurCardFront extends StatelessWidget {
         fit: StackFit.expand,
         children: [
           DinosaurCardImage(imageUrl: dinosaur.mainImageUrl),
-          if (showFacts)
-            Positioned(
-              right: 0,
-              top: 24,
-              width: 144,
-              child: DinosaurCardEdgeFacts(dinosaur: dinosaur),
+          Positioned(
+            left: 18,
+            right: 18,
+            top: 20,
+            child: DinosaurCardHeader(
+              dinosaur: dinosaur,
+              titleFontSize: titleFontSize,
+              subtitleFontSize: subtitleFontSize,
+              centered: true,
+              overlayOnImage: true,
             ),
+          ),
           Positioned.fill(
             child: Align(
               alignment: Alignment.bottomCenter,
               child: FractionallySizedBox(
                 heightFactor: overlayHeightFactor,
                 widthFactor: 1,
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    gradient: cardTheme.frontOverlayGradient(),
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(
+                    18,
+                    10,
+                    18,
+                    showFacts ? 16 : math.max(8, titleFontSize * 0.45),
                   ),
-                  child: ClipRect(
-                    child: Padding(
-                      padding: EdgeInsets.fromLTRB(
-                        18,
-                        0,
-                        18,
-                        showFacts ? 16 : math.max(8, titleFontSize * 0.45),
-                      ),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          DinosaurCardHeader(
-                            dinosaur: dinosaur,
-                            titleFontSize: titleFontSize,
-                            subtitleFontSize: subtitleFontSize,
-                            centered: true,
-                            useFrontTitleStyle: true,
-                          ),
-                          if (showFacts) ...[
-                            const SizedBox(height: 14),
-                            Text(
-                              _description,
-                              textAlign: TextAlign.center,
-                              style: cardTheme.bodyStyle(fontSize: 12),
-                              maxLines: 4,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      if (showFacts) ...[
+                        Text(
+                          _description,
+                          textAlign: TextAlign.center,
+                          style: cardTheme.frontOverlayBodyStyle(fontSize: 13),
+                        ),
+                        const SizedBox(height: 10),
+                        DinosaurCardEdgeFacts(dinosaur: dinosaur),
+                      ],
+                    ],
                   ),
                 ),
               ),

@@ -13,9 +13,9 @@ class DinosaurTurnableCard extends StatelessWidget {
     this.showFrontFacts = true,
     this.showArticleButton,
     this.turnable = true,
-    this.titleFontSize = 28,
+    this.titleFontSize = 36,
     this.subtitleFontSize = 10,
-    this.overlayHeightFactor = 0.45,
+    this.overlayHeightFactor = 0.52,
   });
 
   final DinosaurSummary dinosaur;
