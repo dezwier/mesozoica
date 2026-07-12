@@ -166,6 +166,8 @@ def test_build_site_type_image_prompt_emphasizes_rock_type_and_period():
     assert "3:4" in prompt
     assert "dramatic warm" in prompt
     assert "field outcrop" in prompt.lower()
+    assert "scrappy" in prompt.lower()
+    assert "too clean" in prompt.lower()
     assert "no text" in prompt.lower()
     assert "no people" in prompt.lower()
 

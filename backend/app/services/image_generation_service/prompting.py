@@ -60,6 +60,11 @@ Primary subject — rock type (most important):
 - natural eroded cliff face, hillside cut, or badlands outcrop where a fossil site would realistically occur
 - dusty field setting, uneven daylight, authentic geological strata
 
+Imperfect, scrappy field look (important — do NOT make it too clean):
+- weathered, irregular exposure: cracked surfaces, loose talus, rubble at the base, dust, lichen, partial erosion
+- uneven lighting, slightly blown highlights or muddy shadows — casual handheld iPhone snapshot, not a polished landscape photo
+- do NOT beautify, over-sharpen, or CGI-polish the outcrop; avoid pristine cliff faces and hyper-saturated colors
+
 Geological period (secondary context):
 - {period_context}
 
@@ -69,7 +74,7 @@ Hard constraints:
 - no borders, frames, or graphic overlays
 - only nature: rock, sediment, sky, and period-appropriate vegetation if any
 
-Avoid: museum displays, polished rock slabs, studio backdrops, stock-photo perfection."""
+Avoid: museum displays, polished rock slabs, studio backdrops, stock-photo perfection, overly clean or manicured scenery."""
 
 
 def build_dinosaur_image_prompt(name: str, article_text: str) -> str:

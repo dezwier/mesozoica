@@ -36,7 +36,7 @@ class MapControlButtons extends StatelessWidget {
             FloatingActionButton.small(
               heroTag: 'refresh_map',
               onPressed: isRefreshing ? null : onRefresh,
-              tooltip: 'Refresh fossils',
+              tooltip: 'Refresh sites',
               child: isRefreshing
                   ? SizedBox(
                       width: 16,

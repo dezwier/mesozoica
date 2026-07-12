@@ -7,15 +7,13 @@ import 'package:provider/provider.dart';
 
 import '../../config/map_config.dart';
 import '../../controllers/map_controller.dart' as map_data;
-import '../../models/fossil.dart';
+import '../../models/site.dart';
 import '../../services/location_service.dart';
-import '../../widgets/fossil/fossil_filter_fab.dart';
-import '../../widgets/fossil/fossil_filter_sheet.dart';
-import '../../widgets/map/fossil_map_card_dialog.dart';
-import '../../widgets/map/fossil_markers_layer.dart';
 import '../../widgets/map/location_marker_layer.dart';
 import '../../widgets/map/map_control_buttons.dart';
 import '../../widgets/map/map_tile_layer.dart';
+import '../../widgets/map/site_map_card_dialog.dart';
+import '../../widgets/map/site_markers_layer.dart';
 
 class MapScreen extends StatefulWidget {
   const MapScreen({
@@ -155,21 +153,12 @@ class _MapScreenState extends State<MapScreen> {
     }
   }
 
-  Future<void> _onFossilTap(FossilSummary fossil) async {
+  Future<void> _onSiteTap(SiteSummary site) async {
     final mapData = context.read<map_data.MapController>();
-    mapData.selectFossil(fossil);
-    await showFossilMapCardDialog(context, fossil);
+    mapData.selectSite(site);
+    await showSiteMapCardDialog(context, site);
     if (!mounted) return;
     mapData.clearSelection();
-  }
-
-  void _openFilterSheet(map_data.MapController mapData) {
-    FossilFilterSheet.show(
-      context,
-      initialFilters: mapData.filters,
-      catalogTotal: mapData.totalCatalog > 0 ? mapData.totalCatalog : null,
-      onApply: mapData.applyFilters,
-    );
   }
 
   @override
@@ -217,13 +206,13 @@ class _MapScreenState extends State<MapScreen> {
               ),
               children: [
                 const MapTileLayer(),
-                FossilMarkersLayer(
-                  fossils: mapData.geoFossils,
+                SiteMarkersLayer(
+                  sites: mapData.geoSites,
                   zoomLevel: _zoomLevel,
                   mapReady: _mapReady,
                   visibleBounds: _safeVisibleBounds(),
-                  selectedFossil: mapData.selectedFossil,
-                  onFossilTap: _onFossilTap,
+                  selectedSite: mapData.selectedSite,
+                  onSiteTap: _onSiteTap,
                 ),
                 LocationMarkerLayer(
                   currentLocation: locationService.currentLocation,
@@ -258,7 +247,7 @@ class _MapScreenState extends State<MapScreen> {
                             child: CircularProgressIndicator(strokeWidth: 2),
                           ),
                           const SizedBox(width: 8),
-                          Text(_fossilLoadingLabel(mapData)),
+                          Text(_siteLoadingLabel(mapData)),
                         ],
                       ),
                     ),
@@ -309,11 +298,6 @@ class _MapScreenState extends State<MapScreen> {
                   _toggleRotationMode(locationService.headingDeg),
               onRefresh: mapData.refresh,
               isRefreshing: mapData.loading,
-              filterFab: FossilFilterFab(
-                heroTag: 'map_filter_fab',
-                hasActiveFilters: mapData.hasActiveFilters,
-                onPressed: () => _openFilterSheet(mapData),
-              ),
             ),
             if (locationService.error != null)
               Positioned(
@@ -344,14 +328,14 @@ class _MapScreenState extends State<MapScreen> {
     );
   }
 
-  String _fossilLoadingLabel(map_data.MapController mapData) {
+  String _siteLoadingLabel(map_data.MapController mapData) {
     if (mapData.totalCatalog > 0) {
-      return 'Loading fossils… ${mapData.geoFossilCount} found '
+      return 'Loading sites… ${mapData.geoSiteCount} found '
           '(${mapData.loadedCatalog}/${mapData.totalCatalog})';
     }
-    if (mapData.geoFossilCount > 0) {
-      return 'Loading fossils… ${mapData.geoFossilCount} found';
+    if (mapData.geoSiteCount > 0) {
+      return 'Loading sites… ${mapData.geoSiteCount} found';
     }
-    return 'Loading fossils…';
+    return 'Loading sites…';
   }
 }
