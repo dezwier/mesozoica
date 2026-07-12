@@ -7,15 +7,17 @@ class FossilFilterFab extends StatelessWidget {
     super.key,
     required this.onPressed,
     this.hasActiveFilters = false,
+    this.heroTag = 'fossil_filter_fab',
   });
 
   final VoidCallback onPressed;
   final bool hasActiveFilters;
+  final Object heroTag;
 
   @override
   Widget build(BuildContext context) {
     return DinosaurFilterFab(
-      heroTag: 'fossil_filter_fab',
+      heroTag: heroTag,
       onPressed: onPressed,
       hasActiveFilters: hasActiveFilters,
     );

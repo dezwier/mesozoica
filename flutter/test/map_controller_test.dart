@@ -20,6 +20,8 @@ void main() {
       'dinosaur_id': 1,
       'dinosaur_name': 'Tyrannosaurus',
       'identified_name': identifiedName,
+      'dinosaur_main_image_url':
+          'https://mesozoica-production.up.railway.app/media/dinosaurs/Tyrannosaurus.webp',
       if (latitude != null) 'latitude': latitude,
       if (longitude != null) 'longitude': longitude,
     };

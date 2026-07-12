@@ -5,14 +5,17 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../config/app_config.dart';
+import '../controllers/fossil_catalog_controller.dart';
 import '../models/fossil.dart';
 import '../services/fossil_service.dart';
+import '../widgets/cards/dinosaur_card_image.dart';
 
 class MapController extends ChangeNotifier {
   MapController({FossilService? service})
       : _service = service ?? FossilService();
 
   static const pageSize = 500;
+  static const _clientScanPageSize = 500;
 
   final FossilService _service;
 
@@ -26,6 +29,8 @@ class MapController extends ChangeNotifier {
   int _offset = 0;
   int _totalCatalog = 0;
   int _loadedCatalog = 0;
+  FossilCatalogFilters _filters = FossilCatalogFilters.defaults;
+  bool _useClientCustomImageFilter = false;
 
   List<FossilSummary> get geoFossils => List.unmodifiable(_geoFossils);
   bool get loading => _loading;
@@ -37,6 +42,8 @@ class MapController extends ChangeNotifier {
   int get totalCatalog => _totalCatalog;
   int get loadedCatalog => _loadedCatalog;
   int get geoFossilCount => _geoFossils.length;
+  FossilCatalogFilters get filters => _filters;
+  bool get hasActiveFilters => _filters.hasActiveFilters;
   bool get isEmpty =>
       !_loading && _loadingComplete && _error == null && _geoFossils.isEmpty;
 
@@ -51,6 +58,7 @@ class MapController extends ChangeNotifier {
       _loadedCatalog = 0;
       _totalCatalog = 0;
       _loadingComplete = false;
+      _useClientCustomImageFilter = false;
     }
 
     final seq = ++_loadSeq;
@@ -72,6 +80,11 @@ class MapController extends ChangeNotifier {
     load(force: true);
   }
 
+  Future<void> applyFilters(FossilCatalogFilters filters) async {
+    _filters = filters;
+    load(force: true);
+  }
+
   void selectFossil(FossilSummary fossil) {
     _selectedFossil = fossil;
     notifyListeners();
@@ -85,23 +98,31 @@ class MapController extends ChangeNotifier {
 
   Future<void> _loadPages(int seq) async {
     try {
+      if (_filters.onlyCustomImage && _useClientCustomImageFilter) {
+        final response = await _fetchAllCuratedClientSide();
+        if (seq != _loadSeq) return;
+
+        final geo = _withCoordinates(response.items);
+        _geoFossils = geo;
+        _offset = response.items.length;
+        _loadedCatalog = response.total;
+        _totalCatalog = response.total;
+        _fossilBounds = _expandBounds(null, geo);
+        _loadingComplete = true;
+        _error = null;
+        notifyListeners();
+        return;
+      }
+
       var hasMore = true;
 
       while (hasMore) {
         if (seq != _loadSeq) return;
 
-        final response = await _service.fetchFossils(
-          limit: pageSize,
-          offset: _offset,
-          sort: 'name',
-        );
+        final response = await _fetchPage(offset: _offset);
         if (seq != _loadSeq) return;
 
-        final geo = response.items
-            .where(
-              (fossil) => fossil.latitude != null && fossil.longitude != null,
-            )
-            .toList();
+        final geo = _withCoordinates(response.items);
 
         _geoFossils = [..._geoFossils, ...geo];
         _offset += response.items.length;
@@ -154,6 +175,91 @@ class MapController extends ChangeNotifier {
         notifyListeners();
       }
     }
+  }
+
+  Future<FossilListResponse> _fetchPage({required int offset}) async {
+    if (_filters.onlyCustomImage && _useClientCustomImageFilter) {
+      return _fetchAllCuratedClientSide();
+    }
+
+    final hasSearch = _filters.searchQuery.trim().isNotEmpty;
+    final response = await _service.fetchFossils(
+      limit: pageSize,
+      offset: offset,
+      sort: 'name',
+      q: hasSearch ? _filters.searchQuery.trim() : null,
+      maYounger:
+          !hasSearch && _filters.hasTimeFilter ? _filters.maYounger : null,
+      maOlder: !hasSearch && _filters.hasTimeFilter ? _filters.maOlder : null,
+      hasCustomImage: _filters.onlyCustomImage,
+    );
+
+    if (_filters.onlyCustomImage &&
+        offset == 0 &&
+        !_serverHonorsCustomImageFilter(response)) {
+      _useClientCustomImageFilter = true;
+      if (kDebugMode) {
+        debugPrint(
+          'MapController: API ignored has_custom_image; '
+          'scanning catalog client-side',
+        );
+      }
+      return _fetchAllCuratedClientSide();
+    }
+
+    return response;
+  }
+
+  bool _serverHonorsCustomImageFilter(FossilListResponse response) {
+    return !response.items.any(
+      (fossil) =>
+          !DinosaurCardImage.isCuratedCardImageUrl(fossil.dinosaurMainImageUrl),
+    );
+  }
+
+  Future<FossilListResponse> _fetchAllCuratedClientSide() async {
+    final hasSearch = _filters.searchQuery.trim().isNotEmpty;
+    final curated = <FossilSummary>[];
+    var offset = 0;
+    var hasMore = true;
+
+    while (hasMore) {
+      final response = await _service.fetchFossils(
+        limit: _clientScanPageSize,
+        offset: offset,
+        sort: 'name',
+        q: hasSearch ? _filters.searchQuery.trim() : null,
+        maYounger:
+            !hasSearch && _filters.hasTimeFilter ? _filters.maYounger : null,
+        maOlder: !hasSearch && _filters.hasTimeFilter ? _filters.maOlder : null,
+      );
+      curated.addAll(
+        response.items.where(
+          (fossil) => DinosaurCardImage.isCuratedCardImageUrl(
+            fossil.dinosaurMainImageUrl,
+          ),
+        ),
+      );
+      offset += response.items.length;
+      hasMore = response.hasMore;
+      if (response.items.isEmpty) break;
+    }
+
+    return FossilListResponse(
+      items: curated,
+      total: curated.length,
+      limit: curated.length,
+      offset: 0,
+      hasNext: false,
+    );
+  }
+
+  List<FossilSummary> _withCoordinates(List<FossilSummary> fossils) {
+    return fossils
+        .where(
+          (fossil) => fossil.latitude != null && fossil.longitude != null,
+        )
+        .toList();
   }
 
   LatLngBounds? _expandBounds(

@@ -12,6 +12,7 @@ class MapControlButtons extends StatelessWidget {
     required this.onToggleRotation,
     this.onRefresh,
     this.isRefreshing = false,
+    this.filterFab,
   });
 
   final double currentZoom;
@@ -21,12 +22,13 @@ class MapControlButtons extends StatelessWidget {
   final VoidCallback onToggleRotation;
   final VoidCallback? onRefresh;
   final bool isRefreshing;
+  final Widget? filterFab;
 
   @override
   Widget build(BuildContext context) {
     return Positioned(
-      right: 16,
-      bottom: 24,
+      right: 12,
+      bottom: 12,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -69,6 +71,10 @@ class MapControlButtons extends StatelessWidget {
             currentZoom: currentZoom,
             onZoomChanged: onZoomChanged,
           ),
+          if (filterFab != null) ...[
+            const SizedBox(height: 10),
+            filterFab!,
+          ],
         ],
       ),
     );

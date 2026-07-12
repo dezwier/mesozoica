@@ -9,6 +9,8 @@ import '../../config/map_config.dart';
 import '../../controllers/map_controller.dart' as map_data;
 import '../../models/fossil.dart';
 import '../../services/location_service.dart';
+import '../../widgets/fossil/fossil_filter_fab.dart';
+import '../../widgets/fossil/fossil_filter_sheet.dart';
 import '../../widgets/map/fossil_map_card_dialog.dart';
 import '../../widgets/map/fossil_markers_layer.dart';
 import '../../widgets/map/location_marker_layer.dart';
@@ -161,6 +163,15 @@ class _MapScreenState extends State<MapScreen> {
     mapData.clearSelection();
   }
 
+  void _openFilterSheet(map_data.MapController mapData) {
+    FossilFilterSheet.show(
+      context,
+      initialFilters: mapData.filters,
+      catalogTotal: mapData.totalCatalog > 0 ? mapData.totalCatalog : null,
+      onApply: mapData.applyFilters,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Consumer2<map_data.MapController, LocationService>(
@@ -298,6 +309,11 @@ class _MapScreenState extends State<MapScreen> {
                   _toggleRotationMode(locationService.headingDeg),
               onRefresh: mapData.refresh,
               isRefreshing: mapData.loading,
+              filterFab: FossilFilterFab(
+                heroTag: 'map_filter_fab',
+                hasActiveFilters: mapData.hasActiveFilters,
+                onPressed: () => _openFilterSheet(mapData),
+              ),
             ),
             if (locationService.error != null)
               Positioned(
