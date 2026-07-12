@@ -5,10 +5,11 @@ from __future__ import annotations
 import logging
 import time
 from dataclasses import dataclass, field
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal, InvalidOperation
 from typing import Any
 
-from sqlmodel import Session, select
+from sqlmodel import Session, col, func, select
 
 from app.models.dinosaur import Dinosaur
 from app.models.fossil import Fossil
@@ -33,6 +34,8 @@ class SyncSummary:
     counters: SyncCounters = field(default_factory=SyncCounters)
     dry_run: bool = False
     overwrite: bool = False
+    since: datetime | None = None
+    stale_skipped: int = 0
     elapsed_s: float = 0.0
 
     @property
@@ -177,10 +180,41 @@ def _copy_fossil_fields(source: Fossil, target: Fossil) -> None:
         setattr(target, field_name, getattr(source, field_name))
 
 
-def _load_dinosaurs(session: Session, *, dinos: list[str] | None) -> list[Dinosaur]:
+def resolve_since(
+    *,
+    since: datetime | None = None,
+    stale_days: int | None = None,
+) -> datetime | None:
+    """Return cutoff for fossils_insert_time filtering (exclusive upper bound)."""
+    if since is not None:
+        return since
+    if stale_days is not None:
+        return datetime.now(timezone.utc) - timedelta(days=stale_days)
+    return None
+
+
+def _count_dinosaurs(session: Session, *, dinos: list[str] | None) -> int:
+    stmt = select(func.count()).select_from(Dinosaur)
+    if dinos:
+        stmt = stmt.where(dino_name_match_clause(dinos))
+    return int(session.exec(stmt).one())
+
+
+def _load_dinosaurs(
+    session: Session,
+    *,
+    dinos: list[str] | None,
+    since: datetime | None,
+    overwrite: bool,
+) -> list[Dinosaur]:
     stmt = select(Dinosaur).order_by(Dinosaur.name)
     if dinos:
         stmt = stmt.where(dino_name_match_clause(dinos))
+    if since is not None and not overwrite:
+        stmt = stmt.where(
+            col(Dinosaur.fossils_insert_time).is_(None)
+            | (col(Dinosaur.fossils_insert_time) < since)
+        )
     return list(session.exec(stmt).all())
 
 
@@ -204,20 +238,28 @@ def sync_fossils(
     dry_run: bool = False,
     overwrite: bool = False,
     dinos: list[str] | None = None,
+    since: datetime | None = None,
+    stale_days: int | None = None,
 ) -> SyncSummary:
     """Fetch PBDB occurrences per catalog genus and upsert into fossil."""
     own_client = client is None
     pbdb = client or PbdbClient()
     start = time.monotonic()
     counters = SyncCounters()
-    dinosaurs = _load_dinosaurs(session, dinos=dinos)
+    cutoff = resolve_since(since=since, stale_days=stale_days)
+    total_matching = _count_dinosaurs(session, dinos=dinos)
+    dinosaurs = _load_dinosaurs(session, dinos=dinos, since=cutoff, overwrite=overwrite)
+    stale_skipped = total_matching - len(dinosaurs) if cutoff is not None and not overwrite else 0
     total = len(dinosaurs)
 
     logger.info(
-        "pbdb_fossil_sync: starting total_dinosaurs=%d overwrite=%s dry_run=%s dinos=%s",
+        "pbdb_fossil_sync: starting total_dinosaurs=%d stale_skipped=%d overwrite=%s "
+        "dry_run=%s since=%s dinos=%s",
         total,
+        stale_skipped,
         overwrite,
         dry_run,
+        cutoff.isoformat() if cutoff else None,
         dinos,
     )
 
@@ -271,6 +313,10 @@ def sync_fossils(
                     genus_unchanged,
                     genus_skipped,
                 )
+                if not dry_run:
+                    dinosaur.fossils_insert_time = datetime.now(timezone.utc)
+                    session.add(dinosaur)
+                    session.commit()
             except Exception as exc:
                 counters.failed += 1
                 logger.error("%s action=failed error=%s", prefix, exc)
@@ -285,12 +331,15 @@ def sync_fossils(
         counters=counters,
         dry_run=dry_run,
         overwrite=overwrite,
+        since=cutoff,
+        stale_skipped=stale_skipped,
         elapsed_s=elapsed,
     )
     logger.info(
-        "pbdb_fossil_sync: finished dinosaurs=%d fetched=%d updated=%d unchanged=%d "
-        "skipped=%d failed=%d overwrite=%s dry_run=%s elapsed_s=%.1f",
+        "pbdb_fossil_sync: finished dinosaurs=%d stale_skipped=%d fetched=%d updated=%d "
+        "unchanged=%d skipped=%d failed=%d overwrite=%s dry_run=%s since=%s elapsed_s=%.1f",
         total,
+        stale_skipped,
         counters.fetched,
         counters.updated,
         counters.unchanged,
@@ -298,6 +347,7 @@ def sync_fossils(
         counters.failed,
         overwrite,
         dry_run,
+        cutoff.isoformat() if cutoff else None,
         elapsed,
     )
     return summary

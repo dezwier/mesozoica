@@ -26,3 +26,4 @@ jobs:
     params:
       dry_run: false
       overwrite: false
+      stale_days: 7

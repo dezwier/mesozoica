@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../controllers/phylo_tree_controller.dart';
-import '../../models/dinosaur.dart';
-import '../../widgets/cards/dinosaur_turnable_card.dart';
 import '../../widgets/dino/dinosaur_filter_fab.dart';
 import '../../widgets/dino/dinosaur_filter_sheet.dart';
 import '../../widgets/tree/fractal_fern_view.dart';
@@ -21,7 +19,8 @@ class TreeScreen extends StatefulWidget {
 }
 
 class _TreeScreenState extends State<TreeScreen> {
-  DinosaurSummary? _selectedDinosaur;
+  final GlobalKey<FractalFernViewState> _fernViewKey =
+      GlobalKey<FractalFernViewState>();
 
   @override
   void initState() {
@@ -43,14 +42,6 @@ class _TreeScreenState extends State<TreeScreen> {
     });
   }
 
-  void _onGenusTap(DinosaurSummary dinosaur) {
-    setState(() => _selectedDinosaur = dinosaur);
-  }
-
-  void _dismissCard() {
-    setState(() => _selectedDinosaur = null);
-  }
-
   void _openFilterSheet(PhyloTreeController treeController) {
     DinosaurFilterSheet.show(
       context,
@@ -58,7 +49,6 @@ class _TreeScreenState extends State<TreeScreen> {
       catalogTotal:
           treeController.totalGenera > 0 ? treeController.totalGenera : null,
       onApply: (filters) {
-        setState(() => _selectedDinosaur = null);
         treeController.applyFilters(filters);
       },
     );
@@ -71,11 +61,6 @@ class _TreeScreenState extends State<TreeScreen> {
         return Stack(
           children: [
             Positioned.fill(child: _buildBody(context, treeController)),
-            if (_selectedDinosaur != null)
-              _DinosaurCardOverlay(
-                dinosaur: _selectedDinosaur!,
-                onDismiss: _dismissCard,
-              ),
           ],
         );
       },
@@ -133,58 +118,36 @@ class _TreeScreenState extends State<TreeScreen> {
       children: [
         Positioned.fill(
           child: FractalFernView(
+            key: _fernViewKey,
             layout: layout,
-            onGenusTap: _onGenusTap,
           ),
         ),
         Positioned(
           right: 12,
           bottom: 12,
-          child: DinosaurFilterFab(
-            heroTag: 'tree_filter_fab',
-            hasActiveFilters: treeController.hasActiveFilters,
-            onPressed: () => _openFilterSheet(treeController),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              FloatingActionButton.small(
+                heroTag: 'tree_reset_fab',
+                tooltip: 'Reset view',
+                backgroundColor:
+                    Theme.of(context).colorScheme.surfaceContainerHighest,
+                foregroundColor: Theme.of(context).colorScheme.onSurface,
+                onPressed: () => _fernViewKey.currentState?.resetView(),
+                child: const Icon(Icons.center_focus_strong),
+              ),
+              const SizedBox(height: 10),
+              DinosaurFilterFab(
+                heroTag: 'tree_filter_fab',
+                hasActiveFilters: treeController.hasActiveFilters,
+                onPressed: () => _openFilterSheet(treeController),
+              ),
+            ],
           ),
         ),
       ],
-    );
-  }
-}
-
-class _DinosaurCardOverlay extends StatelessWidget {
-  const _DinosaurCardOverlay({
-    required this.dinosaur,
-    required this.onDismiss,
-  });
-
-  final DinosaurSummary dinosaur;
-  final VoidCallback onDismiss;
-
-  @override
-  Widget build(BuildContext context) {
-    return Positioned.fill(
-      child: Material(
-        color: Colors.black.withValues(alpha: 0.45),
-        child: GestureDetector(
-          onTap: onDismiss,
-          behavior: HitTestBehavior.opaque,
-          child: Center(
-            child: GestureDetector(
-              onTap: () {},
-              child: ConstrainedBox(
-                constraints: BoxConstraints(
-                  maxWidth: MediaQuery.sizeOf(context).width,
-                  maxHeight: MediaQuery.sizeOf(context).height * 0.85,
-                ),
-                child: SingleChildScrollView(
-                  physics: const ClampingScrollPhysics(),
-                  child: DinosaurTurnableCard(dinosaur: dinosaur),
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
     );
   }
 }

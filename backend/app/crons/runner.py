@@ -60,11 +60,26 @@ def _run_dinosaur_llm_enrich(params: dict[str, Any]) -> int:
     )
 
 
+def _parse_since(raw: Any) -> datetime | None:
+    if raw is None:
+        return None
+    if isinstance(raw, datetime):
+        return raw if raw.tzinfo else raw.replace(tzinfo=timezone.utc)
+    text = str(raw).strip()
+    if not text:
+        return None
+    parsed = datetime.fromisoformat(text.replace("Z", "+00:00"))
+    return parsed if parsed.tzinfo else parsed.replace(tzinfo=timezone.utc)
+
+
 def _run_pbdb_fossil_sync(params: dict[str, Any]) -> int:
+    stale_days = params.get("stale_days")
     return pbdb_fossil_sync.run_sync_job(
         dry_run=bool(params.get("dry_run", False)),
         overwrite=bool(params.get("overwrite", False)),
         dinos=params.get("dinos"),
+        since=_parse_since(params.get("since")),
+        stale_days=int(stale_days) if stale_days is not None else None,
     )
 
 
@@ -134,6 +149,19 @@ def main(argv: list[str] | None = None) -> int:
         help="Limit to specific dinosaurs by Wikipedia title (e.g. Tyrannosaurus). "
         "Pass multiple names or comma-separated names in one argument.",
     )
+    parser.add_argument(
+        "--stale-days",
+        metavar="N",
+        type=int,
+        help="Only sync dinosaurs whose fossils_insert_time is null or older than N days "
+        "(pbdb_fossil_sync; ignored with --overwrite).",
+    )
+    parser.add_argument(
+        "--since",
+        metavar="ISO8601",
+        help="Only sync dinosaurs whose fossils_insert_time is null or before this UTC "
+        "timestamp (pbdb_fossil_sync; ignored with --overwrite).",
+    )
     args = parser.parse_args(argv)
 
     overrides: dict[str, Any] = {}
@@ -142,6 +170,10 @@ def main(argv: list[str] | None = None) -> int:
     dinos = parse_dino_names(args.dinos)
     if dinos:
         overrides["dinos"] = dinos
+    if args.stale_days is not None:
+        overrides["stale_days"] = args.stale_days
+    if args.since is not None:
+        overrides["since"] = args.since
 
     if args.job:
         cfg = load_cron_config()

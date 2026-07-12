@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import 'config/app_config.dart';
 import 'controllers/dinosaur_catalog_controller.dart';
+import 'controllers/fossil_catalog_controller.dart';
 import 'controllers/phylo_tree_controller.dart';
 import 'controllers/theme_controller.dart';
 import 'shell/app_shell.dart';
@@ -21,6 +22,7 @@ class MesozoicaApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (_) => ThemeController()),
         ChangeNotifierProvider(create: (_) => DinosaurCatalogController()),
+        ChangeNotifierProvider(create: (_) => FossilCatalogController()),
         ChangeNotifierProvider(create: (_) => PhyloTreeController()),
       ],
       child: Consumer<ThemeController>(

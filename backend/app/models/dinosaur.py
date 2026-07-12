@@ -35,5 +35,9 @@ class Dinosaur(SQLModel, table=True):
     article: Optional[str] = Field(default=None, sa_column=Column(Text))
     article_date: Optional[datetime] = Field(default=None)
     insert_date: datetime = Field(default_factory=_utc_now)
+    fossils_insert_time: Optional[datetime] = Field(
+        default=None,
+        description="Last time PBDB fossil occurrences were retrieved for this genus",
+    )
     main_image_url: Optional[str] = Field(default=None, max_length=2048)
     llm_enriched: bool = Field(default=False, index=True)

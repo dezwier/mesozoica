@@ -1,0 +1,218 @@
+"""Query helpers for fossil read APIs."""
+
+from __future__ import annotations
+
+import hashlib
+from dataclasses import dataclass
+from decimal import Decimal
+from typing import Literal
+
+from sqlalchemy import func, or_
+from sqlmodel import Session, col, func as sqlmodel_func, select
+
+from app.core.exceptions import ValidationError
+from app.models.dinosaur import Dinosaur
+from app.models.fossil import Fossil
+from app.services.fossil_image_service.sync import CURATED_MEDIA_PATH
+
+SortOption = Literal["name", "random"]
+_MAX_SEED_LEN = 64
+MESOZOIC_YOUNGER_MA = 66.0
+MESOZOIC_OLDER_MA = 252.0
+
+
+@dataclass(frozen=True)
+class FossilRow:
+    fossil: Fossil
+    dinosaur_name: str
+    dinosaur_main_image_url: str | None
+
+
+def list_fossils(
+    session: Session,
+    *,
+    limit: int = 200,
+    offset: int = 0,
+    sort: SortOption = "name",
+    seed: str | None = None,
+    q: str | None = None,
+    ma_younger: float | None = None,
+    ma_older: float | None = None,
+    has_custom_image: bool = False,
+) -> tuple[list[FossilRow], int]:
+    """Return paginated fossil rows joined with dinosaur catalog fields."""
+    capped_limit = max(1, min(limit, 500))
+    capped_offset = max(0, offset)
+    normalized_q, younger, older, time_filter_active = _normalize_filters(
+        q=q,
+        ma_younger=ma_younger,
+        ma_older=ma_older,
+    )
+    effective_time_filter = time_filter_active and normalized_q is None
+    filtered = _filtered_select(
+        normalized_q=normalized_q,
+        ma_younger=younger,
+        ma_older=older,
+        time_filter_active=effective_time_filter,
+        has_custom_image=has_custom_image,
+    )
+
+    total = session.exec(
+        select(sqlmodel_func.count()).select_from(filtered.subquery())
+    ).one()
+
+    if sort == "random":
+        normalized_seed = (seed or "").strip()
+        if not normalized_seed:
+            raise ValidationError("seed is required when sort=random")
+        normalized_seed = normalized_seed[:_MAX_SEED_LEN]
+        rows = _list_fossils_random(
+            session,
+            filtered=filtered,
+            seed=normalized_seed,
+            offset=capped_offset,
+            limit=capped_limit,
+        )
+        return rows, int(total)
+
+    rows = session.exec(
+        filtered.order_by(
+            func.coalesce(Fossil.identified_name, Dinosaur.name),
+            Fossil.id,
+        )
+        .offset(capped_offset)
+        .limit(capped_limit)
+    ).all()
+    return [_row_from_tuple(row) for row in rows], int(total)
+
+
+def _normalize_filters(
+    *,
+    q: str | None,
+    ma_younger: float | None,
+    ma_older: float | None,
+) -> tuple[str | None, float | None, float | None, bool]:
+    normalized_q = (q or "").strip() or None
+
+    if ma_younger is None and ma_older is None:
+        return normalized_q, None, None, False
+
+    if ma_younger is None or ma_older is None:
+        raise ValidationError("ma_younger and ma_older must both be provided")
+
+    younger = max(MESOZOIC_YOUNGER_MA, min(float(ma_younger), MESOZOIC_OLDER_MA))
+    older = max(MESOZOIC_YOUNGER_MA, min(float(ma_older), MESOZOIC_OLDER_MA))
+    if younger > older:
+        raise ValidationError("ma_younger must be less than or equal to ma_older")
+
+    time_filter_active = not (
+        younger <= MESOZOIC_YOUNGER_MA and older >= MESOZOIC_OLDER_MA
+    )
+    return normalized_q, younger, older, time_filter_active
+
+
+def _filtered_select(
+    *,
+    normalized_q: str | None,
+    ma_younger: float | None,
+    ma_older: float | None,
+    time_filter_active: bool,
+    has_custom_image: bool,
+):
+    stmt = (
+        select(Fossil, Dinosaur.name, Dinosaur.main_image_url)
+        .join(Dinosaur, col(Fossil.dinosaur_id) == col(Dinosaur.id))
+    )
+    if has_custom_image:
+        stmt = stmt.where(
+            col(Fossil.main_image_url).is_not(None),
+            col(Fossil.main_image_url).contains(CURATED_MEDIA_PATH),
+        )
+    if normalized_q is not None:
+        pattern = f"%{normalized_q}%"
+        stmt = stmt.where(
+            or_(
+                col(Fossil.identified_name).ilike(pattern),
+                col(Fossil.geological_formation).ilike(pattern),
+                col(Fossil.state).ilike(pattern),
+                col(Fossil.collectors).ilike(pattern),
+                col(Dinosaur.name).ilike(pattern),
+            )
+        )
+    if time_filter_active:
+        assert ma_younger is not None and ma_older is not None
+        stmt = stmt.where(
+            col(Fossil.min_age_ma).is_not(None),
+            col(Fossil.max_age_ma).is_not(None),
+            col(Fossil.min_age_ma) <= ma_older,
+            col(Fossil.max_age_ma) >= ma_younger,
+        )
+    return stmt
+
+
+def _list_fossils_random(
+    session: Session,
+    *,
+    filtered,
+    seed: str,
+    offset: int,
+    limit: int,
+) -> list[FossilRow]:
+    dialect_name = session.get_bind().dialect.name
+    if dialect_name == "postgresql":
+        order = func.md5(func.concat(func.coalesce(Fossil.identified_name, Dinosaur.name), seed))
+        rows = session.exec(
+            filtered.order_by(order).offset(offset).limit(limit)
+        ).all()
+        return [_row_from_tuple(row) for row in rows]
+
+    all_rows = session.exec(filtered).all()
+    all_rows.sort(
+        key=lambda row: hashlib.md5(
+            f"{row[1] or row[0].identified_name or row[0].id}{seed}".encode()
+        ).hexdigest()
+    )
+    return [_row_from_tuple(row) for row in all_rows[offset : offset + limit]]
+
+
+def _row_from_tuple(row: tuple) -> FossilRow:
+    fossil, dinosaur_name, dinosaur_main_image_url = row
+    return FossilRow(
+        fossil=fossil,
+        dinosaur_name=dinosaur_name,
+        dinosaur_main_image_url=dinosaur_main_image_url,
+    )
+
+
+def fossil_row_to_summary(row: FossilRow):
+    """Build API schema from a joined fossil row."""
+    from app.schemas.fossil import FossilSummary
+
+    fossil = row.fossil
+    return FossilSummary(
+        id=fossil.id,
+        dinosaur_id=fossil.dinosaur_id,
+        identified_name=fossil.identified_name,
+        state=fossil.state,
+        geological_formation=fossil.geological_formation,
+        latitude=_decimal_to_float(fossil.latitude),
+        longitude=_decimal_to_float(fossil.longitude),
+        collection_dates=fossil.collection_dates,
+        stratcomments=fossil.stratcomments,
+        description=fossil.description,
+        collectors=fossil.collectors,
+        pres_mode=fossil.pres_mode,
+        preservation_quality=fossil.preservation_quality,
+        min_age_ma=_decimal_to_float(fossil.min_age_ma),
+        max_age_ma=_decimal_to_float(fossil.max_age_ma),
+        early_interval=fossil.early_interval,
+        main_image_url=fossil.main_image_url,
+        dinosaur_name=row.dinosaur_name,
+        dinosaur_main_image_url=row.dinosaur_main_image_url,
+    )
+
+
+def _decimal_to_float(value: Decimal | float | int | None) -> float | None:
+    if value is None:
+        return None
+    return float(value)

@@ -36,6 +36,7 @@ make run-dinosaur-enrich CRON_EXTRA='--dinos Tyrannosaurus --overwrite'
 
 make run-fossil-sync CRON_EXTRA='--dinos Tyrannosaurus'
 make run-fossil-sync CRON_EXTRA='--overwrite'
+make run-fossil-sync CRON_EXTRA='--stale-days 7'
 make run-fossil-sync CRON_EXTRA='--dinos Tyrannosaurus --overwrite'
 
 # Target a specific Railway service
@@ -70,6 +71,8 @@ RAILWAY_RUN=1 railway run python -m app.crons.runner --job dinosaur_llm_enrich -
 | `--job ID` | Run one job immediately (ignores schedule) |
 | `--overwrite` | Re-fetch / re-enrich even when already up to date |
 | `--dinos NAME …` | Limit to specific Wikipedia titles (space- or comma-separated) |
+| `--stale-days N` | PBDB sync: only genera not synced in the last N days (ignored with `--overwrite`) |
+| `--since ISO8601` | PBDB sync: only genera with `fossils_insert_time` null or before this UTC time |
 
 ## Config overrides
 

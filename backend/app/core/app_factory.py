@@ -130,4 +130,12 @@ def create_app() -> FastAPI:
         name="dinosaur-images",
     )
 
+    fossil_images_dir = settings.resolved_fossil_images_dir
+    fossil_images_dir.mkdir(parents=True, exist_ok=True)
+    app.mount(
+        "/media/fossils",
+        StaticFiles(directory=str(fossil_images_dir)),
+        name="fossil-images",
+    )
+
     return app

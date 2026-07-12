@@ -13,6 +13,7 @@ from app.models.dinosaur import Dinosaur
 from app.models.fossil import Fossil
 from app.services.pbdb_service.sync import (
     build_fossil_description,
+    resolve_since,
     sync_exit_code,
     sync_fossils,
     SyncCounters,
@@ -135,6 +136,9 @@ def test_sync_inserts_new_fossil(session: Session):
     assert summary.counters.fetched == 1
     assert summary.counters.updated == 0
 
+    session.refresh(dinosaur)
+    assert dinosaur.fossils_insert_time is not None
+
 
 def test_sync_updates_existing_fossil_when_overwrite(session: Session):
     dinosaur = _dinosaur()
@@ -245,6 +249,9 @@ def test_sync_dry_run_does_not_write(session: Session):
     assert summary.dry_run is True
     assert summary.counters.fetched == 1
 
+    session.refresh(dinosaur)
+    assert dinosaur.fossils_insert_time is None
+
 
 def test_sync_dry_run_counts_unchanged_without_overwrite(session: Session):
     dinosaur = _dinosaur()
@@ -301,3 +308,80 @@ def test_sync_counts_per_genus_failure(session: Session):
     summary = sync_fossils(session, client=client, dry_run=False)
     assert summary.counters.failed == 1
     assert sync_exit_code(summary) == 1
+
+    session.refresh(dinosaur)
+    assert dinosaur.fossils_insert_time is None
+
+
+def test_sync_skips_recently_synced_dinosaur(session: Session):
+    recent = datetime(2026, 7, 11, 12, 0, tzinfo=timezone.utc)
+    stale = datetime(2026, 7, 1, 12, 0, tzinfo=timezone.utc)
+
+    recent_dino = _dinosaur(name="Tyrannosaurus", page_id=1)
+    recent_dino.fossils_insert_time = recent
+    stale_dino = _dinosaur(name="Giganotosaurus", page_id=2)
+    stale_dino.fossils_insert_time = stale
+    session.add(recent_dino)
+    session.add(stale_dino)
+    session.commit()
+    session.refresh(stale_dino)
+
+    client = _mock_client(
+        {
+            "Giganotosaurus": [
+                {
+                    **_tyrannosaurus_record(occurrence_no="999001"),
+                    "primary_name": "Giganotosaurus",
+                    "identified_name": "Giganotosaurus carolinii",
+                }
+            ]
+        }
+    )
+    summary = sync_fossils(
+        session,
+        client=client,
+        dry_run=False,
+        since=datetime(2026, 7, 10, 0, 0, tzinfo=timezone.utc),
+    )
+    session.commit()
+
+    assert summary.total_dinosaurs == 1
+    assert summary.stale_skipped == 1
+    fossil = session.get(Fossil, 999001)
+    assert fossil is not None
+    assert fossil.dinosaur_id == stale_dino.id
+
+
+def test_sync_since_filter_bypassed_with_overwrite(session: Session):
+    recent = datetime(2026, 7, 11, 12, 0, tzinfo=timezone.utc)
+    dinosaur = _dinosaur()
+    dinosaur.fossils_insert_time = recent
+    session.add(dinosaur)
+    session.commit()
+    session.refresh(dinosaur)
+
+    client = _mock_client({"Tyrannosaurus": [_tyrannosaurus_record()]})
+    summary = sync_fossils(
+        session,
+        client=client,
+        dry_run=False,
+        overwrite=True,
+        since=datetime(2026, 7, 10, 0, 0, tzinfo=timezone.utc),
+    )
+    session.commit()
+
+    assert summary.total_dinosaurs == 1
+    assert summary.stale_skipped == 0
+    session.refresh(dinosaur)
+    assert dinosaur.fossils_insert_time is not None
+    updated = dinosaur.fossils_insert_time
+    if updated.tzinfo is None:
+        updated = updated.replace(tzinfo=timezone.utc)
+    assert updated > recent
+
+
+def test_resolve_since_from_stale_days():
+    cutoff = resolve_since(stale_days=7)
+    assert cutoff is not None
+    assert cutoff.tzinfo == timezone.utc
+    assert (datetime.now(timezone.utc) - cutoff).days == 7

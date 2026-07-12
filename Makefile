@@ -6,7 +6,7 @@ RAILWAY_SERVICE ?=
 RAILWAY_SERVICE_FLAG = $(if $(RAILWAY_SERVICE),--service $(RAILWAY_SERVICE),)
 CRON_EXTRA ?=
 
-.PHONY: help backend-install backend-test run-backend flutter-test run-flutter test-all run-cron run-wikipedia-sync run-dinosaur-enrich run-fossil-sync sync-dinosaur-images
+.PHONY: help backend-install backend-test run-backend flutter-test run-flutter test-all run-cron run-wikipedia-sync run-dinosaur-enrich run-fossil-sync sync-dinosaur-images sync-fossil-images
 
 help:
 	@echo "Available targets:"
@@ -18,6 +18,7 @@ help:
 	@echo "  run-dinosaur-enrich LLM dinosaur enrichment on Railway"
 	@echo "  run-fossil-sync       PBDB fossil occurrence sync on Railway"
 	@echo "  sync-dinosaur-images Upload curated card images to Railway volume + DB"
+	@echo "  sync-fossil-images   Upload curated fossil card images to Railway volume + DB"
 	@echo "  flutter-test        Run Flutter tests"
 	@echo "  run-flutter         Start Flutter app"
 	@echo "  test-all            Run backend and Flutter tests"
@@ -55,6 +56,9 @@ run-fossil-sync:
 
 sync-dinosaur-images:
 	cd backend && RAILWAY_RUN=1 railway run $(RAILWAY_SERVICE_FLAG) python -m scripts.sync_dinosaur_images $(CRON_EXTRA)
+
+sync-fossil-images:
+	cd backend && RAILWAY_RUN=1 railway run $(RAILWAY_SERVICE_FLAG) python -m scripts.sync_fossil_images $(CRON_EXTRA)
 
 flutter-test:
 	cd flutter && flutter test

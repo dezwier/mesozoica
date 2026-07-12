@@ -1,10 +1,12 @@
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../services/fractal_label_placer.dart';
 import '../../services/fractal_tree_layout.dart';
+import '../../theme/dino_card_theme.dart';
 
 class FractalFernPainter extends CustomPainter {
   FractalFernPainter({
@@ -12,26 +14,28 @@ class FractalFernPainter extends CustomPainter {
     required this.viewTransform,
     required this.zoomScale,
     required this.visibleTreeRect,
-    required this.viewportCenterTree,
     required this.branchColor,
     required this.labelColor,
     required this.labelMutedColor,
     required this.rootGlowColor,
     required this.leafColor,
     required this.genusLeafColor,
+    this.genusCardNodes = const {},
+    this.genusCardTreeRects = const [],
   });
 
   final FractalTreeLayout layout;
   final Matrix4 viewTransform;
   final double zoomScale;
   final Rect visibleTreeRect;
-  final Offset viewportCenterTree;
   final Color branchColor;
   final Color labelColor;
   final Color labelMutedColor;
   final Color rootGlowColor;
   final Color leafColor;
   final Color genusLeafColor;
+  final Set<FractalLayoutNode> genusCardNodes;
+  final List<Rect> genusCardTreeRects;
 
   static const _labelPlacer = FractalLabelPlacer();
 
@@ -99,7 +103,9 @@ class FractalFernPainter extends CustomPainter {
       _paintBranch(canvas, node);
     }
 
-    if (node.isGenus && _isNearVisible(node.position)) {
+    if (node.isGenus &&
+        _isNearVisible(node.position) &&
+        !genusCardNodes.contains(node)) {
       _paintGenusDot(canvas, node);
     }
 
@@ -154,13 +160,19 @@ class FractalFernPainter extends CustomPainter {
   }
 
   void _paintGenusDot(Canvas canvas, FractalLayoutNode node) {
-    final radius = FractalLodPolicy.nodeTreeUnitsWithBoost(
-      screenPixels: _genusDotScreenRadius,
-      zoomScale: zoomScale,
+    final screenRadius = math.max(
+      _genusDotScreenRadius,
+      FractalLodPolicy.leafScreenRadius(
+        leafCount: node.treeNode.leafCount,
+        maxLeaves: layout.root.treeNode.leafCount,
+        isGenus: true,
+        zoomScale: zoomScale,
+      ),
     );
-    final ringWidth = FractalLodPolicy.nodeTreeUnitsWithBoost(
-      screenPixels: 1.5,
-      zoomScale: zoomScale,
+    final radius = FractalLodPolicy.treeUnits(screenRadius, zoomScale);
+    final ringWidth = FractalLodPolicy.treeUnits(
+      1.5 * FractalLodPolicy.leafScreenZoomScale(zoomScale).clamp(1.0, 2.5),
+      zoomScale,
     );
     final paint = Paint()..color = genusLeafColor;
     canvas.drawCircle(node.position, radius, paint);
@@ -179,13 +191,15 @@ class FractalFernPainter extends CustomPainter {
 
     final genusStyle = TextStyle(
       color: genusLeafColor,
-      fontSize: FractalLabelPlacer.genusScreenFontSize,
+      fontFamily: DinoCardTheme.titleFontFamily,
+      fontSize: FractalLabelPlacer.genusScreenFontSizeFor(zoomScale),
       fontWeight: FontWeight.w700,
       letterSpacing: 0,
     );
     final cladeStyle = TextStyle(
       color: labelColor,
-      fontSize: FractalLabelPlacer.cladeScreenFontSize,
+      fontFamily: DinoCardTheme.titleFontFamily,
+      fontSize: FractalLabelPlacer.cladeScreenFontSizeFor(zoomScale),
       fontWeight: FontWeight.w500,
       letterSpacing: 0,
     );
@@ -193,15 +207,16 @@ class FractalFernPainter extends CustomPainter {
     final candidates = _labelPlacer.collectCandidates(
       root: layout.root,
       visibleTreeRect: visibleTreeRect,
-      viewportCenterTree: viewportCenterTree,
       zoomScale: zoomScale,
       genusStyle: genusStyle,
       cladeStyle: cladeStyle,
+      excludeNodes: genusCardNodes,
     );
 
     final placed = _labelPlacer.placeWithoutOverlap(
       candidates,
       zoomScale: zoomScale,
+      avoidTreeRects: genusCardTreeRects,
     );
     for (final label in placed) {
       _paintCrispLabel(
@@ -234,13 +249,14 @@ class FractalFernPainter extends CustomPainter {
         oldDelegate.viewTransform != viewTransform ||
         (oldDelegate.zoomScale - zoomScale).abs() > 0.001 ||
         oldDelegate.visibleTreeRect != visibleTreeRect ||
-        (oldDelegate.viewportCenterTree - viewportCenterTree).distance > 0.5 ||
         oldDelegate.branchColor != branchColor ||
         oldDelegate.labelColor != labelColor ||
         oldDelegate.labelMutedColor != labelMutedColor ||
         oldDelegate.rootGlowColor != rootGlowColor ||
         oldDelegate.leafColor != leafColor ||
-        oldDelegate.genusLeafColor != genusLeafColor;
+        oldDelegate.genusLeafColor != genusLeafColor ||
+        oldDelegate.genusCardNodes != genusCardNodes ||
+        !listEquals(oldDelegate.genusCardTreeRects, genusCardTreeRects);
   }
 }
 
@@ -258,12 +274,68 @@ Matrix4 fitFractalTransform({
   final scaleY = (viewportSize.height - viewportPadding * 2) / contentHeight;
   final scale = math.min(scaleX, scaleY).clamp(0.01, 2.0);
 
-  final tx = (viewportSize.width - contentWidth * scale) / 2;
-  final ty = (viewportSize.height - contentHeight * scale) / 2;
+  return focusFractalTransform(
+    treePoint: bounds.center,
+    bounds: bounds,
+    viewportSize: viewportSize,
+    scale: scale,
+  );
+}
+
+/// Pans and zooms so [treePoint] sits at the viewport center at [scale].
+Matrix4 focusFractalTransform({
+  required Offset treePoint,
+  required Rect bounds,
+  required Size viewportSize,
+  required double scale,
+}) {
+  if (bounds.isEmpty || viewportSize.isEmpty) return Matrix4.identity();
+
+  final local = Offset(
+    treePoint.dx - bounds.left,
+    treePoint.dy - bounds.top,
+  );
 
   return Matrix4.identity()
-    ..setEntry(0, 0, scale)
-    ..setEntry(1, 1, scale)
-    ..setEntry(0, 3, tx)
-    ..setEntry(1, 3, ty);
+    ..translate(viewportSize.width / 2, viewportSize.height / 2)
+    ..scale(scale)
+    ..translate(-local.dx, -local.dy);
+}
+
+/// Child-local coordinate currently at the viewport center for [transform].
+Offset childLocalAtViewportCenter(Matrix4 transform, Size viewportSize) {
+  if (viewportSize.isEmpty) return Offset.zero;
+  final inverse = Matrix4.inverted(transform);
+  return MatrixUtils.transformPoint(
+    inverse,
+    Offset(viewportSize.width / 2, viewportSize.height / 2),
+  );
+}
+
+/// Smoothly flies from [start] toward [endTreePoint] at [endScale].
+Matrix4 lerpFractalFocusTransform({
+  required Matrix4 start,
+  required Offset endTreePoint,
+  required Rect bounds,
+  required Size viewportSize,
+  required double endScale,
+  required double t,
+}) {
+  final startScale = start.getMaxScaleOnAxis();
+  final scale = startScale + (endScale - startScale) * t;
+  final startCenterLocal = childLocalAtViewportCenter(start, viewportSize);
+  final endLocal = Offset(
+    endTreePoint.dx - bounds.left,
+    endTreePoint.dy - bounds.top,
+  );
+  final focalLocal = Offset.lerp(startCenterLocal, endLocal, t)!;
+  return focusFractalTransform(
+    treePoint: Offset(
+      focalLocal.dx + bounds.left,
+      focalLocal.dy + bounds.top,
+    ),
+    bounds: bounds,
+    viewportSize: viewportSize,
+    scale: scale,
+  );
 }

@@ -48,3 +48,4 @@ class Fossil(SQLModel, table=True):
         sa_column=Column(Text),
         description="Human-readable site summary from PBDB location and stratigraphy notes",
     )
+    main_image_url: Optional[str] = Field(default=None, max_length=2048)

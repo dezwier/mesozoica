@@ -15,6 +15,7 @@ class TurnableYAxisCard extends StatefulWidget {
     this.fixedFaceHeight,
     this.prelayoutFacesForHeight = true,
     this.decoration,
+    this.turnable = true,
   });
 
   final Widget front;
@@ -25,6 +26,7 @@ class TurnableYAxisCard extends StatefulWidget {
   final double? fixedFaceHeight;
   final bool prelayoutFacesForHeight;
   final BoxDecoration? decoration;
+  final bool turnable;
 
   @override
   State<TurnableYAxisCard> createState() => _TurnableYAxisCardState();
@@ -67,6 +69,11 @@ class _TurnableYAxisCardState extends State<TurnableYAxisCard>
     if (widget.resetIdentity != oldWidget.resetIdentity) {
       _flipController.value = 0;
       _lastTapTargetAngle = 0;
+    }
+    if (!widget.turnable && oldWidget.turnable) {
+      _flipController.value = 0;
+      _lastTapTargetAngle = 0;
+      _isDraggingHorizontally = false;
     }
   }
 
@@ -177,7 +184,9 @@ class _TurnableYAxisCardState extends State<TurnableYAxisCard>
                 ? constraints.maxWidth
                 : _cardWidth;
         final fixedH = widget.fixedFaceHeight;
-        final angle = _normalizedSignedAngle(_rotationAngle);
+        final angle = widget.turnable
+            ? _normalizedSignedAngle(_rotationAngle)
+            : 0.0;
         final normalizedAngle = _normalizedAngle(angle);
         final sideTilt = 0.01 * math.sin(angle);
         final isBackVisible = normalizedAngle > (math.pi / 2) &&
@@ -255,19 +264,21 @@ class _TurnableYAxisCardState extends State<TurnableYAxisCard>
       },
     );
 
-    final wrappedCard = GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTapUp: (details) {
-        final tapX = details.localPosition.dx;
-        final isLeftHalf = tapX <= (_cardWidth / 2);
-        _flipByOneFace(turnLeft: isLeftHalf);
-      },
-      onHorizontalDragStart: _onHorizontalDragStart,
-      onHorizontalDragUpdate: _onHorizontalDragUpdate,
-      onHorizontalDragEnd: _onHorizontalDragEnd,
-      onHorizontalDragCancel: _onHorizontalDragCancel,
-      child: cardContent,
-    );
+    final wrappedCard = widget.turnable
+        ? GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTapUp: (details) {
+              final tapX = details.localPosition.dx;
+              final isLeftHalf = tapX <= (_cardWidth / 2);
+              _flipByOneFace(turnLeft: isLeftHalf);
+            },
+            onHorizontalDragStart: _onHorizontalDragStart,
+            onHorizontalDragUpdate: _onHorizontalDragUpdate,
+            onHorizontalDragEnd: _onHorizontalDragEnd,
+            onHorizontalDragCancel: _onHorizontalDragCancel,
+            child: cardContent,
+          )
+        : cardContent;
 
     return Padding(
       padding: widget.outerPadding,

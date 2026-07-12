@@ -101,9 +101,30 @@ class Settings(BaseSettings):
         validation_alias="DINOSAUR_IMAGE_SYNC_SECRET",
     )
 
+    fossil_images_dir: str = Field(
+        default="../fossil-images",
+        validation_alias="FOSSIL_IMAGES_DIR",
+    )
+    railway_fossil_images_volume: str = Field(
+        default="fossil-images",
+        validation_alias="RAILWAY_FOSSIL_IMAGES_VOLUME",
+    )
+    fossil_image_sync_secret: str = Field(
+        default="",
+        validation_alias="FOSSIL_IMAGE_SYNC_SECRET",
+    )
+
     @property
     def resolved_dinosaur_images_dir(self) -> Path:
         path = Path(self.dinosaur_images_dir)
+        if path.is_absolute():
+            return path
+        backend_dir = Path(__file__).parent.parent.parent
+        return (backend_dir / path).resolve()
+
+    @property
+    def resolved_fossil_images_dir(self) -> Path:
+        path = Path(self.fossil_images_dir)
         if path.is_absolute():
             return path
         backend_dir = Path(__file__).parent.parent.parent

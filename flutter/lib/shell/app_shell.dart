@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../widgets/common/gradient_app_bar.dart';
 import '../controllers/theme_controller.dart';
 import '../screens/dino/dino_screen.dart';
+import '../screens/fossil/fossil_screen.dart';
 import '../screens/map/map_screen.dart';
 import '../screens/profile/profile_screen.dart';
 import '../screens/tree/tree_screen.dart';
@@ -17,13 +18,19 @@ class AppShell extends StatefulWidget {
 
 class _AppShellState extends State<AppShell> {
   static const _dinoTabIndex = 2;
+  static const _fossilTabIndex = 3;
 
   int _index = _dinoTabIndex;
   final _dinoScreenKey = GlobalKey<DinoScreenState>();
+  final _fossilScreenKey = GlobalKey<FossilScreenState>();
 
   void _onDestinationSelected(int index) {
     if (index == _index && index == _dinoTabIndex) {
       _dinoScreenKey.currentState?.scrollToTop();
+      return;
+    }
+    if (index == _index && index == _fossilTabIndex) {
+      _fossilScreenKey.currentState?.scrollToTop();
       return;
     }
     setState(() => _index = index);
@@ -57,6 +64,7 @@ class _AppShellState extends State<AppShell> {
           const MapScreen(),
           TreeScreen(isActive: _index == 1),
           DinoScreen(key: _dinoScreenKey),
+          FossilScreen(key: _fossilScreenKey),
           const ProfileScreen(),
         ],
       ),
@@ -90,6 +98,11 @@ class _AppShellState extends State<AppShell> {
               icon: Icon(Icons.style_outlined),
               selectedIcon: Icon(Icons.style),
               label: 'Dino',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.terrain_outlined),
+              selectedIcon: Icon(Icons.terrain),
+              label: 'Fossil',
             ),
             NavigationDestination(
               icon: Icon(Icons.person_outlined),

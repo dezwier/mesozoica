@@ -2,8 +2,47 @@ import 'dart:math' as math;
 
 import 'package:flutter/rendering.dart';
 
+import '../models/dinosaur.dart';
 import '../utils/display_text.dart';
 import 'fractal_tree_layout.dart';
+
+/// A genus card waiting for non-overlapping placement.
+class FractalGenusCardCandidate {
+  const FractalGenusCardCandidate({
+    required this.node,
+    required this.dinosaur,
+    required this.anchor,
+    required this.priority,
+    required this.screenSize,
+  });
+
+  final FractalLayoutNode node;
+  final DinosaurSummary dinosaur;
+  final Offset anchor;
+  final double priority;
+  final Size screenSize;
+}
+
+/// A genus card positioned in screen pixels relative to its anchor.
+class PlacedGenusCard {
+  const PlacedGenusCard({
+    required this.candidate,
+    required this.screenOffset,
+  });
+
+  final FractalGenusCardCandidate candidate;
+  final Offset screenOffset;
+
+  Rect treeRect(double zoomScale) {
+    final z = zoomScale.clamp(0.001, 500.0);
+    return Rect.fromLTWH(
+      candidate.anchor.dx + screenOffset.dx / z,
+      candidate.anchor.dy + screenOffset.dy / z,
+      candidate.screenSize.width / z,
+      candidate.screenSize.height / z,
+    );
+  }
+}
 
 /// A label waiting for non-overlapping placement.
 class FractalLabelCandidate {
@@ -48,15 +87,39 @@ class PlacedLabel {
 class FractalLabelPlacer {
   const FractalLabelPlacer({
     this.labelPadding = 3,
-    this.maxLabels = 64,
   });
 
   final double labelPadding;
-  final int maxLabels;
 
-  /// Fixed on-screen font sizes (logical pixels).
-  static const double genusScreenFontSize = 20;
-  static const double cladeScreenFontSize = 18.5;
+  /// Base font sizes at zoom scale 1.0 (logical pixels).
+  static const double genusBaseFontSize = 20;
+  static const double cladeBaseFontSize = 16;
+
+  /// Sublinear exponent — labels grow with zoom, but much less than 1:1.
+  static const double labelZoomExponent = 0.25;
+
+  /// Scales label size with zoom so text grows as you zoom in.
+  static double zoomScaledScreenFontSize({
+    required double baseFontSize,
+    required double zoomScale,
+    double minSize = 10,
+    double maxSize = 28,
+  }) {
+    final z = zoomScale.clamp(0.08, 50);
+    return (baseFontSize * math.pow(z, labelZoomExponent)).clamp(minSize, maxSize);
+  }
+
+  static double genusScreenFontSizeFor(double zoomScale) =>
+      zoomScaledScreenFontSize(
+        baseFontSize: genusBaseFontSize,
+        zoomScale: zoomScale,
+      );
+
+  static double cladeScreenFontSizeFor(double zoomScale) =>
+      zoomScaledScreenFontSize(
+        baseFontSize: cladeBaseFontSize,
+        zoomScale: zoomScale,
+      );
 
   /// Converts screen pixels to tree-space units for a given [zoomScale].
   static double treeUnits(double screenPixels, double zoomScale) =>
@@ -70,10 +133,10 @@ class FractalLabelPlacer {
   List<FractalLabelCandidate> collectCandidates({
     required FractalLayoutNode root,
     required Rect visibleTreeRect,
-    required Offset viewportCenterTree,
     required double zoomScale,
     required TextStyle genusStyle,
     required TextStyle cladeStyle,
+    Set<FractalLayoutNode> excludeNodes = const {},
   }) {
     final candidates = <FractalLabelCandidate>[];
     final minScreenLen = minScreenLengthForLabel(zoomScale);
@@ -89,39 +152,38 @@ class FractalLabelPlacer {
         );
 
         if (!collapsed && expandedVisible.contains(node.position)) {
-          final screenLen = FractalLodPolicy.screenLength(
-            node.branchLength,
-            zoomScale,
-          );
-          if (screenLen >= minScreenLen) {
-            final isGenus = node.isGenus;
-            final style = isGenus ? genusStyle : cladeStyle;
-
-            final textPainter = TextPainter(
-              text: TextSpan(
-                text: displayTaxonName(node.label),
-                style: style,
-              ),
-              textDirection: TextDirection.ltr,
-            )..layout();
-
-            final dist = (node.position - viewportCenterTree).distance;
-            final priority = _priority(
-              node: node,
-              screenLen: screenLen,
-              distToCenter: dist,
-              visibleSize: visibleTreeRect.shortestSide,
+          if (!excludeNodes.contains(node)) {
+            final screenLen = FractalLodPolicy.screenLength(
+              node.branchLength,
+              zoomScale,
             );
+            if (screenLen >= minScreenLen) {
+              final isGenus = node.isGenus;
+              final style = isGenus ? genusStyle : cladeStyle;
 
-            candidates.add(
-              FractalLabelCandidate(
+              final textPainter = TextPainter(
+                text: TextSpan(
+                  text: displayTaxonName(node.label),
+                  style: style,
+                ),
+                textDirection: TextDirection.ltr,
+              )..layout();
+
+              final priority = _priority(
                 node: node,
-                textPainter: textPainter,
-                anchor: node.position,
-                priority: priority,
-                isGenus: isGenus,
-              ),
-            );
+                screenLen: screenLen,
+              );
+
+              candidates.add(
+                FractalLabelCandidate(
+                  node: node,
+                  textPainter: textPainter,
+                  anchor: node.position,
+                  priority: priority,
+                  isGenus: isGenus,
+                ),
+              );
+            }
           }
         }
 
@@ -161,24 +223,148 @@ class FractalLabelPlacer {
       );
     }
 
-    candidates.sort((a, b) => b.priority.compareTo(a.priority));
-    if (candidates.length > maxLabels) {
-      return candidates.sublist(0, maxLabels);
-    }
+    candidates.sort((a, b) {
+      final byPriority = b.priority.compareTo(a.priority);
+      if (byPriority != 0) return byPriority;
+      final byY = a.anchor.dy.compareTo(b.anchor.dy);
+      if (byY != 0) return byY;
+      return a.anchor.dx.compareTo(b.anchor.dx);
+    });
     return candidates;
+  }
+
+  /// Collects genus nodes eligible for inline dino cards.
+  List<FractalGenusCardCandidate> collectGenusCardCandidates({
+    required FractalLayoutNode root,
+    required Rect visibleTreeRect,
+    required double zoomScale,
+    required double viewportWidth,
+  }) {
+    final candidates = <FractalGenusCardCandidate>[];
+    final cardSize =
+        FractalLodPolicy.genusCardScreenSize(viewportWidth, zoomScale);
+    final expandedVisible =
+        visibleTreeRect.inflate(visibleTreeRect.shortestSide * 0.15);
+
+    void walk(FractalLayoutNode node) {
+      if (node.parentPosition != null) {
+        final collapsed = FractalLodPolicy.shouldCollapse(
+          branchLength: node.branchLength,
+          zoomScale: zoomScale,
+          hasChildren: node.hasChildren,
+        );
+
+        if (!collapsed &&
+            node.isGenus &&
+            node.treeNode.dinosaurs.isNotEmpty &&
+            expandedVisible.contains(node.position) &&
+            FractalLodPolicy.shouldShowGenusCard(
+              branchLength: node.branchLength,
+              zoomScale: zoomScale,
+              isGenus: true,
+            )) {
+          final screenLen = FractalLodPolicy.screenLength(
+            node.branchLength,
+            zoomScale,
+          );
+          candidates.add(
+            FractalGenusCardCandidate(
+              node: node,
+              dinosaur: node.treeNode.dinosaurs.first,
+              anchor: node.position,
+              priority: screenLen * 20 + 300,
+              screenSize: cardSize,
+            ),
+          );
+        }
+
+        if (collapsed) return;
+      }
+
+      for (final child in node.children) {
+        walk(child);
+      }
+    }
+
+    walk(root);
+
+    candidates.sort((a, b) {
+      final byPriority = b.priority.compareTo(a.priority);
+      if (byPriority != 0) return byPriority;
+      final byY = a.anchor.dy.compareTo(b.anchor.dy);
+      if (byY != 0) return byY;
+      return a.anchor.dx.compareTo(b.anchor.dx);
+    });
+    return candidates;
+  }
+
+  /// Returns placed genus cards centered on each anchor when space allows.
+  List<PlacedGenusCard> placeGenusCardsWithoutOverlap(
+    List<FractalGenusCardCandidate> candidates, {
+    required double zoomScale,
+    double cardPadding = 12,
+  }) {
+    final placed = <Rect>[];
+    final result = <PlacedGenusCard>[];
+    final z = zoomScale.clamp(0.001, 500.0);
+    final padTree = cardPadding / z;
+
+    for (final candidate in candidates) {
+      final halfW = candidate.screenSize.width / 2;
+      final halfH = candidate.screenSize.height / 2;
+      final screenOffset = Offset(-halfW, -halfH);
+      final treeRect = Rect.fromLTWH(
+        candidate.anchor.dx + screenOffset.dx / z,
+        candidate.anchor.dy + screenOffset.dy / z,
+        candidate.screenSize.width / z,
+        candidate.screenSize.height / z,
+      );
+
+      if (_overlapsAny(treeRect.inflate(padTree), placed)) continue;
+
+      placed.add(treeRect.inflate(padTree));
+      result.add(
+        PlacedGenusCard(candidate: candidate, screenOffset: screenOffset),
+      );
+    }
+    return result;
+  }
+
+  /// Builds a single genus card centered on [node] (e.g. tap-to-reveal).
+  PlacedGenusCard placedGenusCardForNode({
+    required FractalLayoutNode node,
+    required DinosaurSummary dinosaur,
+    required double viewportWidth,
+    required double zoomScale,
+  }) {
+    final cardSize =
+        FractalLodPolicy.genusCardScreenSize(viewportWidth, zoomScale);
+    final halfW = cardSize.width / 2;
+    final halfH = cardSize.height / 2;
+    return PlacedGenusCard(
+      candidate: FractalGenusCardCandidate(
+        node: node,
+        dinosaur: dinosaur,
+        anchor: node.position,
+        priority: 1000,
+        screenSize: cardSize,
+      ),
+      screenOffset: Offset(-halfW, -halfH),
+    );
+  }
+
+  Set<FractalLayoutNode> genusCardNodes(List<PlacedGenusCard> placedCards) {
+    return placedCards.map((card) => card.candidate.node).toSet();
   }
 
   double _priority({
     required FractalLayoutNode node,
     required double screenLen,
-    required double distToCenter,
-    required double visibleSize,
   }) {
     var score = screenLen * 12;
     if (node.isGenus) score += 200;
     if (node.depth <= 1) score += 80;
     if (node.depth <= 3) score += 30;
-    score -= (distToCenter / math.max(visibleSize, 1)) * 40;
     return score;
   }
 
@@ -186,8 +372,9 @@ class FractalLabelPlacer {
   List<PlacedLabel> placeWithoutOverlap(
     List<FractalLabelCandidate> candidates, {
     required double zoomScale,
+    List<Rect> avoidTreeRects = const [],
   }) {
-    final placed = <Rect>[];
+    final placed = <Rect>[...avoidTreeRects];
     final result = <PlacedLabel>[];
     final z = zoomScale.clamp(0.001, 500.0);
     final padTree = labelPadding / z;
@@ -300,20 +487,4 @@ Rect visibleTreeRect({
   }
 
   return Rect.fromLTRB(minX, minY, maxX, maxY);
-}
-
-Offset viewportCenterInTree({
-  required Size viewportSize,
-  required Matrix4 transform,
-  required Rect layoutBounds,
-}) {
-  final inverse = Matrix4.inverted(transform);
-  final center = MatrixUtils.transformPoint(
-    inverse,
-    Offset(viewportSize.width / 2, viewportSize.height / 2),
-  );
-  return Offset(
-    center.dx + layoutBounds.left,
-    center.dy + layoutBounds.top,
-  );
 }

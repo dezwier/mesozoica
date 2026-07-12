@@ -245,6 +245,66 @@ class FractalLodPolicy {
   static const double collapseThreshold = 4;
   static const double labelThreshold = 18;
   static const double genusTapThreshold = 12;
+  static const double genusCardThreshold = 56;
+  static const double genusCardMinZoomScale = 1.0;
+  static const double genusCardHorizontalPadding = 32;
+  static const double genusCardVerticalPadding = 16;
+  static const double genusCardMinFaceWidth = 280;
+  static const double genusCardScale = 0.3;
+  static const double genusCardFullZoomScale = 14.0;
+  static const double genusCardScaleProgressExponent = 1.45;
+  static const double genusCardFactsMinEffectiveScale = 0.68;
+  static const double _genusCardAspectRatio = 493 / 677;
+  static const double genusCardCatalogTitleFontSize = 28;
+  static const double genusCardCatalogSubtitleFontSize = 10;
+  static const double genusCardFrontOverlayHeightFactorCompact = 0.22;
+  static const double genusCardFrontOverlayHeightFactorFull = 0.45;
+
+  /// 0 at first card zoom, 1 at catalog-sized card zoom.
+  static double genusCardZoomProgress(double zoomScale) {
+    if (zoomScale <= genusCardMinZoomScale) return 0;
+    if (zoomScale >= genusCardFullZoomScale) return 1;
+    return (zoomScale - genusCardMinZoomScale) /
+        (genusCardFullZoomScale - genusCardMinZoomScale);
+  }
+
+  /// Interpolates from [genusCardScale] at first reveal to 1.0 at catalog size.
+  static double genusCardEffectiveScale(double zoomScale) {
+    final linearProgress = genusCardZoomProgress(zoomScale);
+    final progress = math
+        .pow(linearProgress, genusCardScaleProgressExponent)
+        .toDouble();
+    return genusCardScale + (1.0 - genusCardScale) * progress;
+  }
+
+  static double genusCardTitleFontSize(double zoomScale) =>
+      genusCardCatalogTitleFontSize * genusCardEffectiveScale(zoomScale);
+
+  static double genusCardSubtitleFontSize(double zoomScale) =>
+      genusCardCatalogSubtitleFontSize * genusCardEffectiveScale(zoomScale);
+
+  static bool genusCardShowsFacts(double zoomScale) =>
+      genusCardEffectiveScale(zoomScale) >= genusCardFactsMinEffectiveScale;
+
+  /// Zoom level where card attributes first appear (slightly above threshold).
+  static double genusCardFactsZoomScale() {
+    const targetScale =
+        genusCardFactsMinEffectiveScale + 0.02;
+    if (targetScale <= genusCardScale) return genusCardMinZoomScale;
+
+    final curvedProgress = math.pow(
+      (targetScale - genusCardScale) / (1.0 - genusCardScale),
+      1.0 / genusCardScaleProgressExponent,
+    ).toDouble();
+    final linearProgress = curvedProgress.clamp(0.0, 1.0);
+    return genusCardMinZoomScale +
+        linearProgress * (genusCardFullZoomScale - genusCardMinZoomScale);
+  }
+
+  static double genusCardFrontOverlayHeightFactor(double zoomScale) =>
+      genusCardShowsFacts(zoomScale)
+          ? genusCardFrontOverlayHeightFactorFull
+          : genusCardFrontOverlayHeightFactorCompact;
 
   /// Converts on-screen pixels to tree-space units at [zoomScale].
   static double treeUnits(double screenPixels, double zoomScale) =>
@@ -256,10 +316,29 @@ class FractalLodPolicy {
         .clamp(1.0, 1.4);
   }
 
-  /// Nodes grow more noticeably when zoomed in (+30% per decade, max +100%).
+  /// Nodes grow when zoomed in (+18% per decade, max +50%).
   static double nodeZoomBoost(double zoomScale) {
-    return (1.0 + math.log(zoomScale.clamp(1.0, 200)) / math.ln10 * 0.30)
-        .clamp(1.0, 2.0);
+    return (1.0 + math.log(zoomScale.clamp(1.0, 200)) / math.ln10 * 0.18)
+        .clamp(1.0, 1.5);
+  }
+
+  /// Leaf markers grow on screen as you zoom in (sublinear, capped).
+  static double leafScreenZoomScale(double zoomScale) {
+    return math.pow(zoomScale.clamp(0.25, 200), 0.5).clamp(0.9, 2.4).toDouble();
+  }
+
+  static double leafScreenRadius({
+    required int leafCount,
+    required int maxLeaves,
+    required bool isGenus,
+    required double zoomScale,
+  }) {
+    return leafBlobScreenRadius(
+      leafCount: leafCount,
+      maxLeaves: maxLeaves,
+      isGenus: isGenus,
+    ) *
+        leafScreenZoomScale(zoomScale);
   }
 
   static double treeUnitsWithBoost({
@@ -304,6 +383,28 @@ class FractalLodPolicy {
     return screenLength(branchLength, zoomScale) >= genusTapThreshold;
   }
 
+  static bool shouldShowGenusCard({
+    required double branchLength,
+    required double zoomScale,
+    required bool isGenus,
+  }) {
+    if (!isGenus) return false;
+    return screenLength(branchLength, zoomScale) >= genusCardThreshold;
+  }
+
+  /// Scales from [genusCardScale] at first reveal up to catalog width at full zoom.
+  static Size genusCardScreenSize(double viewportWidth, double zoomScale) {
+    final catalogWidth =
+        viewportWidth.clamp(genusCardMinFaceWidth, 2000.0).toDouble();
+    final effectiveScale = genusCardEffectiveScale(zoomScale);
+    final treeWidth = catalogWidth * effectiveScale;
+    final minTreeFaceWidth = genusCardMinFaceWidth * genusCardScale;
+    final faceWidth =
+        math.max(minTreeFaceWidth, treeWidth - genusCardHorizontalPadding);
+    final faceHeight = faceWidth / _genusCardAspectRatio;
+    return Size(treeWidth, faceHeight + genusCardVerticalPadding);
+  }
+
   static double leafBlobScreenRadius({
     required int leafCount,
     required int maxLeaves,
@@ -321,13 +422,14 @@ class FractalLodPolicy {
     required int maxLeaves,
     required bool isGenus,
   }) {
-    return nodeTreeUnitsWithBoost(
-      screenPixels: leafBlobScreenRadius(
+    return treeUnits(
+      leafScreenRadius(
         leafCount: leafCount,
         maxLeaves: maxLeaves,
         isGenus: isGenus,
+        zoomScale: zoomScale,
       ),
-      zoomScale: zoomScale,
+      zoomScale,
     );
   }
 }
