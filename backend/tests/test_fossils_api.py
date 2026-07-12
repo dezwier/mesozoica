@@ -213,6 +213,33 @@ def test_list_fossils_random_stable_order_with_seed(client, session):
     assert first["has_next"] is True
 
 
+def test_list_fossils_random_spreads_duplicate_names(client, session):
+    dinosaur = _seed_tyrannosaurus(session)
+    for fossil_id in [100080, 100081, 100082, 100083]:
+        session.add(
+            Fossil(
+                id=fossil_id,
+                dinosaur_id=dinosaur.id,
+                identified_name="Tyrannosaurus rex",
+            )
+        )
+    session.commit()
+
+    seed = "fossil-id-spread"
+    random_ids = [
+        item["id"]
+        for item in client.get(
+            f"/api/v1/fossils?sort=random&seed={seed}&limit=20"
+        ).json()["items"]
+    ]
+    name_ids = [
+        item["id"]
+        for item in client.get("/api/v1/fossils?sort=name&limit=20").json()["items"]
+    ]
+
+    assert random_ids != name_ids
+
+
 def _seed_timed_fossils(session: Session) -> None:
     cretaceous = Dinosaur(
         name="Tyrannosaurus",

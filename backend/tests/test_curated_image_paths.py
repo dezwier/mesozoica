@@ -6,12 +6,40 @@ from pathlib import Path
 
 import app.core.config as config_module
 from app.services.curated_image_service.common import (
+    remote_curated_image_exists,
     resolve_curated_storage_dir,
     resolve_local_source_dir_for_sync,
 )
 from app.services.dinosaur_image_service.sync import resolve_local_source_dir_for_sync as resolve_dino_source
 from app.services.fossil_image_service.sync import resolve_local_source_dir_for_sync as resolve_fossil_source
 from app.services.site_type_image_service.sync import resolve_local_source_dir_for_sync as resolve_site_type_source
+
+
+def test_remote_curated_image_exists(monkeypatch):
+    class FakeResponse:
+        def __init__(self, status_code: int):
+            self.status_code = status_code
+
+    def fake_head(url: str, **kwargs):
+        if url.endswith("/media/dinosaurs/Tyrannosaurus.webp"):
+            return FakeResponse(200)
+        return FakeResponse(404)
+
+    monkeypatch.setattr(
+        "app.services.curated_image_service.common.httpx.head",
+        fake_head,
+    )
+
+    assert remote_curated_image_exists(
+        public_base_url="https://example.com",
+        curated_media_path="/media/dinosaurs/",
+        filename="Tyrannosaurus.webp",
+    )
+    assert not remote_curated_image_exists(
+        public_base_url="https://example.com",
+        curated_media_path="/media/dinosaurs/",
+        filename="Missing.webp",
+    )
 
 
 def test_resolve_curated_storage_dir_uses_explicit_server_path():

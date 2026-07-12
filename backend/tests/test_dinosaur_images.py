@@ -181,6 +181,81 @@ def test_upload_file_to_railway_dry_run(tmp_path: Path):
     )
 
 
+def test_run_sync_skips_existing_remote_images(
+    session: Session,
+    tmp_path: Path,
+    monkeypatch,
+):
+    from scripts import sync_dinosaur_images as sync_module
+
+    images_dir = tmp_path / "images"
+    images_dir.mkdir()
+    (images_dir / "Tyrannosaurus.webp").write_bytes(b"x")
+
+    row = Dinosaur(
+        name="Tyrannosaurus",
+        wikipedia_page_id=1,
+        wikipedia_title="Tyrannosaurus",
+    )
+    session.add(row)
+    session.commit()
+
+    monkeypatch.setenv("DINOSAUR_IMAGES_SOURCE_DIR", str(images_dir))
+    monkeypatch.setattr(sync_module, "remote_image_exists", lambda **kwargs: True)
+    upload_calls: list[str] = []
+
+    def fake_upload(**kwargs):
+        upload_calls.append(kwargs["remote_filename"])
+
+    monkeypatch.setattr(sync_module, "upload_file_to_railway", fake_upload)
+    monkeypatch.setenv("ALLOW_LOCAL_CRON", "1")
+
+    assert sync_module.run_sync(dry_run=False, overwrite=False) == 0
+    assert upload_calls == []
+
+    session.refresh(row)
+    assert row.main_image_url is None
+
+
+def test_run_sync_overwrite_uploads_existing_remote_images(
+    session: Session,
+    tmp_path: Path,
+    monkeypatch,
+):
+    from scripts import sync_dinosaur_images as sync_module
+
+    images_dir = tmp_path / "images"
+    images_dir.mkdir()
+    (images_dir / "Tyrannosaurus.webp").write_bytes(b"x")
+
+    row = Dinosaur(
+        name="Tyrannosaurus",
+        wikipedia_page_id=1,
+        wikipedia_title="Tyrannosaurus",
+    )
+    session.add(row)
+    session.commit()
+
+    monkeypatch.setattr(config_module.settings, "public_base_url", "https://example.com")
+    monkeypatch.setenv("DINOSAUR_IMAGES_SOURCE_DIR", str(images_dir))
+    monkeypatch.setattr(sync_module, "remote_image_exists", lambda **kwargs: True)
+    upload_calls: list[str] = []
+
+    def fake_upload(**kwargs):
+        upload_calls.append(kwargs["remote_filename"])
+
+    monkeypatch.setattr(sync_module, "upload_file_to_railway", fake_upload)
+    monkeypatch.setenv("ALLOW_LOCAL_CRON", "1")
+
+    assert sync_module.run_sync(dry_run=False, overwrite=True) == 0
+    assert upload_calls == ["Tyrannosaurus.webp"]
+
+    session.refresh(row)
+    assert row.main_image_url == (
+        "https://example.com/media/dinosaurs/Tyrannosaurus.webp?v=9dd4e461268c"
+    )
+
+
 def test_run_sync_updates_main_image_url(
     session: Session,
     tmp_path: Path,
@@ -209,6 +284,7 @@ def test_run_sync_updates_main_image_url(
         "upload_file_to_railway",
         lambda **kwargs: None,
     )
+    monkeypatch.setattr(sync_module, "remote_image_exists", lambda **kwargs: False)
     monkeypatch.setenv("ALLOW_LOCAL_CRON", "1")
 
     assert sync_module.run_sync(dry_run=False) == 0

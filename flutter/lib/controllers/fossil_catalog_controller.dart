@@ -226,6 +226,7 @@ class FossilCatalogController extends ChangeNotifier {
 
   Future<FossilListResponse> _fetchAllCuratedClientSide() async {
     final hasSearch = _filters.searchQuery.trim().isNotEmpty;
+    final seed = _seed ?? _newSeed();
     final curated = <FossilSummary>[];
     var offset = 0;
     var hasMore = true;
@@ -234,7 +235,8 @@ class FossilCatalogController extends ChangeNotifier {
       final response = await _service.fetchFossils(
         limit: _clientScanPageSize,
         offset: offset,
-        sort: 'name',
+        sort: hasSearch ? 'name' : 'random',
+        seed: hasSearch ? null : seed,
         q: hasSearch ? _filters.searchQuery.trim() : null,
         maYounger:
             !hasSearch && _filters.hasTimeFilter ? _filters.maYounger : null,

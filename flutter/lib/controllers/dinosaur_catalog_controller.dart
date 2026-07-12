@@ -226,6 +226,7 @@ class DinosaurCatalogController extends ChangeNotifier {
 
   Future<DinosaurListResponse> _fetchAllCuratedClientSide() async {
     final hasSearch = _filters.searchQuery.trim().isNotEmpty;
+    final seed = _seed ?? _newSeed();
     final curated = <DinosaurSummary>[];
     var offset = 0;
     var hasMore = true;
@@ -234,7 +235,8 @@ class DinosaurCatalogController extends ChangeNotifier {
       final response = await _service.fetchDinosaurs(
         limit: _clientScanPageSize,
         offset: offset,
-        sort: 'name',
+        sort: hasSearch ? 'name' : 'random',
+        seed: hasSearch ? null : seed,
         q: hasSearch ? _filters.searchQuery.trim() : null,
         maYounger:
             !hasSearch && _filters.hasTimeFilter ? _filters.maYounger : null,

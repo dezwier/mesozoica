@@ -105,6 +105,7 @@ def test_run_sync_updates_main_image_url(
         "upload_file_to_railway",
         lambda **kwargs: None,
     )
+    monkeypatch.setattr(sync_module, "remote_image_exists", lambda **kwargs: False)
     monkeypatch.setenv("ALLOW_LOCAL_CRON", "1")
 
     assert sync_module.run_sync(dry_run=False) == 0

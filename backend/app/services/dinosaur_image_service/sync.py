@@ -11,6 +11,7 @@ from app.services.curated_image_service.common import (
     DEFAULT_PRODUCTION_BASE_URL,
     is_allowed_image_filename,
     normalize_public_base_url,
+    remote_curated_image_exists,
     resolve_local_source_dir_for_sync as _resolve_local_source_dir,
     resolve_public_base_url_for_sync,
     scan_local_image_files,
@@ -75,6 +76,14 @@ def match_image_files(
     return matched, unmatched
 
 
+def remote_image_exists(*, public_base_url: str, filename: str) -> bool:
+    return remote_curated_image_exists(
+        public_base_url=public_base_url,
+        curated_media_path=CURATED_MEDIA_PATH,
+        filename=filename,
+    )
+
+
 def upload_file_to_railway(
     *,
     local_path: Path,
@@ -113,6 +122,7 @@ __all__ = [
     "is_curated_image_url",
     "match_image_files",
     "normalize_public_base_url",
+    "remote_image_exists",
     "resolve_local_source_dir_for_sync",
     "resolve_public_base_url_for_sync",
     "scan_local_image_files",

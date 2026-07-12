@@ -60,7 +60,8 @@ class FossilService {
     return fetchFossils(
       limit: limit,
       offset: offset,
-      sort: 'name',
+      sort: 'random',
+      seed: 'dinosaur-$dinosaurId',
       dinosaurId: dinosaurId,
     );
   }

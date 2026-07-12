@@ -74,6 +74,21 @@ def resolve_curated_storage_dir(
     return (_BACKEND_DIR / path).resolve()
 
 
+def remote_curated_image_exists(
+    *,
+    public_base_url: str,
+    curated_media_path: str,
+    filename: str,
+) -> bool:
+    """Return True when the image is already served from Railway."""
+    url = f"{public_base_url.rstrip('/')}{curated_media_path}{filename}"
+    try:
+        response = httpx.head(url, timeout=30.0, follow_redirects=True)
+    except httpx.HTTPError:
+        return False
+    return response.status_code == 200
+
+
 def upload_curated_image_to_railway(
     *,
     local_path: Path,

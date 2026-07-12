@@ -140,7 +140,7 @@ def _list_dinosaurs_random(
 ) -> list[Dinosaur]:
     dialect_name = session.get_bind().dialect.name
     if dialect_name == "postgresql":
-        order = func.md5(func.concat(Dinosaur.name, seed))
+        order = func.md5(func.concat(Dinosaur.id, seed))
         rows = session.exec(
             filtered.order_by(order).offset(offset).limit(limit)
         ).all()
@@ -148,7 +148,7 @@ def _list_dinosaurs_random(
 
     all_rows = session.exec(filtered).all()
     all_rows.sort(
-        key=lambda row: hashlib.md5(f"{row.name}{seed}".encode()).hexdigest()
+        key=lambda row: hashlib.md5(f"{row.id}{seed}".encode()).hexdigest()
     )
     return all_rows[offset : offset + limit]
 

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import hashlib
+
 from sqlmodel import Session, col, select
 
 from app.core.exceptions import NotFoundError
@@ -24,8 +26,11 @@ def list_site_fossils(session: Session, site_id: int) -> list[SiteFossilThumb]:
         select(Fossil.id, Fossil.main_image_url)
         .join(FossilClean, col(FossilClean.fossil_id) == col(Fossil.id))
         .where(col(FossilClean.site_id) == site_id)
-        .order_by(Fossil.id)
     ).all()
+    rows = sorted(
+        rows,
+        key=lambda row: hashlib.md5(f"{row[0]}{site_id}".encode()).hexdigest(),
+    )
     return [
         SiteFossilThumb(id=fossil_id, main_image_url=main_image_url)
         for fossil_id, main_image_url in rows

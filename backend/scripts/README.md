@@ -34,10 +34,12 @@ From the repo root:
 # Dinosaur images — upload and update DB
 make sync-dinosaur-images
 make sync-dinosaur-images CRON_EXTRA='--dry-run'
+make sync-dinosaur-images CRON_EXTRA='--overwrite'
 
 # Fossil images — upload and update DB
 make sync-fossil-images
 make sync-fossil-images CRON_EXTRA='--dry-run'
+make sync-fossil-images CRON_EXTRA='--overwrite'
 
 # Target a specific Railway service
 make sync-dinosaur-images RAILWAY_SERVICE=my-service
@@ -54,6 +56,7 @@ cd backend
 # Dinosaur images
 RAILWAY_RUN=1 railway run python -m scripts.sync_dinosaur_images
 python -m scripts.sync_dinosaur_images --dry-run
+python -m scripts.sync_dinosaur_images --overwrite
 
 # Fossil images
 RAILWAY_RUN=1 railway run python -m scripts.sync_fossil_images
@@ -65,6 +68,7 @@ python -m scripts.sync_fossil_images --dry-run
 | Flag | Effect |
 |------|--------|
 | `--dry-run` | Log what would sync; skip uploads and database updates |
+| `--overwrite` | Replace images already on Railway. Default: upload only missing images |
 
 ## Environment
 
@@ -107,6 +111,9 @@ make sync-dinosaur-images CRON_EXTRA='--dry-run'
 
 # 3. Upload to production
 make sync-dinosaur-images
+
+# Re-upload changed images
+make sync-dinosaur-images CRON_EXTRA='--overwrite'
 ```
 
 ### Fossil card images

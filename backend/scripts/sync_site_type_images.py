@@ -16,6 +16,7 @@ from app.services.dinosaur_image_service.sync import file_content_version
 from app.services.site_type_image_service.sync import (
     build_curated_image_url,
     match_image_files,
+    remote_image_exists,
     resolve_local_source_dir_for_sync,
     resolve_public_base_url_for_sync,
     scan_local_image_files,
@@ -34,10 +35,15 @@ def _parse_args() -> argparse.Namespace:
         action="store_true",
         help="Preview matches without uploading files or updating the database.",
     )
+    parser.add_argument(
+        "--overwrite",
+        action="store_true",
+        help="Replace images already on Railway. Default: upload only missing images.",
+    )
     return parser.parse_args()
 
 
-def run_sync(*, dry_run: bool = False) -> int:
+def run_sync(*, dry_run: bool = False, overwrite: bool = False) -> int:
     if not dry_run:
         require_railway_database()
 
@@ -57,7 +63,16 @@ def run_sync(*, dry_run: bool = False) -> int:
 
         uploaded = 0
         updated = 0
+        skipped = 0
         for match in matched:
+            if not overwrite and remote_image_exists(
+                public_base_url=public_base_url,
+                filename=match.filename,
+            ):
+                logger.info("Skipping %s (already on Railway)", match.filename)
+                skipped += 1
+                continue
+
             public_url = build_curated_image_url(
                 public_base_url,
                 match.filename,
@@ -105,10 +120,11 @@ def run_sync(*, dry_run: bool = False) -> int:
             )
 
         logger.info(
-            "Summary: %d matched, %d uploaded, %d db_updated, %d unmatched files",
+            "Summary: %d matched, %d uploaded, %d db_updated, %d skipped, %d unmatched files",
             len(matched),
             uploaded,
             updated,
+            skipped,
             len(unmatched_files),
         )
 
@@ -119,7 +135,7 @@ def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
     args = _parse_args()
     try:
-        raise SystemExit(run_sync(dry_run=args.dry_run))
+        raise SystemExit(run_sync(dry_run=args.dry_run, overwrite=args.overwrite))
     except Exception as exc:
         logger.error("%s", exc)
         raise SystemExit(1) from exc

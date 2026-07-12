@@ -177,7 +177,7 @@ def _list_fossils_random(
 ) -> list[FossilRow]:
     dialect_name = session.get_bind().dialect.name
     if dialect_name == "postgresql":
-        order = func.md5(func.concat(func.coalesce(Fossil.identified_name, Dinosaur.name), seed))
+        order = func.md5(func.concat(Fossil.id, seed))
         rows = session.exec(
             filtered.order_by(order).offset(offset).limit(limit)
         ).all()
@@ -185,9 +185,7 @@ def _list_fossils_random(
 
     all_rows = session.exec(filtered).all()
     all_rows.sort(
-        key=lambda row: hashlib.md5(
-            f"{row[1] or row[0].identified_name or row[0].id}{seed}".encode()
-        ).hexdigest()
+        key=lambda row: hashlib.md5(f"{row[0].id}{seed}".encode()).hexdigest()
     )
     return [_row_from_tuple(row) for row in all_rows[offset : offset + limit]]
 
