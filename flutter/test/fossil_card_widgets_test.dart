@@ -13,16 +13,26 @@ const _fixture = FossilSummary(
   dinosaurId: 1,
   dinosaurName: 'Tyrannosaurus',
   identifiedName: 'Tyrannosaurus rex',
+  countryCode: 'US',
   state: 'Montana',
   geologicalFormation: 'Hell Creek Formation',
   latitude: 46.8797,
   longitude: -110.3626,
+  collectionName: 'Hell Creek site 12',
   collectionDates: '1902',
   stratcomments: 'Found in sandstone lens.',
+  lithdescript: 'channel sandstone',
   description: 'Famous Hell Creek tyrannosaur locality.',
   collectors: 'Barnum Brown',
+  museum: 'AMNH',
+  family: 'Tyrannosauridae',
   presMode: 'body',
   preservationQuality: 'good',
+  abundValue: 1,
+  abundUnit: 'specimens',
+  minAgeMa: 66,
+  maxAgeMa: 68,
+  earlyInterval: 'Maastrichtian',
   dinosaurMainImageUrl:
       'https://mesozoica-production.up.railway.app/media/dinosaurs/Tyrannosaurus.webp',
 );
@@ -89,16 +99,26 @@ void main() {
     );
 
     expect(find.text('Tyrannosaurus rex'), findsOneWidget);
+    expect(find.text('GENUS'), findsOneWidget);
+    expect(find.text('FAMILY'), findsOneWidget);
+    expect(find.text('COUNTRY'), findsOneWidget);
     expect(find.text('STATE'), findsOneWidget);
     expect(find.text('FORMATION'), findsOneWidget);
+    expect(find.text('SITE'), findsOneWidget);
     expect(find.text('COORDINATES'), findsOneWidget);
+    expect(find.text('INTERVAL'), findsOneWidget);
+    expect(find.text('AGE'), findsOneWidget);
+    expect(find.text('ROCK TYPE'), findsOneWidget);
+    expect(find.text('STRATIGRAPHY'), findsOneWidget);
     expect(find.text('COLLECTION DATES'), findsOneWidget);
-    expect(find.text('COMMENTS'), findsOneWidget);
     expect(find.text('COLLECTORS'), findsOneWidget);
+    expect(find.text('MUSEUM'), findsOneWidget);
     expect(find.text('PRESERVATION MODE'), findsOneWidget);
     expect(find.text('QUALITY'), findsOneWidget);
+    expect(find.text('ABUNDANCE'), findsOneWidget);
     expect(find.text('Montana'), findsOneWidget);
     expect(find.text('Hell Creek Formation'), findsOneWidget);
+    expect(find.text('Channel sandstone'), findsOneWidget);
     expect(find.text('Barnum Brown'), findsOneWidget);
   });
 

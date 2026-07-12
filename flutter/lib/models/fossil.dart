@@ -6,16 +6,23 @@ class FossilSummary {
     required this.dinosaurId,
     required this.dinosaurName,
     this.identifiedName,
+    this.countryCode,
     this.state,
     this.geologicalFormation,
     this.latitude,
     this.longitude,
+    this.collectionName,
     this.collectionDates,
     this.stratcomments,
+    this.lithdescript,
     this.description,
     this.collectors,
+    this.museum,
+    this.family,
     this.presMode,
     this.preservationQuality,
+    this.abundValue,
+    this.abundUnit,
     this.minAgeMa,
     this.maxAgeMa,
     this.earlyInterval,
@@ -27,16 +34,23 @@ class FossilSummary {
   final int dinosaurId;
   final String dinosaurName;
   final String? identifiedName;
+  final String? countryCode;
   final String? state;
   final String? geologicalFormation;
   final double? latitude;
   final double? longitude;
+  final String? collectionName;
   final String? collectionDates;
   final String? stratcomments;
+  final String? lithdescript;
   final String? description;
   final String? collectors;
+  final String? museum;
+  final String? family;
   final String? presMode;
   final String? preservationQuality;
+  final int? abundValue;
+  final String? abundUnit;
   final double? minAgeMa;
   final double? maxAgeMa;
   final String? earlyInterval;
@@ -49,16 +63,23 @@ class FossilSummary {
       dinosaurId: json['dinosaur_id'] as int,
       dinosaurName: json['dinosaur_name'] as String,
       identifiedName: json['identified_name'] as String?,
+      countryCode: json['country_code'] as String?,
       state: json['state'] as String?,
       geologicalFormation: json['geological_formation'] as String?,
       latitude: (json['latitude'] as num?)?.toDouble(),
       longitude: (json['longitude'] as num?)?.toDouble(),
+      collectionName: json['collection_name'] as String?,
       collectionDates: json['collection_dates'] as String?,
       stratcomments: json['stratcomments'] as String?,
+      lithdescript: json['lithdescript'] as String?,
       description: json['description'] as String?,
       collectors: json['collectors'] as String?,
+      museum: json['museum'] as String?,
+      family: json['family'] as String?,
       presMode: json['pres_mode'] as String?,
       preservationQuality: json['preservation_quality'] as String?,
+      abundValue: json['abund_value'] as int?,
+      abundUnit: json['abund_unit'] as String?,
       minAgeMa: (json['min_age_ma'] as num?)?.toDouble(),
       maxAgeMa: (json['max_age_ma'] as num?)?.toDouble(),
       earlyInterval: json['early_interval'] as String?,
@@ -80,6 +101,28 @@ class FossilSummary {
     final lat = latitude!.toStringAsFixed(4);
     final lng = longitude!.toStringAsFixed(4);
     return '$lat, $lng';
+  }
+
+  String get displayAgeRange {
+    if (minAgeMa == null && maxAgeMa == null) return '—';
+    if (minAgeMa != null && maxAgeMa != null) {
+      final younger = minAgeMa! <= maxAgeMa! ? minAgeMa : maxAgeMa;
+      final older = minAgeMa! >= maxAgeMa! ? minAgeMa : maxAgeMa;
+      return '${younger!.toStringAsFixed(1)} – ${older!.toStringAsFixed(1)} Ma';
+    }
+    final single = minAgeMa ?? maxAgeMa;
+    return '${single!.toStringAsFixed(1)} Ma';
+  }
+
+  String get displayAbundance {
+    if (abundValue == null && (abundUnit == null || abundUnit!.trim().isEmpty)) {
+      return '—';
+    }
+    if (abundValue != null && abundUnit != null && abundUnit!.trim().isNotEmpty) {
+      return '$abundValue $abundUnit';
+    }
+    if (abundValue != null) return '$abundValue';
+    return abundUnit!.trim();
   }
 }
 

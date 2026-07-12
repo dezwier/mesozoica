@@ -48,7 +48,77 @@ class FossilCardBack extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        _LocationBlock(fossil: fossil),
+                        _FactSection(
+                          rows: [
+                            _FactSpec(
+                              icon: 'assets/images/cards/icons/diet.svg',
+                              label: 'Genus',
+                              value: displayFactValue(fossil.dinosaurName),
+                            ),
+                            _FactSpec(
+                              icon: 'assets/images/cards/icons/diet.svg',
+                              label: 'Family',
+                              value: displayFactValue(fossil.family),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        _FactSection(
+                          rows: [
+                            _FactSpec(
+                              icon: 'assets/images/cards/icons/location.svg',
+                              label: 'Country',
+                              value: displayFactValue(fossil.countryCode),
+                            ),
+                            _FactSpec(
+                              icon: 'assets/images/cards/icons/location.svg',
+                              label: 'State',
+                              value: displayFactValue(fossil.state),
+                            ),
+                            _FactSpec(
+                              icon: 'assets/images/cards/icons/location.svg',
+                              label: 'Formation',
+                              value: displayFactValue(fossil.geologicalFormation),
+                            ),
+                            _FactSpec(
+                              icon: 'assets/images/cards/icons/location.svg',
+                              label: 'Site',
+                              value: displayFactValue(fossil.collectionName),
+                            ),
+                            _FactSpec(
+                              icon: 'assets/images/cards/icons/location.svg',
+                              label: 'Coordinates',
+                              value: fossil.displayCoordinates,
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        _FactSection(
+                          rows: [
+                            _FactSpec(
+                              icon: 'assets/images/cards/icons/period.svg',
+                              label: 'Interval',
+                              value: displayFactValue(fossil.earlyInterval),
+                            ),
+                            _FactSpec(
+                              icon: 'assets/images/cards/icons/period.svg',
+                              label: 'Age',
+                              value: fossil.displayAgeRange,
+                            ),
+                            _FactSpec(
+                              icon: 'assets/images/cards/icons/period.svg',
+                              label: 'Rock type',
+                              value: displayFactValue(fossil.lithdescript),
+                              maxValueLines: 4,
+                            ),
+                            _FactSpec(
+                              icon: 'assets/images/cards/icons/period.svg',
+                              label: 'Stratigraphy',
+                              value: displayFactValue(fossil.stratcomments),
+                              maxValueLines: 4,
+                            ),
+                          ],
+                        ),
                         const SizedBox(height: 10),
                         Text(
                           description,
@@ -56,7 +126,46 @@ class FossilCardBack extends StatelessWidget {
                           style: cardTheme.bodyStyle(fontSize: 12),
                         ),
                         const SizedBox(height: 12),
-                        _CollectionBlock(fossil: fossil),
+                        _FactSection(
+                          rows: [
+                            _FactSpec(
+                              icon: 'assets/images/cards/icons/period.svg',
+                              label: 'Collection dates',
+                              value: displayFactValue(fossil.collectionDates),
+                            ),
+                            _FactSpec(
+                              icon: 'assets/images/cards/icons/diet.svg',
+                              label: 'Collectors',
+                              value: displayFactValue(fossil.collectors),
+                              maxValueLines: 3,
+                            ),
+                            _FactSpec(
+                              icon: 'assets/images/cards/icons/location.svg',
+                              label: 'Museum',
+                              value: displayFactValue(fossil.museum),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        _FactSection(
+                          rows: [
+                            _FactSpec(
+                              icon: 'assets/images/cards/icons/mass.svg',
+                              label: 'Preservation mode',
+                              value: displayFactValue(fossil.presMode),
+                            ),
+                            _FactSpec(
+                              icon: 'assets/images/cards/icons/length.svg',
+                              label: 'Quality',
+                              value: displayFactValue(fossil.preservationQuality),
+                            ),
+                            _FactSpec(
+                              icon: 'assets/images/cards/icons/mass.svg',
+                              label: 'Abundance',
+                              value: fossil.displayAbundance,
+                            ),
+                          ],
+                        ),
                       ],
                     ),
                   ),
@@ -70,79 +179,37 @@ class FossilCardBack extends StatelessWidget {
   }
 }
 
-class _LocationBlock extends StatelessWidget {
-  const _LocationBlock({required this.fossil});
+class _FactSpec {
+  const _FactSpec({
+    required this.icon,
+    required this.label,
+    required this.value,
+    this.maxValueLines = 2,
+  });
 
-  final FossilSummary fossil;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        DinoFactRow(
-          iconAsset: 'assets/images/cards/icons/location.svg',
-          label: 'State',
-          value: displayFactValue(fossil.state),
-          compact: true,
-        ),
-        DinoFactRow(
-          iconAsset: 'assets/images/cards/icons/location.svg',
-          label: 'Formation',
-          value: displayFactValue(fossil.geologicalFormation),
-          compact: true,
-        ),
-        DinoFactRow(
-          iconAsset: 'assets/images/cards/icons/location.svg',
-          label: 'Coordinates',
-          value: fossil.displayCoordinates,
-          compact: true,
-        ),
-      ],
-    );
-  }
+  final String icon;
+  final String label;
+  final String value;
+  final int maxValueLines;
 }
 
-class _CollectionBlock extends StatelessWidget {
-  const _CollectionBlock({required this.fossil});
+class _FactSection extends StatelessWidget {
+  const _FactSection({required this.rows});
 
-  final FossilSummary fossil;
+  final List<_FactSpec> rows;
 
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
-        DinoFactRow(
-          iconAsset: 'assets/images/cards/icons/period.svg',
-          label: 'Collection dates',
-          value: displayFactValue(fossil.collectionDates),
-          compact: true,
-        ),
-        DinoFactRow(
-          iconAsset: 'assets/images/cards/icons/period.svg',
-          label: 'Comments',
-          value: displayFactValue(fossil.stratcomments),
-          compact: true,
-          maxValueLines: 4,
-        ),
-        DinoFactRow(
-          iconAsset: 'assets/images/cards/icons/diet.svg',
-          label: 'Collectors',
-          value: displayFactValue(fossil.collectors),
-          compact: true,
-          maxValueLines: 3,
-        ),
-        DinoFactRow(
-          iconAsset: 'assets/images/cards/icons/mass.svg',
-          label: 'Preservation mode',
-          value: displayFactValue(fossil.presMode),
-          compact: true,
-        ),
-        DinoFactRow(
-          iconAsset: 'assets/images/cards/icons/length.svg',
-          label: 'Quality',
-          value: displayFactValue(fossil.preservationQuality),
-          compact: true,
-        ),
+        for (final row in rows)
+          DinoFactRow(
+            iconAsset: row.icon,
+            label: row.label,
+            value: row.value,
+            compact: true,
+            maxValueLines: row.maxValueLines,
+          ),
       ],
     );
   }

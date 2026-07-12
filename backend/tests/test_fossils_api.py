@@ -28,16 +28,23 @@ def _seed_hell_creek_fossil(session: Session, dinosaur: Dinosaur) -> Fossil:
         id=100001,
         dinosaur_id=dinosaur.id,
         identified_name="Tyrannosaurus rex",
+        country_code="US",
         state="Montana",
         geological_formation="Hell Creek Formation",
         latitude=Decimal("46.879700"),
         longitude=Decimal("-110.362600"),
+        collection_name="Hell Creek site 12",
         collection_dates="1902",
         stratcomments="Found in sandstone lens.",
+        lithdescript="channel sandstone",
         description="Famous Hell Creek tyrannosaur locality.",
         collectors="Barnum Brown",
+        museum="AMNH",
+        family="Tyrannosauridae",
         pres_mode="body",
         preservation_quality="good",
+        abund_value=1,
+        abund_unit="specimens",
         min_age_ma=Decimal("66.00"),
         max_age_ma=Decimal("68.00"),
         early_interval="Maastrichtian",
@@ -74,16 +81,24 @@ def test_list_fossils_returns_summary_fields(client, session):
     assert item["id"] == fossil.id
     assert item["dinosaur_id"] == dinosaur.id
     assert item["identified_name"] == "Tyrannosaurus rex"
+    assert item["country_code"] == "US"
     assert item["state"] == "Montana"
     assert item["geological_formation"] == "Hell Creek Formation"
+    assert item["collection_name"] == "Hell Creek site 12"
     assert item["latitude"] == 46.8797
     assert item["longitude"] == -110.3626
     assert item["collection_dates"] == "1902"
     assert item["stratcomments"] == "Found in sandstone lens."
+    assert item["lithdescript"] == "channel sandstone"
     assert item["description"] == "Famous Hell Creek tyrannosaur locality."
     assert item["collectors"] == "Barnum Brown"
+    assert item["museum"] == "AMNH"
+    assert item["family"] == "Tyrannosauridae"
     assert item["pres_mode"] == "body"
     assert item["preservation_quality"] == "good"
+    assert item["abund_value"] == 1
+    assert item["abund_unit"] == "specimens"
+    assert item["early_interval"] == "Maastrichtian"
     assert item["dinosaur_name"] == "Tyrannosaurus"
     assert item["dinosaur_main_image_url"].endswith("Tyrannosaurus.webp")
     assert item["main_image_url"].endswith("100001.webp")
