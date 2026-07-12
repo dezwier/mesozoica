@@ -33,7 +33,7 @@ class SiteCardEdgeFacts extends StatelessWidget {
         ),
       ),
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(22, 10, 8, 10),
+        padding: const EdgeInsets.fromLTRB(16, 10, 6, 10),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.end,

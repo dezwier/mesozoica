@@ -45,19 +45,10 @@ class DinoFactRow extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            SvgPicture.asset(
-              iconAsset,
-              width: iconSize,
-              height: iconSize,
-              colorFilter: ColorFilter.mode(
-                cardTheme.cardTextPrimary.withValues(alpha: 0.65),
-                BlendMode.srcIn,
-              ),
-            ),
-            const SizedBox(width: 5),
             Expanded(
               child: Text(
                 value,
+                textAlign: TextAlign.right,
                 style: cardTheme.statValueStyle(fontSize: valueSize).copyWith(
                   color: cardTheme.cardTextPrimary.withValues(alpha: 0.78),
                   fontWeight: FontWeight.w500,
@@ -65,6 +56,16 @@ class DinoFactRow extends StatelessWidget {
                 maxLines: valueLines,
                 overflow: TextOverflow.ellipsis,
                 softWrap: true,
+              ),
+            ),
+            const SizedBox(width: 5),
+            SvgPicture.asset(
+              iconAsset,
+              width: iconSize,
+              height: iconSize,
+              colorFilter: ColorFilter.mode(
+                cardTheme.cardTextPrimary.withValues(alpha: 0.65),
+                BlendMode.srcIn,
               ),
             ),
           ],
