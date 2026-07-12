@@ -39,9 +39,17 @@ def _tyrannosaurus_record(*, occurrence_no: str = "139292", formation: str = "Sc
     return {
         "occurrence_no": occurrence_no,
         "identified_name": "Tyrannosaurus rex",
-        "accepted_name": "Tyrannosaurus rex",
         "primary_name": "Tyrannosaurus",
         "species_name": "rex",
+        "accepted_name": "Tyrannosaurus rex",
+        "accepted_no": "54833",
+        "accepted_rank": "species",
+        "accepted_attr": "Osborn 1905",
+        "genus": "Tyrannosaurus",
+        "order": "NO_ORDER_SPECIFIED",
+        "class": "Reptilia",
+        "phylum": "Chordata",
+        "identified_rank": "species",
         "family": "Tyrannosauridae",
         "lat": "51.906399",
         "lng": "-113.028900",
@@ -54,12 +62,17 @@ def _tyrannosaurus_record(*, occurrence_no: str = "139292", formation: str = "Sc
         "collection_name": "Knudsen's Coulee (NMC 9954)",
         "collection_aka": "East of Huxley",
         "collection_dates": "1946, 1962",
+        "collection_type": "biostratigraphic",
+        "occurrence_comments": "partial skull and vertebrae",
         "geogcomments": (
             "center of section 10, township 34, range 22, W. 4th meridian; "
             "7 miles east of Huxley, AB in Knudsen's Coulee"
         ),
         "stratcomments": "52 m above base (Kneehills Tuff)",
         "lithdescript": "concretionary zone in the basal part of a channel sandstone",
+        "composition": "hydroxyapatite",
+        "architecture": "compact or dense",
+        "fragmentation": "slightly abraded",
         "collectors": "C. M. Sternberg, W. Langston",
         "museum": "GSC",
         "pres_mode": "body",
@@ -121,18 +134,31 @@ def test_sync_inserts_new_fossil(session: Session):
     assert fossil.family == "Tyrannosauridae"
     assert fossil.collection_name == "Knudsen's Coulee (NMC 9954)"
     assert fossil.collection_dates == "1946, 1962"
+    assert fossil.collection_type == "biostratigraphic"
+    assert fossil.occurrence_comments == "partial skull and vertebrae"
     assert fossil.stratcomments == "52 m above base (Kneehills Tuff)"
     assert fossil.lithdescript == "concretionary zone in the basal part of a channel sandstone"
+    assert fossil.composition == "hydroxyapatite"
+    assert fossil.architecture == "compact or dense"
+    assert fossil.fragmentation == "slightly abraded"
     assert fossil.collectors == "C. M. Sternberg, W. Langston"
     assert fossil.museum == "GSC"
     assert fossil.pres_mode == "body"
     assert fossil.preservation_quality == "medium"
     assert fossil.abund_value == 1
     assert fossil.abund_unit == "specimens"
-    assert fossil.description is not None
-    assert "Huxley" in fossil.description
-    assert "Kneehills Tuff" in fossil.description
-    assert "Lithology:" in fossil.description
+    assert fossil.description is None
+    assert fossil.accepted_name == "Tyrannosaurus rex"
+    assert fossil.accepted_no == 54833
+    assert fossil.accepted_rank == "species"
+    assert fossil.accepted_attr == "Osborn 1905"
+    assert fossil.genus == "Tyrannosaurus"
+    assert fossil.taxon_order == "NO_ORDER_SPECIFIED"
+    assert fossil.taxon_class == "Reptilia"
+    assert fossil.phylum == "Chordata"
+    assert fossil.identified_rank == "species"
+    assert fossil.geogcomments is not None
+    assert "Huxley" in fossil.geogcomments
     assert summary.counters.fetched == 1
     assert summary.counters.updated == 0
 
@@ -205,6 +231,32 @@ def test_sync_skips_aves_records(session: Session):
     fossils = list(session.exec(select(Fossil)).all())
     assert fossils == []
     assert summary.counters.skipped == 1
+
+
+def test_sync_prioritizes_dinosaurs_with_custom_image(session: Session):
+    curated = _dinosaur(name="Zephyrosaurus", page_id=10)
+    curated.main_image_url = (
+        "https://mesozoica-production.up.railway.app/media/dinosaurs/Zephyrosaurus.webp"
+    )
+    uncurated = _dinosaur(name="Anchisaurus", page_id=11)
+    uncurated.main_image_url = "https://upload.wikimedia.org/wikipedia/commons/anchi.jpg"
+    session.add(curated)
+    session.add(uncurated)
+    session.commit()
+
+    queried: list[str] = []
+
+    def iter_occurrences(*, base_name: str):
+        queried.append(base_name)
+        return
+        yield  # pragma: no cover
+
+    client = MagicMock()
+    client.iter_occurrences.side_effect = iter_occurrences
+
+    sync_fossils(session, client=client, dry_run=True)
+
+    assert queried == ["Zephyrosaurus", "Anchisaurus"]
 
 
 def test_sync_dinos_filter_limits_genera(session: Session, monkeypatch):

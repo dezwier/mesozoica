@@ -189,34 +189,19 @@ def fossil_row_to_summary(row: FossilRow):
     from app.schemas.fossil import FossilSummary
 
     fossil = row.fossil
-    return FossilSummary(
-        id=fossil.id,
-        dinosaur_id=fossil.dinosaur_id,
-        identified_name=fossil.identified_name,
-        country_code=fossil.country_code,
-        state=fossil.state,
-        geological_formation=fossil.geological_formation,
-        latitude=_decimal_to_float(fossil.latitude),
-        longitude=_decimal_to_float(fossil.longitude),
-        collection_name=fossil.collection_name,
-        collection_dates=fossil.collection_dates,
-        stratcomments=fossil.stratcomments,
-        lithdescript=fossil.lithdescript,
-        description=fossil.description,
-        collectors=fossil.collectors,
-        museum=fossil.museum,
-        family=fossil.family,
-        pres_mode=fossil.pres_mode,
-        preservation_quality=fossil.preservation_quality,
-        abund_value=fossil.abund_value,
-        abund_unit=fossil.abund_unit,
-        min_age_ma=_decimal_to_float(fossil.min_age_ma),
-        max_age_ma=_decimal_to_float(fossil.max_age_ma),
-        early_interval=fossil.early_interval,
-        main_image_url=fossil.main_image_url,
-        dinosaur_name=row.dinosaur_name,
-        dinosaur_main_image_url=row.dinosaur_main_image_url,
-    )
+    payload = {
+        name: _fossil_field_value(fossil, name) for name in Fossil.model_fields
+    }
+    payload["dinosaur_name"] = row.dinosaur_name
+    payload["dinosaur_main_image_url"] = row.dinosaur_main_image_url
+    return FossilSummary.model_validate(payload)
+
+
+def _fossil_field_value(fossil: Fossil, name: str):
+    value = getattr(fossil, name)
+    if isinstance(value, Decimal):
+        return float(value)
+    return value
 
 
 def _decimal_to_float(value: Decimal | float | int | None) -> float | None:

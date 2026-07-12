@@ -35,8 +35,13 @@ def _seed_hell_creek_fossil(session: Session, dinosaur: Dinosaur) -> Fossil:
         longitude=Decimal("-110.362600"),
         collection_name="Hell Creek site 12",
         collection_dates="1902",
+        collection_type="taxonomic",
+        occurrence_comments="tooth",
         stratcomments="Found in sandstone lens.",
         lithdescript="channel sandstone",
+        composition="hydroxyapatite",
+        architecture="compact or dense",
+        fragmentation="unabraded",
         description="Famous Hell Creek tyrannosaur locality.",
         collectors="Barnum Brown",
         museum="AMNH",
@@ -88,8 +93,13 @@ def test_list_fossils_returns_summary_fields(client, session):
     assert item["latitude"] == 46.8797
     assert item["longitude"] == -110.3626
     assert item["collection_dates"] == "1902"
+    assert item["collection_type"] == "taxonomic"
+    assert item["occurrence_comments"] == "tooth"
     assert item["stratcomments"] == "Found in sandstone lens."
     assert item["lithdescript"] == "channel sandstone"
+    assert item["composition"] == "hydroxyapatite"
+    assert item["architecture"] == "compact or dense"
+    assert item["fragmentation"] == "unabraded"
     assert item["description"] == "Famous Hell Creek tyrannosaur locality."
     assert item["collectors"] == "Barnum Brown"
     assert item["museum"] == "AMNH"

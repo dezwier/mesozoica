@@ -20,8 +20,13 @@ const _fixture = FossilSummary(
   longitude: -110.3626,
   collectionName: 'Hell Creek site 12',
   collectionDates: '1902',
+  collectionType: 'taxonomic',
+  occurrenceComments: 'tooth',
   stratcomments: 'Found in sandstone lens.',
   lithdescript: 'channel sandstone',
+  composition: 'hydroxyapatite',
+  architecture: 'compact or dense',
+  fragmentation: 'unabraded',
   description: 'Famous Hell Creek tyrannosaur locality.',
   collectors: 'Barnum Brown',
   museum: 'AMNH',
@@ -98,10 +103,11 @@ void main() {
       ),
     );
 
-    expect(find.text('Tyrannosaurus rex'), findsOneWidget);
+    expect(find.text('Tyrannosaurus rex'), findsWidgets);
     expect(find.text('OCCURRENCE NO'), findsOneWidget);
     expect(find.text('100001'), findsOneWidget);
     expect(find.text('DINOSAUR'), findsOneWidget);
+    expect(find.text('IDENTIFIED NAME'), findsOneWidget);
     expect(find.text('FAMILY'), findsOneWidget);
     expect(find.text('COUNTRY CODE'), findsOneWidget);
     expect(find.text('GEOLOGICAL FORMATION'), findsOneWidget);
@@ -110,16 +116,22 @@ void main() {
     expect(find.text('EARLY INTERVAL'), findsOneWidget);
     expect(find.text('MIN AGE (MA)'), findsOneWidget);
     expect(find.text('MAX AGE (MA)'), findsOneWidget);
-    expect(find.text('COLLECTION NAME'), findsOneWidget);
+    expect(find.text('COLLECTION TYPE'), findsOneWidget);
+    expect(find.text('OCCURRENCE COMMENTS'), findsOneWidget);
+    expect(find.text('COMPOSITION'), findsOneWidget);
+    expect(find.text('ARCHITECTURE'), findsOneWidget);
+    expect(find.text('FRAGMENTATION'), findsOneWidget);
     expect(find.text('STRATIGRAPHY COMMENTS'), findsOneWidget);
     expect(find.text('LITHOLOGY'), findsOneWidget);
     expect(find.text('ABUNDANCE VALUE'), findsOneWidget);
     expect(find.text('ABUNDANCE UNIT'), findsOneWidget);
     expect(find.text('PRESERVATION QUALITY'), findsOneWidget);
     expect(find.text('Hell Creek Formation'), findsOneWidget);
-    expect(find.text('Channel sandstone'), findsOneWidget);
+    expect(find.text('COLLECTION NAME'), findsOneWidget);
+    expect(find.text('Tooth'), findsOneWidget);
     expect(find.text('Barnum Brown'), findsOneWidget);
-    expect(find.textContaining('Famous Hell Creek'), findsNothing);
+    expect(find.text('DESCRIPTION'), findsOneWidget);
+    expect(find.textContaining('Famous Hell Creek'), findsOneWidget);
   });
 
   testWidgets('FossilTurnableCard composes front and back faces',
