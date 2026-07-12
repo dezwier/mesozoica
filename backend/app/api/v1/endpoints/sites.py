@@ -9,12 +9,14 @@ from app.core.database import get_session
 from app.core.exceptions import ValidationError
 from app.schemas.site import (
     SiteDinosaurThumbListResponse,
+    SiteDinoFossilGroupListResponse,
     SiteFossilThumbListResponse,
     SiteListResponse,
     SiteSummary,
 )
 from app.services.site_service import (
     get_site_by_id,
+    list_site_dino_fossil_groups,
     list_site_dinosaurs,
     list_site_fossils,
     list_sites,
@@ -84,3 +86,12 @@ def get_site_dinosaurs(
 ) -> SiteDinosaurThumbListResponse:
     items = list_site_dinosaurs(session, site_id)
     return SiteDinosaurThumbListResponse(items=items)
+
+
+@router.get("/{site_id}/groups", response_model=SiteDinoFossilGroupListResponse)
+def get_site_dino_fossil_groups(
+    site_id: int,
+    session: Session = Depends(get_session),
+) -> SiteDinoFossilGroupListResponse:
+    items = list_site_dino_fossil_groups(session, site_id)
+    return SiteDinoFossilGroupListResponse(items=items)

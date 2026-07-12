@@ -164,6 +164,9 @@ class AppConfig {
   static Uri siteDinosaursUri(int siteId) =>
       Uri.parse('$baseApiUrl/api/v1/sites/$siteId/dinosaurs');
 
+  static Uri siteGroupsUri(int siteId) =>
+      Uri.parse('$baseApiUrl/api/v1/sites/$siteId/groups');
+
   static Future<bool> checkApiHealth() async {
     try {
       final response = await http.get(healthUri).timeout(const Duration(seconds: 15));

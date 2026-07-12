@@ -183,3 +183,46 @@ class SiteDinosaurThumbListResponse {
     );
   }
 }
+
+class SiteDinoFossilGroup {
+  const SiteDinoFossilGroup({
+    required this.dinosaur,
+    required this.fossils,
+  });
+
+  final SiteDinosaurThumb dinosaur;
+  final List<SiteFossilThumb> fossils;
+
+  factory SiteDinoFossilGroup.fromJson(Map<String, dynamic> json) {
+    final rawFossils = json['fossils'];
+    return SiteDinoFossilGroup(
+      dinosaur: SiteDinosaurThumb.fromJson(
+        json['dinosaur'] as Map<String, dynamic>,
+      ),
+      fossils: rawFossils is List
+          ? rawFossils
+              .whereType<Map<String, dynamic>>()
+              .map(SiteFossilThumb.fromJson)
+              .toList()
+          : const [],
+    );
+  }
+}
+
+class SiteDinoFossilGroupListResponse {
+  const SiteDinoFossilGroupListResponse({required this.items});
+
+  final List<SiteDinoFossilGroup> items;
+
+  factory SiteDinoFossilGroupListResponse.fromJson(Map<String, dynamic> json) {
+    final rawItems = json['items'];
+    return SiteDinoFossilGroupListResponse(
+      items: rawItems is List
+          ? rawItems
+              .whereType<Map<String, dynamic>>()
+              .map(SiteDinoFossilGroup.fromJson)
+              .toList()
+          : const [],
+    );
+  }
+}

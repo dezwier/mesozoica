@@ -68,7 +68,11 @@ class SiteScreenState extends State<SiteScreen> {
   Widget build(BuildContext context) {
     return Consumer<SiteCatalogController>(
       builder: (context, catalog, _) {
-        return Positioned.fill(child: _buildBody(context, catalog));
+        return Stack(
+          children: [
+            Positioned.fill(child: _buildBody(context, catalog)),
+          ],
+        );
       },
     );
   }
@@ -111,7 +115,7 @@ class SiteScreenState extends State<SiteScreen> {
     if (catalog.isEmpty) {
       return Center(
         child: Text(
-          'No sites with curated images yet.',
+          'No sites in the catalog yet.',
           style: Theme.of(context).textTheme.bodyLarge,
         ),
       );

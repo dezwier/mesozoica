@@ -40,50 +40,17 @@ class SiteCardBack extends StatelessWidget {
                   centered: true,
                   useFrontTitleStyle: true,
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 10),
+                Text(
+                  'FOSSIL RECORD',
+                  textAlign: TextAlign.center,
+                  style: cardTheme.sectionLabelStyle(fontSize: 11),
+                ),
+                const SizedBox(height: 8),
                 Expanded(
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 6),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'FOSSILS',
-                                style: cardTheme.sectionLabelStyle(fontSize: 11),
-                              ),
-                              const SizedBox(height: 6),
-                              Expanded(
-                                child: SiteCardFossilList(
-                                  siteId: site.siteId,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 14),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'DINOSAURS',
-                                style: cardTheme.sectionLabelStyle(fontSize: 11),
-                              ),
-                              const SizedBox(height: 6),
-                              Expanded(
-                                child: SiteCardDinosaurList(
-                                  siteId: site.siteId,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
+                    child: SiteCardDinoFossilGroups(siteId: site.siteId),
                   ),
                 ),
               ],

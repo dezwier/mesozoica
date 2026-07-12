@@ -50,3 +50,12 @@ class SiteFossilThumbListResponse(BaseModel):
 
 class SiteDinosaurThumbListResponse(BaseModel):
     items: list[SiteDinosaurThumb]
+
+
+class SiteDinoFossilGroup(BaseModel):
+    dinosaur: SiteDinosaurThumb
+    fossils: list[SiteFossilThumb]
+
+
+class SiteDinoFossilGroupListResponse(BaseModel):
+    items: list[SiteDinoFossilGroup]

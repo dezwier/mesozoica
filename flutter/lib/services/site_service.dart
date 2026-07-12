@@ -116,6 +116,29 @@ class SiteService {
     return SiteDinosaurThumbListResponse.fromJson(decoded).items;
   }
 
+  Future<List<SiteDinoFossilGroup>> fetchDinoFossilGroupsForSite(
+    int siteId,
+  ) async {
+    final uri = AppConfig.siteGroupsUri(siteId);
+    if (kDebugMode) {
+      debugPrint('SiteService GET $uri');
+    }
+    final response =
+        await _client.get(uri).timeout(const Duration(seconds: 15));
+
+    if (response.statusCode != 200) {
+      throw SiteServiceException(
+        'Failed to load site groups (${response.statusCode})',
+      );
+    }
+
+    final decoded = jsonDecode(response.body);
+    if (decoded is! Map<String, dynamic>) {
+      throw const SiteServiceException('Invalid site groups response');
+    }
+    return SiteDinoFossilGroupListResponse.fromJson(decoded).items;
+  }
+
   void dispose() {
     _client.close();
   }

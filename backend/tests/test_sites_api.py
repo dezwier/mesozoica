@@ -180,3 +180,12 @@ def test_site_related_fossils_and_dinosaurs(client, session):
     assert dinos[0]["id"] == dinosaur.id
     assert dinos[0]["name"] == "Tyrannosaurus"
     assert dinos[0]["main_image_url"].endswith("Tyrannosaurus.webp")
+
+    groups_response = client.get(f"/api/v1/sites/{site.site_id}/groups")
+    assert groups_response.status_code == 200
+    groups = groups_response.json()["items"]
+    assert len(groups) == 1
+    assert groups[0]["dinosaur"]["id"] == dinosaur.id
+    assert groups[0]["dinosaur"]["name"] == "Tyrannosaurus"
+    assert len(groups[0]["fossils"]) == 1
+    assert groups[0]["fossils"][0]["id"] == fossil.id
