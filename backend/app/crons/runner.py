@@ -29,6 +29,7 @@ from app.crons.jobs import (
     fossil_clean_sync,
     fossil_image_generate,
     pbdb_fossil_sync,
+    site_type_image_generate,
     wikipedia_dinosaur_sync,
 )
 from app.crons.logging_config import configure_cron_logging
@@ -114,6 +115,27 @@ def _run_fossil_image_generate(params: dict[str, Any]) -> int:
     )
 
 
+def _parse_site_type_ids(raw: Any) -> list[int] | None:
+    if raw is None:
+        return None
+    if isinstance(raw, int):
+        return [raw]
+    if isinstance(raw, list):
+        return [int(value) for value in raw]
+    text = str(raw).strip()
+    if not text:
+        return None
+    return [int(part.strip()) for part in text.replace(",", " ").split() if part.strip()]
+
+
+def _run_site_type_image_generate(params: dict[str, Any]) -> int:
+    return site_type_image_generate.run_generate_job(
+        dry_run=bool(params.get("dry_run", False)),
+        max_items=_parse_max_items(params.get("max_items")),
+        site_type_ids=_parse_site_type_ids(params.get("site_types")),
+    )
+
+
 def _run_fossil_clean_sync(params: dict[str, Any]) -> int:
     return fossil_clean_sync.run_sync_job(
         dry_run=bool(params.get("dry_run", False)),
@@ -127,6 +149,7 @@ _JOB_HANDLERS: dict[str, Callable[[dict[str, Any]], int]] = {
     "pbdb_fossil_sync": _run_pbdb_fossil_sync,
     "dinosaur_image_generate": _run_dinosaur_image_generate,
     "fossil_image_generate": _run_fossil_image_generate,
+    "site_type_image_generate": _run_site_type_image_generate,
     "fossil_clean_sync": _run_fossil_clean_sync,
 }
 
@@ -214,7 +237,15 @@ def main(argv: list[str] | None = None) -> int:
         metavar="N",
         type=int,
         help="Maximum successful image generations per run (dinosaur_image_generate, "
-        "fossil_image_generate).",
+        "fossil_image_generate, site_type_image_generate).",
+    )
+    parser.add_argument(
+        "--site-types",
+        metavar="ID",
+        nargs="+",
+        type=int,
+        help="Limit site-type image generation to specific site_type.id values "
+        "(site_type_image_generate).",
     )
     parser.add_argument(
         "--dry-run",
@@ -237,6 +268,8 @@ def main(argv: list[str] | None = None) -> int:
         overrides["since"] = args.since
     if args.max_items is not None:
         overrides["max_items"] = args.max_items
+    if args.site_types is not None:
+        overrides["site_types"] = args.site_types
     if args.dry_run:
         overrides["dry_run"] = True
 

@@ -42,8 +42,15 @@ jobs:
       dry_run: false
       max_items: null
 
-  - id: fossil_clean_sync
+  - id: site_type_image_generate
     enabled: false
     schedule: "0 8 * * 0"
+    params:
+      dry_run: false
+      max_items: null
+
+  - id: fossil_clean_sync
+    enabled: false
+    schedule: "0 9 * * 0"
     params:
       dry_run: false

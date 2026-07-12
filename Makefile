@@ -6,7 +6,7 @@ RAILWAY_SERVICE ?=
 RAILWAY_SERVICE_FLAG = $(if $(RAILWAY_SERVICE),--service $(RAILWAY_SERVICE),)
 CRON_EXTRA ?=
 
-.PHONY: help backend-install backend-test run-backend flutter-test run-flutter test-all run-cron run-wikipedia-sync run-dinosaur-enrich run-fossil-sync run-fossil-clean-sync run-dinosaur-image-gen run-fossil-image-gen sync-dinosaur-images sync-fossil-images sync-site-type-images
+.PHONY: help backend-install backend-test run-backend flutter-test run-flutter test-all run-cron run-wikipedia-sync run-dinosaur-enrich run-fossil-sync run-fossil-clean-sync run-dinosaur-image-gen run-fossil-image-gen run-site-type-image-gen sync-dinosaur-images sync-fossil-images sync-site-type-images
 
 help:
 	@echo "Available targets:"
@@ -20,6 +20,7 @@ help:
 	@echo "  run-fossil-clean-sync Rebuild site_clean and fossil_clean tables on Railway"
 	@echo "  run-dinosaur-image-gen Generate dinosaur card images via Gemini Imagen (local repo folder)"
 	@echo "  run-fossil-image-gen   Generate fossil card images via Gemini Imagen (local repo folder)"
+	@echo "  run-site-type-image-gen Generate site-type card images via Gemini Imagen (local repo folder)"
 	@echo "  sync-dinosaur-images Upload curated card images to Railway volume + DB"
 	@echo "  sync-fossil-images   Upload curated fossil card images to Railway volume + DB"
 	@echo "  sync-site-type-images Upload curated site-type card images to Railway volume + DB"
@@ -39,6 +40,8 @@ help:
 	@echo "  make run-dinosaur-image-gen CRON_EXTRA='--max-items 5'"
 	@echo "  make run-dinosaur-image-gen CRON_EXTRA='--dinos Tyrannosaurus --dry-run'"
 	@echo "  make run-fossil-image-gen CRON_EXTRA='--max-items 10'"
+	@echo "  make run-site-type-image-gen CRON_EXTRA='--max-items 3 --dry-run'"
+	@echo "  make run-site-type-image-gen CRON_EXTRA='--site-types 5 18 20'"
 
 backend-install:
 	cd backend && python3 -m pip install --upgrade pip && pip install -r requirements.txt -r requirements-dev.txt
@@ -70,6 +73,9 @@ run-dinosaur-image-gen:
 
 run-fossil-image-gen:
 	cd backend && RAILWAY_RUN=1 railway run $(RAILWAY_SERVICE_FLAG) python -m app.crons.runner --job fossil_image_generate $(CRON_EXTRA)
+
+run-site-type-image-gen:
+	cd backend && RAILWAY_RUN=1 railway run $(RAILWAY_SERVICE_FLAG) python -m app.crons.runner --job site_type_image_generate $(CRON_EXTRA)
 
 sync-dinosaur-images:
 	cd backend && RAILWAY_RUN=1 railway run $(RAILWAY_SERVICE_FLAG) python -m scripts.sync_dinosaur_images $(CRON_EXTRA)

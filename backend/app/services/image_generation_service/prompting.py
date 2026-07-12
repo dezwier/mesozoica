@@ -38,6 +38,39 @@ _PRES_MODE_GUIDANCE: dict[str, str] = {
     "trace": "Trace fossil: show impression, track, burrow, or ichnofossil in sediment.",
 }
 
+_PERIOD_CONTEXT: dict[str, str] = {
+    "triassic": (
+        "Triassic period (~252–201 million years ago): arid to semi-arid early Mesozoic "
+        "landscapes, sparse conifers and ferns, red beds and evaporites common."
+    ),
+    "jurassic": (
+        "Jurassic period (~201–145 million years ago): warm humid climates, lush conifers "
+        "and cycads, coastal plains and shallow inland seas."
+    ),
+    "cretaceous": (
+        "Cretaceous period (~145–66 million years ago): varied Mesozoic landscapes, "
+        "angiosperms emerging, chalk, sandstone, and claystone formations common."
+    ),
+}
+
+_SITE_TYPE_INSTRUCTIONS = """Generate a 3:4 portrait photo of a natural geological field outcrop at a paleontological dig site. Documentary iPhone photo with slight 'dramatic warm' tone. Real geology and landscape, NOT cartoon, NOT CGI.
+
+Primary subject — rock type (most important):
+- show {rock_type} clearly as the dominant exposed lithology: bedding, texture, color, and weathering typical of this rock type in the field
+- natural eroded cliff face, hillside cut, or badlands outcrop where a fossil site would realistically occur
+- dusty field setting, uneven daylight, authentic geological strata
+
+Geological period (secondary context):
+- {period_context}
+
+Hard constraints:
+- no text, labels, signs, maps, or watermarks
+- no people, vehicles, tools, tarps, tents, or excavation equipment
+- no borders, frames, or graphic overlays
+- only nature: rock, sediment, sky, and period-appropriate vegetation if any
+
+Avoid: museum displays, polished rock slabs, studio backdrops, stock-photo perfection."""
+
 
 def build_dinosaur_image_prompt(name: str, article_text: str) -> str:
     """Build Imagen prompt for a dinosaur genus card image."""
@@ -156,6 +189,19 @@ def build_fossil_image_prompt(fossil_data: dict[str, Any]) -> str:
     return _FOSSIL_INSTRUCTIONS.format(
         preservation_brief=preservation_brief,
         fossil_json=fossil_json,
+    )
+
+
+def build_site_type_image_prompt(*, period: str, rock_type: str) -> str:
+    """Build Imagen prompt for a site-type card image (field outcrop by lithology + period)."""
+    period_key = _normalize_key(period)
+    period_context = _PERIOD_CONTEXT.get(
+        period_key,
+        f"{period.strip().capitalize()} period: Mesozoic geological landscape.",
+    )
+    return _SITE_TYPE_INSTRUCTIONS.format(
+        rock_type=rock_type.strip(),
+        period_context=period_context,
     )
 
 

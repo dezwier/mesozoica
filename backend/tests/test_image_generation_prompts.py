@@ -15,6 +15,7 @@ from app.services.image_generation_service.prompting import (
     build_dinosaur_image_prompt,
     build_fossil_image_prompt,
     build_fossil_preservation_brief,
+    build_site_type_image_prompt,
 )
 
 
@@ -153,3 +154,27 @@ def test_fossil_to_prompt_json_respects_max_chars():
     )
     text = fossil_to_prompt_json(fossil, dinosaur_name="Foo", max_chars=400)
     assert len(text) <= 400
+
+
+def test_build_site_type_image_prompt_emphasizes_rock_type_and_period():
+    prompt = build_site_type_image_prompt(
+        period="cretaceous",
+        rock_type="sandstone",
+    )
+    assert "sandstone" in prompt
+    assert "Cretaceous" in prompt
+    assert "3:4" in prompt
+    assert "dramatic warm" in prompt
+    assert "field outcrop" in prompt.lower()
+    assert "no text" in prompt.lower()
+    assert "no people" in prompt.lower()
+
+
+def test_build_site_type_image_prompt_includes_period_context_for_triassic():
+    prompt = build_site_type_image_prompt(
+        period="triassic",
+        rock_type="claystone",
+    )
+    assert "claystone" in prompt
+    assert "Triassic" in prompt
+    assert "252" in prompt or "201" in prompt

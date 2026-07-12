@@ -11,6 +11,7 @@ from app.services.curated_image_service.common import (
 )
 from app.services.dinosaur_image_service.sync import resolve_local_source_dir_for_sync as resolve_dino_source
 from app.services.fossil_image_service.sync import resolve_local_source_dir_for_sync as resolve_fossil_source
+from app.services.site_type_image_service.sync import resolve_local_source_dir_for_sync as resolve_site_type_source
 
 
 def test_resolve_curated_storage_dir_uses_explicit_server_path():
@@ -64,3 +65,13 @@ def test_resolve_dino_source_ignores_server_storage_path(monkeypatch, tmp_path: 
     monkeypatch.setenv("DINOSAUR_IMAGES_SOURCE_DIR", str(repo_images))
 
     assert resolve_dino_source() == repo_images.resolve()
+
+
+def test_resolve_site_type_source_uses_repo_subdir(monkeypatch, tmp_path: Path):
+    repo_images = tmp_path / "site-type-images"
+    repo_images.mkdir()
+    (repo_images / "1.png").write_bytes(b"x")
+
+    monkeypatch.setenv("SITE_TYPE_IMAGES_SOURCE_DIR", str(repo_images))
+
+    assert resolve_site_type_source() == repo_images.resolve()
