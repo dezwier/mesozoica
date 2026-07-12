@@ -92,8 +92,8 @@ class FractalLabelPlacer {
   final double labelPadding;
 
   /// Base font sizes at zoom scale 1.0 (logical pixels).
-  static const double genusBaseFontSize = 20;
-  static const double cladeBaseFontSize = 16;
+  static const double genusBaseFontSize = 15;
+  static const double cladeBaseFontSize = 12;
 
   /// Sublinear exponent — labels grow with zoom, but much less than 1:1.
   static const double labelZoomExponent = 0.25;
@@ -102,8 +102,8 @@ class FractalLabelPlacer {
   static double zoomScaledScreenFontSize({
     required double baseFontSize,
     required double zoomScale,
-    double minSize = 10,
-    double maxSize = 28,
+    double minSize = 8,
+    double maxSize = 22,
   }) {
     final z = zoomScale.clamp(0.08, 50);
     return (baseFontSize * math.pow(z, labelZoomExponent)).clamp(minSize, maxSize);

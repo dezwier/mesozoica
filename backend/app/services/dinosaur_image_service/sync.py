@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import os
 import re
 from dataclasses import dataclass
@@ -27,9 +28,23 @@ def is_allowed_image_filename(filename: str) -> bool:
     return Path(filename).suffix.lower() in ALLOWED_IMAGE_EXTENSIONS
 
 
-def build_curated_image_url(public_base_url: str, filename: str) -> str:
+def file_content_version(local_path: Path) -> str:
+    """Short content hash for cache-busting curated image URLs after re-sync."""
+    digest = hashlib.md5(local_path.read_bytes()).hexdigest()
+    return digest[:12]
+
+
+def build_curated_image_url(
+    public_base_url: str,
+    filename: str,
+    *,
+    version: str | None = None,
+) -> str:
     base = public_base_url.rstrip("/")
-    return f"{base}{CURATED_MEDIA_PATH}{filename}"
+    url = f"{base}{CURATED_MEDIA_PATH}{filename}"
+    if version:
+        return f"{url}?v={version}"
+    return url
 
 
 def is_curated_image_url(url: str | None) -> bool:

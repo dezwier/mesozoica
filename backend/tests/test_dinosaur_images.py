@@ -14,6 +14,7 @@ from app.models.dinosaur import Dinosaur
 from app.services.dinosaur_image_service.sync import (
     DEFAULT_PRODUCTION_BASE_URL,
     build_curated_image_url,
+    file_content_version,
     is_curated_image_url,
     match_image_files,
     normalize_public_base_url,
@@ -29,6 +30,20 @@ def test_build_curated_image_url():
         build_curated_image_url("https://example.com", "Tyrannosaurus.webp")
         == "https://example.com/media/dinosaurs/Tyrannosaurus.webp"
     )
+    assert (
+        build_curated_image_url(
+            "https://example.com",
+            "Tyrannosaurus.webp",
+            version="abc123",
+        )
+        == "https://example.com/media/dinosaurs/Tyrannosaurus.webp?v=abc123"
+    )
+
+
+def test_file_content_version(tmp_path: Path):
+    image = tmp_path / "Tyrannosaurus.webp"
+    image.write_bytes(b"image-bytes")
+    assert file_content_version(image) == "f9831439379c"
 
 
 def test_is_curated_image_url():
@@ -199,7 +214,6 @@ def test_run_sync_updates_main_image_url(
     assert sync_module.run_sync(dry_run=False) == 0
 
     session.refresh(row)
-    assert (
-        row.main_image_url
-        == "https://example.com/media/dinosaurs/Tyrannosaurus.webp"
+    assert row.main_image_url == (
+        "https://example.com/media/dinosaurs/Tyrannosaurus.webp?v=9dd4e461268c"
     )

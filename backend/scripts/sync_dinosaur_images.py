@@ -14,6 +14,7 @@ from app.crons.railway_guard import require_railway_database
 from app.models.dinosaur import Dinosaur
 from app.services.dinosaur_image_service.sync import (
     build_curated_image_url,
+    file_content_version,
     match_image_files,
     resolve_local_source_dir_for_sync,
     resolve_public_base_url_for_sync,
@@ -57,7 +58,11 @@ def run_sync(*, dry_run: bool = False) -> int:
         uploaded = 0
         updated = 0
         for match in matched:
-            public_url = build_curated_image_url(public_base_url, match.filename)
+            public_url = build_curated_image_url(
+                public_base_url,
+                match.filename,
+                version=file_content_version(match.path),
+            )
             logger.info(
                 "%s %s -> %s",
                 "Would sync" if dry_run else "Syncing",

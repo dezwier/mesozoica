@@ -171,6 +171,39 @@ class _TurnableYAxisCardState extends State<TurnableYAxisCard>
     ];
   }
 
+  /// Keeps both faces mounted so images do not remount (and re-fade) on flip.
+  Widget _buildFaces({required bool isBackVisible}) {
+    return Stack(
+      alignment: Alignment.topCenter,
+      children: [
+        ExcludeSemantics(
+          excluding: isBackVisible,
+          child: IgnorePointer(
+            ignoring: isBackVisible,
+            child: Opacity(
+              opacity: isBackVisible ? 0 : 1,
+              child: widget.front,
+            ),
+          ),
+        ),
+        ExcludeSemantics(
+          excluding: !isBackVisible,
+          child: IgnorePointer(
+            ignoring: !isBackVisible,
+            child: Opacity(
+              opacity: isBackVisible ? 1 : 0,
+              child: Transform(
+                alignment: Alignment.center,
+                transform: Matrix4.identity()..rotateY(math.pi),
+                child: widget.back,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final r = widget.borderRadius;
@@ -192,15 +225,7 @@ class _TurnableYAxisCardState extends State<TurnableYAxisCard>
         final isBackVisible = normalizedAngle > (math.pi / 2) &&
             normalizedAngle < (3 * math.pi / 2);
 
-        Widget visibleFace() {
-          return isBackVisible
-              ? Transform(
-                  alignment: Alignment.center,
-                  transform: Matrix4.identity()..rotateY(math.pi),
-                  child: widget.back,
-                )
-              : widget.front;
-        }
+        final faces = _buildFaces(isBackVisible: isBackVisible);
 
         final decoration = (widget.decoration ??
                 BoxDecoration(
@@ -230,32 +255,11 @@ class _TurnableYAxisCardState extends State<TurnableYAxisCard>
                       ? SizedBox(
                           width: measurementWidth,
                           height: fixedH,
-                          child: visibleFace(),
+                          child: faces,
                         )
                       : !widget.prelayoutFacesForHeight
-                          ? SizedBox.expand(child: visibleFace())
-                          : Stack(
-                              alignment: Alignment.topCenter,
-                              children: [
-                                ExcludeSemantics(
-                                  child: IgnorePointer(
-                                    child: Opacity(
-                                      opacity: 0,
-                                      child: widget.front,
-                                    ),
-                                  ),
-                                ),
-                                ExcludeSemantics(
-                                  child: IgnorePointer(
-                                    child: Opacity(
-                                      opacity: 0,
-                                      child: widget.back,
-                                    ),
-                                  ),
-                                ),
-                                Positioned.fill(child: visibleFace()),
-                              ],
-                            ),
+                          ? SizedBox.expand(child: faces)
+                          : faces,
                 ),
               ),
             ),

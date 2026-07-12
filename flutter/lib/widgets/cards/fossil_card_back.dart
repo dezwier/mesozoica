@@ -35,6 +35,7 @@ class FossilCardBack extends StatelessWidget {
                   titleFontSize: 24,
                   centered: true,
                   useFrontTitleStyle: true,
+                  wrapTitle: true,
                 ),
                 const SizedBox(height: 10),
                 Expanded(
@@ -97,7 +98,7 @@ class _FieldColumn extends StatelessWidget {
             label: field.label,
             value: field.value,
             compact: true,
-            maxValueLines: field.maxValueLines,
+            wrapValue: true,
           ),
       ],
     );

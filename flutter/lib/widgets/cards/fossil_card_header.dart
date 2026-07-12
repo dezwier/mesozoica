@@ -10,12 +10,14 @@ class FossilCardHeader extends StatelessWidget {
     this.titleFontSize = 18,
     this.centered = false,
     this.useFrontTitleStyle = false,
+    this.wrapTitle = false,
   });
 
   final FossilSummary fossil;
   final double titleFontSize;
   final bool centered;
   final bool useFrontTitleStyle;
+  final bool wrapTitle;
 
   @override
   Widget build(BuildContext context) {
@@ -31,8 +33,9 @@ class FossilCardHeader extends StatelessWidget {
           style: useFrontTitleStyle
               ? cardTheme.frontTitleStyle(fontSize: titleFontSize)
               : cardTheme.titleStyle(fontSize: titleFontSize),
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
+          maxLines: wrapTitle ? null : 2,
+          overflow: wrapTitle ? TextOverflow.visible : TextOverflow.ellipsis,
+          softWrap: true,
         ),
       ],
     );

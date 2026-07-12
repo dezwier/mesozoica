@@ -13,6 +13,7 @@ class DinoFactRow extends StatelessWidget {
     this.centered = false,
     this.maxValueLines = 2,
     this.maxLines,
+    this.wrapValue = false,
   });
 
   final String iconAsset;
@@ -22,6 +23,7 @@ class DinoFactRow extends StatelessWidget {
   final bool centered;
   final int maxValueLines;
   final int? maxLines;
+  final bool wrapValue;
 
   @override
   Widget build(BuildContext context) {
@@ -56,8 +58,10 @@ class DinoFactRow extends StatelessWidget {
                 Text(
                   value,
                   style: cardTheme.statValueStyle(fontSize: valueSize),
-                  maxLines: valueLines,
-                  overflow: TextOverflow.ellipsis,
+                  maxLines: wrapValue ? null : valueLines,
+                  overflow:
+                      wrapValue ? TextOverflow.visible : TextOverflow.ellipsis,
+                  softWrap: true,
                 ),
               ],
             ),
