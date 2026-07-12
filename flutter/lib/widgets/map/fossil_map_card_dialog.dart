@@ -16,7 +16,7 @@ Future<void> showFossilMapCardDialog(
 
       return SafeArea(
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(8, 0, 8, 12),
+          padding: const EdgeInsets.only(bottom: 12),
           child: Material(
             color: Colors.transparent,
             child: ConstrainedBox(
