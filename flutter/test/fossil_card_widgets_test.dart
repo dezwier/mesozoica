@@ -7,6 +7,7 @@ import 'package:mesozoica/widgets/cards/fossil_card_back.dart';
 import 'package:mesozoica/widgets/cards/fossil_card_front.dart';
 import 'package:mesozoica/widgets/cards/fossil_card_image.dart';
 import 'package:mesozoica/widgets/cards/fossil_turnable_card.dart';
+import 'package:mesozoica/widgets/cards/site_card_image.dart';
 
 const _fixture = FossilSummary(
   id: 100001,
@@ -40,12 +41,15 @@ const _fixture = FossilSummary(
   earlyInterval: 'Maastrichtian',
   dinosaurMainImageUrl:
       'https://mesozoica-production.up.railway.app/media/dinosaurs/Tyrannosaurus.webp',
+  siteId: 50001,
+  siteMainImageUrl:
+      'https://mesozoica-production.up.railway.app/media/site-types/1.png',
 );
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  testWidgets('FossilCardFront renders fossil image, dino inset, and title',
+  testWidgets('FossilCardFront renders fossil image, site and dino insets, and title',
       (tester) async {
     await tester.pumpWidget(
       const MaterialApp(
@@ -61,6 +65,7 @@ void main() {
     );
 
     expect(find.byType(FossilCardImage), findsOneWidget);
+    expect(find.byType(SiteCardImage), findsOneWidget);
     expect(find.byType(DinosaurCardImage), findsOneWidget);
     expect(find.text('Tyrannosaurus rex'), findsOneWidget);
     expect(find.text('Occurrence No #100001'), findsOneWidget);

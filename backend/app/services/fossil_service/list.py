@@ -13,7 +13,11 @@ from sqlmodel import Session, col, func as sqlmodel_func, select
 from app.core.exceptions import NotFoundError, ValidationError
 from app.models.dinosaur import Dinosaur
 from app.models.fossil import Fossil
+from app.models.fossil_clean import FossilClean
+from app.models.site_clean import SiteClean
+from app.models.site_type import SiteType
 from app.services.dinosaur_image_service.sync import CURATED_MEDIA_PATH as DINOSAUR_CURATED_MEDIA_PATH
+from app.services.site_service.site_type_fallback import effective_site_type
 
 SortOption = Literal["name", "random"]
 _MAX_SEED_LEN = 64
@@ -26,6 +30,8 @@ class FossilRow:
     fossil: Fossil
     dinosaur_name: str
     dinosaur_main_image_url: str | None
+    site: SiteClean | None
+    site_type: SiteType | None
 
 
 def list_fossils(
@@ -90,9 +96,7 @@ def list_fossils(
 
 def get_fossil_by_id(session: Session, fossil_id: int) -> FossilRow:
     row = session.exec(
-        select(Fossil, Dinosaur.name, Dinosaur.main_image_url)
-        .join(Dinosaur, col(Fossil.dinosaur_id) == col(Dinosaur.id))
-        .where(col(Fossil.id) == fossil_id)
+        _base_select().where(col(Fossil.id) == fossil_id)
     ).first()
     if row is None:
         raise NotFoundError(f"Fossil {fossil_id} not found")
@@ -133,10 +137,7 @@ def _filtered_select(
     has_custom_image: bool,
     dinosaur_id: int | None = None,
 ):
-    stmt = (
-        select(Fossil, Dinosaur.name, Dinosaur.main_image_url)
-        .join(Dinosaur, col(Fossil.dinosaur_id) == col(Dinosaur.id))
-    )
+    stmt = _base_select()
     if dinosaur_id is not None:
         stmt = stmt.where(col(Fossil.dinosaur_id) == dinosaur_id)
     if has_custom_image:
@@ -192,15 +193,61 @@ def _list_fossils_random(
 
 
 def _row_from_tuple(row: tuple) -> FossilRow:
-    fossil, dinosaur_name, dinosaur_main_image_url = row
+    fossil, dinosaur_name, dinosaur_main_image_url, site, site_type = row
     return FossilRow(
         fossil=fossil,
         dinosaur_name=dinosaur_name,
         dinosaur_main_image_url=dinosaur_main_image_url,
+        site=site,
+        site_type=site_type,
     )
 
 
-def fossil_row_to_summary(row: FossilRow):
+def _base_select():
+    site_id_expr = func.coalesce(FossilClean.site_id, Fossil.collection_no)
+    return (
+        select(
+            Fossil,
+            Dinosaur.name,
+            Dinosaur.main_image_url,
+            SiteClean,
+            SiteType,
+        )
+        .join(Dinosaur, col(Fossil.dinosaur_id) == col(Dinosaur.id))
+        .outerjoin(FossilClean, col(FossilClean.fossil_id) == col(Fossil.id))
+        .outerjoin(SiteClean, col(SiteClean.site_id) == site_id_expr)
+        .outerjoin(SiteType, col(SiteClean.site_type_id) == col(SiteType.id))
+    )
+
+
+def _fossil_site_id(row: FossilRow) -> int | None:
+    if row.site is not None:
+        return row.site.site_id
+    return row.fossil.collection_no
+
+
+def _fossil_site_main_image_url(
+    row: FossilRow,
+    *,
+    types_by_period: dict[str, list[SiteType]] | None,
+) -> str | None:
+    if row.site is None:
+        return None
+    effective = (
+        effective_site_type(row.site, row.site_type, types_by_period)
+        if types_by_period is not None
+        else row.site_type
+    )
+    if effective is None:
+        return None
+    return effective.main_image_url
+
+
+def fossil_row_to_summary(
+    row: FossilRow,
+    *,
+    types_by_period: dict[str, list[SiteType]] | None = None,
+):
     """Build API schema from a joined fossil row."""
     from app.schemas.fossil import FossilSummary
 
@@ -210,6 +257,11 @@ def fossil_row_to_summary(row: FossilRow):
     }
     payload["dinosaur_name"] = row.dinosaur_name
     payload["dinosaur_main_image_url"] = row.dinosaur_main_image_url
+    payload["site_id"] = _fossil_site_id(row)
+    payload["site_main_image_url"] = _fossil_site_main_image_url(
+        row,
+        types_by_period=types_by_period,
+    )
     return FossilSummary.model_validate(payload)
 
 

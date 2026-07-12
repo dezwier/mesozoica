@@ -6,6 +6,39 @@ from sqlmodel import Session
 
 from app.models.dinosaur import Dinosaur
 from app.models.fossil import Fossil
+from app.models.site_clean import SiteClean
+from app.models.site_type import SiteType
+
+
+def _seed_site_type(session: Session) -> SiteType:
+    row = SiteType(
+        period="cretaceous",
+        rock_type="sandstone",
+        main_image_url="https://mesozoica-production.up.railway.app/media/site-types/1.png",
+    )
+    session.add(row)
+    session.commit()
+    session.refresh(row)
+    return row
+
+
+def _seed_hell_creek_site(session: Session, site_type: SiteType) -> SiteClean:
+    row = SiteClean(
+        site_id=50001,
+        latitude=Decimal("46.879700"),
+        longitude=Decimal("-110.362600"),
+        country_code="US",
+        state="Montana",
+        rock_type="sandstone",
+        formation="Hell Creek Formation",
+        min_age_ma=Decimal("66.00"),
+        max_age_ma=Decimal("68.00"),
+        site_type_id=site_type.id,
+    )
+    session.add(row)
+    session.commit()
+    session.refresh(row)
+    return row
 
 
 def _seed_tyrannosaurus(session: Session) -> Dinosaur:
@@ -34,6 +67,7 @@ def _seed_hell_creek_fossil(session: Session, dinosaur: Dinosaur) -> Fossil:
         latitude=Decimal("46.879700"),
         longitude=Decimal("-110.362600"),
         collection_name="Hell Creek site 12",
+        collection_no=50001,
         collection_dates="1902",
         collection_type="taxonomic",
         occurrence_comments="tooth",
@@ -74,6 +108,8 @@ def test_list_fossils_empty(client):
 
 def test_list_fossils_returns_summary_fields(client, session):
     dinosaur = _seed_tyrannosaurus(session)
+    site_type = _seed_site_type(session)
+    _seed_hell_creek_site(session, site_type)
     fossil = _seed_hell_creek_fossil(session, dinosaur)
 
     response = client.get("/api/v1/fossils")
@@ -112,6 +148,8 @@ def test_list_fossils_returns_summary_fields(client, session):
     assert item["dinosaur_name"] == "Tyrannosaurus"
     assert item["dinosaur_main_image_url"].endswith("Tyrannosaurus.webp")
     assert item["main_image_url"].endswith("100001.webp")
+    assert item["site_id"] == 50001
+    assert item["site_main_image_url"].endswith("site-types/1.png")
 
 
 def test_list_fossils_pagination(client, session):
@@ -284,6 +322,8 @@ def test_list_fossils_filter_ma_requires_both_params(client):
 
 def test_get_fossil_by_id(client, session):
     dinosaur = _seed_tyrannosaurus(session)
+    site_type = _seed_site_type(session)
+    _seed_hell_creek_site(session, site_type)
     fossil = _seed_hell_creek_fossil(session, dinosaur)
 
     response = client.get(f"/api/v1/fossils/{fossil.id}")
@@ -295,6 +335,8 @@ def test_get_fossil_by_id(client, session):
     assert body["geological_formation"] == "Hell Creek Formation"
     assert body["dinosaur_name"] == "Tyrannosaurus"
     assert body["dinosaur_main_image_url"].endswith("Tyrannosaurus.webp")
+    assert body["site_id"] == 50001
+    assert body["site_main_image_url"].endswith("site-types/1.png")
 
 
 def test_get_fossil_not_found(client):

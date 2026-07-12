@@ -89,6 +89,8 @@ class FossilSummary(BaseModel):
     main_image_url: str | None = None
     dinosaur_name: str
     dinosaur_main_image_url: str | None = None
+    site_id: int | None = None
+    site_main_image_url: str | None = None
 
 
 class FossilListResponse(BaseModel):

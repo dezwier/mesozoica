@@ -9,6 +9,7 @@ from app.core.database import get_session
 from app.core.exceptions import ValidationError
 from app.schemas.fossil import FossilListResponse, FossilSummary
 from app.services.fossil_service.list import fossil_row_to_summary, get_fossil_by_id, list_fossils
+from app.services.site_service.site_type_fallback import load_site_types_by_period
 
 router = APIRouter(prefix="/fossils", tags=["fossils"])
 
@@ -40,7 +41,10 @@ def get_fossils(
         has_custom_image=has_custom_image,
         dinosaur_id=dinosaur_id,
     )
-    items = [fossil_row_to_summary(row) for row in rows]
+    types_by_period = load_site_types_by_period(session)
+    items = [
+        fossil_row_to_summary(row, types_by_period=types_by_period) for row in rows
+    ]
     return FossilListResponse(
         items=items,
         total=total,
@@ -56,4 +60,5 @@ def get_fossil(
     session: Session = Depends(get_session),
 ) -> FossilSummary:
     row = get_fossil_by_id(session, fossil_id)
-    return fossil_row_to_summary(row)
+    types_by_period = load_site_types_by_period(session)
+    return fossil_row_to_summary(row, types_by_period=types_by_period)

@@ -4,10 +4,13 @@ import 'package:flutter/material.dart';
 
 import '../../models/fossil.dart';
 import '../../theme/dino_card_theme.dart';
+import 'card_corner_inset.dart';
 import 'dinosaur_card_dialog.dart';
 import 'dinosaur_card_image.dart';
 import 'fossil_card_header.dart';
 import 'fossil_card_image.dart';
+import 'site_card_dialog.dart';
+import 'site_card_image.dart';
 
 class FossilCardFront extends StatelessWidget {
   const FossilCardFront({
@@ -15,17 +18,20 @@ class FossilCardFront extends StatelessWidget {
     required this.fossil,
     this.titleFontSize = 28,
     this.overlayHeightFactor = 0.35,
-    this.dinosaurInsetWidthFactor = 0.28,
+    this.insetSizeFactor = 0.28,
   });
 
   final FossilSummary fossil;
   final double titleFontSize;
   final double overlayHeightFactor;
-  final double dinosaurInsetWidthFactor;
+  final double insetSizeFactor;
 
   @override
   Widget build(BuildContext context) {
     final cardTheme = DinoCardTheme.of(context);
+    final insetSize = math
+        .max(72.0, MediaQuery.sizeOf(context).width * insetSizeFactor)
+        .toDouble();
 
     return AspectRatio(
       aspectRatio: DinoCardTheme.cardAspectRatio,
@@ -33,50 +39,29 @@ class FossilCardFront extends StatelessWidget {
         fit: StackFit.expand,
         children: [
           FossilCardImage(imageUrl: fossil.mainImageUrl),
+          if (fossil.siteId != null)
+            Positioned(
+              top: 12,
+              left: 12,
+              child: CardCornerInset(
+                size: insetSize,
+                onTap: () => showSiteCardDialog(
+                  context,
+                  siteId: fossil.siteId!,
+                ),
+                child: SiteCardImage(imageUrl: fossil.siteMainImageUrl),
+              ),
+            ),
           Positioned(
             top: 12,
             right: 12,
-            width: math.max(72, MediaQuery.sizeOf(context).width * dinosaurInsetWidthFactor),
-            child: AspectRatio(
-              aspectRatio: DinoCardTheme.cardAspectRatio,
-              child: Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  onTap: () => showDinosaurCardDialog(
-                    context,
-                    dinosaurId: fossil.dinosaurId,
-                  ),
-                  borderRadius: BorderRadius.circular(10),
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.85),
-                        width: 1.5,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.42),
-                          blurRadius: 5,
-                          offset: const Offset(0, 2),
-                        ),
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.22),
-                          blurRadius: 16,
-                          spreadRadius: 1,
-                          offset: const Offset(0, 6),
-                        ),
-                      ],
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(8.5),
-                      child: DinosaurCardImage(
-                        imageUrl: fossil.dinosaurMainImageUrl,
-                      ),
-                    ),
-                  ),
-                ),
+            child: CardCornerInset(
+              size: insetSize,
+              onTap: () => showDinosaurCardDialog(
+                context,
+                dinosaurId: fossil.dinosaurId,
               ),
+              child: DinosaurCardImage(imageUrl: fossil.dinosaurMainImageUrl),
             ),
           ),
           Positioned.fill(

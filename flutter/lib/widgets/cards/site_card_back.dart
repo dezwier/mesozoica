@@ -50,7 +50,7 @@ class SiteCardBack extends StatelessWidget {
                 Expanded(
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 6),
-                    child: SiteCardDinoFossilGroups(siteId: site.siteId),
+                    child: SiteCardFossils(siteId: site.siteId),
                   ),
                 ),
               ],
