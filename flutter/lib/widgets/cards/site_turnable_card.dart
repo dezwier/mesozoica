@@ -36,7 +36,11 @@ class SiteTurnableCard extends StatelessWidget {
         subtitleFontSize: subtitleFontSize,
         overlayHeightFactor: overlayHeightFactor,
       ),
-      back: SiteCardBack(site: site),
+      back: SiteCardBack(
+        site: site,
+        titleFontSize: titleFontSize,
+        subtitleFontSize: subtitleFontSize,
+      ),
     );
   }
 }

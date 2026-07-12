@@ -303,10 +303,10 @@ class _HorizontalTimeline extends StatelessWidget {
                   ? _horizontalInset - 2 * scale
                   : ma == maxMa
                       ? null
-                      : _xForMa(ma, trackWidth) - 16 * scale,
+                      : _xForMa(ma, trackWidth) - 24 * scale,
               right: ma == maxMa ? _horizontalInset - 2 * scale : null,
               top: _barTop + _barHeight + 4 * scale,
-              width: ma == minMa || ma == maxMa ? null : 32 * scale,
+              width: ma == minMa || ma == maxMa ? null : 48 * scale,
               child: Text(
                 '${ma.round()} Ma',
                 textAlign: ma == maxMa
@@ -314,6 +314,8 @@ class _HorizontalTimeline extends StatelessWidget {
                     : ma == minMa
                         ? TextAlign.left
                         : TextAlign.center,
+                maxLines: 1,
+                softWrap: false,
                 style: TextStyle(
                   color: cardTheme.timelineAnnotationColor(),
                   fontSize: 9 * scale,

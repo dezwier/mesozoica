@@ -44,6 +44,8 @@ class DinosaurTurnableCard extends StatelessWidget {
       back: DinosaurCardBack(
         dinosaur: dinosaur,
         showArticleButton: showArticleButton ?? showFrontFacts,
+        titleFontSize: titleFontSize,
+        subtitleFontSize: subtitleFontSize,
       ),
     );
   }

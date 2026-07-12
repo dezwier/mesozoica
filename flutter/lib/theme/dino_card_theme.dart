@@ -252,8 +252,8 @@ class DinoCardTheme {
   BoxDecoration factPanelDecoration() {
     return BoxDecoration(
       color: isLight
-          ? cardBackground.withValues(alpha: 0.72)
-          : cardBackground.withValues(alpha: 0.7),
+          ? cardBackground.withValues(alpha: 0.8)
+          : cardBackground.withValues(alpha: 0.8),
       borderRadius: BorderRadius.circular(10),
       border: Border.all(
         color: cardAccent.withValues(alpha: 0.35),
