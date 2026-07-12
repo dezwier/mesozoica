@@ -65,6 +65,25 @@ class DinosaurCardBack extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Expanded(
+                          flex: 55,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'FOSSIL RECORD',
+                                style: cardTheme.sectionLabelStyle(fontSize: 11),
+                              ),
+                              const SizedBox(height: 6),
+                              Expanded(
+                                child: DinosaurCardFossilList(
+                                  dinosaurId: dinosaur.id,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
                           flex: 45,
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -82,25 +101,6 @@ class DinosaurCardBack extends StatelessWidget {
                                     scale: _contentScale,
                                     centered: false,
                                   ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 14),
-                        Expanded(
-                          flex: 55,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'FOSSIL RECORD',
-                                style: cardTheme.sectionLabelStyle(fontSize: 11),
-                              ),
-                              const SizedBox(height: 6),
-                              Expanded(
-                                child: DinosaurCardFossilList(
-                                  dinosaurId: dinosaur.id,
                                 ),
                               ),
                             ],
