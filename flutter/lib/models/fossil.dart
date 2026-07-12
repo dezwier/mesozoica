@@ -102,28 +102,6 @@ class FossilSummary {
     final lng = longitude!.toStringAsFixed(4);
     return '$lat, $lng';
   }
-
-  String get displayAgeRange {
-    if (minAgeMa == null && maxAgeMa == null) return '—';
-    if (minAgeMa != null && maxAgeMa != null) {
-      final younger = minAgeMa! <= maxAgeMa! ? minAgeMa : maxAgeMa;
-      final older = minAgeMa! >= maxAgeMa! ? minAgeMa : maxAgeMa;
-      return '${younger!.toStringAsFixed(1)} – ${older!.toStringAsFixed(1)} Ma';
-    }
-    final single = minAgeMa ?? maxAgeMa;
-    return '${single!.toStringAsFixed(1)} Ma';
-  }
-
-  String get displayAbundance {
-    if (abundValue == null && (abundUnit == null || abundUnit!.trim().isEmpty)) {
-      return '—';
-    }
-    if (abundValue != null && abundUnit != null && abundUnit!.trim().isNotEmpty) {
-      return '$abundValue $abundUnit';
-    }
-    if (abundValue != null) return '$abundValue';
-    return abundUnit!.trim();
-  }
 }
 
 class FossilListResponse {

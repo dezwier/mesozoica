@@ -83,7 +83,7 @@ void main() {
     expect(find.byType(CachedNetworkImage), findsOneWidget);
   });
 
-  testWidgets('FossilCardBack renders location and collection fields',
+  testWidgets('FossilCardBack renders stored fields with clear labels',
       (tester) async {
     await tester.pumpWidget(
       const MaterialApp(
@@ -99,27 +99,27 @@ void main() {
     );
 
     expect(find.text('Tyrannosaurus rex'), findsOneWidget);
-    expect(find.text('GENUS'), findsOneWidget);
+    expect(find.text('OCCURRENCE NO'), findsOneWidget);
+    expect(find.text('100001'), findsOneWidget);
+    expect(find.text('DINOSAUR'), findsOneWidget);
     expect(find.text('FAMILY'), findsOneWidget);
-    expect(find.text('COUNTRY'), findsOneWidget);
-    expect(find.text('STATE'), findsOneWidget);
-    expect(find.text('FORMATION'), findsOneWidget);
-    expect(find.text('SITE'), findsOneWidget);
-    expect(find.text('COORDINATES'), findsOneWidget);
-    expect(find.text('INTERVAL'), findsOneWidget);
-    expect(find.text('AGE'), findsOneWidget);
-    expect(find.text('ROCK TYPE'), findsOneWidget);
-    expect(find.text('STRATIGRAPHY'), findsOneWidget);
-    expect(find.text('COLLECTION DATES'), findsOneWidget);
-    expect(find.text('COLLECTORS'), findsOneWidget);
-    expect(find.text('MUSEUM'), findsOneWidget);
-    expect(find.text('PRESERVATION MODE'), findsOneWidget);
-    expect(find.text('QUALITY'), findsOneWidget);
-    expect(find.text('ABUNDANCE'), findsOneWidget);
-    expect(find.text('Montana'), findsOneWidget);
+    expect(find.text('COUNTRY CODE'), findsOneWidget);
+    expect(find.text('GEOLOGICAL FORMATION'), findsOneWidget);
+    expect(find.text('LATITUDE'), findsOneWidget);
+    expect(find.text('LONGITUDE'), findsOneWidget);
+    expect(find.text('EARLY INTERVAL'), findsOneWidget);
+    expect(find.text('MIN AGE (MA)'), findsOneWidget);
+    expect(find.text('MAX AGE (MA)'), findsOneWidget);
+    expect(find.text('COLLECTION NAME'), findsOneWidget);
+    expect(find.text('STRATIGRAPHY COMMENTS'), findsOneWidget);
+    expect(find.text('LITHOLOGY'), findsOneWidget);
+    expect(find.text('ABUNDANCE VALUE'), findsOneWidget);
+    expect(find.text('ABUNDANCE UNIT'), findsOneWidget);
+    expect(find.text('PRESERVATION QUALITY'), findsOneWidget);
     expect(find.text('Hell Creek Formation'), findsOneWidget);
     expect(find.text('Channel sandstone'), findsOneWidget);
     expect(find.text('Barnum Brown'), findsOneWidget);
+    expect(find.textContaining('Famous Hell Creek'), findsNothing);
   });
 
   testWidgets('FossilTurnableCard composes front and back faces',

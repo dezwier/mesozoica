@@ -74,8 +74,8 @@ class FractalFernViewState extends State<FractalFernView>
       _zoomScale = _transform.getMaxScaleOnAxis();
       if (_flyController?.isAnimating != true) {
         _clearTapRevealedIfNeeded();
-        _syncTrackedCards(_displayedGenusCards().cards);
       }
+      _syncTrackedCards(_displayedGenusCards().cards);
     });
   }
 
@@ -705,13 +705,18 @@ class _FadingInlineGenusCardLayerState extends State<_FadingInlineGenusCardLayer
   @override
   Widget build(BuildContext context) {
     final anchor = widget.card.candidate.anchor;
-    final size = widget.card.candidate.screenSize;
+    final size = FractalLodPolicy.genusCardScreenSize(
+      widget.viewportSize.width,
+      widget.zoomScale,
+    );
+    final halfW = size.width / 2;
+    final halfH = size.height / 2;
     final left = widget.centerOnScreen
         ? (widget.viewportSize.width - size.width) / 2
-        : widget.treeToScreen(anchor).dx + widget.card.screenOffset.dx;
+        : widget.treeToScreen(anchor).dx - halfW;
     final top = widget.centerOnScreen
         ? (widget.viewportSize.height - size.height) / 2
-        : widget.treeToScreen(anchor).dy + widget.card.screenOffset.dy;
+        : widget.treeToScreen(anchor).dy - halfH;
 
     final showFacts = FractalLodPolicy.genusCardShowsFacts(widget.zoomScale);
 
