@@ -6,9 +6,11 @@ import logging
 import time
 from dataclasses import dataclass, field
 
+from sqlalchemy import func
 from sqlmodel import Session, col, select
 
 from app.core.config import settings
+from app.models.site_clean import SiteClean
 from app.models.site_type import SiteType
 from app.services.image_generation_service.client import (
     IMAGEN_ULTRA_COST_USD_PER_IMAGE,
@@ -49,28 +51,41 @@ class GenerateSummary:
     output_dir: str = ""
 
 
+@dataclass(frozen=True)
+class SiteTypeCandidate:
+    site_type: SiteType
+    site_count: int
+
+
 def _select_candidates(
     session: Session,
     *,
     output_dir,
     existing_stems: set[str],
     site_type_ids: list[int] | None = None,
-) -> tuple[list[SiteType], int]:
-    stmt = select(SiteType).order_by(SiteType.id)
+) -> tuple[list[SiteTypeCandidate], int]:
+    stmt = (
+        select(SiteType, func.count(SiteClean.site_id).label("site_count"))
+        .outerjoin(SiteClean, col(SiteClean.site_type_id) == col(SiteType.id))
+        .group_by(SiteType.id)
+        .order_by(func.count(SiteClean.site_id).desc(), SiteType.id)
+    )
     if site_type_ids:
         stmt = stmt.where(col(SiteType.id).in_(site_type_ids))
 
     rows = session.exec(stmt).all()
     skipped_existing = 0
-    candidates: list[SiteType] = []
-    for site_type in rows:
+    candidates: list[SiteTypeCandidate] = []
+    for site_type, site_count in rows:
         if site_type.id is None:
             continue
         stem = str(site_type.id)
         if has_local_image(output_dir, stem, existing_stems=existing_stems):
             skipped_existing += 1
             continue
-        candidates.append(site_type)
+        candidates.append(
+            SiteTypeCandidate(site_type=site_type, site_count=int(site_count or 0))
+        )
     return candidates, skipped_existing
 
 
@@ -106,16 +121,17 @@ def generate_site_type_images(
         dry_run=dry_run,
     )
 
-    for site_type in candidates:
+    for candidate in candidates:
         if max_items is not None and counters.generated >= max_items:
             break
 
+        site_type = candidate.site_type
         site_type_id = site_type.id
         assert site_type_id is not None
         stem = str(site_type_id)
         label = (
-            f'site_type {site_type_id} period="{site_type.period}" '
-            f'rock="{site_type.rock_type}"'
+            f'site_type {site_type_id} sites={candidate.site_count} '
+            f'period="{site_type.period}" rock="{site_type.rock_type}"'
         )
 
         if has_local_image(output_dir, stem, existing_stems=existing_stems):

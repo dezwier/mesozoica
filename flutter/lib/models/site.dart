@@ -1,3 +1,5 @@
+import '../utils/display_text.dart';
+
 class SiteSummary {
   const SiteSummary({
     required this.siteId,
@@ -56,6 +58,27 @@ class SiteSummary {
     }
     if (parts.isEmpty) return '—';
     return parts.join(', ');
+  }
+
+  String get displayPeriod {
+    final periodName = siteTypePeriod?.trim();
+    final capitalizedPeriod = periodName != null && periodName.isNotEmpty
+        ? capitalizeLeadingLetter(periodName)
+        : null;
+
+    if (minAgeMa != null && maxAgeMa != null) {
+      final maLabel = minAgeMa!.round() == maxAgeMa!.round()
+          ? '${minAgeMa!.round()} Ma'
+          : '${minAgeMa!.round()} – ${maxAgeMa!.round()} Ma';
+      if (capitalizedPeriod != null) {
+        return '$capitalizedPeriod, $maLabel';
+      }
+      return maLabel;
+    }
+    if (capitalizedPeriod != null) {
+      return capitalizedPeriod;
+    }
+    return '—';
   }
 
   factory SiteSummary.fromJson(Map<String, dynamic> json) {

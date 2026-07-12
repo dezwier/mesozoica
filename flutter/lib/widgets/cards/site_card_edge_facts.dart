@@ -56,6 +56,14 @@ class SiteCardEdgeFacts extends StatelessWidget {
             ),
             DinoFactRow(
               iconAsset: 'assets/images/cards/icons/period.svg',
+              label: 'Period',
+              value: displayFactValue(
+                site.displayPeriod == '—' ? null : site.displayPeriod,
+              ),
+              edge: true,
+            ),
+            DinoFactRow(
+              iconAsset: 'assets/images/cards/icons/mass.svg',
               label: 'Rock type',
               value: displayFactValue(site.rockType),
               edge: true,

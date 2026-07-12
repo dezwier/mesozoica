@@ -75,6 +75,7 @@ void main() {
     expect(find.byType(SiteCardEdgeFacts), findsOneWidget);
     expect(find.textContaining('46.88'), findsOneWidget);
     expect(find.textContaining('Montana'), findsOneWidget);
+    expect(find.textContaining('Cretaceous, 66 – 68 Ma'), findsOneWidget);
     expect(find.textContaining('Sandstone'), findsOneWidget);
   });
 

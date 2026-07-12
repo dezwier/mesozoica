@@ -6,6 +6,7 @@ from pathlib import Path
 
 from sqlmodel import Session
 
+from app.models.site_clean import SiteClean
 from app.models.site_type import SiteType
 from app.services.site_type_image_generation_service.generate import _select_candidates
 
@@ -54,7 +55,36 @@ def test_site_type_candidates_respect_site_type_ids_filter(
     )
     assert skipped_existing == 0
     assert len(candidates) == 1
-    assert candidates[0].id == second.id
+    assert candidates[0].site_type.id == second.id
+
+
+def test_site_type_candidates_prioritize_by_site_count(session: Session, tmp_path: Path):
+    popular = _site_type(period="cretaceous", rock_type="sandstone")
+    rare = _site_type(period="jurassic", rock_type="claystone")
+    session.add(popular)
+    session.add(rare)
+    session.commit()
+    session.refresh(popular)
+    session.refresh(rare)
+    assert popular.id is not None
+    assert rare.id is not None
+
+    for site_id in range(100, 103):
+        session.add(SiteClean(site_id=site_id, site_type_id=popular.id))
+    session.add(SiteClean(site_id=200, site_type_id=rare.id))
+    session.commit()
+
+    candidates, skipped_existing = _select_candidates(
+        session,
+        output_dir=tmp_path,
+        existing_stems=set(),
+    )
+    assert skipped_existing == 0
+    assert len(candidates) == 2
+    assert candidates[0].site_type.id == popular.id
+    assert candidates[0].site_count == 3
+    assert candidates[1].site_type.id == rare.id
+    assert candidates[1].site_count == 1
 
 
 def test_site_type_candidates_include_all_missing_by_default(
