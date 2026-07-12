@@ -12,7 +12,11 @@ from sqlmodel import Session, select, update
 from app.services.dinosaur_name_filter import dino_name_match_clause, find_dinosaurs_by_names
 from app.core.config import settings
 from app.models.dinosaur import Dinosaur
-from app.services.wikipedia_service.category import CategoryMember, list_category_articles
+from app.services.wikipedia_service.category import (
+    CategoryMember,
+    default_wikipedia_dinosaur_categories,
+    list_dinosaur_sync_batches,
+)
 from app.services.wikipedia_service.client import WikipediaClient
 from app.services.wikipedia_service.metadata import fetch_page_metadata
 from app.services.wikipedia_service.parser import parse_article_html
@@ -173,8 +177,9 @@ def sync_dinosaurs(
     dinos: list[str] | None = None,
     client: WikipediaClient | None = None,
 ) -> SyncSummary:
-    """Sync dinosaur records from Wikipedia category into the database."""
-    cat = category or settings.wikipedia_dinosaur_category
+    """Sync dinosaur records from Wikipedia categories into the database."""
+    categories = [category] if category else default_wikipedia_dinosaur_categories()
+    cat = " + ".join(categories)
     cap = max_pages if max_pages is not None else settings.wikipedia_sync_max_pages
     start = time.monotonic()
     counters = SyncCounters()
@@ -183,7 +188,8 @@ def sync_dinosaurs(
 
     own_client = client is None
     wiki = client or WikipediaClient()
-    members: list[CategoryMember] = []
+    batches: list[tuple[str, list[CategoryMember]]] = []
+    total = 0
     try:
         if overwrite and not dry_run:
             cleared = _bulk_clear_llm_enrichment_fields(
@@ -207,12 +213,18 @@ def sync_dinosaurs(
             )
 
         if dinos:
-            members = [CategoryMember(page_id=0, title=title) for title in dinos]
+            batches = [
+                (
+                    "manual",
+                    [CategoryMember(page_id=0, title=title) for title in dinos],
+                )
+            ]
         else:
-            members = list_category_articles(wiki, cat, max_pages=cap)
-        total = len(members)
+            batches = list_dinosaur_sync_batches(wiki, category=category, max_pages=cap)
+
+        total = sum(len(members) for _, members in batches)
         logger.info(
-            "wikipedia_sync: starting category=%s total_candidates=%d overwrite=%s dinos=%s",
+            "wikipedia_sync: starting categories=%s total_candidates=%d overwrite=%s dinos=%s",
             cat,
             total,
             overwrite,
@@ -220,52 +232,68 @@ def sync_dinosaurs(
         )
 
         try:
-            for index, member in enumerate(members, start=1):
-                processed = index
-                prefix = f"wikipedia_sync: [{index}/{total}] {member.title}"
-                try:
-                    outcome = _process_member(
-                        session,
-                        wiki,
-                        member,
-                        dry_run=dry_run,
-                        overwrite=overwrite,
+            processed = 0
+            for batch_category, members in batches:
+                batch_total = len(members)
+                logger.info(
+                    "wikipedia_sync: [%s] starting candidates=%d",
+                    batch_category,
+                    batch_total,
+                )
+                for index, member in enumerate(members, start=1):
+                    processed += 1
+                    prefix = (
+                        f"wikipedia_sync: [{batch_category}] "
+                        f"[{index}/{batch_total}] {member.title}"
                     )
-                    if outcome == "fetch_new":
-                        counters.fetched += 1
-                        logger.info("%s action=fetch reason=new", prefix)
-                    elif outcome == "fetch_update_stale":
-                        counters.updated += 1
-                        logger.info("%s action=fetch reason=stale", prefix)
-                    elif outcome == "fetch_update_incomplete":
-                        counters.updated += 1
-                        logger.info("%s action=fetch reason=incomplete", prefix)
-                    elif outcome == "fetch_update_overwrite":
-                        counters.updated += 1
-                        logger.info("%s action=fetch reason=overwrite", prefix)
-                    elif outcome == "skip_current":
-                        counters.skipped += 1
-                        logger.info("%s action=skip reason=up_to_date", prefix)
-                    elif outcome == "skip_disambiguation":
-                        counters.disambiguation += 1
-                        counters.skipped += 1
-                        logger.warning("%s action=skip reason=disambiguation", prefix)
+                    try:
+                        outcome = _process_member(
+                            session,
+                            wiki,
+                            member,
+                            dry_run=dry_run,
+                            overwrite=overwrite,
+                        )
+                        if outcome == "fetch_new":
+                            counters.fetched += 1
+                            logger.info("%s action=fetch reason=new", prefix)
+                        elif outcome == "fetch_update_stale":
+                            counters.updated += 1
+                            logger.info("%s action=fetch reason=stale", prefix)
+                        elif outcome == "fetch_update_incomplete":
+                            counters.updated += 1
+                            logger.info("%s action=fetch reason=incomplete", prefix)
+                        elif outcome == "fetch_update_overwrite":
+                            counters.updated += 1
+                            logger.info("%s action=fetch reason=overwrite", prefix)
+                        elif outcome == "skip_current":
+                            counters.skipped += 1
+                            logger.info("%s action=skip reason=up_to_date", prefix)
+                        elif outcome == "skip_disambiguation":
+                            counters.disambiguation += 1
+                            counters.skipped += 1
+                            logger.warning("%s action=skip reason=disambiguation", prefix)
 
-                    if not dry_run and outcome in (
-                        "fetch_new",
-                        "fetch_update_stale",
-                        "fetch_update_incomplete",
-                        "fetch_update_overwrite",
-                    ):
-                        session.commit()
-                except Exception as exc:
-                    counters.failed += 1
-                    logger.error("%s action=failed error=%s", prefix, exc)
-                    session.rollback()
+                        if not dry_run and outcome in (
+                            "fetch_new",
+                            "fetch_update_stale",
+                            "fetch_update_incomplete",
+                            "fetch_update_overwrite",
+                        ):
+                            session.commit()
+                    except Exception as exc:
+                        counters.failed += 1
+                        logger.error("%s action=failed error=%s", prefix, exc)
+                        session.rollback()
+                logger.info(
+                    "wikipedia_sync: [%s] finished processed=%d",
+                    batch_category,
+                    batch_total,
+                )
         except KeyboardInterrupt:
             interrupted = True
             logger.warning(
-                "wikipedia_sync: interrupted at [%d/%d]; progress committed through last successful record",
+                "wikipedia_sync: interrupted after %d/%d records; progress committed through last successful record",
                 processed,
                 total,
             )
@@ -276,7 +304,7 @@ def sync_dinosaurs(
     elapsed = time.monotonic() - start
     summary = SyncSummary(
         category=cat,
-        total_candidates=len(members),
+        total_candidates=total,
         counters=counters,
         dry_run=dry_run,
         elapsed_s=elapsed,

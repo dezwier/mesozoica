@@ -53,13 +53,22 @@ def _parsed(html: str):
     )
 
 
+def _sync_batches(
+    *members: CategoryMember,
+    category: str = "Category:Dinosaur_genera",
+) -> list[tuple[str, list[CategoryMember]]]:
+    return [(category, list(members))]
+
+
 def test_sync_inserts_new_record(session: Session, fixture_html, monkeypatch):
     client = MagicMock()
     client.page_with_html.return_value = {"html": fixture_html}
 
     monkeypatch.setattr(
-        "app.services.wikipedia_service.sync.list_category_articles",
-        lambda *_args, **_kwargs: [CategoryMember(page_id=30467, title="Tyrannosaurus")],
+        "app.services.wikipedia_service.sync.list_dinosaur_sync_batches",
+        lambda *_args, **_kwargs: _sync_batches(
+            CategoryMember(page_id=30467, title="Tyrannosaurus"),
+        ),
     )
     monkeypatch.setattr(
         "app.services.wikipedia_service.sync.fetch_page_metadata",
@@ -85,8 +94,10 @@ def test_sync_inserts_main_image_url_from_metadata(session: Session, fixture_htm
     client.page_with_html.return_value = {"html": fixture_html}
 
     monkeypatch.setattr(
-        "app.services.wikipedia_service.sync.list_category_articles",
-        lambda *_args, **_kwargs: [CategoryMember(page_id=30467, title="Tyrannosaurus")],
+        "app.services.wikipedia_service.sync.list_dinosaur_sync_batches",
+        lambda *_args, **_kwargs: _sync_batches(
+            CategoryMember(page_id=30467, title="Tyrannosaurus"),
+        ),
     )
     monkeypatch.setattr(
         "app.services.wikipedia_service.sync.fetch_page_metadata",
@@ -124,8 +135,10 @@ def test_sync_stale_update_fills_null_main_image_url(session: Session, fixture_h
     client.page_with_html.return_value = {"html": fixture_html}
 
     monkeypatch.setattr(
-        "app.services.wikipedia_service.sync.list_category_articles",
-        lambda *_args, **_kwargs: [CategoryMember(page_id=30467, title="Tyrannosaurus")],
+        "app.services.wikipedia_service.sync.list_dinosaur_sync_batches",
+        lambda *_args, **_kwargs: _sync_batches(
+            CategoryMember(page_id=30467, title="Tyrannosaurus"),
+        ),
     )
     monkeypatch.setattr(
         "app.services.wikipedia_service.sync.fetch_page_metadata",
@@ -161,8 +174,10 @@ def test_sync_skips_up_to_date(session: Session, monkeypatch):
 
     client = MagicMock()
     monkeypatch.setattr(
-        "app.services.wikipedia_service.sync.list_category_articles",
-        lambda *_args, **_kwargs: [CategoryMember(page_id=30467, title="Tyrannosaurus")],
+        "app.services.wikipedia_service.sync.list_dinosaur_sync_batches",
+        lambda *_args, **_kwargs: _sync_batches(
+            CategoryMember(page_id=30467, title="Tyrannosaurus"),
+        ),
     )
     monkeypatch.setattr(
         "app.services.wikipedia_service.sync.fetch_page_metadata",
@@ -196,8 +211,10 @@ def test_sync_updates_stale_preserves_insert_date(session: Session, fixture_html
     client.page_with_html.return_value = {"html": fixture_html}
 
     monkeypatch.setattr(
-        "app.services.wikipedia_service.sync.list_category_articles",
-        lambda *_args, **_kwargs: [CategoryMember(page_id=30467, title="Tyrannosaurus")],
+        "app.services.wikipedia_service.sync.list_dinosaur_sync_batches",
+        lambda *_args, **_kwargs: _sync_batches(
+            CategoryMember(page_id=30467, title="Tyrannosaurus"),
+        ),
     )
     monkeypatch.setattr(
         "app.services.wikipedia_service.sync.fetch_page_metadata",
@@ -235,8 +252,10 @@ def test_sync_refreshes_incomplete_stub(session: Session, fixture_html, monkeypa
     client.page_with_html.return_value = {"html": fixture_html}
 
     monkeypatch.setattr(
-        "app.services.wikipedia_service.sync.list_category_articles",
-        lambda *_args, **_kwargs: [CategoryMember(page_id=12345, title="Brachiosaurus")],
+        "app.services.wikipedia_service.sync.list_dinosaur_sync_batches",
+        lambda *_args, **_kwargs: _sync_batches(
+            CategoryMember(page_id=12345, title="Brachiosaurus"),
+        ),
     )
     monkeypatch.setattr(
         "app.services.wikipedia_service.sync.fetch_page_metadata",
@@ -280,8 +299,10 @@ def test_sync_updates_stub_matched_by_title_when_page_id_differs(
     client.page_with_html.return_value = {"html": fixture_html}
 
     monkeypatch.setattr(
-        "app.services.wikipedia_service.sync.list_category_articles",
-        lambda *_args, **_kwargs: [CategoryMember(page_id=1347, title="Allosaurus")],
+        "app.services.wikipedia_service.sync.list_dinosaur_sync_batches",
+        lambda *_args, **_kwargs: _sync_batches(
+            CategoryMember(page_id=1347, title="Allosaurus"),
+        ),
     )
     monkeypatch.setattr(
         "app.services.wikipedia_service.sync.fetch_page_metadata",
@@ -326,8 +347,10 @@ def test_sync_stale_update_resets_llm_enriched(session: Session, fixture_html, m
     client.page_with_html.return_value = {"html": fixture_html}
 
     monkeypatch.setattr(
-        "app.services.wikipedia_service.sync.list_category_articles",
-        lambda *_args, **_kwargs: [CategoryMember(page_id=30467, title="Tyrannosaurus")],
+        "app.services.wikipedia_service.sync.list_dinosaur_sync_batches",
+        lambda *_args, **_kwargs: _sync_batches(
+            CategoryMember(page_id=30467, title="Tyrannosaurus"),
+        ),
     )
     monkeypatch.setattr(
         "app.services.wikipedia_service.sync.fetch_page_metadata",
@@ -358,11 +381,11 @@ def test_sync_keyboard_interrupt_preserves_committed_records(session: Session, f
         return _metadata(title=title, page_id=30467 if title == "Tyrannosaurus" else 99999)
 
     monkeypatch.setattr(
-        "app.services.wikipedia_service.sync.list_category_articles",
-        lambda *_args, **_kwargs: [
+        "app.services.wikipedia_service.sync.list_dinosaur_sync_batches",
+        lambda *_args, **_kwargs: _sync_batches(
             CategoryMember(page_id=30467, title="Tyrannosaurus"),
             CategoryMember(page_id=99999, title="Velociraptor"),
-        ],
+        ),
     )
     monkeypatch.setattr(
         "app.services.wikipedia_service.sync.fetch_page_metadata",
@@ -409,7 +432,7 @@ def test_sync_overwrite_bulk_clears_all_dinosaurs(session: Session, monkeypatch)
     session.commit()
 
     monkeypatch.setattr(
-        "app.services.wikipedia_service.sync.list_category_articles",
+        "app.services.wikipedia_service.sync.list_dinosaur_sync_batches",
         lambda *_args, **_kwargs: [],
     )
 
@@ -446,8 +469,10 @@ def test_sync_overwrite_clears_llm_fields(session: Session, fixture_html, monkey
     client.page_with_html.return_value = {"html": fixture_html}
 
     monkeypatch.setattr(
-        "app.services.wikipedia_service.sync.list_category_articles",
-        lambda *_args, **_kwargs: [CategoryMember(page_id=30467, title="Tyrannosaurus")],
+        "app.services.wikipedia_service.sync.list_dinosaur_sync_batches",
+        lambda *_args, **_kwargs: _sync_batches(
+            CategoryMember(page_id=30467, title="Tyrannosaurus"),
+        ),
     )
     monkeypatch.setattr(
         "app.services.wikipedia_service.sync.fetch_page_metadata",
@@ -486,8 +511,10 @@ def test_sync_overwrite_refetches_up_to_date(session: Session, fixture_html, mon
     client.page_with_html.return_value = {"html": fixture_html}
 
     monkeypatch.setattr(
-        "app.services.wikipedia_service.sync.list_category_articles",
-        lambda *_args, **_kwargs: [CategoryMember(page_id=30467, title="Tyrannosaurus")],
+        "app.services.wikipedia_service.sync.list_dinosaur_sync_batches",
+        lambda *_args, **_kwargs: _sync_batches(
+            CategoryMember(page_id=30467, title="Tyrannosaurus"),
+        ),
     )
     monkeypatch.setattr(
         "app.services.wikipedia_service.sync.fetch_page_metadata",
@@ -519,16 +546,16 @@ def test_sync_dinos_skips_category_listing(session: Session, fixture_html, monke
     client = MagicMock()
     client.page_with_html.return_value = {"html": fixture_html}
 
-    list_category_called = False
+    list_batches_called = False
 
-    def fake_list_category(*_args, **_kwargs):
-        nonlocal list_category_called
-        list_category_called = True
+    def fake_list_batches(*_args, **_kwargs):
+        nonlocal list_batches_called
+        list_batches_called = True
         return []
 
     monkeypatch.setattr(
-        "app.services.wikipedia_service.sync.list_category_articles",
-        fake_list_category,
+        "app.services.wikipedia_service.sync.list_dinosaur_sync_batches",
+        fake_list_batches,
     )
     monkeypatch.setattr(
         "app.services.wikipedia_service.sync.fetch_page_metadata",
@@ -547,7 +574,7 @@ def test_sync_dinos_skips_category_listing(session: Session, fixture_html, monke
     )
     session.commit()
 
-    assert list_category_called is False
+    assert list_batches_called is False
     assert summary.counters.fetched == 1
     row = session.exec(select(Dinosaur).where(Dinosaur.wikipedia_page_id == 555)).first()
     assert row is not None

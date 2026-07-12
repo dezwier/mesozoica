@@ -51,6 +51,10 @@ class Settings(BaseSettings):
         default="Category:Dinosaur_genera",
         validation_alias="WIKIPEDIA_DINOSAUR_CATEGORY",
     )
+    wikipedia_feathered_dinosaur_category: str = Field(
+        default="Category:Feathered dinosaurs",
+        validation_alias="WIKIPEDIA_FEATHERED_DINOSAUR_CATEGORY",
+    )
     wikipedia_base_url: str = Field(
         default="https://en.wikipedia.org",
         validation_alias="WIKIPEDIA_BASE_URL",

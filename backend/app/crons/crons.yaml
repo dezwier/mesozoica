@@ -5,7 +5,7 @@
 
 jobs:
   - id: wikipedia_dinosaur_sync
-    enabled: true
+    enabled: false
     schedule: "0 3 * * 0"
     params:
       dry_run: false
@@ -13,7 +13,7 @@ jobs:
       max_pages: null
 
   - id: dinosaur_llm_enrich
-    enabled: true
+    enabled: false
     schedule: "0 4 * * 0"
     params:
       dry_run: false
@@ -21,7 +21,7 @@ jobs:
       max_records: null
 
   - id: pbdb_fossil_sync
-    enabled: true
+    enabled: false
     schedule: "0 5 * * 0"
     params:
       dry_run: false

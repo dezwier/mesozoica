@@ -27,6 +27,7 @@ help:
 	@echo ""
 	@echo "Cron jobs always run via Railway (never a local DB). Examples:"
 	@echo "  make run-wikipedia-sync CRON_EXTRA='--overwrite'"
+	@echo "  make run-wikipedia-sync CRON_EXTRA='--category \"Category:Feathered dinosaurs\"'"
 	@echo "  make run-wikipedia-sync CRON_EXTRA='--dinos Tyrannosaurus Giganotosaurus'"
 	@echo "  make run-dinosaur-enrich CRON_EXTRA='--overwrite'"
 	@echo "  make run-dinosaur-enrich CRON_EXTRA='--dinos Tyrannosaurus --overwrite'"

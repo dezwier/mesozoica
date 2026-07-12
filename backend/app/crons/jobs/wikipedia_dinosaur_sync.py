@@ -5,6 +5,7 @@ Run manually:
   python -m app.crons.runner --job wikipedia_dinosaur_sync
   python -m app.crons.runner --job wikipedia_dinosaur_sync --overwrite
   python -m app.crons.runner --job wikipedia_dinosaur_sync --dinos Tyrannosaurus Giganotosaurus
+  python -m app.crons.runner --job wikipedia_dinosaur_sync --category "Category:Feathered dinosaurs"
 """
 
 from __future__ import annotations

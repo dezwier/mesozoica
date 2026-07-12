@@ -175,6 +175,12 @@ def main(argv: list[str] | None = None) -> int:
         "Re-fetch PBDB fossil occurrences even when already synced (pbdb_fossil_sync).",
     )
     parser.add_argument(
+        "--category",
+        metavar="NAME",
+        help="Limit Wikipedia dinosaur sync to one category "
+        '(e.g. "Category:Feathered dinosaurs").',
+    )
+    parser.add_argument(
         "--dinos",
         metavar="NAME",
         nargs="+",
@@ -211,6 +217,8 @@ def main(argv: list[str] | None = None) -> int:
     overrides: dict[str, Any] = {}
     if args.overwrite:
         overrides["overwrite"] = True
+    if args.category:
+        overrides["category"] = args.category.strip()
     dinos = parse_dino_names(args.dinos)
     if dinos:
         overrides["dinos"] = dinos
