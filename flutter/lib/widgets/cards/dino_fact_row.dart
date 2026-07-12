@@ -32,12 +32,12 @@ class DinoFactRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cardTheme = DinoCardTheme.of(context);
-    final iconSize = edge ? 11.0 : (compact ? 14.0 : 18.0);
+    final iconSize = edge ? 13.0 : (compact ? 14.0 : 18.0);
     final labelSize = compact ? 8.0 : 10.0;
-    final valueSize = edge ? 9.0 : (compact ? 11.0 : 13.0);
+    final valueSize = edge ? 11.0 : (compact ? 11.0 : 13.0);
     final effectiveRowPadding = rowPadding ?? (edge ? 8.0 : (compact ? 10.0 : 8.0));
     final valueLines =
-        maxLines ?? (edge ? 1 : (compact ? (centered ? 3 : 2) : maxValueLines));
+        maxLines ?? (edge ? 2 : (compact ? (centered ? 3 : 2) : maxValueLines));
 
     if (edge) {
       return Padding(
@@ -59,12 +59,12 @@ class DinoFactRow extends StatelessWidget {
               child: Text(
                 value,
                 style: cardTheme.statValueStyle(fontSize: valueSize).copyWith(
-                  color: cardTheme.cardTextPrimary.withValues(alpha: 0.68),
-                  fontWeight: FontWeight.w400,
+                  color: cardTheme.cardTextPrimary.withValues(alpha: 0.78),
+                  fontWeight: FontWeight.w500,
                 ),
                 maxLines: valueLines,
                 overflow: TextOverflow.ellipsis,
-                softWrap: false,
+                softWrap: true,
               ),
             ),
           ],

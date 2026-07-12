@@ -5,7 +5,7 @@ import '../../theme/dino_card_theme.dart';
 import '../../utils/display_text.dart';
 import 'dino_fact_row.dart';
 
-/// Subtle vertical attribute strip for the card front left edge.
+/// Subtle vertical attribute strip for the card front right edge.
 class DinosaurCardEdgeFacts extends StatelessWidget {
   const DinosaurCardEdgeFacts({
     super.key,
@@ -24,21 +24,22 @@ class DinosaurCardEdgeFacts extends StatelessWidget {
     return DecoratedBox(
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          begin: Alignment.centerLeft,
-          end: Alignment.centerRight,
+          begin: Alignment.centerRight,
+          end: Alignment.centerLeft,
           colors: [
-            cardTheme.cardBackground.withValues(alpha: 0.72),
-            cardTheme.cardBackground.withValues(alpha: 0.42),
+            cardTheme.cardBackground.withValues(alpha: 0.84),
+            cardTheme.cardBackground.withValues(alpha: 0.74),
+            cardTheme.cardBackground.withValues(alpha: 0.50),
             cardTheme.cardBackground.withValues(alpha: 0.0),
           ],
-          stops: const [0.0, 0.55, 1.0],
+          stops: const [0.0, 0.38, 0.72, 1.0],
         ),
       ),
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(8, 10, 14, 10),
+        padding: const EdgeInsets.fromLTRB(22, 10, 8, 10),
         child: Column(
           mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.end,
           children: [
             DinoFactRow(
               iconAsset: 'assets/images/cards/icons/location.svg',

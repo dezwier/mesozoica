@@ -9,9 +9,14 @@ import 'dinosaur_card_image.dart';
 import 'geologic_timeline.dart';
 
 class DinosaurCardBack extends StatelessWidget {
-  const DinosaurCardBack({super.key, required this.dinosaur});
+  const DinosaurCardBack({
+    super.key,
+    required this.dinosaur,
+    this.showArticleButton = true,
+  });
 
   final DinosaurSummary dinosaur;
+  final bool showArticleButton;
 
   static const _contentScale = 1.15;
 
@@ -41,10 +46,11 @@ class DinosaurCardBack extends StatelessWidget {
                   subtitleFontSize: 13,
                   centered: true,
                   useFrontTitleStyle: true,
+                  showArticleButton: showArticleButton,
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 6),
                 SizedBox(
-                  height: 102,
+                  height: 90,
                   child: GeologicTimeline(
                     birth: dinosaur.birth,
                     death: dinosaur.death,
@@ -52,7 +58,6 @@ class DinosaurCardBack extends StatelessWidget {
                     scale: _contentScale,
                   ),
                 ),
-                const SizedBox(height: 8),
                 Expanded(
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 6),
@@ -61,20 +66,44 @@ class DinosaurCardBack extends StatelessWidget {
                       children: [
                         Expanded(
                           flex: 45,
-                          child: SingleChildScrollView(
-                            physics: const ClampingScrollPhysics(),
-                            child: CladogramStrip(
-                              nodes: nodes,
-                              scale: _contentScale,
-                              centered: false,
-                            ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'CLADOGRAM',
+                                style: cardTheme.sectionLabelStyle(fontSize: 11),
+                              ),
+                              const SizedBox(height: 6),
+                              Expanded(
+                                child: SingleChildScrollView(
+                                  physics: const ClampingScrollPhysics(),
+                                  child: CladogramStrip(
+                                    nodes: nodes,
+                                    scale: _contentScale,
+                                    centered: false,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                         const SizedBox(width: 14),
                         Expanded(
                           flex: 55,
-                          child: DinosaurCardFossilList(
-                            dinosaurId: dinosaur.id,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'FOSSIL RECORD',
+                                style: cardTheme.sectionLabelStyle(fontSize: 11),
+                              ),
+                              const SizedBox(height: 6),
+                              Expanded(
+                                child: DinosaurCardFossilList(
+                                  dinosaurId: dinosaur.id,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ],

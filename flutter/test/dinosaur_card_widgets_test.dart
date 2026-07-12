@@ -32,7 +32,7 @@ const _fixture = DinosaurSummary(
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  testWidgets('DinosaurCardFront renders art, title, description, and info button',
+  testWidgets('DinosaurCardFront renders art, title, description, and edge facts',
       (tester) async {
     await tester.pumpWidget(
       const MaterialApp(
@@ -48,7 +48,7 @@ void main() {
     );
 
     expect(find.byType(DinosaurCardImage), findsOneWidget);
-    expect(find.byIcon(Icons.info_outline), findsOneWidget);
+    expect(find.byIcon(Icons.info_outline), findsNothing);
     expect(find.text('Tyrannosaurus rex'), findsOneWidget);
     expect(
       find.textContaining('largest terrestrial predators'),
@@ -146,10 +146,12 @@ void main() {
     );
 
     expect(find.text('Tyrannosaurus rex'), findsOneWidget);
+    expect(find.byIcon(Icons.info_outline), findsOneWidget);
     expect(find.text('LOCATION'), findsNothing);
     expect(find.text('PERIOD'), findsNothing);
     expect(find.text('TIME'), findsNothing);
-    expect(find.text('CLADOGRAM'), findsNothing);
+    expect(find.text('CLADOGRAM'), findsOneWidget);
+    expect(find.text('FOSSIL RECORD'), findsOneWidget);
     expect(find.text('CLADE'), findsNWidgets(2));
     expect(find.text('FAMILY'), findsOneWidget);
     expect(find.text('GENUS'), findsOneWidget);

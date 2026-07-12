@@ -93,33 +93,88 @@ class _DinosaurCardFossilListState extends State<DinosaurCardFossilList> {
           );
         }
 
+        if (fossils.length == 1) {
+          return ListView(
+            physics: const ClampingScrollPhysics(),
+            padding: EdgeInsets.zero,
+            children: [
+              _FossilThumbnail(
+                fossil: fossils.first,
+                onTap: () => showFossilCardDialog(
+                  context,
+                  fossilId: fossils.first.id,
+                ),
+              ),
+            ],
+          );
+        }
+
+        final rowCount = (fossils.length / 2).ceil();
         return ListView.separated(
           physics: const ClampingScrollPhysics(),
           padding: EdgeInsets.zero,
-          itemCount: fossils.length,
+          itemCount: rowCount,
           separatorBuilder: (context, index) => const SizedBox(height: 6),
-          itemBuilder: (context, index) {
-            final fossil = fossils[index];
-            return Material(
-              color: Colors.transparent,
-              child: InkWell(
-                onTap: () => showFossilCardDialog(
-                  context,
-                  fossilId: fossil.id,
-                ),
-                borderRadius: BorderRadius.circular(8),
-                child: AspectRatio(
-                  aspectRatio: DinoCardTheme.cardAspectRatio,
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: FossilCardImage(imageUrl: fossil.mainImageUrl),
+          itemBuilder: (context, rowIndex) {
+            final leftIndex = rowIndex * 2;
+            final rightIndex = leftIndex + 1;
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: _FossilThumbnail(
+                    fossil: fossils[leftIndex],
+                    onTap: () => showFossilCardDialog(
+                      context,
+                      fossilId: fossils[leftIndex].id,
+                    ),
                   ),
                 ),
-              ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: rightIndex < fossils.length
+                      ? _FossilThumbnail(
+                          fossil: fossils[rightIndex],
+                          onTap: () => showFossilCardDialog(
+                            context,
+                            fossilId: fossils[rightIndex].id,
+                          ),
+                        )
+                      : const SizedBox.shrink(),
+                ),
+              ],
             );
           },
         );
       },
+    );
+  }
+}
+
+class _FossilThumbnail extends StatelessWidget {
+  const _FossilThumbnail({
+    required this.fossil,
+    required this.onTap,
+  });
+
+  final FossilSummary fossil;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: AspectRatio(
+          aspectRatio: DinoCardTheme.cardAspectRatio,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: FossilCardImage(imageUrl: fossil.mainImageUrl),
+          ),
+        ),
+      ),
     );
   }
 }
