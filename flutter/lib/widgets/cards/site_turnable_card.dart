@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../models/site.dart';
 import '../../theme/dino_card_theme.dart';
+import 'card_world_map.dart';
 import 'site_card_back.dart';
 import 'site_card_front.dart';
 import 'turnable_y_axis_card.dart';
@@ -14,6 +15,7 @@ class SiteTurnableCard extends StatelessWidget {
     this.titleFontSize = 36,
     this.subtitleFontSize = 10,
     this.overlayHeightFactor = 0.38,
+    this.mapTileLayerBuilder = CardWorldMap.defaultTileLayerBuilder,
   });
 
   final SiteSummary site;
@@ -21,6 +23,7 @@ class SiteTurnableCard extends StatelessWidget {
   final double titleFontSize;
   final double subtitleFontSize;
   final double overlayHeightFactor;
+  final Widget Function() mapTileLayerBuilder;
 
   @override
   Widget build(BuildContext context) {
@@ -40,6 +43,7 @@ class SiteTurnableCard extends StatelessWidget {
         site: site,
         titleFontSize: titleFontSize,
         subtitleFontSize: subtitleFontSize,
+        mapTileLayerBuilder: mapTileLayerBuilder,
       ),
     );
   }

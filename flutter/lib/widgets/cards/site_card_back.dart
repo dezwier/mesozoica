@@ -3,9 +3,11 @@ import 'package:flutter/material.dart';
 import '../../models/site.dart';
 import '../../theme/dino_card_theme.dart';
 import 'card_section_panel.dart';
+import 'card_world_map.dart';
 import 'geologic_timeline.dart';
 import 'site_card_header.dart';
 import 'site_card_image.dart';
+import 'site_card_location_map.dart';
 import 'site_card_related_lists.dart';
 
 class SiteCardBack extends StatelessWidget {
@@ -14,11 +16,13 @@ class SiteCardBack extends StatelessWidget {
     required this.site,
     this.titleFontSize = 36,
     this.subtitleFontSize = 10,
+    this.mapTileLayerBuilder = CardWorldMap.defaultTileLayerBuilder,
   });
 
   final SiteSummary site;
   final double titleFontSize;
   final double subtitleFontSize;
+  final Widget Function() mapTileLayerBuilder;
 
   static const _contentScale = 1.15;
 
@@ -70,13 +74,24 @@ class SiteCardBack extends StatelessWidget {
                       Expanded(
                         flex: 55,
                         child: CardSectionPanel(
+                          padding: EdgeInsets.zero,
+                          expandChild: true,
+                          clipChild: true,
+                          child: SiteCardLocationMap(
+                            site: site,
+                            tileLayerBuilder: mapTileLayerBuilder,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        flex: 45,
+                        child: CardSectionPanel(
                           label: 'Fossil record',
                           expandChild: true,
                           child: SiteCardFossils(siteId: site.siteId),
                         ),
                       ),
-                      const SizedBox(width: 10),
-                      const Expanded(flex: 45, child: SizedBox.shrink()),
                     ],
                   ),
                 ),

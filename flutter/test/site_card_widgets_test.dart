@@ -7,7 +7,9 @@ import 'package:mesozoica/widgets/cards/site_card_edge_facts.dart';
 import 'package:mesozoica/widgets/cards/site_card_front.dart';
 import 'package:mesozoica/widgets/cards/site_card_header.dart';
 import 'package:mesozoica/widgets/cards/site_card_image.dart';
+import 'package:mesozoica/widgets/cards/site_card_location_map.dart';
 import 'package:mesozoica/widgets/cards/site_turnable_card.dart';
+import 'package:mesozoica/widgets/map/fossil_marker.dart';
 
 const _fixture = SiteSummary(
   siteId: 50001,
@@ -83,24 +85,78 @@ void main() {
     expect(find.text('ROCK TYPE'), findsOneWidget);
   });
 
-  testWidgets('SiteCardBack and SiteTurnableCard build without error',
+  testWidgets('SiteCardBack renders timeline, map, and fossil record',
       (tester) async {
     await tester.pumpWidget(
-      const MaterialApp(
+      MaterialApp(
         home: Scaffold(
           body: Center(
             child: SizedBox(
               width: 800,
-              child: SiteTurnableCard(site: _fixture, turnable: false),
+              child: SiteCardBack(
+                site: _fixture,
+                mapTileLayerBuilder: () => const SizedBox.shrink(),
+              ),
             ),
           ),
         ),
       ),
     );
 
+    await tester.pump();
+
+    expect(find.byType(SiteCardLocationMap), findsOneWidget);
+    expect(find.byType(GeologicTimeline), findsOneWidget);
+    expect(find.text('FOSSIL RECORD'), findsOneWidget);
+    expect(find.text('TIME'), findsNothing);
+  });
+
+  testWidgets('SiteTurnableCard composes front and back', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: SizedBox(
+              width: 800,
+              child: SiteTurnableCard(
+                site: _fixture,
+                turnable: false,
+                mapTileLayerBuilder: () => const SizedBox.shrink(),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.pump();
+
     expect(find.byType(SiteCardFront), findsOneWidget);
     expect(find.byType(SiteCardBack), findsOneWidget);
-    expect(find.byType(GeologicTimeline), findsOneWidget);
-    expect(find.text('TIME'), findsNothing);
+  });
+
+  testWidgets('SiteCardLocationMap shows site marker when coordinates exist',
+      (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: SizedBox(
+              width: 260,
+              height: 180,
+              child: SiteCardLocationMap(
+                site: _fixture,
+                tileLayerBuilder: () => const SizedBox.shrink(),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+
+    expect(find.byType(FossilMarker), findsOneWidget);
+    expect(find.text('No location'), findsNothing);
   });
 }

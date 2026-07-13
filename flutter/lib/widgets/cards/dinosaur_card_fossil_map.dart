@@ -7,8 +7,7 @@ import '../../models/fossil.dart';
 import '../../services/fossil_service.dart';
 import '../../theme/dino_card_theme.dart';
 import '../map/fossil_map_card_dialog.dart';
-import '../map/fossil_marker.dart';
-import '../map/map_tile_layer.dart';
+import 'card_world_map.dart';
 
 /// World map showing geolocated fossil occurrences on the dinosaur card back.
 class DinosaurCardFossilMap extends StatefulWidget {
@@ -16,16 +15,12 @@ class DinosaurCardFossilMap extends StatefulWidget {
     super.key,
     required this.dinosaurId,
     this.fossilService,
-    this.tileLayerBuilder = _defaultTileLayerBuilder,
+    this.tileLayerBuilder = CardWorldMap.defaultTileLayerBuilder,
   });
 
   final int dinosaurId;
   final FossilService? fossilService;
   final Widget Function() tileLayerBuilder;
-
-  static const double markerSize = 11.0;
-
-  static Widget _defaultTileLayerBuilder() => const MapTileLayer();
 
   @override
   State<DinosaurCardFossilMap> createState() => _DinosaurCardFossilMapState();
@@ -35,8 +30,6 @@ class _DinosaurCardFossilMapState extends State<DinosaurCardFossilMap> {
   late final FossilService _service;
   late final bool _ownsService;
 
-  final MapController _mapController = MapController();
-  bool _mapReady = false;
   bool _loading = true;
   bool _error = false;
   List<FossilSummary> _geolocatedFossils = const [];
@@ -72,10 +65,6 @@ class _DinosaurCardFossilMapState extends State<DinosaurCardFossilMap> {
         _loading = false;
         _geolocatedFossils = geolocatedFossils(response.items);
       });
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        _panCameraToMarkers();
-      });
     } catch (_) {
       if (!mounted) return;
       setState(() {
@@ -91,21 +80,6 @@ class _DinosaurCardFossilMapState extends State<DinosaurCardFossilMap> {
       _service.dispose();
     }
     super.dispose();
-  }
-
-  void _onMapReady() {
-    if (!mounted) return;
-    setState(() => _mapReady = true);
-    _panCameraToMarkers();
-  }
-
-  void _panCameraToMarkers() {
-    if (!_mapReady) return;
-
-    _mapController.move(
-      centerForFossils(_geolocatedFossils),
-      MapConfig.minZoom,
-    );
   }
 
   @override
@@ -138,62 +112,17 @@ class _DinosaurCardFossilMapState extends State<DinosaurCardFossilMap> {
       );
     }
 
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        FlutterMap(
-          mapController: _mapController,
-          options: MapOptions(
-            initialCenter: MapConfig.defaultCenter,
-            initialZoom: MapConfig.minZoom,
-            minZoom: MapConfig.minZoom,
-            maxZoom: MapConfig.maxZoom,
-            backgroundColor: cardTheme.cardBackground,
-            cameraConstraint: CameraConstraint.contain(
-              bounds: LatLngBounds(
-                const LatLng(-85, -180),
-                const LatLng(85, 180),
-              ),
+    return CardWorldMap(
+      markers: _geolocatedFossils
+          .map(
+            (fossil) => CardMapMarker(
+              point: LatLng(fossil.latitude!, fossil.longitude!),
+              onTap: () => showFossilMapCardDialog(context, fossil),
             ),
-            onMapReady: _onMapReady,
-            interactionOptions: const InteractionOptions(
-              flags: InteractiveFlag.drag |
-                  InteractiveFlag.pinchZoom |
-                  InteractiveFlag.doubleTapZoom,
-            ),
-          ),
-          children: [
-            widget.tileLayerBuilder(),
-            if (_geolocatedFossils.isNotEmpty)
-              MarkerLayer(
-                markers: _geolocatedFossils.map((fossil) {
-                  return Marker(
-                    point: LatLng(fossil.latitude!, fossil.longitude!),
-                    width: DinosaurCardFossilMap.markerSize,
-                    height: DinosaurCardFossilMap.markerSize,
-                    child: GestureDetector(
-                      onTap: () => showFossilMapCardDialog(context, fossil),
-                      child: FossilMarker(
-                        size: DinosaurCardFossilMap.markerSize,
-                        selected: false,
-                        showIcon: false,
-                        color: cardTheme.cardAccent,
-                      ),
-                    ),
-                  );
-                }).toList(),
-              ),
-          ],
-        ),
-        if (_geolocatedFossils.isEmpty)
-          Center(
-            child: Text(
-              'No geolocated occurrences',
-              textAlign: TextAlign.center,
-              style: cardTheme.bodyStyle(fontSize: 10),
-            ),
-          ),
-      ],
+          )
+          .toList(),
+      center: centerForFossils(_geolocatedFossils),
+      tileLayerBuilder: widget.tileLayerBuilder,
     );
   }
 }
