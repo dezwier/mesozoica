@@ -3,8 +3,9 @@ import 'package:flutter/material.dart';
 import '../../models/fossil.dart';
 import '../../services/fossil_service.dart';
 import '../../theme/dino_card_theme.dart';
+import 'card_record_thumb.dart';
 import 'fossil_card_dialog.dart';
-import 'fossil_record_thumb.dart';
+import 'fossil_card_image.dart';
 
 /// Scrollable fossil thumbnails for the dinosaur card back face.
 class DinosaurCardFossilList extends StatefulWidget {
@@ -104,8 +105,10 @@ class _DinosaurCardFossilListState extends State<DinosaurCardFossilList> {
                   SizedBox(
                     width: thumbSize,
                     height: thumbSize,
-                    child: FossilRecordThumb(
-                      imageUrl: fossils.first.mainImageUrl,
+                    child: CardRecordThumb(
+                      image: FossilCardImage(
+                        imageUrl: fossils.first.mainImageUrl,
+                      ),
                       label: fossils.first.displayTitle,
                       onTap: () => showFossilCardDialog(
                         context,
@@ -138,8 +141,10 @@ class _DinosaurCardFossilListState extends State<DinosaurCardFossilList> {
                     SizedBox(
                       width: thumbSize,
                       height: thumbSize,
-                      child: FossilRecordThumb(
-                        imageUrl: fossils[leftIndex].mainImageUrl,
+                      child: CardRecordThumb(
+                        image: FossilCardImage(
+                          imageUrl: fossils[leftIndex].mainImageUrl,
+                        ),
                         label: fossils[leftIndex].displayTitle,
                         onTap: () => showFossilCardDialog(
                           context,
@@ -152,8 +157,10 @@ class _DinosaurCardFossilListState extends State<DinosaurCardFossilList> {
                       SizedBox(
                         width: thumbSize,
                         height: thumbSize,
-                        child: FossilRecordThumb(
-                          imageUrl: fossils[rightIndex].mainImageUrl,
+                        child: CardRecordThumb(
+                          image: FossilCardImage(
+                            imageUrl: fossils[rightIndex].mainImageUrl,
+                          ),
                           label: fossils[rightIndex].displayTitle,
                           onTap: () => showFossilCardDialog(
                             context,

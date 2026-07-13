@@ -16,6 +16,22 @@ class GeologicTimeline extends StatelessWidget {
     this.scale = 1.0,
   });
 
+  /// PBDB-style age bounds: [minAgeMa] is younger, [maxAgeMa] is older.
+  const GeologicTimeline.fromAgeRange({
+    super.key,
+    double? minAgeMa,
+    double? maxAgeMa,
+    double minMa = mesozoicOlderMa,
+    double maxMa = mesozoicYoungerMa,
+    GeologicTimelineAxis axis = GeologicTimelineAxis.vertical,
+    double scale = 1.0,
+  })  : birth = maxAgeMa,
+        death = minAgeMa,
+        minMa = minMa,
+        maxMa = maxMa,
+        axis = axis,
+        scale = scale;
+
   static const double mesozoicOlderMa = 252;
   static const double mesozoicYoungerMa = 66;
 

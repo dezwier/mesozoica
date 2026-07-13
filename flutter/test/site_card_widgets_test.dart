@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mesozoica/models/site.dart';
+import 'package:mesozoica/widgets/cards/geologic_timeline.dart';
 import 'package:mesozoica/widgets/cards/site_card_back.dart';
 import 'package:mesozoica/widgets/cards/site_card_edge_facts.dart';
 import 'package:mesozoica/widgets/cards/site_card_front.dart';
@@ -99,5 +100,7 @@ void main() {
 
     expect(find.byType(SiteCardFront), findsOneWidget);
     expect(find.byType(SiteCardBack), findsOneWidget);
+    expect(find.byType(GeologicTimeline), findsOneWidget);
+    expect(find.text('TIME'), findsNothing);
   });
 }

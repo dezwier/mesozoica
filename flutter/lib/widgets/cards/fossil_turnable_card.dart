@@ -11,13 +11,15 @@ class FossilTurnableCard extends StatelessWidget {
     super.key,
     required this.fossil,
     this.turnable = true,
-    this.titleFontSize = 28,
-    this.overlayHeightFactor = 0.35,
+    this.titleFontSize = 36,
+    this.subtitleFontSize = 10,
+    this.overlayHeightFactor = 0.38,
   });
 
   final FossilSummary fossil;
   final bool turnable;
   final double titleFontSize;
+  final double subtitleFontSize;
   final double overlayHeightFactor;
 
   @override
@@ -31,9 +33,14 @@ class FossilTurnableCard extends StatelessWidget {
       front: FossilCardFront(
         fossil: fossil,
         titleFontSize: titleFontSize,
+        subtitleFontSize: subtitleFontSize,
         overlayHeightFactor: overlayHeightFactor,
       ),
-      back: FossilCardBack(fossil: fossil),
+      back: FossilCardBack(
+        fossil: fossil,
+        titleFontSize: titleFontSize,
+        subtitleFontSize: subtitleFontSize,
+      ),
     );
   }
 }

@@ -1,18 +1,17 @@
 import 'package:flutter/material.dart';
 
 import '../../theme/dino_card_theme.dart';
-import 'fossil_card_image.dart';
 
-/// Square fossil thumbnail with a bottom name overlay for card-back lists.
-class FossilRecordThumb extends StatelessWidget {
-  const FossilRecordThumb({
+/// Square catalog thumbnail with a bottom name overlay for card-back lists.
+class CardRecordThumb extends StatelessWidget {
+  const CardRecordThumb({
     super.key,
-    required this.imageUrl,
+    required this.image,
     required this.label,
     required this.onTap,
   });
 
-  final String? imageUrl;
+  final Widget image;
   final String label;
   final VoidCallback onTap;
 
@@ -31,7 +30,7 @@ class FossilRecordThumb extends StatelessWidget {
             child: Stack(
               fit: StackFit.expand,
               children: [
-                FossilCardImage(imageUrl: imageUrl),
+                image,
                 Positioned(
                   left: 0,
                   right: 0,

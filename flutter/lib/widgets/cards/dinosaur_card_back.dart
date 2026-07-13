@@ -77,7 +77,6 @@ class DinosaurCardBack extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 CardSectionPanel(
-                  label: 'Time',
                   padding: const EdgeInsets.fromLTRB(10, 8, 10, 4),
                   child: SizedBox(
                     height: 78,

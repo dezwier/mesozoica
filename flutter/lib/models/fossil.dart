@@ -1,4 +1,5 @@
 import '../utils/display_text.dart';
+import '../utils/period_for_ages.dart';
 
 class FossilStoredField {
   const FossilStoredField({
@@ -278,6 +279,49 @@ class FossilSummary {
     final lat = latitude!.toStringAsFixed(4);
     final lng = longitude!.toStringAsFixed(4);
     return '$lat, $lng';
+  }
+
+  String get displayRockType {
+    final rock = lithology1?.trim();
+    if (rock != null && rock.isNotEmpty) {
+      return displayFactValue(rock);
+    }
+    final lith = lithdescript?.trim();
+    if (lith != null && lith.isNotEmpty) {
+      return displayFactValue(lith);
+    }
+    return displayFactValue(lithadj1);
+  }
+
+  String get displayPeriod {
+    final interval = earlyInterval?.trim();
+    final capitalizedInterval = interval != null && interval.isNotEmpty
+        ? capitalizeLeadingLetter(interval)
+        : null;
+    final periodName = periodForAges(minAgeMa, maxAgeMa);
+    final capitalizedPeriod = periodName != null && periodName.isNotEmpty
+        ? capitalizeLeadingLetter(periodName)
+        : null;
+
+    if (minAgeMa != null && maxAgeMa != null) {
+      final maLabel = minAgeMa!.round() == maxAgeMa!.round()
+          ? '${minAgeMa!.round()} Ma'
+          : '${minAgeMa!.round()} – ${maxAgeMa!.round()} Ma';
+      if (capitalizedInterval != null) {
+        return '$capitalizedInterval, $maLabel';
+      }
+      if (capitalizedPeriod != null) {
+        return '$capitalizedPeriod, $maLabel';
+      }
+      return maLabel;
+    }
+    if (capitalizedInterval != null) {
+      return capitalizedInterval;
+    }
+    if (capitalizedPeriod != null) {
+      return capitalizedPeriod;
+    }
+    return '—';
   }
 
   List<FossilStoredField> get storedFields {

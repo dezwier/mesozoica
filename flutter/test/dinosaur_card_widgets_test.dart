@@ -149,7 +149,7 @@ void main() {
     expect(find.byIcon(Icons.info_outline), findsOneWidget);
     expect(find.text('LOCATION'), findsNothing);
     expect(find.text('PERIOD'), findsNothing);
-    expect(find.text('TIME'), findsOneWidget);
+    expect(find.text('TIME'), findsNothing);
     expect(find.text('CLADOGRAM'), findsOneWidget);
     expect(find.text('FOSSIL RECORD'), findsOneWidget);
     expect(find.text('CLADE'), findsNWidgets(2));

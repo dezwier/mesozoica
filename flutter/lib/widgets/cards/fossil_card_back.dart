@@ -2,16 +2,26 @@ import 'package:flutter/material.dart';
 
 import '../../models/fossil.dart';
 import '../../theme/dino_card_theme.dart';
-import 'dino_fact_row.dart';
+import 'card_section_panel.dart';
 import 'fossil_card_header.dart';
 import 'fossil_card_image.dart';
+import 'fossil_related_thumbs.dart';
+import 'fossil_stored_fields_panel.dart';
+import 'geologic_timeline.dart';
 
 class FossilCardBack extends StatelessWidget {
-  const FossilCardBack({super.key, required this.fossil});
+  const FossilCardBack({
+    super.key,
+    required this.fossil,
+    this.titleFontSize = 36,
+    this.subtitleFontSize = 10,
+  });
 
   final FossilSummary fossil;
+  final double titleFontSize;
+  final double subtitleFontSize;
 
-  static const _icon = 'assets/images/cards/icons/location.svg';
+  static const _contentScale = 1.15;
 
   @override
   Widget build(BuildContext context) {
@@ -20,28 +30,48 @@ class FossilCardBack extends StatelessWidget {
       child: Stack(
         fit: StackFit.expand,
         children: [
-          ColoredBox(color: DinoCardTheme.of(context).cardBackground),
-          Opacity(
-            opacity: 0.1,
-            child: FossilCardImage(imageUrl: fossil.mainImageUrl),
+          FossilCardImage(imageUrl: fossil.mainImageUrl),
+          Positioned(
+            left: 18,
+            right: 18,
+            top: 20,
+            child: FossilCardHeader(
+              fossil: fossil,
+              titleFontSize: titleFontSize,
+              subtitleFontSize: subtitleFontSize,
+              centered: true,
+              overlayOnImage: true,
+              showOccurrenceSubtitle: true,
+            ),
           ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(18, 18, 18, 14),
+          Positioned(
+            left: 18,
+            right: 18,
+            top: 72,
+            bottom: 14,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                FossilCardHeader(
-                  fossil: fossil,
-                  titleFontSize: 24,
-                  centered: true,
-                  useFrontTitleStyle: true,
-                  wrapTitle: true,
+                CardSectionPanel(
+                  padding: const EdgeInsets.fromLTRB(10, 8, 10, 4),
+                  child: SizedBox(
+                    height: 78,
+                    child: GeologicTimeline.fromAgeRange(
+                      minAgeMa: fossil.minAgeMa,
+                      maxAgeMa: fossil.maxAgeMa,
+                      axis: GeologicTimelineAxis.horizontal,
+                      scale: _contentScale,
+                    ),
+                  ),
                 ),
                 const SizedBox(height: 10),
+                FossilRelatedThumbs(fossil: fossil),
+                const SizedBox(height: 10),
                 Expanded(
-                  child: SingleChildScrollView(
-                    physics: const BouncingScrollPhysics(),
-                    child: _TwoColumnFields(fields: fossil.storedFields),
+                  child: CardSectionPanel(
+                    label: 'Record',
+                    expandChild: true,
+                    child: FossilStoredFieldsPanel(fields: fossil.storedFields),
                   ),
                 ),
               ],
@@ -49,58 +79,6 @@ class FossilCardBack extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-}
-
-class _TwoColumnFields extends StatelessWidget {
-  const _TwoColumnFields({required this.fields});
-
-  final List<FossilStoredField> fields;
-
-  static const _icon = FossilCardBack._icon;
-  static const _columnGap = 12.0;
-
-  @override
-  Widget build(BuildContext context) {
-    if (fields.isEmpty) {
-      return const SizedBox.shrink();
-    }
-
-    final midpoint = (fields.length / 2).ceil();
-    final leftFields = fields.sublist(0, midpoint);
-    final rightFields = fields.sublist(midpoint);
-
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(child: _FieldColumn(fields: leftFields)),
-        const SizedBox(width: _columnGap),
-        Expanded(child: _FieldColumn(fields: rightFields)),
-      ],
-    );
-  }
-}
-
-class _FieldColumn extends StatelessWidget {
-  const _FieldColumn({required this.fields});
-
-  final List<FossilStoredField> fields;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        for (final field in fields)
-          DinoFactRow(
-            iconAsset: _TwoColumnFields._icon,
-            label: field.label,
-            value: field.value,
-            compact: true,
-            wrapValue: true,
-          ),
-      ],
     );
   }
 }

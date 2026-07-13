@@ -7,7 +7,7 @@ import 'package:http/testing.dart';
 import 'package:mesozoica/services/fossil_service.dart';
 import 'package:mesozoica/widgets/cards/dinosaur_card_fossil_list.dart';
 import 'package:mesozoica/widgets/cards/fossil_card_dialog.dart';
-import 'package:mesozoica/widgets/cards/fossil_record_thumb.dart';
+import 'package:mesozoica/widgets/cards/card_record_thumb.dart';
 import 'package:mesozoica/widgets/cards/fossil_turnable_card.dart';
 
 const _curatedFossilImageUrl =
@@ -72,7 +72,7 @@ void main() {
 
     await tester.pumpAndSettle();
 
-    expect(find.byType(FossilRecordThumb), findsNWidgets(2));
+    expect(find.byType(CardRecordThumb), findsNWidgets(2));
     expect(find.text('Tyrannosaurus rex'), findsOneWidget);
     expect(find.text('Tyrannosaurus sp.'), findsOneWidget);
 

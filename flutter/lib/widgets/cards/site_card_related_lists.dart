@@ -3,10 +3,11 @@ import 'package:flutter/material.dart';
 import '../../models/site.dart';
 import '../../services/site_service.dart';
 import '../../theme/dino_card_theme.dart';
+import 'card_record_thumb.dart';
 import 'fossil_card_dialog.dart';
-import 'fossil_record_thumb.dart';
+import 'fossil_card_image.dart';
 
-/// Fossil thumbnails on the site card back, centered in rows of four.
+/// Fossil thumbnails on the site card back — one large square, or two per row.
 class SiteCardFossils extends StatefulWidget {
   const SiteCardFossils({
     super.key,
@@ -26,8 +27,26 @@ class _SiteCardFossilsState extends State<SiteCardFossils> {
   late final bool _ownsService;
   late Future<List<SiteFossilThumb>> _fossilsFuture;
 
-  static const _columns = 4;
   static const _gap = 6.0;
+
+  Widget _buildThumb({
+    required BuildContext context,
+    required SiteFossilThumb fossil,
+    required double thumbSize,
+  }) {
+    return SizedBox(
+      width: thumbSize,
+      height: thumbSize,
+      child: CardRecordThumb(
+        image: FossilCardImage(imageUrl: fossil.mainImageUrl),
+        label: fossil.displayLabel,
+        onTap: () => showFossilCardDialog(
+          context,
+          fossilId: fossil.id,
+        ),
+      ),
+    );
+  }
 
   @override
   void initState() {
@@ -95,42 +114,53 @@ class _SiteCardFossilsState extends State<SiteCardFossils> {
           );
         }
 
+        if (fossils.length == 1) {
+          return LayoutBuilder(
+            builder: (context, constraints) {
+              final thumbSize = constraints.maxWidth;
+              return ListView(
+                physics: const ClampingScrollPhysics(),
+                padding: EdgeInsets.zero,
+                children: [
+                  _buildThumb(
+                    context: context,
+                    fossil: fossils.first,
+                    thumbSize: thumbSize,
+                  ),
+                ],
+              );
+            },
+          );
+        }
+
+        final rowCount = (fossils.length / 2).ceil();
         return LayoutBuilder(
           builder: (context, constraints) {
-            final thumbSize =
-                (constraints.maxWidth - _gap * (_columns - 1)) / _columns;
-            final rowCount = (fossils.length / _columns).ceil();
-
+            final thumbSize = (constraints.maxWidth - _gap) / 2;
             return ListView.separated(
               physics: const ClampingScrollPhysics(),
               padding: EdgeInsets.zero,
               itemCount: rowCount,
-              separatorBuilder: (context, index) => const SizedBox(height: _gap),
+              separatorBuilder: (context, index) =>
+                  const SizedBox(height: _gap),
               itemBuilder: (context, rowIndex) {
-                final rowStart = rowIndex * _columns;
-                final rowEnd =
-                    (rowStart + _columns).clamp(0, fossils.length);
-                final rowFossils = fossils.sublist(rowStart, rowEnd);
-
+                final leftIndex = rowIndex * 2;
+                final rightIndex = leftIndex + 1;
                 return Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    for (var col = 0; col < rowFossils.length; col++) ...[
-                      if (col > 0) const SizedBox(width: _gap),
-                      SizedBox(
-                        width: thumbSize,
-                        height: thumbSize,
-                        child: FossilRecordThumb(
-                          imageUrl: rowFossils[col].mainImageUrl,
-                          label: rowFossils[col].displayLabel,
-                          onTap: () => showFossilCardDialog(
-                            context,
-                            fossilId: rowFossils[col].id,
-                          ),
-                        ),
+                    _buildThumb(
+                      context: context,
+                      fossil: fossils[leftIndex],
+                      thumbSize: thumbSize,
+                    ),
+                    const SizedBox(width: _gap),
+                    if (rightIndex < fossils.length)
+                      _buildThumb(
+                        context: context,
+                        fossil: fossils[rightIndex],
+                        thumbSize: thumbSize,
                       ),
-                    ],
                   ],
                 );
               },
