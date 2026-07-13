@@ -61,7 +61,7 @@ class _CardWorldMapState extends State<CardWorldMap> {
 
   void _panCamera() {
     if (!_mapReady) return;
-    _mapController.move(widget.center, MapConfig.minZoom);
+    _mapController.move(widget.center, MapConfig.cardMapZoom);
   }
 
   @override
@@ -75,8 +75,8 @@ class _CardWorldMapState extends State<CardWorldMap> {
           mapController: _mapController,
           options: MapOptions(
             initialCenter: widget.center,
-            initialZoom: MapConfig.minZoom,
-            minZoom: MapConfig.minZoom,
+            initialZoom: MapConfig.cardMapZoom,
+            minZoom: MapConfig.cardMapZoom,
             maxZoom: MapConfig.maxZoom,
             backgroundColor: cardTheme.cardBackground,
             cameraConstraint: CameraConstraint.contain(

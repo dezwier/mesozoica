@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../models/site.dart';
 import '../../services/site_service.dart';
+import 'card_detail_sheet.dart';
 import 'site_turnable_card.dart';
 
 Future<void> showSiteCardDialog(
@@ -9,24 +10,12 @@ Future<void> showSiteCardDialog(
   required int siteId,
   SiteService? siteService,
 }) {
-  return showModalBottomSheet<void>(
-    context: context,
-    isScrollControlled: true,
-    backgroundColor: Colors.transparent,
-    builder: (context) {
-      return SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.only(bottom: 12),
-          child: Material(
-            color: Colors.transparent,
-            child: _SiteCardSheet(
-              siteId: siteId,
-              siteService: siteService,
-            ),
-          ),
-        ),
-      );
-    },
+  return CardDetailSheet.show<void>(
+    context,
+    builder: (context) => _SiteCardSheet(
+      siteId: siteId,
+      siteService: siteService,
+    ),
   );
 }
 
@@ -66,8 +55,6 @@ class _SiteCardSheetState extends State<_SiteCardSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final maxHeight = MediaQuery.sizeOf(context).height * 0.85;
-
     return FutureBuilder<SiteSummary>(
       future: _siteFuture,
       builder: (context, snapshot) {
@@ -122,14 +109,8 @@ class _SiteCardSheetState extends State<_SiteCardSheet> {
           );
         }
 
-        return ConstrainedBox(
-          constraints: BoxConstraints(maxHeight: maxHeight),
-          child: SingleChildScrollView(
-            child: SiteTurnableCard(
-              site: snapshot.data!,
-              titleFontSize: 22,
-            ),
-          ),
+        return CardDetailSheetContent(
+          child: SiteTurnableCard(site: snapshot.data!),
         );
       },
     );

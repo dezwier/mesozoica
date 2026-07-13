@@ -7,6 +7,8 @@ class MapConfig {
 
   static const double initialZoom = 3.0;
   static const double minZoom = 2.0;
+  /// Default zoom for mini maps on card backs (dino fossil map, site location).
+  static const double cardMapZoom = 1.0;
   static const double maxZoom = 16.4;
   static const double centerOnMeZoom = 10.0;
   static const double markerDetailZoom = 8.0;

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../models/fossil.dart';
 import '../../services/fossil_service.dart';
+import 'card_detail_sheet.dart';
 import 'fossil_turnable_card.dart';
 
 Future<void> showFossilCardDialog(
@@ -9,24 +10,12 @@ Future<void> showFossilCardDialog(
   required int fossilId,
   FossilService? fossilService,
 }) {
-  return showModalBottomSheet<void>(
-    context: context,
-    isScrollControlled: true,
-    backgroundColor: Colors.transparent,
-    builder: (context) {
-      return SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.only(bottom: 12),
-          child: Material(
-            color: Colors.transparent,
-            child: _FossilCardSheet(
-              fossilId: fossilId,
-              fossilService: fossilService,
-            ),
-          ),
-        ),
-      );
-    },
+  return CardDetailSheet.show<void>(
+    context,
+    builder: (context) => _FossilCardSheet(
+      fossilId: fossilId,
+      fossilService: fossilService,
+    ),
   );
 }
 
@@ -66,8 +55,6 @@ class _FossilCardSheetState extends State<_FossilCardSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final maxHeight = MediaQuery.sizeOf(context).height * 0.85;
-
     return FutureBuilder<FossilSummary>(
       future: _fossilFuture,
       builder: (context, snapshot) {
@@ -122,14 +109,8 @@ class _FossilCardSheetState extends State<_FossilCardSheet> {
           );
         }
 
-        return ConstrainedBox(
-          constraints: BoxConstraints(maxHeight: maxHeight),
-          child: SingleChildScrollView(
-            child: FossilTurnableCard(
-              fossil: snapshot.data!,
-              titleFontSize: 22,
-            ),
-          ),
+        return CardDetailSheetContent(
+          child: FossilTurnableCard(fossil: snapshot.data!),
         );
       },
     );

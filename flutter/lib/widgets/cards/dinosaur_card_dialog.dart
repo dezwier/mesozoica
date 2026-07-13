@@ -2,27 +2,16 @@ import 'package:flutter/material.dart';
 
 import '../../models/dinosaur.dart';
 import '../../services/dinosaur_service.dart';
+import 'card_detail_sheet.dart';
 import 'dinosaur_turnable_card.dart';
 
 Future<void> showDinosaurCardDialog(
   BuildContext context, {
   required int dinosaurId,
 }) {
-  return showModalBottomSheet<void>(
-    context: context,
-    isScrollControlled: true,
-    backgroundColor: Colors.transparent,
-    builder: (context) {
-      return SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.only(bottom: 12),
-          child: Material(
-            color: Colors.transparent,
-            child: _DinosaurCardSheet(dinosaurId: dinosaurId),
-          ),
-        ),
-      );
-    },
+  return CardDetailSheet.show<void>(
+    context,
+    builder: (context) => _DinosaurCardSheet(dinosaurId: dinosaurId),
   );
 }
 
@@ -53,8 +42,6 @@ class _DinosaurCardSheetState extends State<_DinosaurCardSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final maxHeight = MediaQuery.sizeOf(context).height * 0.85;
-
     return FutureBuilder<DinosaurSummary>(
       future: _dinosaurFuture,
       builder: (context, snapshot) {
@@ -109,14 +96,8 @@ class _DinosaurCardSheetState extends State<_DinosaurCardSheet> {
           );
         }
 
-        return ConstrainedBox(
-          constraints: BoxConstraints(maxHeight: maxHeight),
-          child: SingleChildScrollView(
-            child: DinosaurTurnableCard(
-              dinosaur: snapshot.data!,
-              titleFontSize: 22,
-            ),
-          ),
+        return CardDetailSheetContent(
+          child: DinosaurTurnableCard(dinosaur: snapshot.data!),
         );
       },
     );
