@@ -79,6 +79,7 @@ class GeologicTimeline extends StatelessWidget {
         }
         return _VerticalTimeline(
           cardTheme: DinoCardTheme.of(context),
+          scale: scale,
           width: constraints.maxWidth,
           height: constraints.maxHeight,
           startPos: startPos,
@@ -94,6 +95,7 @@ class GeologicTimeline extends StatelessWidget {
 class _VerticalTimeline extends StatelessWidget {
   const _VerticalTimeline({
     required this.cardTheme,
+    required this.scale,
     required this.width,
     required this.height,
     required this.startPos,
@@ -103,6 +105,7 @@ class _VerticalTimeline extends StatelessWidget {
   });
 
   final DinoCardTheme cardTheme;
+  final double scale;
   final double width;
   final double height;
   final double? startPos;
@@ -110,7 +113,23 @@ class _VerticalTimeline extends StatelessWidget {
   final bool sameMa;
   final double? Function(double ma) positionForMa;
 
-  static const _minRangeExtent = 10.0;
+  static const _boundaryMas = [252.0, 201.0, 145.0, 66.0];
+
+  double get _axisLeft => 28 * scale;
+  double get _barWidth => 6 * scale;
+  double get _rangeWidth => 12 * scale;
+  double get _minRangeExtent => 10 * scale;
+  double get _dotSize => 12 * scale;
+  double get _labelFontSize => 8.5 * scale;
+  double get _labelDotSize => 5 * scale;
+  double get _labelGap => 6 * scale;
+  double get _maLabelFontSize => 8 * scale;
+  double get _maLabelWidth => 34 * scale;
+
+  double _yForMa(double ma) {
+    final pos = positionForMa(ma)!;
+    return (1 - pos.clamp(0.0, 1.0)) * height;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -120,76 +139,94 @@ class _VerticalTimeline extends StatelessWidget {
       child: Stack(
         clipBehavior: Clip.none,
         children: [
-          Positioned(
-            left: 32,
-            top: 0,
-            bottom: 0,
-            child: Container(
-              width: 3,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(2),
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    cardTheme.cardAccent.withValues(alpha: 0.35),
-                    cardTheme.cardAccent,
-                    cardTheme.cardAccent.withValues(alpha: 0.85),
-                  ],
+          for (var i = 0; i < GeologicTimeline._periods.length; i++)
+            Positioned(
+              left: _axisLeft,
+              top: _yForMa(GeologicTimeline._periods[i].startMa),
+              bottom: height - _yForMa(GeologicTimeline._periods[i].endMa),
+              child: Container(
+                width: _barWidth,
+                decoration: BoxDecoration(
+                  color: cardTheme.cardAccent
+                      .withValues(alpha: 0.28 + i * 0.12),
+                  borderRadius: BorderRadius.vertical(
+                    top: i == 0 ? const Radius.circular(2) : Radius.zero,
+                    bottom: i == GeologicTimeline._periods.length - 1
+                        ? const Radius.circular(2)
+                        : Radius.zero,
+                  ),
                 ),
               ),
             ),
-          ),
           if (sameMa && startPos != null)
             Positioned(
-              left: 28,
+              left: _axisLeft - (_rangeWidth - _barWidth) / 2,
               top: (1 - startPos!.clamp(0.0, 1.0)) * height - _minRangeExtent / 2,
               child: Container(
-                width: 11,
+                width: _rangeWidth,
                 height: _minRangeExtent,
                 decoration: BoxDecoration(
-                  color: cardTheme.cardAccent.withValues(alpha: 0.35),
+                  color: cardTheme.cardTextPrimary.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(3),
                   border: Border.all(
-                    color: cardTheme.cardAccent.withValues(alpha: 0.7),
+                    color: cardTheme.cardTextPrimary.withValues(alpha: 0.55),
                   ),
                 ),
               ),
             )
           else if (startPos != null && endPos != null)
             Positioned(
-              left: 28,
+              left: _axisLeft - (_rangeWidth - _barWidth) / 2,
               top: (1 - startPos!.clamp(0.0, 1.0)) * height,
               bottom: endPos!.clamp(0.0, 1.0) * height,
               child: Container(
-                width: 11,
+                width: _rangeWidth,
                 decoration: BoxDecoration(
-                  color: cardTheme.cardAccent.withValues(alpha: 0.35),
+                  color: cardTheme.cardTextPrimary.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(3),
                   border: Border.all(
-                    color: cardTheme.cardAccent.withValues(alpha: 0.7),
+                    color: cardTheme.cardTextPrimary.withValues(alpha: 0.55),
                   ),
                 ),
               ),
             )
           else if (startPos != null)
             Positioned(
-              left: 27,
-              top: (1 - startPos!.clamp(0.0, 1.0)) * height - 5,
+              left: _axisLeft - (_dotSize - _barWidth) / 2,
+              top: (1 - startPos!.clamp(0.0, 1.0)) * height - _dotSize / 2,
               child: _TimelineDot(
-                color: cardTheme.cardAccent,
+                scale: scale,
+                color: cardTheme.cardTextPrimary,
                 borderColor: cardTheme.cardTextPrimary,
               ),
             ),
           for (final period in GeologicTimeline._periods)
             Positioned(
-              top: (1 - positionForMa(period.midMa)!.clamp(0.0, 1.0)) * height -
-                  10,
+              top: _yForMa(period.midMa) - 8 * scale,
               left: 0,
-              right: 0,
+              width: _axisLeft - 4 * scale,
               child: _VerticalPeriodLabel(
                 name: period.name,
                 cardTheme: cardTheme,
+                fontSize: _labelFontSize,
+                dotSize: _labelDotSize,
+                gap: _labelGap,
+              ),
+            ),
+          for (final ma in _boundaryMas)
+            Positioned(
+              left: _axisLeft + _barWidth + 4 * scale,
+              top: _yForMa(ma) - 7 * scale,
+              width: _maLabelWidth,
+              child: Text(
+                '${ma.round()} Ma',
+                maxLines: 1,
+                softWrap: false,
+                style: TextStyle(
+                  color: cardTheme.timelineAnnotationColor(),
+                  fontSize: _maLabelFontSize,
+                  height: 1.1,
+                ),
               ),
             ),
         ],
@@ -395,10 +432,16 @@ class _VerticalPeriodLabel extends StatelessWidget {
   const _VerticalPeriodLabel({
     required this.name,
     required this.cardTheme,
+    required this.fontSize,
+    required this.dotSize,
+    required this.gap,
   });
 
   final String name;
   final DinoCardTheme cardTheme;
+  final double fontSize;
+  final double dotSize;
+  final double gap;
 
   @override
   Widget build(BuildContext context) {
@@ -410,15 +453,15 @@ class _VerticalPeriodLabel extends StatelessWidget {
             textAlign: TextAlign.end,
             style: TextStyle(
               color: cardTheme.periodLabelColor(),
-              fontSize: 9,
+              fontSize: fontSize,
               fontWeight: FontWeight.w600,
             ),
           ),
         ),
-        const SizedBox(width: 10),
+        SizedBox(width: gap),
         Container(
-          width: 6,
-          height: 6,
+          width: dotSize,
+          height: dotSize,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             color: cardTheme.cardAccent.withValues(alpha: 0.8),

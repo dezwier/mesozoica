@@ -16,6 +16,9 @@ class DinoCardTheme {
   });
 
   static const double borderRadius = 16;
+  static const double factPanelBorderRadius = 10;
+  static const double factPanelBackgroundAlpha = 0.9;
+  static const double factPanelBorderAlpha = 0.58;
 
   /// Matches [frontPlaceholderAsset] (1086×1448) so the cover image is not cropped.
   static const double cardAspectRatio = 1086 / 1448;
@@ -251,15 +254,13 @@ class DinoCardTheme {
     return isLight ? cardTextSecondary : cardAccent.withValues(alpha: 0.9);
   }
 
-  /// Frosted stat panel on card fronts.
+  /// Frosted stat panel on card fronts and section panels on card backs.
   BoxDecoration factPanelDecoration() {
     return BoxDecoration(
-      color: isLight
-          ? cardBackground.withValues(alpha: 0.8)
-          : cardBackground.withValues(alpha: 0.8),
-      borderRadius: BorderRadius.circular(10),
+      color: cardBackground.withValues(alpha: factPanelBackgroundAlpha),
+      borderRadius: BorderRadius.circular(factPanelBorderRadius),
       border: Border.all(
-        color: cardAccent.withValues(alpha: 0.35),
+        color: cardAccent.withValues(alpha: factPanelBorderAlpha),
         width: 1,
       ),
     );

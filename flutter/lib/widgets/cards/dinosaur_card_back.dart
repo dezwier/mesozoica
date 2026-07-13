@@ -5,7 +5,7 @@ import '../../theme/dino_card_theme.dart';
 import '../dino/dinosaur_article_drawer.dart';
 import 'card_section_panel.dart';
 import 'cladogram_strip.dart';
-import 'dinosaur_card_fossil_list.dart';
+import 'dinosaur_card_fossil_map.dart';
 import 'dinosaur_card_header.dart';
 import 'dinosaur_card_image.dart';
 import 'geologic_timeline.dart';
@@ -96,11 +96,10 @@ class DinosaurCardBack extends StatelessWidget {
                       Expanded(
                         flex: 55,
                         child: CardSectionPanel(
-                          label: 'Fossil record',
+                          padding: EdgeInsets.zero,
                           expandChild: true,
-                          child: DinosaurCardFossilList(
-                            dinosaurId: dinosaur.id,
-                          ),
+                          clipChild: true,
+                          child: DinosaurCardFossilMap(dinosaurId: dinosaur.id),
                         ),
                       ),
                       const SizedBox(width: 10),

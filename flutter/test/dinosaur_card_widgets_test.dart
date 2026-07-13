@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mesozoica/models/dinosaur.dart';
 import 'package:mesozoica/widgets/cards/dinosaur_card_back.dart';
 import 'package:mesozoica/widgets/cards/dinosaur_card_edge_facts.dart';
+import 'package:mesozoica/widgets/cards/dinosaur_card_fossil_map.dart';
 import 'package:mesozoica/widgets/cards/dinosaur_card_front.dart';
 import 'package:mesozoica/widgets/cards/dinosaur_card_image.dart';
 import 'package:mesozoica/widgets/cards/dinosaur_turnable_card.dart';
@@ -130,7 +131,7 @@ void main() {
     expect(find.byType(Image), findsOneWidget);
   });
 
-  testWidgets('DinosaurCardBack renders timeline, cladogram, and fossil list',
+  testWidgets('DinosaurCardBack renders horizontal timeline, map, and cladogram',
       (tester) async {
     await tester.pumpWidget(
       const MaterialApp(
@@ -151,7 +152,12 @@ void main() {
     expect(find.text('PERIOD'), findsNothing);
     expect(find.text('TIME'), findsNothing);
     expect(find.text('CLADOGRAM'), findsOneWidget);
-    expect(find.text('FOSSIL RECORD'), findsOneWidget);
+    expect(find.text('FOSSIL RECORD'), findsNothing);
+    expect(find.text('Triassic'), findsOneWidget);
+    expect(find.text('Jurassic'), findsOneWidget);
+    expect(find.text('Cretaceous'), findsOneWidget);
+    expect(find.text('252 Ma'), findsOneWidget);
+    expect(find.text('66 Ma'), findsOneWidget);
     expect(find.text('CLADE'), findsNWidgets(2));
     expect(find.text('FAMILY'), findsOneWidget);
     expect(find.text('GENUS'), findsOneWidget);
@@ -159,6 +165,7 @@ void main() {
       find.textContaining('largest terrestrial predators'),
       findsNothing,
     );
+    expect(find.byType(DinosaurCardFossilMap), findsOneWidget);
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
   });
 
