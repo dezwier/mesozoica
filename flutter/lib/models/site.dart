@@ -148,15 +148,26 @@ class SiteFossilThumb {
   const SiteFossilThumb({
     required this.id,
     this.mainImageUrl,
+    this.identifiedName,
   });
 
   final int id;
   final String? mainImageUrl;
+  final String? identifiedName;
+
+  String get displayLabel {
+    final identified = identifiedName?.trim();
+    if (identified != null && identified.isNotEmpty) {
+      return displayTaxonName(identified);
+    }
+    return '#$id';
+  }
 
   factory SiteFossilThumb.fromJson(Map<String, dynamic> json) {
     return SiteFossilThumb(
       id: json['id'] as int,
       mainImageUrl: json['main_image_url'] as String?,
+      identifiedName: json['identified_name'] as String?,
     );
   }
 }

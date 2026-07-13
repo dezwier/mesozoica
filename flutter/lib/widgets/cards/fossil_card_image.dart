@@ -30,17 +30,19 @@ class FossilCardImage extends StatelessWidget {
       return const _FadingPlaceholderImage();
     }
 
-    return CachedNetworkImage(
-      imageUrl: curatedUrl,
-      fit: BoxFit.cover,
-      fadeInDuration: _fadeInDuration,
-      fadeInCurve: Curves.easeIn,
-      placeholderFadeInDuration: Duration.zero,
-      httpHeaders: const {
-        'User-Agent': 'Mesozoica/1.0 (mobile app; fossil catalog)',
-      },
-      placeholder: (context, url) => const SizedBox.shrink(),
-      errorWidget: (context, url, error) => const _FadingPlaceholderImage(),
+    return SizedBox.expand(
+      child: CachedNetworkImage(
+        imageUrl: curatedUrl,
+        fit: BoxFit.cover,
+        fadeInDuration: _fadeInDuration,
+        fadeInCurve: Curves.easeIn,
+        placeholderFadeInDuration: Duration.zero,
+        httpHeaders: const {
+          'User-Agent': 'Mesozoica/1.0 (mobile app; fossil catalog)',
+        },
+        placeholder: (context, url) => const SizedBox.shrink(),
+        errorWidget: (context, url, error) => const _FadingPlaceholderImage(),
+      ),
     );
   }
 }
@@ -70,9 +72,11 @@ class _FadingPlaceholderImageState extends State<_FadingPlaceholderImage>
   Widget build(BuildContext context) {
     return FadeTransition(
       opacity: CurvedAnimation(parent: _controller, curve: Curves.easeIn),
-      child: Image.asset(
-        DinoCardTheme.fossilPlaceholderAsset,
-        fit: BoxFit.cover,
+      child: SizedBox.expand(
+        child: Image.asset(
+          DinoCardTheme.fossilPlaceholderAsset,
+          fit: BoxFit.cover,
+        ),
       ),
     );
   }

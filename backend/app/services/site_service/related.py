@@ -23,7 +23,7 @@ def _ensure_site_exists(session: Session, site_id: int) -> None:
 def list_site_fossils(session: Session, site_id: int) -> list[SiteFossilThumb]:
     _ensure_site_exists(session, site_id)
     rows = session.exec(
-        select(Fossil.id, Fossil.main_image_url)
+        select(Fossil.id, Fossil.main_image_url, Fossil.identified_name)
         .join(FossilClean, col(FossilClean.fossil_id) == col(Fossil.id))
         .where(col(FossilClean.site_id) == site_id)
     ).all()
@@ -32,8 +32,12 @@ def list_site_fossils(session: Session, site_id: int) -> list[SiteFossilThumb]:
         key=lambda row: hashlib.md5(f"{row[0]}{site_id}".encode()).hexdigest(),
     )
     return [
-        SiteFossilThumb(id=fossil_id, main_image_url=main_image_url)
-        for fossil_id, main_image_url in rows
+        SiteFossilThumb(
+            id=fossil_id,
+            main_image_url=main_image_url,
+            identified_name=identified_name,
+        )
+        for fossil_id, main_image_url, identified_name in rows
     ]
 
 
@@ -63,6 +67,7 @@ def list_site_dino_fossil_groups(
             Dinosaur.main_image_url,
             Fossil.id,
             Fossil.main_image_url,
+            Fossil.identified_name,
         )
         .join(FossilClean, col(FossilClean.dinosaur_id) == col(Dinosaur.id))
         .join(Fossil, col(FossilClean.fossil_id) == col(Fossil.id))
@@ -74,7 +79,7 @@ def list_site_dino_fossil_groups(
     current_dino_id: int | None = None
     current_group: SiteDinoFossilGroup | None = None
 
-    for dino_id, name, dino_image, fossil_id, fossil_image in rows:
+    for dino_id, name, dino_image, fossil_id, fossil_image, identified_name in rows:
         if dino_id != current_dino_id:
             if current_group is not None:
                 groups.append(current_group)
@@ -89,7 +94,11 @@ def list_site_dino_fossil_groups(
             )
         assert current_group is not None
         current_group.fossils.append(
-            SiteFossilThumb(id=fossil_id, main_image_url=fossil_image)
+            SiteFossilThumb(
+                id=fossil_id,
+                main_image_url=fossil_image,
+                identified_name=identified_name,
+            )
         )
 
     if current_group is not None:

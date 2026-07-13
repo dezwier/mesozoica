@@ -1,0 +1,71 @@
+import 'package:flutter/material.dart';
+
+import '../../theme/dino_card_theme.dart';
+import 'fossil_card_image.dart';
+
+/// Square fossil thumbnail with a bottom name overlay for card-back lists.
+class FossilRecordThumb extends StatelessWidget {
+  const FossilRecordThumb({
+    super.key,
+    required this.imageUrl,
+    required this.label,
+    required this.onTap,
+  });
+
+  final String? imageUrl;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final cardTheme = DinoCardTheme.of(context);
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: SizedBox.expand(
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                FossilCardImage(imageUrl: imageUrl),
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Colors.transparent,
+                          Colors.black.withValues(alpha: 0.72),
+                        ],
+                      ),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(3, 10, 3, 3),
+                      child: Text(
+                        label,
+                        textAlign: TextAlign.center,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: cardTheme
+                            .frontOverlaySubtitleStyle(fontSize: 7)
+                            .copyWith(height: 1.05),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}

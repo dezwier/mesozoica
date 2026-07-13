@@ -255,6 +255,7 @@ def test_site_related_fossils_and_dinosaurs(client, session):
     assert len(fossils) == 1
     assert fossils[0]["id"] == fossil.id
     assert fossils[0]["main_image_url"].endswith("100001.webp")
+    assert fossils[0]["identified_name"] == "Tyrannosaurus rex"
 
     dinos_response = client.get(f"/api/v1/sites/{site.site_id}/dinosaurs")
     assert dinos_response.status_code == 200

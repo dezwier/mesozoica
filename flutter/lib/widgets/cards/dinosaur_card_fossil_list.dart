@@ -4,7 +4,7 @@ import '../../models/fossil.dart';
 import '../../services/fossil_service.dart';
 import '../../theme/dino_card_theme.dart';
 import 'fossil_card_dialog.dart';
-import 'fossil_card_image.dart';
+import 'fossil_record_thumb.dart';
 
 /// Scrollable fossil thumbnails for the dinosaur card back face.
 class DinosaurCardFossilList extends StatefulWidget {
@@ -94,87 +94,80 @@ class _DinosaurCardFossilListState extends State<DinosaurCardFossilList> {
         }
 
         if (fossils.length == 1) {
-          return ListView(
-            physics: const ClampingScrollPhysics(),
-            padding: EdgeInsets.zero,
-            children: [
-              _FossilThumbnail(
-                fossil: fossils.first,
-                onTap: () => showFossilCardDialog(
-                  context,
-                  fossilId: fossils.first.id,
-                ),
-              ),
-            ],
+          return LayoutBuilder(
+            builder: (context, constraints) {
+              final thumbSize = constraints.maxWidth;
+              return ListView(
+                physics: const ClampingScrollPhysics(),
+                padding: EdgeInsets.zero,
+                children: [
+                  SizedBox(
+                    width: thumbSize,
+                    height: thumbSize,
+                    child: FossilRecordThumb(
+                      imageUrl: fossils.first.mainImageUrl,
+                      label: fossils.first.displayTitle,
+                      onTap: () => showFossilCardDialog(
+                        context,
+                        fossilId: fossils.first.id,
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            },
           );
         }
 
         final rowCount = (fossils.length / 2).ceil();
-        return ListView.separated(
-          physics: const ClampingScrollPhysics(),
-          padding: EdgeInsets.zero,
-          itemCount: rowCount,
-          separatorBuilder: (context, index) => const SizedBox(height: 6),
-          itemBuilder: (context, rowIndex) {
-            final leftIndex = rowIndex * 2;
-            final rightIndex = leftIndex + 1;
-            return Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: _FossilThumbnail(
-                    fossil: fossils[leftIndex],
-                    onTap: () => showFossilCardDialog(
-                      context,
-                      fossilId: fossils[leftIndex].id,
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            const gap = 6.0;
+            final thumbSize = (constraints.maxWidth - gap) / 2;
+            return ListView.separated(
+              physics: const ClampingScrollPhysics(),
+              padding: EdgeInsets.zero,
+              itemCount: rowCount,
+              separatorBuilder: (context, index) => const SizedBox(height: 6),
+              itemBuilder: (context, rowIndex) {
+                final leftIndex = rowIndex * 2;
+                final rightIndex = leftIndex + 1;
+                return Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SizedBox(
+                      width: thumbSize,
+                      height: thumbSize,
+                      child: FossilRecordThumb(
+                        imageUrl: fossils[leftIndex].mainImageUrl,
+                        label: fossils[leftIndex].displayTitle,
+                        onTap: () => showFossilCardDialog(
+                          context,
+                          fossilId: fossils[leftIndex].id,
+                        ),
+                      ),
                     ),
-                  ),
-                ),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: rightIndex < fossils.length
-                      ? _FossilThumbnail(
-                          fossil: fossils[rightIndex],
+                    const SizedBox(width: gap),
+                    if (rightIndex < fossils.length)
+                      SizedBox(
+                        width: thumbSize,
+                        height: thumbSize,
+                        child: FossilRecordThumb(
+                          imageUrl: fossils[rightIndex].mainImageUrl,
+                          label: fossils[rightIndex].displayTitle,
                           onTap: () => showFossilCardDialog(
                             context,
                             fossilId: fossils[rightIndex].id,
                           ),
-                        )
-                      : const SizedBox.shrink(),
-                ),
-              ],
+                        ),
+                      ),
+                  ],
+                );
+              },
             );
           },
         );
       },
-    );
-  }
-}
-
-class _FossilThumbnail extends StatelessWidget {
-  const _FossilThumbnail({
-    required this.fossil,
-    required this.onTap,
-  });
-
-  final FossilSummary fossil;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(8),
-        child: AspectRatio(
-          aspectRatio: DinoCardTheme.cardAspectRatio,
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: FossilCardImage(imageUrl: fossil.mainImageUrl),
-          ),
-        ),
-      ),
     );
   }
 }

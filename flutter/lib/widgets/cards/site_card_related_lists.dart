@@ -4,9 +4,9 @@ import '../../models/site.dart';
 import '../../services/site_service.dart';
 import '../../theme/dino_card_theme.dart';
 import 'fossil_card_dialog.dart';
-import 'fossil_card_image.dart';
+import 'fossil_record_thumb.dart';
 
-/// Fossil thumbnails on the site card back, centered in rows of three.
+/// Fossil thumbnails on the site card back, centered in rows of four.
 class SiteCardFossils extends StatefulWidget {
   const SiteCardFossils({
     super.key,
@@ -26,7 +26,7 @@ class _SiteCardFossilsState extends State<SiteCardFossils> {
   late final bool _ownsService;
   late Future<List<SiteFossilThumb>> _fossilsFuture;
 
-  static const _columns = 3;
+  static const _columns = 4;
   static const _gap = 6.0;
 
   @override
@@ -97,60 +97,47 @@ class _SiteCardFossilsState extends State<SiteCardFossils> {
 
         return LayoutBuilder(
           builder: (context, constraints) {
-            final thumbWidth =
+            final thumbSize =
                 (constraints.maxWidth - _gap * (_columns - 1)) / _columns;
-            final thumbHeight = thumbWidth / DinoCardTheme.cardAspectRatio;
+            final rowCount = (fossils.length / _columns).ceil();
 
-            return SingleChildScrollView(
+            return ListView.separated(
               physics: const ClampingScrollPhysics(),
-              child: Wrap(
-                alignment: WrapAlignment.center,
-                spacing: _gap,
-                runSpacing: _gap,
-                children: [
-                  for (final fossil in fossils)
-                    SizedBox(
-                      width: thumbWidth,
-                      height: thumbHeight,
-                      child: _FossilThumbnail(
-                        imageUrl: fossil.mainImageUrl,
-                        onTap: () => showFossilCardDialog(
-                          context,
-                          fossilId: fossil.id,
+              padding: EdgeInsets.zero,
+              itemCount: rowCount,
+              separatorBuilder: (context, index) => const SizedBox(height: _gap),
+              itemBuilder: (context, rowIndex) {
+                final rowStart = rowIndex * _columns;
+                final rowEnd =
+                    (rowStart + _columns).clamp(0, fossils.length);
+                final rowFossils = fossils.sublist(rowStart, rowEnd);
+
+                return Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    for (var col = 0; col < rowFossils.length; col++) ...[
+                      if (col > 0) const SizedBox(width: _gap),
+                      SizedBox(
+                        width: thumbSize,
+                        height: thumbSize,
+                        child: FossilRecordThumb(
+                          imageUrl: rowFossils[col].mainImageUrl,
+                          label: rowFossils[col].displayLabel,
+                          onTap: () => showFossilCardDialog(
+                            context,
+                            fossilId: rowFossils[col].id,
+                          ),
                         ),
                       ),
-                    ),
-                ],
-              ),
+                    ],
+                  ],
+                );
+              },
             );
           },
         );
       },
-    );
-  }
-}
-
-class _FossilThumbnail extends StatelessWidget {
-  const _FossilThumbnail({
-    required this.imageUrl,
-    required this.onTap,
-  });
-
-  final String? imageUrl;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(8),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(8),
-          child: FossilCardImage(imageUrl: imageUrl),
-        ),
-      ),
     );
   }
 }

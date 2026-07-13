@@ -7,7 +7,7 @@ import 'package:http/testing.dart';
 import 'package:mesozoica/services/fossil_service.dart';
 import 'package:mesozoica/widgets/cards/dinosaur_card_fossil_list.dart';
 import 'package:mesozoica/widgets/cards/fossil_card_dialog.dart';
-import 'package:mesozoica/widgets/cards/fossil_card_image.dart';
+import 'package:mesozoica/widgets/cards/fossil_record_thumb.dart';
 import 'package:mesozoica/widgets/cards/fossil_turnable_card.dart';
 
 const _curatedFossilImageUrl =
@@ -16,12 +16,13 @@ const _curatedFossilImageUrl =
 Map<String, dynamic> _fossilJson({
   required int id,
   String? mainImageUrl,
+  String? identifiedName,
 }) {
   return {
     'id': id,
     'dinosaur_id': 1,
     'dinosaur_name': 'Tyrannosaurus',
-    'identified_name': 'Tyrannosaurus rex',
+    'identified_name': identifiedName ?? 'Tyrannosaurus rex',
     'main_image_url': mainImageUrl,
     'dinosaur_main_image_url':
         'https://mesozoica-production.up.railway.app/media/dinosaurs/Tyrannosaurus.webp',
@@ -40,7 +41,7 @@ void main() {
           jsonEncode({
             'items': [
               _fossilJson(id: 100001, mainImageUrl: _curatedFossilImageUrl),
-              _fossilJson(id: 100002),
+              _fossilJson(id: 100002, identifiedName: 'Tyrannosaurus sp.'),
             ],
             'total': 2,
             'limit': 200,
@@ -71,7 +72,19 @@ void main() {
 
     await tester.pumpAndSettle();
 
-    expect(find.byType(FossilCardImage), findsNWidgets(2));
+    expect(find.byType(FossilRecordThumb), findsNWidgets(2));
+    expect(find.text('Tyrannosaurus rex'), findsOneWidget);
+    expect(find.text('Tyrannosaurus sp.'), findsOneWidget);
+
+    final thumbBoxes = tester
+        .widgetList<SizedBox>(find.byType(SizedBox))
+        .where((box) => box.width != null && box.height != null)
+        .where((box) => box.width == box.height)
+        .toList();
+    expect(thumbBoxes, isNotEmpty);
+    for (final box in thumbBoxes) {
+      expect(box.width, box.height);
+    }
   });
 
   testWidgets('showFossilCardDialog loads fossil card from API', (tester) async {

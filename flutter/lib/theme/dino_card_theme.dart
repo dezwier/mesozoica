@@ -20,6 +20,9 @@ class DinoCardTheme {
   /// Matches [frontPlaceholderAsset] (1086×1448) so the cover image is not cropped.
   static const double cardAspectRatio = 1086 / 1448;
 
+  /// Square thumbnails for fossil images on card backs.
+  static const double fossilThumbAspectRatio = 1;
+
   static const String frontPlaceholderAsset =
       'assets/images/cards/dinosaur_card_front_placeholder.png';
 

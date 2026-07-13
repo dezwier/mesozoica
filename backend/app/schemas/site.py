@@ -36,6 +36,7 @@ class SiteListResponse(BaseModel):
 class SiteFossilThumb(BaseModel):
     id: int
     main_image_url: str | None = None
+    identified_name: str | None = None
 
 
 class SiteDinosaurThumb(BaseModel):
