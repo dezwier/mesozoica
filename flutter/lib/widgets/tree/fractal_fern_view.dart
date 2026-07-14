@@ -620,13 +620,26 @@ class _FadingInlineGenusCardLayer extends StatefulWidget {
 }
 
 class _FadingInlineGenusCardLayerState extends State<_FadingInlineGenusCardLayer>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   static const _fadeDuration = Duration(milliseconds: 350);
+  static const _factsFadeDuration = Duration(milliseconds: 400);
 
   late final AnimationController _fadeController;
   late final Animation<double> _fadeAnimation;
+  late final AnimationController _factsFadeController;
+  late final Animation<double> _factsFadeAnimation;
   bool _dismissPending = false;
   bool _fadeInCompleteNotified = false;
+
+  void _syncFactsFade(bool showFacts) {
+    if (showFacts) {
+      if (_factsFadeController.value == 0) {
+        _factsFadeController.forward(from: 0);
+      }
+    } else {
+      _factsFadeController.value = 0;
+    }
+  }
 
   void _startFadeIn() {
     _dismissPending = false;
@@ -649,6 +662,14 @@ class _FadingInlineGenusCardLayerState extends State<_FadingInlineGenusCardLayer
       curve: Curves.easeOut,
       reverseCurve: Curves.easeIn,
     );
+    _factsFadeController = AnimationController(
+      vsync: this,
+      duration: _factsFadeDuration,
+    );
+    _factsFadeAnimation = CurvedAnimation(
+      parent: _factsFadeController,
+      curve: Curves.easeOut,
+    );
     if (!widget.visible) {
       _fadeController.value = 0;
     } else if (widget.needsFadeIn) {
@@ -656,6 +677,9 @@ class _FadingInlineGenusCardLayerState extends State<_FadingInlineGenusCardLayer
     } else {
       _fadeController.value = 1;
     }
+    _syncFactsFade(
+      FractalLodPolicy.genusCardShowsFacts(widget.zoomScale),
+    );
   }
 
   @override
@@ -672,6 +696,10 @@ class _FadingInlineGenusCardLayerState extends State<_FadingInlineGenusCardLayer
     } else if (!widget.visible && oldWidget.visible) {
       _startDismiss();
     }
+
+    _syncFactsFade(
+      FractalLodPolicy.genusCardShowsFacts(widget.zoomScale),
+    );
   }
 
   void _startDismiss() {
@@ -686,6 +714,7 @@ class _FadingInlineGenusCardLayerState extends State<_FadingInlineGenusCardLayer
   @override
   void dispose() {
     _fadeController.dispose();
+    _factsFadeController.dispose();
     super.dispose();
   }
 
@@ -710,18 +739,31 @@ class _FadingInlineGenusCardLayerState extends State<_FadingInlineGenusCardLayer
       width: size.width,
       child: FadeTransition(
         opacity: _fadeAnimation,
-        child: DinosaurTurnableCard(
-          dinosaur: widget.card.candidate.dinosaur,
-          showFrontFacts: showFacts,
-          showArticleButton: showFacts,
-          turnable: showFacts,
-          titleFontSize:
-              FractalLodPolicy.genusCardTitleFontSize(widget.zoomScale),
-          subtitleFontSize:
-              FractalLodPolicy.genusCardSubtitleFontSize(widget.zoomScale),
-          overlayHeightFactor: FractalLodPolicy.genusCardFrontOverlayHeightFactor(
-            widget.zoomScale,
-          ),
+        child: AnimatedBuilder(
+          animation: _factsFadeAnimation,
+          builder: (context, _) {
+            final factsReveal = _factsFadeAnimation.value;
+            final overlayHeightFactor = showFacts || factsReveal > 0
+                ? lerpDouble(
+                    FractalLodPolicy.genusCardFrontOverlayHeightFactorCompact,
+                    FractalLodPolicy.genusCardFrontOverlayHeightFactorFull,
+                    factsReveal,
+                  )!
+                : FractalLodPolicy.genusCardFrontOverlayHeightFactorCompact;
+
+            return DinosaurTurnableCard(
+              dinosaur: widget.card.candidate.dinosaur,
+              showFrontFacts: showFacts || factsReveal > 0,
+              showArticleButton: showFacts || factsReveal > 0,
+              turnable: showFacts,
+              titleFontSize:
+                  FractalLodPolicy.genusCardTitleFontSize(widget.zoomScale),
+              subtitleFontSize:
+                  FractalLodPolicy.genusCardSubtitleFontSize(widget.zoomScale),
+              overlayHeightFactor: overlayHeightFactor,
+              factsFadeAnimation: _factsFadeAnimation,
+            );
+          },
         ),
       ),
     );

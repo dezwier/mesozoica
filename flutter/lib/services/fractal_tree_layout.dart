@@ -253,7 +253,6 @@ class FractalLodPolicy {
   static const double genusCardScale = 0.3;
   static const double genusCardFullZoomScale = 14.0;
   static const double genusCardScaleProgressExponent = 1.45;
-  static const double genusCardFactsMinEffectiveScale = 0.68;
   static const double _genusCardAspectRatio = 493 / 677;
   static const double genusCardCatalogTitleFontSize = 28;
   static const double genusCardCatalogSubtitleFontSize = 10;
@@ -284,22 +283,10 @@ class FractalLodPolicy {
       genusCardCatalogSubtitleFontSize * genusCardEffectiveScale(zoomScale);
 
   static bool genusCardShowsFacts(double zoomScale) =>
-      genusCardEffectiveScale(zoomScale) >= genusCardFactsMinEffectiveScale;
+      genusCardEffectiveScale(zoomScale) >= 1.0;
 
-  /// Zoom level where card attributes first appear (slightly above threshold).
-  static double genusCardFactsZoomScale() {
-    const targetScale =
-        genusCardFactsMinEffectiveScale + 0.02;
-    if (targetScale <= genusCardScale) return genusCardMinZoomScale;
-
-    final curvedProgress = math.pow(
-      (targetScale - genusCardScale) / (1.0 - genusCardScale),
-      1.0 / genusCardScaleProgressExponent,
-    ).toDouble();
-    final linearProgress = curvedProgress.clamp(0.0, 1.0);
-    return genusCardMinZoomScale +
-        linearProgress * (genusCardFullZoomScale - genusCardMinZoomScale);
-  }
+  /// Zoom level where card attributes first appear (catalog-sized card).
+  static double genusCardFactsZoomScale() => genusCardFullZoomScale;
 
   static double genusCardFrontOverlayHeightFactor(double zoomScale) =>
       genusCardShowsFacts(zoomScale)

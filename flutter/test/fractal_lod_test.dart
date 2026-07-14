@@ -154,12 +154,15 @@ void main() {
       );
     });
 
-    test('genus card shows facts before catalog size', () {
-      final factsZoom = FractalLodPolicy.genusCardFactsZoomScale();
+    test('genus card shows facts only at full catalog size', () {
       expect(FractalLodPolicy.genusCardShowsFacts(4.0), isFalse);
       expect(FractalLodPolicy.genusCardShowsFacts(8.0), isFalse);
-      expect(FractalLodPolicy.genusCardShowsFacts(factsZoom), isTrue);
+      expect(FractalLodPolicy.genusCardShowsFacts(13.9), isFalse);
       expect(FractalLodPolicy.genusCardShowsFacts(14.0), isTrue);
+      expect(
+        FractalLodPolicy.genusCardFactsZoomScale(),
+        FractalLodPolicy.genusCardFullZoomScale,
+      );
     });
 
     test('focusFractalTransform centers tree point in viewport', () {
