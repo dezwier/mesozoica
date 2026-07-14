@@ -89,7 +89,8 @@ class _CardWorldMapState extends State<CardWorldMap> {
             interactionOptions: const InteractionOptions(
               flags: InteractiveFlag.drag |
                   InteractiveFlag.pinchZoom |
-                  InteractiveFlag.doubleTapZoom,
+                  InteractiveFlag.doubleTapZoom |
+                  InteractiveFlag.flingAnimation,
             ),
           ),
           children: [

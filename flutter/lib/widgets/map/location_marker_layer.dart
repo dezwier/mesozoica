@@ -10,25 +10,32 @@ class LocationMarkerLayer extends StatelessWidget {
   const LocationMarkerLayer({
     super.key,
     required this.currentLocation,
-    required this.cameraCenter,
     required this.headingDeg,
     required this.rotateMap,
     required this.mapReady,
-    required this.isCenteredOnCurrent,
     this.onTapCenter,
   });
 
   final LatLng? currentLocation;
-  final LatLng? cameraCenter;
   final double headingDeg;
   final bool rotateMap;
   final bool mapReady;
-  final bool isCenteredOnCurrent;
   final VoidCallback? onTapCenter;
+
+  static const _centeredThresholdMeters = 50;
+
+  bool _isCenteredOnCurrent(LatLng? current, LatLng cameraCenter) {
+    if (current == null) return true;
+    const distance = Distance();
+    return distance(cameraCenter, current) < _centeredThresholdMeters;
+  }
 
   @override
   Widget build(BuildContext context) {
     final primary = Theme.of(context).colorScheme.primary;
+    final cameraCenter = MapCamera.of(context).center;
+    final isCenteredOnCurrent =
+        _isCenteredOnCurrent(currentLocation, cameraCenter);
 
     return MarkerLayer(
       rotate: false,
@@ -66,12 +73,9 @@ class LocationMarkerLayer extends StatelessWidget {
               ),
             ),
           ),
-        if (mapReady &&
-            currentLocation != null &&
-            !isCenteredOnCurrent &&
-            cameraCenter != null)
+        if (mapReady && currentLocation != null && !isCenteredOnCurrent)
           Marker(
-            point: cameraCenter!,
+            point: cameraCenter,
             width: MapConfig.markerSize,
             height: MapConfig.markerSize,
             child: GestureDetector(

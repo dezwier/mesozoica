@@ -72,11 +72,9 @@ class _MapScreenState extends State<MapScreen> {
   void _onMapEvent(fm.MapEvent event) {
     if (!mounted) return;
     try {
-      final zoom = _mapController.camera.zoom;
+      final zoom = event.camera.zoom;
       if (zoom != _zoomLevel) {
         setState(() => _zoomLevel = zoom);
-      } else if (event is fm.MapEventMove) {
-        setState(() {});
       }
     } catch (_) {
       // Map controller not ready yet.
@@ -123,34 +121,6 @@ class _MapScreenState extends State<MapScreen> {
 
   void _onZoomChanged(double zoom) {
     _mapController.move(_mapController.camera.center, zoom);
-  }
-
-  bool _isCenteredOnCurrent(LocationService locationService) {
-    final current = locationService.currentLocation;
-    if (current == null || !_mapReady) return true;
-
-    final center = _mapController.camera.center;
-    const distance = Distance();
-    final meters = distance(center, current);
-    return meters < 50;
-  }
-
-  LatLng? _safeCameraCenter() {
-    if (!_mapReady) return null;
-    try {
-      return _mapController.camera.center;
-    } catch (_) {
-      return null;
-    }
-  }
-
-  fm.LatLngBounds? _safeVisibleBounds() {
-    if (!_mapReady) return null;
-    try {
-      return _mapController.camera.visibleBounds;
-    } catch (_) {
-      return null;
-    }
   }
 
   Future<void> _onSiteTap(SiteSummary site) async {
@@ -203,27 +173,23 @@ class _MapScreenState extends State<MapScreen> {
                   flags: fm.InteractiveFlag.pinchZoom |
                       fm.InteractiveFlag.doubleTapZoom |
                       fm.InteractiveFlag.scrollWheelZoom |
-                      fm.InteractiveFlag.drag,
+                      fm.InteractiveFlag.drag |
+                      fm.InteractiveFlag.flingAnimation,
                 ),
               ),
               children: [
                 const MapTileLayer(),
                 SiteMarkersLayer(
                   sites: mapData.geoSites,
-                  zoomLevel: _zoomLevel,
                   mapReady: _mapReady,
-                  visibleBounds: _safeVisibleBounds(),
                   selectedSite: mapData.selectedSite,
                   onSiteTap: _onSiteTap,
                 ),
                 LocationMarkerLayer(
                   currentLocation: locationService.currentLocation,
-                  cameraCenter: _safeCameraCenter(),
                   headingDeg: locationService.headingDeg,
                   rotateMap: _rotateMap,
                   mapReady: _mapReady,
-                  isCenteredOnCurrent:
-                      _isCenteredOnCurrent(locationService),
                   onTapCenter: () => _centerOnLocation(locationService),
                 ),
               ],

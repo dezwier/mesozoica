@@ -4,23 +4,20 @@ import 'package:latlong2/latlong.dart';
 
 import '../../models/site.dart';
 import 'fossil_marker.dart';
+import 'map_visible_bounds.dart';
 import 'period_marker_color.dart';
 
 class SiteMarkersLayer extends StatelessWidget {
   const SiteMarkersLayer({
     super.key,
     required this.sites,
-    required this.zoomLevel,
     required this.mapReady,
-    required this.visibleBounds,
     required this.selectedSite,
     required this.onSiteTap,
   });
 
   final List<SiteSummary> sites;
-  final double zoomLevel;
   final bool mapReady;
-  final LatLngBounds? visibleBounds;
   final SiteSummary? selectedSite;
   final ValueChanged<SiteSummary> onSiteTap;
 
@@ -28,9 +25,11 @@ class SiteMarkersLayer extends StatelessWidget {
   Widget build(BuildContext context) {
     if (!mapReady) return const SizedBox.shrink();
 
+    final map = MapCamera.of(context);
+    final zoomLevel = map.zoom;
     final scheme = Theme.of(context).colorScheme;
     final showIcon = fossilMarkerShowsIcon(zoomLevel);
-    final bounds = visibleBounds;
+    final bounds = paddedVisibleBounds(map.visibleBounds);
 
     final visibleSites = bounds == null
         ? sites
