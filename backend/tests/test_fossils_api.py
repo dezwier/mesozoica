@@ -6,7 +6,7 @@ from sqlmodel import Session
 
 from app.models.dinosaur import Dinosaur
 from app.models.fossil import Fossil
-from app.models.site_clean import SiteClean
+from app.models.site import Site
 from app.models.site_type import SiteType
 
 
@@ -22,8 +22,8 @@ def _seed_site_type(session: Session) -> SiteType:
     return row
 
 
-def _seed_hell_creek_site(session: Session, site_type: SiteType) -> SiteClean:
-    row = SiteClean(
+def _seed_hell_creek_site(session: Session, site_type: SiteType) -> Site:
+    row = Site(
         site_id=50001,
         latitude=Decimal("46.879700"),
         longitude=Decimal("-110.362600"),
@@ -68,6 +68,7 @@ def _seed_hell_creek_fossil(session: Session, dinosaur: Dinosaur) -> Fossil:
         longitude=Decimal("-110.362600"),
         collection_name="Hell Creek site 12",
         collection_no=50001,
+        site_id=50001,
         collection_dates="1902",
         collection_type="taxonomic",
         occurrence_comments="tooth",

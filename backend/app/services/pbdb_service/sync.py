@@ -9,7 +9,7 @@ from datetime import datetime, timedelta, timezone
 from decimal import Decimal, InvalidOperation
 from typing import Any
 
-from sqlalchemy import case
+from sqlalchemy import case, update
 from sqlmodel import Session, col, func, select
 
 from app.models.dinosaur import Dinosaur
@@ -18,7 +18,7 @@ from app.services.dinosaur_image_service.sync import CURATED_MEDIA_PATH
 from app.services.dinosaur_name_filter import dino_name_match_clause
 from app.services.pbdb_service.client import PbdbClient
 
-logger = logging.getLogger("pbdb_fossil_sync")
+logger = logging.getLogger("fossil_pbdb_sync")
 
 
 @dataclass
@@ -128,7 +128,9 @@ def _record_to_fossil(record: dict[str, Any], *, dinosaur_id: int) -> Fossil | N
         id=occurrence_no,
         dinosaur_id=dinosaur_id,
         identified_name=_parse_optional_str(record.get("identified_name"), max_len=255),
+        identified_no=_parse_optional_int(record.get("identified_no")),
         identified_rank=_parse_optional_str(record.get("identified_rank"), max_len=50),
+        taxon_difference=_parse_optional_str(record.get("difference"), max_len=100),
         accepted_name=_parse_optional_str(record.get("accepted_name"), max_len=255),
         accepted_no=_parse_optional_int(record.get("accepted_no")),
         accepted_rank=_parse_optional_str(record.get("accepted_rank"), max_len=50),
@@ -142,6 +144,10 @@ def _record_to_fossil(record: dict[str, Any], *, dinosaur_id: int) -> Fossil | N
         longitude=_parse_decimal(record.get("lng"), precision=9, scale=6),
         country_code=_parse_optional_str(record.get("cc"), max_len=2),
         state=_parse_optional_str(record.get("state"), max_len=100),
+        county=_parse_optional_str(record.get("county"), max_len=100),
+        altitude_value=_parse_decimal(record.get("altitude_value"), precision=9, scale=2),
+        altitude_unit=_parse_optional_str(record.get("altitude_unit"), max_len=50),
+        protected=_parse_optional_str(record.get("protected"), max_len=20),
         geogcomments=_parse_optional_str(record.get("geogcomments"), max_len=4000),
         geogscale=_parse_optional_str(record.get("geogscale"), max_len=100),
         geoplate=_parse_optional_int(record.get("geoplate")),
@@ -152,14 +158,33 @@ def _record_to_fossil(record: dict[str, Any], *, dinosaur_id: int) -> Fossil | N
         paleomodel=_parse_optional_str(record.get("paleomodel"), max_len=50),
         paleoage=_parse_optional_str(record.get("paleoage"), max_len=50),
         geological_formation=_parse_optional_str(record.get("formation"), max_len=255),
+        geological_group=_parse_optional_str(record.get("geological_group"), max_len=255),
+        geological_member=_parse_optional_str(record.get("member"), max_len=255),
+        strat_zone=_parse_optional_str(record.get("zone"), max_len=100),
+        localsection=_parse_optional_str(record.get("localsection"), max_len=255),
+        localbed=_parse_optional_str(record.get("localbed"), max_len=255),
+        localbedunit=_parse_optional_str(record.get("localbedunit"), max_len=100),
+        localorder=_parse_optional_str(record.get("localorder"), max_len=50),
+        regionalsection=_parse_optional_str(record.get("regionalsection"), max_len=255),
+        regionalbed=_parse_optional_str(record.get("regionalbed"), max_len=255),
+        regionalbedunit=_parse_optional_str(record.get("regionalbedunit"), max_len=100),
+        regionalorder=_parse_optional_str(record.get("regionalorder"), max_len=50),
         min_age_ma=_parse_decimal(record.get("min_ma"), precision=5, scale=2),
         max_age_ma=_parse_decimal(record.get("max_ma"), precision=5, scale=2),
         early_interval=_parse_optional_str(record.get("early_interval"), max_len=100),
+        late_interval=_parse_optional_str(record.get("late_interval"), max_len=100),
         stratcomments=_parse_optional_str(record.get("stratcomments"), max_len=4000),
         stratscale=_parse_optional_str(record.get("stratscale"), max_len=100),
         lithdescript=_parse_optional_str(record.get("lithdescript"), max_len=500),
         lithology1=_parse_optional_str(record.get("lithology1"), max_len=100),
         lithadj1=_parse_optional_str(record.get("lithadj1"), max_len=100),
+        lithification1=_parse_optional_str(record.get("lithification1"), max_len=100),
+        minor_lithology1=_parse_optional_str(record.get("minor_lithology1"), max_len=100),
+        lithology2=_parse_optional_str(record.get("lithology2"), max_len=100),
+        lithadj2=_parse_optional_str(record.get("lithadj2"), max_len=100),
+        lithification2=_parse_optional_str(record.get("lithification2"), max_len=100),
+        minor_lithology2=_parse_optional_str(record.get("minor_lithology2"), max_len=100),
+        fossilsfrom2=_parse_optional_str(record.get("fossilsfrom2"), max_len=10),
         concentration=_parse_optional_str(record.get("concentration"), max_len=100),
         temporal_resolution=_parse_optional_str(record.get("temporal_resolution"), max_len=100),
         collection_name=_parse_optional_str(record.get("collection_name"), max_len=255),
@@ -171,12 +196,28 @@ def _record_to_fossil(record: dict[str, Any], *, dinosaur_id: int) -> Fossil | N
         collectors=_parse_optional_str(record.get("collectors"), max_len=500),
         museum=_parse_optional_str(record.get("museum"), max_len=100),
         research_group=_parse_optional_str(record.get("research_group"), max_len=100),
+        collection_coverage=_parse_optional_str(record.get("collection_coverage"), max_len=100),
+        collection_size=_parse_optional_str(record.get("collection_size"), max_len=100),
+        rock_censused=_parse_optional_str(record.get("rock_censused"), max_len=255),
+        collection_comments=_parse_optional_str(record.get("collection_comments"), max_len=4000),
+        taxonomy_comments=_parse_optional_str(record.get("taxonomy_comments"), max_len=4000),
         occurrence_comments=_parse_optional_str(record.get("occurrence_comments"), max_len=4000),
         composition=_parse_optional_str(record.get("composition"), max_len=100),
         architecture=_parse_optional_str(record.get("architecture"), max_len=100),
+        thickness=_parse_optional_str(record.get("thickness"), max_len=100),
+        reinforcement=_parse_optional_str(record.get("reinforcement"), max_len=100),
+        plant_organ=_parse_optional_str(record.get("plant_organ"), max_len=100),
         fragmentation=_parse_optional_str(record.get("fragmentation"), max_len=100),
         pres_mode=_parse_optional_str(record.get("pres_mode"), max_len=100),
         preservation_quality=_parse_optional_str(record.get("preservation_quality"), max_len=50),
+        preservation_comments=_parse_optional_str(record.get("preservation_comments"), max_len=4000),
+        spatial_resolution=_parse_optional_str(record.get("spatial_resolution"), max_len=100),
+        lagerstatten=_parse_optional_str(record.get("lagerstatten"), max_len=100),
+        orientation=_parse_optional_str(record.get("orientation"), max_len=100),
+        abund_in_sediment=_parse_optional_str(record.get("abund_in_sediment"), max_len=100),
+        sorting=_parse_optional_str(record.get("sorting"), max_len=100),
+        bioerosion=_parse_optional_str(record.get("bioerosion"), max_len=100),
+        encrustation=_parse_optional_str(record.get("encrustation"), max_len=100),
         abund_value=_parse_optional_int(record.get("abund_value")),
         abund_unit=_parse_optional_str(record.get("abund_unit"), max_len=50),
         fossilsfrom1=_parse_optional_str(record.get("fossilsfrom1"), max_len=10),
@@ -191,6 +232,8 @@ def _record_to_fossil(record: dict[str, Any], *, dinosaur_id: int) -> Fossil | N
         component_comments=_parse_optional_str(record.get("component_comments"), max_len=4000),
         diet=_parse_optional_str(record.get("diet"), max_len=100),
         environment=_parse_optional_str(record.get("environment"), max_len=255),
+        tectonic_setting=_parse_optional_str(record.get("tectonic_setting"), max_len=100),
+        geology_comments=_parse_optional_str(record.get("geology_comments"), max_len=4000),
         taxon_environment=_parse_optional_str(record.get("taxon_environment"), max_len=100),
         life_habit=_parse_optional_str(record.get("life_habit"), max_len=255),
         motility=_parse_optional_str(record.get("motility"), max_len=100),
@@ -207,7 +250,9 @@ def _record_to_fossil(record: dict[str, Any], *, dinosaur_id: int) -> Fossil | N
 _FOSSIL_MUTABLE_FIELDS = (
     "dinosaur_id",
     "identified_name",
+    "identified_no",
     "identified_rank",
+    "taxon_difference",
     "accepted_name",
     "accepted_no",
     "accepted_rank",
@@ -221,6 +266,10 @@ _FOSSIL_MUTABLE_FIELDS = (
     "longitude",
     "country_code",
     "state",
+    "county",
+    "altitude_value",
+    "altitude_unit",
+    "protected",
     "geogcomments",
     "geogscale",
     "geoplate",
@@ -231,14 +280,33 @@ _FOSSIL_MUTABLE_FIELDS = (
     "paleomodel",
     "paleoage",
     "geological_formation",
+    "geological_group",
+    "geological_member",
+    "strat_zone",
+    "localsection",
+    "localbed",
+    "localbedunit",
+    "localorder",
+    "regionalsection",
+    "regionalbed",
+    "regionalbedunit",
+    "regionalorder",
     "min_age_ma",
     "max_age_ma",
     "early_interval",
+    "late_interval",
     "stratcomments",
     "stratscale",
     "lithdescript",
     "lithology1",
     "lithadj1",
+    "lithification1",
+    "minor_lithology1",
+    "lithology2",
+    "lithadj2",
+    "lithification2",
+    "minor_lithology2",
+    "fossilsfrom2",
     "concentration",
     "temporal_resolution",
     "collection_name",
@@ -250,12 +318,28 @@ _FOSSIL_MUTABLE_FIELDS = (
     "collectors",
     "museum",
     "research_group",
+    "collection_coverage",
+    "collection_size",
+    "rock_censused",
+    "collection_comments",
+    "taxonomy_comments",
     "occurrence_comments",
     "composition",
     "architecture",
+    "thickness",
+    "reinforcement",
+    "plant_organ",
     "fragmentation",
     "pres_mode",
     "preservation_quality",
+    "preservation_comments",
+    "spatial_resolution",
+    "lagerstatten",
+    "orientation",
+    "abund_in_sediment",
+    "sorting",
+    "bioerosion",
+    "encrustation",
     "abund_value",
     "abund_unit",
     "fossilsfrom1",
@@ -270,6 +354,8 @@ _FOSSIL_MUTABLE_FIELDS = (
     "component_comments",
     "diet",
     "environment",
+    "tectonic_setting",
+    "geology_comments",
     "taxon_environment",
     "life_habit",
     "motility",
@@ -281,6 +367,16 @@ _FOSSIL_MUTABLE_FIELDS = (
     "reid_no",
     "description",
 )
+
+
+def _clear_llm_enrichment_fields(fossil: Fossil) -> None:
+    """Drop LLM-only fields so stale enrichment is not shown after a PBDB refresh."""
+    fossil.llm_rock_type = None
+    fossil.llm_category = None
+    fossil.llm_subcategory = None
+    fossil.llm_preservation_quality = None
+    fossil.llm_completeness = None
+    fossil.llm_enriched = False
 
 
 def _copy_fossil_fields(source: Fossil, target: Fossil) -> None:
@@ -301,6 +397,31 @@ def resolve_since(
     return None
 
 
+def reset_fossils_insert_time(
+    session: Session,
+    *,
+    dinos: list[str] | None = None,
+    dry_run: bool = False,
+) -> int:
+    """Clear fossils_insert_time so an interrupted overwrite run can resume incrementally."""
+    if dry_run:
+        stmt = select(func.count()).select_from(Dinosaur).where(
+            col(Dinosaur.fossils_insert_time).is_not(None)
+        )
+        if dinos:
+            stmt = stmt.where(dino_name_match_clause(dinos))
+        return int(session.exec(stmt).one())
+
+    stmt = update(Dinosaur).values(fossils_insert_time=None)
+    if dinos:
+        stmt = stmt.where(dino_name_match_clause(dinos))
+    else:
+        stmt = stmt.where(col(Dinosaur.fossils_insert_time).is_not(None))
+    result = session.exec(stmt)
+    session.commit()
+    return int(result.rowcount or 0)
+
+
 def _count_dinosaurs(session: Session, *, dinos: list[str] | None) -> int:
     stmt = select(func.count()).select_from(Dinosaur)
     if dinos:
@@ -318,11 +439,14 @@ def _load_dinosaurs(
     stmt = select(Dinosaur)
     if dinos:
         stmt = stmt.where(dino_name_match_clause(dinos))
-    if since is not None and not overwrite:
-        stmt = stmt.where(
-            col(Dinosaur.fossils_insert_time).is_(None)
-            | (col(Dinosaur.fossils_insert_time) < since)
-        )
+    if not overwrite:
+        if since is not None:
+            stmt = stmt.where(
+                col(Dinosaur.fossils_insert_time).is_(None)
+                | (col(Dinosaur.fossils_insert_time) < since)
+            )
+        else:
+            stmt = stmt.where(col(Dinosaur.fossils_insert_time).is_(None))
     custom_image_priority = case(
         (
             col(Dinosaur.main_image_url).is_not(None)
@@ -344,6 +468,7 @@ def _apply_record(existing: Fossil | None, row: Fossil, *, overwrite: bool) -> s
         return "fetch_new"
     if not overwrite:
         return "skip_existing"
+    _clear_llm_enrichment_fields(existing)
     _copy_fossil_fields(row, existing)
     return "fetch_update"
 
@@ -364,13 +489,22 @@ def sync_fossils(
     start = time.monotonic()
     counters = SyncCounters()
     cutoff = resolve_since(since=since, stale_days=stale_days)
+
+    if overwrite and not dry_run:
+        reset_count = reset_fossils_insert_time(session, dinos=dinos)
+        logger.info(
+            "fossil_pbdb_sync: reset fossils_insert_time count=%d dinos=%s",
+            reset_count,
+            dinos,
+        )
+
     total_matching = _count_dinosaurs(session, dinos=dinos)
     dinosaurs = _load_dinosaurs(session, dinos=dinos, since=cutoff, overwrite=overwrite)
-    stale_skipped = total_matching - len(dinosaurs) if cutoff is not None and not overwrite else 0
+    stale_skipped = total_matching - len(dinosaurs) if not overwrite else 0
     total = len(dinosaurs)
 
     logger.info(
-        "pbdb_fossil_sync: starting total_dinosaurs=%d stale_skipped=%d overwrite=%s "
+        "fossil_pbdb_sync: starting total_dinosaurs=%d stale_skipped=%d overwrite=%s "
         "dry_run=%s since=%s dinos=%s",
         total,
         stale_skipped,
@@ -382,7 +516,7 @@ def sync_fossils(
 
     try:
         for index, dinosaur in enumerate(dinosaurs, start=1):
-            prefix = f"pbdb_fossil_sync: [{index}/{total}] {dinosaur.name}"
+            prefix = f"fossil_pbdb_sync: [{index}/{total}] {dinosaur.name}"
             genus_fetched = 0
             genus_updated = 0
             genus_unchanged = 0
@@ -453,7 +587,7 @@ def sync_fossils(
         elapsed_s=elapsed,
     )
     logger.info(
-        "pbdb_fossil_sync: finished dinosaurs=%d stale_skipped=%d fetched=%d updated=%d "
+        "fossil_pbdb_sync: finished dinosaurs=%d stale_skipped=%d fetched=%d updated=%d "
         "unchanged=%d skipped=%d failed=%d overwrite=%s dry_run=%s since=%s elapsed_s=%.1f",
         total,
         stale_skipped,

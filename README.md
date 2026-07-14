@@ -39,10 +39,10 @@ cd backend && railway link
 Run jobs against **Railway Postgres** (uses the linked service's `DATABASE_URL` and secrets):
 
 ```bash
-make run-wikipedia-sync                        # weekly Wikipedia ingest
-make run-wikipedia-sync CRON_EXTRA='--overwrite' # force re-fetch all
-make run-dinosaur-enrich                         # LLM enrichment
-make run-dinosaur-enrich CRON_EXTRA='--overwrite'
+make run-dinosaur-wiki-sync                        # weekly Wikipedia ingest
+make run-dinosaur-wiki-sync CRON_EXTRA='--overwrite' # force re-fetch all
+make run-dinosaur-llm-enrich                         # LLM enrichment
+make run-dinosaur-llm-enrich CRON_EXTRA='--overwrite'
 ```
 
 Do **not** run `python -m app.crons.runner` directly — it is blocked unless executed on Railway or via `make run-*`.

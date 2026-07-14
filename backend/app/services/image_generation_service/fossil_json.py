@@ -22,8 +22,11 @@ _IMAGE_PROMPT_FIELD_ORDER: tuple[str, ...] = (
     "articulated_parts",
     "associated_parts",
     "component_comments",
+    "collection_comments",
+    "preservation_comments",
     "occurrence_comments",
     "feed_pred_traces",
+    "collection_coverage",
     "preservation_quality",
     "fragmentation",
     "composition",
@@ -135,7 +138,7 @@ def _is_informative_value(key: str, value: Any) -> bool:
         stripped = value.strip()
         if not stripped:
             return False
-        if key in {"occurrence_comments", "component_comments"}:
+        if key in {"occurrence_comments", "component_comments", "collection_comments", "preservation_comments"}:
             return _is_informative_comment(stripped)
         if key == "fossilsfrom1" and stripped.upper() in {"Y", "N"}:
             return False

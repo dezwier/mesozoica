@@ -6,8 +6,7 @@ from sqlmodel import Session
 
 from app.models.dinosaur import Dinosaur
 from app.models.fossil import Fossil
-from app.models.fossil_clean import FossilClean
-from app.models.site_clean import SiteClean
+from app.models.site import Site
 from app.models.site_type import SiteType
 
 
@@ -23,8 +22,8 @@ def _seed_site_type(session: Session) -> SiteType:
     return row
 
 
-def _seed_hell_creek_site(session: Session, site_type: SiteType) -> SiteClean:
-    row = SiteClean(
+def _seed_hell_creek_site(session: Session, site_type: SiteType) -> Site:
+    row = Site(
         site_id=50001,
         latitude=Decimal("46.879700"),
         longitude=Decimal("-110.362600"),
@@ -66,27 +65,8 @@ def _seed_hell_creek_fossil(session: Session, dinosaur: Dinosaur) -> Fossil:
         state="Montana",
         geological_formation="Hell Creek Formation",
         collection_no=50001,
+        site_id=50001,
         main_image_url="https://mesozoica-production.up.railway.app/media/fossils/100001.webp",
-    )
-    session.add(row)
-    session.commit()
-    session.refresh(row)
-    return row
-
-
-def _seed_fossil_clean(
-    session: Session,
-    *,
-    fossil: Fossil,
-    site: SiteClean,
-    dinosaur: Dinosaur,
-) -> FossilClean:
-    row = FossilClean(
-        fossil_id=fossil.id,
-        site_id=site.site_id,
-        dinosaur_id=dinosaur.id,
-        name="Tyrannosaurus rex",
-        type="body",
     )
     session.add(row)
     session.commit()
@@ -112,7 +92,7 @@ def test_list_sites_random_stable_order_with_seed(client, session):
     site_type = _seed_site_type(session)
     for site_id in (50001, 50002, 50003):
         session.add(
-            SiteClean(
+            Site(
                 site_id=site_id,
                 formation=f"Formation {site_id}",
                 site_type_id=site_type.id,
@@ -139,7 +119,7 @@ def test_list_sites_random_shuffles_same_formation_sites(client, session):
     site_type = _seed_site_type(session)
     for site_id in (50011, 50012, 50013):
         session.add(
-            SiteClean(
+            Site(
                 site_id=site_id,
                 formation="Shared Formation",
                 site_type_id=site_type.id,
@@ -185,7 +165,7 @@ def test_list_sites_has_custom_image_filter(client, session):
     site_type = _seed_site_type(session)
     _seed_hell_creek_site(session, site_type)
     session.add(
-        SiteClean(
+        Site(
             site_id=50002,
             formation="Unillustrated Formation",
             site_type_id=None,
@@ -219,7 +199,7 @@ def test_get_site_not_found(client):
 def test_get_site_without_rock_type_uses_period_fallback_image(client, session):
     site_type = _seed_site_type(session)
     session.add(
-        SiteClean(
+        Site(
             site_id=50003,
             latitude=Decimal("40.000000"),
             longitude=Decimal("-100.000000"),
@@ -247,7 +227,6 @@ def test_site_related_fossils_and_dinosaurs(client, session):
     site = _seed_hell_creek_site(session, site_type)
     dinosaur = _seed_tyrannosaurus(session)
     fossil = _seed_hell_creek_fossil(session, dinosaur)
-    _seed_fossil_clean(session, fossil=fossil, site=site, dinosaur=dinosaur)
 
     fossils_response = client.get(f"/api/v1/sites/{site.site_id}/fossils")
     assert fossils_response.status_code == 200

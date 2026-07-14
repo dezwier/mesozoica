@@ -1,19 +1,16 @@
-"""Tests for fossil clean table sync orchestration."""
+"""Tests for site table sync orchestration."""
 
 from __future__ import annotations
 
 from datetime import datetime, timezone
 from decimal import Decimal
 
-import pytest
 from sqlmodel import Session, select
 
 from app.models.dinosaur import Dinosaur
 from app.models.fossil import Fossil
-from app.models.fossil_clean import FossilClean
-from app.models.site_clean import SiteClean
-from app.models.site_type import SiteType
-from app.services.fossil_clean_service.sync import sync_clean_tables, sync_exit_code
+from app.models.site import Site
+from app.services.site_service.sync import site_sync_exit_code, sync_sites
 
 
 def _dinosaur(*, name: str = "Tyrannosaurus", page_id: int = 30467) -> Dinosaur:
@@ -54,7 +51,7 @@ def _fossil(
     )
 
 
-def test_sync_builds_clean_tables(session: Session):
+def test_sync_builds_site_table_and_links_fossils(session: Session):
     dinosaur = _dinosaur()
     session.add(dinosaur)
     session.commit()
@@ -71,42 +68,28 @@ def test_sync_builds_clean_tables(session: Session):
     )
     session.commit()
 
-    summary = sync_clean_tables(session)
+    summary = sync_sites(session)
 
-    sites = list(session.exec(select(SiteClean)).all())
-    fossils = list(session.exec(select(FossilClean)).all())
+    sites = list(session.exec(select(Site)).all())
+    fossils = list(session.exec(select(Fossil)).all())
 
     assert summary.counters.sites_written == 2
-    assert summary.counters.fossils_written == 2
+    assert summary.counters.fossils_linked == 2
     assert len(sites) == 2
     assert len(fossils) == 2
-    assert sync_exit_code(summary) == 0
+    assert site_sync_exit_code(summary) == 0
 
-    fossil_row = next(row for row in fossils if row.fossil_id == 139292)
+    fossil_row = next(row for row in fossils if row.id == 139292)
     assert fossil_row.site_id == 9954
     assert fossil_row.dinosaur_id == dinosaur.id
-    assert fossil_row.name == "Tyrannosaurus rex"
-    assert fossil_row.type == "body"
-    assert fossil_row.sub_category == "skull,vertebra"
-    assert fossil_row.preservation_quality == "medium"
-    assert fossil_row.collection_year_min == 1946
-    assert fossil_row.collection_year_max == 1962
-    assert fossil_row.comment is not None
-    assert "partial skull and vertebrae" in fossil_row.comment
 
     site_row = next(row for row in sites if row.site_id == 9954)
     assert site_row.formation == "Scollard"
     assert site_row.rock_type == "sandstone"
     assert site_row.min_age_ma == Decimal("66.00")
     assert site_row.max_age_ma == Decimal("72.20")
-    assert site_row.site_type_id is not None
+    assert site_row.site_type_id is None
     assert site_row.country_code == "CA"
-
-    site_types = list(session.exec(select(SiteType)).all())
-    assert len(site_types) == 1
-    assert site_types[0].period == "cretaceous"
-    assert site_types[0].rock_type == "sandstone"
-    assert site_types[0].id == site_row.site_type_id
 
 
 def test_sync_dry_run_writes_nothing(session: Session):
@@ -117,12 +100,13 @@ def test_sync_dry_run_writes_nothing(session: Session):
     session.add(_fossil(occurrence_no=139292, dinosaur_id=dinosaur.id))
     session.commit()
 
-    summary = sync_clean_tables(session, dry_run=True)
+    summary = sync_sites(session, dry_run=True)
 
     assert summary.dry_run is True
-    assert summary.counters.fossils_written == 1
-    assert list(session.exec(select(FossilClean)).all()) == []
-    assert list(session.exec(select(SiteClean)).all()) == []
+    assert summary.counters.fossils_linked == 1
+    assert list(session.exec(select(Site)).all()) == []
+    fossil = session.exec(select(Fossil).where(Fossil.id == 139292)).one()
+    assert fossil.site_id is None
 
 
 def test_sync_partial_dino_filter(session: Session):
@@ -145,15 +129,15 @@ def test_sync_partial_dino_filter(session: Session):
     )
     session.commit()
 
-    sync_clean_tables(session)
-    sync_clean_tables(session, dinos=["Tyrannosaurus"])
+    sync_sites(session)
+    sync_sites(session, dinos=["Tyrannosaurus"])
 
-    fossils = list(session.exec(select(FossilClean)).all())
+    fossils = list(session.exec(select(Fossil)).all())
     assert len(fossils) == 2
-    trex_row = next(row for row in fossils if row.fossil_id == 139292)
-    allo_row = next(row for row in fossils if row.fossil_id == 200001)
-    assert trex_row.sub_category == "skull,vertebra"
-    assert allo_row.fossil_id == 200001
+    trex_fossil = next(row for row in fossils if row.id == 139292)
+    allo_fossil = next(row for row in fossils if row.id == 200001)
+    assert trex_fossil.site_id == 9954
+    assert allo_fossil.site_id == 2000
 
 
 def test_sync_fails_when_collection_no_missing(session: Session):
@@ -167,6 +151,7 @@ def test_sync_fails_when_collection_no_missing(session: Session):
     session.add(fossil)
     session.commit()
 
-    summary = sync_clean_tables(session)
+    summary = sync_sites(session)
     assert summary.counters.fossils_skipped == 1
-    assert sync_exit_code(summary) == 1
+    assert site_sync_exit_code(summary) == 1
+    assert fossil.site_id is None

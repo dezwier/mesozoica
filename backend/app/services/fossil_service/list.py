@@ -13,8 +13,7 @@ from sqlmodel import Session, col, func as sqlmodel_func, select
 from app.core.exceptions import NotFoundError, ValidationError
 from app.models.dinosaur import Dinosaur
 from app.models.fossil import Fossil
-from app.models.fossil_clean import FossilClean
-from app.models.site_clean import SiteClean
+from app.models.site import Site
 from app.models.site_type import SiteType
 from app.services.dinosaur_image_service.sync import CURATED_MEDIA_PATH as DINOSAUR_CURATED_MEDIA_PATH
 from app.services.site_service.site_type_fallback import effective_site_type
@@ -30,7 +29,7 @@ class FossilRow:
     fossil: Fossil
     dinosaur_name: str
     dinosaur_main_image_url: str | None
-    site: SiteClean | None
+    site: Site | None
     site_type: SiteType | None
 
 
@@ -202,26 +201,22 @@ def _row_from_tuple(row: tuple) -> FossilRow:
 
 
 def _base_select():
-    site_id_expr = func.coalesce(FossilClean.site_id, Fossil.collection_no)
     return (
         select(
             Fossil,
             Dinosaur.name,
             Dinosaur.main_image_url,
-            SiteClean,
+            Site,
             SiteType,
         )
         .join(Dinosaur, col(Fossil.dinosaur_id) == col(Dinosaur.id))
-        .outerjoin(FossilClean, col(FossilClean.fossil_id) == col(Fossil.id))
-        .outerjoin(SiteClean, col(SiteClean.site_id) == site_id_expr)
-        .outerjoin(SiteType, col(SiteClean.site_type_id) == col(SiteType.id))
+        .outerjoin(Site, col(Site.site_id) == col(Fossil.site_id))
+        .outerjoin(SiteType, col(Site.site_type_id) == col(SiteType.id))
     )
 
 
 def _fossil_site_id(row: FossilRow) -> int | None:
-    if row.site is not None:
-        return row.site.site_id
-    return row.fossil.collection_no
+    return row.fossil.site_id
 
 
 def _fossil_site_main_image_url(

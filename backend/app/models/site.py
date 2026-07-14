@@ -9,10 +9,10 @@ from sqlalchemy import Column, ForeignKey, Numeric
 from sqlmodel import Field, SQLModel
 
 
-class SiteClean(SQLModel, table=True):
+class Site(SQLModel, table=True):
     """One row per PBDB collection locality (collection_no)."""
 
-    __tablename__ = "site_clean"
+    __tablename__ = "site"
 
     site_id: int = Field(primary_key=True, description="PBDB collection_no")
     latitude: Optional[Decimal] = Field(default=None, sa_column=Column(Numeric(9, 6)))

@@ -1,12 +1,16 @@
 """
 PBDB fossil occurrence sync job.
 
+With --overwrite, fossils_insert_time is cleared first for the target dinosaurs
+(or all if --dinos is omitted). Each genus is stamped only after it finishes, so
+an interrupted run can be resumed without --overwrite.
+
 Run manually:
-  python -m app.crons.runner --job pbdb_fossil_sync
-  python -m app.crons.runner --job pbdb_fossil_sync --overwrite
-  python -m app.crons.runner --job pbdb_fossil_sync --stale-days 7
-  python -m app.crons.runner --job pbdb_fossil_sync --dinos Tyrannosaurus Giganotosaurus
-  python -m app.crons.runner --job pbdb_fossil_sync --dinos Tyrannosaurus --overwrite
+  python -m app.crons.runner --job fossil_pbdb_sync
+  python -m app.crons.runner --job fossil_pbdb_sync --overwrite
+  python -m app.crons.runner --job fossil_pbdb_sync --stale-days 7
+  python -m app.crons.runner --job fossil_pbdb_sync --dinos Tyrannosaurus Giganotosaurus
+  python -m app.crons.runner --job fossil_pbdb_sync --dinos Tyrannosaurus --overwrite
 """
 
 from __future__ import annotations

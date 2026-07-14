@@ -13,6 +13,7 @@ from app.models.dinosaur import Dinosaur
 from app.models.fossil import Fossil
 from app.services.pbdb_service.sync import (
     build_fossil_description,
+    reset_fossils_insert_time,
     resolve_since,
     sync_exit_code,
     sync_fossils,
@@ -82,6 +83,15 @@ def _tyrannosaurus_record(*, occurrence_no: str = "139292", formation: str = "Sc
         "common_body_parts": "skull, vertebrae",
         "articulated_parts": "some",
         "component_comments": "partial skull material in sandstone matrix",
+        "collection_comments": "single phalanx from shattered skeleton",
+        "preservation_comments": "many isolated elements, dentaries",
+        "collection_coverage": "some macrofossils",
+        "spatial_resolution": "parautochthonous",
+        "lagerstatten": "concentrate",
+        "county": "Red Deer County",
+        "geological_group": "Edmonton Group",
+        "member": "Horseshoe Canyon Formation",
+        "difference": "recombined",
     }
 
 
@@ -153,6 +163,15 @@ def test_sync_inserts_new_fossil(session: Session):
     assert fossil.common_body_parts == "skull, vertebrae"
     assert fossil.articulated_parts == "some"
     assert fossil.component_comments == "partial skull material in sandstone matrix"
+    assert fossil.collection_comments == "single phalanx from shattered skeleton"
+    assert fossil.preservation_comments == "many isolated elements, dentaries"
+    assert fossil.collection_coverage == "some macrofossils"
+    assert fossil.spatial_resolution == "parautochthonous"
+    assert fossil.lagerstatten == "concentrate"
+    assert fossil.county == "Red Deer County"
+    assert fossil.geological_group == "Edmonton Group"
+    assert fossil.geological_member == "Horseshoe Canyon Formation"
+    assert fossil.taxon_difference == "recombined"
     assert fossil.description is None
     assert fossil.accepted_name == "Tyrannosaurus rex"
     assert fossil.accepted_no == 54833
@@ -183,6 +202,12 @@ def test_sync_updates_existing_fossil_when_overwrite(session: Session):
         dinosaur_id=dinosaur.id,
         identified_name="Tyrannosaurus rex",
         geological_formation="Old Formation",
+        llm_enriched=True,
+        llm_rock_type="shale",
+        llm_category="body_fossil",
+        llm_subcategory="skull",
+        llm_preservation_quality="moderate",
+        llm_completeness="partial",
     )
     session.add(existing)
     session.commit()
@@ -194,6 +219,12 @@ def test_sync_updates_existing_fossil_when_overwrite(session: Session):
     fossil = session.get(Fossil, 139292)
     assert fossil is not None
     assert fossil.geological_formation == "Scollard"
+    assert fossil.llm_enriched is False
+    assert fossil.llm_rock_type is None
+    assert fossil.llm_category is None
+    assert fossil.llm_subcategory is None
+    assert fossil.llm_preservation_quality is None
+    assert fossil.llm_completeness is None
     assert summary.counters.updated == 1
     assert summary.counters.fetched == 0
 
@@ -436,6 +467,98 @@ def test_sync_since_filter_bypassed_with_overwrite(session: Session):
     if updated.tzinfo is None:
         updated = updated.replace(tzinfo=timezone.utc)
     assert updated > recent
+
+
+def test_overwrite_resets_fossils_insert_time_for_all(session: Session):
+    recent = datetime(2026, 7, 11, 12, 0, tzinfo=timezone.utc)
+    tyranno = _dinosaur(name="Tyrannosaurus", page_id=1)
+    tyranno.fossils_insert_time = recent
+    giga = _dinosaur(name="Giganotosaurus", page_id=2)
+    giga.fossils_insert_time = recent
+    session.add(tyranno)
+    session.add(giga)
+    session.commit()
+
+    assert reset_fossils_insert_time(session) == 2
+    session.refresh(tyranno)
+    session.refresh(giga)
+    assert tyranno.fossils_insert_time is None
+    assert giga.fossils_insert_time is None
+
+
+def test_overwrite_resets_fossils_insert_time_for_dino_filter(session: Session):
+    recent = datetime(2026, 7, 11, 12, 0, tzinfo=timezone.utc)
+    tyranno = _dinosaur(name="Tyrannosaurus", page_id=1)
+    tyranno.fossils_insert_time = recent
+    giga = _dinosaur(name="Giganotosaurus", page_id=2)
+    giga.fossils_insert_time = recent
+    session.add(tyranno)
+    session.add(giga)
+    session.commit()
+
+    assert reset_fossils_insert_time(session, dinos=["Tyrannosaurus"]) == 1
+    session.refresh(tyranno)
+    session.refresh(giga)
+    assert tyranno.fossils_insert_time is None
+    assert giga.fossils_insert_time is not None
+    if giga.fossils_insert_time.tzinfo is None:
+        assert giga.fossils_insert_time.replace(tzinfo=timezone.utc) == recent
+    else:
+        assert giga.fossils_insert_time == recent
+
+
+def test_overwrite_reset_enables_resume_without_overwrite(session: Session):
+    recent = datetime(2026, 7, 11, 12, 0, tzinfo=timezone.utc)
+    tyranno = _dinosaur(name="Tyrannosaurus", page_id=1)
+    tyranno.fossils_insert_time = recent
+    giga = _dinosaur(name="Giganotosaurus", page_id=2)
+    giga.fossils_insert_time = recent
+    session.add(tyranno)
+    session.add(giga)
+    session.commit()
+    session.refresh(tyranno)
+    session.refresh(giga)
+
+    def iter_occurrences(*, base_name: str):
+        if base_name == "Tyrannosaurus":
+            yield _tyrannosaurus_record()
+            return
+        raise RuntimeError("simulated interrupt")
+
+    client = MagicMock()
+    client.iter_occurrences.side_effect = iter_occurrences
+    summary = sync_fossils(session, client=client, dry_run=False, overwrite=True)
+    session.commit()
+    session.refresh(tyranno)
+    session.refresh(giga)
+
+    assert summary.counters.failed == 1
+    assert tyranno.fossils_insert_time is not None
+    assert giga.fossils_insert_time is None
+
+    queried: list[str] = []
+
+    def iter_occurrences(*, base_name: str):
+        queried.append(base_name)
+        if base_name == "Giganotosaurus":
+            yield {
+                **_tyrannosaurus_record(occurrence_no="999002"),
+                "primary_name": "Giganotosaurus",
+                "identified_name": "Giganotosaurus carolinii",
+            }
+        return
+        yield  # pragma: no cover
+
+    resume_client = MagicMock()
+    resume_client.iter_occurrences.side_effect = iter_occurrences
+    summary = sync_fossils(session, client=resume_client, dry_run=False, overwrite=False)
+    session.commit()
+
+    assert queried == ["Giganotosaurus"]
+    assert summary.total_dinosaurs == 1
+    assert session.get(Fossil, 999002) is not None
+    session.refresh(giga)
+    assert giga.fossils_insert_time is not None
 
 
 def test_resolve_since_from_stale_days():

@@ -6,7 +6,7 @@ from pathlib import Path
 
 from sqlmodel import Session
 
-from app.models.site_clean import SiteClean
+from app.models.site import Site
 from app.models.site_type import SiteType
 from app.services.site_type_image_generation_service.generate import _select_candidates
 
@@ -70,8 +70,8 @@ def test_site_type_candidates_prioritize_by_site_count(session: Session, tmp_pat
     assert rare.id is not None
 
     for site_id in range(100, 103):
-        session.add(SiteClean(site_id=site_id, site_type_id=popular.id))
-    session.add(SiteClean(site_id=200, site_type_id=rare.id))
+        session.add(Site(site_id=site_id, site_type_id=popular.id))
+    session.add(Site(site_id=200, site_type_id=rare.id))
     session.commit()
 
     candidates, skipped_existing = _select_candidates(

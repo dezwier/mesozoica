@@ -26,7 +26,9 @@ class Fossil(SQLModel, table=True):
 
     # Taxonomy
     identified_name: Optional[str] = Field(default=None, max_length=255)
+    identified_no: Optional[int] = Field(default=None)
     identified_rank: Optional[str] = Field(default=None, max_length=50)
+    taxon_difference: Optional[str] = Field(default=None, max_length=100)
     accepted_name: Optional[str] = Field(default=None, max_length=255)
     accepted_no: Optional[int] = Field(default=None)
     accepted_rank: Optional[str] = Field(default=None, max_length=50)
@@ -42,6 +44,10 @@ class Fossil(SQLModel, table=True):
     longitude: Optional[Decimal] = Field(default=None, sa_column=Column(Numeric(9, 6)))
     country_code: Optional[str] = Field(default=None, max_length=2)
     state: Optional[str] = Field(default=None, max_length=100)
+    county: Optional[str] = Field(default=None, max_length=100)
+    altitude_value: Optional[Decimal] = Field(default=None, sa_column=Column(Numeric(9, 2)))
+    altitude_unit: Optional[str] = Field(default=None, max_length=50)
+    protected: Optional[str] = Field(default=None, max_length=20)
     geogcomments: Optional[str] = Field(default=None, sa_column=Column(Text))
     geogscale: Optional[str] = Field(default=None, max_length=100)
     geoplate: Optional[int] = Field(default=None)
@@ -54,16 +60,46 @@ class Fossil(SQLModel, table=True):
 
     # Stratigraphy
     geological_formation: Optional[str] = Field(default=None, max_length=255)
+    geological_group: Optional[str] = Field(default=None, max_length=255)
+    geological_member: Optional[str] = Field(default=None, max_length=255)
+    strat_zone: Optional[str] = Field(default=None, max_length=100)
+    localsection: Optional[str] = Field(default=None, max_length=255)
+    localbed: Optional[str] = Field(default=None, max_length=255)
+    localbedunit: Optional[str] = Field(default=None, max_length=100)
+    localorder: Optional[str] = Field(default=None, max_length=50)
+    regionalsection: Optional[str] = Field(default=None, max_length=255)
+    regionalbed: Optional[str] = Field(default=None, max_length=255)
+    regionalbedunit: Optional[str] = Field(default=None, max_length=100)
+    regionalorder: Optional[str] = Field(default=None, max_length=50)
     min_age_ma: Optional[Decimal] = Field(default=None, sa_column=Column(Numeric(5, 2)))
     max_age_ma: Optional[Decimal] = Field(default=None, sa_column=Column(Numeric(5, 2)))
     early_interval: Optional[str] = Field(default=None, max_length=100)
+    late_interval: Optional[str] = Field(default=None, max_length=100)
     stratcomments: Optional[str] = Field(default=None, sa_column=Column(Text))
     stratscale: Optional[str] = Field(default=None, max_length=100)
     lithdescript: Optional[str] = Field(default=None, max_length=500)
     lithology1: Optional[str] = Field(default=None, max_length=100)
     lithadj1: Optional[str] = Field(default=None, max_length=100)
+    lithification1: Optional[str] = Field(default=None, max_length=100)
+    minor_lithology1: Optional[str] = Field(default=None, max_length=100)
+    lithology2: Optional[str] = Field(default=None, max_length=100)
+    lithadj2: Optional[str] = Field(default=None, max_length=100)
+    lithification2: Optional[str] = Field(default=None, max_length=100)
+    minor_lithology2: Optional[str] = Field(default=None, max_length=100)
+    fossilsfrom2: Optional[str] = Field(default=None, max_length=10)
     concentration: Optional[str] = Field(default=None, max_length=100)
     temporal_resolution: Optional[str] = Field(default=None, max_length=100)
+
+    site_id: Optional[int] = Field(
+        default=None,
+        sa_column=Column(
+            "site_id",
+            ForeignKey("site.site_id", ondelete="SET NULL"),
+            nullable=True,
+            index=True,
+        ),
+        description="PBDB collection_no; set by site_sync",
+    )
 
     # Collection
     collection_name: Optional[str] = Field(default=None, max_length=255)
@@ -75,14 +111,30 @@ class Fossil(SQLModel, table=True):
     collectors: Optional[str] = Field(default=None, max_length=500)
     museum: Optional[str] = Field(default=None, max_length=100)
     research_group: Optional[str] = Field(default=None, max_length=100)
+    collection_coverage: Optional[str] = Field(default=None, max_length=100)
+    collection_size: Optional[str] = Field(default=None, max_length=100)
+    rock_censused: Optional[str] = Field(default=None, max_length=255)
+    collection_comments: Optional[str] = Field(default=None, sa_column=Column(Text))
+    taxonomy_comments: Optional[str] = Field(default=None, sa_column=Column(Text))
 
     # Occurrence detail
     occurrence_comments: Optional[str] = Field(default=None, sa_column=Column(Text))
     composition: Optional[str] = Field(default=None, max_length=100)
     architecture: Optional[str] = Field(default=None, max_length=100)
+    thickness: Optional[str] = Field(default=None, max_length=100)
+    reinforcement: Optional[str] = Field(default=None, max_length=100)
+    plant_organ: Optional[str] = Field(default=None, max_length=100)
     fragmentation: Optional[str] = Field(default=None, max_length=100)
     pres_mode: Optional[str] = Field(default=None, max_length=100)
     preservation_quality: Optional[str] = Field(default=None, max_length=50)
+    preservation_comments: Optional[str] = Field(default=None, sa_column=Column(Text))
+    spatial_resolution: Optional[str] = Field(default=None, max_length=100)
+    lagerstatten: Optional[str] = Field(default=None, max_length=100)
+    orientation: Optional[str] = Field(default=None, max_length=100)
+    abund_in_sediment: Optional[str] = Field(default=None, max_length=100)
+    sorting: Optional[str] = Field(default=None, max_length=100)
+    bioerosion: Optional[str] = Field(default=None, max_length=100)
+    encrustation: Optional[str] = Field(default=None, max_length=100)
     abund_value: Optional[int] = Field(default=None)
     abund_unit: Optional[str] = Field(default=None, max_length=50)
     fossilsfrom1: Optional[str] = Field(default=None, max_length=10)
@@ -101,6 +153,8 @@ class Fossil(SQLModel, table=True):
     # Ecology
     diet: Optional[str] = Field(default=None, max_length=100)
     environment: Optional[str] = Field(default=None, max_length=255)
+    tectonic_setting: Optional[str] = Field(default=None, max_length=100)
+    geology_comments: Optional[str] = Field(default=None, sa_column=Column(Text))
     taxon_environment: Optional[str] = Field(default=None, max_length=100)
     life_habit: Optional[str] = Field(default=None, max_length=255)
     motility: Optional[str] = Field(default=None, max_length=100)
@@ -116,3 +170,11 @@ class Fossil(SQLModel, table=True):
     # Legacy composed narrative (no longer populated on sync)
     description: Optional[str] = Field(default=None, sa_column=Column(Text))
     main_image_url: Optional[str] = Field(default=None, max_length=2048)
+
+    # LLM enrichment (fossil_llm_enrich cron)
+    llm_rock_type: Optional[str] = Field(default=None, max_length=64)
+    llm_category: Optional[str] = Field(default=None, max_length=32)
+    llm_subcategory: Optional[str] = Field(default=None, max_length=64)
+    llm_preservation_quality: Optional[str] = Field(default=None, max_length=32)
+    llm_completeness: Optional[str] = Field(default=None, max_length=32)
+    llm_enriched: bool = Field(default=False, index=True)

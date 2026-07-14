@@ -99,6 +99,18 @@ class Settings(BaseSettings):
         default=500,
         validation_alias="DINOSAUR_ENRICH_REQUEST_DELAY_MS",
     )
+    fossil_enrich_max_records: int | None = Field(
+        default=None,
+        validation_alias="FOSSIL_ENRICH_MAX_RECORDS",
+    )
+    fossil_enrich_failure_threshold: float = Field(
+        default=0.10,
+        validation_alias="FOSSIL_ENRICH_FAILURE_THRESHOLD",
+    )
+    fossil_enrich_request_delay_ms: int = Field(
+        default=500,
+        validation_alias="FOSSIL_ENRICH_REQUEST_DELAY_MS",
+    )
 
     dinosaur_images_dir: str = Field(
         default="../dinosaur-images",
@@ -205,6 +217,13 @@ class Settings(BaseSettings):
     @field_validator("dinosaur_enrich_max_records", mode="before")
     @classmethod
     def empty_enrich_max_records_is_none(cls, value: Any) -> Any:
+        if value in ("", None):
+            return None
+        return value
+
+    @field_validator("fossil_enrich_max_records", mode="before")
+    @classmethod
+    def empty_fossil_enrich_max_records_is_none(cls, value: Any) -> Any:
         if value in ("", None):
             return None
         return value

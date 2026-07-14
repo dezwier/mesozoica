@@ -11,16 +11,16 @@ Every major element in the game exists as a collectible, flippable "Card" or Ite
  * **Dinosaurs (Card 4):** The ultimate reward. Fully assembled, historically accurate species populated entirely via automated live data snapshots.
 ## 3. Data Pipeline & Wikipedia Engine
 To maintain absolute scientific realism, the database relies on an automated scraping engine rather than manual data entry.
- * **The Wikipedia API Script:** A Python cron job (`app/crons/jobs/wikipedia_dinosaur_sync.py`) that weekly queries `Category:Dinosaur_genera` on English Wikipedia.
+ * **The Wikipedia API Script:** A Python cron job (`app/crons/jobs/dinosaur_wiki_sync.py`) that weekly queries `Category:Dinosaur_genera` on English Wikipedia.
  * **Data Extraction:** Parses full Parsoid HTML articles, infobox quick-facts (temporal range, taxonomy, diet), and lead paragraphs. Short descriptions are **not** set here — they are produced by the LLM enrichment cron.
  * **Cladogram Parsing:** Extracts phylogenetic data from the infobox biota table (Kingdom → Genus, plus Species when present) into JSON for the Tree of Life.
  * **Lead Image:** Wikipedia sync fetches the page lead image via MediaWiki `pageimages` and stores it in `main_image_url` on insert; existing non-null URLs are preserved on update. Card fronts use **curated** images only (see below); Wikipedia URLs are not shown on the card front.
  * **Curated Card Images:** Source files live in repo `dinosaur-images/` (filename stem = `dinosaur.name`, e.g. `Tyrannosaurus.webp`). `make sync-dinosaur-images` uploads files to a Railway volume via `railway volume files upload` and sets `main_image_url` to `{PUBLIC_BASE_URL}/media/dinosaurs/{filename}`. The FastAPI backend serves files from the mounted volume at `/media/dinosaurs/`.
  * **Snapshot Schema:** The sync can be rerun safely — it skips up-to-date records, refreshes stale ones by Wikipedia revision date, preserves `insert_date` and `main_image_url` on updates, and resets `llm_enriched=false` when article content is refreshed.
- * **Manual run:** `make run-wikipedia-sync` or `python -m app.crons.runner --job wikipedia_dinosaur_sync`
+ * **Manual run:** `make run-dinosaur-wiki-sync` or `python -m app.crons.runner --job dinosaur_wiki_sync`
  * **Curated image sync:** `make sync-dinosaur-images` or `python -m scripts.sync_dinosaur_images` (supports `--dry-run`)
  * **The LLM Enrichment Engine:** A second Python cron (`app/crons/jobs/dinosaur_llm_enrich.py`) runs after the Wikipedia sync. For each dinosaur with `llm_enriched=false`, it sends the full record (including article text) to Google Gemini and fills `length`, `mass`, `location`, `diet_type`, and a catchy one-sentence `short_description`. Sets `llm_enriched=true` on success. Re-runs automatically when Wikipedia sync refreshes a stale article.
- * **LLM manual run:** `make run-dinosaur-enrich` or `python -m app.crons.runner --job dinosaur_llm_enrich`
+ * **LLM manual run:** `make run-dinosaur-llm-enrich` or `python -m app.crons.runner --job dinosaur_llm_enrich`
 ## 4. App Architecture & Screens
 ### Primary navigation (v0)
 Four bottom tabs using an `IndexedStack` shell (mesosoica-style brown/sandstone Material 3 theme):
@@ -81,7 +81,7 @@ mesozoica/
 ├── dinosaur-images/  # Curated card images (gitignored binaries; synced to Railway volume)
 ├── flutter/          # Flutter mobile app (iOS & Android)
 │   └── lib/          # config/, controllers/, models/, screens/, services/, shell/, theme/, widgets/
-├── Makefile          # make run-backend, run-wikipedia-sync, test-all
+├── Makefile          # make run-backend, run-dinosaur-wiki-sync, test-all
 ├── railway.toml      # Monorepo Railway service roots
 └── prd.md
 ```
@@ -119,8 +119,8 @@ mesozoica/
 make backend-install
 cp backend/.env.example backend/.env   # set DATABASE_URL to Railway Postgres or any PostgreSQL
 make run-backend                       # http://localhost:8000/docs
-make run-wikipedia-sync                # one-off Wikipedia dinosaur ingest
-make run-dinosaur-enrich               # one-off Gemini dinosaur enrichment
+make run-dinosaur-wiki-sync                # one-off Wikipedia dinosaur ingest
+make run-dinosaur-llm-enrich               # one-off Gemini dinosaur enrichment
 make sync-dinosaur-images              # upload curated card images to Railway volume + DB
 
 cd flutter && flutter pub get

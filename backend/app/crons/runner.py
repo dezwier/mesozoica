@@ -4,7 +4,7 @@ Single entrypoint for all scheduled jobs.
   python -m app.crons.runner
     Run every enabled job whose cron schedule matches the current minute (UTC).
 
-  python -m app.crons.runner --job wikipedia_dinosaur_sync
+  python -m app.crons.runner --job dinosaur_wiki_sync
     Run one job once (ignores schedule); useful for debugging.
 
 Platform note: Railway cronSchedule must invoke this runner at least as often as the
@@ -26,11 +26,13 @@ from app.services.dinosaur_name_filter import parse_dino_names
 from app.crons.jobs import (
     dinosaur_image_generate,
     dinosaur_llm_enrich,
-    fossil_clean_sync,
+    site_sync,
+    site_type_sync,
     fossil_image_generate,
-    pbdb_fossil_sync,
+    fossil_llm_enrich,
+    fossil_pbdb_sync,
     site_type_image_generate,
-    wikipedia_dinosaur_sync,
+    dinosaur_wiki_sync,
 )
 from app.crons.logging_config import configure_cron_logging
 from app.crons.railway_guard import require_railway_database
@@ -47,9 +49,9 @@ def cron_matches_now(schedule: str, now: datetime) -> bool:
     return bool(croniter.match(schedule, n))
 
 
-def _run_wikipedia_dinosaur_sync(params: dict[str, Any]) -> int:
+def _run_dinosaur_wiki_sync(params: dict[str, Any]) -> int:
     max_pages = params.get("max_pages")
-    return wikipedia_dinosaur_sync.run_sync_job(
+    return dinosaur_wiki_sync.run_sync_job(
         dry_run=bool(params.get("dry_run", False)),
         overwrite=bool(params.get("overwrite", False)),
         max_pages=int(max_pages) if max_pages is not None else None,
@@ -61,6 +63,16 @@ def _run_wikipedia_dinosaur_sync(params: dict[str, Any]) -> int:
 def _run_dinosaur_llm_enrich(params: dict[str, Any]) -> int:
     max_records = params.get("max_records")
     return dinosaur_llm_enrich.run_enrich_job(
+        dry_run=bool(params.get("dry_run", False)),
+        overwrite=bool(params.get("overwrite", False)),
+        max_records=int(max_records) if max_records is not None else None,
+        dinos=params.get("dinos"),
+    )
+
+
+def _run_fossil_llm_enrich(params: dict[str, Any]) -> int:
+    max_records = params.get("max_records")
+    return fossil_llm_enrich.run_enrich_job(
         dry_run=bool(params.get("dry_run", False)),
         overwrite=bool(params.get("overwrite", False)),
         max_records=int(max_records) if max_records is not None else None,
@@ -80,9 +92,9 @@ def _parse_since(raw: Any) -> datetime | None:
     return parsed if parsed.tzinfo else parsed.replace(tzinfo=timezone.utc)
 
 
-def _run_pbdb_fossil_sync(params: dict[str, Any]) -> int:
+def _run_fossil_pbdb_sync(params: dict[str, Any]) -> int:
     stale_days = params.get("stale_days")
-    return pbdb_fossil_sync.run_sync_job(
+    return fossil_pbdb_sync.run_sync_job(
         dry_run=bool(params.get("dry_run", False)),
         overwrite=bool(params.get("overwrite", False)),
         dinos=params.get("dinos"),
@@ -136,21 +148,30 @@ def _run_site_type_image_generate(params: dict[str, Any]) -> int:
     )
 
 
-def _run_fossil_clean_sync(params: dict[str, Any]) -> int:
-    return fossil_clean_sync.run_sync_job(
+def _run_site_sync(params: dict[str, Any]) -> int:
+    return site_sync.run_sync_job(
+        dry_run=bool(params.get("dry_run", False)),
+        dinos=params.get("dinos"),
+    )
+
+
+def _run_site_type_sync(params: dict[str, Any]) -> int:
+    return site_type_sync.run_sync_job(
         dry_run=bool(params.get("dry_run", False)),
         dinos=params.get("dinos"),
     )
 
 
 _JOB_HANDLERS: dict[str, Callable[[dict[str, Any]], int]] = {
-    "wikipedia_dinosaur_sync": _run_wikipedia_dinosaur_sync,
+    "dinosaur_wiki_sync": _run_dinosaur_wiki_sync,
     "dinosaur_llm_enrich": _run_dinosaur_llm_enrich,
-    "pbdb_fossil_sync": _run_pbdb_fossil_sync,
+    "fossil_llm_enrich": _run_fossil_llm_enrich,
+    "fossil_pbdb_sync": _run_fossil_pbdb_sync,
     "dinosaur_image_generate": _run_dinosaur_image_generate,
     "fossil_image_generate": _run_fossil_image_generate,
     "site_type_image_generate": _run_site_type_image_generate,
-    "fossil_clean_sync": _run_fossil_clean_sync,
+    "site_sync": _run_site_sync,
+    "site_type_sync": _run_site_type_sync,
 }
 
 
@@ -197,14 +218,15 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--job",
         metavar="ID",
-        help="Run a single job by id (ignores schedule). E.g. wikipedia_dinosaur_sync.",
+        help="Run a single job by id (ignores schedule). E.g. dinosaur_wiki_sync.",
     )
     parser.add_argument(
         "--overwrite",
         action="store_true",
-        help="Re-fetch Wikipedia records even when already up to date (wikipedia_dinosaur_sync). "
-        "Re-run LLM enrichment even when llm_enriched=true (dinosaur_llm_enrich). "
-        "Re-fetch PBDB fossil occurrences even when already synced (pbdb_fossil_sync).",
+        help="Re-fetch Wikipedia records even when already up to date (dinosaur_wiki_sync). "
+        "Re-run LLM enrichment even when llm_enriched=true (dinosaur_llm_enrich, fossil_llm_enrich). "
+        "Re-fetch PBDB fossil occurrences even when already synced (fossil_pbdb_sync); "
+        "also clears fossils_insert_time first so an interrupted run can resume without --overwrite.",
     )
     parser.add_argument(
         "--category",
@@ -224,13 +246,13 @@ def main(argv: list[str] | None = None) -> int:
         metavar="N",
         type=int,
         help="Only sync dinosaurs whose fossils_insert_time is null or older than N days "
-        "(pbdb_fossil_sync; ignored with --overwrite).",
+        "(fossil_pbdb_sync; ignored with --overwrite).",
     )
     parser.add_argument(
         "--since",
         metavar="ISO8601",
         help="Only sync dinosaurs whose fossils_insert_time is null or before this UTC "
-        "timestamp (pbdb_fossil_sync; ignored with --overwrite).",
+        "timestamp (fossil_pbdb_sync; ignored with --overwrite).",
     )
     parser.add_argument(
         "--max-items",
@@ -250,7 +272,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--dry-run",
         action="store_true",
-        help="Preview work without writing (image generation jobs, fossil_clean_sync).",
+        help="Preview work without writing (image generation jobs, site_sync, site_type_sync).",
     )
     args = parser.parse_args(argv)
 

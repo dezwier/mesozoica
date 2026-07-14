@@ -6,9 +6,9 @@ from collections import defaultdict
 
 from sqlmodel import Session, col, select
 
-from app.models.site_clean import SiteClean
+from app.models.site import Site
 from app.models.site_type import SiteType
-from app.services.fossil_clean_service.rules import period_for_ages
+from app.services.site_service.rules import period_for_ages
 
 
 def load_site_types_by_period(session: Session) -> dict[str, list[SiteType]]:
@@ -42,12 +42,12 @@ def pick_site_type_for_period(
     return candidates[site_id % len(candidates)]
 
 
-def _rock_type_missing(site: SiteClean) -> bool:
+def _rock_type_missing(site: Site) -> bool:
     return not (site.rock_type or "").strip()
 
 
 def fallback_site_type(
-    site: SiteClean,
+    site: Site,
     site_type: SiteType | None,
     types_by_period: dict[str, list[SiteType]],
 ) -> SiteType | None:
@@ -66,7 +66,7 @@ def fallback_site_type(
 
 
 def effective_site_type(
-    site: SiteClean,
+    site: Site,
     site_type: SiteType | None,
     types_by_period: dict[str, list[SiteType]],
 ) -> SiteType | None:

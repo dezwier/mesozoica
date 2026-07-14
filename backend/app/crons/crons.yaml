@@ -4,7 +4,7 @@
 # job granularity below. Use "0 * * * *" on the platform for weekly jobs.
 
 jobs:
-  - id: wikipedia_dinosaur_sync
+  - id: dinosaur_wiki_sync
     enabled: false
     schedule: "0 3 * * 0"
     params:
@@ -20,13 +20,21 @@ jobs:
       overwrite: false
       max_records: null
 
-  - id: pbdb_fossil_sync
+  - id: fossil_pbdb_sync
     enabled: false
     schedule: "0 5 * * 0"
     params:
       dry_run: false
       overwrite: false
       stale_days: 7
+
+  - id: fossil_llm_enrich
+    enabled: false
+    schedule: "0 6 * * 0"
+    params:
+      dry_run: false
+      overwrite: false
+      max_records: null
 
   - id: dinosaur_image_generate
     enabled: false
@@ -49,8 +57,14 @@ jobs:
       dry_run: false
       max_items: null
 
-  - id: fossil_clean_sync
+  - id: site_sync
     enabled: false
     schedule: "0 9 * * 0"
+    params:
+      dry_run: false
+
+  - id: site_type_sync
+    enabled: false
+    schedule: "30 9 * * 0"
     params:
       dry_run: false

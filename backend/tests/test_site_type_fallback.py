@@ -2,7 +2,7 @@
 
 from decimal import Decimal
 
-from app.models.site_clean import SiteClean
+from app.models.site import Site
 from app.models.site_type import SiteType
 from app.services.site_service.site_type_fallback import (
     effective_site_type,
@@ -51,7 +51,7 @@ def test_pick_site_type_for_period_is_deterministic_per_site_id():
 
 
 def test_effective_site_type_uses_period_match_when_rock_type_missing():
-    site = SiteClean(
+    site = Site(
         site_id=50001,
         min_age_ma=Decimal("72.00"),
         max_age_ma=Decimal("84.00"),
@@ -78,7 +78,7 @@ def test_effective_site_type_uses_period_match_when_rock_type_missing():
 
 
 def test_site_row_to_summary_applies_fallback_image():
-    site = SiteClean(
+    site = Site(
         site_id=50001,
         min_age_ma=Decimal("72.00"),
         max_age_ma=Decimal("84.00"),

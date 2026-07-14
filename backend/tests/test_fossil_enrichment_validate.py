@@ -1,0 +1,72 @@
+"""Tests for fossil enrichment validation."""
+
+import pytest
+
+from app.services.fossil_enrichment_service.validate import validate_llm_enrichment
+
+
+def test_validate_llm_enrichment_accepts_valid_payload():
+    raw = {
+        "llm_rock_type": "sandstone",
+        "llm_category": "body_fossil",
+        "llm_subcategory": "skull",
+        "llm_preservation_quality": "good",
+        "llm_completeness": "partial",
+    }
+    result = validate_llm_enrichment(raw)
+    assert result.llm_rock_type == "sandstone"
+    assert result.llm_category == "body_fossil"
+    assert result.llm_subcategory == "skull"
+    assert result.llm_preservation_quality == "good"
+    assert result.llm_completeness == "partial"
+
+
+def test_validate_llm_enrichment_defaults_missing_keys_to_unknown():
+    result = validate_llm_enrichment({})
+    assert result.llm_rock_type == "unknown"
+    assert result.llm_category == "unknown"
+    assert result.llm_subcategory == "unknown"
+    assert result.llm_preservation_quality == "unknown"
+    assert result.llm_completeness == "unknown"
+
+
+def test_validate_llm_enrichment_coerces_snake_case():
+    raw = {
+        "llm_rock_type": "Volcanic Ash",
+        "llm_category": "trace_fossil",
+        "llm_subcategory": "Footprints and Trackways",
+        "llm_preservation_quality": "Very Poor",
+        "llm_completeness": "Trace Only",
+    }
+    result = validate_llm_enrichment(raw)
+    assert result.llm_rock_type == "volcanic_ash"
+    assert result.llm_category == "trace_fossil"
+    assert result.llm_subcategory == "footprints_and_trackways"
+    assert result.llm_preservation_quality == "very_poor"
+    assert result.llm_completeness == "trace_only"
+
+
+def test_validate_llm_enrichment_rejects_invalid_enum():
+    with pytest.raises(ValueError, match="invalid llm_rock_type"):
+        validate_llm_enrichment({"llm_rock_type": "granite"})
+
+
+def test_validate_llm_enrichment_rejects_body_trace_mismatch():
+    with pytest.raises(ValueError, match="body_fossil cannot have trace subcategory"):
+        validate_llm_enrichment(
+            {
+                "llm_category": "body_fossil",
+                "llm_subcategory": "coprolites",
+            }
+        )
+
+
+def test_validate_llm_enrichment_trace_completeness_constraint():
+    with pytest.raises(ValueError, match="trace_fossil completeness"):
+        validate_llm_enrichment(
+            {
+                "llm_category": "trace_fossil",
+                "llm_subcategory": "coprolites",
+                "llm_completeness": "partial",
+            }
+        )

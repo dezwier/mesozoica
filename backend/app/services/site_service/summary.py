@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from decimal import Decimal
 
-from app.models.site_clean import SiteClean
+from app.models.site import Site
 from app.models.site_type import SiteType
 from app.schemas.site import SiteSummary
 from app.services.site_service.site_type_fallback import effective_site_type
@@ -13,7 +13,7 @@ from app.services.site_service.site_type_fallback import effective_site_type
 
 @dataclass(frozen=True)
 class SiteRow:
-    site: SiteClean
+    site: Site
     site_type: SiteType | None
 
 

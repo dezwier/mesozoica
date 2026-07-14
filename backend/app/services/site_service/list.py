@@ -9,7 +9,7 @@ from sqlalchemy import func, or_
 from sqlmodel import Session, col, func as sqlmodel_func, select
 
 from app.core.exceptions import NotFoundError, ValidationError
-from app.models.site_clean import SiteClean
+from app.models.site import Site
 from app.models.site_type import SiteType
 from app.services.site_service.summary import SiteRow
 from app.services.site_type_image_service.sync import CURATED_MEDIA_PATH
@@ -69,8 +69,8 @@ def list_sites(
 
     rows = session.exec(
         filtered.order_by(
-            func.coalesce(SiteClean.formation, ""),
-            SiteClean.site_id,
+            func.coalesce(Site.formation, ""),
+            Site.site_id,
         )
         .offset(capped_offset)
         .limit(capped_limit)
@@ -80,9 +80,9 @@ def list_sites(
 
 def get_site_by_id(session: Session, site_id: int) -> SiteRow:
     row = session.exec(
-        select(SiteClean, SiteType)
-        .outerjoin(SiteType, col(SiteClean.site_type_id) == col(SiteType.id))
-        .where(col(SiteClean.site_id) == site_id)
+        select(Site, SiteType)
+        .outerjoin(SiteType, col(Site.site_type_id) == col(SiteType.id))
+        .where(col(Site.site_id) == site_id)
     ).first()
     if row is None:
         raise NotFoundError(f"Site {site_id} not found")
@@ -122,8 +122,8 @@ def _filtered_select(
     time_filter_active: bool,
     has_custom_image: bool,
 ):
-    stmt = select(SiteClean, SiteType).outerjoin(
-        SiteType, col(SiteClean.site_type_id) == col(SiteType.id)
+    stmt = select(Site, SiteType).outerjoin(
+        SiteType, col(Site.site_type_id) == col(SiteType.id)
     )
     if has_custom_image:
         stmt = stmt.where(
@@ -134,19 +134,19 @@ def _filtered_select(
         pattern = f"%{normalized_q}%"
         stmt = stmt.where(
             or_(
-                col(SiteClean.formation).ilike(pattern),
-                col(SiteClean.state).ilike(pattern),
-                col(SiteClean.country_code).ilike(pattern),
-                col(SiteClean.rock_type).ilike(pattern),
+                col(Site.formation).ilike(pattern),
+                col(Site.state).ilike(pattern),
+                col(Site.country_code).ilike(pattern),
+                col(Site.rock_type).ilike(pattern),
             )
         )
     if time_filter_active:
         assert ma_younger is not None and ma_older is not None
         stmt = stmt.where(
-            col(SiteClean.min_age_ma).is_not(None),
-            col(SiteClean.max_age_ma).is_not(None),
-            col(SiteClean.min_age_ma) <= ma_older,
-            col(SiteClean.max_age_ma) >= ma_younger,
+            col(Site.min_age_ma).is_not(None),
+            col(Site.max_age_ma).is_not(None),
+            col(Site.min_age_ma) <= ma_older,
+            col(Site.max_age_ma) >= ma_younger,
         )
     return stmt
 
@@ -161,7 +161,7 @@ def _list_sites_random(
 ) -> list[SiteRow]:
     dialect_name = session.get_bind().dialect.name
     if dialect_name == "postgresql":
-        order = func.md5(func.concat(SiteClean.site_id, seed))
+        order = func.md5(func.concat(Site.site_id, seed))
         rows = session.exec(
             filtered.order_by(order).offset(offset).limit(limit)
         ).all()

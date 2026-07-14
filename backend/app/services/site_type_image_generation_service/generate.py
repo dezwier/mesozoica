@@ -10,7 +10,7 @@ from sqlalchemy import func
 from sqlmodel import Session, col, select
 
 from app.core.config import settings
-from app.models.site_clean import SiteClean
+from app.models.site import Site
 from app.models.site_type import SiteType
 from app.services.image_generation_service.client import (
     IMAGEN_ULTRA_COST_USD_PER_IMAGE,
@@ -65,10 +65,10 @@ def _select_candidates(
     site_type_ids: list[int] | None = None,
 ) -> tuple[list[SiteTypeCandidate], int]:
     stmt = (
-        select(SiteType, func.count(SiteClean.site_id).label("site_count"))
-        .outerjoin(SiteClean, col(SiteClean.site_type_id) == col(SiteType.id))
+        select(SiteType, func.count(Site.site_id).label("site_count"))
+        .outerjoin(Site, col(Site.site_type_id) == col(SiteType.id))
         .group_by(SiteType.id)
-        .order_by(func.count(SiteClean.site_id).desc(), SiteType.id)
+        .order_by(func.count(Site.site_id).desc(), SiteType.id)
     )
     if site_type_ids:
         stmt = stmt.where(col(SiteType.id).in_(site_type_ids))
