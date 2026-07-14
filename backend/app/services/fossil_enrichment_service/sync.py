@@ -6,8 +6,8 @@ import logging
 import time
 from dataclasses import dataclass, field
 
-from sqlalchemy import case
-from sqlmodel import Session, col, select
+from sqlalchemy import case, update
+from sqlmodel import Session, col, func, select
 
 from app.core.config import settings
 from app.models.dinosaur import Dinosaur
@@ -52,15 +52,43 @@ class FossilCandidate:
     dinosaur: Dinosaur
 
 
+def reset_llm_enriched_flags(
+    session: Session,
+    *,
+    dinos: list[str] | None = None,
+    dry_run: bool = False,
+) -> int:
+    """Clear llm_enriched so an interrupted overwrite run can resume without --overwrite."""
+    if dry_run:
+        stmt = select(func.count()).select_from(Fossil).where(
+            Fossil.llm_enriched.is_(True)  # type: ignore[attr-defined]
+        )
+        if dinos:
+            stmt = stmt.join(Dinosaur, Fossil.dinosaur_id == Dinosaur.id).where(
+                dino_name_match_clause(dinos)
+            )
+        return int(session.exec(stmt).one())
+
+    stmt = update(Fossil).values(llm_enriched=False).where(
+        Fossil.llm_enriched.is_(True)  # type: ignore[attr-defined]
+    )
+    if dinos:
+        dinosaur_ids = select(Dinosaur.id).where(dino_name_match_clause(dinos))  # type: ignore[arg-type]
+        stmt = stmt.where(col(Fossil.dinosaur_id).in_(dinosaur_ids))
+    result = session.exec(stmt)
+    session.commit()
+    return int(result.rowcount or 0)
+
+
 def _select_candidates(
     session: Session,
     *,
-    overwrite: bool,
+    include_enriched: bool,
     max_records: int | None,
     dinos: list[str] | None = None,
 ) -> list[FossilCandidate]:
     stmt = select(Fossil, Dinosaur).join(Dinosaur, Fossil.dinosaur_id == Dinosaur.id)
-    if not overwrite:
+    if not include_enriched:
         stmt = stmt.where(Fossil.llm_enriched.is_(False))  # type: ignore[attr-defined]
     if dinos:
         stmt = stmt.where(dino_name_match_clause(dinos))
@@ -116,8 +144,20 @@ def enrich_fossils(
 
     start = time.monotonic()
     counters = EnrichCounters()
+
+    if overwrite and not dry_run:
+        reset_count = reset_llm_enriched_flags(session, dinos=dinos)
+        logger.info(
+            "fossil_enrich: reset llm_enriched count=%d dinos=%s",
+            reset_count,
+            dinos,
+        )
+
     candidates = _select_candidates(
-        session, overwrite=overwrite, max_records=cap, dinos=dinos
+        session,
+        include_enriched=overwrite and dry_run,
+        max_records=cap,
+        dinos=dinos,
     )
     total = len(candidates)
 
@@ -133,11 +173,6 @@ def enrich_fossils(
         dinosaur = candidate.dinosaur
         prefix = f"fossil_enrich: [{index}/{total}] {fossil.id} ({dinosaur.name})"
         try:
-            if fossil.llm_enriched and not overwrite:
-                counters.skipped += 1
-                logger.info("%s action=skip reason=already_enriched", prefix)
-                continue
-
             system_instruction, user_prompt = build_enrichment_prompt(
                 fossil, dinosaur=dinosaur
             )
@@ -156,12 +191,11 @@ def enrich_fossils(
                 counters.enriched += 1
                 logger.info("%s action=enrich reason=dry_run", prefix)
             else:
-                was_enriched = fossil.llm_enriched
                 _apply_enrichment(fossil, raw)
                 session.add(fossil)
                 session.commit()
                 counters.enriched += 1
-                reason = "overwrite" if was_enriched else "new"
+                reason = "overwrite" if overwrite else "new"
                 logger.info("%s action=enrich reason=%s", prefix, reason)
 
         except Exception as exc:

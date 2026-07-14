@@ -14,6 +14,7 @@ from app.services.dinosaur_enrichment_service.sync import (
     EnrichSummary,
     enrich_dinosaurs,
     enrich_exit_code,
+    reset_llm_enriched_flags,
 )
 
 
@@ -134,6 +135,110 @@ def test_enrich_overwrite_refreshes_enriched(session: Session):
     session.refresh(row)
     assert summary.counters.enriched == 1
     assert row.length == "12 m"
+
+
+def test_enrich_overwrite_resets_flags_before_processing(session: Session):
+    done = Dinosaur(
+        name="Velociraptor",
+        wikipedia_page_id=901,
+        wikipedia_title="Velociraptor",
+        cladogram={},
+        article="<p>Small theropod.</p>",
+        llm_enriched=True,
+        short_description="Old description.",
+    )
+    pending = Dinosaur(
+        name="Tyrannosaurus",
+        wikipedia_page_id=902,
+        wikipedia_title="Tyrannosaurus",
+        cladogram={},
+        article="<p>Big carnivore.</p>",
+        llm_enriched=True,
+        short_description="Also old.",
+    )
+    session.add_all([done, pending])
+    session.commit()
+
+    with patch(
+        "app.services.dinosaur_enrichment_service.sync.call_gemini_api",
+        return_value=(_llm_response(), {}),
+    ) as mock_api:
+        summary = enrich_dinosaurs(session, dry_run=False, overwrite=True, max_records=1)
+
+    session.refresh(done)
+    session.refresh(pending)
+    assert summary.counters.enriched == 1
+    assert mock_api.call_count == 1
+    enriched = [done.llm_enriched, pending.llm_enriched]
+    assert enriched.count(True) == 1
+    assert enriched.count(False) == 1
+
+
+def test_enrich_resume_after_interrupted_overwrite(session: Session):
+    done = Dinosaur(
+        name="Velociraptor",
+        wikipedia_page_id=911,
+        wikipedia_title="Velociraptor",
+        cladogram={},
+        article="<p>Small theropod.</p>",
+        llm_enriched=True,
+    )
+    pending = Dinosaur(
+        name="Tyrannosaurus",
+        wikipedia_page_id=912,
+        wikipedia_title="Tyrannosaurus",
+        cladogram={},
+        article="<p>Big carnivore.</p>",
+        llm_enriched=True,
+    )
+    session.add_all([done, pending])
+    session.commit()
+
+    with patch(
+        "app.services.dinosaur_enrichment_service.sync.call_gemini_api",
+        return_value=(_llm_response(), {}),
+    ):
+        enrich_dinosaurs(session, dry_run=False, overwrite=True, max_records=1)
+
+    with patch(
+        "app.services.dinosaur_enrichment_service.sync.call_gemini_api",
+        return_value=(_llm_response(), {}),
+    ) as mock_api:
+        summary = enrich_dinosaurs(session, dry_run=False)
+
+    assert summary.counters.enriched == 1
+    mock_api.assert_called_once()
+    session.refresh(done)
+    session.refresh(pending)
+    assert done.llm_enriched is True
+    assert pending.llm_enriched is True
+
+
+def test_reset_llm_enriched_flags_honors_dino_filter(session: Session):
+    tyranno = Dinosaur(
+        name="Tyrannosaurus",
+        wikipedia_page_id=921,
+        wikipedia_title="Tyrannosaurus",
+        cladogram={},
+        article="<p>Big carnivore.</p>",
+        llm_enriched=True,
+    )
+    giga = Dinosaur(
+        name="Giganotosaurus",
+        wikipedia_page_id=922,
+        wikipedia_title="Giganotosaurus",
+        cladogram={},
+        article="<p>Another big carnivore.</p>",
+        llm_enriched=True,
+    )
+    session.add_all([tyranno, giga])
+    session.commit()
+
+    assert reset_llm_enriched_flags(session, dinos=["Tyrannosaurus"]) == 1
+    session.refresh(tyranno)
+    session.refresh(giga)
+    assert tyranno.llm_enriched is False
+    assert giga.llm_enriched is True
 
 
 def test_enrich_failure_does_not_set_flag(session: Session):

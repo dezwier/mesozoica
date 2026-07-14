@@ -10,7 +10,7 @@ from app.services.image_generation_service.fossil_json import fossil_to_prompt_d
 
 _SYSTEM_INSTRUCTION = """You are a paleontology data assistant.
 Read the fossil occurrence record and return ONLY valid JSON (no markdown, no explanations).
-Be conservative: use "unknown" when the record does not clearly support a value.
+Be accurate: use "unknown" when the record does not clearly support a value.
 Do not infer anatomy, lithology, or preservation from taxon name alone.
 PBDB catalog numbers, collection metadata, and geographic names are not evidence for classification."""
 
@@ -38,7 +38,7 @@ llm_rock_type — host rock / lithology:
 llm_category:
   body_fossil, trace_fossil, unknown
 
-llm_subcategory — use label before em-dash only; must match llm_category:
+llm_subcategory — must match llm_category, if clearly something else, other values are allowed
   Body fossils: skull, teeth, vertebrae, ribs_and_gastralia, pectoral_girdle,
     forelimbs, pelvic_girdle, hindlimbs, tail_structures, dermal_armour,
     skin_and_soft_tissue, eggs_and_embryos
@@ -66,9 +66,8 @@ llm_description:
 Rules:
 - Only classify when evidence appears in the record fields or comments.
 - llm_subcategory must be consistent with llm_category (body vs trace).
-- Prefer "unknown" over guessing for enum fields.
 - Enum values must be lowercase snake_case strings, never null.
-- llm_description is normal prose (not snake_case); use null if unclear.
+- llm_description is normal prose (not snake_case).
 
 Occurrence id: """
 

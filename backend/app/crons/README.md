@@ -112,7 +112,7 @@ RAILWAY_RUN=1 railway run python -m app.crons.runner --job fossil_llm_enrich --d
 | Flag | Effect |
 |------|--------|
 | `--job ID` | Run one job immediately (ignores schedule) |
-| `--overwrite` | Re-fetch / re-enrich even when already up to date. For `fossil_pbdb_sync`, also clears `fossils_insert_time` first so an interrupted run can resume without `--overwrite`. |
+| `--overwrite` | Re-fetch / re-enrich even when already up to date. For `fossil_pbdb_sync`, also clears `fossils_insert_time` first so an interrupted run can resume without `--overwrite`. For `dinosaur_llm_enrich` and `fossil_llm_enrich`, clears `llm_enriched` first so an interrupted overwrite can resume without `--overwrite`. |
 | `--dinos NAME …` | Limit to specific Wikipedia titles (space- or comma-separated) |
 | `--category NAME` | `dinosaur_wiki_sync`: limit to one Wikipedia category |
 | `--stale-days N` | `fossil_pbdb_sync`: only genera with `fossils_insert_time` null or older than N days (ignored with `--overwrite`) |
@@ -126,6 +126,10 @@ RAILWAY_RUN=1 railway run python -m app.crons.runner --job fossil_llm_enrich --d
 - **Normal run** (no flags): only genera with `fossils_insert_time IS NULL` (first-time or interrupted).
 - **`--stale-days N`** (cron default: 7): also re-sync genera last synced more than N days ago.
 - **`--overwrite`**: clears `fossils_insert_time` for the target genera (or all), re-fetches and updates existing fossil rows, and stamps each genus only after it finishes. If interrupted, resume with a normal run — completed genera are skipped, pending ones are picked up.
+
+### `dinosaur_llm_enrich` / `fossil_llm_enrich` resume behavior
+
+- **`--overwrite`**: clears `llm_enriched` for the target scope first, then re-enriches and sets `llm_enriched=true` per successful record. If interrupted, resume with a normal run (no `--overwrite`) — completed rows are skipped, pending rows are picked up.
 
 ## Config overrides
 

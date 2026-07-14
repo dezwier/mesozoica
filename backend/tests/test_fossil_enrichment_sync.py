@@ -242,6 +242,59 @@ def test_enrich_prioritizes_fossils_synced_before_custom_image(session: Session)
     assert mock_api.call_args.kwargs["log_context"] == "210002"
 
 
+def test_enrich_overwrite_resets_flags_before_processing(session: Session):
+    fossil_done, _ = _seed_fossil(
+        session, fossil_id=400001, dinosaur_name="Velociraptor", llm_enriched=True
+    )
+    fossil_pending, _ = _seed_fossil(
+        session, fossil_id=400002, dinosaur_name="Tyrannosaurus", llm_enriched=True
+    )
+
+    with patch(
+        "app.services.fossil_enrichment_service.sync.call_gemini_api",
+        return_value=(_llm_response(), {}),
+    ) as mock_api:
+        summary = enrich_fossils(session, dry_run=False, overwrite=True, max_records=1)
+
+    session.refresh(fossil_done)
+    session.refresh(fossil_pending)
+    assert summary.counters.enriched == 1
+    assert mock_api.call_count == 1
+    enriched = [fossil_done.llm_enriched, fossil_pending.llm_enriched]
+    assert enriched.count(True) == 1
+    assert enriched.count(False) == 1
+
+
+def test_enrich_resume_after_interrupted_overwrite(session: Session):
+    fossil_done, _ = _seed_fossil(
+        session, fossil_id=410001, dinosaur_name="Velociraptor", llm_enriched=True
+    )
+    fossil_pending, _ = _seed_fossil(
+        session, fossil_id=410002, dinosaur_name="Tyrannosaurus", llm_enriched=True
+    )
+
+    with patch(
+        "app.services.fossil_enrichment_service.sync.call_gemini_api",
+        return_value=(_llm_response(), {}),
+    ):
+        enrich_fossils(session, dry_run=False, overwrite=True, max_records=1)
+
+    session.refresh(fossil_done)
+    session.refresh(fossil_pending)
+    with patch(
+        "app.services.fossil_enrichment_service.sync.call_gemini_api",
+        return_value=(_llm_response(), {}),
+    ) as mock_api:
+        summary = enrich_fossils(session, dry_run=False)
+
+    assert summary.counters.enriched == 1
+    mock_api.assert_called_once()
+    session.refresh(fossil_done)
+    session.refresh(fossil_pending)
+    assert fossil_done.llm_enriched is True
+    assert fossil_pending.llm_enriched is True
+
+
 def test_enrich_dinos_limits_candidates(session: Session):
     _seed_fossil(session, fossil_id=300001, dinosaur_name="Tyrannosaurus")
     _seed_fossil(session, fossil_id=300002, dinosaur_name="Velociraptor")
