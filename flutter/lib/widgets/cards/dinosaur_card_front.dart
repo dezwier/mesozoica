@@ -6,7 +6,6 @@ import '../../models/dinosaur.dart';
 import '../../theme/dino_card_theme.dart';
 import 'dinosaur_card_header.dart';
 import 'dinosaur_card_image.dart';
-import 'dinosaur_card_edge_facts.dart';
 
 class DinosaurCardFront extends StatelessWidget {
   const DinosaurCardFront({
@@ -40,48 +39,44 @@ class DinosaurCardFront extends StatelessWidget {
         fit: StackFit.expand,
         children: [
           DinosaurCardImage(imageUrl: dinosaur.mainImageUrl),
-          Positioned(
-            left: 18,
-            right: 18,
-            top: 20,
-            child: DinosaurCardHeader(
-              dinosaur: dinosaur,
-              titleFontSize: titleFontSize,
-              subtitleFontSize: subtitleFontSize,
-              centered: true,
-              overlayOnImage: true,
-            ),
-          ),
           Positioned.fill(
             child: Align(
               alignment: Alignment.bottomCenter,
               child: FractionallySizedBox(
                 heightFactor: overlayHeightFactor,
                 widthFactor: 1,
-                child: Padding(
-                  padding: EdgeInsets.fromLTRB(
-                    18,
-                    10,
-                    18,
-                    showFacts ? 16 : math.max(8, titleFontSize * 0.45),
-                  ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      if (showFacts) ...[
-                        Text(
-                          _description,
-                          textAlign: TextAlign.center,
-                          style: cardTheme.frontOverlayBodyStyle(fontSize: 13),
-                        ),
-                        const SizedBox(height: 10),
-                        DinosaurCardEdgeFacts(dinosaur: dinosaur),
-                      ],
-                    ],
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: cardTheme.frontOverlayGradient(),
                   ),
                 ),
               ),
+            ),
+          ),
+          Positioned(
+            left: 18,
+            right: 18,
+            bottom: math.max(16, titleFontSize * 0.45),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                DinosaurCardHeader(
+                  dinosaur: dinosaur,
+                  titleFontSize: titleFontSize,
+                  subtitleFontSize: subtitleFontSize,
+                  centered: true,
+                  overlayOnImage: true,
+                ),
+                if (showFacts) ...[
+                  const SizedBox(height: 10),
+                  Text(
+                    _description,
+                    textAlign: TextAlign.center,
+                    style: cardTheme.frontOverlayBodyStyle(fontSize: 13),
+                  ),
+                ],
+              ],
             ),
           ),
         ],

@@ -163,7 +163,7 @@ class DinoCardTheme {
     return TextStyle(
       color: const Color.fromARGB(230, 255, 255, 255),
       fontSize: fontSize,
-      fontWeight: FontWeight.w800,
+      fontWeight: FontWeight.w500,
       height: 1.4,
       shadows: const [
         Shadow(
@@ -268,34 +268,19 @@ class DinoCardTheme {
 
   /// Bottom overlay on the card front illustration.
   LinearGradient frontOverlayGradient() {
-    if (isLight) {
-      return LinearGradient(
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-        colors: [
-          Colors.transparent,
-          Colors.transparent,
-          cardBackground.withValues(alpha: 0.18),
-          cardBackground.withValues(alpha: 0.42),
-          cardBackground.withValues(alpha: 0.68),
-          cardBackground.withValues(alpha: 0.88),
-          cardBackground,
-        ],
-        stops: const [0.0, 0.42, 0.55, 0.68, 0.80, 0.92, 1.0],
-      );
-    }
-
-    return LinearGradient(
+    return const LinearGradient(
       begin: Alignment.topCenter,
       end: Alignment.bottomCenter,
       colors: [
         Colors.transparent,
         Colors.transparent,
-        cardBackground.withValues(alpha: 0.62),
-        cardBackground.withValues(alpha: 0.88),
-        cardBackground,
+        Color(0x66000000),
+        Color.fromARGB(145, 0, 0, 0),
+        Color.fromARGB(173, 0, 0, 0),
+        Color.fromARGB(196, 0, 0, 0),
+        Color.fromARGB(197, 0, 0, 0),
       ],
-      stops: const [0.0, 0.48, 0.68, 0.86, 1.0],
+      stops: [0.0, 0.42, 0.55, 0.68, 0.80, 0.92, 1.0],
     );
   }
 }

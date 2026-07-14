@@ -33,7 +33,7 @@ const _fixture = DinosaurSummary(
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  testWidgets('DinosaurCardFront renders art, title, description, and edge facts',
+  testWidgets('DinosaurCardFront renders art, title, and description at bottom',
       (tester) async {
     await tester.pumpWidget(
       const MaterialApp(
@@ -55,14 +55,14 @@ void main() {
       find.textContaining('largest terrestrial predators'),
       findsOneWidget,
     );
-    expect(find.byType(DinosaurCardEdgeFacts), findsOneWidget);
-    expect(find.textContaining('Hell Creek Formation'), findsOneWidget);
-    expect(find.textContaining('Late Cretaceous'), findsOneWidget);
-    expect(find.text('LOCATION'), findsOneWidget);
-    expect(find.text('PERIOD'), findsOneWidget);
+    expect(find.byType(DinosaurCardEdgeFacts), findsNothing);
+    expect(find.textContaining('Hell Creek Formation'), findsNothing);
+    expect(find.textContaining('Late Cretaceous'), findsNothing);
+    expect(find.text('LOCATION'), findsNothing);
+    expect(find.text('PERIOD'), findsNothing);
   });
 
-  testWidgets('DinosaurCardFront hides edge facts when showFacts is false',
+  testWidgets('DinosaurCardFront hides description when showFacts is false',
       (tester) async {
     await tester.pumpWidget(
       const MaterialApp(
@@ -81,7 +81,10 @@ void main() {
     );
 
     expect(find.byType(DinosaurCardEdgeFacts), findsNothing);
-    expect(find.textContaining('Hell Creek Formation'), findsNothing);
+    expect(
+      find.textContaining('largest terrestrial predators'),
+      findsNothing,
+    );
   });
 
   testWidgets('DinosaurCardImage uses network image for curated URL',
@@ -149,7 +152,10 @@ void main() {
     expect(find.text('Tyrannosaurus rex'), findsOneWidget);
     expect(find.byIcon(Icons.info_outline), findsOneWidget);
     expect(find.text('LOCATION'), findsNothing);
-    expect(find.text('PERIOD'), findsNothing);
+    expect(find.text('PERIOD'), findsOneWidget);
+    expect(find.text('DIET'), findsOneWidget);
+    expect(find.text('MASS'), findsOneWidget);
+    expect(find.text('LENGTH'), findsOneWidget);
     expect(find.text('TIME'), findsNothing);
     expect(find.text('CLADOGRAM'), findsOneWidget);
     expect(find.text('FOSSIL RECORD'), findsNothing);
