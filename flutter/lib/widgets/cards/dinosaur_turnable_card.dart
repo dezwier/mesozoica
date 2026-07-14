@@ -16,7 +16,6 @@ class DinosaurTurnableCard extends StatelessWidget {
     this.titleFontSize = 36,
     this.subtitleFontSize = 10,
     this.overlayHeightFactor = 0.52,
-    this.factsFadeAnimation,
   });
 
   final DinosaurSummary dinosaur;
@@ -26,7 +25,6 @@ class DinosaurTurnableCard extends StatelessWidget {
   final double titleFontSize;
   final double subtitleFontSize;
   final double overlayHeightFactor;
-  final Animation<double>? factsFadeAnimation;
 
   @override
   Widget build(BuildContext context) {
@@ -42,14 +40,12 @@ class DinosaurTurnableCard extends StatelessWidget {
         titleFontSize: titleFontSize,
         subtitleFontSize: subtitleFontSize,
         overlayHeightFactor: overlayHeightFactor,
-        factsFadeAnimation: factsFadeAnimation,
       ),
       back: DinosaurCardBack(
         dinosaur: dinosaur,
         showArticleButton: showArticleButton ?? showFrontFacts,
         titleFontSize: titleFontSize,
         subtitleFontSize: subtitleFontSize,
-        factsFadeAnimation: factsFadeAnimation,
       ),
     );
   }

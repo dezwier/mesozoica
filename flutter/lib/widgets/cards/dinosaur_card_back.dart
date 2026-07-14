@@ -17,14 +17,12 @@ class DinosaurCardBack extends StatelessWidget {
     this.showArticleButton = true,
     this.titleFontSize = 36,
     this.subtitleFontSize = 10,
-    this.factsFadeAnimation,
   });
 
   final DinosaurSummary dinosaur;
   final bool showArticleButton;
   final double titleFontSize;
   final double subtitleFontSize;
-  final Animation<double>? factsFadeAnimation;
 
   static const _contentScale = 1.15;
 
@@ -50,16 +48,26 @@ class DinosaurCardBack extends StatelessWidget {
               overlayOnImage: true,
             ),
           ),
-          if (factsFadeAnimation != null)
-            FadeTransition(
-              opacity: factsFadeAnimation!,
-              child: IgnorePointer(
-                ignoring: factsFadeAnimation!.value < 0.05,
-                child: _articleButton(context),
+          if (showArticleButton)
+            Positioned(
+              top: 14,
+              right: 10,
+              child: IconButton(
+                onPressed: () => DinosaurArticleDrawer.show(
+                  context,
+                  dinosaur: dinosaur,
+                ),
+                icon: const Icon(Icons.info_outline, size: 18),
+                color: const Color(0xE6F5F0E8),
+                tooltip: 'Read article',
+                visualDensity: VisualDensity.compact,
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(
+                  minWidth: 28,
+                  minHeight: 28,
+                ),
               ),
-            )
-          else if (showArticleButton)
-            _articleButton(context),
+            ),
           Positioned(
             left: 18,
             right: 18,
@@ -114,28 +122,6 @@ class DinosaurCardBack extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _articleButton(BuildContext context) {
-    return Positioned(
-      top: 14,
-      right: 10,
-      child: IconButton(
-        onPressed: () => DinosaurArticleDrawer.show(
-          context,
-          dinosaur: dinosaur,
-        ),
-        icon: const Icon(Icons.info_outline, size: 18),
-        color: const Color(0xE6F5F0E8),
-        tooltip: 'Read article',
-        visualDensity: VisualDensity.compact,
-        padding: EdgeInsets.zero,
-        constraints: const BoxConstraints(
-          minWidth: 28,
-          minHeight: 28,
-        ),
       ),
     );
   }
