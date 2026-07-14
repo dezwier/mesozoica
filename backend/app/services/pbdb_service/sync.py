@@ -376,6 +376,7 @@ def _clear_llm_enrichment_fields(fossil: Fossil) -> None:
     fossil.llm_subcategory = None
     fossil.llm_preservation_quality = None
     fossil.llm_completeness = None
+    fossil.llm_description = None
     fossil.llm_enriched = False
 
 

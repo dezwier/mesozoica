@@ -177,4 +177,5 @@ class Fossil(SQLModel, table=True):
     llm_subcategory: Optional[str] = Field(default=None, max_length=64)
     llm_preservation_quality: Optional[str] = Field(default=None, max_length=32)
     llm_completeness: Optional[str] = Field(default=None, max_length=32)
+    llm_description: Optional[str] = Field(default=None, sa_column=Column(Text))
     llm_enriched: bool = Field(default=False, index=True)

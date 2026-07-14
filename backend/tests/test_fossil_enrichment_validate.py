@@ -12,6 +12,7 @@ def test_validate_llm_enrichment_accepts_valid_payload():
         "llm_subcategory": "skull",
         "llm_preservation_quality": "good",
         "llm_completeness": "partial",
+        "llm_description": "A partial skull from Late Cretaceous sandstone in Montana.",
     }
     result = validate_llm_enrichment(raw)
     assert result.llm_rock_type == "sandstone"
@@ -19,6 +20,9 @@ def test_validate_llm_enrichment_accepts_valid_payload():
     assert result.llm_subcategory == "skull"
     assert result.llm_preservation_quality == "good"
     assert result.llm_completeness == "partial"
+    assert result.llm_description == (
+        "A partial skull from Late Cretaceous sandstone in Montana."
+    )
 
 
 def test_validate_llm_enrichment_defaults_missing_keys_to_unknown():
@@ -28,6 +32,12 @@ def test_validate_llm_enrichment_defaults_missing_keys_to_unknown():
     assert result.llm_subcategory == "unknown"
     assert result.llm_preservation_quality == "unknown"
     assert result.llm_completeness == "unknown"
+    assert result.llm_description is None
+
+
+def test_validate_llm_enrichment_coerces_empty_description_to_none():
+    result = validate_llm_enrichment({"llm_description": "   "})
+    assert result.llm_description is None
 
 
 def test_validate_llm_enrichment_coerces_snake_case():

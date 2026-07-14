@@ -25,6 +25,9 @@ def _llm_response():
         "llm_subcategory": "teeth",
         "llm_preservation_quality": "good",
         "llm_completeness": "isolated_element",
+        "llm_description": (
+            "An isolated tyrannosaur tooth from channel sandstone in the Hell Creek Formation."
+        ),
     }
 
 
@@ -62,6 +65,7 @@ def _seed_fossil(
         llm_subcategory="skull" if llm_enriched else None,
         llm_preservation_quality="moderate" if llm_enriched else None,
         llm_completeness="fragmentary" if llm_enriched else None,
+        llm_description="Old summary." if llm_enriched else None,
     )
     session.add(fossil)
     session.commit()
@@ -95,6 +99,8 @@ def test_enrich_writes_fields_and_sets_flag(session: Session):
     assert fossil.llm_subcategory == "teeth"
     assert fossil.llm_preservation_quality == "good"
     assert fossil.llm_completeness == "isolated_element"
+    assert fossil.llm_description is not None
+    assert "tooth" in fossil.llm_description.lower()
 
 
 def test_enrich_disables_gemini_thinking(session: Session):

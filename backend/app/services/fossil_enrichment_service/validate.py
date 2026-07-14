@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import re
-from typing import Any, Literal, get_args
+from typing import Any, Literal, Optional, get_args
 
-from pydantic import BaseModel, field_validator, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 RockType = Literal[
     "mudstone",
@@ -118,6 +118,7 @@ class FossilEnrichmentOutput(BaseModel):
     llm_subcategory: str = "unknown"
     llm_preservation_quality: str = "unknown"
     llm_completeness: str = "unknown"
+    llm_description: Optional[str] = Field(default=None, max_length=512)
 
     @field_validator(
         "llm_rock_type",
@@ -128,8 +129,18 @@ class FossilEnrichmentOutput(BaseModel):
         mode="before",
     )
     @classmethod
-    def normalize_value(cls, value: Any) -> str:
+    def normalize_enum_value(cls, value: Any) -> str:
         return _normalize_enum(value)
+
+    @field_validator("llm_description", mode="before")
+    @classmethod
+    def coerce_description(cls, value: Any) -> Optional[str]:
+        if value is None:
+            return None
+        if isinstance(value, str):
+            text = value.strip()
+            return text or None
+        return str(value).strip() or None
 
     @field_validator("llm_rock_type", mode="after")
     @classmethod

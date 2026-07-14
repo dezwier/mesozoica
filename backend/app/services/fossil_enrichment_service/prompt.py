@@ -22,7 +22,8 @@ Return a JSON object with exactly these keys:
   "llm_category": "<body_fossil | trace_fossil | unknown>",
   "llm_subcategory": "<anatomical or trace type>",
   "llm_preservation_quality": "<preservation grade>",
-  "llm_completeness": "<how complete the specimen is>"
+  "llm_completeness": "<how complete the specimen is>",
+  "llm_description": "<one catchy but truthful museum-card sentence, or null>"
 }
 
 Allowed values (all lowercase snake_case):
@@ -57,11 +58,17 @@ llm_completeness:
   otherwise unknown. Use articulated_parts, common_body_parts, fragmentation,
   collection_coverage, and comments.
 
+llm_description:
+  One concise, engaging sentence summarizing what this fossil occurrence is
+  (what was found, where/when if known, and why it matters). Use only facts
+  supported by the record. Use null when the record lacks enough detail.
+
 Rules:
 - Only classify when evidence appears in the record fields or comments.
 - llm_subcategory must be consistent with llm_category (body vs trace).
-- Prefer "unknown" over guessing.
-- All values must be lowercase snake_case strings, never null.
+- Prefer "unknown" over guessing for enum fields.
+- Enum values must be lowercase snake_case strings, never null.
+- llm_description is normal prose (not snake_case); use null if unclear.
 
 Occurrence id: """
 

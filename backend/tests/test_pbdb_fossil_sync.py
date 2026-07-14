@@ -208,6 +208,7 @@ def test_sync_updates_existing_fossil_when_overwrite(session: Session):
         llm_subcategory="skull",
         llm_preservation_quality="moderate",
         llm_completeness="partial",
+        llm_description="A famous partial skull locality.",
     )
     session.add(existing)
     session.commit()
@@ -225,6 +226,7 @@ def test_sync_updates_existing_fossil_when_overwrite(session: Session):
     assert fossil.llm_subcategory is None
     assert fossil.llm_preservation_quality is None
     assert fossil.llm_completeness is None
+    assert fossil.llm_description is None
     assert summary.counters.updated == 1
     assert summary.counters.fetched == 0
 

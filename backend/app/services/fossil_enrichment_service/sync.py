@@ -95,6 +95,7 @@ def _apply_enrichment(fossil: Fossil, raw: dict) -> None:
     fossil.llm_subcategory = validated.llm_subcategory
     fossil.llm_preservation_quality = validated.llm_preservation_quality
     fossil.llm_completeness = validated.llm_completeness
+    fossil.llm_description = validated.llm_description
     fossil.llm_enriched = True
 
 
