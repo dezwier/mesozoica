@@ -99,6 +99,23 @@ _TRACE_SUBCATEGORIES = frozenset(
     }
 )
 
+_UNKNOWN_ALIASES = frozenset(
+    {
+        "unknown",
+        "not_reported",
+        "not_specified",
+        "unspecified",
+        "unclear",
+        "not_known",
+        "not_determined",
+        "undetermined",
+        "n_a",
+        "na",
+        "none",
+        "null",
+    }
+)
+
 
 def _normalize_enum(value: Any) -> str:
     if value is None:
@@ -109,7 +126,15 @@ def _normalize_enum(value: Any) -> str:
     text = re.sub(r"[\s\-/]+", "_", text)
     text = re.sub(r"[^a-z0-9_]", "", text)
     text = re.sub(r"_+", "_", text).strip("_")
-    return text or "unknown"
+    if not text or text in _UNKNOWN_ALIASES:
+        return "unknown"
+    return text
+
+
+def _coerce_to_allowed(value: str, allowed: set[str]) -> str:
+    if value in allowed:
+        return value
+    return "unknown"
 
 
 class FossilEnrichmentOutput(BaseModel):
@@ -145,54 +170,39 @@ class FossilEnrichmentOutput(BaseModel):
     @field_validator("llm_rock_type", mode="after")
     @classmethod
     def validate_rock_type(cls, value: str) -> str:
-        allowed = set(get_args(RockType))
-        if value not in allowed:
-            raise ValueError(f"invalid llm_rock_type: {value}")
-        return value
+        return _coerce_to_allowed(value, set(get_args(RockType)))
 
     @field_validator("llm_category", mode="after")
     @classmethod
     def validate_category(cls, value: str) -> str:
-        allowed = set(get_args(Category))
-        if value not in allowed:
-            raise ValueError(f"invalid llm_category: {value}")
-        return value
+        return _coerce_to_allowed(value, set(get_args(Category)))
 
     @field_validator("llm_subcategory", mode="after")
     @classmethod
     def validate_subcategory(cls, value: str) -> str:
-        allowed = set(get_args(Subcategory))
-        if value not in allowed:
-            raise ValueError(f"invalid llm_subcategory: {value}")
-        return value
+        return _coerce_to_allowed(value, set(get_args(Subcategory)))
 
     @field_validator("llm_preservation_quality", mode="after")
     @classmethod
     def validate_preservation_quality(cls, value: str) -> str:
-        allowed = set(get_args(PreservationQuality))
-        if value not in allowed:
-            raise ValueError(f"invalid llm_preservation_quality: {value}")
-        return value
+        return _coerce_to_allowed(value, set(get_args(PreservationQuality)))
 
     @field_validator("llm_completeness", mode="after")
     @classmethod
     def validate_completeness(cls, value: str) -> str:
-        allowed = set(get_args(Completeness))
-        if value not in allowed:
-            raise ValueError(f"invalid llm_completeness: {value}")
-        return value
+        return _coerce_to_allowed(value, set(get_args(Completeness)))
 
     @model_validator(mode="after")
     def check_category_consistency(self) -> "FossilEnrichmentOutput":
         if self.llm_category == "body_fossil" and self.llm_subcategory in _TRACE_SUBCATEGORIES:
-            raise ValueError("body_fossil cannot have trace subcategory")
+            self.llm_subcategory = "unknown"
         if self.llm_category == "trace_fossil" and self.llm_subcategory in _BODY_SUBCATEGORIES:
-            raise ValueError("trace_fossil cannot have body subcategory")
+            self.llm_subcategory = "unknown"
         if self.llm_category == "trace_fossil" and self.llm_completeness not in {
             "trace_only",
             "unknown",
         }:
-            raise ValueError("trace_fossil completeness must be trace_only or unknown")
+            self.llm_completeness = "unknown"
         return self
 
 

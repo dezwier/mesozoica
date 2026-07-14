@@ -7,7 +7,12 @@ import '../../controllers/site_catalog_controller.dart';
 import '../../widgets/cards/site_turnable_card.dart';
 
 class SiteScreen extends StatefulWidget {
-  const SiteScreen({super.key});
+  const SiteScreen({
+    super.key,
+    this.isActive = true,
+  });
+
+  final bool isActive;
 
   @override
   State<SiteScreen> createState() => SiteScreenState();

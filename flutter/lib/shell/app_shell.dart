@@ -3,11 +3,9 @@ import 'package:provider/provider.dart';
 
 import '../widgets/common/gradient_app_bar.dart';
 import '../controllers/theme_controller.dart';
-import '../screens/dino/dino_screen.dart';
-import '../screens/fossil/fossil_screen.dart';
+import '../screens/catalog/catalog_screen.dart';
 import '../screens/map/map_screen.dart';
 import '../screens/profile/profile_screen.dart';
-import '../screens/site/site_screen.dart';
 import '../screens/tree/tree_screen.dart';
 
 class AppShell extends StatefulWidget {
@@ -19,27 +17,15 @@ class AppShell extends StatefulWidget {
 
 class _AppShellState extends State<AppShell> {
   static const _mapTabIndex = 0;
-  static const _siteTabIndex = 1;
-  static const _fossilTabIndex = 2;
-  static const _dinoTabIndex = 3;
-  static const _treeTabIndex = 4;
+  static const _catalogTabIndex = 1;
+  static const _treeTabIndex = 2;
 
-  int _index = _dinoTabIndex;
-  final _siteScreenKey = GlobalKey<SiteScreenState>();
-  final _dinoScreenKey = GlobalKey<DinoScreenState>();
-  final _fossilScreenKey = GlobalKey<FossilScreenState>();
+  int _index = _catalogTabIndex;
+  final _catalogScreenKey = GlobalKey<CatalogScreenState>();
 
   void _onDestinationSelected(int index) {
-    if (index == _index && index == _siteTabIndex) {
-      _siteScreenKey.currentState?.scrollToTop();
-      return;
-    }
-    if (index == _index && index == _dinoTabIndex) {
-      _dinoScreenKey.currentState?.scrollToTop();
-      return;
-    }
-    if (index == _index && index == _fossilTabIndex) {
-      _fossilScreenKey.currentState?.scrollToTop();
+    if (index == _index && index == _catalogTabIndex) {
+      _catalogScreenKey.currentState?.scrollActiveTabToTop();
       return;
     }
     setState(() => _index = index);
@@ -71,9 +57,10 @@ class _AppShellState extends State<AppShell> {
         index: _index,
         children: [
           MapScreen(isActive: _index == _mapTabIndex),
-          SiteScreen(key: _siteScreenKey),
-          FossilScreen(key: _fossilScreenKey),
-          DinoScreen(key: _dinoScreenKey),
+          CatalogScreen(
+            key: _catalogScreenKey,
+            isActive: _index == _catalogTabIndex,
+          ),
           TreeScreen(isActive: _index == _treeTabIndex),
           const ProfileScreen(),
         ],
@@ -100,19 +87,9 @@ class _AppShellState extends State<AppShell> {
               label: 'Map',
             ),
             NavigationDestination(
-              icon: Icon(Icons.place_outlined),
-              selectedIcon: Icon(Icons.place),
-              label: 'Site',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.terrain_outlined),
-              selectedIcon: Icon(Icons.terrain),
-              label: 'Fossil',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.style_outlined),
-              selectedIcon: Icon(Icons.style),
-              label: 'Dino',
+              icon: Icon(Icons.collections_bookmark_outlined),
+              selectedIcon: Icon(Icons.collections_bookmark),
+              label: 'Catalog',
             ),
             NavigationDestination(
               icon: Icon(Icons.account_tree_outlined),

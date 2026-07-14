@@ -9,7 +9,12 @@ import '../../widgets/fossil/fossil_filter_fab.dart';
 import '../../widgets/fossil/fossil_filter_sheet.dart';
 
 class FossilScreen extends StatefulWidget {
-  const FossilScreen({super.key});
+  const FossilScreen({
+    super.key,
+    this.isActive = true,
+  });
+
+  final bool isActive;
 
   @override
   State<FossilScreen> createState() => FossilScreenState();
@@ -82,14 +87,15 @@ class FossilScreenState extends State<FossilScreen> {
         return Stack(
           children: [
             Positioned.fill(child: _buildBody(context, catalog)),
-            Positioned(
-              right: 12,
-              bottom: 12,
-              child: FossilFilterFab(
-                hasActiveFilters: catalog.hasActiveFilters,
-                onPressed: () => _openFilterSheet(catalog),
+            if (widget.isActive)
+              Positioned(
+                right: 12,
+                bottom: 12,
+                child: FossilFilterFab(
+                  hasActiveFilters: catalog.hasActiveFilters,
+                  onPressed: () => _openFilterSheet(catalog),
+                ),
               ),
-            ),
           ],
         );
       },

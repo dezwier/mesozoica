@@ -1,7 +1,5 @@
 """Tests for fossil enrichment validation."""
 
-import pytest
-
 from app.services.fossil_enrichment_service.validate import validate_llm_enrichment
 
 
@@ -56,27 +54,32 @@ def test_validate_llm_enrichment_coerces_snake_case():
     assert result.llm_completeness == "trace_only"
 
 
-def test_validate_llm_enrichment_rejects_invalid_enum():
-    with pytest.raises(ValueError, match="invalid llm_rock_type"):
-        validate_llm_enrichment({"llm_rock_type": "granite"})
+def test_validate_llm_enrichment_coerces_unlisted_enum_to_unknown():
+    result = validate_llm_enrichment({"llm_rock_type": "granite"})
+    assert result.llm_rock_type == "unknown"
 
 
-def test_validate_llm_enrichment_rejects_body_trace_mismatch():
-    with pytest.raises(ValueError, match="body_fossil cannot have trace subcategory"):
-        validate_llm_enrichment(
-            {
-                "llm_category": "body_fossil",
-                "llm_subcategory": "coprolites",
-            }
-        )
+def test_validate_llm_enrichment_coerces_not_reported_to_unknown():
+    result = validate_llm_enrichment({"llm_rock_type": "not reported"})
+    assert result.llm_rock_type == "unknown"
 
 
-def test_validate_llm_enrichment_trace_completeness_constraint():
-    with pytest.raises(ValueError, match="trace_fossil completeness"):
-        validate_llm_enrichment(
-            {
-                "llm_category": "trace_fossil",
-                "llm_subcategory": "coprolites",
-                "llm_completeness": "partial",
-            }
-        )
+def test_validate_llm_enrichment_coerces_category_mismatch_to_unknown():
+    result = validate_llm_enrichment(
+        {
+            "llm_category": "body_fossil",
+            "llm_subcategory": "coprolites",
+        }
+    )
+    assert result.llm_subcategory == "unknown"
+
+
+def test_validate_llm_enrichment_coerces_trace_completeness_mismatch():
+    result = validate_llm_enrichment(
+        {
+            "llm_category": "trace_fossil",
+            "llm_subcategory": "coprolites",
+            "llm_completeness": "partial",
+        }
+    )
+    assert result.llm_completeness == "unknown"

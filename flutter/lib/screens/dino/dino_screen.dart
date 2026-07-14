@@ -9,7 +9,12 @@ import '../../widgets/dino/dinosaur_filter_fab.dart';
 import '../../widgets/dino/dinosaur_filter_sheet.dart';
 
 class DinoScreen extends StatefulWidget {
-  const DinoScreen({super.key});
+  const DinoScreen({
+    super.key,
+    this.isActive = true,
+  });
+
+  final bool isActive;
 
   @override
   State<DinoScreen> createState() => DinoScreenState();
@@ -82,14 +87,15 @@ class DinoScreenState extends State<DinoScreen> {
         return Stack(
           children: [
             Positioned.fill(child: _buildBody(context, catalog)),
-            Positioned(
-              right: 12,
-              bottom: 12,
-              child: DinosaurFilterFab(
-                hasActiveFilters: catalog.hasActiveFilters,
-                onPressed: () => _openFilterSheet(catalog),
+            if (widget.isActive)
+              Positioned(
+                right: 12,
+                bottom: 12,
+                child: DinosaurFilterFab(
+                  hasActiveFilters: catalog.hasActiveFilters,
+                  onPressed: () => _openFilterSheet(catalog),
+                ),
               ),
-            ),
           ],
         );
       },

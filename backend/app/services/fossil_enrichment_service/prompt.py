@@ -66,7 +66,9 @@ llm_description:
 Rules:
 - Only classify when evidence appears in the record fields or comments.
 - llm_subcategory must be consistent with llm_category (body vs trace).
-- Enum values must be lowercase snake_case strings, never null.
+- Prefer "unknown" over guessing for enum fields.
+- Enum values must be lowercase snake_case strings, never null. Never use
+  "not reported", "not specified", or similar — use "unknown" instead.
 - llm_description is normal prose (not snake_case).
 
 Occurrence id: """
