@@ -5,6 +5,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../../config/map_config.dart';
+import 'period_marker_color.dart';
 
 class LocationMarkerLayer extends StatelessWidget {
   const LocationMarkerLayer({
@@ -32,7 +33,7 @@ class LocationMarkerLayer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final primary = Theme.of(context).colorScheme.primary;
+    final primary = mapMarkerPrimaryColor();
     final cameraCenter = MapCamera.of(context).center;
     final isCenteredOnCurrent =
         _isCenteredOnCurrent(currentLocation, cameraCenter);

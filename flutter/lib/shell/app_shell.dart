@@ -6,7 +6,6 @@ import '../controllers/theme_controller.dart';
 import '../screens/catalog/catalog_screen.dart';
 import '../screens/map/map_screen.dart';
 import '../screens/profile/profile_screen.dart';
-import '../screens/tree/tree_screen.dart';
 
 class AppShell extends StatefulWidget {
   const AppShell({super.key});
@@ -18,7 +17,6 @@ class AppShell extends StatefulWidget {
 class _AppShellState extends State<AppShell> {
   static const _mapTabIndex = 0;
   static const _catalogTabIndex = 1;
-  static const _treeTabIndex = 2;
 
   int _index = _catalogTabIndex;
   final _catalogScreenKey = GlobalKey<CatalogScreenState>();
@@ -61,7 +59,6 @@ class _AppShellState extends State<AppShell> {
             key: _catalogScreenKey,
             isActive: _index == _catalogTabIndex,
           ),
-          TreeScreen(isActive: _index == _treeTabIndex),
           const ProfileScreen(),
         ],
       ),
@@ -90,11 +87,6 @@ class _AppShellState extends State<AppShell> {
               icon: Icon(Icons.collections_bookmark_outlined),
               selectedIcon: Icon(Icons.collections_bookmark),
               label: 'Catalog',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.account_tree_outlined),
-              selectedIcon: Icon(Icons.account_tree),
-              label: 'Tree',
             ),
             NavigationDestination(
               icon: Icon(Icons.person_outlined),

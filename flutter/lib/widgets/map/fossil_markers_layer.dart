@@ -4,6 +4,7 @@ import 'package:latlong2/latlong.dart';
 
 import '../../models/fossil.dart';
 import 'fossil_marker.dart';
+import 'period_marker_color.dart';
 
 class FossilMarkersLayer extends StatelessWidget {
   const FossilMarkersLayer({
@@ -27,7 +28,7 @@ class FossilMarkersLayer extends StatelessWidget {
   Widget build(BuildContext context) {
     if (!mapReady) return const SizedBox.shrink();
 
-    final color = Theme.of(context).colorScheme.primary;
+    final color = mapMarkerPrimaryColor();
     final showIcon = fossilMarkerShowsIcon(zoomLevel);
     final bounds = visibleBounds;
 

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../models/dinosaur.dart';
 import '../../models/dinosaur_article.dart';
 import '../../services/dinosaur_service.dart';
+import '../common/drawer_sheet_sizes.dart';
 import 'dinosaur_article_html_view.dart';
 
 class DinosaurArticleDrawer extends StatefulWidget {
@@ -60,9 +61,9 @@ class _DinosaurArticleDrawerState extends State<DinosaurArticleDrawer> {
 
     return DraggableScrollableSheet(
       expand: false,
-      initialChildSize: 0.88,
-      minChildSize: 0.35,
-      maxChildSize: 0.95,
+      initialChildSize: DrawerSheetSizes.initialChildSize,
+      minChildSize: DrawerSheetSizes.minChildSize,
+      maxChildSize: DrawerSheetSizes.maxChildSize,
       builder: (context, scrollController) {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,

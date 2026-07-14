@@ -27,7 +27,6 @@ class SiteMarkersLayer extends StatelessWidget {
 
     final map = MapCamera.of(context);
     final zoomLevel = map.zoom;
-    final scheme = Theme.of(context).colorScheme;
     final showIcon = fossilMarkerShowsIcon(zoomLevel);
     final bounds = paddedVisibleBounds(map.visibleBounds);
 
@@ -42,7 +41,7 @@ class SiteMarkersLayer extends StatelessWidget {
       markers: visibleSites.map((site) {
         final selected = selectedSite?.siteId == site.siteId;
         final size = fossilMarkerSizeForZoom(zoomLevel, selected: selected);
-        final color = periodMarkerColor(site.effectivePeriod, scheme);
+        final color = periodMarkerColor(site.effectivePeriod);
 
         return Marker(
           point: LatLng(site.latitude!, site.longitude!),

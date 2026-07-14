@@ -7,6 +7,7 @@ import '../../controllers/dinosaur_catalog_controller.dart';
 import '../../widgets/cards/dinosaur_turnable_card.dart';
 import '../../widgets/dino/dinosaur_filter_fab.dart';
 import '../../widgets/dino/dinosaur_filter_sheet.dart';
+import '../../widgets/dino/dinosaur_tree_sheet.dart';
 
 class DinoScreen extends StatefulWidget {
   const DinoScreen({
@@ -91,9 +92,26 @@ class DinoScreenState extends State<DinoScreen> {
               Positioned(
                 right: 12,
                 bottom: 12,
-                child: DinosaurFilterFab(
-                  hasActiveFilters: catalog.hasActiveFilters,
-                  onPressed: () => _openFilterSheet(catalog),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    FloatingActionButton.small(
+                      heroTag: 'dino_tree_fab',
+                      tooltip: 'Phylogeny',
+                      backgroundColor: Theme.of(context)
+                          .colorScheme
+                          .surfaceContainerHighest,
+                      foregroundColor:
+                          Theme.of(context).colorScheme.onSurface,
+                      onPressed: () => DinosaurTreeSheet.show(context),
+                      child: const Icon(Icons.account_tree),
+                    ),
+                    DinosaurFilterFab(
+                      hasActiveFilters: catalog.hasActiveFilters,
+                      onPressed: () => _openFilterSheet(catalog),
+                    ),
+                  ],
                 ),
               ),
           ],
@@ -153,7 +171,7 @@ class DinoScreenState extends State<DinoScreen> {
       child: ListView.builder(
         controller: _scrollController,
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.only(top: 8, bottom: 88),
+        padding: const EdgeInsets.only(top: 8, bottom: 96),
         itemCount: catalog.items.length + (catalog.isLoadingMore ? 1 : 0),
         itemBuilder: (context, index) {
           if (index >= catalog.items.length) {

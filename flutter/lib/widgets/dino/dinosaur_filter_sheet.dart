@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../controllers/dinosaur_catalog_controller.dart';
 import '../cards/geologic_timeline.dart';
+import '../common/drawer_sheet_sizes.dart';
 
 class DinosaurFilterSheet extends StatefulWidget {
   const DinosaurFilterSheet({
@@ -115,9 +116,9 @@ class _DinosaurFilterSheetState extends State<DinosaurFilterSheet> {
       },
       child: DraggableScrollableSheet(
         expand: false,
-        initialChildSize: 0.55,
-        minChildSize: 0.35,
-        maxChildSize: 0.85,
+        initialChildSize: DrawerSheetSizes.initialChildSize,
+        minChildSize: DrawerSheetSizes.minChildSize,
+        maxChildSize: DrawerSheetSizes.maxChildSize,
         builder: (context, scrollController) {
           return ListView(
             controller: scrollController,

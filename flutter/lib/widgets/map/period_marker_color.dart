@@ -1,19 +1,23 @@
 import 'package:flutter/material.dart';
 
-/// Cretaceous keeps the theme brown; Jurassic and Triassic use distinct warm hues.
-const Color _jurassicOrange = Color(0xFFFF9800);
-const Color _triassicGold = Color(0xFFC5944E);
+import '../../theme/mesozoica_theme.dart';
 
-Color periodMarkerColor(String? period, ColorScheme scheme) {
+const Color _jurassicGray = Color.fromARGB(255, 195, 195, 195);
+const Color _triassicOrange = Color.fromARGB(255, 221, 133, 0);
+
+/// Primary marker hue — always the light-theme brown so markers match on dark tiles.
+Color mapMarkerPrimaryColor() => MesozoicaTheme.light.colorScheme.primary;
+
+/// Cretaceous keeps the theme brown; Jurassic and Triassic use distinct warm hues.
+Color periodMarkerColor(String? period) {
   switch (period?.toLowerCase()) {
     case 'cretaceous':
-      return scheme.primary;
+      return mapMarkerPrimaryColor();
     case 'jurassic':
-      return const Color.fromARGB(255, 195, 195, 195);
-
+      return _jurassicGray;
     case 'triassic':
-      return const Color.fromARGB(255, 221, 133, 0);
+      return _triassicOrange;
     default:
-      return scheme.primary;
+      return mapMarkerPrimaryColor();
   }
 }
