@@ -6,7 +6,7 @@ import json
 
 from app.models.dinosaur import Dinosaur
 from app.models.fossil import Fossil
-from app.services.image_generation_service.fossil_json import fossil_to_prompt_dict
+from app.services.image_generation_service.fossil_json import fossil_to_enrichment_prompt_dict
 
 _SYSTEM_INSTRUCTION = """You are a paleontology data assistant.
 Read the fossil occurrence record and return ONLY valid JSON (no markdown, no explanations).
@@ -15,7 +15,9 @@ null, or any value outside those lists.
 When the record clearly supports a value, choose the closest match. When evidence is weak or
 absent, pick uniformly at random from that field's allowed values.
 Do not infer anatomy, lithology, or preservation from taxon name alone.
-PBDB catalog numbers, collection metadata, and geographic names are not evidence for classification."""
+PBDB catalog numbers, collection metadata, and geographic names are not evidence for classification.
+The PBDB field research_group (often "vertebrate") refers to vertebrate paleontology — it is NOT
+evidence for vertebrae bones. Never pick llm_subcategory=vertebrae from research_group or taxonomy."""
 
 _USER_PREFIX = """Classify this fossil occurrence record into normalized museum-card fields.
 
@@ -48,7 +50,11 @@ llm_subcategory — must match llm_category
     skin_and_soft_tissue, eggs_and_embryos
   Trace fossils: footprints_and_trackways, burrows_and_nesting_traces,
     bite_marks_and_feeding_traces, coprolites, gastroliths, regurgitates
-  Pick from the list that matches llm_category. If unclear, pick randomly from that list.
+  Use occurrence_comments, pres_mode, and feed_pred_traces as primary evidence.
+  Only choose vertebrae when vertebrae, cervical, dorsal, or caudal backbone elements
+  are explicitly described for this occurrence. Do not use collection-level body-part
+  summaries, research_group, taxonomy, or catalog numbers. If unclear, pick randomly
+  from the list that matches llm_category.
 
 llm_preservation_quality:
   exceptional, excellent, good, moderate, poor, very_poor
@@ -57,8 +63,8 @@ llm_preservation_quality:
 
 llm_completeness:
   nearly_complete, substantial, partial, fragmentary, isolated_element, trace_only
-  When llm_category is trace_fossil, prefer trace_only. Use articulated_parts,
-  common_body_parts, fragmentation, collection_coverage, and comments. If unclear,
+  When llm_category is trace_fossil, prefer trace_only. Use occurrence_comments,
+  pres_mode, feed_pred_traces, fragmentation, and preservation_comments. If unclear,
   pick randomly from this list.
 
 llm_description:
@@ -79,7 +85,7 @@ Occurrence id: """
 
 def build_enrichment_prompt(fossil: Fossil, *, dinosaur: Dinosaur) -> tuple[str, str]:
     """Return (system_instruction, user_prompt) for Gemini."""
-    payload = fossil_to_prompt_dict(fossil, dinosaur_name=dinosaur.name)
+    payload = fossil_to_enrichment_prompt_dict(fossil, dinosaur_name=dinosaur.name)
     payload["dinosaur_period"] = dinosaur.period
     payload["dinosaur_short_description"] = dinosaur.short_description
     user_prompt = (

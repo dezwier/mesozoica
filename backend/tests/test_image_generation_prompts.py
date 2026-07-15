@@ -7,6 +7,7 @@ from decimal import Decimal
 from app.models.fossil import Fossil
 from app.services.image_generation_service.article_text import extract_article_text
 from app.services.image_generation_service.fossil_json import (
+    fossil_to_enrichment_prompt_dict,
     fossil_to_image_prompt_dict,
     fossil_to_prompt_dict,
     fossil_to_prompt_json,
@@ -71,6 +72,32 @@ def test_fossil_to_prompt_dict_omits_nulls_and_includes_dino_name():
     assert payload["geological_formation"] == "Scollard"
     assert "main_image_url" not in payload
     assert "dinosaur_id" in payload
+
+
+def test_fossil_to_enrichment_prompt_dict_excludes_research_group_and_collection_comps():
+    fossil = Fossil(
+        id=139292,
+        dinosaur_id=1,
+        pres_mode="body",
+        occurrence_comments="isolated tooth",
+        research_group="vertebrate",
+        common_body_parts="skull, vertebrae",
+        articulated_parts="some",
+        component_comments="collection has many vertebrae",
+        reference_no=4218,
+        museum="GSC",
+        llm_subcategory="vertebrae",
+    )
+    payload = fossil_to_enrichment_prompt_dict(fossil, dinosaur_name="Tyrannosaurus")
+    assert payload["dinosaur_name"] == "Tyrannosaurus"
+    assert payload["occurrence_comments"] == "isolated tooth"
+    assert payload["pres_mode"] == "body"
+    assert "research_group" not in payload
+    assert "common_body_parts" not in payload
+    assert "articulated_parts" not in payload
+    assert "component_comments" not in payload
+    assert "reference_no" not in payload
+    assert "llm_subcategory" not in payload
 
 
 def test_fossil_to_image_prompt_dict_includes_only_llm_fields():

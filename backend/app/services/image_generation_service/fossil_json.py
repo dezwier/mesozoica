@@ -19,6 +19,33 @@ _IMAGE_PROMPT_LLM_FIELDS: tuple[tuple[str, str], ...] = (
     ("llm_preservation_quality", "llm_quality"),
 )
 
+# Occurrence-specific PBDB fields useful for LLM enrichment (exclude collection comps/admin noise).
+_ENRICHMENT_PROMPT_FIELDS: tuple[str, ...] = (
+    "identified_name",
+    "genus",
+    "pres_mode",
+    "occurrence_comments",
+    "feed_pred_traces",
+    "preservation_comments",
+    "fragmentation",
+    "preservation_quality",
+    "lagerstatten",
+    "lithdescript",
+    "lithology1",
+    "lithology2",
+    "lithadj1",
+    "stratcomments",
+    "geological_formation",
+    "early_interval",
+    "late_interval",
+    "min_age_ma",
+    "max_age_ma",
+    "environment",
+    "country_code",
+    "state",
+    "geogcomments",
+)
+
 
 def fossil_to_prompt_dict(fossil: Fossil, *, dinosaur_name: str) -> dict[str, Any]:
     """Return non-null fossil fields plus dinosaur name (full record)."""
@@ -26,6 +53,18 @@ def fossil_to_prompt_dict(fossil: Fossil, *, dinosaur_name: str) -> dict[str, An
     payload: dict[str, Any] = {"dinosaur_name": dinosaur_name}
     for key, value in raw.items():
         if value is None or key in {"main_image_url", "description"}:
+            continue
+        payload[key] = _serialize_value(value)
+    return payload
+
+
+def fossil_to_enrichment_prompt_dict(fossil: Fossil, *, dinosaur_name: str) -> dict[str, Any]:
+    """Return occurrence-specific fossil fields for LLM enrichment prompts."""
+    source = fossil_to_prompt_dict(fossil, dinosaur_name=dinosaur_name)
+    payload: dict[str, Any] = {"dinosaur_name": dinosaur_name}
+    for key in _ENRICHMENT_PROMPT_FIELDS:
+        value = source.get(key)
+        if value is None:
             continue
         payload[key] = _serialize_value(value)
     return payload
