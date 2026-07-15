@@ -1,7 +1,9 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:mesozoica/controllers/auth_controller.dart';
+import 'package:mesozoica/controllers/theme_controller.dart';
 import 'package:mesozoica/models/profile.dart';
 
 void main() {
@@ -36,5 +38,18 @@ void main() {
     expect(authController.isInitializing, isFalse);
     expect(authController.isLoggedIn, isFalse);
     expect(authController.currentUser, isNull);
+  });
+
+  test('ThemeController persists appearance preference', () async {
+    SharedPreferences.setMockInitialValues({'theme_mode': 'dark'});
+    final themeController = ThemeController();
+    await themeController.initialize();
+
+    expect(themeController.themeMode, ThemeMode.dark);
+
+    await themeController.setThemeMode(ThemeMode.system);
+    final prefs = await SharedPreferences.getInstance();
+    expect(prefs.getString('theme_mode'), 'system');
+    expect(themeController.themeMode, ThemeMode.system);
   });
 }

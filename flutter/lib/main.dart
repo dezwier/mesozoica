@@ -27,17 +27,21 @@ Future<void> main() async {
       debugPrint('Firebase init skipped/failed: $error');
     }
   }
-  runApp(const MesozoicaApp());
+  final themeController = ThemeController();
+  await themeController.initialize();
+  runApp(MesozoicaApp(themeController: themeController));
 }
 
 class MesozoicaApp extends StatelessWidget {
-  const MesozoicaApp({super.key});
+  const MesozoicaApp({super.key, required this.themeController});
+
+  final ThemeController themeController;
 
   @override
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => ThemeController()),
+        ChangeNotifierProvider.value(value: themeController),
         ChangeNotifierProvider(
           create: (_) => AuthController()..initialize(),
         ),

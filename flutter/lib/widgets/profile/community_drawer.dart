@@ -524,38 +524,72 @@ class _UserProfileDrawerState extends State<UserProfileDrawer> {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Theme.of(context).colorScheme.surface,
-      borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-      child: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : _error != null
-              ? Center(child: Text(_error!))
-              : _profile == null
-                  ? const Center(child: Text('Profile unavailable'))
-                  : ListView(
-                      controller: widget.scrollController,
-                      children: [
-                        ProfileContent(
-                          profile: _profile!,
-                          headerActions: _relationshipType == 'self'
-                              ? null
-                              : IconButton(
-                                  onPressed:
-                                      _friendBusy ? null : _handleFriendAction,
-                                  icon: _friendBusy
-                                      ? const SizedBox(
-                                          width: 18,
-                                          height: 18,
-                                          child: CircularProgressIndicator(
-                                            strokeWidth: 2,
-                                          ),
-                                        )
-                                      : Icon(_friendIcon()),
-                                ),
-                        ),
-                      ],
-                    ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final height = widget.scrollController != null
+            ? constraints.maxHeight
+            : MediaQuery.of(context).size.height * 0.9;
+
+        return Container(
+          height: height,
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surface,
+            borderRadius:
+                const BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: Column(
+            children: [
+              const SizedBox(height: 12),
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Theme.of(context)
+                      .colorScheme
+                      .onSurface
+                      .withValues(alpha: 0.3),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              Expanded(child: _buildBody(context)),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildBody(BuildContext context) {
+    if (_loading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (_error != null) {
+      return Center(child: Text(_error!));
+    }
+    if (_profile == null) {
+      return const Center(child: Text('Profile unavailable'));
+    }
+
+    return ListView(
+      controller: widget.scrollController,
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+      children: [
+        ProfileContent(
+          profile: _profile!,
+          headerActions: _relationshipType == 'self'
+              ? null
+              : IconButton(
+                  onPressed: _friendBusy ? null : _handleFriendAction,
+                  icon: _friendBusy
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : Icon(_friendIcon()),
+                ),
+        ),
+      ],
     );
   }
 }
