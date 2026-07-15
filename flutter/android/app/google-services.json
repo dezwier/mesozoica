@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "349946200961",
+    "project_id": "mesozoica-f7ea0",
+    "storage_bucket": "mesozoica-f7ea0.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:349946200961:android:c013fa666f1429c7589e80",
+        "android_client_info": {
+          "package_name": "com.mesozoica.mesozoica"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "349946200961-sfdq9s9n5bsjs98viphcgsurgmh9ka5f.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD5Ep_lQPuIQeYfc8uHwAXfoPWNJ9e_Q4U"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "349946200961-sfdq9s9n5bsjs98viphcgsurgmh9ka5f.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

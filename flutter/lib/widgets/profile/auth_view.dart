@@ -1,6 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
+import '../../config/app_config.dart';
+
 class AuthView extends StatefulWidget {
   const AuthView({
     super.key,
@@ -77,6 +79,17 @@ class AuthViewState extends State<AuthView>
             ],
           ),
           const SizedBox(height: 16),
+          if (AppConfig.showDebugTestAccount) ...[
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton.icon(
+                onPressed: widget.isLoading ? null : _fillDebugTestAccount,
+                icon: const Icon(Icons.bug_report_outlined, size: 18),
+                label: const Text('Fill test account'),
+              ),
+            ),
+            const SizedBox(height: 8),
+          ],
           Expanded(
             child: TabBarView(
               controller: _tabController,
@@ -194,6 +207,18 @@ class AuthViewState extends State<AuthView>
         ],
       ],
     );
+  }
+
+  void _fillDebugTestAccount() {
+    if (_tabController.index == 0) {
+      widget.usernameController.text = AppConfig.debugTestEmail;
+      widget.passwordController.text = AppConfig.debugTestPassword;
+      return;
+    }
+    _registerUsernameController.text = AppConfig.debugTestUsername;
+    _registerEmailController.text = AppConfig.debugTestEmail;
+    _registerPasswordController.text = AppConfig.debugTestPassword;
+    _registerFullNameController.text = AppConfig.debugTestFullName;
   }
 
   Future<void> _handleRegister() async {

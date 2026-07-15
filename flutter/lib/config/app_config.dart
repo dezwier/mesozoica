@@ -11,6 +11,14 @@ class AppConfig {
   static bool isDebugMode = kDebugMode;
   static bool isApiRunning = false;
 
+  /// Debug-only test account (quick fill on Profile auth screen).
+  static const String debugTestEmail = 'dezwier@mesozoica.app';
+  static const String debugTestUsername = 'dezwier';
+  static const String debugTestPassword = 'password123';
+  static const String debugTestFullName = 'Dezwier';
+
+  static bool get showDebugTestAccount => isDebugMode;
+
   /// Deployed FastAPI on Railway (default for all device builds).
   static const String productionApiUrl =
       'https://mesozoica-production.up.railway.app';

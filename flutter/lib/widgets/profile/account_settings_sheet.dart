@@ -28,6 +28,7 @@ class AccountSettingsSheet extends StatefulWidget {
 
 class _AccountSettingsSheetState extends State<AccountSettingsSheet>
     with TickerProviderStateMixin {
+  final _formKey = GlobalKey<FormState>();
   TabController? _tabController;
   int _selectedTabIndex = 0;
   final _fullNameController = TextEditingController();
@@ -44,6 +45,7 @@ class _AccountSettingsSheetState extends State<AccountSettingsSheet>
   bool? _usernameAvailable;
   String? _usernameError;
   bool _isSaving = false;
+  String? _saveError;
   bool _isUploadingImage = false;
   List<String> _linkedProviders = [];
   bool _isLoadingLinked = false;
@@ -92,15 +94,28 @@ class _AccountSettingsSheetState extends State<AccountSettingsSheet>
   void _onUsernameChanged() {
     _usernameCheckTimer?.cancel();
     final value = _usernameController.text.trim();
-    if (value.length < 3 || value == widget.currentUser.username) {
+    if (value == widget.currentUser.username) {
       setState(() {
-        _usernameAvailable = value == widget.currentUser.username ? true : null;
+        _usernameAvailable = true;
         _usernameError = null;
+        _isCheckingUsername = false;
       });
       return;
     }
-    _usernameCheckTimer = Timer(const Duration(milliseconds: 400), () async {
-      setState(() => _isCheckingUsername = true);
+    if (value.length < 3) {
+      setState(() {
+        _usernameAvailable = null;
+        _usernameError = null;
+        _isCheckingUsername = false;
+      });
+      return;
+    }
+    setState(() {
+      _isCheckingUsername = true;
+      _usernameAvailable = null;
+      _usernameError = null;
+    });
+    _usernameCheckTimer = Timer(const Duration(milliseconds: 500), () async {
       final result =
           await context.read<AuthController>().authService.checkUsername(value);
       if (!mounted) return;
@@ -135,11 +150,31 @@ class _AccountSettingsSheetState extends State<AccountSettingsSheet>
   }
 
   Future<void> _saveSettings() async {
-    if (_newPasswordController.text != _confirmPasswordController.text) {
-      _showSnack('New passwords do not match');
+    if (!_formKey.currentState!.validate()) return;
+
+    if (_newPasswordController.text.isNotEmpty) {
+      final hasPasswordLinked = _linkedProviders.contains('password');
+      if (hasPasswordLinked && _currentPasswordController.text.isEmpty) {
+        setState(() => _saveError = 'Current password is required');
+        return;
+      }
+      if (_newPasswordController.text != _confirmPasswordController.text) {
+        setState(() => _saveError = 'New passwords do not match');
+        return;
+      }
+    }
+
+    if (_usernameController.text.trim() != widget.currentUser.username &&
+        _usernameAvailable != true) {
+      setState(() => _saveError = 'Please wait for username check to finish');
       return;
     }
-    setState(() => _isSaving = true);
+
+    setState(() {
+      _isSaving = true;
+      _saveError = null;
+    });
+
     final result = await context.read<AuthController>().authService.updateProfile(
           username: _usernameController.text.trim(),
           email: _emailController.text.trim(),
@@ -158,7 +193,7 @@ class _AccountSettingsSheetState extends State<AccountSettingsSheet>
       _showSnack('Settings saved');
       Navigator.of(context).pop();
     } else {
-      _showSnack(result['message'] as String? ?? 'Save failed');
+      setState(() => _saveError = result['message'] as String? ?? 'Save failed');
     }
   }
 
@@ -167,12 +202,20 @@ class _AccountSettingsSheetState extends State<AccountSettingsSheet>
     setState(() => _activeLinkedProviderAction = 'google');
     try {
       final idToken = await _oauth.signInWithGoogle();
-      if (idToken == null) return;
+      if (idToken == null) {
+        if (mounted) setState(() => _activeLinkedProviderAction = null);
+        return;
+      }
       final credential = await _oauth.firebaseSignInWithGoogle(idToken);
       final token = await credential.user?.getIdToken(true);
-      if (token == null) return;
+      if (token == null) {
+        if (mounted) setState(() => _activeLinkedProviderAction = null);
+        return;
+      }
       final result =
           await context.read<AuthController>().authService.linkGoogle(token);
+      if (!mounted) return;
+      setState(() => _activeLinkedProviderAction = null);
       if (result['success'] == true) {
         setState(
           () => _linkedProviders = (result['providers'] as List).cast<String>(),
@@ -182,9 +225,10 @@ class _AccountSettingsSheetState extends State<AccountSettingsSheet>
         _showSnack(result['message'] as String? ?? 'Link failed');
       }
     } catch (error) {
-      _showSnack(error.toString());
-    } finally {
-      if (mounted) setState(() => _activeLinkedProviderAction = null);
+      if (mounted) {
+        setState(() => _activeLinkedProviderAction = null);
+        _showSnack(error.toString());
+      }
     }
   }
 
@@ -193,15 +237,23 @@ class _AccountSettingsSheetState extends State<AccountSettingsSheet>
     setState(() => _activeLinkedProviderAction = 'apple');
     try {
       final apple = await _oauth.signInWithApple();
-      if (apple?.idToken == null) return;
+      if (apple?.idToken == null) {
+        if (mounted) setState(() => _activeLinkedProviderAction = null);
+        return;
+      }
       final credential = await _oauth.firebaseSignInWithApple(
         idToken: apple!.idToken!,
         rawNonce: apple.rawNonce,
       );
       final token = await credential.user?.getIdToken(true);
-      if (token == null) return;
+      if (token == null) {
+        if (mounted) setState(() => _activeLinkedProviderAction = null);
+        return;
+      }
       final result =
           await context.read<AuthController>().authService.linkApple(token);
+      if (!mounted) return;
+      setState(() => _activeLinkedProviderAction = null);
       if (result['success'] == true) {
         setState(
           () => _linkedProviders = (result['providers'] as List).cast<String>(),
@@ -211,9 +263,10 @@ class _AccountSettingsSheetState extends State<AccountSettingsSheet>
         _showSnack(result['message'] as String? ?? 'Link failed');
       }
     } catch (error) {
-      _showSnack(error.toString());
-    } finally {
-      if (mounted) setState(() => _activeLinkedProviderAction = null);
+      if (mounted) {
+        setState(() => _activeLinkedProviderAction = null);
+        _showSnack(error.toString());
+      }
     }
   }
 
@@ -221,21 +274,61 @@ class _AccountSettingsSheetState extends State<AccountSettingsSheet>
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text('Unlink $provider?'),
-        content: const Text('You can link it again later in Account settings.'),
+        title: const Text('Unlink account?'),
+        content: Text('Unlink $provider? You can link it again later.'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Unlink')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(
+              'Unlink',
+              style: TextStyle(color: Theme.of(ctx).colorScheme.error),
+            ),
+          ),
         ],
       ),
     );
-    if (confirmed != true) return;
+    if (confirmed != true || !mounted) return;
+    setState(() => _activeLinkedProviderAction = provider);
     final result =
         await context.read<AuthController>().authService.unlinkProvider(provider);
+    if (!mounted) return;
+    setState(() => _activeLinkedProviderAction = null);
     if (result['success'] == true) {
       setState(() => _linkedProviders = (result['providers'] as List).cast<String>());
     } else {
       _showSnack(result['message'] as String? ?? 'Unlink failed');
+    }
+  }
+
+  Future<void> _requestDeleteAllData() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete all data?'),
+        content: const Text(
+          'This removes your progress and collections. Your account stays active.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(
+              'Delete data',
+              style: TextStyle(color: Theme.of(ctx).colorScheme.error),
+            ),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) {
+      _showSnack('Delete data is not available yet');
     }
   }
 
@@ -246,8 +339,17 @@ class _AccountSettingsSheetState extends State<AccountSettingsSheet>
         title: const Text('Delete account?'),
         content: const Text('This permanently deletes your account.'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Delete')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(
+              'Delete',
+              style: TextStyle(color: Theme.of(ctx).colorScheme.error),
+            ),
+          ),
         ],
       ),
     );
@@ -266,129 +368,271 @@ class _AccountSettingsSheetState extends State<AccountSettingsSheet>
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
   }
 
-  List<Widget> _buildLinkedRows() {
-    const providers = ['password', 'google', 'apple'];
-    return providers.map((provider) {
-      final linked = _linkedProviders.contains(provider);
-      return ListTile(
-        contentPadding: EdgeInsets.zero,
-        title: Text(_providerLabel(provider)),
-        trailing: linked
-            ? TextButton(
-                onPressed: _linkedProviders.length <= 1
-                    ? null
-                    : () => _unlinkProvider(provider),
-                child: const Text('Unlink'),
-              )
-            : TextButton(
-                onPressed: _activeLinkedProviderAction != null
-                    ? null
-                    : provider == 'google'
-                        ? _linkGoogle
-                        : provider == 'apple'
-                            ? _linkApple
-                            : null,
-                child: Text(
-                  _activeLinkedProviderAction == provider ? 'Linking…' : 'Link',
-                ),
-              ),
-      );
-    }).toList();
+  List<Widget> _buildLinkedAccountsRows(BuildContext context) {
+    final hasPassword = _linkedProviders.contains('password');
+    final hasGoogle = _linkedProviders.contains('google');
+    final hasApple = _linkedProviders.contains('apple');
+    final canUnlink = _linkedProviders.length > 1;
+
+    return [
+      _linkedAccountRow(
+        context,
+        providerKey: 'password',
+        label: 'Password',
+        buttonLabel: hasPassword ? 'Unlink' : 'Link',
+        onAction: hasPassword
+            ? (canUnlink ? () => _unlinkProvider('password') : null)
+            : null,
+        isDestructiveAction: hasPassword,
+        isLoading: _activeLinkedProviderAction == 'password',
+      ),
+      _linkedAccountRow(
+        context,
+        providerKey: 'google',
+        label: 'Google',
+        buttonLabel: hasGoogle ? 'Unlink' : 'Link',
+        onAction: hasGoogle
+            ? (canUnlink ? () => _unlinkProvider('google') : null)
+            : _linkGoogle,
+        isDestructiveAction: hasGoogle,
+        isLoading: _activeLinkedProviderAction == 'google',
+      ),
+      _linkedAccountRow(
+        context,
+        providerKey: 'apple',
+        label: 'Apple',
+        buttonLabel: hasApple ? 'Unlink' : 'Link',
+        onAction: hasApple
+            ? (canUnlink ? () => _unlinkProvider('apple') : null)
+            : _linkApple,
+        isDestructiveAction: hasApple,
+        isLoading: _activeLinkedProviderAction == 'apple',
+      ),
+    ];
   }
 
-  String _providerLabel(String provider) {
-    switch (provider) {
-      case 'google':
-        return 'Google';
-      case 'apple':
-        return 'Apple';
-      default:
-        return 'Password';
-    }
+  Widget _linkedAccountRow(
+    BuildContext context, {
+    required String providerKey,
+    required String label,
+    required String buttonLabel,
+    required VoidCallback? onAction,
+    required bool isDestructiveAction,
+    required bool isLoading,
+  }) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isLinked = isDestructiveAction;
+    final icon = providerKey == 'password'
+        ? Icons.lock_outline
+        : (providerKey == 'google' ? Icons.g_mobiledata : Icons.apple);
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        children: [
+          Icon(icon, size: 20, color: colorScheme.onSurface),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              label,
+              style: theme.textTheme.bodyLarge?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          IgnorePointer(
+            ignoring: isLoading,
+            child: FilledButton.tonalIcon(
+              onPressed: onAction,
+              icon: Icon(isLinked ? Icons.link_off : Icons.link),
+              label: Text(buttonLabel),
+              style: FilledButton.styleFrom(
+                visualDensity: VisualDensity.compact,
+                foregroundColor:
+                    isLinked ? colorScheme.error : colorScheme.primary,
+                backgroundColor: isLinked
+                    ? colorScheme.errorContainer.withValues(alpha: 0.45)
+                    : colorScheme.primaryContainer.withValues(alpha: 0.5),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final bottomInset = MediaQuery.of(context).padding.bottom;
-    return Material(
-      color: Theme.of(context).colorScheme.surface,
-      borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-      child: Column(
-        children: [
-          const SizedBox(height: 8),
-          Container(
-            width: 40,
-            height: 4,
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.outlineVariant,
-              borderRadius: BorderRadius.circular(2),
-            ),
+    final controller = _tabController;
+    if (controller == null) {
+      return const SizedBox.shrink();
+    }
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final height = widget.scrollController != null
+            ? constraints.maxHeight
+            : MediaQuery.of(context).size.height * 0.9;
+
+        return Container(
+          height: height,
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surface,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
           ),
-          TabBar(
-            controller: _tabController,
-            tabs: const [
-              Tab(text: 'App'),
-              Tab(text: 'Profile'),
-              Tab(text: 'Account'),
-            ],
-          ),
-          Expanded(
-            child: TabBarView(
-              controller: _tabController,
-              children: [
-                SettingsAppTab(),
-                SettingsProfileTab(
-                  currentUser: widget.currentUser,
-                  fullNameController: _fullNameController,
-                  usernameController: _usernameController,
-                  usernameAvailable: _usernameAvailable,
-                  usernameError: _usernameError,
-                  isCheckingUsername: _isCheckingUsername,
-                  isUploadingImage: _isUploadingImage,
-                  onPickImage: _pickImage,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                margin: const EdgeInsets.only(top: 12),
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Theme.of(context)
+                      .colorScheme
+                      .onSurface
+                      .withValues(alpha: 0.3),
+                  borderRadius: BorderRadius.circular(2),
                 ),
-                SettingsAccountTab(
-                  currentUser: widget.currentUser,
-                  emailController: _emailController,
-                  currentPasswordController: _currentPasswordController,
-                  newPasswordController: _newPasswordController,
-                  confirmPasswordController: _confirmPasswordController,
-                  linkedAccountRows: _buildLinkedRows(),
-                  isLoadingLinked: _isLoadingLinked,
-                  onRequestDeleteAccount: _confirmDeleteAccount,
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 8, 0),
+                child: Row(
+                  children: [
+                    Text(
+                      'Settings',
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                    ),
+                    const Spacer(),
+                    IconButton(
+                      icon: const Icon(Icons.close),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                      onPressed: () => Navigator.of(context).pop(),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-          ),
-          if (_selectedTabIndex != 0)
-            Padding(
-              padding: EdgeInsets.fromLTRB(16, 8, 16, bottomInset + 12),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: _isSaving ? null : () => Navigator.pop(context),
-                      child: const Text('Cancel'),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: FilledButton(
-                      onPressed: _isSaving ? null : _saveSettings,
-                      child: _isSaving
-                          ? const SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Text('Save'),
-                    ),
-                  ),
+              ),
+              TabBar(
+                controller: controller,
+                labelColor: Theme.of(context).colorScheme.primary,
+                unselectedLabelColor: Theme.of(context)
+                    .colorScheme
+                    .onSurface
+                    .withValues(alpha: 0.6),
+                tabs: const [
+                  Tab(text: 'App'),
+                  Tab(text: 'Profile'),
+                  Tab(text: 'Account'),
                 ],
               ),
-            ),
-        ],
-      ),
+              Flexible(
+                child: Form(
+                  key: _formKey,
+                  child: TabBarView(
+                    controller: controller,
+                    children: [
+                      const SettingsAppTab(),
+                      SettingsProfileTab(
+                        currentUser: widget.currentUser,
+                        fullNameController: _fullNameController,
+                        usernameController: _usernameController,
+                        usernameAvailable: _usernameAvailable,
+                        usernameError: _usernameError,
+                        isCheckingUsername: _isCheckingUsername,
+                        isUploadingImage: _isUploadingImage,
+                        onPickImage: _pickImage,
+                      ),
+                      SettingsAccountTab(
+                        currentUser: widget.currentUser,
+                        scrollController: widget.scrollController,
+                        emailController: _emailController,
+                        currentPasswordController: _currentPasswordController,
+                        newPasswordController: _newPasswordController,
+                        confirmPasswordController: _confirmPasswordController,
+                        emailValidator: (value) {
+                          if (value == null || value.trim().isEmpty) {
+                            return 'Email is required';
+                          }
+                          if (!value.contains('@')) return 'Enter a valid email';
+                          return null;
+                        },
+                        newPasswordValidator: (value) {
+                          if (_newPasswordController.text.isNotEmpty &&
+                              (value == null || value.length < 6)) {
+                            return 'Password must be at least 6 characters';
+                          }
+                          return null;
+                        },
+                        confirmPasswordValidator: (value) {
+                          if (_newPasswordController.text.isNotEmpty &&
+                              value != _newPasswordController.text) {
+                            return 'Passwords do not match';
+                          }
+                          return null;
+                        },
+                        linkedAccountRows: _buildLinkedAccountsRows(context),
+                        isLoadingLinked: _isLoadingLinked,
+                        onRequestDeleteAllData: _requestDeleteAllData,
+                        onRequestDeleteAccount: _confirmDeleteAccount,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              if (_selectedTabIndex != 0)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (_saveError != null)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: Text(
+                            _saveError!,
+                            style: TextStyle(
+                              color: Theme.of(context).colorScheme.error,
+                            ),
+                          ),
+                        ),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed:
+                                  _isSaving ? null : () => Navigator.pop(context),
+                              child: const Text('Cancel'),
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: ElevatedButton(
+                              onPressed: _isSaving ? null : _saveSettings,
+                              child: _isSaving
+                                  ? const SizedBox(
+                                      width: 20,
+                                      height: 20,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                      ),
+                                    )
+                                  : const Text('Save'),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+        );
+      },
     );
   }
 }

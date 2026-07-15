@@ -14,33 +14,31 @@ class ProfileContent extends StatelessWidget {
 
   final Profile profile;
   final Widget? headerActions;
-  static const double _cardRadius = 5;
+  static const double _cardRadius = 10;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildHeaderCard(context, scheme),
-          const SizedBox(height: 5),
-          _buildStatsGrid(context, scheme),
-          const SizedBox(height: 5),
-          _buildBioCard(context, scheme),
-          const SizedBox(height: 5),
-          _buildAchievementsCard(context, scheme),
-          const SizedBox(height: 5),
-          _buildProfessionalCard(context, scheme),
-        ],
-      ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildHeaderCard(context, scheme),
+        const SizedBox(height: 5),
+        _buildStatsGrid(context, scheme),
+        const SizedBox(height: 5),
+        _buildBioCard(context, scheme),
+        const SizedBox(height: 5),
+        _buildAchievementsCard(context, scheme),
+        const SizedBox(height: 5),
+        _buildProfessionalCard(context, scheme),
+      ],
     );
   }
 
   Widget _buildHeaderCard(BuildContext context, ColorScheme scheme) {
     final imageUrl = AuthService.imageUrl(profile.profileImage);
     return AppCard.profile(
+      borderRadius: _cardRadius,
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
@@ -53,7 +51,7 @@ class ProfileContent extends StatelessWidget {
         borderRadius: BorderRadius.circular(_cardRadius),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
         child: Column(
           children: [
             if (headerActions != null) ...[
@@ -165,52 +163,60 @@ class ProfileContent extends StatelessWidget {
       ('Dinosaurs', Icons.pets, profile.actualDinosaursCount),
     ];
     return Row(
-      children: stats.map((stat) {
-        return Expanded(
-          child: Card(
-            elevation: 1,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(_cardRadius),
-            ),
-            child: Container(
-              decoration: BoxDecoration(
-                color: scheme.surfaceContainerHighest.withValues(alpha: 0.3),
+      children: [
+        for (var i = 0; i < stats.length; i++) ...[
+          if (i > 0) const SizedBox(width: 5),
+          Expanded(
+            child: Card(
+              elevation: 1,
+              shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(_cardRadius),
               ),
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                children: [
-                  Icon(stat.$2, color: scheme.primary, size: 24),
-                  const SizedBox(height: 8),
-                  Text(
-                    '${stat.$3}',
-                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(stat.$1,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: scheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                  borderRadius: BorderRadius.circular(_cardRadius),
+                ),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                child: Column(
+                  children: [
+                    Icon(stats[i].$2, color: scheme.primary, size: 24),
+                    const SizedBox(height: 8),
+                    Text(
+                      '${stats[i].$3}',
+                      style:
+                          Theme.of(context).textTheme.headlineSmall?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      stats[i].$1,
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
                             color: scheme.onSurfaceVariant,
-                          )),
-                ],
+                          ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
-        );
-      }).toList(),
+        ],
+      ],
     );
   }
 
   Widget _buildBioCard(BuildContext context, ColorScheme scheme) {
     return AppCard.profile(
+      borderRadius: _cardRadius,
       child: Container(
         width: double.infinity,
         decoration: BoxDecoration(
           color: scheme.surfaceContainerHighest.withValues(alpha: 0.5),
           borderRadius: BorderRadius.circular(_cardRadius),
         ),
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -248,7 +254,7 @@ class ProfileContent extends StatelessWidget {
           color: scheme.surfaceContainerHighest.withValues(alpha: 0.5),
           borderRadius: BorderRadius.circular(_cardRadius),
         ),
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -316,7 +322,7 @@ class ProfileContent extends StatelessWidget {
           color: scheme.surfaceContainerHighest.withValues(alpha: 0.5),
           borderRadius: BorderRadius.circular(_cardRadius),
         ),
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

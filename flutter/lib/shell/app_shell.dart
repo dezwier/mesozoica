@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 
 import '../widgets/common/gradient_app_bar.dart';
-import '../controllers/theme_controller.dart';
 import '../screens/catalog/catalog_screen.dart';
 import '../screens/map/map_screen.dart';
 import '../screens/profile/profile_screen.dart';
@@ -31,25 +29,12 @@ class _AppShellState extends State<AppShell> {
 
   @override
   Widget build(BuildContext context) {
-    final themeController = context.watch<ThemeController>();
-
     return Scaffold(
       appBar: GradientAppBar(
         title: Padding(
           padding: const EdgeInsets.only(left: 12),
           child: Image.asset('assets/images/logo.png', height: 32),
         ),
-        actions: [
-          IconButton(
-            tooltip: themeController.isDark ? 'Light mode' : 'Dark mode',
-            onPressed: themeController.toggle,
-            icon: Icon(
-              themeController.isDark
-                  ? Icons.light_mode_outlined
-                  : Icons.dark_mode_outlined,
-            ),
-          ),
-        ],
       ),
       body: IndexedStack(
         index: _index,

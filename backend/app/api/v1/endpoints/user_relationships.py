@@ -65,7 +65,14 @@ async def get_user_relationship(
     current_user: User = Depends(get_current_user),
     session: Session = Depends(get_session),
 ):
-    _require_target(session, current_user.id, target_user_id)
+    if target_user_id == current_user.id:
+        return UserRelationshipResponse(
+            target_user_id=target_user_id,
+            relationship_type="self",
+        )
+    target = session.get(User, target_user_id)
+    if target is None:
+        raise HTTPException(status_code=404, detail="Target user not found")
     return _to_response(target_user_id, _get_row(session, current_user.id, target_user_id))
 
 

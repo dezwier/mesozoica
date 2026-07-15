@@ -103,6 +103,17 @@ def test_users_list_and_friend_flow(client: TestClient, session: Session):
     assert friends.json()["total"] == 1
 
 
+def test_get_self_relationship(client: TestClient):
+    registered = _register_user(client, "self_user", "self@example.com")
+    user_id = registered["user"]["id"]
+    response = client.get(
+        f"/api/v1/user-relationships/{user_id}",
+        headers={"Authorization": f"Bearer {registered['access_token']}"},
+    )
+    assert response.status_code == 200
+    assert response.json()["relationship_type"] == "self"
+
+
 def test_public_profile(client: TestClient):
     registered = _register_user(client, "public_user", "public@example.com")
     user_id = registered["user"]["id"]

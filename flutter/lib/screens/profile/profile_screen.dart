@@ -184,8 +184,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildActionRow(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final style = Theme.of(context).textTheme.labelLarge;
+    final color = Theme.of(context).colorScheme.primary;
+    final textStyle = Theme.of(context).textTheme.bodySmall?.copyWith(
+          color: color,
+          fontWeight: FontWeight.w500,
+        );
+
     Widget button({
       required IconData icon,
       required String label,
@@ -194,10 +198,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
       return Expanded(
         child: TextButton.icon(
           onPressed: onPressed,
-          icon: Icon(icon, size: 18, color: scheme.primary),
-          label: Text(label, style: style?.copyWith(color: scheme.primary)),
+          icon: Icon(icon, size: 18, color: color),
+          label: Text(label, style: textStyle),
           style: TextButton.styleFrom(
-            padding: const EdgeInsets.symmetric(vertical: 8),
+            foregroundColor: color,
+            padding: const EdgeInsets.symmetric(vertical: 14),
             minimumSize: Size.zero,
             tapTargetSize: MaterialTapTargetSize.shrinkWrap,
           ),
@@ -216,7 +221,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           },
         ),
         button(
-          icon: Icons.people_outline,
+          icon: Icons.groups_outlined,
           label: 'Community',
           onPressed: _showCommunity,
         ),
@@ -257,12 +262,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
           onRefresh: auth.refreshProfile,
           child: ListView(
             physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
             children: [
-              Text('Profile', style: Theme.of(context).textTheme.titleLarge),
-              const SizedBox(height: 12),
               _buildActionRow(context),
-              const SizedBox(height: 12),
               ProfileContent(profile: profile),
             ],
           ),

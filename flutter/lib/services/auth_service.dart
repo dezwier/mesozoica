@@ -23,11 +23,31 @@ class AuthService {
       }
       return _exchangeFirebaseToken(idToken);
     } on FirebaseAuthException catch (error) {
-      return {'success': false, 'message': error.message ?? error.code};
+      return {'success': false, 'message': _firebaseAuthMessage(error)};
     } on ApiException catch (error) {
       return {'success': false, 'message': error.message};
     } catch (error) {
       return {'success': false, 'message': error.toString()};
+    }
+  }
+
+  static String _firebaseAuthMessage(FirebaseAuthException error) {
+    switch (error.code) {
+      case 'invalid-credential':
+      case 'invalid-login-credentials':
+      case 'user-not-found':
+      case 'wrong-password':
+        return 'No account found or wrong password. Try Sign up first, '
+            'or check email is dezwier@mesozoica.app (not just "dezwier").';
+      case 'email-already-in-use':
+        return 'This email is already registered. Switch to Sign in.';
+      case 'operation-not-allowed':
+        return 'Email/password sign-in is disabled in Firebase Console. '
+            'Enable it under Authentication → Sign-in method.';
+      case 'weak-password':
+        return 'Password is too weak. Use at least 6 characters.';
+      default:
+        return error.message ?? error.code;
     }
   }
 
@@ -65,7 +85,7 @@ class AuthService {
         'message': update['message'] as String? ?? 'Registration successful',
       };
     } on FirebaseAuthException catch (error) {
-      return {'success': false, 'message': error.message ?? error.code};
+      return {'success': false, 'message': _firebaseAuthMessage(error)};
     } on ApiException catch (error) {
       return {'success': false, 'message': error.message};
     } catch (error) {
@@ -88,7 +108,7 @@ class AuthService {
       await FirebaseAuth.instance.sendPasswordResetEmail(email: email.trim());
       return {'success': true, 'message': 'Check your email for a reset link.'};
     } on FirebaseAuthException catch (error) {
-      return {'success': false, 'message': error.message ?? error.code};
+      return {'success': false, 'message': _firebaseAuthMessage(error)};
     }
   }
 

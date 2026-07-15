@@ -1,8 +1,11 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
+import '../../controllers/auth_controller.dart';
 import '../../models/profile.dart';
 import '../../services/auth_service.dart';
+import 'settings_form_styles.dart';
 
 class SettingsProfileTab extends StatelessWidget {
   const SettingsProfileTab({
@@ -28,71 +31,127 @@ class SettingsProfileTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final imageUrl = AuthService.imageUrl(currentUser.profileImage);
-    return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const SizedBox(height: 24),
-          Center(
-            child: Stack(
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final finePrintStyle = SettingsFormStyles.finePrintStyle(context);
+
+    return GestureDetector(
+      behavior: HitTestBehavior.translucent,
+      onTap: () => FocusScope.of(context).unfocus(),
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SizedBox(height: 24),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                CircleAvatar(
-                  radius: 42,
-                  backgroundImage: imageUrl.isNotEmpty
-                      ? CachedNetworkImageProvider(imageUrl)
-                      : null,
-                  child: imageUrl.isEmpty
-                      ? const Icon(Icons.person, size: 42)
-                      : null,
-                ),
-                Positioned(
-                  right: 0,
-                  bottom: 0,
-                  child: IconButton.filled(
-                    onPressed: isUploadingImage ? null : onPickImage,
-                    icon: isUploadingImage
-                        ? const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Icon(Icons.camera_alt_outlined, size: 18),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'Profile',
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Update your photo, username, and display name.',
+                        style: finePrintStyle,
+                      ),
+                    ],
                   ),
+                ),
+                const SizedBox(width: 12),
+                Consumer<AuthController>(
+                  builder: (context, auth, _) {
+                    final user = auth.currentUser ?? currentUser;
+                    final imageUrl = AuthService.imageUrl(user.profileImage);
+                    return GestureDetector(
+                      onTap: isUploadingImage ? null : onPickImage,
+                      child: Container(
+                        width: 64,
+                        height: 64,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: scheme.primaryContainer,
+                        ),
+                        child: isUploadingImage
+                            ? Padding(
+                                padding: const EdgeInsets.all(16),
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                    scheme.primary,
+                                  ),
+                                ),
+                              )
+                            : imageUrl.isNotEmpty
+                                ? ClipOval(
+                                    child: CachedNetworkImage(
+                                      imageUrl: imageUrl,
+                                      width: 64,
+                                      height: 64,
+                                      fit: BoxFit.cover,
+                                      errorWidget: (context, url, error) => Icon(
+                                        Icons.person,
+                                        size: 64,
+                                        color: scheme.primary,
+                                      ),
+                                    ),
+                                  )
+                                : Icon(
+                                    Icons.person,
+                                    size: 64,
+                                    color: scheme.primary,
+                                  ),
+                      ),
+                    );
+                  },
                 ),
               ],
             ),
-          ),
-          const SizedBox(height: 24),
-          TextField(
-            controller: usernameController,
-            decoration: InputDecoration(
-              labelText: 'Username',
-              errorText: usernameError,
-              suffixIcon: isCheckingUsername
-                  ? const Padding(
-                      padding: EdgeInsets.all(12),
-                      child: SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      ),
-                    )
-                  : usernameAvailable == true
-                      ? const Icon(Icons.check_circle_outline, color: Colors.green)
-                      : usernameAvailable == false
-                          ? const Icon(Icons.cancel_outlined, color: Colors.red)
-                          : null,
+            const SizedBox(height: 18),
+            TextFormField(
+              controller: usernameController,
+              decoration: SettingsFormStyles.createStyleDecoration(
+                context,
+                labelText: 'Username',
+                suffixIcon: isCheckingUsername
+                    ? const Padding(
+                        padding: EdgeInsets.all(12),
+                        child: SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                      )
+                    : usernameAvailable == true
+                        ? const Icon(Icons.check_circle, color: Colors.green)
+                        : usernameAvailable == false
+                            ? const Icon(Icons.cancel, color: Colors.red)
+                            : null,
+                errorText: usernameError,
+              ),
             ),
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: fullNameController,
-            decoration: const InputDecoration(labelText: 'Full name'),
-          ),
-          SizedBox(height: MediaQuery.of(context).padding.bottom + 24),
-        ],
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: fullNameController,
+              decoration: SettingsFormStyles.createStyleDecoration(
+                context,
+                labelText: 'Full name',
+                counterText: '',
+              ),
+              textCapitalization: TextCapitalization.words,
+              maxLength: 200,
+            ),
+            SizedBox(height: MediaQuery.of(context).padding.bottom + 24),
+          ],
+        ),
       ),
     );
   }
