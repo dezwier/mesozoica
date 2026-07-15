@@ -31,9 +31,9 @@ class GradientAppBar extends StatelessWidget implements PreferredSizeWidget {
               const Color(0xFF4A3F38),
             ]
           : [
-              const Color.fromARGB(255, 213, 210, 206),
-              const Color.fromARGB(255, 216, 213, 211),
-              const Color.fromARGB(255, 207, 199, 196),
+              const Color.fromARGB(255, 195, 190, 186),
+              const Color.fromARGB(255, 198, 193, 189),
+              const Color.fromARGB(255, 188, 180, 177),
             ],
     );
 
