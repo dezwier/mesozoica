@@ -4,7 +4,7 @@ import '../../models/fossil.dart';
 import '../../utils/display_text.dart';
 import 'card_fact_badge.dart';
 
-/// Attribute panel for the fossil card front overlay.
+/// Attribute panel for the fossil card back.
 class FossilCardEdgeFacts extends StatelessWidget {
   const FossilCardEdgeFacts({
     super.key,
@@ -16,28 +16,39 @@ class FossilCardEdgeFacts extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return CardFactPanel(
-      columns: 3,
+      columns: 2,
       layout: CardFactPanelLayout.columnGrid,
+      centerColumns: true,
       facts: [
         CardFactEntry(
           iconAsset: 'assets/images/cards/icons/diet.svg',
-          label: 'Dinosaur',
-          value: displayFactValue(fossil.dinosaurName),
+          label: 'Category',
+          value: displayFactValue(
+            fossil.displayCategory == '—' ? null : fossil.displayCategory,
+          ),
         ),
         CardFactEntry(
           iconAsset: 'assets/images/cards/icons/mass.svg',
-          label: 'Rock type',
+          label: 'Sub category',
           value: displayFactValue(
-            fossil.displayRockType == '—' ? null : fossil.displayRockType,
+            fossil.displaySubcategory == '—' ? null : fossil.displaySubcategory,
           ),
         ),
         CardFactEntry(
           iconAsset: 'assets/images/cards/icons/period.svg',
-          label: 'Period',
+          label: 'Preservation quality',
           value: displayFactValue(
-            fossil.displayPeriod == '—' ? null : fossil.displayPeriod,
+            fossil.displayPreservationQuality == '—'
+                ? null
+                : fossil.displayPreservationQuality,
           ),
-          maxValueLines: 3,
+        ),
+        CardFactEntry(
+          iconAsset: 'assets/images/cards/icons/length.svg',
+          label: 'Completeness',
+          value: displayFactValue(
+            fossil.displayCompleteness == '—' ? null : fossil.displayCompleteness,
+          ),
         ),
       ],
     );

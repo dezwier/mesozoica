@@ -57,7 +57,7 @@ void main() {
     expect(find.text('Collection #50001'), findsOneWidget);
   });
 
-  testWidgets('SiteCardFront renders image, title, and edge facts',
+  testWidgets('SiteCardFront renders image, title, and collection id',
       (tester) async {
     await tester.pumpWidget(
       const MaterialApp(
@@ -75,17 +75,13 @@ void main() {
     expect(find.byType(SiteCardImage), findsOneWidget);
     expect(find.text('Hell Creek Formation'), findsOneWidget);
     expect(find.text('Collection #50001'), findsOneWidget);
-    expect(find.byType(SiteCardEdgeFacts), findsOneWidget);
-    expect(find.textContaining('46.88'), findsOneWidget);
-    expect(find.textContaining('Montana'), findsOneWidget);
-    expect(find.textContaining('Cretaceous, 66 – 68 Ma'), findsOneWidget);
-    expect(find.textContaining('Sandstone'), findsOneWidget);
-    expect(find.text('COORDINATES'), findsOneWidget);
-    expect(find.text('COUNTRY'), findsOneWidget);
-    expect(find.text('ROCK TYPE'), findsOneWidget);
+    expect(find.byType(SiteCardEdgeFacts), findsNothing);
+    expect(find.text('COORDINATES'), findsNothing);
+    expect(find.text('COUNTRY'), findsNothing);
+    expect(find.text('ROCK TYPE'), findsNothing);
   });
 
-  testWidgets('SiteCardBack renders timeline, map, and fossil record',
+  testWidgets('SiteCardBack renders timeline, attributes, map, and fossil record',
       (tester) async {
     await tester.pumpWidget(
       MaterialApp(
@@ -107,8 +103,17 @@ void main() {
 
     expect(find.byType(SiteCardLocationMap), findsOneWidget);
     expect(find.byType(GeologicTimeline), findsOneWidget);
+    expect(find.byType(SiteCardEdgeFacts), findsOneWidget);
     expect(find.text('FOSSIL RECORD'), findsOneWidget);
     expect(find.text('TIME'), findsNothing);
+    expect(find.text('COORDINATES'), findsOneWidget);
+    expect(find.text('COUNTRY'), findsOneWidget);
+    expect(find.text('PERIOD'), findsOneWidget);
+    expect(find.text('ROCK TYPE'), findsOneWidget);
+    expect(find.textContaining('46.88'), findsOneWidget);
+    expect(find.textContaining('Montana'), findsOneWidget);
+    expect(find.textContaining('Cretaceous, 66 – 68 Ma'), findsOneWidget);
+    expect(find.textContaining('Sandstone'), findsOneWidget);
   });
 
   testWidgets('SiteTurnableCard composes front and back', (tester) async {

@@ -159,6 +159,23 @@ class Settings(BaseSettings):
         validation_alias="SITE_TYPE_IMAGE_SYNC_SECRET",
     )
 
+    access_token_expire_minutes: int = Field(
+        default=60 * 24 * 7,
+        validation_alias="ACCESS_TOKEN_EXPIRE_MINUTES",
+    )
+    algorithm: str = Field(default="HS256", validation_alias="JWT_ALGORITHM")
+    user_images_dir: str = Field(
+        default="../user-images",
+        validation_alias="USER_IMAGES_DIR",
+    )
+
+    @property
+    def resolved_user_images_dir(self) -> Path:
+        path = Path(self.user_images_dir)
+        if not path.is_absolute():
+            path = Path(__file__).parent.parent.parent / path
+        return path.resolve()
+
     @property
     def resolved_site_type_images_dir(self) -> Path:
         from app.services.curated_image_service.common import resolve_curated_storage_dir

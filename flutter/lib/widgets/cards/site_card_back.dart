@@ -5,6 +5,7 @@ import '../../theme/dino_card_theme.dart';
 import 'card_section_panel.dart';
 import 'card_world_map.dart';
 import 'geologic_timeline.dart';
+import 'site_card_edge_facts.dart';
 import 'site_card_header.dart';
 import 'site_card_image.dart';
 import 'site_card_location_map.dart';
@@ -66,6 +67,8 @@ class SiteCardBack extends StatelessWidget {
                     ),
                   ),
                 ),
+                const SizedBox(height: 10),
+                SiteCardEdgeFacts(site: site),
                 const SizedBox(height: 10),
                 Expanded(
                   child: Row(

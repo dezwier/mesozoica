@@ -59,7 +59,7 @@ class _AppShellState extends State<AppShell> {
             key: _catalogScreenKey,
             isActive: _index == _catalogTabIndex,
           ),
-          const ProfileScreen(),
+          ProfileScreen(isActive: _index == 2),
         ],
       ),
       bottomNavigationBar: DecoratedBox(

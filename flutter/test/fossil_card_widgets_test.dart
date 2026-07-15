@@ -9,6 +9,7 @@ import 'package:mesozoica/widgets/cards/fossil_card_image.dart';
 import 'package:mesozoica/widgets/cards/fossil_turnable_card.dart';
 import 'package:mesozoica/widgets/cards/geologic_timeline.dart';
 import 'package:mesozoica/widgets/cards/site_card_image.dart';
+import 'package:mesozoica/widgets/fossil/fossil_record_drawer.dart';
 
 const _fixture = FossilSummary(
   id: 100001,
@@ -40,6 +41,12 @@ const _fixture = FossilSummary(
   minAgeMa: 66,
   maxAgeMa: 68,
   earlyInterval: 'Maastrichtian',
+  llmDescription: 'A well-preserved tyrannosaur tooth from the Hell Creek Formation.',
+  llmCategory: 'Tooth',
+  llmSubcategory: 'Crown fragment',
+  llmPreservationQuality: 'Excellent',
+  llmCompleteness: 'Partial',
+  llmRockType: 'Sandstone',
   dinosaurMainImageUrl:
       'https://mesozoica-production.up.railway.app/media/dinosaurs/Tyrannosaurus.webp',
   siteId: 50001,
@@ -50,7 +57,7 @@ const _fixture = FossilSummary(
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  testWidgets('FossilCardFront renders fossil image, title, and edge facts',
+  testWidgets('FossilCardFront renders fossil image, title, and llm description',
       (tester) async {
     await tester.pumpWidget(
       const MaterialApp(
@@ -69,12 +76,14 @@ void main() {
     expect(find.byType(SiteCardImage), findsNothing);
     expect(find.byType(DinosaurCardImage), findsNothing);
     expect(find.text('Tyrannosaurus rex'), findsOneWidget);
-    expect(find.text('Occurrence No #100001'), findsOneWidget);
-    expect(find.text('DINOSAUR'), findsOneWidget);
-    expect(find.text('ROCK TYPE'), findsOneWidget);
-    expect(find.text('PERIOD'), findsOneWidget);
-    expect(find.text('Tyrannosaurus'), findsOneWidget);
-    expect(find.textContaining('Maastrichtian'), findsOneWidget);
+    expect(find.text('Occurrence No #100001'), findsNothing);
+    expect(find.text('DINOSAUR'), findsNothing);
+    expect(find.text('ROCK TYPE'), findsNothing);
+    expect(find.text('PERIOD'), findsNothing);
+    expect(
+      find.textContaining('well-preserved tyrannosaur tooth'),
+      findsOneWidget,
+    );
   });
 
   testWidgets('FossilCardImage uses network image for curated URL',
@@ -99,7 +108,7 @@ void main() {
     expect(find.byType(CachedNetworkImage), findsOneWidget);
   });
 
-  testWidgets('FossilCardBack renders timeline, related thumbs, and record',
+  testWidgets('FossilCardBack renders timeline, attributes, and related thumbs',
       (tester) async {
     await tester.pumpWidget(
       const MaterialApp(
@@ -117,38 +126,78 @@ void main() {
     expect(find.text('Tyrannosaurus rex'), findsWidgets);
     expect(find.text('Occurrence No #100001'), findsOneWidget);
     expect(find.text('TIME'), findsNothing);
-    expect(find.text('RECORD'), findsOneWidget);
+    expect(find.text('RECORD'), findsNothing);
     expect(find.byType(GeologicTimeline), findsOneWidget);
     expect(find.byType(SiteCardImage), findsOneWidget);
     expect(find.byType(DinosaurCardImage), findsOneWidget);
     expect(find.text('Hell Creek Formation'), findsWidgets);
-    expect(find.text('OCCURRENCE NO'), findsOneWidget);
-    expect(find.text('100001'), findsOneWidget);
-    expect(find.text('DINOSAUR'), findsOneWidget);
-    expect(find.text('IDENTIFIED NAME'), findsOneWidget);
-    expect(find.text('FAMILY'), findsOneWidget);
-    expect(find.text('COUNTRY CODE'), findsOneWidget);
-    expect(find.text('GEOLOGICAL FORMATION'), findsOneWidget);
-    expect(find.text('LATITUDE'), findsOneWidget);
-    expect(find.text('LONGITUDE'), findsOneWidget);
-    expect(find.text('EARLY INTERVAL'), findsOneWidget);
-    expect(find.text('MIN AGE (MA)'), findsOneWidget);
-    expect(find.text('MAX AGE (MA)'), findsOneWidget);
-    expect(find.text('COLLECTION TYPE'), findsOneWidget);
-    expect(find.text('OCCURRENCE COMMENTS'), findsOneWidget);
-    expect(find.text('COMPOSITION'), findsOneWidget);
-    expect(find.text('ARCHITECTURE'), findsOneWidget);
-    expect(find.text('FRAGMENTATION'), findsOneWidget);
-    expect(find.text('STRATIGRAPHY COMMENTS'), findsOneWidget);
-    expect(find.text('LITHOLOGY'), findsOneWidget);
-    expect(find.text('ABUNDANCE VALUE'), findsOneWidget);
-    expect(find.text('ABUNDANCE UNIT'), findsOneWidget);
+    expect(find.text('CATEGORY'), findsOneWidget);
+    expect(find.text('SUB CATEGORY'), findsOneWidget);
     expect(find.text('PRESERVATION QUALITY'), findsOneWidget);
-    expect(find.text('COLLECTION NAME'), findsOneWidget);
+    expect(find.text('COMPLETENESS'), findsOneWidget);
     expect(find.text('Tooth'), findsOneWidget);
-    expect(find.text('Barnum Brown'), findsOneWidget);
-    expect(find.text('DESCRIPTION'), findsOneWidget);
-    expect(find.textContaining('Famous Hell Creek'), findsOneWidget);
+    expect(find.text('Excellent'), findsOneWidget);
+    expect(find.text('Partial'), findsOneWidget);
+    expect(find.byIcon(Icons.info_outline), findsOneWidget);
+    expect(find.text('OCCURRENCE NO'), findsNothing);
+  });
+
+  testWidgets('FossilCardBack info button opens record drawer', (tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: SizedBox(
+              width: 800,
+              child: FossilCardBack(fossil: _fixture),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.byIcon(Icons.info_outline));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(FossilRecordDrawer), findsOneWidget);
+
+    final drawer = find.byType(FossilRecordDrawer);
+    expect(find.descendant(of: drawer, matching: find.text('OCCURRENCE NO')), findsOneWidget);
+    expect(find.descendant(of: drawer, matching: find.text('100001')), findsOneWidget);
+    expect(find.descendant(of: drawer, matching: find.text('LLM DESCRIPTION')), findsOneWidget);
+    expect(find.descendant(of: drawer, matching: find.text('LLM CATEGORY')), findsOneWidget);
+    expect(find.descendant(of: drawer, matching: find.text('LLM ROCK TYPE')), findsOneWidget);
+    expect(find.descendant(of: drawer, matching: find.text('Sandstone')), findsOneWidget);
+    expect(find.descendant(of: drawer, matching: find.text('DINOSAUR')), findsOneWidget);
+    expect(find.descendant(of: drawer, matching: find.text('IDENTIFIED NAME')), findsOneWidget);
+    expect(find.descendant(of: drawer, matching: find.text('FAMILY')), findsOneWidget);
+    expect(find.descendant(of: drawer, matching: find.text('COUNTRY CODE')), findsOneWidget);
+    expect(find.descendant(of: drawer, matching: find.text('GEOLOGICAL FORMATION')), findsOneWidget);
+    expect(find.descendant(of: drawer, matching: find.text('LATITUDE')), findsOneWidget);
+    expect(find.descendant(of: drawer, matching: find.text('LONGITUDE')), findsOneWidget);
+    expect(find.descendant(of: drawer, matching: find.text('EARLY INTERVAL')), findsOneWidget);
+    expect(find.descendant(of: drawer, matching: find.text('MIN AGE (MA)')), findsOneWidget);
+    expect(find.descendant(of: drawer, matching: find.text('MAX AGE (MA)')), findsOneWidget);
+    expect(find.descendant(of: drawer, matching: find.text('COLLECTION TYPE')), findsOneWidget);
+    expect(find.descendant(of: drawer, matching: find.text('OCCURRENCE COMMENTS')), findsOneWidget);
+    expect(find.descendant(of: drawer, matching: find.text('COMPOSITION')), findsOneWidget);
+    expect(find.descendant(of: drawer, matching: find.text('ARCHITECTURE')), findsOneWidget);
+    expect(find.descendant(of: drawer, matching: find.text('FRAGMENTATION')), findsOneWidget);
+    expect(find.descendant(of: drawer, matching: find.text('STRATIGRAPHY COMMENTS')), findsOneWidget);
+    expect(find.descendant(of: drawer, matching: find.text('LITHOLOGY')), findsOneWidget);
+    expect(find.descendant(of: drawer, matching: find.text('ABUNDANCE VALUE')), findsOneWidget);
+    expect(find.descendant(of: drawer, matching: find.text('ABUNDANCE UNIT')), findsOneWidget);
+    expect(find.descendant(of: drawer, matching: find.text('PRESERVATION QUALITY')), findsOneWidget);
+    expect(find.descendant(of: drawer, matching: find.text('COLLECTION NAME')), findsOneWidget);
+    expect(find.descendant(of: drawer, matching: find.text('Barnum Brown')), findsOneWidget);
+    expect(find.descendant(of: drawer, matching: find.text('DESCRIPTION')), findsOneWidget);
+    expect(
+      find.descendant(
+        of: drawer,
+        matching: find.textContaining('Famous Hell Creek'),
+      ),
+      findsOneWidget,
+    );
   });
 
   testWidgets('FossilTurnableCard composes front and back faces',

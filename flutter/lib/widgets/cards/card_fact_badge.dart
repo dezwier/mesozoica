@@ -26,11 +26,13 @@ class CardFactPanel extends StatelessWidget {
     required this.facts,
     this.columns = 3,
     this.layout = CardFactPanelLayout.wrap,
+    this.centerColumns = false,
   });
 
   final List<CardFactEntry> facts;
   final int columns;
   final CardFactPanelLayout layout;
+  final bool centerColumns;
 
   @override
   Widget build(BuildContext context) {
@@ -72,7 +74,9 @@ class CardFactPanel extends StatelessWidget {
           SizedBox(
             width: cellWidth,
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: centerColumns
+                  ? CrossAxisAlignment.stretch
+                  : CrossAxisAlignment.start,
               children: [
                 for (var row = 0; row < columnFacts[column].length; row++) ...[
                   if (row > 0) const SizedBox(height: 8),
@@ -81,6 +85,7 @@ class CardFactPanel extends StatelessWidget {
                     label: columnFacts[column][row].label,
                     value: columnFacts[column][row].value,
                     maxValueLines: columnFacts[column][row].maxValueLines,
+                    centered: centerColumns,
                   ),
                 ],
               ],
@@ -121,22 +126,28 @@ class _CardFactCell extends StatelessWidget {
     required this.label,
     required this.value,
     this.maxValueLines = 2,
+    this.centered = false,
   });
 
   final String iconAsset;
   final String label;
   final String value;
   final int maxValueLines;
+  final bool centered;
 
   @override
   Widget build(BuildContext context) {
     final cardTheme = DinoCardTheme.of(context);
 
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: centered
+          ? CrossAxisAlignment.stretch
+          : CrossAxisAlignment.start,
       children: [
         Row(
-          mainAxisSize: MainAxisSize.min,
+          mainAxisSize: centered ? MainAxisSize.max : MainAxisSize.min,
+          mainAxisAlignment:
+              centered ? MainAxisAlignment.center : MainAxisAlignment.start,
           children: [
             SvgPicture.asset(
               iconAsset,
@@ -154,6 +165,7 @@ class _CardFactCell extends StatelessWidget {
                 style: cardTheme.statLabelStyle(fontSize: 7.5),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
+                textAlign: centered ? TextAlign.center : TextAlign.start,
               ),
             ),
           ],
@@ -168,6 +180,7 @@ class _CardFactCell extends StatelessWidget {
           maxLines: maxValueLines,
           overflow: TextOverflow.ellipsis,
           softWrap: true,
+          textAlign: centered ? TextAlign.center : TextAlign.start,
         ),
       ],
     );

@@ -2,22 +2,25 @@ import 'package:flutter/material.dart';
 
 import '../../models/fossil.dart';
 import '../../theme/dino_card_theme.dart';
+import '../fossil/fossil_record_drawer.dart';
 import 'card_section_panel.dart';
+import 'fossil_card_edge_facts.dart';
 import 'fossil_card_header.dart';
 import 'fossil_card_image.dart';
 import 'fossil_related_thumbs.dart';
-import 'fossil_stored_fields_panel.dart';
 import 'geologic_timeline.dart';
 
 class FossilCardBack extends StatelessWidget {
   const FossilCardBack({
     super.key,
     required this.fossil,
+    this.showRecordButton = true,
     this.titleFontSize = 36,
     this.subtitleFontSize = 10,
   });
 
   final FossilSummary fossil;
+  final bool showRecordButton;
   final double titleFontSize;
   final double subtitleFontSize;
 
@@ -44,6 +47,26 @@ class FossilCardBack extends StatelessWidget {
               showOccurrenceSubtitle: true,
             ),
           ),
+          if (showRecordButton)
+            Positioned(
+              top: 14,
+              right: 10,
+              child: IconButton(
+                onPressed: () => FossilRecordDrawer.show(
+                  context,
+                  fossil: fossil,
+                ),
+                icon: const Icon(Icons.info_outline, size: 18),
+                color: const Color(0xE6F5F0E8),
+                tooltip: 'Record details',
+                visualDensity: VisualDensity.compact,
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(
+                  minWidth: 28,
+                  minHeight: 28,
+                ),
+              ),
+            ),
           Positioned(
             left: 18,
             right: 18,
@@ -65,14 +88,10 @@ class FossilCardBack extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 10),
-                FossilRelatedThumbs(fossil: fossil),
+                FossilCardEdgeFacts(fossil: fossil),
                 const SizedBox(height: 10),
                 Expanded(
-                  child: CardSectionPanel(
-                    label: 'Record',
-                    expandChild: true,
-                    child: FossilStoredFieldsPanel(fields: fossil.storedFields),
-                  ),
+                  child: FossilRelatedThumbs(fossil: fossil),
                 ),
               ],
             ),

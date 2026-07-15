@@ -4,7 +4,7 @@ import '../../models/site.dart';
 import '../../utils/display_text.dart';
 import 'card_fact_badge.dart';
 
-/// Attribute panel for the site card front overlay.
+/// Attribute panel for the site card back.
 class SiteCardEdgeFacts extends StatelessWidget {
   const SiteCardEdgeFacts({
     super.key,
@@ -17,6 +17,8 @@ class SiteCardEdgeFacts extends StatelessWidget {
   Widget build(BuildContext context) {
     return CardFactPanel(
       columns: 2,
+      layout: CardFactPanelLayout.columnGrid,
+      centerColumns: true,
       facts: [
         CardFactEntry(
           iconAsset: 'assets/images/cards/icons/location.svg',

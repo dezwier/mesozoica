@@ -1,0 +1,110 @@
+"""Auth and user API schemas."""
+
+from __future__ import annotations
+
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
+
+
+class LoginRequest(BaseModel):
+    username: str = Field(..., description="Username or email")
+    password: str = Field(..., min_length=1)
+
+
+class RegisterRequest(BaseModel):
+    username: str = Field(..., min_length=3, max_length=50)
+    email: EmailStr
+    password: str = Field(..., min_length=6)
+    full_name: str | None = Field(None, max_length=200)
+
+
+class UserResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    username: str
+    email: str
+    created_at: str
+    full_name: str | None = None
+    image_url: str | None = None
+    display_name: str = "Paleontologist"
+    specialization: str = "Paleontologist"
+    years_of_experience: int = 0
+    notable_discovery: str = ""
+    favorite_era: str = ""
+    xp: int = 0
+    level: int = 1
+    achievements: list[str] = Field(default_factory=list)
+    bio: str = ""
+    current_location: str = ""
+    is_subscriber: bool = False
+    is_admin: bool = False
+
+
+class UserProfileResponse(UserResponse):
+    actual_dinosaurs_count: int = 0
+    actual_fossils_count: int = 0
+    actual_sites_count: int = 0
+
+
+class UserListEntry(BaseModel):
+    id: int
+    username: str
+    display_name: str
+    full_name: str | None = None
+    image_url: str | None = None
+    level: int = 1
+    actual_dinosaurs_count: int = 0
+    actual_fossils_count: int = 0
+    actual_sites_count: int = 0
+
+
+class UserListResponse(BaseModel):
+    items: list[UserListEntry]
+    total: int
+    limit: int
+    offset: int
+    has_next: bool
+
+
+class UpdateProfileRequest(BaseModel):
+    username: str | None = Field(None, min_length=3, max_length=50)
+    email: EmailStr | None = None
+    current_password: str | None = None
+    password: str | None = Field(None, min_length=6)
+    full_name: str | None = Field(None, max_length=200)
+
+
+class FirebaseLoginRequest(BaseModel):
+    id_token: str = Field(..., description="Firebase ID token from the client")
+
+
+class LinkGoogleRequest(BaseModel):
+    id_token: str | None = None
+    firebase_id_token: str | None = None
+
+
+class LinkAppleRequest(BaseModel):
+    id_token: str | None = None
+    firebase_id_token: str | None = None
+    email: str | None = None
+    full_name: str | None = None
+
+
+class AuthResponse(BaseModel):
+    user: UserResponse
+    access_token: str
+    token_type: str = "bearer"
+    message: str
+
+
+class AvailabilityResponse(BaseModel):
+    available: bool
+
+
+class LinkedAccountsResponse(BaseModel):
+    providers: list[str]
+
+
+class LinkedAccountsMessageResponse(BaseModel):
+    message: str
+    providers: list[str]

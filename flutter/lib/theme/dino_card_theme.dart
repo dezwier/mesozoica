@@ -17,14 +17,14 @@ class DinoCardTheme {
 
   static const double borderRadius = 16;
   static const double factPanelBorderRadius = 10;
-  static const double factPanelBackgroundAlpha = 0.9;
+  static const double factPanelBackgroundAlpha = 0.98;
   static const double factPanelBorderAlpha = 0.58;
 
   /// Matches [frontPlaceholderAsset] (1086×1448) so the cover image is not cropped.
   static const double cardAspectRatio = 1086 / 1448;
 
-  /// Square thumbnails for fossil images on card backs.
-  static const double fossilThumbAspectRatio = 1;
+  /// Portrait 3:4 thumbnails for site and dinosaur cards on fossil card backs.
+  static const double fossilThumbAspectRatio = 3 / 4;
 
   static const String frontPlaceholderAsset =
       'assets/images/cards/dinosaur_card_front_placeholder.png';

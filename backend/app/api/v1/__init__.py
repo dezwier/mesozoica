@@ -3,6 +3,9 @@
 from fastapi import APIRouter
 
 from app.api.v1.endpoints import (
+    auth_linking,
+    auth_login,
+    auth_profile,
     dinosaur_images,
     dinosaurs,
     fossil_images,
@@ -10,6 +13,8 @@ from app.api.v1.endpoints import (
     root,
     site_type_images,
     sites,
+    user_relationships,
+    users,
 )
 
 api_router = APIRouter()
@@ -20,3 +25,8 @@ api_router.include_router(sites.router)
 api_router.include_router(dinosaur_images.router)
 api_router.include_router(fossil_images.router)
 api_router.include_router(site_type_images.router)
+api_router.include_router(auth_login.router)
+api_router.include_router(auth_profile.router)
+api_router.include_router(auth_linking.router)
+api_router.include_router(users.router)
+api_router.include_router(user_relationships.router)

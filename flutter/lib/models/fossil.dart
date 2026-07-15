@@ -93,6 +93,12 @@ class FossilSummary {
     this.reidNo,
     this.description,
     this.mainImageUrl,
+    this.llmRockType,
+    this.llmCategory,
+    this.llmSubcategory,
+    this.llmPreservationQuality,
+    this.llmCompleteness,
+    this.llmDescription,
     this.dinosaurMainImageUrl,
     this.siteId,
     this.siteMainImageUrl,
@@ -176,6 +182,12 @@ class FossilSummary {
   final int? reidNo;
   final String? description;
   final String? mainImageUrl;
+  final String? llmRockType;
+  final String? llmCategory;
+  final String? llmSubcategory;
+  final String? llmPreservationQuality;
+  final String? llmCompleteness;
+  final String? llmDescription;
   final String? dinosaurMainImageUrl;
   final int? siteId;
   final String? siteMainImageUrl;
@@ -260,6 +272,12 @@ class FossilSummary {
       reidNo: json['reid_no'] as int?,
       description: json['description'] as String?,
       mainImageUrl: json['main_image_url'] as String?,
+      llmRockType: json['llm_rock_type'] as String?,
+      llmCategory: json['llm_category'] as String?,
+      llmSubcategory: json['llm_subcategory'] as String?,
+      llmPreservationQuality: json['llm_preservation_quality'] as String?,
+      llmCompleteness: json['llm_completeness'] as String?,
+      llmDescription: json['llm_description'] as String?,
       dinosaurMainImageUrl: json['dinosaur_main_image_url'] as String?,
       siteId: json['site_id'] as int?,
       siteMainImageUrl: json['site_main_image_url'] as String?,
@@ -324,9 +342,37 @@ class FossilSummary {
     return '—';
   }
 
+  String get displayCategory => displayFactValue(llmCategory);
+
+  String get displaySubcategory => displayFactValue(llmSubcategory);
+
+  String get displayPreservationQuality =>
+      displayFactValue(llmPreservationQuality ?? preservationQuality);
+
+  String get displayCompleteness => displayFactValue(llmCompleteness);
+
   List<FossilStoredField> get storedFields {
     return [
       FossilStoredField(label: 'Occurrence no', value: '$id'),
+      FossilStoredField(
+        label: 'LLM description',
+        value: displayFactValue(llmDescription),
+        maxValueLines: 4,
+      ),
+      FossilStoredField(label: 'LLM category', value: displayFactValue(llmCategory)),
+      FossilStoredField(
+        label: 'LLM subcategory',
+        value: displayFactValue(llmSubcategory),
+      ),
+      FossilStoredField(
+        label: 'LLM preservation quality',
+        value: displayFactValue(llmPreservationQuality),
+      ),
+      FossilStoredField(
+        label: 'LLM completeness',
+        value: displayFactValue(llmCompleteness),
+      ),
+      FossilStoredField(label: 'LLM rock type', value: displayFactValue(llmRockType)),
       FossilStoredField(label: 'Dinosaur', value: displayFactValue(dinosaurName)),
       FossilStoredField(
         label: 'Identified name',

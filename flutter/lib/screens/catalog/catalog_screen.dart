@@ -78,7 +78,7 @@ class CatalogScreenState extends State<CatalogScreen>
           tabs: const [
             Tab(text: 'Site'),
             Tab(text: 'Fossil'),
-            Tab(text: 'Dino'),
+            Tab(text: 'Dinosaur'),
           ],
         ),
         Expanded(

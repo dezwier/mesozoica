@@ -9,11 +9,13 @@ class CardRecordThumb extends StatelessWidget {
     required this.image,
     required this.label,
     required this.onTap,
+    this.labelFontSize = 7,
   });
 
   final Widget image;
   final String label;
   final VoidCallback onTap;
+  final double labelFontSize;
 
   @override
   Widget build(BuildContext context) {
@@ -47,15 +49,20 @@ class CardRecordThumb extends StatelessWidget {
                       ),
                     ),
                     child: Padding(
-                      padding: const EdgeInsets.fromLTRB(3, 10, 3, 3),
+                      padding: EdgeInsets.fromLTRB(
+                        4,
+                        labelFontSize * 1.4,
+                        4,
+                        labelFontSize * 0.35,
+                      ),
                       child: Text(
                         label,
                         textAlign: TextAlign.center,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: cardTheme
-                            .frontOverlaySubtitleStyle(fontSize: 7)
-                            .copyWith(height: 1.05),
+                            .frontOverlaySubtitleStyle(fontSize: labelFontSize)
+                            .copyWith(height: 1.1),
                       ),
                     ),
                   ),
