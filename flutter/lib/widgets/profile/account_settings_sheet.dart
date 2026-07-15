@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
+import '../../config/app_config.dart';
 import '../../controllers/auth_controller.dart';
 import '../../models/profile.dart';
 import '../../services/oauth_sign_in_service.dart';
@@ -387,17 +388,18 @@ class _AccountSettingsSheetState extends State<AccountSettingsSheet>
         isDestructiveAction: hasGoogle,
         isLoading: _activeLinkedProviderAction == 'google',
       ),
-      _linkedAccountRow(
-        context,
-        providerKey: 'apple',
-        label: 'Apple',
-        buttonLabel: hasApple ? 'Unlink' : 'Link',
-        onAction: hasApple
-            ? (canUnlink ? () => _unlinkProvider('apple') : null)
-            : _linkApple,
-        isDestructiveAction: hasApple,
-        isLoading: _activeLinkedProviderAction == 'apple',
-      ),
+      if (AppConfig.enableAppleSignIn || hasApple)
+        _linkedAccountRow(
+          context,
+          providerKey: 'apple',
+          label: 'Apple',
+          buttonLabel: hasApple ? 'Unlink' : 'Link',
+          onAction: hasApple
+              ? (canUnlink ? () => _unlinkProvider('apple') : null)
+              : _linkApple,
+          isDestructiveAction: hasApple,
+          isLoading: _activeLinkedProviderAction == 'apple',
+        ),
     ];
   }
 

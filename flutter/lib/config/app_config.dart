@@ -19,6 +19,10 @@ class AppConfig {
 
   static bool get showDebugTestAccount => isDebugMode;
 
+  /// Sign in with Apple requires a paid Apple Developer Program team in Xcode.
+  static const bool enableAppleSignIn =
+      bool.fromEnvironment('ENABLE_APPLE_SIGN_IN', defaultValue: true);
+
   /// Deployed FastAPI on Railway (default for all device builds).
   static const String productionApiUrl =
       'https://mesozoica-production.up.railway.app';

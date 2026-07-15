@@ -54,20 +54,27 @@ class OAuthSignInService {
     if (kIsWeb) return null;
     final rawNonce = _generateNonce();
     final nonce = _sha256ofString(rawNonce);
-    final credential = await SignInWithApple.getAppleIDCredential(
-      scopes: [
-        AppleIDAuthorizationScopes.email,
-        AppleIDAuthorizationScopes.fullName,
-      ],
-      nonce: nonce,
-    );
-    return OAuthAppleResult(
-      idToken: credential.identityToken,
-      email: credential.email,
-      fullName: _appleFullName(credential),
-      rawNonce: rawNonce,
-      authorizationCode: credential.authorizationCode,
-    );
+    try {
+      final credential = await SignInWithApple.getAppleIDCredential(
+        scopes: [
+          AppleIDAuthorizationScopes.email,
+          AppleIDAuthorizationScopes.fullName,
+        ],
+        nonce: nonce,
+      );
+      return OAuthAppleResult(
+        idToken: credential.identityToken,
+        email: credential.email,
+        fullName: _appleFullName(credential),
+        rawNonce: rawNonce,
+        authorizationCode: credential.authorizationCode,
+      );
+    } on SignInWithAppleAuthorizationException catch (error) {
+      if (error.code == AuthorizationErrorCode.canceled) {
+        return null;
+      }
+      throw StateError(_appleAuthorizationMessage(error));
+    }
   }
 
   Future<UserCredential> firebaseSignInWithGoogle(String idToken) async {
@@ -78,10 +85,12 @@ class OAuthSignInService {
   Future<UserCredential> firebaseSignInWithApple({
     required String idToken,
     required String rawNonce,
+    String? authorizationCode,
   }) async {
     final credential = OAuthProvider('apple.com').credential(
       idToken: idToken,
       rawNonce: rawNonce,
+      accessToken: authorizationCode,
     );
     return FirebaseAuth.instance.signInWithCredential(credential);
   }
@@ -122,6 +131,7 @@ class OAuthSignInService {
   Future<UserCredential> linkAppleCredential({
     required String idToken,
     required String rawNonce,
+    String? authorizationCode,
   }) async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
@@ -130,6 +140,7 @@ class OAuthSignInService {
     final credential = OAuthProvider('apple.com').credential(
       idToken: idToken,
       rawNonce: rawNonce,
+      accessToken: authorizationCode,
     );
     return user.linkWithCredential(credential);
   }
@@ -139,6 +150,23 @@ class OAuthSignInService {
     final family = credential.familyName;
     if (given == null && family == null) return null;
     return [given, family].whereType<String>().join(' ').trim();
+  }
+
+  String _appleAuthorizationMessage(SignInWithAppleAuthorizationException error) {
+    switch (error.code) {
+      case AuthorizationErrorCode.failed:
+        return 'Apple sign-in failed. Try again.';
+      case AuthorizationErrorCode.invalidResponse:
+        return 'Apple sign-in returned an invalid response.';
+      case AuthorizationErrorCode.notHandled:
+        return 'Apple sign-in is not configured for this app.';
+      case AuthorizationErrorCode.notInteractive:
+        return 'Apple sign-in is not available right now. Try again.';
+      case AuthorizationErrorCode.unknown:
+        return 'Apple sign-in is not enabled for this build. Reinstall the app after enabling Sign in with Apple in Xcode.';
+      case AuthorizationErrorCode.canceled:
+        return 'Apple sign-in was canceled.';
+    }
   }
 
   String _generateNonce([int length = 32]) {

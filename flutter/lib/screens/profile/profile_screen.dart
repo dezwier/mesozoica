@@ -1,7 +1,9 @@
+import 'package:firebase_auth/firebase_auth.dart' hide User;
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../config/app_config.dart';
 import '../../controllers/auth_controller.dart';
 import '../../models/profile.dart';
 import '../../services/oauth_sign_in_service.dart';
@@ -113,6 +115,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       final credential = await _oauth.firebaseSignInWithApple(
         idToken: apple!.idToken!,
         rawNonce: apple.rawNonce,
+        authorizationCode: apple.authorizationCode,
       );
       final firebaseToken = await credential.user?.getIdToken();
       if (firebaseToken == null) {
@@ -129,6 +132,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _showError(message);
       }
     } catch (error) {
+      if (error is FirebaseAuthException) {
+        final message = error.message ?? error.code;
+        if (message.toLowerCase().contains('invalid oauth response') &&
+            message.toLowerCase().contains('apple.com')) {
+          _showError(
+            'Apple sign-in needs Firebase OAuth setup. In Firebase Console → '
+            'Authentication → Apple, add your Team ID, Key ID, and .p8 key.',
+          );
+          return;
+        }
+        _showError(message);
+        return;
+      }
       _showError(error.toString());
     } finally {
       if (mounted) setState(() => _localLoading = false);
@@ -251,7 +267,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
             onLogin: _handleLogin,
             onForgotPassword: _handleForgotPassword,
             onSignInWithGoogle: _handleSignInWithGoogle,
-            onSignInWithApple: _handleSignInWithApple,
+            onSignInWithApple:
+                AppConfig.enableAppleSignIn ? _handleSignInWithApple : null,
             onRegister: _handleRegister,
             onShowError: _showError,
           );

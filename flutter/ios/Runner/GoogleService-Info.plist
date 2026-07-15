@@ -3,9 +3,9 @@
 <plist version="1.0">
 <dict>
 	<key>CLIENT_ID</key>
-	<string>349946200961-ab0s37sp2mnf0346fnmjcpscf9ittase.apps.googleusercontent.com</string>
+	<string>349946200961-fduc7bsj1rlsuu9d5jl5mqo8vlmm6tpc.apps.googleusercontent.com</string>
 	<key>REVERSED_CLIENT_ID</key>
-	<string>com.googleusercontent.apps.349946200961-ab0s37sp2mnf0346fnmjcpscf9ittase</string>
+	<string>com.googleusercontent.apps.349946200961-fduc7bsj1rlsuu9d5jl5mqo8vlmm6tpc</string>
 	<key>API_KEY</key>
 	<string>AIzaSyDYM9jOYRF71dUVqWosnQ4xki2_bE7Jqhs</string>
 	<key>GCM_SENDER_ID</key>
@@ -13,7 +13,7 @@
 	<key>PLIST_VERSION</key>
 	<string>1</string>
 	<key>BUNDLE_ID</key>
-	<string>com.mesozoica.mesozoica</string>
+	<string>com.desiredewaele.mesozoica</string>
 	<key>PROJECT_ID</key>
 	<string>mesozoica-f7ea0</string>
 	<key>STORAGE_BUCKET</key>
@@ -29,6 +29,6 @@
 	<key>IS_SIGNIN_ENABLED</key>
 	<true></true>
 	<key>GOOGLE_APP_ID</key>
-	<string>1:349946200961:ios:0fd66aec03c014cc589e80</string>
+	<string>1:349946200961:ios:6c4414a3c59cf365589e80</string>
 </dict>
 </plist>

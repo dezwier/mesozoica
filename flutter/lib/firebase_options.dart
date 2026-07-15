@@ -59,14 +59,13 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions ios = FirebaseOptions(
     apiKey: 'AIzaSyDYM9jOYRF71dUVqWosnQ4xki2_bE7Jqhs',
-    appId: '1:349946200961:ios:0fd66aec03c014cc589e80',
+    appId: '1:349946200961:ios:6c4414a3c59cf365589e80',
     messagingSenderId: '349946200961',
     projectId: 'mesozoica-f7ea0',
     storageBucket: 'mesozoica-f7ea0.firebasestorage.app',
-    iosClientId: '349946200961-ab0s37sp2mnf0346fnmjcpscf9ittase.apps.googleusercontent.com',
-    iosBundleId: 'com.mesozoica.mesozoica',
+    iosClientId: '349946200961-fduc7bsj1rlsuu9d5jl5mqo8vlmm6tpc.apps.googleusercontent.com',
+    iosBundleId: 'com.desiredewaele.mesozoica',
   );
-
   static const FirebaseOptions macos = FirebaseOptions(
     apiKey: 'AIzaSyDYM9jOYRF71dUVqWosnQ4xki2_bE7Jqhs',
     appId: '1:349946200961:ios:0fd66aec03c014cc589e80',
@@ -74,7 +73,7 @@ class DefaultFirebaseOptions {
     projectId: 'mesozoica-f7ea0',
     storageBucket: 'mesozoica-f7ea0.firebasestorage.app',
     iosClientId: '349946200961-ab0s37sp2mnf0346fnmjcpscf9ittase.apps.googleusercontent.com',
-    iosBundleId: 'com.mesozoica.mesozoica',
+    iosBundleId: 'com.desiredewaele.mesozoica',
   );
 
   static const FirebaseOptions windows = FirebaseOptions(
