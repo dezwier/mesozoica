@@ -9,29 +9,45 @@ import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 
 class OAuthSignInService {
   OAuthSignInService({GoogleSignIn? googleSignIn})
-      : _googleSignIn = googleSignIn ?? GoogleSignIn(scopes: const ['email']);
-
-  final GoogleSignIn _googleSignIn;
+      : _googleSignIn = googleSignIn ?? _createGoogleSignIn();
 
   static const String _webClientId = String.fromEnvironment('GOOGLE_WEB_CLIENT_ID');
 
-  Future<String?> signInWithGoogle() async {
+  final GoogleSignIn _googleSignIn;
+
+  static GoogleSignIn _createGoogleSignIn() {
+    if (_webClientId.isNotEmpty) {
+      return GoogleSignIn(
+        scopes: const ['email'],
+        serverClientId: _webClientId,
+      );
+    }
+    return GoogleSignIn(scopes: const ['email']);
+  }
+
+  Future<OAuthGoogleResult?> signInWithGoogle({bool forceAccountPicker = false}) async {
     if (kIsWeb) {
       return null;
     }
-    if (_webClientId.isNotEmpty) {
-      final googleUser = await GoogleSignIn(
-        scopes: const ['email'],
-        serverClientId: _webClientId,
-      ).signIn();
+    try {
+      if (forceAccountPicker) {
+        try {
+          await _googleSignIn.signOut();
+          await _googleSignIn.disconnect();
+        } catch (_) {}
+      }
+      final googleUser = await _googleSignIn.signIn();
       if (googleUser == null) return null;
       final auth = await googleUser.authentication;
-      return auth.idToken;
+      final idToken = auth.idToken;
+      if (idToken == null || idToken.isEmpty) return null;
+      return OAuthGoogleResult(
+        idToken: idToken,
+        accessToken: auth.accessToken,
+      );
+    } catch (_) {
+      return null;
     }
-    final googleUser = await _googleSignIn.signIn();
-    if (googleUser == null) return null;
-    final auth = await googleUser.authentication;
-    return auth.idToken;
   }
 
   Future<OAuthAppleResult?> signInWithApple() async {
@@ -50,6 +66,7 @@ class OAuthSignInService {
       email: credential.email,
       fullName: _appleFullName(credential),
       rawNonce: rawNonce,
+      authorizationCode: credential.authorizationCode,
     );
   }
 
@@ -139,16 +156,28 @@ class OAuthSignInService {
   }
 }
 
+class OAuthGoogleResult {
+  const OAuthGoogleResult({
+    required this.idToken,
+    this.accessToken,
+  });
+
+  final String idToken;
+  final String? accessToken;
+}
+
 class OAuthAppleResult {
   const OAuthAppleResult({
     required this.idToken,
     this.email,
     this.fullName,
     required this.rawNonce,
+    this.authorizationCode,
   });
 
   final String? idToken;
   final String? email;
   final String? fullName;
   final String rawNonce;
+  final String? authorizationCode;
 }

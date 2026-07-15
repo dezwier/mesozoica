@@ -201,19 +201,15 @@ class _AccountSettingsSheetState extends State<AccountSettingsSheet>
     if (kIsWeb) return;
     setState(() => _activeLinkedProviderAction = 'google');
     try {
-      final idToken = await _oauth.signInWithGoogle();
-      if (idToken == null) {
+      final google = await _oauth.signInWithGoogle(forceAccountPicker: true);
+      if (google == null) {
         if (mounted) setState(() => _activeLinkedProviderAction = null);
         return;
       }
-      final credential = await _oauth.firebaseSignInWithGoogle(idToken);
-      final token = await credential.user?.getIdToken(true);
-      if (token == null) {
-        if (mounted) setState(() => _activeLinkedProviderAction = null);
-        return;
-      }
-      final result =
-          await context.read<AuthController>().authService.linkGoogle(token);
+      final result = await context.read<AuthController>().authService.linkGoogle(
+            idToken: google.idToken,
+            accessToken: google.accessToken,
+          );
       if (!mounted) return;
       setState(() => _activeLinkedProviderAction = null);
       if (result['success'] == true) {
@@ -241,17 +237,11 @@ class _AccountSettingsSheetState extends State<AccountSettingsSheet>
         if (mounted) setState(() => _activeLinkedProviderAction = null);
         return;
       }
-      final credential = await _oauth.firebaseSignInWithApple(
-        idToken: apple!.idToken!,
-        rawNonce: apple.rawNonce,
-      );
-      final token = await credential.user?.getIdToken(true);
-      if (token == null) {
-        if (mounted) setState(() => _activeLinkedProviderAction = null);
-        return;
-      }
-      final result =
-          await context.read<AuthController>().authService.linkApple(token);
+      final result = await context.read<AuthController>().authService.linkApple(
+            idToken: apple!.idToken!,
+            rawNonce: apple.rawNonce,
+            authorizationCode: apple.authorizationCode,
+          );
       if (!mounted) return;
       setState(() => _activeLinkedProviderAction = null);
       if (result['success'] == true) {

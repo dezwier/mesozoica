@@ -77,9 +77,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
     setState(() => _localLoading = true);
     try {
-      final idToken = await _oauth.signInWithGoogle();
-      if (idToken == null) return;
-      final credential = await _oauth.firebaseSignInWithGoogle(idToken);
+      final google = await _oauth.signInWithGoogle(forceAccountPicker: true);
+      if (google == null) return;
+      final credential = await _oauth.firebaseSignInWithGoogle(google.idToken);
       final firebaseToken = await credential.user?.getIdToken();
       if (firebaseToken == null) {
         _showError('Google sign-in failed (no token).');

@@ -183,11 +183,39 @@ class AuthService {
     return const [];
   }
 
-  Future<Map<String, dynamic>> linkGoogle(String firebaseIdToken) async {
+  Future<Map<String, dynamic>> linkGoogle({
+    required String idToken,
+    String? accessToken,
+  }) async {
     try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        return {'success': false, 'message': 'Not signed in to Firebase.'};
+      }
+      try {
+        final credential = GoogleAuthProvider.credential(
+          idToken: idToken,
+          accessToken: accessToken,
+        );
+        await user.linkWithCredential(credential);
+      } on FirebaseAuthException catch (error) {
+        if (error.code == 'credential-already-in-use') {
+          return {
+            'success': false,
+            'message': 'This Google account is already linked to another user.',
+          };
+        }
+        if (error.code != 'provider-already-linked') {
+          return {'success': false, 'message': error.message ?? error.code};
+        }
+      }
+      final firebaseToken = await user.getIdToken(true);
+      if (firebaseToken == null || firebaseToken.isEmpty) {
+        return {'success': false, 'message': 'Could not refresh Firebase token.'};
+      }
       final response = await ApiClient.instance.post(
         '/api/v1/auth/link/google',
-        body: {'firebase_id_token': firebaseIdToken},
+        body: {'firebase_id_token': firebaseToken},
       );
       return {
         'success': true,
@@ -196,14 +224,46 @@ class AuthService {
       };
     } on ApiException catch (error) {
       return {'success': false, 'message': error.message};
+    } catch (error) {
+      return {'success': false, 'message': error.toString()};
     }
   }
 
-  Future<Map<String, dynamic>> linkApple(String firebaseIdToken) async {
+  Future<Map<String, dynamic>> linkApple({
+    required String idToken,
+    required String rawNonce,
+    String? authorizationCode,
+  }) async {
     try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        return {'success': false, 'message': 'Not signed in to Firebase.'};
+      }
+      try {
+        final credential = OAuthProvider('apple.com').credential(
+          idToken: idToken,
+          rawNonce: rawNonce,
+          accessToken: authorizationCode,
+        );
+        await user.linkWithCredential(credential);
+      } on FirebaseAuthException catch (error) {
+        if (error.code == 'credential-already-in-use') {
+          return {
+            'success': false,
+            'message': 'This Apple account is already linked to another user.',
+          };
+        }
+        if (error.code != 'provider-already-linked') {
+          return {'success': false, 'message': error.message ?? error.code};
+        }
+      }
+      final firebaseToken = await user.getIdToken(true);
+      if (firebaseToken == null || firebaseToken.isEmpty) {
+        return {'success': false, 'message': 'Could not refresh Firebase token.'};
+      }
       final response = await ApiClient.instance.post(
         '/api/v1/auth/link/apple',
-        body: {'firebase_id_token': firebaseIdToken},
+        body: {'firebase_id_token': firebaseToken},
       );
       return {
         'success': true,
@@ -212,6 +272,8 @@ class AuthService {
       };
     } on ApiException catch (error) {
       return {'success': false, 'message': error.message};
+    } catch (error) {
+      return {'success': false, 'message': error.toString()};
     }
   }
 
