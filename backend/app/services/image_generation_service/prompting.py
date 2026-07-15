@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 from typing import Any
 
 _DINOSAUR_INSTRUCTIONS = """Generate a 3:4 image of the following dinosaur: {name}
@@ -10,32 +9,44 @@ The image must have these features - according to latest science, be as truthful
 - consider the following wikipedia article as context
 {article}"""
 
-_FOSSIL_INSTRUCTIONS = """Generate a 3:4 portrait photo of a dinosaur fossil at an active field excavation site. Documentary iPhone photo with slight 'dramatic warm' tone. Real paleontology, NOT cartoon, NOT CGI.
+_FOSSIL_INSTRUCTIONS = """Generate a 3:4 portrait photo of a {dinosaur} fossil at an active field excavation site.
+The dinosaur genus is the primary subject — depict anatomy, proportions, and bone texture consistent with that genus.
+
+Documentary iPhone photograph with slight 'dramatic warm' color tone. Real paleontology, NOT cartoon, NOT CGI.
+No borders, no text, no watermarks, no vignette — only the photo itself.
 
 Show imperfect in-situ field documentation:
 - fossil partially exposed in natural rock/sediment matrix, still embedded or freshly uncovered
-- dusty dig site, uneven lighting, field tools or tarps in background optional
+- dusty dig site, uneven daylight, casual handheld framing
 - authentic wear: cracks, broken edges, matrix clinging to bone, irregular exposure
-- depict the specific body parts or trace type listed below when provided
 - do NOT beautify, over-restore, or museum-prepare the specimen
 
 Avoid entirely: lab bench, glass case, mounted skeleton, polished specimen, studio lighting, stock-photo perfection.
 
-Depict this occurrence:
-{preservation_brief}
+Depict this occurrence using ONLY the fields below (especially the dinosaur):
+{spec_brief}"""
 
-Image-relevant occurrence data:
-{fossil_json}"""
-
-_PRESERVATION_QUALITY_GUIDANCE: dict[str, str] = {
-    "poor": "Visibly poor preservation: heavy weathering, erosion, missing pieces, crumbling matrix.",
-    "medium": "Moderate preservation: partial exposure, worn surfaces, some breakage, mixed with matrix.",
-    "good": "Better preservation but still in field matrix — not cleaned, mounted, or lab-prepped.",
+_LLM_CATEGORY_GUIDANCE: dict[str, str] = {
+    "body_fossil": "Body fossil: show the listed anatomical element partially exposed in rock.",
+    "trace_fossil": "Trace fossil: show impression, track, burrow, or ichnofossil in sediment.",
 }
 
-_PRES_MODE_GUIDANCE: dict[str, str] = {
-    "body": "Body fossil: show the listed bone/tooth elements partially exposed in rock.",
-    "trace": "Trace fossil: show impression, track, burrow, or ichnofossil in sediment.",
+_LLM_QUALITY_GUIDANCE: dict[str, str] = {
+    "exceptional": "Exceptional preservation with fine surface detail still visible in the matrix.",
+    "excellent": "Excellent preservation: clear bone or trace definition with limited damage.",
+    "good": "Good preservation: recognizable form with some wear and matrix attachment.",
+    "moderate": "Moderate preservation: partial exposure, worn surfaces, and some breakage.",
+    "poor": "Poor preservation: heavy weathering, erosion, missing pieces, crumbling matrix.",
+    "very_poor": "Very poor preservation: heavily fragmented, eroded, or barely recognizable remains.",
+}
+
+_LLM_COMPLETENESS_GUIDANCE: dict[str, str] = {
+    "nearly_complete": "Nearly complete specimen: most of the element is present and connected.",
+    "substantial": "Substantial remains: a large portion of the element is exposed.",
+    "partial": "Partial remains: roughly half or less of the element is visible.",
+    "fragmentary": "Fragmentary remains: broken pieces with irregular edges.",
+    "isolated_element": "Isolated element: a single bone, tooth, or small part on its own.",
+    "trace_only": "Trace only: impression or mark in sediment without body fossil bone.",
 }
 
 _PERIOD_CONTEXT: dict[str, str] = {
@@ -83,101 +94,38 @@ def build_dinosaur_image_prompt(name: str, article_text: str) -> str:
 
 
 def build_fossil_preservation_brief(fossil_data: dict[str, Any]) -> str:
-    """Human-readable brief focused on what the image should show."""
+    """Human-readable brief from LLM enrichment fields for fossil image prompts."""
     lines: list[str] = []
 
-    dino_name = fossil_data.get("dinosaur_name")
-    if dino_name:
-        lines.append(f"- Dinosaur: {dino_name}")
+    dinosaur = fossil_data.get("dinosaur") or fossil_data.get("dinosaur_name")
+    if dinosaur:
+        lines.append(f"- Dinosaur (primary subject): {dinosaur}")
 
-    identified = fossil_data.get("identified_name")
-    if identified and identified != dino_name:
-        lines.append(f"- Identified as: {identified}")
+    rock_type = fossil_data.get("llm_rock_type")
+    if rock_type:
+        lines.append(f"- Host rock / matrix: {rock_type}")
 
-    pres_mode = _normalize_key(fossil_data.get("pres_mode"))
-    if pres_mode:
-        guidance = _PRES_MODE_GUIDANCE.get(pres_mode, "")
+    category = _normalize_key(fossil_data.get("llm_category"))
+    if category:
+        guidance = _LLM_CATEGORY_GUIDANCE.get(category, "")
         suffix = f" — {guidance}" if guidance else ""
-        lines.append(f"- Fossil type ({pres_mode}){suffix}")
+        lines.append(f"- Fossil type ({category}){suffix}")
 
-    for label, key in (
-        ("Show these body parts", "common_body_parts"),
-        ("Rare elements", "rare_body_parts"),
-        ("Articulation", "articulated_parts"),
-        ("Associated elements", "associated_parts"),
-        ("Trace/feeding marks", "feed_pred_traces"),
-    ):
-        value = fossil_data.get(key)
-        if value:
-            lines.append(f"- {label}: {value}")
+    subcategory = fossil_data.get("llm_subcategory")
+    if subcategory:
+        lines.append(f"- Element / trace type: {subcategory.replace('_', ' ')}")
 
-    for key, prefix in (
-        ("component_comments", "Collection notes"),
-        ("occurrence_comments", "Occurrence notes"),
-    ):
-        value = fossil_data.get(key)
-        if value:
-            lines.append(f"- {prefix}: {value}")
+    completeness = _normalize_key(fossil_data.get("llm_completeness"))
+    if completeness:
+        guidance = _LLM_COMPLETENESS_GUIDANCE.get(completeness, "")
+        suffix = f" — {guidance}" if guidance else ""
+        lines.append(f"- Completeness ({completeness}){suffix}")
 
-    quality = _normalize_key(fossil_data.get("preservation_quality"))
+    quality = _normalize_key(fossil_data.get("llm_quality"))
     if quality:
-        guidance = _PRESERVATION_QUALITY_GUIDANCE.get(quality, "")
+        guidance = _LLM_QUALITY_GUIDANCE.get(quality, "")
         suffix = f" — {guidance}" if guidance else ""
-        lines.append(f"- Preservation ({quality}){suffix}")
-
-    for field_name, hint in (
-        ("fragmentation", "show broken/irregular edges"),
-        ("composition", "mineral composition visible in matrix"),
-        ("architecture", "taphonomic texture"),
-        ("size_classes", None),
-    ):
-        value = fossil_data.get(field_name)
-        if value:
-            suffix = f" ({hint})" if hint else ""
-            label = field_name.replace("_", " ").capitalize()
-            lines.append(f"- {label}: {value}{suffix}")
-
-    formation = fossil_data.get("geological_formation")
-    early_interval = fossil_data.get("early_interval")
-    min_age = fossil_data.get("min_age_ma")
-    max_age = fossil_data.get("max_age_ma")
-    if formation or early_interval or min_age is not None or max_age is not None:
-        age_bits = []
-        if early_interval:
-            age_bits.append(str(early_interval))
-        if min_age is not None or max_age is not None:
-            age_bits.append(f"{min_age}–{max_age} Ma")
-        age_text = ", ".join(age_bits)
-        formation_text = formation or "unspecified formation"
-        lines.append(f"- Stratigraphy: {formation_text}" + (f" ({age_text})" if age_text else ""))
-
-    lith_bits = [
-        fossil_data.get("lithdescript"),
-        fossil_data.get("lithology1"),
-        fossil_data.get("lithadj1"),
-    ]
-    lith_text = "; ".join(str(bit) for bit in lith_bits if bit)
-    if lith_text:
-        lines.append(f"- Rock/matrix: {lith_text}")
-
-    if fossil_data.get("stratcomments"):
-        lines.append(f"- Stratigraphy notes: {fossil_data['stratcomments']}")
-
-    env_bits = [
-        fossil_data.get("environment"),
-        fossil_data.get("country_code"),
-        fossil_data.get("state"),
-    ]
-    env_text = ", ".join(str(bit) for bit in env_bits if bit)
-    if env_text:
-        lines.append(f"- Field setting: {env_text}")
-
-    if fossil_data.get("geogcomments"):
-        lines.append(f"- Site: {fossil_data['geogcomments']}")
-
-    collection = fossil_data.get("collection_name") or fossil_data.get("collection_aka")
-    if collection:
-        lines.append(f"- Dig/collection: {collection}")
+        lines.append(f"- Preservation quality ({quality}){suffix}")
 
     if not lines:
         lines.append(
@@ -189,11 +137,13 @@ def build_fossil_preservation_brief(fossil_data: dict[str, Any]) -> str:
 
 def build_fossil_image_prompt(fossil_data: dict[str, Any]) -> str:
     """Build Imagen prompt for a fossil occurrence card image."""
-    preservation_brief = build_fossil_preservation_brief(fossil_data)
-    fossil_json = json.dumps(fossil_data, ensure_ascii=False, separators=(",", ":"))
+    dinosaur = str(
+        fossil_data.get("dinosaur") or fossil_data.get("dinosaur_name") or "dinosaur"
+    ).strip()
+    spec_brief = build_fossil_preservation_brief(fossil_data)
     return _FOSSIL_INSTRUCTIONS.format(
-        preservation_brief=preservation_brief,
-        fossil_json=fossil_json,
+        dinosaur=dinosaur,
+        spec_brief=spec_brief,
     )
 
 

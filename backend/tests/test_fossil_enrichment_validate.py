@@ -1,6 +1,12 @@
 """Tests for fossil enrichment validation."""
 
-from app.services.fossil_enrichment_service.validate import validate_llm_enrichment
+import random
+
+from app.services.fossil_enrichment_service.validate import (
+    _BODY_SUBCATEGORIES,
+    _TRACE_SUBCATEGORIES,
+    validate_llm_enrichment,
+)
 
 
 def test_validate_llm_enrichment_accepts_valid_payload():
@@ -23,13 +29,45 @@ def test_validate_llm_enrichment_accepts_valid_payload():
     )
 
 
-def test_validate_llm_enrichment_defaults_missing_keys_to_unknown():
+def test_validate_llm_enrichment_defaults_missing_keys_to_random_allowed_values():
+    random.seed(0)
     result = validate_llm_enrichment({})
-    assert result.llm_rock_type == "unknown"
-    assert result.llm_category == "unknown"
-    assert result.llm_subcategory == "unknown"
-    assert result.llm_preservation_quality == "unknown"
-    assert result.llm_completeness == "unknown"
+    assert result.llm_rock_type in {
+        "mudstone",
+        "shale",
+        "siltstone",
+        "sandstone",
+        "conglomerate",
+        "limestone",
+        "marl",
+        "chalk",
+        "claystone",
+        "coal",
+        "volcanic_ash",
+        "tuff",
+        "ironstone",
+        "phosphorite",
+        "evaporite",
+        "other",
+    }
+    assert result.llm_category in {"body_fossil", "trace_fossil"}
+    assert result.llm_subcategory in _BODY_SUBCATEGORIES | _TRACE_SUBCATEGORIES
+    assert result.llm_preservation_quality in {
+        "exceptional",
+        "excellent",
+        "good",
+        "moderate",
+        "poor",
+        "very_poor",
+    }
+    assert result.llm_completeness in {
+        "nearly_complete",
+        "substantial",
+        "partial",
+        "fragmentary",
+        "isolated_element",
+        "trace_only",
+    }
     assert result.llm_description is None
 
 
@@ -54,24 +92,62 @@ def test_validate_llm_enrichment_coerces_snake_case():
     assert result.llm_completeness == "trace_only"
 
 
-def test_validate_llm_enrichment_coerces_unlisted_enum_to_unknown():
+def test_validate_llm_enrichment_coerces_unlisted_enum_to_random_allowed_value():
+    random.seed(1)
     result = validate_llm_enrichment({"llm_rock_type": "granite"})
-    assert result.llm_rock_type == "unknown"
+    assert result.llm_rock_type != "granite"
+    assert result.llm_rock_type in {
+        "mudstone",
+        "shale",
+        "siltstone",
+        "sandstone",
+        "conglomerate",
+        "limestone",
+        "marl",
+        "chalk",
+        "claystone",
+        "coal",
+        "volcanic_ash",
+        "tuff",
+        "ironstone",
+        "phosphorite",
+        "evaporite",
+        "other",
+    }
 
 
-def test_validate_llm_enrichment_coerces_not_reported_to_unknown():
+def test_validate_llm_enrichment_coerces_not_reported_to_random_allowed_value():
+    random.seed(2)
     result = validate_llm_enrichment({"llm_rock_type": "not reported"})
-    assert result.llm_rock_type == "unknown"
+    assert result.llm_rock_type in {
+        "mudstone",
+        "shale",
+        "siltstone",
+        "sandstone",
+        "conglomerate",
+        "limestone",
+        "marl",
+        "chalk",
+        "claystone",
+        "coal",
+        "volcanic_ash",
+        "tuff",
+        "ironstone",
+        "phosphorite",
+        "evaporite",
+        "other",
+    }
 
 
-def test_validate_llm_enrichment_coerces_category_mismatch_to_unknown():
+def test_validate_llm_enrichment_coerces_category_mismatch_to_body_subcategory():
+    random.seed(3)
     result = validate_llm_enrichment(
         {
             "llm_category": "body_fossil",
             "llm_subcategory": "coprolites",
         }
     )
-    assert result.llm_subcategory == "unknown"
+    assert result.llm_subcategory in _BODY_SUBCATEGORIES
 
 
 def test_validate_llm_enrichment_coerces_trace_completeness_mismatch():
@@ -82,4 +158,4 @@ def test_validate_llm_enrichment_coerces_trace_completeness_mismatch():
             "llm_completeness": "partial",
         }
     )
-    assert result.llm_completeness == "unknown"
+    assert result.llm_completeness == "trace_only"

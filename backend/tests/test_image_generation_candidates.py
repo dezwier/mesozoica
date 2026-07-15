@@ -102,8 +102,8 @@ def test_fossil_candidates_prioritize_dinos_with_images(session: Session, tmp_pa
     session.refresh(dino_with)
     session.refresh(dino_without)
 
-    fossil_a = Fossil(id=201, dinosaur_id=dino_without.id, pres_mode="body")
-    fossil_b = Fossil(id=202, dinosaur_id=dino_with.id, pres_mode="body")
+    fossil_a = Fossil(id=201, dinosaur_id=dino_without.id, pres_mode="body", llm_enriched=True)
+    fossil_b = Fossil(id=202, dinosaur_id=dino_with.id, pres_mode="body", llm_enriched=True)
     session.add(fossil_a)
     session.add(fossil_b)
     session.commit()
@@ -127,3 +127,29 @@ def test_fossil_candidates_prioritize_dinos_with_images(session: Session, tmp_pa
     assert candidates[0].dinosaur_has_image is True
     assert candidates[1].fossil.id == 201
     assert candidates[1].dinosaur_has_image is False
+
+
+def test_fossil_candidates_skip_not_llm_enriched(session: Session, tmp_path: Path):
+    dino = _dinosaur(name="EnrichedOnly", page_id=30)
+    session.add(dino)
+    session.commit()
+    session.refresh(dino)
+
+    enriched = Fossil(id=301, dinosaur_id=dino.id, pres_mode="body", llm_enriched=True)
+    pending = Fossil(id=302, dinosaur_id=dino.id, pres_mode="body", llm_enriched=False)
+    session.add(enriched)
+    session.add(pending)
+    session.commit()
+
+    fossil_dir = tmp_path / "fossils"
+    fossil_dir.mkdir()
+
+    candidates, skipped_existing = select_fossil_candidates(
+        session,
+        output_dir=fossil_dir,
+        existing_stems=set(),
+        dinosaur_image_stems=set(),
+    )
+    assert skipped_existing == 0
+    assert len(candidates) == 1
+    assert candidates[0].fossil.id == 301

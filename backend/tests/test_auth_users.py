@@ -82,18 +82,13 @@ def test_users_list_and_friend_flow(client: TestClient, session: Session):
     assert rel.status_code == 200
     assert rel.json()["relationship_type"] == "friend_pending"
 
-    # Promote to friend directly in DB for test simplicity
-    from app.models.user_user import UserUser
-
-    row = session.exec(
-        __import__("sqlmodel").select(UserUser).where(
-            UserUser.relationship_type == "friend_pending"
-        )
-    ).first()
-    assert row is not None
-    row.relationship_type = "friend"
-    session.add(row)
-    session.commit()
+    alice_id = user_a["user"]["id"]
+    accept = client.post(
+        f"/api/v1/user-relationships/friend-request/{alice_id}/accept",
+        headers={"Authorization": f"Bearer {user_b['access_token']}"},
+    )
+    assert accept.status_code == 200
+    assert accept.json()["relationship_type"] == "friend"
 
     friends = client.get(
         "/api/v1/user-relationships/friends/me/list",

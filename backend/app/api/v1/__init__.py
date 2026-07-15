@@ -10,6 +10,7 @@ from app.api.v1.endpoints import (
     dinosaurs,
     fossil_images,
     fossils,
+    notifications,
     root,
     site_type_images,
     sites,
@@ -30,3 +31,4 @@ api_router.include_router(auth_profile.router)
 api_router.include_router(auth_linking.router)
 api_router.include_router(users.router)
 api_router.include_router(user_relationships.router)
+api_router.include_router(notifications.router)

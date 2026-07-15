@@ -68,7 +68,11 @@ def _select_candidates(
     dinosaur_image_stems: set[str],
     dinos: list[str] | None = None,
 ) -> tuple[list[FossilCandidate], int]:
-    stmt = select(Fossil, Dinosaur).join(Dinosaur, Fossil.dinosaur_id == Dinosaur.id)
+    stmt = (
+        select(Fossil, Dinosaur)
+        .join(Dinosaur, Fossil.dinosaur_id == Dinosaur.id)
+        .where(Fossil.llm_enriched.is_(True))  # type: ignore[attr-defined]
+    )
     if dinos:
         stmt = stmt.where(dino_name_match_clause(dinos))
 

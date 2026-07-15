@@ -73,7 +73,7 @@ def test_fossil_to_prompt_dict_omits_nulls_and_includes_dino_name():
     assert "dinosaur_id" in payload
 
 
-def test_fossil_to_image_prompt_dict_omits_catalog_numbers_and_admin_fields():
+def test_fossil_to_image_prompt_dict_includes_only_llm_fields():
     fossil = Fossil(
         id=139292,
         dinosaur_id=1,
@@ -84,17 +84,24 @@ def test_fossil_to_image_prompt_dict_omits_catalog_numbers_and_admin_fields():
         museum="GSC",
         country_code="CA",
         geological_formation="Scollard",
+        llm_rock_type="sandstone",
+        llm_category="body_fossil",
+        llm_subcategory="skull",
+        llm_completeness="partial",
+        llm_preservation_quality="good",
     )
     payload = fossil_to_image_prompt_dict(fossil, dinosaur_name="Tyrannosaurus")
-    assert payload["common_body_parts"] == "skull, vertebrae"
-    assert payload["geological_formation"] == "Scollard"
-    assert "occurrence_comments" not in payload
-    assert "reference_no" not in payload
-    assert "museum" not in payload
-    assert "dinosaur_id" not in payload
+    assert payload == {
+        "dinosaur": "Tyrannosaurus",
+        "llm_rock_type": "sandstone",
+        "llm_category": "body_fossil",
+        "llm_subcategory": "skull",
+        "llm_completeness": "partial",
+        "llm_quality": "good",
+    }
 
 
-def test_fossil_to_image_prompt_dict_keeps_anatomical_occurrence_comments():
+def test_fossil_to_image_prompt_dict_omits_unset_llm_fields():
     fossil = Fossil(
         id=1,
         dinosaur_id=1,
@@ -102,46 +109,51 @@ def test_fossil_to_image_prompt_dict_keeps_anatomical_occurrence_comments():
         pres_mode="body",
     )
     payload = fossil_to_image_prompt_dict(fossil, dinosaur_name="Tyrannosaurus")
-    assert payload["occurrence_comments"] == "partial skull and vertebrae"
+    assert payload == {"dinosaur": "Tyrannosaurus"}
 
 
-def test_build_fossil_image_prompt_includes_body_parts():
+def test_build_fossil_image_prompt_includes_llm_fields_and_dinosaur():
     fossil = Fossil(
         id=291021,
         dinosaur_id=2,
         pres_mode="body",
-        preservation_quality="medium",
-        fragmentation="slightly abraded",
         common_body_parts="femur, tibia",
-        articulated_parts="some",
-        country_code="US",
+        llm_rock_type="mudstone",
+        llm_category="body_fossil",
+        llm_subcategory="hindlimbs",
+        llm_completeness="isolated_element",
+        llm_preservation_quality="moderate",
     )
     payload = fossil_to_image_prompt_dict(fossil, dinosaur_name="Allosaurus")
     prompt = build_fossil_image_prompt(payload)
-    assert "291021" not in prompt  # id excluded from image-focused payload
+    assert "291021" not in prompt
     assert "Allosaurus" in prompt
-    assert "femur, tibia" in prompt
+    assert "primary subject" in prompt.lower()
+    assert "hindlimbs" in prompt
+    assert "mudstone" in prompt
     assert "dramatic warm" in prompt
-    assert "Show these body parts" in prompt
+    assert "iphone" in prompt.lower()
+    assert "femur, tibia" not in prompt
     assert "reference_no" not in prompt
 
 
-def test_build_fossil_preservation_brief_maps_quality_and_pres_mode():
+def test_build_fossil_preservation_brief_maps_llm_fields():
     brief = build_fossil_preservation_brief(
         {
-            "dinosaur_name": "Iguanodon",
-            "pres_mode": "trace",
-            "preservation_quality": "poor",
-            "fragmentation": "highly fragmented",
-            "common_body_parts": "tracks",
-            "geological_formation": "Wealden",
+            "dinosaur": "Iguanodon",
+            "llm_category": "trace_fossil",
+            "llm_subcategory": "footprints_and_trackways",
+            "llm_quality": "poor",
+            "llm_completeness": "trace_only",
+            "llm_rock_type": "sandstone",
         }
     )
     assert "Iguanodon" in brief
-    assert "trace" in brief.lower()
-    assert "tracks" in brief
-    assert "highly fragmented" in brief
-    assert "Wealden" in brief
+    assert "trace_fossil" in brief
+    assert "footprints and trackways" in brief
+    assert "poor" in brief
+    assert "trace_only" in brief
+    assert "sandstone" in brief
 
 
 def test_fossil_to_prompt_json_respects_max_chars():

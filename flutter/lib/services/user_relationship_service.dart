@@ -19,6 +19,18 @@ class UserRelationshipService {
     );
   }
 
+  Future<Map<String, dynamic>> acceptFriendRequest(int targetUserId) async {
+    return ApiClient.instance.post(
+      '/api/v1/user-relationships/friend-request/$targetUserId/accept',
+    );
+  }
+
+  Future<Map<String, dynamic>> rejectFriendRequest(int targetUserId) async {
+    return ApiClient.instance.post(
+      '/api/v1/user-relationships/friend-request/$targetUserId/reject',
+    );
+  }
+
   Future<Map<String, dynamic>> removeFriend(int targetUserId) async {
     return ApiClient.instance.post(
       '/api/v1/user-relationships/friend/$targetUserId/remove',

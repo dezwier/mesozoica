@@ -10,7 +10,10 @@ from app.services.image_generation_service.fossil_json import fossil_to_prompt_d
 
 _SYSTEM_INSTRUCTION = """You are a paleontology data assistant.
 Read the fossil occurrence record and return ONLY valid JSON (no markdown, no explanations).
-Be accurate: use "unknown" when the record does not clearly support a value.
+Every enum field must be one of the allowed values listed in the user prompt — never "unknown",
+null, or any value outside those lists.
+When the record clearly supports a value, choose the closest match. When evidence is weak or
+absent, pick uniformly at random from that field's allowed values.
 Do not infer anatomy, lithology, or preservation from taxon name alone.
 PBDB catalog numbers, collection metadata, and geographic names are not evidence for classification."""
 
@@ -19,7 +22,7 @@ _USER_PREFIX = """Classify this fossil occurrence record into normalized museum-
 Return a JSON object with exactly these keys:
 {
   "llm_rock_type": "<sedimentary rock type>",
-  "llm_category": "<body_fossil | trace_fossil | unknown>",
+  "llm_category": "<body_fossil | trace_fossil>",
   "llm_subcategory": "<anatomical or trace type>",
   "llm_preservation_quality": "<preservation grade>",
   "llm_completeness": "<how complete the specimen is>",
@@ -30,33 +33,33 @@ Allowed values (all lowercase snake_case):
 
 llm_rock_type — host rock / lithology:
   mudstone, shale, siltstone, sandstone, conglomerate, limestone, marl, chalk,
-  claystone, coal, volcanic_ash, tuff, ironstone, phosphorite, evaporite,
-  other, unknown
+  claystone, coal, volcanic_ash, tuff, ironstone, phosphorite, evaporite, other
   Use lithology1, lithology2, lithdescript, lithadj1, stratcomments. Pick the closest
-  listed type. Use "other" for a clearly stated but unlisted rock. Use "unknown" if absent.
+  listed type. Use "other" for a clearly stated but unlisted rock. If lithology is
+  absent or ambiguous, pick randomly from this list.
 
 llm_category:
-  body_fossil, trace_fossil, unknown
+  body_fossil, trace_fossil
+  If category is unclear, pick randomly between the two.
 
-llm_subcategory — must match llm_category, if clearly something else, other values are allowed
+llm_subcategory — must match llm_category
   Body fossils: skull, teeth, vertebrae, ribs_and_gastralia, pectoral_girdle,
     forelimbs, pelvic_girdle, hindlimbs, tail_structures, dermal_armour,
     skin_and_soft_tissue, eggs_and_embryos
   Trace fossils: footprints_and_trackways, burrows_and_nesting_traces,
     bite_marks_and_feeding_traces, coprolites, gastroliths, regurgitates
-  unknown
+  Pick from the list that matches llm_category. If unclear, pick randomly from that list.
 
 llm_preservation_quality:
-  exceptional, excellent, good, moderate, poor, very_poor, unknown
+  exceptional, excellent, good, moderate, poor, very_poor
   Map PBDB preservation_quality when clearly equivalent; consider lagerstatten,
-  preservation_comments, fragmentation. Do not guess.
+  preservation_comments, fragmentation. If unclear, pick randomly from this list.
 
 llm_completeness:
-  nearly_complete, substantial, partial, fragmentary, isolated_element,
-  trace_only, unknown
-  When llm_category is trace_fossil, use trace_only if a trace is clearly present,
-  otherwise unknown. Use articulated_parts, common_body_parts, fragmentation,
-  collection_coverage, and comments.
+  nearly_complete, substantial, partial, fragmentary, isolated_element, trace_only
+  When llm_category is trace_fossil, prefer trace_only. Use articulated_parts,
+  common_body_parts, fragmentation, collection_coverage, and comments. If unclear,
+  pick randomly from this list.
 
 llm_description:
   One concise, engaging sentence summarizing what this fossil occurrence is
@@ -64,11 +67,11 @@ llm_description:
   supported by the record. Use null when the record lacks enough detail.
 
 Rules:
-- Only classify when evidence appears in the record fields or comments.
 - llm_subcategory must be consistent with llm_category (body vs trace).
-- Prefer "unknown" over guessing for enum fields.
-- Enum values must be lowercase snake_case strings, never null. Never use
-  "not reported", "not specified", or similar — use "unknown" instead.
+- Enum values must be lowercase snake_case strings from the allowed lists only.
+  Never use "unknown", null, "not reported", "not specified", or similar.
+- When evidence supports a value, use it; otherwise pick uniformly at random from
+  that field's allowed values.
 - llm_description is normal prose (not snake_case).
 
 Occurrence id: """

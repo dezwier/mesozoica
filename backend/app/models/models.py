@@ -10,6 +10,7 @@ from app.models.site import Site
 from app.models.site_type import SiteType
 from app.models.user import User
 from app.models.user_auth_identity import UserAuthIdentity
+from app.models.user_notification import UserNotification
 from app.models.user_user import UserUser
 
 __all__ = [
@@ -19,5 +20,6 @@ __all__ = [
     "SiteType",
     "User",
     "UserAuthIdentity",
+    "UserNotification",
     "UserUser",
 ]

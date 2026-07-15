@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../controllers/auth_controller.dart';
+import '../../controllers/notification_controller.dart';
 import '../../models/profile.dart';
 import '../../models/user_list_entry.dart';
 import '../../services/profile_service.dart';
@@ -10,6 +11,25 @@ import '../common/draggable_sheet_wrapper.dart';
 import '../common/section_card.dart';
 import 'profile_content.dart';
 import 'user_list_item.dart';
+
+void showUserProfileSheet(
+  BuildContext context,
+  int userId, {
+  bool showFriendRequestActions = false,
+}) {
+  showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    builder: (ctx) => DraggableSheetWrapper(
+      childBuilder: (scrollController) => UserProfileDrawer(
+        userId: userId,
+        scrollController: scrollController,
+        showFriendRequestActions: showFriendRequestActions,
+      ),
+    ),
+  );
+}
 
 class CommunityDrawer extends StatefulWidget {
   const CommunityDrawer({super.key, this.scrollController});
@@ -140,17 +160,7 @@ class _CommunityDrawerState extends State<CommunityDrawer> {
   }
 
   void _openUser(UserListEntry entry) {
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => DraggableSheetWrapper(
-        childBuilder: (scrollController) => UserProfileDrawer(
-          userId: entry.id,
-          scrollController: scrollController,
-        ),
-      ),
-    );
+    showUserProfileSheet(context, entry.id);
   }
 
   Widget _buildUserSearchField({
@@ -418,10 +428,12 @@ class UserProfileDrawer extends StatefulWidget {
     super.key,
     required this.userId,
     this.scrollController,
+    this.showFriendRequestActions = false,
   });
 
   final int userId;
   final ScrollController? scrollController;
+  final bool showFriendRequestActions;
 
   @override
   State<UserProfileDrawer> createState() => _UserProfileDrawerState();
@@ -433,6 +445,7 @@ class _UserProfileDrawerState extends State<UserProfileDrawer> {
 
   bool _loading = true;
   bool _friendBusy = false;
+  bool _friendDecisionBusy = false;
   String? _error;
   Profile? _profile;
   Map<String, dynamic>? _relationship;
@@ -472,6 +485,31 @@ class _UserProfileDrawerState extends State<UserProfileDrawer> {
 
   int? get _actionUserId => _relationship?['action_user_id'] as int?;
 
+  int? get _currentUserId => context.read<AuthController>().currentUser?.id;
+
+  bool get _isOutgoingPending =>
+      _relationshipType == 'friend_pending' &&
+      _actionUserId != null &&
+      _actionUserId == _currentUserId;
+
+  bool get _showIncomingFriendRequestActions {
+    if (!widget.showFriendRequestActions) return false;
+    if (_relationshipType == 'friend_pending' &&
+        _actionUserId != null &&
+        _actionUserId != _currentUserId) {
+      return true;
+    }
+    return _relationship == null && widget.showFriendRequestActions;
+  }
+
+  Future<void> _refreshNotifications() async {
+    final userId = _currentUserId;
+    if (userId == null || !mounted) return;
+    await context
+        .read<NotificationController>()
+        .refreshInBackground(authenticatedUserId: userId);
+  }
+
   Future<void> _handleFriendAction() async {
     if (_friendBusy) return;
     setState(() => _friendBusy = true);
@@ -479,8 +517,8 @@ class _UserProfileDrawerState extends State<UserProfileDrawer> {
       if (_relationshipType == 'none') {
         _relationship =
             await _relationshipService.sendFriendRequest(widget.userId);
-      } else if (_relationshipType == 'friend_pending' &&
-          _actionUserId != null) {
+        await _refreshNotifications();
+      } else if (_isOutgoingPending) {
         _relationship = await _relationshipService
             .cancelFriendRequest(widget.userId);
       } else if (_relationshipType == 'friend') {
@@ -508,6 +546,32 @@ class _UserProfileDrawerState extends State<UserProfileDrawer> {
       if (mounted) setState(() {});
     } finally {
       if (mounted) setState(() => _friendBusy = false);
+    }
+  }
+
+  Future<void> _acceptFriendRequest() async {
+    if (_friendDecisionBusy) return;
+    setState(() => _friendDecisionBusy = true);
+    try {
+      _relationship =
+          await _relationshipService.acceptFriendRequest(widget.userId);
+      await _refreshNotifications();
+      if (mounted) setState(() {});
+    } finally {
+      if (mounted) setState(() => _friendDecisionBusy = false);
+    }
+  }
+
+  Future<void> _rejectFriendRequest() async {
+    if (_friendDecisionBusy) return;
+    setState(() => _friendDecisionBusy = true);
+    try {
+      _relationship =
+          await _relationshipService.rejectFriendRequest(widget.userId);
+      await _refreshNotifications();
+      if (mounted) Navigator.of(context).pop();
+    } finally {
+      if (mounted) setState(() => _friendDecisionBusy = false);
     }
   }
 
@@ -574,20 +638,49 @@ class _UserProfileDrawerState extends State<UserProfileDrawer> {
       controller: widget.scrollController,
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
       children: [
+        if (_showIncomingFriendRequestActions)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: _friendDecisionBusy ? null : _rejectFriendRequest,
+                    child: const Text('Decline'),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: FilledButton(
+                    onPressed: _friendDecisionBusy ? null : _acceptFriendRequest,
+                    child: _friendDecisionBusy
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Text('Accept'),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ProfileContent(
           profile: _profile!,
-          headerActions: _relationshipType == 'self'
+          headerActions: _relationshipType == 'self' || _showIncomingFriendRequestActions
               ? null
-              : IconButton(
-                  onPressed: _friendBusy ? null : _handleFriendAction,
-                  icon: _friendBusy
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : Icon(_friendIcon()),
-                ),
+              : (_relationshipType == 'friend_pending' && !_isOutgoingPending)
+                  ? null
+                  : IconButton(
+                      onPressed: _friendBusy ? null : _handleFriendAction,
+                      icon: _friendBusy
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : Icon(_friendIcon()),
+                    ),
         ),
       ],
     );

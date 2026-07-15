@@ -10,6 +10,7 @@ from sqlmodel import Session, or_, select
 from app.core.database import get_session
 from app.core.security import get_current_user
 from app.models.user import User
+from app.models.user_notification import UserNotification, UserNotificationType
 from app.models.user_user import UserUser
 from app.schemas.auth import UserResponse
 from app.schemas.user_relationship import (
@@ -103,9 +104,66 @@ async def send_friend_request(
         row.action_user_id = current_user.id
         row.updated_at = now
     session.add(row)
+    session.add(
+        UserNotification(
+            user_id=target_user_id,
+            type=UserNotificationType.FRIEND_REQUEST_RECEIVED,
+            actor_user_id=current_user.id,
+        )
+    )
     session.commit()
     session.refresh(row)
     return _to_response(target_user_id, row)
+
+
+@router.post("/friend-request/{target_user_id}/accept", response_model=UserRelationshipResponse)
+async def accept_friend_request(
+    target_user_id: int,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    _require_target(session, current_user.id, target_user_id)
+    row = _get_row(session, current_user.id, target_user_id)
+    if (
+        row is None
+        or row.relationship_type != "friend_pending"
+        or row.action_user_id == current_user.id
+    ):
+        raise HTTPException(status_code=404, detail="No incoming friend request found")
+    now = _utc_now()
+    row.relationship_type = "friend"
+    row.action_user_id = current_user.id
+    row.updated_at = now
+    session.add(row)
+    session.add(
+        UserNotification(
+            user_id=target_user_id,
+            type=UserNotificationType.FRIEND_REQUEST_ACCEPTED,
+            actor_user_id=current_user.id,
+        )
+    )
+    session.commit()
+    session.refresh(row)
+    return _to_response(target_user_id, row)
+
+
+@router.post("/friend-request/{target_user_id}/reject", response_model=UserRelationshipResponse)
+async def reject_friend_request(
+    target_user_id: int,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    _require_target(session, current_user.id, target_user_id)
+    row = _get_row(session, current_user.id, target_user_id)
+    if (
+        row is None
+        or row.relationship_type != "friend_pending"
+        or row.action_user_id == current_user.id
+    ):
+        raise HTTPException(status_code=404, detail="No incoming friend request found")
+    session.delete(row)
+    session.commit()
+    return UserRelationshipResponse(target_user_id=target_user_id, relationship_type="none")
 
 
 @router.post("/friend-request/{target_user_id}/cancel", response_model=UserRelationshipResponse)

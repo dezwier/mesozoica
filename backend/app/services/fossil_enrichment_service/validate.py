@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import random
 import re
 from typing import Any, Literal, Optional, get_args
 
@@ -24,10 +25,9 @@ RockType = Literal[
     "phosphorite",
     "evaporite",
     "other",
-    "unknown",
 ]
 
-Category = Literal["body_fossil", "trace_fossil", "unknown"]
+Category = Literal["body_fossil", "trace_fossil"]
 
 Subcategory = Literal[
     "skull",
@@ -48,7 +48,6 @@ Subcategory = Literal[
     "coprolites",
     "gastroliths",
     "regurgitates",
-    "unknown",
 ]
 
 PreservationQuality = Literal[
@@ -58,7 +57,6 @@ PreservationQuality = Literal[
     "moderate",
     "poor",
     "very_poor",
-    "unknown",
 ]
 
 Completeness = Literal[
@@ -68,7 +66,6 @@ Completeness = Literal[
     "fragmentary",
     "isolated_element",
     "trace_only",
-    "unknown",
 ]
 
 _BODY_SUBCATEGORIES = frozenset(
@@ -117,32 +114,36 @@ _UNKNOWN_ALIASES = frozenset(
 )
 
 
+def _pick_random(allowed: set[str]) -> str:
+    return random.choice(sorted(allowed))
+
+
 def _normalize_enum(value: Any) -> str:
     if value is None:
-        return "unknown"
+        return ""
     text = str(value).strip().lower()
     if not text:
-        return "unknown"
+        return ""
     text = re.sub(r"[\s\-/]+", "_", text)
     text = re.sub(r"[^a-z0-9_]", "", text)
     text = re.sub(r"_+", "_", text).strip("_")
     if not text or text in _UNKNOWN_ALIASES:
-        return "unknown"
+        return ""
     return text
 
 
 def _coerce_to_allowed(value: str, allowed: set[str]) -> str:
     if value in allowed:
         return value
-    return "unknown"
+    return _pick_random(allowed)
 
 
 class FossilEnrichmentOutput(BaseModel):
-    llm_rock_type: str = "unknown"
-    llm_category: str = "unknown"
-    llm_subcategory: str = "unknown"
-    llm_preservation_quality: str = "unknown"
-    llm_completeness: str = "unknown"
+    llm_rock_type: str = ""
+    llm_category: str = ""
+    llm_subcategory: str = ""
+    llm_preservation_quality: str = ""
+    llm_completeness: str = ""
     llm_description: Optional[str] = Field(default=None, max_length=512)
 
     @field_validator(
@@ -195,14 +196,11 @@ class FossilEnrichmentOutput(BaseModel):
     @model_validator(mode="after")
     def check_category_consistency(self) -> "FossilEnrichmentOutput":
         if self.llm_category == "body_fossil" and self.llm_subcategory in _TRACE_SUBCATEGORIES:
-            self.llm_subcategory = "unknown"
+            self.llm_subcategory = _pick_random(_BODY_SUBCATEGORIES)
         if self.llm_category == "trace_fossil" and self.llm_subcategory in _BODY_SUBCATEGORIES:
-            self.llm_subcategory = "unknown"
-        if self.llm_category == "trace_fossil" and self.llm_completeness not in {
-            "trace_only",
-            "unknown",
-        }:
-            self.llm_completeness = "unknown"
+            self.llm_subcategory = _pick_random(_TRACE_SUBCATEGORIES)
+        if self.llm_category == "trace_fossil" and self.llm_completeness != "trace_only":
+            self.llm_completeness = "trace_only"
         return self
 
 

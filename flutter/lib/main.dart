@@ -10,6 +10,7 @@ import 'controllers/fossil_catalog_controller.dart';
 import 'controllers/map_controller.dart';
 import 'controllers/phylo_tree_controller.dart';
 import 'controllers/site_catalog_controller.dart';
+import 'controllers/notification_controller.dart';
 import 'controllers/theme_controller.dart';
 import 'firebase_options.dart';
 import 'services/location_service.dart';
@@ -45,6 +46,7 @@ class MesozoicaApp extends StatelessWidget {
         ChangeNotifierProvider(
           create: (_) => AuthController()..initialize(),
         ),
+        ChangeNotifierProvider(create: (_) => NotificationController()),
         ChangeNotifierProvider(create: (_) => DinosaurCatalogController()),
         ChangeNotifierProvider(create: (_) => FossilCatalogController()),
         ChangeNotifierProvider(create: (_) => SiteCatalogController()),

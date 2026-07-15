@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import re
 from decimal import Decimal
 from typing import Any
 
@@ -12,63 +11,12 @@ from app.models.fossil import Fossil
 
 _DEFAULT_STRING_CAP = 400
 
-# Fields that help Imagen depict the fossil and dig site (priority order).
-_IMAGE_PROMPT_FIELD_ORDER: tuple[str, ...] = (
-    "dinosaur_name",
-    "identified_name",
-    "pres_mode",
-    "common_body_parts",
-    "rare_body_parts",
-    "articulated_parts",
-    "associated_parts",
-    "component_comments",
-    "collection_comments",
-    "preservation_comments",
-    "occurrence_comments",
-    "feed_pred_traces",
-    "collection_coverage",
-    "preservation_quality",
-    "fragmentation",
-    "composition",
-    "architecture",
-    "size_classes",
-    "geological_formation",
-    "early_interval",
-    "min_age_ma",
-    "max_age_ma",
-    "lithdescript",
-    "lithology1",
-    "lithadj1",
-    "stratcomments",
-    "environment",
-    "country_code",
-    "state",
-    "geogcomments",
-    "collection_name",
-    "collection_aka",
-)
-
-_CATALOG_NUMBER_RE = re.compile(
-    r"^[A-Z]{1,6}[\s-]?\d[\w./-]*$",
-    re.IGNORECASE,
-)
-_ANATOMY_HINTS = (
-    "skull",
-    "vertebra",
-    "femur",
-    "tibia",
-    "tooth",
-    "teeth",
-    "bone",
-    "bones",
-    "partial",
-    "articulated",
-    "fragment",
-    "rib",
-    "limb",
-    "track",
-    "trace",
-    "impression",
+_IMAGE_PROMPT_LLM_FIELDS: tuple[tuple[str, str], ...] = (
+    ("llm_rock_type", "llm_rock_type"),
+    ("llm_category", "llm_category"),
+    ("llm_subcategory", "llm_subcategory"),
+    ("llm_completeness", "llm_completeness"),
+    ("llm_preservation_quality", "llm_quality"),
 )
 
 
@@ -84,21 +32,16 @@ def fossil_to_prompt_dict(fossil: Fossil, *, dinosaur_name: str) -> dict[str, An
 
 
 def fossil_to_image_prompt_dict(fossil: Fossil, *, dinosaur_name: str) -> dict[str, Any]:
-    """Return only image-relevant fossil fields, omitting empty or catalog-only values."""
-    source = fossil_to_prompt_dict(fossil, dinosaur_name=dinosaur_name)
-    payload: dict[str, Any] = {}
-
-    for key in _IMAGE_PROMPT_FIELD_ORDER:
-        value = source.get(key)
-        if not _is_informative_value(key, value):
+    """Return only LLM enrichment fields used for fossil image generation."""
+    payload: dict[str, Any] = {"dinosaur": dinosaur_name}
+    for model_field, prompt_key in _IMAGE_PROMPT_LLM_FIELDS:
+        value = getattr(fossil, model_field, None)
+        if value is None:
             continue
-        payload[key] = _serialize_value(value)
-
-    if not payload:
-        payload["dinosaur_name"] = dinosaur_name
-        if source.get("pres_mode"):
-            payload["pres_mode"] = source["pres_mode"]
-
+        text = str(value).strip()
+        if not text:
+            continue
+        payload[prompt_key] = text
     return payload
 
 
@@ -129,35 +72,6 @@ def fossil_to_prompt_json(
         dinosaur_name=dinosaur_name,
         max_chars=max_chars,
     )
-
-
-def _is_informative_value(key: str, value: Any) -> bool:
-    if value is None:
-        return False
-    if isinstance(value, str):
-        stripped = value.strip()
-        if not stripped:
-            return False
-        if key in {"occurrence_comments", "component_comments", "collection_comments", "preservation_comments"}:
-            return _is_informative_comment(stripped)
-        if key == "fossilsfrom1" and stripped.upper() in {"Y", "N"}:
-            return False
-        return True
-    return True
-
-
-def _is_informative_comment(text: str) -> bool:
-    if len(text) >= 40:
-        return True
-    lower = text.lower()
-    if any(hint in lower for hint in _ANATOMY_HINTS):
-        return True
-    if _CATALOG_NUMBER_RE.match(text.strip()):
-        return False
-    words = [word for word in re.split(r"\s+", text) if word]
-    if len(words) <= 3 and sum(1 for char in text if char.isupper()) / max(len(text), 1) > 0.35:
-        return False
-    return len(text) >= 15
 
 
 def _serialize_value(value: Any) -> Any:
