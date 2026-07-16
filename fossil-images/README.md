@@ -23,6 +23,12 @@ Dry run (preview matches, no upload or DB changes):
 make sync-fossil-images CRON_EXTRA='--dry-run'
 ```
 
+Replace images already on Railway (required after regenerating local PNGs):
+
+```bash
+make sync-fossil-images CRON_EXTRA='--overwrite'
+```
+
 Set `PUBLIC_BASE_URL` on Railway and the same `FOSSIL_IMAGE_SYNC_SECRET` locally via `railway run` so `main_image_url` is stored correctly and uploads are authorized.
 
 Image binaries are gitignored; only this README and `.gitkeep` are tracked.

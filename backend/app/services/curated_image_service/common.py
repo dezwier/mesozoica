@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import os
 import re
 from pathlib import Path
@@ -72,6 +73,47 @@ def resolve_curated_storage_dir(
     if path.is_absolute():
         return path
     return (_BACKEND_DIR / path).resolve()
+
+
+def file_content_version(local_path: Path) -> str:
+    """Short content hash for cache-busting curated image URLs after re-sync."""
+    digest = hashlib.md5(local_path.read_bytes()).hexdigest()
+    return digest[:12]
+
+
+def version_from_curated_url(url: str | None) -> str | None:
+    if not url or "?v=" not in url:
+        return None
+    return url.rsplit("?v=", 1)[-1].split("&", 1)[0] or None
+
+
+def needs_curated_image_resync(
+    *,
+    overwrite: bool,
+    local_path: Path,
+    main_image_url: str | None,
+    public_base_url: str,
+    filename: str,
+    curated_media_path: str,
+) -> bool:
+    """Return True when the local file should be uploaded and main_image_url refreshed."""
+    if overwrite:
+        return True
+
+    local_version = file_content_version(local_path)
+    stored_version = version_from_curated_url(main_image_url)
+    if stored_version == local_version:
+        return False
+
+    if not remote_curated_image_exists(
+        public_base_url=public_base_url,
+        curated_media_path=curated_media_path,
+        filename=filename,
+    ):
+        return True
+
+    # Remote file exists but local content changed or the DB URL is stale.
+    return True
 
 
 def remote_curated_image_exists(

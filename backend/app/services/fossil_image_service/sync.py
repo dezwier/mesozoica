@@ -8,13 +8,16 @@ from pathlib import Path
 from app.services.curated_image_service.common import (
     ALLOWED_IMAGE_EXTENSIONS,
     DEFAULT_PRODUCTION_BASE_URL,
+    file_content_version,
     is_allowed_image_filename,
+    needs_curated_image_resync,
     normalize_public_base_url,
     remote_curated_image_exists,
     resolve_local_source_dir_for_sync as _resolve_local_source_dir,
     resolve_public_base_url_for_sync,
     scan_local_image_files,
     upload_curated_image_to_railway,
+    version_from_curated_url,
 )
 
 CURATED_MEDIA_PATH = "/media/fossils/"
@@ -27,9 +30,17 @@ class FossilImageFileMatch:
     fossil_id: int
 
 
-def build_curated_image_url(public_base_url: str, filename: str) -> str:
+def build_curated_image_url(
+    public_base_url: str,
+    filename: str,
+    *,
+    version: str | None = None,
+) -> str:
     base = public_base_url.rstrip("/")
-    return f"{base}{CURATED_MEDIA_PATH}{filename}"
+    url = f"{base}{CURATED_MEDIA_PATH}{filename}"
+    if version:
+        return f"{url}?v={version}"
+    return url
 
 
 def is_curated_image_url(url: str | None) -> bool:
@@ -72,6 +83,24 @@ def remote_image_exists(*, public_base_url: str, filename: str) -> bool:
     )
 
 
+def needs_image_resync(
+    *,
+    overwrite: bool,
+    local_path: Path,
+    main_image_url: str | None,
+    public_base_url: str,
+    filename: str,
+) -> bool:
+    return needs_curated_image_resync(
+        overwrite=overwrite,
+        local_path=local_path,
+        main_image_url=main_image_url,
+        public_base_url=public_base_url,
+        filename=filename,
+        curated_media_path=CURATED_MEDIA_PATH,
+    )
+
+
 def upload_file_to_railway(
     *,
     local_path: Path,
@@ -105,13 +134,16 @@ __all__ = [
     "DEFAULT_PRODUCTION_BASE_URL",
     "FossilImageFileMatch",
     "build_curated_image_url",
+    "file_content_version",
     "is_allowed_image_filename",
     "is_curated_image_url",
     "match_image_files",
+    "needs_image_resync",
     "normalize_public_base_url",
     "remote_image_exists",
     "resolve_local_source_dir_for_sync",
     "resolve_public_base_url_for_sync",
     "scan_local_image_files",
     "upload_file_to_railway",
+    "version_from_curated_url",
 ]

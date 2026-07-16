@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-import hashlib
 from dataclasses import dataclass
 from pathlib import Path
 
 from app.services.curated_image_service.common import (
     ALLOWED_IMAGE_EXTENSIONS,
     DEFAULT_PRODUCTION_BASE_URL,
+    file_content_version,
     is_allowed_image_filename,
     normalize_public_base_url,
     remote_curated_image_exists,
@@ -26,12 +26,6 @@ class ImageFileMatch:
     path: Path
     filename: str
     dinosaur_name: str
-
-
-def file_content_version(local_path: Path) -> str:
-    """Short content hash for cache-busting curated image URLs after re-sync."""
-    digest = hashlib.md5(local_path.read_bytes()).hexdigest()
-    return digest[:12]
 
 
 def build_curated_image_url(

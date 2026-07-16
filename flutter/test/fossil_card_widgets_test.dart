@@ -47,6 +47,11 @@ const _fixture = FossilSummary(
   llmPreservationQuality: 'Excellent',
   llmCompleteness: 'Partial',
   llmRockType: 'Sandstone',
+  llmImpCategory: 'body',
+  llmImpSubcategory: 'teeth',
+  llmImpPreservationQuality: 'good',
+  llmImpCompleteness: 'isolated_element',
+  llmImpRockType: 'sandstone',
   dinosaurMainImageUrl:
       'https://mesozoica-production.up.railway.app/media/dinosaurs/Tyrannosaurus.webp',
   siteId: 50001,
@@ -135,9 +140,13 @@ void main() {
     expect(find.text('SUB CATEGORY'), findsOneWidget);
     expect(find.text('PRESERVATION QUALITY'), findsOneWidget);
     expect(find.text('COMPLETENESS'), findsOneWidget);
-    expect(find.text('Tooth'), findsOneWidget);
-    expect(find.text('Excellent'), findsOneWidget);
-    expect(find.text('Partial'), findsOneWidget);
+    expect(find.text('Body'), findsOneWidget);
+    expect(find.text('Teeth'), findsOneWidget);
+    expect(find.text('Good'), findsOneWidget);
+    expect(find.text('Isolated_element'), findsOneWidget);
+    expect(find.text('Tooth'), findsNothing);
+    expect(find.text('Excellent'), findsNothing);
+    expect(find.text('Partial'), findsNothing);
     expect(find.byIcon(Icons.info_outline), findsOneWidget);
     expect(find.text('OCCURRENCE NO'), findsNothing);
   });
@@ -168,6 +177,7 @@ void main() {
     expect(find.descendant(of: drawer, matching: find.text('LLM CATEGORY')), findsOneWidget);
     expect(find.descendant(of: drawer, matching: find.text('LLM ROCK TYPE')), findsOneWidget);
     expect(find.descendant(of: drawer, matching: find.text('Sandstone')), findsOneWidget);
+    expect(find.descendant(of: drawer, matching: find.text('Tooth')), findsWidgets);
     expect(find.descendant(of: drawer, matching: find.text('DINOSAUR')), findsOneWidget);
     expect(find.descendant(of: drawer, matching: find.text('IDENTIFIED NAME')), findsOneWidget);
     expect(find.descendant(of: drawer, matching: find.text('FAMILY')), findsOneWidget);

@@ -13,8 +13,10 @@ from app.core.app_factory import create_app
 from app.models.fossil import Fossil
 from app.services.fossil_image_service.sync import (
     build_curated_image_url,
+    file_content_version,
     is_curated_image_url,
     match_image_files,
+    needs_image_resync,
     resolve_local_source_dir_for_sync,
     upload_file_to_railway,
 )
@@ -24,6 +26,14 @@ def test_build_curated_image_url():
     assert (
         build_curated_image_url("https://example.com", "139292.webp")
         == "https://example.com/media/fossils/139292.webp"
+    )
+    assert (
+        build_curated_image_url(
+            "https://example.com",
+            "139292.webp",
+            version="abc123",
+        )
+        == "https://example.com/media/fossils/139292.webp?v=abc123"
     )
 
 
@@ -105,13 +115,151 @@ def test_run_sync_updates_main_image_url(
         "upload_file_to_railway",
         lambda **kwargs: None,
     )
-    monkeypatch.setattr(sync_module, "remote_image_exists", lambda **kwargs: False)
     monkeypatch.setenv("ALLOW_LOCAL_CRON", "1")
 
     assert sync_module.run_sync(dry_run=False) == 0
 
     session.refresh(row)
-    assert row.main_image_url == "https://example.com/media/fossils/139292.png"
+    assert row.main_image_url == (
+        "https://example.com/media/fossils/139292.png?v=9dd4e461268c"
+    )
+
+
+def test_run_sync_skips_existing_remote_images(
+    session: Session,
+    tmp_path: Path,
+    monkeypatch,
+):
+    from scripts import sync_fossil_images as sync_module
+
+    images_dir = tmp_path / "images"
+    images_dir.mkdir()
+    image_path = images_dir / "139292.png"
+    image_path.write_bytes(b"x")
+
+    row = Fossil(id=139292, dinosaur_id=1, identified_name="Tyrannosaurus rex")
+    row.main_image_url = build_curated_image_url(
+        "https://example.com",
+        "139292.png",
+        version=file_content_version(image_path),
+    )
+    session.add(row)
+    session.commit()
+
+    monkeypatch.setenv("FOSSIL_IMAGES_SOURCE_DIR", str(images_dir))
+    upload_calls: list[str] = []
+
+    def fake_upload(**kwargs):
+        upload_calls.append(kwargs["remote_filename"])
+
+    monkeypatch.setattr(sync_module, "upload_file_to_railway", fake_upload)
+    monkeypatch.setenv("ALLOW_LOCAL_CRON", "1")
+
+    assert sync_module.run_sync(dry_run=False, overwrite=False) == 0
+    assert upload_calls == []
+
+    session.refresh(row)
+    assert row.main_image_url == (
+        "https://example.com/media/fossils/139292.png?v=9dd4e461268c"
+    )
+
+
+def test_run_sync_resyncs_when_local_content_changed(
+    session: Session,
+    tmp_path: Path,
+    monkeypatch,
+):
+    from scripts import sync_fossil_images as sync_module
+
+    images_dir = tmp_path / "images"
+    images_dir.mkdir()
+    image_path = images_dir / "139292.png"
+    image_path.write_bytes(b"new-image-bytes")
+
+    row = Fossil(id=139292, dinosaur_id=1, identified_name="Tyrannosaurus rex")
+    row.main_image_url = (
+        "https://example.com/media/fossils/139292.png?v=9dd4e461268c"
+    )
+    session.add(row)
+    session.commit()
+
+    monkeypatch.setattr(config_module.settings, "public_base_url", "https://example.com")
+    monkeypatch.setenv("FOSSIL_IMAGES_SOURCE_DIR", str(images_dir))
+    upload_calls: list[str] = []
+
+    def fake_upload(**kwargs):
+        upload_calls.append(kwargs["remote_filename"])
+
+    monkeypatch.setattr(sync_module, "upload_file_to_railway", fake_upload)
+    monkeypatch.setenv("ALLOW_LOCAL_CRON", "1")
+
+    assert sync_module.run_sync(dry_run=False, overwrite=False) == 0
+    assert upload_calls == ["139292.png"]
+
+    session.refresh(row)
+    assert row.main_image_url == (
+        f"https://example.com/media/fossils/139292.png?v={file_content_version(image_path)}"
+    )
+    assert row.main_image_url != (
+        "https://example.com/media/fossils/139292.png?v=9dd4e461268c"
+    )
+
+
+def test_needs_image_resync_detects_stale_content(tmp_path: Path):
+    local = tmp_path / "139292.png"
+    local.write_bytes(b"new")
+    assert needs_image_resync(
+        overwrite=False,
+        local_path=local,
+        main_image_url="https://example.com/media/fossils/139292.png?v=oldhash",
+        public_base_url="https://example.com",
+        filename="139292.png",
+    )
+    assert not needs_image_resync(
+        overwrite=False,
+        local_path=local,
+        main_image_url=build_curated_image_url(
+            "https://example.com",
+            "139292.png",
+            version=file_content_version(local),
+        ),
+        public_base_url="https://example.com",
+        filename="139292.png",
+    )
+
+
+def test_run_sync_overwrite_uploads_existing_remote_images(
+    session: Session,
+    tmp_path: Path,
+    monkeypatch,
+):
+    from scripts import sync_fossil_images as sync_module
+
+    images_dir = tmp_path / "images"
+    images_dir.mkdir()
+    (images_dir / "139292.png").write_bytes(b"x")
+
+    row = Fossil(id=139292, dinosaur_id=1, identified_name="Tyrannosaurus rex")
+    session.add(row)
+    session.commit()
+
+    monkeypatch.setattr(config_module.settings, "public_base_url", "https://example.com")
+    monkeypatch.setenv("FOSSIL_IMAGES_SOURCE_DIR", str(images_dir))
+    upload_calls: list[str] = []
+
+    def fake_upload(**kwargs):
+        upload_calls.append(kwargs["remote_filename"])
+
+    monkeypatch.setattr(sync_module, "upload_file_to_railway", fake_upload)
+    monkeypatch.setenv("ALLOW_LOCAL_CRON", "1")
+
+    assert sync_module.run_sync(dry_run=False, overwrite=True) == 0
+    assert upload_calls == ["139292.png"]
+
+    session.refresh(row)
+    assert row.main_image_url == (
+        "https://example.com/media/fossils/139292.png?v=9dd4e461268c"
+    )
 
 
 def test_resolve_local_source_dir_for_sync_uses_repo_folder(monkeypatch, tmp_path: Path):

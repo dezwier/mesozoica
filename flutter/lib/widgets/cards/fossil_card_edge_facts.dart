@@ -24,30 +24,34 @@ class FossilCardEdgeFacts extends StatelessWidget {
           iconAsset: 'assets/images/cards/icons/diet.svg',
           label: 'Category',
           value: displayFactValue(
-            fossil.displayCategory == '—' ? null : fossil.displayCategory,
+            fossil.displayImpCategory == '—' ? null : fossil.displayImpCategory,
           ),
         ),
         CardFactEntry(
           iconAsset: 'assets/images/cards/icons/mass.svg',
           label: 'Sub category',
           value: displayFactValue(
-            fossil.displaySubcategory == '—' ? null : fossil.displaySubcategory,
+            fossil.displayImpSubcategory == '—'
+                ? null
+                : fossil.displayImpSubcategory,
           ),
         ),
         CardFactEntry(
           iconAsset: 'assets/images/cards/icons/period.svg',
           label: 'Preservation quality',
           value: displayFactValue(
-            fossil.displayPreservationQuality == '—'
+            fossil.displayImpPreservationQuality == '—'
                 ? null
-                : fossil.displayPreservationQuality,
+                : fossil.displayImpPreservationQuality,
           ),
         ),
         CardFactEntry(
           iconAsset: 'assets/images/cards/icons/length.svg',
           label: 'Completeness',
           value: displayFactValue(
-            fossil.displayCompleteness == '—' ? null : fossil.displayCompleteness,
+            fossil.displayImpCompleteness == '—'
+                ? null
+                : fossil.displayImpCompleteness,
           ),
         ),
       ],

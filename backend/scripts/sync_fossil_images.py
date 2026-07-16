@@ -14,8 +14,9 @@ from app.crons.railway_guard import require_railway_database
 from app.models.fossil import Fossil
 from app.services.fossil_image_service.sync import (
     build_curated_image_url,
+    file_content_version,
     match_image_files,
-    remote_image_exists,
+    needs_image_resync,
     resolve_local_source_dir_for_sync,
     resolve_public_base_url_for_sync,
     scan_local_image_files,
@@ -64,15 +65,24 @@ def run_sync(*, dry_run: bool = False, overwrite: bool = False) -> int:
         updated = 0
         skipped = 0
         for match in matched:
-            if not overwrite and remote_image_exists(
+            row = session.get(Fossil, match.fossil_id)
+            main_image_url = row.main_image_url if row is not None else None
+            if not needs_image_resync(
+                overwrite=overwrite,
+                local_path=match.path,
+                main_image_url=main_image_url,
                 public_base_url=public_base_url,
                 filename=match.filename,
             ):
-                logger.info("Skipping %s (already on Railway)", match.filename)
+                logger.info("Skipping %s (already synced)", match.filename)
                 skipped += 1
                 continue
 
-            public_url = build_curated_image_url(public_base_url, match.filename)
+            public_url = build_curated_image_url(
+                public_base_url,
+                match.filename,
+                version=file_content_version(match.path),
+            )
             logger.info(
                 "%s %s -> %s",
                 "Would sync" if dry_run else "Syncing",
@@ -88,7 +98,6 @@ def run_sync(*, dry_run: bool = False, overwrite: bool = False) -> int:
                 )
                 uploaded += 1
 
-                row = session.get(Fossil, match.fossil_id)
                 if row is not None:
                     row.main_image_url = public_url
                     session.add(row)

@@ -25,6 +25,8 @@ Both scripts support `.png`, `.jpg`, `.jpeg`, and `.webp`.
 - **Source folder:** repo `fossil-images/`
 - **Filename rule:** `<occurrence_no>.<ext>` — stem is the PBDB occurrence number (stored as `fossil.id`), e.g. `139292.png`
 - **Served at:** `https://<api-host>/media/fossils/<occurrence_no>.<ext>`
+- **Cache busting:** `main_image_url` includes a `?v=<content-hash>` query param so the app fetches updated files after re-sync
+- **Re-sync:** Regenerated local files are re-uploaded automatically when their content hash differs from the stored `main_image_url` (no `--overwrite` required)
 
 ## Make targets (recommended)
 
@@ -68,7 +70,7 @@ python -m scripts.sync_fossil_images --dry-run
 | Flag | Effect |
 |------|--------|
 | `--dry-run` | Log what would sync; skip uploads and database updates |
-| `--overwrite` | Replace images already on Railway. Default: upload only missing images |
+| `--overwrite` | Force re-upload every matched image, even when content is unchanged |
 
 ## Environment
 
@@ -125,11 +127,11 @@ ls fossil-images/
 # 2. Preview matches
 make sync-fossil-images CRON_EXTRA='--dry-run'
 
-# 3. Upload to production
+# 3. Upload to production (re-uploads when local file content changed)
 make sync-fossil-images
 ```
 
-If the app still shows a stale image after re-sync, pull to refresh the catalog. Dinosaur URLs include a content hash (`?v=...`) that changes when the file changes; a full app restart clears any remaining client-side cache.
+Regenerated images are detected via content hash and overwrite the remote file automatically. Use `--overwrite` only to force a full re-upload of every matched file.
 
 ## Adding a script
 

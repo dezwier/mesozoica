@@ -12,11 +12,12 @@ from app.core.config import settings
 from app.core.database import engine
 from app.crons.railway_guard import require_railway_database
 from app.models.dinosaur import Dinosaur
+from app.services.curated_image_service.common import needs_curated_image_resync
 from app.services.dinosaur_image_service.sync import (
+    CURATED_MEDIA_PATH,
     build_curated_image_url,
     file_content_version,
     match_image_files,
-    remote_image_exists,
     resolve_local_source_dir_for_sync,
     resolve_public_base_url_for_sync,
     scan_local_image_files,
@@ -65,11 +66,19 @@ def run_sync(*, dry_run: bool = False, overwrite: bool = False) -> int:
         updated = 0
         skipped = 0
         for match in matched:
-            if not overwrite and remote_image_exists(
+            row = session.exec(
+                select(Dinosaur).where(Dinosaur.name == match.dinosaur_name)
+            ).first()
+            main_image_url = row.main_image_url if row is not None else None
+            if not needs_curated_image_resync(
+                overwrite=overwrite,
+                local_path=match.path,
+                main_image_url=main_image_url,
                 public_base_url=public_base_url,
                 filename=match.filename,
+                curated_media_path=CURATED_MEDIA_PATH,
             ):
-                logger.info("Skipping %s (already on Railway)", match.filename)
+                logger.info("Skipping %s (already synced)", match.filename)
                 skipped += 1
                 continue
 
@@ -93,9 +102,6 @@ def run_sync(*, dry_run: bool = False, overwrite: bool = False) -> int:
                 )
                 uploaded += 1
 
-                row = session.exec(
-                    select(Dinosaur).where(Dinosaur.name == match.dinosaur_name)
-                ).first()
                 if row is not None:
                     row.main_image_url = public_url
                     session.add(row)

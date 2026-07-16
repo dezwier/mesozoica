@@ -99,6 +99,11 @@ class FossilSummary {
     this.llmPreservationQuality,
     this.llmCompleteness,
     this.llmDescription,
+    this.llmImpRockType,
+    this.llmImpCategory,
+    this.llmImpSubcategory,
+    this.llmImpPreservationQuality,
+    this.llmImpCompleteness,
     this.dinosaurMainImageUrl,
     this.siteId,
     this.siteMainImageUrl,
@@ -188,6 +193,11 @@ class FossilSummary {
   final String? llmPreservationQuality;
   final String? llmCompleteness;
   final String? llmDescription;
+  final String? llmImpRockType;
+  final String? llmImpCategory;
+  final String? llmImpSubcategory;
+  final String? llmImpPreservationQuality;
+  final String? llmImpCompleteness;
   final String? dinosaurMainImageUrl;
   final int? siteId;
   final String? siteMainImageUrl;
@@ -278,6 +288,11 @@ class FossilSummary {
       llmPreservationQuality: json['llm_preservation_quality'] as String?,
       llmCompleteness: json['llm_completeness'] as String?,
       llmDescription: json['llm_description'] as String?,
+      llmImpRockType: json['llm_imp_rock_type'] as String?,
+      llmImpCategory: json['llm_imp_category'] as String?,
+      llmImpSubcategory: json['llm_imp_subcategory'] as String?,
+      llmImpPreservationQuality: json['llm_imp_preservation_quality'] as String?,
+      llmImpCompleteness: json['llm_imp_completeness'] as String?,
       dinosaurMainImageUrl: json['dinosaur_main_image_url'] as String?,
       siteId: json['site_id'] as int?,
       siteMainImageUrl: json['site_main_image_url'] as String?,
@@ -350,6 +365,15 @@ class FossilSummary {
       displayFactValue(llmPreservationQuality ?? preservationQuality);
 
   String get displayCompleteness => displayFactValue(llmCompleteness);
+
+  String get displayImpCategory => displayFactValue(llmImpCategory);
+
+  String get displayImpSubcategory => displayFactValue(llmImpSubcategory);
+
+  String get displayImpPreservationQuality =>
+      displayFactValue(llmImpPreservationQuality);
+
+  String get displayImpCompleteness => displayFactValue(llmImpCompleteness);
 
   List<FossilStoredField> get storedFields {
     return [
