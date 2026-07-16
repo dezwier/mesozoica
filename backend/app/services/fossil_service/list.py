@@ -16,6 +16,7 @@ from app.models.fossil import Fossil
 from app.models.site import Site
 from app.models.site_type import SiteType
 from app.services.dinosaur_image_service.sync import CURATED_MEDIA_PATH as DINOSAUR_CURATED_MEDIA_PATH
+from app.services.fossil_image_service.sync import CURATED_MEDIA_PATH as FOSSIL_CURATED_MEDIA_PATH
 from app.services.site_service.site_type_fallback import effective_site_type
 
 SortOption = Literal["name", "random"]
@@ -41,26 +42,43 @@ def list_fossils(
     sort: SortOption = "name",
     seed: str | None = None,
     q: str | None = None,
+    dino_q: str | None = None,
+    fossil_q: str | None = None,
     ma_younger: float | None = None,
     ma_older: float | None = None,
     has_custom_image: bool = False,
+    has_custom_fossil_image: bool = False,
+    llm_enriched: bool | None = None,
     dinosaur_id: int | None = None,
 ) -> tuple[list[FossilRow], int]:
     """Return paginated fossil rows joined with dinosaur catalog fields."""
     capped_limit = max(1, min(limit, 500))
     capped_offset = max(0, offset)
-    normalized_q, younger, older, time_filter_active = _normalize_filters(
-        q=q,
-        ma_younger=ma_younger,
-        ma_older=ma_older,
+    normalized_q, normalized_dino_q, normalized_fossil_q, younger, older, time_filter_active = (
+        _normalize_filters(
+            q=q,
+            dino_q=dino_q,
+            fossil_q=fossil_q,
+            ma_younger=ma_younger,
+            ma_older=ma_older,
+        )
     )
-    effective_time_filter = time_filter_active and normalized_q is None
+    search_active = (
+        normalized_q is not None
+        or normalized_dino_q is not None
+        or normalized_fossil_q is not None
+    )
+    effective_time_filter = time_filter_active and not search_active
     filtered = _filtered_select(
         normalized_q=normalized_q,
+        normalized_dino_q=normalized_dino_q,
+        normalized_fossil_q=normalized_fossil_q,
         ma_younger=younger,
         ma_older=older,
         time_filter_active=effective_time_filter,
         has_custom_image=has_custom_image,
+        has_custom_fossil_image=has_custom_fossil_image,
+        llm_enriched=llm_enriched,
         dinosaur_id=dinosaur_id,
     )
 
@@ -105,13 +123,17 @@ def get_fossil_by_id(session: Session, fossil_id: int) -> FossilRow:
 def _normalize_filters(
     *,
     q: str | None,
+    dino_q: str | None,
+    fossil_q: str | None,
     ma_younger: float | None,
     ma_older: float | None,
-) -> tuple[str | None, float | None, float | None, bool]:
+) -> tuple[str | None, str | None, str | None, float | None, float | None, bool]:
     normalized_q = (q or "").strip() or None
+    normalized_dino_q = (dino_q or "").strip() or None
+    normalized_fossil_q = (fossil_q or "").strip() or None
 
     if ma_younger is None and ma_older is None:
-        return normalized_q, None, None, False
+        return normalized_q, normalized_dino_q, normalized_fossil_q, None, None, False
 
     if ma_younger is None or ma_older is None:
         raise ValidationError("ma_younger and ma_older must both be provided")
@@ -124,16 +146,20 @@ def _normalize_filters(
     time_filter_active = not (
         younger <= MESOZOIC_YOUNGER_MA and older >= MESOZOIC_OLDER_MA
     )
-    return normalized_q, younger, older, time_filter_active
+    return normalized_q, normalized_dino_q, normalized_fossil_q, younger, older, time_filter_active
 
 
 def _filtered_select(
     *,
     normalized_q: str | None,
+    normalized_dino_q: str | None,
+    normalized_fossil_q: str | None,
     ma_younger: float | None,
     ma_older: float | None,
     time_filter_active: bool,
     has_custom_image: bool,
+    has_custom_fossil_image: bool,
+    llm_enriched: bool | None,
     dinosaur_id: int | None = None,
 ):
     stmt = _base_select()
@@ -144,6 +170,19 @@ def _filtered_select(
             col(Dinosaur.main_image_url).is_not(None),
             col(Dinosaur.main_image_url).contains(DINOSAUR_CURATED_MEDIA_PATH),
         )
+    if has_custom_fossil_image:
+        stmt = stmt.where(
+            col(Fossil.main_image_url).is_not(None),
+            col(Fossil.main_image_url).contains(FOSSIL_CURATED_MEDIA_PATH),
+        )
+    if llm_enriched is not None:
+        stmt = stmt.where(col(Fossil.llm_enriched).is_(llm_enriched))
+    if normalized_dino_q is not None:
+        pattern = f"%{normalized_dino_q}%"
+        stmt = stmt.where(col(Dinosaur.name).ilike(pattern))
+    if normalized_fossil_q is not None:
+        pattern = f"%{normalized_fossil_q}%"
+        stmt = stmt.where(col(Fossil.identified_name).ilike(pattern))
     if normalized_q is not None:
         pattern = f"%{normalized_q}%"
         stmt = stmt.where(

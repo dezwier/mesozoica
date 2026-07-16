@@ -44,27 +44,34 @@ class FossilFilterSheet extends StatefulWidget {
 }
 
 class _FossilFilterSheetState extends State<FossilFilterSheet> {
-  late final TextEditingController _searchController;
-  late String _pendingSearch;
+  late final TextEditingController _dinoSearchController;
+  late final TextEditingController _fossilSearchController;
+  late String _pendingDinoSearch;
+  late String _pendingFossilSearch;
   late RangeValues _pendingRange;
-  late bool _pendingOnlyCustomImage;
+  late bool _pendingOnlyCustomFossilImage;
+  late bool _pendingOnlyLlmEnriched;
   bool _applied = false;
 
   @override
   void initState() {
     super.initState();
-    _pendingSearch = widget.initialFilters.searchQuery;
-    _searchController = TextEditingController(text: _pendingSearch);
+    _pendingDinoSearch = widget.initialFilters.dinoSearchQuery;
+    _pendingFossilSearch = widget.initialFilters.fossilSearchQuery;
+    _dinoSearchController = TextEditingController(text: _pendingDinoSearch);
+    _fossilSearchController = TextEditingController(text: _pendingFossilSearch);
     _pendingRange = RangeValues(
       widget.initialFilters.maYounger,
       widget.initialFilters.maOlder,
     );
-    _pendingOnlyCustomImage = widget.initialFilters.onlyCustomImage;
+    _pendingOnlyCustomFossilImage = widget.initialFilters.onlyCustomFossilImage;
+    _pendingOnlyLlmEnriched = widget.initialFilters.onlyLlmEnriched;
   }
 
   @override
   void dispose() {
-    _searchController.dispose();
+    _dinoSearchController.dispose();
+    _fossilSearchController.dispose();
     super.dispose();
   }
 
@@ -73,32 +80,39 @@ class _FossilFilterSheetState extends State<FossilFilterSheet> {
     _applied = true;
     widget.onApply(
       FossilCatalogFilters(
-        searchQuery: _pendingSearch.trim(),
+        dinoSearchQuery: _pendingDinoSearch.trim(),
+        fossilSearchQuery: _pendingFossilSearch.trim(),
         maYounger: _pendingRange.start,
         maOlder: _pendingRange.end,
-        onlyCustomImage: _pendingOnlyCustomImage,
+        onlyCustomFossilImage: _pendingOnlyCustomFossilImage,
+        onlyLlmEnriched: _pendingOnlyLlmEnriched,
       ),
     );
   }
 
   FossilCatalogFilters _buildPendingFilters() {
     return FossilCatalogFilters(
-      searchQuery: _pendingSearch.trim(),
+      dinoSearchQuery: _pendingDinoSearch.trim(),
+      fossilSearchQuery: _pendingFossilSearch.trim(),
       maYounger: _pendingRange.start,
       maOlder: _pendingRange.end,
-      onlyCustomImage: _pendingOnlyCustomImage,
+      onlyCustomFossilImage: _pendingOnlyCustomFossilImage,
+      onlyLlmEnriched: _pendingOnlyLlmEnriched,
     );
   }
 
   void _clearPending() {
     setState(() {
-      _pendingSearch = '';
-      _searchController.clear();
+      _pendingDinoSearch = '';
+      _pendingFossilSearch = '';
+      _dinoSearchController.clear();
+      _fossilSearchController.clear();
       _pendingRange = const RangeValues(
         GeologicTimeline.mesozoicYoungerMa,
         GeologicTimeline.mesozoicOlderMa,
       );
-      _pendingOnlyCustomImage = true;
+      _pendingOnlyCustomFossilImage = false;
+      _pendingOnlyLlmEnriched = true;
     });
   }
 
@@ -151,18 +165,53 @@ class _FossilFilterSheetState extends State<FossilFilterSheet> {
                     ),
                   ),
                 ),
-              _buildSearchField(context),
-              const SizedBox(height: 16),
+              _buildSearchField(
+                context,
+                controller: _dinoSearchController,
+                hintText: 'Search dinosaur name…',
+                onChanged: (value) => setState(() => _pendingDinoSearch = value),
+                onClear: () {
+                  _dinoSearchController.clear();
+                  setState(() => _pendingDinoSearch = '');
+                },
+              ),
+              const SizedBox(height: 12),
+              _buildSearchField(
+                context,
+                controller: _fossilSearchController,
+                hintText: 'Search fossil name…',
+                onChanged: (value) => setState(() => _pendingFossilSearch = value),
+                onClear: () {
+                  _fossilSearchController.clear();
+                  setState(() => _pendingFossilSearch = '');
+                },
+              ),
+              const SizedBox(height: 8),
               CheckboxListTile(
                 contentPadding: EdgeInsets.zero,
                 controlAffinity: ListTileControlAffinity.leading,
-                value: _pendingOnlyCustomImage,
+                value: _pendingOnlyCustomFossilImage,
                 onChanged: (value) {
-                  setState(() => _pendingOnlyCustomImage = value ?? true);
+                  setState(() => _pendingOnlyCustomFossilImage = value ?? false);
                 },
-                title: const Text('Custom image only'),
+                title: const Text('Custom fossil image only'),
                 subtitle: Text(
-                  'Only show fossils whose dinosaur has a custom card image',
+                  'Only show fossils with a curated fossil card image',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
+              CheckboxListTile(
+                contentPadding: EdgeInsets.zero,
+                controlAffinity: ListTileControlAffinity.leading,
+                value: _pendingOnlyLlmEnriched,
+                onChanged: (value) {
+                  setState(() => _pendingOnlyLlmEnriched = value ?? true);
+                },
+                title: const Text('LLM enriched only'),
+                subtitle: Text(
+                  'Only show fossils with LLM enrichment completed',
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: colorScheme.onSurfaceVariant,
                   ),
@@ -238,7 +287,13 @@ class _FossilFilterSheetState extends State<FossilFilterSheet> {
     );
   }
 
-  Widget _buildSearchField(BuildContext context) {
+  Widget _buildSearchField(
+    BuildContext context, {
+    required TextEditingController controller,
+    required String hintText,
+    required ValueChanged<String> onChanged,
+    required VoidCallback onClear,
+  }) {
     final colorScheme = Theme.of(context).colorScheme;
 
     return Container(
@@ -247,26 +302,23 @@ class _FossilFilterSheetState extends State<FossilFilterSheet> {
         borderRadius: BorderRadius.circular(12),
       ),
       child: TextField(
-        controller: _searchController,
+        controller: controller,
         textCapitalization: TextCapitalization.sentences,
         onTapOutside: (_) => FocusManager.instance.primaryFocus?.unfocus(),
-        onChanged: (value) => setState(() => _pendingSearch = value),
+        onChanged: onChanged,
         decoration: InputDecoration(
-          hintText: 'Search fossils…',
+          hintText: hintText,
           prefixIcon: Icon(
             Icons.search,
             color: colorScheme.onSurface.withValues(alpha: 0.6),
           ),
-          suffixIcon: _searchController.text.isNotEmpty
+          suffixIcon: controller.text.isNotEmpty
               ? IconButton(
                   icon: Icon(
                     Icons.clear,
                     color: colorScheme.onSurface.withValues(alpha: 0.6),
                   ),
-                  onPressed: () {
-                    _searchController.clear();
-                    setState(() => _pendingSearch = '');
-                  },
+                  onPressed: onClear,
                 )
               : null,
           border: InputBorder.none,

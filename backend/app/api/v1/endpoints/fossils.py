@@ -22,9 +22,13 @@ def get_fossils(
     sort: str = Query(default="name"),
     seed: str | None = Query(default=None),
     q: str | None = Query(default=None),
+    dino_q: str | None = Query(default=None),
+    fossil_q: str | None = Query(default=None),
     ma_younger: float | None = Query(default=None),
     ma_older: float | None = Query(default=None),
     has_custom_image: bool = Query(default=False),
+    has_custom_fossil_image: bool = Query(default=False),
+    llm_enriched: bool | None = Query(default=None),
     dinosaur_id: int | None = Query(default=None, ge=1),
 ) -> FossilListResponse:
     if sort not in ("name", "random"):
@@ -36,9 +40,13 @@ def get_fossils(
         sort=sort,  # type: ignore[arg-type]
         seed=seed,
         q=q,
+        dino_q=dino_q,
+        fossil_q=fossil_q,
         ma_younger=ma_younger,
         ma_older=ma_older,
         has_custom_image=has_custom_image,
+        has_custom_fossil_image=has_custom_fossil_image,
+        llm_enriched=llm_enriched,
         dinosaur_id=dinosaur_id,
     )
     types_by_period = load_site_types_by_period(session)

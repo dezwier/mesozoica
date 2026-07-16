@@ -5,25 +5,33 @@ import 'package:flutter/foundation.dart';
 import '../config/app_config.dart';
 import '../models/fossil.dart';
 import '../services/fossil_service.dart';
-import '../widgets/cards/dinosaur_card_image.dart';
+import '../widgets/cards/fossil_card_image.dart';
 import '../widgets/cards/geologic_timeline.dart';
 
 class FossilCatalogFilters {
   const FossilCatalogFilters({
-    this.searchQuery = '',
+    this.dinoSearchQuery = '',
+    this.fossilSearchQuery = '',
     this.maYounger = GeologicTimeline.mesozoicYoungerMa,
     this.maOlder = GeologicTimeline.mesozoicOlderMa,
-    this.onlyCustomImage = true,
+    this.onlyCustomFossilImage = false,
+    this.onlyLlmEnriched = true,
   });
 
-  final String searchQuery;
+  final String dinoSearchQuery;
+  final String fossilSearchQuery;
   final double maYounger;
   final double maOlder;
-  final bool onlyCustomImage;
+  final bool onlyCustomFossilImage;
+  final bool onlyLlmEnriched;
+
+  bool get hasSearch =>
+      dinoSearchQuery.trim().isNotEmpty || fossilSearchQuery.trim().isNotEmpty;
 
   bool get hasActiveFilters {
-    if (searchQuery.trim().isNotEmpty) return true;
-    if (!onlyCustomImage) return true;
+    if (hasSearch) return true;
+    if (onlyCustomFossilImage) return true;
+    if (!onlyLlmEnriched) return true;
     return maYounger > GeologicTimeline.mesozoicYoungerMa ||
         maOlder < GeologicTimeline.mesozoicOlderMa;
   }
@@ -33,16 +41,21 @@ class FossilCatalogFilters {
       maOlder < GeologicTimeline.mesozoicOlderMa;
 
   FossilCatalogFilters copyWith({
-    String? searchQuery,
+    String? dinoSearchQuery,
+    String? fossilSearchQuery,
     double? maYounger,
     double? maOlder,
-    bool? onlyCustomImage,
+    bool? onlyCustomFossilImage,
+    bool? onlyLlmEnriched,
   }) {
     return FossilCatalogFilters(
-      searchQuery: searchQuery ?? this.searchQuery,
+      dinoSearchQuery: dinoSearchQuery ?? this.dinoSearchQuery,
+      fossilSearchQuery: fossilSearchQuery ?? this.fossilSearchQuery,
       maYounger: maYounger ?? this.maYounger,
       maOlder: maOlder ?? this.maOlder,
-      onlyCustomImage: onlyCustomImage ?? this.onlyCustomImage,
+      onlyCustomFossilImage:
+          onlyCustomFossilImage ?? this.onlyCustomFossilImage,
+      onlyLlmEnriched: onlyLlmEnriched ?? this.onlyLlmEnriched,
     );
   }
 
@@ -86,7 +99,7 @@ class FossilCatalogController extends ChangeNotifier {
 
     final seq = ++_loadSeq;
     final keepExistingItems = force && _items.isNotEmpty;
-    final hasSearch = _filters.searchQuery.trim().isNotEmpty;
+    final hasSearch = _filters.hasSearch;
 
     _loading = true;
     _error = null;
@@ -180,11 +193,11 @@ class FossilCatalogController extends ChangeNotifier {
   }
 
   Future<FossilListResponse> _fetchPage({required int offset}) async {
-    if (_filters.onlyCustomImage && _useClientCustomImageFilter) {
+    if (_filters.onlyCustomFossilImage && _useClientCustomImageFilter) {
       return _fetchAllCuratedClientSide();
     }
 
-    final hasSearch = _filters.searchQuery.trim().isNotEmpty;
+    final hasSearch = _filters.hasSearch;
     final seed = _seed;
     if (!hasSearch && (seed == null || seed.isEmpty)) {
       throw StateError('Catalog seed missing before fetch');
@@ -194,20 +207,22 @@ class FossilCatalogController extends ChangeNotifier {
       offset: offset,
       sort: hasSearch ? 'name' : 'random',
       seed: hasSearch ? null : seed,
-      q: hasSearch ? _filters.searchQuery.trim() : null,
+      dinoQ: hasSearch ? _filters.dinoSearchQuery.trim() : null,
+      fossilQ: hasSearch ? _filters.fossilSearchQuery.trim() : null,
       maYounger:
           !hasSearch && _filters.hasTimeFilter ? _filters.maYounger : null,
       maOlder: !hasSearch && _filters.hasTimeFilter ? _filters.maOlder : null,
-      hasCustomImage: _filters.onlyCustomImage,
+      hasCustomFossilImage: _filters.onlyCustomFossilImage,
+      llmEnriched: _filters.onlyLlmEnriched,
     );
 
-    if (_filters.onlyCustomImage &&
+    if (_filters.onlyCustomFossilImage &&
         offset == 0 &&
         !_serverHonorsCustomImageFilter(response)) {
       _useClientCustomImageFilter = true;
       if (kDebugMode) {
         debugPrint(
-          'FossilCatalogController: API ignored has_custom_image; '
+          'FossilCatalogController: API ignored has_custom_fossil_image; '
           'scanning catalog client-side',
         );
       }
@@ -219,13 +234,12 @@ class FossilCatalogController extends ChangeNotifier {
 
   bool _serverHonorsCustomImageFilter(FossilListResponse response) {
     return !response.items.any(
-      (fossil) =>
-          !DinosaurCardImage.isCuratedCardImageUrl(fossil.dinosaurMainImageUrl),
+      (fossil) => !FossilCardImage.isCuratedCardImageUrl(fossil.mainImageUrl),
     );
   }
 
   Future<FossilListResponse> _fetchAllCuratedClientSide() async {
-    final hasSearch = _filters.searchQuery.trim().isNotEmpty;
+    final hasSearch = _filters.hasSearch;
     final seed = _seed ?? _newSeed();
     final curated = <FossilSummary>[];
     var offset = 0;
@@ -237,16 +251,16 @@ class FossilCatalogController extends ChangeNotifier {
         offset: offset,
         sort: hasSearch ? 'name' : 'random',
         seed: hasSearch ? null : seed,
-        q: hasSearch ? _filters.searchQuery.trim() : null,
+        dinoQ: hasSearch ? _filters.dinoSearchQuery.trim() : null,
+        fossilQ: hasSearch ? _filters.fossilSearchQuery.trim() : null,
         maYounger:
             !hasSearch && _filters.hasTimeFilter ? _filters.maYounger : null,
         maOlder: !hasSearch && _filters.hasTimeFilter ? _filters.maOlder : null,
+        llmEnriched: _filters.onlyLlmEnriched,
       );
       curated.addAll(
         response.items.where(
-          (fossil) => DinosaurCardImage.isCuratedCardImageUrl(
-            fossil.dinosaurMainImageUrl,
-          ),
+          (fossil) => FossilCardImage.isCuratedCardImageUrl(fossil.mainImageUrl),
         ),
       );
       offset += response.items.length;

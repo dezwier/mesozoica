@@ -23,7 +23,7 @@ Show imperfect in-situ field documentation:
 
 Avoid entirely: lab bench, glass case, mounted skeleton, polished specimen, studio lighting, stock-photo perfection.
 
-Depict this occurrence using ONLY the fields below (especially the dinosaur):
+Depict this occurrence using ONLY the specification below. Every field is required — show a realistic in-situ fossil of this dinosaur genus with the stated host rock, fossil type, element or trace, completeness, and preservation quality all visible together:
 {spec_brief}"""
 
 _LLM_CATEGORY_GUIDANCE: dict[str, str] = {
@@ -96,38 +96,42 @@ def build_dinosaur_image_prompt(name: str, article_text: str) -> str:
 
 
 def build_fossil_preservation_brief(fossil_data: dict[str, Any]) -> str:
-    """Human-readable brief from LLM enrichment fields for fossil image prompts."""
+    """Human-readable brief from imputed LLM fields for fossil image prompts."""
     lines: list[str] = []
 
-    dinosaur = fossil_data.get("dinosaur") or fossil_data.get("dinosaur_name")
-    if dinosaur:
-        lines.append(f"- Dinosaur (primary subject): {dinosaur}")
+    dinosaur_id = fossil_data.get("dinosaur_id")
+    if dinosaur_id is not None:
+        lines.append(f"- Dinosaur catalog id: {dinosaur_id}")
 
-    rock_type = fossil_data.get("llm_rock_type")
+    rock_type = fossil_data.get("llm_imp_rock_type")
     if rock_type:
-        lines.append(f"- Host rock / matrix: {rock_type}")
+        lines.append(
+            f"- Host rock / matrix (required): {str(rock_type).replace('_', ' ')}"
+        )
 
-    category = _normalize_key(fossil_data.get("llm_category"))
+    category = _normalize_key(fossil_data.get("llm_imp_category"))
     if category:
         guidance = _LLM_CATEGORY_GUIDANCE.get(category, "")
         suffix = f" — {guidance}" if guidance else ""
-        lines.append(f"- Fossil type ({category}){suffix}")
+        lines.append(f"- Fossil type (required: {category}){suffix}")
 
-    subcategory = fossil_data.get("llm_subcategory")
+    subcategory = fossil_data.get("llm_imp_subcategory")
     if subcategory:
-        lines.append(f"- Element / trace type: {subcategory.replace('_', ' ')}")
+        lines.append(
+            f"- Element / trace type (required): {str(subcategory).replace('_', ' ')}"
+        )
 
-    completeness = _normalize_key(fossil_data.get("llm_completeness"))
+    completeness = _normalize_key(fossil_data.get("llm_imp_completeness"))
     if completeness:
         guidance = _LLM_COMPLETENESS_GUIDANCE.get(completeness, "")
         suffix = f" — {guidance}" if guidance else ""
-        lines.append(f"- Completeness ({completeness}){suffix}")
+        lines.append(f"- Completeness (required: {completeness}){suffix}")
 
-    quality = _normalize_key(fossil_data.get("llm_quality"))
+    quality = _normalize_key(fossil_data.get("llm_imp_preservation_quality"))
     if quality:
         guidance = _LLM_QUALITY_GUIDANCE.get(quality, "")
         suffix = f" — {guidance}" if guidance else ""
-        lines.append(f"- Preservation quality ({quality}){suffix}")
+        lines.append(f"- Preservation quality (required: {quality}){suffix}")
 
     if not lines:
         lines.append(
@@ -137,11 +141,9 @@ def build_fossil_preservation_brief(fossil_data: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
-def build_fossil_image_prompt(fossil_data: dict[str, Any]) -> str:
+def build_fossil_image_prompt(fossil_data: dict[str, Any], *, dinosaur_name: str) -> str:
     """Build Imagen prompt for a fossil occurrence card image."""
-    dinosaur = str(
-        fossil_data.get("dinosaur") or fossil_data.get("dinosaur_name") or "dinosaur"
-    ).strip()
+    dinosaur = dinosaur_name.strip() or "dinosaur"
     spec_brief = build_fossil_preservation_brief(fossil_data)
     return _FOSSIL_INSTRUCTIONS.format(
         dinosaur=dinosaur,

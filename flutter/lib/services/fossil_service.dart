@@ -17,9 +17,13 @@ class FossilService {
     String sort = 'name',
     String? seed,
     String? q,
+    String? dinoQ,
+    String? fossilQ,
     double? maYounger,
     double? maOlder,
     bool hasCustomImage = false,
+    bool hasCustomFossilImage = false,
+    bool? llmEnriched,
     int? dinosaurId,
   }) async {
     final uri = AppConfig.fossilsUri(
@@ -28,9 +32,13 @@ class FossilService {
       sort: sort,
       seed: seed,
       q: q,
+      dinoQ: dinoQ,
+      fossilQ: fossilQ,
       maYounger: maYounger,
       maOlder: maOlder,
       hasCustomImage: hasCustomImage,
+      hasCustomFossilImage: hasCustomFossilImage,
+      llmEnriched: llmEnriched,
       dinosaurId: dinosaurId,
     );
     if (kDebugMode) {

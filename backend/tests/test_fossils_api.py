@@ -293,6 +293,79 @@ def test_list_fossils_filter_by_search(client, session):
     assert body["items"][0]["identified_name"] == "Tyrannosaurus rex"
 
 
+def test_list_fossils_filter_by_dino_q(client, session):
+    _seed_timed_fossils(session)
+
+    response = client.get("/api/v1/fossils?dino_q=tyrannosaurus&sort=name")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["total"] == 1
+    assert body["items"][0]["identified_name"] == "Tyrannosaurus rex"
+
+
+def test_list_fossils_filter_by_fossil_q(client, session):
+    _seed_timed_fossils(session)
+
+    response = client.get("/api/v1/fossils?fossil_q=stenops&sort=name")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["total"] == 1
+    assert body["items"][0]["identified_name"] == "Stegosaurus stenops"
+
+
+def test_list_fossils_filter_by_llm_enriched(client, session):
+    dinosaur = _seed_tyrannosaurus(session)
+    session.add_all(
+        [
+            Fossil(
+                id=100090,
+                dinosaur_id=dinosaur.id,
+                identified_name="Enriched specimen",
+                llm_enriched=True,
+            ),
+            Fossil(
+                id=100091,
+                dinosaur_id=dinosaur.id,
+                identified_name="Pending specimen",
+                llm_enriched=False,
+            ),
+        ]
+    )
+    session.commit()
+
+    response = client.get("/api/v1/fossils?llm_enriched=true&sort=name")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["total"] == 1
+    assert body["items"][0]["identified_name"] == "Enriched specimen"
+
+
+def test_list_fossils_filter_by_custom_fossil_image(client, session):
+    dinosaur = _seed_tyrannosaurus(session)
+    session.add_all(
+        [
+            Fossil(
+                id=100100,
+                dinosaur_id=dinosaur.id,
+                identified_name="Curated fossil image",
+                main_image_url="https://mesozoica-production.up.railway.app/media/fossils/100100.webp",
+            ),
+            Fossil(
+                id=100101,
+                dinosaur_id=dinosaur.id,
+                identified_name="No fossil image",
+            ),
+        ]
+    )
+    session.commit()
+
+    response = client.get("/api/v1/fossils?has_custom_fossil_image=true&sort=name")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["total"] == 1
+    assert body["items"][0]["identified_name"] == "Curated fossil image"
+
+
 def test_list_fossils_filter_by_time_overlap(client, session):
     _seed_timed_fossils(session)
 

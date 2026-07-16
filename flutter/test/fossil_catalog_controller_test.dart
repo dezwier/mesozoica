@@ -7,7 +7,7 @@ import 'package:mesozoica/controllers/fossil_catalog_controller.dart';
 import 'package:mesozoica/services/fossil_service.dart';
 
 void main() {
-  const curatedImageUrl =
+  const curatedFossilImageUrl =
       'https://mesozoica-production.up.railway.app/media/fossils/100001.webp';
 
   Map<String, dynamic> fossilJson({
@@ -26,7 +26,7 @@ void main() {
     };
   }
 
-  test('fetchFossils requests random sort with seed', () async {
+  test('fetchFossils requests random sort with seed and llm_enriched default', () async {
     Uri? capturedUri;
     final service = FossilService(
       client: MockClient((request) async {
@@ -37,12 +37,12 @@ void main() {
               fossilJson(
                 id: 2,
                 identifiedName: 'Specimen B',
-                mainImageUrl: curatedImageUrl,
+                mainImageUrl: curatedFossilImageUrl,
               ),
               fossilJson(
                 id: 1,
                 identifiedName: 'Specimen A',
-                mainImageUrl: curatedImageUrl,
+                mainImageUrl: curatedFossilImageUrl,
               ),
             ],
             'total': 2,
@@ -63,10 +63,12 @@ void main() {
     expect(capturedUri!.queryParameters['seed'], isNotEmpty);
     expect(capturedUri!.queryParameters['limit'], '20');
     expect(capturedUri!.queryParameters['offset'], '0');
-    expect(capturedUri!.queryParameters.containsKey('q'), isFalse);
+    expect(capturedUri!.queryParameters.containsKey('dino_q'), isFalse);
+    expect(capturedUri!.queryParameters.containsKey('fossil_q'), isFalse);
     expect(capturedUri!.queryParameters.containsKey('ma_younger'), isFalse);
     expect(capturedUri!.queryParameters.containsKey('ma_older'), isFalse);
-    expect(capturedUri!.queryParameters['has_custom_image'], 'true');
+    expect(capturedUri!.queryParameters.containsKey('has_custom_fossil_image'), isFalse);
+    expect(capturedUri!.queryParameters['llm_enriched'], 'true');
     expect(
       controller.items.map((f) => f.identifiedName),
       ['Specimen B', 'Specimen A'],
@@ -75,7 +77,7 @@ void main() {
     controller.dispose();
   });
 
-  test('applyFilters uses name sort when searching', () async {
+  test('applyFilters uses name sort when searching dinosaur name', () async {
     Uri? capturedUri;
     final service = FossilService(
       client: MockClient((request) async {
@@ -86,7 +88,7 @@ void main() {
               fossilJson(
                 id: 1,
                 identifiedName: 'Tyrannosaurus rex',
-                mainImageUrl: curatedImageUrl,
+                mainImageUrl: curatedFossilImageUrl,
               ),
             ],
             'total': 1,
@@ -101,14 +103,78 @@ void main() {
 
     final controller = FossilCatalogController(service: service);
     await controller.applyFilters(
-      const FossilCatalogFilters(searchQuery: 'tyrannosaurus'),
+      const FossilCatalogFilters(dinoSearchQuery: 'tyrannosaurus'),
     );
 
     expect(capturedUri, isNotNull);
     expect(capturedUri!.queryParameters['sort'], 'name');
-    expect(capturedUri!.queryParameters['q'], 'tyrannosaurus');
+    expect(capturedUri!.queryParameters['dino_q'], 'tyrannosaurus');
+    expect(capturedUri!.queryParameters.containsKey('fossil_q'), isFalse);
     expect(capturedUri!.queryParameters.containsKey('seed'), isFalse);
     expect(controller.items.single.identifiedName, 'Tyrannosaurus rex');
+
+    controller.dispose();
+  });
+
+  test('applyFilters can search fossil name separately', () async {
+    Uri? capturedUri;
+    final service = FossilService(
+      client: MockClient((request) async {
+        capturedUri = request.url;
+        return http.Response(
+          jsonEncode({
+            'items': [
+              fossilJson(
+                id: 1,
+                identifiedName: 'Tyrannosaurus rex',
+                mainImageUrl: curatedFossilImageUrl,
+              ),
+            ],
+            'total': 1,
+            'limit': 20,
+            'offset': 0,
+            'has_next': false,
+          }),
+          200,
+        );
+      }),
+    );
+
+    final controller = FossilCatalogController(service: service);
+    await controller.applyFilters(
+      const FossilCatalogFilters(fossilSearchQuery: 'rex'),
+    );
+
+    expect(capturedUri!.queryParameters['fossil_q'], 'rex');
+    expect(capturedUri!.queryParameters.containsKey('dino_q'), isFalse);
+
+    controller.dispose();
+  });
+
+  test('applyFilters can request custom fossil image only', () async {
+    Uri? capturedUri;
+    final service = FossilService(
+      client: MockClient((request) async {
+        capturedUri = request.url;
+        return http.Response(
+          jsonEncode({
+            'items': [],
+            'total': 0,
+            'limit': 20,
+            'offset': 0,
+            'has_next': false,
+          }),
+          200,
+        );
+      }),
+    );
+
+    final controller = FossilCatalogController(service: service);
+    await controller.applyFilters(
+      const FossilCatalogFilters(onlyCustomFossilImage: true),
+    );
+
+    expect(capturedUri!.queryParameters['has_custom_fossil_image'], 'true');
 
     controller.dispose();
   });
@@ -125,7 +191,7 @@ void main() {
                 fossilJson(
                   id: 1,
                   identifiedName: 'First',
-                  mainImageUrl: curatedImageUrl,
+                  mainImageUrl: curatedFossilImageUrl,
                 ),
               ],
               'total': 2,
@@ -142,7 +208,7 @@ void main() {
               fossilJson(
                 id: 2,
                 identifiedName: 'Second',
-                mainImageUrl: curatedImageUrl,
+                mainImageUrl: curatedFossilImageUrl,
               ),
             ],
             'total': 2,

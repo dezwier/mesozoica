@@ -99,9 +99,13 @@ class AppConfig {
     String sort = 'name',
     String? seed,
     String? q,
+    String? dinoQ,
+    String? fossilQ,
     double? maYounger,
     double? maOlder,
     bool hasCustomImage = false,
+    bool hasCustomFossilImage = false,
+    bool? llmEnriched,
     int? dinosaurId,
   }) {
     final params = <String, String>{
@@ -116,12 +120,26 @@ class AppConfig {
     if (trimmedQuery != null && trimmedQuery.isNotEmpty) {
       params['q'] = trimmedQuery;
     }
+    final trimmedDinoQuery = dinoQ?.trim();
+    if (trimmedDinoQuery != null && trimmedDinoQuery.isNotEmpty) {
+      params['dino_q'] = trimmedDinoQuery;
+    }
+    final trimmedFossilQuery = fossilQ?.trim();
+    if (trimmedFossilQuery != null && trimmedFossilQuery.isNotEmpty) {
+      params['fossil_q'] = trimmedFossilQuery;
+    }
     if (maYounger != null && maOlder != null) {
       params['ma_younger'] = '$maYounger';
       params['ma_older'] = '$maOlder';
     }
     if (hasCustomImage) {
       params['has_custom_image'] = 'true';
+    }
+    if (hasCustomFossilImage) {
+      params['has_custom_fossil_image'] = 'true';
+    }
+    if (llmEnriched != null) {
+      params['llm_enriched'] = llmEnriched ? 'true' : 'false';
     }
     if (dinosaurId != null) {
       params['dinosaur_id'] = '$dinosaurId';

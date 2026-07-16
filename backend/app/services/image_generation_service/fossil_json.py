@@ -11,12 +11,13 @@ from app.models.fossil import Fossil
 
 _DEFAULT_STRING_CAP = 400
 
-_IMAGE_PROMPT_LLM_FIELDS: tuple[tuple[str, str], ...] = (
-    ("llm_imp_rock_type", "llm_rock_type"),
-    ("llm_imp_category", "llm_category"),
-    ("llm_imp_subcategory", "llm_subcategory"),
-    ("llm_imp_completeness", "llm_completeness"),
-    ("llm_imp_preservation_quality", "llm_quality"),
+_IMAGE_PROMPT_FIELDS: tuple[str, ...] = (
+    "dinosaur_id",
+    "llm_imp_rock_type",
+    "llm_imp_category",
+    "llm_imp_subcategory",
+    "llm_imp_completeness",
+    "llm_imp_preservation_quality",
 )
 
 # Occurrence-specific PBDB fields useful for LLM enrichment (exclude collection comps/admin noise).
@@ -70,29 +71,31 @@ def fossil_to_enrichment_prompt_dict(fossil: Fossil, *, dinosaur_name: str) -> d
     return payload
 
 
-def fossil_to_image_prompt_dict(fossil: Fossil, *, dinosaur_name: str) -> dict[str, Any]:
-    """Return only LLM enrichment fields used for fossil image generation."""
-    payload: dict[str, Any] = {"dinosaur": dinosaur_name}
-    for model_field, prompt_key in _IMAGE_PROMPT_LLM_FIELDS:
-        value = getattr(fossil, model_field, None)
+def fossil_to_image_prompt_dict(fossil: Fossil) -> dict[str, Any]:
+    """Return only imputed LLM fields used for fossil image generation."""
+    payload: dict[str, Any] = {}
+    for field in _IMAGE_PROMPT_FIELDS:
+        value = getattr(fossil, field, None)
         if value is None:
             continue
-        text = str(value).strip()
-        if not text:
-            continue
-        payload[prompt_key] = text
+        if isinstance(value, str):
+            text = value.strip()
+            if not text:
+                continue
+            payload[field] = text
+        else:
+            payload[field] = value
     return payload
 
 
 def fossil_to_image_prompt_json(
     fossil: Fossil,
     *,
-    dinosaur_name: str,
     max_chars: int | None = None,
 ) -> str:
     """Compact JSON for fossil image prompts."""
     cap = max_chars if max_chars is not None else settings.gemini_image_max_fossil_json_chars
-    payload = fossil_to_image_prompt_dict(fossil, dinosaur_name=dinosaur_name)
+    payload = fossil_to_image_prompt_dict(fossil)
     text = json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
     if len(text) <= cap:
         return text
@@ -106,11 +109,8 @@ def fossil_to_prompt_json(
     max_chars: int | None = None,
 ) -> str:
     """Compact JSON string for fossil image prompts, truncated if needed."""
-    return fossil_to_image_prompt_json(
-        fossil,
-        dinosaur_name=dinosaur_name,
-        max_chars=max_chars,
-    )
+    del dinosaur_name
+    return fossil_to_image_prompt_json(fossil, max_chars=max_chars)
 
 
 def _serialize_value(value: Any) -> Any:

@@ -154,8 +154,11 @@ def generate_fossil_images(
             logger.info('%s · SKIP · image exists', label)
             continue
 
-        fossil_data = fossil_to_image_prompt_dict(fossil, dinosaur_name=candidate.dinosaur_name)
-        prompt = build_fossil_image_prompt(fossil_data)
+        fossil_data = fossil_to_image_prompt_dict(fossil)
+        prompt = build_fossil_image_prompt(
+            fossil_data,
+            dinosaur_name=candidate.dinosaur_name,
+        )
         output_path = output_png_path(output_dir, stem)
 
         if dry_run:
