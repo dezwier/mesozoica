@@ -22,6 +22,25 @@ def test_site_type_candidates_skip_existing_image(session: Session, tmp_path: Pa
     session.refresh(row)
     assert row.id is not None
 
+    (tmp_path / "cretaceous_sandstone.png").write_bytes(b"png")
+    existing = {"cretaceous_sandstone"}
+
+    candidates, skipped_existing = _select_candidates(
+        session,
+        output_dir=tmp_path,
+        existing_stems=existing,
+    )
+    assert skipped_existing == 1
+    assert candidates == []
+
+
+def test_site_type_candidates_skip_legacy_numeric_image(session: Session, tmp_path: Path):
+    row = _site_type(period="cretaceous", rock_type="sandstone")
+    session.add(row)
+    session.commit()
+    session.refresh(row)
+    assert row.id is not None
+
     (tmp_path / f"{row.id}.png").write_bytes(b"png")
     existing = {str(row.id)}
 

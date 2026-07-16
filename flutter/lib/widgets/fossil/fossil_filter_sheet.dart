@@ -194,9 +194,9 @@ class _FossilFilterSheetState extends State<FossilFilterSheet> {
                 onChanged: (value) {
                   setState(() => _pendingOnlyCustomFossilImage = value ?? false);
                 },
-                title: const Text('Custom fossil image only'),
+                title: const Text('Illustrated'),
                 subtitle: Text(
-                  'Only show fossils with a curated fossil card image',
+                  'Only show fossils with a curated card image',
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: colorScheme.onSurfaceVariant,
                   ),
@@ -209,7 +209,7 @@ class _FossilFilterSheetState extends State<FossilFilterSheet> {
                 onChanged: (value) {
                   setState(() => _pendingOnlyLlmEnriched = value ?? true);
                 },
-                title: const Text('LLM enriched only'),
+                title: const Text('Enriched'),
                 subtitle: Text(
                   'Only show fossils with LLM enrichment completed',
                   style: theme.textTheme.bodySmall?.copyWith(

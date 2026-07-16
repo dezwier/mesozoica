@@ -341,3 +341,34 @@ def test_list_dinosaurs_filter_has_custom_image(client, session):
     all_response = client.get("/api/v1/dinosaurs?sort=name")
     assert all_response.status_code == 200
     assert all_response.json()["total"] == 3
+
+
+def test_list_dinosaurs_filter_llm_enriched(client, session):
+    session.add_all(
+        [
+            Dinosaur(
+                name="Tyrannosaurus",
+                wikipedia_page_id=6101,
+                wikipedia_title="Tyrannosaurus",
+                llm_enriched=True,
+            ),
+            Dinosaur(
+                name="Stegosaurus",
+                wikipedia_page_id=6102,
+                wikipedia_title="Stegosaurus",
+                llm_enriched=False,
+            ),
+        ]
+    )
+    session.commit()
+
+    response = client.get("/api/v1/dinosaurs?llm_enriched=true&sort=name")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["total"] == 1
+    assert body["items"][0]["name"] == "Tyrannosaurus"
+
+    response = client.get("/api/v1/dinosaurs?llm_enriched=false&sort=name")
+    assert response.status_code == 200
+    assert response.json()["total"] == 1
+    assert response.json()["items"][0]["name"] == "Stegosaurus"

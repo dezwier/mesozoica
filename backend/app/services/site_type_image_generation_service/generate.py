@@ -25,7 +25,10 @@ from app.services.image_generation_service.local_files import (
 )
 from app.services.image_generation_service.postprocess import save_processed_png
 from app.services.image_generation_service.prompting import build_site_type_image_prompt
-from app.services.site_type_image_service.sync import resolve_local_source_dir_for_sync
+from app.services.site_type_image_service.sync import (
+    resolve_local_source_dir_for_sync,
+    site_type_image_key,
+)
 
 logger = logging.getLogger("site_type_image_generate")
 
@@ -79,8 +82,17 @@ def _select_candidates(
     for site_type, site_count in rows:
         if site_type.id is None:
             continue
-        stem = str(site_type.id)
-        if has_local_image(output_dir, stem, existing_stems=existing_stems):
+        key = site_type_image_key(period=site_type.period, rock_type=site_type.rock_type)
+        legacy_stem = str(site_type.id)
+        if has_local_image(
+            output_dir,
+            key,
+            existing_stems=existing_stems,
+        ) or has_local_image(
+            output_dir,
+            legacy_stem,
+            existing_stems=existing_stems,
+        ):
             skipped_existing += 1
             continue
         candidates.append(
@@ -128,13 +140,25 @@ def generate_site_type_images(
         site_type = candidate.site_type
         site_type_id = site_type.id
         assert site_type_id is not None
-        stem = str(site_type_id)
+        stem = site_type_image_key(
+            period=site_type.period,
+            rock_type=site_type.rock_type,
+        )
+        legacy_stem = str(site_type_id)
         label = (
             f'site_type {site_type_id} sites={candidate.site_count} '
             f'period="{site_type.period}" rock="{site_type.rock_type}"'
         )
 
-        if has_local_image(output_dir, stem, existing_stems=existing_stems):
+        if has_local_image(
+            output_dir,
+            stem,
+            existing_stems=existing_stems,
+        ) or has_local_image(
+            output_dir,
+            legacy_stem,
+            existing_stems=existing_stems,
+        ):
             counters.skipped += 1
             logger.info("%s · SKIP · image exists", label)
             continue

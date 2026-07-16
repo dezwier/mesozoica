@@ -66,14 +66,22 @@ def _write_site_types(
     *,
     full_refresh: bool,
 ) -> dict[tuple[str, str], int]:
+    preserved_urls: dict[tuple[str, str], str] = {}
     if full_refresh:
+        for row in session.exec(select(SiteType)).all():
+            if row.main_image_url:
+                preserved_urls[(row.period, row.rock_type)] = row.main_image_url
         session.exec(delete(SiteType))
         session.flush()
 
     mapping: dict[tuple[str, str], int] = {}
     for period, rock_type in sorted(pairs):
         if full_refresh:
-            row = SiteType(period=period, rock_type=rock_type)
+            row = SiteType(
+                period=period,
+                rock_type=rock_type,
+                main_image_url=preserved_urls.get((period, rock_type)),
+            )
             session.add(row)
             session.flush()
             if row.id is None:

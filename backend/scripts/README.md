@@ -10,8 +10,9 @@ Scripts that touch production data use the **Railway Postgres database** and Rai
 |--------|-------------|
 | [`sync_dinosaur_images.py`](sync_dinosaur_images.py) | Upload curated dinosaur card images from `dinosaur-images/` to Railway volume and set `main_image_url` |
 | [`sync_fossil_images.py`](sync_fossil_images.py) | Upload curated fossil card images from `fossil-images/` to Railway volume and set `main_image_url` |
+| [`sync_site_type_images.py`](sync_site_type_images.py) | Upload curated site-type card images from `site-type-images/` to Railway volume and set `main_image_url` |
 
-Both scripts support `.png`, `.jpg`, `.jpeg`, and `.webp`.
+All sync scripts support `.png`, `.jpg`, `.jpeg`, and `.webp`.
 
 ### Dinosaur images
 
@@ -133,6 +134,18 @@ make sync-fossil-images
 ```
 
 Regenerated images are detected via content hash and overwrite the remote file automatically. Use `--overwrite` only to force a full re-upload of every matched file.
+
+### Site-type card images
+
+- **Source folder:** repo `site-type-images/`
+- **Filename rule:** `<period>_<rock_type>.<ext>` — e.g. `cretaceous_sandstone.png`
+- **Served at:** `https://<api-host>/media/site-types/<period>_<rock_type>.<ext>`
+
+```bash
+make sync-site-type-images
+make sync-site-type-images CRON_EXTRA='--dry-run'
+make sync-site-type-images CRON_EXTRA='--overwrite'
+```
 
 ## Adding a script
 

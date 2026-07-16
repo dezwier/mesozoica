@@ -55,6 +55,7 @@ void main() {
     expect(capturedUri!.queryParameters.containsKey('ma_younger'), isFalse);
     expect(capturedUri!.queryParameters.containsKey('ma_older'), isFalse);
     expect(capturedUri!.queryParameters['has_custom_image'], 'true');
+    expect(capturedUri!.queryParameters['llm_enriched'], 'true');
     expect(controller.items.map((d) => d.name), ['Velociraptor', 'Tyrannosaurus']);
 
     controller.dispose();
@@ -196,6 +197,36 @@ void main() {
     );
 
     expect(capturedUri!.queryParameters.containsKey('has_custom_image'), isFalse);
+    expect(capturedUri!.queryParameters['llm_enriched'], 'true');
+    expect(controller.hasActiveFilters, isTrue);
+
+    controller.dispose();
+  });
+
+  test('onlyLlmEnriched false sends llm_enriched=false', () async {
+    Uri? capturedUri;
+    final service = DinosaurService(
+      client: MockClient((request) async {
+        capturedUri = request.url;
+        return http.Response(
+          jsonEncode({
+            'items': [],
+            'total': 0,
+            'limit': 20,
+            'offset': 0,
+            'has_next': false,
+          }),
+          200,
+        );
+      }),
+    );
+
+    final controller = DinosaurCatalogController(service: service);
+    await controller.applyFilters(
+      const DinosaurCatalogFilters(onlyLlmEnriched: false),
+    );
+
+    expect(capturedUri!.queryParameters['llm_enriched'], 'false');
     expect(controller.hasActiveFilters, isTrue);
 
     controller.dispose();

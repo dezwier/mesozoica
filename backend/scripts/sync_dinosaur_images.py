@@ -17,6 +17,7 @@ from app.services.dinosaur_image_service.sync import (
     CURATED_MEDIA_PATH,
     build_curated_image_url,
     file_content_version,
+    is_curated_image_url,
     match_image_files,
     resolve_local_source_dir_for_sync,
     resolve_public_base_url_for_sync,
@@ -55,16 +56,20 @@ def run_sync(*, dry_run: bool = False, overwrite: bool = False) -> int:
     image_files = scan_local_image_files(source_dir)
     if not image_files:
         logger.warning("No image files found in %s", source_dir)
-        return 0
 
     with Session(engine) as session:
         dinosaurs = session.exec(select(Dinosaur)).all()
         name_set = {row.name for row in dinosaurs}
-        matched, unmatched_files = match_image_files(image_files, name_set)
+        if image_files:
+            matched, unmatched_files = match_image_files(image_files, name_set)
+        else:
+            matched, unmatched_files = [], []
 
         uploaded = 0
         updated = 0
+        cleared = 0
         skipped = 0
+        matched_names = {match.dinosaur_name for match in matched}
         for match in matched:
             row = session.exec(
                 select(Dinosaur).where(Dinosaur.name == match.dinosaur_name)
@@ -107,12 +112,26 @@ def run_sync(*, dry_run: bool = False, overwrite: bool = False) -> int:
                     session.add(row)
                     updated += 1
 
+        for row in dinosaurs:
+            if row.name in matched_names:
+                continue
+            if not is_curated_image_url(row.main_image_url):
+                continue
+            logger.info(
+                "%s dinosaur %s main_image_url (no local image in %s)",
+                "Would clear" if dry_run else "Clearing",
+                row.name,
+                source_dir,
+            )
+            if not dry_run:
+                row.main_image_url = None
+                session.add(row)
+            cleared += 1
+
         if not dry_run:
             session.commit()
 
-        dinosaurs_without_images = sorted(
-            name for name in name_set if not any(m.dinosaur_name == name for m in matched)
-        )
+        dinosaurs_without_images = sorted(name for name in name_set if name not in matched_names)
         if unmatched_files:
             logger.warning(
                 "Unmatched local files (no dinosaur.name): %s",
@@ -126,10 +145,11 @@ def run_sync(*, dry_run: bool = False, overwrite: bool = False) -> int:
             )
 
         logger.info(
-            "Summary: %d matched, %d uploaded, %d db_updated, %d skipped, %d unmatched files",
+            "Summary: %d matched, %d uploaded, %d db_updated, %d cleared, %d skipped, %d unmatched files",
             len(matched),
             uploaded,
             updated,
+            cleared,
             skipped,
             len(unmatched_files),
         )

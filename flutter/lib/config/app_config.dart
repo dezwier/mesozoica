@@ -62,6 +62,7 @@ class AppConfig {
     double? maYounger,
     double? maOlder,
     bool hasCustomImage = false,
+    bool? llmEnriched,
   }) {
     final params = <String, String>{
       'limit': '$limit',
@@ -81,6 +82,9 @@ class AppConfig {
     }
     if (hasCustomImage) {
       params['has_custom_image'] = 'true';
+    }
+    if (llmEnriched != null) {
+      params['llm_enriched'] = llmEnriched ? 'true' : 'false';
     }
     return Uri.parse('$baseApiUrl/api/v1/dinosaurs').replace(
       queryParameters: params,

@@ -29,6 +29,7 @@ def list_dinosaurs(
     ma_younger: float | None = None,
     ma_older: float | None = None,
     has_custom_image: bool = False,
+    llm_enriched: bool | None = None,
 ) -> tuple[list[Dinosaur], int]:
     """Return paginated dinosaur rows ordered by name or seed-stable random."""
     capped_limit = max(1, min(limit, 500))
@@ -46,6 +47,7 @@ def list_dinosaurs(
         ma_older=older,
         time_filter_active=effective_time_filter,
         has_custom_image=has_custom_image,
+        llm_enriched=llm_enriched,
     )
 
     total = session.exec(
@@ -104,6 +106,7 @@ def _filtered_select(
     ma_older: float | None,
     time_filter_active: bool,
     has_custom_image: bool,
+    llm_enriched: bool | None,
 ):
     stmt = select(Dinosaur)
     if has_custom_image:
@@ -111,6 +114,8 @@ def _filtered_select(
             col(Dinosaur.main_image_url).is_not(None),
             col(Dinosaur.main_image_url).contains(CURATED_MEDIA_PATH),
         )
+    if llm_enriched is not None:
+        stmt = stmt.where(col(Dinosaur.llm_enriched).is_(llm_enriched))
     if normalized_q is not None:
         pattern = f"%{normalized_q}%"
         stmt = stmt.where(

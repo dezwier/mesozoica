@@ -98,6 +98,33 @@ def test_site_type_sync_dry_run_writes_nothing(session: Session):
     assert site.site_type_id is None
 
 
+def test_site_type_sync_preserves_main_image_url_on_full_refresh(session: Session):
+    dinosaur = _dinosaur()
+    session.add(dinosaur)
+    session.commit()
+    session.refresh(dinosaur)
+    session.add(_fossil(occurrence_no=139292, dinosaur_id=dinosaur.id))
+    session.commit()
+    sync_sites(session)
+
+    first = sync_site_types(session)
+    site_type = session.exec(select(SiteType)).one()
+    site_type.main_image_url = (
+        "https://example.com/media/site-types/cretaceous_sandstone.png?v=abc"
+    )
+    session.add(site_type)
+    session.commit()
+
+    sync_site_types(session)
+
+    refreshed = session.exec(select(SiteType)).one()
+    assert refreshed.main_image_url == (
+        "https://example.com/media/site-types/cretaceous_sandstone.png?v=abc"
+    )
+    assert refreshed.period == "cretaceous"
+    assert refreshed.rock_type == "sandstone"
+
+
 def test_site_type_sync_partial_dino_filter(session: Session):
     trex = _dinosaur(name="Tyrannosaurus", page_id=30467)
     allo = _dinosaur(name="Allosaurus", page_id=30468)

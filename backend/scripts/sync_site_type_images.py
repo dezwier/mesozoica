@@ -12,14 +12,16 @@ from app.core.config import settings
 from app.core.database import engine
 from app.crons.railway_guard import require_railway_database
 from app.models.site_type import SiteType
-from app.services.dinosaur_image_service.sync import file_content_version
 from app.services.site_type_image_service.sync import (
     build_curated_image_url,
+    file_content_version,
+    is_curated_image_url,
     match_image_files,
-    remote_image_exists,
+    needs_image_resync,
     resolve_local_source_dir_for_sync,
     resolve_public_base_url_for_sync,
     scan_local_image_files,
+    site_type_image_key,
     upload_file_to_railway,
 )
 
@@ -54,22 +56,33 @@ def run_sync(*, dry_run: bool = False, overwrite: bool = False) -> int:
     image_files = scan_local_image_files(source_dir)
     if not image_files:
         logger.warning("No image files found in %s", source_dir)
-        return 0
 
     with Session(engine) as session:
-        site_types = session.exec(select(SiteType)).all()
-        id_set = {row.id for row in site_types if row.id is not None}
-        matched, unmatched_files = match_image_files(image_files, id_set)
+        site_types = list(session.exec(select(SiteType)).all())
+        if image_files:
+            matched, unmatched_files = match_image_files(image_files, site_types)
+        else:
+            matched, unmatched_files = [], []
 
         uploaded = 0
         updated = 0
+        cleared = 0
         skipped = 0
+        matched_keys = {
+            site_type_image_key(period=match.period, rock_type=match.rock_type)
+            for match in matched
+        }
         for match in matched:
-            if not overwrite and remote_image_exists(
+            row = session.get(SiteType, match.site_type_id)
+            main_image_url = row.main_image_url if row is not None else None
+            if not needs_image_resync(
+                overwrite=overwrite,
+                local_path=match.path,
+                main_image_url=main_image_url,
                 public_base_url=public_base_url,
                 filename=match.filename,
             ):
-                logger.info("Skipping %s (already on Railway)", match.filename)
+                logger.info("Skipping %s (already synced)", match.filename)
                 skipped += 1
                 continue
 
@@ -93,37 +106,56 @@ def run_sync(*, dry_run: bool = False, overwrite: bool = False) -> int:
                 )
                 uploaded += 1
 
-                row = session.get(SiteType, match.site_type_id)
                 if row is not None:
                     row.main_image_url = public_url
                     session.add(row)
                     updated += 1
 
+        for row in site_types:
+            key = site_type_image_key(period=row.period, rock_type=row.rock_type)
+            if key in matched_keys:
+                continue
+            if not is_curated_image_url(row.main_image_url):
+                continue
+            logger.info(
+                "%s site_type %s/%s main_image_url (no local image in %s)",
+                "Would clear" if dry_run else "Clearing",
+                row.period,
+                row.rock_type,
+                source_dir,
+            )
+            if not dry_run:
+                row.main_image_url = None
+                session.add(row)
+            cleared += 1
+
         if not dry_run:
             session.commit()
 
         site_types_without_images = sorted(
-            site_type_id
-            for site_type_id in id_set
-            if not any(m.site_type_id == site_type_id for m in matched)
+            site_type_image_key(period=row.period, rock_type=row.rock_type)
+            for row in site_types
+            if site_type_image_key(period=row.period, rock_type=row.rock_type)
+            not in matched_keys
         )
         if unmatched_files:
             logger.warning(
-                "Unmatched local files (no site_type.id): %s",
+                "Unmatched local files (no site_type match): %s",
                 ", ".join(path.name for path in unmatched_files),
             )
         if site_types_without_images:
             logger.info(
                 "Site types without curated images: %d (first 10: %s)",
                 len(site_types_without_images),
-                ", ".join(str(value) for value in site_types_without_images[:10]),
+                ", ".join(site_types_without_images[:10]),
             )
 
         logger.info(
-            "Summary: %d matched, %d uploaded, %d db_updated, %d skipped, %d unmatched files",
+            "Summary: %d matched, %d uploaded, %d db_updated, %d cleared, %d skipped, %d unmatched files",
             len(matched),
             uploaded,
             updated,
+            cleared,
             skipped,
             len(unmatched_files),
         )

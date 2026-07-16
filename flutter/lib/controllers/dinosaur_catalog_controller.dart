@@ -14,16 +14,19 @@ class DinosaurCatalogFilters {
     this.maYounger = GeologicTimeline.mesozoicYoungerMa,
     this.maOlder = GeologicTimeline.mesozoicOlderMa,
     this.onlyCustomImage = true,
+    this.onlyLlmEnriched = true,
   });
 
   final String searchQuery;
   final double maYounger;
   final double maOlder;
   final bool onlyCustomImage;
+  final bool onlyLlmEnriched;
 
   bool get hasActiveFilters {
     if (searchQuery.trim().isNotEmpty) return true;
     if (!onlyCustomImage) return true;
+    if (!onlyLlmEnriched) return true;
     return maYounger > GeologicTimeline.mesozoicYoungerMa ||
         maOlder < GeologicTimeline.mesozoicOlderMa;
   }
@@ -37,12 +40,14 @@ class DinosaurCatalogFilters {
     double? maYounger,
     double? maOlder,
     bool? onlyCustomImage,
+    bool? onlyLlmEnriched,
   }) {
     return DinosaurCatalogFilters(
       searchQuery: searchQuery ?? this.searchQuery,
       maYounger: maYounger ?? this.maYounger,
       maOlder: maOlder ?? this.maOlder,
       onlyCustomImage: onlyCustomImage ?? this.onlyCustomImage,
+      onlyLlmEnriched: onlyLlmEnriched ?? this.onlyLlmEnriched,
     );
   }
 
@@ -199,6 +204,7 @@ class DinosaurCatalogController extends ChangeNotifier {
           !hasSearch && _filters.hasTimeFilter ? _filters.maYounger : null,
       maOlder: !hasSearch && _filters.hasTimeFilter ? _filters.maOlder : null,
       hasCustomImage: _filters.onlyCustomImage,
+      llmEnriched: _filters.onlyLlmEnriched,
     );
 
     if (_filters.onlyCustomImage &&
@@ -241,6 +247,7 @@ class DinosaurCatalogController extends ChangeNotifier {
         maYounger:
             !hasSearch && _filters.hasTimeFilter ? _filters.maYounger : null,
         maOlder: !hasSearch && _filters.hasTimeFilter ? _filters.maOlder : null,
+        llmEnriched: _filters.onlyLlmEnriched,
       );
       curated.addAll(
         response.items.where(

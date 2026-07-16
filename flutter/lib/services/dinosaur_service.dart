@@ -21,6 +21,7 @@ class DinosaurService {
     double? maYounger,
     double? maOlder,
     bool hasCustomImage = false,
+    bool? llmEnriched,
   }) async {
     final uri = AppConfig.dinosaursUri(
       limit: limit,
@@ -31,6 +32,7 @@ class DinosaurService {
       maYounger: maYounger,
       maOlder: maOlder,
       hasCustomImage: hasCustomImage,
+      llmEnriched: llmEnriched,
     );
     if (kDebugMode) {
       debugPrint('DinosaurService GET $uri');

@@ -122,6 +122,7 @@ class PhyloTreeController extends ChangeNotifier {
             !hasSearch && _filters.hasTimeFilter ? _filters.maYounger : null,
         maOlder: !hasSearch && _filters.hasTimeFilter ? _filters.maOlder : null,
         hasCustomImage: _filters.onlyCustomImage,
+        llmEnriched: _filters.onlyLlmEnriched,
       );
 
       if (_filters.onlyCustomImage &&
@@ -168,6 +169,7 @@ class PhyloTreeController extends ChangeNotifier {
         maYounger:
             !hasSearch && _filters.hasTimeFilter ? _filters.maYounger : null,
         maOlder: !hasSearch && _filters.hasTimeFilter ? _filters.maOlder : null,
+        llmEnriched: _filters.onlyLlmEnriched,
       );
       curated.addAll(
         response.items.where(

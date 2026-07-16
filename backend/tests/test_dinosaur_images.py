@@ -298,3 +298,85 @@ def test_run_sync_updates_main_image_url(
     assert row.main_image_url == (
         "https://example.com/media/dinosaurs/Tyrannosaurus.webp?v=9dd4e461268c"
     )
+
+
+def test_run_sync_clears_curated_url_when_local_file_missing(
+    session: Session,
+    tmp_path: Path,
+    monkeypatch,
+):
+    from scripts import sync_dinosaur_images as sync_module
+
+    images_dir = tmp_path / "images"
+    images_dir.mkdir()
+    (images_dir / "Tyrannosaurus.webp").write_bytes(b"x")
+
+    synced = Dinosaur(
+        name="Tyrannosaurus",
+        wikipedia_page_id=1,
+        wikipedia_title="Tyrannosaurus",
+    )
+    stale = Dinosaur(
+        name="Triceratops",
+        wikipedia_page_id=2,
+        wikipedia_title="Triceratops",
+        main_image_url="https://example.com/media/dinosaurs/Triceratops.webp?v=old",
+    )
+    session.add(synced)
+    session.add(stale)
+    session.commit()
+
+    monkeypatch.setattr(config_module.settings, "public_base_url", "https://example.com")
+    monkeypatch.setenv("DINOSAUR_IMAGES_SOURCE_DIR", str(images_dir))
+    monkeypatch.setattr(sync_module, "upload_file_to_railway", lambda **kwargs: None)
+    monkeypatch.setenv("ALLOW_LOCAL_CRON", "1")
+
+    assert sync_module.run_sync(dry_run=False) == 0
+
+    session.refresh(synced)
+    session.refresh(stale)
+    assert synced.main_image_url == (
+        "https://example.com/media/dinosaurs/Tyrannosaurus.webp?v=9dd4e461268c"
+    )
+    assert stale.main_image_url is None
+
+
+def test_run_sync_clears_curated_url_when_local_file_missing(
+    session: Session,
+    tmp_path: Path,
+    monkeypatch,
+):
+    from scripts import sync_dinosaur_images as sync_module
+
+    images_dir = tmp_path / "images"
+    images_dir.mkdir()
+    (images_dir / "Tyrannosaurus.webp").write_bytes(b"x")
+
+    synced = Dinosaur(
+        name="Tyrannosaurus",
+        wikipedia_page_id=1,
+        wikipedia_title="Tyrannosaurus",
+    )
+    stale = Dinosaur(
+        name="Triceratops",
+        wikipedia_page_id=2,
+        wikipedia_title="Triceratops",
+        main_image_url="https://example.com/media/dinosaurs/Triceratops.webp?v=old",
+    )
+    session.add(synced)
+    session.add(stale)
+    session.commit()
+
+    monkeypatch.setattr(config_module.settings, "public_base_url", "https://example.com")
+    monkeypatch.setenv("DINOSAUR_IMAGES_SOURCE_DIR", str(images_dir))
+    monkeypatch.setattr(sync_module, "upload_file_to_railway", lambda **kwargs: None)
+    monkeypatch.setenv("ALLOW_LOCAL_CRON", "1")
+
+    assert sync_module.run_sync(dry_run=False) == 0
+
+    session.refresh(synced)
+    session.refresh(stale)
+    assert synced.main_image_url == (
+        "https://example.com/media/dinosaurs/Tyrannosaurus.webp?v=9dd4e461268c"
+    )
+    assert stale.main_image_url is None

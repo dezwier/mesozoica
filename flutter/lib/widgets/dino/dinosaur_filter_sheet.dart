@@ -48,6 +48,7 @@ class _DinosaurFilterSheetState extends State<DinosaurFilterSheet> {
   late String _pendingSearch;
   late RangeValues _pendingRange;
   late bool _pendingOnlyCustomImage;
+  late bool _pendingOnlyLlmEnriched;
   bool _applied = false;
 
   @override
@@ -60,6 +61,7 @@ class _DinosaurFilterSheetState extends State<DinosaurFilterSheet> {
       widget.initialFilters.maOlder,
     );
     _pendingOnlyCustomImage = widget.initialFilters.onlyCustomImage;
+    _pendingOnlyLlmEnriched = widget.initialFilters.onlyLlmEnriched;
   }
 
   @override
@@ -77,6 +79,7 @@ class _DinosaurFilterSheetState extends State<DinosaurFilterSheet> {
         maYounger: _pendingRange.start,
         maOlder: _pendingRange.end,
         onlyCustomImage: _pendingOnlyCustomImage,
+        onlyLlmEnriched: _pendingOnlyLlmEnriched,
       ),
     );
   }
@@ -87,6 +90,7 @@ class _DinosaurFilterSheetState extends State<DinosaurFilterSheet> {
       maYounger: _pendingRange.start,
       maOlder: _pendingRange.end,
       onlyCustomImage: _pendingOnlyCustomImage,
+      onlyLlmEnriched: _pendingOnlyLlmEnriched,
     );
   }
 
@@ -99,6 +103,7 @@ class _DinosaurFilterSheetState extends State<DinosaurFilterSheet> {
         GeologicTimeline.mesozoicOlderMa,
       );
       _pendingOnlyCustomImage = true;
+      _pendingOnlyLlmEnriched = true;
     });
   }
 
@@ -160,9 +165,24 @@ class _DinosaurFilterSheetState extends State<DinosaurFilterSheet> {
                 onChanged: (value) {
                   setState(() => _pendingOnlyCustomImage = value ?? true);
                 },
-                title: const Text('Custom image only'),
+                title: const Text('Illustrated'),
                 subtitle: Text(
                   'Hide cards using the placeholder illustration',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
+              CheckboxListTile(
+                contentPadding: EdgeInsets.zero,
+                controlAffinity: ListTileControlAffinity.leading,
+                value: _pendingOnlyLlmEnriched,
+                onChanged: (value) {
+                  setState(() => _pendingOnlyLlmEnriched = value ?? true);
+                },
+                title: const Text('Enriched'),
+                subtitle: Text(
+                  'Only show dinosaurs with LLM enrichment completed',
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: colorScheme.onSurfaceVariant,
                   ),

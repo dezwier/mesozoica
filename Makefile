@@ -6,7 +6,7 @@ RAILWAY_SERVICE ?=
 RAILWAY_SERVICE_FLAG = $(if $(RAILWAY_SERVICE),--service $(RAILWAY_SERVICE),)
 CRON_EXTRA ?=
 
-.PHONY: help backend-install backend-test run-backend flutter-test run-flutter test-all run-cron run-dinosaur-wiki-sync run-dinosaur-llm-enrich run-fossil-pbdb-sync run-fossil-llm-enrich run-site-sync run-site-type-sync run-dinosaur-image-generate run-fossil-image-generate run-site-type-image-generate sync-dinosaur-images sync-fossil-images sync-site-type-images
+.PHONY: help backend-install backend-test run-backend flutter-test run-flutter test-all run-cron run-dinosaur-wiki-sync run-dinosaur-llm-enrich run-fossil-pbdb-sync run-fossil-llm-enrich run-site-sync run-site-type-sync run-dinosaur-image-generate run-fossil-image-generate run-site-type-image-generate sync-dinosaur-images sync-fossil-images sync-site-type-images rename-site-type-images
 
 help:
 	@echo "Available targets:"
@@ -26,6 +26,7 @@ help:
 	@echo "  sync-dinosaur-images         Upload curated card images to Railway volume + DB"
 	@echo "  sync-fossil-images           Upload curated fossil card images to Railway volume + DB"
 	@echo "  sync-site-type-images        Upload curated site-type card images to Railway volume + DB"
+	@echo "  rename-site-type-images      Rename legacy numeric site-type image files to period_rocktype"
 	@echo "  flutter-test                 Run Flutter tests"
 	@echo "  run-flutter                  Start Flutter app"
 	@echo "  test-all                     Run backend and Flutter tests"
@@ -95,6 +96,9 @@ sync-fossil-images:
 
 sync-site-type-images:
 	cd backend && RAILWAY_RUN=1 railway run $(RAILWAY_SERVICE_FLAG) python -m scripts.sync_site_type_images $(CRON_EXTRA)
+
+rename-site-type-images:
+	cd backend && RAILWAY_RUN=1 railway run $(RAILWAY_SERVICE_FLAG) python -m scripts.rename_site_type_images $(CRON_EXTRA)
 
 flutter-test:
 	cd flutter && flutter test
