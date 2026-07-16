@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
-import random
 import re
 from typing import Any, Literal, Optional, get_args
 
 from pydantic import BaseModel, Field, field_validator, model_validator
+
+UNKNOWN = "unknown"
 
 RockType = Literal[
     "mudstone",
@@ -25,9 +26,10 @@ RockType = Literal[
     "phosphorite",
     "evaporite",
     "other",
+    UNKNOWN,
 ]
 
-Category = Literal["body_fossil", "trace_fossil"]
+Category = Literal["body", "trace", UNKNOWN]
 
 Subcategory = Literal[
     "skull",
@@ -48,6 +50,7 @@ Subcategory = Literal[
     "coprolites",
     "gastroliths",
     "regurgitates",
+    UNKNOWN,
 ]
 
 PreservationQuality = Literal[
@@ -57,6 +60,7 @@ PreservationQuality = Literal[
     "moderate",
     "poor",
     "very_poor",
+    UNKNOWN,
 ]
 
 Completeness = Literal[
@@ -66,9 +70,16 @@ Completeness = Literal[
     "fragmentary",
     "isolated_element",
     "trace_only",
+    UNKNOWN,
 ]
 
-_BODY_SUBCATEGORIES = frozenset(
+ROCK_TYPES = frozenset(get_args(RockType)) - {UNKNOWN}
+CATEGORIES = frozenset(get_args(Category)) - {UNKNOWN}
+SUBCATEGORIES = frozenset(get_args(Subcategory)) - {UNKNOWN}
+PRESERVATION_QUALITIES = frozenset(get_args(PreservationQuality)) - {UNKNOWN}
+COMPLETENESS_VALUES = frozenset(get_args(Completeness)) - {UNKNOWN}
+
+BODY_SUBCATEGORIES = frozenset(
     {
         "skull",
         "teeth",
@@ -85,7 +96,7 @@ _BODY_SUBCATEGORIES = frozenset(
     }
 )
 
-_TRACE_SUBCATEGORIES = frozenset(
+TRACE_SUBCATEGORIES = frozenset(
     {
         "footprints_and_trackways",
         "burrows_and_nesting_traces",
@@ -114,41 +125,47 @@ _UNKNOWN_ALIASES = frozenset(
 )
 
 
-def _pick_random(allowed: set[str]) -> str:
-    return random.choice(sorted(allowed))
-
-
 def _normalize_enum(value: Any) -> str:
     if value is None:
-        return ""
+        return UNKNOWN
     text = str(value).strip().lower()
     if not text:
-        return ""
+        return UNKNOWN
     text = re.sub(r"[\s\-/]+", "_", text)
     text = re.sub(r"[^a-z0-9_]", "", text)
     text = re.sub(r"_+", "_", text).strip("_")
     if not text or text in _UNKNOWN_ALIASES:
-        return ""
+        return UNKNOWN
     return text
 
 
 def _coerce_to_allowed(value: str, allowed: set[str]) -> str:
+    if value == UNKNOWN:
+        return UNKNOWN
     if value in allowed:
         return value
-    return _pick_random(allowed)
+    return UNKNOWN
+
+
+def category_from_subcategory(subcategory: str) -> str:
+    """Derive llm_category from a validated subcategory."""
+    if subcategory in BODY_SUBCATEGORIES:
+        return "body"
+    if subcategory in TRACE_SUBCATEGORIES:
+        return "trace"
+    return UNKNOWN
 
 
 class FossilEnrichmentOutput(BaseModel):
-    llm_rock_type: str = ""
-    llm_category: str = ""
-    llm_subcategory: str = ""
-    llm_preservation_quality: str = ""
-    llm_completeness: str = ""
+    llm_rock_type: str = UNKNOWN
+    llm_category: str = UNKNOWN
+    llm_subcategory: str = UNKNOWN
+    llm_preservation_quality: str = UNKNOWN
+    llm_completeness: str = UNKNOWN
     llm_description: Optional[str] = Field(default=None, max_length=512)
 
     @field_validator(
         "llm_rock_type",
-        "llm_category",
         "llm_subcategory",
         "llm_preservation_quality",
         "llm_completeness",
@@ -171,36 +188,31 @@ class FossilEnrichmentOutput(BaseModel):
     @field_validator("llm_rock_type", mode="after")
     @classmethod
     def validate_rock_type(cls, value: str) -> str:
-        return _coerce_to_allowed(value, set(get_args(RockType)))
-
-    @field_validator("llm_category", mode="after")
-    @classmethod
-    def validate_category(cls, value: str) -> str:
-        return _coerce_to_allowed(value, set(get_args(Category)))
+        return _coerce_to_allowed(value, ROCK_TYPES)
 
     @field_validator("llm_subcategory", mode="after")
     @classmethod
     def validate_subcategory(cls, value: str) -> str:
-        return _coerce_to_allowed(value, set(get_args(Subcategory)))
+        return _coerce_to_allowed(value, SUBCATEGORIES)
 
     @field_validator("llm_preservation_quality", mode="after")
     @classmethod
     def validate_preservation_quality(cls, value: str) -> str:
-        return _coerce_to_allowed(value, set(get_args(PreservationQuality)))
+        return _coerce_to_allowed(value, PRESERVATION_QUALITIES)
 
     @field_validator("llm_completeness", mode="after")
     @classmethod
     def validate_completeness(cls, value: str) -> str:
-        return _coerce_to_allowed(value, set(get_args(Completeness)))
+        return _coerce_to_allowed(value, COMPLETENESS_VALUES)
 
     @model_validator(mode="after")
-    def check_category_consistency(self) -> "FossilEnrichmentOutput":
-        if self.llm_category == "body_fossil" and self.llm_subcategory in _TRACE_SUBCATEGORIES:
-            self.llm_subcategory = _pick_random(_BODY_SUBCATEGORIES)
-        if self.llm_category == "trace_fossil" and self.llm_subcategory in _BODY_SUBCATEGORIES:
-            self.llm_subcategory = _pick_random(_TRACE_SUBCATEGORIES)
-        if self.llm_category == "trace_fossil" and self.llm_completeness != "trace_only":
-            self.llm_completeness = "trace_only"
+    def derive_category_and_check_completeness(self) -> "FossilEnrichmentOutput":
+        self.llm_category = category_from_subcategory(self.llm_subcategory)
+        if self.llm_category == "trace" and self.llm_completeness not in {
+            "trace_only",
+            UNKNOWN,
+        }:
+            self.llm_completeness = UNKNOWN
         return self
 
 

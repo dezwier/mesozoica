@@ -100,7 +100,7 @@ def test_fossil_to_enrichment_prompt_dict_excludes_research_group_and_collection
     assert "llm_subcategory" not in payload
 
 
-def test_fossil_to_image_prompt_dict_includes_only_llm_fields():
+def test_fossil_to_image_prompt_dict_includes_only_llm_imp_fields():
     fossil = Fossil(
         id=139292,
         dinosaur_id=1,
@@ -111,17 +111,22 @@ def test_fossil_to_image_prompt_dict_includes_only_llm_fields():
         museum="GSC",
         country_code="CA",
         geological_formation="Scollard",
-        llm_rock_type="sandstone",
-        llm_category="body_fossil",
-        llm_subcategory="skull",
-        llm_completeness="partial",
-        llm_preservation_quality="good",
+        llm_rock_type="unknown",
+        llm_category="unknown",
+        llm_subcategory="unknown",
+        llm_completeness="unknown",
+        llm_preservation_quality="unknown",
+        llm_imp_rock_type="sandstone",
+        llm_imp_category="body",
+        llm_imp_subcategory="skull",
+        llm_imp_completeness="partial",
+        llm_imp_preservation_quality="good",
     )
     payload = fossil_to_image_prompt_dict(fossil, dinosaur_name="Tyrannosaurus")
     assert payload == {
         "dinosaur": "Tyrannosaurus",
         "llm_rock_type": "sandstone",
-        "llm_category": "body_fossil",
+        "llm_category": "body",
         "llm_subcategory": "skull",
         "llm_completeness": "partial",
         "llm_quality": "good",
@@ -145,11 +150,11 @@ def test_build_fossil_image_prompt_includes_llm_fields_and_dinosaur():
         dinosaur_id=2,
         pres_mode="body",
         common_body_parts="femur, tibia",
-        llm_rock_type="mudstone",
-        llm_category="body_fossil",
-        llm_subcategory="hindlimbs",
-        llm_completeness="isolated_element",
-        llm_preservation_quality="moderate",
+        llm_imp_rock_type="mudstone",
+        llm_imp_category="body",
+        llm_imp_subcategory="hindlimbs",
+        llm_imp_completeness="isolated_element",
+        llm_imp_preservation_quality="moderate",
     )
     payload = fossil_to_image_prompt_dict(fossil, dinosaur_name="Allosaurus")
     prompt = build_fossil_image_prompt(payload)
@@ -168,7 +173,7 @@ def test_build_fossil_preservation_brief_maps_llm_fields():
     brief = build_fossil_preservation_brief(
         {
             "dinosaur": "Iguanodon",
-            "llm_category": "trace_fossil",
+            "llm_category": "trace",
             "llm_subcategory": "footprints_and_trackways",
             "llm_quality": "poor",
             "llm_completeness": "trace_only",
@@ -176,7 +181,7 @@ def test_build_fossil_preservation_brief_maps_llm_fields():
         }
     )
     assert "Iguanodon" in brief
-    assert "trace_fossil" in brief
+    assert "trace" in brief
     assert "footprints and trackways" in brief
     assert "poor" in brief
     assert "trace_only" in brief

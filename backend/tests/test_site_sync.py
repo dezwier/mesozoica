@@ -92,6 +92,63 @@ def test_sync_builds_site_table_and_links_fossils(session: Session):
     assert site_row.country_code == "CA"
 
 
+def test_sync_uses_llm_imp_rock_type_when_pbdb_lithology_missing(session: Session):
+    dinosaur = _dinosaur()
+    session.add(dinosaur)
+    session.commit()
+    session.refresh(dinosaur)
+
+    fossil = _fossil(occurrence_no=139294, dinosaur_id=dinosaur.id)
+    fossil.lithology1 = None
+    fossil.lithdescript = None
+    fossil.stratcomments = None
+    fossil.lithadj1 = None
+    fossil.llm_imp_rock_type = "mudstone"
+    session.add(fossil)
+    session.commit()
+
+    sync_sites(session)
+
+    site_row = session.exec(select(Site).where(Site.site_id == 9954)).one()
+    assert site_row.rock_type == "mudstone"
+
+
+def test_sync_prefers_pbdb_lithology_over_llm_imp_rock_type(session: Session):
+    dinosaur = _dinosaur()
+    session.add(dinosaur)
+    session.commit()
+    session.refresh(dinosaur)
+
+    fossil = _fossil(occurrence_no=139295, dinosaur_id=dinosaur.id)
+    fossil.lithology1 = "sandstone"
+    fossil.llm_imp_rock_type = "mudstone"
+    session.add(fossil)
+    session.commit()
+
+    sync_sites(session)
+
+    site_row = session.exec(select(Site).where(Site.site_id == 9954)).one()
+    assert site_row.rock_type == "sandstone"
+
+
+def test_sync_uses_llm_imp_rock_type_when_pbdb_lithology_not_reported(session: Session):
+    dinosaur = _dinosaur()
+    session.add(dinosaur)
+    session.commit()
+    session.refresh(dinosaur)
+
+    fossil = _fossil(occurrence_no=139296, dinosaur_id=dinosaur.id)
+    fossil.lithology1 = "not reported"
+    fossil.llm_imp_rock_type = "shale"
+    session.add(fossil)
+    session.commit()
+
+    sync_sites(session)
+
+    site_row = session.exec(select(Site).where(Site.site_id == 9954)).one()
+    assert site_row.rock_type == "shale"
+
+
 def test_sync_dry_run_writes_nothing(session: Session):
     dinosaur = _dinosaur()
     session.add(dinosaur)

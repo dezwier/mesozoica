@@ -21,7 +21,6 @@ from app.services.fossil_enrichment_service.sync import (
 def _llm_response():
     return {
         "llm_rock_type": "sandstone",
-        "llm_category": "body_fossil",
         "llm_subcategory": "teeth",
         "llm_preservation_quality": "good",
         "llm_completeness": "isolated_element",
@@ -61,7 +60,7 @@ def _seed_fossil(
         pres_mode="body",
         llm_enriched=llm_enriched,
         llm_rock_type="shale" if llm_enriched else None,
-        llm_category="body_fossil" if llm_enriched else None,
+        llm_category="body" if llm_enriched else None,
         llm_subcategory="skull" if llm_enriched else None,
         llm_preservation_quality="moderate" if llm_enriched else None,
         llm_completeness="fragmentary" if llm_enriched else None,
@@ -95,12 +94,17 @@ def test_enrich_writes_fields_and_sets_flag(session: Session):
     assert summary.counters.enriched == 1
     assert fossil.llm_enriched is True
     assert fossil.llm_rock_type == "sandstone"
-    assert fossil.llm_category == "body_fossil"
+    assert fossil.llm_category == "body"
     assert fossil.llm_subcategory == "teeth"
     assert fossil.llm_preservation_quality == "good"
     assert fossil.llm_completeness == "isolated_element"
     assert fossil.llm_description is not None
     assert "tooth" in fossil.llm_description.lower()
+    assert fossil.llm_imp_rock_type == "sandstone"
+    assert fossil.llm_imp_category == "body"
+    assert fossil.llm_imp_subcategory == "teeth"
+    assert fossil.llm_imp_preservation_quality == "good"
+    assert fossil.llm_imp_completeness == "isolated_element"
 
 
 def test_enrich_disables_gemini_thinking(session: Session):

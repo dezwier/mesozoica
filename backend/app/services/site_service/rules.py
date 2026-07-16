@@ -125,7 +125,7 @@ def _rock_type_from_text(text: str | None) -> str | None:
 
 
 def rock_type_from_fossil(fossil: Fossil) -> str | None:
-    """Derive a single rock type label from all available lithology fields."""
+    """Derive a single rock type label from PBDB lithology, then llm_imp_rock_type."""
     if fossil.lithology1:
         cleaned = fossil.lithology1.strip().lower()
         if cleaned not in NOT_REPORTED_LITHOLOGY:
@@ -134,6 +134,9 @@ def rock_type_from_fossil(fossil: Fossil) -> str | None:
         rock = _rock_type_from_text(field)
         if rock:
             return rock
+    imp = (fossil.llm_imp_rock_type or "").strip().lower()
+    if imp:
+        return imp
     return None
 
 

@@ -136,6 +136,11 @@ class FossilSummary(BaseModel):
     llm_preservation_quality: str | None = None
     llm_completeness: str | None = None
     llm_description: str | None = None
+    llm_imp_rock_type: str | None = None
+    llm_imp_category: str | None = None
+    llm_imp_subcategory: str | None = None
+    llm_imp_preservation_quality: str | None = None
+    llm_imp_completeness: str | None = None
     dinosaur_name: str
     dinosaur_main_image_url: str | None = None
     site_id: int | None = None

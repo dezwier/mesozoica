@@ -12,11 +12,11 @@ from app.models.fossil import Fossil
 _DEFAULT_STRING_CAP = 400
 
 _IMAGE_PROMPT_LLM_FIELDS: tuple[tuple[str, str], ...] = (
-    ("llm_rock_type", "llm_rock_type"),
-    ("llm_category", "llm_category"),
-    ("llm_subcategory", "llm_subcategory"),
-    ("llm_completeness", "llm_completeness"),
-    ("llm_preservation_quality", "llm_quality"),
+    ("llm_imp_rock_type", "llm_rock_type"),
+    ("llm_imp_category", "llm_category"),
+    ("llm_imp_subcategory", "llm_subcategory"),
+    ("llm_imp_completeness", "llm_completeness"),
+    ("llm_imp_preservation_quality", "llm_quality"),
 )
 
 # Occurrence-specific PBDB fields useful for LLM enrichment (exclude collection comps/admin noise).

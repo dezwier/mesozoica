@@ -27,6 +27,8 @@ Depict this occurrence using ONLY the fields below (especially the dinosaur):
 {spec_brief}"""
 
 _LLM_CATEGORY_GUIDANCE: dict[str, str] = {
+    "body": "Body fossil: show the listed anatomical element partially exposed in rock.",
+    "trace": "Trace fossil: show impression, track, burrow, or ichnofossil in sediment.",
     "body_fossil": "Body fossil: show the listed anatomical element partially exposed in rock.",
     "trace_fossil": "Trace fossil: show impression, track, burrow, or ichnofossil in sediment.",
 }

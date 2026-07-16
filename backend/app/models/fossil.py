@@ -179,3 +179,8 @@ class Fossil(SQLModel, table=True):
     llm_completeness: Optional[str] = Field(default=None, max_length=32)
     llm_description: Optional[str] = Field(default=None, sa_column=Column(Text))
     llm_enriched: bool = Field(default=False, index=True)
+    llm_imp_rock_type: Optional[str] = Field(default=None, max_length=64)
+    llm_imp_category: Optional[str] = Field(default=None, max_length=32)
+    llm_imp_subcategory: Optional[str] = Field(default=None, max_length=64)
+    llm_imp_preservation_quality: Optional[str] = Field(default=None, max_length=32)
+    llm_imp_completeness: Optional[str] = Field(default=None, max_length=32)
