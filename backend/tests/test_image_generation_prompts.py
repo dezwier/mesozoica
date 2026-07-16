@@ -95,7 +95,7 @@ def test_fossil_to_enrichment_prompt_dict_excludes_research_group_and_collection
     assert "research_group" not in payload
     assert "common_body_parts" not in payload
     assert "articulated_parts" not in payload
-    assert "component_comments" not in payload
+    assert payload["component_comments"] == "collection has many vertebrae"
     assert "reference_no" not in payload
     assert "llm_subcategory" not in payload
 

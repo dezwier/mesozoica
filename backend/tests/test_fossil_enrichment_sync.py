@@ -312,3 +312,38 @@ def test_enrich_dinos_limits_candidates(session: Session):
     assert summary.counters.enriched == 1
     mock_api.assert_called_once()
     assert mock_api.call_args.kwargs["log_context"] == "300002"
+
+
+def test_enrich_applies_pbdb_hints_when_llm_subcategory_unknown(session: Session):
+    dinosaur = Dinosaur(
+        name="Tyrannosaurus",
+        wikipedia_page_id=219975,
+        wikipedia_title="Tyrannosaurus",
+    )
+    session.add(dinosaur)
+    session.commit()
+    session.refresh(dinosaur)
+
+    fossil = Fossil(
+        id=219975,
+        dinosaur_id=dinosaur.id,
+        identified_name="Tyrannosaurus sp.",
+        feed_pred_traces="tooth marks, arthropod boring",
+        component_comments="tooth marks",
+    )
+    session.add(fossil)
+    session.commit()
+
+    with patch(
+        "app.services.fossil_enrichment_service.sync.call_gemini_api",
+        return_value=({"llm_subcategory": "unknown"}, {}),
+    ):
+        enrich_fossils(session, dry_run=False, max_records=1)
+
+    session.refresh(fossil)
+    assert fossil.llm_subcategory == "bite_marks_and_feeding_traces"
+    assert fossil.llm_category == "trace"
+    assert fossil.llm_completeness == "trace_only"
+    assert fossil.llm_imp_category == "trace"
+    assert fossil.llm_imp_subcategory == "bite_marks_and_feeding_traces"
+    assert fossil.llm_imp_completeness == "trace_only"

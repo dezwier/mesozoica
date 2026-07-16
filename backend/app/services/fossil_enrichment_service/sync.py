@@ -15,6 +15,7 @@ from app.models.fossil import Fossil
 from app.services.dinosaur_image_service.sync import CURATED_MEDIA_PATH
 from app.services.dinosaur_name_filter import dino_name_match_clause
 from app.services.fossil_enrichment_service.impute import impute_llm_fields
+from app.services.fossil_enrichment_service.pbdb_hints import apply_pbdb_hints
 from app.services.fossil_enrichment_service.prompt import build_enrichment_prompt
 from app.services.fossil_enrichment_service.validate import validate_llm_enrichment
 from app.services.llm_service.client import call_gemini_api
@@ -118,7 +119,7 @@ def _select_candidates(
 
 
 def _apply_enrichment(fossil: Fossil, raw: dict) -> None:
-    validated = validate_llm_enrichment(raw)
+    validated = apply_pbdb_hints(fossil, validate_llm_enrichment(raw))
     imputed = impute_llm_fields(validated)
     fossil.llm_rock_type = validated.llm_rock_type
     fossil.llm_category = validated.llm_category
@@ -194,7 +195,7 @@ def enrich_fossils(
             )
 
             if dry_run:
-                validated = validate_llm_enrichment(raw)
+                validated = apply_pbdb_hints(fossil, validate_llm_enrichment(raw))
                 impute_llm_fields(validated)
                 counters.enriched += 1
                 logger.info("%s action=enrich reason=dry_run", prefix)

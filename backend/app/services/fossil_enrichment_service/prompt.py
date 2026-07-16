@@ -46,7 +46,10 @@ llm_subcategory — anatomical element or trace type
   Trace fossils: footprints_and_trackways, burrows_and_nesting_traces,
     bite_marks_and_feeding_traces, coprolites, gastroliths, regurgitates
   Also allowed: unknown
-  Use occurrence_comments, pres_mode, and feed_pred_traces as primary evidence.
+  Use feed_pred_traces, component_comments, bioerosion, occurrence_comments,
+  pres_mode, and record_type as primary evidence for trace fossils.
+  Tooth marks, bite marks, feeding traces, and predation traces map to
+  bite_marks_and_feeding_traces.
   Only choose vertebrae when vertebrae, cervical, dorsal, or caudal backbone elements
   are explicitly described for this occurrence. Do not use collection-level body-part
   summaries, research_group, taxonomy, or catalog numbers. If unclear, use "unknown".
