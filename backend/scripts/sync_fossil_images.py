@@ -15,6 +15,7 @@ from app.models.fossil import Fossil
 from app.services.fossil_image_service.sync import (
     build_curated_image_url,
     file_content_version,
+    is_curated_image_url,
     match_image_files,
     needs_image_resync,
     resolve_local_source_dir_for_sync,
@@ -54,15 +55,18 @@ def run_sync(*, dry_run: bool = False, overwrite: bool = False) -> int:
     image_files = scan_local_image_files(source_dir)
     if not image_files:
         logger.warning("No image files found in %s", source_dir)
-        return 0
 
     with Session(engine) as session:
         fossils = session.exec(select(Fossil)).all()
         id_set = {row.id for row in fossils}
-        matched, unmatched_files = match_image_files(image_files, id_set)
+        if image_files:
+            matched, unmatched_files = match_image_files(image_files, id_set)
+        else:
+            matched, unmatched_files = [], []
 
         uploaded = 0
         updated = 0
+        cleared = 0
         skipped = 0
         for match in matched:
             row = session.get(Fossil, match.fossil_id)
@@ -103,6 +107,23 @@ def run_sync(*, dry_run: bool = False, overwrite: bool = False) -> int:
                     session.add(row)
                     updated += 1
 
+        matched_ids = {match.fossil_id for match in matched}
+        for row in fossils:
+            if row.id in matched_ids:
+                continue
+            if not is_curated_image_url(row.main_image_url):
+                continue
+            logger.info(
+                "%s fossil %d main_image_url (no local image in %s)",
+                "Would clear" if dry_run else "Clearing",
+                row.id,
+                source_dir,
+            )
+            if not dry_run:
+                row.main_image_url = None
+                session.add(row)
+            cleared += 1
+
         if not dry_run:
             session.commit()
 
@@ -122,10 +143,11 @@ def run_sync(*, dry_run: bool = False, overwrite: bool = False) -> int:
             )
 
         logger.info(
-            "Summary: %d matched, %d uploaded, %d db_updated, %d skipped, %d unmatched files",
+            "Summary: %d matched, %d uploaded, %d db_updated, %d cleared, %d skipped, %d unmatched files",
             len(matched),
             uploaded,
             updated,
+            cleared,
             skipped,
             len(unmatched_files),
         )

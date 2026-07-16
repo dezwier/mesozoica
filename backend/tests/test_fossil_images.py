@@ -262,6 +262,43 @@ def test_run_sync_overwrite_uploads_existing_remote_images(
     )
 
 
+def test_run_sync_clears_curated_url_when_local_file_missing(
+    session: Session,
+    tmp_path: Path,
+    monkeypatch,
+):
+    from scripts import sync_fossil_images as sync_module
+
+    images_dir = tmp_path / "images"
+    images_dir.mkdir()
+    (images_dir / "139292.png").write_bytes(b"x")
+
+    synced = Fossil(id=139292, dinosaur_id=1, identified_name="Tyrannosaurus rex")
+    stale = Fossil(
+        id=219975,
+        dinosaur_id=1,
+        identified_name="Tyrannosaurus rex",
+        main_image_url="https://example.com/media/fossils/219975.png?v=oldhash",
+    )
+    session.add(synced)
+    session.add(stale)
+    session.commit()
+
+    monkeypatch.setattr(config_module.settings, "public_base_url", "https://example.com")
+    monkeypatch.setenv("FOSSIL_IMAGES_SOURCE_DIR", str(images_dir))
+    monkeypatch.setattr(sync_module, "upload_file_to_railway", lambda **kwargs: None)
+    monkeypatch.setenv("ALLOW_LOCAL_CRON", "1")
+
+    assert sync_module.run_sync(dry_run=False) == 0
+
+    session.refresh(synced)
+    session.refresh(stale)
+    assert synced.main_image_url == (
+        "https://example.com/media/fossils/139292.png?v=9dd4e461268c"
+    )
+    assert stale.main_image_url is None
+
+
 def test_resolve_local_source_dir_for_sync_uses_repo_folder(monkeypatch, tmp_path: Path):
     repo_images = tmp_path / "fossil-images"
     repo_images.mkdir()

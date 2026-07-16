@@ -27,6 +27,7 @@ Both scripts support `.png`, `.jpg`, `.jpeg`, and `.webp`.
 - **Served at:** `https://<api-host>/media/fossils/<occurrence_no>.<ext>`
 - **Cache busting:** `main_image_url` includes a `?v=<content-hash>` query param so the app fetches updated files after re-sync
 - **Re-sync:** Regenerated local files are re-uploaded automatically when their content hash differs from the stored `main_image_url` (no `--overwrite` required)
+- **Prune:** Fossils with a curated `main_image_url` but no matching file in `fossil-images/` get `main_image_url` cleared on sync (app shows placeholder)
 
 ## Make targets (recommended)
 
