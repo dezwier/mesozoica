@@ -10,8 +10,6 @@ class MapControlButtons extends StatelessWidget {
     required this.onCenterLocation,
     required this.rotateMap,
     required this.onToggleRotation,
-    this.onRefresh,
-    this.isRefreshing = false,
     this.filterFab,
   });
 
@@ -20,8 +18,6 @@ class MapControlButtons extends StatelessWidget {
   final VoidCallback onCenterLocation;
   final bool rotateMap;
   final VoidCallback onToggleRotation;
-  final VoidCallback? onRefresh;
-  final bool isRefreshing;
   final Widget? filterFab;
 
   @override
@@ -32,24 +28,6 @@ class MapControlButtons extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (onRefresh != null)
-            FloatingActionButton.small(
-              heroTag: 'refresh_map',
-              onPressed: isRefreshing ? null : onRefresh,
-              tooltip: 'Refresh sites',
-              child: isRefreshing
-                  ? SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        valueColor: AlwaysStoppedAnimation<Color>(
-                          Theme.of(context).colorScheme.onPrimary,
-                        ),
-                      ),
-                    )
-                  : const Icon(Icons.refresh),
-            ),
           FloatingActionButton.small(
             heroTag: 'toggle_rotation',
             onPressed: onToggleRotation,

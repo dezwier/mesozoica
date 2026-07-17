@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart' as fm;
+import 'package:flutter_map_animations/flutter_map_animations.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
 
@@ -27,8 +28,9 @@ class MapScreen extends StatefulWidget {
   State<MapScreen> createState() => _MapScreenState();
 }
 
-class _MapScreenState extends State<MapScreen> {
+class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
   final fm.MapController _mapController = fm.MapController();
+  late final AnimatedMapController _animatedMapController;
 
   StreamSubscription<fm.MapEvent>? _mapSub;
   bool _mapReady = false;
@@ -39,6 +41,11 @@ class _MapScreenState extends State<MapScreen> {
   @override
   void initState() {
     super.initState();
+    _animatedMapController = AnimatedMapController(
+      vsync: this,
+      mapController: _mapController,
+      duration: const Duration(milliseconds: 500),
+    );
     _mapSub = _mapController.mapEventStream.listen(_onMapEvent);
     _activateIfNeeded();
   }
@@ -52,6 +59,7 @@ class _MapScreenState extends State<MapScreen> {
   @override
   void dispose() {
     _mapSub?.cancel();
+    _animatedMapController.dispose();
     super.dispose();
   }
 
@@ -116,7 +124,10 @@ class _MapScreenState extends State<MapScreen> {
   void _centerOnLocation(LocationService locationService) {
     final location = locationService.currentLocation;
     if (location == null || !_mapReady) return;
-    _mapController.move(location, _mapController.camera.zoom);
+    _animatedMapController.centerOnPoint(
+      location,
+      zoom: _mapController.camera.zoom,
+    );
   }
 
   void _onZoomChanged(double zoom) {
@@ -264,8 +275,6 @@ class _MapScreenState extends State<MapScreen> {
               rotateMap: _rotateMap,
               onToggleRotation: () =>
                   _toggleRotationMode(locationService.headingDeg),
-              onRefresh: mapData.refresh,
-              isRefreshing: mapData.loading,
             ),
             if (locationService.error != null)
               Positioned(
