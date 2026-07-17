@@ -3,16 +3,21 @@ import 'dart:math';
 import 'package:flutter/foundation.dart';
 
 import '../config/app_config.dart';
+import '../controllers/catalog_mode_controller.dart';
 import '../models/site.dart';
 import '../services/site_service.dart';
 
 class SiteCatalogController extends ChangeNotifier {
-  SiteCatalogController({SiteService? service})
-      : _service = service ?? SiteService();
+  SiteCatalogController({
+    SiteService? service,
+    CatalogModeController? catalogModeController,
+  })  : _service = service ?? SiteService(),
+        _catalogModeController = catalogModeController;
 
   static const pageSize = 20;
 
   final SiteService _service;
+  final CatalogModeController? _catalogModeController;
   final Random _random = Random();
 
   List<SiteSummary> _items = [];
@@ -32,6 +37,9 @@ class SiteCatalogController extends ChangeNotifier {
   String? get error => _error;
   bool get isEmpty => !_loading && _error == null && _items.isEmpty;
   int get total => _total;
+
+  CatalogDataSource get _dataSource =>
+      _catalogModeController?.dataSource ?? CatalogDataSource.archive;
 
   Future<void> load({bool force = false}) async {
     if (!force && _items.isNotEmpty) return;
@@ -125,6 +133,7 @@ class SiteCatalogController extends ChangeNotifier {
       offset: offset,
       sort: 'random',
       seed: seed,
+      dataSource: _dataSource,
     );
   }
 

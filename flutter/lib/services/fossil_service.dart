@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 import '../config/app_config.dart';
+import '../controllers/catalog_mode_controller.dart';
 import '../models/fossil.dart';
 
 class FossilService {
@@ -25,6 +26,7 @@ class FossilService {
     bool hasCustomFossilImage = false,
     bool? llmEnriched,
     int? dinosaurId,
+    CatalogDataSource dataSource = CatalogDataSource.archive,
   }) async {
     final uri = AppConfig.fossilsUri(
       limit: limit,
@@ -40,6 +42,7 @@ class FossilService {
       hasCustomFossilImage: hasCustomFossilImage,
       llmEnriched: llmEnriched,
       dinosaurId: dinosaurId,
+      dataSource: dataSource,
     );
     if (kDebugMode) {
       debugPrint('FossilService GET $uri');
@@ -64,6 +67,7 @@ class FossilService {
     int dinosaurId, {
     int limit = 200,
     int offset = 0,
+    CatalogDataSource dataSource = CatalogDataSource.archive,
   }) async {
     return fetchFossils(
       limit: limit,
@@ -71,11 +75,15 @@ class FossilService {
       sort: 'random',
       seed: 'dinosaur-$dinosaurId',
       dinosaurId: dinosaurId,
+      dataSource: dataSource,
     );
   }
 
-  Future<FossilSummary> fetchFossilById(int id) async {
-    final uri = AppConfig.fossilUri(id);
+  Future<FossilSummary> fetchFossilById(
+    int id, {
+    CatalogDataSource dataSource = CatalogDataSource.archive,
+  }) async {
+    final uri = AppConfig.fossilUri(id, dataSource: dataSource);
     if (kDebugMode) {
       debugPrint('FossilService GET $uri');
     }

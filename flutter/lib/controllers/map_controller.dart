@@ -6,16 +6,21 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../config/app_config.dart';
+import '../controllers/catalog_mode_controller.dart';
 import '../models/site.dart';
 import '../services/site_service.dart';
 
 class MapController extends ChangeNotifier {
-  MapController({SiteService? service})
-      : _service = service ?? SiteService();
+  MapController({
+    SiteService? service,
+    CatalogModeController? catalogModeController,
+  })  : _service = service ?? SiteService(),
+        _catalogModeController = catalogModeController;
 
   static const pageSize = 500;
 
   final SiteService _service;
+  final CatalogModeController? _catalogModeController;
   final Random _random = Random();
   String? _seed;
 
@@ -43,6 +48,9 @@ class MapController extends ChangeNotifier {
   bool get isEmpty =>
       !_loading && _loadingComplete && _error == null && _geoSites.isEmpty;
 
+  CatalogDataSource get _dataSource =>
+      _catalogModeController?.dataSource ?? CatalogDataSource.archive;
+
   /// Starts or resumes background site pagination without blocking the map UI.
   void load({bool force = false}) {
     if (!force) {
@@ -50,6 +58,7 @@ class MapController extends ChangeNotifier {
     } else {
       _geoSites = [];
       _siteBounds = null;
+      _selectedSite = null;
       _offset = 0;
       _loadedCatalog = 0;
       _totalCatalog = 0;
@@ -92,7 +101,10 @@ class MapController extends ChangeNotifier {
   /// Loads the latest site row so formation and other card fields are current.
   Future<SiteSummary> siteForDisplay(SiteSummary site) async {
     try {
-      final fresh = await _service.fetchSiteById(site.siteId);
+      final fresh = await _service.fetchSiteById(
+        site.siteId,
+        dataSource: _dataSource,
+      );
       _replaceCachedSite(fresh);
       return fresh;
     } on SiteServiceException {
@@ -189,6 +201,7 @@ class MapController extends ChangeNotifier {
       offset: offset,
       sort: 'random',
       seed: seed,
+      dataSource: _dataSource,
     );
   }
 

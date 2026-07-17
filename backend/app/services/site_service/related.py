@@ -13,17 +13,19 @@ from app.models.site import Site
 from app.schemas.site import SiteDinosaurThumb, SiteDinoFossilGroup, SiteFossilThumb
 
 
-def _ensure_site_exists(session: Session, site_id: int) -> None:
+def _ensure_site_exists(session: Session, site_id: int) -> Site:
     row = session.get(Site, site_id)
     if row is None:
         raise NotFoundError(f"Site {site_id} not found")
+    return row
 
 
 def list_site_fossils(session: Session, site_id: int) -> list[SiteFossilThumb]:
-    _ensure_site_exists(session, site_id)
+    site = _ensure_site_exists(session, site_id)
     rows = session.exec(
         select(Fossil.id, Fossil.main_image_url, Fossil.identified_name).where(
-            col(Fossil.site_id) == site_id
+            col(Fossil.site_id) == site_id,
+            col(Fossil.data_source) == site.data_source,
         )
     ).all()
     rows = sorted(
@@ -41,11 +43,14 @@ def list_site_fossils(session: Session, site_id: int) -> list[SiteFossilThumb]:
 
 
 def list_site_dinosaurs(session: Session, site_id: int) -> list[SiteDinosaurThumb]:
-    _ensure_site_exists(session, site_id)
+    site = _ensure_site_exists(session, site_id)
     rows = session.exec(
         select(Dinosaur.id, Dinosaur.name, Dinosaur.main_image_url)
         .join(Fossil, col(Fossil.dinosaur_id) == col(Dinosaur.id))
-        .where(col(Fossil.site_id) == site_id)
+        .where(
+            col(Fossil.site_id) == site_id,
+            col(Fossil.data_source) == site.data_source,
+        )
         .distinct()
         .order_by(Dinosaur.name, Dinosaur.id)
     ).all()
@@ -58,7 +63,7 @@ def list_site_dinosaurs(session: Session, site_id: int) -> list[SiteDinosaurThum
 def list_site_dino_fossil_groups(
     session: Session, site_id: int
 ) -> list[SiteDinoFossilGroup]:
-    _ensure_site_exists(session, site_id)
+    site = _ensure_site_exists(session, site_id)
     rows = session.exec(
         select(
             Dinosaur.id,
@@ -69,7 +74,10 @@ def list_site_dino_fossil_groups(
             Fossil.identified_name,
         )
         .join(Fossil, col(Fossil.dinosaur_id) == col(Dinosaur.id))
-        .where(col(Fossil.site_id) == site_id)
+        .where(
+            col(Fossil.site_id) == site_id,
+            col(Fossil.data_source) == site.data_source,
+        )
         .order_by(Dinosaur.name, Dinosaur.id, Fossil.id)
     ).all()
 

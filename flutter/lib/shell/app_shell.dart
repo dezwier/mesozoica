@@ -2,10 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../controllers/auth_controller.dart';
+import '../controllers/catalog_mode_controller.dart';
+import '../controllers/map_controller.dart';
 import '../controllers/notification_controller.dart';
+import '../controllers/site_catalog_controller.dart';
+import '../controllers/fossil_catalog_controller.dart';
 import '../models/user_notification.dart';
 import '../services/api_response_cache.dart';
 import '../widgets/common/gradient_app_bar.dart';
+import '../widgets/common/catalog_mode_toggle.dart';
 import '../widgets/common/notification_icon_button.dart';
 import '../widgets/profile/community_drawer.dart';
 import '../screens/catalog/catalog_screen.dart';
@@ -26,15 +31,40 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
   int _index = _catalogTabIndex;
   final _catalogScreenKey = GlobalKey<CatalogScreenState>();
   int? _previousUserId;
+  CatalogDataSource? _previousCatalogDataSource;
+  CatalogModeController? _catalogModeController;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _attachCatalogModeListener();
+    });
+  }
+
+  void _attachCatalogModeListener() {
+    final controller = context.read<CatalogModeController>();
+    _catalogModeController = controller;
+    controller.addListener(_onCatalogModeChanged);
+    _previousCatalogDataSource = controller.dataSource;
+  }
+
+  void _onCatalogModeChanged() {
+    if (!mounted) return;
+    final source = context.read<CatalogModeController>().dataSource;
+    if (source == _previousCatalogDataSource) return;
+    _previousCatalogDataSource = source;
+
+    context.read<MapController>().load(force: true);
+    context.read<SiteCatalogController>().load(force: true);
+    context.read<FossilCatalogController>().load(force: true);
   }
 
   @override
   void dispose() {
+    _catalogModeController?.removeListener(_onCatalogModeChanged);
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -106,16 +136,19 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
               padding: const EdgeInsets.only(left: 12),
               child: Image.asset('assets/images/logo.png', height: 32),
             ),
-            actions: auth.isLoggedIn
-                ? [
-                    Padding(
-                      padding: const EdgeInsets.only(right: 8),
-                      child: NotificationIconButton(
-                        onTapFriendRequest: _onFriendRequestNotificationTap,
-                      ),
-                    ),
-                  ]
-                : null,
+            actions: [
+              const Padding(
+                padding: EdgeInsets.only(right: 4),
+                child: CatalogModeToggle(),
+              ),
+              if (auth.isLoggedIn)
+                Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: NotificationIconButton(
+                    onTapFriendRequest: _onFriendRequestNotificationTap,
+                  ),
+                ),
+            ],
           ),
           body: IndexedStack(
             index: _index,

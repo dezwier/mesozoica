@@ -5,10 +5,18 @@ import 'package:flutter_map/flutter_map.dart' hide MapController;
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:mesozoica/controllers/catalog_mode_controller.dart';
 import 'package:mesozoica/controllers/map_controller.dart';
 import 'package:mesozoica/services/site_service.dart';
 
+import 'package:shared_preferences/shared_preferences.dart';
+
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  setUp(() {
+    SharedPreferences.setMockInitialValues({});
+  });
   Map<String, dynamic> siteJson({
     required int siteId,
     double? latitude,
@@ -328,6 +336,41 @@ void main() {
     expect(detailCalls, 1);
     expect(displaySite.formation, 'Hell Creek Formation');
     expect(controller.geoSites.single.formation, 'Hell Creek Formation');
+
+    controller.dispose();
+  });
+
+  test('load sends data_source query param from catalog mode', () async {
+    final requests = <Uri>[];
+    final catalogMode = CatalogModeController();
+    await catalogMode.initialize();
+    await catalogMode.setDataSource(CatalogDataSource.field);
+
+    final service = SiteService(
+      client: MockClient((request) async {
+        requests.add(request.url);
+        return http.Response(
+          jsonEncode({
+            'items': [],
+            'total': 0,
+            'limit': 500,
+            'offset': 0,
+            'has_next': false,
+          }),
+          200,
+        );
+      }),
+    );
+
+    final controller = MapController(
+      service: service,
+      catalogModeController: catalogMode,
+    );
+    controller.load();
+    await pumpUntilIdle();
+
+    expect(requests, isNotEmpty);
+    expect(requests.first.queryParameters['data_source'], 'field');
 
     controller.dispose();
   });

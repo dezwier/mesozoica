@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 
 import 'config/app_config.dart';
 import 'controllers/auth_controller.dart';
+import 'controllers/catalog_mode_controller.dart';
 import 'controllers/dinosaur_catalog_controller.dart';
 import 'controllers/fossil_catalog_controller.dart';
 import 'controllers/map_controller.dart';
@@ -31,29 +32,52 @@ Future<void> main() async {
   }
   final themeController = ThemeController();
   await themeController.initialize();
-  runApp(MesozoicaApp(themeController: themeController));
+  final catalogModeController = CatalogModeController();
+  await catalogModeController.initialize();
+  runApp(MesozoicaApp(
+    themeController: themeController,
+    catalogModeController: catalogModeController,
+  ));
 }
 
 class MesozoicaApp extends StatelessWidget {
-  const MesozoicaApp({super.key, required this.themeController});
+  const MesozoicaApp({
+    super.key,
+    required this.themeController,
+    required this.catalogModeController,
+  });
 
   final ThemeController themeController;
+  final CatalogModeController catalogModeController;
 
   @override
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider.value(value: themeController),
+        ChangeNotifierProvider.value(value: catalogModeController),
         ChangeNotifierProvider(
           create: (_) => AuthController()..initialize(),
         ),
         ChangeNotifierProvider(create: (_) => NotificationController()),
         ChangeNotifierProvider(create: (_) => DinosaurCatalogController()),
-        ChangeNotifierProvider(create: (_) => FossilCatalogController()),
-        ChangeNotifierProvider(create: (_) => SiteCatalogController()),
+        ChangeNotifierProvider(
+          create: (context) => FossilCatalogController(
+            catalogModeController: context.read<CatalogModeController>(),
+          ),
+        ),
+        ChangeNotifierProvider(
+          create: (context) => SiteCatalogController(
+            catalogModeController: context.read<CatalogModeController>(),
+          ),
+        ),
         ChangeNotifierProvider(create: (_) => ToolCatalogController()),
         ChangeNotifierProvider(create: (_) => PhyloTreeController()),
-        ChangeNotifierProvider(create: (_) => MapController()),
+        ChangeNotifierProvider(
+          create: (context) => MapController(
+            catalogModeController: context.read<CatalogModeController>(),
+          ),
+        ),
         ChangeNotifierProvider(create: (_) => LocationService()),
       ],
       child: Consumer<ThemeController>(

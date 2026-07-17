@@ -145,6 +145,7 @@ class FossilSummary(BaseModel):
     dinosaur_main_image_url: str | None = None
     site_id: int | None = None
     site_main_image_url: str | None = None
+    data_source: str = "archive"
 
 
 class FossilListResponse(BaseModel):

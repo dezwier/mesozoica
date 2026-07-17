@@ -252,3 +252,33 @@ def test_site_related_fossils_and_dinosaurs(client, session):
     assert groups[0]["dinosaur"]["name"] == "Tyrannosaurus"
     assert len(groups[0]["fossils"]) == 1
     assert groups[0]["fossils"][0]["id"] == fossil.id
+
+
+def test_list_sites_filters_by_data_source(client, session):
+    site_type = _seed_site_type(session)
+    _seed_hell_creek_site(session, site_type)
+    session.add(
+        Site(
+            site_id=90001,
+            formation="Field Prospect",
+            data_source="field",
+        )
+    )
+    session.commit()
+
+    archive = client.get("/api/v1/sites", params={"data_source": "archive"})
+    assert archive.status_code == 200
+    assert archive.json()["total"] == 1
+    assert archive.json()["items"][0]["site_id"] == 50001
+    assert archive.json()["items"][0]["data_source"] == "archive"
+
+    field = client.get("/api/v1/sites", params={"data_source": "field"})
+    assert field.status_code == 200
+    assert field.json()["total"] == 1
+    assert field.json()["items"][0]["site_id"] == 90001
+    assert field.json()["items"][0]["data_source"] == "field"
+
+
+def test_list_sites_rejects_invalid_data_source(client):
+    response = client.get("/api/v1/sites", params={"data_source": "invalid"})
+    assert response.status_code == 400

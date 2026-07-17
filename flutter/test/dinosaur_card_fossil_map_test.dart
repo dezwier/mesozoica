@@ -6,11 +6,13 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:mesozoica/controllers/catalog_mode_controller.dart';
 import 'package:mesozoica/models/fossil.dart';
 import 'package:mesozoica/services/fossil_service.dart';
 import 'package:mesozoica/widgets/cards/dinosaur_card_fossil_map.dart';
 import 'package:mesozoica/widgets/cards/fossil_turnable_card.dart';
 import 'package:mesozoica/widgets/map/fossil_marker.dart';
+import 'package:provider/provider.dart';
 
 Widget _noTileLayer() => const SizedBox.shrink();
 
@@ -37,6 +39,13 @@ FossilSummary _fossil({
 }) {
   return FossilSummary.fromJson(
     _fossilJson(id: id, latitude: latitude, longitude: longitude),
+  );
+}
+
+Widget _wrapWithCatalogMode(Widget child) {
+  return ChangeNotifierProvider(
+    create: (_) => CatalogModeController(),
+    child: MaterialApp(home: child),
   );
 }
 
@@ -116,8 +125,8 @@ void main() {
     );
 
     await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
+      _wrapWithCatalogMode(
+        Scaffold(
           body: Center(
             child: SizedBox(
               width: 260,
@@ -160,8 +169,8 @@ void main() {
     );
 
     await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
+      _wrapWithCatalogMode(
+        Scaffold(
           body: Center(
             child: SizedBox(
               width: 260,
@@ -204,8 +213,8 @@ void main() {
     );
 
     await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
+      _wrapWithCatalogMode(
+        Scaffold(
           body: Center(
             child: SizedBox(
               width: 260,

@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:provider/provider.dart';
 
 import '../../config/map_config.dart';
+import '../../controllers/catalog_mode_controller.dart';
 import '../../models/fossil.dart';
 import '../../services/fossil_service.dart';
 import '../../theme/dino_card_theme.dart';
@@ -33,24 +35,25 @@ class _DinosaurCardFossilMapState extends State<DinosaurCardFossilMap> {
   bool _loading = true;
   bool _error = false;
   List<FossilSummary> _geolocatedFossils = const [];
+  CatalogDataSource? _loadedForSource;
+  int? _loadedForDinosaurId;
 
   @override
   void initState() {
     super.initState();
     _ownsService = widget.fossilService == null;
     _service = widget.fossilService ?? FossilService();
-    _loadFossils();
   }
 
   @override
   void didUpdateWidget(covariant DinosaurCardFossilMap oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.dinosaurId != widget.dinosaurId) {
-      _loadFossils();
+      _loadedForDinosaurId = null;
     }
   }
 
-  Future<void> _loadFossils() async {
+  Future<void> _loadFossils(CatalogDataSource source) async {
     setState(() {
       _loading = true;
       _error = false;
@@ -58,8 +61,10 @@ class _DinosaurCardFossilMapState extends State<DinosaurCardFossilMap> {
     });
 
     try {
-      final response =
-          await _service.fetchFossilsForDinosaur(widget.dinosaurId);
+      final response = await _service.fetchFossilsForDinosaur(
+        widget.dinosaurId,
+        dataSource: source,
+      );
       if (!mounted) return;
       setState(() {
         _loading = false;
@@ -84,6 +89,13 @@ class _DinosaurCardFossilMapState extends State<DinosaurCardFossilMap> {
 
   @override
   Widget build(BuildContext context) {
+    final source = context.watch<CatalogModeController>().dataSource;
+    if (_loadedForSource != source || _loadedForDinosaurId != widget.dinosaurId) {
+      _loadedForSource = source;
+      _loadedForDinosaurId = widget.dinosaurId;
+      _loadFossils(source);
+    }
+
     final cardTheme = DinoCardTheme.of(context);
 
     if (_loading) {

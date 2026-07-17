@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from sqlmodel import Session, col, select
 
 from app.models.dinosaur import Dinosaur
+from app.models.data_source import DATA_SOURCE_ARCHIVE
 from app.models.fossil import Fossil
 from app.models.site import Site
 from app.services.dinosaur_name_filter import dino_name_match_clause
@@ -26,7 +27,7 @@ class SiteDraft:
 
 
 def fossil_query(session: Session, *, dinos: list[str] | None):
-    stmt = select(Fossil)
+    stmt = select(Fossil).where(col(Fossil.data_source) == DATA_SOURCE_ARCHIVE)
     if dinos:
         stmt = stmt.join(Dinosaur, col(Fossil.dinosaur_id) == col(Dinosaur.id)).where(
             dino_name_match_clause(dinos)
@@ -37,7 +38,10 @@ def fossil_query(session: Session, *, dinos: list[str] | None):
 def site_members(session: Session, collection_nos: set[int]) -> dict[int, list[Fossil]]:
     if not collection_nos:
         return {}
-    stmt = select(Fossil).where(col(Fossil.collection_no).in_(collection_nos))
+    stmt = select(Fossil).where(
+        col(Fossil.collection_no).in_(collection_nos),
+        col(Fossil.data_source) == DATA_SOURCE_ARCHIVE,
+    )
     grouped: dict[int, list[Fossil]] = defaultdict(list)
     for fossil in session.exec(stmt).all():
         if fossil.collection_no is not None:

@@ -8,6 +8,8 @@ from typing import Optional
 from sqlalchemy import Column, ForeignKey, Numeric
 from sqlmodel import Field, SQLModel
 
+from app.models.data_source import DATA_SOURCE_ARCHIVE
+
 
 class Site(SQLModel, table=True):
     """One row per PBDB collection locality (collection_no)."""
@@ -31,4 +33,10 @@ class Site(SQLModel, table=True):
             nullable=True,
             index=True,
         ),
+    )
+    data_source: str = Field(
+        default=DATA_SOURCE_ARCHIVE,
+        max_length=16,
+        index=True,
+        description="archive (PBDB/wiki) or field (procedural)",
     )

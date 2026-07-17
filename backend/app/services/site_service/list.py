@@ -11,6 +11,7 @@ from sqlmodel import Session, col, func as sqlmodel_func, select
 from app.core.exceptions import NotFoundError, ValidationError
 from app.models.site import Site
 from app.models.site_type import SiteType
+from app.services.data_source_filter import normalize_data_source
 from app.services.site_service.summary import SiteRow
 from app.services.site_type_image_service.sync import CURATED_MEDIA_PATH
 
@@ -31,10 +32,12 @@ def list_sites(
     ma_younger: float | None = None,
     ma_older: float | None = None,
     has_custom_image: bool = False,
+    data_source: str | None = None,
 ) -> tuple[list[SiteRow], int]:
     """Return paginated site rows joined with site_type."""
     capped_limit = max(1, min(limit, 500))
     capped_offset = max(0, offset)
+    normalized_data_source = normalize_data_source(data_source)
     normalized_q, younger, older, time_filter_active = _normalize_filters(
         q=q,
         ma_younger=ma_younger,
@@ -47,6 +50,7 @@ def list_sites(
         ma_older=older,
         time_filter_active=effective_time_filter,
         has_custom_image=has_custom_image,
+        data_source=normalized_data_source,
     )
 
     total = session.exec(
@@ -78,11 +82,20 @@ def list_sites(
     return [_row_from_tuple(row) for row in rows], int(total)
 
 
-def get_site_by_id(session: Session, site_id: int) -> SiteRow:
+def get_site_by_id(
+    session: Session,
+    site_id: int,
+    *,
+    data_source: str | None = None,
+) -> SiteRow:
+    normalized_data_source = normalize_data_source(data_source)
     row = session.exec(
         select(Site, SiteType)
         .outerjoin(SiteType, col(Site.site_type_id) == col(SiteType.id))
-        .where(col(Site.site_id) == site_id)
+        .where(
+            col(Site.site_id) == site_id,
+            col(Site.data_source) == normalized_data_source,
+        )
     ).first()
     if row is None:
         raise NotFoundError(f"Site {site_id} not found")
@@ -121,10 +134,11 @@ def _filtered_select(
     ma_older: float | None,
     time_filter_active: bool,
     has_custom_image: bool,
+    data_source: str,
 ):
     stmt = select(Site, SiteType).outerjoin(
         SiteType, col(Site.site_type_id) == col(SiteType.id)
-    )
+    ).where(col(Site.data_source) == data_source)
     if has_custom_image:
         stmt = stmt.where(
             col(SiteType.main_image_url).is_not(None),

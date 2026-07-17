@@ -6,10 +6,11 @@ import logging
 import time
 from dataclasses import dataclass, field
 
-from sqlmodel import Session, select
+from sqlmodel import Session, col, select
 
 from app.core.config import settings
 from app.models.dinosaur import Dinosaur
+from app.models.data_source import DATA_SOURCE_ARCHIVE
 from app.models.fossil import Fossil
 from app.services.dinosaur_image_service.sync import resolve_local_source_dir_for_sync
 from app.services.dinosaur_name_filter import dino_name_match_clause
@@ -71,7 +72,10 @@ def _select_candidates(
     stmt = (
         select(Fossil, Dinosaur)
         .join(Dinosaur, Fossil.dinosaur_id == Dinosaur.id)
-        .where(Fossil.llm_enriched.is_(True))  # type: ignore[attr-defined]
+        .where(
+            Fossil.llm_enriched.is_(True),  # type: ignore[attr-defined]
+            col(Fossil.data_source) == DATA_SOURCE_ARCHIVE,
+        )
     )
     if dinos:
         stmt = stmt.where(dino_name_match_clause(dinos))

@@ -7,6 +7,7 @@ from sqlmodel import Session
 
 from app.core.database import get_session
 from app.core.exceptions import ValidationError
+from app.models.data_source import DATA_SOURCE_ARCHIVE
 from app.schemas.site import (
     SiteDinosaurThumbListResponse,
     SiteDinoFossilGroupListResponse,
@@ -38,6 +39,7 @@ def get_sites(
     ma_younger: float | None = Query(default=None),
     ma_older: float | None = Query(default=None),
     has_custom_image: bool = Query(default=False),
+    data_source: str = Query(default=DATA_SOURCE_ARCHIVE),
 ) -> SiteListResponse:
     if sort not in ("name", "random"):
         raise ValidationError("sort must be one of: name, random")
@@ -51,6 +53,7 @@ def get_sites(
         ma_younger=ma_younger,
         ma_older=ma_older,
         has_custom_image=has_custom_image,
+        data_source=data_source,
     )
     types_by_period = load_site_types_by_period(session)
     items = [site_row_to_summary(row, types_by_period=types_by_period) for row in rows]
@@ -67,8 +70,9 @@ def get_sites(
 def get_site(
     site_id: int,
     session: Session = Depends(get_session),
+    data_source: str = Query(default=DATA_SOURCE_ARCHIVE),
 ) -> SiteSummary:
-    row = get_site_by_id(session, site_id)
+    row = get_site_by_id(session, site_id, data_source=data_source)
     types_by_period = load_site_types_by_period(session)
     return site_row_to_summary(row, types_by_period=types_by_period)
 

@@ -4,6 +4,8 @@ import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
+import '../controllers/catalog_mode_controller.dart';
+
 /// Global application configuration.
 class AppConfig {
   AppConfig._();
@@ -111,6 +113,7 @@ class AppConfig {
     bool hasCustomFossilImage = false,
     bool? llmEnriched,
     int? dinosaurId,
+    CatalogDataSource dataSource = CatalogDataSource.archive,
   }) {
     final params = <String, String>{
       'limit': '$limit',
@@ -148,13 +151,19 @@ class AppConfig {
     if (dinosaurId != null) {
       params['dinosaur_id'] = '$dinosaurId';
     }
+    params['data_source'] = dataSource.apiValue;
     return Uri.parse('$baseApiUrl/api/v1/fossils').replace(
       queryParameters: params,
     );
   }
 
-  static Uri fossilUri(int id) =>
-      Uri.parse('$baseApiUrl/api/v1/fossils/$id');
+  static Uri fossilUri(
+    int id, {
+    CatalogDataSource dataSource = CatalogDataSource.archive,
+  }) =>
+      Uri.parse('$baseApiUrl/api/v1/fossils/$id').replace(
+        queryParameters: {'data_source': dataSource.apiValue},
+      );
 
   static Uri sitesUri({
     int limit = 200,
@@ -165,6 +174,7 @@ class AppConfig {
     double? maYounger,
     double? maOlder,
     bool hasCustomImage = false,
+    CatalogDataSource dataSource = CatalogDataSource.archive,
   }) {
     final params = <String, String>{
       'limit': '$limit',
@@ -185,12 +195,19 @@ class AppConfig {
     if (hasCustomImage) {
       params['has_custom_image'] = 'true';
     }
+    params['data_source'] = dataSource.apiValue;
     return Uri.parse('$baseApiUrl/api/v1/sites').replace(
       queryParameters: params,
     );
   }
 
-  static Uri siteUri(int id) => Uri.parse('$baseApiUrl/api/v1/sites/$id');
+  static Uri siteUri(
+    int id, {
+    CatalogDataSource dataSource = CatalogDataSource.archive,
+  }) =>
+      Uri.parse('$baseApiUrl/api/v1/sites/$id').replace(
+        queryParameters: {'data_source': dataSource.apiValue},
+      );
 
   static Uri siteFossilsUri(int siteId) =>
       Uri.parse('$baseApiUrl/api/v1/sites/$siteId/fossils');

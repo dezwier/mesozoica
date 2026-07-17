@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
+import '../../controllers/catalog_mode_controller.dart';
 import '../../models/fossil.dart';
 import '../../services/fossil_service.dart';
 import 'card_detail_sheet.dart';
@@ -35,14 +37,23 @@ class _FossilCardSheet extends StatefulWidget {
 class _FossilCardSheetState extends State<_FossilCardSheet> {
   late final FossilService _service;
   late final bool _ownsService;
-  late final Future<FossilSummary> _fossilFuture;
+  Future<FossilSummary>? _fossilFuture;
+  CatalogDataSource? _loadedForSource;
 
   @override
   void initState() {
     super.initState();
     _ownsService = widget.fossilService == null;
     _service = widget.fossilService ?? FossilService();
-    _fossilFuture = _service.fetchFossilById(widget.fossilId);
+  }
+
+  void _ensureLoaded(CatalogDataSource source) {
+    if (_loadedForSource == source && _fossilFuture != null) return;
+    _loadedForSource = source;
+    _fossilFuture = _service.fetchFossilById(
+      widget.fossilId,
+      dataSource: source,
+    );
   }
 
   @override
@@ -55,6 +66,9 @@ class _FossilCardSheetState extends State<_FossilCardSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final source = context.watch<CatalogModeController>().dataSource;
+    _ensureLoaded(source);
+
     return FutureBuilder<FossilSummary>(
       future: _fossilFuture,
       builder: (context, snapshot) {

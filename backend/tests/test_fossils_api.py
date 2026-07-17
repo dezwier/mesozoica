@@ -529,3 +529,36 @@ def test_list_fossils_filter_has_custom_image(client, session):
     all_response = client.get("/api/v1/fossils?sort=name")
     assert all_response.status_code == 200
     assert all_response.json()["total"] == 3
+
+
+def test_list_fossils_filters_by_data_source(client, session):
+    dinosaur = _seed_tyrannosaurus(session)
+    site_type = _seed_site_type(session)
+    _seed_hell_creek_site(session, site_type)
+    _seed_hell_creek_fossil(session, dinosaur)
+    session.add(
+        Fossil(
+            id=200001,
+            dinosaur_id=dinosaur.id,
+            identified_name="Field specimen",
+            data_source="field",
+        )
+    )
+    session.commit()
+
+    archive = client.get("/api/v1/fossils", params={"data_source": "archive"})
+    assert archive.status_code == 200
+    assert archive.json()["total"] == 1
+    assert archive.json()["items"][0]["id"] == 100001
+    assert archive.json()["items"][0]["data_source"] == "archive"
+
+    field = client.get("/api/v1/fossils", params={"data_source": "field"})
+    assert field.status_code == 200
+    assert field.json()["total"] == 1
+    assert field.json()["items"][0]["id"] == 200001
+    assert field.json()["items"][0]["data_source"] == "field"
+
+
+def test_list_fossils_rejects_invalid_data_source(client):
+    response = client.get("/api/v1/fossils", params={"data_source": "invalid"})
+    assert response.status_code == 400

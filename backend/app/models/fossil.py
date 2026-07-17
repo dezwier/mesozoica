@@ -8,6 +8,8 @@ from typing import Optional
 from sqlalchemy import Column, ForeignKey, Numeric, Text
 from sqlmodel import Field, SQLModel
 
+from app.models.data_source import DATA_SOURCE_ARCHIVE
+
 
 class Fossil(SQLModel, table=True):
     """PBDB fossil occurrence linked to a dinosaur genus."""
@@ -184,3 +186,9 @@ class Fossil(SQLModel, table=True):
     llm_imp_subcategory: Optional[str] = Field(default=None, max_length=64)
     llm_imp_preservation_quality: Optional[str] = Field(default=None, max_length=32)
     llm_imp_completeness: Optional[str] = Field(default=None, max_length=32)
+    data_source: str = Field(
+        default=DATA_SOURCE_ARCHIVE,
+        max_length=16,
+        index=True,
+        description="archive (PBDB/wiki) or field (procedural)",
+    )

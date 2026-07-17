@@ -42,6 +42,7 @@ def site_row_to_summary(
         site_type_period=site_type.period if site_type else None,
         site_type_rock_type=site_type.rock_type if site_type else None,
         main_image_url=site_type.main_image_url if site_type else None,
+        data_source=site.data_source,
     )
 
 

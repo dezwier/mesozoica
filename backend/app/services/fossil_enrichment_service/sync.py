@@ -11,6 +11,7 @@ from sqlmodel import Session, col, func, select
 
 from app.core.config import settings
 from app.models.dinosaur import Dinosaur
+from app.models.data_source import DATA_SOURCE_ARCHIVE
 from app.models.fossil import Fossil
 from app.services.dinosaur_image_service.sync import CURATED_MEDIA_PATH
 from app.services.dinosaur_name_filter import dino_name_match_clause
@@ -63,7 +64,8 @@ def reset_llm_enriched_flags(
     """Clear llm_enriched so an interrupted overwrite run can resume without --overwrite."""
     if dry_run:
         stmt = select(func.count()).select_from(Fossil).where(
-            Fossil.llm_enriched.is_(True)  # type: ignore[attr-defined]
+            Fossil.llm_enriched.is_(True),  # type: ignore[attr-defined]
+            col(Fossil.data_source) == DATA_SOURCE_ARCHIVE,
         )
         if dinos:
             stmt = stmt.join(Dinosaur, Fossil.dinosaur_id == Dinosaur.id).where(
@@ -72,7 +74,8 @@ def reset_llm_enriched_flags(
         return int(session.exec(stmt).one())
 
     stmt = update(Fossil).values(llm_enriched=False).where(
-        Fossil.llm_enriched.is_(True)  # type: ignore[attr-defined]
+        Fossil.llm_enriched.is_(True),  # type: ignore[attr-defined]
+        col(Fossil.data_source) == DATA_SOURCE_ARCHIVE,
     )
     if dinos:
         dinosaur_ids = select(Dinosaur.id).where(dino_name_match_clause(dinos))  # type: ignore[arg-type]
@@ -89,7 +92,9 @@ def _select_candidates(
     max_records: int | None,
     dinos: list[str] | None = None,
 ) -> list[FossilCandidate]:
-    stmt = select(Fossil, Dinosaur).join(Dinosaur, Fossil.dinosaur_id == Dinosaur.id)
+    stmt = select(Fossil, Dinosaur).join(
+        Dinosaur, Fossil.dinosaur_id == Dinosaur.id
+    ).where(col(Fossil.data_source) == DATA_SOURCE_ARCHIVE)
     if not include_enriched:
         stmt = stmt.where(Fossil.llm_enriched.is_(False))  # type: ignore[attr-defined]
     if dinos:

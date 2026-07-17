@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
+import '../../controllers/catalog_mode_controller.dart';
 import '../../models/fossil.dart';
 import '../../services/fossil_service.dart';
 import '../../theme/dino_card_theme.dart';
@@ -25,26 +27,41 @@ class DinosaurCardFossilList extends StatefulWidget {
 class _DinosaurCardFossilListState extends State<DinosaurCardFossilList> {
   late final FossilService _service;
   late final bool _ownsService;
-  late Future<List<FossilSummary>> _fossilsFuture;
+  Future<List<FossilSummary>>? _fossilsFuture;
+  CatalogDataSource? _loadedForSource;
+  int? _loadedForDinosaurId;
 
   @override
   void initState() {
     super.initState();
     _ownsService = widget.fossilService == null;
     _service = widget.fossilService ?? FossilService();
-    _fossilsFuture = _loadFossils();
+  }
+
+  void _ensureLoaded(CatalogDataSource source) {
+    if (_loadedForSource == source &&
+        _loadedForDinosaurId == widget.dinosaurId &&
+        _fossilsFuture != null) {
+      return;
+    }
+    _loadedForSource = source;
+    _loadedForDinosaurId = widget.dinosaurId;
+    _fossilsFuture = _loadFossils(source);
   }
 
   @override
   void didUpdateWidget(covariant DinosaurCardFossilList oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.dinosaurId != widget.dinosaurId) {
-      _fossilsFuture = _loadFossils();
+      _loadedForDinosaurId = null;
     }
   }
 
-  Future<List<FossilSummary>> _loadFossils() async {
-    final response = await _service.fetchFossilsForDinosaur(widget.dinosaurId);
+  Future<List<FossilSummary>> _loadFossils(CatalogDataSource source) async {
+    final response = await _service.fetchFossilsForDinosaur(
+      widget.dinosaurId,
+      dataSource: source,
+    );
     return response.items;
   }
 
@@ -58,6 +75,8 @@ class _DinosaurCardFossilListState extends State<DinosaurCardFossilList> {
 
   @override
   Widget build(BuildContext context) {
+    final source = context.watch<CatalogModeController>().dataSource;
+    _ensureLoaded(source);
     final cardTheme = DinoCardTheme.of(context);
 
     return FutureBuilder<List<FossilSummary>>(

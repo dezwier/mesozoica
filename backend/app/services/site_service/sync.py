@@ -10,6 +10,7 @@ from sqlalchemy import delete, update
 from sqlmodel import Session, col
 
 from app.models.fossil import Fossil
+from app.models.data_source import DATA_SOURCE_ARCHIVE
 from app.models.site import Site
 from app.services.site_service.build import (
     apply_site_draft,
@@ -97,13 +98,18 @@ def sync_sites(
     full_refresh = not dinos
 
     if full_refresh:
-        session.exec(delete(Site))
+        session.exec(delete(Site).where(col(Site.data_source) == DATA_SOURCE_ARCHIVE))
         session.flush()
         for site_row in site_rows:
             session.add(site_row)
         session.flush()
         session.exec(
-            update(Fossil).values(site_id=None).where(col(Fossil.collection_no).is_(None))
+            update(Fossil)
+            .values(site_id=None)
+            .where(
+                col(Fossil.collection_no).is_(None),
+                col(Fossil.data_source) == DATA_SOURCE_ARCHIVE,
+            )
         )
         for fossil in fossils_to_link:
             fossil.site_id = fossil.collection_no
@@ -112,7 +118,7 @@ def sync_sites(
             existing = session.get(Site, draft.site.site_id)
             if existing is None:
                 session.add(draft.site)
-            else:
+            elif existing.data_source == DATA_SOURCE_ARCHIVE:
                 apply_site_draft(existing, draft.site)
         session.flush()
         for fossil in fossils_to_link:

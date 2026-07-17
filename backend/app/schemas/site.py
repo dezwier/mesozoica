@@ -23,6 +23,7 @@ class SiteSummary(BaseModel):
     site_type_period: str | None = None
     site_type_rock_type: str | None = None
     main_image_url: str | None = None
+    data_source: str = "archive"
 
 
 class SiteListResponse(BaseModel):

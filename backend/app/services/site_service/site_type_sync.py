@@ -10,6 +10,7 @@ from sqlalchemy import delete
 from sqlmodel import Session, col, select
 
 from app.models.dinosaur import Dinosaur
+from app.models.data_source import DATA_SOURCE_ARCHIVE
 from app.models.fossil import Fossil
 from app.models.site import Site
 from app.models.site_type import SiteType
@@ -40,7 +41,7 @@ class SiteTypeSyncSummary:
 
 
 def _sites_query(session: Session, *, dinos: list[str] | None):
-    stmt = select(Site)
+    stmt = select(Site).where(col(Site.data_source) == DATA_SOURCE_ARCHIVE)
     if dinos:
         stmt = (
             stmt.join(Fossil, col(Fossil.site_id) == col(Site.site_id))

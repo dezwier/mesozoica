@@ -4,11 +4,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+import 'package:mesozoica/controllers/catalog_mode_controller.dart';
 import 'package:mesozoica/services/fossil_service.dart';
 import 'package:mesozoica/widgets/cards/dinosaur_card_fossil_list.dart';
 import 'package:mesozoica/widgets/cards/fossil_card_dialog.dart';
 import 'package:mesozoica/widgets/cards/card_record_thumb.dart';
 import 'package:mesozoica/widgets/cards/fossil_turnable_card.dart';
+import 'package:provider/provider.dart';
 
 const _curatedFossilImageUrl =
     'https://mesozoica-production.up.railway.app/media/fossils/100001.webp';
@@ -29,6 +31,13 @@ Map<String, dynamic> _fossilJson({
   };
 }
 
+Widget _wrapWithCatalogMode(Widget child) {
+  return ChangeNotifierProvider(
+    create: (_) => CatalogModeController(),
+    child: MaterialApp(home: child),
+  );
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -37,6 +46,7 @@ void main() {
     final service = FossilService(
       client: MockClient((request) async {
         expect(request.url.queryParameters['dinosaur_id'], '1');
+        expect(request.url.queryParameters['data_source'], 'archive');
         return http.Response(
           jsonEncode({
             'items': [
@@ -54,8 +64,8 @@ void main() {
     );
 
     await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
+      _wrapWithCatalogMode(
+        Scaffold(
           body: Center(
             child: SizedBox(
               width: 120,
@@ -91,6 +101,7 @@ void main() {
     final service = FossilService(
       client: MockClient((request) async {
         expect(request.url.path, endsWith('/fossils/100001'));
+        expect(request.url.queryParameters['data_source'], 'archive');
         return http.Response(
           jsonEncode(_fossilJson(id: 100001, mainImageUrl: _curatedFossilImageUrl)),
           200,
@@ -99,8 +110,8 @@ void main() {
     );
 
     await tester.pumpWidget(
-      MaterialApp(
-        home: Builder(
+      _wrapWithCatalogMode(
+        Builder(
           builder: (context) {
             return Scaffold(
               body: Center(

@@ -212,3 +212,47 @@ def test_sync_fails_when_collection_no_missing(session: Session):
     assert summary.counters.fossils_skipped == 1
     assert site_sync_exit_code(summary) == 1
     assert fossil.site_id is None
+
+
+def test_sync_full_refresh_preserves_field_rows(session: Session):
+    dinosaur = _dinosaur()
+    session.add(dinosaur)
+    session.commit()
+    session.refresh(dinosaur)
+
+    session.add(_fossil(occurrence_no=139292, dinosaur_id=dinosaur.id))
+    session.add(
+        Site(
+            site_id=88001,
+            formation="Field Prospect",
+            data_source="field",
+        )
+    )
+    session.add(
+        Fossil(
+            id=88002,
+            dinosaur_id=dinosaur.id,
+            identified_name="Field fragment",
+            collection_no=88001,
+            site_id=88001,
+            data_source="field",
+        )
+    )
+    session.commit()
+
+    sync_sites(session)
+
+    field_site = session.get(Site, 88001)
+    field_fossil = session.get(Fossil, 88002)
+    assert field_site is not None
+    assert field_site.data_source == "field"
+    assert field_site.formation == "Field Prospect"
+    assert field_fossil is not None
+    assert field_fossil.data_source == "field"
+    assert field_fossil.site_id == 88001
+
+    archive_sites = list(
+        session.exec(select(Site).where(Site.data_source == "archive")).all()
+    )
+    assert len(archive_sites) == 1
+    assert archive_sites[0].site_id == 9954

@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 import '../config/app_config.dart';
+import '../controllers/catalog_mode_controller.dart';
 import '../models/site.dart';
 
 class SiteService {
@@ -20,6 +21,7 @@ class SiteService {
     double? maYounger,
     double? maOlder,
     bool hasCustomImage = false,
+    CatalogDataSource dataSource = CatalogDataSource.archive,
   }) async {
     final uri = AppConfig.sitesUri(
       limit: limit,
@@ -30,6 +32,7 @@ class SiteService {
       maYounger: maYounger,
       maOlder: maOlder,
       hasCustomImage: hasCustomImage,
+      dataSource: dataSource,
     );
     if (kDebugMode) {
       debugPrint('SiteService GET $uri');
@@ -50,8 +53,11 @@ class SiteService {
     return SiteListResponse.fromJson(decoded);
   }
 
-  Future<SiteSummary> fetchSiteById(int id) async {
-    final uri = AppConfig.siteUri(id);
+  Future<SiteSummary> fetchSiteById(
+    int id, {
+    CatalogDataSource dataSource = CatalogDataSource.archive,
+  }) async {
+    final uri = AppConfig.siteUri(id, dataSource: dataSource);
     if (kDebugMode) {
       debugPrint('SiteService GET $uri');
     }

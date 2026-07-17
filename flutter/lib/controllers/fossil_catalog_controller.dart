@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:flutter/foundation.dart';
 
 import '../config/app_config.dart';
+import '../controllers/catalog_mode_controller.dart';
 import '../models/fossil.dart';
 import '../services/fossil_service.dart';
 import '../widgets/cards/fossil_card_image.dart';
@@ -63,13 +64,17 @@ class FossilCatalogFilters {
 }
 
 class FossilCatalogController extends ChangeNotifier {
-  FossilCatalogController({FossilService? service})
-      : _service = service ?? FossilService();
+  FossilCatalogController({
+    FossilService? service,
+    CatalogModeController? catalogModeController,
+  })  : _service = service ?? FossilService(),
+        _catalogModeController = catalogModeController;
 
   static const pageSize = 20;
   static const _clientScanPageSize = 500;
 
   final FossilService _service;
+  final CatalogModeController? _catalogModeController;
   final Random _random = Random();
 
   List<FossilSummary> _items = [];
@@ -93,6 +98,9 @@ class FossilCatalogController extends ChangeNotifier {
   int get total => _total;
   FossilCatalogFilters get filters => _filters;
   bool get hasActiveFilters => _filters.hasActiveFilters;
+
+  CatalogDataSource get _dataSource =>
+      _catalogModeController?.dataSource ?? CatalogDataSource.archive;
 
   Future<void> load({bool force = false}) async {
     if (!force && _items.isNotEmpty) return;
@@ -214,6 +222,7 @@ class FossilCatalogController extends ChangeNotifier {
       maOlder: !hasSearch && _filters.hasTimeFilter ? _filters.maOlder : null,
       hasCustomFossilImage: _filters.onlyCustomFossilImage,
       llmEnriched: _filters.onlyLlmEnriched,
+      dataSource: _dataSource,
     );
 
     if (_filters.onlyCustomFossilImage &&
@@ -257,6 +266,7 @@ class FossilCatalogController extends ChangeNotifier {
             !hasSearch && _filters.hasTimeFilter ? _filters.maYounger : null,
         maOlder: !hasSearch && _filters.hasTimeFilter ? _filters.maOlder : null,
         llmEnriched: _filters.onlyLlmEnriched,
+        dataSource: _dataSource,
       );
       curated.addAll(
         response.items.where(

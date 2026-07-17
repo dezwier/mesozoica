@@ -15,6 +15,7 @@ from app.models.dinosaur import Dinosaur
 from app.models.fossil import Fossil
 from app.models.site import Site
 from app.models.site_type import SiteType
+from app.services.data_source_filter import normalize_data_source
 from app.services.dinosaur_image_service.sync import CURATED_MEDIA_PATH as DINOSAUR_CURATED_MEDIA_PATH
 from app.services.fossil_image_service.sync import CURATED_MEDIA_PATH as FOSSIL_CURATED_MEDIA_PATH
 from app.services.site_service.site_type_fallback import effective_site_type
@@ -50,10 +51,12 @@ def list_fossils(
     has_custom_fossil_image: bool = False,
     llm_enriched: bool | None = None,
     dinosaur_id: int | None = None,
+    data_source: str | None = None,
 ) -> tuple[list[FossilRow], int]:
     """Return paginated fossil rows joined with dinosaur catalog fields."""
     capped_limit = max(1, min(limit, 500))
     capped_offset = max(0, offset)
+    normalized_data_source = normalize_data_source(data_source)
     normalized_q, normalized_dino_q, normalized_fossil_q, younger, older, time_filter_active = (
         _normalize_filters(
             q=q,
@@ -80,6 +83,7 @@ def list_fossils(
         has_custom_fossil_image=has_custom_fossil_image,
         llm_enriched=llm_enriched,
         dinosaur_id=dinosaur_id,
+        data_source=normalized_data_source,
     )
 
     total = session.exec(
@@ -111,9 +115,18 @@ def list_fossils(
     return [_row_from_tuple(row) for row in rows], int(total)
 
 
-def get_fossil_by_id(session: Session, fossil_id: int) -> FossilRow:
+def get_fossil_by_id(
+    session: Session,
+    fossil_id: int,
+    *,
+    data_source: str | None = None,
+) -> FossilRow:
+    normalized_data_source = normalize_data_source(data_source)
     row = session.exec(
-        _base_select().where(col(Fossil.id) == fossil_id)
+        _base_select().where(
+            col(Fossil.id) == fossil_id,
+            col(Fossil.data_source) == normalized_data_source,
+        )
     ).first()
     if row is None:
         raise NotFoundError(f"Fossil {fossil_id} not found")
@@ -161,8 +174,9 @@ def _filtered_select(
     has_custom_fossil_image: bool,
     llm_enriched: bool | None,
     dinosaur_id: int | None = None,
+    data_source: str,
 ):
-    stmt = _base_select()
+    stmt = _base_select().where(col(Fossil.data_source) == data_source)
     if dinosaur_id is not None:
         stmt = stmt.where(col(Fossil.dinosaur_id) == dinosaur_id)
     if has_custom_image:

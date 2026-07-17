@@ -7,6 +7,7 @@ from sqlmodel import Session
 
 from app.core.database import get_session
 from app.core.exceptions import ValidationError
+from app.models.data_source import DATA_SOURCE_ARCHIVE
 from app.schemas.fossil import FossilListResponse, FossilSummary
 from app.services.fossil_service.list import fossil_row_to_summary, get_fossil_by_id, list_fossils
 from app.services.site_service.site_type_fallback import load_site_types_by_period
@@ -30,6 +31,7 @@ def get_fossils(
     has_custom_fossil_image: bool = Query(default=False),
     llm_enriched: bool | None = Query(default=None),
     dinosaur_id: int | None = Query(default=None, ge=1),
+    data_source: str = Query(default=DATA_SOURCE_ARCHIVE),
 ) -> FossilListResponse:
     if sort not in ("name", "random"):
         raise ValidationError("sort must be one of: name, random")
@@ -48,6 +50,7 @@ def get_fossils(
         has_custom_fossil_image=has_custom_fossil_image,
         llm_enriched=llm_enriched,
         dinosaur_id=dinosaur_id,
+        data_source=data_source,
     )
     types_by_period = load_site_types_by_period(session)
     items = [
@@ -66,7 +69,8 @@ def get_fossils(
 def get_fossil(
     fossil_id: int,
     session: Session = Depends(get_session),
+    data_source: str = Query(default=DATA_SOURCE_ARCHIVE),
 ) -> FossilSummary:
-    row = get_fossil_by_id(session, fossil_id)
+    row = get_fossil_by_id(session, fossil_id, data_source=data_source)
     types_by_period = load_site_types_by_period(session)
     return fossil_row_to_summary(row, types_by_period=types_by_period)

@@ -13,6 +13,7 @@ from sqlalchemy import case, update
 from sqlmodel import Session, col, func, select
 
 from app.models.dinosaur import Dinosaur
+from app.models.data_source import DATA_SOURCE_ARCHIVE
 from app.models.fossil import Fossil
 from app.services.dinosaur_image_service.sync import CURATED_MEDIA_PATH
 from app.services.dinosaur_name_filter import dino_name_match_clause
@@ -127,6 +128,7 @@ def _record_to_fossil(record: dict[str, Any], *, dinosaur_id: int) -> Fossil | N
     return Fossil(
         id=occurrence_no,
         dinosaur_id=dinosaur_id,
+        data_source=DATA_SOURCE_ARCHIVE,
         identified_name=_parse_optional_str(record.get("identified_name"), max_len=255),
         identified_no=_parse_optional_int(record.get("identified_no")),
         identified_rank=_parse_optional_str(record.get("identified_rank"), max_len=50),
@@ -465,12 +467,15 @@ def _get_existing(session: Session, occurrence_no: int) -> Fossil | None:
 
 
 def _apply_record(existing: Fossil | None, row: Fossil, *, overwrite: bool) -> str:
+    if existing is not None and existing.data_source != DATA_SOURCE_ARCHIVE:
+        return "skip_existing"
     if existing is None:
         return "fetch_new"
     if not overwrite:
         return "skip_existing"
     _clear_llm_enrichment_fields(existing)
     _copy_fossil_fields(row, existing)
+    existing.data_source = DATA_SOURCE_ARCHIVE
     return "fetch_update"
 
 
