@@ -4,6 +4,8 @@ Scheduled background jobs for Mesozoica. Config lives in [`crons.yaml`](crons.ya
 
 Cron jobs **always use the Railway Postgres database** — not a local DB. Run them via `make` (which wraps `railway run`) or from the Railway cron service.
 
+Image **generation** writes local PNGs to repo folders; **image sync** (`make sync-*-images`) uploads those files to Railway and updates `main_image_url`.
+
 ## Jobs
 
 | ID | Schedule (UTC) | Description |
@@ -17,6 +19,8 @@ Cron jobs **always use the Railway Postgres database** — not a local DB. Run t
 | `site_type_image_generate` | `0 8 * * 0` (Sun 08:00) | Generate site-type card images via Gemini Imagen |
 | `site_sync` | `0 9 * * 0` (Sun 09:00) | Rebuild `site` derived table and link `fossil.site_id` |
 | `site_type_sync` | `30 9 * * 0` (Sun 09:30) | Rebuild `site_type` rows and assign `site.site_type_id` |
+| `tool_sync` | `0 10 * * 0` (Sun 10:00) | Upsert tool catalog from [`backend/data/tools.json`](../data/tools.json) |
+| `tool_image_generate` | `30 10 * * 0` (Sun 10:30) | Generate tool card images via Gemini Imagen |
 
 All jobs are `enabled: false` in `crons.yaml` by default — enable individually in YAML, via `CRON_<JOB_ID>_ENABLED`, or run manually with `--job`.
 
@@ -39,9 +43,11 @@ make run-fossil-pbdb-sync
 make run-fossil-llm-enrich
 make run-site-sync
 make run-site-type-sync
+make run-tool-sync
 make run-dinosaur-image-generate
 make run-fossil-image-generate
 make run-site-type-image-generate
+make run-tool-image-generate
 
 # Pass extra runner flags via CRON_EXTRA
 make run-dinosaur-wiki-sync CRON_EXTRA='--overwrite'
@@ -68,12 +74,29 @@ make run-site-type-sync
 make run-site-type-sync CRON_EXTRA='--dry-run'
 make run-site-type-sync CRON_EXTRA='--dinos Tyrannosaurus'
 
+make run-tool-sync
+make run-tool-sync CRON_EXTRA='--dry-run'
+make run-tool-sync CRON_EXTRA='--tools "Geo Hammer" "Field Codex"'
+make run-tool-sync CRON_EXTRA='--prune'   # remove DB rows missing from tools.json
+
 make run-dinosaur-image-generate CRON_EXTRA='--max-items 5'
 make run-dinosaur-image-generate CRON_EXTRA='--dinos Tyrannosaurus --dry-run'
 make run-fossil-image-generate CRON_EXTRA='--max-items 10'
 make run-fossil-image-generate CRON_EXTRA='--dinos Tyrannosaurus --dry-run'
 make run-site-type-image-generate CRON_EXTRA='--max-items 3 --dry-run'
 make run-site-type-image-generate CRON_EXTRA='--site-types 5 18 20'
+make run-tool-image-generate CRON_EXTRA='--max-items 5'
+make run-tool-image-generate CRON_EXTRA='--tools "Geo Hammer" "Field Codex" --dry-run'
+
+# Local tool image generation (no railway run wrapper; uses backend/.env)
+make run-tool-image-generate-local CRON_EXTRA='--max-items 1 --tools "Geo Hammer"'
+
+# Upload curated images to Railway volume + DB (separate from generation)
+make sync-dinosaur-images
+make sync-fossil-images
+make sync-site-type-images
+make sync-tool-images
+make sync-tool-images CRON_EXTRA='--dry-run'
 
 # Target a specific Railway service
 make run-fossil-pbdb-sync RAILWAY_SERVICE=my-service CRON_EXTRA='--dinos Herrerasaurus'
@@ -99,12 +122,14 @@ RAILWAY_RUN=1 railway run python -m app.crons.runner --job fossil_image_generate
 RAILWAY_RUN=1 railway run python -m app.crons.runner --job site_type_image_generate
 RAILWAY_RUN=1 railway run python -m app.crons.runner --job site_sync
 RAILWAY_RUN=1 railway run python -m app.crons.runner --job site_type_sync
+RAILWAY_RUN=1 railway run python -m app.crons.runner --job tool_sync
+RAILWAY_RUN=1 railway run python -m app.crons.runner --job tool_image_generate
 
 # Flags
 RAILWAY_RUN=1 railway run python -m app.crons.runner --job dinosaur_wiki_sync --overwrite
 RAILWAY_RUN=1 railway run python -m app.crons.runner --job fossil_pbdb_sync --dinos Tyrannosaurus
-RAILWAY_RUN=1 railway run python -m app.crons.runner --job dinosaur_llm_enrich --dinos Tyrannosaurus --overwrite
-RAILWAY_RUN=1 railway run python -m app.crons.runner --job fossil_llm_enrich --dinos Tyrannosaurus --overwrite
+RAILWAY_RUN=1 railway run python -m app.crons.runner --job tool_sync --tools "Geo Hammer"
+RAILWAY_RUN=1 railway run python -m app.crons.runner --job tool_image_generate --max-items 3 --tools "Geo Hammer"
 ```
 
 ### CLI flags
@@ -119,7 +144,9 @@ RAILWAY_RUN=1 railway run python -m app.crons.runner --job fossil_llm_enrich --d
 | `--since ISO8601` | `fossil_pbdb_sync`: only genera with `fossils_insert_time` null or before this UTC time (ignored with `--overwrite`) |
 | `--max-items N` | Image generation jobs: cap successful generations per run |
 | `--site-types ID …` | `site_type_image_generate`: limit to specific `site_type.id` values |
-| `--dry-run` | Image generation: list candidates without calling Imagen or writing files; `site_sync` / `site_type_sync`: compute without DB writes |
+| `--tools NAME …` | `tool_sync` / `tool_image_generate`: limit to specific branded tool names |
+| `--prune` | `tool_sync`: delete DB tool rows whose `name` is no longer in `tools.json` |
+| `--dry-run` | Image generation: list candidates without calling Imagen or writing files; `site_sync` / `site_type_sync` / `tool_sync`: compute without DB writes |
 
 ### `fossil_pbdb_sync` resume behavior
 
@@ -130,6 +157,49 @@ RAILWAY_RUN=1 railway run python -m app.crons.runner --job fossil_llm_enrich --d
 ### `dinosaur_llm_enrich` / `fossil_llm_enrich` resume behavior
 
 - **`--overwrite`**: clears `llm_enriched` for the target scope first, then re-enriches and sets `llm_enriched=true` per successful record. If interrupted, resume with a normal run (no `--overwrite`) — completed rows are skipped, pending rows are picked up.
+
+### `tool_sync` behavior
+
+- Source of truth: [`backend/data/tools.json`](../data/tools.json).
+- Upserts by branded `name`; updates `category`, `scientific_tool`, `description`, `rarity`.
+- Preserves existing `main_image_url` on update.
+- **`--prune`**: removes DB rows not present in JSON (off by default).
+
+## Image generation
+
+All `*_image_generate` jobs write PNGs locally under repo folders:
+
+| Entity | Output folder | Filename key |
+|--------|---------------|--------------|
+| Dinosaur | `dinosaur-images/` | `{dinosaur.name}.png` |
+| Fossil | `fossil-images/` | `{fossil.id}.png` |
+| Site type | `site-type-images/` | `{period}_{rock_type}.png` |
+| Tool | `tool-images/` | `{tool.name}.png` |
+
+Requires `GOOGLE_GEMINI_API_KEY`. Default model: `imagen-4.0-ultra-generate-001` (`GEMINI_IMAGE_MODEL`).
+
+The client retries transient failures (503, capacity, timeouts) with exponential backoff, then falls back to **`imagen-4.0-fast-generate-001`** when Ultra cannot complete. Override the primary model:
+
+```bash
+GEMINI_IMAGE_MODEL=imagen-4.0-fast-generate-001 \
+  make run-tool-image-generate-local CRON_EXTRA='--max-items 5'
+```
+
+**Local tool generation** skips the `railway run` wrapper but still reads tools from Railway Postgres via `backend/.env`:
+
+```bash
+make run-tool-image-generate-local CRON_EXTRA='--max-items 1 --tools "Geo Hammer"'
+```
+
+During API capacity spikes, prefer `--max-items 1` and one tool at a time. Each successful image typically takes ~15–20s.
+
+After generating locally, upload to Railway:
+
+```bash
+make sync-tool-images
+```
+
+See also [`tool-images/README.md`](../../../tool-images/README.md) and sibling folders for sync env vars.
 
 ## Config overrides
 
@@ -145,12 +215,13 @@ RAILWAY_RUN=1 railway run python -m app.crons.runner --job dinosaur_wiki_sync
 ```bash
 export CRON_DINOSAUR_WIKI_SYNC_ENABLED=false
 export CRON_FOSSIL_PBDB_SYNC_ENABLED=1
+export CRON_TOOL_SYNC_ENABLED=1
 ```
 
-**Emergency local run** (tests only — still requires non-local `DATABASE_URL`):
+**Emergency local run** (tests or local image generation — still requires non-local `DATABASE_URL` in `backend/.env`):
 
 ```bash
-ALLOW_LOCAL_CRON=1 python -m app.crons.runner --job dinosaur_wiki_sync
+ALLOW_LOCAL_CRON=1 python -m app.crons.runner --job tool_image_generate --max-items 1
 ```
 
 ## Typical workflows
@@ -163,6 +234,11 @@ make run-fossil-pbdb-sync     CRON_EXTRA='--dinos Tyrannosaurus --overwrite'
 make run-fossil-llm-enrich    CRON_EXTRA='--dinos Tyrannosaurus --overwrite'
 make run-site-sync CRON_EXTRA='--dinos Tyrannosaurus'
 make run-site-type-sync CRON_EXTRA='--dinos Tyrannosaurus'
+
+# Tool catalog: JSON → DB → images → upload
+make run-tool-sync
+make run-tool-image-generate-local CRON_EXTRA='--max-items 10'
+make sync-tool-images
 
 # Interrupted full PBDB overwrite — resume without --overwrite
 make run-fossil-pbdb-sync CRON_EXTRA='--overwrite'   # start (or restart) full refresh

@@ -40,11 +40,11 @@ def test_generate_image_retries_transient_503(mock_once, mock_sleep):
 
 @patch("app.services.image_generation_service.client._generate_with_retries")
 @patch("app.services.image_generation_service.client.settings")
-def test_generate_image_falls_back_to_standard_model(mock_settings, mock_with_retries):
+def test_generate_image_falls_back_to_fast_model(mock_settings, mock_with_retries):
     mock_settings.gemini_image_model = "imagen-4.0-ultra-generate-001"
     mock_with_retries.side_effect = [
         ImageGenerationError("Fail to execute model for flow_id: flow-vertex-juno"),
-        (b"png-bytes", {"images_generated": 1, "cost_usd": 0.04, "model_name": "imagen-4.0-generate-001"}),
+        (b"png-bytes", {"images_generated": 1, "cost_usd": 0.02, "model_name": "imagen-4.0-fast-generate-001"}),
     ]
 
     image_bytes, usage = generate_image_with_gemini("test prompt")
@@ -52,7 +52,21 @@ def test_generate_image_falls_back_to_standard_model(mock_settings, mock_with_re
     assert image_bytes == b"png-bytes"
     assert mock_with_retries.call_count == 2
     assert mock_with_retries.call_args_list[0].kwargs["model_name"] == "imagen-4.0-ultra-generate-001"
-    assert mock_with_retries.call_args_list[1].kwargs["model_name"] == "imagen-4.0-generate-001"
+    assert mock_with_retries.call_args_list[1].kwargs["model_name"] == "imagen-4.0-fast-generate-001"
+
+
+@patch("app.services.image_generation_service.client._generate_with_retries")
+@patch("app.services.image_generation_service.client.settings")
+def test_generate_image_does_not_fallback_for_deprecated_model_error(mock_settings, mock_with_retries):
+    mock_settings.gemini_image_model = "imagen-4.0-ultra-generate-001"
+    mock_with_retries.side_effect = ImageGenerationError(
+        "This model models/imagen-4.0-generate-001 is no longer available to new users."
+    )
+
+    with pytest.raises(ImageGenerationError, match="no longer available"):
+        generate_image_with_gemini("test prompt")
+
+    assert mock_with_retries.call_count == 1
 
 
 @patch("app.services.image_generation_service.client.settings")

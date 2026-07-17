@@ -49,11 +49,12 @@ class CatalogScreenState extends State<CatalogScreen>
 
   void _onTabChanged() {
     if (_tabController.indexIsChanging) return;
-    _syncTabBarWithActiveTab();
+    _showTabBar();
     setState(() {});
   }
 
   void _onTabScrollUpdate(double offset, double delta) {
+    if (_tabController.indexIsChanging) return;
     if (offset <= 0) {
       _showTabBar();
       return;
@@ -62,20 +63,6 @@ class CatalogScreenState extends State<CatalogScreen>
       _hideTabBar();
     } else if (delta < -1) {
       _showTabBar();
-    }
-  }
-
-  void _syncTabBarWithActiveTab() {
-    final offset = switch (_tabController.index) {
-      _siteTabIndex => _siteKey.currentState?.scrollOffset ?? 0,
-      _fossilTabIndex => _fossilKey.currentState?.scrollOffset ?? 0,
-      _toolTabIndex => _toolKey.currentState?.scrollOffset ?? 0,
-      _ => _dinoKey.currentState?.scrollOffset ?? 0,
-    };
-    if (offset <= 0) {
-      _showTabBar();
-    } else {
-      _hideTabBar();
     }
   }
 
@@ -99,7 +86,7 @@ class CatalogScreenState extends State<CatalogScreen>
   void didUpdateWidget(CatalogScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.isActive && !oldWidget.isActive) {
-      _syncTabBarWithActiveTab();
+      _showTabBar();
     }
   }
 

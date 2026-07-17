@@ -18,9 +18,9 @@ from app.services.image_generation_service.postprocess import crop_to_portrait_3
 logger = logging.getLogger(__name__)
 
 IMAGEN_ULTRA_MODEL_NAME = "imagen-4.0-ultra-generate-001"
-IMAGEN_STANDARD_MODEL_NAME = "imagen-4.0-generate-001"
+IMAGEN_FAST_MODEL_NAME = "imagen-4.0-fast-generate-001"
 IMAGEN_ULTRA_COST_USD_PER_IMAGE = 0.06
-IMAGEN_STANDARD_COST_USD_PER_IMAGE = 0.04
+IMAGEN_FAST_COST_USD_PER_IMAGE = 0.02
 IMAGEN_REQUEST_TIMEOUT_SECONDS = 120
 IMAGEN_PORTRAIT_SIZE = "896x1280"
 IMAGEN_MAX_ATTEMPTS = 5
@@ -38,23 +38,23 @@ def generate_image_with_gemini(prompt: str) -> tuple[bytes, dict[str, Any]]:
 
     Returns PNG bytes and a usage dict with cost_usd and model_name.
     Retries transient API failures with exponential backoff, then falls back
-    from Ultra to standard Imagen when Ultra cannot execute the prompt.
+    from Ultra to Imagen Fast when Ultra cannot complete the request.
     """
     primary_model = settings.gemini_image_model.strip() or IMAGEN_ULTRA_MODEL_NAME
     try:
         return _generate_with_retries(prompt, model_name=primary_model)
     except ImageGenerationError as primary_exc:
-        if primary_model == IMAGEN_STANDARD_MODEL_NAME:
+        if primary_model == IMAGEN_FAST_MODEL_NAME:
             raise
-        if not _should_fallback_to_standard_model(str(primary_exc)):
+        if not _should_fallback_model(str(primary_exc)):
             raise
         logger.warning(
             "Primary Imagen model %s failed (%s); trying fallback %s",
             primary_model,
             short_generation_error(str(primary_exc)),
-            IMAGEN_STANDARD_MODEL_NAME,
+            IMAGEN_FAST_MODEL_NAME,
         )
-        return _generate_with_retries(prompt, model_name=IMAGEN_STANDARD_MODEL_NAME)
+        return _generate_with_retries(prompt, model_name=IMAGEN_FAST_MODEL_NAME)
 
 
 def _generate_with_retries(prompt: str, *, model_name: str) -> tuple[bytes, dict[str, Any]]:
@@ -82,8 +82,8 @@ def _generate_with_retries(prompt: str, *, model_name: str) -> tuple[bytes, dict
 
 
 def _model_cost_usd(model_name: str) -> float:
-    if model_name == IMAGEN_STANDARD_MODEL_NAME:
-        return IMAGEN_STANDARD_COST_USD_PER_IMAGE
+    if model_name == IMAGEN_FAST_MODEL_NAME:
+        return IMAGEN_FAST_COST_USD_PER_IMAGE
     return IMAGEN_ULTRA_COST_USD_PER_IMAGE
 
 
@@ -214,12 +214,16 @@ def is_retryable_generation_error(message: str) -> bool:
             "fail to execute model",
             "flow-vertex-juno",
             "image generation failed",
+            "out of capacity",
+            "temporarily out of capacity",
+            "deadline expired",
+            "try again later",
         )
     )
 
 
-def _should_fallback_to_standard_model(message: str) -> bool:
-    """Fallback only for model/prompt execution issues, not auth or config errors."""
+def _should_fallback_model(message: str) -> bool:
+    """Fallback only when Ultra failed for transient/execution reasons."""
     lower = message.lower()
     if any(token in message for token in ("401", "403")):
         return False
@@ -231,6 +235,9 @@ def _should_fallback_to_standard_model(message: str) -> bool:
             "not configured",
             "unauthorized",
             "forbidden",
+            "no longer available",
+            "deprecated",
+            "migrate to",
         )
     ):
         return False
@@ -254,6 +261,12 @@ def short_generation_error(message: str) -> str:
         return "service unavailable"
     if "fail to execute model" in lower:
         return "model execution failed"
+    if "out of capacity" in lower:
+        return "out of capacity"
+    if "deadline expired" in lower:
+        return "deadline expired"
+    if "no longer available" in lower:
+        return "model unavailable for this API key"
     if "timeout" in lower:
         return "timeout"
     if len(text) > 120:

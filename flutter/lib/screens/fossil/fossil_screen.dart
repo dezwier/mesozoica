@@ -67,7 +67,9 @@ class FossilScreenState extends State<FossilScreen> {
       _scrollController.hasClients ? _scrollController.offset : 0;
 
   void _onScroll() {
-    if (_scrollController.hasClients && widget.onScrollUpdate != null) {
+    if (_scrollController.hasClients &&
+        widget.isActive &&
+        widget.onScrollUpdate != null) {
       final offset = _scrollController.offset;
       final previous = _previousScrollOffset ?? offset;
       widget.onScrollUpdate!(offset, offset - previous);
