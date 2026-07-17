@@ -12,6 +12,7 @@ from app.core.config import settings
 from app.models.tool import Tool
 from app.services.image_generation_service.client import (
     IMAGEN_ULTRA_COST_USD_PER_IMAGE,
+    INTER_GENERATION_DELAY_SECONDS,
     ImageGenerationError,
     generate_image_with_gemini,
     short_generation_error,
@@ -27,8 +28,7 @@ from app.services.tool_image_service.sync import resolve_local_source_dir_for_sy
 
 logger = logging.getLogger("tool_image_generate")
 
-GENERATION_ATTEMPTS = 3
-GENERATION_RETRY_BACKOFF_SECONDS = 1.0
+GENERATION_ATTEMPTS = 1
 
 
 @dataclass
@@ -165,6 +165,7 @@ def generate_tool_images(
                 counters.generated += 1
                 generated = True
                 logger.info('%s · OK -> %s', label, output_path.name)
+                time.sleep(INTER_GENERATION_DELAY_SECONDS)
                 break
             except FileExistsError:
                 counters.skipped += 1
@@ -174,12 +175,8 @@ def generate_tool_images(
                 break
             except ImageGenerationError as exc:
                 last_error = str(exc)
-                if attempt < GENERATION_ATTEMPTS:
-                    time.sleep(GENERATION_RETRY_BACKOFF_SECONDS * attempt)
             except Exception as exc:
                 last_error = str(exc)
-                if attempt < GENERATION_ATTEMPTS:
-                    time.sleep(GENERATION_RETRY_BACKOFF_SECONDS * attempt)
 
         if not generated and not dry_run:
             counters.failed += 1

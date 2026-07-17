@@ -6,7 +6,7 @@ RAILWAY_SERVICE ?=
 RAILWAY_SERVICE_FLAG = $(if $(RAILWAY_SERVICE),--service $(RAILWAY_SERVICE),)
 CRON_EXTRA ?=
 
-.PHONY: help backend-install backend-test run-backend flutter-test run-flutter test-all run-cron run-dinosaur-wiki-sync run-dinosaur-llm-enrich run-fossil-pbdb-sync run-fossil-llm-enrich run-site-sync run-site-type-sync run-tool-sync run-dinosaur-image-generate run-fossil-image-generate run-site-type-image-generate run-tool-image-generate sync-dinosaur-images sync-fossil-images sync-site-type-images sync-tool-images rename-site-type-images
+.PHONY: help backend-install backend-test run-backend flutter-test run-flutter test-all run-cron run-dinosaur-wiki-sync run-dinosaur-llm-enrich run-fossil-pbdb-sync run-fossil-llm-enrich run-site-sync run-site-type-sync run-tool-sync run-dinosaur-image-generate run-fossil-image-generate run-site-type-image-generate run-tool-image-generate run-tool-image-generate-local sync-dinosaur-images sync-fossil-images sync-site-type-images sync-tool-images rename-site-type-images
 
 help:
 	@echo "Available targets:"
@@ -25,6 +25,7 @@ help:
 	@echo "  run-fossil-image-generate    fossil_image_generate on Railway"
 	@echo "  run-site-type-image-generate site_type_image_generate on Railway"
 	@echo "  run-tool-image-generate      tool_image_generate on Railway"
+	@echo "  run-tool-image-generate-local tool_image_generate via backend/.env (faster for local PNGs)"
 	@echo "  sync-dinosaur-images         Upload curated card images to Railway volume + DB"
 	@echo "  sync-fossil-images           Upload curated fossil card images to Railway volume + DB"
 	@echo "  sync-site-type-images        Upload curated site-type card images to Railway volume + DB"
@@ -96,6 +97,11 @@ run-site-type-image-generate:
 
 run-tool-image-generate:
 	cd backend && RAILWAY_RUN=1 railway run $(RAILWAY_SERVICE_FLAG) python -m app.crons.runner --job tool_image_generate $(CRON_EXTRA)
+
+# Image generation locally: uses backend/.env (Railway DATABASE_URL + GOOGLE_GEMINI_API_KEY).
+# Skips `railway run` startup overhead; still writes PNGs to repo tool-images/.
+run-tool-image-generate-local:
+	cd backend && ALLOW_LOCAL_CRON=1 python -m app.crons.runner --job tool_image_generate $(CRON_EXTRA)
 
 sync-dinosaur-images:
 	cd backend && RAILWAY_RUN=1 railway run $(RAILWAY_SERVICE_FLAG) python -m scripts.sync_dinosaur_images $(CRON_EXTRA)

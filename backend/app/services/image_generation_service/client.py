@@ -5,6 +5,7 @@ from __future__ import annotations
 import base64
 import io
 import logging
+import time
 from typing import Any
 
 import requests
@@ -17,9 +18,14 @@ from app.services.image_generation_service.postprocess import crop_to_portrait_3
 logger = logging.getLogger(__name__)
 
 IMAGEN_ULTRA_MODEL_NAME = "imagen-4.0-ultra-generate-001"
+IMAGEN_STANDARD_MODEL_NAME = "imagen-4.0-generate-001"
 IMAGEN_ULTRA_COST_USD_PER_IMAGE = 0.06
+IMAGEN_STANDARD_COST_USD_PER_IMAGE = 0.04
 IMAGEN_REQUEST_TIMEOUT_SECONDS = 120
 IMAGEN_PORTRAIT_SIZE = "896x1280"
+IMAGEN_MAX_ATTEMPTS = 5
+IMAGEN_RETRY_BASE_SECONDS = 5.0
+INTER_GENERATION_DELAY_SECONDS = 3.0
 
 
 class ImageGenerationError(RuntimeError):
@@ -31,7 +37,32 @@ def generate_image_with_gemini(prompt: str) -> tuple[bytes, dict[str, Any]]:
     Generate a 3:4 portrait image using Gemini Imagen.
 
     Returns PNG bytes and a usage dict with cost_usd and model_name.
+    Retries transient API failures (503, 429, etc.) with exponential backoff.
     """
+    last_error: ImageGenerationError | None = None
+    for attempt in range(1, IMAGEN_MAX_ATTEMPTS + 1):
+        try:
+            return _generate_image_once(prompt)
+        except ImageGenerationError as exc:
+            last_error = exc
+            if attempt >= IMAGEN_MAX_ATTEMPTS or not is_retryable_generation_error(str(exc)):
+                raise
+            delay = IMAGEN_RETRY_BASE_SECONDS * (2 ** (attempt - 1))
+            logger.warning(
+                "Imagen attempt %d/%d failed (%s); retrying in %.0fs",
+                attempt,
+                IMAGEN_MAX_ATTEMPTS,
+                short_generation_error(str(exc)),
+                delay,
+            )
+            time.sleep(delay)
+    if last_error is not None:
+        raise last_error
+    raise ImageGenerationError("Image generation failed")
+
+
+def _generate_image_once(prompt: str) -> tuple[bytes, dict[str, Any]]:
+    """Single Imagen API request without retries."""
     api_key = settings.google_gemini_api_key.strip()
     if not api_key:
         raise ImageGenerationError(
@@ -133,6 +164,29 @@ def _extract_error_message(response: requests.Response) -> str:
     except ValueError:
         pass
     return f"HTTP {response.status_code}: {response.text[:500]}"
+
+
+def is_retryable_generation_error(message: str) -> bool:
+    """True for transient Gemini/HTTP failures worth retrying."""
+    lower = message.lower()
+    if any(code in message for code in ("429", "500", "502", "503", "504")):
+        return True
+    return any(
+        phrase in lower
+        for phrase in (
+            "service unavailable",
+            "service is currently unavailable",
+            "resource exhausted",
+            "quota exceeded",
+            "rate limit",
+            "too many requests",
+            "timeout",
+            "temporarily unavailable",
+            "internal error",
+            "bad gateway",
+            "gateway timeout",
+        )
+    )
 
 
 def short_generation_error(message: str) -> str:
