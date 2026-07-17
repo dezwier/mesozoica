@@ -90,15 +90,20 @@ Hard constraints:
 
 Avoid: museum displays, polished rock slabs, studio backdrops, stock-photo perfection, overly clean or manicured scenery."""
 
-_TOOL_INSTRUCTIONS = """Generate a realistic 3:4 portrait photograph for this paleontological field tool catalog card.
+_TOOL_INSTRUCTIONS = """Generate a realistic 3:4 portrait iPhone photograph for a paleontological field tool catalog card.
 
-Use ONLY the full tool record below as context — every field is required:
+Tool record (use every field):
 {tool_record}
 
+Primary subject (critical):
+- Branded tool: "{name}"
+- Real-world instrument/method to depict: "{scientific_tool}"
+- Show ONE concrete, photographable subject representing {scientific_tool} in modern paleontological use
+- If the method is abstract (satellite imagery, acid dissolution, radiometric dating, isotope analysis), depict the actual physical equipment or visible field setup — e.g. a drone over badlands, a lab beaker with fossil in dilute acid, a bench instrument, a printed geological map — never an abstract diagram, chart, or text overlay
+
 Scientific accuracy:
-- Depict the real-world instrument or method as used in modern paleontological field practice
 - Stay scientifically in line with today's paleontology; do not invent capabilities or anachronistic equipment
-- Show an authentic dusty dig-site, lab, or field context matching the category and description
+- Match the category and description in an authentic dusty dig-site, quarry, or conservation-lab context
 
 Visual style:
 - Documentary iPhone photograph with slight 'dramatic warm' color tone
@@ -106,7 +111,7 @@ Visual style:
 - Casual handheld framing, uneven daylight, imperfect practical use — worn surfaces, dirt, realistic placement
 - No borders, no text, no watermarks, no vignette — only the photo itself
 
-Avoid: studio product shot, museum display, stock-photo perfection, CGI render, people faces."""
+Avoid: studio product shot, museum display, stock-photo perfection, CGI render, people faces, abstract infographics."""
 
 
 def build_dinosaur_image_prompt(name: str, article_text: str) -> str:
@@ -196,8 +201,14 @@ def tool_to_image_prompt_dict(tool_data: dict[str, Any]) -> dict[str, Any]:
 
 def build_tool_image_prompt(tool_data: dict[str, Any]) -> str:
     """Build Imagen prompt for a tool catalog card image."""
+    name = str(tool_data.get("name", "")).strip()
+    scientific_tool = str(tool_data.get("scientific_tool", "")).strip()
     record = json.dumps(tool_to_image_prompt_dict(tool_data), indent=2, ensure_ascii=False)
-    return _TOOL_INSTRUCTIONS.format(tool_record=record)
+    return _TOOL_INSTRUCTIONS.format(
+        tool_record=record,
+        name=name,
+        scientific_tool=scientific_tool,
+    )
 
 
 def _normalize_key(value: Any) -> str:

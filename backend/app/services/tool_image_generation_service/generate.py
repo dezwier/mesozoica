@@ -180,7 +180,7 @@ def generate_tool_images(
 
         if not generated and not dry_run:
             counters.failed += 1
-            logger.error('%s · FAIL · %s', label, short_generation_error(last_error))
+            logger.error('%s · FAIL · %s', label, last_error)
 
     elapsed = time.monotonic() - start
     summary = GenerateSummary(

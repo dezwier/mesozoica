@@ -243,8 +243,8 @@ def test_build_tool_image_prompt_includes_full_record_and_style():
     assert "prospecting" in prompt
     assert "Identifies exposed formations." in prompt
     assert '"rarity": 2' in prompt
+    assert "concrete, photographable subject" in prompt
     assert "3:4" in prompt
     assert "dramatic warm" in prompt
     assert "iphone photograph" in prompt.lower()
     assert "today's paleontology" in prompt.lower()
-    assert "full tool record" in prompt.lower()

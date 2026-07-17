@@ -37,19 +37,39 @@ def generate_image_with_gemini(prompt: str) -> tuple[bytes, dict[str, Any]]:
     Generate a 3:4 portrait image using Gemini Imagen.
 
     Returns PNG bytes and a usage dict with cost_usd and model_name.
-    Retries transient API failures (503, 429, etc.) with exponential backoff.
+    Retries transient API failures with exponential backoff, then falls back
+    from Ultra to standard Imagen when Ultra cannot execute the prompt.
     """
+    primary_model = settings.gemini_image_model.strip() or IMAGEN_ULTRA_MODEL_NAME
+    try:
+        return _generate_with_retries(prompt, model_name=primary_model)
+    except ImageGenerationError as primary_exc:
+        if primary_model == IMAGEN_STANDARD_MODEL_NAME:
+            raise
+        if not _should_fallback_to_standard_model(str(primary_exc)):
+            raise
+        logger.warning(
+            "Primary Imagen model %s failed (%s); trying fallback %s",
+            primary_model,
+            short_generation_error(str(primary_exc)),
+            IMAGEN_STANDARD_MODEL_NAME,
+        )
+        return _generate_with_retries(prompt, model_name=IMAGEN_STANDARD_MODEL_NAME)
+
+
+def _generate_with_retries(prompt: str, *, model_name: str) -> tuple[bytes, dict[str, Any]]:
     last_error: ImageGenerationError | None = None
     for attempt in range(1, IMAGEN_MAX_ATTEMPTS + 1):
         try:
-            return _generate_image_once(prompt)
+            return _generate_image_once(prompt, model_name=model_name)
         except ImageGenerationError as exc:
             last_error = exc
             if attempt >= IMAGEN_MAX_ATTEMPTS or not is_retryable_generation_error(str(exc)):
                 raise
             delay = IMAGEN_RETRY_BASE_SECONDS * (2 ** (attempt - 1))
             logger.warning(
-                "Imagen attempt %d/%d failed (%s); retrying in %.0fs",
+                "Imagen %s attempt %d/%d failed (%s); retrying in %.0fs",
+                model_name,
                 attempt,
                 IMAGEN_MAX_ATTEMPTS,
                 short_generation_error(str(exc)),
@@ -61,7 +81,13 @@ def generate_image_with_gemini(prompt: str) -> tuple[bytes, dict[str, Any]]:
     raise ImageGenerationError("Image generation failed")
 
 
-def _generate_image_once(prompt: str) -> tuple[bytes, dict[str, Any]]:
+def _model_cost_usd(model_name: str) -> float:
+    if model_name == IMAGEN_STANDARD_MODEL_NAME:
+        return IMAGEN_STANDARD_COST_USD_PER_IMAGE
+    return IMAGEN_ULTRA_COST_USD_PER_IMAGE
+
+
+def _generate_image_once(prompt: str, *, model_name: str) -> tuple[bytes, dict[str, Any]]:
     """Single Imagen API request without retries."""
     api_key = settings.google_gemini_api_key.strip()
     if not api_key:
@@ -69,7 +95,7 @@ def _generate_image_once(prompt: str) -> tuple[bytes, dict[str, Any]]:
             "Google Gemini API key not configured. Set GOOGLE_GEMINI_API_KEY."
         )
 
-    model_name = settings.gemini_image_model.strip() or IMAGEN_ULTRA_MODEL_NAME
+    model_name = model_name.strip() or IMAGEN_ULTRA_MODEL_NAME
     base_url = "https://generativelanguage.googleapis.com/v1beta/openai/images/generations"
     headers = {
         "Authorization": f"Bearer {api_key}",
@@ -125,7 +151,7 @@ def _generate_image_once(prompt: str) -> tuple[bytes, dict[str, Any]]:
         usage: dict[str, Any] = {
             "model_name": model_name,
             "images_generated": 1,
-            "cost_usd": IMAGEN_ULTRA_COST_USD_PER_IMAGE,
+            "cost_usd": _model_cost_usd(model_name),
         }
         return image_bytes, usage
 
@@ -185,8 +211,30 @@ def is_retryable_generation_error(message: str) -> bool:
             "internal error",
             "bad gateway",
             "gateway timeout",
+            "fail to execute model",
+            "flow-vertex-juno",
+            "image generation failed",
         )
     )
+
+
+def _should_fallback_to_standard_model(message: str) -> bool:
+    """Fallback only for model/prompt execution issues, not auth or config errors."""
+    lower = message.lower()
+    if any(token in message for token in ("401", "403")):
+        return False
+    if any(
+        phrase in lower
+        for phrase in (
+            "invalid api key",
+            "permission denied",
+            "not configured",
+            "unauthorized",
+            "forbidden",
+        )
+    ):
+        return False
+    return True
 
 
 def short_generation_error(message: str) -> str:
@@ -204,6 +252,8 @@ def short_generation_error(message: str) -> str:
         return "quota exceeded"
     if "503" in text or "service unavailable" in lower:
         return "service unavailable"
+    if "fail to execute model" in lower:
+        return "model execution failed"
     if "timeout" in lower:
         return "timeout"
     if len(text) > 120:
