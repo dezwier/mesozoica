@@ -5,6 +5,8 @@ import 'package:provider/provider.dart';
 
 import '../../controllers/tool_catalog_controller.dart';
 import '../../widgets/cards/tool_turnable_card.dart';
+import '../../widgets/tool/tool_filter_fab.dart';
+import '../../widgets/tool/tool_filter_sheet.dart';
 
 class ToolScreen extends StatefulWidget {
   const ToolScreen({
@@ -84,6 +86,15 @@ class ToolScreenState extends State<ToolScreen> {
     });
   }
 
+  void _openFilterSheet(ToolCatalogController catalog) {
+    ToolFilterSheet.show(
+      context,
+      initialFilters: catalog.filters,
+      catalogTotal: catalog.total > 0 ? catalog.total : null,
+      onApply: catalog.applyFilters,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Consumer<ToolCatalogController>(
@@ -91,6 +102,15 @@ class ToolScreenState extends State<ToolScreen> {
         return Stack(
           children: [
             Positioned.fill(child: _buildBody(context, catalog)),
+            if (widget.isActive)
+              Positioned(
+                right: 12,
+                bottom: 12,
+                child: ToolFilterFab(
+                  hasActiveFilters: catalog.hasActiveFilters,
+                  onPressed: () => _openFilterSheet(catalog),
+                ),
+              ),
           ],
         );
       },
@@ -135,7 +155,9 @@ class ToolScreenState extends State<ToolScreen> {
     if (catalog.isEmpty) {
       return Center(
         child: Text(
-          'No tools in the catalog yet.',
+          catalog.hasActiveFilters
+              ? 'No tools match these filters.'
+              : 'No tools in the catalog yet.',
           style: Theme.of(context).textTheme.bodyLarge,
         ),
       );
@@ -146,7 +168,7 @@ class ToolScreenState extends State<ToolScreen> {
       child: ListView.builder(
         controller: _scrollController,
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.only(top: 8, bottom: 24),
+        padding: const EdgeInsets.only(top: 8, bottom: 88),
         itemCount: catalog.items.length + (catalog.isLoadingMore ? 1 : 0),
         itemBuilder: (context, index) {
           if (index >= catalog.items.length) {

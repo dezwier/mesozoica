@@ -12,7 +12,7 @@ from app.core.exceptions import NotFoundError, ValidationError
 from app.models.tool import Tool
 from app.services.tool_image_service.sync import CURATED_MEDIA_PATH
 
-SortOption = Literal["name", "random"]
+SortOption = Literal["name", "random", "category"]
 _MAX_SEED_LEN = 64
 
 
@@ -53,8 +53,11 @@ def list_tools(
         )
         return rows, int(total)
 
+    order_by = (
+        (Tool.category, Tool.name) if sort == "category" else (Tool.name,)
+    )
     rows = session.exec(
-        filtered.order_by(Tool.name).offset(capped_offset).limit(capped_limit)
+        filtered.order_by(*order_by).offset(capped_offset).limit(capped_limit)
     ).all()
     return list(rows), int(total)
 

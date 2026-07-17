@@ -23,8 +23,8 @@ def get_tools(
     q: str | None = Query(default=None),
     has_custom_image: bool = Query(default=False),
 ) -> ToolListResponse:
-    if sort not in ("name", "random"):
-        raise ValidationError("sort must be one of: name, random")
+    if sort not in ("name", "random", "category"):
+        raise ValidationError("sort must be one of: name, random, category")
     rows, total = list_tools(
         session,
         limit=limit,

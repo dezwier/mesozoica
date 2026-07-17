@@ -82,3 +82,39 @@ def test_list_tools_random_requires_seed(client, session):
     _seed_tool(session)
     response = client.get("/api/v1/tools", params={"sort": "random"})
     assert response.status_code == 400
+
+
+def test_list_tools_sort_by_category(client, session):
+    session.add(
+        Tool(
+            name="Zeta Tool",
+            category="prospecting",
+            scientific_tool="z",
+            description="Z.",
+            rarity=1,
+        )
+    )
+    session.add(
+        Tool(
+            name="Alpha Tool",
+            category="excavation",
+            scientific_tool="a",
+            description="A.",
+            rarity=1,
+        )
+    )
+    session.add(
+        Tool(
+            name="Beta Tool",
+            category="excavation",
+            scientific_tool="b",
+            description="B.",
+            rarity=1,
+        )
+    )
+    session.commit()
+
+    response = client.get("/api/v1/tools", params={"sort": "category"})
+    assert response.status_code == 200
+    names = [item["name"] for item in response.json()["items"]]
+    assert names == ["Alpha Tool", "Beta Tool", "Zeta Tool"]
