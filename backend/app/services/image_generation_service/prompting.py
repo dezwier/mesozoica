@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from typing import Any
 
 _DINOSAUR_INSTRUCTIONS = """Generate a 3:4 image of the following dinosaur: {name}
@@ -89,19 +90,23 @@ Hard constraints:
 
 Avoid: museum displays, polished rock slabs, studio backdrops, stock-photo perfection, overly clean or manicured scenery."""
 
-_TOOL_INSTRUCTIONS = """Generate a 3:4 portrait photo of a real paleontological field tool in active use at a dig site.
-The branded tool is "{name}" — it is a {scientific_tool} used for {category_label}.
+_TOOL_INSTRUCTIONS = """Generate a realistic 3:4 portrait photograph for this paleontological field tool catalog card.
 
-Documentary iPhone photograph with slight 'dramatic warm' color tone. Real field archaeology, NOT cartoon, NOT CGI.
-No borders, no text, no watermarks, no vignette — only the photo itself.
+Use ONLY the full tool record below as context — every field is required:
+{tool_record}
 
-Show the tool naturally in context:
-- {description}
-- authentic dusty dig-site setting: rock, sediment, uneven daylight, casual handheld framing
-- the {scientific_tool} must be clearly recognizable as the primary subject
-- imperfect, practical field use — worn surfaces, dirt, realistic placement
+Scientific accuracy:
+- Depict the real-world instrument or method as used in modern paleontological field practice
+- Stay scientifically in line with today's paleontology; do not invent capabilities or anachronistic equipment
+- Show an authentic dusty dig-site, lab, or field context matching the category and description
 
-Avoid entirely: studio product shot, museum display, stock-photo perfection, CGI render, people faces."""
+Visual style:
+- Documentary iPhone photograph with slight 'dramatic warm' color tone
+- Real field archaeology / paleontology, NOT cartoon, NOT CGI
+- Casual handheld framing, uneven daylight, imperfect practical use — worn surfaces, dirt, realistic placement
+- No borders, no text, no watermarks, no vignette — only the photo itself
+
+Avoid: studio product shot, museum display, stock-photo perfection, CGI render, people faces."""
 
 
 def build_dinosaur_image_prompt(name: str, article_text: str) -> str:
@@ -178,21 +183,21 @@ def build_site_type_image_prompt(*, period: str, rock_type: str) -> str:
     )
 
 
-def build_tool_image_prompt(
-    *,
-    name: str,
-    scientific_tool: str,
-    category: str,
-    description: str,
-) -> str:
+def tool_to_image_prompt_dict(tool_data: dict[str, Any]) -> dict[str, Any]:
+    """Serialize a tool record for image-generation prompts."""
+    return {
+        "name": tool_data.get("name"),
+        "category": tool_data.get("category"),
+        "scientific_tool": tool_data.get("scientific_tool"),
+        "description": tool_data.get("description"),
+        "rarity": tool_data.get("rarity"),
+    }
+
+
+def build_tool_image_prompt(tool_data: dict[str, Any]) -> str:
     """Build Imagen prompt for a tool catalog card image."""
-    category_label = category.strip().replace("_", " ")
-    return _TOOL_INSTRUCTIONS.format(
-        name=name.strip(),
-        scientific_tool=scientific_tool.strip(),
-        category_label=category_label,
-        description=description.strip(),
-    )
+    record = json.dumps(tool_to_image_prompt_dict(tool_data), indent=2, ensure_ascii=False)
+    return _TOOL_INSTRUCTIONS.format(tool_record=record)
 
 
 def _normalize_key(value: Any) -> str:

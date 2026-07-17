@@ -134,10 +134,13 @@ def generate_tool_images(
             continue
 
         prompt = build_tool_image_prompt(
-            name=tool.name,
-            scientific_tool=tool.scientific_tool,
-            category=tool.category,
-            description=tool.description,
+            {
+                "name": tool.name,
+                "category": tool.category,
+                "scientific_tool": tool.scientific_tool,
+                "description": tool.description,
+                "rarity": tool.rarity,
+            }
         )
         output_path = output_png_path(output_dir, tool.name)
 
