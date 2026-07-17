@@ -136,19 +136,17 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
               padding: const EdgeInsets.only(left: 12),
               child: Image.asset('assets/images/logo.png', height: 32),
             ),
-            actions: [
-              const Padding(
-                padding: EdgeInsets.only(right: 4),
-                child: CatalogModeToggle(),
-              ),
-              if (auth.isLoggedIn)
-                Padding(
-                  padding: const EdgeInsets.only(right: 8),
-                  child: NotificationIconButton(
-                    onTapFriendRequest: _onFriendRequestNotificationTap,
-                  ),
-                ),
-            ],
+            center: const CatalogModeToggle(),
+            actions: auth.isLoggedIn
+                ? [
+                    Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: NotificationIconButton(
+                        onTapFriendRequest: _onFriendRequestNotificationTap,
+                      ),
+                    ),
+                  ]
+                : null,
           ),
           body: IndexedStack(
             index: _index,

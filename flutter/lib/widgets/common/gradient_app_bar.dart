@@ -5,10 +5,12 @@ class GradientAppBar extends StatelessWidget implements PreferredSizeWidget {
   const GradientAppBar({
     super.key,
     required this.title,
+    this.center,
     this.actions,
   });
 
   final Widget title;
+  final Widget? center;
   final List<Widget>? actions;
 
   static const Color _foregroundColor = Colors.white;
@@ -50,10 +52,30 @@ class GradientAppBar extends StatelessWidget implements PreferredSizeWidget {
       ),
       child: AppBar(
         toolbarHeight: _height,
-        title: title,
-        titleSpacing: 8,
-        centerTitle: false,
-        actions: actions,
+        automaticallyImplyLeading: false,
+        titleSpacing: 0,
+        title: SizedBox(
+          width: double.infinity,
+          height: _height,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              Align(
+                alignment: Alignment.centerLeft,
+                child: title,
+              ),
+              if (center != null) center!,
+              if (actions != null && actions!.isNotEmpty)
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: actions!,
+                  ),
+                ),
+            ],
+          ),
+        ),
         elevation: 0,
         scrolledUnderElevation: 0,
         backgroundColor: Colors.transparent,
