@@ -8,6 +8,7 @@ from app.models.dinosaur import Dinosaur
 from app.models.fossil import Fossil
 from app.models.site import Site
 from app.models.site_type import SiteType
+from app.models.tool import Tool
 from app.models.user import User
 from app.models.user_auth_identity import UserAuthIdentity
 from app.models.user_notification import UserNotification
@@ -18,6 +19,7 @@ __all__ = [
     "Fossil",
     "Site",
     "SiteType",
+    "Tool",
     "User",
     "UserAuthIdentity",
     "UserNotification",

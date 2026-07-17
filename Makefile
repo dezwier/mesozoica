@@ -6,7 +6,7 @@ RAILWAY_SERVICE ?=
 RAILWAY_SERVICE_FLAG = $(if $(RAILWAY_SERVICE),--service $(RAILWAY_SERVICE),)
 CRON_EXTRA ?=
 
-.PHONY: help backend-install backend-test run-backend flutter-test run-flutter test-all run-cron run-dinosaur-wiki-sync run-dinosaur-llm-enrich run-fossil-pbdb-sync run-fossil-llm-enrich run-site-sync run-site-type-sync run-dinosaur-image-generate run-fossil-image-generate run-site-type-image-generate sync-dinosaur-images sync-fossil-images sync-site-type-images rename-site-type-images
+.PHONY: help backend-install backend-test run-backend flutter-test run-flutter test-all run-cron run-dinosaur-wiki-sync run-dinosaur-llm-enrich run-fossil-pbdb-sync run-fossil-llm-enrich run-site-sync run-site-type-sync run-tool-sync run-dinosaur-image-generate run-fossil-image-generate run-site-type-image-generate run-tool-image-generate sync-dinosaur-images sync-fossil-images sync-site-type-images sync-tool-images rename-site-type-images
 
 help:
 	@echo "Available targets:"
@@ -20,12 +20,15 @@ help:
 	@echo "  run-fossil-llm-enrich        fossil_llm_enrich on Railway"
 	@echo "  run-site-sync                site_sync on Railway"
 	@echo "  run-site-type-sync           site_type_sync on Railway"
+	@echo "  run-tool-sync                tool_sync on Railway"
 	@echo "  run-dinosaur-image-generate  dinosaur_image_generate on Railway"
 	@echo "  run-fossil-image-generate    fossil_image_generate on Railway"
 	@echo "  run-site-type-image-generate site_type_image_generate on Railway"
+	@echo "  run-tool-image-generate      tool_image_generate on Railway"
 	@echo "  sync-dinosaur-images         Upload curated card images to Railway volume + DB"
 	@echo "  sync-fossil-images           Upload curated fossil card images to Railway volume + DB"
 	@echo "  sync-site-type-images        Upload curated site-type card images to Railway volume + DB"
+	@echo "  sync-tool-images             Upload curated tool card images to Railway volume + DB"
 	@echo "  rename-site-type-images      Rename legacy numeric site-type image files to period_rocktype"
 	@echo "  flutter-test                 Run Flutter tests"
 	@echo "  run-flutter                  Start Flutter app"
@@ -79,6 +82,9 @@ run-site-sync:
 run-site-type-sync:
 	cd backend && RAILWAY_RUN=1 railway run $(RAILWAY_SERVICE_FLAG) python -m app.crons.runner --job site_type_sync $(CRON_EXTRA)
 
+run-tool-sync:
+	cd backend && RAILWAY_RUN=1 railway run $(RAILWAY_SERVICE_FLAG) python -m app.crons.runner --job tool_sync $(CRON_EXTRA)
+
 run-dinosaur-image-generate:
 	cd backend && RAILWAY_RUN=1 railway run $(RAILWAY_SERVICE_FLAG) python -m app.crons.runner --job dinosaur_image_generate $(CRON_EXTRA)
 
@@ -88,6 +94,9 @@ run-fossil-image-generate:
 run-site-type-image-generate:
 	cd backend && RAILWAY_RUN=1 railway run $(RAILWAY_SERVICE_FLAG) python -m app.crons.runner --job site_type_image_generate $(CRON_EXTRA)
 
+run-tool-image-generate:
+	cd backend && RAILWAY_RUN=1 railway run $(RAILWAY_SERVICE_FLAG) python -m app.crons.runner --job tool_image_generate $(CRON_EXTRA)
+
 sync-dinosaur-images:
 	cd backend && RAILWAY_RUN=1 railway run $(RAILWAY_SERVICE_FLAG) python -m scripts.sync_dinosaur_images $(CRON_EXTRA)
 
@@ -96,6 +105,9 @@ sync-fossil-images:
 
 sync-site-type-images:
 	cd backend && RAILWAY_RUN=1 railway run $(RAILWAY_SERVICE_FLAG) python -m scripts.sync_site_type_images $(CRON_EXTRA)
+
+sync-tool-images:
+	cd backend && RAILWAY_RUN=1 railway run $(RAILWAY_SERVICE_FLAG) python -m scripts.sync_tool_images $(CRON_EXTRA)
 
 rename-site-type-images:
 	cd backend && RAILWAY_RUN=1 railway run $(RAILWAY_SERVICE_FLAG) python -m scripts.rename_site_type_images $(CRON_EXTRA)

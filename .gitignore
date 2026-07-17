@@ -10,3 +10,9 @@ dinosaur-images/*.webp
 dinosaur-images/*.jpg
 dinosaur-images/*.jpeg
 dinosaur-images/*.png
+
+# Curated tool card images (local source; synced to Railway volume)
+tool-images/*.webp
+tool-images/*.jpg
+tool-images/*.jpeg
+tool-images/*.png

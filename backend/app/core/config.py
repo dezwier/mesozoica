@@ -159,6 +159,19 @@ class Settings(BaseSettings):
         validation_alias="SITE_TYPE_IMAGE_SYNC_SECRET",
     )
 
+    tool_images_dir: str = Field(
+        default="../tool-images",
+        validation_alias="TOOL_IMAGES_DIR",
+    )
+    railway_tool_images_volume: str = Field(
+        default="tool-images",
+        validation_alias="RAILWAY_TOOL_IMAGES_VOLUME",
+    )
+    tool_image_sync_secret: str = Field(
+        default="",
+        validation_alias="TOOL_IMAGE_SYNC_SECRET",
+    )
+
     access_token_expire_minutes: int = Field(
         default=60 * 24 * 7,
         validation_alias="ACCESS_TOKEN_EXPIRE_MINUTES",
@@ -207,6 +220,17 @@ class Settings(BaseSettings):
             default_relative="../fossil-images",
             data_root=self.curated_images_data_root,
             subdir_name="fossil-images",
+        )
+
+    @property
+    def resolved_tool_images_dir(self) -> Path:
+        from app.services.curated_image_service.common import resolve_curated_storage_dir
+
+        return resolve_curated_storage_dir(
+            configured_dir=self.tool_images_dir,
+            default_relative="../tool-images",
+            data_root=self.curated_images_data_root,
+            subdir_name="tool-images",
         )
 
     @property

@@ -201,6 +201,36 @@ class AppConfig {
   static Uri siteGroupsUri(int siteId) =>
       Uri.parse('$baseApiUrl/api/v1/sites/$siteId/groups');
 
+  static Uri toolsUri({
+    int limit = 200,
+    int offset = 0,
+    String sort = 'name',
+    String? seed,
+    String? q,
+    bool hasCustomImage = false,
+  }) {
+    final params = <String, String>{
+      'limit': '$limit',
+      'offset': '$offset',
+      'sort': sort,
+    };
+    if (seed != null && seed.isNotEmpty) {
+      params['seed'] = seed;
+    }
+    final trimmedQuery = q?.trim();
+    if (trimmedQuery != null && trimmedQuery.isNotEmpty) {
+      params['q'] = trimmedQuery;
+    }
+    if (hasCustomImage) {
+      params['has_custom_image'] = 'true';
+    }
+    return Uri.parse('$baseApiUrl/api/v1/tools').replace(
+      queryParameters: params,
+    );
+  }
+
+  static Uri toolUri(int id) => Uri.parse('$baseApiUrl/api/v1/tools/$id');
+
   static Future<bool> checkApiHealth() async {
     try {
       final response = await http.get(healthUri).timeout(const Duration(seconds: 15));

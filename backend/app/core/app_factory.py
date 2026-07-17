@@ -146,6 +146,14 @@ def create_app() -> FastAPI:
         name="site-type-images",
     )
 
+    tool_images_dir = settings.resolved_tool_images_dir
+    tool_images_dir.mkdir(parents=True, exist_ok=True)
+    app.mount(
+        "/media/tools",
+        StaticFiles(directory=str(tool_images_dir)),
+        name="tool-images",
+    )
+
     user_images_dir = settings.resolved_user_images_dir
     user_images_dir.mkdir(parents=True, exist_ok=True)
     app.mount(

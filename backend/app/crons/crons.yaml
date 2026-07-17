@@ -68,3 +68,17 @@ jobs:
     schedule: "30 9 * * 0"
     params:
       dry_run: false
+
+  - id: tool_sync
+    enabled: false
+    schedule: "0 10 * * 0"
+    params:
+      dry_run: false
+      prune: false
+
+  - id: tool_image_generate
+    enabled: false
+    schedule: "30 10 * * 0"
+    params:
+      dry_run: false
+      max_items: null

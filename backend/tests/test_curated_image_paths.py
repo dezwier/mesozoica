@@ -13,6 +13,7 @@ from app.services.curated_image_service.common import (
 from app.services.dinosaur_image_service.sync import resolve_local_source_dir_for_sync as resolve_dino_source
 from app.services.fossil_image_service.sync import resolve_local_source_dir_for_sync as resolve_fossil_source
 from app.services.site_type_image_service.sync import resolve_local_source_dir_for_sync as resolve_site_type_source
+from app.services.tool_image_service.sync import resolve_local_source_dir_for_sync as resolve_tool_source
 
 
 def test_remote_curated_image_exists(monkeypatch):
@@ -103,3 +104,13 @@ def test_resolve_site_type_source_uses_repo_subdir(monkeypatch, tmp_path: Path):
     monkeypatch.setenv("SITE_TYPE_IMAGES_SOURCE_DIR", str(repo_images))
 
     assert resolve_site_type_source() == repo_images.resolve()
+
+
+def test_resolve_tool_source_uses_repo_subdir(monkeypatch, tmp_path: Path):
+    repo_images = tmp_path / "tool-images"
+    repo_images.mkdir()
+    (repo_images / "Orbit Survey.png").write_bytes(b"x")
+
+    monkeypatch.setenv("TOOL_IMAGES_SOURCE_DIR", str(repo_images))
+
+    assert resolve_tool_source() == repo_images.resolve()

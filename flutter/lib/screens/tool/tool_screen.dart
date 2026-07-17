@@ -3,13 +3,11 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../../controllers/fossil_catalog_controller.dart';
-import '../../widgets/cards/fossil_turnable_card.dart';
-import '../../widgets/fossil/fossil_filter_fab.dart';
-import '../../widgets/fossil/fossil_filter_sheet.dart';
+import '../../controllers/tool_catalog_controller.dart';
+import '../../widgets/cards/tool_turnable_card.dart';
 
-class FossilScreen extends StatefulWidget {
-  const FossilScreen({
+class ToolScreen extends StatefulWidget {
+  const ToolScreen({
     super.key,
     this.isActive = true,
     this.onScrollUpdate,
@@ -19,10 +17,10 @@ class FossilScreen extends StatefulWidget {
   final void Function(double offset, double delta)? onScrollUpdate;
 
   @override
-  State<FossilScreen> createState() => FossilScreenState();
+  State<ToolScreen> createState() => ToolScreenState();
 }
 
-class FossilScreenState extends State<FossilScreen> {
+class ToolScreenState extends State<ToolScreen> {
   final ScrollController _scrollController = ScrollController();
   Timer? _scrollDebounceTimer;
   double? _previousScrollOffset;
@@ -33,7 +31,7 @@ class FossilScreenState extends State<FossilScreen> {
     _scrollController.addListener(_onScroll);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      context.read<FossilCatalogController>().refresh();
+      context.read<ToolCatalogController>().refresh();
     });
   }
 
@@ -41,7 +39,7 @@ class FossilScreenState extends State<FossilScreen> {
   void reassemble() {
     super.reassemble();
     if (mounted) {
-      context.read<FossilCatalogController>().refresh();
+      context.read<ToolCatalogController>().refresh();
     }
   }
 
@@ -79,43 +77,25 @@ class FossilScreenState extends State<FossilScreen> {
       if (!_scrollController.hasClients) return;
       final position = _scrollController.position;
       if (position.pixels >= position.maxScrollExtent * 0.8) {
-        context.read<FossilCatalogController>().loadMore();
+        context.read<ToolCatalogController>().loadMore();
       }
     });
   }
 
-  void _openFilterSheet(FossilCatalogController catalog) {
-    FossilFilterSheet.show(
-      context,
-      initialFilters: catalog.filters,
-      catalogTotal: catalog.total > 0 ? catalog.total : null,
-      onApply: catalog.applyFilters,
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
-    return Consumer<FossilCatalogController>(
+    return Consumer<ToolCatalogController>(
       builder: (context, catalog, _) {
         return Stack(
           children: [
             Positioned.fill(child: _buildBody(context, catalog)),
-            if (widget.isActive)
-              Positioned(
-                right: 12,
-                bottom: 12,
-                child: FossilFilterFab(
-                  hasActiveFilters: catalog.hasActiveFilters,
-                  onPressed: () => _openFilterSheet(catalog),
-                ),
-              ),
           ],
         );
       },
     );
   }
 
-  Widget _buildBody(BuildContext context, FossilCatalogController catalog) {
+  Widget _buildBody(BuildContext context, ToolCatalogController catalog) {
     if (catalog.loading && catalog.items.isEmpty) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -153,9 +133,7 @@ class FossilScreenState extends State<FossilScreen> {
     if (catalog.isEmpty) {
       return Center(
         child: Text(
-          catalog.hasActiveFilters
-              ? 'No fossils match these filters.'
-              : 'No fossils in the catalog yet.',
+          'No tools in the catalog yet.',
           style: Theme.of(context).textTheme.bodyLarge,
         ),
       );
@@ -166,7 +144,7 @@ class FossilScreenState extends State<FossilScreen> {
       child: ListView.builder(
         controller: _scrollController,
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.only(top: 8, bottom: 88),
+        padding: const EdgeInsets.only(top: 8, bottom: 24),
         itemCount: catalog.items.length + (catalog.isLoadingMore ? 1 : 0),
         itemBuilder: (context, index) {
           if (index >= catalog.items.length) {
@@ -176,8 +154,8 @@ class FossilScreenState extends State<FossilScreen> {
             );
           }
 
-          final fossil = catalog.items[index];
-          return FossilTurnableCard(fossil: fossil);
+          final tool = catalog.items[index];
+          return ToolTurnableCard(tool: tool);
         },
       ),
     );

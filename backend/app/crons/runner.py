@@ -32,6 +32,8 @@ from app.crons.jobs import (
     fossil_llm_enrich,
     fossil_pbdb_sync,
     site_type_image_generate,
+    tool_image_generate,
+    tool_sync,
     dinosaur_wiki_sync,
 )
 from app.crons.logging_config import configure_cron_logging
@@ -162,6 +164,35 @@ def _run_site_type_sync(params: dict[str, Any]) -> int:
     )
 
 
+def _parse_tool_names(raw: Any) -> list[str] | None:
+    if raw is None:
+        return None
+    if isinstance(raw, str):
+        text = raw.strip()
+        if not text:
+            return None
+        return [part.strip() for part in text.replace(",", " ").split() if part.strip()]
+    if isinstance(raw, list):
+        return [str(value).strip() for value in raw if str(value).strip()]
+    return None
+
+
+def _run_tool_sync(params: dict[str, Any]) -> int:
+    return tool_sync.run_sync_job(
+        dry_run=bool(params.get("dry_run", False)),
+        prune=bool(params.get("prune", False)),
+        tools=_parse_tool_names(params.get("tools")),
+    )
+
+
+def _run_tool_image_generate(params: dict[str, Any]) -> int:
+    return tool_image_generate.run_generate_job(
+        dry_run=bool(params.get("dry_run", False)),
+        max_items=_parse_max_items(params.get("max_items")),
+        tools=_parse_tool_names(params.get("tools")),
+    )
+
+
 _JOB_HANDLERS: dict[str, Callable[[dict[str, Any]], int]] = {
     "dinosaur_wiki_sync": _run_dinosaur_wiki_sync,
     "dinosaur_llm_enrich": _run_dinosaur_llm_enrich,
@@ -172,6 +203,8 @@ _JOB_HANDLERS: dict[str, Callable[[dict[str, Any]], int]] = {
     "site_type_image_generate": _run_site_type_image_generate,
     "site_sync": _run_site_sync,
     "site_type_sync": _run_site_type_sync,
+    "tool_sync": _run_tool_sync,
+    "tool_image_generate": _run_tool_image_generate,
 }
 
 
@@ -271,6 +304,18 @@ def main(argv: list[str] | None = None) -> int:
         "(site_type_image_generate).",
     )
     parser.add_argument(
+        "--tools",
+        metavar="NAME",
+        nargs="+",
+        help="Limit to specific tools by branded name (e.g. \"Orbit Survey\"). "
+        "Pass multiple names or comma-separated names in one argument.",
+    )
+    parser.add_argument(
+        "--prune",
+        action="store_true",
+        help="Remove DB tool rows whose name is no longer in tools.json (tool_sync).",
+    )
+    parser.add_argument(
         "--dry-run",
         action="store_true",
         help="Preview work without writing (image generation jobs, site_sync, site_type_sync).",
@@ -293,6 +338,11 @@ def main(argv: list[str] | None = None) -> int:
         overrides["max_items"] = args.max_items
     if args.site_types is not None:
         overrides["site_types"] = args.site_types
+    tool_names = _parse_tool_names(args.tools)
+    if tool_names:
+        overrides["tools"] = tool_names
+    if args.prune:
+        overrides["prune"] = True
     if args.dry_run:
         overrides["dry_run"] = True
 

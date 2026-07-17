@@ -89,6 +89,20 @@ Hard constraints:
 
 Avoid: museum displays, polished rock slabs, studio backdrops, stock-photo perfection, overly clean or manicured scenery."""
 
+_TOOL_INSTRUCTIONS = """Generate a 3:4 portrait photo of a real paleontological field tool in active use at a dig site.
+The branded tool is "{name}" — it is a {scientific_tool} used for {category_label}.
+
+Documentary iPhone photograph with slight 'dramatic warm' color tone. Real field archaeology, NOT cartoon, NOT CGI.
+No borders, no text, no watermarks, no vignette — only the photo itself.
+
+Show the tool naturally in context:
+- {description}
+- authentic dusty dig-site setting: rock, sediment, uneven daylight, casual handheld framing
+- the {scientific_tool} must be clearly recognizable as the primary subject
+- imperfect, practical field use — worn surfaces, dirt, realistic placement
+
+Avoid entirely: studio product shot, museum display, stock-photo perfection, CGI render, people faces."""
+
 
 def build_dinosaur_image_prompt(name: str, article_text: str) -> str:
     """Build Imagen prompt for a dinosaur genus card image."""
@@ -161,6 +175,23 @@ def build_site_type_image_prompt(*, period: str, rock_type: str) -> str:
     return _SITE_TYPE_INSTRUCTIONS.format(
         rock_type=rock_type.strip(),
         period_context=period_context,
+    )
+
+
+def build_tool_image_prompt(
+    *,
+    name: str,
+    scientific_tool: str,
+    category: str,
+    description: str,
+) -> str:
+    """Build Imagen prompt for a tool catalog card image."""
+    category_label = category.strip().replace("_", " ")
+    return _TOOL_INSTRUCTIONS.format(
+        name=name.strip(),
+        scientific_tool=scientific_tool.strip(),
+        category_label=category_label,
+        description=description.strip(),
     )
 
 

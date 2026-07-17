@@ -17,6 +17,7 @@ from app.services.image_generation_service.prompting import (
     build_fossil_image_prompt,
     build_fossil_preservation_brief,
     build_site_type_image_prompt,
+    build_tool_image_prompt,
 )
 
 
@@ -225,3 +226,18 @@ def test_build_site_type_image_prompt_includes_period_context_for_triassic():
     assert "claystone" in prompt
     assert "Triassic" in prompt
     assert "252" in prompt or "201" in prompt
+
+
+def test_build_tool_image_prompt_includes_name_and_scientific_tool():
+    prompt = build_tool_image_prompt(
+        name="Orbit Survey",
+        scientific_tool="satellite imagery",
+        category="prospecting",
+        description="Identifies exposed formations.",
+    )
+    assert "Orbit Survey" in prompt
+    assert "satellite imagery" in prompt
+    assert "prospecting" in prompt
+    assert "Identifies exposed formations." in prompt
+    assert "3:4" in prompt
+    assert "dramatic warm" in prompt
