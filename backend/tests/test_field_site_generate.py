@@ -13,7 +13,12 @@ from sqlmodel import Session, select
 from app.models.data_source import DATA_SOURCE_ARCHIVE, DATA_SOURCE_FIELD
 from app.models.site import Site
 from app.models.site_type import SiteType
-from app.services.site_service.field_coordinates import CoordinateSampleConfig, LandMask
+from app.services.site_service.field_coordinate_enrich import CoordinateEnrichment
+from app.services.site_service.field_coordinate_filter import (
+    CoordinateSampleConfig,
+    CoordinateSampler,
+    LandPolygonFilter,
+)
 from app.services.site_service.field_distributions import (
     ArchiveSiteRef,
     DistributionWeights,
@@ -54,15 +59,10 @@ def _site_type(*, period: str, rock_type: str) -> SiteType:
     return SiteType(period=period, rock_type=rock_type)
 
 
-def _test_land_mask() -> LandMask:
+def _test_coordinate_sampler() -> CoordinateSampler:
     geometry = box(-120.0, 30.0, -70.0, 50.0)
-    return LandMask(
-        geometry=geometry,
-        min_lon=-120.0,
-        min_lat=30.0,
-        max_lon=-70.0,
-        max_lat=50.0,
-    )
+    land_filter = LandPolygonFilter.from_polygons([geometry], source_path="test")
+    return CoordinateSampler(land_filter)
 
 
 def test_blend_renormalizes_when_nearby_empty():
@@ -95,7 +95,7 @@ def test_blend_renormalizes_when_nearby_empty():
         ),
     )
 
-    assert nearby_counts.total() == 0
+    assert sum(nearby_counts.values()) == 0
     assert sum(blended.values()) == pytest.approx(1.0)
     assert ("cretaceous", "sandstone") in blended
 
@@ -118,8 +118,8 @@ def test_generate_field_sites_dry_run(session: Session, monkeypatch):
     session.commit()
 
     monkeypatch.setattr(
-        "app.services.site_service.field_generate.lookup_country_state",
-        lambda lat, lon: ("US", "Montana"),
+        "app.services.site_service.field_generate.enrich_coordinate",
+        lambda lat, lon: CoordinateEnrichment(country_code="US", state="Montana"),
     )
 
     config = FieldSiteGenerateConfig(max_items=3, refresh=False)
@@ -128,7 +128,7 @@ def test_generate_field_sites_dry_run(session: Session, monkeypatch):
         config=config,
         dry_run=True,
         rng=random.Random(42),
-        land_mask=_test_land_mask(),
+        coordinate_sampler=_test_coordinate_sampler(),
     )
 
     assert summary.counters.generated == 3
@@ -152,8 +152,8 @@ def test_generate_field_sites_append_and_refresh(session: Session, monkeypatch):
     session.commit()
 
     monkeypatch.setattr(
-        "app.services.site_service.field_generate.lookup_country_state",
-        lambda lat, lon: ("US", "Montana"),
+        "app.services.site_service.field_generate.enrich_coordinate",
+        lambda lat, lon: CoordinateEnrichment(country_code="US", state="Montana"),
     )
 
     append_summary = generate_field_sites(
@@ -161,7 +161,7 @@ def test_generate_field_sites_append_and_refresh(session: Session, monkeypatch):
         config=FieldSiteGenerateConfig(max_items=2, refresh=False),
         dry_run=False,
         rng=random.Random(7),
-        land_mask=_test_land_mask(),
+        coordinate_sampler=_test_coordinate_sampler(),
     )
     assert append_summary.counters.generated == 2
     field_sites = list(session.exec(select(Site).where(Site.data_source == DATA_SOURCE_FIELD)).all())
@@ -172,7 +172,7 @@ def test_generate_field_sites_append_and_refresh(session: Session, monkeypatch):
         config=FieldSiteGenerateConfig(max_items=1, refresh=True),
         dry_run=False,
         rng=random.Random(8),
-        land_mask=_test_land_mask(),
+        coordinate_sampler=_test_coordinate_sampler(),
     )
     assert refresh_summary.counters.deleted_on_refresh == 3
     assert refresh_summary.counters.generated == 1
@@ -192,8 +192,8 @@ def test_generate_field_sites_sets_expected_fields(session: Session, monkeypatch
     session.refresh(site_type)
 
     monkeypatch.setattr(
-        "app.services.site_service.field_generate.lookup_country_state",
-        lambda lat, lon: ("CA", "Alberta"),
+        "app.services.site_service.field_generate.enrich_coordinate",
+        lambda lat, lon: CoordinateEnrichment(country_code="CA", state="Alberta"),
     )
 
     generate_field_sites(
@@ -201,7 +201,7 @@ def test_generate_field_sites_sets_expected_fields(session: Session, monkeypatch
         config=FieldSiteGenerateConfig(max_items=1, refresh=True),
         dry_run=False,
         rng=random.Random(1),
-        land_mask=_test_land_mask(),
+        coordinate_sampler=_test_coordinate_sampler(),
     )
 
     site = session.exec(select(Site).where(Site.data_source == DATA_SOURCE_FIELD)).first()
@@ -217,10 +217,10 @@ def test_generate_field_sites_sets_expected_fields(session: Session, monkeypatch
     assert site.max_age_ma is None
 
 
-def test_land_mask_respects_min_separation():
-    mask = _test_land_mask()
+def test_coordinate_sampler_respects_min_separation():
+    sampler = _test_coordinate_sampler()
     config = CoordinateSampleConfig(max_coordinate_attempts=20, min_separation_km=10_000.0)
-    first = mask.sample(existing=[], config=config, rng=random.Random(1))
-    second = mask.sample(existing=[first] if first else [], config=config, rng=random.Random(2))
+    first = sampler.sample(existing=[], config=config, rng=random.Random(1))
+    second = sampler.sample(existing=[first] if first else [], config=config, rng=random.Random(2))
     assert first is not None
     assert second is None

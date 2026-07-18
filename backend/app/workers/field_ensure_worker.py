@@ -18,6 +18,7 @@ from app.services.site_service.field_ensure_queue import (
     mark_job_failed,
     recover_stale_running_jobs,
 )
+from app.services.site_service.field_coordinate_filter import warm_coordinate_filter_cache
 from app.services.site_service.field_generate import (
     FieldSiteLazyConfig,
     ensure_field_sites_nearby,
@@ -108,6 +109,7 @@ def run_forever() -> None:
 
 def main() -> None:
     run_migrations()
+    warm_coordinate_filter_cache()
     run_forever()
 
 

@@ -17,10 +17,11 @@ from app.core.database import engine
 from app.models.data_source import DATA_SOURCE_ARCHIVE, DATA_SOURCE_FIELD
 from app.models.site import Site
 from app.models.site_type import SiteType
-from app.services.site_service.field_coordinates import (
+from app.services.site_service.field_coordinate_enrich import enrich_coordinate
+from app.services.site_service.field_coordinate_filter import (
     CoordinateSampleConfig,
-    LandMask,
-    load_land_mask,
+    CoordinateSampler,
+    build_coordinate_sampler,
 )
 from app.services.site_service.field_distributions import (
     ArchiveSiteRef,
@@ -31,7 +32,6 @@ from app.services.site_service.field_distributions import (
     nearby_distribution,
     sample_pair,
 )
-from app.services.site_service.reverse_geocode import lookup_country_state
 from app.services.site_service.field_site_logging import log_field_event
 from app.services.site_service.nearby import count_sites_in_radius, list_sites_in_radius
 from app.services.site_service.summary import SiteRow
@@ -55,7 +55,7 @@ class FieldSiteGenerateConfig:
     weight_closest: float = 0.25
 
     max_coordinate_attempts: int = 200
-    min_separation_km: float = 1.0
+    min_separation_km: float = 0.01
 
     exclude_military: bool = False
     land_mask_path: str | None = None
@@ -110,7 +110,7 @@ class FieldSiteGenerateSummary:
 class FieldSiteLazyConfig:
     min_sites_in_radius: int = 100
     radius_km: float = 1.0
-    min_separation_km: float = 0.1
+    min_separation_km: float = 0.01
 
     nearby_radius_km: float = 100.0
     closest_neighbor_count: int = 20
@@ -171,7 +171,7 @@ class _GenerationContext:
     archive_sites: list[ArchiveSiteRef]
     global_counts: Counter[tuple[str, str]]
     site_type_map: dict[tuple[str, str], int]
-    mask: LandMask
+    sampler: CoordinateSampler
     distribution_weights: DistributionWeights
     nearby_radius_km: float
     closest_neighbor_count: int
@@ -180,8 +180,9 @@ class _GenerationContext:
 def _build_generation_context(
     session: Session,
     *,
-    land_mask: LandMask | None = None,
+    coordinate_sampler: CoordinateSampler | None = None,
     land_mask_path: str | None = None,
+    exclude_military: bool = False,
     distribution_weights: DistributionWeights,
     nearby_radius_km: float,
     closest_neighbor_count: int,
@@ -195,12 +196,15 @@ def _build_generation_context(
         raise RuntimeError("No site_type rows found; run site_type_sync first")
 
     global_counts = build_global_distribution(archive_sites)
-    mask = land_mask or load_land_mask(land_mask_path)
+    sampler = coordinate_sampler or build_coordinate_sampler(
+        land_mask_path=land_mask_path,
+        exclude_military=exclude_military,
+    )
     return _GenerationContext(
         archive_sites=archive_sites,
         global_counts=global_counts,
         site_type_map=site_type_map,
-        mask=mask,
+        sampler=sampler,
         distribution_weights=distribution_weights,
         nearby_radius_km=nearby_radius_km,
         closest_neighbor_count=closest_neighbor_count,
@@ -249,13 +253,13 @@ def _build_field_site(
         )
         return None
 
-    country_code, state = lookup_country_state(lat, lon)
+    enrichment = enrich_coordinate(lat, lon)
     return Site(
         site_id=site_id,
         latitude=Decimal(str(round(lat, 6))),
         longitude=Decimal(str(round(lon, 6))),
-        country_code=country_code,
-        state=state,
+        country_code=enrichment.country_code,
+        state=enrichment.state,
         rock_type=rock_type,
         formation=None,
         min_age_ma=None,
@@ -282,7 +286,7 @@ def ensure_field_sites_nearby(
     lon: float,
     config: FieldSiteLazyConfig | None = None,
     rng: random.Random | None = None,
-    land_mask: LandMask | None = None,
+    coordinate_sampler: CoordinateSampler | None = None,
 ) -> EnsureFieldSitesResult:
     """Top up field sites within ``radius_km`` to ``min_sites_in_radius``."""
     cfg = config or FieldSiteLazyConfig()
@@ -291,8 +295,9 @@ def ensure_field_sites_nearby(
 
     context = _build_generation_context(
         session,
-        land_mask=land_mask,
+        coordinate_sampler=coordinate_sampler,
         land_mask_path=cfg.land_mask_path,
+        exclude_military=cfg.exclude_military,
         distribution_weights=cfg.distribution_weights,
         nearby_radius_km=cfg.nearby_radius_km,
         closest_neighbor_count=cfg.closest_neighbor_count,
@@ -337,7 +342,7 @@ def ensure_field_sites_nearby(
         if generated >= missing:
             break
 
-        sampled = context.mask.sample_in_radius(
+        sampled = context.sampler.sample_in_radius(
             center_lat=lat,
             center_lon=lon,
             radius_km=cfg.radius_km,
@@ -539,7 +544,7 @@ def generate_field_sites(
     config: FieldSiteGenerateConfig,
     dry_run: bool = False,
     rng: random.Random | None = None,
-    land_mask: LandMask | None = None,
+    coordinate_sampler: CoordinateSampler | None = None,
 ) -> FieldSiteGenerateSummary:
     """Create up to ``max_items`` procedural field sites."""
     started = time.monotonic()
@@ -555,7 +560,10 @@ def generate_field_sites(
         raise RuntimeError("No site_type rows found; run site_type_sync first")
 
     global_counts = build_global_distribution(archive_sites)
-    mask = land_mask or load_land_mask(config.land_mask_path)
+    sampler = coordinate_sampler or build_coordinate_sampler(
+        land_mask_path=config.land_mask_path,
+        exclude_military=config.exclude_military,
+    )
     existing_coords = _load_existing_field_coords(session)
 
     logger.info(
@@ -591,7 +599,7 @@ def generate_field_sites(
     pending_rows: list[Site] = []
 
     for _ in range(config.max_items):
-        sampled = mask.sample(
+        sampled = sampler.sample(
             existing=existing_coords,
             config=config.coordinate_config,
             rng=random_source,
@@ -637,13 +645,13 @@ def generate_field_sites(
             )
             continue
 
-        country_code, state = lookup_country_state(lat, lon)
+        enrichment = enrich_coordinate(lat, lon)
         site = Site(
             site_id=id_allocator.next_id(),
             latitude=Decimal(str(round(lat, 6))),
             longitude=Decimal(str(round(lon, 6))),
-            country_code=country_code,
-            state=state,
+            country_code=enrichment.country_code,
+            state=enrichment.state,
             rock_type=rock_type,
             formation=None,
             min_age_ma=None,
