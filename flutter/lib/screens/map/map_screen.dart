@@ -40,6 +40,8 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
   bool _centeredOnUser = false;
   bool _rotateMap = false;
   bool _scanning = false;
+  String? _scanBannerMessage;
+  Timer? _scanBannerTimer;
 
   @override
   void initState() {
@@ -61,6 +63,7 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
 
   @override
   void dispose() {
+    _scanBannerTimer?.cancel();
     _mapSub?.cancel();
     _animatedMapController.dispose();
     super.dispose();
@@ -137,16 +140,40 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
     _mapController.move(_mapController.camera.center, zoom);
   }
 
+  void _showScanBanner(String message) {
+    _scanBannerTimer?.cancel();
+    setState(() => _scanBannerMessage = message);
+    _scanBannerTimer = Timer(const Duration(seconds: 4), () {
+      if (!mounted) return;
+      setState(() => _scanBannerMessage = null);
+    });
+  }
+
+  String _scanRequestBannerMessage(FieldEnsureResponse response) {
+    if (!response.accepted) {
+      return 'Scan already queued for this map area';
+    }
+    if (response.missing <= 0) {
+      return 'This map area already has enough field sites';
+    }
+    return 'Field site scan requested — new sites will appear when ready';
+  }
+
   Future<void> _onScanFieldArea() async {
     if (!_mapReady || _scanning) return;
 
     final center = _mapController.camera.center;
     setState(() => _scanning = true);
     try {
-      await context.read<FieldSessionCoordinator>().scanAt(center);
+      final response =
+          await context.read<FieldSessionCoordinator>().scanAt(center);
       if (!mounted) return;
-      if (context.read<CatalogModeController>().isField) {
-        await context.read<map_data.MapController>().refresh();
+      if (response != null) {
+        _showScanBanner(_scanRequestBannerMessage(response));
+      }
+    } catch (error) {
+      if (mounted) {
+        _showScanBanner('Could not request field site scan');
       }
     } finally {
       if (mounted) {
@@ -228,6 +255,45 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
                 ),
               ],
             ),
+            if (_scanBannerMessage != null)
+              Positioned(
+                top: 12,
+                left: 16,
+                right: 16,
+                child: Material(
+                  color: Theme.of(context)
+                      .colorScheme
+                      .primaryContainer
+                      .withValues(alpha: 0.92),
+                  borderRadius: BorderRadius.circular(12),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 10,
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.radar_outlined,
+                          size: 18,
+                          color: Theme.of(context).colorScheme.onPrimaryContainer,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            _scanBannerMessage!,
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onPrimaryContainer,
+                                ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
             if (mapData.loading)
               Positioned(
                 top: locationService.error != null ? 56 : 12,

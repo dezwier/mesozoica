@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:latlong2/latlong.dart';
 
+import '../models/site.dart';
 import '../services/location_service.dart';
 import '../services/site_service.dart';
 
@@ -104,19 +105,19 @@ class FieldSessionCoordinator extends ChangeNotifier {
   }
 
   /// Manual scan at a map-chosen point (field mode FAB).
-  Future<void> scanAt(LatLng position) async {
+  Future<FieldEnsureResponse?> scanAt(LatLng position) async {
     if (_lifecycle == AppLifecycleState.detached) {
       _logEnsure('scan skipped (app detached)');
-      return;
+      return null;
     }
     if (!_sessionActive) {
       await _syncSession();
     }
     if (!_sessionActive) {
       _logEnsure('scan skipped (session inactive)');
-      return;
+      return null;
     }
-    await _maybeEnsure(position: position, force: true, reason: reasonScan);
+    return _maybeEnsure(position: position, force: true, reason: reasonScan);
   }
 
   void stop() {
@@ -149,17 +150,17 @@ class FieldSessionCoordinator extends ChangeNotifier {
     );
   }
 
-  Future<void> _maybeEnsure({
+  Future<FieldEnsureResponse?> _maybeEnsure({
     LatLng? position,
     bool force = false,
     required String reason,
   }) async {
-    if (!_sessionActive) return;
+    if (!_sessionActive) return null;
     if (_ensureInFlight) {
       if (force) {
         _pendingEnsureReason = reason;
       }
-      return;
+      return null;
     }
     final location = position ?? _locationService?.currentLocation;
     if (location == null) {
@@ -171,14 +172,14 @@ class FieldSessionCoordinator extends ChangeNotifier {
           '${err != null ? '; $err' : ''})',
         );
       }
-      return;
+      return null;
     }
 
     _pendingEnsureReason = null;
     if (!force &&
         _lastEnsurePosition != null &&
         _distance(_lastEnsurePosition!, location) < ensureMoveThresholdM) {
-      return;
+      return null;
     }
 
     _ensureInFlight = true;
@@ -198,8 +199,13 @@ class FieldSessionCoordinator extends ChangeNotifier {
         'missing=${response.missing} enqueued=${response.accepted} '
         'written=0',
       );
+      return response;
     } catch (error) {
       _logEnsure('failed reason=$reason error=$error');
+      if (reason == reasonScan) {
+        rethrow;
+      }
+      return null;
     } finally {
       _ensureInFlight = false;
       final pending = _pendingEnsureReason;
