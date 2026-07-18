@@ -22,6 +22,9 @@ IS_DEVELOPMENT = settings.environment.lower() in ("development", "dev", "local")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    from app.services.site_service.field_site_logging import _configure_logger
+
+    _configure_logger()
     init_db()
     yield
 

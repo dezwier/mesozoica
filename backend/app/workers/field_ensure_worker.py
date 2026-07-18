@@ -58,7 +58,8 @@ def process_one_job(*, worker_id: str) -> bool:
             if refreshed is not None:
                 mark_job_done(session, refreshed)
         log_field_event(
-            "ensure_written",
+            "ensure_complete",
+            service="worker",
             reason=reason,
             lat=job.lat,
             lon=job.lon,
@@ -67,13 +68,13 @@ def process_one_job(*, worker_id: str) -> bool:
             written=result.generated,
             total_in_radius=result.total_in_radius,
             elapsed_s=round(time.monotonic() - started, 1),
-            worker=worker_id,
             job_id=job.id,
         )
         return True
     except Exception as exc:
         log_field_event(
             "worker_failed",
+            service="worker",
             reason=reason,
             lat=job.lat,
             lon=job.lon,
@@ -94,6 +95,7 @@ def run_forever() -> None:
     worker_id = _worker_id()
     log_field_event(
         "worker_start",
+        service="worker",
         worker=worker_id,
         max_concurrent=MAX_CONCURRENT,
         poll_s=POLL_INTERVAL_S,

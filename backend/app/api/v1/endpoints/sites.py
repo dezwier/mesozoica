@@ -29,7 +29,9 @@ from app.services.site_service import (
     site_row_to_summary,
 )
 from app.services.site_service.field_ensure_background import schedule_field_site_ensure
+from app.services.site_service.field_ensure_queue import cell_key
 from app.services.site_service.field_generate import FieldSiteLazyConfig
+from app.services.site_service.field_site_logging import log_field_event, normalize_reason
 
 router = APIRouter(prefix="/sites", tags=["sites"])
 
@@ -109,11 +111,25 @@ def get_sites_nearby(
 @router.post("/field/ensure", response_model=FieldEnsureResponse, status_code=202)
 def post_field_site_ensure(body: FieldEnsureRequest) -> FieldEnsureResponse:
     config = FieldSiteLazyConfig(radius_km=body.radius_km)
+    reason = normalize_reason(body.reason)
     existing, missing, accepted = schedule_field_site_ensure(
         lat=body.lat,
         lon=body.lon,
         config=config,
         reason=body.reason,
+    )
+    log_field_event(
+        "ensure_check",
+        service="api",
+        reason=reason,
+        lat=body.lat,
+        lon=body.lon,
+        radius_km=body.radius_km,
+        cell=cell_key(body.lat, body.lon, body.radius_km),
+        existing=existing,
+        missing=missing,
+        enqueued=accepted and missing > 0,
+        written=0,
     )
     return FieldEnsureResponse(
         accepted=accepted,

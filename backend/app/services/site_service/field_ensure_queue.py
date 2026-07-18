@@ -51,18 +51,6 @@ def enqueue_field_site_ensure(
     key = cell_key(lat, lon, cfg.radius_km)
 
     if missing == 0:
-        log_field_event(
-            "ensure_check",
-            lat=lat,
-            lon=lon,
-            radius_km=cfg.radius_km,
-            cell=key,
-            reason=trigger,
-            existing=existing,
-            missing=0,
-            enqueued=False,
-            written=0,
-        )
         return existing, 0, True
 
     job = session.exec(
@@ -71,19 +59,6 @@ def enqueue_field_site_ensure(
 
     if job is not None:
         if job.status in (STATUS_PENDING, STATUS_RUNNING):
-            log_field_event(
-                "ensure_check",
-                lat=lat,
-                lon=lon,
-                radius_km=cfg.radius_km,
-                cell=key,
-                reason=trigger,
-                existing=existing,
-                missing=missing,
-                enqueued=False,
-                written=0,
-                skip_reason="job_active",
-            )
             return existing, missing, False
 
         job.lat = lat
@@ -98,18 +73,6 @@ def enqueue_field_site_ensure(
         job.finished_at = None
         session.add(job)
         session.commit()
-        log_field_event(
-            "ensure_check",
-            lat=lat,
-            lon=lon,
-            radius_km=cfg.radius_km,
-            cell=key,
-            reason=trigger,
-            existing=existing,
-            missing=missing,
-            enqueued=True,
-            written=0,
-        )
         return existing, missing, True
 
     job = FieldEnsureJob(
@@ -127,33 +90,8 @@ def enqueue_field_site_ensure(
         session.commit()
     except IntegrityError:
         session.rollback()
-        log_field_event(
-            "ensure_check",
-            lat=lat,
-            lon=lon,
-            radius_km=cfg.radius_km,
-            cell=key,
-            reason=trigger,
-            existing=existing,
-            missing=missing,
-            enqueued=False,
-            written=0,
-            skip_reason="duplicate_enqueue",
-        )
         return existing, missing, False
 
-    log_field_event(
-        "ensure_check",
-        lat=lat,
-        lon=lon,
-        radius_km=cfg.radius_km,
-        cell=key,
-        reason=trigger,
-        existing=existing,
-        missing=missing,
-        enqueued=True,
-        written=0,
-    )
     return existing, missing, True
 
 
@@ -244,17 +182,6 @@ def claim_next_job(session: Session, *, worker_id: str) -> FieldEnsureJob | None
     session.add(job)
     session.commit()
     session.refresh(job)
-    log_field_event(
-        "ensure_claimed",
-        lat=job.lat,
-        lon=job.lon,
-        radius_km=job.radius_km,
-        cell=job.cell_key,
-        reason=normalize_reason(job.reason),
-        missing=job.missing_count,
-        worker=worker_id,
-        job_id=job.id,
-    )
     return job
 
 

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import sys
 from typing import Any
 
 logger = logging.getLogger("field_site_generate")
@@ -47,4 +48,9 @@ def log_field_event(action: str, **fields: Any) -> None:
         if value is None:
             continue
         parts.append(f"{key}={value}")
-    logger.info(" ".join(parts))
+    message = " ".join(parts)
+    logger.info(message)
+    for handler in logger.handlers:
+        if hasattr(handler, "flush"):
+            handler.flush()
+    sys.stderr.flush()

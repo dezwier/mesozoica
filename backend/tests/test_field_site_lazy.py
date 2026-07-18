@@ -279,7 +279,9 @@ def test_field_ensure_api_logs_noop_when_full(
     assert response.json()["missing"] == 0
     assert any(
         "action=ensure_check" in record.message
+        and "service=api" in record.message
         and "reason=move_500m" in record.message
+        and "missing=0" in record.message
         and "written=0" in record.message
         for record in caplog.records
     )
