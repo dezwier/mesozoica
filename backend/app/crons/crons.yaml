@@ -69,6 +69,22 @@ jobs:
     params:
       dry_run: false
 
+  - id: field_site_generate
+    enabled: false
+    schedule: "0 10 * * 0"
+    params:
+      dry_run: false
+      refresh: false
+      max_items: 100
+      nearby_radius_km: 100.0
+      closest_neighbor_count: 20
+      weight_global: 0.25
+      weight_nearby: 0.50
+      weight_closest: 0.25
+      max_coordinate_attempts: 200
+      min_separation_km: 1.0
+      exclude_military: false
+
   - id: tool_sync
     enabled: false
     schedule: "0 10 * * 0"

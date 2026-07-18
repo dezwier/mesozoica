@@ -19,6 +19,7 @@ Image **generation** writes local PNGs to repo folders; **image sync** (`make sy
 | `site_type_image_generate` | `0 8 * * 0` (Sun 08:00) | Generate site-type card images via Gemini Imagen |
 | `site_sync` | `0 9 * * 0` (Sun 09:00) | Rebuild `site` derived table and link `fossil.site_id` |
 | `site_type_sync` | `30 9 * * 0` (Sun 09:30) | Rebuild `site_type` rows and assign `site.site_type_id` |
+| `field_site_generate` | `0 10 * * 0` (Sun 10:00) | Generate procedural `data_source=field` sites at safe land coordinates |
 | `tool_sync` | `0 10 * * 0` (Sun 10:00) | Upsert tool catalog from [`backend/data/tools.json`](../data/tools.json) |
 | `tool_image_generate` | `30 10 * * 0` (Sun 10:30) | Generate tool card images via Gemini Imagen |
 
@@ -43,6 +44,7 @@ make run-fossil-pbdb-sync
 make run-fossil-llm-enrich
 make run-site-sync
 make run-site-type-sync
+make run-field-site-generate
 make run-tool-sync
 make run-dinosaur-image-generate
 make run-fossil-image-generate
@@ -73,6 +75,9 @@ make run-site-sync CRON_EXTRA='--dinos Tyrannosaurus'
 make run-site-type-sync
 make run-site-type-sync CRON_EXTRA='--dry-run'
 make run-site-type-sync CRON_EXTRA='--dinos Tyrannosaurus'
+
+make run-field-site-generate CRON_EXTRA='--dry-run --max-items 10'
+make run-field-site-generate CRON_EXTRA='--refresh --max-items 100'
 
 make run-tool-sync
 make run-tool-sync CRON_EXTRA='--dry-run'
@@ -122,6 +127,7 @@ RAILWAY_RUN=1 railway run python -m app.crons.runner --job fossil_image_generate
 RAILWAY_RUN=1 railway run python -m app.crons.runner --job site_type_image_generate
 RAILWAY_RUN=1 railway run python -m app.crons.runner --job site_sync
 RAILWAY_RUN=1 railway run python -m app.crons.runner --job site_type_sync
+RAILWAY_RUN=1 railway run python -m app.crons.runner --job field_site_generate
 RAILWAY_RUN=1 railway run python -m app.crons.runner --job tool_sync
 RAILWAY_RUN=1 railway run python -m app.crons.runner --job tool_image_generate
 
@@ -142,11 +148,12 @@ RAILWAY_RUN=1 railway run python -m app.crons.runner --job tool_image_generate -
 | `--category NAME` | `dinosaur_wiki_sync`: limit to one Wikipedia category |
 | `--stale-days N` | `fossil_pbdb_sync`: only genera with `fossils_insert_time` null or older than N days (ignored with `--overwrite`) |
 | `--since ISO8601` | `fossil_pbdb_sync`: only genera with `fossils_insert_time` null or before this UTC time (ignored with `--overwrite`) |
-| `--max-items N` | Image generation jobs: cap successful generations per run |
+| `--max-items N` | Image generation jobs: cap successful generations per run; `field_site_generate`: number of field sites to create |
+| `--refresh` | `field_site_generate`: delete existing `data_source=field` rows before generating |
 | `--site-types ID …` | `site_type_image_generate`: limit to specific `site_type.id` values |
 | `--tools NAME …` | `tool_sync` / `tool_image_generate`: limit to specific branded tool names |
 | `--prune` | `tool_sync`: delete DB tool rows whose `name` is no longer in `tools.json` |
-| `--dry-run` | Image generation: list candidates without calling Imagen or writing files; `site_sync` / `site_type_sync` / `tool_sync`: compute without DB writes |
+| `--dry-run` | Image generation: list candidates without calling Imagen or writing files; `site_sync` / `site_type_sync` / `tool_sync` / `field_site_generate`: compute without DB writes |
 
 ### `fossil_pbdb_sync` resume behavior
 

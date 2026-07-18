@@ -28,6 +28,7 @@ from app.crons.jobs import (
     dinosaur_llm_enrich,
     site_sync,
     site_type_sync,
+    field_site_generate,
     fossil_image_generate,
     fossil_llm_enrich,
     fossil_pbdb_sync,
@@ -164,6 +165,10 @@ def _run_site_type_sync(params: dict[str, Any]) -> int:
     )
 
 
+def _run_field_site_generate(params: dict[str, Any]) -> int:
+    return field_site_generate.run_generate_job(**params)
+
+
 def _parse_tool_names(raw: Any) -> list[str] | None:
     if raw is None:
         return None
@@ -203,6 +208,7 @@ _JOB_HANDLERS: dict[str, Callable[[dict[str, Any]], int]] = {
     "site_type_image_generate": _run_site_type_image_generate,
     "site_sync": _run_site_sync,
     "site_type_sync": _run_site_type_sync,
+    "field_site_generate": _run_field_site_generate,
     "tool_sync": _run_tool_sync,
     "tool_image_generate": _run_tool_image_generate,
 }
@@ -293,7 +299,8 @@ def main(argv: list[str] | None = None) -> int:
         metavar="N",
         type=int,
         help="Maximum successful image generations per run (dinosaur_image_generate, "
-        "fossil_image_generate, site_type_image_generate).",
+        "fossil_image_generate, site_type_image_generate) or field sites to create "
+        "(field_site_generate).",
     )
     parser.add_argument(
         "--site-types",
@@ -316,9 +323,15 @@ def main(argv: list[str] | None = None) -> int:
         help="Remove DB tool rows whose name is no longer in tools.json (tool_sync).",
     )
     parser.add_argument(
+        "--refresh",
+        action="store_true",
+        help="Delete existing field sites before generating (field_site_generate).",
+    )
+    parser.add_argument(
         "--dry-run",
         action="store_true",
-        help="Preview work without writing (image generation jobs, site_sync, site_type_sync).",
+        help="Preview work without writing (image generation jobs, site_sync, site_type_sync, "
+        "field_site_generate).",
     )
     args = parser.parse_args(argv)
 
@@ -343,6 +356,8 @@ def main(argv: list[str] | None = None) -> int:
         overrides["tools"] = tool_names
     if args.prune:
         overrides["prune"] = True
+    if args.refresh:
+        overrides["refresh"] = True
     if args.dry_run:
         overrides["dry_run"] = True
 
