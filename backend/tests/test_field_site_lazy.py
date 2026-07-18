@@ -285,6 +285,12 @@ def test_field_ensure_api_logs_noop_when_full(
         and "written=0" in record.message
         for record in caplog.records
     )
+    assert any(
+        "action=ensure_complete" in record.message
+        and "service=api" in record.message
+        and "written=0" in record.message
+        for record in caplog.records
+    )
     assert len(list(session.exec(select(FieldEnsureJob)).all())) == 0
 
 

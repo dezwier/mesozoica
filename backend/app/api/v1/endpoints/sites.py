@@ -131,6 +131,18 @@ def post_field_site_ensure(body: FieldEnsureRequest) -> FieldEnsureResponse:
         enqueued=accepted and missing > 0,
         written=0,
     )
+    if missing == 0:
+        log_field_event(
+            "ensure_complete",
+            service="api",
+            reason=reason,
+            lat=body.lat,
+            lon=body.lon,
+            radius_km=body.radius_km,
+            cell=cell_key(body.lat, body.lon, body.radius_km),
+            written=0,
+            total_in_radius=existing,
+        )
     return FieldEnsureResponse(
         accepted=accepted,
         existing_in_radius=existing,

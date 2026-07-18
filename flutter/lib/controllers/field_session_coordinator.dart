@@ -59,8 +59,8 @@ class FieldSessionCoordinator extends ChangeNotifier {
   }
 
   Future<void> _runResumeEnsure() async {
-    await _locationService?.onAppResumed();
     await _syncSession();
+    await _locationService?.onAppResumed();
     await _maybeEnsure(force: true, reason: reasonResume);
     _openedEnsureDone = true;
   }
@@ -155,8 +155,12 @@ class FieldSessionCoordinator extends ChangeNotifier {
     required String reason,
   }) async {
     if (!_sessionActive) return;
-    if (_ensureInFlight && reason != reasonScan) return;
-
+    if (_ensureInFlight) {
+      if (force) {
+        _pendingEnsureReason = reason;
+      }
+      return;
+    }
     final location = position ?? _locationService?.currentLocation;
     if (location == null) {
       if (force) {
@@ -191,12 +195,18 @@ class FieldSessionCoordinator extends ChangeNotifier {
       );
       _logEnsure(
         'check reason=$reason existing=${response.existingInRadius} '
-        'missing=${response.missing} enqueued=${response.accepted} written=0',
+        'missing=${response.missing} enqueued=${response.accepted} '
+        'written=0',
       );
     } catch (error) {
       _logEnsure('failed reason=$reason error=$error');
     } finally {
       _ensureInFlight = false;
+      final pending = _pendingEnsureReason;
+      if (pending != null) {
+        _pendingEnsureReason = null;
+        unawaited(_maybeEnsure(force: true, reason: pending));
+      }
     }
   }
 

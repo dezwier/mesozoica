@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/widgets.dart';
@@ -207,6 +208,47 @@ void main() {
     expect(scanBody['lat'], 52.5);
     expect(scanBody['lon'], 5.5);
     expect(bodies.where((b) => b['reason'] == FieldSessionCoordinator.reasonScan).length, 1);
+
+    coordinator.dispose();
+  });
+
+  test('defers resume ensure when another check is in flight', () async {
+    final bodies = <Map<String, dynamic>>[];
+    final completer = Completer<void>();
+
+    final coordinator = FieldSessionCoordinator(
+      siteService: SiteService(
+        client: MockClient((request) async {
+          bodies.add(jsonDecode(request.body) as Map<String, dynamic>);
+          if (bodies.length == 1) {
+            await completer.future;
+          }
+          return http.Response(
+            jsonEncode({
+              'accepted': true,
+              'existing_in_radius': 100,
+              'missing': 0,
+              'radius_km': 1.0,
+            }),
+            202,
+          );
+        }),
+      ),
+    );
+
+    final locationService = _FakeLocationService(const LatLng(51.0, 4.0));
+    coordinator.bind(locationService: locationService);
+    await pumpUntilIdle();
+    expect(bodies.length, 1);
+
+    coordinator.onForeground();
+    await pumpUntilIdle();
+    expect(bodies.length, 1);
+
+    completer.complete();
+    await pumpUntilIdle();
+    expect(bodies.length, 2);
+    expect(bodies.last['reason'], FieldSessionCoordinator.reasonResume);
 
     coordinator.dispose();
   });

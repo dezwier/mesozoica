@@ -46,6 +46,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
       context.read<FieldSessionCoordinator>().bind(
             locationService: context.read<LocationService>(),
           );
+      context.read<FieldSessionCoordinator>().onForeground();
     });
   }
 

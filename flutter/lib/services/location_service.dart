@@ -189,6 +189,12 @@ class LocationService extends ChangeNotifier {
         return;
       }
 
+      final lastKnown = await Geolocator.getLastKnownPosition();
+      if (lastKnown != null) {
+        _currentLocation = LatLng(lastKnown.latitude, lastKnown.longitude);
+        notifyListeners();
+      }
+
       final position = await Geolocator.getCurrentPosition(
         locationSettings: _locationSettings(
           backgroundPreferred: backgroundPreferred,
