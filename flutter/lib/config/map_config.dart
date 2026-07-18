@@ -19,9 +19,9 @@ class MapConfig {
   static const double markerIconSize = 22.0;
 
   static const String cartoLight =
-      'https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png';
+      'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
   static const String cartoDark =
-      'https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png';
+      'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
 
   static const List<String> tileSubdomains = ['a', 'b', 'c', 'd'];
   static const String userAgentPackageName = 'com.mesozoica.app';
