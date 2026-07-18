@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import os
 import socket
 import time
@@ -111,8 +112,12 @@ def run_forever() -> None:
 
 
 def main() -> None:
+    logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
+    print("field_ensure_worker: starting", flush=True)
     run_migrations()
+    print("field_ensure_worker: migrations complete", flush=True)
     ensure_osm_coordinate_masks_on_disk()
+    print("field_ensure_worker: coordinate masks ready", flush=True)
     warm_coordinate_filter_cache()
     run_forever()
 
