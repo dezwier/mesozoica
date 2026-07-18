@@ -368,8 +368,9 @@ def ensure_field_sites_nearby(
             radius_km=cfg.radius_km,
         )
 
+    _sync_field_site_id_sequence(session)
+    id_allocator = _FieldSiteIdAllocator(session)
     existing_coords = _load_existing_field_coords(session)
-    next_site_id = _next_field_site_id(session)
     pending_rows: list[Site] = []
     generated = 0
     skipped_coords = 0
@@ -397,14 +398,13 @@ def ensure_field_sites_nearby(
             context,
             lat=site_lat,
             lon=site_lon,
-            site_id=next_site_id,
+            site_id=id_allocator.next_id(),
             rng=random_source,
         )
         if site is None:
             skipped_no_site_type += 1
             continue
 
-        next_site_id += 1
         existing_coords.append((site_lat, site_lon))
         pending_rows.append(site)
         generated += 1
@@ -504,18 +504,63 @@ def _load_existing_field_coords(session: Session) -> list[tuple[float, float]]:
     return coords
 
 
-def _next_field_site_id(session: Session) -> int:
-    if engine.dialect.name == "postgresql":
-        row = session.exec(text("SELECT nextval('field_site_id_seq')")).one()
-        next_id = row[0]
-        return max(int(next_id), FIELD_SITE_ID_START)
+def _sync_field_site_id_sequence(session: Session) -> None:
+    """Advance the Postgres sequence past existing field site IDs."""
+    if engine.dialect.name != "postgresql":
+        return
+    session.exec(
+        text(
+            """
+            SELECT setval(
+                'field_site_id_seq',
+                GREATEST(
+                    :start,
+                    COALESCE(
+                        (SELECT MAX(site_id) FROM site WHERE site_id >= :start),
+                        :start_minus_one
+                    )
+                ),
+                true
+            )
+            """
+        ).bindparams(
+            start=FIELD_SITE_ID_START,
+            start_minus_one=FIELD_SITE_ID_START - 1,
+        )
+    )
 
-    current_max = session.exec(
-        select(func.max(Site.site_id)).where(col(Site.data_source) == DATA_SOURCE_FIELD)
-    ).one()
-    if current_max is None:
-        return FIELD_SITE_ID_START
-    return max(int(current_max) + 1, FIELD_SITE_ID_START)
+
+class _FieldSiteIdAllocator:
+    """Hand out unique field site IDs (Postgres sequence or SQLite counter)."""
+
+    def __init__(self, session: Session) -> None:
+        self._session = session
+        self._sqlite_next: int | None = None
+
+    def next_id(self) -> int:
+        if engine.dialect.name == "postgresql":
+            row = self._session.exec(
+                text("SELECT nextval('field_site_id_seq')")
+            ).one()
+            return max(int(row[0]), FIELD_SITE_ID_START)
+
+        if self._sqlite_next is None:
+            current_max = self._session.exec(
+                select(func.max(Site.site_id)).where(
+                    col(Site.site_id) >= FIELD_SITE_ID_START
+                )
+            ).one()
+            if current_max is None:
+                self._sqlite_next = FIELD_SITE_ID_START
+            else:
+                self._sqlite_next = max(int(current_max) + 1, FIELD_SITE_ID_START)
+        next_id = self._sqlite_next
+        self._sqlite_next += 1
+        return next_id
+
+
+def _next_field_site_id(session: Session) -> int:
+    return _FieldSiteIdAllocator(session).next_id()
 
 
 def _delete_field_sites(session: Session) -> int:
@@ -617,7 +662,8 @@ def generate_field_sites(
                 dry_run,
             )
 
-    next_site_id = _next_field_site_id(session)
+    _sync_field_site_id_sequence(session)
+    id_allocator = _FieldSiteIdAllocator(session)
     pending_rows: list[Site] = []
 
     for _ in range(config.max_items):
@@ -669,7 +715,7 @@ def generate_field_sites(
 
         country_code, state = lookup_country_state(lat, lon)
         site = Site(
-            site_id=next_site_id,
+            site_id=id_allocator.next_id(),
             latitude=Decimal(str(round(lat, 6))),
             longitude=Decimal(str(round(lon, 6))),
             country_code=country_code,
@@ -682,7 +728,6 @@ def generate_field_sites(
             site_type_id=site_type_id,
             data_source=DATA_SOURCE_FIELD,
         )
-        next_site_id += 1
         existing_coords.append((lat, lon))
         counters.generated += 1
 

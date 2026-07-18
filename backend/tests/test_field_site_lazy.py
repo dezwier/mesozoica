@@ -328,9 +328,70 @@ def test_next_field_site_id_reads_postgresql_nextval_row(session: Session, monke
     )
 
     class _SeqResult:
-        def one(self):
-            return (FIELD_SITE_ID_START + 7,)
+        def __init__(self, value):
+            self._value = value
 
-    monkeypatch.setattr(session, "exec", lambda _stmt: _SeqResult())
+        def one(self):
+            return (self._value,)
+
+    def fake_exec(stmt):
+        sql = str(stmt)
+        if "nextval" not in sql:
+            raise AssertionError(f"unexpected sql: {sql}")
+        return _SeqResult(FIELD_SITE_ID_START + 7)
+
+    monkeypatch.setattr(session, "exec", fake_exec)
 
     assert _next_field_site_id(session) == FIELD_SITE_ID_START + 7
+
+
+def test_ensure_uses_fresh_ids_after_existing_field_site(
+    session: Session, monkeypatch
+):
+    site_type = _site_type(period="cretaceous", rock_type="sandstone")
+    session.add(site_type)
+    session.add(_archive_site(site_id=100, lat=40.0, lon=-100.0))
+    session.add(
+        Site(
+            site_id=FIELD_SITE_ID_START + 1,
+            latitude=Decimal("40.0001"),
+            longitude=Decimal("-100.0001"),
+            rock_type="sandstone",
+            period="cretaceous",
+            site_type_id=site_type.id,
+            data_source=DATA_SOURCE_FIELD,
+        )
+    )
+    session.commit()
+    session.refresh(site_type)
+
+    assigned: list[int] = []
+
+    class _FakeAllocator:
+        def next_id(self):
+            assigned.append(FIELD_SITE_ID_START + 2 + len(assigned))
+            return assigned[-1]
+
+    monkeypatch.setattr(
+        "app.services.site_service.field_generate._FieldSiteIdAllocator",
+        lambda session: _FakeAllocator(),
+    )
+    monkeypatch.setattr(
+        "app.services.site_service.field_generate.lookup_country_state",
+        lambda lat, lon: ("US", "Montana"),
+    )
+    monkeypatch.setattr(
+        "app.services.site_service.field_generate.load_land_mask",
+        lambda path=None: _test_land_mask(40.0, -100.0, radius_km=1.0),
+    )
+
+    result = ensure_field_sites_nearby(
+        session,
+        lat=40.0,
+        lon=-100.0,
+        config=FieldSiteLazyConfig(min_sites_in_radius=3, radius_km=1.0),
+    )
+
+    assert result.generated == 2
+    assert assigned == [FIELD_SITE_ID_START + 2, FIELD_SITE_ID_START + 3]
+    assert len(assigned) == len(set(assigned))
