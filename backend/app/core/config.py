@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import os
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -270,6 +271,13 @@ class Settings(BaseSettings):
         return value
 
 
+def _uses_minimal_settings() -> bool:
+    """Background workers only need DATABASE_URL, not API/cron env validation."""
+    if os.getenv("MESOZOICA_MINIMAL_SETTINGS", "").strip() == "1":
+        return True
+    return "field_ensure_worker" in " ".join(sys.argv)
+
+
 settings = Settings()
 
 if not settings.database_url:
@@ -277,7 +285,7 @@ if not settings.database_url:
 
 _env = os.getenv("ENVIRONMENT", "production").strip().lower()
 _is_production = _env not in ("development", "dev", "local")
-_minimal_settings = os.getenv("MESOZOICA_MINIMAL_SETTINGS", "").strip() == "1"
+_minimal_settings = _uses_minimal_settings()
 
 if _is_production and not _minimal_settings:
     if not (os.getenv("SECRET_KEY") or "").strip():
