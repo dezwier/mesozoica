@@ -8,6 +8,7 @@ import 'package:provider/provider.dart';
 
 import '../../config/map_config.dart';
 import '../../controllers/catalog_mode_controller.dart';
+import '../../controllers/field_session_coordinator.dart';
 import '../../controllers/map_controller.dart' as map_data;
 import '../../models/site.dart';
 import '../../services/location_service.dart';
@@ -38,6 +39,7 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
   double _zoomLevel = MapConfig.initialZoom;
   bool _centeredOnUser = false;
   bool _rotateMap = false;
+  bool _scanning = false;
 
   @override
   void initState() {
@@ -135,6 +137,24 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
     _mapController.move(_mapController.camera.center, zoom);
   }
 
+  Future<void> _onScanFieldArea() async {
+    if (!_mapReady || _scanning) return;
+
+    final center = _mapController.camera.center;
+    setState(() => _scanning = true);
+    try {
+      await context.read<FieldSessionCoordinator>().scanAt(center);
+      if (!mounted) return;
+      if (context.read<CatalogModeController>().isField) {
+        await context.read<map_data.MapController>().refresh();
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _scanning = false);
+      }
+    }
+  }
+
   Future<void> _onSiteTap(SiteSummary site) async {
     final mapData = context.read<map_data.MapController>();
     mapData.selectSite(site);
@@ -147,6 +167,8 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
+    final isFieldMode = context.watch<CatalogModeController>().isField;
+
     return Consumer2<map_data.MapController, LocationService>(
       builder: (context, mapData, locationService, _) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -276,6 +298,25 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
               rotateMap: _rotateMap,
               onToggleRotation: () =>
                   _toggleRotationMode(locationService.headingDeg),
+              filterFab: isFieldMode
+                  ? FloatingActionButton.small(
+                      heroTag: 'scan_field_area',
+                      onPressed: _scanning ? null : _onScanFieldArea,
+                      tooltip: 'Scan map center for field sites',
+                      child: _scanning
+                          ? SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onPrimaryContainer,
+                              ),
+                            )
+                          : const Icon(Icons.radar_outlined),
+                    )
+                  : null,
             ),
             if (locationService.error != null)
               Positioned(

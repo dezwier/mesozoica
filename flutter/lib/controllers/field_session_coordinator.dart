@@ -18,6 +18,7 @@ class FieldSessionCoordinator extends ChangeNotifier {
 
   static const reasonResume = 'resume';
   static const reasonMove500m = 'move_500m';
+  static const reasonScan = 'scan';
 
   final SiteService _siteService;
   LocationService? _locationService;
@@ -102,6 +103,22 @@ class FieldSessionCoordinator extends ChangeNotifier {
     unawaited(_syncSession());
   }
 
+  /// Manual scan at a map-chosen point (field mode FAB).
+  Future<void> scanAt(LatLng position) async {
+    if (_lifecycle == AppLifecycleState.detached) {
+      _logEnsure('scan skipped (app detached)');
+      return;
+    }
+    if (!_sessionActive) {
+      await _syncSession();
+    }
+    if (!_sessionActive) {
+      _logEnsure('scan skipped (session inactive)');
+      return;
+    }
+    await _maybeEnsure(position: position, force: true, reason: reasonScan);
+  }
+
   void stop() {
     if (!_sessionActive) {
       return;
@@ -138,7 +155,7 @@ class FieldSessionCoordinator extends ChangeNotifier {
     required String reason,
   }) async {
     if (!_sessionActive) return;
-    if (_ensureInFlight) return;
+    if (_ensureInFlight && reason != reasonScan) return;
 
     final location = position ?? _locationService?.currentLocation;
     if (location == null) {
@@ -161,7 +178,9 @@ class FieldSessionCoordinator extends ChangeNotifier {
     }
 
     _ensureInFlight = true;
-    _lastEnsurePosition = location;
+    if (reason != reasonScan) {
+      _lastEnsurePosition = location;
+    }
 
     try {
       final response = await _siteService.requestFieldSiteEnsure(

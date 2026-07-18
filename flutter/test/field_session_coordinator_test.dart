@@ -174,4 +174,40 @@ void main() {
 
     coordinator.dispose();
   });
+
+  test('scanAt ensures map-chosen location with scan reason', () async {
+    final bodies = <Map<String, dynamic>>[];
+    final coordinator = FieldSessionCoordinator(
+      siteService: SiteService(
+        client: MockClient((request) async {
+          bodies.add(jsonDecode(request.body) as Map<String, dynamic>);
+          return http.Response(
+            jsonEncode({
+              'accepted': true,
+              'existing_in_radius': 12,
+              'missing': 88,
+              'radius_km': 1.0,
+            }),
+            202,
+          );
+        }),
+      ),
+    );
+
+    final locationService = _FakeLocationService(const LatLng(51.0, 4.0));
+    coordinator.bind(locationService: locationService);
+    await pumpUntilIdle();
+
+    await coordinator.scanAt(const LatLng(52.5, 5.5));
+    await pumpUntilIdle();
+
+    final scanBody = bodies.firstWhere(
+      (body) => body['reason'] == FieldSessionCoordinator.reasonScan,
+    );
+    expect(scanBody['lat'], 52.5);
+    expect(scanBody['lon'], 5.5);
+    expect(bodies.where((b) => b['reason'] == FieldSessionCoordinator.reasonScan).length, 1);
+
+    coordinator.dispose();
+  });
 }

@@ -7,7 +7,7 @@ from typing import Any
 
 logger = logging.getLogger("field_site_generate")
 
-FIELD_ENSURE_REASONS = frozenset({"resume", "move_500m", "field_mode_on"})
+FIELD_ENSURE_REASONS = frozenset({"resume", "move_500m", "scan", "field_mode_on"})
 
 _configured = False
 
