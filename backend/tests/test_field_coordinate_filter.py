@@ -9,25 +9,47 @@ from shapely.geometry import box
 
 from app.services.site_service.field_coordinate_enrich import CoordinateEnrichment, enrich_coordinate
 from app.services.site_service.field_coordinate_filter import (
+    CompositeCoordinateFilter,
     CoordinateSampleConfig,
     CoordinateSampler,
     LandPolygonFilter,
+    PolygonSetFilter,
+    WaterExclusionFilter,
     build_coordinate_filter,
+    clear_coordinate_filter_cache,
     load_land_polygon_filter,
     resolve_land_mask_path,
     warm_coordinate_filter_cache,
 )
 
 
-def test_land_polygon_filter_uses_spatial_index():
-    land = LandPolygonFilter.from_polygons(
+def test_polygon_set_filter_uses_spatial_index():
+    land = PolygonSetFilter.from_polygons(
         [box(-1.0, -1.0, 1.0, 1.0), box(10.0, 10.0, 11.0, 11.0)],
+        name="land",
         source_path="test",
     )
 
     assert land.allows(0.0, 0.0) is True
     assert land.allows(0.0, 5.0) is False
     assert land.allows(10.5, 10.5) is True
+
+
+def test_water_exclusion_filter_rejects_water_points():
+    land = PolygonSetFilter.from_polygons(
+        [box(-2.0, -2.0, 2.0, 2.0)],
+        name="land",
+        source_path="test",
+    )
+    water = PolygonSetFilter.from_polygons(
+        [box(-0.5, -0.5, 0.5, 0.5)],
+        name="water",
+        source_path="test",
+    )
+    filt = CompositeCoordinateFilter([land, WaterExclusionFilter(water)])
+
+    assert filt.allows(1.5, 1.5) is True
+    assert filt.allows(0.0, 0.0) is False
 
 
 def test_coordinate_sampler_rejects_points_outside_filter():
@@ -44,7 +66,7 @@ def test_coordinate_sampler_rejects_points_outside_filter():
 
 
 def test_load_land_polygon_filter_is_cached():
-    load_land_polygon_filter.cache_clear()
+    clear_coordinate_filter_cache()
     path = str(resolve_land_mask_path())
     first = load_land_polygon_filter(path)
     second = load_land_polygon_filter(path)
@@ -52,11 +74,14 @@ def test_load_land_polygon_filter_is_cached():
 
 
 def test_warm_coordinate_filter_cache_loads_default_dataset():
-    load_land_polygon_filter.cache_clear()
+    clear_coordinate_filter_cache()
     filt = warm_coordinate_filter_cache()
-    assert filt.name == "land"
-    assert isinstance(filt, LandPolygonFilter)
-    assert filt.polygon_count > 1000
+    if filt.name == "composite":
+        assert len(filt.filters) == 2
+    else:
+        assert filt.name == "land"
+        assert isinstance(filt, LandPolygonFilter)
+        assert filt.polygon_count > 1000
 
 
 def test_default_land_dataset_is_10m():
@@ -64,11 +89,16 @@ def test_default_land_dataset_is_10m():
     assert resolve_land_mask_path().exists()
 
 
-def test_real_land_filter_matches_known_land_and_water_points():
-    land = build_coordinate_filter()
+def test_natural_earth_fallback_matches_known_land_and_water_points(monkeypatch):
+    monkeypatch.setattr(
+        "app.services.site_service.field_coordinate_filter.osm_coordinate_masks_available",
+        lambda: False,
+    )
+    clear_coordinate_filter_cache()
+    filt = build_coordinate_filter()
 
-    assert land.allows(40.7128, -74.0060) is True  # Manhattan
-    assert land.allows(25.0, -40.0) is False  # mid-Atlantic
+    assert filt.allows(40.7128, -74.0060) is True  # Manhattan
+    assert filt.allows(25.0, -40.0) is False  # mid-Atlantic
 
 
 def test_enrich_coordinate_returns_structured_metadata(monkeypatch):

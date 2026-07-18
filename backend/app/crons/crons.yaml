@@ -82,3 +82,9 @@ jobs:
     params:
       dry_run: false
       max_items: null
+
+  - id: field_site_coordinate_prune
+    enabled: false
+    schedule: "0 11 * * 0"
+    params:
+      dry_run: false

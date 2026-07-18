@@ -18,4 +18,5 @@ firebase-admin>=6.6.0
 python-multipart>=0.0.20
 email-validator>=2.2.0
 shapely>=2.0.0
+pyogrio>=0.7.0
 reverse-geocoder>=1.5.1

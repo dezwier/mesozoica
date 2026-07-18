@@ -5,6 +5,9 @@ __pycache__/
 *.db
 .DS_Store
 
+# OSM land/water polygon shapefiles (fetch via make fetch-coordinate-masks)
+backend/app/data/osm/
+
 # Curated dinosaur card images (local source; synced to Railway volume)
 dinosaur-images/*.webp
 dinosaur-images/*.jpg

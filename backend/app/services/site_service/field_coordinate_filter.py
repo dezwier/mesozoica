@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import logging
 import math
+import os
 import random
 import time
 from collections.abc import Sequence
@@ -13,7 +14,8 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Protocol, runtime_checkable
 
-from shapely.geometry import Point, shape
+import pyogrio
+from shapely.geometry import MultiPolygon, Point, shape
 from shapely.geometry.base import BaseGeometry
 from shapely.strtree import STRtree
 
@@ -21,9 +23,11 @@ from app.services.site_service.geo_utils import haversine_km
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_LAND_MASK_PATH = (
-    Path(__file__).resolve().parents[2] / "data" / "natural_earth_land_10m.geojson"
-)
+DEFAULT_DATA_DIR = Path(__file__).resolve().parents[2] / "data"
+DEFAULT_LAND_MASK_PATH = DEFAULT_DATA_DIR / "natural_earth_land_10m.geojson"
+DEFAULT_OSM_DIR = DEFAULT_DATA_DIR / "osm"
+OSM_LAND_DIR = DEFAULT_OSM_DIR / "land"
+OSM_WATER_DIR = DEFAULT_OSM_DIR / "water"
 
 
 @dataclass(frozen=True)
@@ -46,22 +50,22 @@ class CoordinateFilter(Protocol):
     def allows(self, lat: float, lon: float) -> bool: ...
 
 
-class LandPolygonFilter:
-    """On-land check using preloaded polygons and a spatial index."""
-
-    name = "land"
+class PolygonSetFilter:
+    """Point-in-polygon check against a preloaded polygon set."""
 
     def __init__(
         self,
         *,
+        name: str,
         polygons: Sequence[BaseGeometry],
-        source_path: Path,
+        source_path: Path | str,
     ) -> None:
         if not polygons:
-            raise ValueError("LandPolygonFilter requires at least one polygon")
+            raise ValueError(f"{name} filter requires at least one polygon")
+        self.name = name
         self._polygons = list(polygons)
         self._spatial_index = STRtree(self._polygons)
-        self.source_path = source_path
+        self.source_path = Path(source_path)
         min_lon = min_lat = float("inf")
         max_lon = max_lat = float("-inf")
         for polygon in self._polygons:
@@ -77,9 +81,10 @@ class LandPolygonFilter:
         cls,
         polygons: Sequence[BaseGeometry],
         *,
+        name: str = "land",
         source_path: Path | str = "inline",
-    ) -> LandPolygonFilter:
-        return cls(polygons=polygons, source_path=Path(source_path))
+    ) -> PolygonSetFilter:
+        return cls(name=name, polygons=polygons, source_path=source_path)
 
     @property
     def polygon_count(self) -> int:
@@ -89,10 +94,50 @@ class LandPolygonFilter:
     def bounds(self) -> tuple[float, float, float, float]:
         return self._bounds
 
-    def allows(self, lat: float, lon: float) -> bool:
+    def contains(self, lat: float, lon: float) -> bool:
         point = Point(lon, lat)
         indices = self._spatial_index.query(point, predicate="within")
         return len(indices) > 0
+
+    def allows(self, lat: float, lon: float) -> bool:
+        return self.contains(lat, lon)
+
+
+class LandPolygonFilter(PolygonSetFilter):
+    """On-land check using preloaded polygons and a spatial index."""
+
+    def __init__(
+        self,
+        *,
+        polygons: Sequence[BaseGeometry],
+        source_path: Path | str,
+    ) -> None:
+        super().__init__(name="land", polygons=polygons, source_path=source_path)
+
+    @classmethod
+    def from_polygons(
+        cls,
+        polygons: Sequence[BaseGeometry],
+        *,
+        source_path: Path | str = "inline",
+    ) -> LandPolygonFilter:
+        return cls(polygons=polygons, source_path=source_path)
+
+
+class WaterExclusionFilter:
+    """Reject coordinates that fall inside OSM water polygons."""
+
+    name = "not_water"
+
+    def __init__(self, water_polygons: PolygonSetFilter) -> None:
+        self._water = water_polygons
+
+    @property
+    def bounds(self) -> tuple[float, float, float, float]:
+        return self._water.bounds
+
+    def allows(self, lat: float, lon: float) -> bool:
+        return not self._water.contains(lat, lon)
 
 
 class CompositeCoordinateFilter:
@@ -111,10 +156,10 @@ class CompositeCoordinateFilter:
 
     @property
     def bounds(self) -> tuple[float, float, float, float]:
-        min_lon = max(f.bounds[0] for f in self._filters)
-        min_lat = max(f.bounds[1] for f in self._filters)
-        max_lon = min(f.bounds[2] for f in self._filters)
-        max_lat = min(f.bounds[3] for f in self._filters)
+        min_lon = max(item.bounds[0] for item in self._filters)
+        min_lat = max(item.bounds[1] for item in self._filters)
+        max_lon = min(item.bounds[2] for item in self._filters)
+        max_lat = min(item.bounds[3] for item in self._filters)
         return min_lon, min_lat, max_lon, max_lat
 
     def allows(self, lat: float, lon: float) -> bool:
@@ -183,13 +228,28 @@ def _too_close(
     return False
 
 
+def resolve_coordinate_data_dir() -> Path:
+    override = os.getenv("FIELD_COORDINATE_DATA_DIR")
+    if override:
+        return Path(override)
+    return DEFAULT_DATA_DIR
+
+
 def resolve_land_mask_path(path: str | None = None) -> Path:
     if path:
         return Path(path)
     return DEFAULT_LAND_MASK_PATH
 
 
-def _flatten_land_polygons(geometry: BaseGeometry) -> list[BaseGeometry]:
+def resolve_osm_land_dir() -> Path:
+    return resolve_coordinate_data_dir() / "osm" / "land"
+
+
+def resolve_osm_water_dir() -> Path:
+    return resolve_coordinate_data_dir() / "osm" / "water"
+
+
+def _flatten_polygons(geometry: BaseGeometry) -> list[BaseGeometry]:
     if geometry.is_empty:
         return []
     if geometry.geom_type == "Polygon":
@@ -199,9 +259,82 @@ def _flatten_land_polygons(geometry: BaseGeometry) -> list[BaseGeometry]:
     return []
 
 
+def _find_shapefile(directory: Path) -> Path:
+    matches = sorted(directory.glob("*.shp"))
+    if not matches:
+        raise FileNotFoundError(f"No .shp files found in {directory}")
+    return matches[0]
+
+
+def _load_shapefile_polygons(shapefile_path: Path) -> list[BaseGeometry]:
+    _fields, geometries, _crs = pyogrio.read(str(shapefile_path))
+    polygons: list[BaseGeometry] = []
+    for geometry in geometries:
+        if geometry is None or geometry.is_empty:
+            continue
+        polygons.extend(_flatten_polygons(geometry))
+    if not polygons:
+        raise RuntimeError(f"No polygons loaded from {shapefile_path}")
+    return polygons
+
+
+def osm_coordinate_masks_available() -> bool:
+    land_dir = resolve_osm_land_dir()
+    water_dir = resolve_osm_water_dir()
+    try:
+        _find_shapefile(land_dir)
+        _find_shapefile(water_dir)
+    except FileNotFoundError:
+        return False
+    return True
+
+
+@lru_cache(maxsize=4)
+def load_osm_land_filter(resolved_land_dir: str) -> PolygonSetFilter:
+    """Load OSM land polygons once per process and cache in memory."""
+    land_dir = Path(resolved_land_dir)
+    shapefile_path = _find_shapefile(land_dir)
+    started = time.monotonic()
+    polygons = _load_shapefile_polygons(shapefile_path)
+    land_filter = PolygonSetFilter(
+        name="osm_land",
+        polygons=polygons,
+        source_path=shapefile_path,
+    )
+    logger.info(
+        "Loaded OSM land filter path=%s polygons=%d elapsed_s=%.2f",
+        shapefile_path,
+        land_filter.polygon_count,
+        time.monotonic() - started,
+    )
+    return land_filter
+
+
+@lru_cache(maxsize=4)
+def load_osm_water_exclusion_filter(resolved_water_dir: str) -> WaterExclusionFilter:
+    """Load OSM water polygons once per process and cache in memory."""
+    water_dir = Path(resolved_water_dir)
+    shapefile_path = _find_shapefile(water_dir)
+    started = time.monotonic()
+    polygons = _load_shapefile_polygons(shapefile_path)
+    water_polygons = PolygonSetFilter(
+        name="osm_water",
+        polygons=polygons,
+        source_path=shapefile_path,
+    )
+    water_filter = WaterExclusionFilter(water_polygons)
+    logger.info(
+        "Loaded OSM water exclusion filter path=%s polygons=%d elapsed_s=%.2f",
+        shapefile_path,
+        water_polygons.polygon_count,
+        time.monotonic() - started,
+    )
+    return water_filter
+
+
 @lru_cache(maxsize=4)
 def load_land_polygon_filter(resolved_path: str) -> LandPolygonFilter:
-    """Load land polygons once per process and cache in memory."""
+    """Load Natural Earth land polygons once per process and cache in memory."""
     geojson_path = Path(resolved_path)
     started = time.monotonic()
     with geojson_path.open(encoding="utf-8") as handle:
@@ -213,17 +346,24 @@ def load_land_polygon_filter(resolved_path: str) -> LandPolygonFilter:
         if not geometry:
             continue
         try:
-            polygons.extend(_flatten_land_polygons(shape(geometry)))
+            polygons.extend(_flatten_polygons(shape(geometry)))
         except Exception:
             logger.debug("Skipping invalid land geometry feature", exc_info=True)
 
     if not polygons:
         raise RuntimeError(f"No land geometries loaded from {geojson_path}")
 
+    merged: BaseGeometry
+    if len(polygons) == 1:
+        merged = polygons[0]
+    else:
+        merged = MultiPolygon([polygon for polygon in polygons if not polygon.is_empty])
+        polygons = _flatten_polygons(merged)
+
     land_filter = LandPolygonFilter(polygons=polygons, source_path=geojson_path)
     elapsed_s = time.monotonic() - started
     logger.info(
-        "Loaded land polygon filter path=%s polygons=%d elapsed_s=%.2f",
+        "Loaded Natural Earth land filter path=%s polygons=%d elapsed_s=%.2f",
         geojson_path,
         land_filter.polygon_count,
         elapsed_s,
@@ -237,15 +377,24 @@ def build_coordinate_filter(
     exclude_military: bool = False,
 ) -> CoordinateFilter:
     """Build the offline filter stack used during coordinate sampling."""
-    land_filter = load_land_polygon_filter(str(resolve_land_mask_path(land_mask_path)))
-    filters: list[CoordinateFilter] = [land_filter]
     if exclude_military:
         logger.warning(
-            "exclude_military=true is not implemented yet; using land-only filter"
+            "exclude_military=true is not implemented yet; using land/water filters only"
         )
-    if len(filters) == 1:
-        return filters[0]
-    return CompositeCoordinateFilter(filters)
+
+    if land_mask_path:
+        return load_land_polygon_filter(str(resolve_land_mask_path(land_mask_path)))
+
+    if osm_coordinate_masks_available():
+        land_filter = load_osm_land_filter(str(resolve_osm_land_dir()))
+        water_filter = load_osm_water_exclusion_filter(str(resolve_osm_water_dir()))
+        return CompositeCoordinateFilter([land_filter, water_filter])
+
+    logger.warning(
+        "OSM coordinate masks not found under %s; falling back to Natural Earth land",
+        resolve_osm_land_dir().parent,
+    )
+    return load_land_polygon_filter(str(resolve_land_mask_path(None)))
 
 
 def build_coordinate_sampler(
@@ -262,5 +411,12 @@ def build_coordinate_sampler(
 
 
 def warm_coordinate_filter_cache(*, land_mask_path: str | None = None) -> CoordinateFilter:
-    """Eager-load the land filter so the first request avoids disk/parse cost."""
+    """Eager-load coordinate filters so the first request avoids disk/parse cost."""
     return build_coordinate_filter(land_mask_path=land_mask_path)
+
+
+def clear_coordinate_filter_cache() -> None:
+    """Clear cached polygon filters (mainly for tests)."""
+    load_osm_land_filter.cache_clear()
+    load_osm_water_exclusion_filter.cache_clear()
+    load_land_polygon_filter.cache_clear()

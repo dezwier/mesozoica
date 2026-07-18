@@ -18,18 +18,16 @@ class MapConfig {
   static const double markerSize = 40.0;
   static const double markerIconSize = 22.0;
 
-  static const String esriLight =
-      'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}';
-  static const String esriDark =
-      'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}';
-  static const String osmNoLabels =
-      'https://tiles.wmflabs.org/osm-no-labels/{z}/{x}/{y}.png';
+  static const String cartoLight =
+      'https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png';
+  static const String cartoDark =
+      'https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png';
 
   static const List<String> tileSubdomains = ['a', 'b', 'c', 'd'];
   static const String userAgentPackageName = 'com.mesozoica.app';
 
   static String tileUrlForBrightness(Brightness brightness) {
-    return brightness == Brightness.dark ? esriDark : esriLight;
+    return brightness == Brightness.dark ? cartoDark : cartoLight;
   }
 
   static double fossilMarkerSize(double zoom, {bool selected = false}) {

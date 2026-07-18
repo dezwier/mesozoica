@@ -6,7 +6,7 @@ RAILWAY_SERVICE ?=
 RAILWAY_SERVICE_FLAG = $(if $(RAILWAY_SERVICE),--service $(RAILWAY_SERVICE),)
 CRON_EXTRA ?=
 
-.PHONY: help backend-install backend-test run-backend flutter-test run-flutter test-all run-cron run-field-ensure-worker run-dinosaur-wiki-sync run-dinosaur-llm-enrich run-fossil-pbdb-sync run-fossil-llm-enrich run-site-sync run-site-type-sync run-tool-sync run-dinosaur-image-generate run-fossil-image-generate run-site-type-image-generate run-tool-image-generate run-tool-image-generate-local sync-dinosaur-images sync-fossil-images sync-site-type-images sync-tool-images rename-site-type-images
+.PHONY: help backend-install backend-test run-backend flutter-test run-flutter test-all run-cron run-field-ensure-worker fetch-coordinate-masks run-field-site-coordinate-prune run-dinosaur-wiki-sync run-dinosaur-llm-enrich run-fossil-pbdb-sync run-fossil-llm-enrich run-site-sync run-site-type-sync run-tool-sync run-dinosaur-image-generate run-fossil-image-generate run-site-type-image-generate run-tool-image-generate run-tool-image-generate-local sync-dinosaur-images sync-fossil-images sync-site-type-images sync-tool-images rename-site-type-images
 
 help:
 	@echo "Available targets:"
@@ -15,6 +15,8 @@ help:
 	@echo "  run-backend                  Start FastAPI dev server (reads backend/.env)"
 	@echo "  run-cron                     Run due cron jobs on Railway"
 	@echo "  run-field-ensure-worker      Run field ensure worker on Railway"
+	@echo "  fetch-coordinate-masks       Download OSM land/water polygon shapefiles"
+	@echo "  run-field-site-coordinate-prune  Delete field sites failing coordinate filters"
 	@echo "  run-dinosaur-wiki-sync       dinosaur_wiki_sync on Railway"
 	@echo "  run-dinosaur-llm-enrich      dinosaur_llm_enrich on Railway"
 	@echo "  run-fossil-pbdb-sync         fossil_pbdb_sync on Railway"
@@ -68,6 +70,12 @@ run-cron:
 
 run-field-ensure-worker:
 	cd backend && RAILWAY_RUN=1 railway run $(RAILWAY_SERVICE_FLAG) env MESOZOICA_MINIMAL_SETTINGS=1 python -m app.workers.field_ensure_worker
+
+fetch-coordinate-masks:
+	cd backend && python -m scripts.fetch_osm_coordinate_masks
+
+run-field-site-coordinate-prune:
+	cd backend && RAILWAY_RUN=1 railway run $(RAILWAY_SERVICE_FLAG) python -m app.crons.runner --job field_site_coordinate_prune $(CRON_EXTRA)
 
 run-dinosaur-wiki-sync:
 	cd backend && RAILWAY_RUN=1 railway run $(RAILWAY_SERVICE_FLAG) python -m app.crons.runner --job dinosaur_wiki_sync $(CRON_EXTRA)

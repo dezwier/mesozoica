@@ -26,6 +26,7 @@ from app.services.dinosaur_name_filter import parse_dino_names
 from app.crons.jobs import (
     dinosaur_image_generate,
     dinosaur_llm_enrich,
+    field_site_coordinate_prune,
     site_sync,
     site_type_sync,
     fossil_image_generate,
@@ -185,6 +186,12 @@ def _run_tool_sync(params: dict[str, Any]) -> int:
     )
 
 
+def _run_field_site_coordinate_prune(params: dict[str, Any]) -> int:
+    return field_site_coordinate_prune.run_prune_job(
+        dry_run=bool(params.get("dry_run", False)),
+    )
+
+
 def _run_tool_image_generate(params: dict[str, Any]) -> int:
     return tool_image_generate.run_generate_job(
         dry_run=bool(params.get("dry_run", False)),
@@ -205,6 +212,7 @@ _JOB_HANDLERS: dict[str, Callable[[dict[str, Any]], int]] = {
     "site_type_sync": _run_site_type_sync,
     "tool_sync": _run_tool_sync,
     "tool_image_generate": _run_tool_image_generate,
+    "field_site_coordinate_prune": _run_field_site_coordinate_prune,
 }
 
 
@@ -318,7 +326,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--dry-run",
         action="store_true",
-        help="Preview work without writing (image generation jobs, site_sync, site_type_sync).",
+        help="Preview work without writing (image generation jobs, site_sync, site_type_sync, "
+        "field_site_coordinate_prune).",
     )
     args = parser.parse_args(argv)
 
