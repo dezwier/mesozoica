@@ -54,50 +54,42 @@ OSM shapefiles are **gitignored** and are **not** baked into the Docker image. S
 
 #### One-time Railway setup
 
-1. Create or reuse a volume mounted at **`/data`** on:
+Railway **does not support sharing one volume across services**. Upload OSM masks to the **field-generate worker** (the service that creates field sites). The API does not need them.
+
+1. Mount a volume at **`/data`** on:
    - API service
    - field-ensure worker
    - cron service (if running coordinate prune)
 2. Set on each of those services:
    ```bash
    FIELD_COORDINATE_DATA_DIR=/data
+   FETCH_OSM_COORDINATE_MASKS=false
    ```
-   (`CURATED_IMAGES_DATA_ROOT=/data` can share the same volume for card images.)
-3. Deploy backend code.
+   (`CURATED_IMAGES_DATA_ROOT=/data` on the API for card images uses that service's volume only.)
 
-On **first boot**, `docker-entrypoint.sh` downloads and simplifies OSM masks into `/data/osm/` (~5–10 minutes, one time). Later deploys and restarts skip the download and load from the volume immediately.
+   `FETCH_OSM_COORDINATE_MASKS=false` stops the container from trying to download OSM on boot (often OOM on Railway). Upload from your laptop instead (step 3).
 
-If API and worker start together, one service fetches while the others wait on a lock file.
-
-#### Troubleshooting first-boot fetch
-
-If logs show `OSM fetch lock released but masks are still missing` in a loop, the fetch likely **failed** (often out-of-memory) and the container restarted before writing files.
-
-1. **Bump RAM** on the API service to **2 GB+** for the first fetch (Railway → service → Settings → Resources).
-2. **Redeploy** — the entrypoint retries up to 3 times, then starts the API with Natural Earth fallback instead of crash-looping.
-3. **Check mount path** — volume must be at `/data` and `FIELD_COORDINATE_DATA_DIR=/data` must match.
-4. **Optional lower memory fetch** — set `OSM_SIMPLIFY_TOLERANCE=0.001` (coarser coastlines, fewer polygons) and redeploy.
-5. After the API is up, run fetch manually once:
+3. **Upload local masks to the worker** (you already ran `make fetch-coordinate-masks`):
    ```bash
-   railway shell --service backend
-   python -m scripts.fetch_osm_coordinate_masks --data-dir /data/osm
+   make upload-coordinate-masks-railway RAILWAY_SERVICE=field-generate
    ```
-   Then restart the worker.
+   The worker must be **running** during upload (`FETCH_OSM_COORDINATE_MASKS=false` if it crash-loops). List services: `cd backend && railway status --json`.
+4. **Redeploy / restart** API and field-ensure worker.
 
-#### Optional: skip OSM in a service
+Logs should show `Loaded OSM land filter`, not Natural Earth fallback.
 
-Set `FETCH_OSM_COORDINATE_MASKS=false` to use Natural Earth fallback only (CI, dev).
+#### Alternative: fetch on Railway (needs 2 GB+ RAM)
 
-#### Pre-seed from your laptop (skip first-boot download)
+If you prefer Railway to download OSM itself, set `FETCH_OSM_COORDINATE_MASKS=true` and bump API memory to 2 GB+. First boot takes ~5–10 minutes.
 
-If you already ran `make fetch-coordinate-masks` locally, copy into the volume via Railway shell instead of waiting for production fetch:
+#### Troubleshooting
 
-```bash
-# Example — adjust service name / paths for your project
-railway shell --service backend
-mkdir -p /data/osm
-# then upload or rsync backend/app/data/osm/* into /data/osm/
-```
+If logs show `OSM fetch lock released but masks are still missing` in a loop, the in-container fetch failed (usually OOM):
+
+1. Set `FETCH_OSM_COORDINATE_MASKS=false` on API + worker
+2. Redeploy to stop the loop
+3. Run `make upload-coordinate-masks-railway` **once per service** (API + worker)
+4. Restart API + worker
 
 ### Loading and RAM
 
