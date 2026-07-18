@@ -62,7 +62,18 @@ echo "Note: the target service must be running (set FETCH_OSM_COORDINATE_MASKS=f
 echo "Step 1/3: Preparing /data on Railway ..."
 if ! run_ssh "mkdir -p /data/osm && rm -f /data/osm-masks.tar"; then
   echo "ERROR: Could not reach Railway service or prepare /data."
-  echo "Check: volume mounted at /data, service is running, service name is correct."
+  echo ""
+  echo "Railway SSH often fails on worker / unexposed services (field-generate)"
+  echo "even when the deployment shows Active. SSH to the API service (mesozoica) works."
+  echo ""
+  echo "For field-generate, use in-container fetch instead of upload:"
+  echo "  1. Set FETCH_OSM_COORDINATE_MASKS=true"
+  echo "  2. Set OSM_SIMPLIFY_TOLERANCE=0.001"
+  echo "  3. Bump service memory to 4 GB"
+  echo "  4. Redeploy and wait ~10 min for first-boot download into /data/osm"
+  echo ""
+  echo "Or upload to the API if it has a volume (worker still needs its own copy):"
+  echo "  make upload-coordinate-masks-railway RAILWAY_SERVICE=mesozoica"
   exit 1
 fi
 

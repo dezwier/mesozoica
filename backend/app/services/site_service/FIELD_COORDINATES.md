@@ -54,42 +54,42 @@ OSM shapefiles are **gitignored** and are **not** baked into the Docker image. S
 
 #### One-time Railway setup
 
-Railway **does not support sharing one volume across services**. Upload OSM masks to the **field-generate worker** (the service that creates field sites). The API does not need them.
+Railway **does not support sharing one volume across services**. Only **field-generate** (the worker) needs OSM masks on its volume.
 
-1. Mount a volume at **`/data`** on:
-   - API service
-   - field-ensure worker
-   - cron service (if running coordinate prune)
-2. Set on each of those services:
+1. Mount a volume at **`/data`** on **field-generate**.
+2. Set on field-generate:
    ```bash
    FIELD_COORDINATE_DATA_DIR=/data
-   FETCH_OSM_COORDINATE_MASKS=false
+   FETCH_OSM_COORDINATE_MASKS=true
+   OSM_SIMPLIFY_TOLERANCE=0.001
    ```
-   (`CURATED_IMAGES_DATA_ROOT=/data` on the API for card images uses that service's volume only.)
+3. Bump worker memory to **4 GB** (Settings → Resources).
+4. Redeploy and watch logs (~10 min first boot). Later restarts reuse `/data/osm/`.
 
-   `FETCH_OSM_COORDINATE_MASKS=false` stops the container from trying to download OSM on boot (often OOM on Railway). Upload from your laptop instead (step 3).
+The API (`mesozoica`) does not need OSM on a volume — it only queues jobs.
 
-3. **Upload local masks to the worker** (you already ran `make fetch-coordinate-masks`):
-   ```bash
-   make upload-coordinate-masks-railway RAILWAY_SERVICE=field-generate
-   ```
-   The worker must be **running** during upload (`FETCH_OSM_COORDINATE_MASKS=false` if it crash-loops). List services: `cd backend && railway status --json`.
-4. **Redeploy / restart** API and field-ensure worker.
+#### Upload OSM masks (optional)
 
-Logs should show `Loaded OSM land filter`, not Natural Earth fallback.
+Railway **SSH upload only works on web/exposed services** (e.g. `mesozoica`). It usually **fails on workers** (`field-generate`) even when deployment shows Active.
 
-#### Alternative: fetch on Railway (needs 2 GB+ RAM)
+Prefer **in-container fetch** on field-generate (steps above). If you already have local files and SSH to the API works:
 
-If you prefer Railway to download OSM itself, set `FETCH_OSM_COORDINATE_MASKS=true` and bump API memory to 2 GB+. First boot takes ~5–10 minutes.
+```bash
+make upload-coordinate-masks-railway RAILWAY_SERVICE=mesozoica
+```
+
+That only fills the **API** volume; the worker still needs its own fetch.
 
 #### Troubleshooting
 
-If logs show `OSM fetch lock released but masks are still missing` in a loop, the in-container fetch failed (usually OOM):
+If logs show fetch failing or crash-looping:
 
-1. Set `FETCH_OSM_COORDINATE_MASKS=false` on API + worker
-2. Redeploy to stop the loop
-3. Run `make upload-coordinate-masks-railway` **once per service** (API + worker)
-4. Restart API + worker
+1. Set `OSM_SIMPLIFY_TOLERANCE=0.001` (coarser, less RAM).
+2. Bump field-generate memory to **4 GB**.
+3. Do **not** use SSH upload to field-generate — use in-container fetch instead.
+4. After masks exist on `/data/osm/`, set `FETCH_OSM_COORDINATE_MASKS=false` to skip future boot checks.
+
+Logs should show `Loaded OSM land filter`, not Natural Earth fallback.
 
 ### Loading and RAM
 

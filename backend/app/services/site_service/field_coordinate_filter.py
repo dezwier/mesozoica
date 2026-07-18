@@ -404,6 +404,35 @@ def warm_coordinate_filter_cache(*, land_mask_path: str | None = None) -> Coordi
     return build_coordinate_filter(land_mask_path=land_mask_path)
 
 
+def _fetch_osm_masks_enabled() -> bool:
+    value = os.getenv("FETCH_OSM_COORDINATE_MASKS", "true").strip().lower()
+    return value not in {"0", "false", "no", "off"}
+
+
+def ensure_osm_coordinate_masks_on_disk() -> None:
+    """Download OSM shapefiles when missing (worker startup / volume first boot)."""
+    if osm_coordinate_masks_available():
+        logger.info("OSM coordinate masks already present under %s/osm", resolve_coordinate_data_dir())
+        return
+    if not _fetch_osm_masks_enabled():
+        logger.info(
+            "OSM coordinate masks missing under %s/osm; fetch disabled (FETCH_OSM_COORDINATE_MASKS=false)",
+            resolve_coordinate_data_dir(),
+        )
+        return
+
+    from scripts.fetch_osm_coordinate_masks import run_fetch
+
+    data_dir = resolve_coordinate_data_dir() / "osm"
+    simplify = float(os.getenv("OSM_SIMPLIFY_TOLERANCE", "0.0001"))
+    logger.info(
+        "OSM coordinate masks missing; fetching into %s (simplify=%s)",
+        data_dir,
+        simplify,
+    )
+    run_fetch(data_dir=data_dir, simplify_tolerance=simplify, force=False)
+
+
 def clear_coordinate_filter_cache() -> None:
     """Clear cached polygon filters (mainly for tests)."""
     load_osm_land_filter.cache_clear()
