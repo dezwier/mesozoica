@@ -52,7 +52,7 @@ def enqueue_field_site_ensure(
 
     if missing == 0:
         log_field_event(
-            "ensure_noop",
+            "ensure_check",
             lat=lat,
             lon=lon,
             radius_km=cfg.radius_km,
@@ -60,7 +60,8 @@ def enqueue_field_site_ensure(
             reason=trigger,
             existing=existing,
             missing=0,
-            accepted=True,
+            enqueued=False,
+            written=0,
         )
         return existing, 0, True
 
@@ -71,17 +72,17 @@ def enqueue_field_site_ensure(
     if job is not None:
         if job.status in (STATUS_PENDING, STATUS_RUNNING):
             log_field_event(
-                "ensure_skip",
+                "ensure_check",
                 lat=lat,
                 lon=lon,
                 radius_km=cfg.radius_km,
                 cell=key,
                 reason=trigger,
-                skip_reason="job_active",
-                job_status=job.status,
                 existing=existing,
                 missing=missing,
-                accepted=False,
+                enqueued=False,
+                written=0,
+                skip_reason="job_active",
             )
             return existing, missing, False
 
@@ -97,7 +98,7 @@ def enqueue_field_site_ensure(
         session.add(job)
         session.commit()
         log_field_event(
-            "ensure_requeued",
+            "ensure_check",
             lat=lat,
             lon=lon,
             radius_km=cfg.radius_km,
@@ -105,7 +106,8 @@ def enqueue_field_site_ensure(
             reason=trigger,
             existing=existing,
             missing=missing,
-            accepted=True,
+            enqueued=True,
+            written=0,
         )
         return existing, missing, True
 
@@ -124,21 +126,22 @@ def enqueue_field_site_ensure(
     except IntegrityError:
         session.rollback()
         log_field_event(
-            "ensure_skip",
+            "ensure_check",
             lat=lat,
             lon=lon,
             radius_km=cfg.radius_km,
             cell=key,
             reason=trigger,
-            skip_reason="duplicate_enqueue",
             existing=existing,
             missing=missing,
-            accepted=False,
+            enqueued=False,
+            written=0,
+            skip_reason="duplicate_enqueue",
         )
         return existing, missing, False
 
     log_field_event(
-        "ensure_enqueued",
+        "ensure_check",
         lat=lat,
         lon=lon,
         radius_km=cfg.radius_km,
@@ -146,7 +149,8 @@ def enqueue_field_site_ensure(
         reason=trigger,
         existing=existing,
         missing=missing,
-        accepted=True,
+        enqueued=True,
+        written=0,
     )
     return existing, missing, True
 

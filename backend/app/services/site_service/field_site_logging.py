@@ -9,6 +9,25 @@ logger = logging.getLogger("field_site_generate")
 
 FIELD_ENSURE_REASONS = frozenset({"resume", "move_500m", "field_mode_on"})
 
+_configured = False
+
+
+def _configure_logger() -> None:
+    global _configured
+    if _configured:
+        return
+    logger.setLevel(logging.INFO)
+    if not any(isinstance(handler, logging.StreamHandler) for handler in logger.handlers):
+        handler = logging.StreamHandler()
+        handler.setLevel(logging.INFO)
+        handler.setFormatter(logging.Formatter("%(levelname)s %(message)s"))
+        logger.addHandler(handler)
+    logger.propagate = True
+    _configured = True
+
+
+_configure_logger()
+
 
 def normalize_reason(reason: str | None) -> str | None:
     if reason is None:

@@ -274,7 +274,9 @@ def test_field_ensure_api_logs_noop_when_full(
     assert response.status_code == 202
     assert response.json()["missing"] == 0
     assert any(
-        "action=ensure_noop" in record.message and "reason=move_500m" in record.message
+        "action=ensure_check" in record.message
+        and "reason=move_500m" in record.message
+        and "written=0" in record.message
         for record in caplog.records
     )
     assert len(list(session.exec(select(FieldEnsureJob)).all())) == 0

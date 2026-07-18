@@ -5,11 +5,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:mesozoica/controllers/catalog_mode_controller.dart';
 import 'package:mesozoica/controllers/field_session_coordinator.dart';
 import 'package:mesozoica/services/location_service.dart';
 import 'package:mesozoica/services/site_service.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 class _FakeLocationService extends LocationService {
   _FakeLocationService(this._location);
@@ -39,48 +37,41 @@ class _FakeLocationService extends LocationService {
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  setUp(() {
-    SharedPreferences.setMockInitialValues({});
-  });
-
   Future<void> pumpUntilIdle() async {
     await Future<void>.delayed(const Duration(milliseconds: 20));
   }
 
-  test('does not ensure when archive mode is active', () async {
+  test('ensures on app open in archive mode', () async {
     var ensureCalls = 0;
-    final catalogMode = CatalogModeController();
-    await catalogMode.initialize();
-
     final coordinator = FieldSessionCoordinator(
       siteService: SiteService(
         client: MockClient((request) async {
           ensureCalls++;
-          return http.Response('', 404);
+          return http.Response(
+            jsonEncode({
+              'accepted': true,
+              'existing_in_radius': 0,
+              'missing': 100,
+              'radius_km': 1.0,
+            }),
+            202,
+          );
         }),
       ),
     );
 
     final locationService = _FakeLocationService(const LatLng(51.0, 4.0));
-    coordinator.bind(
-      catalogModeController: catalogMode,
-      locationService: locationService,
-    );
-    coordinator.onForeground();
+    coordinator.bind(locationService: locationService);
     await pumpUntilIdle();
 
-    expect(ensureCalls, 0);
-    expect(coordinator.isSessionActive, isFalse);
+    expect(ensureCalls, 1);
+    expect(coordinator.isSessionActive, isTrue);
 
     coordinator.dispose();
   });
 
-  test('ensures on foreground and throttles movement in field mode', () async {
+  test('ensures on foreground and throttles movement', () async {
     final bodies = <Map<String, dynamic>>[];
-    final catalogMode = CatalogModeController();
-    await catalogMode.initialize();
-    await catalogMode.setDataSource(CatalogDataSource.field);
-
     final coordinator = FieldSessionCoordinator(
       siteService: SiteService(
         client: MockClient((request) async {
@@ -99,12 +90,10 @@ void main() {
     );
 
     final locationService = _FakeLocationService(const LatLng(51.0, 4.0));
-    coordinator.bind(
-      catalogModeController: catalogMode,
-      locationService: locationService,
-    );
+    coordinator.bind(locationService: locationService);
     await pumpUntilIdle();
-    expect(bodies.single['reason'], FieldSessionCoordinator.reasonFieldModeOn);
+    expect(bodies.length, 1);
+    expect(bodies.single['reason'], FieldSessionCoordinator.reasonResume);
 
     coordinator.onForeground();
     await pumpUntilIdle();
@@ -124,10 +113,6 @@ void main() {
   });
 
   test('stop clears active session on detached lifecycle', () async {
-    final catalogMode = CatalogModeController();
-    await catalogMode.initialize();
-    await catalogMode.setDataSource(CatalogDataSource.field);
-
     final coordinator = FieldSessionCoordinator(
       siteService: SiteService(
         client: MockClient((request) async {
@@ -145,10 +130,7 @@ void main() {
     );
 
     final locationService = _FakeLocationService(const LatLng(51.0, 4.0));
-    coordinator.bind(
-      catalogModeController: catalogMode,
-      locationService: locationService,
-    );
+    coordinator.bind(locationService: locationService);
     coordinator.onForeground();
     await pumpUntilIdle();
     expect(coordinator.isSessionActive, isTrue);
@@ -161,10 +143,6 @@ void main() {
 
   test('defers resume ensure until first GPS fix', () async {
     final bodies = <Map<String, dynamic>>[];
-    final catalogMode = CatalogModeController();
-    await catalogMode.initialize();
-    await catalogMode.setDataSource(CatalogDataSource.field);
-
     final locationService = _FakeLocationService(null);
 
     final coordinator = FieldSessionCoordinator(
@@ -184,10 +162,7 @@ void main() {
       ),
     );
 
-    coordinator.bind(
-      catalogModeController: catalogMode,
-      locationService: locationService,
-    );
+    coordinator.bind(locationService: locationService);
     coordinator.onForeground();
     await pumpUntilIdle();
     expect(bodies, isEmpty);

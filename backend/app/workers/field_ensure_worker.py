@@ -57,12 +57,12 @@ def process_one_job(*, worker_id: str) -> bool:
             if refreshed is not None:
                 mark_job_done(session, refreshed)
         log_field_event(
-            "worker_done",
+            "ensure_written",
             lat=job.lat,
             lon=job.lon,
             radius_km=job.radius_km,
             cell=job.cell_key,
-            generated=result.generated,
+            written=result.generated,
             total_in_radius=result.total_in_radius,
             worker=worker_id,
             job_id=job.id,

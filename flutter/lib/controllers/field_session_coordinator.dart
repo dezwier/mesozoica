@@ -1,14 +1,14 @@
 import 'dart:async';
+import 'dart:developer' as developer;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:latlong2/latlong.dart';
 
-import '../controllers/catalog_mode_controller.dart';
 import '../services/location_service.dart';
 import '../services/site_service.dart';
 
-/// Orchestrates field-site ensure calls across app lifecycle and tabs.
+/// Orchestrates field-site ensure calls across app lifecycle.
 class FieldSessionCoordinator extends ChangeNotifier {
   FieldSessionCoordinator({SiteService? siteService})
       : _siteService = siteService ?? SiteService();
@@ -18,10 +18,8 @@ class FieldSessionCoordinator extends ChangeNotifier {
 
   static const reasonResume = 'resume';
   static const reasonMove500m = 'move_500m';
-  static const reasonFieldModeOn = 'field_mode_on';
 
   final SiteService _siteService;
-  CatalogModeController? _catalogModeController;
   LocationService? _locationService;
 
   AppLifecycleState _lifecycle = AppLifecycleState.resumed;
@@ -30,30 +28,22 @@ class FieldSessionCoordinator extends ChangeNotifier {
   LatLng? _lastEnsurePosition;
   String? _pendingEnsureReason;
   VoidCallback? _locationListener;
-  VoidCallback? _catalogListener;
 
   bool get isSessionActive => _sessionActive;
 
-  void bind({
-    required CatalogModeController catalogModeController,
-    required LocationService locationService,
-  }) {
-    if (_catalogModeController != null) {
+  void bind({required LocationService locationService}) {
+    if (_locationService != null) {
       return;
     }
 
-    _catalogModeController = catalogModeController;
     _locationService = locationService;
-
-    _catalogListener = () => unawaited(
-          _syncSession(ensureReason: reasonFieldModeOn),
-        );
-    catalogModeController.addListener(_catalogListener!);
     unawaited(() async {
-      await _syncSession(ensureReason: reasonFieldModeOn);
+      await _syncSession();
       _locationListener = () => _onLocationChanged(locationService);
       locationService.addListener(_locationListener!);
-      _onLocationChanged(locationService);
+      if (_lifecycle == AppLifecycleState.resumed) {
+        await _maybeEnsure(force: true, reason: reasonResume);
+      }
     }());
   }
 
@@ -84,7 +74,10 @@ class FieldSessionCoordinator extends ChangeNotifier {
   void onForeground() {
     _lifecycle = AppLifecycleState.resumed;
     unawaited(_locationService?.onAppResumed());
-    unawaited(_syncSession(ensureReason: reasonResume));
+    unawaited(() async {
+      await _syncSession();
+      await _maybeEnsure(force: true, reason: reasonResume);
+    }());
   }
 
   void onBackground() {
@@ -96,7 +89,7 @@ class FieldSessionCoordinator extends ChangeNotifier {
   }
 
   void stop() {
-    if (!_sessionActive && _catalogModeController?.isField != true) {
+    if (!_sessionActive) {
       return;
     }
     _sessionActive = false;
@@ -104,16 +97,13 @@ class FieldSessionCoordinator extends ChangeNotifier {
     unawaited(_locationService?.setFieldSession(active: false));
   }
 
-  Future<void> _syncSession({String? ensureReason}) async {
-    final catalogMode = _catalogModeController;
+  Future<void> _syncSession() async {
     final locationService = _locationService;
-    if (catalogMode == null || locationService == null) {
+    if (locationService == null) {
       return;
     }
 
-    final shouldRun =
-        catalogMode.isField && _lifecycle != AppLifecycleState.detached;
-    if (!shouldRun) {
+    if (_lifecycle == AppLifecycleState.detached) {
       _sessionActive = false;
       await locationService.setFieldSession(active: false);
       return;
@@ -125,9 +115,6 @@ class FieldSessionCoordinator extends ChangeNotifier {
       active: true,
       backgroundPreferred: backgroundPreferred,
     );
-    if (_lifecycle == AppLifecycleState.resumed && ensureReason != null) {
-      await _maybeEnsure(force: true, reason: ensureReason);
-    }
   }
 
   Future<void> _maybeEnsure({
@@ -142,12 +129,9 @@ class FieldSessionCoordinator extends ChangeNotifier {
     if (location == null) {
       if (force) {
         _pendingEnsureReason = reason;
-        if (kDebugMode) {
-          debugPrint(
-            'FieldSessionCoordinator: deferred ensure reason=$reason '
-            '(waiting for GPS)',
-          );
-        }
+        _logEnsure(
+          'deferred reason=$reason (waiting for GPS)',
+        );
       }
       return;
     }
@@ -169,18 +153,12 @@ class FieldSessionCoordinator extends ChangeNotifier {
         radiusKm: nearbyRadiusKm,
         reason: reason,
       );
-      if (kDebugMode) {
-        debugPrint(
-          'FieldSessionCoordinator: ensure reason=$reason '
-          'accepted=${response.accepted}; missing=${response.missing}',
-        );
-      }
+      _logEnsure(
+        'check reason=$reason existing=${response.existingInRadius} '
+        'missing=${response.missing} enqueued=${response.accepted} written=0',
+      );
     } catch (error) {
-      if (kDebugMode) {
-        debugPrint(
-          'FieldSessionCoordinator ensure failed reason=$reason: $error',
-        );
-      }
+      _logEnsure('failed reason=$reason error=$error');
     } finally {
       _ensureInFlight = false;
     }
@@ -188,9 +166,18 @@ class FieldSessionCoordinator extends ChangeNotifier {
 
   final Distance _distance = const Distance();
 
+  void _logEnsure(String message) {
+    developer.log(
+      'field_site_generate action=$message',
+      name: 'field_site_generate',
+    );
+    if (kDebugMode) {
+      debugPrint('FieldSessionCoordinator: $message');
+    }
+  }
+
   @override
   void dispose() {
-    _catalogModeController?.removeListener(_catalogListener ?? () {});
     _locationService?.removeListener(_locationListener ?? () {});
     _siteService.dispose();
     super.dispose();

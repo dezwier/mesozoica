@@ -44,10 +44,8 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
       if (!mounted) return;
       _attachCatalogModeListener();
       context.read<FieldSessionCoordinator>().bind(
-            catalogModeController: context.read<CatalogModeController>(),
             locationService: context.read<LocationService>(),
           );
-      context.read<FieldSessionCoordinator>().onForeground();
     });
   }
 
