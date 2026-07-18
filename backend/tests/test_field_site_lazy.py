@@ -17,6 +17,7 @@ from app.services.site_service.field_coordinates import LandMask
 from app.services.site_service.field_generate import (
     FIELD_SITE_ID_START,
     FieldSiteLazyConfig,
+    _next_field_site_id,
     ensure_field_sites_nearby,
 )
 from app.services.site_service.geo_utils import haversine_km
@@ -241,6 +242,9 @@ def test_field_ensure_api_logs_noop_when_full(
 ):
     import logging
 
+    from app.services.site_service.field_site_logging import logger as field_site_logger
+
+    field_site_logger.propagate = True
     site_type = _site_type(period="cretaceous", rock_type="sandstone")
     session.add(site_type)
     session.commit()
@@ -313,3 +317,20 @@ def test_field_ensure_worker_processes_job(client, session: Session, monkeypatch
     job = session.exec(select(FieldEnsureJob)).first()
     assert job is not None
     assert job.status == "done"
+
+
+def test_next_field_site_id_reads_postgresql_nextval_row(session: Session, monkeypatch):
+    from types import SimpleNamespace
+
+    monkeypatch.setattr(
+        "app.services.site_service.field_generate.engine",
+        SimpleNamespace(dialect=SimpleNamespace(name="postgresql")),
+    )
+
+    class _SeqResult:
+        def one(self):
+            return (FIELD_SITE_ID_START + 7,)
+
+    monkeypatch.setattr(session, "exec", lambda _stmt: _SeqResult())
+
+    assert _next_field_site_id(session) == FIELD_SITE_ID_START + 7

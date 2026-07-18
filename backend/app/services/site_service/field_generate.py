@@ -506,7 +506,8 @@ def _load_existing_field_coords(session: Session) -> list[tuple[float, float]]:
 
 def _next_field_site_id(session: Session) -> int:
     if engine.dialect.name == "postgresql":
-        next_id = session.exec(text("SELECT nextval('field_site_id_seq')")).one()
+        row = session.exec(text("SELECT nextval('field_site_id_seq')")).one()
+        next_id = row[0]
         return max(int(next_id), FIELD_SITE_ID_START)
 
     current_max = session.exec(

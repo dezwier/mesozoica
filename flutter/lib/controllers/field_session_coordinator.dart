@@ -28,6 +28,7 @@ class FieldSessionCoordinator extends ChangeNotifier {
   LatLng? _lastEnsurePosition;
   String? _pendingEnsureReason;
   VoidCallback? _locationListener;
+  bool _openedEnsureDone = false;
 
   bool get isSessionActive => _sessionActive;
 
@@ -37,14 +38,30 @@ class FieldSessionCoordinator extends ChangeNotifier {
     }
 
     _locationService = locationService;
-    unawaited(() async {
+    unawaited(_startSession());
+  }
+
+  Future<void> _startSession() async {
+    final locationService = _locationService;
+    if (locationService == null) {
+      return;
+    }
+
+    _locationListener ??= () => _onLocationChanged(locationService);
+    locationService.removeListener(_locationListener!);
+    locationService.addListener(_locationListener!);
+    if (_lifecycle == AppLifecycleState.resumed) {
+      await _runResumeEnsure();
+    } else {
       await _syncSession();
-      _locationListener = () => _onLocationChanged(locationService);
-      locationService.addListener(_locationListener!);
-      if (_lifecycle == AppLifecycleState.resumed) {
-        await _maybeEnsure(force: true, reason: reasonResume);
-      }
-    }());
+    }
+  }
+
+  Future<void> _runResumeEnsure() async {
+    await _locationService?.onAppResumed();
+    await _syncSession();
+    await _maybeEnsure(force: true, reason: reasonResume);
+    _openedEnsureDone = true;
   }
 
   void _onLocationChanged(LocationService locationService) {
@@ -59,6 +76,7 @@ class FieldSessionCoordinator extends ChangeNotifier {
 
     final location = locationService.currentLocation;
     if (location == null) return;
+    if (!_openedEnsureDone) return;
     unawaited(_maybeEnsure(position: location, reason: reasonMove500m));
   }
 
@@ -73,11 +91,7 @@ class FieldSessionCoordinator extends ChangeNotifier {
 
   void onForeground() {
     _lifecycle = AppLifecycleState.resumed;
-    unawaited(_locationService?.onAppResumed());
-    unawaited(() async {
-      await _syncSession();
-      await _maybeEnsure(force: true, reason: reasonResume);
-    }());
+    unawaited(_runResumeEnsure());
   }
 
   void onBackground() {
@@ -110,10 +124,11 @@ class FieldSessionCoordinator extends ChangeNotifier {
     }
 
     _sessionActive = true;
-    final backgroundPreferred = _lifecycle != AppLifecycleState.resumed;
+    // Foreground permission only — ensure runs on app open/resume and 500 m
+    // moves while the process is alive; no iOS "Always" location required.
     await locationService.setFieldSession(
       active: true,
-      backgroundPreferred: backgroundPreferred,
+      backgroundPreferred: false,
     );
   }
 
@@ -129,8 +144,10 @@ class FieldSessionCoordinator extends ChangeNotifier {
     if (location == null) {
       if (force) {
         _pendingEnsureReason = reason;
+        final err = _locationService?.error;
         _logEnsure(
-          'deferred reason=$reason (waiting for GPS)',
+          'deferred reason=$reason (waiting for GPS'
+          '${err != null ? '; $err' : ''})',
         );
       }
       return;
