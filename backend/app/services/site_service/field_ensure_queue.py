@@ -90,6 +90,7 @@ def enqueue_field_site_ensure(
         job.lon = lon
         job.radius_km = cfg.radius_km
         job.missing_count = missing
+        job.reason = trigger
         job.status = STATUS_PENDING
         job.worker_id = None
         job.error_message = None
@@ -117,6 +118,7 @@ def enqueue_field_site_ensure(
         lon=lon,
         radius_km=cfg.radius_km,
         missing_count=missing,
+        reason=trigger,
         status=STATUS_PENDING,
         created_at=datetime.now(timezone.utc).replace(tzinfo=None),
     )
@@ -248,6 +250,7 @@ def claim_next_job(session: Session, *, worker_id: str) -> FieldEnsureJob | None
         lon=job.lon,
         radius_km=job.radius_km,
         cell=job.cell_key,
+        reason=normalize_reason(job.reason),
         missing=job.missing_count,
         worker=worker_id,
         job_id=job.id,

@@ -17,6 +17,7 @@ class FieldEnsureJob(SQLModel, table=True):
     lon: float
     radius_km: float
     missing_count: int = Field(default=0)
+    reason: Optional[str] = Field(default=None, max_length=32)
     status: str = Field(default="pending", max_length=16, index=True)
     attempts: int = Field(default=0)
     worker_id: Optional[str] = Field(default=None, max_length=64)

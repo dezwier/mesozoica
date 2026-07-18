@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import logging
 import os
 import socket
 import time
@@ -23,7 +22,7 @@ from app.services.site_service.field_generate import (
     FieldSiteLazyConfig,
     ensure_field_sites_nearby,
 )
-from app.services.site_service.field_site_logging import log_field_event
+from app.services.site_service.field_site_logging import log_field_event, normalize_reason
 
 POLL_INTERVAL_S = float(os.getenv("FIELD_ENSURE_POLL_INTERVAL_S", "5"))
 MAX_CONCURRENT = int(os.getenv("FIELD_ENSURE_MAX_CONCURRENT", "2"))
@@ -44,6 +43,8 @@ def process_one_job(*, worker_id: str) -> bool:
             return False
 
     config = FieldSiteLazyConfig(radius_km=job.radius_km)
+    reason = normalize_reason(job.reason)
+    started = time.monotonic()
     try:
         with Session(engine) as session:
             result = ensure_field_sites_nearby(
@@ -58,12 +59,14 @@ def process_one_job(*, worker_id: str) -> bool:
                 mark_job_done(session, refreshed)
         log_field_event(
             "ensure_written",
+            reason=reason,
             lat=job.lat,
             lon=job.lon,
             radius_km=job.radius_km,
             cell=job.cell_key,
             written=result.generated,
             total_in_radius=result.total_in_radius,
+            elapsed_s=round(time.monotonic() - started, 1),
             worker=worker_id,
             job_id=job.id,
         )
@@ -71,6 +74,7 @@ def process_one_job(*, worker_id: str) -> bool:
     except Exception as exc:
         log_field_event(
             "worker_failed",
+            reason=reason,
             lat=job.lat,
             lon=job.lon,
             radius_km=job.radius_km,
@@ -87,7 +91,6 @@ def process_one_job(*, worker_id: str) -> bool:
 
 
 def run_forever() -> None:
-    logging.basicConfig(level=logging.INFO)
     worker_id = _worker_id()
     log_field_event(
         "worker_start",

@@ -266,30 +266,6 @@ def _build_field_site(
     )
 
 
-def _log_ensure_progress(
-    *,
-    generated: int,
-    target: int,
-    skipped_coords: int,
-    skipped_no_site_type: int,
-    started: float,
-    lat: float,
-    lon: float,
-    radius_km: float,
-) -> None:
-    log_field_event(
-        "ensure_progress",
-        lat=lat,
-        lon=lon,
-        radius_km=radius_km,
-        generated=generated,
-        target=target,
-        skipped_coords=skipped_coords,
-        skipped_no_site_type=skipped_no_site_type,
-        elapsed_s=round(time.monotonic() - started, 1),
-    )
-
-
 def _flush_pending_sites(session: Session, pending_rows: list[Site]) -> None:
     if not pending_rows:
         return
@@ -312,7 +288,6 @@ def ensure_field_sites_nearby(
     cfg = config or FieldSiteLazyConfig()
     cfg.validate()
     random_source = rng or random.Random()
-    started = time.monotonic()
 
     context = _build_generation_context(
         session,
@@ -331,14 +306,6 @@ def ensure_field_sites_nearby(
         data_source=DATA_SOURCE_FIELD,
     )
     missing = max(0, cfg.min_sites_in_radius - existing_count)
-    log_field_event(
-        "ensure_start",
-        lat=lat,
-        lon=lon,
-        radius_km=cfg.radius_km,
-        existing=existing_count,
-        missing=missing,
-    )
 
     if missing == 0:
         items = list_sites_in_radius(
@@ -347,17 +314,6 @@ def ensure_field_sites_nearby(
             lon=lon,
             radius_km=cfg.radius_km,
             data_source=DATA_SOURCE_FIELD,
-        )
-        log_field_event(
-            "ensure_done",
-            lat=lat,
-            lon=lon,
-            radius_km=cfg.radius_km,
-            generated=0,
-            total_in_radius=len(items),
-            skipped_coords=0,
-            skipped_no_site_type=0,
-            elapsed_s=round(time.monotonic() - started, 2),
         )
         return EnsureFieldSitesResult(
             generated=0,
@@ -411,29 +367,8 @@ def ensure_field_sites_nearby(
 
         if generated % PROGRESS_LOG_INTERVAL == 0:
             _flush_pending_sites(session, pending_rows)
-            _log_ensure_progress(
-                generated=generated,
-                target=missing,
-                skipped_coords=skipped_coords,
-                skipped_no_site_type=skipped_no_site_type,
-                started=started,
-                lat=lat,
-                lon=lon,
-                radius_km=cfg.radius_km,
-            )
 
     _flush_pending_sites(session, pending_rows)
-    if generated > 0 and generated % PROGRESS_LOG_INTERVAL != 0:
-        _log_ensure_progress(
-            generated=generated,
-            target=missing,
-            skipped_coords=skipped_coords,
-            skipped_no_site_type=skipped_no_site_type,
-            started=started,
-            lat=lat,
-            lon=lon,
-            radius_km=cfg.radius_km,
-        )
 
     items = list_sites_in_radius(
         session,
@@ -441,17 +376,6 @@ def ensure_field_sites_nearby(
         lon=lon,
         radius_km=cfg.radius_km,
         data_source=DATA_SOURCE_FIELD,
-    )
-    log_field_event(
-        "ensure_done",
-        lat=lat,
-        lon=lon,
-        radius_km=cfg.radius_km,
-        generated=generated,
-        total_in_radius=len(items),
-        skipped_coords=skipped_coords,
-        skipped_no_site_type=skipped_no_site_type,
-        elapsed_s=round(time.monotonic() - started, 2),
     )
     return EnsureFieldSitesResult(
         generated=generated,
