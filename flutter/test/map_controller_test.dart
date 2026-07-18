@@ -340,11 +340,11 @@ void main() {
     controller.dispose();
   });
 
-  test('load sends data_source query param from catalog mode', () async {
+  test('load sends data_source query param from catalog mode in archive mode', () async {
     final requests = <Uri>[];
     final catalogMode = CatalogModeController();
     await catalogMode.initialize();
-    await catalogMode.setDataSource(CatalogDataSource.field);
+    await catalogMode.setDataSource(CatalogDataSource.archive);
 
     final service = SiteService(
       client: MockClient((request) async {
@@ -370,7 +370,91 @@ void main() {
     await pumpUntilIdle();
 
     expect(requests, isNotEmpty);
-    expect(requests.first.queryParameters['data_source'], 'field');
+    expect(requests.first.queryParameters['data_source'], 'archive');
+
+    controller.dispose();
+  });
+
+  test('field mode ensureNearbySites calls nearby API and throttles movement', () async {
+    final requests = <Uri>[];
+    final catalogMode = CatalogModeController();
+    await catalogMode.initialize();
+    await catalogMode.setDataSource(CatalogDataSource.field);
+
+    final service = SiteService(
+      client: MockClient((request) async {
+        requests.add(request.url);
+        return http.Response(
+          jsonEncode({
+            'items': [
+              siteJson(
+                siteId: 1000000001,
+                latitude: 51.0,
+                longitude: 4.0,
+                siteTypePeriod: 'cretaceous',
+              ),
+            ],
+            'total': 1,
+            'generated': 1,
+            'radius_km': 1.0,
+          }),
+          200,
+        );
+      }),
+    );
+
+    final controller = MapController(
+      service: service,
+      catalogModeController: catalogMode,
+    );
+    controller.load();
+
+    await controller.ensureNearbySites(const LatLng(51.0, 4.0));
+    expect(requests.length, 1);
+    expect(requests.single.path, contains('/sites/nearby'));
+    expect(controller.geoSites.length, 1);
+
+    await controller.ensureNearbySites(const LatLng(51.001, 4.0));
+    expect(requests.length, 1);
+
+    await controller.ensureNearbySites(const LatLng(51.01, 4.0));
+    expect(requests.length, 2);
+
+    controller.dispose();
+  });
+
+  test('field mode load does not paginate global catalog', () async {
+    var listCalls = 0;
+    final catalogMode = CatalogModeController();
+    await catalogMode.initialize();
+    await catalogMode.setDataSource(CatalogDataSource.field);
+
+    final service = SiteService(
+      client: MockClient((request) async {
+        if (request.url.path.endsWith('/sites')) {
+          listCalls++;
+        }
+        return http.Response(
+          jsonEncode({
+            'items': [],
+            'total': 0,
+            'generated': 0,
+            'radius_km': 1.0,
+          }),
+          200,
+        );
+      }),
+    );
+
+    final controller = MapController(
+      service: service,
+      catalogModeController: catalogMode,
+    );
+    controller.load();
+    await pumpUntilIdle();
+
+    expect(listCalls, 0);
+    expect(controller.loadingComplete, isFalse);
 
     controller.dispose();
   });

@@ -34,6 +34,13 @@ class SiteListResponse(BaseModel):
     has_next: bool
 
 
+class SiteNearbyResponse(BaseModel):
+    items: list[SiteSummary]
+    total: int
+    generated: int
+    radius_km: float
+
+
 class SiteFossilThumb(BaseModel):
     id: int
     main_image_url: str | None = None

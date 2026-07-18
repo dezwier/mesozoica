@@ -7,23 +7,27 @@ from sqlmodel import Session
 
 from app.core.database import get_session
 from app.core.exceptions import ValidationError
-from app.models.data_source import DATA_SOURCE_ARCHIVE
+from app.models.data_source import DATA_SOURCE_ARCHIVE, DATA_SOURCE_FIELD
 from app.schemas.site import (
     SiteDinosaurThumbListResponse,
     SiteDinoFossilGroupListResponse,
     SiteFossilThumbListResponse,
     SiteListResponse,
+    SiteNearbyResponse,
     SiteSummary,
 )
 from app.services.site_service import (
+    ensure_field_sites_nearby,
     get_site_by_id,
     list_site_dino_fossil_groups,
     list_site_dinosaurs,
     list_site_fossils,
     list_sites,
+    list_sites_in_radius,
     load_site_types_by_period,
     site_row_to_summary,
 )
+from app.services.site_service.field_generate import FieldSiteLazyConfig
 
 router = APIRouter(prefix="/sites", tags=["sites"])
 
@@ -63,6 +67,49 @@ def get_sites(
         limit=limit,
         offset=offset,
         has_next=offset + len(items) < total,
+    )
+
+
+@router.get("/nearby", response_model=SiteNearbyResponse)
+def get_sites_nearby(
+    session: Session = Depends(get_session),
+    lat: float = Query(..., ge=-90, le=90),
+    lon: float = Query(..., ge=-180, le=180),
+    radius_km: float = Query(default=1.0, gt=0, le=50),
+    data_source: str = Query(default=DATA_SOURCE_FIELD),
+) -> SiteNearbyResponse:
+    if data_source != DATA_SOURCE_FIELD:
+        rows = list_sites_in_radius(
+            session,
+            lat=lat,
+            lon=lon,
+            radius_km=radius_km,
+            data_source=data_source,
+        )
+        types_by_period = load_site_types_by_period(session)
+        items = [site_row_to_summary(row, types_by_period=types_by_period) for row in rows]
+        return SiteNearbyResponse(
+            items=items,
+            total=len(items),
+            generated=0,
+            radius_km=radius_km,
+        )
+
+    result = ensure_field_sites_nearby(
+        session,
+        lat=lat,
+        lon=lon,
+        config=FieldSiteLazyConfig(radius_km=radius_km),
+    )
+    types_by_period = load_site_types_by_period(session)
+    items = [
+        site_row_to_summary(row, types_by_period=types_by_period) for row in result.items
+    ]
+    return SiteNearbyResponse(
+        items=items,
+        total=result.total_in_radius,
+        generated=result.generated,
+        radius_km=result.radius_km,
     )
 
 

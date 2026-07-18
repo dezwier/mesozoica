@@ -80,6 +80,37 @@ class SiteService {
     return SiteSummary.fromJson(decoded);
   }
 
+  Future<SiteNearbyResponse> fetchNearbySites({
+    required double lat,
+    required double lon,
+    double radiusKm = 1.0,
+    CatalogDataSource dataSource = CatalogDataSource.field,
+  }) async {
+    final uri = AppConfig.sitesNearbyUri(
+      lat: lat,
+      lon: lon,
+      radiusKm: radiusKm,
+      dataSource: dataSource,
+    );
+    if (kDebugMode) {
+      debugPrint('SiteService GET $uri');
+    }
+    final response =
+        await _client.get(uri).timeout(const Duration(seconds: 60));
+
+    if (response.statusCode != 200) {
+      throw SiteServiceException(
+        'Failed to load nearby sites (${response.statusCode})',
+      );
+    }
+
+    final decoded = jsonDecode(response.body);
+    if (decoded is! Map<String, dynamic>) {
+      throw const SiteServiceException('Invalid nearby sites response');
+    }
+    return SiteNearbyResponse.fromJson(decoded);
+  }
+
   Future<List<SiteFossilThumb>> fetchFossilsForSite(int siteId) async {
     final uri = AppConfig.siteFossilsUri(siteId);
     if (kDebugMode) {

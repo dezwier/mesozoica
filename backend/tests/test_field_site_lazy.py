@@ -1,0 +1,201 @@
+"""Tests for lazy field site generation near a player."""
+
+from __future__ import annotations
+
+import math
+import random
+from decimal import Decimal
+
+from shapely.geometry import box
+from sqlmodel import Session, select
+
+from app.models.data_source import DATA_SOURCE_ARCHIVE, DATA_SOURCE_FIELD
+from app.models.site import Site
+from app.models.site_type import SiteType
+from app.services.site_service.field_coordinates import LandMask
+from app.services.site_service.field_generate import (
+    FIELD_SITE_ID_START,
+    FieldSiteLazyConfig,
+    ensure_field_sites_nearby,
+)
+from app.services.site_service.geo_utils import haversine_km
+
+
+def _archive_site(
+    *,
+    site_id: int,
+    lat: float,
+    lon: float,
+    period: str = "cretaceous",
+    rock_type: str = "sandstone",
+) -> Site:
+    return Site(
+        site_id=site_id,
+        latitude=Decimal(str(lat)),
+        longitude=Decimal(str(lon)),
+        country_code="US",
+        state="Montana",
+        rock_type=rock_type,
+        period=period,
+        data_source=DATA_SOURCE_ARCHIVE,
+    )
+
+
+def _site_type(*, period: str, rock_type: str) -> SiteType:
+    return SiteType(period=period, rock_type=rock_type)
+
+
+def _test_land_mask(center_lat: float, center_lon: float, radius_km: float) -> LandMask:
+    lat_delta = radius_km / 111.0
+    cos_lat = max(abs(math.cos(math.radians(center_lat))), 1e-6)
+    lon_delta = radius_km / (111.0 * cos_lat)
+    geometry = box(
+        center_lon - lon_delta,
+        center_lat - lat_delta,
+        center_lon + lon_delta,
+        center_lat + lat_delta,
+    )
+    min_lon, min_lat, max_lon, max_lat = geometry.bounds
+    return LandMask(
+        geometry=geometry,
+        min_lon=min_lon,
+        min_lat=min_lat,
+        max_lon=max_lon,
+        max_lat=max_lat,
+    )
+
+
+def test_ensure_generates_when_below_minimum(session: Session, monkeypatch):
+    session.add(_site_type(period="cretaceous", rock_type="sandstone"))
+    session.add(_archive_site(site_id=100, lat=40.0, lon=-100.0))
+    session.commit()
+
+    monkeypatch.setattr(
+        "app.services.site_service.field_generate.lookup_country_state",
+        lambda lat, lon: ("US", "Montana"),
+    )
+
+    center_lat, center_lon = 40.0, -100.0
+    mask = _test_land_mask(center_lat, center_lon, radius_km=1.0)
+    config = FieldSiteLazyConfig(
+        min_sites_in_radius=5,
+        radius_km=1.0,
+        min_separation_km=0.05,
+        max_coordinate_attempts=50,
+    )
+
+    result = ensure_field_sites_nearby(
+        session,
+        lat=center_lat,
+        lon=center_lon,
+        config=config,
+        rng=random.Random(1),
+        land_mask=mask,
+    )
+
+    assert result.generated == 5
+    assert result.total_in_radius == 5
+    assert len(result.items) == 5
+    for row in result.items:
+        site = row.site
+        assert site.data_source == DATA_SOURCE_FIELD
+        distance = haversine_km(
+            center_lat,
+            center_lon,
+            float(site.latitude),
+            float(site.longitude),
+        )
+        assert distance <= config.radius_km
+
+
+def test_ensure_skips_when_minimum_already_met(session: Session, monkeypatch):
+    site_type = _site_type(period="cretaceous", rock_type="sandstone")
+    session.add(site_type)
+    session.add(_archive_site(site_id=100, lat=40.0, lon=-100.0))
+    session.commit()
+    session.refresh(site_type)
+
+    center_lat, center_lon = 40.0, -100.0
+    for index in range(3):
+        session.add(
+            Site(
+                site_id=FIELD_SITE_ID_START + index,
+                latitude=Decimal(str(center_lat + index * 0.001)),
+                longitude=Decimal(str(center_lon + index * 0.001)),
+                rock_type="sandstone",
+                period="cretaceous",
+                site_type_id=site_type.id,
+                data_source=DATA_SOURCE_FIELD,
+            )
+        )
+    session.commit()
+
+    monkeypatch.setattr(
+        "app.services.site_service.field_generate.lookup_country_state",
+        lambda lat, lon: ("US", "Montana"),
+    )
+
+    config = FieldSiteLazyConfig(min_sites_in_radius=3, radius_km=1.0)
+    result = ensure_field_sites_nearby(
+        session,
+        lat=center_lat,
+        lon=center_lon,
+        config=config,
+        land_mask=_test_land_mask(center_lat, center_lon, radius_km=1.0),
+    )
+
+    assert result.generated == 0
+    assert result.total_in_radius == 3
+
+
+def test_ensure_does_not_delete_archive_sites(session: Session, monkeypatch):
+    session.add(_site_type(period="cretaceous", rock_type="sandstone"))
+    session.add(_archive_site(site_id=100, lat=40.0, lon=-100.0))
+    session.commit()
+
+    monkeypatch.setattr(
+        "app.services.site_service.field_generate.lookup_country_state",
+        lambda lat, lon: ("US", "Montana"),
+    )
+
+    center_lat, center_lon = 40.0, -100.0
+    ensure_field_sites_nearby(
+        session,
+        lat=center_lat,
+        lon=center_lon,
+        config=FieldSiteLazyConfig(min_sites_in_radius=2, radius_km=1.0, min_separation_km=0.05),
+        rng=random.Random(3),
+        land_mask=_test_land_mask(center_lat, center_lon, radius_km=1.0),
+    )
+
+    archive_sites = list(session.exec(select(Site).where(Site.data_source == DATA_SOURCE_ARCHIVE)).all())
+    assert len(archive_sites) == 1
+
+
+def test_sites_nearby_api_generates_and_persists(client, session: Session, monkeypatch):
+    site_type = _site_type(period="cretaceous", rock_type="sandstone")
+    session.add(site_type)
+    session.add(_archive_site(site_id=100, lat=40.0, lon=-100.0))
+    session.commit()
+
+    monkeypatch.setattr(
+        "app.services.site_service.field_generate.lookup_country_state",
+        lambda lat, lon: ("US", "Montana"),
+    )
+    monkeypatch.setattr(
+        "app.services.site_service.field_generate.load_land_mask",
+        lambda path=None: _test_land_mask(40.0, -100.0, radius_km=1.0),
+    )
+
+    response = client.get(
+        "/api/v1/sites/nearby",
+        params={"lat": 40.0, "lon": -100.0, "radius_km": 1.0, "data_source": "field"},
+    )
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["generated"] == 100
+    assert payload["total"] == 100
+    assert len(payload["items"]) == 100
+
+    field_sites = list(session.exec(select(Site).where(Site.data_source == DATA_SOURCE_FIELD)).all())
+    assert len(field_sites) == 100

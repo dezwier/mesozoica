@@ -18,10 +18,13 @@ class MapController extends ChangeNotifier {
         _catalogModeController = catalogModeController;
 
   static const pageSize = 500;
+  static const nearbyRadiusKm = 1.0;
+  static const ensureMoveThresholdM = 500.0;
 
   final SiteService _service;
   final CatalogModeController? _catalogModeController;
   final Random _random = Random();
+  final Distance _distance = const Distance();
   String? _seed;
 
   List<SiteSummary> _geoSites = [];
@@ -34,6 +37,8 @@ class MapController extends ChangeNotifier {
   int _offset = 0;
   int _totalCatalog = 0;
   int _loadedCatalog = 0;
+  LatLng? _lastEnsurePosition;
+  bool _ensureInFlight = false;
 
   List<SiteSummary> get geoSites => List.unmodifiable(_geoSites);
   bool get loading => _loading;
@@ -51,18 +56,19 @@ class MapController extends ChangeNotifier {
   CatalogDataSource get _dataSource =>
       _catalogModeController?.dataSource ?? CatalogDataSource.archive;
 
+  bool get _isFieldMode => _dataSource == CatalogDataSource.field;
+
   /// Starts or resumes background site pagination without blocking the map UI.
   void load({bool force = false}) {
+    if (_isFieldMode) {
+      _loadFieldMode(force: force);
+      return;
+    }
+
     if (!force) {
       if (_loading || _loadingComplete) return;
     } else {
-      _geoSites = [];
-      _siteBounds = null;
-      _selectedSite = null;
-      _offset = 0;
-      _loadedCatalog = 0;
-      _totalCatalog = 0;
-      _loadingComplete = false;
+      _resetCatalogState();
       _seed = _newSeed();
     }
 
@@ -76,6 +82,20 @@ class MapController extends ChangeNotifier {
     unawaited(_loadPages(seq));
   }
 
+  void _loadFieldMode({required bool force}) {
+    if (!force && (_loading || _loadingComplete || _ensureInFlight)) {
+      return;
+    }
+    if (force) {
+      _resetCatalogState();
+      _lastEnsurePosition = null;
+    }
+    _loadingComplete = false;
+    _loading = false;
+    _error = null;
+    notifyListeners();
+  }
+
   void pause() {
     if (!_loading && _loadingComplete) return;
     _loadSeq++;
@@ -85,6 +105,55 @@ class MapController extends ChangeNotifier {
 
   Future<void> refresh() async {
     load(force: true);
+  }
+
+  /// Ensures persisted field sites exist near [position] (500 m throttle).
+  Future<void> ensureNearbySites(LatLng position) async {
+    if (!_isFieldMode) return;
+    if (_ensureInFlight) return;
+
+    if (_lastEnsurePosition != null &&
+        _distance(_lastEnsurePosition!, position) < ensureMoveThresholdM) {
+      return;
+    }
+
+    _ensureInFlight = true;
+    _loading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      final response = await _service.fetchNearbySites(
+        lat: position.latitude,
+        lon: position.longitude,
+        radiusKm: nearbyRadiusKm,
+        dataSource: CatalogDataSource.field,
+      );
+      _mergeSites(_withCoordinates(response.items));
+      _lastEnsurePosition = position;
+      _loadingComplete = true;
+      _error = null;
+
+      if (kDebugMode) {
+        debugPrint(
+          'MapController: ensured ${response.generated} new field sites; '
+          '${response.total} within ${response.radiusKm} km',
+        );
+      }
+    } on SiteServiceException catch (error) {
+      _error = error.message;
+    } catch (error) {
+      _error =
+          'Could not reach the API at ${AppConfig.baseApiUrl}. '
+          'Check your connection or try again later.';
+      if (kDebugMode) {
+        debugPrint('MapController.ensureNearbySites failed: $error');
+      }
+    } finally {
+      _ensureInFlight = false;
+      _loading = false;
+      notifyListeners();
+    }
   }
 
   void selectSite(SiteSummary site) {
@@ -124,6 +193,26 @@ class MapController extends ChangeNotifier {
       _selectedSite = site;
     }
     notifyListeners();
+  }
+
+  void _mergeSites(List<SiteSummary> incoming) {
+    if (incoming.isEmpty) return;
+    final byId = {for (final site in _geoSites) site.siteId: site};
+    for (final site in incoming) {
+      byId[site.siteId] = site;
+    }
+    _geoSites = byId.values.toList();
+    _siteBounds = _expandBounds(_siteBounds, incoming);
+  }
+
+  void _resetCatalogState() {
+    _geoSites = [];
+    _siteBounds = null;
+    _selectedSite = null;
+    _offset = 0;
+    _loadedCatalog = 0;
+    _totalCatalog = 0;
+    _loadingComplete = false;
   }
 
   Future<void> _loadPages(int seq) async {

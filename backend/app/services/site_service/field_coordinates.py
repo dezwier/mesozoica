@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+import math
 import random
 from dataclasses import dataclass
 from functools import lru_cache
@@ -50,6 +51,31 @@ class LandMask:
         for _ in range(config.max_coordinate_attempts):
             lon = random_source.uniform(self.min_lon, self.max_lon)
             lat = random_source.uniform(self.min_lat, self.max_lat)
+            if not self.contains(lat, lon):
+                continue
+            if _too_close(lat, lon, existing, config.min_separation_km):
+                continue
+            return lat, lon
+        return None
+
+    def sample_in_radius(
+        self,
+        *,
+        center_lat: float,
+        center_lon: float,
+        radius_km: float,
+        existing: list[tuple[float, float]],
+        config: CoordinateSampleConfig,
+        rng: random.Random | None = None,
+    ) -> tuple[float, float] | None:
+        """Rejection-sample a land point within a circle around a center."""
+        random_source = rng or random
+        cos_lat = max(abs(math.cos(math.radians(center_lat))), 1e-6)
+        for _ in range(config.max_coordinate_attempts):
+            angle = random_source.uniform(0, 2 * math.pi)
+            distance_km = radius_km * math.sqrt(random_source.uniform(0, 1))
+            lat = center_lat + (distance_km / 111.0) * math.cos(angle)
+            lon = center_lon + (distance_km / (111.0 * cos_lat)) * math.sin(angle)
             if not self.contains(lat, lon):
                 continue
             if _too_close(lat, lon, existing, config.min_separation_km):

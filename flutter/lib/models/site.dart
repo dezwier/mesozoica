@@ -144,6 +144,35 @@ class SiteListResponse {
   }
 }
 
+class SiteNearbyResponse {
+  const SiteNearbyResponse({
+    required this.items,
+    required this.total,
+    required this.generated,
+    required this.radiusKm,
+  });
+
+  final List<SiteSummary> items;
+  final int total;
+  final int generated;
+  final double radiusKm;
+
+  factory SiteNearbyResponse.fromJson(Map<String, dynamic> json) {
+    final rawItems = json['items'];
+    return SiteNearbyResponse(
+      items: rawItems is List
+          ? rawItems
+              .whereType<Map<String, dynamic>>()
+              .map(SiteSummary.fromJson)
+              .toList()
+          : const [],
+      total: json['total'] as int? ?? 0,
+      generated: json['generated'] as int? ?? 0,
+      radiusKm: (json['radius_km'] as num?)?.toDouble() ?? 1.0,
+    );
+  }
+}
+
 class SiteFossilThumb {
   const SiteFossilThumb({
     required this.id,

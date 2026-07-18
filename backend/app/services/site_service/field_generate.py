@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 import random
 import time
+from collections import Counter
 from dataclasses import dataclass, field
 from decimal import Decimal
 
@@ -29,10 +30,13 @@ from app.services.site_service.field_distributions import (
     sample_pair,
 )
 from app.services.site_service.reverse_geocode import lookup_country_state
+from app.services.site_service.nearby import count_sites_in_radius, list_sites_in_radius
+from app.services.site_service.summary import SiteRow
 
 logger = logging.getLogger("field_site_generate")
 
 FIELD_SITE_ID_START = 1_000_000_000
+PROGRESS_LOG_INTERVAL = 50
 
 
 @dataclass(frozen=True)
@@ -99,6 +103,342 @@ class FieldSiteGenerateSummary:
     elapsed_s: float = 0.0
 
 
+@dataclass(frozen=True)
+class FieldSiteLazyConfig:
+    min_sites_in_radius: int = 100
+    radius_km: float = 1.0
+    min_separation_km: float = 0.1
+
+    nearby_radius_km: float = 100.0
+    closest_neighbor_count: int = 20
+
+    weight_global: float = 0.25
+    weight_nearby: float = 0.50
+    weight_closest: float = 0.25
+
+    max_coordinate_attempts: int = 200
+    exclude_military: bool = False
+    land_mask_path: str | None = None
+
+    def validate(self) -> None:
+        if self.min_sites_in_radius <= 0:
+            raise ValueError("min_sites_in_radius must be positive")
+        if self.radius_km <= 0:
+            raise ValueError("radius_km must be positive")
+        if self.closest_neighbor_count <= 0:
+            raise ValueError("closest_neighbor_count must be positive")
+        if self.nearby_radius_km <= 0:
+            raise ValueError("nearby_radius_km must be positive")
+        total = self.weight_global + self.weight_nearby + self.weight_closest
+        if abs(total - 1.0) > 1e-6:
+            raise ValueError("distribution weights must sum to 1.0")
+        if self.exclude_military:
+            logger.warning(
+                "exclude_military=true is not implemented yet; using land-only sampling"
+            )
+
+    @property
+    def coordinate_config(self) -> CoordinateSampleConfig:
+        return CoordinateSampleConfig(
+            max_coordinate_attempts=self.max_coordinate_attempts,
+            min_separation_km=self.min_separation_km,
+        )
+
+    @property
+    def distribution_weights(self) -> DistributionWeights:
+        return DistributionWeights(
+            global_weight=self.weight_global,
+            nearby_weight=self.weight_nearby,
+            closest_weight=self.weight_closest,
+        )
+
+
+@dataclass
+class EnsureFieldSitesResult:
+    generated: int
+    total_in_radius: int
+    skipped_coords: int
+    skipped_no_site_type: int
+    items: list[SiteRow]
+    radius_km: float
+
+
+@dataclass
+class _GenerationContext:
+    archive_sites: list[ArchiveSiteRef]
+    global_counts: Counter[tuple[str, str]]
+    site_type_map: dict[tuple[str, str], int]
+    mask: LandMask
+    distribution_weights: DistributionWeights
+    nearby_radius_km: float
+    closest_neighbor_count: int
+
+
+def _build_generation_context(
+    session: Session,
+    *,
+    land_mask: LandMask | None = None,
+    land_mask_path: str | None = None,
+    distribution_weights: DistributionWeights,
+    nearby_radius_km: float,
+    closest_neighbor_count: int,
+) -> _GenerationContext:
+    archive_sites = _load_archive_sites(session)
+    if not archive_sites:
+        raise RuntimeError("No archive sites with coordinates, period, and rock_type found")
+
+    site_type_map = _load_site_type_map(session)
+    if not site_type_map:
+        raise RuntimeError("No site_type rows found; run site_type_sync first")
+
+    global_counts = build_global_distribution(archive_sites)
+    mask = land_mask or load_land_mask(land_mask_path)
+    return _GenerationContext(
+        archive_sites=archive_sites,
+        global_counts=global_counts,
+        site_type_map=site_type_map,
+        mask=mask,
+        distribution_weights=distribution_weights,
+        nearby_radius_km=nearby_radius_km,
+        closest_neighbor_count=closest_neighbor_count,
+    )
+
+
+def _build_field_site(
+    context: _GenerationContext,
+    *,
+    lat: float,
+    lon: float,
+    site_id: int,
+    rng: random.Random,
+) -> Site | None:
+    nearby_counts = nearby_distribution(
+        context.archive_sites,
+        lat=lat,
+        lon=lon,
+        radius_km=context.nearby_radius_km,
+    )
+    closest_counts = closest_distribution(
+        context.archive_sites,
+        lat=lat,
+        lon=lon,
+        neighbor_count=context.closest_neighbor_count,
+    )
+    blended = blend_distributions(
+        global_counts=context.global_counts,
+        nearby_counts=nearby_counts,
+        closest_counts=closest_counts,
+        weights=context.distribution_weights,
+    )
+    pair = sample_pair(blended, rng=rng)
+    if pair is None:
+        return None
+
+    period, rock_type = pair
+    site_type_id = context.site_type_map.get(pair)
+    if site_type_id is None:
+        logger.warning(
+            "No site_type for period=%s rock_type=%s; skipping coordinate lat=%s lon=%s",
+            period,
+            rock_type,
+            lat,
+            lon,
+        )
+        return None
+
+    country_code, state = lookup_country_state(lat, lon)
+    return Site(
+        site_id=site_id,
+        latitude=Decimal(str(round(lat, 6))),
+        longitude=Decimal(str(round(lon, 6))),
+        country_code=country_code,
+        state=state,
+        rock_type=rock_type,
+        formation=None,
+        min_age_ma=None,
+        max_age_ma=None,
+        period=period,
+        site_type_id=site_type_id,
+        data_source=DATA_SOURCE_FIELD,
+    )
+
+
+def _log_ensure_progress(
+    *,
+    generated: int,
+    target: int,
+    skipped_coords: int,
+    skipped_no_site_type: int,
+    started: float,
+) -> None:
+    logger.info(
+        "%s action=ensure_progress generated=%d/%d skipped_coords=%d "
+        "skipped_no_site_type=%d elapsed_s=%.1f",
+        "field_site_generate",
+        generated,
+        target,
+        skipped_coords,
+        skipped_no_site_type,
+        time.monotonic() - started,
+    )
+
+
+def _flush_pending_sites(session: Session, pending_rows: list[Site]) -> None:
+    if not pending_rows:
+        return
+    session.add_all(pending_rows)
+    session.flush()
+    session.commit()
+    pending_rows.clear()
+
+
+def ensure_field_sites_nearby(
+    session: Session,
+    *,
+    lat: float,
+    lon: float,
+    config: FieldSiteLazyConfig | None = None,
+    rng: random.Random | None = None,
+    land_mask: LandMask | None = None,
+) -> EnsureFieldSitesResult:
+    """Top up field sites within ``radius_km`` to ``min_sites_in_radius``."""
+    cfg = config or FieldSiteLazyConfig()
+    cfg.validate()
+    random_source = rng or random.Random()
+    started = time.monotonic()
+
+    context = _build_generation_context(
+        session,
+        land_mask=land_mask,
+        land_mask_path=cfg.land_mask_path,
+        distribution_weights=cfg.distribution_weights,
+        nearby_radius_km=cfg.nearby_radius_km,
+        closest_neighbor_count=cfg.closest_neighbor_count,
+    )
+
+    existing_count = count_sites_in_radius(
+        session,
+        lat=lat,
+        lon=lon,
+        radius_km=cfg.radius_km,
+        data_source=DATA_SOURCE_FIELD,
+    )
+    missing = max(0, cfg.min_sites_in_radius - existing_count)
+    logger.info(
+        "%s action=ensure_start lat=%s lon=%s radius_km=%s existing=%d missing=%d",
+        "field_site_generate",
+        lat,
+        lon,
+        cfg.radius_km,
+        existing_count,
+        missing,
+    )
+
+    if missing == 0:
+        items = list_sites_in_radius(
+            session,
+            lat=lat,
+            lon=lon,
+            radius_km=cfg.radius_km,
+            data_source=DATA_SOURCE_FIELD,
+        )
+        return EnsureFieldSitesResult(
+            generated=0,
+            total_in_radius=len(items),
+            skipped_coords=0,
+            skipped_no_site_type=0,
+            items=items,
+            radius_km=cfg.radius_km,
+        )
+
+    existing_coords = _load_existing_field_coords(session)
+    next_site_id = _next_field_site_id(session)
+    pending_rows: list[Site] = []
+    generated = 0
+    skipped_coords = 0
+    skipped_no_site_type = 0
+    max_attempts = missing * cfg.max_coordinate_attempts
+
+    for _ in range(max_attempts):
+        if generated >= missing:
+            break
+
+        sampled = context.mask.sample_in_radius(
+            center_lat=lat,
+            center_lon=lon,
+            radius_km=cfg.radius_km,
+            existing=existing_coords,
+            config=cfg.coordinate_config,
+            rng=random_source,
+        )
+        if sampled is None:
+            skipped_coords += 1
+            continue
+
+        site_lat, site_lon = sampled
+        site = _build_field_site(
+            context,
+            lat=site_lat,
+            lon=site_lon,
+            site_id=next_site_id,
+            rng=random_source,
+        )
+        if site is None:
+            skipped_no_site_type += 1
+            continue
+
+        next_site_id += 1
+        existing_coords.append((site_lat, site_lon))
+        pending_rows.append(site)
+        generated += 1
+
+        if generated % PROGRESS_LOG_INTERVAL == 0:
+            _flush_pending_sites(session, pending_rows)
+            _log_ensure_progress(
+                generated=generated,
+                target=missing,
+                skipped_coords=skipped_coords,
+                skipped_no_site_type=skipped_no_site_type,
+                started=started,
+            )
+
+    _flush_pending_sites(session, pending_rows)
+    if generated > 0 and generated % PROGRESS_LOG_INTERVAL != 0:
+        _log_ensure_progress(
+            generated=generated,
+            target=missing,
+            skipped_coords=skipped_coords,
+            skipped_no_site_type=skipped_no_site_type,
+            started=started,
+        )
+
+    items = list_sites_in_radius(
+        session,
+        lat=lat,
+        lon=lon,
+        radius_km=cfg.radius_km,
+        data_source=DATA_SOURCE_FIELD,
+    )
+    logger.info(
+        "%s action=ensure_done generated=%d total_in_radius=%d skipped_coords=%d "
+        "skipped_no_site_type=%d elapsed_s=%.2f",
+        "field_site_generate",
+        generated,
+        len(items),
+        skipped_coords,
+        skipped_no_site_type,
+        time.monotonic() - started,
+    )
+    return EnsureFieldSitesResult(
+        generated=generated,
+        total_in_radius=len(items),
+        skipped_coords=skipped_coords,
+        skipped_no_site_type=skipped_no_site_type,
+        items=items,
+        radius_km=cfg.radius_km,
+    )
+
+
 def _load_archive_sites(session: Session) -> list[ArchiveSiteRef]:
     stmt = select(Site).where(col(Site.data_source) == DATA_SOURCE_ARCHIVE)
     rows = session.exec(stmt).all()
@@ -160,6 +500,41 @@ def _delete_field_sites(session: Session) -> int:
     return len(existing)
 
 
+def _log_progress(
+    counters: FieldSiteGenerateCounters,
+    max_items: int,
+    started: float,
+) -> None:
+    elapsed_s = time.monotonic() - started
+    logger.info(
+        "%s action=progress generated=%d/%d skipped_coords=%d skipped_no_site_type=%d "
+        "elapsed_s=%.1f",
+        "field_site_generate",
+        counters.generated,
+        max_items,
+        counters.skipped_coords,
+        counters.skipped_no_site_type,
+        elapsed_s,
+    )
+
+
+def _write_pending_batch(
+    session: Session,
+    pending_rows: list[Site],
+    *,
+    counters: FieldSiteGenerateCounters,
+    max_items: int,
+    started: float,
+) -> None:
+    if not pending_rows:
+        return
+    session.add_all(pending_rows)
+    session.flush()
+    session.commit()
+    pending_rows.clear()
+    _log_progress(counters, max_items, started)
+
+
 def generate_field_sites(
     session: Session,
     *,
@@ -185,6 +560,18 @@ def generate_field_sites(
     mask = land_mask or load_land_mask(config.land_mask_path)
     existing_coords = _load_existing_field_coords(session)
 
+    logger.info(
+        "%s action=start max_items=%d refresh=%s dry_run=%s archive_sites=%d "
+        "site_types=%d existing_field_sites=%d",
+        "field_site_generate",
+        config.max_items,
+        config.refresh,
+        dry_run,
+        len(archive_sites),
+        len(site_type_map),
+        len(existing_coords),
+    )
+
     counters = FieldSiteGenerateCounters()
     if config.refresh:
         if dry_run:
@@ -193,6 +580,13 @@ def generate_field_sites(
         else:
             counters.deleted_on_refresh = _delete_field_sites(session)
             existing_coords = []
+        if counters.deleted_on_refresh:
+            logger.info(
+                "%s action=refresh deleted_field_sites=%d dry_run=%s",
+                "field_site_generate",
+                counters.deleted_on_refresh,
+                dry_run,
+            )
 
     next_site_id = _next_field_site_id(session)
     pending_rows: list[Site] = []
@@ -264,20 +658,30 @@ def generate_field_sites(
         counters.generated += 1
 
         if dry_run:
+            if counters.generated % PROGRESS_LOG_INTERVAL == 0:
+                _log_progress(counters, config.max_items, started)
             continue
 
         pending_rows.append(site)
-        if len(pending_rows) >= 500:
-            session.add_all(pending_rows)
-            session.flush()
-            pending_rows.clear()
+        if counters.generated % PROGRESS_LOG_INTERVAL == 0:
+            _write_pending_batch(
+                session,
+                pending_rows,
+                counters=counters,
+                max_items=config.max_items,
+                started=started,
+            )
 
-    if not dry_run and pending_rows:
-        session.add_all(pending_rows)
-        session.flush()
-        session.commit()
-    elif not dry_run:
-        session.commit()
+    if not dry_run:
+        _write_pending_batch(
+            session,
+            pending_rows,
+            counters=counters,
+            max_items=config.max_items,
+            started=started,
+        )
+    elif counters.generated > 0 and counters.generated % PROGRESS_LOG_INTERVAL != 0:
+        _log_progress(counters, config.max_items, started)
 
     summary = FieldSiteGenerateSummary(
         counters=counters,

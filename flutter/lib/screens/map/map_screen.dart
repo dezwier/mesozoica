@@ -7,6 +7,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
 
 import '../../config/map_config.dart';
+import '../../controllers/catalog_mode_controller.dart';
 import '../../controllers/map_controller.dart' as map_data;
 import '../../models/site.dart';
 import '../../services/location_service.dart';
@@ -37,6 +38,8 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
   double _zoomLevel = MapConfig.initialZoom;
   bool _centeredOnUser = false;
   bool _rotateMap = false;
+  LocationService? _locationService;
+  VoidCallback? _locationListener;
 
   @override
   void initState() {
@@ -58,6 +61,9 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
 
   @override
   void dispose() {
+    if (_locationListener != null) {
+      _locationService?.removeListener(_locationListener!);
+    }
     _mapSub?.cancel();
     _animatedMapController.dispose();
     super.dispose();
@@ -73,8 +79,32 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || !widget.isActive) return;
       context.read<LocationService>().start();
+      _bindLocationListener();
       context.read<map_data.MapController>().load();
     });
+  }
+
+  void _bindLocationListener() {
+    final locationService = context.read<LocationService>();
+    if (_locationService == locationService && _locationListener != null) {
+      _onPlayerLocationChanged(locationService);
+      return;
+    }
+    if (_locationListener != null) {
+      _locationService?.removeListener(_locationListener!);
+    }
+    _locationService = locationService;
+    _locationListener = () => _onPlayerLocationChanged(locationService);
+    locationService.addListener(_locationListener!);
+    _onPlayerLocationChanged(locationService);
+  }
+
+  void _onPlayerLocationChanged(LocationService locationService) {
+    if (!mounted || !widget.isActive) return;
+    if (!context.read<CatalogModeController>().isField) return;
+    final location = locationService.currentLocation;
+    if (location == null) return;
+    context.read<map_data.MapController>().ensureNearbySites(location);
   }
 
   void _onMapEvent(fm.MapEvent event) {
@@ -306,6 +336,12 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
   }
 
   String _siteLoadingLabel(map_data.MapController mapData) {
+    if (context.read<CatalogModeController>().isField) {
+      if (mapData.geoSiteCount > 0) {
+        return 'Loading nearby field sites… ${mapData.geoSiteCount} found';
+      }
+      return 'Loading nearby field sites…';
+    }
     if (mapData.totalCatalog > 0) {
       return 'Loading sites… ${mapData.geoSiteCount} found '
           '(${mapData.loadedCatalog}/${mapData.totalCatalog})';

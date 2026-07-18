@@ -209,6 +209,22 @@ class AppConfig {
         queryParameters: {'data_source': dataSource.apiValue},
       );
 
+  static Uri sitesNearbyUri({
+    required double lat,
+    required double lon,
+    double radiusKm = 1.0,
+    CatalogDataSource dataSource = CatalogDataSource.field,
+  }) {
+    return Uri.parse('$baseApiUrl/api/v1/sites/nearby').replace(
+      queryParameters: {
+        'lat': '$lat',
+        'lon': '$lon',
+        'radius_km': '$radiusKm',
+        'data_source': dataSource.apiValue,
+      },
+    );
+  }
+
   static Uri siteFossilsUri(int siteId) =>
       Uri.parse('$baseApiUrl/api/v1/sites/$siteId/fossils');
 
