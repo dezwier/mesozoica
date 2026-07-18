@@ -375,7 +375,7 @@ void main() {
     controller.dispose();
   });
 
-  test('field mode ensureNearbySites calls nearby API and throttles movement', () async {
+  test('field mode ensureNearbySites posts ensure and throttles movement', () async {
     final requests = <Uri>[];
     final catalogMode = CatalogModeController();
     await catalogMode.initialize();
@@ -384,62 +384,24 @@ void main() {
     final service = SiteService(
       client: MockClient((request) async {
         requests.add(request.url);
-        return http.Response(
-          jsonEncode({
-            'items': [
-              siteJson(
-                siteId: 1000000001,
-                latitude: 51.0,
-                longitude: 4.0,
-                siteTypePeriod: 'cretaceous',
-              ),
-            ],
-            'total': 1,
-            'generated': 1,
-            'radius_km': 1.0,
-          }),
-          200,
-        );
-      }),
-    );
-
-    final controller = MapController(
-      service: service,
-      catalogModeController: catalogMode,
-    );
-    controller.load();
-
-    await controller.ensureNearbySites(const LatLng(51.0, 4.0));
-    expect(requests.length, 1);
-    expect(requests.single.path, contains('/sites/nearby'));
-    expect(controller.geoSites.length, 1);
-
-    await controller.ensureNearbySites(const LatLng(51.001, 4.0));
-    expect(requests.length, 1);
-
-    await controller.ensureNearbySites(const LatLng(51.01, 4.0));
-    expect(requests.length, 2);
-
-    controller.dispose();
-  });
-
-  test('field mode load does not paginate global catalog', () async {
-    var listCalls = 0;
-    final catalogMode = CatalogModeController();
-    await catalogMode.initialize();
-    await catalogMode.setDataSource(CatalogDataSource.field);
-
-    final service = SiteService(
-      client: MockClient((request) async {
-        if (request.url.path.endsWith('/sites')) {
-          listCalls++;
+        if (request.method == 'POST') {
+          return http.Response(
+            jsonEncode({
+              'accepted': true,
+              'existing_in_radius': 0,
+              'missing': 100,
+              'radius_km': 1.0,
+            }),
+            202,
+          );
         }
         return http.Response(
           jsonEncode({
             'items': [],
             'total': 0,
-            'generated': 0,
-            'radius_km': 1.0,
+            'limit': 500,
+            'offset': 0,
+            'has_next': false,
           }),
           200,
         );
@@ -453,8 +415,75 @@ void main() {
     controller.load();
     await pumpUntilIdle();
 
-    expect(listCalls, 0);
-    expect(controller.loadingComplete, isFalse);
+    await controller.ensureNearbySites(const LatLng(51.0, 4.0));
+    expect(
+      requests.where((uri) => uri.path.endsWith('/field/ensure')).length,
+      1,
+    );
+    expect(controller.loading, isFalse);
+
+    await controller.ensureNearbySites(const LatLng(51.001, 4.0));
+    expect(
+      requests.where((uri) => uri.path.endsWith('/field/ensure')).length,
+      1,
+    );
+
+    await controller.ensureNearbySites(const LatLng(51.01, 4.0));
+    expect(
+      requests.where((uri) => uri.path.endsWith('/field/ensure')).length,
+      2,
+    );
+
+    controller.dispose();
+  });
+
+  test('field mode load paginates all field sites', () async {
+    var listCalls = 0;
+    final catalogMode = CatalogModeController();
+    await catalogMode.initialize();
+    await catalogMode.setDataSource(CatalogDataSource.field);
+
+    final service = SiteService(
+      client: MockClient((request) async {
+        if (request.url.path.endsWith('/sites') &&
+            request.method == 'GET' &&
+            !request.url.path.contains('nearby')) {
+          listCalls++;
+          return http.Response(
+            jsonEncode({
+              'items': [
+                siteJson(
+                  siteId: 1000000001,
+                  latitude: 51.0,
+                  longitude: 4.0,
+                ),
+              ],
+              'total': 1,
+              'limit': 500,
+              'offset': 0,
+              'has_next': false,
+            }),
+            200,
+          );
+        }
+        return http.Response('', 404);
+      }),
+    );
+
+    final controller = MapController(
+      service: service,
+      catalogModeController: catalogMode,
+    );
+    controller.load();
+    await pumpUntilIdle();
+
+    expect(listCalls, 1);
+    expect(controller.loadingComplete, isTrue);
+    expect(controller.geoSites.length, 1);
+    expect(
+      controller.geoSites.single.siteId,
+      1000000001,
+    );
 
     controller.dispose();
   });

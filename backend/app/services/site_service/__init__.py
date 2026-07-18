@@ -1,5 +1,6 @@
 """Site read service exports."""
 
+from app.services.site_service.field_ensure_background import schedule_field_site_ensure
 from app.services.site_service.field_generate import ensure_field_sites_nearby
 from app.services.site_service.list import get_site_by_id, list_sites
 from app.services.site_service.nearby import list_sites_in_radius
@@ -20,5 +21,6 @@ __all__ = [
     "list_sites",
     "list_sites_in_radius",
     "load_site_types_by_period",
+    "schedule_field_site_ensure",
     "site_row_to_summary",
 ]

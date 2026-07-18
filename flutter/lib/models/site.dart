@@ -144,6 +144,29 @@ class SiteListResponse {
   }
 }
 
+class FieldEnsureResponse {
+  const FieldEnsureResponse({
+    required this.accepted,
+    required this.existingInRadius,
+    required this.missing,
+    required this.radiusKm,
+  });
+
+  final bool accepted;
+  final int existingInRadius;
+  final int missing;
+  final double radiusKm;
+
+  factory FieldEnsureResponse.fromJson(Map<String, dynamic> json) {
+    return FieldEnsureResponse(
+      accepted: json['accepted'] as bool? ?? false,
+      existingInRadius: json['existing_in_radius'] as int? ?? 0,
+      missing: json['missing'] as int? ?? 0,
+      radiusKm: (json['radius_km'] as num?)?.toDouble() ?? 1.0,
+    );
+  }
+}
+
 class SiteNearbyResponse {
   const SiteNearbyResponse({
     required this.items,

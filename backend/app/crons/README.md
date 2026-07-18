@@ -150,7 +150,14 @@ RAILWAY_RUN=1 railway run python -m app.crons.runner --job tool_image_generate -
 
 ### Procedural field sites (lazy, not a cron)
 
-Field sites (`data_source=field`) are created on demand by `GET /api/v1/sites/nearby?lat=&lon=&radius_km=1&data_source=field`. When fewer than 100 field sites exist within the radius, the API generates up to the missing count (land-only coordinates, geology sampled from archive sites) and returns the persisted rows. The Flutter map calls this when the player moves (≥500 m throttle) in field catalog mode.
+Field sites (`data_source=field`) are shared globally — every persisted field site appears on the map for all players.
+
+- **`GET /api/v1/sites?data_source=field`** — paginate all field sites (Flutter map loads these on open).
+- **`GET /api/v1/sites?data_source=field&site_id_min=N&sort=name`** — incremental poll for sites written since the last id (Flutter polls every ~15 s while the map is active).
+- **`POST /api/v1/sites/field/ensure`** — returns `202` immediately and schedules generation in a background thread inside the API process. When fewer than 100 field sites exist within 1 km of the posted coordinates, the worker generates up to the missing count (land-only coordinates, geology sampled from archive sites) and commits in batches of 50. No separate Railway worker is required for v1.
+- **`GET /api/v1/sites/nearby`** — read-only listing within a radius (no generation).
+
+The Flutter map calls `POST /field/ensure` when the player moves (≥500 m throttle) in field catalog mode.
 
 ### `fossil_pbdb_sync` resume behavior
 

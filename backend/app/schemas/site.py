@@ -41,6 +41,13 @@ class SiteNearbyResponse(BaseModel):
     radius_km: float
 
 
+class FieldEnsureResponse(BaseModel):
+    accepted: bool
+    existing_in_radius: int
+    missing: int
+    radius_km: float
+
+
 class SiteFossilThumb(BaseModel):
     id: int
     main_image_url: str | None = None

@@ -337,10 +337,14 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
 
   String _siteLoadingLabel(map_data.MapController mapData) {
     if (context.read<CatalogModeController>().isField) {
-      if (mapData.geoSiteCount > 0) {
-        return 'Loading nearby field sites… ${mapData.geoSiteCount} found';
+      if (mapData.totalCatalog > 0) {
+        return 'Loading field sites… ${mapData.geoSiteCount} found '
+            '(${mapData.loadedCatalog}/${mapData.totalCatalog})';
       }
-      return 'Loading nearby field sites…';
+      if (mapData.geoSiteCount > 0) {
+        return 'Loading field sites… ${mapData.geoSiteCount} found';
+      }
+      return 'Loading field sites…';
     }
     if (mapData.totalCatalog > 0) {
       return 'Loading sites… ${mapData.geoSiteCount} found '

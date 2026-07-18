@@ -22,6 +22,7 @@ class SiteService {
     double? maOlder,
     bool hasCustomImage = false,
     CatalogDataSource dataSource = CatalogDataSource.archive,
+    int? siteIdMin,
   }) async {
     final uri = AppConfig.sitesUri(
       limit: limit,
@@ -33,6 +34,7 @@ class SiteService {
       maOlder: maOlder,
       hasCustomImage: hasCustomImage,
       dataSource: dataSource,
+      siteIdMin: siteIdMin,
     );
     if (kDebugMode) {
       debugPrint('SiteService GET $uri');
@@ -109,6 +111,40 @@ class SiteService {
       throw const SiteServiceException('Invalid nearby sites response');
     }
     return SiteNearbyResponse.fromJson(decoded);
+  }
+
+  Future<FieldEnsureResponse> requestFieldSiteEnsure({
+    required double lat,
+    required double lon,
+    double radiusKm = 1.0,
+  }) async {
+    final uri = AppConfig.fieldSiteEnsureUri();
+    if (kDebugMode) {
+      debugPrint('SiteService POST $uri');
+    }
+    final response = await _client
+        .post(
+          uri,
+          headers: const {'Content-Type': 'application/json'},
+          body: jsonEncode({
+            'lat': lat,
+            'lon': lon,
+            'radius_km': radiusKm,
+          }),
+        )
+        .timeout(const Duration(seconds: 10));
+
+    if (response.statusCode != 202) {
+      throw SiteServiceException(
+        'Failed to schedule field site ensure (${response.statusCode})',
+      );
+    }
+
+    final decoded = jsonDecode(response.body);
+    if (decoded is! Map<String, dynamic>) {
+      throw const SiteServiceException('Invalid field ensure response');
+    }
+    return FieldEnsureResponse.fromJson(decoded);
   }
 
   Future<List<SiteFossilThumb>> fetchFossilsForSite(int siteId) async {

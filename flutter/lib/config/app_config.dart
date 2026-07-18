@@ -175,6 +175,7 @@ class AppConfig {
     double? maOlder,
     bool hasCustomImage = false,
     CatalogDataSource dataSource = CatalogDataSource.archive,
+    int? siteIdMin,
   }) {
     final params = <String, String>{
       'limit': '$limit',
@@ -195,11 +196,17 @@ class AppConfig {
     if (hasCustomImage) {
       params['has_custom_image'] = 'true';
     }
+    if (siteIdMin != null) {
+      params['site_id_min'] = '$siteIdMin';
+    }
     params['data_source'] = dataSource.apiValue;
     return Uri.parse('$baseApiUrl/api/v1/sites').replace(
       queryParameters: params,
     );
   }
+
+  static Uri fieldSiteEnsureUri() =>
+      Uri.parse('$baseApiUrl/api/v1/sites/field/ensure');
 
   static Uri siteUri(
     int id, {

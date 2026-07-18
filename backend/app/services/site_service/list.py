@@ -33,6 +33,7 @@ def list_sites(
     ma_older: float | None = None,
     has_custom_image: bool = False,
     data_source: str | None = None,
+    site_id_min: int | None = None,
 ) -> tuple[list[SiteRow], int]:
     """Return paginated site rows joined with site_type."""
     capped_limit = max(1, min(limit, 500))
@@ -51,11 +52,20 @@ def list_sites(
         time_filter_active=effective_time_filter,
         has_custom_image=has_custom_image,
         data_source=normalized_data_source,
+        site_id_min=site_id_min,
     )
 
     total = session.exec(
         select(sqlmodel_func.count()).select_from(filtered.subquery())
     ).one()
+
+    if site_id_min is not None:
+        if sort != "name":
+            raise ValidationError("site_id_min requires sort=name")
+        rows = session.exec(
+            filtered.order_by(col(Site.site_id)).limit(capped_limit)
+        ).all()
+        return [_row_from_tuple(row) for row in rows], int(total)
 
     if sort == "random":
         normalized_seed = (seed or "").strip()
@@ -135,10 +145,13 @@ def _filtered_select(
     time_filter_active: bool,
     has_custom_image: bool,
     data_source: str,
+    site_id_min: int | None = None,
 ):
     stmt = select(Site, SiteType).outerjoin(
         SiteType, col(Site.site_type_id) == col(SiteType.id)
     ).where(col(Site.data_source) == data_source)
+    if site_id_min is not None:
+        stmt = stmt.where(col(Site.site_id) > site_id_min)
     if has_custom_image:
         stmt = stmt.where(
             col(SiteType.main_image_url).is_not(None),

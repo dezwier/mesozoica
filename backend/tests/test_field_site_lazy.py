@@ -172,7 +172,7 @@ def test_ensure_does_not_delete_archive_sites(session: Session, monkeypatch):
     assert len(archive_sites) == 1
 
 
-def test_sites_nearby_api_generates_and_persists(client, session: Session, monkeypatch):
+def test_sites_nearby_api_is_read_only(client, session: Session, monkeypatch):
     site_type = _site_type(period="cretaceous", rock_type="sandstone")
     session.add(site_type)
     session.add(_archive_site(site_id=100, lat=40.0, lon=-100.0))
@@ -193,9 +193,57 @@ def test_sites_nearby_api_generates_and_persists(client, session: Session, monke
     )
     assert response.status_code == 200
     payload = response.json()
-    assert payload["generated"] == 100
-    assert payload["total"] == 100
-    assert len(payload["items"]) == 100
+    assert payload["generated"] == 0
+    assert payload["total"] == 0
+
+    field_sites = list(session.exec(select(Site).where(Site.data_source == DATA_SOURCE_FIELD)).all())
+    assert len(field_sites) == 0
+
+
+def test_field_ensure_api_schedules_generation(client, session: Session, monkeypatch):
+    site_type = _site_type(period="cretaceous", rock_type="sandstone")
+    session.add(site_type)
+    session.add(_archive_site(site_id=100, lat=40.0, lon=-100.0))
+    session.commit()
+
+    monkeypatch.setattr(
+        "app.services.site_service.field_generate.lookup_country_state",
+        lambda lat, lon: ("US", "Montana"),
+    )
+    monkeypatch.setattr(
+        "app.services.site_service.field_generate.load_land_mask",
+        lambda path=None: _test_land_mask(40.0, -100.0, radius_km=1.0),
+    )
+
+    generated: list[int] = []
+
+    def _run_sync(*, target, args=(), **kwargs):
+        generated.append(1)
+        target(*args, **kwargs)
+
+    class _SyncThread:
+        def __init__(self, *, target, args=(), **kwargs):
+            self._target = target
+            self._args = args
+
+        def start(self):
+            _run_sync(target=self._target, args=self._args)
+
+    monkeypatch.setattr(
+        "app.services.site_service.field_ensure_background.threading.Thread",
+        _SyncThread,
+    )
+
+    response = client.post(
+        "/api/v1/sites/field/ensure",
+        json={"lat": 40.0, "lon": -100.0, "radius_km": 1.0},
+    )
+    assert response.status_code == 202
+    payload = response.json()
+    assert payload["accepted"] is True
+    assert payload["missing"] == 100
+    assert payload["existing_in_radius"] == 0
+    assert generated == [1]
 
     field_sites = list(session.exec(select(Site).where(Site.data_source == DATA_SOURCE_FIELD)).all())
     assert len(field_sites) == 100

@@ -20,6 +20,7 @@ class MapController extends ChangeNotifier {
   static const pageSize = 500;
   static const nearbyRadiusKm = 1.0;
   static const ensureMoveThresholdM = 500.0;
+  static const fieldPollInterval = Duration(seconds: 15);
 
   final SiteService _service;
   final CatalogModeController? _catalogModeController;
@@ -39,6 +40,8 @@ class MapController extends ChangeNotifier {
   int _loadedCatalog = 0;
   LatLng? _lastEnsurePosition;
   bool _ensureInFlight = false;
+  int _maxFieldSiteId = 0;
+  Timer? _fieldPollTimer;
 
   List<SiteSummary> get geoSites => List.unmodifiable(_geoSites);
   bool get loading => _loading;
@@ -83,23 +86,32 @@ class MapController extends ChangeNotifier {
   }
 
   void _loadFieldMode({required bool force}) {
-    if (!force && (_loading || _loadingComplete || _ensureInFlight)) {
-      return;
-    }
-    if (force) {
+    if (!force) {
+      if (_loading) return;
+      if (_loadingComplete) {
+        _startFieldPoll(_loadSeq);
+        return;
+      }
+    } else {
       _resetCatalogState();
       _lastEnsurePosition = null;
+      _maxFieldSiteId = 0;
     }
+
+    _stopFieldPoll();
+    final seq = ++_loadSeq;
+    _loading = true;
     _loadingComplete = false;
-    _loading = false;
     _error = null;
     notifyListeners();
+
+    unawaited(_loadFieldPages(seq));
   }
 
   void pause() {
-    if (!_loading && _loadingComplete) return;
     _loadSeq++;
     _loading = false;
+    _stopFieldPoll();
     notifyListeners();
   }
 
@@ -107,7 +119,7 @@ class MapController extends ChangeNotifier {
     load(force: true);
   }
 
-  /// Ensures persisted field sites exist near [position] (500 m throttle).
+  /// Schedules background field-site generation near [position] (500 m throttle).
   Future<void> ensureNearbySites(LatLng position) async {
     if (!_isFieldMode) return;
     if (_ensureInFlight) return;
@@ -118,41 +130,27 @@ class MapController extends ChangeNotifier {
     }
 
     _ensureInFlight = true;
-    _loading = true;
-    _error = null;
-    notifyListeners();
+    _lastEnsurePosition = position;
 
     try {
-      final response = await _service.fetchNearbySites(
+      final response = await _service.requestFieldSiteEnsure(
         lat: position.latitude,
         lon: position.longitude,
         radiusKm: nearbyRadiusKm,
-        dataSource: CatalogDataSource.field,
       );
-      _mergeSites(_withCoordinates(response.items));
-      _lastEnsurePosition = position;
-      _loadingComplete = true;
-      _error = null;
 
       if (kDebugMode) {
         debugPrint(
-          'MapController: ensured ${response.generated} new field sites; '
-          '${response.total} within ${response.radiusKm} km',
+          'MapController: field ensure accepted=${response.accepted}; '
+          'missing=${response.missing} existing=${response.existingInRadius}',
         );
       }
-    } on SiteServiceException catch (error) {
-      _error = error.message;
     } catch (error) {
-      _error =
-          'Could not reach the API at ${AppConfig.baseApiUrl}. '
-          'Check your connection or try again later.';
       if (kDebugMode) {
         debugPrint('MapController.ensureNearbySites failed: $error');
       }
     } finally {
       _ensureInFlight = false;
-      _loading = false;
-      notifyListeners();
     }
   }
 
@@ -203,6 +201,10 @@ class MapController extends ChangeNotifier {
     }
     _geoSites = byId.values.toList();
     _siteBounds = _expandBounds(_siteBounds, incoming);
+    _maxFieldSiteId = _geoSites.fold(
+      _maxFieldSiteId,
+      (max, site) => site.siteId > max ? site.siteId : max,
+    );
   }
 
   void _resetCatalogState() {
@@ -213,6 +215,134 @@ class MapController extends ChangeNotifier {
     _loadedCatalog = 0;
     _totalCatalog = 0;
     _loadingComplete = false;
+    _maxFieldSiteId = 0;
+  }
+
+  Future<void> _loadFieldPages(int seq) async {
+    try {
+      var hasMore = true;
+      var offset = 0;
+
+      while (hasMore) {
+        if (seq != _loadSeq) return;
+
+        final response = await _service.fetchSites(
+          limit: pageSize,
+          offset: offset,
+          sort: 'name',
+          dataSource: CatalogDataSource.field,
+        );
+        if (seq != _loadSeq) return;
+
+        final geo = _withCoordinates(response.items);
+        _mergeSites(geo);
+        offset += response.items.length;
+        _loadedCatalog = offset;
+        _totalCatalog = response.total;
+        _error = null;
+        notifyListeners();
+
+        hasMore = response.hasMore;
+        if (response.items.isEmpty) {
+          hasMore = false;
+        }
+
+        if (kDebugMode) {
+          debugPrint(
+            'MapController: field page loaded — ${_geoSites.length} geo sites '
+            '($_loadedCatalog/$_totalCatalog catalog)',
+          );
+        }
+
+        if (hasMore) {
+          await Future<void>.delayed(Duration.zero);
+        }
+      }
+
+      if (seq != _loadSeq) return;
+      _loadingComplete = true;
+      _startFieldPoll(seq);
+
+      if (kDebugMode) {
+        debugPrint(
+          'MapController: field catalog finished — ${_geoSites.length} geo sites '
+          'from $_loadedCatalog catalog rows',
+        );
+      }
+    } on SiteServiceException catch (error) {
+      if (seq != _loadSeq) return;
+      _error = error.message;
+    } catch (error) {
+      if (seq != _loadSeq) return;
+      _error =
+          'Could not reach the API at ${AppConfig.baseApiUrl}. '
+          'Check your connection or try again later.';
+      if (kDebugMode) {
+        debugPrint('MapController.load field mode failed: $error');
+      }
+    } finally {
+      if (seq == _loadSeq) {
+        _loading = false;
+        notifyListeners();
+      }
+    }
+  }
+
+  void _startFieldPoll(int seq) {
+    _stopFieldPoll();
+    _fieldPollTimer = Timer.periodic(fieldPollInterval, (_) {
+      if (seq != _loadSeq || !_isFieldMode) return;
+      unawaited(_pollNewFieldSites(seq));
+    });
+  }
+
+  void _stopFieldPoll() {
+    _fieldPollTimer?.cancel();
+    _fieldPollTimer = null;
+  }
+
+  Future<void> _pollNewFieldSites(int seq) async {
+    if (!_isFieldMode || seq != _loadSeq) return;
+
+    try {
+      var hasMore = true;
+      var siteIdMin = _maxFieldSiteId > 0 ? _maxFieldSiteId + 1 : null;
+
+      while (hasMore) {
+        if (seq != _loadSeq) return;
+
+        final response = await _service.fetchSites(
+          limit: pageSize,
+          offset: 0,
+          sort: 'name',
+          dataSource: CatalogDataSource.field,
+          siteIdMin: siteIdMin,
+        );
+        if (seq != _loadSeq) return;
+        if (response.items.isEmpty) return;
+
+        final geo = _withCoordinates(response.items);
+        _mergeSites(geo);
+        _totalCatalog = response.total;
+        notifyListeners();
+
+        hasMore = response.hasMore;
+        if (hasMore) {
+          siteIdMin = _maxFieldSiteId + 1;
+        }
+
+        if (kDebugMode) {
+          debugPrint(
+            'MapController: polled ${geo.length} new field sites '
+            '(max id $_maxFieldSiteId)',
+          );
+        }
+      }
+    } catch (error) {
+      if (kDebugMode) {
+        debugPrint('MapController field poll failed: $error');
+      }
+    }
   }
 
   Future<void> _loadPages(int seq) async {
@@ -335,6 +465,7 @@ class MapController extends ChangeNotifier {
   @override
   void dispose() {
     _loadSeq++;
+    _stopFieldPoll();
     _service.dispose();
     super.dispose();
   }
