@@ -23,7 +23,6 @@ from app.services.site_service.rules import (
 @dataclass
 class SiteDraft:
     site: Site
-    period: str | None
 
 
 def fossil_query(session: Session, *, dinos: list[str] | None):
@@ -65,8 +64,8 @@ def build_site_draft(site_id: int, fossils_at_site: list[Fossil]) -> SiteDraft |
             formation=formation_for_site(fossils_at_site),
             min_age_ma=min_age_ma,
             max_age_ma=max_age_ma,
+            period=period_for_ages(min_age_ma, max_age_ma),
         ),
-        period=period_for_ages(min_age_ma, max_age_ma),
     )
 
 
@@ -90,3 +89,4 @@ def apply_site_draft(existing: Site, draft: Site) -> None:
     existing.formation = draft.formation
     existing.min_age_ma = draft.min_age_ma
     existing.max_age_ma = draft.max_age_ma
+    existing.period = draft.period

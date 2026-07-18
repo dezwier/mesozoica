@@ -88,6 +88,7 @@ def test_sync_builds_site_table_and_links_fossils(session: Session):
     assert site_row.rock_type == "sandstone"
     assert site_row.min_age_ma == Decimal("66.00")
     assert site_row.max_age_ma == Decimal("72.20")
+    assert site_row.period == "cretaceous"
     assert site_row.site_type_id is None
     assert site_row.country_code == "CA"
 

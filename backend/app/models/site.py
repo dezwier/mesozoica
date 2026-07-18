@@ -25,6 +25,11 @@ class Site(SQLModel, table=True):
     formation: Optional[str] = Field(default=None, max_length=255)
     min_age_ma: Optional[Decimal] = Field(default=None, sa_column=Column(Numeric(5, 2)))
     max_age_ma: Optional[Decimal] = Field(default=None, sa_column=Column(Numeric(5, 2)))
+    period: Optional[str] = Field(
+        default=None,
+        max_length=20,
+        description="triassic, jurassic, or cretaceous (derived from min/max_age_ma)",
+    )
     site_type_id: Optional[int] = Field(
         default=None,
         sa_column=Column(
