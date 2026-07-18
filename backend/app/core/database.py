@@ -40,6 +40,18 @@ def init_db() -> None:
     SQLModel.metadata.create_all(engine)
 
 
+def run_migrations() -> None:
+    """Apply Alembic migrations (Postgres only)."""
+    if db_url.startswith("sqlite"):
+        return
+    from alembic import command
+    from alembic.config import Config
+
+    alembic_cfg = Config("alembic.ini")
+    command.upgrade(alembic_cfg, "head")
+    logger.info("Database migrations applied")
+
+
 def _ping_db() -> None:
     with engine.connect() as connection:
         connection.execute(text("SELECT 1"))

@@ -9,7 +9,7 @@ import uuid
 
 from sqlmodel import Session
 
-from app.core.database import engine
+from app.core.database import engine, run_migrations
 from app.models.field_ensure_job import FieldEnsureJob
 from app.services.site_service.field_ensure_queue import (
     claim_next_job,
@@ -105,6 +105,7 @@ def run_forever() -> None:
 
 
 def main() -> None:
+    run_migrations()
     run_forever()
 
 
