@@ -69,6 +69,21 @@ On **first boot**, `docker-entrypoint.sh` downloads and simplifies OSM masks int
 
 If API and worker start together, one service fetches while the others wait on a lock file.
 
+#### Troubleshooting first-boot fetch
+
+If logs show `OSM fetch lock released but masks are still missing` in a loop, the fetch likely **failed** (often out-of-memory) and the container restarted before writing files.
+
+1. **Bump RAM** on the API service to **2 GB+** for the first fetch (Railway → service → Settings → Resources).
+2. **Redeploy** — the entrypoint retries up to 3 times, then starts the API with Natural Earth fallback instead of crash-looping.
+3. **Check mount path** — volume must be at `/data` and `FIELD_COORDINATE_DATA_DIR=/data` must match.
+4. **Optional lower memory fetch** — set `OSM_SIMPLIFY_TOLERANCE=0.001` (coarser coastlines, fewer polygons) and redeploy.
+5. After the API is up, run fetch manually once:
+   ```bash
+   railway shell --service backend
+   python -m scripts.fetch_osm_coordinate_masks --data-dir /data/osm
+   ```
+   Then restart the worker.
+
 #### Optional: skip OSM in a service
 
 Set `FETCH_OSM_COORDINATE_MASKS=false` to use Natural Earth fallback only (CI, dev).
