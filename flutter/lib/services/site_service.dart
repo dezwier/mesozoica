@@ -117,20 +117,25 @@ class SiteService {
     required double lat,
     required double lon,
     double radiusKm = 1.0,
+    String? reason,
   }) async {
     final uri = AppConfig.fieldSiteEnsureUri();
     if (kDebugMode) {
-      debugPrint('SiteService POST $uri');
+      debugPrint('SiteService POST $uri reason=${reason ?? '-'}');
+    }
+    final body = <String, dynamic>{
+      'lat': lat,
+      'lon': lon,
+      'radius_km': radiusKm,
+    };
+    if (reason != null && reason.isNotEmpty) {
+      body['reason'] = reason;
     }
     final response = await _client
         .post(
           uri,
           headers: const {'Content-Type': 'application/json'},
-          body: jsonEncode({
-            'lat': lat,
-            'lon': lon,
-            'radius_km': radiusKm,
-          }),
+          body: jsonEncode(body),
         )
         .timeout(const Duration(seconds: 10));
 

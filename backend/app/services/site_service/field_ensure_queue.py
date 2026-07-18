@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import logging
 from datetime import datetime, timedelta, timezone
 
 from sqlalchemy.exc import IntegrityError
@@ -12,9 +11,8 @@ from app.core.database import engine
 from app.models.data_source import DATA_SOURCE_FIELD
 from app.models.field_ensure_job import FieldEnsureJob
 from app.services.site_service.field_generate import FieldSiteLazyConfig
+from app.services.site_service.field_site_logging import log_field_event, normalize_reason
 from app.services.site_service.nearby import count_sites_in_radius
-
-logger = logging.getLogger("field_site_generate")
 
 STATUS_PENDING = "pending"
 STATUS_RUNNING = "running"
@@ -32,6 +30,7 @@ def enqueue_field_site_ensure(
     lat: float,
     lon: float,
     config: FieldSiteLazyConfig | None = None,
+    reason: str | None = None,
 ) -> tuple[int, int, bool]:
     """Count local density and enqueue a worker job when under-filled.
 
@@ -39,6 +38,7 @@ def enqueue_field_site_ensure(
     """
     cfg = config or FieldSiteLazyConfig()
     cfg.validate()
+    trigger = normalize_reason(reason)
 
     existing = count_sites_in_radius(
         session,
@@ -48,22 +48,40 @@ def enqueue_field_site_ensure(
         data_source=DATA_SOURCE_FIELD,
     )
     missing = max(0, cfg.min_sites_in_radius - existing)
+    key = cell_key(lat, lon, cfg.radius_km)
+
     if missing == 0:
+        log_field_event(
+            "ensure_noop",
+            lat=lat,
+            lon=lon,
+            radius_km=cfg.radius_km,
+            cell=key,
+            reason=trigger,
+            existing=existing,
+            missing=0,
+            accepted=True,
+        )
         return existing, 0, True
 
-    key = cell_key(lat, lon, cfg.radius_km)
     job = session.exec(
         select(FieldEnsureJob).where(col(FieldEnsureJob.cell_key) == key)
     ).first()
 
     if job is not None:
         if job.status in (STATUS_PENDING, STATUS_RUNNING):
-            logger.info(
-                "%s action=ensure_skip reason=job_active cell=%s status=%s missing=%d",
-                "field_site_generate",
-                key,
-                job.status,
-                missing,
+            log_field_event(
+                "ensure_skip",
+                lat=lat,
+                lon=lon,
+                radius_km=cfg.radius_km,
+                cell=key,
+                reason=trigger,
+                skip_reason="job_active",
+                job_status=job.status,
+                existing=existing,
+                missing=missing,
+                accepted=False,
             )
             return existing, missing, False
 
@@ -78,11 +96,16 @@ def enqueue_field_site_ensure(
         job.finished_at = None
         session.add(job)
         session.commit()
-        logger.info(
-            "%s action=ensure_requeued cell=%s missing=%d",
-            "field_site_generate",
-            key,
-            missing,
+        log_field_event(
+            "ensure_requeued",
+            lat=lat,
+            lon=lon,
+            radius_km=cfg.radius_km,
+            cell=key,
+            reason=trigger,
+            existing=existing,
+            missing=missing,
+            accepted=True,
         )
         return existing, missing, True
 
@@ -100,19 +123,30 @@ def enqueue_field_site_ensure(
         session.commit()
     except IntegrityError:
         session.rollback()
-        logger.info(
-            "%s action=ensure_skip reason=duplicate_enqueue cell=%s missing=%d",
-            "field_site_generate",
-            key,
-            missing,
+        log_field_event(
+            "ensure_skip",
+            lat=lat,
+            lon=lon,
+            radius_km=cfg.radius_km,
+            cell=key,
+            reason=trigger,
+            skip_reason="duplicate_enqueue",
+            existing=existing,
+            missing=missing,
+            accepted=False,
         )
         return existing, missing, False
 
-    logger.info(
-        "%s action=ensure_enqueued cell=%s missing=%d",
-        "field_site_generate",
-        key,
-        missing,
+    log_field_event(
+        "ensure_enqueued",
+        lat=lat,
+        lon=lon,
+        radius_km=cfg.radius_km,
+        cell=key,
+        reason=trigger,
+        existing=existing,
+        missing=missing,
+        accepted=True,
     )
     return existing, missing, True
 
@@ -122,10 +156,17 @@ def schedule_field_site_ensure(
     lat: float,
     lon: float,
     config: FieldSiteLazyConfig | None = None,
+    reason: str | None = None,
 ) -> tuple[int, int, bool]:
     """API helper: open a session and enqueue a job."""
     with Session(engine) as session:
-        return enqueue_field_site_ensure(session, lat=lat, lon=lon, config=config)
+        return enqueue_field_site_ensure(
+            session,
+            lat=lat,
+            lon=lon,
+            config=config,
+            reason=reason,
+        )
 
 
 def count_running_jobs(session: Session) -> int:
@@ -158,6 +199,7 @@ def recover_stale_running_jobs(
         session.add(job)
     if stale_jobs:
         session.commit()
+        log_field_event("ensure_stale_recovered", recovered=len(stale_jobs))
     return len(stale_jobs)
 
 
@@ -196,6 +238,16 @@ def claim_next_job(session: Session, *, worker_id: str) -> FieldEnsureJob | None
     session.add(job)
     session.commit()
     session.refresh(job)
+    log_field_event(
+        "ensure_claimed",
+        lat=job.lat,
+        lon=job.lon,
+        radius_km=job.radius_km,
+        cell=job.cell_key,
+        missing=job.missing_count,
+        worker=worker_id,
+        job_id=job.id,
+    )
     return job
 
 

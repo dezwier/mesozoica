@@ -32,6 +32,7 @@ from app.services.site_service.field_distributions import (
     sample_pair,
 )
 from app.services.site_service.reverse_geocode import lookup_country_state
+from app.services.site_service.field_site_logging import log_field_event
 from app.services.site_service.nearby import count_sites_in_radius, list_sites_in_radius
 from app.services.site_service.summary import SiteRow
 
@@ -272,16 +273,20 @@ def _log_ensure_progress(
     skipped_coords: int,
     skipped_no_site_type: int,
     started: float,
+    lat: float,
+    lon: float,
+    radius_km: float,
 ) -> None:
-    logger.info(
-        "%s action=ensure_progress generated=%d/%d skipped_coords=%d "
-        "skipped_no_site_type=%d elapsed_s=%.1f",
-        "field_site_generate",
-        generated,
-        target,
-        skipped_coords,
-        skipped_no_site_type,
-        time.monotonic() - started,
+    log_field_event(
+        "ensure_progress",
+        lat=lat,
+        lon=lon,
+        radius_km=radius_km,
+        generated=generated,
+        target=target,
+        skipped_coords=skipped_coords,
+        skipped_no_site_type=skipped_no_site_type,
+        elapsed_s=round(time.monotonic() - started, 1),
     )
 
 
@@ -326,14 +331,13 @@ def ensure_field_sites_nearby(
         data_source=DATA_SOURCE_FIELD,
     )
     missing = max(0, cfg.min_sites_in_radius - existing_count)
-    logger.info(
-        "%s action=ensure_start lat=%s lon=%s radius_km=%s existing=%d missing=%d",
-        "field_site_generate",
-        lat,
-        lon,
-        cfg.radius_km,
-        existing_count,
-        missing,
+    log_field_event(
+        "ensure_start",
+        lat=lat,
+        lon=lon,
+        radius_km=cfg.radius_km,
+        existing=existing_count,
+        missing=missing,
     )
 
     if missing == 0:
@@ -343,6 +347,17 @@ def ensure_field_sites_nearby(
             lon=lon,
             radius_km=cfg.radius_km,
             data_source=DATA_SOURCE_FIELD,
+        )
+        log_field_event(
+            "ensure_done",
+            lat=lat,
+            lon=lon,
+            radius_km=cfg.radius_km,
+            generated=0,
+            total_in_radius=len(items),
+            skipped_coords=0,
+            skipped_no_site_type=0,
+            elapsed_s=round(time.monotonic() - started, 2),
         )
         return EnsureFieldSitesResult(
             generated=0,
@@ -402,6 +417,9 @@ def ensure_field_sites_nearby(
                 skipped_coords=skipped_coords,
                 skipped_no_site_type=skipped_no_site_type,
                 started=started,
+                lat=lat,
+                lon=lon,
+                radius_km=cfg.radius_km,
             )
 
     _flush_pending_sites(session, pending_rows)
@@ -412,6 +430,9 @@ def ensure_field_sites_nearby(
             skipped_coords=skipped_coords,
             skipped_no_site_type=skipped_no_site_type,
             started=started,
+            lat=lat,
+            lon=lon,
+            radius_km=cfg.radius_km,
         )
 
     items = list_sites_in_radius(
@@ -421,15 +442,16 @@ def ensure_field_sites_nearby(
         radius_km=cfg.radius_km,
         data_source=DATA_SOURCE_FIELD,
     )
-    logger.info(
-        "%s action=ensure_done generated=%d total_in_radius=%d skipped_coords=%d "
-        "skipped_no_site_type=%d elapsed_s=%.2f",
-        "field_site_generate",
-        generated,
-        len(items),
-        skipped_coords,
-        skipped_no_site_type,
-        time.monotonic() - started,
+    log_field_event(
+        "ensure_done",
+        lat=lat,
+        lon=lon,
+        radius_km=cfg.radius_km,
+        generated=generated,
+        total_in_radius=len(items),
+        skipped_coords=skipped_coords,
+        skipped_no_site_type=skipped_no_site_type,
+        elapsed_s=round(time.monotonic() - started, 2),
     )
     return EnsureFieldSitesResult(
         generated=generated,

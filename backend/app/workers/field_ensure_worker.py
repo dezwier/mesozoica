@@ -23,8 +23,7 @@ from app.services.site_service.field_generate import (
     FieldSiteLazyConfig,
     ensure_field_sites_nearby,
 )
-
-logger = logging.getLogger("field_site_generate")
+from app.services.site_service.field_site_logging import log_field_event
 
 POLL_INTERVAL_S = float(os.getenv("FIELD_ENSURE_POLL_INTERVAL_S", "5"))
 MAX_CONCURRENT = int(os.getenv("FIELD_ENSURE_MAX_CONCURRENT", "2"))
@@ -47,7 +46,7 @@ def process_one_job(*, worker_id: str) -> bool:
     config = FieldSiteLazyConfig(radius_km=job.radius_km)
     try:
         with Session(engine) as session:
-            ensure_field_sites_nearby(
+            result = ensure_field_sites_nearby(
                 session,
                 lat=job.lat,
                 lon=job.lon,
@@ -57,19 +56,28 @@ def process_one_job(*, worker_id: str) -> bool:
             refreshed = session.get(FieldEnsureJob, job.id)
             if refreshed is not None:
                 mark_job_done(session, refreshed)
-        logger.info(
-            "%s action=worker_done cell=%s worker=%s",
-            "field_site_generate",
-            job.cell_key,
-            worker_id,
+        log_field_event(
+            "worker_done",
+            lat=job.lat,
+            lon=job.lon,
+            radius_km=job.radius_km,
+            cell=job.cell_key,
+            generated=result.generated,
+            total_in_radius=result.total_in_radius,
+            worker=worker_id,
+            job_id=job.id,
         )
         return True
     except Exception as exc:
-        logger.exception(
-            "%s action=worker_failed cell=%s worker=%s",
-            "field_site_generate",
-            job.cell_key,
-            worker_id,
+        log_field_event(
+            "worker_failed",
+            lat=job.lat,
+            lon=job.lon,
+            radius_km=job.radius_km,
+            cell=job.cell_key,
+            worker=worker_id,
+            job_id=job.id,
+            error=str(exc)[:200],
         )
         with Session(engine) as session:
             refreshed = session.get(FieldEnsureJob, job.id)
@@ -81,12 +89,11 @@ def process_one_job(*, worker_id: str) -> bool:
 def run_forever() -> None:
     logging.basicConfig(level=logging.INFO)
     worker_id = _worker_id()
-    logger.info(
-        "%s action=worker_start worker=%s max_concurrent=%d poll_s=%s",
-        "field_site_generate",
-        worker_id,
-        MAX_CONCURRENT,
-        POLL_INTERVAL_S,
+    log_field_event(
+        "worker_start",
+        worker=worker_id,
+        max_concurrent=MAX_CONCURRENT,
+        poll_s=POLL_INTERVAL_S,
     )
     while True:
         processed = process_one_job(worker_id=worker_id)

@@ -17,6 +17,8 @@ make run-field-ensure-worker
 | `FIELD_ENSURE_MAX_CONCURRENT` | `2` | Max jobs with `status=running` globally |
 | `FIELD_ENSURE_POLL_INTERVAL_S` | `5` | Sleep when no job is available |
 
+Log lines use a unified format, e.g. `field_site_generate action=ensure_enqueued lat=… lon=… reason=resume missing=…`. Worker logs `action=worker_done generated=… total_in_radius=…`.
+
 The worker start command in [`railway.worker.toml`](../railway.worker.toml) sets `MESOZOICA_MINIMAL_SETTINGS=1` so you only need `DATABASE_URL` in the Railway dashboard.
 
 **Workaround without redeploying:** reference `SECRET_KEY`, `CORS_ORIGINS`, and `WIKIPEDIA_USER_AGENT` from the `backend` service (same as API) until the minimal-settings start command is deployed.

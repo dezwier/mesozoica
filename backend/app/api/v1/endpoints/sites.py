@@ -38,6 +38,7 @@ class FieldEnsureRequest(BaseModel):
     lat: float = Field(ge=-90, le=90)
     lon: float = Field(ge=-180, le=180)
     radius_km: float = Field(default=1.0, gt=0, le=50)
+    reason: str | None = Field(default=None, max_length=32)
 
 
 @router.get("", response_model=SiteListResponse)
@@ -112,6 +113,7 @@ def post_field_site_ensure(body: FieldEnsureRequest) -> FieldEnsureResponse:
         lat=body.lat,
         lon=body.lon,
         config=config,
+        reason=body.reason,
     )
     return FieldEnsureResponse(
         accepted=accepted,

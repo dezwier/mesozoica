@@ -76,7 +76,7 @@ void main() {
   });
 
   test('ensures on foreground and throttles movement in field mode', () async {
-    final requests = <Uri>[];
+    final bodies = <Map<String, dynamic>>[];
     final catalogMode = CatalogModeController();
     await catalogMode.initialize();
     await catalogMode.setDataSource(CatalogDataSource.field);
@@ -84,7 +84,7 @@ void main() {
     final coordinator = FieldSessionCoordinator(
       siteService: SiteService(
         client: MockClient((request) async {
-          requests.add(request.url);
+          bodies.add(jsonDecode(request.body) as Map<String, dynamic>);
           return http.Response(
             jsonEncode({
               'accepted': true,
@@ -103,17 +103,22 @@ void main() {
       catalogModeController: catalogMode,
       locationService: locationService,
     );
+    await pumpUntilIdle();
+    expect(bodies.single['reason'], FieldSessionCoordinator.reasonFieldModeOn);
+
     coordinator.onForeground();
     await pumpUntilIdle();
-    expect(requests.length, 1);
+    expect(bodies.length, 2);
+    expect(bodies.last['reason'], FieldSessionCoordinator.reasonResume);
 
     locationService.setLocation(const LatLng(51.001, 4.0));
     await pumpUntilIdle();
-    expect(requests.length, 1);
+    expect(bodies.length, 2);
 
     locationService.setLocation(const LatLng(51.01, 4.0));
     await pumpUntilIdle();
-    expect(requests.length, 2);
+    expect(bodies.length, 3);
+    expect(bodies.last['reason'], FieldSessionCoordinator.reasonMove500m);
 
     coordinator.dispose();
   });

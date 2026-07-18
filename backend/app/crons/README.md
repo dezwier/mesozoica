@@ -154,7 +154,7 @@ Field sites (`data_source=field`) are shared globally — every persisted field 
 
 - **`GET /api/v1/sites?data_source=field`** — paginate all field sites (Flutter map loads these on open).
 - **`GET /api/v1/sites?data_source=field&site_id_min=N&sort=name`** — incremental poll for sites written since the last id (Flutter polls every ~60 s while the map tab is open).
-- **`POST /api/v1/sites/field/ensure`** — returns `202` immediately and enqueues a row in `field_ensure_job`. A dedicated Railway worker service (`python -m app.workers.field_ensure_worker`, see [`app/workers/README.md`](../workers/README.md)) claims jobs with `FOR UPDATE SKIP LOCKED`, re-counts density, and generates only the still-missing count within 1 km (land-only coordinates, geology sampled from archive sites). Jobs dedupe by `cell_key` (`round(lat,2):round(lon,2):radius_km`).
+- **`POST /api/v1/sites/field/ensure`** — returns `202` immediately and enqueues a row in `field_ensure_job`. Optional JSON field `reason`: `resume`, `move_500m`, or `field_mode_on` (logged on enqueue/skip/noop). A dedicated Railway worker service (`python -m app.workers.field_ensure_worker`, see [`app/workers/README.md`](../workers/README.md)) claims jobs with `FOR UPDATE SKIP LOCKED`, re-counts density, and generates only the still-missing count within 1 km (land-only coordinates, geology sampled from archive sites). Jobs dedupe by `cell_key` (`round(lat,2):round(lon,2):radius_km`).
 - **`GET /api/v1/sites/nearby`** — read-only listing within a radius (no generation).
 
 The Flutter app calls `POST /field/ensure` on app open/resume and every 500 m move while field mode is active (foreground or background). Map polling is map-tab-only.

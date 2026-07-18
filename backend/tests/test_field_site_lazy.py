@@ -209,7 +209,12 @@ def test_field_ensure_api_enqueues_job(client, session: Session):
 
     response = client.post(
         "/api/v1/sites/field/ensure",
-        json={"lat": 40.0, "lon": -100.0, "radius_km": 1.0},
+        json={
+            "lat": 40.0,
+            "lon": -100.0,
+            "radius_km": 1.0,
+            "reason": "resume",
+        },
     )
     assert response.status_code == 202
     payload = response.json()
@@ -229,6 +234,50 @@ def test_field_ensure_api_enqueues_job(client, session: Session):
     assert duplicate.status_code == 202
     assert duplicate.json()["accepted"] is False
     assert len(list(session.exec(select(FieldEnsureJob)).all())) == 1
+
+
+def test_field_ensure_api_logs_noop_when_full(
+    client, session: Session, caplog
+):
+    import logging
+
+    site_type = _site_type(period="cretaceous", rock_type="sandstone")
+    session.add(site_type)
+    session.commit()
+    session.refresh(site_type)
+
+    center_lat, center_lon = 40.0, -100.0
+    for index in range(100):
+        session.add(
+            Site(
+                site_id=FIELD_SITE_ID_START + index,
+                latitude=Decimal(str(center_lat + index * 0.00001)),
+                longitude=Decimal(str(center_lon + index * 0.00001)),
+                rock_type="sandstone",
+                period="cretaceous",
+                site_type_id=site_type.id,
+                data_source=DATA_SOURCE_FIELD,
+            )
+        )
+    session.commit()
+
+    caplog.set_level(logging.INFO, logger="field_site_generate")
+    response = client.post(
+        "/api/v1/sites/field/ensure",
+        json={
+            "lat": center_lat,
+            "lon": center_lon,
+            "radius_km": 1.0,
+            "reason": "move_500m",
+        },
+    )
+    assert response.status_code == 202
+    assert response.json()["missing"] == 0
+    assert any(
+        "action=ensure_noop" in record.message and "reason=move_500m" in record.message
+        for record in caplog.records
+    )
+    assert len(list(session.exec(select(FieldEnsureJob)).all())) == 0
 
 
 def test_field_ensure_worker_processes_job(client, session: Session, monkeypatch):
