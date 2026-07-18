@@ -72,7 +72,7 @@ run-field-ensure-worker:
 	cd backend && RAILWAY_RUN=1 railway run $(RAILWAY_SERVICE_FLAG) env MESOZOICA_MINIMAL_SETTINGS=1 python -m app.workers.field_ensure_worker
 
 fetch-coordinate-masks:
-	cd backend && python -m scripts.fetch_osm_coordinate_masks
+	cd backend && .venv/bin/python -m scripts.fetch_osm_coordinate_masks
 
 run-field-site-coordinate-prune:
 	cd backend && RAILWAY_RUN=1 railway run $(RAILWAY_SERVICE_FLAG) python -m app.crons.runner --job field_site_coordinate_prune $(CRON_EXTRA)

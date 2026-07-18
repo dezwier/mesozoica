@@ -14,11 +14,14 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Protocol, runtime_checkable
 
-import pyogrio
 from shapely.geometry import MultiPolygon, Point, shape
 from shapely.geometry.base import BaseGeometry
 from shapely.strtree import STRtree
 
+from app.services.site_service.field_coordinate_geodata import (
+    flatten_polygons,
+    read_shapefile_polygons,
+)
 from app.services.site_service.geo_utils import haversine_km
 
 logger = logging.getLogger(__name__)
@@ -250,13 +253,7 @@ def resolve_osm_water_dir() -> Path:
 
 
 def _flatten_polygons(geometry: BaseGeometry) -> list[BaseGeometry]:
-    if geometry.is_empty:
-        return []
-    if geometry.geom_type == "Polygon":
-        return [geometry]
-    if geometry.geom_type == "MultiPolygon":
-        return [polygon for polygon in geometry.geoms if not polygon.is_empty]
-    return []
+    return flatten_polygons(geometry)
 
 
 def _find_shapefile(directory: Path) -> Path:
@@ -267,15 +264,7 @@ def _find_shapefile(directory: Path) -> Path:
 
 
 def _load_shapefile_polygons(shapefile_path: Path) -> list[BaseGeometry]:
-    _fields, geometries, _crs = pyogrio.read(str(shapefile_path))
-    polygons: list[BaseGeometry] = []
-    for geometry in geometries:
-        if geometry is None or geometry.is_empty:
-            continue
-        polygons.extend(_flatten_polygons(geometry))
-    if not polygons:
-        raise RuntimeError(f"No polygons loaded from {shapefile_path}")
-    return polygons
+    return read_shapefile_polygons(shapefile_path)
 
 
 def osm_coordinate_masks_available() -> bool:

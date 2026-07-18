@@ -5,14 +5,18 @@ from __future__ import annotations
 import argparse
 import logging
 import shutil
-import sys
 import tempfile
 import zipfile
 from pathlib import Path
 from urllib.request import urlretrieve
 
-import pyogrio
 from shapely.geometry.base import BaseGeometry
+
+from app.services.site_service.field_coordinate_geodata import (
+    flatten_polygons,
+    read_shapefile_polygons,
+    write_shapefile_polygons,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -66,47 +70,29 @@ def _find_shapefile(root: Path) -> Path:
     return matches[0]
 
 
-def _flatten_geometry(geometry: BaseGeometry) -> list[BaseGeometry]:
-    if geometry.is_empty:
-        return []
-    if geometry.geom_type == "Polygon":
-        return [geometry]
-    if geometry.geom_type == "MultiPolygon":
-        return [part for part in geometry.geoms if not part.is_empty]
-    return []
-
-
 def _write_simplified_shapefile(
     *,
     source_shp: Path,
     dest_shp: Path,
     simplify_tolerance: float,
 ) -> int:
-    _, geometries, _crs = pyogrio.read(str(source_shp))
+    geometries = read_shapefile_polygons(source_shp)
     simplified: list[BaseGeometry] = []
     for geometry in geometries:
-        if geometry is None or geometry.is_empty:
-            continue
         if simplify_tolerance > 0:
             geometry = geometry.simplify(simplify_tolerance, preserve_topology=True)
-        simplified.extend(_flatten_geometry(geometry))
+        simplified.extend(flatten_polygons(geometry))
 
     if not simplified:
         raise RuntimeError(f"No geometries produced from {source_shp}")
 
-    dest_shp.parent.mkdir(parents=True, exist_ok=True)
     if dest_shp.exists():
         for suffix in (".shp", ".shx", ".dbf", ".prj", ".cpg"):
             path = dest_shp.with_suffix(suffix)
             if path.exists():
                 path.unlink()
 
-    pyogrio.write(
-        str(dest_shp),
-        {"geometry": simplified},
-        crs="EPSG:4326",
-        driver="ESRI Shapefile",
-    )
+    write_shapefile_polygons(dest_shp, simplified)
     return len(simplified)
 
 
@@ -130,8 +116,7 @@ def _prepare_dataset(
     output_shp = output_dir / f"{meta['output_stem']}.shp"
     if output_shp.exists() and not force:
         logger.info("Skip %s — already present at %s", name, output_shp)
-        _, geometries, _crs = pyogrio.read(str(output_shp))
-        return len(geometries)
+        return len(read_shapefile_polygons(output_shp))
 
     logger.info("Downloading %s polygons from %s", name, meta["url"])
     with tempfile.TemporaryDirectory(prefix=f"osm-{name}-") as tmp:
@@ -154,8 +139,7 @@ def _prepare_dataset(
             )
         else:
             _copy_shapefile(source_shp, output_shp)
-            _, geometries, _crs = pyogrio.read(str(output_shp))
-            polygon_count = len(geometries)
+            polygon_count = len(read_shapefile_polygons(output_shp))
 
     logger.info(
         "Prepared %s polygons=%d simplify=%s output=%s",
