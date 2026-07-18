@@ -108,13 +108,13 @@ def get_sites_nearby(
 @router.post("/field/ensure", response_model=FieldEnsureResponse, status_code=202)
 def post_field_site_ensure(body: FieldEnsureRequest) -> FieldEnsureResponse:
     config = FieldSiteLazyConfig(radius_km=body.radius_km)
-    existing, missing, scheduled = schedule_field_site_ensure(
+    existing, missing, accepted = schedule_field_site_ensure(
         lat=body.lat,
         lon=body.lon,
         config=config,
     )
     return FieldEnsureResponse(
-        accepted=scheduled or missing == 0,
+        accepted=accepted,
         existing_in_radius=existing,
         missing=missing,
         radius_km=body.radius_km,

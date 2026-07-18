@@ -18,14 +18,11 @@ class MapController extends ChangeNotifier {
         _catalogModeController = catalogModeController;
 
   static const pageSize = 500;
-  static const nearbyRadiusKm = 1.0;
-  static const ensureMoveThresholdM = 500.0;
-  static const fieldPollInterval = Duration(seconds: 15);
+  static const fieldPollInterval = Duration(seconds: 60);
 
   final SiteService _service;
   final CatalogModeController? _catalogModeController;
   final Random _random = Random();
-  final Distance _distance = const Distance();
   String? _seed;
 
   List<SiteSummary> _geoSites = [];
@@ -38,8 +35,6 @@ class MapController extends ChangeNotifier {
   int _offset = 0;
   int _totalCatalog = 0;
   int _loadedCatalog = 0;
-  LatLng? _lastEnsurePosition;
-  bool _ensureInFlight = false;
   int _maxFieldSiteId = 0;
   Timer? _fieldPollTimer;
 
@@ -94,7 +89,6 @@ class MapController extends ChangeNotifier {
       }
     } else {
       _resetCatalogState();
-      _lastEnsurePosition = null;
       _maxFieldSiteId = 0;
     }
 
@@ -117,41 +111,6 @@ class MapController extends ChangeNotifier {
 
   Future<void> refresh() async {
     load(force: true);
-  }
-
-  /// Schedules background field-site generation near [position] (500 m throttle).
-  Future<void> ensureNearbySites(LatLng position) async {
-    if (!_isFieldMode) return;
-    if (_ensureInFlight) return;
-
-    if (_lastEnsurePosition != null &&
-        _distance(_lastEnsurePosition!, position) < ensureMoveThresholdM) {
-      return;
-    }
-
-    _ensureInFlight = true;
-    _lastEnsurePosition = position;
-
-    try {
-      final response = await _service.requestFieldSiteEnsure(
-        lat: position.latitude,
-        lon: position.longitude,
-        radiusKm: nearbyRadiusKm,
-      );
-
-      if (kDebugMode) {
-        debugPrint(
-          'MapController: field ensure accepted=${response.accepted}; '
-          'missing=${response.missing} existing=${response.existingInRadius}',
-        );
-      }
-    } catch (error) {
-      if (kDebugMode) {
-        debugPrint('MapController.ensureNearbySites failed: $error');
-      }
-    } finally {
-      _ensureInFlight = false;
-    }
   }
 
   void selectSite(SiteSummary site) {

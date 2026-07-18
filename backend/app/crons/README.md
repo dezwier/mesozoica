@@ -153,11 +153,11 @@ RAILWAY_RUN=1 railway run python -m app.crons.runner --job tool_image_generate -
 Field sites (`data_source=field`) are shared globally — every persisted field site appears on the map for all players.
 
 - **`GET /api/v1/sites?data_source=field`** — paginate all field sites (Flutter map loads these on open).
-- **`GET /api/v1/sites?data_source=field&site_id_min=N&sort=name`** — incremental poll for sites written since the last id (Flutter polls every ~15 s while the map is active).
-- **`POST /api/v1/sites/field/ensure`** — returns `202` immediately and schedules generation in a background thread inside the API process. When fewer than 100 field sites exist within 1 km of the posted coordinates, the worker generates up to the missing count (land-only coordinates, geology sampled from archive sites) and commits in batches of 50. No separate Railway worker is required for v1.
+- **`GET /api/v1/sites?data_source=field&site_id_min=N&sort=name`** — incremental poll for sites written since the last id (Flutter polls every ~60 s while the map tab is open).
+- **`POST /api/v1/sites/field/ensure`** — returns `202` immediately and enqueues a row in `field_ensure_job`. A dedicated Railway worker service (`python -m app.workers.field_ensure_worker`, see [`app/workers/README.md`](../workers/README.md)) claims jobs with `FOR UPDATE SKIP LOCKED`, re-counts density, and generates only the still-missing count within 1 km (land-only coordinates, geology sampled from archive sites). Jobs dedupe by `cell_key` (`round(lat,2):round(lon,2):radius_km`).
 - **`GET /api/v1/sites/nearby`** — read-only listing within a radius (no generation).
 
-The Flutter map calls `POST /field/ensure` when the player moves (≥500 m throttle) in field catalog mode.
+The Flutter app calls `POST /field/ensure` on app open/resume and every 500 m move while field mode is active (foreground or background). Map polling is map-tab-only.
 
 ### `fossil_pbdb_sync` resume behavior
 

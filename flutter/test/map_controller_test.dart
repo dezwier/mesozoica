@@ -375,68 +375,6 @@ void main() {
     controller.dispose();
   });
 
-  test('field mode ensureNearbySites posts ensure and throttles movement', () async {
-    final requests = <Uri>[];
-    final catalogMode = CatalogModeController();
-    await catalogMode.initialize();
-    await catalogMode.setDataSource(CatalogDataSource.field);
-
-    final service = SiteService(
-      client: MockClient((request) async {
-        requests.add(request.url);
-        if (request.method == 'POST') {
-          return http.Response(
-            jsonEncode({
-              'accepted': true,
-              'existing_in_radius': 0,
-              'missing': 100,
-              'radius_km': 1.0,
-            }),
-            202,
-          );
-        }
-        return http.Response(
-          jsonEncode({
-            'items': [],
-            'total': 0,
-            'limit': 500,
-            'offset': 0,
-            'has_next': false,
-          }),
-          200,
-        );
-      }),
-    );
-
-    final controller = MapController(
-      service: service,
-      catalogModeController: catalogMode,
-    );
-    controller.load();
-    await pumpUntilIdle();
-
-    await controller.ensureNearbySites(const LatLng(51.0, 4.0));
-    expect(
-      requests.where((uri) => uri.path.endsWith('/field/ensure')).length,
-      1,
-    );
-    expect(controller.loading, isFalse);
-
-    await controller.ensureNearbySites(const LatLng(51.001, 4.0));
-    expect(
-      requests.where((uri) => uri.path.endsWith('/field/ensure')).length,
-      1,
-    );
-
-    await controller.ensureNearbySites(const LatLng(51.01, 4.0));
-    expect(
-      requests.where((uri) => uri.path.endsWith('/field/ensure')).length,
-      2,
-    );
-
-    controller.dispose();
-  });
-
   test('field mode load paginates all field sites', () async {
     var listCalls = 0;
     final catalogMode = CatalogModeController();

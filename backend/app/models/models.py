@@ -5,6 +5,7 @@ Alembic imports this module to detect schema changes.
 """
 
 from app.models.dinosaur import Dinosaur
+from app.models.field_ensure_job import FieldEnsureJob
 from app.models.fossil import Fossil
 from app.models.site import Site
 from app.models.site_type import SiteType
@@ -16,6 +17,7 @@ from app.models.user_user import UserUser
 
 __all__ = [
     "Dinosaur",
+    "FieldEnsureJob",
     "Fossil",
     "Site",
     "SiteType",

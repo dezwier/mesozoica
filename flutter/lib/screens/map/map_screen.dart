@@ -38,8 +38,6 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
   double _zoomLevel = MapConfig.initialZoom;
   bool _centeredOnUser = false;
   bool _rotateMap = false;
-  LocationService? _locationService;
-  VoidCallback? _locationListener;
 
   @override
   void initState() {
@@ -61,9 +59,6 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
 
   @override
   void dispose() {
-    if (_locationListener != null) {
-      _locationService?.removeListener(_locationListener!);
-    }
     _mapSub?.cancel();
     _animatedMapController.dispose();
     super.dispose();
@@ -71,40 +66,16 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
 
   void _activateIfNeeded() {
     if (!widget.isActive) {
-      context.read<LocationService>().stop();
+      context.read<LocationService>().setMapForeground(false);
       context.read<map_data.MapController>().pause();
       return;
     }
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || !widget.isActive) return;
-      context.read<LocationService>().start();
-      _bindLocationListener();
+      context.read<LocationService>().setMapForeground(true);
       context.read<map_data.MapController>().load();
     });
-  }
-
-  void _bindLocationListener() {
-    final locationService = context.read<LocationService>();
-    if (_locationService == locationService && _locationListener != null) {
-      _onPlayerLocationChanged(locationService);
-      return;
-    }
-    if (_locationListener != null) {
-      _locationService?.removeListener(_locationListener!);
-    }
-    _locationService = locationService;
-    _locationListener = () => _onPlayerLocationChanged(locationService);
-    locationService.addListener(_locationListener!);
-    _onPlayerLocationChanged(locationService);
-  }
-
-  void _onPlayerLocationChanged(LocationService locationService) {
-    if (!mounted || !widget.isActive) return;
-    if (!context.read<CatalogModeController>().isField) return;
-    final location = locationService.currentLocation;
-    if (location == null) return;
-    context.read<map_data.MapController>().ensureNearbySites(location);
   }
 
   void _onMapEvent(fm.MapEvent event) {

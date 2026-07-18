@@ -8,6 +8,7 @@ import 'controllers/auth_controller.dart';
 import 'controllers/catalog_mode_controller.dart';
 import 'controllers/dinosaur_catalog_controller.dart';
 import 'controllers/fossil_catalog_controller.dart';
+import 'controllers/field_session_coordinator.dart';
 import 'controllers/map_controller.dart';
 import 'controllers/phylo_tree_controller.dart';
 import 'controllers/site_catalog_controller.dart';
@@ -79,6 +80,7 @@ class MesozoicaApp extends StatelessWidget {
           ),
         ),
         ChangeNotifierProvider(create: (_) => LocationService()),
+        ChangeNotifierProvider(create: (_) => FieldSessionCoordinator()),
       ],
       child: Consumer<ThemeController>(
         builder: (context, themeController, _) {

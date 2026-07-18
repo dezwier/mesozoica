@@ -1,0 +1,10 @@
+# Railway field-ensure worker service.
+# In Railway dashboard: add a worker service with config file path backend/railway.worker.toml
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+startCommand = "python -m app.workers.field_ensure_worker"
+restartPolicyType = "ON_FAILURE"

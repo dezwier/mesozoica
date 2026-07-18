@@ -10,6 +10,7 @@ from shapely.geometry import box
 from sqlmodel import Session, select
 
 from app.models.data_source import DATA_SOURCE_ARCHIVE, DATA_SOURCE_FIELD
+from app.models.field_ensure_job import FieldEnsureJob
 from app.models.site import Site
 from app.models.site_type import SiteType
 from app.services.site_service.field_coordinates import LandMask
@@ -200,7 +201,37 @@ def test_sites_nearby_api_is_read_only(client, session: Session, monkeypatch):
     assert len(field_sites) == 0
 
 
-def test_field_ensure_api_schedules_generation(client, session: Session, monkeypatch):
+def test_field_ensure_api_enqueues_job(client, session: Session):
+    site_type = _site_type(period="cretaceous", rock_type="sandstone")
+    session.add(site_type)
+    session.add(_archive_site(site_id=100, lat=40.0, lon=-100.0))
+    session.commit()
+
+    response = client.post(
+        "/api/v1/sites/field/ensure",
+        json={"lat": 40.0, "lon": -100.0, "radius_km": 1.0},
+    )
+    assert response.status_code == 202
+    payload = response.json()
+    assert payload["accepted"] is True
+    assert payload["missing"] == 100
+    assert payload["existing_in_radius"] == 0
+
+    jobs = list(session.exec(select(FieldEnsureJob)).all())
+    assert len(jobs) == 1
+    assert jobs[0].status == "pending"
+    assert jobs[0].cell_key == "40.0:-100.0:1.0"
+
+    duplicate = client.post(
+        "/api/v1/sites/field/ensure",
+        json={"lat": 40.0, "lon": -100.0, "radius_km": 1.0},
+    )
+    assert duplicate.status_code == 202
+    assert duplicate.json()["accepted"] is False
+    assert len(list(session.exec(select(FieldEnsureJob)).all())) == 1
+
+
+def test_field_ensure_worker_processes_job(client, session: Session, monkeypatch):
     site_type = _site_type(period="cretaceous", rock_type="sandstone")
     session.add(site_type)
     session.add(_archive_site(site_id=100, lat=40.0, lon=-100.0))
@@ -215,35 +246,19 @@ def test_field_ensure_api_schedules_generation(client, session: Session, monkeyp
         lambda path=None: _test_land_mask(40.0, -100.0, radius_km=1.0),
     )
 
-    generated: list[int] = []
-
-    def _run_sync(*, target, args=(), **kwargs):
-        generated.append(1)
-        target(*args, **kwargs)
-
-    class _SyncThread:
-        def __init__(self, *, target, args=(), **kwargs):
-            self._target = target
-            self._args = args
-
-        def start(self):
-            _run_sync(target=self._target, args=self._args)
-
-    monkeypatch.setattr(
-        "app.services.site_service.field_ensure_background.threading.Thread",
-        _SyncThread,
-    )
-
     response = client.post(
         "/api/v1/sites/field/ensure",
         json={"lat": 40.0, "lon": -100.0, "radius_km": 1.0},
     )
     assert response.status_code == 202
-    payload = response.json()
-    assert payload["accepted"] is True
-    assert payload["missing"] == 100
-    assert payload["existing_in_radius"] == 0
-    assert generated == [1]
+
+    from app.workers.field_ensure_worker import process_one_job
+
+    assert process_one_job(worker_id="test-worker") is True
 
     field_sites = list(session.exec(select(Site).where(Site.data_source == DATA_SOURCE_FIELD)).all())
     assert len(field_sites) == 100
+
+    job = session.exec(select(FieldEnsureJob)).first()
+    assert job is not None
+    assert job.status == "done"

@@ -9,8 +9,10 @@ from collections import Counter
 from dataclasses import dataclass, field
 from decimal import Decimal
 
-from sqlalchemy import delete, func
-from sqlmodel import Session, col, select
+from sqlalchemy import func, text
+from sqlmodel import Session, col, delete, select
+
+from app.core.database import engine
 
 from app.models.data_source import DATA_SOURCE_ARCHIVE, DATA_SOURCE_FIELD
 from app.models.site import Site
@@ -481,6 +483,10 @@ def _load_existing_field_coords(session: Session) -> list[tuple[float, float]]:
 
 
 def _next_field_site_id(session: Session) -> int:
+    if engine.dialect.name == "postgresql":
+        next_id = session.exec(text("SELECT nextval('field_site_id_seq')")).one()
+        return max(int(next_id), FIELD_SITE_ID_START)
+
     current_max = session.exec(
         select(func.max(Site.site_id)).where(col(Site.data_source) == DATA_SOURCE_FIELD)
     ).one()

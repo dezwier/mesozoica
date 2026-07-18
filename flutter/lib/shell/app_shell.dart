@@ -3,12 +3,14 @@ import 'package:provider/provider.dart';
 
 import '../controllers/auth_controller.dart';
 import '../controllers/catalog_mode_controller.dart';
+import '../controllers/field_session_coordinator.dart';
 import '../controllers/map_controller.dart';
 import '../controllers/notification_controller.dart';
 import '../controllers/site_catalog_controller.dart';
 import '../controllers/fossil_catalog_controller.dart';
 import '../models/user_notification.dart';
 import '../services/api_response_cache.dart';
+import '../services/location_service.dart';
 import '../widgets/common/gradient_app_bar.dart';
 import '../widgets/common/catalog_mode_toggle.dart';
 import '../widgets/common/notification_icon_button.dart';
@@ -41,6 +43,11 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       _attachCatalogModeListener();
+      context.read<FieldSessionCoordinator>().bind(
+            catalogModeController: context.read<CatalogModeController>(),
+            locationService: context.read<LocationService>(),
+          );
+      context.read<FieldSessionCoordinator>().onForeground();
     });
   }
 
@@ -71,12 +78,25 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state != AppLifecycleState.resumed || !mounted) return;
-    final userId = context.read<AuthController>().currentUser?.id;
-    if (userId == null) return;
-    context
-        .read<NotificationController>()
-        .refreshInBackground(authenticatedUserId: userId);
+    if (!mounted) return;
+
+    final fieldSession = context.read<FieldSessionCoordinator>();
+    switch (state) {
+      case AppLifecycleState.resumed:
+        fieldSession.onForeground();
+        final userId = context.read<AuthController>().currentUser?.id;
+        if (userId != null) {
+          context
+              .read<NotificationController>()
+              .refreshInBackground(authenticatedUserId: userId);
+        }
+      case AppLifecycleState.inactive:
+      case AppLifecycleState.paused:
+      case AppLifecycleState.hidden:
+        fieldSession.onBackground();
+      case AppLifecycleState.detached:
+        fieldSession.onLifecycle(state);
+    }
   }
 
   void _syncNotificationStore(AuthController auth) {
