@@ -1,3 +1,10 @@
+# Railway API service (repo root railway.toml points here).
+
 [build]
 builder = "DOCKERFILE"
 dockerfilePath = "Dockerfile"
+
+# Dashboard setup (shared with worker + cron):
+# - Mount one volume at /data
+# - FIELD_COORDINATE_DATA_DIR=/data
+# - CURATED_IMAGES_DATA_ROOT=/data (optional, card images)

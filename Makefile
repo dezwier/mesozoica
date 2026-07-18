@@ -15,7 +15,7 @@ help:
 	@echo "  run-backend                  Start FastAPI dev server (reads backend/.env)"
 	@echo "  run-cron                     Run due cron jobs on Railway"
 	@echo "  run-field-ensure-worker      Run field ensure worker on Railway"
-	@echo "  fetch-coordinate-masks       Download OSM land/water polygon shapefiles"
+	@echo "  fetch-coordinate-masks       Download OSM land/water polygon shapefiles (local dev)"
 	@echo "  run-field-site-coordinate-prune  Delete field sites failing coordinate filters"
 	@echo "  run-dinosaur-wiki-sync       dinosaur_wiki_sync on Railway"
 	@echo "  run-dinosaur-llm-enrich      dinosaur_llm_enrich on Railway"

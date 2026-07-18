@@ -17,6 +17,7 @@ import 'controllers/notification_controller.dart';
 import 'controllers/theme_controller.dart';
 import 'firebase_options.dart';
 import 'services/location_service.dart';
+import 'services/map_tile_cache.dart';
 import 'shell/app_shell.dart';
 import 'theme/mesozoica_theme.dart';
 
@@ -35,6 +36,7 @@ Future<void> main() async {
   await themeController.initialize();
   final catalogModeController = CatalogModeController();
   await catalogModeController.initialize();
+  await MapTileCache.initialize();
   runApp(MesozoicaApp(
     themeController: themeController,
     catalogModeController: catalogModeController,

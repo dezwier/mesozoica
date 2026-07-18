@@ -1,9 +1,9 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
-import 'package:flutter_map_cancellable_tile_provider/flutter_map_cancellable_tile_provider.dart';
 
 import '../../config/map_config.dart';
+import '../../services/map_tile_cache.dart';
 
 class MapTileLayer extends StatelessWidget {
   const MapTileLayer({super.key});
@@ -18,7 +18,7 @@ class MapTileLayer extends StatelessWidget {
       ),
       subdomains: MapConfig.tileSubdomains,
       userAgentPackageName: MapConfig.userAgentPackageName,
-      tileProvider: CancellableNetworkTileProvider(),
+      tileProvider: MapTileCache.tileProvider,
       errorTileCallback: (tile, error, stackTrace) {
         if (kDebugMode) {
           debugPrint('MapTileLayer error: $error');

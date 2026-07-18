@@ -1,5 +1,8 @@
 # Railway cron service: runs scheduled jobs from app/crons/crons.yaml.
 # In Railway dashboard: add a cron service with config file path backend/railway.cron.toml
+#
+# Mount the same /data volume as the API service and set FIELD_COORDINATE_DATA_DIR=/data
+# if any cron job uses coordinate filters (e.g. field_site_coordinate_prune).
 
 [build]
 builder = "DOCKERFILE"

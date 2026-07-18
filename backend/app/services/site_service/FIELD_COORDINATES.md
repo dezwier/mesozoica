@@ -44,7 +44,45 @@ python -m scripts.fetch_osm_coordinate_masks --help
 python -m scripts.fetch_osm_coordinate_masks --simplify-tolerance 0 --force
 ```
 
-Override storage location with `FIELD_COORDINATE_DATA_DIR`.
+Override storage location with `FIELD_COORDINATE_DATA_DIR` (e.g. a Railway volume mounted at `/data`).
+
+### Production (Railway volume — recommended)
+
+OSM shapefiles are **gitignored** and are **not** baked into the Docker image. Store them on a **shared Railway volume** so they are downloaded once and reused across deploys.
+
+`make run-field-site-coordinate-prune` uses `railway run`, which executes **on your machine** with Railway env vars. It reads local `backend/app/data/osm/` and talks to the remote DB. That is why prune can succeed while production still logs the Natural Earth fallback.
+
+#### One-time Railway setup
+
+1. Create or reuse a volume mounted at **`/data`** on:
+   - API service
+   - field-ensure worker
+   - cron service (if running coordinate prune)
+2. Set on each of those services:
+   ```bash
+   FIELD_COORDINATE_DATA_DIR=/data
+   ```
+   (`CURATED_IMAGES_DATA_ROOT=/data` can share the same volume for card images.)
+3. Deploy backend code.
+
+On **first boot**, `docker-entrypoint.sh` downloads and simplifies OSM masks into `/data/osm/` (~5–10 minutes, one time). Later deploys and restarts skip the download and load from the volume immediately.
+
+If API and worker start together, one service fetches while the others wait on a lock file.
+
+#### Optional: skip OSM in a service
+
+Set `FETCH_OSM_COORDINATE_MASKS=false` to use Natural Earth fallback only (CI, dev).
+
+#### Pre-seed from your laptop (skip first-boot download)
+
+If you already ran `make fetch-coordinate-masks` locally, copy into the volume via Railway shell instead of waiting for production fetch:
+
+```bash
+# Example — adjust service name / paths for your project
+railway shell --service backend
+mkdir -p /data/osm
+# then upload or rsync backend/app/data/osm/* into /data/osm/
+```
 
 ### Loading and RAM
 
@@ -110,9 +148,16 @@ The map uses Carto OSM no-labels basemaps (light/dark) so coastlines align with 
 
 ## Deploy sequence
 
-1. Deploy backend code
-2. `make fetch-coordinate-masks` on Railway API + field-ensure worker
-3. Restart API + worker
-4. `make run-field-site-coordinate-prune CRON_EXTRA='--dry-run'` — review counts
-5. `make run-field-site-coordinate-prune` — delete invalid sites
-6. Ship Flutter app with Carto OSM tiles
+1. Mount shared Railway volume at `/data` on API + field-ensure worker (+ cron if needed)
+2. Set `FIELD_COORDINATE_DATA_DIR=/data` on those services
+3. Deploy backend code (first boot fetches OSM masks into the volume once)
+4. Confirm logs show `Loaded OSM land filter` (not Natural Earth fallback)
+5. `make run-field-site-coordinate-prune CRON_EXTRA='--dry-run'` — review counts
+6. `make run-field-site-coordinate-prune` — delete invalid sites
+7. Ship Flutter app with Carto OSM tiles
+
+Local dev (optional):
+
+```bash
+make fetch-coordinate-masks
+```

@@ -96,9 +96,12 @@ Mount **one** volume at `/data` and set:
 
 ```bash
 CURATED_IMAGES_DATA_ROOT=/data
+FIELD_COORDINATE_DATA_DIR=/data
 DINOSAUR_IMAGES_DIR=/data/dinosaur-images   # optional if root is set
 FOSSIL_IMAGES_DIR=/data/fossil-images      # optional if root is set
 ```
+
+OSM coordinate masks are stored at `/data/osm/` (fetched once on first container boot).
 
 Served URLs stay separate: `/media/dinosaurs/...` and `/media/fossils/...`.
 

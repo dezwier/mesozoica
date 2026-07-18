@@ -1,5 +1,7 @@
 # Railway field-ensure worker service.
 # In Railway dashboard: add a worker service with config file path backend/railway.worker.toml
+#
+# Mount the same /data volume as the API service and set FIELD_COORDINATE_DATA_DIR=/data.
 
 [build]
 builder = "DOCKERFILE"
