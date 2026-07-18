@@ -67,7 +67,7 @@ run-cron:
 	cd backend && RAILWAY_RUN=1 railway run $(RAILWAY_SERVICE_FLAG) python -m app.crons.runner $(CRON_EXTRA)
 
 run-field-ensure-worker:
-	cd backend && RAILWAY_RUN=1 railway run $(RAILWAY_SERVICE_FLAG) python -m app.workers.field_ensure_worker
+	cd backend && RAILWAY_RUN=1 railway run $(RAILWAY_SERVICE_FLAG) env MESOZOICA_MINIMAL_SETTINGS=1 python -m app.workers.field_ensure_worker
 
 run-dinosaur-wiki-sync:
 	cd backend && RAILWAY_RUN=1 railway run $(RAILWAY_SERVICE_FLAG) python -m app.crons.runner --job dinosaur_wiki_sync $(CRON_EXTRA)

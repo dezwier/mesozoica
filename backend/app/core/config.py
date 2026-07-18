@@ -277,8 +277,9 @@ if not settings.database_url:
 
 _env = os.getenv("ENVIRONMENT", "production").strip().lower()
 _is_production = _env not in ("development", "dev", "local")
+_minimal_settings = os.getenv("MESOZOICA_MINIMAL_SETTINGS", "").strip() == "1"
 
-if _is_production:
+if _is_production and not _minimal_settings:
     if not (os.getenv("SECRET_KEY") or "").strip():
         raise ValueError(
             "SECRET_KEY environment variable is required in production. "

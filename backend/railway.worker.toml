@@ -6,5 +6,5 @@ builder = "DOCKERFILE"
 dockerfilePath = "Dockerfile"
 
 [deploy]
-startCommand = "python -m app.workers.field_ensure_worker"
+startCommand = "MESOZOICA_MINIMAL_SETTINGS=1 python -m app.workers.field_ensure_worker"
 restartPolicyType = "ON_FAILURE"
