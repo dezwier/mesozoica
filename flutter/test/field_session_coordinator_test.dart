@@ -158,4 +158,45 @@ void main() {
 
     coordinator.dispose();
   });
+
+  test('defers resume ensure until first GPS fix', () async {
+    final bodies = <Map<String, dynamic>>[];
+    final catalogMode = CatalogModeController();
+    await catalogMode.initialize();
+    await catalogMode.setDataSource(CatalogDataSource.field);
+
+    final locationService = _FakeLocationService(null);
+
+    final coordinator = FieldSessionCoordinator(
+      siteService: SiteService(
+        client: MockClient((request) async {
+          bodies.add(jsonDecode(request.body) as Map<String, dynamic>);
+          return http.Response(
+            jsonEncode({
+              'accepted': true,
+              'existing_in_radius': 0,
+              'missing': 100,
+              'radius_km': 1.0,
+            }),
+            202,
+          );
+        }),
+      ),
+    );
+
+    coordinator.bind(
+      catalogModeController: catalogMode,
+      locationService: locationService,
+    );
+    coordinator.onForeground();
+    await pumpUntilIdle();
+    expect(bodies, isEmpty);
+
+    locationService.setLocation(const LatLng(51.0, 4.0));
+    await pumpUntilIdle();
+    expect(bodies.length, 1);
+    expect(bodies.single['reason'], FieldSessionCoordinator.reasonResume);
+
+    coordinator.dispose();
+  });
 }

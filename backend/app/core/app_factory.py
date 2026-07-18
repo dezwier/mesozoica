@@ -22,6 +22,12 @@ IS_DEVELOPMENT = settings.environment.lower() in ("development", "dev", "local")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(levelname)s %(name)s %(message)s",
+        force=True,
+    )
+    logging.getLogger("field_site_generate").setLevel(logging.INFO)
     init_db()
     yield
 

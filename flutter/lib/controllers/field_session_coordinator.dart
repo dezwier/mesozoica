@@ -28,6 +28,7 @@ class FieldSessionCoordinator extends ChangeNotifier {
   bool _sessionActive = false;
   bool _ensureInFlight = false;
   LatLng? _lastEnsurePosition;
+  String? _pendingEnsureReason;
   VoidCallback? _locationListener;
   VoidCallback? _catalogListener;
 
@@ -50,13 +51,25 @@ class FieldSessionCoordinator extends ChangeNotifier {
     catalogModeController.addListener(_catalogListener!);
     unawaited(() async {
       await _syncSession(ensureReason: reasonFieldModeOn);
-      _locationListener = () {
-        final location = locationService.currentLocation;
-        if (location == null || !_sessionActive) return;
-        unawaited(_maybeEnsure(position: location, reason: reasonMove500m));
-      };
+      _locationListener = () => _onLocationChanged(locationService);
       locationService.addListener(_locationListener!);
+      _onLocationChanged(locationService);
     }());
+  }
+
+  void _onLocationChanged(LocationService locationService) {
+    if (!_sessionActive) return;
+
+    final pending = _pendingEnsureReason;
+    if (pending != null && locationService.currentLocation != null) {
+      _pendingEnsureReason = null;
+      unawaited(_maybeEnsure(force: true, reason: pending));
+      return;
+    }
+
+    final location = locationService.currentLocation;
+    if (location == null) return;
+    unawaited(_maybeEnsure(position: location, reason: reasonMove500m));
   }
 
   void onLifecycle(AppLifecycleState state) {
@@ -87,6 +100,7 @@ class FieldSessionCoordinator extends ChangeNotifier {
       return;
     }
     _sessionActive = false;
+    _pendingEnsureReason = null;
     unawaited(_locationService?.setFieldSession(active: false));
   }
 
@@ -125,8 +139,20 @@ class FieldSessionCoordinator extends ChangeNotifier {
     if (_ensureInFlight) return;
 
     final location = position ?? _locationService?.currentLocation;
-    if (location == null) return;
+    if (location == null) {
+      if (force) {
+        _pendingEnsureReason = reason;
+        if (kDebugMode) {
+          debugPrint(
+            'FieldSessionCoordinator: deferred ensure reason=$reason '
+            '(waiting for GPS)',
+          );
+        }
+      }
+      return;
+    }
 
+    _pendingEnsureReason = null;
     if (!force &&
         _lastEnsurePosition != null &&
         _distance(_lastEnsurePosition!, location) < ensureMoveThresholdM) {
