@@ -4,6 +4,8 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/physics.dart';
 
+import '../../config/discovery_config.dart';
+
 /// Y-axis 3D flip shell — tap left/right half or horizontal drag to turn.
 class TurnableYAxisCard extends StatefulWidget {
   const TurnableYAxisCard({
@@ -45,6 +47,7 @@ class _TurnableYAxisCardState extends State<TurnableYAxisCard>
   bool _isDraggingHorizontally = false;
   double _lastTapTargetAngle = 0;
   bool _didAutoFlip = false;
+  bool _autoFlipCancelled = false;
 
   static const double _halfTurnRadians = math.pi;
   static const double _fullTurnRadians = 2 * math.pi;
@@ -78,17 +81,22 @@ class _TurnableYAxisCardState extends State<TurnableYAxisCard>
   }
 
   Future<void> _runAutoFlipSequence() async {
-    await Future<void>.delayed(const Duration(milliseconds: 450));
-    if (!mounted) return;
+    await Future<void>.delayed(DiscoveryConfig.autoFlipStartDelay);
+    if (!mounted || _autoFlipCancelled) return;
     _flipByOneFace(turnLeft: true);
     final hold = widget.autoFlipHoldOnBack;
     if (hold <= Duration.zero) return;
     // Wait for the spring flip to settle on the back, then hold.
-    await Future<void>.delayed(const Duration(milliseconds: 700));
-    if (!mounted) return;
+    await Future<void>.delayed(DiscoveryConfig.autoFlipSettle);
+    if (!mounted || _autoFlipCancelled) return;
     await Future<void>.delayed(hold);
-    if (!mounted) return;
+    if (!mounted || _autoFlipCancelled) return;
     _flipByOneFace(turnLeft: true);
+  }
+
+  /// User drag/tap takes over — stop any remaining auto-flip steps.
+  void _cancelAutoFlip() {
+    _autoFlipCancelled = true;
   }
 
   @override
@@ -125,6 +133,7 @@ class _TurnableYAxisCardState extends State<TurnableYAxisCard>
   }
 
   void _onHorizontalDragStart(DragStartDetails details) {
+    _cancelAutoFlip();
     _flipController.stop();
     _lastTapTargetAngle =
         (_rotationAngle / _halfTurnRadians).roundToDouble() * _halfTurnRadians;
@@ -300,6 +309,7 @@ class _TurnableYAxisCardState extends State<TurnableYAxisCard>
         ? GestureDetector(
             behavior: HitTestBehavior.opaque,
             onTapUp: (details) {
+              _cancelAutoFlip();
               final tapX = details.localPosition.dx;
               final isLeftHalf = tapX <= (_cardWidth / 2);
               _flipByOneFace(turnLeft: isLeftHalf);

@@ -365,7 +365,7 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
               Positioned(
                 top: isFieldMode && isAdmin ? 64 : 12,
                 left: 16,
-                right: isFieldMode && isAdmin ? 160 : 16,
+                right: isFieldMode && isAdmin ? 112 : 16,
                 child: Material(
                   color: Theme.of(context)
                       .colorScheme
@@ -411,29 +411,33 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
                       .withValues(alpha: 0.92),
                   borderRadius: BorderRadius.circular(12),
                   child: Padding(
-                    padding: const EdgeInsets.fromLTRB(8, 4, 4, 4),
+                    padding: const EdgeInsets.all(4),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              'Show all',
-                              style: Theme.of(context).textTheme.labelMedium,
-                            ),
-                            Checkbox(
-                              value: mapData.showAllFieldSites,
-                              materialTapTargetSize:
-                                  MaterialTapTargetSize.shrinkWrap,
-                              visualDensity: VisualDensity.compact,
-                              onChanged: (value) {
-                                mapData.setShowAllFieldSites(value ?? false);
-                              },
-                            ),
-                          ],
+                        FloatingActionButton.small(
+                          heroTag: 'show_all_field_sites',
+                          onPressed: () {
+                            mapData.setShowAllFieldSites(
+                              !mapData.showAllFieldSites,
+                            );
+                          },
+                          tooltip: mapData.showAllFieldSites
+                              ? 'Showing all field sites'
+                              : 'Show all field sites',
+                          backgroundColor: mapData.showAllFieldSites
+                              ? Theme.of(context).colorScheme.primaryContainer
+                              : null,
+                          foregroundColor: mapData.showAllFieldSites
+                              ? Theme.of(context).colorScheme.onPrimaryContainer
+                              : null,
+                          child: Icon(
+                            mapData.showAllFieldSites
+                                ? Icons.visibility
+                                : Icons.visibility_outlined,
+                          ),
                         ),
-                        const SizedBox(width: 4),
+                        const SizedBox(width: 2),
                         FloatingActionButton.small(
                           heroTag: 'scan_field_area',
                           onPressed: _onScanFieldArea,
@@ -451,7 +455,7 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
                     ? 56
                     : 12,
                 left: 0,
-                right: isFieldMode && isAdmin ? 160 : 0,
+                right: isFieldMode && isAdmin ? 112 : 0,
                 child: Center(
                   child: Card(
                     child: Padding(

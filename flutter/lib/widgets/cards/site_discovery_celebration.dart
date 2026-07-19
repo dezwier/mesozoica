@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../config/discovery_config.dart';
 import '../../controllers/catalog_mode_controller.dart';
 import '../../models/site.dart';
 import '../../services/site_service.dart';
@@ -66,7 +67,7 @@ class _SiteDiscoveryCelebrationSheetState
     }
     _scaleController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 520),
+      duration: DiscoveryConfig.celebrationScaleIn,
     );
     _scale = CurvedAnimation(
       parent: _scaleController,
@@ -153,7 +154,7 @@ class _SiteDiscoveryCelebrationSheetState
                 SiteTurnableCard(
                   site: snapshot.data!,
                   autoFlipOnce: true,
-                  autoFlipHoldOnBack: const Duration(seconds: 1),
+                  autoFlipHoldOnBack: DiscoveryConfig.autoFlipHoldOnBack,
                 ),
               ],
             ),
