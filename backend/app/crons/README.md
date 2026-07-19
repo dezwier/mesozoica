@@ -150,14 +150,16 @@ RAILWAY_RUN=1 railway run python -m app.crons.runner --job tool_image_generate -
 
 ### Procedural field sites (lazy, not a cron)
 
-Field sites (`data_source=field`) are shared globally — every persisted field site appears on the map for all players.
+Field sites (`data_source=field`) are **global** `Site` rows (shared density pool). Players only see sites they have a `user_site` link to on the default map; undiscovered sites stay hidden until personal proximity discovery (50 m). Admins can use `show_all=true` (and the map “Show all” / “Scan” controls) to inspect the full field catalog.
 
-- **`GET /api/v1/sites?data_source=field`** — paginate all field sites (Flutter map loads these on open).
+- **`GET /api/v1/sites?data_source=field`** — linked-only field sites for the current user (empty when anonymous). Pass `show_all=true` as an **admin** to list all field sites.
 - **`GET /api/v1/sites?data_source=field&site_id_min=N&sort=name`** — incremental poll for sites written since the last id (Flutter polls every ~60 s while the map tab is open).
-- **`POST /api/v1/sites/field/ensure`** — returns `202` immediately and enqueues a row in `field_ensure_job`. Optional JSON field `reason`: `resume`, `move_500m`, or `field_mode_on` (logged on enqueue/skip/noop). A dedicated Railway worker service (`python -m app.workers.field_ensure_worker`, see [`app/workers/README.md`](../workers/README.md)) claims jobs with `FOR UPDATE SKIP LOCKED`, re-counts density, and generates only the still-missing count within 1 km (land-only coordinates, geology sampled from archive sites). Jobs dedupe by `cell_key` (`round(lat,2):round(lon,2):radius_km`).
-- **`GET /api/v1/sites/nearby`** — read-only listing within a radius (no generation).
+- **`GET /api/v1/sites/nearby-discoverable`** — field sites in radius that the current user can still discover (`hidden`, or discovered by someone else and not yet linked to them).
+- **`POST /api/v1/sites/{id}/discover`** — create this user’s discoverer link when within 50 m (also sends inbox + FCM push).
+- **`POST /api/v1/sites/field/ensure`** — returns `202` immediately and enqueues a row in `field_ensure_job`. Optional JSON field `reason`: `resume`, `move_500m`, `scan`, or `field_mode_on` (logged on enqueue/skip/noop). A dedicated Railway worker service (`python -m app.workers.field_ensure_worker`, see [`app/workers/README.md`](../workers/README.md)) claims jobs with `FOR UPDATE SKIP LOCKED`, re-counts density, and generates only the still-missing count within 1 km (land-only coordinates, geology sampled from archive sites). Jobs dedupe by `cell_key` (`round(lat,2):round(lon,2):radius_km`).
+- **`GET /api/v1/sites/nearby`** — read-only listing within a radius (no generation); same linked-only / admin `show_all` rules as list.
 
-The Flutter app calls `POST /field/ensure` on app open/resume and every 500 m move while field mode is active (foreground or background). Map polling is map-tab-only.
+The Flutter app calls `POST /field/ensure` on app open/resume and every 500 m move while the app process is alive (foreground or background). Map polling is map-tab-only. Auto-discovery runs on every GPS fix within 50 m.
 
 ### `fossil_pbdb_sync` resume behavior
 

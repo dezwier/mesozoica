@@ -7,6 +7,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
 
 import '../../config/map_config.dart';
+import '../../controllers/auth_controller.dart';
 import '../../controllers/catalog_mode_controller.dart';
 import '../../controllers/field_session_coordinator.dart';
 import '../../controllers/map_controller.dart' as map_data;
@@ -251,11 +252,16 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     final isFieldMode = context.watch<CatalogModeController>().isField;
+    final isAdmin =
+        context.watch<AuthController>().currentUser?.isAdmin ?? false;
 
     return Consumer2<map_data.MapController, LocationService>(
       builder: (context, mapData, locationService, _) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (!mounted) return;
+          if (!isAdmin && mapData.showAllFieldSites) {
+            mapData.setShowAllFieldSites(false);
+          }
           _setInitialCamera(locationService: locationService);
           _maybeFollowUser(locationService);
           _updateMapRotation(locationService.headingDeg);
@@ -314,9 +320,9 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
             ),
             if (_scanBannerMessage != null)
               Positioned(
-                top: isFieldMode ? 64 : 12,
+                top: isFieldMode && isAdmin ? 64 : 12,
                 left: 16,
-                right: isFieldMode ? 160 : 16,
+                right: isFieldMode && isAdmin ? 160 : 16,
                 child: Material(
                   color: Theme.of(context)
                       .colorScheme
@@ -351,7 +357,7 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
                   ),
                 ),
               ),
-            if (isFieldMode)
+            if (isFieldMode && isAdmin)
               Positioned(
                 top: 12,
                 right: 12,
@@ -398,9 +404,11 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
               ),
             if (mapData.loading)
               Positioned(
-                top: locationService.error != null || isFieldMode ? 56 : 12,
+                top: locationService.error != null || (isFieldMode && isAdmin)
+                    ? 56
+                    : 12,
                 left: 0,
-                right: isFieldMode ? 160 : 0,
+                right: isFieldMode && isAdmin ? 160 : 0,
                 child: Center(
                   child: Card(
                     child: Padding(

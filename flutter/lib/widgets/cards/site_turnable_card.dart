@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
+import '../../controllers/auth_controller.dart';
 import '../../models/site.dart';
 import '../../theme/dino_card_theme.dart';
 import 'card_world_map.dart';
@@ -68,6 +70,8 @@ class _SiteTurnableCardState extends State<SiteTurnableCard> {
   @override
   Widget build(BuildContext context) {
     final hasStatus = (_site.status?.trim().isNotEmpty ?? false);
+    final isAdmin =
+        context.watch<AuthController>().currentUser?.isAdmin ?? false;
 
     return TurnableYAxisCard(
       resetIdentity: _site.siteId,
@@ -82,7 +86,7 @@ class _SiteTurnableCardState extends State<SiteTurnableCard> {
         titleFontSize: widget.titleFontSize,
         subtitleFontSize: widget.subtitleFontSize,
         overlayHeightFactor: widget.overlayHeightFactor,
-        onStatusSelected: hasStatus ? _onStatusSelected : null,
+        onStatusSelected: hasStatus && isAdmin ? _onStatusSelected : null,
       ),
       back: SiteCardBack(
         site: _site,

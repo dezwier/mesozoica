@@ -48,6 +48,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
   StreamSubscription<RemoteMessage>? _foregroundPushSub;
   StreamSubscription<RemoteMessage>? _openedPushSub;
   bool _celebrationShowing = false;
+  bool _appInForeground = true;
 
   @override
   void initState() {
@@ -113,7 +114,8 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     final discovery = context.read<FieldDiscoveryCoordinator>();
     final pending = discovery.pendingCelebration;
     if (pending == null) return;
-    discovery.consumeCelebration();
+
+    // Always refresh map/catalog/inbox; push already covers background UX.
     context.read<MapController>().load(force: true);
     context.read<SiteCatalogController>().load(force: true);
     final userId = context.read<AuthController>().currentUser?.id;
@@ -122,6 +124,18 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
           .read<NotificationController>()
           .refreshInBackground(authenticatedUserId: userId);
     }
+
+    // Defer the in-app celebration dialog until the app is foregrounded.
+    if (!_appInForeground) return;
+    _showPendingCelebrationIfAny();
+  }
+
+  void _showPendingCelebrationIfAny() {
+    if (!mounted) return;
+    final discovery = context.read<FieldDiscoveryCoordinator>();
+    final pending = discovery.pendingCelebration;
+    if (pending == null) return;
+    discovery.consumeCelebration();
     unawaited(_showCelebration(site: pending));
   }
 
@@ -205,6 +219,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     final fieldSession = context.read<FieldSessionCoordinator>();
     switch (state) {
       case AppLifecycleState.resumed:
+        _appInForeground = true;
         fieldSession.onForeground();
         unawaited(
           context
@@ -217,11 +232,14 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
               .read<NotificationController>()
               .refreshInBackground(authenticatedUserId: userId);
         }
+        _showPendingCelebrationIfAny();
       case AppLifecycleState.inactive:
       case AppLifecycleState.paused:
       case AppLifecycleState.hidden:
+        _appInForeground = false;
         fieldSession.onBackground();
       case AppLifecycleState.detached:
+        _appInForeground = false;
         fieldSession.onLifecycle(state);
     }
   }

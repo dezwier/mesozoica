@@ -8,7 +8,11 @@ from sqlmodel import Session
 
 from app.core.database import get_session
 from app.core.exceptions import ValidationError
-from app.core.security import get_current_user, get_optional_current_user
+from app.core.security import (
+    get_current_admin_user,
+    get_current_user,
+    get_optional_current_user,
+)
 from app.models.data_source import DATA_SOURCE_ARCHIVE, DATA_SOURCE_FIELD
 from app.models.user import User
 from app.schemas.site import (
@@ -65,10 +69,14 @@ def _field_visibility(
     show_all: bool,
     current_user: User | None,
 ) -> tuple[int | None, bool]:
-    """Return (linked_user_id, show_all) for field list/nearby filtering."""
+    """Return (linked_user_id, show_all) for field list/nearby filtering.
+
+    ``show_all`` is honored only for authenticated admins; everyone else gets
+    linked-only field visibility.
+    """
     if data_source != DATA_SOURCE_FIELD:
         return None, True
-    if show_all:
+    if show_all and current_user is not None and current_user.is_admin:
         return None, True
     if current_user is None:
         return None, False
@@ -235,7 +243,7 @@ def post_set_site_status(
     site_id: int,
     body: SetSiteStatusRequest,
     session: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_admin_user),
 ) -> SiteSummary:
     row = set_site_status(
         session,
@@ -244,6 +252,7 @@ def post_set_site_status(
         status=body.status,
         lat=body.lat,
         lon=body.lon,
+        skip_distance_check=True,
     )
     types_by_period = load_site_types_by_period(session)
     return site_row_to_summary(row, types_by_period=types_by_period)

@@ -38,12 +38,16 @@ def set_site_status(
     status: str,
     lat: float | None = None,
     lon: float | None = None,
+    skip_distance_check: bool = False,
 ) -> SiteRow:
     """Set the site's latest status for the acting user.
 
     ``hidden`` clears all ``user_site`` rows for the site.
     Other statuses upsert the matching role with a fresh timestamp.
     Transitioning ``hidden`` → ``discovered`` creates inbox + FCM like discover.
+
+    When ``skip_distance_check`` is True (admin), proximity is not enforced and
+    ``lat``/``lon`` are optional for non-hidden statuses.
     """
     normalized = (status or "").strip().lower()
     if normalized not in SITE_STATUSES:
@@ -69,17 +73,17 @@ def set_site_status(
 
     if site.latitude is None or site.longitude is None:
         raise ValidationError("Site has no coordinates")
-    if lat is None or lon is None:
-        raise ValidationError("lat and lon are required to set this status")
-
-    distance_km = haversine_km(
-        lat, lon, float(site.latitude), float(site.longitude)
-    )
-    if distance_km > _SET_STATUS_MAX_DISTANCE_KM:
-        raise ValidationError(
-            f"Must be within {int(DISCOVER_MAX_DISTANCE_M)} m of the site "
-            f"to set status to {normalized}"
+    if not skip_distance_check:
+        if lat is None or lon is None:
+            raise ValidationError("lat and lon are required to set this status")
+        distance_km = haversine_km(
+            lat, lon, float(site.latitude), float(site.longitude)
         )
+        if distance_km > _SET_STATUS_MAX_DISTANCE_KM:
+            raise ValidationError(
+                f"Must be within {int(DISCOVER_MAX_DISTANCE_M)} m of the site "
+                f"to set status to {normalized}"
+            )
 
     role = _STATUS_TO_ROLE[normalized]
     now = datetime.now(timezone.utc)

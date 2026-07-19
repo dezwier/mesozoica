@@ -17,6 +17,7 @@ class Profile {
   final int actualSitesCount;
   final String email;
   final String? fullName;
+  final bool isAdmin;
 
   const Profile({
     required this.id,
@@ -37,6 +38,7 @@ class Profile {
     required this.actualSitesCount,
     required this.email,
     this.fullName,
+    this.isAdmin = false,
   });
 
   factory Profile.fromJson(Map<String, dynamic> json) {
@@ -75,6 +77,9 @@ class Profile {
       actualSitesCount: json['actual_sites_count'] as int? ?? 0,
       email: json['email'] as String? ?? '',
       fullName: json['full_name'] as String? ?? json['fullName'] as String?,
+      isAdmin: json['is_admin'] as bool? ??
+          json['isAdmin'] as bool? ??
+          false,
     );
   }
 
@@ -97,6 +102,7 @@ class Profile {
         'actualSitesCount': actualSitesCount,
         'email': email,
         'fullName': fullName,
+        'isAdmin': isAdmin,
       };
 
   Profile copyWith({
@@ -104,6 +110,7 @@ class Profile {
     String? username,
     String? profileImage,
     String? fullName,
+    bool? isAdmin,
   }) {
     return Profile(
       id: id,
@@ -124,6 +131,7 @@ class Profile {
       actualSitesCount: actualSitesCount,
       email: email,
       fullName: fullName ?? this.fullName,
+      isAdmin: isAdmin ?? this.isAdmin,
     );
   }
 }

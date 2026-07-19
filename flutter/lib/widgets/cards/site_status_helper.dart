@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:provider/provider.dart';
 
 import '../../controllers/auth_controller.dart';
@@ -11,12 +10,12 @@ import '../../services/site_service.dart';
 import '../../utils/discovery_haptic.dart';
 import 'site_discovery_celebration.dart';
 
-const setStatusMaxDistanceMeters = 500.0;
-
-/// Apply a status chosen from the badge dropdown.
+/// Apply a status chosen from the admin badge dropdown.
 ///
 /// Returns the updated site, or null if cancelled / failed.
 /// When transitioning hidden → discovered, shows the discovery celebration.
+/// Admins may change status from any distance; lat/lon are sent when GPS is
+/// available but are not required by the API.
 Future<SiteSummary?> applySiteStatusSelection(
   BuildContext context,
   SiteSummary site, {
@@ -27,38 +26,9 @@ Future<SiteSummary?> applySiteStatusSelection(
   final next = newStatus.trim().toLowerCase();
   if (next == previous) return site;
 
-  final needsLocation = next != 'hidden';
-  double? lat;
-  double? lon;
-  if (needsLocation) {
-    final siteLat = site.latitude;
-    final siteLon = site.longitude;
-    if (siteLat == null || siteLon == null) {
-      _snack(context, 'This site has no coordinates.');
-      return null;
-    }
-    final location = context.read<LocationService>().currentLocation;
-    if (location == null) {
-      _snack(context, 'Location unavailable. Enable GPS and try again.');
-      return null;
-    }
-    final distanceM = Geolocator.distanceBetween(
-      location.latitude,
-      location.longitude,
-      siteLat,
-      siteLon,
-    );
-    if (distanceM > setStatusMaxDistanceMeters) {
-      _snack(
-        context,
-        'Too far away (${distanceM.round()} m). '
-        'Get within ${setStatusMaxDistanceMeters.round()} m to change status.',
-      );
-      return null;
-    }
-    lat = location.latitude;
-    lon = location.longitude;
-  }
+  final location = context.read<LocationService>().currentLocation;
+  final lat = location?.latitude;
+  final lon = location?.longitude;
 
   final service = siteService ?? SiteService();
   final ownedService = siteService == null;

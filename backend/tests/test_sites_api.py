@@ -29,6 +29,20 @@ def _seed_site_type(session: Session) -> SiteType:
     return row
 
 
+def _admin_auth_headers(session: Session, *, username: str = "admin") -> dict[str, str]:
+    user = User(
+        username=username,
+        email=f"{username}@example.com",
+        password="x",
+        is_admin=True,
+    )
+    session.add(user)
+    session.commit()
+    session.refresh(user)
+    token = create_access_token({"sub": str(user.id)})
+    return {"Authorization": f"Bearer {token}"}
+
+
 def _seed_hell_creek_site(session: Session, site_type: SiteType) -> Site:
     row = Site(
         site_id=50001,
@@ -283,6 +297,7 @@ def test_list_sites_filters_by_data_source(client, session):
     field = client.get(
         "/api/v1/sites",
         params={"data_source": "field", "show_all": True},
+        headers=_admin_auth_headers(session, username="field_list_admin"),
     )
     assert field.status_code == 200
     assert field.json()["total"] == 1
@@ -309,6 +324,7 @@ def test_list_field_sites_includes_status(client, session):
     response = client.get(
         "/api/v1/sites",
         params={"data_source": "field", "show_all": True},
+        headers=_admin_auth_headers(session, username="status_list_admin"),
     )
     assert response.status_code == 200
     item = response.json()["items"][0]
@@ -368,6 +384,7 @@ def test_list_field_sites_returns_latest_status(client, session):
     response = client.get(
         "/api/v1/sites",
         params={"data_source": "field", "show_all": True},
+        headers=_admin_auth_headers(session, username="latest_status_admin"),
     )
     assert response.status_code == 200
     item = response.json()["items"][0]
@@ -452,14 +469,14 @@ def test_discover_site_within_range(client, session):
     too_far = client.post(
         "/api/v1/sites/90006/discover",
         headers={"Authorization": f"Bearer {token}"},
-        json={"lat": 40.01, "lon": -100.0},
+        json={"lat": 40.001, "lon": -100.0},
     )
     assert too_far.status_code == 400
 
     ok = client.post(
         "/api/v1/sites/90006/discover",
         headers={"Authorization": f"Bearer {token}"},
-        json={"lat": 40.001, "lon": -100.0},
+        json={"lat": 40.0003, "lon": -100.0},
     )
     assert ok.status_code == 200
     assert ok.json()["status"] == "discovered"
@@ -487,7 +504,7 @@ def test_discover_site_within_range(client, session):
     again = client.post(
         "/api/v1/sites/90006/discover",
         headers={"Authorization": f"Bearer {token}"},
-        json={"lat": 40.001, "lon": -100.0},
+        json={"lat": 40.0003, "lon": -100.0},
     )
     assert again.status_code == 200
     notifications2 = client.get(
@@ -511,17 +528,23 @@ def test_set_site_status_dropdown_flow(client, session):
             data_source="field",
         )
     )
-    user = User(username="statuser", email="statuser@example.com", password="x")
+    user = User(
+        username="statuser",
+        email="statuser@example.com",
+        password="x",
+        is_admin=True,
+    )
     session.add(user)
     session.commit()
     session.refresh(user)
     token = create_access_token({"sub": str(user.id)})
     headers = {"Authorization": f"Bearer {token}"}
 
+    # Admin may set status without being within discovery range.
     discover = client.post(
         "/api/v1/sites/90020/status",
         headers=headers,
-        json={"status": "discovered", "lat": 40.001, "lon": -100.0},
+        json={"status": "discovered", "lat": 41.0, "lon": -100.0},
     )
     assert discover.status_code == 200
     assert discover.json()["status"] == "discovered"
@@ -532,7 +555,7 @@ def test_set_site_status_dropdown_flow(client, session):
     excavate = client.post(
         "/api/v1/sites/90020/status",
         headers=headers,
-        json={"status": "excavation", "lat": 40.001, "lon": -100.0},
+        json={"status": "excavation"},
     )
     assert excavate.status_code == 200
     assert excavate.json()["status"] == "excavation"
@@ -540,7 +563,7 @@ def test_set_site_status_dropdown_flow(client, session):
     protect = client.post(
         "/api/v1/sites/90020/status",
         headers=headers,
-        json={"status": "protected", "lat": 40.001, "lon": -100.0},
+        json={"status": "protected"},
     )
     assert protect.status_code == 200
     assert protect.json()["status"] == "protected"
@@ -548,7 +571,7 @@ def test_set_site_status_dropdown_flow(client, session):
     exhaust = client.post(
         "/api/v1/sites/90020/status",
         headers=headers,
-        json={"status": "exhausted", "lat": 40.001, "lon": -100.0},
+        json={"status": "exhausted"},
     )
     assert exhaust.status_code == 200
     assert exhaust.json()["status"] == "exhausted"
@@ -565,7 +588,7 @@ def test_set_site_status_dropdown_flow(client, session):
     rediscover = client.post(
         "/api/v1/sites/90020/status",
         headers=headers,
-        json={"status": "discovered", "lat": 40.001, "lon": -100.0},
+        json={"status": "discovered"},
     )
     assert rediscover.status_code == 200
     assert rediscover.json()["status"] == "discovered"
@@ -574,6 +597,63 @@ def test_set_site_status_dropdown_flow(client, session):
     assert all(
         n["type"] == "site_discovered" for n in notifs2.json()["notifications"]
     )
+
+
+def test_set_site_status_forbidden_for_non_admin(client, session):
+    site_type = _seed_site_type(session)
+    session.add(
+        Site(
+            site_id=90021,
+            latitude=Decimal("40.000000"),
+            longitude=Decimal("-100.000000"),
+            formation="Non Admin Site",
+            rock_type="sandstone",
+            period="cretaceous",
+            site_type_id=site_type.id,
+            data_source="field",
+        )
+    )
+    user = User(username="pleb", email="pleb@example.com", password="x")
+    session.add(user)
+    session.commit()
+    session.refresh(user)
+    token = create_access_token({"sub": str(user.id)})
+
+    response = client.post(
+        "/api/v1/sites/90021/status",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"status": "discovered", "lat": 40.0003, "lon": -100.0},
+    )
+    assert response.status_code == 403
+
+
+def test_show_all_ignored_for_non_admin(client, session):
+    site_type = _seed_site_type(session)
+    session.add(
+        Site(
+            site_id=90022,
+            latitude=Decimal("44.0"),
+            longitude=Decimal("-104.0"),
+            formation="Secret Prospect",
+            rock_type="sandstone",
+            period="cretaceous",
+            site_type_id=site_type.id,
+            data_source="field",
+        )
+    )
+    user = User(username="viewer", email="viewer@example.com", password="x")
+    session.add(user)
+    session.commit()
+    session.refresh(user)
+    token = create_access_token({"sub": str(user.id)})
+
+    response = client.get(
+        "/api/v1/sites",
+        params={"data_source": "field", "show_all": True},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert response.status_code == 200
+    assert response.json()["total"] == 0
 
 
 def test_nearby_discoverable_excludes_linked_and_non_discoverable(client, session):
