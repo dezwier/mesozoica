@@ -231,10 +231,21 @@ def _too_close(
     return False
 
 
+@lru_cache(maxsize=1)
 def resolve_coordinate_data_dir() -> Path:
     override = os.getenv("FIELD_COORDINATE_DATA_DIR")
     if override:
-        return Path(override)
+        configured = Path(override)
+        if _osm_masks_available_at(configured):
+            return configured
+        if configured != DEFAULT_DATA_DIR and _osm_masks_available_at(DEFAULT_DATA_DIR):
+            logger.info(
+                "OSM coordinate masks not found under %s/osm; using %s/osm",
+                configured,
+                DEFAULT_DATA_DIR,
+            )
+            return DEFAULT_DATA_DIR
+        return configured
     return DEFAULT_DATA_DIR
 
 
@@ -267,15 +278,19 @@ def _load_shapefile_polygons(shapefile_path: Path) -> list[BaseGeometry]:
     return read_shapefile_polygons(shapefile_path)
 
 
-def osm_coordinate_masks_available() -> bool:
-    land_dir = resolve_osm_land_dir()
-    water_dir = resolve_osm_water_dir()
+def _osm_masks_available_at(data_dir: Path) -> bool:
+    land_dir = data_dir / "osm" / "land"
+    water_dir = data_dir / "osm" / "water"
     try:
         _find_shapefile(land_dir)
         _find_shapefile(water_dir)
     except FileNotFoundError:
         return False
     return True
+
+
+def osm_coordinate_masks_available() -> bool:
+    return _osm_masks_available_at(resolve_coordinate_data_dir())
 
 
 @lru_cache(maxsize=4)
@@ -420,9 +435,14 @@ def ensure_osm_coordinate_masks_on_disk() -> None:
         logger.info("OSM coordinate masks already present under %s/osm", resolve_coordinate_data_dir())
         return
     if not _fetch_osm_masks_enabled():
+        data_dir = resolve_coordinate_data_dir()
+        hint = ""
+        if data_dir != DEFAULT_DATA_DIR and not _osm_masks_available_at(DEFAULT_DATA_DIR):
+            hint = " Run `make fetch-coordinate-masks` locally first."
         raise RuntimeError(
-            f"OSM coordinate masks missing under {resolve_coordinate_data_dir() / 'osm'} "
-            "and FETCH_OSM_COORDINATE_MASKS is disabled"
+            f"OSM coordinate masks missing under {data_dir / 'osm'}"
+            " and FETCH_OSM_COORDINATE_MASKS is disabled."
+            f"{hint}"
         )
 
     from scripts.fetch_osm_coordinate_masks import run_fetch
@@ -443,6 +463,7 @@ def ensure_osm_coordinate_masks_on_disk() -> None:
 
 def clear_coordinate_filter_cache() -> None:
     """Clear cached polygon filters (mainly for tests)."""
+    resolve_coordinate_data_dir.cache_clear()
     load_osm_land_filter.cache_clear()
     load_osm_water_exclusion_filter.cache_clear()
     load_land_polygon_filter.cache_clear()

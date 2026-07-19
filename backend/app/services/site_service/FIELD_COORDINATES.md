@@ -128,6 +128,8 @@ Registered as cron job `field_site_coordinate_prune` (disabled by default in `cr
 
 Sparse areas backfill automatically via the field-ensure worker on resume/move/scan.
 
+**Local prune via `make run-field-site-coordinate-prune`:** `railway run` injects Railway's `FIELD_COORDINATE_DATA_DIR=/data`, which does not exist on your Mac. If OSM masks are present under `backend/app/data/osm/` (from `make fetch-coordinate-masks`), the code automatically uses that local copy. Run `make fetch-coordinate-masks` once if prune fails with missing masks.
+
 ## Flutter map tiles
 
 The map uses Carto OSM no-labels basemaps (light/dark) so coastlines align with the OSM polygon filters. See `flutter/lib/config/map_config.dart`.

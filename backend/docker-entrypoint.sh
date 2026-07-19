@@ -11,6 +11,17 @@ resolve_coord_dir() {
   fi
 }
 
+needs_osm_masks() {
+  case "$*" in
+    *field_ensure_worker*|*field_site_coordinate_prune*)
+      return 0
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
 wait_for_volume() {
   coord_dir="$1"
   waited=0
@@ -45,8 +56,8 @@ ensure_masks() {
   fi
 
   if [ "${FETCH_OSM_COORDINATE_MASKS:-true}" = "false" ]; then
-    echo "WARN: OSM coordinate masks missing under ${coord_dir}/osm; using Natural Earth fallback."
-    return 0
+    echo "ERROR: OSM coordinate masks missing under ${coord_dir}/osm and FETCH_OSM_COORDINATE_MASKS is disabled."
+    return 1
   fi
 
   fetch_attempts=0
@@ -64,9 +75,9 @@ ensure_masks() {
       trap - EXIT INT TERM
       fetch_attempts=$((fetch_attempts + 1))
       if [ "$fetch_attempts" -ge 3 ]; then
-        echo "ERROR: OSM fetch failed after 3 attempts; starting with Natural Earth fallback."
-        echo "ERROR: Check service memory (recommend 2 GB+ for first fetch) and volume mount at ${coord_dir}."
-        return 0
+        echo "ERROR: OSM fetch failed after 3 attempts."
+        echo "ERROR: Check service memory (recommend 4 GB for 10 m masks) and volume mount at ${coord_dir}."
+        return 1
       fi
       sleep 15
       continue
@@ -80,7 +91,7 @@ ensure_masks() {
       fi
       if [ "$waited" -ge 3600 ]; then
         echo "ERROR: Timed out waiting for OSM coordinate masks."
-        return 0
+        return 1
       fi
       sleep 5
       waited=$((waited + 5))
@@ -90,12 +101,14 @@ ensure_masks() {
   return 0
 }
 
-coord_dir="$(resolve_coord_dir)"
-land_shp="${coord_dir}/osm/land/wgs84_land_polygons.shp"
-water_shp="${coord_dir}/osm/water/wgs84_water_polygons.shp"
-lock_dir="${coord_dir}/osm/.fetch.lock"
+if needs_osm_masks "$@"; then
+  coord_dir="$(resolve_coord_dir)"
+  land_shp="${coord_dir}/osm/land/wgs84_land_polygons.shp"
+  water_shp="${coord_dir}/osm/water/wgs84_water_polygons.shp"
+  lock_dir="${coord_dir}/osm/.fetch.lock"
 
-wait_for_volume "$coord_dir" || true
-ensure_masks
+  wait_for_volume "$coord_dir" || exit 1
+  ensure_masks || exit 1
+fi
 
 exec "$@"

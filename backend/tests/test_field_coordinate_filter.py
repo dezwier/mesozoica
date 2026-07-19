@@ -105,6 +105,21 @@ def test_build_osm_coordinate_filter_requires_masks(monkeypatch):
         build_osm_coordinate_filter()
 
 
+def test_resolve_coordinate_data_dir_falls_back_to_local_masks(monkeypatch):
+    from app.services.site_service.field_coordinate_filter import (
+        DEFAULT_DATA_DIR,
+        resolve_coordinate_data_dir,
+    )
+
+    monkeypatch.setenv("FIELD_COORDINATE_DATA_DIR", "/data")
+    clear_coordinate_filter_cache()
+    monkeypatch.setattr(
+        "app.services.site_service.field_coordinate_filter._osm_masks_available_at",
+        lambda path: path == DEFAULT_DATA_DIR,
+    )
+    assert resolve_coordinate_data_dir() == DEFAULT_DATA_DIR
+
+
 def test_enrich_coordinate_returns_structured_metadata(monkeypatch):
     monkeypatch.setattr(
         "app.services.site_service.field_coordinate_enrich.lookup_country_state",
