@@ -48,9 +48,17 @@ class MapController extends ChangeNotifier {
 
   static const pageSize = 500;
   static const fieldPollInterval = Duration(seconds: 60);
-  static const _fieldPollBackoffDelays = [
-    Duration(seconds: 5),
+  /// Aggressive polling while a generation job is expected to be writing.
+  static const _fieldPollBurstDelays = [
+    Duration(seconds: 3),
+    Duration(seconds: 6),
+    Duration(seconds: 10),
     Duration(seconds: 15),
+    Duration(seconds: 25),
+    Duration(seconds: 40),
+    Duration(seconds: 60),
+    Duration(seconds: 90),
+    Duration(seconds: 120),
   ];
 
   final SiteService _service;
@@ -193,7 +201,7 @@ class MapController extends ChangeNotifier {
       return;
     }
     unawaited(_pollNewFieldSites(seq));
-    for (final delay in _fieldPollBackoffDelays) {
+    for (final delay in _fieldPollBurstDelays) {
       Future<void>.delayed(delay, () {
         if (seq != _fieldPollBackoffSeq ||
             seq != fieldSnap.loadSeq ||

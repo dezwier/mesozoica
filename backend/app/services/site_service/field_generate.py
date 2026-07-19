@@ -280,7 +280,6 @@ def _flush_pending_sites(session: Session, pending_rows: list[Site]) -> None:
     if not pending_rows:
         return
     session.add_all(pending_rows)
-    session.flush()
     session.commit()
     pending_rows.clear()
 
@@ -295,14 +294,6 @@ def _allocate_field_site_ids(session: Session, count: int) -> list[int]:
     return ids
 
 
-def _write_sites_in_batches(session: Session, sites: list[Site]) -> None:
-    """Persist sites in small committed batches to avoid long write locks."""
-    for start in range(0, len(sites), WRITE_BATCH_SIZE):
-        batch = sites[start : start + WRITE_BATCH_SIZE]
-        session.add_all(batch)
-        session.commit()
-
-
 def ensure_field_sites_nearby(
     session: Session,
     *,
@@ -314,9 +305,8 @@ def ensure_field_sites_nearby(
 ) -> EnsureFieldSitesResult:
     """Top up field sites within ``radius_km`` to ``min_sites_in_radius``.
 
-    Uses short DB transactions: read → commit, CPU sampling off-DB, then
-    small write batches. This keeps the API's site reads responsive while
-    the worker generates.
+    Short DB transactions: read → commit, then sample and commit every
+    ``WRITE_BATCH_SIZE`` sites so the map can poll progressive batches.
     """
     cfg = config or FieldSiteLazyConfig()
     cfg.validate()
@@ -374,8 +364,8 @@ def ensure_field_sites_nearby(
     candidate_ids = _allocate_field_site_ids(session, missing)
     id_iter = iter(candidate_ids)
 
-    # --- CPU / sampling (no open write transaction) ---
-    built_sites: list[Site] = []
+    # --- Sample + commit progressively (short write txns) ---
+    pending_rows: list[Site] = []
     generated = 0
     skipped_coords = 0
     skipped_no_site_type = 0
@@ -415,11 +405,13 @@ def ensure_field_sites_nearby(
             continue
 
         existing_coords.append((site_lat, site_lon))
-        built_sites.append(site)
+        pending_rows.append(site)
         generated += 1
 
-    # --- Short write transactions ---
-    _write_sites_in_batches(session, built_sites)
+        if len(pending_rows) >= WRITE_BATCH_SIZE:
+            _flush_pending_sites(session, pending_rows)
+
+    _flush_pending_sites(session, pending_rows)
 
     items = list_sites_in_radius(
         session,
