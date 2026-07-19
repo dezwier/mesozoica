@@ -45,6 +45,45 @@ def test_mark_notification_read_not_found_returns_404(client: TestClient):
     assert response.status_code == 404
 
 
+def test_mark_notification_read_syncs_unread_badge(client: TestClient, monkeypatch):
+    registered = _register_user(client, "badge_sync", "badge_sync@example.com")
+    token = registered["access_token"]
+    user_id = registered["user"]["id"]
+
+    other = _register_user(client, "badge_peer", "badge_peer@example.com")
+    send = client.post(
+        "/api/v1/user-relationships/friend-request",
+        headers={"Authorization": f"Bearer {other['access_token']}"},
+        json={"target_user_id": user_id},
+    )
+    assert send.status_code == 200
+
+    items = client.get(
+        "/api/v1/notifications",
+        headers={"Authorization": f"Bearer {token}"},
+    ).json()["notifications"]
+    assert len(items) == 1
+    notification_id = items[0]["id"]
+
+    synced: list[int] = []
+
+    def _fake_sync(session, uid: int) -> None:
+        synced.append(uid)
+
+    # Endpoint imports sync_unread_badge at call time from push_service.
+    monkeypatch.setattr(
+        "app.services.push_service.sync_unread_badge",
+        _fake_sync,
+    )
+
+    mark_read = client.patch(
+        f"/api/v1/notifications/{notification_id}/read",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert mark_read.status_code == 200
+    assert synced == [user_id]
+
+
 def test_friend_request_creates_notification_and_accept_notifies_requester(client: TestClient):
     user_a = _register_user(client, "alice_notif", "alice_notif@example.com")
     user_b = _register_user(client, "bob_notif", "bob_notif@example.com")

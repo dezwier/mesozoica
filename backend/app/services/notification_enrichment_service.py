@@ -8,15 +8,7 @@ from app.models.site import Site
 from app.models.user import User
 from app.models.user_notification import UserNotification
 from app.schemas.notification import UserNotificationResponse
-
-
-def _site_label(site: Site | None) -> str:
-    if site is None:
-        return ""
-    formation = (site.formation or "").strip()
-    if formation:
-        return formation
-    return f"Site #{site.site_id}"
+from app.services.site_service.labels import site_display_title
 
 
 def notifications_to_response(
@@ -52,7 +44,7 @@ def notifications_to_response(
                 actor_user_id=notification.actor_user_id,
                 actor_username=actor.username if actor else "",
                 site_id=notification.site_id,
-                site_label=_site_label(site),
+                site_label=site_display_title(site),
                 read=notification.read,
                 created_at=notification.created_at,
             )

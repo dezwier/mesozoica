@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 
 import '../models/user_notification.dart';
 import '../services/api_response_cache.dart';
+import '../services/app_badge_service.dart';
 import '../services/notification_service.dart';
 
 /// Server-backed user notifications (friend requests).
@@ -12,13 +13,17 @@ import '../services/notification_service.dart';
 /// Stale-while-revalidate: [hydrate] loads from disk; [refreshInBackground]
 /// syncs from API. Opening the bell does not block on network.
 class NotificationController extends ChangeNotifier {
-  NotificationController({NotificationService? notificationService})
-      : _notificationService = notificationService ?? NotificationService();
+  NotificationController({
+    NotificationService? notificationService,
+    Future<void> Function(int count)? setAppBadgeCount,
+  })  : _notificationService = notificationService ?? NotificationService(),
+        _setAppBadgeCount = setAppBadgeCount ?? AppBadgeService.setBadgeCount;
 
-  static const String _cacheName = 'notifications_v1';
+  static const String _cacheKey = 'notifications_v1';
   static const Duration _cacheTtl = Duration(days: 365);
 
   final NotificationService _notificationService;
+  final Future<void> Function(int count) _setAppBadgeCount;
   final List<UserNotificationItem> _items = [];
   int? _activeUserId;
   bool _isLoading = false;
@@ -32,9 +37,14 @@ class NotificationController extends ChangeNotifier {
   bool get isLoading => _isLoading;
   bool get isRefreshingInBackground => _isRefreshingInBackground;
 
+  /// In-app bell badge: unread items not yet opened in the overlay.
   int get unreadCountForBadge => _items
       .where((item) => !item.read && !_seenForBadgeIds.contains(item.id))
       .length;
+
+  void _syncAppBadge() {
+    unawaited(_setAppBadgeCount(unreadCount));
+  }
 
   Future<void> hydrate(int? userId) async {
     if (userId == null) return;
@@ -45,7 +55,7 @@ class NotificationController extends ChangeNotifier {
     }
     try {
       final raw = await ApiResponseCache.instance.get(
-        _cacheName,
+        _cacheKey,
         userId,
         ttl: _cacheTtl,
       );
@@ -67,6 +77,7 @@ class NotificationController extends ChangeNotifier {
               ),
         );
       notifyListeners();
+      _syncAppBadge();
     } catch (error, stackTrace) {
       debugPrint('NotificationController.hydrate failed: $error\n$stackTrace');
     }
@@ -134,6 +145,7 @@ class NotificationController extends ChangeNotifier {
           ),
         );
       await _persistItems();
+      _syncAppBadge();
     } catch (error, stackTrace) {
       debugPrint('NotificationController._fetchAndApply: $error\n$stackTrace');
     }
@@ -144,7 +156,7 @@ class NotificationController extends ChangeNotifier {
     if (userId == null) return;
     try {
       await ApiResponseCache.instance.set(
-        _cacheName,
+        _cacheKey,
         userId,
         {
           'notifications': _items.map((item) => item.toJson()).toList(),
@@ -164,6 +176,7 @@ class NotificationController extends ChangeNotifier {
     _isLoading = false;
     _isRefreshingInBackground = false;
     notifyListeners();
+    _syncAppBadge();
   }
 
   Future<void> markAllRead() async {
@@ -183,12 +196,14 @@ class NotificationController extends ChangeNotifier {
 
     _items[index] = previous.copyWith(read: true);
     notifyListeners();
+    _syncAppBadge();
     await _persistItems();
 
     final ok = await _notificationService.markRead(id);
     if (!ok) {
       _items[index] = previous;
       notifyListeners();
+      _syncAppBadge();
       await _persistItems();
     }
   }

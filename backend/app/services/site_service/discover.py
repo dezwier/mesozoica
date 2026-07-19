@@ -16,6 +16,7 @@ from app.models.user_site import (
 )
 from app.services.push_service import send_site_discovered_push
 from app.services.site_service.geo_utils import haversine_km
+from app.services.site_service.labels import site_display_title
 from app.services.site_service.list import get_site_by_id
 from app.services.site_service.summary import SiteRow
 
@@ -24,10 +25,7 @@ _DISCOVER_MAX_DISTANCE_KM = DISCOVER_MAX_DISTANCE_M / 1000.0
 
 
 def _site_label(site: Site) -> str:
-    formation = (site.formation or "").strip()
-    if formation:
-        return formation
-    return f"Site #{site.site_id}"
+    return site_display_title(site)
 
 
 def discover_site(

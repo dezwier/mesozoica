@@ -145,6 +145,69 @@ def remove_tokens(session: Session, tokens: List[str]) -> None:
     session.commit()
 
 
+def send_badge_sync_to_tokens(
+    tokens: List[str],
+    badge_count: int,
+) -> List[str]:
+    """
+    Silently update the OS app-icon badge without showing an alert.
+    Used after in-app mark-read so the launcher badge matches unread count.
+    """
+    app = _get_firebase_app()
+    if not app or not tokens:
+        return []
+    try:
+        from firebase_admin import messaging
+
+        invalid_tokens: list[str] = []
+        for token in tokens:
+            try:
+                apns_config = messaging.APNSConfig(
+                    headers={"apns-priority": "5"},
+                    payload=messaging.APNSPayload(
+                        aps=messaging.Aps(
+                            badge=badge_count,
+                            content_available=True,
+                        )
+                    ),
+                )
+                android_config = messaging.AndroidConfig(
+                    priority="normal",
+                    data={"type": "badge_sync", "badge": str(badge_count)},
+                )
+                msg = messaging.Message(
+                    data={"type": "badge_sync", "badge": str(badge_count)},
+                    token=token,
+                    apns=apns_config,
+                    android=android_config,
+                )
+                messaging.send(msg)
+            except messaging.UnregisteredError:
+                logger.warning("FCM badge sync unregistered token=%s...", token[:20])
+                invalid_tokens.append(token)
+            except Exception as exc:
+                logger.warning(
+                    "FCM badge sync failed for token %s...: %s", token[:20], exc
+                )
+                if "not found" in str(exc).lower() or "unregistered" in str(exc).lower():
+                    invalid_tokens.append(token)
+        return invalid_tokens
+    except Exception as exc:
+        logger.warning("FCM badge sync failed: %s", exc)
+        return []
+
+
+def sync_unread_badge(session: Session, user_id: int) -> None:
+    """Push the current unread notification count to the device app-icon badge."""
+    tokens = get_device_tokens(session, user_id)
+    if not tokens:
+        return
+    badge_count = _get_unread_notification_badge_count(session, user_id)
+    invalid = send_badge_sync_to_tokens(tokens, badge_count)
+    if invalid:
+        remove_tokens(session, invalid)
+
+
 def send_site_discovered_push(
     session: Session,
     *,

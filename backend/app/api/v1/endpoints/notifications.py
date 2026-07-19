@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import Session, select
 
@@ -12,6 +14,8 @@ from app.models.user_notification import UserNotification
 from app.schemas.common import OkResponse
 from app.schemas.notification import UserNotificationsResponse
 from app.services.notification_enrichment_service import notifications_to_response
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/notifications", tags=["notifications"])
 
@@ -52,4 +56,13 @@ async def mark_notification_read(
     notification.read = True
     session.add(notification)
     session.commit()
+
+    # Keep the OS app-icon badge aligned with remaining unread notifications.
+    from app.services.push_service import sync_unread_badge
+
+    try:
+        sync_unread_badge(session, current_user.id)
+    except Exception as exc:
+        logger.warning("Failed to sync unread badge after mark-read: %s", exc)
+
     return OkResponse()
