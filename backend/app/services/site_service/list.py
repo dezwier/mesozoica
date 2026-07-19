@@ -6,12 +6,18 @@ import hashlib
 from typing import Literal
 
 from sqlalchemy import func, or_
+from sqlalchemy.orm import aliased
 from sqlmodel import Session, col, func as sqlmodel_func, select
 
 from app.core.exceptions import NotFoundError, ValidationError
 from app.models.site import Site
+from app.models.site_status import SiteStatus
 from app.models.site_type import SiteType
 from app.services.data_source_filter import normalize_data_source
+from app.services.site_service.status_join import (
+    latest_site_status_subquery,
+    latest_status_join_condition,
+)
 from app.services.site_service.summary import SiteRow
 from app.services.site_type_image_service.sync import CURATED_MEDIA_PATH
 
@@ -19,6 +25,8 @@ SortOption = Literal["name", "random"]
 _MAX_SEED_LEN = 64
 MESOZOIC_YOUNGER_MA = 66.0
 MESOZOIC_OLDER_MA = 252.0
+
+_LatestStatus = aliased(SiteStatus)
 
 
 def list_sites(
@@ -99,9 +107,15 @@ def get_site_by_id(
     data_source: str | None = None,
 ) -> SiteRow:
     normalized_data_source = normalize_data_source(data_source)
+    max_ts = latest_site_status_subquery()
     row = session.exec(
-        select(Site, SiteType)
+        select(Site, SiteType, _LatestStatus)
         .outerjoin(SiteType, col(Site.site_type_id) == col(SiteType.id))
+        .outerjoin(max_ts, col(Site.site_id) == max_ts.c.site_id)
+        .outerjoin(
+            _LatestStatus,
+            latest_status_join_condition(_LatestStatus, max_ts),
+        )
         .where(
             col(Site.site_id) == site_id,
             col(Site.data_source) == normalized_data_source,
@@ -147,9 +161,17 @@ def _filtered_select(
     data_source: str,
     site_id_min: int | None = None,
 ):
-    stmt = select(Site, SiteType).outerjoin(
-        SiteType, col(Site.site_type_id) == col(SiteType.id)
-    ).where(col(Site.data_source) == data_source)
+    max_ts = latest_site_status_subquery()
+    stmt = (
+        select(Site, SiteType, _LatestStatus)
+        .outerjoin(SiteType, col(Site.site_type_id) == col(SiteType.id))
+        .outerjoin(max_ts, col(Site.site_id) == max_ts.c.site_id)
+        .outerjoin(
+            _LatestStatus,
+            latest_status_join_condition(_LatestStatus, max_ts),
+        )
+        .where(col(Site.data_source) == data_source)
+    )
     if site_id_min is not None:
         stmt = stmt.where(col(Site.site_id) > site_id_min)
     if has_custom_image:
@@ -204,5 +226,6 @@ def _list_sites_random(
 
 
 def _row_from_tuple(row: tuple) -> SiteRow:
-    site, site_type = row
-    return SiteRow(site=site, site_type=site_type)
+    site, site_type, site_status = row
+    status_value = site_status.status if site_status is not None else None
+    return SiteRow(site=site, site_type=site_type, status=status_value)

@@ -15,8 +15,10 @@ import '../../services/location_service.dart';
 import '../../widgets/map/location_marker_layer.dart';
 import '../../widgets/map/map_control_buttons.dart';
 import '../../widgets/map/map_tile_layer.dart';
+import '../../widgets/map/site_filter_sheet.dart';
 import '../../widgets/map/site_map_card_dialog.dart';
 import '../../widgets/map/site_markers_layer.dart';
+import '../../widgets/dino/dinosaur_filter_fab.dart';
 
 class MapScreen extends StatefulWidget {
   const MapScreen({
@@ -174,6 +176,15 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
     );
   }
 
+  void _openFilterSheet(map_data.MapController mapData, bool isFieldMode) {
+    SiteFilterSheet.show(
+      context,
+      initialFilters: mapData.filters.copyWith(filterByStatus: isFieldMode),
+      showStatusSection: isFieldMode,
+      onApply: mapData.applyFilters,
+    );
+  }
+
   Future<void> _onSiteTap(SiteSummary site) async {
     final mapData = context.read<map_data.MapController>();
     mapData.selectSite(site);
@@ -233,7 +244,7 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
               children: [
                 const MapTileLayer(),
                 SiteMarkersLayer(
-                  sites: mapData.geoSites,
+                  sites: mapData.filteredGeoSites,
                   mapReady: _mapReady,
                   selectedSite: mapData.selectedSite,
                   onSiteTap: _onSiteTap,
@@ -356,7 +367,12 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
               rotateMap: _rotateMap,
               onToggleRotation: () =>
                   _toggleRotationMode(locationService.headingDeg),
-              filterFab: isFieldMode
+              filterFab: DinosaurFilterFab(
+                heroTag: 'site_filter_fab',
+                hasActiveFilters: mapData.hasActiveFilters,
+                onPressed: () => _openFilterSheet(mapData, isFieldMode),
+              ),
+              scanFab: isFieldMode
                   ? FloatingActionButton.small(
                       heroTag: 'scan_field_area',
                       onPressed: _onScanFieldArea,

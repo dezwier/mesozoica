@@ -6,6 +6,7 @@ import '../../models/site.dart';
 import '../../theme/dino_card_theme.dart';
 import 'site_card_header.dart';
 import 'site_card_image.dart';
+import 'site_status_badge.dart';
 
 class SiteCardFront extends StatelessWidget {
   const SiteCardFront({
@@ -24,6 +25,7 @@ class SiteCardFront extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cardTheme = DinoCardTheme.of(context);
+    final status = site.status?.trim();
 
     return AspectRatio(
       aspectRatio: DinoCardTheme.cardAspectRatio,
@@ -45,6 +47,12 @@ class SiteCardFront extends StatelessWidget {
               ),
             ),
           ),
+          if (status != null && status.isNotEmpty)
+            Positioned(
+              top: 14,
+              right: 14,
+              child: SiteStatusBadge(status: status),
+            ),
           Positioned(
             left: 18,
             right: 18,

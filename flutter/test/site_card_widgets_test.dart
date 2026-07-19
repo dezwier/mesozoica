@@ -81,6 +81,50 @@ void main() {
     expect(find.text('ROCK TYPE'), findsNothing);
   });
 
+  testWidgets('SiteCardFront renders status badge for field sites', (tester) async {
+    const fieldSite = SiteSummary(
+      siteId: 1000000001,
+      latitude: 40,
+      longitude: -100,
+      rockType: 'sandstone',
+      siteTypePeriod: 'cretaceous',
+      status: 'protected',
+    );
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: SizedBox(
+              width: 800,
+              child: SiteCardFront(site: fieldSite),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('Protected'), findsOneWidget);
+  });
+
+  testWidgets('SiteCardFront omits status badge when status is null', (tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: SizedBox(
+              width: 800,
+              child: SiteCardFront(site: _fixture),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('Hidden'), findsNothing);
+    expect(find.text('Protected'), findsNothing);
+  });
+
   testWidgets('SiteCardBack renders timeline, attributes, map, and fossil record',
       (tester) async {
     await tester.pumpWidget(

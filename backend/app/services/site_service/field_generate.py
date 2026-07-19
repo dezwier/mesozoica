@@ -16,6 +16,7 @@ from app.core.database import engine
 
 from app.models.data_source import DATA_SOURCE_ARCHIVE, DATA_SOURCE_FIELD
 from app.models.site import Site
+from app.models.site_status import SITE_STATUS_HIDDEN, SiteStatus
 from app.models.site_type import SiteType
 from app.services.site_service.field_coordinate_enrich import enrich_coordinate
 from app.services.site_service.field_coordinate_filter import (
@@ -276,10 +277,18 @@ def _build_field_site(
     )
 
 
+def _status_rows_for_sites(sites: list[Site]) -> list[SiteStatus]:
+    return [
+        SiteStatus(site_id=site.site_id, status=SITE_STATUS_HIDDEN)
+        for site in sites
+    ]
+
+
 def _flush_pending_sites(session: Session, pending_rows: list[Site]) -> None:
     if not pending_rows:
         return
     session.add_all(pending_rows)
+    session.add_all(_status_rows_for_sites(pending_rows))
     session.commit()
     pending_rows.clear()
 
@@ -594,6 +603,7 @@ def _write_pending_batch(
     if not pending_rows:
         return
     session.add_all(pending_rows)
+    session.add_all(_status_rows_for_sites(pending_rows))
     session.flush()
     session.commit()
     pending_rows.clear()

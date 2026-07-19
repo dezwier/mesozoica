@@ -7,6 +7,7 @@ from sqlmodel import Session
 from app.models.dinosaur import Dinosaur
 from app.models.fossil import Fossil
 from app.models.site import Site
+from app.models.site_status import SiteStatus
 from app.models.site_type import SiteType
 
 
@@ -159,6 +160,7 @@ def test_list_sites_returns_summary_fields(client, session):
     assert item["site_type_period"] == "cretaceous"
     assert item["site_type_rock_type"] == "sandstone"
     assert item["main_image_url"].endswith("/media/site-types/1.png")
+    assert item["status"] is None
 
 
 def test_list_sites_has_custom_image_filter(client, session):
@@ -277,6 +279,64 @@ def test_list_sites_filters_by_data_source(client, session):
     assert field.json()["total"] == 1
     assert field.json()["items"][0]["site_id"] == 90001
     assert field.json()["items"][0]["data_source"] == "field"
+
+
+def test_list_field_sites_includes_status(client, session):
+    site_type = _seed_site_type(session)
+    session.add(
+        Site(
+            site_id=90002,
+            latitude=Decimal("40.0"),
+            longitude=Decimal("-100.0"),
+            formation="Field Prospect",
+            rock_type="sandstone",
+            period="cretaceous",
+            site_type_id=site_type.id,
+            data_source="field",
+        )
+    )
+    session.add(SiteStatus(site_id=90002, status="hidden"))
+    session.commit()
+
+    response = client.get("/api/v1/sites", params={"data_source": "field"})
+    assert response.status_code == 200
+    item = response.json()["items"][0]
+    assert item["site_id"] == 90002
+    assert item["status"] == "hidden"
+
+    archive = client.get("/api/v1/sites", params={"data_source": "archive"})
+    assert archive.status_code == 200
+    # No archive sites seeded in this test.
+    assert archive.json()["total"] == 0
+
+
+def test_list_field_sites_returns_latest_status(client, session):
+    from datetime import datetime, timedelta, timezone
+
+    site_type = _seed_site_type(session)
+    session.add(
+        Site(
+            site_id=90003,
+            latitude=Decimal("41.0"),
+            longitude=Decimal("-101.0"),
+            formation="Field Prospect",
+            rock_type="sandstone",
+            period="cretaceous",
+            site_type_id=site_type.id,
+            data_source="field",
+        )
+    )
+    older = datetime.now(timezone.utc) - timedelta(days=2)
+    newer = datetime.now(timezone.utc) - timedelta(hours=1)
+    session.add(SiteStatus(site_id=90003, status="hidden", timestamp=older))
+    session.add(SiteStatus(site_id=90003, status="protected", timestamp=newer))
+    session.commit()
+
+    response = client.get("/api/v1/sites", params={"data_source": "field"})
+    assert response.status_code == 200
+    item = response.json()["items"][0]
+    assert item["site_id"] == 90003
+    assert item["status"] == "protected"
 
 
 def test_list_sites_rejects_invalid_data_source(client):

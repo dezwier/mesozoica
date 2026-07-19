@@ -15,6 +15,7 @@ from app.services.site_service.site_type_fallback import effective_site_type
 class SiteRow:
     site: Site
     site_type: SiteType | None
+    status: str | None = None
 
 
 def site_row_to_summary(
@@ -43,6 +44,7 @@ def site_row_to_summary(
         site_type_rock_type=site_type.rock_type if site_type else None,
         main_image_url=site_type.main_image_url if site_type else None,
         data_source=site.data_source,
+        status=row.status,
     )
 
 

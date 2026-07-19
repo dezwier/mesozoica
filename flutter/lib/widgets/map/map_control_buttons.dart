@@ -11,6 +11,7 @@ class MapControlButtons extends StatelessWidget {
     required this.rotateMap,
     required this.onToggleRotation,
     this.filterFab,
+    this.scanFab,
   });
 
   final double currentZoom;
@@ -19,6 +20,7 @@ class MapControlButtons extends StatelessWidget {
   final bool rotateMap;
   final VoidCallback onToggleRotation;
   final Widget? filterFab;
+  final Widget? scanFab;
 
   @override
   Widget build(BuildContext context) {
@@ -52,6 +54,10 @@ class MapControlButtons extends StatelessWidget {
           if (filterFab != null) ...[
             const SizedBox(height: 10),
             filterFab!,
+          ],
+          if (scanFab != null) ...[
+            const SizedBox(height: 10),
+            scanFab!,
           ],
         ],
       ),

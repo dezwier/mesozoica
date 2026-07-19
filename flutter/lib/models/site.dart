@@ -16,6 +16,7 @@ class SiteSummary {
     this.siteTypePeriod,
     this.siteTypeRockType,
     this.mainImageUrl,
+    this.status,
   });
 
   final int siteId;
@@ -31,6 +32,7 @@ class SiteSummary {
   final String? siteTypePeriod;
   final String? siteTypeRockType;
   final String? mainImageUrl;
+  final String? status;
 
   String get displayTitle {
     final trimmed = formation?.trim();
@@ -106,6 +108,7 @@ class SiteSummary {
       siteTypePeriod: json['site_type_period'] as String?,
       siteTypeRockType: json['site_type_rock_type'] as String?,
       mainImageUrl: json['main_image_url'] as String?,
+      status: json['status'] as String?,
     );
   }
 }

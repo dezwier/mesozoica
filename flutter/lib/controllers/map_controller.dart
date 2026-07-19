@@ -9,6 +9,7 @@ import '../config/app_config.dart';
 import '../controllers/catalog_mode_controller.dart';
 import '../models/site.dart';
 import '../services/site_service.dart';
+import '../widgets/map/site_map_filters.dart';
 
 class _CatalogSnapshot {
   List<SiteSummary> geoSites = [];
@@ -73,10 +74,31 @@ class MapController extends ChangeNotifier {
   SiteSummary? _selectedSite;
   Timer? _fieldPollTimer;
   int _fieldPollBackoffSeq = 0;
+  SiteMapFilters _filters = SiteMapFilters();
 
   _CatalogSnapshot get _snap => _snapshots[_dataSource]!;
 
   List<SiteSummary> get geoSites => List.unmodifiable(_snap.geoSites);
+
+  /// Sites after applying [filters] (used for map markers).
+  List<SiteSummary> get filteredGeoSites {
+    if (!_filters.hasActiveFilters) {
+      return geoSites;
+    }
+    return List.unmodifiable(
+      _snap.geoSites.where(_filters.matches),
+    );
+  }
+
+  SiteMapFilters get filters => _filters;
+
+  bool get hasActiveFilters => _filters.hasActiveFilters;
+
+  void applyFilters(SiteMapFilters filters) {
+    _filters = filters.copyWith(filterByStatus: _isFieldMode);
+    notifyListeners();
+  }
+
   bool get loading => _snap.loading;
   bool get loadingComplete => _snap.loadingComplete;
   bool get isLoadingMore => _snap.loading && _snap.geoSites.isNotEmpty;
@@ -102,6 +124,7 @@ class MapController extends ChangeNotifier {
     clearSelection();
     _stopFieldPoll();
     _stopFieldPollBackoff();
+    _filters = _filters.copyWith(filterByStatus: _isFieldMode);
 
     final snap = _snap;
     if (snap.loadingComplete) {

@@ -24,6 +24,7 @@ class SiteSummary(BaseModel):
     site_type_rock_type: str | None = None
     main_image_url: str | None = None
     data_source: str = "archive"
+    status: str | None = None
 
 
 class SiteListResponse(BaseModel):

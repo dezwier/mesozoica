@@ -9,11 +9,12 @@ from decimal import Decimal
 
 import pytest
 from shapely.geometry import box
-from sqlmodel import Session, select
+from sqlmodel import Session, col, select
 
 from app.models.data_source import DATA_SOURCE_ARCHIVE, DATA_SOURCE_FIELD
 from app.models.field_ensure_job import FieldEnsureJob
 from app.models.site import Site
+from app.models.site_status import SITE_STATUS_HIDDEN, SiteStatus
 from app.models.site_type import SiteType
 from app.services.site_service.field_coordinate_enrich import CoordinateEnrichment
 from app.services.site_service.field_coordinate_filter import CoordinateSampler, LandPolygonFilter
@@ -98,6 +99,13 @@ def test_ensure_generates_when_below_minimum(session: Session, monkeypatch):
     for row in result.items:
         site = row.site
         assert site.data_source == DATA_SOURCE_FIELD
+        assert row.status == SITE_STATUS_HIDDEN
+        assert (
+            session.exec(
+                select(SiteStatus).where(col(SiteStatus.site_id) == site.site_id)
+            ).first()
+            is not None
+        )
         distance = haversine_km(
             center_lat,
             center_lon,

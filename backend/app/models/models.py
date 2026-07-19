@@ -8,6 +8,7 @@ from app.models.dinosaur import Dinosaur
 from app.models.field_ensure_job import FieldEnsureJob
 from app.models.fossil import Fossil
 from app.models.site import Site
+from app.models.site_status import SiteStatus
 from app.models.site_type import SiteType
 from app.models.tool import Tool
 from app.models.user import User
@@ -20,6 +21,7 @@ __all__ = [
     "FieldEnsureJob",
     "Fossil",
     "Site",
+    "SiteStatus",
     "SiteType",
     "Tool",
     "User",
