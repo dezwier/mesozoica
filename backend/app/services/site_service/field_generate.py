@@ -348,13 +348,23 @@ def ensure_field_sites_nearby(
     missing = max(0, cfg.min_sites_in_radius - existing_count)
 
     if missing == 0:
+        items = list_sites_in_radius(
+            session,
+            lat=lat,
+            lon=lon,
+            radius_km=cfg.radius_km,
+            data_source=DATA_SOURCE_FIELD,
+            show_all=True,
+        )
         session.commit()
         return EnsureFieldSitesResult(
             generated=0,
+            # Density metric: non-exhausted only (may be < len(items) if some
+            # are exhausted).
             total_in_radius=existing_count,
             skipped_coords=0,
             skipped_no_site_type=0,
-            items=[],
+            items=items,
             radius_km=cfg.radius_km,
         )
 
@@ -421,6 +431,14 @@ def ensure_field_sites_nearby(
 
     _flush_pending_sites(session, pending_rows)
 
+    items = list_sites_in_radius(
+        session,
+        lat=lat,
+        lon=lon,
+        radius_km=cfg.radius_km,
+        data_source=DATA_SOURCE_FIELD,
+        show_all=True,
+    )
     # Same metric as density top-up: non-exhausted field sites only.
     total_in_radius = count_sites_in_radius(
         session,
@@ -435,7 +453,7 @@ def ensure_field_sites_nearby(
         total_in_radius=total_in_radius,
         skipped_coords=skipped_coords,
         skipped_no_site_type=skipped_no_site_type,
-        items=[],
+        items=items,
         radius_km=cfg.radius_km,
     )
 

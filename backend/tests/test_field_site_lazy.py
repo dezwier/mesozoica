@@ -209,6 +209,7 @@ def test_ensure_tops_up_when_sites_are_exhausted(session: Session, monkeypatch):
     )
 
     assert result.generated == 3
+    assert result.total_in_radius == 5
     new_sites = list(
         session.exec(
             select(Site).where(col(Site.site_id) >= FIELD_SITE_ID_START + 5)
