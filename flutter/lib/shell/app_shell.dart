@@ -66,7 +66,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     if (source == _previousCatalogDataSource) return;
     _previousCatalogDataSource = source;
 
-    context.read<MapController>().load(force: true);
+    context.read<MapController>().onDataSourceChanged();
     context.read<SiteCatalogController>().load(force: true);
     context.read<FossilCatalogController>().load(force: true);
   }

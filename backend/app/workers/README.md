@@ -31,7 +31,7 @@ The API (`POST /api/v1/sites/field/ensure`) only enqueues jobs — it does not c
 
 Integration test `test_ensure_generates_100_sites_within_time_budget` (marked `@pytest.mark.slow`) generates 100 sites with a test land polygon and asserts completion within **30 s**. Production timing depends on OSM rejection rate, archive-site count, and DB load; check worker logs for `elapsed_s`.
 
-Sites are committed in batches of **50** (`PROGRESS_LOG_INTERVAL`). The Flutter map polls for new field sites at 5 s, 15 s, then every 60 s after an ensure request.
+Sites are committed in batches of **25** (`WRITE_BATCH_SIZE`). Sampling/geology run after the read transaction commits so the API is not blocked by a long open write. The Flutter map polls for new field sites at 5 s, 15 s, then every 60 s after an ensure request.
 
 ## Deploy
 

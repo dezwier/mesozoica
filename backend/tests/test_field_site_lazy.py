@@ -277,10 +277,10 @@ def test_field_ensure_api_enqueues_even_when_full(
     assert payload["missing"] is None
     assert payload["accepted"] is True
     assert any(
-        "action=ensure_check" in record.message
+        "action=ensure_enqueued" in record.message
         and "service=api" in record.message
         and "reason=move_500m" in record.message
-        and "written=0" in record.message
+        and "enqueued=True" in record.message
         for record in caplog.records
     )
     jobs = list(session.exec(select(FieldEnsureJob)).all())

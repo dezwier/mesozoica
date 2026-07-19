@@ -201,9 +201,7 @@ class FieldSessionCoordinator extends ChangeNotifier {
         reason: reason,
       );
       _logEnsure(
-        'check reason=$reason existing=${response.existingInRadius ?? '-'} '
-        'missing=${response.missing ?? '-'} enqueued=${response.accepted} '
-        'written=0',
+        'enqueued reason=$reason accepted=${response.accepted}',
       );
       _onEnsureScheduled?.call();
       return response;

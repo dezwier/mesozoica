@@ -45,6 +45,7 @@ logger = logging.getLogger("field_site_generate")
 
 FIELD_SITE_ID_START = 1_000_000_000
 PROGRESS_LOG_INTERVAL = 50
+WRITE_BATCH_SIZE = 25
 
 
 @dataclass(frozen=True)
@@ -284,6 +285,24 @@ def _flush_pending_sites(session: Session, pending_rows: list[Site]) -> None:
     pending_rows.clear()
 
 
+def _allocate_field_site_ids(session: Session, count: int) -> list[int]:
+    """Reserve ``count`` field site IDs in a short transaction."""
+    if count <= 0:
+        return []
+    allocator = _FieldSiteIdAllocator(session)
+    ids = [allocator.next_id() for _ in range(count)]
+    session.commit()
+    return ids
+
+
+def _write_sites_in_batches(session: Session, sites: list[Site]) -> None:
+    """Persist sites in small committed batches to avoid long write locks."""
+    for start in range(0, len(sites), WRITE_BATCH_SIZE):
+        batch = sites[start : start + WRITE_BATCH_SIZE]
+        session.add_all(batch)
+        session.commit()
+
+
 def ensure_field_sites_nearby(
     session: Session,
     *,
@@ -293,11 +312,17 @@ def ensure_field_sites_nearby(
     rng: random.Random | None = None,
     coordinate_sampler: CoordinateSampler | None = None,
 ) -> EnsureFieldSitesResult:
-    """Top up field sites within ``radius_km`` to ``min_sites_in_radius``."""
+    """Top up field sites within ``radius_km`` to ``min_sites_in_radius``.
+
+    Uses short DB transactions: read → commit, CPU sampling off-DB, then
+    small write batches. This keeps the API's site reads responsive while
+    the worker generates.
+    """
     cfg = config or FieldSiteLazyConfig()
     cfg.validate()
     random_source = rng or random.Random()
 
+    # --- Short read transaction ---
     context = _build_generation_context(
         session,
         coordinate_sampler=coordinate_sampler,
@@ -325,6 +350,7 @@ def ensure_field_sites_nearby(
             radius_km=cfg.radius_km,
             data_source=DATA_SOURCE_FIELD,
         )
+        session.commit()
         return EnsureFieldSitesResult(
             generated=0,
             total_in_radius=len(items),
@@ -335,7 +361,6 @@ def ensure_field_sites_nearby(
         )
 
     _sync_field_site_id_sequence(session)
-    id_allocator = _FieldSiteIdAllocator(session)
     existing_coords = _load_existing_field_coords(
         session,
         lat=lat,
@@ -343,7 +368,14 @@ def ensure_field_sites_nearby(
         radius_km=cfg.radius_km,
         min_separation_km=cfg.min_separation_km,
     )
-    pending_rows: list[Site] = []
+    session.commit()
+
+    # --- Short ID reservation ---
+    candidate_ids = _allocate_field_site_ids(session, missing)
+    id_iter = iter(candidate_ids)
+
+    # --- CPU / sampling (no open write transaction) ---
+    built_sites: list[Site] = []
     generated = 0
     skipped_coords = 0
     skipped_no_site_type = 0
@@ -365,12 +397,17 @@ def ensure_field_sites_nearby(
             skipped_coords += 1
             continue
 
+        try:
+            site_id = next(id_iter)
+        except StopIteration:
+            break
+
         site_lat, site_lon = sampled
         site = _build_field_site(
             context,
             lat=site_lat,
             lon=site_lon,
-            site_id=id_allocator.next_id(),
+            site_id=site_id,
             rng=random_source,
         )
         if site is None:
@@ -378,13 +415,11 @@ def ensure_field_sites_nearby(
             continue
 
         existing_coords.append((site_lat, site_lon))
-        pending_rows.append(site)
+        built_sites.append(site)
         generated += 1
 
-        if generated % PROGRESS_LOG_INTERVAL == 0:
-            _flush_pending_sites(session, pending_rows)
-
-    _flush_pending_sites(session, pending_rows)
+    # --- Short write transactions ---
+    _write_sites_in_batches(session, built_sites)
 
     items = list_sites_in_radius(
         session,
@@ -393,6 +428,7 @@ def ensure_field_sites_nearby(
         radius_km=cfg.radius_km,
         data_source=DATA_SOURCE_FIELD,
     )
+    session.commit()
     return EnsureFieldSitesResult(
         generated=generated,
         total_in_radius=len(items),

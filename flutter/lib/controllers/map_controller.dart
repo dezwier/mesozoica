@@ -10,6 +10,35 @@ import '../controllers/catalog_mode_controller.dart';
 import '../models/site.dart';
 import '../services/site_service.dart';
 
+class _CatalogSnapshot {
+  List<SiteSummary> geoSites = [];
+  bool loading = false;
+  bool loadingComplete = false;
+  String? error;
+  LatLngBounds? siteBounds;
+  int offset = 0;
+  int totalCatalog = 0;
+  int loadedCatalog = 0;
+  int maxFieldSiteId = 0;
+  String? seed;
+  int loadSeq = 0;
+
+  void reset({required bool clearSeed}) {
+    geoSites = [];
+    siteBounds = null;
+    offset = 0;
+    loadedCatalog = 0;
+    totalCatalog = 0;
+    loadingComplete = false;
+    loading = false;
+    error = null;
+    maxFieldSiteId = 0;
+    if (clearSeed) {
+      seed = null;
+    }
+  }
+}
+
 class MapController extends ChangeNotifier {
   MapController({
     SiteService? service,
@@ -27,39 +56,63 @@ class MapController extends ChangeNotifier {
   final SiteService _service;
   final CatalogModeController? _catalogModeController;
   final Random _random = Random();
-  String? _seed;
 
-  List<SiteSummary> _geoSites = [];
-  bool _loading = false;
-  bool _loadingComplete = false;
-  String? _error;
+  final Map<CatalogDataSource, _CatalogSnapshot> _snapshots = {
+    CatalogDataSource.archive: _CatalogSnapshot(),
+    CatalogDataSource.field: _CatalogSnapshot(),
+  };
+
   SiteSummary? _selectedSite;
-  LatLngBounds? _siteBounds;
-  int _loadSeq = 0;
-  int _offset = 0;
-  int _totalCatalog = 0;
-  int _loadedCatalog = 0;
-  int _maxFieldSiteId = 0;
   Timer? _fieldPollTimer;
   int _fieldPollBackoffSeq = 0;
 
-  List<SiteSummary> get geoSites => List.unmodifiable(_geoSites);
-  bool get loading => _loading;
-  bool get loadingComplete => _loadingComplete;
-  bool get isLoadingMore => _loading && _geoSites.isNotEmpty;
-  String? get error => _error;
+  _CatalogSnapshot get _snap => _snapshots[_dataSource]!;
+
+  List<SiteSummary> get geoSites => List.unmodifiable(_snap.geoSites);
+  bool get loading => _snap.loading;
+  bool get loadingComplete => _snap.loadingComplete;
+  bool get isLoadingMore => _snap.loading && _snap.geoSites.isNotEmpty;
+  String? get error => _snap.error;
   SiteSummary? get selectedSite => _selectedSite;
-  LatLngBounds? get siteBounds => _siteBounds;
-  int get totalCatalog => _totalCatalog;
-  int get loadedCatalog => _loadedCatalog;
-  int get geoSiteCount => _geoSites.length;
+  LatLngBounds? get siteBounds => _snap.siteBounds;
+  int get totalCatalog => _snap.totalCatalog;
+  int get loadedCatalog => _snap.loadedCatalog;
+  int get geoSiteCount => _snap.geoSites.length;
   bool get isEmpty =>
-      !_loading && _loadingComplete && _error == null && _geoSites.isEmpty;
+      !_snap.loading &&
+      _snap.loadingComplete &&
+      _snap.error == null &&
+      _snap.geoSites.isEmpty;
 
   CatalogDataSource get _dataSource =>
       _catalogModeController?.dataSource ?? CatalogDataSource.archive;
 
   bool get _isFieldMode => _dataSource == CatalogDataSource.field;
+
+  /// Switch archive/field without wiping the other mode's cache.
+  void onDataSourceChanged() {
+    clearSelection();
+    _stopFieldPoll();
+    _stopFieldPollBackoff();
+
+    final snap = _snap;
+    if (snap.loadingComplete) {
+      if (_isFieldMode) {
+        _startFieldPoll(snap.loadSeq);
+        // Pick up sites generated while user was in archive mode.
+        unawaited(_pollNewFieldSites(snap.loadSeq));
+      }
+      notifyListeners();
+      return;
+    }
+
+    if (snap.loading) {
+      notifyListeners();
+      return;
+    }
+
+    load(force: false);
+  }
 
   /// Starts or resumes background site pagination without blocking the map UI.
   void load({bool force = false}) {
@@ -68,48 +121,58 @@ class MapController extends ChangeNotifier {
       return;
     }
 
+    final snap = _snap;
     if (!force) {
-      if (_loading || _loadingComplete) return;
-    } else {
-      _resetCatalogState();
-      _seed = _newSeed();
-    }
-
-    _seed ??= _newSeed();
-
-    final seq = ++_loadSeq;
-    _loading = true;
-    _error = null;
-    notifyListeners();
-
-    unawaited(_loadPages(seq));
-  }
-
-  void _loadFieldMode({required bool force}) {
-    if (!force) {
-      if (_loading) return;
-      if (_loadingComplete) {
-        _startFieldPoll(_loadSeq);
+      if (snap.loading || snap.loadingComplete) {
+        notifyListeners();
         return;
       }
     } else {
-      _resetCatalogState();
-      _maxFieldSiteId = 0;
+      snap.reset(clearSeed: true);
+      snap.seed = _newSeed();
+    }
+
+    snap.seed ??= _newSeed();
+
+    final seq = ++snap.loadSeq;
+    snap.loading = true;
+    snap.error = null;
+    notifyListeners();
+
+    unawaited(_loadArchivePages(seq));
+  }
+
+  void _loadFieldMode({required bool force}) {
+    final snap = _snap;
+    if (!force) {
+      if (snap.loading) {
+        notifyListeners();
+        return;
+      }
+      if (snap.loadingComplete) {
+        _startFieldPoll(snap.loadSeq);
+        notifyListeners();
+        return;
+      }
+    } else {
+      snap.reset(clearSeed: false);
     }
 
     _stopFieldPoll();
-    final seq = ++_loadSeq;
-    _loading = true;
-    _loadingComplete = false;
-    _error = null;
+    final seq = ++snap.loadSeq;
+    snap.loading = true;
+    snap.loadingComplete = false;
+    snap.error = null;
     notifyListeners();
 
     unawaited(_loadFieldPages(seq));
   }
 
   void pause() {
-    _loadSeq++;
-    _loading = false;
+    for (final snap in _snapshots.values) {
+      snap.loadSeq++;
+      snap.loading = false;
+    }
     _stopFieldPoll();
     _stopFieldPollBackoff();
     notifyListeners();
@@ -121,14 +184,20 @@ class MapController extends ChangeNotifier {
 
   /// Poll for newly generated field sites soon after an ensure request.
   void scheduleFieldPollAfterEnsure() {
-    if (!_isFieldMode) return;
+    final fieldSnap = _snapshots[CatalogDataSource.field]!;
     _stopFieldPollBackoff();
-    final seq = _loadSeq;
+    final seq = fieldSnap.loadSeq;
     _fieldPollBackoffSeq = seq;
+    if (!_isFieldMode) {
+      // Ensure may run while viewing archive; poll when user returns to field.
+      return;
+    }
     unawaited(_pollNewFieldSites(seq));
     for (final delay in _fieldPollBackoffDelays) {
       Future<void>.delayed(delay, () {
-        if (seq != _fieldPollBackoffSeq || seq != _loadSeq || !_isFieldMode) {
+        if (seq != _fieldPollBackoffSeq ||
+            seq != fieldSnap.loadSeq ||
+            !_isFieldMode) {
           return;
         }
         unawaited(_pollNewFieldSites(seq));
@@ -139,7 +208,7 @@ class MapController extends ChangeNotifier {
   /// Immediate poll for new field sites (field mode only).
   Future<void> pollNow() async {
     if (!_isFieldMode) return;
-    await _pollNewFieldSites(_loadSeq);
+    await _pollNewFieldSites(_snap.loadSeq);
   }
 
   void selectSite(SiteSummary site) {
@@ -170,49 +239,40 @@ class MapController extends ChangeNotifier {
   }
 
   void _replaceCachedSite(SiteSummary site) {
-    final index = _geoSites.indexWhere((s) => s.siteId == site.siteId);
+    final snap = _snap;
+    final index = snap.geoSites.indexWhere((s) => s.siteId == site.siteId);
     if (index < 0) return;
-    final updated = [..._geoSites];
+    final updated = [...snap.geoSites];
     updated[index] = site;
-    _geoSites = updated;
+    snap.geoSites = updated;
     if (_selectedSite?.siteId == site.siteId) {
       _selectedSite = site;
     }
     notifyListeners();
   }
 
-  void _mergeSites(List<SiteSummary> incoming) {
+  void _mergeSites(_CatalogSnapshot snap, List<SiteSummary> incoming) {
     if (incoming.isEmpty) return;
-    final byId = {for (final site in _geoSites) site.siteId: site};
+    final byId = {for (final site in snap.geoSites) site.siteId: site};
     for (final site in incoming) {
       byId[site.siteId] = site;
     }
-    _geoSites = byId.values.toList();
-    _siteBounds = _expandBounds(_siteBounds, incoming);
-    _maxFieldSiteId = _geoSites.fold(
-      _maxFieldSiteId,
+    snap.geoSites = byId.values.toList();
+    snap.siteBounds = _expandBounds(snap.siteBounds, incoming);
+    snap.maxFieldSiteId = snap.geoSites.fold(
+      snap.maxFieldSiteId,
       (max, site) => site.siteId > max ? site.siteId : max,
     );
   }
 
-  void _resetCatalogState() {
-    _geoSites = [];
-    _siteBounds = null;
-    _selectedSite = null;
-    _offset = 0;
-    _loadedCatalog = 0;
-    _totalCatalog = 0;
-    _loadingComplete = false;
-    _maxFieldSiteId = 0;
-  }
-
   Future<void> _loadFieldPages(int seq) async {
+    final snap = _snapshots[CatalogDataSource.field]!;
     try {
       var hasMore = true;
       var offset = 0;
 
       while (hasMore) {
-        if (seq != _loadSeq) return;
+        if (seq != snap.loadSeq) return;
 
         final response = await _service.fetchSites(
           limit: pageSize,
@@ -220,15 +280,17 @@ class MapController extends ChangeNotifier {
           sort: 'name',
           dataSource: CatalogDataSource.field,
         );
-        if (seq != _loadSeq) return;
+        if (seq != snap.loadSeq) return;
 
         final geo = _withCoordinates(response.items);
-        _mergeSites(geo);
+        _mergeSites(snap, geo);
         offset += response.items.length;
-        _loadedCatalog = offset;
-        _totalCatalog = response.total;
-        _error = null;
-        notifyListeners();
+        snap.loadedCatalog = offset;
+        snap.totalCatalog = response.total;
+        snap.error = null;
+        if (_isFieldMode) {
+          notifyListeners();
+        }
 
         hasMore = response.hasMore;
         if (response.items.isEmpty) {
@@ -237,8 +299,8 @@ class MapController extends ChangeNotifier {
 
         if (kDebugMode) {
           debugPrint(
-            'MapController: field page loaded — ${_geoSites.length} geo sites '
-            '($_loadedCatalog/$_totalCatalog catalog)',
+            'MapController: field page loaded — ${snap.geoSites.length} geo sites '
+            '(${snap.loadedCatalog}/${snap.totalCatalog} catalog)',
           );
         }
 
@@ -247,31 +309,35 @@ class MapController extends ChangeNotifier {
         }
       }
 
-      if (seq != _loadSeq) return;
-      _loadingComplete = true;
-      _startFieldPoll(seq);
+      if (seq != snap.loadSeq) return;
+      snap.loadingComplete = true;
+      if (_isFieldMode) {
+        _startFieldPoll(seq);
+      }
 
       if (kDebugMode) {
         debugPrint(
-          'MapController: field catalog finished — ${_geoSites.length} geo sites '
-          'from $_loadedCatalog catalog rows',
+          'MapController: field catalog finished — ${snap.geoSites.length} geo sites '
+          'from ${snap.loadedCatalog} catalog rows',
         );
       }
     } on SiteServiceException catch (error) {
-      if (seq != _loadSeq) return;
-      _error = error.message;
+      if (seq != snap.loadSeq) return;
+      snap.error = error.message;
     } catch (error) {
-      if (seq != _loadSeq) return;
-      _error =
+      if (seq != snap.loadSeq) return;
+      snap.error =
           'Could not reach the API at ${AppConfig.baseApiUrl}. '
           'Check your connection or try again later.';
       if (kDebugMode) {
         debugPrint('MapController.load field mode failed: $error');
       }
     } finally {
-      if (seq == _loadSeq) {
-        _loading = false;
-        notifyListeners();
+      if (seq == snap.loadSeq) {
+        snap.loading = false;
+        if (_isFieldMode) {
+          notifyListeners();
+        }
       }
     }
   }
@@ -279,7 +345,9 @@ class MapController extends ChangeNotifier {
   void _startFieldPoll(int seq) {
     _stopFieldPoll();
     _fieldPollTimer = Timer.periodic(fieldPollInterval, (_) {
-      if (seq != _loadSeq || !_isFieldMode) return;
+      if (seq != _snapshots[CatalogDataSource.field]!.loadSeq || !_isFieldMode) {
+        return;
+      }
       unawaited(_pollNewFieldSites(seq));
     });
   }
@@ -294,14 +362,15 @@ class MapController extends ChangeNotifier {
   }
 
   Future<void> _pollNewFieldSites(int seq) async {
-    if (!_isFieldMode || seq != _loadSeq) return;
+    final snap = _snapshots[CatalogDataSource.field]!;
+    if (seq != snap.loadSeq) return;
 
     try {
       var hasMore = true;
-      var siteIdMin = _maxFieldSiteId > 0 ? _maxFieldSiteId + 1 : null;
+      var siteIdMin = snap.maxFieldSiteId > 0 ? snap.maxFieldSiteId + 1 : null;
 
       while (hasMore) {
-        if (seq != _loadSeq) return;
+        if (seq != snap.loadSeq) return;
 
         final response = await _service.fetchSites(
           limit: pageSize,
@@ -310,23 +379,25 @@ class MapController extends ChangeNotifier {
           dataSource: CatalogDataSource.field,
           siteIdMin: siteIdMin,
         );
-        if (seq != _loadSeq) return;
+        if (seq != snap.loadSeq) return;
         if (response.items.isEmpty) return;
 
         final geo = _withCoordinates(response.items);
-        _mergeSites(geo);
-        _totalCatalog = response.total;
-        notifyListeners();
+        _mergeSites(snap, geo);
+        snap.totalCatalog = response.total;
+        if (_isFieldMode) {
+          notifyListeners();
+        }
 
         hasMore = response.hasMore;
         if (hasMore) {
-          siteIdMin = _maxFieldSiteId + 1;
+          siteIdMin = snap.maxFieldSiteId + 1;
         }
 
         if (kDebugMode) {
           debugPrint(
             'MapController: polled ${geo.length} new field sites '
-            '(max id $_maxFieldSiteId)',
+            '(max id ${snap.maxFieldSiteId})',
           );
         }
       }
@@ -337,25 +408,28 @@ class MapController extends ChangeNotifier {
     }
   }
 
-  Future<void> _loadPages(int seq) async {
+  Future<void> _loadArchivePages(int seq) async {
+    final snap = _snapshots[CatalogDataSource.archive]!;
     try {
       var hasMore = true;
 
       while (hasMore) {
-        if (seq != _loadSeq) return;
+        if (seq != snap.loadSeq) return;
 
-        final response = await _fetchPage(offset: _offset);
-        if (seq != _loadSeq) return;
+        final response = await _fetchArchivePage(snap: snap, offset: snap.offset);
+        if (seq != snap.loadSeq) return;
 
         final geo = _withCoordinates(response.items);
 
-        _geoSites = [..._geoSites, ...geo];
-        _offset += response.items.length;
-        _loadedCatalog = _offset;
-        _totalCatalog = response.total;
-        _siteBounds = _expandBounds(_siteBounds, geo);
-        _error = null;
-        notifyListeners();
+        snap.geoSites = [...snap.geoSites, ...geo];
+        snap.offset += response.items.length;
+        snap.loadedCatalog = snap.offset;
+        snap.totalCatalog = response.total;
+        snap.siteBounds = _expandBounds(snap.siteBounds, geo);
+        snap.error = null;
+        if (!_isFieldMode) {
+          notifyListeners();
+        }
 
         hasMore = response.hasMore;
         if (response.items.isEmpty) {
@@ -364,8 +438,8 @@ class MapController extends ChangeNotifier {
 
         if (kDebugMode) {
           debugPrint(
-            'MapController: page loaded — ${_geoSites.length} geo sites '
-            '($_loadedCatalog/$_totalCatalog catalog)',
+            'MapController: page loaded — ${snap.geoSites.length} geo sites '
+            '(${snap.loadedCatalog}/${snap.totalCatalog} catalog)',
           );
         }
 
@@ -374,36 +448,41 @@ class MapController extends ChangeNotifier {
         }
       }
 
-      if (seq != _loadSeq) return;
-      _loadingComplete = true;
+      if (seq != snap.loadSeq) return;
+      snap.loadingComplete = true;
 
       if (kDebugMode) {
         debugPrint(
-          'MapController: finished — ${_geoSites.length} geo sites '
-          'from $_loadedCatalog catalog rows',
+          'MapController: finished — ${snap.geoSites.length} geo sites '
+          'from ${snap.loadedCatalog} catalog rows',
         );
       }
     } on SiteServiceException catch (error) {
-      if (seq != _loadSeq) return;
-      _error = error.message;
+      if (seq != snap.loadSeq) return;
+      snap.error = error.message;
     } catch (error) {
-      if (seq != _loadSeq) return;
-      _error =
+      if (seq != snap.loadSeq) return;
+      snap.error =
           'Could not reach the API at ${AppConfig.baseApiUrl}. '
           'Check your connection or try again later.';
       if (kDebugMode) {
         debugPrint('MapController.load failed: $error');
       }
     } finally {
-      if (seq == _loadSeq) {
-        _loading = false;
-        notifyListeners();
+      if (seq == snap.loadSeq) {
+        snap.loading = false;
+        if (!_isFieldMode) {
+          notifyListeners();
+        }
       }
     }
   }
 
-  Future<SiteListResponse> _fetchPage({required int offset}) async {
-    final seed = _seed;
+  Future<SiteListResponse> _fetchArchivePage({
+    required _CatalogSnapshot snap,
+    required int offset,
+  }) async {
+    final seed = snap.seed;
     if (seed == null || seed.isEmpty) {
       throw StateError('Map catalog seed missing before fetch');
     }
@@ -412,7 +491,7 @@ class MapController extends ChangeNotifier {
       offset: offset,
       sort: 'random',
       seed: seed,
-      dataSource: _dataSource,
+      dataSource: CatalogDataSource.archive,
     );
   }
 
@@ -456,7 +535,9 @@ class MapController extends ChangeNotifier {
 
   @override
   void dispose() {
-    _loadSeq++;
+    for (final snap in _snapshots.values) {
+      snap.loadSeq++;
+    }
     _stopFieldPoll();
     _service.dispose();
     super.dispose();

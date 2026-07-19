@@ -119,7 +119,7 @@ def post_field_site_ensure(body: FieldEnsureRequest) -> FieldEnsureResponse:
         reason=body.reason,
     )
     log_field_event(
-        "ensure_check",
+        "ensure_enqueued" if accepted else "ensure_deduped",
         service="api",
         reason=reason,
         lat=body.lat,
@@ -127,7 +127,6 @@ def post_field_site_ensure(body: FieldEnsureRequest) -> FieldEnsureResponse:
         radius_km=body.radius_km,
         cell=cell_key(body.lat, body.lon, body.radius_km),
         enqueued=accepted,
-        written=0,
     )
     return FieldEnsureResponse(
         accepted=accepted,
