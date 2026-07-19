@@ -196,27 +196,21 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
     _mapController.move(_mapController.camera.center, zoom);
   }
 
-  void _showScanBanner(String message) {
+  void _showScanBanner(String message, {bool autoDismiss = true}) {
     _scanBannerTimer?.cancel();
     setState(() => _scanBannerMessage = message);
+    if (!autoDismiss) return;
     _scanBannerTimer = Timer(const Duration(seconds: 4), () {
       if (!mounted) return;
       setState(() => _scanBannerMessage = null);
     });
   }
 
-  void _showScanSnackBar(String message) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
-  }
-
   void _onScanFieldArea() {
     if (!_mapReady) return;
 
     final center = _mapController.camera.center;
-    _showScanBanner('Field site scan queued…');
+    _showScanBanner('Field site scan queued…', autoDismiss: false);
     unawaited(_runAdminFieldScan(center));
   }
 
@@ -243,17 +237,17 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
       }
 
       if (!response.accepted) {
-        _showScanBanner('Scan already running — waiting for result…');
+        _showScanBanner(
+          'Scan already running — waiting for result…',
+          autoDismiss: false,
+        );
       }
 
       final status = await siteService.waitForFieldEnsureJob(jobId);
       if (!mounted) return;
 
-      _scanBannerTimer?.cancel();
-      setState(() => _scanBannerMessage = null);
-
       if (status.isFailed) {
-        _showScanSnackBar(
+        _showScanBanner(
           status.errorMessage?.trim().isNotEmpty == true
               ? 'Scan failed: ${status.errorMessage}'
               : 'Field site scan failed',
@@ -267,9 +261,7 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
       final radiusLabel = radiusKm == radiusKm.roundToDouble()
           ? '${radiusKm.toInt()} km'
           : '${radiusKm.toStringAsFixed(1)} km';
-      _showScanSnackBar(
-        'Found $found in $radiusLabel · wrote $written',
-      );
+      _showScanBanner('Found $found in $radiusLabel · wrote $written');
       context.read<map_data.MapController>().scheduleFieldPollAfterEnsure();
     } catch (_) {
       if (!mounted) return;
