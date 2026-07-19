@@ -155,6 +155,121 @@ def test_ensure_skips_when_minimum_already_met(session: Session, monkeypatch):
     assert result.total_in_radius == 3
 
 
+def test_ensure_tops_up_when_sites_are_exhausted(session: Session, monkeypatch):
+    from datetime import datetime, timezone
+
+    from app.models.site_status import SITE_STATUS_EXHAUSTED, SITE_STATUS_HIDDEN, SiteStatus
+
+    session.add(_site_type(period="cretaceous", rock_type="sandstone"))
+    session.add(_archive_site(site_id=100, lat=40.0, lon=-100.0))
+    session.commit()
+
+    center_lat, center_lon = 40.0, -100.0
+    for index in range(5):
+        site_id = FIELD_SITE_ID_START + index
+        session.add(
+            Site(
+                site_id=site_id,
+                latitude=Decimal(str(center_lat + index * 0.001)),
+                longitude=Decimal(str(center_lon + index * 0.001)),
+                rock_type="sandstone",
+                period="cretaceous",
+                data_source=DATA_SOURCE_FIELD,
+            )
+        )
+        status = SITE_STATUS_EXHAUSTED if index < 3 else SITE_STATUS_HIDDEN
+        session.add(
+            SiteStatus(
+                site_id=site_id,
+                status=status,
+                timestamp=datetime.now(timezone.utc),
+            )
+        )
+    session.commit()
+
+    monkeypatch.setattr(
+        "app.services.site_service.field_generate.enrich_coordinate",
+        lambda lat, lon: CoordinateEnrichment(country_code="US", state="Montana"),
+    )
+
+    # 2 non-exhausted + 3 exhausted → need 3 more to reach min of 5
+    result = ensure_field_sites_nearby(
+        session,
+        lat=center_lat,
+        lon=center_lon,
+        config=FieldSiteLazyConfig(
+            min_sites_in_radius=5,
+            radius_km=1.0,
+            min_separation_km=0.05,
+            max_coordinate_attempts=50,
+        ),
+        rng=random.Random(3),
+        coordinate_sampler=_test_coordinate_sampler(center_lat, center_lon, radius_km=1.0),
+    )
+
+    assert result.generated == 3
+    new_statuses = list(
+        session.exec(
+            select(SiteStatus).where(col(SiteStatus.site_id) >= FIELD_SITE_ID_START + 5)
+        ).all()
+    )
+    assert len(new_statuses) == 3
+    assert all(row.status == SITE_STATUS_HIDDEN for row in new_statuses)
+
+
+def test_load_existing_field_coords_skips_exhausted(session: Session):
+    from datetime import datetime, timezone
+
+    from app.models.site_status import SITE_STATUS_EXHAUSTED, SITE_STATUS_HIDDEN, SiteStatus
+    from app.services.site_service.field_generate import _load_existing_field_coords
+
+    center_lat, center_lon = 40.0, -100.0
+    session.add(
+        Site(
+            site_id=FIELD_SITE_ID_START,
+            latitude=Decimal(str(center_lat)),
+            longitude=Decimal(str(center_lon)),
+            rock_type="sandstone",
+            period="cretaceous",
+            data_source=DATA_SOURCE_FIELD,
+        )
+    )
+    session.add(
+        Site(
+            site_id=FIELD_SITE_ID_START + 1,
+            latitude=Decimal(str(center_lat + 0.001)),
+            longitude=Decimal(str(center_lon + 0.001)),
+            rock_type="sandstone",
+            period="cretaceous",
+            data_source=DATA_SOURCE_FIELD,
+        )
+    )
+    session.add(
+        SiteStatus(
+            site_id=FIELD_SITE_ID_START,
+            status=SITE_STATUS_EXHAUSTED,
+            timestamp=datetime.now(timezone.utc),
+        )
+    )
+    session.add(
+        SiteStatus(
+            site_id=FIELD_SITE_ID_START + 1,
+            status=SITE_STATUS_HIDDEN,
+            timestamp=datetime.now(timezone.utc),
+        )
+    )
+    session.commit()
+
+    coords = _load_existing_field_coords(
+        session,
+        lat=center_lat,
+        lon=center_lon,
+        radius_km=1.0,
+    )
+    assert len(coords) == 1
+    assert abs(coords[0][0] - (center_lat + 0.001)) < 1e-6
+
+
 def test_ensure_does_not_delete_archive_sites(session: Session, monkeypatch):
     session.add(_site_type(period="cretaceous", rock_type="sandstone"))
     session.add(_archive_site(site_id=100, lat=40.0, lon=-100.0))

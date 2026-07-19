@@ -9,7 +9,7 @@ from sqlalchemy.orm import aliased
 from sqlmodel import Session, col, select
 
 from app.models.site import Site
-from app.models.site_status import SiteStatus
+from app.models.site_status import SITE_STATUS_EXHAUSTED, SiteStatus
 from app.models.site_type import SiteType
 from app.services.data_source_filter import normalize_data_source
 from app.services.site_service.geo_utils import haversine_km
@@ -56,6 +56,17 @@ _HAVERSINE_COUNT_SQL = text(
           )
         )
       ) <= :radius_km
+      AND NOT EXISTS (
+        SELECT 1
+        FROM site_status ss
+        WHERE ss.site_id = site.site_id
+          AND ss.status = :exhausted_status
+          AND ss.timestamp = (
+            SELECT MAX(ss2.timestamp)
+            FROM site_status ss2
+            WHERE ss2.site_id = site.site_id
+          )
+      )
     """
 )
 
@@ -110,6 +121,7 @@ def count_sites_in_radius(
     radius_km: float,
     data_source: str,
 ) -> int:
+    """Count field/archive sites in radius, excluding latest-status ``exhausted``."""
     normalized_data_source = normalize_data_source(data_source)
     min_lat, max_lat, min_lon, max_lon = _bbox(lat, lon, radius_km)
     row = session.exec(
@@ -122,6 +134,7 @@ def count_sites_in_radius(
             max_lat=max_lat,
             min_lon=min_lon,
             max_lon=max_lon,
+            exhausted_status=SITE_STATUS_EXHAUSTED,
         )
     ).one()
     return int(row[0])

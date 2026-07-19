@@ -10,13 +10,14 @@ from dataclasses import dataclass, field
 from decimal import Decimal
 
 from sqlalchemy import func, text
+from sqlalchemy.orm import aliased
 from sqlmodel import Session, col, delete, select
 
 from app.core.database import engine
 
 from app.models.data_source import DATA_SOURCE_ARCHIVE, DATA_SOURCE_FIELD
 from app.models.site import Site
-from app.models.site_status import SITE_STATUS_HIDDEN, SiteStatus
+from app.models.site_status import SITE_STATUS_EXHAUSTED, SITE_STATUS_HIDDEN, SiteStatus
 from app.models.site_type import SiteType
 from app.services.site_service.field_coordinate_enrich import enrich_coordinate
 from app.services.site_service.field_coordinate_filter import (
@@ -40,10 +41,15 @@ from app.services.site_service.nearby import (
     count_sites_in_radius,
     list_sites_in_radius,
 )
+from app.services.site_service.status_join import (
+    latest_site_status_subquery,
+    latest_status_join_condition,
+)
 from app.services.site_service.summary import SiteRow
 
 logger = logging.getLogger("field_site_generate")
 
+_LatestStatus = aliased(SiteStatus)
 FIELD_SITE_ID_START = 1_000_000_000
 PROGRESS_LOG_INTERVAL = 100
 WRITE_BATCH_SIZE = 5
@@ -312,7 +318,11 @@ def ensure_field_sites_nearby(
     rng: random.Random | None = None,
     coordinate_sampler: CoordinateSampler | None = None,
 ) -> EnsureFieldSitesResult:
-    """Top up field sites within ``radius_km`` to ``min_sites_in_radius``.
+    """Top up non-exhausted field sites within ``radius_km`` to ``min_sites_in_radius``.
+
+    Exhausted sites are ignored for both the density quota and min-separation
+    coordinate blocking, so new ``hidden`` sites can replace them as others
+    become exhausted.
 
     Short DB transactions: read → commit, then sample and commit every
     ``WRITE_BATCH_SIZE`` sites so the map can poll progressive batches.
@@ -479,7 +489,17 @@ def _load_existing_field_coords(
     radius_km: float | None = None,
     min_separation_km: float = 0.01,
 ) -> list[tuple[float, float]]:
-    stmt = select(Site).where(col(Site.data_source) == DATA_SOURCE_FIELD)
+    """Coords of non-exhausted field sites used for min-separation sampling."""
+    max_ts = latest_site_status_subquery()
+    stmt = (
+        select(Site, _LatestStatus)
+        .outerjoin(max_ts, col(Site.site_id) == max_ts.c.site_id)
+        .outerjoin(
+            _LatestStatus,
+            latest_status_join_condition(_LatestStatus, max_ts),
+        )
+        .where(col(Site.data_source) == DATA_SOURCE_FIELD)
+    )
     if lat is not None and lon is not None and radius_km is not None:
         search_radius = radius_km + min_separation_km
         min_lat, max_lat, min_lon, max_lon = _bbox(lat, lon, search_radius)
@@ -492,11 +512,16 @@ def _load_existing_field_coords(
             col(Site.longitude) <= max_lon,
         )
     coords: list[tuple[float, float]] = []
-    for row in session.exec(stmt).all():
-        if row.latitude is None or row.longitude is None:
+    for site, latest_status in session.exec(stmt).all():
+        if site.latitude is None or site.longitude is None:
             continue
-        site_lat = float(row.latitude)
-        site_lon = float(row.longitude)
+        if (
+            latest_status is not None
+            and latest_status.status == SITE_STATUS_EXHAUSTED
+        ):
+            continue
+        site_lat = float(site.latitude)
+        site_lon = float(site.longitude)
         if lat is not None and lon is not None and radius_km is not None:
             if haversine_km(lat, lon, site_lat, site_lon) > radius_km + min_separation_km:
                 continue

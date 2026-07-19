@@ -125,44 +125,38 @@ class _SiteFilterSheetState extends State<SiteFilterSheet> {
               if (widget.showStatusSection) ...[
                 _sectionTitle(theme, 'Status'),
                 ...siteStatusOptions.map(
-                  (value) => CheckboxListTile(
-                    contentPadding: EdgeInsets.zero,
-                    controlAffinity: ListTileControlAffinity.leading,
-                    dense: true,
+                  (value) => _checkboxTile(
+                    theme: theme,
                     value: _pendingStatuses.contains(value),
+                    label: siteFilterOptionLabel(value),
                     onChanged: (selected) =>
                         _toggle(_pendingStatuses, value, selected),
-                    title: Text(siteFilterOptionLabel(value)),
                   ),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 8),
               ],
               _sectionTitle(theme, 'Period'),
               ...sitePeriodOptions.map(
-                (value) => CheckboxListTile(
-                  contentPadding: EdgeInsets.zero,
-                  controlAffinity: ListTileControlAffinity.leading,
-                  dense: true,
+                (value) => _checkboxTile(
+                  theme: theme,
                   value: _pendingPeriods.contains(value),
+                  label: siteFilterOptionLabel(value),
                   onChanged: (selected) =>
                       _toggle(_pendingPeriods, value, selected),
-                  title: Text(siteFilterOptionLabel(value)),
                 ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 8),
               _sectionTitle(theme, 'Rock type'),
               ...siteRockTypeOptions.map(
-                (value) => CheckboxListTile(
-                  contentPadding: EdgeInsets.zero,
-                  controlAffinity: ListTileControlAffinity.leading,
-                  dense: true,
+                (value) => _checkboxTile(
+                  theme: theme,
                   value: _pendingRockTypes.contains(value),
+                  label: siteFilterOptionLabel(value),
                   onChanged: (selected) =>
                       _toggle(_pendingRockTypes, value, selected),
-                  title: Text(siteFilterOptionLabel(value)),
                 ),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 16),
               Row(
                 children: [
                   TextButton(
@@ -181,6 +175,7 @@ class _SiteFilterSheetState extends State<SiteFilterSheet> {
                   ),
                 ],
               ),
+              const SizedBox(height: 4),
               Text(
                 'Unchecking options hides matching markers on the map.',
                 style: theme.textTheme.bodySmall?.copyWith(
@@ -194,9 +189,33 @@ class _SiteFilterSheetState extends State<SiteFilterSheet> {
     );
   }
 
+  Widget _checkboxTile({
+    required ThemeData theme,
+    required bool value,
+    required String label,
+    required ValueChanged<bool?> onChanged,
+  }) {
+    return SizedBox(
+      height: 32,
+      child: CheckboxListTile(
+        contentPadding: EdgeInsets.zero,
+        controlAffinity: ListTileControlAffinity.leading,
+        dense: true,
+        visualDensity: const VisualDensity(horizontal: -4, vertical: -4),
+        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        value: value,
+        onChanged: onChanged,
+        title: Text(
+          label,
+          style: theme.textTheme.bodyMedium,
+        ),
+      ),
+    );
+  }
+
   Widget _sectionTitle(ThemeData theme, String title) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 4),
+      padding: const EdgeInsets.only(top: 2, bottom: 2),
       child: Text(
         title,
         style: theme.textTheme.titleSmall?.copyWith(
