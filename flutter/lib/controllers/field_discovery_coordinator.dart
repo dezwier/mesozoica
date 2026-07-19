@@ -96,6 +96,21 @@ class FieldDiscoveryCoordinator extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Drop all proximity state when the signed-in user changes.
+  void clearForUserChange() {
+    _discoverableCache = [];
+    _lastCachePosition = null;
+    _lastHandledLocation = null;
+    _attemptedSiteIds.clear();
+    _inFlightSiteIds.clear();
+    _retryAfterBySiteId.clear();
+    _pendingCelebration = null;
+    _celebrationConsumed = false;
+    _cacheRefreshFuture = null;
+    _log('cleared for user change');
+    notifyListeners();
+  }
+
   void _onLocationChanged(LocationService locationService) {
     final location = locationService.currentLocation;
     if (location == null) return;

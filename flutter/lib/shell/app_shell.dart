@@ -252,12 +252,21 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     final previousUserId = _previousUserId;
     _previousUserId = userId;
 
-    if (previousUserId != null && userId == null) {
-      notificationController.clear();
+    if (previousUserId != null) {
       ApiResponseCache.instance.clearForUser(previousUserId);
+    }
+
+    // Field map/catalog are per-user (user_site links). Always drop the
+    // previous account's markers/list when the signed-in identity changes.
+    final isAdmin = auth.currentUser?.isAdmin ?? false;
+    context.read<MapController>().onUserChanged(isAdmin: isAdmin);
+    context.read<FieldDiscoveryCoordinator>().clearForUserChange();
+    context.read<SiteCatalogController>().load(force: true);
+
+    if (userId == null) {
+      notificationController.clear();
       return;
     }
-    if (userId == null) return;
 
     Future.microtask(() async {
       if (!mounted || _previousUserId != userId) return;
@@ -267,6 +276,12 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
         authenticatedUserId: userId,
       );
       await PushNotificationService.registerTokenIfLoggedIn();
+      if (!mounted || _previousUserId != userId) return;
+      unawaited(
+        context
+            .read<FieldDiscoveryCoordinator>()
+            .refreshDiscoverableCache(force: true),
+      );
     });
   }
 

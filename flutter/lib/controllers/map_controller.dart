@@ -186,6 +186,24 @@ class MapController extends ChangeNotifier {
     unawaited(_loadArchivePages(seq));
   }
 
+  /// Drop field markers and reload for the newly signed-in user.
+  ///
+  /// Field sites are per-user (linked via ``user_site``). Keeping the previous
+  /// account's markers would leak discoveries across logins.
+  void onUserChanged({required bool isAdmin}) {
+    clearSelection();
+    _stopFieldPoll();
+    _stopFieldPollBackoff();
+    if (!isAdmin) {
+      _showAllFieldSites = false;
+    }
+    final fieldSnap = _snapshots[CatalogDataSource.field]!;
+    fieldSnap.reset(clearSeed: false);
+    fieldSnap.loadSeq++;
+    notifyListeners();
+    load(force: true);
+  }
+
   void _loadFieldMode({required bool force}) {
     final snap = _snap;
     if (!force) {
@@ -337,7 +355,18 @@ class MapController extends ChangeNotifier {
         if (seq != snap.loadSeq) return;
 
         final geo = _withCoordinates(response.items);
-        _mergeSites(snap, geo);
+        // Full catalog load must replace, not merge — otherwise a previous
+        // user's linked sites remain visible after login switch.
+        if (offset == 0) {
+          snap.geoSites = geo;
+          snap.siteBounds = _expandBounds(null, geo);
+          snap.maxFieldSiteId = geo.fold(
+            0,
+            (max, site) => site.siteId > max ? site.siteId : max,
+          );
+        } else {
+          _mergeSites(snap, geo);
+        }
         offset += response.items.length;
         snap.loadedCatalog = offset;
         snap.totalCatalog = response.total;
