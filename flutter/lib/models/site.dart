@@ -34,15 +34,24 @@ class SiteSummary {
   final String? mainImageUrl;
   final String? status;
 
+  /// Field-generated site IDs start at 1_000_000_000; show the offset only.
+  static const int fieldSiteIdBase = 1000000000;
+
+  String get displaySiteNumber {
+    final n =
+        siteId >= fieldSiteIdBase ? siteId - fieldSiteIdBase : siteId;
+    return '#$n';
+  }
+
   String get displayTitle {
     final trimmed = formation?.trim();
     if (trimmed != null && trimmed.isNotEmpty) {
       return trimmed;
     }
-    return 'Site #$siteId';
+    return displaySiteNumber;
   }
 
-  String get displaySubtitle => 'Collection #$siteId';
+  String get displaySubtitle => 'Collection $displaySiteNumber';
 
   String get displayCoordinates {
     if (latitude == null || longitude == null) return '—';

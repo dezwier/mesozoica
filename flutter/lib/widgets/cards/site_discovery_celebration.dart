@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../controllers/catalog_mode_controller.dart';
 import '../../models/site.dart';
 import '../../services/site_service.dart';
+import '../../theme/dino_card_theme.dart';
 import 'card_detail_sheet.dart';
 import 'site_turnable_card.dart';
 
@@ -122,18 +123,37 @@ class _SiteDiscoveryCelebrationSheetState
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                const Padding(
+                  padding: EdgeInsets.fromLTRB(20, 8, 20, 4),
                   child: Text(
                     'Site discovered!',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.w700,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontFamily: DinoCardTheme.titleFontFamily,
+                      fontSize: 34,
+                      fontWeight: FontWeight.w700,
+                      height: 1.15,
+                      letterSpacing: 0.2,
+                      color: Colors.white,
+                      shadows: [
+                        Shadow(
+                          color: Color(0xCC000000),
+                          blurRadius: 14,
+                          offset: Offset(0, 2),
                         ),
+                        Shadow(
+                          color: Color(0x99000000),
+                          blurRadius: 4,
+                          offset: Offset(0, 1),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
                 SiteTurnableCard(
                   site: snapshot.data!,
                   autoFlipOnce: true,
+                  autoFlipHoldOnBack: const Duration(seconds: 1),
                 ),
               ],
             ),

@@ -8,6 +8,7 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:mesozoica/controllers/field_discovery_coordinator.dart';
+import 'package:mesozoica/models/site.dart';
 import 'package:mesozoica/services/location_service.dart';
 import 'package:mesozoica/services/site_service.dart';
 
@@ -155,6 +156,127 @@ void main() {
     locationService.setLocation(const LatLng(51.00005, 4.0000));
     await pumpUntilIdle();
     expect(discoverCount, 1);
+
+    coordinator.dispose();
+  });
+
+  test('discovers map-ingested site when API cache was empty', () async {
+    final discoverCalls = <int>[];
+    final coordinator = FieldDiscoveryCoordinator(
+      siteService: SiteService(
+        client: MockClient((request) async {
+          if (request.url.path.contains('nearby-discoverable')) {
+            return http.Response(
+              jsonEncode({
+                'items': <dynamic>[],
+                'total': 0,
+                'generated': 0,
+                'radius_km': 1.0,
+              }),
+              200,
+            );
+          }
+          if (request.method == 'POST' &&
+              request.url.path.contains('/discover')) {
+            final siteId = int.parse(request.url.pathSegments[3]);
+            discoverCalls.add(siteId);
+            return http.Response(
+              jsonEncode(
+                _siteJson(
+                  siteId: siteId,
+                  lat: 51.0,
+                  lon: 4.0,
+                  status: 'discovered',
+                ),
+              ),
+              200,
+            );
+          }
+          return http.Response('{}', 404);
+        }),
+      ),
+    );
+
+    final locationService = _FakeLocationService(const LatLng(51.0001, 4.0000));
+    coordinator.bind(locationService: locationService);
+    await pumpUntilIdle();
+    expect(discoverCalls, isEmpty);
+
+    coordinator.ingestMapSites([
+      SiteSummary(
+        siteId: 42,
+        latitude: 51.0000,
+        longitude: 4.0000,
+        status: 'hidden',
+      ),
+    ]);
+    locationService.setLocation(const LatLng(51.00005, 4.0000));
+    await pumpUntilIdle();
+
+    expect(discoverCalls, [42]);
+    expect(coordinator.pendingCelebration?.siteId, 42);
+
+    coordinator.dispose();
+  });
+
+  test('hiding a site allows rediscovery on the next move', () async {
+    final discoverCalls = <int>[];
+    final coordinator = FieldDiscoveryCoordinator(
+      siteService: SiteService(
+        client: MockClient((request) async {
+          if (request.url.path.contains('nearby-discoverable')) {
+            return http.Response(
+              jsonEncode({
+                'items': [
+                  _siteJson(siteId: 5, lat: 51.0000, lon: 4.0000),
+                ],
+                'total': 1,
+                'generated': 0,
+                'radius_km': 1.0,
+              }),
+              200,
+            );
+          }
+          if (request.method == 'POST' &&
+              request.url.path.contains('/discover')) {
+            final siteId = int.parse(request.url.pathSegments[3]);
+            discoverCalls.add(siteId);
+            return http.Response(
+              jsonEncode(
+                _siteJson(
+                  siteId: siteId,
+                  lat: 51.0,
+                  lon: 4.0,
+                  status: 'discovered',
+                ),
+              ),
+              200,
+            );
+          }
+          return http.Response('{}', 404);
+        }),
+      ),
+    );
+
+    final locationService = _FakeLocationService(const LatLng(51.0001, 4.0000));
+    coordinator.bind(locationService: locationService);
+    await pumpUntilIdle();
+    expect(discoverCalls, [5]);
+
+    coordinator.consumeCelebration();
+    coordinator.siteBecameHidden(
+      SiteSummary(
+        siteId: 5,
+        latitude: 51.0000,
+        longitude: 4.0000,
+        status: 'hidden',
+      ),
+    );
+
+    locationService.setLocation(const LatLng(51.00005, 4.0000));
+    await pumpUntilIdle();
+    expect(discoverCalls, [5, 5]);
+    expect(coordinator.pendingCelebration?.siteId, 5);
 
     coordinator.dispose();
   });

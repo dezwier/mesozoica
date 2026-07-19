@@ -2,9 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:provider/provider.dart';
 
+import '../../controllers/auth_controller.dart';
+import '../../controllers/field_discovery_coordinator.dart';
+import '../../controllers/notification_controller.dart';
 import '../../models/site.dart';
 import '../../services/location_service.dart';
 import '../../services/site_service.dart';
+import '../../utils/discovery_haptic.dart';
 import 'site_discovery_celebration.dart';
 
 const setStatusMaxDistanceMeters = 500.0;
@@ -67,9 +71,21 @@ Future<SiteSummary?> applySiteStatusSelection(
     );
     if (!context.mounted) return updated;
 
+    if (next == 'hidden') {
+      context.read<FieldDiscoveryCoordinator>().siteBecameHidden(updated);
+    }
+
     final wasHiddenToDiscover =
         previous == 'hidden' && next == 'discovered';
     if (wasHiddenToDiscover) {
+      playDiscoveryHapticFireAndForget();
+      final userId = context.read<AuthController>().currentUser?.id;
+      if (userId != null) {
+        await context.read<NotificationController>().refreshAndWait(
+              authenticatedUserId: userId,
+            );
+      }
+      if (!context.mounted) return updated;
       await showSiteDiscoveryCelebration(context, site: updated);
     } else {
       _snack(context, 'Status updated to ${updated.status ?? next}.');

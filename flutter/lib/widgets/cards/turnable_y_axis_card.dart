@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -17,6 +18,7 @@ class TurnableYAxisCard extends StatefulWidget {
     this.decoration,
     this.turnable = true,
     this.autoFlipOnce = false,
+    this.autoFlipHoldOnBack = Duration.zero,
   });
 
   final Widget front;
@@ -29,6 +31,8 @@ class TurnableYAxisCard extends StatefulWidget {
   final BoxDecoration? decoration;
   final bool turnable;
   final bool autoFlipOnce;
+  /// After [autoFlipOnce] reaches the back, wait this long then flip to front.
+  final Duration autoFlipHoldOnBack;
 
   @override
   State<TurnableYAxisCard> createState() => _TurnableYAxisCardState();
@@ -68,12 +72,23 @@ class _TurnableYAxisCardState extends State<TurnableYAxisCard>
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted || _didAutoFlip || !widget.turnable) return;
         _didAutoFlip = true;
-        Future<void>.delayed(const Duration(milliseconds: 450), () {
-          if (!mounted) return;
-          _flipByOneFace(turnLeft: true);
-        });
+        unawaited(_runAutoFlipSequence());
       });
     }
+  }
+
+  Future<void> _runAutoFlipSequence() async {
+    await Future<void>.delayed(const Duration(milliseconds: 450));
+    if (!mounted) return;
+    _flipByOneFace(turnLeft: true);
+    final hold = widget.autoFlipHoldOnBack;
+    if (hold <= Duration.zero) return;
+    // Wait for the spring flip to settle on the back, then hold.
+    await Future<void>.delayed(const Duration(milliseconds: 700));
+    if (!mounted) return;
+    await Future<void>.delayed(hold);
+    if (!mounted) return;
+    _flipByOneFace(turnLeft: true);
   }
 
   @override

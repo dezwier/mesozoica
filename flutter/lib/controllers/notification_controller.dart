@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
@@ -23,6 +24,7 @@ class NotificationController extends ChangeNotifier {
   bool _isLoading = false;
   bool _isRefreshingInBackground = false;
   Future<void>? _inFlightRefresh;
+  bool _refreshQueued = false;
   final Set<int> _seenForBadgeIds = {};
 
   List<UserNotificationItem> get items => List.unmodifiable(_items);
@@ -59,7 +61,10 @@ class NotificationController extends ChangeNotifier {
                 (entry) =>
                     UserNotificationItem.fromJson(entry as Map<String, dynamic>),
               )
-              .where((item) => item.isFriendRequestRelated),
+              .where(
+                (item) =>
+                    item.isFriendRequestRelated || item.isSiteDiscovered,
+              ),
         );
       notifyListeners();
     } catch (error, stackTrace) {
@@ -86,13 +91,22 @@ class NotificationController extends ChangeNotifier {
 
   Future<void> refreshInBackground({int? authenticatedUserId}) {
     _bindAuthenticatedUser(authenticatedUserId);
-    if (_inFlightRefresh != null) return _inFlightRefresh!;
+    if (_inFlightRefresh != null) {
+      _refreshQueued = true;
+      return _inFlightRefresh!;
+    }
     _isRefreshingInBackground = true;
     notifyListeners();
     _inFlightRefresh = _fetchAndApply().whenComplete(() {
       _inFlightRefresh = null;
       _isRefreshingInBackground = false;
       notifyListeners();
+      if (_refreshQueued) {
+        _refreshQueued = false;
+        unawaited(
+          refreshInBackground(authenticatedUserId: _activeUserId),
+        );
+      }
     });
     return _inFlightRefresh!;
   }
@@ -114,7 +128,11 @@ class NotificationController extends ChangeNotifier {
       final result = await _notificationService.getNotifications();
       _items
         ..clear()
-        ..addAll(result.items);
+        ..addAll(
+          result.items.where(
+            (item) => item.isFriendRequestRelated || item.isSiteDiscovered,
+          ),
+        );
       await _persistItems();
     } catch (error, stackTrace) {
       debugPrint('NotificationController._fetchAndApply: $error\n$stackTrace');
@@ -142,6 +160,7 @@ class NotificationController extends ChangeNotifier {
     _seenForBadgeIds.clear();
     _activeUserId = null;
     _inFlightRefresh = null;
+    _refreshQueued = false;
     _isLoading = false;
     _isRefreshingInBackground = false;
     notifyListeners();

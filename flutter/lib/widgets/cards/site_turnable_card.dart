@@ -14,6 +14,7 @@ class SiteTurnableCard extends StatefulWidget {
     required this.site,
     this.turnable = true,
     this.autoFlipOnce = false,
+    this.autoFlipHoldOnBack = Duration.zero,
     this.titleFontSize = 36,
     this.subtitleFontSize = 10,
     this.overlayHeightFactor = 0.38,
@@ -24,6 +25,7 @@ class SiteTurnableCard extends StatefulWidget {
   final SiteSummary site;
   final bool turnable;
   final bool autoFlipOnce;
+  final Duration autoFlipHoldOnBack;
   final double titleFontSize;
   final double subtitleFontSize;
   final double overlayHeightFactor;
@@ -74,6 +76,7 @@ class _SiteTurnableCardState extends State<SiteTurnableCard> {
       decoration: DinoCardTheme.of(context).chromeDecoration(),
       turnable: widget.turnable,
       autoFlipOnce: widget.autoFlipOnce,
+      autoFlipHoldOnBack: widget.autoFlipHoldOnBack,
       front: SiteCardFront(
         site: _site,
         titleFontSize: widget.titleFontSize,

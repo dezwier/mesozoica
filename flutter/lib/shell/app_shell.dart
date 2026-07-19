@@ -44,6 +44,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
   CatalogDataSource? _previousCatalogDataSource;
   CatalogModeController? _catalogModeController;
   FieldDiscoveryCoordinator? _discoveryCoordinator;
+  MapController? _mapController;
   StreamSubscription<RemoteMessage>? _foregroundPushSub;
   StreamSubscription<RemoteMessage>? _openedPushSub;
   bool _celebrationShowing = false;
@@ -59,6 +60,11 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
       _discoveryCoordinator = discovery;
       discovery.addListener(_onDiscoveryChanged);
       discovery.bind(locationService: context.read<LocationService>());
+
+      final map = context.read<MapController>();
+      _mapController = map;
+      map.addListener(_onMapSitesChanged);
+      discovery.ingestMapSites(map.geoSites);
 
       context.read<FieldSessionCoordinator>().bind(
             locationService: context.read<LocationService>(),
@@ -94,6 +100,14 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     context.read<FossilCatalogController>().load(force: true);
   }
 
+  void _onMapSitesChanged() {
+    if (!mounted) return;
+    final map = _mapController;
+    final discovery = _discoveryCoordinator;
+    if (map == null || discovery == null) return;
+    discovery.ingestMapSites(map.geoSites);
+  }
+
   void _onDiscoveryChanged() {
     if (!mounted) return;
     final discovery = context.read<FieldDiscoveryCoordinator>();
@@ -102,6 +116,12 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     discovery.consumeCelebration();
     context.read<MapController>().load(force: true);
     context.read<SiteCatalogController>().load(force: true);
+    final userId = context.read<AuthController>().currentUser?.id;
+    if (userId != null) {
+      context
+          .read<NotificationController>()
+          .refreshInBackground(authenticatedUserId: userId);
+    }
     unawaited(_showCelebration(site: pending));
   }
 
@@ -170,6 +190,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
   @override
   void dispose() {
     _discoveryCoordinator?.removeListener(_onDiscoveryChanged);
+    _mapController?.removeListener(_onMapSitesChanged);
     _catalogModeController?.removeListener(_onCatalogModeChanged);
     unawaited(_foregroundPushSub?.cancel() ?? Future<void>.value());
     unawaited(_openedPushSub?.cancel() ?? Future<void>.value());

@@ -39,8 +39,10 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
   StreamSubscription<fm.MapEvent>? _mapSub;
   bool _mapReady = false;
   double _zoomLevel = MapConfig.initialZoom;
-  bool _centeredOnUser = false;
+  bool _didInitialCenter = false;
+  bool _followUser = false;
   bool _rotateMap = false;
+  LatLng? _lastFollowedLocation;
   String? _scanBannerMessage;
   Timer? _scanBannerTimer;
 
@@ -86,6 +88,9 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
 
   void _onMapEvent(fm.MapEvent event) {
     if (!mounted) return;
+    if (_followUser && _isUserCameraGesture(event.source)) {
+      _followUser = false;
+    }
     try {
       final zoom = event.camera.zoom;
       if (zoom != _zoomLevel) {
@@ -93,6 +98,34 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
       }
     } catch (_) {
       // Map controller not ready yet.
+    }
+  }
+
+  /// Pans/flings break follow; pinch/double-tap zoom keep it.
+  bool _isUserCameraGesture(fm.MapEventSource source) {
+    switch (source) {
+      case fm.MapEventSource.dragStart:
+      case fm.MapEventSource.onDrag:
+      case fm.MapEventSource.dragEnd:
+      case fm.MapEventSource.flingAnimationController:
+        return true;
+      case fm.MapEventSource.mapController:
+      case fm.MapEventSource.tap:
+      case fm.MapEventSource.secondaryTap:
+      case fm.MapEventSource.longPress:
+      case fm.MapEventSource.doubleTap:
+      case fm.MapEventSource.doubleTapHold:
+      case fm.MapEventSource.doubleTapZoomAnimationController:
+      case fm.MapEventSource.multiFingerGestureStart:
+      case fm.MapEventSource.onMultiFinger:
+      case fm.MapEventSource.multiFingerEnd:
+      case fm.MapEventSource.scrollWheel:
+      case fm.MapEventSource.interactiveFlagsChanged:
+      case fm.MapEventSource.fitCamera:
+      case fm.MapEventSource.custom:
+      case fm.MapEventSource.nonRotatedSizeChange:
+      case fm.MapEventSource.cursorKeyboardRotation:
+        return false;
     }
   }
 
@@ -117,24 +150,44 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
   void _setInitialCamera({
     required LocationService locationService,
   }) {
-    if (!_mapReady || _centeredOnUser) return;
+    if (!_mapReady || _didInitialCenter) return;
 
     if (locationService.hasLocation) {
-      _mapController.move(
-        locationService.currentLocation!,
-        MapConfig.initialZoom,
-      );
-      _centeredOnUser = true;
+      final location = locationService.currentLocation!;
+      _mapController.move(location, MapConfig.initialZoom);
+      _didInitialCenter = true;
+      _followUser = true;
+      _lastFollowedLocation = location;
     }
   }
 
   void _centerOnLocation(LocationService locationService) {
     final location = locationService.currentLocation;
     if (location == null || !_mapReady) return;
+    _followUser = true;
+    _lastFollowedLocation = location;
     _animatedMapController.centerOnPoint(
       location,
       zoom: _mapController.camera.zoom,
     );
+  }
+
+  void _maybeFollowUser(LocationService locationService) {
+    if (!_followUser || !_mapReady) return;
+    final location = locationService.currentLocation;
+    if (location == null) return;
+    final previous = _lastFollowedLocation;
+    if (previous != null &&
+        previous.latitude == location.latitude &&
+        previous.longitude == location.longitude) {
+      return;
+    }
+    _lastFollowedLocation = location;
+    try {
+      _mapController.move(location, _mapController.camera.zoom);
+    } catch (_) {
+      // Map controller not ready yet.
+    }
   }
 
   void _onZoomChanged(double zoom) {
@@ -204,6 +257,7 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (!mounted) return;
           _setInitialCamera(locationService: locationService);
+          _maybeFollowUser(locationService);
           _updateMapRotation(locationService.headingDeg);
         });
 

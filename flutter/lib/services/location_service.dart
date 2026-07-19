@@ -27,20 +27,23 @@ class LocationService extends ChangeNotifier {
       _mapForeground || (_fieldSession && _locationSub != null);
 
   Future<void> setMapForeground(bool active) async {
+    final changed = _mapForeground != active;
     _mapForeground = active;
-    await _reconcileTracking();
+    await _reconcileTracking(forceRestartLocation: changed);
   }
 
   Future<void> setFieldSession({
     required bool active,
     bool backgroundPreferred = false,
   }) async {
+    final settingsChanged =
+        _fieldSession != active || _backgroundPreferred != backgroundPreferred;
     _fieldSession = active;
     _backgroundPreferred = backgroundPreferred;
-    if (active && backgroundPreferred) {
+    if (active && backgroundPreferred && !_mapForeground) {
       await _ensureBackgroundPermission();
     }
-    await _reconcileTracking();
+    await _reconcileTracking(forceRestartLocation: settingsChanged);
   }
 
   Future<void> onAppResumed() async {
@@ -48,18 +51,20 @@ class LocationService extends ChangeNotifier {
     await _startLocationStream(forceRestart: true);
   }
 
-  Future<void> _reconcileTracking() async {
+  Future<void> _reconcileTracking({bool forceRestartLocation = false}) async {
     if (!_mapForeground && !_fieldSession) {
       _stopStreams();
       return;
     }
-    if (_mapForeground && !_backgroundPreferred) {
+    // Compass is foreground-only UI; keep it while the map tab is active even
+    // when field session uses background GPS.
+    if (_mapForeground) {
       _startHeading();
     } else {
       _headingSub?.cancel();
       _headingSub = null;
     }
-    await _startLocationStream(forceRestart: false);
+    await _startLocationStream(forceRestart: forceRestartLocation);
   }
 
   void _stopStreams() {
@@ -134,13 +139,18 @@ class LocationService extends ChangeNotifier {
     await _ensurePermission(backgroundPreferred: true);
   }
 
+  /// Background profile only when the app is not actively showing the map.
+  /// While the map tab is open we prefer best accuracy so 50 m discovery works.
+  bool get _useBackgroundLocationProfile =>
+      _backgroundPreferred && !_mapForeground;
+
   LocationSettings _locationSettings({required bool backgroundPreferred}) {
     if (!kIsWeb && Platform.isAndroid) {
       return AndroidSettings(
         accuracy: backgroundPreferred
             ? LocationAccuracy.medium
             : LocationAccuracy.best,
-        distanceFilter: 5,
+        distanceFilter: backgroundPreferred ? 10 : 5,
         foregroundNotificationConfig: backgroundPreferred
             ? const ForegroundNotificationConfig(
                 notificationTitle: 'Field exploration active',
@@ -157,7 +167,7 @@ class LocationService extends ChangeNotifier {
         accuracy: backgroundPreferred
             ? LocationAccuracy.medium
             : LocationAccuracy.best,
-        distanceFilter: 5,
+        distanceFilter: backgroundPreferred ? 10 : 5,
         allowBackgroundLocationUpdates: backgroundPreferred,
         showBackgroundLocationIndicator: backgroundPreferred,
         activityType: ActivityType.fitness,
@@ -168,7 +178,7 @@ class LocationService extends ChangeNotifier {
       accuracy: backgroundPreferred
           ? LocationAccuracy.medium
           : LocationAccuracy.best,
-      distanceFilter: 5,
+      distanceFilter: backgroundPreferred ? 10 : 5,
     );
   }
 
@@ -181,7 +191,7 @@ class LocationService extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final backgroundPreferred = _backgroundPreferred;
+      final backgroundPreferred = _useBackgroundLocationProfile;
       final permitted = await _ensurePermission(
         backgroundPreferred: backgroundPreferred,
       );
