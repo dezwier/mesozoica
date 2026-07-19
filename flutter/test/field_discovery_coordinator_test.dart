@@ -35,6 +35,9 @@ class _FakeLocationService extends LocationService {
 
   @override
   Future<void> onAppResumed() async {}
+
+  @override
+  Future<void> onAppBackgrounded() async {}
 }
 
 Map<String, dynamic> _siteJson({

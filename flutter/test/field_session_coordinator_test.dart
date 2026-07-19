@@ -35,7 +35,17 @@ class _FakeLocationService extends LocationService {
   bool? lastBackgroundPreferred;
 
   @override
-  Future<void> onAppResumed() async {}
+  Future<void> onAppResumed() async {
+    resumedCalls++;
+  }
+
+  @override
+  Future<void> onAppBackgrounded() async {
+    backgroundedCalls++;
+  }
+
+  int resumedCalls = 0;
+  int backgroundedCalls = 0;
 }
 
 void main() {
@@ -113,6 +123,38 @@ void main() {
     await pumpUntilIdle();
     expect(bodies.length, 3);
     expect(bodies.last['reason'], FieldSessionCoordinator.reasonMove500m);
+
+    coordinator.dispose();
+  });
+
+  test('background lifecycle switches location to background GPS profile',
+      () async {
+    final coordinator = FieldSessionCoordinator(
+      siteService: SiteService(
+        client: MockClient((request) async {
+          return http.Response(
+            jsonEncode({
+              'accepted': true,
+              'existing_in_radius': 0,
+              'missing': 0,
+              'radius_km': 1.0,
+            }),
+            202,
+          );
+        }),
+      ),
+    );
+
+    final locationService = _FakeLocationService(const LatLng(51.0, 4.0));
+    coordinator.bind(locationService: locationService);
+    coordinator.onForeground();
+    await pumpUntilIdle();
+    expect(locationService.backgroundedCalls, 0);
+
+    coordinator.onBackground();
+    await pumpUntilIdle();
+    expect(locationService.backgroundedCalls, 1);
+    expect(coordinator.isSessionActive, isTrue);
 
     coordinator.dispose();
   });

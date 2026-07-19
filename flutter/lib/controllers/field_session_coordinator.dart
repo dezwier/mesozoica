@@ -107,7 +107,14 @@ class FieldSessionCoordinator extends ChangeNotifier {
       return;
     }
     _lifecycle = AppLifecycleState.paused;
-    unawaited(_syncSession());
+    // Keep field GPS on the background-capable profile so 50 m discovery
+    // continues while the app is backgrounded or the phone is locked.
+    unawaited(_enterBackground());
+  }
+
+  Future<void> _enterBackground() async {
+    await _syncSession();
+    await _locationService?.onAppBackgrounded();
   }
 
   /// Manual scan at a map-chosen point (field mode FAB).
