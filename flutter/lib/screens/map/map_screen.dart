@@ -255,8 +255,10 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
         return;
       }
 
-      final found = status.totalInRadius ?? 0;
       final written = status.generated ?? 0;
+      final after = status.totalInRadius ?? 0;
+      // "Found" = non-exhausted sites already in radius before this write.
+      final found = (after - written).clamp(0, after);
       final radiusKm = status.radiusKm;
       final radiusLabel = radiusKm == radiusKm.roundToDouble()
           ? '${radiusKm.toInt()} km'
