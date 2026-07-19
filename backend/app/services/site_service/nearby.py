@@ -9,18 +9,19 @@ from sqlalchemy.orm import aliased
 from sqlmodel import Session, col, select
 
 from app.models.site import Site
-from app.models.site_status import SITE_STATUS_EXHAUSTED, SiteStatus
 from app.models.site_type import SiteType
+from app.models.user_site import UserSite
 from app.services.data_source_filter import normalize_data_source
 from app.services.site_service.geo_utils import haversine_km
 from app.services.site_service.list import _row_from_tuple
 from app.services.site_service.status_join import (
-    latest_site_status_subquery,
-    latest_status_join_condition,
+    latest_user_site_join_condition,
+    latest_user_site_subquery,
 )
 from app.services.site_service.summary import SiteRow
 
-_LatestStatus = aliased(SiteStatus)
+_LatestUserSite = aliased(UserSite)
+
 
 def _bbox(lat: float, lon: float, radius_km: float) -> tuple[float, float, float, float]:
     lat_radius = radius_km / 111.0
@@ -58,13 +59,13 @@ _HAVERSINE_COUNT_SQL = text(
       ) <= :radius_km
       AND NOT EXISTS (
         SELECT 1
-        FROM site_status ss
-        WHERE ss.site_id = site.site_id
-          AND ss.status = :exhausted_status
-          AND ss.timestamp = (
-            SELECT MAX(ss2.timestamp)
-            FROM site_status ss2
-            WHERE ss2.site_id = site.site_id
+        FROM user_site us
+        WHERE us.site_id = site.site_id
+          AND us.role = :exhauster_role
+          AND us.timestamp = (
+            SELECT MAX(us2.timestamp)
+            FROM user_site us2
+            WHERE us2.site_id = site.site_id
           )
       )
     """
@@ -79,17 +80,21 @@ def list_sites_in_radius(
     radius_km: float,
     data_source: str,
     limit: int = 500,
+    linked_user_id: int | None = None,
+    show_all: bool = False,
 ) -> list[SiteRow]:
+    from app.models.data_source import DATA_SOURCE_FIELD
+
     normalized_data_source = normalize_data_source(data_source)
     min_lat, max_lat, min_lon, max_lon = _bbox(lat, lon, radius_km)
-    max_ts = latest_site_status_subquery()
-    rows = session.exec(
-        select(Site, SiteType, _LatestStatus)
+    max_ts = latest_user_site_subquery()
+    stmt = (
+        select(Site, SiteType, _LatestUserSite)
         .outerjoin(SiteType, col(Site.site_type_id) == col(SiteType.id))
         .outerjoin(max_ts, col(Site.site_id) == max_ts.c.site_id)
         .outerjoin(
-            _LatestStatus,
-            latest_status_join_condition(_LatestStatus, max_ts),
+            _LatestUserSite,
+            latest_user_site_join_condition(_LatestUserSite, max_ts),
         )
         .where(
             col(Site.data_source) == normalized_data_source,
@@ -100,7 +105,26 @@ def list_sites_in_radius(
             col(Site.longitude) >= min_lon,
             col(Site.longitude) <= max_lon,
         )
-    ).all()
+    )
+    if (
+        normalized_data_source == DATA_SOURCE_FIELD
+        and not show_all
+        and linked_user_id is not None
+    ):
+        linked_sites = (
+            select(col(UserSite.site_id))
+            .where(col(UserSite.user_id) == linked_user_id)
+            .distinct()
+        )
+        stmt = stmt.where(col(Site.site_id).in_(linked_sites))
+    elif (
+        normalized_data_source == DATA_SOURCE_FIELD
+        and not show_all
+        and linked_user_id is None
+    ):
+        stmt = stmt.where(col(Site.site_id).is_(None))
+
+    rows = session.exec(stmt).all()
 
     nearby: list[SiteRow] = []
     for row in rows:
@@ -121,7 +145,9 @@ def count_sites_in_radius(
     radius_km: float,
     data_source: str,
 ) -> int:
-    """Count field/archive sites in radius, excluding latest-status ``exhausted``."""
+    """Count field/archive sites in radius, excluding latest-role ``exhauster``."""
+    from app.models.user_site import USER_SITE_ROLE_EXHAUSTER
+
     normalized_data_source = normalize_data_source(data_source)
     min_lat, max_lat, min_lon, max_lon = _bbox(lat, lon, radius_km)
     row = session.exec(
@@ -134,7 +160,7 @@ def count_sites_in_radius(
             max_lat=max_lat,
             min_lon=min_lon,
             max_lon=max_lon,
-            exhausted_status=SITE_STATUS_EXHAUSTED,
+            exhauster_role=USER_SITE_ROLE_EXHAUSTER,
         )
     ).one()
     return int(row[0])

@@ -15,12 +15,14 @@ class SiteCardFront extends StatelessWidget {
     this.titleFontSize = 36,
     this.subtitleFontSize = 10,
     this.overlayHeightFactor = 0.52,
+    this.onStatusBadgePressed,
   });
 
   final SiteSummary site;
   final double titleFontSize;
   final double subtitleFontSize;
   final double overlayHeightFactor;
+  final VoidCallback? onStatusBadgePressed;
 
   @override
   Widget build(BuildContext context) {
@@ -51,7 +53,10 @@ class SiteCardFront extends StatelessWidget {
             Positioned(
               top: 14,
               right: 14,
-              child: SiteStatusBadge(status: status),
+              child: SiteStatusBadge(
+                status: status,
+                onPressed: onStatusBadgePressed,
+              ),
             ),
           Positioned(
             left: 18,

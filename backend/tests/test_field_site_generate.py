@@ -12,7 +12,6 @@ from sqlmodel import Session, col, select
 
 from app.models.data_source import DATA_SOURCE_ARCHIVE, DATA_SOURCE_FIELD
 from app.models.site import Site
-from app.models.site_status import SITE_STATUS_HIDDEN, SiteStatus
 from app.models.site_type import SiteType
 from app.services.site_service.field_coordinate_enrich import CoordinateEnrichment
 from app.services.site_service.field_coordinate_filter import (
@@ -217,11 +216,10 @@ def test_generate_field_sites_sets_expected_fields(session: Session, monkeypatch
     assert site.min_age_ma is None
     assert site.max_age_ma is None
 
-    status = session.exec(
-        select(SiteStatus).where(col(SiteStatus.site_id) == site.site_id)
-    ).first()
-    assert status is not None
-    assert status.status == SITE_STATUS_HIDDEN
+    from app.services.site_service.list import get_site_by_id
+
+    row = get_site_by_id(session, site.site_id, data_source=DATA_SOURCE_FIELD)
+    assert row.status == "hidden"
 
 
 def test_coordinate_sampler_respects_min_separation():

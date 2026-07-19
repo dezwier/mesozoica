@@ -8,9 +8,11 @@ class SiteStatusBadge extends StatelessWidget {
   const SiteStatusBadge({
     super.key,
     required this.status,
+    this.onPressed,
   });
 
   final String status;
+  final VoidCallback? onPressed;
 
   @override
   Widget build(BuildContext context) {
@@ -18,7 +20,7 @@ class SiteStatusBadge extends StatelessWidget {
     final label = capitalizeLeadingLetter(status.trim());
     if (label.isEmpty) return const SizedBox.shrink();
 
-    return DecoratedBox(
+    final chip = DecoratedBox(
       decoration: BoxDecoration(
         color: cardTheme.cardBackground.withValues(alpha: 0.55),
         borderRadius: BorderRadius.circular(999),
@@ -39,6 +41,17 @@ class SiteStatusBadge extends StatelessWidget {
             height: 1.1,
           ),
         ),
+      ),
+    );
+
+    if (onPressed == null) return chip;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onPressed,
+        borderRadius: BorderRadius.circular(999),
+        child: chip,
       ),
     );
   }

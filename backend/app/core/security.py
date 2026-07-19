@@ -59,3 +59,21 @@ async def get_current_user(
             detail="User not found",
         )
     return user
+
+
+security_optional = HTTPBearer(auto_error=False)
+
+
+async def get_optional_current_user(
+    credentials: HTTPAuthorizationCredentials | None = Depends(security_optional),
+    session: Session = Depends(get_session),
+) -> User | None:
+    if credentials is None:
+        return None
+    payload = verify_token(credentials.credentials)
+    if payload is None:
+        return None
+    user_id = payload.get("sub")
+    if user_id is None:
+        return None
+    return session.get(User, int(user_id))

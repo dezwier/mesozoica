@@ -17,8 +17,12 @@ from app.core.database import engine
 
 from app.models.data_source import DATA_SOURCE_ARCHIVE, DATA_SOURCE_FIELD
 from app.models.site import Site
-from app.models.site_status import SITE_STATUS_EXHAUSTED, SITE_STATUS_HIDDEN, SiteStatus
 from app.models.site_type import SiteType
+from app.models.user_site import (
+    SITE_STATUS_EXHAUSTED,
+    UserSite,
+    role_to_status,
+)
 from app.services.site_service.field_coordinate_enrich import enrich_coordinate
 from app.services.site_service.field_coordinate_filter import (
     CoordinateSampleConfig,
@@ -42,14 +46,14 @@ from app.services.site_service.nearby import (
     list_sites_in_radius,
 )
 from app.services.site_service.status_join import (
-    latest_site_status_subquery,
-    latest_status_join_condition,
+    latest_user_site_join_condition,
+    latest_user_site_subquery,
 )
 from app.services.site_service.summary import SiteRow
 
 logger = logging.getLogger("field_site_generate")
 
-_LatestStatus = aliased(SiteStatus)
+_LatestUserSite = aliased(UserSite)
 FIELD_SITE_ID_START = 1_000_000_000
 PROGRESS_LOG_INTERVAL = 100
 WRITE_BATCH_SIZE = 5
@@ -283,18 +287,10 @@ def _build_field_site(
     )
 
 
-def _status_rows_for_sites(sites: list[Site]) -> list[SiteStatus]:
-    return [
-        SiteStatus(site_id=site.site_id, status=SITE_STATUS_HIDDEN)
-        for site in sites
-    ]
-
-
 def _flush_pending_sites(session: Session, pending_rows: list[Site]) -> None:
     if not pending_rows:
         return
     session.add_all(pending_rows)
-    session.add_all(_status_rows_for_sites(pending_rows))
     session.commit()
     pending_rows.clear()
 
@@ -358,6 +354,7 @@ def ensure_field_sites_nearby(
             lon=lon,
             radius_km=cfg.radius_km,
             data_source=DATA_SOURCE_FIELD,
+            show_all=True,
         )
         session.commit()
         return EnsureFieldSitesResult(
@@ -438,6 +435,7 @@ def ensure_field_sites_nearby(
         lon=lon,
         radius_km=cfg.radius_km,
         data_source=DATA_SOURCE_FIELD,
+        show_all=True,
     )
     session.commit()
     return EnsureFieldSitesResult(
@@ -490,13 +488,13 @@ def _load_existing_field_coords(
     min_separation_km: float = 0.01,
 ) -> list[tuple[float, float]]:
     """Coords of non-exhausted field sites used for min-separation sampling."""
-    max_ts = latest_site_status_subquery()
+    max_ts = latest_user_site_subquery()
     stmt = (
-        select(Site, _LatestStatus)
+        select(Site, _LatestUserSite)
         .outerjoin(max_ts, col(Site.site_id) == max_ts.c.site_id)
         .outerjoin(
-            _LatestStatus,
-            latest_status_join_condition(_LatestStatus, max_ts),
+            _LatestUserSite,
+            latest_user_site_join_condition(_LatestUserSite, max_ts),
         )
         .where(col(Site.data_source) == DATA_SOURCE_FIELD)
     )
@@ -512,13 +510,13 @@ def _load_existing_field_coords(
             col(Site.longitude) <= max_lon,
         )
     coords: list[tuple[float, float]] = []
-    for site, latest_status in session.exec(stmt).all():
+    for site, latest_user_site in session.exec(stmt).all():
         if site.latitude is None or site.longitude is None:
             continue
-        if (
-            latest_status is not None
-            and latest_status.status == SITE_STATUS_EXHAUSTED
-        ):
+        status = role_to_status(
+            latest_user_site.role if latest_user_site is not None else None
+        )
+        if status == SITE_STATUS_EXHAUSTED:
             continue
         site_lat = float(site.latitude)
         site_lon = float(site.longitude)
@@ -628,7 +626,6 @@ def _write_pending_batch(
     if not pending_rows:
         return
     session.add_all(pending_rows)
-    session.add_all(_status_rows_for_sites(pending_rows))
     session.flush()
     session.commit()
     pending_rows.clear()

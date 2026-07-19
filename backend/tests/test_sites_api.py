@@ -7,8 +7,14 @@ from sqlmodel import Session
 from app.models.dinosaur import Dinosaur
 from app.models.fossil import Fossil
 from app.models.site import Site
-from app.models.site_status import SiteStatus
 from app.models.site_type import SiteType
+from app.models.user_site import (
+    USER_SITE_ROLE_DISCOVERER,
+    USER_SITE_ROLE_PROTECTOR,
+    UserSite,
+)
+from app.models.user import User
+from app.core.security import create_access_token
 
 
 def _seed_site_type(session: Session) -> SiteType:
@@ -274,7 +280,10 @@ def test_list_sites_filters_by_data_source(client, session):
     assert archive.json()["items"][0]["site_id"] == 50001
     assert archive.json()["items"][0]["data_source"] == "archive"
 
-    field = client.get("/api/v1/sites", params={"data_source": "field"})
+    field = client.get(
+        "/api/v1/sites",
+        params={"data_source": "field", "show_all": True},
+    )
     assert field.status_code == 200
     assert field.json()["total"] == 1
     assert field.json()["items"][0]["site_id"] == 90001
@@ -295,10 +304,12 @@ def test_list_field_sites_includes_status(client, session):
             data_source="field",
         )
     )
-    session.add(SiteStatus(site_id=90002, status="hidden"))
     session.commit()
 
-    response = client.get("/api/v1/sites", params={"data_source": "field"})
+    response = client.get(
+        "/api/v1/sites",
+        params={"data_source": "field", "show_all": True},
+    )
     assert response.status_code == 200
     item = response.json()["items"][0]
     assert item["site_id"] == 90002
@@ -326,17 +337,140 @@ def test_list_field_sites_returns_latest_status(client, session):
             data_source="field",
         )
     )
+    user = User(
+        username="status_user",
+        email="status@example.com",
+        password="x",
+    )
+    session.add(user)
+    session.commit()
+    session.refresh(user)
     older = datetime.now(timezone.utc) - timedelta(days=2)
     newer = datetime.now(timezone.utc) - timedelta(hours=1)
-    session.add(SiteStatus(site_id=90003, status="hidden", timestamp=older))
-    session.add(SiteStatus(site_id=90003, status="protected", timestamp=newer))
+    session.add(
+        UserSite(
+            user_id=user.id,
+            site_id=90003,
+            role=USER_SITE_ROLE_DISCOVERER,
+            timestamp=older,
+        )
+    )
+    session.add(
+        UserSite(
+            user_id=user.id,
+            site_id=90003,
+            role=USER_SITE_ROLE_PROTECTOR,
+            timestamp=newer,
+        )
+    )
     session.commit()
 
-    response = client.get("/api/v1/sites", params={"data_source": "field"})
+    response = client.get(
+        "/api/v1/sites",
+        params={"data_source": "field", "show_all": True},
+    )
     assert response.status_code == 200
     item = response.json()["items"][0]
     assert item["site_id"] == 90003
     assert item["status"] == "protected"
+
+
+def test_list_field_sites_linked_only_by_default(client, session):
+    site_type = _seed_site_type(session)
+    session.add(
+        Site(
+            site_id=90004,
+            latitude=Decimal("42.0"),
+            longitude=Decimal("-102.0"),
+            formation="Linked Prospect",
+            rock_type="sandstone",
+            period="cretaceous",
+            site_type_id=site_type.id,
+            data_source="field",
+        )
+    )
+    session.add(
+        Site(
+            site_id=90005,
+            latitude=Decimal("43.0"),
+            longitude=Decimal("-103.0"),
+            formation="Hidden Prospect",
+            rock_type="sandstone",
+            period="cretaceous",
+            site_type_id=site_type.id,
+            data_source="field",
+        )
+    )
+    user = User(username="linker", email="linker@example.com", password="x")
+    session.add(user)
+    session.commit()
+    session.refresh(user)
+    session.add(
+        UserSite(
+            user_id=user.id,
+            site_id=90004,
+            role=USER_SITE_ROLE_DISCOVERER,
+        )
+    )
+    session.commit()
+
+    token = create_access_token({"sub": str(user.id)})
+    linked = client.get(
+        "/api/v1/sites",
+        params={"data_source": "field"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert linked.status_code == 200
+    assert linked.json()["total"] == 1
+    assert linked.json()["items"][0]["site_id"] == 90004
+
+    anonymous = client.get("/api/v1/sites", params={"data_source": "field"})
+    assert anonymous.status_code == 200
+    assert anonymous.json()["total"] == 0
+
+
+def test_discover_site_within_range(client, session):
+    site_type = _seed_site_type(session)
+    session.add(
+        Site(
+            site_id=90006,
+            latitude=Decimal("40.000000"),
+            longitude=Decimal("-100.000000"),
+            formation="Discover Me",
+            rock_type="sandstone",
+            period="cretaceous",
+            site_type_id=site_type.id,
+            data_source="field",
+        )
+    )
+    user = User(username="finder", email="finder@example.com", password="x")
+    session.add(user)
+    session.commit()
+    session.refresh(user)
+    token = create_access_token({"sub": str(user.id)})
+
+    too_far = client.post(
+        "/api/v1/sites/90006/discover",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"lat": 40.001, "lon": -100.0},
+    )
+    assert too_far.status_code == 400
+
+    ok = client.post(
+        "/api/v1/sites/90006/discover",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"lat": 40.00005, "lon": -100.0},
+    )
+    assert ok.status_code == 200
+    assert ok.json()["status"] == "discovered"
+
+    linked = client.get(
+        "/api/v1/sites",
+        params={"data_source": "field"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert linked.json()["total"] == 1
+    assert linked.json()["items"][0]["site_id"] == 90006
 
 
 def test_list_sites_rejects_invalid_data_source(client):

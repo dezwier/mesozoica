@@ -123,6 +123,15 @@ class SiteCatalogController extends ChangeNotifier {
 
   Future<void> refresh() => load(force: true);
 
+  void replaceSite(SiteSummary site) {
+    final index = _items.indexWhere((item) => item.siteId == site.siteId);
+    if (index < 0) return;
+    final updated = [..._items];
+    updated[index] = site;
+    _items = updated;
+    notifyListeners();
+  }
+
   Future<SiteListResponse> _fetchPage({required int offset}) async {
     final seed = _seed;
     if (seed == null || seed.isEmpty) {

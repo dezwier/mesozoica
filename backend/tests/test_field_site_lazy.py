@@ -14,8 +14,13 @@ from sqlmodel import Session, col, select
 from app.models.data_source import DATA_SOURCE_ARCHIVE, DATA_SOURCE_FIELD
 from app.models.field_ensure_job import FieldEnsureJob
 from app.models.site import Site
-from app.models.site_status import SITE_STATUS_HIDDEN, SiteStatus
 from app.models.site_type import SiteType
+from app.models.user_site import (
+    SITE_STATUS_HIDDEN,
+    USER_SITE_ROLE_EXHAUSTER,
+    UserSite,
+)
+from app.models.user import User
 from app.services.site_service.field_coordinate_enrich import CoordinateEnrichment
 from app.services.site_service.field_coordinate_filter import CoordinateSampler, LandPolygonFilter
 from app.services.site_service.field_generate import (
@@ -100,12 +105,6 @@ def test_ensure_generates_when_below_minimum(session: Session, monkeypatch):
         site = row.site
         assert site.data_source == DATA_SOURCE_FIELD
         assert row.status == SITE_STATUS_HIDDEN
-        assert (
-            session.exec(
-                select(SiteStatus).where(col(SiteStatus.site_id) == site.site_id)
-            ).first()
-            is not None
-        )
         distance = haversine_km(
             center_lat,
             center_lon,
@@ -158,11 +157,12 @@ def test_ensure_skips_when_minimum_already_met(session: Session, monkeypatch):
 def test_ensure_tops_up_when_sites_are_exhausted(session: Session, monkeypatch):
     from datetime import datetime, timezone
 
-    from app.models.site_status import SITE_STATUS_EXHAUSTED, SITE_STATUS_HIDDEN, SiteStatus
-
     session.add(_site_type(period="cretaceous", rock_type="sandstone"))
     session.add(_archive_site(site_id=100, lat=40.0, lon=-100.0))
+    user = User(username="exhauster", email="exhauster@example.com", password="x")
+    session.add(user)
     session.commit()
+    session.refresh(user)
 
     center_lat, center_lon = 40.0, -100.0
     for index in range(5):
@@ -177,14 +177,15 @@ def test_ensure_tops_up_when_sites_are_exhausted(session: Session, monkeypatch):
                 data_source=DATA_SOURCE_FIELD,
             )
         )
-        status = SITE_STATUS_EXHAUSTED if index < 3 else SITE_STATUS_HIDDEN
-        session.add(
-            SiteStatus(
-                site_id=site_id,
-                status=status,
-                timestamp=datetime.now(timezone.utc),
+        if index < 3:
+            session.add(
+                UserSite(
+                    user_id=user.id,
+                    site_id=site_id,
+                    role=USER_SITE_ROLE_EXHAUSTER,
+                    timestamp=datetime.now(timezone.utc),
+                )
             )
-        )
     session.commit()
 
     monkeypatch.setattr(
@@ -208,22 +209,23 @@ def test_ensure_tops_up_when_sites_are_exhausted(session: Session, monkeypatch):
     )
 
     assert result.generated == 3
-    new_statuses = list(
+    new_sites = list(
         session.exec(
-            select(SiteStatus).where(col(SiteStatus.site_id) >= FIELD_SITE_ID_START + 5)
+            select(Site).where(col(Site.site_id) >= FIELD_SITE_ID_START + 5)
         ).all()
     )
-    assert len(new_statuses) == 3
-    assert all(row.status == SITE_STATUS_HIDDEN for row in new_statuses)
+    assert len(new_sites) == 3
+    assert all(row.status == SITE_STATUS_HIDDEN for row in result.items if row.site.site_id >= FIELD_SITE_ID_START + 5)
 
 
 def test_load_existing_field_coords_skips_exhausted(session: Session):
     from datetime import datetime, timezone
 
-    from app.models.site_status import SITE_STATUS_EXHAUSTED, SITE_STATUS_HIDDEN, SiteStatus
     from app.services.site_service.field_generate import _load_existing_field_coords
 
     center_lat, center_lon = 40.0, -100.0
+    user = User(username="coord_user", email="coord@example.com", password="x")
+    session.add(user)
     session.add(
         Site(
             site_id=FIELD_SITE_ID_START,
@@ -244,17 +246,13 @@ def test_load_existing_field_coords_skips_exhausted(session: Session):
             data_source=DATA_SOURCE_FIELD,
         )
     )
+    session.commit()
+    session.refresh(user)
     session.add(
-        SiteStatus(
+        UserSite(
+            user_id=user.id,
             site_id=FIELD_SITE_ID_START,
-            status=SITE_STATUS_EXHAUSTED,
-            timestamp=datetime.now(timezone.utc),
-        )
-    )
-    session.add(
-        SiteStatus(
-            site_id=FIELD_SITE_ID_START + 1,
-            status=SITE_STATUS_HIDDEN,
+            role=USER_SITE_ROLE_EXHAUSTER,
             timestamp=datetime.now(timezone.utc),
         )
     )

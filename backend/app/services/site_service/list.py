@@ -10,13 +10,14 @@ from sqlalchemy.orm import aliased
 from sqlmodel import Session, col, func as sqlmodel_func, select
 
 from app.core.exceptions import NotFoundError, ValidationError
+from app.models.data_source import DATA_SOURCE_FIELD
 from app.models.site import Site
-from app.models.site_status import SiteStatus
 from app.models.site_type import SiteType
+from app.models.user_site import UserSite, role_to_status
 from app.services.data_source_filter import normalize_data_source
 from app.services.site_service.status_join import (
-    latest_site_status_subquery,
-    latest_status_join_condition,
+    latest_user_site_join_condition,
+    latest_user_site_subquery,
 )
 from app.services.site_service.summary import SiteRow
 from app.services.site_type_image_service.sync import CURATED_MEDIA_PATH
@@ -26,7 +27,7 @@ _MAX_SEED_LEN = 64
 MESOZOIC_YOUNGER_MA = 66.0
 MESOZOIC_OLDER_MA = 252.0
 
-_LatestStatus = aliased(SiteStatus)
+_LatestUserSite = aliased(UserSite)
 
 
 def list_sites(
@@ -42,8 +43,14 @@ def list_sites(
     has_custom_image: bool = False,
     data_source: str | None = None,
     site_id_min: int | None = None,
+    linked_user_id: int | None = None,
+    show_all: bool = False,
 ) -> tuple[list[SiteRow], int]:
-    """Return paginated site rows joined with site_type."""
+    """Return paginated site rows joined with site_type.
+
+    For field sites, pass ``linked_user_id`` to restrict to sites linked via
+    ``user_site`` unless ``show_all`` is True.
+    """
     capped_limit = max(1, min(limit, 500))
     capped_offset = max(0, offset)
     normalized_data_source = normalize_data_source(data_source)
@@ -61,6 +68,8 @@ def list_sites(
         has_custom_image=has_custom_image,
         data_source=normalized_data_source,
         site_id_min=site_id_min,
+        linked_user_id=linked_user_id,
+        show_all=show_all,
     )
 
     total = session.exec(
@@ -107,14 +116,14 @@ def get_site_by_id(
     data_source: str | None = None,
 ) -> SiteRow:
     normalized_data_source = normalize_data_source(data_source)
-    max_ts = latest_site_status_subquery()
+    max_ts = latest_user_site_subquery()
     row = session.exec(
-        select(Site, SiteType, _LatestStatus)
+        select(Site, SiteType, _LatestUserSite)
         .outerjoin(SiteType, col(Site.site_type_id) == col(SiteType.id))
         .outerjoin(max_ts, col(Site.site_id) == max_ts.c.site_id)
         .outerjoin(
-            _LatestStatus,
-            latest_status_join_condition(_LatestStatus, max_ts),
+            _LatestUserSite,
+            latest_user_site_join_condition(_LatestUserSite, max_ts),
         )
         .where(
             col(Site.site_id) == site_id,
@@ -160,18 +169,34 @@ def _filtered_select(
     has_custom_image: bool,
     data_source: str,
     site_id_min: int | None = None,
+    linked_user_id: int | None = None,
+    show_all: bool = False,
 ):
-    max_ts = latest_site_status_subquery()
+    max_ts = latest_user_site_subquery()
     stmt = (
-        select(Site, SiteType, _LatestStatus)
+        select(Site, SiteType, _LatestUserSite)
         .outerjoin(SiteType, col(Site.site_type_id) == col(SiteType.id))
         .outerjoin(max_ts, col(Site.site_id) == max_ts.c.site_id)
         .outerjoin(
-            _LatestStatus,
-            latest_status_join_condition(_LatestStatus, max_ts),
+            _LatestUserSite,
+            latest_user_site_join_condition(_LatestUserSite, max_ts),
         )
         .where(col(Site.data_source) == data_source)
     )
+    if (
+        data_source == DATA_SOURCE_FIELD
+        and not show_all
+        and linked_user_id is not None
+    ):
+        linked_sites = (
+            select(col(UserSite.site_id))
+            .where(col(UserSite.user_id) == linked_user_id)
+            .distinct()
+        )
+        stmt = stmt.where(col(Site.site_id).in_(linked_sites))
+    elif data_source == DATA_SOURCE_FIELD and not show_all and linked_user_id is None:
+        # Field + linked-only without a user → empty result set.
+        stmt = stmt.where(col(Site.site_id).is_(None))
     if site_id_min is not None:
         stmt = stmt.where(col(Site.site_id) > site_id_min)
     if has_custom_image:
@@ -226,6 +251,11 @@ def _list_sites_random(
 
 
 def _row_from_tuple(row: tuple) -> SiteRow:
-    site, site_type, site_status = row
-    status_value = site_status.status if site_status is not None else None
+    site, site_type, latest_user_site = row
+    if latest_user_site is not None:
+        status_value = role_to_status(latest_user_site.role)
+    elif site.data_source == DATA_SOURCE_FIELD:
+        status_value = role_to_status(None)
+    else:
+        status_value = None
     return SiteRow(site=site, site_type=site_type, status=status_value)

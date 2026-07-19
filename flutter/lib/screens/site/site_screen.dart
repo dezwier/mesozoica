@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../controllers/catalog_mode_controller.dart';
 import '../../controllers/site_catalog_controller.dart';
 import '../../widgets/cards/site_turnable_card.dart';
 
@@ -133,9 +134,12 @@ class SiteScreenState extends State<SiteScreen> {
     }
 
     if (catalog.isEmpty) {
+      final isField = context.watch<CatalogModeController>().isField;
       return Center(
         child: Text(
-          'No sites in the catalog yet.',
+          isField
+              ? 'No linked field sites yet.'
+              : 'No sites in the catalog yet.',
           style: Theme.of(context).textTheme.bodyLarge,
         ),
       );
@@ -157,7 +161,10 @@ class SiteScreenState extends State<SiteScreen> {
           }
 
           final site = catalog.items[index];
-          return SiteTurnableCard(site: site);
+          return SiteTurnableCard(
+            site: site,
+            onSiteUpdated: catalog.replaceSite,
+          );
         },
       ),
     );

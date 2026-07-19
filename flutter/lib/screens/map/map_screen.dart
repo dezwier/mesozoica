@@ -260,9 +260,9 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
             ),
             if (_scanBannerMessage != null)
               Positioned(
-                top: 12,
+                top: isFieldMode ? 64 : 12,
                 left: 16,
-                right: 16,
+                right: isFieldMode ? 160 : 16,
                 child: Material(
                   color: Theme.of(context)
                       .colorScheme
@@ -297,11 +297,56 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
                   ),
                 ),
               ),
+            if (isFieldMode)
+              Positioned(
+                top: 12,
+                right: 12,
+                child: Material(
+                  color: Theme.of(context)
+                      .colorScheme
+                      .surfaceContainerHighest
+                      .withValues(alpha: 0.92),
+                  borderRadius: BorderRadius.circular(12),
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(8, 4, 4, 4),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              'Show all',
+                              style: Theme.of(context).textTheme.labelMedium,
+                            ),
+                            Checkbox(
+                              value: mapData.showAllFieldSites,
+                              materialTapTargetSize:
+                                  MaterialTapTargetSize.shrinkWrap,
+                              visualDensity: VisualDensity.compact,
+                              onChanged: (value) {
+                                mapData.setShowAllFieldSites(value ?? false);
+                              },
+                            ),
+                          ],
+                        ),
+                        const SizedBox(width: 4),
+                        FloatingActionButton.small(
+                          heroTag: 'scan_field_area',
+                          onPressed: _onScanFieldArea,
+                          tooltip: 'Scan map center for field sites',
+                          child: const Icon(Icons.radar_outlined),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
             if (mapData.loading)
               Positioned(
-                top: locationService.error != null ? 56 : 12,
+                top: locationService.error != null || isFieldMode ? 56 : 12,
                 left: 0,
-                right: 0,
+                right: isFieldMode ? 160 : 0,
                 child: Center(
                   child: Card(
                     child: Padding(
@@ -329,7 +374,7 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
               Positioned(
                 top: 12,
                 left: 16,
-                right: 16,
+                right: isFieldMode ? 160 : 16,
                 child: Material(
                   color: Theme.of(context)
                       .colorScheme
@@ -372,20 +417,12 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
                 hasActiveFilters: mapData.hasActiveFilters,
                 onPressed: () => _openFilterSheet(mapData, isFieldMode),
               ),
-              scanFab: isFieldMode
-                  ? FloatingActionButton.small(
-                      heroTag: 'scan_field_area',
-                      onPressed: _onScanFieldArea,
-                      tooltip: 'Scan map center for field sites',
-                      child: const Icon(Icons.radar_outlined),
-                    )
-                  : null,
             ),
             if (locationService.error != null)
               Positioned(
-                top: mapData.loading ? 56 : 12,
+                top: mapData.loading || isFieldMode ? 56 : 12,
                 left: 16,
-                right: 16,
+                right: isFieldMode ? 160 : 16,
                 child: Material(
                   color: Theme.of(context)
                       .colorScheme

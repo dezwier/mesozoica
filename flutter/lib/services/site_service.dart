@@ -6,11 +6,28 @@ import 'package:http/http.dart' as http;
 import '../config/app_config.dart';
 import '../controllers/catalog_mode_controller.dart';
 import '../models/site.dart';
+import 'token_storage.dart';
 
 class SiteService {
   SiteService({http.Client? client}) : _client = client ?? http.Client();
 
   final http.Client _client;
+
+  Future<Map<String, String>> _headers({bool jsonBody = false}) async {
+    final headers = <String, String>{};
+    if (jsonBody) {
+      headers['Content-Type'] = 'application/json';
+    }
+    try {
+      final token = await TokenStorage.loadToken();
+      if (token != null && token.isNotEmpty) {
+        headers['Authorization'] = 'Bearer $token';
+      }
+    } catch (_) {
+      // SharedPreferences unavailable in some unit-test environments.
+    }
+    return headers;
+  }
 
   Future<SiteListResponse> fetchSites({
     int limit = 200,
@@ -23,6 +40,7 @@ class SiteService {
     bool hasCustomImage = false,
     CatalogDataSource dataSource = CatalogDataSource.archive,
     int? siteIdMin,
+    bool showAll = false,
   }) async {
     final uri = AppConfig.sitesUri(
       limit: limit,
@@ -35,12 +53,14 @@ class SiteService {
       hasCustomImage: hasCustomImage,
       dataSource: dataSource,
       siteIdMin: siteIdMin,
+      showAll: showAll,
     );
     if (kDebugMode) {
       debugPrint('SiteService GET $uri');
     }
-    final response =
-        await _client.get(uri).timeout(const Duration(seconds: 15));
+    final response = await _client
+        .get(uri, headers: await _headers())
+        .timeout(const Duration(seconds: 15));
 
     if (response.statusCode != 200) {
       throw SiteServiceException(
@@ -63,8 +83,9 @@ class SiteService {
     if (kDebugMode) {
       debugPrint('SiteService GET $uri');
     }
-    final response =
-        await _client.get(uri).timeout(const Duration(seconds: 15));
+    final response = await _client
+        .get(uri, headers: await _headers())
+        .timeout(const Duration(seconds: 15));
 
     if (response.statusCode == 404) {
       throw SiteServiceException('Site not found');
@@ -82,23 +103,57 @@ class SiteService {
     return SiteSummary.fromJson(decoded);
   }
 
+  Future<SiteSummary> discoverSite({
+    required int siteId,
+    required double lat,
+    required double lon,
+  }) async {
+    final uri = AppConfig.siteDiscoverUri(siteId);
+    if (kDebugMode) {
+      debugPrint('SiteService POST $uri');
+    }
+    final response = await _client
+        .post(
+          uri,
+          headers: await _headers(jsonBody: true),
+          body: jsonEncode({'lat': lat, 'lon': lon}),
+        )
+        .timeout(const Duration(seconds: 15));
+
+    if (response.statusCode != 200) {
+      final detail = _errorDetail(response.body);
+      throw SiteServiceException(
+        detail ?? 'Failed to discover site (${response.statusCode})',
+      );
+    }
+
+    final decoded = jsonDecode(response.body);
+    if (decoded is! Map<String, dynamic>) {
+      throw const SiteServiceException('Invalid discover response');
+    }
+    return SiteSummary.fromJson(decoded);
+  }
+
   Future<SiteNearbyResponse> fetchNearbySites({
     required double lat,
     required double lon,
     double radiusKm = 1.0,
     CatalogDataSource dataSource = CatalogDataSource.field,
+    bool showAll = false,
   }) async {
     final uri = AppConfig.sitesNearbyUri(
       lat: lat,
       lon: lon,
       radiusKm: radiusKm,
       dataSource: dataSource,
+      showAll: showAll,
     );
     if (kDebugMode) {
       debugPrint('SiteService GET $uri');
     }
-    final response =
-        await _client.get(uri).timeout(const Duration(seconds: 60));
+    final response = await _client
+        .get(uri, headers: await _headers())
+        .timeout(const Duration(seconds: 60));
 
     if (response.statusCode != 200) {
       throw SiteServiceException(
@@ -134,7 +189,7 @@ class SiteService {
     final response = await _client
         .post(
           uri,
-          headers: const {'Content-Type': 'application/json'},
+          headers: await _headers(jsonBody: true),
           body: jsonEncode(body),
         )
         .timeout(const Duration(seconds: 3));
@@ -157,8 +212,9 @@ class SiteService {
     if (kDebugMode) {
       debugPrint('SiteService GET $uri');
     }
-    final response =
-        await _client.get(uri).timeout(const Duration(seconds: 15));
+    final response = await _client
+        .get(uri, headers: await _headers())
+        .timeout(const Duration(seconds: 15));
 
     if (response.statusCode != 200) {
       throw SiteServiceException(
@@ -178,8 +234,9 @@ class SiteService {
     if (kDebugMode) {
       debugPrint('SiteService GET $uri');
     }
-    final response =
-        await _client.get(uri).timeout(const Duration(seconds: 15));
+    final response = await _client
+        .get(uri, headers: await _headers())
+        .timeout(const Duration(seconds: 15));
 
     if (response.statusCode != 200) {
       throw SiteServiceException(
@@ -201,8 +258,9 @@ class SiteService {
     if (kDebugMode) {
       debugPrint('SiteService GET $uri');
     }
-    final response =
-        await _client.get(uri).timeout(const Duration(seconds: 15));
+    final response = await _client
+        .get(uri, headers: await _headers())
+        .timeout(const Duration(seconds: 15));
 
     if (response.statusCode != 200) {
       throw SiteServiceException(
@@ -215,6 +273,20 @@ class SiteService {
       throw const SiteServiceException('Invalid site groups response');
     }
     return SiteDinoFossilGroupListResponse.fromJson(decoded).items;
+  }
+
+  String? _errorDetail(String body) {
+    try {
+      final decoded = jsonDecode(body);
+      if (decoded is Map<String, dynamic>) {
+        final detail = decoded['detail'];
+        if (detail is Map) {
+          return detail['message'] as String? ?? detail.toString();
+        }
+        if (detail is String) return detail;
+      }
+    } catch (_) {}
+    return null;
   }
 
   void dispose() {

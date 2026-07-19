@@ -75,6 +75,7 @@ class MapController extends ChangeNotifier {
   Timer? _fieldPollTimer;
   int _fieldPollBackoffSeq = 0;
   SiteMapFilters _filters = SiteMapFilters();
+  bool _showAllFieldSites = false;
 
   _CatalogSnapshot get _snap => _snapshots[_dataSource]!;
 
@@ -93,6 +94,18 @@ class MapController extends ChangeNotifier {
   SiteMapFilters get filters => _filters;
 
   bool get hasActiveFilters => _filters.hasActiveFilters;
+
+  bool get showAllFieldSites => _showAllFieldSites;
+
+  void setShowAllFieldSites(bool value) {
+    if (_showAllFieldSites == value) return;
+    _showAllFieldSites = value;
+    if (_isFieldMode) {
+      load(force: true);
+    } else {
+      notifyListeners();
+    }
+  }
 
   void applyFilters(SiteMapFilters filters) {
     _filters = filters.copyWith(filterByStatus: _isFieldMode);
@@ -269,6 +282,15 @@ class MapController extends ChangeNotifier {
     }
   }
 
+  void upsertSite(SiteSummary site) {
+    final snap = _snapshots[CatalogDataSource.field]!;
+    _mergeSites(snap, [site]);
+    if (_selectedSite?.siteId == site.siteId) {
+      _selectedSite = site;
+    }
+    notifyListeners();
+  }
+
   void _replaceCachedSite(SiteSummary site) {
     final snap = _snap;
     final index = snap.geoSites.indexWhere((s) => s.siteId == site.siteId);
@@ -310,6 +332,7 @@ class MapController extends ChangeNotifier {
           offset: offset,
           sort: 'name',
           dataSource: CatalogDataSource.field,
+          showAll: _showAllFieldSites,
         );
         if (seq != snap.loadSeq) return;
 
@@ -409,6 +432,7 @@ class MapController extends ChangeNotifier {
           sort: 'name',
           dataSource: CatalogDataSource.field,
           siteIdMin: siteIdMin,
+          showAll: _showAllFieldSites,
         );
         if (seq != snap.loadSeq) return;
         if (response.items.isEmpty) return;

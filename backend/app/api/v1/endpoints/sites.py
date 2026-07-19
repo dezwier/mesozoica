@@ -8,7 +8,9 @@ from sqlmodel import Session
 
 from app.core.database import get_session
 from app.core.exceptions import ValidationError
+from app.core.security import get_current_user, get_optional_current_user
 from app.models.data_source import DATA_SOURCE_ARCHIVE, DATA_SOURCE_FIELD
+from app.models.user import User
 from app.schemas.site import (
     FieldEnsureResponse,
     SiteDinosaurThumbListResponse,
@@ -19,6 +21,7 @@ from app.schemas.site import (
     SiteSummary,
 )
 from app.services.site_service import (
+    discover_site,
     get_site_by_id,
     list_site_dino_fossil_groups,
     list_site_dinosaurs,
@@ -43,9 +46,31 @@ class FieldEnsureRequest(BaseModel):
     reason: str | None = Field(default=None, max_length=32)
 
 
+class DiscoverSiteRequest(BaseModel):
+    lat: float = Field(ge=-90, le=90)
+    lon: float = Field(ge=-180, le=180)
+
+
+def _field_visibility(
+    *,
+    data_source: str,
+    show_all: bool,
+    current_user: User | None,
+) -> tuple[int | None, bool]:
+    """Return (linked_user_id, show_all) for field list/nearby filtering."""
+    if data_source != DATA_SOURCE_FIELD:
+        return None, True
+    if show_all:
+        return None, True
+    if current_user is None:
+        return None, False
+    return current_user.id, False
+
+
 @router.get("", response_model=SiteListResponse)
 def get_sites(
     session: Session = Depends(get_session),
+    current_user: User | None = Depends(get_optional_current_user),
     limit: int = Query(default=200, ge=1, le=500),
     offset: int = Query(default=0, ge=0),
     sort: str = Query(default="name"),
@@ -56,9 +81,15 @@ def get_sites(
     has_custom_image: bool = Query(default=False),
     data_source: str = Query(default=DATA_SOURCE_ARCHIVE),
     site_id_min: int | None = Query(default=None, ge=0),
+    show_all: bool = Query(default=False),
 ) -> SiteListResponse:
     if sort not in ("name", "random"):
         raise ValidationError("sort must be one of: name, random")
+    linked_user_id, effective_show_all = _field_visibility(
+        data_source=data_source,
+        show_all=show_all,
+        current_user=current_user,
+    )
     rows, total = list_sites(
         session,
         limit=limit,
@@ -71,6 +102,8 @@ def get_sites(
         has_custom_image=has_custom_image,
         data_source=data_source,
         site_id_min=site_id_min,
+        linked_user_id=linked_user_id,
+        show_all=effective_show_all,
     )
     types_by_period = load_site_types_by_period(session)
     items = [site_row_to_summary(row, types_by_period=types_by_period) for row in rows]
@@ -86,17 +119,26 @@ def get_sites(
 @router.get("/nearby", response_model=SiteNearbyResponse)
 def get_sites_nearby(
     session: Session = Depends(get_session),
+    current_user: User | None = Depends(get_optional_current_user),
     lat: float = Query(..., ge=-90, le=90),
     lon: float = Query(..., ge=-180, le=180),
     radius_km: float = Query(default=1.0, gt=0, le=50),
     data_source: str = Query(default=DATA_SOURCE_FIELD),
+    show_all: bool = Query(default=False),
 ) -> SiteNearbyResponse:
+    linked_user_id, effective_show_all = _field_visibility(
+        data_source=data_source,
+        show_all=show_all,
+        current_user=current_user,
+    )
     rows = list_sites_in_radius(
         session,
         lat=lat,
         lon=lon,
         radius_km=radius_km,
         data_source=data_source,
+        linked_user_id=linked_user_id,
+        show_all=effective_show_all,
     )
     types_by_period = load_site_types_by_period(session)
     items = [site_row_to_summary(row, types_by_period=types_by_period) for row in rows]
@@ -134,6 +176,24 @@ def post_field_site_ensure(body: FieldEnsureRequest) -> FieldEnsureResponse:
         missing=None,
         radius_km=body.radius_km,
     )
+
+
+@router.post("/{site_id}/discover", response_model=SiteSummary)
+def post_discover_site(
+    site_id: int,
+    body: DiscoverSiteRequest,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+) -> SiteSummary:
+    row = discover_site(
+        session,
+        site_id=site_id,
+        user_id=current_user.id,
+        lat=body.lat,
+        lon=body.lon,
+    )
+    types_by_period = load_site_types_by_period(session)
+    return site_row_to_summary(row, types_by_period=types_by_period)
 
 
 @router.get("/{site_id}", response_model=SiteSummary)

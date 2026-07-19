@@ -176,6 +176,7 @@ class AppConfig {
     bool hasCustomImage = false,
     CatalogDataSource dataSource = CatalogDataSource.archive,
     int? siteIdMin,
+    bool showAll = false,
   }) {
     final params = <String, String>{
       'limit': '$limit',
@@ -200,6 +201,9 @@ class AppConfig {
       params['site_id_min'] = '$siteIdMin';
     }
     params['data_source'] = dataSource.apiValue;
+    if (showAll) {
+      params['show_all'] = 'true';
+    }
     return Uri.parse('$baseApiUrl/api/v1/sites').replace(
       queryParameters: params,
     );
@@ -216,19 +220,27 @@ class AppConfig {
         queryParameters: {'data_source': dataSource.apiValue},
       );
 
+  static Uri siteDiscoverUri(int id) =>
+      Uri.parse('$baseApiUrl/api/v1/sites/$id/discover');
+
   static Uri sitesNearbyUri({
     required double lat,
     required double lon,
     double radiusKm = 1.0,
     CatalogDataSource dataSource = CatalogDataSource.field,
+    bool showAll = false,
   }) {
+    final params = <String, String>{
+      'lat': '$lat',
+      'lon': '$lon',
+      'radius_km': '$radiusKm',
+      'data_source': dataSource.apiValue,
+    };
+    if (showAll) {
+      params['show_all'] = 'true';
+    }
     return Uri.parse('$baseApiUrl/api/v1/sites/nearby').replace(
-      queryParameters: {
-        'lat': '$lat',
-        'lon': '$lon',
-        'radius_km': '$radiusKm',
-        'data_source': dataSource.apiValue,
-      },
+      queryParameters: params,
     );
   }
 

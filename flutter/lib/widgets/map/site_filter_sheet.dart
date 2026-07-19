@@ -96,6 +96,10 @@ class _SiteFilterSheetState extends State<SiteFilterSheet> {
     });
   }
 
+  void _selectOnly(void Function(Set<String> next) assign, String value) {
+    setState(() => assign({value}));
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -122,39 +126,70 @@ class _SiteFilterSheetState extends State<SiteFilterSheet> {
                 ),
               ),
               const SizedBox(height: 16),
-              if (widget.showStatusSection) ...[
-                _sectionTitle(theme, 'Status'),
-                ...siteStatusOptions.map(
-                  (value) => _checkboxTile(
-                    theme: theme,
-                    value: _pendingStatuses.contains(value),
-                    label: siteFilterOptionLabel(value),
-                    onChanged: (selected) =>
-                        _toggle(_pendingStatuses, value, selected),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        if (widget.showStatusSection) ...[
+                          _sectionTitle(theme, 'Status'),
+                          ...siteStatusOptions.map(
+                            (value) => _checkboxTile(
+                              theme: theme,
+                              value: _pendingStatuses.contains(value),
+                              label: siteFilterOptionLabel(value),
+                              onChanged: (selected) =>
+                                  _toggle(_pendingStatuses, value, selected),
+                              onLongPress: () => _selectOnly(
+                                (next) => _pendingStatuses = next,
+                                value,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                        ],
+                        _sectionTitle(theme, 'Period'),
+                        ...sitePeriodOptions.map(
+                          (value) => _checkboxTile(
+                            theme: theme,
+                            value: _pendingPeriods.contains(value),
+                            label: siteFilterOptionLabel(value),
+                            onChanged: (selected) =>
+                                _toggle(_pendingPeriods, value, selected),
+                            onLongPress: () => _selectOnly(
+                              (next) => _pendingPeriods = next,
+                              value,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-                const SizedBox(height: 8),
-              ],
-              _sectionTitle(theme, 'Period'),
-              ...sitePeriodOptions.map(
-                (value) => _checkboxTile(
-                  theme: theme,
-                  value: _pendingPeriods.contains(value),
-                  label: siteFilterOptionLabel(value),
-                  onChanged: (selected) =>
-                      _toggle(_pendingPeriods, value, selected),
-                ),
-              ),
-              const SizedBox(height: 8),
-              _sectionTitle(theme, 'Rock type'),
-              ...siteRockTypeOptions.map(
-                (value) => _checkboxTile(
-                  theme: theme,
-                  value: _pendingRockTypes.contains(value),
-                  label: siteFilterOptionLabel(value),
-                  onChanged: (selected) =>
-                      _toggle(_pendingRockTypes, value, selected),
-                ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        _sectionTitle(theme, 'Rock type'),
+                        ...siteRockTypeOptions.map(
+                          (value) => _checkboxTile(
+                            theme: theme,
+                            value: _pendingRockTypes.contains(value),
+                            label: siteFilterOptionLabel(value),
+                            onChanged: (selected) =>
+                                _toggle(_pendingRockTypes, value, selected),
+                            onLongPress: () => _selectOnly(
+                              (next) => _pendingRockTypes = next,
+                              value,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 16),
               Row(
@@ -177,7 +212,8 @@ class _SiteFilterSheetState extends State<SiteFilterSheet> {
               ),
               const SizedBox(height: 4),
               Text(
-                'Unchecking options hides matching markers on the map.',
+                'Unchecking options hides matching markers on the map. '
+                'Long-press a checkbox to keep only that option.',
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: colorScheme.onSurfaceVariant,
                 ),
@@ -194,20 +230,36 @@ class _SiteFilterSheetState extends State<SiteFilterSheet> {
     required bool value,
     required String label,
     required ValueChanged<bool?> onChanged,
+    required VoidCallback onLongPress,
   }) {
     return SizedBox(
-      height: 32,
-      child: CheckboxListTile(
-        contentPadding: EdgeInsets.zero,
-        controlAffinity: ListTileControlAffinity.leading,
-        dense: true,
-        visualDensity: const VisualDensity(horizontal: -4, vertical: -4),
-        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-        value: value,
-        onChanged: onChanged,
-        title: Text(
-          label,
-          style: theme.textTheme.bodyMedium,
+      height: 44,
+      child: InkWell(
+        onTap: () => onChanged(!value),
+        onLongPress: onLongPress,
+        child: Row(
+          children: [
+            SizedBox(
+              width: 32,
+              height: 44,
+              child: IgnorePointer(
+                child: Checkbox(
+                  value: value,
+                  onChanged: (_) {},
+                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  visualDensity:
+                      const VisualDensity(horizontal: -4, vertical: -4),
+                ),
+              ),
+            ),
+            const SizedBox(width: 4),
+            Expanded(
+              child: Text(
+                label,
+                style: theme.textTheme.bodyMedium,
+              ),
+            ),
+          ],
         ),
       ),
     );
