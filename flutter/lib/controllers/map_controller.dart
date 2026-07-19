@@ -19,6 +19,10 @@ class MapController extends ChangeNotifier {
 
   static const pageSize = 500;
   static const fieldPollInterval = Duration(seconds: 60);
+  static const _fieldPollBackoffDelays = [
+    Duration(seconds: 5),
+    Duration(seconds: 15),
+  ];
 
   final SiteService _service;
   final CatalogModeController? _catalogModeController;
@@ -37,6 +41,7 @@ class MapController extends ChangeNotifier {
   int _loadedCatalog = 0;
   int _maxFieldSiteId = 0;
   Timer? _fieldPollTimer;
+  int _fieldPollBackoffSeq = 0;
 
   List<SiteSummary> get geoSites => List.unmodifiable(_geoSites);
   bool get loading => _loading;
@@ -106,11 +111,35 @@ class MapController extends ChangeNotifier {
     _loadSeq++;
     _loading = false;
     _stopFieldPoll();
+    _stopFieldPollBackoff();
     notifyListeners();
   }
 
   Future<void> refresh() async {
     load(force: true);
+  }
+
+  /// Poll for newly generated field sites soon after an ensure request.
+  void scheduleFieldPollAfterEnsure() {
+    if (!_isFieldMode) return;
+    _stopFieldPollBackoff();
+    final seq = _loadSeq;
+    _fieldPollBackoffSeq = seq;
+    unawaited(_pollNewFieldSites(seq));
+    for (final delay in _fieldPollBackoffDelays) {
+      Future<void>.delayed(delay, () {
+        if (seq != _fieldPollBackoffSeq || seq != _loadSeq || !_isFieldMode) {
+          return;
+        }
+        unawaited(_pollNewFieldSites(seq));
+      });
+    }
+  }
+
+  /// Immediate poll for new field sites (field mode only).
+  Future<void> pollNow() async {
+    if (!_isFieldMode) return;
+    await _pollNewFieldSites(_loadSeq);
   }
 
   void selectSite(SiteSummary site) {
@@ -258,6 +287,10 @@ class MapController extends ChangeNotifier {
   void _stopFieldPoll() {
     _fieldPollTimer?.cancel();
     _fieldPollTimer = null;
+  }
+
+  void _stopFieldPollBackoff() {
+    _fieldPollBackoffSeq++;
   }
 
   Future<void> _pollNewFieldSites(int seq) async {

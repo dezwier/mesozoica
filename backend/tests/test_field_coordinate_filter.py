@@ -5,6 +5,7 @@ from __future__ import annotations
 import random
 from pathlib import Path
 
+import pytest
 from shapely.geometry import box
 
 from app.services.site_service.field_coordinate_enrich import CoordinateEnrichment, enrich_coordinate
@@ -16,6 +17,7 @@ from app.services.site_service.field_coordinate_filter import (
     PolygonSetFilter,
     WaterExclusionFilter,
     build_coordinate_filter,
+    build_osm_coordinate_filter,
     clear_coordinate_filter_cache,
     load_land_polygon_filter,
     resolve_land_mask_path,
@@ -73,32 +75,34 @@ def test_load_land_polygon_filter_is_cached():
     assert first is second
 
 
-def test_warm_coordinate_filter_cache_loads_default_dataset():
-    clear_coordinate_filter_cache()
-    filt = warm_coordinate_filter_cache()
-    if filt.name == "composite":
-        assert len(filt.filters) == 2
-    else:
-        assert filt.name == "land"
-        assert isinstance(filt, LandPolygonFilter)
-        assert filt.polygon_count > 1000
-
-
-def test_default_land_dataset_is_10m():
-    assert resolve_land_mask_path().name == "natural_earth_land_10m.geojson"
-    assert resolve_land_mask_path().exists()
-
-
-def test_natural_earth_fallback_matches_known_land_and_water_points(monkeypatch):
+def test_warm_coordinate_filter_cache_requires_osm_or_override(monkeypatch):
     monkeypatch.setattr(
         "app.services.site_service.field_coordinate_filter.osm_coordinate_masks_available",
         lambda: False,
     )
     clear_coordinate_filter_cache()
-    filt = build_coordinate_filter()
+    with pytest.raises(RuntimeError, match="OSM coordinate masks required"):
+        warm_coordinate_filter_cache()
 
-    assert filt.allows(40.7128, -74.0060) is True  # Manhattan
-    assert filt.allows(25.0, -40.0) is False  # mid-Atlantic
+
+def test_build_coordinate_filter_allows_land_mask_override():
+    clear_coordinate_filter_cache()
+    filt = build_coordinate_filter(
+        land_mask_path=str(resolve_land_mask_path()),
+    )
+    assert filt.name == "land"
+    assert isinstance(filt, LandPolygonFilter)
+    assert filt.polygon_count > 1000
+
+
+def test_build_osm_coordinate_filter_requires_masks(monkeypatch):
+    monkeypatch.setattr(
+        "app.services.site_service.field_coordinate_filter.osm_coordinate_masks_available",
+        lambda: False,
+    )
+    clear_coordinate_filter_cache()
+    with pytest.raises(RuntimeError, match="OSM coordinate masks required"):
+        build_osm_coordinate_filter()
 
 
 def test_enrich_coordinate_returns_structured_metadata(monkeypatch):

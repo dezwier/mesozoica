@@ -137,7 +137,7 @@ class SiteService {
           headers: const {'Content-Type': 'application/json'},
           body: jsonEncode(body),
         )
-        .timeout(const Duration(seconds: 10));
+        .timeout(const Duration(seconds: 3));
 
     if (response.statusCode != 202) {
       throw SiteServiceException(

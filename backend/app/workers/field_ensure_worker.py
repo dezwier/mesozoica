@@ -72,6 +72,7 @@ def process_one_job(*, worker_id: str) -> bool:
             cell=job.cell_key,
             written=result.generated,
             total_in_radius=result.total_in_radius,
+            skipped=result.generated == 0,
             elapsed_s=round(time.monotonic() - started, 1),
             job_id=job.id,
         )
@@ -116,9 +117,13 @@ def main() -> None:
     print("field_ensure_worker: starting", flush=True)
     run_migrations()
     print("field_ensure_worker: migrations complete", flush=True)
-    ensure_osm_coordinate_masks_on_disk()
-    print("field_ensure_worker: coordinate masks ready", flush=True)
-    warm_coordinate_filter_cache()
+    try:
+        ensure_osm_coordinate_masks_on_disk()
+        print("field_ensure_worker: coordinate masks ready", flush=True)
+        warm_coordinate_filter_cache()
+    except RuntimeError as exc:
+        logging.error("field_ensure_worker: %s", exc)
+        raise SystemExit(1) from exc
     run_forever()
 
 

@@ -112,7 +112,7 @@ def get_sites_nearby(
 def post_field_site_ensure(body: FieldEnsureRequest) -> FieldEnsureResponse:
     config = FieldSiteLazyConfig(radius_km=body.radius_km)
     reason = normalize_reason(body.reason)
-    existing, missing, accepted = schedule_field_site_ensure(
+    accepted = schedule_field_site_ensure(
         lat=body.lat,
         lon=body.lon,
         config=config,
@@ -126,27 +126,13 @@ def post_field_site_ensure(body: FieldEnsureRequest) -> FieldEnsureResponse:
         lon=body.lon,
         radius_km=body.radius_km,
         cell=cell_key(body.lat, body.lon, body.radius_km),
-        existing=existing,
-        missing=missing,
-        enqueued=accepted and missing > 0,
+        enqueued=accepted,
         written=0,
     )
-    if missing == 0:
-        log_field_event(
-            "ensure_complete",
-            service="api",
-            reason=reason,
-            lat=body.lat,
-            lon=body.lon,
-            radius_km=body.radius_km,
-            cell=cell_key(body.lat, body.lon, body.radius_km),
-            written=0,
-            total_in_radius=existing,
-        )
     return FieldEnsureResponse(
         accepted=accepted,
-        existing_in_radius=existing,
-        missing=missing,
+        existing_in_radius=None,
+        missing=None,
         radius_km=body.radius_km,
     )
 

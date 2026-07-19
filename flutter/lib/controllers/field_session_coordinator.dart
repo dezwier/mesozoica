@@ -23,6 +23,7 @@ class FieldSessionCoordinator extends ChangeNotifier {
 
   final SiteService _siteService;
   LocationService? _locationService;
+  VoidCallback? _onEnsureScheduled;
 
   AppLifecycleState _lifecycle = AppLifecycleState.resumed;
   bool _sessionActive = false;
@@ -34,12 +35,17 @@ class FieldSessionCoordinator extends ChangeNotifier {
 
   bool get isSessionActive => _sessionActive;
 
-  void bind({required LocationService locationService}) {
+  void bind({
+    required LocationService locationService,
+    VoidCallback? onEnsureScheduled,
+  }) {
     if (_locationService != null) {
+      _onEnsureScheduled = onEnsureScheduled;
       return;
     }
 
     _locationService = locationService;
+    _onEnsureScheduled = onEnsureScheduled;
     unawaited(_startSession());
   }
 
@@ -195,10 +201,11 @@ class FieldSessionCoordinator extends ChangeNotifier {
         reason: reason,
       );
       _logEnsure(
-        'check reason=$reason existing=${response.existingInRadius} '
-        'missing=${response.missing} enqueued=${response.accepted} '
+        'check reason=$reason existing=${response.existingInRadius ?? '-'} '
+        'missing=${response.missing ?? '-'} enqueued=${response.accepted} '
         'written=0',
       );
+      _onEnsureScheduled?.call();
       return response;
     } catch (error) {
       _logEnsure('failed reason=$reason error=$error');

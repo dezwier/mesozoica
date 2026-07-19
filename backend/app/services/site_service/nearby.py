@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import math
 
+from sqlalchemy import text
 from sqlmodel import Session, col, select
 
 from app.models.site import Site
@@ -19,6 +20,37 @@ def _bbox(lat: float, lon: float, radius_km: float) -> tuple[float, float, float
     cos_lat = max(abs(math.cos(math.radians(lat))), 1e-6)
     lon_radius = radius_km / (111.0 * cos_lat)
     return lat - lat_radius, lat + lat_radius, lon - lon_radius, lon + lon_radius
+
+
+_HAVERSINE_COUNT_SQL = text(
+    """
+    SELECT COUNT(*)
+    FROM site
+    WHERE data_source = :data_source
+      AND latitude IS NOT NULL
+      AND longitude IS NOT NULL
+      AND latitude >= :min_lat
+      AND latitude <= :max_lat
+      AND longitude >= :min_lon
+      AND longitude <= :max_lon
+      AND (
+        6371.0 * 2 * ATAN2(
+          SQRT(
+            POWER(SIN(RADIANS(latitude - :lat) / 2), 2)
+            + COS(RADIANS(:lat)) * COS(RADIANS(latitude))
+            * POWER(SIN(RADIANS(longitude - :lon) / 2), 2)
+          ),
+          SQRT(
+            1 - (
+              POWER(SIN(RADIANS(latitude - :lat) / 2), 2)
+              + COS(RADIANS(:lat)) * COS(RADIANS(latitude))
+              * POWER(SIN(RADIANS(longitude - :lon) / 2), 2)
+            )
+          )
+        )
+      ) <= :radius_km
+    """
+)
 
 
 def list_sites_in_radius(
@@ -65,13 +97,18 @@ def count_sites_in_radius(
     radius_km: float,
     data_source: str,
 ) -> int:
-    return len(
-        list_sites_in_radius(
-            session,
+    normalized_data_source = normalize_data_source(data_source)
+    min_lat, max_lat, min_lon, max_lon = _bbox(lat, lon, radius_km)
+    row = session.exec(
+        _HAVERSINE_COUNT_SQL.bindparams(
+            data_source=normalized_data_source,
             lat=lat,
             lon=lon,
             radius_km=radius_km,
-            data_source=data_source,
-            limit=10_000,
+            min_lat=min_lat,
+            max_lat=max_lat,
+            min_lon=min_lon,
+            max_lon=max_lon,
         )
-    )
+    ).one()
+    return int(row[0])

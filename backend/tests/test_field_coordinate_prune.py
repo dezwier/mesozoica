@@ -58,7 +58,7 @@ def test_prune_deletes_invalid_field_sites(session: Session, monkeypatch):
     session.commit()
 
     monkeypatch.setattr(
-        "app.services.site_service.field_coordinate_prune.build_coordinate_filter",
+        "app.services.site_service.field_coordinate_prune.build_osm_coordinate_filter",
         _test_filter,
     )
 
@@ -86,7 +86,7 @@ def test_prune_dry_run_leaves_database_unchanged(session: Session, monkeypatch):
     session.commit()
 
     monkeypatch.setattr(
-        "app.services.site_service.field_coordinate_prune.build_coordinate_filter",
+        "app.services.site_service.field_coordinate_prune.build_osm_coordinate_filter",
         _test_filter,
     )
 

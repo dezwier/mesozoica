@@ -7,16 +7,18 @@ Procedural field sites pick random coordinates in two stages:
 
 ## Filter (offline, in-memory)
 
-While generating sites the API/worker asks: “Is this point allowed?”
+While generating sites the worker/prune job asks: “Is this point allowed?”
 
-Current rules (when OSM masks are present):
+Production rules (**required — no fallback**):
 
 | Filter | Source | Status |
 |--------|--------|--------|
-| On OSM land | `backend/app/data/osm/land/*.shp` | Active |
-| Not in OSM water | `backend/app/data/osm/water/*.shp` | Active |
+| On OSM land | `{FIELD_COORDINATE_DATA_DIR}/osm/land/*.shp` | Required |
+| Not in OSM water | `{FIELD_COORDINATE_DATA_DIR}/osm/water/*.shp` | Required |
 
-**Fallback** (CI / dev without OSM data): Natural Earth 10m land GeoJSON only.
+The field-ensure **worker** and **field_site_coordinate_prune** cron **fail startup** if OSM shapefiles are missing. There is no Natural Earth fallback in production.
+
+Unit tests inject inline polygon fixtures or pass `land_mask_path` explicitly.
 
 Future rules (same pipeline, still offline):
 
@@ -34,7 +36,7 @@ From repo root:
 make fetch-coordinate-masks
 ```
 
-This downloads ~880 MB land + ~860 MB water archives from [osmdata.openstreetmap.de](https://osmdata.openstreetmap.de/), simplifies to ~10 m tolerance by default, and writes shapefiles under `backend/app/data/osm/`. The directory is gitignored.
+This downloads ~880 MB land + ~860 MB water archives from [osmdata.openstreetmap.de](https://osmdata.openstreetmap.de/), simplifies to ~10 m tolerance by default (`OSM_SIMPLIFY_TOLERANCE=0.0001`), and writes shapefiles under `backend/app/data/osm/`. The directory is gitignored.
 
 Options:
 
@@ -46,62 +48,52 @@ python -m scripts.fetch_osm_coordinate_masks --simplify-tolerance 0 --force
 
 Override storage location with `FIELD_COORDINATE_DATA_DIR` (e.g. a Railway volume mounted at `/data`).
 
-### Production (Railway volume — recommended)
+### Production (Railway volume — required)
 
-OSM shapefiles are **gitignored** and are **not** baked into the Docker image. Store them on a **shared Railway volume** so they are downloaded once and reused across deploys.
-
-`make run-field-site-coordinate-prune` uses `railway run`, which executes **on your machine** with Railway env vars. It reads local `backend/app/data/osm/` and talks to the remote DB. That is why prune can succeed while production still logs the Natural Earth fallback.
+OSM shapefiles are **gitignored** and are **not** baked into the Docker image. Store them on a **Railway volume** on the field-generate worker.
 
 #### One-time Railway setup
 
-Railway **does not support sharing one volume across services**. Only **field-generate** (the worker) needs OSM masks on its volume.
+Railway **does not support sharing one volume across services**. Only **field-generate** (the worker) needs OSM masks on its volume. The prune cron must use the same masks (fetch locally before `make run-field-site-coordinate-prune`, or run prune in an environment with OSM data).
 
 1. Mount a volume at **`/data`** on **field-generate**.
 2. Set on field-generate:
    ```bash
    FIELD_COORDINATE_DATA_DIR=/data
    FETCH_OSM_COORDINATE_MASKS=true
-   OSM_SIMPLIFY_TOLERANCE=0.001
+   OSM_SIMPLIFY_TOLERANCE=0.0001
    ```
 3. Bump worker memory to **4 GB** (Settings → Resources).
 4. Redeploy and watch logs (~10 min first boot). Later restarts reuse `/data/osm/`.
+5. After masks exist, set `FETCH_OSM_COORDINATE_MASKS=false` to skip future boot fetches.
 
-The API (`mesozoica`) does not need OSM on a volume — it only queues jobs.
+The API (`mesozoica`) does not need OSM on a volume — it only enqueues jobs without loading coordinate filters.
 
 #### Upload OSM masks (optional)
 
 Railway **SSH upload only works on web/exposed services** (e.g. `mesozoica`). It usually **fails on workers** (`field-generate`) even when deployment shows Active.
 
-Prefer **in-container fetch** on field-generate (steps above). If you already have local files and SSH to the API works:
-
-```bash
-make upload-coordinate-masks-railway RAILWAY_SERVICE=mesozoica
-```
-
-That only fills the **API** volume; the worker still needs its own fetch.
+Prefer **in-container fetch** on field-generate (steps above).
 
 #### Troubleshooting
 
-If logs show fetch failing or crash-looping:
+If the worker exits on startup or logs fetch failure:
 
-1. Set `OSM_SIMPLIFY_TOLERANCE=0.001` (coarser, less RAM).
-2. Bump field-generate memory to **4 GB**.
-3. Do **not** use SSH upload to field-generate — use in-container fetch instead.
-4. After masks exist on `/data/osm/`, set `FETCH_OSM_COORDINATE_MASKS=false` to skip future boot checks.
-
-Logs should show `Loaded OSM land filter`, not Natural Earth fallback.
+1. Confirm `FIELD_COORDINATE_DATA_DIR=/data` and the volume is mounted.
+2. Keep `OSM_SIMPLIFY_TOLERANCE=0.0001` (~10 m). Do not fall back to Natural Earth.
+3. Bump field-generate memory to **4 GB**.
+4. Logs must show `Loaded OSM land filter` and `Loaded OSM water exclusion filter`.
 
 ### Loading and RAM
 
-Polygon filters load **once per process** via `@lru_cache`.
-The API server and field-ensure worker each keep one in-memory copy after the first use.
+Polygon filters load **once per process** via `@lru_cache` on the worker and prune job only.
 
 Startup preload:
 
-- API: `warm_coordinate_filter_cache()` in app lifespan
-- Worker: same call in `field_ensure_worker.main()`
+- Worker: `ensure_osm_coordinate_masks_on_disk()` then `warm_coordinate_filter_cache()` in `field_ensure_worker.main()`
+- Prune cron: same sequence in `field_site_coordinate_prune.run_prune_job()`
 
-Approximate footprint with simplified OSM masks:
+Approximate footprint with 10 m OSM masks:
 
 | Layer | Disk (simplified) | RSS after load (est.) |
 |-------|-------------------|------------------------|
@@ -109,11 +101,7 @@ Approximate footprint with simplified OSM masks:
 | OSM water | ~50–150 MB | ~200–500 MB |
 | Combined | | ~400 MB–1 GB per process |
 
-Natural Earth 10m fallback: ~150 MB RSS, ~10 MB on disk (committed for CI).
-
 Point lookup: ~0.003 ms via Shapely `STRtree` + `predicate="within"`.
-
-Legacy override: `land_mask_path` in field-site config forces Natural Earth GeoJSON.
 
 ## Enrich (after accept)
 
@@ -128,16 +116,17 @@ Current fields:
 
 ## Retroactive cleanup
 
-Remove existing field sites that fail the current filter stack:
+Remove existing field sites that fail the OSM filter stack:
 
 ```bash
+make fetch-coordinate-masks   # if not already present locally
 make run-field-site-coordinate-prune CRON_EXTRA='--dry-run'
 make run-field-site-coordinate-prune
 ```
 
 Registered as cron job `field_site_coordinate_prune` (disabled by default in `crons.yaml`).
 
-Sparse areas backfill automatically via the existing field-ensure worker on resume/move/scan.
+Sparse areas backfill automatically via the field-ensure worker on resume/move/scan.
 
 ## Flutter map tiles
 
@@ -147,7 +136,7 @@ The map uses Carto OSM no-labels basemaps (light/dark) so coastlines align with 
 
 | Module | Role |
 |--------|------|
-| `field_coordinate_filter.py` | Filter protocol, OSM/NE polygons, sampler |
+| `field_coordinate_filter.py` | Filter protocol, OSM polygons, sampler |
 | `field_coordinate_enrich.py` | Post-accept metadata |
 | `field_coordinate_prune.py` | Delete invalid existing field sites |
 | `field_generate.py` | Orchestrates filter → geology → enrich → `Site` row |
@@ -155,16 +144,17 @@ The map uses Carto OSM no-labels basemaps (light/dark) so coastlines align with 
 
 ## Deploy sequence
 
-1. Mount shared Railway volume at `/data` on API + field-ensure worker (+ cron if needed)
-2. Set `FIELD_COORDINATE_DATA_DIR=/data` on those services
+1. Mount Railway volume at `/data` on field-generate worker
+2. Set `FIELD_COORDINATE_DATA_DIR=/data`, `OSM_SIMPLIFY_TOLERANCE=0.0001`, 4 GB RAM
 3. Deploy backend code (first boot fetches OSM masks into the volume once)
-4. Confirm logs show `Loaded OSM land filter` (not Natural Earth fallback)
-5. `make run-field-site-coordinate-prune CRON_EXTRA='--dry-run'` — review counts
+4. Confirm logs show `Loaded OSM land filter` and `Loaded OSM water exclusion filter`
+5. `make run-field-site-coordinate-prune CRON_EXTRA='--dry-run'` — review counts (requires local OSM masks)
 6. `make run-field-site-coordinate-prune` — delete invalid sites
 7. Ship Flutter app with Carto OSM tiles
 
-Local dev (optional):
+Local dev:
 
 ```bash
 make fetch-coordinate-masks
+make run-field-ensure-worker
 ```

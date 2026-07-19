@@ -39,7 +39,6 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
   double _zoomLevel = MapConfig.initialZoom;
   bool _centeredOnUser = false;
   bool _rotateMap = false;
-  bool _scanning = false;
   String? _scanBannerMessage;
   Timer? _scanBannerTimer;
 
@@ -153,33 +152,26 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
     if (!response.accepted) {
       return 'Scan already queued for this map area';
     }
-    if (response.missing <= 0) {
-      return 'This map area already has enough field sites';
-    }
     return 'Field site scan requested — new sites will appear when ready';
   }
 
-  Future<void> _onScanFieldArea() async {
-    if (!_mapReady || _scanning) return;
+  void _onScanFieldArea() {
+    if (!_mapReady) return;
 
     final center = _mapController.camera.center;
-    setState(() => _scanning = true);
-    try {
-      final response =
-          await context.read<FieldSessionCoordinator>().scanAt(center);
-      if (!mounted) return;
-      if (response != null) {
-        _showScanBanner(_scanRequestBannerMessage(response));
-      }
-    } catch (error) {
-      if (mounted) {
-        _showScanBanner('Could not request field site scan');
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _scanning = false);
-      }
-    }
+    _showScanBanner('Field site scan requested — new sites will appear when ready');
+    unawaited(
+      context.read<FieldSessionCoordinator>().scanAt(center).then((response) {
+        if (!mounted) return;
+        if (response != null) {
+          _showScanBanner(_scanRequestBannerMessage(response));
+        }
+      }).catchError((_) {
+        if (mounted) {
+          _showScanBanner('Could not request field site scan');
+        }
+      }),
+    );
   }
 
   Future<void> _onSiteTap(SiteSummary site) async {
@@ -367,20 +359,9 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
               filterFab: isFieldMode
                   ? FloatingActionButton.small(
                       heroTag: 'scan_field_area',
-                      onPressed: _scanning ? null : _onScanFieldArea,
+                      onPressed: _onScanFieldArea,
                       tooltip: 'Scan map center for field sites',
-                      child: _scanning
-                          ? SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Theme.of(context)
-                                    .colorScheme
-                                    .onPrimaryContainer,
-                              ),
-                            )
-                          : const Icon(Icons.radar_outlined),
+                      child: const Icon(Icons.radar_outlined),
                     )
                   : null,
             ),

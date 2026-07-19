@@ -8,11 +8,9 @@ from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, col, func, select, text
 
 from app.core.database import engine
-from app.models.data_source import DATA_SOURCE_FIELD
 from app.models.field_ensure_job import FieldEnsureJob
 from app.services.site_service.field_generate import FieldSiteLazyConfig
 from app.services.site_service.field_site_logging import log_field_event, normalize_reason
-from app.services.site_service.nearby import count_sites_in_radius
 
 STATUS_PENDING = "pending"
 STATUS_RUNNING = "running"
@@ -31,27 +29,16 @@ def enqueue_field_site_ensure(
     lon: float,
     config: FieldSiteLazyConfig | None = None,
     reason: str | None = None,
-) -> tuple[int, int, bool]:
-    """Count local density and enqueue a worker job when under-filled.
+) -> bool:
+    """Enqueue a worker job for density check and generation.
 
-    Returns ``(existing_in_radius, missing, accepted)``.
+    Does not count sites in radius — the worker re-counts before generating.
+    Returns ``accepted`` (False when the cell already has a pending/running job).
     """
     cfg = config or FieldSiteLazyConfig()
     cfg.validate()
     trigger = normalize_reason(reason)
-
-    existing = count_sites_in_radius(
-        session,
-        lat=lat,
-        lon=lon,
-        radius_km=cfg.radius_km,
-        data_source=DATA_SOURCE_FIELD,
-    )
-    missing = max(0, cfg.min_sites_in_radius - existing)
     key = cell_key(lat, lon, cfg.radius_km)
-
-    if missing == 0:
-        return existing, 0, True
 
     job = session.exec(
         select(FieldEnsureJob).where(col(FieldEnsureJob.cell_key) == key)
@@ -59,12 +46,12 @@ def enqueue_field_site_ensure(
 
     if job is not None:
         if job.status in (STATUS_PENDING, STATUS_RUNNING):
-            return existing, missing, False
+            return False
 
         job.lat = lat
         job.lon = lon
         job.radius_km = cfg.radius_km
-        job.missing_count = missing
+        job.missing_count = 0
         job.reason = trigger
         job.status = STATUS_PENDING
         job.worker_id = None
@@ -73,14 +60,14 @@ def enqueue_field_site_ensure(
         job.finished_at = None
         session.add(job)
         session.commit()
-        return existing, missing, True
+        return True
 
     job = FieldEnsureJob(
         cell_key=key,
         lat=lat,
         lon=lon,
         radius_km=cfg.radius_km,
-        missing_count=missing,
+        missing_count=0,
         reason=trigger,
         status=STATUS_PENDING,
         created_at=datetime.now(timezone.utc).replace(tzinfo=None),
@@ -90,9 +77,9 @@ def enqueue_field_site_ensure(
         session.commit()
     except IntegrityError:
         session.rollback()
-        return existing, missing, False
+        return False
 
-    return existing, missing, True
+    return True
 
 
 def schedule_field_site_ensure(
@@ -101,7 +88,7 @@ def schedule_field_site_ensure(
     lon: float,
     config: FieldSiteLazyConfig | None = None,
     reason: str | None = None,
-) -> tuple[int, int, bool]:
+) -> bool:
     """API helper: open a session and enqueue a job."""
     with Session(engine) as session:
         return enqueue_field_site_ensure(

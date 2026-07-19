@@ -147,21 +147,21 @@ class SiteListResponse {
 class FieldEnsureResponse {
   const FieldEnsureResponse({
     required this.accepted,
-    required this.existingInRadius,
-    required this.missing,
+    this.existingInRadius,
+    this.missing,
     required this.radiusKm,
   });
 
   final bool accepted;
-  final int existingInRadius;
-  final int missing;
+  final int? existingInRadius;
+  final int? missing;
   final double radiusKm;
 
   factory FieldEnsureResponse.fromJson(Map<String, dynamic> json) {
     return FieldEnsureResponse(
       accepted: json['accepted'] as bool? ?? false,
-      existingInRadius: json['existing_in_radius'] as int? ?? 0,
-      missing: json['missing'] as int? ?? 0,
+      existingInRadius: json['existing_in_radius'] as int?,
+      missing: json['missing'] as int?,
       radiusKm: (json['radius_km'] as num?)?.toDouble() ?? 1.0,
     );
   }

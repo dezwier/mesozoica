@@ -11,7 +11,7 @@ from sqlmodel import Session, col, delete, select
 
 from app.models.data_source import DATA_SOURCE_FIELD
 from app.models.site import Site
-from app.services.site_service.field_coordinate_filter import build_coordinate_filter
+from app.services.site_service.field_coordinate_filter import build_osm_coordinate_filter
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +33,7 @@ def prune_invalid_field_sites(
 ) -> FieldCoordinatePruneSummary:
     """Remove field sites whose coordinates fail the active filter stack."""
     started = time.monotonic()
-    coordinate_filter = build_coordinate_filter()
+    coordinate_filter = build_osm_coordinate_filter()
     checked = 0
     deleted = 0
     kept = 0

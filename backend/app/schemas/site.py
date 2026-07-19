@@ -43,8 +43,8 @@ class SiteNearbyResponse(BaseModel):
 
 class FieldEnsureResponse(BaseModel):
     accepted: bool
-    existing_in_radius: int
-    missing: int
+    existing_in_radius: int | None = None
+    missing: int | None = None
     radius_km: float
 
 

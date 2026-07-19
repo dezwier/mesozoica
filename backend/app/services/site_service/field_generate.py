@@ -33,7 +33,12 @@ from app.services.site_service.field_distributions import (
     sample_pair,
 )
 from app.services.site_service.field_site_logging import log_field_event
-from app.services.site_service.nearby import count_sites_in_radius, list_sites_in_radius
+from app.services.site_service.geo_utils import haversine_km
+from app.services.site_service.nearby import (
+    _bbox,
+    count_sites_in_radius,
+    list_sites_in_radius,
+)
 from app.services.site_service.summary import SiteRow
 
 logger = logging.getLogger("field_site_generate")
@@ -331,7 +336,13 @@ def ensure_field_sites_nearby(
 
     _sync_field_site_id_sequence(session)
     id_allocator = _FieldSiteIdAllocator(session)
-    existing_coords = _load_existing_field_coords(session)
+    existing_coords = _load_existing_field_coords(
+        session,
+        lat=lat,
+        lon=lon,
+        radius_km=cfg.radius_km,
+        min_separation_km=cfg.min_separation_km,
+    )
     pending_rows: list[Site] = []
     generated = 0
     skipped_coords = 0
@@ -423,13 +434,36 @@ def _load_site_type_map(session: Session) -> dict[tuple[str, str], int]:
     return mapping
 
 
-def _load_existing_field_coords(session: Session) -> list[tuple[float, float]]:
+def _load_existing_field_coords(
+    session: Session,
+    *,
+    lat: float | None = None,
+    lon: float | None = None,
+    radius_km: float | None = None,
+    min_separation_km: float = 0.01,
+) -> list[tuple[float, float]]:
     stmt = select(Site).where(col(Site.data_source) == DATA_SOURCE_FIELD)
+    if lat is not None and lon is not None and radius_km is not None:
+        search_radius = radius_km + min_separation_km
+        min_lat, max_lat, min_lon, max_lon = _bbox(lat, lon, search_radius)
+        stmt = stmt.where(
+            col(Site.latitude).is_not(None),
+            col(Site.longitude).is_not(None),
+            col(Site.latitude) >= min_lat,
+            col(Site.latitude) <= max_lat,
+            col(Site.longitude) >= min_lon,
+            col(Site.longitude) <= max_lon,
+        )
     coords: list[tuple[float, float]] = []
     for row in session.exec(stmt).all():
         if row.latitude is None or row.longitude is None:
             continue
-        coords.append((float(row.latitude), float(row.longitude)))
+        site_lat = float(row.latitude)
+        site_lon = float(row.longitude)
+        if lat is not None and lon is not None and radius_km is not None:
+            if haversine_km(lat, lon, site_lat, site_lon) > radius_km + min_separation_km:
+                continue
+        coords.append((site_lat, site_lon))
     return coords
 
 

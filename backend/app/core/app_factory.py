@@ -22,12 +22,10 @@ IS_DEVELOPMENT = settings.environment.lower() in ("development", "dev", "local")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    from app.services.site_service.field_coordinate_filter import warm_coordinate_filter_cache
     from app.services.site_service.field_site_logging import _configure_logger
 
     _configure_logger()
     init_db()
-    warm_coordinate_filter_cache()
     yield
 
 

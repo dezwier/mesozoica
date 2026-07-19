@@ -360,6 +360,18 @@ def load_land_polygon_filter(resolved_path: str) -> LandPolygonFilter:
     return land_filter
 
 
+def build_osm_coordinate_filter() -> CoordinateFilter:
+    """Build the production OSM land + water filter stack."""
+    if not osm_coordinate_masks_available():
+        data_root = resolve_coordinate_data_dir()
+        raise RuntimeError(
+            f"OSM coordinate masks required but missing under {data_root / 'osm'}"
+        )
+    land_filter = load_osm_land_filter(str(resolve_osm_land_dir()))
+    water_filter = load_osm_water_exclusion_filter(str(resolve_osm_water_dir()))
+    return CompositeCoordinateFilter([land_filter, water_filter])
+
+
 def build_coordinate_filter(
     *,
     land_mask_path: str | None = None,
@@ -374,16 +386,7 @@ def build_coordinate_filter(
     if land_mask_path:
         return load_land_polygon_filter(str(resolve_land_mask_path(land_mask_path)))
 
-    if osm_coordinate_masks_available():
-        land_filter = load_osm_land_filter(str(resolve_osm_land_dir()))
-        water_filter = load_osm_water_exclusion_filter(str(resolve_osm_water_dir()))
-        return CompositeCoordinateFilter([land_filter, water_filter])
-
-    logger.warning(
-        "OSM coordinate masks not found under %s; falling back to Natural Earth land",
-        resolve_osm_land_dir().parent,
-    )
-    return load_land_polygon_filter(str(resolve_land_mask_path(None)))
+    return build_osm_coordinate_filter()
 
 
 def build_coordinate_sampler(
@@ -401,7 +404,9 @@ def build_coordinate_sampler(
 
 def warm_coordinate_filter_cache(*, land_mask_path: str | None = None) -> CoordinateFilter:
     """Eager-load coordinate filters so the first request avoids disk/parse cost."""
-    return build_coordinate_filter(land_mask_path=land_mask_path)
+    if land_mask_path:
+        return load_land_polygon_filter(str(resolve_land_mask_path(land_mask_path)))
+    return build_osm_coordinate_filter()
 
 
 def _fetch_osm_masks_enabled() -> bool:
@@ -415,11 +420,10 @@ def ensure_osm_coordinate_masks_on_disk() -> None:
         logger.info("OSM coordinate masks already present under %s/osm", resolve_coordinate_data_dir())
         return
     if not _fetch_osm_masks_enabled():
-        logger.info(
-            "OSM coordinate masks missing under %s/osm; fetch disabled (FETCH_OSM_COORDINATE_MASKS=false)",
-            resolve_coordinate_data_dir(),
+        raise RuntimeError(
+            f"OSM coordinate masks missing under {resolve_coordinate_data_dir() / 'osm'} "
+            "and FETCH_OSM_COORDINATE_MASKS is disabled"
         )
-        return
 
     from scripts.fetch_osm_coordinate_masks import run_fetch
 
@@ -431,6 +435,10 @@ def ensure_osm_coordinate_masks_on_disk() -> None:
         simplify,
     )
     run_fetch(data_dir=data_dir, simplify_tolerance=simplify, force=False)
+    if not osm_coordinate_masks_available():
+        raise RuntimeError(
+            f"OSM coordinate mask fetch completed but files are still missing under {data_dir}"
+        )
 
 
 def clear_coordinate_filter_cache() -> None:
