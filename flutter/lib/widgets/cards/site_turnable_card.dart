@@ -5,7 +5,7 @@ import '../../theme/dino_card_theme.dart';
 import 'card_world_map.dart';
 import 'site_card_back.dart';
 import 'site_card_front.dart';
-import 'site_discover_helper.dart';
+import 'site_status_helper.dart';
 import 'turnable_y_axis_card.dart';
 
 class SiteTurnableCard extends StatefulWidget {
@@ -52,8 +52,12 @@ class _SiteTurnableCardState extends State<SiteTurnableCard> {
     }
   }
 
-  Future<void> _onHiddenBadgePressed() async {
-    final updated = await promptDiscoverSite(context, _site);
+  Future<void> _onStatusSelected(String status) async {
+    final updated = await applySiteStatusSelection(
+      context,
+      _site,
+      newStatus: status,
+    );
     if (updated == null || !mounted) return;
     setState(() => _site = updated);
     widget.onSiteUpdated?.call(updated);
@@ -61,8 +65,7 @@ class _SiteTurnableCardState extends State<SiteTurnableCard> {
 
   @override
   Widget build(BuildContext context) {
-    final status = _site.status?.trim().toLowerCase();
-    final canDiscover = status == 'hidden';
+    final hasStatus = (_site.status?.trim().isNotEmpty ?? false);
 
     return TurnableYAxisCard(
       resetIdentity: _site.siteId,
@@ -76,7 +79,7 @@ class _SiteTurnableCardState extends State<SiteTurnableCard> {
         titleFontSize: widget.titleFontSize,
         subtitleFontSize: widget.subtitleFontSize,
         overlayHeightFactor: widget.overlayHeightFactor,
-        onStatusBadgePressed: canDiscover ? _onHiddenBadgePressed : null,
+        onStatusSelected: hasStatus ? _onStatusSelected : null,
       ),
       back: SiteCardBack(
         site: _site,

@@ -134,6 +134,41 @@ class SiteService {
     return SiteSummary.fromJson(decoded);
   }
 
+  Future<SiteSummary> setSiteStatus({
+    required int siteId,
+    required String status,
+    double? lat,
+    double? lon,
+  }) async {
+    final uri = AppConfig.siteStatusUri(siteId);
+    if (kDebugMode) {
+      debugPrint('SiteService POST $uri status=$status');
+    }
+    final body = <String, dynamic>{'status': status};
+    if (lat != null) body['lat'] = lat;
+    if (lon != null) body['lon'] = lon;
+    final response = await _client
+        .post(
+          uri,
+          headers: await _headers(jsonBody: true),
+          body: jsonEncode(body),
+        )
+        .timeout(const Duration(seconds: 15));
+
+    if (response.statusCode != 200) {
+      final detail = _errorDetail(response.body);
+      throw SiteServiceException(
+        detail ?? 'Failed to set site status (${response.statusCode})',
+      );
+    }
+
+    final decoded = jsonDecode(response.body);
+    if (decoded is! Map<String, dynamic>) {
+      throw const SiteServiceException('Invalid status response');
+    }
+    return SiteSummary.fromJson(decoded);
+  }
+
   Future<SiteNearbyResponse> fetchNearbySites({
     required double lat,
     required double lon,

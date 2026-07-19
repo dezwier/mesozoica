@@ -30,6 +30,7 @@ from app.services.site_service import (
     list_sites,
     list_sites_in_radius,
     load_site_types_by_period,
+    set_site_status,
     site_row_to_summary,
 )
 from app.services.site_service.field_ensure_background import schedule_field_site_ensure
@@ -50,6 +51,12 @@ class FieldEnsureRequest(BaseModel):
 class DiscoverSiteRequest(BaseModel):
     lat: float = Field(ge=-90, le=90)
     lon: float = Field(ge=-180, le=180)
+
+
+class SetSiteStatusRequest(BaseModel):
+    status: str = Field(min_length=1, max_length=32)
+    lat: float | None = Field(default=None, ge=-90, le=90)
+    lon: float | None = Field(default=None, ge=-180, le=180)
 
 
 def _field_visibility(
@@ -216,6 +223,25 @@ def post_discover_site(
         session,
         site_id=site_id,
         user_id=current_user.id,
+        lat=body.lat,
+        lon=body.lon,
+    )
+    types_by_period = load_site_types_by_period(session)
+    return site_row_to_summary(row, types_by_period=types_by_period)
+
+
+@router.post("/{site_id}/status", response_model=SiteSummary)
+def post_set_site_status(
+    site_id: int,
+    body: SetSiteStatusRequest,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+) -> SiteSummary:
+    row = set_site_status(
+        session,
+        site_id=site_id,
+        user_id=current_user.id,
+        status=body.status,
         lat=body.lat,
         lon=body.lon,
     )

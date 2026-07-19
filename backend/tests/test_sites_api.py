@@ -497,6 +497,85 @@ def test_discover_site_within_range(client, session):
     assert len(notifications2.json()["notifications"]) == 1
 
 
+def test_set_site_status_dropdown_flow(client, session):
+    site_type = _seed_site_type(session)
+    session.add(
+        Site(
+            site_id=90020,
+            latitude=Decimal("40.000000"),
+            longitude=Decimal("-100.000000"),
+            formation="Status Site",
+            rock_type="sandstone",
+            period="cretaceous",
+            site_type_id=site_type.id,
+            data_source="field",
+        )
+    )
+    user = User(username="statuser", email="statuser@example.com", password="x")
+    session.add(user)
+    session.commit()
+    session.refresh(user)
+    token = create_access_token({"sub": str(user.id)})
+    headers = {"Authorization": f"Bearer {token}"}
+
+    discover = client.post(
+        "/api/v1/sites/90020/status",
+        headers=headers,
+        json={"status": "discovered", "lat": 40.001, "lon": -100.0},
+    )
+    assert discover.status_code == 200
+    assert discover.json()["status"] == "discovered"
+    notifs = client.get("/api/v1/notifications", headers=headers)
+    assert len(notifs.json()["notifications"]) == 1
+    assert notifs.json()["notifications"][0]["type"] == "site_discovered"
+
+    excavate = client.post(
+        "/api/v1/sites/90020/status",
+        headers=headers,
+        json={"status": "excavation", "lat": 40.001, "lon": -100.0},
+    )
+    assert excavate.status_code == 200
+    assert excavate.json()["status"] == "excavation"
+
+    protect = client.post(
+        "/api/v1/sites/90020/status",
+        headers=headers,
+        json={"status": "protected", "lat": 40.001, "lon": -100.0},
+    )
+    assert protect.status_code == 200
+    assert protect.json()["status"] == "protected"
+
+    exhaust = client.post(
+        "/api/v1/sites/90020/status",
+        headers=headers,
+        json={"status": "exhausted", "lat": 40.001, "lon": -100.0},
+    )
+    assert exhaust.status_code == 200
+    assert exhaust.json()["status"] == "exhausted"
+
+    hidden = client.post(
+        "/api/v1/sites/90020/status",
+        headers=headers,
+        json={"status": "hidden"},
+    )
+    assert hidden.status_code == 200
+    assert hidden.json()["status"] == "hidden"
+
+    # Re-discover from hidden creates another discovery notification.
+    rediscover = client.post(
+        "/api/v1/sites/90020/status",
+        headers=headers,
+        json={"status": "discovered", "lat": 40.001, "lon": -100.0},
+    )
+    assert rediscover.status_code == 200
+    assert rediscover.json()["status"] == "discovered"
+    notifs2 = client.get("/api/v1/notifications", headers=headers)
+    assert len(notifs2.json()["notifications"]) == 2
+    assert all(
+        n["type"] == "site_discovered" for n in notifs2.json()["notifications"]
+    )
+
+
 def test_nearby_discoverable_excludes_linked_and_non_discoverable(client, session):
     site_type = _seed_site_type(session)
     session.add(

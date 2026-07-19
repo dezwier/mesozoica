@@ -3,16 +3,35 @@ import 'package:flutter/material.dart';
 import '../../theme/dino_card_theme.dart';
 import '../../utils/display_text.dart';
 
-/// Subtle status chip for field site cards.
+/// Field-site status options shown in the badge dropdown.
+class SiteStatusOption {
+  const SiteStatusOption({
+    required this.apiStatus,
+    required this.label,
+  });
+
+  final String apiStatus;
+  final String label;
+}
+
+const List<SiteStatusOption> kSiteStatusOptions = [
+  SiteStatusOption(apiStatus: 'hidden', label: 'Hidden'),
+  SiteStatusOption(apiStatus: 'discovered', label: 'Discover'),
+  SiteStatusOption(apiStatus: 'protected', label: 'Protect'),
+  SiteStatusOption(apiStatus: 'excavation', label: 'Excavate'),
+  SiteStatusOption(apiStatus: 'exhausted', label: 'Exhaust'),
+];
+
+/// Subtle status chip for field site cards with optional status menu.
 class SiteStatusBadge extends StatelessWidget {
   const SiteStatusBadge({
     super.key,
     required this.status,
-    this.onPressed,
+    this.onStatusSelected,
   });
 
   final String status;
-  final VoidCallback? onPressed;
+  final ValueChanged<String>? onStatusSelected;
 
   @override
   Widget build(BuildContext context) {
@@ -44,15 +63,37 @@ class SiteStatusBadge extends StatelessWidget {
       ),
     );
 
-    if (onPressed == null) return chip;
+    if (onStatusSelected == null) return chip;
 
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onPressed,
-        borderRadius: BorderRadius.circular(999),
-        child: chip,
-      ),
+    final current = status.trim().toLowerCase();
+    return PopupMenuButton<String>(
+      tooltip: 'Change site status',
+      padding: EdgeInsets.zero,
+      offset: const Offset(0, 28),
+      onSelected: onStatusSelected,
+      itemBuilder: (context) => [
+        for (final option in kSiteStatusOptions)
+          PopupMenuItem<String>(
+            value: option.apiStatus,
+            child: Row(
+              children: [
+                SizedBox(
+                  width: 20,
+                  child: current == option.apiStatus
+                      ? Icon(
+                          Icons.check,
+                          size: 16,
+                          color: Theme.of(context).colorScheme.primary,
+                        )
+                      : null,
+                ),
+                const SizedBox(width: 4),
+                Text(option.label),
+              ],
+            ),
+          ),
+      ],
+      child: chip,
     );
   }
 }

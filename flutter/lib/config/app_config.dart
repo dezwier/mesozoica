@@ -223,6 +223,9 @@ class AppConfig {
   static Uri siteDiscoverUri(int id) =>
       Uri.parse('$baseApiUrl/api/v1/sites/$id/discover');
 
+  static Uri siteStatusUri(int id) =>
+      Uri.parse('$baseApiUrl/api/v1/sites/$id/status');
+
   static Uri sitesNearbyDiscoverableUri({
     required double lat,
     required double lon,
