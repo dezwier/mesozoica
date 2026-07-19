@@ -155,7 +155,8 @@ class FieldSessionCoordinator extends ChangeNotifier {
     }
 
     _sessionActive = true;
-    // Always-on GPS for proximity discovery + field ensure while process is alive.
+    // Always-on GPS for proximity discovery + field ensure on every tab while
+    // the process is alive (foreground and background).
     await locationService.setFieldSession(
       active: true,
       backgroundPreferred: true,

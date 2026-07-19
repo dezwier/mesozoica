@@ -8,17 +8,16 @@ import 'package:latlong2/latlong.dart';
 
 /// Whether GPS should use the background-capable profile.
 ///
-/// Field sessions prefer background GPS, but while the map is actively shown
-/// in the foreground we keep the high-accuracy foreground profile. As soon as
-/// the app itself is backgrounded or locked, switch back to background GPS
-/// even if the map tab is still selected.
+/// While the app is in the foreground, always use the normal While-In-Use
+/// stream so 50 m discovery works on every tab. Only when the app itself is
+/// backgrounded or locked do we switch to the background-capable profile
+/// (Android foreground service / iOS `allowsBackgroundLocationUpdates`).
 @visibleForTesting
 bool shouldUseBackgroundLocationProfile({
   required bool backgroundPreferred,
-  required bool mapForeground,
   required bool appForeground,
 }) {
-  return backgroundPreferred && (!mapForeground || !appForeground);
+  return backgroundPreferred && !appForeground;
 }
 
 /// User location for the map tab and field-session ensure tracking.
@@ -49,7 +48,10 @@ class LocationService extends ChangeNotifier {
   Future<void> setMapForeground(bool active) async {
     final changed = _mapForeground != active;
     _mapForeground = active;
-    await _reconcileTracking(forceRestartLocation: changed);
+    if (!changed) return;
+    // Map tab only controls the compass; discovery GPS stays on for all tabs
+    // via the field session and must not restart on tab switches.
+    await _reconcileTracking(forceRestartLocation: false);
   }
 
   Future<void> setFieldSession({
@@ -60,7 +62,9 @@ class LocationService extends ChangeNotifier {
         _fieldSession != active || _backgroundPreferred != backgroundPreferred;
     _fieldSession = active;
     _backgroundPreferred = backgroundPreferred;
-    if (active && backgroundPreferred && _useBackgroundLocationProfile) {
+    if (active && backgroundPreferred) {
+      // Ask for Always early so background/locked discovery can work later,
+      // but foreground tracking still proceeds with While In Use.
       await _ensureBackgroundPermission();
     }
     await _reconcileTracking(forceRestartLocation: settingsChanged);
@@ -75,17 +79,14 @@ class LocationService extends ChangeNotifier {
 
   /// Switch to the background-capable GPS profile while the process stays alive.
   ///
-  /// The map tab can still report "foreground" while the app is backgrounded or
-  /// the phone is locked; without this restart, iOS keeps
-  /// `allowBackgroundLocationUpdates: false` and Android has no FGS, so 50 m
-  /// discovery stops.
+  /// Without this restart, a foreground-only stream keeps
+  /// `allowBackgroundLocationUpdates: false` / no Android FGS, so 50 m
+  /// discovery stops when the app is backgrounded or the phone is locked.
   Future<void> onAppBackgrounded() async {
     if (!_appForeground) return;
     _appForeground = false;
     if (!_fieldSession || !_backgroundPreferred) return;
-    if (_useBackgroundLocationProfile) {
-      await _ensureBackgroundPermission();
-    }
+    await _ensureBackgroundPermission();
     await _reconcileTracking(forceRestartLocation: true);
   }
 
@@ -94,8 +95,7 @@ class LocationService extends ChangeNotifier {
       _stopStreams();
       return;
     }
-    // Compass is foreground-only UI; keep it while the map tab is active and
-    // the app itself is in the foreground.
+    // Compass is foreground-only UI for the map tab.
     if (_mapForeground && _appForeground) {
       _startHeading();
     } else {
@@ -178,22 +178,20 @@ class LocationService extends ChangeNotifier {
     await _ensurePermission(backgroundPreferred: true);
   }
 
-  /// Background profile when field session wants it and either the map is not
-  /// showing or the app itself is backgrounded / locked.
   bool get _useBackgroundLocationProfile => shouldUseBackgroundLocationProfile(
         backgroundPreferred: _backgroundPreferred,
-        mapForeground: _mapForeground,
         appForeground: _appForeground,
       );
 
   LocationSettings _locationSettings({required bool backgroundPreferred}) {
+    // Best accuracy in both modes so 50 m discovery stays reliable.
+    const accuracy = LocationAccuracy.best;
+    final distanceFilter = backgroundPreferred ? 10 : 5;
+
     if (!kIsWeb && Platform.isAndroid) {
       return AndroidSettings(
-        // High accuracy keeps 50 m discovery reliable while exploring locked.
-        accuracy: backgroundPreferred
-            ? LocationAccuracy.high
-            : LocationAccuracy.best,
-        distanceFilter: backgroundPreferred ? 10 : 5,
+        accuracy: accuracy,
+        distanceFilter: distanceFilter,
         foregroundNotificationConfig: backgroundPreferred
             ? const ForegroundNotificationConfig(
                 notificationTitle: 'Field exploration active',
@@ -207,10 +205,8 @@ class LocationService extends ChangeNotifier {
 
     if (!kIsWeb && Platform.isIOS) {
       return AppleSettings(
-        accuracy: backgroundPreferred
-            ? LocationAccuracy.high
-            : LocationAccuracy.best,
-        distanceFilter: backgroundPreferred ? 10 : 5,
+        accuracy: accuracy,
+        distanceFilter: distanceFilter,
         allowBackgroundLocationUpdates: backgroundPreferred,
         showBackgroundLocationIndicator: backgroundPreferred,
         pauseLocationUpdatesAutomatically: false,
@@ -219,10 +215,8 @@ class LocationService extends ChangeNotifier {
     }
 
     return LocationSettings(
-      accuracy: backgroundPreferred
-          ? LocationAccuracy.high
-          : LocationAccuracy.best,
-      distanceFilter: backgroundPreferred ? 10 : 5,
+      accuracy: accuracy,
+      distanceFilter: distanceFilter,
     );
   }
 
