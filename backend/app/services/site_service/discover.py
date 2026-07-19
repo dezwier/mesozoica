@@ -17,7 +17,7 @@ from app.services.site_service.geo_utils import haversine_km
 from app.services.site_service.list import get_site_by_id
 from app.services.site_service.summary import SiteRow
 
-DISCOVER_MAX_DISTANCE_M = 20.0
+DISCOVER_MAX_DISTANCE_M = 500.0
 _DISCOVER_MAX_DISTANCE_KM = DISCOVER_MAX_DISTANCE_M / 1000.0
 
 

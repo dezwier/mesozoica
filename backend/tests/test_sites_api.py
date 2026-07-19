@@ -452,14 +452,14 @@ def test_discover_site_within_range(client, session):
     too_far = client.post(
         "/api/v1/sites/90006/discover",
         headers={"Authorization": f"Bearer {token}"},
-        json={"lat": 40.001, "lon": -100.0},
+        json={"lat": 40.01, "lon": -100.0},
     )
     assert too_far.status_code == 400
 
     ok = client.post(
         "/api/v1/sites/90006/discover",
         headers={"Authorization": f"Bearer {token}"},
-        json={"lat": 40.00005, "lon": -100.0},
+        json={"lat": 40.001, "lon": -100.0},
     )
     assert ok.status_code == 200
     assert ok.json()["status"] == "discovered"

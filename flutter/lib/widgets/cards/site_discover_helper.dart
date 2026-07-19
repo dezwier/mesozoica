@@ -6,7 +6,7 @@ import '../../models/site.dart';
 import '../../services/location_service.dart';
 import '../../services/site_service.dart';
 
-const discoverMaxDistanceMeters = 20.0;
+const discoverMaxDistanceMeters = 500.0;
 
 /// Confirm + proximity-gated discover for a hidden field site.
 Future<SiteSummary?> promptDiscoverSite(
@@ -23,7 +23,7 @@ Future<SiteSummary?> promptDiscoverSite(
       title: const Text('Discover site?'),
       content: const Text(
         'Mark yourself as a discoverer of this site? '
-        'You must be within 20 meters.',
+        'You must be within 500 meters.',
       ),
       actions: [
         TextButton(
