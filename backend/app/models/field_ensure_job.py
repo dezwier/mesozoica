@@ -17,6 +17,8 @@ class FieldEnsureJob(SQLModel, table=True):
     lon: float
     radius_km: float
     missing_count: int = Field(default=0)
+    generated_count: Optional[int] = Field(default=None)
+    total_in_radius: Optional[int] = Field(default=None)
     reason: Optional[str] = Field(default=None, max_length=32)
     status: str = Field(default="pending", max_length=16, index=True)
     attempts: int = Field(default=0)

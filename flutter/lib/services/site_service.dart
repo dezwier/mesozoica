@@ -272,6 +272,50 @@ class SiteService {
     return FieldEnsureResponse.fromJson(decoded);
   }
 
+  Future<FieldEnsureJobStatus> fetchFieldEnsureJobStatus(int jobId) async {
+    final uri = AppConfig.fieldSiteEnsureJobUri(jobId);
+    if (kDebugMode) {
+      debugPrint('SiteService GET $uri');
+    }
+    final response = await _client
+        .get(uri, headers: await _headers())
+        .timeout(const Duration(seconds: 10));
+
+    if (response.statusCode == 404) {
+      throw const SiteServiceException('Field ensure job not found');
+    }
+    if (response.statusCode != 200) {
+      throw SiteServiceException(
+        'Failed to load field ensure job (${response.statusCode})',
+      );
+    }
+
+    final decoded = jsonDecode(response.body);
+    if (decoded is! Map<String, dynamic>) {
+      throw const SiteServiceException('Invalid field ensure job response');
+    }
+    return FieldEnsureJobStatus.fromJson(decoded);
+  }
+
+  /// Poll until the ensure job finishes (or [timeout] elapses).
+  Future<FieldEnsureJobStatus> waitForFieldEnsureJob(
+    int jobId, {
+    Duration timeout = const Duration(minutes: 3),
+    Duration interval = const Duration(seconds: 2),
+  }) async {
+    final deadline = DateTime.now().add(timeout);
+    while (true) {
+      final status = await fetchFieldEnsureJobStatus(jobId);
+      if (status.isTerminal) return status;
+      if (DateTime.now().isAfter(deadline)) {
+        throw const SiteServiceException(
+          'Timed out waiting for field site scan',
+        );
+      }
+      await Future<void>.delayed(interval);
+    }
+  }
+
   Future<List<SiteFossilThumb>> fetchFossilsForSite(int siteId) async {
     final uri = AppConfig.siteFossilsUri(siteId);
     if (kDebugMode) {

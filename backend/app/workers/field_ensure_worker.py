@@ -61,7 +61,12 @@ def process_one_job(*, worker_id: str) -> bool:
         with Session(engine) as session:
             refreshed = session.get(FieldEnsureJob, job.id)
             if refreshed is not None:
-                mark_job_done(session, refreshed)
+                mark_job_done(
+                    session,
+                    refreshed,
+                    generated_count=result.generated,
+                    total_in_radius=result.total_in_radius,
+                )
         log_field_event(
             "ensure_complete",
             service="worker",

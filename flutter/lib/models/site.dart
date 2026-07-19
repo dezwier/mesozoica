@@ -159,22 +159,70 @@ class SiteListResponse {
 class FieldEnsureResponse {
   const FieldEnsureResponse({
     required this.accepted,
+    this.jobId,
+    this.status,
     this.existingInRadius,
     this.missing,
+    this.generated,
+    this.totalInRadius,
     required this.radiusKm,
+    this.errorMessage,
   });
 
   final bool accepted;
+  final int? jobId;
+  final String? status;
   final int? existingInRadius;
   final int? missing;
+  final int? generated;
+  final int? totalInRadius;
   final double radiusKm;
+  final String? errorMessage;
 
   factory FieldEnsureResponse.fromJson(Map<String, dynamic> json) {
     return FieldEnsureResponse(
       accepted: json['accepted'] as bool? ?? false,
+      jobId: json['job_id'] as int?,
+      status: json['status'] as String?,
       existingInRadius: json['existing_in_radius'] as int?,
       missing: json['missing'] as int?,
+      generated: json['generated'] as int?,
+      totalInRadius: json['total_in_radius'] as int?,
       radiusKm: (json['radius_km'] as num?)?.toDouble() ?? 1.0,
+      errorMessage: json['error_message'] as String?,
+    );
+  }
+}
+
+class FieldEnsureJobStatus {
+  const FieldEnsureJobStatus({
+    required this.jobId,
+    required this.status,
+    this.generated,
+    this.totalInRadius,
+    required this.radiusKm,
+    this.errorMessage,
+  });
+
+  final int jobId;
+  final String status;
+  final int? generated;
+  final int? totalInRadius;
+  final double radiusKm;
+  final String? errorMessage;
+
+  bool get isDone => status == 'done';
+  bool get isFailed => status == 'failed';
+  bool get isTerminal => isDone || isFailed;
+
+  factory FieldEnsureJobStatus.fromJson(Map<String, dynamic> json) {
+    return FieldEnsureJobStatus(
+      jobId: json['job_id'] as int? ?? 0,
+      status: json['status'] as String? ?? 'pending',
+      generated: json['generated'] as int?,
+      totalInRadius: json['total_in_radius'] as int?,
+      radiusKm: (json['radius_km'] as num?)?.toDouble() ?? 1.0,
+      errorMessage: json['error_message'] as String?,
     );
   }
 }

@@ -13,6 +13,7 @@ import '../../controllers/field_session_coordinator.dart';
 import '../../controllers/map_controller.dart' as map_data;
 import '../../models/site.dart';
 import '../../services/location_service.dart';
+import '../../services/site_service.dart';
 import '../../widgets/map/location_marker_layer.dart';
 import '../../widgets/map/map_control_buttons.dart';
 import '../../widgets/map/map_tile_layer.dart';
@@ -204,30 +205,78 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
     });
   }
 
-  String _scanRequestBannerMessage(FieldEnsureResponse response) {
-    if (!response.accepted) {
-      return 'Scan already queued for this map area';
-    }
-    return 'Field site scan requested — new sites will appear when ready';
+  void _showScanSnackBar(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
   }
 
   void _onScanFieldArea() {
     if (!_mapReady) return;
 
     final center = _mapController.camera.center;
-    _showScanBanner('Field site scan requested — new sites will appear when ready');
-    unawaited(
-      context.read<FieldSessionCoordinator>().scanAt(center).then((response) {
-        if (!mounted) return;
-        if (response != null) {
-          _showScanBanner(_scanRequestBannerMessage(response));
-        }
-      }).catchError((_) {
-        if (mounted) {
-          _showScanBanner('Could not request field site scan');
-        }
-      }),
-    );
+    _showScanBanner('Field site scan queued…');
+    unawaited(_runAdminFieldScan(center));
+  }
+
+  Future<void> _runAdminFieldScan(LatLng center) async {
+    final siteService = SiteService();
+    try {
+      final response = await context
+          .read<FieldSessionCoordinator>()
+          .scanAt(center);
+      if (!mounted) return;
+      if (response == null) {
+        _showScanBanner('Could not queue field site scan');
+        return;
+      }
+
+      final jobId = response.jobId;
+      if (jobId == null) {
+        _showScanBanner(
+          response.accepted
+              ? 'Field site scan queued'
+              : 'Scan already running for this area',
+        );
+        return;
+      }
+
+      if (!response.accepted) {
+        _showScanBanner('Scan already running — waiting for result…');
+      }
+
+      final status = await siteService.waitForFieldEnsureJob(jobId);
+      if (!mounted) return;
+
+      _scanBannerTimer?.cancel();
+      setState(() => _scanBannerMessage = null);
+
+      if (status.isFailed) {
+        _showScanSnackBar(
+          status.errorMessage?.trim().isNotEmpty == true
+              ? 'Scan failed: ${status.errorMessage}'
+              : 'Field site scan failed',
+        );
+        return;
+      }
+
+      final found = status.totalInRadius ?? 0;
+      final written = status.generated ?? 0;
+      final radiusKm = status.radiusKm;
+      final radiusLabel = radiusKm == radiusKm.roundToDouble()
+          ? '${radiusKm.toInt()} km'
+          : '${radiusKm.toStringAsFixed(1)} km';
+      _showScanSnackBar(
+        'Found $found in $radiusLabel · wrote $written',
+      );
+      context.read<map_data.MapController>().scheduleFieldPollAfterEnsure();
+    } catch (_) {
+      if (!mounted) return;
+      _showScanBanner('Could not complete field site scan');
+    } finally {
+      siteService.dispose();
+    }
   }
 
   void _openFilterSheet(map_data.MapController mapData, bool isFieldMode) {

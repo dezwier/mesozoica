@@ -338,6 +338,7 @@ def test_field_ensure_api_enqueues_job(client, session: Session):
     assert response.status_code == 202
     payload = response.json()
     assert payload["accepted"] is True
+    assert payload["job_id"] is not None
     assert payload["missing"] is None
     assert payload["existing_in_radius"] is None
 
@@ -345,6 +346,7 @@ def test_field_ensure_api_enqueues_job(client, session: Session):
     assert len(jobs) == 1
     assert jobs[0].status == "pending"
     assert jobs[0].cell_key == "40.0:-100.0:1.0"
+    assert jobs[0].id == payload["job_id"]
 
     duplicate = client.post(
         "/api/v1/sites/field/ensure",
@@ -352,6 +354,7 @@ def test_field_ensure_api_enqueues_job(client, session: Session):
     )
     assert duplicate.status_code == 202
     assert duplicate.json()["accepted"] is False
+    assert duplicate.json()["job_id"] == payload["job_id"]
     assert len(list(session.exec(select(FieldEnsureJob)).all())) == 1
 
 
@@ -456,6 +459,15 @@ def test_field_ensure_worker_noops_when_full(client, session: Session, monkeypat
     job = session.exec(select(FieldEnsureJob)).first()
     assert job is not None
     assert job.status == "done"
+    assert job.generated_count == 0
+    assert job.total_in_radius == 100
+
+    status = client.get(f"/api/v1/sites/field/ensure/jobs/{job.id}")
+    assert status.status_code == 200
+    body = status.json()
+    assert body["status"] == "done"
+    assert body["generated"] == 0
+    assert body["total_in_radius"] == 100
 
 
 def test_field_ensure_worker_processes_job(client, session: Session, monkeypatch):
@@ -489,6 +501,8 @@ def test_field_ensure_worker_processes_job(client, session: Session, monkeypatch
     job = session.exec(select(FieldEnsureJob)).first()
     assert job is not None
     assert job.status == "done"
+    assert job.generated_count == 100
+    assert job.total_in_radius == 100
 
 
 def test_next_field_site_id_reads_postgresql_nextval_row(session: Session, monkeypatch):

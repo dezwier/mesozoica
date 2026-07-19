@@ -29,11 +29,12 @@ def enqueue_field_site_ensure(
     lon: float,
     config: FieldSiteLazyConfig | None = None,
     reason: str | None = None,
-) -> bool:
+) -> tuple[bool, int | None]:
     """Enqueue a worker job for density check and generation.
 
     Does not count sites in radius — the worker re-counts before generating.
-    Returns ``accepted`` (False when the cell already has a pending/running job).
+    Returns ``(accepted, job_id)``. ``accepted`` is False when the cell already
+    has a pending/running job; ``job_id`` is still the existing job when present.
     """
     cfg = config or FieldSiteLazyConfig()
     cfg.validate()
@@ -46,12 +47,14 @@ def enqueue_field_site_ensure(
 
     if job is not None:
         if job.status in (STATUS_PENDING, STATUS_RUNNING):
-            return False
+            return False, job.id
 
         job.lat = lat
         job.lon = lon
         job.radius_km = cfg.radius_km
         job.missing_count = 0
+        job.generated_count = None
+        job.total_in_radius = None
         job.reason = trigger
         job.status = STATUS_PENDING
         job.worker_id = None
@@ -60,7 +63,8 @@ def enqueue_field_site_ensure(
         job.finished_at = None
         session.add(job)
         session.commit()
-        return True
+        session.refresh(job)
+        return True, job.id
 
     job = FieldEnsureJob(
         cell_key=key,
@@ -75,11 +79,15 @@ def enqueue_field_site_ensure(
     session.add(job)
     try:
         session.commit()
+        session.refresh(job)
     except IntegrityError:
         session.rollback()
-        return False
+        existing = session.exec(
+            select(FieldEnsureJob).where(col(FieldEnsureJob.cell_key) == key)
+        ).first()
+        return False, existing.id if existing is not None else None
 
-    return True
+    return True, job.id
 
 
 def schedule_field_site_ensure(
@@ -88,7 +96,7 @@ def schedule_field_site_ensure(
     lon: float,
     config: FieldSiteLazyConfig | None = None,
     reason: str | None = None,
-) -> bool:
+) -> tuple[bool, int | None]:
     """API helper: open a session and enqueue a job."""
     with Session(engine) as session:
         return enqueue_field_site_ensure(
@@ -172,12 +180,26 @@ def claim_next_job(session: Session, *, worker_id: str) -> FieldEnsureJob | None
     return job
 
 
-def mark_job_done(session: Session, job: FieldEnsureJob) -> None:
+def mark_job_done(
+    session: Session,
+    job: FieldEnsureJob,
+    *,
+    generated_count: int | None = None,
+    total_in_radius: int | None = None,
+) -> None:
     job.status = STATUS_DONE
     job.finished_at = datetime.now(timezone.utc).replace(tzinfo=None)
     job.error_message = None
+    if generated_count is not None:
+        job.generated_count = generated_count
+    if total_in_radius is not None:
+        job.total_in_radius = total_in_radius
     session.add(job)
     session.commit()
+
+
+def get_field_ensure_job(session: Session, job_id: int) -> FieldEnsureJob | None:
+    return session.get(FieldEnsureJob, job_id)
 
 
 def mark_job_failed(session: Session, job: FieldEnsureJob, error_message: str) -> None:

@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field
 from sqlmodel import Session
 
 from app.core.database import get_session
-from app.core.exceptions import ValidationError
+from app.core.exceptions import NotFoundError, ValidationError
 from app.core.security import (
     get_current_admin_user,
     get_current_user,
@@ -16,6 +16,7 @@ from app.core.security import (
 from app.models.data_source import DATA_SOURCE_ARCHIVE, DATA_SOURCE_FIELD
 from app.models.user import User
 from app.schemas.site import (
+    FieldEnsureJobResponse,
     FieldEnsureResponse,
     SiteDinosaurThumbListResponse,
     SiteDinoFossilGroupListResponse,
@@ -38,7 +39,10 @@ from app.services.site_service import (
     site_row_to_summary,
 )
 from app.services.site_service.field_ensure_background import schedule_field_site_ensure
-from app.services.site_service.field_ensure_queue import cell_key
+from app.services.site_service.field_ensure_queue import (
+    cell_key,
+    get_field_ensure_job,
+)
 from app.services.site_service.field_generate import FieldSiteLazyConfig
 from app.services.site_service.field_site_logging import log_field_event, normalize_reason
 
@@ -196,7 +200,7 @@ def get_sites_nearby_discoverable(
 def post_field_site_ensure(body: FieldEnsureRequest) -> FieldEnsureResponse:
     config = FieldSiteLazyConfig(radius_km=body.radius_km)
     reason = normalize_reason(body.reason)
-    accepted = schedule_field_site_ensure(
+    accepted, job_id = schedule_field_site_ensure(
         lat=body.lat,
         lon=body.lon,
         config=config,
@@ -211,12 +215,35 @@ def post_field_site_ensure(body: FieldEnsureRequest) -> FieldEnsureResponse:
         radius_km=body.radius_km,
         cell=cell_key(body.lat, body.lon, body.radius_km),
         enqueued=accepted,
+        job_id=job_id,
     )
     return FieldEnsureResponse(
         accepted=accepted,
+        job_id=job_id,
+        status="pending" if accepted else "pending_or_running",
         existing_in_radius=None,
         missing=None,
+        generated=None,
+        total_in_radius=None,
         radius_km=body.radius_km,
+    )
+
+
+@router.get("/field/ensure/jobs/{job_id}", response_model=FieldEnsureJobResponse)
+def get_field_ensure_job_status(
+    job_id: int,
+    session: Session = Depends(get_session),
+) -> FieldEnsureJobResponse:
+    job = get_field_ensure_job(session, job_id)
+    if job is None or job.id is None:
+        raise NotFoundError(f"Field ensure job {job_id} not found")
+    return FieldEnsureJobResponse(
+        job_id=job.id,
+        status=job.status,
+        generated=job.generated_count,
+        total_in_radius=job.total_in_radius,
+        radius_km=job.radius_km,
+        error_message=job.error_message,
     )
 
 

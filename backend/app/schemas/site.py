@@ -44,9 +44,24 @@ class SiteNearbyResponse(BaseModel):
 
 class FieldEnsureResponse(BaseModel):
     accepted: bool
+    job_id: int | None = None
+    status: str | None = None
     existing_in_radius: int | None = None
     missing: int | None = None
+    generated: int | None = None
+    total_in_radius: int | None = None
     radius_km: float
+    error_message: str | None = None
+
+
+class FieldEnsureJobResponse(BaseModel):
+    job_id: int
+    status: str
+    accepted: bool = True
+    generated: int | None = None
+    total_in_radius: int | None = None
+    radius_km: float
+    error_message: str | None = None
 
 
 class SiteFossilThumb(BaseModel):

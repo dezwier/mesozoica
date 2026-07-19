@@ -212,6 +212,9 @@ class AppConfig {
   static Uri fieldSiteEnsureUri() =>
       Uri.parse('$baseApiUrl/api/v1/sites/field/ensure');
 
+  static Uri fieldSiteEnsureJobUri(int jobId) =>
+      Uri.parse('$baseApiUrl/api/v1/sites/field/ensure/jobs/$jobId');
+
   static Uri siteUri(
     int id, {
     CatalogDataSource dataSource = CatalogDataSource.archive,

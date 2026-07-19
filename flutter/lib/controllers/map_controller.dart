@@ -11,6 +11,10 @@ import '../models/site.dart';
 import '../services/site_service.dart';
 import '../widgets/map/site_map_filters.dart';
 
+/// Separate map caches so archive / field-linked / field-show-all switch
+/// instantly like archive ↔ field, without reloading.
+enum _MapCacheKey { archive, fieldLinked, fieldShowAll }
+
 class _CatalogSnapshot {
   List<SiteSummary> geoSites = [];
   bool loading = false;
@@ -66,9 +70,10 @@ class MapController extends ChangeNotifier {
   final CatalogModeController? _catalogModeController;
   final Random _random = Random();
 
-  final Map<CatalogDataSource, _CatalogSnapshot> _snapshots = {
-    CatalogDataSource.archive: _CatalogSnapshot(),
-    CatalogDataSource.field: _CatalogSnapshot(),
+  final Map<_MapCacheKey, _CatalogSnapshot> _snapshots = {
+    _MapCacheKey.archive: _CatalogSnapshot(),
+    _MapCacheKey.fieldLinked: _CatalogSnapshot(),
+    _MapCacheKey.fieldShowAll: _CatalogSnapshot(),
   };
 
   SiteSummary? _selectedSite;
@@ -77,7 +82,24 @@ class MapController extends ChangeNotifier {
   SiteMapFilters _filters = SiteMapFilters();
   bool _showAllFieldSites = false;
 
-  _CatalogSnapshot get _snap => _snapshots[_dataSource]!;
+  _MapCacheKey get _cacheKey {
+    if (_dataSource == CatalogDataSource.archive) {
+      return _MapCacheKey.archive;
+    }
+    return _showAllFieldSites
+        ? _MapCacheKey.fieldShowAll
+        : _MapCacheKey.fieldLinked;
+  }
+
+  _CatalogSnapshot get _snap => _snapshots[_cacheKey]!;
+
+  _CatalogSnapshot get _activeFieldSnap => _snapshots[
+      _showAllFieldSites ? _MapCacheKey.fieldShowAll : _MapCacheKey.fieldLinked]!;
+
+  Iterable<_CatalogSnapshot> get _fieldSnaps => [
+        _snapshots[_MapCacheKey.fieldLinked]!,
+        _snapshots[_MapCacheKey.fieldShowAll]!,
+      ];
 
   List<SiteSummary> get geoSites => List.unmodifiable(_snap.geoSites);
 
@@ -97,14 +119,32 @@ class MapController extends ChangeNotifier {
 
   bool get showAllFieldSites => _showAllFieldSites;
 
+  /// Toggle admin show-all without wiping the other field cache (same idea as
+  /// archive ↔ field).
   void setShowAllFieldSites(bool value) {
     if (_showAllFieldSites == value) return;
     _showAllFieldSites = value;
-    if (_isFieldMode) {
-      load(force: true);
-    } else {
+    clearSelection();
+    if (!_isFieldMode) {
       notifyListeners();
+      return;
     }
+
+    _stopFieldPoll();
+    _stopFieldPollBackoff();
+
+    final snap = _snap;
+    if (snap.loadingComplete) {
+      _startFieldPoll(snap.loadSeq);
+      unawaited(_pollNewFieldSites(snap.loadSeq));
+      notifyListeners();
+      return;
+    }
+    if (snap.loading) {
+      notifyListeners();
+      return;
+    }
+    load(force: false);
   }
 
   void applyFilters(SiteMapFilters filters) {
@@ -197,9 +237,10 @@ class MapController extends ChangeNotifier {
     if (!isAdmin) {
       _showAllFieldSites = false;
     }
-    final fieldSnap = _snapshots[CatalogDataSource.field]!;
-    fieldSnap.reset(clearSeed: false);
-    fieldSnap.loadSeq++;
+    for (final snap in _fieldSnaps) {
+      snap.reset(clearSeed: false);
+      snap.loadSeq++;
+    }
     notifyListeners();
     load(force: true);
   }
@@ -246,7 +287,7 @@ class MapController extends ChangeNotifier {
 
   /// Poll for newly generated field sites soon after an ensure request.
   void scheduleFieldPollAfterEnsure() {
-    final fieldSnap = _snapshots[CatalogDataSource.field]!;
+    final fieldSnap = _activeFieldSnap;
     _stopFieldPollBackoff();
     final seq = fieldSnap.loadSeq;
     _fieldPollBackoffSeq = seq;
@@ -301,8 +342,10 @@ class MapController extends ChangeNotifier {
   }
 
   void upsertSite(SiteSummary site) {
-    final snap = _snapshots[CatalogDataSource.field]!;
-    _mergeSites(snap, [site]);
+    // Keep both field views in sync after discover / admin status edits.
+    for (final snap in _fieldSnaps) {
+      _mergeSites(snap, [site]);
+    }
     if (_selectedSite?.siteId == site.siteId) {
       _selectedSite = site;
     }
@@ -337,7 +380,8 @@ class MapController extends ChangeNotifier {
   }
 
   Future<void> _loadFieldPages(int seq) async {
-    final snap = _snapshots[CatalogDataSource.field]!;
+    final snap = _snap;
+    final showAll = _showAllFieldSites;
     try {
       var hasMore = true;
       var offset = 0;
@@ -350,7 +394,7 @@ class MapController extends ChangeNotifier {
           offset: offset,
           sort: 'name',
           dataSource: CatalogDataSource.field,
-          showAll: _showAllFieldSites,
+          showAll: showAll,
         );
         if (seq != snap.loadSeq) return;
 
@@ -371,7 +415,7 @@ class MapController extends ChangeNotifier {
         snap.loadedCatalog = offset;
         snap.totalCatalog = response.total;
         snap.error = null;
-        if (_isFieldMode) {
+        if (_isFieldMode && _showAllFieldSites == showAll) {
           notifyListeners();
         }
 
@@ -383,7 +427,8 @@ class MapController extends ChangeNotifier {
         if (kDebugMode) {
           debugPrint(
             'MapController: field page loaded — ${snap.geoSites.length} geo sites '
-            '(${snap.loadedCatalog}/${snap.totalCatalog} catalog)',
+            '(${snap.loadedCatalog}/${snap.totalCatalog} catalog, '
+            'showAll=$showAll)',
           );
         }
 
@@ -394,14 +439,14 @@ class MapController extends ChangeNotifier {
 
       if (seq != snap.loadSeq) return;
       snap.loadingComplete = true;
-      if (_isFieldMode) {
+      if (_isFieldMode && _showAllFieldSites == showAll) {
         _startFieldPoll(seq);
       }
 
       if (kDebugMode) {
         debugPrint(
           'MapController: field catalog finished — ${snap.geoSites.length} geo sites '
-          'from ${snap.loadedCatalog} catalog rows',
+          'from ${snap.loadedCatalog} catalog rows (showAll=$showAll)',
         );
       }
     } on SiteServiceException catch (error) {
@@ -418,7 +463,7 @@ class MapController extends ChangeNotifier {
     } finally {
       if (seq == snap.loadSeq) {
         snap.loading = false;
-        if (_isFieldMode) {
+        if (_isFieldMode && _showAllFieldSites == showAll) {
           notifyListeners();
         }
       }
@@ -428,7 +473,7 @@ class MapController extends ChangeNotifier {
   void _startFieldPoll(int seq) {
     _stopFieldPoll();
     _fieldPollTimer = Timer.periodic(fieldPollInterval, (_) {
-      if (seq != _snapshots[CatalogDataSource.field]!.loadSeq || !_isFieldMode) {
+      if (seq != _activeFieldSnap.loadSeq || !_isFieldMode) {
         return;
       }
       unawaited(_pollNewFieldSites(seq));
@@ -445,7 +490,8 @@ class MapController extends ChangeNotifier {
   }
 
   Future<void> _pollNewFieldSites(int seq) async {
-    final snap = _snapshots[CatalogDataSource.field]!;
+    final snap = _activeFieldSnap;
+    final showAll = _showAllFieldSites;
     if (seq != snap.loadSeq) return;
 
     try {
@@ -461,7 +507,7 @@ class MapController extends ChangeNotifier {
           sort: 'name',
           dataSource: CatalogDataSource.field,
           siteIdMin: siteIdMin,
-          showAll: _showAllFieldSites,
+          showAll: showAll,
         );
         if (seq != snap.loadSeq) return;
         if (response.items.isEmpty) return;
@@ -469,7 +515,7 @@ class MapController extends ChangeNotifier {
         final geo = _withCoordinates(response.items);
         _mergeSites(snap, geo);
         snap.totalCatalog = response.total;
-        if (_isFieldMode) {
+        if (_isFieldMode && _showAllFieldSites == showAll) {
           notifyListeners();
         }
 
@@ -481,7 +527,7 @@ class MapController extends ChangeNotifier {
         if (kDebugMode) {
           debugPrint(
             'MapController: polled ${geo.length} new field sites '
-            '(max id ${snap.maxFieldSiteId})',
+            '(max id ${snap.maxFieldSiteId}, showAll=$showAll)',
           );
         }
       }
@@ -493,7 +539,7 @@ class MapController extends ChangeNotifier {
   }
 
   Future<void> _loadArchivePages(int seq) async {
-    final snap = _snapshots[CatalogDataSource.archive]!;
+    final snap = _snapshots[_MapCacheKey.archive]!;
     try {
       var hasMore = true;
 
