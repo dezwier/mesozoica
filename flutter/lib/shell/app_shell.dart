@@ -1,16 +1,24 @@
+import 'dart:async';
+
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../controllers/auth_controller.dart';
 import '../controllers/catalog_mode_controller.dart';
+import '../controllers/field_discovery_coordinator.dart';
 import '../controllers/field_session_coordinator.dart';
 import '../controllers/map_controller.dart';
 import '../controllers/notification_controller.dart';
 import '../controllers/site_catalog_controller.dart';
 import '../controllers/fossil_catalog_controller.dart';
+import '../models/site.dart';
 import '../models/user_notification.dart';
 import '../services/api_response_cache.dart';
 import '../services/location_service.dart';
+import '../services/push_notification_service.dart';
+import '../widgets/cards/site_discovery_celebration.dart';
 import '../widgets/common/gradient_app_bar.dart';
 import '../widgets/common/catalog_mode_toggle.dart';
 import '../widgets/common/notification_icon_button.dart';
@@ -35,6 +43,10 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
   int? _previousUserId;
   CatalogDataSource? _previousCatalogDataSource;
   CatalogModeController? _catalogModeController;
+  FieldDiscoveryCoordinator? _discoveryCoordinator;
+  StreamSubscription<RemoteMessage>? _foregroundPushSub;
+  StreamSubscription<RemoteMessage>? _openedPushSub;
+  bool _celebrationShowing = false;
 
   @override
   void initState() {
@@ -43,13 +55,24 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       _attachCatalogModeListener();
+      final discovery = context.read<FieldDiscoveryCoordinator>();
+      _discoveryCoordinator = discovery;
+      discovery.addListener(_onDiscoveryChanged);
+      discovery.bind(locationService: context.read<LocationService>());
+
       context.read<FieldSessionCoordinator>().bind(
             locationService: context.read<LocationService>(),
             onEnsureScheduled: () {
               context.read<MapController>().scheduleFieldPollAfterEnsure();
+              unawaited(
+                context
+                    .read<FieldDiscoveryCoordinator>()
+                    .refreshDiscoverableCache(force: true),
+              );
             },
           );
       context.read<FieldSessionCoordinator>().onForeground();
+      _setupPushHandling();
     });
   }
 
@@ -71,9 +94,85 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     context.read<FossilCatalogController>().load(force: true);
   }
 
+  void _onDiscoveryChanged() {
+    if (!mounted) return;
+    final discovery = context.read<FieldDiscoveryCoordinator>();
+    final pending = discovery.pendingCelebration;
+    if (pending == null) return;
+    discovery.consumeCelebration();
+    context.read<MapController>().load(force: true);
+    context.read<SiteCatalogController>().load(force: true);
+    unawaited(_showCelebration(site: pending));
+  }
+
+  Future<void> _showCelebration({
+    SiteSummary? site,
+    int? siteId,
+  }) async {
+    if (!mounted || _celebrationShowing) return;
+    if (site == null && siteId == null) return;
+    _celebrationShowing = true;
+    try {
+      await showSiteDiscoveryCelebration(
+        context,
+        site: site,
+        siteId: siteId,
+      );
+    } finally {
+      _celebrationShowing = false;
+    }
+  }
+
+  void _setupPushHandling() {
+    if (kIsWeb) return;
+    try {
+      unawaited(PushNotificationService.init());
+      _foregroundPushSub = FirebaseMessaging.onMessage.listen((msg) {
+        final type = msg.data['type']?.toString() ?? '';
+        if (type != 'site_discovered' &&
+            type != 'friend_request_received' &&
+            type != 'friend_request_accepted') {
+          return;
+        }
+        if (!mounted) return;
+        final uid = context.read<AuthController>().currentUser?.id;
+        if (uid == null) return;
+        context
+            .read<NotificationController>()
+            .refreshInBackground(authenticatedUserId: uid);
+      });
+
+      unawaited(
+        FirebaseMessaging.instance.getInitialMessage().then((msg) {
+          if (msg == null || !mounted) return;
+          _handlePushOpen(msg);
+        }),
+      );
+      _openedPushSub = FirebaseMessaging.onMessageOpenedApp.listen((msg) {
+        if (!mounted) return;
+        _handlePushOpen(msg);
+      });
+    } catch (_) {
+      // Firebase not configured.
+    }
+  }
+
+  void _handlePushOpen(RemoteMessage msg) {
+    final type = msg.data['type']?.toString() ?? '';
+    if (type != 'site_discovered') return;
+    final rawSiteId = msg.data['site_id'];
+    final siteId =
+        rawSiteId != null ? int.tryParse(rawSiteId.toString()) : null;
+    if (siteId == null) return;
+    unawaited(_showCelebration(siteId: siteId));
+  }
+
   @override
   void dispose() {
+    _discoveryCoordinator?.removeListener(_onDiscoveryChanged);
     _catalogModeController?.removeListener(_onCatalogModeChanged);
+    unawaited(_foregroundPushSub?.cancel() ?? Future<void>.value());
+    unawaited(_openedPushSub?.cancel() ?? Future<void>.value());
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -86,6 +185,11 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     switch (state) {
       case AppLifecycleState.resumed:
         fieldSession.onForeground();
+        unawaited(
+          context
+              .read<FieldDiscoveryCoordinator>()
+              .refreshDiscoverableCache(force: true),
+        );
         final userId = context.read<AuthController>().currentUser?.id;
         if (userId != null) {
           context
@@ -123,6 +227,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
       await notificationController.refreshInBackground(
         authenticatedUserId: userId,
       );
+      await PushNotificationService.registerTokenIfLoggedIn();
     });
   }
 
@@ -134,7 +239,13 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     setState(() => _index = index);
   }
 
-  void _onFriendRequestNotificationTap(UserNotificationItem item) {
+  void _onNotificationTap(UserNotificationItem item) {
+    if (item.isSiteDiscovered) {
+      final siteId = item.siteId;
+      if (siteId == null) return;
+      unawaited(_showCelebration(siteId: siteId));
+      return;
+    }
     final actorUserId = item.actorUserId;
     if (actorUserId == null) return;
     showUserProfileSheet(
@@ -164,7 +275,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
                     Padding(
                       padding: const EdgeInsets.only(right: 8),
                       child: NotificationIconButton(
-                        onTapFriendRequest: _onFriendRequestNotificationTap,
+                        onTapNotification: _onNotificationTap,
                       ),
                     ),
                   ]

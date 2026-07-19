@@ -137,6 +137,73 @@ def list_sites_in_radius(
     return nearby
 
 
+def list_discoverable_sites_in_radius(
+    session: Session,
+    *,
+    lat: float,
+    lon: float,
+    radius_km: float,
+    user_id: int,
+    limit: int = 500,
+) -> list[SiteRow]:
+    """Field sites within radius that this user has not linked and can still discover.
+
+    Includes globally ``hidden`` sites and sites already ``discovered`` by others.
+    """
+    from app.models.data_source import DATA_SOURCE_FIELD
+    from app.models.user_site import (
+        SITE_STATUS_DISCOVERED,
+        SITE_STATUS_HIDDEN,
+        USER_SITE_ROLE_DISCOVERER,
+        role_to_status,
+    )
+
+    min_lat, max_lat, min_lon, max_lon = _bbox(lat, lon, radius_km)
+    max_ts = latest_user_site_subquery()
+    linked_sites = (
+        select(col(UserSite.site_id))
+        .where(col(UserSite.user_id) == user_id)
+        .distinct()
+    )
+    stmt = (
+        select(Site, SiteType, _LatestUserSite)
+        .outerjoin(SiteType, col(Site.site_type_id) == col(SiteType.id))
+        .outerjoin(max_ts, col(Site.site_id) == max_ts.c.site_id)
+        .outerjoin(
+            _LatestUserSite,
+            latest_user_site_join_condition(_LatestUserSite, max_ts),
+        )
+        .where(
+            col(Site.data_source) == DATA_SOURCE_FIELD,
+            col(Site.latitude).is_not(None),
+            col(Site.longitude).is_not(None),
+            col(Site.latitude) >= min_lat,
+            col(Site.latitude) <= max_lat,
+            col(Site.longitude) >= min_lon,
+            col(Site.longitude) <= max_lon,
+            ~col(Site.site_id).in_(linked_sites),
+        )
+    )
+    rows = session.exec(stmt).all()
+
+    nearby: list[SiteRow] = []
+    for row in rows:
+        site = row[0]
+        latest = row[2]
+        status = role_to_status(latest.role if latest is not None else None)
+        if status not in (SITE_STATUS_HIDDEN, SITE_STATUS_DISCOVERED):
+            continue
+        # Discoverable when no latest role (hidden) or latest is discoverer.
+        if latest is not None and latest.role != USER_SITE_ROLE_DISCOVERER:
+            continue
+        distance = haversine_km(lat, lon, float(site.latitude), float(site.longitude))
+        if distance <= radius_km:
+            nearby.append(_row_from_tuple(row))
+            if len(nearby) >= limit:
+                break
+    return nearby
+
+
 def count_sites_in_radius(
     session: Session,
     *,

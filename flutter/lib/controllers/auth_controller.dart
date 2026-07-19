@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 
 import '../models/profile.dart';
 import '../services/auth_service.dart';
+import '../services/push_notification_service.dart';
 
 class AuthController extends ChangeNotifier {
   AuthController({AuthService? authService})
@@ -25,6 +26,7 @@ class AuthController extends ChangeNotifier {
       _currentUser = await _authService.loadStoredUser();
       if (_currentUser != null) {
         _currentUser = await _authService.refreshProfile();
+        await PushNotificationService.registerTokenIfLoggedIn();
       }
     } catch (_) {
       _currentUser = null;
@@ -41,6 +43,7 @@ class AuthController extends ChangeNotifier {
     if (result['success'] == true) {
       _currentUser = result['user'] as Profile;
       notifyListeners();
+      await PushNotificationService.registerTokenIfLoggedIn();
     }
     _setLoading(false);
     return result;
@@ -62,6 +65,7 @@ class AuthController extends ChangeNotifier {
     if (result['success'] == true) {
       _currentUser = result['user'] as Profile;
       notifyListeners();
+      await PushNotificationService.registerTokenIfLoggedIn();
     }
     _setLoading(false);
     return result;
@@ -73,6 +77,7 @@ class AuthController extends ChangeNotifier {
     if (result['success'] == true) {
       _currentUser = result['user'] as Profile;
       notifyListeners();
+      await PushNotificationService.registerTokenIfLoggedIn();
     }
     _setLoading(false);
     return result;

@@ -4,6 +4,8 @@ class UserNotificationItem {
     required this.type,
     this.actorUserId,
     this.actorUsername = '',
+    this.siteId,
+    this.siteLabel = '',
     required this.read,
     required this.createdAt,
   });
@@ -12,6 +14,8 @@ class UserNotificationItem {
   final String type;
   final int? actorUserId;
   final String actorUsername;
+  final int? siteId;
+  final String siteLabel;
   final bool read;
   final DateTime createdAt;
 
@@ -19,6 +23,7 @@ class UserNotificationItem {
   bool get isFriendRequestAccepted => type == 'friend_request_accepted';
   bool get isFriendRequestRelated =>
       isFriendRequestReceived || isFriendRequestAccepted;
+  bool get isSiteDiscovered => type == 'site_discovered';
 
   Map<String, dynamic> toJson() {
     return {
@@ -26,6 +31,8 @@ class UserNotificationItem {
       'type': type,
       'actor_user_id': actorUserId,
       'actor_username': actorUsername,
+      'site_id': siteId,
+      'site_label': siteLabel,
       'read': read,
       'created_at': createdAt.toUtc().toIso8601String(),
     };
@@ -37,6 +44,8 @@ class UserNotificationItem {
       type: json['type'] as String,
       actorUserId: json['actor_user_id'] as int?,
       actorUsername: json['actor_username'] as String? ?? '',
+      siteId: json['site_id'] as int?,
+      siteLabel: json['site_label'] as String? ?? '',
       read: json['read'] as bool? ?? false,
       createdAt: _parseUtcThenLocal(json['created_at'] as String),
     );
@@ -48,6 +57,8 @@ class UserNotificationItem {
       type: type,
       actorUserId: actorUserId,
       actorUsername: actorUsername,
+      siteId: siteId,
+      siteLabel: siteLabel,
       read: read ?? this.read,
       createdAt: createdAt,
     );

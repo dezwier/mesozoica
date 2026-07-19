@@ -16,6 +16,7 @@ class TurnableYAxisCard extends StatefulWidget {
     this.prelayoutFacesForHeight = true,
     this.decoration,
     this.turnable = true,
+    this.autoFlipOnce = false,
   });
 
   final Widget front;
@@ -27,6 +28,7 @@ class TurnableYAxisCard extends StatefulWidget {
   final bool prelayoutFacesForHeight;
   final BoxDecoration? decoration;
   final bool turnable;
+  final bool autoFlipOnce;
 
   @override
   State<TurnableYAxisCard> createState() => _TurnableYAxisCardState();
@@ -38,6 +40,7 @@ class _TurnableYAxisCardState extends State<TurnableYAxisCard>
   double _cardWidth = 1;
   bool _isDraggingHorizontally = false;
   double _lastTapTargetAngle = 0;
+  bool _didAutoFlip = false;
 
   static const double _halfTurnRadians = math.pi;
   static const double _fullTurnRadians = 2 * math.pi;
@@ -61,6 +64,16 @@ class _TurnableYAxisCardState extends State<TurnableYAxisCard>
         if (!mounted) return;
         setState(() {});
       });
+    if (widget.autoFlipOnce) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || _didAutoFlip || !widget.turnable) return;
+        _didAutoFlip = true;
+        Future<void>.delayed(const Duration(milliseconds: 450), () {
+          if (!mounted) return;
+          _flipByOneFace(turnLeft: true);
+        });
+      });
+    }
   }
 
   @override

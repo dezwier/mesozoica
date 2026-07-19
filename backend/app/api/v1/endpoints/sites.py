@@ -23,6 +23,7 @@ from app.schemas.site import (
 from app.services.site_service import (
     discover_site,
     get_site_by_id,
+    list_discoverable_sites_in_radius,
     list_site_dino_fossil_groups,
     list_site_dinosaurs,
     list_site_fossils,
@@ -139,6 +140,32 @@ def get_sites_nearby(
         data_source=data_source,
         linked_user_id=linked_user_id,
         show_all=effective_show_all,
+    )
+    types_by_period = load_site_types_by_period(session)
+    items = [site_row_to_summary(row, types_by_period=types_by_period) for row in rows]
+    return SiteNearbyResponse(
+        items=items,
+        total=len(items),
+        generated=0,
+        radius_km=radius_km,
+    )
+
+
+@router.get("/nearby-discoverable", response_model=SiteNearbyResponse)
+def get_sites_nearby_discoverable(
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+    lat: float = Query(..., ge=-90, le=90),
+    lon: float = Query(..., ge=-180, le=180),
+    radius_km: float = Query(default=1.0, gt=0, le=50),
+) -> SiteNearbyResponse:
+    """Field sites near the user that they can still discover (not yet linked)."""
+    rows = list_discoverable_sites_in_radius(
+        session,
+        lat=lat,
+        lon=lon,
+        radius_km=radius_km,
+        user_id=current_user.id,
     )
     types_by_period = load_site_types_by_period(session)
     items = [site_row_to_summary(row, types_by_period=types_by_period) for row in rows]

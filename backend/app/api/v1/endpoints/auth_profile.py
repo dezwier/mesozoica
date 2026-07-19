@@ -1,13 +1,20 @@
 """Auth profile endpoints."""
 
+from datetime import datetime, timezone
+
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 from sqlmodel import Session, select
 
-from app.api.v1.endpoints.auth_shared import auth_response_for_user
 from app.core.database import get_session
 from app.core.security import get_current_user
 from app.models.user import User
-from app.schemas.auth import AuthResponse, AvailabilityResponse, UpdateProfileRequest
+from app.models.user_device_token import UserDeviceToken
+from app.schemas.auth import (
+    AuthResponse,
+    AvailabilityResponse,
+    RegisterDeviceTokenRequest,
+    UpdateProfileRequest,
+)
 from app.services.user_image_service import (
     delete_user_image_file,
     process_user_profile_image,
@@ -16,6 +23,40 @@ from app.services.user_image_service import (
 from app.services.user_service import delete_user_account, user_to_response
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+
+
+@router.post("/device-token", status_code=status.HTTP_204_NO_CONTENT)
+async def register_device_token(
+    body: RegisterDeviceTokenRequest,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    """Register or refresh device token for push notifications."""
+    now = datetime.now(timezone.utc)
+    existing = session.exec(
+        select(UserDeviceToken).where(UserDeviceToken.token == body.token)
+    ).first()
+    if existing:
+        if existing.user_id != current_user.id:
+            existing.user_id = current_user.id
+            existing.last_used_at = now
+            existing.platform = body.platform
+            session.add(existing)
+        else:
+            existing.last_used_at = now
+            existing.platform = body.platform
+            session.add(existing)
+    else:
+        session.add(
+            UserDeviceToken(
+                user_id=current_user.id,
+                token=body.token,
+                platform=body.platform,
+                last_used_at=now,
+            )
+        )
+    session.commit()
+    return None
 
 
 @router.post("/upload-profile-image", response_model=AuthResponse)

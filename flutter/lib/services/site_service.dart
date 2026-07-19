@@ -168,6 +168,36 @@ class SiteService {
     return SiteNearbyResponse.fromJson(decoded);
   }
 
+  Future<SiteNearbyResponse> fetchNearbyDiscoverableSites({
+    required double lat,
+    required double lon,
+    double radiusKm = 1.0,
+  }) async {
+    final uri = AppConfig.sitesNearbyDiscoverableUri(
+      lat: lat,
+      lon: lon,
+      radiusKm: radiusKm,
+    );
+    if (kDebugMode) {
+      debugPrint('SiteService GET $uri');
+    }
+    final response = await _client
+        .get(uri, headers: await _headers())
+        .timeout(const Duration(seconds: 60));
+
+    if (response.statusCode != 200) {
+      throw SiteServiceException(
+        'Failed to load discoverable sites (${response.statusCode})',
+      );
+    }
+
+    final decoded = jsonDecode(response.body);
+    if (decoded is! Map<String, dynamic>) {
+      throw const SiteServiceException('Invalid discoverable sites response');
+    }
+    return SiteNearbyResponse.fromJson(decoded);
+  }
+
   Future<FieldEnsureResponse> requestFieldSiteEnsure({
     required double lat,
     required double lon,

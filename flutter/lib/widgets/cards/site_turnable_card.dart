@@ -13,6 +13,7 @@ class SiteTurnableCard extends StatefulWidget {
     super.key,
     required this.site,
     this.turnable = true,
+    this.autoFlipOnce = false,
     this.titleFontSize = 36,
     this.subtitleFontSize = 10,
     this.overlayHeightFactor = 0.38,
@@ -22,6 +23,7 @@ class SiteTurnableCard extends StatefulWidget {
 
   final SiteSummary site;
   final bool turnable;
+  final bool autoFlipOnce;
   final double titleFontSize;
   final double subtitleFontSize;
   final double overlayHeightFactor;
@@ -68,6 +70,7 @@ class _SiteTurnableCardState extends State<SiteTurnableCard> {
       outerPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: DinoCardTheme.of(context).chromeDecoration(),
       turnable: widget.turnable,
+      autoFlipOnce: widget.autoFlipOnce,
       front: SiteCardFront(
         site: _site,
         titleFontSize: widget.titleFontSize,

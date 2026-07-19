@@ -223,6 +223,20 @@ class AppConfig {
   static Uri siteDiscoverUri(int id) =>
       Uri.parse('$baseApiUrl/api/v1/sites/$id/discover');
 
+  static Uri sitesNearbyDiscoverableUri({
+    required double lat,
+    required double lon,
+    double radiusKm = 1.0,
+  }) {
+    return Uri.parse('$baseApiUrl/api/v1/sites/nearby-discoverable').replace(
+      queryParameters: {
+        'lat': '$lat',
+        'lon': '$lon',
+        'radius_km': '$radiusKm',
+      },
+    );
+  }
+
   static Uri sitesNearbyUri({
     required double lat,
     required double lon,

@@ -108,3 +108,13 @@ class LinkedAccountsResponse(BaseModel):
 class LinkedAccountsMessageResponse(BaseModel):
     message: str
     providers: list[str]
+
+
+class RegisterDeviceTokenRequest(BaseModel):
+    """Register FCM (or other) device token for push."""
+
+    token: str = Field(..., min_length=1, description="FCM device token")
+    platform: str = Field(
+        default="android",
+        description="android | ios | web",
+    )

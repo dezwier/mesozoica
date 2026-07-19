@@ -148,11 +148,10 @@ class FieldSessionCoordinator extends ChangeNotifier {
     }
 
     _sessionActive = true;
-    // Foreground permission only — ensure runs on app open/resume and 500 m
-    // moves while the process is alive; no iOS "Always" location required.
+    // Always-on GPS for proximity discovery + field ensure while process is alive.
     await locationService.setFieldSession(
       active: true,
-      backgroundPreferred: false,
+      backgroundPreferred: true,
     );
   }
 

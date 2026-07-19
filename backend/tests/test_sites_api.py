@@ -472,6 +472,128 @@ def test_discover_site_within_range(client, session):
     assert linked.json()["total"] == 1
     assert linked.json()["items"][0]["site_id"] == 90006
 
+    notifications = client.get(
+        "/api/v1/notifications",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert notifications.status_code == 200
+    items = notifications.json()["notifications"]
+    assert len(items) == 1
+    assert items[0]["type"] == "site_discovered"
+    assert items[0]["site_id"] == 90006
+    assert "Discover Me" in items[0]["site_label"]
+
+    # Second discover is idempotent — no duplicate notification.
+    again = client.post(
+        "/api/v1/sites/90006/discover",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"lat": 40.001, "lon": -100.0},
+    )
+    assert again.status_code == 200
+    notifications2 = client.get(
+        "/api/v1/notifications",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert len(notifications2.json()["notifications"]) == 1
+
+
+def test_nearby_discoverable_excludes_linked_and_non_discoverable(client, session):
+    site_type = _seed_site_type(session)
+    session.add(
+        Site(
+            site_id=90010,
+            latitude=Decimal("40.000000"),
+            longitude=Decimal("-100.000000"),
+            formation="Hidden Nearby",
+            rock_type="sandstone",
+            period="cretaceous",
+            site_type_id=site_type.id,
+            data_source="field",
+        )
+    )
+    session.add(
+        Site(
+            site_id=90011,
+            latitude=Decimal("40.000500"),
+            longitude=Decimal("-100.000000"),
+            formation="Already Linked",
+            rock_type="sandstone",
+            period="cretaceous",
+            site_type_id=site_type.id,
+            data_source="field",
+        )
+    )
+    session.add(
+        Site(
+            site_id=90012,
+            latitude=Decimal("40.000800"),
+            longitude=Decimal("-100.000000"),
+            formation="Protected Nearby",
+            rock_type="sandstone",
+            period="cretaceous",
+            site_type_id=site_type.id,
+            data_source="field",
+        )
+    )
+    user = User(username="prox", email="prox@example.com", password="x")
+    other = User(username="other", email="other@example.com", password="x")
+    session.add(user)
+    session.add(other)
+    session.commit()
+    session.refresh(user)
+    session.refresh(other)
+    session.add(
+        UserSite(
+            user_id=user.id,
+            site_id=90011,
+            role=USER_SITE_ROLE_DISCOVERER,
+        )
+    )
+    session.add(
+        UserSite(
+            user_id=other.id,
+            site_id=90012,
+            role=USER_SITE_ROLE_PROTECTOR,
+        )
+    )
+    session.commit()
+    token = create_access_token({"sub": str(user.id)})
+
+    response = client.get(
+        "/api/v1/sites/nearby-discoverable",
+        params={"lat": 40.0, "lon": -100.0, "radius_km": 1.0},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert response.status_code == 200
+    items = response.json()["items"]
+    ids = {item["site_id"] for item in items}
+    assert 90010 in ids
+    assert 90011 not in ids
+    assert 90012 not in ids
+
+
+def test_register_device_token(client, session):
+    user = User(username="pusher", email="pusher@example.com", password="x")
+    session.add(user)
+    session.commit()
+    session.refresh(user)
+    token = create_access_token({"sub": str(user.id)})
+
+    response = client.post(
+        "/api/v1/auth/device-token",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"token": "fcm-token-abc", "platform": "ios"},
+    )
+    assert response.status_code == 204
+
+    # Upsert same token for same user.
+    again = client.post(
+        "/api/v1/auth/device-token",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"token": "fcm-token-abc", "platform": "android"},
+    )
+    assert again.status_code == 204
+
 
 def test_list_sites_rejects_invalid_data_source(client):
     response = client.get("/api/v1/sites", params={"data_source": "invalid"})

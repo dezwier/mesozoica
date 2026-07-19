@@ -15,6 +15,8 @@ class UserNotificationResponse(BaseModel):
     type: str
     actor_user_id: Optional[int] = None
     actor_username: str = ""
+    site_id: Optional[int] = None
+    site_label: str = ""
     read: bool
     created_at: datetime
 

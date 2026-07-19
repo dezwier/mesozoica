@@ -16,10 +16,10 @@ class NotificationIconButton extends StatelessWidget {
 
   const NotificationIconButton({
     super.key,
-    required this.onTapFriendRequest,
+    required this.onTapNotification,
   });
 
-  final void Function(UserNotificationItem item) onTapFriendRequest;
+  final void Function(UserNotificationItem item) onTapNotification;
 
   @override
   Widget build(BuildContext context) {
@@ -93,7 +93,7 @@ class NotificationIconButton extends StatelessWidget {
                   child: Consumer<NotificationController>(
                     builder: (context, store, _) => _NotificationListContent(
                       store: store,
-                      onTapFriendRequest: (item) async {
+                      onTapNotification: (item) async {
                         if (_notificationTapScheduled) return;
                         _notificationTapScheduled = true;
                         await store.markRead(item.id);
@@ -101,7 +101,7 @@ class NotificationIconButton extends StatelessWidget {
                         remove();
                         WidgetsBinding.instance.addPostFrameCallback((_) {
                           _notificationTapScheduled = false;
-                          onTapFriendRequest(item);
+                          onTapNotification(item);
                         });
                       },
                       onMarkAllRead: store.markAllRead,

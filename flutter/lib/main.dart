@@ -7,6 +7,7 @@ import 'config/app_config.dart';
 import 'controllers/auth_controller.dart';
 import 'controllers/catalog_mode_controller.dart';
 import 'controllers/dinosaur_catalog_controller.dart';
+import 'controllers/field_discovery_coordinator.dart';
 import 'controllers/fossil_catalog_controller.dart';
 import 'controllers/field_session_coordinator.dart';
 import 'controllers/map_controller.dart';
@@ -18,6 +19,7 @@ import 'controllers/theme_controller.dart';
 import 'firebase_options.dart';
 import 'services/location_service.dart';
 import 'services/map_tile_cache.dart';
+import 'services/push_notification_runtime.dart';
 import 'shell/app_shell.dart';
 import 'theme/mesozoica_theme.dart';
 
@@ -27,6 +29,7 @@ Future<void> main() async {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
+    await PushNotificationRuntime.init();
   } catch (error) {
     if (kDebugMode) {
       debugPrint('Firebase init skipped/failed: $error');
@@ -83,6 +86,7 @@ class MesozoicaApp extends StatelessWidget {
         ),
         ChangeNotifierProvider(create: (_) => LocationService()),
         ChangeNotifierProvider(create: (_) => FieldSessionCoordinator()),
+        ChangeNotifierProvider(create: (_) => FieldDiscoveryCoordinator()),
       ],
       child: Consumer<ThemeController>(
         builder: (context, themeController, _) {

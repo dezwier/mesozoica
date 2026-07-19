@@ -3,25 +3,27 @@ part of 'notification_icon_button.dart';
 class _NotificationListContent extends StatelessWidget {
   const _NotificationListContent({
     required this.store,
-    required this.onTapFriendRequest,
+    required this.onTapNotification,
     required this.onMarkAllRead,
   });
 
   final NotificationController store;
-  final void Function(UserNotificationItem item) onTapFriendRequest;
+  final void Function(UserNotificationItem item) onTapNotification;
   final Future<void> Function() onMarkAllRead;
 
   static const double _listMaxHeight = 320.0;
 
-  List<UserNotificationItem> _friendRequestItems() {
-    final items = store.items.where((item) => item.isFriendRequestRelated).toList()
+  List<UserNotificationItem> _visibleItems() {
+    final items = store.items
+        .where((item) => item.isFriendRequestRelated || item.isSiteDiscovered)
+        .toList()
       ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
     return items;
   }
 
   @override
   Widget build(BuildContext context) {
-    final items = _friendRequestItems();
+    final items = _visibleItems();
     final hasUnread = items.any((item) => !item.read);
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
@@ -97,10 +99,10 @@ class _NotificationListContent extends StatelessWidget {
                 indent: 56,
                 endIndent: 16,
               ),
-              itemBuilder: (context, index) => _buildFriendRequestTile(
+              itemBuilder: (context, index) => _buildTile(
                 context,
                 items[index],
-                onTapFriendRequest,
+                onTapNotification,
               ),
             ),
           ),
@@ -109,7 +111,7 @@ class _NotificationListContent extends StatelessWidget {
     );
   }
 
-  Widget _buildFriendRequestTile(
+  Widget _buildTile(
     BuildContext context,
     UserNotificationItem item,
     void Function(UserNotificationItem) onTap,
@@ -117,8 +119,51 @@ class _NotificationListContent extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
     final timeText = DateFormat.Hm().format(item.createdAt.toLocal());
-    final actor = item.actorUsername.isNotEmpty ? item.actorUsername : 'Someone';
 
+    if (item.isSiteDiscovered) {
+      final label =
+          item.siteLabel.isNotEmpty ? item.siteLabel : 'a field site';
+      return ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+        leading: Column(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.explore_outlined,
+              color: item.read
+                  ? colorScheme.onSurfaceVariant
+                  : colorScheme.primary,
+            ),
+            const SizedBox(height: 2),
+            Text(
+              timeText,
+              style: textTheme.labelSmall?.copyWith(
+                color: colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ),
+        title: Text(
+          'You discovered $label',
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: textTheme.bodyMedium?.copyWith(
+            fontWeight: item.read ? FontWeight.normal : FontWeight.w600,
+            color: colorScheme.onSurface,
+          ),
+        ),
+        subtitle: Text(
+          'Tap to view card',
+          style: textTheme.bodySmall?.copyWith(
+            color: colorScheme.onSurfaceVariant,
+          ),
+        ),
+        onTap: () => onTap(item),
+      );
+    }
+
+    final actor = item.actorUsername.isNotEmpty ? item.actorUsername : 'Someone';
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
       leading: Column(

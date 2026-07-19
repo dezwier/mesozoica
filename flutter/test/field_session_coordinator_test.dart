@@ -28,8 +28,11 @@ class _FakeLocationService extends LocationService {
     required bool active,
     bool backgroundPreferred = false,
   }) async {
+    lastBackgroundPreferred = backgroundPreferred;
     notifyListeners();
   }
+
+  bool? lastBackgroundPreferred;
 
   @override
   Future<void> onAppResumed() async {}
@@ -67,6 +70,7 @@ void main() {
 
     expect(ensureCalls, 1);
     expect(coordinator.isSessionActive, isTrue);
+    expect(locationService.lastBackgroundPreferred, isTrue);
 
     coordinator.dispose();
   });

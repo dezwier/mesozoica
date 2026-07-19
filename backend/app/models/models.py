@@ -12,6 +12,7 @@ from app.models.site_type import SiteType
 from app.models.tool import Tool
 from app.models.user import User
 from app.models.user_auth_identity import UserAuthIdentity
+from app.models.user_device_token import UserDeviceToken
 from app.models.user_notification import UserNotification
 from app.models.user_site import UserSite
 from app.models.user_user import UserUser
@@ -25,6 +26,7 @@ __all__ = [
     "Tool",
     "User",
     "UserAuthIdentity",
+    "UserDeviceToken",
     "UserNotification",
     "UserSite",
     "UserUser",

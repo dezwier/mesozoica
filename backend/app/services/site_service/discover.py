@@ -7,18 +7,27 @@ from sqlmodel import Session, col, select
 from app.core.exceptions import NotFoundError, ValidationError
 from app.models.data_source import DATA_SOURCE_FIELD
 from app.models.site import Site
+from app.models.user_notification import UserNotification, UserNotificationType
 from app.models.user_site import (
     SITE_STATUS_DISCOVERED,
     SITE_STATUS_HIDDEN,
     USER_SITE_ROLE_DISCOVERER,
     UserSite,
 )
+from app.services.push_service import send_site_discovered_push
 from app.services.site_service.geo_utils import haversine_km
 from app.services.site_service.list import get_site_by_id
 from app.services.site_service.summary import SiteRow
 
 DISCOVER_MAX_DISTANCE_M = 500.0
 _DISCOVER_MAX_DISTANCE_KM = DISCOVER_MAX_DISTANCE_M / 1000.0
+
+
+def _site_label(site: Site) -> str:
+    formation = (site.formation or "").strip()
+    if formation:
+        return formation
+    return f"Site #{site.site_id}"
 
 
 def discover_site(
@@ -66,6 +75,21 @@ def discover_site(
                 role=USER_SITE_ROLE_DISCOVERER,
             )
         )
+        notification = UserNotification(
+            user_id=user_id,
+            type=UserNotificationType.SITE_DISCOVERED,
+            site_id=site_id,
+        )
+        session.add(notification)
         session.commit()
+        session.refresh(notification)
+        if notification.id is not None:
+            send_site_discovered_push(
+                session,
+                user_id=user_id,
+                site_id=site_id,
+                notification_id=notification.id,
+                site_label=_site_label(site),
+            )
 
     return get_site_by_id(session, site_id, data_source=DATA_SOURCE_FIELD)
