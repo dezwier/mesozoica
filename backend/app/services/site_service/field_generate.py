@@ -44,8 +44,8 @@ from app.services.site_service.summary import SiteRow
 logger = logging.getLogger("field_site_generate")
 
 FIELD_SITE_ID_START = 1_000_000_000
-PROGRESS_LOG_INTERVAL = 50
-WRITE_BATCH_SIZE = 25
+PROGRESS_LOG_INTERVAL = 100
+WRITE_BATCH_SIZE = 5
 
 
 @dataclass(frozen=True)
