@@ -59,7 +59,10 @@ class SiteSummary {
     return displaySiteNumber;
   }
 
-  String get displaySubtitle {
+  /// Subtitle: `#id, lat, lon, region, distance`.
+  ///
+  /// [distanceMeters] is appended after region when known (e.g. `450m`, `1.23km`).
+  String displaySubtitle({double? distanceMeters}) {
     final parts = <String>[];
     if (latitude != null && longitude != null) {
       parts.add(displayCoordinates);
@@ -72,8 +75,19 @@ class SiteSummary {
     if (trimmedCountry != null && trimmedCountry.isNotEmpty) {
       parts.add(trimmedCountry);
     }
+    if (distanceMeters != null) {
+      parts.add(formatSiteDistance(distanceMeters));
+    }
     if (parts.isEmpty) return displaySiteNumber;
-    return '$displaySiteNumber ${parts.join(', ')}';
+    return '$displaySiteNumber, ${parts.join(', ')}';
+  }
+
+  /// Formats a distance as `450m` (< 1 km) or `1.23km` (≥ 1 km).
+  static String formatSiteDistance(double meters) {
+    if (meters < 1000) {
+      return '${meters.round()}m';
+    }
+    return '${(meters / 1000).toStringAsFixed(2)}km';
   }
 
   String get displayCoordinates {

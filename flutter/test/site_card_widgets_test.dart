@@ -54,7 +54,24 @@ void main() {
     );
 
     expect(find.text('Cretaceous Sandstone'), findsOneWidget);
-    expect(find.text('#50001 46.88, -110.36, Montana, US'), findsOneWidget);
+    expect(find.text('#50001, 46.88, -110.36, Montana, US'), findsOneWidget);
+  });
+
+  test('SiteSummary.displaySubtitle formats id comma and distance', () {
+    expect(
+      _fixture.displaySubtitle(),
+      '#50001, 46.88, -110.36, Montana, US',
+    );
+    expect(
+      _fixture.displaySubtitle(distanceMeters: 450),
+      '#50001, 46.88, -110.36, Montana, US, 450m',
+    );
+    expect(
+      _fixture.displaySubtitle(distanceMeters: 1230),
+      '#50001, 46.88, -110.36, Montana, US, 1.23km',
+    );
+    expect(SiteSummary.formatSiteDistance(999), '999m');
+    expect(SiteSummary.formatSiteDistance(1000), '1.00km');
   });
 
   testWidgets('SiteCardFront renders image, title, and collection id',
@@ -74,7 +91,7 @@ void main() {
 
     expect(find.byType(SiteCardImage), findsOneWidget);
     expect(find.text('Cretaceous Sandstone'), findsOneWidget);
-    expect(find.text('#50001 46.88, -110.36, Montana, US'), findsOneWidget);
+    expect(find.text('#50001, 46.88, -110.36, Montana, US'), findsOneWidget);
     expect(find.byType(SiteCardEdgeFacts), findsNothing);
     expect(find.text('COORDINATES'), findsNothing);
     expect(find.text('COUNTRY'), findsNothing);
@@ -149,7 +166,7 @@ void main() {
     expect(find.byType(GeologicTimeline), findsOneWidget);
     expect(find.byType(SiteCardEdgeFacts), findsOneWidget);
     expect(find.text('Cretaceous Sandstone'), findsOneWidget);
-    expect(find.text('#50001 46.88, -110.36, Montana, US'), findsNothing);
+    expect(find.text('#50001, 46.88, -110.36, Montana, US'), findsNothing);
     expect(find.text('FOSSIL RECORD'), findsOneWidget);
     expect(find.text('TIME'), findsNothing);
     expect(find.text('COORDINATES'), findsOneWidget);

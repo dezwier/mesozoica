@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:provider/provider.dart';
 
 import '../../models/site.dart';
+import '../../services/location_service.dart';
 import '../../theme/dino_card_theme.dart';
 import 'card_adaptive_title_text.dart';
 
@@ -69,7 +72,7 @@ class SiteCardHeader extends StatelessWidget {
         if (showSubtitle) ...[
           const SizedBox(height: 8),
           Text(
-            site.displaySubtitle,
+            site.displaySubtitle(distanceMeters: _distanceMeters(context)),
             textAlign: centered ? TextAlign.center : TextAlign.start,
             style: subtitleStyle,
             maxLines: 1,
@@ -77,6 +80,21 @@ class SiteCardHeader extends StatelessWidget {
           ),
         ],
       ],
+    );
+  }
+
+  double? _distanceMeters(BuildContext context) {
+    final lat = site.latitude;
+    final lon = site.longitude;
+    if (lat == null || lon == null) return null;
+    final user =
+        Provider.of<LocationService?>(context, listen: true)?.currentLocation;
+    if (user == null) return null;
+    return Geolocator.distanceBetween(
+      user.latitude,
+      user.longitude,
+      lat,
+      lon,
     );
   }
 }
