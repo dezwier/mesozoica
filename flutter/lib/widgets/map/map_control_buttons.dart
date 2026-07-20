@@ -29,7 +29,7 @@ class MapControlButtons extends StatelessWidget {
       bottom: 12,
       child: Column(
         mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.end,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           if (!rotateMap) ...[
             ZoomSlider(
@@ -38,6 +38,15 @@ class MapControlButtons extends StatelessWidget {
             ),
             const SizedBox(height: 8),
           ],
+          if (!rotateMap)
+            FloatingActionButton.small(
+              heroTag: 'center_location',
+              onPressed: onCenterLocation,
+              tooltip: 'Center on my location',
+              backgroundColor: fabTheme.backgroundColor,
+              foregroundColor: fabTheme.foregroundColor,
+              child: const Icon(Icons.my_location),
+            ),
           FloatingActionButton.small(
             heroTag: 'toggle_rotation',
             onPressed: onToggleRotation,
@@ -50,15 +59,6 @@ class MapControlButtons extends StatelessWidget {
               rotateMap ? Icons.explore_outlined : Icons.threed_rotation,
             ),
           ),
-          if (!rotateMap)
-            FloatingActionButton.small(
-              heroTag: 'center_location',
-              onPressed: onCenterLocation,
-              tooltip: 'Center on my location',
-              backgroundColor: fabTheme.backgroundColor,
-              foregroundColor: fabTheme.foregroundColor,
-              child: const Icon(Icons.my_location),
-            ),
           if (filterFab != null) filterFab!,
         ],
       ),

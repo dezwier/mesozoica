@@ -6,6 +6,8 @@ import 'package:provider/provider.dart';
 import '../../controllers/catalog_mode_controller.dart';
 import '../../controllers/site_catalog_controller.dart';
 import '../../widgets/cards/site_turnable_card.dart';
+import '../../widgets/dino/dinosaur_filter_fab.dart';
+import '../../widgets/map/site_filter_sheet.dart';
 
 class SiteScreen extends StatefulWidget {
   const SiteScreen({
@@ -85,13 +87,33 @@ class SiteScreenState extends State<SiteScreen> {
     });
   }
 
+  void _openFilterSheet(SiteCatalogController catalog, bool isFieldMode) {
+    SiteFilterSheet.show(
+      context,
+      initialFilters: catalog.filters.copyWith(filterByStatus: isFieldMode),
+      showStatusSection: isFieldMode,
+      onApply: catalog.applyFilters,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final isFieldMode = context.watch<CatalogModeController>().isField;
     return Consumer<SiteCatalogController>(
       builder: (context, catalog, _) {
         return Stack(
           children: [
             Positioned.fill(child: _buildBody(context, catalog)),
+            if (widget.isActive)
+              Positioned(
+                right: 12,
+                bottom: 12,
+                child: DinosaurFilterFab(
+                  heroTag: 'site_catalog_filter_fab',
+                  hasActiveFilters: catalog.hasActiveFilters,
+                  onPressed: () => _openFilterSheet(catalog, isFieldMode),
+                ),
+              ),
           ],
         );
       },
@@ -99,7 +121,7 @@ class SiteScreenState extends State<SiteScreen> {
   }
 
   Widget _buildBody(BuildContext context, SiteCatalogController catalog) {
-    if (catalog.loading && catalog.items.isEmpty) {
+    if ((catalog.loading || catalog.isLoadingMore) && catalog.items.isEmpty) {
       return const Center(child: CircularProgressIndicator());
     }
 
@@ -137,9 +159,11 @@ class SiteScreenState extends State<SiteScreen> {
       final isField = context.watch<CatalogModeController>().isField;
       return Center(
         child: Text(
-          isField
-              ? 'No linked field sites yet.'
-              : 'No sites in the catalog yet.',
+          catalog.hasActiveFilters
+              ? 'No sites match these filters.'
+              : isField
+                  ? 'No linked field sites yet.'
+                  : 'No sites in the catalog yet.',
           style: Theme.of(context).textTheme.bodyLarge,
         ),
       );
@@ -150,7 +174,7 @@ class SiteScreenState extends State<SiteScreen> {
       child: ListView.builder(
         controller: _scrollController,
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.only(top: 8, bottom: 24),
+        padding: const EdgeInsets.only(top: 8, bottom: 88),
         itemCount: catalog.items.length + (catalog.isLoadingMore ? 1 : 0),
         itemBuilder: (context, index) {
           if (index >= catalog.items.length) {

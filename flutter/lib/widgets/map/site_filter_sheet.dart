@@ -212,7 +212,7 @@ class _SiteFilterSheetState extends State<SiteFilterSheet> {
               ),
               const SizedBox(height: 4),
               Text(
-                'Unchecking options hides matching markers on the map. '
+                'Unchecking options hides matching sites. '
                 'Long-press a checkbox to keep only that option.',
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: colorScheme.onSurfaceVariant,

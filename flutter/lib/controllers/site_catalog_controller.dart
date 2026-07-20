@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/foundation.dart';
@@ -6,6 +7,7 @@ import '../config/app_config.dart';
 import '../controllers/catalog_mode_controller.dart';
 import '../models/site.dart';
 import '../services/site_service.dart';
+import '../widgets/map/site_map_filters.dart';
 
 class SiteCatalogController extends ChangeNotifier {
   SiteCatalogController({
@@ -20,7 +22,7 @@ class SiteCatalogController extends ChangeNotifier {
   final CatalogModeController? _catalogModeController;
   final Random _random = Random();
 
-  List<SiteSummary> _items = [];
+  List<SiteSummary> _rawItems = [];
   bool _loading = false;
   bool _loadingMore = false;
   String? _error;
@@ -29,47 +31,63 @@ class SiteCatalogController extends ChangeNotifier {
   int _offset = 0;
   bool _hasMore = false;
   int _total = 0;
+  SiteMapFilters _filters = SiteMapFilters();
 
-  List<SiteSummary> get items => List.unmodifiable(_items);
+  /// Visible catalog rows after applying [filters].
+  List<SiteSummary> get items {
+    if (!_filters.hasActiveFilters) {
+      return List.unmodifiable(_rawItems);
+    }
+    return List.unmodifiable(_rawItems.where(_filters.matches));
+  }
+
   bool get loading => _loading;
   bool get isLoadingMore => _loadingMore;
   bool get hasMore => _hasMore;
   String? get error => _error;
-  bool get isEmpty => !_loading && _error == null && _items.isEmpty;
+  bool get isEmpty =>
+      !_loading && !_loadingMore && _error == null && items.isEmpty;
   int get total => _total;
+  SiteMapFilters get filters => _filters;
+  bool get hasActiveFilters => _filters.hasActiveFilters;
 
   CatalogDataSource get _dataSource =>
       _catalogModeController?.dataSource ?? CatalogDataSource.archive;
 
+  bool get _isFieldMode => _dataSource == CatalogDataSource.field;
+
   Future<void> load({bool force = false}) async {
-    if (!force && _items.isNotEmpty) return;
+    if (!force && _rawItems.isNotEmpty) return;
 
     final seq = ++_loadSeq;
-    final keepExistingItems = force && _items.isNotEmpty;
+    final keepExistingItems = force && _rawItems.isNotEmpty;
 
     _loading = true;
     _error = null;
     _seed = _newSeed();
     _offset = 0;
     _hasMore = false;
+    _filters = _filters.copyWith(filterByStatus: _isFieldMode);
     if (!keepExistingItems) {
-      _items = [];
+      _rawItems = [];
       _total = 0;
     }
     notifyListeners();
 
+    var loadedOk = false;
     try {
       final response = await _fetchPage(offset: 0);
       if (seq != _loadSeq) return;
-      _items = response.items;
+      _rawItems = response.items;
       _offset = response.items.length;
       _hasMore = response.hasMore;
       _total = response.total;
       _error = null;
+      loadedOk = true;
       if (kDebugMode) {
-        final preview = _items.take(5).map((s) => s.displayTitle).join(', ');
+        final preview = _rawItems.take(5).map((s) => s.displayTitle).join(', ');
         debugPrint(
-          'SiteCatalogController: loaded ${_items.length}/$_total sites '
+          'SiteCatalogController: loaded ${_rawItems.length}/$_total sites '
           '(seed=$_seed) → $preview',
         );
       }
@@ -90,9 +108,48 @@ class SiteCatalogController extends ChangeNotifier {
         notifyListeners();
       }
     }
+
+    if (loadedOk && seq == _loadSeq) {
+      await _fillUntil(seq, minVisible: pageSize);
+    }
   }
 
   Future<void> loadMore() async {
+    if (_loading || _loadingMore || !_hasMore) return;
+    if (_seed == null) return;
+
+    if (_filters.hasActiveFilters) {
+      final before = items.length;
+      await _fillUntil(_loadSeq, minVisible: before + 1);
+      return;
+    }
+
+    await _fetchNextPage();
+  }
+
+  Future<void> refresh() => load(force: true);
+
+  void applyFilters(SiteMapFilters filters) {
+    _filters = filters.copyWith(filterByStatus: _isFieldMode);
+    notifyListeners();
+    unawaited(_fillUntil(_loadSeq, minVisible: pageSize));
+  }
+
+  /// Keep paging until [items] reaches [minVisible] or the catalog is exhausted.
+  Future<void> _fillUntil(int seq, {required int minVisible}) async {
+    if (!_filters.hasActiveFilters) return;
+    while (seq == _loadSeq &&
+        _hasMore &&
+        _error == null &&
+        items.length < minVisible) {
+      final before = _rawItems.length;
+      await _fetchNextPage();
+      if (seq != _loadSeq) return;
+      if (_rawItems.length == before) return;
+    }
+  }
+
+  Future<void> _fetchNextPage() async {
     if (_loading || _loadingMore || !_hasMore) return;
     if (_seed == null) return;
 
@@ -101,7 +158,7 @@ class SiteCatalogController extends ChangeNotifier {
 
     try {
       final response = await _fetchPage(offset: _offset);
-      _items = [..._items, ...response.items];
+      _rawItems = [..._rawItems, ...response.items];
       _offset += response.items.length;
       _hasMore = response.hasMore;
       _total = response.total;
@@ -121,14 +178,12 @@ class SiteCatalogController extends ChangeNotifier {
     }
   }
 
-  Future<void> refresh() => load(force: true);
-
   void replaceSite(SiteSummary site) {
-    final index = _items.indexWhere((item) => item.siteId == site.siteId);
+    final index = _rawItems.indexWhere((item) => item.siteId == site.siteId);
     if (index < 0) return;
-    final updated = [..._items];
+    final updated = [..._rawItems];
     updated[index] = site;
-    _items = updated;
+    _rawItems = updated;
     notifyListeners();
   }
 
