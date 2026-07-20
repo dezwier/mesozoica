@@ -186,6 +186,9 @@ class _MapboxFieldMapState extends State<MapboxFieldMap> {
         oldWidget.markerDatasetKey != widget.markerDatasetKey) {
       _scheduleAnnotationSync();
     }
+    if (oldWidget.currentLocation != widget.currentLocation) {
+      unawaited(_applyBasemapLook());
+    }
   }
 
   Future<void> _onMapCreated(MapboxMap map) async {
@@ -249,13 +252,26 @@ class _MapboxFieldMapState extends State<MapboxFieldMap> {
     unawaited(_seedAfterLayout());
   }
 
+  LatLng get _lightPresetLocation =>
+      widget.currentLocation ?? _seedCenter;
+
   Future<void> _applyBasemapLook({bool force = false}) async {
     final map = _map;
     if (map == null || !_styleLoaded) return;
-    final preset = MapboxBasemapConfig.lightPresetForDateTime(DateTime.now());
+    final loc = _lightPresetLocation;
+    final preset = MapboxBasemapConfig.lightPresetForDateTime(
+      DateTime.now(),
+      latitude: loc.latitude,
+      longitude: loc.longitude,
+    );
     if (!force && preset == _appliedLightPreset) return;
     try {
-      await MapboxBasemapConfig.apply(map, lightPreset: preset);
+      await MapboxBasemapConfig.apply(
+        map,
+        lightPreset: preset,
+        latitude: loc.latitude,
+        longitude: loc.longitude,
+      );
       _appliedLightPreset = preset;
       _lightPresetTimer ??= Timer.periodic(
         const Duration(minutes: 1),

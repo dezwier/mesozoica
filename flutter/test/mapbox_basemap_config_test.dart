@@ -3,7 +3,7 @@ import 'package:mesozoica/config/map_config.dart';
 import 'package:mesozoica/widgets/map/mapbox_basemap_config.dart';
 
 void main() {
-  group('MapboxBasemapConfig.lightPresetForDateTime', () {
+  group('MapboxBasemapConfig.lightPresetForDateTime clock fallback', () {
     test('dawn morning', () {
       expect(
         MapboxBasemapConfig.lightPresetForDateTime(DateTime(2026, 7, 20, 6)),
@@ -33,6 +33,20 @@ void main() {
       expect(
         MapboxBasemapConfig.lightPresetForDateTime(DateTime(2026, 7, 20, 2)),
         'night',
+      );
+    });
+  });
+
+  group('MapboxBasemapConfig.lightPresetForDateTime solar', () {
+    test('summer 19:00 local still day in Brussels', () {
+      // 19:00 CEST = 17:00 UTC
+      expect(
+        MapboxBasemapConfig.lightPresetForDateTime(
+          DateTime.utc(2026, 7, 20, 17),
+          latitude: 50.85,
+          longitude: 4.35,
+        ),
+        'day',
       );
     });
   });
