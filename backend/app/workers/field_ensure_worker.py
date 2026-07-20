@@ -1,4 +1,4 @@
-"""Always-on worker for field-site ensure jobs."""
+"""Always-on worker for field-site ensure and survey jobs."""
 
 from __future__ import annotations
 
@@ -12,6 +12,7 @@ from sqlmodel import Session
 
 from app.core.database import engine, run_migrations
 from app.models.field_ensure_job import FieldEnsureJob
+from app.models.field_survey_job import FieldSurveyJob
 from app.services.site_service.field_ensure_queue import (
     claim_next_job,
     count_running_jobs,
@@ -23,14 +24,23 @@ from app.services.site_service.field_coordinate_filter import (
     ensure_osm_coordinate_masks_on_disk,
     warm_coordinate_filter_cache,
 )
+from app.services.site_service.field_fossil_generate import ensure_field_fossils_for_site
 from app.services.site_service.field_generate import (
     FieldSiteLazyConfig,
     ensure_field_sites_nearby,
 )
 from app.services.site_service.field_site_logging import log_field_event, normalize_reason
+from app.services.site_service.field_survey_queue import (
+    claim_next_survey_job,
+    count_running_survey_jobs,
+    mark_survey_job_done,
+    mark_survey_job_failed,
+    recover_stale_running_survey_jobs,
+)
 
 POLL_INTERVAL_S = float(os.getenv("FIELD_ENSURE_POLL_INTERVAL_S", "5"))
 MAX_CONCURRENT = int(os.getenv("FIELD_ENSURE_MAX_CONCURRENT", "2"))
+MAX_CONCURRENT_SURVEY = int(os.getenv("FIELD_SURVEY_MAX_CONCURRENT", "2"))
 
 
 def _worker_id() -> str:
@@ -38,7 +48,7 @@ def _worker_id() -> str:
     return f"{host}-{os.getpid()}-{uuid.uuid4().hex[:8]}"
 
 
-def process_one_job(*, worker_id: str) -> bool:
+def process_one_ensure_job(*, worker_id: str) -> bool:
     with Session(engine) as session:
         recover_stale_running_jobs(session)
         if count_running_jobs(session) >= MAX_CONCURRENT:
@@ -100,6 +110,67 @@ def process_one_job(*, worker_id: str) -> bool:
             if refreshed is not None:
                 mark_job_failed(session, refreshed, str(exc))
         return True
+
+
+def process_one_survey_job(*, worker_id: str) -> bool:
+    with Session(engine) as session:
+        recover_stale_running_survey_jobs(session)
+        if count_running_survey_jobs(session) >= MAX_CONCURRENT_SURVEY:
+            return False
+        job = claim_next_survey_job(session, worker_id=worker_id)
+        if job is None:
+            return False
+
+    started = time.monotonic()
+    try:
+        with Session(engine) as session:
+            result = ensure_field_fossils_for_site(session, site_id=job.site_id)
+            fossil_count = result.generated
+            if result.skipped:
+                from app.services.site_service.field_fossil_generate import (
+                    count_field_fossils_for_site,
+                )
+
+                fossil_count = count_field_fossils_for_site(session, job.site_id)
+        with Session(engine) as session:
+            refreshed = session.get(FieldSurveyJob, job.id)
+            if refreshed is not None:
+                mark_survey_job_done(
+                    session,
+                    refreshed,
+                    fossil_count=fossil_count,
+                )
+        log_field_event(
+            "survey_complete",
+            service="worker",
+            site_id=job.site_id,
+            written=fossil_count,
+            skipped=result.skipped,
+            elapsed_s=round(time.monotonic() - started, 1),
+            job_id=job.id,
+        )
+        return True
+    except Exception as exc:
+        log_field_event(
+            "survey_worker_failed",
+            service="worker",
+            site_id=job.site_id,
+            worker=worker_id,
+            job_id=job.id,
+            error=str(exc)[:200],
+        )
+        with Session(engine) as session:
+            refreshed = session.get(FieldSurveyJob, job.id)
+            if refreshed is not None:
+                mark_survey_job_failed(session, refreshed, str(exc))
+        return True
+
+
+def process_one_job(*, worker_id: str) -> bool:
+    """Process one ensure or survey job; prefer ensure then survey."""
+    if process_one_ensure_job(worker_id=worker_id):
+        return True
+    return process_one_survey_job(worker_id=worker_id)
 
 
 def run_forever() -> None:

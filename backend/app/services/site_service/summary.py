@@ -16,6 +16,7 @@ class SiteRow:
     site: Site
     site_type: SiteType | None
     status: str | None = None
+    viewer_has_surveyed: bool | None = None
 
 
 def site_row_to_summary(
@@ -45,6 +46,7 @@ def site_row_to_summary(
         main_image_url=site_type.main_image_url if site_type else None,
         data_source=site.data_source,
         status=row.status,
+        viewer_has_surveyed=row.viewer_has_surveyed,
     )
 
 

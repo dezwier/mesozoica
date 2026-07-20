@@ -17,6 +17,7 @@ class SiteSummary {
     this.siteTypeRockType,
     this.mainImageUrl,
     this.status,
+    this.viewerHasSurveyed,
   });
 
   final int siteId;
@@ -33,6 +34,7 @@ class SiteSummary {
   final String? siteTypeRockType;
   final String? mainImageUrl;
   final String? status;
+  final bool? viewerHasSurveyed;
 
   /// Field-generated site IDs start at 1_000_000_000; show the offset only.
   static const int fieldSiteIdBase = 1000000000;
@@ -155,6 +157,31 @@ class SiteSummary {
       siteTypeRockType: json['site_type_rock_type'] as String?,
       mainImageUrl: json['main_image_url'] as String?,
       status: json['status'] as String?,
+      viewerHasSurveyed: json['viewer_has_surveyed'] as bool?,
+    );
+  }
+
+  SiteSummary copyWith({
+    String? status,
+    bool? viewerHasSurveyed,
+    String? mainImageUrl,
+  }) {
+    return SiteSummary(
+      siteId: siteId,
+      latitude: latitude,
+      longitude: longitude,
+      countryCode: countryCode,
+      state: state,
+      rockType: rockType,
+      formation: formation,
+      minAgeMa: minAgeMa,
+      maxAgeMa: maxAgeMa,
+      siteTypeId: siteTypeId,
+      siteTypePeriod: siteTypePeriod,
+      siteTypeRockType: siteTypeRockType,
+      mainImageUrl: mainImageUrl ?? this.mainImageUrl,
+      status: status ?? this.status,
+      viewerHasSurveyed: viewerHasSurveyed ?? this.viewerHasSurveyed,
     );
   }
 }
@@ -259,6 +286,65 @@ class FieldEnsureJobStatus {
       generated: json['generated'] as int?,
       totalInRadius: json['total_in_radius'] as int?,
       radiusKm: (json['radius_km'] as num?)?.toDouble() ?? 1.0,
+      errorMessage: json['error_message'] as String?,
+    );
+  }
+}
+
+class FieldSurveyResponse {
+  const FieldSurveyResponse({
+    required this.site,
+    this.jobId,
+    required this.status,
+    this.onboarded = false,
+    this.generated = false,
+    this.fossilsReady = false,
+  });
+
+  final SiteSummary site;
+  final int? jobId;
+  final String status;
+  final bool onboarded;
+  final bool generated;
+  final bool fossilsReady;
+
+  factory FieldSurveyResponse.fromJson(Map<String, dynamic> json) {
+    return FieldSurveyResponse(
+      site: SiteSummary.fromJson(json['site'] as Map<String, dynamic>),
+      jobId: json['job_id'] as int?,
+      status: json['status'] as String? ?? 'pending',
+      onboarded: json['onboarded'] as bool? ?? false,
+      generated: json['generated'] as bool? ?? false,
+      fossilsReady: json['fossils_ready'] as bool? ?? false,
+    );
+  }
+}
+
+class FieldSurveyJobStatus {
+  const FieldSurveyJobStatus({
+    required this.jobId,
+    required this.siteId,
+    required this.status,
+    this.fossilCount,
+    this.errorMessage,
+  });
+
+  final int jobId;
+  final int siteId;
+  final String status;
+  final int? fossilCount;
+  final String? errorMessage;
+
+  bool get isDone => status == 'done';
+  bool get isFailed => status == 'failed';
+  bool get isTerminal => isDone || isFailed;
+
+  factory FieldSurveyJobStatus.fromJson(Map<String, dynamic> json) {
+    return FieldSurveyJobStatus(
+      jobId: json['job_id'] as int,
+      siteId: json['site_id'] as int,
+      status: json['status'] as String? ?? 'pending',
+      fossilCount: json['fossil_count'] as int?,
       errorMessage: json['error_message'] as String?,
     );
   }

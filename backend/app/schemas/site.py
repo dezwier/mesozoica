@@ -25,6 +25,7 @@ class SiteSummary(BaseModel):
     main_image_url: str | None = None
     data_source: str = "archive"
     status: str | None = None
+    viewer_has_surveyed: bool | None = None
 
 
 class SiteListResponse(BaseModel):
@@ -61,6 +62,23 @@ class FieldEnsureJobResponse(BaseModel):
     generated: int | None = None
     total_in_radius: int | None = None
     radius_km: float
+    error_message: str | None = None
+
+
+class FieldSurveyResponse(BaseModel):
+    site: SiteSummary
+    job_id: int | None = None
+    status: str
+    onboarded: bool = False
+    generated: bool = False
+    fossils_ready: bool = False
+
+
+class FieldSurveyJobResponse(BaseModel):
+    job_id: int
+    site_id: int
+    status: str
+    fossil_count: int | None = None
     error_message: str | None = None
 
 

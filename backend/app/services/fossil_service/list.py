@@ -308,6 +308,10 @@ def fossil_row_to_summary(
         row,
         types_by_period=types_by_period,
     )
+    # No user_fossil rows yet → always hidden for all viewers.
+    from app.models.user_fossil import FOSSIL_STATUS_HIDDEN
+
+    payload["status"] = FOSSIL_STATUS_HIDDEN
     return FossilSummary.model_validate(payload)
 
 

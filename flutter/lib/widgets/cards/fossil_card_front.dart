@@ -6,6 +6,7 @@ import '../../models/fossil.dart';
 import '../../theme/dino_card_theme.dart';
 import 'fossil_card_header.dart';
 import 'fossil_card_image.dart';
+import 'fossil_status_badge.dart';
 
 class FossilCardFront extends StatelessWidget {
   const FossilCardFront({
@@ -31,6 +32,7 @@ class FossilCardFront extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cardTheme = DinoCardTheme.of(context);
+    final status = fossil.status?.trim();
 
     return AspectRatio(
       aspectRatio: DinoCardTheme.cardAspectRatio,
@@ -52,6 +54,12 @@ class FossilCardFront extends StatelessWidget {
               ),
             ),
           ),
+          if (status != null && status.isNotEmpty)
+            Positioned(
+              top: 14,
+              right: 14,
+              child: FossilStatusBadge(status: status),
+            ),
           Positioned(
             left: 18,
             right: 18,

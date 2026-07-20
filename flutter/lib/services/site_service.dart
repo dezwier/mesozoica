@@ -316,6 +316,72 @@ class SiteService {
     }
   }
 
+  Future<FieldSurveyResponse> surveySite(int siteId) async {
+    final uri = AppConfig.siteSurveyUri(siteId);
+    if (kDebugMode) {
+      debugPrint('SiteService POST $uri');
+    }
+    final response = await _client
+        .post(uri, headers: await _headers(jsonBody: true))
+        .timeout(const Duration(seconds: 15));
+
+    if (response.statusCode != 200 && response.statusCode != 202) {
+      final detail = _errorDetail(response.body);
+      throw SiteServiceException(
+        detail ?? 'Failed to survey site (${response.statusCode})',
+      );
+    }
+
+    final decoded = jsonDecode(response.body);
+    if (decoded is! Map<String, dynamic>) {
+      throw const SiteServiceException('Invalid survey response');
+    }
+    return FieldSurveyResponse.fromJson(decoded);
+  }
+
+  Future<FieldSurveyJobStatus> fetchFieldSurveyJobStatus(int jobId) async {
+    final uri = AppConfig.fieldSurveyJobUri(jobId);
+    if (kDebugMode) {
+      debugPrint('SiteService GET $uri');
+    }
+    final response = await _client
+        .get(uri, headers: await _headers())
+        .timeout(const Duration(seconds: 10));
+
+    if (response.statusCode == 404) {
+      throw const SiteServiceException('Field survey job not found');
+    }
+    if (response.statusCode != 200) {
+      throw SiteServiceException(
+        'Failed to load field survey job (${response.statusCode})',
+      );
+    }
+
+    final decoded = jsonDecode(response.body);
+    if (decoded is! Map<String, dynamic>) {
+      throw const SiteServiceException('Invalid field survey job response');
+    }
+    return FieldSurveyJobStatus.fromJson(decoded);
+  }
+
+  Future<FieldSurveyJobStatus> waitForFieldSurveyJob(
+    int jobId, {
+    Duration timeout = const Duration(minutes: 2),
+    Duration interval = const Duration(seconds: 1),
+  }) async {
+    final deadline = DateTime.now().add(timeout);
+    while (true) {
+      final status = await fetchFieldSurveyJobStatus(jobId);
+      if (status.isTerminal) return status;
+      if (DateTime.now().isAfter(deadline)) {
+        throw const SiteServiceException(
+          'Timed out waiting for site survey',
+        );
+      }
+      await Future<void>.delayed(interval);
+    }
+  }
+
   Future<List<SiteFossilThumb>> fetchFossilsForSite(int siteId) async {
     final uri = AppConfig.siteFossilsUri(siteId);
     if (kDebugMode) {

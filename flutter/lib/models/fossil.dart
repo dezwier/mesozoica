@@ -107,6 +107,7 @@ class FossilSummary {
     this.dinosaurMainImageUrl,
     this.siteId,
     this.siteMainImageUrl,
+    this.status,
   });
 
   final int id;
@@ -201,6 +202,7 @@ class FossilSummary {
   final String? dinosaurMainImageUrl;
   final int? siteId;
   final String? siteMainImageUrl;
+  final String? status;
 
   factory FossilSummary.fromJson(Map<String, dynamic> json) {
     return FossilSummary(
@@ -296,6 +298,7 @@ class FossilSummary {
       dinosaurMainImageUrl: json['dinosaur_main_image_url'] as String?,
       siteId: json['site_id'] as int?,
       siteMainImageUrl: json['site_main_image_url'] as String?,
+      status: json['status'] as String?,
     );
   }
 

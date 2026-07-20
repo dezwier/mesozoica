@@ -229,6 +229,12 @@ class AppConfig {
   static Uri siteStatusUri(int id) =>
       Uri.parse('$baseApiUrl/api/v1/sites/$id/status');
 
+  static Uri siteSurveyUri(int id) =>
+      Uri.parse('$baseApiUrl/api/v1/sites/$id/survey');
+
+  static Uri fieldSurveyJobUri(int jobId) =>
+      Uri.parse('$baseApiUrl/api/v1/sites/survey/jobs/$jobId');
+
   static Uri sitesNearbyDiscoverableUri({
     required double lat,
     required double lon,

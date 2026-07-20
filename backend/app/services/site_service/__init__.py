@@ -16,11 +16,13 @@ from app.services.site_service.related import (
 from app.services.site_service.set_status import set_site_status
 from app.services.site_service.site_type_fallback import load_site_types_by_period
 from app.services.site_service.summary import site_row_to_summary
+from app.services.site_service.survey import get_survey_job, survey_site, user_has_surveyed
 
 __all__ = [
     "discover_site",
     "ensure_field_sites_nearby",
     "get_site_by_id",
+    "get_survey_job",
     "list_site_dino_fossil_groups",
     "list_site_dinosaurs",
     "list_site_fossils",
@@ -31,4 +33,6 @@ __all__ = [
     "schedule_field_site_ensure",
     "set_site_status",
     "site_row_to_summary",
+    "survey_site",
+    "user_has_surveyed",
 ]

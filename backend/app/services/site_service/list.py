@@ -114,6 +114,7 @@ def get_site_by_id(
     site_id: int,
     *,
     data_source: str | None = None,
+    viewer_user_id: int | None = None,
 ) -> SiteRow:
     normalized_data_source = normalize_data_source(data_source)
     max_ts = latest_user_site_subquery()
@@ -132,7 +133,19 @@ def get_site_by_id(
     ).first()
     if row is None:
         raise NotFoundError(f"Site {site_id} not found")
-    return _row_from_tuple(row)
+    site_row = _row_from_tuple(row)
+    if viewer_user_id is not None:
+        from app.services.site_service.survey import user_has_surveyed
+
+        return SiteRow(
+            site=site_row.site,
+            site_type=site_row.site_type,
+            status=site_row.status,
+            viewer_has_surveyed=user_has_surveyed(
+                session, user_id=viewer_user_id, site_id=site_id
+            ),
+        )
+    return site_row
 
 
 def _normalize_filters(

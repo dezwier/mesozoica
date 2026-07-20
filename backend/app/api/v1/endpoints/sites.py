@@ -9,7 +9,6 @@ from sqlmodel import Session
 from app.core.database import get_session
 from app.core.exceptions import NotFoundError, ValidationError
 from app.core.security import (
-    get_current_admin_user,
     get_current_user,
     get_optional_current_user,
 )
@@ -18,6 +17,8 @@ from app.models.user import User
 from app.schemas.site import (
     FieldEnsureJobResponse,
     FieldEnsureResponse,
+    FieldSurveyJobResponse,
+    FieldSurveyResponse,
     SiteDinosaurThumbListResponse,
     SiteDinoFossilGroupListResponse,
     SiteFossilThumbListResponse,
@@ -28,6 +29,7 @@ from app.schemas.site import (
 from app.services.site_service import (
     discover_site,
     get_site_by_id,
+    get_survey_job,
     list_discoverable_sites_in_radius,
     list_site_dino_fossil_groups,
     list_site_dinosaurs,
@@ -37,6 +39,7 @@ from app.services.site_service import (
     load_site_types_by_period,
     set_site_status,
     site_row_to_summary,
+    survey_site,
 )
 from app.services.site_service.field_ensure_background import schedule_field_site_ensure
 from app.services.site_service.field_ensure_queue import (
@@ -247,6 +250,48 @@ def get_field_ensure_job_status(
     )
 
 
+@router.get("/survey/jobs/{job_id}", response_model=FieldSurveyJobResponse)
+def get_field_survey_job_status(
+    job_id: int,
+    session: Session = Depends(get_session),
+    _current_user: User = Depends(get_current_user),
+) -> FieldSurveyJobResponse:
+    job = get_survey_job(session, job_id)
+    if job is None or job.id is None:
+        raise NotFoundError(f"Field survey job {job_id} not found")
+    return FieldSurveyJobResponse(
+        job_id=job.id,
+        site_id=job.site_id,
+        status=job.status,
+        fossil_count=job.fossil_count,
+        error_message=job.error_message,
+    )
+
+
+@router.post("/{site_id}/survey", response_model=FieldSurveyResponse)
+def post_survey_site(
+    site_id: int,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+) -> FieldSurveyResponse:
+    result = survey_site(
+        session,
+        site_id=site_id,
+        user_id=current_user.id,
+    )
+    types_by_period = load_site_types_by_period(session)
+    # Async generation still pending → 202 would be ideal; FastAPI status via Response.
+    # Clients treat fossils_ready=False as poll; keep 200 for all outcomes for simplicity.
+    return FieldSurveyResponse(
+        site=site_row_to_summary(result.site, types_by_period=types_by_period),
+        job_id=result.job_id,
+        status=result.job_status,
+        onboarded=result.onboarded,
+        generated=result.generated,
+        fossils_ready=result.fossils_ready,
+    )
+
+
 @router.post("/{site_id}/discover", response_model=SiteSummary)
 def post_discover_site(
     site_id: int,
@@ -270,7 +315,7 @@ def post_set_site_status(
     site_id: int,
     body: SetSiteStatusRequest,
     session: Session = Depends(get_session),
-    current_user: User = Depends(get_current_admin_user),
+    current_user: User = Depends(get_current_user),
 ) -> SiteSummary:
     row = set_site_status(
         session,
@@ -279,7 +324,7 @@ def post_set_site_status(
         status=body.status,
         lat=body.lat,
         lon=body.lon,
-        skip_distance_check=True,
+        skip_distance_check=bool(current_user.is_admin),
     )
     types_by_period = load_site_types_by_period(session)
     return site_row_to_summary(row, types_by_period=types_by_period)
@@ -289,9 +334,15 @@ def post_set_site_status(
 def get_site(
     site_id: int,
     session: Session = Depends(get_session),
+    current_user: User | None = Depends(get_optional_current_user),
     data_source: str = Query(default=DATA_SOURCE_ARCHIVE),
 ) -> SiteSummary:
-    row = get_site_by_id(session, site_id, data_source=data_source)
+    row = get_site_by_id(
+        session,
+        site_id,
+        data_source=data_source,
+        viewer_user_id=current_user.id if current_user is not None else None,
+    )
     types_by_period = load_site_types_by_period(session)
     return site_row_to_summary(row, types_by_period=types_by_period)
 

@@ -51,7 +51,8 @@ class _SiteTurnableCardState extends State<SiteTurnableCard> {
   void didUpdateWidget(covariant SiteTurnableCard oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.site.siteId != widget.site.siteId ||
-        oldWidget.site.status != widget.site.status) {
+        oldWidget.site.status != widget.site.status ||
+        oldWidget.site.viewerHasSurveyed != widget.site.viewerHasSurveyed) {
       _site = widget.site;
     }
   }

@@ -599,7 +599,7 @@ def test_set_site_status_dropdown_flow(client, session):
     )
 
 
-def test_set_site_status_forbidden_for_non_admin(client, session):
+def test_set_site_status_allowed_for_non_admin_within_range(client, session):
     site_type = _seed_site_type(session)
     session.add(
         Site(
@@ -619,12 +619,20 @@ def test_set_site_status_forbidden_for_non_admin(client, session):
     session.refresh(user)
     token = create_access_token({"sub": str(user.id)})
 
+    too_far = client.post(
+        "/api/v1/sites/90021/status",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"status": "protected", "lat": 41.0, "lon": -100.0},
+    )
+    assert too_far.status_code == 400
+
     response = client.post(
         "/api/v1/sites/90021/status",
         headers={"Authorization": f"Bearer {token}"},
-        json={"status": "discovered", "lat": 40.0003, "lon": -100.0},
+        json={"status": "protected", "lat": 40.0003, "lon": -100.0},
     )
-    assert response.status_code == 403
+    assert response.status_code == 200
+    assert response.json()["status"] == "protected"
 
 
 def test_show_all_ignored_for_non_admin(client, session):
