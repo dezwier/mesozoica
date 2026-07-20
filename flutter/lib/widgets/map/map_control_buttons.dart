@@ -22,37 +22,44 @@ class MapControlButtons extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final fabTheme = Theme.of(context).floatingActionButtonTheme;
+
     return Positioned(
       right: 12,
       bottom: 12,
       child: Column(
         mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.end,
         children: [
+          if (!rotateMap) ...[
+            ZoomSlider(
+              currentZoom: currentZoom,
+              onZoomChanged: onZoomChanged,
+            ),
+            const SizedBox(height: 8),
+          ],
           FloatingActionButton.small(
             heroTag: 'toggle_rotation',
             onPressed: onToggleRotation,
             tooltip: rotateMap
-                ? 'Fixed plan: rotate marker with phone'
-                : 'Rotating map: keep marker pointing up',
+                ? 'North-fixed map'
+                : 'Rotate map with phone orientation',
+            backgroundColor: fabTheme.backgroundColor,
+            foregroundColor: fabTheme.foregroundColor,
             child: Icon(
-              rotateMap ? Icons.navigation_outlined : Icons.explore_outlined,
+              rotateMap ? Icons.explore_outlined : Icons.threed_rotation,
             ),
           ),
-          FloatingActionButton.small(
-            heroTag: 'center_location',
-            onPressed: onCenterLocation,
-            tooltip: 'Center on my location',
-            child: const Icon(Icons.my_location),
-          ),
-          const SizedBox(height: 5),
-          ZoomSlider(
-            currentZoom: currentZoom,
-            onZoomChanged: onZoomChanged,
-          ),
-          if (filterFab != null) ...[
-            const SizedBox(height: 10),
-            filterFab!,
-          ],
+          if (!rotateMap)
+            FloatingActionButton.small(
+              heroTag: 'center_location',
+              onPressed: onCenterLocation,
+              tooltip: 'Center on my location',
+              backgroundColor: fabTheme.backgroundColor,
+              foregroundColor: fabTheme.foregroundColor,
+              child: const Icon(Icons.my_location),
+            ),
+          if (filterFab != null) filterFab!,
         ],
       ),
     );

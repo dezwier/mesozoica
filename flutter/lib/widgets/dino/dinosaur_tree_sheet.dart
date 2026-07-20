@@ -100,9 +100,12 @@ class _DinosaurTreeSheetBodyState extends State<_DinosaurTreeSheetBody> {
                         FloatingActionButton.small(
                           heroTag: 'tree_reset_fab',
                           tooltip: 'Reset view',
-                          backgroundColor:
-                              colorScheme.surfaceContainerHighest,
-                          foregroundColor: colorScheme.onSurface,
+                          backgroundColor: Theme.of(context)
+                              .floatingActionButtonTheme
+                              .backgroundColor,
+                          foregroundColor: Theme.of(context)
+                              .floatingActionButtonTheme
+                              .foregroundColor,
                           onPressed: () =>
                               _panelKey.currentState?.resetView(),
                           child: const Icon(Icons.center_focus_strong),

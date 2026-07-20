@@ -115,10 +115,11 @@ class DinoScreenState extends State<DinoScreen> {
                       heroTag: 'dino_tree_fab',
                       tooltip: 'Phylogeny',
                       backgroundColor: Theme.of(context)
-                          .colorScheme
-                          .surfaceContainerHighest,
-                      foregroundColor:
-                          Theme.of(context).colorScheme.onSurface,
+                          .floatingActionButtonTheme
+                          .backgroundColor,
+                      foregroundColor: Theme.of(context)
+                          .floatingActionButtonTheme
+                          .foregroundColor,
                       onPressed: () => DinosaurTreeSheet.show(context),
                       child: const Icon(Icons.account_tree),
                     ),

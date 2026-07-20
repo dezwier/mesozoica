@@ -74,5 +74,7 @@
 	</array>
 	<key>NSMotionUsageDescription</key>
 	<string>Mesozoica uses motion sensors to orient the location indicator on the map.</string>
+	<key>MBXAccessToken</key>
+	<string>$(MAPBOX_ACCESS_TOKEN)</string>
 </dict>
 </plist>

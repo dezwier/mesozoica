@@ -39,6 +39,13 @@ app.*.symbols
 # Obfuscation related
 app.*.map.json
 
+# Local Mapbox / IDE secrets (keep tokens out of git)
+.vscode/launch.json
+.dart_defines.json
+ios/Flutter/MapboxSecrets.xcconfig
+**/secrets.properties
+mapbox_access_token.txt
+
 # Android Studio will place build artifacts here
 /android/app/debug
 /android/app/profile

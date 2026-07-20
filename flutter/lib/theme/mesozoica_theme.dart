@@ -26,6 +26,10 @@ class MesozoicaTheme {
           onError: Colors.white,
         ),
         navigationBarTheme: const NavigationBarThemeData(height: 60),
+        floatingActionButtonTheme: const FloatingActionButtonThemeData(
+          backgroundColor: Color(0xFF8D6E63),
+          foregroundColor: Colors.white,
+        ),
       );
 
   static ThemeData get dark => ThemeData(
@@ -48,5 +52,9 @@ class MesozoicaTheme {
           onError: Color(0xFF601410),
         ),
         navigationBarTheme: const NavigationBarThemeData(height: 60),
+        floatingActionButtonTheme: const FloatingActionButtonThemeData(
+          backgroundColor: Color(0xFF8D6E63),
+          foregroundColor: Colors.white,
+        ),
       );
 }

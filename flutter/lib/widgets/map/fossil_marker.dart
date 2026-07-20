@@ -16,11 +16,14 @@ class FossilMarker extends StatelessWidget {
   final bool selected;
   final bool showIcon;
   final Color color;
-  /// When true, opacity/border ease with selection (use with [AnimatedScale]).
+  /// When true, opacity/border ease with selection.
   final bool animateSelection;
 
   static const selectionDuration = Duration(milliseconds: 250);
   static const selectionCurve = Curves.easeOutCubic;
+
+  /// Inner selection-dot diameter as a fraction of [size].
+  static const selectionDotScale = 0.38;
 
   @override
   Widget build(BuildContext context) {
@@ -30,7 +33,7 @@ class FossilMarker extends StatelessWidget {
       color: color.withValues(alpha: opacity),
       border: Border.all(
         color: Colors.white.withValues(alpha: opacity),
-        width: selected ? 1.5 : 1.0,
+        width: 1.0,
       ),
       boxShadow: [
         BoxShadow(
@@ -40,20 +43,34 @@ class FossilMarker extends StatelessWidget {
         ),
       ],
     );
-    final icon = showIcon
-        ? Icon(
+    final dotSize = size * selectionDotScale;
+    final child = Stack(
+      alignment: Alignment.center,
+      children: [
+        if (showIcon)
+          Icon(
             Icons.terrain,
             color: Colors.white.withValues(alpha: opacity),
             size: size * 0.65,
-          )
-        : null;
+          ),
+        if (selected)
+          Container(
+            width: dotSize,
+            height: dotSize,
+            decoration: const BoxDecoration(
+              shape: BoxShape.circle,
+              color: Colors.white,
+            ),
+          ),
+      ],
+    );
 
     if (!animateSelection) {
       return Container(
         width: size,
         height: size,
         decoration: decoration,
-        child: icon,
+        child: child,
       );
     }
 
@@ -63,7 +80,7 @@ class FossilMarker extends StatelessWidget {
       width: size,
       height: size,
       decoration: decoration,
-      child: icon,
+      child: child,
     );
   }
 }

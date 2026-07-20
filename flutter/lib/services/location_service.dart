@@ -28,6 +28,7 @@ class LocationService extends ChangeNotifier {
   String? _error;
   StreamSubscription<Position>? _locationSub;
   StreamSubscription<double>? _headingSub;
+  Timer? _headingNotifyTimer;
   bool _mapForeground = false;
   bool _fieldSession = false;
   bool _backgroundPreferred = false;
@@ -101,6 +102,8 @@ class LocationService extends ChangeNotifier {
     } else {
       _headingSub?.cancel();
       _headingSub = null;
+      _headingNotifyTimer?.cancel();
+      _headingNotifyTimer = null;
     }
     await _startLocationStream(forceRestart: forceRestartLocation);
   }
@@ -110,6 +113,8 @@ class LocationService extends ChangeNotifier {
     _locationSub = null;
     _headingSub?.cancel();
     _headingSub = null;
+    _headingNotifyTimer?.cancel();
+    _headingNotifyTimer = null;
   }
 
   void _startHeading() {
@@ -128,7 +133,14 @@ class LocationService extends ChangeNotifier {
         .listen(
       (heading) {
         _headingDeg = heading;
-        notifyListeners();
+        // Coalesce compass spam to ~60 Hz so the map stays smooth.
+        _headingNotifyTimer ??= Timer(
+          const Duration(milliseconds: 16),
+          () {
+            _headingNotifyTimer = null;
+            notifyListeners();
+          },
+        );
       },
       onError: (Object error) {
         if (kDebugMode) {
@@ -186,12 +198,16 @@ class LocationService extends ChangeNotifier {
   LocationSettings _locationSettings({required bool backgroundPreferred}) {
     // Best accuracy in both modes so 50 m discovery stays reliable.
     const accuracy = LocationAccuracy.best;
-    final distanceFilter = backgroundPreferred ? 10 : 5;
+    // Tight filter in foreground so the map follow feels responsive.
+    final distanceFilter = backgroundPreferred ? 10 : 1;
 
     if (!kIsWeb && Platform.isAndroid) {
       return AndroidSettings(
         accuracy: accuracy,
         distanceFilter: distanceFilter,
+        intervalDuration: backgroundPreferred
+            ? null
+            : const Duration(milliseconds: 500),
         foregroundNotificationConfig: backgroundPreferred
             ? const ForegroundNotificationConfig(
                 notificationTitle: 'Field exploration active',

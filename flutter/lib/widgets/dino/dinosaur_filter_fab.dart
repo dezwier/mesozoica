@@ -14,6 +14,7 @@ class DinosaurFilterFab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final fabTheme = Theme.of(context).floatingActionButtonTheme;
     final colorScheme = Theme.of(context).colorScheme;
 
     return Stack(
@@ -23,8 +24,8 @@ class DinosaurFilterFab extends StatelessWidget {
           heroTag: heroTag,
           onPressed: onPressed,
           tooltip: 'Filter',
-          backgroundColor: colorScheme.surfaceContainerHighest,
-          foregroundColor: colorScheme.onSurface,
+          backgroundColor: fabTheme.backgroundColor,
+          foregroundColor: fabTheme.foregroundColor,
           child: const Icon(Icons.filter_list),
         ),
         if (hasActiveFilters)
@@ -35,9 +36,12 @@ class DinosaurFilterFab extends StatelessWidget {
               width: 10,
               height: 10,
               decoration: BoxDecoration(
-                color: colorScheme.primary,
+                color: colorScheme.tertiary,
                 shape: BoxShape.circle,
-                border: Border.all(color: colorScheme.surface, width: 1.5),
+                border: Border.all(
+                  color: fabTheme.backgroundColor ?? colorScheme.surface,
+                  width: 1.5,
+                ),
               ),
             ),
           ),

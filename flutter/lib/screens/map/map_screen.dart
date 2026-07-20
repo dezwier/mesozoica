@@ -1,8 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart' as fm;
-import 'package:flutter_map_animations/flutter_map_animations.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
 
@@ -14,13 +12,13 @@ import '../../controllers/map_controller.dart' as map_data;
 import '../../models/site.dart';
 import '../../services/location_service.dart';
 import '../../services/site_service.dart';
-import '../../widgets/map/location_marker_layer.dart';
+import '../../widgets/dino/dinosaur_filter_fab.dart';
 import '../../widgets/map/map_control_buttons.dart';
-import '../../widgets/map/map_tile_layer.dart';
+import '../../widgets/map/mapbox_camera_coordinator.dart';
+import '../../widgets/map/mapbox_field_map.dart';
+import '../../widgets/map/mapbox_site_annotations.dart';
 import '../../widgets/map/site_filter_sheet.dart';
 import '../../widgets/map/site_map_card_dialog.dart';
-import '../../widgets/map/site_markers_layer.dart';
-import '../../widgets/dino/dinosaur_filter_fab.dart';
 
 class MapScreen extends StatefulWidget {
   const MapScreen({
@@ -34,29 +32,23 @@ class MapScreen extends StatefulWidget {
   State<MapScreen> createState() => _MapScreenState();
 }
 
-class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
-  final fm.MapController _mapController = fm.MapController();
-  late final AnimatedMapController _animatedMapController;
+class _MapScreenState extends State<MapScreen> {
+  final MapboxCameraCoordinator _mapboxCamera = MapboxCameraCoordinator();
 
-  StreamSubscription<fm.MapEvent>? _mapSub;
-  bool _mapReady = false;
-  double _zoomLevel = MapConfig.initialZoom;
+  bool _mapboxReady = false;
+  double _zoomLevel = MapConfig.mapboxFollowZoom;
   bool _didInitialCenter = false;
   bool _followUser = false;
+  /// false = north-fixed Mapbox; true = map bearing follows phone.
   bool _rotateMap = false;
   LatLng? _lastFollowedLocation;
   String? _scanBannerMessage;
+  String? _mapboxBannerMessage;
   Timer? _scanBannerTimer;
 
   @override
   void initState() {
     super.initState();
-    _animatedMapController = AnimatedMapController(
-      vsync: this,
-      mapController: _mapController,
-      duration: const Duration(milliseconds: 500),
-    );
-    _mapSub = _mapController.mapEventStream.listen(_onMapEvent);
     _activateIfNeeded();
   }
 
@@ -69,8 +61,6 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
   @override
   void dispose() {
     _scanBannerTimer?.cancel();
-    _mapSub?.cancel();
-    _animatedMapController.dispose();
     super.dispose();
   }
 
@@ -90,112 +80,140 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
   }
 
   void _consumePendingFocus() {
-    if (!widget.isActive || !_mapReady) return;
+    if (!widget.isActive || !_mapboxReady) return;
     final mapData = context.read<map_data.MapController>();
     final site = mapData.takePendingFocusSite();
     if (site == null) return;
-    _panToSite(site);
-  }
-
-  void _panToSite(SiteSummary site) {
-    final lat = site.latitude;
-    final lon = site.longitude;
-    if (lat == null || lon == null || !_mapReady) return;
-    _followUser = false;
-    _animatedMapController.centerOnPoint(
-      LatLng(lat, lon),
-      zoom: _mapController.camera.zoom,
+    // Catalog backside map taps: select marker + slow pan, no card.
+    mapData.selectSite(site);
+    unawaited(
+      _panToSite(
+        site,
+        durationMs: 1400,
+        exitRotateMode: true,
+      ),
     );
   }
 
-  void _onMapEvent(fm.MapEvent event) {
-    if (!mounted) return;
-    if (_followUser && _isUserCameraGesture(event.source)) {
-      _followUser = false;
-    }
-    try {
-      final zoom = event.camera.zoom;
-      if (zoom != _zoomLevel) {
-        setState(() => _zoomLevel = zoom);
-      }
-    } catch (_) {
-      // Map controller not ready yet.
-    }
-  }
+  Future<void> _panToSite(
+    SiteSummary site, {
+    int durationMs = 700,
+    bool exitRotateMode = false,
+  }) async {
+    final lat = site.latitude;
+    final lon = site.longitude;
+    if (lat == null || lon == null || !_mapboxReady) return;
+    final headingDeg = context.read<LocationService>().headingDeg;
 
-  /// Pans/flings break follow; pinch/double-tap zoom keep it.
-  bool _isUserCameraGesture(fm.MapEventSource source) {
-    switch (source) {
-      case fm.MapEventSource.dragStart:
-      case fm.MapEventSource.onDrag:
-      case fm.MapEventSource.dragEnd:
-      case fm.MapEventSource.flingAnimationController:
-        return true;
-      case fm.MapEventSource.mapController:
-      case fm.MapEventSource.tap:
-      case fm.MapEventSource.secondaryTap:
-      case fm.MapEventSource.longPress:
-      case fm.MapEventSource.doubleTap:
-      case fm.MapEventSource.doubleTapHold:
-      case fm.MapEventSource.doubleTapZoomAnimationController:
-      case fm.MapEventSource.multiFingerGestureStart:
-      case fm.MapEventSource.onMultiFinger:
-      case fm.MapEventSource.multiFingerEnd:
-      case fm.MapEventSource.scrollWheel:
-      case fm.MapEventSource.interactiveFlagsChanged:
-      case fm.MapEventSource.fitCamera:
-      case fm.MapEventSource.custom:
-      case fm.MapEventSource.nonRotatedSizeChange:
-      case fm.MapEventSource.cursorKeyboardRotation:
-        return false;
+    if (exitRotateMode && _rotateMap) {
+      setState(() {
+        _rotateMap = false;
+        _followUser = false;
+      });
+      _mapboxCamera.clearPendingFollow();
+      await _mapboxCamera.applyOrientationMode(
+        rotateWithHeading: false,
+        headingDeg: headingDeg,
+      );
+    } else if (_rotateMap) {
+      // Rotate mode stays locked on the user — don't pan away for site taps.
+      return;
+    } else {
+      setState(() => _followUser = false);
+      _mapboxCamera.clearPendingFollow();
     }
-  }
 
-  void _updateMapRotation(double headingDeg) {
-    if (!_rotateMap || !_mapReady) return;
-    try {
-      _mapController.rotate(-headingDeg);
-    } catch (_) {
-      // Map controller not ready yet.
-    }
+    // Wait for followUser=false to rebuild MapboxFieldMap; otherwise a GPS
+    // follow setCamera can cancel this flyTo (common when already in fixed mode).
+    await WidgetsBinding.instance.endOfFrame;
+    if (!mounted || !_mapboxReady) return;
+
+    await _mapboxCamera.centerOn(
+      LatLng(lat, lon),
+      zoom: _zoomLevel,
+      headingDeg: headingDeg,
+      durationMs: durationMs,
+    );
   }
 
   void _toggleRotationMode(double headingDeg) {
+    if (!MapConfig.hasMapboxAccessToken) {
+      setState(() {
+        _mapboxBannerMessage =
+            'Mapbox token missing — add MAPBOX_ACCESS_TOKEN via ./run.sh';
+      });
+      return;
+    }
+    final enteringRotate = !_rotateMap;
     setState(() {
-      _rotateMap = !_rotateMap;
-      if (_mapReady) {
-        _mapController.rotate(_rotateMap ? -headingDeg : 0);
+      _rotateMap = enteringRotate;
+      _mapboxBannerMessage = null;
+      if (enteringRotate) {
+        _followUser = true;
+        _zoomLevel = MapConfig.mapboxRotateZoom;
       }
     });
+    unawaited(
+      _mapboxCamera.applyOrientationMode(
+        rotateWithHeading: enteringRotate,
+        headingDeg: headingDeg,
+        zoom: enteringRotate ? MapConfig.mapboxRotateZoom : null,
+      ),
+    );
+    if (enteringRotate) {
+      final location = context.read<LocationService>().currentLocation;
+      if (location != null) {
+        _lastFollowedLocation = location;
+        unawaited(
+          _mapboxCamera.centerOn(
+            location,
+            zoom: MapConfig.mapboxRotateZoom,
+            headingDeg: headingDeg,
+          ),
+        );
+      }
+    }
   }
 
   void _setInitialCamera({
     required LocationService locationService,
   }) {
-    if (!_mapReady || _didInitialCenter) return;
-
-    if (locationService.hasLocation) {
-      final location = locationService.currentLocation!;
-      _mapController.move(location, MapConfig.initialZoom);
-      _didInitialCenter = true;
-      _followUser = true;
-      _lastFollowedLocation = location;
-    }
-  }
-
-  void _centerOnLocation(LocationService locationService) {
-    final location = locationService.currentLocation;
-    if (location == null || !_mapReady) return;
+    if (!_mapboxReady || _didInitialCenter) return;
+    if (!locationService.hasLocation) return;
+    final location = locationService.currentLocation!;
+    _didInitialCenter = true;
     _followUser = true;
     _lastFollowedLocation = location;
-    _animatedMapController.centerOnPoint(
+    unawaited(
+      _mapboxCamera.centerOn(
+        location,
+        zoom: MapConfig.mapboxFollowZoom,
+        headingDeg: locationService.headingDeg,
+      ),
+    );
+    _zoomLevel = MapConfig.mapboxFollowZoom;
+  }
+
+  Future<void> _centerOnLocation(LocationService locationService) async {
+    final location = locationService.currentLocation;
+    if (location == null || !_mapboxReady) return;
+    setState(() {
+      _followUser = true;
+      _lastFollowedLocation = location;
+      _zoomLevel = MapConfig.mapboxFollowZoom;
+    });
+    await _mapboxCamera.centerOn(
       location,
-      zoom: _mapController.camera.zoom,
+      zoom: MapConfig.mapboxFollowZoom,
+      headingDeg: locationService.headingDeg,
+      durationMs: 1200,
     );
   }
 
   void _maybeFollowUser(LocationService locationService) {
-    if (!_followUser || !_mapReady) return;
+    // Rotate mode always tracks the user at max zoom.
+    final shouldFollow = _followUser || _rotateMap;
+    if (!shouldFollow || !_mapboxReady) return;
     final location = locationService.currentLocation;
     if (location == null) return;
     final previous = _lastFollowedLocation;
@@ -205,15 +223,27 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
       return;
     }
     _lastFollowedLocation = location;
-    try {
-      _mapController.move(location, _mapController.camera.zoom);
-    } catch (_) {
-      // Map controller not ready yet.
-    }
+    unawaited(
+      _mapboxCamera.followLocation(
+        location,
+        followUser: true,
+        zoom: _rotateMap ? MapConfig.mapboxRotateZoom : null,
+      ),
+    );
   }
 
   void _onZoomChanged(double zoom) {
-    _mapController.move(_mapController.camera.center, zoom);
+    if (_rotateMap) return;
+    final clamped = clampMapboxZoom(zoom);
+    setState(() => _zoomLevel = clamped);
+    unawaited(_mapboxCamera.setZoom(clamped));
+  }
+
+  void _onMapboxZoomChanged(double zoom) {
+    if (!mounted || _rotateMap) return;
+    final clamped = clampMapboxZoom(zoom);
+    if (clamped == _zoomLevel) return;
+    setState(() => _zoomLevel = clamped);
   }
 
   void _showScanBanner(String message, {bool autoDismiss = true}) {
@@ -226,10 +256,13 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
     });
   }
 
-  void _onScanFieldArea() {
-    if (!_mapReady) return;
-
-    final center = _mapController.camera.center;
+  Future<void> _onScanFieldArea() async {
+    if (!_mapboxReady) return;
+    final center = await _mapboxCamera.currentCenter();
+    if (center == null) {
+      _showScanBanner('Could not read map center');
+      return;
+    }
     _showScanBanner('Field site scan queued…', autoDismiss: false);
     unawaited(_runAdminFieldScan(center));
   }
@@ -277,7 +310,6 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
 
       final written = status.generated ?? 0;
       final after = status.totalInRadius ?? 0;
-      // "Found" = non-exhausted sites already in radius before this write.
       final found = (after - written).clamp(0, after);
       final radiusKm = status.radiusKm;
       final radiusLabel = radiusKm == radiusKm.roundToDouble()
@@ -304,11 +336,22 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
 
   Future<void> _onSiteTap(SiteSummary site) async {
     final mapData = context.read<map_data.MapController>();
+    // Keep selection after the card closes; only another tap replaces it.
     mapData.selectSite(site);
-    _panToSite(site);
-    final displaySite = await mapData.siteForDisplay(site);
+    final displayFuture = mapData.siteForDisplay(site);
+    if (!_rotateMap) {
+      unawaited(_panToSite(site));
+    }
+    final displaySite = await displayFuture;
     if (!mounted) return;
     await showSiteMapCardDialog(context, displaySite);
+  }
+
+  void _onMapboxError(Object error) {
+    if (!mounted) return;
+    setState(() {
+      _mapboxBannerMessage = 'Mapbox failed: $error';
+    });
   }
 
   @override
@@ -326,7 +369,6 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
           }
           _setInitialCamera(locationService: locationService);
           _maybeFollowUser(locationService);
-          _updateMapRotation(locationService.headingDeg);
           _consumePendingFocus();
         });
 
@@ -335,56 +377,93 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
 
         return Stack(
           children: [
-            fm.FlutterMap(
-              mapController: _mapController,
-              options: fm.MapOptions(
-                initialCenter: startCenter,
-                initialZoom: _zoomLevel,
-                minZoom: MapConfig.minZoom,
-                maxZoom: MapConfig.maxZoom,
-                backgroundColor: Theme.of(context).colorScheme.surface,
-                cameraConstraint: fm.CameraConstraint.contain(
-                  bounds: fm.LatLngBounds(
-                    const LatLng(-85, -180),
-                    const LatLng(85, 180),
+            if (!MapConfig.hasMapboxAccessToken)
+              const ColoredBox(
+                color: Color(0xFFE8DFD4),
+                child: Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(24),
+                    child: Text(
+                      'Mapbox token missing.\nRun with ./run.sh so '
+                      '.dart_defines.json is applied.',
+                      textAlign: TextAlign.center,
+                    ),
                   ),
                 ),
-                onMapReady: () {
-                  if (!mounted) return;
-                  setState(() => _mapReady = true);
-                  if (_rotateMap) {
-                    _mapController.rotate(-locationService.headingDeg);
-                  }
-                  _consumePendingFocus();
-                },
-                interactionOptions: const fm.InteractionOptions(
-                  flags: fm.InteractiveFlag.pinchZoom |
-                      fm.InteractiveFlag.doubleTapZoom |
-                      fm.InteractiveFlag.scrollWheelZoom |
-                      fm.InteractiveFlag.drag |
-                      fm.InteractiveFlag.flingAnimation,
-                ),
-              ),
-              children: [
-                const MapTileLayer(),
-                MapCenterMarkerLayer(
-                  currentLocation: locationService.currentLocation,
-                  mapReady: _mapReady,
-                ),
-                SiteMarkersLayer(
+              )
+            else
+              Positioned.fill(
+                child: MapboxFieldMap(
+                  camera: _mapboxCamera,
+                  rotateWithHeading: _rotateMap,
                   sites: mapData.filteredGeoSites,
-                  mapReady: _mapReady,
                   selectedSite: mapData.selectedSite,
-                  onSiteTap: _onSiteTap,
-                ),
-                LocationMarkerLayer(
+                  markerDatasetKey: [
+                    isFieldMode
+                        ? (mapData.showAllFieldSites
+                            ? 'field:all'
+                            : 'field:linked')
+                        : 'archive',
+                    mapData.filters.markerFilterKey,
+                  ].join('|'),
                   currentLocation: locationService.currentLocation,
                   headingDeg: locationService.headingDeg,
-                  rotateMap: _rotateMap,
-                  mapReady: _mapReady,
+                  followUser: _followUser || _rotateMap,
+                  initialCenter: startCenter,
+                  initialZoom: _zoomLevel,
+                  onSiteTap: _onSiteTap,
+                  onFollowCancelled: () {
+                    // Rotate mode is always locked to the user.
+                    if (_rotateMap) return;
+                    if (_followUser) setState(() => _followUser = false);
+                  },
+                  onZoomChanged: _onMapboxZoomChanged,
+                  onReadyChanged: (ready) {
+                    if (!mounted) return;
+                    setState(() => _mapboxReady = ready);
+                    if (ready) {
+                      _consumePendingFocus();
+                      _setInitialCamera(locationService: locationService);
+                    }
+                  },
+                  onError: _onMapboxError,
                 ),
-              ],
-            ),
+              ),
+            if (_mapboxBannerMessage != null)
+              Positioned(
+                top: 12,
+                left: 16,
+                right: 16,
+                child: Material(
+                  color: Theme.of(context)
+                      .colorScheme
+                      .errorContainer
+                      .withValues(alpha: 0.92),
+                  borderRadius: BorderRadius.circular(12),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 10,
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            _mapboxBannerMessage!,
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                        ),
+                        IconButton(
+                          visualDensity: VisualDensity.compact,
+                          onPressed: () =>
+                              setState(() => _mapboxBannerMessage = null),
+                          icon: const Icon(Icons.close, size: 18),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
             if (_scanBannerMessage != null)
               Positioned(
                 top: isFieldMode && isAdmin ? 64 : 12,
@@ -406,13 +485,18 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
                         Icon(
                           Icons.radar_outlined,
                           size: 18,
-                          color: Theme.of(context).colorScheme.onPrimaryContainer,
+                          color: Theme.of(context)
+                              .colorScheme
+                              .onPrimaryContainer,
                         ),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
                             _scanBannerMessage!,
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            style: Theme.of(context)
+                                .textTheme
+                                .bodySmall
+                                ?.copyWith(
                                   color: Theme.of(context)
                                       .colorScheme
                                       .onPrimaryContainer,
@@ -453,7 +537,9 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
                               ? Theme.of(context).colorScheme.primaryContainer
                               : null,
                           foregroundColor: mapData.showAllFieldSites
-                              ? Theme.of(context).colorScheme.onPrimaryContainer
+                              ? Theme.of(context)
+                                  .colorScheme
+                                  .onPrimaryContainer
                               : null,
                           child: Icon(
                             mapData.showAllFieldSites

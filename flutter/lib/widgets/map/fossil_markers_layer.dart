@@ -42,7 +42,7 @@ class FossilMarkersLayer extends StatelessWidget {
     return MarkerLayer(
       markers: visibleFossils.map((fossil) {
         final selected = selectedFossil?.id == fossil.id;
-        final size = fossilMarkerSizeForZoom(zoomLevel, selected: selected);
+        final size = fossilMarkerSizeForZoom(zoomLevel);
 
         return Marker(
           point: LatLng(fossil.latitude!, fossil.longitude!),

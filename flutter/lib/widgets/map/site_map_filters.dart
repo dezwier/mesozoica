@@ -67,6 +67,15 @@ class SiteMapFilters {
     return periodActive || rockActive || statusActive;
   }
 
+  /// Stable key so marker layer can wipe+reload when filters change.
+  String get markerFilterKey {
+    if (!hasActiveFilters) return 'all';
+    final s = (statuses.toList()..sort()).join(',');
+    final p = (periods.toList()..sort()).join(',');
+    final r = (rockTypes.toList()..sort()).join(',');
+    return 's=$s|p=$p|r=$r|fs=$filterByStatus';
+  }
+
   SiteMapFilters copyWith({
     Set<String>? statuses,
     Set<String>? periods,
