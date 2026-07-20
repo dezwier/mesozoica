@@ -21,6 +21,7 @@ class MapboxCameraCoordinator {
   double? _pendingHeadingDeg;
   LatLng? _pendingFollowLocation;
   double? _pendingFollowZoom;
+  double? _viewportHeight;
   bool rotateWithHeading = false;
 
   /// Ignore heading jitter smaller than this (degrees).
@@ -38,6 +39,12 @@ class MapboxCameraCoordinator {
     _pendingFollowZoom = null;
   }
 
+  /// Logical map height from Flutter layout (preferred over [MapboxMap.getSize]).
+  void setViewportHeight(double height) {
+    if (height <= 0) return;
+    _viewportHeight = height;
+  }
+
   /// Drop queued GPS follow so a programmatic [centerOn] is not overwritten.
   void clearPendingFollow() {
     _pendingFollowLocation = null;
@@ -50,6 +57,29 @@ class MapboxCameraCoordinator {
   double _bearingForMode(double headingDeg) {
     if (!rotateWithHeading) return 0;
     return mapboxBearingFromHeading(headingDeg);
+  }
+
+  /// Rotate mode: mid-x, [MapConfig.mapboxRotateFocusFromBottom] from bottom.
+  /// North-fixed: true screen center (zero padding).
+  MbxEdgeInsets _paddingForMode() {
+    if (!rotateWithHeading) {
+      return MbxEdgeInsets(top: 0, left: 0, bottom: 0, right: 0);
+    }
+    final height = _viewportHeight;
+    if (height == null || height <= 0) {
+      return MbxEdgeInsets(top: 0, left: 0, bottom: 0, right: 0);
+    }
+    // Focus at fraction F from bottom ⇒ y = (1−F)·H from top.
+    // With top padding T and bottom 0: center y = (H+T)/2 = (1−F)·H
+    // ⇒ T = (1−2F)·H. For F = 1/3: T = H/3.
+    final focusFromBottom = MapConfig.mapboxRotateFocusFromBottom;
+    final top = height * (1 - 2 * focusFromBottom);
+    return MbxEdgeInsets(
+      top: top.clamp(0, height),
+      left: 0,
+      bottom: 0,
+      right: 0,
+    );
   }
 
   Future<void> seedCamera({
@@ -67,6 +97,7 @@ class MapboxCameraCoordinator {
         zoom: clampMapboxZoom(zoom),
         bearing: _bearingForMode(headingDeg),
         pitch: _pitch,
+        padding: _paddingForMode(),
       ),
     );
   }
@@ -86,6 +117,7 @@ class MapboxCameraCoordinator {
         bearing: _bearingForMode(headingDeg),
         pitch: _pitch,
         zoom: zoom != null ? clampMapboxZoom(zoom) : null,
+        padding: _paddingForMode(),
       ),
     );
   }
@@ -109,6 +141,7 @@ class MapboxCameraCoordinator {
           CameraOptions(
             bearing: mapboxBearingFromHeading(next),
             pitch: _pitch,
+            padding: _paddingForMode(),
           ),
         );
       }
@@ -154,6 +187,7 @@ class MapboxCameraCoordinator {
                     : null),
             pitch: _pitch,
             bearing: _bearingForMode(_lastHeadingDeg),
+            padding: _paddingForMode(),
           ),
         );
       }
@@ -186,6 +220,7 @@ class MapboxCameraCoordinator {
         zoom: clampMapboxZoom(zoom),
         bearing: _bearingForMode(headingDeg),
         pitch: _pitch,
+        padding: _paddingForMode(),
       ),
       MapAnimationOptions(duration: durationMs),
     );

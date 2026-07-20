@@ -51,6 +51,10 @@ class MapConfig {
   /// Locked zoom while in Mapbox rotate (AR-style) mode.
   static const double mapboxRotateZoom = maxZoom;
 
+  /// Where the follow/rotate target sits on screen in rotate mode, as a
+  /// fraction of map height from the bottom (mid-x, this fraction up).
+  static const double mapboxRotateFocusFromBottom = 1 / 3;
+
   /// Zoom used when centering on the user in north-fixed mode.
   static const double mapboxFollowZoom = 16.0;
 

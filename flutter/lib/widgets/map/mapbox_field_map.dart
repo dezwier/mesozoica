@@ -371,52 +371,63 @@ class _MapboxFieldMapState extends State<MapboxFieldMap> {
       );
     }
 
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        MapWidget(
-          key: const ValueKey('mapbox_field_map'),
-          styleUri: MapboxStyles.STANDARD,
-          viewport: _initialViewport,
-          onMapCreated: _onMapCreated,
-          onStyleLoadedListener: _onStyleLoaded,
-          onMapLoadedListener: _onMapLoaded,
-          onScrollListener: _onScroll,
-          onCameraChangeListener: _onCameraChange,
-          onMapIdleListener: _onMapIdle,
-          onMapLoadErrorListener: (event) {
-            widget.onError?.call(event.message);
-          },
-        ),
-        if (!_ready)
-          Positioned(
-            left: 16,
-            right: 16,
-            bottom: 100,
-            child: Material(
-              elevation: 2,
-              borderRadius: BorderRadius.circular(12),
-              color: Theme.of(context)
-                  .colorScheme
-                  .surfaceContainerHighest
-                  .withValues(alpha: 0.95),
-              child: const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                child: Row(
-                  children: [
-                    SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final height = constraints.maxHeight;
+        if (height.isFinite && height > 0) {
+          widget.camera.setViewportHeight(height);
+        }
+        return Stack(
+          fit: StackFit.expand,
+          children: [
+            MapWidget(
+              key: const ValueKey('mapbox_field_map'),
+              styleUri: MapboxStyles.STANDARD,
+              viewport: _initialViewport,
+              onMapCreated: _onMapCreated,
+              onStyleLoadedListener: _onStyleLoaded,
+              onMapLoadedListener: _onMapLoaded,
+              onScrollListener: _onScroll,
+              onCameraChangeListener: _onCameraChange,
+              onMapIdleListener: _onMapIdle,
+              onMapLoadErrorListener: (event) {
+                widget.onError?.call(event.message);
+              },
+            ),
+            if (!_ready)
+              Positioned(
+                left: 16,
+                right: 16,
+                bottom: 100,
+                child: Material(
+                  elevation: 2,
+                  borderRadius: BorderRadius.circular(12),
+                  color: Theme.of(context)
+                      .colorScheme
+                      .surfaceContainerHighest
+                      .withValues(alpha: 0.95),
+                  child: const Padding(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 10,
                     ),
-                    SizedBox(width: 10),
-                    Expanded(child: Text('Loading map tiles…')),
-                  ],
+                    child: Row(
+                      children: [
+                        SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                        SizedBox(width: 10),
+                        Expanded(child: Text('Loading map tiles…')),
+                      ],
+                    ),
+                  ),
                 ),
               ),
-            ),
-          ),
-      ],
+          ],
+        );
+      },
     );
   }
 }
