@@ -13,6 +13,7 @@ class SiteCardHeader extends StatelessWidget {
     this.centered = false,
     this.useFrontTitleStyle = false,
     this.overlayOnImage = false,
+    this.showSubtitle = true,
   });
 
   final SiteSummary site;
@@ -21,6 +22,7 @@ class SiteCardHeader extends StatelessWidget {
   final bool centered;
   final bool useFrontTitleStyle;
   final bool overlayOnImage;
+  final bool showSubtitle;
 
   @override
   Widget build(BuildContext context) {
@@ -64,14 +66,16 @@ class SiteCardHeader extends StatelessWidget {
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
-        const SizedBox(height: 8),
-        Text(
-          site.displaySubtitle,
-          textAlign: centered ? TextAlign.center : TextAlign.start,
-          style: subtitleStyle,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
+        if (showSubtitle) ...[
+          const SizedBox(height: 8),
+          Text(
+            site.displaySubtitle,
+            textAlign: centered ? TextAlign.center : TextAlign.start,
+            style: subtitleStyle,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
       ],
     );
   }

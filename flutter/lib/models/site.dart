@@ -44,14 +44,37 @@ class SiteSummary {
   }
 
   String get displayTitle {
-    final trimmed = formation?.trim();
-    if (trimmed != null && trimmed.isNotEmpty) {
-      return trimmed;
+    final period = effectivePeriod;
+    final rock = (rockType ?? siteTypeRockType)?.trim();
+    final parts = <String>[];
+    if (period != null && period.isNotEmpty) {
+      parts.add(toTitleCase(period));
+    }
+    if (rock != null && rock.isNotEmpty) {
+      parts.add(toTitleCase(rock));
+    }
+    if (parts.isNotEmpty) {
+      return parts.join(' ');
     }
     return displaySiteNumber;
   }
 
-  String get displaySubtitle => 'Collection $displaySiteNumber';
+  String get displaySubtitle {
+    final parts = <String>[];
+    if (latitude != null && longitude != null) {
+      parts.add(displayCoordinates);
+    }
+    final trimmedState = state?.trim();
+    if (trimmedState != null && trimmedState.isNotEmpty) {
+      parts.add(trimmedState);
+    }
+    final trimmedCountry = countryCode?.trim();
+    if (trimmedCountry != null && trimmedCountry.isNotEmpty) {
+      parts.add(trimmedCountry);
+    }
+    if (parts.isEmpty) return displaySiteNumber;
+    return '$displaySiteNumber ${parts.join(', ')}';
+  }
 
   String get displayCoordinates {
     if (latitude == null || longitude == null) return '—';

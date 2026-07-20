@@ -85,7 +85,27 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
       if (!mounted || !widget.isActive) return;
       context.read<LocationService>().setMapForeground(true);
       context.read<map_data.MapController>().load();
+      _consumePendingFocus();
     });
+  }
+
+  void _consumePendingFocus() {
+    if (!widget.isActive || !_mapReady) return;
+    final mapData = context.read<map_data.MapController>();
+    final site = mapData.takePendingFocusSite();
+    if (site == null) return;
+    _panToSite(site);
+  }
+
+  void _panToSite(SiteSummary site) {
+    final lat = site.latitude;
+    final lon = site.longitude;
+    if (lat == null || lon == null || !_mapReady) return;
+    _followUser = false;
+    _animatedMapController.centerOnPoint(
+      LatLng(lat, lon),
+      zoom: _mapController.camera.zoom,
+    );
   }
 
   void _onMapEvent(fm.MapEvent event) {
@@ -285,11 +305,10 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
   Future<void> _onSiteTap(SiteSummary site) async {
     final mapData = context.read<map_data.MapController>();
     mapData.selectSite(site);
+    _panToSite(site);
     final displaySite = await mapData.siteForDisplay(site);
     if (!mounted) return;
     await showSiteMapCardDialog(context, displaySite);
-    if (!mounted) return;
-    mapData.clearSelection();
   }
 
   @override
@@ -308,6 +327,7 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
           _setInitialCamera(locationService: locationService);
           _maybeFollowUser(locationService);
           _updateMapRotation(locationService.headingDeg);
+          _consumePendingFocus();
         });
 
         final startCenter =
@@ -335,6 +355,7 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
                   if (_rotateMap) {
                     _mapController.rotate(-locationService.headingDeg);
                   }
+                  _consumePendingFocus();
                 },
                 interactionOptions: const fm.InteractionOptions(
                   flags: fm.InteractiveFlag.pinchZoom |
@@ -346,6 +367,10 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
               ),
               children: [
                 const MapTileLayer(),
+                MapCenterMarkerLayer(
+                  currentLocation: locationService.currentLocation,
+                  mapReady: _mapReady,
+                ),
                 SiteMarkersLayer(
                   sites: mapData.filteredGeoSites,
                   mapReady: _mapReady,
@@ -357,7 +382,6 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
                   headingDeg: locationService.headingDeg,
                   rotateMap: _rotateMap,
                   mapReady: _mapReady,
-                  onTapCenter: () => _centerOnLocation(locationService),
                 ),
               ],
             ),

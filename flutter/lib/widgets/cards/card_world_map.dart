@@ -17,18 +17,25 @@ class CardMapMarker {
   final VoidCallback? onTap;
 }
 
-/// Shared mini world map for card backs — max zoom-out with optional auto-pan.
+/// Shared mini world map for card backs — optional auto-pan and interaction.
 class CardWorldMap extends StatefulWidget {
   const CardWorldMap({
     super.key,
     required this.markers,
     required this.center,
+    this.zoom = MapConfig.cardMapZoom,
+    this.interactive = true,
+    this.onTap,
     this.emptyMessage = 'No geolocated occurrences',
     this.tileLayerBuilder = CardWorldMap.defaultTileLayerBuilder,
   });
 
   final List<CardMapMarker> markers;
   final LatLng center;
+  final double zoom;
+  /// When false, the map behaves like a static image (no pan/zoom).
+  final bool interactive;
+  final VoidCallback? onTap;
   final String emptyMessage;
   final Widget Function() tileLayerBuilder;
 
@@ -48,6 +55,7 @@ class _CardWorldMapState extends State<CardWorldMap> {
   void didUpdateWidget(covariant CardWorldMap oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.center != widget.center ||
+        oldWidget.zoom != widget.zoom ||
         oldWidget.markers.length != widget.markers.length) {
       _panCamera();
     }
@@ -61,61 +69,74 @@ class _CardWorldMapState extends State<CardWorldMap> {
 
   void _panCamera() {
     if (!_mapReady) return;
-    _mapController.move(widget.center, MapConfig.cardMapZoom);
+    _mapController.move(widget.center, widget.zoom);
   }
 
   @override
   Widget build(BuildContext context) {
     final cardTheme = DinoCardTheme.of(context);
+    final map = FlutterMap(
+      mapController: _mapController,
+      options: MapOptions(
+        initialCenter: widget.center,
+        initialZoom: widget.zoom,
+        minZoom: widget.zoom,
+        maxZoom: widget.interactive ? MapConfig.maxZoom : widget.zoom,
+        backgroundColor: cardTheme.cardBackground,
+        cameraConstraint: CameraConstraint.contain(
+          bounds: LatLngBounds(
+            const LatLng(-85, -180),
+            const LatLng(85, 180),
+          ),
+        ),
+        onMapReady: _onMapReady,
+        onTap: widget.onTap == null ? null : (_, _) => widget.onTap!(),
+        interactionOptions: InteractionOptions(
+          flags: widget.interactive
+              ? InteractiveFlag.drag |
+                  InteractiveFlag.pinchZoom |
+                  InteractiveFlag.doubleTapZoom |
+                  InteractiveFlag.flingAnimation
+              : InteractiveFlag.none,
+        ),
+      ),
+      children: [
+        widget.tileLayerBuilder(),
+        if (widget.markers.isNotEmpty)
+          MarkerLayer(
+            markers: widget.markers.map((marker) {
+              return Marker(
+                point: marker.point,
+                width: CardWorldMap.markerSize,
+                height: CardWorldMap.markerSize,
+                child: GestureDetector(
+                  onTap: marker.onTap ?? widget.onTap,
+                  child: FossilMarker(
+                    size: CardWorldMap.markerSize,
+                    selected: false,
+                    showIcon: false,
+                    color: cardTheme.cardAccent,
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+      ],
+    );
 
     return Stack(
       fit: StackFit.expand,
       children: [
-        FlutterMap(
-          mapController: _mapController,
-          options: MapOptions(
-            initialCenter: widget.center,
-            initialZoom: MapConfig.cardMapZoom,
-            minZoom: MapConfig.cardMapZoom,
-            maxZoom: MapConfig.maxZoom,
-            backgroundColor: cardTheme.cardBackground,
-            cameraConstraint: CameraConstraint.contain(
-              bounds: LatLngBounds(
-                const LatLng(-85, -180),
-                const LatLng(85, 180),
-              ),
-            ),
-            onMapReady: _onMapReady,
-            interactionOptions: const InteractionOptions(
-              flags: InteractiveFlag.drag |
-                  InteractiveFlag.pinchZoom |
-                  InteractiveFlag.doubleTapZoom |
-                  InteractiveFlag.flingAnimation,
-            ),
-          ),
-          children: [
-            widget.tileLayerBuilder(),
-            if (widget.markers.isNotEmpty)
-              MarkerLayer(
-                markers: widget.markers.map((marker) {
-                  return Marker(
-                    point: marker.point,
-                    width: CardWorldMap.markerSize,
-                    height: CardWorldMap.markerSize,
-                    child: GestureDetector(
-                      onTap: marker.onTap,
-                      child: FossilMarker(
-                        size: CardWorldMap.markerSize,
-                        selected: false,
-                        showIcon: false,
-                        color: cardTheme.cardAccent,
-                      ),
-                    ),
-                  );
-                }).toList(),
-              ),
-          ],
-        ),
+        // Non-interactive maps still need a hit target for [onTap]; flutter_map
+        // may not deliver taps when all interaction flags are off.
+        if (!widget.interactive && widget.onTap != null)
+          GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: widget.onTap,
+            child: AbsorbPointer(child: map),
+          )
+        else
+          map,
         if (widget.markers.isEmpty)
           Center(
             child: Text(

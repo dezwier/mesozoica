@@ -19,4 +19,11 @@ void main() {
       'Abelisaurus',
     );
   });
+
+  test('toTitleCase splits underscores and capitalizes words', () {
+    expect(toTitleCase('vulcanic_ash'), 'Vulcanic Ash');
+    expect(toTitleCase('Jurassic'), 'Jurassic');
+    expect(toTitleCase('sandstone'), 'Sandstone');
+    expect(toTitleCase('  mixed_CASE rock '), 'Mixed Case Rock');
+  });
 }

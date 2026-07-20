@@ -43,7 +43,7 @@ void main() {
     );
   });
 
-  testWidgets('SiteCardHeader renders formation title and collection subtitle',
+  testWidgets('SiteCardHeader renders period-rock title and collection subtitle',
       (tester) async {
     await tester.pumpWidget(
       const MaterialApp(
@@ -53,8 +53,8 @@ void main() {
       ),
     );
 
-    expect(find.text('Hell Creek Formation'), findsOneWidget);
-    expect(find.text('Collection #50001'), findsOneWidget);
+    expect(find.text('Cretaceous Sandstone'), findsOneWidget);
+    expect(find.text('#50001 46.88, -110.36, Montana, US'), findsOneWidget);
   });
 
   testWidgets('SiteCardFront renders image, title, and collection id',
@@ -73,8 +73,8 @@ void main() {
     );
 
     expect(find.byType(SiteCardImage), findsOneWidget);
-    expect(find.text('Hell Creek Formation'), findsOneWidget);
-    expect(find.text('Collection #50001'), findsOneWidget);
+    expect(find.text('Cretaceous Sandstone'), findsOneWidget);
+    expect(find.text('#50001 46.88, -110.36, Montana, US'), findsOneWidget);
     expect(find.byType(SiteCardEdgeFacts), findsNothing);
     expect(find.text('COORDINATES'), findsNothing);
     expect(find.text('COUNTRY'), findsNothing);
@@ -148,6 +148,8 @@ void main() {
     expect(find.byType(SiteCardLocationMap), findsOneWidget);
     expect(find.byType(GeologicTimeline), findsOneWidget);
     expect(find.byType(SiteCardEdgeFacts), findsOneWidget);
+    expect(find.text('Cretaceous Sandstone'), findsOneWidget);
+    expect(find.text('#50001 46.88, -110.36, Montana, US'), findsNothing);
     expect(find.text('FOSSIL RECORD'), findsOneWidget);
     expect(find.text('TIME'), findsNothing);
     expect(find.text('COORDINATES'), findsOneWidget);
@@ -157,7 +159,7 @@ void main() {
     expect(find.textContaining('46.88'), findsOneWidget);
     expect(find.textContaining('Montana'), findsOneWidget);
     expect(find.textContaining('Cretaceous, 66 – 68 Ma'), findsOneWidget);
-    expect(find.textContaining('Sandstone'), findsOneWidget);
+    expect(find.text('Sandstone'), findsOneWidget);
   });
 
   testWidgets('SiteTurnableCard composes front and back', (tester) async {

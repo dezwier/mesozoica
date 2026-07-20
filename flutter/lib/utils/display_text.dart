@@ -5,6 +5,20 @@ String capitalizeLeadingLetter(String value) {
   return trimmed[0].toUpperCase() + trimmed.substring(1);
 }
 
+/// Title-cases a label, treating `_` and whitespace as word breaks.
+///
+/// Example: `vulcanic_ash` → `Vulcanic Ash`.
+String toTitleCase(String value) {
+  final trimmed = value.trim();
+  if (trimmed.isEmpty) return trimmed;
+  return trimmed
+      .replaceAll('_', ' ')
+      .split(RegExp(r'\s+'))
+      .where((word) => word.isNotEmpty)
+      .map((word) => '${word[0].toUpperCase()}${word.substring(1).toLowerCase()}')
+      .join(' ');
+}
+
 /// Canonical taxon name for merge keys and compact labels.
 String canonicalTaxonName(String value) {
   var text = value.replaceAll(RegExp(r'[\u00A0\u200B\uFEFF]'), ' ');

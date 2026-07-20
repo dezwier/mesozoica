@@ -44,7 +44,9 @@ class SiteCardEdgeFacts extends StatelessWidget {
         CardFactEntry(
           iconAsset: 'assets/images/cards/icons/mass.svg',
           label: 'Rock type',
-          value: displayFactValue(site.rockType),
+          value: displayFactValue(
+            site.rockType == null ? null : toTitleCase(site.rockType!),
+          ),
         ),
       ],
     );

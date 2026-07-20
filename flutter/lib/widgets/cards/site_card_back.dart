@@ -45,6 +45,7 @@ class SiteCardBack extends StatelessWidget {
               subtitleFontSize: subtitleFontSize,
               centered: true,
               overlayOnImage: true,
+              showSubtitle: false,
             ),
           ),
           Positioned(

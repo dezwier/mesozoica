@@ -104,9 +104,14 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
   void _onMapSitesChanged() {
     if (!mounted) return;
     final map = _mapController;
-    final discovery = _discoveryCoordinator;
-    if (map == null || discovery == null) return;
-    discovery.ingestMapSites(map.geoSites);
+    if (map == null) return;
+    _discoveryCoordinator?.ingestMapSites(map.geoSites);
+
+    // Card map taps queue a focus request; switch to the map tab so MapScreen
+    // can pan to the site (works even from root-navigator dialogs).
+    if (map.pendingFocusSite != null && _index != _mapTabIndex) {
+      setState(() => _index = _mapTabIndex);
+    }
   }
 
   void _onDiscoveryChanged() {

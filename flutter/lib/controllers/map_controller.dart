@@ -77,6 +77,8 @@ class MapController extends ChangeNotifier {
   };
 
   SiteSummary? _selectedSite;
+  /// Site to pan to when the map tab becomes active (e.g. from a card map tap).
+  SiteSummary? _pendingFocusSite;
   Timer? _fieldPollTimer;
   int _fieldPollBackoffSeq = 0;
   SiteMapFilters _filters = SiteMapFilters();
@@ -157,6 +159,7 @@ class MapController extends ChangeNotifier {
   bool get isLoadingMore => _snap.loading && _snap.geoSites.isNotEmpty;
   String? get error => _snap.error;
   SiteSummary? get selectedSite => _selectedSite;
+  SiteSummary? get pendingFocusSite => _pendingFocusSite;
   LatLngBounds? get siteBounds => _snap.siteBounds;
   int get totalCatalog => _snap.totalCatalog;
   int get loadedCatalog => _snap.loadedCatalog;
@@ -323,6 +326,20 @@ class MapController extends ChangeNotifier {
     if (_selectedSite == null) return;
     _selectedSite = null;
     notifyListeners();
+  }
+
+  /// Select [site] and queue a camera pan when the map screen is ready.
+  void requestFocusOnSite(SiteSummary site) {
+    _pendingFocusSite = site;
+    _selectedSite = site;
+    notifyListeners();
+  }
+
+  /// Returns and clears a pending focus request, if any.
+  SiteSummary? takePendingFocusSite() {
+    final site = _pendingFocusSite;
+    _pendingFocusSite = null;
+    return site;
   }
 
   /// Loads the latest site row so formation and other card fields are current.
