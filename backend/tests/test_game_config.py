@@ -25,18 +25,19 @@ def test_load_game_config_matches_current_defaults() -> None:
     get_game_config.cache_clear()
     config = load_game_config()
 
-    assert config.site_generation.lazy.min_sites_in_radius == 100
+    assert config.site_generation.lazy.min_sites_in_radius == 200
     assert config.site_generation.lazy.radius_km == 1.0
-    assert config.site_generation.lazy.min_separation_km == 0.01
-    assert config.site_generation.lazy.weight_global == 0.25
-    assert config.site_generation.lazy.weight_nearby == 0.50
-    assert config.site_generation.lazy.weight_closest == 0.25
+    assert config.site_generation.lazy.min_separation_km == 0.03
+    assert config.site_generation.lazy.weight_global == 0.33
+    assert config.site_generation.lazy.weight_nearby == 0.33
+    assert config.site_generation.lazy.weight_closest == 0.34
 
-    assert config.site_generation.bulk.max_items == 100
+    assert config.site_generation.bulk.max_items == 200
     assert config.site_generation.client.ensure_move_threshold_m == 500.0
     assert config.site_generation.client.nearby_radius_km == 1.0
 
     assert config.site_discovery.max_distance_m == 50.0
+    assert config.site_discovery.discovery_chance == 0.3
     assert config.site_discovery.client.auto_discover_radius_m == 50.0
     assert config.site_discovery.client.cache_radius_km == 1.0
     assert config.site_discovery.client.cache_refresh_move_threshold_m == 500.0

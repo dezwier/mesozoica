@@ -123,7 +123,7 @@ void main() {
     coordinator.dispose();
   });
 
-  test('does not discover the same site twice', () async {
+  test('does not re-attempt while still inside after enter', () async {
     var discoverCount = 0;
     final coordinator = FieldDiscoveryCoordinator(
       siteService: SiteService(
@@ -163,6 +163,122 @@ void main() {
 
     coordinator.consumeCelebration();
     locationService.setLocation(const LatLng(51.00005, 4.0000));
+    await pumpUntilIdle();
+    expect(discoverCount, 1);
+
+    coordinator.dispose();
+  });
+
+  test('re-attempts after exit beyond radius then re-enter', () async {
+    var discoverCount = 0;
+    final coordinator = FieldDiscoveryCoordinator(
+      siteService: SiteService(
+        client: MockClient((request) async {
+          if (request.url.path.contains('nearby-discoverable')) {
+            return http.Response(
+              jsonEncode({
+                'items': [
+                  _siteJson(siteId: 9, lat: 51.0000, lon: 4.0000),
+                ],
+                'total': 1,
+                'generated': 0,
+                'radius_km': 1.0,
+              }),
+              200,
+            );
+          }
+          if (request.method == 'POST' &&
+              request.url.path.contains('/discover')) {
+            discoverCount++;
+            // First enter misses; second enter succeeds.
+            if (discoverCount == 1) {
+              return http.Response(
+                jsonEncode({
+                  'detail':
+                      'Discovery chance miss - leave and re-enter range to try again',
+                  'type': 'DiscoveryChanceMissError',
+                }),
+                400,
+              );
+            }
+            return http.Response(
+              jsonEncode(
+                _siteJson(siteId: 9, lat: 51.0, lon: 4.0, status: 'discovered'),
+              ),
+              200,
+            );
+          }
+          return http.Response('{}', 404);
+        }),
+      ),
+    );
+
+    final locationService = _FakeLocationService(const LatLng(51.0001, 4.0000));
+    coordinator.bind(locationService: locationService);
+    await pumpUntilIdle();
+    expect(discoverCount, 1);
+    expect(coordinator.pendingCelebration, isNull);
+
+    // Stay inside — no second attempt.
+    locationService.setLocation(const LatLng(51.00005, 4.0000));
+    await pumpUntilIdle();
+    expect(discoverCount, 1);
+
+    // Exit beyond ~50 m (~200 m south).
+    locationService.setLocation(const LatLng(50.9982, 4.0000));
+    await pumpUntilIdle();
+
+    // Re-enter — second attempt succeeds.
+    locationService.setLocation(const LatLng(51.0001, 4.0000));
+    await pumpUntilIdle();
+    expect(discoverCount, 2);
+    expect(coordinator.pendingCelebration?.siteId, 9);
+
+    coordinator.dispose();
+  });
+
+  test('chance miss does not celebrate and does not retry until exit', () async {
+    var discoverCount = 0;
+    final coordinator = FieldDiscoveryCoordinator(
+      siteService: SiteService(
+        client: MockClient((request) async {
+          if (request.url.path.contains('nearby-discoverable')) {
+            return http.Response(
+              jsonEncode({
+                'items': [
+                  _siteJson(siteId: 3, lat: 51.0000, lon: 4.0000),
+                ],
+                'total': 1,
+                'generated': 0,
+                'radius_km': 1.0,
+              }),
+              200,
+            );
+          }
+          if (request.method == 'POST' &&
+              request.url.path.contains('/discover')) {
+            discoverCount++;
+            return http.Response(
+              jsonEncode({
+                'detail':
+                    'Discovery chance miss - leave and re-enter range to try again',
+                'type': 'DiscoveryChanceMissError',
+              }),
+              400,
+            );
+          }
+          return http.Response('{}', 404);
+        }),
+      ),
+    );
+
+    final locationService = _FakeLocationService(const LatLng(51.0001, 4.0000));
+    coordinator.bind(locationService: locationService);
+    await pumpUntilIdle();
+    expect(discoverCount, 1);
+    expect(coordinator.pendingCelebration, isNull);
+
+    locationService.setLocation(const LatLng(51.00008, 4.0000));
     await pumpUntilIdle();
     expect(discoverCount, 1);
 

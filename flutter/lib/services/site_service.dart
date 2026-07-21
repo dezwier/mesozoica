@@ -122,8 +122,10 @@ class SiteService {
 
     if (response.statusCode != 200) {
       final detail = _errorDetail(response.body);
+      final type = _errorType(response.body);
       throw SiteServiceException(
         detail ?? 'Failed to discover site (${response.statusCode})',
+        type: type,
       );
     }
 
@@ -464,15 +466,29 @@ class SiteService {
     return null;
   }
 
+  String? _errorType(String body) {
+    try {
+      final decoded = jsonDecode(body);
+      if (decoded is Map<String, dynamic>) {
+        final type = decoded['type'];
+        if (type is String && type.isNotEmpty) return type;
+      }
+    } catch (_) {}
+    return null;
+  }
+
   void dispose() {
     _client.close();
   }
 }
 
 class SiteServiceException implements Exception {
-  const SiteServiceException(this.message);
+  const SiteServiceException(this.message, {this.type});
 
   final String message;
+  final String? type;
+
+  bool get isDiscoveryChanceMiss => type == 'DiscoveryChanceMissError';
 
   @override
   String toString() => message;

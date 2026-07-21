@@ -15,6 +15,7 @@ void main() {
     expect(config.siteGeneration.client.nearbyRadiusKm, 1.0);
 
     expect(config.siteDiscovery.maxDistanceM, 50.0);
+    expect(config.siteDiscovery.discoveryChance, 0.3);
     expect(config.siteDiscovery.client.autoDiscoverRadiusM, 50.0);
     expect(config.siteDiscovery.client.cacheRadiusKm, 1.0);
     expect(config.siteDiscovery.client.cacheRefreshMoveThresholdM, 500.0);

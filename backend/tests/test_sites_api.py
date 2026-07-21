@@ -446,7 +446,12 @@ def test_list_field_sites_linked_only_by_default(client, session):
     assert anonymous.json()["total"] == 0
 
 
-def test_discover_site_within_range(client, session):
+def test_discover_site_within_range(client, session, monkeypatch):
+    # Force chance roll to succeed (YAML discovery_chance is 0.3).
+    monkeypatch.setattr(
+        "app.services.site_service.discover.random.random",
+        lambda: 0.0,
+    )
     site_type = _seed_site_type(session)
     session.add(
         Site(
@@ -512,6 +517,47 @@ def test_discover_site_within_range(client, session):
         headers={"Authorization": f"Bearer {token}"},
     )
     assert len(notifications2.json()["notifications"]) == 1
+
+
+def test_discover_site_chance_miss(client, session, monkeypatch):
+    monkeypatch.setattr(
+        "app.services.site_service.discover.random.random",
+        lambda: 0.99,
+    )
+    site_type = _seed_site_type(session)
+    session.add(
+        Site(
+            site_id=90016,
+            latitude=Decimal("40.000000"),
+            longitude=Decimal("-100.000000"),
+            formation="Miss Me",
+            rock_type="sandstone",
+            period="cretaceous",
+            site_type_id=site_type.id,
+            data_source="field",
+        )
+    )
+    user = User(username="misser", email="misser@example.com", password="x")
+    session.add(user)
+    session.commit()
+    session.refresh(user)
+    token = create_access_token({"sub": str(user.id)})
+
+    miss = client.post(
+        "/api/v1/sites/90016/discover",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"lat": 40.0003, "lon": -100.0},
+    )
+    assert miss.status_code == 400
+    body = miss.json()
+    assert body["type"] == "DiscoveryChanceMissError"
+
+    linked = client.get(
+        "/api/v1/sites",
+        params={"data_source": "field"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert linked.json()["total"] == 0
 
 
 def test_set_site_status_dropdown_flow(client, session):

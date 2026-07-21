@@ -132,15 +132,18 @@ class SiteGenerationClientConfig {
 class SiteDiscoveryConfig {
   const SiteDiscoveryConfig({
     required this.maxDistanceM,
+    required this.discoveryChance,
     required this.client,
   });
 
   final double maxDistanceM;
+  final double discoveryChance;
   final SiteDiscoveryClientConfig client;
 
   factory SiteDiscoveryConfig.fromYaml(Map<String, dynamic> yaml) {
     return SiteDiscoveryConfig(
       maxDistanceM: _asDouble(yaml['max_distance_m'], 50.0),
+      discoveryChance: _asDouble(yaml['discovery_chance'], 0.3),
       client: SiteDiscoveryClientConfig.fromYaml(
         GameConfig._asMap(yaml['client']),
       ),

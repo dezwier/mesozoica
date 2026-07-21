@@ -11,7 +11,7 @@ Single source of truth for Mesozoica game-mechanics knobs.
 | File | Purpose |
 |------|---------|
 | `site_generation.yaml` | Field site density, spacing, geology blend, client ensure triggers |
-| `site_discovery.yaml` | Proximity to discover a site (server + client) |
+| `site_discovery.yaml` | Proximity + discovery_chance to discover a site (server + client) |
 | `fossil_generation.yaml` | Dino/card spawn weights on survey |
 | `fossil_discovery.yaml` | Stub — fossil proximity discovery (future) |
 | `fossil_excavation.yaml` | Stub — excavation timing/loot (future) |

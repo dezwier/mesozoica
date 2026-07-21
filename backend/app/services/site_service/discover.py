@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
+import random
+
 from sqlmodel import Session, col, select
 
-from app.core.exceptions import NotFoundError, ValidationError
-from app.core.game_config import get_game_config
+from app.core.exceptions import DiscoveryChanceMissError, NotFoundError, ValidationError
 from app.models.data_source import DATA_SOURCE_FIELD
 from app.models.site import Site
 from app.models.user_notification import UserNotification, UserNotificationType
@@ -16,6 +17,7 @@ from app.models.user_site import (
     UserSite,
 )
 from app.services.push_service import send_site_discovered_push
+from app.services.site_service.discovery_params import resolve_site_discovery_params
 from app.services.site_service.geo_utils import haversine_km
 from app.services.site_service.labels import site_display_title
 from app.services.site_service.list import get_site_by_id
@@ -24,6 +26,8 @@ from app.services.site_service.summary import SiteRow
 
 def discover_max_distance_m() -> float:
     """Server-side max distance (meters) to discover / change site status."""
+    from app.core.game_config import get_game_config
+
     return get_game_config().site_discovery.max_distance_m
 
 
@@ -38,21 +42,22 @@ def discover_site(
     user_id: int,
     lat: float,
     lon: float,
+    rng: random.Random | None = None,
 ) -> SiteRow:
-    """Link the user as discoverer when within range and status allows it."""
+    """Link the user as discoverer when within range and the chance roll succeeds."""
     site = session.get(Site, site_id)
     if site is None or site.data_source != DATA_SOURCE_FIELD:
         raise NotFoundError(f"Field site {site_id} not found")
     if site.latitude is None or site.longitude is None:
         raise ValidationError("Site has no coordinates")
 
-    max_distance_m = discover_max_distance_m()
+    params = resolve_site_discovery_params(session, user_id=user_id, site=site)
     distance_km = haversine_km(
         lat, lon, float(site.latitude), float(site.longitude)
     )
-    if distance_km > max_distance_m / 1000.0:
+    if distance_km > params.max_distance_m / 1000.0:
         raise ValidationError(
-            f"Must be within {int(max_distance_m)} m of the site to discover it"
+            f"Must be within {int(params.max_distance_m)} m of the site to discover it"
         )
 
     row = get_site_by_id(session, site_id, data_source=DATA_SOURCE_FIELD)
@@ -69,29 +74,37 @@ def discover_site(
             col(UserSite.role) == USER_SITE_ROLE_DISCOVERER,
         )
     ).first()
-    if existing is None:
-        session.add(
-            UserSite(
-                user_id=user_id,
-                site_id=site_id,
-                role=USER_SITE_ROLE_DISCOVERER,
-            )
+    if existing is not None:
+        return get_site_by_id(session, site_id, data_source=DATA_SOURCE_FIELD)
+
+    roller = rng if rng is not None else random
+    if roller.random() >= params.discovery_chance:
+        raise DiscoveryChanceMissError(
+            "Discovery chance miss - leave and re-enter range to try again"
         )
-        notification = UserNotification(
+
+    session.add(
+        UserSite(
             user_id=user_id,
-            type=UserNotificationType.SITE_DISCOVERED,
             site_id=site_id,
+            role=USER_SITE_ROLE_DISCOVERER,
         )
-        session.add(notification)
-        session.commit()
-        session.refresh(notification)
-        if notification.id is not None:
-            send_site_discovered_push(
-                session,
-                user_id=user_id,
-                site_id=site_id,
-                notification_id=notification.id,
-                site_label=_site_label(site),
-            )
+    )
+    notification = UserNotification(
+        user_id=user_id,
+        type=UserNotificationType.SITE_DISCOVERED,
+        site_id=site_id,
+    )
+    session.add(notification)
+    session.commit()
+    session.refresh(notification)
+    if notification.id is not None:
+        send_site_discovered_push(
+            session,
+            user_id=user_id,
+            site_id=site_id,
+            notification_id=notification.id,
+            site_label=_site_label(site),
+        )
 
     return get_site_by_id(session, site_id, data_source=DATA_SOURCE_FIELD)

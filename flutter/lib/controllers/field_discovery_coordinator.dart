@@ -11,7 +11,10 @@ import '../services/location_service.dart';
 import '../services/site_service.dart';
 import '../utils/discovery_haptic.dart';
 
-/// Auto-discovers nearby field sites within [autoDiscoverRadiusM].
+/// Auto-discovers nearby field sites on enter into [autoDiscoverRadiusM].
+///
+/// Each walk-in triggers one discover attempt. A chance miss does not retry
+/// until the user leaves and re-enters the radius.
 class FieldDiscoveryCoordinator extends ChangeNotifier {
   FieldDiscoveryCoordinator({SiteService? siteService})
       : _siteService = siteService ?? SiteService();
@@ -33,7 +36,8 @@ class FieldDiscoveryCoordinator extends ChangeNotifier {
   List<SiteSummary> _discoverableCache = [];
   LatLng? _lastCachePosition;
   LatLng? _lastHandledLocation;
-  final Set<int> _attemptedSiteIds = {};
+  final Set<int> _insideRadiusSiteIds = {};
+  final Set<int> _attemptedThisVisitSiteIds = {};
   final Set<int> _inFlightSiteIds = {};
   final Map<int, DateTime> _retryAfterBySiteId = {};
   Future<void>? _cacheRefreshFuture;
@@ -67,8 +71,8 @@ class FieldDiscoveryCoordinator extends ChangeNotifier {
 
   /// Merge hidden map sites into the discoverable cache.
   ///
-  /// If a site was auto-discovered then set back to hidden, clear the session
-  /// blacklist so the next GPS move can discover it again.
+  /// If a site was auto-discovered then set back to hidden, clear visit state
+  /// so the next enter (or current enter) can discover it again.
   void ingestMapSites(Iterable<SiteSummary> sites) {
     var added = 0;
     for (final site in sites) {
@@ -76,7 +80,7 @@ class FieldDiscoveryCoordinator extends ChangeNotifier {
       if (status != 'hidden') continue;
       if (site.latitude == null || site.longitude == null) continue;
 
-      _attemptedSiteIds.remove(site.siteId);
+      _attemptedThisVisitSiteIds.remove(site.siteId);
       _retryAfterBySiteId.remove(site.siteId);
 
       if (_discoverableCache.any((s) => s.siteId == site.siteId)) continue;
@@ -90,7 +94,8 @@ class FieldDiscoveryCoordinator extends ChangeNotifier {
   /// Call when the user manually sets a site back to hidden.
   void siteBecameHidden(SiteSummary site) {
     if (site.latitude == null || site.longitude == null) return;
-    _attemptedSiteIds.remove(site.siteId);
+    _attemptedThisVisitSiteIds.remove(site.siteId);
+    _insideRadiusSiteIds.remove(site.siteId);
     _retryAfterBySiteId.remove(site.siteId);
     _discoverableCache.removeWhere((s) => s.siteId == site.siteId);
     _discoverableCache.add(site);
@@ -108,7 +113,8 @@ class FieldDiscoveryCoordinator extends ChangeNotifier {
     _discoverableCache = [];
     _lastCachePosition = null;
     _lastHandledLocation = null;
-    _attemptedSiteIds.clear();
+    _insideRadiusSiteIds.clear();
+    _attemptedThisVisitSiteIds.clear();
     _inFlightSiteIds.clear();
     _retryAfterBySiteId.clear();
     _pendingCelebration = null;
@@ -132,7 +138,7 @@ class FieldDiscoveryCoordinator extends ChangeNotifier {
     unawaited(_handleLocationMove(location));
   }
 
-  /// Every GPS move: keep discoverable cache fresh, then check 50 m proximity.
+  /// Every GPS move: keep discoverable cache fresh, then check enter/exit.
   Future<void> _handleLocationMove(LatLng location) async {
     await _ensureDiscoverableCache(location);
     await _checkProximity(location);
@@ -227,10 +233,6 @@ class FieldDiscoveryCoordinator extends ChangeNotifier {
       final lat = site.latitude;
       final lon = site.longitude;
       if (lat == null || lon == null) continue;
-      if (_attemptedSiteIds.contains(site.siteId)) continue;
-      if (_inFlightSiteIds.contains(site.siteId)) continue;
-      final retryAfter = _retryAfterBySiteId[site.siteId];
-      if (retryAfter != null && retryAfter.isAfter(now)) continue;
 
       final distanceM = Geolocator.distanceBetween(
         location.latitude,
@@ -238,7 +240,15 @@ class FieldDiscoveryCoordinator extends ChangeNotifier {
         lat,
         lon,
       );
-      if (distanceM > autoDiscoverRadiusM) {
+      final inside = distanceM <= autoDiscoverRadiusM;
+
+      if (!inside) {
+        if (_insideRadiusSiteIds.remove(site.siteId)) {
+          _attemptedThisVisitSiteIds.remove(site.siteId);
+          _log(
+            'exited site_id=${site.siteId} distance_m=${distanceM.round()}',
+          );
+        }
         if (kDebugMode && distanceM <= autoDiscoverRadiusM * 2) {
           _log(
             'near site_id=${site.siteId} distance_m=${distanceM.round()} '
@@ -248,6 +258,19 @@ class FieldDiscoveryCoordinator extends ChangeNotifier {
         continue;
       }
 
+      final wasInside = _insideRadiusSiteIds.contains(site.siteId);
+      _insideRadiusSiteIds.add(site.siteId);
+      if (wasInside) {
+        // Still inside this visit — do not re-attempt.
+        continue;
+      }
+
+      // Enter edge: first fix inside, or re-enter after exit.
+      if (_attemptedThisVisitSiteIds.contains(site.siteId)) continue;
+      if (_inFlightSiteIds.contains(site.siteId)) continue;
+      final retryAfter = _retryAfterBySiteId[site.siteId];
+      if (retryAfter != null && retryAfter.isAfter(now)) continue;
+
       _inFlightSiteIds.add(site.siteId);
       try {
         final updated = await _siteService.discoverSite(
@@ -255,16 +278,33 @@ class FieldDiscoveryCoordinator extends ChangeNotifier {
           lat: location.latitude,
           lon: location.longitude,
         );
-        _attemptedSiteIds.add(site.siteId);
+        _attemptedThisVisitSiteIds.add(site.siteId);
         _retryAfterBySiteId.remove(site.siteId);
         _discoverableCache.removeWhere((s) => s.siteId == site.siteId);
+        _insideRadiusSiteIds.remove(site.siteId);
         _pendingCelebration = updated;
         _celebrationConsumed = false;
         playDiscoveryHapticFireAndForget();
         _log('discovered site_id=${site.siteId} distance_m=${distanceM.round()}');
         notifyListeners();
+      } on SiteServiceException catch (error) {
+        if (error.isDiscoveryChanceMiss) {
+          _attemptedThisVisitSiteIds.add(site.siteId);
+          _retryAfterBySiteId.remove(site.siteId);
+          _log(
+            'chance miss site_id=${site.siteId} '
+            'distance_m=${distanceM.round()} — wait for exit',
+          );
+        } else {
+          _retryAfterBySiteId[site.siteId] = now.add(discoverFailRetry);
+          // Allow another enter-attempt after retry window: treat as not yet
+          // rolled this visit, and clear inside so the next GPS tick can re-enter.
+          _insideRadiusSiteIds.remove(site.siteId);
+          _log('discover failed site_id=${site.siteId} error=$error');
+        }
       } catch (error) {
         _retryAfterBySiteId[site.siteId] = now.add(discoverFailRetry);
+        _insideRadiusSiteIds.remove(site.siteId);
         _log('discover failed site_id=${site.siteId} error=$error');
       } finally {
         _inFlightSiteIds.remove(site.siteId);

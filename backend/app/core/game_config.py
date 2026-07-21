@@ -101,9 +101,17 @@ class SiteDiscoveryConfig(BaseModel):
     model_config = {"frozen": True}
 
     max_distance_m: float = 50.0
+    discovery_chance: float = 0.3
     client: SiteDiscoveryClientConfig = Field(
         default_factory=SiteDiscoveryClientConfig
     )
+
+    @field_validator("discovery_chance")
+    @classmethod
+    def _validate_discovery_chance(cls, value: float) -> float:
+        if value < 0.0 or value > 1.0:
+            raise ValueError("discovery_chance must be between 0.0 and 1.0")
+        return value
 
 
 class FossilGenerationDefaults(BaseModel):
