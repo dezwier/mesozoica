@@ -74,12 +74,14 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
   MapboxSiteAnnotations? _annotations;
   MapboxMap? _map;
   bool _ready = false;
+  bool _readyNotified = false;
   bool _styleLoaded = false;
   bool _cameraSeeded = false;
   bool _seeding = false;
   bool _tokenReady = false;
   Timer? _annotationDebounce;
   Timer? _readyTimeout;
+  Timer? _readyNotifyFallback;
   Timer? _lightPresetTimer;
   Timer? _followPuckReassertTimer;
   Ticker? _rotateOverlayTicker;
@@ -126,13 +128,37 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
       pitch: mapboxPitchForMode(rotateWithHeading: widget.rotateWithHeading),
     );
     _readyTimeout = Timer(const Duration(seconds: 15), () {
-      if (!mounted || _ready) return;
-      widget.onError?.call(
-        'Mapbox did not become ready (token/style). '
-        'Confirm ./run.sh uses .dart_defines.json and rebuild.',
-      );
+      if (!mounted || _readyNotified) return;
+      if (!_ready) {
+        widget.onError?.call(
+          'Mapbox did not become ready (token/style). '
+          'Confirm ./run.sh uses .dart_defines.json and rebuild.',
+        );
+        setState(() => _ready = true);
+      }
+      // Always release splash/UI hold after the timeout.
+      _notifyParentReady();
     });
     unawaited(_ensureTokenThenShow());
+  }
+
+  /// Camera is seeded; tell the parent once the map has painted (idle) or
+  /// after a short fallback so splash does not clear on a blank map.
+  void _markInternallyReady() {
+    _readyTimeout?.cancel();
+    if (!mounted) return;
+    setState(() => _ready = true);
+    _readyNotifyFallback?.cancel();
+    _readyNotifyFallback = Timer(const Duration(milliseconds: 2500), () {
+      _notifyParentReady();
+    });
+  }
+
+  void _notifyParentReady() {
+    if (_readyNotified || !_ready) return;
+    _readyNotified = true;
+    _readyNotifyFallback?.cancel();
+    widget.onReadyChanged(true);
   }
 
   Future<void> _ensureTokenThenShow() async {
@@ -156,6 +182,7 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
   void dispose() {
     _annotationDebounce?.cancel();
     _readyTimeout?.cancel();
+    _readyNotifyFallback?.cancel();
     _lightPresetTimer?.cancel();
     _followPuckReassertTimer?.cancel();
     _rotateOverlayTicker?.dispose();
@@ -163,7 +190,7 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
     widget.camera.detach();
     _annotations?.dispose();
     _annotations = null;
-    if (_ready) {
+    if (_readyNotified) {
       widget.onReadyChanged(false);
     }
     super.dispose();
@@ -496,10 +523,8 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
       }
 
       _cameraSeeded = true;
-      _readyTimeout?.cancel();
       if (!mounted) return;
-      setState(() => _ready = true);
-      widget.onReadyChanged(true);
+      _markInternallyReady();
       unawaited(_applyRotateMarkerMode(widget.rotateWithHeading));
       if (widget.rotateWithHeading) {
         _setRotateOverlayTickerActive(true);
@@ -565,7 +590,8 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
   }
 
   void _onMapIdle(MapIdleEventData data) {
-    // Markers are not viewport-culled; idle sync is unnecessary.
+    // First idle after camera seed ≈ tiles painted; release splash hold.
+    if (_ready) _notifyParentReady();
   }
 
   @override

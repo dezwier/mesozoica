@@ -9,6 +9,7 @@ import '../../controllers/auth_controller.dart';
 import '../../controllers/catalog_mode_controller.dart';
 import '../../controllers/field_session_coordinator.dart';
 import '../../controllers/map_controller.dart' as map_data;
+import '../../controllers/splash_hold_provider.dart';
 import '../../controllers/theme_controller.dart';
 import '../../models/site.dart';
 import '../../services/auth_service.dart';
@@ -39,6 +40,7 @@ class _MapScreenState extends State<MapScreen> {
   final MapboxCameraCoordinator _mapboxCamera = MapboxCameraCoordinator();
 
   bool _mapboxReady = false;
+  bool _splashDismissed = false;
   double _zoomLevel = MapConfig.mapboxRotateZoom;
   bool _didInitialCenter = false;
   bool _followUser = true;
@@ -49,11 +51,22 @@ class _MapScreenState extends State<MapScreen> {
   String? _scanBannerMessage;
   String? _mapboxBannerMessage;
   Timer? _scanBannerTimer;
+  Timer? _splashSafetyTimer;
 
   @override
   void initState() {
     super.initState();
     _activateIfNeeded();
+    if (!MapConfig.hasMapboxAccessToken) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        _dismissSplash();
+      });
+    }
+    _splashSafetyTimer = Timer(const Duration(seconds: 20), () {
+      if (!mounted || _splashDismissed) return;
+      _dismissSplash();
+    });
   }
 
   @override
@@ -65,7 +78,15 @@ class _MapScreenState extends State<MapScreen> {
   @override
   void dispose() {
     _scanBannerTimer?.cancel();
+    _splashSafetyTimer?.cancel();
     super.dispose();
+  }
+
+  void _dismissSplash() {
+    if (!mounted || _splashDismissed) return;
+    _splashDismissed = true;
+    _splashSafetyTimer?.cancel();
+    context.read<SplashHoldProvider>().setInitialPageReady(true);
   }
 
   void _activateIfNeeded() {
@@ -427,6 +448,7 @@ class _MapScreenState extends State<MapScreen> {
                     if (ready) {
                       _consumePendingFocus();
                       _setInitialCamera(locationService: locationService);
+                      _dismissSplash();
                     }
                   },
                   onError: _onMapboxError,

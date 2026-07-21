@@ -14,12 +14,14 @@ import '../controllers/map_controller.dart';
 import '../controllers/notification_controller.dart';
 import '../controllers/site_catalog_controller.dart';
 import '../controllers/fossil_catalog_controller.dart';
+import '../controllers/splash_hold_provider.dart';
 import '../models/site.dart';
 import '../models/user_notification.dart';
 import '../services/api_response_cache.dart';
 import '../services/location_service.dart';
 import '../services/push_notification_service.dart';
 import '../widgets/cards/site_discovery_celebration.dart';
+import '../widgets/common/app_splash_screen.dart';
 import '../widgets/profile/community_drawer.dart';
 import '../screens/catalog/catalog_screen.dart';
 import '../screens/map/map_screen.dart';
@@ -337,8 +339,8 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<AuthController>(
-      builder: (context, auth, _) {
+    return Consumer2<AuthController, SplashHoldProvider>(
+      builder: (context, auth, splashHold, _) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted) _syncNotificationStore(auth);
         });
@@ -393,6 +395,8 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
                       onOpenCatalog: _openCatalog,
                     ),
                   ],
+                  if (!splashHold.isInitialPageReady)
+                    const Positioned.fill(child: AppSplashScreen()),
                 ],
               ),
             ),

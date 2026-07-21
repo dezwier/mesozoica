@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -18,6 +20,7 @@ import 'controllers/phylo_tree_controller.dart';
 import 'controllers/site_catalog_controller.dart';
 import 'controllers/tool_catalog_controller.dart';
 import 'controllers/notification_controller.dart';
+import 'controllers/splash_hold_provider.dart';
 import 'controllers/theme_controller.dart';
 import 'firebase_options.dart';
 import 'services/location_service.dart';
@@ -25,9 +28,13 @@ import 'services/map_tile_cache.dart';
 import 'services/push_notification_runtime.dart';
 import 'shell/app_shell.dart';
 import 'theme/mesozoica_theme.dart';
+import 'widgets/common/app_splash_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // Decode the same placeholder the native launch screen shows, so the first
+  // Flutter frame matches with no visible change.
+  await AppSplashScreen.prepare();
   await GameConfig.load();
   await _configureMapboxAccessToken();
   try {
@@ -100,6 +107,7 @@ class MesozoicaApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider.value(value: themeController),
         ChangeNotifierProvider.value(value: catalogModeController),
+        ChangeNotifierProvider(create: (_) => SplashHoldProvider()),
         ChangeNotifierProvider(
           create: (_) => AuthController()..initialize(),
         ),
