@@ -52,12 +52,12 @@ void main() {
   });
 
   group('MapboxBasemapConfig.styleConfig', () {
-    test('monochrome theme and all labels off', () {
+    test('defaults to monochrome theme and all labels off', () {
       final config = MapboxBasemapConfig.styleConfig(
         lightPreset: 'dusk',
       );
       expect(config['theme'], 'monochrome');
-      expect(config['theme'], MapConfig.mapboxBasemapTheme);
+      expect(config['theme'], MapConfig.mapboxBasemapTheme.value);
       expect(config['lightPreset'], 'dusk');
       expect(config['showPlaceLabels'], false);
       expect(config['showRoadLabels'], false);
@@ -65,6 +65,14 @@ void main() {
       expect(config['showTransitLabels'], false);
       expect(config['showLandmarkIcons'], false);
       expect(config['showIndoorLabels'], false);
+    });
+
+    test('accepts explicit Mapbox theme', () {
+      final config = MapboxBasemapConfig.styleConfig(
+        lightPreset: 'day',
+        theme: MapboxBasemapTheme.faded,
+      );
+      expect(config['theme'], 'faded');
     });
   });
 }

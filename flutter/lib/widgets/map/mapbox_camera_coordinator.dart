@@ -8,24 +8,24 @@ import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 import '../../config/map_config.dart';
 import 'mapbox_site_annotations.dart';
 
-/// Drives Mapbox camera for north-fixed (flat) or compass-follow (tilted) modes.
+/// Drives Mapbox camera for north-fixed (flat) mode and one-shot transitions.
 ///
-/// Heading / follow updates coalesce to the latest value so the camera stays
-/// responsive instead of dropping frames while a previous [setCamera] is in flight.
+/// Rotate / AR mode uses Mapbox [FollowPuckViewportState] (native heading +
+/// location tracking). Do not call [applyHeading] / [followLocation] while
+/// FollowPuck owns the camera — Dart [setCamera] fights the native viewport.
+///
+/// North-fixed GPS follow updates coalesce to the latest value so the camera
+/// stays responsive instead of dropping frames while a previous [setCamera]
+/// is in flight.
 class MapboxCameraCoordinator {
   MapboxMap? _map;
   double _lastHeadingDeg = 0;
   LatLng? _lastFollowedLocation;
-  bool _headingInFlight = false;
   bool _followInFlight = false;
-  double? _pendingHeadingDeg;
   LatLng? _pendingFollowLocation;
   double? _pendingFollowZoom;
   double? _viewportHeight;
   bool rotateWithHeading = false;
-
-  /// Ignore heading jitter smaller than this (degrees).
-  static const double headingEpsilonDeg = 0.25;
 
   void attach(MapboxMap map) {
     _map = map;
@@ -34,7 +34,6 @@ class MapboxCameraCoordinator {
   void detach() {
     _map = null;
     _lastFollowedLocation = null;
-    _pendingHeadingDeg = null;
     _pendingFollowLocation = null;
     _pendingFollowZoom = null;
   }
@@ -103,59 +102,39 @@ class MapboxCameraCoordinator {
   }
 
   /// Switch between north-fixed and heading-follow without remounting.
+  ///
+  /// Entering rotate mode is a no-op here — [FollowPuckViewportState] owns
+  /// pitch/bearing/zoom. Exiting resets to a flat, north-up camera.
   Future<void> applyOrientationMode({
     required bool rotateWithHeading,
     required double headingDeg,
     double? zoom,
   }) async {
     this.rotateWithHeading = rotateWithHeading;
+    _lastHeadingDeg = headingDeg;
+    if (rotateWithHeading) return;
     final map = _map;
     if (map == null) return;
-    _lastHeadingDeg = headingDeg;
     await map.setCamera(
       CameraOptions(
-        bearing: _bearingForMode(headingDeg),
-        pitch: _pitch,
+        bearing: 0,
+        pitch: 0,
         zoom: zoom != null ? clampMapboxZoom(zoom) : null,
         padding: _paddingForMode(),
       ),
     );
   }
 
-  Future<void> applyHeading(double headingDeg, {bool force = false}) async {
-    if (!rotateWithHeading) return;
-    _pendingHeadingDeg = headingDeg;
-    if (_headingInFlight) return;
-    _headingInFlight = true;
-    try {
-      while (_pendingHeadingDeg != null) {
-        final map = _map;
-        if (map == null) return;
-        final next = _pendingHeadingDeg!;
-        _pendingHeadingDeg = null;
-        if (!force && (next - _lastHeadingDeg).abs() < headingEpsilonDeg) {
-          continue;
-        }
-        _lastHeadingDeg = next;
-        await map.setCamera(
-          CameraOptions(
-            bearing: mapboxBearingFromHeading(next),
-            pitch: _pitch,
-            padding: _paddingForMode(),
-          ),
-        );
-      }
-    } finally {
-      _headingInFlight = false;
-    }
-  }
+  /// No-op: rotate mode uses FollowPuck; north-fixed keeps bearing at 0.
+  Future<void> applyHeading(double headingDeg, {bool force = false}) async {}
 
+  /// North-fixed GPS follow only. Rotate mode is owned by FollowPuck.
   Future<void> followLocation(
     LatLng location, {
     required bool followUser,
     double? zoom,
   }) async {
-    if (!followUser) return;
+    if (!followUser || rotateWithHeading) return;
     _pendingFollowLocation = location;
     _pendingFollowZoom = zoom;
     if (_followInFlight) return;
@@ -180,11 +159,7 @@ class MapboxCameraCoordinator {
             center: Point(
               coordinates: Position(next.longitude, next.latitude),
             ),
-            zoom: nextZoom != null
-                ? clampMapboxZoom(nextZoom)
-                : (rotateWithHeading
-                    ? clampMapboxZoom(MapConfig.mapboxRotateZoom)
-                    : null),
+            zoom: nextZoom != null ? clampMapboxZoom(nextZoom) : null,
             pitch: _pitch,
             bearing: _bearingForMode(_lastHeadingDeg),
             padding: _paddingForMode(),
@@ -208,6 +183,8 @@ class MapboxCameraCoordinator {
     required double headingDeg,
     int durationMs = 500,
   }) async {
+    // FollowPuck owns the camera in rotate mode.
+    if (rotateWithHeading) return;
     final map = _map;
     if (map == null) return;
     _lastFollowedLocation = location;

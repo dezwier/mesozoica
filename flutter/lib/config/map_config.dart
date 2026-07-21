@@ -1,6 +1,26 @@
 import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
 
+/// Mapbox Standard `basemap.theme` color presets (excludes `custom` / LUT).
+enum MapboxBasemapTheme {
+  standard('default', 'Default'),
+  faded('faded', 'Faded'),
+  monochrome('monochrome', 'Monochrome');
+
+  const MapboxBasemapTheme(this.value, this.label);
+
+  /// Value passed to Mapbox style import config.
+  final String value;
+  final String label;
+
+  static MapboxBasemapTheme fromStored(String? stored) {
+    for (final theme in values) {
+      if (theme.value == stored || theme.name == stored) return theme;
+    }
+    return MapConfig.mapboxBasemapTheme;
+  }
+}
+
 /// Map tile URLs and zoom constants ported from mesosoica.
 class MapConfig {
   MapConfig._();
@@ -43,8 +63,9 @@ class MapConfig {
   /// Mapbox Standard style (3D buildings when pitched).
   static const String mapboxStyleUri = 'mapbox://styles/mapbox/standard';
 
-  /// Monochrome Standard basemap theme.
-  static const String mapboxBasemapTheme = 'monochrome';
+  /// Default Mapbox Standard basemap color theme when none is saved.
+  static const MapboxBasemapTheme mapboxBasemapTheme =
+      MapboxBasemapTheme.monochrome;
 
   /// Camera pitch in rotate / follow-orientation mode.
   static const double mapboxFollowPitch = 55.0;

@@ -2,6 +2,11 @@ package com.mesozoica.mesozoica
 
 import android.app.NotificationManager
 import android.content.Context
+import android.view.View
+import android.view.ViewGroup
+import com.mapbox.maps.MapView
+import com.mapbox.maps.plugin.viewport.data.ViewportOptions
+import com.mapbox.maps.plugin.viewport.viewport
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
@@ -24,5 +29,36 @@ class MainActivity : FlutterActivity() {
           result.notImplemented()
         }
       }
+
+    MethodChannel(
+      flutterEngine.dartExecutor.binaryMessenger,
+      "mesozoica/mapbox_viewport",
+    ).setMethodCallHandler { call, result ->
+      if (call.method == "disableViewportIdleOnInteraction") {
+        val root = window?.decorView ?: run {
+          result.success(0)
+          return@setMethodCallHandler
+        }
+        result.success(disableViewportIdleOnInteraction(root))
+      } else {
+        result.notImplemented()
+      }
+    }
+  }
+
+  private fun disableViewportIdleOnInteraction(root: View): Int {
+    var count = 0
+    if (root is MapView) {
+      root.viewport.options = ViewportOptions.Builder()
+        .transitionsToIdleUponUserInteraction(false)
+        .build()
+      count += 1
+    }
+    if (root is ViewGroup) {
+      for (i in 0 until root.childCount) {
+        count += disableViewportIdleOnInteraction(root.getChildAt(i))
+      }
+    }
+    return count
   }
 }

@@ -45,3 +45,8 @@ android {
 flutter {
     source = "../.."
 }
+
+dependencies {
+    // Same artifact as mapbox_maps_flutter so we can set ViewportOptions from MainActivity.
+    implementation("com.mapbox.maps:android-ndk27:11.26.0")
+}

@@ -9,6 +9,7 @@ import '../../controllers/auth_controller.dart';
 import '../../controllers/catalog_mode_controller.dart';
 import '../../controllers/field_session_coordinator.dart';
 import '../../controllers/map_controller.dart' as map_data;
+import '../../controllers/theme_controller.dart';
 import '../../models/site.dart';
 import '../../services/location_service.dart';
 import '../../services/site_service.dart';
@@ -112,10 +113,7 @@ class _MapScreenState extends State<MapScreen> {
         _followUser = false;
       });
       _mapboxCamera.clearPendingFollow();
-      await _mapboxCamera.applyOrientationMode(
-        rotateWithHeading: false,
-        headingDeg: headingDeg,
-      );
+      // MapboxFieldMap exits FollowPuck → Idle + north-fixed camera.
     } else if (_rotateMap) {
       // Rotate mode stays locked on the user — don't pan away for site taps.
       return;
@@ -124,8 +122,8 @@ class _MapScreenState extends State<MapScreen> {
       _mapboxCamera.clearPendingFollow();
     }
 
-    // Wait for followUser=false to rebuild MapboxFieldMap; otherwise a GPS
-    // follow setCamera can cancel this flyTo (common when already in fixed mode).
+    // Wait for followUser=false / FollowPuck exit to settle before flyTo.
+    await WidgetsBinding.instance.endOfFrame;
     await WidgetsBinding.instance.endOfFrame;
     if (!mounted || !_mapboxReady) return;
 
@@ -137,7 +135,7 @@ class _MapScreenState extends State<MapScreen> {
     );
   }
 
-  void _toggleRotationMode(double headingDeg) {
+  void _toggleRotationMode() {
     if (!MapConfig.hasMapboxAccessToken) {
       setState(() {
         _mapboxBannerMessage =
@@ -152,28 +150,13 @@ class _MapScreenState extends State<MapScreen> {
       if (enteringRotate) {
         _followUser = true;
         _zoomLevel = MapConfig.mapboxRotateZoom;
+        final location = context.read<LocationService>().currentLocation;
+        if (location != null) {
+          _lastFollowedLocation = location;
+        }
       }
     });
-    unawaited(
-      _mapboxCamera.applyOrientationMode(
-        rotateWithHeading: enteringRotate,
-        headingDeg: headingDeg,
-        zoom: enteringRotate ? MapConfig.mapboxRotateZoom : null,
-      ),
-    );
-    if (enteringRotate) {
-      final location = context.read<LocationService>().currentLocation;
-      if (location != null) {
-        _lastFollowedLocation = location;
-        unawaited(
-          _mapboxCamera.centerOn(
-            location,
-            zoom: MapConfig.mapboxRotateZoom,
-            headingDeg: headingDeg,
-          ),
-        );
-      }
-    }
+    // MapboxFieldMap switches FollowPuck ↔ Idle from rotateWithHeading.
   }
 
   void _setInitialCamera({
@@ -185,8 +168,12 @@ class _MapScreenState extends State<MapScreen> {
     _didInitialCenter = true;
     _followUser = true;
     _lastFollowedLocation = location;
-    final zoom =
-        _rotateMap ? MapConfig.mapboxRotateZoom : MapConfig.mapboxFollowZoom;
+    if (_rotateMap) {
+      // FollowPuck owns camera while rotating.
+      _zoomLevel = MapConfig.mapboxRotateZoom;
+      return;
+    }
+    final zoom = MapConfig.mapboxFollowZoom;
     unawaited(
       _mapboxCamera.centerOn(
         location,
@@ -199,7 +186,7 @@ class _MapScreenState extends State<MapScreen> {
 
   Future<void> _centerOnLocation(LocationService locationService) async {
     final location = locationService.currentLocation;
-    if (location == null || !_mapboxReady) return;
+    if (location == null || !_mapboxReady || _rotateMap) return;
     setState(() {
       _followUser = true;
       _lastFollowedLocation = location;
@@ -214,9 +201,8 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   void _maybeFollowUser(LocationService locationService) {
-    // Rotate mode always tracks the user at max zoom.
-    final shouldFollow = _followUser || _rotateMap;
-    if (!shouldFollow || !_mapboxReady) return;
+    // Rotate mode is owned by FollowPuck; only north-fixed GPS-follow here.
+    if (_rotateMap || !_followUser || !_mapboxReady) return;
     final location = locationService.currentLocation;
     if (location == null) return;
     final previous = _lastFollowedLocation;
@@ -230,7 +216,6 @@ class _MapScreenState extends State<MapScreen> {
       _mapboxCamera.followLocation(
         location,
         followUser: true,
-        zoom: _rotateMap ? MapConfig.mapboxRotateZoom : null,
       ),
     );
   }
@@ -362,6 +347,7 @@ class _MapScreenState extends State<MapScreen> {
     final isFieldMode = context.watch<CatalogModeController>().isField;
     final isAdmin =
         context.watch<AuthController>().currentUser?.isAdmin ?? false;
+    final basemapTheme = context.watch<ThemeController>().mapBasemapTheme;
 
     return Consumer2<map_data.MapController, LocationService>(
       builder: (context, mapData, locationService, _) {
@@ -416,6 +402,7 @@ class _MapScreenState extends State<MapScreen> {
                   followUser: _followUser || _rotateMap,
                   initialCenter: startCenter,
                   initialZoom: _zoomLevel,
+                  basemapTheme: basemapTheme,
                   onSiteTap: _onSiteTap,
                   onFollowCancelled: () {
                     // Rotate mode is always locked to the user.
@@ -581,8 +568,7 @@ class _MapScreenState extends State<MapScreen> {
               onZoomChanged: _onZoomChanged,
               onCenterLocation: () => _centerOnLocation(locationService),
               rotateMap: _rotateMap,
-              onToggleRotation: () =>
-                  _toggleRotationMode(locationService.headingDeg),
+              onToggleRotation: _toggleRotationMode,
               bottom: fabBottom,
               leadingActions: [
                 if (isFieldMode && isAdmin) ...[

@@ -10,10 +10,11 @@ import '../../models/site.dart';
 import 'mapbox_basemap_config.dart';
 import 'mapbox_camera_coordinator.dart';
 import 'mapbox_site_annotations.dart';
+import 'mapbox_viewport_native.dart';
 
 /// Mapbox Standard field map — warm theme, time-of-day lighting, site markers.
 ///
-/// [rotateWithHeading] false = north-fixed; true = map bearing follows phone.
+/// [rotateWithHeading] false = north-fixed; true = native FollowPuck + heading.
 class MapboxFieldMap extends StatefulWidget {
   const MapboxFieldMap({
     super.key,
@@ -27,6 +28,7 @@ class MapboxFieldMap extends StatefulWidget {
     required this.followUser,
     required this.initialCenter,
     required this.initialZoom,
+    required this.basemapTheme,
     required this.onSiteTap,
     required this.onFollowCancelled,
     required this.onZoomChanged,
@@ -45,6 +47,7 @@ class MapboxFieldMap extends StatefulWidget {
   final bool followUser;
   final LatLng initialCenter;
   final double initialZoom;
+  final MapboxBasemapTheme basemapTheme;
   final ValueChanged<SiteSummary> onSiteTap;
   final VoidCallback onFollowCancelled;
   final ValueChanged<double> onZoomChanged;
@@ -66,12 +69,16 @@ class _MapboxFieldMapState extends State<MapboxFieldMap> {
   Timer? _annotationDebounce;
   Timer? _readyTimeout;
   Timer? _lightPresetTimer;
+  Timer? _followPuckReassertTimer;
   String? _appliedLightPreset;
+  MapboxBasemapTheme? _appliedBasemapTheme;
+  double? _layoutHeight;
 
   late final LatLng _seedCenter;
   late final double _seedZoom;
   late final double _seedHeading;
-  late final CameraViewportState _initialViewport;
+  /// Stable reference so MapWidget only transitions when we replace it.
+  late ViewportState _viewport;
 
   @override
   void initState() {
@@ -82,7 +89,9 @@ class _MapboxFieldMapState extends State<MapboxFieldMap> {
       widget.initialZoom < 10 ? MapConfig.mapboxFollowZoom : widget.initialZoom,
     );
     _seedHeading = widget.headingDeg;
-    _initialViewport = CameraViewportState(
+    // Seed with a fixed camera; switch to FollowPuck after the location puck
+    // is enabled (FollowPuck requires location).
+    _viewport = CameraViewportState(
       center: Point(
         coordinates: Position(_seedCenter.longitude, _seedCenter.latitude),
       ),
@@ -124,6 +133,7 @@ class _MapboxFieldMapState extends State<MapboxFieldMap> {
     _annotationDebounce?.cancel();
     _readyTimeout?.cancel();
     _lightPresetTimer?.cancel();
+    _followPuckReassertTimer?.cancel();
     widget.camera.detach();
     _annotations?.dispose();
     _annotations = null;
@@ -133,36 +143,106 @@ class _MapboxFieldMapState extends State<MapboxFieldMap> {
     super.dispose();
   }
 
+  MbxEdgeInsets? _paddingForCurrentHeight() {
+    final height = _layoutHeight;
+    if (height == null || height <= 0) return null;
+    final focusFromBottom = MapConfig.mapboxRotateFocusFromBottom;
+    final top = height * (1 - 2 * focusFromBottom);
+    return MbxEdgeInsets(
+      top: top.clamp(0.0, height),
+      left: 0,
+      bottom: 0,
+      right: 0,
+    );
+  }
+
+  FollowPuckViewportState _followPuckViewport() {
+    return FollowPuckViewportState(
+      zoom: MapConfig.mapboxRotateZoom,
+      pitch: MapConfig.mapboxFollowPitch,
+      bearing: const FollowPuckViewportStateBearingHeading(),
+      padding: _paddingForCurrentHeight(),
+    );
+  }
+
+  void _enterFollowPuck({bool animated = true}) {
+    unawaited(MapboxViewportNative.disableIdleOnUserInteraction());
+    setStateWithViewportAnimation(
+      () => _viewport = _followPuckViewport(),
+      // null → native immediate transition (used when re-asserting after taps).
+      transition: animated
+          ? const DefaultViewportTransition(
+              maxDuration: Duration(milliseconds: 1200),
+            )
+          : null,
+    );
+  }
+
+  void _exitFollowPuck() {
+    _followPuckReassertTimer?.cancel();
+    setStateWithViewportAnimation(
+      () => _viewport = const IdleViewportState(),
+      transition: const DefaultViewportTransition(
+        maxDuration: Duration(milliseconds: 800),
+      ),
+    );
+    unawaited(
+      widget.camera.applyOrientationMode(
+        rotateWithHeading: false,
+        headingDeg: widget.headingDeg,
+      ),
+    );
+  }
+
+  /// Belt-and-suspenders: if a tap still cancels FollowPuck, re-engage.
+  void _scheduleFollowPuckReassert() {
+    if (!widget.rotateWithHeading || !_ready) return;
+    unawaited(MapboxViewportNative.disableIdleOnUserInteraction());
+    _followPuckReassertTimer?.cancel();
+    _followPuckReassertTimer = Timer(const Duration(milliseconds: 50), () {
+      if (!mounted || !widget.rotateWithHeading || !_ready) return;
+      _enterFollowPuck(animated: false);
+    });
+  }
+
+  void _onSiteTap(SiteSummary site) {
+    widget.onSiteTap(site);
+    _scheduleFollowPuckReassert();
+  }
+
+  void _onMapTap(MapContentGestureContext context) {
+    _scheduleFollowPuckReassert();
+  }
+
+  void _refreshFollowPuckPadding() {
+    if (!widget.rotateWithHeading || !_ready) return;
+    if (_viewport is! FollowPuckViewportState) return;
+    setStateWithViewportAnimation(
+      () => _viewport = _followPuckViewport(),
+      transition: const DefaultViewportTransition(
+        maxDuration: Duration(milliseconds: 300),
+      ),
+    );
+  }
+
   @override
   void didUpdateWidget(covariant MapboxFieldMap oldWidget) {
     super.didUpdateWidget(oldWidget);
-    _annotations?.onSiteTap = widget.onSiteTap;
+    _annotations?.onSiteTap = _onSiteTap;
     if (!_ready) return;
 
     if (oldWidget.rotateWithHeading != widget.rotateWithHeading) {
+      widget.camera.rotateWithHeading = widget.rotateWithHeading;
       unawaited(_applyGestureMode());
-      unawaited(
-        widget.camera.applyOrientationMode(
-          rotateWithHeading: widget.rotateWithHeading,
-          headingDeg: widget.headingDeg,
-          zoom: widget.rotateWithHeading ? MapConfig.mapboxRotateZoom : null,
-        ),
-      );
-      if (widget.rotateWithHeading && widget.currentLocation != null) {
-        unawaited(
-          widget.camera.centerOn(
-            widget.currentLocation!,
-            zoom: MapConfig.mapboxRotateZoom,
-            headingDeg: widget.headingDeg,
-          ),
-        );
+      if (widget.rotateWithHeading) {
+        _enterFollowPuck();
+      } else {
+        _exitFollowPuck();
       }
-    } else if (widget.rotateWithHeading &&
-        oldWidget.headingDeg != widget.headingDeg) {
-      unawaited(widget.camera.applyHeading(widget.headingDeg));
     }
 
-    final shouldFollow = widget.followUser || widget.rotateWithHeading;
+    // North-fixed GPS follow only — rotate mode is owned by FollowPuck.
+    final shouldFollow = widget.followUser && !widget.rotateWithHeading;
     if (shouldFollow &&
         widget.currentLocation != null &&
         (oldWidget.currentLocation != widget.currentLocation ||
@@ -172,7 +252,6 @@ class _MapboxFieldMapState extends State<MapboxFieldMap> {
         widget.camera.followLocation(
           widget.currentLocation!,
           followUser: true,
-          zoom: widget.rotateWithHeading ? MapConfig.mapboxRotateZoom : null,
         ),
       );
     }
@@ -189,6 +268,9 @@ class _MapboxFieldMapState extends State<MapboxFieldMap> {
     if (oldWidget.currentLocation != widget.currentLocation) {
       unawaited(_applyBasemapLook());
     }
+    if (oldWidget.basemapTheme != widget.basemapTheme) {
+      unawaited(_applyBasemapLook(force: true));
+    }
   }
 
   Future<void> _onMapCreated(MapboxMap map) async {
@@ -204,7 +286,7 @@ class _MapboxFieldMapState extends State<MapboxFieldMap> {
       final manager = await map.annotations.createCircleAnnotationManager();
       final selectionDotManager =
           await map.annotations.createCircleAnnotationManager();
-      final annotations = MapboxSiteAnnotations(onSiteTap: widget.onSiteTap);
+      final annotations = MapboxSiteAnnotations(onSiteTap: _onSiteTap);
       await annotations.attach(
         shadowManager: shadowManager,
         manager: manager,
@@ -264,15 +346,22 @@ class _MapboxFieldMapState extends State<MapboxFieldMap> {
       latitude: loc.latitude,
       longitude: loc.longitude,
     );
-    if (!force && preset == _appliedLightPreset) return;
+    final theme = widget.basemapTheme;
+    if (!force &&
+        preset == _appliedLightPreset &&
+        theme == _appliedBasemapTheme) {
+      return;
+    }
     try {
       await MapboxBasemapConfig.apply(
         map,
         lightPreset: preset,
+        theme: theme,
         latitude: loc.latitude,
         longitude: loc.longitude,
       );
       _appliedLightPreset = preset;
+      _appliedBasemapTheme = theme;
       _lightPresetTimer ??= Timer.periodic(
         const Duration(minutes: 1),
         (_) => unawaited(_applyBasemapLook()),
@@ -291,14 +380,20 @@ class _MapboxFieldMapState extends State<MapboxFieldMap> {
       await Future<void>.delayed(const Duration(milliseconds: 120));
       if (!mounted || _map == null || _cameraSeeded) return;
 
-      await widget.camera.seedCamera(
-        center: widget.currentLocation ?? _seedCenter,
-        zoom: _seedZoom,
-        headingDeg: widget.headingDeg,
-      );
+      // FollowPuck needs the location component; enable before entering it.
       try {
         await widget.camera.enableLocationPuck();
       } catch (_) {}
+
+      if (widget.rotateWithHeading) {
+        _enterFollowPuck();
+      } else {
+        await widget.camera.seedCamera(
+          center: widget.currentLocation ?? _seedCenter,
+          zoom: _seedZoom,
+          headingDeg: widget.headingDeg,
+        );
+      }
 
       _cameraSeeded = true;
       _readyTimeout?.cancel();
@@ -392,6 +487,16 @@ class _MapboxFieldMapState extends State<MapboxFieldMap> {
         final height = constraints.maxHeight;
         if (height.isFinite && height > 0) {
           widget.camera.setViewportHeight(height);
+          final previous = _layoutHeight;
+          if (previous != height) {
+            _layoutHeight = height;
+            if (previous != null && (previous - height).abs() >= 1) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (!mounted) return;
+                _refreshFollowPuckPadding();
+              });
+            }
+          }
         }
         return Stack(
           fit: StackFit.expand,
@@ -399,10 +504,11 @@ class _MapboxFieldMapState extends State<MapboxFieldMap> {
             MapWidget(
               key: const ValueKey('mapbox_field_map'),
               styleUri: MapboxStyles.STANDARD,
-              viewport: _initialViewport,
+              viewport: _viewport,
               onMapCreated: _onMapCreated,
               onStyleLoadedListener: _onStyleLoaded,
               onMapLoadedListener: _onMapLoaded,
+              onTapListener: _onMapTap,
               onScrollListener: _onScroll,
               onCameraChangeListener: _onCameraChange,
               onMapIdleListener: _onMapIdle,

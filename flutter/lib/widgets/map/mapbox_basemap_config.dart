@@ -41,11 +41,12 @@ class MapboxBasemapConfig {
   static Map<String, Object> styleConfig({
     DateTime? now,
     String? lightPreset,
+    MapboxBasemapTheme? theme,
     double? latitude,
     double? longitude,
   }) {
     return {
-      'theme': MapConfig.mapboxBasemapTheme,
+      'theme': (theme ?? MapConfig.mapboxBasemapTheme).value,
       'lightPreset': lightPreset ??
           lightPresetForDateTime(
             now ?? DateTime.now(),
@@ -66,6 +67,7 @@ class MapboxBasemapConfig {
     MapboxMap map, {
     DateTime? now,
     String? lightPreset,
+    MapboxBasemapTheme? theme,
     double? latitude,
     double? longitude,
   }) {
@@ -74,6 +76,7 @@ class MapboxBasemapConfig {
       styleConfig(
         now: now,
         lightPreset: lightPreset,
+        theme: theme,
         latitude: latitude,
         longitude: longitude,
       ),

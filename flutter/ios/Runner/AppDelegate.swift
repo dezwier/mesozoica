@@ -11,6 +11,7 @@ import UserNotifications
     GeneratedPluginRegistrant.register(with: self)
     let launched = super.application(application, didFinishLaunchingWithOptions: launchOptions)
     setupAppBadgeChannel()
+    setupMapboxViewportChannel()
     return launched
   }
 
@@ -51,5 +52,15 @@ import UserNotifications
         result(nil)
       }
     }
+  }
+
+  private func setupMapboxViewportChannel() {
+    guard let controller = window?.rootViewController as? FlutterViewController else {
+      DispatchQueue.main.async { [weak self] in
+        self?.setupMapboxViewportChannel()
+      }
+      return
+    }
+    MapboxViewportFix.register(with: controller.binaryMessenger)
   }
 }

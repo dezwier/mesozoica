@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../config/map_config.dart';
 import '../../controllers/theme_controller.dart';
 import 'settings_form_styles.dart';
 
@@ -12,6 +13,7 @@ class SettingsAppTab extends StatelessWidget {
     final themeController = context.watch<ThemeController>();
     final theme = Theme.of(context);
     final themeMode = themeController.themeMode;
+    final mapBasemapTheme = themeController.mapBasemapTheme;
     final outlineBorder = SettingsFormStyles.outlineBorder(context);
 
     return SingleChildScrollView(
@@ -52,6 +54,31 @@ class SettingsAppTab extends StatelessWidget {
               ],
               onSelected: (value) {
                 if (value != null) themeController.setThemeMode(value);
+              },
+            ),
+          ),
+          const SizedBox(height: 24),
+          SettingsFormStyles.settingsRow(
+            context: context,
+            label: 'Map theme',
+            description: 'Mapbox Standard color theme for the field map.',
+            control: SettingsFormStyles.densePopupField<MapboxBasemapTheme>(
+              context: context,
+              outlineBorder: outlineBorder,
+              selectedChild: Text(
+                mapBasemapTheme.label,
+                style: theme.textTheme.bodyMedium,
+                overflow: TextOverflow.ellipsis,
+              ),
+              entries: [
+                for (final option in MapboxBasemapTheme.values)
+                  DensePopupEntry(
+                    value: option,
+                    child: Text(option.label, style: theme.textTheme.bodyMedium),
+                  ),
+              ],
+              onSelected: (value) {
+                if (value != null) themeController.setMapBasemapTheme(value);
               },
             ),
           ),
