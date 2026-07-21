@@ -11,6 +11,8 @@ class MapControlButtons extends StatelessWidget {
     required this.rotateMap,
     required this.onToggleRotation,
     this.filterFab,
+    this.leadingActions = const [],
+    this.bottom = 12,
   });
 
   final double currentZoom;
@@ -20,17 +22,22 @@ class MapControlButtons extends StatelessWidget {
   final VoidCallback onToggleRotation;
   final Widget? filterFab;
 
+  /// Extra FABs stacked above the zoom / location controls (e.g. admin).
+  final List<Widget> leadingActions;
+  final double bottom;
+
   @override
   Widget build(BuildContext context) {
     final fabTheme = Theme.of(context).floatingActionButtonTheme;
 
     return Positioned(
       right: 12,
-      bottom: 12,
+      bottom: bottom,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
+          ...leadingActions,
           if (!rotateMap) ...[
             ZoomSlider(
               currentZoom: currentZoom,
@@ -59,7 +66,7 @@ class MapControlButtons extends StatelessWidget {
               rotateMap ? Icons.explore : Icons.explore_outlined,
             ),
           ),
-          if (filterFab != null) filterFab!,
+          ?filterFab,
         ],
       ),
     );

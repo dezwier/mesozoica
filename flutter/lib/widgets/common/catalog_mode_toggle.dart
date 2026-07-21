@@ -13,42 +13,54 @@ class CatalogModeToggle extends StatelessWidget {
     return Consumer<CatalogModeController>(
       builder: (context, controller, _) {
         final selected = controller.dataSource;
-        return SegmentedButton<CatalogDataSource>(
-          segments: const [
-            ButtonSegment(
-              value: CatalogDataSource.archive,
-              label: Text('Archive'),
-            ),
-            ButtonSegment(
-              value: CatalogDataSource.field,
-              label: Text('Field'),
-            ),
-          ],
-          selected: {selected},
-          onSelectionChanged: (selection) {
-            controller.setDataSource(selection.first);
-          },
-          style: ButtonStyle(
-            visualDensity: VisualDensity.compact,
-            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            minimumSize: const WidgetStatePropertyAll(Size(0, 28)),
-            padding: const WidgetStatePropertyAll(
-              EdgeInsets.symmetric(horizontal: 8),
-            ),
-            foregroundColor: WidgetStateProperty.resolveWith((states) {
-              if (states.contains(WidgetState.selected)) {
-                return const Color(0xFF4A3F38);
-              }
-              return _foregroundColor;
-            }),
-            backgroundColor: WidgetStateProperty.resolveWith((states) {
-              if (states.contains(WidgetState.selected)) {
+        return DecoratedBox(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.35),
+                blurRadius: 8,
+                offset: const Offset(0, 1),
+              ),
+            ],
+          ),
+          child: SegmentedButton<CatalogDataSource>(
+            segments: const [
+              ButtonSegment(
+                value: CatalogDataSource.archive,
+                label: Text('Archive'),
+              ),
+              ButtonSegment(
+                value: CatalogDataSource.field,
+                label: Text('Field'),
+              ),
+            ],
+            selected: {selected},
+            onSelectionChanged: (selection) {
+              controller.setDataSource(selection.first);
+            },
+            style: ButtonStyle(
+              visualDensity: VisualDensity.compact,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              minimumSize: const WidgetStatePropertyAll(Size(0, 28)),
+              padding: const WidgetStatePropertyAll(
+                EdgeInsets.symmetric(horizontal: 8),
+              ),
+              foregroundColor: WidgetStateProperty.resolveWith((states) {
+                if (states.contains(WidgetState.selected)) {
+                  return const Color(0xFF4A3F38);
+                }
                 return _foregroundColor;
-              }
-              return Colors.white.withValues(alpha: 0.12);
-            }),
-            side: WidgetStatePropertyAll(
-              BorderSide(color: Colors.white.withValues(alpha: 0.35)),
+              }),
+              backgroundColor: WidgetStateProperty.resolveWith((states) {
+                if (states.contains(WidgetState.selected)) {
+                  return _foregroundColor;
+                }
+                return Colors.black.withValues(alpha: 0.35);
+              }),
+              side: WidgetStatePropertyAll(
+                BorderSide(color: Colors.white.withValues(alpha: 0.45)),
+              ),
             ),
           ),
         );

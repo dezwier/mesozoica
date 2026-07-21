@@ -5,6 +5,8 @@ import 'package:provider/provider.dart';
 
 import '../../controllers/catalog_mode_controller.dart';
 import '../../controllers/site_catalog_controller.dart';
+import '../../shell/map_chrome_insets.dart';
+import '../../shell/shell_overlay_panel.dart';
 import '../../widgets/cards/site_turnable_card.dart';
 import '../../widgets/dino/dinosaur_filter_fab.dart';
 import '../../widgets/map/site_filter_sheet.dart';
@@ -13,11 +15,9 @@ class SiteScreen extends StatefulWidget {
   const SiteScreen({
     super.key,
     this.isActive = true,
-    this.onScrollUpdate,
   });
 
   final bool isActive;
-  final void Function(double offset, double delta)? onScrollUpdate;
 
   @override
   State<SiteScreen> createState() => SiteScreenState();
@@ -26,7 +26,6 @@ class SiteScreen extends StatefulWidget {
 class SiteScreenState extends State<SiteScreen> {
   final ScrollController _scrollController = ScrollController();
   Timer? _scrollDebounceTimer;
-  double? _previousScrollOffset;
 
   @override
   void initState() {
@@ -64,19 +63,7 @@ class SiteScreenState extends State<SiteScreen> {
     );
   }
 
-  double get scrollOffset =>
-      _scrollController.hasClients ? _scrollController.offset : 0;
-
   void _onScroll() {
-    if (_scrollController.hasClients &&
-        widget.isActive &&
-        widget.onScrollUpdate != null) {
-      final offset = _scrollController.offset;
-      final previous = _previousScrollOffset ?? offset;
-      widget.onScrollUpdate!(offset, offset - previous);
-      _previousScrollOffset = offset;
-    }
-
     _scrollDebounceTimer?.cancel();
     _scrollDebounceTimer = Timer(const Duration(milliseconds: 200), () {
       if (!_scrollController.hasClients) return;
@@ -107,7 +94,7 @@ class SiteScreenState extends State<SiteScreen> {
             if (widget.isActive)
               Positioned(
                 right: 12,
-                bottom: 12,
+                bottom: MapChromeInsets.fabBottom(context),
                 child: DinosaurFilterFab(
                   heroTag: 'site_catalog_filter_fab',
                   hasActiveFilters: catalog.hasActiveFilters,
@@ -174,7 +161,10 @@ class SiteScreenState extends State<SiteScreen> {
       child: ListView.builder(
         controller: _scrollController,
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.only(top: 8, bottom: 88),
+        padding: EdgeInsets.only(
+          top: 8,
+          bottom: ShellOverlayPanel.contentBottomInset(context),
+        ),
         itemCount: catalog.items.length + (catalog.isLoadingMore ? 1 : 0),
         itemBuilder: (context, index) {
           if (index >= catalog.items.length) {

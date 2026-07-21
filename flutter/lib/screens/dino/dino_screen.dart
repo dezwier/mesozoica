@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../controllers/dinosaur_catalog_controller.dart';
+import '../../shell/map_chrome_insets.dart';
+import '../../shell/shell_overlay_panel.dart';
 import '../../widgets/cards/dinosaur_turnable_card.dart';
 import '../../widgets/dino/dinosaur_filter_fab.dart';
 import '../../widgets/dino/dinosaur_filter_sheet.dart';
@@ -13,11 +15,9 @@ class DinoScreen extends StatefulWidget {
   const DinoScreen({
     super.key,
     this.isActive = true,
-    this.onScrollUpdate,
   });
 
   final bool isActive;
-  final void Function(double offset, double delta)? onScrollUpdate;
 
   @override
   State<DinoScreen> createState() => DinoScreenState();
@@ -26,7 +26,6 @@ class DinoScreen extends StatefulWidget {
 class DinoScreenState extends State<DinoScreen> {
   final ScrollController _scrollController = ScrollController();
   Timer? _scrollDebounceTimer;
-  double? _previousScrollOffset;
 
   @override
   void initState() {
@@ -64,19 +63,7 @@ class DinoScreenState extends State<DinoScreen> {
     );
   }
 
-  double get scrollOffset =>
-      _scrollController.hasClients ? _scrollController.offset : 0;
-
   void _onScroll() {
-    if (_scrollController.hasClients &&
-        widget.isActive &&
-        widget.onScrollUpdate != null) {
-      final offset = _scrollController.offset;
-      final previous = _previousScrollOffset ?? offset;
-      widget.onScrollUpdate!(offset, offset - previous);
-      _previousScrollOffset = offset;
-    }
-
     _scrollDebounceTimer?.cancel();
     _scrollDebounceTimer = Timer(const Duration(milliseconds: 200), () {
       if (!_scrollController.hasClients) return;
@@ -106,7 +93,7 @@ class DinoScreenState extends State<DinoScreen> {
             if (widget.isActive)
               Positioned(
                 right: 12,
-                bottom: 12,
+                bottom: MapChromeInsets.fabBottom(context),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.end,
@@ -187,7 +174,10 @@ class DinoScreenState extends State<DinoScreen> {
       child: ListView.builder(
         controller: _scrollController,
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.only(top: 8, bottom: 96),
+        padding: EdgeInsets.only(
+          top: 8,
+          bottom: ShellOverlayPanel.contentBottomInset(context),
+        ),
         itemCount: catalog.items.length + (catalog.isLoadingMore ? 1 : 0),
         itemBuilder: (context, index) {
           if (index >= catalog.items.length) {

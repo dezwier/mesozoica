@@ -22,7 +22,7 @@ class SiteCardLocationMap extends StatelessWidget {
     final point = _sitePoint(site);
     if (point == null) return;
 
-    // AppShell watches MapController and switches to the map tab when a focus
+    // AppShell watches MapController and closes overlays when a focus
     // request is pending (works from root-navigator card dialogs).
     context.read<MapController>().requestFocusOnSite(site);
     if (Navigator.of(context).canPop()) {

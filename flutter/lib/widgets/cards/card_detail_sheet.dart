@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../../shell/map_chrome_insets.dart';
+
 /// Shared presentation for card detail overlays (map taps, cross-links).
 ///
 /// Catalog screens embed turnable cards inline; this sheet is only for the
@@ -9,8 +11,8 @@ import 'package:flutter/material.dart';
 class CardDetailSheet {
   CardDetailSheet._();
 
-  /// Clears the app [NavigationBar] plus a small gap.
-  static const double navigationBarClearance = 52;
+  /// Clears the floating bottom map chrome plus a small gap.
+  static const double navigationBarClearance = MapChromeInsets.bottomRowHeight;
 
   static const double bottomGap = 16;
 

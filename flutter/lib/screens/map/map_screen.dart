@@ -12,6 +12,7 @@ import '../../controllers/map_controller.dart' as map_data;
 import '../../models/site.dart';
 import '../../services/location_service.dart';
 import '../../services/site_service.dart';
+import '../../shell/map_chrome_insets.dart';
 import '../../widgets/dino/dinosaur_filter_fab.dart';
 import '../../widgets/map/map_control_buttons.dart';
 import '../../widgets/map/mapbox_camera_coordinator.dart';
@@ -374,6 +375,8 @@ class _MapScreenState extends State<MapScreen> {
 
         final startCenter =
             locationService.currentLocation ?? MapConfig.defaultCenter;
+        final topInset = MapChromeInsets.top(context);
+        final fabBottom = MapChromeInsets.fabBottom(context);
 
         return Stack(
           children: [
@@ -431,7 +434,7 @@ class _MapScreenState extends State<MapScreen> {
               ),
             if (_mapboxBannerMessage != null)
               Positioned(
-                top: 12,
+                top: topInset,
                 left: 16,
                 right: 16,
                 child: Material(
@@ -466,9 +469,9 @@ class _MapScreenState extends State<MapScreen> {
               ),
             if (_scanBannerMessage != null)
               Positioned(
-                top: isFieldMode && isAdmin ? 64 : 12,
+                top: topInset,
                 left: 16,
-                right: isFieldMode && isAdmin ? 112 : 16,
+                right: 16,
                 child: Material(
                   color: Theme.of(context)
                       .colorScheme
@@ -508,64 +511,11 @@ class _MapScreenState extends State<MapScreen> {
                   ),
                 ),
               ),
-            if (isFieldMode && isAdmin)
-              Positioned(
-                top: 12,
-                right: 12,
-                child: Material(
-                  color: Theme.of(context)
-                      .colorScheme
-                      .surfaceContainerHighest
-                      .withValues(alpha: 0.92),
-                  borderRadius: BorderRadius.circular(12),
-                  child: Padding(
-                    padding: const EdgeInsets.all(4),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        FloatingActionButton.small(
-                          heroTag: 'show_all_field_sites',
-                          onPressed: () {
-                            mapData.setShowAllFieldSites(
-                              !mapData.showAllFieldSites,
-                            );
-                          },
-                          tooltip: mapData.showAllFieldSites
-                              ? 'Showing all field sites'
-                              : 'Show all field sites',
-                          backgroundColor: mapData.showAllFieldSites
-                              ? Theme.of(context).colorScheme.primaryContainer
-                              : null,
-                          foregroundColor: mapData.showAllFieldSites
-                              ? Theme.of(context)
-                                  .colorScheme
-                                  .onPrimaryContainer
-                              : null,
-                          child: Icon(
-                            mapData.showAllFieldSites
-                                ? Icons.visibility
-                                : Icons.visibility_outlined,
-                          ),
-                        ),
-                        const SizedBox(width: 2),
-                        FloatingActionButton.small(
-                          heroTag: 'scan_field_area',
-                          onPressed: _onScanFieldArea,
-                          tooltip: 'Scan map center for field sites',
-                          child: const Icon(Icons.radar_outlined),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
             if (mapData.loading)
               Positioned(
-                top: locationService.error != null || (isFieldMode && isAdmin)
-                    ? 56
-                    : 12,
+                top: topInset + (locationService.error != null ? 44 : 0),
                 left: 0,
-                right: isFieldMode && isAdmin ? 112 : 0,
+                right: 0,
                 child: Center(
                   child: Card(
                     child: Padding(
@@ -591,9 +541,9 @@ class _MapScreenState extends State<MapScreen> {
               ),
             if (mapData.error != null)
               Positioned(
-                top: 12,
+                top: topInset,
                 left: 16,
-                right: isFieldMode ? 160 : 16,
+                right: 16,
                 child: Material(
                   color: Theme.of(context)
                       .colorScheme
@@ -631,6 +581,39 @@ class _MapScreenState extends State<MapScreen> {
               rotateMap: _rotateMap,
               onToggleRotation: () =>
                   _toggleRotationMode(locationService.headingDeg),
+              bottom: fabBottom,
+              leadingActions: [
+                if (isFieldMode && isAdmin) ...[
+                  FloatingActionButton.small(
+                    heroTag: 'show_all_field_sites',
+                    onPressed: () {
+                      mapData.setShowAllFieldSites(
+                        !mapData.showAllFieldSites,
+                      );
+                    },
+                    tooltip: mapData.showAllFieldSites
+                        ? 'Showing all field sites'
+                        : 'Show all field sites',
+                    backgroundColor: mapData.showAllFieldSites
+                        ? Theme.of(context).colorScheme.primaryContainer
+                        : null,
+                    foregroundColor: mapData.showAllFieldSites
+                        ? Theme.of(context).colorScheme.onPrimaryContainer
+                        : null,
+                    child: Icon(
+                      mapData.showAllFieldSites
+                          ? Icons.visibility
+                          : Icons.visibility_outlined,
+                    ),
+                  ),
+                  FloatingActionButton.small(
+                    heroTag: 'scan_field_area',
+                    onPressed: _onScanFieldArea,
+                    tooltip: 'Scan map center for field sites',
+                    child: const Icon(Icons.radar_outlined),
+                  ),
+                ],
+              ],
               filterFab: DinosaurFilterFab(
                 heroTag: 'site_filter_fab',
                 hasActiveFilters: mapData.hasActiveFilters,
@@ -639,9 +622,9 @@ class _MapScreenState extends State<MapScreen> {
             ),
             if (locationService.error != null)
               Positioned(
-                top: mapData.loading || isFieldMode ? 56 : 12,
+                top: topInset + (mapData.loading || isFieldMode ? 44 : 0),
                 left: 16,
-                right: isFieldMode ? 160 : 16,
+                right: 16,
                 child: Material(
                   color: Theme.of(context)
                       .colorScheme

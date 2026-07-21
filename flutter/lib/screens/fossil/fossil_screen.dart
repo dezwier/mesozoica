@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../controllers/fossil_catalog_controller.dart';
+import '../../shell/map_chrome_insets.dart';
+import '../../shell/shell_overlay_panel.dart';
 import '../../widgets/cards/fossil_turnable_card.dart';
 import '../../widgets/fossil/fossil_filter_fab.dart';
 import '../../widgets/fossil/fossil_filter_sheet.dart';
@@ -12,11 +14,9 @@ class FossilScreen extends StatefulWidget {
   const FossilScreen({
     super.key,
     this.isActive = true,
-    this.onScrollUpdate,
   });
 
   final bool isActive;
-  final void Function(double offset, double delta)? onScrollUpdate;
 
   @override
   State<FossilScreen> createState() => FossilScreenState();
@@ -25,7 +25,6 @@ class FossilScreen extends StatefulWidget {
 class FossilScreenState extends State<FossilScreen> {
   final ScrollController _scrollController = ScrollController();
   Timer? _scrollDebounceTimer;
-  double? _previousScrollOffset;
 
   @override
   void initState() {
@@ -63,19 +62,7 @@ class FossilScreenState extends State<FossilScreen> {
     );
   }
 
-  double get scrollOffset =>
-      _scrollController.hasClients ? _scrollController.offset : 0;
-
   void _onScroll() {
-    if (_scrollController.hasClients &&
-        widget.isActive &&
-        widget.onScrollUpdate != null) {
-      final offset = _scrollController.offset;
-      final previous = _previousScrollOffset ?? offset;
-      widget.onScrollUpdate!(offset, offset - previous);
-      _previousScrollOffset = offset;
-    }
-
     _scrollDebounceTimer?.cancel();
     _scrollDebounceTimer = Timer(const Duration(milliseconds: 200), () {
       if (!_scrollController.hasClients) return;
@@ -105,7 +92,7 @@ class FossilScreenState extends State<FossilScreen> {
             if (widget.isActive)
               Positioned(
                 right: 12,
-                bottom: 12,
+                bottom: MapChromeInsets.fabBottom(context),
                 child: FossilFilterFab(
                   hasActiveFilters: catalog.hasActiveFilters,
                   onPressed: () => _openFilterSheet(catalog),
@@ -168,7 +155,10 @@ class FossilScreenState extends State<FossilScreen> {
       child: ListView.builder(
         controller: _scrollController,
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.only(top: 8, bottom: 88),
+        padding: EdgeInsets.only(
+          top: 8,
+          bottom: ShellOverlayPanel.contentBottomInset(context),
+        ),
         itemCount: catalog.items.length + (catalog.isLoadingMore ? 1 : 0),
         itemBuilder: (context, index) {
           if (index >= catalog.items.length) {

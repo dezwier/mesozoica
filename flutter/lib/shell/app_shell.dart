@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../controllers/auth_controller.dart';
@@ -19,13 +20,13 @@ import '../services/api_response_cache.dart';
 import '../services/location_service.dart';
 import '../services/push_notification_service.dart';
 import '../widgets/cards/site_discovery_celebration.dart';
-import '../widgets/common/gradient_app_bar.dart';
-import '../widgets/common/catalog_mode_toggle.dart';
-import '../widgets/common/notification_icon_button.dart';
 import '../widgets/profile/community_drawer.dart';
 import '../screens/catalog/catalog_screen.dart';
 import '../screens/map/map_screen.dart';
 import '../screens/profile/profile_screen.dart';
+import 'map_bottom_chrome.dart';
+import 'map_top_chrome.dart';
+import 'shell_overlay_panel.dart';
 
 class AppShell extends StatefulWidget {
   const AppShell({super.key});
@@ -35,10 +36,8 @@ class AppShell extends StatefulWidget {
 }
 
 class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
-  static const _mapTabIndex = 0;
-  static const _catalogTabIndex = 1;
-
-  int _index = _catalogTabIndex;
+  bool _profileOpen = false;
+  bool _catalogOpen = false;
   final _catalogScreenKey = GlobalKey<CatalogScreenState>();
   int? _previousUserId;
   CatalogDataSource? _previousCatalogDataSource;
@@ -49,6 +48,8 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
   StreamSubscription<RemoteMessage>? _openedPushSub;
   bool _celebrationShowing = false;
   bool _appInForeground = true;
+
+  bool get _anyOverlayOpen => _profileOpen || _catalogOpen;
 
   @override
   void initState() {
@@ -107,10 +108,12 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     if (map == null) return;
     _discoveryCoordinator?.ingestMapSites(map.geoSites);
 
-    // Card map taps queue a focus request; switch to the map tab so MapScreen
-    // can pan to the site (works even from root-navigator dialogs).
-    if (map.pendingFocusSite != null && _index != _mapTabIndex) {
-      setState(() => _index = _mapTabIndex);
+    // Card map taps queue a focus request; close overlays so MapScreen can pan.
+    if (map.pendingFocusSite != null && _anyOverlayOpen) {
+      setState(() {
+        _profileOpen = false;
+        _catalogOpen = false;
+      });
     }
   }
 
@@ -290,12 +293,30 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     });
   }
 
-  void _onDestinationSelected(int index) {
-    if (index == _index && index == _catalogTabIndex) {
+  void _openProfile() {
+    setState(() {
+      _catalogOpen = false;
+      _profileOpen = true;
+    });
+  }
+
+  void _openCatalog() {
+    if (_catalogOpen) {
       _catalogScreenKey.currentState?.scrollActiveTabToTop();
       return;
     }
-    setState(() => _index = index);
+    setState(() {
+      _profileOpen = false;
+      _catalogOpen = true;
+    });
+  }
+
+  void _closeOverlays() {
+    if (!_anyOverlayOpen) return;
+    setState(() {
+      _profileOpen = false;
+      _catalogOpen = false;
+    });
   }
 
   void _onNotificationTap(UserNotificationItem item) {
@@ -322,67 +343,58 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
           if (mounted) _syncNotificationStore(auth);
         });
 
-        return Scaffold(
-          appBar: GradientAppBar(
-            title: Padding(
-              padding: const EdgeInsets.only(left: 12),
-              child: Image.asset('assets/images/logo.png', height: 32),
-            ),
-            center: const CatalogModeToggle(),
-            actions: auth.isLoggedIn
-                ? [
-                    Padding(
-                      padding: const EdgeInsets.only(right: 8),
-                      child: NotificationIconButton(
-                        onTapNotification: _onNotificationTap,
+        return PopScope(
+          canPop: !_anyOverlayOpen,
+          onPopInvokedWithResult: (didPop, _) {
+            if (didPop) return;
+            _closeOverlays();
+          },
+          child: AnnotatedRegion<SystemUiOverlayStyle>(
+            value: _anyOverlayOpen
+                ? (Theme.of(context).brightness == Brightness.dark
+                    ? SystemUiOverlayStyle.light
+                    : SystemUiOverlayStyle.dark)
+                : SystemUiOverlayStyle.light,
+            child: Scaffold(
+              body: Stack(
+                fit: StackFit.expand,
+                children: [
+                  MapScreen(isActive: !_anyOverlayOpen),
+                  Offstage(
+                    offstage: !_catalogOpen,
+                    child: TickerMode(
+                      enabled: _catalogOpen,
+                      child: ShellOverlayPanel(
+                        onClose: _closeOverlays,
+                        child: CatalogScreen(
+                          key: _catalogScreenKey,
+                          isActive: _catalogOpen,
+                        ),
                       ),
                     ),
-                  ]
-                : null,
-          ),
-          body: IndexedStack(
-            index: _index,
-            children: [
-              MapScreen(isActive: _index == _mapTabIndex),
-              CatalogScreen(
-                key: _catalogScreenKey,
-                isActive: _index == _catalogTabIndex,
+                  ),
+                  Offstage(
+                    offstage: !_profileOpen,
+                    child: TickerMode(
+                      enabled: _profileOpen,
+                      child: ShellOverlayPanel(
+                        onClose: _closeOverlays,
+                        child: ProfileScreen(isActive: _profileOpen),
+                      ),
+                    ),
+                  ),
+                  if (!_anyOverlayOpen) ...[
+                    MapTopChrome(
+                      showNotifications: auth.isLoggedIn,
+                      onTapNotification: _onNotificationTap,
+                    ),
+                    MapBottomChrome(
+                      onOpenProfile: _openProfile,
+                      onOpenCatalog: _openCatalog,
+                    ),
+                  ],
+                ],
               ),
-              ProfileScreen(isActive: _index == 2),
-            ],
-          ),
-          bottomNavigationBar: DecoratedBox(
-            decoration: BoxDecoration(
-              border: Border(
-                top: BorderSide(
-                  color: Theme.of(context)
-                      .colorScheme
-                      .outlineVariant
-                      .withValues(alpha: 0.45),
-                  width: 1,
-                ),
-              ),
-            ),
-            child: NavigationBar(
-              selectedIndex: _index,
-              onDestinationSelected: _onDestinationSelected,
-              destinations: const [
-                NavigationDestination(
-                  icon: Icon(Icons.map_outlined),
-                  selectedIcon: Icon(Icons.map),
-                  label: 'Map',
-                ),
-                NavigationDestination(
-                  icon: Icon(Icons.collections_bookmark_outlined),
-                  selectedIcon: Icon(Icons.collections_bookmark),
-                  label: 'Catalog',
-                ),
-                NavigationDestination(
-                  icon: Icon(Icons.person_outlined),
-                  selectedIcon: Icon(Icons.person),
-                  label: 'Profile',
-                ),
-              ],
             ),
           ),
         );

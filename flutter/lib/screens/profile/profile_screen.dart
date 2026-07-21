@@ -7,6 +7,7 @@ import '../../config/app_config.dart';
 import '../../controllers/auth_controller.dart';
 import '../../models/profile.dart';
 import '../../services/oauth_sign_in_service.dart';
+import '../../shell/shell_overlay_panel.dart';
 import '../../widgets/common/draggable_sheet_wrapper.dart';
 import '../../widgets/profile/account_settings_sheet.dart';
 import '../../widgets/profile/auth_view.dart';
@@ -275,16 +276,31 @@ class _ProfileScreenState extends State<ProfileScreen> {
         }
 
         final profile = auth.currentUser!;
-        return RefreshIndicator(
-          onRefresh: auth.refreshProfile,
-          child: ListView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-            children: [
-              _buildActionRow(context),
-              ProfileContent(profile: profile),
-            ],
-          ),
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Material(
+              color: Theme.of(context).scaffoldBackgroundColor,
+              child: _buildActionRow(context),
+            ),
+            Expanded(
+              child: RefreshIndicator(
+                onRefresh: auth.refreshProfile,
+                child: ListView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: EdgeInsets.fromLTRB(
+                    16,
+                    8,
+                    16,
+                    ShellOverlayPanel.contentBottomInset(context),
+                  ),
+                  children: [
+                    ProfileContent(profile: profile),
+                  ],
+                ),
+              ),
+            ),
+          ],
         );
       },
     );

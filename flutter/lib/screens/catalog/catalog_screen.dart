@@ -25,7 +25,6 @@ class CatalogScreenState extends State<CatalogScreen>
   static const _toolTabIndex = 3;
 
   late final TabController _tabController;
-  late final AnimationController _tabBarVisibilityController;
   final _siteKey = GlobalKey<SiteScreenState>();
   final _fossilKey = GlobalKey<FossilScreenState>();
   final _dinoKey = GlobalKey<DinoScreenState>();
@@ -39,55 +38,12 @@ class CatalogScreenState extends State<CatalogScreen>
       vsync: this,
       initialIndex: _dinoTabIndex,
     );
-    _tabBarVisibilityController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 250),
-      value: 1,
-    );
     _tabController.addListener(_onTabChanged);
   }
 
   void _onTabChanged() {
     if (_tabController.indexIsChanging) return;
-    _showTabBar();
     setState(() {});
-  }
-
-  void _onTabScrollUpdate(double offset, double delta) {
-    if (_tabController.indexIsChanging) return;
-    if (offset <= 0) {
-      _showTabBar();
-      return;
-    }
-    if (delta > 1) {
-      _hideTabBar();
-    } else if (delta < -1) {
-      _showTabBar();
-    }
-  }
-
-  void _hideTabBar() {
-    if (_tabBarVisibilityController.status == AnimationStatus.reverse ||
-        _tabBarVisibilityController.value == 0) {
-      return;
-    }
-    _tabBarVisibilityController.reverse();
-  }
-
-  void _showTabBar() {
-    if (_tabBarVisibilityController.status == AnimationStatus.forward ||
-        _tabBarVisibilityController.value == 1) {
-      return;
-    }
-    _tabBarVisibilityController.forward();
-  }
-
-  @override
-  void didUpdateWidget(CatalogScreen oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (widget.isActive && !oldWidget.isActive) {
-      _showTabBar();
-    }
   }
 
   @override
@@ -95,12 +51,10 @@ class CatalogScreenState extends State<CatalogScreen>
     _tabController
       ..removeListener(_onTabChanged)
       ..dispose();
-    _tabBarVisibilityController.dispose();
     super.dispose();
   }
 
   void scrollActiveTabToTop() {
-    _showTabBar();
     switch (_tabController.index) {
       case _siteTabIndex:
         _siteKey.currentState?.scrollToTop();
@@ -122,25 +76,17 @@ class CatalogScreenState extends State<CatalogScreen>
 
     return Column(
       children: [
-        SizeTransition(
-          sizeFactor: CurvedAnimation(
-            parent: _tabBarVisibilityController,
-            curve: Curves.easeInOut,
-            reverseCurve: Curves.easeInOut,
-          ),
-          axisAlignment: -1,
-          child: TabBar(
-            controller: _tabController,
-            labelColor: colorScheme.primary,
-            unselectedLabelColor: colorScheme.onSurface.withValues(alpha: 0.6),
-            indicatorColor: colorScheme.primary,
-            tabs: const [
-              Tab(text: 'Site'),
-              Tab(text: 'Fossil'),
-              Tab(text: 'Dinosaur'),
-              Tab(text: 'Tool'),
-            ],
-          ),
+        TabBar(
+          controller: _tabController,
+          labelColor: colorScheme.primary,
+          unselectedLabelColor: colorScheme.onSurface.withValues(alpha: 0.6),
+          indicatorColor: colorScheme.primary,
+          tabs: const [
+            Tab(text: 'Site'),
+            Tab(text: 'Fossil'),
+            Tab(text: 'Dinosaur'),
+            Tab(text: 'Tool'),
+          ],
         ),
         Expanded(
           child: TabBarView(
@@ -151,7 +97,6 @@ class CatalogScreenState extends State<CatalogScreen>
                   key: _siteKey,
                   isActive:
                       showActiveTabContent && activeTabIndex == _siteTabIndex,
-                  onScrollUpdate: _onTabScrollUpdate,
                 ),
               ),
               _CatalogTab(
@@ -159,7 +104,6 @@ class CatalogScreenState extends State<CatalogScreen>
                   key: _fossilKey,
                   isActive:
                       showActiveTabContent && activeTabIndex == _fossilTabIndex,
-                  onScrollUpdate: _onTabScrollUpdate,
                 ),
               ),
               _CatalogTab(
@@ -167,7 +111,6 @@ class CatalogScreenState extends State<CatalogScreen>
                   key: _dinoKey,
                   isActive:
                       showActiveTabContent && activeTabIndex == _dinoTabIndex,
-                  onScrollUpdate: _onTabScrollUpdate,
                 ),
               ),
               _CatalogTab(
@@ -175,7 +118,6 @@ class CatalogScreenState extends State<CatalogScreen>
                   key: _toolKey,
                   isActive:
                       showActiveTabContent && activeTabIndex == _toolTabIndex,
-                  onScrollUpdate: _onTabScrollUpdate,
                 ),
               ),
             ],

@@ -414,7 +414,7 @@ class _MapboxFieldMapState extends State<MapboxFieldMap> {
               Positioned(
                 left: 16,
                 right: 16,
-                bottom: 100,
+                bottom: 160,
                 child: Material(
                   elevation: 2,
                   borderRadius: BorderRadius.circular(12),
