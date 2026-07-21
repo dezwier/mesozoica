@@ -73,6 +73,33 @@ class MapConfig {
   /// Locked zoom while in Mapbox rotate (AR-style) mode.
   static const double mapboxRotateZoom = 18.0;
 
+  /// Diameter of circular mini-markers in rotate mode (at closest range).
+  static const double rotateMiniCardWidth = 62.0;
+
+  /// Distance (m) within which mini-cards use [rotateMiniCardWidth].
+  static const double rotateMiniCardFullSizeWithinM = 55.0;
+
+  /// From this distance (m) onward, cards are half of [rotateMiniCardWidth].
+  static const double rotateMiniCardHalfSizeAtM = 200.0;
+
+  /// Card width factor at and beyond [rotateMiniCardHalfSizeAtM] (0.5 = half size).
+  static const double rotateMiniCardHalfSizeFactor = 0.5;
+
+  /// Smallest width at the outer cull radius (beyond half-size range).
+  static const double rotateMiniCardMinWidth = 20.0;
+
+  /// Corner radius for rotate-mode mini-cards (smaller than full turnables).
+  static const double rotateMiniCardBorderRadius = 6.0;
+
+  /// Max mini-cards visible at once in rotate mode (nearest first).
+  static const int rotateMaxVisibleCards = 20;
+
+  /// Drop sites farther than this from the camera before pixel projection.
+  static const double rotateCardCullRadiusM = 1500.0;
+
+  /// Expand the viewport bounds used to keep mini-cards (fraction of span).
+  static const double rotateViewportPadding = 0.18;
+
   /// Where the follow/rotate target sits on screen in rotate mode, as a
   /// fraction of map height from the bottom (mid-x, this fraction up).
   static const double mapboxRotateFocusFromBottom = 1 / 3;

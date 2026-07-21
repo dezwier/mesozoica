@@ -1,7 +1,9 @@
 import 'dart:async';
+import 'dart:ui' as ui;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 
@@ -11,6 +13,9 @@ import 'mapbox_basemap_config.dart';
 import 'mapbox_camera_coordinator.dart';
 import 'mapbox_site_annotations.dart';
 import 'mapbox_viewport_native.dart';
+import 'map_rotate_site_card_overlay.dart';
+
+typedef MapSiteTapCallback = void Function(SiteSummary site);
 
 /// Mapbox Standard field map — warm theme, time-of-day lighting, site markers.
 ///
@@ -33,6 +38,7 @@ class MapboxFieldMap extends StatefulWidget {
     required this.onFollowCancelled,
     required this.onZoomChanged,
     required this.onReadyChanged,
+    this.hiddenRotateSiteId,
     this.onError,
   });
 
@@ -48,17 +54,20 @@ class MapboxFieldMap extends StatefulWidget {
   final LatLng initialCenter;
   final double initialZoom;
   final MapboxBasemapTheme basemapTheme;
-  final ValueChanged<SiteSummary> onSiteTap;
+  final MapSiteTapCallback onSiteTap;
   final VoidCallback onFollowCancelled;
   final ValueChanged<double> onZoomChanged;
   final ValueChanged<bool> onReadyChanged;
+  /// Hide this site's mini-card while the detail sheet morphs open.
+  final int? hiddenRotateSiteId;
   final ValueChanged<Object>? onError;
 
   @override
   State<MapboxFieldMap> createState() => _MapboxFieldMapState();
 }
 
-class _MapboxFieldMapState extends State<MapboxFieldMap> {
+class _MapboxFieldMapState extends State<MapboxFieldMap>
+    with SingleTickerProviderStateMixin {
   MapboxSiteAnnotations? _annotations;
   MapboxMap? _map;
   bool _ready = false;
@@ -70,9 +79,13 @@ class _MapboxFieldMapState extends State<MapboxFieldMap> {
   Timer? _readyTimeout;
   Timer? _lightPresetTimer;
   Timer? _followPuckReassertTimer;
+  Ticker? _rotateOverlayTicker;
   String? _appliedLightPreset;
   MapboxBasemapTheme? _appliedBasemapTheme;
   double? _layoutHeight;
+  ui.Size? _viewportSize;
+  List<MapRotateVisibleSite> _visibleRotateSites = const [];
+  late final MapRotateOverlayController _overlayController;
 
   late final LatLng _seedCenter;
   late final double _seedZoom;
@@ -83,6 +96,14 @@ class _MapboxFieldMapState extends State<MapboxFieldMap> {
   @override
   void initState() {
     super.initState();
+    _overlayController = MapRotateOverlayController(
+      onVisibleSitesChanged: (sites) {
+        if (!mounted) return;
+        final sorted = sortOverlayDepth(sites);
+        if (rotateOverlaySitesEqual(_visibleRotateSites, sorted)) return;
+        setState(() => _visibleRotateSites = sorted);
+      },
+    );
     widget.camera.rotateWithHeading = widget.rotateWithHeading;
     _seedCenter = widget.currentLocation ?? widget.initialCenter;
     _seedZoom = clampMapboxZoom(
@@ -134,6 +155,8 @@ class _MapboxFieldMapState extends State<MapboxFieldMap> {
     _readyTimeout?.cancel();
     _lightPresetTimer?.cancel();
     _followPuckReassertTimer?.cancel();
+    _rotateOverlayTicker?.dispose();
+    _overlayController.dispose();
     widget.camera.detach();
     _annotations?.dispose();
     _annotations = null;
@@ -210,6 +233,52 @@ class _MapboxFieldMapState extends State<MapboxFieldMap> {
     _scheduleFollowPuckReassert();
   }
 
+  void _onRotateMiniCardTap(SiteSummary site) {
+    _onSiteTap(site);
+  }
+
+  void _onRotateOverlayTick(Duration elapsed) {
+    if (!widget.rotateWithHeading || !_ready) return;
+    _syncRotateOverlayFrame();
+  }
+
+  void _setRotateOverlayTickerActive(bool active) {
+    if (active) {
+      if (_rotateOverlayTicker == null) {
+        _rotateOverlayTicker = createTicker(_onRotateOverlayTick)..start();
+      }
+      _syncRotateOverlayFrame();
+    } else {
+      _rotateOverlayTicker?.dispose();
+      _rotateOverlayTicker = null;
+    }
+  }
+
+  Future<void> _applyRotateMarkerMode(bool rotate) async {
+    await _annotations?.setRotateModePaused(rotate);
+    if (!mounted) return;
+    if (rotate) {
+      _setRotateOverlayTickerActive(true);
+    } else {
+      _setRotateOverlayTickerActive(false);
+      setState(() => _visibleRotateSites = const []);
+      _scheduleAnnotationSync();
+    }
+  }
+
+  void _syncRotateOverlayFrame() {
+    if (!widget.rotateWithHeading || !_ready) return;
+    final size = _viewportSize;
+    final map = _map;
+    if (size == null || map == null) return;
+    _overlayController.syncFrame(
+      map: map,
+      sites: widget.sites,
+      viewportSize: size,
+      cullCenter: widget.currentLocation,
+    );
+  }
+
   void _onMapTap(MapContentGestureContext context) {
     _scheduleFollowPuckReassert();
   }
@@ -234,6 +303,7 @@ class _MapboxFieldMapState extends State<MapboxFieldMap> {
     if (oldWidget.rotateWithHeading != widget.rotateWithHeading) {
       widget.camera.rotateWithHeading = widget.rotateWithHeading;
       unawaited(_applyGestureMode());
+      unawaited(_applyRotateMarkerMode(widget.rotateWithHeading));
       if (widget.rotateWithHeading) {
         _enterFollowPuck();
       } else {
@@ -257,13 +327,26 @@ class _MapboxFieldMapState extends State<MapboxFieldMap> {
     }
     if (oldWidget.selectedSite?.siteId != widget.selectedSite?.siteId) {
       // Selection must not wait on the site-list debounce — apply immediately.
-      unawaited(
-        _annotations?.applySelectedSiteId(widget.selectedSite?.siteId),
-      );
+      if (!widget.rotateWithHeading) {
+        unawaited(
+          _annotations?.applySelectedSiteId(widget.selectedSite?.siteId),
+        );
+      }
     }
     if (oldWidget.sites != widget.sites ||
         oldWidget.markerDatasetKey != widget.markerDatasetKey) {
-      _scheduleAnnotationSync();
+      if (widget.rotateWithHeading) {
+        _syncRotateOverlayFrame();
+      } else {
+        _scheduleAnnotationSync();
+      }
+    }
+    if (widget.rotateWithHeading &&
+        (oldWidget.sites != widget.sites ||
+            oldWidget.markerDatasetKey != widget.markerDatasetKey ||
+            oldWidget.currentLocation != widget.currentLocation ||
+            oldWidget.headingDeg != widget.headingDeg)) {
+      _syncRotateOverlayFrame();
     }
     if (oldWidget.currentLocation != widget.currentLocation) {
       unawaited(_applyBasemapLook());
@@ -400,7 +483,12 @@ class _MapboxFieldMapState extends State<MapboxFieldMap> {
       if (!mounted) return;
       setState(() => _ready = true);
       widget.onReadyChanged(true);
-      _scheduleAnnotationSync();
+      unawaited(_applyRotateMarkerMode(widget.rotateWithHeading));
+      if (widget.rotateWithHeading) {
+        _setRotateOverlayTickerActive(true);
+      } else {
+        _scheduleAnnotationSync();
+      }
     } catch (error, stack) {
       if (kDebugMode) {
         debugPrint('MapboxFieldMap seed failed: $error\n$stack');
@@ -422,6 +510,7 @@ class _MapboxFieldMapState extends State<MapboxFieldMap> {
     final map = _map;
     final annotations = _annotations;
     if (map == null || annotations == null || !_ready) return;
+    if (widget.rotateWithHeading || annotations.rotateModePaused) return;
     try {
       await annotations.sync(
         map: map,
@@ -446,9 +535,11 @@ class _MapboxFieldMapState extends State<MapboxFieldMap> {
 
   void _onCameraChange(CameraChangedEventData data) {
     if (!_ready) return;
-    if (!widget.rotateWithHeading) {
-      widget.onZoomChanged(data.cameraState.zoom);
+    if (widget.rotateWithHeading) {
+      _syncRotateOverlayFrame();
+      return;
     }
+    widget.onZoomChanged(data.cameraState.zoom);
     // Update marker size immediately while zooming (no debounce / bucket wait).
     final annotations = _annotations;
     if (annotations != null) {
@@ -485,9 +576,15 @@ class _MapboxFieldMapState extends State<MapboxFieldMap> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final height = constraints.maxHeight;
-        if (height.isFinite && height > 0) {
+        final width = constraints.maxWidth;
+        if (height.isFinite && height > 0 && width.isFinite && width > 0) {
           widget.camera.setViewportHeight(height);
           final previous = _layoutHeight;
+          final size = ui.Size(width, height);
+          final sizeChanged = _viewportSize != size;
+          if (sizeChanged) {
+            _viewportSize = size;
+          }
           if (previous != height) {
             _layoutHeight = height;
             if (previous != null && (previous - height).abs() >= 1) {
@@ -496,6 +593,12 @@ class _MapboxFieldMapState extends State<MapboxFieldMap> {
                 _refreshFollowPuckPadding();
               });
             }
+          }
+          if (sizeChanged && widget.rotateWithHeading && _ready) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (!mounted) return;
+              _syncRotateOverlayFrame();
+            });
           }
         }
         return Stack(
@@ -516,6 +619,15 @@ class _MapboxFieldMapState extends State<MapboxFieldMap> {
                 widget.onError?.call(event.message);
               },
             ),
+            if (widget.rotateWithHeading && _ready)
+              Positioned.fill(
+                child: MapRotateSiteCardOverlay(
+                  visibleSites: _visibleRotateSites,
+                  selectedSiteId: widget.selectedSite?.siteId,
+                  hiddenSiteId: widget.hiddenRotateSiteId,
+                  onSiteTap: _onRotateMiniCardTap,
+                ),
+              ),
             if (!_ready)
               Positioned(
                 left: 16,

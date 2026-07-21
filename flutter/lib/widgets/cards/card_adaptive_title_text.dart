@@ -7,11 +7,13 @@ class CardAdaptiveTitleText extends StatelessWidget {
     required this.text,
     required this.style,
     this.textAlign = TextAlign.center,
+    this.maxLines = 1,
   });
 
   final String text;
   final TextStyle style;
   final TextAlign textAlign;
+  final int maxLines;
 
   Alignment get _fitAlignment {
     return switch (textAlign) {
@@ -30,8 +32,9 @@ class CardAdaptiveTitleText extends StatelessWidget {
           text,
           style: style,
           textAlign: textAlign,
-          maxLines: 1,
-          softWrap: false,
+          maxLines: maxLines,
+          softWrap: maxLines > 1,
+          overflow: TextOverflow.ellipsis,
         );
 
         if (!maxWidth.isFinite || maxWidth <= 0) {

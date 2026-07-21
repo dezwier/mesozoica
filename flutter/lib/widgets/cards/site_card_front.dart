@@ -6,6 +6,7 @@ import '../../models/site.dart';
 import '../../theme/dino_card_theme.dart';
 import 'site_card_header.dart';
 import 'site_card_image.dart';
+import 'site_period_rock_type_lines.dart';
 import 'site_status_badge.dart';
 
 class SiteCardFront extends StatelessWidget {
@@ -15,6 +16,11 @@ class SiteCardFront extends StatelessWidget {
     this.titleFontSize = 36,
     this.subtitleFontSize = 10,
     this.overlayHeightFactor = 0.52,
+    this.showSubtitle = true,
+    this.showStatusBadge = true,
+    this.titleHorizontalInset = 18,
+    this.titleMaxLines = 1,
+    this.usePeriodRockTypeLines = false,
     this.onStatusSelected,
   });
 
@@ -22,6 +28,11 @@ class SiteCardFront extends StatelessWidget {
   final double titleFontSize;
   final double subtitleFontSize;
   final double overlayHeightFactor;
+  final bool showSubtitle;
+  final bool showStatusBadge;
+  final double titleHorizontalInset;
+  final int titleMaxLines;
+  final bool usePeriodRockTypeLines;
   final ValueChanged<String>? onStatusSelected;
 
   @override
@@ -49,7 +60,7 @@ class SiteCardFront extends StatelessWidget {
               ),
             ),
           ),
-          if (status != null && status.isNotEmpty)
+          if (showStatusBadge && status != null && status.isNotEmpty)
             Positioned(
               top: 14,
               right: 14,
@@ -59,16 +70,31 @@ class SiteCardFront extends StatelessWidget {
               ),
             ),
           Positioned(
-            left: 18,
-            right: 18,
-            bottom: math.max(16, titleFontSize * 0.45),
-            child: SiteCardHeader(
-              site: site,
-              titleFontSize: titleFontSize,
-              subtitleFontSize: subtitleFontSize,
-              centered: true,
-              overlayOnImage: true,
+            left: titleHorizontalInset,
+            right: titleHorizontalInset,
+            bottom: math.max(
+              usePeriodRockTypeLines || titleMaxLines > 1 ? 5 : 16,
+              titleFontSize *
+                  (usePeriodRockTypeLines
+                      ? 0.28
+                      : titleMaxLines > 1
+                          ? 0.35
+                          : 0.45),
             ),
+            child: usePeriodRockTypeLines
+                ? SitePeriodRockTypeLines(
+                    site: site,
+                    fontSize: titleFontSize,
+                  )
+                : SiteCardHeader(
+                    site: site,
+                    titleFontSize: titleFontSize,
+                    subtitleFontSize: subtitleFontSize,
+                    centered: true,
+                    overlayOnImage: true,
+                    showSubtitle: showSubtitle,
+                    titleMaxLines: titleMaxLines,
+                  ),
           ),
         ],
       ),

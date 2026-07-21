@@ -138,6 +138,30 @@ class DinoCardTheme {
     );
   }
 
+  /// Compact labels on rotate-mode map circles (white text, strong shadow).
+  TextStyle mapMarkerLabelStyle({required double fontSize}) {
+    return TextStyle(
+      fontFamily: titleFontFamily,
+      color: Colors.white,
+      fontSize: fontSize,
+      fontWeight: FontWeight.w600,
+      letterSpacing: 0.3,
+      height: 1.1,
+      shadows: const [
+        Shadow(
+          color: Color(0xCC000000),
+          blurRadius: 6,
+          offset: Offset(0, 1),
+        ),
+        Shadow(
+          color: Color(0x99000000),
+          blurRadius: 3,
+          offset: Offset(0, 0),
+        ),
+      ],
+    );
+  }
+
   /// Subtitle paired with [frontOverlayTitleStyle] on the card image.
   TextStyle frontOverlaySubtitleStyle({double fontSize = 10}) {
     return TextStyle(

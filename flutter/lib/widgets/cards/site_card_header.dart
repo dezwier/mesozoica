@@ -17,6 +17,7 @@ class SiteCardHeader extends StatelessWidget {
     this.useFrontTitleStyle = false,
     this.overlayOnImage = false,
     this.showSubtitle = true,
+    this.titleMaxLines = 1,
   });
 
   final SiteSummary site;
@@ -26,6 +27,7 @@ class SiteCardHeader extends StatelessWidget {
   final bool useFrontTitleStyle;
   final bool overlayOnImage;
   final bool showSubtitle;
+  final int titleMaxLines;
 
   @override
   Widget build(BuildContext context) {
@@ -53,6 +55,7 @@ class SiteCardHeader extends StatelessWidget {
               text: site.displayTitle,
               style: titleStyle,
               textAlign: TextAlign.center,
+              maxLines: titleMaxLines,
             ),
           )
         else
@@ -60,6 +63,7 @@ class SiteCardHeader extends StatelessWidget {
             text: site.displayTitle,
             style: titleStyle,
             textAlign: TextAlign.start,
+            maxLines: titleMaxLines,
           ),
         if (showSubtitle) ...[
           const SizedBox(height: 8),

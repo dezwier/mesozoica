@@ -43,6 +43,7 @@ class _MapScreenState extends State<MapScreen> {
   bool _followUser = true;
   /// false = north-fixed Mapbox; true = map bearing follows phone.
   bool _rotateMap = true;
+  int? _hiddenRotateSiteId;
   LatLng? _lastFollowedLocation;
   String? _scanBannerMessage;
   String? _mapboxBannerMessage;
@@ -326,6 +327,9 @@ class _MapScreenState extends State<MapScreen> {
     final mapData = context.read<map_data.MapController>();
     // Keep selection after the card closes; only another tap replaces it.
     mapData.selectSite(site);
+    if (_rotateMap) {
+      setState(() => _hiddenRotateSiteId = site.siteId);
+    }
     final displayFuture = mapData.siteForDisplay(site);
     if (!_rotateMap) {
       unawaited(_panToSite(site));
@@ -333,6 +337,9 @@ class _MapScreenState extends State<MapScreen> {
     final displaySite = await displayFuture;
     if (!mounted) return;
     await showSiteMapCardDialog(context, displaySite);
+    if (mounted) {
+      setState(() => _hiddenRotateSiteId = null);
+    }
   }
 
   void _onMapboxError(Object error) {
@@ -389,6 +396,7 @@ class _MapScreenState extends State<MapScreen> {
                   rotateWithHeading: _rotateMap,
                   sites: mapData.filteredGeoSites,
                   selectedSite: mapData.selectedSite,
+                  hiddenRotateSiteId: _hiddenRotateSiteId,
                   markerDatasetKey: [
                     isFieldMode
                         ? (mapData.showAllFieldSites

@@ -42,6 +42,39 @@ class MapboxSiteAnnotations {
   double _baseRadius = 8.0;
   double? _pendingZoomRadius;
   bool _radiusInFlight = false;
+  bool _rotateModePaused = false;
+
+  /// When true, circle markers are cleared and [sync] is a no-op.
+  bool get rotateModePaused => _rotateModePaused;
+
+  Future<void> setRotateModePaused(bool paused) async {
+    if (_rotateModePaused == paused) return;
+    _rotateModePaused = paused;
+    if (paused) {
+      await clearAllMarkers();
+    }
+  }
+
+  Future<void> clearAllMarkers() async {
+    final shadowManager = _shadowManager;
+    final manager = _manager;
+    final dotManager = _dotManager;
+    if (shadowManager == null || manager == null || dotManager == null) {
+      return;
+    }
+    _selectionAnimToken++;
+    await Future.wait([
+      shadowManager.deleteAll(),
+      manager.deleteAll(),
+      dotManager.deleteAll(),
+    ]);
+    _bySiteId.clear();
+    _shadowBySiteId.clear();
+    _byAnnotationId.clear();
+    _selectionDot = null;
+    _loadedDatasetKey = null;
+    _selectedSiteId = null;
+  }
 
   Future<void> attach({
     required CircleAnnotationManager shadowManager,
@@ -121,6 +154,8 @@ class MapboxSiteAnnotations {
     required SiteSummary? selectedSite,
     required String datasetKey,
   }) async {
+    if (_rotateModePaused) return;
+
     final manager = _manager;
     final shadowManager = _shadowManager;
     final dotManager = _dotManager;
@@ -238,6 +273,7 @@ class MapboxSiteAnnotations {
 
   /// Instantly apply circle radius for the current zoom (no debounce).
   Future<void> applyZoomRadius(double zoom) async {
+    if (_rotateModePaused) return;
     _pendingZoomRadius = zoom;
     if (_radiusInFlight) return;
     _radiusInFlight = true;
