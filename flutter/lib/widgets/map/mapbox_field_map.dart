@@ -203,11 +203,12 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
 
   void _exitFollowPuck() {
     _followPuckReassertTimer?.cancel();
+    // Release FollowPuck immediately so Dart flyTo owns the exit animation.
+    // Animating Idle→camera here does nothing useful (Idle has no target) and
+    // used to race an instant setCamera — that was the exit snap.
     setStateWithViewportAnimation(
       () => _viewport = const IdleViewportState(),
-      transition: const DefaultViewportTransition(
-        maxDuration: Duration(milliseconds: 800),
-      ),
+      transition: null,
     );
     unawaited(
       widget.camera.applyOrientationMode(
@@ -312,12 +313,16 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
     }
 
     // North-fixed GPS follow only — rotate mode is owned by FollowPuck.
+    // Skip when *exiting* rotate: [applyOrientationMode] already flyTos flat
+    // north-up; an instant followLocation setCamera would snap over that.
     final shouldFollow = widget.followUser && !widget.rotateWithHeading;
+    final exitingRotate =
+        oldWidget.rotateWithHeading && !widget.rotateWithHeading;
     if (shouldFollow &&
+        !exitingRotate &&
         widget.currentLocation != null &&
         (oldWidget.currentLocation != widget.currentLocation ||
-            oldWidget.followUser != widget.followUser ||
-            oldWidget.rotateWithHeading != widget.rotateWithHeading)) {
+            oldWidget.followUser != widget.followUser)) {
       unawaited(
         widget.camera.followLocation(
           widget.currentLocation!,

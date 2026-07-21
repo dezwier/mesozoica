@@ -4,6 +4,7 @@ import '../../config/map_config.dart';
 import '../../models/site.dart';
 import '../../theme/dino_card_theme.dart';
 import '../cards/site_card_image.dart';
+import '../cards/site_period_rock_type_lines.dart';
 
 /// Circular rotate-mode site marker — styled like map chrome profile/catalog buttons.
 class MapSiteMiniCard extends StatelessWidget {
@@ -26,6 +27,8 @@ class MapSiteMiniCard extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final cardTheme = DinoCardTheme.of(context);
     final size = width;
+    final titleSize = (width * 0.13).clamp(5.0, 8.5);
+    final inset = (width * 0.1).clamp(4.0, 8.0);
     final borderWidth = (width * 0.04).clamp(1.5, 2.5);
 
     return SizedBox(
@@ -42,7 +45,22 @@ class MapSiteMiniCard extends StatelessWidget {
         ),
         color: scheme.surface.withValues(alpha: 0.95),
         clipBehavior: Clip.antiAlias,
-        child: SiteCardImage(imageUrl: site.mainImageUrl),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            SiteCardImage(imageUrl: site.mainImageUrl),
+            Center(
+              child: Padding(
+                padding: EdgeInsets.symmetric(horizontal: inset),
+                child: SitePeriodRockTypeLines(
+                  site: site,
+                  fontSize: titleSize,
+                  mapMarker: true,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

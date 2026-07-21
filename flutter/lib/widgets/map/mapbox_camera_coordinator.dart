@@ -104,24 +104,34 @@ class MapboxCameraCoordinator {
   /// Switch between north-fixed and heading-follow without remounting.
   ///
   /// Entering rotate mode is a no-op here — [FollowPuckViewportState] owns
-  /// pitch/bearing/zoom. Exiting resets to a flat, north-up camera.
+  /// pitch/bearing/zoom. Exiting animates to a flat, north-up camera (same
+  /// duration as FollowPuck enter) so leaving rotate mode isn't a snap.
   Future<void> applyOrientationMode({
     required bool rotateWithHeading,
     required double headingDeg,
     double? zoom,
+    int durationMs = 1200,
   }) async {
     this.rotateWithHeading = rotateWithHeading;
     _lastHeadingDeg = headingDeg;
     if (rotateWithHeading) return;
     final map = _map;
     if (map == null) return;
-    await map.setCamera(
-      CameraOptions(
-        bearing: 0,
-        pitch: 0,
-        zoom: zoom != null ? clampMapboxZoom(zoom) : null,
-        padding: _paddingForMode(),
-      ),
+    // Drop any coalesced GPS follow so it can't interrupt this flyTo.
+    clearPendingFollow();
+    final options = CameraOptions(
+      bearing: 0,
+      pitch: 0,
+      zoom: zoom != null ? clampMapboxZoom(zoom) : null,
+      padding: _paddingForMode(),
+    );
+    if (durationMs <= 0) {
+      await map.setCamera(options);
+      return;
+    }
+    await map.flyTo(
+      options,
+      MapAnimationOptions(duration: durationMs),
     );
   }
 
