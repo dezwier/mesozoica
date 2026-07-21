@@ -1,8 +1,8 @@
 # Field site generation around the player (lazy ensure) and bulk cron generate.
 
 lazy:
-  min_sites_in_radius: 200
-  radius_km: 1.0
+  min_sites_in_radius: 100
+  radius_km: 0.5
   min_separation_km: 0.030
   nearby_radius_km: 2000.0
   closest_neighbor_count: 10
@@ -23,5 +23,5 @@ bulk:
 
 # Flutter session triggers for POST /sites/field/ensure
 client:
-  ensure_move_threshold_m: 500.0
-  nearby_radius_km: 1.0
+  ensure_move_threshold_m: 250.0
+  nearby_radius_km: 0.5

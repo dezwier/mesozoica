@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/physics.dart';
 
 import '../../config/discovery_config.dart';
+import 'card_face_specular_overlay.dart';
 
 /// Y-axis 3D flip shell — tap left/right half or horizontal drag to turn.
 class TurnableYAxisCard extends StatefulWidget {
@@ -208,6 +209,21 @@ class _TurnableYAxisCardState extends State<TurnableYAxisCard>
     ];
   }
 
+  Widget _faceWithGlare(Widget face) {
+    return Stack(
+      children: [
+        face,
+        Positioned.fill(
+          child: CardFaceSpecularOverlay(
+            motionRadians: _rotationAngle,
+            cornerRadius: widget.borderRadius,
+            clipShape: SpecularOverlayClip.fullRoundedRect,
+          ),
+        ),
+      ],
+    );
+  }
+
   /// Keeps both faces mounted so images do not remount (and re-fade) on flip.
   Widget _buildFaces({required bool isBackVisible}) {
     return Stack(
@@ -219,7 +235,7 @@ class _TurnableYAxisCardState extends State<TurnableYAxisCard>
             ignoring: isBackVisible,
             child: Opacity(
               opacity: isBackVisible ? 0 : 1,
-              child: widget.front,
+              child: _faceWithGlare(widget.front),
             ),
           ),
         ),
@@ -232,7 +248,7 @@ class _TurnableYAxisCardState extends State<TurnableYAxisCard>
               child: Transform(
                 alignment: Alignment.center,
                 transform: Matrix4.identity()..rotateY(math.pi),
-                child: widget.back,
+                child: _faceWithGlare(widget.back),
               ),
             ),
           ),
