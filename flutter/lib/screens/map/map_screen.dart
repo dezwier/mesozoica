@@ -37,11 +37,11 @@ class _MapScreenState extends State<MapScreen> {
   final MapboxCameraCoordinator _mapboxCamera = MapboxCameraCoordinator();
 
   bool _mapboxReady = false;
-  double _zoomLevel = MapConfig.mapboxFollowZoom;
+  double _zoomLevel = MapConfig.mapboxRotateZoom;
   bool _didInitialCenter = false;
-  bool _followUser = false;
+  bool _followUser = true;
   /// false = north-fixed Mapbox; true = map bearing follows phone.
-  bool _rotateMap = false;
+  bool _rotateMap = true;
   LatLng? _lastFollowedLocation;
   String? _scanBannerMessage;
   String? _mapboxBannerMessage;
@@ -185,14 +185,16 @@ class _MapScreenState extends State<MapScreen> {
     _didInitialCenter = true;
     _followUser = true;
     _lastFollowedLocation = location;
+    final zoom =
+        _rotateMap ? MapConfig.mapboxRotateZoom : MapConfig.mapboxFollowZoom;
     unawaited(
       _mapboxCamera.centerOn(
         location,
-        zoom: MapConfig.mapboxFollowZoom,
+        zoom: zoom,
         headingDeg: locationService.headingDeg,
       ),
     );
-    _zoomLevel = MapConfig.mapboxFollowZoom;
+    _zoomLevel = zoom;
   }
 
   Future<void> _centerOnLocation(LocationService locationService) async {

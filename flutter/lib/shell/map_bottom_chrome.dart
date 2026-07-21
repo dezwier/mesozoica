@@ -6,7 +6,7 @@ import '../controllers/auth_controller.dart';
 import '../services/auth_service.dart';
 import 'map_chrome_insets.dart';
 
-/// Floating bottom entry points: profile avatar (left) and catalog dino (center).
+/// Floating bottom entry points: profile and catalog side by side on the lower left.
 class MapBottomChrome extends StatelessWidget {
   const MapBottomChrome({
     super.key,
@@ -17,7 +17,8 @@ class MapBottomChrome extends StatelessWidget {
   final VoidCallback onOpenProfile;
   final VoidCallback onOpenCatalog;
 
-  static const double _buttonSize = 56;
+  static const double _buttonSize = 60;
+  static const double _buttonGap = 16;
 
   @override
   Widget build(BuildContext context) {
@@ -25,47 +26,58 @@ class MapBottomChrome extends StatelessWidget {
       left: 0,
       right: 0,
       bottom: 0,
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.bottomCenter,
-            end: Alignment.topCenter,
-            colors: [
-              Colors.black.withValues(alpha: 0.45),
-              Colors.black.withValues(alpha: 0.0),
-            ],
-          ),
-        ),
-        child: SafeArea(
-          top: false,
-          child: SizedBox(
-            height: MapChromeInsets.bottomRowHeight,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Stack(
-                alignment: Alignment.bottomCenter,
-                children: [
-                  Align(
-                    alignment: Alignment.bottomLeft,
-                    child: _ProfileEntry(
-                      size: _buttonSize,
-                      onTap: onOpenProfile,
-                    ),
+      child: Stack(
+        children: [
+          // Full-width fade is visual only; otherwise it blocks the map filter FAB.
+          Positioned.fill(
+            child: IgnorePointer(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.bottomCenter,
+                    end: Alignment.topCenter,
+                    colors: [
+                      Colors.black.withValues(alpha: 0.45),
+                      Colors.black.withValues(alpha: 0.0),
+                    ],
                   ),
-                  _LabeledChromeButton(
-                    size: _buttonSize,
-                    label: 'Catalog',
-                    onTap: onOpenCatalog,
-                    child: Image.asset(
-                      'assets/images/cards/dinosaur_card_front_placeholder.png',
-                      fit: BoxFit.cover,
-                    ),
-                  ),
-                ],
+                ),
               ),
             ),
           ),
-        ),
+          SafeArea(
+            top: false,
+            child: SizedBox(
+              height: MapChromeInsets.bottomRowHeight,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Align(
+                  alignment: Alignment.bottomLeft,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      _ProfileEntry(
+                        size: _buttonSize,
+                        onTap: onOpenProfile,
+                      ),
+                      const SizedBox(width: _buttonGap),
+                      _LabeledChromeButton(
+                        size: _buttonSize,
+                        label: 'Catalog',
+                        onTap: onOpenCatalog,
+                        child: Image.asset(
+                          'assets/images/cards/dinosaur_card_front_placeholder.png',
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -110,7 +122,17 @@ class _ProfileEntry extends StatelessWidget {
         ? username.trim()
         : (displayName ?? '').trim();
     if (name.isEmpty) return 'Profile';
-    return name;
+    return _toTitleCase(name);
+  }
+
+  static String _toTitleCase(String value) {
+    return value
+        .split(RegExp(r'\s+'))
+        .map((word) {
+          if (word.isEmpty) return word;
+          return '${word[0].toUpperCase()}${word.substring(1).toLowerCase()}';
+        })
+        .join(' ');
   }
 
   Widget _fallbackAvatar() {

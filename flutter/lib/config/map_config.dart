@@ -12,7 +12,7 @@ class MapConfig {
   static const double cardMapZoom = 1.0;
   /// Slightly tighter zoom for a single site location on the site card back.
   static const double siteCardMapZoom = 2.5;
-  static const double maxZoom = 16.4;
+  static const double maxZoom = 18.0;
   static const double centerOnMeZoom = 10.0;
   static const double markerDetailZoom = 8.0;
 
@@ -50,7 +50,7 @@ class MapConfig {
   static const double mapboxFollowPitch = 55.0;
 
   /// Locked zoom while in Mapbox rotate (AR-style) mode.
-  static const double mapboxRotateZoom = maxZoom;
+  static const double mapboxRotateZoom = 18.0;
 
   /// Where the follow/rotate target sits on screen in rotate mode, as a
   /// fraction of map height from the bottom (mid-x, this fraction up).
