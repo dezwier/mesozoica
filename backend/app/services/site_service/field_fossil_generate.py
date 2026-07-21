@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from sqlalchemy import text
 from sqlmodel import Session, col, func, select
 
+from app.core.game_config import get_game_config
 from app.models.data_source import DATA_SOURCE_ARCHIVE, DATA_SOURCE_FIELD
 from app.models.dinosaur import Dinosaur
 from app.models.fossil import Fossil
@@ -24,19 +25,9 @@ logger = logging.getLogger(__name__)
 
 FIELD_FOSSIL_ID_START = 1_000_000_000
 
-DINO_COUNT_WEIGHTS: dict[int, float] = {1: 0.60, 2: 0.30, 3: 0.10}
-CARD_COUNT_WEIGHTS: dict[int, float] = {
-    1: 0.25,
-    2: 0.25,
-    3: 0.20,
-    4: 0.15,
-    5: 0.10,
-    6: 0.05,
-}
 
-_DEFAULT_SUBCATEGORY = "teeth"
-_DEFAULT_COMPLETENESS = "fragmentary"
-_DEFAULT_QUALITY = "moderate"
+def _fossil_gen():
+    return get_game_config().fossil_generation
 
 
 @dataclass(frozen=True)
@@ -95,22 +86,23 @@ def ensure_field_fossils_for_site(
     id_allocator = _FieldFossilIdAllocator(session)
 
     pending: list[Fossil] = []
+    fossil_cfg = _fossil_gen()
     for dinosaur_id in dino_ids:
-        card_count = _weighted_choice(CARD_COUNT_WEIGHTS, rng=random_source)
+        card_count = _weighted_choice(fossil_cfg.card_count_weights, rng=random_source)
         for _ in range(card_count):
             subcategory = _sample_from_counter(
                 attr_dists.subcategory,
-                default=_DEFAULT_SUBCATEGORY,
+                default=fossil_cfg.defaults.subcategory,
                 rng=random_source,
             )
             completeness = _sample_from_counter(
                 attr_dists.completeness,
-                default=_DEFAULT_COMPLETENESS,
+                default=fossil_cfg.defaults.completeness,
                 rng=random_source,
             )
             quality = _sample_from_counter(
                 attr_dists.preservation_quality,
-                default=_DEFAULT_QUALITY,
+                default=fossil_cfg.defaults.quality,
                 rng=random_source,
             )
             category = _category_for_subcategory(subcategory)
@@ -247,7 +239,7 @@ def _sample_dino_ids(
     *,
     rng: random.Random,
 ) -> list[int]:
-    target = _weighted_choice(DINO_COUNT_WEIGHTS, rng=rng)
+    target = _weighted_choice(_fossil_gen().dino_count_weights, rng=rng)
     target = min(target, len(counts))
     pool = dict(counts)
     chosen: list[int] = []

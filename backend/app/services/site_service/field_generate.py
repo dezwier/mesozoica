@@ -14,6 +14,7 @@ from sqlalchemy.orm import aliased
 from sqlmodel import Session, col, delete, select
 
 from app.core.database import engine
+from app.core.game_config import SiteGenerationConfig, get_game_config
 
 from app.models.data_source import DATA_SOURCE_ARCHIVE, DATA_SOURCE_FIELD
 from app.models.site import Site
@@ -59,6 +60,10 @@ PROGRESS_LOG_INTERVAL = 100
 WRITE_BATCH_SIZE = 5
 
 
+def _site_gen() -> SiteGenerationConfig:
+    return get_game_config().site_generation
+
+
 @dataclass(frozen=True)
 class FieldSiteGenerateConfig:
     max_items: int = 100
@@ -76,6 +81,30 @@ class FieldSiteGenerateConfig:
 
     exclude_military: bool = False
     land_mask_path: str | None = None
+
+    @classmethod
+    def from_game_config(
+        cls,
+        *,
+        refresh: bool = False,
+        exclude_military: bool = False,
+        land_mask_path: str | None = None,
+        max_items: int | None = None,
+    ) -> FieldSiteGenerateConfig:
+        bulk = _site_gen().bulk
+        return cls(
+            max_items=bulk.max_items if max_items is None else max_items,
+            refresh=refresh,
+            nearby_radius_km=bulk.nearby_radius_km,
+            closest_neighbor_count=bulk.closest_neighbor_count,
+            weight_global=bulk.weight_global,
+            weight_nearby=bulk.weight_nearby,
+            weight_closest=bulk.weight_closest,
+            max_coordinate_attempts=bulk.max_coordinate_attempts,
+            min_separation_km=bulk.min_separation_km,
+            exclude_military=exclude_military,
+            land_mask_path=land_mask_path,
+        )
 
     def validate(self) -> None:
         if self.max_items <= 0:
@@ -139,6 +168,29 @@ class FieldSiteLazyConfig:
     max_coordinate_attempts: int = 200
     exclude_military: bool = False
     land_mask_path: str | None = None
+
+    @classmethod
+    def from_game_config(
+        cls,
+        *,
+        radius_km: float | None = None,
+        exclude_military: bool = False,
+        land_mask_path: str | None = None,
+    ) -> FieldSiteLazyConfig:
+        lazy = _site_gen().lazy
+        return cls(
+            min_sites_in_radius=lazy.min_sites_in_radius,
+            radius_km=lazy.radius_km if radius_km is None else radius_km,
+            min_separation_km=lazy.min_separation_km,
+            nearby_radius_km=lazy.nearby_radius_km,
+            closest_neighbor_count=lazy.closest_neighbor_count,
+            weight_global=lazy.weight_global,
+            weight_nearby=lazy.weight_nearby,
+            weight_closest=lazy.weight_closest,
+            max_coordinate_attempts=lazy.max_coordinate_attempts,
+            exclude_military=exclude_military,
+            land_mask_path=land_mask_path,
+        )
 
     def validate(self) -> None:
         if self.min_sites_in_radius <= 0:
@@ -323,7 +375,7 @@ def ensure_field_sites_nearby(
     Short DB transactions: read → commit, then sample and commit every
     ``WRITE_BATCH_SIZE`` sites so the map can poll progressive batches.
     """
-    cfg = config or FieldSiteLazyConfig()
+    cfg = config or FieldSiteLazyConfig.from_game_config()
     cfg.validate()
     random_source = rng or random.Random()
 
@@ -819,8 +871,8 @@ def field_site_generate_exit_code(summary: FieldSiteGenerateSummary) -> int:
 
 
 def config_from_params(params: dict) -> FieldSiteGenerateConfig:
-    """Build config from cron YAML/CLI params, falling back to defaults."""
-    defaults = FieldSiteGenerateConfig()
+    """Build config from cron YAML/CLI params, falling back to game_config defaults."""
+    defaults = FieldSiteGenerateConfig.from_game_config()
     max_items = params.get("max_items")
     return FieldSiteGenerateConfig(
         max_items=int(max_items) if max_items is not None else defaults.max_items,

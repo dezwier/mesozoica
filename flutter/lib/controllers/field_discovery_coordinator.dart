@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 
+import '../config/game_config.dart';
 import '../models/site.dart';
 import '../services/location_service.dart';
 import '../services/site_service.dart';
@@ -15,9 +16,15 @@ class FieldDiscoveryCoordinator extends ChangeNotifier {
   FieldDiscoveryCoordinator({SiteService? siteService})
       : _siteService = siteService ?? SiteService();
 
-  static const autoDiscoverRadiusM = 50.0;
-  static const cacheRadiusKm = 1.0;
-  static const cacheRefreshMoveThresholdM = 500.0;
+  static double get autoDiscoverRadiusM =>
+      GameConfig.instance.siteDiscovery.client.autoDiscoverRadiusM;
+  static double get cacheRadiusKm =>
+      GameConfig.instance.siteDiscovery.client.cacheRadiusKm;
+  static double get cacheRefreshMoveThresholdM =>
+      GameConfig.instance.siteDiscovery.client.cacheRefreshMoveThresholdM;
+  static Duration get discoverFailRetry => Duration(
+        seconds: GameConfig.instance.siteDiscovery.client.discoverFailRetryS,
+      );
 
   final SiteService _siteService;
   LocationService? _locationService;
@@ -257,8 +264,7 @@ class FieldDiscoveryCoordinator extends ChangeNotifier {
         _log('discovered site_id=${site.siteId} distance_m=${distanceM.round()}');
         notifyListeners();
       } catch (error) {
-        _retryAfterBySiteId[site.siteId] =
-            now.add(const Duration(seconds: 20));
+        _retryAfterBySiteId[site.siteId] = now.add(discoverFailRetry);
         _log('discover failed site_id=${site.siteId} error=$error');
       } finally {
         _inFlightSiteIds.remove(site.siteId);

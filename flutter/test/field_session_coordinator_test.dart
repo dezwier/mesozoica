@@ -10,6 +10,8 @@ import 'package:mesozoica/controllers/field_session_coordinator.dart';
 import 'package:mesozoica/services/location_service.dart';
 import 'package:mesozoica/services/site_service.dart';
 
+import 'helpers/game_config_test_helpers.dart';
+
 class _FakeLocationService extends LocationService {
   _FakeLocationService(this._location);
 
@@ -50,6 +52,10 @@ class _FakeLocationService extends LocationService {
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+
+  setUp(() async {
+    await loadGameConfigForTest();
+  });
 
   Future<void> pumpUntilIdle() async {
     await Future<void>.delayed(const Duration(milliseconds: 20));

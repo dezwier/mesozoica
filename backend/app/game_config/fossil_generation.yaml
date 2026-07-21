@@ -1,0 +1,22 @@
+# Field fossils spawned when a site is surveyed (once per site).
+
+# How many distinct dinosaurs to sample for the site.
+dino_count_weights:
+  1: 0.60
+  2: 0.30
+  3: 0.10
+
+# How many fossil cards per sampled dinosaur.
+card_count_weights:
+  1: 0.25
+  2: 0.25
+  3: 0.20
+  4: 0.15
+  5: 0.10
+  6: 0.05
+
+# Fallback attributes when archive distributions are empty.
+defaults:
+  subcategory: teeth
+  completeness: fragmentary
+  quality: moderate

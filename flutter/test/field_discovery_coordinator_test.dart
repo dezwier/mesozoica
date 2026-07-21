@@ -12,6 +12,8 @@ import 'package:mesozoica/models/site.dart';
 import 'package:mesozoica/services/location_service.dart';
 import 'package:mesozoica/services/site_service.dart';
 
+import 'helpers/game_config_test_helpers.dart';
+
 class _FakeLocationService extends LocationService {
   _FakeLocationService(this._location);
 
@@ -65,6 +67,10 @@ void main() {
       SystemChannels.platform,
       (call) async => null,
     );
+  });
+
+  setUp(() async {
+    await loadGameConfigForTest();
   });
 
   Future<void> pumpUntilIdle() async {

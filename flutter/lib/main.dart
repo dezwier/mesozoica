@@ -5,6 +5,7 @@ import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 import 'package:provider/provider.dart';
 
 import 'config/app_config.dart';
+import 'config/game_config.dart';
 import 'config/map_config.dart';
 import 'controllers/auth_controller.dart';
 import 'controllers/catalog_mode_controller.dart';
@@ -27,6 +28,7 @@ import 'theme/mesozoica_theme.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await GameConfig.load();
   await _configureMapboxAccessToken();
   try {
     await Firebase.initializeApp(

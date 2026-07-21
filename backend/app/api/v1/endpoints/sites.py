@@ -201,7 +201,7 @@ def get_sites_nearby_discoverable(
 
 @router.post("/field/ensure", response_model=FieldEnsureResponse, status_code=202)
 def post_field_site_ensure(body: FieldEnsureRequest) -> FieldEnsureResponse:
-    config = FieldSiteLazyConfig(radius_km=body.radius_km)
+    config = FieldSiteLazyConfig.from_game_config(radius_km=body.radius_km)
     reason = normalize_reason(body.reason)
     accepted, job_id = schedule_field_site_ensure(
         lat=body.lat,

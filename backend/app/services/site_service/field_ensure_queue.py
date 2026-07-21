@@ -36,7 +36,7 @@ def enqueue_field_site_ensure(
     Returns ``(accepted, job_id)``. ``accepted`` is False when the cell already
     has a pending/running job; ``job_id`` is still the existing job when present.
     """
-    cfg = config or FieldSiteLazyConfig()
+    cfg = config or FieldSiteLazyConfig.from_game_config()
     cfg.validate()
     trigger = normalize_reason(reason)
     key = cell_key(lat, lon, cfg.radius_km)

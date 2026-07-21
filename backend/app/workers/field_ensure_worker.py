@@ -57,7 +57,7 @@ def process_one_ensure_job(*, worker_id: str) -> bool:
         if job is None:
             return False
 
-    config = FieldSiteLazyConfig(radius_km=job.radius_km)
+    config = FieldSiteLazyConfig.from_game_config(radius_km=job.radius_km)
     reason = normalize_reason(job.reason)
     started = time.monotonic()
     try:

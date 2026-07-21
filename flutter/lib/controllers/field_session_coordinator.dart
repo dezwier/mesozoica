@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:latlong2/latlong.dart';
 
+import '../config/game_config.dart';
 import '../models/site.dart';
 import '../services/location_service.dart';
 import '../services/site_service.dart';
@@ -14,8 +15,10 @@ class FieldSessionCoordinator extends ChangeNotifier {
   FieldSessionCoordinator({SiteService? siteService})
       : _siteService = siteService ?? SiteService();
 
-  static const ensureMoveThresholdM = 500.0;
-  static const nearbyRadiusKm = 1.0;
+  static double get ensureMoveThresholdM =>
+      GameConfig.instance.siteGeneration.client.ensureMoveThresholdM;
+  static double get nearbyRadiusKm =>
+      GameConfig.instance.siteGeneration.client.nearbyRadiusKm;
 
   static const reasonResume = 'resume';
   static const reasonMove500m = 'move_500m';

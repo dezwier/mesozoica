@@ -19,7 +19,7 @@ from app.models.user_site import (
     UserSite,
 )
 from app.services.push_service import send_site_discovered_push
-from app.services.site_service.discover import DISCOVER_MAX_DISTANCE_M, _site_label
+from app.services.site_service.discover import _site_label, discover_max_distance_m
 from app.services.site_service.geo_utils import haversine_km
 from app.services.site_service.list import get_site_by_id
 from app.services.site_service.summary import SiteRow
@@ -27,7 +27,6 @@ from app.services.site_service.summary import SiteRow
 _STATUS_TO_ROLE: dict[str, str] = {
     status: role for role, status in ROLE_TO_STATUS.items()
 }
-_SET_STATUS_MAX_DISTANCE_KM = DISCOVER_MAX_DISTANCE_M / 1000.0
 
 
 def set_site_status(
@@ -76,12 +75,13 @@ def set_site_status(
     if not skip_distance_check:
         if lat is None or lon is None:
             raise ValidationError("lat and lon are required to set this status")
+        max_distance_m = discover_max_distance_m()
         distance_km = haversine_km(
             lat, lon, float(site.latitude), float(site.longitude)
         )
-        if distance_km > _SET_STATUS_MAX_DISTANCE_KM:
+        if distance_km > max_distance_m / 1000.0:
             raise ValidationError(
-                f"Must be within {int(DISCOVER_MAX_DISTANCE_M)} m of the site "
+                f"Must be within {int(max_distance_m)} m of the site "
                 f"to set status to {normalized}"
             )
 

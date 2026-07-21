@@ -5,6 +5,7 @@ from __future__ import annotations
 from sqlmodel import Session, col, select
 
 from app.core.exceptions import NotFoundError, ValidationError
+from app.core.game_config import get_game_config
 from app.models.data_source import DATA_SOURCE_FIELD
 from app.models.site import Site
 from app.models.user_notification import UserNotification, UserNotificationType
@@ -20,8 +21,10 @@ from app.services.site_service.labels import site_display_title
 from app.services.site_service.list import get_site_by_id
 from app.services.site_service.summary import SiteRow
 
-DISCOVER_MAX_DISTANCE_M = 50.0
-_DISCOVER_MAX_DISTANCE_KM = DISCOVER_MAX_DISTANCE_M / 1000.0
+
+def discover_max_distance_m() -> float:
+    """Server-side max distance (meters) to discover / change site status."""
+    return get_game_config().site_discovery.max_distance_m
 
 
 def _site_label(site: Site) -> str:
@@ -43,12 +46,13 @@ def discover_site(
     if site.latitude is None or site.longitude is None:
         raise ValidationError("Site has no coordinates")
 
+    max_distance_m = discover_max_distance_m()
     distance_km = haversine_km(
         lat, lon, float(site.latitude), float(site.longitude)
     )
-    if distance_km > _DISCOVER_MAX_DISTANCE_KM:
+    if distance_km > max_distance_m / 1000.0:
         raise ValidationError(
-            f"Must be within {int(DISCOVER_MAX_DISTANCE_M)} m of the site to discover it"
+            f"Must be within {int(max_distance_m)} m of the site to discover it"
         )
 
     row = get_site_by_id(session, site_id, data_source=DATA_SOURCE_FIELD)

@@ -1,0 +1,8 @@
+# Fossil / site excavation mechanics (not implemented yet).
+
+enabled: false
+
+# Future knobs (examples):
+# dig_duration_s: 30
+# tool_bonus_enabled: true
+# loot_rolls_per_dig: 1
