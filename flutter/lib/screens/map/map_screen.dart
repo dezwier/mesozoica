@@ -11,6 +11,7 @@ import '../../controllers/field_session_coordinator.dart';
 import '../../controllers/map_controller.dart' as map_data;
 import '../../controllers/theme_controller.dart';
 import '../../models/site.dart';
+import '../../services/auth_service.dart';
 import '../../services/location_service.dart';
 import '../../services/site_service.dart';
 import '../../shell/map_chrome_insets.dart';
@@ -352,9 +353,10 @@ class _MapScreenState extends State<MapScreen> {
   @override
   Widget build(BuildContext context) {
     final isFieldMode = context.watch<CatalogModeController>().isField;
-    final isAdmin =
-        context.watch<AuthController>().currentUser?.isAdmin ?? false;
+    final auth = context.watch<AuthController>();
+    final isAdmin = auth.currentUser?.isAdmin ?? false;
     final basemapTheme = context.watch<ThemeController>().mapBasemapTheme;
+    final avatarUrl = AuthService.imageUrl(auth.currentUser?.profileImage);
 
     return Consumer2<map_data.MapController, LocationService>(
       builder: (context, mapData, locationService, _) {
@@ -411,6 +413,7 @@ class _MapScreenState extends State<MapScreen> {
                   initialCenter: startCenter,
                   initialZoom: _zoomLevel,
                   basemapTheme: basemapTheme,
+                  avatarImageUrl: avatarUrl.isEmpty ? null : avatarUrl,
                   onSiteTap: _onSiteTap,
                   onFollowCancelled: () {
                     // Rotate mode is always locked to the user.

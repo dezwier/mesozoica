@@ -38,6 +38,7 @@ class MapboxFieldMap extends StatefulWidget {
     required this.onFollowCancelled,
     required this.onZoomChanged,
     required this.onReadyChanged,
+    this.avatarImageUrl,
     this.hiddenRotateSiteId,
     this.onError,
   });
@@ -58,6 +59,8 @@ class MapboxFieldMap extends StatefulWidget {
   final VoidCallback onFollowCancelled;
   final ValueChanged<double> onZoomChanged;
   final ValueChanged<bool> onReadyChanged;
+  /// Profile image for the location puck (falls back to app logo).
+  final String? avatarImageUrl;
   /// Hide this site's mini-card while the detail sheet morphs open.
   final int? hiddenRotateSiteId;
   final ValueChanged<Object>? onError;
@@ -359,6 +362,13 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
     if (oldWidget.basemapTheme != widget.basemapTheme) {
       unawaited(_applyBasemapLook(force: true));
     }
+    if (oldWidget.avatarImageUrl != widget.avatarImageUrl) {
+      unawaited(
+        widget.camera.enableLocationPuck(
+          avatarImageUrl: widget.avatarImageUrl,
+        ),
+      );
+    }
   }
 
   Future<void> _onMapCreated(MapboxMap map) async {
@@ -470,7 +480,9 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
 
       // FollowPuck needs the location component; enable before entering it.
       try {
-        await widget.camera.enableLocationPuck();
+        await widget.camera.enableLocationPuck(
+          avatarImageUrl: widget.avatarImageUrl,
+        );
       } catch (_) {}
 
       if (widget.rotateWithHeading) {
