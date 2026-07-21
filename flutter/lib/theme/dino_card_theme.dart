@@ -17,8 +17,6 @@ class DinoCardTheme {
 
   static const double borderRadius = 16;
   static const double factPanelBorderRadius = 10;
-  static const double factPanelBackgroundAlpha = 0.98;
-  static const double factPanelBorderAlpha = 0.58;
 
   /// Matches [frontPlaceholderAsset] (1086×1448) so the cover image is not cropped.
   static const double cardAspectRatio = 1086 / 1448;
@@ -254,15 +252,45 @@ class DinoCardTheme {
     return isLight ? cardTextSecondary : cardAccent.withValues(alpha: 0.9);
   }
 
-  /// Frosted stat panel on card fronts and section panels on card backs.
-  BoxDecoration factPanelDecoration() {
+  /// Stat / section panels — matches profile cards (radius 10, elevation 1,
+  /// surfaceContainerHighest wash on [ColorScheme.surface]).
+  BoxDecoration factPanelDecoration(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return BoxDecoration(
-      color: cardBackground.withValues(alpha: factPanelBackgroundAlpha),
-      borderRadius: BorderRadius.circular(factPanelBorderRadius),
-      border: Border.all(
-        color: cardAccent.withValues(alpha: factPanelBorderAlpha),
-        width: 1,
+      color: Color.alphaBlend(
+        scheme.surfaceContainerHighest.withValues(alpha: 0.5),
+        scheme.surface,
       ),
+      borderRadius: BorderRadius.circular(factPanelBorderRadius),
+      boxShadow: kElevationToShadow[1],
+    );
+  }
+
+  /// Darkening wash over the blurred back image (darker at top for light titles).
+  LinearGradient backFaceImageOverlayGradient() {
+    return const LinearGradient(
+      begin: Alignment.topCenter,
+      end: Alignment.bottomCenter,
+      colors: [
+        Color(0xA64C4643),
+        Color(0x447E7671),
+        Color(0x33B4ADA7),
+      ],
+      stops: [0.0, 0.28, 1.0],
+    );
+  }
+
+  /// Soft metallic highlight washed across the back face.
+  LinearGradient backFaceSheenGradient() {
+    return LinearGradient(
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+      colors: [
+        Colors.white.withValues(alpha: isLight ? 0.03 : 0.02),
+        Colors.transparent,
+        Colors.black.withValues(alpha: isLight ? 0.025 : 0.05),
+      ],
+      stops: const [0.0, 0.45, 1.0],
     );
   }
 

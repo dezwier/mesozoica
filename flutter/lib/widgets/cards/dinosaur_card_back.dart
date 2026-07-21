@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../models/dinosaur.dart';
 import '../../theme/dino_card_theme.dart';
 import '../dino/dinosaur_article_drawer.dart';
+import 'card_back_backdrop.dart';
 import 'card_section_panel.dart';
 import 'cladogram_strip.dart';
 import 'dinosaur_card_edge_facts.dart';
@@ -36,7 +37,9 @@ class DinosaurCardBack extends StatelessWidget {
       child: Stack(
         fit: StackFit.expand,
         children: [
-          DinosaurCardImage(imageUrl: dinosaur.mainImageUrl),
+          CardBackBackdrop(
+            image: DinosaurCardImage(imageUrl: dinosaur.mainImageUrl),
+          ),
           Positioned(
             left: 18,
             right: 18,

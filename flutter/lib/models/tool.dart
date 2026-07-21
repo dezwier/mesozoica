@@ -20,6 +20,20 @@ class ToolSummary {
   String get displayCategory =>
       category.replaceAll('_', ' ').split(' ').map(_titleCaseWord).join(' ');
 
+  String get displayScientificTool => scientificTool
+      .replaceAll('_', ' ')
+      .split(' ')
+      .where((word) => word.isNotEmpty)
+      .map(_titleCaseWord)
+      .join(' ');
+
+  String get categoryWithScientific {
+    final scientific = displayScientificTool;
+    if (scientific.isEmpty) return displayCategory;
+    if (displayCategory.isEmpty) return scientific;
+    return '$displayCategory - $scientific';
+  }
+
   static String _titleCaseWord(String word) {
     if (word.isEmpty) return word;
     return '${word[0].toUpperCase()}${word.substring(1).toLowerCase()}';

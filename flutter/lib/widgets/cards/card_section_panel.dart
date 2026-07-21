@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../theme/dino_card_theme.dart';
 
-/// Frosted section container matching the front attribute panel.
+/// Section container styled like profile cards (elevation, radius).
 class CardSectionPanel extends StatelessWidget {
   const CardSectionPanel({
     super.key,
@@ -49,7 +49,7 @@ class CardSectionPanel extends StatelessWidget {
     }
 
     return DecoratedBox(
-      decoration: cardTheme.factPanelDecoration(),
+      decoration: cardTheme.factPanelDecoration(context),
       child: content,
     );
   }

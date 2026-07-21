@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 
 import '../../models/tool.dart';
 import '../../theme/dino_card_theme.dart';
-import 'card_adaptive_title_text.dart';
+import 'card_back_backdrop.dart';
 import 'card_section_panel.dart';
+import 'tool_card_header.dart';
 import 'tool_card_image.dart';
 
 class ToolCardBack extends StatelessWidget {
@@ -27,20 +28,19 @@ class ToolCardBack extends StatelessWidget {
       child: Stack(
         fit: StackFit.expand,
         children: [
-          ToolCardImage(imageUrl: tool.mainImageUrl),
+          CardBackBackdrop(
+            image: ToolCardImage(imageUrl: tool.mainImageUrl),
+          ),
           Positioned(
             left: 18,
             right: 18,
             top: 20,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                CardAdaptiveTitleText(
-                  text: tool.scientificTool,
-                  style: cardTheme.frontOverlayTitleStyle(fontSize: titleFontSize),
-                  textAlign: TextAlign.center,
-                ),
-              ],
+            child: ToolCardHeader(
+              tool: tool,
+              titleFontSize: titleFontSize,
+              subtitleFontSize: subtitleFontSize,
+              centered: true,
+              overlayOnImage: true,
             ),
           ),
           Positioned(
@@ -54,7 +54,7 @@ class ToolCardBack extends StatelessWidget {
                 CardSectionPanel(
                   label: 'Category',
                   child: Text(
-                    tool.displayCategory,
+                    tool.categoryWithScientific,
                     style: cardTheme.bodyStyle(fontSize: 14),
                   ),
                 ),

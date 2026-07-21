@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../models/site.dart';
 import '../../theme/dino_card_theme.dart';
+import 'card_back_backdrop.dart';
 import 'card_section_panel.dart';
 import 'card_world_map.dart';
 import 'geologic_timeline.dart';
@@ -34,7 +35,9 @@ class SiteCardBack extends StatelessWidget {
       child: Stack(
         fit: StackFit.expand,
         children: [
-          SiteCardImage(imageUrl: site.mainImageUrl),
+          CardBackBackdrop(
+            image: SiteCardImage(imageUrl: site.mainImageUrl),
+          ),
           Positioned(
             left: 18,
             right: 18,

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../models/fossil.dart';
 import '../../theme/dino_card_theme.dart';
 import '../fossil/fossil_record_drawer.dart';
+import 'card_back_backdrop.dart';
 import 'card_section_panel.dart';
 import 'fossil_card_edge_facts.dart';
 import 'fossil_card_header.dart';
@@ -33,7 +34,9 @@ class FossilCardBack extends StatelessWidget {
       child: Stack(
         fit: StackFit.expand,
         children: [
-          FossilCardImage(imageUrl: fossil.mainImageUrl),
+          CardBackBackdrop(
+            image: FossilCardImage(imageUrl: fossil.mainImageUrl),
+          ),
           Positioned(
             left: 18,
             right: 18,
@@ -44,7 +47,6 @@ class FossilCardBack extends StatelessWidget {
               subtitleFontSize: subtitleFontSize,
               centered: true,
               overlayOnImage: true,
-              showOccurrenceSubtitle: true,
             ),
           ),
           if (showRecordButton)

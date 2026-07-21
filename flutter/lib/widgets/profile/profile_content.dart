@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../../models/profile.dart';
 import '../../services/auth_service.dart';
+import '../../theme/dino_card_theme.dart';
 import '../common/app_card.dart';
 
 class ProfileContent extends StatelessWidget {
@@ -114,9 +115,11 @@ class ProfileContent extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             Text(
-              profile.displayName,
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
+              profile.fullName?.trim().isNotEmpty == true
+                  ? profile.fullName!.trim()
+                  : profile.displayName,
+              style: DinoCardTheme.of(context).titleStyle(fontSize: 24).copyWith(
+                    color: scheme.onSurface,
                   ),
               textAlign: TextAlign.center,
             ),

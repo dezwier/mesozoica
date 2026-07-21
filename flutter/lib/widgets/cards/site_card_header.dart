@@ -46,7 +46,7 @@ class SiteCardHeader extends StatelessWidget {
       crossAxisAlignment:
           centered ? CrossAxisAlignment.center : CrossAxisAlignment.start,
       children: [
-        if (overlayOnImage && centered)
+        if (centered)
           SizedBox(
             width: double.infinity,
             child: CardAdaptiveTitleText(
@@ -56,19 +56,11 @@ class SiteCardHeader extends StatelessWidget {
             ),
           )
         else
-          overlayOnImage
-              ? CardAdaptiveTitleText(
-                  text: site.displayTitle,
-                  style: titleStyle,
-                  textAlign: centered ? TextAlign.center : TextAlign.start,
-                )
-              : Text(
-                  site.displayTitle,
-                  textAlign: centered ? TextAlign.center : TextAlign.start,
-                  style: titleStyle,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
+          CardAdaptiveTitleText(
+            text: site.displayTitle,
+            style: titleStyle,
+            textAlign: TextAlign.start,
+          ),
         if (showSubtitle) ...[
           const SizedBox(height: 8),
           Text(

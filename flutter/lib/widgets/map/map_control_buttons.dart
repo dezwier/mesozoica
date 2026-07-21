@@ -56,7 +56,7 @@ class MapControlButtons extends StatelessWidget {
             backgroundColor: fabTheme.backgroundColor,
             foregroundColor: fabTheme.foregroundColor,
             child: Icon(
-              rotateMap ? Icons.explore_outlined : Icons.threed_rotation,
+              rotateMap ? Icons.explore : Icons.explore_outlined,
             ),
           ),
           if (filterFab != null) filterFab!,

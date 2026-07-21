@@ -19,7 +19,7 @@ class CardFactEntry {
 
 enum CardFactPanelLayout { wrap, columnGrid }
 
-/// Full-width frosted stat panel for card fronts.
+/// Full-width stat panel for card backs (profile-card elevation style).
 class CardFactPanel extends StatelessWidget {
   const CardFactPanel({
     super.key,
@@ -39,7 +39,7 @@ class CardFactPanel extends StatelessWidget {
     final cardTheme = DinoCardTheme.of(context);
 
     return DecoratedBox(
-      decoration: cardTheme.factPanelDecoration(),
+      decoration: cardTheme.factPanelDecoration(context),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
         child: LayoutBuilder(
