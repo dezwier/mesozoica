@@ -6,7 +6,8 @@ class MapConfig {
   MapConfig._();
 
   static const double initialZoom = 3.0;
-  static const double minZoom = 2.0;
+  /// How far the map / zoom slider can pull out (world view).
+  static const double minZoom = 1.0;
   /// Default zoom for mini maps on card backs (dino fossil world map).
   static const double cardMapZoom = 1.0;
   /// Slightly tighter zoom for a single site location on the site card back.

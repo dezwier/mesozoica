@@ -258,7 +258,7 @@ class MapboxCameraCoordinator {
     final puckImage = await _renderGoldLocationPuckPng(logicalSize: 28);
     final bearingImage = await _renderGoldLocationPuckPng(
       logicalSize: 28,
-      withChevron: true,
+      withHeadingDot: true,
     );
 
     await map.location.updateSettings(
@@ -283,7 +283,7 @@ class MapboxCameraCoordinator {
 
 Future<Uint8List> _renderGoldLocationPuckPng({
   required double logicalSize,
-  bool withChevron = false,
+  bool withHeadingDot = false,
 }) async {
   const gold = Color(0xFFD4AF37);
   final pixelRatio = 3.0;
@@ -321,21 +321,17 @@ Future<Uint8List> _renderGoldLocationPuckPng({
     Paint()..color = Colors.white.withValues(alpha: 0.45),
   );
 
-  if (withChevron) {
-    final tip = Offset(center.dx, center.dy - radius * 0.55);
-    final left = Offset(center.dx - radius * 0.32, center.dy + radius * 0.05);
-    final right = Offset(center.dx + radius * 0.32, center.dy + radius * 0.05);
-    final chevron = ui.Path()
-      ..moveTo(tip.dx, tip.dy)
-      ..lineTo(left.dx, left.dy)
-      ..lineTo(center.dx, center.dy + radius * 0.08)
-      ..lineTo(right.dx, right.dy)
-      ..close();
-    canvas.drawPath(
-      chevron,
-      Paint()
-        ..color = Colors.white.withValues(alpha: 0.95)
-        ..style = PaintingStyle.fill,
+  // White perimeter dot at the top; Mapbox rotates bearingImage with heading.
+  if (withHeadingDot) {
+    final dotRadius = radius * 0.28;
+    final dotCenter = Offset(
+      center.dx,
+      center.dy - radius + dotRadius * 1.15,
+    );
+    canvas.drawCircle(
+      dotCenter,
+      dotRadius,
+      Paint()..color = Colors.white,
     );
   }
 
