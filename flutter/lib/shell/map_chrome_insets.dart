@@ -24,7 +24,7 @@ class MapChromeInsets {
   static double bottom(BuildContext context) =>
       MediaQuery.paddingOf(context).bottom + bottomRowHeight;
 
-  /// Aligns map FABs with the bottom edge of the profile/catalog circles.
+  /// Aligns map / catalog FABs with the labels under the profile/catalog circles.
   static double fabBottom(BuildContext context) =>
-      MediaQuery.paddingOf(context).bottom + bottomLabelBlockHeight;
+      MediaQuery.paddingOf(context).bottom;
 }
