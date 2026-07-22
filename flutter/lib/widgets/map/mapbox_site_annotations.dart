@@ -92,6 +92,7 @@ class MapboxSiteAnnotations {
     await shadowManager.setCircleOpacity(mapboxMarkerShadowOpacity);
     await shadowManager.setCircleBlur(mapboxMarkerShadowBlur);
     await shadowManager.setCircleStrokeWidth(0);
+    await shadowManager.setCircleEmissiveStrength(1.0);
     await shadowManager.setCircleRadius(
       _baseRadius * mapboxMarkerShadowRadiusScale,
     );
@@ -101,6 +102,8 @@ class MapboxSiteAnnotations {
     await manager.setCircleStrokeWidth(1.5);
     await manager.setCircleStrokeColor(0xFFFFFFFF);
     await manager.setCircleOpacity(0.95);
+    // Keep period colors fully lit under dusk lightPreset (same as day).
+    await manager.setCircleEmissiveStrength(1.0);
     await manager.setCircleRadius(_baseRadius);
 
     await selectionDotManager.setCirclePitchAlignment(
@@ -110,6 +113,7 @@ class MapboxSiteAnnotations {
     await selectionDotManager.setCircleColor(0xFFFFFFFF);
     await selectionDotManager.setCircleOpacity(1.0);
     await selectionDotManager.setCircleStrokeWidth(0);
+    await selectionDotManager.setCircleEmissiveStrength(1.0);
     await selectionDotManager.setCircleRadius(_dotRadius);
 
     _tapCancelable = manager.tapEvents(onTap: _handleTap);

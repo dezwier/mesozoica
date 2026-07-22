@@ -18,7 +18,7 @@ import 'map_rotate_site_card_overlay.dart';
 
 typedef MapSiteTapCallback = void Function(SiteSummary site);
 
-/// Mapbox Standard field map — warm theme, time-of-day lighting, site markers.
+/// Mapbox Standard field map — basemap theme + day/dusk from app appearance.
 ///
 /// [rotateWithHeading] false = north-fixed; true = native FollowPuck + heading.
 class MapboxFieldMap extends StatefulWidget {
@@ -35,6 +35,7 @@ class MapboxFieldMap extends StatefulWidget {
     required this.initialCenter,
     required this.initialZoom,
     required this.basemapTheme,
+    required this.brightness,
     required this.onSiteTap,
     required this.onFollowCancelled,
     required this.onZoomChanged,
@@ -63,6 +64,8 @@ class MapboxFieldMap extends StatefulWidget {
   final LatLng initialCenter;
   final double initialZoom;
   final MapboxBasemapTheme basemapTheme;
+  /// App appearance — drives Mapbox `lightPreset` day vs dusk.
+  final Brightness brightness;
   final MapSiteTapCallback onSiteTap;
   final VoidCallback onFollowCancelled;
   final ValueChanged<double> onZoomChanged;
@@ -92,7 +95,6 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
   Timer? _annotationDebounce;
   Timer? _readyTimeout;
   Timer? _readyNotifyFallback;
-  Timer? _lightPresetTimer;
   Timer? _followPuckReassertTimer;
   Ticker? _rotateOverlayTicker;
   String? _appliedLightPreset;
@@ -194,7 +196,6 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
     _annotationDebounce?.cancel();
     _readyTimeout?.cancel();
     _readyNotifyFallback?.cancel();
-    _lightPresetTimer?.cancel();
     _followPuckReassertTimer?.cancel();
     _rotateOverlayTicker?.dispose();
     _overlayController.dispose();
@@ -406,17 +407,9 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
       } else {
         _setRotateOverlayTickerActive(false);
       }
-      if (!widget.mapActive) {
-        _lightPresetTimer?.cancel();
-        _lightPresetTimer = null;
-      } else if (_styleLoaded) {
-        unawaited(_applyBasemapLook());
-      }
     }
-    if (oldWidget.currentLocation != widget.currentLocation) {
-      unawaited(_applyBasemapLook());
-    }
-    if (oldWidget.basemapTheme != widget.basemapTheme) {
+    if (oldWidget.basemapTheme != widget.basemapTheme ||
+        oldWidget.brightness != widget.brightness) {
       unawaited(_applyBasemapLook(force: true));
     }
     if (oldWidget.avatarImageUrl != widget.avatarImageUrl) {
@@ -489,18 +482,11 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
     unawaited(_seedAfterLayout());
   }
 
-  LatLng get _lightPresetLocation =>
-      widget.currentLocation ?? _seedCenter;
-
   Future<void> _applyBasemapLook({bool force = false}) async {
     final map = _map;
     if (map == null || !_styleLoaded) return;
-    final loc = _lightPresetLocation;
-    final preset = MapboxBasemapConfig.lightPresetForDateTime(
-      DateTime.now(),
-      latitude: loc.latitude,
-      longitude: loc.longitude,
-    );
+    final preset =
+        MapboxBasemapConfig.lightPresetForBrightness(widget.brightness);
     final theme = widget.basemapTheme;
     if (!force &&
         preset == _appliedLightPreset &&
@@ -512,15 +498,10 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
         map,
         lightPreset: preset,
         theme: theme,
-        latitude: loc.latitude,
-        longitude: loc.longitude,
+        brightness: widget.brightness,
       );
       _appliedLightPreset = preset;
       _appliedBasemapTheme = theme;
-      _lightPresetTimer ??= Timer.periodic(
-        const Duration(minutes: 1),
-        (_) => unawaited(_applyBasemapLook()),
-      );
     } catch (error) {
       if (kDebugMode) {
         debugPrint('MapboxFieldMap basemap config failed: $error');

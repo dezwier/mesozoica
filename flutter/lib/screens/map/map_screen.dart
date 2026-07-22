@@ -82,6 +82,7 @@ class _MapScreenState extends State<MapScreen>
     final auth = context.watch<AuthController>();
     final isAdmin = auth.currentUser?.isAdmin ?? false;
     final basemapTheme = context.watch<ThemeController>().mapBasemapTheme;
+    final mapBrightness = Theme.of(context).brightness;
     final avatarUrl = AuthService.imageUrl(auth.currentUser?.profileImage);
 
     return Consumer2<map_data.MapController, LocationService>(
@@ -143,6 +144,7 @@ class _MapScreenState extends State<MapScreen>
                     initialCenter: startCenter,
                     initialZoom: _zoomLevel,
                     basemapTheme: basemapTheme,
+                    brightness: mapBrightness,
                     avatarImageUrl: avatarUrl.isEmpty ? null : avatarUrl,
                     rotateCardCount: _rotateCardCount,
                     onSiteTap: _onSiteTap,

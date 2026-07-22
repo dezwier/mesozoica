@@ -1,7 +1,7 @@
+import 'package:flutter/material.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 
 import '../../config/map_config.dart';
-import '../../utils/solar_period.dart';
 
 /// Mapbox Standard basemap look for Mesozoica field / rotate mode.
 class MapboxBasemapConfig {
@@ -9,50 +9,21 @@ class MapboxBasemapConfig {
 
   static const String importId = 'basemap';
 
-  /// Dawn / day / dusk / night for Mapbox `lightPreset`.
-  ///
-  /// When [latitude] and [longitude] are set, uses solar elevation (civil
-  /// twilight) so seasons and location are respected. Without a location,
-  /// falls back to rough civil clock windows:
-  /// - night: 21:00–04:59
-  /// - dawn: 05:00–07:59
-  /// - day: 08:00–16:59
-  /// - dusk: 17:00–20:59
-  static String lightPresetForDateTime(
-    DateTime local, {
-    double? latitude,
-    double? longitude,
-  }) {
-    if (latitude != null && longitude != null) {
-      return Solar.lightPresetAt(
-        latitude: latitude,
-        longitude: longitude,
-        at: local,
-      );
-    }
-    final hour = local.hour;
-    if (hour >= 5 && hour < 8) return 'dawn';
-    if (hour >= 8 && hour < 17) return 'day';
-    if (hour >= 17 && hour < 21) return 'dusk';
-    return 'night';
+  /// Day / dusk for Mapbox `lightPreset`, matching the app appearance theme.
+  static String lightPresetForBrightness(Brightness brightness) {
+    return brightness == Brightness.dark ? 'dusk' : 'day';
   }
 
   /// Config properties applied to the Standard `basemap` import.
   static Map<String, Object> styleConfig({
-    DateTime? now,
     String? lightPreset,
     MapboxBasemapTheme? theme,
-    double? latitude,
-    double? longitude,
+    Brightness brightness = Brightness.light,
   }) {
     return {
       'theme': (theme ?? MapConfig.mapboxBasemapTheme).value,
-      'lightPreset': lightPreset ??
-          lightPresetForDateTime(
-            now ?? DateTime.now(),
-            latitude: latitude,
-            longitude: longitude,
-          ),
+      'lightPreset':
+          lightPreset ?? lightPresetForBrightness(brightness),
       'showPlaceLabels': false,
       'showRoadLabels': false,
       'showPointOfInterestLabels': false,
@@ -65,20 +36,16 @@ class MapboxBasemapConfig {
 
   static Future<void> apply(
     MapboxMap map, {
-    DateTime? now,
     String? lightPreset,
     MapboxBasemapTheme? theme,
-    double? latitude,
-    double? longitude,
+    Brightness brightness = Brightness.light,
   }) {
     return map.style.setStyleImportConfigProperties(
       importId,
       styleConfig(
-        now: now,
         lightPreset: lightPreset,
         theme: theme,
-        latitude: latitude,
-        longitude: longitude,
+        brightness: brightness,
       ),
     );
   }
