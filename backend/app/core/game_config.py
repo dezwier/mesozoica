@@ -155,10 +155,35 @@ class DinoCountThreshold(BaseModel):
         return self
 
 
+class FossilOddNoiseConfig(BaseModel):
+    """Per-sampler ±noise for clamp(odd + Uniform(-n, +n), 0, 1)."""
+
+    model_config = {"frozen": True}
+
+    dino_count: float = 0.3
+    fossil_count: float = 0.3
+    completeness: float = 0.3
+    quality: float = 0.3
+    depth: float = 0.3
+
+    @field_validator(
+        "dino_count",
+        "fossil_count",
+        "completeness",
+        "quality",
+        "depth",
+    )
+    @classmethod
+    def _validate_non_negative(cls, value: float) -> float:
+        if value < 0.0:
+            raise ValueError("odd_noise values must be >= 0")
+        return value
+
+
 class FossilGenerationConfig(BaseModel):
     model_config = {"frozen": True}
 
-    odd_noise: float = 0.15
+    odd_noise: FossilOddNoiseConfig = Field(default_factory=FossilOddNoiseConfig)
     dino_count_thresholds: list[DinoCountThreshold] = Field(
         default_factory=lambda: [
             DinoCountThreshold(max_odd=0.10, count=0),
@@ -198,13 +223,6 @@ class FossilGenerationConfig(BaseModel):
         if not isinstance(value, dict):
             raise TypeError("weights must be a mapping")
         return {int(k): float(v) for k, v in value.items()}
-
-    @field_validator("odd_noise")
-    @classmethod
-    def _validate_odd_noise(cls, value: float) -> float:
-        if value < 0.0:
-            raise ValueError("odd_noise must be >= 0")
-        return value
 
     @model_validator(mode="after")
     def _validate_weights(self) -> FossilGenerationConfig:

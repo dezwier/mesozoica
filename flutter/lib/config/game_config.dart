@@ -185,7 +185,7 @@ class FossilGenerationConfig {
     required this.depthBuckets,
   });
 
-  final double oddNoise;
+  final FossilOddNoiseConfig oddNoise;
   final List<DinoCountThreshold> dinoCountThresholds;
   final Map<int, double> cardCountWeights;
   final List<FossilDepthBucket> depthBuckets;
@@ -221,10 +221,47 @@ class FossilGenerationConfig {
       }
     }
     return FossilGenerationConfig(
-      oddNoise: _asDouble(yaml['odd_noise'], 0.15),
+      oddNoise: FossilOddNoiseConfig.fromYaml(yaml['odd_noise']),
       dinoCountThresholds: thresholds,
       cardCountWeights: _asIntDoubleMap(yaml['card_count_weights']),
       depthBuckets: buckets,
+    );
+  }
+}
+
+class FossilOddNoiseConfig {
+  const FossilOddNoiseConfig({
+    required this.dinoCount,
+    required this.fossilCount,
+    required this.completeness,
+    required this.quality,
+    required this.depth,
+  });
+
+  final double dinoCount;
+  final double fossilCount;
+  final double completeness;
+  final double quality;
+  final double depth;
+
+  factory FossilOddNoiseConfig.fromYaml(Object? raw) {
+    if (raw is Map) {
+      return FossilOddNoiseConfig(
+        dinoCount: _asDouble(raw['dino_count'], 0.3),
+        fossilCount: _asDouble(raw['fossil_count'], 0.3),
+        completeness: _asDouble(raw['completeness'], 0.3),
+        quality: _asDouble(raw['quality'], 0.3),
+        depth: _asDouble(raw['depth'], 0.3),
+      );
+    }
+    // Legacy scalar odd_noise: apply the same value to every sampler.
+    final shared = _asDouble(raw, 0.3);
+    return FossilOddNoiseConfig(
+      dinoCount: shared,
+      fossilCount: shared,
+      completeness: shared,
+      quality: shared,
+      depth: shared,
     );
   }
 }

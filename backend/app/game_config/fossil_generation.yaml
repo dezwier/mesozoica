@@ -1,11 +1,16 @@
 # Field fossils spawned when a site is discovered (once per site, global).
 #
 # Each field site has five odd_* scores Uniform(0,1). On survey, attributes use
-# score = clamp(odd + Uniform(-odd_noise, +odd_noise), 0, 1) then pick a tier.
+# score = clamp(odd + Uniform(-noise, +noise), 0, 1) then pick a tier.
 # See README.md in this directory for the full mechanics.
 
-# Shared ±noise applied to every odd_* score before tier lookup.
-odd_noise: 0.15
+# Per-sampler ±noise applied to each odd_* score before tier lookup.
+odd_noise:
+  dino_count: 0
+  fossil_count: 0.5
+  completeness: 0.3
+  quality: 0.3
+  depth: 0.3
 
 # How many distinct dinosaurs to sample for the site (from clamp(odd_dino_count)).
 dino_count_thresholds:

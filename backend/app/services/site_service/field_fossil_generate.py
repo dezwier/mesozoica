@@ -173,7 +173,7 @@ def ensure_field_fossils_for_site(
     dino_ids = _sample_dino_ids(
         dino_counts,
         odd=site.odd_dino_count,
-        noise=noise,
+        noise=noise.dino_count,
         thresholds=fossil_cfg.dino_count_thresholds,
         rng=random_source,
     )
@@ -184,7 +184,9 @@ def ensure_field_fossils_for_site(
 
     pending: list[Fossil] = []
     for dinosaur_id in dino_ids:
-        card_score = clamp_odd(site.odd_fossil_count, noise, rng=random_source)
+        card_score = clamp_odd(
+            site.odd_fossil_count, noise.fossil_count, rng=random_source
+        )
         card_keys = sorted(fossil_cfg.card_count_weights.keys())
         card_count = tier_from_cdf(
             card_score,
@@ -202,7 +204,7 @@ def ensure_field_fossils_for_site(
                 attr_dists.completeness,
                 order=COMPLETENESS_ORDER,
                 odd=site.odd_completeness,
-                noise=noise,
+                noise=noise.completeness,
                 default=fossil_cfg.defaults.completeness,
                 rng=random_source,
             )
@@ -210,7 +212,7 @@ def ensure_field_fossils_for_site(
                 attr_dists.preservation_quality,
                 order=QUALITY_ORDER,
                 odd=site.odd_quality,
-                noise=noise,
+                noise=noise.quality,
                 default=fossil_cfg.defaults.quality,
                 rng=random_source,
             )
@@ -218,7 +220,7 @@ def ensure_field_fossils_for_site(
             name = dino_names.get(dinosaur_id) or f"dinosaur-{dinosaur_id}"
             identified = f"{name} ({subcategory.replace('_', ' ')})"
             fossil_id = id_allocator.next_id()
-            depth_score = clamp_odd(site.odd_depth, noise, rng=random_source)
+            depth_score = clamp_odd(site.odd_depth, noise.depth, rng=random_source)
             depth_cm = sample_depth_cm(
                 fossil_cfg.depth_buckets,
                 score=depth_score,

@@ -21,7 +21,11 @@ void main() {
     expect(config.siteDiscovery.client.cacheRefreshMoveThresholdM, 500.0);
     expect(config.siteDiscovery.client.discoverFailRetryS, 20);
 
-    expect(config.fossilGeneration.oddNoise, 0.15);
+    expect(config.fossilGeneration.oddNoise.dinoCount, 0.0);
+    expect(config.fossilGeneration.oddNoise.fossilCount, 0.5);
+    expect(config.fossilGeneration.oddNoise.completeness, 0.3);
+    expect(config.fossilGeneration.oddNoise.quality, 0.3);
+    expect(config.fossilGeneration.oddNoise.depth, 0.3);
     expect(config.fossilGeneration.dinoCountThresholds.length, 6);
     expect(config.fossilGeneration.dinoCountThresholds.first.count, 0);
     expect(config.fossilGeneration.dinoCountThresholds.last.count, 5);

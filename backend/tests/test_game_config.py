@@ -43,7 +43,11 @@ def test_load_game_config_matches_current_defaults() -> None:
     assert config.site_discovery.client.cache_refresh_move_threshold_m == 500.0
     assert config.site_discovery.client.discover_fail_retry_s == 20
 
-    assert config.fossil_generation.odd_noise == 0.15
+    assert config.fossil_generation.odd_noise.dino_count == 0.0
+    assert config.fossil_generation.odd_noise.fossil_count == 0.5
+    assert config.fossil_generation.odd_noise.completeness == 0.3
+    assert config.fossil_generation.odd_noise.quality == 0.3
+    assert config.fossil_generation.odd_noise.depth == 0.3
     assert [
         (t.max_odd, t.count) for t in config.fossil_generation.dino_count_thresholds
     ] == [

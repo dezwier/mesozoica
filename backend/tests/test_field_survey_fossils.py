@@ -169,10 +169,18 @@ def test_ensure_field_fossils_zero_dino_stays_done(session: Session, monkeypatch
     session.add(field_site)
     session.commit()
 
+    from app.core.game_config import FossilOddNoiseConfig
+
     real_cfg = get_game_config().fossil_generation
 
     class _ZeroNoiseCfg:
-        odd_noise = 0.0
+        odd_noise = FossilOddNoiseConfig(
+            dino_count=0.0,
+            fossil_count=0.0,
+            completeness=0.0,
+            quality=0.0,
+            depth=0.0,
+        )
         dino_count_thresholds = real_cfg.dino_count_thresholds
         card_count_weights = real_cfg.card_count_weights
         depth_buckets = real_cfg.depth_buckets
