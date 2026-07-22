@@ -84,6 +84,13 @@ class FieldSurveyJobResponse(BaseModel):
     error_message: str | None = None
 
 
+class FieldDataPurgeResponse(BaseModel):
+    sites_deleted: int
+    fossils_deleted: int
+    survey_jobs_deleted: int
+    ensure_jobs_deleted: int
+
+
 class FieldDiscoverResponse(BaseModel):
     """Site discovery plus global fossil generation onboard metadata."""
 

@@ -62,6 +62,28 @@ const _fixture = FossilSummary(
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
+  test('FossilSummary.displaySubtitle is occurrence for archive', () {
+    expect(_fixture.displaySubtitle, 'Occurrence No #100001');
+  });
+
+  test('FossilSummary.displaySubtitle lists field attributes and depth', () {
+    const field = FossilSummary(
+      id: 200001,
+      dinosaurId: 1,
+      dinosaurName: 'Tyrannosaurus',
+      dataSource: 'field',
+      llmImpCategory: 'body',
+      llmImpSubcategory: 'teeth',
+      llmImpPreservationQuality: 'good',
+      llmImpCompleteness: 'isolated_element',
+      depthCm: 45,
+    );
+    expect(
+      field.displaySubtitle,
+      'Body, Teeth, Good, Isolated Element, 45cm',
+    );
+  });
+
   testWidgets('FossilCardFront renders fossil image, title, and llm description',
       (tester) async {
     await tester.pumpWidget(

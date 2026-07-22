@@ -107,6 +107,7 @@ class FossilSummary {
     this.dinosaurMainImageUrl,
     this.siteId,
     this.siteMainImageUrl,
+    this.dataSource = 'archive',
     this.depthCm,
     this.status,
   });
@@ -203,10 +204,13 @@ class FossilSummary {
   final String? dinosaurMainImageUrl;
   final int? siteId;
   final String? siteMainImageUrl;
+  final String dataSource;
   final int? depthCm;
   final String? status;
 
   bool get isHidden => (status ?? 'hidden').trim().toLowerCase() == 'hidden';
+
+  bool get isField => dataSource.trim().toLowerCase() == 'field';
 
   factory FossilSummary.fromJson(Map<String, dynamic> json) {
     return FossilSummary(
@@ -302,6 +306,9 @@ class FossilSummary {
       dinosaurMainImageUrl: json['dinosaur_main_image_url'] as String?,
       siteId: json['site_id'] as int?,
       siteMainImageUrl: json['site_main_image_url'] as String?,
+      dataSource: (json['data_source'] as String?)?.trim().isNotEmpty == true
+          ? (json['data_source'] as String).trim()
+          : 'archive',
       depthCm: json['depth_cm'] as int?,
       status: json['status'] as String?,
     );
@@ -313,6 +320,33 @@ class FossilSummary {
       return displayTaxonName(identified);
     }
     return dinosaurName;
+  }
+
+  /// Archive: occurrence id. Field: category, subcategory, quality,
+  /// completeness, and burial depth.
+  String get displaySubtitle {
+    if (!isField) {
+      return 'Occurrence No #$id';
+    }
+    final parts = <String>[
+      _fieldSubtitlePart(llmImpCategory ?? llmCategory),
+      _fieldSubtitlePart(llmImpSubcategory ?? llmSubcategory),
+      _fieldSubtitlePart(
+        llmImpPreservationQuality ?? llmPreservationQuality ?? preservationQuality,
+      ),
+      _fieldSubtitlePart(llmImpCompleteness ?? llmCompleteness),
+    ];
+    if (depthCm != null) {
+      parts.add('${depthCm}cm');
+    }
+    final visible = parts.where((part) => part != '—').toList();
+    return visible.isEmpty ? '—' : visible.join(', ');
+  }
+
+  static String _fieldSubtitlePart(String? value) {
+    final trimmed = value?.trim();
+    if (trimmed == null || trimmed.isEmpty) return '—';
+    return toTitleCase(trimmed);
   }
 
   String get displayCoordinates {

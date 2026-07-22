@@ -9,12 +9,14 @@ from sqlmodel import Session
 from app.core.database import get_session
 from app.core.exceptions import NotFoundError, ValidationError
 from app.core.security import (
+    get_current_admin_user,
     get_current_user,
     get_optional_current_user,
 )
 from app.models.data_source import DATA_SOURCE_ARCHIVE, DATA_SOURCE_FIELD
 from app.models.user import User
 from app.schemas.site import (
+    FieldDataPurgeResponse,
     FieldDiscoverResponse,
     FieldEnsureJobResponse,
     FieldEnsureResponse,
@@ -46,6 +48,7 @@ from app.services.site_service.field_fossil_onboard import (
     DiscoverFossilOnboardResult,
     surface_fossil_summaries,
 )
+from app.services.site_service.field_data_purge import purge_all_field_data
 from app.services.site_service.field_ensure_background import schedule_field_site_ensure
 from app.services.site_service.field_ensure_queue import (
     cell_key,
@@ -252,6 +255,29 @@ def get_field_ensure_job_status(
         total_in_radius=job.total_in_radius,
         radius_km=job.radius_km,
         error_message=job.error_message,
+    )
+
+
+@router.delete("/field", response_model=FieldDataPurgeResponse)
+def delete_all_field_data(
+    session: Session = Depends(get_session),
+    _admin: User = Depends(get_current_admin_user),
+) -> FieldDataPurgeResponse:
+    """Admin-only: wipe all field sites, field fossils, and related jobs."""
+    result = purge_all_field_data(session)
+    log_field_event(
+        "field_data_purged",
+        service="api",
+        sites_deleted=result.sites_deleted,
+        fossils_deleted=result.fossils_deleted,
+        survey_jobs_deleted=result.survey_jobs_deleted,
+        ensure_jobs_deleted=result.ensure_jobs_deleted,
+    )
+    return FieldDataPurgeResponse(
+        sites_deleted=result.sites_deleted,
+        fossils_deleted=result.fossils_deleted,
+        survey_jobs_deleted=result.survey_jobs_deleted,
+        ensure_jobs_deleted=result.ensure_jobs_deleted,
     )
 
 

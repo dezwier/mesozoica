@@ -364,6 +364,30 @@ class SiteService {
     return FieldSurveyResponse.fromJson(decoded);
   }
 
+  /// Admin-only: delete all field sites, field fossils, and related jobs.
+  Future<FieldDataPurgeResult> purgeAllFieldData() async {
+    final uri = AppConfig.fieldDataPurgeUri();
+    if (kDebugMode) {
+      debugPrint('SiteService DELETE $uri');
+    }
+    final response = await _client
+        .delete(uri, headers: await _headers())
+        .timeout(const Duration(seconds: 60));
+
+    if (response.statusCode != 200) {
+      final detail = _errorDetail(response.body);
+      throw SiteServiceException(
+        detail ?? 'Failed to purge field data (${response.statusCode})',
+      );
+    }
+
+    final decoded = jsonDecode(response.body);
+    if (decoded is! Map<String, dynamic>) {
+      throw const SiteServiceException('Invalid field purge response');
+    }
+    return FieldDataPurgeResult.fromJson(decoded);
+  }
+
   Future<FieldSurveyJobStatus> fetchFieldSurveyJobStatus(int jobId) async {
     final uri = AppConfig.fieldSurveyJobUri(jobId);
     if (kDebugMode) {

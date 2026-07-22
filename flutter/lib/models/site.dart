@@ -392,6 +392,29 @@ class FieldSurveyJobStatus {
   }
 }
 
+class FieldDataPurgeResult {
+  const FieldDataPurgeResult({
+    required this.sitesDeleted,
+    required this.fossilsDeleted,
+    required this.surveyJobsDeleted,
+    required this.ensureJobsDeleted,
+  });
+
+  final int sitesDeleted;
+  final int fossilsDeleted;
+  final int surveyJobsDeleted;
+  final int ensureJobsDeleted;
+
+  factory FieldDataPurgeResult.fromJson(Map<String, dynamic> json) {
+    return FieldDataPurgeResult(
+      sitesDeleted: json['sites_deleted'] as int? ?? 0,
+      fossilsDeleted: json['fossils_deleted'] as int? ?? 0,
+      surveyJobsDeleted: json['survey_jobs_deleted'] as int? ?? 0,
+      ensureJobsDeleted: json['ensure_jobs_deleted'] as int? ?? 0,
+    );
+  }
+}
+
 class SiteNearbyResponse {
   const SiteNearbyResponse({
     required this.items,

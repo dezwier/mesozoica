@@ -72,7 +72,7 @@ class FossilCardHeader extends StatelessWidget {
         if (showOccurrenceSubtitle) ...[
           const SizedBox(height: 8),
           Text(
-            'Occurrence No #${fossil.id}',
+            fossil.displaySubtitle,
             textAlign: centered ? TextAlign.center : TextAlign.start,
             style: subtitleStyle,
             maxLines: 1,

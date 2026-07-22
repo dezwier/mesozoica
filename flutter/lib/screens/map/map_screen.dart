@@ -7,8 +7,11 @@ import 'package:provider/provider.dart';
 import '../../config/map_config.dart';
 import '../../controllers/auth_controller.dart';
 import '../../controllers/catalog_mode_controller.dart';
+import '../../controllers/field_discovery_coordinator.dart';
 import '../../controllers/field_session_coordinator.dart';
+import '../../controllers/fossil_catalog_controller.dart';
 import '../../controllers/map_controller.dart' as map_data;
+import '../../controllers/site_catalog_controller.dart';
 import '../../controllers/splash_hold_provider.dart';
 import '../../controllers/theme_controller.dart';
 import '../../models/site.dart';
@@ -18,6 +21,7 @@ import '../../services/site_service.dart';
 import '../../shell/map_chrome_insets.dart';
 import '../../widgets/common/chrome_fab.dart';
 import '../../widgets/dino/dinosaur_filter_fab.dart';
+import '../../widgets/map/field_data_purge_dialog.dart';
 import '../../widgets/map/map_control_buttons.dart';
 import '../../widgets/map/mapbox_camera_coordinator.dart';
 import '../../widgets/map/mapbox_field_map.dart';
@@ -337,6 +341,34 @@ class _MapScreenState extends State<MapScreen> {
     }
   }
 
+  Future<void> _onPurgeFieldData() async {
+    final confirmed = await FieldDataPurgeDialog.confirm(context);
+    if (!confirmed || !mounted) return;
+
+    _showScanBanner('Deleting field world…', autoDismiss: false);
+    final service = SiteService();
+    try {
+      final result = await service.purgeAllFieldData();
+      if (!mounted) return;
+      context.read<FieldDiscoveryCoordinator>().clearForUserChange();
+      context.read<map_data.MapController>().load(force: true);
+      context.read<SiteCatalogController>().load(force: true);
+      context.read<FossilCatalogController>().load(force: true);
+      _showScanBanner(
+        'Deleted ${result.sitesDeleted} sites · '
+        '${result.fossilsDeleted} fossils',
+      );
+    } on SiteServiceException catch (error) {
+      if (!mounted) return;
+      _showScanBanner(error.message);
+    } catch (_) {
+      if (!mounted) return;
+      _showScanBanner('Could not delete field world');
+    } finally {
+      service.dispose();
+    }
+  }
+
   void _openFilterSheet(map_data.MapController mapData, bool isFieldMode) {
     SiteFilterSheet.show(
       context,
@@ -630,6 +662,13 @@ class _MapScreenState extends State<MapScreen> {
                     onPressed: _onScanFieldArea,
                     tooltip: 'Scan map center for field sites',
                     child: const Icon(Icons.radar_outlined),
+                  ),
+                  ChromeFab(
+                    heroTag: 'purge_field_data',
+                    tone: ChromeFabTone.grey,
+                    onPressed: _onPurgeFieldData,
+                    tooltip: 'Delete all field sites and fossils',
+                    child: const Icon(Icons.delete_forever_outlined),
                   ),
                   // Keep admin tools clearly above the regular map FABs.
                   const SizedBox(height: 28),
