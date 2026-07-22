@@ -83,6 +83,11 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
             },
           );
       context.read<FieldSessionCoordinator>().onForeground();
+      unawaited(
+        context.read<WalkDistanceController>().bind(
+              context.read<LocationService>(),
+            ),
+      );
       _setupPushHandling();
     });
   }
@@ -245,7 +250,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
               .refreshInBackground(authenticatedUserId: userId);
         }
         unawaited(
-          context.read<WalkDistanceController>().refresh(
+          context.read<WalkDistanceController>().onAppResumed(
                 profile: auth.currentUser,
               ),
         );
@@ -255,9 +260,11 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
       case AppLifecycleState.hidden:
         _appInForeground = false;
         fieldSession.onBackground();
+        unawaited(context.read<WalkDistanceController>().onAppBackgrounded());
       case AppLifecycleState.detached:
         _appInForeground = false;
         fieldSession.onLifecycle(state);
+        unawaited(context.read<WalkDistanceController>().onAppBackgrounded());
     }
   }
 

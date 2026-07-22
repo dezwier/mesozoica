@@ -1,4 +1,4 @@
-"""Walk-distance sync helpers (HealthKit / Health Connect → user profile)."""
+"""Walk-distance sync helpers (GPS open + Health closed → user profile)."""
 
 from __future__ import annotations
 
@@ -15,6 +15,10 @@ from app.services.user_service import user_to_profile_response
 _MAX_METERS_PER_DAY = 200_000.0
 
 
+def _monotonic(previous: float, reported: float) -> float:
+    return previous if reported < previous else reported
+
+
 def apply_distance_update(
     session: Session,
     user: User,
@@ -23,18 +27,14 @@ def apply_distance_update(
     now = datetime.now(timezone.utc)
     previous_total = float(user.total_distance_m or 0.0)
     previous_weekly = float(user.weekly_distance_m or 0.0)
+    previous_active = float(user.active_distance_m or 0.0)
+    previous_active_weekly = float(user.active_weekly_distance_m or 0.0)
     previous_week_start = user.distance_week_start
     previous_synced = user.distance_synced_at
 
-    reported_total = float(payload.total_distance_m)
-    reported_weekly = float(payload.weekly_distance_m)
     week_start = payload.week_start
-
-    if reported_total < previous_total:
-        # Distance only grows; ignore downward reports (stale device / reset).
-        new_total = previous_total
-    else:
-        new_total = reported_total
+    new_total = _monotonic(previous_total, float(payload.total_distance_m))
+    new_active = _monotonic(previous_active, float(payload.active_distance_m))
 
     delta_total = new_total - previous_total
     if previous_synced is not None and delta_total > 0:
@@ -53,12 +53,18 @@ def apply_distance_update(
             )
 
     if previous_week_start is None or week_start != previous_week_start:
-        new_weekly = reported_weekly
+        new_weekly = float(payload.weekly_distance_m)
+        new_active_weekly = float(payload.active_weekly_distance_m)
     else:
-        new_weekly = max(previous_weekly, reported_weekly)
+        new_weekly = _monotonic(previous_weekly, float(payload.weekly_distance_m))
+        new_active_weekly = _monotonic(
+            previous_active_weekly, float(payload.active_weekly_distance_m)
+        )
 
     user.total_distance_m = new_total
     user.weekly_distance_m = new_weekly
+    user.active_distance_m = new_active
+    user.active_weekly_distance_m = new_active_weekly
     user.distance_week_start = week_start
     user.distance_synced_at = now
     session.add(user)

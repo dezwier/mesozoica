@@ -3,6 +3,8 @@ import 'package:flutter/foundation.dart' show defaultTargetPlatform, kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import 'dart:async';
+
 import '../../controllers/walk_distance_controller.dart';
 import '../../models/profile.dart';
 import '../../services/auth_service.dart';
@@ -219,13 +221,9 @@ class ProfileContent extends StatelessWidget {
   Widget _buildDistanceCard(BuildContext context, ColorScheme scheme) {
     return Consumer<WalkDistanceController>(
       builder: (context, walk, _) {
-        final weekKm = _kmLabel(
-          walk.weeklyMeters ?? profile.weeklyDistanceM,
-        );
-        final totalKm = _kmLabel(
-          walk.totalMeters ?? profile.totalDistanceM,
-        );
-        final caption = _distanceCaption(walk.permission);
+        final weekKm = _kmLabel(walk.displayWeeklyMeters);
+        final totalKm = _kmLabel(walk.displayTotalMeters);
+        final caption = _distanceCaption(walk);
         return AppCard.profile(
           borderRadius: _cardRadius,
           child: Container(
@@ -242,14 +240,15 @@ class ProfileContent extends StatelessWidget {
                   children: [
                     Icon(Icons.directions_walk, color: scheme.primary, size: 20),
                     const SizedBox(width: 8),
-                    Text(
-                      'Distance walked',
-                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                            fontWeight: FontWeight.w600,
-                          ),
+                    Expanded(
+                      child: Text(
+                        'Distance walked',
+                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                              fontWeight: FontWeight.w600,
+                            ),
+                      ),
                     ),
-                    if (walk.loading) ...[
-                      const SizedBox(width: 8),
+                    if (walk.loading)
                       SizedBox(
                         width: 14,
                         height: 14,
@@ -258,8 +257,32 @@ class ProfileContent extends StatelessWidget {
                           color: scheme.primary,
                         ),
                       ),
-                    ],
                   ],
+                ),
+                const SizedBox(height: 10),
+                SegmentedButton<ExploringDistanceMode>(
+                  segments: const [
+                    ButtonSegment(
+                      value: ExploringDistanceMode.active,
+                      label: Text('Active'),
+                      icon: Icon(Icons.phone_android, size: 16),
+                    ),
+                    ButtonSegment(
+                      value: ExploringDistanceMode.total,
+                      label: Text('Total'),
+                      icon: Icon(Icons.public, size: 16),
+                    ),
+                  ],
+                  selected: {walk.mode},
+                  onSelectionChanged: (selected) {
+                    unawaited(walk.setMode(selected.first));
+                  },
+                  style: ButtonStyle(
+                    visualDensity: VisualDensity.compact,
+                    textStyle: WidgetStatePropertyAll(
+                      Theme.of(context).textTheme.labelMedium,
+                    ),
+                  ),
                 ),
                 const SizedBox(height: 12),
                 Row(
@@ -285,10 +308,11 @@ class ProfileContent extends StatelessWidget {
                 ),
                 if (caption != null) ...[
                   const SizedBox(height: 10),
-                  if (walk.permission == HealthDistancePermission.denied ||
-                      walk.permission == HealthDistancePermission.unknown ||
-                      walk.permission ==
-                          HealthDistancePermission.unavailable)
+                  if (walk.mode == ExploringDistanceMode.total &&
+                      (walk.permission == HealthDistancePermission.denied ||
+                          walk.permission == HealthDistancePermission.unknown ||
+                          walk.permission ==
+                              HealthDistancePermission.unavailable))
                     TextButton(
                       onPressed: () {
                         context.read<WalkDistanceController>().refresh(
@@ -349,24 +373,29 @@ class ProfileContent extends StatelessWidget {
     return '${km.toStringAsFixed(0)} km';
   }
 
-  String? _distanceCaption(HealthDistancePermission permission) {
-    switch (permission) {
+  String? _distanceCaption(WalkDistanceController walk) {
+    if (walk.mode == ExploringDistanceMode.active) {
+      return 'While Mesozoica is open';
+    }
+    switch (walk.permission) {
       case HealthDistancePermission.granted:
-        if (kIsWeb) return null;
+        if (kIsWeb) {
+          return 'Includes walking while the app is closed';
+        }
         if (defaultTargetPlatform == TargetPlatform.iOS) {
-          return 'Synced from Apple Health';
+          return 'Includes Apple Health when closed';
         }
         if (defaultTargetPlatform == TargetPlatform.android) {
-          return 'Synced from Health Connect';
+          return 'Includes Health Connect when closed';
         }
-        return null;
+        return 'Includes walking while the app is closed';
       case HealthDistancePermission.denied:
       case HealthDistancePermission.unknown:
         return 'Enable Health access';
       case HealthDistancePermission.unavailable:
         return 'Install Health Connect';
       case HealthDistancePermission.unsupported:
-        return null;
+        return 'GPS while open only on this device';
     }
   }
 

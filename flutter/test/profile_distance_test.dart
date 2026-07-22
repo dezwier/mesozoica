@@ -11,6 +11,8 @@ void main() {
       'created_at': '2026-01-15T12:00:00+00:00',
       'total_distance_m': 12345.5,
       'weekly_distance_m': 2100,
+      'active_distance_m': 8000,
+      'active_weekly_distance_m': 1500,
       'level': 3,
       'xp': 100,
     });
@@ -21,5 +23,7 @@ void main() {
     expect(profile.createdAt!.toUtc().day, 15);
     expect(profile.totalDistanceM, 12345.5);
     expect(profile.weeklyDistanceM, 2100);
+    expect(profile.activeDistanceM, 8000);
+    expect(profile.activeWeeklyDistanceM, 1500);
   });
 }

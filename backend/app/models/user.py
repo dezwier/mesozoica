@@ -42,9 +42,12 @@ class User(SQLModel, table=True):
     current_location: str = Field(default="", max_length=200)
     is_admin: bool = Field(default=False)
 
-    # Walked distance synced from Apple Health / Health Connect (meters).
+    # Walked distance (meters): total = GPS open + Health closed gaps;
+    # active = GPS while app open only.
     total_distance_m: float = Field(default=0.0)
     weekly_distance_m: float = Field(default=0.0)
+    active_distance_m: float = Field(default=0.0)
+    active_weekly_distance_m: float = Field(default=0.0)
     distance_week_start: Optional[date] = Field(default=None)
     distance_synced_at: Optional[datetime] = Field(default=None)
 

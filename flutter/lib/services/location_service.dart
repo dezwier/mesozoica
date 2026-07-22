@@ -21,6 +21,7 @@ bool shouldTrackLocation({
 /// User location for the map tab and field-session ensure tracking.
 class LocationService extends ChangeNotifier {
   LatLng? _currentLocation;
+  Position? _lastPosition;
   double _headingDeg = 0;
   bool _isLoading = false;
   String? _error;
@@ -32,6 +33,8 @@ class LocationService extends ChangeNotifier {
   bool _appForeground = true;
 
   LatLng? get currentLocation => _currentLocation;
+  Position? get lastPosition => _lastPosition;
+  bool get isAppForeground => _appForeground;
   double get headingDeg => _headingDeg;
   bool get isLoading => _isLoading;
   String? get error => _error;
@@ -208,25 +211,20 @@ class LocationService extends ChangeNotifier {
 
       final lastKnown = await Geolocator.getLastKnownPosition();
       if (lastKnown != null) {
-        _currentLocation = LatLng(lastKnown.latitude, lastKnown.longitude);
-        notifyListeners();
+        _applyPosition(lastKnown);
       }
 
       final settings = _locationSettings();
       final position = await Geolocator.getCurrentPosition(
         locationSettings: settings,
       );
-      _currentLocation = LatLng(position.latitude, position.longitude);
-      notifyListeners();
+      _applyPosition(position);
 
       _locationSub?.cancel();
       _locationSub = Geolocator.getPositionStream(
         locationSettings: settings,
       ).listen(
-        (position) {
-          _currentLocation = LatLng(position.latitude, position.longitude);
-          notifyListeners();
-        },
+        _applyPosition,
         onError: (Object error) {
           if (kDebugMode) {
             debugPrint('LocationService stream error: $error');
@@ -242,6 +240,12 @@ class LocationService extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
     }
+  }
+
+  void _applyPosition(Position position) {
+    _lastPosition = position;
+    _currentLocation = LatLng(position.latitude, position.longitude);
+    notifyListeners();
   }
 
   @override

@@ -40,6 +40,8 @@ def user_to_response(user: User) -> UserResponse:
         is_admin=user.is_admin,
         total_distance_m=float(user.total_distance_m or 0.0),
         weekly_distance_m=float(user.weekly_distance_m or 0.0),
+        active_distance_m=float(user.active_distance_m or 0.0),
+        active_weekly_distance_m=float(user.active_weekly_distance_m or 0.0),
         distance_week_start=user.distance_week_start,
         distance_synced_at=(
             user.distance_synced_at.isoformat()

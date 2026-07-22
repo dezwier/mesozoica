@@ -21,6 +21,8 @@ class Profile {
   final DateTime? createdAt;
   final double totalDistanceM;
   final double weeklyDistanceM;
+  final double activeDistanceM;
+  final double activeWeeklyDistanceM;
 
   const Profile({
     required this.id,
@@ -45,6 +47,8 @@ class Profile {
     this.createdAt,
     this.totalDistanceM = 0,
     this.weeklyDistanceM = 0,
+    this.activeDistanceM = 0,
+    this.activeWeeklyDistanceM = 0,
   });
 
   factory Profile.fromJson(Map<String, dynamic> json) {
@@ -95,6 +99,13 @@ class Profile {
       weeklyDistanceM: (json['weekly_distance_m'] as num?)?.toDouble() ??
           (json['weeklyDistanceM'] as num?)?.toDouble() ??
           0,
+      activeDistanceM: (json['active_distance_m'] as num?)?.toDouble() ??
+          (json['activeDistanceM'] as num?)?.toDouble() ??
+          0,
+      activeWeeklyDistanceM:
+          (json['active_weekly_distance_m'] as num?)?.toDouble() ??
+              (json['activeWeeklyDistanceM'] as num?)?.toDouble() ??
+              0,
     );
   }
 
@@ -130,6 +141,8 @@ class Profile {
         'createdAt': createdAt?.toIso8601String(),
         'totalDistanceM': totalDistanceM,
         'weeklyDistanceM': weeklyDistanceM,
+        'activeDistanceM': activeDistanceM,
+        'activeWeeklyDistanceM': activeWeeklyDistanceM,
       };
 
   Profile copyWith({
@@ -141,6 +154,8 @@ class Profile {
     DateTime? createdAt,
     double? totalDistanceM,
     double? weeklyDistanceM,
+    double? activeDistanceM,
+    double? activeWeeklyDistanceM,
   }) {
     return Profile(
       id: id,
@@ -165,6 +180,9 @@ class Profile {
       createdAt: createdAt ?? this.createdAt,
       totalDistanceM: totalDistanceM ?? this.totalDistanceM,
       weeklyDistanceM: weeklyDistanceM ?? this.weeklyDistanceM,
+      activeDistanceM: activeDistanceM ?? this.activeDistanceM,
+      activeWeeklyDistanceM:
+          activeWeeklyDistanceM ?? this.activeWeeklyDistanceM,
     );
   }
 }

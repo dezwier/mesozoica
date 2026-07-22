@@ -34,6 +34,8 @@ def test_profile_includes_distance_fields(client: TestClient):
     body = response.json()
     assert body["total_distance_m"] == 0.0
     assert body["weekly_distance_m"] == 0.0
+    assert body["active_distance_m"] == 0.0
+    assert body["active_weekly_distance_m"] == 0.0
     assert body["distance_week_start"] is None
     assert body["created_at"]
 
@@ -49,27 +51,35 @@ def test_patch_distance_grows_monotonically(client: TestClient):
         json={
             "total_distance_m": 5000,
             "weekly_distance_m": 1200,
+            "active_distance_m": 3000,
+            "active_weekly_distance_m": 800,
             "week_start": week,
         },
     )
     assert first.status_code == 200
     assert first.json()["total_distance_m"] == 5000
     assert first.json()["weekly_distance_m"] == 1200
+    assert first.json()["active_distance_m"] == 3000
+    assert first.json()["active_weekly_distance_m"] == 800
     assert first.json()["distance_week_start"] == week
 
-    # Downward total is ignored; weekly same week takes max.
+    # Downward totals are ignored; weekly same week takes max.
     second = client.patch(
         "/api/v1/users/me/distance",
         headers=headers,
         json={
             "total_distance_m": 4000,
             "weekly_distance_m": 800,
+            "active_distance_m": 2000,
+            "active_weekly_distance_m": 400,
             "week_start": week,
         },
     )
     assert second.status_code == 200
     assert second.json()["total_distance_m"] == 5000
     assert second.json()["weekly_distance_m"] == 1200
+    assert second.json()["active_distance_m"] == 3000
+    assert second.json()["active_weekly_distance_m"] == 800
 
     third = client.patch(
         "/api/v1/users/me/distance",
@@ -77,12 +87,16 @@ def test_patch_distance_grows_monotonically(client: TestClient):
         json={
             "total_distance_m": 5500,
             "weekly_distance_m": 1500,
+            "active_distance_m": 3200,
+            "active_weekly_distance_m": 900,
             "week_start": week,
         },
     )
     assert third.status_code == 200
     assert third.json()["total_distance_m"] == 5500
     assert third.json()["weekly_distance_m"] == 1500
+    assert third.json()["active_distance_m"] == 3200
+    assert third.json()["active_weekly_distance_m"] == 900
 
 
 def test_patch_distance_week_rollover(client: TestClient):
@@ -95,6 +109,8 @@ def test_patch_distance_week_rollover(client: TestClient):
         json={
             "total_distance_m": 10000,
             "weekly_distance_m": 3000,
+            "active_distance_m": 7000,
+            "active_weekly_distance_m": 2000,
             "week_start": "2026-07-13",
         },
     )
@@ -104,6 +120,8 @@ def test_patch_distance_week_rollover(client: TestClient):
         json={
             "total_distance_m": 10500,
             "weekly_distance_m": 200,
+            "active_distance_m": 7100,
+            "active_weekly_distance_m": 100,
             "week_start": "2026-07-20",
         },
     )
@@ -111,6 +129,8 @@ def test_patch_distance_week_rollover(client: TestClient):
     body = rolled.json()
     assert body["total_distance_m"] == 10500
     assert body["weekly_distance_m"] == 200
+    assert body["active_distance_m"] == 7100
+    assert body["active_weekly_distance_m"] == 100
     assert body["distance_week_start"] == "2026-07-20"
 
 

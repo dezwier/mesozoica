@@ -42,6 +42,8 @@ class UserResponse(BaseModel):
     is_admin: bool = False
     total_distance_m: float = 0.0
     weekly_distance_m: float = 0.0
+    active_distance_m: float = 0.0
+    active_weekly_distance_m: float = 0.0
     distance_week_start: date | None = None
     distance_synced_at: str | None = None
 
@@ -55,6 +57,8 @@ class UserProfileResponse(UserResponse):
 class UpdateDistanceRequest(BaseModel):
     total_distance_m: float = Field(..., ge=0)
     weekly_distance_m: float = Field(..., ge=0)
+    active_distance_m: float = Field(0, ge=0)
+    active_weekly_distance_m: float = Field(0, ge=0)
     week_start: date = Field(..., description="Local Monday (ISO date) for the weekly window")
 
 
