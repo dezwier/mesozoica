@@ -18,6 +18,9 @@ class Profile {
   final String email;
   final String? fullName;
   final bool isAdmin;
+  final DateTime? createdAt;
+  final double totalDistanceM;
+  final double weeklyDistanceM;
 
   const Profile({
     required this.id,
@@ -39,6 +42,9 @@ class Profile {
     required this.email,
     this.fullName,
     this.isAdmin = false,
+    this.createdAt,
+    this.totalDistanceM = 0,
+    this.weeklyDistanceM = 0,
   });
 
   factory Profile.fromJson(Map<String, dynamic> json) {
@@ -80,7 +86,25 @@ class Profile {
       isAdmin: json['is_admin'] as bool? ??
           json['isAdmin'] as bool? ??
           false,
+      createdAt: _parseDateTime(
+        json['created_at'] ?? json['createdAt'],
+      ),
+      totalDistanceM: (json['total_distance_m'] as num?)?.toDouble() ??
+          (json['totalDistanceM'] as num?)?.toDouble() ??
+          0,
+      weeklyDistanceM: (json['weekly_distance_m'] as num?)?.toDouble() ??
+          (json['weeklyDistanceM'] as num?)?.toDouble() ??
+          0,
     );
+  }
+
+  static DateTime? _parseDateTime(Object? raw) {
+    if (raw == null) return null;
+    if (raw is DateTime) return raw;
+    if (raw is String && raw.isNotEmpty) {
+      return DateTime.tryParse(raw);
+    }
+    return null;
   }
 
   Map<String, dynamic> toJson() => {
@@ -103,6 +127,9 @@ class Profile {
         'email': email,
         'fullName': fullName,
         'isAdmin': isAdmin,
+        'createdAt': createdAt?.toIso8601String(),
+        'totalDistanceM': totalDistanceM,
+        'weeklyDistanceM': weeklyDistanceM,
       };
 
   Profile copyWith({
@@ -111,6 +138,9 @@ class Profile {
     String? profileImage,
     String? fullName,
     bool? isAdmin,
+    DateTime? createdAt,
+    double? totalDistanceM,
+    double? weeklyDistanceM,
   }) {
     return Profile(
       id: id,
@@ -132,6 +162,9 @@ class Profile {
       email: email,
       fullName: fullName ?? this.fullName,
       isAdmin: isAdmin ?? this.isAdmin,
+      createdAt: createdAt ?? this.createdAt,
+      totalDistanceM: totalDistanceM ?? this.totalDistanceM,
+      weeklyDistanceM: weeklyDistanceM ?? this.weeklyDistanceM,
     );
   }
 }

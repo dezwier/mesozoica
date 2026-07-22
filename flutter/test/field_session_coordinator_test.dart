@@ -86,7 +86,7 @@ void main() {
 
     expect(ensureCalls, 1);
     expect(coordinator.isSessionActive, isTrue);
-    expect(locationService.lastBackgroundPreferred, isTrue);
+    expect(locationService.lastBackgroundPreferred, isFalse);
 
     coordinator.dispose();
   });
@@ -133,8 +133,7 @@ void main() {
     coordinator.dispose();
   });
 
-  test('background lifecycle switches location to background GPS profile',
-      () async {
+  test('background lifecycle stops GPS via onAppBackgrounded', () async {
     final coordinator = FieldSessionCoordinator(
       siteService: SiteService(
         client: MockClient((request) async {

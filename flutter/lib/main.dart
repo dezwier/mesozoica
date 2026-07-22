@@ -22,6 +22,7 @@ import 'controllers/tool_catalog_controller.dart';
 import 'controllers/notification_controller.dart';
 import 'controllers/splash_hold_provider.dart';
 import 'controllers/theme_controller.dart';
+import 'controllers/walk_distance_controller.dart';
 import 'firebase_options.dart';
 import 'services/location_service.dart';
 import 'services/map_tile_cache.dart';
@@ -133,6 +134,7 @@ class MesozoicaApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => LocationService()),
         ChangeNotifierProvider(create: (_) => FieldSessionCoordinator()),
         ChangeNotifierProvider(create: (_) => FieldDiscoveryCoordinator()),
+        ChangeNotifierProvider(create: (_) => WalkDistanceController()),
       ],
       child: Consumer<ThemeController>(
         builder: (context, themeController, _) {

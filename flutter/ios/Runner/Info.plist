@@ -65,11 +65,10 @@
 	</dict>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Mesozoica needs your location to show nearby fossil discoveries on the map.</string>
-	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-	<string>Mesozoica uses your location in the background to discover nearby field sites and keep field exploration up to date.</string>
+	<key>NSHealthShareUsageDescription</key>
+	<string>Mesozoica reads walking distance to track your field exploration.</string>
 	<key>UIBackgroundModes</key>
 	<array>
-		<string>location</string>
 		<string>remote-notification</string>
 	</array>
 	<key>NSMotionUsageDescription</key>

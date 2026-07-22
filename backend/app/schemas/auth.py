@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import date
+
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 
@@ -38,12 +40,22 @@ class UserResponse(BaseModel):
     current_location: str = ""
     is_subscriber: bool = False
     is_admin: bool = False
+    total_distance_m: float = 0.0
+    weekly_distance_m: float = 0.0
+    distance_week_start: date | None = None
+    distance_synced_at: str | None = None
 
 
 class UserProfileResponse(UserResponse):
     actual_dinosaurs_count: int = 0
     actual_fossils_count: int = 0
     actual_sites_count: int = 0
+
+
+class UpdateDistanceRequest(BaseModel):
+    total_distance_m: float = Field(..., ge=0)
+    weekly_distance_m: float = Field(..., ge=0)
+    week_start: date = Field(..., description="Local Monday (ISO date) for the weekly window")
 
 
 class UserListEntry(BaseModel):

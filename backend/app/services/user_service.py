@@ -38,6 +38,14 @@ def user_to_response(user: User) -> UserResponse:
         current_location=user.current_location,
         is_subscriber=False,
         is_admin=user.is_admin,
+        total_distance_m=float(user.total_distance_m or 0.0),
+        weekly_distance_m=float(user.weekly_distance_m or 0.0),
+        distance_week_start=user.distance_week_start,
+        distance_synced_at=(
+            user.distance_synced_at.isoformat()
+            if user.distance_synced_at is not None
+            else None
+        ),
     )
 
 

@@ -2,31 +2,31 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mesozoica/services/location_service.dart';
 
 void main() {
-  test('uses foreground GPS while app is resumed on any tab', () {
+  test('tracks GPS while app is resumed and location is wanted', () {
     expect(
-      shouldUseBackgroundLocationProfile(
-        backgroundPreferred: true,
+      shouldTrackLocation(
+        wantsLocation: true,
         appForeground: true,
-      ),
-      isFalse,
-    );
-  });
-
-  test('uses background GPS when app is backgrounded or locked', () {
-    expect(
-      shouldUseBackgroundLocationProfile(
-        backgroundPreferred: true,
-        appForeground: false,
       ),
       isTrue,
     );
   });
 
-  test('never uses background GPS without field-session preference', () {
+  test('stops GPS when app is backgrounded or locked', () {
     expect(
-      shouldUseBackgroundLocationProfile(
-        backgroundPreferred: false,
+      shouldTrackLocation(
+        wantsLocation: true,
         appForeground: false,
+      ),
+      isFalse,
+    );
+  });
+
+  test('never tracks GPS without map or field session', () {
+    expect(
+      shouldTrackLocation(
+        wantsLocation: false,
+        appForeground: true,
       ),
       isFalse,
     );

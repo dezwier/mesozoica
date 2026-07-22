@@ -6,8 +6,13 @@ from sqlmodel import Session, select
 from app.core.database import get_session
 from app.core.security import get_current_user
 from app.models.user import User
-from app.schemas.auth import UserListResponse, UserProfileResponse
+from app.schemas.auth import (
+    UpdateDistanceRequest,
+    UserListResponse,
+    UserProfileResponse,
+)
 from app.services.user_service import user_to_list_entry, user_to_profile_response
+from app.services.walk_distance_service import apply_distance_update
 
 router = APIRouter(prefix="/users", tags=["users"])
 
@@ -17,6 +22,19 @@ async def get_my_profile(
     current_user: User = Depends(get_current_user),
 ):
     return user_to_profile_response(current_user)
+
+
+@router.patch("/me/distance", response_model=UserProfileResponse)
+async def update_my_distance(
+    payload: UpdateDistanceRequest,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
+    # Re-load so we mutate a session-bound instance.
+    user = session.get(User, current_user.id)
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    return apply_distance_update(session, user, payload)
 
 
 @router.get("/list", response_model=UserListResponse)

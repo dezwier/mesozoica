@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import hashlib
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from typing import Optional
 
 from sqlalchemy import Column, JSON
@@ -41,6 +41,12 @@ class User(SQLModel, table=True):
     bio: str = Field(default="", max_length=2000)
     current_location: str = Field(default="", max_length=200)
     is_admin: bool = Field(default=False)
+
+    # Walked distance synced from Apple Health / Health Connect (meters).
+    total_distance_m: float = Field(default=0.0)
+    weekly_distance_m: float = Field(default=0.0)
+    distance_week_start: Optional[date] = Field(default=None)
+    distance_synced_at: Optional[datetime] = Field(default=None)
 
     @staticmethod
     def hash_password(password: str) -> str:

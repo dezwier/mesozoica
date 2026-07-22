@@ -6,18 +6,16 @@ import 'package:flutter_compass/flutter_compass.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 
-/// Whether GPS should use the background-capable profile.
+/// Whether GPS should be actively streaming.
 ///
-/// While the app is in the foreground, always use the normal While-In-Use
-/// stream so 50 m discovery works on every tab. Only when the app itself is
-/// backgrounded or locked do we switch to the background-capable profile
-/// (Android foreground service / iOS `allowsBackgroundLocationUpdates`).
+/// Location is While-In-Use only (Pokémon GO style): no background GPS when
+/// the app is paused/locked. Discovery and map follow resume on foreground.
 @visibleForTesting
-bool shouldUseBackgroundLocationProfile({
-  required bool backgroundPreferred,
+bool shouldTrackLocation({
+  required bool wantsLocation,
   required bool appForeground,
 }) {
-  return backgroundPreferred && !appForeground;
+  return wantsLocation && appForeground;
 }
 
 /// User location for the map tab and field-session ensure tracking.
@@ -31,7 +29,6 @@ class LocationService extends ChangeNotifier {
   Timer? _headingNotifyTimer;
   bool _mapForeground = false;
   bool _fieldSession = false;
-  bool _backgroundPreferred = false;
   bool _appForeground = true;
 
   LatLng? get currentLocation => _currentLocation;
@@ -42,9 +39,12 @@ class LocationService extends ChangeNotifier {
   bool get isTracking =>
       _mapForeground || (_fieldSession && _locationSub != null);
 
-  /// True when GPS uses the background-capable profile (FGS / Always updates).
+  /// True when a foreground GPS stream should be running.
   @visibleForTesting
-  bool get usesBackgroundLocationProfile => _useBackgroundLocationProfile;
+  bool get isLocationStreamDesired => shouldTrackLocation(
+        wantsLocation: _mapForeground || _fieldSession,
+        appForeground: _appForeground,
+      );
 
   Future<void> setMapForeground(bool active) async {
     final changed = _mapForeground != active;
@@ -57,17 +57,11 @@ class LocationService extends ChangeNotifier {
 
   Future<void> setFieldSession({
     required bool active,
+    @Deprecated('Background GPS is no longer supported')
     bool backgroundPreferred = false,
   }) async {
-    final settingsChanged =
-        _fieldSession != active || _backgroundPreferred != backgroundPreferred;
+    final settingsChanged = _fieldSession != active;
     _fieldSession = active;
-    _backgroundPreferred = backgroundPreferred;
-    if (active && backgroundPreferred) {
-      // Ask for Always early so background/locked discovery can work later,
-      // but foreground tracking still proceeds with While In Use.
-      await _ensureBackgroundPermission();
-    }
     await _reconcileTracking(forceRestartLocation: settingsChanged);
   }
 
@@ -78,26 +72,24 @@ class LocationService extends ChangeNotifier {
     await _reconcileTracking(forceRestartLocation: wasBackground);
   }
 
-  /// Switch to the background-capable GPS profile while the process stays alive.
+  /// Stop GPS while the app is backgrounded or locked.
   ///
-  /// Without this restart, a foreground-only stream keeps
-  /// `allowBackgroundLocationUpdates: false` / no Android FGS, so 50 m
-  /// discovery stops when the app is backgrounded or the phone is locked.
+  /// Walked distance continues via HealthKit / Health Connect; proximity
+  /// discovery resumes when the app returns to the foreground.
   Future<void> onAppBackgrounded() async {
     if (!_appForeground) return;
     _appForeground = false;
-    if (!_fieldSession || !_backgroundPreferred) return;
-    await _ensureBackgroundPermission();
     await _reconcileTracking(forceRestartLocation: true);
   }
 
   Future<void> _reconcileTracking({bool forceRestartLocation = false}) async {
-    if (!_mapForeground && !_fieldSession) {
+    final wantsLocation = _mapForeground || _fieldSession;
+    if (!wantsLocation || !_appForeground) {
       _stopStreams();
       return;
     }
     // Compass is foreground-only UI for the map tab.
-    if (_mapForeground && _appForeground) {
+    if (_mapForeground) {
       _startHeading();
     } else {
       _headingSub?.cancel();
@@ -150,7 +142,7 @@ class LocationService extends ChangeNotifier {
     );
   }
 
-  Future<bool> _ensurePermission({required bool backgroundPreferred}) async {
+  Future<bool> _ensurePermission() async {
     final enabled = await Geolocator.isLocationServiceEnabled();
     if (!enabled) {
       _error = 'Location services are disabled.';
@@ -167,55 +159,19 @@ class LocationService extends ChangeNotifier {
       return false;
     }
 
-    if (backgroundPreferred &&
-        permission == LocationPermission.whileInUse &&
-        !kIsWeb) {
-      permission = await Geolocator.requestPermission();
-    }
-
-    if (backgroundPreferred &&
-        permission != LocationPermission.always &&
-        !kIsWeb &&
-        Platform.isIOS) {
-      // Keep tracking alive with While In Use; iOS simply will not deliver
-      // suspended-state updates until the user grants Always.
-      _error = 'Background location requires Always permission.';
-    } else {
-      _error = null;
-    }
+    _error = null;
     return true;
   }
 
-  Future<void> _ensureBackgroundPermission() async {
-    await _ensurePermission(backgroundPreferred: true);
-  }
-
-  bool get _useBackgroundLocationProfile => shouldUseBackgroundLocationProfile(
-        backgroundPreferred: _backgroundPreferred,
-        appForeground: _appForeground,
-      );
-
-  LocationSettings _locationSettings({required bool backgroundPreferred}) {
-    // Best accuracy in both modes so 50 m discovery stays reliable.
+  LocationSettings _locationSettings() {
     const accuracy = LocationAccuracy.best;
-    // Tight filter in foreground so the map follow feels responsive.
-    final distanceFilter = backgroundPreferred ? 10 : 1;
+    const distanceFilter = 1;
 
     if (!kIsWeb && Platform.isAndroid) {
       return AndroidSettings(
         accuracy: accuracy,
         distanceFilter: distanceFilter,
-        intervalDuration: backgroundPreferred
-            ? null
-            : const Duration(milliseconds: 500),
-        foregroundNotificationConfig: backgroundPreferred
-            ? const ForegroundNotificationConfig(
-                notificationTitle: 'Field exploration active',
-                notificationText:
-                    'Mesozoica is updating nearby field sites while you explore.',
-                enableWakeLock: true,
-              )
-            : null,
+        intervalDuration: const Duration(milliseconds: 500),
       );
     }
 
@@ -223,14 +179,14 @@ class LocationService extends ChangeNotifier {
       return AppleSettings(
         accuracy: accuracy,
         distanceFilter: distanceFilter,
-        allowBackgroundLocationUpdates: backgroundPreferred,
-        showBackgroundLocationIndicator: backgroundPreferred,
+        allowBackgroundLocationUpdates: false,
+        showBackgroundLocationIndicator: false,
         pauseLocationUpdatesAutomatically: false,
         activityType: ActivityType.fitness,
       );
     }
 
-    return LocationSettings(
+    return const LocationSettings(
       accuracy: accuracy,
       distanceFilter: distanceFilter,
     );
@@ -245,10 +201,7 @@ class LocationService extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final backgroundPreferred = _useBackgroundLocationProfile;
-      final permitted = await _ensurePermission(
-        backgroundPreferred: backgroundPreferred,
-      );
+      final permitted = await _ensurePermission();
       if (!permitted) {
         return;
       }
@@ -259,19 +212,16 @@ class LocationService extends ChangeNotifier {
         notifyListeners();
       }
 
+      final settings = _locationSettings();
       final position = await Geolocator.getCurrentPosition(
-        locationSettings: _locationSettings(
-          backgroundPreferred: backgroundPreferred,
-        ),
+        locationSettings: settings,
       );
       _currentLocation = LatLng(position.latitude, position.longitude);
       notifyListeners();
 
       _locationSub?.cancel();
       _locationSub = Geolocator.getPositionStream(
-        locationSettings: _locationSettings(
-          backgroundPreferred: backgroundPreferred,
-        ),
+        locationSettings: settings,
       ).listen(
         (position) {
           _currentLocation = LatLng(position.latitude, position.longitude);

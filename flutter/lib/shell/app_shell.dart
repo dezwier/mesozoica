@@ -15,6 +15,7 @@ import '../controllers/notification_controller.dart';
 import '../controllers/site_catalog_controller.dart';
 import '../controllers/fossil_catalog_controller.dart';
 import '../controllers/splash_hold_provider.dart';
+import '../controllers/walk_distance_controller.dart';
 import '../models/site.dart';
 import '../models/user_notification.dart';
 import '../services/api_response_cache.dart';
@@ -236,12 +237,18 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
               .read<FieldDiscoveryCoordinator>()
               .refreshDiscoverableCache(force: true),
         );
-        final userId = context.read<AuthController>().currentUser?.id;
+        final auth = context.read<AuthController>();
+        final userId = auth.currentUser?.id;
         if (userId != null) {
           context
               .read<NotificationController>()
               .refreshInBackground(authenticatedUserId: userId);
         }
+        unawaited(
+          context.read<WalkDistanceController>().refresh(
+                profile: auth.currentUser,
+              ),
+        );
         _showPendingCelebrationIfAny();
       case AppLifecycleState.inactive:
       case AppLifecycleState.paused:

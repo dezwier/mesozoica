@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:firebase_auth/firebase_auth.dart' hide User;
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
@@ -5,6 +7,7 @@ import 'package:provider/provider.dart';
 
 import '../../config/app_config.dart';
 import '../../controllers/auth_controller.dart';
+import '../../controllers/walk_distance_controller.dart';
 import '../../models/profile.dart';
 import '../../services/oauth_sign_in_service.dart';
 import '../../shell/shell_overlay_panel.dart';
@@ -29,12 +32,40 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final _authViewKey = GlobalKey<AuthViewState>();
   final _oauth = OAuthSignInService();
   bool _localLoading = false;
+  bool _distanceRefreshScheduled = false;
 
   @override
   void dispose() {
     _loginUsernameController.dispose();
     _loginPasswordController.dispose();
     super.dispose();
+  }
+
+  @override
+  void didUpdateWidget(covariant ProfileScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isActive && !oldWidget.isActive) {
+      _distanceRefreshScheduled = false;
+      _scheduleDistanceRefresh();
+    }
+  }
+
+  void _scheduleDistanceRefresh() {
+    if (_distanceRefreshScheduled || !widget.isActive) return;
+    _distanceRefreshScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !widget.isActive) return;
+      final profile = context.read<AuthController>().currentUser;
+      if (profile == null) return;
+      final walk = context.read<WalkDistanceController>();
+      walk.applyProfile(profile);
+      unawaited(
+        walk.refresh(
+          profile: profile,
+          requestPermissionIfNeeded: true,
+        ),
+      );
+    });
   }
 
   void _showError(String message) {
@@ -276,6 +307,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         }
 
         final profile = auth.currentUser!;
+        _scheduleDistanceRefresh();
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [

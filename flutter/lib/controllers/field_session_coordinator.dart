@@ -110,8 +110,7 @@ class FieldSessionCoordinator extends ChangeNotifier {
       return;
     }
     _lifecycle = AppLifecycleState.paused;
-    // Keep field GPS on the background-capable profile so 50 m discovery
-    // continues while the app is backgrounded or the phone is locked.
+    // Stop GPS while backgrounded; walked distance comes from Health instead.
     unawaited(_enterBackground());
   }
 
@@ -158,12 +157,9 @@ class FieldSessionCoordinator extends ChangeNotifier {
     }
 
     _sessionActive = true;
-    // Always-on GPS for proximity discovery + field ensure on every tab while
-    // the process is alive (foreground and background).
-    await locationService.setFieldSession(
-      active: true,
-      backgroundPreferred: true,
-    );
+    // Foreground-only GPS for proximity discovery + field ensure on every tab
+    // while the app is open (Pokémon GO style; no background location).
+    await locationService.setFieldSession(active: true);
   }
 
   Future<FieldEnsureResponse?> _maybeEnsure({

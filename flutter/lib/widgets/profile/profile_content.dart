@@ -1,8 +1,12 @@
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter/foundation.dart' show defaultTargetPlatform, kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
+import '../../controllers/walk_distance_controller.dart';
 import '../../models/profile.dart';
 import '../../services/auth_service.dart';
+import '../../services/health_distance_service.dart';
 import '../../theme/dino_card_theme.dart';
 import '../common/app_card.dart';
 
@@ -26,6 +30,8 @@ class ProfileContent extends StatelessWidget {
         _buildHeaderCard(context, scheme),
         const SizedBox(height: 5),
         _buildStatsGrid(context, scheme),
+        const SizedBox(height: 5),
+        _buildDistanceCard(context, scheme),
         const SizedBox(height: 5),
         _buildBioCard(context, scheme),
         const SizedBox(height: 5),
@@ -208,6 +214,160 @@ class ProfileContent extends StatelessWidget {
         ],
       ],
     );
+  }
+
+  Widget _buildDistanceCard(BuildContext context, ColorScheme scheme) {
+    return Consumer<WalkDistanceController>(
+      builder: (context, walk, _) {
+        final weekKm = _kmLabel(
+          walk.weeklyMeters ?? profile.weeklyDistanceM,
+        );
+        final totalKm = _kmLabel(
+          walk.totalMeters ?? profile.totalDistanceM,
+        );
+        final caption = _distanceCaption(walk.permission);
+        return AppCard.profile(
+          borderRadius: _cardRadius,
+          child: Container(
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: scheme.surfaceContainerHighest.withValues(alpha: 0.5),
+              borderRadius: BorderRadius.circular(_cardRadius),
+            ),
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.directions_walk, color: scheme.primary, size: 20),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Distance walked',
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
+                    ),
+                    if (walk.loading) ...[
+                      const SizedBox(width: 8),
+                      SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: scheme.primary,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _distanceStat(
+                        context,
+                        scheme,
+                        label: 'This week',
+                        value: weekKm,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _distanceStat(
+                        context,
+                        scheme,
+                        label: 'Total',
+                        value: totalKm,
+                      ),
+                    ),
+                  ],
+                ),
+                if (caption != null) ...[
+                  const SizedBox(height: 10),
+                  if (walk.permission == HealthDistancePermission.denied ||
+                      walk.permission == HealthDistancePermission.unknown ||
+                      walk.permission ==
+                          HealthDistancePermission.unavailable)
+                    TextButton(
+                      onPressed: () {
+                        context.read<WalkDistanceController>().refresh(
+                              profile: profile,
+                              requestPermissionIfNeeded: true,
+                              force: true,
+                            );
+                      },
+                      child: Text(caption),
+                    )
+                  else
+                    Text(
+                      caption,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: scheme.onSurfaceVariant,
+                          ),
+                    ),
+                ],
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _distanceStat(
+    BuildContext context,
+    ColorScheme scheme, {
+    required String label,
+    required String value,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          value,
+          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          label,
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: scheme.onSurfaceVariant,
+              ),
+        ),
+      ],
+    );
+  }
+
+  String _kmLabel(double meters) {
+    final km = meters / 1000.0;
+    if (km < 10) {
+      return '${km.toStringAsFixed(1)} km';
+    }
+    return '${km.toStringAsFixed(0)} km';
+  }
+
+  String? _distanceCaption(HealthDistancePermission permission) {
+    switch (permission) {
+      case HealthDistancePermission.granted:
+        if (kIsWeb) return null;
+        if (defaultTargetPlatform == TargetPlatform.iOS) {
+          return 'Synced from Apple Health';
+        }
+        if (defaultTargetPlatform == TargetPlatform.android) {
+          return 'Synced from Health Connect';
+        }
+        return null;
+      case HealthDistancePermission.denied:
+      case HealthDistancePermission.unknown:
+        return 'Enable Health access';
+      case HealthDistancePermission.unavailable:
+        return 'Install Health Connect';
+      case HealthDistancePermission.unsupported:
+        return null;
+    }
   }
 
   Widget _buildBioCard(BuildContext context, ColorScheme scheme) {
