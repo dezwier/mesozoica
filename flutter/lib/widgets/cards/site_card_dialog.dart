@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../controllers/catalog_mode_controller.dart';
 import '../../models/site.dart';
 import '../../services/site_service.dart';
 import 'card_detail_sheet.dart';
@@ -8,12 +9,14 @@ import 'site_turnable_card.dart';
 Future<void> showSiteCardDialog(
   BuildContext context, {
   required int siteId,
+  CatalogDataSource dataSource = CatalogDataSource.archive,
   SiteService? siteService,
 }) {
   return CardDetailSheet.show<void>(
     context,
     builder: (context) => _SiteCardSheet(
       siteId: siteId,
+      dataSource: dataSource,
       siteService: siteService,
     ),
   );
@@ -22,10 +25,12 @@ Future<void> showSiteCardDialog(
 class _SiteCardSheet extends StatefulWidget {
   const _SiteCardSheet({
     required this.siteId,
+    this.dataSource = CatalogDataSource.archive,
     this.siteService,
   });
 
   final int siteId;
+  final CatalogDataSource dataSource;
   final SiteService? siteService;
 
   @override
@@ -42,7 +47,10 @@ class _SiteCardSheetState extends State<_SiteCardSheet> {
     super.initState();
     _ownsService = widget.siteService == null;
     _service = widget.siteService ?? SiteService();
-    _siteFuture = _service.fetchSiteById(widget.siteId);
+    _siteFuture = _service.fetchSiteById(
+      widget.siteId,
+      dataSource: widget.dataSource,
+    );
   }
 
   @override

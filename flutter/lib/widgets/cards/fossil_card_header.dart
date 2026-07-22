@@ -77,8 +77,10 @@ class FossilCardHeader extends StatelessWidget {
             fossil.displaySubtitle,
             textAlign: centered ? TextAlign.center : TextAlign.start,
             style: subtitleStyle,
-            maxLines: fossil.isField ? 1 : 4,
-            overflow: TextOverflow.ellipsis,
+            maxLines: fossil.isField ? null : 4,
+            overflow:
+                fossil.isField ? TextOverflow.visible : TextOverflow.ellipsis,
+            softWrap: true,
           ),
         ],
       ],

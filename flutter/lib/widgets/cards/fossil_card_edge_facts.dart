@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../../models/fossil.dart';
-import '../../utils/display_text.dart';
 import 'card_fact_badge.dart';
 
 /// Attribute panel for the fossil card back.
@@ -23,36 +22,22 @@ class FossilCardEdgeFacts extends StatelessWidget {
         CardFactEntry(
           iconAsset: 'assets/images/cards/icons/diet.svg',
           label: 'Category',
-          value: displayFactValue(
-            fossil.displayImpCategory == '—' ? null : fossil.displayImpCategory,
-          ),
+          value: fossil.displayImpCategory,
         ),
         CardFactEntry(
           iconAsset: 'assets/images/cards/icons/mass.svg',
           label: 'Sub category',
-          value: displayFactValue(
-            fossil.displayImpSubcategory == '—'
-                ? null
-                : fossil.displayImpSubcategory,
-          ),
+          value: fossil.displayImpSubcategory,
         ),
         CardFactEntry(
           iconAsset: 'assets/images/cards/icons/period.svg',
           label: 'Preservation quality',
-          value: displayFactValue(
-            fossil.displayImpPreservationQuality == '—'
-                ? null
-                : fossil.displayImpPreservationQuality,
-          ),
+          value: fossil.displayImpPreservationQuality,
         ),
         CardFactEntry(
           iconAsset: 'assets/images/cards/icons/length.svg',
           label: 'Completeness',
-          value: displayFactValue(
-            fossil.displayImpCompleteness == '—'
-                ? null
-                : fossil.displayImpCompleteness,
-          ),
+          value: fossil.displayImpCompleteness,
         ),
       ],
     );

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../../controllers/catalog_mode_controller.dart';
 import '../../models/fossil.dart';
+import '../../models/site.dart';
 import '../../theme/dino_card_theme.dart';
 import '../../utils/display_text.dart';
 import 'card_record_thumb.dart';
@@ -23,12 +25,22 @@ class FossilRelatedThumbs extends StatelessWidget {
   String get _siteLabel {
     final formation = fossil.geologicalFormation?.trim();
     if (formation != null && formation.isNotEmpty) {
-      return displayFactValue(formation);
+      return toTitleCase(formation);
     }
     if (fossil.siteId != null) {
-      return 'Collection #${fossil.siteId}';
+      return SiteSummary.formatSiteNumber(fossil.siteId!);
     }
     return 'Site';
+  }
+
+  CatalogDataSource get _siteDataSource {
+    final siteId = fossil.siteId;
+    if (siteId != null && siteId >= SiteSummary.fieldSiteIdBase) {
+      return CatalogDataSource.field;
+    }
+    return fossil.isField
+        ? CatalogDataSource.field
+        : CatalogDataSource.archive;
   }
 
   @override
@@ -71,6 +83,7 @@ class FossilRelatedThumbs extends StatelessWidget {
                       onTap: () => showSiteCardDialog(
                         context,
                         siteId: fossil.siteId!,
+                        dataSource: _siteDataSource,
                       ),
                     ),
                   ),

@@ -414,14 +414,14 @@ class FossilSummary {
 
   String get displayCompleteness => displayFactValue(llmCompleteness);
 
-  String get displayImpCategory => displayFactValue(llmImpCategory);
+  String get displayImpCategory => _fieldSubtitlePart(llmImpCategory);
 
-  String get displayImpSubcategory => displayFactValue(llmImpSubcategory);
+  String get displayImpSubcategory => _fieldSubtitlePart(llmImpSubcategory);
 
   String get displayImpPreservationQuality =>
-      displayFactValue(llmImpPreservationQuality);
+      _fieldSubtitlePart(llmImpPreservationQuality);
 
-  String get displayImpCompleteness => displayFactValue(llmImpCompleteness);
+  String get displayImpCompleteness => _fieldSubtitlePart(llmImpCompleteness);
 
   List<FossilStoredField> get storedFields {
     return [

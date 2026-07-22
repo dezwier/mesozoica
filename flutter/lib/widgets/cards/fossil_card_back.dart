@@ -47,7 +47,7 @@ class FossilCardBack extends StatelessWidget {
               subtitleFontSize: subtitleFontSize,
               centered: true,
               overlayOnImage: true,
-              showOccurrenceSubtitle: true,
+              showOccurrenceSubtitle: false,
             ),
           ),
           if (showRecordButton)

@@ -40,11 +40,13 @@ class SiteSummary {
   /// Field-generated site IDs start at 1_000_000_000; show the offset only.
   static const int fieldSiteIdBase = 1000000000;
 
-  String get displaySiteNumber {
-    final n =
-        siteId >= fieldSiteIdBase ? siteId - fieldSiteIdBase : siteId;
+  /// Short collection number for UI (`#67`, not `#1000000067`).
+  static String formatSiteNumber(int siteId) {
+    final n = siteId >= fieldSiteIdBase ? siteId - fieldSiteIdBase : siteId;
     return '#$n';
   }
+
+  String get displaySiteNumber => formatSiteNumber(siteId);
 
   String get displayTitle {
     final period = effectivePeriod;
