@@ -46,31 +46,7 @@ class _DinosaurCardSheetState extends State<_DinosaurCardSheet> {
       future: _dinosaurFuture,
       builder: (context, snapshot) {
         if (snapshot.connectionState != ConnectionState.done) {
-          return SizedBox(
-            height: 120,
-            child: Center(
-              child: Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      ),
-                      const SizedBox(width: 12),
-                      Text(
-                        'Loading dinosaur…',
-                        style: Theme.of(context).textTheme.bodyMedium,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          );
+          return const SizedBox.shrink();
         }
 
         if (snapshot.hasError || !snapshot.hasData) {

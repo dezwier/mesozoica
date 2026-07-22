@@ -184,10 +184,10 @@ All `*_image_generate` jobs write PNGs locally under repo folders:
 
 | Entity | Output folder | Filename key |
 |--------|---------------|--------------|
-| Dinosaur | `dinosaur-images/` | `{dinosaur.name}.png` |
-| Fossil | `fossil-images/` | `{fossil.id}.png` |
-| Site type | `site-type-images/` | `{period}_{rock_type}.png` |
-| Tool | `tool-images/` | `{tool.name}.png` |
+| Dinosaur | `images/dinosaurs/` | `{dinosaur.name}.png` |
+| Fossil | `images/fossils/` | `{fossil.id}.png` |
+| Site type | `images/site-types/` | `{period}_{rock_type}.png` |
+| Tool | `images/tools/` | `{tool.name}.png` |
 
 Requires `GOOGLE_GEMINI_API_KEY`. Default model: `imagen-4.0-ultra-generate-001` (`GEMINI_IMAGE_MODEL`).
 
@@ -212,7 +212,7 @@ After generating locally, upload to Railway:
 make sync-tool-images
 ```
 
-See also [`tool-images/README.md`](../../../tool-images/README.md) and sibling folders for sync env vars.
+See also [`images/tools/README.md`](../../../images/tools/README.md) and sibling folders for sync env vars.
 
 ## Config overrides
 

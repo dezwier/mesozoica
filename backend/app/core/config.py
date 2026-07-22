@@ -114,7 +114,7 @@ class Settings(BaseSettings):
     )
 
     dinosaur_images_dir: str = Field(
-        default="../dinosaur-images",
+        default="../images/dinosaurs",
         validation_alias="DINOSAUR_IMAGES_DIR",
     )
     curated_images_data_root: str = Field(
@@ -126,7 +126,7 @@ class Settings(BaseSettings):
         validation_alias="PUBLIC_BASE_URL",
     )
     railway_dinosaur_images_volume: str = Field(
-        default="dinosaur-images",
+        default="images",
         validation_alias="RAILWAY_DINOSAUR_IMAGES_VOLUME",
     )
     dinosaur_image_sync_secret: str = Field(
@@ -135,11 +135,11 @@ class Settings(BaseSettings):
     )
 
     fossil_images_dir: str = Field(
-        default="../fossil-images",
+        default="../images/fossils",
         validation_alias="FOSSIL_IMAGES_DIR",
     )
     railway_fossil_images_volume: str = Field(
-        default="fossil-images",
+        default="images",
         validation_alias="RAILWAY_FOSSIL_IMAGES_VOLUME",
     )
     fossil_image_sync_secret: str = Field(
@@ -148,11 +148,11 @@ class Settings(BaseSettings):
     )
 
     site_type_images_dir: str = Field(
-        default="../site-type-images",
+        default="../images/site-types",
         validation_alias="SITE_TYPE_IMAGES_DIR",
     )
     railway_site_type_images_volume: str = Field(
-        default="site-type-images",
+        default="images",
         validation_alias="RAILWAY_SITE_TYPE_IMAGES_VOLUME",
     )
     site_type_image_sync_secret: str = Field(
@@ -161,11 +161,11 @@ class Settings(BaseSettings):
     )
 
     tool_images_dir: str = Field(
-        default="../tool-images",
+        default="../images/tools",
         validation_alias="TOOL_IMAGES_DIR",
     )
     railway_tool_images_volume: str = Field(
-        default="tool-images",
+        default="images",
         validation_alias="RAILWAY_TOOL_IMAGES_VOLUME",
     )
     tool_image_sync_secret: str = Field(
@@ -179,16 +179,20 @@ class Settings(BaseSettings):
     )
     algorithm: str = Field(default="HS256", validation_alias="JWT_ALGORITHM")
     user_images_dir: str = Field(
-        default="../user-images",
+        default="../images/users",
         validation_alias="USER_IMAGES_DIR",
     )
 
     @property
     def resolved_user_images_dir(self) -> Path:
-        path = Path(self.user_images_dir)
-        if not path.is_absolute():
-            path = Path(__file__).parent.parent.parent / path
-        return path.resolve()
+        from app.services.curated_image_service.common import resolve_curated_storage_dir
+
+        return resolve_curated_storage_dir(
+            configured_dir=self.user_images_dir,
+            default_relative="../images/users",
+            data_root=self.curated_images_data_root,
+            subdir_name="images/users",
+        )
 
     @property
     def resolved_site_type_images_dir(self) -> Path:
@@ -196,9 +200,9 @@ class Settings(BaseSettings):
 
         return resolve_curated_storage_dir(
             configured_dir=self.site_type_images_dir,
-            default_relative="../site-type-images",
+            default_relative="../images/site-types",
             data_root=self.curated_images_data_root,
-            subdir_name="site-type-images",
+            subdir_name="images/site-types",
         )
 
     @property
@@ -207,9 +211,9 @@ class Settings(BaseSettings):
 
         return resolve_curated_storage_dir(
             configured_dir=self.dinosaur_images_dir,
-            default_relative="../dinosaur-images",
+            default_relative="../images/dinosaurs",
             data_root=self.curated_images_data_root,
-            subdir_name="dinosaur-images",
+            subdir_name="images/dinosaurs",
         )
 
     @property
@@ -218,9 +222,9 @@ class Settings(BaseSettings):
 
         return resolve_curated_storage_dir(
             configured_dir=self.fossil_images_dir,
-            default_relative="../fossil-images",
+            default_relative="../images/fossils",
             data_root=self.curated_images_data_root,
-            subdir_name="fossil-images",
+            subdir_name="images/fossils",
         )
 
     @property
@@ -229,9 +233,9 @@ class Settings(BaseSettings):
 
         return resolve_curated_storage_dir(
             configured_dir=self.tool_images_dir,
-            default_relative="../tool-images",
+            default_relative="../images/tools",
             data_root=self.curated_images_data_root,
-            subdir_name="tool-images",
+            subdir_name="images/tools",
         )
 
     @property

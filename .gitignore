@@ -8,14 +8,22 @@ __pycache__/
 # OSM land/water polygon shapefiles (fetch via make fetch-coordinate-masks)
 backend/app/data/osm/
 
-# Curated dinosaur card images (local source; synced to Railway volume)
-dinosaur-images/*.webp
-dinosaur-images/*.jpg
-dinosaur-images/*.jpeg
-dinosaur-images/*.png
-
-# Curated tool card images (local source; synced to Railway volume)
-tool-images/*.webp
-tool-images/*.jpg
-tool-images/*.jpeg
-tool-images/*.png
+# Curated card + user images (local source; synced to Railway volume)
+images/dinosaurs/*.webp
+images/dinosaurs/*.jpg
+images/dinosaurs/*.jpeg
+images/dinosaurs/*.png
+images/fossils/*.webp
+images/fossils/*.jpg
+images/fossils/*.jpeg
+images/fossils/*.png
+images/site-types/*.webp
+images/site-types/*.jpg
+images/site-types/*.jpeg
+images/site-types/*.png
+images/tools/*.webp
+images/tools/*.jpg
+images/tools/*.jpeg
+images/tools/*.png
+images/users/*
+!images/users/.gitkeep

@@ -67,31 +67,7 @@ class _SiteCardSheetState extends State<_SiteCardSheet> {
       future: _siteFuture,
       builder: (context, snapshot) {
         if (snapshot.connectionState != ConnectionState.done) {
-          return SizedBox(
-            height: 120,
-            child: Center(
-              child: Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      ),
-                      const SizedBox(width: 12),
-                      Text(
-                        'Loading site…',
-                        style: Theme.of(context).textTheme.bodyMedium,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          );
+          return const SizedBox.shrink();
         }
 
         if (snapshot.hasError || !snapshot.hasData) {

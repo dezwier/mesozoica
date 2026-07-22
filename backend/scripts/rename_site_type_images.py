@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
-            "Rename site-type-images/<id>.<ext> files to <period>_<rock_type>.<ext> "
+            "Rename images/site-types/<id>.<ext> files to <period>_<rock_type>.<ext> "
             "using the current site_type table."
         )
     )

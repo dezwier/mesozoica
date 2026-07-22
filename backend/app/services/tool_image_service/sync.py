@@ -101,7 +101,7 @@ def upload_file_to_railway(
 def resolve_local_source_dir_for_sync() -> Path:
     return _resolve_local_source_dir(
         source_env_var="TOOL_IMAGES_SOURCE_DIR",
-        default_repo_subdir="tool-images",
+        default_repo_subdir="images/tools",
     )
 
 

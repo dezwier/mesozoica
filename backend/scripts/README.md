@@ -8,27 +8,27 @@ Scripts that touch production data use the **Railway Postgres database** and Rai
 
 | Module | Description |
 |--------|-------------|
-| [`sync_dinosaur_images.py`](sync_dinosaur_images.py) | Upload curated dinosaur card images from `dinosaur-images/` to Railway volume and set `main_image_url` |
-| [`sync_fossil_images.py`](sync_fossil_images.py) | Upload curated fossil card images from `fossil-images/` to Railway volume and set `main_image_url` |
-| [`sync_site_type_images.py`](sync_site_type_images.py) | Upload curated site-type card images from `site-type-images/` to Railway volume and set `main_image_url` |
+| [`sync_dinosaur_images.py`](sync_dinosaur_images.py) | Upload curated dinosaur card images from `images/dinosaurs/` to Railway volume and set `main_image_url` |
+| [`sync_fossil_images.py`](sync_fossil_images.py) | Upload curated fossil card images from `images/fossils/` to Railway volume and set `main_image_url` |
+| [`sync_site_type_images.py`](sync_site_type_images.py) | Upload curated site-type card images from `images/site-types/` to Railway volume and set `main_image_url` |
 
 All sync scripts support `.png`, `.jpg`, `.jpeg`, and `.webp`.
 
 ### Dinosaur images
 
-- **Source folder:** repo `dinosaur-images/`
+- **Source folder:** repo `images/dinosaurs/`
 - **Filename rule:** stem must match `dinosaur.name` (case-insensitive), e.g. `tyrannosaurus.png` → `Tyrannosaurus`
 - **Served at:** `https://<api-host>/media/dinosaurs/<DinosaurName>.<ext>`
 - **Cache busting:** `main_image_url` includes a `?v=<content-hash>` query param so the app fetches updated files after re-sync
 
 ### Fossil images
 
-- **Source folder:** repo `fossil-images/`
+- **Source folder:** repo `images/fossils/`
 - **Filename rule:** `<occurrence_no>.<ext>` — stem is the PBDB occurrence number (stored as `fossil.id`), e.g. `139292.png`
 - **Served at:** `https://<api-host>/media/fossils/<occurrence_no>.<ext>`
 - **Cache busting:** `main_image_url` includes a `?v=<content-hash>` query param so the app fetches updated files after re-sync
 - **Re-sync:** Regenerated local files are re-uploaded automatically when their content hash differs from the stored `main_image_url` (no `--overwrite` required)
-- **Prune:** Fossils with a curated `main_image_url` but no matching file in `fossil-images/` get `main_image_url` cleared on sync (app shows placeholder)
+- **Prune:** Fossils with a curated `main_image_url` but no matching file in `images/fossils/` get `main_image_url` cleared on sync (app shows placeholder)
 
 ## Make targets (recommended)
 
@@ -78,11 +78,11 @@ python -m scripts.sync_fossil_images --dry-run
 
 | Variable | Purpose |
 |----------|---------|
-| `DINOSAUR_IMAGES_SOURCE_DIR` | Local dinosaur image folder (default: repo `dinosaur-images/`) |
-| `FOSSIL_IMAGES_SOURCE_DIR` | Local fossil image folder (default: repo `fossil-images/`) |
+| `DINOSAUR_IMAGES_SOURCE_DIR` | Local dinosaur image folder (default: repo `images/dinosaurs/`) |
+| `FOSSIL_IMAGES_SOURCE_DIR` | Local fossil image folder (default: repo `images/fossils/`) |
 | `DINOSAUR_IMAGE_SYNC_SECRET` | Required for dinosaur uploads; sent as `X-Dinosaur-Image-Sync-Key` |
 | `FOSSIL_IMAGE_SYNC_SECRET` | Required for fossil uploads; sent as `X-Fossil-Image-Sync-Key` |
-| `CURATED_IMAGES_DATA_ROOT` | Shared Railway volume root (e.g. `/data`); defaults fossil storage to `/data/fossil-images` when `FOSSIL_IMAGES_DIR` is unset |
+| `CURATED_IMAGES_DATA_ROOT` | Shared Railway volume root (e.g. `/data`); defaults fossil storage to `/data/images/fossils` when `FOSSIL_IMAGES_DIR` is unset |
 | `PUBLIC_BASE_URL` | API base for curated image URLs (non-localhost) |
 | `RAILWAY_PUBLIC_DOMAIN` | Fallback API host when `PUBLIC_BASE_URL` is unset |
 | `RAILWAY_RUN=1` | Set by `make` so `railway run` is allowed |
@@ -97,8 +97,8 @@ Mount **one** volume at `/data` and set:
 ```bash
 CURATED_IMAGES_DATA_ROOT=/data
 FIELD_COORDINATE_DATA_DIR=/data
-DINOSAUR_IMAGES_DIR=/data/dinosaur-images   # optional if root is set
-FOSSIL_IMAGES_DIR=/data/fossil-images      # optional if root is set
+DINOSAUR_IMAGES_DIR=/data/images/dinosaurs   # optional if root is set
+FOSSIL_IMAGES_DIR=/data/images/fossils      # optional if root is set
 ```
 
 OSM coordinate masks are stored at `/data/osm/` (fetched once on first container boot).
@@ -110,8 +110,8 @@ Served URLs stay separate: `/media/dinosaurs/...` and `/media/fossils/...`.
 ### Dinosaur card images
 
 ```bash
-# 1. Add or update images in dinosaur-images/ (e.g. tyrannosaurus.png)
-ls dinosaur-images/
+# 1. Add or update images in images/dinosaurs/ (e.g. tyrannosaurus.png)
+ls images/dinosaurs/
 
 # 2. Preview matches
 make sync-dinosaur-images CRON_EXTRA='--dry-run'
@@ -126,8 +126,8 @@ make sync-dinosaur-images CRON_EXTRA='--overwrite'
 ### Fossil card images
 
 ```bash
-# 1. Add or update images in fossil-images/ (filename = occurrence no, e.g. 139292.png)
-ls fossil-images/
+# 1. Add or update images in images/fossils/ (filename = occurrence no, e.g. 139292.png)
+ls images/fossils/
 
 # 2. Preview matches
 make sync-fossil-images CRON_EXTRA='--dry-run'
@@ -140,7 +140,7 @@ Regenerated images are detected via content hash and overwrite the remote file a
 
 ### Site-type card images
 
-- **Source folder:** repo `site-type-images/`
+- **Source folder:** repo `images/site-types/`
 - **Filename rule:** `<period>_<rock_type>.<ext>` — e.g. `cretaceous_sandstone.png`
 - **Served at:** `https://<api-host>/media/site-types/<period>_<rock_type>.<ext>`
 

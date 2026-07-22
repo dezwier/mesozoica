@@ -45,60 +45,60 @@ def test_remote_curated_image_exists(monkeypatch):
 
 def test_resolve_curated_storage_dir_uses_explicit_server_path():
     path = resolve_curated_storage_dir(
-        configured_dir="/data/dinosaur-images",
-        default_relative="../dinosaur-images",
+        configured_dir="/data/images/dinosaurs",
+        default_relative="../images/dinosaurs",
         data_root="",
-        subdir_name="dinosaur-images",
+        subdir_name="images/dinosaurs",
     )
-    assert path == Path("/data/dinosaur-images")
+    assert path == Path("/data/images/dinosaurs")
 
 
 def test_resolve_curated_storage_dir_uses_data_root_for_defaults(monkeypatch):
     monkeypatch.setattr(config_module.settings, "curated_images_data_root", "/data")
-    monkeypatch.setattr(config_module.settings, "fossil_images_dir", "../fossil-images")
+    monkeypatch.setattr(config_module.settings, "fossil_images_dir", "../images/fossils")
 
-    assert config_module.settings.resolved_fossil_images_dir == Path("/data/fossil-images")
+    assert config_module.settings.resolved_fossil_images_dir == Path("/data/images/fossils")
 
 
 def test_resolve_curated_storage_dir_explicit_overrides_data_root():
     path = resolve_curated_storage_dir(
-        configured_dir="/data/dinosaur-images",
-        default_relative="../dinosaur-images",
+        configured_dir="/data/images/dinosaurs",
+        default_relative="../images/dinosaurs",
         data_root="/data",
-        subdir_name="dinosaur-images",
+        subdir_name="images/dinosaurs",
     )
-    assert path == Path("/data/dinosaur-images")
+    assert path == Path("/data/images/dinosaurs")
 
 
 def test_resolve_local_source_dir_ignores_server_storage_path(monkeypatch, tmp_path: Path):
-    repo_images = tmp_path / "fossil-images"
-    repo_images.mkdir()
+    repo_images = tmp_path / "images" / "fossils"
+    repo_images.mkdir(parents=True)
     (repo_images / "139292.png").write_bytes(b"x")
 
-    monkeypatch.setenv("FOSSIL_IMAGES_DIR", "/data/fossil-images")
+    monkeypatch.setenv("FOSSIL_IMAGES_DIR", "/data/images/fossils")
     monkeypatch.setenv("FOSSIL_IMAGES_SOURCE_DIR", str(repo_images))
 
     assert resolve_fossil_source() == repo_images.resolve()
     assert resolve_local_source_dir_for_sync(
         source_env_var="FOSSIL_IMAGES_SOURCE_DIR",
-        default_repo_subdir="fossil-images",
+        default_repo_subdir="images/fossils",
     ) == repo_images.resolve()
 
 
 def test_resolve_dino_source_ignores_server_storage_path(monkeypatch, tmp_path: Path):
-    repo_images = tmp_path / "dinosaur-images"
-    repo_images.mkdir()
+    repo_images = tmp_path / "images" / "dinosaurs"
+    repo_images.mkdir(parents=True)
     (repo_images / "Tyrannosaurus.webp").write_bytes(b"x")
 
-    monkeypatch.setenv("DINOSAUR_IMAGES_DIR", "/data/dinosaur-images")
+    monkeypatch.setenv("DINOSAUR_IMAGES_DIR", "/data/images/dinosaurs")
     monkeypatch.setenv("DINOSAUR_IMAGES_SOURCE_DIR", str(repo_images))
 
     assert resolve_dino_source() == repo_images.resolve()
 
 
 def test_resolve_site_type_source_uses_repo_subdir(monkeypatch, tmp_path: Path):
-    repo_images = tmp_path / "site-type-images"
-    repo_images.mkdir()
+    repo_images = tmp_path / "images" / "site-types"
+    repo_images.mkdir(parents=True)
     (repo_images / "1.png").write_bytes(b"x")
 
     monkeypatch.setenv("SITE_TYPE_IMAGES_SOURCE_DIR", str(repo_images))
@@ -107,8 +107,8 @@ def test_resolve_site_type_source_uses_repo_subdir(monkeypatch, tmp_path: Path):
 
 
 def test_resolve_tool_source_uses_repo_subdir(monkeypatch, tmp_path: Path):
-    repo_images = tmp_path / "tool-images"
-    repo_images.mkdir()
+    repo_images = tmp_path / "images" / "tools"
+    repo_images.mkdir(parents=True)
     (repo_images / "Orbit Survey.png").write_bytes(b"x")
 
     monkeypatch.setenv("TOOL_IMAGES_SOURCE_DIR", str(repo_images))

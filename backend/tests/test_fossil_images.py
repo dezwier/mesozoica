@@ -300,9 +300,9 @@ def test_run_sync_clears_curated_url_when_local_file_missing(
 
 
 def test_resolve_local_source_dir_for_sync_uses_repo_folder(monkeypatch, tmp_path: Path):
-    repo_images = tmp_path / "fossil-images"
+    repo_images = tmp_path / "images/fossils"
     repo_images.mkdir()
     monkeypatch.setenv("FOSSIL_IMAGES_SOURCE_DIR", str(repo_images))
-    monkeypatch.setenv("FOSSIL_IMAGES_DIR", "/data/fossil-images")
+    monkeypatch.setenv("FOSSIL_IMAGES_DIR", "/data/images/fossils")
 
     assert resolve_local_source_dir_for_sync() == repo_images.resolve()

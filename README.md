@@ -8,6 +8,7 @@ Location-based paleontology game — monorepo scaffold.
 mesozoica/
 ├── backend/   # FastAPI + PostgreSQL (Railway)
 ├── flutter/   # Flutter mobile app (iOS & Android)
+├── images/    # Dinosaur, fossil, site-type, tool, and user images
 ├── prd.md     # Product requirements
 └── Makefile   # Dev commands
 ```

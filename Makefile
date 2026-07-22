@@ -118,7 +118,7 @@ run-tool-image-generate:
 	cd backend && RAILWAY_RUN=1 railway run $(RAILWAY_SERVICE_FLAG) python -m app.crons.runner --job tool_image_generate $(CRON_EXTRA)
 
 # Image generation locally: uses backend/.env (Railway DATABASE_URL + GOOGLE_GEMINI_API_KEY).
-# Skips `railway run` startup overhead; still writes PNGs to repo tool-images/.
+# Skips `railway run` startup overhead; still writes PNGs to repo images/tools/.
 run-tool-image-generate-local:
 	cd backend && ALLOW_LOCAL_CRON=1 python -m app.crons.runner --job tool_image_generate $(CRON_EXTRA)
 

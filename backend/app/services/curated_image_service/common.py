@@ -38,7 +38,7 @@ def resolve_local_source_dir_for_sync(
     """Repo image folder used as the local sync source.
 
     Intentionally ignores server-side storage env vars (e.g. DINOSAUR_IMAGES_DIR
-    on Railway at /data/dinosaur-images). Override with *_SOURCE_DIR when needed.
+    on Railway at /data/images/dinosaurs). Override with *_SOURCE_DIR when needed.
     """
     override = os.getenv(source_env_var, "").strip()
     if override:

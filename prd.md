@@ -15,7 +15,7 @@ To maintain absolute scientific realism, the database relies on an automated scr
  * **Data Extraction:** Parses full Parsoid HTML articles, infobox quick-facts (temporal range, taxonomy, diet), and lead paragraphs. Short descriptions are **not** set here — they are produced by the LLM enrichment cron.
  * **Cladogram Parsing:** Extracts phylogenetic data from the infobox biota table (Kingdom → Genus, plus Species when present) into JSON for the Tree of Life.
  * **Lead Image:** Wikipedia sync fetches the page lead image via MediaWiki `pageimages` and stores it in `main_image_url` on insert; existing non-null URLs are preserved on update. Card fronts use **curated** images only (see below); Wikipedia URLs are not shown on the card front.
- * **Curated Card Images:** Source files live in repo `dinosaur-images/` (filename stem = `dinosaur.name`, e.g. `Tyrannosaurus.webp`). `make sync-dinosaur-images` uploads files to a Railway volume via `railway volume files upload` and sets `main_image_url` to `{PUBLIC_BASE_URL}/media/dinosaurs/{filename}`. The FastAPI backend serves files from the mounted volume at `/media/dinosaurs/`.
+ * **Curated Card Images:** Source files live in repo `images/dinosaurs/` (filename stem = `dinosaur.name`, e.g. `Tyrannosaurus.webp`). `make sync-dinosaur-images` uploads files to a Railway volume via `railway volume files upload` and sets `main_image_url` to `{PUBLIC_BASE_URL}/media/dinosaurs/{filename}`. The FastAPI backend serves files from the mounted volume at `/media/dinosaurs/`.
  * **Snapshot Schema:** The sync can be rerun safely — it skips up-to-date records, refreshes stale ones by Wikipedia revision date, preserves `insert_date` and `main_image_url` on updates, and resets `llm_enriched=false` when article content is refreshed.
  * **Manual run:** `make run-dinosaur-wiki-sync` or `python -m app.crons.runner --job dinosaur_wiki_sync`
  * **Curated image sync:** `make sync-dinosaur-images` or `python -m scripts.sync_dinosaur_images` (supports `--dry-run`)
@@ -78,7 +78,7 @@ mesozoica/
 │   ├── Dockerfile
 │   ├── railway.toml          # API service
 │   └── railway.cron.toml     # Cron service (Wikipedia sync)
-├── dinosaur-images/  # Curated card images (gitignored binaries; synced to Railway volume)
+├── images/           # Curated + user images (dinosaurs/, fossils/, site-types/, tools/, users/)
 ├── flutter/          # Flutter mobile app (iOS & Android)
 │   └── lib/          # config/, controllers/, models/, screens/, services/, shell/, theme/, widgets/
 ├── Makefile          # make run-backend, run-dinosaur-wiki-sync, test-all
@@ -89,8 +89,8 @@ mesozoica/
  * **Language/Framework:** FastAPI (Python) for rapid, high-performance asynchronous API endpoints and data parsing.
  * **Location:** `backend/` — layered structure: thin routers in `api/v1/endpoints/`, business logic in `services/`, SQLModel tables in `models/`.
  * **Database:** PostgreSQL on Railway. PostGIS extensions planned for spatial mapping/location querying (not enabled in scaffold).
- * **Deployment:** Railway Dockerfile build; `alembic upgrade head` runs on startup; health at `/health`, readiness at `/ready`. Attach a Railway volume named `dinosaur-images` mounted at `/data/dinosaur-images` on the backend service for curated card images.
- * **Static media:** `GET /media/dinosaurs/{filename}` serves curated card images from `DINOSAUR_IMAGES_DIR` (volume mount in production, repo `dinosaur-images/` in local dev).
+ * **Deployment:** Railway Dockerfile build; `alembic upgrade head` runs on startup; health at `/health`, readiness at `/ready`. Attach a Railway volume mounted at `/data` on the backend service; curated images live under `/data/images/{dinosaurs,fossils,site-types,tools}/` when `CURATED_IMAGES_DATA_ROOT=/data`.
+ * **Static media:** `GET /media/dinosaurs/{filename}` serves curated card images from `DINOSAUR_IMAGES_DIR` (volume mount in production, repo `images/dinosaurs/` in local dev).
  * **Data Sync:** Cron runner at `app/crons/runner.py` loads schedules from `app/crons/crons.yaml`. Deploy as a separate Railway cron service via `backend/railway.cron.toml` (hourly trigger; jobs define their own UTC schedules).
  * **Dinosaur table:** `dinosaur` — name, birth/death (Ma), period, cladogram (JSON), diet_type, length, mass, location, short_description (LLM-only), long_description, full article HTML, article_date, insert_date, main_image_url (curated Railway URL after sync; Wikipedia URL as metadata fallback), llm_enriched (bool).
  * **Dinosaur read API:** `GET /api/v1/dinosaurs` (paginated list, optional `q`, `ma_younger`, `ma_older` filters, card summary fields), `GET /api/v1/dinosaurs/{id}` (single summary).
@@ -133,16 +133,16 @@ Wikipedia sync env vars (see `backend/.env.example`): `WIKIPEDIA_USER_AGENT` (re
 
 Gemini enrichment env vars: `GOOGLE_GEMINI_API_KEY` (required in production for enrich cron), `GEMINI_MODEL`, `GEMINI_TEMPERATURE`, optional `DINOSAUR_ENRICH_MAX_RECORDS`, `DINOSAUR_ENRICH_FAILURE_THRESHOLD`, `DINOSAUR_ENRICH_REQUEST_DELAY_MS`, `DINOSAUR_ENRICH_ARTICLE_MAX_CHARS`.
 
-Curated card image env vars (backend service): `DINOSAUR_IMAGES_DIR` (default `/data/dinosaur-images` in production), `PUBLIC_BASE_URL` (public API base for stored URLs), `RAILWAY_DINOSAUR_IMAGES_VOLUME` (default `dinosaur-images`, used by sync script).
+Curated card image env vars (backend service): `CURATED_IMAGES_DATA_ROOT=/data` (recommended), optional per-type `*_IMAGES_DIR` overrides, `PUBLIC_BASE_URL` (public API base for stored URLs), and `*_IMAGE_SYNC_SECRET` for admin uploads.
 ### Railway deployment
 1. Create a Railway project and add a **PostgreSQL** database.
 2. Add a **backend** service with root directory `backend` (declared in root `railway.toml`).
 3. Link `DATABASE_URL` from Postgres to the backend service.
-4. Set variables: `SECRET_KEY`, `ENVIRONMENT=production`, `CORS_ORIGINS` (explicit origins, no `*`), `WIKIPEDIA_USER_AGENT`, `GOOGLE_GEMINI_API_KEY`, `PUBLIC_BASE_URL`, `DINOSAUR_IMAGES_DIR=/data/dinosaur-images`.
-5. Attach a **volume** named `dinosaur-images` to the backend service; mount at `/data/dinosaur-images`.
+4. Set variables: `SECRET_KEY`, `ENVIRONMENT=production`, `CORS_ORIGINS` (explicit origins, no `*`), `WIKIPEDIA_USER_AGENT`, `GOOGLE_GEMINI_API_KEY`, `PUBLIC_BASE_URL`, `CURATED_IMAGES_DATA_ROOT=/data`.
+5. Attach a **volume** to the backend service mounted at `/data` (images resolve under `/data/images/...`).
 6. Deploy — Dockerfile runs migrations then starts uvicorn on `$PORT`.
 7. Add a **cron** service with config file path `backend/railway.cron.toml`; link the same `DATABASE_URL`.
-8. Add curated images to local `dinosaur-images/` and run `make sync-dinosaur-images`.
+8. Add curated images to local `images/` subfolders and run the matching `make sync-*-images` targets.
 ### Implementation status
 | Area | Status |
 |------|--------|

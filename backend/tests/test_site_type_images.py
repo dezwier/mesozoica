@@ -70,7 +70,7 @@ def test_match_image_files_accepts_legacy_sorted_order_index():
 def test_run_rename_maps_legacy_id_files(session: Session, tmp_path: Path, monkeypatch):
     from scripts import rename_site_type_images as rename_module
 
-    images_dir = tmp_path / "site-type-images"
+    images_dir = tmp_path / "images/site-types"
     images_dir.mkdir()
     (images_dir / "1.png").write_bytes(b"x")
 
@@ -94,7 +94,7 @@ def test_run_sync_clears_curated_url_when_local_file_missing(
     import app.core.config as config_module
     from scripts import sync_site_type_images as sync_module
 
-    images_dir = tmp_path / "site-type-images"
+    images_dir = tmp_path / "images/site-types"
     images_dir.mkdir()
     (images_dir / "cretaceous_sandstone.png").write_bytes(b"x")
 
