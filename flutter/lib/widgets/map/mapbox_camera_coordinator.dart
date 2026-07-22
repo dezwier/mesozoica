@@ -273,9 +273,7 @@ class MapboxCameraCoordinator {
         enabled: true,
         puckBearingEnabled: true,
         puckBearing: PuckBearing.HEADING,
-        pulsingEnabled: true,
-        pulsingColor: _locationPuckGold.toARGB32(),
-        pulsingMaxRadius: 58,
+        pulsingEnabled: false,
         locationPuck: LocationPuck(
           locationPuck2D: LocationPuck2D(
             topImage: puckImage,

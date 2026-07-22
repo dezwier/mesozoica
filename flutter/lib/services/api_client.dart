@@ -68,6 +68,50 @@ class ApiClient {
     return request.send();
   }
 
+  /// Sends a GET request to an already-built [uri] (e.g. from one of
+  /// [AppConfig]'s Uri builders), returning the raw response so callers can
+  /// keep their own status-code/error handling. Passing [client] routes the
+  /// request through it instead of the top-level `http` functions, which is
+  /// how domain services keep supporting `MockClient` injection in tests.
+  Future<http.Response> sendGet(
+    Uri uri, {
+    http.Client? client,
+    Map<String, String>? headers,
+    Duration? timeout,
+  }) {
+    final future = client != null
+        ? client.get(uri, headers: headers)
+        : http.get(uri, headers: headers);
+    return timeout == null ? future : future.timeout(timeout);
+  }
+
+  /// POST equivalent of [sendGet] for an already-built [uri].
+  Future<http.Response> sendPost(
+    Uri uri, {
+    http.Client? client,
+    Map<String, String>? headers,
+    Object? body,
+    Duration? timeout,
+  }) {
+    final future = client != null
+        ? client.post(uri, headers: headers, body: body)
+        : http.post(uri, headers: headers, body: body);
+    return timeout == null ? future : future.timeout(timeout);
+  }
+
+  /// DELETE equivalent of [sendGet] for an already-built [uri].
+  Future<http.Response> sendDelete(
+    Uri uri, {
+    http.Client? client,
+    Map<String, String>? headers,
+    Duration? timeout,
+  }) {
+    final future = client != null
+        ? client.delete(uri, headers: headers)
+        : http.delete(uri, headers: headers);
+    return timeout == null ? future : future.timeout(timeout);
+  }
+
   Uri _uri(String path, [Map<String, String>? query]) {
     final base = AppConfig.baseApiUrl;
     final normalized = path.startsWith('/') ? path : '/$path';

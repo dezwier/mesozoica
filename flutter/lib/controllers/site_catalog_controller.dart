@@ -6,10 +6,11 @@ import 'package:flutter/foundation.dart';
 import '../config/app_config.dart';
 import '../controllers/catalog_mode_controller.dart';
 import '../models/site.dart';
+import '../models/site_map_filters.dart';
 import '../services/site_service.dart';
-import '../widgets/map/site_map_filters.dart';
+import 'catalog_controller.dart';
 
-class SiteCatalogController extends ChangeNotifier {
+class SiteCatalogController extends CatalogController<SiteSummary> {
   SiteCatalogController({
     SiteService? service,
     CatalogModeController? catalogModeController,
@@ -34,6 +35,7 @@ class SiteCatalogController extends ChangeNotifier {
   SiteMapFilters _filters = SiteMapFilters();
 
   /// Visible catalog rows after applying [filters].
+  @override
   List<SiteSummary> get items {
     if (!_filters.hasActiveFilters) {
       return List.unmodifiable(_rawItems);
@@ -41,14 +43,19 @@ class SiteCatalogController extends ChangeNotifier {
     return List.unmodifiable(_rawItems.where(_filters.matches));
   }
 
+  @override
   bool get loading => _loading;
+  @override
   bool get isLoadingMore => _loadingMore;
   bool get hasMore => _hasMore;
+  @override
   String? get error => _error;
+  @override
   bool get isEmpty =>
       !_loading && !_loadingMore && _error == null && items.isEmpty;
   int get total => _total;
   SiteMapFilters get filters => _filters;
+  @override
   bool get hasActiveFilters => _filters.hasActiveFilters;
 
   CatalogDataSource get _dataSource =>
@@ -114,6 +121,7 @@ class SiteCatalogController extends ChangeNotifier {
     }
   }
 
+  @override
   Future<void> loadMore() async {
     if (_loading || _loadingMore || !_hasMore) return;
     if (_seed == null) return;
@@ -127,6 +135,7 @@ class SiteCatalogController extends ChangeNotifier {
     await _fetchNextPage();
   }
 
+  @override
   Future<void> refresh() => load(force: true);
 
   void applyFilters(SiteMapFilters filters) {

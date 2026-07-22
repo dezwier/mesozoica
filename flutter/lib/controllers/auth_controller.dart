@@ -19,8 +19,6 @@ class AuthController extends ChangeNotifier {
   bool get isLoading => _isLoading;
   bool get isInitializing => _isInitializing;
 
-  AuthService get authService => _authService;
-
   Future<void> initialize() async {
     try {
       _currentUser = await _authService.loadStoredUser();
@@ -102,6 +100,65 @@ class AuthController extends ChangeNotifier {
     _currentUser = null;
     notifyListeners();
   }
+
+  Future<Map<String, dynamic>> sendPasswordResetEmail(String email) =>
+      _authService.sendPasswordResetEmail(email);
+
+  Future<List<String>> getLinkedAccounts() => _authService.getLinkedAccounts();
+
+  Future<Map<String, dynamic>> checkUsername(String username) =>
+      _authService.checkUsername(username);
+
+  Future<Map<String, dynamic>> uploadProfileImage(List<int> bytes) =>
+      _authService.uploadProfileImage(bytes);
+
+  Future<Map<String, dynamic>> updateProfile({
+    String? username,
+    String? email,
+    String? fullName,
+    String? currentPassword,
+    String? password,
+  }) =>
+      _authService.updateProfile(
+        username: username,
+        email: email,
+        fullName: fullName,
+        currentPassword: currentPassword,
+        password: password,
+      );
+
+  Future<Map<String, dynamic>> linkGoogle({
+    required String idToken,
+    String? accessToken,
+  }) =>
+      _authService.linkGoogle(idToken: idToken, accessToken: accessToken);
+
+  Future<Map<String, dynamic>> linkApple({
+    required String idToken,
+    required String rawNonce,
+    String? authorizationCode,
+  }) =>
+      _authService.linkApple(
+        idToken: idToken,
+        rawNonce: rawNonce,
+        authorizationCode: authorizationCode,
+      );
+
+  Future<Map<String, dynamic>> unlinkProvider(String provider) =>
+      _authService.unlinkProvider(provider);
+
+  Future<Map<String, dynamic>> deleteData({
+    required bool sites,
+    required bool fossils,
+    required bool dinosaurs,
+  }) =>
+      _authService.deleteData(
+        sites: sites,
+        fossils: fossils,
+        dinosaurs: dinosaurs,
+      );
+
+  Future<Map<String, dynamic>> deleteAccount() => _authService.deleteAccount();
 
   void _setLoading(bool value) {
     _isLoading = value;

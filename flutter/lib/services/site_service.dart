@@ -4,8 +4,9 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 import '../config/app_config.dart';
-import '../controllers/catalog_mode_controller.dart';
+import '../models/catalog_data_source.dart';
 import '../models/site.dart';
+import 'api_client.dart';
 import 'token_storage.dart';
 
 class SiteService {
@@ -58,8 +59,8 @@ class SiteService {
     if (kDebugMode) {
       debugPrint('SiteService GET $uri');
     }
-    final response = await _client
-        .get(uri, headers: await _headers())
+    final response = await ApiClient.instance
+        .sendGet(uri, client: _client, headers: await _headers())
         .timeout(const Duration(seconds: 15));
 
     if (response.statusCode != 200) {
@@ -83,8 +84,8 @@ class SiteService {
     if (kDebugMode) {
       debugPrint('SiteService GET $uri');
     }
-    final response = await _client
-        .get(uri, headers: await _headers())
+    final response = await ApiClient.instance
+        .sendGet(uri, client: _client, headers: await _headers())
         .timeout(const Duration(seconds: 15));
 
     if (response.statusCode == 404) {
@@ -112,9 +113,10 @@ class SiteService {
     if (kDebugMode) {
       debugPrint('SiteService POST $uri');
     }
-    final response = await _client
-        .post(
+    final response = await ApiClient.instance
+        .sendPost(
           uri,
+          client: _client,
           headers: await _headers(jsonBody: true),
           body: jsonEncode({'lat': lat, 'lon': lon}),
         )
@@ -165,9 +167,10 @@ class SiteService {
     final body = <String, dynamic>{'status': status};
     if (lat != null) body['lat'] = lat;
     if (lon != null) body['lon'] = lon;
-    final response = await _client
-        .post(
+    final response = await ApiClient.instance
+        .sendPost(
           uri,
+          client: _client,
           headers: await _headers(jsonBody: true),
           body: jsonEncode(body),
         )
@@ -211,8 +214,8 @@ class SiteService {
     if (kDebugMode) {
       debugPrint('SiteService GET $uri');
     }
-    final response = await _client
-        .get(uri, headers: await _headers())
+    final response = await ApiClient.instance
+        .sendGet(uri, client: _client, headers: await _headers())
         .timeout(const Duration(seconds: 60));
 
     if (response.statusCode != 200) {
@@ -241,8 +244,8 @@ class SiteService {
     if (kDebugMode) {
       debugPrint('SiteService GET $uri');
     }
-    final response = await _client
-        .get(uri, headers: await _headers())
+    final response = await ApiClient.instance
+        .sendGet(uri, client: _client, headers: await _headers())
         .timeout(const Duration(seconds: 60));
 
     if (response.statusCode != 200) {
@@ -276,9 +279,10 @@ class SiteService {
     if (reason != null && reason.isNotEmpty) {
       body['reason'] = reason;
     }
-    final response = await _client
-        .post(
+    final response = await ApiClient.instance
+        .sendPost(
           uri,
+          client: _client,
           headers: await _headers(jsonBody: true),
           body: jsonEncode(body),
         )
@@ -302,8 +306,8 @@ class SiteService {
     if (kDebugMode) {
       debugPrint('SiteService GET $uri');
     }
-    final response = await _client
-        .get(uri, headers: await _headers())
+    final response = await ApiClient.instance
+        .sendGet(uri, client: _client, headers: await _headers())
         .timeout(const Duration(seconds: 10));
 
     if (response.statusCode == 404) {
@@ -346,8 +350,8 @@ class SiteService {
     if (kDebugMode) {
       debugPrint('SiteService POST $uri');
     }
-    final response = await _client
-        .post(uri, headers: await _headers(jsonBody: true))
+    final response = await ApiClient.instance
+        .sendPost(uri, client: _client, headers: await _headers(jsonBody: true))
         .timeout(const Duration(seconds: 15));
 
     if (response.statusCode != 200 && response.statusCode != 202) {
@@ -380,8 +384,8 @@ class SiteService {
     if (kDebugMode) {
       debugPrint('SiteService DELETE $uri');
     }
-    final response = await _client
-        .delete(uri, headers: await _headers())
+    final response = await ApiClient.instance
+        .sendDelete(uri, client: _client, headers: await _headers())
         .timeout(const Duration(seconds: 60));
 
     if (response.statusCode != 200) {
@@ -403,8 +407,8 @@ class SiteService {
     if (kDebugMode) {
       debugPrint('SiteService GET $uri');
     }
-    final response = await _client
-        .get(uri, headers: await _headers())
+    final response = await ApiClient.instance
+        .sendGet(uri, client: _client, headers: await _headers())
         .timeout(const Duration(seconds: 10));
 
     if (response.statusCode == 404) {
@@ -446,8 +450,8 @@ class SiteService {
     if (kDebugMode) {
       debugPrint('SiteService GET $uri');
     }
-    final response = await _client
-        .get(uri, headers: await _headers())
+    final response = await ApiClient.instance
+        .sendGet(uri, client: _client, headers: await _headers())
         .timeout(const Duration(seconds: 15));
 
     if (response.statusCode != 200) {
@@ -468,8 +472,8 @@ class SiteService {
     if (kDebugMode) {
       debugPrint('SiteService GET $uri');
     }
-    final response = await _client
-        .get(uri, headers: await _headers())
+    final response = await ApiClient.instance
+        .sendGet(uri, client: _client, headers: await _headers())
         .timeout(const Duration(seconds: 15));
 
     if (response.statusCode != 200) {
@@ -492,8 +496,8 @@ class SiteService {
     if (kDebugMode) {
       debugPrint('SiteService GET $uri');
     }
-    final response = await _client
-        .get(uri, headers: await _headers())
+    final response = await ApiClient.instance
+        .sendGet(uri, client: _client, headers: await _headers())
         .timeout(const Duration(seconds: 15));
 
     if (response.statusCode != 200) {

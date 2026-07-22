@@ -3,18 +3,19 @@ import 'dart:math';
 import 'package:flutter/foundation.dart';
 
 import '../config/app_config.dart';
+import '../config/geologic_timeline_constants.dart';
 import '../controllers/catalog_mode_controller.dart';
 import '../models/fossil.dart';
 import '../services/fossil_service.dart';
 import '../widgets/cards/fossil_card_image.dart';
-import '../widgets/cards/geologic_timeline.dart';
+import 'catalog_controller.dart';
 
 class FossilCatalogFilters {
   const FossilCatalogFilters({
     this.dinoSearchQuery = '',
     this.fossilSearchQuery = '',
-    this.maYounger = GeologicTimeline.mesozoicYoungerMa,
-    this.maOlder = GeologicTimeline.mesozoicOlderMa,
+    this.maYounger = mesozoicYoungerMa,
+    this.maOlder = mesozoicOlderMa,
     this.onlyCustomFossilImage = false,
     this.onlyLlmEnriched = true,
   });
@@ -33,13 +34,11 @@ class FossilCatalogFilters {
     if (hasSearch) return true;
     if (onlyCustomFossilImage) return true;
     if (!onlyLlmEnriched) return true;
-    return maYounger > GeologicTimeline.mesozoicYoungerMa ||
-        maOlder < GeologicTimeline.mesozoicOlderMa;
+    return maYounger > mesozoicYoungerMa || maOlder < mesozoicOlderMa;
   }
 
   bool get hasTimeFilter =>
-      maYounger > GeologicTimeline.mesozoicYoungerMa ||
-      maOlder < GeologicTimeline.mesozoicOlderMa;
+      maYounger > mesozoicYoungerMa || maOlder < mesozoicOlderMa;
 
   FossilCatalogFilters copyWith({
     String? dinoSearchQuery,
@@ -63,7 +62,7 @@ class FossilCatalogFilters {
   static const defaults = FossilCatalogFilters();
 }
 
-class FossilCatalogController extends ChangeNotifier {
+class FossilCatalogController extends CatalogController<FossilSummary> {
   FossilCatalogController({
     FossilService? service,
     CatalogModeController? catalogModeController,
@@ -89,14 +88,20 @@ class FossilCatalogController extends ChangeNotifier {
   FossilCatalogFilters _filters = FossilCatalogFilters.defaults;
   bool _useClientCustomImageFilter = false;
 
+  @override
   List<FossilSummary> get items => List.unmodifiable(_items);
+  @override
   bool get loading => _loading;
+  @override
   bool get isLoadingMore => _loadingMore;
   bool get hasMore => _hasMore;
+  @override
   String? get error => _error;
+  @override
   bool get isEmpty => !_loading && _error == null && _items.isEmpty;
   int get total => _total;
   FossilCatalogFilters get filters => _filters;
+  @override
   bool get hasActiveFilters {
     if (_dataSource == CatalogDataSource.field) {
       if (_filters.hasSearch) return true;
@@ -170,6 +175,7 @@ class FossilCatalogController extends ChangeNotifier {
     }
   }
 
+  @override
   Future<void> loadMore() async {
     if (_loading || _loadingMore || !_hasMore || _useClientCustomImageFilter) {
       return;
@@ -201,6 +207,7 @@ class FossilCatalogController extends ChangeNotifier {
     }
   }
 
+  @override
   Future<void> refresh() => load(force: true);
 
   Future<void> applyFilters(FossilCatalogFilters filters) async {

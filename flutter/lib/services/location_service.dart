@@ -22,6 +22,7 @@ bool shouldTrackLocation({
 class LocationService extends ChangeNotifier {
   LatLng? _currentLocation;
   Position? _lastPosition;
+  DateTime? _lastPositionAt;
   double _headingDeg = 0;
   bool _isLoading = false;
   String? _error;
@@ -31,16 +32,35 @@ class LocationService extends ChangeNotifier {
   bool _mapForeground = false;
   bool _fieldSession = false;
   bool _appForeground = true;
+  bool _highPrecisionGps = false;
+
+  /// Heading updates without [notifyListeners] (avoids ~60 Hz map rebuilds).
+  final ValueNotifier<double> headingListenable = ValueNotifier<double>(0);
+
+  // Perf HUD counters (monotonic; HUD diffs over a window).
+  int _gpsUpdateCount = 0;
+  int _headingNotifyCount = 0;
+  int _headingSampleCount = 0;
 
   LatLng? get currentLocation => _currentLocation;
   Position? get lastPosition => _lastPosition;
+  DateTime? get lastPositionAt => _lastPositionAt;
   bool get isAppForeground => _appForeground;
   double get headingDeg => _headingDeg;
   bool get isLoading => _isLoading;
   String? get error => _error;
   bool get hasLocation => _currentLocation != null;
+  bool get isMapForeground => _mapForeground;
+  bool get isFieldSession => _fieldSession;
+  bool get isGpsStreamActive => _locationSub != null;
+  bool get isHeadingStreamActive => _headingSub != null;
+  bool get isHighPrecisionGps => _highPrecisionGps;
   bool get isTracking =>
       _mapForeground || (_fieldSession && _locationSub != null);
+
+  int get gpsUpdateCount => _gpsUpdateCount;
+  int get headingNotifyCount => _headingNotifyCount;
+  int get headingSampleCount => _headingSampleCount;
 
   /// True when a foreground GPS stream should be running.
   @visibleForTesting
@@ -49,13 +69,20 @@ class LocationService extends ChangeNotifier {
         appForeground: _appForeground,
       );
 
+  /// Age of the last GPS fix, or null if never fixed.
+  Duration? get gpsFixAge {
+    final at = _lastPositionAt;
+    if (at == null) return null;
+    return DateTime.now().difference(at);
+  }
+
   Future<void> setMapForeground(bool active) async {
     final changed = _mapForeground != active;
     _mapForeground = active;
     if (!changed) return;
     // Map tab only controls the compass; discovery GPS stays on for all tabs
-    // via the field session and must not restart on tab switches.
-    await _reconcileTracking(forceRestartLocation: false);
+    // via the field session. Precision profile may change → restart GPS.
+    await _reconcileTracking(forceRestartLocation: true);
   }
 
   Future<void> setFieldSession({
@@ -89,6 +116,7 @@ class LocationService extends ChangeNotifier {
     final wantsLocation = _mapForeground || _fieldSession;
     if (!wantsLocation || !_appForeground) {
       _stopStreams();
+      _highPrecisionGps = false;
       return;
     }
     // Compass is foreground-only UI for the map tab.
@@ -100,7 +128,11 @@ class LocationService extends ChangeNotifier {
       _headingNotifyTimer?.cancel();
       _headingNotifyTimer = null;
     }
-    await _startLocationStream(forceRestart: forceRestartLocation);
+    final wantHigh = _mapForeground;
+    final profileChanged = wantHigh != _highPrecisionGps;
+    await _startLocationStream(
+      forceRestart: forceRestartLocation || profileChanged,
+    );
   }
 
   void _stopStreams() {
@@ -113,7 +145,7 @@ class LocationService extends ChangeNotifier {
   }
 
   void _startHeading() {
-    _headingSub?.cancel();
+    if (_headingSub != null) return;
     final events = FlutterCompass.events;
     if (events == null) {
       if (kDebugMode) {
@@ -127,13 +159,16 @@ class LocationService extends ChangeNotifier {
         .map((event) => (event.heading! + 360) % 360)
         .listen(
       (heading) {
+        _headingSampleCount++;
         _headingDeg = heading;
-        // Coalesce compass spam to ~60 Hz so the map stays smooth.
+        // Coalesce compass spam to ~60 Hz for listeners that opt in.
         _headingNotifyTimer ??= Timer(
           const Duration(milliseconds: 16),
           () {
             _headingNotifyTimer = null;
-            notifyListeners();
+            _headingNotifyCount++;
+            headingListenable.value = _headingDeg;
+            // Do NOT call notifyListeners() — heading must not rebuild the map.
           },
         );
       },
@@ -166,15 +201,20 @@ class LocationService extends ChangeNotifier {
     return true;
   }
 
-  LocationSettings _locationSettings() {
-    const accuracy = LocationAccuracy.best;
-    const distanceFilter = 1;
+  /// Tighter GPS on the map tab; relaxed while only the field session needs it.
+  LocationSettings _locationSettings({required bool highPrecision}) {
+    final accuracy =
+        highPrecision ? LocationAccuracy.high : LocationAccuracy.medium;
+    final distanceFilter = highPrecision ? 5 : 10;
+    final interval = highPrecision
+        ? const Duration(seconds: 1)
+        : const Duration(seconds: 2);
 
     if (!kIsWeb && Platform.isAndroid) {
       return AndroidSettings(
         accuracy: accuracy,
         distanceFilter: distanceFilter,
-        intervalDuration: const Duration(milliseconds: 500),
+        intervalDuration: interval,
       );
     }
 
@@ -189,7 +229,7 @@ class LocationService extends ChangeNotifier {
       );
     }
 
-    return const LocationSettings(
+    return LocationSettings(
       accuracy: accuracy,
       distanceFilter: distanceFilter,
     );
@@ -214,7 +254,9 @@ class LocationService extends ChangeNotifier {
         _applyPosition(lastKnown);
       }
 
-      final settings = _locationSettings();
+      final highPrecision = _mapForeground;
+      _highPrecisionGps = highPrecision;
+      final settings = _locationSettings(highPrecision: highPrecision);
       final position = await Geolocator.getCurrentPosition(
         locationSettings: settings,
       );
@@ -244,13 +286,16 @@ class LocationService extends ChangeNotifier {
 
   void _applyPosition(Position position) {
     _lastPosition = position;
+    _lastPositionAt = DateTime.now();
     _currentLocation = LatLng(position.latitude, position.longitude);
+    _gpsUpdateCount++;
     notifyListeners();
   }
 
   @override
   void dispose() {
     _stopStreams();
+    headingListenable.dispose();
     super.dispose();
   }
 }

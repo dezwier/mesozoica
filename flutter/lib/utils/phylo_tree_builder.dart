@@ -1,6 +1,6 @@
 import '../models/dinosaur.dart';
 import '../models/phylo_tree.dart';
-import '../utils/display_text.dart';
+import 'display_text.dart';
 
 /// Merges per-dinosaur cladogram lineages into a single phylogenetic trie.
 class PhyloTreeBuilder {

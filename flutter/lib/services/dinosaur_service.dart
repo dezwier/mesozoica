@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import '../config/app_config.dart';
 import '../models/dinosaur.dart';
 import '../models/dinosaur_article.dart';
+import 'api_client.dart';
 
 class DinosaurService {
   DinosaurService({http.Client? client}) : _client = client ?? http.Client();
@@ -37,7 +38,7 @@ class DinosaurService {
     if (kDebugMode) {
       debugPrint('DinosaurService GET $uri');
     }
-    final response = await _client.get(uri).timeout(const Duration(seconds: 15));
+    final response = await ApiClient.instance.sendGet(uri, client: _client).timeout(const Duration(seconds: 15));
 
     if (response.statusCode != 200) {
       throw DinosaurServiceException(
@@ -58,7 +59,7 @@ class DinosaurService {
       debugPrint('DinosaurService GET $uri');
     }
     final response =
-        await _client.get(uri).timeout(const Duration(seconds: 15));
+        await ApiClient.instance.sendGet(uri, client: _client).timeout(const Duration(seconds: 15));
 
     if (response.statusCode == 404) {
       throw DinosaurServiceException('Dinosaur not found');
@@ -79,7 +80,7 @@ class DinosaurService {
   Future<DinosaurArticle> fetchDinosaurArticle(int id) async {
     final uri = AppConfig.dinosaurArticleUri(id);
     final response =
-        await _client.get(uri).timeout(const Duration(seconds: 20));
+        await ApiClient.instance.sendGet(uri, client: _client).timeout(const Duration(seconds: 20));
 
     if (response.statusCode == 404) {
       throw DinosaurServiceException('Dinosaur article not found');

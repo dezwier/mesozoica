@@ -8,8 +8,8 @@ import 'package:latlong2/latlong.dart';
 import '../config/app_config.dart';
 import '../controllers/catalog_mode_controller.dart';
 import '../models/site.dart';
+import '../models/site_map_filters.dart';
 import '../services/site_service.dart';
-import '../widgets/map/site_map_filters.dart';
 
 /// Separate map caches so archive / field-linked / field-show-all switch
 /// instantly like archive ↔ field, without reloading.

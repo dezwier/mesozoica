@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../models/site_map_filters.dart';
 import '../common/drawer_sheet_sizes.dart';
-import 'site_map_filters.dart';
 
 class SiteFilterSheet extends StatefulWidget {
   const SiteFilterSheet({

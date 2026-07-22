@@ -5,8 +5,8 @@ import '../controllers/dinosaur_catalog_controller.dart';
 import '../models/dinosaur.dart';
 import '../models/phylo_tree.dart';
 import '../services/dinosaur_service.dart';
-import '../services/fractal_tree_layout.dart';
-import '../services/phylo_tree_builder.dart';
+import '../utils/fractal_tree_layout.dart';
+import '../utils/phylo_tree_builder.dart';
 import '../widgets/cards/dinosaur_card_image.dart';
 
 class PhyloTreeController extends ChangeNotifier {

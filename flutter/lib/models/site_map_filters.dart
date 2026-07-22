@@ -1,5 +1,5 @@
-import '../../models/site.dart';
-import '../../utils/display_text.dart';
+import '../utils/display_text.dart';
+import 'site.dart';
 
 /// Site lifecycle statuses for field sites.
 const siteStatusOptions = <String>[

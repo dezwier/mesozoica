@@ -6,6 +6,7 @@ import '../config/app_config.dart';
 import '../models/tool.dart';
 import '../services/tool_service.dart';
 import '../widgets/cards/tool_card_image.dart';
+import 'catalog_controller.dart';
 
 enum ToolCatalogSort {
   category,
@@ -60,7 +61,7 @@ class ToolCatalogFilters {
   static const defaults = ToolCatalogFilters();
 }
 
-class ToolCatalogController extends ChangeNotifier {
+class ToolCatalogController extends CatalogController<ToolSummary> {
   ToolCatalogController({ToolService? service})
       : _service = service ?? ToolService();
 
@@ -82,16 +83,22 @@ class ToolCatalogController extends ChangeNotifier {
   int _total = 0;
   ToolCatalogFilters _filters = ToolCatalogFilters.defaults;
 
+  @override
   List<ToolSummary> get items => List.unmodifiable(_items);
   List<ToolCategoryOption> get availableCategories =>
       List.unmodifiable(_availableCategories);
+  @override
   bool get loading => _loading;
+  @override
   bool get isLoadingMore => _loadingMore;
   bool get hasMore => _hasMore;
+  @override
   String? get error => _error;
+  @override
   bool get isEmpty => !_loading && _error == null && _items.isEmpty;
   int get total => _total;
   ToolCatalogFilters get filters => _filters;
+  @override
   bool get hasActiveFilters => _filters.hasActiveFilters;
   String? get chromeImageUrl => _chromeImageUrl;
 
@@ -181,6 +188,7 @@ class ToolCatalogController extends ChangeNotifier {
     }
   }
 
+  @override
   Future<void> loadMore() async {
     if (_loading || _loadingMore || !_hasMore) return;
     if (_filters.sort == ToolCatalogSort.category && _seed == null) return;
@@ -211,6 +219,7 @@ class ToolCatalogController extends ChangeNotifier {
     }
   }
 
+  @override
   Future<void> refresh() => load(force: true);
 
   Future<void> applyFilters(ToolCatalogFilters filters) async {

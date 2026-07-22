@@ -191,7 +191,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
     final result = await context
         .read<AuthController>()
-        .authService
         .sendPasswordResetEmail(email);
     _showError(
       result['success'] == true

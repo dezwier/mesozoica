@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../config/geologic_timeline_constants.dart' as timeline_constants;
 import '../../theme/dino_card_theme.dart';
 
 enum GeologicTimelineAxis { vertical, horizontal }
@@ -32,8 +33,8 @@ class GeologicTimeline extends StatelessWidget {
         axis = axis,
         scale = scale;
 
-  static const double mesozoicOlderMa = 252;
-  static const double mesozoicYoungerMa = 66;
+  static const double mesozoicOlderMa = timeline_constants.mesozoicOlderMa;
+  static const double mesozoicYoungerMa = timeline_constants.mesozoicYoungerMa;
 
   final double? birth;
   final double? death;

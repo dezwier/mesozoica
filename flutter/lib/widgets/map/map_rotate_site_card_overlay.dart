@@ -230,7 +230,10 @@ class MapRotateOverlayController {
   bool _syncInFlight = false;
   bool _syncQueued = false;
 
-  /// Project visible sites for the current map frame (no debounce).
+  /// Project visible sites for the current map frame (coalesced).
+  ///
+  /// In-flight work is merged into one follow-up pass so we stay near vsync
+  /// without stacking parallel native projections (that lagged and jittered).
   void syncFrame({
     required MapboxMap? map,
     required List<SiteSummary> sites,
@@ -296,7 +299,7 @@ List<MapRotateVisibleSite> sortOverlayDepth(List<MapRotateVisibleSite> sites) {
 bool rotateOverlaySitesEqual(
   List<MapRotateVisibleSite> a,
   List<MapRotateVisibleSite> b, {
-  double epsilon = 0.75,
+  double epsilon = 0.5,
 }) {
   if (identical(a, b)) return true;
   if (a.length != b.length) return false;

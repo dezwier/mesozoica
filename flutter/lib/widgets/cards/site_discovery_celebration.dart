@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../config/discovery_config.dart';
-import '../../controllers/catalog_mode_controller.dart';
+import '../../models/catalog_data_source.dart';
 import '../../models/site.dart';
 import '../../services/site_service.dart';
 import '../../theme/dino_card_theme.dart';

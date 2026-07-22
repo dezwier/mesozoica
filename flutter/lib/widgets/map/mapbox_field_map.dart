@@ -39,19 +39,26 @@ class MapboxFieldMap extends StatefulWidget {
     required this.onFollowCancelled,
     required this.onZoomChanged,
     required this.onReadyChanged,
+    this.mapActive = true,
     this.avatarImageUrl,
     this.hiddenRotateSiteId,
+    this.rotateCardCount,
+    this.headingListenable,
     this.onError,
   });
 
   final MapboxCameraCoordinator camera;
   final bool rotateWithHeading;
+  /// When false (catalog/profile/tools open), pause rotate overlay work.
+  final bool mapActive;
   final List<SiteSummary> sites;
   final SiteSummary? selectedSite;
   /// Changes on archive ↔ field ↔ show-all (and filters) → wipe + reload.
   final String markerDatasetKey;
   final LatLng? currentLocation;
   final double headingDeg;
+  /// Live heading without rebuilding this widget (compass decoupled).
+  final ValueListenable<double>? headingListenable;
   final bool followUser;
   final LatLng initialCenter;
   final double initialZoom;
@@ -64,6 +71,8 @@ class MapboxFieldMap extends StatefulWidget {
   final String? avatarImageUrl;
   /// Hide this site's mini-card while the detail sheet morphs open.
   final int? hiddenRotateSiteId;
+  /// Optional admin HUD counter for visible rotate mini-cards.
+  final ValueNotifier<int>? rotateCardCount;
   final ValueChanged<Object>? onError;
 
   @override
@@ -108,6 +117,7 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
         final sorted = sortOverlayDepth(sites);
         if (rotateOverlaySitesEqual(_visibleRotateSites, sorted)) return;
         setState(() => _visibleRotateSites = sorted);
+        widget.rotateCardCount?.value = sorted.length;
       },
     );
     widget.camera.rotateWithHeading = widget.rotateWithHeading;
@@ -210,6 +220,9 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
     );
   }
 
+  double get _liveHeadingDeg =>
+      widget.headingListenable?.value ?? widget.headingDeg;
+
   FollowPuckViewportState _followPuckViewport() {
     return FollowPuckViewportState(
       zoom: MapConfig.mapboxRotateZoom,
@@ -244,7 +257,7 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
     unawaited(
       widget.camera.applyOrientationMode(
         rotateWithHeading: false,
-        headingDeg: widget.headingDeg,
+        headingDeg: _liveHeadingDeg,
       ),
     );
   }
@@ -270,12 +283,12 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
   }
 
   void _onRotateOverlayTick(Duration elapsed) {
-    if (!widget.rotateWithHeading || !_ready) return;
+    if (!widget.rotateWithHeading || !widget.mapActive || !_ready) return;
     _syncRotateOverlayFrame();
   }
 
   void _setRotateOverlayTickerActive(bool active) {
-    if (active) {
+    if (active && widget.mapActive) {
       if (_rotateOverlayTicker == null) {
         _rotateOverlayTicker = createTicker(_onRotateOverlayTick)..start();
       }
@@ -289,17 +302,20 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
   Future<void> _applyRotateMarkerMode(bool rotate) async {
     await _annotations?.setRotateModePaused(rotate);
     if (!mounted) return;
-    if (rotate) {
+    if (rotate && widget.mapActive) {
       _setRotateOverlayTickerActive(true);
     } else {
       _setRotateOverlayTickerActive(false);
       setState(() => _visibleRotateSites = const []);
-      _scheduleAnnotationSync();
+      widget.rotateCardCount?.value = 0;
+      if (!rotate) {
+        _scheduleAnnotationSync();
+      }
     }
   }
 
   void _syncRotateOverlayFrame() {
-    if (!widget.rotateWithHeading || !_ready) return;
+    if (!widget.rotateWithHeading || !widget.mapActive || !_ready) return;
     final size = _viewportSize;
     final map = _map;
     if (size == null || map == null) return;
@@ -377,12 +393,25 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
         _scheduleAnnotationSync();
       }
     }
+    // Location cull-center updates; heading is owned by FollowPuck / ticker —
+    // do not rebuild-sync on headingDeg (would fight compass decoupling).
     if (widget.rotateWithHeading &&
-        (oldWidget.sites != widget.sites ||
-            oldWidget.markerDatasetKey != widget.markerDatasetKey ||
-            oldWidget.currentLocation != widget.currentLocation ||
-            oldWidget.headingDeg != widget.headingDeg)) {
+        oldWidget.currentLocation != widget.currentLocation) {
       _syncRotateOverlayFrame();
+    }
+    if (oldWidget.mapActive != widget.mapActive ||
+        oldWidget.rotateWithHeading != widget.rotateWithHeading) {
+      if (widget.rotateWithHeading && widget.mapActive && _ready) {
+        _setRotateOverlayTickerActive(true);
+      } else {
+        _setRotateOverlayTickerActive(false);
+      }
+      if (!widget.mapActive) {
+        _lightPresetTimer?.cancel();
+        _lightPresetTimer = null;
+      } else if (_styleLoaded) {
+        unawaited(_applyBasemapLook());
+      }
     }
     if (oldWidget.currentLocation != widget.currentLocation) {
       unawaited(_applyBasemapLook());
@@ -519,7 +548,7 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
         await widget.camera.seedCamera(
           center: widget.currentLocation ?? _seedCenter,
           zoom: _seedZoom,
-          headingDeg: widget.headingDeg,
+          headingDeg: _liveHeadingDeg,
         );
       }
 
@@ -577,9 +606,10 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
   }
 
   void _onCameraChange(CameraChangedEventData data) {
-    if (!_ready) return;
+    if (!_ready || !widget.mapActive) return;
     if (widget.rotateWithHeading) {
-      _syncRotateOverlayFrame();
+      // Rotate mini-cards are driven by the vsync ticker only. Syncing here
+      // too queued stale projections and made cards jitter behind FollowPuck.
       return;
     }
     widget.onZoomChanged(data.cameraState.zoom);

@@ -1,17 +1,9 @@
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-enum CatalogDataSource {
-  archive,
-  field;
+import '../models/catalog_data_source.dart';
 
-  String get apiValue => name;
-
-  static CatalogDataSource fromStored(String? value) {
-    if (value == field.name) return field;
-    return archive;
-  }
-}
+export '../models/catalog_data_source.dart' show CatalogDataSource;
 
 class CatalogModeController extends ChangeNotifier {
   static const _storageKey = 'catalog_data_source';

@@ -4,9 +4,9 @@ import 'dart:ui' as ui;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
-import '../../services/fractal_label_placer.dart';
-import '../../services/fractal_tree_layout.dart';
 import '../../theme/dino_card_theme.dart';
+import '../../utils/fractal_label_placer.dart';
+import '../../utils/fractal_tree_layout.dart';
 
 class FractalFernPainter extends CustomPainter {
   FractalFernPainter({

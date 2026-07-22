@@ -23,11 +23,15 @@ import '../../widgets/common/chrome_fab.dart';
 import '../../widgets/dino/dinosaur_filter_fab.dart';
 import '../../widgets/map/field_data_purge_dialog.dart';
 import '../../widgets/map/map_control_buttons.dart';
+import '../../widgets/map/map_perf_hud.dart';
 import '../../widgets/map/mapbox_camera_coordinator.dart';
 import '../../widgets/map/mapbox_field_map.dart';
 import '../../widgets/map/mapbox_site_annotations.dart';
 import '../../widgets/map/site_filter_sheet.dart';
 import '../../widgets/map/site_map_card_dialog.dart';
+
+part 'map_screen_camera.dart';
+part 'map_screen_field_ops.dart';
 
 class MapScreen extends StatefulWidget {
   const MapScreen({
@@ -41,23 +45,8 @@ class MapScreen extends StatefulWidget {
   State<MapScreen> createState() => _MapScreenState();
 }
 
-class _MapScreenState extends State<MapScreen> {
-  final MapboxCameraCoordinator _mapboxCamera = MapboxCameraCoordinator();
-
-  bool _mapboxReady = false;
-  bool _splashDismissed = false;
-  double _zoomLevel = MapConfig.mapboxRotateZoom;
-  bool _didInitialCenter = false;
-  bool _followUser = true;
-  /// false = north-fixed Mapbox; true = map bearing follows phone.
-  bool _rotateMap = true;
-  int? _hiddenRotateSiteId;
-  LatLng? _lastFollowedLocation;
-  String? _scanBannerMessage;
-  String? _mapboxBannerMessage;
-  Timer? _scanBannerTimer;
-  Timer? _splashSafetyTimer;
-
+class _MapScreenState extends State<MapScreen>
+    with _MapScreenCameraMixin, _MapScreenFieldOpsMixin {
   @override
   void initState() {
     super.initState();
@@ -82,333 +71,9 @@ class _MapScreenState extends State<MapScreen> {
 
   @override
   void dispose() {
-    _scanBannerTimer?.cancel();
-    _splashSafetyTimer?.cancel();
+    _disposeFieldOpsMixin();
+    _disposeCameraMixin();
     super.dispose();
-  }
-
-  void _dismissSplash() {
-    if (!mounted || _splashDismissed) return;
-    _splashDismissed = true;
-    _splashSafetyTimer?.cancel();
-    context.read<SplashHoldProvider>().setInitialPageReady(true);
-  }
-
-  void _activateIfNeeded() {
-    if (!widget.isActive) {
-      context.read<LocationService>().setMapForeground(false);
-      context.read<map_data.MapController>().pause();
-      return;
-    }
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted || !widget.isActive) return;
-      context.read<LocationService>().setMapForeground(true);
-      context.read<map_data.MapController>().load();
-      _consumePendingFocus();
-    });
-  }
-
-  void _consumePendingFocus() {
-    if (!widget.isActive || !_mapboxReady) return;
-    final mapData = context.read<map_data.MapController>();
-    final site = mapData.takePendingFocusSite();
-    if (site == null) return;
-    // Catalog backside map taps: select marker + slow pan, no card.
-    mapData.selectSite(site);
-    unawaited(
-      _panToSite(
-        site,
-        durationMs: 1400,
-        exitRotateMode: true,
-      ),
-    );
-  }
-
-  Future<void> _panToSite(
-    SiteSummary site, {
-    int durationMs = 700,
-    bool exitRotateMode = false,
-  }) async {
-    final lat = site.latitude;
-    final lon = site.longitude;
-    if (lat == null || lon == null || !_mapboxReady) return;
-    final headingDeg = context.read<LocationService>().headingDeg;
-
-    if (exitRotateMode && _rotateMap) {
-      setState(() {
-        _rotateMap = false;
-        _followUser = false;
-      });
-      _mapboxCamera.clearPendingFollow();
-      // MapboxFieldMap exits FollowPuck → Idle + north-fixed camera.
-    } else if (_rotateMap) {
-      // Rotate mode stays locked on the user — don't pan away for site taps.
-      return;
-    } else {
-      setState(() => _followUser = false);
-      _mapboxCamera.clearPendingFollow();
-    }
-
-    // Wait for followUser=false / FollowPuck exit to settle before flyTo.
-    await WidgetsBinding.instance.endOfFrame;
-    await WidgetsBinding.instance.endOfFrame;
-    if (!mounted || !_mapboxReady) return;
-
-    await _mapboxCamera.centerOn(
-      LatLng(lat, lon),
-      zoom: _zoomLevel,
-      headingDeg: headingDeg,
-      durationMs: durationMs,
-    );
-  }
-
-  void _toggleRotationMode() {
-    if (!MapConfig.hasMapboxAccessToken) {
-      setState(() {
-        _mapboxBannerMessage =
-            'Mapbox token missing — add MAPBOX_ACCESS_TOKEN via ./run.sh';
-      });
-      return;
-    }
-    final enteringRotate = !_rotateMap;
-    setState(() {
-      _rotateMap = enteringRotate;
-      _mapboxBannerMessage = null;
-      if (enteringRotate) {
-        _followUser = true;
-        _zoomLevel = MapConfig.mapboxRotateZoom;
-        final location = context.read<LocationService>().currentLocation;
-        if (location != null) {
-          _lastFollowedLocation = location;
-        }
-      }
-    });
-    // MapboxFieldMap switches FollowPuck ↔ Idle from rotateWithHeading.
-  }
-
-  void _setInitialCamera({
-    required LocationService locationService,
-  }) {
-    if (!_mapboxReady || _didInitialCenter) return;
-    if (!locationService.hasLocation) return;
-    final location = locationService.currentLocation!;
-    _didInitialCenter = true;
-    _followUser = true;
-    _lastFollowedLocation = location;
-    if (_rotateMap) {
-      // FollowPuck owns camera while rotating.
-      _zoomLevel = MapConfig.mapboxRotateZoom;
-      return;
-    }
-    final zoom = MapConfig.mapboxFollowZoom;
-    unawaited(
-      _mapboxCamera.centerOn(
-        location,
-        zoom: zoom,
-        headingDeg: locationService.headingDeg,
-      ),
-    );
-    _zoomLevel = zoom;
-  }
-
-  Future<void> _centerOnLocation(LocationService locationService) async {
-    final location = locationService.currentLocation;
-    if (location == null || !_mapboxReady || _rotateMap) return;
-    setState(() {
-      _followUser = true;
-      _lastFollowedLocation = location;
-      _zoomLevel = MapConfig.mapboxFollowZoom;
-    });
-    await _mapboxCamera.centerOn(
-      location,
-      zoom: MapConfig.mapboxFollowZoom,
-      headingDeg: locationService.headingDeg,
-      durationMs: 1200,
-    );
-  }
-
-  void _maybeFollowUser(LocationService locationService) {
-    // Rotate mode is owned by FollowPuck; only north-fixed GPS-follow here.
-    if (_rotateMap || !_followUser || !_mapboxReady) return;
-    final location = locationService.currentLocation;
-    if (location == null) return;
-    final previous = _lastFollowedLocation;
-    if (previous != null &&
-        previous.latitude == location.latitude &&
-        previous.longitude == location.longitude) {
-      return;
-    }
-    _lastFollowedLocation = location;
-    unawaited(
-      _mapboxCamera.followLocation(
-        location,
-        followUser: true,
-      ),
-    );
-  }
-
-  void _onZoomChanged(double zoom) {
-    if (_rotateMap) return;
-    final clamped = clampMapboxZoom(zoom);
-    setState(() => _zoomLevel = clamped);
-    unawaited(_mapboxCamera.setZoom(clamped));
-  }
-
-  void _onMapboxZoomChanged(double zoom) {
-    if (!mounted || _rotateMap) return;
-    final clamped = clampMapboxZoom(zoom);
-    if (clamped == _zoomLevel) return;
-    setState(() => _zoomLevel = clamped);
-  }
-
-  void _showScanBanner(String message, {bool autoDismiss = true}) {
-    _scanBannerTimer?.cancel();
-    setState(() => _scanBannerMessage = message);
-    if (!autoDismiss) return;
-    _scanBannerTimer = Timer(const Duration(seconds: 4), () {
-      if (!mounted) return;
-      setState(() => _scanBannerMessage = null);
-    });
-  }
-
-  Future<void> _onScanFieldArea() async {
-    if (!_mapboxReady) return;
-    final center = await _mapboxCamera.currentCenter();
-    if (center == null) {
-      _showScanBanner('Could not read map center');
-      return;
-    }
-    _showScanBanner('Field site scan queued…', autoDismiss: false);
-    unawaited(_runAdminFieldScan(center));
-  }
-
-  Future<void> _runAdminFieldScan(LatLng center) async {
-    final siteService = SiteService();
-    try {
-      final response = await context
-          .read<FieldSessionCoordinator>()
-          .scanAt(center);
-      if (!mounted) return;
-      if (response == null) {
-        _showScanBanner('Could not queue field site scan');
-        return;
-      }
-
-      final jobId = response.jobId;
-      if (jobId == null) {
-        _showScanBanner(
-          response.accepted
-              ? 'Field site scan queued'
-              : 'Scan already running for this area',
-        );
-        return;
-      }
-
-      if (!response.accepted) {
-        _showScanBanner(
-          'Scan already running — waiting for result…',
-          autoDismiss: false,
-        );
-      }
-
-      final status = await siteService.waitForFieldEnsureJob(jobId);
-      if (!mounted) return;
-
-      if (status.isFailed) {
-        _showScanBanner(
-          status.errorMessage?.trim().isNotEmpty == true
-              ? 'Scan failed: ${status.errorMessage}'
-              : 'Field site scan failed',
-        );
-        return;
-      }
-
-      final written = status.generated ?? 0;
-      final after = status.totalInRadius ?? 0;
-      final found = (after - written).clamp(0, after);
-      final radiusKm = status.radiusKm;
-      final radiusLabel = radiusKm == radiusKm.roundToDouble()
-          ? '${radiusKm.toInt()} km'
-          : '${radiusKm.toStringAsFixed(1)} km';
-      _showScanBanner('Found $found in $radiusLabel · wrote $written');
-      context.read<map_data.MapController>().scheduleFieldPollAfterEnsure();
-    } catch (_) {
-      if (!mounted) return;
-      _showScanBanner('Could not complete field site scan');
-    } finally {
-      siteService.dispose();
-    }
-  }
-
-  Future<void> _onPurgeFieldData() async {
-    final selection = await FieldDataPurgeDialog.confirm(context);
-    if (selection == null || !mounted) return;
-
-    _showScanBanner('Deleting field data…', autoDismiss: false);
-    final service = SiteService();
-    try {
-      final result = await service.purgeAllFieldData(
-        userSites: selection.userSites,
-        userFossils: selection.userFossils,
-        sites: selection.sites,
-        fossils: selection.fossils,
-      );
-      if (!mounted) return;
-      context.read<FieldDiscoveryCoordinator>().clearForUserChange();
-      context.read<map_data.MapController>().load(force: true);
-      context.read<SiteCatalogController>().load(force: true);
-      context.read<FossilCatalogController>().load(force: true);
-      _showScanBanner(
-        'Deleted ${result.userSitesDeleted} user sites · '
-        '${result.userFossilsDeleted} user fossils · '
-        '${result.sitesDeleted} sites · '
-        '${result.fossilsDeleted} fossils',
-      );
-    } on SiteServiceException catch (error) {
-      if (!mounted) return;
-      _showScanBanner(error.message);
-    } catch (_) {
-      if (!mounted) return;
-      _showScanBanner('Could not delete field data');
-    } finally {
-      service.dispose();
-    }
-  }
-
-  void _openFilterSheet(map_data.MapController mapData, bool isFieldMode) {
-    SiteFilterSheet.show(
-      context,
-      initialFilters: mapData.filters.copyWith(filterByStatus: isFieldMode),
-      showStatusSection: isFieldMode,
-      onApply: mapData.applyFilters,
-    );
-  }
-
-  Future<void> _onSiteTap(SiteSummary site) async {
-    final mapData = context.read<map_data.MapController>();
-    // Keep selection after the card closes; only another tap replaces it.
-    mapData.selectSite(site);
-    if (_rotateMap) {
-      setState(() => _hiddenRotateSiteId = site.siteId);
-    }
-    final displayFuture = mapData.siteForDisplay(site);
-    if (!_rotateMap) {
-      unawaited(_panToSite(site));
-    }
-    final displaySite = await displayFuture;
-    if (!mounted) return;
-    await showSiteMapCardDialog(context, displaySite);
-    if (mounted) {
-      setState(() => _hiddenRotateSiteId = null);
-    }
-  }
-
-  void _onMapboxError(Object error) {
-    if (!mounted) return;
-    setState(() {
-      _mapboxBannerMessage = 'Mapbox failed: $error';
-    });
   }
 
   @override
@@ -454,44 +119,62 @@ class _MapScreenState extends State<MapScreen> {
               )
             else
               Positioned.fill(
-                child: MapboxFieldMap(
-                  camera: _mapboxCamera,
-                  rotateWithHeading: _rotateMap,
-                  sites: mapData.filteredGeoSites,
-                  selectedSite: mapData.selectedSite,
-                  hiddenRotateSiteId: _hiddenRotateSiteId,
-                  markerDatasetKey: [
-                    isFieldMode
-                        ? (mapData.showAllFieldSites
-                            ? 'field:all'
-                            : 'field:linked')
-                        : 'archive',
-                    mapData.filters.markerFilterKey,
-                  ].join('|'),
-                  currentLocation: locationService.currentLocation,
-                  headingDeg: locationService.headingDeg,
+                child: TickerMode(
+                  enabled: widget.isActive,
+                  child: MapboxFieldMap(
+                    camera: _mapboxCamera,
+                    rotateWithHeading: _rotateMap,
+                    mapActive: widget.isActive,
+                    sites: mapData.filteredGeoSites,
+                    selectedSite: mapData.selectedSite,
+                    hiddenRotateSiteId: _hiddenRotateSiteId,
+                    markerDatasetKey: [
+                      isFieldMode
+                          ? (mapData.showAllFieldSites
+                              ? 'field:all'
+                              : 'field:linked')
+                          : 'archive',
+                      mapData.filters.markerFilterKey,
+                    ].join('|'),
+                    currentLocation: locationService.currentLocation,
+                    headingDeg: locationService.headingDeg,
+                    headingListenable: locationService.headingListenable,
+                    followUser: _followUser || _rotateMap,
+                    initialCenter: startCenter,
+                    initialZoom: _zoomLevel,
+                    basemapTheme: basemapTheme,
+                    avatarImageUrl: avatarUrl.isEmpty ? null : avatarUrl,
+                    rotateCardCount: _rotateCardCount,
+                    onSiteTap: _onSiteTap,
+                    onFollowCancelled: () {
+                      // Rotate mode is always locked to the user.
+                      if (_rotateMap) return;
+                      if (_followUser) setState(() => _followUser = false);
+                    },
+                    onZoomChanged: _onMapboxZoomChanged,
+                    onReadyChanged: (ready) {
+                      if (!mounted) return;
+                      setState(() => _mapboxReady = ready);
+                      if (ready) {
+                        _consumePendingFocus();
+                        _setInitialCamera(locationService: locationService);
+                        _dismissSplash();
+                      }
+                    },
+                    onError: _onMapboxError,
+                  ),
+                ),
+              ),
+            if (isAdmin && widget.isActive)
+              Positioned(
+                top: topInset,
+                left: 8,
+                child: MapPerfHud(
+                  rotateMap: _rotateMap,
                   followUser: _followUser || _rotateMap,
-                  initialCenter: startCenter,
-                  initialZoom: _zoomLevel,
-                  basemapTheme: basemapTheme,
-                  avatarImageUrl: avatarUrl.isEmpty ? null : avatarUrl,
-                  onSiteTap: _onSiteTap,
-                  onFollowCancelled: () {
-                    // Rotate mode is always locked to the user.
-                    if (_rotateMap) return;
-                    if (_followUser) setState(() => _followUser = false);
-                  },
-                  onZoomChanged: _onMapboxZoomChanged,
-                  onReadyChanged: (ready) {
-                    if (!mounted) return;
-                    setState(() => _mapboxReady = ready);
-                    if (ready) {
-                      _consumePendingFocus();
-                      _setInitialCamera(locationService: locationService);
-                      _dismissSplash();
-                    }
-                  },
-                  onError: _onMapboxError,
+                  mapActive: widget.isActive,
+                  mapboxReady: _mapboxReady,
+                  rotateCardCount: _rotateCardCount,
                 ),
               ),
             if (_mapboxBannerMessage != null)

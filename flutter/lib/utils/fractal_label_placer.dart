@@ -3,7 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/rendering.dart';
 
 import '../models/dinosaur.dart';
-import '../utils/display_text.dart';
+import 'display_text.dart';
 import 'fractal_tree_layout.dart';
 
 /// A genus card waiting for non-overlapping placement.

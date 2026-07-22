@@ -4,7 +4,7 @@ import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
-import '../controllers/catalog_mode_controller.dart';
+import '../models/catalog_data_source.dart';
 
 /// Global application configuration.
 class AppConfig {

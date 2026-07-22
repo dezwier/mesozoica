@@ -3,16 +3,17 @@ import 'dart:math';
 import 'package:flutter/foundation.dart';
 
 import '../config/app_config.dart';
+import '../config/geologic_timeline_constants.dart';
 import '../models/dinosaur.dart';
 import '../services/dinosaur_service.dart';
 import '../widgets/cards/dinosaur_card_image.dart';
-import '../widgets/cards/geologic_timeline.dart';
+import 'catalog_controller.dart';
 
 class DinosaurCatalogFilters {
   const DinosaurCatalogFilters({
     this.searchQuery = '',
-    this.maYounger = GeologicTimeline.mesozoicYoungerMa,
-    this.maOlder = GeologicTimeline.mesozoicOlderMa,
+    this.maYounger = mesozoicYoungerMa,
+    this.maOlder = mesozoicOlderMa,
     this.onlyCustomImage = true,
     this.onlyLlmEnriched = true,
   });
@@ -27,13 +28,11 @@ class DinosaurCatalogFilters {
     if (searchQuery.trim().isNotEmpty) return true;
     if (!onlyCustomImage) return true;
     if (!onlyLlmEnriched) return true;
-    return maYounger > GeologicTimeline.mesozoicYoungerMa ||
-        maOlder < GeologicTimeline.mesozoicOlderMa;
+    return maYounger > mesozoicYoungerMa || maOlder < mesozoicOlderMa;
   }
 
   bool get hasTimeFilter =>
-      maYounger > GeologicTimeline.mesozoicYoungerMa ||
-      maOlder < GeologicTimeline.mesozoicOlderMa;
+      maYounger > mesozoicYoungerMa || maOlder < mesozoicOlderMa;
 
   DinosaurCatalogFilters copyWith({
     String? searchQuery,
@@ -54,7 +53,7 @@ class DinosaurCatalogFilters {
   static const defaults = DinosaurCatalogFilters();
 }
 
-class DinosaurCatalogController extends ChangeNotifier {
+class DinosaurCatalogController extends CatalogController<DinosaurSummary> {
   DinosaurCatalogController({DinosaurService? service})
       : _service = service ?? DinosaurService();
 
@@ -76,14 +75,20 @@ class DinosaurCatalogController extends ChangeNotifier {
   DinosaurCatalogFilters _filters = DinosaurCatalogFilters.defaults;
   bool _useClientCustomImageFilter = false;
 
+  @override
   List<DinosaurSummary> get items => List.unmodifiable(_items);
+  @override
   bool get loading => _loading;
+  @override
   bool get isLoadingMore => _loadingMore;
   bool get hasMore => _hasMore;
+  @override
   String? get error => _error;
+  @override
   bool get isEmpty => !_loading && _error == null && _items.isEmpty;
   int get total => _total;
   DinosaurCatalogFilters get filters => _filters;
+  @override
   bool get hasActiveFilters => _filters.hasActiveFilters;
 
   Future<void> load({bool force = false}) async {
@@ -141,6 +146,7 @@ class DinosaurCatalogController extends ChangeNotifier {
     }
   }
 
+  @override
   Future<void> loadMore() async {
     if (_loading || _loadingMore || !_hasMore || _useClientCustomImageFilter) {
       return;
@@ -172,6 +178,7 @@ class DinosaurCatalogController extends ChangeNotifier {
     }
   }
 
+  @override
   Future<void> refresh() => load(force: true);
 
   Future<void> applyFilters(DinosaurCatalogFilters filters) async {

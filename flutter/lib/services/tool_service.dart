@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 
 import '../config/app_config.dart';
 import '../models/tool.dart';
+import 'api_client.dart';
 
 class ToolService {
   ToolService({http.Client? client}) : _client = client ?? http.Client();
@@ -33,7 +34,7 @@ class ToolService {
       debugPrint('ToolService GET $uri');
     }
     final response =
-        await _client.get(uri).timeout(const Duration(seconds: 15));
+        await ApiClient.instance.sendGet(uri, client: _client).timeout(const Duration(seconds: 15));
 
     if (response.statusCode != 200) {
       throw ToolServiceException(
@@ -54,7 +55,7 @@ class ToolService {
       debugPrint('ToolService GET $uri');
     }
     final response =
-        await _client.get(uri).timeout(const Duration(seconds: 15));
+        await ApiClient.instance.sendGet(uri, client: _client).timeout(const Duration(seconds: 15));
 
     if (response.statusCode != 200) {
       throw ToolServiceException(
@@ -81,7 +82,7 @@ class ToolService {
       debugPrint('ToolService GET $uri');
     }
     final response =
-        await _client.get(uri).timeout(const Duration(seconds: 15));
+        await ApiClient.instance.sendGet(uri, client: _client).timeout(const Duration(seconds: 15));
 
     if (response.statusCode == 404) {
       throw ToolServiceException('Tool not found');
