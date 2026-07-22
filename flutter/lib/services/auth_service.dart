@@ -300,6 +300,38 @@ class AuthService {
     }
   }
 
+  Future<Map<String, dynamic>> deleteData({
+    required bool sites,
+    required bool fossils,
+    required bool dinosaurs,
+  }) async {
+    try {
+      final response = await ApiClient.instance.post(
+        '/api/v1/auth/delete-data',
+        body: {
+          'sites': sites,
+          'fossils': fossils,
+          'dinosaurs': dinosaurs,
+        },
+      );
+      final userJson = response['user'] as Map<String, dynamic>?;
+      final user = userJson == null ? null : Profile.fromJson(userJson);
+      if (user != null) {
+        await _storeUser(user);
+      }
+      return {
+        'success': true,
+        'user': user,
+        'deleted_sites': response['deleted_sites'] as int? ?? 0,
+        'deleted_fossils': response['deleted_fossils'] as int? ?? 0,
+        'deleted_dinosaurs': response['deleted_dinosaurs'] as int? ?? 0,
+        'message': response['message'] as String? ?? 'Data deleted',
+      };
+    } on ApiException catch (error) {
+      return {'success': false, 'message': error.message};
+    }
+  }
+
   Future<Profile?> loadStoredUser() async {
     final prefs = await SharedPreferences.getInstance();
     final token = await TokenStorage.loadToken();

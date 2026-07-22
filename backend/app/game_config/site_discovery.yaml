@@ -4,7 +4,7 @@
 max_distance_m: 50.0
 
 # P(success) on each walk-in to max_distance_m. Re-rolls only after exit + re-enter.
-discovery_chance: 0.3
+discovery_chance: 0.2
 
 # Flutter auto-discover + nearby-discoverable cache.
 client:

@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-from sqlalchemy import func
+from sqlalchemy import delete, func
 from sqlmodel import Session, col, select
 
+from app.core.exceptions import ValidationError
 from app.models.user import User
 from app.models.user_dinosaur import UserDinosaur
 from app.models.user_fossil import UserFossil
@@ -33,6 +34,47 @@ def collection_counts(session: Session, user_id: int) -> dict[str, int]:
         "actual_sites_count": int(sites or 0),
         "actual_fossils_count": int(fossils or 0),
         "actual_dinosaurs_count": int(dinosaurs or 0),
+    }
+
+
+def _count_rows(session: Session, model: type, user_id: int) -> int:
+    count = session.exec(
+        select(func.count()).select_from(model).where(col(model.user_id) == user_id)
+    ).one()
+    return int(count or 0)
+
+
+def delete_user_progress(
+    session: Session,
+    user_id: int,
+    *,
+    sites: bool,
+    fossils: bool,
+    dinosaurs: bool,
+) -> dict[str, int]:
+    """Bulk-delete selected progress rows for one user. Idempotent."""
+    if not (sites or fossils or dinosaurs):
+        raise ValidationError("Select at least one data category to delete")
+
+    deleted_sites = 0
+    deleted_fossils = 0
+    deleted_dinosaurs = 0
+
+    if sites:
+        deleted_sites = _count_rows(session, UserSite, user_id)
+        session.exec(delete(UserSite).where(col(UserSite.user_id) == user_id))
+    if fossils:
+        deleted_fossils = _count_rows(session, UserFossil, user_id)
+        session.exec(delete(UserFossil).where(col(UserFossil.user_id) == user_id))
+    if dinosaurs:
+        deleted_dinosaurs = _count_rows(session, UserDinosaur, user_id)
+        session.exec(delete(UserDinosaur).where(col(UserDinosaur.user_id) == user_id))
+
+    session.commit()
+    return {
+        "deleted_sites": deleted_sites,
+        "deleted_fossils": deleted_fossils,
+        "deleted_dinosaurs": deleted_dinosaurs,
     }
 
 

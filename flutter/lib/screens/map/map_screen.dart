@@ -616,23 +616,26 @@ class _MapScreenState extends State<MapScreen> {
                         ? 'Showing all field sites'
                         : 'Show all field sites',
                     backgroundColor: mapData.showAllFieldSites
-                        ? Theme.of(context).colorScheme.primaryContainer
-                        : null,
-                    foregroundColor: mapData.showAllFieldSites
-                        ? Theme.of(context).colorScheme.onPrimaryContainer
-                        : null,
+                        ? Colors.grey.shade600
+                        : Colors.grey.shade500,
+                    foregroundColor: Colors.white,
                     child: Icon(
                       mapData.showAllFieldSites
                           ? Icons.visibility
                           : Icons.visibility_outlined,
                     ),
                   ),
+                  const SizedBox(height: 8),
                   FloatingActionButton.small(
                     heroTag: 'scan_field_area',
                     onPressed: _onScanFieldArea,
                     tooltip: 'Scan map center for field sites',
+                    backgroundColor: Colors.grey.shade500,
+                    foregroundColor: Colors.white,
                     child: const Icon(Icons.radar_outlined),
                   ),
+                  // Keep admin tools clearly above the regular map FABs.
+                  const SizedBox(height: 28),
                 ],
               ],
               filterFab: DinosaurFilterFab(

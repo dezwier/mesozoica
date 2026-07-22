@@ -273,3 +273,195 @@ def test_update_profile_username(client: TestClient):
     )
     assert response.status_code == 200
     assert response.json()["user"]["full_name"] == "Old Name Updated"
+
+
+def test_delete_data_requires_auth(client: TestClient):
+    response = client.post(
+        "/api/v1/auth/delete-data",
+        json={"sites": True, "fossils": True, "dinosaurs": True},
+    )
+    assert response.status_code == 401
+
+
+def test_delete_data_requires_selection(client: TestClient):
+    registered = _register_user(client, "wipe_empty", "wipe_empty@example.com")
+    response = client.post(
+        "/api/v1/auth/delete-data",
+        headers={"Authorization": f"Bearer {registered['access_token']}"},
+        json={"sites": False, "fossils": False, "dinosaurs": False},
+    )
+    assert response.status_code == 400
+    assert "at least one" in response.json()["detail"].lower()
+
+
+def test_delete_data_selective_and_scoped(client: TestClient, session: Session):
+    from decimal import Decimal
+
+    from app.models.dinosaur import Dinosaur
+    from app.models.fossil import Fossil
+    from app.models.site import Site
+    from app.models.site_type import SiteType
+    from app.models.user_dinosaur import (
+        USER_DINOSAUR_ROLE_DISCOVERER,
+        UserDinosaur,
+    )
+    from app.models.user_fossil import USER_FOSSIL_ROLE_DISCOVERER, UserFossil
+    from app.models.user_site import USER_SITE_ROLE_DISCOVERER, UserSite
+    from sqlmodel import col, select
+
+    user_a = _register_user(client, "wipe_a", "wipe_a@example.com")
+    user_b = _register_user(client, "wipe_b", "wipe_b@example.com")
+    a_id = user_a["user"]["id"]
+    b_id = user_b["user"]["id"]
+    a_token = user_a["access_token"]
+
+    site_type = SiteType(period="jurassic", rock_type="limestone")
+    session.add(site_type)
+    session.commit()
+    session.refresh(site_type)
+
+    session.add(
+        Site(
+            site_id=92001,
+            latitude=Decimal("40.0"),
+            longitude=Decimal("-105.0"),
+            rock_type="limestone",
+            period="jurassic",
+            site_type_id=site_type.id,
+        )
+    )
+    session.add(
+        Site(
+            site_id=92002,
+            latitude=Decimal("41.0"),
+            longitude=Decimal("-106.0"),
+            rock_type="limestone",
+            period="jurassic",
+            site_type_id=site_type.id,
+        )
+    )
+    dino = Dinosaur(
+        name="Stegosaurus",
+        wikipedia_page_id=92001,
+        wikipedia_title="Stegosaurus",
+    )
+    session.add(dino)
+    session.commit()
+    session.refresh(dino)
+
+    fossil = Fossil(
+        id=92001, dinosaur_id=dino.id, identified_name="Stegosaurus plate"
+    )
+    session.add(fossil)
+    session.commit()
+
+    for uid in (a_id, b_id):
+        session.add(
+            UserSite(
+                user_id=uid,
+                site_id=92001,
+                role=USER_SITE_ROLE_DISCOVERER,
+            )
+        )
+        session.add(
+            UserSite(
+                user_id=uid,
+                site_id=92002,
+                role=USER_SITE_ROLE_DISCOVERER,
+            )
+        )
+        session.add(
+            UserFossil(
+                user_id=uid,
+                fossil_id=92001,
+                role=USER_FOSSIL_ROLE_DISCOVERER,
+            )
+        )
+        session.add(
+            UserDinosaur(
+                user_id=uid,
+                dinosaur_id=dino.id,
+                role=USER_DINOSAUR_ROLE_DISCOVERER,
+            )
+        )
+    session.commit()
+
+    # Wipe only sites for A; fossils + dinos remain for A; B untouched.
+    wipe_sites = client.post(
+        "/api/v1/auth/delete-data",
+        headers={"Authorization": f"Bearer {a_token}"},
+        json={"sites": True, "fossils": False, "dinosaurs": False},
+    )
+    assert wipe_sites.status_code == 200
+    sites_body = wipe_sites.json()
+    assert sites_body["deleted_sites"] == 2
+    assert sites_body["deleted_fossils"] == 0
+    assert sites_body["deleted_dinosaurs"] == 0
+    assert sites_body["user"]["actual_sites_count"] == 0
+    assert sites_body["user"]["actual_fossils_count"] == 1
+    assert sites_body["user"]["actual_dinosaurs_count"] == 1
+
+    # Wipe fossils + dinos for A.
+    wipe_rest = client.post(
+        "/api/v1/auth/delete-data",
+        headers={"Authorization": f"Bearer {a_token}"},
+        json={"sites": False, "fossils": True, "dinosaurs": True},
+    )
+    assert wipe_rest.status_code == 200
+    rest_body = wipe_rest.json()
+    assert rest_body["deleted_fossils"] == 1
+    assert rest_body["deleted_dinosaurs"] == 1
+    assert rest_body["user"]["actual_sites_count"] == 0
+    assert rest_body["user"]["actual_fossils_count"] == 0
+    assert rest_body["user"]["actual_dinosaurs_count"] == 0
+
+    me = client.get(
+        "/api/v1/users/me",
+        headers={"Authorization": f"Bearer {a_token}"},
+    )
+    assert me.status_code == 200
+    assert me.json()["actual_sites_count"] == 0
+    assert me.json()["actual_fossils_count"] == 0
+    assert me.json()["actual_dinosaurs_count"] == 0
+
+    # User B's progress intact.
+    assert (
+        len(session.exec(select(UserSite).where(col(UserSite.user_id) == b_id)).all())
+        == 2
+    )
+    assert (
+        len(
+            session.exec(
+                select(UserFossil).where(col(UserFossil.user_id) == b_id)
+            ).all()
+        )
+        == 1
+    )
+    assert (
+        len(
+            session.exec(
+                select(UserDinosaur).where(col(UserDinosaur.user_id) == b_id)
+            ).all()
+        )
+        == 1
+    )
+
+    other_me = client.get(
+        "/api/v1/users/me",
+        headers={"Authorization": f"Bearer {user_b['access_token']}"},
+    )
+    assert other_me.status_code == 200
+    assert other_me.json()["actual_sites_count"] == 2
+    assert other_me.json()["actual_fossils_count"] == 1
+    assert other_me.json()["actual_dinosaurs_count"] == 1
+
+    # Idempotent: wiping again succeeds with zero deletes.
+    again = client.post(
+        "/api/v1/auth/delete-data",
+        headers={"Authorization": f"Bearer {a_token}"},
+        json={"sites": True, "fossils": True, "dinosaurs": True},
+    )
+    assert again.status_code == 200
+    assert again.json()["deleted_sites"] == 0
+    assert again.json()["deleted_fossils"] == 0
+    assert again.json()["deleted_dinosaurs"] == 0

@@ -12,6 +12,8 @@ from app.models.user_device_token import UserDeviceToken
 from app.schemas.auth import (
     AuthResponse,
     AvailabilityResponse,
+    DeleteUserDataRequest,
+    DeleteUserDataResponse,
     RegisterDeviceTokenRequest,
     UpdateProfileRequest,
 )
@@ -20,7 +22,12 @@ from app.services.user_image_service import (
     process_user_profile_image,
     save_user_image,
 )
-from app.services.user_service import delete_user_account, user_to_response
+from app.services.user_service import (
+    delete_user_account,
+    delete_user_progress,
+    user_to_profile_response,
+    user_to_response,
+)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -155,6 +162,29 @@ async def update_profile(
         user=user_to_response(user),
         access_token="",
         message="Profile updated successfully",
+    )
+
+
+@router.post("/delete-data", response_model=DeleteUserDataResponse)
+async def delete_data(
+    body: DeleteUserDataRequest,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    deleted = delete_user_progress(
+        session,
+        current_user.id,
+        sites=body.sites,
+        fossils=body.fossils,
+        dinosaurs=body.dinosaurs,
+    )
+    session.refresh(current_user)
+    return DeleteUserDataResponse(
+        deleted_sites=deleted["deleted_sites"],
+        deleted_fossils=deleted["deleted_fossils"],
+        deleted_dinosaurs=deleted["deleted_dinosaurs"],
+        user=user_to_profile_response(session, current_user),
+        message="Selected progress data deleted successfully",
     )
 
 

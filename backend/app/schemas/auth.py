@@ -134,3 +134,19 @@ class RegisterDeviceTokenRequest(BaseModel):
         default="android",
         description="android | ios | web",
     )
+
+
+class DeleteUserDataRequest(BaseModel):
+    """Selective wipe of the authenticated user's progress tables."""
+
+    sites: bool = False
+    fossils: bool = False
+    dinosaurs: bool = False
+
+
+class DeleteUserDataResponse(BaseModel):
+    deleted_sites: int = 0
+    deleted_fossils: int = 0
+    deleted_dinosaurs: int = 0
+    user: UserProfileResponse
+    message: str

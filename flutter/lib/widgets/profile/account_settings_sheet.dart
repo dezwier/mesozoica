@@ -7,8 +7,13 @@ import 'package:provider/provider.dart';
 
 import '../../config/app_config.dart';
 import '../../controllers/auth_controller.dart';
+import '../../controllers/field_discovery_coordinator.dart';
+import '../../controllers/map_controller.dart';
+import '../../controllers/site_catalog_controller.dart';
 import '../../models/profile.dart';
+import '../../services/api_response_cache.dart';
 import '../../services/oauth_sign_in_service.dart';
+import 'delete_data_dialog.dart';
 import 'settings_account_tab.dart';
 import 'settings_app_tab.dart';
 import 'settings_profile_tab.dart';
@@ -296,31 +301,68 @@ class _AccountSettingsSheetState extends State<AccountSettingsSheet>
   }
 
   Future<void> _requestDeleteAllData() async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Delete all data?'),
-        content: const Text(
-          'This removes your progress and collections. Your account stays active.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text(
-              'Delete data',
-              style: TextStyle(color: Theme.of(ctx).colorScheme.error),
-            ),
-          ),
-        ],
-      ),
-    );
-    if (confirmed == true) {
-      _showSnack('Delete data is not available yet');
+    final auth = context.read<AuthController>();
+    try {
+      await auth.refreshProfile();
+    } catch (_) {
+      // Still show dialog with cached counts if refresh fails.
     }
+    if (!mounted) return;
+
+    final profile = auth.currentUser ?? widget.currentUser;
+    final selection = await showDialog<DeleteDataSelection>(
+      context: context,
+      builder: (ctx) => DeleteDataDialog(profile: profile),
+    );
+    if (selection == null || !selection.hasAny || !mounted) return;
+
+    final result = await auth.authService.deleteData(
+      sites: selection.sites,
+      fossils: selection.fossils,
+      dinosaurs: selection.dinosaurs,
+    );
+    if (!mounted) return;
+
+    if (result['success'] != true) {
+      _showSnack(result['message'] as String? ?? 'Delete failed');
+      return;
+    }
+
+    final updated = result['user'] as Profile?;
+    if (updated != null) {
+      await auth.applyUser(updated);
+    } else {
+      await auth.refreshProfile();
+    }
+    if (!mounted) return;
+
+    final userId = auth.currentUser?.id ?? profile.id;
+    await ApiResponseCache.instance.clearForUser(userId);
+    if (!mounted) return;
+
+    final isAdmin = auth.currentUser?.isAdmin ?? false;
+    context.read<MapController>().onUserChanged(isAdmin: isAdmin);
+    context.read<FieldDiscoveryCoordinator>().clearForUserChange();
+    unawaited(
+      context
+          .read<FieldDiscoveryCoordinator>()
+          .refreshDiscoverableCache(force: true),
+    );
+    context.read<SiteCatalogController>().load(force: true);
+
+    final parts = <String>[];
+    if (selection.sites) {
+      parts.add('${result['deleted_sites'] ?? 0} site rows');
+    }
+    if (selection.fossils) {
+      parts.add('${result['deleted_fossils'] ?? 0} fossil rows');
+    }
+    if (selection.dinosaurs) {
+      parts.add('${result['deleted_dinosaurs'] ?? 0} dino rows');
+    }
+    _showSnack(
+      parts.isEmpty ? 'Data deleted' : 'Deleted ${parts.join(', ')}',
+    );
   }
 
   Future<void> _confirmDeleteAccount() async {
