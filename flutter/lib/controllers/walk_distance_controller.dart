@@ -10,12 +10,12 @@ import '../services/gps_odometer.dart';
 import '../services/health_distance_service.dart';
 import '../services/location_service.dart';
 
-/// Which distance metrics the profile card should show.
+/// Which exploration metrics the profile card should show.
 enum ExploringDistanceMode {
-  /// Speed-filtered GPS while the app was open.
+  /// Speed-filtered GPS while the app was open (active exploration).
   active,
 
-  /// Active + Health credits for closed-app gaps.
+  /// Active + Health credits for closed-app gaps (total exploration).
   total,
 }
 
@@ -37,7 +37,7 @@ class WalkDistanceController extends ChangeNotifier {
   static const _keyWeekStart = '${_prefsPrefix}_week_start';
   static const _keyClosedSince = '${_prefsPrefix}_closed_since';
   static const _keyBootstrapped = '${_prefsPrefix}_bootstrapped';
-  static const _keyMode = '${_prefsPrefix}_mode';
+  static const _keyMode = '${_prefsPrefix}_mode_v3';
 
   final HealthDistanceService _health;
   final ApiClient _api;
@@ -85,6 +85,7 @@ class WalkDistanceController extends ChangeNotifier {
   Future<void> bind(LocationService locationService) async {
     if (_location == locationService) return;
     await _ensureLoaded();
+    notifyListeners();
     if (_location != null && _locationListener != null) {
       _location!.removeListener(_locationListener!);
     }
@@ -319,10 +320,15 @@ class WalkDistanceController extends ChangeNotifier {
       _closedSince = DateTime.tryParse(closed);
     }
     final modeName = prefs.getString(_keyMode);
-    _mode = ExploringDistanceMode.values.firstWhere(
-      (m) => m.name == modeName,
-      orElse: () => ExploringDistanceMode.total,
-    );
+    if (modeName == ExploringDistanceMode.active.name) {
+      _mode = ExploringDistanceMode.active;
+    } else {
+      // Default (and any unknown value): Total exploration, checkbox checked.
+      _mode = ExploringDistanceMode.total;
+    }
+    if (modeName == null) {
+      await prefs.setString(_keyMode, ExploringDistanceMode.total.name);
+    }
     _rolloverWeekIfNeeded();
   }
 
