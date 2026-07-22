@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../common/chrome_fab.dart';
 import 'zoom_slider.dart';
 
 class MapControlButtons extends StatelessWidget {
@@ -28,8 +29,6 @@ class MapControlButtons extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final fabTheme = Theme.of(context).floatingActionButtonTheme;
-
     return Positioned(
       right: 12,
       bottom: bottom,
@@ -46,22 +45,18 @@ class MapControlButtons extends StatelessWidget {
             const SizedBox(height: 8),
           ],
           if (!rotateMap)
-            FloatingActionButton.small(
+            ChromeFab(
               heroTag: 'center_location',
               onPressed: onCenterLocation,
               tooltip: 'Center on my location',
-              backgroundColor: fabTheme.backgroundColor,
-              foregroundColor: fabTheme.foregroundColor,
               child: const Icon(Icons.my_location),
             ),
-          FloatingActionButton.small(
+          ChromeFab(
             heroTag: 'toggle_rotation',
             onPressed: onToggleRotation,
             tooltip: rotateMap
                 ? 'North-fixed map'
                 : 'Rotate map with phone orientation',
-            backgroundColor: fabTheme.backgroundColor,
-            foregroundColor: fabTheme.foregroundColor,
             child: Icon(
               rotateMap ? Icons.explore : Icons.explore_outlined,
             ),

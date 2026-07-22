@@ -2,10 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../controllers/phylo_tree_controller.dart';
+import '../common/chrome_fab.dart';
 import '../common/drawer_sheet_sizes.dart';
+import '../tree/phylo_tree_panel.dart';
 import 'dinosaur_filter_fab.dart';
 import 'dinosaur_filter_sheet.dart';
-import '../tree/phylo_tree_panel.dart';
 
 class DinosaurTreeSheet {
   DinosaurTreeSheet._();
@@ -97,15 +98,9 @@ class _DinosaurTreeSheetBodyState extends State<_DinosaurTreeSheetBody> {
                     return Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        FloatingActionButton.small(
+                        ChromeFab(
                           heroTag: 'tree_reset_fab',
                           tooltip: 'Reset view',
-                          backgroundColor: Theme.of(context)
-                              .floatingActionButtonTheme
-                              .backgroundColor,
-                          foregroundColor: Theme.of(context)
-                              .floatingActionButtonTheme
-                              .foregroundColor,
                           onPressed: () =>
                               _panelKey.currentState?.resetView(),
                           child: const Icon(Icons.center_focus_strong),

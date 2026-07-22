@@ -20,6 +20,7 @@ class SiteTurnableCard extends StatefulWidget {
     this.titleFontSize = 36,
     this.subtitleFontSize = 10,
     this.overlayHeightFactor = 0.38,
+    this.outerPadding = const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
     this.mapTileLayerBuilder = CardWorldMap.defaultTileLayerBuilder,
     this.onSiteUpdated,
   });
@@ -31,6 +32,7 @@ class SiteTurnableCard extends StatefulWidget {
   final double titleFontSize;
   final double subtitleFontSize;
   final double overlayHeightFactor;
+  final EdgeInsets outerPadding;
   final Widget Function() mapTileLayerBuilder;
   final ValueChanged<SiteSummary>? onSiteUpdated;
 
@@ -77,7 +79,7 @@ class _SiteTurnableCardState extends State<SiteTurnableCard> {
     return TurnableYAxisCard(
       resetIdentity: _site.siteId,
       borderRadius: DinoCardTheme.borderRadius,
-      outerPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      outerPadding: widget.outerPadding,
       decoration: DinoCardTheme.of(context).chromeDecoration(),
       turnable: widget.turnable,
       autoFlipOnce: widget.autoFlipOnce,

@@ -7,6 +7,7 @@ import '../../controllers/dinosaur_catalog_controller.dart';
 import '../../shell/map_chrome_insets.dart';
 import '../../shell/shell_overlay_panel.dart';
 import '../../widgets/cards/dinosaur_turnable_card.dart';
+import '../../widgets/common/chrome_fab.dart';
 import '../../widgets/dino/dinosaur_filter_fab.dart';
 import '../../widgets/dino/dinosaur_filter_sheet.dart';
 import '../../widgets/dino/dinosaur_tree_sheet.dart';
@@ -98,15 +99,9 @@ class DinoScreenState extends State<DinoScreen> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    FloatingActionButton.small(
+                    ChromeFab(
                       heroTag: 'dino_tree_fab',
                       tooltip: 'Phylogeny',
-                      backgroundColor: Theme.of(context)
-                          .floatingActionButtonTheme
-                          .backgroundColor,
-                      foregroundColor: Theme.of(context)
-                          .floatingActionButtonTheme
-                          .foregroundColor,
                       onPressed: () => DinosaurTreeSheet.show(context),
                       child: const Icon(Icons.account_tree),
                     ),

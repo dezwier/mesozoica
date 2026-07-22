@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../controllers/map_controller.dart' as map_data;
 import '../../models/site.dart';
 import '../../services/site_service.dart';
+import '../../theme/dino_card_theme.dart';
 import '../cards/card_detail_sheet.dart';
 import '../cards/site_status_helper.dart';
 import '../cards/site_turnable_card.dart';
@@ -118,52 +119,142 @@ class _SiteMapCardWithActionsState extends State<_SiteMapCardWithActions> {
     }
   }
 
+  /// Matches card horizontal inset to the screen edge.
+  static const double _edgeInset = 16;
+  static const double _actionHeight = 50;
+  static const double _actionGap = 6;
+
   @override
   Widget build(BuildContext context) {
+    // Buttons sit fully below the card with [_edgeInset] gap, but are painted
+    // behind the turnable card so they stay put while it flips.
+    const actionClearance = _actionHeight + _edgeInset;
+
     return CardDetailSheetContent(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
+      child: Stack(
+        alignment: Alignment.bottomCenter,
         children: [
-          SiteTurnableCard(
-            site: _site,
-            onSiteUpdated: _onSiteUpdated,
-          ),
-          const SizedBox(height: 12),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+          Positioned(
+            left: _edgeInset,
+            right: _edgeInset,
+            bottom: 0,
+            height: _actionHeight,
             child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Expanded(
-                  child: FilledButton.tonal(
+                  child: _MapSiteActionButton(
+                    label: _site.viewerHasSurveyed == true
+                        ? 'Surveyed'
+                        : 'Survey',
                     onPressed: _canSurvey ? _onSurvey : null,
-                    child: Text(
-                      _site.viewerHasSurveyed == true ? 'Surveyed' : 'Survey',
-                    ),
                   ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: _actionGap),
                 Expanded(
-                  child: FilledButton.tonal(
-                    onPressed: _busy
-                        ? null
-                        : () => _onStatusAction('protected'),
-                    child: const Text('Protect'),
+                  child: _MapSiteActionButton(
+                    label: 'Protect',
+                    onPressed:
+                        _busy ? null : () => _onStatusAction('protected'),
                   ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: _actionGap),
                 Expanded(
-                  child: FilledButton.tonal(
-                    onPressed: _busy
-                        ? null
-                        : () => _onStatusAction('excavation'),
-                    child: const Text('Excavate'),
+                  child: _MapSiteActionButton(
+                    label: 'Excavate',
+                    onPressed:
+                        _busy ? null : () => _onStatusAction('excavation'),
                   ),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 8),
+          Padding(
+            padding: const EdgeInsets.only(bottom: actionClearance),
+            child: SiteTurnableCard(
+              site: _site,
+              onSiteUpdated: _onSiteUpdated,
+              outerPadding: const EdgeInsets.fromLTRB(
+                _edgeInset,
+                8,
+                _edgeInset,
+                0,
+              ),
+            ),
+          ),
         ],
+      ),
+    );
+  }
+}
+
+/// Neutral gray action button behind the map site card.
+class _MapSiteActionButton extends StatelessWidget {
+  const _MapSiteActionButton({
+    required this.label,
+    required this.onPressed,
+  });
+
+  final String label;
+  final VoidCallback? onPressed;
+
+  static const Color _label = Color(0xFFF5F5F5);
+  static const Color _labelDisabled = Color(0x88BDBDBD);
+
+  @override
+  Widget build(BuildContext context) {
+    final enabled = onPressed != null;
+    final radius = BorderRadius.circular(DinoCardTheme.borderRadius);
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        borderRadius: radius,
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: enabled
+              ? const [Color(0xFF5E5854), Color(0xFF4A4542)]
+              : const [Color(0xFF464240), Color(0xFF3C3937)],
+        ),
+        border: Border.all(
+          color: enabled
+              ? const Color(0x40FFFFFF)
+              : const Color(0x22FFFFFF),
+          width: 0.5,
+        ),
+        boxShadow: enabled
+            ? const [
+                BoxShadow(
+                  color: Color(0x44000000),
+                  blurRadius: 8,
+                  offset: Offset(0, 2),
+                ),
+              ]
+            : null,
+      ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: radius,
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onPressed,
+          borderRadius: radius,
+          splashColor: Colors.white24,
+          highlightColor: Colors.white10,
+          child: Center(
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: enabled ? _label : _labelDisabled,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.3,
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }

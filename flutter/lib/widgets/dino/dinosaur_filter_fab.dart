@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../common/chrome_fab.dart';
+
 class DinosaurFilterFab extends StatelessWidget {
   const DinosaurFilterFab({
     super.key,
@@ -14,18 +16,13 @@ class DinosaurFilterFab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final fabTheme = Theme.of(context).floatingActionButtonTheme;
-    final colorScheme = Theme.of(context).colorScheme;
-
     return Stack(
       clipBehavior: Clip.none,
       children: [
-        FloatingActionButton.small(
+        ChromeFab(
           heroTag: heroTag,
           onPressed: onPressed,
           tooltip: 'Filter',
-          backgroundColor: fabTheme.backgroundColor,
-          foregroundColor: fabTheme.foregroundColor,
           child: const Icon(Icons.filter_list),
         ),
         if (hasActiveFilters)
@@ -36,10 +33,10 @@ class DinosaurFilterFab extends StatelessWidget {
               width: 10,
               height: 10,
               decoration: BoxDecoration(
-                color: colorScheme.tertiary,
+                color: Theme.of(context).colorScheme.tertiary,
                 shape: BoxShape.circle,
                 border: Border.all(
-                  color: fabTheme.backgroundColor ?? colorScheme.surface,
+                  color: const Color(0xFF4A4542),
                   width: 1.5,
                 ),
               ),

@@ -16,6 +16,7 @@ import '../../services/auth_service.dart';
 import '../../services/location_service.dart';
 import '../../services/site_service.dart';
 import '../../shell/map_chrome_insets.dart';
+import '../../widgets/common/chrome_fab.dart';
 import '../../widgets/dino/dinosaur_filter_fab.dart';
 import '../../widgets/map/map_control_buttons.dart';
 import '../../widgets/map/mapbox_camera_coordinator.dart';
@@ -605,8 +606,10 @@ class _MapScreenState extends State<MapScreen> {
               bottom: fabBottom,
               leadingActions: [
                 if (isFieldMode && isAdmin) ...[
-                  FloatingActionButton.small(
+                  ChromeFab(
                     heroTag: 'show_all_field_sites',
+                    tone: ChromeFabTone.grey,
+                    active: mapData.showAllFieldSites,
                     onPressed: () {
                       mapData.setShowAllFieldSites(
                         !mapData.showAllFieldSites,
@@ -615,22 +618,17 @@ class _MapScreenState extends State<MapScreen> {
                     tooltip: mapData.showAllFieldSites
                         ? 'Showing all field sites'
                         : 'Show all field sites',
-                    backgroundColor: mapData.showAllFieldSites
-                        ? Colors.grey.shade600
-                        : Colors.grey.shade500,
-                    foregroundColor: Colors.white,
                     child: Icon(
                       mapData.showAllFieldSites
                           ? Icons.visibility
                           : Icons.visibility_outlined,
                     ),
                   ),
-                  FloatingActionButton.small(
+                  ChromeFab(
                     heroTag: 'scan_field_area',
+                    tone: ChromeFabTone.grey,
                     onPressed: _onScanFieldArea,
                     tooltip: 'Scan map center for field sites',
-                    backgroundColor: Colors.grey.shade500,
-                    foregroundColor: Colors.white,
                     child: const Icon(Icons.radar_outlined),
                   ),
                   // Keep admin tools clearly above the regular map FABs.
