@@ -78,6 +78,7 @@ class ToolScreenState extends State<ToolScreen> {
       context,
       initialFilters: catalog.filters,
       catalogTotal: catalog.total > 0 ? catalog.total : null,
+      availableCategories: catalog.availableCategories,
       onApply: catalog.applyFilters,
     );
   }

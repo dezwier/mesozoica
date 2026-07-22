@@ -17,8 +17,15 @@ class ToolSummary {
   final int rarity;
   final String? mainImageUrl;
 
-  String get displayCategory =>
-      category.replaceAll('_', ' ').split(' ').map(_titleCaseWord).join(' ');
+  String get displayCategory {
+    final stripped = category.replaceFirst(RegExp(r'^\d+\s+'), '');
+    return stripped
+        .replaceAll('_', ' ')
+        .split(' ')
+        .where((word) => word.isNotEmpty)
+        .map(_titleCaseWord)
+        .join(' ');
+  }
 
   String get displayScientificTool => scientificTool
       .replaceAll('_', ' ')
@@ -80,6 +87,23 @@ class ToolListResponse {
       limit: json['limit'] as int? ?? 0,
       offset: json['offset'] as int? ?? 0,
       hasMore: json['has_next'] as bool? ?? false,
+    );
+  }
+}
+
+class ToolCategoryOption {
+  const ToolCategoryOption({
+    required this.value,
+    required this.label,
+  });
+
+  final String value;
+  final String label;
+
+  factory ToolCategoryOption.fromJson(Map<String, dynamic> json) {
+    return ToolCategoryOption(
+      value: json['value'] as String? ?? '',
+      label: json['label'] as String? ?? '',
     );
   }
 }

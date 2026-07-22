@@ -14,9 +14,10 @@ class ToolService {
   Future<ToolListResponse> fetchTools({
     int limit = 200,
     int offset = 0,
-    String sort = 'name',
+    String sort = 'category',
     String? seed,
     String? q,
+    Set<String> categories = const {},
     bool hasCustomImage = false,
   }) async {
     final uri = AppConfig.toolsUri(
@@ -25,6 +26,7 @@ class ToolService {
       sort: sort,
       seed: seed,
       q: q,
+      categories: categories,
       hasCustomImage: hasCustomImage,
     );
     if (kDebugMode) {
@@ -44,6 +46,33 @@ class ToolService {
       throw const ToolServiceException('Invalid tools response');
     }
     return ToolListResponse.fromJson(decoded);
+  }
+
+  Future<List<ToolCategoryOption>> fetchCategories() async {
+    final uri = AppConfig.toolCategoriesUri();
+    if (kDebugMode) {
+      debugPrint('ToolService GET $uri');
+    }
+    final response =
+        await _client.get(uri).timeout(const Duration(seconds: 15));
+
+    if (response.statusCode != 200) {
+      throw ToolServiceException(
+        'Failed to load tool categories (${response.statusCode})',
+      );
+    }
+
+    final decoded = jsonDecode(response.body);
+    if (decoded is! Map<String, dynamic>) {
+      throw const ToolServiceException('Invalid tool categories response');
+    }
+    final rawItems = decoded['items'];
+    if (rawItems is! List) return const [];
+    return rawItems
+        .whereType<Map<String, dynamic>>()
+        .map(ToolCategoryOption.fromJson)
+        .where((item) => item.value.isNotEmpty)
+        .toList(growable: false);
   }
 
   Future<ToolSummary> fetchToolById(int id) async {

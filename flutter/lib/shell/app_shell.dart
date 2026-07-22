@@ -27,6 +27,7 @@ import '../widgets/profile/community_drawer.dart';
 import '../screens/catalog/catalog_screen.dart';
 import '../screens/map/map_screen.dart';
 import '../screens/profile/profile_screen.dart';
+import '../screens/tool/tool_screen.dart';
 import 'map_bottom_chrome.dart';
 import 'map_top_chrome.dart';
 import 'shell_overlay_panel.dart';
@@ -41,7 +42,9 @@ class AppShell extends StatefulWidget {
 class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
   bool _profileOpen = false;
   bool _catalogOpen = false;
+  bool _toolsOpen = false;
   final _catalogScreenKey = GlobalKey<CatalogScreenState>();
+  final _toolScreenKey = GlobalKey<ToolScreenState>();
   int? _previousUserId;
   CatalogDataSource? _previousCatalogDataSource;
   CatalogModeController? _catalogModeController;
@@ -52,7 +55,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
   bool _celebrationShowing = false;
   bool _appInForeground = true;
 
-  bool get _anyOverlayOpen => _profileOpen || _catalogOpen;
+  bool get _anyOverlayOpen => _profileOpen || _catalogOpen || _toolsOpen;
 
   @override
   void initState() {
@@ -121,6 +124,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
       setState(() {
         _profileOpen = false;
         _catalogOpen = false;
+        _toolsOpen = false;
       });
     }
   }
@@ -314,6 +318,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
   void _openProfile() {
     setState(() {
       _catalogOpen = false;
+      _toolsOpen = false;
       _profileOpen = true;
     });
   }
@@ -325,7 +330,20 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     }
     setState(() {
       _profileOpen = false;
+      _toolsOpen = false;
       _catalogOpen = true;
+    });
+  }
+
+  void _openTools() {
+    if (_toolsOpen) {
+      _toolScreenKey.currentState?.scrollToTop();
+      return;
+    }
+    setState(() {
+      _profileOpen = false;
+      _catalogOpen = false;
+      _toolsOpen = true;
     });
   }
 
@@ -334,6 +352,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     setState(() {
       _profileOpen = false;
       _catalogOpen = false;
+      _toolsOpen = false;
     });
   }
 
@@ -401,6 +420,19 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
                       ),
                     ),
                   ),
+                  Offstage(
+                    offstage: !_toolsOpen,
+                    child: TickerMode(
+                      enabled: _toolsOpen,
+                      child: ShellOverlayPanel(
+                        onClose: _closeOverlays,
+                        child: ToolScreen(
+                          key: _toolScreenKey,
+                          isActive: _toolsOpen,
+                        ),
+                      ),
+                    ),
+                  ),
                   if (!_anyOverlayOpen) ...[
                     MapTopChrome(
                       showNotifications: auth.isLoggedIn,
@@ -409,6 +441,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
                     MapBottomChrome(
                       onOpenProfile: _openProfile,
                       onOpenCatalog: _openCatalog,
+                      onOpenTools: _openTools,
                     ),
                   ],
                   if (!splashHold.isInitialPageReady)

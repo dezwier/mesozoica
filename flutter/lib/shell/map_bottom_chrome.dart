@@ -3,22 +3,41 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../controllers/auth_controller.dart';
+import '../controllers/tool_catalog_controller.dart';
 import '../services/auth_service.dart';
+import '../theme/dino_card_theme.dart';
+import '../widgets/cards/tool_card_image.dart';
 import 'map_chrome_insets.dart';
 
-/// Floating bottom entry points: profile and catalog side by side on the lower left.
-class MapBottomChrome extends StatelessWidget {
+/// Floating bottom entry points: profile, catalog, and tools on the lower left.
+class MapBottomChrome extends StatefulWidget {
   const MapBottomChrome({
     super.key,
     required this.onOpenProfile,
     required this.onOpenCatalog,
+    required this.onOpenTools,
   });
 
   final VoidCallback onOpenProfile;
   final VoidCallback onOpenCatalog;
+  final VoidCallback onOpenTools;
 
   static const double _buttonSize = 60;
   static const double _buttonGap = 16;
+
+  @override
+  State<MapBottomChrome> createState() => _MapBottomChromeState();
+}
+
+class _MapBottomChromeState extends State<MapBottomChrome> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      context.read<ToolCatalogController>().ensureChromeImage();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -58,18 +77,23 @@ class MapBottomChrome extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
                       _ProfileEntry(
-                        size: _buttonSize,
-                        onTap: onOpenProfile,
+                        size: MapBottomChrome._buttonSize,
+                        onTap: widget.onOpenProfile,
                       ),
-                      const SizedBox(width: _buttonGap),
+                      const SizedBox(width: MapBottomChrome._buttonGap),
                       _LabeledChromeButton(
-                        size: _buttonSize,
+                        size: MapBottomChrome._buttonSize,
                         label: 'Catalog',
-                        onTap: onOpenCatalog,
+                        onTap: widget.onOpenCatalog,
                         child: Image.asset(
                           'assets/images/cards/dinosaur_card_front_placeholder.png',
                           fit: BoxFit.cover,
                         ),
+                      ),
+                      const SizedBox(width: MapBottomChrome._buttonGap),
+                      _ToolsEntry(
+                        size: MapBottomChrome._buttonSize,
+                        onTap: widget.onOpenTools,
                       ),
                     ],
                   ),
@@ -79,6 +103,45 @@ class MapBottomChrome extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _ToolsEntry extends StatelessWidget {
+  const _ToolsEntry({
+    required this.size,
+    required this.onTap,
+  });
+
+  final double size;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer<ToolCatalogController>(
+      builder: (context, catalog, _) {
+        final imageUrl = catalog.chromeImageUrl;
+        final curated = ToolCardImage.isCuratedCardImageUrl(imageUrl);
+        return _LabeledChromeButton(
+          size: size,
+          label: 'Tools',
+          onTap: onTap,
+          child: curated
+              ? CachedNetworkImage(
+                  imageUrl: imageUrl!.trim(),
+                  fit: BoxFit.cover,
+                  errorWidget: (context, _, _) => _fallbackToolImage(),
+                )
+              : _fallbackToolImage(),
+        );
+      },
+    );
+  }
+
+  Widget _fallbackToolImage() {
+    return Image.asset(
+      DinoCardTheme.sitePlaceholderAsset,
+      fit: BoxFit.cover,
     );
   }
 }

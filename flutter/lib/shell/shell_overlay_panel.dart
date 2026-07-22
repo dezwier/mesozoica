@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// Fullscreen panel that hosts Profile or Catalog over the map.
+/// Fullscreen panel that hosts Profile, Catalog, or Tools over the map.
 ///
 /// Dismissal sits at bottom center over the content (no top chrome).
 class ShellOverlayPanel extends StatelessWidget {

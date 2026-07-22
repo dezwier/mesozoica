@@ -25,3 +25,12 @@ class ToolListResponse(BaseModel):
     limit: int
     offset: int
     has_next: bool
+
+
+class ToolCategoryItem(BaseModel):
+    value: str
+    label: str
+
+
+class ToolCategoryListResponse(BaseModel):
+    items: list[ToolCategoryItem]

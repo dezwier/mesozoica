@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../controllers/tool_catalog_controller.dart';
+import '../../models/tool.dart';
 import '../common/drawer_sheet_sizes.dart';
 
 class ToolFilterSheet extends StatefulWidget {
@@ -9,17 +10,20 @@ class ToolFilterSheet extends StatefulWidget {
     required this.initialFilters,
     required this.onApply,
     this.catalogTotal,
+    this.availableCategories = const [],
   });
 
   final ToolCatalogFilters initialFilters;
   final ValueChanged<ToolCatalogFilters> onApply;
   final int? catalogTotal;
+  final List<ToolCategoryOption> availableCategories;
 
   static Future<void> show(
     BuildContext context, {
     required ToolCatalogFilters initialFilters,
     required ValueChanged<ToolCatalogFilters> onApply,
     int? catalogTotal,
+    List<ToolCategoryOption> availableCategories = const [],
   }) {
     return showModalBottomSheet<void>(
       context: context,
@@ -34,6 +38,7 @@ class ToolFilterSheet extends StatefulWidget {
         initialFilters: initialFilters,
         onApply: onApply,
         catalogTotal: catalogTotal,
+        availableCategories: availableCategories,
       ),
     );
   }
@@ -46,6 +51,7 @@ class _ToolFilterSheetState extends State<ToolFilterSheet> {
   late final TextEditingController _searchController;
   late String _pendingSearch;
   late ToolCatalogSort _pendingSort;
+  late Set<String> _pendingCategories;
   bool _applied = false;
 
   @override
@@ -53,6 +59,7 @@ class _ToolFilterSheetState extends State<ToolFilterSheet> {
     super.initState();
     _pendingSearch = widget.initialFilters.searchQuery;
     _pendingSort = widget.initialFilters.sort;
+    _pendingCategories = {...widget.initialFilters.categories};
     _searchController = TextEditingController(text: _pendingSearch);
   }
 
@@ -69,6 +76,7 @@ class _ToolFilterSheetState extends State<ToolFilterSheet> {
       ToolCatalogFilters(
         searchQuery: _pendingSearch.trim(),
         sort: _pendingSort,
+        categories: {..._pendingCategories},
       ),
     );
   }
@@ -77,14 +85,26 @@ class _ToolFilterSheetState extends State<ToolFilterSheet> {
     return ToolCatalogFilters(
       searchQuery: _pendingSearch.trim(),
       sort: _pendingSort,
+      categories: {..._pendingCategories},
     );
   }
 
   void _clearPending() {
     setState(() {
       _pendingSearch = '';
-      _pendingSort = ToolCatalogSort.random;
+      _pendingSort = ToolCatalogSort.category;
+      _pendingCategories = {};
       _searchController.clear();
+    });
+  }
+
+  void _toggleCategory(String value, bool? selected) {
+    setState(() {
+      if (selected ?? false) {
+        _pendingCategories.add(value);
+      } else {
+        _pendingCategories.remove(value);
+      }
     });
   }
 
@@ -153,6 +173,25 @@ class _ToolFilterSheetState extends State<ToolFilterSheet> {
               ),
               const SizedBox(height: 8),
               _buildSortDropdown(context),
+              if (widget.availableCategories.isNotEmpty) ...[
+                const SizedBox(height: 16),
+                Text(
+                  'Category',
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                ...widget.availableCategories.map(
+                  (option) => _checkboxTile(
+                    theme: theme,
+                    value: _pendingCategories.contains(option.value),
+                    label: option.label,
+                    onChanged: (selected) =>
+                        _toggleCategory(option.value, selected),
+                  ),
+                ),
+              ],
               const SizedBox(height: 24),
               Row(
                 children: [
@@ -252,6 +291,44 @@ class _ToolFilterSheetState extends State<ToolFilterSheet> {
                 ),
               )
               .toList(),
+        ),
+      ),
+    );
+  }
+
+  Widget _checkboxTile({
+    required ThemeData theme,
+    required bool value,
+    required String label,
+    required ValueChanged<bool?> onChanged,
+  }) {
+    return SizedBox(
+      height: 44,
+      child: InkWell(
+        onTap: () => onChanged(!value),
+        child: Row(
+          children: [
+            SizedBox(
+              width: 32,
+              height: 44,
+              child: IgnorePointer(
+                child: Checkbox(
+                  value: value,
+                  onChanged: (_) {},
+                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  visualDensity:
+                      const VisualDensity(horizontal: -4, vertical: -4),
+                ),
+              ),
+            ),
+            const SizedBox(width: 4),
+            Expanded(
+              child: Text(
+                label,
+                style: theme.textTheme.bodyMedium,
+              ),
+            ),
+          ],
         ),
       ),
     );

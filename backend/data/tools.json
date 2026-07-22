@@ -1,352 +1,359 @@
 [
   {
-    "name": "Orbit Survey",
-    "category": "prospecting",
-    "scientific_tool": "satellite imagery",
-    "description": "Identifies exposed formations, erosion zones and terrain worth surveying.",
-    "rarity": 2
-  },
-  {
     "name": "Aerial Scout",
-    "category": "prospecting",
+    "category": "1 site_discovery",
     "scientific_tool": "drone",
     "description": "Maps outcrops and photographs inaccessible terrain from above.",
     "rarity": 2
   },
   {
     "name": "Airlift Survey",
-    "category": "access",
+    "category": "1 site_discovery",
     "scientific_tool": "helicopter",
     "description": "Provides access to remote sites and aerial observation of large exposures.",
     "rarity": 5
   },
   {
-    "name": "Ridge Glass",
-    "category": "prospecting",
-    "scientific_tool": "binoculars",
-    "description": "Helps inspect distant slopes, cliffs and exposed sedimentary beds.",
-    "rarity": 1
-  },
-  {
-    "name": "Field Beam",
-    "category": "prospecting",
-    "scientific_tool": "flashlight",
-    "description": "Illuminates caves, crevices and shaded rock surfaces during inspection.",
-    "rarity": 1
-  },
-  {
-    "name": "Thermal Survey",
-    "category": "remote_sensing",
-    "scientific_tool": "thermal camera",
-    "description": "Detects temperature differences that may reveal fractures or shallow geological structures.",
-    "rarity": 4
-  },
-  {
-    "name": "Field Codex",
-    "category": "documentation",
-    "scientific_tool": "field notebook",
-    "description": "Records locality, geology, specimen context and excavation decisions.",
-    "rarity": 1
-  },
-  {
     "name": "Formation Map",
-    "category": "prospecting",
+    "category": "1 site_discovery",
     "scientific_tool": "geological map",
     "description": "Locates rocks of the correct age and depositional environment.",
     "rarity": 1
   },
   {
     "name": "Geo Compass",
-    "category": "surveying",
+    "category": "1 site_discovery",
     "scientific_tool": "geological compass",
-    "description": "Measures orientation, strike and dip of sedimentary layers.",
+    "description": "Points toward the nearest undiscovered site without revealing its exact distance.",
+    "rarity": 1
+  },
+  {
+    "name": "Orbit Survey",
+    "category": "1 site_discovery",
+    "scientific_tool": "satellite imagery",
+    "description": "Identifies exposed formations, erosion zones and terrain worth surveying.",
+    "rarity": 2
+  },
+  {
+    "name": "Proximity Scanner",
+    "category": "1 site_discovery",
+    "scientific_tool": "proximity-based survey guidance",
+    "description": "Indicates whether the player is moving closer to or farther from the nearest undiscovered site.",
     "rarity": 2
   },
   {
     "name": "Site Navigator",
-    "category": "surveying",
-    "scientific_tool": "GPS or GNSS receiver",
-    "description": "Records precise site and specimen coordinates.",
-    "rarity": 1
-  },
-  {
-    "name": "Earth Mover",
-    "category": "overburden_removal",
-    "scientific_tool": "bulldozer or excavator",
-    "description": "Removes confirmed sterile overburden far above the fossil-bearing layer.",
-    "rarity": 4
+    "category": "1 site_discovery",
+    "scientific_tool": "GPS or GNSS navigation system",
+    "description": "Combines directional guidance with an estimated distance to the nearest undiscovered site.",
+    "rarity": 3
   },
   {
     "name": "Controlled Break",
-    "category": "overburden_removal",
+    "category": "2 fossil_discovery",
     "scientific_tool": "controlled explosives",
     "description": "Removes large volumes of sterile rock only under professional geological supervision.",
     "rarity": 5
   },
   {
+    "name": "Earth Mover",
+    "category": "2 fossil_discovery",
+    "scientific_tool": "bulldozer or excavator",
+    "description": "Removes confirmed sterile overburden far above the fossil-bearing layer.",
+    "rarity": 4
+  },
+  {
+    "name": "Field Beam",
+    "category": "2 fossil_discovery",
+    "scientific_tool": "flashlight",
+    "description": "Illuminates caves, crevices and shaded rock surfaces during inspection.",
+    "rarity": 1
+  },
+  {
+    "name": "Ridge Glass",
+    "category": "2 fossil_discovery",
+    "scientific_tool": "binoculars",
+    "description": "Helps inspect distant slopes, cliffs and exposed sedimentary beds.",
+    "rarity": 1
+  },
+  {
     "name": "Rock Breaker",
-    "category": "overburden_removal",
+    "category": "2 fossil_discovery",
     "scientific_tool": "jackhammer",
     "description": "Breaks resistant matrix at a safe distance from exposed fossils.",
     "rarity": 3
   },
   {
+    "name": "Thermal Survey",
+    "category": "2 fossil_discovery",
+    "scientific_tool": "thermal camera",
+    "description": "Detects temperature differences that may reveal fractures or shallow geological structures.",
+    "rarity": 4
+  },
+  {
+    "name": "Field Canopy",
+    "category": "3 site_protection",
+    "scientific_tool": "portable shelter",
+    "description": "Protects an exposed excavation from sun, rain and wind.",
+    "rarity": 2
+  },
+  {
+    "name": "Field Codex",
+    "category": "3 site_protection",
+    "scientific_tool": "field notebook",
+    "description": "Records locality, geology, specimen context and excavation decisions.",
+    "rarity": 1
+  },
+  {
+    "name": "Perimeter Guard",
+    "category": "3 site_protection",
+    "scientific_tool": "fencing or barrier tape",
+    "description": "Prevents visitors, animals and vehicles from damaging the site.",
+    "rarity": 2
+  },
+  {
+    "name": "Site Veil",
+    "category": "3 site_protection",
+    "scientific_tool": "tarp or geotextile",
+    "description": "Covers excavated surfaces during pauses or bad weather.",
+    "rarity": 1
+  },
+  {
+    "name": "Detail Brush",
+    "category": "4 excavation",
+    "scientific_tool": "brush",
+    "description": "Clears loose sediment from exposed fossil surfaces.",
+    "rarity": 1
+  },
+  {
+    "name": "Field Trowel",
+    "category": "4 excavation",
+    "scientific_tool": "pointing trowel",
+    "description": "Cleans excavation surfaces and removes sediment around larger bones.",
+    "rarity": 1
+  },
+  {
     "name": "Geo Hammer",
-    "category": "excavation",
+    "category": "4 excavation",
     "scientific_tool": "geological hammer",
     "description": "Splits rock and drives chisels during controlled excavation.",
     "rarity": 1
   },
   {
     "name": "Matrix Chisel",
-    "category": "excavation",
+    "category": "4 excavation",
     "scientific_tool": "chisel",
     "description": "Removes compact rock from around a fossil in small controlled sections.",
     "rarity": 1
   },
   {
-    "name": "Detail Brush",
-    "category": "excavation",
-    "scientific_tool": "brush",
-    "description": "Clears loose sediment from exposed fossil surfaces.",
-    "rarity": 1
-  },
-  {
     "name": "Precision Pick",
-    "category": "excavation",
+    "category": "4 excavation",
     "scientific_tool": "dental pick",
     "description": "Removes fine matrix from small anatomical details.",
     "rarity": 1
   },
   {
-    "name": "Field Trowel",
-    "category": "excavation",
-    "scientific_tool": "pointing trowel",
-    "description": "Cleans excavation surfaces and removes sediment around larger bones.",
-    "rarity": 1
-  },
-  {
-    "name": "Air Scribe",
-    "category": "preparation",
-    "scientific_tool": "pneumatic engraving tool",
-    "description": "Mechanically removes hard matrix with rapid, precise impacts.",
-    "rarity": 3
-  },
-  {
     "name": "Acid Bath",
-    "category": "preparation",
+    "category": "5 preparation",
     "scientific_tool": "acid dissolution",
     "description": "Dissolves suitable carbonate matrix under controlled laboratory conditions.",
     "rarity": 4
   },
   {
+    "name": "Air Scribe",
+    "category": "5 preparation",
+    "scientific_tool": "pneumatic engraving tool",
+    "description": "Mechanically removes hard matrix with rapid, precise impacts.",
+    "rarity": 3
+  },
+  {
     "name": "Bone Seal",
-    "category": "stabilization",
+    "category": "5 preparation",
     "scientific_tool": "consolidant",
     "description": "Penetrates fragile fossil material to reduce cracking and flaking.",
     "rarity": 2
   },
   {
-    "name": "Precision Bond",
-    "category": "stabilization",
-    "scientific_tool": "conservation adhesive",
-    "description": "Reattaches broken fragments using a documented and preferably reversible adhesive.",
-    "rarity": 2
-  },
-  {
     "name": "Foil Barrier",
-    "category": "stabilization",
+    "category": "5 preparation",
     "scientific_tool": "aluminium foil",
     "description": "Separates fossil surfaces from plaster, adhesives or packing materials.",
     "rarity": 1
   },
   {
+    "name": "Precision Bond",
+    "category": "5 preparation",
+    "scientific_tool": "conservation adhesive",
+    "description": "Reattaches broken fragments using a documented and preferably reversible adhesive.",
+    "rarity": 2
+  },
+  {
     "name": "Support Wrap",
-    "category": "stabilization",
+    "category": "5 preparation",
     "scientific_tool": "protective bandage wrap",
     "description": "Temporarily supports fractured or delicate material before extraction.",
     "rarity": 1
   },
   {
-    "name": "Field Canopy",
-    "category": "site_protection",
-    "scientific_tool": "portable shelter",
-    "description": "Protects an exposed excavation from sun, rain and wind.",
-    "rarity": 2
-  },
-  {
-    "name": "Site Veil",
-    "category": "site_protection",
-    "scientific_tool": "tarp or geotextile",
-    "description": "Covers excavated surfaces during pauses or bad weather.",
-    "rarity": 1
-  },
-  {
-    "name": "Perimeter Guard",
-    "category": "site_protection",
-    "scientific_tool": "fencing or barrier tape",
-    "description": "Prevents visitors, animals and vehicles from damaging the site.",
-    "rarity": 2
-  },
-  {
-    "name": "Plaster Shell",
-    "category": "extraction",
-    "scientific_tool": "plaster jacket",
-    "description": "Encases a fossil and surrounding matrix in a rigid protective shell.",
-    "rarity": 2
-  },
-  {
-    "name": "Jacket Wrap",
-    "category": "extraction",
-    "scientific_tool": "plaster bandage",
-    "description": "Creates a fast protective jacket around smaller fossil blocks.",
-    "rarity": 2
-  },
-  {
     "name": "Block Lift",
-    "category": "extraction",
+    "category": "6 extraction",
     "scientific_tool": "hoist or lifting frame",
     "description": "Raises large jacketed blocks while distributing their weight safely.",
     "rarity": 4
   },
   {
-    "name": "Specimen Cradle",
-    "category": "transport",
-    "scientific_tool": "custom specimen cradle",
-    "description": "Supports irregular fossils without concentrating pressure on fragile areas.",
-    "rarity": 3
-  },
-  {
-    "name": "Quarry Sled",
-    "category": "transport",
-    "scientific_tool": "transport sled",
-    "description": "Moves heavy jackets across rough terrain without repeated lifting.",
+    "name": "Jacket Wrap",
+    "category": "6 extraction",
+    "scientific_tool": "plaster bandage",
+    "description": "Creates a fast protective jacket around smaller fossil blocks.",
     "rarity": 2
   },
   {
+    "name": "Plaster Shell",
+    "category": "6 extraction",
+    "scientific_tool": "plaster jacket",
+    "description": "Encases a fossil and surrounding matrix in a rigid protective shell.",
+    "rarity": 2
+  },
+  {
+    "name": "Airlift Rig",
+    "category": "7 transport",
+    "scientific_tool": "helicopter sling",
+    "description": "Removes heavy specimens from sites without practical road access.",
+    "rarity": 5
+  },
+  {
     "name": "Field Case",
-    "category": "transport",
+    "category": "7 transport",
     "scientific_tool": "padded transport case",
     "description": "Protects small fossils from impact, vibration and displacement.",
     "rarity": 1
   },
   {
     "name": "Flatbed Carrier",
-    "category": "transport",
+    "category": "7 transport",
     "scientific_tool": "flatbed truck",
     "description": "Transports large jackets, crates and quarry equipment.",
     "rarity": 3
   },
   {
-    "name": "Airlift Rig",
-    "category": "transport",
-    "scientific_tool": "helicopter sling",
-    "description": "Removes heavy specimens from sites without practical road access.",
-    "rarity": 5
+    "name": "Quarry Sled",
+    "category": "7 transport",
+    "scientific_tool": "transport sled",
+    "description": "Moves heavy jackets across rough terrain without repeated lifting.",
+    "rarity": 2
+  },
+  {
+    "name": "Specimen Cradle",
+    "category": "7 transport",
+    "scientific_tool": "custom specimen cradle",
+    "description": "Supports irregular fossils without concentrating pressure on fragile areas.",
+    "rarity": 3
   },
   {
     "name": "Archive Deposit",
-    "category": "collections",
+    "category": "8 storage",
     "scientific_tool": "repository deposit",
     "description": "Transfers a specimen and its documentation to an approved scientific collection.",
     "rarity": 3
   },
   {
-    "name": "Collection Vault",
-    "category": "storage",
-    "scientific_tool": "museum storage cabinet",
-    "description": "Stores catalogued specimens in a stable and organized environment.",
-    "rarity": 2
-  },
-  {
     "name": "Climate Sentinel",
-    "category": "storage",
+    "category": "8 storage",
     "scientific_tool": "temperature and humidity logger",
     "description": "Monitors environmental conditions that could damage stored fossils.",
     "rarity": 2
   },
   {
-    "name": "Strata Reader",
-    "category": "analysis",
-    "scientific_tool": "stratigraphic analysis",
-    "description": "Determines the fossil's position and context within the surrounding rock sequence.",
+    "name": "Collection Vault",
+    "category": "8 storage",
+    "scientific_tool": "museum storage cabinet",
+    "description": "Stores catalogued specimens in a stable and organized environment.",
     "rarity": 2
   },
   {
-    "name": "Radiometric Clock",
-    "category": "dating",
-    "scientific_tool": "radiometric dating",
-    "description": "Dates suitable volcanic minerals or layers associated with the fossil site.",
-    "rarity": 5
-  },
-  {
     "name": "Anatomy Archive",
-    "category": "analysis",
+    "category": "9 analysis",
     "scientific_tool": "comparative anatomy collection",
     "description": "Compares a specimen with identified skeletons, casts and reference material.",
     "rarity": 3
   },
   {
     "name": "CT Vault",
-    "category": "imaging",
+    "category": "9 analysis",
     "scientific_tool": "CT scanner",
     "description": "Reveals internal anatomy and enclosed structures without physically opening the fossil.",
     "rarity": 5
   },
   {
     "name": "Isotope Engine",
-    "category": "analysis",
+    "category": "9 analysis",
     "scientific_tool": "isotope analysis",
     "description": "Investigates diet, environment, migration or alteration using isotopic composition.",
     "rarity": 5
   },
   {
     "name": "Micro Lens",
-    "category": "analysis",
+    "category": "9 analysis",
     "scientific_tool": "microscope",
     "description": "Examines fine anatomy, surface textures, sediments and microfossils.",
     "rarity": 2
   },
   {
-    "name": "UV Revealer",
-    "category": "imaging",
-    "scientific_tool": "ultraviolet imaging",
-    "description": "Makes some fossils, repairs and minerals easier to distinguish through fluorescence.",
-    "rarity": 3
+    "name": "Radiometric Clock",
+    "category": "9 analysis",
+    "scientific_tool": "radiometric dating",
+    "description": "Dates suitable volcanic minerals or layers associated with the fossil site.",
+    "rarity": 5
+  },
+  {
+    "name": "Strata Reader",
+    "category": "9 analysis",
+    "scientific_tool": "stratigraphic analysis",
+    "description": "Determines the fossil's position and context within the surrounding rock sequence.",
+    "rarity": 2
   },
   {
     "name": "Surface Scanner",
-    "category": "imaging",
+    "category": "9 analysis",
     "scientific_tool": "photogrammetry or 3D scanner",
     "description": "Produces an accurate digital model of a fossil or excavation surface.",
     "rarity": 3
   },
   {
-    "name": "Mount Armature",
-    "category": "reconstruction",
-    "scientific_tool": "skeletal mount frame",
-    "description": "Supports an assembled skeleton while minimizing contact with original bones.",
-    "rarity": 4
+    "name": "UV Revealer",
+    "category": "9 analysis",
+    "scientific_tool": "ultraviolet imaging",
+    "description": "Makes some fossils, repairs and minerals easier to distinguish through fluorescence.",
+    "rarity": 3
   },
   {
     "name": "Digital Restorer",
-    "category": "reconstruction",
+    "category": "10 reconstruction",
     "scientific_tool": "digital reconstruction software",
     "description": "Reassembles scanned elements and tests alternative anatomical arrangements.",
     "rarity": 3
   },
   {
-    "name": "Soft-Tissue Model",
-    "category": "reconstruction",
-    "scientific_tool": "soft-tissue inference",
-    "description": "Estimates muscles and other missing tissues using attachment marks and living relatives.",
+    "name": "Missing Element Model",
+    "category": "10 reconstruction",
+    "scientific_tool": "comparative reconstruction",
+    "description": "Estimates absent bones from mirrored anatomy and closely related specimens.",
     "rarity": 4
   },
   {
-    "name": "Missing Element Model",
-    "category": "reconstruction",
-    "scientific_tool": "comparative reconstruction",
-    "description": "Estimates absent bones from mirrored anatomy and closely related specimens.",
+    "name": "Mount Armature",
+    "category": "10 reconstruction",
+    "scientific_tool": "skeletal mount frame",
+    "description": "Supports an assembled skeleton while minimizing contact with original bones.",
+    "rarity": 4
+  },
+  {
+    "name": "Soft-Tissue Model",
+    "category": "10 reconstruction",
+    "scientific_tool": "soft-tissue inference",
+    "description": "Estimates muscles and other missing tissues using attachment marks and living relatives.",
     "rarity": 4
   }
 ]

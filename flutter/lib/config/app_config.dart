@@ -282,30 +282,37 @@ class AppConfig {
   static Uri toolsUri({
     int limit = 200,
     int offset = 0,
-    String sort = 'name',
+    String sort = 'category',
     String? seed,
     String? q,
+    Set<String> categories = const {},
     bool hasCustomImage = false,
   }) {
-    final params = <String, String>{
-      'limit': '$limit',
-      'offset': '$offset',
-      'sort': sort,
-    };
+    final parts = <String>[
+      'limit=$limit',
+      'offset=$offset',
+      'sort=${Uri.encodeQueryComponent(sort)}',
+    ];
     if (seed != null && seed.isNotEmpty) {
-      params['seed'] = seed;
+      parts.add('seed=${Uri.encodeQueryComponent(seed)}');
     }
     final trimmedQuery = q?.trim();
     if (trimmedQuery != null && trimmedQuery.isNotEmpty) {
-      params['q'] = trimmedQuery;
+      parts.add('q=${Uri.encodeQueryComponent(trimmedQuery)}');
     }
     if (hasCustomImage) {
-      params['has_custom_image'] = 'true';
+      parts.add('has_custom_image=true');
     }
-    return Uri.parse('$baseApiUrl/api/v1/tools').replace(
-      queryParameters: params,
-    );
+    for (final value in categories) {
+      final trimmed = value.trim();
+      if (trimmed.isEmpty) continue;
+      parts.add('category=${Uri.encodeQueryComponent(trimmed)}');
+    }
+    return Uri.parse('$baseApiUrl/api/v1/tools?${parts.join('&')}');
   }
+
+  static Uri toolCategoriesUri() =>
+      Uri.parse('$baseApiUrl/api/v1/tools/categories');
 
   static Uri toolUri(int id) => Uri.parse('$baseApiUrl/api/v1/tools/$id');
 

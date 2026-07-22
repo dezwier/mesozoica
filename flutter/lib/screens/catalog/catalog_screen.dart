@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import '../dino/dino_screen.dart';
 import '../fossil/fossil_screen.dart';
 import '../site/site_screen.dart';
-import '../tool/tool_screen.dart';
 
 class CatalogScreen extends StatefulWidget {
   const CatalogScreen({
@@ -22,19 +21,17 @@ class CatalogScreenState extends State<CatalogScreen>
   static const _siteTabIndex = 0;
   static const _fossilTabIndex = 1;
   static const _dinoTabIndex = 2;
-  static const _toolTabIndex = 3;
 
   late final TabController _tabController;
   final _siteKey = GlobalKey<SiteScreenState>();
   final _fossilKey = GlobalKey<FossilScreenState>();
   final _dinoKey = GlobalKey<DinoScreenState>();
-  final _toolKey = GlobalKey<ToolScreenState>();
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(
-      length: 4,
+      length: 3,
       vsync: this,
       initialIndex: _dinoTabIndex,
     );
@@ -62,8 +59,6 @@ class CatalogScreenState extends State<CatalogScreen>
         _fossilKey.currentState?.scrollToTop();
       case _dinoTabIndex:
         _dinoKey.currentState?.scrollToTop();
-      case _toolTabIndex:
-        _toolKey.currentState?.scrollToTop();
     }
   }
 
@@ -85,7 +80,6 @@ class CatalogScreenState extends State<CatalogScreen>
             Tab(text: 'Site'),
             Tab(text: 'Fossil'),
             Tab(text: 'Dinosaur'),
-            Tab(text: 'Tool'),
           ],
         ),
         Expanded(
@@ -111,13 +105,6 @@ class CatalogScreenState extends State<CatalogScreen>
                   key: _dinoKey,
                   isActive:
                       showActiveTabContent && activeTabIndex == _dinoTabIndex,
-                ),
-              ),
-              _CatalogTab(
-                child: ToolScreen(
-                  key: _toolKey,
-                  isActive:
-                      showActiveTabContent && activeTabIndex == _toolTabIndex,
                 ),
               ),
             ],
