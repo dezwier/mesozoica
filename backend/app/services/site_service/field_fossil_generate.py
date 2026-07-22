@@ -191,12 +191,13 @@ def ensure_field_fossils_for_site(
             card_keys,
             [fossil_cfg.card_count_weights[k] for k in card_keys],
         )
-        for _ in range(card_count):
-            subcategory = _sample_from_counter(
-                attr_dists.subcategory,
-                default=fossil_cfg.defaults.subcategory,
-                rng=random_source,
-            )
+        subcategories = _sample_distinct_subcategories(
+            attr_dists.subcategory,
+            count=card_count,
+            default=fossil_cfg.defaults.subcategory,
+            rng=random_source,
+        )
+        for subcategory in subcategories:
             completeness = _sample_ordered_from_counter(
                 attr_dists.completeness,
                 order=COMPLETENESS_ORDER,
@@ -387,6 +388,48 @@ def _sample_from_counter(
     keys = list(counts.keys())
     weights = [counts[k] for k in keys]
     return str(rng.choices(keys, weights=weights, k=1)[0])
+
+
+def _sample_distinct_subcategories(
+    counts: Counter[str],
+    *,
+    count: int,
+    default: str,
+    rng: random.Random,
+) -> list[str]:
+    """Weighted sample without replacement so one dino never repeats a subcategory."""
+    if count <= 0:
+        return []
+
+    pool = {key: weight for key, weight in counts.items() if weight > 0}
+    chosen: list[str] = []
+    for _ in range(count):
+        if not pool:
+            break
+        keys = list(pool.keys())
+        weights = [pool[k] for k in keys]
+        pick = str(rng.choices(keys, weights=weights, k=1)[0])
+        chosen.append(pick)
+        del pool[pick]
+
+    if len(chosen) >= count:
+        return chosen
+
+    # Top up from known body/trace subcategories if archive pool was too small.
+    extras = [
+        key
+        for key in list(BODY_SUBCATEGORIES) + list(TRACE_SUBCATEGORIES)
+        if key not in chosen
+    ]
+    rng.shuffle(extras)
+    for key in extras:
+        if len(chosen) >= count:
+            break
+        chosen.append(key)
+
+    if not chosen:
+        return [default]
+    return chosen
 
 
 def _sample_ordered_from_counter(

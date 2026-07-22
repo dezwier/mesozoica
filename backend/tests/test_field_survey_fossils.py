@@ -237,6 +237,15 @@ def test_ensure_field_fossils_samples_and_writes(session: Session):
     assert all(f.llm_imp_subcategory for f in fossils)
     assert all(f.depth_cm is not None and f.depth_cm >= 0 for f in fossils)
 
+    by_dino: dict[int, list[str]] = {}
+    for fossil in fossils:
+        assert fossil.dinosaur_id is not None
+        by_dino.setdefault(int(fossil.dinosaur_id), []).append(
+            str(fossil.llm_imp_subcategory)
+        )
+    for subcats in by_dino.values():
+        assert len(subcats) == len(set(subcats))
+
     again = ensure_field_fossils_for_site(
         session, site_id=field_site.site_id, rng=random.Random(99)
     )

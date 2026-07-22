@@ -3,14 +3,15 @@
 from __future__ import annotations
 
 import random
+from collections import Counter
 
 from app.core.game_config import DinoCountThreshold, get_game_config
 from app.services.site_service.field_fossil_generate import (
+    _sample_distinct_subcategories,
     clamp_odd,
     dino_count_from_score,
     tier_from_cdf,
 )
-
 
 def test_clamp_odd_clamps_and_defaults_missing() -> None:
     rng = random.Random(0)
@@ -57,3 +58,23 @@ def test_dino_count_custom_thresholds() -> None:
     ]
     assert dino_count_from_score(0.4, thresholds) == 1
     assert dino_count_from_score(0.9, thresholds) == 2
+
+
+def test_sample_distinct_subcategories_no_repeats() -> None:
+    counts = Counter({"teeth": 10, "skull": 5, "vertebrae": 1})
+    picked = _sample_distinct_subcategories(
+        counts, count=3, default="teeth", rng=random.Random(7)
+    )
+    assert len(picked) == 3
+    assert len(set(picked)) == 3
+    assert set(picked) <= {"teeth", "skull", "vertebrae"}
+
+
+def test_sample_distinct_subcategories_tops_up_when_pool_small() -> None:
+    counts = Counter({"teeth": 3})
+    picked = _sample_distinct_subcategories(
+        counts, count=3, default="teeth", rng=random.Random(3)
+    )
+    assert len(picked) == 3
+    assert len(set(picked)) == 3
+    assert "teeth" in picked
