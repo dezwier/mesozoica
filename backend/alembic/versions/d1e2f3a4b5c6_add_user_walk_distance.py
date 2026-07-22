@@ -1,8 +1,8 @@
 """add user walk distance fields
 
-Revision ID: a7t8u9v0w1x2
-Revises: z6s7l8m9n0o1
-Create Date: 2026-07-22 09:00:00.000000
+Revision ID: d1e2f3a4b5c6
+Revises: c9d0e1f2a3b4
+Create Date: 2026-07-22 09:15:00.000000
 
 """
 
@@ -11,8 +11,8 @@ from typing import Sequence, Union
 import sqlalchemy as sa
 from alembic import op
 
-revision: str = "a7t8u9v0w1x2"
-down_revision: Union[str, None] = "z6s7l8m9n0o1"
+revision: str = "d1e2f3a4b5c6"
+down_revision: Union[str, None] = "c9d0e1f2a3b4"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
