@@ -21,6 +21,7 @@ from app.models.user_site import USER_SITE_ROLE_DISCOVERER, UserSite
 from app.services.site_service.discover import discover_site
 from app.services.site_service.field_fossil_generate import (
     FIELD_FOSSIL_ID_START,
+    count_field_fossils_for_site,
     ensure_field_fossils_for_site,
     sample_depth_cm,
 )
@@ -129,6 +130,11 @@ def _seed_field_site(session: Session, *, site_id: int = 1_000_000_501) -> Site:
         period="cretaceous",
         site_type_id=site_type.id,
         data_source=DATA_SOURCE_FIELD,
+        odd_dino_count=0.7,
+        odd_fossil_count=0.5,
+        odd_completeness=0.5,
+        odd_quality=0.5,
+        odd_depth=0.3,
     )
     session.add(site)
     session.commit()
@@ -139,20 +145,75 @@ def _seed_field_site(session: Session, *, site_id: int = 1_000_000_501) -> Site:
 def test_sample_depth_cm_surface_bucket():
     get_game_config.cache_clear()
     buckets = get_game_config().fossil_generation.depth_buckets
-    # Force surface by using a bucket list with only 0.
     from app.core.game_config import FossilDepthBucket
 
     depth = sample_depth_cm(
         [FossilDepthBucket(weight=1.0, min_cm=0, max_cm=0)],
+        score=0.0,
         rng=random.Random(1),
     )
     assert depth == 0
     depth_range = sample_depth_cm(
         [FossilDepthBucket(weight=1.0, min_cm=51, max_cm=200)],
+        score=0.5,
         rng=random.Random(1),
     )
     assert 51 <= depth_range <= 200
     assert abs(sum(b.weight for b in buckets) - 1.0) < 1e-6
+
+
+def test_ensure_field_fossils_zero_dino_stays_done(session: Session, monkeypatch):
+    _seed_archive_pool(session)
+    field_site = _seed_field_site(session, site_id=1_000_000_502)
+    field_site.odd_dino_count = 0.05
+    session.add(field_site)
+    session.commit()
+
+    real_cfg = get_game_config().fossil_generation
+
+    class _ZeroNoiseCfg:
+        odd_noise = 0.0
+        dino_count_thresholds = real_cfg.dino_count_thresholds
+        card_count_weights = real_cfg.card_count_weights
+        depth_buckets = real_cfg.depth_buckets
+        defaults = real_cfg.defaults
+
+    monkeypatch.setattr(
+        "app.services.site_service.field_fossil_generate._fossil_gen",
+        lambda: _ZeroNoiseCfg(),
+    )
+
+    user = User(username="empty_disc", email="empty@example.com", password="x")
+    session.add(user)
+    session.commit()
+    session.refresh(user)
+
+    result = ensure_field_fossils_for_site(
+        session, site_id=field_site.site_id, rng=random.Random(1)
+    )
+    assert not result.skipped
+    assert result.generated == 0
+
+    from app.services.site_service.field_survey_queue import (
+        STATUS_DONE,
+        mark_survey_job_done,
+    )
+
+    _, job = enqueue_field_survey(session, site_id=field_site.site_id, user_id=user.id)
+    mark_survey_job_done(session, job, fossil_count=0)
+    session.refresh(job)
+    assert job.status == STATUS_DONE
+    assert job.fossil_count == 0
+
+    onboard = ensure_fossils_on_site_discovery(
+        session, site_id=field_site.site_id, user_id=user.id
+    )
+    assert onboard.fossils_ready is True
+    assert onboard.job_status == STATUS_DONE
+    session.refresh(job)
+    assert job.status == STATUS_DONE
+    assert job.fossil_count == 0
+    assert count_field_fossils_for_site(session, field_site.site_id) == 0
 
 
 def test_ensure_field_fossils_samples_and_writes(session: Session):

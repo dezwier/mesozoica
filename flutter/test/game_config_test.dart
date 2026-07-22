@@ -11,18 +11,20 @@ void main() {
   test('loads shared YAML with current game defaults', () async {
     final config = await loadGameConfigForTest();
 
-    expect(config.siteGeneration.client.ensureMoveThresholdM, 500.0);
-    expect(config.siteGeneration.client.nearbyRadiusKm, 1.0);
+    expect(config.siteGeneration.client.ensureMoveThresholdM, 250.0);
+    expect(config.siteGeneration.client.nearbyRadiusKm, 0.5);
 
     expect(config.siteDiscovery.maxDistanceM, 50.0);
-    expect(config.siteDiscovery.discoveryChance, 0.3);
+    expect(config.siteDiscovery.discoveryChance, 0.2);
     expect(config.siteDiscovery.client.autoDiscoverRadiusM, 50.0);
     expect(config.siteDiscovery.client.cacheRadiusKm, 1.0);
     expect(config.siteDiscovery.client.cacheRefreshMoveThresholdM, 500.0);
     expect(config.siteDiscovery.client.discoverFailRetryS, 20);
 
-    expect(config.fossilGeneration.dinoCountWeights[1], 0.60);
-    expect(config.fossilGeneration.dinoCountWeights[3], 0.10);
+    expect(config.fossilGeneration.oddNoise, 0.15);
+    expect(config.fossilGeneration.dinoCountThresholds.length, 6);
+    expect(config.fossilGeneration.dinoCountThresholds.first.count, 0);
+    expect(config.fossilGeneration.dinoCountThresholds.last.count, 5);
     expect(config.fossilGeneration.cardCountWeights[6], 0.05);
 
     expect(config.fossilDiscovery.enabled, isFalse);

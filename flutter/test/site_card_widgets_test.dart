@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mesozoica/controllers/auth_controller.dart';
 import 'package:mesozoica/models/site.dart';
 import 'package:mesozoica/widgets/cards/geologic_timeline.dart';
 import 'package:mesozoica/widgets/cards/site_card_back.dart';
@@ -8,8 +9,11 @@ import 'package:mesozoica/widgets/cards/site_card_front.dart';
 import 'package:mesozoica/widgets/cards/site_card_header.dart';
 import 'package:mesozoica/widgets/cards/site_card_image.dart';
 import 'package:mesozoica/widgets/cards/site_card_location_map.dart';
+import 'package:mesozoica/widgets/cards/site_card_odd_facts.dart';
+import 'package:mesozoica/widgets/cards/site_card_related_lists.dart';
 import 'package:mesozoica/widgets/cards/site_turnable_card.dart';
 import 'package:mesozoica/widgets/map/fossil_marker.dart';
+import 'package:provider/provider.dart';
 
 const _fixture = SiteSummary(
   siteId: 50001,
@@ -26,6 +30,11 @@ const _fixture = SiteSummary(
   siteTypeRockType: 'sandstone',
   mainImageUrl:
       'https://mesozoica-production.up.railway.app/media/site-types/1.png',
+  oddDinoCount: 0.42,
+  oddFossilCount: 0.55,
+  oddCompleteness: 0.61,
+  oddQuality: 0.33,
+  oddDepth: 0.78,
 );
 
 void main() {
@@ -165,6 +174,8 @@ void main() {
     expect(find.byType(SiteCardLocationMap), findsOneWidget);
     expect(find.byType(GeologicTimeline), findsOneWidget);
     expect(find.byType(SiteCardEdgeFacts), findsOneWidget);
+    expect(find.byType(SiteCardOddFacts), findsOneWidget);
+    expect(find.byType(SiteCardFossils), findsOneWidget);
     expect(find.text('Cretaceous Sandstone'), findsOneWidget);
     expect(find.text('#50001, 46.88, -110.36, Montana, US'), findsNothing);
     expect(find.text('FOSSIL RECORD'), findsOneWidget);
@@ -173,6 +184,13 @@ void main() {
     expect(find.text('COUNTRY'), findsOneWidget);
     expect(find.text('PERIOD'), findsOneWidget);
     expect(find.text('ROCK TYPE'), findsOneWidget);
+    expect(find.text('DINOS'), findsOneWidget);
+    expect(find.text('FOSSILS'), findsOneWidget);
+    expect(find.text('COMPLETE'), findsOneWidget);
+    expect(find.text('QUALITY'), findsOneWidget);
+    expect(find.text('DEPTH'), findsOneWidget);
+    expect(find.text('0.42'), findsOneWidget);
+    expect(find.text('0.55'), findsOneWidget);
     expect(find.textContaining('46.88'), findsOneWidget);
     expect(find.textContaining('Montana'), findsOneWidget);
     expect(find.textContaining('Cretaceous, 66 – 68 Ma'), findsOneWidget);
@@ -181,15 +199,18 @@ void main() {
 
   testWidgets('SiteTurnableCard composes front and back', (tester) async {
     await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: Center(
-            child: SizedBox(
-              width: 800,
-              child: SiteTurnableCard(
-                site: _fixture,
-                turnable: false,
-                mapTileLayerBuilder: () => const SizedBox.shrink(),
+      ChangeNotifierProvider(
+        create: (_) => AuthController(),
+        child: MaterialApp(
+          home: Scaffold(
+            body: Center(
+              child: SizedBox(
+                width: 800,
+                child: SiteTurnableCard(
+                  site: _fixture,
+                  turnable: false,
+                  mapTileLayerBuilder: () => const SizedBox.shrink(),
+                ),
               ),
             ),
           ),

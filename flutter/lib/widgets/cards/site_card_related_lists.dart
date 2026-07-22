@@ -7,16 +7,18 @@ import 'card_record_thumb.dart';
 import 'fossil_card_dialog.dart';
 import 'fossil_card_image.dart';
 
-/// Fossil thumbnails on the site card back — one large square, or two per row.
+/// Horizontal scroll of small square fossil thumbs on the site card back.
 class SiteCardFossils extends StatefulWidget {
   const SiteCardFossils({
     super.key,
     required this.siteId,
     this.siteService,
+    this.thumbSize = 56,
   });
 
   final int siteId;
   final SiteService? siteService;
+  final double thumbSize;
 
   @override
   State<SiteCardFossils> createState() => _SiteCardFossilsState();
@@ -116,56 +118,18 @@ class _SiteCardFossilsState extends State<SiteCardFossils> {
           );
         }
 
-        if (fossils.length == 1) {
-          return LayoutBuilder(
-            builder: (context, constraints) {
-              final thumbSize = constraints.maxWidth;
-              return ListView(
-                physics: const ClampingScrollPhysics(),
-                padding: EdgeInsets.zero,
-                children: [
-                  _buildThumb(
-                    context: context,
-                    fossil: fossils.first,
-                    thumbSize: thumbSize,
-                  ),
-                ],
-              );
-            },
-          );
-        }
-
-        final rowCount = (fossils.length / 2).ceil();
-        return LayoutBuilder(
-          builder: (context, constraints) {
-            final thumbSize = (constraints.maxWidth - _gap) / 2;
-            return ListView.separated(
-              physics: const ClampingScrollPhysics(),
-              padding: EdgeInsets.zero,
-              itemCount: rowCount,
-              separatorBuilder: (context, index) =>
-                  const SizedBox(height: _gap),
-              itemBuilder: (context, rowIndex) {
-                final leftIndex = rowIndex * 2;
-                final rightIndex = leftIndex + 1;
-                return Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildThumb(
-                      context: context,
-                      fossil: fossils[leftIndex],
-                      thumbSize: thumbSize,
-                    ),
-                    const SizedBox(width: _gap),
-                    if (rightIndex < fossils.length)
-                      _buildThumb(
-                        context: context,
-                        fossil: fossils[rightIndex],
-                        thumbSize: thumbSize,
-                      ),
-                  ],
-                );
-              },
+        final thumbSize = widget.thumbSize;
+        return ListView.separated(
+          scrollDirection: Axis.horizontal,
+          physics: const ClampingScrollPhysics(),
+          padding: EdgeInsets.zero,
+          itemCount: fossils.length,
+          separatorBuilder: (context, index) => const SizedBox(width: _gap),
+          itemBuilder: (context, index) {
+            return _buildThumb(
+              context: context,
+              fossil: fossils[index],
+              thumbSize: thumbSize,
             );
           },
         );

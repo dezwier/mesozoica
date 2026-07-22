@@ -179,12 +179,14 @@ class SiteDiscoveryClientConfig {
 
 class FossilGenerationConfig {
   const FossilGenerationConfig({
-    required this.dinoCountWeights,
+    required this.oddNoise,
+    required this.dinoCountThresholds,
     required this.cardCountWeights,
     required this.depthBuckets,
   });
 
-  final Map<int, double> dinoCountWeights;
+  final double oddNoise;
+  final List<DinoCountThreshold> dinoCountThresholds;
   final Map<int, double> cardCountWeights;
   final List<FossilDepthBucket> depthBuckets;
 
@@ -204,12 +206,37 @@ class FossilGenerationConfig {
         }
       }
     }
+    final rawThresholds = yaml['dino_count_thresholds'];
+    final thresholds = <DinoCountThreshold>[];
+    if (rawThresholds is List) {
+      for (final entry in rawThresholds) {
+        if (entry is Map) {
+          thresholds.add(
+            DinoCountThreshold(
+              maxOdd: _asDouble(entry['max_odd'], 0),
+              count: _asInt(entry['count'], 0),
+            ),
+          );
+        }
+      }
+    }
     return FossilGenerationConfig(
-      dinoCountWeights: _asIntDoubleMap(yaml['dino_count_weights']),
+      oddNoise: _asDouble(yaml['odd_noise'], 0.15),
+      dinoCountThresholds: thresholds,
       cardCountWeights: _asIntDoubleMap(yaml['card_count_weights']),
       depthBuckets: buckets,
     );
   }
+}
+
+class DinoCountThreshold {
+  const DinoCountThreshold({
+    required this.maxOdd,
+    required this.count,
+  });
+
+  final double maxOdd;
+  final int count;
 }
 
 class FossilDepthBucket {

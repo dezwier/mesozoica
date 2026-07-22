@@ -28,6 +28,11 @@ class SiteSummary(BaseModel):
     data_source: str = "archive"
     status: str | None = None
     viewer_has_surveyed: bool | None = None
+    odd_dino_count: float | None = None
+    odd_fossil_count: float | None = None
+    odd_completeness: float | None = None
+    odd_quality: float | None = None
+    odd_depth: float | None = None
 
 
 class SiteListResponse(BaseModel):

@@ -1,12 +1,28 @@
 # Field fossils spawned when a site is discovered (once per site, global).
+#
+# Each field site has five odd_* scores Uniform(0,1). On survey, attributes use
+# score = clamp(odd + Uniform(-odd_noise, +odd_noise), 0, 1) then pick a tier.
+# See README.md in this directory for the full mechanics.
 
-# How many distinct dinosaurs to sample for the site.
-dino_count_weights:
-  1: 0.60
-  2: 0.30
-  3: 0.10
+# Shared ±noise applied to every odd_* score before tier lookup.
+odd_noise: 0.15
 
-# How many fossil cards per sampled dinosaur.
+# How many distinct dinosaurs to sample for the site (from clamp(odd_dino_count)).
+dino_count_thresholds:
+  - max_odd: 0.10
+    count: 0
+  - max_odd: 0.60
+    count: 1
+  - max_odd: 0.80
+    count: 2
+  - max_odd: 0.90
+    count: 3
+  - max_odd: 0.95
+    count: 4
+  - max_odd: 1.00
+    count: 5
+
+# How many fossil cards per sampled dinosaur (CDF masses; inverse-CDF via odd_fossil_count).
 card_count_weights:
   1: 0.25
   2: 0.25
@@ -15,7 +31,7 @@ card_count_weights:
   5: 0.10
   6: 0.05
 
-# Burial depth buckets (weights must sum to 1.0). Sample uniform in [min_cm, max_cm].
+# Burial depth buckets (weights = CDF masses via odd_depth). Sample uniform in [min_cm, max_cm].
 depth_buckets:
   - weight: 0.20
     min_cm: 0

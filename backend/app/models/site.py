@@ -45,3 +45,23 @@ class Site(SQLModel, table=True):
         index=True,
         description="archive (PBDB/wiki) or field (procedural)",
     )
+    odd_dino_count: Optional[float] = Field(
+        default=None,
+        description="Field-site Uniform(0,1) score biasing dinosaur count on survey",
+    )
+    odd_fossil_count: Optional[float] = Field(
+        default=None,
+        description="Field-site Uniform(0,1) score biasing cards per dinosaur",
+    )
+    odd_completeness: Optional[float] = Field(
+        default=None,
+        description="Field-site Uniform(0,1) score biasing fossil completeness",
+    )
+    odd_quality: Optional[float] = Field(
+        default=None,
+        description="Field-site Uniform(0,1) score biasing preservation quality",
+    )
+    odd_depth: Optional[float] = Field(
+        default=None,
+        description="Field-site Uniform(0,1) score biasing burial depth",
+    )

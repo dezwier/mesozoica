@@ -6,11 +6,16 @@ import logging
 import random
 from collections import Counter
 from dataclasses import dataclass
+from typing import TypeVar
 
 from sqlalchemy import text
 from sqlmodel import Session, col, func, select
 
-from app.core.game_config import FossilDepthBucket, get_game_config
+from app.core.game_config import (
+    DinoCountThreshold,
+    FossilDepthBucket,
+    get_game_config,
+)
 from app.models.data_source import DATA_SOURCE_ARCHIVE, DATA_SOURCE_FIELD
 from app.models.dinosaur import Dinosaur
 from app.models.fossil import Fossil
@@ -24,6 +29,26 @@ from app.services.fossil_enrichment_service.validate import (
 logger = logging.getLogger(__name__)
 
 FIELD_FOSSIL_ID_START = 1_000_000_000
+_DEFAULT_ODD = 0.5
+_T = TypeVar("_T")
+
+# Worst → best for archive-biased CDF lookup.
+COMPLETENESS_ORDER: tuple[str, ...] = (
+    "trace_only",
+    "isolated_element",
+    "fragmentary",
+    "partial",
+    "substantial",
+    "nearly_complete",
+)
+QUALITY_ORDER: tuple[str, ...] = (
+    "very_poor",
+    "poor",
+    "moderate",
+    "good",
+    "excellent",
+    "exceptional",
+)
 
 
 def _fossil_gen():
@@ -49,14 +74,64 @@ def count_field_fossils_for_site(session: Session, site_id: int) -> int:
     )
 
 
+def clamp_odd(
+    odd: float | None,
+    noise: float,
+    *,
+    rng: random.Random,
+) -> float:
+    """score = clamp(odd + Uniform(-noise, +noise), 0, 1). Missing odd → 0.5."""
+    base = _DEFAULT_ODD if odd is None else float(odd)
+    score = base + rng.uniform(-noise, noise)
+    return max(0.0, min(1.0, score))
+
+
+def tier_from_cdf(
+    score: float,
+    items: list[_T],
+    weights: list[float],
+) -> _T:
+    """Pick the tier whose cumulative weight first reaches ``score`` (inverse CDF)."""
+    if not items:
+        raise ValueError("tier_from_cdf requires at least one item")
+    if len(items) != len(weights):
+        raise ValueError("tier_from_cdf items/weights length mismatch")
+    total = sum(weights)
+    if total <= 0:
+        return items[-1]
+    cumulative = 0.0
+    for item, weight in zip(items, weights):
+        cumulative += weight / total
+        if score <= cumulative:
+            return item
+    return items[-1]
+
+
+def dino_count_from_score(
+    score: float,
+    thresholds: list[DinoCountThreshold],
+) -> int:
+    """Map score to count using exclusive upper bounds except the final tier."""
+    if not thresholds:
+        return 0
+    for threshold in thresholds[:-1]:
+        if score < threshold.max_odd:
+            return threshold.count
+    return thresholds[-1].count
+
+
 def sample_depth_cm(
     buckets: list[FossilDepthBucket],
     *,
+    score: float,
     rng: random.Random,
 ) -> int:
-    """Sample burial depth (cm) from weighted buckets."""
-    weights = [bucket.weight for bucket in buckets]
-    bucket = rng.choices(buckets, weights=weights, k=1)[0]
+    """Sample burial depth via odd score against bucket CDF, then uniform in range."""
+    bucket = tier_from_cdf(
+        score,
+        buckets,
+        [b.weight for b in buckets],
+    )
     if bucket.min_cm == bucket.max_cm:
         return bucket.min_cm
     return rng.randint(bucket.min_cm, bucket.max_cm)
@@ -82,6 +157,9 @@ def ensure_field_fossils_for_site(
         raise ValueError(f"Site {site_id} missing period/rock_type for fossil generation")
 
     random_source = rng or random.Random()
+    fossil_cfg = _fossil_gen()
+    noise = fossil_cfg.odd_noise
+
     dino_counts = _dino_distribution(session, period=period, rock_type=rock_type)
     if not dino_counts:
         logger.warning(
@@ -92,29 +170,46 @@ def ensure_field_fossils_for_site(
         return FieldFossilGenerateResult(generated=0, skipped=True)
 
     attr_dists = _attribute_distributions(session, period=period)
-    dino_ids = _sample_dino_ids(dino_counts, rng=random_source)
+    dino_ids = _sample_dino_ids(
+        dino_counts,
+        odd=site.odd_dino_count,
+        noise=noise,
+        thresholds=fossil_cfg.dino_count_thresholds,
+        rng=random_source,
+    )
     dino_names = _load_dino_names(session, dino_ids)
 
     _sync_field_fossil_id_sequence(session)
     id_allocator = _FieldFossilIdAllocator(session)
 
     pending: list[Fossil] = []
-    fossil_cfg = _fossil_gen()
     for dinosaur_id in dino_ids:
-        card_count = _weighted_choice(fossil_cfg.card_count_weights, rng=random_source)
+        card_score = clamp_odd(site.odd_fossil_count, noise, rng=random_source)
+        card_keys = sorted(fossil_cfg.card_count_weights.keys())
+        card_count = tier_from_cdf(
+            card_score,
+            card_keys,
+            [fossil_cfg.card_count_weights[k] for k in card_keys],
+        )
         for _ in range(card_count):
             subcategory = _sample_from_counter(
                 attr_dists.subcategory,
                 default=fossil_cfg.defaults.subcategory,
                 rng=random_source,
             )
-            completeness = _sample_from_counter(
+            completeness = _sample_ordered_from_counter(
                 attr_dists.completeness,
+                order=COMPLETENESS_ORDER,
+                odd=site.odd_completeness,
+                noise=noise,
                 default=fossil_cfg.defaults.completeness,
                 rng=random_source,
             )
-            quality = _sample_from_counter(
+            quality = _sample_ordered_from_counter(
                 attr_dists.preservation_quality,
+                order=QUALITY_ORDER,
+                odd=site.odd_quality,
+                noise=noise,
                 default=fossil_cfg.defaults.quality,
                 rng=random_source,
             )
@@ -122,7 +217,12 @@ def ensure_field_fossils_for_site(
             name = dino_names.get(dinosaur_id) or f"dinosaur-{dinosaur_id}"
             identified = f"{name} ({subcategory.replace('_', ' ')})"
             fossil_id = id_allocator.next_id()
-            depth_cm = sample_depth_cm(fossil_cfg.depth_buckets, rng=random_source)
+            depth_score = clamp_odd(site.odd_depth, noise, rng=random_source)
+            depth_cm = sample_depth_cm(
+                fossil_cfg.depth_buckets,
+                score=depth_score,
+                rng=random_source,
+            )
             pending.append(
                 Fossil(
                     id=fossil_id,
@@ -253,10 +353,16 @@ def _bump_if_known(counter: Counter[str], value: str | None) -> None:
 def _sample_dino_ids(
     counts: Counter[int],
     *,
+    odd: float | None,
+    noise: float,
+    thresholds: list[DinoCountThreshold],
     rng: random.Random,
 ) -> list[int]:
-    target = _weighted_choice(_fossil_gen().dino_count_weights, rng=rng)
+    score = clamp_odd(odd, noise, rng=rng)
+    target = dino_count_from_score(score, thresholds)
     target = min(target, len(counts))
+    if target <= 0:
+        return []
     pool = dict(counts)
     chosen: list[int] = []
     for _ in range(target):
@@ -270,12 +376,6 @@ def _sample_dino_ids(
     return chosen
 
 
-def _weighted_choice(weights: dict[int, float], *, rng: random.Random) -> int:
-    keys = list(weights.keys())
-    values = [weights[k] for k in keys]
-    return int(rng.choices(keys, weights=values, k=1)[0])
-
-
 def _sample_from_counter(
     counts: Counter[str],
     *,
@@ -287,6 +387,27 @@ def _sample_from_counter(
     keys = list(counts.keys())
     weights = [counts[k] for k in keys]
     return str(rng.choices(keys, weights=weights, k=1)[0])
+
+
+def _sample_ordered_from_counter(
+    counts: Counter[str],
+    *,
+    order: tuple[str, ...],
+    odd: float | None,
+    noise: float,
+    default: str,
+    rng: random.Random,
+) -> str:
+    """Bias archive frequencies with odd+noise via ordered inverse-CDF."""
+    items = [key for key in order if counts.get(key, 0) > 0]
+    if not items:
+        extras = sorted(k for k in counts if k not in order and counts[k] > 0)
+        items = extras
+    if not items:
+        return default
+    score = clamp_odd(odd, noise, rng=rng)
+    weights = [float(counts[k]) for k in items]
+    return tier_from_cdf(score, items, weights)
 
 
 def _category_for_subcategory(subcategory: str) -> str:

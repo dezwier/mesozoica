@@ -28,6 +28,7 @@ from app.services.site_service.field_distributions import (
     nearby_distribution,
     sample_pair,
 )
+from app.services.site_service.summary import site_row_to_summary
 from app.services.site_service.field_generate import (
     FIELD_SITE_ID_START,
     FieldSiteGenerateConfig,
@@ -215,11 +216,19 @@ def test_generate_field_sites_sets_expected_fields(session: Session, monkeypatch
     assert site.formation is None
     assert site.min_age_ma is None
     assert site.max_age_ma is None
+    assert site.odd_dino_count is not None and 0.0 <= site.odd_dino_count <= 1.0
+    assert site.odd_fossil_count is not None and 0.0 <= site.odd_fossil_count <= 1.0
+    assert site.odd_completeness is not None and 0.0 <= site.odd_completeness <= 1.0
+    assert site.odd_quality is not None and 0.0 <= site.odd_quality <= 1.0
+    assert site.odd_depth is not None and 0.0 <= site.odd_depth <= 1.0
 
     from app.services.site_service.list import get_site_by_id
 
     row = get_site_by_id(session, site.site_id, data_source=DATA_SOURCE_FIELD)
     assert row.status == "hidden"
+    summary = site_row_to_summary(row)
+    assert summary.odd_dino_count == site.odd_dino_count
+    assert summary.odd_depth == site.odd_depth
 
 
 def test_coordinate_sampler_respects_min_separation():

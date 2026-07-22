@@ -19,6 +19,11 @@ class SiteSummary {
     this.mainImageUrl,
     this.status,
     this.viewerHasSurveyed,
+    this.oddDinoCount,
+    this.oddFossilCount,
+    this.oddCompleteness,
+    this.oddQuality,
+    this.oddDepth,
   });
 
   final int siteId;
@@ -36,6 +41,11 @@ class SiteSummary {
   final String? mainImageUrl;
   final String? status;
   final bool? viewerHasSurveyed;
+  final double? oddDinoCount;
+  final double? oddFossilCount;
+  final double? oddCompleteness;
+  final double? oddQuality;
+  final double? oddDepth;
 
   /// Field-generated site IDs start at 1_000_000_000; show the offset only.
   static const int fieldSiteIdBase = 1000000000;
@@ -161,6 +171,11 @@ class SiteSummary {
       mainImageUrl: json['main_image_url'] as String?,
       status: json['status'] as String?,
       viewerHasSurveyed: json['viewer_has_surveyed'] as bool?,
+      oddDinoCount: (json['odd_dino_count'] as num?)?.toDouble(),
+      oddFossilCount: (json['odd_fossil_count'] as num?)?.toDouble(),
+      oddCompleteness: (json['odd_completeness'] as num?)?.toDouble(),
+      oddQuality: (json['odd_quality'] as num?)?.toDouble(),
+      oddDepth: (json['odd_depth'] as num?)?.toDouble(),
     );
   }
 
@@ -185,6 +200,11 @@ class SiteSummary {
       mainImageUrl: mainImageUrl ?? this.mainImageUrl,
       status: status ?? this.status,
       viewerHasSurveyed: viewerHasSurveyed ?? this.viewerHasSurveyed,
+      oddDinoCount: oddDinoCount,
+      oddFossilCount: oddFossilCount,
+      oddCompleteness: oddCompleteness,
+      oddQuality: oddQuality,
+      oddDepth: oddDepth,
     );
   }
 }

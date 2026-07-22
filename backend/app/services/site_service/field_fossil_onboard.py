@@ -108,7 +108,14 @@ def ensure_fossils_on_site_discovery(
         )
 
     accepted, job = enqueue_field_survey(session, site_id=site_id, user_id=user_id)
-    if job.status == STATUS_DONE and count_field_fossils_for_site(session, site_id) == 0:
+    live_fossil_count = count_field_fossils_for_site(session, site_id)
+    # Intentional empty surveys store fossil_count=0. Only re-pend when DONE
+    # but fossils are missing despite a positive recorded count (or never recorded).
+    if (
+        job.status == STATUS_DONE
+        and live_fossil_count == 0
+        and (job.fossil_count is None or job.fossil_count > 0)
+    ):
         job.status = STATUS_PENDING
         job.initiated_by_user_id = user_id
         job.fossil_count = None
@@ -120,13 +127,13 @@ def ensure_fossils_on_site_discovery(
         session.commit()
         session.refresh(job)
         accepted = True
+        live_fossil_count = 0
 
-    fossils_ready = (
-        job.status == STATUS_DONE
-        and count_field_fossils_for_site(session, site_id) > 0
+    fossils_ready = job.status == STATUS_DONE and (
+        live_fossil_count > 0 or job.fossil_count == 0
     )
     surface_ids: tuple[int, ...] = ()
-    if fossils_ready:
+    if fossils_ready and live_fossil_count > 0:
         surface_ids = grant_surface_fossils_to_user(
             session, site_id=site_id, user_id=user_id
         )

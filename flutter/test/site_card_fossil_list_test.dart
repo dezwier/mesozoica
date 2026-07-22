@@ -7,6 +7,7 @@ import 'package:http/testing.dart';
 import 'package:mesozoica/services/site_service.dart';
 import 'package:mesozoica/widgets/cards/card_record_thumb.dart';
 import 'package:mesozoica/widgets/cards/site_card_related_lists.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 const _curatedFossilImageUrl =
     'https://mesozoica-production.up.railway.app/media/fossils/100001.webp';
@@ -14,7 +15,12 @@ const _curatedFossilImageUrl =
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  testWidgets('SiteCardFossils renders square fossil thumbnails', (tester) async {
+  setUp(() {
+    SharedPreferences.setMockInitialValues({});
+  });
+
+  testWidgets('SiteCardFossils renders horizontal fossil thumbnails',
+      (tester) async {
     final service = SiteService(
       client: MockClient((request) async {
         return http.Response(
@@ -39,8 +45,8 @@ void main() {
         home: Scaffold(
           body: Center(
             child: SizedBox(
-              width: 180,
-              height: 260,
+              width: 220,
+              height: 80,
               child: SiteCardFossils(
                 siteId: 50001,
                 siteService: service,
@@ -57,14 +63,14 @@ void main() {
     expect(find.text('Tyrannosaurus rex'), findsOneWidget);
     expect(find.text('Triceratops horridus'), findsOneWidget);
 
+    final listView = tester.widget<ListView>(find.byType(ListView));
+    expect(listView.scrollDirection, Axis.horizontal);
+
     final thumbBoxes = tester
         .widgetList<SizedBox>(find.byType(SizedBox))
         .where((box) => box.width != null && box.height != null)
-        .where((box) => box.width == box.height)
+        .where((box) => box.width == box.height && box.width == 56)
         .toList();
-    expect(thumbBoxes, isNotEmpty);
-    for (final box in thumbBoxes) {
-      expect(box.width, box.height);
-    }
+    expect(thumbBoxes.length, greaterThanOrEqualTo(3));
   });
 }

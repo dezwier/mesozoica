@@ -140,11 +140,34 @@ class FossilDepthBucket(BaseModel):
         return self
 
 
+class DinoCountThreshold(BaseModel):
+    model_config = {"frozen": True}
+
+    max_odd: float
+    count: int
+
+    @model_validator(mode="after")
+    def _validate_threshold(self) -> DinoCountThreshold:
+        if self.max_odd < 0.0 or self.max_odd > 1.0:
+            raise ValueError("dino_count_thresholds max_odd must be in [0, 1]")
+        if self.count < 0:
+            raise ValueError("dino_count_thresholds count must be >= 0")
+        return self
+
+
 class FossilGenerationConfig(BaseModel):
     model_config = {"frozen": True}
 
-    dino_count_weights: dict[int, float] = Field(
-        default_factory=lambda: {1: 0.60, 2: 0.30, 3: 0.10}
+    odd_noise: float = 0.15
+    dino_count_thresholds: list[DinoCountThreshold] = Field(
+        default_factory=lambda: [
+            DinoCountThreshold(max_odd=0.10, count=0),
+            DinoCountThreshold(max_odd=0.60, count=1),
+            DinoCountThreshold(max_odd=0.80, count=2),
+            DinoCountThreshold(max_odd=0.90, count=3),
+            DinoCountThreshold(max_odd=0.95, count=4),
+            DinoCountThreshold(max_odd=1.00, count=5),
+        ]
     )
     card_count_weights: dict[int, float] = Field(
         default_factory=lambda: {
@@ -169,16 +192,31 @@ class FossilGenerationConfig(BaseModel):
         default_factory=FossilGenerationDefaults
     )
 
-    @field_validator("dino_count_weights", "card_count_weights", mode="before")
+    @field_validator("card_count_weights", mode="before")
     @classmethod
     def _coerce_int_keys(cls, value: Any) -> dict[int, float]:
         if not isinstance(value, dict):
             raise TypeError("weights must be a mapping")
         return {int(k): float(v) for k, v in value.items()}
 
+    @field_validator("odd_noise")
+    @classmethod
+    def _validate_odd_noise(cls, value: float) -> float:
+        if value < 0.0:
+            raise ValueError("odd_noise must be >= 0")
+        return value
+
     @model_validator(mode="after")
     def _validate_weights(self) -> FossilGenerationConfig:
-        _weights_must_sum_to_one(self.dino_count_weights, label="dino_count_weights")
+        if not self.dino_count_thresholds:
+            raise ValueError("dino_count_thresholds must not be empty")
+        prev = -1.0
+        for threshold in self.dino_count_thresholds:
+            if threshold.max_odd < prev:
+                raise ValueError("dino_count_thresholds must be ordered by max_odd")
+            prev = threshold.max_odd
+        if abs(self.dino_count_thresholds[-1].max_odd - 1.0) > 1e-6:
+            raise ValueError("dino_count_thresholds final max_odd must be 1.0")
         _weights_must_sum_to_one(self.card_count_weights, label="card_count_weights")
         if not self.depth_buckets:
             raise ValueError("depth_buckets must not be empty")

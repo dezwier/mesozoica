@@ -43,7 +43,17 @@ def test_load_game_config_matches_current_defaults() -> None:
     assert config.site_discovery.client.cache_refresh_move_threshold_m == 500.0
     assert config.site_discovery.client.discover_fail_retry_s == 20
 
-    assert config.fossil_generation.dino_count_weights == {1: 0.60, 2: 0.30, 3: 0.10}
+    assert config.fossil_generation.odd_noise == 0.15
+    assert [
+        (t.max_odd, t.count) for t in config.fossil_generation.dino_count_thresholds
+    ] == [
+        (0.10, 0),
+        (0.60, 1),
+        (0.80, 2),
+        (0.90, 3),
+        (0.95, 4),
+        (1.00, 5),
+    ]
     assert config.fossil_generation.card_count_weights[1] == 0.25
     assert config.fossil_generation.card_count_weights[6] == 0.05
     assert config.fossil_generation.defaults.subcategory == "teeth"

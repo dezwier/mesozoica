@@ -336,6 +336,11 @@ def _build_field_site(
         period=period,
         site_type_id=site_type_id,
         data_source=DATA_SOURCE_FIELD,
+        odd_dino_count=rng.random(),
+        odd_fossil_count=rng.random(),
+        odd_completeness=rng.random(),
+        odd_quality=rng.random(),
+        odd_depth=rng.random(),
     )
 
 
@@ -815,6 +820,11 @@ def generate_field_sites(
             period=period,
             site_type_id=site_type_id,
             data_source=DATA_SOURCE_FIELD,
+            odd_dino_count=random_source.random(),
+            odd_fossil_count=random_source.random(),
+            odd_completeness=random_source.random(),
+            odd_quality=random_source.random(),
+            odd_depth=random_source.random(),
         )
         existing_coords.append((lat, lon))
         counters.generated += 1

@@ -47,6 +47,11 @@ def site_row_to_summary(
         data_source=site.data_source,
         status=row.status,
         viewer_has_surveyed=row.viewer_has_surveyed,
+        odd_dino_count=site.odd_dino_count,
+        odd_fossil_count=site.odd_fossil_count,
+        odd_completeness=site.odd_completeness,
+        odd_quality=site.odd_quality,
+        odd_depth=site.odd_depth,
     )
 
 

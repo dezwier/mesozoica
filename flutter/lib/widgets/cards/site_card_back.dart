@@ -10,6 +10,7 @@ import 'site_card_edge_facts.dart';
 import 'site_card_header.dart';
 import 'site_card_image.dart';
 import 'site_card_location_map.dart';
+import 'site_card_odd_facts.dart';
 import 'site_card_related_lists.dart';
 
 class SiteCardBack extends StatelessWidget {
@@ -27,6 +28,7 @@ class SiteCardBack extends StatelessWidget {
   final Widget Function() mapTileLayerBuilder;
 
   static const _contentScale = 1.15;
+  static const _bottomRowHeight = 80.0;
 
   @override
   Widget build(BuildContext context) {
@@ -71,15 +73,18 @@ class SiteCardBack extends StatelessWidget {
                     ),
                   ),
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 8),
                 SiteCardEdgeFacts(site: site),
-                const SizedBox(height: 10),
-                Expanded(
+                const SizedBox(height: 8),
+                SiteCardOddFacts(site: site),
+                const SizedBox(height: 8),
+                SizedBox(
+                  height: _bottomRowHeight,
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      Expanded(
-                        flex: 55,
+                      SizedBox(
+                        width: _bottomRowHeight,
                         child: CardSectionPanel(
                           padding: EdgeInsets.zero,
                           expandChild: true,
@@ -90,9 +95,8 @@ class SiteCardBack extends StatelessWidget {
                           ),
                         ),
                       ),
-                      const SizedBox(width: 10),
+                      const SizedBox(width: 8),
                       Expanded(
-                        flex: 45,
                         child: CardSectionPanel(
                           label: 'Fossil record',
                           expandChild: true,
