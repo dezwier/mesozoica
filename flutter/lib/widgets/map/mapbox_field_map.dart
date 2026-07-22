@@ -13,6 +13,7 @@ import 'mapbox_basemap_config.dart';
 import 'mapbox_camera_coordinator.dart';
 import 'mapbox_site_annotations.dart';
 import 'mapbox_viewport_native.dart';
+import 'map_center_crosshair.dart';
 import 'map_rotate_site_card_overlay.dart';
 
 typedef MapSiteTapCallback = void Function(SiteSummary site);
@@ -662,6 +663,10 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
                 widget.onError?.call(event.message);
               },
             ),
+            // Screen-fixed; sits under rotate cards. IgnorePointer so Mapbox
+            // location/site hits still win when they share the center.
+            if (!widget.rotateWithHeading && _ready)
+              const MapCenterCrosshair(),
             if (widget.rotateWithHeading && _ready)
               Positioned.fill(
                 child: MapRotateSiteCardOverlay(
