@@ -20,7 +20,7 @@ import 'controllers/phylo_tree_controller.dart';
 import 'controllers/site_catalog_controller.dart';
 import 'controllers/tool_catalog_controller.dart';
 import 'controllers/notification_controller.dart';
-import 'controllers/splash_hold_provider.dart';
+import 'controllers/splash_hold_controller.dart';
 import 'controllers/theme_controller.dart';
 import 'controllers/walk_distance_controller.dart';
 import 'firebase_options.dart';
@@ -108,7 +108,7 @@ class MesozoicaApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider.value(value: themeController),
         ChangeNotifierProvider.value(value: catalogModeController),
-        ChangeNotifierProvider(create: (_) => SplashHoldProvider()),
+        ChangeNotifierProvider(create: (_) => SplashHoldController()),
         ChangeNotifierProvider(
           create: (_) => AuthController()..initialize(),
         ),

@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mesozoica/models/dinosaur.dart';
-import 'package:mesozoica/services/phylo_tree_builder.dart';
+import 'package:mesozoica/utils/phylo_tree_builder.dart';
 
 DinosaurSummary _dino({
   required int id,

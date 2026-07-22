@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui' show FramePhase;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
@@ -71,7 +72,8 @@ class _MapPerfHudState extends State<MapPerfHud> {
 
   void _onTimings(List<FrameTiming> timings) {
     _timings.addAll(timings);
-    const maxKeep = 120;
+    // Keep >1s of ProMotion frames so a late sample doesn't truncate.
+    const maxKeep = 256;
     if (_timings.length > maxKeep) {
       _timings.removeRange(0, _timings.length - maxKeep);
     }
@@ -83,23 +85,34 @@ class _MapPerfHudState extends State<MapPerfHud> {
     var buildSum = 0.0;
     var rasterSum = 0.0;
     var jank = 0;
+    // One Flutter frame can show up more than once in the timings buffer;
+    // unique vsyncStart = one display refresh.
+    final vsyncStarts = <int>{};
     for (final t in _timings) {
       final buildMs = t.buildDuration.inMicroseconds / 1000.0;
       final rasterMs = t.rasterDuration.inMicroseconds / 1000.0;
       buildSum += buildMs;
       rasterSum += rasterMs;
-      // Frame missed its budget if build+raster alone exceeded ~16.7ms.
       if (buildMs + rasterMs > _jankThresholdMs) jank++;
+      vsyncStarts.add(t.timestampInMicroseconds(FramePhase.vsyncStart));
     }
     final n = _timings.length;
+    final uniqueVsyncs = vsyncStarts.length;
+
+    // Cadence from vsync timestamps (avoids wall-clock jitter and double-counts).
+    var fps = 0.0;
+    if (uniqueVsyncs >= 2) {
+      final sorted = vsyncStarts.toList()..sort();
+      final spanUs = sorted.last - sorted.first;
+      if (spanUs > 0) {
+        fps = (sorted.length - 1) * 1e6 / spanUs;
+      }
+    }
 
     final loc = context.read<LocationService>();
     final now = DateTime.now();
     final elapsedSec =
         now.difference(_windowStart).inMilliseconds.clamp(1, 60000) / 1000.0;
-    // Wall-clock FPS: frames Flutter reported in this sample window.
-    // (Do not use sum(totalSpan) — that is busy-time and invents 300–400+ "FPS".)
-    final fps = n / elapsedSec;
     final gpsDelta = loc.gpsUpdateCount - _prevGpsCount;
     final headingDelta = loc.headingNotifyCount - _prevHeadingNotify;
     _prevGpsCount = loc.gpsUpdateCount;

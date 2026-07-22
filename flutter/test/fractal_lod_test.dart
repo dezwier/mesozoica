@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mesozoica/services/fractal_tree_layout.dart';
+import 'package:mesozoica/utils/fractal_tree_layout.dart';
 import 'package:mesozoica/widgets/tree/fractal_fern_painter.dart';
 
 void main() {

@@ -14,7 +14,7 @@ import '../controllers/map_controller.dart';
 import '../controllers/notification_controller.dart';
 import '../controllers/site_catalog_controller.dart';
 import '../controllers/fossil_catalog_controller.dart';
-import '../controllers/splash_hold_provider.dart';
+import '../controllers/splash_hold_controller.dart';
 import '../controllers/walk_distance_controller.dart';
 import '../models/fossil.dart';
 import '../models/site.dart';
@@ -413,7 +413,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer2<AuthController, SplashHoldProvider>(
+    return Consumer2<AuthController, SplashHoldController>(
       builder: (context, auth, splashHold, _) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted) _syncNotificationStore(auth);

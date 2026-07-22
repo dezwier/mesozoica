@@ -12,7 +12,7 @@ import '../../controllers/field_session_coordinator.dart';
 import '../../controllers/fossil_catalog_controller.dart';
 import '../../controllers/map_controller.dart' as map_data;
 import '../../controllers/site_catalog_controller.dart';
-import '../../controllers/splash_hold_provider.dart';
+import '../../controllers/splash_hold_controller.dart';
 import '../../controllers/theme_controller.dart';
 import '../../models/site.dart';
 import '../../services/auth_service.dart';

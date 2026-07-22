@@ -26,7 +26,7 @@ mixin _MapScreenCameraMixin on State<MapScreen> {
     if (!mounted || _splashDismissed) return;
     _splashDismissed = true;
     _splashSafetyTimer?.cancel();
-    context.read<SplashHoldProvider>().setInitialPageReady(true);
+    context.read<SplashHoldController>().setInitialPageReady(true);
   }
 
   void _activateIfNeeded() {

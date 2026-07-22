@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mesozoica/models/site.dart';
-import 'package:mesozoica/widgets/map/site_map_filters.dart';
+import 'package:mesozoica/models/site_map_filters.dart';
 
 void main() {
   SiteSummary site({
