@@ -364,9 +364,19 @@ class SiteService {
     return FieldSurveyResponse.fromJson(decoded);
   }
 
-  /// Admin-only: delete all field sites, field fossils, and related jobs.
-  Future<FieldDataPurgeResult> purgeAllFieldData() async {
-    final uri = AppConfig.fieldDataPurgeUri();
+  /// Admin-only: delete selected field scopes (progress / sites / fossils).
+  Future<FieldDataPurgeResult> purgeAllFieldData({
+    bool userSites = true,
+    bool userFossils = true,
+    bool sites = true,
+    bool fossils = true,
+  }) async {
+    final uri = AppConfig.fieldDataPurgeUri(
+      userSites: userSites,
+      userFossils: userFossils,
+      sites: sites,
+      fossils: fossils,
+    );
     if (kDebugMode) {
       debugPrint('SiteService DELETE $uri');
     }

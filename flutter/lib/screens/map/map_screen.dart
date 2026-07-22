@@ -342,20 +342,27 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   Future<void> _onPurgeFieldData() async {
-    final confirmed = await FieldDataPurgeDialog.confirm(context);
-    if (!confirmed || !mounted) return;
+    final selection = await FieldDataPurgeDialog.confirm(context);
+    if (selection == null || !mounted) return;
 
-    _showScanBanner('Deleting field world…', autoDismiss: false);
+    _showScanBanner('Deleting field data…', autoDismiss: false);
     final service = SiteService();
     try {
-      final result = await service.purgeAllFieldData();
+      final result = await service.purgeAllFieldData(
+        userSites: selection.userSites,
+        userFossils: selection.userFossils,
+        sites: selection.sites,
+        fossils: selection.fossils,
+      );
       if (!mounted) return;
       context.read<FieldDiscoveryCoordinator>().clearForUserChange();
       context.read<map_data.MapController>().load(force: true);
       context.read<SiteCatalogController>().load(force: true);
       context.read<FossilCatalogController>().load(force: true);
       _showScanBanner(
-        'Deleted ${result.sitesDeleted} sites · '
+        'Deleted ${result.userSitesDeleted} user sites · '
+        '${result.userFossilsDeleted} user fossils · '
+        '${result.sitesDeleted} sites · '
         '${result.fossilsDeleted} fossils',
       );
     } on SiteServiceException catch (error) {
@@ -363,7 +370,7 @@ class _MapScreenState extends State<MapScreen> {
       _showScanBanner(error.message);
     } catch (_) {
       if (!mounted) return;
-      _showScanBanner('Could not delete field world');
+      _showScanBanner('Could not delete field data');
     } finally {
       service.dispose();
     }
@@ -667,7 +674,7 @@ class _MapScreenState extends State<MapScreen> {
                     heroTag: 'purge_field_data',
                     tone: ChromeFabTone.grey,
                     onPressed: _onPurgeFieldData,
-                    tooltip: 'Delete all field sites and fossils',
+                    tooltip: 'Delete field data',
                     child: const Icon(Icons.delete_forever_outlined),
                   ),
                   // Keep admin tools clearly above the regular map FABs.

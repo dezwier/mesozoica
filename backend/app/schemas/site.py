@@ -85,6 +85,8 @@ class FieldSurveyJobResponse(BaseModel):
 
 
 class FieldDataPurgeResponse(BaseModel):
+    user_sites_deleted: int = 0
+    user_fossils_deleted: int = 0
     sites_deleted: int
     fossils_deleted: int
     survey_jobs_deleted: int

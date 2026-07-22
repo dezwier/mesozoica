@@ -34,7 +34,7 @@ def _auth_headers(session: Session, *, username: str, is_admin: bool = False):
     return user, {"Authorization": f"Bearer {token}"}
 
 
-def test_purge_all_field_data_service(session: Session):
+def _seed_field_world(session: Session) -> tuple[Site, Fossil, User]:
     site_type = SiteType(period="cretaceous", rock_type="sandstone")
     session.add(site_type)
     session.commit()
@@ -80,16 +80,15 @@ def test_purge_all_field_data_service(session: Session):
             data_source=DATA_SOURCE_ARCHIVE,
         )
     )
-    session.add(
-        Fossil(
-            id=1_000_000_001,
-            dinosaur_id=dino.id,
-            site_id=field.site_id,
-            identified_name="field fossil",
-            data_source=DATA_SOURCE_FIELD,
-            depth_cm=0,
-        )
+    field_fossil = Fossil(
+        id=1_000_000_001,
+        dinosaur_id=dino.id,
+        site_id=field.site_id,
+        identified_name="field fossil",
+        data_source=DATA_SOURCE_FIELD,
+        depth_cm=0,
     )
+    session.add(field_fossil)
     user = User(username="purge_u", email="pu@example.com", password="x")
     session.add(user)
     session.commit()
@@ -125,18 +124,25 @@ def test_purge_all_field_data_service(session: Session):
         )
     )
     session.commit()
+    return field, field_fossil, user
 
+
+def test_purge_all_field_data_service(session: Session):
+    field, field_fossil, _user = _seed_field_world(session)
     field_site_id = field.site_id
+    field_fossil_id = field_fossil.id
     result = purge_all_field_data(session)
     assert result.sites_deleted == 1
     assert result.fossils_deleted == 1
+    assert result.user_sites_deleted == 1
+    assert result.user_fossils_deleted == 1
     assert result.survey_jobs_deleted == 1
     assert result.ensure_jobs_deleted == 1
 
-    assert session.get(Site, archive.site_id) is not None
+    assert session.get(Site, 42) is not None
     assert session.get(Site, field_site_id) is None
     assert session.get(Fossil, 100) is not None
-    assert session.get(Fossil, 1_000_000_001) is None
+    assert session.get(Fossil, field_fossil_id) is None
     assert session.exec(select(FieldSurveyJob)).all() == []
     assert session.exec(select(FieldEnsureJob)).all() == []
     assert (
@@ -145,6 +151,60 @@ def test_purge_all_field_data_service(session: Session):
         ).all()
         == []
     )
+
+
+def test_purge_user_progress_only(session: Session):
+    field, field_fossil, user = _seed_field_world(session)
+    result = purge_all_field_data(
+        session,
+        user_sites=True,
+        user_fossils=True,
+        sites=False,
+        fossils=False,
+    )
+    assert result.user_sites_deleted == 1
+    assert result.user_fossils_deleted == 1
+    assert result.sites_deleted == 0
+    assert result.fossils_deleted == 0
+    assert result.survey_jobs_deleted == 0
+    assert result.ensure_jobs_deleted == 0
+
+    assert session.get(Site, field.site_id) is not None
+    assert session.get(Fossil, field_fossil.id) is not None
+    assert (
+        session.exec(
+            select(UserSite).where(col(UserSite.user_id) == user.id)
+        ).all()
+        == []
+    )
+    assert (
+        session.exec(
+            select(UserFossil).where(col(UserFossil.user_id) == user.id)
+        ).all()
+        == []
+    )
+    assert session.exec(select(FieldSurveyJob)).all() != []
+    assert session.exec(select(FieldEnsureJob)).all() != []
+
+
+def test_purge_field_entities_only(session: Session):
+    field, field_fossil, _user = _seed_field_world(session)
+    field_site_id = field.site_id
+    field_fossil_id = field_fossil.id
+    result = purge_all_field_data(
+        session,
+        user_sites=False,
+        user_fossils=False,
+        sites=True,
+        fossils=True,
+    )
+    assert result.sites_deleted == 1
+    assert result.fossils_deleted == 1
+    # Progress rows still removed to satisfy FKs when parents are deleted.
+    assert result.user_sites_deleted == 1
+    assert result.user_fossils_deleted == 1
+    assert session.get(Site, field_site_id) is None
+    assert session.get(Fossil, field_fossil_id) is None
 
 
 def test_purge_field_data_api_requires_admin(client, session: Session):
@@ -178,3 +238,18 @@ def test_purge_field_data_api_admin(client, session: Session):
     assert body["sites_deleted"] == 1
     assert body["fossils_deleted"] == 0
     assert session.get(Site, 1_000_000_099) is None
+
+
+def test_purge_field_data_api_rejects_empty_scope(client, session: Session):
+    _admin, headers = _auth_headers(session, username="admin_empty", is_admin=True)
+    response = client.delete(
+        "/api/v1/sites/field",
+        headers=headers,
+        params={
+            "user_sites": "false",
+            "user_fossils": "false",
+            "sites": "false",
+            "fossils": "false",
+        },
+    )
+    assert response.status_code == 400

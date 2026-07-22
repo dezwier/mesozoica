@@ -219,8 +219,20 @@ class AppConfig {
   static Uri fieldSiteEnsureJobUri(int jobId) =>
       Uri.parse('$baseApiUrl/api/v1/sites/field/ensure/jobs/$jobId');
 
-  static Uri fieldDataPurgeUri() =>
-      Uri.parse('$baseApiUrl/api/v1/sites/field');
+  static Uri fieldDataPurgeUri({
+    bool userSites = true,
+    bool userFossils = true,
+    bool sites = true,
+    bool fossils = true,
+  }) =>
+      Uri.parse('$baseApiUrl/api/v1/sites/field').replace(
+        queryParameters: {
+          'user_sites': '$userSites',
+          'user_fossils': '$userFossils',
+          'sites': '$sites',
+          'fossils': '$fossils',
+        },
+      );
 
   static Uri siteUri(
     int id, {

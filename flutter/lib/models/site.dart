@@ -394,12 +394,16 @@ class FieldSurveyJobStatus {
 
 class FieldDataPurgeResult {
   const FieldDataPurgeResult({
+    this.userSitesDeleted = 0,
+    this.userFossilsDeleted = 0,
     required this.sitesDeleted,
     required this.fossilsDeleted,
     required this.surveyJobsDeleted,
     required this.ensureJobsDeleted,
   });
 
+  final int userSitesDeleted;
+  final int userFossilsDeleted;
   final int sitesDeleted;
   final int fossilsDeleted;
   final int surveyJobsDeleted;
@@ -407,6 +411,8 @@ class FieldDataPurgeResult {
 
   factory FieldDataPurgeResult.fromJson(Map<String, dynamic> json) {
     return FieldDataPurgeResult(
+      userSitesDeleted: json['user_sites_deleted'] as int? ?? 0,
+      userFossilsDeleted: json['user_fossils_deleted'] as int? ?? 0,
       sitesDeleted: json['sites_deleted'] as int? ?? 0,
       fossilsDeleted: json['fossils_deleted'] as int? ?? 0,
       surveyJobsDeleted: json['survey_jobs_deleted'] as int? ?? 0,

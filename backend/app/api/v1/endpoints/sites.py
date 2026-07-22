@@ -262,18 +262,46 @@ def get_field_ensure_job_status(
 def delete_all_field_data(
     session: Session = Depends(get_session),
     _admin: User = Depends(get_current_admin_user),
+    user_sites: bool = Query(
+        default=True,
+        description="Delete user_site rows for field sites",
+    ),
+    user_fossils: bool = Query(
+        default=True,
+        description="Delete user_fossil rows for field fossils",
+    ),
+    sites: bool = Query(
+        default=True,
+        description="Delete field sites (and related survey/ensure jobs)",
+    ),
+    fossils: bool = Query(
+        default=True,
+        description="Delete field fossils",
+    ),
 ) -> FieldDataPurgeResponse:
-    """Admin-only: wipe all field sites, field fossils, and related jobs."""
-    result = purge_all_field_data(session)
+    """Admin-only: selectively wipe field progress, sites, and/or fossils."""
+    if not any((user_sites, user_fossils, sites, fossils)):
+        raise ValidationError("Select at least one purge scope")
+    result = purge_all_field_data(
+        session,
+        user_sites=user_sites,
+        user_fossils=user_fossils,
+        sites=sites,
+        fossils=fossils,
+    )
     log_field_event(
         "field_data_purged",
         service="api",
+        user_sites_deleted=result.user_sites_deleted,
+        user_fossils_deleted=result.user_fossils_deleted,
         sites_deleted=result.sites_deleted,
         fossils_deleted=result.fossils_deleted,
         survey_jobs_deleted=result.survey_jobs_deleted,
         ensure_jobs_deleted=result.ensure_jobs_deleted,
     )
     return FieldDataPurgeResponse(
+        user_sites_deleted=result.user_sites_deleted,
+        user_fossils_deleted=result.user_fossils_deleted,
         sites_deleted=result.sites_deleted,
         fossils_deleted=result.fossils_deleted,
         survey_jobs_deleted=result.survey_jobs_deleted,
