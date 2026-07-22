@@ -625,7 +625,6 @@ class _MapScreenState extends State<MapScreen> {
                           : Icons.visibility_outlined,
                     ),
                   ),
-                  const SizedBox(height: 8),
                   FloatingActionButton.small(
                     heroTag: 'scan_field_area',
                     onPressed: _onScanFieldArea,
