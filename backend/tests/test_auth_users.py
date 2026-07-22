@@ -53,9 +53,151 @@ def test_get_my_profile(client: TestClient):
     body = response.json()
     assert body["username"] == "profile_user"
     assert body["actual_dinosaurs_count"] == 0
+    assert body["actual_fossils_count"] == 0
+    assert body["actual_sites_count"] == 0
 
 
-def test_users_list_and_friend_flow(client: TestClient, session: Session):
+def test_profile_collection_counts_from_link_tables(
+    client: TestClient, session: Session
+):
+    from decimal import Decimal
+
+    from app.models.dinosaur import Dinosaur
+    from app.models.fossil import Fossil
+    from app.models.site import Site
+    from app.models.site_type import SiteType
+    from app.models.user_dinosaur import (
+        USER_DINOSAUR_ROLE_DISCOVERER,
+        UserDinosaur,
+    )
+    from app.models.user_fossil import USER_FOSSIL_ROLE_DISCOVERER, UserFossil
+    from app.models.user_site import (
+        USER_SITE_ROLE_DISCOVERER,
+        USER_SITE_ROLE_SURVEYOR,
+        UserSite,
+    )
+
+    registered = _register_user(client, "collector", "collector@example.com")
+    user_id = registered["user"]["id"]
+    token = registered["access_token"]
+
+    site_type = SiteType(period="cretaceous", rock_type="sandstone")
+    session.add(site_type)
+    session.commit()
+    session.refresh(site_type)
+
+    session.add(
+        Site(
+            site_id=91001,
+            latitude=Decimal("45.0"),
+            longitude=Decimal("-110.0"),
+            rock_type="sandstone",
+            period="cretaceous",
+            site_type_id=site_type.id,
+        )
+    )
+    session.add(
+        Site(
+            site_id=91002,
+            latitude=Decimal("46.0"),
+            longitude=Decimal("-111.0"),
+            rock_type="sandstone",
+            period="cretaceous",
+            site_type_id=site_type.id,
+        )
+    )
+    dino_a = Dinosaur(
+        name="Tyrannosaurus",
+        wikipedia_page_id=91001,
+        wikipedia_title="Tyrannosaurus",
+    )
+    dino_b = Dinosaur(
+        name="Triceratops",
+        wikipedia_page_id=91002,
+        wikipedia_title="Triceratops",
+    )
+    session.add(dino_a)
+    session.add(dino_b)
+    session.commit()
+    session.refresh(dino_a)
+    session.refresh(dino_b)
+
+    fossil_a = Fossil(
+        id=91001, dinosaur_id=dino_a.id, identified_name="T. rex tooth"
+    )
+    fossil_b = Fossil(
+        id=91002, dinosaur_id=dino_b.id, identified_name="Triceratops horn"
+    )
+    session.add(fossil_a)
+    session.add(fossil_b)
+    session.commit()
+
+    # Two roles on the same site → still one unique site.
+    session.add(
+        UserSite(
+            user_id=user_id,
+            site_id=91001,
+            role=USER_SITE_ROLE_DISCOVERER,
+        )
+    )
+    session.add(
+        UserSite(
+            user_id=user_id,
+            site_id=91001,
+            role=USER_SITE_ROLE_SURVEYOR,
+        )
+    )
+    session.add(
+        UserSite(
+            user_id=user_id,
+            site_id=91002,
+            role=USER_SITE_ROLE_DISCOVERER,
+        )
+    )
+    session.add(
+        UserFossil(
+            user_id=user_id,
+            fossil_id=91001,
+            role=USER_FOSSIL_ROLE_DISCOVERER,
+        )
+    )
+    session.add(
+        UserFossil(
+            user_id=user_id,
+            fossil_id=91002,
+            role=USER_FOSSIL_ROLE_DISCOVERER,
+        )
+    )
+    session.add(
+        UserDinosaur(
+            user_id=user_id,
+            dinosaur_id=dino_a.id,
+            role=USER_DINOSAUR_ROLE_DISCOVERER,
+        )
+    )
+    session.commit()
+
+    response = client.get(
+        "/api/v1/users/me",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["actual_sites_count"] == 2
+    assert body["actual_fossils_count"] == 2
+    assert body["actual_dinosaurs_count"] == 1
+
+    other = _register_user(client, "other_collector", "other@example.com")
+    other_me = client.get(
+        "/api/v1/users/me",
+        headers={"Authorization": f"Bearer {other['access_token']}"},
+    )
+    assert other_me.status_code == 200
+    other_body = other_me.json()
+    assert other_body["actual_sites_count"] == 0
+    assert other_body["actual_fossils_count"] == 0
+    assert other_body["actual_dinosaurs_count"] == 0
+
     user_a = _register_user(client, "alice", "alice@example.com")
     user_b = _register_user(client, "bob", "bob@example.com")
 

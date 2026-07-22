@@ -19,9 +19,10 @@ router = APIRouter(prefix="/users", tags=["users"])
 
 @router.get("/me", response_model=UserProfileResponse)
 async def get_my_profile(
+    session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ):
-    return user_to_profile_response(current_user)
+    return user_to_profile_response(session, current_user)
 
 
 @router.patch("/me/distance", response_model=UserProfileResponse)
@@ -52,7 +53,7 @@ async def get_all_users(
     page_users = users[:limit]
     total = session.exec(select(User)).all()
     return UserListResponse(
-        items=[user_to_list_entry(user) for user in page_users],
+        items=[user_to_list_entry(session, user) for user in page_users],
         total=len(total),
         limit=limit,
         offset=offset,
@@ -70,4 +71,4 @@ async def get_user_profile(
     user = session.get(User, user_id)
     if user is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
-    return user_to_profile_response(user)
+    return user_to_profile_response(session, user)

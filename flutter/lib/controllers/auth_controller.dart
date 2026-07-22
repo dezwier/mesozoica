@@ -44,6 +44,7 @@ class AuthController extends ChangeNotifier {
       _currentUser = result['user'] as Profile;
       notifyListeners();
       await PushNotificationService.registerTokenIfLoggedIn();
+      await refreshProfile();
     }
     _setLoading(false);
     return result;
@@ -66,6 +67,7 @@ class AuthController extends ChangeNotifier {
       _currentUser = result['user'] as Profile;
       notifyListeners();
       await PushNotificationService.registerTokenIfLoggedIn();
+      await refreshProfile();
     }
     _setLoading(false);
     return result;
@@ -78,6 +80,7 @@ class AuthController extends ChangeNotifier {
       _currentUser = result['user'] as Profile;
       notifyListeners();
       await PushNotificationService.registerTokenIfLoggedIn();
+      await refreshProfile();
     }
     _setLoading(false);
     return result;

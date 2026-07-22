@@ -134,7 +134,9 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     // Always refresh map/catalog/inbox; push already covers background UX.
     context.read<MapController>().load(force: true);
     context.read<SiteCatalogController>().load(force: true);
-    final userId = context.read<AuthController>().currentUser?.id;
+    final auth = context.read<AuthController>();
+    unawaited(auth.refreshProfile());
+    final userId = auth.currentUser?.id;
     if (userId != null) {
       context
           .read<NotificationController>()

@@ -2,18 +2,37 @@
 
 from __future__ import annotations
 
-from sqlmodel import Session, select
+from sqlalchemy import func
+from sqlmodel import Session, col, select
 
 from app.models.user import User
+from app.models.user_dinosaur import UserDinosaur
+from app.models.user_fossil import UserFossil
+from app.models.user_site import UserSite
 from app.schemas.auth import UserListEntry, UserProfileResponse, UserResponse
 
 
-def collection_counts(_user_id: int) -> dict[str, int]:
-    """Placeholder until user inventory tables exist."""
+def collection_counts(session: Session, user_id: int) -> dict[str, int]:
+    """Unique sites / fossils / dinosaurs linked to the user."""
+    sites = session.exec(
+        select(func.count(func.distinct(UserSite.site_id))).where(
+            col(UserSite.user_id) == user_id
+        )
+    ).one()
+    fossils = session.exec(
+        select(func.count(func.distinct(UserFossil.fossil_id))).where(
+            col(UserFossil.user_id) == user_id
+        )
+    ).one()
+    dinosaurs = session.exec(
+        select(func.count(func.distinct(UserDinosaur.dinosaur_id))).where(
+            col(UserDinosaur.user_id) == user_id
+        )
+    ).one()
     return {
-        "actual_dinosaurs_count": 0,
-        "actual_fossils_count": 0,
-        "actual_sites_count": 0,
+        "actual_sites_count": int(sites or 0),
+        "actual_fossils_count": int(fossils or 0),
+        "actual_dinosaurs_count": int(dinosaurs or 0),
     }
 
 
@@ -51,14 +70,14 @@ def user_to_response(user: User) -> UserResponse:
     )
 
 
-def user_to_profile_response(user: User) -> UserProfileResponse:
-    counts = collection_counts(user.id)
+def user_to_profile_response(session: Session, user: User) -> UserProfileResponse:
+    counts = collection_counts(session, user.id)
     base = user_to_response(user).model_dump()
     return UserProfileResponse(**base, **counts)
 
 
-def user_to_list_entry(user: User) -> UserListEntry:
-    counts = collection_counts(user.id)
+def user_to_list_entry(session: Session, user: User) -> UserListEntry:
+    counts = collection_counts(session, user.id)
     return UserListEntry(
         id=user.id,
         username=user.username,

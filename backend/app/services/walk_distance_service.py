@@ -70,4 +70,4 @@ def apply_distance_update(
     session.add(user)
     session.commit()
     session.refresh(user)
-    return user_to_profile_response(user)
+    return user_to_profile_response(session, user)
