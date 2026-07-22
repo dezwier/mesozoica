@@ -210,7 +210,9 @@ class FossilSummary {
 
   bool get isHidden => (status ?? 'hidden').trim().toLowerCase() == 'hidden';
 
-  bool get isField => dataSource.trim().toLowerCase() == 'field';
+  /// Field fossils always have burial depth; use that when [dataSource] is absent.
+  bool get isField =>
+      dataSource.trim().toLowerCase() == 'field' || depthCm != null;
 
   factory FossilSummary.fromJson(Map<String, dynamic> json) {
     return FossilSummary(
@@ -322,25 +324,29 @@ class FossilSummary {
     return dinosaurName;
   }
 
-  /// Archive: occurrence id. Field: category, subcategory, quality,
+  /// Archive: LLM description text. Field: category, subcategory, quality,
   /// completeness, and burial depth.
   String get displaySubtitle {
-    if (!isField) {
-      return 'Occurrence No #$id';
+    if (isField) {
+      final parts = <String>[
+        _fieldSubtitlePart(llmImpCategory ?? llmCategory),
+        _fieldSubtitlePart(llmImpSubcategory ?? llmSubcategory),
+        _fieldSubtitlePart(
+          llmImpPreservationQuality ??
+              llmPreservationQuality ??
+              preservationQuality,
+        ),
+        _fieldSubtitlePart(llmImpCompleteness ?? llmCompleteness),
+      ];
+      if (depthCm != null) {
+        parts.add('${depthCm}cm');
+      }
+      final visible = parts.where((part) => part != '—').toList();
+      return visible.isEmpty ? '—' : visible.join(', ');
     }
-    final parts = <String>[
-      _fieldSubtitlePart(llmImpCategory ?? llmCategory),
-      _fieldSubtitlePart(llmImpSubcategory ?? llmSubcategory),
-      _fieldSubtitlePart(
-        llmImpPreservationQuality ?? llmPreservationQuality ?? preservationQuality,
-      ),
-      _fieldSubtitlePart(llmImpCompleteness ?? llmCompleteness),
-    ];
-    if (depthCm != null) {
-      parts.add('${depthCm}cm');
-    }
-    final visible = parts.where((part) => part != '—').toList();
-    return visible.isEmpty ? '—' : visible.join(', ');
+    final text = llmDescription?.trim();
+    if (text != null && text.isNotEmpty) return text;
+    return '—';
   }
 
   static String _fieldSubtitlePart(String? value) {

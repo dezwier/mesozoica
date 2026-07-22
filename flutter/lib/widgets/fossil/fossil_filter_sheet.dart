@@ -10,17 +10,20 @@ class FossilFilterSheet extends StatefulWidget {
     required this.initialFilters,
     required this.onApply,
     this.catalogTotal,
+    this.showLlmEnrichedFilter = true,
   });
 
   final FossilCatalogFilters initialFilters;
   final ValueChanged<FossilCatalogFilters> onApply;
   final int? catalogTotal;
+  final bool showLlmEnrichedFilter;
 
   static Future<void> show(
     BuildContext context, {
     required FossilCatalogFilters initialFilters,
     required ValueChanged<FossilCatalogFilters> onApply,
     int? catalogTotal,
+    bool showLlmEnrichedFilter = true,
   }) {
     return showModalBottomSheet<void>(
       context: context,
@@ -35,6 +38,7 @@ class FossilFilterSheet extends StatefulWidget {
         initialFilters: initialFilters,
         onApply: onApply,
         catalogTotal: catalogTotal,
+        showLlmEnrichedFilter: showLlmEnrichedFilter,
       ),
     );
   }
@@ -202,21 +206,22 @@ class _FossilFilterSheetState extends State<FossilFilterSheet> {
                   ),
                 ),
               ),
-              CheckboxListTile(
-                contentPadding: EdgeInsets.zero,
-                controlAffinity: ListTileControlAffinity.leading,
-                value: _pendingOnlyLlmEnriched,
-                onChanged: (value) {
-                  setState(() => _pendingOnlyLlmEnriched = value ?? true);
-                },
-                title: const Text('Enriched'),
-                subtitle: Text(
-                  'Only show fossils with LLM enrichment completed',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: colorScheme.onSurfaceVariant,
+              if (widget.showLlmEnrichedFilter)
+                CheckboxListTile(
+                  contentPadding: EdgeInsets.zero,
+                  controlAffinity: ListTileControlAffinity.leading,
+                  value: _pendingOnlyLlmEnriched,
+                  onChanged: (value) {
+                    setState(() => _pendingOnlyLlmEnriched = value ?? true);
+                  },
+                  title: const Text('Enriched'),
+                  subtitle: Text(
+                    'Only show fossils with LLM enrichment completed',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: colorScheme.onSurfaceVariant,
+                    ),
                   ),
                 ),
-              ),
               const SizedBox(height: 20),
               Text(
                 'Time range',

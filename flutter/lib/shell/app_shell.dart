@@ -183,6 +183,8 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
       final fossils = await _resolveSurfaceFossils(discover);
       if (!mounted || fossils.isEmpty) return;
       await showFossilDiscoveryCelebrations(context, fossils: fossils);
+      if (!mounted) return;
+      unawaited(context.read<FossilCatalogController>().load(force: true));
     } finally {
       _celebrationShowing = false;
     }

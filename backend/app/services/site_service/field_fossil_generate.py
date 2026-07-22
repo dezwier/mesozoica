@@ -149,6 +149,7 @@ def ensure_field_fossils_for_site(
                     llm_imp_completeness=completeness,
                     data_source=DATA_SOURCE_FIELD,
                     depth_cm=depth_cm,
+                    llm_enriched=True,
                 )
             )
 

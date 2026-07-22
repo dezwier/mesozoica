@@ -62,8 +62,11 @@ const _fixture = FossilSummary(
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  test('FossilSummary.displaySubtitle is occurrence for archive', () {
-    expect(_fixture.displaySubtitle, 'Occurrence No #100001');
+  test('FossilSummary.displaySubtitle is description for archive', () {
+    expect(
+      _fixture.displaySubtitle,
+      'A well-preserved tyrannosaur tooth from the Hell Creek Formation.',
+    );
   });
 
   test('FossilSummary.displaySubtitle lists field attributes and depth', () {
@@ -77,6 +80,7 @@ void main() {
       llmImpPreservationQuality: 'good',
       llmImpCompleteness: 'isolated_element',
       depthCm: 45,
+      llmDescription: 'Should not appear in field subtitle.',
     );
     expect(
       field.displaySubtitle,
@@ -84,7 +88,7 @@ void main() {
     );
   });
 
-  testWidgets('FossilCardFront renders fossil image, title, and llm description',
+  testWidgets('FossilCardFront renders title and archive description subtitle',
       (tester) async {
     await tester.pumpWidget(
       const MaterialApp(
@@ -111,6 +115,42 @@ void main() {
       find.textContaining('well-preserved tyrannosaur tooth'),
       findsOneWidget,
     );
+  });
+
+  testWidgets('FossilCardFront shows field attribute subtitle only',
+      (tester) async {
+    const field = FossilSummary(
+      id: 200001,
+      dinosaurId: 1,
+      dinosaurName: 'Tyrannosaurus',
+      identifiedName: 'Tyrannosaurus rex',
+      dataSource: 'field',
+      llmImpCategory: 'body',
+      llmImpSubcategory: 'teeth',
+      llmImpPreservationQuality: 'good',
+      llmImpCompleteness: 'isolated_element',
+      depthCm: 45,
+      llmDescription: 'A surface find.',
+    );
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: SizedBox(
+              width: 800,
+              child: FossilCardFront(fossil: field),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(
+      find.text('Body, Teeth, Good, Isolated Element, 45cm'),
+      findsOneWidget,
+    );
+    expect(find.text('A surface find.'), findsNothing);
+    expect(find.text('Occurrence No #200001'), findsNothing);
   });
 
   testWidgets('FossilCardImage uses network image for curated URL',
@@ -151,7 +191,11 @@ void main() {
     );
 
     expect(find.text('Tyrannosaurus rex'), findsWidgets);
-    expect(find.text('Occurrence No #100001'), findsOneWidget);
+    expect(
+      find.textContaining('well-preserved tyrannosaur tooth'),
+      findsOneWidget,
+    );
+    expect(find.text('Occurrence No #100001'), findsNothing);
     expect(find.text('TIME'), findsNothing);
     expect(find.text('RECORD'), findsNothing);
     expect(find.byType(GeologicTimeline), findsOneWidget);

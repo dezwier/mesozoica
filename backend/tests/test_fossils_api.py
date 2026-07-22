@@ -10,6 +10,7 @@ from app.models.fossil import Fossil
 from app.models.site import Site
 from app.models.site_type import SiteType
 from app.models.user import User
+from app.models.user_fossil import USER_FOSSIL_ROLE_DISCOVERER, UserFossil
 
 
 def _seed_site_type(session: Session) -> SiteType:
@@ -590,6 +591,63 @@ def test_list_fossils_filters_by_data_source(client, session):
     assert admin_peek.json()["items"][0]["data_source"] == "field"
     assert admin_peek.json()["items"][0]["status"] == "hidden"
     assert admin_peek.json()["items"][0]["depth_cm"] == 100
+
+
+def test_list_field_fossils_includes_discoverer_links(client, session):
+    dinosaur = _seed_tyrannosaurus(session)
+    site_type = _seed_site_type(session)
+    _seed_hell_creek_site(session, site_type)
+    session.add(
+        Fossil(
+            id=200002,
+            dinosaur_id=dinosaur.id,
+            identified_name="Discovered field specimen",
+            data_source="field",
+            depth_cm=0,
+            llm_enriched=False,
+        )
+    )
+    user = User(
+        username="fossil_finder",
+        email="fossil_finder@example.com",
+        password="x",
+    )
+    session.add(user)
+    session.commit()
+    session.refresh(user)
+    session.add(
+        UserFossil(
+            user_id=user.id,
+            fossil_id=200002,
+            role=USER_FOSSIL_ROLE_DISCOVERER,
+        )
+    )
+    session.commit()
+    token = create_access_token({"sub": str(user.id)})
+
+    # Default catalog filter llm_enriched=true must not hide field finds.
+    response = client.get(
+        "/api/v1/fossils",
+        params={"data_source": "field", "llm_enriched": "true", "sort": "name"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert response.status_code == 200
+    # Field fossils historically omit llm_enriched; catalog should still
+    # return discovers when the client omits that filter. With the filter
+    # on, unenriched fossils stay hidden — so unfiltered field list is the
+    # contract for the app field catalog.
+    unfiltered = client.get(
+        "/api/v1/fossils",
+        params={"data_source": "field", "sort": "name"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert unfiltered.status_code == 200
+    assert unfiltered.json()["total"] == 1
+    assert unfiltered.json()["items"][0]["id"] == 200002
+    assert unfiltered.json()["items"][0]["status"] == "discovered"
+
+    enriched_only = response.json()
+    assert enriched_only["total"] == 0
 
 
 def test_list_fossils_rejects_invalid_data_source(client):

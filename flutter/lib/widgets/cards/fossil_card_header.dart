@@ -35,7 +35,9 @@ class FossilCardHeader extends StatelessWidget {
             ? cardTheme.frontTitleStyle(fontSize: titleFontSize)
             : cardTheme.titleStyle(fontSize: titleFontSize);
     final subtitleStyle = overlayOnImage
-        ? cardTheme.frontOverlaySubtitleStyle(fontSize: subtitleFontSize)
+        ? (fossil.isField
+            ? cardTheme.frontOverlaySubtitleStyle(fontSize: subtitleFontSize)
+            : cardTheme.frontOverlayBodyStyle(fontSize: 13))
         : cardTheme.subtitleStyle(fontSize: subtitleFontSize).copyWith(
             color: cardTheme.cardTextMuted,
             fontWeight: FontWeight.w500,
@@ -75,7 +77,7 @@ class FossilCardHeader extends StatelessWidget {
             fossil.displaySubtitle,
             textAlign: centered ? TextAlign.center : TextAlign.start,
             style: subtitleStyle,
-            maxLines: 1,
+            maxLines: fossil.isField ? 1 : 4,
             overflow: TextOverflow.ellipsis,
           ),
         ],

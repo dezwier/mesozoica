@@ -12,22 +12,15 @@ class FossilCardFront extends StatelessWidget {
   const FossilCardFront({
     super.key,
     required this.fossil,
-    this.showDescription = true,
     this.titleFontSize = 36,
     this.subtitleFontSize = 10,
     this.overlayHeightFactor = 0.52,
   });
 
   final FossilSummary fossil;
-  final bool showDescription;
   final double titleFontSize;
   final double subtitleFontSize;
   final double overlayHeightFactor;
-
-  String get _description =>
-      fossil.llmDescription != null && fossil.llmDescription!.trim().isNotEmpty
-          ? fossil.llmDescription!.trim()
-          : '—';
 
   @override
   Widget build(BuildContext context) {
@@ -64,26 +57,13 @@ class FossilCardFront extends StatelessWidget {
             left: 18,
             right: 18,
             bottom: math.max(16, titleFontSize * 0.45),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                FossilCardHeader(
-                  fossil: fossil,
-                  titleFontSize: titleFontSize,
-                  subtitleFontSize: subtitleFontSize,
-                  centered: true,
-                  overlayOnImage: true,
-                ),
-                if (showDescription) ...[
-                  const SizedBox(height: 10),
-                  Text(
-                    _description,
-                    textAlign: TextAlign.center,
-                    style: cardTheme.frontOverlayBodyStyle(fontSize: 13),
-                  ),
-                ],
-              ],
+            child: FossilCardHeader(
+              fossil: fossil,
+              titleFontSize: titleFontSize,
+              subtitleFontSize: subtitleFontSize,
+              centered: true,
+              overlayOnImage: true,
+              showOccurrenceSubtitle: true,
             ),
           ),
         ],

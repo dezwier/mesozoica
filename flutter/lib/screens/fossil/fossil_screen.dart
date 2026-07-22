@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../controllers/catalog_mode_controller.dart';
 import '../../controllers/fossil_catalog_controller.dart';
 import '../../shell/map_chrome_insets.dart';
 import '../../shell/shell_overlay_panel.dart';
@@ -74,10 +75,12 @@ class FossilScreenState extends State<FossilScreen> {
   }
 
   void _openFilterSheet(FossilCatalogController catalog) {
+    final isField = context.read<CatalogModeController>().isField;
     FossilFilterSheet.show(
       context,
       initialFilters: catalog.filters,
       catalogTotal: catalog.total > 0 ? catalog.total : null,
+      showLlmEnrichedFilter: !isField,
       onApply: catalog.applyFilters,
     );
   }

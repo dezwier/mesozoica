@@ -97,7 +97,20 @@ class FossilCatalogController extends ChangeNotifier {
   bool get isEmpty => !_loading && _error == null && _items.isEmpty;
   int get total => _total;
   FossilCatalogFilters get filters => _filters;
-  bool get hasActiveFilters => _filters.hasActiveFilters;
+  bool get hasActiveFilters {
+    if (_dataSource == CatalogDataSource.field) {
+      if (_filters.hasSearch) return true;
+      if (_filters.onlyCustomFossilImage) return true;
+      return _filters.hasTimeFilter;
+    }
+    return _filters.hasActiveFilters;
+  }
+
+  /// Archive catalog defaults to enriched fossils; field discoveries skip that.
+  bool? get _llmEnrichedQuery {
+    if (_dataSource == CatalogDataSource.field) return null;
+    return _filters.onlyLlmEnriched ? true : null;
+  }
 
   CatalogDataSource get _dataSource =>
       _catalogModeController?.dataSource ?? CatalogDataSource.archive;
@@ -221,7 +234,7 @@ class FossilCatalogController extends ChangeNotifier {
           !hasSearch && _filters.hasTimeFilter ? _filters.maYounger : null,
       maOlder: !hasSearch && _filters.hasTimeFilter ? _filters.maOlder : null,
       hasCustomFossilImage: _filters.onlyCustomFossilImage,
-      llmEnriched: _filters.onlyLlmEnriched,
+      llmEnriched: _llmEnrichedQuery,
       dataSource: _dataSource,
     );
 
@@ -265,7 +278,7 @@ class FossilCatalogController extends ChangeNotifier {
         maYounger:
             !hasSearch && _filters.hasTimeFilter ? _filters.maYounger : null,
         maOlder: !hasSearch && _filters.hasTimeFilter ? _filters.maOlder : null,
-        llmEnriched: _filters.onlyLlmEnriched,
+        llmEnriched: _llmEnrichedQuery,
         dataSource: _dataSource,
       );
       curated.addAll(
