@@ -1,4 +1,4 @@
-"""Tests for survey-driven field fossil generation."""
+"""Tests for discovery-driven field fossil generation."""
 
 from __future__ import annotations
 
@@ -7,6 +7,7 @@ from decimal import Decimal
 
 from sqlmodel import Session, col, select
 
+from app.core.game_config import get_game_config
 from app.core.security import create_access_token
 from app.models.data_source import DATA_SOURCE_ARCHIVE, DATA_SOURCE_FIELD
 from app.models.dinosaur import Dinosaur
@@ -15,10 +16,16 @@ from app.models.fossil import Fossil
 from app.models.site import Site
 from app.models.site_type import SiteType
 from app.models.user import User
-from app.models.user_site import USER_SITE_ROLE_SURVEYOR, UserSite
+from app.models.user_fossil import USER_FOSSIL_ROLE_DISCOVERER, UserFossil
+from app.models.user_site import USER_SITE_ROLE_DISCOVERER, UserSite
+from app.services.site_service.discover import discover_site
 from app.services.site_service.field_fossil_generate import (
     FIELD_FOSSIL_ID_START,
     ensure_field_fossils_for_site,
+    sample_depth_cm,
+)
+from app.services.site_service.field_fossil_onboard import (
+    ensure_fossils_on_site_discovery,
 )
 from app.services.site_service.field_survey_queue import (
     STATUS_PENDING,
@@ -29,11 +36,14 @@ from app.services.site_service.survey import survey_site
 from app.workers.field_ensure_worker import process_one_survey_job
 
 
-def _auth_headers(session: Session, *, username: str, email: str | None = None) -> tuple[User, dict[str, str]]:
+def _auth_headers(
+    session: Session, *, username: str, email: str | None = None, is_admin: bool = False
+) -> tuple[User, dict[str, str]]:
     user = User(
         username=username,
         email=email or f"{username}@example.com",
         password="x",
+        is_admin=is_admin,
     )
     session.add(user)
     session.commit()
@@ -126,6 +136,25 @@ def _seed_field_site(session: Session, *, site_id: int = 1_000_000_501) -> Site:
     return site
 
 
+def test_sample_depth_cm_surface_bucket():
+    get_game_config.cache_clear()
+    buckets = get_game_config().fossil_generation.depth_buckets
+    # Force surface by using a bucket list with only 0.
+    from app.core.game_config import FossilDepthBucket
+
+    depth = sample_depth_cm(
+        [FossilDepthBucket(weight=1.0, min_cm=0, max_cm=0)],
+        rng=random.Random(1),
+    )
+    assert depth == 0
+    depth_range = sample_depth_cm(
+        [FossilDepthBucket(weight=1.0, min_cm=51, max_cm=200)],
+        rng=random.Random(1),
+    )
+    assert 51 <= depth_range <= 200
+    assert abs(sum(b.weight for b in buckets) - 1.0) < 1e-6
+
+
 def test_ensure_field_fossils_samples_and_writes(session: Session):
     _seed_archive_pool(session)
     field_site = _seed_field_site(session)
@@ -145,6 +174,7 @@ def test_ensure_field_fossils_samples_and_writes(session: Session):
     assert len(fossils) == result.generated
     assert all(f.id >= FIELD_FOSSIL_ID_START for f in fossils)
     assert all(f.llm_imp_subcategory for f in fossils)
+    assert all(f.depth_cm is not None and f.depth_cm >= 0 for f in fossils)
 
     again = ensure_field_fossils_for_site(
         session, site_id=field_site.site_id, rng=random.Random(99)
@@ -153,34 +183,55 @@ def test_ensure_field_fossils_samples_and_writes(session: Session):
     assert again.generated == 0
 
 
-def test_survey_multi_user_lazy_once(session: Session):
+def test_discover_multi_user_lazy_once(session: Session, monkeypatch):
     _seed_archive_pool(session)
     field_site = _seed_field_site(session)
-    user_a = User(username="survey_a", email="a@example.com", password="x")
-    user_b = User(username="survey_b", email="b@example.com", password="x")
+    user_a = User(username="disc_a", email="a@example.com", password="x")
+    user_b = User(username="disc_b", email="b@example.com", password="x")
     session.add(user_a)
     session.add(user_b)
     session.commit()
     session.refresh(user_a)
     session.refresh(user_b)
 
-    first = survey_site(session, site_id=field_site.site_id, user_id=user_a.id)
+    monkeypatch.setattr(
+        "app.services.site_service.discover.resolve_site_discovery_params",
+        lambda *args, **kwargs: type(
+            "P", (), {"max_distance_m": 50_000.0, "discovery_chance": 1.0}
+        )(),
+    )
+
+    first = discover_site(
+        session,
+        site_id=field_site.site_id,
+        user_id=user_a.id,
+        lat=40.0,
+        lon=-100.0,
+        rng=random.Random(1),
+    )
     assert first.job_id is not None
     assert first.fossils_ready is False
     assert first.generated is True
 
-    second = survey_site(session, site_id=field_site.site_id, user_id=user_b.id)
+    second = discover_site(
+        session,
+        site_id=field_site.site_id,
+        user_id=user_b.id,
+        lat=40.0,
+        lon=-100.0,
+        rng=random.Random(1),
+    )
     assert second.job_id == first.job_id
     assert second.onboarded is True
     assert second.fossils_ready is False
 
-    surveyors = session.exec(
+    discoverers = session.exec(
         select(UserSite).where(
             col(UserSite.site_id) == field_site.site_id,
-            col(UserSite.role) == USER_SITE_ROLE_SURVEYOR,
+            col(UserSite.role) == USER_SITE_ROLE_DISCOVERER,
         )
     ).all()
-    assert {row.user_id for row in surveyors} == {user_a.id, user_b.id}
+    assert {row.user_id for row in discoverers} == {user_a.id, user_b.id}
 
     jobs = session.exec(select(FieldSurveyJob)).all()
     assert len(jobs) == 1
@@ -196,17 +247,39 @@ def test_survey_multi_user_lazy_once(session: Session):
     ).all()
     assert len(fossils) >= 1
 
-    third = survey_site(session, site_id=field_site.site_id, user_id=user_a.id)
-    assert third.fossils_ready is True
-    assert third.generated is False
-    assert len(
-        session.exec(
-            select(Fossil).where(
-                col(Fossil.site_id) == field_site.site_id,
-                col(Fossil.data_source) == DATA_SOURCE_FIELD,
+    surface_ids = {f.id for f in fossils if f.depth_cm == 0}
+    for user in (user_a, user_b):
+        links = session.exec(
+            select(UserFossil).where(
+                col(UserFossil.user_id) == user.id,
+                col(UserFossil.role) == USER_FOSSIL_ROLE_DISCOVERER,
             )
         ).all()
-    ) == len(fossils)
+        assert {link.fossil_id for link in links} == surface_ids
+
+    third = ensure_fossils_on_site_discovery(
+        session, site_id=field_site.site_id, user_id=user_a.id
+    )
+    assert third.fossils_ready is True
+    assert third.generated is False
+
+
+def test_survey_no_longer_enqueues_fossils(session: Session):
+    _seed_archive_pool(session)
+    field_site = _seed_field_site(session, site_id=1_000_000_510)
+    user = User(username="survey_only", email="s@example.com", password="x")
+    session.add(user)
+    session.commit()
+    session.refresh(user)
+
+    result = survey_site(session, site_id=field_site.site_id, user_id=user.id)
+    assert result.site is not None
+    jobs = session.exec(select(FieldSurveyJob)).all()
+    assert jobs == []
+    fossils = session.exec(
+        select(Fossil).where(col(Fossil.site_id) == field_site.site_id)
+    ).all()
+    assert fossils == []
 
 
 def test_enqueue_onboards_active_job(session: Session):
@@ -235,19 +308,29 @@ def test_enqueue_onboards_active_job(session: Session):
     assert claimed.id == job_a.id
 
 
-def test_survey_api_and_fossils_endpoint(client, session: Session):
+def test_discover_api_and_visibility(client, session: Session, monkeypatch):
     _seed_archive_pool(session)
     field_site = _seed_field_site(session, site_id=1_000_000_503)
-    _user, headers = _auth_headers(session, username="survey_api")
+    user, headers = _auth_headers(session, username="disc_api")
+    _admin, admin_headers = _auth_headers(
+        session, username="disc_admin", is_admin=True
+    )
+
+    monkeypatch.setattr(
+        "app.services.site_service.discover.resolve_site_discovery_params",
+        lambda *args, **kwargs: type(
+            "P", (), {"max_distance_m": 50_000.0, "discovery_chance": 1.0}
+        )(),
+    )
 
     response = client.post(
-        f"/api/v1/sites/{field_site.site_id}/survey",
+        f"/api/v1/sites/{field_site.site_id}/discover",
         headers=headers,
+        json={"lat": 40.0, "lon": -100.0},
     )
     assert response.status_code == 200
     body = response.json()
-    assert body["site"]["status"] == "surveyed"
-    assert body["site"]["viewer_has_surveyed"] is True
+    assert body["site"]["status"] == "discovered"
     assert body["fossils_ready"] is False
     assert body["job_id"] is not None
 
@@ -261,15 +344,49 @@ def test_survey_api_and_fossils_endpoint(client, session: Session):
     assert job.json()["status"] == "done"
     assert (job.json()["fossil_count"] or 0) >= 1
 
-    fossils = client.get(f"/api/v1/sites/{field_site.site_id}/fossils")
-    assert fossils.status_code == 200
-    assert len(fossils.json()["items"]) >= 1
+    # Re-hit discover to collect surface fossils for this user (idempotent).
+    again = client.post(
+        f"/api/v1/sites/{field_site.site_id}/discover",
+        headers=headers,
+        json={"lat": 40.0, "lon": -100.0},
+    )
+    assert again.status_code == 200
+    again_body = again.json()
+    assert again_body["fossils_ready"] is True
 
-    site = client.get(
-        f"/api/v1/sites/{field_site.site_id}",
+    fossils = client.get(
+        f"/api/v1/sites/{field_site.site_id}/fossils",
+        headers=headers,
+    )
+    assert fossils.status_code == 200
+    # Non-admin only sees discovered (surface) fossils.
+    assert len(fossils.json()["items"]) == len(again_body["surface_fossils"])
+
+    catalog = client.get(
+        "/api/v1/fossils",
         params={"data_source": "field"},
         headers=headers,
     )
-    assert site.status_code == 200
-    assert site.json()["viewer_has_surveyed"] is True
-    assert site.json()["status"] == "surveyed"
+    assert catalog.status_code == 200
+    assert catalog.json()["total"] == len(again_body["surface_fossils"])
+    for item in catalog.json()["items"]:
+        assert item["status"] == "discovered"
+        assert item["depth_cm"] == 0
+
+    admin_catalog = client.get(
+        "/api/v1/fossils",
+        params={"data_source": "field"},
+        headers=admin_headers,
+    )
+    assert admin_catalog.status_code == 200
+    # Catalog is linked-only for admins too (no include_hidden).
+    assert admin_catalog.json()["total"] == 0
+
+    admin_site = client.get(
+        f"/api/v1/sites/{field_site.site_id}/fossils",
+        headers=admin_headers,
+    )
+    assert admin_site.status_code == 200
+    assert len(admin_site.json()["items"]) >= len(fossils.json()["items"])
+    statuses = {item["status"] for item in admin_site.json()["items"]}
+    assert "hidden" in statuses or "discovered" in statuses

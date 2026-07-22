@@ -11,6 +11,8 @@ class FossilTurnableCard extends StatelessWidget {
     super.key,
     required this.fossil,
     this.turnable = true,
+    this.autoFlipOnce = false,
+    this.autoFlipHoldOnBack = Duration.zero,
     this.titleFontSize = 36,
     this.subtitleFontSize = 10,
     this.overlayHeightFactor = 0.38,
@@ -18,6 +20,8 @@ class FossilTurnableCard extends StatelessWidget {
 
   final FossilSummary fossil;
   final bool turnable;
+  final bool autoFlipOnce;
+  final Duration autoFlipHoldOnBack;
   final double titleFontSize;
   final double subtitleFontSize;
   final double overlayHeightFactor;
@@ -30,6 +34,8 @@ class FossilTurnableCard extends StatelessWidget {
       outerPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: DinoCardTheme.of(context).chromeDecoration(),
       turnable: turnable,
+      autoFlipOnce: autoFlipOnce,
+      autoFlipHoldOnBack: autoFlipHoldOnBack,
       front: FossilCardFront(
         fossil: fossil,
         titleFontSize: titleFontSize,

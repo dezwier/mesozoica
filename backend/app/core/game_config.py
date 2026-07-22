@@ -122,6 +122,24 @@ class FossilGenerationDefaults(BaseModel):
     quality: str = "moderate"
 
 
+class FossilDepthBucket(BaseModel):
+    model_config = {"frozen": True}
+
+    weight: float
+    min_cm: int
+    max_cm: int
+
+    @model_validator(mode="after")
+    def _validate_range(self) -> FossilDepthBucket:
+        if self.weight < 0:
+            raise ValueError("depth bucket weight must be >= 0")
+        if self.min_cm < 0 or self.max_cm < 0:
+            raise ValueError("depth_cm bounds must be >= 0")
+        if self.max_cm < self.min_cm:
+            raise ValueError("depth bucket max_cm must be >= min_cm")
+        return self
+
+
 class FossilGenerationConfig(BaseModel):
     model_config = {"frozen": True}
 
@@ -138,6 +156,15 @@ class FossilGenerationConfig(BaseModel):
             6: 0.05,
         }
     )
+    depth_buckets: list[FossilDepthBucket] = Field(
+        default_factory=lambda: [
+            FossilDepthBucket(weight=0.20, min_cm=0, max_cm=0),
+            FossilDepthBucket(weight=0.30, min_cm=1, max_cm=50),
+            FossilDepthBucket(weight=0.30, min_cm=51, max_cm=200),
+            FossilDepthBucket(weight=0.10, min_cm=201, max_cm=500),
+            FossilDepthBucket(weight=0.10, min_cm=501, max_cm=1000),
+        ]
+    )
     defaults: FossilGenerationDefaults = Field(
         default_factory=FossilGenerationDefaults
     )
@@ -153,6 +180,11 @@ class FossilGenerationConfig(BaseModel):
     def _validate_weights(self) -> FossilGenerationConfig:
         _weights_must_sum_to_one(self.dino_count_weights, label="dino_count_weights")
         _weights_must_sum_to_one(self.card_count_weights, label="card_count_weights")
+        if not self.depth_buckets:
+            raise ValueError("depth_buckets must not be empty")
+        total = sum(bucket.weight for bucket in self.depth_buckets)
+        if abs(total - 1.0) > 1e-6:
+            raise ValueError(f"depth_buckets weights must sum to 1.0 (got {total})")
         return self
 
 

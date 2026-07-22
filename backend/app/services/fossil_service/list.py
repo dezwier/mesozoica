@@ -52,6 +52,8 @@ def list_fossils(
     llm_enriched: bool | None = None,
     dinosaur_id: int | None = None,
     data_source: str | None = None,
+    viewer_user_id: int | None = None,
+    include_hidden: bool = False,
 ) -> tuple[list[FossilRow], int]:
     """Return paginated fossil rows joined with dinosaur catalog fields."""
     capped_limit = max(1, min(limit, 500))
@@ -85,6 +87,20 @@ def list_fossils(
         dinosaur_id=dinosaur_id,
         data_source=normalized_data_source,
     )
+    from app.models.data_source import DATA_SOURCE_FIELD
+    from app.models.user_fossil import USER_FOSSIL_ROLE_DISCOVERER, UserFossil
+
+    # Field fossils are collection-gated for all viewers unless an admin
+    # explicitly requests include_hidden (site/dino card admin peek).
+    if normalized_data_source == DATA_SOURCE_FIELD and not include_hidden:
+        if viewer_user_id is None:
+            return [], 0
+        filtered = filtered.join(
+            UserFossil,
+            (col(UserFossil.fossil_id) == col(Fossil.id))
+            & (col(UserFossil.user_id) == viewer_user_id)
+            & (col(UserFossil.role) == USER_FOSSIL_ROLE_DISCOVERER),
+        )
 
     total = session.exec(
         select(sqlmodel_func.count()).select_from(filtered.subquery())
@@ -293,8 +309,16 @@ def fossil_row_to_summary(
     row: FossilRow,
     *,
     types_by_period: dict[str, list[SiteType]] | None = None,
+    viewer_user_id: int | None = None,
+    session: Session | None = None,
 ):
     """Build API schema from a joined fossil row."""
+    from app.models.user_fossil import (
+        FOSSIL_STATUS_DISCOVERED,
+        FOSSIL_STATUS_HIDDEN,
+        UserFossil,
+        role_to_status,
+    )
     from app.schemas.fossil import FossilSummary
 
     fossil = row.fossil
@@ -308,10 +332,22 @@ def fossil_row_to_summary(
         row,
         types_by_period=types_by_period,
     )
-    # No user_fossil rows yet → always hidden for all viewers.
-    from app.models.user_fossil import FOSSIL_STATUS_HIDDEN
-
-    payload["status"] = FOSSIL_STATUS_HIDDEN
+    status = FOSSIL_STATUS_HIDDEN
+    if fossil.data_source != "field":
+        # Archive fossils are not discovery-gated.
+        status = FOSSIL_STATUS_DISCOVERED
+    elif viewer_user_id is not None and session is not None:
+        link = session.exec(
+            select(UserFossil)
+            .where(
+                col(UserFossil.user_id) == viewer_user_id,
+                col(UserFossil.fossil_id) == fossil.id,
+            )
+            .order_by(col(UserFossil.timestamp).desc())
+        ).first()
+        if link is not None:
+            status = role_to_status(link.role)
+    payload["status"] = status
     return FossilSummary.model_validate(payload)
 
 

@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Query
-from sqlmodel import Session
+from sqlmodel import Session, col, select
 
 from app.core.database import get_session
-from app.core.exceptions import ValidationError
-from app.models.data_source import DATA_SOURCE_ARCHIVE
+from app.core.exceptions import NotFoundError, ValidationError
+from app.core.security import get_optional_current_user
+from app.models.data_source import DATA_SOURCE_ARCHIVE, DATA_SOURCE_FIELD
+from app.models.user import User
+from app.models.user_fossil import USER_FOSSIL_ROLE_DISCOVERER, UserFossil
 from app.schemas.fossil import FossilListResponse, FossilSummary
 from app.services.fossil_service.list import fossil_row_to_summary, get_fossil_by_id, list_fossils
 from app.services.site_service.site_type_fallback import load_site_types_by_period
@@ -18,6 +21,7 @@ router = APIRouter(prefix="/fossils", tags=["fossils"])
 @router.get("", response_model=FossilListResponse)
 def get_fossils(
     session: Session = Depends(get_session),
+    current_user: User | None = Depends(get_optional_current_user),
     limit: int = Query(default=200, ge=1, le=500),
     offset: int = Query(default=0, ge=0),
     sort: str = Query(default="name"),
@@ -32,9 +36,17 @@ def get_fossils(
     llm_enriched: bool | None = Query(default=None),
     dinosaur_id: int | None = Query(default=None, ge=1),
     data_source: str = Query(default=DATA_SOURCE_ARCHIVE),
+    include_hidden: bool = Query(
+        default=False,
+        description="Admin-only: include undiscovered field fossils (card peek).",
+    ),
 ) -> FossilListResponse:
     if sort not in ("name", "random"):
         raise ValidationError("sort must be one of: name, random")
+    is_admin = bool(current_user is not None and current_user.is_admin)
+    viewer_user_id = current_user.id if current_user is not None else None
+    if include_hidden and not is_admin:
+        raise ValidationError("include_hidden requires admin")
     rows, total = list_fossils(
         session,
         limit=limit,
@@ -51,10 +63,18 @@ def get_fossils(
         llm_enriched=llm_enriched,
         dinosaur_id=dinosaur_id,
         data_source=data_source,
+        viewer_user_id=viewer_user_id,
+        include_hidden=include_hidden and is_admin,
     )
     types_by_period = load_site_types_by_period(session)
     items = [
-        fossil_row_to_summary(row, types_by_period=types_by_period) for row in rows
+        fossil_row_to_summary(
+            row,
+            types_by_period=types_by_period,
+            viewer_user_id=viewer_user_id,
+            session=session,
+        )
+        for row in rows
     ]
     return FossilListResponse(
         items=items,
@@ -69,8 +89,29 @@ def get_fossils(
 def get_fossil(
     fossil_id: int,
     session: Session = Depends(get_session),
+    current_user: User | None = Depends(get_optional_current_user),
     data_source: str = Query(default=DATA_SOURCE_ARCHIVE),
 ) -> FossilSummary:
     row = get_fossil_by_id(session, fossil_id, data_source=data_source)
+    is_admin = bool(current_user is not None and current_user.is_admin)
+    viewer_user_id = current_user.id if current_user is not None else None
+    # Admins may open hidden fossils from site/dino card peeks.
+    if row.fossil.data_source == DATA_SOURCE_FIELD and not is_admin:
+        if viewer_user_id is None:
+            raise NotFoundError(f"Fossil {fossil_id} not found")
+        link = session.exec(
+            select(UserFossil).where(
+                col(UserFossil.user_id) == viewer_user_id,
+                col(UserFossil.fossil_id) == fossil_id,
+                col(UserFossil.role) == USER_FOSSIL_ROLE_DISCOVERER,
+            )
+        ).first()
+        if link is None:
+            raise NotFoundError(f"Fossil {fossil_id} not found")
     types_by_period = load_site_types_by_period(session)
-    return fossil_row_to_summary(row, types_by_period=types_by_period)
+    return fossil_row_to_summary(
+        row,
+        types_by_period=types_by_period,
+        viewer_user_id=viewer_user_id,
+        session=session,
+    )

@@ -114,6 +114,7 @@ class AppConfig {
     bool? llmEnriched,
     int? dinosaurId,
     CatalogDataSource dataSource = CatalogDataSource.archive,
+    bool includeHidden = false,
   }) {
     final params = <String, String>{
       'limit': '$limit',
@@ -152,6 +153,9 @@ class AppConfig {
       params['dinosaur_id'] = '$dinosaurId';
     }
     params['data_source'] = dataSource.apiValue;
+    if (includeHidden) {
+      params['include_hidden'] = 'true';
+    }
     return Uri.parse('$baseApiUrl/api/v1/fossils').replace(
       queryParameters: params,
     );

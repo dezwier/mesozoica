@@ -192,3 +192,5 @@ class Fossil(SQLModel, table=True):
         index=True,
         description="archive (PBDB/wiki) or field (procedural)",
     )
+    # Burial depth for field fossils (cm); NULL for archive.
+    depth_cm: Optional[int] = Field(default=None, index=True)

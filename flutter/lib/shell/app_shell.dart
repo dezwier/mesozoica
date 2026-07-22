@@ -16,11 +16,14 @@ import '../controllers/site_catalog_controller.dart';
 import '../controllers/fossil_catalog_controller.dart';
 import '../controllers/splash_hold_provider.dart';
 import '../controllers/walk_distance_controller.dart';
+import '../models/fossil.dart';
 import '../models/site.dart';
 import '../models/user_notification.dart';
 import '../services/api_response_cache.dart';
 import '../services/location_service.dart';
 import '../services/push_notification_service.dart';
+import '../services/site_service.dart';
+import '../widgets/cards/fossil_discovery_celebration.dart';
 import '../widgets/cards/site_discovery_celebration.dart';
 import '../widgets/common/app_splash_screen.dart';
 import '../widgets/profile/community_drawer.dart';
@@ -158,24 +161,58 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     final pending = discovery.pendingCelebration;
     if (pending == null) return;
     discovery.consumeCelebration();
-    unawaited(_showCelebration(site: pending));
+    unawaited(_showCelebration(discover: pending));
   }
 
   Future<void> _showCelebration({
+    FieldDiscoverResponse? discover,
     SiteSummary? site,
     int? siteId,
   }) async {
     if (!mounted || _celebrationShowing) return;
-    if (site == null && siteId == null) return;
+    final resolvedSite = discover?.site ?? site;
+    if (resolvedSite == null && siteId == null) return;
     _celebrationShowing = true;
     try {
       await showSiteDiscoveryCelebration(
         context,
-        site: site,
+        site: resolvedSite,
         siteId: siteId,
       );
+      if (!mounted) return;
+      final fossils = await _resolveSurfaceFossils(discover);
+      if (!mounted || fossils.isEmpty) return;
+      await showFossilDiscoveryCelebrations(context, fossils: fossils);
     } finally {
       _celebrationShowing = false;
+    }
+  }
+
+  Future<List<FossilSummary>> _resolveSurfaceFossils(
+    FieldDiscoverResponse? discover,
+  ) async {
+    if (discover == null) return const [];
+    if (discover.fossilsReady) {
+      return discover.surfaceFossils;
+    }
+    final jobId = discover.jobId;
+    if (jobId == null) return discover.surfaceFossils;
+    final location = context.read<LocationService>().currentLocation;
+    if (location == null) return const [];
+    final service = SiteService();
+    try {
+      final job = await service.waitForFieldSurveyJob(jobId);
+      if (!job.isDone || !mounted) return const [];
+      final refreshed = await service.discoverSite(
+        siteId: discover.site.siteId,
+        lat: location.latitude,
+        lon: location.longitude,
+      );
+      return refreshed.surfaceFossils;
+    } catch (_) {
+      return const [];
+    } finally {
+      service.dispose();
     }
   }
 

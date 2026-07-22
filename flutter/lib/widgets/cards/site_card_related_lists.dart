@@ -34,7 +34,7 @@ class _SiteCardFossilsState extends State<SiteCardFossils> {
     required SiteFossilThumb fossil,
     required double thumbSize,
   }) {
-    return SizedBox(
+    final thumb = SizedBox(
       width: thumbSize,
       height: thumbSize,
       child: CardRecordThumb(
@@ -46,6 +46,8 @@ class _SiteCardFossilsState extends State<SiteCardFossils> {
         ),
       ),
     );
+    if (!fossil.isHidden) return thumb;
+    return Opacity(opacity: 0.5, child: thumb);
   }
 
   @override

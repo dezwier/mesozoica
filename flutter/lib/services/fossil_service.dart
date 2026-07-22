@@ -6,11 +6,25 @@ import 'package:http/http.dart' as http;
 import '../config/app_config.dart';
 import '../controllers/catalog_mode_controller.dart';
 import '../models/fossil.dart';
+import 'token_storage.dart';
 
 class FossilService {
   FossilService({http.Client? client}) : _client = client ?? http.Client();
 
   final http.Client _client;
+
+  Future<Map<String, String>> _headers() async {
+    final headers = <String, String>{};
+    try {
+      final token = await TokenStorage.loadToken();
+      if (token != null && token.isNotEmpty) {
+        headers['Authorization'] = 'Bearer $token';
+      }
+    } catch (_) {
+      // SharedPreferences unavailable in some unit-test environments.
+    }
+    return headers;
+  }
 
   Future<FossilListResponse> fetchFossils({
     int limit = 200,
@@ -27,6 +41,7 @@ class FossilService {
     bool? llmEnriched,
     int? dinosaurId,
     CatalogDataSource dataSource = CatalogDataSource.archive,
+    bool includeHidden = false,
   }) async {
     final uri = AppConfig.fossilsUri(
       limit: limit,
@@ -43,12 +58,14 @@ class FossilService {
       llmEnriched: llmEnriched,
       dinosaurId: dinosaurId,
       dataSource: dataSource,
+      includeHidden: includeHidden,
     );
     if (kDebugMode) {
       debugPrint('FossilService GET $uri');
     }
-    final response =
-        await _client.get(uri).timeout(const Duration(seconds: 15));
+    final response = await _client
+        .get(uri, headers: await _headers())
+        .timeout(const Duration(seconds: 15));
 
     if (response.statusCode != 200) {
       throw FossilServiceException(
@@ -68,6 +85,7 @@ class FossilService {
     int limit = 200,
     int offset = 0,
     CatalogDataSource dataSource = CatalogDataSource.archive,
+    bool includeHidden = false,
   }) async {
     return fetchFossils(
       limit: limit,
@@ -76,6 +94,7 @@ class FossilService {
       seed: 'dinosaur-$dinosaurId',
       dinosaurId: dinosaurId,
       dataSource: dataSource,
+      includeHidden: includeHidden,
     );
   }
 
@@ -87,8 +106,9 @@ class FossilService {
     if (kDebugMode) {
       debugPrint('FossilService GET $uri');
     }
-    final response =
-        await _client.get(uri).timeout(const Duration(seconds: 15));
+    final response = await _client
+        .get(uri, headers: await _headers())
+        .timeout(const Duration(seconds: 15));
 
     if (response.statusCode == 404) {
       throw FossilServiceException('Fossil not found');

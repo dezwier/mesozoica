@@ -1,4 +1,4 @@
-"""Discover a field site (create user_site discoverer link)."""
+"""Discover a field site (create user_site discoverer link) and onboard fossils."""
 
 from __future__ import annotations
 
@@ -18,10 +18,13 @@ from app.models.user_site import (
 )
 from app.services.push_service import send_site_discovered_push
 from app.services.site_service.discovery_params import resolve_site_discovery_params
+from app.services.site_service.field_fossil_onboard import (
+    DiscoverFossilOnboardResult,
+    ensure_fossils_on_site_discovery,
+)
 from app.services.site_service.geo_utils import haversine_km
 from app.services.site_service.labels import site_display_title
 from app.services.site_service.list import get_site_by_id
-from app.services.site_service.summary import SiteRow
 
 
 def discover_max_distance_m() -> float:
@@ -43,8 +46,11 @@ def discover_site(
     lat: float,
     lon: float,
     rng: random.Random | None = None,
-) -> SiteRow:
-    """Link the user as discoverer when within range and the chance roll succeeds."""
+) -> DiscoverFossilOnboardResult:
+    """Link the user as discoverer when within range and the chance roll succeeds.
+
+    Also ensures global field fossils for the site (once) and grants surface finds.
+    """
     site = session.get(Site, site_id)
     if site is None or site.data_source != DATA_SOURCE_FIELD:
         raise NotFoundError(f"Field site {site_id} not found")
@@ -75,7 +81,10 @@ def discover_site(
         )
     ).first()
     if existing is not None:
-        return get_site_by_id(session, site_id, data_source=DATA_SOURCE_FIELD)
+        # Idempotent re-hit: still onboard fossils / surface grants if needed.
+        return ensure_fossils_on_site_discovery(
+            session, site_id=site_id, user_id=user_id
+        )
 
     roller = rng if rng is not None else random
     if roller.random() >= params.discovery_chance:
@@ -107,4 +116,6 @@ def discover_site(
             site_label=_site_label(site),
         )
 
-    return get_site_by_id(session, site_id, data_source=DATA_SOURCE_FIELD)
+    return ensure_fossils_on_site_discovery(
+        session, site_id=site_id, user_id=user_id
+    )

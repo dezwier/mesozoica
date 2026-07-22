@@ -62,28 +62,9 @@ class _SiteMapCardWithActionsState extends State<_SiteMapCardWithActions> {
       _onSiteUpdated(
         result.site.copyWith(viewerHasSurveyed: true),
       );
-      if (!result.fossilsReady && result.jobId != null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Surveying… fossils will appear shortly.')),
-        );
-        final job = await service.waitForFieldSurveyJob(result.jobId!);
-        if (!mounted) return;
-        if (job.isFailed) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(job.errorMessage ?? 'Survey failed. Try again.'),
-            ),
-          );
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Survey complete.')),
-          );
-        }
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Site surveyed.')),
-        );
-      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Site surveyed.')),
+      );
     } on SiteServiceException catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

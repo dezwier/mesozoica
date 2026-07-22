@@ -41,11 +41,11 @@ class FieldDiscoveryCoordinator extends ChangeNotifier {
   final Set<int> _inFlightSiteIds = {};
   final Map<int, DateTime> _retryAfterBySiteId = {};
   Future<void>? _cacheRefreshFuture;
-  SiteSummary? _pendingCelebration;
+  FieldDiscoverResponse? _pendingCelebration;
   bool _celebrationConsumed = false;
 
   /// Latest auto-discovered site waiting for celebration UI (if any).
-  SiteSummary? get pendingCelebration =>
+  FieldDiscoverResponse? get pendingCelebration =>
       _celebrationConsumed ? null : _pendingCelebration;
 
   void bind({required LocationService locationService}) {

@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
+
+from app.schemas.fossil import FossilSummary
 
 
 class SiteSummary(BaseModel):
@@ -68,10 +70,10 @@ class FieldEnsureJobResponse(BaseModel):
 class FieldSurveyResponse(BaseModel):
     site: SiteSummary
     job_id: int | None = None
-    status: str
+    status: str = "done"
     onboarded: bool = False
     generated: bool = False
-    fossils_ready: bool = False
+    fossils_ready: bool = True
 
 
 class FieldSurveyJobResponse(BaseModel):
@@ -82,10 +84,23 @@ class FieldSurveyJobResponse(BaseModel):
     error_message: str | None = None
 
 
+class FieldDiscoverResponse(BaseModel):
+    """Site discovery plus global fossil generation onboard metadata."""
+
+    site: SiteSummary
+    job_id: int | None = None
+    status: str = "done"
+    onboarded: bool = False
+    generated: bool = False
+    fossils_ready: bool = False
+    surface_fossils: list[FossilSummary] = Field(default_factory=list)
+
+
 class SiteFossilThumb(BaseModel):
     id: int
     main_image_url: str | None = None
     identified_name: str | None = None
+    status: str = "hidden"
 
 
 class SiteDinosaurThumb(BaseModel):

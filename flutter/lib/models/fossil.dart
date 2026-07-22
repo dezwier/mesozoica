@@ -107,6 +107,7 @@ class FossilSummary {
     this.dinosaurMainImageUrl,
     this.siteId,
     this.siteMainImageUrl,
+    this.depthCm,
     this.status,
   });
 
@@ -202,7 +203,10 @@ class FossilSummary {
   final String? dinosaurMainImageUrl;
   final int? siteId;
   final String? siteMainImageUrl;
+  final int? depthCm;
   final String? status;
+
+  bool get isHidden => (status ?? 'hidden').trim().toLowerCase() == 'hidden';
 
   factory FossilSummary.fromJson(Map<String, dynamic> json) {
     return FossilSummary(
@@ -298,6 +302,7 @@ class FossilSummary {
       dinosaurMainImageUrl: json['dinosaur_main_image_url'] as String?,
       siteId: json['site_id'] as int?,
       siteMainImageUrl: json['site_main_image_url'] as String?,
+      depthCm: json['depth_cm'] as int?,
       status: json['status'] as String?,
     );
   }

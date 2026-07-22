@@ -20,6 +20,10 @@ from app.models.user_site import (
 )
 from app.services.push_service import send_site_discovered_push
 from app.services.site_service.discover import _site_label, discover_max_distance_m
+from app.services.site_service.field_fossil_onboard import (
+    DiscoverFossilOnboardResult,
+    ensure_fossils_on_site_discovery,
+)
 from app.services.site_service.geo_utils import haversine_km
 from app.services.site_service.list import get_site_by_id
 from app.services.site_service.summary import SiteRow
@@ -38,12 +42,13 @@ def set_site_status(
     lat: float | None = None,
     lon: float | None = None,
     skip_distance_check: bool = False,
-) -> SiteRow:
+) -> SiteRow | DiscoverFossilOnboardResult:
     """Set the site's latest status for the acting user.
 
     ``hidden`` clears all ``user_site`` rows for the site.
     Other statuses upsert the matching role with a fresh timestamp.
-    Transitioning ``hidden`` → ``discovered`` creates inbox + FCM like discover.
+    Transitioning ``hidden`` → ``discovered`` creates inbox + FCM like discover
+    and returns fossil onboard metadata (same as ``discover_site``).
 
     When ``skip_distance_check`` is True (admin), proximity is not enforced and
     ``lat``/``lon`` are optional for non-hidden statuses.
@@ -129,7 +134,13 @@ def set_site_status(
                 notification_id=notification.id,
                 site_label=_site_label(site),
             )
-        return get_site_by_id(session, site_id, data_source=DATA_SOURCE_FIELD)
+        return ensure_fossils_on_site_discovery(
+            session, site_id=site_id, user_id=user_id
+        )
 
     session.commit()
+    if normalized == SITE_STATUS_DISCOVERED:
+        return ensure_fossils_on_site_discovery(
+            session, site_id=site_id, user_id=user_id
+        )
     return get_site_by_id(session, site_id, data_source=DATA_SOURCE_FIELD)

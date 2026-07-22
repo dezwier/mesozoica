@@ -8,6 +8,7 @@ import '../../models/site.dart';
 import '../../services/location_service.dart';
 import '../../services/site_service.dart';
 import '../../utils/discovery_haptic.dart';
+import 'fossil_discovery_celebration.dart';
 import 'site_discovery_celebration.dart';
 
 /// Apply a status chosen from the admin badge dropdown.
@@ -33,12 +34,13 @@ Future<SiteSummary?> applySiteStatusSelection(
   final service = siteService ?? SiteService();
   final ownedService = siteService == null;
   try {
-    final updated = await service.setSiteStatus(
+    final result = await service.setSiteStatusDetailed(
       siteId: site.siteId,
       status: next,
       lat: lat,
       lon: lon,
     );
+    final updated = result.site;
     if (!context.mounted) return updated;
 
     if (next == 'hidden') {
@@ -57,6 +59,23 @@ Future<SiteSummary?> applySiteStatusSelection(
       }
       if (!context.mounted) return updated;
       await showSiteDiscoveryCelebration(context, site: updated);
+      if (!context.mounted) return updated;
+
+      var fossils = result.surfaceFossils;
+      if (!result.fossilsReady && result.jobId != null) {
+        final job = await service.waitForFieldSurveyJob(result.jobId!);
+        if (job.isDone && location != null) {
+          final refreshed = await service.discoverSite(
+            siteId: site.siteId,
+            lat: location.latitude,
+            lon: location.longitude,
+          );
+          fossils = refreshed.surfaceFossils;
+        }
+      }
+      if (context.mounted && fossils.isNotEmpty) {
+        await showFossilDiscoveryCelebrations(context, fossils: fossils);
+      }
     } else {
       _snack(context, 'Status updated to ${updated.status ?? next}.');
     }
@@ -79,7 +98,5 @@ Future<SiteSummary?> applySiteStatusSelection(
 }
 
 void _snack(BuildContext context, String message) {
-  ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(content: Text(message)),
-  );
+  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
 }

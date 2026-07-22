@@ -181,17 +181,47 @@ class FossilGenerationConfig {
   const FossilGenerationConfig({
     required this.dinoCountWeights,
     required this.cardCountWeights,
+    required this.depthBuckets,
   });
 
   final Map<int, double> dinoCountWeights;
   final Map<int, double> cardCountWeights;
+  final List<FossilDepthBucket> depthBuckets;
 
   factory FossilGenerationConfig.fromYaml(Map<String, dynamic> yaml) {
+    final rawBuckets = yaml['depth_buckets'];
+    final buckets = <FossilDepthBucket>[];
+    if (rawBuckets is List) {
+      for (final entry in rawBuckets) {
+        if (entry is Map) {
+          buckets.add(
+            FossilDepthBucket(
+              weight: _asDouble(entry['weight'], 0),
+              minCm: _asInt(entry['min_cm'], 0),
+              maxCm: _asInt(entry['max_cm'], 0),
+            ),
+          );
+        }
+      }
+    }
     return FossilGenerationConfig(
       dinoCountWeights: _asIntDoubleMap(yaml['dino_count_weights']),
       cardCountWeights: _asIntDoubleMap(yaml['card_count_weights']),
+      depthBuckets: buckets,
     );
   }
+}
+
+class FossilDepthBucket {
+  const FossilDepthBucket({
+    required this.weight,
+    required this.minCm,
+    required this.maxCm,
+  });
+
+  final double weight;
+  final int minCm;
+  final int maxCm;
 }
 
 class FossilDiscoveryConfig {

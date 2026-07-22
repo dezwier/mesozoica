@@ -11,10 +11,12 @@ class CardMapMarker {
   const CardMapMarker({
     required this.point,
     this.onTap,
+    this.opacity = 1.0,
   });
 
   final LatLng point;
   final VoidCallback? onTap;
+  final double opacity;
 }
 
 /// Shared mini world map for card backs — optional auto-pan and interaction.
@@ -111,11 +113,14 @@ class _CardWorldMapState extends State<CardWorldMap> {
                 height: CardWorldMap.markerSize,
                 child: GestureDetector(
                   onTap: marker.onTap ?? widget.onTap,
-                  child: FossilMarker(
-                    size: CardWorldMap.markerSize,
-                    selected: false,
-                    showIcon: false,
-                    color: cardTheme.cardAccent,
+                  child: Opacity(
+                    opacity: marker.opacity,
+                    child: FossilMarker(
+                      size: CardWorldMap.markerSize,
+                      selected: false,
+                      showIcon: false,
+                      color: cardTheme.cardAccent,
+                    ),
                   ),
                 ),
               );

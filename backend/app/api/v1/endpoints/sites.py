@@ -15,6 +15,7 @@ from app.core.security import (
 from app.models.data_source import DATA_SOURCE_ARCHIVE, DATA_SOURCE_FIELD
 from app.models.user import User
 from app.schemas.site import (
+    FieldDiscoverResponse,
     FieldEnsureJobResponse,
     FieldEnsureResponse,
     FieldSurveyJobResponse,
@@ -40,6 +41,10 @@ from app.services.site_service import (
     set_site_status,
     site_row_to_summary,
     survey_site,
+)
+from app.services.site_service.field_fossil_onboard import (
+    DiscoverFossilOnboardResult,
+    surface_fossil_summaries,
 )
 from app.services.site_service.field_ensure_background import schedule_field_site_ensure
 from app.services.site_service.field_ensure_queue import (
@@ -280,43 +285,64 @@ def post_survey_site(
         user_id=current_user.id,
     )
     types_by_period = load_site_types_by_period(session)
-    # Async generation still pending → 202 would be ideal; FastAPI status via Response.
-    # Clients treat fossils_ready=False as poll; keep 200 for all outcomes for simplicity.
     return FieldSurveyResponse(
+        site=site_row_to_summary(result.site, types_by_period=types_by_period),
+        job_id=None,
+        status="done",
+        onboarded=True,
+        generated=False,
+        fossils_ready=True,
+    )
+
+
+def _discover_response(
+    session: Session,
+    result: DiscoverFossilOnboardResult,
+    *,
+    viewer_user_id: int,
+) -> FieldDiscoverResponse:
+    types_by_period = load_site_types_by_period(session)
+    return FieldDiscoverResponse(
         site=site_row_to_summary(result.site, types_by_period=types_by_period),
         job_id=result.job_id,
         status=result.job_status,
         onboarded=result.onboarded,
         generated=result.generated,
         fossils_ready=result.fossils_ready,
+        surface_fossils=surface_fossil_summaries(
+            session,
+            fossil_ids=result.surface_fossil_ids,
+            viewer_user_id=viewer_user_id,
+        ),
     )
 
 
-@router.post("/{site_id}/discover", response_model=SiteSummary)
+@router.post("/{site_id}/discover", response_model=FieldDiscoverResponse)
 def post_discover_site(
     site_id: int,
     body: DiscoverSiteRequest,
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user),
-) -> SiteSummary:
-    row = discover_site(
+) -> FieldDiscoverResponse:
+    result = discover_site(
         session,
         site_id=site_id,
         user_id=current_user.id,
         lat=body.lat,
         lon=body.lon,
     )
-    types_by_period = load_site_types_by_period(session)
-    return site_row_to_summary(row, types_by_period=types_by_period)
+    return _discover_response(
+        session, result, viewer_user_id=current_user.id
+    )
 
 
-@router.post("/{site_id}/status", response_model=SiteSummary)
+@router.post("/{site_id}/status", response_model=SiteSummary | FieldDiscoverResponse)
 def post_set_site_status(
     site_id: int,
     body: SetSiteStatusRequest,
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user),
-) -> SiteSummary:
+) -> SiteSummary | FieldDiscoverResponse:
     row = set_site_status(
         session,
         site_id=site_id,
@@ -326,6 +352,10 @@ def post_set_site_status(
         lon=body.lon,
         skip_distance_check=bool(current_user.is_admin),
     )
+    if isinstance(row, DiscoverFossilOnboardResult):
+        return _discover_response(
+            session, row, viewer_user_id=current_user.id
+        )
     types_by_period = load_site_types_by_period(session)
     return site_row_to_summary(row, types_by_period=types_by_period)
 
@@ -351,8 +381,14 @@ def get_site(
 def get_site_fossils(
     site_id: int,
     session: Session = Depends(get_session),
+    current_user: User | None = Depends(get_optional_current_user),
 ) -> SiteFossilThumbListResponse:
-    items = list_site_fossils(session, site_id)
+    items = list_site_fossils(
+        session,
+        site_id,
+        viewer_user_id=current_user.id if current_user is not None else None,
+        is_admin=bool(current_user is not None and current_user.is_admin),
+    )
     return SiteFossilThumbListResponse(items=items)
 
 
@@ -360,8 +396,14 @@ def get_site_fossils(
 def get_site_dinosaurs(
     site_id: int,
     session: Session = Depends(get_session),
+    current_user: User | None = Depends(get_optional_current_user),
 ) -> SiteDinosaurThumbListResponse:
-    items = list_site_dinosaurs(session, site_id)
+    items = list_site_dinosaurs(
+        session,
+        site_id,
+        viewer_user_id=current_user.id if current_user is not None else None,
+        is_admin=bool(current_user is not None and current_user.is_admin),
+    )
     return SiteDinosaurThumbListResponse(items=items)
 
 
@@ -369,6 +411,12 @@ def get_site_dinosaurs(
 def get_site_dino_fossil_groups(
     site_id: int,
     session: Session = Depends(get_session),
+    current_user: User | None = Depends(get_optional_current_user),
 ) -> SiteDinoFossilGroupListResponse:
-    items = list_site_dino_fossil_groups(session, site_id)
+    items = list_site_dino_fossil_groups(
+        session,
+        site_id,
+        viewer_user_id=current_user.id if current_user is not None else None,
+        is_admin=bool(current_user is not None and current_user.is_admin),
+    )
     return SiteDinoFossilGroupListResponse(items=items)

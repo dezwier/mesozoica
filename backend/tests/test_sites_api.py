@@ -484,7 +484,9 @@ def test_discover_site_within_range(client, session, monkeypatch):
         json={"lat": 40.0003, "lon": -100.0},
     )
     assert ok.status_code == 200
-    assert ok.json()["status"] == "discovered"
+    assert ok.json()["site"]["status"] == "discovered"
+    assert "fossils_ready" in ok.json()
+    assert "surface_fossils" in ok.json()
 
     linked = client.get(
         "/api/v1/sites",
@@ -593,7 +595,9 @@ def test_set_site_status_dropdown_flow(client, session):
         json={"status": "discovered", "lat": 41.0, "lon": -100.0},
     )
     assert discover.status_code == 200
-    assert discover.json()["status"] == "discovered"
+    body = discover.json()
+    site_status = body["site"]["status"] if "site" in body else body["status"]
+    assert site_status == "discovered"
     notifs = client.get("/api/v1/notifications", headers=headers)
     assert len(notifs.json()["notifications"]) == 1
     assert notifs.json()["notifications"][0]["type"] == "site_discovered"
@@ -637,7 +641,13 @@ def test_set_site_status_dropdown_flow(client, session):
         json={"status": "discovered"},
     )
     assert rediscover.status_code == 200
-    assert rediscover.json()["status"] == "discovered"
+    rediscover_body = rediscover.json()
+    rediscover_status = (
+        rediscover_body["site"]["status"]
+        if "site" in rediscover_body
+        else rediscover_body["status"]
+    )
+    assert rediscover_status == "discovered"
     notifs2 = client.get("/api/v1/notifications", headers=headers)
     assert len(notifs2.json()["notifications"]) == 2
     assert all(

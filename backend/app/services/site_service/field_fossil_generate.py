@@ -1,4 +1,4 @@
-"""Sample and write field fossils for a surveyed site (lazy, once per site)."""
+"""Sample and write field fossils for a discovered site (lazy, once per site)."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from sqlalchemy import text
 from sqlmodel import Session, col, func, select
 
-from app.core.game_config import get_game_config
+from app.core.game_config import FossilDepthBucket, get_game_config
 from app.models.data_source import DATA_SOURCE_ARCHIVE, DATA_SOURCE_FIELD
 from app.models.dinosaur import Dinosaur
 from app.models.fossil import Fossil
@@ -49,6 +49,19 @@ def count_field_fossils_for_site(session: Session, site_id: int) -> int:
     )
 
 
+def sample_depth_cm(
+    buckets: list[FossilDepthBucket],
+    *,
+    rng: random.Random,
+) -> int:
+    """Sample burial depth (cm) from weighted buckets."""
+    weights = [bucket.weight for bucket in buckets]
+    bucket = rng.choices(buckets, weights=weights, k=1)[0]
+    if bucket.min_cm == bucket.max_cm:
+        return bucket.min_cm
+    return rng.randint(bucket.min_cm, bucket.max_cm)
+
+
 def ensure_field_fossils_for_site(
     session: Session,
     *,
@@ -66,7 +79,7 @@ def ensure_field_fossils_for_site(
     period = (site.period or "").strip().lower()
     rock_type = (site.rock_type or "").strip().lower()
     if not period or not rock_type:
-        raise ValueError(f"Site {site_id} missing period/rock_type for survey")
+        raise ValueError(f"Site {site_id} missing period/rock_type for fossil generation")
 
     random_source = rng or random.Random()
     dino_counts = _dino_distribution(session, period=period, rock_type=rock_type)
@@ -109,6 +122,7 @@ def ensure_field_fossils_for_site(
             name = dino_names.get(dinosaur_id) or f"dinosaur-{dinosaur_id}"
             identified = f"{name} ({subcategory.replace('_', ' ')})"
             fossil_id = id_allocator.next_id()
+            depth_cm = sample_depth_cm(fossil_cfg.depth_buckets, rng=random_source)
             pending.append(
                 Fossil(
                     id=fossil_id,
@@ -134,6 +148,7 @@ def ensure_field_fossils_for_site(
                     llm_imp_preservation_quality=quality,
                     llm_imp_completeness=completeness,
                     data_source=DATA_SOURCE_FIELD,
+                    depth_cm=depth_cm,
                 )
             )
 

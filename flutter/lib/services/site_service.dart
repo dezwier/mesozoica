@@ -103,7 +103,7 @@ class SiteService {
     return SiteSummary.fromJson(decoded);
   }
 
-  Future<SiteSummary> discoverSite({
+  Future<FieldDiscoverResponse> discoverSite({
     required int siteId,
     required double lat,
     required double lon,
@@ -133,10 +133,26 @@ class SiteService {
     if (decoded is! Map<String, dynamic>) {
       throw const SiteServiceException('Invalid discover response');
     }
-    return SiteSummary.fromJson(decoded);
+    return FieldDiscoverResponse.fromJson(decoded);
   }
 
   Future<SiteSummary> setSiteStatus({
+    required int siteId,
+    required String status,
+    double? lat,
+    double? lon,
+  }) async {
+    final result = await setSiteStatusDetailed(
+      siteId: siteId,
+      status: status,
+      lat: lat,
+      lon: lon,
+    );
+    return result.site;
+  }
+
+  /// Like [setSiteStatus], but returns fossil onboard metadata when discovering.
+  Future<FieldDiscoverResponse> setSiteStatusDetailed({
     required int siteId,
     required String status,
     double? lat,
@@ -168,7 +184,14 @@ class SiteService {
     if (decoded is! Map<String, dynamic>) {
       throw const SiteServiceException('Invalid status response');
     }
-    return SiteSummary.fromJson(decoded);
+    if (decoded.containsKey('site')) {
+      return FieldDiscoverResponse.fromJson(decoded);
+    }
+    return FieldDiscoverResponse(
+      site: SiteSummary.fromJson(decoded),
+      status: 'done',
+      fossilsReady: true,
+    );
   }
 
   Future<SiteNearbyResponse> fetchNearbySites({

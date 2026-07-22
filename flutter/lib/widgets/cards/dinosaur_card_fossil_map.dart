@@ -4,6 +4,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
 
 import '../../config/map_config.dart';
+import '../../controllers/auth_controller.dart';
 import '../../controllers/catalog_mode_controller.dart';
 import '../../models/fossil.dart';
 import '../../services/fossil_service.dart';
@@ -37,6 +38,7 @@ class _DinosaurCardFossilMapState extends State<DinosaurCardFossilMap> {
   List<FossilSummary> _geolocatedFossils = const [];
   CatalogDataSource? _loadedForSource;
   int? _loadedForDinosaurId;
+  bool? _loadedIncludeHidden;
 
   @override
   void initState() {
@@ -53,7 +55,10 @@ class _DinosaurCardFossilMapState extends State<DinosaurCardFossilMap> {
     }
   }
 
-  Future<void> _loadFossils(CatalogDataSource source) async {
+  Future<void> _loadFossils(
+    CatalogDataSource source, {
+    required bool includeHidden,
+  }) async {
     setState(() {
       _loading = true;
       _error = false;
@@ -64,6 +69,7 @@ class _DinosaurCardFossilMapState extends State<DinosaurCardFossilMap> {
       final response = await _service.fetchFossilsForDinosaur(
         widget.dinosaurId,
         dataSource: source,
+        includeHidden: includeHidden,
       );
       if (!mounted) return;
       setState(() {
@@ -90,10 +96,15 @@ class _DinosaurCardFossilMapState extends State<DinosaurCardFossilMap> {
   @override
   Widget build(BuildContext context) {
     final source = context.watch<CatalogModeController>().dataSource;
-    if (_loadedForSource != source || _loadedForDinosaurId != widget.dinosaurId) {
+    final includeHidden =
+        context.watch<AuthController>().currentUser?.isAdmin ?? false;
+    if (_loadedForSource != source ||
+        _loadedForDinosaurId != widget.dinosaurId ||
+        _loadedIncludeHidden != includeHidden) {
       _loadedForSource = source;
       _loadedForDinosaurId = widget.dinosaurId;
-      _loadFossils(source);
+      _loadedIncludeHidden = includeHidden;
+      _loadFossils(source, includeHidden: includeHidden);
     }
 
     final cardTheme = DinoCardTheme.of(context);
@@ -129,6 +140,7 @@ class _DinosaurCardFossilMapState extends State<DinosaurCardFossilMap> {
           .map(
             (fossil) => CardMapMarker(
               point: LatLng(fossil.latitude!, fossil.longitude!),
+              opacity: fossil.isHidden ? 0.5 : 1.0,
               onTap: () => showFossilMapCardDialog(context, fossil),
             ),
           )

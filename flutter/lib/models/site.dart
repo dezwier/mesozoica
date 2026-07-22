@@ -1,5 +1,6 @@
 import '../utils/display_text.dart';
 import '../utils/period_for_ages.dart';
+import 'fossil.dart';
 
 class SiteSummary {
   const SiteSummary({
@@ -320,6 +321,47 @@ class FieldSurveyResponse {
   }
 }
 
+class FieldDiscoverResponse {
+  const FieldDiscoverResponse({
+    required this.site,
+    this.jobId,
+    required this.status,
+    this.onboarded = false,
+    this.generated = false,
+    this.fossilsReady = false,
+    this.surfaceFossils = const [],
+  });
+
+  final SiteSummary site;
+  final int? jobId;
+  final String status;
+  final bool onboarded;
+  final bool generated;
+  final bool fossilsReady;
+  final List<FossilSummary> surfaceFossils;
+
+  factory FieldDiscoverResponse.fromJson(Map<String, dynamic> json) {
+    final rawFossils = json['surface_fossils'];
+    final fossils = <FossilSummary>[];
+    if (rawFossils is List) {
+      for (final item in rawFossils) {
+        if (item is Map<String, dynamic>) {
+          fossils.add(FossilSummary.fromJson(item));
+        }
+      }
+    }
+    return FieldDiscoverResponse(
+      site: SiteSummary.fromJson(json['site'] as Map<String, dynamic>),
+      jobId: json['job_id'] as int?,
+      status: json['status'] as String? ?? 'pending',
+      onboarded: json['onboarded'] as bool? ?? false,
+      generated: json['generated'] as bool? ?? false,
+      fossilsReady: json['fossils_ready'] as bool? ?? false,
+      surfaceFossils: fossils,
+    );
+  }
+}
+
 class FieldSurveyJobStatus {
   const FieldSurveyJobStatus({
     required this.jobId,
@@ -384,11 +426,15 @@ class SiteFossilThumb {
     required this.id,
     this.mainImageUrl,
     this.identifiedName,
+    this.status,
   });
 
   final int id;
   final String? mainImageUrl;
   final String? identifiedName;
+  final String? status;
+
+  bool get isHidden => (status ?? 'hidden').trim().toLowerCase() == 'hidden';
 
   String get displayLabel {
     final identified = identifiedName?.trim();
@@ -403,6 +449,7 @@ class SiteFossilThumb {
       id: json['id'] as int,
       mainImageUrl: json['main_image_url'] as String?,
       identifiedName: json['identified_name'] as String?,
+      status: json['status'] as String?,
     );
   }
 }

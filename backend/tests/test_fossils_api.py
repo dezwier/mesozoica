@@ -4,10 +4,12 @@ from decimal import Decimal
 
 from sqlmodel import Session
 
+from app.core.security import create_access_token
 from app.models.dinosaur import Dinosaur
 from app.models.fossil import Fossil
 from app.models.site import Site
 from app.models.site_type import SiteType
+from app.models.user import User
 
 
 def _seed_site_type(session: Session) -> SiteType:
@@ -542,6 +544,7 @@ def test_list_fossils_filters_by_data_source(client, session):
             dinosaur_id=dinosaur.id,
             identified_name="Field specimen",
             data_source="field",
+            depth_cm=100,
         )
     )
     session.commit()
@@ -552,11 +555,41 @@ def test_list_fossils_filters_by_data_source(client, session):
     assert archive.json()["items"][0]["id"] == 100001
     assert archive.json()["items"][0]["data_source"] == "archive"
 
+    # Anonymous / non-admin viewers only see field fossils they discovered.
     field = client.get("/api/v1/fossils", params={"data_source": "field"})
     assert field.status_code == 200
-    assert field.json()["total"] == 1
-    assert field.json()["items"][0]["id"] == 200001
-    assert field.json()["items"][0]["data_source"] == "field"
+    assert field.json()["total"] == 0
+
+    admin = User(
+        username="fossil_admin",
+        email="fossil_admin@example.com",
+        password="x",
+        is_admin=True,
+    )
+    session.add(admin)
+    session.commit()
+    session.refresh(admin)
+    token = create_access_token({"sub": str(admin.id)})
+    admin_field = client.get(
+        "/api/v1/fossils",
+        params={"data_source": "field"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert admin_field.status_code == 200
+    # Admins also only see linked fossils in the catalog.
+    assert admin_field.json()["total"] == 0
+
+    admin_peek = client.get(
+        "/api/v1/fossils",
+        params={"data_source": "field", "include_hidden": "true"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert admin_peek.status_code == 200
+    assert admin_peek.json()["total"] == 1
+    assert admin_peek.json()["items"][0]["id"] == 200001
+    assert admin_peek.json()["items"][0]["data_source"] == "field"
+    assert admin_peek.json()["items"][0]["status"] == "hidden"
+    assert admin_peek.json()["items"][0]["depth_cm"] == 100
 
 
 def test_list_fossils_rejects_invalid_data_source(client):

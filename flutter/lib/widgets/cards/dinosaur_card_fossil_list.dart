@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../controllers/auth_controller.dart';
 import '../../controllers/catalog_mode_controller.dart';
 import '../../models/fossil.dart';
 import '../../services/fossil_service.dart';
@@ -30,6 +31,7 @@ class _DinosaurCardFossilListState extends State<DinosaurCardFossilList> {
   Future<List<FossilSummary>>? _fossilsFuture;
   CatalogDataSource? _loadedForSource;
   int? _loadedForDinosaurId;
+  bool? _loadedIncludeHidden;
 
   @override
   void initState() {
@@ -38,15 +40,17 @@ class _DinosaurCardFossilListState extends State<DinosaurCardFossilList> {
     _service = widget.fossilService ?? FossilService();
   }
 
-  void _ensureLoaded(CatalogDataSource source) {
+  void _ensureLoaded(CatalogDataSource source, {required bool includeHidden}) {
     if (_loadedForSource == source &&
         _loadedForDinosaurId == widget.dinosaurId &&
+        _loadedIncludeHidden == includeHidden &&
         _fossilsFuture != null) {
       return;
     }
     _loadedForSource = source;
     _loadedForDinosaurId = widget.dinosaurId;
-    _fossilsFuture = _loadFossils(source);
+    _loadedIncludeHidden = includeHidden;
+    _fossilsFuture = _loadFossils(source, includeHidden: includeHidden);
   }
 
   @override
@@ -57,12 +61,37 @@ class _DinosaurCardFossilListState extends State<DinosaurCardFossilList> {
     }
   }
 
-  Future<List<FossilSummary>> _loadFossils(CatalogDataSource source) async {
+  Future<List<FossilSummary>> _loadFossils(
+    CatalogDataSource source, {
+    required bool includeHidden,
+  }) async {
     final response = await _service.fetchFossilsForDinosaur(
       widget.dinosaurId,
       dataSource: source,
+      includeHidden: includeHidden,
     );
     return response.items;
+  }
+
+  Widget _buildThumb({
+    required BuildContext context,
+    required FossilSummary fossil,
+    required double thumbSize,
+  }) {
+    final thumb = SizedBox(
+      width: thumbSize,
+      height: thumbSize,
+      child: CardRecordThumb(
+        image: FossilCardImage(imageUrl: fossil.mainImageUrl),
+        label: fossil.displayTitle,
+        onTap: () => showFossilCardDialog(
+          context,
+          fossilId: fossil.id,
+        ),
+      ),
+    );
+    if (!fossil.isHidden) return thumb;
+    return Opacity(opacity: 0.5, child: thumb);
   }
 
   @override
@@ -76,7 +105,9 @@ class _DinosaurCardFossilListState extends State<DinosaurCardFossilList> {
   @override
   Widget build(BuildContext context) {
     final source = context.watch<CatalogModeController>().dataSource;
-    _ensureLoaded(source);
+    final includeHidden =
+        context.watch<AuthController>().currentUser?.isAdmin ?? false;
+    _ensureLoaded(source, includeHidden: includeHidden);
     final cardTheme = DinoCardTheme.of(context);
 
     return FutureBuilder<List<FossilSummary>>(
@@ -121,19 +152,10 @@ class _DinosaurCardFossilListState extends State<DinosaurCardFossilList> {
                 physics: const ClampingScrollPhysics(),
                 padding: EdgeInsets.zero,
                 children: [
-                  SizedBox(
-                    width: thumbSize,
-                    height: thumbSize,
-                    child: CardRecordThumb(
-                      image: FossilCardImage(
-                        imageUrl: fossils.first.mainImageUrl,
-                      ),
-                      label: fossils.first.displayTitle,
-                      onTap: () => showFossilCardDialog(
-                        context,
-                        fossilId: fossils.first.id,
-                      ),
-                    ),
+                  _buildThumb(
+                    context: context,
+                    fossil: fossils.first,
+                    thumbSize: thumbSize,
                   ),
                 ],
               );
@@ -157,35 +179,17 @@ class _DinosaurCardFossilListState extends State<DinosaurCardFossilList> {
                 return Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    SizedBox(
-                      width: thumbSize,
-                      height: thumbSize,
-                      child: CardRecordThumb(
-                        image: FossilCardImage(
-                          imageUrl: fossils[leftIndex].mainImageUrl,
-                        ),
-                        label: fossils[leftIndex].displayTitle,
-                        onTap: () => showFossilCardDialog(
-                          context,
-                          fossilId: fossils[leftIndex].id,
-                        ),
-                      ),
+                    _buildThumb(
+                      context: context,
+                      fossil: fossils[leftIndex],
+                      thumbSize: thumbSize,
                     ),
                     const SizedBox(width: gap),
                     if (rightIndex < fossils.length)
-                      SizedBox(
-                        width: thumbSize,
-                        height: thumbSize,
-                        child: CardRecordThumb(
-                          image: FossilCardImage(
-                            imageUrl: fossils[rightIndex].mainImageUrl,
-                          ),
-                          label: fossils[rightIndex].displayTitle,
-                          onTap: () => showFossilCardDialog(
-                            context,
-                            fossilId: fossils[rightIndex].id,
-                          ),
-                        ),
+                      _buildThumb(
+                        context: context,
+                        fossil: fossils[rightIndex],
+                        thumbSize: thumbSize,
                       ),
                   ],
                 );

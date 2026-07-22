@@ -132,6 +132,13 @@ def process_one_survey_job(*, worker_id: str) -> bool:
                 )
 
                 fossil_count = count_field_fossils_for_site(session, job.site_id)
+            from app.services.site_service.field_fossil_onboard import (
+                grant_surface_fossils_to_site_discoverers,
+            )
+
+            grant_surface_fossils_to_site_discoverers(
+                session, site_id=job.site_id
+            )
         with Session(engine) as session:
             refreshed = session.get(FieldSurveyJob, job.id)
             if refreshed is not None:

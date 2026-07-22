@@ -146,6 +146,7 @@ class FossilSummary(BaseModel):
     site_id: int | None = None
     site_main_image_url: str | None = None
     data_source: str = "archive"
+    depth_cm: int | None = None
     status: str = "hidden"
 
 
