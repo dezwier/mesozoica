@@ -196,6 +196,20 @@ class SiteCatalogController extends CatalogController<SiteSummary> {
     notifyListeners();
   }
 
+  /// Insert or replace a site after discovery without a full catalog reload.
+  void upsertSite(SiteSummary site) {
+    final index = _rawItems.indexWhere((item) => item.siteId == site.siteId);
+    if (index < 0) {
+      _rawItems = [site, ..._rawItems];
+      _total += 1;
+    } else {
+      final updated = [..._rawItems];
+      updated[index] = site;
+      _rawItems = updated;
+    }
+    notifyListeners();
+  }
+
   Future<SiteListResponse> _fetchPage({required int offset}) async {
     final seed = _seed;
     if (seed == null || seed.isEmpty) {

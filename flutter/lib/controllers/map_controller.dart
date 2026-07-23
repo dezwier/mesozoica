@@ -261,7 +261,12 @@ class MapController extends ChangeNotifier {
         return;
       }
     } else {
-      snap.reset(clearSeed: false);
+      // Keep existing markers visible until the first page arrives so rapid
+      // discovery refreshes (aerial recon) don't blank the map.
+      snap.offset = 0;
+      snap.loadedCatalog = 0;
+      snap.totalCatalog = 0;
+      snap.error = null;
     }
 
     _stopFieldPoll();

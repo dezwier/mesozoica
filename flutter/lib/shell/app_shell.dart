@@ -58,6 +58,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
   AerialReconController? _aerialRecon;
   int _lastAerialMissionsFetchGeneration = 0;
   bool _aerialWasActive = false;
+  Timer? _discoveryRefreshTimer;
   StreamSubscription<RemoteMessage>? _foregroundPushSub;
   StreamSubscription<RemoteMessage>? _openedPushSub;
   bool _celebrationShowing = false;
@@ -165,19 +166,49 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
       return;
     }
 
-    // While a recon is (or just was) active, reload map/catalog after each
-    // missions poll so aerial discoveries appear without waiting for a tap.
+    // While a recon is (or just was) active, coalesce map/catalog reloads after
+    // each missions poll so aerial discoveries appear without thrashing the map.
     final gen = aerial.missionsFetchGeneration;
     if (gen != _lastAerialMissionsFetchGeneration) {
       _lastAerialMissionsFetchGeneration = gen;
       final hasActive = aerial.missions.any((m) => m.isActive);
       if (hasActive || _aerialWasActive) {
-        _refreshAfterSiteDiscovered();
+        _scheduleDiscoveryRefresh();
       }
       _aerialWasActive = hasActive;
     }
 
     setState(() {});
+  }
+
+  /// Coalesce rapid discovery signals (many aerial finds / polls) into one reload.
+  void _scheduleDiscoveryRefresh({int? siteId}) {
+    if (siteId != null) {
+      unawaited(_upsertDiscoveredSite(siteId));
+    }
+    _discoveryRefreshTimer?.cancel();
+    _discoveryRefreshTimer = Timer(const Duration(milliseconds: 1500), () {
+      if (!mounted) return;
+      _refreshAfterSiteDiscovered();
+    });
+  }
+
+  Future<void> _upsertDiscoveredSite(int siteId) async {
+    if (!mounted) return;
+    final service = SiteService();
+    try {
+      final site = await service.fetchSiteById(
+        siteId,
+        dataSource: CatalogDataSource.field,
+      );
+      if (!mounted) return;
+      context.read<MapController>().upsertSite(site);
+      context.read<SiteCatalogController>().upsertSite(site);
+    } catch (_) {
+      // Full debounced reload will still pick it up.
+    } finally {
+      service.dispose();
+    }
   }
 
   void _refreshAfterSiteDiscovered() {
@@ -202,7 +233,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     if (pending == null) return;
 
     // Always refresh map/catalog/inbox; push already covers background UX.
-    _refreshAfterSiteDiscovered();
+    _scheduleDiscoveryRefresh(siteId: pending.site.siteId);
 
     // Defer the in-app celebration dialog until the app is foregrounded.
     if (!_appInForeground) return;
@@ -285,7 +316,10 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
         }
         if (!mounted) return;
         if (type == 'site_discovered') {
-          _refreshAfterSiteDiscovered();
+          final rawSiteId = msg.data['site_id'];
+          final siteId =
+              rawSiteId != null ? int.tryParse(rawSiteId.toString()) : null;
+          _scheduleDiscoveryRefresh(siteId: siteId);
           return;
         }
         final uid = context.read<AuthController>().currentUser?.id;
@@ -317,7 +351,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     final siteId =
         rawSiteId != null ? int.tryParse(rawSiteId.toString()) : null;
     if (siteId == null) return;
-    _refreshAfterSiteDiscovered();
+    _scheduleDiscoveryRefresh(siteId: siteId);
     unawaited(_showCelebration(siteId: siteId));
   }
 
@@ -327,6 +361,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     _mapController?.removeListener(_onMapSitesChanged);
     _aerialRecon?.removeListener(_onAerialReconChanged);
     _catalogModeController?.removeListener(_onCatalogModeChanged);
+    _discoveryRefreshTimer?.cancel();
     unawaited(_foregroundPushSub?.cancel() ?? Future<void>.value());
     unawaited(_openedPushSub?.cancel() ?? Future<void>.value());
     WidgetsBinding.instance.removeObserver(this);
@@ -461,7 +496,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     if (item.isSiteDiscovered) {
       final siteId = item.siteId;
       if (siteId == null) return;
-      _refreshAfterSiteDiscovered();
+      _scheduleDiscoveryRefresh(siteId: siteId);
       unawaited(_showCelebration(siteId: siteId));
       return;
     }
