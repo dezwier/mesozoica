@@ -278,9 +278,19 @@ def delete_all_field_data(
         default=True,
         description="Delete field fossils",
     ),
+    mission_events: bool = Query(
+        default=True,
+        description="Delete tool_mission_event rows",
+    ),
+    missions: bool = Query(
+        default=True,
+        description="Delete tool_mission rows (and remaining events)",
+    ),
 ) -> FieldDataPurgeResponse:
     """Admin-only: selectively wipe field progress, sites, and/or fossils."""
-    if not any((user_sites, user_fossils, sites, fossils)):
+    if not any(
+        (user_sites, user_fossils, sites, fossils, mission_events, missions)
+    ):
         raise ValidationError("Select at least one purge scope")
     result = purge_all_field_data(
         session,
@@ -288,6 +298,8 @@ def delete_all_field_data(
         user_fossils=user_fossils,
         sites=sites,
         fossils=fossils,
+        mission_events=mission_events,
+        missions=missions,
     )
     log_field_event(
         "field_data_purged",
@@ -298,6 +310,8 @@ def delete_all_field_data(
         fossils_deleted=result.fossils_deleted,
         survey_jobs_deleted=result.survey_jobs_deleted,
         ensure_jobs_deleted=result.ensure_jobs_deleted,
+        mission_events_deleted=result.mission_events_deleted,
+        missions_deleted=result.missions_deleted,
     )
     return FieldDataPurgeResponse(
         user_sites_deleted=result.user_sites_deleted,
@@ -306,6 +320,8 @@ def delete_all_field_data(
         fossils_deleted=result.fossils_deleted,
         survey_jobs_deleted=result.survey_jobs_deleted,
         ensure_jobs_deleted=result.ensure_jobs_deleted,
+        mission_events_deleted=result.mission_events_deleted,
+        missions_deleted=result.missions_deleted,
     )
 
 

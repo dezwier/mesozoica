@@ -224,6 +224,8 @@ class AppConfig {
     bool userFossils = true,
     bool sites = true,
     bool fossils = true,
+    bool missionEvents = true,
+    bool missions = true,
   }) =>
       Uri.parse('$baseApiUrl/api/v1/sites/field').replace(
         queryParameters: {
@@ -231,6 +233,8 @@ class AppConfig {
           'user_fossils': '$userFossils',
           'sites': '$sites',
           'fossils': '$fossils',
+          'mission_events': '$missionEvents',
+          'missions': '$missions',
         },
       );
 

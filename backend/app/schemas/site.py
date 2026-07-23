@@ -97,6 +97,8 @@ class FieldDataPurgeResponse(BaseModel):
     fossils_deleted: int
     survey_jobs_deleted: int
     ensure_jobs_deleted: int
+    mission_events_deleted: int = 0
+    missions_deleted: int = 0
 
 
 class FieldDiscoverResponse(BaseModel):

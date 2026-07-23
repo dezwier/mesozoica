@@ -374,12 +374,16 @@ class SiteService {
     bool userFossils = true,
     bool sites = true,
     bool fossils = true,
+    bool missionEvents = true,
+    bool missions = true,
   }) async {
     final uri = AppConfig.fieldDataPurgeUri(
       userSites: userSites,
       userFossils: userFossils,
       sites: sites,
       fossils: fossils,
+      missionEvents: missionEvents,
+      missions: missions,
     );
     if (kDebugMode) {
       debugPrint('SiteService DELETE $uri');

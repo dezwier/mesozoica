@@ -7,26 +7,40 @@ class FieldDataPurgeSelection {
     this.userFossils = true,
     this.sites = true,
     this.fossils = true,
+    this.missionEvents = true,
+    this.missions = true,
   });
 
   final bool userSites;
   final bool userFossils;
   final bool sites;
   final bool fossils;
+  final bool missionEvents;
+  final bool missions;
 
-  bool get hasAny => userSites || userFossils || sites || fossils;
+  bool get hasAny =>
+      userSites ||
+      userFossils ||
+      sites ||
+      fossils ||
+      missionEvents ||
+      missions;
 
   FieldDataPurgeSelection copyWith({
     bool? userSites,
     bool? userFossils,
     bool? sites,
     bool? fossils,
+    bool? missionEvents,
+    bool? missions,
   }) {
     return FieldDataPurgeSelection(
       userSites: userSites ?? this.userSites,
       userFossils: userFossils ?? this.userFossils,
       sites: sites ?? this.sites,
       fossils: fossils ?? this.fossils,
+      missionEvents: missionEvents ?? this.missionEvents,
+      missions: missions ?? this.missions,
     );
   }
 }
@@ -106,6 +120,29 @@ class _FieldDataPurgeDialogState extends State<FieldDataPurgeDialog> {
               }),
               title: const Text('Field fossils'),
               subtitle: const Text('fossil (field)'),
+              controlAffinity: ListTileControlAffinity.leading,
+            ),
+            CheckboxListTile(
+              contentPadding: EdgeInsets.zero,
+              dense: true,
+              value: _selection.missionEvents,
+              onChanged: (value) => setState(() {
+                _selection =
+                    _selection.copyWith(missionEvents: value ?? false);
+              }),
+              title: const Text('Mission events'),
+              subtitle: const Text('tool_mission_event'),
+              controlAffinity: ListTileControlAffinity.leading,
+            ),
+            CheckboxListTile(
+              contentPadding: EdgeInsets.zero,
+              dense: true,
+              value: _selection.missions,
+              onChanged: (value) => setState(() {
+                _selection = _selection.copyWith(missions: value ?? false);
+              }),
+              title: const Text('Tool missions'),
+              subtitle: const Text('tool_mission'),
               controlAffinity: ListTileControlAffinity.leading,
             ),
           ],

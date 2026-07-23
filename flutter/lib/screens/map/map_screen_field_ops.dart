@@ -102,17 +102,22 @@ mixin _MapScreenFieldOpsMixin on State<MapScreen>, _MapScreenCameraMixin {
         userFossils: selection.userFossils,
         sites: selection.sites,
         fossils: selection.fossils,
+        missionEvents: selection.missionEvents,
+        missions: selection.missions,
       );
       if (!mounted) return;
       context.read<FieldDiscoveryCoordinator>().clearForUserChange();
       context.read<map_data.MapController>().load(force: true);
       context.read<SiteCatalogController>().load(force: true);
       context.read<FossilCatalogController>().load(force: true);
+      unawaited(context.read<AerialReconController>().refreshMissions());
       _showScanBanner(
         'Deleted ${result.userSitesDeleted} user sites · '
         '${result.userFossilsDeleted} user fossils · '
         '${result.sitesDeleted} sites · '
-        '${result.fossilsDeleted} fossils',
+        '${result.fossilsDeleted} fossils · '
+        '${result.missionEventsDeleted} mission events · '
+        '${result.missionsDeleted} missions',
       );
     } on SiteServiceException catch (error) {
       if (!mounted) return;
