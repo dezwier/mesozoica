@@ -11,6 +11,8 @@ mixin _MapScreenCameraMixin on State<MapScreen> {
   double _zoomLevel = MapConfig.mapboxRotateZoom;
   bool _didInitialCenter = false;
   bool _followUser = true;
+  /// Continuous camera follow of the focused aerial-recon scout.
+  bool _followAerialScout = false;
   /// false = north-fixed Mapbox; true = map bearing follows phone.
   bool _rotateMap = true;
   LatLng? _lastFollowedLocation;
@@ -78,10 +80,14 @@ mixin _MapScreenCameraMixin on State<MapScreen> {
       setState(() {
         _rotateMap = false;
         _followUser = false;
+        _followAerialScout = false;
       });
       _mapboxCamera.clearPendingFollow();
     } else {
-      setState(() => _followUser = false);
+      setState(() {
+        _followUser = false;
+        _followAerialScout = false;
+      });
       _mapboxCamera.clearPendingFollow();
     }
 
@@ -101,11 +107,35 @@ mixin _MapScreenCameraMixin on State<MapScreen> {
     final target = recon.scoutPosition(mission) ??
         (mission.route.isNotEmpty ? mission.route.first : null);
     if (target == null) return;
+
+    setState(() => _followAerialScout = true);
     await _mapboxCamera.centerOn(
       target,
       zoom: MapConfig.mapboxFollowZoom,
       headingDeg: headingDeg,
       durationMs: 1400,
+    );
+  }
+
+  void _maybeFollowAerialScout() {
+    if (!_followAerialScout || !_mapboxReady || _rotateMap) return;
+    final recon = context.read<AerialReconController>();
+    final mission = recon.focusedMission;
+    if (mission == null || !mission.isActive) {
+      setState(() => _followAerialScout = false);
+      return;
+    }
+    // Rebuild trigger while flying (progressTick) so follow stays live.
+    // ignore: unused_local_variable
+    final tick = recon.progressTick;
+    final target = recon.scoutPosition(mission);
+    if (target == null) return;
+    unawaited(
+      _mapboxCamera.followLocation(
+        target,
+        followUser: true,
+        zoom: MapConfig.mapboxFollowZoom,
+      ),
     );
   }
 
@@ -201,6 +231,7 @@ mixin _MapScreenCameraMixin on State<MapScreen> {
     if (location == null || !_mapboxReady || _rotateMap) return;
     setState(() {
       _followUser = true;
+      _followAerialScout = false;
       _lastFollowedLocation = location;
       _zoomLevel = MapConfig.mapboxFollowZoom;
     });

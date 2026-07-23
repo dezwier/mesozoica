@@ -113,6 +113,7 @@ class _MapScreenState extends State<MapScreen>
           }
           _setInitialCamera(locationService: locationService);
           _maybeFollowUser(locationService);
+          _maybeFollowAerialScout();
           _consumePendingFocus();
           _consumePendingAerialFocus();
         });
@@ -174,7 +175,12 @@ class _MapScreenState extends State<MapScreen>
                     onFollowCancelled: () {
                       // Rotate mode is always locked to the user.
                       if (_rotateMap) return;
-                      if (_followUser) setState(() => _followUser = false);
+                      if (_followUser || _followAerialScout) {
+                        setState(() {
+                          _followUser = false;
+                          _followAerialScout = false;
+                        });
+                      }
                     },
                     onZoomChanged: _onMapboxZoomChanged,
                     onReadyChanged: (ready) {

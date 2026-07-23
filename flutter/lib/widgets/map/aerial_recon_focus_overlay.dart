@@ -159,30 +159,42 @@ class AerialReconFocusOverlay extends StatelessWidget {
     final durationLabel = durationMin <= 1
         ? '${mission.flightDurationS}s flight'
         : '$durationMin min flight';
+    final startLabel = _startLabel(mission);
 
     if (mission.isFlying && mission.flightEndsAt != null) {
       final left = mission.flightEndsAt!.difference(DateTime.now().toUtc());
-      if (left.isNegative) return '$durationLabel · finishing…';
+      if (left.isNegative) {
+        return '$startLabel · $durationLabel · finishing…';
+      }
       final mins = left.inMinutes;
-      if (mins < 1) return '$durationLabel · <1 min left';
-      return '$durationLabel · $mins min left';
+      if (mins < 1) {
+        return '$startLabel · $durationLabel · <1 min left';
+      }
+      return '$startLabel · $durationLabel · $mins min left';
     }
     if (mission.isEnsuring) {
-      return '$durationLabel · preparing terrain';
+      return '$startLabel · $durationLabel · preparing terrain';
     }
     if (mission.status == 'cancelled') {
       final ended = mission.flightEndsAt ?? mission.createdAt;
       final local = ended.toLocal();
-      return 'Stopped '
+      return '$startLabel · stopped '
           '${local.month}/${local.day} '
           '${local.hour.toString().padLeft(2, '0')}:'
           '${local.minute.toString().padLeft(2, '0')}';
     }
     final ended = mission.flightEndsAt ?? mission.createdAt;
     final local = ended.toLocal();
-    return '$durationLabel · finished '
+    return '$startLabel · $durationLabel · finished '
         '${local.month}/${local.day} '
         '${local.hour.toString().padLeft(2, '0')}:'
         '${local.minute.toString().padLeft(2, '0')}';
+  }
+
+  static String _startLabel(AerialReconMission mission) {
+    final start = (mission.flightStartedAt ?? mission.createdAt).toLocal();
+    final hh = start.hour.toString().padLeft(2, '0');
+    final mm = start.minute.toString().padLeft(2, '0');
+    return 'Started ${start.month}/${start.day} $hh:$mm';
   }
 }

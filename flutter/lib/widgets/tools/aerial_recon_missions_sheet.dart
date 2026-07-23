@@ -209,18 +209,30 @@ class _MissionTile extends StatelessWidget {
     final durationLabel = durationMin <= 1
         ? '${mission.flightDurationS}s flight'
         : '$durationMin min flight';
+    final startLabel = _startLabel(mission);
     if (mission.isActive) {
       if (mission.isFlying && mission.flightEndsAt != null) {
         final left = mission.flightEndsAt!.difference(DateTime.now().toUtc());
-        if (left.isNegative) return '$durationLabel · finishing…';
+        if (left.isNegative) {
+          return '$startLabel · $durationLabel · finishing…';
+        }
         final mins = left.inMinutes;
-        if (mins < 1) return '$durationLabel · <1 min left';
-        return '$durationLabel · $mins min left';
+        if (mins < 1) {
+          return '$startLabel · $durationLabel · <1 min left';
+        }
+        return '$startLabel · $durationLabel · $mins min left';
       }
-      return '$durationLabel · preparing terrain';
+      return '$startLabel · $durationLabel · preparing terrain';
     }
     final ended = mission.flightEndsAt ?? mission.createdAt;
-    return '$durationLabel · ${_relative(ended)}';
+    return '$startLabel · $durationLabel · ${_relative(ended)}';
+  }
+
+  static String _startLabel(AerialReconMission mission) {
+    final start = (mission.flightStartedAt ?? mission.createdAt).toLocal();
+    final hh = start.hour.toString().padLeft(2, '0');
+    final mm = start.minute.toString().padLeft(2, '0');
+    return 'Started ${start.month}/${start.day} $hh:$mm';
   }
 
   static String _relative(DateTime utc) {

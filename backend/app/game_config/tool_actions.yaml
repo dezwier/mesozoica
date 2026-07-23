@@ -6,7 +6,7 @@ aerial_recon:
   loop_endpoint_tolerance_m: 75
   # Flight time = route_length_km / flight_speed_kmh (snapshotted as flight_duration_s)
   flight_speed_kmh: 50
-  discovery_chance: 0.2
+  discovery_chance: 0.05
   discovery_distance_m: 200
   ensure_sample_spacing_km: 0.5
   # promote ensuring → flying even if some ensure jobs are still pending

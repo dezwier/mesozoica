@@ -56,6 +56,8 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
   FieldDiscoveryCoordinator? _discoveryCoordinator;
   MapController? _mapController;
   AerialReconController? _aerialRecon;
+  int _lastAerialMissionsFetchGeneration = 0;
+  bool _aerialWasActive = false;
   StreamSubscription<RemoteMessage>? _foregroundPushSub;
   StreamSubscription<RemoteMessage>? _openedPushSub;
   bool _celebrationShowing = false;
@@ -162,7 +164,35 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
       });
       return;
     }
+
+    // While a recon is (or just was) active, reload map/catalog after each
+    // missions poll so aerial discoveries appear without waiting for a tap.
+    final gen = aerial.missionsFetchGeneration;
+    if (gen != _lastAerialMissionsFetchGeneration) {
+      _lastAerialMissionsFetchGeneration = gen;
+      final hasActive = aerial.missions.any((m) => m.isActive);
+      if (hasActive || _aerialWasActive) {
+        _refreshAfterSiteDiscovered();
+      }
+      _aerialWasActive = hasActive;
+    }
+
     setState(() {});
+  }
+
+  void _refreshAfterSiteDiscovered() {
+    if (!mounted) return;
+    context.read<MapController>().load(force: true);
+    context.read<SiteCatalogController>().load(force: true);
+    unawaited(context.read<FossilCatalogController>().load(force: true));
+    final auth = context.read<AuthController>();
+    unawaited(auth.refreshProfile());
+    final userId = auth.currentUser?.id;
+    if (userId != null) {
+      context
+          .read<NotificationController>()
+          .refreshInBackground(authenticatedUserId: userId);
+    }
   }
 
   void _onDiscoveryChanged() {
@@ -172,16 +202,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     if (pending == null) return;
 
     // Always refresh map/catalog/inbox; push already covers background UX.
-    context.read<MapController>().load(force: true);
-    context.read<SiteCatalogController>().load(force: true);
-    final auth = context.read<AuthController>();
-    unawaited(auth.refreshProfile());
-    final userId = auth.currentUser?.id;
-    if (userId != null) {
-      context
-          .read<NotificationController>()
-          .refreshInBackground(authenticatedUserId: userId);
-    }
+    _refreshAfterSiteDiscovered();
 
     // Defer the in-app celebration dialog until the app is foregrounded.
     if (!_appInForeground) return;
@@ -263,6 +284,10 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
           return;
         }
         if (!mounted) return;
+        if (type == 'site_discovered') {
+          _refreshAfterSiteDiscovered();
+          return;
+        }
         final uid = context.read<AuthController>().currentUser?.id;
         if (uid == null) return;
         context
@@ -292,6 +317,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     final siteId =
         rawSiteId != null ? int.tryParse(rawSiteId.toString()) : null;
     if (siteId == null) return;
+    _refreshAfterSiteDiscovered();
     unawaited(_showCelebration(siteId: siteId));
   }
 
@@ -435,6 +461,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     if (item.isSiteDiscovered) {
       final siteId = item.siteId;
       if (siteId == null) return;
+      _refreshAfterSiteDiscovered();
       unawaited(_showCelebration(siteId: siteId));
       return;
     }

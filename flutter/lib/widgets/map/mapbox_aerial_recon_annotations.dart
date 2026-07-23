@@ -5,14 +5,11 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
-import 'package:latlong2/latlong.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 
 import '../../controllers/aerial_recon_controller.dart';
 import '../../services/auth_service.dart';
 import '../../services/token_storage.dart';
-import '../../services/tool_service.dart';
-import '../../utils/route_geometry.dart';
 
 const Color _reconGold = Color(0xFFD4AF37);
 const int _reconGoldArgb = 0xFFD4AF37;
@@ -29,7 +26,11 @@ class MapboxAerialReconAnnotations {
   Uint8List? _cachedPuckPng;
   String? _cachedPuckKey;
   String? _lastRouteSignature;
+  final Map<int, PointAnnotation> _scoutsByMissionId = {};
   int _syncSeq = 0;
+  bool _scoutUpdateInFlight = false;
+  bool _scoutUpdateQueued = false;
+  AerialReconController? _pendingScoutController;
 
   Future<void> attach({
     required PolylineAnnotationManager lineManager,
@@ -58,8 +59,7 @@ class MapboxAerialReconAnnotations {
 
     final seq = ++_syncSeq;
     final missions = controller.missions;
-    final now = DateTime.now().toUtc();
-    final routeSignature = _routeSignature(missions, now: now);
+    final routeSignature = _routeSignature(missions);
 
     Uint8List? puckImage;
     final needsScout = missions.any((m) => m.isFlying || m.isEnsuring);
@@ -78,25 +78,21 @@ class MapboxAerialReconAnnotations {
       final lineOptions = <PolylineAnnotationOptions>[];
       for (final mission in missions) {
         if (mission.route.length < 2) continue;
-        if (mission.isActive) {
-          final frac = aerialReconProgressFraction(mission, now: now);
-          _appendProgressLines(lineOptions, mission.route, frac);
-        } else {
-          lineOptions.add(
-            PolylineAnnotationOptions(
-              geometry: LineString(
-                coordinates: [
-                  for (final p in mission.route)
-                    Position(p.longitude, p.latitude),
-                ],
-              ),
-              lineColor: _reconGoldArgb,
-              lineWidth: 3.0,
-              lineOpacity: 0.38,
-              lineSortKey: 1.0,
+        final active = mission.isActive;
+        lineOptions.add(
+          PolylineAnnotationOptions(
+            geometry: LineString(
+              coordinates: [
+                for (final p in mission.route)
+                  Position(p.longitude, p.latitude),
+              ],
             ),
-          );
-        }
+            lineColor: _reconGoldArgb,
+            lineWidth: active ? 4.0 : 3.0,
+            lineOpacity: active ? 0.95 : 0.38,
+            lineSortKey: active ? 2.0 : 1.0,
+          ),
+        );
       }
       await lineManager.deleteAll();
       if (seq != _syncSeq) return;
@@ -106,79 +102,93 @@ class MapboxAerialReconAnnotations {
       if (seq != _syncSeq) return;
     }
 
-    final scoutOptions = <PointAnnotationOptions>[];
-    if (puckImage != null) {
-      for (final mission in missions) {
-        if (!(mission.isFlying || mission.isEnsuring)) continue;
-        final pos = controller.scoutPosition(mission, now: now);
-        if (pos == null) continue;
-        final bearing = controller.scoutBearing(mission, now: now);
-        scoutOptions.add(
-          PointAnnotationOptions(
-            geometry: Point(
-              coordinates: Position(pos.longitude, pos.latitude),
-            ),
-            image: puckImage,
-            iconSize: 1.0,
-            iconRotate: bearing,
-            iconAnchor: IconAnchor.CENTER,
-            symbolSortKey: 10,
-            customData: {'missionId': '${mission.missionId}'},
-          ),
-        );
-      }
-    }
-
-    await scoutManager.deleteAll();
-    if (seq != _syncSeq) return;
-    if (scoutOptions.isNotEmpty) {
-      await scoutManager.createMulti(scoutOptions);
-    }
+    await _syncScouts(
+      controller: controller,
+      scoutManager: scoutManager,
+      puckImage: puckImage,
+      seq: seq,
+    );
   }
 
-  void _appendProgressLines(
-    List<PolylineAnnotationOptions> lineOptions,
-    List<LatLng> route,
-    double frac,
-  ) {
-    final done = RouteGeometry.prefixUpToFraction(route, frac);
-    final todo = RouteGeometry.suffixFromFraction(route, frac);
-
-    if (todo.length >= 2) {
-      lineOptions.add(
-        PolylineAnnotationOptions(
-          geometry: LineString(
-            coordinates: [
-              for (final p in todo) Position(p.longitude, p.latitude),
-            ],
-          ),
-          lineColor: _reconGoldArgb,
-          lineWidth: 3.0,
-          lineOpacity: 0.5,
-          lineSortKey: 2.0,
-        ),
-      );
+  Future<void> _syncScouts({
+    required AerialReconController controller,
+    required PointAnnotationManager scoutManager,
+    required Uint8List? puckImage,
+    required int seq,
+  }) async {
+    if (_scoutUpdateInFlight) {
+      _scoutUpdateQueued = true;
+      _pendingScoutController = controller;
+      return;
     }
-    if (done.length >= 2) {
-      lineOptions.add(
-        PolylineAnnotationOptions(
-          geometry: LineString(
-            coordinates: [
-              for (final p in done) Position(p.longitude, p.latitude),
-            ],
-          ),
-          lineColor: _reconGoldArgb,
-          lineWidth: 5.5,
-          lineOpacity: 0.95,
-          lineSortKey: 3.0,
-        ),
-      );
+    _scoutUpdateInFlight = true;
+    try {
+      do {
+        _scoutUpdateQueued = false;
+        final now = DateTime.now().toUtc();
+        final activeIds = <int>{};
+        final updates = <Future<void>>[];
+
+        for (final mission in controller.missions) {
+          if (!(mission.isFlying || mission.isEnsuring)) continue;
+          final pos = controller.scoutPosition(mission, now: now);
+          if (pos == null) continue;
+          final bearing = controller.scoutBearing(mission, now: now);
+          activeIds.add(mission.missionId);
+
+          final existing = _scoutsByMissionId[mission.missionId];
+          if (existing != null) {
+            existing.geometry = Point(
+              coordinates: Position(pos.longitude, pos.latitude),
+            );
+            existing.iconRotate = bearing;
+            updates.add(scoutManager.update(existing));
+          } else if (puckImage != null) {
+            updates.add(() async {
+              final created = await scoutManager.create(
+                PointAnnotationOptions(
+                  geometry: Point(
+                    coordinates: Position(pos.longitude, pos.latitude),
+                  ),
+                  image: puckImage,
+                  iconSize: 1.0,
+                  iconRotate: bearing,
+                  iconAnchor: IconAnchor.CENTER,
+                  symbolSortKey: 10,
+                  customData: {'missionId': '${mission.missionId}'},
+                ),
+              );
+              if (seq != _syncSeq) return;
+              _scoutsByMissionId[mission.missionId] = created;
+            }());
+          }
+        }
+
+        for (final id in _scoutsByMissionId.keys.toList()) {
+          if (activeIds.contains(id)) continue;
+          final stale = _scoutsByMissionId.remove(id);
+          if (stale != null) {
+            updates.add(scoutManager.delete(stale));
+          }
+        }
+
+        if (updates.isNotEmpty) await Future.wait(updates);
+        if (seq != _syncSeq) return;
+
+        if (_scoutUpdateQueued) {
+          controller = _pendingScoutController ?? controller;
+          _pendingScoutController = null;
+        }
+      } while (_scoutUpdateQueued && seq == _syncSeq);
+    } finally {
+      _scoutUpdateInFlight = false;
     }
   }
 
   Future<void> clear() async {
     _syncSeq++;
     _lastRouteSignature = null;
+    _scoutsByMissionId.clear();
     await _lineManager?.deleteAll();
     await _scoutManager?.deleteAll();
   }
@@ -186,6 +196,7 @@ class MapboxAerialReconAnnotations {
   void dispose() {
     _syncSeq++;
     _lastRouteSignature = null;
+    _scoutsByMissionId.clear();
     _tapCancelable?.cancel();
     _tapCancelable = null;
     _onScoutTap = null;
@@ -193,7 +204,7 @@ class MapboxAerialReconAnnotations {
     _scoutManager = null;
   }
 
-  String _routeSignature(List<AerialReconMission> missions, {required DateTime now}) {
+  String _routeSignature(List missions) {
     final buf = StringBuffer();
     for (final mission in missions) {
       buf
@@ -201,15 +212,8 @@ class MapboxAerialReconAnnotations {
         ..write(':')
         ..write(mission.status)
         ..write(':')
-        ..write(mission.route.length);
-      if (mission.isActive) {
-        final frac = aerialReconProgressFraction(mission, now: now);
-        // Quantize so the split stroke updates about once per percent.
-        buf
-          ..write(':')
-          ..write((frac * 100).round());
-      }
-      buf.write(';');
+        ..write(mission.route.length)
+        ..write(';');
     }
     return buf.toString();
   }

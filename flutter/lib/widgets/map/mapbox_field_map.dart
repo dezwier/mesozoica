@@ -373,6 +373,7 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
       } else {
         _exitFollowPuck();
       }
+      unawaited(_syncAerialRecon());
     }
 
     // North-fixed GPS follow only — rotate mode is owned by FollowPuck.
@@ -625,8 +626,13 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
   Future<void> _syncAerialRecon() async {
     final aerial = _aerialReconAnnotations;
     final controller = widget.aerialRecon;
-    if (aerial == null || controller == null || !_ready) return;
+    if (aerial == null || !_ready) return;
     try {
+      // Keep rotate mode uncluttered — no scout loops/pucks over FollowPuck.
+      if (widget.rotateWithHeading || controller == null) {
+        await aerial.clear();
+        return;
+      }
       await aerial.sync(controller);
     } catch (error) {
       if (kDebugMode) {

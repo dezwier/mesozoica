@@ -319,7 +319,13 @@ class AerialReconMission {
 
   static DateTime? _parseDate(Object? value) {
     if (value is! String || value.isEmpty) return null;
-    return DateTime.tryParse(value)?.toUtc();
+    // Backend stores/sends naive UTC (no Z). Treat missing timezone as UTC so
+    // flight progress is not shifted into the past by the device offset.
+    final hasTz =
+        value.endsWith('Z') || RegExp(r'[+-]\d{2}:?\d{2}$').hasMatch(value);
+    final parsed =
+        DateTime.tryParse(hasTz ? value : '${value}Z');
+    return parsed?.toUtc();
   }
 }
 

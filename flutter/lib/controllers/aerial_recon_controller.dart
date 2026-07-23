@@ -28,6 +28,8 @@ class AerialReconController extends ChangeNotifier {
   Timer? _refreshTimer;
   Timer? _progressTimer;
   int _progressTick = 0;
+  /// Bumps only after a successful missions list fetch (not progress ticks).
+  int _missionsFetchGeneration = 0;
   AerialReconMission? _focusedMission;
   AerialReconMission? _pendingFocusMission;
 
@@ -46,6 +48,9 @@ class AerialReconController extends ChangeNotifier {
 
   /// Bumps while any flying mission is active so map layers can re-interpolate.
   int get progressTick => _progressTick;
+
+  /// Increments when missions are reloaded from the server.
+  int get missionsFetchGeneration => _missionsFetchGeneration;
 
   AerialReconActionConfig get _cfg =>
       GameConfig.instance.toolActions.aerialRecon;
@@ -301,6 +306,7 @@ class AerialReconController extends ChangeNotifier {
     try {
       final items = await _toolService.fetchAerialReconMissions();
       _missions = items;
+      _missionsFetchGeneration++;
       final focusedId = _focusedMission?.missionId;
       if (focusedId != null) {
         AerialReconMission? match;
@@ -360,7 +366,8 @@ class AerialReconController extends ChangeNotifier {
     final needsTick = _missions.any((m) => m.isFlying) ||
         (_focusedMission?.isFlying ?? false);
     if (needsTick) {
-      _progressTimer ??= Timer.periodic(const Duration(seconds: 1), (_) {
+      // ~4 Hz keeps the scout puck moving smoothly without thrashing Mapbox.
+      _progressTimer ??= Timer.periodic(const Duration(milliseconds: 250), (_) {
         _progressTick++;
         notifyListeners();
       });

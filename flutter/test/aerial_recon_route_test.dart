@@ -93,5 +93,28 @@ void main() {
       final now = started.add(const Duration(seconds: 200));
       expect(aerialReconProgressFraction(m, now: now), 1.0);
     });
+
+    test('naive UTC timestamps from API are not shifted by local offset', () {
+      // Mirrors FastAPI serialization of naive utcnow() (no Z suffix).
+      final json = <String, dynamic>{
+        'mission_id': 1,
+        'status': 'flying',
+        'route': [
+          {'lat': 40.0, 'lon': -100.0},
+          {'lat': 40.1, 'lon': -100.0},
+        ],
+        'route_length_km': 11,
+        'flight_duration_s': 3600,
+        'flight_started_at': '2026-01-01T12:00:00',
+        'flight_ends_at': '2026-01-01T13:00:00',
+        'created_at': '2026-01-01T11:00:00',
+        'tool_id': 1,
+      };
+      final m = AerialReconMission.fromJson(json);
+      expect(m.flightStartedAt!.isUtc, isTrue);
+      expect(m.flightStartedAt, DateTime.utc(2026, 1, 1, 12));
+      final now = DateTime.utc(2026, 1, 1, 12, 30);
+      expect(aerialReconProgressFraction(m, now: now), closeTo(0.5, 1e-9));
+    });
   });
 }
