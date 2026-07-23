@@ -266,12 +266,20 @@ class AerialReconActionConfig(BaseModel):
     discovery_distance_m: float = 200.0
     ensure_sample_spacing_km: float = 0.5
     ensure_timeout_s: int = 600
+    short_route_warn_fraction: float = 0.7
 
     @field_validator("discovery_chance")
     @classmethod
     def _validate_discovery_chance(cls, value: float) -> float:
         if value < 0.0 or value > 1.0:
             raise ValueError("discovery_chance must be between 0.0 and 1.0")
+        return value
+
+    @field_validator("short_route_warn_fraction")
+    @classmethod
+    def _validate_short_route_warn_fraction(cls, value: float) -> float:
+        if value < 0.0 or value > 1.0:
+            raise ValueError("short_route_warn_fraction must be between 0.0 and 1.0")
         return value
 
 

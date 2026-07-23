@@ -426,7 +426,11 @@ class _MapScreenState extends State<MapScreen>
                 ),
               ),
             if (aerialDrawMode)
-              AerialReconDrawOverlay(camera: _mapboxCamera),
+              AerialReconDrawOverlay(
+                camera: _mapboxCamera,
+                currentZoom: _zoomLevel,
+                onZoomChanged: _onZoomChanged,
+              ),
           ],
         );
       },

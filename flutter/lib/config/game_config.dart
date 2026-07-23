@@ -338,6 +338,7 @@ class AerialReconActionConfig {
     required this.discoveryDistanceM,
     required this.ensureSampleSpacingKm,
     required this.ensureTimeoutS,
+    required this.shortRouteWarnFraction,
   });
 
   final double maxRouteKm;
@@ -347,6 +348,7 @@ class AerialReconActionConfig {
   final double discoveryDistanceM;
   final double ensureSampleSpacingKm;
   final int ensureTimeoutS;
+  final double shortRouteWarnFraction;
 
   factory AerialReconActionConfig.fromYaml(Map<String, dynamic> yaml) {
     return AerialReconActionConfig(
@@ -357,6 +359,7 @@ class AerialReconActionConfig {
       discoveryDistanceM: _asDouble(yaml['discovery_distance_m'], 200.0),
       ensureSampleSpacingKm: _asDouble(yaml['ensure_sample_spacing_km'], 0.5),
       ensureTimeoutS: _asInt(yaml['ensure_timeout_s'], 600),
+      shortRouteWarnFraction: _asDouble(yaml['short_route_warn_fraction'], 0.7),
     );
   }
 }

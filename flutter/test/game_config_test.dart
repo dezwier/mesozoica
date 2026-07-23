@@ -38,6 +38,7 @@ void main() {
     expect(config.toolActions.aerialRecon.flightDurationS, 2700);
     expect(config.toolActions.aerialRecon.discoveryChance, 0.2);
     expect(config.toolActions.aerialRecon.discoveryDistanceM, 200.0);
+    expect(config.toolActions.aerialRecon.shortRouteWarnFraction, 0.7);
 
     expect(GameConfig.isLoaded, isTrue);
     expect(GameConfig.instance.siteDiscovery.maxDistanceM, 50.0);

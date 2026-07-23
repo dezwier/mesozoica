@@ -10,3 +10,5 @@ aerial_recon:
   ensure_sample_spacing_km: 0.5
   # promote ensuring → flying even if some ensure jobs are still pending
   ensure_timeout_s: 600
+  # warn on confirm when drawn length is below this fraction of max_route_km
+  short_route_warn_fraction: 0.7
