@@ -15,6 +15,8 @@ from app.models.site import Site
 from app.models.tool import Tool
 from app.models.tool_mission import (
     ACTION_KEY_AERIAL_RECON,
+    MISSION_STATUS_CANCELLED,
+    MISSION_STATUS_DONE,
     MISSION_STATUS_ENSURING,
     MISSION_STATUS_FLYING,
     ToolMission,
@@ -23,11 +25,13 @@ from app.models.tool_mission_event import (
     EVENT_STATUS_DONE,
     EVENT_STATUS_MISS,
     EVENT_STATUS_PENDING,
+    EVENT_STATUS_SKIPPED,
     ToolMissionEvent,
 )
 from app.models.user import User
 from app.models.user_tool import UserTool
 from app.services.tool_action_service.aerial_recon import (
+    cancel_aerial_recon_mission,
     process_due_mission_events,
     promote_ensuring_missions,
     start_aerial_recon_mission,
@@ -420,3 +424,199 @@ def test_point_at_fraction_matches_discovery_timing():
 
     along = haversine_km(route[0].lat, route[0].lon, mid.lat, mid.lon)
     assert abs(along / length - 0.5) < 0.05
+
+
+def test_prefix_up_to_fraction():
+    from app.services.tool_action_service.route_geometry import (
+        RoutePoint,
+        prefix_up_to_fraction,
+        route_length_km,
+    )
+
+    route = [
+        RoutePoint(40.0, -100.0),
+        RoutePoint(40.1, -100.0),
+        RoutePoint(40.1, -99.9),
+    ]
+    assert prefix_up_to_fraction(route, 0.0) == [route[0]]
+    assert prefix_up_to_fraction(route, 1.0) == route
+    half = prefix_up_to_fraction(route, 0.5)
+    assert half[0] == route[0]
+    assert len(half) >= 2
+    assert abs(route_length_km(half) / route_length_km(route) - 0.5) < 0.05
+
+
+def test_cancel_flying_truncates_and_skips_pending(client, session: Session):
+    tool = _aerial_tool(session)
+    user = _user(session)
+    _grant(session, user_id=int(user.id), tool_id=int(tool.id))
+    now = datetime.utcnow()
+    full_route = _square_route(40.0, -100.0, delta=0.02)
+    mission = ToolMission(
+        user_id=int(user.id),
+        tool_id=int(tool.id),
+        action_key=ACTION_KEY_AERIAL_RECON,
+        status=MISSION_STATUS_FLYING,
+        route_json=json.dumps(full_route),
+        route_length_km=8.0,
+        flight_duration_s=100,
+        flight_started_at=now - timedelta(seconds=40),
+        flight_ends_at=now + timedelta(seconds=60),
+        created_at=now - timedelta(seconds=40),
+        updated_at=now - timedelta(seconds=40),
+    )
+    session.add(mission)
+    session.commit()
+    session.refresh(mission)
+
+    session.add(
+        ToolMissionEvent(
+            mission_id=int(mission.id),
+            event_type="discover_site",
+            site_id=9201,
+            due_at=now - timedelta(seconds=10),
+            status=EVENT_STATUS_DONE,
+            lat=40.0,
+            lon=-100.0,
+            distance_along_km=0.0,
+            processed_at=now - timedelta(seconds=10),
+        )
+    )
+    session.add(
+        ToolMissionEvent(
+            mission_id=int(mission.id),
+            event_type="discover_site",
+            site_id=9202,
+            due_at=now + timedelta(seconds=30),
+            status=EVENT_STATUS_PENDING,
+            lat=40.02,
+            lon=-100.0,
+            distance_along_km=4.0,
+        )
+    )
+    session.commit()
+
+    original_len = mission.route_length_km
+    response = client.post(
+        f"/api/v1/tools/missions/aerial-recon/{mission.id}/cancel",
+        headers=_auth_headers(user),
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["status"] == MISSION_STATUS_CANCELLED
+    assert body["route_length_km"] < original_len
+    assert len(body["route"]) >= 2
+    assert body["route"][0]["lat"] == full_route[0]["lat"]
+
+    session.refresh(mission)
+    assert mission.status == MISSION_STATUS_CANCELLED
+    events = {
+        e.site_id: e
+        for e in session.exec(select(ToolMissionEvent)).all()
+    }
+    assert events[9201].status == EVENT_STATUS_DONE
+    assert events[9202].status == EVENT_STATUS_SKIPPED
+
+
+def test_cancel_done_rejected(client, session: Session):
+    tool = _aerial_tool(session)
+    user = _user(session)
+    _grant(session, user_id=int(user.id), tool_id=int(tool.id))
+    now = datetime.utcnow()
+    mission = ToolMission(
+        user_id=int(user.id),
+        tool_id=int(tool.id),
+        action_key=ACTION_KEY_AERIAL_RECON,
+        status=MISSION_STATUS_DONE,
+        route_json=json.dumps(_square_route(40.0, -100.0)),
+        route_length_km=4.0,
+        flight_duration_s=60,
+        flight_started_at=now - timedelta(minutes=5),
+        flight_ends_at=now - timedelta(minutes=1),
+        created_at=now - timedelta(minutes=5),
+        updated_at=now - timedelta(minutes=1),
+    )
+    session.add(mission)
+    session.commit()
+    session.refresh(mission)
+
+    response = client.post(
+        f"/api/v1/tools/missions/aerial-recon/{mission.id}/cancel",
+        headers=_auth_headers(user),
+    )
+    assert response.status_code == 400
+    assert "in-progress" in response.json()["detail"].lower()
+
+
+def test_new_mission_allowed_after_cancel(client, session: Session):
+    tool = _aerial_tool(session)
+    user = _user(session)
+    _grant(session, user_id=int(user.id), tool_id=int(tool.id))
+    origin_lat, origin_lon = 40.0, -100.0
+    route = _square_route(origin_lat, origin_lon)
+
+    first = client.post(
+        f"/api/v1/tools/{tool.id}/actions/aerial-recon",
+        headers=_auth_headers(user),
+        json={
+            "route": route,
+            "origin_lat": origin_lat,
+            "origin_lon": origin_lon,
+        },
+    )
+    assert first.status_code == 202
+    mission_id = first.json()["mission_id"]
+
+    blocked = client.post(
+        f"/api/v1/tools/{tool.id}/actions/aerial-recon",
+        headers=_auth_headers(user),
+        json={
+            "route": route,
+            "origin_lat": origin_lat,
+            "origin_lon": origin_lon,
+        },
+    )
+    assert blocked.status_code == 400
+
+    cancelled = client.post(
+        f"/api/v1/tools/missions/aerial-recon/{mission_id}/cancel",
+        headers=_auth_headers(user),
+    )
+    assert cancelled.status_code == 200
+    assert cancelled.json()["status"] == MISSION_STATUS_CANCELLED
+
+    second = client.post(
+        f"/api/v1/tools/{tool.id}/actions/aerial-recon",
+        headers=_auth_headers(user),
+        json={
+            "route": route,
+            "origin_lat": origin_lat,
+            "origin_lon": origin_lon,
+        },
+    )
+    assert second.status_code == 202
+    assert second.json()["mission_id"] != mission_id
+
+
+def test_cancel_service_ensuring_truncates_to_start(session: Session):
+    tool = _aerial_tool(session)
+    user = _user(session)
+    _grant(session, user_id=int(user.id), tool_id=int(tool.id))
+    origin_lat, origin_lon = 40.0, -100.0
+    mission = start_aerial_recon_mission(
+        session,
+        user_id=int(user.id),
+        tool_id=int(tool.id),
+        route=_square_route(origin_lat, origin_lon),
+        origin_lat=origin_lat,
+        origin_lon=origin_lon,
+    )
+    assert mission.status == MISSION_STATUS_ENSURING
+    cancelled = cancel_aerial_recon_mission(
+        session, user_id=int(user.id), mission_id=int(mission.id)
+    )
+    assert cancelled.status == MISSION_STATUS_CANCELLED
+    route = json.loads(cancelled.route_json)
+    assert len(route) == 1
+    assert route[0]["lat"] == origin_lat
+    assert cancelled.route_length_km == 0.0

@@ -197,6 +197,8 @@ class _MissionTile extends StatelessWidget {
         return 'Completed';
       case 'failed':
         return 'Failed';
+      case 'cancelled':
+        return 'Cancelled';
       default:
         return status;
     }

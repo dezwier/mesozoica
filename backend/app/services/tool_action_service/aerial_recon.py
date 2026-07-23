@@ -18,6 +18,7 @@ from app.models.site import Site
 from app.models.tool import Tool
 from app.models.tool_mission import (
     ACTION_KEY_AERIAL_RECON,
+    MISSION_STATUS_CANCELLED,
     MISSION_STATUS_DONE,
     MISSION_STATUS_ENSURING,
     MISSION_STATUS_FAILED,
@@ -45,6 +46,7 @@ from app.services.tool_action_service.discover_aerial import discover_site_from_
 from app.services.tool_action_service.route_geometry import (
     RoutePoint,
     point_to_route_distance_km,
+    prefix_up_to_fraction,
     route_length_km,
     sample_along_route,
 )
@@ -196,6 +198,79 @@ def list_aerial_recon_missions(
 
 def mission_route_dicts(mission: ToolMission) -> list[dict[str, float]]:
     return [{"lat": p.lat, "lon": p.lon} for p in _load_route(mission)]
+
+
+def _flight_progress_fraction(mission: ToolMission, *, now: datetime | None = None) -> float:
+    """Arc fraction 0..1 matching client / discovery scheduling."""
+    if mission.status == MISSION_STATUS_ENSURING or mission.flight_started_at is None:
+        return 0.0
+    duration = mission.flight_duration_s
+    if duration <= 0:
+        return 1.0 if mission.status in (
+            MISSION_STATUS_DONE,
+            MISSION_STATUS_FAILED,
+            MISSION_STATUS_CANCELLED,
+        ) else 0.0
+    clock = now if now is not None else _utcnow()
+    started = mission.flight_started_at
+    elapsed = (clock - started).total_seconds()
+    return min(1.0, max(0.0, elapsed / duration))
+
+
+def cancel_aerial_recon_mission(
+    session: Session,
+    *,
+    user_id: int,
+    mission_id: int,
+) -> ToolMission:
+    """Abort an active mission: truncate route at scout, skip pending discoveries."""
+    mission = session.get(ToolMission, mission_id)
+    if (
+        mission is None
+        or mission.user_id != user_id
+        or mission.action_key != ACTION_KEY_AERIAL_RECON
+    ):
+        raise NotFoundError(f"Aerial Recon mission {mission_id} not found")
+    if mission.status not in _ACTIVE_STATUSES:
+        raise ValidationError("Only an in-progress Aerial Recon can be cancelled")
+
+    now = _utcnow()
+    frac = _flight_progress_fraction(mission, now=now)
+    route = _load_route(mission)
+    truncated = prefix_up_to_fraction(route, frac)
+
+    mission.route_json = json.dumps(
+        [{"lat": p.lat, "lon": p.lon} for p in truncated],
+        separators=(",", ":"),
+    )
+    mission.route_length_km = route_length_km(truncated)
+    mission.status = MISSION_STATUS_CANCELLED
+    mission.flight_ends_at = now
+    mission.updated_at = now
+    session.add(mission)
+
+    pending = list(
+        session.exec(
+            select(ToolMissionEvent).where(
+                col(ToolMissionEvent.mission_id) == mission.id,
+                col(ToolMissionEvent.status) == EVENT_STATUS_PENDING,
+            )
+        ).all()
+    )
+    for event in pending:
+        event.status = EVENT_STATUS_SKIPPED
+        event.processed_at = now
+        session.add(event)
+
+    session.commit()
+    session.refresh(mission)
+    logger.info(
+        "aerial_recon mission=%s cancelled frac=%.3f pending_skipped=%s",
+        mission.id,
+        frac,
+        len(pending),
+    )
+    return mission
 
 
 def _ensure_jobs_ready(session: Session, mission: ToolMission) -> bool:

@@ -27,6 +27,35 @@ void main() {
     });
   });
 
+  group('RouteGeometry.prefixUpToFraction / suffixFromFraction', () {
+    test('prefix at 0 is start; at 1 is full route', () {
+      final route = [
+        const LatLng(40.0, -100.0),
+        const LatLng(40.1, -100.0),
+        const LatLng(40.1, -99.9),
+      ];
+      expect(RouteGeometry.prefixUpToFraction(route, 0), [route.first]);
+      expect(RouteGeometry.prefixUpToFraction(route, 1), route);
+    });
+
+    test('prefix and suffix meet at midpoint fraction', () {
+      final route = [
+        const LatLng(40.0, -100.0),
+        const LatLng(40.1, -100.0),
+      ];
+      final prefix = RouteGeometry.prefixUpToFraction(route, 0.5);
+      final suffix = RouteGeometry.suffixFromFraction(route, 0.5);
+      expect(prefix.length, greaterThanOrEqualTo(2));
+      expect(suffix.length, greaterThanOrEqualTo(2));
+      expect(prefix.last.latitude, closeTo(suffix.first.latitude, 1e-9));
+      expect(prefix.last.longitude, closeTo(suffix.first.longitude, 1e-9));
+      expect(
+        RouteGeometry.lengthKm(prefix) + RouteGeometry.lengthKm(suffix),
+        closeTo(RouteGeometry.lengthKm(route), 0.02),
+      );
+    });
+  });
+
   group('aerialReconProgressFraction', () {
     AerialReconMission mission({
       required String status,

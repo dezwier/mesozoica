@@ -16,6 +16,7 @@ from app.models.tool_mission import ToolMission
 from app.models.user import User
 from app.schemas.tool import ToolCategoryItem, ToolCategoryListResponse, ToolListResponse, ToolSummary
 from app.services.tool_action_service import (
+    cancel_aerial_recon_mission,
     list_aerial_recon_missions,
     mission_route_dicts,
     start_aerial_recon_mission,
@@ -170,6 +171,24 @@ def get_aerial_recon_missions(
     return AerialReconMissionListResponse(
         items=[_mission_item(session, m) for m in missions]
     )
+
+
+@router.post(
+    "/missions/aerial-recon/{mission_id}/cancel",
+    response_model=AerialReconResponse,
+)
+def post_cancel_aerial_recon(
+    mission_id: int,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+) -> AerialReconResponse:
+    mission = cancel_aerial_recon_mission(
+        session,
+        user_id=int(current_user.id),
+        mission_id=mission_id,
+    )
+    item = _mission_item(session, mission)
+    return AerialReconResponse(**item.model_dump())
 
 
 @router.post("/{tool_id}/collect", response_model=ToolSummary)

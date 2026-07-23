@@ -352,6 +352,9 @@ class AppConfig {
   static Uri aerialReconMissionsUri() =>
       Uri.parse('$baseApiUrl/api/v1/tools/missions/aerial-recon');
 
+  static Uri aerialReconCancelUri(int missionId) =>
+      Uri.parse('$baseApiUrl/api/v1/tools/missions/aerial-recon/$missionId/cancel');
+
   static Future<bool> checkApiHealth() async {
     try {
       final response = await http.get(healthUri).timeout(const Duration(seconds: 15));

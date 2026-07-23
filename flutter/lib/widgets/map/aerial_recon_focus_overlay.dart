@@ -6,7 +6,7 @@ import '../../controllers/tool_action_router.dart';
 import '../../services/tool_service.dart';
 import '../../shell/map_chrome_insets.dart';
 
-/// Top banner while a recon mission is focused from the Info sheet.
+/// Top banner while a recon mission is focused from the Info sheet or scout tap.
 class AerialReconFocusOverlay extends StatelessWidget {
   const AerialReconFocusOverlay({super.key});
 
@@ -61,6 +61,22 @@ class AerialReconFocusOverlay extends StatelessWidget {
                         ),
                       ),
                     ],
+                    if (mission.isActive) ...[
+                      const SizedBox(height: 8),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: TextButton(
+                          onPressed: () => _confirmCancel(context, mission),
+                          style: TextButton.styleFrom(
+                            foregroundColor: theme.colorScheme.error,
+                            visualDensity: VisualDensity.compact,
+                            padding: EdgeInsets.zero,
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          ),
+                          child: const Text('Cancel recon'),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -78,6 +94,49 @@ class AerialReconFocusOverlay extends StatelessWidget {
     );
   }
 
+  static Future<void> _confirmCancel(
+    BuildContext context,
+    AerialReconMission mission,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Cancel Aerial Recon?'),
+          content: const Text(
+            'The scout will stop where it is. Sites already found stay '
+            'discovered; nothing further will be found on this loop.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Keep flying'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              style: TextButton.styleFrom(
+                foregroundColor: Theme.of(dialogContext).colorScheme.error,
+              ),
+              child: const Text('Cancel recon'),
+            ),
+          ],
+        );
+      },
+    );
+    if (confirmed != true || !context.mounted) return;
+
+    final ok = await context
+        .read<AerialReconController>()
+        .cancelMission(mission.missionId);
+    if (!context.mounted) return;
+    if (!ok) {
+      final message = context.read<AerialReconController>().message;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message ?? 'Failed to cancel Aerial Recon')),
+      );
+    }
+  }
+
   static String _statusLabel(String status) {
     switch (status) {
       case 'ensuring':
@@ -88,6 +147,8 @@ class AerialReconFocusOverlay extends StatelessWidget {
         return 'Completed';
       case 'failed':
         return 'Failed';
+      case 'cancelled':
+        return 'Cancelled';
       default:
         return status;
     }
@@ -108,6 +169,14 @@ class AerialReconFocusOverlay extends StatelessWidget {
     }
     if (mission.isEnsuring) {
       return '$durationLabel · preparing terrain';
+    }
+    if (mission.status == 'cancelled') {
+      final ended = mission.flightEndsAt ?? mission.createdAt;
+      final local = ended.toLocal();
+      return 'Stopped '
+          '${local.month}/${local.day} '
+          '${local.hour.toString().padLeft(2, '0')}:'
+          '${local.minute.toString().padLeft(2, '0')}';
     }
     final ended = mission.flightEndsAt ?? mission.createdAt;
     final local = ended.toLocal();

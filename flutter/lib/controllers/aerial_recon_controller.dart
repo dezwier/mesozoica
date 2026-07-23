@@ -266,6 +266,26 @@ class AerialReconController extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Cancel an active mission; keeps focus on the truncated cancelled route.
+  Future<bool> cancelMission(int missionId) async {
+    try {
+      final mission = await _toolService.cancelAerialRecon(missionId);
+      if (_focusedMission?.missionId == missionId) {
+        _focusedMission = mission;
+      }
+      _upsertMission(mission);
+      return true;
+    } on ToolServiceException catch (error) {
+      _message = error.message;
+      notifyListeners();
+      return false;
+    } catch (_) {
+      _message = 'Failed to cancel Aerial Recon';
+      notifyListeners();
+      return false;
+    }
+  }
+
   /// One-shot camera request; cleared when MapScreen consumes it.
   AerialReconMission? takePendingFocusMission() {
     final mission = _pendingFocusMission;

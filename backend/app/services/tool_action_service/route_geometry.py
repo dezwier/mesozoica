@@ -55,6 +55,51 @@ def point_at_fraction(points: list[RoutePoint], fraction: float) -> RoutePoint:
     return points[-1]
 
 
+def prefix_up_to_fraction(
+    points: list[RoutePoint], fraction: float
+) -> list[RoutePoint]:
+    """Vertices from start up to [fraction], ending at the interpolated point.
+
+    Fraction 0 returns ``[start]``. Fraction 1 returns a copy of the full route.
+    """
+    if not points:
+        raise ValueError("route must not be empty")
+    if len(points) == 1:
+        return [points[0]]
+    frac = min(1.0, max(0.0, fraction))
+    if frac <= 0:
+        return [points[0]]
+    if frac >= 1:
+        return list(points)
+
+    total = route_length_km(points)
+    if total <= 0:
+        return [points[0]]
+
+    target = total * frac
+    prefix: list[RoutePoint] = [points[0]]
+    traveled = 0.0
+    for i in range(1, len(points)):
+        a = points[i - 1]
+        b = points[i]
+        seg = haversine_km(a.lat, a.lon, b.lat, b.lon)
+        if seg <= 0:
+            continue
+        if traveled + seg >= target:
+            t = (target - traveled) / seg
+            end = RoutePoint(
+                lat=a.lat + (b.lat - a.lat) * t,
+                lon=a.lon + (b.lon - a.lon) * t,
+            )
+            # Avoid duplicating when we land exactly on a vertex.
+            if end != a:
+                prefix.append(end)
+            return prefix
+        prefix.append(b)
+        traveled += seg
+    return list(points)
+
+
 def sample_along_route(
     points: list[RoutePoint],
     *,

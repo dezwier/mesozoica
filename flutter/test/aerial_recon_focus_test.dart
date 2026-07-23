@@ -46,10 +46,11 @@ void main() {
       mission(id: 2, status: 'flying'),
       mission(id: 3, status: 'done'),
       mission(id: 4, status: 'failed'),
+      mission(id: 5, status: 'cancelled'),
     ];
     final ongoing = items.where((m) => m.isActive).toList();
     final past = items.where((m) => m.isPast).toList();
     expect(ongoing.map((m) => m.missionId), [1, 2]);
-    expect(past.map((m) => m.missionId), [3, 4]);
+    expect(past.map((m) => m.missionId), [3, 4, 5]);
   });
 }

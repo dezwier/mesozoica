@@ -5,11 +5,14 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
+import 'package:latlong2/latlong.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 
 import '../../controllers/aerial_recon_controller.dart';
 import '../../services/auth_service.dart';
 import '../../services/token_storage.dart';
+import '../../services/tool_service.dart';
+import '../../utils/route_geometry.dart';
 
 const Color _reconGold = Color(0xFFD4AF37);
 const int _reconGoldArgb = 0xFFD4AF37;
@@ -21,6 +24,8 @@ const String _scoutPuckFallbackAsset = 'assets/images/logo.png';
 class MapboxAerialReconAnnotations {
   PolylineAnnotationManager? _lineManager;
   PointAnnotationManager? _scoutManager;
+  Cancelable? _tapCancelable;
+  void Function(int missionId)? _onScoutTap;
   Uint8List? _cachedPuckPng;
   String? _cachedPuckKey;
   String? _lastRouteSignature;
@@ -29,9 +34,21 @@ class MapboxAerialReconAnnotations {
   Future<void> attach({
     required PolylineAnnotationManager lineManager,
     required PointAnnotationManager scoutManager,
+    void Function(int missionId)? onScoutTap,
   }) async {
     _lineManager = lineManager;
     _scoutManager = scoutManager;
+    _onScoutTap = onScoutTap;
+    _tapCancelable?.cancel();
+    _tapCancelable = scoutManager.tapEvents(onTap: _handleScoutTap);
+  }
+
+  void _handleScoutTap(PointAnnotation annotation) {
+    final onTap = _onScoutTap;
+    if (onTap == null) return;
+    final missionId = _missionIdFromCustomData(annotation.customData);
+    if (missionId == null) return;
+    onTap(missionId);
   }
 
   Future<void> sync(AerialReconController controller) async {
@@ -42,7 +59,7 @@ class MapboxAerialReconAnnotations {
     final seq = ++_syncSeq;
     final missions = controller.missions;
     final now = DateTime.now().toUtc();
-    final routeSignature = _routeSignature(missions);
+    final routeSignature = _routeSignature(missions, now: now);
 
     Uint8List? puckImage;
     final needsScout = missions.any((m) => m.isFlying || m.isEnsuring);
@@ -61,21 +78,25 @@ class MapboxAerialReconAnnotations {
       final lineOptions = <PolylineAnnotationOptions>[];
       for (final mission in missions) {
         if (mission.route.length < 2) continue;
-        final active = mission.isActive;
-        lineOptions.add(
-          PolylineAnnotationOptions(
-            geometry: LineString(
-              coordinates: [
-                for (final p in mission.route)
-                  Position(p.longitude, p.latitude),
-              ],
+        if (mission.isActive) {
+          final frac = aerialReconProgressFraction(mission, now: now);
+          _appendProgressLines(lineOptions, mission.route, frac);
+        } else {
+          lineOptions.add(
+            PolylineAnnotationOptions(
+              geometry: LineString(
+                coordinates: [
+                  for (final p in mission.route)
+                    Position(p.longitude, p.latitude),
+                ],
+              ),
+              lineColor: _reconGoldArgb,
+              lineWidth: 3.0,
+              lineOpacity: 0.38,
+              lineSortKey: 1.0,
             ),
-            lineColor: _reconGoldArgb,
-            lineWidth: active ? 4.0 : 3.0,
-            lineOpacity: active ? 0.95 : 0.38,
-            lineSortKey: active ? 2.0 : 1.0,
-          ),
-        );
+          );
+        }
       }
       await lineManager.deleteAll();
       if (seq != _syncSeq) return;
@@ -102,6 +123,7 @@ class MapboxAerialReconAnnotations {
             iconRotate: bearing,
             iconAnchor: IconAnchor.CENTER,
             symbolSortKey: 10,
+            customData: {'missionId': '${mission.missionId}'},
           ),
         );
       }
@@ -111,6 +133,46 @@ class MapboxAerialReconAnnotations {
     if (seq != _syncSeq) return;
     if (scoutOptions.isNotEmpty) {
       await scoutManager.createMulti(scoutOptions);
+    }
+  }
+
+  void _appendProgressLines(
+    List<PolylineAnnotationOptions> lineOptions,
+    List<LatLng> route,
+    double frac,
+  ) {
+    final done = RouteGeometry.prefixUpToFraction(route, frac);
+    final todo = RouteGeometry.suffixFromFraction(route, frac);
+
+    if (todo.length >= 2) {
+      lineOptions.add(
+        PolylineAnnotationOptions(
+          geometry: LineString(
+            coordinates: [
+              for (final p in todo) Position(p.longitude, p.latitude),
+            ],
+          ),
+          lineColor: _reconGoldArgb,
+          lineWidth: 3.0,
+          lineOpacity: 0.5,
+          lineSortKey: 2.0,
+        ),
+      );
+    }
+    if (done.length >= 2) {
+      lineOptions.add(
+        PolylineAnnotationOptions(
+          geometry: LineString(
+            coordinates: [
+              for (final p in done) Position(p.longitude, p.latitude),
+            ],
+          ),
+          lineColor: _reconGoldArgb,
+          lineWidth: 5.5,
+          lineOpacity: 0.95,
+          lineSortKey: 3.0,
+        ),
+      );
     }
   }
 
@@ -124,11 +186,14 @@ class MapboxAerialReconAnnotations {
   void dispose() {
     _syncSeq++;
     _lastRouteSignature = null;
+    _tapCancelable?.cancel();
+    _tapCancelable = null;
+    _onScoutTap = null;
     _lineManager = null;
     _scoutManager = null;
   }
 
-  String _routeSignature(List missions) {
+  String _routeSignature(List<AerialReconMission> missions, {required DateTime now}) {
     final buf = StringBuffer();
     for (final mission in missions) {
       buf
@@ -136,10 +201,25 @@ class MapboxAerialReconAnnotations {
         ..write(':')
         ..write(mission.status)
         ..write(':')
-        ..write(mission.route.length)
-        ..write(';');
+        ..write(mission.route.length);
+      if (mission.isActive) {
+        final frac = aerialReconProgressFraction(mission, now: now);
+        // Quantize so the split stroke updates about once per percent.
+        buf
+          ..write(':')
+          ..write((frac * 100).round());
+      }
+      buf.write(';');
     }
     return buf.toString();
+  }
+
+  static int? _missionIdFromCustomData(Map<String, dynamic>? data) {
+    if (data == null) return null;
+    final raw = data['missionId'];
+    if (raw is int) return raw;
+    if (raw is String) return int.tryParse(raw);
+    return null;
   }
 
   Future<Uint8List> _puckPng(String imageUrl) async {

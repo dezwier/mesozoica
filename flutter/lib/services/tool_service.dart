@@ -219,6 +219,33 @@ class ToolService {
     ];
   }
 
+  Future<AerialReconMission> cancelAerialRecon(int missionId) async {
+    final uri = AppConfig.aerialReconCancelUri(missionId);
+    if (kDebugMode) {
+      debugPrint('ToolService POST $uri');
+    }
+    final response = await ApiClient.instance
+        .sendPost(
+          uri,
+          client: _client,
+          headers: await _headers(jsonBody: true),
+        )
+        .timeout(const Duration(seconds: 15));
+
+    if (response.statusCode != 200) {
+      throw ToolServiceException(
+        _errorDetail(response.body) ??
+            'Failed to cancel Aerial Recon (${response.statusCode})',
+      );
+    }
+
+    final decoded = jsonDecode(response.body);
+    if (decoded is! Map<String, dynamic>) {
+      throw const ToolServiceException('Invalid aerial recon cancel response');
+    }
+    return AerialReconMission.fromJson(decoded);
+  }
+
   static String? _errorDetail(String body) {
     final decoded = AppConfig.decodeJson(body);
     if (decoded == null) return null;
@@ -260,7 +287,8 @@ class AerialReconMission {
   bool get isActive => status == 'ensuring' || status == 'flying';
   bool get isFlying => status == 'flying';
   bool get isEnsuring => status == 'ensuring';
-  bool get isPast => status == 'done' || status == 'failed';
+  bool get isPast =>
+      status == 'done' || status == 'failed' || status == 'cancelled';
 
   factory AerialReconMission.fromJson(Map<String, dynamic> json) {
     final rawRoute = json['route'];

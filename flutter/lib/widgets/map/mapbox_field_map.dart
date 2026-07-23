@@ -471,6 +471,16 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
       await aerial.attach(
         lineManager: lineManager,
         scoutManager: scoutManager,
+        onScoutTap: (missionId) {
+          final recon = widget.aerialRecon;
+          if (recon == null) return;
+          for (final mission in recon.missions) {
+            if (mission.missionId == missionId) {
+              recon.focusMission(mission);
+              return;
+            }
+          }
+        },
       );
       _aerialReconAnnotations?.dispose();
       _aerialReconAnnotations = aerial;
