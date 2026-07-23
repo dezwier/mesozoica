@@ -12,6 +12,7 @@ class GameConfig {
     required this.fossilGeneration,
     required this.fossilDiscovery,
     required this.fossilExcavation,
+    required this.toolActions,
   });
 
   final SiteGenerationConfig siteGeneration;
@@ -19,6 +20,7 @@ class GameConfig {
   final FossilGenerationConfig fossilGeneration;
   final FossilDiscoveryConfig fossilDiscovery;
   final FossilExcavationConfig fossilExcavation;
+  final ToolActionsConfig toolActions;
 
   static GameConfig? _instance;
 
@@ -55,6 +57,7 @@ class GameConfig {
       fossilGenerationYaml: await read('fossil_generation.yaml'),
       fossilDiscoveryYaml: await read('fossil_discovery.yaml'),
       fossilExcavationYaml: await read('fossil_excavation.yaml'),
+      toolActionsYaml: await read('tool_actions.yaml'),
     );
     _instance = config;
     return config;
@@ -67,6 +70,7 @@ class GameConfig {
     required String fossilGenerationYaml,
     required String fossilDiscoveryYaml,
     required String fossilExcavationYaml,
+    required String toolActionsYaml,
   }) {
     final config = GameConfig(
       siteGeneration: SiteGenerationConfig.fromYaml(
@@ -83,6 +87,9 @@ class GameConfig {
       ),
       fossilExcavation: FossilExcavationConfig.fromYaml(
         _asMap(loadYaml(fossilExcavationYaml)),
+      ),
+      toolActions: ToolActionsConfig.fromYaml(
+        _asMap(loadYaml(toolActionsYaml)),
       ),
     );
     _instance = config;
@@ -305,6 +312,52 @@ class FossilExcavationConfig {
 
   factory FossilExcavationConfig.fromYaml(Map<String, dynamic> yaml) {
     return FossilExcavationConfig(enabled: yaml['enabled'] == true);
+  }
+}
+
+class ToolActionsConfig {
+  const ToolActionsConfig({required this.aerialRecon});
+
+  final AerialReconActionConfig aerialRecon;
+
+  factory ToolActionsConfig.fromYaml(Map<String, dynamic> yaml) {
+    return ToolActionsConfig(
+      aerialRecon: AerialReconActionConfig.fromYaml(
+        GameConfig._asMap(yaml['aerial_recon']),
+      ),
+    );
+  }
+}
+
+class AerialReconActionConfig {
+  const AerialReconActionConfig({
+    required this.maxRouteKm,
+    required this.loopEndpointToleranceM,
+    required this.flightDurationS,
+    required this.discoveryChance,
+    required this.discoveryDistanceM,
+    required this.ensureSampleSpacingKm,
+    required this.ensureTimeoutS,
+  });
+
+  final double maxRouteKm;
+  final double loopEndpointToleranceM;
+  final int flightDurationS;
+  final double discoveryChance;
+  final double discoveryDistanceM;
+  final double ensureSampleSpacingKm;
+  final int ensureTimeoutS;
+
+  factory AerialReconActionConfig.fromYaml(Map<String, dynamic> yaml) {
+    return AerialReconActionConfig(
+      maxRouteKm: _asDouble(yaml['max_route_km'], 100.0),
+      loopEndpointToleranceM: _asDouble(yaml['loop_endpoint_tolerance_m'], 75.0),
+      flightDurationS: _asInt(yaml['flight_duration_s'], 2700),
+      discoveryChance: _asDouble(yaml['discovery_chance'], 0.2),
+      discoveryDistanceM: _asDouble(yaml['discovery_distance_m'], 200.0),
+      ensureSampleSpacingKm: _asDouble(yaml['ensure_sample_spacing_km'], 0.5),
+      ensureTimeoutS: _asInt(yaml['ensure_timeout_s'], 600),
+    );
   }
 }
 

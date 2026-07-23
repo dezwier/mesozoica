@@ -5,6 +5,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
 
 import '../../config/map_config.dart';
+import '../../controllers/aerial_recon_controller.dart';
 import '../../controllers/auth_controller.dart';
 import '../../controllers/catalog_mode_controller.dart';
 import '../../controllers/field_discovery_coordinator.dart';
@@ -21,6 +22,7 @@ import '../../services/site_service.dart';
 import '../../shell/map_chrome_insets.dart';
 import '../../widgets/common/chrome_fab.dart';
 import '../../widgets/dino/dinosaur_filter_fab.dart';
+import '../../widgets/map/aerial_recon_draw_overlay.dart';
 import '../../widgets/map/field_data_purge_dialog.dart';
 import '../../widgets/map/map_control_buttons.dart';
 import '../../widgets/map/map_perf_hud.dart';
@@ -29,6 +31,7 @@ import '../../widgets/map/mapbox_field_map.dart';
 import '../../widgets/map/mapbox_site_annotations.dart';
 import '../../widgets/map/site_filter_sheet.dart';
 import '../../widgets/map/site_map_card_dialog.dart';
+import '../../widgets/map/zoom_slider.dart';
 
 part 'map_screen_camera.dart';
 part 'map_screen_field_ops.dart';
@@ -84,6 +87,21 @@ class _MapScreenState extends State<MapScreen>
     final basemapTheme = context.watch<ThemeController>().mapBasemapTheme;
     final mapBrightness = Theme.of(context).brightness;
     final avatarUrl = AuthService.imageUrl(auth.currentUser?.profileImage);
+    final aerialRecon = context.watch<AerialReconController>();
+    final aerialDrawMode = aerialRecon.isDrawMode;
+
+    // Force north-fixed while drawing a scout loop.
+    if (aerialDrawMode && _rotateMap) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        if (context.read<AerialReconController>().isDrawMode && _rotateMap) {
+          setState(() {
+            _rotateMap = false;
+            _followUser = true;
+          });
+        }
+      });
+    }
 
     return Consumer2<map_data.MapController, LocationService>(
       builder: (context, mapData, locationService, _) {
@@ -124,7 +142,7 @@ class _MapScreenState extends State<MapScreen>
                   enabled: widget.isActive,
                   child: MapboxFieldMap(
                     camera: _mapboxCamera,
-                    rotateWithHeading: _rotateMap,
+                    rotateWithHeading: aerialDrawMode ? false : _rotateMap,
                     mapActive: widget.isActive,
                     sites: mapData.filteredGeoSites,
                     selectedSite: mapData.selectedSite,
@@ -140,14 +158,16 @@ class _MapScreenState extends State<MapScreen>
                     currentLocation: locationService.currentLocation,
                     headingDeg: locationService.headingDeg,
                     headingListenable: locationService.headingListenable,
-                    followUser: _followUser || _rotateMap,
+                    followUser: aerialDrawMode
+                        ? false
+                        : (_followUser || _rotateMap),
                     initialCenter: startCenter,
                     initialZoom: _zoomLevel,
                     basemapTheme: basemapTheme,
                     brightness: mapBrightness,
                     avatarImageUrl: avatarUrl.isEmpty ? null : avatarUrl,
                     rotateCardCount: _rotateCardCount,
-                    onSiteTap: _onSiteTap,
+                    onSiteTap: aerialDrawMode ? (_) {} : _onSiteTap,
                     onFollowCancelled: () {
                       // Rotate mode is always locked to the user.
                       if (_rotateMap) return;
@@ -167,7 +187,7 @@ class _MapScreenState extends State<MapScreen>
                   ),
                 ),
               ),
-            if (isAdmin && widget.isActive)
+            if (isAdmin && widget.isActive && !aerialDrawMode)
               Positioned(
                 top: topInset,
                 left: 8,
@@ -214,7 +234,7 @@ class _MapScreenState extends State<MapScreen>
                   ),
                 ),
               ),
-            if (_scanBannerMessage != null)
+            if (_scanBannerMessage != null && !aerialDrawMode)
               Positioned(
                 top: topInset,
                 left: 16,
@@ -258,7 +278,7 @@ class _MapScreenState extends State<MapScreen>
                   ),
                 ),
               ),
-            if (mapData.loading)
+            if (mapData.loading && !aerialDrawMode)
               Positioned(
                 top: topInset + (locationService.error != null ? 44 : 0),
                 left: 0,
@@ -286,7 +306,7 @@ class _MapScreenState extends State<MapScreen>
                   ),
                 ),
               ),
-            if (mapData.error != null)
+            if (mapData.error != null && !aerialDrawMode)
               Positioned(
                 top: topInset,
                 left: 16,
@@ -321,58 +341,68 @@ class _MapScreenState extends State<MapScreen>
                   ),
                 ),
               ),
-            MapControlButtons(
-              currentZoom: _zoomLevel,
-              onZoomChanged: _onZoomChanged,
-              onCenterLocation: () => _centerOnLocation(locationService),
-              rotateMap: _rotateMap,
-              onToggleRotation: _toggleRotationMode,
-              bottom: fabBottom,
-              leadingActions: [
-                if (isFieldMode && isAdmin) ...[
-                  ChromeFab(
-                    heroTag: 'show_all_field_sites',
-                    tone: ChromeFabTone.grey,
-                    active: mapData.showAllFieldSites,
-                    onPressed: () {
-                      mapData.setShowAllFieldSites(
-                        !mapData.showAllFieldSites,
-                      );
-                    },
-                    tooltip: mapData.showAllFieldSites
-                        ? 'Showing all field sites'
-                        : 'Show all field sites',
-                    child: Icon(
-                      mapData.showAllFieldSites
-                          ? Icons.visibility
-                          : Icons.visibility_outlined,
+            if (aerialDrawMode)
+              Positioned(
+                right: 12,
+                bottom: fabBottom,
+                child: ZoomSlider(
+                  currentZoom: _zoomLevel,
+                  onZoomChanged: _onZoomChanged,
+                ),
+              )
+            else
+              MapControlButtons(
+                currentZoom: _zoomLevel,
+                onZoomChanged: _onZoomChanged,
+                onCenterLocation: () => _centerOnLocation(locationService),
+                rotateMap: _rotateMap,
+                onToggleRotation: _toggleRotationMode,
+                bottom: fabBottom,
+                leadingActions: [
+                  if (isFieldMode && isAdmin) ...[
+                    ChromeFab(
+                      heroTag: 'show_all_field_sites',
+                      tone: ChromeFabTone.grey,
+                      active: mapData.showAllFieldSites,
+                      onPressed: () {
+                        mapData.setShowAllFieldSites(
+                          !mapData.showAllFieldSites,
+                        );
+                      },
+                      tooltip: mapData.showAllFieldSites
+                          ? 'Showing all field sites'
+                          : 'Show all field sites',
+                      child: Icon(
+                        mapData.showAllFieldSites
+                            ? Icons.visibility
+                            : Icons.visibility_outlined,
+                      ),
                     ),
-                  ),
-                  ChromeFab(
-                    heroTag: 'scan_field_area',
-                    tone: ChromeFabTone.grey,
-                    onPressed: _onScanFieldArea,
-                    tooltip: 'Scan map center for field sites',
-                    child: const Icon(Icons.radar_outlined),
-                  ),
-                  ChromeFab(
-                    heroTag: 'purge_field_data',
-                    tone: ChromeFabTone.grey,
-                    onPressed: _onPurgeFieldData,
-                    tooltip: 'Delete field data',
-                    child: const Icon(Icons.delete_forever_outlined),
-                  ),
-                  // Keep admin tools clearly above the regular map FABs.
-                  const SizedBox(height: 28),
+                    ChromeFab(
+                      heroTag: 'scan_field_area',
+                      tone: ChromeFabTone.grey,
+                      onPressed: _onScanFieldArea,
+                      tooltip: 'Scan map center for field sites',
+                      child: const Icon(Icons.radar_outlined),
+                    ),
+                    ChromeFab(
+                      heroTag: 'purge_field_data',
+                      tone: ChromeFabTone.grey,
+                      onPressed: _onPurgeFieldData,
+                      tooltip: 'Delete field data',
+                      child: const Icon(Icons.delete_forever_outlined),
+                    ),
+                    // Keep admin tools clearly above the regular map FABs.
+                    const SizedBox(height: 28),
+                  ],
                 ],
-              ],
-              filterFab: DinosaurFilterFab(
-                heroTag: 'site_filter_fab',
-                hasActiveFilters: mapData.hasActiveFilters,
-                onPressed: () => _openFilterSheet(mapData, isFieldMode),
+                filterFab: DinosaurFilterFab(
+                  heroTag: 'site_filter_fab',
+                  hasActiveFilters: mapData.hasActiveFilters,
+                  onPressed: () => _openFilterSheet(mapData, isFieldMode),
+                ),
               ),
-            ),
-            if (locationService.error != null)
+            if (locationService.error != null && !aerialDrawMode)
               Positioned(
                 top: topInset + (mapData.loading || isFieldMode ? 44 : 0),
                 left: 16,
@@ -395,6 +425,8 @@ class _MapScreenState extends State<MapScreen>
                   ),
                 ),
               ),
+            if (aerialDrawMode)
+              AerialReconDrawOverlay(camera: _mapboxCamera),
           ],
         );
       },

@@ -74,6 +74,7 @@ flutter:
     - assets/game_config/fossil_generation.yaml
     - assets/game_config/fossil_discovery.yaml
     - assets/game_config/fossil_excavation.yaml
+    - assets/game_config/tool_actions.yaml
   fonts:
     - family: tt_ramilas
       fonts:

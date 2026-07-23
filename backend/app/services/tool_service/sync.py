@@ -86,6 +86,7 @@ def sync_tools(
         scientific_tool = str(entry.get("scientific_tool", "")).strip()
         description = str(entry.get("description", "")).strip()
         rarity = int(entry.get("rarity", 1))
+        action = str(entry.get("action", "Use")).strip() or "Use"
 
         row = existing_by_name.get(name)
         if row is None:
@@ -99,6 +100,7 @@ def sync_tools(
                         scientific_tool=scientific_tool,
                         description=description,
                         rarity=rarity,
+                        action=action,
                     )
                 )
             continue
@@ -108,6 +110,7 @@ def sync_tools(
             or row.scientific_tool != scientific_tool
             or row.description != description
             or row.rarity != rarity
+            or row.action != action
         )
         if not changed:
             counters.skipped += 1
@@ -120,6 +123,7 @@ def sync_tools(
             row.scientific_tool = scientific_tool
             row.description = description
             row.rarity = rarity
+            row.action = action
             session.add(row)
 
     if prune:

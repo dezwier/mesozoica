@@ -15,6 +15,7 @@ Single source of truth for Mesozoica game-mechanics knobs.
 | `fossil_generation.yaml` | Field survey spawn: site odd_* thresholds, card/depth CDFs, noise |
 | `fossil_discovery.yaml` | Stub — fossil proximity discovery (future) |
 | `fossil_excavation.yaml` | Stub — excavation timing/loot (future) |
+| `tool_actions.yaml` | Per-tool action knobs (Aerial Recon route/flight/discovery) |
 
 ## Field fossil generation (`fossil_generation.yaml`)
 

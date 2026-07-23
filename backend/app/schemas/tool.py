@@ -16,6 +16,7 @@ class ToolSummary(BaseModel):
     scientific_tool: str
     description: str
     rarity: int
+    action: str = "Use"
     main_image_url: str | None = None
     level: int | None = None
 

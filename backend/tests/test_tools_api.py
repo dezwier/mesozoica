@@ -132,6 +132,7 @@ def test_list_tools_returns_summary_fields(client, session):
     assert item["category"] == "1 site_discovery"
     assert item["rarity"] == 2
     assert item["description"] == "Identifies exposed formations."
+    assert item["action"] == "Use"
     assert item["level"] is None
 
 

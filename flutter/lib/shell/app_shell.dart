@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
+import '../controllers/aerial_recon_controller.dart';
 import '../controllers/auth_controller.dart';
 import '../controllers/catalog_mode_controller.dart';
 import '../controllers/field_discovery_coordinator.dart';
@@ -54,12 +55,15 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
   CatalogModeController? _catalogModeController;
   FieldDiscoveryCoordinator? _discoveryCoordinator;
   MapController? _mapController;
+  AerialReconController? _aerialRecon;
   StreamSubscription<RemoteMessage>? _foregroundPushSub;
   StreamSubscription<RemoteMessage>? _openedPushSub;
   bool _celebrationShowing = false;
   bool _appInForeground = true;
 
   bool get _anyOverlayOpen => _profileOpen || _catalogOpen || _toolsOpen;
+  bool get _hideChrome =>
+      _anyOverlayOpen || (_aerialRecon?.isDrawMode ?? false);
 
   @override
   void initState() {
@@ -77,6 +81,10 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
       _mapController = map;
       map.addListener(_onMapSitesChanged);
       discovery.ingestMapSites(map.geoSites);
+
+      final aerial = context.read<AerialReconController>();
+      _aerialRecon = aerial;
+      aerial.addListener(_onAerialReconChanged);
 
       context.read<FieldSessionCoordinator>().bind(
             locationService: context.read<LocationService>(),
@@ -131,6 +139,21 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
         _toolsOpen = false;
       });
     }
+  }
+
+  void _onAerialReconChanged() {
+    if (!mounted) return;
+    final aerial = _aerialRecon;
+    if (aerial == null) return;
+    if (aerial.isDrawMode && _anyOverlayOpen) {
+      setState(() {
+        _profileOpen = false;
+        _catalogOpen = false;
+        _toolsOpen = false;
+      });
+      return;
+    }
+    setState(() {});
   }
 
   void _onDiscoveryChanged() {
@@ -267,6 +290,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
   void dispose() {
     _discoveryCoordinator?.removeListener(_onDiscoveryChanged);
     _mapController?.removeListener(_onMapSitesChanged);
+    _aerialRecon?.removeListener(_onAerialReconChanged);
     _catalogModeController?.removeListener(_onCatalogModeChanged);
     unawaited(_foregroundPushSub?.cancel() ?? Future<void>.value());
     unawaited(_openedPushSub?.cancel() ?? Future<void>.value());
@@ -475,7 +499,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
                       ),
                     ),
                   ),
-                  if (!_anyOverlayOpen) ...[
+                  if (!_hideChrome) ...[
                     MapTopChrome(
                       showNotifications: auth.isLoggedIn,
                       onTapNotification: _onNotificationTap,

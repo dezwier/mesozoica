@@ -263,6 +263,7 @@ def tool_to_summary(tool: Tool, level: int | None = None):
         scientific_tool=tool.scientific_tool,
         description=tool.description,
         rarity=tool.rarity,
+        action=tool.action or "Use",
         main_image_url=tool.main_image_url,
         level=level,
     )

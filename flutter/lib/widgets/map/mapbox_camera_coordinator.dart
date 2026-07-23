@@ -47,6 +47,19 @@ class MapboxCameraCoordinator {
     _pendingFollowZoom = null;
   }
 
+  MapboxMap? get map => _map;
+
+  /// Convert a Flutter logical pixel (in the map widget) to WGS84.
+  Future<LatLng?> coordinateForPixel(Offset pixel) async {
+    final map = _map;
+    if (map == null) return null;
+    final point = await map.coordinateForPixel(
+      ScreenCoordinate(x: pixel.dx, y: pixel.dy),
+    );
+    final coords = point.coordinates;
+    return LatLng(coords.lat.toDouble(), coords.lng.toDouble());
+  }
+
   /// Logical map height from Flutter layout (preferred over [MapboxMap.getSize]).
   void setViewportHeight(double height) {
     if (height <= 0) return;

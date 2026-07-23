@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../controllers/auth_controller.dart';
+import '../../controllers/tool_action_router.dart';
 import '../../controllers/tool_catalog_controller.dart';
 import '../../models/tool.dart';
 import '../../services/tool_service.dart';
@@ -59,6 +60,10 @@ class _ToolTurnableCardState extends State<ToolTurnableCard> {
     }
   }
 
+  Future<void> _onAction() async {
+    ToolActionRouter.start(context, widget.tool);
+  }
+
   @override
   Widget build(BuildContext context) {
     final isAdmin =
@@ -84,6 +89,7 @@ class _ToolTurnableCardState extends State<ToolTurnableCard> {
         tool: widget.tool,
         titleFontSize: widget.titleFontSize,
         subtitleFontSize: widget.subtitleFontSize,
+        onAction: widget.tool.isOwned ? _onAction : null,
       ),
     );
   }

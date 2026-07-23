@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:latlong2/latlong.dart';
 
 import '../config/app_config.dart';
 import '../models/tool.dart';
@@ -150,8 +151,78 @@ class ToolService {
     return ToolSummary.fromJson(decoded);
   }
 
+  Future<AerialReconMissionResult> startAerialRecon({
+    required int toolId,
+    required List<LatLng> route,
+    required LatLng origin,
+  }) async {
+    final uri = AppConfig.toolAerialReconUri(toolId);
+    final body = jsonEncode({
+      'route': [
+        for (final point in route) {'lat': point.latitude, 'lon': point.longitude},
+      ],
+      'origin_lat': origin.latitude,
+      'origin_lon': origin.longitude,
+    });
+    if (kDebugMode) {
+      debugPrint('ToolService POST $uri');
+    }
+    final response = await ApiClient.instance
+        .sendPost(
+          uri,
+          client: _client,
+          headers: await _headers(jsonBody: true),
+          body: body,
+        )
+        .timeout(const Duration(seconds: 30));
+
+    if (response.statusCode != 202) {
+      throw ToolServiceException(
+        _errorDetail(response.body) ??
+            'Failed to deploy Aerial Recon (${response.statusCode})',
+      );
+    }
+
+    final decoded = jsonDecode(response.body);
+    if (decoded is! Map<String, dynamic>) {
+      throw const ToolServiceException('Invalid aerial recon response');
+    }
+    return AerialReconMissionResult.fromJson(decoded);
+  }
+
+  static String? _errorDetail(String body) {
+    final decoded = AppConfig.decodeJson(body);
+    if (decoded == null) return null;
+    final detail = decoded['detail'];
+    if (detail is String && detail.isNotEmpty) return detail;
+    return null;
+  }
+
   void dispose() {
     _client.close();
+  }
+}
+
+class AerialReconMissionResult {
+  const AerialReconMissionResult({
+    required this.missionId,
+    required this.status,
+    required this.routeLengthKm,
+    required this.flightDurationS,
+  });
+
+  final int missionId;
+  final String status;
+  final double routeLengthKm;
+  final int flightDurationS;
+
+  factory AerialReconMissionResult.fromJson(Map<String, dynamic> json) {
+    return AerialReconMissionResult(
+      missionId: json['mission_id'] as int? ?? 0,
+      status: json['status'] as String? ?? '',
+      routeLengthKm: (json['route_length_km'] as num?)?.toDouble() ?? 0,
+      flightDurationS: json['flight_duration_s'] as int? ?? 0,
+    );
   }
 }
 

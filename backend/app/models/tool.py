@@ -16,4 +16,5 @@ class Tool(SQLModel, table=True):
     scientific_tool: str = Field(max_length=100)
     description: str = Field(max_length=500)
     rarity: int = Field(ge=1, le=5)
+    action: str = Field(default="Use", max_length=40)
     main_image_url: str | None = Field(default=None, max_length=512)

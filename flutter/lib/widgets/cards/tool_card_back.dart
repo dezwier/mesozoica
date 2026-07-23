@@ -13,15 +13,18 @@ class ToolCardBack extends StatelessWidget {
     required this.tool,
     this.titleFontSize = 36,
     this.subtitleFontSize = 10,
+    this.onAction,
   });
 
   final ToolSummary tool;
   final double titleFontSize;
   final double subtitleFontSize;
+  final VoidCallback? onAction;
 
   @override
   Widget build(BuildContext context) {
     final cardTheme = DinoCardTheme.of(context);
+    final actionEnabled = tool.isOwned && onAction != null;
 
     return AspectRatio(
       aspectRatio: DinoCardTheme.cardAspectRatio,
@@ -62,6 +65,41 @@ class ToolCardBack extends StatelessWidget {
                 CardSectionPanel(
                   label: 'Rarity',
                   child: _RarityRow(rarity: tool.rarity),
+                ),
+                const SizedBox(height: 10),
+                CardSectionPanel(
+                  label: 'Actions',
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: FilledButton(
+                          onPressed: actionEnabled ? onAction : null,
+                          style: FilledButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 10),
+                            textStyle: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          child: Text(tool.action),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: null,
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 10),
+                            textStyle: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          child: const Text('Info'),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),

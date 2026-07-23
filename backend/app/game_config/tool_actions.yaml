@@ -1,0 +1,12 @@
+# Per-tool action parameters (gameplay knobs, not catalog copy).
+
+aerial_recon:
+  max_route_km: 100
+  # start/end must be within this of the player's GPS origin
+  loop_endpoint_tolerance_m: 75
+  flight_duration_s: 2700
+  discovery_chance: 0.2
+  discovery_distance_m: 200
+  ensure_sample_spacing_km: 0.5
+  # promote ensuring → flying even if some ensure jobs are still pending
+  ensure_timeout_s: 600

@@ -27,6 +27,7 @@ def test_sync_tools_inserts_from_json(session: Session, tmp_path: Path):
                 "scientific_tool": "satellite imagery",
                 "description": "Identifies exposed formations.",
                 "rarity": 2,
+                "action": "Scan",
             }
         ],
     )
@@ -38,6 +39,7 @@ def test_sync_tools_inserts_from_json(session: Session, tmp_path: Path):
     assert row.category == "prospecting"
     assert row.scientific_tool == "satellite imagery"
     assert row.rarity == 2
+    assert row.action == "Scan"
 
 
 def test_sync_tools_preserves_main_image_url_on_update(session: Session, tmp_path: Path):
@@ -140,4 +142,5 @@ def test_sync_tools_prune(session: Session, tmp_path: Path):
 def test_default_tools_json_exists():
     assert DEFAULT_TOOLS_JSON.is_file()
     entries = json.loads(DEFAULT_TOOLS_JSON.read_text(encoding="utf-8"))
-    assert len(entries) == 50
+    assert len(entries) == 55
+    assert all("action" in entry and entry["action"] for entry in entries)

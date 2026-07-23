@@ -256,6 +256,33 @@ class FossilExcavationConfig(BaseModel):
     enabled: bool = False
 
 
+class AerialReconActionConfig(BaseModel):
+    model_config = {"frozen": True}
+
+    max_route_km: float = 100.0
+    loop_endpoint_tolerance_m: float = 75.0
+    flight_duration_s: int = 2700
+    discovery_chance: float = 0.2
+    discovery_distance_m: float = 200.0
+    ensure_sample_spacing_km: float = 0.5
+    ensure_timeout_s: int = 600
+
+    @field_validator("discovery_chance")
+    @classmethod
+    def _validate_discovery_chance(cls, value: float) -> float:
+        if value < 0.0 or value > 1.0:
+            raise ValueError("discovery_chance must be between 0.0 and 1.0")
+        return value
+
+
+class ToolActionsConfig(BaseModel):
+    model_config = {"frozen": True}
+
+    aerial_recon: AerialReconActionConfig = Field(
+        default_factory=AerialReconActionConfig
+    )
+
+
 class GameConfig(BaseModel):
     model_config = {"frozen": True}
 
@@ -264,6 +291,7 @@ class GameConfig(BaseModel):
     fossil_generation: FossilGenerationConfig
     fossil_discovery: FossilDiscoveryConfig
     fossil_excavation: FossilExcavationConfig
+    tool_actions: ToolActionsConfig
 
 
 def resolve_game_config_dir() -> Path:
@@ -294,6 +322,9 @@ def load_game_config(config_dir: Path | None = None) -> GameConfig:
         ),
         fossil_excavation=FossilExcavationConfig.model_validate(
             _load_yaml(directory / "fossil_excavation.yaml")
+        ),
+        tool_actions=ToolActionsConfig.model_validate(
+            _load_yaml(directory / "tool_actions.yaml")
         ),
     )
 

@@ -174,10 +174,15 @@ def process_one_survey_job(*, worker_id: str) -> bool:
 
 
 def process_one_job(*, worker_id: str) -> bool:
-    """Process one ensure or survey job; prefer ensure then survey."""
+    """Process one ensure, survey, or tool-mission tick; prefer ensure then survey."""
     if process_one_ensure_job(worker_id=worker_id):
         return True
-    return process_one_survey_job(worker_id=worker_id)
+    if process_one_survey_job(worker_id=worker_id):
+        return True
+    with Session(engine) as session:
+        from app.services.tool_action_service import process_aerial_recon_tick
+
+        return process_aerial_recon_tick(session)
 
 
 def run_forever() -> None:

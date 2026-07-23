@@ -6,6 +6,7 @@ class ToolSummary {
     required this.scientificTool,
     required this.description,
     required this.rarity,
+    this.action = 'Use',
     this.mainImageUrl,
     this.level,
   });
@@ -16,6 +17,8 @@ class ToolSummary {
   final String scientificTool;
   final String description;
   final int rarity;
+  /// Verb shown on the card Actions panel (e.g. Deploy, Read).
+  final String action;
   final String? mainImageUrl;
   /// Collection level when owned; null when not in the user's collection.
   final int? level;
@@ -29,6 +32,7 @@ class ToolSummary {
     String? scientificTool,
     String? description,
     int? rarity,
+    String? action,
     String? mainImageUrl,
     int? level,
     bool clearLevel = false,
@@ -40,6 +44,7 @@ class ToolSummary {
       scientificTool: scientificTool ?? this.scientificTool,
       description: description ?? this.description,
       rarity: rarity ?? this.rarity,
+      action: action ?? this.action,
       mainImageUrl: mainImageUrl ?? this.mainImageUrl,
       level: clearLevel ? null : (level ?? this.level),
     );
@@ -82,6 +87,7 @@ class ToolSummary {
       scientificTool: json['scientific_tool'] as String? ?? '',
       description: json['description'] as String? ?? '',
       rarity: json['rarity'] as int? ?? 1,
+      action: json['action'] as String? ?? 'Use',
       mainImageUrl: json['main_image_url'] as String?,
       level: json['level'] as int?,
     );

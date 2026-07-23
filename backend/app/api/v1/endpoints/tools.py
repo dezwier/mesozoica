@@ -1,15 +1,17 @@
-"""Tool read and collect endpoints."""
+"""Tool read, collect, and action endpoints."""
 
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from pydantic import BaseModel, Field
 from sqlmodel import Session
 
 from app.core.database import get_session
 from app.core.exceptions import ValidationError
-from app.core.security import get_current_admin_user, get_optional_current_user
+from app.core.security import get_current_admin_user, get_current_user, get_optional_current_user
 from app.models.user import User
 from app.schemas.tool import ToolCategoryItem, ToolCategoryListResponse, ToolListResponse, ToolSummary
+from app.services.tool_action_service import start_aerial_recon_mission
 from app.services.tool_service import (
     collect_tool_for_user,
     get_tool_by_id,
@@ -19,6 +21,24 @@ from app.services.tool_service import (
 )
 
 router = APIRouter(prefix="/tools", tags=["tools"])
+
+
+class RoutePointBody(BaseModel):
+    lat: float
+    lon: float
+
+
+class AerialReconRequest(BaseModel):
+    route: list[RoutePointBody] = Field(min_length=3)
+    origin_lat: float
+    origin_lon: float
+
+
+class AerialReconResponse(BaseModel):
+    mission_id: int
+    status: str
+    route_length_km: float
+    flight_duration_s: int
 
 
 def _require_show_all_admin(current_user: User | None, show_all: bool) -> None:
@@ -99,6 +119,33 @@ def post_collect_tool(
         tool_id=tool_id,
     )
     return tool_to_summary(tool, level)
+
+
+@router.post(
+    "/{tool_id}/actions/aerial-recon",
+    response_model=AerialReconResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+)
+def post_aerial_recon(
+    tool_id: int,
+    body: AerialReconRequest,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+) -> AerialReconResponse:
+    mission = start_aerial_recon_mission(
+        session,
+        user_id=int(current_user.id),
+        tool_id=tool_id,
+        route=[point.model_dump() for point in body.route],
+        origin_lat=body.origin_lat,
+        origin_lon=body.origin_lon,
+    )
+    return AerialReconResponse(
+        mission_id=int(mission.id),
+        status=mission.status,
+        route_length_km=mission.route_length_km,
+        flight_duration_s=mission.flight_duration_s,
+    )
 
 
 @router.get("/{tool_id}", response_model=ToolSummary)
