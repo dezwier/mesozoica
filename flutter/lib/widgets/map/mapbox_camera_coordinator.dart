@@ -258,6 +258,45 @@ class MapboxCameraCoordinator {
     );
   }
 
+  /// Fit the camera to a route polyline (north-fixed).
+  Future<void> fitRoute(
+    List<LatLng> route, {
+    int durationMs = 1200,
+    double padding = 56,
+  }) async {
+    if (rotateWithHeading) return;
+    final map = _map;
+    if (map == null || route.isEmpty) return;
+    clearPendingFollow();
+    final points = <Point>[
+      for (final p in route)
+        Point(coordinates: Position(p.longitude, p.latitude)),
+    ];
+    final options = await map.cameraForCoordinatesPadding(
+      points,
+      CameraOptions(bearing: 0, pitch: 0),
+      MbxEdgeInsets(
+        top: padding + 72,
+        left: padding,
+        bottom: padding + 72,
+        right: padding,
+      ),
+      null,
+      null,
+    );
+    if (options.center != null) {
+      final coords = options.center!.coordinates;
+      _lastFollowedLocation = LatLng(
+        coords.lat.toDouble(),
+        coords.lng.toDouble(),
+      );
+    }
+    await map.flyTo(
+      options,
+      MapAnimationOptions(duration: durationMs),
+    );
+  }
+
   Future<LatLng?> currentCenter() async {
     final map = _map;
     if (map == null) return null;

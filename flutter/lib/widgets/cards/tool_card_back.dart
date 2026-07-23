@@ -14,12 +14,14 @@ class ToolCardBack extends StatelessWidget {
     this.titleFontSize = 36,
     this.subtitleFontSize = 10,
     this.onAction,
+    this.onInfo,
   });
 
   final ToolSummary tool;
   final double titleFontSize;
   final double subtitleFontSize;
   final VoidCallback? onAction;
+  final VoidCallback? onInfo;
 
   @override
   Widget build(BuildContext context) {
@@ -87,7 +89,7 @@ class ToolCardBack extends StatelessWidget {
                       const SizedBox(width: 8),
                       Expanded(
                         child: OutlinedButton(
-                          onPressed: null,
+                          onPressed: onInfo,
                           style: OutlinedButton.styleFrom(
                             padding: const EdgeInsets.symmetric(vertical: 10),
                             textStyle: const TextStyle(

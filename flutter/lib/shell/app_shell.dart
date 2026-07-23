@@ -153,6 +153,15 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
       });
       return;
     }
+    // Mission Info taps queue a focus request; close overlays so MapScreen can pan.
+    if (aerial.pendingFocusMission != null && _anyOverlayOpen) {
+      setState(() {
+        _profileOpen = false;
+        _catalogOpen = false;
+        _toolsOpen = false;
+      });
+      return;
+    }
     setState(() {});
   }
 

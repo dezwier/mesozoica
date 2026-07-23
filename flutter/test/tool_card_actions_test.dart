@@ -6,7 +6,7 @@ import 'package:mesozoica/widgets/cards/tool_card_back.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  testWidgets('ToolCardBack shows action verb and disabled Info', (tester) async {
+  testWidgets('ToolCardBack shows action verb and disabled Info by default', (tester) async {
     const owned = ToolSummary(
       id: 1,
       name: 'Aerial Recon',
@@ -47,6 +47,41 @@ void main() {
       find.widgetWithText(OutlinedButton, 'Info'),
     );
     expect(info.onPressed, isNull);
+  });
+
+  testWidgets('ToolCardBack enables Info when onInfo is set', (tester) async {
+    const owned = ToolSummary(
+      id: 1,
+      name: 'Aerial Recon',
+      category: '1 site_discovery',
+      scientificTool: 'helicopter',
+      description: 'Scout loop',
+      rarity: 5,
+      action: 'Deploy',
+      level: 1,
+    );
+
+    var infoTapped = false;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: SizedBox(
+              width: 320,
+              child: ToolCardBack(
+                tool: owned,
+                onAction: () {},
+                onInfo: () => infoTapped = true,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('Info'));
+    await tester.pump();
+    expect(infoTapped, isTrue);
   });
 
   testWidgets('ToolCardBack disables action when not owned', (tester) async {

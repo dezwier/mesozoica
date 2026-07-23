@@ -28,6 +28,8 @@ class AerialReconController extends ChangeNotifier {
   Timer? _refreshTimer;
   Timer? _progressTimer;
   int _progressTick = 0;
+  AerialReconMission? _focusedMission;
+  AerialReconMission? _pendingFocusMission;
 
   bool get isDrawMode => _drawMode;
   ToolSummary? get tool => _tool;
@@ -39,6 +41,8 @@ class AerialReconController extends ChangeNotifier {
 
   List<AerialReconMission> get missions => List.unmodifiable(_missions);
   bool get missionsLoading => _missionsLoading;
+  AerialReconMission? get focusedMission => _focusedMission;
+  AerialReconMission? get pendingFocusMission => _pendingFocusMission;
 
   /// Bumps while any flying mission is active so map layers can re-interpolate.
   int get progressTick => _progressTick;
@@ -246,13 +250,48 @@ class AerialReconController extends ChangeNotifier {
     }
   }
 
+  /// Select a mission for the map overlay and queue a one-shot camera focus.
+  void focusMission(AerialReconMission mission) {
+    _focusedMission = mission;
+    _pendingFocusMission = mission;
+    _syncProgressTimer();
+    notifyListeners();
+  }
+
+  void clearFocus() {
+    if (_focusedMission == null && _pendingFocusMission == null) return;
+    _focusedMission = null;
+    _pendingFocusMission = null;
+    _syncProgressTimer();
+    notifyListeners();
+  }
+
+  /// One-shot camera request; cleared when MapScreen consumes it.
+  AerialReconMission? takePendingFocusMission() {
+    final mission = _pendingFocusMission;
+    _pendingFocusMission = null;
+    return mission;
+  }
+
   /// Load missions from the server (cross-device). Call when map becomes active.
   Future<void> refreshMissions() async {
     if (_missionsLoading) return;
     _missionsLoading = true;
+    notifyListeners();
     try {
       final items = await _toolService.fetchAerialReconMissions();
       _missions = items;
+      final focusedId = _focusedMission?.missionId;
+      if (focusedId != null) {
+        AerialReconMission? match;
+        for (final m in items) {
+          if (m.missionId == focusedId) {
+            match = m;
+            break;
+          }
+        }
+        if (match != null) _focusedMission = match;
+      }
       _syncProgressTimer();
       notifyListeners();
     } on ToolServiceException catch (error) {
@@ -265,6 +304,7 @@ class AerialReconController extends ChangeNotifier {
       }
     } finally {
       _missionsLoading = false;
+      notifyListeners();
     }
   }
 
@@ -297,7 +337,8 @@ class AerialReconController extends ChangeNotifier {
   }
 
   void _syncProgressTimer() {
-    final needsTick = _missions.any((m) => m.isFlying);
+    final needsTick = _missions.any((m) => m.isFlying) ||
+        (_focusedMission?.isFlying ?? false);
     if (needsTick) {
       _progressTimer ??= Timer.periodic(const Duration(seconds: 1), (_) {
         _progressTick++;

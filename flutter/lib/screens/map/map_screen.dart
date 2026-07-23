@@ -19,10 +19,12 @@ import '../../models/site.dart';
 import '../../services/auth_service.dart';
 import '../../services/location_service.dart';
 import '../../services/site_service.dart';
+import '../../services/tool_service.dart';
 import '../../shell/map_chrome_insets.dart';
 import '../../widgets/common/chrome_fab.dart';
 import '../../widgets/dino/dinosaur_filter_fab.dart';
 import '../../widgets/map/aerial_recon_draw_overlay.dart';
+import '../../widgets/map/aerial_recon_focus_overlay.dart';
 import '../../widgets/map/field_data_purge_dialog.dart';
 import '../../widgets/map/map_control_buttons.dart';
 import '../../widgets/map/map_perf_hud.dart';
@@ -112,6 +114,7 @@ class _MapScreenState extends State<MapScreen>
           _setInitialCamera(locationService: locationService);
           _maybeFollowUser(locationService);
           _consumePendingFocus();
+          _consumePendingAerialFocus();
         });
 
         final startCenter =
@@ -179,6 +182,7 @@ class _MapScreenState extends State<MapScreen>
                       setState(() => _mapboxReady = ready);
                       if (ready) {
                         _consumePendingFocus();
+                        _consumePendingAerialFocus();
                         _setInitialCamera(locationService: locationService);
                         _dismissSplash();
                       }
@@ -421,7 +425,9 @@ class _MapScreenState extends State<MapScreen>
                 camera: _mapboxCamera,
                 currentZoom: _zoomLevel,
                 onZoomChanged: _onZoomChanged,
-              ),
+              )
+            else if (aerialRecon.focusedMission != null)
+              const AerialReconFocusOverlay(),
           ],
         );
       },

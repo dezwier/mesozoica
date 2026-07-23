@@ -7,6 +7,7 @@ import '../../controllers/tool_catalog_controller.dart';
 import '../../models/tool.dart';
 import '../../services/tool_service.dart';
 import '../../theme/dino_card_theme.dart';
+import '../tools/aerial_recon_missions_sheet.dart';
 import 'tool_card_back.dart';
 import 'tool_card_front.dart';
 import 'turnable_y_axis_card.dart';
@@ -64,11 +65,17 @@ class _ToolTurnableCardState extends State<ToolTurnableCard> {
     ToolActionRouter.start(context, widget.tool);
   }
 
+  void _onInfo() {
+    if (widget.tool.name != ToolActionRouter.aerialReconName) return;
+    AerialReconMissionsSheet.show(context);
+  }
+
   @override
   Widget build(BuildContext context) {
     final isAdmin =
         context.watch<AuthController>().currentUser?.isAdmin ?? false;
     final showCollectBadge = isAdmin && !widget.tool.isOwned;
+    final showInfo = widget.tool.name == ToolActionRouter.aerialReconName;
 
     return TurnableYAxisCard(
       resetIdentity: widget.tool.id,
@@ -90,6 +97,7 @@ class _ToolTurnableCardState extends State<ToolTurnableCard> {
         titleFontSize: widget.titleFontSize,
         subtitleFontSize: widget.subtitleFontSize,
         onAction: widget.tool.isOwned ? _onAction : null,
+        onInfo: showInfo ? _onInfo : null,
       ),
     );
   }

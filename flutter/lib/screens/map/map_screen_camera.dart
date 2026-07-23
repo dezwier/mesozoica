@@ -43,6 +43,7 @@ mixin _MapScreenCameraMixin on State<MapScreen> {
       context.read<map_data.MapController>().load();
       context.read<AerialReconController>().startTracking();
       _consumePendingFocus();
+      _consumePendingAerialFocus();
     });
   }
 
@@ -59,6 +60,52 @@ mixin _MapScreenCameraMixin on State<MapScreen> {
         durationMs: 1400,
         exitRotateMode: true,
       ),
+    );
+  }
+
+  void _consumePendingAerialFocus() {
+    if (!widget.isActive || !_mapboxReady) return;
+    final recon = context.read<AerialReconController>();
+    final mission = recon.takePendingFocusMission();
+    if (mission == null) return;
+    unawaited(_focusAerialMission(mission));
+  }
+
+  Future<void> _focusAerialMission(AerialReconMission mission) async {
+    if (!_mapboxReady) return;
+
+    if (_rotateMap) {
+      setState(() {
+        _rotateMap = false;
+        _followUser = false;
+      });
+      _mapboxCamera.clearPendingFollow();
+    } else {
+      setState(() => _followUser = false);
+      _mapboxCamera.clearPendingFollow();
+    }
+
+    await WidgetsBinding.instance.endOfFrame;
+    await WidgetsBinding.instance.endOfFrame;
+    if (!mounted || !_mapboxReady) return;
+
+    final recon = context.read<AerialReconController>();
+    final headingDeg = context.read<LocationService>().headingDeg;
+
+    if (mission.isPast) {
+      if (mission.route.isEmpty) return;
+      await _mapboxCamera.fitRoute(mission.route, durationMs: 1400);
+      return;
+    }
+
+    final target = recon.scoutPosition(mission) ??
+        (mission.route.isNotEmpty ? mission.route.first : null);
+    if (target == null) return;
+    await _mapboxCamera.centerOn(
+      target,
+      zoom: MapConfig.mapboxFollowZoom,
+      headingDeg: headingDeg,
+      durationMs: 1400,
     );
   }
 
