@@ -333,7 +333,7 @@ class AerialReconActionConfig {
   const AerialReconActionConfig({
     required this.maxRouteKm,
     required this.loopEndpointToleranceM,
-    required this.flightDurationS,
+    required this.flightSpeedKmh,
     required this.discoveryChance,
     required this.discoveryDistanceM,
     required this.ensureSampleSpacingKm,
@@ -343,7 +343,7 @@ class AerialReconActionConfig {
 
   final double maxRouteKm;
   final double loopEndpointToleranceM;
-  final int flightDurationS;
+  final double flightSpeedKmh;
   final double discoveryChance;
   final double discoveryDistanceM;
   final double ensureSampleSpacingKm;
@@ -354,7 +354,7 @@ class AerialReconActionConfig {
     return AerialReconActionConfig(
       maxRouteKm: _asDouble(yaml['max_route_km'], 100.0),
       loopEndpointToleranceM: _asDouble(yaml['loop_endpoint_tolerance_m'], 75.0),
-      flightDurationS: _asInt(yaml['flight_duration_s'], 2700),
+      flightSpeedKmh: _asDouble(yaml['flight_speed_kmh'], 50.0),
       discoveryChance: _asDouble(yaml['discovery_chance'], 0.2),
       discoveryDistanceM: _asDouble(yaml['discovery_distance_m'], 200.0),
       ensureSampleSpacingKm: _asDouble(yaml['ensure_sample_spacing_km'], 0.5),

@@ -33,6 +33,7 @@ mixin _MapScreenCameraMixin on State<MapScreen> {
     if (!widget.isActive) {
       context.read<LocationService>().setMapForeground(false);
       context.read<map_data.MapController>().pause();
+      context.read<AerialReconController>().stopTracking();
       return;
     }
 
@@ -40,6 +41,7 @@ mixin _MapScreenCameraMixin on State<MapScreen> {
       if (!mounted || !widget.isActive) return;
       context.read<LocationService>().setMapForeground(true);
       context.read<map_data.MapController>().load();
+      context.read<AerialReconController>().startTracking();
       _consumePendingFocus();
     });
   }

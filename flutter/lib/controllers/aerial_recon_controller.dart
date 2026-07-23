@@ -1,11 +1,14 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../config/game_config.dart';
 import '../models/tool.dart';
 import '../services/tool_service.dart';
+import '../utils/route_geometry.dart';
 
-/// Client state for Aerial Recon draw mode and mission submit.
+/// Client state for Aerial Recon draw mode, mission submit, and map tracking.
 class AerialReconController extends ChangeNotifier {
   AerialReconController({ToolService? toolService})
       : _toolService = toolService ?? ToolService();
@@ -20,6 +23,12 @@ class AerialReconController extends ChangeNotifier {
   bool _submitting = false;
   String? _message;
 
+  List<AerialReconMission> _missions = const [];
+  bool _missionsLoading = false;
+  Timer? _refreshTimer;
+  Timer? _progressTimer;
+  int _progressTick = 0;
+
   bool get isDrawMode => _drawMode;
   ToolSummary? get tool => _tool;
   List<LatLng> get route => List.unmodifiable(_route);
@@ -27,6 +36,12 @@ class AerialReconController extends ChangeNotifier {
   bool get isSubmitting => _submitting;
   String? get message => _message;
   bool get hasRoute => _route.length >= 2;
+
+  List<AerialReconMission> get missions => List.unmodifiable(_missions);
+  bool get missionsLoading => _missionsLoading;
+
+  /// Bumps while any flying mission is active so map layers can re-interpolate.
+  int get progressTick => _progressTick;
 
   AerialReconActionConfig get _cfg =>
       GameConfig.instance.toolActions.aerialRecon;
@@ -58,6 +73,19 @@ class AerialReconController extends ChangeNotifier {
       return 'Allowed range: up to $maxLabel km';
     }
     return 'Drawn ${drawn.toStringAsFixed(1)} km · allowed up to $maxLabel km';
+  }
+
+  /// Scout position for [mission] at [now] (UTC).
+  LatLng? scoutPosition(AerialReconMission mission, {DateTime? now}) {
+    if (mission.route.isEmpty) return null;
+    final frac = aerialReconProgressFraction(mission, now: now);
+    return RouteGeometry.pointAtFraction(mission.route, frac);
+  }
+
+  double scoutBearing(AerialReconMission mission, {DateTime? now}) {
+    if (mission.route.length < 2) return 0;
+    final frac = aerialReconProgressFraction(mission, now: now);
+    return RouteGeometry.bearingAtFraction(mission.route, frac);
   }
 
   void beginDraw(ToolSummary tool) {
@@ -196,12 +224,14 @@ class AerialReconController extends ChangeNotifier {
     notifyListeners();
 
     try {
-      await _toolService.startAerialRecon(
+      final mission = await _toolService.startAerialRecon(
         toolId: tool.id,
         route: List<LatLng>.from(_route),
         origin: origin,
       );
+      _upsertMission(mission);
       cancelDraw();
+      unawaited(refreshMissions());
       return true;
     } on ToolServiceException catch (error) {
       _message = error.message;
@@ -213,6 +243,69 @@ class AerialReconController extends ChangeNotifier {
       _submitting = false;
       notifyListeners();
       return false;
+    }
+  }
+
+  /// Load missions from the server (cross-device). Call when map becomes active.
+  Future<void> refreshMissions() async {
+    if (_missionsLoading) return;
+    _missionsLoading = true;
+    try {
+      final items = await _toolService.fetchAerialReconMissions();
+      _missions = items;
+      _syncProgressTimer();
+      notifyListeners();
+    } on ToolServiceException catch (error) {
+      if (kDebugMode) {
+        debugPrint('AerialRecon refresh failed: $error');
+      }
+    } catch (error) {
+      if (kDebugMode) {
+        debugPrint('AerialRecon refresh failed: $error');
+      }
+    } finally {
+      _missionsLoading = false;
+    }
+  }
+
+  /// Start periodic status refresh (~30s) while the map is active.
+  void startTracking() {
+    _refreshTimer?.cancel();
+    _refreshTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      unawaited(refreshMissions());
+    });
+    unawaited(refreshMissions());
+    _syncProgressTimer();
+  }
+
+  void stopTracking() {
+    _refreshTimer?.cancel();
+    _refreshTimer = null;
+    _progressTimer?.cancel();
+    _progressTimer = null;
+  }
+
+  void _upsertMission(AerialReconMission mission) {
+    final next = [
+      mission,
+      for (final existing in _missions)
+        if (existing.missionId != mission.missionId) existing,
+    ];
+    _missions = next;
+    _syncProgressTimer();
+    notifyListeners();
+  }
+
+  void _syncProgressTimer() {
+    final needsTick = _missions.any((m) => m.isFlying);
+    if (needsTick) {
+      _progressTimer ??= Timer.periodic(const Duration(seconds: 1), (_) {
+        _progressTick++;
+        notifyListeners();
+      });
+    } else {
+      _progressTimer?.cancel();
+      _progressTimer = null;
     }
   }
 
@@ -235,5 +328,11 @@ class AerialReconController extends ChangeNotifier {
   static String _formatKm(double km) {
     if (km == km.roundToDouble()) return '${km.toStringAsFixed(0)} km';
     return '${km.toStringAsFixed(1)} km';
+  }
+
+  @override
+  void dispose() {
+    stopTracking();
+    super.dispose();
   }
 }

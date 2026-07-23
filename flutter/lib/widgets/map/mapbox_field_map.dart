@@ -8,7 +8,9 @@ import 'package:latlong2/latlong.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 
 import '../../config/map_config.dart';
+import '../../controllers/aerial_recon_controller.dart';
 import '../../models/site.dart';
+import 'mapbox_aerial_recon_annotations.dart';
 import 'mapbox_basemap_config.dart';
 import 'mapbox_camera_coordinator.dart';
 import 'mapbox_site_annotations.dart';
@@ -45,6 +47,7 @@ class MapboxFieldMap extends StatefulWidget {
     this.hiddenRotateSiteId,
     this.rotateCardCount,
     this.headingListenable,
+    this.aerialRecon,
     this.onError,
   });
 
@@ -76,6 +79,8 @@ class MapboxFieldMap extends StatefulWidget {
   final int? hiddenRotateSiteId;
   /// Optional admin HUD counter for visible rotate mini-cards.
   final ValueNotifier<int>? rotateCardCount;
+  /// Ongoing + past aerial recon routes / scout puck.
+  final AerialReconController? aerialRecon;
   final ValueChanged<Object>? onError;
 
   @override
@@ -85,6 +90,7 @@ class MapboxFieldMap extends StatefulWidget {
 class _MapboxFieldMapState extends State<MapboxFieldMap>
     with SingleTickerProviderStateMixin {
   MapboxSiteAnnotations? _annotations;
+  MapboxAerialReconAnnotations? _aerialReconAnnotations;
   MapboxMap? _map;
   bool _ready = false;
   bool _readyNotified = false;
@@ -128,6 +134,7 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
       widget.initialZoom < 10 ? MapConfig.mapboxFollowZoom : widget.initialZoom,
     );
     _seedHeading = widget.headingDeg;
+    widget.aerialRecon?.addListener(_onAerialReconChanged);
     // Seed with a fixed camera; switch to FollowPuck after the location puck
     // is enabled (FollowPuck requires location).
     _viewport = CameraViewportState(
@@ -161,6 +168,7 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
     _readyTimeout?.cancel();
     if (!mounted) return;
     setState(() => _ready = true);
+    unawaited(_syncAerialRecon());
     _readyNotifyFallback?.cancel();
     _readyNotifyFallback = Timer(const Duration(milliseconds: 2500), () {
       _notifyParentReady();
@@ -193,6 +201,7 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
 
   @override
   void dispose() {
+    widget.aerialRecon?.removeListener(_onAerialReconChanged);
     _annotationDebounce?.cancel();
     _readyTimeout?.cancel();
     _readyNotifyFallback?.cancel();
@@ -202,10 +211,16 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
     widget.camera.detach();
     _annotations?.dispose();
     _annotations = null;
+    _aerialReconAnnotations?.dispose();
+    _aerialReconAnnotations = null;
     if (_readyNotified) {
       widget.onReadyChanged(false);
     }
     super.dispose();
+  }
+
+  void _onAerialReconChanged() {
+    unawaited(_syncAerialRecon());
   }
 
   MbxEdgeInsets? _paddingForCurrentHeight() {
@@ -419,6 +434,11 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
         ),
       );
     }
+    if (oldWidget.aerialRecon != widget.aerialRecon) {
+      oldWidget.aerialRecon?.removeListener(_onAerialReconChanged);
+      widget.aerialRecon?.addListener(_onAerialReconChanged);
+      unawaited(_syncAerialRecon());
+    }
   }
 
   Future<void> _onMapCreated(MapboxMap map) async {
@@ -442,8 +462,22 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
       );
       _annotations?.dispose();
       _annotations = annotations;
+
+      final lineManager =
+          await map.annotations.createPolylineAnnotationManager();
+      final scoutManager =
+          await map.annotations.createPointAnnotationManager();
+      final aerial = MapboxAerialReconAnnotations();
+      await aerial.attach(
+        lineManager: lineManager,
+        scoutManager: scoutManager,
+      );
+      _aerialReconAnnotations?.dispose();
+      _aerialReconAnnotations = aerial;
+
       await _applyGestureMode();
       _scheduleAnnotationSync();
+      unawaited(_syncAerialRecon());
     } catch (error, stack) {
       if (kDebugMode) {
         debugPrint('MapboxFieldMap setup failed: $error\n$stack');
@@ -574,6 +608,19 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
     } catch (error) {
       if (kDebugMode) {
         debugPrint('MapboxFieldMap annotation sync failed: $error');
+      }
+    }
+  }
+
+  Future<void> _syncAerialRecon() async {
+    final aerial = _aerialReconAnnotations;
+    final controller = widget.aerialRecon;
+    if (aerial == null || controller == null || !_ready) return;
+    try {
+      await aerial.sync(controller);
+    } catch (error) {
+      if (kDebugMode) {
+        debugPrint('MapboxFieldMap aerial recon sync failed: $error');
       }
     }
   }

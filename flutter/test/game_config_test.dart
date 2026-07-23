@@ -35,7 +35,7 @@ void main() {
     expect(config.fossilExcavation.enabled, isFalse);
 
     expect(config.toolActions.aerialRecon.maxRouteKm, 100.0);
-    expect(config.toolActions.aerialRecon.flightDurationS, 2700);
+    expect(config.toolActions.aerialRecon.flightSpeedKmh, 50.0);
     expect(config.toolActions.aerialRecon.discoveryChance, 0.2);
     expect(config.toolActions.aerialRecon.discoveryDistanceM, 200.0);
     expect(config.toolActions.aerialRecon.shortRouteWarnFraction, 0.7);

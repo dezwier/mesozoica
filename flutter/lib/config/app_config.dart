@@ -349,6 +349,9 @@ class AppConfig {
   static Uri toolAerialReconUri(int id) =>
       Uri.parse('$baseApiUrl/api/v1/tools/$id/actions/aerial-recon');
 
+  static Uri aerialReconMissionsUri() =>
+      Uri.parse('$baseApiUrl/api/v1/tools/missions/aerial-recon');
+
   static Future<bool> checkApiHealth() async {
     try {
       final response = await http.get(healthUri).timeout(const Duration(seconds: 15));

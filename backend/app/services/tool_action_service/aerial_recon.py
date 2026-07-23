@@ -140,6 +140,9 @@ def start_aerial_recon_mission(
         if job_id is not None:
             job_ids.append(job_id)
 
+    speed = max(cfg.flight_speed_kmh, 1e-6)
+    flight_duration_s = max(1, int(round(length_km / speed * 3600.0)))
+
     now = _utcnow()
     mission = ToolMission(
         user_id=user_id,
@@ -151,7 +154,7 @@ def start_aerial_recon_mission(
             separators=(",", ":"),
         ),
         route_length_km=length_km,
-        flight_duration_s=cfg.flight_duration_s,
+        flight_duration_s=flight_duration_s,
         ensure_job_ids_json=json.dumps(job_ids),
         created_at=now,
         updated_at=now,
@@ -171,6 +174,28 @@ def start_aerial_recon_mission(
 def _load_route(mission: ToolMission) -> list[RoutePoint]:
     raw = json.loads(mission.route_json)
     return [RoutePoint(lat=float(p["lat"]), lon=float(p["lon"])) for p in raw]
+
+
+def list_aerial_recon_missions(
+    session: Session,
+    *,
+    user_id: int,
+) -> list[ToolMission]:
+    """Return all aerial recon missions for [user_id], newest first."""
+    return list(
+        session.exec(
+            select(ToolMission)
+            .where(
+                col(ToolMission.user_id) == user_id,
+                col(ToolMission.action_key) == ACTION_KEY_AERIAL_RECON,
+            )
+            .order_by(col(ToolMission.created_at).desc())
+        ).all()
+    )
+
+
+def mission_route_dicts(mission: ToolMission) -> list[dict[str, float]]:
+    return [{"lat": p.lat, "lon": p.lon} for p in _load_route(mission)]
 
 
 def _ensure_jobs_ready(session: Session, mission: ToolMission) -> bool:

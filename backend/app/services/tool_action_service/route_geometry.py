@@ -27,6 +27,34 @@ def route_length_km(points: list[RoutePoint]) -> float:
     return total
 
 
+def point_at_fraction(points: list[RoutePoint], fraction: float) -> RoutePoint:
+    """Return the point at [fraction] of total arc length (0..1)."""
+    if not points:
+        raise ValueError("route must not be empty")
+    if len(points) == 1:
+        return points[0]
+    frac = min(1.0, max(0.0, fraction))
+    total = route_length_km(points)
+    if total <= 0:
+        return points[0]
+    target = total * frac
+    traveled = 0.0
+    for i in range(1, len(points)):
+        a = points[i - 1]
+        b = points[i]
+        seg = haversine_km(a.lat, a.lon, b.lat, b.lon)
+        if seg <= 0:
+            continue
+        if traveled + seg >= target:
+            t = (target - traveled) / seg
+            return RoutePoint(
+                lat=a.lat + (b.lat - a.lat) * t,
+                lon=a.lon + (b.lon - a.lon) * t,
+            )
+        traveled += seg
+    return points[-1]
+
+
 def sample_along_route(
     points: list[RoutePoint],
     *,

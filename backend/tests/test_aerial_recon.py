@@ -164,14 +164,69 @@ def test_aerial_recon_accepts_and_enqueues_ensure(client, session: Session):
     assert body["status"] == MISSION_STATUS_ENSURING
     assert body["mission_id"] > 0
     assert body["route_length_km"] > 0
+    assert body["flight_duration_s"] > 0
+    assert len(body["route"]) >= 3
+    # Duration from speed: length_km / 50 * 3600
+    expected_s = max(1, int(round(body["route_length_km"] / 50.0 * 3600.0)))
+    assert body["flight_duration_s"] == expected_s
 
     missions = list(session.exec(select(ToolMission)).all())
     assert len(missions) == 1
     assert missions[0].action_key == ACTION_KEY_AERIAL_RECON
+    assert missions[0].flight_duration_s == expected_s
     job_ids = json.loads(missions[0].ensure_job_ids_json or "[]")
     assert len(job_ids) >= 1
     jobs = list(session.exec(select(FieldEnsureJob)).all())
     assert len(jobs) >= 1
+
+
+def test_list_aerial_recon_missions(client, session: Session):
+    tool = _aerial_tool(session)
+    user = _user(session)
+    other = _user(session, username="other")
+    _grant(session, user_id=int(user.id), tool_id=int(tool.id))
+    _grant(session, user_id=int(other.id), tool_id=int(tool.id))
+    origin_lat, origin_lon = 40.0, -100.0
+    route = _square_route(origin_lat, origin_lon)
+
+    created = client.post(
+        f"/api/v1/tools/{tool.id}/actions/aerial-recon",
+        headers=_auth_headers(user),
+        json={
+            "route": route,
+            "origin_lat": origin_lat,
+            "origin_lon": origin_lon,
+        },
+    )
+    assert created.status_code == 202
+    mission_id = created.json()["mission_id"]
+
+    # Other user's mission must not appear.
+    other_resp = client.post(
+        f"/api/v1/tools/{tool.id}/actions/aerial-recon",
+        headers=_auth_headers(other),
+        json={
+            "route": route,
+            "origin_lat": origin_lat,
+            "origin_lon": origin_lon,
+        },
+    )
+    assert other_resp.status_code == 202
+
+    listed = client.get(
+        "/api/v1/tools/missions/aerial-recon",
+        headers=_auth_headers(user),
+    )
+    assert listed.status_code == 200
+    items = listed.json()["items"]
+    assert len(items) == 1
+    assert items[0]["mission_id"] == mission_id
+    assert items[0]["status"] == MISSION_STATUS_ENSURING
+    assert len(items[0]["route"]) >= 3
+    assert items[0]["tool_id"] == tool.id
+
+    unauth = client.get("/api/v1/tools/missions/aerial-recon")
+    assert unauth.status_code in (401, 403)
 
 
 def test_promote_schedules_events_in_route_order(session: Session):
@@ -342,5 +397,26 @@ def test_game_config_loads_aerial_recon():
     get_game_config.cache_clear()
     cfg = get_game_config().tool_actions.aerial_recon
     assert cfg.max_route_km == 100
-    assert cfg.flight_duration_s == 2700
+    assert cfg.flight_speed_kmh == 50
     assert 0 < cfg.discovery_chance <= 1
+
+
+def test_point_at_fraction_matches_discovery_timing():
+    from app.services.tool_action_service.route_geometry import (
+        RoutePoint,
+        point_at_fraction,
+        route_length_km,
+    )
+
+    route = [
+        RoutePoint(40.0, -100.0),
+        RoutePoint(40.1, -100.0),
+        RoutePoint(40.1, -99.9),
+    ]
+    length = route_length_km(route)
+    mid = point_at_fraction(route, 0.5)
+    # Midpoint should be roughly halfway along arc.
+    from app.services.site_service.geo_utils import haversine_km
+
+    along = haversine_km(route[0].lat, route[0].lon, mid.lat, mid.lon)
+    assert abs(along / length - 0.5) < 0.05

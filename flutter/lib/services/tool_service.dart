@@ -151,7 +151,7 @@ class ToolService {
     return ToolSummary.fromJson(decoded);
   }
 
-  Future<AerialReconMissionResult> startAerialRecon({
+  Future<AerialReconMission> startAerialRecon({
     required int toolId,
     required List<LatLng> route,
     required LatLng origin,
@@ -187,7 +187,36 @@ class ToolService {
     if (decoded is! Map<String, dynamic>) {
       throw const ToolServiceException('Invalid aerial recon response');
     }
-    return AerialReconMissionResult.fromJson(decoded);
+    return AerialReconMission.fromJson(decoded);
+  }
+
+  Future<List<AerialReconMission>> fetchAerialReconMissions() async {
+    final uri = AppConfig.aerialReconMissionsUri();
+    if (kDebugMode) {
+      debugPrint('ToolService GET $uri');
+    }
+    final response = await ApiClient.instance
+        .sendGet(uri, client: _client, headers: await _headers())
+        .timeout(const Duration(seconds: 15));
+
+    if (response.statusCode != 200) {
+      throw ToolServiceException(
+        'Failed to load aerial recon missions (${response.statusCode})',
+      );
+    }
+
+    final decoded = jsonDecode(response.body);
+    if (decoded is! Map<String, dynamic>) {
+      throw const ToolServiceException('Invalid aerial recon missions response');
+    }
+    final items = decoded['items'];
+    if (items is! List) {
+      throw const ToolServiceException('Invalid aerial recon missions response');
+    }
+    return [
+      for (final item in items)
+        if (item is Map<String, dynamic>) AerialReconMission.fromJson(item),
+    ];
   }
 
   static String? _errorDetail(String body) {
@@ -203,27 +232,82 @@ class ToolService {
   }
 }
 
-class AerialReconMissionResult {
-  const AerialReconMissionResult({
+class AerialReconMission {
+  const AerialReconMission({
     required this.missionId,
     required this.status,
+    required this.route,
     required this.routeLengthKm,
     required this.flightDurationS,
+    required this.createdAt,
+    required this.toolId,
+    this.flightStartedAt,
+    this.flightEndsAt,
+    this.toolImageUrl,
   });
 
   final int missionId;
   final String status;
+  final List<LatLng> route;
   final double routeLengthKm;
   final int flightDurationS;
+  final DateTime? flightStartedAt;
+  final DateTime? flightEndsAt;
+  final DateTime createdAt;
+  final int toolId;
+  final String? toolImageUrl;
 
-  factory AerialReconMissionResult.fromJson(Map<String, dynamic> json) {
-    return AerialReconMissionResult(
+  bool get isActive => status == 'ensuring' || status == 'flying';
+  bool get isFlying => status == 'flying';
+  bool get isEnsuring => status == 'ensuring';
+  bool get isPast => status == 'done' || status == 'failed';
+
+  factory AerialReconMission.fromJson(Map<String, dynamic> json) {
+    final rawRoute = json['route'];
+    final route = <LatLng>[];
+    if (rawRoute is List) {
+      for (final item in rawRoute) {
+        if (item is! Map) continue;
+        final lat = item['lat'];
+        final lon = item['lon'];
+        if (lat is num && lon is num) {
+          route.add(LatLng(lat.toDouble(), lon.toDouble()));
+        }
+      }
+    }
+    return AerialReconMission(
       missionId: json['mission_id'] as int? ?? 0,
       status: json['status'] as String? ?? '',
+      route: route,
       routeLengthKm: (json['route_length_km'] as num?)?.toDouble() ?? 0,
       flightDurationS: json['flight_duration_s'] as int? ?? 0,
+      flightStartedAt: _parseDate(json['flight_started_at']),
+      flightEndsAt: _parseDate(json['flight_ends_at']),
+      createdAt: _parseDate(json['created_at']) ?? DateTime.now().toUtc(),
+      toolId: json['tool_id'] as int? ?? 0,
+      toolImageUrl: json['tool_image_url'] as String?,
     );
   }
+
+  static DateTime? _parseDate(Object? value) {
+    if (value is! String || value.isEmpty) return null;
+    return DateTime.tryParse(value)?.toUtc();
+  }
+}
+
+/// Progress along the route in 0..1 using the same arc-fraction timing as
+/// backend discovery scheduling.
+double aerialReconProgressFraction(
+  AerialReconMission mission, {
+  DateTime? now,
+}) {
+  if (mission.isEnsuring || mission.flightStartedAt == null) return 0;
+  final started = mission.flightStartedAt!;
+  final duration = mission.flightDurationS;
+  if (duration <= 0) return mission.isPast ? 1 : 0;
+  final clock = now ?? DateTime.now().toUtc();
+  final elapsed = clock.difference(started).inMilliseconds / 1000.0;
+  return (elapsed / duration).clamp(0.0, 1.0);
 }
 
 class ToolServiceException implements Exception {

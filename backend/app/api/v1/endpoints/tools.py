@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import datetime
+
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 from sqlmodel import Session
@@ -9,9 +11,15 @@ from sqlmodel import Session
 from app.core.database import get_session
 from app.core.exceptions import ValidationError
 from app.core.security import get_current_admin_user, get_current_user, get_optional_current_user
+from app.models.tool import Tool
+from app.models.tool_mission import ToolMission
 from app.models.user import User
 from app.schemas.tool import ToolCategoryItem, ToolCategoryListResponse, ToolListResponse, ToolSummary
-from app.services.tool_action_service import start_aerial_recon_mission
+from app.services.tool_action_service import (
+    list_aerial_recon_missions,
+    mission_route_dicts,
+    start_aerial_recon_mission,
+)
 from app.services.tool_service import (
     collect_tool_for_user,
     get_tool_by_id,
@@ -34,11 +42,54 @@ class AerialReconRequest(BaseModel):
     origin_lon: float
 
 
+class AerialReconMissionItem(BaseModel):
+    mission_id: int
+    status: str
+    route: list[RoutePointBody]
+    route_length_km: float
+    flight_duration_s: int
+    flight_started_at: datetime | None = None
+    flight_ends_at: datetime | None = None
+    created_at: datetime
+    tool_id: int
+    tool_image_url: str | None = None
+
+
+class AerialReconMissionListResponse(BaseModel):
+    items: list[AerialReconMissionItem]
+
+
 class AerialReconResponse(BaseModel):
     mission_id: int
     status: str
+    route: list[RoutePointBody]
     route_length_km: float
     flight_duration_s: int
+    flight_started_at: datetime | None = None
+    flight_ends_at: datetime | None = None
+    created_at: datetime
+    tool_id: int
+    tool_image_url: str | None = None
+
+
+def _tool_image_url(session: Session, tool_id: int) -> str | None:
+    tool = session.get(Tool, tool_id)
+    return tool.main_image_url if tool is not None else None
+
+
+def _mission_item(session: Session, mission: ToolMission) -> AerialReconMissionItem:
+    return AerialReconMissionItem(
+        mission_id=int(mission.id),
+        status=mission.status,
+        route=[RoutePointBody(**p) for p in mission_route_dicts(mission)],
+        route_length_km=mission.route_length_km,
+        flight_duration_s=mission.flight_duration_s,
+        flight_started_at=mission.flight_started_at,
+        flight_ends_at=mission.flight_ends_at,
+        created_at=mission.created_at,
+        tool_id=mission.tool_id,
+        tool_image_url=_tool_image_url(session, mission.tool_id),
+    )
 
 
 def _require_show_all_admin(current_user: User | None, show_all: bool) -> None:
@@ -107,6 +158,20 @@ def get_tool_categories(
     return ToolCategoryListResponse(items=items)
 
 
+@router.get(
+    "/missions/aerial-recon",
+    response_model=AerialReconMissionListResponse,
+)
+def get_aerial_recon_missions(
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+) -> AerialReconMissionListResponse:
+    missions = list_aerial_recon_missions(session, user_id=int(current_user.id))
+    return AerialReconMissionListResponse(
+        items=[_mission_item(session, m) for m in missions]
+    )
+
+
 @router.post("/{tool_id}/collect", response_model=ToolSummary)
 def post_collect_tool(
     tool_id: int,
@@ -140,12 +205,8 @@ def post_aerial_recon(
         origin_lat=body.origin_lat,
         origin_lon=body.origin_lon,
     )
-    return AerialReconResponse(
-        mission_id=int(mission.id),
-        status=mission.status,
-        route_length_km=mission.route_length_km,
-        flight_duration_s=mission.flight_duration_s,
-    )
+    item = _mission_item(session, mission)
+    return AerialReconResponse(**item.model_dump())
 
 
 @router.get("/{tool_id}", response_model=ToolSummary)

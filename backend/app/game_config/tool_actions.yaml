@@ -4,7 +4,8 @@ aerial_recon:
   max_route_km: 100
   # start/end must be within this of the player's GPS origin
   loop_endpoint_tolerance_m: 75
-  flight_duration_s: 2700
+  # Flight time = route_length_km / flight_speed_kmh (snapshotted as flight_duration_s)
+  flight_speed_kmh: 50
   discovery_chance: 0.2
   discovery_distance_m: 200
   ensure_sample_spacing_km: 0.5

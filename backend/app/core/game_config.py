@@ -261,7 +261,7 @@ class AerialReconActionConfig(BaseModel):
 
     max_route_km: float = 100.0
     loop_endpoint_tolerance_m: float = 75.0
-    flight_duration_s: int = 2700
+    flight_speed_kmh: float = 50.0
     discovery_chance: float = 0.2
     discovery_distance_m: float = 200.0
     ensure_sample_spacing_km: float = 0.5
