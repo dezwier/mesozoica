@@ -228,9 +228,87 @@ def test_list_aerial_recon_missions(client, session: Session):
     assert items[0]["status"] == MISSION_STATUS_ENSURING
     assert len(items[0]["route"]) >= 3
     assert items[0]["tool_id"] == tool.id
+    assert items[0]["discovered_site_ids"] == []
 
     unauth = client.get("/api/v1/tools/missions/aerial-recon")
     assert unauth.status_code in (401, 403)
+
+
+def test_list_aerial_recon_includes_discovered_site_ids(client, session: Session):
+    tool = _aerial_tool(session)
+    user = _user(session)
+    _grant(session, user_id=int(user.id), tool_id=int(tool.id))
+    origin_lat, origin_lon = 40.0, -100.0
+    route = _square_route(origin_lat, origin_lon)
+
+    created = client.post(
+        f"/api/v1/tools/{tool.id}/actions/aerial-recon",
+        headers=_auth_headers(user),
+        json={
+            "route": route,
+            "origin_lat": origin_lat,
+            "origin_lon": origin_lon,
+        },
+    )
+    assert created.status_code == 202
+    mission_id = created.json()["mission_id"]
+    assert created.json()["discovered_site_ids"] == []
+
+    session.add(
+        Site(
+            site_id=9301,
+            latitude=origin_lat,
+            longitude=origin_lon,
+            data_source=DATA_SOURCE_FIELD,
+        )
+    )
+    session.add(
+        Site(
+            site_id=9302,
+            latitude=origin_lat + 0.01,
+            longitude=origin_lon,
+            data_source=DATA_SOURCE_FIELD,
+        )
+    )
+    session.commit()
+
+    now = datetime.utcnow()
+    session.add(
+        ToolMissionEvent(
+            mission_id=mission_id,
+            event_type="discover_site",
+            site_id=9301,
+            due_at=now - timedelta(seconds=10),
+            status=EVENT_STATUS_DONE,
+            lat=origin_lat,
+            lon=origin_lon,
+            distance_along_km=0.0,
+            processed_at=now,
+        )
+    )
+    session.add(
+        ToolMissionEvent(
+            mission_id=mission_id,
+            event_type="discover_site",
+            site_id=9302,
+            due_at=now - timedelta(seconds=5),
+            status=EVENT_STATUS_MISS,
+            lat=origin_lat + 0.01,
+            lon=origin_lon,
+            distance_along_km=1.0,
+            processed_at=now,
+        )
+    )
+    session.commit()
+
+    listed = client.get(
+        "/api/v1/tools/missions/aerial-recon",
+        headers=_auth_headers(user),
+    )
+    assert listed.status_code == 200
+    items = listed.json()["items"]
+    assert len(items) == 1
+    assert items[0]["discovered_site_ids"] == [9301]
 
 
 def test_promote_schedules_events_in_route_order(session: Session):

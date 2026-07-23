@@ -6,13 +6,18 @@ from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
-from sqlmodel import Session
+from sqlmodel import Session, col, select
 
 from app.core.database import get_session
 from app.core.exceptions import ValidationError
 from app.core.security import get_current_admin_user, get_current_user, get_optional_current_user
 from app.models.tool import Tool
 from app.models.tool_mission import ToolMission
+from app.models.tool_mission_event import (
+    EVENT_STATUS_DONE,
+    EVENT_TYPE_DISCOVER_SITE,
+    ToolMissionEvent,
+)
 from app.models.user import User
 from app.schemas.tool import ToolCategoryItem, ToolCategoryListResponse, ToolListResponse, ToolSummary
 from app.services.tool_action_service import (
@@ -54,6 +59,7 @@ class AerialReconMissionItem(BaseModel):
     created_at: datetime
     tool_id: int
     tool_image_url: str | None = None
+    discovered_site_ids: list[int] = Field(default_factory=list)
 
 
 class AerialReconMissionListResponse(BaseModel):
@@ -71,6 +77,7 @@ class AerialReconResponse(BaseModel):
     created_at: datetime
     tool_id: int
     tool_image_url: str | None = None
+    discovered_site_ids: list[int] = Field(default_factory=list)
 
 
 def _tool_image_url(session: Session, tool_id: int) -> str | None:
@@ -78,7 +85,40 @@ def _tool_image_url(session: Session, tool_id: int) -> str | None:
     return tool.main_image_url if tool is not None else None
 
 
-def _mission_item(session: Session, mission: ToolMission) -> AerialReconMissionItem:
+def _discovered_site_ids_by_mission(
+    session: Session,
+    mission_ids: list[int],
+) -> dict[int, list[int]]:
+    """Site IDs from successful discover events, keyed by mission_id."""
+    if not mission_ids:
+        return {}
+    rows = session.exec(
+        select(ToolMissionEvent.mission_id, ToolMissionEvent.site_id).where(
+            col(ToolMissionEvent.mission_id).in_(mission_ids),
+            col(ToolMissionEvent.event_type) == EVENT_TYPE_DISCOVER_SITE,
+            col(ToolMissionEvent.status) == EVENT_STATUS_DONE,
+            col(ToolMissionEvent.site_id).is_not(None),
+        )
+    ).all()
+    by_mission: dict[int, list[int]] = {mid: [] for mid in mission_ids}
+    for mission_id, site_id in rows:
+        if site_id is None:
+            continue
+        by_mission.setdefault(int(mission_id), []).append(int(site_id))
+    return by_mission
+
+
+def _mission_item(
+    session: Session,
+    mission: ToolMission,
+    *,
+    discovered_site_ids: list[int] | None = None,
+) -> AerialReconMissionItem:
+    site_ids = discovered_site_ids
+    if site_ids is None:
+        site_ids = _discovered_site_ids_by_mission(
+            session, [int(mission.id)]
+        ).get(int(mission.id), [])
     return AerialReconMissionItem(
         mission_id=int(mission.id),
         status=mission.status,
@@ -90,6 +130,7 @@ def _mission_item(session: Session, mission: ToolMission) -> AerialReconMissionI
         created_at=mission.created_at,
         tool_id=mission.tool_id,
         tool_image_url=_tool_image_url(session, mission.tool_id),
+        discovered_site_ids=site_ids,
     )
 
 
@@ -168,8 +209,18 @@ def get_aerial_recon_missions(
     current_user: User = Depends(get_current_user),
 ) -> AerialReconMissionListResponse:
     missions = list_aerial_recon_missions(session, user_id=int(current_user.id))
+    discovered = _discovered_site_ids_by_mission(
+        session, [int(m.id) for m in missions if m.id is not None]
+    )
     return AerialReconMissionListResponse(
-        items=[_mission_item(session, m) for m in missions]
+        items=[
+            _mission_item(
+                session,
+                m,
+                discovered_site_ids=discovered.get(int(m.id), []),
+            )
+            for m in missions
+        ]
     )
 
 

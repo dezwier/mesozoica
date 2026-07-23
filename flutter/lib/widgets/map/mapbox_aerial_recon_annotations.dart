@@ -8,14 +8,40 @@ import 'package:http/http.dart' as http;
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 
 import '../../controllers/aerial_recon_controller.dart';
+import '../../models/site_map_filters.dart';
 import '../../services/auth_service.dart';
 import '../../services/token_storage.dart';
+import '../../services/tool_service.dart';
 
 const Color _reconGold = Color(0xFFD4AF37);
 const int _reconGoldArgb = 0xFFD4AF37;
 const double _scoutPuckLogicalSize = 28;
 const double _scoutPuckPixelRatio = 3;
 const String _scoutPuckFallbackAsset = 'assets/images/logo.png';
+
+/// Active missions always; past only when [showPastReconRoutes] and within 24h.
+List<AerialReconMission> aerialReconMissionsForMap({
+  required List<AerialReconMission> missions,
+  required bool showPastReconRoutes,
+  DateTime? now,
+}) {
+  final clock = now ?? DateTime.now().toUtc();
+  return [
+    for (final mission in missions)
+      if (mission.isActive)
+        mission
+      else if (showPastReconRoutes &&
+          mission.isPast &&
+          _pastReconRouteIsRecent(mission, clock))
+        mission,
+  ];
+}
+
+bool _pastReconRouteIsRecent(AerialReconMission mission, DateTime now) {
+  final end = mission.flightEndsAt ?? mission.createdAt;
+  final age = now.difference(end);
+  return age.isNegative || age <= pastReconRouteMaxAge;
+}
 
 /// Mapbox polylines + scout pucks for aerial recon missions.
 class MapboxAerialReconAnnotations {
@@ -52,14 +78,21 @@ class MapboxAerialReconAnnotations {
     onTap(missionId);
   }
 
-  Future<void> sync(AerialReconController controller) async {
+  Future<void> sync(
+    AerialReconController controller, {
+    required bool showPastReconRoutes,
+  }) async {
     final lineManager = _lineManager;
     final scoutManager = _scoutManager;
     if (lineManager == null || scoutManager == null) return;
 
     final seq = ++_syncSeq;
-    final missions = controller.missions;
-    final routeSignature = _routeSignature(missions);
+    final missions = aerialReconMissionsForMap(
+      missions: controller.missions,
+      showPastReconRoutes: showPastReconRoutes,
+    );
+    final routeSignature =
+        '${showPastReconRoutes ? 1 : 0}|${_routeSignature(missions)}';
 
     Uint8List? puckImage;
     final needsScout = missions.any((m) => m.isFlying || m.isEnsuring);
@@ -204,7 +237,7 @@ class MapboxAerialReconAnnotations {
     _scoutManager = null;
   }
 
-  String _routeSignature(List missions) {
+  String _routeSignature(List<AerialReconMission> missions) {
     final buf = StringBuffer();
     for (final mission in missions) {
       buf

@@ -171,6 +171,8 @@ class _MapScreenState extends State<MapScreen>
                     avatarImageUrl: avatarUrl.isEmpty ? null : avatarUrl,
                     rotateCardCount: _rotateCardCount,
                     aerialRecon: aerialRecon,
+                    showAerialReconOverlays: isFieldMode,
+                    showPastReconRoutes: mapData.filters.showPastReconRoutes,
                     onSiteTap: aerialDrawMode ? (_) {} : _onSiteTap,
                     onFollowCancelled: () {
                       // Rotate mode is always locked to the user.

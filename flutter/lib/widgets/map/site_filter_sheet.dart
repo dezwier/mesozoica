@@ -9,17 +9,20 @@ class SiteFilterSheet extends StatefulWidget {
     required this.initialFilters,
     required this.onApply,
     this.showStatusSection = true,
+    this.showReconRoutesSection = false,
   });
 
   final SiteMapFilters initialFilters;
   final ValueChanged<SiteMapFilters> onApply;
   final bool showStatusSection;
+  final bool showReconRoutesSection;
 
   static Future<void> show(
     BuildContext context, {
     required SiteMapFilters initialFilters,
     required ValueChanged<SiteMapFilters> onApply,
     bool showStatusSection = true,
+    bool showReconRoutesSection = false,
   }) {
     return showModalBottomSheet<void>(
       context: context,
@@ -34,6 +37,7 @@ class SiteFilterSheet extends StatefulWidget {
         initialFilters: initialFilters,
         onApply: onApply,
         showStatusSection: showStatusSection,
+        showReconRoutesSection: showReconRoutesSection,
       ),
     );
   }
@@ -46,6 +50,7 @@ class _SiteFilterSheetState extends State<SiteFilterSheet> {
   late Set<String> _pendingStatuses;
   late Set<String> _pendingPeriods;
   late Set<String> _pendingRockTypes;
+  late bool _pendingShowPastReconRoutes;
   bool _applied = false;
 
   @override
@@ -54,6 +59,7 @@ class _SiteFilterSheetState extends State<SiteFilterSheet> {
     _pendingStatuses = {...widget.initialFilters.statuses};
     _pendingPeriods = {...widget.initialFilters.periods};
     _pendingRockTypes = {...widget.initialFilters.rockTypes};
+    _pendingShowPastReconRoutes = widget.initialFilters.showPastReconRoutes;
   }
 
   void _commitPending() {
@@ -65,6 +71,9 @@ class _SiteFilterSheetState extends State<SiteFilterSheet> {
         periods: _pendingPeriods,
         rockTypes: _pendingRockTypes,
         filterByStatus: widget.showStatusSection,
+        showPastReconRoutes: widget.showReconRoutesSection
+            ? _pendingShowPastReconRoutes
+            : false,
       ),
     );
   }
@@ -75,6 +84,9 @@ class _SiteFilterSheetState extends State<SiteFilterSheet> {
       periods: _pendingPeriods,
       rockTypes: _pendingRockTypes,
       filterByStatus: widget.showStatusSection,
+      showPastReconRoutes: widget.showReconRoutesSection
+          ? _pendingShowPastReconRoutes
+          : false,
     );
   }
 
@@ -83,6 +95,7 @@ class _SiteFilterSheetState extends State<SiteFilterSheet> {
       _pendingStatuses = {...siteStatusOptions};
       _pendingPeriods = {...sitePeriodOptions};
       _pendingRockTypes = {...siteRockTypeOptions};
+      _pendingShowPastReconRoutes = false;
     });
   }
 
@@ -191,6 +204,23 @@ class _SiteFilterSheetState extends State<SiteFilterSheet> {
                   ),
                 ],
               ),
+              if (widget.showReconRoutesSection) ...[
+                const SizedBox(height: 16),
+                _sectionTitle(theme, 'Overlays'),
+                _checkboxTile(
+                  theme: theme,
+                  value: _pendingShowPastReconRoutes,
+                  label: 'Past aerial recon routes (last 24h)',
+                  onChanged: (selected) {
+                    setState(() {
+                      _pendingShowPastReconRoutes = selected ?? false;
+                    });
+                  },
+                  onLongPress: () {
+                    setState(() => _pendingShowPastReconRoutes = true);
+                  },
+                ),
+              ],
               const SizedBox(height: 16),
               Row(
                 children: [

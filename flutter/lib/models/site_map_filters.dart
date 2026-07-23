@@ -42,12 +42,16 @@ const siteRockTypeOptions = <String>[
 
 String siteFilterOptionLabel(String value) => capitalizeLeadingLetter(value);
 
+/// How far back past aerial recon routes stay eligible for the map overlay.
+const Duration pastReconRouteMaxAge = Duration(hours: 24);
+
 class SiteMapFilters {
   SiteMapFilters({
     Set<String>? statuses,
     Set<String>? periods,
     Set<String>? rockTypes,
     this.filterByStatus = false,
+    this.showPastReconRoutes = false,
   })  : statuses = statuses ?? Set<String>.from(siteStatusOptions),
         periods = periods ?? Set<String>.from(sitePeriodOptions),
         rockTypes = rockTypes ?? Set<String>.from(siteRockTypeOptions);
@@ -59,17 +63,25 @@ class SiteMapFilters {
   /// When false (archive mode), status checkboxes are ignored.
   final bool filterByStatus;
 
+  /// Opt-in: show completed aerial recon polylines from the last 24h.
+  final bool showPastReconRoutes;
+
   bool get hasActiveFilters {
     final periodActive = periods.length != sitePeriodOptions.length;
     final rockActive = rockTypes.length != siteRockTypeOptions.length;
     final statusActive =
         filterByStatus && statuses.length != siteStatusOptions.length;
-    return periodActive || rockActive || statusActive;
+    return periodActive || rockActive || statusActive || showPastReconRoutes;
   }
 
-  /// Stable key so marker layer can wipe+reload when filters change.
+  /// Stable key so marker layer can wipe+reload when site filters change.
+  /// Past recon routes are a separate overlay and do not affect this key.
   String get markerFilterKey {
-    if (!hasActiveFilters) return 'all';
+    final periodActive = periods.length != sitePeriodOptions.length;
+    final rockActive = rockTypes.length != siteRockTypeOptions.length;
+    final statusActive =
+        filterByStatus && statuses.length != siteStatusOptions.length;
+    if (!periodActive && !rockActive && !statusActive) return 'all';
     final s = (statuses.toList()..sort()).join(',');
     final p = (periods.toList()..sort()).join(',');
     final r = (rockTypes.toList()..sort()).join(',');
@@ -81,12 +93,14 @@ class SiteMapFilters {
     Set<String>? periods,
     Set<String>? rockTypes,
     bool? filterByStatus,
+    bool? showPastReconRoutes,
   }) {
     return SiteMapFilters(
       statuses: statuses ?? this.statuses,
       periods: periods ?? this.periods,
       rockTypes: rockTypes ?? this.rockTypes,
       filterByStatus: filterByStatus ?? this.filterByStatus,
+      showPastReconRoutes: showPastReconRoutes ?? this.showPastReconRoutes,
     );
   }
 

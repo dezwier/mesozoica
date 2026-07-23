@@ -130,6 +130,7 @@ mixin _MapScreenFieldOpsMixin on State<MapScreen>, _MapScreenCameraMixin {
       context,
       initialFilters: mapData.filters.copyWith(filterByStatus: isFieldMode),
       showStatusSection: isFieldMode,
+      showReconRoutesSection: isFieldMode,
       onApply: mapData.applyFilters,
     );
   }

@@ -57,7 +57,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
   MapController? _mapController;
   AerialReconController? _aerialRecon;
   int _lastAerialMissionsFetchGeneration = 0;
-  bool _aerialWasActive = false;
+  final Set<int> _knownAerialDiscoveredSiteIds = {};
   Timer? _discoveryRefreshTimer;
   StreamSubscription<RemoteMessage>? _foregroundPushSub;
   StreamSubscription<RemoteMessage>? _openedPushSub;
@@ -166,31 +166,40 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
       return;
     }
 
-    // While a recon is (or just was) active, coalesce map/catalog reloads after
-    // each missions poll so aerial discoveries appear without thrashing the map.
+    // Missions poll reports successful discover event site IDs. Upsert only
+    // newly seen IDs into map + site catalog (no blind full reload).
     final gen = aerial.missionsFetchGeneration;
     if (gen != _lastAerialMissionsFetchGeneration) {
       _lastAerialMissionsFetchGeneration = gen;
-      final hasActive = aerial.missions.any((m) => m.isActive);
-      if (hasActive || _aerialWasActive) {
-        _scheduleDiscoveryRefresh();
-      }
-      _aerialWasActive = hasActive;
+      _ingestAerialDiscoveredSites(
+        aerial.missions.expand((m) => m.discoveredSiteIds),
+      );
     }
 
     setState(() {});
   }
 
+  void _ingestAerialDiscoveredSites(Iterable<int> siteIds) {
+    final newIds = <int>[];
+    for (final id in siteIds) {
+      if (_knownAerialDiscoveredSiteIds.add(id)) {
+        newIds.add(id);
+      }
+    }
+    if (newIds.isEmpty) return;
+    for (final id in newIds) {
+      unawaited(_upsertDiscoveredSite(id));
+    }
+    _scheduleDiscoverySideEffects(reloadSiteCatalogs: false);
+  }
+
   /// Coalesce rapid discovery signals (many aerial finds / polls) into one reload.
   void _scheduleDiscoveryRefresh({int? siteId}) {
     if (siteId != null) {
+      _knownAerialDiscoveredSiteIds.add(siteId);
       unawaited(_upsertDiscoveredSite(siteId));
     }
-    _discoveryRefreshTimer?.cancel();
-    _discoveryRefreshTimer = Timer(const Duration(milliseconds: 1500), () {
-      if (!mounted) return;
-      _refreshAfterSiteDiscovered();
-    });
+    _scheduleDiscoverySideEffects(reloadSiteCatalogs: true);
   }
 
   Future<void> _upsertDiscoveredSite(int siteId) async {
@@ -205,16 +214,26 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
       context.read<MapController>().upsertSite(site);
       context.read<SiteCatalogController>().upsertSite(site);
     } catch (_) {
-      // Full debounced reload will still pick it up.
+      // Debounced catalog reload (when scheduled) may still pick it up.
     } finally {
       service.dispose();
     }
   }
 
-  void _refreshAfterSiteDiscovered() {
+  void _scheduleDiscoverySideEffects({required bool reloadSiteCatalogs}) {
+    _discoveryRefreshTimer?.cancel();
+    _discoveryRefreshTimer = Timer(const Duration(milliseconds: 1500), () {
+      if (!mounted) return;
+      _refreshAfterSiteDiscovered(reloadSiteCatalogs: reloadSiteCatalogs);
+    });
+  }
+
+  void _refreshAfterSiteDiscovered({bool reloadSiteCatalogs = true}) {
     if (!mounted) return;
-    context.read<MapController>().load(force: true);
-    context.read<SiteCatalogController>().load(force: true);
+    if (reloadSiteCatalogs) {
+      context.read<MapController>().load(force: true);
+      context.read<SiteCatalogController>().load(force: true);
+    }
     unawaited(context.read<FossilCatalogController>().load(force: true));
     final auth = context.read<AuthController>();
     unawaited(auth.refreshProfile());
@@ -423,6 +442,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     // Field map/catalog are per-user (user_site links). Always drop the
     // previous account's markers/list when the signed-in identity changes.
     final isAdmin = auth.currentUser?.isAdmin ?? false;
+    _knownAerialDiscoveredSiteIds.clear();
     context.read<MapController>().onUserChanged(isAdmin: isAdmin);
     context.read<ToolCatalogController>().onUserChanged(isAdmin: isAdmin);
     context.read<FieldDiscoveryCoordinator>().clearForUserChange();

@@ -50,8 +50,26 @@ class MapboxSiteAnnotations {
   Future<void> setRotateModePaused(bool paused) async {
     if (_rotateModePaused == paused) return;
     _rotateModePaused = paused;
+    // Hide without deleteAll so exiting rotate restores markers instantly;
+    // append-only sync then adds anything discovered while paused.
+    final shadowManager = _shadowManager;
+    final manager = _manager;
+    final dotManager = _dotManager;
+    if (shadowManager == null || manager == null || dotManager == null) {
+      return;
+    }
     if (paused) {
-      await clearAllMarkers();
+      await Future.wait([
+        shadowManager.setCircleOpacity(0),
+        manager.setCircleOpacity(0),
+        dotManager.setCircleOpacity(0),
+      ]);
+    } else {
+      await Future.wait([
+        shadowManager.setCircleOpacity(mapboxMarkerShadowOpacity),
+        manager.setCircleOpacity(0.95),
+        dotManager.setCircleOpacity(1.0),
+      ]);
     }
   }
 

@@ -48,6 +48,8 @@ class MapboxFieldMap extends StatefulWidget {
     this.rotateCardCount,
     this.headingListenable,
     this.aerialRecon,
+    this.showPastReconRoutes = false,
+    this.showAerialReconOverlays = true,
     this.onError,
   });
 
@@ -81,6 +83,10 @@ class MapboxFieldMap extends StatefulWidget {
   final ValueNotifier<int>? rotateCardCount;
   /// Ongoing + past aerial recon routes / scout puck.
   final AerialReconController? aerialRecon;
+  /// When true, draw past (done/cancelled) recon routes from the last 24h.
+  final bool showPastReconRoutes;
+  /// When false (archive mode), never draw recon routes or scout.
+  final bool showAerialReconOverlays;
   final ValueChanged<Object>? onError;
 
   @override
@@ -440,6 +446,10 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
       widget.aerialRecon?.addListener(_onAerialReconChanged);
       unawaited(_syncAerialRecon());
     }
+    if (oldWidget.showPastReconRoutes != widget.showPastReconRoutes ||
+        oldWidget.showAerialReconOverlays != widget.showAerialReconOverlays) {
+      unawaited(_syncAerialRecon());
+    }
   }
 
   Future<void> _onMapCreated(MapboxMap map) async {
@@ -629,11 +639,17 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
     if (aerial == null || !_ready) return;
     try {
       // Keep rotate mode uncluttered — no scout loops/pucks over FollowPuck.
-      if (widget.rotateWithHeading || controller == null) {
+      // Archive mode never shows recon overlays.
+      if (widget.rotateWithHeading ||
+          controller == null ||
+          !widget.showAerialReconOverlays) {
         await aerial.clear();
         return;
       }
-      await aerial.sync(controller);
+      await aerial.sync(
+        controller,
+        showPastReconRoutes: widget.showPastReconRoutes,
+      );
     } catch (error) {
       if (kDebugMode) {
         debugPrint('MapboxFieldMap aerial recon sync failed: $error');

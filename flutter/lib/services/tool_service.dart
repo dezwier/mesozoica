@@ -271,6 +271,7 @@ class AerialReconMission {
     this.flightStartedAt,
     this.flightEndsAt,
     this.toolImageUrl,
+    this.discoveredSiteIds = const [],
   });
 
   final int missionId;
@@ -283,6 +284,7 @@ class AerialReconMission {
   final DateTime createdAt;
   final int toolId;
   final String? toolImageUrl;
+  final List<int> discoveredSiteIds;
 
   bool get isActive => status == 'ensuring' || status == 'flying';
   bool get isFlying => status == 'flying';
@@ -303,6 +305,17 @@ class AerialReconMission {
         }
       }
     }
+    final rawIds = json['discovered_site_ids'];
+    final discoveredSiteIds = <int>[];
+    if (rawIds is List) {
+      for (final id in rawIds) {
+        if (id is int) {
+          discoveredSiteIds.add(id);
+        } else if (id is num) {
+          discoveredSiteIds.add(id.toInt());
+        }
+      }
+    }
     return AerialReconMission(
       missionId: json['mission_id'] as int? ?? 0,
       status: json['status'] as String? ?? '',
@@ -314,6 +327,7 @@ class AerialReconMission {
       createdAt: _parseDate(json['created_at']) ?? DateTime.now().toUtc(),
       toolId: json['tool_id'] as int? ?? 0,
       toolImageUrl: json['tool_image_url'] as String?,
+      discoveredSiteIds: discoveredSiteIds,
     );
   }
 
