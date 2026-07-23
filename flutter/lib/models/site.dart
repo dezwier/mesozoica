@@ -17,6 +17,7 @@ class SiteSummary {
     this.siteTypePeriod,
     this.siteTypeRockType,
     this.mainImageUrl,
+    this.howDiscovered,
     this.status,
     this.viewerHasSurveyed,
     this.oddDinoCount,
@@ -39,6 +40,8 @@ class SiteSummary {
   final String? siteTypePeriod;
   final String? siteTypeRockType;
   final String? mainImageUrl;
+  /// First discovery method: walk, aerial_recon, or manual.
+  final String? howDiscovered;
   final String? status;
   final bool? viewerHasSurveyed;
   final double? oddDinoCount;
@@ -169,6 +172,7 @@ class SiteSummary {
       siteTypePeriod: json['site_type_period'] as String?,
       siteTypeRockType: json['site_type_rock_type'] as String?,
       mainImageUrl: json['main_image_url'] as String?,
+      howDiscovered: json['how_discovered'] as String?,
       status: json['status'] as String?,
       viewerHasSurveyed: json['viewer_has_surveyed'] as bool?,
       oddDinoCount: (json['odd_dino_count'] as num?)?.toDouble(),
@@ -198,6 +202,7 @@ class SiteSummary {
       siteTypePeriod: siteTypePeriod,
       siteTypeRockType: siteTypeRockType,
       mainImageUrl: mainImageUrl ?? this.mainImageUrl,
+      howDiscovered: howDiscovered,
       status: status ?? this.status,
       viewerHasSurveyed: viewerHasSurveyed ?? this.viewerHasSurveyed,
       oddDinoCount: oddDinoCount,

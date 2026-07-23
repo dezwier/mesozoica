@@ -26,6 +26,7 @@ class SiteSummary(BaseModel):
     site_type_rock_type: str | None = None
     main_image_url: str | None = None
     data_source: str = "archive"
+    how_discovered: str | None = None
     status: str | None = None
     viewer_has_surveyed: bool | None = None
     odd_dino_count: float | None = None

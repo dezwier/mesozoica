@@ -8,7 +8,7 @@ from sqlmodel import Session, col, select
 
 from app.core.exceptions import NotFoundError, ValidationError
 from app.models.data_source import DATA_SOURCE_FIELD
-from app.models.site import Site
+from app.models.site import HOW_DISCOVERED_AERIAL_RECON, Site
 from app.models.user_notification import UserNotification, UserNotificationType
 from app.models.user_site import (
     SITE_STATUS_DISCOVERED,
@@ -17,6 +17,9 @@ from app.models.user_site import (
     UserSite,
 )
 from app.services.push_service import send_site_discovered_push
+from app.services.site_service.field_coordinate_enrich import (
+    apply_site_discovery_enrichment,
+)
 from app.services.site_service.field_fossil_onboard import (
     DiscoverFossilOnboardResult,
     ensure_fossils_on_site_discovery,
@@ -84,6 +87,9 @@ def discover_site_from_aerial(
             site_id=site_id,
             role=USER_SITE_ROLE_DISCOVERER,
         )
+    )
+    apply_site_discovery_enrichment(
+        session, site, how_discovered=HOW_DISCOVERED_AERIAL_RECON
     )
     notification = UserNotification(
         user_id=user_id,

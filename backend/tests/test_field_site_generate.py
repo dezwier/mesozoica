@@ -13,7 +13,6 @@ from sqlmodel import Session, col, select
 from app.models.data_source import DATA_SOURCE_ARCHIVE, DATA_SOURCE_FIELD
 from app.models.site import Site
 from app.models.site_type import SiteType
-from app.services.site_service.field_coordinate_enrich import CoordinateEnrichment
 from app.services.site_service.field_coordinate_filter import (
     CoordinateSampleConfig,
     CoordinateSampler,
@@ -118,10 +117,6 @@ def test_generate_field_sites_dry_run(session: Session, monkeypatch):
     session.add(_archive_site(site_id=101, lat=41.0, lon=-101.0, period="jurassic", rock_type="mudstone"))
     session.commit()
 
-    monkeypatch.setattr(
-        "app.services.site_service.field_generate.enrich_coordinate",
-        lambda lat, lon: CoordinateEnrichment(country_code="US", state="Montana"),
-    )
 
     config = FieldSiteGenerateConfig(max_items=3, refresh=False)
     summary = generate_field_sites(
@@ -152,10 +147,6 @@ def test_generate_field_sites_append_and_refresh(session: Session, monkeypatch):
     )
     session.commit()
 
-    monkeypatch.setattr(
-        "app.services.site_service.field_generate.enrich_coordinate",
-        lambda lat, lon: CoordinateEnrichment(country_code="US", state="Montana"),
-    )
 
     append_summary = generate_field_sites(
         session,
@@ -192,11 +183,6 @@ def test_generate_field_sites_sets_expected_fields(session: Session, monkeypatch
     session.commit()
     session.refresh(site_type)
 
-    monkeypatch.setattr(
-        "app.services.site_service.field_generate.enrich_coordinate",
-        lambda lat, lon: CoordinateEnrichment(country_code="CA", state="Alberta"),
-    )
-
     generate_field_sites(
         session,
         config=FieldSiteGenerateConfig(max_items=1, refresh=True),
@@ -208,8 +194,10 @@ def test_generate_field_sites_sets_expected_fields(session: Session, monkeypatch
     site = session.exec(select(Site).where(Site.data_source == DATA_SOURCE_FIELD)).first()
     assert site is not None
     assert site.data_source == DATA_SOURCE_FIELD
-    assert site.country_code == "CA"
-    assert site.state == "Alberta"
+    # Country/state deferred until discovery.
+    assert site.country_code is None
+    assert site.state is None
+    assert site.how_discovered is None
     assert site.period == "cretaceous"
     assert site.rock_type == "sandstone"
     assert site.site_type_id == site_type.id
@@ -229,6 +217,7 @@ def test_generate_field_sites_sets_expected_fields(session: Session, monkeypatch
     summary = site_row_to_summary(row)
     assert summary.odd_dino_count == site.odd_dino_count
     assert summary.odd_depth == site.odd_depth
+    assert summary.how_discovered is None
 
 
 def test_coordinate_sampler_respects_min_separation():

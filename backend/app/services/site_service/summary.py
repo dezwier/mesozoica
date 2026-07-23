@@ -45,6 +45,7 @@ def site_row_to_summary(
         site_type_rock_type=site_type.rock_type if site_type else None,
         main_image_url=site_type.main_image_url if site_type else None,
         data_source=site.data_source,
+        how_discovered=site.how_discovered,
         status=row.status,
         viewer_has_surveyed=row.viewer_has_surveyed,
         odd_dino_count=site.odd_dino_count,

@@ -10,6 +10,15 @@ from sqlmodel import Field, SQLModel
 
 from app.models.data_source import DATA_SOURCE_ARCHIVE
 
+HOW_DISCOVERED_WALK = "walk"
+HOW_DISCOVERED_AERIAL_RECON = "aerial_recon"
+HOW_DISCOVERED_MANUAL = "manual"
+HOW_DISCOVERED_VALUES = (
+    HOW_DISCOVERED_WALK,
+    HOW_DISCOVERED_AERIAL_RECON,
+    HOW_DISCOVERED_MANUAL,
+)
+
 
 class Site(SQLModel, table=True):
     """One row per PBDB collection locality (collection_no)."""
@@ -44,6 +53,11 @@ class Site(SQLModel, table=True):
         max_length=16,
         index=True,
         description="archive (PBDB/wiki) or field (procedural)",
+    )
+    how_discovered: Optional[str] = Field(
+        default=None,
+        max_length=32,
+        description="First discovery method: walk, aerial_recon, or manual",
     )
     odd_dino_count: Optional[float] = Field(
         default=None,

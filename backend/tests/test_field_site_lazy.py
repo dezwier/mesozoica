@@ -21,7 +21,6 @@ from app.models.user_site import (
     UserSite,
 )
 from app.models.user import User
-from app.services.site_service.field_coordinate_enrich import CoordinateEnrichment
 from app.services.site_service.field_coordinate_filter import CoordinateSampler, LandPolygonFilter
 from app.services.site_service.field_generate import (
     FIELD_SITE_ID_START,
@@ -75,10 +74,6 @@ def test_ensure_generates_when_below_minimum(session: Session, monkeypatch):
     session.add(_archive_site(site_id=100, lat=40.0, lon=-100.0))
     session.commit()
 
-    monkeypatch.setattr(
-        "app.services.site_service.field_generate.enrich_coordinate",
-        lambda lat, lon: CoordinateEnrichment(country_code="US", state="Montana"),
-    )
 
     center_lat, center_lon = 40.0, -100.0
     mask = _test_coordinate_sampler(center_lat, center_lon, radius_km=1.0)
@@ -136,10 +131,6 @@ def test_ensure_skips_when_minimum_already_met(session: Session, monkeypatch):
         )
     session.commit()
 
-    monkeypatch.setattr(
-        "app.services.site_service.field_generate.enrich_coordinate",
-        lambda lat, lon: CoordinateEnrichment(country_code="US", state="Montana"),
-    )
 
     config = FieldSiteLazyConfig(min_sites_in_radius=3, radius_km=1.0)
     result = ensure_field_sites_nearby(
@@ -188,10 +179,6 @@ def test_ensure_tops_up_when_sites_are_exhausted(session: Session, monkeypatch):
             )
     session.commit()
 
-    monkeypatch.setattr(
-        "app.services.site_service.field_generate.enrich_coordinate",
-        lambda lat, lon: CoordinateEnrichment(country_code="US", state="Montana"),
-    )
 
     # 2 non-exhausted + 3 exhausted → need 3 more to reach min of 5
     result = ensure_field_sites_nearby(
@@ -274,10 +261,6 @@ def test_ensure_does_not_delete_archive_sites(session: Session, monkeypatch):
     session.add(_archive_site(site_id=100, lat=40.0, lon=-100.0))
     session.commit()
 
-    monkeypatch.setattr(
-        "app.services.site_service.field_generate.enrich_coordinate",
-        lambda lat, lon: CoordinateEnrichment(country_code="US", state="Montana"),
-    )
 
     center_lat, center_lon = 40.0, -100.0
     ensure_field_sites_nearby(
@@ -299,10 +282,6 @@ def test_sites_nearby_api_is_read_only(client, session: Session, monkeypatch):
     session.add(_archive_site(site_id=100, lat=40.0, lon=-100.0))
     session.commit()
 
-    monkeypatch.setattr(
-        "app.services.site_service.field_generate.enrich_coordinate",
-        lambda lat, lon: CoordinateEnrichment(country_code="US", state="Montana"),
-    )
     monkeypatch.setattr(
         "app.services.site_service.field_generate.build_coordinate_sampler",
         lambda **kwargs: _test_coordinate_sampler(40.0, -100.0, radius_km=1.0),
@@ -436,10 +415,6 @@ def test_field_ensure_worker_noops_when_full(client, session: Session, monkeypat
     session.commit()
 
     monkeypatch.setattr(
-        "app.services.site_service.field_generate.enrich_coordinate",
-        lambda lat, lon: CoordinateEnrichment(country_code="US", state="Montana"),
-    )
-    monkeypatch.setattr(
         "app.services.site_service.field_generate.build_coordinate_sampler",
         lambda **kwargs: _test_coordinate_sampler(center_lat, center_lon, radius_km=1.0),
     )
@@ -477,10 +452,6 @@ def test_field_ensure_worker_processes_job(client, session: Session, monkeypatch
     session.add(_archive_site(site_id=100, lat=40.0, lon=-100.0))
     session.commit()
 
-    monkeypatch.setattr(
-        "app.services.site_service.field_generate.enrich_coordinate",
-        lambda lat, lon: CoordinateEnrichment(country_code="US", state="Montana"),
-    )
     monkeypatch.setattr(
         "app.services.site_service.field_generate.build_coordinate_sampler",
         lambda **kwargs: _test_coordinate_sampler(40.0, -100.0, radius_km=1.0),
@@ -564,10 +535,6 @@ def test_ensure_uses_fresh_ids_after_existing_field_site(
         lambda session: _FakeAllocator(),
     )
     monkeypatch.setattr(
-        "app.services.site_service.field_generate.enrich_coordinate",
-        lambda lat, lon: CoordinateEnrichment(country_code="US", state="Montana"),
-    )
-    monkeypatch.setattr(
         "app.services.site_service.field_generate.build_coordinate_sampler",
         lambda **kwargs: _test_coordinate_sampler(40.0, -100.0, radius_km=1.0),
     )
@@ -590,10 +557,6 @@ def test_ensure_generates_100_sites_within_time_budget(session: Session, monkeyp
     session.add(_archive_site(site_id=100, lat=40.0, lon=-100.0))
     session.commit()
 
-    monkeypatch.setattr(
-        "app.services.site_service.field_generate.enrich_coordinate",
-        lambda lat, lon: CoordinateEnrichment(country_code="US", state="Montana"),
-    )
 
     center_lat, center_lon = 40.0, -100.0
     mask = _test_coordinate_sampler(center_lat, center_lon, radius_km=1.0)

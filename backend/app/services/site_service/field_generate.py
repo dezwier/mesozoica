@@ -24,7 +24,6 @@ from app.models.user_site import (
     UserSite,
     role_to_status,
 )
-from app.services.site_service.field_coordinate_enrich import enrich_coordinate
 from app.services.site_service.field_coordinate_filter import (
     CoordinateSampleConfig,
     CoordinateSampler,
@@ -322,13 +321,12 @@ def _build_field_site(
         )
         return None
 
-    enrichment = enrich_coordinate(lat, lon)
     return Site(
         site_id=site_id,
         latitude=Decimal(str(round(lat, 6))),
         longitude=Decimal(str(round(lon, 6))),
-        country_code=enrichment.country_code,
-        state=enrichment.state,
+        country_code=None,
+        state=None,
         rock_type=rock_type,
         formation=None,
         min_age_ma=None,
@@ -806,13 +804,12 @@ def generate_field_sites(
             )
             continue
 
-        enrichment = enrich_coordinate(lat, lon)
         site = Site(
             site_id=id_allocator.next_id(),
             latitude=Decimal(str(round(lat, 6))),
             longitude=Decimal(str(round(lon, 6))),
-            country_code=enrichment.country_code,
-            state=enrichment.state,
+            country_code=None,
+            state=None,
             rock_type=rock_type,
             formation=None,
             min_age_ma=None,

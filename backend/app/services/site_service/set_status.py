@@ -8,7 +8,11 @@ from sqlmodel import Session, col, select
 
 from app.core.exceptions import NotFoundError, ValidationError
 from app.models.data_source import DATA_SOURCE_FIELD
-from app.models.site import Site
+from app.models.site import (
+    HOW_DISCOVERED_MANUAL,
+    HOW_DISCOVERED_WALK,
+    Site,
+)
 from app.models.user_notification import UserNotification, UserNotificationType
 from app.models.user_site import (
     ROLE_TO_STATUS,
@@ -20,6 +24,9 @@ from app.models.user_site import (
 )
 from app.services.push_service import send_site_discovered_push
 from app.services.site_service.discover import _site_label, discover_max_distance_m
+from app.services.site_service.field_coordinate_enrich import (
+    apply_site_discovery_enrichment,
+)
 from app.services.site_service.field_fossil_onboard import (
     DiscoverFossilOnboardResult,
     ensure_fossils_on_site_discovery,
@@ -117,6 +124,16 @@ def set_site_status(
         and normalized == SITE_STATUS_DISCOVERED
         and role == USER_SITE_ROLE_DISCOVERER
     )
+    if should_notify or (
+        normalized == SITE_STATUS_DISCOVERED and role == USER_SITE_ROLE_DISCOVERER
+    ):
+        how = (
+            HOW_DISCOVERED_MANUAL
+            if skip_distance_check
+            else HOW_DISCOVERED_WALK
+        )
+        apply_site_discovery_enrichment(session, site, how_discovered=how)
+
     if should_notify:
         notification = UserNotification(
             user_id=user_id,
