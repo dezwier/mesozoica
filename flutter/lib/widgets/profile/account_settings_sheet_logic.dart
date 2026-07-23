@@ -299,6 +299,7 @@ mixin _AccountSettingsSheetLogicMixin on State<AccountSettingsSheet> {
 
     final isAdmin = auth.currentUser?.isAdmin ?? false;
     context.read<MapController>().onUserChanged(isAdmin: isAdmin);
+    context.read<ToolCatalogController>().onUserChanged(isAdmin: isAdmin);
     context.read<FieldDiscoveryCoordinator>().clearForUserChange();
     unawaited(
       context
@@ -306,6 +307,7 @@ mixin _AccountSettingsSheetLogicMixin on State<AccountSettingsSheet> {
           .refreshDiscoverableCache(force: true),
     );
     context.read<SiteCatalogController>().load(force: true);
+    context.read<ToolCatalogController>().load(force: true);
 
     final parts = <String>[];
     if (selection.sites) {

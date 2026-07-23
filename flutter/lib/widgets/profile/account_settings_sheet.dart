@@ -10,6 +10,7 @@ import '../../controllers/auth_controller.dart';
 import '../../controllers/field_discovery_coordinator.dart';
 import '../../controllers/map_controller.dart';
 import '../../controllers/site_catalog_controller.dart';
+import '../../controllers/tool_catalog_controller.dart';
 import '../../models/profile.dart';
 import '../../services/api_response_cache.dart';
 import '../../services/oauth_sign_in_service.dart';

@@ -306,6 +306,7 @@ class AppConfig {
     String? q,
     Set<String> categories = const {},
     bool hasCustomImage = false,
+    bool showAll = false,
   }) {
     final parts = <String>[
       'limit=$limit',
@@ -322,6 +323,9 @@ class AppConfig {
     if (hasCustomImage) {
       parts.add('has_custom_image=true');
     }
+    if (showAll) {
+      parts.add('show_all=true');
+    }
     for (final value in categories) {
       final trimmed = value.trim();
       if (trimmed.isEmpty) continue;
@@ -330,10 +334,17 @@ class AppConfig {
     return Uri.parse('$baseApiUrl/api/v1/tools?${parts.join('&')}');
   }
 
-  static Uri toolCategoriesUri() =>
-      Uri.parse('$baseApiUrl/api/v1/tools/categories');
+  static Uri toolCategoriesUri({bool showAll = false}) {
+    if (!showAll) {
+      return Uri.parse('$baseApiUrl/api/v1/tools/categories');
+    }
+    return Uri.parse('$baseApiUrl/api/v1/tools/categories?show_all=true');
+  }
 
   static Uri toolUri(int id) => Uri.parse('$baseApiUrl/api/v1/tools/$id');
+
+  static Uri toolCollectUri(int id) =>
+      Uri.parse('$baseApiUrl/api/v1/tools/$id/collect');
 
   static Future<bool> checkApiHealth() async {
     try {

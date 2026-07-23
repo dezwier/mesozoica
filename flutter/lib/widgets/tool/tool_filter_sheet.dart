@@ -11,12 +11,14 @@ class ToolFilterSheet extends StatefulWidget {
     required this.onApply,
     this.catalogTotal,
     this.availableCategories = const [],
+    this.isAdmin = false,
   });
 
   final ToolCatalogFilters initialFilters;
   final ValueChanged<ToolCatalogFilters> onApply;
   final int? catalogTotal;
   final List<ToolCategoryOption> availableCategories;
+  final bool isAdmin;
 
   static Future<void> show(
     BuildContext context, {
@@ -24,6 +26,7 @@ class ToolFilterSheet extends StatefulWidget {
     required ValueChanged<ToolCatalogFilters> onApply,
     int? catalogTotal,
     List<ToolCategoryOption> availableCategories = const [],
+    bool isAdmin = false,
   }) {
     return showModalBottomSheet<void>(
       context: context,
@@ -39,6 +42,7 @@ class ToolFilterSheet extends StatefulWidget {
         onApply: onApply,
         catalogTotal: catalogTotal,
         availableCategories: availableCategories,
+        isAdmin: isAdmin,
       ),
     );
   }
@@ -52,6 +56,7 @@ class _ToolFilterSheetState extends State<ToolFilterSheet> {
   late String _pendingSearch;
   late ToolCatalogSort _pendingSort;
   late Set<String> _pendingCategories;
+  late bool _pendingShowAll;
   bool _applied = false;
 
   @override
@@ -60,6 +65,7 @@ class _ToolFilterSheetState extends State<ToolFilterSheet> {
     _pendingSearch = widget.initialFilters.searchQuery;
     _pendingSort = widget.initialFilters.sort;
     _pendingCategories = {...widget.initialFilters.categories};
+    _pendingShowAll = widget.initialFilters.showAll;
     _searchController = TextEditingController(text: _pendingSearch);
   }
 
@@ -77,6 +83,7 @@ class _ToolFilterSheetState extends State<ToolFilterSheet> {
         searchQuery: _pendingSearch.trim(),
         sort: _pendingSort,
         categories: {..._pendingCategories},
+        showAll: widget.isAdmin && _pendingShowAll,
       ),
     );
   }
@@ -86,6 +93,7 @@ class _ToolFilterSheetState extends State<ToolFilterSheet> {
       searchQuery: _pendingSearch.trim(),
       sort: _pendingSort,
       categories: {..._pendingCategories},
+      showAll: widget.isAdmin && _pendingShowAll,
     );
   }
 
@@ -94,6 +102,7 @@ class _ToolFilterSheetState extends State<ToolFilterSheet> {
       _pendingSearch = '';
       _pendingSort = ToolCatalogSort.category;
       _pendingCategories = {};
+      _pendingShowAll = false;
       _searchController.clear();
     });
   }
@@ -173,6 +182,23 @@ class _ToolFilterSheetState extends State<ToolFilterSheet> {
               ),
               const SizedBox(height: 8),
               _buildSortDropdown(context),
+              if (widget.isAdmin) ...[
+                const SizedBox(height: 16),
+                Text(
+                  'Admin',
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                _checkboxTile(
+                  theme: theme,
+                  value: _pendingShowAll,
+                  label: 'Show all tools',
+                  onChanged: (selected) =>
+                      setState(() => _pendingShowAll = selected ?? false),
+                ),
+              ],
               if (widget.availableCategories.isNotEmpty) ...[
                 const SizedBox(height: 16),
                 Text(

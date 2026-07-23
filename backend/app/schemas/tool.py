@@ -17,6 +17,7 @@ class ToolSummary(BaseModel):
     description: str
     rarity: int
     main_image_url: str | None = None
+    level: int | None = None
 
 
 class ToolListResponse(BaseModel):

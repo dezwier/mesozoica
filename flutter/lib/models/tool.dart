@@ -7,6 +7,7 @@ class ToolSummary {
     required this.description,
     required this.rarity,
     this.mainImageUrl,
+    this.level,
   });
 
   final int id;
@@ -16,6 +17,33 @@ class ToolSummary {
   final String description;
   final int rarity;
   final String? mainImageUrl;
+  /// Collection level when owned; null when not in the user's collection.
+  final int? level;
+
+  bool get isOwned => level != null;
+
+  ToolSummary copyWith({
+    int? id,
+    String? name,
+    String? category,
+    String? scientificTool,
+    String? description,
+    int? rarity,
+    String? mainImageUrl,
+    int? level,
+    bool clearLevel = false,
+  }) {
+    return ToolSummary(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      category: category ?? this.category,
+      scientificTool: scientificTool ?? this.scientificTool,
+      description: description ?? this.description,
+      rarity: rarity ?? this.rarity,
+      mainImageUrl: mainImageUrl ?? this.mainImageUrl,
+      level: clearLevel ? null : (level ?? this.level),
+    );
+  }
 
   String get displayCategory {
     final stripped = category.replaceFirst(RegExp(r'^\d+\s+'), '');
@@ -55,6 +83,7 @@ class ToolSummary {
       description: json['description'] as String? ?? '',
       rarity: json['rarity'] as int? ?? 1,
       mainImageUrl: json['main_image_url'] as String?,
+      level: json['level'] as int?,
     );
   }
 }

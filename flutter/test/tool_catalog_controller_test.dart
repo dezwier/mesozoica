@@ -108,4 +108,23 @@ void main() {
 
     controller.dispose();
   });
+
+  test('applyFilters passes show_all for admin catalog', () async {
+    Uri? capturedUri;
+    final service = ToolService(
+      client: _mockClient(onToolsRequest: (uri) => capturedUri = uri),
+    );
+
+    final controller = ToolCatalogController(service: service);
+    await controller.applyFilters(
+      const ToolCatalogFilters(showAll: true),
+    );
+
+    expect(capturedUri, isNotNull);
+    expect(capturedUri!.queryParameters['show_all'], 'true');
+    expect(controller.showAll, isTrue);
+    expect(controller.hasActiveFilters, isTrue);
+
+    controller.dispose();
+  });
 }

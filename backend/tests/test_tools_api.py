@@ -1,13 +1,16 @@
-"""Tests for tool read API."""
+"""Tests for tool read API and ownership collection."""
 
-from sqlmodel import Session
+from sqlmodel import Session, select
 
+from app.core.security import create_access_token
 from app.models.tool import Tool
+from app.models.user import User
+from app.models.user_tool import UserTool
 
 
-def _seed_tool(session: Session) -> Tool:
+def _seed_tool(session: Session, *, name: str = "Orbit Survey") -> Tool:
     row = Tool(
-        name="Orbit Survey",
+        name=name,
         category="1 site_discovery",
         scientific_tool="satellite imagery",
         description="Identifies exposed formations.",
@@ -20,7 +23,39 @@ def _seed_tool(session: Session) -> Tool:
     return row
 
 
-def test_list_tools_empty(client):
+def _user(
+    session: Session,
+    *,
+    username: str = "player",
+    is_admin: bool = False,
+) -> User:
+    user = User(
+        username=username,
+        email=f"{username}@example.com",
+        password="x",
+        is_admin=is_admin,
+    )
+    session.add(user)
+    session.commit()
+    session.refresh(user)
+    return user
+
+
+def _auth_headers(user: User) -> dict[str, str]:
+    token = create_access_token({"sub": str(user.id)})
+    return {"Authorization": f"Bearer {token}"}
+
+
+def _grant(session: Session, *, user_id: int, tool_id: int, level: int = 1) -> UserTool:
+    row = UserTool(user_id=user_id, tool_id=tool_id, level=level)
+    session.add(row)
+    session.commit()
+    session.refresh(row)
+    return row
+
+
+def test_list_tools_anonymous_empty(client, session):
+    _seed_tool(session)
     response = client.get("/api/v1/tools", params={"sort": "name"})
     assert response.status_code == 200
     body = response.json()
@@ -28,10 +63,65 @@ def test_list_tools_empty(client):
     assert body["total"] == 0
 
 
+def test_list_tools_owned_only(client, session):
+    owned = _seed_tool(session, name="Orbit Survey")
+    _seed_tool(session, name="Geo Hammer")
+    user = _user(session)
+    _grant(session, user_id=int(user.id), tool_id=int(owned.id))
+
+    response = client.get(
+        "/api/v1/tools",
+        params={"sort": "name"},
+        headers=_auth_headers(user),
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["total"] == 1
+    item = body["items"][0]
+    assert item["name"] == "Orbit Survey"
+    assert item["level"] == 1
+
+
+def test_list_tools_show_all_requires_admin(client, session):
+    _seed_tool(session)
+    user = _user(session, is_admin=False)
+    response = client.get(
+        "/api/v1/tools",
+        params={"sort": "name", "show_all": True},
+        headers=_auth_headers(user),
+    )
+    assert response.status_code == 403
+
+
+def test_list_tools_show_all_admin(client, session):
+    owned = _seed_tool(session, name="Orbit Survey")
+    other = _seed_tool(session, name="Geo Hammer")
+    admin = _user(session, username="admin", is_admin=True)
+    _grant(session, user_id=int(admin.id), tool_id=int(owned.id), level=2)
+
+    response = client.get(
+        "/api/v1/tools",
+        params={"sort": "name", "show_all": True},
+        headers=_auth_headers(admin),
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["total"] == 2
+    by_name = {item["name"]: item for item in body["items"]}
+    assert by_name["Orbit Survey"]["level"] == 2
+    assert by_name["Geo Hammer"]["level"] is None
+    assert by_name["Geo Hammer"]["id"] == other.id
+
+
 def test_list_tools_returns_summary_fields(client, session):
     row = _seed_tool(session)
+    admin = _user(session, username="admin", is_admin=True)
 
-    response = client.get("/api/v1/tools", params={"sort": "name"})
+    response = client.get(
+        "/api/v1/tools",
+        params={"sort": "name", "show_all": True},
+        headers=_auth_headers(admin),
+    )
     assert response.status_code == 200
     body = response.json()
     assert body["total"] == 1
@@ -42,6 +132,7 @@ def test_list_tools_returns_summary_fields(client, session):
     assert item["category"] == "1 site_discovery"
     assert item["rarity"] == 2
     assert item["description"] == "Identifies exposed formations."
+    assert item["level"] is None
 
 
 def test_get_tool_by_id(client, session):
@@ -51,6 +142,7 @@ def test_get_tool_by_id(client, session):
     assert response.status_code == 200
     item = response.json()
     assert item["name"] == "Orbit Survey"
+    assert item["level"] is None
 
 
 def test_get_tool_not_found(client):
@@ -70,8 +162,13 @@ def test_list_tools_search(client, session):
         )
     )
     session.commit()
+    admin = _user(session, username="admin", is_admin=True)
 
-    response = client.get("/api/v1/tools", params={"q": "satellite", "sort": "name"})
+    response = client.get(
+        "/api/v1/tools",
+        params={"q": "satellite", "sort": "name", "show_all": True},
+        headers=_auth_headers(admin),
+    )
     assert response.status_code == 200
     body = response.json()
     assert body["total"] == 1
@@ -80,13 +177,23 @@ def test_list_tools_search(client, session):
 
 def test_list_tools_random_requires_seed(client, session):
     _seed_tool(session)
-    response = client.get("/api/v1/tools", params={"sort": "random"})
+    admin = _user(session, username="admin", is_admin=True)
+    response = client.get(
+        "/api/v1/tools",
+        params={"sort": "random", "show_all": True},
+        headers=_auth_headers(admin),
+    )
     assert response.status_code == 400
 
 
 def test_list_tools_category_requires_seed(client, session):
     _seed_tool(session)
-    response = client.get("/api/v1/tools", params={"sort": "category"})
+    admin = _user(session, username="admin", is_admin=True)
+    response = client.get(
+        "/api/v1/tools",
+        params={"sort": "category", "show_all": True},
+        headers=_auth_headers(admin),
+    )
     assert response.status_code == 400
 
 
@@ -119,10 +226,12 @@ def test_list_tools_sort_by_category_sequence(client, session):
         )
     )
     session.commit()
+    admin = _user(session, username="admin", is_admin=True)
 
     response = client.get(
         "/api/v1/tools",
-        params={"sort": "category", "seed": "stable"},
+        params={"sort": "category", "seed": "stable", "show_all": True},
+        headers=_auth_headers(admin),
     )
     assert response.status_code == 200
     items = response.json()["items"]
@@ -132,7 +241,6 @@ def test_list_tools_sort_by_category_sequence(client, session):
         "2 fossil_discovery",
         "10 reconstruction",
     ]
-    # Within category 2, order is seed-stable (not name A–Z).
     names_in_cat2 = [item["name"] for item in items if item["category"].startswith("2 ")]
     assert set(names_in_cat2) == {"Alpha Tool", "Beta Tool"}
 
@@ -149,13 +257,16 @@ def test_list_tools_filter_by_category(client, session):
         )
     )
     session.commit()
+    admin = _user(session, username="admin", is_admin=True)
 
     response = client.get(
         "/api/v1/tools",
         params=[
             ("sort", "name"),
             ("category", "4 excavation"),
+            ("show_all", "true"),
         ],
+        headers=_auth_headers(admin),
     )
     assert response.status_code == 200
     body = response.json()
@@ -163,7 +274,40 @@ def test_list_tools_filter_by_category(client, session):
     assert body["items"][0]["name"] == "Geo Hammer"
 
 
-def test_list_tool_categories(client, session):
+def test_list_tool_categories_owned_only(client, session):
+    owned = Tool(
+        name="Zeta Tool",
+        category="10 reconstruction",
+        scientific_tool="z",
+        description="Z.",
+        rarity=1,
+    )
+    session.add(owned)
+    session.add(
+        Tool(
+            name="Alpha Tool",
+            category="2 fossil_discovery",
+            scientific_tool="a",
+            description="A.",
+            rarity=1,
+        )
+    )
+    session.commit()
+    session.refresh(owned)
+    user = _user(session)
+    _grant(session, user_id=int(user.id), tool_id=int(owned.id))
+
+    response = client.get(
+        "/api/v1/tools/categories",
+        headers=_auth_headers(user),
+    )
+    assert response.status_code == 200
+    assert response.json()["items"] == [
+        {"value": "10 reconstruction", "label": "Reconstruction"},
+    ]
+
+
+def test_list_tool_categories_show_all(client, session):
     session.add(
         Tool(
             name="Zeta Tool",
@@ -183,11 +327,63 @@ def test_list_tool_categories(client, session):
         )
     )
     session.commit()
+    admin = _user(session, username="admin", is_admin=True)
 
-    response = client.get("/api/v1/tools/categories")
+    response = client.get(
+        "/api/v1/tools/categories",
+        params={"show_all": True},
+        headers=_auth_headers(admin),
+    )
     assert response.status_code == 200
     items = response.json()["items"]
     assert items == [
         {"value": "2 fossil_discovery", "label": "Fossil Discovery"},
         {"value": "10 reconstruction", "label": "Reconstruction"},
     ]
+
+
+def test_collect_tool_creates_user_tool(client, session):
+    tool = _seed_tool(session)
+    admin = _user(session, username="admin", is_admin=True)
+
+    response = client.post(
+        f"/api/v1/tools/{tool.id}/collect",
+        headers=_auth_headers(admin),
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["id"] == tool.id
+    assert body["level"] == 1
+
+    rows = session.exec(select(UserTool)).all()
+    assert len(rows) == 1
+    assert rows[0].user_id == admin.id
+    assert rows[0].tool_id == tool.id
+    assert rows[0].level == 1
+
+
+def test_collect_tool_idempotent(client, session):
+    tool = _seed_tool(session)
+    admin = _user(session, username="admin", is_admin=True)
+    _grant(session, user_id=int(admin.id), tool_id=int(tool.id), level=3)
+
+    response = client.post(
+        f"/api/v1/tools/{tool.id}/collect",
+        headers=_auth_headers(admin),
+    )
+    assert response.status_code == 200
+    assert response.json()["level"] == 3
+
+    rows = session.exec(select(UserTool)).all()
+    assert len(rows) == 1
+    assert rows[0].level == 3
+
+
+def test_collect_tool_requires_admin(client, session):
+    tool = _seed_tool(session)
+    user = _user(session, is_admin=False)
+    response = client.post(
+        f"/api/v1/tools/{tool.id}/collect",
+        headers=_auth_headers(user),
+    )
+    assert response.status_code == 403

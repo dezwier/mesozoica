@@ -6,11 +6,28 @@ import 'package:http/http.dart' as http;
 import '../config/app_config.dart';
 import '../models/tool.dart';
 import 'api_client.dart';
+import 'token_storage.dart';
 
 class ToolService {
   ToolService({http.Client? client}) : _client = client ?? http.Client();
 
   final http.Client _client;
+
+  Future<Map<String, String>> _headers({bool jsonBody = false}) async {
+    final headers = <String, String>{};
+    if (jsonBody) {
+      headers['Content-Type'] = 'application/json';
+    }
+    try {
+      final token = await TokenStorage.loadToken();
+      if (token != null && token.isNotEmpty) {
+        headers['Authorization'] = 'Bearer $token';
+      }
+    } catch (_) {
+      // SharedPreferences unavailable in some unit-test environments.
+    }
+    return headers;
+  }
 
   Future<ToolListResponse> fetchTools({
     int limit = 200,
@@ -20,6 +37,7 @@ class ToolService {
     String? q,
     Set<String> categories = const {},
     bool hasCustomImage = false,
+    bool showAll = false,
   }) async {
     final uri = AppConfig.toolsUri(
       limit: limit,
@@ -29,12 +47,14 @@ class ToolService {
       q: q,
       categories: categories,
       hasCustomImage: hasCustomImage,
+      showAll: showAll,
     );
     if (kDebugMode) {
       debugPrint('ToolService GET $uri');
     }
-    final response =
-        await ApiClient.instance.sendGet(uri, client: _client).timeout(const Duration(seconds: 15));
+    final response = await ApiClient.instance
+        .sendGet(uri, client: _client, headers: await _headers())
+        .timeout(const Duration(seconds: 15));
 
     if (response.statusCode != 200) {
       throw ToolServiceException(
@@ -49,13 +69,16 @@ class ToolService {
     return ToolListResponse.fromJson(decoded);
   }
 
-  Future<List<ToolCategoryOption>> fetchCategories() async {
-    final uri = AppConfig.toolCategoriesUri();
+  Future<List<ToolCategoryOption>> fetchCategories({
+    bool showAll = false,
+  }) async {
+    final uri = AppConfig.toolCategoriesUri(showAll: showAll);
     if (kDebugMode) {
       debugPrint('ToolService GET $uri');
     }
-    final response =
-        await ApiClient.instance.sendGet(uri, client: _client).timeout(const Duration(seconds: 15));
+    final response = await ApiClient.instance
+        .sendGet(uri, client: _client, headers: await _headers())
+        .timeout(const Duration(seconds: 15));
 
     if (response.statusCode != 200) {
       throw ToolServiceException(
@@ -81,8 +104,9 @@ class ToolService {
     if (kDebugMode) {
       debugPrint('ToolService GET $uri');
     }
-    final response =
-        await ApiClient.instance.sendGet(uri, client: _client).timeout(const Duration(seconds: 15));
+    final response = await ApiClient.instance
+        .sendGet(uri, client: _client, headers: await _headers())
+        .timeout(const Duration(seconds: 15));
 
     if (response.statusCode == 404) {
       throw ToolServiceException('Tool not found');
@@ -96,6 +120,32 @@ class ToolService {
     final decoded = jsonDecode(response.body);
     if (decoded is! Map<String, dynamic>) {
       throw const ToolServiceException('Invalid tool response');
+    }
+    return ToolSummary.fromJson(decoded);
+  }
+
+  Future<ToolSummary> collectTool(int id) async {
+    final uri = AppConfig.toolCollectUri(id);
+    if (kDebugMode) {
+      debugPrint('ToolService POST $uri');
+    }
+    final response = await ApiClient.instance
+        .sendPost(
+          uri,
+          client: _client,
+          headers: await _headers(jsonBody: true),
+        )
+        .timeout(const Duration(seconds: 15));
+
+    if (response.statusCode != 200) {
+      throw ToolServiceException(
+        'Failed to collect tool (${response.statusCode})',
+      );
+    }
+
+    final decoded = jsonDecode(response.body);
+    if (decoded is! Map<String, dynamic>) {
+      throw const ToolServiceException('Invalid collect response');
     }
     return ToolSummary.fromJson(decoded);
   }

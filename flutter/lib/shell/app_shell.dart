@@ -15,6 +15,7 @@ import '../controllers/notification_controller.dart';
 import '../controllers/site_catalog_controller.dart';
 import '../controllers/fossil_catalog_controller.dart';
 import '../controllers/splash_hold_controller.dart';
+import '../controllers/tool_catalog_controller.dart';
 import '../controllers/walk_distance_controller.dart';
 import '../models/fossil.dart';
 import '../models/site.dart';
@@ -329,8 +330,10 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     // previous account's markers/list when the signed-in identity changes.
     final isAdmin = auth.currentUser?.isAdmin ?? false;
     context.read<MapController>().onUserChanged(isAdmin: isAdmin);
+    context.read<ToolCatalogController>().onUserChanged(isAdmin: isAdmin);
     context.read<FieldDiscoveryCoordinator>().clearForUserChange();
     context.read<SiteCatalogController>().load(force: true);
+    context.read<ToolCatalogController>().load(force: true);
 
     if (userId == null) {
       notificationController.clear();

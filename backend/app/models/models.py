@@ -18,6 +18,7 @@ from app.models.user_dinosaur import UserDinosaur
 from app.models.user_fossil import UserFossil
 from app.models.user_notification import UserNotification
 from app.models.user_site import UserSite
+from app.models.user_tool import UserTool
 from app.models.user_user import UserUser
 
 __all__ = [
@@ -35,5 +36,6 @@ __all__ = [
     "UserFossil",
     "UserNotification",
     "UserSite",
+    "UserTool",
     "UserUser",
 ]

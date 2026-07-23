@@ -35,26 +35,31 @@ class ToolCatalogFilters {
     this.searchQuery = '',
     this.sort = ToolCatalogSort.category,
     this.categories = const {},
+    this.showAll = false,
   });
 
   final String searchQuery;
   final ToolCatalogSort sort;
   final Set<String> categories;
+  final bool showAll;
 
   bool get hasActiveFilters =>
       searchQuery.trim().isNotEmpty ||
       sort != ToolCatalogSort.category ||
-      categories.isNotEmpty;
+      categories.isNotEmpty ||
+      showAll;
 
   ToolCatalogFilters copyWith({
     String? searchQuery,
     ToolCatalogSort? sort,
     Set<String>? categories,
+    bool? showAll,
   }) {
     return ToolCatalogFilters(
       searchQuery: searchQuery ?? this.searchQuery,
       sort: sort ?? this.sort,
       categories: categories ?? this.categories,
+      showAll: showAll ?? this.showAll,
     );
   }
 
@@ -82,6 +87,7 @@ class ToolCatalogController extends CatalogController<ToolSummary> {
   bool _hasMore = false;
   int _total = 0;
   ToolCatalogFilters _filters = ToolCatalogFilters.defaults;
+  bool? _categoriesShowAll;
 
   @override
   List<ToolSummary> get items => List.unmodifiable(_items);
@@ -100,7 +106,18 @@ class ToolCatalogController extends CatalogController<ToolSummary> {
   ToolCatalogFilters get filters => _filters;
   @override
   bool get hasActiveFilters => _filters.hasActiveFilters;
+  bool get showAll => _filters.showAll;
   String? get chromeImageUrl => _chromeImageUrl;
+
+  /// Drop show-all when the viewer is no longer an admin.
+  void onUserChanged({required bool isAdmin}) {
+    if (!isAdmin && _filters.showAll) {
+      _filters = _filters.copyWith(showAll: false);
+      _availableCategories = [];
+      _categoriesShowAll = null;
+      load(force: true);
+    }
+  }
 
   Future<void> load({bool force = false}) async {
     if (!force && _items.isNotEmpty) return;
@@ -125,7 +142,7 @@ class ToolCatalogController extends CatalogController<ToolSummary> {
     try {
       final results = await Future.wait([
         _fetchPage(offset: 0),
-        _ensureCategoriesLoaded(),
+        _ensureCategoriesLoaded(force: true),
       ]);
       if (seq != _loadSeq) return;
       final response = results[0] as ToolListResponse;
@@ -139,7 +156,8 @@ class ToolCatalogController extends CatalogController<ToolSummary> {
         final preview = _items.take(5).map((t) => t.name).join(', ');
         debugPrint(
           'ToolCatalogController: loaded ${_items.length}/$_total tools '
-          '(sort=${_filters.sort.apiValue}, seed=$_seed) → $preview',
+          '(sort=${_filters.sort.apiValue}, showAll=${_filters.showAll}, '
+          'seed=$_seed) → $preview',
         );
       }
     } on ToolServiceException catch (error) {
@@ -172,6 +190,7 @@ class ToolCatalogController extends CatalogController<ToolSummary> {
         sort: 'category',
         seed: _newSeed(),
         hasCustomImage: true,
+        showAll: _filters.showAll,
       );
       final curated = response.items
           .map((tool) => tool.mainImageUrl)
@@ -223,13 +242,32 @@ class ToolCatalogController extends CatalogController<ToolSummary> {
   Future<void> refresh() => load(force: true);
 
   Future<void> applyFilters(ToolCatalogFilters filters) async {
+    final showAllChanged = filters.showAll != _filters.showAll;
     _filters = filters;
+    if (showAllChanged) {
+      _availableCategories = [];
+      _categoriesShowAll = null;
+    }
     await load(force: true);
   }
 
   Future<void> clearFilters() async {
     _filters = ToolCatalogFilters.defaults;
+    _availableCategories = [];
+    _categoriesShowAll = null;
     await load(force: true);
+  }
+
+  /// Admin collect: upsert ownership and update the in-memory card.
+  Future<ToolSummary> collectTool(int toolId) async {
+    final updated = await _service.collectTool(toolId);
+    final index = _items.indexWhere((item) => item.id == toolId);
+    if (index >= 0) {
+      _items = [..._items];
+      _items[index] = updated;
+      notifyListeners();
+    }
+    return updated;
   }
 
   Future<ToolListResponse> _fetchPage({required int offset}) async {
@@ -247,13 +285,20 @@ class ToolCatalogController extends CatalogController<ToolSummary> {
       seed: seed,
       q: trimmedQuery.isNotEmpty ? trimmedQuery : null,
       categories: _filters.categories,
+      showAll: _filters.showAll,
     );
   }
 
-  Future<void> _ensureCategoriesLoaded() async {
-    if (_availableCategories.isNotEmpty) return;
+  Future<void> _ensureCategoriesLoaded({bool force = false}) async {
+    if (!force &&
+        _availableCategories.isNotEmpty &&
+        _categoriesShowAll == _filters.showAll) {
+      return;
+    }
     try {
-      _availableCategories = await _service.fetchCategories();
+      _availableCategories =
+          await _service.fetchCategories(showAll: _filters.showAll);
+      _categoriesShowAll = _filters.showAll;
     } catch (error) {
       if (kDebugMode) {
         debugPrint(
