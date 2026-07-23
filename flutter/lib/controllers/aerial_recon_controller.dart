@@ -14,7 +14,6 @@ class AerialReconController extends ChangeNotifier {
   final Distance _distance = const Distance();
 
   bool _drawMode = false;
-  bool _confirming = false;
   ToolSummary? _tool;
   final List<LatLng> _route = [];
   bool _drawing = false;
@@ -22,7 +21,6 @@ class AerialReconController extends ChangeNotifier {
   String? _message;
 
   bool get isDrawMode => _drawMode;
-  bool get isConfirming => _confirming;
   ToolSummary? get tool => _tool;
   List<LatLng> get route => List.unmodifiable(_route);
   bool get isDrawing => _drawing;
@@ -65,7 +63,6 @@ class AerialReconController extends ChangeNotifier {
   void beginDraw(ToolSummary tool) {
     _tool = tool;
     _drawMode = true;
-    _confirming = false;
     _route.clear();
     _drawing = false;
     _submitting = false;
@@ -78,7 +75,6 @@ class AerialReconController extends ChangeNotifier {
 
   void cancelDraw() {
     _drawMode = false;
-    _confirming = false;
     _tool = null;
     _route.clear();
     _drawing = false;
@@ -90,17 +86,15 @@ class AerialReconController extends ChangeNotifier {
   void clearRoute({String? message}) {
     _route.clear();
     _drawing = false;
-    _confirming = false;
     _message = message;
     notifyListeners();
   }
 
-  /// Leave confirm and draw again (keeps mode open).
-  void redraw() {
+  /// Reset the drawn route; stay in draw mode.
+  void clearDrawnRoute() {
     if (!_drawMode || _submitting) return;
     _route.clear();
     _drawing = false;
-    _confirming = false;
     _message =
         'Draw with one finger; pinch to zoom. '
         'The loop starts and ends at your location. '
@@ -108,22 +102,25 @@ class AerialReconController extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Abort an in-progress stroke (e.g. second finger / pinch started).
-  void abortStroke() {
-    if (!_drawMode || _confirming || _submitting) return;
-    if (!_drawing && _route.isEmpty) return;
-    _route.clear();
+  /// Pause an in-progress stroke without clearing or closing it (e.g. pinch).
+  void pauseStroke() {
+    if (!_drawing) return;
     _drawing = false;
-    _message =
-        'Draw with one finger; pinch to zoom. '
-        'The loop starts and ends at your location. '
-        'Allowed range: up to ${_formatKm(maxRouteKm)}.';
+    notifyListeners();
+  }
+
+  /// Resume appending to an existing unfinished stroke after a pinch.
+  void resumeStroke() {
+    if (!_drawMode || _submitting) return;
+    if (_route.isEmpty) return;
+    _drawing = true;
+    _message = null;
     notifyListeners();
   }
 
   /// Begin a stroke anchored at [origin] (current location).
   void startStroke(LatLng fingerPoint, {required LatLng? origin}) {
-    if (!_drawMode || _submitting || _confirming) return;
+    if (!_drawMode || _submitting) return;
     if (origin == null) {
       _message = 'Waiting for your current location';
       notifyListeners();
@@ -141,7 +138,7 @@ class AerialReconController extends ChangeNotifier {
   }
 
   void appendPoint(LatLng point, {double minSpacingM = 25}) {
-    if (!_drawMode || !_drawing || _submitting || _confirming) return;
+    if (!_drawMode || !_drawing || _submitting) return;
     if (_route.isEmpty) {
       _route.add(point);
       notifyListeners();
@@ -163,34 +160,13 @@ class AerialReconController extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Validate and enter confirm step. Clears the stroke on failure.
-  bool finishDrawing(LatLng? origin) {
-    if (_confirming || _submitting) return false;
-    if (origin == null) {
-      clearRoute(message: 'Waiting for your current location');
-      return false;
-    }
-    _snapEndpointsToOrigin(origin);
-    _drawing = false;
-
-    final error = validationError(origin);
-    if (error != null) {
-      clearRoute(message: error);
-      return false;
-    }
-    _confirming = true;
-    _message = null;
-    notifyListeners();
-    return true;
-  }
-
   /// Returns an error message, or null when the route is valid.
   String? validationError(LatLng? origin) {
     if (origin == null) {
       return 'Waiting for your current location';
     }
     if (_route.length < 3) {
-      return 'Draw a longer loop, then tap Finish';
+      return 'Draw a longer loop, then tap Deploy Recon';
     }
 
     final lengthKm = routeLengthKm();
@@ -201,10 +177,14 @@ class AerialReconController extends ChangeNotifier {
     return null;
   }
 
-  Future<bool> confirmAndSubmit({required LatLng origin}) async {
+  /// Validate and submit the scout mission.
+  Future<bool> deployRecon({required LatLng origin}) async {
     final tool = _tool;
-    if (tool == null || !_confirming || _submitting) return false;
+    if (tool == null || !_drawMode || _submitting) return false;
+
     _snapEndpointsToOrigin(origin);
+    _drawing = false;
+
     final error = validationError(origin);
     if (error != null) {
       clearRoute(message: error);

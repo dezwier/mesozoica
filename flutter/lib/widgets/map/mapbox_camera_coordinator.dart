@@ -60,6 +60,29 @@ class MapboxCameraCoordinator {
     return LatLng(coords.lat.toDouble(), coords.lng.toDouble());
   }
 
+  /// Project WGS84 points to Flutter logical pixels in the map widget.
+  Future<List<Offset?>> pixelsForCoordinates(List<LatLng> points) async {
+    final map = _map;
+    if (map == null || points.isEmpty) {
+      return List<Offset?>.filled(points.length, null);
+    }
+    final geo = [
+      for (final p in points)
+        Point(coordinates: Position(p.longitude, p.latitude)),
+    ];
+    try {
+      final pixels = await map.pixelsForCoordinates(geo);
+      return [
+        for (final pixel in pixels)
+          pixel == null
+              ? null
+              : Offset(pixel.x.toDouble(), pixel.y.toDouble()),
+      ];
+    } catch (_) {
+      return List<Offset?>.filled(points.length, null);
+    }
+  }
+
   /// Logical map height from Flutter layout (preferred over [MapboxMap.getSize]).
   void setViewportHeight(double height) {
     if (height <= 0) return;

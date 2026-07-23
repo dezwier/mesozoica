@@ -4,8 +4,6 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart'
-    show Point, Position;
 import 'package:provider/provider.dart';
 
 import '../../config/map_config.dart';
@@ -35,13 +33,22 @@ class AerialReconDrawOverlay extends StatefulWidget {
 class _AerialReconDrawOverlayState extends State<AerialReconDrawOverlay> {
   final List<Offset> _screenPoints = [];
   AerialReconController? _recon;
+  int _resyncToken = 0;
+  int _paintEpoch = 0;
 
-  /// True while a one-finger draw stroke is active.
-  bool _drawingGesture = false;
-
-  /// True while a two-finger pinch is controlling zoom.
-  bool _pinchGesture = false;
+  final Map<int, Offset> _pointers = {};
+  int? _drawPointer;
+  Offset? _drawDownPos;
+  bool _strokeStarted = false;
+  bool _pinchActive = false;
   double _pinchBaseZoom = 0;
+  double? _pinchBaseSpan;
+  /// Zoom last applied to [_screenPoints] (for live pinch scaling).
+  double _screenZoom = 0;
+
+  static const _drawSlopPx = 10.0;
+
+  void _markScreenDirty() => _paintEpoch++;
 
   @override
   void didChangeDependencies() {
@@ -55,6 +62,21 @@ class _AerialReconDrawOverlayState extends State<AerialReconDrawOverlay> {
   }
 
   @override
+  void didUpdateWidget(covariant AerialReconDrawOverlay oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.currentZoom == widget.currentZoom) return;
+    if (_pinchActive) {
+      // Pinch already scales [_screenPoints] live; wait for finger-up resync.
+      return;
+    }
+    setState(() {
+      _scaleScreenPointsToZoom(widget.currentZoom);
+      _markScreenDirty();
+    });
+    unawaited(_resyncScreenFromRoute());
+  }
+
+  @override
   void dispose() {
     _recon?.removeListener(_onReconChanged);
     super.dispose();
@@ -65,59 +87,137 @@ class _AerialReconDrawOverlayState extends State<AerialReconDrawOverlay> {
     if (recon == null) return;
     if (!recon.isDrawMode || recon.route.isEmpty) {
       if (_screenPoints.isNotEmpty) {
-        setState(() => _screenPoints.clear());
+        setState(() {
+          _screenPoints.clear();
+          _markScreenDirty();
+        });
       }
+      return;
     }
+    // Route mutated outside this overlay (e.g. clear) — keep screen in sync
+    // when not actively stroking finger points.
+    if (!_strokeStarted && !_pinchActive) {
+      unawaited(_resyncScreenFromRoute());
+    }
+  }
+
+  double? _currentSpan() {
+    if (_pointers.length < 2) return null;
+    final pts = _pointers.values.toList();
+    return (pts[0] - pts[1]).distance;
+  }
+
+  Offset _mapFocal() {
+    final size = MediaQuery.sizeOf(context);
+    return Offset(size.width / 2, size.height / 2);
+  }
+
+  void _scaleScreenPointsToZoom(double toZoom) {
+    if (_screenPoints.isEmpty) {
+      _screenZoom = toZoom;
+      return;
+    }
+    final delta = toZoom - _screenZoom;
+    if (delta.abs() < 1e-6) return;
+    final scale = math.pow(2.0, delta).toDouble();
+    final focal = _mapFocal();
+    for (var i = 0; i < _screenPoints.length; i++) {
+      final p = _screenPoints[i];
+      _screenPoints[i] = focal + (p - focal) * scale;
+    }
+    _screenZoom = toZoom;
+  }
+
+  Future<void> _resyncScreenFromRoute() async {
+    final recon = _recon;
+    if (recon == null || !recon.isDrawMode) return;
+    final route = recon.route;
+    if (route.isEmpty) {
+      if (_screenPoints.isNotEmpty && mounted) {
+        setState(() {
+          _screenPoints.clear();
+          _markScreenDirty();
+        });
+      }
+      return;
+    }
+    final token = ++_resyncToken;
+    // Ensure the map camera has the zoom we are projecting against.
+    await widget.camera.setZoom(widget.currentZoom);
+    if (!mounted || token != _resyncToken) return;
+    final pixels = await widget.camera.pixelsForCoordinates(route);
+    if (!mounted || token != _resyncToken) return;
+    final next = <Offset>[];
+    for (final pixel in pixels) {
+      if (pixel != null) next.add(pixel);
+    }
+    if (next.length < 2 && route.length >= 2) return;
+    setState(() {
+      _screenPoints
+        ..clear()
+        ..addAll(next);
+      _screenZoom = widget.currentZoom;
+      _markScreenDirty();
+    });
   }
 
   Future<Offset?> _screenFor(LatLng point) async {
-    final map = widget.camera.map;
-    if (map == null) return null;
-    final screen = await map.pixelForCoordinate(
-      Point(coordinates: Position(point.longitude, point.latitude)),
-    );
-    return Offset(screen.x.toDouble(), screen.y.toDouble());
+    final pixels = await widget.camera.pixelsForCoordinates([point]);
+    return pixels.isEmpty ? null : pixels.first;
   }
 
-  Future<void> _handlePoint(Offset local, {required bool start}) async {
+  Future<void> _startDrawAt(Offset local) async {
     final recon = context.read<AerialReconController>();
     final location = context.read<LocationService>();
-    if (recon.isConfirming || recon.isSubmitting) return;
+    if (recon.isSubmitting) return;
+
+    // Resume a stroke paused by pinch instead of wiping it.
+    if (recon.route.isNotEmpty && !recon.isDrawing) {
+      recon.resumeStroke();
+      _strokeStarted = true;
+      await _appendDrawAt(local);
+      return;
+    }
+
     final point = await widget.camera.coordinateForPixel(local);
     if (!mounted || point == null) return;
     final origin = location.currentLocation;
-    if (start) {
-      recon.startStroke(point, origin: origin);
-      if (origin == null) return;
-      final originScreen = await _screenFor(origin);
-      if (!mounted) return;
-      setState(() {
-        _screenPoints
-          ..clear()
-          ..add(originScreen ?? local);
-        if (recon.route.length > 1) {
-          _screenPoints.add(local);
-        }
-      });
-    } else {
-      final before = recon.route.length;
-      recon.appendPoint(point);
-      if (recon.route.length > before) {
-        setState(() => _screenPoints.add(local));
+    recon.startStroke(point, origin: origin);
+    if (origin == null) return;
+    final originScreen = await _screenFor(origin);
+    if (!mounted) return;
+    setState(() {
+      _screenPoints
+        ..clear()
+        ..add(originScreen ?? local);
+      if (recon.route.length > 1) {
+        _screenPoints.add(local);
       }
-    }
+      _markScreenDirty();
+    });
+    _strokeStarted = true;
+    _screenZoom = widget.currentZoom;
   }
 
-  void _abortDrawForPinch() {
+  Future<void> _appendDrawAt(Offset local) async {
     final recon = context.read<AerialReconController>();
-    recon.abortStroke();
-    _drawingGesture = false;
-    setState(() => _screenPoints.clear());
+    if (recon.isSubmitting || !recon.isDrawing) return;
+    final point = await widget.camera.coordinateForPixel(local);
+    if (!mounted || point == null) return;
+    final before = recon.route.length;
+    recon.appendPoint(point);
+    if (recon.route.length > before) {
+      setState(() {
+        _screenPoints.add(local);
+        _markScreenDirty();
+      });
+    }
   }
 
   Future<void> _endStroke() async {
     final recon = context.read<AerialReconController>();
     final location = context.read<LocationService>();
+    if (!recon.isDrawing) return;
     final origin = location.currentLocation;
     recon.endStroke(origin: origin);
     if (origin == null) return;
@@ -129,80 +229,145 @@ class _AerialReconDrawOverlayState extends State<AerialReconDrawOverlay> {
       } else {
         _screenPoints.add(originScreen);
       }
+      _markScreenDirty();
     });
   }
 
-  Future<void> _finishDrawing() async {
+  Future<void> _deployRecon() async {
     final recon = context.read<AerialReconController>();
     final location = context.read<LocationService>();
     final origin = location.currentLocation;
-    final ok = recon.finishDrawing(origin);
+    if (origin == null) {
+      recon.clearRoute(message: 'Waiting for your current location');
+      setState(() => _screenPoints.clear());
+      return;
+    }
+    final ok = await recon.deployRecon(origin: origin);
+    if (!mounted) return;
     if (!ok) {
       setState(() => _screenPoints.clear());
       return;
     }
-    if (origin == null) return;
-    final originScreen = await _screenFor(origin);
-    if (!mounted || originScreen == null) return;
-    setState(() {
-      if (_screenPoints.isEmpty) {
-        _screenPoints.add(originScreen);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Aerial Recon deployed — scouting in background'),
+      ),
+    );
+  }
+
+  void _onPointerDown(PointerDownEvent event) {
+    _pointers[event.pointer] = event.localPosition;
+
+    if (_pointers.length >= 2) {
+      // Pinch only — never start/clear a drawing.
+      final recon = context.read<AerialReconController>();
+      if (recon.isDrawing) {
+        recon.pauseStroke();
+      }
+      _strokeStarted = false;
+      _drawPointer = null;
+      _drawDownPos = null;
+      if (!_pinchActive) {
+        _pinchActive = true;
+        _pinchBaseZoom = widget.currentZoom;
+        _pinchBaseSpan = _currentSpan();
+      }
+      return;
+    }
+
+    // Single finger — wait for move past slop before drawing.
+    _pinchActive = false;
+    _pinchBaseSpan = null;
+    _drawPointer = event.pointer;
+    _drawDownPos = event.localPosition;
+    _strokeStarted = false;
+  }
+
+  void _onPointerMove(PointerMoveEvent event) {
+    if (!_pointers.containsKey(event.pointer)) return;
+    _pointers[event.pointer] = event.localPosition;
+
+    if (_pointers.length >= 2) {
+      final span = _currentSpan();
+      if (span == null) return;
+      if (!_pinchActive) {
+        _pinchActive = true;
+        _pinchBaseZoom = widget.currentZoom;
+        _pinchBaseSpan = span;
+        _screenZoom = widget.currentZoom;
+        final recon = context.read<AerialReconController>();
+        if (recon.isDrawing) {
+          recon.pauseStroke();
+        }
+        _strokeStarted = false;
+        _drawPointer = null;
+        _drawDownPos = null;
+      }
+      final base = _pinchBaseSpan;
+      if (base == null || base <= 0) return;
+      final scale = span / base;
+      final next = (_pinchBaseZoom + math.log(scale) / math.ln2)
+          .clamp(MapConfig.minZoom, MapConfig.maxZoom)
+          .toDouble();
+      if ((next - _screenZoom).abs() > 1e-4) {
+        setState(() {
+          _scaleScreenPointsToZoom(next);
+          _markScreenDirty();
+        });
+      }
+      widget.onZoomChanged(next);
+      return;
+    }
+
+    // One finger only.
+    if (_pinchActive) return;
+    if (event.pointer != _drawPointer || _drawDownPos == null) return;
+
+    if (!_strokeStarted) {
+      if ((event.localPosition - _drawDownPos!).distance < _drawSlopPx) {
         return;
       }
-      _screenPoints[0] = originScreen;
-      if (_screenPoints.length == 1) {
-        _screenPoints.add(originScreen);
-      } else {
-        _screenPoints[_screenPoints.length - 1] = originScreen;
-      }
-    });
+      unawaited(_startDrawAt(event.localPosition));
+      return;
+    }
+
+    unawaited(_appendDrawAt(event.localPosition));
   }
 
-  void _onScaleStart(ScaleStartDetails details) {
-    if (details.pointerCount >= 2) {
-      if (_drawingGesture) {
-        _abortDrawForPinch();
-      }
-      _pinchGesture = true;
+  void _onPointerUp(PointerEvent event) {
+    _pointers.remove(event.pointer);
+
+    if (_pointers.length >= 2) {
       _pinchBaseZoom = widget.currentZoom;
+      _pinchBaseSpan = _currentSpan();
       return;
     }
-    _pinchGesture = false;
-    _drawingGesture = true;
-    unawaited(_handlePoint(details.localFocalPoint, start: true));
-  }
 
-  void _onScaleUpdate(ScaleUpdateDetails details) {
-    if (details.pointerCount >= 2) {
-      if (_drawingGesture) {
-        _abortDrawForPinch();
+    if (_pointers.length == 1) {
+      // Leaving a pinch — reproject from geo so the route matches the map.
+      if (_pinchActive) {
+        _pinchActive = false;
+        _pinchBaseSpan = null;
+        unawaited(_resyncScreenFromRoute());
       }
-      if (!_pinchGesture) {
-        _pinchGesture = true;
-        _pinchBaseZoom = widget.currentZoom;
-      }
-      // scale == 2 → +1 zoom level
-      final next = (_pinchBaseZoom + math.log(details.scale) / math.ln2)
-          .clamp(MapConfig.minZoom, MapConfig.maxZoom);
-      widget.onZoomChanged(next.toDouble());
+      _drawPointer = null;
+      _drawDownPos = null;
+      _strokeStarted = false;
       return;
     }
 
-    if (_pinchGesture) {
-      // Returned to one finger after pinch — do not resume drawing this gesture.
-      return;
+    if (_pinchActive) {
+      _pinchActive = false;
+      _pinchBaseSpan = null;
+      unawaited(_resyncScreenFromRoute());
     }
-    if (_drawingGesture) {
-      unawaited(_handlePoint(details.localFocalPoint, start: false));
-    }
-  }
 
-  void _onScaleEnd(ScaleEndDetails details) {
-    if (_drawingGesture && !_pinchGesture) {
+    if (_strokeStarted) {
       unawaited(_endStroke());
     }
-    _drawingGesture = false;
-    _pinchGesture = false;
+    _drawPointer = null;
+    _drawDownPos = null;
+    _strokeStarted = false;
   }
 
   @override
@@ -218,19 +383,22 @@ class _AerialReconDrawOverlayState extends State<AerialReconDrawOverlay> {
         return Positioned.fill(
           child: Stack(
             children: [
-              if (!recon.isConfirming)
-                Positioned.fill(
-                  child: GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    onScaleStart: _onScaleStart,
-                    onScaleUpdate: _onScaleUpdate,
-                    onScaleEnd: _onScaleEnd,
-                  ),
+              Positioned.fill(
+                child: Listener(
+                  behavior: HitTestBehavior.opaque,
+                  onPointerDown: _onPointerDown,
+                  onPointerMove: _onPointerMove,
+                  onPointerUp: _onPointerUp,
+                  onPointerCancel: _onPointerUp,
                 ),
+              ),
               Positioned.fill(
                 child: IgnorePointer(
                   child: CustomPaint(
-                    painter: _ScreenRoutePainter(points: _screenPoints),
+                    painter: _ScreenRoutePainter(
+                      points: _screenPoints,
+                      epoch: _paintEpoch,
+                    ),
                   ),
                 ),
               ),
@@ -250,26 +418,19 @@ class _AerialReconDrawOverlayState extends State<AerialReconDrawOverlay> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          recon.isConfirming
-                              ? 'Confirm scout route'
-                              : (recon.message ??
-                                  'Draw with one finger; pinch to zoom. '
-                                  'The loop starts and ends at your location.'),
+                          recon.message ??
+                              'Draw with one finger; pinch to zoom. '
+                              'The loop starts and ends at your location.',
                           style: Theme.of(context).textTheme.bodyMedium,
                         ),
                         const SizedBox(height: 6),
                         Text(
-                          recon.isConfirming
-                              ? 'Route length: '
-                                  '${recon.routeLengthKm().toStringAsFixed(1)} km '
-                                  '(allowed up to '
-                                  '${_formatMax(recon.maxRouteKm)})'
-                              : recon.rangeHint,
+                          recon.rangeHint,
                           style: Theme.of(context).textTheme.bodySmall?.copyWith(
                                 color: scheme.onSurfaceVariant,
                               ),
                         ),
-                        if (recon.isConfirming && recon.isShortRoute) ...[
+                        if (recon.hasRoute && recon.isShortRoute) ...[
                           const SizedBox(height: 8),
                           Text(
                             'This loop uses less than '
@@ -290,86 +451,79 @@ class _AerialReconDrawOverlayState extends State<AerialReconDrawOverlay> {
                 left: 16,
                 right: 16,
                 bottom: bottom,
-                child: recon.isConfirming
-                    ? Row(
-                        children: [
-                          Expanded(
-                            child: OutlinedButton(
-                              onPressed: recon.isSubmitting
-                                  ? null
-                                  : () {
-                                      recon.redraw();
-                                      setState(() => _screenPoints.clear());
-                                    },
-                              child: const Text('Redraw'),
-                            ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: recon.isSubmitting
+                            ? null
+                            : () => recon.cancelDraw(),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 12,
                           ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: FilledButton(
-                              onPressed: recon.isSubmitting
-                                  ? null
-                                  : () async {
-                                      final origin = location.currentLocation;
-                                      if (origin == null) {
-                                        recon.clearRoute(
-                                          message:
-                                              'Waiting for your current location',
-                                        );
-                                        setState(() => _screenPoints.clear());
-                                        return;
-                                      }
-                                      final ok = await recon.confirmAndSubmit(
-                                        origin: origin,
-                                      );
-                                      if (!context.mounted) return;
-                                      if (ok) {
-                                        ScaffoldMessenger.of(context)
-                                            .showSnackBar(
-                                          const SnackBar(
-                                            content: Text(
-                                              'Aerial Recon deployed — scouting in background',
-                                            ),
-                                          ),
-                                        );
-                                      }
-                                    },
-                              child: recon.isSubmitting
-                                  ? const SizedBox(
-                                      width: 18,
-                                      height: 18,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                      ),
-                                    )
-                                  : const Text('Deploy'),
-                            ),
-                          ),
-                        ],
-                      )
-                    : Row(
-                        children: [
-                          Expanded(
-                            child: OutlinedButton(
-                              onPressed: recon.isSubmitting
-                                  ? null
-                                  : () => recon.cancelDraw(),
-                              child: const Text('Cancel'),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: FilledButton(
-                              onPressed: recon.isSubmitting || !recon.hasRoute
-                                  ? null
-                                  : () {
-                                      unawaited(_finishDrawing());
-                                    },
-                              child: const Text('Finish'),
-                            ),
-                          ),
-                        ],
+                        ),
+                        child: const Text(
+                          'Abort Recon',
+                          textAlign: TextAlign.center,
+                        ),
                       ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: recon.isSubmitting || !recon.hasRoute
+                            ? null
+                            : () {
+                                recon.clearDrawnRoute();
+                                setState(() {
+                                  _screenPoints.clear();
+                                  _markScreenDirty();
+                                });
+                              },
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 12,
+                          ),
+                        ),
+                        child: const Text(
+                          'Clear Route',
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: FilledButton(
+                        onPressed: recon.isSubmitting || !recon.hasRoute
+                            ? null
+                            : () {
+                                unawaited(_deployRecon());
+                              },
+                        style: FilledButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 12,
+                          ),
+                        ),
+                        child: recon.isSubmitting
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Text(
+                                'Deploy Recon',
+                                textAlign: TextAlign.center,
+                              ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
@@ -377,17 +531,13 @@ class _AerialReconDrawOverlayState extends State<AerialReconDrawOverlay> {
       },
     );
   }
-
-  static String _formatMax(double km) {
-    if (km == km.roundToDouble()) return '${km.toStringAsFixed(0)} km';
-    return '${km.toStringAsFixed(1)} km';
-  }
 }
 
 class _ScreenRoutePainter extends CustomPainter {
-  _ScreenRoutePainter({required this.points});
+  _ScreenRoutePainter({required this.points, required this.epoch});
 
   final List<Offset> points;
+  final int epoch;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -411,5 +561,5 @@ class _ScreenRoutePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _ScreenRoutePainter oldDelegate) =>
-      oldDelegate.points != points;
+      oldDelegate.epoch != epoch;
 }

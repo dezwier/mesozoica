@@ -31,7 +31,6 @@ import '../../widgets/map/mapbox_field_map.dart';
 import '../../widgets/map/mapbox_site_annotations.dart';
 import '../../widgets/map/site_filter_sheet.dart';
 import '../../widgets/map/site_map_card_dialog.dart';
-import '../../widgets/map/zoom_slider.dart';
 
 part 'map_screen_camera.dart';
 part 'map_screen_field_ops.dart';
@@ -341,16 +340,7 @@ class _MapScreenState extends State<MapScreen>
                   ),
                 ),
               ),
-            if (aerialDrawMode)
-              Positioned(
-                right: 12,
-                bottom: fabBottom,
-                child: ZoomSlider(
-                  currentZoom: _zoomLevel,
-                  onZoomChanged: _onZoomChanged,
-                ),
-              )
-            else
+            if (!aerialDrawMode)
               MapControlButtons(
                 currentZoom: _zoomLevel,
                 onZoomChanged: _onZoomChanged,
