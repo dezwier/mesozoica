@@ -334,10 +334,10 @@ class AerialReconController extends ChangeNotifier {
     }
   }
 
-  /// Start periodic status refresh (~30s) while the map is active.
+  /// Start periodic status refresh (~5s) while the map is active.
   void startTracking() {
     _refreshTimer?.cancel();
-    _refreshTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+    _refreshTimer = Timer.periodic(const Duration(seconds: 5), (_) {
       unawaited(refreshMissions());
     });
     unawaited(refreshMissions());
