@@ -139,7 +139,7 @@ void main() {
       discoveredAfter: after,
       discoveredBefore: before,
     );
-    expect(filters.discoveryTimeActive, isTrue);
+    expect(filters.discoveryTimeActive(), isTrue);
     expect(
       filters.matches(
         SiteSummary(
@@ -185,5 +185,42 @@ void main() {
     expect(SiteCatalogSort.discoveredAtDesc.apiValue, 'discovered_at_desc');
     expect(SiteCatalogSort.discoveredAtAsc.apiValue, 'discovered_at');
     expect(SiteCatalogSort.fromApiValue('distance'), SiteCatalogSort.distance);
+  });
+
+  test('default sort is nearest', () {
+    expect(SiteMapFilters().sort, SiteCatalogSort.distance);
+    expect(SiteMapFilters().hasActiveFilters, isFalse);
+  });
+
+  test('earliestSiteDiscovery picks oldest discoveredAt', () {
+    final earliest = earliestSiteDiscovery([
+      SiteSummary(
+        siteId: 1,
+        latitude: 1,
+        longitude: 1,
+        discoveredAt: DateTime.utc(2026, 6, 1),
+      ),
+      SiteSummary(
+        siteId: 2,
+        latitude: 1,
+        longitude: 1,
+        discoveredAt: DateTime.utc(2026, 1, 15),
+      ),
+      SiteSummary(
+        siteId: 3,
+        latitude: 1,
+        longitude: 1,
+      ),
+    ]);
+    expect(earliest, DateTime.utc(2026, 1, 15));
+  });
+
+  test('discoveryTimeWindowBounds uses earliest card day', () {
+    final bounds = discoveryTimeWindowBounds(
+      now: DateTime.utc(2026, 7, 24),
+      earliestDiscovery: DateTime.utc(2026, 3, 10, 15, 30),
+    );
+    expect(bounds.start, DateTime.utc(2026, 3, 10));
+    expect(bounds.end, DateTime.utc(2026, 7, 24));
   });
 }

@@ -41,6 +41,7 @@ class SiteScreenState extends State<SiteScreen> {
       showStatusSection: isFieldMode,
       showSortSection: true,
       canSortByDistance: hasLocation,
+      earliestDiscovery: catalog.earliestDiscovery,
       onApply: catalog.applyFilters,
     );
   }

@@ -136,6 +136,7 @@ mixin _MapScreenFieldOpsMixin on State<MapScreen>, _MapScreenCameraMixin {
       initialFilters: mapData.filters.copyWith(filterByStatus: isFieldMode),
       showStatusSection: isFieldMode,
       showReconRoutesSection: isFieldMode,
+      earliestDiscovery: earliestSiteDiscovery(mapData.geoSites),
       onApply: mapData.applyFilters,
     );
   }

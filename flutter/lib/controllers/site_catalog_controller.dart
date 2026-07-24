@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 import 'package:latlong2/latlong.dart';
@@ -26,13 +25,11 @@ class SiteCatalogController extends CatalogController<SiteSummary> {
   final SiteService _service;
   final CatalogModeController? _catalogModeController;
   final LocationService? _locationService;
-  final Random _random = Random();
 
   List<SiteSummary> _rawItems = [];
   bool _loading = false;
   bool _loadingMore = false;
   String? _error;
-  String? _seed;
   int _loadSeq = 0;
   int _offset = 0;
   bool _hasMore = false;
@@ -48,6 +45,9 @@ class SiteCatalogController extends CatalogController<SiteSummary> {
     return List.unmodifiable(_rawItems.where(_filters.matches));
   }
 
+  /// Oldest discovery among loaded (unfiltered) catalog pages.
+  DateTime? get earliestDiscovery => earliestSiteDiscovery(_rawItems);
+
   /// Period/rock/status still filter client-side; discovery is also matched
   /// client-side as a safety net (and for empty checkbox groups).
   bool get _needsClientMatch {
@@ -59,7 +59,7 @@ class SiteCatalogController extends CatalogController<SiteSummary> {
         rockActive ||
         statusActive ||
         _filters.howDiscoveredActive ||
-        _filters.discoveryTimeActive;
+        _filters.discoveryTimeActive();
   }
 
   @override
@@ -92,7 +92,6 @@ class SiteCatalogController extends CatalogController<SiteSummary> {
 
     _loading = true;
     _error = null;
-    _seed = _newSeed();
     _offset = 0;
     _hasMore = false;
     _filters = _filters.copyWith(filterByStatus: _isFieldMode);
@@ -116,7 +115,7 @@ class SiteCatalogController extends CatalogController<SiteSummary> {
         final preview = _rawItems.take(5).map((s) => s.displayTitle).join(', ');
         debugPrint(
           'SiteCatalogController: loaded ${_rawItems.length}/$_total sites '
-          '(sort=${_filters.sort.apiValue}, seed=$_seed) → $preview',
+          '(sort=${_filters.sort.apiValue}) → $preview',
         );
       }
     } on SiteServiceException catch (error) {
@@ -181,7 +180,6 @@ class SiteCatalogController extends CatalogController<SiteSummary> {
 
   Future<void> _fetchNextPage() async {
     if (_loading || _loadingMore || !_hasMore) return;
-    if (_filters.sort == SiteCatalogSort.random && _seed == null) return;
 
     _loadingMore = true;
     notifyListeners();
@@ -232,28 +230,23 @@ class SiteCatalogController extends CatalogController<SiteSummary> {
   }
 
   Future<SiteListResponse> _fetchPage({required int offset}) async {
-    final sort = _filters.sort;
-    if (sort == SiteCatalogSort.random) {
-      final seed = _seed;
-      if (seed == null || seed.isEmpty) {
-        throw StateError('Catalog seed missing before fetch');
-      }
+    var sort = _filters.sort;
+    final origin = _locationService?.currentLocation;
+    if (sort == SiteCatalogSort.distance && origin == null) {
+      sort = SiteCatalogSort.discoveredAtDesc;
     }
 
-    final origin = _locationService?.currentLocation;
     final how = _filters.howDiscoveredActive
         ? _filters.howDiscovered.toList()
         : null;
-    final after =
-        _filters.discoveryTimeActive ? _filters.discoveredAfter : null;
-    final before =
-        _filters.discoveryTimeActive ? _filters.discoveredBefore : null;
+    final timeActive = _filters.discoveryTimeActive();
+    final after = timeActive ? _filters.discoveredAfter : null;
+    final before = timeActive ? _filters.discoveredBefore : null;
 
     return _service.fetchSites(
       limit: pageSize,
       offset: offset,
       sort: sort.apiValue,
-      seed: sort == SiteCatalogSort.random ? _seed : null,
       dataSource: _dataSource,
       howDiscovered: how,
       discoveredAfter: after,
@@ -261,10 +254,6 @@ class SiteCatalogController extends CatalogController<SiteSummary> {
       lat: sort == SiteCatalogSort.distance ? origin?.latitude : null,
       lon: sort == SiteCatalogSort.distance ? origin?.longitude : null,
     );
-  }
-
-  String _newSeed() {
-    return '${DateTime.now().microsecondsSinceEpoch}_${_random.nextInt(1 << 32)}';
   }
 
   @override

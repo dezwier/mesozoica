@@ -16,6 +16,7 @@ import '../../controllers/site_catalog_controller.dart';
 import '../../controllers/splash_hold_controller.dart';
 import '../../controllers/theme_controller.dart';
 import '../../models/site.dart';
+import '../../models/site_map_filters.dart';
 import '../../services/auth_service.dart';
 import '../../services/location_service.dart';
 import '../../services/site_service.dart';

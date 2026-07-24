@@ -62,25 +62,22 @@ String siteFilterOptionLabel(String value) {
 /// How far back past aerial recon routes stay eligible for the map overlay.
 const Duration pastAerialRouteMaxAge = Duration(hours: 24);
 
-/// Dual-range discovery-time window length (now − span → now).
+/// Fallback discovery-time window when no card has a discovery date.
 const Duration discoveryTimeWindowSpan = Duration(days: 365 * 2);
 
 /// Catalog sort keys sent to `GET /sites`.
 enum SiteCatalogSort {
-  random,
   distance,
   discoveredAtDesc,
   discoveredAtAsc;
 
   String get label => switch (this) {
-        SiteCatalogSort.random => 'Random',
         SiteCatalogSort.distance => 'Nearest',
         SiteCatalogSort.discoveredAtDesc => 'Discovered (newest)',
         SiteCatalogSort.discoveredAtAsc => 'Discovered (oldest)',
       };
 
   String get apiValue => switch (this) {
-        SiteCatalogSort.random => 'random',
         SiteCatalogSort.distance => 'distance',
         SiteCatalogSort.discoveredAtDesc => 'discovered_at_desc',
         SiteCatalogSort.discoveredAtAsc => 'discovered_at',
@@ -88,19 +85,44 @@ enum SiteCatalogSort {
 
   static SiteCatalogSort fromApiValue(String value) {
     return switch (value) {
-      'distance' => SiteCatalogSort.distance,
       'discovered_at_desc' => SiteCatalogSort.discoveredAtDesc,
       'discovered_at' => SiteCatalogSort.discoveredAtAsc,
-      _ => SiteCatalogSort.random,
+      _ => SiteCatalogSort.distance,
     };
   }
 }
 
-/// Bounds for the discovery-time range slider (UTC).
-({DateTime start, DateTime end}) discoveryTimeWindowBounds({DateTime? now}) {
-  final end = (now ?? DateTime.now()).toUtc();
-  final start = end.subtract(discoveryTimeWindowSpan);
+DateTime discoveryDateOnlyUtc(DateTime value) {
+  final utc = value.toUtc();
+  return DateTime.utc(utc.year, utc.month, utc.day);
+}
+
+/// Bounds for the discovery-time range slider (UTC day precision).
+///
+/// [earliestDiscovery] is typically the oldest `discoveredAt` among visible
+/// cards; when null, falls back to [discoveryTimeWindowSpan] before today.
+({DateTime start, DateTime end}) discoveryTimeWindowBounds({
+  DateTime? now,
+  DateTime? earliestDiscovery,
+}) {
+  final end = discoveryDateOnlyUtc(now ?? DateTime.now());
+  final earliest = earliestDiscovery == null
+      ? null
+      : discoveryDateOnlyUtc(earliestDiscovery);
+  final start = earliest ?? end.subtract(discoveryTimeWindowSpan);
+  if (start.isAfter(end)) return (start: end, end: end);
   return (start: start, end: end);
+}
+
+/// Earliest non-null `discoveredAt` among [sites], or null if none.
+DateTime? earliestSiteDiscovery(Iterable<SiteSummary> sites) {
+  DateTime? earliest;
+  for (final site in sites) {
+    final at = site.discoveredAt?.toUtc();
+    if (at == null) continue;
+    if (earliest == null || at.isBefore(earliest)) earliest = at;
+  }
+  return earliest;
 }
 
 class SiteMapFilters {
@@ -111,7 +133,7 @@ class SiteMapFilters {
     Set<String>? howDiscovered,
     this.discoveredAfter,
     this.discoveredBefore,
-    this.sort = SiteCatalogSort.random,
+    this.sort = SiteCatalogSort.distance,
     this.filterByStatus = false,
     this.showPastAerialRoutes = false,
   })  : statuses = statuses ?? Set<String>.from(siteStatusOptions),
@@ -143,19 +165,21 @@ class SiteMapFilters {
   bool get howDiscoveredActive =>
       howDiscovered.length != siteHowDiscoveredOptions.length;
 
-  /// True when the dual slider is not at the full 2y window (or custom bounds).
-  bool get discoveryTimeActive {
+  /// True when the dual slider is not at the full window.
+  bool discoveryTimeActive({DateTime? earliestDiscovery, DateTime? now}) {
     if (discoveredAfter == null && discoveredBefore == null) return false;
-    final bounds = discoveryTimeWindowBounds();
-    final after = discoveredAfter?.toUtc();
-    final before = discoveredBefore?.toUtc();
-    if (after != null && after.isAfter(bounds.start.add(const Duration(minutes: 1)))) {
-      return true;
-    }
-    if (before != null &&
-        before.isBefore(bounds.end.subtract(const Duration(minutes: 1)))) {
-      return true;
-    }
+    final bounds = discoveryTimeWindowBounds(
+      now: now,
+      earliestDiscovery: earliestDiscovery,
+    );
+    final after = discoveredAfter == null
+        ? null
+        : discoveryDateOnlyUtc(discoveredAfter!);
+    final before = discoveredBefore == null
+        ? null
+        : discoveryDateOnlyUtc(discoveredBefore!);
+    if (after != null && after.isAfter(bounds.start)) return true;
+    if (before != null && before.isBefore(bounds.end)) return true;
     return false;
   }
 
@@ -168,9 +192,9 @@ class SiteMapFilters {
         rockActive ||
         statusActive ||
         howDiscoveredActive ||
-        discoveryTimeActive ||
+        discoveryTimeActive() ||
         showPastAerialRoutes ||
-        sort != SiteCatalogSort.random;
+        sort != SiteCatalogSort.distance;
   }
 
   /// Stable key so marker layer can wipe+reload when site filters change.
@@ -181,7 +205,7 @@ class SiteMapFilters {
     final statusActive =
         filterByStatus && statuses.length != siteStatusOptions.length;
     final howActive = howDiscoveredActive;
-    final timeActive = discoveryTimeActive;
+    final timeActive = discoveryTimeActive();
     if (!periodActive &&
         !rockActive &&
         !statusActive &&
@@ -260,7 +284,7 @@ class SiteMapFilters {
       }
     }
 
-    if (discoveryTimeActive) {
+    if (discoveryTimeActive()) {
       final at = site.discoveredAt?.toUtc();
       if (at == null) return false;
       final after = discoveredAfter?.toUtc();

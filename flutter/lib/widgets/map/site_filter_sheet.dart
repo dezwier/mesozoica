@@ -13,6 +13,7 @@ class SiteFilterSheet extends StatefulWidget {
     this.showReconRoutesSection = false,
     this.showSortSection = false,
     this.canSortByDistance = true,
+    this.earliestDiscovery,
   });
 
   final SiteMapFilters initialFilters;
@@ -20,11 +21,14 @@ class SiteFilterSheet extends StatefulWidget {
   final bool showStatusSection;
   final bool showReconRoutesSection;
 
-  /// Catalog-only: Random / Nearest / Discovered sorts.
+  /// Catalog-only: Nearest / Discovered sorts.
   final bool showSortSection;
 
-  /// When false, Nearest is shown disabled in the sort dropdown.
+  /// When false, Nearest falls back with a snackbar if selected.
   final bool canSortByDistance;
+
+  /// Oldest discovery among current cards; drives the slider minimum day.
+  final DateTime? earliestDiscovery;
 
   static Future<void> show(
     BuildContext context, {
@@ -34,6 +38,7 @@ class SiteFilterSheet extends StatefulWidget {
     bool showReconRoutesSection = false,
     bool showSortSection = false,
     bool canSortByDistance = true,
+    DateTime? earliestDiscovery,
   }) {
     return showModalBottomSheet<void>(
       context: context,
@@ -51,6 +56,7 @@ class SiteFilterSheet extends StatefulWidget {
         showReconRoutesSection: showReconRoutesSection,
         showSortSection: showSortSection,
         canSortByDistance: canSortByDistance,
+        earliestDiscovery: earliestDiscovery,
       ),
     );
   }
@@ -64,68 +70,80 @@ class _SiteFilterSheetState extends State<SiteFilterSheet> {
   late Set<String> _pendingPeriods;
   late Set<String> _pendingRockTypes;
   late Set<String> _pendingHowDiscovered;
-  late RangeValues _pendingDiscoveryRange;
+  late RangeValues _pendingDiscoveryDays;
   late SiteCatalogSort _pendingSort;
   late bool _pendingShowPastReconRoutes;
   late final DateTime _windowStart;
   late final DateTime _windowEnd;
+  late final int _dayCount;
   bool _applied = false;
 
-  static final _monthYear = DateFormat('MMM yyyy');
+  static final _dayLabel = DateFormat('MMM d, yyyy');
 
   @override
   void initState() {
     super.initState();
-    final bounds = discoveryTimeWindowBounds();
+    final bounds = discoveryTimeWindowBounds(
+      earliestDiscovery: widget.earliestDiscovery,
+    );
     _windowStart = bounds.start;
     _windowEnd = bounds.end;
+    _dayCount = _windowEnd.difference(_windowStart).inDays;
     _pendingStatuses = {...widget.initialFilters.statuses};
     _pendingPeriods = {...widget.initialFilters.periods};
     _pendingRockTypes = {...widget.initialFilters.rockTypes};
     _pendingHowDiscovered = {...widget.initialFilters.howDiscovered};
-    _pendingSort = widget.initialFilters.sort;
+    _pendingSort = widget.showSortSection
+        ? widget.initialFilters.sort
+        : SiteCatalogSort.distance;
+    if (_pendingSort == SiteCatalogSort.distance &&
+        !widget.canSortByDistance &&
+        widget.showSortSection) {
+      _pendingSort = SiteCatalogSort.discoveredAtDesc;
+    }
     _pendingShowPastReconRoutes = widget.initialFilters.showPastAerialRoutes;
-    _pendingDiscoveryRange = _rangeFromFilters(widget.initialFilters);
+    _pendingDiscoveryDays = _daysFromFilters(widget.initialFilters);
   }
 
-  RangeValues _rangeFromFilters(SiteMapFilters filters) {
-    final spanMs =
-        _windowEnd.millisecondsSinceEpoch - _windowStart.millisecondsSinceEpoch;
-    if (spanMs <= 0) return const RangeValues(0, 1);
-    final after = filters.discoveredAfter?.toUtc() ?? _windowStart;
-    final before = filters.discoveredBefore?.toUtc() ?? _windowEnd;
-    final start = ((after.millisecondsSinceEpoch -
-                _windowStart.millisecondsSinceEpoch) /
-            spanMs)
-        .clamp(0.0, 1.0);
-    final end = ((before.millisecondsSinceEpoch -
-                _windowStart.millisecondsSinceEpoch) /
-            spanMs)
-        .clamp(0.0, 1.0);
-    return RangeValues(
-      start <= end ? start : end,
-      start <= end ? end : start,
-    );
+  RangeValues _daysFromFilters(SiteMapFilters filters) {
+    if (_dayCount <= 0) return const RangeValues(0, 0);
+    final after = filters.discoveredAfter == null
+        ? _windowStart
+        : discoveryDateOnlyUtc(filters.discoveredAfter!);
+    final before = filters.discoveredBefore == null
+        ? _windowEnd
+        : discoveryDateOnlyUtc(filters.discoveredBefore!);
+    final start = after
+        .difference(_windowStart)
+        .inDays
+        .clamp(0, _dayCount)
+        .toDouble();
+    final end = before
+        .difference(_windowStart)
+        .inDays
+        .clamp(0, _dayCount)
+        .toDouble();
+    return RangeValues(start <= end ? start : end, start <= end ? end : start);
   }
 
-  DateTime _dateAt(double t) {
-    final spanMs =
-        _windowEnd.millisecondsSinceEpoch - _windowStart.millisecondsSinceEpoch;
-    return DateTime.fromMillisecondsSinceEpoch(
-      _windowStart.millisecondsSinceEpoch + (spanMs * t).round(),
-      isUtc: true,
-    );
+  DateTime _dateAtDay(double day) {
+    final clamped = day.round().clamp(0, _dayCount);
+    return _windowStart.add(Duration(days: clamped));
   }
 
   bool get _discoveryTimeIsFullSpan =>
-      _pendingDiscoveryRange.start <= 0.001 &&
-      _pendingDiscoveryRange.end >= 0.999;
+      _dayCount <= 0 ||
+      (_pendingDiscoveryDays.start <= 0.001 &&
+          _pendingDiscoveryDays.end >= _dayCount - 0.001);
 
   SiteMapFilters _buildPendingFilters() {
     final after =
-        _discoveryTimeIsFullSpan ? null : _dateAt(_pendingDiscoveryRange.start);
-    final before =
-        _discoveryTimeIsFullSpan ? null : _dateAt(_pendingDiscoveryRange.end);
+        _discoveryTimeIsFullSpan ? null : _dateAtDay(_pendingDiscoveryDays.start);
+    // Inclusive end-of-day for the upper thumb.
+    final before = _discoveryTimeIsFullSpan
+        ? null
+        : _dateAtDay(_pendingDiscoveryDays.end)
+            .add(const Duration(hours: 23, minutes: 59, seconds: 59));
     return SiteMapFilters(
       statuses: _pendingStatuses,
       periods: _pendingPeriods,
@@ -133,7 +151,7 @@ class _SiteFilterSheetState extends State<SiteFilterSheet> {
       howDiscovered: _pendingHowDiscovered,
       discoveredAfter: after,
       discoveredBefore: before,
-      sort: widget.showSortSection ? _pendingSort : SiteCatalogSort.random,
+      sort: widget.showSortSection ? _pendingSort : SiteCatalogSort.distance,
       filterByStatus: widget.showStatusSection,
       showPastAerialRoutes: widget.showReconRoutesSection
           ? _pendingShowPastReconRoutes
@@ -153,8 +171,10 @@ class _SiteFilterSheetState extends State<SiteFilterSheet> {
       _pendingPeriods = {...sitePeriodOptions};
       _pendingRockTypes = {...siteRockTypeOptions};
       _pendingHowDiscovered = {...siteHowDiscoveredOptions};
-      _pendingDiscoveryRange = const RangeValues(0, 1);
-      _pendingSort = SiteCatalogSort.random;
+      _pendingDiscoveryDays = RangeValues(0, _dayCount.toDouble());
+      _pendingSort = widget.canSortByDistance
+          ? SiteCatalogSort.distance
+          : SiteCatalogSort.discoveredAtDesc;
       _pendingShowPastReconRoutes = false;
     });
   }
@@ -173,9 +193,10 @@ class _SiteFilterSheetState extends State<SiteFilterSheet> {
     setState(() => assign({value}));
   }
 
-  String _formatBound(double t) {
-    if (t >= 0.999) return 'Today';
-    return _monthYear.format(_dateAt(t).toLocal());
+  String _formatDay(double day) {
+    if (_dayCount <= 0) return 'Today';
+    if (day >= _dayCount - 0.001) return 'Today';
+    return _dayLabel.format(_dateAtDay(day).toLocal());
   }
 
   @override
@@ -203,125 +224,103 @@ class _SiteFilterSheetState extends State<SiteFilterSheet> {
                   fontWeight: FontWeight.w600,
                 ),
               ),
-              const SizedBox(height: 16),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        if (widget.showStatusSection) ...[
-                          _sectionTitle(theme, 'Status'),
-                          ...siteStatusOptions.map(
-                            (value) => _checkboxTile(
-                              theme: theme,
-                              value: _pendingStatuses.contains(value),
-                              label: siteFilterOptionLabel(value),
-                              onChanged: (selected) =>
-                                  _toggle(_pendingStatuses, value, selected),
-                              onLongPress: () => _selectOnly(
-                                (next) => _pendingStatuses = next,
-                                value,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                        ],
-                        _sectionTitle(theme, 'Period'),
-                        ...sitePeriodOptions.map(
-                          (value) => _checkboxTile(
-                            theme: theme,
-                            value: _pendingPeriods.contains(value),
-                            label: siteFilterOptionLabel(value),
-                            onChanged: (selected) =>
-                                _toggle(_pendingPeriods, value, selected),
-                            onLongPress: () => _selectOnly(
-                              (next) => _pendingPeriods = next,
-                              value,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        _sectionTitle(theme, 'Discovery'),
-                        ...siteHowDiscoveredOptions.map(
-                          (value) => _checkboxTile(
-                            theme: theme,
-                            value: _pendingHowDiscovered.contains(value),
-                            label: siteFilterOptionLabel(value),
-                            onChanged: (selected) => _toggle(
-                              _pendingHowDiscovered,
-                              value,
-                              selected,
-                            ),
-                            onLongPress: () => _selectOnly(
-                              (next) => _pendingHowDiscovered = next,
-                              value,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        _sectionTitle(theme, 'Rock type'),
-                        ...siteRockTypeOptions.map(
-                          (value) => _checkboxTile(
-                            theme: theme,
-                            value: _pendingRockTypes.contains(value),
-                            label: siteFilterOptionLabel(value),
-                            onChanged: (selected) =>
-                                _toggle(_pendingRockTypes, value, selected),
-                            onLongPress: () => _selectOnly(
-                              (next) => _pendingRockTypes = next,
-                              value,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              _sectionTitle(theme, 'Discovery time'),
-              RangeSlider(
-                values: _pendingDiscoveryRange,
-                onChanged: (values) {
-                  setState(() => _pendingDiscoveryRange = values);
-                },
-              ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 4),
-                child: Row(
-                  children: [
-                    Text(
-                      _formatBound(_pendingDiscoveryRange.start),
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                    const Spacer(),
-                    Text(
-                      _formatBound(_pendingDiscoveryRange.end),
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
               if (widget.showSortSection) ...[
                 const SizedBox(height: 16),
                 _sectionTitle(theme, 'Sort'),
                 _buildSortDropdown(context),
               ],
+              const SizedBox(height: 16),
+              _sectionTitle(theme, 'Discovery time'),
+              if (_dayCount <= 0)
+                Text(
+                  'No discovery dates on current sites yet.',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                )
+              else ...[
+                RangeSlider(
+                  values: _pendingDiscoveryDays,
+                  min: 0,
+                  max: _dayCount.toDouble(),
+                  divisions: _dayCount < 1 ? null : _dayCount,
+                  onChanged: (values) {
+                    setState(() => _pendingDiscoveryDays = values);
+                  },
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  child: Row(
+                    children: [
+                      Text(
+                        _formatDay(_pendingDiscoveryDays.start),
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                      const Spacer(),
+                      Text(
+                        _formatDay(_pendingDiscoveryDays.end),
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+              const SizedBox(height: 8),
+              if (widget.showStatusSection)
+                _checkboxDropdown(
+                  theme: theme,
+                  title: 'Status',
+                  options: siteStatusOptions,
+                  selected: _pendingStatuses,
+                  onToggle: (value, selected) =>
+                      _toggle(_pendingStatuses, value, selected),
+                  onSelectOnly: (value) => _selectOnly(
+                    (next) => _pendingStatuses = next,
+                    value,
+                  ),
+                ),
+              _checkboxDropdown(
+                theme: theme,
+                title: 'Period',
+                options: sitePeriodOptions,
+                selected: _pendingPeriods,
+                onToggle: (value, selected) =>
+                    _toggle(_pendingPeriods, value, selected),
+                onSelectOnly: (value) => _selectOnly(
+                  (next) => _pendingPeriods = next,
+                  value,
+                ),
+              ),
+              _checkboxDropdown(
+                theme: theme,
+                title: 'Discovery',
+                options: siteHowDiscoveredOptions,
+                selected: _pendingHowDiscovered,
+                onToggle: (value, selected) =>
+                    _toggle(_pendingHowDiscovered, value, selected),
+                onSelectOnly: (value) => _selectOnly(
+                  (next) => _pendingHowDiscovered = next,
+                  value,
+                ),
+              ),
+              _checkboxDropdown(
+                theme: theme,
+                title: 'Rock type',
+                options: siteRockTypeOptions,
+                selected: _pendingRockTypes,
+                onToggle: (value, selected) =>
+                    _toggle(_pendingRockTypes, value, selected),
+                onSelectOnly: (value) => _selectOnly(
+                  (next) => _pendingRockTypes = next,
+                  value,
+                ),
+              ),
               if (widget.showReconRoutesSection) ...[
-                const SizedBox(height: 16),
+                const SizedBox(height: 8),
                 _sectionTitle(theme, 'Overlays'),
                 _checkboxTile(
                   theme: theme,
@@ -349,18 +348,6 @@ class _SiteFilterSheetState extends State<SiteFilterSheet> {
                   const Spacer(),
                   FilledButton(
                     onPressed: () {
-                      if (widget.showSortSection &&
-                          _pendingSort == SiteCatalogSort.distance &&
-                          !widget.canSortByDistance) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text(
-                              'Waiting for your current location to sort by nearest',
-                            ),
-                          ),
-                        );
-                        return;
-                      }
                       _commitPending();
                       Navigator.of(context).pop();
                     },
@@ -370,7 +357,6 @@ class _SiteFilterSheetState extends State<SiteFilterSheet> {
               ),
               const SizedBox(height: 4),
               Text(
-                'Unchecking options hides matching sites. '
                 'Long-press a checkbox to keep only that option.',
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: colorScheme.onSurfaceVariant,
@@ -426,6 +412,52 @@ class _SiteFilterSheetState extends State<SiteFilterSheet> {
               )
               .toList(),
         ),
+      ),
+    );
+  }
+
+  Widget _checkboxDropdown({
+    required ThemeData theme,
+    required String title,
+    required List<String> options,
+    required Set<String> selected,
+    required void Function(String value, bool? selected) onToggle,
+    required void Function(String value) onSelectOnly,
+  }) {
+    final allSelected = selected.length == options.length;
+    final subtitle = allSelected
+        ? 'All'
+        : selected.isEmpty
+            ? 'None'
+            : '${selected.length} of ${options.length}';
+
+    return Theme(
+      data: theme.copyWith(dividerColor: Colors.transparent),
+      child: ExpansionTile(
+        tilePadding: EdgeInsets.zero,
+        childrenPadding: EdgeInsets.zero,
+        title: Text(
+          title,
+          style: theme.textTheme.titleSmall?.copyWith(
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        subtitle: Text(
+          subtitle,
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+        ),
+        children: [
+          for (final value in options)
+            _checkboxTile(
+              theme: theme,
+              value: selected.contains(value),
+              label: siteFilterOptionLabel(value),
+              onChanged: (checked) => onToggle(value, checked),
+              onLongPress: () => onSelectOnly(value),
+            ),
+        ],
       ),
     );
   }
