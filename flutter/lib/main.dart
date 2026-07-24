@@ -115,6 +115,7 @@ class MesozoicaApp extends StatelessWidget {
         ),
         ChangeNotifierProvider(create: (_) => NotificationController()),
         ChangeNotifierProvider(create: (_) => DinosaurCatalogController()),
+        ChangeNotifierProvider(create: (_) => LocationService()),
         ChangeNotifierProvider(
           create: (context) => FossilCatalogController(
             catalogModeController: context.read<CatalogModeController>(),
@@ -123,6 +124,7 @@ class MesozoicaApp extends StatelessWidget {
         ChangeNotifierProvider(
           create: (context) => SiteCatalogController(
             catalogModeController: context.read<CatalogModeController>(),
+            locationService: context.read<LocationService>(),
           ),
         ),
         ChangeNotifierProvider(create: (_) => ToolCatalogController()),
@@ -133,7 +135,6 @@ class MesozoicaApp extends StatelessWidget {
             catalogModeController: context.read<CatalogModeController>(),
           ),
         ),
-        ChangeNotifierProvider(create: (_) => LocationService()),
         ChangeNotifierProvider(create: (_) => FieldSessionCoordinator()),
         ChangeNotifierProvider(create: (_) => FieldDiscoveryCoordinator()),
         ChangeNotifierProvider(create: (_) => WalkDistanceController()),

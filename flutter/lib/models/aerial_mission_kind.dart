@@ -22,7 +22,7 @@ enum AerialMissionKind {
     deployVerb: 'Launch',
     deployedSnack: 'Aerial Scout launched — preparing field data…',
     activeRouteColor: Color(0xFF4A4A4A),
-    pastRouteColor: Color(0xFFBDBDBD),
+    pastRouteColor: Color(0xFF8A8A8A),
   );
 
   const AerialMissionKind({

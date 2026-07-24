@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import datetime
+
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel, Field
 from sqlmodel import Session
@@ -127,9 +129,21 @@ def get_sites(
     data_source: str = Query(default=DATA_SOURCE_ARCHIVE),
     site_id_min: int | None = Query(default=None, ge=0),
     show_all: bool = Query(default=False),
+    how_discovered: list[str] | None = Query(default=None),
+    discovered_after: datetime | None = Query(default=None),
+    discovered_before: datetime | None = Query(default=None),
+    lat: float | None = Query(default=None, ge=-90, le=90),
+    lon: float | None = Query(default=None, ge=-180, le=180),
 ) -> SiteListResponse:
-    if sort not in ("name", "random"):
-        raise ValidationError("sort must be one of: name, random")
+    allowed_sorts = (
+        "name",
+        "random",
+        "distance",
+        "discovered_at",
+        "discovered_at_desc",
+    )
+    if sort not in allowed_sorts:
+        raise ValidationError(f"sort must be one of: {', '.join(allowed_sorts)}")
     linked_user_id, effective_show_all = _field_visibility(
         data_source=data_source,
         show_all=show_all,
@@ -149,6 +163,12 @@ def get_sites(
         site_id_min=site_id_min,
         linked_user_id=linked_user_id,
         show_all=effective_show_all,
+        how_discovered=how_discovered,
+        discovered_after=discovered_after,
+        discovered_before=discovered_before,
+        lat=lat,
+        lon=lon,
+        viewer_user_id=int(current_user.id) if current_user is not None else None,
     )
     rows = _maybe_enrich_viewer(session, rows, current_user)
     types_by_period = load_site_types_by_period(session)

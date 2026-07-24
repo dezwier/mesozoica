@@ -100,4 +100,90 @@ void main() {
     expect(filters.markerFilterKey, 'all');
     expect(filters.copyWith(showPastAerialRoutes: false).hasActiveFilters, isFalse);
   });
+
+  test('howDiscovered filter narrows matches', () {
+    final filters = SiteMapFilters(howDiscovered: {'walk'});
+    expect(filters.hasActiveFilters, isTrue);
+    expect(
+      filters.matches(
+        SiteSummary(
+          siteId: 1,
+          latitude: 1,
+          longitude: 1,
+          howDiscovered: 'walk',
+          siteTypePeriod: 'cretaceous',
+          rockType: 'sandstone',
+        ),
+      ),
+      isTrue,
+    );
+    expect(
+      filters.matches(
+        SiteSummary(
+          siteId: 2,
+          latitude: 1,
+          longitude: 1,
+          howDiscovered: 'aerial_recon',
+          siteTypePeriod: 'cretaceous',
+          rockType: 'sandstone',
+        ),
+      ),
+      isFalse,
+    );
+  });
+
+  test('discovery time range filters by discoveredAt', () {
+    final after = DateTime.utc(2026, 1, 1);
+    final before = DateTime.utc(2026, 6, 1);
+    final filters = SiteMapFilters(
+      discoveredAfter: after,
+      discoveredBefore: before,
+    );
+    expect(filters.discoveryTimeActive, isTrue);
+    expect(
+      filters.matches(
+        SiteSummary(
+          siteId: 1,
+          latitude: 1,
+          longitude: 1,
+          discoveredAt: DateTime.utc(2026, 3, 15),
+          siteTypePeriod: 'cretaceous',
+          rockType: 'sandstone',
+        ),
+      ),
+      isTrue,
+    );
+    expect(
+      filters.matches(
+        SiteSummary(
+          siteId: 2,
+          latitude: 1,
+          longitude: 1,
+          discoveredAt: DateTime.utc(2025, 1, 1),
+          siteTypePeriod: 'cretaceous',
+          rockType: 'sandstone',
+        ),
+      ),
+      isFalse,
+    );
+    expect(
+      filters.matches(
+        SiteSummary(
+          siteId: 3,
+          latitude: 1,
+          longitude: 1,
+          siteTypePeriod: 'cretaceous',
+          rockType: 'sandstone',
+        ),
+      ),
+      isFalse,
+    );
+  });
+
+  test('SiteCatalogSort api values', () {
+    expect(SiteCatalogSort.distance.apiValue, 'distance');
+    expect(SiteCatalogSort.discoveredAtDesc.apiValue, 'discovered_at_desc');
+    expect(SiteCatalogSort.discoveredAtAsc.apiValue, 'discovered_at');
+    expect(SiteCatalogSort.fromApiValue('distance'), SiteCatalogSort.distance);
+  });
 }

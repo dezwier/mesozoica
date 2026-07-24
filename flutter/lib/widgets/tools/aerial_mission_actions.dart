@@ -20,7 +20,10 @@ class AerialMissionActions extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (!showFollow && !showAbort) return const SizedBox.shrink();
+    // Past missions never show Follow / Abort (overlay, card, sheet).
+    final follow = showFollow && mission.isActive;
+    final abort = showAbort && mission.isActive;
+    if (!follow && !abort) return const SizedBox.shrink();
 
     final theme = Theme.of(context);
     final onSurface = theme.colorScheme.onSurface;
@@ -30,7 +33,7 @@ class AerialMissionActions extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        if (showFollow)
+        if (follow)
           _AerialActionChip(
             label: 'Follow',
             icon: Icons.center_focus_strong_rounded,
@@ -40,8 +43,8 @@ class AerialMissionActions extends StatelessWidget {
             background: onSurface.withValues(alpha: 0.05),
             border: onSurface.withValues(alpha: 0.14),
           ),
-        if (showFollow && showAbort) const SizedBox(width: 8),
-        if (showAbort)
+        if (follow && abort) const SizedBox(width: 8),
+        if (abort)
           _AerialActionChip(
             label: 'Abort',
             icon: Icons.cancel_outlined,

@@ -15,7 +15,7 @@ void main() {
     expect(AerialMissionKind.tryParseToolName('Formation Map'), isNull);
 
     expect(AerialMissionKind.scout.activeRouteColor, const Color(0xFF4A4A4A));
-    expect(AerialMissionKind.scout.pastRouteColor, const Color(0xFFBDBDBD));
+    expect(AerialMissionKind.scout.pastRouteColor, const Color(0xFF8A8A8A));
     expect(AerialMissionKind.recon.activeRouteColor, const Color(0xFFD4AF37));
 
     expect(

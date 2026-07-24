@@ -1,7 +1,7 @@
 # Per-tool action parameters (gameplay knobs, not catalog copy).
 
 aerial_recon:
-  max_route_km: 100
+  max_route_km: 50
   # start/end must be within this of the player's GPS origin
   loop_endpoint_tolerance_m: 75
   # Flight time = route_length_km / flight_speed_kmh (snapshotted as flight_duration_s)
@@ -19,11 +19,11 @@ aerial_recon:
     discovery distance are rolled at the listed chance.
 
 aerial_scout:
-  max_route_km: 30
+  max_route_km: 5
   loop_endpoint_tolerance_m: 75
   flight_speed_kmh: 35
   discovery_chance: 0.008
-  discovery_distance_m: 120
+  discovery_distance_m: 50
   ensure_sample_spacing_km: 0.5
   ensure_timeout_s: 600
   short_route_warn_fraction: 0.7

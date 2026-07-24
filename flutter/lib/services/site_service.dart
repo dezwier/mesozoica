@@ -42,6 +42,11 @@ class SiteService {
     CatalogDataSource dataSource = CatalogDataSource.archive,
     int? siteIdMin,
     bool showAll = false,
+    List<String>? howDiscovered,
+    DateTime? discoveredAfter,
+    DateTime? discoveredBefore,
+    double? lat,
+    double? lon,
   }) async {
     final uri = AppConfig.sitesUri(
       limit: limit,
@@ -55,6 +60,11 @@ class SiteService {
       dataSource: dataSource,
       siteIdMin: siteIdMin,
       showAll: showAll,
+      howDiscovered: howDiscovered,
+      discoveredAfter: discoveredAfter,
+      discoveredBefore: discoveredBefore,
+      lat: lat,
+      lon: lon,
     );
     if (kDebugMode) {
       debugPrint('SiteService GET $uri');

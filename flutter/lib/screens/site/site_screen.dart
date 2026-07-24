@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../controllers/catalog_mode_controller.dart';
 import '../../controllers/site_catalog_controller.dart';
 import '../../models/site.dart';
+import '../../services/location_service.dart';
 import '../../widgets/cards/site_turnable_card.dart';
 import '../../widgets/common/catalog_list_screen.dart';
 import '../../widgets/dino/dinosaur_filter_fab.dart';
@@ -32,10 +33,14 @@ class SiteScreenState extends State<SiteScreen> {
     SiteCatalogController catalog,
     bool isFieldMode,
   ) {
+    final hasLocation =
+        context.read<LocationService>().currentLocation != null;
     SiteFilterSheet.show(
       context,
       initialFilters: catalog.filters.copyWith(filterByStatus: isFieldMode),
       showStatusSection: isFieldMode,
+      showSortSection: true,
+      canSortByDistance: hasLocation,
       onApply: catalog.applyFilters,
     );
   }

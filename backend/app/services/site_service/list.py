@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+from datetime import datetime
 from typing import Literal
 
 from sqlalchemy import func, or_
@@ -11,10 +12,11 @@ from sqlmodel import Session, col, func as sqlmodel_func, select
 
 from app.core.exceptions import NotFoundError, ValidationError
 from app.models.data_source import DATA_SOURCE_FIELD
-from app.models.site import Site
+from app.models.site import HOW_DISCOVERED_VALUES, Site
 from app.models.site_type import SiteType
-from app.models.user_site import UserSite, role_to_status
+from app.models.user_site import USER_SITE_ROLE_DISCOVERER, UserSite, role_to_status
 from app.services.data_source_filter import normalize_data_source
+from app.services.site_service.geo_utils import haversine_km
 from app.services.site_service.status_join import (
     latest_user_site_join_condition,
     latest_user_site_subquery,
@@ -22,7 +24,13 @@ from app.services.site_service.status_join import (
 from app.services.site_service.summary import SiteRow
 from app.services.site_type_image_service.sync import CURATED_MEDIA_PATH
 
-SortOption = Literal["name", "random"]
+SortOption = Literal[
+    "name",
+    "random",
+    "distance",
+    "discovered_at",
+    "discovered_at_desc",
+]
 _MAX_SEED_LEN = 64
 MESOZOIC_YOUNGER_MA = 66.0
 MESOZOIC_OLDER_MA = 252.0
@@ -45,6 +53,12 @@ def list_sites(
     site_id_min: int | None = None,
     linked_user_id: int | None = None,
     show_all: bool = False,
+    how_discovered: list[str] | None = None,
+    discovered_after: datetime | None = None,
+    discovered_before: datetime | None = None,
+    lat: float | None = None,
+    lon: float | None = None,
+    viewer_user_id: int | None = None,
 ) -> tuple[list[SiteRow], int]:
     """Return paginated site rows joined with site_type.
 
@@ -60,6 +74,17 @@ def list_sites(
         ma_older=ma_older,
     )
     effective_time_filter = time_filter_active and normalized_q is None
+    how_values = _normalize_how_discovered(how_discovered)
+    discovery_viewer_id = _require_discovery_viewer(
+        sort=sort,
+        discovered_after=discovered_after,
+        discovered_before=discovered_before,
+        viewer_user_id=viewer_user_id,
+    )
+    origin_lat, origin_lon = _normalize_distance_origin(
+        sort=sort, lat=lat, lon=lon
+    )
+
     filtered = _filtered_select(
         normalized_q=normalized_q,
         ma_younger=younger,
@@ -70,6 +95,11 @@ def list_sites(
         site_id_min=site_id_min,
         linked_user_id=linked_user_id,
         show_all=show_all,
+        how_discovered=how_values,
+        discovered_after=discovered_after,
+        discovered_before=discovered_before,
+        discovery_viewer_id=discovery_viewer_id,
+        require_coordinates=sort == "distance",
     )
 
     total = session.exec(
@@ -93,6 +123,30 @@ def list_sites(
             session,
             filtered=filtered,
             seed=normalized_seed,
+            offset=capped_offset,
+            limit=capped_limit,
+        )
+        return rows, int(total)
+
+    if sort == "distance":
+        assert origin_lat is not None and origin_lon is not None
+        rows = _list_sites_by_distance(
+            session,
+            filtered=filtered,
+            lat=origin_lat,
+            lon=origin_lon,
+            offset=capped_offset,
+            limit=capped_limit,
+        )
+        return rows, int(total)
+
+    if sort in ("discovered_at", "discovered_at_desc"):
+        assert discovery_viewer_id is not None
+        rows = _list_sites_by_discovered_at(
+            session,
+            filtered=filtered,
+            viewer_user_id=discovery_viewer_id,
+            descending=sort == "discovered_at_desc",
             offset=capped_offset,
             limit=capped_limit,
         )
@@ -168,6 +222,72 @@ def _normalize_filters(
     return normalized_q, younger, older, time_filter_active
 
 
+def _normalize_how_discovered(values: list[str] | None) -> list[str] | None:
+    if not values:
+        return None
+    normalized: list[str] = []
+    for raw in values:
+        value = (raw or "").strip().lower()
+        if not value:
+            continue
+        if value not in HOW_DISCOVERED_VALUES:
+            raise ValidationError(
+                f"how_discovered must be one of: {', '.join(HOW_DISCOVERED_VALUES)}"
+            )
+        if value not in normalized:
+            normalized.append(value)
+    if not normalized:
+        return None
+    # All methods selected ≡ no filter.
+    if len(normalized) == len(HOW_DISCOVERED_VALUES):
+        return None
+    return normalized
+
+
+def _require_discovery_viewer(
+    *,
+    sort: SortOption,
+    discovered_after: datetime | None,
+    discovered_before: datetime | None,
+    viewer_user_id: int | None,
+) -> int | None:
+    needs_viewer = (
+        sort in ("discovered_at", "discovered_at_desc")
+        or discovered_after is not None
+        or discovered_before is not None
+    )
+    if not needs_viewer:
+        return None
+    if viewer_user_id is None:
+        raise ValidationError(
+            "Authentication required for discovery time filter or sort"
+        )
+    if (
+        discovered_after is not None
+        and discovered_before is not None
+        and discovered_after > discovered_before
+    ):
+        raise ValidationError(
+            "discovered_after must be less than or equal to discovered_before"
+        )
+    return viewer_user_id
+
+
+def _normalize_distance_origin(
+    *,
+    sort: SortOption,
+    lat: float | None,
+    lon: float | None,
+) -> tuple[float | None, float | None]:
+    if sort != "distance":
+        return None, None
+    if lat is None or lon is None:
+        raise ValidationError("lat and lon are required when sort=distance")
+    if not (-90.0 <= lat <= 90.0 and -180.0 <= lon <= 180.0):
+        raise ValidationError("lat/lon out of range")
+    return float(lat), float(lon)
+
+
 def _filtered_select(
     *,
     normalized_q: str | None,
@@ -179,6 +299,11 @@ def _filtered_select(
     site_id_min: int | None = None,
     linked_user_id: int | None = None,
     show_all: bool = False,
+    how_discovered: list[str] | None = None,
+    discovered_after: datetime | None = None,
+    discovered_before: datetime | None = None,
+    discovery_viewer_id: int | None = None,
+    require_coordinates: bool = False,
 ):
     max_ts = latest_user_site_subquery()
     stmt = (
@@ -230,6 +355,29 @@ def _filtered_select(
             col(Site.min_age_ma) <= ma_older,
             col(Site.max_age_ma) >= ma_younger,
         )
+    if how_discovered is not None:
+        stmt = stmt.where(col(Site.how_discovered).in_(how_discovered))
+    if discovery_viewer_id is not None and (
+        discovered_after is not None or discovered_before is not None
+    ):
+        discoverer_sites = select(col(UserSite.site_id)).where(
+            col(UserSite.user_id) == discovery_viewer_id,
+            col(UserSite.role) == USER_SITE_ROLE_DISCOVERER,
+        )
+        if discovered_after is not None:
+            discoverer_sites = discoverer_sites.where(
+                col(UserSite.timestamp) >= discovered_after
+            )
+        if discovered_before is not None:
+            discoverer_sites = discoverer_sites.where(
+                col(UserSite.timestamp) <= discovered_before
+            )
+        stmt = stmt.where(col(Site.site_id).in_(discoverer_sites))
+    if require_coordinates:
+        stmt = stmt.where(
+            col(Site.latitude).is_not(None),
+            col(Site.longitude).is_not(None),
+        )
     return stmt
 
 
@@ -258,8 +406,70 @@ def _list_sites_random(
     return [_row_from_tuple(row) for row in all_rows[offset : offset + limit]]
 
 
+def _list_sites_by_distance(
+    session: Session,
+    *,
+    filtered,
+    lat: float,
+    lon: float,
+    offset: int,
+    limit: int,
+) -> list[SiteRow]:
+    all_rows = session.exec(filtered).all()
+
+    def distance_key(row: tuple) -> tuple[float, int]:
+        site = row[0]
+        dist = haversine_km(
+            lat, lon, float(site.latitude), float(site.longitude)
+        )
+        return (dist, int(site.site_id))
+
+    all_rows.sort(key=distance_key)
+    return [_row_from_tuple(row) for row in all_rows[offset : offset + limit]]
+
+
+def _list_sites_by_discovered_at(
+    session: Session,
+    *,
+    filtered,
+    viewer_user_id: int,
+    descending: bool,
+    offset: int,
+    limit: int,
+) -> list[SiteRow]:
+    all_rows = session.exec(filtered).all()
+    site_ids = [int(row[0].site_id) for row in all_rows]
+    timestamps: dict[int, datetime] = {}
+    if site_ids:
+        links = session.exec(
+            select(UserSite).where(
+                col(UserSite.user_id) == viewer_user_id,
+                col(UserSite.role) == USER_SITE_ROLE_DISCOVERER,
+                col(UserSite.site_id).in_(site_ids),
+            )
+        ).all()
+        for link in links:
+            timestamps[int(link.site_id)] = link.timestamp
+
+    def sort_key(row: tuple) -> tuple:
+        site_id = int(row[0].site_id)
+        ts = timestamps.get(site_id)
+        missing = ts is None
+        if ts is None:
+            epoch = 0.0
+        else:
+            naive = ts.replace(tzinfo=None) if ts.tzinfo else ts
+            epoch = naive.timestamp()
+        if descending:
+            return (1 if missing else 0, -epoch, site_id)
+        return (1 if missing else 0, epoch, site_id)
+
+    all_rows.sort(key=sort_key)
+    return [_row_from_tuple(row) for row in all_rows[offset : offset + limit]]
+
+
 def _row_from_tuple(row: tuple) -> SiteRow:
-    site, site_type, latest_user_site = row
+    site, site_type, latest_user_site = row[0], row[1], row[2]
     if latest_user_site is not None:
         status_value = role_to_status(latest_user_site.role)
     elif site.data_source == DATA_SOURCE_FIELD:

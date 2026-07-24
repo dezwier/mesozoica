@@ -54,11 +54,10 @@ class AerialMissionFocusOverlay extends StatelessWidget {
                     AerialMissionSummaryLine(mission: mission),
                     const SizedBox(height: 8),
                     AerialMissionFlightStats.fromMission(mission),
-                    const SizedBox(height: 10),
-                    AerialMissionActions(
-                      mission: mission,
-                      showAbort: mission.isActive,
-                    ),
+                    if (mission.isActive) ...[
+                      const SizedBox(height: 10),
+                      AerialMissionActions(mission: mission),
+                    ],
                   ],
                 ),
               ),

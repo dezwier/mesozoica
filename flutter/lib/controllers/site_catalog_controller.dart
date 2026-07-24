@@ -2,11 +2,13 @@ import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/foundation.dart';
+import 'package:latlong2/latlong.dart';
 
 import '../config/app_config.dart';
 import '../controllers/catalog_mode_controller.dart';
 import '../models/site.dart';
 import '../models/site_map_filters.dart';
+import '../services/location_service.dart';
 import '../services/site_service.dart';
 import 'catalog_controller.dart';
 
@@ -14,13 +16,16 @@ class SiteCatalogController extends CatalogController<SiteSummary> {
   SiteCatalogController({
     SiteService? service,
     CatalogModeController? catalogModeController,
+    LocationService? locationService,
   })  : _service = service ?? SiteService(),
-        _catalogModeController = catalogModeController;
+        _catalogModeController = catalogModeController,
+        _locationService = locationService;
 
   static const pageSize = 20;
 
   final SiteService _service;
   final CatalogModeController? _catalogModeController;
+  final LocationService? _locationService;
   final Random _random = Random();
 
   List<SiteSummary> _rawItems = [];
@@ -34,13 +39,27 @@ class SiteCatalogController extends CatalogController<SiteSummary> {
   int _total = 0;
   SiteMapFilters _filters = SiteMapFilters();
 
-  /// Visible catalog rows after applying [filters].
+  /// Visible catalog rows after applying client-side period/rock/status filters.
   @override
   List<SiteSummary> get items {
-    if (!_filters.hasActiveFilters) {
+    if (!_needsClientMatch) {
       return List.unmodifiable(_rawItems);
     }
     return List.unmodifiable(_rawItems.where(_filters.matches));
+  }
+
+  /// Period/rock/status still filter client-side; discovery is also matched
+  /// client-side as a safety net (and for empty checkbox groups).
+  bool get _needsClientMatch {
+    final periodActive = _filters.periods.length != sitePeriodOptions.length;
+    final rockActive = _filters.rockTypes.length != siteRockTypeOptions.length;
+    final statusActive = _filters.filterByStatus &&
+        _filters.statuses.length != siteStatusOptions.length;
+    return periodActive ||
+        rockActive ||
+        statusActive ||
+        _filters.howDiscoveredActive ||
+        _filters.discoveryTimeActive;
   }
 
   @override
@@ -57,6 +76,8 @@ class SiteCatalogController extends CatalogController<SiteSummary> {
   SiteMapFilters get filters => _filters;
   @override
   bool get hasActiveFilters => _filters.hasActiveFilters;
+
+  LatLng? get currentLocation => _locationService?.currentLocation;
 
   CatalogDataSource get _dataSource =>
       _catalogModeController?.dataSource ?? CatalogDataSource.archive;
@@ -95,7 +116,7 @@ class SiteCatalogController extends CatalogController<SiteSummary> {
         final preview = _rawItems.take(5).map((s) => s.displayTitle).join(', ');
         debugPrint(
           'SiteCatalogController: loaded ${_rawItems.length}/$_total sites '
-          '(seed=$_seed) → $preview',
+          '(sort=${_filters.sort.apiValue}, seed=$_seed) → $preview',
         );
       }
     } on SiteServiceException catch (error) {
@@ -123,10 +144,9 @@ class SiteCatalogController extends CatalogController<SiteSummary> {
 
   @override
   Future<void> loadMore() async {
-    if (_loading || _loadingMore || !_hasMore) return;
-    if (_seed == null) return;
+    if (_loading || _loadingMore || !_hasMore || _error != null) return;
 
-    if (_filters.hasActiveFilters) {
+    if (_needsClientMatch) {
       final before = items.length;
       await _fillUntil(_loadSeq, minVisible: before + 1);
       return;
@@ -141,12 +161,13 @@ class SiteCatalogController extends CatalogController<SiteSummary> {
   void applyFilters(SiteMapFilters filters) {
     _filters = filters.copyWith(filterByStatus: _isFieldMode);
     notifyListeners();
-    unawaited(_fillUntil(_loadSeq, minVisible: pageSize));
+    // Discovery filters + sort are server-backed; always reload.
+    unawaited(load(force: true));
   }
 
   /// Keep paging until [items] reaches [minVisible] or the catalog is exhausted.
   Future<void> _fillUntil(int seq, {required int minVisible}) async {
-    if (!_filters.hasActiveFilters) return;
+    if (!_needsClientMatch) return;
     while (seq == _loadSeq &&
         _hasMore &&
         _error == null &&
@@ -160,7 +181,7 @@ class SiteCatalogController extends CatalogController<SiteSummary> {
 
   Future<void> _fetchNextPage() async {
     if (_loading || _loadingMore || !_hasMore) return;
-    if (_seed == null) return;
+    if (_filters.sort == SiteCatalogSort.random && _seed == null) return;
 
     _loadingMore = true;
     notifyListeners();
@@ -211,16 +232,34 @@ class SiteCatalogController extends CatalogController<SiteSummary> {
   }
 
   Future<SiteListResponse> _fetchPage({required int offset}) async {
-    final seed = _seed;
-    if (seed == null || seed.isEmpty) {
-      throw StateError('Catalog seed missing before fetch');
+    final sort = _filters.sort;
+    if (sort == SiteCatalogSort.random) {
+      final seed = _seed;
+      if (seed == null || seed.isEmpty) {
+        throw StateError('Catalog seed missing before fetch');
+      }
     }
+
+    final origin = _locationService?.currentLocation;
+    final how = _filters.howDiscoveredActive
+        ? _filters.howDiscovered.toList()
+        : null;
+    final after =
+        _filters.discoveryTimeActive ? _filters.discoveredAfter : null;
+    final before =
+        _filters.discoveryTimeActive ? _filters.discoveredBefore : null;
+
     return _service.fetchSites(
       limit: pageSize,
       offset: offset,
-      sort: 'random',
-      seed: seed,
+      sort: sort.apiValue,
+      seed: sort == SiteCatalogSort.random ? _seed : null,
       dataSource: _dataSource,
+      howDiscovered: how,
+      discoveredAfter: after,
+      discoveredBefore: before,
+      lat: sort == SiteCatalogSort.distance ? origin?.latitude : null,
+      lon: sort == SiteCatalogSort.distance ? origin?.longitude : null,
     );
   }
 

@@ -181,6 +181,11 @@ class AppConfig {
     CatalogDataSource dataSource = CatalogDataSource.archive,
     int? siteIdMin,
     bool showAll = false,
+    List<String>? howDiscovered,
+    DateTime? discoveredAfter,
+    DateTime? discoveredBefore,
+    double? lat,
+    double? lon,
   }) {
     final params = <String, String>{
       'limit': '$limit',
@@ -208,9 +213,28 @@ class AppConfig {
     if (showAll) {
       params['show_all'] = 'true';
     }
-    return Uri.parse('$baseApiUrl/api/v1/sites').replace(
+    if (discoveredAfter != null) {
+      params['discovered_after'] = discoveredAfter.toUtc().toIso8601String();
+    }
+    if (discoveredBefore != null) {
+      params['discovered_before'] = discoveredBefore.toUtc().toIso8601String();
+    }
+    if (lat != null && lon != null) {
+      params['lat'] = '$lat';
+      params['lon'] = '$lon';
+    }
+    var uri = Uri.parse('$baseApiUrl/api/v1/sites').replace(
       queryParameters: params,
     );
+    final methods = howDiscovered;
+    if (methods != null && methods.isNotEmpty) {
+      final extras = methods
+          .map((m) => 'how_discovered=${Uri.encodeQueryComponent(m)}')
+          .join('&');
+      final base = uri.toString();
+      uri = Uri.parse(base.contains('?') ? '$base&$extras' : '$base?$extras');
+    }
+    return uri;
   }
 
   static Uri fieldSiteEnsureUri() =>

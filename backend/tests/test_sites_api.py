@@ -821,3 +821,185 @@ def test_register_device_token(client, session):
 def test_list_sites_rejects_invalid_data_source(client):
     response = client.get("/api/v1/sites", params={"data_source": "invalid"})
     assert response.status_code == 400
+
+
+def test_list_sites_filters_by_how_discovered(client, session):
+    from app.models.data_source import DATA_SOURCE_FIELD
+    from app.models.site import HOW_DISCOVERED_WALK, HOW_DISCOVERED_AERIAL_RECON
+
+    site_type = _seed_site_type(session)
+    session.add(
+        Site(
+            site_id=60001,
+            latitude=Decimal("40.0"),
+            longitude=Decimal("-100.0"),
+            formation="Walk Site",
+            site_type_id=site_type.id,
+            data_source=DATA_SOURCE_FIELD,
+            how_discovered=HOW_DISCOVERED_WALK,
+        )
+    )
+    session.add(
+        Site(
+            site_id=60002,
+            latitude=Decimal("40.1"),
+            longitude=Decimal("-100.1"),
+            formation="Recon Site",
+            site_type_id=site_type.id,
+            data_source=DATA_SOURCE_FIELD,
+            how_discovered=HOW_DISCOVERED_AERIAL_RECON,
+        )
+    )
+    session.commit()
+
+    headers = _admin_auth_headers(session, username="how_admin")
+    response = client.get(
+        "/api/v1/sites",
+        params={
+            "data_source": "field",
+            "show_all": "true",
+            "how_discovered": ["walk"],
+        },
+        headers=headers,
+    )
+    assert response.status_code == 200
+    ids = [item["site_id"] for item in response.json()["items"]]
+    assert ids == [60001]
+
+
+def test_list_sites_sort_by_distance(client, session):
+    from app.models.data_source import DATA_SOURCE_FIELD
+
+    site_type = _seed_site_type(session)
+    # Origin at 40,-100; nearer site first.
+    session.add(
+        Site(
+            site_id=61001,
+            latitude=Decimal("41.0"),
+            longitude=Decimal("-100.0"),
+            formation="Far",
+            site_type_id=site_type.id,
+            data_source=DATA_SOURCE_FIELD,
+        )
+    )
+    session.add(
+        Site(
+            site_id=61002,
+            latitude=Decimal("40.01"),
+            longitude=Decimal("-100.0"),
+            formation="Near",
+            site_type_id=site_type.id,
+            data_source=DATA_SOURCE_FIELD,
+        )
+    )
+    session.commit()
+
+    headers = _admin_auth_headers(session, username="dist_admin")
+    response = client.get(
+        "/api/v1/sites",
+        params={
+            "data_source": "field",
+            "show_all": "true",
+            "sort": "distance",
+            "lat": 40.0,
+            "lon": -100.0,
+            "limit": 10,
+        },
+        headers=headers,
+    )
+    assert response.status_code == 200
+    ids = [item["site_id"] for item in response.json()["items"]]
+    assert ids[:2] == [61002, 61001]
+    assert response.json()["has_next"] is False
+
+
+def test_list_sites_sort_distance_requires_lat_lon(client, session):
+    response = client.get("/api/v1/sites", params={"sort": "distance"})
+    assert response.status_code == 400
+
+
+def test_list_sites_discovery_time_filter_and_sort(client, session):
+    from datetime import datetime, timedelta
+
+    from app.models.data_source import DATA_SOURCE_FIELD
+    from app.models.site import HOW_DISCOVERED_WALK
+
+    site_type = _seed_site_type(session)
+    user = User(username="discoverer", email="d@example.com", password="x")
+    session.add(user)
+    session.commit()
+    session.refresh(user)
+
+    now = datetime.utcnow()
+    older = now - timedelta(days=30)
+    newer = now - timedelta(days=2)
+
+    for site_id, ts in ((62001, older), (62002, newer)):
+        session.add(
+            Site(
+                site_id=site_id,
+                latitude=Decimal("40.0"),
+                longitude=Decimal("-100.0"),
+                formation=f"Site {site_id}",
+                site_type_id=site_type.id,
+                data_source=DATA_SOURCE_FIELD,
+                how_discovered=HOW_DISCOVERED_WALK,
+            )
+        )
+        session.add(
+            UserSite(
+                user_id=int(user.id),
+                site_id=site_id,
+                role=USER_SITE_ROLE_DISCOVERER,
+                timestamp=ts,
+            )
+        )
+    session.commit()
+
+    token = create_access_token({"sub": str(user.id)})
+    headers = {"Authorization": f"Bearer {token}"}
+
+    # Newest first
+    newest = client.get(
+        "/api/v1/sites",
+        params={
+            "data_source": "field",
+            "sort": "discovered_at_desc",
+            "limit": 10,
+        },
+        headers=headers,
+    )
+    assert newest.status_code == 200
+    assert [i["site_id"] for i in newest.json()["items"][:2]] == [62002, 62001]
+
+    # Oldest first
+    oldest = client.get(
+        "/api/v1/sites",
+        params={
+            "data_source": "field",
+            "sort": "discovered_at",
+            "limit": 10,
+        },
+        headers=headers,
+    )
+    assert oldest.status_code == 200
+    assert [i["site_id"] for i in oldest.json()["items"][:2]] == [62001, 62002]
+
+    # Time window: only newer
+    window = client.get(
+        "/api/v1/sites",
+        params={
+            "data_source": "field",
+            "discovered_after": (now - timedelta(days=7)).isoformat(),
+            "discovered_before": now.isoformat(),
+            "limit": 10,
+        },
+        headers=headers,
+    )
+    assert window.status_code == 200
+    assert [i["site_id"] for i in window.json()["items"]] == [62002]
+
+
+def test_list_sites_discovery_sort_requires_auth(client, session):
+    response = client.get("/api/v1/sites", params={"sort": "discovered_at"})
+    assert response.status_code == 400

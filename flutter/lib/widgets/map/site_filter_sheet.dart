@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
 import '../../models/site_map_filters.dart';
 import '../common/drawer_sheet_sizes.dart';
@@ -10,6 +11,8 @@ class SiteFilterSheet extends StatefulWidget {
     required this.onApply,
     this.showStatusSection = true,
     this.showReconRoutesSection = false,
+    this.showSortSection = false,
+    this.canSortByDistance = true,
   });
 
   final SiteMapFilters initialFilters;
@@ -17,12 +20,20 @@ class SiteFilterSheet extends StatefulWidget {
   final bool showStatusSection;
   final bool showReconRoutesSection;
 
+  /// Catalog-only: Random / Nearest / Discovered sorts.
+  final bool showSortSection;
+
+  /// When false, Nearest is shown disabled in the sort dropdown.
+  final bool canSortByDistance;
+
   static Future<void> show(
     BuildContext context, {
     required SiteMapFilters initialFilters,
     required ValueChanged<SiteMapFilters> onApply,
     bool showStatusSection = true,
     bool showReconRoutesSection = false,
+    bool showSortSection = false,
+    bool canSortByDistance = true,
   }) {
     return showModalBottomSheet<void>(
       context: context,
@@ -38,6 +49,8 @@ class SiteFilterSheet extends StatefulWidget {
         onApply: onApply,
         showStatusSection: showStatusSection,
         showReconRoutesSection: showReconRoutesSection,
+        showSortSection: showSortSection,
+        canSortByDistance: canSortByDistance,
       ),
     );
   }
@@ -50,39 +63,77 @@ class _SiteFilterSheetState extends State<SiteFilterSheet> {
   late Set<String> _pendingStatuses;
   late Set<String> _pendingPeriods;
   late Set<String> _pendingRockTypes;
+  late Set<String> _pendingHowDiscovered;
+  late RangeValues _pendingDiscoveryRange;
+  late SiteCatalogSort _pendingSort;
   late bool _pendingShowPastReconRoutes;
+  late final DateTime _windowStart;
+  late final DateTime _windowEnd;
   bool _applied = false;
+
+  static final _monthYear = DateFormat('MMM yyyy');
 
   @override
   void initState() {
     super.initState();
+    final bounds = discoveryTimeWindowBounds();
+    _windowStart = bounds.start;
+    _windowEnd = bounds.end;
     _pendingStatuses = {...widget.initialFilters.statuses};
     _pendingPeriods = {...widget.initialFilters.periods};
     _pendingRockTypes = {...widget.initialFilters.rockTypes};
+    _pendingHowDiscovered = {...widget.initialFilters.howDiscovered};
+    _pendingSort = widget.initialFilters.sort;
     _pendingShowPastReconRoutes = widget.initialFilters.showPastAerialRoutes;
+    _pendingDiscoveryRange = _rangeFromFilters(widget.initialFilters);
   }
 
-  void _commitPending() {
-    if (_applied) return;
-    _applied = true;
-    widget.onApply(
-      SiteMapFilters(
-        statuses: _pendingStatuses,
-        periods: _pendingPeriods,
-        rockTypes: _pendingRockTypes,
-        filterByStatus: widget.showStatusSection,
-        showPastAerialRoutes: widget.showReconRoutesSection
-            ? _pendingShowPastReconRoutes
-            : false,
-      ),
+  RangeValues _rangeFromFilters(SiteMapFilters filters) {
+    final spanMs =
+        _windowEnd.millisecondsSinceEpoch - _windowStart.millisecondsSinceEpoch;
+    if (spanMs <= 0) return const RangeValues(0, 1);
+    final after = filters.discoveredAfter?.toUtc() ?? _windowStart;
+    final before = filters.discoveredBefore?.toUtc() ?? _windowEnd;
+    final start = ((after.millisecondsSinceEpoch -
+                _windowStart.millisecondsSinceEpoch) /
+            spanMs)
+        .clamp(0.0, 1.0);
+    final end = ((before.millisecondsSinceEpoch -
+                _windowStart.millisecondsSinceEpoch) /
+            spanMs)
+        .clamp(0.0, 1.0);
+    return RangeValues(
+      start <= end ? start : end,
+      start <= end ? end : start,
     );
   }
 
+  DateTime _dateAt(double t) {
+    final spanMs =
+        _windowEnd.millisecondsSinceEpoch - _windowStart.millisecondsSinceEpoch;
+    return DateTime.fromMillisecondsSinceEpoch(
+      _windowStart.millisecondsSinceEpoch + (spanMs * t).round(),
+      isUtc: true,
+    );
+  }
+
+  bool get _discoveryTimeIsFullSpan =>
+      _pendingDiscoveryRange.start <= 0.001 &&
+      _pendingDiscoveryRange.end >= 0.999;
+
   SiteMapFilters _buildPendingFilters() {
+    final after =
+        _discoveryTimeIsFullSpan ? null : _dateAt(_pendingDiscoveryRange.start);
+    final before =
+        _discoveryTimeIsFullSpan ? null : _dateAt(_pendingDiscoveryRange.end);
     return SiteMapFilters(
       statuses: _pendingStatuses,
       periods: _pendingPeriods,
       rockTypes: _pendingRockTypes,
+      howDiscovered: _pendingHowDiscovered,
+      discoveredAfter: after,
+      discoveredBefore: before,
+      sort: widget.showSortSection ? _pendingSort : SiteCatalogSort.random,
       filterByStatus: widget.showStatusSection,
       showPastAerialRoutes: widget.showReconRoutesSection
           ? _pendingShowPastReconRoutes
@@ -90,11 +141,20 @@ class _SiteFilterSheetState extends State<SiteFilterSheet> {
     );
   }
 
+  void _commitPending() {
+    if (_applied) return;
+    _applied = true;
+    widget.onApply(_buildPendingFilters());
+  }
+
   void _clearPending() {
     setState(() {
       _pendingStatuses = {...siteStatusOptions};
       _pendingPeriods = {...sitePeriodOptions};
       _pendingRockTypes = {...siteRockTypeOptions};
+      _pendingHowDiscovered = {...siteHowDiscoveredOptions};
+      _pendingDiscoveryRange = const RangeValues(0, 1);
+      _pendingSort = SiteCatalogSort.random;
       _pendingShowPastReconRoutes = false;
     });
   }
@@ -111,6 +171,11 @@ class _SiteFilterSheetState extends State<SiteFilterSheet> {
 
   void _selectOnly(void Function(Set<String> next) assign, String value) {
     setState(() => assign({value}));
+  }
+
+  String _formatBound(double t) {
+    if (t >= 0.999) return 'Today';
+    return _monthYear.format(_dateAt(t).toLocal());
   }
 
   @override
@@ -177,6 +242,24 @@ class _SiteFilterSheetState extends State<SiteFilterSheet> {
                             ),
                           ),
                         ),
+                        const SizedBox(height: 8),
+                        _sectionTitle(theme, 'Discovery'),
+                        ...siteHowDiscoveredOptions.map(
+                          (value) => _checkboxTile(
+                            theme: theme,
+                            value: _pendingHowDiscovered.contains(value),
+                            label: siteFilterOptionLabel(value),
+                            onChanged: (selected) => _toggle(
+                              _pendingHowDiscovered,
+                              value,
+                              selected,
+                            ),
+                            onLongPress: () => _selectOnly(
+                              (next) => _pendingHowDiscovered = next,
+                              value,
+                            ),
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -204,6 +287,39 @@ class _SiteFilterSheetState extends State<SiteFilterSheet> {
                   ),
                 ],
               ),
+              const SizedBox(height: 16),
+              _sectionTitle(theme, 'Discovery time'),
+              RangeSlider(
+                values: _pendingDiscoveryRange,
+                onChanged: (values) {
+                  setState(() => _pendingDiscoveryRange = values);
+                },
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                child: Row(
+                  children: [
+                    Text(
+                      _formatBound(_pendingDiscoveryRange.start),
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    const Spacer(),
+                    Text(
+                      _formatBound(_pendingDiscoveryRange.end),
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (widget.showSortSection) ...[
+                const SizedBox(height: 16),
+                _sectionTitle(theme, 'Sort'),
+                _buildSortDropdown(context),
+              ],
               if (widget.showReconRoutesSection) ...[
                 const SizedBox(height: 16),
                 _sectionTitle(theme, 'Overlays'),
@@ -233,6 +349,18 @@ class _SiteFilterSheetState extends State<SiteFilterSheet> {
                   const Spacer(),
                   FilledButton(
                     onPressed: () {
+                      if (widget.showSortSection &&
+                          _pendingSort == SiteCatalogSort.distance &&
+                          !widget.canSortByDistance) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              'Waiting for your current location to sort by nearest',
+                            ),
+                          ),
+                        );
+                        return;
+                      }
                       _commitPending();
                       Navigator.of(context).pop();
                     },
@@ -251,6 +379,53 @@ class _SiteFilterSheetState extends State<SiteFilterSheet> {
             ],
           );
         },
+      ),
+    );
+  }
+
+  Widget _buildSortDropdown(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<SiteCatalogSort>(
+          value: _pendingSort,
+          isExpanded: true,
+          icon: Icon(
+            Icons.expand_more,
+            color: colorScheme.onSurface.withValues(alpha: 0.6),
+          ),
+          onChanged: (value) {
+            if (value == null) return;
+            if (value == SiteCatalogSort.distance &&
+                !widget.canSortByDistance) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text(
+                    'Waiting for your current location to sort by nearest',
+                  ),
+                ),
+              );
+              return;
+            }
+            setState(() => _pendingSort = value);
+          },
+          items: SiteCatalogSort.values
+              .map(
+                (sort) => DropdownMenuItem(
+                  value: sort,
+                  enabled: sort != SiteCatalogSort.distance ||
+                      widget.canSortByDistance,
+                  child: Text(sort.label),
+                ),
+              )
+              .toList(),
+        ),
       ),
     );
   }
