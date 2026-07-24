@@ -27,6 +27,11 @@ class ToolMission(SQLModel, table=True):
     route_json: str
     route_length_km: float
     flight_duration_s: int
+    # Snapshotted from tool_actions.yaml at deploy time (nullable for legacy rows).
+    flight_speed_kmh: Optional[float] = Field(default=None)
+    max_route_km: Optional[float] = Field(default=None)
+    discovery_chance: Optional[float] = Field(default=None)
+    discovery_distance_m: Optional[float] = Field(default=None)
     ensure_job_ids_json: Optional[str] = Field(default=None)
     flight_started_at: Optional[datetime] = Field(default=None)
     flight_ends_at: Optional[datetime] = Field(default=None)

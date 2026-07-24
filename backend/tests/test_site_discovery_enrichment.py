@@ -137,8 +137,42 @@ def test_discover_site_sets_walk_and_enriches(session: Session, monkeypatch):
 
 
 def test_aerial_discover_sets_aerial_recon(session: Session, monkeypatch):
+    from datetime import datetime
+
+    from app.models.tool import Tool
+    from app.models.tool_mission import ACTION_KEY_AERIAL_RECON, ToolMission
+    from app.models.user_site import USER_SITE_ROLE_DISCOVERER, UserSite
+    from sqlmodel import col, select
+
     site = _field_site(session, site_id=2_000_000_002)
     user = _user(session, username="pilot")
+    tool = Tool(
+        name="Aerial Recon",
+        category="1 site_discovery",
+        scientific_tool="helicopter",
+        description="Scout",
+        rarity=5,
+        action="Deploy",
+    )
+    session.add(tool)
+    session.commit()
+    session.refresh(tool)
+    now = datetime.utcnow()
+    mission = ToolMission(
+        user_id=int(user.id),
+        tool_id=int(tool.id),
+        action_key=ACTION_KEY_AERIAL_RECON,
+        status="flying",
+        route_json='[{"lat":40,"lon":-100}]',
+        route_length_km=1.0,
+        flight_duration_s=60,
+        created_at=now,
+        updated_at=now,
+    )
+    session.add(mission)
+    session.commit()
+    session.refresh(mission)
+
     monkeypatch.setattr(
         "app.services.site_service.field_coordinate_enrich.enrich_coordinate",
         lambda lat, lon: CoordinateEnrichment(country_code="US", state="Nebraska"),
@@ -160,11 +194,82 @@ def test_aerial_discover_sets_aerial_recon(session: Session, monkeypatch):
         lon=-100.0,
         max_distance_m=500.0,
         discovery_chance=1.0,
+        mission_id=int(mission.id),
     )
     assert result == "ok"
     session.refresh(site)
     assert site.how_discovered == HOW_DISCOVERED_AERIAL_RECON
     assert site.country_code == "US"
+
+    link = session.exec(
+        select(UserSite).where(
+            col(UserSite.user_id) == int(user.id),
+            col(UserSite.site_id) == int(site.site_id),
+            col(UserSite.role) == USER_SITE_ROLE_DISCOVERER,
+        )
+    ).one()
+    assert link.source_mission_id == int(mission.id)
+
+
+def test_site_summary_includes_viewer_discovery(session: Session):
+    from datetime import datetime, timezone
+
+    from app.models.tool import Tool
+    from app.models.tool_mission import ACTION_KEY_AERIAL_RECON, ToolMission
+    from app.models.user_site import USER_SITE_ROLE_DISCOVERER, UserSite
+    from app.services.site_service.list import get_site_by_id
+    from app.services.site_service.summary import site_row_to_summary
+
+    site = _field_site(session, site_id=2_000_000_003)
+    user = _user(session, username="viewer")
+    tool = Tool(
+        name="Aerial Recon",
+        category="1 site_discovery",
+        scientific_tool="helicopter",
+        description="Scout",
+        rarity=5,
+        action="Deploy",
+    )
+    session.add(tool)
+    session.commit()
+    session.refresh(tool)
+    now = datetime.utcnow()
+    mission = ToolMission(
+        user_id=int(user.id),
+        tool_id=int(tool.id),
+        action_key=ACTION_KEY_AERIAL_RECON,
+        status="done",
+        route_json='[{"lat":40,"lon":-100}]',
+        route_length_km=1.0,
+        flight_duration_s=60,
+        created_at=now,
+        updated_at=now,
+    )
+    session.add(mission)
+    session.commit()
+    session.refresh(mission)
+
+    discovered_at = datetime(2026, 7, 1, 12, 0, tzinfo=timezone.utc)
+    session.add(
+        UserSite(
+            user_id=int(user.id),
+            site_id=int(site.site_id),
+            role=USER_SITE_ROLE_DISCOVERER,
+            source_mission_id=int(mission.id),
+            timestamp=discovered_at,
+        )
+    )
+    session.commit()
+
+    row = get_site_by_id(
+        session,
+        int(site.site_id),
+        data_source="field",
+        viewer_user_id=int(user.id),
+    )
+    summary = site_row_to_summary(row)
+    assert summary.discovered_at is not None
+    assert summary.discovering_mission_id == int(mission.id)
 
 
 def test_manual_constant_available():

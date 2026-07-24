@@ -157,6 +157,10 @@ def start_aerial_recon_mission(
         ),
         route_length_km=length_km,
         flight_duration_s=flight_duration_s,
+        flight_speed_kmh=cfg.flight_speed_kmh,
+        max_route_km=cfg.max_route_km,
+        discovery_chance=cfg.discovery_chance,
+        discovery_distance_m=cfg.discovery_distance_m,
         ensure_job_ids_json=json.dumps(job_ids),
         created_at=now,
         updated_at=now,
@@ -443,6 +447,17 @@ def process_due_mission_events(
             processed += 1
             continue
 
+        distance_m = (
+            float(mission.discovery_distance_m)
+            if mission.discovery_distance_m is not None
+            else float(cfg.discovery_distance_m)
+        )
+        chance = (
+            float(mission.discovery_chance)
+            if mission.discovery_chance is not None
+            else float(cfg.discovery_chance)
+        )
+
         try:
             result = discover_site_from_aerial(
                 session,
@@ -450,8 +465,9 @@ def process_due_mission_events(
                 user_id=mission.user_id,
                 lat=float(event.lat),
                 lon=float(event.lon),
-                max_distance_m=cfg.discovery_distance_m * 2,  # closest-on-path already filtered
-                discovery_chance=cfg.discovery_chance,
+                max_distance_m=distance_m * 2,  # closest-on-path already filtered
+                discovery_chance=chance,
+                mission_id=int(mission.id) if mission.id is not None else None,
                 rng=rng,
             )
             event.status = (

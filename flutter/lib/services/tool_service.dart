@@ -268,6 +268,10 @@ class AerialReconMission {
     required this.flightDurationS,
     required this.createdAt,
     required this.toolId,
+    this.flightSpeedKmh,
+    this.maxRouteKm,
+    this.discoveryChance,
+    this.discoveryDistanceM,
     this.flightStartedAt,
     this.flightEndsAt,
     this.toolImageUrl,
@@ -279,12 +283,18 @@ class AerialReconMission {
   final List<LatLng> route;
   final double routeLengthKm;
   final int flightDurationS;
+  final double? flightSpeedKmh;
+  final double? maxRouteKm;
+  final double? discoveryChance;
+  final double? discoveryDistanceM;
   final DateTime? flightStartedAt;
   final DateTime? flightEndsAt;
   final DateTime createdAt;
   final int toolId;
   final String? toolImageUrl;
   final List<int> discoveredSiteIds;
+
+  int get discoveredSiteCount => discoveredSiteIds.length;
 
   bool get isActive => status == 'ensuring' || status == 'flying';
   bool get isFlying => status == 'flying';
@@ -322,6 +332,10 @@ class AerialReconMission {
       route: route,
       routeLengthKm: (json['route_length_km'] as num?)?.toDouble() ?? 0,
       flightDurationS: json['flight_duration_s'] as int? ?? 0,
+      flightSpeedKmh: (json['flight_speed_kmh'] as num?)?.toDouble(),
+      maxRouteKm: (json['max_route_km'] as num?)?.toDouble(),
+      discoveryChance: (json['discovery_chance'] as num?)?.toDouble(),
+      discoveryDistanceM: (json['discovery_distance_m'] as num?)?.toDouble(),
       flightStartedAt: _parseDate(json['flight_started_at']),
       flightEndsAt: _parseDate(json['flight_ends_at']),
       createdAt: _parseDate(json['created_at']) ?? DateTime.now().toUtc(),

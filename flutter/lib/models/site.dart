@@ -20,6 +20,8 @@ class SiteSummary {
     this.howDiscovered,
     this.status,
     this.viewerHasSurveyed,
+    this.discoveredAt,
+    this.discoveringMissionId,
     this.oddDinoCount,
     this.oddFossilCount,
     this.oddCompleteness,
@@ -44,11 +46,19 @@ class SiteSummary {
   final String? howDiscovered;
   final String? status;
   final bool? viewerHasSurveyed;
+  /// When the viewing user became discoverer (from user_site).
+  final DateTime? discoveredAt;
+  /// Aerial recon mission that discovered this site for the viewer.
+  final int? discoveringMissionId;
   final double? oddDinoCount;
   final double? oddFossilCount;
   final double? oddCompleteness;
   final double? oddQuality;
   final double? oddDepth;
+
+  static const howDiscoveredWalk = 'walk';
+  static const howDiscoveredAerialRecon = 'aerial_recon';
+  static const howDiscoveredManual = 'manual';
 
   /// Field-generated site IDs start at 1_000_000_000; show the offset only.
   static const int fieldSiteIdBase = 1000000000;
@@ -175,6 +185,8 @@ class SiteSummary {
       howDiscovered: json['how_discovered'] as String?,
       status: json['status'] as String?,
       viewerHasSurveyed: json['viewer_has_surveyed'] as bool?,
+      discoveredAt: _parseSiteDate(json['discovered_at']),
+      discoveringMissionId: json['discovering_mission_id'] as int?,
       oddDinoCount: (json['odd_dino_count'] as num?)?.toDouble(),
       oddFossilCount: (json['odd_fossil_count'] as num?)?.toDouble(),
       oddCompleteness: (json['odd_completeness'] as num?)?.toDouble(),
@@ -183,10 +195,21 @@ class SiteSummary {
     );
   }
 
+  static DateTime? _parseSiteDate(Object? value) {
+    if (value is! String || value.isEmpty) return null;
+    final hasTz =
+        value.endsWith('Z') || RegExp(r'[+-]\d{2}:?\d{2}$').hasMatch(value);
+    final parsed = DateTime.tryParse(hasTz ? value : '${value}Z');
+    return parsed?.toUtc();
+  }
+
   SiteSummary copyWith({
     String? status,
     bool? viewerHasSurveyed,
     String? mainImageUrl,
+    DateTime? discoveredAt,
+    int? discoveringMissionId,
+    String? howDiscovered,
   }) {
     return SiteSummary(
       siteId: siteId,
@@ -202,9 +225,12 @@ class SiteSummary {
       siteTypePeriod: siteTypePeriod,
       siteTypeRockType: siteTypeRockType,
       mainImageUrl: mainImageUrl ?? this.mainImageUrl,
-      howDiscovered: howDiscovered,
+      howDiscovered: howDiscovered ?? this.howDiscovered,
       status: status ?? this.status,
       viewerHasSurveyed: viewerHasSurveyed ?? this.viewerHasSurveyed,
+      discoveredAt: discoveredAt ?? this.discoveredAt,
+      discoveringMissionId:
+          discoveringMissionId ?? this.discoveringMissionId,
       oddDinoCount: oddDinoCount,
       oddFossilCount: oddFossilCount,
       oddCompleteness: oddCompleteness,

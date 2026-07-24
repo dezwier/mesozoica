@@ -87,6 +87,16 @@ class UserSite(SQLModel, table=True):
         max_length=16,
         description="discoverer, surveyor, excavator, exhauster, or protector",
     )
+    source_mission_id: Optional[int] = Field(
+        default=None,
+        sa_column=Column(
+            Integer,
+            ForeignKey("tool_mission.id", ondelete="SET NULL"),
+            nullable=True,
+            index=True,
+        ),
+        description="Tool mission that granted this role (e.g. aerial discover)",
+    )
     timestamp: datetime = Field(
         default_factory=_utc_now,
         sa_column=Column(

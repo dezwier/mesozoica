@@ -38,6 +38,7 @@ def discover_site_from_aerial(
     lon: float,
     max_distance_m: float,
     discovery_chance: float,
+    mission_id: int | None = None,
     rng: random.Random | None = None,
 ) -> DiscoverFossilOnboardResult | None:
     """Link discoverer using chopper position. Returns None on chance miss.
@@ -86,6 +87,7 @@ def discover_site_from_aerial(
             user_id=user_id,
             site_id=site_id,
             role=USER_SITE_ROLE_DISCOVERER,
+            source_mission_id=mission_id,
         )
     )
     apply_site_discovery_enrichment(

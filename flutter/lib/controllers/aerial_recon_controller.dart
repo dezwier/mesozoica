@@ -263,6 +263,29 @@ class AerialReconController extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Resolve [missionId] from cached missions (refreshing if needed) and focus.
+  Future<bool> focusMissionById(int missionId) async {
+    AerialReconMission? match;
+    for (final m in _missions) {
+      if (m.missionId == missionId) {
+        match = m;
+        break;
+      }
+    }
+    if (match == null) {
+      await refreshMissions();
+      for (final m in _missions) {
+        if (m.missionId == missionId) {
+          match = m;
+          break;
+        }
+      }
+    }
+    if (match == null) return false;
+    focusMission(match);
+    return true;
+  }
+
   void clearFocus() {
     if (_focusedMission == null && _pendingFocusMission == null) return;
     _focusedMission = null;

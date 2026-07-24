@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import datetime
+
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.schemas.fossil import FossilSummary
@@ -29,6 +31,9 @@ class SiteSummary(BaseModel):
     how_discovered: str | None = None
     status: str | None = None
     viewer_has_surveyed: bool | None = None
+    # Viewer's discoverer UserSite (when authenticated and linked).
+    discovered_at: datetime | None = None
+    discovering_mission_id: int | None = None
     odd_dino_count: float | None = None
     odd_fossil_count: float | None = None
     odd_completeness: float | None = None

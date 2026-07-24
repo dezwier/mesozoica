@@ -54,6 +54,10 @@ class AerialReconMissionItem(BaseModel):
     route: list[RoutePointBody]
     route_length_km: float
     flight_duration_s: int
+    flight_speed_kmh: float
+    max_route_km: float
+    discovery_chance: float
+    discovery_distance_m: float
     flight_started_at: datetime | None = None
     flight_ends_at: datetime | None = None
     created_at: datetime
@@ -72,6 +76,10 @@ class AerialReconResponse(BaseModel):
     route: list[RoutePointBody]
     route_length_km: float
     flight_duration_s: int
+    flight_speed_kmh: float
+    max_route_km: float
+    discovery_chance: float
+    discovery_distance_m: float
     flight_started_at: datetime | None = None
     flight_ends_at: datetime | None = None
     created_at: datetime
@@ -83,6 +91,27 @@ class AerialReconResponse(BaseModel):
 def _tool_image_url(session: Session, tool_id: int) -> str | None:
     tool = session.get(Tool, tool_id)
     return tool.main_image_url if tool is not None else None
+
+
+def _mission_flight_params(mission: ToolMission) -> tuple[float, float, float, float]:
+    """Snapshotted knobs, falling back to current game config for legacy rows."""
+    from app.core.game_config import get_game_config
+
+    cfg = get_game_config().tool_actions.aerial_recon
+    return (
+        float(mission.flight_speed_kmh)
+        if mission.flight_speed_kmh is not None
+        else float(cfg.flight_speed_kmh),
+        float(mission.max_route_km)
+        if mission.max_route_km is not None
+        else float(cfg.max_route_km),
+        float(mission.discovery_chance)
+        if mission.discovery_chance is not None
+        else float(cfg.discovery_chance),
+        float(mission.discovery_distance_m)
+        if mission.discovery_distance_m is not None
+        else float(cfg.discovery_distance_m),
+    )
 
 
 def _discovered_site_ids_by_mission(
@@ -119,12 +148,19 @@ def _mission_item(
         site_ids = _discovered_site_ids_by_mission(
             session, [int(mission.id)]
         ).get(int(mission.id), [])
+    speed_kmh, max_route_km, discovery_chance, discovery_distance_m = (
+        _mission_flight_params(mission)
+    )
     return AerialReconMissionItem(
         mission_id=int(mission.id),
         status=mission.status,
         route=[RoutePointBody(**p) for p in mission_route_dicts(mission)],
         route_length_km=mission.route_length_km,
         flight_duration_s=mission.flight_duration_s,
+        flight_speed_kmh=speed_kmh,
+        max_route_km=max_route_km,
+        discovery_chance=discovery_chance,
+        discovery_distance_m=discovery_distance_m,
         flight_started_at=mission.flight_started_at,
         flight_ends_at=mission.flight_ends_at,
         created_at=mission.created_at,

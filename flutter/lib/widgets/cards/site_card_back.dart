@@ -12,6 +12,7 @@ import 'site_card_image.dart';
 import 'site_card_location_map.dart';
 import 'site_card_odd_facts.dart';
 import 'site_card_related_lists.dart';
+import 'site_card_user_timeline.dart';
 
 class SiteCardBack extends StatelessWidget {
   const SiteCardBack({
@@ -28,7 +29,7 @@ class SiteCardBack extends StatelessWidget {
   final Widget Function() mapTileLayerBuilder;
 
   static const _contentScale = 1.15;
-  static const _bottomRowHeight = 80.0;
+  static const _bottomRowHeight = 64.0;
 
   @override
   Widget build(BuildContext context) {
@@ -64,7 +65,7 @@ class SiteCardBack extends StatelessWidget {
                 CardSectionPanel(
                   padding: const EdgeInsets.fromLTRB(10, 8, 10, 4),
                   child: SizedBox(
-                    height: 78,
+                    height: 70,
                     child: GeologicTimeline.fromAgeRange(
                       minAgeMa: site.minAgeMa,
                       maxAgeMa: site.maxAgeMa,
@@ -73,11 +74,11 @@ class SiteCardBack extends StatelessWidget {
                     ),
                   ),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 6),
                 SiteCardEdgeFacts(site: site),
-                const SizedBox(height: 8),
+                const SizedBox(height: 6),
                 SiteCardOddFacts(site: site),
-                const SizedBox(height: 8),
+                const SizedBox(height: 6),
                 SizedBox(
                   height: _bottomRowHeight,
                   child: Row(
@@ -106,6 +107,8 @@ class SiteCardBack extends StatelessWidget {
                     ],
                   ),
                 ),
+                const SizedBox(height: 6),
+                SiteCardUserTimeline(site: site),
               ],
             ),
           ),

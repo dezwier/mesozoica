@@ -15,6 +15,8 @@ class ToolCardBack extends StatelessWidget {
     this.subtitleFontSize = 10,
     this.onAction,
     this.onInfo,
+    this.statsChild,
+    this.ongoingChild,
   });
 
   final ToolSummary tool;
@@ -22,11 +24,20 @@ class ToolCardBack extends StatelessWidget {
   final double subtitleFontSize;
   final VoidCallback? onAction;
   final VoidCallback? onInfo;
+  /// Replaces the Rarity panel when non-null (e.g. deploy stats).
+  final Widget? statsChild;
+  /// Optional ongoing-mission panel below stats.
+  final Widget? ongoingChild;
 
   @override
   Widget build(BuildContext context) {
     final cardTheme = DinoCardTheme.of(context);
     final actionEnabled = tool.isOwned && onAction != null;
+    final middle = statsChild ??
+        CardSectionPanel(
+          label: 'Rarity',
+          child: _RarityRow(rarity: tool.rarity),
+        );
 
     return AspectRatio(
       aspectRatio: DinoCardTheme.cardAspectRatio,
@@ -63,12 +74,13 @@ class ToolCardBack extends StatelessWidget {
                     style: cardTheme.bodyStyle(fontSize: 14),
                   ),
                 ),
-                const SizedBox(height: 10),
-                CardSectionPanel(
-                  label: 'Rarity',
-                  child: _RarityRow(rarity: tool.rarity),
-                ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 8),
+                middle,
+                if (ongoingChild != null) ...[
+                  const SizedBox(height: 8),
+                  ongoingChild!,
+                ],
+                const Spacer(),
                 CardSectionPanel(
                   label: 'Actions',
                   child: Row(

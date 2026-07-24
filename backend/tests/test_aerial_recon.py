@@ -178,6 +178,15 @@ def test_aerial_recon_accepts_and_enqueues_ensure(client, session: Session):
     assert len(missions) == 1
     assert missions[0].action_key == ACTION_KEY_AERIAL_RECON
     assert missions[0].flight_duration_s == expected_s
+    cfg = get_game_config().tool_actions.aerial_recon
+    assert missions[0].flight_speed_kmh == cfg.flight_speed_kmh
+    assert missions[0].max_route_km == cfg.max_route_km
+    assert missions[0].discovery_chance == cfg.discovery_chance
+    assert missions[0].discovery_distance_m == cfg.discovery_distance_m
+    assert body["flight_speed_kmh"] == cfg.flight_speed_kmh
+    assert body["max_route_km"] == cfg.max_route_km
+    assert body["discovery_chance"] == cfg.discovery_chance
+    assert body["discovery_distance_m"] == cfg.discovery_distance_m
     job_ids = json.loads(missions[0].ensure_job_ids_json or "[]")
     assert len(job_ids) >= 1
     jobs = list(session.exec(select(FieldEnsureJob)).all())

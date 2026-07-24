@@ -5,6 +5,7 @@ import '../../controllers/aerial_recon_controller.dart';
 import '../../controllers/tool_action_router.dart';
 import '../../services/tool_service.dart';
 import '../../shell/map_chrome_insets.dart';
+import '../tools/aerial_recon_flight_stats.dart';
 
 /// Top banner while a recon mission is focused from the Info sheet or scout tap.
 class AerialReconFocusOverlay extends StatelessWidget {
@@ -17,6 +18,9 @@ class AerialReconFocusOverlay extends StatelessWidget {
     // Rebuild when flying so remaining time updates.
     // ignore: unused_local_variable
     final tick = recon.progressTick;
+    // Rebuild when poll updates discovered sites.
+    // ignore: unused_local_variable
+    final gen = recon.missionsFetchGeneration;
     if (mission == null) return const SizedBox.shrink();
 
     final topInset = MapChromeInsets.top(context);
@@ -61,6 +65,8 @@ class AerialReconFocusOverlay extends StatelessWidget {
                         ),
                       ),
                     ],
+                    const SizedBox(height: 8),
+                    AerialReconFlightStats.fromMission(mission),
                     if (mission.isActive) ...[
                       const SizedBox(height: 8),
                       Align(

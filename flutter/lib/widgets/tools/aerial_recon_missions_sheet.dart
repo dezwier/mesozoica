@@ -5,8 +5,9 @@ import '../../controllers/aerial_recon_controller.dart';
 import '../../controllers/tool_action_router.dart';
 import '../../services/tool_service.dart';
 import '../common/drawer_sheet_sizes.dart';
+import 'aerial_recon_flight_stats.dart';
 
-/// Bottom sheet listing ongoing and past Aerial Recon missions.
+/// Bottom sheet listing past Aerial Recon missions (ongoing lives on tool card).
 class AerialReconMissionsSheet extends StatefulWidget {
   const AerialReconMissionsSheet({super.key});
 
@@ -43,9 +44,8 @@ class _AerialReconMissionsSheetState extends State<AerialReconMissionsSheet> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final recon = context.watch<AerialReconController>();
-    final ongoing = recon.missions.where((m) => m.isActive).toList();
     final past = recon.missions.where((m) => m.isPast).toList();
-    final empty = ongoing.isEmpty && past.isEmpty && !recon.missionsLoading;
+    final empty = past.isEmpty && !recon.missionsLoading;
 
     return DraggableScrollableSheet(
       expand: false,
@@ -69,7 +69,7 @@ class _AerialReconMissionsSheetState extends State<AerialReconMissionsSheet> {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    'Ongoing and past scout loops',
+                    'Past scout loops',
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: theme.colorScheme.onSurfaceVariant,
                     ),
@@ -91,23 +91,13 @@ class _AerialReconMissionsSheetState extends State<AerialReconMissionsSheet> {
                       Padding(
                         padding: const EdgeInsets.symmetric(vertical: 32),
                         child: Text(
-                          'No recons yet — Deploy to scout a loop.',
+                          'No past recons yet — Deploy to scout a loop.',
                           textAlign: TextAlign.center,
                           style: theme.textTheme.bodyMedium?.copyWith(
                             color: theme.colorScheme.onSurfaceVariant,
                           ),
                         ),
                       ),
-                    if (ongoing.isNotEmpty) ...[
-                      _SectionHeader(label: 'Ongoing'),
-                      ...ongoing.map(
-                        (m) => _MissionTile(
-                          mission: m,
-                          onTap: () => _select(m),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                    ],
                     if (past.isNotEmpty) ...[
                       _SectionHeader(label: 'Past'),
                       ...past.map(
@@ -170,18 +160,42 @@ class _MissionTile extends StatelessWidget {
 
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
-      child: ListTile(
+      child: InkWell(
         onTap: onTap,
-        title: Text(
-          '${mission.routeLengthKm.toStringAsFixed(1)} km · $statusLabel',
-          style: theme.textTheme.titleSmall?.copyWith(
-            fontWeight: FontWeight.w600,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '${mission.routeLengthKm.toStringAsFixed(1)} km · $statusLabel',
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    AerialReconFlightStats.fromMission(mission),
+                  ],
+                ),
+              ),
+              Icon(
+                Icons.route,
+                color: theme.colorScheme.primary,
+              ),
+            ],
           ),
-        ),
-        subtitle: Text(subtitle),
-        trailing: Icon(
-          mission.isActive ? Icons.my_location : Icons.route,
-          color: theme.colorScheme.primary,
         ),
       ),
     );
@@ -210,20 +224,6 @@ class _MissionTile extends StatelessWidget {
         ? '${mission.flightDurationS}s flight'
         : '$durationMin min flight';
     final startLabel = _startLabel(mission);
-    if (mission.isActive) {
-      if (mission.isFlying && mission.flightEndsAt != null) {
-        final left = mission.flightEndsAt!.difference(DateTime.now().toUtc());
-        if (left.isNegative) {
-          return '$startLabel · $durationLabel · finishing…';
-        }
-        final mins = left.inMinutes;
-        if (mins < 1) {
-          return '$startLabel · $durationLabel · <1 min left';
-        }
-        return '$startLabel · $durationLabel · $mins min left';
-      }
-      return '$startLabel · $durationLabel · preparing terrain';
-    }
     final ended = mission.flightEndsAt ?? mission.createdAt;
     return '$startLabel · $durationLabel · ${_relative(ended)}';
   }

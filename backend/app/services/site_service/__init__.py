@@ -15,12 +15,16 @@ from app.services.site_service.related import (
 )
 from app.services.site_service.set_status import set_site_status
 from app.services.site_service.site_type_fallback import load_site_types_by_period
-from app.services.site_service.summary import site_row_to_summary
+from app.services.site_service.summary import (
+    enrich_site_rows_for_viewer,
+    site_row_to_summary,
+)
 from app.services.site_service.survey import survey_site, user_has_surveyed
 from app.services.site_service.field_survey_queue import get_field_survey_job as get_survey_job
 
 __all__ = [
     "discover_site",
+    "enrich_site_rows_for_viewer",
     "ensure_field_sites_nearby",
     "get_site_by_id",
     "get_survey_job",

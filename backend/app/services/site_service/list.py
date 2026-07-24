@@ -135,16 +135,11 @@ def get_site_by_id(
         raise NotFoundError(f"Site {site_id} not found")
     site_row = _row_from_tuple(row)
     if viewer_user_id is not None:
-        from app.services.site_service.survey import user_has_surveyed
+        from app.services.site_service.summary import enrich_site_rows_for_viewer
 
-        return SiteRow(
-            site=site_row.site,
-            site_type=site_row.site_type,
-            status=site_row.status,
-            viewer_has_surveyed=user_has_surveyed(
-                session, user_id=viewer_user_id, site_id=site_id
-            ),
-        )
+        return enrich_site_rows_for_viewer(
+            session, [site_row], viewer_user_id=viewer_user_id
+        )[0]
     return site_row
 
 

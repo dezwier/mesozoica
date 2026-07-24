@@ -31,6 +31,7 @@ from app.schemas.site import (
 )
 from app.services.site_service import (
     discover_site,
+    enrich_site_rows_for_viewer,
     get_site_by_id,
     get_survey_job,
     list_discoverable_sites_in_radius,
@@ -44,6 +45,7 @@ from app.services.site_service import (
     site_row_to_summary,
     survey_site,
 )
+from app.services.site_service.summary import SiteRow
 from app.services.site_service.field_fossil_onboard import (
     DiscoverFossilOnboardResult,
     surface_fossil_summaries,
@@ -98,6 +100,18 @@ def _field_visibility(
     return current_user.id, False
 
 
+def _maybe_enrich_viewer(
+    session: Session,
+    rows: list[SiteRow],
+    current_user: User | None,
+) -> list[SiteRow]:
+    if current_user is None or not rows:
+        return rows
+    return enrich_site_rows_for_viewer(
+        session, rows, viewer_user_id=int(current_user.id)
+    )
+
+
 @router.get("", response_model=SiteListResponse)
 def get_sites(
     session: Session = Depends(get_session),
@@ -136,6 +150,7 @@ def get_sites(
         linked_user_id=linked_user_id,
         show_all=effective_show_all,
     )
+    rows = _maybe_enrich_viewer(session, rows, current_user)
     types_by_period = load_site_types_by_period(session)
     items = [site_row_to_summary(row, types_by_period=types_by_period) for row in rows]
     return SiteListResponse(
@@ -171,6 +186,7 @@ def get_sites_nearby(
         linked_user_id=linked_user_id,
         show_all=effective_show_all,
     )
+    rows = _maybe_enrich_viewer(session, rows, current_user)
     types_by_period = load_site_types_by_period(session)
     items = [site_row_to_summary(row, types_by_period=types_by_period) for row in rows]
     return SiteNearbyResponse(
@@ -197,6 +213,7 @@ def get_sites_nearby_discoverable(
         radius_km=radius_km,
         user_id=current_user.id,
     )
+    rows = _maybe_enrich_viewer(session, rows, current_user)
     types_by_period = load_site_types_by_period(session)
     items = [site_row_to_summary(row, types_by_period=types_by_period) for row in rows]
     return SiteNearbyResponse(
@@ -355,8 +372,11 @@ def post_survey_site(
         user_id=current_user.id,
     )
     types_by_period = load_site_types_by_period(session)
+    enriched = enrich_site_rows_for_viewer(
+        session, [result.site], viewer_user_id=int(current_user.id)
+    )[0]
     return FieldSurveyResponse(
-        site=site_row_to_summary(result.site, types_by_period=types_by_period),
+        site=site_row_to_summary(enriched, types_by_period=types_by_period),
         job_id=None,
         status="done",
         onboarded=True,
@@ -372,8 +392,11 @@ def _discover_response(
     viewer_user_id: int,
 ) -> FieldDiscoverResponse:
     types_by_period = load_site_types_by_period(session)
+    enriched = enrich_site_rows_for_viewer(
+        session, [result.site], viewer_user_id=viewer_user_id
+    )[0]
     return FieldDiscoverResponse(
-        site=site_row_to_summary(result.site, types_by_period=types_by_period),
+        site=site_row_to_summary(enriched, types_by_period=types_by_period),
         job_id=result.job_id,
         status=result.job_status,
         onboarded=result.onboarded,
@@ -427,7 +450,10 @@ def post_set_site_status(
             session, row, viewer_user_id=current_user.id
         )
     types_by_period = load_site_types_by_period(session)
-    return site_row_to_summary(row, types_by_period=types_by_period)
+    enriched = enrich_site_rows_for_viewer(
+        session, [row], viewer_user_id=int(current_user.id)
+    )[0]
+    return site_row_to_summary(enriched, types_by_period=types_by_period)
 
 
 @router.get("/{site_id}", response_model=SiteSummary)

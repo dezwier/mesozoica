@@ -1,0 +1,53 @@
+import 'package:flutter_test/flutter_test.dart';
+import 'package:mesozoica/models/site.dart';
+import 'package:mesozoica/widgets/cards/site_card_user_timeline.dart';
+
+void main() {
+  test('timeline entries empty without discovery', () {
+    const site = SiteSummary(siteId: 1);
+    expect(SiteCardUserTimeline.entriesFor(site), isEmpty);
+  });
+
+  test('timeline shows discovered walk without link', () {
+    final site = SiteSummary(
+      siteId: 2,
+      howDiscovered: SiteSummary.howDiscoveredWalk,
+      discoveredAt: DateTime.utc(2026, 7, 1, 12),
+    );
+    final entries = SiteCardUserTimeline.entriesFor(site);
+    expect(entries, hasLength(1));
+    expect(entries.single.moment, 'Discovered');
+    expect(entries.single.howLabel, 'Walk');
+    expect(entries.single.onHowTap, isNull);
+  });
+
+  test('timeline aerial row is tappable when mission id present', () {
+    var tapped = false;
+    final site = SiteSummary(
+      siteId: 3,
+      howDiscovered: SiteSummary.howDiscoveredAerialRecon,
+      discoveredAt: DateTime.utc(2026, 7, 1, 12),
+      discoveringMissionId: 7,
+    );
+    final entries = SiteCardUserTimeline.entriesFor(
+      site,
+      onAerialTap: () => tapped = true,
+    );
+    expect(entries.single.howLabel, 'Aerial recon');
+    expect(entries.single.onHowTap, isNotNull);
+    entries.single.onHowTap!();
+    expect(tapped, isTrue);
+  });
+
+  test('SiteSummary parses discovery fields from json', () {
+    final site = SiteSummary.fromJson({
+      'site_id': 9,
+      'how_discovered': 'aerial_recon',
+      'discovered_at': '2026-07-01T12:00:00',
+      'discovering_mission_id': 42,
+    });
+    expect(site.howDiscovered, SiteSummary.howDiscoveredAerialRecon);
+    expect(site.discoveringMissionId, 42);
+    expect(site.discoveredAt?.toUtc(), DateTime.utc(2026, 7, 1, 12));
+  });
+}
