@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../controllers/tool_catalog_controller.dart';
 import '../../models/tool.dart';
 import '../common/drawer_sheet_sizes.dart';
+import '../profile/settings_form_styles.dart';
 
 class ToolFilterSheet extends StatefulWidget {
   const ToolFilterSheet({
@@ -75,6 +76,33 @@ class _ToolFilterSheetState extends State<ToolFilterSheet> {
     super.dispose();
   }
 
+  void _toggleCategory(String value, bool selected) {
+    setState(() {
+      if (_pendingCategories.isEmpty) {
+        _pendingCategories = {
+          for (final option in widget.availableCategories) option.value,
+        };
+      }
+      if (selected) {
+        _pendingCategories.add(value);
+      } else {
+        _pendingCategories.remove(value);
+      }
+    });
+  }
+
+  Set<String> _categoriesForApply() {
+    if (_pendingCategories.isEmpty) return {};
+    final allValues = {
+      for (final option in widget.availableCategories) option.value,
+    };
+    if (_pendingCategories.length == allValues.length &&
+        _pendingCategories.containsAll(allValues)) {
+      return {};
+    }
+    return {..._pendingCategories};
+  }
+
   void _commitPending() {
     if (_applied) return;
     _applied = true;
@@ -82,7 +110,7 @@ class _ToolFilterSheetState extends State<ToolFilterSheet> {
       ToolCatalogFilters(
         searchQuery: _pendingSearch.trim(),
         sort: _pendingSort,
-        categories: {..._pendingCategories},
+        categories: _categoriesForApply(),
         showAll: widget.isAdmin && _pendingShowAll,
       ),
     );
@@ -92,7 +120,7 @@ class _ToolFilterSheetState extends State<ToolFilterSheet> {
     return ToolCatalogFilters(
       searchQuery: _pendingSearch.trim(),
       sort: _pendingSort,
-      categories: {..._pendingCategories},
+      categories: _categoriesForApply(),
       showAll: widget.isAdmin && _pendingShowAll,
     );
   }
@@ -107,20 +135,12 @@ class _ToolFilterSheetState extends State<ToolFilterSheet> {
     });
   }
 
-  void _toggleCategory(String value, bool? selected) {
-    setState(() {
-      if (selected ?? false) {
-        _pendingCategories.add(value);
-      } else {
-        _pendingCategories.remove(value);
-      }
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final outlineBorder = SettingsFormStyles.outlineBorder(context);
+    final categoryOptions = widget.availableCategories;
 
     return PopScope(
       onPopInvokedWithResult: (didPop, _) {
@@ -173,48 +193,109 @@ class _ToolFilterSheetState extends State<ToolFilterSheet> {
                   setState(() => _pendingSearch = '');
                 },
               ),
-              const SizedBox(height: 16),
-              Text(
-                'Sort',
-                style: theme.textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.w600,
+              const SizedBox(height: 20),
+              SettingsFormStyles.settingsRow(
+                context: context,
+                label: 'Sort',
+                description: 'Order tools in the catalog list.',
+                controlWidth: 168,
+                control: SettingsFormStyles.densePopupField<ToolCatalogSort>(
+                  context: context,
+                  outlineBorder: outlineBorder,
+                  selectedChild: Text(
+                    _pendingSort.label,
+                    style: theme.textTheme.bodyMedium,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  entries: [
+                    for (final sort in ToolCatalogSort.values)
+                      DensePopupEntry(
+                        value: sort,
+                        child: Text(
+                          sort.label,
+                          style: theme.textTheme.bodyMedium,
+                        ),
+                      ),
+                  ],
+                  onSelected: (value) {
+                    if (value == null) return;
+                    setState(() => _pendingSort = value);
+                  },
                 ),
               ),
-              const SizedBox(height: 8),
-              _buildSortDropdown(context),
               if (widget.isAdmin) ...[
-                const SizedBox(height: 16),
-                Text(
-                  'Admin',
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w600,
+                const SizedBox(height: 20),
+                SettingsFormStyles.settingsRow(
+                  context: context,
+                  label: 'Visibility',
+                  description: 'Include tools normally hidden from the catalog.',
+                  controlWidth: 168,
+                  control: SettingsFormStyles.densePopupField<bool>(
+                    context: context,
+                    outlineBorder: outlineBorder,
+                    selectedChild: Text(
+                      _pendingShowAll ? 'Show all' : 'Default',
+                      style: theme.textTheme.bodyMedium,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    entries: [
+                      DensePopupEntry(
+                        value: false,
+                        child: Text(
+                          'Default',
+                          style: theme.textTheme.bodyMedium,
+                        ),
+                      ),
+                      DensePopupEntry(
+                        value: true,
+                        child: Text(
+                          'Show all',
+                          style: theme.textTheme.bodyMedium,
+                        ),
+                      ),
+                    ],
+                    onSelected: (value) {
+                      if (value == null) return;
+                      setState(() => _pendingShowAll = value);
+                    },
                   ),
-                ),
-                const SizedBox(height: 8),
-                _checkboxTile(
-                  theme: theme,
-                  value: _pendingShowAll,
-                  label: 'Show all tools',
-                  onChanged: (selected) =>
-                      setState(() => _pendingShowAll = selected ?? false),
                 ),
               ],
-              if (widget.availableCategories.isNotEmpty) ...[
-                const SizedBox(height: 16),
-                Text(
-                  'Category',
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                ...widget.availableCategories.map(
-                  (option) => _checkboxTile(
-                    theme: theme,
-                    value: _pendingCategories.contains(option.value),
-                    label: option.label,
-                    onChanged: (selected) =>
-                        _toggleCategory(option.value, selected),
+              if (categoryOptions.isNotEmpty) ...[
+                const SizedBox(height: 20),
+                SettingsFormStyles.settingsRow(
+                  context: context,
+                  label: 'Category',
+                  description: 'Limit tools to one or more categories.',
+                  controlWidth: 168,
+                  control: SettingsFormStyles.multiSelectDensePopup(
+                    context: context,
+                    outlineBorder: outlineBorder,
+                    selectedChild: Text(
+                      SettingsFormStyles.multiSelectSummary(
+                        selectedCount: _pendingCategories.isEmpty
+                            ? categoryOptions.length
+                            : _pendingCategories.length,
+                        totalCount: categoryOptions.length,
+                      ),
+                      style: theme.textTheme.bodyMedium,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    entries: [
+                      for (final option in categoryOptions)
+                        MultiSelectPopupEntry(
+                          value: option.value,
+                          label: option.label,
+                          selected: _pendingCategories.isEmpty ||
+                              _pendingCategories.contains(option.value),
+                        ),
+                    ],
+                    onToggle: (value, selected) {
+                      _toggleCategory(value, selected);
+                    },
+                    onSelectOnly: (value) {
+                      setState(() => _pendingCategories = {value});
+                    },
                   ),
                 ),
               ],
@@ -237,6 +318,13 @@ class _ToolFilterSheetState extends State<ToolFilterSheet> {
                   ),
                 ],
               ),
+              if (categoryOptions.isNotEmpty) ...[
+                const SizedBox(height: 4),
+                Text(
+                  'Long-press an option in a multi-select menu to keep only that one.',
+                  style: SettingsFormStyles.finePrintStyle(context),
+                ),
+              ],
             ],
           );
         },
@@ -283,78 +371,6 @@ class _ToolFilterSheetState extends State<ToolFilterSheet> {
             horizontal: 16,
             vertical: 12,
           ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSortDropdown(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return Container(
-      decoration: BoxDecoration(
-        color: colorScheme.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<ToolCatalogSort>(
-          value: _pendingSort,
-          isExpanded: true,
-          icon: Icon(
-            Icons.expand_more,
-            color: colorScheme.onSurface.withValues(alpha: 0.6),
-          ),
-          onChanged: (value) {
-            if (value == null) return;
-            setState(() => _pendingSort = value);
-          },
-          items: ToolCatalogSort.values
-              .map(
-                (sort) => DropdownMenuItem(
-                  value: sort,
-                  child: Text(sort.label),
-                ),
-              )
-              .toList(),
-        ),
-      ),
-    );
-  }
-
-  Widget _checkboxTile({
-    required ThemeData theme,
-    required bool value,
-    required String label,
-    required ValueChanged<bool?> onChanged,
-  }) {
-    return SizedBox(
-      height: 44,
-      child: InkWell(
-        onTap: () => onChanged(!value),
-        child: Row(
-          children: [
-            SizedBox(
-              width: 32,
-              height: 44,
-              child: IgnorePointer(
-                child: Checkbox(
-                  value: value,
-                  onChanged: (_) {},
-                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  visualDensity:
-                      const VisualDensity(horizontal: -4, vertical: -4),
-                ),
-              ),
-            ),
-            const SizedBox(width: 4),
-            Expanded(
-              child: Text(
-                label,
-                style: theme.textTheme.bodyMedium,
-              ),
-            ),
-          ],
         ),
       ),
     );

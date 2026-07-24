@@ -3,18 +3,19 @@ import 'package:flutter/material.dart';
 import '../../controllers/fossil_catalog_controller.dart';
 import '../cards/geologic_timeline.dart';
 import '../common/drawer_sheet_sizes.dart';
+import '../profile/settings_form_styles.dart';
 
 class FossilFilterSheet extends StatefulWidget {
   const FossilFilterSheet({
     super.key,
     required this.initialFilters,
-    required this.onApply,
+    required this.onPendingChanged,
     this.catalogTotal,
     this.showLlmEnrichedFilter = true,
   });
 
   final FossilCatalogFilters initialFilters;
-  final ValueChanged<FossilCatalogFilters> onApply;
+  final ValueChanged<FossilCatalogFilters> onPendingChanged;
   final int? catalogTotal;
   final bool showLlmEnrichedFilter;
 
@@ -24,8 +25,9 @@ class FossilFilterSheet extends StatefulWidget {
     required ValueChanged<FossilCatalogFilters> onApply,
     int? catalogTotal,
     bool showLlmEnrichedFilter = true,
-  }) {
-    return showModalBottomSheet<void>(
+  }) async {
+    var pending = initialFilters;
+    await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
@@ -36,11 +38,12 @@ class FossilFilterSheet extends StatefulWidget {
       ),
       builder: (_) => FossilFilterSheet(
         initialFilters: initialFilters,
-        onApply: onApply,
         catalogTotal: catalogTotal,
         showLlmEnrichedFilter: showLlmEnrichedFilter,
+        onPendingChanged: (filters) => pending = filters,
       ),
     );
+    onApply(pending);
   }
 
   @override
@@ -55,7 +58,6 @@ class _FossilFilterSheetState extends State<FossilFilterSheet> {
   late RangeValues _pendingRange;
   late bool _pendingOnlyCustomFossilImage;
   late bool _pendingOnlyLlmEnriched;
-  bool _applied = false;
 
   @override
   void initState() {
@@ -79,21 +81,6 @@ class _FossilFilterSheetState extends State<FossilFilterSheet> {
     super.dispose();
   }
 
-  void _commitPending() {
-    if (_applied) return;
-    _applied = true;
-    widget.onApply(
-      FossilCatalogFilters(
-        dinoSearchQuery: _pendingDinoSearch.trim(),
-        fossilSearchQuery: _pendingFossilSearch.trim(),
-        maYounger: _pendingRange.start,
-        maOlder: _pendingRange.end,
-        onlyCustomFossilImage: _pendingOnlyCustomFossilImage,
-        onlyLlmEnriched: _pendingOnlyLlmEnriched,
-      ),
-    );
-  }
-
   FossilCatalogFilters _buildPendingFilters() {
     return FossilCatalogFilters(
       dinoSearchQuery: _pendingDinoSearch.trim(),
@@ -105,8 +92,13 @@ class _FossilFilterSheetState extends State<FossilFilterSheet> {
     );
   }
 
+  void _updatePending(VoidCallback update) {
+    setState(update);
+    widget.onPendingChanged(_buildPendingFilters());
+  }
+
   void _clearPending() {
-    setState(() {
+    _updatePending(() {
       _pendingDinoSearch = '';
       _pendingFossilSearch = '';
       _dinoSearchController.clear();
@@ -124,171 +116,203 @@ class _FossilFilterSheetState extends State<FossilFilterSheet> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final outlineBorder = SettingsFormStyles.outlineBorder(context);
     final divisions =
         (GeologicTimeline.mesozoicOlderMa - GeologicTimeline.mesozoicYoungerMa)
             .round();
 
-    return PopScope(
-      onPopInvokedWithResult: (didPop, _) {
-        if (didPop) _commitPending();
-      },
-      child: DraggableScrollableSheet(
-        expand: false,
-        initialChildSize: DrawerSheetSizes.initialChildSize,
-        minChildSize: DrawerSheetSizes.minChildSize,
-        maxChildSize: DrawerSheetSizes.maxChildSize,
-        builder: (context, scrollController) {
-          return ListView(
-            controller: scrollController,
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      'Filter',
-                      style: theme.textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                  IconButton(
-                    tooltip: 'Close',
-                    onPressed: () => Navigator.of(context).pop(),
-                    icon: const Icon(Icons.close),
-                  ),
-                ],
-              ),
-              if (widget.catalogTotal != null)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
+    return DraggableScrollableSheet(
+      expand: false,
+      initialChildSize: DrawerSheetSizes.initialChildSize,
+      minChildSize: DrawerSheetSizes.minChildSize,
+      maxChildSize: DrawerSheetSizes.maxChildSize,
+      builder: (context, scrollController) {
+        return ListView(
+          controller: scrollController,
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+          children: [
+            Row(
+              children: [
+                Expanded(
                   child: Text(
-                    '${widget.catalogTotal} fossils in catalog',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: colorScheme.onSurfaceVariant,
+                    'Filter',
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                 ),
-              _buildSearchField(
-                context,
-                controller: _dinoSearchController,
-                hintText: 'Search dinosaur name…',
-                onChanged: (value) => setState(() => _pendingDinoSearch = value),
-                onClear: () {
-                  _dinoSearchController.clear();
-                  setState(() => _pendingDinoSearch = '');
-                },
-              ),
-              const SizedBox(height: 12),
-              _buildSearchField(
-                context,
-                controller: _fossilSearchController,
-                hintText: 'Search fossil name…',
-                onChanged: (value) => setState(() => _pendingFossilSearch = value),
-                onClear: () {
-                  _fossilSearchController.clear();
-                  setState(() => _pendingFossilSearch = '');
-                },
-              ),
-              const SizedBox(height: 8),
-              CheckboxListTile(
-                contentPadding: EdgeInsets.zero,
-                controlAffinity: ListTileControlAffinity.leading,
-                value: _pendingOnlyCustomFossilImage,
-                onChanged: (value) {
-                  setState(() => _pendingOnlyCustomFossilImage = value ?? false);
-                },
-                title: const Text('Illustrated'),
-                subtitle: Text(
-                  'Only show fossils with a curated card image',
+                IconButton(
+                  tooltip: 'Close',
+                  onPressed: () => Navigator.of(context).pop(),
+                  icon: const Icon(Icons.close),
+                ),
+              ],
+            ),
+            if (widget.catalogTotal != null)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Text(
+                  '${widget.catalogTotal} fossils in catalog',
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: colorScheme.onSurfaceVariant,
                   ),
                 ),
               ),
-              if (widget.showLlmEnrichedFilter)
-                CheckboxListTile(
-                  contentPadding: EdgeInsets.zero,
-                  controlAffinity: ListTileControlAffinity.leading,
-                  value: _pendingOnlyLlmEnriched,
-                  onChanged: (value) {
-                    setState(() => _pendingOnlyLlmEnriched = value ?? true);
-                  },
-                  title: const Text('Enriched'),
-                  subtitle: Text(
-                    'Only show fossils with LLM enrichment completed',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: colorScheme.onSurfaceVariant,
+            _buildSearchField(
+              context,
+              controller: _dinoSearchController,
+              hintText: 'Search dinosaur name…',
+              onChanged: (value) {
+                _updatePending(() => _pendingDinoSearch = value);
+              },
+              onClear: () {
+                _dinoSearchController.clear();
+                _updatePending(() => _pendingDinoSearch = '');
+              },
+            ),
+            const SizedBox(height: 12),
+            _buildSearchField(
+              context,
+              controller: _fossilSearchController,
+              hintText: 'Search fossil name…',
+              onChanged: (value) {
+                _updatePending(() => _pendingFossilSearch = value);
+              },
+              onClear: () {
+                _fossilSearchController.clear();
+                _updatePending(() => _pendingFossilSearch = '');
+              },
+            ),
+            const SizedBox(height: 20),
+            SettingsFormStyles.settingsRow(
+              context: context,
+              label: 'Illustrated',
+              description: 'Only show fossils with a curated card image.',
+              controlWidth: 168,
+              control: SettingsFormStyles.densePopupField<bool>(
+                context: context,
+                outlineBorder: outlineBorder,
+                selectedChild: Text(
+                  _pendingOnlyCustomFossilImage ? 'Illustrated only' : 'All',
+                  style: theme.textTheme.bodyMedium,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                entries: [
+                  DensePopupEntry(
+                    value: false,
+                    child: Text('All', style: theme.textTheme.bodyMedium),
+                  ),
+                  DensePopupEntry(
+                    value: true,
+                    child: Text(
+                      'Illustrated only',
+                      style: theme.textTheme.bodyMedium,
                     ),
                   ),
-                ),
+                ],
+                onSelected: (value) {
+                  if (value == null) return;
+                  _updatePending(() => _pendingOnlyCustomFossilImage = value);
+                },
+              ),
+            ),
+            if (widget.showLlmEnrichedFilter) ...[
               const SizedBox(height: 20),
-              Text(
-                'Time range',
-                style: theme.textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'Showing ${_pendingRange.end.round()} – ${_pendingRange.start.round()} Ma',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: colorScheme.onSurfaceVariant,
-                ),
-              ),
-              Transform(
-                alignment: Alignment.center,
-                transform: Matrix4.identity()..scaleByDouble(-1.0, 1.0, 1.0, 1.0),
-                child: RangeSlider(
-                  values: _pendingRange,
-                  min: GeologicTimeline.mesozoicYoungerMa,
-                  max: GeologicTimeline.mesozoicOlderMa,
-                  divisions: divisions,
-                  onChanged: (values) {
-                    setState(() => _pendingRange = values);
+              SettingsFormStyles.settingsRow(
+                context: context,
+                label: 'Enriched',
+                description:
+                    'Only show fossils with LLM enrichment completed.',
+                controlWidth: 168,
+                control: SettingsFormStyles.densePopupField<bool>(
+                  context: context,
+                  outlineBorder: outlineBorder,
+                  selectedChild: Text(
+                    _pendingOnlyLlmEnriched ? 'Enriched only' : 'All',
+                    style: theme.textTheme.bodyMedium,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  entries: [
+                    DensePopupEntry(
+                      value: false,
+                      child: Text('All', style: theme.textTheme.bodyMedium),
+                    ),
+                    DensePopupEntry(
+                      value: true,
+                      child: Text(
+                        'Enriched only',
+                        style: theme.textTheme.bodyMedium,
+                      ),
+                    ),
+                  ],
+                  onSelected: (value) {
+                    if (value == null) return;
+                    _updatePending(() => _pendingOnlyLlmEnriched = value);
                   },
                 ),
-              ),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    '${GeologicTimeline.mesozoicOlderMa.round()} Ma',
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                  Text(
-                    '${GeologicTimeline.mesozoicYoungerMa.round()} Ma',
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 24),
-              Row(
-                children: [
-                  TextButton(
-                    onPressed: _buildPendingFilters().hasActiveFilters
-                        ? _clearPending
-                        : null,
-                    child: const Text('Clear'),
-                  ),
-                  const Spacer(),
-                  FilledButton(
-                    onPressed: () {
-                      _commitPending();
-                      Navigator.of(context).pop();
-                    },
-                    child: const Text('Apply'),
-                  ),
-                ],
               ),
             ],
-          );
-        },
-      ),
+            const SizedBox(height: 20),
+            Text(
+              'Time range',
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              'Showing ${_pendingRange.end.round()} – ${_pendingRange.start.round()} Ma',
+              style: SettingsFormStyles.finePrintStyle(context),
+            ),
+            Transform(
+              alignment: Alignment.center,
+              transform: Matrix4.identity()..scaleByDouble(-1.0, 1.0, 1.0, 1.0),
+              child: RangeSlider(
+                values: _pendingRange,
+                min: GeologicTimeline.mesozoicYoungerMa,
+                max: GeologicTimeline.mesozoicOlderMa,
+                divisions: divisions,
+                onChanged: (values) {
+                  _updatePending(() => _pendingRange = values);
+                },
+              ),
+            ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  '${GeologicTimeline.mesozoicOlderMa.round()} Ma',
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                Text(
+                  '${GeologicTimeline.mesozoicYoungerMa.round()} Ma',
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            Row(
+              children: [
+                TextButton(
+                  onPressed: _buildPendingFilters().hasActiveFilters
+                      ? _clearPending
+                      : null,
+                  child: const Text('Clear'),
+                ),
+                const Spacer(),
+                FilledButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('Apply'),
+                ),
+              ],
+            ),
+          ],
+        );
+      },
     );
   }
 

@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 
 import '../../models/site_map_filters.dart';
 import '../common/drawer_sheet_sizes.dart';
+import '../profile/settings_form_styles.dart';
 
 class SiteFilterSheet extends StatefulWidget {
   const SiteFilterSheet({
@@ -139,7 +140,6 @@ class _SiteFilterSheetState extends State<SiteFilterSheet> {
   SiteMapFilters _buildPendingFilters() {
     final after =
         _discoveryTimeIsFullSpan ? null : _dateAtDay(_pendingDiscoveryDays.start);
-    // Inclusive end-of-day for the upper thumb.
     final before = _discoveryTimeIsFullSpan
         ? null
         : _dateAtDay(_pendingDiscoveryDays.end)
@@ -179,9 +179,9 @@ class _SiteFilterSheetState extends State<SiteFilterSheet> {
     });
   }
 
-  void _toggle(Set<String> target, String value, bool? selected) {
+  void _toggle(Set<String> target, String value, bool selected) {
     setState(() {
-      if (selected ?? false) {
+      if (selected) {
         target.add(value);
       } else {
         target.remove(value);
@@ -203,6 +203,7 @@ class _SiteFilterSheetState extends State<SiteFilterSheet> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final outlineBorder = SettingsFormStyles.outlineBorder(context);
 
     return PopScope(
       onPopInvokedWithResult: (didPop, _) {
@@ -225,17 +226,70 @@ class _SiteFilterSheetState extends State<SiteFilterSheet> {
                 ),
               ),
               if (widget.showSortSection) ...[
-                const SizedBox(height: 16),
-                _sectionTitle(theme, 'Sort'),
-                _buildSortDropdown(context),
+                const SizedBox(height: 20),
+                SettingsFormStyles.settingsRow(
+                  context: context,
+                  label: 'Sort',
+                  description: 'Order catalog cards in the list.',
+                  controlWidth: 168,
+                  control: SettingsFormStyles.densePopupField<SiteCatalogSort>(
+                    context: context,
+                    outlineBorder: outlineBorder,
+                    selectedChild: Text(
+                      _pendingSort.label,
+                      style: theme.textTheme.bodyMedium,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    entries: [
+                      for (final sort in SiteCatalogSort.values)
+                        DensePopupEntry(
+                          value: sort,
+                          enabled: sort != SiteCatalogSort.distance ||
+                              widget.canSortByDistance,
+                          child: Text(
+                            sort.label,
+                            style: theme.textTheme.bodyMedium,
+                          ),
+                        ),
+                    ],
+                    onSelected: (value) {
+                      if (value == null) return;
+                      if (value == SiteCatalogSort.distance &&
+                          !widget.canSortByDistance) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              'Waiting for your current location to sort by nearest',
+                            ),
+                          ),
+                        );
+                        return;
+                      }
+                      setState(() => _pendingSort = value);
+                    },
+                  ),
+                ),
               ],
-              const SizedBox(height: 16),
-              _sectionTitle(theme, 'Discovery time'),
+              const SizedBox(height: 20),
+              Text(
+                'Discovery time',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                'Limit sites by when you discovered them.',
+                style: SettingsFormStyles.finePrintStyle(context),
+              ),
               if (_dayCount <= 0)
-                Text(
-                  'No discovery dates on current sites yet.',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: colorScheme.onSurfaceVariant,
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Text(
+                    'No discovery dates on current sites yet.',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: colorScheme.onSurfaceVariant,
+                    ),
                   ),
                 )
               else ...[
@@ -269,11 +323,13 @@ class _SiteFilterSheetState extends State<SiteFilterSheet> {
                   ),
                 ),
               ],
-              const SizedBox(height: 8),
-              if (widget.showStatusSection)
-                _checkboxDropdown(
-                  theme: theme,
-                  title: 'Status',
+              if (widget.showStatusSection) ...[
+                const SizedBox(height: 20),
+                _multiSelectRow(
+                  context: context,
+                  outlineBorder: outlineBorder,
+                  label: 'Status',
+                  description: 'Lifecycle stage of field sites.',
                   options: siteStatusOptions,
                   selected: _pendingStatuses,
                   onToggle: (value, selected) =>
@@ -283,9 +339,13 @@ class _SiteFilterSheetState extends State<SiteFilterSheet> {
                     value,
                   ),
                 ),
-              _checkboxDropdown(
-                theme: theme,
-                title: 'Period',
+              ],
+              const SizedBox(height: 20),
+              _multiSelectRow(
+                context: context,
+                outlineBorder: outlineBorder,
+                label: 'Period',
+                description: 'Geologic period of the site.',
                 options: sitePeriodOptions,
                 selected: _pendingPeriods,
                 onToggle: (value, selected) =>
@@ -295,9 +355,12 @@ class _SiteFilterSheetState extends State<SiteFilterSheet> {
                   value,
                 ),
               ),
-              _checkboxDropdown(
-                theme: theme,
-                title: 'Discovery',
+              const SizedBox(height: 20),
+              _multiSelectRow(
+                context: context,
+                outlineBorder: outlineBorder,
+                label: 'Discovery',
+                description: 'How the site was found.',
                 options: siteHowDiscoveredOptions,
                 selected: _pendingHowDiscovered,
                 onToggle: (value, selected) =>
@@ -307,9 +370,12 @@ class _SiteFilterSheetState extends State<SiteFilterSheet> {
                   value,
                 ),
               ),
-              _checkboxDropdown(
-                theme: theme,
-                title: 'Rock type',
+              const SizedBox(height: 20),
+              _multiSelectRow(
+                context: context,
+                outlineBorder: outlineBorder,
+                label: 'Rock type',
+                description: 'Lithology recorded for the site.',
                 options: siteRockTypeOptions,
                 selected: _pendingRockTypes,
                 onToggle: (value, selected) =>
@@ -320,23 +386,38 @@ class _SiteFilterSheetState extends State<SiteFilterSheet> {
                 ),
               ),
               if (widget.showReconRoutesSection) ...[
-                const SizedBox(height: 8),
-                _sectionTitle(theme, 'Overlays'),
-                _checkboxTile(
-                  theme: theme,
-                  value: _pendingShowPastReconRoutes,
-                  label: 'Past aerial routes (last 24h)',
-                  onChanged: (selected) {
-                    setState(() {
-                      _pendingShowPastReconRoutes = selected ?? false;
-                    });
-                  },
-                  onLongPress: () {
-                    setState(() => _pendingShowPastReconRoutes = true);
-                  },
+                const SizedBox(height: 20),
+                SettingsFormStyles.settingsRow(
+                  context: context,
+                  label: 'Past routes',
+                  description: 'Show completed aerial routes from the last 24h.',
+                  controlWidth: 168,
+                  control: SettingsFormStyles.densePopupField<bool>(
+                    context: context,
+                    outlineBorder: outlineBorder,
+                    selectedChild: Text(
+                      _pendingShowPastReconRoutes ? 'Show' : 'Hide',
+                      style: theme.textTheme.bodyMedium,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    entries: [
+                      DensePopupEntry(
+                        value: false,
+                        child: Text('Hide', style: theme.textTheme.bodyMedium),
+                      ),
+                      DensePopupEntry(
+                        value: true,
+                        child: Text('Show', style: theme.textTheme.bodyMedium),
+                      ),
+                    ],
+                    onSelected: (value) {
+                      if (value == null) return;
+                      setState(() => _pendingShowPastReconRoutes = value);
+                    },
+                  ),
                 ),
               ],
-              const SizedBox(height: 16),
+              const SizedBox(height: 24),
               Row(
                 children: [
                   TextButton(
@@ -357,10 +438,8 @@ class _SiteFilterSheetState extends State<SiteFilterSheet> {
               ),
               const SizedBox(height: 4),
               Text(
-                'Long-press a checkbox to keep only that option.',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: colorScheme.onSurfaceVariant,
-                ),
+                'Long-press an option in a multi-select menu to keep only that one.',
+                style: SettingsFormStyles.finePrintStyle(context),
               ),
             ],
           );
@@ -369,147 +448,43 @@ class _SiteFilterSheetState extends State<SiteFilterSheet> {
     );
   }
 
-  Widget _buildSortDropdown(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return Container(
-      decoration: BoxDecoration(
-        color: colorScheme.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<SiteCatalogSort>(
-          value: _pendingSort,
-          isExpanded: true,
-          icon: Icon(
-            Icons.expand_more,
-            color: colorScheme.onSurface.withValues(alpha: 0.6),
-          ),
-          onChanged: (value) {
-            if (value == null) return;
-            if (value == SiteCatalogSort.distance &&
-                !widget.canSortByDistance) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text(
-                    'Waiting for your current location to sort by nearest',
-                  ),
-                ),
-              );
-              return;
-            }
-            setState(() => _pendingSort = value);
-          },
-          items: SiteCatalogSort.values
-              .map(
-                (sort) => DropdownMenuItem(
-                  value: sort,
-                  enabled: sort != SiteCatalogSort.distance ||
-                      widget.canSortByDistance,
-                  child: Text(sort.label),
-                ),
-              )
-              .toList(),
-        ),
-      ),
-    );
-  }
-
-  Widget _checkboxDropdown({
-    required ThemeData theme,
-    required String title,
+  Widget _multiSelectRow({
+    required BuildContext context,
+    required InputBorder outlineBorder,
+    required String label,
+    required String description,
     required List<String> options,
     required Set<String> selected,
-    required void Function(String value, bool? selected) onToggle,
+    required void Function(String value, bool selected) onToggle,
     required void Function(String value) onSelectOnly,
   }) {
-    final allSelected = selected.length == options.length;
-    final subtitle = allSelected
-        ? 'All'
-        : selected.isEmpty
-            ? 'None'
-            : '${selected.length} of ${options.length}';
-
-    return Theme(
-      data: theme.copyWith(dividerColor: Colors.transparent),
-      child: ExpansionTile(
-        tilePadding: EdgeInsets.zero,
-        childrenPadding: EdgeInsets.zero,
-        title: Text(
-          title,
-          style: theme.textTheme.titleSmall?.copyWith(
-            fontWeight: FontWeight.w600,
+    final theme = Theme.of(context);
+    return SettingsFormStyles.settingsRow(
+      context: context,
+      label: label,
+      description: description,
+      controlWidth: 168,
+      control: SettingsFormStyles.multiSelectDensePopup(
+        context: context,
+        outlineBorder: outlineBorder,
+        selectedChild: Text(
+          SettingsFormStyles.multiSelectSummary(
+            selectedCount: selected.length,
+            totalCount: options.length,
           ),
+          style: theme.textTheme.bodyMedium,
+          overflow: TextOverflow.ellipsis,
         ),
-        subtitle: Text(
-          subtitle,
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
-          ),
-        ),
-        children: [
+        entries: [
           for (final value in options)
-            _checkboxTile(
-              theme: theme,
-              value: selected.contains(value),
+            MultiSelectPopupEntry(
+              value: value,
               label: siteFilterOptionLabel(value),
-              onChanged: (checked) => onToggle(value, checked),
-              onLongPress: () => onSelectOnly(value),
+              selected: selected.contains(value),
             ),
         ],
-      ),
-    );
-  }
-
-  Widget _checkboxTile({
-    required ThemeData theme,
-    required bool value,
-    required String label,
-    required ValueChanged<bool?> onChanged,
-    required VoidCallback onLongPress,
-  }) {
-    return SizedBox(
-      height: 44,
-      child: InkWell(
-        onTap: () => onChanged(!value),
-        onLongPress: onLongPress,
-        child: Row(
-          children: [
-            SizedBox(
-              width: 32,
-              height: 44,
-              child: IgnorePointer(
-                child: Checkbox(
-                  value: value,
-                  onChanged: (_) {},
-                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  visualDensity:
-                      const VisualDensity(horizontal: -4, vertical: -4),
-                ),
-              ),
-            ),
-            const SizedBox(width: 4),
-            Expanded(
-              child: Text(
-                label,
-                style: theme.textTheme.bodyMedium,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _sectionTitle(ThemeData theme, String title) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 2, bottom: 2),
-      child: Text(
-        title,
-        style: theme.textTheme.titleSmall?.copyWith(
-          fontWeight: FontWeight.w600,
-        ),
+        onToggle: onToggle,
+        onSelectOnly: onSelectOnly,
       ),
     );
   }

@@ -3,17 +3,18 @@ import 'package:flutter/material.dart';
 import '../../controllers/dinosaur_catalog_controller.dart';
 import '../cards/geologic_timeline.dart';
 import '../common/drawer_sheet_sizes.dart';
+import '../profile/settings_form_styles.dart';
 
 class DinosaurFilterSheet extends StatefulWidget {
   const DinosaurFilterSheet({
     super.key,
     required this.initialFilters,
-    required this.onApply,
+    required this.onPendingChanged,
     this.catalogTotal,
   });
 
   final DinosaurCatalogFilters initialFilters;
-  final ValueChanged<DinosaurCatalogFilters> onApply;
+  final ValueChanged<DinosaurCatalogFilters> onPendingChanged;
   final int? catalogTotal;
 
   static Future<void> show(
@@ -21,8 +22,9 @@ class DinosaurFilterSheet extends StatefulWidget {
     required DinosaurCatalogFilters initialFilters,
     required ValueChanged<DinosaurCatalogFilters> onApply,
     int? catalogTotal,
-  }) {
-    return showModalBottomSheet<void>(
+  }) async {
+    var pending = initialFilters;
+    await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
@@ -33,10 +35,11 @@ class DinosaurFilterSheet extends StatefulWidget {
       ),
       builder: (_) => DinosaurFilterSheet(
         initialFilters: initialFilters,
-        onApply: onApply,
         catalogTotal: catalogTotal,
+        onPendingChanged: (filters) => pending = filters,
       ),
     );
+    onApply(pending);
   }
 
   @override
@@ -49,7 +52,6 @@ class _DinosaurFilterSheetState extends State<DinosaurFilterSheet> {
   late RangeValues _pendingRange;
   late bool _pendingOnlyCustomImage;
   late bool _pendingOnlyLlmEnriched;
-  bool _applied = false;
 
   @override
   void initState() {
@@ -70,20 +72,6 @@ class _DinosaurFilterSheetState extends State<DinosaurFilterSheet> {
     super.dispose();
   }
 
-  void _commitPending() {
-    if (_applied) return;
-    _applied = true;
-    widget.onApply(
-      DinosaurCatalogFilters(
-        searchQuery: _pendingSearch.trim(),
-        maYounger: _pendingRange.start,
-        maOlder: _pendingRange.end,
-        onlyCustomImage: _pendingOnlyCustomImage,
-        onlyLlmEnriched: _pendingOnlyLlmEnriched,
-      ),
-    );
-  }
-
   DinosaurCatalogFilters _buildPendingFilters() {
     return DinosaurCatalogFilters(
       searchQuery: _pendingSearch.trim(),
@@ -94,8 +82,13 @@ class _DinosaurFilterSheetState extends State<DinosaurFilterSheet> {
     );
   }
 
+  void _updatePending(VoidCallback update) {
+    setState(update);
+    widget.onPendingChanged(_buildPendingFilters());
+  }
+
   void _clearPending() {
-    setState(() {
+    _updatePending(() {
       _pendingSearch = '';
       _searchController.clear();
       _pendingRange = const RangeValues(
@@ -111,150 +104,176 @@ class _DinosaurFilterSheetState extends State<DinosaurFilterSheet> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final outlineBorder = SettingsFormStyles.outlineBorder(context);
     final divisions =
         (GeologicTimeline.mesozoicOlderMa - GeologicTimeline.mesozoicYoungerMa)
             .round();
 
-    return PopScope(
-      onPopInvokedWithResult: (didPop, _) {
-        if (didPop) _commitPending();
-      },
-      child: DraggableScrollableSheet(
-        expand: false,
-        initialChildSize: DrawerSheetSizes.initialChildSize,
-        minChildSize: DrawerSheetSizes.minChildSize,
-        maxChildSize: DrawerSheetSizes.maxChildSize,
-        builder: (context, scrollController) {
-          return ListView(
-            controller: scrollController,
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      'Filter',
-                      style: theme.textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                  IconButton(
-                    tooltip: 'Close',
-                    onPressed: () => Navigator.of(context).pop(),
-                    icon: const Icon(Icons.close),
-                  ),
-                ],
-              ),
-              if (widget.catalogTotal != null)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
+    return DraggableScrollableSheet(
+      expand: false,
+      initialChildSize: DrawerSheetSizes.initialChildSize,
+      minChildSize: DrawerSheetSizes.minChildSize,
+      maxChildSize: DrawerSheetSizes.maxChildSize,
+      builder: (context, scrollController) {
+        return ListView(
+          controller: scrollController,
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+          children: [
+            Row(
+              children: [
+                Expanded(
                   child: Text(
-                    '${widget.catalogTotal} dinosaurs in catalog',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: colorScheme.onSurfaceVariant,
+                    'Filter',
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                 ),
-              _buildSearchField(context),
-              const SizedBox(height: 16),
-              CheckboxListTile(
-                contentPadding: EdgeInsets.zero,
-                controlAffinity: ListTileControlAffinity.leading,
-                value: _pendingOnlyCustomImage,
-                onChanged: (value) {
-                  setState(() => _pendingOnlyCustomImage = value ?? true);
-                },
-                title: const Text('Illustrated'),
-                subtitle: Text(
-                  'Hide cards using the placeholder illustration',
+                IconButton(
+                  tooltip: 'Close',
+                  onPressed: () => Navigator.of(context).pop(),
+                  icon: const Icon(Icons.close),
+                ),
+              ],
+            ),
+            if (widget.catalogTotal != null)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Text(
+                  '${widget.catalogTotal} dinosaurs in catalog',
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: colorScheme.onSurfaceVariant,
                   ),
                 ),
               ),
-              CheckboxListTile(
-                contentPadding: EdgeInsets.zero,
-                controlAffinity: ListTileControlAffinity.leading,
-                value: _pendingOnlyLlmEnriched,
-                onChanged: (value) {
-                  setState(() => _pendingOnlyLlmEnriched = value ?? true);
+            _buildSearchField(context),
+            const SizedBox(height: 20),
+            SettingsFormStyles.settingsRow(
+              context: context,
+              label: 'Illustrated',
+              description: 'Hide cards using the placeholder illustration.',
+              controlWidth: 168,
+              control: SettingsFormStyles.densePopupField<bool>(
+                context: context,
+                outlineBorder: outlineBorder,
+                selectedChild: Text(
+                  _pendingOnlyCustomImage ? 'Illustrated only' : 'All',
+                  style: theme.textTheme.bodyMedium,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                entries: [
+                  DensePopupEntry(
+                    value: false,
+                    child: Text('All', style: theme.textTheme.bodyMedium),
+                  ),
+                  DensePopupEntry(
+                    value: true,
+                    child: Text(
+                      'Illustrated only',
+                      style: theme.textTheme.bodyMedium,
+                    ),
+                  ),
+                ],
+                onSelected: (value) {
+                  if (value == null) return;
+                  _updatePending(() => _pendingOnlyCustomImage = value);
                 },
-                title: const Text('Enriched'),
-                subtitle: Text(
-                  'Only show dinosaurs with LLM enrichment completed',
-                  style: theme.textTheme.bodySmall?.copyWith(
+              ),
+            ),
+            const SizedBox(height: 20),
+            SettingsFormStyles.settingsRow(
+              context: context,
+              label: 'Enriched',
+              description: 'Only show dinosaurs with LLM enrichment completed.',
+              controlWidth: 168,
+              control: SettingsFormStyles.densePopupField<bool>(
+                context: context,
+                outlineBorder: outlineBorder,
+                selectedChild: Text(
+                  _pendingOnlyLlmEnriched ? 'Enriched only' : 'All',
+                  style: theme.textTheme.bodyMedium,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                entries: [
+                  DensePopupEntry(
+                    value: false,
+                    child: Text('All', style: theme.textTheme.bodyMedium),
+                  ),
+                  DensePopupEntry(
+                    value: true,
+                    child: Text(
+                      'Enriched only',
+                      style: theme.textTheme.bodyMedium,
+                    ),
+                  ),
+                ],
+                onSelected: (value) {
+                  if (value == null) return;
+                  _updatePending(() => _pendingOnlyLlmEnriched = value);
+                },
+              ),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              'Time range',
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              'Showing ${_pendingRange.end.round()} – ${_pendingRange.start.round()} Ma',
+              style: SettingsFormStyles.finePrintStyle(context),
+            ),
+            Transform(
+              alignment: Alignment.center,
+              transform: Matrix4.identity()..scaleByDouble(-1.0, 1.0, 1.0, 1.0),
+              child: RangeSlider(
+                values: _pendingRange,
+                min: GeologicTimeline.mesozoicYoungerMa,
+                max: GeologicTimeline.mesozoicOlderMa,
+                divisions: divisions,
+                onChanged: (values) {
+                  _updatePending(() => _pendingRange = values);
+                },
+              ),
+            ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  '${GeologicTimeline.mesozoicOlderMa.round()} Ma',
+                  style: theme.textTheme.labelSmall?.copyWith(
                     color: colorScheme.onSurfaceVariant,
                   ),
                 ),
-              ),
-              const SizedBox(height: 20),
-              Text(
-                'Time range',
-                style: theme.textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.w600,
+                Text(
+                  '${GeologicTimeline.mesozoicYoungerMa.round()} Ma',
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'Showing ${_pendingRange.end.round()} – ${_pendingRange.start.round()} Ma',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: colorScheme.onSurfaceVariant,
+              ],
+            ),
+            const SizedBox(height: 24),
+            Row(
+              children: [
+                TextButton(
+                  onPressed: _buildPendingFilters().hasActiveFilters
+                      ? _clearPending
+                      : null,
+                  child: const Text('Clear'),
                 ),
-              ),
-              Transform(
-                alignment: Alignment.center,
-                transform: Matrix4.identity()..scaleByDouble(-1.0, 1.0, 1.0, 1.0),
-                child: RangeSlider(
-                  values: _pendingRange,
-                  min: GeologicTimeline.mesozoicYoungerMa,
-                  max: GeologicTimeline.mesozoicOlderMa,
-                  divisions: divisions,
-                  onChanged: (values) {
-                    setState(() => _pendingRange = values);
-                  },
+                const Spacer(),
+                FilledButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('Apply'),
                 ),
-              ),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    '${GeologicTimeline.mesozoicOlderMa.round()} Ma',
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                  Text(
-                    '${GeologicTimeline.mesozoicYoungerMa.round()} Ma',
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 24),
-              Row(
-                children: [
-                  TextButton(
-                    onPressed: _buildPendingFilters().hasActiveFilters
-                        ? _clearPending
-                        : null,
-                    child: const Text('Clear'),
-                  ),
-                  const Spacer(),
-                  FilledButton(
-                    onPressed: () {
-                      _commitPending();
-                      Navigator.of(context).pop();
-                    },
-                    child: const Text('Apply'),
-                  ),
-                ],
-              ),
-            ],
-          );
-        },
-      ),
+              ],
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -270,7 +289,9 @@ class _DinosaurFilterSheetState extends State<DinosaurFilterSheet> {
         controller: _searchController,
         textCapitalization: TextCapitalization.sentences,
         onTapOutside: (_) => FocusManager.instance.primaryFocus?.unfocus(),
-        onChanged: (value) => setState(() => _pendingSearch = value),
+        onChanged: (value) {
+          _updatePending(() => _pendingSearch = value);
+        },
         decoration: InputDecoration(
           hintText: 'Search dinosaurs…',
           prefixIcon: Icon(
@@ -285,7 +306,7 @@ class _DinosaurFilterSheetState extends State<DinosaurFilterSheet> {
                   ),
                   onPressed: () {
                     _searchController.clear();
-                    setState(() => _pendingSearch = '');
+                    _updatePending(() => _pendingSearch = '');
                   },
                 )
               : null,

@@ -140,6 +140,94 @@ class SettingsFormStyles {
       ),
     );
   }
+
+  /// Multi-select companion to [densePopupField] — same chrome, checkboxes
+  /// inside a [MenuAnchor] so the menu stays open while toggling.
+  static Widget multiSelectDensePopup({
+    required BuildContext context,
+    required InputBorder outlineBorder,
+    required Widget selectedChild,
+    required List<MultiSelectPopupEntry> entries,
+    required void Function(String value, bool selected) onToggle,
+    void Function(String value)? onSelectOnly,
+    bool enabled = true,
+  }) {
+    final theme = Theme.of(context);
+    return DecoratedBox(
+      decoration: ShapeDecoration(shape: outlineBorder),
+      child: SizedBox(
+        height: 48,
+        child: MenuAnchor(
+          alignmentOffset: const Offset(0, 4),
+          style: MenuStyle(
+            shape: WidgetStatePropertyAll(
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            maximumSize: const WidgetStatePropertyAll(Size(320, 360)),
+          ),
+          builder: (context, controller, _) {
+            return InkWell(
+              borderRadius: BorderRadius.circular(8),
+              onTap: !enabled
+                  ? null
+                  : () {
+                      if (controller.isOpen) {
+                        controller.close();
+                      } else {
+                        controller.open();
+                      }
+                    },
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                child: Row(
+                  children: [
+                    Expanded(child: selectedChild),
+                    Icon(
+                      Icons.arrow_drop_down,
+                      color: enabled
+                          ? IconTheme.of(context).color
+                          : Theme.of(context).disabledColor,
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+          menuChildren: [
+            for (final entry in entries)
+              CheckboxMenuButton(
+                closeOnActivate: false,
+                value: entry.selected,
+                onChanged: !enabled || !entry.enabled
+                    ? null
+                    : (checked) {
+                        onToggle(entry.value, checked ?? false);
+                      },
+                child: GestureDetector(
+                  onLongPress: onSelectOnly == null || !enabled
+                      ? null
+                      : () => onSelectOnly(entry.value),
+                  child: Text(
+                    entry.label,
+                    style: theme.textTheme.bodyMedium,
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Summary label for a multi-select set (All / None / "3 of 12").
+  static String multiSelectSummary({
+    required int selectedCount,
+    required int totalCount,
+  }) {
+    if (selectedCount <= 0) return 'None';
+    if (selectedCount >= totalCount) return 'All';
+    return '$selectedCount of $totalCount';
+  }
 }
 
 class DensePopupEntry<T> {
@@ -154,4 +242,18 @@ class DensePopupEntry<T> {
   final Widget child;
   final bool enabled;
   final double height;
+}
+
+class MultiSelectPopupEntry {
+  const MultiSelectPopupEntry({
+    required this.value,
+    required this.label,
+    required this.selected,
+    this.enabled = true,
+  });
+
+  final String value;
+  final String label;
+  final bool selected;
+  final bool enabled;
 }
