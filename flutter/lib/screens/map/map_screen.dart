@@ -11,6 +11,7 @@ import '../../controllers/catalog_mode_controller.dart';
 import '../../controllers/field_discovery_coordinator.dart';
 import '../../controllers/field_session_coordinator.dart';
 import '../../controllers/fossil_catalog_controller.dart';
+import '../../controllers/guidance_session_controller.dart';
 import '../../controllers/map_controller.dart' as map_data;
 import '../../controllers/site_catalog_controller.dart';
 import '../../controllers/splash_hold_controller.dart';
@@ -27,6 +28,7 @@ import '../../widgets/dino/dinosaur_filter_fab.dart';
 import '../../widgets/map/aerial_mission_draw_overlay.dart';
 import '../../widgets/map/aerial_mission_focus_overlay.dart';
 import '../../widgets/map/field_data_purge_dialog.dart';
+import '../../widgets/map/guidance_overlay.dart';
 import '../../widgets/map/map_control_buttons.dart';
 import '../../widgets/map/map_perf_hud.dart';
 import '../../widgets/map/mapbox_camera_coordinator.dart';
@@ -91,6 +93,7 @@ class _MapScreenState extends State<MapScreen>
     final avatarUrl = AuthService.imageUrl(auth.currentUser?.profileImage);
     final aerialRecon = context.watch<AerialMissionController>();
     final aerialDrawMode = aerialRecon.isDrawMode;
+    final guidance = context.watch<GuidanceSessionController>();
 
     // Force north-fixed while drawing a scout loop.
     if (aerialDrawMode && _rotateMap) {
@@ -101,7 +104,18 @@ class _MapScreenState extends State<MapScreen>
             _rotateMap = false;
             _followUser = true;
           });
+          context.read<GuidanceSessionController>().onRotateModeExited();
         }
+      });
+    }
+
+    if (guidance.requestEnterRotate) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        final g = context.read<GuidanceSessionController>();
+        if (!g.requestEnterRotate) return;
+        g.consumeEnterRotateRequest();
+        _ensureRotationMode();
       });
     }
 
@@ -438,6 +452,8 @@ class _MapScreenState extends State<MapScreen>
               )
             else if (aerialRecon.focusedMission != null)
               const AerialMissionFocusOverlay(),
+            if (_rotateMap && !aerialDrawMode && guidance.isActive)
+              const GuidanceOverlay(),
           ],
         );
       },

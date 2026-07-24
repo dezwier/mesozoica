@@ -2,12 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../controllers/aerial_mission_controller.dart';
+import '../../controllers/guidance_session_controller.dart';
 import '../../models/aerial_mission_kind.dart';
+import '../../models/guidance_tool_kind.dart';
 import '../../models/tool.dart';
 import '../../services/tool_service.dart';
 import '../tools/aerial_mission_flight_stats.dart';
 import '../tools/aerial_mission_actions.dart';
 import '../tools/aerial_mission_missions_sheet.dart';
+import '../tools/guidance_tool_stats.dart';
 import 'card_section_panel.dart';
 
 /// Per-action-key extras for tool card backs (stats, ongoing, info).
@@ -30,6 +33,7 @@ class ToolCardExtensions {
 
   static final List<ToolCardExtension> _all = [
     AerialMissionCardExtension(),
+    GuidanceCardExtension(),
   ];
 
   static ToolCardExtension? forTool(ToolSummary tool) {
@@ -69,6 +73,78 @@ class AerialMissionCardExtension implements ToolCardExtension {
   VoidCallback? infoHandler(BuildContext context, ToolSummary tool) {
     final kind = AerialMissionKind.requireToolName(tool.name);
     return () => AerialMissionsSheet.show(context, kind: kind);
+  }
+}
+
+class GuidanceCardExtension implements ToolCardExtension {
+  @override
+  String get actionKey => 'site_guidance';
+
+  @override
+  bool matches(ToolSummary tool) =>
+      GuidanceToolKind.tryParseToolName(tool.name) != null;
+
+  @override
+  Widget? buildDeployStats(BuildContext context, ToolSummary tool) {
+    final kind = GuidanceToolKind.requireToolName(tool.name);
+    return CardSectionPanel(
+      child: GuidanceToolStats(actionKey: kind.actionKey),
+    );
+  }
+
+  @override
+  Widget? buildOngoingPanel(BuildContext context, ToolSummary tool) {
+    final kind = GuidanceToolKind.requireToolName(tool.name);
+    return _GuidanceOngoingPanel(toolId: tool.id, actionKey: kind.actionKey);
+  }
+
+  @override
+  VoidCallback? infoHandler(BuildContext context, ToolSummary tool) => null;
+}
+
+class _GuidanceOngoingPanel extends StatelessWidget {
+  const _GuidanceOngoingPanel({
+    required this.toolId,
+    required this.actionKey,
+  });
+
+  final int toolId;
+  final String actionKey;
+
+  @override
+  Widget build(BuildContext context) {
+    final guidance = context.watch<GuidanceSessionController>();
+    if (!guidance.isActive) return const SizedBox.shrink();
+    final session = guidance.session;
+    if (session == null) return const SizedBox.shrink();
+    if (session.toolId != toolId && session.actionKey != actionKey) {
+      return const SizedBox.shrink();
+    }
+
+    final remaining = guidance.remaining;
+    final minutes = remaining == null
+        ? '—'
+        : '${remaining.inMinutes.clamp(0, 999)} min left';
+
+    return CardSectionPanel(
+      label: 'Active session',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            minutes,
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
+          const SizedBox(height: 8),
+          GuidanceToolStats(actionKey: session.actionKey, compact: true),
+          const SizedBox(height: 10),
+          OutlinedButton(
+            onPressed: () => guidance.stop(),
+            child: const Text('Stop'),
+          ),
+        ],
+      ),
+    );
   }
 }
 

@@ -246,6 +246,81 @@ class ToolService {
     return AerialMission.fromJson(decoded);
   }
 
+  Future<GuidanceSession> startGuidanceSession({required int toolId}) async {
+    final uri = AppConfig.toolGuidanceSessionUri(toolId);
+    if (kDebugMode) {
+      debugPrint('ToolService POST $uri');
+    }
+    final response = await ApiClient.instance
+        .sendPost(
+          uri,
+          client: _client,
+          headers: await _headers(jsonBody: true),
+        )
+        .timeout(const Duration(seconds: 15));
+
+    if (response.statusCode != 201) {
+      throw ToolServiceException(
+        _errorDetail(response.body) ??
+            'Failed to start guidance session (${response.statusCode})',
+      );
+    }
+
+    final decoded = jsonDecode(response.body);
+    if (decoded is! Map<String, dynamic>) {
+      throw const ToolServiceException('Invalid guidance session response');
+    }
+    return GuidanceSession.fromJson(decoded);
+  }
+
+  Future<GuidanceSession?> fetchActiveGuidanceSession() async {
+    final uri = AppConfig.activeGuidanceSessionUri();
+    if (kDebugMode) {
+      debugPrint('ToolService GET $uri');
+    }
+    final response = await ApiClient.instance
+        .sendGet(uri, client: _client, headers: await _headers())
+        .timeout(const Duration(seconds: 15));
+
+    if (response.statusCode == 404) return null;
+    if (response.statusCode != 200) {
+      throw ToolServiceException(
+        'Failed to load guidance session (${response.statusCode})',
+      );
+    }
+    final decoded = jsonDecode(response.body);
+    if (decoded is! Map<String, dynamic>) {
+      throw const ToolServiceException('Invalid guidance session response');
+    }
+    return GuidanceSession.fromJson(decoded);
+  }
+
+  Future<GuidanceSession> cancelGuidanceSession() async {
+    final uri = AppConfig.cancelGuidanceSessionUri();
+    if (kDebugMode) {
+      debugPrint('ToolService POST $uri');
+    }
+    final response = await ApiClient.instance
+        .sendPost(
+          uri,
+          client: _client,
+          headers: await _headers(jsonBody: true),
+        )
+        .timeout(const Duration(seconds: 15));
+
+    if (response.statusCode != 200) {
+      throw ToolServiceException(
+        _errorDetail(response.body) ??
+            'Failed to cancel guidance session (${response.statusCode})',
+      );
+    }
+    final decoded = jsonDecode(response.body);
+    if (decoded is! Map<String, dynamic>) {
+      throw const ToolServiceException('Invalid guidance cancel response');
+    }
+    return GuidanceSession.fromJson(decoded);
+  }
+
   static String? _errorDetail(String body) {
     final decoded = AppConfig.decodeJson(body);
     if (decoded == null) return null;
@@ -357,6 +432,56 @@ class AerialMission {
     final parsed =
         DateTime.tryParse(hasTz ? value : '${value}Z');
     return parsed?.toUtc();
+  }
+}
+
+class GuidanceSession {
+  const GuidanceSession({
+    required this.sessionId,
+    required this.actionKey,
+    required this.status,
+    required this.toolId,
+    required this.durationMinutes,
+    required this.startedAt,
+    required this.expiresAt,
+    this.discoveryChance,
+    this.directionExactness,
+    this.distanceExactness,
+    this.cancelledAt,
+  });
+
+  final int sessionId;
+  final String actionKey;
+  final String status;
+  final int toolId;
+  final double? discoveryChance;
+  final double? directionExactness;
+  final double? distanceExactness;
+  final int durationMinutes;
+  final DateTime startedAt;
+  final DateTime expiresAt;
+  final DateTime? cancelledAt;
+
+  bool get isActive => status == 'active';
+  bool get isExpired =>
+      !isActive || DateTime.now().toUtc().isAfter(expiresAt);
+
+  factory GuidanceSession.fromJson(Map<String, dynamic> json) {
+    return GuidanceSession(
+      sessionId: json['session_id'] as int? ?? 0,
+      actionKey: json['action_key'] as String? ?? '',
+      status: json['status'] as String? ?? '',
+      toolId: json['tool_id'] as int? ?? 0,
+      discoveryChance: (json['discovery_chance'] as num?)?.toDouble(),
+      directionExactness: (json['direction_exactness'] as num?)?.toDouble(),
+      distanceExactness: (json['distance_exactness'] as num?)?.toDouble(),
+      durationMinutes: json['duration_minutes'] as int? ?? 15,
+      startedAt: AerialMission._parseDate(json['started_at']) ??
+          DateTime.now().toUtc(),
+      expiresAt: AerialMission._parseDate(json['expires_at']) ??
+          DateTime.now().toUtc(),
+      cancelledAt: AerialMission._parseDate(json['cancelled_at']),
+    );
   }
 }
 

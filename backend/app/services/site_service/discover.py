@@ -60,7 +60,9 @@ def discover_site(
     if site.latitude is None or site.longitude is None:
         raise ValidationError("Site has no coordinates")
 
-    params = resolve_site_discovery_params(session, user_id=user_id, site=site)
+    params = resolve_site_discovery_params(
+        session, user_id=user_id, site=site, lat=lat, lon=lon
+    )
     distance_km = haversine_km(
         lat, lon, float(site.latitude), float(site.longitude)
     )

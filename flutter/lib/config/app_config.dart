@@ -377,11 +377,20 @@ class AppConfig {
   static Uri toolAerialMissionUri(int id) =>
       Uri.parse('$baseApiUrl/api/v1/tools/$id/actions/aerial-mission');
 
+  static Uri toolGuidanceSessionUri(int id) =>
+      Uri.parse('$baseApiUrl/api/v1/tools/$id/actions/guidance-session');
+
   static Uri aerialMissionsUri() =>
       Uri.parse('$baseApiUrl/api/v1/tools/missions/aerial');
 
   static Uri aerialMissionCancelUri(int missionId) =>
       Uri.parse('$baseApiUrl/api/v1/tools/missions/aerial/$missionId/cancel');
+
+  static Uri activeGuidanceSessionUri() =>
+      Uri.parse('$baseApiUrl/api/v1/tools/sessions/guidance/active');
+
+  static Uri cancelGuidanceSessionUri() =>
+      Uri.parse('$baseApiUrl/api/v1/tools/sessions/guidance/cancel');
 
   static Future<bool> checkApiHealth() async {
     try {

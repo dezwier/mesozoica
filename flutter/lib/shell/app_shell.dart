@@ -11,6 +11,7 @@ import '../controllers/auth_controller.dart';
 import '../controllers/catalog_mode_controller.dart';
 import '../controllers/field_discovery_coordinator.dart';
 import '../controllers/field_session_coordinator.dart';
+import '../controllers/guidance_session_controller.dart';
 import '../controllers/map_controller.dart';
 import '../controllers/notification_controller.dart';
 import '../controllers/site_catalog_controller.dart';
@@ -88,6 +89,11 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
       final aerial = context.read<AerialMissionController>();
       _aerialRecon = aerial;
       aerial.addListener(_onAerialReconChanged);
+
+      context.read<GuidanceSessionController>().bind(
+            discovery: discovery,
+            location: context.read<LocationService>(),
+          );
 
       context.read<FieldSessionCoordinator>().bind(
             locationService: context.read<LocationService>(),

@@ -291,6 +291,68 @@ class AerialMissionActionConfig(BaseModel):
 AerialReconActionConfig = AerialMissionActionConfig
 
 
+def _clamp_unit_interval(value: float, *, label: str) -> float:
+    if value < 0.0 or value > 1.0:
+        raise ValueError(f"{label} must be between 0.0 and 1.0")
+    return value
+
+
+class GuidanceActionConfig(BaseModel):
+    """Knobs for site-guidance tools (compass / proximity / navigator)."""
+
+    model_config = {"frozen": True}
+
+    duration_minutes: int = 15
+    # Single-axis tools (geo_compass direction, proximity_scanner distance).
+    exactness: float | None = None
+    # Site navigator dual axes.
+    direction_exactness: float | None = None
+    distance_exactness: float | None = None
+    discovery_chance: float | None = None
+    needle_jitter_period_s: float = 3.0
+    max_jitter_deg: float = 90.0
+    band_edges_m: list[float] = Field(
+        default_factory=lambda: [250.0, 500.0, 750.0, 1000.0]
+    )
+    mid_round_m: float = 100.0
+    stats_explanation: str = ""
+
+    @field_validator("exactness", "direction_exactness", "distance_exactness")
+    @classmethod
+    def _validate_exactness(cls, value: float | None) -> float | None:
+        if value is None:
+            return None
+        return _clamp_unit_interval(value, label="exactness")
+
+    @field_validator("discovery_chance")
+    @classmethod
+    def _validate_discovery_chance(cls, value: float | None) -> float | None:
+        if value is None:
+            return None
+        return _clamp_unit_interval(value, label="discovery_chance")
+
+    @field_validator("duration_minutes")
+    @classmethod
+    def _validate_duration(cls, value: int) -> int:
+        if value < 1:
+            raise ValueError("duration_minutes must be >= 1")
+        return value
+
+    def resolved_direction_exactness(self) -> float:
+        if self.direction_exactness is not None:
+            return float(self.direction_exactness)
+        if self.exactness is not None:
+            return float(self.exactness)
+        return 0.0
+
+    def resolved_distance_exactness(self) -> float:
+        if self.distance_exactness is not None:
+            return float(self.distance_exactness)
+        if self.exactness is not None:
+            return float(self.exactness)
+        return 0.0
+
+
 class ToolActionsConfig(BaseModel):
     model_config = {"frozen": True}
 
@@ -306,6 +368,39 @@ class ToolActionsConfig(BaseModel):
             stats_explanation=(
                 "Drone loops fly at this speed within the max range; sites within "
                 "discovery distance are rolled at the listed chance."
+            ),
+        )
+    )
+    geo_compass: GuidanceActionConfig = Field(
+        default_factory=lambda: GuidanceActionConfig(
+            exactness=0.0,
+            discovery_chance=0.9,
+            duration_minutes=15,
+            stats_explanation=(
+                "Points toward the nearest undiscovered site for this duration; "
+                "lower exactness adds needle drift."
+            ),
+        )
+    )
+    proximity_scanner: GuidanceActionConfig = Field(
+        default_factory=lambda: GuidanceActionConfig(
+            exactness=0.0,
+            duration_minutes=15,
+            discovery_chance=None,
+            stats_explanation=(
+                "Shows how far you are from the nearest undiscovered site."
+            ),
+        )
+    )
+    site_navigator: GuidanceActionConfig = Field(
+        default_factory=lambda: GuidanceActionConfig(
+            direction_exactness=0.0,
+            distance_exactness=0.0,
+            discovery_chance=0.9,
+            duration_minutes=15,
+            stats_explanation=(
+                "Combines compass direction and proximity readout for the "
+                "nearest undiscovered site."
             ),
         )
     )

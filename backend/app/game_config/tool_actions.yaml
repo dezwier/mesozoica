@@ -30,3 +30,36 @@ aerial_scout:
   stats_explanation: >-
     Drone loops fly at this speed within the max range; sites within
     discovery distance are rolled at the listed chance.
+
+geo_compass:
+  exactness: 0.0
+  discovery_chance: 0.9
+  duration_minutes: 15
+  needle_jitter_period_s: 3
+  max_jitter_deg: 90
+  stats_explanation: >-
+    Points toward the nearest undiscovered site for this duration; lower
+    exactness adds needle drift. Walk-in discovery of that nearest site uses
+    the listed chance instead of the base rate.
+
+proximity_scanner:
+  exactness: 0.0
+  duration_minutes: 15
+  band_edges_m: [250, 500, 750, 1000]
+  mid_round_m: 100
+  stats_explanation: >-
+    Shows how far you are from the nearest undiscovered site. Low exactness
+    uses coarse bands; mid rounds to 100 m; high shows precise distance.
+
+site_navigator:
+  direction_exactness: 0.0
+  distance_exactness: 0.0
+  discovery_chance: 0.9
+  duration_minutes: 15
+  needle_jitter_period_s: 3
+  max_jitter_deg: 90
+  band_edges_m: [250, 500, 750, 1000]
+  mid_round_m: 100
+  stats_explanation: >-
+    Combines compass direction and proximity readout for the nearest
+    undiscovered site, with the listed walk-in discovery chance for that site.

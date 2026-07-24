@@ -11,6 +11,7 @@ from sqlmodel import Session, col, select
 from app.core.database import get_session
 from app.core.exceptions import ValidationError
 from app.core.security import get_current_admin_user, get_current_user, get_optional_current_user
+from app.models.guidance_session import GuidanceSession
 from app.models.tool import Tool
 from app.models.tool_mission import ToolMission
 from app.models.tool_mission_event import (
@@ -22,9 +23,12 @@ from app.models.user import User
 from app.schemas.tool import ToolCategoryItem, ToolCategoryListResponse, ToolListResponse, ToolSummary
 from app.services.tool_action_service import (
     cancel_aerial_mission,
+    cancel_guidance_session,
+    get_active_guidance_session,
     list_aerial_missions,
     mission_route_dicts,
     start_aerial_mission,
+    start_guidance_session,
 )
 from app.services.tool_action_service.aerial_mission_kinds import (
     config_for_action_key,
@@ -92,6 +96,36 @@ class AerialMissionResponse(BaseModel):
     tool_id: int
     tool_image_url: str | None = None
     discovered_site_ids: list[int] = Field(default_factory=list)
+
+
+class GuidanceSessionResponse(BaseModel):
+    session_id: int
+    action_key: str
+    status: str
+    tool_id: int
+    discovery_chance: float | None = None
+    direction_exactness: float | None = None
+    distance_exactness: float | None = None
+    duration_minutes: int
+    started_at: datetime
+    expires_at: datetime
+    cancelled_at: datetime | None = None
+
+
+def _guidance_session_response(row: GuidanceSession) -> GuidanceSessionResponse:
+    return GuidanceSessionResponse(
+        session_id=int(row.id),
+        action_key=row.action_key,
+        status=row.status,
+        tool_id=int(row.tool_id),
+        discovery_chance=row.discovery_chance,
+        direction_exactness=row.direction_exactness,
+        distance_exactness=row.distance_exactness,
+        duration_minutes=int(row.duration_minutes),
+        started_at=row.started_at,
+        expires_at=row.expires_at,
+        cancelled_at=row.cancelled_at,
+    )
 
 
 def _tool_image_url(session: Session, tool_id: int) -> str | None:
@@ -295,6 +329,40 @@ def post_cancel_aerial_mission(
     return AerialMissionResponse(**item.model_dump())
 
 
+@router.get(
+    "/sessions/guidance/active",
+    response_model=GuidanceSessionResponse,
+)
+def get_active_guidance(
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+) -> GuidanceSessionResponse:
+    row = get_active_guidance_session(session, user_id=int(current_user.id))
+    if row is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No active guidance session",
+        )
+    return _guidance_session_response(row)
+
+
+@router.post(
+    "/sessions/guidance/cancel",
+    response_model=GuidanceSessionResponse,
+)
+def post_cancel_guidance_session(
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+) -> GuidanceSessionResponse:
+    row = cancel_guidance_session(session, user_id=int(current_user.id))
+    if row is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No active guidance session",
+        )
+    return _guidance_session_response(row)
+
+
 @router.post("/{tool_id}/collect", response_model=ToolSummary)
 def post_collect_tool(
     tool_id: int,
@@ -330,6 +398,24 @@ def post_aerial_mission(
     )
     item = _mission_item(session, mission)
     return AerialMissionResponse(**item.model_dump())
+
+
+@router.post(
+    "/{tool_id}/actions/guidance-session",
+    response_model=GuidanceSessionResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+def post_guidance_session(
+    tool_id: int,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+) -> GuidanceSessionResponse:
+    row = start_guidance_session(
+        session,
+        user_id=int(current_user.id),
+        tool_id=tool_id,
+    )
+    return _guidance_session_response(row)
 
 
 @router.get("/{tool_id}", response_model=ToolSummary)

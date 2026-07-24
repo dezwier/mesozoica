@@ -87,6 +87,7 @@ mixin _MapScreenCameraMixin on State<MapScreen> {
         _aerialFocusAnimating = false;
       });
       _mapboxCamera.clearPendingFollow();
+      context.read<GuidanceSessionController>().onRotateModeExited();
     } else {
       setState(() {
         _followUser = false;
@@ -185,6 +186,7 @@ mixin _MapScreenCameraMixin on State<MapScreen> {
         _followUser = false;
       });
       _mapboxCamera.clearPendingFollow();
+      context.read<GuidanceSessionController>().onRotateModeExited();
       // MapboxFieldMap exits FollowPuck → Idle + north-fixed camera.
     } else if (_rotateMap) {
       // Rotate mode stays locked on the user — don't pan away for site taps.
@@ -228,7 +230,25 @@ mixin _MapScreenCameraMixin on State<MapScreen> {
         }
       }
     });
+    if (!enteringRotate) {
+      context.read<GuidanceSessionController>().onRotateModeExited();
+    }
     // MapboxFieldMap switches FollowPuck ↔ Idle from rotateWithHeading.
+  }
+
+  void _ensureRotationMode() {
+    if (_rotateMap) return;
+    if (!MapConfig.hasMapboxAccessToken) return;
+    setState(() {
+      _rotateMap = true;
+      _followUser = true;
+      _zoomLevel = MapConfig.mapboxRotateZoom;
+      _mapboxBannerMessage = null;
+      final location = context.read<LocationService>().currentLocation;
+      if (location != null) {
+        _lastFollowedLocation = location;
+      }
+    });
   }
 
   void _setInitialCamera({

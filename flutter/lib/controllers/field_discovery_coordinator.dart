@@ -48,6 +48,33 @@ class FieldDiscoveryCoordinator extends ChangeNotifier {
   FieldDiscoverResponse? get pendingCelebration =>
       _celebrationConsumed ? null : _pendingCelebration;
 
+  /// Read-only snapshot of nearby discoverable (unlinked) field sites.
+  List<SiteSummary> get discoverableCache =>
+      List<SiteSummary>.unmodifiable(_discoverableCache);
+
+  /// Nearest discoverable site to [from], or null if cache is empty.
+  ({SiteSummary site, double distanceM})? nearestDiscoverable(LatLng from) {
+    SiteSummary? best;
+    var bestM = double.infinity;
+    for (final site in _discoverableCache) {
+      final lat = site.latitude;
+      final lon = site.longitude;
+      if (lat == null || lon == null) continue;
+      final d = Geolocator.distanceBetween(
+        from.latitude,
+        from.longitude,
+        lat,
+        lon,
+      );
+      if (d < bestM) {
+        bestM = d;
+        best = site;
+      }
+    }
+    if (best == null) return null;
+    return (site: best, distanceM: bestM);
+  }
+
   void bind({required LocationService locationService}) {
     if (_locationService != null) {
       return;

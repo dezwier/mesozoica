@@ -34,7 +34,7 @@ void main() {
     expect(config.fossilDiscovery.enabled, isFalse);
     expect(config.fossilExcavation.enabled, isFalse);
 
-    expect(config.toolActions.aerialRecon.maxRouteKm, 100.0);
+    expect(config.toolActions.aerialRecon.maxRouteKm, 50.0);
     expect(config.toolActions.aerialRecon.flightSpeedKmh, 50.0);
     expect(config.toolActions.aerialRecon.discoveryChance, 0.01);
     expect(config.toolActions.aerialRecon.discoveryDistanceM, 200.0);
@@ -43,13 +43,24 @@ void main() {
       config.toolActions.aerialRecon.statsExplanation,
       contains('Scout loops'),
     );
-    expect(config.toolActions.aerialScout.maxRouteKm, 30.0);
+    expect(config.toolActions.aerialScout.maxRouteKm, 5.0);
     expect(config.toolActions.aerialScout.flightSpeedKmh, 35.0);
     expect(config.toolActions.aerialScout.discoveryChance, 0.008);
-    expect(config.toolActions.aerialScout.discoveryDistanceM, 120.0);
+    expect(config.toolActions.aerialScout.discoveryDistanceM, 50.0);
     expect(
       config.toolActions.configFor('aerial_scout').maxRouteKm,
-      30.0,
+      5.0,
+    );
+
+    expect(config.toolActions.geoCompass.exactness, 0.0);
+    expect(config.toolActions.geoCompass.discoveryChance, 0.9);
+    expect(config.toolActions.geoCompass.durationMinutes, 15);
+    expect(config.toolActions.proximityScanner.discoveryChance, isNull);
+    expect(config.toolActions.siteNavigator.directionExactness, 0.0);
+    expect(config.toolActions.siteNavigator.distanceExactness, 0.0);
+    expect(
+      config.toolActions.guidanceConfigFor('site_navigator').discoveryChance,
+      0.9,
     );
 
     expect(GameConfig.isLoaded, isTrue);

@@ -319,10 +319,16 @@ class ToolActionsConfig {
   const ToolActionsConfig({
     required this.aerialRecon,
     required this.aerialScout,
+    required this.geoCompass,
+    required this.proximityScanner,
+    required this.siteNavigator,
   });
 
   final AerialMissionActionConfig aerialRecon;
   final AerialMissionActionConfig aerialScout;
+  final GuidanceActionConfig geoCompass;
+  final GuidanceActionConfig proximityScanner;
+  final GuidanceActionConfig siteNavigator;
 
   AerialMissionActionConfig configFor(String actionKey) {
     switch (actionKey) {
@@ -331,6 +337,18 @@ class ToolActionsConfig {
       case 'aerial_recon':
       default:
         return aerialRecon;
+    }
+  }
+
+  GuidanceActionConfig guidanceConfigFor(String actionKey) {
+    switch (actionKey) {
+      case 'proximity_scanner':
+        return proximityScanner;
+      case 'site_navigator':
+        return siteNavigator;
+      case 'geo_compass':
+      default:
+        return geoCompass;
     }
   }
 
@@ -355,6 +373,123 @@ class ToolActionsConfig {
               'discovery distance are rolled at the listed chance.',
         ),
       ),
+      geoCompass: GuidanceActionConfig.fromYaml(
+        GameConfig._asMap(yaml['geo_compass']),
+        defaults: const GuidanceActionConfig(
+          durationMinutes: 15,
+          exactness: 0.0,
+          discoveryChance: 0.9,
+          needleJitterPeriodS: 3.0,
+          maxJitterDeg: 90.0,
+          bandEdgesM: [250, 500, 750, 1000],
+          midRoundM: 100,
+          statsExplanation:
+              'Points toward the nearest undiscovered site for this duration; '
+              'lower exactness adds needle drift.',
+        ),
+      ),
+      proximityScanner: GuidanceActionConfig.fromYaml(
+        GameConfig._asMap(yaml['proximity_scanner']),
+        defaults: const GuidanceActionConfig(
+          durationMinutes: 15,
+          exactness: 0.0,
+          discoveryChance: null,
+          needleJitterPeriodS: 3.0,
+          maxJitterDeg: 90.0,
+          bandEdgesM: [250, 500, 750, 1000],
+          midRoundM: 100,
+          statsExplanation:
+              'Shows how far you are from the nearest undiscovered site.',
+        ),
+      ),
+      siteNavigator: GuidanceActionConfig.fromYaml(
+        GameConfig._asMap(yaml['site_navigator']),
+        defaults: const GuidanceActionConfig(
+          durationMinutes: 15,
+          directionExactness: 0.0,
+          distanceExactness: 0.0,
+          discoveryChance: 0.9,
+          needleJitterPeriodS: 3.0,
+          maxJitterDeg: 90.0,
+          bandEdgesM: [250, 500, 750, 1000],
+          midRoundM: 100,
+          statsExplanation:
+              'Combines compass direction and proximity readout for the '
+              'nearest undiscovered site.',
+        ),
+      ),
+    );
+  }
+}
+
+class GuidanceActionConfig {
+  const GuidanceActionConfig({
+    required this.durationMinutes,
+    this.exactness,
+    this.directionExactness,
+    this.distanceExactness,
+    this.discoveryChance,
+    required this.needleJitterPeriodS,
+    required this.maxJitterDeg,
+    required this.bandEdgesM,
+    required this.midRoundM,
+    required this.statsExplanation,
+  });
+
+  final int durationMinutes;
+  final double? exactness;
+  final double? directionExactness;
+  final double? distanceExactness;
+  final double? discoveryChance;
+  final double needleJitterPeriodS;
+  final double maxJitterDeg;
+  final List<double> bandEdgesM;
+  final double midRoundM;
+  final String statsExplanation;
+
+  double get resolvedDirectionExactness =>
+      directionExactness ?? exactness ?? 0.0;
+
+  double get resolvedDistanceExactness =>
+      distanceExactness ?? exactness ?? 0.0;
+
+  factory GuidanceActionConfig.fromYaml(
+    Map<String, dynamic> yaml, {
+    GuidanceActionConfig? defaults,
+  }) {
+    final d = defaults ??
+        const GuidanceActionConfig(
+          durationMinutes: 15,
+          exactness: 0.0,
+          needleJitterPeriodS: 3.0,
+          maxJitterDeg: 90.0,
+          bandEdgesM: [250, 500, 750, 1000],
+          midRoundM: 100,
+          statsExplanation: '',
+        );
+    return GuidanceActionConfig(
+      durationMinutes: _asInt(yaml['duration_minutes'], d.durationMinutes),
+      exactness: _asOptionalDouble(yaml['exactness'], d.exactness),
+      directionExactness: _asOptionalDouble(
+        yaml['direction_exactness'],
+        d.directionExactness,
+      ),
+      distanceExactness: _asOptionalDouble(
+        yaml['distance_exactness'],
+        d.distanceExactness,
+      ),
+      discoveryChance: _asOptionalDouble(
+        yaml['discovery_chance'],
+        d.discoveryChance,
+      ),
+      needleJitterPeriodS: _asDouble(
+        yaml['needle_jitter_period_s'],
+        d.needleJitterPeriodS,
+      ),
+      maxJitterDeg: _asDouble(yaml['max_jitter_deg'], d.maxJitterDeg),
+      bandEdgesM: _asDoubleList(yaml['band_edges_m'], d.bandEdgesM),
+      midRoundM: _asDouble(yaml['mid_round_m'], d.midRoundM),
+      statsExplanation: _asString(yaml['stats_explanation'], d.statsExplanation),
     );
   }
 }
@@ -433,6 +568,27 @@ double _asDouble(dynamic value, double fallback) {
   if (value is num) return value.toDouble();
   if (value is String) return double.tryParse(value) ?? fallback;
   return fallback;
+}
+
+double? _asOptionalDouble(dynamic value, double? fallback) {
+  if (value == null) return fallback;
+  if (value is num) return value.toDouble();
+  if (value is String) return double.tryParse(value) ?? fallback;
+  return fallback;
+}
+
+List<double> _asDoubleList(dynamic value, List<double> fallback) {
+  if (value is! List) return fallback;
+  final out = <double>[];
+  for (final item in value) {
+    if (item is num) {
+      out.add(item.toDouble());
+    } else if (item is String) {
+      final parsed = double.tryParse(item);
+      if (parsed != null) out.add(parsed);
+    }
+  }
+  return out.isEmpty ? fallback : out;
 }
 
 int _asInt(dynamic value, int fallback) {
