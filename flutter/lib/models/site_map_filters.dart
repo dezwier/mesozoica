@@ -114,11 +114,10 @@ DateTime discoveryDateOnlyUtc(DateTime value) {
   return (start: start, end: end);
 }
 
-/// Day span for a [RangeSlider] over [discoveryTimeWindowBounds].
+/// Inclusive calendar-day distance from window start → end.
 ///
-/// Always at least 1 so a same-day window (all discoveries today) still has a
-/// valid slider range (`max` must be greater than `min`).
-int discoveryTimeDaySpan({
+/// `0` means earliest and today are the same day (no meaningful day range).
+int discoveryTimeNaturalDaySpan({
   DateTime? now,
   DateTime? earliestDiscovery,
 }) {
@@ -126,8 +125,7 @@ int discoveryTimeDaySpan({
     now: now,
     earliestDiscovery: earliestDiscovery,
   );
-  final days = bounds.end.difference(bounds.start).inDays;
-  return days < 1 ? 1 : days;
+  return bounds.end.difference(bounds.start).inDays;
 }
 
 /// Earliest non-null `discoveredAt` among [sites], or null if none.

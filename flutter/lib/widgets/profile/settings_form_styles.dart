@@ -195,23 +195,15 @@ class SettingsFormStyles {
           },
           menuChildren: [
             for (final entry in entries)
-              CheckboxMenuButton(
-                closeOnActivate: false,
-                value: entry.selected,
-                onChanged: !enabled || !entry.enabled
+              _MultiSelectMenuRow(
+                label: entry.label,
+                selected: entry.selected,
+                enabled: enabled && entry.enabled,
+                labelStyle: theme.textTheme.bodyMedium,
+                onToggle: () => onToggle(entry.value, !entry.selected),
+                onSelectOnly: onSelectOnly == null
                     ? null
-                    : (checked) {
-                        onToggle(entry.value, checked ?? false);
-                      },
-                child: GestureDetector(
-                  onLongPress: onSelectOnly == null || !enabled
-                      ? null
-                      : () => onSelectOnly(entry.value),
-                  child: Text(
-                    entry.label,
-                    style: theme.textTheme.bodyMedium,
-                  ),
-                ),
+                    : () => onSelectOnly(entry.value),
               ),
           ],
         ),
@@ -227,6 +219,64 @@ class SettingsFormStyles {
     if (selectedCount <= 0) return 'None';
     if (selectedCount >= totalCount) return 'All';
     return '$selectedCount of $totalCount';
+  }
+}
+
+class _MultiSelectMenuRow extends StatelessWidget {
+  const _MultiSelectMenuRow({
+    required this.label,
+    required this.selected,
+    required this.enabled,
+    required this.labelStyle,
+    required this.onToggle,
+    this.onSelectOnly,
+  });
+
+  final String label;
+  final bool selected;
+  final bool enabled;
+  final TextStyle? labelStyle;
+  final VoidCallback onToggle;
+  final VoidCallback? onSelectOnly;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 280,
+      child: InkWell(
+        onTap: enabled ? onToggle : null,
+        onLongPress: !enabled || onSelectOnly == null
+            ? null
+            : () {
+                Feedback.forLongPress(context);
+                onSelectOnly!();
+              },
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+          child: Row(
+            children: [
+              SizedBox(
+                width: 32,
+                height: 40,
+                child: IgnorePointer(
+                  child: Checkbox(
+                    value: selected,
+                    onChanged: enabled ? (_) {} : null,
+                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    visualDensity:
+                        const VisualDensity(horizontal: -4, vertical: -4),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 4),
+              Expanded(
+                child: Text(label, style: labelStyle),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 

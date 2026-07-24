@@ -76,11 +76,15 @@ class _SiteFilterSheetState extends State<SiteFilterSheet> {
   late bool _pendingShowPastReconRoutes;
   late final DateTime _windowStart;
   late final DateTime _windowEnd;
+  /// Calendar days from earliest → today. `0` = same day (no range slider).
   late final int _dayCount;
   late final bool _hasDiscoveryDates;
   bool _applied = false;
 
   static final _dayLabel = DateFormat('MMM d, yyyy');
+
+  bool get _canSlideDiscoveryDays =>
+      _hasDiscoveryDates && _dayCount >= 1;
 
   @override
   void initState() {
@@ -91,8 +95,7 @@ class _SiteFilterSheetState extends State<SiteFilterSheet> {
     );
     _windowStart = bounds.start;
     _windowEnd = bounds.end;
-    // Same-day discoveries used to yield dayCount=0 and hide the slider.
-    _dayCount = discoveryTimeDaySpan(
+    _dayCount = discoveryTimeNaturalDaySpan(
       earliestDiscovery: widget.earliestDiscovery,
     );
     _pendingStatuses = {...widget.initialFilters.statuses};
@@ -112,7 +115,11 @@ class _SiteFilterSheetState extends State<SiteFilterSheet> {
   }
 
   RangeValues _daysFromFilters(SiteMapFilters filters) {
-    if (_dayCount <= 0) return const RangeValues(0, 0);
+    if (!_canSlideDiscoveryDays) return const RangeValues(0, 0);
+    // Unbound filter = full window (do not map start/end dates to day 0/0).
+    if (filters.discoveredAfter == null && filters.discoveredBefore == null) {
+      return RangeValues(0, _dayCount.toDouble());
+    }
     final after = filters.discoveredAfter == null
         ? _windowStart
         : discoveryDateOnlyUtc(filters.discoveredAfter!);
@@ -134,14 +141,11 @@ class _SiteFilterSheetState extends State<SiteFilterSheet> {
 
   DateTime _dateAtDay(double day) {
     final clamped = day.round().clamp(0, _dayCount);
-    final date = _windowStart.add(Duration(days: clamped));
-    // Same-day window uses daySpan=1 with max thumb past end; clamp to today.
-    if (date.isAfter(_windowEnd)) return _windowEnd;
-    return date;
+    return _windowStart.add(Duration(days: clamped));
   }
 
   bool get _discoveryTimeIsFullSpan =>
-      !_hasDiscoveryDates ||
+      !_canSlideDiscoveryDays ||
       (_pendingDiscoveryDays.start <= 0.001 &&
           _pendingDiscoveryDays.end >= _dayCount - 0.001);
 
@@ -202,8 +206,13 @@ class _SiteFilterSheetState extends State<SiteFilterSheet> {
   }
 
   String _formatDay(double day) {
-    if (!_hasDiscoveryDates) return 'Today';
     final date = _dateAtDay(day);
+    if (!date.isBefore(_windowEnd)) return 'Today';
+    return _dayLabel.format(date.toLocal());
+  }
+
+  String _formatWindowDay(DateTime day) {
+    final date = discoveryDateOnlyUtc(day);
     if (!date.isBefore(_windowEnd)) return 'Today';
     return _dayLabel.format(date.toLocal());
   }
@@ -291,6 +300,17 @@ class _SiteFilterSheetState extends State<SiteFilterSheet> {
                   padding: const EdgeInsets.only(top: 8),
                   child: Text(
                     'No discovery dates on current sites yet.',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                )
+              else if (!_canSlideDiscoveryDays)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Text(
+                    'All current sites were discovered on '
+                    '${_formatWindowDay(_windowStart)}.',
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: colorScheme.onSurfaceVariant,
                     ),
