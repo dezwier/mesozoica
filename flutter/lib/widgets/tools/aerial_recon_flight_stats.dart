@@ -4,7 +4,7 @@ import '../../config/game_config.dart';
 import '../../services/tool_service.dart';
 import '../../theme/dino_card_theme.dart';
 
-/// Shared display of aerial recon flight / deploy knobs (2 params per row).
+/// Shared display of aerial recon flight / deploy knobs (4 params per row).
 class AerialReconFlightStats extends StatelessWidget {
   const AerialReconFlightStats({
     super.key,
@@ -61,11 +61,11 @@ class AerialReconFlightStats extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final pairs = <_StatPair>[
-      _StatPair('Speed', _formatKmh(flightSpeedKmh)),
-      _StatPair('Max range', _formatKm(maxRouteKm)),
-      _StatPair('Discover', _formatChance(discoveryChance)),
-      _StatPair('Distance', _formatMeters(discoveryDistanceM)),
+    final pairs = <AerialReconStatPair>[
+      AerialReconStatPair('Speed', _formatKmh(flightSpeedKmh)),
+      AerialReconStatPair('Range', _formatKm(maxRouteKm)),
+      AerialReconStatPair('Discover', _formatChance(discoveryChance)),
+      AerialReconStatPair('Distance', _formatMeters(discoveryDistanceM)),
     ];
 
     if (compact) {
@@ -76,10 +76,6 @@ class AerialReconFlightStats extends StatelessWidget {
     }
 
     final cardTheme = DinoCardTheme.of(context);
-    final labelStyle = cardTheme.sectionLabelStyle(fontSize: 8);
-    final valueStyle = cardTheme.bodyStyle(fontSize: 13).copyWith(
-          fontWeight: FontWeight.w600,
-        );
     final mutedStyle = cardTheme.bodyStyle(fontSize: 11).copyWith(
           color: cardTheme.cardTextMuted,
           height: 1.3,
@@ -92,31 +88,7 @@ class AerialReconFlightStats extends StatelessWidget {
           Text(explanation!, style: mutedStyle),
           const SizedBox(height: 10),
         ],
-        for (var i = 0; i < pairs.length; i += 2) ...[
-          if (i > 0) const SizedBox(height: 8),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: _ParamCell(
-                  pair: pairs[i],
-                  labelStyle: labelStyle,
-                  valueStyle: valueStyle,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: i + 1 < pairs.length
-                    ? _ParamCell(
-                        pair: pairs[i + 1],
-                        labelStyle: labelStyle,
-                        valueStyle: valueStyle,
-                      )
-                    : const SizedBox.shrink(),
-              ),
-            ],
-          ),
-        ],
+        AerialReconStatRow(pairs: pairs),
       ],
     );
   }
@@ -151,86 +123,56 @@ class AerialReconFlightStats extends StatelessWidget {
   }
 }
 
-/// Status line: status · length · duration · time left/ended · sites found.
+/// Mission summary: Length · Duration · Left/Ended · Sites (labeled, 4 per row).
 class AerialReconMissionSummaryLine extends StatelessWidget {
   const AerialReconMissionSummaryLine({
     super.key,
     required this.mission,
-    this.style,
   });
 
   final AerialReconMission mission;
-  final TextStyle? style;
 
   @override
   Widget build(BuildContext context) {
-    final cardTheme = DinoCardTheme.of(context);
-    return Text(
-      format(mission),
-      style: style ??
-          cardTheme.bodyStyle(fontSize: 12).copyWith(
-                fontWeight: FontWeight.w600,
-                height: 1.35,
-              ),
+    final time = _timePair(mission);
+    return AerialReconStatRow(
+      pairs: [
+        AerialReconStatPair(
+          'Length',
+          '${mission.routeLengthKm.toStringAsFixed(1)} km',
+        ),
+        AerialReconStatPair('Duration', _durationValue(mission)),
+        AerialReconStatPair(time.label, time.value),
+        AerialReconStatPair('Sites', '${mission.discoveredSiteCount}'),
+      ],
     );
   }
 
-  /// status, length, duration, duration left (or ended), sites found.
-  static String format(AerialReconMission mission) {
-    final parts = <String>[
-      statusLabel(mission.status),
-      '${mission.routeLengthKm.toStringAsFixed(1)} km',
-      durationLabel(mission),
-      timeLeftOrEndedLabel(mission),
-      sitesLabel(mission.discoveredSiteCount),
-    ];
-    return parts.join(' · ');
-  }
-
-  static String statusLabel(String status) {
-    switch (status) {
-      case 'ensuring':
-        return 'Preparing';
-      case 'flying':
-        return 'In flight';
-      case 'done':
-        return 'Completed';
-      case 'failed':
-        return 'Failed';
-      case 'cancelled':
-        return 'Cancelled';
-      default:
-        return status;
-    }
-  }
-
-  static String durationLabel(AerialReconMission mission) {
+  static String _durationValue(AerialReconMission mission) {
     final durationMin = (mission.flightDurationS / 60).round();
-    if (durationMin <= 1) {
-      return '${mission.flightDurationS}s';
-    }
+    if (durationMin <= 1) return '${mission.flightDurationS}s';
     return '$durationMin min';
   }
 
-  static String timeLeftOrEndedLabel(AerialReconMission mission) {
+  static AerialReconStatPair _timePair(AerialReconMission mission) {
     if (mission.isFlying && mission.flightEndsAt != null) {
       final left = mission.flightEndsAt!.difference(DateTime.now().toUtc());
-      if (left.isNegative) return 'finishing…';
+      if (left.isNegative) {
+        return const AerialReconStatPair('Left', 'finishing…');
+      }
       final mins = left.inMinutes;
-      if (mins < 1) return '<1 min left';
-      return '$mins min left';
+      if (mins < 1) return const AerialReconStatPair('Left', '<1 min');
+      return AerialReconStatPair('Left', '$mins min');
     }
-    if (mission.isEnsuring) return 'preparing…';
+    if (mission.isEnsuring) {
+      return const AerialReconStatPair('Left', 'preparing…');
+    }
     if (mission.status == 'cancelled') {
       final ended = mission.flightEndsAt ?? mission.createdAt;
-      return 'stopped ${_shortWhen(ended)}';
+      return AerialReconStatPair('Ended', _shortWhen(ended));
     }
     final ended = mission.flightEndsAt ?? mission.createdAt;
-    return 'ended ${_shortWhen(ended)}';
-  }
-
-  static String sitesLabel(int count) {
-    return count == 1 ? '1 site' : '$count sites';
+    return AerialReconStatPair('Ended', _shortWhen(ended));
   }
 
   static String _shortWhen(DateTime utc) {
@@ -244,32 +186,54 @@ class AerialReconMissionSummaryLine extends StatelessWidget {
   }
 }
 
-class _ParamCell extends StatelessWidget {
-  const _ParamCell({
-    required this.pair,
-    required this.labelStyle,
-    required this.valueStyle,
-  });
+/// Four equal labeled cells in one row.
+class AerialReconStatRow extends StatelessWidget {
+  const AerialReconStatRow({super.key, required this.pairs});
 
-  final _StatPair pair;
-  final TextStyle labelStyle;
-  final TextStyle valueStyle;
+  final List<AerialReconStatPair> pairs;
 
   @override
   Widget build(BuildContext context) {
-    return Column(
+    final cardTheme = DinoCardTheme.of(context);
+    final labelStyle = cardTheme.sectionLabelStyle(fontSize: 7);
+    final valueStyle = cardTheme.bodyStyle(fontSize: 11).copyWith(
+          fontWeight: FontWeight.w600,
+          height: 1.15,
+        );
+
+    return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(pair.label.toUpperCase(), style: labelStyle),
-        const SizedBox(height: 2),
-        Text(pair.value, style: valueStyle),
+        for (var i = 0; i < pairs.length; i++) ...[
+          if (i > 0) const SizedBox(width: 6),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  pairs[i].label.toUpperCase(),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: labelStyle,
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  pairs[i].value,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: valueStyle,
+                ),
+              ],
+            ),
+          ),
+        ],
       ],
     );
   }
 }
 
-class _StatPair {
-  const _StatPair(this.label, this.value);
+class AerialReconStatPair {
+  const AerialReconStatPair(this.label, this.value);
 
   final String label;
   final String value;

@@ -66,7 +66,7 @@ class ToolCardBack extends StatelessWidget {
           Positioned(
             left: 18,
             right: 18,
-            top: 78,
+            top: 108,
             bottom: 14,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,

@@ -50,13 +50,7 @@ class AerialReconFocusOverlay extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 4),
-                    AerialReconMissionSummaryLine(
-                      mission: mission,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        fontWeight: FontWeight.w600,
-                        height: 1.35,
-                      ),
-                    ),
+                    AerialReconMissionSummaryLine(mission: mission),
                     const SizedBox(height: 8),
                     AerialReconFlightStats.fromMission(mission),
                     if (mission.isActive) ...[

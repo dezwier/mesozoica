@@ -170,13 +170,7 @@ class _MissionTile extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    AerialReconMissionSummaryLine(
-                      mission: mission,
-                      style: theme.textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w600,
-                        height: 1.35,
-                      ),
-                    ),
+                    AerialReconMissionSummaryLine(mission: mission),
                     const SizedBox(height: 10),
                     AerialReconFlightStats.fromMission(mission),
                   ],
