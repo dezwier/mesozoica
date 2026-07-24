@@ -1,4 +1,4 @@
-"""Discover a field site from a tool mission (chopper position, aerial params)."""
+"""Discover a field site from an aerial tool mission."""
 
 from __future__ import annotations
 
@@ -8,7 +8,11 @@ from sqlmodel import Session, col, select
 
 from app.core.exceptions import NotFoundError, ValidationError
 from app.models.data_source import DATA_SOURCE_FIELD
-from app.models.site import HOW_DISCOVERED_AERIAL_RECON, Site
+from app.models.site import (
+    HOW_DISCOVERED_AERIAL_RECON,
+    HOW_DISCOVERED_VALUES,
+    Site,
+)
 from app.models.user_notification import UserNotification, UserNotificationType
 from app.models.user_site import (
     SITE_STATUS_DISCOVERED,
@@ -38,13 +42,17 @@ def discover_site_from_aerial(
     lon: float,
     max_distance_m: float,
     discovery_chance: float,
+    how_discovered: str = HOW_DISCOVERED_AERIAL_RECON,
     mission_id: int | None = None,
     rng: random.Random | None = None,
 ) -> DiscoverFossilOnboardResult | None:
-    """Link discoverer using chopper position. Returns None on chance miss.
+    """Link discoverer using mission craft position. Returns None on chance miss.
 
     Does not raise on chance miss (mission events record ``miss`` instead).
     """
+    if how_discovered not in HOW_DISCOVERED_VALUES:
+        raise ValidationError(f"Invalid how_discovered: {how_discovered}")
+
     site = session.get(Site, site_id)
     if site is None or site.data_source != DATA_SOURCE_FIELD:
         raise NotFoundError(f"Field site {site_id} not found")
@@ -56,7 +64,7 @@ def discover_site_from_aerial(
     )
     if distance_km > max_distance_m / 1000.0:
         raise ValidationError(
-            f"Chopper must be within {int(max_distance_m)} m of the site"
+            f"Craft must be within {int(max_distance_m)} m of the site"
         )
 
     row = get_site_by_id(session, site_id, data_source=DATA_SOURCE_FIELD)
@@ -91,7 +99,7 @@ def discover_site_from_aerial(
         )
     )
     apply_site_discovery_enrichment(
-        session, site, how_discovered=HOW_DISCOVERED_AERIAL_RECON
+        session, site, how_discovered=how_discovered
     )
     notification = UserNotification(
         user_id=user_id,

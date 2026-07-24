@@ -1,14 +1,15 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:mesozoica/controllers/aerial_recon_controller.dart';
+import 'package:mesozoica/controllers/aerial_mission_controller.dart';
 import 'package:mesozoica/services/tool_service.dart';
 
 void main() {
-  AerialReconMission mission({
+  AerialMission mission({
     required int id,
     required String status,
   }) {
-    return AerialReconMission(
+    return AerialMission(
+      actionKey: 'aerial_recon',
       missionId: id,
       status: status,
       route: const [LatLng(40, -100), LatLng(40.1, -100)],
@@ -22,7 +23,7 @@ void main() {
   }
 
   test('focusMission sets focused and pending; take clears pending once', () {
-    final controller = AerialReconController();
+    final controller = AerialMissionController();
     final flying = mission(id: 3, status: 'flying');
 
     controller.focusMission(flying);

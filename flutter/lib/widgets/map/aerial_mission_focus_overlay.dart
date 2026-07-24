@@ -1,30 +1,31 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../../controllers/aerial_recon_controller.dart';
-import '../../controllers/tool_action_router.dart';
+import '../../controllers/aerial_mission_controller.dart';
+import '../../models/aerial_mission_kind.dart';
 import '../../shell/map_chrome_insets.dart';
-import '../tools/aerial_recon_flight_stats.dart';
-import '../tools/aerial_recon_mission_actions.dart';
+import '../tools/aerial_mission_flight_stats.dart';
+import '../tools/aerial_mission_actions.dart';
 
-/// Top banner while a recon mission is focused from the Info sheet or scout tap.
-class AerialReconFocusOverlay extends StatelessWidget {
-  const AerialReconFocusOverlay({super.key});
+/// Top banner while an aerial mission is focused from the Info sheet or puck tap.
+class AerialMissionFocusOverlay extends StatelessWidget {
+  const AerialMissionFocusOverlay({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final recon = context.watch<AerialReconController>();
-    final mission = recon.focusedMission;
+    final aerial = context.watch<AerialMissionController>();
+    final mission = aerial.focusedMission;
     // Rebuild when flying so remaining time updates.
     // ignore: unused_local_variable
-    final tick = recon.progressTick;
+    final tick = aerial.progressTick;
     // Rebuild when poll updates discovered sites.
     // ignore: unused_local_variable
-    final gen = recon.missionsFetchGeneration;
+    final gen = aerial.missionsFetchGeneration;
     if (mission == null) return const SizedBox.shrink();
 
     final topInset = MapChromeInsets.top(context);
     final theme = Theme.of(context);
+    final kind = AerialMissionKind.fromActionKey(mission.actionKey);
 
     return Positioned(
       top: topInset + 8,
@@ -44,17 +45,17 @@ class AerialReconFocusOverlay extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      ToolActionRouter.aerialReconName,
+                      kind.toolName,
                       style: theme.textTheme.titleSmall?.copyWith(
                         fontWeight: FontWeight.w700,
                       ),
                     ),
                     const SizedBox(height: 4),
-                    AerialReconMissionSummaryLine(mission: mission),
+                    AerialMissionSummaryLine(mission: mission),
                     const SizedBox(height: 8),
-                    AerialReconFlightStats.fromMission(mission),
+                    AerialMissionFlightStats.fromMission(mission),
                     const SizedBox(height: 10),
-                    AerialReconMissionActions(
+                    AerialMissionActions(
                       mission: mission,
                       showAbort: mission.isActive,
                     ),
@@ -65,7 +66,7 @@ class AerialReconFocusOverlay extends StatelessWidget {
                 tooltip: 'Dismiss',
                 visualDensity: VisualDensity.compact,
                 onPressed: () =>
-                    context.read<AerialReconController>().clearFocus(),
+                    context.read<AerialMissionController>().clearFocus(),
                 icon: const Icon(Icons.close),
               ),
             ],

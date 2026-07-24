@@ -15,7 +15,7 @@ void main() {
     expect(config.siteGeneration.client.nearbyRadiusKm, 0.5);
 
     expect(config.siteDiscovery.maxDistanceM, 50.0);
-    expect(config.siteDiscovery.discoveryChance, 0.2);
+    expect(config.siteDiscovery.discoveryChance, 0.1);
     expect(config.siteDiscovery.client.autoDiscoverRadiusM, 50.0);
     expect(config.siteDiscovery.client.cacheRadiusKm, 1.0);
     expect(config.siteDiscovery.client.cacheRefreshMoveThresholdM, 500.0);
@@ -36,12 +36,20 @@ void main() {
 
     expect(config.toolActions.aerialRecon.maxRouteKm, 100.0);
     expect(config.toolActions.aerialRecon.flightSpeedKmh, 50.0);
-    expect(config.toolActions.aerialRecon.discoveryChance, 0.02);
+    expect(config.toolActions.aerialRecon.discoveryChance, 0.01);
     expect(config.toolActions.aerialRecon.discoveryDistanceM, 200.0);
     expect(config.toolActions.aerialRecon.shortRouteWarnFraction, 0.7);
     expect(
       config.toolActions.aerialRecon.statsExplanation,
       contains('Scout loops'),
+    );
+    expect(config.toolActions.aerialScout.maxRouteKm, 30.0);
+    expect(config.toolActions.aerialScout.flightSpeedKmh, 35.0);
+    expect(config.toolActions.aerialScout.discoveryChance, 0.008);
+    expect(config.toolActions.aerialScout.discoveryDistanceM, 120.0);
+    expect(
+      config.toolActions.configFor('aerial_scout').maxRouteKm,
+      30.0,
     );
 
     expect(GameConfig.isLoaded, isTrue);

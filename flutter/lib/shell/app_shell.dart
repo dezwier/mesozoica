@@ -6,7 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
-import '../controllers/aerial_recon_controller.dart';
+import '../controllers/aerial_mission_controller.dart';
 import '../controllers/auth_controller.dart';
 import '../controllers/catalog_mode_controller.dart';
 import '../controllers/field_discovery_coordinator.dart';
@@ -55,7 +55,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
   CatalogModeController? _catalogModeController;
   FieldDiscoveryCoordinator? _discoveryCoordinator;
   MapController? _mapController;
-  AerialReconController? _aerialRecon;
+  AerialMissionController? _aerialRecon;
   int _lastAerialMissionsFetchGeneration = 0;
   final Set<int> _knownAerialDiscoveredSiteIds = {};
   Timer? _discoveryRefreshTimer;
@@ -85,7 +85,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
       map.addListener(_onMapSitesChanged);
       discovery.ingestMapSites(map.geoSites);
 
-      final aerial = context.read<AerialReconController>();
+      final aerial = context.read<AerialMissionController>();
       _aerialRecon = aerial;
       aerial.addListener(_onAerialReconChanged);
 

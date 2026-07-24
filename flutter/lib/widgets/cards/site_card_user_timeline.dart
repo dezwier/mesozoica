@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../../controllers/aerial_recon_controller.dart';
+import '../../controllers/aerial_mission_controller.dart';
 import '../../models/site.dart';
 import '../../theme/dino_card_theme.dart';
 import 'card_section_panel.dart';
@@ -36,7 +36,8 @@ class SiteCardUserTimeline extends StatelessWidget {
     if (discoveredAt == null && (how == null || how.isEmpty)) {
       return const [];
     }
-    final aerial = how == SiteSummary.howDiscoveredAerialRecon &&
+    final aerial = (how == SiteSummary.howDiscoveredAerialRecon ||
+            how == SiteSummary.howDiscoveredAerialScout) &&
         site.discoveringMissionId != null;
     return [
       SiteTimelineEntry(
@@ -56,6 +57,8 @@ class SiteCardUserTimeline extends StatelessWidget {
         return 'Walk';
       case SiteSummary.howDiscoveredAerialRecon:
         return 'Aerial recon';
+      case SiteSummary.howDiscoveredAerialScout:
+        return 'Aerial scout';
       case SiteSummary.howDiscoveredManual:
         return 'Manual';
       default:
@@ -102,7 +105,7 @@ class SiteCardUserTimeline extends StatelessWidget {
   }
 
   Future<void> _focusAerial(BuildContext context, int missionId) async {
-    final recon = Provider.of<AerialReconController>(context, listen: false);
+    final recon = Provider.of<AerialMissionController>(context, listen: false);
     final ok = await recon.focusMissionById(missionId);
     if (!context.mounted) return;
     if (!ok) {

@@ -1,17 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../../controllers/aerial_recon_controller.dart';
-import '../../controllers/tool_action_router.dart';
+import '../../controllers/aerial_mission_controller.dart';
+import '../../models/aerial_mission_kind.dart';
 import '../../services/tool_service.dart';
 import '../common/drawer_sheet_sizes.dart';
-import 'aerial_recon_flight_stats.dart';
+import 'aerial_mission_flight_stats.dart';
 
-/// Bottom sheet listing past Aerial Recon missions (ongoing lives on tool card).
-class AerialReconMissionsSheet extends StatefulWidget {
-  const AerialReconMissionsSheet({super.key});
+/// Bottom sheet listing past aerial missions (ongoing lives on tool card).
+class AerialMissionsSheet extends StatefulWidget {
+  const AerialMissionsSheet({super.key, this.kind});
 
-  static Future<void> show(BuildContext context) {
+  final AerialMissionKind? kind;
+
+  static Future<void> show(
+    BuildContext context, {
+    AerialMissionKind? kind,
+  }) {
     return showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -21,31 +26,36 @@ class AerialReconMissionsSheet extends StatefulWidget {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (_) => const AerialReconMissionsSheet(),
+      builder: (_) => AerialMissionsSheet(kind: kind),
     );
   }
 
   @override
-  State<AerialReconMissionsSheet> createState() =>
-      _AerialReconMissionsSheetState();
+  State<AerialMissionsSheet> createState() => _AerialMissionsSheetState();
 }
 
-class _AerialReconMissionsSheetState extends State<AerialReconMissionsSheet> {
+class _AerialMissionsSheetState extends State<AerialMissionsSheet> {
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      context.read<AerialReconController>().refreshMissions();
+      context.read<AerialMissionController>().refreshMissions();
     });
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final recon = context.watch<AerialReconController>();
-    final past = recon.missions.where((m) => m.isPast).toList();
-    final empty = past.isEmpty && !recon.missionsLoading;
+    final aerial = context.watch<AerialMissionController>();
+    final kind = widget.kind;
+    final past = aerial.missions.where((m) {
+      if (!m.isPast) return false;
+      if (kind == null) return true;
+      return m.actionKey == kind.actionKey;
+    }).toList();
+    final empty = past.isEmpty && !aerial.missionsLoading;
+    final title = kind?.toolName ?? 'Aerial missions';
 
     return DraggableScrollableSheet(
       expand: false,
@@ -62,7 +72,7 @@ class _AerialReconMissionsSheetState extends State<AerialReconMissionsSheet> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    ToolActionRouter.aerialReconName,
+                    title,
                     style: theme.textTheme.titleLarge?.copyWith(
                       fontWeight: FontWeight.w700,
                     ),
@@ -77,7 +87,7 @@ class _AerialReconMissionsSheetState extends State<AerialReconMissionsSheet> {
                 ],
               ),
             ),
-            if (recon.missionsLoading && recon.missions.isEmpty)
+            if (aerial.missionsLoading && aerial.missions.isEmpty)
               const Expanded(
                 child: Center(child: CircularProgressIndicator()),
               )
@@ -91,7 +101,7 @@ class _AerialReconMissionsSheetState extends State<AerialReconMissionsSheet> {
                       Padding(
                         padding: const EdgeInsets.symmetric(vertical: 32),
                         child: Text(
-                          'No past recons yet — Deploy to scout a loop.',
+                          'No past missions yet — ${kind?.deployVerb ?? 'Deploy'} to scout a loop.',
                           textAlign: TextAlign.center,
                           style: theme.textTheme.bodyMedium?.copyWith(
                             color: theme.colorScheme.onSurfaceVariant,
@@ -113,8 +123,8 @@ class _AerialReconMissionsSheetState extends State<AerialReconMissionsSheet> {
     );
   }
 
-  void _select(AerialReconMission mission) {
-    context.read<AerialReconController>().focusMission(mission);
+  void _select(AerialMission mission) {
+    context.read<AerialMissionController>().focusMission(mission);
     Navigator.of(context).pop();
   }
 }
@@ -125,7 +135,7 @@ class _MissionTile extends StatelessWidget {
     required this.onTap,
   });
 
-  final AerialReconMission mission;
+  final AerialMission mission;
   final VoidCallback onTap;
 
   @override
@@ -146,9 +156,9 @@ class _MissionTile extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    AerialReconMissionSummaryLine(mission: mission),
+                    AerialMissionSummaryLine(mission: mission),
                     const SizedBox(height: 10),
-                    AerialReconFlightStats.fromMission(mission),
+                    AerialMissionFlightStats.fromMission(mission),
                   ],
                 ),
               ),

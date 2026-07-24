@@ -7,15 +7,15 @@ import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
 
 import '../../config/map_config.dart';
-import '../../controllers/aerial_recon_controller.dart';
+import '../../controllers/aerial_mission_controller.dart';
 import '../../services/location_service.dart';
 import 'mapbox_camera_coordinator.dart';
 
-/// Full-screen draw layer for Aerial Recon scout loops.
+/// Full-screen draw layer for aerial mission scout loops.
 ///
 /// One finger draws; two fingers pinch-zoom (map is covered by this overlay).
-class AerialReconDrawOverlay extends StatefulWidget {
-  const AerialReconDrawOverlay({
+class AerialMissionDrawOverlay extends StatefulWidget {
+  const AerialMissionDrawOverlay({
     super.key,
     required this.camera,
     required this.currentZoom,
@@ -27,12 +27,12 @@ class AerialReconDrawOverlay extends StatefulWidget {
   final ValueChanged<double> onZoomChanged;
 
   @override
-  State<AerialReconDrawOverlay> createState() => _AerialReconDrawOverlayState();
+  State<AerialMissionDrawOverlay> createState() => _AerialMissionDrawOverlayState();
 }
 
-class _AerialReconDrawOverlayState extends State<AerialReconDrawOverlay> {
+class _AerialMissionDrawOverlayState extends State<AerialMissionDrawOverlay> {
   final List<Offset> _screenPoints = [];
-  AerialReconController? _recon;
+  AerialMissionController? _recon;
   int _resyncToken = 0;
   int _paintEpoch = 0;
 
@@ -53,7 +53,7 @@ class _AerialReconDrawOverlayState extends State<AerialReconDrawOverlay> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    final recon = context.read<AerialReconController>();
+    final recon = context.read<AerialMissionController>();
     if (!identical(recon, _recon)) {
       _recon?.removeListener(_onReconChanged);
       _recon = recon;
@@ -62,7 +62,7 @@ class _AerialReconDrawOverlayState extends State<AerialReconDrawOverlay> {
   }
 
   @override
-  void didUpdateWidget(covariant AerialReconDrawOverlay oldWidget) {
+  void didUpdateWidget(covariant AerialMissionDrawOverlay oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.currentZoom == widget.currentZoom) return;
     if (_pinchActive) {
@@ -167,7 +167,7 @@ class _AerialReconDrawOverlayState extends State<AerialReconDrawOverlay> {
   }
 
   Future<void> _startDrawAt(Offset local) async {
-    final recon = context.read<AerialReconController>();
+    final recon = context.read<AerialMissionController>();
     final location = context.read<LocationService>();
     if (recon.isSubmitting) return;
 
@@ -200,7 +200,7 @@ class _AerialReconDrawOverlayState extends State<AerialReconDrawOverlay> {
   }
 
   Future<void> _appendDrawAt(Offset local) async {
-    final recon = context.read<AerialReconController>();
+    final recon = context.read<AerialMissionController>();
     if (recon.isSubmitting || !recon.isDrawing) return;
     final point = await widget.camera.coordinateForPixel(local);
     if (!mounted || point == null) return;
@@ -215,7 +215,7 @@ class _AerialReconDrawOverlayState extends State<AerialReconDrawOverlay> {
   }
 
   Future<void> _endStroke() async {
-    final recon = context.read<AerialReconController>();
+    final recon = context.read<AerialMissionController>();
     final location = context.read<LocationService>();
     if (!recon.isDrawing) return;
     final origin = location.currentLocation;
@@ -233,8 +233,8 @@ class _AerialReconDrawOverlayState extends State<AerialReconDrawOverlay> {
     });
   }
 
-  Future<void> _deployRecon() async {
-    final recon = context.read<AerialReconController>();
+  Future<void> _deployMission() async {
+    final recon = context.read<AerialMissionController>();
     final location = context.read<LocationService>();
     final origin = location.currentLocation;
     if (origin == null) {
@@ -242,16 +242,15 @@ class _AerialReconDrawOverlayState extends State<AerialReconDrawOverlay> {
       setState(() => _screenPoints.clear());
       return;
     }
-    final ok = await recon.deployRecon(origin: origin);
+    final kind = recon.drawKind;
+    final ok = await recon.deployMission(origin: origin);
     if (!mounted) return;
     if (!ok) {
       setState(() => _screenPoints.clear());
       return;
     }
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Aerial Recon deployed — scouting in background'),
-      ),
+      SnackBar(content: Text(kind.deployedSnack)),
     );
   }
 
@@ -260,7 +259,7 @@ class _AerialReconDrawOverlayState extends State<AerialReconDrawOverlay> {
 
     if (_pointers.length >= 2) {
       // Pinch only — never start/clear a drawing.
-      final recon = context.read<AerialReconController>();
+      final recon = context.read<AerialMissionController>();
       if (recon.isDrawing) {
         recon.pauseStroke();
       }
@@ -295,7 +294,7 @@ class _AerialReconDrawOverlayState extends State<AerialReconDrawOverlay> {
         _pinchBaseZoom = widget.currentZoom;
         _pinchBaseSpan = span;
         _screenZoom = widget.currentZoom;
-        final recon = context.read<AerialReconController>();
+        final recon = context.read<AerialMissionController>();
         if (recon.isDrawing) {
           recon.pauseStroke();
         }
@@ -372,13 +371,14 @@ class _AerialReconDrawOverlayState extends State<AerialReconDrawOverlay> {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer2<AerialReconController, LocationService>(
+    return Consumer2<AerialMissionController, LocationService>(
       builder: (context, recon, location, _) {
         if (!recon.isDrawMode) return const SizedBox.shrink();
 
         final top = MediaQuery.paddingOf(context).top + 12;
         final bottom = MediaQuery.paddingOf(context).bottom + 16;
         final scheme = Theme.of(context).colorScheme;
+        final kind = recon.drawKind;
 
         return Positioned.fill(
           child: Stack(
@@ -398,6 +398,7 @@ class _AerialReconDrawOverlayState extends State<AerialReconDrawOverlay> {
                     painter: _ScreenRoutePainter(
                       points: _screenPoints,
                       epoch: _paintEpoch,
+                      color: kind.activeRouteColor,
                     ),
                   ),
                 ),
@@ -500,7 +501,7 @@ class _AerialReconDrawOverlayState extends State<AerialReconDrawOverlay> {
                         onPressed: recon.isSubmitting || !recon.hasRoute
                             ? null
                             : () {
-                                unawaited(_deployRecon());
+                                unawaited(_deployMission());
                               },
                         style: FilledButton.styleFrom(
                           padding: const EdgeInsets.symmetric(
@@ -516,8 +517,8 @@ class _AerialReconDrawOverlayState extends State<AerialReconDrawOverlay> {
                                   strokeWidth: 2,
                                 ),
                               )
-                            : const Text(
-                                'Deploy Recon',
+                            : Text(
+                                kind.deployVerb,
                                 textAlign: TextAlign.center,
                               ),
                       ),
@@ -534,16 +535,21 @@ class _AerialReconDrawOverlayState extends State<AerialReconDrawOverlay> {
 }
 
 class _ScreenRoutePainter extends CustomPainter {
-  _ScreenRoutePainter({required this.points, required this.epoch});
+  _ScreenRoutePainter({
+    required this.points,
+    required this.epoch,
+    required this.color,
+  });
 
   final List<Offset> points;
   final int epoch;
+  final Color color;
 
   @override
   void paint(Canvas canvas, Size size) {
     if (points.length < 2) return;
     final paint = Paint()
-      ..color = const Color(0xFFD4AF37)
+      ..color = color
       ..strokeWidth = 3.5
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round
@@ -554,12 +560,12 @@ class _ScreenRoutePainter extends CustomPainter {
     }
     canvas.drawPath(path, paint);
 
-    final dot = Paint()..color = const Color(0xFFD4AF37);
+    final dot = Paint()..color = color;
     canvas.drawCircle(points.first, 5, dot);
     canvas.drawCircle(points.last, 5, dot);
   }
 
   @override
   bool shouldRepaint(covariant _ScreenRoutePainter oldDelegate) =>
-      oldDelegate.epoch != epoch;
+      oldDelegate.epoch != epoch || oldDelegate.color != color;
 }

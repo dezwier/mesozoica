@@ -38,7 +38,7 @@ mixin _MapScreenCameraMixin on State<MapScreen> {
     if (!widget.isActive) {
       context.read<LocationService>().setMapForeground(false);
       context.read<map_data.MapController>().pause();
-      context.read<AerialReconController>().stopTracking();
+      context.read<AerialMissionController>().stopTracking();
       return;
     }
 
@@ -46,7 +46,7 @@ mixin _MapScreenCameraMixin on State<MapScreen> {
       if (!mounted || !widget.isActive) return;
       context.read<LocationService>().setMapForeground(true);
       context.read<map_data.MapController>().load();
-      context.read<AerialReconController>().startTracking();
+      context.read<AerialMissionController>().startTracking();
       _consumePendingFocus();
       _consumePendingAerialFocus();
     });
@@ -70,13 +70,13 @@ mixin _MapScreenCameraMixin on State<MapScreen> {
 
   void _consumePendingAerialFocus() {
     if (!widget.isActive || !_mapboxReady) return;
-    final recon = context.read<AerialReconController>();
+    final recon = context.read<AerialMissionController>();
     final mission = recon.takePendingFocusMission();
     if (mission == null) return;
     unawaited(_focusAerialMission(mission));
   }
 
-  Future<void> _focusAerialMission(AerialReconMission mission) async {
+  Future<void> _focusAerialMission(AerialMission mission) async {
     if (!_mapboxReady) return;
 
     if (_rotateMap) {
@@ -100,14 +100,14 @@ mixin _MapScreenCameraMixin on State<MapScreen> {
     await WidgetsBinding.instance.endOfFrame;
     if (!mounted || !_mapboxReady) return;
 
-    final recon = context.read<AerialReconController>();
+    final recon = context.read<AerialMissionController>();
     final headingDeg = context.read<LocationService>().headingDeg;
 
     if (mission.isPast) {
       if (mission.route.isEmpty) return;
       await _mapboxCamera.fitRoute(
         mission.route,
-        durationMs: MapConfig.mapboxAerialReconFocusDurationMs,
+        durationMs: MapConfig.mapboxAerialMissionFocusDurationMs,
       );
       return;
     }
@@ -118,7 +118,7 @@ mixin _MapScreenCameraMixin on State<MapScreen> {
 
     // Fly first without continuous follow — otherwise progress ticks call
     // setCamera mid-flyTo and the camera snaps once the scout has moved.
-    final zoom = MapConfig.mapboxAerialReconZoom;
+    final zoom = MapConfig.mapboxAerialMissionZoom;
     setState(() {
       _followAerialScout = true;
       _aerialFocusAnimating = true;
@@ -129,7 +129,7 @@ mixin _MapScreenCameraMixin on State<MapScreen> {
         target,
         zoom: zoom,
         headingDeg: headingDeg,
-        durationMs: MapConfig.mapboxAerialReconFocusDurationMs,
+        durationMs: MapConfig.mapboxAerialMissionFocusDurationMs,
       );
     } finally {
       if (mounted) {
@@ -148,7 +148,7 @@ mixin _MapScreenCameraMixin on State<MapScreen> {
         _rotateMap) {
       return;
     }
-    final recon = context.read<AerialReconController>();
+    final recon = context.read<AerialMissionController>();
     final mission = recon.focusedMission;
     if (mission == null || !mission.isActive) {
       setState(() => _followAerialScout = false);

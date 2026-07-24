@@ -12,10 +12,12 @@ from app.models.data_source import DATA_SOURCE_ARCHIVE
 
 HOW_DISCOVERED_WALK = "walk"
 HOW_DISCOVERED_AERIAL_RECON = "aerial_recon"
+HOW_DISCOVERED_AERIAL_SCOUT = "aerial_scout"
 HOW_DISCOVERED_MANUAL = "manual"
 HOW_DISCOVERED_VALUES = (
     HOW_DISCOVERED_WALK,
     HOW_DISCOVERED_AERIAL_RECON,
+    HOW_DISCOVERED_AERIAL_SCOUT,
     HOW_DISCOVERED_MANUAL,
 )
 
@@ -57,7 +59,7 @@ class Site(SQLModel, table=True):
     how_discovered: Optional[str] = Field(
         default=None,
         max_length=32,
-        description="First discovery method: walk, aerial_recon, or manual",
+        description="First discovery method: walk, aerial_recon, aerial_scout, or manual",
     )
     odd_dino_count: Optional[float] = Field(
         default=None,

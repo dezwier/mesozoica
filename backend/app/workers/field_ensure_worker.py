@@ -180,9 +180,9 @@ def process_one_job(*, worker_id: str) -> bool:
     if process_one_survey_job(worker_id=worker_id):
         return True
     with Session(engine) as session:
-        from app.services.tool_action_service import process_aerial_recon_tick
+        from app.services.tool_action_service import process_aerial_mission_tick
 
-        return process_aerial_recon_tick(session)
+        return process_aerial_mission_tick(session)
 
 
 def run_forever() -> None:

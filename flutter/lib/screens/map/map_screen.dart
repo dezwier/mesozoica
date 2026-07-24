@@ -5,7 +5,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
 
 import '../../config/map_config.dart';
-import '../../controllers/aerial_recon_controller.dart';
+import '../../controllers/aerial_mission_controller.dart';
 import '../../controllers/auth_controller.dart';
 import '../../controllers/catalog_mode_controller.dart';
 import '../../controllers/field_discovery_coordinator.dart';
@@ -23,8 +23,8 @@ import '../../services/tool_service.dart';
 import '../../shell/map_chrome_insets.dart';
 import '../../widgets/common/chrome_fab.dart';
 import '../../widgets/dino/dinosaur_filter_fab.dart';
-import '../../widgets/map/aerial_recon_draw_overlay.dart';
-import '../../widgets/map/aerial_recon_focus_overlay.dart';
+import '../../widgets/map/aerial_mission_draw_overlay.dart';
+import '../../widgets/map/aerial_mission_focus_overlay.dart';
 import '../../widgets/map/field_data_purge_dialog.dart';
 import '../../widgets/map/map_control_buttons.dart';
 import '../../widgets/map/map_perf_hud.dart';
@@ -88,14 +88,14 @@ class _MapScreenState extends State<MapScreen>
     final basemapTheme = context.watch<ThemeController>().mapBasemapTheme;
     final mapBrightness = Theme.of(context).brightness;
     final avatarUrl = AuthService.imageUrl(auth.currentUser?.profileImage);
-    final aerialRecon = context.watch<AerialReconController>();
+    final aerialRecon = context.watch<AerialMissionController>();
     final aerialDrawMode = aerialRecon.isDrawMode;
 
     // Force north-fixed while drawing a scout loop.
     if (aerialDrawMode && _rotateMap) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
-        if (context.read<AerialReconController>().isDrawMode && _rotateMap) {
+        if (context.read<AerialMissionController>().isDrawMode && _rotateMap) {
           setState(() {
             _rotateMap = false;
             _followUser = true;
@@ -172,7 +172,7 @@ class _MapScreenState extends State<MapScreen>
                     rotateCardCount: _rotateCardCount,
                     aerialRecon: aerialRecon,
                     showAerialReconOverlays: isFieldMode,
-                    showPastReconRoutes: mapData.filters.showPastReconRoutes,
+                    showPastAerialRoutes: mapData.filters.showPastAerialRoutes,
                     onSiteTap: aerialDrawMode ? (_) {} : _onSiteTap,
                     onFollowCancelled: () {
                       // Rotate mode is always locked to the user.
@@ -430,13 +430,13 @@ class _MapScreenState extends State<MapScreen>
                 ),
               ),
             if (aerialDrawMode)
-              AerialReconDrawOverlay(
+              AerialMissionDrawOverlay(
                 camera: _mapboxCamera,
                 currentZoom: _zoomLevel,
                 onZoomChanged: _onZoomChanged,
               )
             else if (aerialRecon.focusedMission != null)
-              const AerialReconFocusOverlay(),
+              const AerialMissionFocusOverlay(),
           ],
         );
       },

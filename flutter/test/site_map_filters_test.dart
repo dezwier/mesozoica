@@ -94,10 +94,10 @@ void main() {
     expect(filters.matches(site(period: 'jurassic', rockType: 'sandstone')), isFalse);
   });
 
-  test('showPastReconRoutes counts as active filter but not marker key', () {
-    final filters = SiteMapFilters(showPastReconRoutes: true);
+  test('showPastAerialRoutes counts as active filter but not marker key', () {
+    final filters = SiteMapFilters(showPastAerialRoutes: true);
     expect(filters.hasActiveFilters, isTrue);
     expect(filters.markerFilterKey, 'all');
-    expect(filters.copyWith(showPastReconRoutes: false).hasActiveFilters, isFalse);
+    expect(filters.copyWith(showPastAerialRoutes: false).hasActiveFilters, isFalse);
   });
 }

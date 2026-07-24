@@ -42,13 +42,13 @@ class SiteSummary {
   final String? siteTypePeriod;
   final String? siteTypeRockType;
   final String? mainImageUrl;
-  /// First discovery method: walk, aerial_recon, or manual.
+  /// First discovery method: walk, aerial_recon, aerial_scout, or manual.
   final String? howDiscovered;
   final String? status;
   final bool? viewerHasSurveyed;
   /// When the viewing user became discoverer (from user_site).
   final DateTime? discoveredAt;
-  /// Aerial recon mission that discovered this site for the viewer.
+  /// Aerial mission that discovered this site for the viewer.
   final int? discoveringMissionId;
   final double? oddDinoCount;
   final double? oddFossilCount;
@@ -58,6 +58,7 @@ class SiteSummary {
 
   static const howDiscoveredWalk = 'walk';
   static const howDiscoveredAerialRecon = 'aerial_recon';
+  static const howDiscoveredAerialScout = 'aerial_scout';
   static const howDiscoveredManual = 'manual';
 
   /// Field-generated site IDs start at 1_000_000_000; show the offset only.

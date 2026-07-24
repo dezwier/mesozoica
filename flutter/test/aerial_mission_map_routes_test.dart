@@ -2,16 +2,17 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:mesozoica/models/site_map_filters.dart';
 import 'package:mesozoica/services/tool_service.dart';
-import 'package:mesozoica/widgets/map/mapbox_aerial_recon_annotations.dart';
+import 'package:mesozoica/widgets/map/mapbox_aerial_mission_annotations.dart';
 
 void main() {
-  AerialReconMission mission({
+  AerialMission mission({
     required int id,
     required String status,
     required DateTime createdAt,
     DateTime? flightEndsAt,
   }) {
-    return AerialReconMission(
+    return AerialMission(
+      actionKey: 'aerial_recon',
       missionId: id,
       status: status,
       route: const [LatLng(40, -100), LatLng(40.1, -100)],
@@ -31,9 +32,9 @@ void main() {
       status: 'flying',
       createdAt: now.subtract(const Duration(days: 2)),
     );
-    final visible = aerialReconMissionsForMap(
+    final visible = aerialMissionsForMap(
       missions: [flying],
-      showPastReconRoutes: false,
+      showPastAerialRoutes: false,
       now: now,
     );
     expect(visible.map((m) => m.missionId), [1]);
@@ -47,9 +48,9 @@ void main() {
       createdAt: now.subtract(const Duration(hours: 2)),
       flightEndsAt: now.subtract(const Duration(hours: 1)),
     );
-    final visible = aerialReconMissionsForMap(
+    final visible = aerialMissionsForMap(
       missions: [past],
-      showPastReconRoutes: false,
+      showPastAerialRoutes: false,
       now: now,
     );
     expect(visible, isEmpty);
@@ -69,12 +70,12 @@ void main() {
       createdAt: now.subtract(const Duration(days: 3)),
       flightEndsAt: now.subtract(const Duration(days: 2)),
     );
-    final visible = aerialReconMissionsForMap(
+    final visible = aerialMissionsForMap(
       missions: [recent, old],
-      showPastReconRoutes: true,
+      showPastAerialRoutes: true,
       now: now,
     );
     expect(visible.map((m) => m.missionId), [3]);
-    expect(pastReconRouteMaxAge, const Duration(hours: 24));
+    expect(pastAerialRouteMaxAge, const Duration(hours: 24));
   });
 }

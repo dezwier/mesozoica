@@ -151,12 +151,12 @@ class ToolService {
     return ToolSummary.fromJson(decoded);
   }
 
-  Future<AerialReconMission> startAerialRecon({
+  Future<AerialMission> startAerialMission({
     required int toolId,
     required List<LatLng> route,
     required LatLng origin,
   }) async {
-    final uri = AppConfig.toolAerialReconUri(toolId);
+    final uri = AppConfig.toolAerialMissionUri(toolId);
     final body = jsonEncode({
       'route': [
         for (final point in route) {'lat': point.latitude, 'lon': point.longitude},
@@ -187,11 +187,11 @@ class ToolService {
     if (decoded is! Map<String, dynamic>) {
       throw const ToolServiceException('Invalid aerial recon response');
     }
-    return AerialReconMission.fromJson(decoded);
+    return AerialMission.fromJson(decoded);
   }
 
-  Future<List<AerialReconMission>> fetchAerialReconMissions() async {
-    final uri = AppConfig.aerialReconMissionsUri();
+  Future<List<AerialMission>> fetchAerialMissions() async {
+    final uri = AppConfig.aerialMissionsUri();
     if (kDebugMode) {
       debugPrint('ToolService GET $uri');
     }
@@ -215,12 +215,12 @@ class ToolService {
     }
     return [
       for (final item in items)
-        if (item is Map<String, dynamic>) AerialReconMission.fromJson(item),
+        if (item is Map<String, dynamic>) AerialMission.fromJson(item),
     ];
   }
 
-  Future<AerialReconMission> cancelAerialRecon(int missionId) async {
-    final uri = AppConfig.aerialReconCancelUri(missionId);
+  Future<AerialMission> cancelAerialMission(int missionId) async {
+    final uri = AppConfig.aerialMissionCancelUri(missionId);
     if (kDebugMode) {
       debugPrint('ToolService POST $uri');
     }
@@ -243,7 +243,7 @@ class ToolService {
     if (decoded is! Map<String, dynamic>) {
       throw const ToolServiceException('Invalid aerial recon cancel response');
     }
-    return AerialReconMission.fromJson(decoded);
+    return AerialMission.fromJson(decoded);
   }
 
   static String? _errorDetail(String body) {
@@ -259,9 +259,10 @@ class ToolService {
   }
 }
 
-class AerialReconMission {
-  const AerialReconMission({
+class AerialMission {
+  const AerialMission({
     required this.missionId,
+    required this.actionKey,
     required this.status,
     required this.route,
     required this.routeLengthKm,
@@ -279,6 +280,7 @@ class AerialReconMission {
   });
 
   final int missionId;
+  final String actionKey;
   final String status;
   final List<LatLng> route;
   final double routeLengthKm;
@@ -302,7 +304,7 @@ class AerialReconMission {
   bool get isPast =>
       status == 'done' || status == 'failed' || status == 'cancelled';
 
-  factory AerialReconMission.fromJson(Map<String, dynamic> json) {
+  factory AerialMission.fromJson(Map<String, dynamic> json) {
     final rawRoute = json['route'];
     final route = <LatLng>[];
     if (rawRoute is List) {
@@ -326,8 +328,9 @@ class AerialReconMission {
         }
       }
     }
-    return AerialReconMission(
+    return AerialMission(
       missionId: json['mission_id'] as int? ?? 0,
+      actionKey: json['action_key'] as String? ?? 'aerial_recon',
       status: json['status'] as String? ?? '',
       route: route,
       routeLengthKm: (json['route_length_km'] as num?)?.toDouble() ?? 0,
@@ -359,8 +362,8 @@ class AerialReconMission {
 
 /// Progress along the route in 0..1 using the same arc-fraction timing as
 /// backend discovery scheduling.
-double aerialReconProgressFraction(
-  AerialReconMission mission, {
+double aerialMissionProgressFraction(
+  AerialMission mission, {
   DateTime? now,
 }) {
   if (mission.isEnsuring || mission.flightStartedAt == null) return 0;

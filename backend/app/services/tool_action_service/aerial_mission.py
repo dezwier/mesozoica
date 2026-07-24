@@ -1,4 +1,4 @@
-"""Aerial Recon tool action: scout loop → ensure along path → timed discoveries."""
+"""Aerial mission tool actions: route loop → ensure along path → timed discoveries."""
 
 from __future__ import annotations
 
@@ -11,13 +11,12 @@ from typing import Any
 from sqlmodel import Session, col, select
 
 from app.core.exceptions import NotFoundError, ValidationError
-from app.core.game_config import get_game_config
 from app.models.data_source import DATA_SOURCE_FIELD
 from app.models.field_ensure_job import FieldEnsureJob
 from app.models.site import Site
 from app.models.tool import Tool
 from app.models.tool_mission import (
-    ACTION_KEY_AERIAL_RECON,
+    AERIAL_MISSION_ACTION_KEYS,
     MISSION_STATUS_CANCELLED,
     MISSION_STATUS_DONE,
     MISSION_STATUS_ENSURING,
@@ -36,12 +35,17 @@ from app.models.tool_mission_event import (
 from app.models.user_site import USER_SITE_ROLE_DISCOVERER, UserSite
 from app.models.user_tool import UserTool
 from app.services.site_service.field_ensure_queue import (
-    STATUS_DONE,
     STATUS_PENDING,
     STATUS_RUNNING,
     enqueue_field_site_ensure,
 )
 from app.services.site_service.geo_utils import haversine_km
+from app.services.tool_action_service.aerial_mission_kinds import (
+    config_for_action_key,
+    is_aerial_action_key,
+    kind_for_action_key,
+    kind_for_tool_name,
+)
 from app.services.tool_action_service.discover_aerial import discover_site_from_aerial
 from app.services.tool_action_service.route_geometry import (
     RoutePoint,
@@ -51,9 +55,8 @@ from app.services.tool_action_service.route_geometry import (
     sample_along_route,
 )
 
-logger = logging.getLogger("aerial_recon")
+logger = logging.getLogger("aerial_mission")
 
-AERIAL_RECON_TOOL_NAME = "Aerial Recon"
 _ACTIVE_STATUSES = (MISSION_STATUS_ENSURING, MISSION_STATUS_FLYING)
 
 
@@ -79,7 +82,7 @@ def _parse_route(raw: list[dict[str, Any]]) -> list[RoutePoint]:
     return points
 
 
-def start_aerial_recon_mission(
+def start_aerial_mission(
     session: Session,
     *,
     user_id: int,
@@ -92,8 +95,9 @@ def start_aerial_recon_mission(
     tool = session.get(Tool, tool_id)
     if tool is None:
         raise NotFoundError(f"Tool {tool_id} not found")
-    if tool.name != AERIAL_RECON_TOOL_NAME:
-        raise ValidationError("This action is only available for Aerial Recon")
+    kind = kind_for_tool_name(tool.name)
+    action_key = kind.action_key
+    label = kind.display_label
 
     owned = session.exec(
         select(UserTool).where(
@@ -102,19 +106,19 @@ def start_aerial_recon_mission(
         )
     ).first()
     if owned is None:
-        raise ValidationError("You must own Aerial Recon to deploy it")
+        raise ValidationError(f"You must own {label} to deploy it")
 
     active = session.exec(
         select(ToolMission).where(
             col(ToolMission.user_id) == user_id,
-            col(ToolMission.action_key) == ACTION_KEY_AERIAL_RECON,
+            col(ToolMission.action_key) == action_key,
             col(ToolMission.status).in_(_ACTIVE_STATUSES),
         )
     ).first()
     if active is not None:
-        raise ValidationError("An Aerial Recon mission is already in progress")
+        raise ValidationError(f"An {label} mission is already in progress")
 
-    cfg = get_game_config().tool_actions.aerial_recon
+    cfg = config_for_action_key(action_key)
     points = _parse_route(route)
     length_km = route_length_km(points)
     if length_km > cfg.max_route_km:
@@ -137,7 +141,7 @@ def start_aerial_recon_mission(
             session,
             lat=sample.lat,
             lon=sample.lon,
-            reason="aerial_recon",
+            reason=action_key,
         )
         if job_id is not None:
             job_ids.append(job_id)
@@ -149,7 +153,7 @@ def start_aerial_recon_mission(
     mission = ToolMission(
         user_id=user_id,
         tool_id=tool_id,
-        action_key=ACTION_KEY_AERIAL_RECON,
+        action_key=action_key,
         status=MISSION_STATUS_ENSURING,
         route_json=json.dumps(
             [{"lat": p.lat, "lon": p.lon} for p in points],
@@ -169,7 +173,8 @@ def start_aerial_recon_mission(
     session.commit()
     session.refresh(mission)
     logger.info(
-        "aerial_recon mission=%s ensuring jobs=%s length_km=%.2f",
+        "%s mission=%s ensuring jobs=%s length_km=%.2f",
+        action_key,
         mission.id,
         len(job_ids),
         length_km,
@@ -182,18 +187,28 @@ def _load_route(mission: ToolMission) -> list[RoutePoint]:
     return [RoutePoint(lat=float(p["lat"]), lon=float(p["lon"])) for p in raw]
 
 
-def list_aerial_recon_missions(
+def list_aerial_missions(
     session: Session,
     *,
     user_id: int,
+    action_key: str | None = None,
 ) -> list[ToolMission]:
-    """Return all aerial recon missions for [user_id], newest first."""
+    """Return aerial missions for [user_id], newest first.
+
+    When [action_key] is set, filter to that kind; otherwise all aerial keys.
+    """
+    if action_key is not None:
+        if not is_aerial_action_key(action_key):
+            raise ValidationError(f"Unknown aerial action_key: {action_key}")
+        keys: tuple[str, ...] = (action_key,)
+    else:
+        keys = AERIAL_MISSION_ACTION_KEYS
     return list(
         session.exec(
             select(ToolMission)
             .where(
                 col(ToolMission.user_id) == user_id,
-                col(ToolMission.action_key) == ACTION_KEY_AERIAL_RECON,
+                col(ToolMission.action_key).in_(keys),
             )
             .order_by(col(ToolMission.created_at).desc())
         ).all()
@@ -221,22 +236,23 @@ def _flight_progress_fraction(mission: ToolMission, *, now: datetime | None = No
     return min(1.0, max(0.0, elapsed / duration))
 
 
-def cancel_aerial_recon_mission(
+def cancel_aerial_mission(
     session: Session,
     *,
     user_id: int,
     mission_id: int,
 ) -> ToolMission:
-    """Abort an active mission: truncate route at scout, skip pending discoveries."""
+    """Abort an active mission: truncate route at craft, skip pending discoveries."""
     mission = session.get(ToolMission, mission_id)
     if (
         mission is None
         or mission.user_id != user_id
-        or mission.action_key != ACTION_KEY_AERIAL_RECON
+        or not is_aerial_action_key(mission.action_key)
     ):
-        raise NotFoundError(f"Aerial Recon mission {mission_id} not found")
+        raise NotFoundError(f"Aerial mission {mission_id} not found")
+    label = kind_for_action_key(mission.action_key).display_label
     if mission.status not in _ACTIVE_STATUSES:
-        raise ValidationError("Only an in-progress Aerial Recon can be cancelled")
+        raise ValidationError(f"Only an in-progress {label} can be cancelled")
 
     now = _utcnow()
     frac = _flight_progress_fraction(mission, now=now)
@@ -269,7 +285,8 @@ def cancel_aerial_recon_mission(
     session.commit()
     session.refresh(mission)
     logger.info(
-        "aerial_recon mission=%s cancelled frac=%.3f pending_skipped=%s",
+        "%s mission=%s cancelled frac=%.3f pending_skipped=%s",
+        mission.action_key,
         mission.id,
         frac,
         len(pending),
@@ -305,17 +322,17 @@ def _ensure_timed_out(mission: ToolMission, timeout_s: int) -> bool:
 
 def promote_ensuring_missions(session: Session) -> int:
     """Promote ensuring → flying when ensures are ready (or timed out)."""
-    cfg = get_game_config().tool_actions.aerial_recon
     missions = list(
         session.exec(
             select(ToolMission).where(
-                col(ToolMission.action_key) == ACTION_KEY_AERIAL_RECON,
+                col(ToolMission.action_key).in_(AERIAL_MISSION_ACTION_KEYS),
                 col(ToolMission.status) == MISSION_STATUS_ENSURING,
             )
         ).all()
     )
     promoted = 0
     for mission in missions:
+        cfg = config_for_action_key(mission.action_key)
         ready = _ensure_jobs_ready(session, mission)
         timed_out = _ensure_timed_out(mission, cfg.ensure_timeout_s)
         if not ready and not timed_out:
@@ -334,10 +351,15 @@ def promote_ensuring_missions(session: Session) -> int:
 
 
 def _promote_to_flying(session: Session, mission: ToolMission) -> None:
-    cfg = get_game_config().tool_actions.aerial_recon
+    cfg = config_for_action_key(mission.action_key)
     route = _load_route(mission)
     length_km = max(mission.route_length_km, 1e-6)
-    max_dist_km = cfg.discovery_distance_m / 1000.0
+    distance_m = (
+        float(mission.discovery_distance_m)
+        if mission.discovery_distance_m is not None
+        else float(cfg.discovery_distance_m)
+    )
+    max_dist_km = distance_m / 1000.0
 
     # Bounding box around route with discovery buffer.
     lats = [p.lat for p in route]
@@ -401,7 +423,8 @@ def _promote_to_flying(session: Session, mission: ToolMission) -> None:
     session.add(mission)
     session.commit()
     logger.info(
-        "aerial_recon mission=%s flying events=%s",
+        "%s mission=%s flying events=%s",
+        mission.action_key,
         mission.id,
         len(candidates),
     )
@@ -414,7 +437,6 @@ def process_due_mission_events(
     limit: int = 20,
 ) -> int:
     """Process due discover events; return count processed."""
-    cfg = get_game_config().tool_actions.aerial_recon
     now = _utcnow()
     events = list(
         session.exec(
@@ -431,7 +453,11 @@ def process_due_mission_events(
     processed = 0
     for event in events:
         mission = session.get(ToolMission, event.mission_id)
-        if mission is None or mission.status != MISSION_STATUS_FLYING:
+        if (
+            mission is None
+            or mission.status != MISSION_STATUS_FLYING
+            or not is_aerial_action_key(mission.action_key)
+        ):
             event.status = EVENT_STATUS_SKIPPED
             event.processed_at = now
             session.add(event)
@@ -447,6 +473,7 @@ def process_due_mission_events(
             processed += 1
             continue
 
+        cfg = config_for_action_key(mission.action_key)
         distance_m = (
             float(mission.discovery_distance_m)
             if mission.discovery_distance_m is not None
@@ -467,6 +494,7 @@ def process_due_mission_events(
                 lon=float(event.lon),
                 max_distance_m=distance_m * 2,  # closest-on-path already filtered
                 discovery_chance=chance,
+                how_discovered=mission.action_key,
                 mission_id=int(mission.id) if mission.id is not None else None,
                 rng=rng,
             )
@@ -475,7 +503,8 @@ def process_due_mission_events(
             )
         except Exception as exc:
             logger.warning(
-                "aerial_recon event=%s site=%s failed: %s",
+                "%s event=%s site=%s failed: %s",
+                mission.action_key,
                 event.id,
                 event.site_id,
                 exc,
@@ -496,6 +525,7 @@ def _finalize_completed_missions(session: Session) -> None:
     missions = list(
         session.exec(
             select(ToolMission).where(
+                col(ToolMission.action_key).in_(AERIAL_MISSION_ACTION_KEYS),
                 col(ToolMission.status) == MISSION_STATUS_FLYING,
                 col(ToolMission.flight_ends_at).is_not(None),
                 col(ToolMission.flight_ends_at) <= now,
@@ -517,7 +547,7 @@ def _finalize_completed_missions(session: Session) -> None:
         session.commit()
 
 
-def process_aerial_recon_tick(
+def process_aerial_mission_tick(
     session: Session,
     *,
     rng: random.Random | None = None,

@@ -256,7 +256,7 @@ class FossilExcavationConfig(BaseModel):
     enabled: bool = False
 
 
-class AerialReconActionConfig(BaseModel):
+class AerialMissionActionConfig(BaseModel):
     model_config = {"frozen": True}
 
     max_route_km: float = 100.0
@@ -287,11 +287,27 @@ class AerialReconActionConfig(BaseModel):
         return value
 
 
+# Back-compat alias for older imports/tests.
+AerialReconActionConfig = AerialMissionActionConfig
+
+
 class ToolActionsConfig(BaseModel):
     model_config = {"frozen": True}
 
-    aerial_recon: AerialReconActionConfig = Field(
-        default_factory=AerialReconActionConfig
+    aerial_recon: AerialMissionActionConfig = Field(
+        default_factory=AerialMissionActionConfig
+    )
+    aerial_scout: AerialMissionActionConfig = Field(
+        default_factory=lambda: AerialMissionActionConfig(
+            max_route_km=30.0,
+            flight_speed_kmh=35.0,
+            discovery_chance=0.008,
+            discovery_distance_m=120.0,
+            stats_explanation=(
+                "Drone loops fly at this speed within the max range; sites within "
+                "discovery distance are rolled at the listed chance."
+            ),
+        )
     )
 
 

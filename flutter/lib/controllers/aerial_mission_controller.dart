@@ -4,13 +4,14 @@ import 'package:flutter/foundation.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../config/game_config.dart';
+import '../models/aerial_mission_kind.dart';
 import '../models/tool.dart';
 import '../services/tool_service.dart';
 import '../utils/route_geometry.dart';
 
-/// Client state for Aerial Recon draw mode, mission submit, and map tracking.
-class AerialReconController extends ChangeNotifier {
-  AerialReconController({ToolService? toolService})
+/// Client state for aerial mission draw mode, submit, and map tracking.
+class AerialMissionController extends ChangeNotifier {
+  AerialMissionController({ToolService? toolService})
       : _toolService = toolService ?? ToolService();
 
   final ToolService _toolService;
@@ -23,15 +24,15 @@ class AerialReconController extends ChangeNotifier {
   bool _submitting = false;
   String? _message;
 
-  List<AerialReconMission> _missions = const [];
+  List<AerialMission> _missions = const [];
   bool _missionsLoading = false;
   Timer? _refreshTimer;
   Timer? _progressTimer;
   int _progressTick = 0;
   /// Bumps only after a successful missions list fetch (not progress ticks).
   int _missionsFetchGeneration = 0;
-  AerialReconMission? _focusedMission;
-  AerialReconMission? _pendingFocusMission;
+  AerialMission? _focusedMission;
+  AerialMission? _pendingFocusMission;
 
   bool get isDrawMode => _drawMode;
   ToolSummary? get tool => _tool;
@@ -41,10 +42,10 @@ class AerialReconController extends ChangeNotifier {
   String? get message => _message;
   bool get hasRoute => _route.length >= 2;
 
-  List<AerialReconMission> get missions => List.unmodifiable(_missions);
+  List<AerialMission> get missions => List.unmodifiable(_missions);
   bool get missionsLoading => _missionsLoading;
-  AerialReconMission? get focusedMission => _focusedMission;
-  AerialReconMission? get pendingFocusMission => _pendingFocusMission;
+  AerialMission? get focusedMission => _focusedMission;
+  AerialMission? get pendingFocusMission => _pendingFocusMission;
 
   /// Bumps while any flying mission is active so map layers can re-interpolate.
   int get progressTick => _progressTick;
@@ -52,8 +53,11 @@ class AerialReconController extends ChangeNotifier {
   /// Increments when missions are reloaded from the server.
   int get missionsFetchGeneration => _missionsFetchGeneration;
 
-  AerialReconActionConfig get _cfg =>
-      GameConfig.instance.toolActions.aerialRecon;
+  AerialMissionKind get drawKind =>
+      AerialMissionKind.tryParseToolName(_tool?.name) ?? AerialMissionKind.recon;
+
+  AerialMissionActionConfig get _cfg =>
+      drawKind.config(GameConfig.instance);
 
   double get maxRouteKm => _cfg.maxRouteKm;
   double get loopEndpointToleranceM => _cfg.loopEndpointToleranceM;
@@ -85,15 +89,15 @@ class AerialReconController extends ChangeNotifier {
   }
 
   /// Scout position for [mission] at [now] (UTC).
-  LatLng? scoutPosition(AerialReconMission mission, {DateTime? now}) {
+  LatLng? scoutPosition(AerialMission mission, {DateTime? now}) {
     if (mission.route.isEmpty) return null;
-    final frac = aerialReconProgressFraction(mission, now: now);
+    final frac = aerialMissionProgressFraction(mission, now: now);
     return RouteGeometry.pointAtFraction(mission.route, frac);
   }
 
-  double scoutBearing(AerialReconMission mission, {DateTime? now}) {
+  double scoutBearing(AerialMission mission, {DateTime? now}) {
     if (mission.route.length < 2) return 0;
-    final frac = aerialReconProgressFraction(mission, now: now);
+    final frac = aerialMissionProgressFraction(mission, now: now);
     return RouteGeometry.bearingAtFraction(mission.route, frac);
   }
 
@@ -203,7 +207,7 @@ class AerialReconController extends ChangeNotifier {
       return 'Waiting for your current location';
     }
     if (_route.length < 3) {
-      return 'Draw a longer loop, then tap Deploy Recon';
+      return 'Draw a longer loop, then tap ${drawKind.deployVerb}';
     }
 
     final lengthKm = routeLengthKm();
@@ -214,10 +218,11 @@ class AerialReconController extends ChangeNotifier {
     return null;
   }
 
-  /// Validate and submit the scout mission.
-  Future<bool> deployRecon({required LatLng origin}) async {
+  /// Validate and submit the aerial mission.
+  Future<bool> deployMission({required LatLng origin}) async {
     final tool = _tool;
     if (tool == null || !_drawMode || _submitting) return false;
+    final kind = drawKind;
 
     _snapEndpointsToOrigin(origin);
     _drawing = false;
@@ -229,11 +234,11 @@ class AerialReconController extends ChangeNotifier {
     }
 
     _submitting = true;
-    _message = 'Deploying Aerial Recon…';
+    _message = '${kind.deployVerb}ing ${kind.toolName}…';
     notifyListeners();
 
     try {
-      final mission = await _toolService.startAerialRecon(
+      final mission = await _toolService.startAerialMission(
         toolId: tool.id,
         route: List<LatLng>.from(_route),
         origin: origin,
@@ -248,7 +253,7 @@ class AerialReconController extends ChangeNotifier {
       notifyListeners();
       return false;
     } catch (_) {
-      _message = 'Failed to deploy Aerial Recon';
+      _message = 'Failed to ${kind.deployVerb.toLowerCase()} ${kind.toolName}';
       _submitting = false;
       notifyListeners();
       return false;
@@ -256,7 +261,7 @@ class AerialReconController extends ChangeNotifier {
   }
 
   /// Select a mission for the map overlay and queue a one-shot camera focus.
-  void focusMission(AerialReconMission mission) {
+  void focusMission(AerialMission mission) {
     _focusedMission = mission;
     _pendingFocusMission = mission;
     _syncProgressTimer();
@@ -265,7 +270,7 @@ class AerialReconController extends ChangeNotifier {
 
   /// Resolve [missionId] from cached missions (refreshing if needed) and focus.
   Future<bool> focusMissionById(int missionId) async {
-    AerialReconMission? match;
+    AerialMission? match;
     for (final m in _missions) {
       if (m.missionId == missionId) {
         match = m;
@@ -297,7 +302,7 @@ class AerialReconController extends ChangeNotifier {
   /// Cancel an active mission; keeps focus on the truncated cancelled route.
   Future<bool> cancelMission(int missionId) async {
     try {
-      final mission = await _toolService.cancelAerialRecon(missionId);
+      final mission = await _toolService.cancelAerialMission(missionId);
       if (_focusedMission?.missionId == missionId) {
         _focusedMission = mission;
       }
@@ -315,7 +320,7 @@ class AerialReconController extends ChangeNotifier {
   }
 
   /// One-shot camera request; cleared when MapScreen consumes it.
-  AerialReconMission? takePendingFocusMission() {
+  AerialMission? takePendingFocusMission() {
     final mission = _pendingFocusMission;
     _pendingFocusMission = null;
     return mission;
@@ -327,12 +332,12 @@ class AerialReconController extends ChangeNotifier {
     _missionsLoading = true;
     notifyListeners();
     try {
-      final items = await _toolService.fetchAerialReconMissions();
+      final items = await _toolService.fetchAerialMissions();
       _missions = items;
       _missionsFetchGeneration++;
       final focusedId = _focusedMission?.missionId;
       if (focusedId != null) {
-        AerialReconMission? match;
+        AerialMission? match;
         for (final m in items) {
           if (m.missionId == focusedId) {
             match = m;
@@ -345,11 +350,11 @@ class AerialReconController extends ChangeNotifier {
       notifyListeners();
     } on ToolServiceException catch (error) {
       if (kDebugMode) {
-        debugPrint('AerialRecon refresh failed: $error');
+        debugPrint('AerialMission refresh failed: $error');
       }
     } catch (error) {
       if (kDebugMode) {
-        debugPrint('AerialRecon refresh failed: $error');
+        debugPrint('AerialMission refresh failed: $error');
       }
     } finally {
       _missionsLoading = false;
@@ -374,7 +379,7 @@ class AerialReconController extends ChangeNotifier {
     _progressTimer = null;
   }
 
-  void _upsertMission(AerialReconMission mission) {
+  void _upsertMission(AerialMission mission) {
     final next = [
       mission,
       for (final existing in _missions)

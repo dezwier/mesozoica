@@ -316,21 +316,51 @@ class FossilExcavationConfig {
 }
 
 class ToolActionsConfig {
-  const ToolActionsConfig({required this.aerialRecon});
+  const ToolActionsConfig({
+    required this.aerialRecon,
+    required this.aerialScout,
+  });
 
-  final AerialReconActionConfig aerialRecon;
+  final AerialMissionActionConfig aerialRecon;
+  final AerialMissionActionConfig aerialScout;
+
+  AerialMissionActionConfig configFor(String actionKey) {
+    switch (actionKey) {
+      case 'aerial_scout':
+        return aerialScout;
+      case 'aerial_recon':
+      default:
+        return aerialRecon;
+    }
+  }
 
   factory ToolActionsConfig.fromYaml(Map<String, dynamic> yaml) {
     return ToolActionsConfig(
-      aerialRecon: AerialReconActionConfig.fromYaml(
+      aerialRecon: AerialMissionActionConfig.fromYaml(
         GameConfig._asMap(yaml['aerial_recon']),
+      ),
+      aerialScout: AerialMissionActionConfig.fromYaml(
+        GameConfig._asMap(yaml['aerial_scout']),
+        defaults: const AerialMissionActionConfig(
+          maxRouteKm: 30.0,
+          loopEndpointToleranceM: 75.0,
+          flightSpeedKmh: 35.0,
+          discoveryChance: 0.008,
+          discoveryDistanceM: 120.0,
+          ensureSampleSpacingKm: 0.5,
+          ensureTimeoutS: 600,
+          shortRouteWarnFraction: 0.7,
+          statsExplanation:
+              'Drone loops fly at this speed within the max range; sites within '
+              'discovery distance are rolled at the listed chance.',
+        ),
       ),
     );
   }
 }
 
-class AerialReconActionConfig {
-  const AerialReconActionConfig({
+class AerialMissionActionConfig {
+  const AerialMissionActionConfig({
     required this.maxRouteKm,
     required this.loopEndpointToleranceM,
     required this.flightSpeedKmh,
@@ -352,20 +382,48 @@ class AerialReconActionConfig {
   final double shortRouteWarnFraction;
   final String statsExplanation;
 
-  factory AerialReconActionConfig.fromYaml(Map<String, dynamic> yaml) {
-    return AerialReconActionConfig(
-      maxRouteKm: _asDouble(yaml['max_route_km'], 100.0),
-      loopEndpointToleranceM: _asDouble(yaml['loop_endpoint_tolerance_m'], 75.0),
-      flightSpeedKmh: _asDouble(yaml['flight_speed_kmh'], 50.0),
-      discoveryChance: _asDouble(yaml['discovery_chance'], 0.2),
-      discoveryDistanceM: _asDouble(yaml['discovery_distance_m'], 200.0),
-      ensureSampleSpacingKm: _asDouble(yaml['ensure_sample_spacing_km'], 0.5),
-      ensureTimeoutS: _asInt(yaml['ensure_timeout_s'], 600),
-      shortRouteWarnFraction: _asDouble(yaml['short_route_warn_fraction'], 0.7),
+  factory AerialMissionActionConfig.fromYaml(
+    Map<String, dynamic> yaml, {
+    AerialMissionActionConfig? defaults,
+  }) {
+    final d = defaults ??
+        const AerialMissionActionConfig(
+          maxRouteKm: 100.0,
+          loopEndpointToleranceM: 75.0,
+          flightSpeedKmh: 50.0,
+          discoveryChance: 0.2,
+          discoveryDistanceM: 200.0,
+          ensureSampleSpacingKm: 0.5,
+          ensureTimeoutS: 600,
+          shortRouteWarnFraction: 0.7,
+          statsExplanation:
+              'Scout loops fly at this speed within the max range; sites within '
+              'discovery distance are rolled at the listed chance.',
+        );
+    return AerialMissionActionConfig(
+      maxRouteKm: _asDouble(yaml['max_route_km'], d.maxRouteKm),
+      loopEndpointToleranceM: _asDouble(
+        yaml['loop_endpoint_tolerance_m'],
+        d.loopEndpointToleranceM,
+      ),
+      flightSpeedKmh: _asDouble(yaml['flight_speed_kmh'], d.flightSpeedKmh),
+      discoveryChance: _asDouble(yaml['discovery_chance'], d.discoveryChance),
+      discoveryDistanceM: _asDouble(
+        yaml['discovery_distance_m'],
+        d.discoveryDistanceM,
+      ),
+      ensureSampleSpacingKm: _asDouble(
+        yaml['ensure_sample_spacing_km'],
+        d.ensureSampleSpacingKm,
+      ),
+      ensureTimeoutS: _asInt(yaml['ensure_timeout_s'], d.ensureTimeoutS),
+      shortRouteWarnFraction: _asDouble(
+        yaml['short_route_warn_fraction'],
+        d.shortRouteWarnFraction,
+      ),
       statsExplanation: _asString(
         yaml['stats_explanation'],
-        'Scout loops fly at this speed within the max range; sites within '
-        'discovery distance are rolled at the listed chance.',
+        d.statsExplanation,
       ),
     );
   }

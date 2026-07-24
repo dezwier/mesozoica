@@ -59,7 +59,7 @@ class _SiteFilterSheetState extends State<SiteFilterSheet> {
     _pendingStatuses = {...widget.initialFilters.statuses};
     _pendingPeriods = {...widget.initialFilters.periods};
     _pendingRockTypes = {...widget.initialFilters.rockTypes};
-    _pendingShowPastReconRoutes = widget.initialFilters.showPastReconRoutes;
+    _pendingShowPastReconRoutes = widget.initialFilters.showPastAerialRoutes;
   }
 
   void _commitPending() {
@@ -71,7 +71,7 @@ class _SiteFilterSheetState extends State<SiteFilterSheet> {
         periods: _pendingPeriods,
         rockTypes: _pendingRockTypes,
         filterByStatus: widget.showStatusSection,
-        showPastReconRoutes: widget.showReconRoutesSection
+        showPastAerialRoutes: widget.showReconRoutesSection
             ? _pendingShowPastReconRoutes
             : false,
       ),
@@ -84,7 +84,7 @@ class _SiteFilterSheetState extends State<SiteFilterSheet> {
       periods: _pendingPeriods,
       rockTypes: _pendingRockTypes,
       filterByStatus: widget.showStatusSection,
-      showPastReconRoutes: widget.showReconRoutesSection
+      showPastAerialRoutes: widget.showReconRoutesSection
           ? _pendingShowPastReconRoutes
           : false,
     );
@@ -210,7 +210,7 @@ class _SiteFilterSheetState extends State<SiteFilterSheet> {
                 _checkboxTile(
                   theme: theme,
                   value: _pendingShowPastReconRoutes,
-                  label: 'Past aerial recon routes (last 24h)',
+                  label: 'Past aerial routes (last 24h)',
                   onChanged: (selected) {
                     setState(() {
                       _pendingShowPastReconRoutes = selected ?? false;

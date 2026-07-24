@@ -21,10 +21,14 @@ from app.models.tool_mission_event import (
 from app.models.user import User
 from app.schemas.tool import ToolCategoryItem, ToolCategoryListResponse, ToolListResponse, ToolSummary
 from app.services.tool_action_service import (
-    cancel_aerial_recon_mission,
-    list_aerial_recon_missions,
+    cancel_aerial_mission,
+    list_aerial_missions,
     mission_route_dicts,
-    start_aerial_recon_mission,
+    start_aerial_mission,
+)
+from app.services.tool_action_service.aerial_mission_kinds import (
+    config_for_action_key,
+    is_aerial_action_key,
 )
 from app.services.tool_service import (
     collect_tool_for_user,
@@ -42,14 +46,15 @@ class RoutePointBody(BaseModel):
     lon: float
 
 
-class AerialReconRequest(BaseModel):
+class AerialMissionRequest(BaseModel):
     route: list[RoutePointBody] = Field(min_length=3)
     origin_lat: float
     origin_lon: float
 
 
-class AerialReconMissionItem(BaseModel):
+class AerialMissionItem(BaseModel):
     mission_id: int
+    action_key: str
     status: str
     route: list[RoutePointBody]
     route_length_km: float
@@ -66,12 +71,13 @@ class AerialReconMissionItem(BaseModel):
     discovered_site_ids: list[int] = Field(default_factory=list)
 
 
-class AerialReconMissionListResponse(BaseModel):
-    items: list[AerialReconMissionItem]
+class AerialMissionListResponse(BaseModel):
+    items: list[AerialMissionItem]
 
 
-class AerialReconResponse(BaseModel):
+class AerialMissionResponse(BaseModel):
     mission_id: int
+    action_key: str
     status: str
     route: list[RoutePointBody]
     route_length_km: float
@@ -95,9 +101,14 @@ def _tool_image_url(session: Session, tool_id: int) -> str | None:
 
 def _mission_flight_params(mission: ToolMission) -> tuple[float, float, float, float]:
     """Snapshotted knobs, falling back to current game config for legacy rows."""
-    from app.core.game_config import get_game_config
+    from app.models.tool_mission import ACTION_KEY_AERIAL_RECON
 
-    cfg = get_game_config().tool_actions.aerial_recon
+    key = (
+        mission.action_key
+        if is_aerial_action_key(mission.action_key)
+        else ACTION_KEY_AERIAL_RECON
+    )
+    cfg = config_for_action_key(key)
     return (
         float(mission.flight_speed_kmh)
         if mission.flight_speed_kmh is not None
@@ -142,7 +153,7 @@ def _mission_item(
     mission: ToolMission,
     *,
     discovered_site_ids: list[int] | None = None,
-) -> AerialReconMissionItem:
+) -> AerialMissionItem:
     site_ids = discovered_site_ids
     if site_ids is None:
         site_ids = _discovered_site_ids_by_mission(
@@ -151,8 +162,9 @@ def _mission_item(
     speed_kmh, max_route_km, discovery_chance, discovery_distance_m = (
         _mission_flight_params(mission)
     )
-    return AerialReconMissionItem(
+    return AerialMissionItem(
         mission_id=int(mission.id),
+        action_key=mission.action_key,
         status=mission.status,
         route=[RoutePointBody(**p) for p in mission_route_dicts(mission)],
         route_length_km=mission.route_length_km,
@@ -237,18 +249,23 @@ def get_tool_categories(
 
 
 @router.get(
-    "/missions/aerial-recon",
-    response_model=AerialReconMissionListResponse,
+    "/missions/aerial",
+    response_model=AerialMissionListResponse,
 )
-def get_aerial_recon_missions(
+def get_aerial_missions(
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user),
-) -> AerialReconMissionListResponse:
-    missions = list_aerial_recon_missions(session, user_id=int(current_user.id))
+    action_key: str | None = Query(default=None),
+) -> AerialMissionListResponse:
+    missions = list_aerial_missions(
+        session,
+        user_id=int(current_user.id),
+        action_key=action_key,
+    )
     discovered = _discovered_site_ids_by_mission(
         session, [int(m.id) for m in missions if m.id is not None]
     )
-    return AerialReconMissionListResponse(
+    return AerialMissionListResponse(
         items=[
             _mission_item(
                 session,
@@ -261,21 +278,21 @@ def get_aerial_recon_missions(
 
 
 @router.post(
-    "/missions/aerial-recon/{mission_id}/cancel",
-    response_model=AerialReconResponse,
+    "/missions/aerial/{mission_id}/cancel",
+    response_model=AerialMissionResponse,
 )
-def post_cancel_aerial_recon(
+def post_cancel_aerial_mission(
     mission_id: int,
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user),
-) -> AerialReconResponse:
-    mission = cancel_aerial_recon_mission(
+) -> AerialMissionResponse:
+    mission = cancel_aerial_mission(
         session,
         user_id=int(current_user.id),
         mission_id=mission_id,
     )
     item = _mission_item(session, mission)
-    return AerialReconResponse(**item.model_dump())
+    return AerialMissionResponse(**item.model_dump())
 
 
 @router.post("/{tool_id}/collect", response_model=ToolSummary)
@@ -293,17 +310,17 @@ def post_collect_tool(
 
 
 @router.post(
-    "/{tool_id}/actions/aerial-recon",
-    response_model=AerialReconResponse,
+    "/{tool_id}/actions/aerial-mission",
+    response_model=AerialMissionResponse,
     status_code=status.HTTP_202_ACCEPTED,
 )
-def post_aerial_recon(
+def post_aerial_mission(
     tool_id: int,
-    body: AerialReconRequest,
+    body: AerialMissionRequest,
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user),
-) -> AerialReconResponse:
-    mission = start_aerial_recon_mission(
+) -> AerialMissionResponse:
+    mission = start_aerial_mission(
         session,
         user_id=int(current_user.id),
         tool_id=tool_id,
@@ -312,7 +329,7 @@ def post_aerial_recon(
         origin_lon=body.origin_lon,
     )
     item = _mission_item(session, mission)
-    return AerialReconResponse(**item.model_dump())
+    return AerialMissionResponse(**item.model_dump())
 
 
 @router.get("/{tool_id}", response_model=ToolSummary)

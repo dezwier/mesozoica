@@ -7,22 +7,21 @@ import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 
-import '../../controllers/aerial_recon_controller.dart';
+import '../../controllers/aerial_mission_controller.dart';
+import '../../models/aerial_mission_kind.dart';
 import '../../models/site_map_filters.dart';
 import '../../services/auth_service.dart';
 import '../../services/token_storage.dart';
 import '../../services/tool_service.dart';
 
-const Color _reconGold = Color(0xFFD4AF37);
-const int _reconGoldArgb = 0xFFD4AF37;
 const double _scoutPuckLogicalSize = 28;
 const double _scoutPuckPixelRatio = 3;
 const String _scoutPuckFallbackAsset = 'assets/images/logo.png';
 
-/// Active missions always; past only when [showPastReconRoutes] and within 24h.
-List<AerialReconMission> aerialReconMissionsForMap({
-  required List<AerialReconMission> missions,
-  required bool showPastReconRoutes,
+/// Active missions always; past only when [showPastAerialRoutes] and within 24h.
+List<AerialMission> aerialMissionsForMap({
+  required List<AerialMission> missions,
+  required bool showPastAerialRoutes,
   DateTime? now,
 }) {
   final clock = now ?? DateTime.now().toUtc();
@@ -30,21 +29,21 @@ List<AerialReconMission> aerialReconMissionsForMap({
     for (final mission in missions)
       if (mission.isActive)
         mission
-      else if (showPastReconRoutes &&
+      else if (showPastAerialRoutes &&
           mission.isPast &&
-          _pastReconRouteIsRecent(mission, clock))
+          _pastAerialRouteIsRecent(mission, clock))
         mission,
   ];
 }
 
-bool _pastReconRouteIsRecent(AerialReconMission mission, DateTime now) {
+bool _pastAerialRouteIsRecent(AerialMission mission, DateTime now) {
   final end = mission.flightEndsAt ?? mission.createdAt;
   final age = now.difference(end);
-  return age.isNegative || age <= pastReconRouteMaxAge;
+  return age.isNegative || age <= pastAerialRouteMaxAge;
 }
 
 /// Mapbox polylines + scout pucks for aerial recon missions.
-class MapboxAerialReconAnnotations {
+class MapboxAerialMissionAnnotations {
   PolylineAnnotationManager? _lineManager;
   PointAnnotationManager? _scoutManager;
   Cancelable? _tapCancelable;
@@ -56,7 +55,7 @@ class MapboxAerialReconAnnotations {
   int _syncSeq = 0;
   bool _scoutUpdateInFlight = false;
   bool _scoutUpdateQueued = false;
-  AerialReconController? _pendingScoutController;
+  AerialMissionController? _pendingScoutController;
 
   Future<void> attach({
     required PolylineAnnotationManager lineManager,
@@ -79,30 +78,31 @@ class MapboxAerialReconAnnotations {
   }
 
   Future<void> sync(
-    AerialReconController controller, {
-    required bool showPastReconRoutes,
+    AerialMissionController controller, {
+    required bool showPastAerialRoutes,
   }) async {
     final lineManager = _lineManager;
     final scoutManager = _scoutManager;
     if (lineManager == null || scoutManager == null) return;
 
     final seq = ++_syncSeq;
-    final missions = aerialReconMissionsForMap(
+    final missions = aerialMissionsForMap(
       missions: controller.missions,
-      showPastReconRoutes: showPastReconRoutes,
+      showPastAerialRoutes: showPastAerialRoutes,
     );
     final routeSignature =
-        '${showPastReconRoutes ? 1 : 0}|${_routeSignature(missions)}';
+        '${showPastAerialRoutes ? 1 : 0}|${_routeSignature(missions)}';
 
     Uint8List? puckImage;
     final needsScout = missions.any((m) => m.isFlying || m.isEnsuring);
     if (needsScout) {
-      final imageUrl = AuthService.imageUrl(
-        missions
-            .firstWhere((m) => m.isFlying || m.isEnsuring)
-            .toolImageUrl,
-      );
-      puckImage = await _puckPng(imageUrl);
+      final scoutMission =
+          missions.firstWhere((m) => m.isFlying || m.isEnsuring);
+      final imageUrl = AuthService.imageUrl(scoutMission.toolImageUrl);
+      final accent = AerialMissionKind.fromActionKey(
+        scoutMission.actionKey,
+      ).activeRouteColor;
+      puckImage = await _puckPng(imageUrl, accent: accent);
       if (seq != _syncSeq) return;
     }
 
@@ -112,6 +112,7 @@ class MapboxAerialReconAnnotations {
       for (final mission in missions) {
         if (mission.route.length < 2) continue;
         final active = mission.isActive;
+        final kind = AerialMissionKind.fromActionKey(mission.actionKey);
         lineOptions.add(
           PolylineAnnotationOptions(
             geometry: LineString(
@@ -120,9 +121,9 @@ class MapboxAerialReconAnnotations {
                   Position(p.longitude, p.latitude),
               ],
             ),
-            lineColor: _reconGoldArgb,
+            lineColor: active ? kind.activeRouteArgb : kind.pastRouteArgb,
             lineWidth: active ? 4.0 : 3.0,
-            lineOpacity: active ? 0.95 : 0.38,
+            lineOpacity: active ? 0.95 : 0.55,
             lineSortKey: active ? 2.0 : 1.0,
           ),
         );
@@ -144,7 +145,7 @@ class MapboxAerialReconAnnotations {
   }
 
   Future<void> _syncScouts({
-    required AerialReconController controller,
+    required AerialMissionController controller,
     required PointAnnotationManager scoutManager,
     required Uint8List? puckImage,
     required int seq,
@@ -237,11 +238,13 @@ class MapboxAerialReconAnnotations {
     _scoutManager = null;
   }
 
-  String _routeSignature(List<AerialReconMission> missions) {
+  String _routeSignature(List<AerialMission> missions) {
     final buf = StringBuffer();
     for (final mission in missions) {
       buf
         ..write(mission.missionId)
+        ..write(':')
+        ..write(mission.actionKey)
         ..write(':')
         ..write(mission.status)
         ..write(':')
@@ -259,14 +262,14 @@ class MapboxAerialReconAnnotations {
     return null;
   }
 
-  Future<Uint8List> _puckPng(String imageUrl) async {
-    final key = imageUrl;
+  Future<Uint8List> _puckPng(String imageUrl, {required Color accent}) async {
+    final key = '$imageUrl|${accent.toARGB32()}';
     if (_cachedPuckPng != null && _cachedPuckKey == key) {
       return _cachedPuckPng!;
     }
     final avatar = await _loadAvatar(imageUrl);
     try {
-      final png = await _renderScoutPuckPng(avatar: avatar);
+      final png = await _renderScoutPuckPng(avatar: avatar, accent: accent);
       _cachedPuckPng = png;
       _cachedPuckKey = key;
       return png;
@@ -336,7 +339,10 @@ Future<ui.Image> _decodeUiImage(Uint8List bytes) async {
   return frame.image;
 }
 
-Future<Uint8List> _renderScoutPuckPng({ui.Image? avatar}) async {
+Future<Uint8List> _renderScoutPuckPng({
+  ui.Image? avatar,
+  required Color accent,
+}) async {
   const pixelRatio = _scoutPuckPixelRatio;
   final circleSpan = (_scoutPuckLogicalSize * pixelRatio).round().clamp(48, 160);
   final radius = circleSpan / 2 - pixelRatio * 2;
@@ -399,7 +405,7 @@ Future<Uint8List> _renderScoutPuckPng({ui.Image? avatar}) async {
       ..color = const Color(0x55000000)
       ..maskFilter = MaskFilter.blur(BlurStyle.normal, pixelRatio * 0.7),
   );
-  canvas.drawPath(path, Paint()..color = _reconGold);
+  canvas.drawPath(path, Paint()..color = accent);
   canvas.drawPath(
     path,
     Paint()

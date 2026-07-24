@@ -9,6 +9,7 @@ from sqlmodel import Session
 from app.models.data_source import DATA_SOURCE_FIELD
 from app.models.site import (
     HOW_DISCOVERED_AERIAL_RECON,
+    HOW_DISCOVERED_AERIAL_SCOUT,
     HOW_DISCOVERED_MANUAL,
     HOW_DISCOVERED_WALK,
     Site,
@@ -194,6 +195,7 @@ def test_aerial_discover_sets_aerial_recon(session: Session, monkeypatch):
         lon=-100.0,
         max_distance_m=500.0,
         discovery_chance=1.0,
+        how_discovered=HOW_DISCOVERED_AERIAL_RECON,
         mission_id=int(mission.id),
     )
     assert result == "ok"
@@ -209,6 +211,70 @@ def test_aerial_discover_sets_aerial_recon(session: Session, monkeypatch):
         )
     ).one()
     assert link.source_mission_id == int(mission.id)
+
+
+def test_aerial_discover_sets_aerial_scout(session: Session, monkeypatch):
+    from datetime import datetime
+
+    from app.models.tool import Tool
+    from app.models.tool_mission import ACTION_KEY_AERIAL_SCOUT, ToolMission
+
+    site = _field_site(session, site_id=2_000_000_012)
+    user = _user(session, username="drone_pilot")
+    tool = Tool(
+        name="Aerial Scout",
+        category="1 site_discovery",
+        scientific_tool="drone",
+        description="Drone loop",
+        rarity=2,
+        action="Launch",
+    )
+    session.add(tool)
+    session.commit()
+    session.refresh(tool)
+    now = datetime.utcnow()
+    mission = ToolMission(
+        user_id=int(user.id),
+        tool_id=int(tool.id),
+        action_key=ACTION_KEY_AERIAL_SCOUT,
+        status="flying",
+        route_json='[{"lat":40,"lon":-100}]',
+        route_length_km=1.0,
+        flight_duration_s=60,
+        created_at=now,
+        updated_at=now,
+    )
+    session.add(mission)
+    session.commit()
+    session.refresh(mission)
+
+    monkeypatch.setattr(
+        "app.services.site_service.field_coordinate_enrich.enrich_coordinate",
+        lambda lat, lon: CoordinateEnrichment(country_code="US", state="Nebraska"),
+    )
+    monkeypatch.setattr(
+        "app.services.tool_action_service.discover_aerial.ensure_fossils_on_site_discovery",
+        lambda session, site_id, user_id: "ok",
+    )
+    monkeypatch.setattr(
+        "app.services.tool_action_service.discover_aerial.send_site_discovered_push",
+        lambda *args, **kwargs: None,
+    )
+
+    result = discover_site_from_aerial(
+        session,
+        site_id=int(site.site_id),
+        user_id=int(user.id),
+        lat=40.0,
+        lon=-100.0,
+        max_distance_m=500.0,
+        discovery_chance=1.0,
+        how_discovered=HOW_DISCOVERED_AERIAL_SCOUT,
+        mission_id=int(mission.id),
+    )
+    assert result == "ok"
+    session.refresh(site)
+    assert site.how_discovered == HOW_DISCOVERED_AERIAL_SCOUT
 
 
 def test_site_summary_includes_viewer_discovery(session: Session):

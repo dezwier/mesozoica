@@ -1,4 +1,4 @@
-"""Queued tool-action missions (e.g. Aerial Recon scout loops)."""
+"""Queued tool-action missions (e.g. aerial scout/recon loops)."""
 
 from __future__ import annotations
 
@@ -14,6 +14,11 @@ MISSION_STATUS_FAILED = "failed"
 MISSION_STATUS_CANCELLED = "cancelled"
 
 ACTION_KEY_AERIAL_RECON = "aerial_recon"
+ACTION_KEY_AERIAL_SCOUT = "aerial_scout"
+AERIAL_MISSION_ACTION_KEYS = (
+    ACTION_KEY_AERIAL_RECON,
+    ACTION_KEY_AERIAL_SCOUT,
+)
 
 
 class ToolMission(SQLModel, table=True):

@@ -1,4 +1,4 @@
-"""Tests for Aerial Recon tool action missions."""
+"""Tests for aerial mission tool actions (recon + scout)."""
 
 from __future__ import annotations
 
@@ -15,6 +15,7 @@ from app.models.site import Site
 from app.models.tool import Tool
 from app.models.tool_mission import (
     ACTION_KEY_AERIAL_RECON,
+    ACTION_KEY_AERIAL_SCOUT,
     MISSION_STATUS_CANCELLED,
     MISSION_STATUS_DONE,
     MISSION_STATUS_ENSURING,
@@ -30,11 +31,11 @@ from app.models.tool_mission_event import (
 )
 from app.models.user import User
 from app.models.user_tool import UserTool
-from app.services.tool_action_service.aerial_recon import (
-    cancel_aerial_recon_mission,
+from app.services.tool_action_service.aerial_mission import (
+    cancel_aerial_mission,
     process_due_mission_events,
     promote_ensuring_missions,
-    start_aerial_recon_mission,
+    start_aerial_mission,
 )
 
 
@@ -55,19 +56,36 @@ def _user(session: Session, *, username: str = "pilot") -> User:
     return user
 
 
-def _aerial_tool(session: Session) -> Tool:
+def _aerial_tool(
+    session: Session,
+    *,
+    name: str = "Aerial Recon",
+    scientific_tool: str = "helicopter",
+    rarity: int = 5,
+    action: str = "Deploy",
+) -> Tool:
     tool = Tool(
-        name="Aerial Recon",
+        name=name,
         category="1 site_discovery",
-        scientific_tool="helicopter",
-        description="Scout loop",
-        rarity=5,
-        action="Deploy",
+        scientific_tool=scientific_tool,
+        description="Aerial loop",
+        rarity=rarity,
+        action=action,
     )
     session.add(tool)
     session.commit()
     session.refresh(tool)
     return tool
+
+
+def _scout_tool(session: Session) -> Tool:
+    return _aerial_tool(
+        session,
+        name="Aerial Scout",
+        scientific_tool="drone",
+        rarity=2,
+        action="Launch",
+    )
 
 
 def _grant(session: Session, *, user_id: int, tool_id: int) -> None:
@@ -86,12 +104,12 @@ def _square_route(origin_lat: float, origin_lon: float, *, delta: float = 0.01):
     ]
 
 
-def test_aerial_recon_rejects_unowned(client, session: Session):
+def test_aerial_mission_rejects_unowned(client, session: Session):
     tool = _aerial_tool(session)
     user = _user(session)
     origin_lat, origin_lon = 40.0, -100.0
     response = client.post(
-        f"/api/v1/tools/{tool.id}/actions/aerial-recon",
+        f"/api/v1/tools/{tool.id}/actions/aerial-mission",
         headers=_auth_headers(user),
         json={
             "route": _square_route(origin_lat, origin_lon),
@@ -103,7 +121,7 @@ def test_aerial_recon_rejects_unowned(client, session: Session):
     assert "own" in response.json()["detail"].lower()
 
 
-def test_aerial_recon_rejects_open_loop(client, session: Session):
+def test_aerial_mission_rejects_open_loop(client, session: Session):
     tool = _aerial_tool(session)
     user = _user(session)
     _grant(session, user_id=int(user.id), tool_id=int(tool.id))
@@ -112,7 +130,7 @@ def test_aerial_recon_rejects_open_loop(client, session: Session):
     # End ~200 m away — outside 75 m tolerance, still under max route length.
     route[-1] = {"lat": origin_lat + 0.002, "lon": origin_lon}
     response = client.post(
-        f"/api/v1/tools/{tool.id}/actions/aerial-recon",
+        f"/api/v1/tools/{tool.id}/actions/aerial-mission",
         headers=_auth_headers(user),
         json={
             "route": route,
@@ -124,7 +142,7 @@ def test_aerial_recon_rejects_open_loop(client, session: Session):
     assert "start and end" in response.json()["detail"].lower()
 
 
-def test_aerial_recon_rejects_overlong_route(client, session: Session):
+def test_aerial_mission_rejects_overlong_route(client, session: Session):
     tool = _aerial_tool(session)
     user = _user(session)
     _grant(session, user_id=int(user.id), tool_id=int(tool.id))
@@ -137,7 +155,7 @@ def test_aerial_recon_rejects_overlong_route(client, session: Session):
         {"lat": origin_lat, "lon": origin_lon},
     ]
     response = client.post(
-        f"/api/v1/tools/{tool.id}/actions/aerial-recon",
+        f"/api/v1/tools/{tool.id}/actions/aerial-mission",
         headers=_auth_headers(user),
         json={
             "route": route,
@@ -149,13 +167,13 @@ def test_aerial_recon_rejects_overlong_route(client, session: Session):
     assert "maximum" in response.json()["detail"].lower()
 
 
-def test_aerial_recon_accepts_and_enqueues_ensure(client, session: Session):
+def test_aerial_mission_accepts_and_enqueues_ensure(client, session: Session):
     tool = _aerial_tool(session)
     user = _user(session)
     _grant(session, user_id=int(user.id), tool_id=int(tool.id))
     origin_lat, origin_lon = 40.0, -100.0
     response = client.post(
-        f"/api/v1/tools/{tool.id}/actions/aerial-recon",
+        f"/api/v1/tools/{tool.id}/actions/aerial-mission",
         headers=_auth_headers(user),
         json={
             "route": _square_route(origin_lat, origin_lon),
@@ -167,6 +185,7 @@ def test_aerial_recon_accepts_and_enqueues_ensure(client, session: Session):
     body = response.json()
     assert body["status"] == MISSION_STATUS_ENSURING
     assert body["mission_id"] > 0
+    assert body["action_key"] == ACTION_KEY_AERIAL_RECON
     assert body["route_length_km"] > 0
     assert body["flight_duration_s"] > 0
     assert len(body["route"]) >= 3
@@ -193,7 +212,35 @@ def test_aerial_recon_accepts_and_enqueues_ensure(client, session: Session):
     assert len(jobs) >= 1
 
 
-def test_list_aerial_recon_missions(client, session: Session):
+def test_aerial_scout_accepts_with_scout_config(client, session: Session):
+    tool = _scout_tool(session)
+    user = _user(session)
+    _grant(session, user_id=int(user.id), tool_id=int(tool.id))
+    origin_lat, origin_lon = 40.0, -100.0
+    response = client.post(
+        f"/api/v1/tools/{tool.id}/actions/aerial-mission",
+        headers=_auth_headers(user),
+        json={
+            "route": _square_route(origin_lat, origin_lon, delta=0.005),
+            "origin_lat": origin_lat,
+            "origin_lon": origin_lon,
+        },
+    )
+    assert response.status_code == 202
+    body = response.json()
+    assert body["action_key"] == ACTION_KEY_AERIAL_SCOUT
+    cfg = get_game_config().tool_actions.aerial_scout
+    assert body["flight_speed_kmh"] == cfg.flight_speed_kmh
+    assert body["max_route_km"] == cfg.max_route_km
+    assert body["discovery_chance"] == cfg.discovery_chance
+    assert body["discovery_distance_m"] == cfg.discovery_distance_m
+    expected_s = max(
+        1, int(round(body["route_length_km"] / cfg.flight_speed_kmh * 3600.0))
+    )
+    assert body["flight_duration_s"] == expected_s
+
+
+def test_list_aerial_missions(client, session: Session):
     tool = _aerial_tool(session)
     user = _user(session)
     other = _user(session, username="other")
@@ -203,7 +250,7 @@ def test_list_aerial_recon_missions(client, session: Session):
     route = _square_route(origin_lat, origin_lon)
 
     created = client.post(
-        f"/api/v1/tools/{tool.id}/actions/aerial-recon",
+        f"/api/v1/tools/{tool.id}/actions/aerial-mission",
         headers=_auth_headers(user),
         json={
             "route": route,
@@ -216,7 +263,7 @@ def test_list_aerial_recon_missions(client, session: Session):
 
     # Other user's mission must not appear.
     other_resp = client.post(
-        f"/api/v1/tools/{tool.id}/actions/aerial-recon",
+        f"/api/v1/tools/{tool.id}/actions/aerial-mission",
         headers=_auth_headers(other),
         json={
             "route": route,
@@ -227,7 +274,7 @@ def test_list_aerial_recon_missions(client, session: Session):
     assert other_resp.status_code == 202
 
     listed = client.get(
-        "/api/v1/tools/missions/aerial-recon",
+        "/api/v1/tools/missions/aerial",
         headers=_auth_headers(user),
     )
     assert listed.status_code == 200
@@ -235,15 +282,16 @@ def test_list_aerial_recon_missions(client, session: Session):
     assert len(items) == 1
     assert items[0]["mission_id"] == mission_id
     assert items[0]["status"] == MISSION_STATUS_ENSURING
+    assert items[0]["action_key"] == ACTION_KEY_AERIAL_RECON
     assert len(items[0]["route"]) >= 3
     assert items[0]["tool_id"] == tool.id
     assert items[0]["discovered_site_ids"] == []
 
-    unauth = client.get("/api/v1/tools/missions/aerial-recon")
+    unauth = client.get("/api/v1/tools/missions/aerial")
     assert unauth.status_code in (401, 403)
 
 
-def test_list_aerial_recon_includes_discovered_site_ids(client, session: Session):
+def test_list_aerial_mission_includes_discovered_site_ids(client, session: Session):
     tool = _aerial_tool(session)
     user = _user(session)
     _grant(session, user_id=int(user.id), tool_id=int(tool.id))
@@ -251,7 +299,7 @@ def test_list_aerial_recon_includes_discovered_site_ids(client, session: Session
     route = _square_route(origin_lat, origin_lon)
 
     created = client.post(
-        f"/api/v1/tools/{tool.id}/actions/aerial-recon",
+        f"/api/v1/tools/{tool.id}/actions/aerial-mission",
         headers=_auth_headers(user),
         json={
             "route": route,
@@ -311,7 +359,7 @@ def test_list_aerial_recon_includes_discovered_site_ids(client, session: Session
     session.commit()
 
     listed = client.get(
-        "/api/v1/tools/missions/aerial-recon",
+        "/api/v1/tools/missions/aerial",
         headers=_auth_headers(user),
     )
     assert listed.status_code == 200
@@ -326,7 +374,7 @@ def test_promote_schedules_events_in_route_order(session: Session):
     _grant(session, user_id=int(user.id), tool_id=int(tool.id))
     origin_lat, origin_lon = 40.0, -100.0
     route = _square_route(origin_lat, origin_lon, delta=0.02)
-    mission = start_aerial_recon_mission(
+    mission = start_aerial_mission(
         session,
         user_id=int(user.id),
         tool_id=int(tool.id),
@@ -484,12 +532,17 @@ def test_tool_summary_includes_action(client, session: Session):
     assert response.json()["action"] == "Deploy"
 
 
-def test_game_config_loads_aerial_recon():
+def test_game_config_loads_aerial_mission():
     get_game_config.cache_clear()
-    cfg = get_game_config().tool_actions.aerial_recon
-    assert cfg.max_route_km == 100
-    assert cfg.flight_speed_kmh == 50
-    assert 0 < cfg.discovery_chance <= 1
+    recon = get_game_config().tool_actions.aerial_recon
+    assert recon.max_route_km == 100
+    assert recon.flight_speed_kmh == 50
+    assert 0 < recon.discovery_chance <= 1
+    scout = get_game_config().tool_actions.aerial_scout
+    assert scout.max_route_km == 30
+    assert scout.flight_speed_kmh == 35
+    assert 0 < scout.discovery_chance <= 1
+    assert scout.discovery_distance_m == 120
 
 
 def test_point_at_fraction_matches_discovery_timing():
@@ -585,7 +638,7 @@ def test_cancel_flying_truncates_and_skips_pending(client, session: Session):
 
     original_len = mission.route_length_km
     response = client.post(
-        f"/api/v1/tools/missions/aerial-recon/{mission.id}/cancel",
+        f"/api/v1/tools/missions/aerial/{mission.id}/cancel",
         headers=_auth_headers(user),
     )
     assert response.status_code == 200
@@ -628,7 +681,7 @@ def test_cancel_done_rejected(client, session: Session):
     session.refresh(mission)
 
     response = client.post(
-        f"/api/v1/tools/missions/aerial-recon/{mission.id}/cancel",
+        f"/api/v1/tools/missions/aerial/{mission.id}/cancel",
         headers=_auth_headers(user),
     )
     assert response.status_code == 400
@@ -643,7 +696,7 @@ def test_new_mission_allowed_after_cancel(client, session: Session):
     route = _square_route(origin_lat, origin_lon)
 
     first = client.post(
-        f"/api/v1/tools/{tool.id}/actions/aerial-recon",
+        f"/api/v1/tools/{tool.id}/actions/aerial-mission",
         headers=_auth_headers(user),
         json={
             "route": route,
@@ -655,7 +708,7 @@ def test_new_mission_allowed_after_cancel(client, session: Session):
     mission_id = first.json()["mission_id"]
 
     blocked = client.post(
-        f"/api/v1/tools/{tool.id}/actions/aerial-recon",
+        f"/api/v1/tools/{tool.id}/actions/aerial-mission",
         headers=_auth_headers(user),
         json={
             "route": route,
@@ -666,14 +719,14 @@ def test_new_mission_allowed_after_cancel(client, session: Session):
     assert blocked.status_code == 400
 
     cancelled = client.post(
-        f"/api/v1/tools/missions/aerial-recon/{mission_id}/cancel",
+        f"/api/v1/tools/missions/aerial/{mission_id}/cancel",
         headers=_auth_headers(user),
     )
     assert cancelled.status_code == 200
     assert cancelled.json()["status"] == MISSION_STATUS_CANCELLED
 
     second = client.post(
-        f"/api/v1/tools/{tool.id}/actions/aerial-recon",
+        f"/api/v1/tools/{tool.id}/actions/aerial-mission",
         headers=_auth_headers(user),
         json={
             "route": route,
@@ -690,7 +743,7 @@ def test_cancel_service_ensuring_truncates_to_start(session: Session):
     user = _user(session)
     _grant(session, user_id=int(user.id), tool_id=int(tool.id))
     origin_lat, origin_lon = 40.0, -100.0
-    mission = start_aerial_recon_mission(
+    mission = start_aerial_mission(
         session,
         user_id=int(user.id),
         tool_id=int(tool.id),
@@ -699,7 +752,7 @@ def test_cancel_service_ensuring_truncates_to_start(session: Session):
         origin_lon=origin_lon,
     )
     assert mission.status == MISSION_STATUS_ENSURING
-    cancelled = cancel_aerial_recon_mission(
+    cancelled = cancel_aerial_mission(
         session, user_id=int(user.id), mission_id=int(mission.id)
     )
     assert cancelled.status == MISSION_STATUS_CANCELLED

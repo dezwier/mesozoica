@@ -5,8 +5,8 @@ import '../../services/tool_service.dart';
 import '../../theme/dino_card_theme.dart';
 
 /// Shared display of aerial recon flight / deploy knobs (4 params per row).
-class AerialReconFlightStats extends StatelessWidget {
-  const AerialReconFlightStats({
+class AerialMissionFlightStats extends StatelessWidget {
+  const AerialMissionFlightStats({
     super.key,
     required this.flightSpeedKmh,
     required this.maxRouteKm,
@@ -17,13 +17,14 @@ class AerialReconFlightStats extends StatelessWidget {
   });
 
   /// From current [GameConfig] (deploy-now stats).
-  factory AerialReconFlightStats.fromConfig({
+  factory AerialMissionFlightStats.fromConfig({
     Key? key,
+    String actionKey = 'aerial_recon',
     bool compact = false,
     bool includeExplanation = true,
   }) {
-    final cfg = GameConfig.instance.toolActions.aerialRecon;
-    return AerialReconFlightStats(
+    final cfg = GameConfig.instance.toolActions.configFor(actionKey);
+    return AerialMissionFlightStats(
       key: key,
       flightSpeedKmh: cfg.flightSpeedKmh,
       maxRouteKm: cfg.maxRouteKm,
@@ -35,13 +36,13 @@ class AerialReconFlightStats extends StatelessWidget {
   }
 
   /// From a mission snapshot (with config fallback for legacy nulls).
-  factory AerialReconFlightStats.fromMission(
-    AerialReconMission mission, {
+  factory AerialMissionFlightStats.fromMission(
+    AerialMission mission, {
     Key? key,
     bool compact = false,
   }) {
-    final cfg = GameConfig.instance.toolActions.aerialRecon;
-    return AerialReconFlightStats(
+    final cfg = GameConfig.instance.toolActions.configFor(mission.actionKey);
+    return AerialMissionFlightStats(
       key: key,
       flightSpeedKmh: mission.flightSpeedKmh ?? cfg.flightSpeedKmh,
       maxRouteKm: mission.maxRouteKm ?? cfg.maxRouteKm,
@@ -61,11 +62,11 @@ class AerialReconFlightStats extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final pairs = <AerialReconStatPair>[
-      AerialReconStatPair('Speed', _formatKmh(flightSpeedKmh)),
-      AerialReconStatPair('Max range', _formatKm(maxRouteKm)),
-      AerialReconStatPair('Site chance', _formatChance(discoveryChance)),
-      AerialReconStatPair('Visibility', _formatMeters(discoveryDistanceM)),
+    final pairs = <AerialMissionStatPair>[
+      AerialMissionStatPair('Speed', _formatKmh(flightSpeedKmh)),
+      AerialMissionStatPair('Max range', _formatKm(maxRouteKm)),
+      AerialMissionStatPair('Site chance', _formatChance(discoveryChance)),
+      AerialMissionStatPair('Visibility', _formatMeters(discoveryDistanceM)),
     ];
 
     if (compact) {
@@ -88,7 +89,7 @@ class AerialReconFlightStats extends StatelessWidget {
           Text(explanation!, style: mutedStyle),
           const SizedBox(height: 10),
         ],
-        AerialReconStatRow(pairs: pairs),
+        AerialMissionStatRow(pairs: pairs),
       ],
     );
   }
@@ -124,26 +125,26 @@ class AerialReconFlightStats extends StatelessWidget {
 }
 
 /// Mission summary: Length · Duration · Left/Ended · Sites (labeled, 4 per row).
-class AerialReconMissionSummaryLine extends StatelessWidget {
-  const AerialReconMissionSummaryLine({
+class AerialMissionSummaryLine extends StatelessWidget {
+  const AerialMissionSummaryLine({
     super.key,
     required this.mission,
   });
 
-  final AerialReconMission mission;
+  final AerialMission mission;
 
   @override
   Widget build(BuildContext context) {
     final time = _timePair(mission);
-    return AerialReconStatRow(
+    return AerialMissionStatRow(
       pairs: [
-        AerialReconStatPair(
+        AerialMissionStatPair(
           'Length',
           '${mission.routeLengthKm.toStringAsFixed(1)} km',
         ),
-        AerialReconStatPair('Duration', _durationValue(mission)),
-        AerialReconStatPair(time.label, time.value),
-        AerialReconStatPair(
+        AerialMissionStatPair('Duration', _durationValue(mission)),
+        AerialMissionStatPair(time.label, time.value),
+        AerialMissionStatPair(
           'Sites found',
           '${mission.discoveredSiteCount}',
         ),
@@ -151,31 +152,31 @@ class AerialReconMissionSummaryLine extends StatelessWidget {
     );
   }
 
-  static String _durationValue(AerialReconMission mission) {
+  static String _durationValue(AerialMission mission) {
     final durationMin = (mission.flightDurationS / 60).round();
     if (durationMin <= 1) return '${mission.flightDurationS}s';
     return '$durationMin min';
   }
 
-  static AerialReconStatPair _timePair(AerialReconMission mission) {
+  static AerialMissionStatPair _timePair(AerialMission mission) {
     if (mission.isFlying && mission.flightEndsAt != null) {
       final left = mission.flightEndsAt!.difference(DateTime.now().toUtc());
       if (left.isNegative) {
-        return const AerialReconStatPair('Left', 'finishing…');
+        return const AerialMissionStatPair('Left', 'finishing…');
       }
       final mins = left.inMinutes;
-      if (mins < 1) return const AerialReconStatPair('Left', '<1 min');
-      return AerialReconStatPair('Left', '$mins min');
+      if (mins < 1) return const AerialMissionStatPair('Left', '<1 min');
+      return AerialMissionStatPair('Left', '$mins min');
     }
     if (mission.isEnsuring) {
-      return const AerialReconStatPair('Left', 'preparing…');
+      return const AerialMissionStatPair('Left', 'preparing…');
     }
     if (mission.status == 'cancelled') {
       final ended = mission.flightEndsAt ?? mission.createdAt;
-      return AerialReconStatPair('Ended', _shortWhen(ended));
+      return AerialMissionStatPair('Ended', _shortWhen(ended));
     }
     final ended = mission.flightEndsAt ?? mission.createdAt;
-    return AerialReconStatPair('Ended', _shortWhen(ended));
+    return AerialMissionStatPair('Ended', _shortWhen(ended));
   }
 
   static String _shortWhen(DateTime utc) {
@@ -190,10 +191,10 @@ class AerialReconMissionSummaryLine extends StatelessWidget {
 }
 
 /// Four equal labeled cells in one row.
-class AerialReconStatRow extends StatelessWidget {
-  const AerialReconStatRow({super.key, required this.pairs});
+class AerialMissionStatRow extends StatelessWidget {
+  const AerialMissionStatRow({super.key, required this.pairs});
 
-  final List<AerialReconStatPair> pairs;
+  final List<AerialMissionStatPair> pairs;
 
   @override
   Widget build(BuildContext context) {
@@ -237,8 +238,8 @@ class AerialReconStatRow extends StatelessWidget {
   }
 }
 
-class AerialReconStatPair {
-  const AerialReconStatPair(this.label, this.value);
+class AerialMissionStatPair {
+  const AerialMissionStatPair(this.label, this.value);
 
   final String label;
   final String value;

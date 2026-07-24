@@ -43,7 +43,7 @@ const siteRockTypeOptions = <String>[
 String siteFilterOptionLabel(String value) => capitalizeLeadingLetter(value);
 
 /// How far back past aerial recon routes stay eligible for the map overlay.
-const Duration pastReconRouteMaxAge = Duration(hours: 24);
+const Duration pastAerialRouteMaxAge = Duration(hours: 24);
 
 class SiteMapFilters {
   SiteMapFilters({
@@ -51,7 +51,7 @@ class SiteMapFilters {
     Set<String>? periods,
     Set<String>? rockTypes,
     this.filterByStatus = false,
-    this.showPastReconRoutes = false,
+    this.showPastAerialRoutes = false,
   })  : statuses = statuses ?? Set<String>.from(siteStatusOptions),
         periods = periods ?? Set<String>.from(sitePeriodOptions),
         rockTypes = rockTypes ?? Set<String>.from(siteRockTypeOptions);
@@ -64,14 +64,14 @@ class SiteMapFilters {
   final bool filterByStatus;
 
   /// Opt-in: show completed aerial recon polylines from the last 24h.
-  final bool showPastReconRoutes;
+  final bool showPastAerialRoutes;
 
   bool get hasActiveFilters {
     final periodActive = periods.length != sitePeriodOptions.length;
     final rockActive = rockTypes.length != siteRockTypeOptions.length;
     final statusActive =
         filterByStatus && statuses.length != siteStatusOptions.length;
-    return periodActive || rockActive || statusActive || showPastReconRoutes;
+    return periodActive || rockActive || statusActive || showPastAerialRoutes;
   }
 
   /// Stable key so marker layer can wipe+reload when site filters change.
@@ -93,14 +93,14 @@ class SiteMapFilters {
     Set<String>? periods,
     Set<String>? rockTypes,
     bool? filterByStatus,
-    bool? showPastReconRoutes,
+    bool? showPastAerialRoutes,
   }) {
     return SiteMapFilters(
       statuses: statuses ?? this.statuses,
       periods: periods ?? this.periods,
       rockTypes: rockTypes ?? this.rockTypes,
       filterByStatus: filterByStatus ?? this.filterByStatus,
-      showPastReconRoutes: showPastReconRoutes ?? this.showPastReconRoutes,
+      showPastAerialRoutes: showPastAerialRoutes ?? this.showPastAerialRoutes,
     );
   }
 

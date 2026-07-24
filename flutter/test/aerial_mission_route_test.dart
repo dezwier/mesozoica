@@ -56,13 +56,14 @@ void main() {
     });
   });
 
-  group('aerialReconProgressFraction', () {
-    AerialReconMission mission({
+  group('aerialMissionProgressFraction', () {
+    AerialMission mission({
       required String status,
       DateTime? started,
       int durationS = 100,
     }) {
-      return AerialReconMission(
+      return AerialMission(
+        actionKey: 'aerial_recon',
         missionId: 1,
         status: status,
         route: const [LatLng(40, -100), LatLng(40.1, -100)],
@@ -77,21 +78,21 @@ void main() {
 
     test('ensuring is at start', () {
       final m = mission(status: 'ensuring');
-      expect(aerialReconProgressFraction(m), 0);
+      expect(aerialMissionProgressFraction(m), 0);
     });
 
     test('flying uses elapsed / duration (same as discovery timing)', () {
       final started = DateTime.utc(2026, 1, 1, 12);
       final m = mission(status: 'flying', started: started, durationS: 100);
       final now = started.add(const Duration(seconds: 40));
-      expect(aerialReconProgressFraction(m, now: now), closeTo(0.4, 1e-9));
+      expect(aerialMissionProgressFraction(m, now: now), closeTo(0.4, 1e-9));
     });
 
     test('clamps at end of flight', () {
       final started = DateTime.utc(2026, 1, 1, 12);
       final m = mission(status: 'flying', started: started, durationS: 100);
       final now = started.add(const Duration(seconds: 200));
-      expect(aerialReconProgressFraction(m, now: now), 1.0);
+      expect(aerialMissionProgressFraction(m, now: now), 1.0);
     });
 
     test('naive UTC timestamps from API are not shifted by local offset', () {
@@ -110,11 +111,11 @@ void main() {
         'created_at': '2026-01-01T11:00:00',
         'tool_id': 1,
       };
-      final m = AerialReconMission.fromJson(json);
+      final m = AerialMission.fromJson(json);
       expect(m.flightStartedAt!.isUtc, isTrue);
       expect(m.flightStartedAt, DateTime.utc(2026, 1, 1, 12));
       final now = DateTime.utc(2026, 1, 1, 12, 30);
-      expect(aerialReconProgressFraction(m, now: now), closeTo(0.5, 1e-9));
+      expect(aerialMissionProgressFraction(m, now: now), closeTo(0.5, 1e-9));
     });
   });
 }

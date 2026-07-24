@@ -3,9 +3,10 @@ import 'package:latlong2/latlong.dart';
 import 'package:mesozoica/services/tool_service.dart';
 
 void main() {
-  test('AerialReconMission parses flight params and site count', () {
-    final mission = AerialReconMission.fromJson({
+  test('AerialMission parses flight params and site count', () {
+    final mission = AerialMission.fromJson({
       'mission_id': 5,
+      'action_key': 'aerial_scout',
       'status': 'flying',
       'route': [
         {'lat': 40.0, 'lon': -100.0},
@@ -21,6 +22,7 @@ void main() {
       'tool_id': 3,
       'discovered_site_ids': [1, 2, 3],
     });
+    expect(mission.actionKey, 'aerial_scout');
     expect(mission.flightSpeedKmh, 50);
     expect(mission.maxRouteKm, 100);
     expect(mission.discoveryChance, 0.02);

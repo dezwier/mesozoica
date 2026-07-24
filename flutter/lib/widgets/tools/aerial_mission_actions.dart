@@ -1,19 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../../controllers/aerial_recon_controller.dart';
+import '../../controllers/aerial_mission_controller.dart';
+import '../../models/aerial_mission_kind.dart';
 import '../../services/tool_service.dart';
 
-/// Shared Follow / Abort controls for an active aerial recon mission.
-class AerialReconMissionActions extends StatelessWidget {
-  const AerialReconMissionActions({
+/// Shared Follow / Abort controls for an active aerial mission.
+class AerialMissionActions extends StatelessWidget {
+  const AerialMissionActions({
     super.key,
     required this.mission,
     this.showFollow = true,
     this.showAbort = true,
   });
 
-  final AerialReconMission mission;
+  final AerialMission mission;
   final bool showFollow;
   final bool showAbort;
 
@@ -30,19 +31,19 @@ class AerialReconMissionActions extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         if (showFollow)
-          _ReconActionChip(
-            label: 'Follow recon',
+          _AerialActionChip(
+            label: 'Follow',
             icon: Icons.center_focus_strong_rounded,
             onPressed: () =>
-                context.read<AerialReconController>().focusMission(mission),
+                context.read<AerialMissionController>().focusMission(mission),
             foreground: onSurface.withValues(alpha: 0.72),
             background: onSurface.withValues(alpha: 0.05),
             border: onSurface.withValues(alpha: 0.14),
           ),
         if (showFollow && showAbort) const SizedBox(width: 8),
         if (showAbort)
-          _ReconActionChip(
-            label: 'Abort recon',
+          _AerialActionChip(
+            label: 'Abort',
             icon: Icons.cancel_outlined,
             onPressed: () => confirmAbort(context, mission),
             foreground: abortColor,
@@ -55,16 +56,17 @@ class AerialReconMissionActions extends StatelessWidget {
 
   static Future<void> confirmAbort(
     BuildContext context,
-    AerialReconMission mission,
+    AerialMission mission,
   ) async {
+    final kind = AerialMissionKind.fromActionKey(mission.actionKey);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) {
         const abortColor = Color.fromARGB(255, 136, 68, 55);
         return AlertDialog(
-          title: const Text('Abort Aerial Recon?'),
+          title: Text('${kind.abortLabel}?'),
           content: const Text(
-            'The scout will stop where it is. Sites already found stay '
+            'The craft will stop where it is. Sites already found stay '
             'discovered; nothing further will be found on this loop.',
           ),
           actions: [
@@ -75,7 +77,7 @@ class AerialReconMissionActions extends StatelessWidget {
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(true),
               style: TextButton.styleFrom(foregroundColor: abortColor),
-              child: const Text('Abort recon'),
+              child: const Text('Abort'),
             ),
           ],
         );
@@ -84,20 +86,22 @@ class AerialReconMissionActions extends StatelessWidget {
     if (confirmed != true || !context.mounted) return;
 
     final ok = await context
-        .read<AerialReconController>()
+        .read<AerialMissionController>()
         .cancelMission(mission.missionId);
     if (!context.mounted) return;
     if (!ok) {
-      final message = context.read<AerialReconController>().message;
+      final message = context.read<AerialMissionController>().message;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message ?? 'Failed to abort Aerial Recon')),
+        SnackBar(
+          content: Text(message ?? 'Failed to abort ${kind.toolName}'),
+        ),
       );
     }
   }
 }
 
-class _ReconActionChip extends StatelessWidget {
-  const _ReconActionChip({
+class _AerialActionChip extends StatelessWidget {
+  const _AerialActionChip({
     required this.label,
     required this.icon,
     required this.onPressed,
@@ -131,20 +135,15 @@ class _ReconActionChip extends StatelessWidget {
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
-            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(icon, size: 14, color: foreground),
-              const SizedBox(width: 5),
+              Icon(icon, size: 16, color: foreground),
+              const SizedBox(width: 6),
               Text(
                 label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   color: foreground,
-                  fontSize: 11.5,
-                  fontWeight: FontWeight.w500,
-                  letterSpacing: 0.1,
-                  height: 1.1,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13,
                 ),
               ),
             ],

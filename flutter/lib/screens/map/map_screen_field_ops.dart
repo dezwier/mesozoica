@@ -110,7 +110,7 @@ mixin _MapScreenFieldOpsMixin on State<MapScreen>, _MapScreenCameraMixin {
       context.read<map_data.MapController>().load(force: true);
       context.read<SiteCatalogController>().load(force: true);
       context.read<FossilCatalogController>().load(force: true);
-      unawaited(context.read<AerialReconController>().refreshMissions());
+      unawaited(context.read<AerialMissionController>().refreshMissions());
       _showScanBanner(
         'Deleted ${result.userSitesDeleted} user sites · '
         '${result.userFossilsDeleted} user fossils · '
