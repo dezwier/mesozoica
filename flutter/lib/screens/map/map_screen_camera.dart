@@ -13,6 +13,9 @@ mixin _MapScreenCameraMixin on State<MapScreen> {
   bool _followUser = true;
   /// Continuous camera follow of the focused aerial-recon scout.
   bool _followAerialScout = false;
+  /// True while the one-shot fly-to-recon animation is running (suppresses
+  /// continuous follow so setCamera does not fight flyTo).
+  bool _aerialFocusAnimating = false;
   /// false = north-fixed Mapbox; true = map bearing follows phone.
   bool _rotateMap = true;
   LatLng? _lastFollowedLocation;
@@ -81,12 +84,14 @@ mixin _MapScreenCameraMixin on State<MapScreen> {
         _rotateMap = false;
         _followUser = false;
         _followAerialScout = false;
+        _aerialFocusAnimating = false;
       });
       _mapboxCamera.clearPendingFollow();
     } else {
       setState(() {
         _followUser = false;
         _followAerialScout = false;
+        _aerialFocusAnimating = false;
       });
       _mapboxCamera.clearPendingFollow();
     }
@@ -100,7 +105,10 @@ mixin _MapScreenCameraMixin on State<MapScreen> {
 
     if (mission.isPast) {
       if (mission.route.isEmpty) return;
-      await _mapboxCamera.fitRoute(mission.route, durationMs: 1400);
+      await _mapboxCamera.fitRoute(
+        mission.route,
+        durationMs: MapConfig.mapboxAerialReconFocusDurationMs,
+      );
       return;
     }
 
@@ -108,17 +116,38 @@ mixin _MapScreenCameraMixin on State<MapScreen> {
         (mission.route.isNotEmpty ? mission.route.first : null);
     if (target == null) return;
 
-    setState(() => _followAerialScout = true);
-    await _mapboxCamera.centerOn(
-      target,
-      zoom: MapConfig.mapboxFollowZoom,
-      headingDeg: headingDeg,
-      durationMs: 1400,
-    );
+    // Fly first without continuous follow — otherwise progress ticks call
+    // setCamera mid-flyTo and the camera snaps once the scout has moved.
+    final zoom = MapConfig.mapboxAerialReconZoom;
+    setState(() {
+      _followAerialScout = true;
+      _aerialFocusAnimating = true;
+      _zoomLevel = zoom;
+    });
+    try {
+      await _mapboxCamera.centerOn(
+        target,
+        zoom: zoom,
+        headingDeg: headingDeg,
+        durationMs: MapConfig.mapboxAerialReconFocusDurationMs,
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _aerialFocusAnimating = false);
+        _maybeFollowAerialScout();
+      } else {
+        _aerialFocusAnimating = false;
+      }
+    }
   }
 
   void _maybeFollowAerialScout() {
-    if (!_followAerialScout || !_mapboxReady || _rotateMap) return;
+    if (!_followAerialScout ||
+        _aerialFocusAnimating ||
+        !_mapboxReady ||
+        _rotateMap) {
+      return;
+    }
     final recon = context.read<AerialReconController>();
     final mission = recon.focusedMission;
     if (mission == null || !mission.isActive) {
@@ -130,11 +159,12 @@ mixin _MapScreenCameraMixin on State<MapScreen> {
     final tick = recon.progressTick;
     final target = recon.scoutPosition(mission);
     if (target == null) return;
+    // Omit zoom so the slider can change level while we stay centered;
+    // pan cancels follow via onFollowCancelled.
     unawaited(
       _mapboxCamera.followLocation(
         target,
         followUser: true,
-        zoom: MapConfig.mapboxFollowZoom,
       ),
     );
   }
@@ -232,6 +262,7 @@ mixin _MapScreenCameraMixin on State<MapScreen> {
     setState(() {
       _followUser = true;
       _followAerialScout = false;
+      _aerialFocusAnimating = false;
       _lastFollowedLocation = location;
       _zoomLevel = MapConfig.mapboxFollowZoom;
     });

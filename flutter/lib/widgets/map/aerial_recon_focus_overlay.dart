@@ -3,9 +3,9 @@ import 'package:provider/provider.dart';
 
 import '../../controllers/aerial_recon_controller.dart';
 import '../../controllers/tool_action_router.dart';
-import '../../services/tool_service.dart';
 import '../../shell/map_chrome_insets.dart';
 import '../tools/aerial_recon_flight_stats.dart';
+import '../tools/aerial_recon_mission_actions.dart';
 
 /// Top banner while a recon mission is focused from the Info sheet or scout tap.
 class AerialReconFocusOverlay extends StatelessWidget {
@@ -53,22 +53,11 @@ class AerialReconFocusOverlay extends StatelessWidget {
                     AerialReconMissionSummaryLine(mission: mission),
                     const SizedBox(height: 8),
                     AerialReconFlightStats.fromMission(mission),
-                    if (mission.isActive) ...[
-                      const SizedBox(height: 8),
-                      Align(
-                        alignment: Alignment.centerLeft,
-                        child: TextButton(
-                          onPressed: () => _confirmCancel(context, mission),
-                          style: TextButton.styleFrom(
-                            foregroundColor: theme.colorScheme.error,
-                            visualDensity: VisualDensity.compact,
-                            padding: EdgeInsets.zero,
-                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                          ),
-                          child: const Text('Cancel recon'),
-                        ),
-                      ),
-                    ],
+                    const SizedBox(height: 10),
+                    AerialReconMissionActions(
+                      mission: mission,
+                      showAbort: mission.isActive,
+                    ),
                   ],
                 ),
               ),
@@ -84,48 +73,5 @@ class AerialReconFocusOverlay extends StatelessWidget {
         ),
       ),
     );
-  }
-
-  static Future<void> _confirmCancel(
-    BuildContext context,
-    AerialReconMission mission,
-  ) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) {
-        return AlertDialog(
-          title: const Text('Cancel Aerial Recon?'),
-          content: const Text(
-            'The scout will stop where it is. Sites already found stay '
-            'discovered; nothing further will be found on this loop.',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: const Text('Keep flying'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(true),
-              style: TextButton.styleFrom(
-                foregroundColor: Theme.of(dialogContext).colorScheme.error,
-              ),
-              child: const Text('Cancel recon'),
-            ),
-          ],
-        );
-      },
-    );
-    if (confirmed != true || !context.mounted) return;
-
-    final ok = await context
-        .read<AerialReconController>()
-        .cancelMission(mission.missionId);
-    if (!context.mounted) return;
-    if (!ok) {
-      final message = context.read<AerialReconController>().message;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message ?? 'Failed to cancel Aerial Recon')),
-      );
-    }
   }
 }

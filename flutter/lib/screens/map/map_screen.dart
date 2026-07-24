@@ -181,6 +181,7 @@ class _MapScreenState extends State<MapScreen>
                         setState(() {
                           _followUser = false;
                           _followAerialScout = false;
+                          _aerialFocusAnimating = false;
                         });
                       }
                     },

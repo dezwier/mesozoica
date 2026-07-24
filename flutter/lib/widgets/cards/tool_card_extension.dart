@@ -6,6 +6,7 @@ import '../../controllers/tool_action_router.dart';
 import '../../models/tool.dart';
 import '../../services/tool_service.dart';
 import '../tools/aerial_recon_flight_stats.dart';
+import '../tools/aerial_recon_mission_actions.dart';
 import '../tools/aerial_recon_missions_sheet.dart';
 import 'card_section_panel.dart';
 
@@ -100,17 +101,15 @@ class _AerialReconOngoingPanel extends StatelessWidget {
 
     return CardSectionPanel(
       label: 'Ongoing flight',
-      child: InkWell(
-        onTap: () => recon.focusMission(mission),
-        borderRadius: BorderRadius.circular(8),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            AerialReconMissionSummaryLine(mission: mission),
-            const SizedBox(height: 8),
-            AerialReconFlightStats.fromMission(mission),
-          ],
-        ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          AerialReconMissionSummaryLine(mission: mission),
+          const SizedBox(height: 8),
+          AerialReconFlightStats.fromMission(mission),
+          const SizedBox(height: 10),
+          AerialReconMissionActions(mission: mission),
+        ],
       ),
     );
   }

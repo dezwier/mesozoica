@@ -211,12 +211,13 @@ class AerialReconStatRow extends StatelessWidget {
           if (i > 0) const SizedBox(width: 6),
           Expanded(
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 Text(
                   pairs[i].label.toUpperCase(),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
                   style: labelStyle,
                 ),
                 const SizedBox(height: 2),
@@ -224,6 +225,7 @@ class AerialReconStatRow extends StatelessWidget {
                   pairs[i].value,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
                   style: valueStyle,
                 ),
               ],

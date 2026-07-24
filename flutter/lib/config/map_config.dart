@@ -107,6 +107,14 @@ class MapConfig {
   /// Zoom used when centering on the user in north-fixed mode.
   static const double mapboxFollowZoom = 16.0;
 
+  /// Initial zoom when linking to an aerial recon scout (more pulled out than
+  /// [mapboxFollowZoom] so the route context is visible). Continuous follow
+  /// preserves whatever zoom the user picks afterward.
+  static const double mapboxAerialReconZoom = 14.0;
+
+  /// Camera fly-in duration when focusing an aerial recon mission.
+  static const int mapboxAerialReconFocusDurationMs = 450;
+
   static String get mapboxAccessToken {
     if (_mapboxAccessToken.isNotEmpty) return _mapboxAccessToken;
     return _mapboxAccessTokenAlias;
