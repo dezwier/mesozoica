@@ -223,4 +223,19 @@ void main() {
     expect(bounds.start, DateTime.utc(2026, 3, 10));
     expect(bounds.end, DateTime.utc(2026, 7, 24));
   });
+
+  test('discoveryTimeDaySpan is at least 1 for same-day discoveries', () {
+    final today = DateTime.utc(2026, 7, 24, 18, 0);
+    expect(
+      discoveryTimeDaySpan(now: today, earliestDiscovery: today),
+      1,
+    );
+    expect(
+      discoveryTimeDaySpan(
+        now: today,
+        earliestDiscovery: DateTime.utc(2026, 7, 20),
+      ),
+      4,
+    );
+  });
 }

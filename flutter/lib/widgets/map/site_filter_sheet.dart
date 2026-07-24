@@ -77,6 +77,7 @@ class _SiteFilterSheetState extends State<SiteFilterSheet> {
   late final DateTime _windowStart;
   late final DateTime _windowEnd;
   late final int _dayCount;
+  late final bool _hasDiscoveryDates;
   bool _applied = false;
 
   static final _dayLabel = DateFormat('MMM d, yyyy');
@@ -84,12 +85,16 @@ class _SiteFilterSheetState extends State<SiteFilterSheet> {
   @override
   void initState() {
     super.initState();
+    _hasDiscoveryDates = widget.earliestDiscovery != null;
     final bounds = discoveryTimeWindowBounds(
       earliestDiscovery: widget.earliestDiscovery,
     );
     _windowStart = bounds.start;
     _windowEnd = bounds.end;
-    _dayCount = _windowEnd.difference(_windowStart).inDays;
+    // Same-day discoveries used to yield dayCount=0 and hide the slider.
+    _dayCount = discoveryTimeDaySpan(
+      earliestDiscovery: widget.earliestDiscovery,
+    );
     _pendingStatuses = {...widget.initialFilters.statuses};
     _pendingPeriods = {...widget.initialFilters.periods};
     _pendingRockTypes = {...widget.initialFilters.rockTypes};
@@ -129,11 +134,14 @@ class _SiteFilterSheetState extends State<SiteFilterSheet> {
 
   DateTime _dateAtDay(double day) {
     final clamped = day.round().clamp(0, _dayCount);
-    return _windowStart.add(Duration(days: clamped));
+    final date = _windowStart.add(Duration(days: clamped));
+    // Same-day window uses daySpan=1 with max thumb past end; clamp to today.
+    if (date.isAfter(_windowEnd)) return _windowEnd;
+    return date;
   }
 
   bool get _discoveryTimeIsFullSpan =>
-      _dayCount <= 0 ||
+      !_hasDiscoveryDates ||
       (_pendingDiscoveryDays.start <= 0.001 &&
           _pendingDiscoveryDays.end >= _dayCount - 0.001);
 
@@ -194,9 +202,10 @@ class _SiteFilterSheetState extends State<SiteFilterSheet> {
   }
 
   String _formatDay(double day) {
-    if (_dayCount <= 0) return 'Today';
-    if (day >= _dayCount - 0.001) return 'Today';
-    return _dayLabel.format(_dateAtDay(day).toLocal());
+    if (!_hasDiscoveryDates) return 'Today';
+    final date = _dateAtDay(day);
+    if (!date.isBefore(_windowEnd)) return 'Today';
+    return _dayLabel.format(date.toLocal());
   }
 
   @override
@@ -219,7 +228,7 @@ class _SiteFilterSheetState extends State<SiteFilterSheet> {
             controller: scrollController,
             padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
             children: [
-              _chapterHeader(theme, 'Site filters'),
+              _chapterHeader(theme, 'Excavation Sites'),
               if (widget.showSortSection) ...[
                 const SizedBox(height: 16),
                 SettingsFormStyles.settingsRow(
@@ -277,7 +286,7 @@ class _SiteFilterSheetState extends State<SiteFilterSheet> {
                 'Limit sites by when you discovered them.',
                 style: SettingsFormStyles.finePrintStyle(context),
               ),
-              if (_dayCount <= 0)
+              if (!_hasDiscoveryDates)
                 Padding(
                   padding: const EdgeInsets.only(top: 8),
                   child: Text(
@@ -292,7 +301,7 @@ class _SiteFilterSheetState extends State<SiteFilterSheet> {
                   values: _pendingDiscoveryDays,
                   min: 0,
                   max: _dayCount.toDouble(),
-                  divisions: _dayCount < 1 ? null : _dayCount,
+                  divisions: _dayCount,
                   onChanged: (values) {
                     setState(() => _pendingDiscoveryDays = values);
                   },
@@ -381,9 +390,7 @@ class _SiteFilterSheetState extends State<SiteFilterSheet> {
                 ),
               ),
               if (widget.showReconRoutesSection) ...[
-                const SizedBox(height: 24),
-                const Divider(height: 1),
-                const SizedBox(height: 20),
+                const SizedBox(height: 28),
                 _chapterHeader(theme, 'Map overlays'),
                 const SizedBox(height: 16),
                 SettingsFormStyles.settingsRow(
@@ -446,8 +453,10 @@ class _SiteFilterSheetState extends State<SiteFilterSheet> {
   Widget _chapterHeader(ThemeData theme, String title) {
     return Text(
       title,
-      style: theme.textTheme.titleLarge?.copyWith(
-        fontWeight: FontWeight.w700,
+      style: theme.textTheme.titleSmall?.copyWith(
+        fontWeight: FontWeight.w600,
+        color: theme.colorScheme.onSurfaceVariant,
+        letterSpacing: 0.2,
       ),
     );
   }
