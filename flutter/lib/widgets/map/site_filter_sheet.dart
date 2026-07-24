@@ -217,16 +217,11 @@ class _SiteFilterSheetState extends State<SiteFilterSheet> {
         builder: (context, scrollController) {
           return ListView(
             controller: scrollController,
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+            padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
             children: [
-              Text(
-                'Filter sites',
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
+              _chapterHeader(theme, 'Site filters'),
               if (widget.showSortSection) ...[
-                const SizedBox(height: 20),
+                const SizedBox(height: 16),
                 SettingsFormStyles.settingsRow(
                   context: context,
                   label: 'Sort',
@@ -386,11 +381,16 @@ class _SiteFilterSheetState extends State<SiteFilterSheet> {
                 ),
               ),
               if (widget.showReconRoutesSection) ...[
+                const SizedBox(height: 24),
+                const Divider(height: 1),
                 const SizedBox(height: 20),
+                _chapterHeader(theme, 'Map overlays'),
+                const SizedBox(height: 16),
                 SettingsFormStyles.settingsRow(
                   context: context,
                   label: 'Past routes',
-                  description: 'Show completed aerial routes from the last 24h.',
+                  description:
+                      'Show completed aerial routes from the last 24h.',
                   controlWidth: 168,
                   control: SettingsFormStyles.densePopupField<bool>(
                     context: context,
@@ -436,14 +436,18 @@ class _SiteFilterSheetState extends State<SiteFilterSheet> {
                   ),
                 ],
               ),
-              const SizedBox(height: 4),
-              Text(
-                'Long-press an option in a multi-select menu to keep only that one.',
-                style: SettingsFormStyles.finePrintStyle(context),
-              ),
             ],
           );
         },
+      ),
+    );
+  }
+
+  Widget _chapterHeader(ThemeData theme, String title) {
+    return Text(
+      title,
+      style: theme.textTheme.titleLarge?.copyWith(
+        fontWeight: FontWeight.w700,
       ),
     );
   }
