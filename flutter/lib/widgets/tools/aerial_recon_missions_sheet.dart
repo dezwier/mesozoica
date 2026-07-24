@@ -98,15 +98,12 @@ class _AerialReconMissionsSheetState extends State<AerialReconMissionsSheet> {
                           ),
                         ),
                       ),
-                    if (past.isNotEmpty) ...[
-                      _SectionHeader(label: 'Past'),
-                      ...past.map(
-                        (m) => _MissionTile(
-                          mission: m,
-                          onTap: () => _select(m),
-                        ),
+                    ...past.map(
+                      (m) => _MissionTile(
+                        mission: m,
+                        onTap: () => _select(m),
                       ),
-                    ],
+                    ),
                   ],
                 ),
               ),
@@ -119,27 +116,6 @@ class _AerialReconMissionsSheetState extends State<AerialReconMissionsSheet> {
   void _select(AerialReconMission mission) {
     context.read<AerialReconController>().focusMission(mission);
     Navigator.of(context).pop();
-  }
-}
-
-class _SectionHeader extends StatelessWidget {
-  const _SectionHeader({required this.label});
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8, top: 4),
-      child: Text(
-        label.toUpperCase(),
-        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              letterSpacing: 0.8,
-              fontWeight: FontWeight.w700,
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
-      ),
-    );
   }
 }
 

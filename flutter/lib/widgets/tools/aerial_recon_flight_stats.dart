@@ -63,9 +63,9 @@ class AerialReconFlightStats extends StatelessWidget {
   Widget build(BuildContext context) {
     final pairs = <AerialReconStatPair>[
       AerialReconStatPair('Speed', _formatKmh(flightSpeedKmh)),
-      AerialReconStatPair('Range', _formatKm(maxRouteKm)),
-      AerialReconStatPair('Discover', _formatChance(discoveryChance)),
-      AerialReconStatPair('Distance', _formatMeters(discoveryDistanceM)),
+      AerialReconStatPair('Max range', _formatKm(maxRouteKm)),
+      AerialReconStatPair('Site chance', _formatChance(discoveryChance)),
+      AerialReconStatPair('Visibility', _formatMeters(discoveryDistanceM)),
     ];
 
     if (compact) {
@@ -143,7 +143,10 @@ class AerialReconMissionSummaryLine extends StatelessWidget {
         ),
         AerialReconStatPair('Duration', _durationValue(mission)),
         AerialReconStatPair(time.label, time.value),
-        AerialReconStatPair('Sites', '${mission.discoveredSiteCount}'),
+        AerialReconStatPair(
+          'Sites found',
+          '${mission.discoveredSiteCount}',
+        ),
       ],
     );
   }
