@@ -5,7 +5,6 @@ import '../../controllers/aerial_recon_controller.dart';
 import '../../controllers/tool_action_router.dart';
 import '../../models/tool.dart';
 import '../../services/tool_service.dart';
-import '../../theme/dino_card_theme.dart';
 import '../tools/aerial_recon_flight_stats.dart';
 import '../tools/aerial_recon_missions_sheet.dart';
 import 'card_section_panel.dart';
@@ -51,7 +50,6 @@ class AerialReconCardExtension implements ToolCardExtension {
   @override
   Widget? buildDeployStats(BuildContext context, ToolSummary tool) {
     return CardSectionPanel(
-      label: 'Stats',
       child: AerialReconFlightStats.fromConfig(),
     );
   }
@@ -75,9 +73,11 @@ class _AerialReconOngoingPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final recon = context.watch<AerialReconController>();
-    // Rebuild when poll updates discovered sites.
+    // Rebuild when poll updates discovered sites / remaining time.
     // ignore: unused_local_variable
     final _ = recon.missionsFetchGeneration;
+    // ignore: unused_local_variable
+    final tick = recon.progressTick;
 
     AerialReconMission? active;
     for (final m in recon.missions) {
@@ -97,7 +97,6 @@ class _AerialReconOngoingPanel extends StatelessWidget {
     if (active == null) return const SizedBox.shrink();
 
     final mission = active;
-    final cardTheme = DinoCardTheme.of(context);
 
     return CardSectionPanel(
       label: 'Ongoing flight',
@@ -107,29 +106,12 @@ class _AerialReconOngoingPanel extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(
-              '${_statusLabel(mission.status)} · '
-              '${mission.routeLengthKm.toStringAsFixed(1)} km',
-              style: cardTheme.bodyStyle(fontSize: 12).copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
-            ),
-            const SizedBox(height: 6),
+            AerialReconMissionSummaryLine(mission: mission),
+            const SizedBox(height: 8),
             AerialReconFlightStats.fromMission(mission),
           ],
         ),
       ),
     );
-  }
-
-  static String _statusLabel(String status) {
-    switch (status) {
-      case 'ensuring':
-        return 'Preparing';
-      case 'flying':
-        return 'In flight';
-      default:
-        return status;
-    }
   }
 }

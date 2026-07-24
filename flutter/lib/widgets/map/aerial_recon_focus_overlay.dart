@@ -25,7 +25,6 @@ class AerialReconFocusOverlay extends StatelessWidget {
 
     final topInset = MapChromeInsets.top(context);
     final theme = Theme.of(context);
-    final detail = _detailLine(mission);
 
     return Positioned(
       top: topInset + 8,
@@ -50,21 +49,14 @@ class AerialReconFocusOverlay extends StatelessWidget {
                         fontWeight: FontWeight.w700,
                       ),
                     ),
-                    const SizedBox(height: 2),
-                    Text(
-                      '${_statusLabel(mission.status)} · '
-                      '${mission.routeLengthKm.toStringAsFixed(1)} km',
-                      style: theme.textTheme.bodySmall,
-                    ),
-                    if (detail != null) ...[
-                      const SizedBox(height: 2),
-                      Text(
-                        detail,
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
+                    const SizedBox(height: 4),
+                    AerialReconMissionSummaryLine(
+                      mission: mission,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        height: 1.35,
                       ),
-                    ],
+                    ),
                     const SizedBox(height: 8),
                     AerialReconFlightStats.fromMission(mission),
                     if (mission.isActive) ...[
@@ -141,66 +133,5 @@ class AerialReconFocusOverlay extends StatelessWidget {
         SnackBar(content: Text(message ?? 'Failed to cancel Aerial Recon')),
       );
     }
-  }
-
-  static String _statusLabel(String status) {
-    switch (status) {
-      case 'ensuring':
-        return 'Preparing';
-      case 'flying':
-        return 'In flight';
-      case 'done':
-        return 'Completed';
-      case 'failed':
-        return 'Failed';
-      case 'cancelled':
-        return 'Cancelled';
-      default:
-        return status;
-    }
-  }
-
-  static String? _detailLine(AerialReconMission mission) {
-    final durationMin = (mission.flightDurationS / 60).round();
-    final durationLabel = durationMin <= 1
-        ? '${mission.flightDurationS}s flight'
-        : '$durationMin min flight';
-    final startLabel = _startLabel(mission);
-
-    if (mission.isFlying && mission.flightEndsAt != null) {
-      final left = mission.flightEndsAt!.difference(DateTime.now().toUtc());
-      if (left.isNegative) {
-        return '$startLabel · $durationLabel · finishing…';
-      }
-      final mins = left.inMinutes;
-      if (mins < 1) {
-        return '$startLabel · $durationLabel · <1 min left';
-      }
-      return '$startLabel · $durationLabel · $mins min left';
-    }
-    if (mission.isEnsuring) {
-      return '$startLabel · $durationLabel · preparing terrain';
-    }
-    if (mission.status == 'cancelled') {
-      final ended = mission.flightEndsAt ?? mission.createdAt;
-      final local = ended.toLocal();
-      return '$startLabel · stopped '
-          '${local.month}/${local.day} '
-          '${local.hour.toString().padLeft(2, '0')}:'
-          '${local.minute.toString().padLeft(2, '0')}';
-    }
-    final ended = mission.flightEndsAt ?? mission.createdAt;
-    final local = ended.toLocal();
-    return '$startLabel · $durationLabel · finished '
-        '${local.month}/${local.day} '
-        '${local.hour.toString().padLeft(2, '0')}:'
-        '${local.minute.toString().padLeft(2, '0')}';
-  }
-
-  static String _startLabel(AerialReconMission mission) {
-    final start = (mission.flightStartedAt ?? mission.createdAt).toLocal();
-    final hh = start.hour.toString().padLeft(2, '0');
-    final mm = start.minute.toString().padLeft(2, '0');
-    return 'Started ${start.month}/${start.day} $hh:$mm';
   }
 }

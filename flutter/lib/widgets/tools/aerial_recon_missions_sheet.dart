@@ -155,8 +155,6 @@ class _MissionTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final statusLabel = _statusLabel(mission.status);
-    final subtitle = _subtitle(mission);
 
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
@@ -172,20 +170,14 @@ class _MissionTile extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      '${mission.routeLengthKm.toStringAsFixed(1)} km · $statusLabel',
+                    AerialReconMissionSummaryLine(
+                      mission: mission,
                       style: theme.textTheme.titleSmall?.copyWith(
                         fontWeight: FontWeight.w600,
+                        height: 1.35,
                       ),
                     ),
-                    const SizedBox(height: 2),
-                    Text(
-                      subtitle,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 10),
                     AerialReconFlightStats.fromMission(mission),
                   ],
                 ),
@@ -199,49 +191,5 @@ class _MissionTile extends StatelessWidget {
         ),
       ),
     );
-  }
-
-  static String _statusLabel(String status) {
-    switch (status) {
-      case 'ensuring':
-        return 'Preparing';
-      case 'flying':
-        return 'In flight';
-      case 'done':
-        return 'Completed';
-      case 'failed':
-        return 'Failed';
-      case 'cancelled':
-        return 'Cancelled';
-      default:
-        return status;
-    }
-  }
-
-  static String _subtitle(AerialReconMission mission) {
-    final durationMin = (mission.flightDurationS / 60).round();
-    final durationLabel = durationMin <= 1
-        ? '${mission.flightDurationS}s flight'
-        : '$durationMin min flight';
-    final startLabel = _startLabel(mission);
-    final ended = mission.flightEndsAt ?? mission.createdAt;
-    return '$startLabel · $durationLabel · ${_relative(ended)}';
-  }
-
-  static String _startLabel(AerialReconMission mission) {
-    final start = (mission.flightStartedAt ?? mission.createdAt).toLocal();
-    final hh = start.hour.toString().padLeft(2, '0');
-    final mm = start.minute.toString().padLeft(2, '0');
-    return 'Started ${start.month}/${start.day} $hh:$mm';
-  }
-
-  static String _relative(DateTime utc) {
-    final local = utc.toLocal();
-    final diff = DateTime.now().difference(local);
-    if (diff.inMinutes < 1) return 'just now';
-    if (diff.inHours < 1) return '${diff.inMinutes}m ago';
-    if (diff.inDays < 1) return '${diff.inHours}h ago';
-    if (diff.inDays < 7) return '${diff.inDays}d ago';
-    return '${local.month}/${local.day}/${local.year}';
   }
 }
