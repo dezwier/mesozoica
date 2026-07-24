@@ -13,6 +13,7 @@ class ToolCardHeader extends StatelessWidget {
     this.centered = false,
     this.overlayOnImage = false,
     this.showScientificSubtitle = false,
+    this.subtitleOverride,
   });
 
   final ToolSummary tool;
@@ -21,6 +22,8 @@ class ToolCardHeader extends StatelessWidget {
   final bool centered;
   final bool overlayOnImage;
   final bool showScientificSubtitle;
+  /// When set, shown as the subtitle instead of scientific name.
+  final String? subtitleOverride;
 
   @override
   Widget build(BuildContext context) {
@@ -34,6 +37,9 @@ class ToolCardHeader extends StatelessWidget {
             color: cardTheme.cardTextMuted,
             fontWeight: FontWeight.w500,
           );
+
+    final subtitle = subtitleOverride ??
+        (showScientificSubtitle ? tool.scientificTool : null);
 
     return Column(
       crossAxisAlignment:
@@ -53,11 +59,13 @@ class ToolCardHeader extends StatelessWidget {
             text: tool.name,
             style: titleStyle,
           ),
-        if (showScientificSubtitle) ...[
-          const SizedBox(height: 4),
+        if (subtitle != null && subtitle.isNotEmpty) ...[
+          const SizedBox(height: 2),
           Text(
-            tool.scientificTool,
+            subtitle,
             textAlign: centered ? TextAlign.center : TextAlign.start,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
             style: subtitleStyle,
           ),
         ],

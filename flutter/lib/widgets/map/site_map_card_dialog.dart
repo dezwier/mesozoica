@@ -4,10 +4,10 @@ import 'package:provider/provider.dart';
 import '../../controllers/map_controller.dart' as map_data;
 import '../../models/site.dart';
 import '../../services/site_service.dart';
-import '../../theme/dino_card_theme.dart';
 import '../cards/card_detail_sheet.dart';
 import '../cards/site_status_helper.dart';
 import '../cards/site_turnable_card.dart';
+import '../common/chrome_action_button.dart';
 
 Future<void> showSiteMapCardDialog(
   BuildContext context,
@@ -124,7 +124,7 @@ class _SiteMapCardWithActionsState extends State<_SiteMapCardWithActions> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Expanded(
-                  child: _MapSiteActionButton(
+                  child: ChromeActionButton(
                     label: _site.viewerHasSurveyed == true
                         ? 'Surveyed'
                         : 'Survey',
@@ -133,7 +133,7 @@ class _SiteMapCardWithActionsState extends State<_SiteMapCardWithActions> {
                 ),
                 const SizedBox(width: _actionGap),
                 Expanded(
-                  child: _MapSiteActionButton(
+                  child: ChromeActionButton(
                     label: 'Protect',
                     onPressed:
                         _busy ? null : () => _onStatusAction('protected'),
@@ -141,7 +141,7 @@ class _SiteMapCardWithActionsState extends State<_SiteMapCardWithActions> {
                 ),
                 const SizedBox(width: _actionGap),
                 Expanded(
-                  child: _MapSiteActionButton(
+                  child: ChromeActionButton(
                     label: 'Excavate',
                     onPressed:
                         _busy ? null : () => _onStatusAction('excavation'),
@@ -164,78 +164,6 @@ class _SiteMapCardWithActionsState extends State<_SiteMapCardWithActions> {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-/// Neutral gray action button behind the map site card.
-class _MapSiteActionButton extends StatelessWidget {
-  const _MapSiteActionButton({
-    required this.label,
-    required this.onPressed,
-  });
-
-  final String label;
-  final VoidCallback? onPressed;
-
-  static const Color _label = Color(0xFFF5F5F5);
-  static const Color _labelDisabled = Color(0x88BDBDBD);
-
-  @override
-  Widget build(BuildContext context) {
-    final enabled = onPressed != null;
-    final radius = BorderRadius.circular(DinoCardTheme.borderRadius);
-
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        borderRadius: radius,
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: enabled
-              ? const [Color(0xFF5E5854), Color(0xFF4A4542)]
-              : const [Color(0xFF464240), Color(0xFF3C3937)],
-        ),
-        border: Border.all(
-          color: enabled
-              ? const Color(0x40FFFFFF)
-              : const Color(0x22FFFFFF),
-          width: 0.5,
-        ),
-        boxShadow: enabled
-            ? const [
-                BoxShadow(
-                  color: Color(0x44000000),
-                  blurRadius: 8,
-                  offset: Offset(0, 2),
-                ),
-              ]
-            : null,
-      ),
-      child: Material(
-        color: Colors.transparent,
-        borderRadius: radius,
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: onPressed,
-          borderRadius: radius,
-          splashColor: Colors.white24,
-          highlightColor: Colors.white10,
-          child: Center(
-            child: Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: enabled ? _label : _labelDisabled,
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                letterSpacing: 0.3,
-              ),
-            ),
-          ),
-        ),
       ),
     );
   }

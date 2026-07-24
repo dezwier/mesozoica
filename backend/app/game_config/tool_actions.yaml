@@ -13,3 +13,7 @@ aerial_recon:
   ensure_timeout_s: 600
   # warn on confirm when drawn length is below this fraction of max_route_km
   short_route_warn_fraction: 0.7
+  # One-line blurb shown on the tool card stats panel
+  stats_explanation: >-
+    Scout loops fly at this speed within the max range; sites within
+    discovery distance are rolled at the listed chance.

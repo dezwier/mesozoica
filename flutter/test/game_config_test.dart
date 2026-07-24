@@ -36,9 +36,13 @@ void main() {
 
     expect(config.toolActions.aerialRecon.maxRouteKm, 100.0);
     expect(config.toolActions.aerialRecon.flightSpeedKmh, 50.0);
-    expect(config.toolActions.aerialRecon.discoveryChance, 0.2);
+    expect(config.toolActions.aerialRecon.discoveryChance, 0.02);
     expect(config.toolActions.aerialRecon.discoveryDistanceM, 200.0);
     expect(config.toolActions.aerialRecon.shortRouteWarnFraction, 0.7);
+    expect(
+      config.toolActions.aerialRecon.statsExplanation,
+      contains('Scout loops'),
+    );
 
     expect(GameConfig.isLoaded, isTrue);
     expect(GameConfig.instance.siteDiscovery.maxDistanceM, 50.0);

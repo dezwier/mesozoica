@@ -267,6 +267,10 @@ class AerialReconActionConfig(BaseModel):
     ensure_sample_spacing_km: float = 0.5
     ensure_timeout_s: int = 600
     short_route_warn_fraction: float = 0.7
+    stats_explanation: str = (
+        "Scout loops fly at this speed within the max range; sites within "
+        "discovery distance are rolled at the listed chance."
+    )
 
     @field_validator("discovery_chance")
     @classmethod

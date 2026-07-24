@@ -339,6 +339,7 @@ class AerialReconActionConfig {
     required this.ensureSampleSpacingKm,
     required this.ensureTimeoutS,
     required this.shortRouteWarnFraction,
+    required this.statsExplanation,
   });
 
   final double maxRouteKm;
@@ -349,6 +350,7 @@ class AerialReconActionConfig {
   final double ensureSampleSpacingKm;
   final int ensureTimeoutS;
   final double shortRouteWarnFraction;
+  final String statsExplanation;
 
   factory AerialReconActionConfig.fromYaml(Map<String, dynamic> yaml) {
     return AerialReconActionConfig(
@@ -360,6 +362,11 @@ class AerialReconActionConfig {
       ensureSampleSpacingKm: _asDouble(yaml['ensure_sample_spacing_km'], 0.5),
       ensureTimeoutS: _asInt(yaml['ensure_timeout_s'], 600),
       shortRouteWarnFraction: _asDouble(yaml['short_route_warn_fraction'], 0.7),
+      statsExplanation: _asString(
+        yaml['stats_explanation'],
+        'Scout loops fly at this speed within the max range; sites within '
+        'discovery distance are rolled at the listed chance.',
+      ),
     );
   }
 }
@@ -374,6 +381,14 @@ int _asInt(dynamic value, int fallback) {
   if (value is int) return value;
   if (value is num) return value.round();
   if (value is String) return int.tryParse(value) ?? fallback;
+  return fallback;
+}
+
+String _asString(dynamic value, String fallback) {
+  if (value is String) {
+    final trimmed = value.trim();
+    if (trimmed.isNotEmpty) return trimmed;
+  }
   return fallback;
 }
 

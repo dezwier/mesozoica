@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mesozoica/models/tool.dart';
 import 'package:mesozoica/widgets/cards/tool_card_back.dart';
+import 'package:mesozoica/widgets/common/chrome_action_button.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -37,14 +38,14 @@ void main() {
 
     expect(find.text('Deploy'), findsOneWidget);
     expect(find.text('Info'), findsOneWidget);
-    expect(find.text('ACTIONS'), findsOneWidget);
+    expect(find.textContaining('Site Discovery'), findsOneWidget);
 
     await tester.tap(find.text('Deploy'));
     await tester.pump();
     expect(tapped, isTrue);
 
-    final info = tester.widget<OutlinedButton>(
-      find.widgetWithText(OutlinedButton, 'Info'),
+    final info = tester.widget<ChromeActionButton>(
+      find.widgetWithText(ChromeActionButton, 'Info'),
     );
     expect(info.onPressed, isNull);
   });
@@ -108,8 +109,8 @@ void main() {
       ),
     );
 
-    final deploy = tester.widget<FilledButton>(
-      find.widgetWithText(FilledButton, 'Read'),
+    final deploy = tester.widget<ChromeActionButton>(
+      find.widgetWithText(ChromeActionButton, 'Read'),
     );
     expect(deploy.onPressed, isNull);
   });

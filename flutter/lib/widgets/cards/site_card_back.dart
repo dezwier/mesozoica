@@ -29,7 +29,7 @@ class SiteCardBack extends StatelessWidget {
   final Widget Function() mapTileLayerBuilder;
 
   static const _contentScale = 1.15;
-  static const _bottomRowHeight = 64.0;
+  static const _bottomRowHeight = 78.0;
 
   @override
   Widget build(BuildContext context) {
@@ -99,8 +99,8 @@ class SiteCardBack extends StatelessWidget {
                       const SizedBox(width: 8),
                       Expanded(
                         child: CardSectionPanel(
-                          label: 'Fossil record',
                           expandChild: true,
+                          padding: const EdgeInsets.fromLTRB(6, 6, 6, 6),
                           child: SiteCardFossils(siteId: site.siteId),
                         ),
                       ),

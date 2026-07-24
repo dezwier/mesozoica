@@ -14,6 +14,7 @@ class AerialReconFlightStats extends StatelessWidget {
     required this.discoveryDistanceM,
     this.routeLengthKm,
     this.discoveredSiteCount,
+    this.explanation,
     this.compact = false,
   });
 
@@ -21,6 +22,7 @@ class AerialReconFlightStats extends StatelessWidget {
   factory AerialReconFlightStats.fromConfig({
     Key? key,
     bool compact = false,
+    bool includeExplanation = true,
   }) {
     final cfg = GameConfig.instance.toolActions.aerialRecon;
     return AerialReconFlightStats(
@@ -29,6 +31,7 @@ class AerialReconFlightStats extends StatelessWidget {
       maxRouteKm: cfg.maxRouteKm,
       discoveryChance: cfg.discoveryChance,
       discoveryDistanceM: cfg.discoveryDistanceM,
+      explanation: includeExplanation ? cfg.statsExplanation : null,
       compact: compact,
     );
   }
@@ -61,6 +64,7 @@ class AerialReconFlightStats extends StatelessWidget {
   final double discoveryDistanceM;
   final double? routeLengthKm;
   final int? discoveredSiteCount;
+  final String? explanation;
   final bool compact;
 
   @override
@@ -89,33 +93,44 @@ class AerialReconFlightStats extends StatelessWidget {
     }
 
     final cardTheme = DinoCardTheme.of(context);
-    final labelStyle = cardTheme.sectionLabelStyle(fontSize: 8);
-    final valueStyle = cardTheme.bodyStyle(fontSize: 12);
-
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final columns = rows.length <= 4 ? 2 : 3;
-        final cellWidth =
-            (constraints.maxWidth - (columns - 1) * 8) / columns;
-        return Wrap(
-          spacing: 8,
-          runSpacing: 6,
-          children: [
-            for (final row in rows)
-              SizedBox(
-                width: cellWidth,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(row.label.toUpperCase(), style: labelStyle),
-                    const SizedBox(height: 2),
-                    Text(row.value, style: valueStyle),
-                  ],
-                ),
-              ),
-          ],
+    final headerStyle = cardTheme.sectionLabelStyle(fontSize: 8);
+    final bodyStyle = cardTheme.bodyStyle(fontSize: 12);
+    final mutedStyle = cardTheme.bodyStyle(fontSize: 11).copyWith(
+          color: cardTheme.cardTextMuted,
+          height: 1.25,
         );
-      },
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (explanation != null && explanation!.isNotEmpty) ...[
+          Text(explanation!, style: mutedStyle),
+          const SizedBox(height: 8),
+        ],
+        Row(
+          children: [
+            Expanded(flex: 5, child: Text('PARAM', style: headerStyle)),
+            Expanded(flex: 4, child: Text('VALUE', style: headerStyle)),
+          ],
+        ),
+        const SizedBox(height: 4),
+        for (var i = 0; i < rows.length; i++) ...[
+          if (i > 0) const SizedBox(height: 3),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                flex: 5,
+                child: Text(rows[i].label, style: bodyStyle),
+              ),
+              Expanded(
+                flex: 4,
+                child: Text(rows[i].value, style: bodyStyle),
+              ),
+            ],
+          ),
+        ],
+      ],
     );
   }
 

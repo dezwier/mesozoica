@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../models/tool.dart';
 import '../../theme/dino_card_theme.dart';
+import '../common/chrome_action_button.dart';
 import 'card_back_backdrop.dart';
 import 'card_section_panel.dart';
 import 'tool_card_header.dart';
@@ -29,9 +30,11 @@ class ToolCardBack extends StatelessWidget {
   /// Optional ongoing-mission panel below stats.
   final Widget? ongoingChild;
 
+  static const double _actionHeight = 44;
+  static const double _actionGap = 6;
+
   @override
   Widget build(BuildContext context) {
-    final cardTheme = DinoCardTheme.of(context);
     final actionEnabled = tool.isOwned && onAction != null;
     final middle = statsChild ??
         CardSectionPanel(
@@ -57,59 +60,39 @@ class ToolCardBack extends StatelessWidget {
               subtitleFontSize: subtitleFontSize,
               centered: true,
               overlayOnImage: true,
+              subtitleOverride: tool.categoryWithScientific,
             ),
           ),
           Positioned(
             left: 18,
             right: 18,
-            top: 96,
+            top: 78,
             bottom: 14,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                CardSectionPanel(
-                  label: 'Category',
-                  child: Text(
-                    tool.categoryWithScientific,
-                    style: cardTheme.bodyStyle(fontSize: 14),
-                  ),
-                ),
-                const SizedBox(height: 8),
                 middle,
                 if (ongoingChild != null) ...[
                   const SizedBox(height: 8),
                   ongoingChild!,
                 ],
                 const Spacer(),
-                CardSectionPanel(
-                  label: 'Actions',
+                SizedBox(
+                  height: _actionHeight,
                   child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       Expanded(
-                        child: FilledButton(
+                        child: ChromeActionButton(
+                          label: tool.action,
                           onPressed: actionEnabled ? onAction : null,
-                          style: FilledButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 10),
-                            textStyle: const TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          child: Text(tool.action),
                         ),
                       ),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: _actionGap),
                       Expanded(
-                        child: OutlinedButton(
+                        child: ChromeActionButton(
+                          label: 'Info',
                           onPressed: onInfo,
-                          style: OutlinedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 10),
-                            textStyle: const TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          child: const Text('Info'),
                         ),
                       ),
                     ],

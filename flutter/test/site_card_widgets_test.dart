@@ -178,7 +178,7 @@ void main() {
     expect(find.byType(SiteCardFossils), findsOneWidget);
     expect(find.text('Cretaceous Sandstone'), findsOneWidget);
     expect(find.text('#50001, 46.88, -110.36, Montana, US'), findsNothing);
-    expect(find.text('FOSSIL RECORD'), findsOneWidget);
+    expect(find.text('FOSSIL RECORD'), findsNothing);
     expect(find.text('TIME'), findsNothing);
     expect(find.text('COORDINATES'), findsOneWidget);
     expect(find.text('COUNTRY'), findsOneWidget);
