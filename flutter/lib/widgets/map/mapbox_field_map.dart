@@ -280,6 +280,7 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
       widget.camera.applyOrientationMode(
         rotateWithHeading: false,
         headingDeg: _liveHeadingDeg,
+        zoom: MapConfig.mapboxFollowZoom,
       ),
     );
   }

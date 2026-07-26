@@ -373,9 +373,9 @@ class _MapScreenState extends State<MapScreen>
               MapControlButtons(
                 currentZoom: _zoomLevel,
                 onZoomChanged: _onZoomChanged,
-                onCenterLocation: () => _centerOnLocation(locationService),
-                rotateMap: _rotateMap,
-                onToggleRotation: _toggleRotationMode,
+                locationFabMode: _locationFabMode,
+                onLocationFabPressed: () =>
+                    _onLocationFabPressed(locationService),
                 bottom: fabBottom,
                 leadingActions: [
                   if (isFieldMode && isAdmin) ...[

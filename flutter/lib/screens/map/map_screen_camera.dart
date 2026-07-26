@@ -209,7 +209,25 @@ mixin _MapScreenCameraMixin on State<MapScreen> {
     );
   }
 
-  void _toggleRotationMode() {
+  MapLocationFabMode get _locationFabMode {
+    if (_rotateMap) return MapLocationFabMode.exitRotate;
+    if (_followUser) return MapLocationFabMode.enterRotate;
+    return MapLocationFabMode.center;
+  }
+
+  void _onLocationFabPressed(LocationService locationService) {
+    switch (_locationFabMode) {
+      case MapLocationFabMode.center:
+        unawaited(_centerOnLocation(locationService));
+      case MapLocationFabMode.enterRotate:
+        _enterRotationMode();
+      case MapLocationFabMode.exitRotate:
+        _exitToNorthFixedCentered();
+    }
+  }
+
+  void _enterRotationMode() {
+    if (_rotateMap) return;
     if (!MapConfig.hasMapboxAccessToken) {
       setState(() {
         _mapboxBannerMessage =
@@ -217,31 +235,11 @@ mixin _MapScreenCameraMixin on State<MapScreen> {
       });
       return;
     }
-    final enteringRotate = !_rotateMap;
-    setState(() {
-      _rotateMap = enteringRotate;
-      _mapboxBannerMessage = null;
-      if (enteringRotate) {
-        _followUser = true;
-        _zoomLevel = MapConfig.mapboxRotateZoom;
-        final location = context.read<LocationService>().currentLocation;
-        if (location != null) {
-          _lastFollowedLocation = location;
-        }
-      }
-    });
-    if (!enteringRotate) {
-      context.read<GuidanceSessionController>().onRotateModeExited();
-    }
-    // MapboxFieldMap switches FollowPuck ↔ Idle from rotateWithHeading.
-  }
-
-  void _ensureRotationMode() {
-    if (_rotateMap) return;
-    if (!MapConfig.hasMapboxAccessToken) return;
     setState(() {
       _rotateMap = true;
       _followUser = true;
+      _followAerialScout = false;
+      _aerialFocusAnimating = false;
       _zoomLevel = MapConfig.mapboxRotateZoom;
       _mapboxBannerMessage = null;
       final location = context.read<LocationService>().currentLocation;
@@ -249,6 +247,29 @@ mixin _MapScreenCameraMixin on State<MapScreen> {
         _lastFollowedLocation = location;
       }
     });
+    // MapboxFieldMap switches FollowPuck ↔ Idle from rotateWithHeading.
+  }
+
+  void _exitToNorthFixedCentered() {
+    if (!_rotateMap) return;
+    setState(() {
+      _rotateMap = false;
+      _followUser = true;
+      _followAerialScout = false;
+      _aerialFocusAnimating = false;
+      _zoomLevel = MapConfig.mapboxFollowZoom;
+      _mapboxBannerMessage = null;
+      final location = context.read<LocationService>().currentLocation;
+      if (location != null) {
+        _lastFollowedLocation = location;
+      }
+    });
+    context.read<GuidanceSessionController>().onRotateModeExited();
+    // MapboxFieldMap switches FollowPuck ↔ Idle from rotateWithHeading.
+  }
+
+  void _ensureRotationMode() {
+    _enterRotationMode();
   }
 
   void _setInitialCamera({
