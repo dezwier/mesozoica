@@ -6,6 +6,8 @@ from pathlib import Path
 
 import app.core.config as config_module
 from app.services.curated_image_service.common import (
+    file_content_version,
+    needs_curated_image_resync,
     remote_curated_image_exists,
     resolve_curated_storage_dir,
     resolve_local_source_dir_for_sync,
@@ -24,6 +26,8 @@ def test_remote_curated_image_exists(monkeypatch):
     def fake_head(url: str, **kwargs):
         if url.endswith("/media/dinosaurs/Tyrannosaurus.webp"):
             return FakeResponse(200)
+        if url.endswith("/media/tools/Orbit%20Survey.png"):
+            return FakeResponse(200)
         return FakeResponse(404)
 
     monkeypatch.setattr(
@@ -36,10 +40,55 @@ def test_remote_curated_image_exists(monkeypatch):
         curated_media_path="/media/dinosaurs/",
         filename="Tyrannosaurus.webp",
     )
+    assert remote_curated_image_exists(
+        public_base_url="https://example.com",
+        curated_media_path="/media/tools/",
+        filename="Orbit Survey.png",
+    )
     assert not remote_curated_image_exists(
         public_base_url="https://example.com",
         curated_media_path="/media/dinosaurs/",
         filename="Missing.webp",
+    )
+
+
+def test_needs_curated_image_resync_when_remote_missing(monkeypatch, tmp_path: Path):
+    image = tmp_path / "Orbit Survey.png"
+    image.write_bytes(b"tool-bytes")
+    version = file_content_version(image)
+
+    monkeypatch.setattr(
+        "app.services.curated_image_service.common.remote_curated_image_exists",
+        lambda **kwargs: False,
+    )
+
+    assert needs_curated_image_resync(
+        overwrite=False,
+        local_path=image,
+        main_image_url=f"https://example.com/media/tools/Orbit Survey.png?v={version}",
+        public_base_url="https://example.com",
+        filename="Orbit Survey.png",
+        curated_media_path="/media/tools/",
+    )
+
+
+def test_needs_curated_image_resync_skips_when_remote_matches(monkeypatch, tmp_path: Path):
+    image = tmp_path / "Orbit Survey.png"
+    image.write_bytes(b"tool-bytes")
+    version = file_content_version(image)
+
+    monkeypatch.setattr(
+        "app.services.curated_image_service.common.remote_curated_image_exists",
+        lambda **kwargs: True,
+    )
+
+    assert not needs_curated_image_resync(
+        overwrite=False,
+        local_path=image,
+        main_image_url=f"https://example.com/media/tools/Orbit Survey.png?v={version}",
+        public_base_url="https://example.com",
+        filename="Orbit Survey.png",
+        curated_media_path="/media/tools/",
     )
 
 
@@ -58,6 +107,39 @@ def test_resolve_curated_storage_dir_uses_data_root_for_defaults(monkeypatch):
     monkeypatch.setattr(config_module.settings, "fossil_images_dir", "../images/fossils")
 
     assert config_module.settings.resolved_fossil_images_dir == Path("/data/images/fossils")
+
+
+def test_resolve_curated_storage_dir_falls_back_to_legacy_volume(tmp_path: Path):
+    root = tmp_path / "data"
+    legacy = root / "tool-images"
+    legacy.mkdir(parents=True)
+    (legacy / "Orbit Survey.png").write_bytes(b"tool")
+
+    path = resolve_curated_storage_dir(
+        configured_dir="../images/tools",
+        default_relative="../images/tools",
+        data_root=str(root),
+        subdir_name="images/tools",
+    )
+    assert path == legacy.resolve()
+
+
+def test_resolve_curated_storage_dir_prefers_new_layout_when_populated(tmp_path: Path):
+    root = tmp_path / "data"
+    primary = root / "images" / "tools"
+    legacy = root / "tool-images"
+    primary.mkdir(parents=True)
+    legacy.mkdir(parents=True)
+    (primary / "Orbit Survey.png").write_bytes(b"new")
+    (legacy / "Orbit Survey.png").write_bytes(b"old")
+
+    path = resolve_curated_storage_dir(
+        configured_dir="../images/tools",
+        default_relative="../images/tools",
+        data_root=str(root),
+        subdir_name="images/tools",
+    )
+    assert path == primary.resolve()
 
 
 def test_resolve_curated_storage_dir_explicit_overrides_data_root():

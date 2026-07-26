@@ -6,6 +6,7 @@ import hashlib
 import os
 import re
 from pathlib import Path
+from urllib.parse import quote
 
 import httpx
 
@@ -14,6 +15,15 @@ from app.core.config import settings
 ALLOWED_IMAGE_EXTENSIONS = frozenset({".webp", ".jpg", ".jpeg", ".png"})
 DEFAULT_PRODUCTION_BASE_URL = "https://mesozoica-production.up.railway.app"
 _BACKEND_DIR = Path(__file__).resolve().parents[3]
+
+# Pre-images/ volume layouts kept for Railway volumes that were never migrated.
+_LEGACY_DATA_SUBDIRS = {
+    "images/dinosaurs": "dinosaur-images",
+    "images/fossils": "fossil-images",
+    "images/site-types": "site-type-images",
+    "images/tools": "tool-images",
+    "images/users": "user-images",
+}
 
 
 def is_allowed_image_filename(filename: str) -> bool:
@@ -28,6 +38,15 @@ def scan_local_image_files(source_dir: Path) -> list[Path]:
         for path in sorted(source_dir.iterdir())
         if path.is_file() and is_allowed_image_filename(path.name)
     ]
+
+
+def _dir_has_image_files(path: Path) -> bool:
+    if not path.is_dir():
+        return False
+    return any(
+        child.is_file() and is_allowed_image_filename(child.name)
+        for child in path.iterdir()
+    )
 
 
 def resolve_local_source_dir_for_sync(
@@ -67,7 +86,17 @@ def resolve_curated_storage_dir(
         return (_BACKEND_DIR / path).resolve()
 
     if root:
-        return (Path(root) / subdir_name).resolve()
+        primary = (Path(root) / subdir_name).resolve()
+        legacy_name = _LEGACY_DATA_SUBDIRS.get(subdir_name)
+        if legacy_name:
+            legacy = (Path(root) / legacy_name).resolve()
+            # Prefer the new layout when populated; otherwise keep serving the
+            # pre-migration volume folder (tools/site-types still live there).
+            if _dir_has_image_files(primary):
+                return primary
+            if _dir_has_image_files(legacy):
+                return legacy
+        return primary
 
     path = Path(configured or default_relative)
     if path.is_absolute():
@@ -100,17 +129,18 @@ def needs_curated_image_resync(
     if overwrite:
         return True
 
-    local_version = file_content_version(local_path)
-    stored_version = version_from_curated_url(main_image_url)
-    if stored_version == local_version:
-        return False
-
     if not remote_curated_image_exists(
         public_base_url=public_base_url,
         curated_media_path=curated_media_path,
         filename=filename,
     ):
         return True
+
+    local_version = file_content_version(local_path)
+    stored_version = version_from_curated_url(main_image_url)
+    # Content unchanged and already served — skip.
+    if stored_version == local_version:
+        return False
 
     # Remote file exists but local content changed or the DB URL is stale.
     return True
@@ -123,7 +153,9 @@ def remote_curated_image_exists(
     filename: str,
 ) -> bool:
     """Return True when the image is already served from Railway."""
-    url = f"{public_base_url.rstrip('/')}{curated_media_path}{filename}"
+    # Encode path segments so names with spaces (tool cards) HEAD correctly.
+    media_path = curated_media_path if curated_media_path.endswith("/") else f"{curated_media_path}/"
+    url = f"{public_base_url.rstrip('/')}{media_path}{quote(filename)}"
     try:
         response = httpx.head(url, timeout=30.0, follow_redirects=True)
     except httpx.HTTPError:
@@ -147,7 +179,8 @@ def upload_curated_image_to_railway(
     if not dry_run and not secret:
         raise RuntimeError(f"{sync_secret_env_var} must be set to upload images to Railway.")
 
-    url = f"{public_base_url.rstrip('/')}{admin_upload_path}/{remote_filename}"
+    upload_root = admin_upload_path.rstrip("/")
+    url = f"{public_base_url.rstrip('/')}/{upload_root.lstrip('/')}/{quote(remote_filename)}"
     if dry_run:
         return
 

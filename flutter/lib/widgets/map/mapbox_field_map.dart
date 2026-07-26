@@ -43,6 +43,7 @@ class MapboxFieldMap extends StatefulWidget {
     required this.onZoomChanged,
     required this.onReadyChanged,
     required this.onRotatePinchZoomOut,
+    required this.onLocationPuckTap,
     this.mapActive = true,
     this.avatarImageUrl,
     this.hiddenRotateSiteId,
@@ -78,6 +79,8 @@ class MapboxFieldMap extends StatefulWidget {
   final ValueChanged<bool> onReadyChanged;
   /// Pinch-out in rotate mode → exit to north-fixed centered (mode 2).
   final VoidCallback onRotatePinchZoomOut;
+  /// Tap the location puck in north-fixed mode → enter rotate (mode 3).
+  final VoidCallback onLocationPuckTap;
   /// Profile image for the location puck (falls back to app logo).
   final String? avatarImageUrl;
   /// Hide this site's mini-card while the detail sheet morphs open.
@@ -111,6 +114,8 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
   Timer? _readyTimeout;
   Timer? _readyNotifyFallback;
   Timer? _followPuckReassertTimer;
+  Timer? _locationPuckTapTimer;
+  bool _siteTapConsumesMapTap = false;
   Ticker? _rotateOverlayTicker;
   String? _appliedLightPreset;
   MapboxBasemapTheme? _appliedBasemapTheme;
@@ -215,6 +220,7 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
     _readyTimeout?.cancel();
     _readyNotifyFallback?.cancel();
     _followPuckReassertTimer?.cancel();
+    _locationPuckTapTimer?.cancel();
     _rotateOverlayTicker?.dispose();
     _overlayController.dispose();
     widget.camera.detach();
@@ -300,6 +306,10 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
   }
 
   void _onSiteTap(SiteSummary site) {
+    // Annotation tap often arrives with/just after map onTap — suppress puck.
+    _siteTapConsumesMapTap = true;
+    _locationPuckTapTimer?.cancel();
+    _locationPuckTapTimer = null;
     widget.onSiteTap(site);
     _scheduleFollowPuckReassert();
   }
@@ -354,7 +364,44 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
   }
 
   void _onMapTap(MapContentGestureContext context) {
-    _scheduleFollowPuckReassert();
+    if (widget.rotateWithHeading) {
+      _scheduleFollowPuckReassert();
+      return;
+    }
+    // Defer so a concurrent site-annotation tap can cancel this.
+    _siteTapConsumesMapTap = false;
+    _locationPuckTapTimer?.cancel();
+    _locationPuckTapTimer = Timer(const Duration(milliseconds: 40), () {
+      if (!mounted || _siteTapConsumesMapTap) return;
+      unawaited(_maybeHandleLocationPuckTap(context));
+    });
+  }
+
+  /// Screen hit-test against the location puck (fixed visual size ~32pt).
+  Future<void> _maybeHandleLocationPuckTap(
+    MapContentGestureContext context,
+  ) async {
+    final map = _map;
+    final location = widget.currentLocation;
+    if (map == null ||
+        location == null ||
+        !widget.mapActive ||
+        widget.rotateWithHeading) {
+      return;
+    }
+    try {
+      final puckPixel = await map.pixelForCoordinate(
+        Point(
+          coordinates: Position(location.longitude, location.latitude),
+        ),
+      );
+      final dx = puckPixel.x - context.touchPosition.x;
+      final dy = puckPixel.y - context.touchPosition.y;
+      const hitRadius = 44.0;
+      if (dx * dx + dy * dy <= hitRadius * hitRadius) {
+        widget.onLocationPuckTap();
+      }
+    } catch (_) {}
   }
 
   void _refreshFollowPuckPadding() {

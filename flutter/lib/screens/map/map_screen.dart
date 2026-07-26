@@ -201,6 +201,8 @@ class _MapScreenState extends State<MapScreen>
                       }
                     },
                     onRotatePinchZoomOut: _exitToNorthFixedCentered,
+                    onLocationPuckTap:
+                        aerialDrawMode ? () {} : _enterRotationMode,
                     onZoomChanged: _onMapboxZoomChanged,
                     onReadyChanged: (ready) {
                       if (!mounted) return;
