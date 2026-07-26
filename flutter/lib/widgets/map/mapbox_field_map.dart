@@ -42,6 +42,7 @@ class MapboxFieldMap extends StatefulWidget {
     required this.onFollowCancelled,
     required this.onZoomChanged,
     required this.onReadyChanged,
+    required this.onRotatePinchZoomOut,
     this.mapActive = true,
     this.avatarImageUrl,
     this.hiddenRotateSiteId,
@@ -75,6 +76,8 @@ class MapboxFieldMap extends StatefulWidget {
   final VoidCallback onFollowCancelled;
   final ValueChanged<double> onZoomChanged;
   final ValueChanged<bool> onReadyChanged;
+  /// Pinch-out in rotate mode → exit to north-fixed centered (mode 2).
+  final VoidCallback onRotatePinchZoomOut;
   /// Profile image for the location puck (falls back to app logo).
   final String? avatarImageUrl;
   /// Hide this site's mini-card while the detail sheet morphs open.
@@ -767,6 +770,14 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
                   onSiteTap: _onRotateMiniCardTap,
                 ),
               ),
+            // Translucent so mini-card taps still work; detects pinch-out to
+            // leave rotate mode (FollowPuck locks Mapbox pinch gestures).
+            if (widget.rotateWithHeading && _ready)
+              Positioned.fill(
+                child: _RotatePinchZoomOutListener(
+                  onZoomOut: widget.onRotatePinchZoomOut,
+                ),
+              ),
             if (!_ready)
               Positioned(
                 left: 16,
@@ -801,6 +812,76 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
           ],
         );
       },
+    );
+  }
+}
+
+/// Two-finger pinch-out detector for rotate mode.
+///
+/// Uses a translucent [Listener] so mini-card taps still reach the overlay
+/// below. Mapbox pinch is locked while FollowPuck owns the camera.
+class _RotatePinchZoomOutListener extends StatefulWidget {
+  const _RotatePinchZoomOutListener({required this.onZoomOut});
+
+  final VoidCallback onZoomOut;
+
+  /// Fingers must close to this fraction of the start span to count as zoom-out.
+  static const double zoomOutSpanRatio = 0.88;
+
+  @override
+  State<_RotatePinchZoomOutListener> createState() =>
+      _RotatePinchZoomOutListenerState();
+}
+
+class _RotatePinchZoomOutListenerState
+    extends State<_RotatePinchZoomOutListener> {
+  final Map<int, Offset> _pointers = {};
+  double? _startSpan;
+  bool _fired = false;
+
+  double? _currentSpan() {
+    if (_pointers.length < 2) return null;
+    final points = _pointers.values.take(2).toList();
+    return (points[0] - points[1]).distance;
+  }
+
+  void _onPointerDown(PointerDownEvent event) {
+    _pointers[event.pointer] = event.localPosition;
+    if (_pointers.length == 2) {
+      _startSpan = _currentSpan();
+      _fired = false;
+    }
+  }
+
+  void _onPointerMove(PointerMoveEvent event) {
+    if (!_pointers.containsKey(event.pointer)) return;
+    _pointers[event.pointer] = event.localPosition;
+    final start = _startSpan;
+    final now = _currentSpan();
+    if (_fired || start == null || now == null || start <= 0) return;
+    if (now / start <= _RotatePinchZoomOutListener.zoomOutSpanRatio) {
+      _fired = true;
+      widget.onZoomOut();
+    }
+  }
+
+  void _onPointerEnd(PointerEvent event) {
+    _pointers.remove(event.pointer);
+    if (_pointers.length < 2) {
+      _startSpan = null;
+      _fired = false;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Listener(
+      behavior: HitTestBehavior.translucent,
+      onPointerDown: _onPointerDown,
+      onPointerMove: _onPointerMove,
+      onPointerUp: _onPointerEnd,
+      onPointerCancel: _onPointerEnd,
+      child: const SizedBox.expand(),
     );
   }
 }

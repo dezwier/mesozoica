@@ -200,6 +200,7 @@ class _MapScreenState extends State<MapScreen>
                         });
                       }
                     },
+                    onRotatePinchZoomOut: _exitToNorthFixedCentered,
                     onZoomChanged: _onMapboxZoomChanged,
                     onReadyChanged: (ready) {
                       if (!mounted) return;
