@@ -13,6 +13,7 @@ void main() {
       'weekly_distance_m': 2100,
       'active_distance_m': 8000,
       'active_weekly_distance_m': 1500,
+      'distance_week_start': '2026-07-20',
       'level': 3,
       'xp': 100,
     });
@@ -25,6 +26,7 @@ void main() {
     expect(profile.weeklyDistanceM, 2100);
     expect(profile.activeDistanceM, 8000);
     expect(profile.activeWeeklyDistanceM, 1500);
+    expect(profile.distanceWeekStart, '2026-07-20');
   });
 
   test('Profile parses multi-skill leveling fields', () {

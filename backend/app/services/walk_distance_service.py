@@ -52,20 +52,36 @@ def apply_distance_update(
                 ),
             )
 
-    if previous_week_start is None or week_start != previous_week_start:
-        new_weekly = float(payload.weekly_distance_m)
-        new_active_weekly = float(payload.active_weekly_distance_m)
+    reported_weekly = float(payload.weekly_distance_m)
+    reported_active_weekly = float(payload.active_weekly_distance_m)
+
+    if previous_week_start is None or week_start > previous_week_start:
+        # New week (or first sync): take the client's window totals.
+        new_weekly = reported_weekly
+        new_active_weekly = reported_active_weekly
+        stored_week_start = week_start
+    elif week_start < previous_week_start:
+        # Stale client still on an older Monday — keep the server window.
+        new_weekly = previous_weekly
+        new_active_weekly = previous_active_weekly
+        stored_week_start = previous_week_start
+    elif payload.reset_weekly:
+        # Explicit heal after a bad Monday seed (client rolled over then
+        # re-applied last week's totals under the new week_start).
+        new_weekly = reported_weekly
+        new_active_weekly = reported_active_weekly
+        stored_week_start = week_start
     else:
-        new_weekly = _monotonic(previous_weekly, float(payload.weekly_distance_m))
-        new_active_weekly = _monotonic(
-            previous_active_weekly, float(payload.active_weekly_distance_m)
-        )
+        # Same week: keep the max across devices.
+        new_weekly = _monotonic(previous_weekly, reported_weekly)
+        new_active_weekly = _monotonic(previous_active_weekly, reported_active_weekly)
+        stored_week_start = week_start
 
     user.total_distance_m = new_total
     user.weekly_distance_m = new_weekly
     user.active_distance_m = new_active
     user.active_weekly_distance_m = new_active_weekly
-    user.distance_week_start = week_start
+    user.distance_week_start = stored_week_start
     user.distance_synced_at = now
 
     from app.services.level_service import (

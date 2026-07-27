@@ -38,6 +38,9 @@ class WalkDistanceController extends ChangeNotifier {
   static const _keyClosedSince = '${_prefsPrefix}_closed_since';
   static const _keyBootstrapped = '${_prefsPrefix}_bootstrapped';
   static const _keyMode = '${_prefsPrefix}_mode_v3';
+  /// Bumped when weekly seeding logic changes; triggers a one-time weekly reset.
+  static const _keyWeeklySchema = '${_prefsPrefix}_weekly_schema';
+  static const _weeklySchemaVersion = 1;
 
   final HealthDistanceService _health;
   final ApiClient _api;
@@ -47,6 +50,8 @@ class WalkDistanceController extends ChangeNotifier {
   VoidCallback? _locationListener;
   bool _loaded = false;
   bool _appForeground = true;
+  /// After a one-time weekly schema heal, push reset_weekly on the next sync.
+  bool _pendingWeeklyReset = false;
 
   double _activeMeters = 0;
   double _activeWeeklyMeters = 0;
@@ -102,7 +107,11 @@ class WalkDistanceController extends ChangeNotifier {
     await prefs.setString(_keyMode, mode.name);
   }
 
-  /// Seed from server profile when local counters are empty / lower.
+  /// Seed lifetime totals from server profile when local counters are lower.
+  ///
+  /// Weekly counters are intentionally not seeded here: a Monday rollover that
+  /// zeros local weekly would otherwise be undone by last week's profile
+  /// totals (and a stale in-memory profile can re-poison after a heal).
   void applyProfile(Profile? profile) {
     if (profile == null) return;
     var changed = false;
@@ -110,16 +119,8 @@ class WalkDistanceController extends ChangeNotifier {
       _totalMeters = profile.totalDistanceM;
       changed = true;
     }
-    if (profile.weeklyDistanceM > _weeklyMeters) {
-      _weeklyMeters = profile.weeklyDistanceM;
-      changed = true;
-    }
     if (profile.activeDistanceM > _activeMeters) {
       _activeMeters = profile.activeDistanceM;
-      changed = true;
-    }
-    if (profile.activeWeeklyDistanceM > _activeWeeklyMeters) {
-      _activeWeeklyMeters = profile.activeWeeklyDistanceM;
       changed = true;
     }
     if (changed) {
@@ -303,6 +304,9 @@ class WalkDistanceController extends ChangeNotifier {
     _weekStartIso = current;
     _activeWeeklyMeters = 0;
     _weeklyMeters = 0;
+    // Ensure server accepts the fresh window even if a prior buggy sync already
+    // wrote last week's totals under this Monday.
+    _pendingWeeklyReset = true;
   }
 
   Future<void> _ensureLoaded() async {
@@ -330,6 +334,17 @@ class WalkDistanceController extends ChangeNotifier {
       await prefs.setString(_keyMode, ExploringDistanceMode.total.name);
     }
     _rolloverWeekIfNeeded();
+    // One-shot heal: older builds re-seeded last week's weekly under the new
+    // Monday via applyProfile, so "this week" never reset. Clear weekly once.
+    final schema = prefs.getInt(_keyWeeklySchema) ?? 0;
+    if (schema < _weeklySchemaVersion) {
+      _activeWeeklyMeters = 0;
+      _weeklyMeters = 0;
+      _weekStartIso = weekStartIso();
+      _pendingWeeklyReset = true;
+      await prefs.setInt(_keyWeeklySchema, _weeklySchemaVersion);
+      await _persistLocal();
+    }
   }
 
   Future<void> _persistLocal() async {
@@ -358,6 +373,7 @@ class WalkDistanceController extends ChangeNotifier {
       return;
     }
     _lastSyncAttemptAt = now;
+    final resetWeekly = _pendingWeeklyReset;
     try {
       final response = await _api.patch(
         '/api/v1/users/me/distance',
@@ -367,9 +383,11 @@ class WalkDistanceController extends ChangeNotifier {
           'active_distance_m': _activeMeters,
           'active_weekly_distance_m': _activeWeeklyMeters,
           'week_start': _weekStartIso,
+          if (resetWeekly) 'reset_weekly': true,
         },
       );
       _lastSyncedAt = DateTime.now();
+      _pendingWeeklyReset = false;
       final serverTotal = (response['total_distance_m'] as num?)?.toDouble();
       final serverWeekly = (response['weekly_distance_m'] as num?)?.toDouble();
       final serverActive = (response['active_distance_m'] as num?)?.toDouble();

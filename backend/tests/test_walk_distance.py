@@ -134,6 +134,76 @@ def test_patch_distance_week_rollover(client: TestClient):
     assert body["distance_week_start"] == "2026-07-20"
 
 
+def test_patch_distance_ignores_stale_older_week(client: TestClient):
+    registered = _register_user(client, "stale_week", "staleweek@example.com")
+    headers = {"Authorization": f"Bearer {registered['access_token']}"}
+
+    client.patch(
+        "/api/v1/users/me/distance",
+        headers=headers,
+        json={
+            "total_distance_m": 5000,
+            "weekly_distance_m": 400,
+            "active_distance_m": 3000,
+            "active_weekly_distance_m": 200,
+            "week_start": "2026-07-20",
+        },
+    )
+    stale = client.patch(
+        "/api/v1/users/me/distance",
+        headers=headers,
+        json={
+            "total_distance_m": 5100,
+            "weekly_distance_m": 9000,
+            "active_distance_m": 3100,
+            "active_weekly_distance_m": 8000,
+            "week_start": "2026-07-13",
+        },
+    )
+    assert stale.status_code == 200
+    body = stale.json()
+    assert body["total_distance_m"] == 5100
+    assert body["weekly_distance_m"] == 400
+    assert body["active_weekly_distance_m"] == 200
+    assert body["distance_week_start"] == "2026-07-20"
+
+
+def test_patch_distance_reset_weekly_heals_same_week(client: TestClient):
+    registered = _register_user(client, "week_heal", "weekheal@example.com")
+    headers = {"Authorization": f"Bearer {registered['access_token']}"}
+    week = "2026-07-20"
+
+    client.patch(
+        "/api/v1/users/me/distance",
+        headers=headers,
+        json={
+            "total_distance_m": 8000,
+            "weekly_distance_m": 8000,
+            "active_distance_m": 5000,
+            "active_weekly_distance_m": 5000,
+            "week_start": week,
+        },
+    )
+    healed = client.patch(
+        "/api/v1/users/me/distance",
+        headers=headers,
+        json={
+            "total_distance_m": 8100,
+            "weekly_distance_m": 100,
+            "active_distance_m": 5100,
+            "active_weekly_distance_m": 100,
+            "week_start": week,
+            "reset_weekly": True,
+        },
+    )
+    assert healed.status_code == 200
+    body = healed.json()
+    assert body["weekly_distance_m"] == 100
+    assert body["active_weekly_distance_m"] == 100
+    assert body["active_distance_m"] == 5100
+    assert body["distance_week_start"] == week
+
+
 def test_patch_distance_rejects_absurd_jump(client: TestClient, session: Session):
     registered = _register_user(client, "spiky", "spiky@example.com")
     user_id = registered["user"]["id"]

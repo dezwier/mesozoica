@@ -84,6 +84,8 @@ class UpdateDistanceRequest(BaseModel):
     active_distance_m: float = Field(0, ge=0)
     active_weekly_distance_m: float = Field(0, ge=0)
     week_start: date = Field(..., description="Local Monday (ISO date) for the weekly window")
+    # When true, replace same-week weekly counters (heals a bad rollover seed).
+    reset_weekly: bool = False
 
 
 class UserListEntry(BaseModel):

@@ -88,6 +88,8 @@ class Profile {
   final double weeklyDistanceM;
   final double activeDistanceM;
   final double activeWeeklyDistanceM;
+  /// Local Monday (yyyy-MM-dd) the weekly counters belong to, if known.
+  final String? distanceWeekStart;
 
   final String careerTitle;
   final List<SkillState> skills;
@@ -119,6 +121,7 @@ class Profile {
     this.weeklyDistanceM = 0,
     this.activeDistanceM = 0,
     this.activeWeeklyDistanceM = 0,
+    this.distanceWeekStart,
     this.careerTitle = 'Curious Wanderer',
     this.skills = const [],
     this.career,
@@ -198,6 +201,9 @@ class Profile {
           (json['active_weekly_distance_m'] as num?)?.toDouble() ??
               (json['activeWeeklyDistanceM'] as num?)?.toDouble() ??
               0,
+      distanceWeekStart: _parseDateOnly(
+        json['distance_week_start'] ?? json['distanceWeekStart'],
+      ),
       careerTitle: career?.title ??
           json['career_title'] as String? ??
           json['careerTitle'] as String? ??
@@ -236,6 +242,22 @@ class Profile {
     return null;
   }
 
+  /// ISO calendar date (yyyy-MM-dd), or null if missing/invalid.
+  static String? _parseDateOnly(Object? raw) {
+    if (raw == null) return null;
+    if (raw is String && raw.isNotEmpty) {
+      // Accept full timestamps by taking the date prefix.
+      final datePart = raw.length >= 10 ? raw.substring(0, 10) : raw;
+      final parsed = DateTime.tryParse(datePart);
+      if (parsed == null) return null;
+      final y = parsed.year.toString().padLeft(4, '0');
+      final m = parsed.month.toString().padLeft(2, '0');
+      final d = parsed.day.toString().padLeft(2, '0');
+      return '$y-$m-$d';
+    }
+    return null;
+  }
+
   Map<String, dynamic> toJson() => {
         'id': id,
         'displayName': displayName,
@@ -261,6 +283,7 @@ class Profile {
         'weeklyDistanceM': weeklyDistanceM,
         'activeDistanceM': activeDistanceM,
         'activeWeeklyDistanceM': activeWeeklyDistanceM,
+        'distanceWeekStart': distanceWeekStart,
         'careerTitle': careerTitle,
         'skills': skills
             .map(
@@ -297,6 +320,7 @@ class Profile {
     double? weeklyDistanceM,
     double? activeDistanceM,
     double? activeWeeklyDistanceM,
+    String? distanceWeekStart,
   }) {
     return Profile(
       id: id,
@@ -324,6 +348,7 @@ class Profile {
       activeDistanceM: activeDistanceM ?? this.activeDistanceM,
       activeWeeklyDistanceM:
           activeWeeklyDistanceM ?? this.activeWeeklyDistanceM,
+      distanceWeekStart: distanceWeekStart ?? this.distanceWeekStart,
       careerTitle: careerTitle,
       skills: skills,
       career: career,
