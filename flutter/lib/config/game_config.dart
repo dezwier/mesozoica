@@ -13,6 +13,7 @@ class GameConfig {
     required this.fossilDiscovery,
     required this.fossilExcavation,
     required this.toolActions,
+    required this.leveling,
   });
 
   final SiteGenerationConfig siteGeneration;
@@ -21,6 +22,7 @@ class GameConfig {
   final FossilDiscoveryConfig fossilDiscovery;
   final FossilExcavationConfig fossilExcavation;
   final ToolActionsConfig toolActions;
+  final LevelingConfig leveling;
 
   static GameConfig? _instance;
 
@@ -58,6 +60,7 @@ class GameConfig {
       fossilDiscoveryYaml: await read('fossil_discovery.yaml'),
       fossilExcavationYaml: await read('fossil_excavation.yaml'),
       toolActionsYaml: await read('tool_actions.yaml'),
+      levelingYaml: await read('leveling.yaml'),
     );
     _instance = config;
     return config;
@@ -71,6 +74,7 @@ class GameConfig {
     required String fossilDiscoveryYaml,
     required String fossilExcavationYaml,
     required String toolActionsYaml,
+    required String levelingYaml,
   }) {
     final config = GameConfig(
       siteGeneration: SiteGenerationConfig.fromYaml(
@@ -90,6 +94,9 @@ class GameConfig {
       ),
       toolActions: ToolActionsConfig.fromYaml(
         _asMap(loadYaml(toolActionsYaml)),
+      ),
+      leveling: LevelingConfig.fromYaml(
+        _asMap(loadYaml(levelingYaml)),
       ),
     );
     _instance = config;
@@ -422,6 +429,72 @@ class ToolActionsConfig {
   }
 }
 
+class LevelingConfig {
+  const LevelingConfig({
+    required this.rewards,
+    required this.titles,
+  });
+
+  final LevelingRewardsConfig rewards;
+  final LevelingTitlesConfig titles;
+
+  factory LevelingConfig.fromYaml(Map<String, dynamic> yaml) {
+    return LevelingConfig(
+      rewards: LevelingRewardsConfig.fromYaml(
+        GameConfig._asMap(yaml['rewards']),
+      ),
+      titles: LevelingTitlesConfig.fromYaml(
+        GameConfig._asMap(yaml['titles']),
+      ),
+    );
+  }
+}
+
+class LevelingRewardsConfig {
+  const LevelingRewardsConfig({
+    required this.siteDiscoverExplorationXp,
+    required this.fossilDiscoverExplorationXp,
+    required this.activeKmExplorationXp,
+    required this.passiveKmExplorationXp,
+  });
+
+  final int siteDiscoverExplorationXp;
+  final int fossilDiscoverExplorationXp;
+  final int activeKmExplorationXp;
+  final int passiveKmExplorationXp;
+
+  factory LevelingRewardsConfig.fromYaml(Map<String, dynamic> yaml) {
+    return LevelingRewardsConfig(
+      siteDiscoverExplorationXp:
+          _asInt(yaml['site_discover_exploration_xp'], 30),
+      fossilDiscoverExplorationXp:
+          _asInt(yaml['fossil_discover_exploration_xp'], 50),
+      activeKmExplorationXp: _asInt(yaml['active_km_exploration_xp'], 30),
+      passiveKmExplorationXp: _asInt(yaml['passive_km_exploration_xp'], 5),
+    );
+  }
+}
+
+class LevelingTitlesConfig {
+  const LevelingTitlesConfig({
+    required this.exploration,
+    required this.excavation,
+    required this.research,
+  });
+
+  final List<String> exploration;
+  final List<String> excavation;
+  final List<String> research;
+
+  factory LevelingTitlesConfig.fromYaml(Map<String, dynamic> yaml) {
+    return LevelingTitlesConfig(
+      exploration: _asStringList(yaml['exploration']),
+      excavation: _asStringList(yaml['excavation']),
+      research: _asStringList(yaml['research']),
+    );
+  }
+}
+
 class GuidanceActionConfig {
   const GuidanceActionConfig({
     required this.durationMinutes,
@@ -604,6 +677,14 @@ String _asString(dynamic value, String fallback) {
     if (trimmed.isNotEmpty) return trimmed;
   }
   return fallback;
+}
+
+List<String> _asStringList(dynamic value) {
+  if (value is! List) return const [];
+  return [
+    for (final item in value)
+      if (item != null) item.toString(),
+  ];
 }
 
 Map<int, double> _asIntDoubleMap(dynamic raw) {

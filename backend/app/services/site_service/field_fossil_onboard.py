@@ -183,6 +183,7 @@ def grant_surface_fossils_to_user(
     )
     now = datetime.now(timezone.utc)
     granted: list[int] = []
+    newly_granted = 0
     for fossil_id in surface:
         fid = int(fossil_id)
         if fid in existing:
@@ -196,7 +197,18 @@ def grant_surface_fossils_to_user(
                 timestamp=now,
             )
         )
+        newly_granted += 1
         granted.append(fid)
+
+    if newly_granted > 0:
+        from app.models.user import User
+        from app.services.level_service import award_fossil_discover_xp
+
+        user = session.get(User, user_id)
+        if user is not None:
+            award_fossil_discover_xp(user, count=newly_granted)
+            session.add(user)
+
     session.commit()
     return tuple(granted)
 

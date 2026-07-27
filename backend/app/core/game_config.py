@@ -353,6 +353,50 @@ class GuidanceActionConfig(BaseModel):
         return 0.0
 
 
+class LevelingRewardsConfig(BaseModel):
+    model_config = {"frozen": True}
+
+    site_discover_exploration_xp: int = 30
+    fossil_discover_exploration_xp: int = 50
+    active_km_exploration_xp: int = 30
+    passive_km_exploration_xp: int = 5
+
+
+class LevelingTitlesConfig(BaseModel):
+    model_config = {"frozen": True}
+
+    exploration: tuple[str, ...] = ()
+    excavation: tuple[str, ...] = ()
+    research: tuple[str, ...] = ()
+
+    @field_validator("exploration", "excavation", "research", mode="before")
+    @classmethod
+    def _coerce_titles(cls, value: object) -> tuple[str, ...]:
+        if value is None:
+            return ()
+        if isinstance(value, (list, tuple)):
+            return tuple(str(item) for item in value)
+        raise ValueError("title lists must be sequences of strings")
+
+    @model_validator(mode="after")
+    def _require_99(self) -> LevelingTitlesConfig:
+        for name, words in (
+            ("exploration", self.exploration),
+            ("excavation", self.excavation),
+            ("research", self.research),
+        ):
+            if len(words) != 99:
+                raise ValueError(f"titles.{name} must have exactly 99 entries")
+        return self
+
+
+class LevelingConfig(BaseModel):
+    model_config = {"frozen": True}
+
+    rewards: LevelingRewardsConfig = Field(default_factory=LevelingRewardsConfig)
+    titles: LevelingTitlesConfig
+
+
 class ToolActionsConfig(BaseModel):
     model_config = {"frozen": True}
 
@@ -415,6 +459,7 @@ class GameConfig(BaseModel):
     fossil_discovery: FossilDiscoveryConfig
     fossil_excavation: FossilExcavationConfig
     tool_actions: ToolActionsConfig
+    leveling: LevelingConfig
 
 
 def resolve_game_config_dir() -> Path:
@@ -448,6 +493,9 @@ def load_game_config(config_dir: Path | None = None) -> GameConfig:
         ),
         tool_actions=ToolActionsConfig.model_validate(
             _load_yaml(directory / "tool_actions.yaml")
+        ),
+        leveling=LevelingConfig.model_validate(
+            _load_yaml(directory / "leveling.yaml")
         ),
     )
 

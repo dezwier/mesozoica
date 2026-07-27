@@ -107,6 +107,15 @@ def discover_site_from_aerial(
         site_id=site_id,
     )
     session.add(notification)
+
+    from app.models.user import User
+    from app.services.level_service import award_site_discover_xp
+
+    user = session.get(User, user_id)
+    if user is not None:
+        award_site_discover_xp(user)
+        session.add(user)
+
     session.commit()
     session.refresh(notification)
     if notification.id is not None:

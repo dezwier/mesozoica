@@ -19,6 +19,7 @@ def test_resolve_default_game_config_dir() -> None:
     assert (directory / "site_generation.yaml").is_file()
     assert (directory / "site_discovery.yaml").is_file()
     assert (directory / "fossil_generation.yaml").is_file()
+    assert (directory / "leveling.yaml").is_file()
 
 
 def test_load_game_config_matches_current_defaults() -> None:
@@ -37,7 +38,7 @@ def test_load_game_config_matches_current_defaults() -> None:
     assert config.site_generation.client.nearby_radius_km == 0.5
 
     assert config.site_discovery.max_distance_m == 50.0
-    assert config.site_discovery.discovery_chance == 0.2
+    assert config.site_discovery.discovery_chance == 0.1
     assert config.site_discovery.client.auto_discover_radius_m == 50.0
     assert config.site_discovery.client.cache_radius_km == 1.0
     assert config.site_discovery.client.cache_refresh_move_threshold_m == 500.0
@@ -72,6 +73,11 @@ def test_load_game_config_matches_current_defaults() -> None:
 
     assert config.fossil_discovery.enabled is False
     assert config.fossil_excavation.enabled is False
+
+    assert config.leveling.rewards.site_discover_exploration_xp == 30
+    assert len(config.leveling.titles.exploration) == 99
+    assert len(config.leveling.titles.excavation) == 99
+    assert len(config.leveling.titles.research) == 99
 
 
 def test_get_game_config_is_cached() -> None:

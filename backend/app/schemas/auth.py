@@ -47,6 +47,22 @@ class UserResponse(BaseModel):
     distance_week_start: date | None = None
     distance_synced_at: str | None = None
 
+    exploration_xp: int = 0
+    excavation_xp: int = 0
+    research_xp: int = 0
+    exploration_level: int = 1
+    excavation_level: int = 1
+    research_level: int = 1
+    career_title: str = "Trail Dust Note"
+    exploration_progress: float = 0.0
+    excavation_progress: float = 0.0
+    research_progress: float = 0.0
+    career_progress: float = 0.0
+    xp_from_sites: int = 0
+    xp_from_fossils: int = 0
+    xp_from_active_distance: int = 0
+    xp_from_passive_distance: int = 0
+
 
 class UserProfileResponse(UserResponse):
     actual_dinosaurs_count: int = 0

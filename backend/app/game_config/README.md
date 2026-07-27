@@ -16,6 +16,7 @@ Single source of truth for Mesozoica game-mechanics knobs.
 | `fossil_discovery.yaml` | Stub — fossil proximity discovery (future) |
 | `fossil_excavation.yaml` | Stub — excavation timing/loot (future) |
 | `tool_actions.yaml` | Per-tool action knobs (aerial recon/scout route/flight/discovery) |
+| `leveling.yaml` | Skill XP rewards + 99 career title words per skill (thresholds in code) |
 
 ## Field fossil generation (`fossil_generation.yaml`)
 

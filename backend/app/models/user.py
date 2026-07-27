@@ -42,6 +42,15 @@ class User(SQLModel, table=True):
     current_location: str = Field(default="", max_length=200)
     is_admin: bool = Field(default=False)
 
+    # Skill XP (RuneScape-style). Career xp/level = sum / career thresholds.
+    exploration_xp: int = Field(default=0)
+    excavation_xp: int = Field(default=0)
+    research_xp: int = Field(default=0)
+    xp_from_sites: int = Field(default=0)
+    xp_from_fossils: int = Field(default=0)
+    xp_from_active_distance: int = Field(default=0)
+    xp_from_passive_distance: int = Field(default=0)
+
     # Walked distance (meters): total = GPS open + Health closed gaps;
     # active = GPS while app open only.
     total_distance_m: float = Field(default=0.0)

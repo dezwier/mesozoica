@@ -67,6 +67,23 @@ def apply_distance_update(
     user.active_weekly_distance_m = new_active_weekly
     user.distance_week_start = week_start
     user.distance_synced_at = now
+
+    from app.services.level_service import (
+        award_distance_km_xp,
+        passive_meters,
+        whole_km,
+    )
+
+    prev_active_km = whole_km(previous_active)
+    new_active_km = whole_km(new_active)
+    prev_passive_km = whole_km(passive_meters(previous_total, previous_active))
+    new_passive_km = whole_km(passive_meters(new_total, new_active))
+    award_distance_km_xp(
+        user,
+        active_km_delta=new_active_km - prev_active_km,
+        passive_km_delta=new_passive_km - prev_passive_km,
+    )
+
     session.add(user)
     session.commit()
     session.refresh(user)

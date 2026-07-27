@@ -24,6 +24,22 @@ class Profile {
   final double activeDistanceM;
   final double activeWeeklyDistanceM;
 
+  final int explorationXp;
+  final int excavationXp;
+  final int researchXp;
+  final int explorationLevel;
+  final int excavationLevel;
+  final int researchLevel;
+  final String careerTitle;
+  final double explorationProgress;
+  final double excavationProgress;
+  final double researchProgress;
+  final double careerProgress;
+  final int xpFromSites;
+  final int xpFromFossils;
+  final int xpFromActiveDistance;
+  final int xpFromPassiveDistance;
+
   const Profile({
     required this.id,
     required this.displayName,
@@ -49,6 +65,21 @@ class Profile {
     this.weeklyDistanceM = 0,
     this.activeDistanceM = 0,
     this.activeWeeklyDistanceM = 0,
+    this.explorationXp = 0,
+    this.excavationXp = 0,
+    this.researchXp = 0,
+    this.explorationLevel = 1,
+    this.excavationLevel = 1,
+    this.researchLevel = 1,
+    this.careerTitle = 'Trail Dust Note',
+    this.explorationProgress = 0,
+    this.excavationProgress = 0,
+    this.researchProgress = 0,
+    this.careerProgress = 0,
+    this.xpFromSites = 0,
+    this.xpFromFossils = 0,
+    this.xpFromActiveDistance = 0,
+    this.xpFromPassiveDistance = 0,
   });
 
   factory Profile.fromJson(Map<String, dynamic> json) {
@@ -106,6 +137,50 @@ class Profile {
           (json['active_weekly_distance_m'] as num?)?.toDouble() ??
               (json['activeWeeklyDistanceM'] as num?)?.toDouble() ??
               0,
+      explorationXp: json['exploration_xp'] as int? ??
+          json['explorationXp'] as int? ??
+          0,
+      excavationXp: json['excavation_xp'] as int? ??
+          json['excavationXp'] as int? ??
+          0,
+      researchXp: json['research_xp'] as int? ?? json['researchXp'] as int? ?? 0,
+      explorationLevel: json['exploration_level'] as int? ??
+          json['explorationLevel'] as int? ??
+          1,
+      excavationLevel: json['excavation_level'] as int? ??
+          json['excavationLevel'] as int? ??
+          1,
+      researchLevel: json['research_level'] as int? ??
+          json['researchLevel'] as int? ??
+          1,
+      careerTitle: json['career_title'] as String? ??
+          json['careerTitle'] as String? ??
+          'Trail Dust Note',
+      explorationProgress:
+          (json['exploration_progress'] as num?)?.toDouble() ??
+              (json['explorationProgress'] as num?)?.toDouble() ??
+              0,
+      excavationProgress: (json['excavation_progress'] as num?)?.toDouble() ??
+          (json['excavationProgress'] as num?)?.toDouble() ??
+          0,
+      researchProgress: (json['research_progress'] as num?)?.toDouble() ??
+          (json['researchProgress'] as num?)?.toDouble() ??
+          0,
+      careerProgress: (json['career_progress'] as num?)?.toDouble() ??
+          (json['careerProgress'] as num?)?.toDouble() ??
+          0,
+      xpFromSites: json['xp_from_sites'] as int? ??
+          json['xpFromSites'] as int? ??
+          0,
+      xpFromFossils: json['xp_from_fossils'] as int? ??
+          json['xpFromFossils'] as int? ??
+          0,
+      xpFromActiveDistance: json['xp_from_active_distance'] as int? ??
+          json['xpFromActiveDistance'] as int? ??
+          0,
+      xpFromPassiveDistance: json['xp_from_passive_distance'] as int? ??
+          json['xpFromPassiveDistance'] as int? ??
+          0,
     );
   }
 
@@ -143,6 +218,21 @@ class Profile {
         'weeklyDistanceM': weeklyDistanceM,
         'activeDistanceM': activeDistanceM,
         'activeWeeklyDistanceM': activeWeeklyDistanceM,
+        'explorationXp': explorationXp,
+        'excavationXp': excavationXp,
+        'researchXp': researchXp,
+        'explorationLevel': explorationLevel,
+        'excavationLevel': excavationLevel,
+        'researchLevel': researchLevel,
+        'careerTitle': careerTitle,
+        'explorationProgress': explorationProgress,
+        'excavationProgress': excavationProgress,
+        'researchProgress': researchProgress,
+        'careerProgress': careerProgress,
+        'xpFromSites': xpFromSites,
+        'xpFromFossils': xpFromFossils,
+        'xpFromActiveDistance': xpFromActiveDistance,
+        'xpFromPassiveDistance': xpFromPassiveDistance,
       };
 
   Profile copyWith({
@@ -183,6 +273,21 @@ class Profile {
       activeDistanceM: activeDistanceM ?? this.activeDistanceM,
       activeWeeklyDistanceM:
           activeWeeklyDistanceM ?? this.activeWeeklyDistanceM,
+      explorationXp: explorationXp,
+      excavationXp: excavationXp,
+      researchXp: researchXp,
+      explorationLevel: explorationLevel,
+      excavationLevel: excavationLevel,
+      researchLevel: researchLevel,
+      careerTitle: careerTitle,
+      explorationProgress: explorationProgress,
+      excavationProgress: excavationProgress,
+      researchProgress: researchProgress,
+      careerProgress: careerProgress,
+      xpFromSites: xpFromSites,
+      xpFromFossils: xpFromFossils,
+      xpFromActiveDistance: xpFromActiveDistance,
+      xpFromPassiveDistance: xpFromPassiveDistance,
     );
   }
 }

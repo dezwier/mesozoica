@@ -29,11 +29,13 @@ class ProfileContent extends StatelessWidget {
       children: [
         _buildHeaderCard(context, scheme),
         const SizedBox(height: 5),
+        _buildCareerCard(context, scheme),
+        const SizedBox(height: 5),
+        _buildSkillGrid(context, scheme),
+        const SizedBox(height: 5),
         _buildStatsGrid(context, scheme),
         const SizedBox(height: 5),
         _buildDistanceCard(context, scheme),
-        const SizedBox(height: 5),
-        _buildAchievementsCard(context, scheme),
         const SizedBox(height: 5),
         _buildProfessionalCard(context, scheme),
       ],
@@ -160,6 +162,169 @@ class ProfileContent extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildCareerCard(BuildContext context, ColorScheme scheme) {
+    return Card(
+      elevation: 1,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(_cardRadius),
+      ),
+      child: Container(
+        width: double.infinity,
+        decoration: BoxDecoration(
+          color: scheme.surfaceContainerHighest.withValues(alpha: 0.5),
+          borderRadius: BorderRadius.circular(_cardRadius),
+        ),
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Career experience',
+              style: Theme.of(context)
+                  .textTheme
+                  .titleMedium
+                  ?.copyWith(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              profile.careerTitle,
+              style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    color: scheme.primary,
+                    fontWeight: FontWeight.w600,
+                  ),
+            ),
+            const SizedBox(height: 12),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: LinearProgressIndicator(
+                value: profile.careerProgress.clamp(0.0, 1.0),
+                minHeight: 8,
+                backgroundColor: scheme.surfaceContainerHighest,
+                color: scheme.primary,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSkillGrid(BuildContext context, ColorScheme scheme) {
+    final skills = [
+      (
+        'Exploration',
+        profile.explorationLevel,
+        profile.explorationXp,
+        profile.explorationProgress,
+        true,
+      ),
+      (
+        'Excavation',
+        profile.excavationLevel,
+        profile.excavationXp,
+        profile.excavationProgress,
+        false,
+      ),
+      (
+        'Research',
+        profile.researchLevel,
+        profile.researchXp,
+        profile.researchProgress,
+        false,
+      ),
+    ];
+    return Row(
+      children: [
+        for (var i = 0; i < skills.length; i++) ...[
+          if (i > 0) const SizedBox(width: 5),
+          Expanded(
+            child: _SkillCard(
+              borderRadius: _cardRadius,
+              name: skills[i].$1,
+              level: skills[i].$2,
+              xp: skills[i].$3,
+              progress: skills[i].$4,
+              onLongPress: () => _showSkillBreakdown(
+                context,
+                skillName: skills[i].$1,
+                hasBreakdown: skills[i].$5,
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  void _showSkillBreakdown(
+    BuildContext context, {
+    required String skillName,
+    required bool hasBreakdown,
+  }) {
+    final scheme = Theme.of(context).colorScheme;
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) {
+        if (!hasBreakdown) {
+          return Padding(
+            padding: const EdgeInsets.fromLTRB(24, 8, 24, 32),
+            child: Text(
+              'No XP sources yet for $skillName.',
+              style: Theme.of(sheetContext).textTheme.bodyLarge,
+            ),
+          );
+        }
+        final rows = [
+          ('Sites discovered', profile.xpFromSites),
+          ('Fossils discovered', profile.xpFromFossils),
+          ('Active distance', profile.xpFromActiveDistance),
+          ('Passive distance', profile.xpFromPassiveDistance),
+        ];
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(24, 8, 24, 32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '$skillName XP',
+                style: Theme.of(sheetContext)
+                    .textTheme
+                    .titleMedium
+                    ?.copyWith(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 16),
+              for (final row in rows) ...[
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        row.$1,
+                        style: Theme.of(sheetContext).textTheme.bodyMedium,
+                      ),
+                    ),
+                    Text(
+                      '${row.$2} XP',
+                      style: Theme.of(sheetContext)
+                          .textTheme
+                          .bodyMedium
+                          ?.copyWith(
+                            color: scheme.primary,
+                            fontWeight: FontWeight.w600,
+                          ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+              ],
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -381,74 +546,6 @@ class ProfileContent extends StatelessWidget {
     return '${km.round()} km';
   }
 
-  Widget _buildAchievementsCard(BuildContext context, ColorScheme scheme) {
-    return Card(
-      elevation: 1,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(_cardRadius),
-      ),
-      child: Container(
-        width: double.infinity,
-        decoration: BoxDecoration(
-          color: scheme.surfaceContainerHighest.withValues(alpha: 0.5),
-          borderRadius: BorderRadius.circular(_cardRadius),
-        ),
-        padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(Icons.emoji_events, color: scheme.primary, size: 20),
-                const SizedBox(width: 8),
-                Text('Achievements',
-                    style: Theme.of(context)
-                        .textTheme
-                        .titleMedium
-                        ?.copyWith(fontWeight: FontWeight.bold)),
-                const Spacer(),
-                Text('${profile.achievements.length}',
-                    style: TextStyle(
-                      color: scheme.primary,
-                      fontWeight: FontWeight.w600,
-                    )),
-              ],
-            ),
-            const SizedBox(height: 12),
-            if (profile.achievements.isEmpty)
-              Text(
-                'No achievements yet.',
-                style: Theme.of(context).textTheme.bodyMedium,
-              )
-            else
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: profile.achievements.map((achievement) {
-                  return Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: scheme.primary.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(
-                        color: scheme.primary.withValues(alpha: 0.3),
-                      ),
-                    ),
-                    child: Text(achievement,
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: scheme.primary,
-                              fontWeight: FontWeight.w500,
-                            )),
-                  );
-                }).toList(),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-
   Widget _buildProfessionalCard(BuildContext context, ColorScheme scheme) {
     return Card(
       elevation: 1,
@@ -514,6 +611,80 @@ class ProfileContent extends StatelessWidget {
             child: Text(value, style: Theme.of(context).textTheme.bodyMedium),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _SkillCard extends StatelessWidget {
+  const _SkillCard({
+    required this.borderRadius,
+    required this.name,
+    required this.level,
+    required this.xp,
+    required this.progress,
+    required this.onLongPress,
+  });
+
+  final double borderRadius;
+  final String name;
+  final int level;
+  final int xp;
+  final double progress;
+  final VoidCallback onLongPress;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Card(
+      elevation: 1,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(borderRadius),
+      ),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(borderRadius),
+        onLongPress: onLongPress,
+        child: Container(
+          decoration: BoxDecoration(
+            color: scheme.surfaceContainerHighest.withValues(alpha: 0.3),
+            borderRadius: BorderRadius.circular(borderRadius),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+          child: Column(
+            children: [
+              Text(
+                'Lv.$level',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                '$xp XP',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: scheme.onSurfaceVariant,
+                    ),
+              ),
+              const SizedBox(height: 8),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(3),
+                child: LinearProgressIndicator(
+                  value: progress.clamp(0.0, 1.0),
+                  minHeight: 6,
+                  backgroundColor: scheme.surfaceContainerHighest,
+                  color: scheme.primary,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                name,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: scheme.onSurfaceVariant,
+                    ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
