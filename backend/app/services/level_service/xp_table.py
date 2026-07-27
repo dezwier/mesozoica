@@ -51,6 +51,18 @@ def level_for_xp(xp: int, *, career: bool = False) -> int:
     return max(1, min(99, idx))
 
 
+def average_skill_level(
+    exploration_level: int,
+    excavation_level: int,
+    research_level: int,
+) -> int:
+    """Global user level = rounded mean of the three skill levels (1..99)."""
+    avg = (
+        int(exploration_level) + int(excavation_level) + int(research_level)
+    ) / 3.0
+    return max(1, min(99, int(round(avg))))
+
+
 def progress_in_level(xp: int, *, career: bool = False) -> float:
     """Fraction 0..1 of progress from current level toward the next (1.0 at 99)."""
     level = level_for_xp(xp, career=career)

@@ -17,6 +17,7 @@ from app.services.level_service import (
     award_distance_km_xp,
     award_fossil_discover_xp,
     award_site_discover_xp,
+    average_skill_level,
     backfill_user_levels,
     career_title_for_user_xp,
     level_for_xp,
@@ -46,6 +47,13 @@ def test_level_for_xp_skill_and_career() -> None:
     assert level_for_xp(13_034_431 * 3, career=True) == 99
     assert level_for_xp(82 * 3, career=True) == 1
     assert level_for_xp(83 * 3, career=True) == 2
+
+
+def test_average_skill_level() -> None:
+    assert average_skill_level(1, 1, 1) == 1
+    assert average_skill_level(10, 10, 10) == 10
+    assert average_skill_level(10, 4, 4) == 6  # 18/3 = 6
+    assert average_skill_level(99, 1, 1) == 34  # 101/3 ≈ 33.67 → 34
 
 
 def test_progress_in_level() -> None:
@@ -106,7 +114,11 @@ def test_award_site_and_fossil_xp(session: Session) -> None:
     assert user.xp_from_sites == 30
     assert user.xp_from_fossils == 100
     assert user.xp == user.exploration_xp
-    assert user.level == level_for_xp(user.xp, career=True)
+    assert user.level == average_skill_level(
+        level_for_xp(user.exploration_xp),
+        level_for_xp(user.excavation_xp),
+        level_for_xp(user.research_xp),
+    )
 
 
 def test_award_distance_km_xp(session: Session) -> None:

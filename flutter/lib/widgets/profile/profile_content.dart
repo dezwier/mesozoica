@@ -29,8 +29,6 @@ class ProfileContent extends StatelessWidget {
       children: [
         _buildHeaderCard(context, scheme),
         const SizedBox(height: 5),
-        _buildCareerCard(context, scheme),
-        const SizedBox(height: 5),
         _buildSkillGrid(context, scheme),
         const SizedBox(height: 5),
         _buildStatsGrid(context, scheme),
@@ -44,6 +42,8 @@ class ProfileContent extends StatelessWidget {
 
   Widget _buildHeaderCard(BuildContext context, ColorScheme scheme) {
     final imageUrl = AuthService.imageUrl(profile.profileImage);
+    final careerLabel =
+        '${profile.careerTitle} - ${profile.level}';
     return AppCard.profile(
       borderRadius: _cardRadius,
       decoration: BoxDecoration(
@@ -131,7 +131,7 @@ class ProfileContent extends StatelessWidget {
             ),
             const SizedBox(height: 4),
             Text(
-              profile.specialization,
+              careerLabel,
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     color: scheme.primary,
                     fontWeight: FontWeight.w600,
@@ -158,53 +158,6 @@ class ProfileContent extends StatelessWidget {
                     ? 'Unknown location'
                     : profile.currentLocation),
               ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildCareerCard(BuildContext context, ColorScheme scheme) {
-    return Card(
-      elevation: 1,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(_cardRadius),
-      ),
-      child: Container(
-        width: double.infinity,
-        decoration: BoxDecoration(
-          color: scheme.surfaceContainerHighest.withValues(alpha: 0.5),
-          borderRadius: BorderRadius.circular(_cardRadius),
-        ),
-        padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Career experience',
-              style: Theme.of(context)
-                  .textTheme
-                  .titleMedium
-                  ?.copyWith(fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              profile.careerTitle,
-              style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    color: scheme.primary,
-                    fontWeight: FontWeight.w600,
-                  ),
-            ),
-            const SizedBox(height: 12),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(4),
-              child: LinearProgressIndicator(
-                value: profile.careerProgress.clamp(0.0, 1.0),
-                minHeight: 8,
-                backgroundColor: scheme.surfaceContainerHighest,
-                color: scheme.primary,
-              ),
             ),
           ],
         ),

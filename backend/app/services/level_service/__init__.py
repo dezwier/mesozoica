@@ -13,6 +13,7 @@ from app.services.level_service.titles import career_title_for_user_xp
 from app.services.level_service.xp_table import (
     CAREER_THRESHOLDS,
     SKILL_THRESHOLDS,
+    average_skill_level,
     level_for_xp,
     progress_in_level,
     xp_for_level,
@@ -24,6 +25,7 @@ __all__ = [
     "award_distance_km_xp",
     "award_fossil_discover_xp",
     "award_site_discover_xp",
+    "average_skill_level",
     "backfill_all_users",
     "backfill_user_levels",
     "career_title_for_user_xp",

@@ -84,12 +84,16 @@ def user_to_response(user: User) -> UserResponse:
         level_for_xp,
         progress_in_level,
     )
+    from app.services.level_service.xp_table import average_skill_level
 
     display = user.display_name or user.full_name or user.username
     exploration_xp = int(user.exploration_xp or 0)
     excavation_xp = int(user.excavation_xp or 0)
     research_xp = int(user.research_xp or 0)
     career_xp = exploration_xp + excavation_xp + research_xp
+    exploration_level = level_for_xp(exploration_xp)
+    excavation_level = level_for_xp(excavation_xp)
+    research_level = level_for_xp(research_xp)
     return UserResponse(
         id=user.id,
         username=user.username,
@@ -103,7 +107,9 @@ def user_to_response(user: User) -> UserResponse:
         notable_discovery=user.notable_discovery,
         favorite_era=user.favorite_era,
         xp=career_xp,
-        level=level_for_xp(career_xp, career=True),
+        level=average_skill_level(
+            exploration_level, excavation_level, research_level
+        ),
         achievements=list(user.achievements or []),
         bio=user.bio,
         current_location=user.current_location,
@@ -122,9 +128,9 @@ def user_to_response(user: User) -> UserResponse:
         exploration_xp=exploration_xp,
         excavation_xp=excavation_xp,
         research_xp=research_xp,
-        exploration_level=level_for_xp(exploration_xp),
-        excavation_level=level_for_xp(excavation_xp),
-        research_level=level_for_xp(research_xp),
+        exploration_level=exploration_level,
+        excavation_level=excavation_level,
+        research_level=research_level,
         career_title=career_title_for_user_xp(
             exploration_xp, excavation_xp, research_xp
         ),
@@ -147,20 +153,20 @@ def user_to_profile_response(session: Session, user: User) -> UserProfileRespons
 
 def user_to_list_entry(session: Session, user: User) -> UserListEntry:
     from app.services.level_service import level_for_xp
+    from app.services.level_service.xp_table import average_skill_level
 
     counts = collection_counts(session, user.id)
-    career_xp = (
-        int(user.exploration_xp or 0)
-        + int(user.excavation_xp or 0)
-        + int(user.research_xp or 0)
-    )
     return UserListEntry(
         id=user.id,
         username=user.username,
         display_name=user.display_name or user.full_name or user.username,
         full_name=user.full_name,
         image_url=user.image_url,
-        level=level_for_xp(career_xp, career=True),
+        level=average_skill_level(
+            level_for_xp(int(user.exploration_xp or 0)),
+            level_for_xp(int(user.excavation_xp or 0)),
+            level_for_xp(int(user.research_xp or 0)),
+        ),
         **counts,
     )
 
