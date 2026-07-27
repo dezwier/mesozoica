@@ -804,9 +804,8 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
                 widget.onError?.call(event.message);
               },
             ),
-            // Screen-fixed; sits under rotate cards. IgnorePointer so Mapbox
-            // location/site hits still win when they share the center.
-            if (!widget.rotateWithHeading && _ready)
+            // Mode 1 only (north-fixed, not following). Hidden while centered.
+            if (!widget.rotateWithHeading && !widget.followUser && _ready)
               const MapCenterCrosshair(),
             if (widget.rotateWithHeading && _ready)
               Positioned.fill(
