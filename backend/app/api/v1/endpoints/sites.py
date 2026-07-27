@@ -134,6 +134,10 @@ def get_sites(
     discovered_before: datetime | None = Query(default=None),
     lat: float | None = Query(default=None, ge=-90, le=90),
     lon: float | None = Query(default=None, ge=-180, le=180),
+    min_lat: float | None = Query(default=None, ge=-90, le=90),
+    max_lat: float | None = Query(default=None, ge=-90, le=90),
+    min_lon: float | None = Query(default=None, ge=-180, le=180),
+    max_lon: float | None = Query(default=None, ge=-180, le=180),
 ) -> SiteListResponse:
     allowed_sorts = (
         "name",
@@ -168,6 +172,10 @@ def get_sites(
         discovered_before=discovered_before,
         lat=lat,
         lon=lon,
+        min_lat=min_lat,
+        max_lat=max_lat,
+        min_lon=min_lon,
+        max_lon=max_lon,
         viewer_user_id=int(current_user.id) if current_user is not None else None,
     )
     rows = _maybe_enrich_viewer(session, rows, current_user)

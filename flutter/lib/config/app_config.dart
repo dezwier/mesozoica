@@ -186,6 +186,10 @@ class AppConfig {
     DateTime? discoveredBefore,
     double? lat,
     double? lon,
+    double? minLat,
+    double? maxLat,
+    double? minLon,
+    double? maxLon,
   }) {
     final params = <String, String>{
       'limit': '$limit',
@@ -222,6 +226,15 @@ class AppConfig {
     if (lat != null && lon != null) {
       params['lat'] = '$lat';
       params['lon'] = '$lon';
+    }
+    if (minLat != null &&
+        maxLat != null &&
+        minLon != null &&
+        maxLon != null) {
+      params['min_lat'] = '$minLat';
+      params['max_lat'] = '$maxLat';
+      params['min_lon'] = '$minLon';
+      params['max_lon'] = '$maxLon';
     }
     var uri = Uri.parse('$baseApiUrl/api/v1/sites').replace(
       queryParameters: params,

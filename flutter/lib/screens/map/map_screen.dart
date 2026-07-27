@@ -31,6 +31,7 @@ import '../../widgets/map/field_data_purge_dialog.dart';
 import '../../widgets/map/guidance_overlay.dart';
 import '../../widgets/map/map_control_buttons.dart';
 import '../../widgets/map/map_perf_hud.dart';
+import '../../widgets/map/map_visible_bounds.dart';
 import '../../widgets/map/mapbox_camera_coordinator.dart';
 import '../../widgets/map/mapbox_field_map.dart';
 import '../../widgets/map/mapbox_site_annotations.dart';
@@ -200,8 +201,12 @@ class _MapScreenState extends State<MapScreen>
                         _consumePendingDrawCamera();
                         _setInitialCamera(locationService: locationService);
                         _dismissSplash();
+                        if (mapData.showAllFieldSites) {
+                          unawaited(_reloadShowAllViewport());
+                        }
                       }
                     },
+                    onMapIdle: _onShowAllMapIdle,
                     onError: _onMapboxError,
                   ),
                 ),
@@ -375,13 +380,15 @@ class _MapScreenState extends State<MapScreen>
                       tone: ChromeFabTone.grey,
                       active: mapData.showAllFieldSites,
                       onPressed: () {
-                        mapData.setShowAllFieldSites(
-                          !mapData.showAllFieldSites,
-                        );
+                        final enabling = !mapData.showAllFieldSites;
+                        mapData.setShowAllFieldSites(enabling);
+                        if (enabling) {
+                          unawaited(_reloadShowAllViewport());
+                        }
                       },
                       tooltip: mapData.showAllFieldSites
-                          ? 'Showing all field sites'
-                          : 'Show all field sites',
+                          ? 'Showing field sites in view'
+                          : 'Show field sites in view',
                       child: Icon(
                         mapData.showAllFieldSites
                             ? Icons.visibility

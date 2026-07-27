@@ -53,6 +53,7 @@ class MapboxFieldMap extends StatefulWidget {
     this.showPastAerialRoutes = false,
     this.showAerialReconOverlays = true,
     this.onError,
+    this.onMapIdle,
   });
 
   final MapboxCameraCoordinator camera;
@@ -94,6 +95,8 @@ class MapboxFieldMap extends StatefulWidget {
   /// When false (archive mode), never draw recon routes or scout.
   final bool showAerialReconOverlays;
   final ValueChanged<Object>? onError;
+  /// Fired when the map becomes idle (after pan/zoom settle).
+  final VoidCallback? onMapIdle;
 
   @override
   State<MapboxFieldMap> createState() => _MapboxFieldMapState();
@@ -734,6 +737,7 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
   void _onMapIdle(MapIdleEventData data) {
     // First idle after camera seed ≈ tiles painted; release splash hold.
     if (_ready) _notifyParentReady();
+    widget.onMapIdle?.call();
   }
 
   @override
@@ -763,7 +767,7 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
         final height = constraints.maxHeight;
         final width = constraints.maxWidth;
         if (height.isFinite && height > 0 && width.isFinite && width > 0) {
-          widget.camera.setViewportHeight(height);
+          widget.camera.setViewportSize(width: width, height: height);
           final previous = _layoutHeight;
           final size = ui.Size(width, height);
           final sizeChanged = _viewportSize != size;

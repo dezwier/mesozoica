@@ -425,4 +425,56 @@ void main() {
 
     controller.dispose();
   });
+
+  test('show-all loads only sites in the given viewport bbox', () async {
+    final requests = <Uri>[];
+    final catalogMode = CatalogModeController();
+    await catalogMode.initialize();
+    await catalogMode.setDataSource(CatalogDataSource.field);
+
+    final service = SiteService(
+      client: MockClient((request) async {
+        requests.add(request.url);
+        return http.Response(
+          jsonEncode({
+            'items': [
+              siteJson(
+                siteId: 42,
+                latitude: 51.0,
+                longitude: 4.0,
+              ),
+            ],
+            'total': 1,
+            'limit': 500,
+            'offset': 0,
+            'has_next': false,
+          }),
+          200,
+        );
+      }),
+    );
+
+    final controller = MapController(
+      service: service,
+      catalogModeController: catalogMode,
+    );
+    controller.setShowAllFieldSites(true);
+    expect(requests, isEmpty);
+
+    controller.loadShowAllInBounds(
+      LatLngBounds(const LatLng(50.0, 3.0), const LatLng(52.0, 5.0)),
+    );
+    await pumpUntilIdle();
+
+    expect(requests, isNotEmpty);
+    final params = requests.first.queryParameters;
+    expect(params['show_all'], 'true');
+    expect(params['min_lat'], '50.0');
+    expect(params['max_lat'], '52.0');
+    expect(params['min_lon'], '3.0');
+    expect(params['max_lon'], '5.0');
+    expect(controller.geoSites.single.siteId, 42);
+
+    controller.dispose();
+  });
 }

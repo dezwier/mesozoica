@@ -4,6 +4,7 @@ import 'dart:ui' as ui;
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
@@ -34,6 +35,7 @@ class MapboxCameraCoordinator {
   LatLng? _pendingFollowLocation;
   double? _pendingFollowZoom;
   double? _viewportHeight;
+  double? _viewportWidth;
   bool rotateWithHeading = false;
 
   void attach(MapboxMap map) {
@@ -87,6 +89,30 @@ class MapboxCameraCoordinator {
   void setViewportHeight(double height) {
     if (height <= 0) return;
     _viewportHeight = height;
+  }
+
+  /// Logical map size from Flutter layout (for visible-bounds sampling).
+  void setViewportSize({required double width, required double height}) {
+    if (width <= 0 || height <= 0) return;
+    _viewportWidth = width;
+    _viewportHeight = height;
+  }
+
+  /// Approximate WGS84 bounds of the visible map (corners via screen→geo).
+  Future<LatLngBounds?> visibleBounds() async {
+    final map = _map;
+    final width = _viewportWidth;
+    final height = _viewportHeight;
+    if (map == null || width == null || height == null) return null;
+    final corners = await Future.wait([
+      coordinateForPixel(Offset.zero),
+      coordinateForPixel(Offset(width, 0)),
+      coordinateForPixel(Offset(0, height)),
+      coordinateForPixel(Offset(width, height)),
+    ]);
+    final points = corners.whereType<LatLng>().toList();
+    if (points.length < 4) return null;
+    return LatLngBounds.fromPoints(points);
   }
 
   /// Drop queued GPS follow so a programmatic [centerOn] is not overwritten.

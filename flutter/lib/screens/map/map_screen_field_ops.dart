@@ -6,9 +6,11 @@ mixin _MapScreenFieldOpsMixin on State<MapScreen>, _MapScreenCameraMixin {
   int? _hiddenRotateSiteId;
   String? _scanBannerMessage;
   Timer? _scanBannerTimer;
+  Timer? _showAllViewportDebounce;
 
   void _disposeFieldOpsMixin() {
     _scanBannerTimer?.cancel();
+    _showAllViewportDebounce?.cancel();
   }
 
   void _showScanBanner(String message, {bool autoDismiss = true}) {
@@ -19,6 +21,28 @@ mixin _MapScreenFieldOpsMixin on State<MapScreen>, _MapScreenCameraMixin {
       if (!mounted) return;
       setState(() => _scanBannerMessage = null);
     });
+  }
+
+  void _onShowAllMapIdle() {
+    if (!mounted || !widget.isActive) return;
+    final mapData = context.read<map_data.MapController>();
+    if (!mapData.showAllFieldSites) return;
+    _showAllViewportDebounce?.cancel();
+    _showAllViewportDebounce = Timer(const Duration(milliseconds: 350), () {
+      if (!mounted) return;
+      unawaited(_reloadShowAllViewport());
+    });
+  }
+
+  Future<void> _reloadShowAllViewport() async {
+    if (!_mapboxReady || !mounted) return;
+    final mapData = context.read<map_data.MapController>();
+    if (!mapData.showAllFieldSites) return;
+    final bounds = await _mapboxCamera.visibleBounds();
+    if (!mounted || bounds == null || !mapData.showAllFieldSites) return;
+    // Antimeridian-spanning views aren't supported by the bbox API.
+    if (bounds.west > bounds.east) return;
+    mapData.loadShowAllInBounds(paddedVisibleBounds(bounds));
   }
 
   Future<void> _onScanFieldArea() async {

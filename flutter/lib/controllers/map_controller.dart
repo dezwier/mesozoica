@@ -83,6 +83,8 @@ class MapController extends ChangeNotifier {
   int _fieldPollBackoffSeq = 0;
   SiteMapFilters _filters = SiteMapFilters();
   bool _showAllFieldSites = false;
+  /// Last viewport used for admin show-all loads (reused by refresh/poll).
+  LatLngBounds? _showAllBounds;
 
   _MapCacheKey get _cacheKey {
     if (_dataSource == CatalogDataSource.archive) {
@@ -122,7 +124,8 @@ class MapController extends ChangeNotifier {
   bool get showAllFieldSites => _showAllFieldSites;
 
   /// Toggle admin show-all without wiping the other field cache (same idea as
-  /// archive ↔ field).
+  /// archive ↔ field). Show-all loads are viewport-scoped via
+  /// [loadShowAllInBounds] — enabling does not fetch the global catalog.
   void setShowAllFieldSites(bool value) {
     if (_showAllFieldSites == value) return;
     _showAllFieldSites = value;
@@ -135,6 +138,16 @@ class MapController extends ChangeNotifier {
     _stopFieldPoll();
     _stopFieldPollBackoff();
 
+    if (value) {
+      final snap = _snap;
+      snap.reset(clearSeed: false);
+      snap.loadSeq++;
+      _showAllBounds = null;
+      notifyListeners();
+      return;
+    }
+
+    _showAllBounds = null;
     final snap = _snap;
     if (snap.loadingComplete) {
       _startFieldPoll(snap.loadSeq);
@@ -147,6 +160,46 @@ class MapController extends ChangeNotifier {
       return;
     }
     load(force: false);
+  }
+
+  /// Admin show-all: replace markers with field sites inside [bounds].
+  void loadShowAllInBounds(LatLngBounds bounds, {bool force = false}) {
+    if (!_isFieldMode || !_showAllFieldSites) return;
+    final snap = _snap;
+    if (!force && snap.loading) return;
+    if (!force &&
+        snap.loadingComplete &&
+        _showAllBounds != null &&
+        !_showAllBoundsChanged(_showAllBounds!, bounds)) {
+      return;
+    }
+
+    _showAllBounds = bounds;
+    _stopFieldPoll();
+    final seq = ++snap.loadSeq;
+    snap.loading = true;
+    snap.loadingComplete = false;
+    snap.error = null;
+    notifyListeners();
+    unawaited(_loadShowAllPages(seq, bounds));
+  }
+
+  /// True when the viewport moved/zoomed enough to warrant a fresh fetch.
+  bool _showAllBoundsChanged(LatLngBounds previous, LatLngBounds next) {
+    final prevLat = previous.north - previous.south;
+    final prevLng = previous.east - previous.west;
+    if (prevLat <= 0 || prevLng <= 0) return true;
+    final nextLat = next.north - next.south;
+    final nextLng = next.east - next.west;
+    if ((nextLat / prevLat - 1).abs() > 0.2) return true;
+    if ((nextLng / prevLng - 1).abs() > 0.2) return true;
+    final prevCenterLat = (previous.north + previous.south) / 2;
+    final prevCenterLng = (previous.east + previous.west) / 2;
+    final nextCenterLat = (next.north + next.south) / 2;
+    final nextCenterLng = (next.east + next.west) / 2;
+    if ((nextCenterLat - prevCenterLat).abs() > prevLat * 0.25) return true;
+    if ((nextCenterLng - prevCenterLng).abs() > prevLng * 0.25) return true;
+    return false;
   }
 
   void applyFilters(SiteMapFilters filters) {
@@ -204,6 +257,15 @@ class MapController extends ChangeNotifier {
   /// Starts or resumes background site pagination without blocking the map UI.
   void load({bool force = false}) {
     if (_isFieldMode) {
+      if (_showAllFieldSites) {
+        final bounds = _showAllBounds;
+        if (bounds != null) {
+          loadShowAllInBounds(bounds, force: force);
+        } else {
+          notifyListeners();
+        }
+        return;
+      }
       _loadFieldMode(force: force);
       return;
     }
@@ -403,7 +465,8 @@ class MapController extends ChangeNotifier {
 
   Future<void> _loadFieldPages(int seq) async {
     final snap = _snap;
-    final showAll = _showAllFieldSites;
+    // Linked field catalog only — show-all uses [_loadShowAllPages].
+    const showAll = false;
     try {
       var hasMore = true;
       var offset = 0;
@@ -437,7 +500,7 @@ class MapController extends ChangeNotifier {
         snap.loadedCatalog = offset;
         snap.totalCatalog = response.total;
         snap.error = null;
-        if (_isFieldMode && _showAllFieldSites == showAll) {
+        if (_isFieldMode && !_showAllFieldSites) {
           notifyListeners();
         }
 
@@ -461,7 +524,7 @@ class MapController extends ChangeNotifier {
 
       if (seq != snap.loadSeq) return;
       snap.loadingComplete = true;
-      if (_isFieldMode && _showAllFieldSites == showAll) {
+      if (_isFieldMode && !_showAllFieldSites) {
         _startFieldPoll(seq);
       }
 
@@ -485,7 +548,89 @@ class MapController extends ChangeNotifier {
     } finally {
       if (seq == snap.loadSeq) {
         snap.loading = false;
-        if (_isFieldMode && _showAllFieldSites == showAll) {
+        if (_isFieldMode && !_showAllFieldSites) {
+          notifyListeners();
+        }
+      }
+    }
+  }
+
+  Future<void> _loadShowAllPages(int seq, LatLngBounds bounds) async {
+    final snap = _snapshots[_MapCacheKey.fieldShowAll]!;
+    try {
+      var hasMore = true;
+      var offset = 0;
+      final allGeo = <SiteSummary>[];
+
+      while (hasMore) {
+        if (seq != snap.loadSeq || !_showAllFieldSites) return;
+
+        final response = await _service.fetchSites(
+          limit: pageSize,
+          offset: offset,
+          sort: 'name',
+          dataSource: CatalogDataSource.field,
+          showAll: true,
+          minLat: bounds.south,
+          maxLat: bounds.north,
+          minLon: bounds.west,
+          maxLon: bounds.east,
+        );
+        if (seq != snap.loadSeq || !_showAllFieldSites) return;
+
+        final geo = _withCoordinates(response.items);
+        allGeo.addAll(geo);
+        offset += response.items.length;
+        snap.geoSites = List<SiteSummary>.from(allGeo);
+        snap.siteBounds = _expandBounds(null, allGeo);
+        snap.maxFieldSiteId = allGeo.fold(
+          0,
+          (max, site) => site.siteId > max ? site.siteId : max,
+        );
+        snap.loadedCatalog = offset;
+        snap.totalCatalog = response.total;
+        snap.error = null;
+        if (_isFieldMode && _showAllFieldSites) {
+          notifyListeners();
+        }
+
+        hasMore = response.hasMore;
+        if (response.items.isEmpty) {
+          hasMore = false;
+        }
+
+        if (kDebugMode) {
+          debugPrint(
+            'MapController: show-all viewport page — ${snap.geoSites.length} geo '
+            '(${snap.loadedCatalog}/${snap.totalCatalog} in bbox)',
+          );
+        }
+
+        if (hasMore) {
+          await Future<void>.delayed(Duration.zero);
+        }
+      }
+
+      if (seq != snap.loadSeq || !_showAllFieldSites) return;
+      snap.loadingComplete = true;
+      if (_isFieldMode && _showAllFieldSites) {
+        _startFieldPoll(seq);
+      }
+    } on SiteServiceException catch (error) {
+      if (seq != snap.loadSeq) return;
+      snap.error = error.message;
+    } catch (error) {
+      if (seq != snap.loadSeq) return;
+      snap.error =
+          'Could not reach the API at ${AppConfig.baseApiUrl}. '
+          'Check your connection or try again later.';
+      if (kDebugMode) {
+        debugPrint('MapController.load show-all viewport failed: $error');
+      }
+    } finally {
+      if (seq == snap.loadSeq) {
+        snap.loading = false;
+        if (_isFieldMode && _showAllFieldSites) {
           notifyListeners();
         }
       }
@@ -513,8 +658,15 @@ class MapController extends ChangeNotifier {
 
   Future<void> _pollNewFieldSites(int seq) async {
     final snap = _activeFieldSnap;
-    final showAll = _showAllFieldSites;
     if (seq != snap.loadSeq) return;
+
+    if (_showAllFieldSites) {
+      final bounds = _showAllBounds;
+      if (bounds == null) return;
+      // Re-query the current viewport so new sites appear without a global dump.
+      loadShowAllInBounds(bounds, force: true);
+      return;
+    }
 
     try {
       var hasMore = true;
@@ -529,7 +681,7 @@ class MapController extends ChangeNotifier {
           sort: 'name',
           dataSource: CatalogDataSource.field,
           siteIdMin: siteIdMin,
-          showAll: showAll,
+          showAll: false,
         );
         if (seq != snap.loadSeq) return;
         if (response.items.isEmpty) return;
@@ -537,7 +689,7 @@ class MapController extends ChangeNotifier {
         final geo = _withCoordinates(response.items);
         _mergeSites(snap, geo);
         snap.totalCatalog = response.total;
-        if (_isFieldMode && _showAllFieldSites == showAll) {
+        if (_isFieldMode && !_showAllFieldSites) {
           notifyListeners();
         }
 
@@ -549,7 +701,7 @@ class MapController extends ChangeNotifier {
         if (kDebugMode) {
           debugPrint(
             'MapController: polled ${geo.length} new field sites '
-            '(max id ${snap.maxFieldSiteId}, showAll=$showAll)',
+            '(max id ${snap.maxFieldSiteId})',
           );
         }
       }

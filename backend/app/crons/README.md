@@ -150,7 +150,7 @@ RAILWAY_RUN=1 railway run python -m app.crons.runner --job tool_image_generate -
 
 ### Procedural field sites (lazy, not a cron)
 
-Field sites (`data_source=field`) are **global** `Site` rows (shared density pool). Players only see sites they have a `user_site` link to on the default map; undiscovered sites stay hidden until personal proximity discovery (50 m). Admins can use `show_all=true` (and the map “Show all” / “Scan” controls) to inspect the full field catalog.
+Field sites (`data_source=field`) are **global** `Site` rows (shared density pool). Players only see sites they have a `user_site` link to on the default map; undiscovered sites stay hidden until personal proximity discovery (50 m). Admins can use `show_all=true` (and the map “Show all” control, which loads the current viewport only) plus “Scan” to inspect field sites.
 
 - **`GET /api/v1/sites?data_source=field`** — linked-only field sites for the current user (empty when anonymous). Pass `show_all=true` as an **admin** to list all field sites.
 - **`GET /api/v1/sites?data_source=field&site_id_min=N&sort=name`** — incremental poll for sites written since the last id (Flutter polls every ~60 s while the map tab is open).

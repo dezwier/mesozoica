@@ -47,6 +47,10 @@ class SiteService {
     DateTime? discoveredBefore,
     double? lat,
     double? lon,
+    double? minLat,
+    double? maxLat,
+    double? minLon,
+    double? maxLon,
   }) async {
     final uri = AppConfig.sitesUri(
       limit: limit,
@@ -65,6 +69,10 @@ class SiteService {
       discoveredBefore: discoveredBefore,
       lat: lat,
       lon: lon,
+      minLat: minLat,
+      maxLat: maxLat,
+      minLon: minLon,
+      maxLon: maxLon,
     );
     if (kDebugMode) {
       debugPrint('SiteService GET $uri');

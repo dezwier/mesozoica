@@ -58,12 +58,19 @@ def list_sites(
     discovered_before: datetime | None = None,
     lat: float | None = None,
     lon: float | None = None,
+    min_lat: float | None = None,
+    max_lat: float | None = None,
+    min_lon: float | None = None,
+    max_lon: float | None = None,
     viewer_user_id: int | None = None,
 ) -> tuple[list[SiteRow], int]:
     """Return paginated site rows joined with site_type.
 
     For field sites, pass ``linked_user_id`` to restrict to sites linked via
     ``user_site`` unless ``show_all`` is True.
+
+    Optional ``min_lat``/``max_lat``/``min_lon``/``max_lon`` restrict to a
+    bounding box (all four required together).
     """
     capped_limit = max(1, min(limit, 500))
     capped_offset = max(0, offset)
@@ -84,6 +91,12 @@ def list_sites(
     origin_lat, origin_lon = _normalize_distance_origin(
         sort=sort, lat=lat, lon=lon
     )
+    bbox = _normalize_bbox(
+        min_lat=min_lat,
+        max_lat=max_lat,
+        min_lon=min_lon,
+        max_lon=max_lon,
+    )
 
     filtered = _filtered_select(
         normalized_q=normalized_q,
@@ -99,7 +112,8 @@ def list_sites(
         discovered_after=discovered_after,
         discovered_before=discovered_before,
         discovery_viewer_id=discovery_viewer_id,
-        require_coordinates=sort == "distance",
+        require_coordinates=sort == "distance" or bbox is not None,
+        bbox=bbox,
     )
 
     total = session.exec(
@@ -288,6 +302,33 @@ def _normalize_distance_origin(
     return float(lat), float(lon)
 
 
+def _normalize_bbox(
+    *,
+    min_lat: float | None,
+    max_lat: float | None,
+    min_lon: float | None,
+    max_lon: float | None,
+) -> tuple[float, float, float, float] | None:
+    values = (min_lat, max_lat, min_lon, max_lon)
+    if all(v is None for v in values):
+        return None
+    if any(v is None for v in values):
+        raise ValidationError(
+            "min_lat, max_lat, min_lon, and max_lon must be provided together"
+        )
+    assert min_lat is not None and max_lat is not None
+    assert min_lon is not None and max_lon is not None
+    if min_lat > max_lat:
+        raise ValidationError("min_lat must be <= max_lat")
+    if min_lon > max_lon:
+        raise ValidationError("min_lon must be <= max_lon")
+    if not (-90.0 <= min_lat <= 90.0 and -90.0 <= max_lat <= 90.0):
+        raise ValidationError("latitude bounds must be between -90 and 90")
+    if not (-180.0 <= min_lon <= 180.0 and -180.0 <= max_lon <= 180.0):
+        raise ValidationError("longitude bounds must be between -180 and 180")
+    return min_lat, max_lat, min_lon, max_lon
+
+
 def _filtered_select(
     *,
     normalized_q: str | None,
@@ -304,6 +345,7 @@ def _filtered_select(
     discovered_before: datetime | None = None,
     discovery_viewer_id: int | None = None,
     require_coordinates: bool = False,
+    bbox: tuple[float, float, float, float] | None = None,
 ):
     max_ts = latest_user_site_subquery()
     stmt = (
@@ -377,6 +419,14 @@ def _filtered_select(
         stmt = stmt.where(
             col(Site.latitude).is_not(None),
             col(Site.longitude).is_not(None),
+        )
+    if bbox is not None:
+        box_min_lat, box_max_lat, box_min_lon, box_max_lon = bbox
+        stmt = stmt.where(
+            col(Site.latitude) >= box_min_lat,
+            col(Site.latitude) <= box_max_lat,
+            col(Site.longitude) >= box_min_lon,
+            col(Site.longitude) <= box_max_lon,
         )
     return stmt
 

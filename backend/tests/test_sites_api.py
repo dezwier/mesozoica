@@ -823,6 +823,59 @@ def test_list_sites_rejects_invalid_data_source(client):
     assert response.status_code == 400
 
 
+def test_list_sites_filters_by_bbox(client, session):
+    from app.models.data_source import DATA_SOURCE_FIELD
+
+    site_type = _seed_site_type(session)
+    session.add(
+        Site(
+            site_id=62001,
+            latitude=Decimal("40.0"),
+            longitude=Decimal("-100.0"),
+            formation="Inside",
+            site_type_id=site_type.id,
+            data_source=DATA_SOURCE_FIELD,
+        )
+    )
+    session.add(
+        Site(
+            site_id=62002,
+            latitude=Decimal("50.0"),
+            longitude=Decimal("-100.0"),
+            formation="Outside",
+            site_type_id=site_type.id,
+            data_source=DATA_SOURCE_FIELD,
+        )
+    )
+    session.commit()
+
+    headers = _admin_auth_headers(session, username="bbox_admin")
+    response = client.get(
+        "/api/v1/sites",
+        params={
+            "data_source": "field",
+            "show_all": "true",
+            "min_lat": 39.0,
+            "max_lat": 41.0,
+            "min_lon": -101.0,
+            "max_lon": -99.0,
+        },
+        headers=headers,
+    )
+    assert response.status_code == 200
+    ids = [item["site_id"] for item in response.json()["items"]]
+    assert ids == [62001]
+    assert response.json()["total"] == 1
+
+
+def test_list_sites_bbox_requires_all_params(client, session):
+    response = client.get(
+        "/api/v1/sites",
+        params={"min_lat": 39.0, "max_lat": 41.0, "min_lon": -101.0},
+    )
+    assert response.status_code == 400
+
+
 def test_list_sites_filters_by_how_discovered(client, session):
     from app.models.data_source import DATA_SOURCE_FIELD
     from app.models.site import HOW_DISCOVERED_WALK, HOW_DISCOVERED_AERIAL_RECON
