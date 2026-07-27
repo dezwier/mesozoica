@@ -37,6 +37,12 @@ class Profile {
   final double careerProgress;
   final int nextLevelXp;
   final int xpToNextLevel;
+  final int explorationNextLevelXp;
+  final int excavationNextLevelXp;
+  final int researchNextLevelXp;
+  final int explorationXpToNext;
+  final int excavationXpToNext;
+  final int researchXpToNext;
   final int xpFromSites;
   final int xpFromFossils;
   final int xpFromActiveDistance;
@@ -80,6 +86,12 @@ class Profile {
     this.careerProgress = 0,
     this.nextLevelXp = 0,
     this.xpToNextLevel = 0,
+    this.explorationNextLevelXp = 0,
+    this.excavationNextLevelXp = 0,
+    this.researchNextLevelXp = 0,
+    this.explorationXpToNext = 0,
+    this.excavationXpToNext = 0,
+    this.researchXpToNext = 0,
     this.xpFromSites = 0,
     this.xpFromFossils = 0,
     this.xpFromActiveDistance = 0,
@@ -179,6 +191,24 @@ class Profile {
       xpToNextLevel: json['xp_to_next_level'] as int? ??
           json['xpToNextLevel'] as int? ??
           0,
+      explorationNextLevelXp: json['exploration_next_level_xp'] as int? ??
+          json['explorationNextLevelXp'] as int? ??
+          0,
+      excavationNextLevelXp: json['excavation_next_level_xp'] as int? ??
+          json['excavationNextLevelXp'] as int? ??
+          0,
+      researchNextLevelXp: json['research_next_level_xp'] as int? ??
+          json['researchNextLevelXp'] as int? ??
+          0,
+      explorationXpToNext: json['exploration_xp_to_next'] as int? ??
+          json['explorationXpToNext'] as int? ??
+          0,
+      excavationXpToNext: json['excavation_xp_to_next'] as int? ??
+          json['excavationXpToNext'] as int? ??
+          0,
+      researchXpToNext: json['research_xp_to_next'] as int? ??
+          json['researchXpToNext'] as int? ??
+          0,
       xpFromSites: json['xp_from_sites'] as int? ??
           json['xpFromSites'] as int? ??
           0,
@@ -241,6 +271,12 @@ class Profile {
         'careerProgress': careerProgress,
         'nextLevelXp': nextLevelXp,
         'xpToNextLevel': xpToNextLevel,
+        'explorationNextLevelXp': explorationNextLevelXp,
+        'excavationNextLevelXp': excavationNextLevelXp,
+        'researchNextLevelXp': researchNextLevelXp,
+        'explorationXpToNext': explorationXpToNext,
+        'excavationXpToNext': excavationXpToNext,
+        'researchXpToNext': researchXpToNext,
         'xpFromSites': xpFromSites,
         'xpFromFossils': xpFromFossils,
         'xpFromActiveDistance': xpFromActiveDistance,
@@ -298,6 +334,12 @@ class Profile {
       careerProgress: careerProgress,
       nextLevelXp: nextLevelXp,
       xpToNextLevel: xpToNextLevel,
+      explorationNextLevelXp: explorationNextLevelXp,
+      excavationNextLevelXp: excavationNextLevelXp,
+      researchNextLevelXp: researchNextLevelXp,
+      explorationXpToNext: explorationXpToNext,
+      excavationXpToNext: excavationXpToNext,
+      researchXpToNext: researchXpToNext,
       xpFromSites: xpFromSites,
       xpFromFossils: xpFromFossils,
       xpFromActiveDistance: xpFromActiveDistance,

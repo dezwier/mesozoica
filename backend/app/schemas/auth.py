@@ -60,6 +60,12 @@ class UserResponse(BaseModel):
     career_progress: float = 0.0
     next_level_xp: int = 0
     xp_to_next_level: int = 0
+    exploration_next_level_xp: int = 0
+    excavation_next_level_xp: int = 0
+    research_next_level_xp: int = 0
+    exploration_xp_to_next: int = 0
+    excavation_xp_to_next: int = 0
+    research_xp_to_next: int = 0
     xp_from_sites: int = 0
     xp_from_fossils: int = 0
     xp_from_active_distance: int = 0

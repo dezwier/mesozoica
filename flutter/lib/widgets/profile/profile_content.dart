@@ -29,7 +29,7 @@ class ProfileContent extends StatelessWidget {
       children: [
         _buildHeaderCard(context, scheme),
         const SizedBox(height: 5),
-        _buildSkillGrid(context, scheme),
+        _buildLevelsCard(context, scheme),
         const SizedBox(height: 5),
         _buildStatsGrid(context, scheme),
         const SizedBox(height: 5),
@@ -42,9 +42,9 @@ class ProfileContent extends StatelessWidget {
 
   Widget _buildHeaderCard(BuildContext context, ColorScheme scheme) {
     final imageUrl = AuthService.imageUrl(profile.profileImage);
-    final xpLabel = _formatXp(profile.xp);
-    final nextLabel = _formatXp(profile.nextLevelXp);
-    final toGoLabel = _formatXp(profile.xpToNextLevel);
+    final name = profile.fullName?.trim().isNotEmpty == true
+        ? profile.fullName!.trim()
+        : profile.displayName;
     return AppCard.profile(
       borderRadius: _cardRadius,
       decoration: BoxDecoration(
@@ -122,9 +122,7 @@ class ProfileContent extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             Text(
-              profile.fullName?.trim().isNotEmpty == true
-                  ? profile.fullName!.trim()
-                  : profile.displayName,
+              name,
               style: DinoCardTheme.of(context).titleStyle(fontSize: 24).copyWith(
                     color: scheme.onSurface,
                   ),
@@ -132,61 +130,12 @@ class ProfileContent extends StatelessWidget {
             ),
             const SizedBox(height: 4),
             Text(
-              profile.careerTitle,
+              'Level ${profile.level}',
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     color: scheme.primary,
                     fontWeight: FontWeight.w600,
                   ),
               textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 10),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              child: Column(
-                children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(3),
-                    child: LinearProgressIndicator(
-                      value: profile.careerProgress.clamp(0.0, 1.0),
-                      minHeight: 4,
-                      backgroundColor:
-                          scheme.onSurface.withValues(alpha: 0.08),
-                      color: scheme.primary.withValues(alpha: 0.55),
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    '$xpLabel / $nextLabel  ·  $toGoLabel to go',
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          color: scheme.onSurfaceVariant.withValues(alpha: 0.85),
-                          fontWeight: FontWeight.w500,
-                          letterSpacing: 0.2,
-                        ),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 12),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.person, size: 16, color: scheme.onSurfaceVariant),
-                const SizedBox(width: 4),
-                Text(profile.username ?? 'user'),
-              ],
-            ),
-            const SizedBox(height: 4),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.location_on,
-                    size: 16, color: scheme.onSurfaceVariant),
-                const SizedBox(width: 4),
-                Text(profile.currentLocation.isEmpty
-                    ? 'Unknown location'
-                    : profile.currentLocation),
-              ],
             ),
           ],
         ),
@@ -194,23 +143,23 @@ class ProfileContent extends StatelessWidget {
     );
   }
 
-  static String _formatXp(int value) {
-    final s = value.toString();
-    final buf = StringBuffer();
-    for (var i = 0; i < s.length; i++) {
-      final fromEnd = s.length - i;
-      if (i > 0 && fromEnd % 3 == 0) buf.write(',');
-      buf.write(s[i]);
-    }
-    return buf.toString();
-  }
-
-  Widget _buildSkillGrid(BuildContext context, ColorScheme scheme) {
-    final skills = [
+  Widget _buildLevelsCard(BuildContext context, ColorScheme scheme) {
+    final rows = [
+      (
+        'Global',
+        profile.level,
+        profile.xp,
+        profile.nextLevelXp,
+        profile.xpToNextLevel,
+        profile.careerProgress,
+        false,
+      ),
       (
         'Exploration',
         profile.explorationLevel,
         profile.explorationXp,
+        profile.explorationNextLevelXp,
+        profile.explorationXpToNext,
         profile.explorationProgress,
         true,
       ),
@@ -218,6 +167,8 @@ class ProfileContent extends StatelessWidget {
         'Excavation',
         profile.excavationLevel,
         profile.excavationXp,
+        profile.excavationNextLevelXp,
+        profile.excavationXpToNext,
         profile.excavationProgress,
         false,
       ),
@@ -225,30 +176,47 @@ class ProfileContent extends StatelessWidget {
         'Research',
         profile.researchLevel,
         profile.researchXp,
+        profile.researchNextLevelXp,
+        profile.researchXpToNext,
         profile.researchProgress,
         false,
       ),
     ];
-    return Row(
-      children: [
-        for (var i = 0; i < skills.length; i++) ...[
-          if (i > 0) const SizedBox(width: 5),
-          Expanded(
-            child: _SkillCard(
-              borderRadius: _cardRadius,
-              name: skills[i].$1,
-              level: skills[i].$2,
-              xp: skills[i].$3,
-              progress: skills[i].$4,
-              onLongPress: () => _showSkillBreakdown(
-                context,
-                skillName: skills[i].$1,
-                hasBreakdown: skills[i].$5,
+    return Card(
+      elevation: 1,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(_cardRadius),
+      ),
+      child: Container(
+        width: double.infinity,
+        decoration: BoxDecoration(
+          color: scheme.surfaceContainerHighest.withValues(alpha: 0.5),
+          borderRadius: BorderRadius.circular(_cardRadius),
+        ),
+        padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+        child: Column(
+          children: [
+            for (var i = 0; i < rows.length; i++) ...[
+              if (i > 0) const SizedBox(height: 12),
+              _LevelProgressRow(
+                name: rows[i].$1,
+                level: rows[i].$2,
+                xp: rows[i].$3,
+                nextLevelXp: rows[i].$4,
+                xpToNext: rows[i].$5,
+                progress: rows[i].$6,
+                onLongPress: rows[i].$1 == 'Global'
+                    ? null
+                    : () => _showSkillBreakdown(
+                          context,
+                          skillName: rows[i].$1,
+                          hasBreakdown: rows[i].$7,
+                        ),
               ),
-            ),
-          ),
-        ],
-      ],
+            ],
+          ],
+        ),
+      ),
     );
   }
 
@@ -609,76 +577,88 @@ class ProfileContent extends StatelessWidget {
   }
 }
 
-class _SkillCard extends StatelessWidget {
-  const _SkillCard({
-    required this.borderRadius,
+class _LevelProgressRow extends StatelessWidget {
+  const _LevelProgressRow({
     required this.name,
     required this.level,
     required this.xp,
+    required this.nextLevelXp,
+    required this.xpToNext,
     required this.progress,
-    required this.onLongPress,
+    this.onLongPress,
   });
 
-  final double borderRadius;
   final String name;
   final int level;
   final int xp;
+  final int nextLevelXp;
+  final int xpToNext;
   final double progress;
-  final VoidCallback onLongPress;
+  final VoidCallback? onLongPress;
+
+  static String _formatXp(int value) {
+    final s = value.toString();
+    final buf = StringBuffer();
+    for (var i = 0; i < s.length; i++) {
+      final fromEnd = s.length - i;
+      if (i > 0 && fromEnd % 3 == 0) buf.write(',');
+      buf.write(s[i]);
+    }
+    return buf.toString();
+  }
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return Card(
-      elevation: 1,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(borderRadius),
-      ),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(borderRadius),
-        onLongPress: onLongPress,
-        child: Container(
-          decoration: BoxDecoration(
-            color: scheme.surfaceContainerHighest.withValues(alpha: 0.3),
-            borderRadius: BorderRadius.circular(borderRadius),
-          ),
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
-          child: Column(
-            children: [
-              Text(
-                'Lv.$level',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                '$xp XP',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: scheme.onSurfaceVariant,
-                    ),
-              ),
-              const SizedBox(height: 8),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(3),
-                child: LinearProgressIndicator(
-                  value: progress.clamp(0.0, 1.0),
-                  minHeight: 6,
-                  backgroundColor: scheme.surfaceContainerHighest,
-                  color: scheme.primary,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
+    final muted = scheme.onSurfaceVariant.withValues(alpha: 0.9);
+    final content = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
                 name,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: scheme.onSurfaceVariant,
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w600,
                     ),
               ),
-            ],
+            ),
+            Text(
+              'Lv.$level',
+              style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    color: scheme.primary,
+                    fontWeight: FontWeight.w700,
+                  ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(3),
+          child: LinearProgressIndicator(
+            value: progress.clamp(0.0, 1.0),
+            minHeight: 6,
+            backgroundColor: scheme.onSurface.withValues(alpha: 0.08),
+            color: scheme.primary.withValues(alpha: name == 'Global' ? 0.75 : 0.55),
           ),
         ),
-      ),
+        const SizedBox(height: 5),
+        Text(
+          '${_formatXp(xp)} / ${_formatXp(nextLevelXp)}  ·  ${_formatXp(xpToNext)} to go',
+          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                color: muted,
+                fontWeight: FontWeight.w500,
+                letterSpacing: 0.15,
+              ),
+        ),
+      ],
+    );
+    if (onLongPress == null) return content;
+    return InkWell(
+      onLongPress: onLongPress,
+      borderRadius: BorderRadius.circular(6),
+      child: content,
     );
   }
 }
