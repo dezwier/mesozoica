@@ -309,12 +309,9 @@ class GuidanceActionConfig(BaseModel):
     direction_exactness: float | None = None
     distance_exactness: float | None = None
     discovery_chance: float | None = None
-    needle_jitter_period_s: float = 3.0
-    max_jitter_deg: float = 90.0
-    band_edges_m: list[float] = Field(
-        default_factory=lambda: [250.0, 500.0, 750.0, 1000.0]
-    )
-    mid_round_m: float = 100.0
+    direction_hint_period_s: float = 3.0
+    max_direction_range_deg: float = 180.0
+    min_direction_range_deg: float = 4.0
     stats_explanation: str = ""
 
     @field_validator("exactness", "direction_exactness", "distance_exactness")

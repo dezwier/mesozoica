@@ -13,7 +13,7 @@ import '../services/location_service.dart';
 import '../services/tool_service.dart';
 import '../utils/guidance_math.dart';
 
-/// Active timed site-guidance session (needle / distance overlays).
+/// Active timed site-guidance session (direction range / distance overlays).
 class GuidanceSessionController extends ChangeNotifier {
   GuidanceSessionController({ToolService? toolService})
       : _toolService = toolService ?? ToolService();
@@ -39,10 +39,10 @@ class GuidanceSessionController extends ChangeNotifier {
   double? _distanceM;
   String? _distanceLabel;
   double _trueBearingDeg = 0;
-  double _displayJitterDeg = 0;
-  double _jitterFromDeg = 0;
-  double _jitterToDeg = 0;
-  DateTime? _jitterPeriodStarted;
+  double _displayCenterOffsetDeg = 0;
+  double _offsetFromDeg = 0;
+  double _offsetToDeg = 0;
+  DateTime? _hintPeriodStarted;
   bool _showRetargetBadge = false;
   Timer? _badgeTimer;
   Timer? _tickTimer;
@@ -72,13 +72,26 @@ class GuidanceSessionController extends ChangeNotifier {
     return left.isNegative ? Duration.zero : left;
   }
 
-  /// Screen-relative needle angle (0 = device forward).
-  double get needleScreenDeg {
+  /// Full arc width in degrees for the direction glow.
+  double get rangeWidthDeg {
+    final cfg = _kind?.config(GameConfig.instance);
+    final exactness = _session?.directionExactness ??
+        cfg?.resolvedDirectionExactness ??
+        0.0;
+    return GuidanceMath.directionRangeWidthDeg(
+      exactness: exactness,
+      maxDeg: cfg?.maxDirectionRangeDeg ?? 180,
+      minDeg: cfg?.minDirectionRangeDeg ?? 4,
+    );
+  }
+
+  /// Screen-relative arc center (0 = device forward).
+  double get rangeCenterScreenDeg {
     final heading = _location?.headingDeg ?? 0;
-    return GuidanceMath.needleScreenDeg(
+    return GuidanceMath.rangeCenterScreenDeg(
       trueBearingDeg: _trueBearingDeg,
       deviceHeadingDeg: heading,
-      jitterDeg: _displayJitterDeg,
+      centerOffsetDeg: _displayCenterOffsetDeg,
     );
   }
 
@@ -116,7 +129,7 @@ class GuidanceSessionController extends ChangeNotifier {
       _kind = GuidanceToolKind.tryParseActionKey(session.actionKey) ?? kind;
       _tool = tool;
       _requestEnterRotate = true;
-      _resetJitter();
+      _resetHint();
       _recomputeTarget(announceRetarget: false);
       _ensureTickTimer();
       _message = '${kind.toolName} active';
@@ -163,7 +176,7 @@ class GuidanceSessionController extends ChangeNotifier {
 
   void _onHeadingChanged() {
     if (!isActive) return;
-    _updateJitterInterpolation();
+    _updateHintInterpolation();
     notifyListeners();
   }
 
@@ -174,58 +187,46 @@ class GuidanceSessionController extends ChangeNotifier {
         unawaited(stop(notifyServer: false));
         return;
       }
-      _updateJitterInterpolation();
+      _updateHintInterpolation();
       notifyListeners();
     });
   }
 
-  void _resetJitter() {
-    final amp = _jitterAmplitude();
-    _jitterFromDeg = 0;
-    _jitterToDeg = GuidanceMath.sampleJitterDeg(
-      amplitudeDeg: amp,
+  void _resetHint() {
+    final half = rangeWidthDeg / 2;
+    _offsetFromDeg = 0;
+    _offsetToDeg = GuidanceMath.sampleRangeCenterOffsetDeg(
+      halfWidthDeg: half,
       random: _random,
     );
-    _jitterPeriodStarted = DateTime.now();
-    _displayJitterDeg = _jitterFromDeg;
+    _hintPeriodStarted = DateTime.now();
+    _displayCenterOffsetDeg = _offsetFromDeg;
   }
 
-  double _jitterAmplitude() {
-    final cfg = _kind?.config(GameConfig.instance);
-    final exactness = _session?.directionExactness ??
-        cfg?.resolvedDirectionExactness ??
-        0.0;
-    final maxJitter = cfg?.maxJitterDeg ?? 90.0;
-    return GuidanceMath.jitterAmplitudeDeg(
-      exactness: exactness,
-      maxJitterDeg: maxJitter,
-    );
-  }
-
-  void _updateJitterInterpolation() {
+  void _updateHintInterpolation() {
     if (!showNeedle) {
-      _displayJitterDeg = 0;
+      _displayCenterOffsetDeg = 0;
       return;
     }
     final cfg = _kind?.config(GameConfig.instance);
-    final periodS = cfg?.needleJitterPeriodS ?? 3.0;
+    final periodS = cfg?.directionHintPeriodS ?? 3.0;
     final periodMs = (periodS * 1000).clamp(200, 60000).toInt();
-    final started = _jitterPeriodStarted ?? DateTime.now();
+    final started = _hintPeriodStarted ?? DateTime.now();
     final elapsed = DateTime.now().difference(started).inMilliseconds;
     if (elapsed >= periodMs) {
-      _jitterFromDeg = _jitterToDeg;
-      _jitterToDeg = GuidanceMath.sampleJitterDeg(
-        amplitudeDeg: _jitterAmplitude(),
+      _offsetFromDeg = _offsetToDeg;
+      _offsetToDeg = GuidanceMath.sampleRangeCenterOffsetDeg(
+        halfWidthDeg: rangeWidthDeg / 2,
         random: _random,
       );
-      _jitterPeriodStarted = DateTime.now();
-      _displayJitterDeg = _jitterFromDeg;
+      _hintPeriodStarted = DateTime.now();
+      _displayCenterOffsetDeg = _offsetFromDeg;
       return;
     }
     final t = elapsed / periodMs;
-    _displayJitterDeg = GuidanceMath.lerpJitterDeg(
-      fromDeg: _jitterFromDeg,
-      toDeg: _jitterToDeg,
+    _displayCenterOffsetDeg = GuidanceMath.lerpOffsetDeg(
+      fromDeg: _offsetFromDeg,
+      toDeg: _offsetToDeg,
       t: t,
     );
   }
@@ -267,14 +268,12 @@ class GuidanceSessionController extends ChangeNotifier {
       _distanceLabel = GuidanceMath.formatDistance(
         distanceM: distM,
         exactness: exactness,
-        bandEdgesM: cfg.bandEdgesM,
-        midRoundM: cfg.midRoundM,
       );
     } else {
       _distanceLabel = null;
     }
 
-    _updateJitterInterpolation();
+    _updateHintInterpolation();
 
     if (announceRetarget &&
         previousId != null &&

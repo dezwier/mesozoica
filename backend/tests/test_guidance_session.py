@@ -104,11 +104,16 @@ def test_tool_actions_yaml_loads_guidance_knobs() -> None:
     assert cfg.geo_compass.exactness == 0.0
     assert cfg.geo_compass.discovery_chance == 0.9
     assert cfg.geo_compass.duration_minutes == 15
+    assert cfg.geo_compass.direction_hint_period_s == 3.0
+    assert cfg.geo_compass.max_direction_range_deg == 180.0
+    assert cfg.geo_compass.min_direction_range_deg == 4.0
     assert cfg.proximity_scanner.discovery_chance is None
     assert cfg.proximity_scanner.exactness == 0.0
     assert cfg.site_navigator.direction_exactness == 0.0
     assert cfg.site_navigator.distance_exactness == 0.0
     assert cfg.site_navigator.discovery_chance == 0.9
+    assert cfg.site_navigator.max_direction_range_deg == 180.0
+    assert cfg.site_navigator.min_direction_range_deg == 4.0
 
 
 def test_start_guidance_session_snapshots_and_replaces(

@@ -6,7 +6,7 @@ import 'package:provider/provider.dart';
 import '../../config/map_config.dart';
 import '../../controllers/guidance_session_controller.dart';
 
-/// Rotation-mode guidance chrome: needle, distance chip, retarget badge, timer.
+/// Rotation-mode guidance chrome: direction glow, distance chip, retarget badge, timer.
 class GuidanceOverlay extends StatelessWidget {
   const GuidanceOverlay({super.key});
 
@@ -23,9 +23,10 @@ class GuidanceOverlay extends StatelessWidget {
         Positioned.fill(
           child: IgnorePointer(
             child: CustomPaint(
-              painter: _GuidanceNeedlePainter(
-                showNeedle: guidance.showNeedle && guidance.targetSite != null,
-                needleDeg: guidance.needleScreenDeg,
+              painter: _GuidanceRangePainter(
+                showRange: guidance.showNeedle && guidance.targetSite != null,
+                centerDeg: guidance.rangeCenterScreenDeg,
+                rangeWidthDeg: guidance.rangeWidthDeg,
                 focusFromBottom: MapConfig.mapboxRotateFocusFromBottom,
               ),
             ),
@@ -161,62 +162,95 @@ class _SessionChrome extends StatelessWidget {
   }
 }
 
-class _GuidanceNeedlePainter extends CustomPainter {
-  _GuidanceNeedlePainter({
-    required this.showNeedle,
-    required this.needleDeg,
+class _GuidanceRangePainter extends CustomPainter {
+  _GuidanceRangePainter({
+    required this.showRange,
+    required this.centerDeg,
+    required this.rangeWidthDeg,
     required this.focusFromBottom,
   });
 
-  final bool showNeedle;
-  final double needleDeg;
+  final bool showRange;
+  final double centerDeg;
+  final double rangeWidthDeg;
   final double focusFromBottom;
+
+  static const _gold = Color(0xFFD4AF37);
 
   @override
   void paint(Canvas canvas, Size size) {
-    if (!showNeedle) return;
+    if (!showRange) return;
 
     final center = Offset(
       size.width / 2,
       size.height * (1 - focusFromBottom),
     );
     final radius = 42.0;
+    final width = rangeWidthDeg.clamp(1.0, 360.0);
 
     final ringPaint = Paint()
-      ..color = const Color(0xFFD4AF37).withValues(alpha: 0.35)
+      ..color = _gold.withValues(alpha: 0.35)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.5;
     canvas.drawCircle(center, radius, ringPaint);
 
-    canvas.save();
-    canvas.translate(center.dx, center.dy);
-    canvas.rotate(needleDeg * math.pi / 180);
+    // Our 0° = device forward (up); Flutter arc 0° = east, clockwise.
+    final startRad = (centerDeg - width / 2 - 90) * math.pi / 180;
+    final sweepRad = width * math.pi / 180;
+    final rect = Rect.fromCircle(center: center, radius: radius);
 
-    final needlePaint = Paint()
-      ..color = const Color(0xFFD4AF37)
-      ..style = PaintingStyle.fill;
+    // Soft outer glow — wider stroke, lower alpha when the range is broad.
+    final glowAlpha = (0.12 + 0.28 * (1.0 - (width / 180).clamp(0.0, 1.0)))
+        .clamp(0.12, 0.4);
+    final glowStroke = 10.0 + 14.0 * (width / 180).clamp(0.0, 1.0);
+    canvas.drawArc(
+      rect,
+      startRad,
+      sweepRad,
+      false,
+      Paint()
+        ..color = _gold.withValues(alpha: glowAlpha)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = glowStroke
+        ..strokeCap = StrokeCap.round,
+    );
 
-    final path = Path()
-      ..moveTo(0, -radius - 6)
-      ..lineTo(7, -radius + 14)
-      ..lineTo(0, -radius + 8)
-      ..lineTo(-7, -radius + 14)
-      ..close();
-    canvas.drawPath(path, needlePaint);
+    // Core arc — sharper as exactness rises (narrower width).
+    final coreAlpha = (0.55 + 0.35 * (1.0 - (width / 180).clamp(0.0, 1.0)))
+        .clamp(0.55, 0.9);
+    final coreStroke = 3.0 + 3.0 * (1.0 - (width / 180).clamp(0.0, 1.0));
+    canvas.drawArc(
+      rect,
+      startRad,
+      sweepRad,
+      false,
+      Paint()
+        ..color = _gold.withValues(alpha: coreAlpha)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = coreStroke
+        ..strokeCap = StrokeCap.round,
+    );
 
-    final tailPaint = Paint()
-      ..color = const Color(0xFFD4AF37).withValues(alpha: 0.55)
-      ..strokeWidth = 2
-      ..strokeCap = StrokeCap.round;
-    canvas.drawLine(Offset.zero, Offset(0, radius * 0.45), tailPaint);
-
-    canvas.restore();
+    // Faint filled wedge for broad ranges.
+    if (width > 12) {
+      final wedge = Path()
+        ..moveTo(center.dx, center.dy)
+        ..arcTo(rect, startRad, sweepRad, false)
+        ..close();
+      canvas.drawPath(
+        wedge,
+        Paint()
+          ..color = _gold.withValues(alpha: 0.08 + 0.06 * (width / 180))
+          ..style = PaintingStyle.fill,
+      );
+    }
   }
 
   @override
-  bool shouldRepaint(covariant _GuidanceNeedlePainter oldDelegate) {
-    return oldDelegate.showNeedle != showNeedle ||
-        oldDelegate.needleDeg != needleDeg ||
+  bool shouldRepaint(covariant _GuidanceRangePainter oldDelegate) {
+    return oldDelegate.showRange != showRange ||
+        oldDelegate.centerDeg != centerDeg ||
+        oldDelegate.rangeWidthDeg != rangeWidthDeg ||
         oldDelegate.focusFromBottom != focusFromBottom;
   }
 }

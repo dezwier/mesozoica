@@ -56,6 +56,14 @@
     "action": "Navigate"
   },
   {
+    "name": "Terrain Echo",
+    "category": "site_detection",
+    "scientific_tool": "satellite or airborne radar remote sensing",
+    "description": "Sends a wide-area survey pulse that highlights approximate zones where exposed or shallow fossil-bearing formations may occur.",
+    "rarity": 3,
+    "action": "Ping"
+  },
+  {
     "name": "Controlled Break",
     "category": "2 overburden_removal",
     "scientific_tool": "controlled explosives",

@@ -35,31 +35,29 @@ geo_compass:
   exactness: 0.0
   discovery_chance: 0.9
   duration_minutes: 15
-  needle_jitter_period_s: 3
-  max_jitter_deg: 90
+  direction_hint_period_s: 3
+  max_direction_range_deg: 180
+  min_direction_range_deg: 4
   stats_explanation: >-
-    Points toward the nearest undiscovered site for this duration; lower
-    exactness adds needle drift. Walk-in discovery of that nearest site uses
+    Shows a direction range toward the nearest undiscovered site; lower
+    exactness widens the glow. Walk-in discovery of that nearest site uses
     the listed chance instead of the base rate.
 
 proximity_scanner:
   exactness: 0.0
   duration_minutes: 15
-  band_edges_m: [250, 500, 750, 1000]
-  mid_round_m: 100
   stats_explanation: >-
-    Shows how far you are from the nearest undiscovered site. Low exactness
-    uses coarse bands; mid rounds to 100 m; high shows precise distance.
+    Shows distance to the nearest undiscovered site as meter bands; lower
+    exactness uses coarser rounding (up to 200 m), higher is finer (down to 1 m).
 
 site_navigator:
   direction_exactness: 0.0
   distance_exactness: 0.0
   discovery_chance: 0.9
   duration_minutes: 15
-  needle_jitter_period_s: 3
-  max_jitter_deg: 90
-  band_edges_m: [250, 500, 750, 1000]
-  mid_round_m: 100
+  direction_hint_period_s: 3
+  max_direction_range_deg: 180
+  min_direction_range_deg: 4
   stats_explanation: >-
-    Combines compass direction and proximity readout for the nearest
+    Combines a direction-range glow and distance bands for the nearest
     undiscovered site, with the listed walk-in discovery chance for that site.

@@ -386,13 +386,12 @@ class ToolActionsConfig {
           durationMinutes: 15,
           exactness: 0.0,
           discoveryChance: 0.9,
-          needleJitterPeriodS: 3.0,
-          maxJitterDeg: 90.0,
-          bandEdgesM: [250, 500, 750, 1000],
-          midRoundM: 100,
+          directionHintPeriodS: 3.0,
+          maxDirectionRangeDeg: 180.0,
+          minDirectionRangeDeg: 4.0,
           statsExplanation:
-              'Points toward the nearest undiscovered site for this duration; '
-              'lower exactness adds needle drift.',
+              'Shows a direction range toward the nearest undiscovered site; '
+              'lower exactness widens the glow.',
         ),
       ),
       proximityScanner: GuidanceActionConfig.fromYaml(
@@ -401,12 +400,11 @@ class ToolActionsConfig {
           durationMinutes: 15,
           exactness: 0.0,
           discoveryChance: null,
-          needleJitterPeriodS: 3.0,
-          maxJitterDeg: 90.0,
-          bandEdgesM: [250, 500, 750, 1000],
-          midRoundM: 100,
+          directionHintPeriodS: 3.0,
+          maxDirectionRangeDeg: 180.0,
+          minDirectionRangeDeg: 4.0,
           statsExplanation:
-              'Shows how far you are from the nearest undiscovered site.',
+              'Shows distance to the nearest undiscovered site as meter bands.',
         ),
       ),
       siteNavigator: GuidanceActionConfig.fromYaml(
@@ -416,12 +414,11 @@ class ToolActionsConfig {
           directionExactness: 0.0,
           distanceExactness: 0.0,
           discoveryChance: 0.9,
-          needleJitterPeriodS: 3.0,
-          maxJitterDeg: 90.0,
-          bandEdgesM: [250, 500, 750, 1000],
-          midRoundM: 100,
+          directionHintPeriodS: 3.0,
+          maxDirectionRangeDeg: 180.0,
+          minDirectionRangeDeg: 4.0,
           statsExplanation:
-              'Combines compass direction and proximity readout for the '
+              'Combines a direction-range glow and distance bands for the '
               'nearest undiscovered site.',
         ),
       ),
@@ -508,10 +505,9 @@ class GuidanceActionConfig {
     this.directionExactness,
     this.distanceExactness,
     this.discoveryChance,
-    required this.needleJitterPeriodS,
-    required this.maxJitterDeg,
-    required this.bandEdgesM,
-    required this.midRoundM,
+    required this.directionHintPeriodS,
+    required this.maxDirectionRangeDeg,
+    required this.minDirectionRangeDeg,
     required this.statsExplanation,
   });
 
@@ -520,10 +516,9 @@ class GuidanceActionConfig {
   final double? directionExactness;
   final double? distanceExactness;
   final double? discoveryChance;
-  final double needleJitterPeriodS;
-  final double maxJitterDeg;
-  final List<double> bandEdgesM;
-  final double midRoundM;
+  final double directionHintPeriodS;
+  final double maxDirectionRangeDeg;
+  final double minDirectionRangeDeg;
   final String statsExplanation;
 
   double get resolvedDirectionExactness =>
@@ -540,10 +535,9 @@ class GuidanceActionConfig {
         const GuidanceActionConfig(
           durationMinutes: 15,
           exactness: 0.0,
-          needleJitterPeriodS: 3.0,
-          maxJitterDeg: 90.0,
-          bandEdgesM: [250, 500, 750, 1000],
-          midRoundM: 100,
+          directionHintPeriodS: 3.0,
+          maxDirectionRangeDeg: 180.0,
+          minDirectionRangeDeg: 4.0,
           statsExplanation: '',
         );
     return GuidanceActionConfig(
@@ -561,13 +555,18 @@ class GuidanceActionConfig {
         yaml['discovery_chance'],
         d.discoveryChance,
       ),
-      needleJitterPeriodS: _asDouble(
-        yaml['needle_jitter_period_s'],
-        d.needleJitterPeriodS,
+      directionHintPeriodS: _asDouble(
+        yaml['direction_hint_period_s'],
+        d.directionHintPeriodS,
       ),
-      maxJitterDeg: _asDouble(yaml['max_jitter_deg'], d.maxJitterDeg),
-      bandEdgesM: _asDoubleList(yaml['band_edges_m'], d.bandEdgesM),
-      midRoundM: _asDouble(yaml['mid_round_m'], d.midRoundM),
+      maxDirectionRangeDeg: _asDouble(
+        yaml['max_direction_range_deg'],
+        d.maxDirectionRangeDeg,
+      ),
+      minDirectionRangeDeg: _asDouble(
+        yaml['min_direction_range_deg'],
+        d.minDirectionRangeDeg,
+      ),
       statsExplanation: _asString(yaml['stats_explanation'], d.statsExplanation),
     );
   }
@@ -654,20 +653,6 @@ double? _asOptionalDouble(dynamic value, double? fallback) {
   if (value is num) return value.toDouble();
   if (value is String) return double.tryParse(value) ?? fallback;
   return fallback;
-}
-
-List<double> _asDoubleList(dynamic value, List<double> fallback) {
-  if (value is! List) return fallback;
-  final out = <double>[];
-  for (final item in value) {
-    if (item is num) {
-      out.add(item.toDouble());
-    } else if (item is String) {
-      final parsed = double.tryParse(item);
-      if (parsed != null) out.add(parsed);
-    }
-  }
-  return out.isEmpty ? fallback : out;
 }
 
 int _asInt(dynamic value, int fallback) {

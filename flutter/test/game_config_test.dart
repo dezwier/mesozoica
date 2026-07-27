@@ -55,6 +55,9 @@ void main() {
     expect(config.toolActions.geoCompass.exactness, 0.0);
     expect(config.toolActions.geoCompass.discoveryChance, 0.9);
     expect(config.toolActions.geoCompass.durationMinutes, 15);
+    expect(config.toolActions.geoCompass.maxDirectionRangeDeg, 180.0);
+    expect(config.toolActions.geoCompass.minDirectionRangeDeg, 4.0);
+    expect(config.toolActions.geoCompass.directionHintPeriodS, 3.0);
     expect(config.toolActions.proximityScanner.discoveryChance, isNull);
     expect(config.toolActions.siteNavigator.directionExactness, 0.0);
     expect(config.toolActions.siteNavigator.distanceExactness, 0.0);
