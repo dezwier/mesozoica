@@ -625,13 +625,14 @@ class _SkillGrid extends StatelessWidget {
                         color: scheme.onSurface.withValues(alpha: 0.04),
                       ),
                       child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Icon(
                             skillIconFor(skill.id),
                             size: 22,
                             color: scheme.primary.withValues(alpha: 0.85),
                           ),
-                          const Spacer(),
+                          const SizedBox(width: 8),
                           _SkillLevelBadge(
                             level: skill.level,
                             color: scheme.onSurfaceVariant,
