@@ -80,10 +80,13 @@ def backfill_user_levels(session: Session, user: User) -> User:
     return user
 
 
-def backfill_all_users(session: Session) -> int:
+def backfill_all_users(session: Session, *, commit: bool = True) -> int:
     """Backfill every user. Returns count processed."""
     users = session.exec(select(User)).all()
     for user in users:
         backfill_user_levels(session, user)
-    session.commit()
+    if commit:
+        session.commit()
+    else:
+        session.flush()
     return len(users)
