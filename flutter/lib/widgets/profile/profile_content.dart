@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 
 import '../../controllers/walk_distance_controller.dart';
 import '../../models/profile.dart';
+import 'profile_skill_detail_sheet.dart';
 import '../../services/auth_service.dart';
 import '../../theme/dino_card_theme.dart';
 import '../common/app_card.dart';
@@ -42,9 +43,6 @@ class ProfileContent extends StatelessWidget {
 
   Widget _buildHeaderCard(BuildContext context, ColorScheme scheme) {
     final imageUrl = AuthService.imageUrl(profile.profileImage);
-    final name = profile.fullName?.trim().isNotEmpty == true
-        ? profile.fullName!.trim()
-        : profile.displayName;
     return AppCard.profile(
       borderRadius: _cardRadius,
       decoration: BoxDecoration(
@@ -122,7 +120,9 @@ class ProfileContent extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             Text(
-              name,
+              profile.fullName?.trim().isNotEmpty == true
+                  ? profile.fullName!.trim()
+                  : profile.displayName,
               style: DinoCardTheme.of(context).titleStyle(fontSize: 24).copyWith(
                     color: scheme.onSurface,
                   ),
@@ -130,12 +130,33 @@ class ProfileContent extends StatelessWidget {
             ),
             const SizedBox(height: 4),
             Text(
-              'Level ${profile.level}',
+              profile.careerTitle,
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     color: scheme.primary,
                     fontWeight: FontWeight.w600,
                   ),
               textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 12),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.person, size: 16, color: scheme.onSurfaceVariant),
+                const SizedBox(width: 4),
+                Text(profile.username ?? 'user'),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.location_on,
+                    size: 16, color: scheme.onSurfaceVariant),
+                const SizedBox(width: 4),
+                Text(profile.currentLocation.isEmpty
+                    ? 'Unknown location'
+                    : profile.currentLocation),
+              ],
             ),
           ],
         ),
@@ -144,44 +165,7 @@ class ProfileContent extends StatelessWidget {
   }
 
   Widget _buildLevelsCard(BuildContext context, ColorScheme scheme) {
-    final rows = [
-      (
-        'Global',
-        profile.level,
-        profile.xp,
-        profile.nextLevelXp,
-        profile.xpToNextLevel,
-        profile.careerProgress,
-        false,
-      ),
-      (
-        'Exploration',
-        profile.explorationLevel,
-        profile.explorationXp,
-        profile.explorationNextLevelXp,
-        profile.explorationXpToNext,
-        profile.explorationProgress,
-        true,
-      ),
-      (
-        'Excavation',
-        profile.excavationLevel,
-        profile.excavationXp,
-        profile.excavationNextLevelXp,
-        profile.excavationXpToNext,
-        profile.excavationProgress,
-        false,
-      ),
-      (
-        'Research',
-        profile.researchLevel,
-        profile.researchXp,
-        profile.researchNextLevelXp,
-        profile.researchXpToNext,
-        profile.researchProgress,
-        false,
-      ),
-    ];
+    final career = profile.effectiveCareer;
     return Card(
       elevation: 1,
       shape: RoundedRectangleBorder(
@@ -195,97 +179,30 @@ class ProfileContent extends StatelessWidget {
         ),
         padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            for (var i = 0; i < rows.length; i++) ...[
-              if (i > 0) const SizedBox(height: 12),
-              _LevelProgressRow(
-                name: rows[i].$1,
-                level: rows[i].$2,
-                xp: rows[i].$3,
-                nextLevelXp: rows[i].$4,
-                xpToNext: rows[i].$5,
-                progress: rows[i].$6,
-                onLongPress: rows[i].$1 == 'Global'
-                    ? null
-                    : () => _showSkillBreakdown(
-                          context,
-                          skillName: rows[i].$1,
-                          hasBreakdown: rows[i].$7,
-                        ),
+            _LevelProgressRow(
+              name: 'Palaeontology Career',
+              level: career.level,
+              xp: career.xp,
+              nextLevelXp: career.nextLevelXp,
+              progress: career.progress,
+              emphasized: true,
+            ),
+            if (profile.skills.isNotEmpty) ...[
+              const SizedBox(height: 14),
+              _SkillGrid(
+                skills: profile.skills,
+                onSkillTap: (skill) => showProfileSkillDetailSheet(
+                  context,
+                  skill: skill,
+                  breakdown: profile.skillBreakdown[skill.id],
+                ),
               ),
             ],
           ],
         ),
       ),
-    );
-  }
-
-  void _showSkillBreakdown(
-    BuildContext context, {
-    required String skillName,
-    required bool hasBreakdown,
-  }) {
-    final scheme = Theme.of(context).colorScheme;
-    showModalBottomSheet<void>(
-      context: context,
-      showDragHandle: true,
-      builder: (sheetContext) {
-        if (!hasBreakdown) {
-          return Padding(
-            padding: const EdgeInsets.fromLTRB(24, 8, 24, 32),
-            child: Text(
-              'No XP sources yet for $skillName.',
-              style: Theme.of(sheetContext).textTheme.bodyLarge,
-            ),
-          );
-        }
-        final rows = [
-          ('Sites discovered', profile.xpFromSites),
-          ('Fossils discovered', profile.xpFromFossils),
-          ('Active distance', profile.xpFromActiveDistance),
-          ('Passive distance', profile.xpFromPassiveDistance),
-        ];
-        return Padding(
-          padding: const EdgeInsets.fromLTRB(24, 8, 24, 32),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                '$skillName XP',
-                style: Theme.of(sheetContext)
-                    .textTheme
-                    .titleMedium
-                    ?.copyWith(fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 16),
-              for (final row in rows) ...[
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        row.$1,
-                        style: Theme.of(sheetContext).textTheme.bodyMedium,
-                      ),
-                    ),
-                    Text(
-                      '${row.$2} XP',
-                      style: Theme.of(sheetContext)
-                          .textTheme
-                          .bodyMedium
-                          ?.copyWith(
-                            color: scheme.primary,
-                            fontWeight: FontWeight.w600,
-                          ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-              ],
-            ],
-          ),
-        );
-      },
     );
   }
 
@@ -583,18 +500,16 @@ class _LevelProgressRow extends StatelessWidget {
     required this.level,
     required this.xp,
     required this.nextLevelXp,
-    required this.xpToNext,
     required this.progress,
-    this.onLongPress,
+    this.emphasized = false,
   });
 
   final String name;
   final int level;
   final int xp;
   final int nextLevelXp;
-  final int xpToNext;
   final double progress;
-  final VoidCallback? onLongPress;
+  final bool emphasized;
 
   static String _formatXp(int value) {
     final s = value.toString();
@@ -610,27 +525,35 @@ class _LevelProgressRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final muted = scheme.onSurfaceVariant.withValues(alpha: 0.9);
+    final titleStyle = emphasized
+        ? Theme.of(context).textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.w700,
+            )
+        : Theme.of(context).textTheme.bodyMedium?.copyWith(
+              fontWeight: FontWeight.w500,
+              color: scheme.onSurfaceVariant,
+            );
+    final levelStyle = emphasized
+        ? Theme.of(context).textTheme.titleSmall?.copyWith(
+              color: scheme.primary,
+              fontWeight: FontWeight.w700,
+            )
+        : Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: scheme.onSurfaceVariant.withValues(alpha: 0.85),
+              fontWeight: FontWeight.w600,
+            );
+    final muted = scheme.onSurfaceVariant.withValues(
+      alpha: emphasized ? 0.9 : 0.7,
+    );
     final content = Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Row(
           children: [
             Expanded(
-              child: Text(
-                name,
-                style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-              ),
+              child: Text(name, style: titleStyle),
             ),
-            Text(
-              'Lv.$level',
-              style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    color: scheme.primary,
-                    fontWeight: FontWeight.w700,
-                  ),
-            ),
+            Text('$level/99', style: levelStyle),
           ],
         ),
         const SizedBox(height: 6),
@@ -638,27 +561,91 @@ class _LevelProgressRow extends StatelessWidget {
           borderRadius: BorderRadius.circular(3),
           child: LinearProgressIndicator(
             value: progress.clamp(0.0, 1.0),
-            minHeight: 6,
-            backgroundColor: scheme.onSurface.withValues(alpha: 0.08),
-            color: scheme.primary.withValues(alpha: name == 'Global' ? 0.75 : 0.55),
+            minHeight: emphasized ? 7 : 4,
+            backgroundColor: scheme.onSurface.withValues(
+              alpha: emphasized ? 0.08 : 0.05,
+            ),
+            color: scheme.primary.withValues(alpha: emphasized ? 0.8 : 0.35),
           ),
         ),
         const SizedBox(height: 5),
         Text(
-          '${_formatXp(xp)} / ${_formatXp(nextLevelXp)}  ·  ${_formatXp(xpToNext)} to go',
+          '${_formatXp(xp)} / ${_formatXp(nextLevelXp)} xp',
           style: Theme.of(context).textTheme.labelSmall?.copyWith(
                 color: muted,
-                fontWeight: FontWeight.w500,
+                fontWeight: emphasized ? FontWeight.w500 : FontWeight.w400,
                 letterSpacing: 0.15,
+                fontSize: emphasized ? null : 11,
               ),
         ),
       ],
     );
-    if (onLongPress == null) return content;
-    return InkWell(
-      onLongPress: onLongPress,
-      borderRadius: BorderRadius.circular(6),
-      child: content,
+    return content;
+  }
+}
+
+class _SkillGrid extends StatelessWidget {
+  const _SkillGrid({
+    required this.skills,
+    required this.onSkillTap,
+  });
+
+  final List<SkillState> skills;
+  final ValueChanged<SkillState> onSkillTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: skills.length,
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 4,
+        mainAxisSpacing: 8,
+        crossAxisSpacing: 8,
+        childAspectRatio: 0.95,
+      ),
+      itemBuilder: (context, index) {
+        final skill = skills[index];
+        return Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: () => onSkillTap(skill),
+            borderRadius: BorderRadius.circular(8),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(8),
+                color: scheme.onSurface.withValues(alpha: 0.03),
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    skill.name,
+                    textAlign: TextAlign.center,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: scheme.onSurfaceVariant,
+                          height: 1.15,
+                        ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    '${skill.level}/99',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: scheme.onSurfaceVariant.withValues(alpha: 0.85),
+                          fontWeight: FontWeight.w600,
+                        ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }

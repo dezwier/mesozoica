@@ -43,13 +43,12 @@ class User(SQLModel, table=True):
     is_admin: bool = Field(default=False)
 
     # Skill XP (RuneScape-style). Career xp/level = sum / career thresholds.
-    exploration_xp: int = Field(default=0)
-    excavation_xp: int = Field(default=0)
-    research_xp: int = Field(default=0)
-    xp_from_sites: int = Field(default=0)
-    xp_from_fossils: int = Field(default=0)
-    xp_from_active_distance: int = Field(default=0)
-    xp_from_passive_distance: int = Field(default=0)
+    skill_xp: dict[str, int] = Field(
+        default_factory=dict, sa_column=Column(JSON, nullable=False)
+    )
+    skill_breakdown: dict[str, dict[str, int]] = Field(
+        default_factory=dict, sa_column=Column(JSON, nullable=False)
+    )
 
     # Walked distance (meters): total = GPS open + Health closed gaps;
     # active = GPS while app open only.

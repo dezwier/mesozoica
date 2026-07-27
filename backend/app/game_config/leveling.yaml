@@ -1,317 +1,136 @@
 # Career / skill leveling (RuneScape-style XP).
 #
-# XP thresholds for levels 1–99 are NOT listed here — they are generated once
-# in code from the classic formula and cached (binary search for level_for_xp).
-# Career thresholds = skill thresholds × 3 (career XP = sum of three skills).
-#
-# Title lists are indexed by skill level 1..99 (list position 0 = level 1).
-# Career title = "{exploration[L]} {excavation[L]} {research[L]}" using
-# each skill's own level.
+# Per-skill thresholds: generated in code (OSRS formula, levels 1-99).
+# Career thresholds = per-skill threshold x number of skills (career XP = sum).
+# career_titles: 99 rich career ranks indexed by career level 1..99.
+
+skills:
+  - id: site_discovery
+    name: Site Discovery
+  - id: overburden_removal
+    name: Overburden Removal
+  - id: fossil_detection
+    name: Fossil Detection
+  - id: site_protection
+    name: Site Protection
+  - id: excavation
+    name: Excavation
+  - id: preparation
+    name: Preparation
+  - id: extraction
+    name: Extraction
+  - id: transport
+    name: Transport
+  - id: storage
+    name: Storage
+  - id: analysis
+    name: Analysis
+  - id: reconstruction
+    name: Reconstruction
 
 rewards:
-  site_discover_exploration_xp: 10
-  fossil_discover_exploration_xp: 5
-  active_km_exploration_xp: 30
-  passive_km_exploration_xp: 5
+  site_discover_site_discovery_xp: 10
+  fossil_discover_fossil_detection_xp: 5
+  active_km_site_discovery_xp: 30
+  passive_km_site_discovery_xp: 5
 
-titles:
-  exploration:
-    - Trail
-    - Path
-    - Ridge
-    - Valley
-    - Creek
-    - Bluff
-    - Mesa
-    - Canyon
-    - Shore
-    - Marsh
-    - Dune
-    - Grove
-    - Slope
-    - Plateau
-    - Basin
-    - Gully
-    - Fjord
-    - Tundra
-    - Prairie
-    - Delta
-    - Outcrop
-    - Bedrock
-    - Escarp
-    - Scree
-    - Talus
-    - Moraine
-    - Drift
-    - Wash
-    - Arroyo
-    - Badland
-    - Butte
-    - Knoll
-    - Summit
-    - Col
-    - Pass
-    - Spur
-    - Bench
-    - Terrace
-    - Floodplain
-    - Oxbow
-    - Lagoon
-    - Atoll
-    - Isthmus
-    - Peninsula
-    - Cape
-    - Headland
-    - Cliff
-    - Crag
-    - Pinnacle
-    - Tor
-    - Cairn
-    - Beacon
-    - Waypoint
-    - Survey
-    - Transect
-    - Grid
-    - Sector
-    - Quadrant
-    - Parcel
-    - Tract
-    - Range
-    - District
-    - Province
-    - Territory
-    - Frontier
-    - Expanse
-    - Horizon
-    - Vista
-    - Overlook
-    - Lookout
-    - Scout
-    - Ranger
-    - Tracker
-    - Pathfinder
-    - Wayfarer
-    - Rover
-    - Wanderer
-    - Trekker
-    - Marcher
-    - Pioneer
-    - Explorer
-    - Cartographer
-    - Surveyor
-    - Topographer
-    - Geodesist
-    - Navigator
-    - Orienteer
-    - Recon
-    - Fieldhand
-    - Bushcraft
-    - Wilderness
-    - Backcountry
-    - Hinterland
-    - Outback
-    - Wildwood
-    - Highcountry
-    - Lowland
-    - Heartland
-    - Borderland
-  excavation:
-    - Dust
-    - Soil
-    - Clay
-    - Silt
-    - Sand
-    - Gravel
-    - Shale
-    - Mudstone
-    - Sandstone
-    - Limestone
-    - Chalk
-    - Marl
-    - Tuff
-    - Ash
-    - Loess
-    - Till
-    - Peat
-    - Humus
-    - Matrix
-    - Overburden
-    - Spoil
-    - Sieve
-    - Screen
-    - Trowel
-    - Brush
-    - Pick
-    - Spade
-    - Awl
-    - Probe
-    - Core
-    - Trench
-    - Pit
-    - Quarry
-    - Adit
-    - Shaft
-    - Gallery
-    - Benchcut
-    - Step
-    - Level
-    - Face
-    - Wall
-    - Floor
-    - Ceiling
-    - Bedding
-    - Joint
-    - Fault
-    - Fold
-    - Strike
-    - Dip
-    - Contact
-    - Horizon
-    - Layer
-    - Stratum
-    - Lens
-    - Pocket
-    - Nidus
-    - Nest
-    - Lager
-    - Bonebed
-    - Assemblage
-    - Context
-    - Feature
-    - Cut
-    - Fill
-    - Deposit
-    - Lenslet
-    - Lamina
-    - Varve
-    - Cycle
-    - Sequence
-    - Digger
-    - Excavator
-    - Troweler
-    - Screener
-    - Washer
-    - Preparator
-    - Conservator
-    - Restorer
-    - Mounter
-    - Castmaker
-    - Fieldtech
-    - Crewlead
-    - Pitboss
-    - Quarryhand
-    - Stratigrapher
-    - Sedimentologist
-    - Taphonomist
-    - Ichnologist
-    - Osteotech
-    - Preptech
-    - Masterdig
-    - Deepcut
-    - Finebrush
-    - Micropick
-    - Airabrade
-    - Consolidator
-    - Stabilizer
-    - Assembler
-    - Articulator
-  research:
-    - Note
-    - Sketch
-    - Log
-    - Draft
-    - Paper
-    - Thesis
-    - Monograph
-    - Treatise
-    - Codex
-    - Archive
-    - Ledger
-    - Catalog
-    - Index
-    - Gazette
-    - Atlas
-    - Compendium
-    - Corpus
-    - Syllabus
-    - Primer
-    - Manual
-    - Handbook
-    - Guide
-    - Review
-    - Survey
-    - Meta
-    - Study
-    - Analysis
-    - Synthesis
-    - Critique
-    - Essay
-    - Abstract
-    - Preface
-    - Chapter
-    - Appendix
-    - Footnote
-    - Citation
-    - Reference
-    - Source
-    - Record
-    - Specimen
-    - Type
-    - Holotype
-    - Paratype
-    - Lectotype
-    - Neotype
-    - Synonym
-    - Taxon
-    - Clade
-    - Genus
-    - Species
-    - Morph
-    - Character
-    - Trait
-    - Metric
-    - Measure
-    - Sample
-    - Dataset
-    - Model
-    - Hypothesis
-    - Theory
-    - Scholar
-    - Student
-    - Reader
-    - Scribe
-    - Clerk
-    - Archivist
-    - Librarian
-    - Curator
-    - Keeper
-    - Registrar
-    - Analyst
-    - Theorist
-    - Systematist
-    - Taxonomist
-    - Cladist
-    - Phylogenist
-    - Paleobiologist
-    - Paleoecologist
-    - Biostratigrapher
-    - Chronologist
-    - Professor
-    - Doctor
-    - Fellow
-    - Laureate
-    - Authority
-    - Luminary
-    - Sage
-    - Oracle
-    - Polymath
-    - Virtuoso
-    - Savant
-    - Erudite
-    - Adept
-    - Mastermind
-    - Architect
-    - Founder
-    - Dean
-    - Chancellor
-    - Emertus
+career_titles:
+  - Curious Wanderer
+  - Weekend Fossil Fan
+  - Trail Scout
+  - Rock Hound
+  - Field Novice
+  - Map Reader
+  - Dirt Sifter
+  - Outcrop Spotter
+  - Hill Walker
+  - Stream Bed Picker
+  - Field Assistant
+  - Site Scout
+  - Brush Carrier
+  - Notebook Keeper
+  - Quarry Hand
+  - Grid Walker
+  - Compass Follower
+  - Bedrock Watcher
+  - Talus Turner
+  - Gully Searcher
+  - Junior Prospector
+  - Formation Tracker
+  - Layer Reader
+  - Sediment Sorter
+  - Bone Spotter
+  - Field Technician
+  - Survey Aide
+  - Trench Digger
+  - Screen Washer
+  - Specimen Tagger
+  - Camp Hand
+  - Route Planner
+  - Outcrop Mapper
+  - Fossil Finder
+  - Trail Veteran
+  - Field Naturalist
+  - Site Recorder
+  - Grid Surveyor
+  - Exposure Hunter
+  - Valley Prospector
+  - Field Geologist
+  - Stratigrapher
+  - Taphonomy Student
+  - Bone Bed Seeker
+  - Quarry Lead
+  - Expedition Member
+  - Terrain Reader
+  - Fossil Prospector
+  - Landscape Decoder
+  - Ridge Walker
+  - Field Researcher
+  - Site Documenter
+  - Excavation Crew
+  - Matrix Sifter
+  - Lab Courier
+  - Field Supervisor
+  - Lead Surveyor
+  - Exposure Specialist
+  - Bone Hunter
+  - Formation Expert
+  - Senior Prospector
+  - Terrain Analyst
+  - Fossil Scout
+  - Landscape Archaeologist
+  - Ridge Master
+  - Field Scientist
+  - Site Director
+  - Excavation Lead
+  - Preparator Trainee
+  - Collection Manager
+  - Expedition Scientist
+  - Terrain Specialist
+  - Fossil Expert
+  - Landscape Reader
+  - Ridge Veteran
+  - Principal Researcher
+  - Site Authority
+  - Excavation Master
+  - Preparation Expert
+  - Collection Curator
+  - Expedition Lead
+  - Terrain Master
+  - Fossil Authority
+  - Landscape Scholar
+  - Ridge Legend
+  - Chief Paleontologist
+  - Site Master
+  - Excavation Director
+  - Preparation Master
+  - Collection Director
+  - Expedition Director
+  - Terrain Sage
+  - Fossil Sage
+  - Landscape Master
+  - Ridge Oracle
+  - World-Renowned Paleontologist
+  - Legend of the Field
+  - Master of the Mesozoic
+  - Keeper of Deep Time

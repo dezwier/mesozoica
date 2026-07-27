@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from sqlalchemy import func
+from sqlalchemy.orm.attributes import flag_modified
 from sqlmodel import Session, col, select
 
 from app.core.game_config import get_game_config
@@ -14,6 +15,7 @@ from app.services.level_service.award import (
     sync_career_from_skills,
     whole_km,
 )
+from app.services.level_service.skills import empty_skill_xp, skill_ids
 
 
 def _discoverer_site_count(session: Session, user_id: int) -> int:
@@ -36,23 +38,42 @@ def _discoverer_fossil_count(session: Session, user_id: int) -> int:
     return int(count or 0)
 
 
-def compute_exploration_from_history(
+def compute_skill_xp_from_history(
     *,
     site_count: int,
     fossil_count: int,
     total_distance_m: float,
     active_distance_m: float,
-) -> tuple[int, int, int, int, int]:
-    """Return (exploration_xp, from_sites, from_fossils, from_active, from_passive)."""
+) -> tuple[dict[str, int], dict[str, dict[str, int]]]:
+    """Return (skill_xp, skill_breakdown) from historical activity."""
     rewards = get_game_config().leveling.rewards
-    from_sites = int(site_count) * int(rewards.site_discover_exploration_xp)
-    from_fossils = int(fossil_count) * int(rewards.fossil_discover_exploration_xp)
+    from_sites = int(site_count) * int(rewards.site_discover_site_discovery_xp)
+    from_fossils = int(fossil_count) * int(
+        rewards.fossil_discover_fossil_detection_xp
+    )
     active_km = whole_km(active_distance_m)
     passive_km = whole_km(passive_meters(total_distance_m, active_distance_m))
-    from_active = active_km * int(rewards.active_km_exploration_xp)
-    from_passive = passive_km * int(rewards.passive_km_exploration_xp)
-    total = from_sites + from_fossils + from_active + from_passive
-    return total, from_sites, from_fossils, from_active, from_passive
+    from_active = active_km * int(rewards.active_km_site_discovery_xp)
+    from_passive = passive_km * int(rewards.passive_km_site_discovery_xp)
+
+    skill_xp = empty_skill_xp()
+    skill_xp["site_discovery"] = from_sites + from_active + from_passive
+    skill_xp["fossil_detection"] = from_fossils
+
+    breakdown: dict[str, dict[str, int]] = {}
+    site_breakdown: dict[str, int] = {}
+    if from_sites:
+        site_breakdown["sites"] = from_sites
+    if from_active:
+        site_breakdown["active_distance"] = from_active
+    if from_passive:
+        site_breakdown["passive_distance"] = from_passive
+    if site_breakdown:
+        breakdown["site_discovery"] = site_breakdown
+    if from_fossils:
+        breakdown["fossil_detection"] = {"fossils": from_fossils}
+
+    return skill_xp, breakdown
 
 
 def backfill_user_levels(session: Session, user: User) -> User:
@@ -60,21 +81,19 @@ def backfill_user_levels(session: Session, user: User) -> User:
     uid = int(user.id)
     sites = _discoverer_site_count(session, uid)
     fossils = _discoverer_fossil_count(session, uid)
-    total, from_sites, from_fossils, from_active, from_passive = (
-        compute_exploration_from_history(
-            site_count=sites,
-            fossil_count=fossils,
-            total_distance_m=float(user.total_distance_m or 0.0),
-            active_distance_m=float(user.active_distance_m or 0.0),
-        )
+    skill_xp, breakdown = compute_skill_xp_from_history(
+        site_count=sites,
+        fossil_count=fossils,
+        total_distance_m=float(user.total_distance_m or 0.0),
+        active_distance_m=float(user.active_distance_m or 0.0),
     )
-    user.exploration_xp = total
-    user.excavation_xp = 0
-    user.research_xp = 0
-    user.xp_from_sites = from_sites
-    user.xp_from_fossils = from_fossils
-    user.xp_from_active_distance = from_active
-    user.xp_from_passive_distance = from_passive
+    # Ensure every configured skill key exists.
+    for skill_id in skill_ids():
+        skill_xp.setdefault(skill_id, 0)
+    user.skill_xp = dict(skill_xp)
+    user.skill_breakdown = dict(breakdown)
+    flag_modified(user, "skill_xp")
+    flag_modified(user, "skill_breakdown")
     sync_career_from_skills(user)
     session.add(user)
     return user

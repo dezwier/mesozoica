@@ -19,6 +19,25 @@ class RegisterRequest(BaseModel):
     full_name: str | None = Field(None, max_length=200)
 
 
+class SkillState(BaseModel):
+    id: str
+    name: str
+    xp: int
+    level: int
+    next_level_xp: int
+    xp_to_next: int
+    progress: float
+
+
+class CareerState(BaseModel):
+    xp: int
+    level: int
+    title: str
+    next_level_xp: int
+    xp_to_next: int
+    progress: float
+
+
 class UserResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -47,29 +66,10 @@ class UserResponse(BaseModel):
     distance_week_start: date | None = None
     distance_synced_at: str | None = None
 
-    exploration_xp: int = 0
-    excavation_xp: int = 0
-    research_xp: int = 0
-    exploration_level: int = 1
-    excavation_level: int = 1
-    research_level: int = 1
-    career_title: str = "Trail Dust Note"
-    exploration_progress: float = 0.0
-    excavation_progress: float = 0.0
-    research_progress: float = 0.0
-    career_progress: float = 0.0
-    next_level_xp: int = 0
-    xp_to_next_level: int = 0
-    exploration_next_level_xp: int = 0
-    excavation_next_level_xp: int = 0
-    research_next_level_xp: int = 0
-    exploration_xp_to_next: int = 0
-    excavation_xp_to_next: int = 0
-    research_xp_to_next: int = 0
-    xp_from_sites: int = 0
-    xp_from_fossils: int = 0
-    xp_from_active_distance: int = 0
-    xp_from_passive_distance: int = 0
+    career_title: str = "Curious Wanderer"
+    skills: list[SkillState] = Field(default_factory=list)
+    career: CareerState | None = None
+    skill_breakdown: dict[str, dict[str, int]] = Field(default_factory=dict)
 
 
 class UserProfileResponse(UserResponse):

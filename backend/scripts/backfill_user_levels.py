@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
-            "Backfill exploration / career XP for all users from site & fossil "
+            "Backfill skill / career XP for all users from site & fossil "
             "discoveries plus walked distance, using rewards in leveling.yaml."
         )
     )
@@ -42,22 +42,22 @@ def main() -> int:
     get_game_config.cache_clear()
     rewards = get_game_config().leveling.rewards
     logger.info(
-        "rewards site=%s fossil=%s active_km=%s passive_km=%s",
-        rewards.site_discover_exploration_xp,
-        rewards.fossil_discover_exploration_xp,
-        rewards.active_km_exploration_xp,
-        rewards.passive_km_exploration_xp,
+        "rewards site_discovery=%s fossil_detection=%s active_km=%s passive_km=%s",
+        rewards.site_discover_site_discovery_xp,
+        rewards.fossil_discover_fossil_detection_xp,
+        rewards.active_km_site_discovery_xp,
+        rewards.passive_km_site_discovery_xp,
     )
 
     with Session(engine) as session:
         users = list(session.exec(select(User)).all())
         logger.info("users=%s dry_run=%s", len(users), args.dry_run)
         for user in users:
-            before = int(user.exploration_xp or 0)
+            before = int((user.skill_xp or {}).get("site_discovery", 0))
             backfill_user_levels(session, user)
-            after = int(user.exploration_xp or 0)
+            after = int((user.skill_xp or {}).get("site_discovery", 0))
             logger.info(
-                "user id=%s username=%s exploration_xp %s -> %s (level %s)",
+                "user id=%s username=%s site_discovery_xp %s -> %s (level %s)",
                 user.id,
                 user.username,
                 before,

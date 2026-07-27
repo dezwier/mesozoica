@@ -27,36 +27,57 @@ void main() {
     expect(profile.activeWeeklyDistanceM, 1500);
   });
 
-  test('Profile parses skill leveling fields', () {
+  test('Profile parses multi-skill leveling fields', () {
     final profile = Profile.fromJson({
       'id': 1,
       'display_name': 'Scout',
-      'exploration_xp': 130,
-      'excavation_xp': 0,
-      'research_xp': 0,
-      'exploration_level': 2,
-      'excavation_level': 1,
-      'research_level': 1,
-      'career_title': 'Path Dust Note',
-      'exploration_progress': 0.4,
-      'excavation_progress': 0.0,
-      'research_progress': 0.0,
-      'career_progress': 0.2,
-      'xp_from_sites': 30,
-      'xp_from_fossils': 50,
-      'xp_from_active_distance': 30,
-      'xp_from_passive_distance': 20,
+      'career_title': 'Curious Wanderer',
+      'career': {
+        'xp': 130,
+        'level': 1,
+        'title': 'Curious Wanderer',
+        'next_level_xp': 913,
+        'xp_to_next': 783,
+        'progress': 0.2,
+      },
+      'skills': [
+        {
+          'id': 'site_discovery',
+          'name': 'Site Discovery',
+          'xp': 75,
+          'level': 1,
+          'next_level_xp': 83,
+          'xp_to_next': 8,
+          'progress': 0.9,
+        },
+        {
+          'id': 'fossil_detection',
+          'name': 'Fossil Detection',
+          'xp': 55,
+          'level': 1,
+          'next_level_xp': 83,
+          'xp_to_next': 28,
+          'progress': 0.66,
+        },
+      ],
+      'skill_breakdown': {
+        'site_discovery': {
+          'sites': 20,
+          'active_distance': 30,
+          'passive_distance': 25,
+        },
+        'fossil_detection': {'fossils': 55},
+      },
       'xp': 130,
       'level': 1,
     });
 
-    expect(profile.explorationXp, 130);
-    expect(profile.explorationLevel, 2);
-    expect(profile.careerTitle, 'Path Dust Note');
-    expect(profile.xpFromSites, 30);
-    expect(profile.xpFromFossils, 50);
-    expect(profile.xpFromActiveDistance, 30);
-    expect(profile.xpFromPassiveDistance, 20);
-    expect(profile.careerProgress, 0.2);
+    expect(profile.effectiveCareer.xp, 130);
+    expect(profile.effectiveCareer.progress, 0.2);
+    expect(profile.careerTitle, 'Curious Wanderer');
+    expect(profile.skills.length, 2);
+    expect(profile.skills.first.id, 'site_discovery');
+    expect(profile.skillBreakdown['site_discovery']?['sites'], 20);
+    expect(profile.skillBreakdown['fossil_detection']?['fossils'], 55);
   });
 }

@@ -431,66 +431,72 @@ class ToolActionsConfig {
 
 class LevelingConfig {
   const LevelingConfig({
+    required this.skills,
     required this.rewards,
-    required this.titles,
+    required this.careerTitles,
   });
 
+  final List<LevelingSkillConfig> skills;
   final LevelingRewardsConfig rewards;
-  final LevelingTitlesConfig titles;
+  final List<String> careerTitles;
 
   factory LevelingConfig.fromYaml(Map<String, dynamic> yaml) {
     return LevelingConfig(
+      skills: LevelingSkillConfig.listFromYaml(yaml['skills']),
       rewards: LevelingRewardsConfig.fromYaml(
         GameConfig._asMap(yaml['rewards']),
       ),
-      titles: LevelingTitlesConfig.fromYaml(
-        GameConfig._asMap(yaml['titles']),
-      ),
+      careerTitles: _asStringList(yaml['career_titles']),
+    );
+  }
+}
+
+class LevelingSkillConfig {
+  const LevelingSkillConfig({
+    required this.id,
+    required this.name,
+  });
+
+  final String id;
+  final String name;
+
+  static List<LevelingSkillConfig> listFromYaml(Object? raw) {
+    if (raw is! List) return const [];
+    return raw
+        .map((item) => LevelingSkillConfig.fromYaml(GameConfig._asMap(item)))
+        .toList();
+  }
+
+  factory LevelingSkillConfig.fromYaml(Map<String, dynamic> yaml) {
+    return LevelingSkillConfig(
+      id: yaml['id'] as String? ?? '',
+      name: yaml['name'] as String? ?? '',
     );
   }
 }
 
 class LevelingRewardsConfig {
   const LevelingRewardsConfig({
-    required this.siteDiscoverExplorationXp,
-    required this.fossilDiscoverExplorationXp,
-    required this.activeKmExplorationXp,
-    required this.passiveKmExplorationXp,
+    required this.siteDiscoverSiteDiscoveryXp,
+    required this.fossilDiscoverFossilDetectionXp,
+    required this.activeKmSiteDiscoveryXp,
+    required this.passiveKmSiteDiscoveryXp,
   });
 
-  final int siteDiscoverExplorationXp;
-  final int fossilDiscoverExplorationXp;
-  final int activeKmExplorationXp;
-  final int passiveKmExplorationXp;
+  final int siteDiscoverSiteDiscoveryXp;
+  final int fossilDiscoverFossilDetectionXp;
+  final int activeKmSiteDiscoveryXp;
+  final int passiveKmSiteDiscoveryXp;
 
   factory LevelingRewardsConfig.fromYaml(Map<String, dynamic> yaml) {
     return LevelingRewardsConfig(
-      siteDiscoverExplorationXp:
-          _asInt(yaml['site_discover_exploration_xp'], 30),
-      fossilDiscoverExplorationXp:
-          _asInt(yaml['fossil_discover_exploration_xp'], 50),
-      activeKmExplorationXp: _asInt(yaml['active_km_exploration_xp'], 30),
-      passiveKmExplorationXp: _asInt(yaml['passive_km_exploration_xp'], 5),
-    );
-  }
-}
-
-class LevelingTitlesConfig {
-  const LevelingTitlesConfig({
-    required this.exploration,
-    required this.excavation,
-    required this.research,
-  });
-
-  final List<String> exploration;
-  final List<String> excavation;
-  final List<String> research;
-
-  factory LevelingTitlesConfig.fromYaml(Map<String, dynamic> yaml) {
-    return LevelingTitlesConfig(
-      exploration: _asStringList(yaml['exploration']),
-      excavation: _asStringList(yaml['excavation']),
-      research: _asStringList(yaml['research']),
+      siteDiscoverSiteDiscoveryXp:
+          _asInt(yaml['site_discover_site_discovery_xp'], 10),
+      fossilDiscoverFossilDetectionXp:
+          _asInt(yaml['fossil_discover_fossil_detection_xp'], 5),
+      activeKmSiteDiscoveryXp: _asInt(yaml['active_km_site_discovery_xp'], 30),
+      passiveKmSiteDiscoveryXp:
+          _asInt(yaml['passive_km_site_discovery_xp'], 5),
     );
   }
 }

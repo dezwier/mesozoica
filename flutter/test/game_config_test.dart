@@ -63,13 +63,12 @@ void main() {
       0.9,
     );
 
-    expect(config.leveling.rewards.siteDiscoverExplorationXp, 30);
-    expect(config.leveling.rewards.fossilDiscoverExplorationXp, 50);
-    expect(config.leveling.rewards.activeKmExplorationXp, 30);
-    expect(config.leveling.rewards.passiveKmExplorationXp, 5);
-    expect(config.leveling.titles.exploration.length, 99);
-    expect(config.leveling.titles.excavation.length, 99);
-    expect(config.leveling.titles.research.length, 99);
+    expect(config.leveling.rewards.siteDiscoverSiteDiscoveryXp, 10);
+    expect(config.leveling.rewards.fossilDiscoverFossilDetectionXp, 5);
+    expect(config.leveling.rewards.activeKmSiteDiscoveryXp, 30);
+    expect(config.leveling.rewards.passiveKmSiteDiscoveryXp, 5);
+    expect(config.leveling.skills.length, 11);
+    expect(config.leveling.careerTitles.length, 99);
 
     expect(GameConfig.isLoaded, isTrue);
     expect(GameConfig.instance.siteDiscovery.maxDistanceM, 50.0);

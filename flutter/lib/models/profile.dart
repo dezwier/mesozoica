@@ -1,3 +1,68 @@
+class SkillState {
+  const SkillState({
+    required this.id,
+    required this.name,
+    required this.xp,
+    required this.level,
+    required this.nextLevelXp,
+    required this.xpToNext,
+    required this.progress,
+  });
+
+  final String id;
+  final String name;
+  final int xp;
+  final int level;
+  final int nextLevelXp;
+  final int xpToNext;
+  final double progress;
+
+  factory SkillState.fromJson(Map<String, dynamic> json) {
+    return SkillState(
+      id: json['id'] as String? ?? '',
+      name: json['name'] as String? ?? '',
+      xp: json['xp'] as int? ?? 0,
+      level: json['level'] as int? ?? 1,
+      nextLevelXp: json['next_level_xp'] as int? ??
+          json['nextLevelXp'] as int? ??
+          0,
+      xpToNext: json['xp_to_next'] as int? ?? json['xpToNext'] as int? ?? 0,
+      progress: (json['progress'] as num?)?.toDouble() ?? 0,
+    );
+  }
+}
+
+class CareerState {
+  const CareerState({
+    required this.xp,
+    required this.level,
+    required this.title,
+    required this.nextLevelXp,
+    required this.xpToNext,
+    required this.progress,
+  });
+
+  final int xp;
+  final int level;
+  final String title;
+  final int nextLevelXp;
+  final int xpToNext;
+  final double progress;
+
+  factory CareerState.fromJson(Map<String, dynamic> json) {
+    return CareerState(
+      xp: json['xp'] as int? ?? 0,
+      level: json['level'] as int? ?? 1,
+      title: json['title'] as String? ?? 'Curious Wanderer',
+      nextLevelXp: json['next_level_xp'] as int? ??
+          json['nextLevelXp'] as int? ??
+          0,
+      xpToNext: json['xp_to_next'] as int? ?? json['xpToNext'] as int? ?? 0,
+      progress: (json['progress'] as num?)?.toDouble() ?? 0,
+    );
+  }
+}
+
 class Profile {
   final int id;
   final String displayName;
@@ -24,29 +89,10 @@ class Profile {
   final double activeDistanceM;
   final double activeWeeklyDistanceM;
 
-  final int explorationXp;
-  final int excavationXp;
-  final int researchXp;
-  final int explorationLevel;
-  final int excavationLevel;
-  final int researchLevel;
   final String careerTitle;
-  final double explorationProgress;
-  final double excavationProgress;
-  final double researchProgress;
-  final double careerProgress;
-  final int nextLevelXp;
-  final int xpToNextLevel;
-  final int explorationNextLevelXp;
-  final int excavationNextLevelXp;
-  final int researchNextLevelXp;
-  final int explorationXpToNext;
-  final int excavationXpToNext;
-  final int researchXpToNext;
-  final int xpFromSites;
-  final int xpFromFossils;
-  final int xpFromActiveDistance;
-  final int xpFromPassiveDistance;
+  final List<SkillState> skills;
+  final CareerState? career;
+  final Map<String, Map<String, int>> skillBreakdown;
 
   const Profile({
     required this.id,
@@ -73,39 +119,38 @@ class Profile {
     this.weeklyDistanceM = 0,
     this.activeDistanceM = 0,
     this.activeWeeklyDistanceM = 0,
-    this.explorationXp = 0,
-    this.excavationXp = 0,
-    this.researchXp = 0,
-    this.explorationLevel = 1,
-    this.excavationLevel = 1,
-    this.researchLevel = 1,
-    this.careerTitle = 'Trail Dust Note',
-    this.explorationProgress = 0,
-    this.excavationProgress = 0,
-    this.researchProgress = 0,
-    this.careerProgress = 0,
-    this.nextLevelXp = 0,
-    this.xpToNextLevel = 0,
-    this.explorationNextLevelXp = 0,
-    this.excavationNextLevelXp = 0,
-    this.researchNextLevelXp = 0,
-    this.explorationXpToNext = 0,
-    this.excavationXpToNext = 0,
-    this.researchXpToNext = 0,
-    this.xpFromSites = 0,
-    this.xpFromFossils = 0,
-    this.xpFromActiveDistance = 0,
-    this.xpFromPassiveDistance = 0,
+    this.careerTitle = 'Curious Wanderer',
+    this.skills = const [],
+    this.career,
+    this.skillBreakdown = const {},
   });
 
+  CareerState get effectiveCareer =>
+      career ??
+      CareerState(
+        xp: xp,
+        level: level,
+        title: careerTitle,
+        nextLevelXp: 0,
+        xpToNext: 0,
+        progress: 0,
+      );
+
   factory Profile.fromJson(Map<String, dynamic> json) {
+    final careerJson = json['career'];
+    final career = careerJson is Map<String, dynamic>
+        ? CareerState.fromJson(careerJson)
+        : null;
+    final skillsRaw = json['skills'] as List<dynamic>?;
+    final breakdownRaw = json['skill_breakdown'] ?? json['skillBreakdown'];
+
     return Profile(
       id: json['id'] as int? ?? 0,
       displayName: json['display_name'] as String? ??
           json['displayName'] as String? ??
           'Unknown User',
       username: json['username'] as String?,
-      xp: json['xp'] as int? ?? 0,
+      xp: career?.xp ?? json['xp'] as int? ?? 0,
       specialization:
           json['specialization'] as String? ?? 'Paleontologist',
       yearsOfExperience: json['years_of_experience'] as int? ??
@@ -116,7 +161,7 @@ class Profile {
           '',
       favoriteEra:
           json['favorite_era'] as String? ?? json['favoriteEra'] as String? ?? '',
-      level: json['level'] as int? ?? 1,
+      level: career?.level ?? json['level'] as int? ?? 1,
       achievements: (json['achievements'] as List<dynamic>?)
               ?.map((item) => item.toString())
               .toList() ??
@@ -153,75 +198,33 @@ class Profile {
           (json['active_weekly_distance_m'] as num?)?.toDouble() ??
               (json['activeWeeklyDistanceM'] as num?)?.toDouble() ??
               0,
-      explorationXp: json['exploration_xp'] as int? ??
-          json['explorationXp'] as int? ??
-          0,
-      excavationXp: json['excavation_xp'] as int? ??
-          json['excavationXp'] as int? ??
-          0,
-      researchXp: json['research_xp'] as int? ?? json['researchXp'] as int? ?? 0,
-      explorationLevel: json['exploration_level'] as int? ??
-          json['explorationLevel'] as int? ??
-          1,
-      excavationLevel: json['excavation_level'] as int? ??
-          json['excavationLevel'] as int? ??
-          1,
-      researchLevel: json['research_level'] as int? ??
-          json['researchLevel'] as int? ??
-          1,
-      careerTitle: json['career_title'] as String? ??
+      careerTitle: career?.title ??
+          json['career_title'] as String? ??
           json['careerTitle'] as String? ??
-          'Trail Dust Note',
-      explorationProgress:
-          (json['exploration_progress'] as num?)?.toDouble() ??
-              (json['explorationProgress'] as num?)?.toDouble() ??
-              0,
-      excavationProgress: (json['excavation_progress'] as num?)?.toDouble() ??
-          (json['excavationProgress'] as num?)?.toDouble() ??
-          0,
-      researchProgress: (json['research_progress'] as num?)?.toDouble() ??
-          (json['researchProgress'] as num?)?.toDouble() ??
-          0,
-      careerProgress: (json['career_progress'] as num?)?.toDouble() ??
-          (json['careerProgress'] as num?)?.toDouble() ??
-          0,
-      nextLevelXp: json['next_level_xp'] as int? ??
-          json['nextLevelXp'] as int? ??
-          0,
-      xpToNextLevel: json['xp_to_next_level'] as int? ??
-          json['xpToNextLevel'] as int? ??
-          0,
-      explorationNextLevelXp: json['exploration_next_level_xp'] as int? ??
-          json['explorationNextLevelXp'] as int? ??
-          0,
-      excavationNextLevelXp: json['excavation_next_level_xp'] as int? ??
-          json['excavationNextLevelXp'] as int? ??
-          0,
-      researchNextLevelXp: json['research_next_level_xp'] as int? ??
-          json['researchNextLevelXp'] as int? ??
-          0,
-      explorationXpToNext: json['exploration_xp_to_next'] as int? ??
-          json['explorationXpToNext'] as int? ??
-          0,
-      excavationXpToNext: json['excavation_xp_to_next'] as int? ??
-          json['excavationXpToNext'] as int? ??
-          0,
-      researchXpToNext: json['research_xp_to_next'] as int? ??
-          json['researchXpToNext'] as int? ??
-          0,
-      xpFromSites: json['xp_from_sites'] as int? ??
-          json['xpFromSites'] as int? ??
-          0,
-      xpFromFossils: json['xp_from_fossils'] as int? ??
-          json['xpFromFossils'] as int? ??
-          0,
-      xpFromActiveDistance: json['xp_from_active_distance'] as int? ??
-          json['xpFromActiveDistance'] as int? ??
-          0,
-      xpFromPassiveDistance: json['xp_from_passive_distance'] as int? ??
-          json['xpFromPassiveDistance'] as int? ??
-          0,
+          'Curious Wanderer',
+      skills: skillsRaw
+              ?.whereType<Map<String, dynamic>>()
+              .map(SkillState.fromJson)
+              .toList() ??
+          const [],
+      career: career,
+      skillBreakdown: _parseSkillBreakdown(breakdownRaw),
     );
+  }
+
+  static Map<String, Map<String, int>> _parseSkillBreakdown(Object? raw) {
+    if (raw is! Map) return const {};
+    final out = <String, Map<String, int>>{};
+    for (final entry in raw.entries) {
+      final value = entry.value;
+      if (value is Map) {
+        out[entry.key.toString()] = {
+          for (final inner in value.entries)
+            inner.key.toString(): (inner.value as num?)?.toInt() ?? 0,
+        };
+      }
+    }
+    return out;
   }
 
   static DateTime? _parseDateTime(Object? raw) {
@@ -258,29 +261,29 @@ class Profile {
         'weeklyDistanceM': weeklyDistanceM,
         'activeDistanceM': activeDistanceM,
         'activeWeeklyDistanceM': activeWeeklyDistanceM,
-        'explorationXp': explorationXp,
-        'excavationXp': excavationXp,
-        'researchXp': researchXp,
-        'explorationLevel': explorationLevel,
-        'excavationLevel': excavationLevel,
-        'researchLevel': researchLevel,
         'careerTitle': careerTitle,
-        'explorationProgress': explorationProgress,
-        'excavationProgress': excavationProgress,
-        'researchProgress': researchProgress,
-        'careerProgress': careerProgress,
-        'nextLevelXp': nextLevelXp,
-        'xpToNextLevel': xpToNextLevel,
-        'explorationNextLevelXp': explorationNextLevelXp,
-        'excavationNextLevelXp': excavationNextLevelXp,
-        'researchNextLevelXp': researchNextLevelXp,
-        'explorationXpToNext': explorationXpToNext,
-        'excavationXpToNext': excavationXpToNext,
-        'researchXpToNext': researchXpToNext,
-        'xpFromSites': xpFromSites,
-        'xpFromFossils': xpFromFossils,
-        'xpFromActiveDistance': xpFromActiveDistance,
-        'xpFromPassiveDistance': xpFromPassiveDistance,
+        'skills': skills
+            .map(
+              (s) => {
+                'id': s.id,
+                'name': s.name,
+                'xp': s.xp,
+                'level': s.level,
+                'nextLevelXp': s.nextLevelXp,
+                'xpToNext': s.xpToNext,
+                'progress': s.progress,
+              },
+            )
+            .toList(),
+        'career': {
+          'xp': effectiveCareer.xp,
+          'level': effectiveCareer.level,
+          'title': effectiveCareer.title,
+          'nextLevelXp': effectiveCareer.nextLevelXp,
+          'xpToNext': effectiveCareer.xpToNext,
+          'progress': effectiveCareer.progress,
+        },
+        'skillBreakdown': skillBreakdown,
       };
 
   Profile copyWith({
@@ -321,29 +324,10 @@ class Profile {
       activeDistanceM: activeDistanceM ?? this.activeDistanceM,
       activeWeeklyDistanceM:
           activeWeeklyDistanceM ?? this.activeWeeklyDistanceM,
-      explorationXp: explorationXp,
-      excavationXp: excavationXp,
-      researchXp: researchXp,
-      explorationLevel: explorationLevel,
-      excavationLevel: excavationLevel,
-      researchLevel: researchLevel,
       careerTitle: careerTitle,
-      explorationProgress: explorationProgress,
-      excavationProgress: excavationProgress,
-      researchProgress: researchProgress,
-      careerProgress: careerProgress,
-      nextLevelXp: nextLevelXp,
-      xpToNextLevel: xpToNextLevel,
-      explorationNextLevelXp: explorationNextLevelXp,
-      excavationNextLevelXp: excavationNextLevelXp,
-      researchNextLevelXp: researchNextLevelXp,
-      explorationXpToNext: explorationXpToNext,
-      excavationXpToNext: excavationXpToNext,
-      researchXpToNext: researchXpToNext,
-      xpFromSites: xpFromSites,
-      xpFromFossils: xpFromFossils,
-      xpFromActiveDistance: xpFromActiveDistance,
-      xpFromPassiveDistance: xpFromPassiveDistance,
+      skills: skills,
+      career: career,
+      skillBreakdown: skillBreakdown,
     );
   }
 }
