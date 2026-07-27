@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import '../../controllers/walk_distance_controller.dart';
 import '../../models/profile.dart';
 import 'profile_skill_detail_sheet.dart';
+import 'profile_skill_icons.dart';
 import '../../services/auth_service.dart';
 import '../../theme/dino_card_theme.dart';
 import '../common/app_card.dart';
@@ -177,7 +178,7 @@ class ProfileContent extends StatelessWidget {
           color: scheme.surfaceContainerHighest.withValues(alpha: 0.5),
           borderRadius: BorderRadius.circular(_cardRadius),
         ),
-        padding: const EdgeInsets.fromLTRB(14, 12, 14, 4),
+        padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -597,9 +598,8 @@ class _SkillGrid extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     const crossAxisCount = 4;
-    const spacing = 8.0;
-    // Fixed tile height: padding + 2-line label + gap + level.
-    const tileHeight = 58.0;
+    const spacing = 6.0;
+    const tileHeight = 44.0;
     return LayoutBuilder(
       builder: (context, constraints) {
         final tileWidth =
@@ -617,62 +617,24 @@ class _SkillGrid extends StatelessWidget {
                   color: Colors.transparent,
                   child: InkWell(
                     onTap: () => onSkillTap(skill),
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(6),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 4,
-                        vertical: 6,
-                      ),
+                      padding: const EdgeInsets.fromLTRB(6, 4, 6, 4),
                       decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(8),
-                        color: scheme.onSurface.withValues(alpha: 0.03),
+                        borderRadius: BorderRadius.circular(6),
+                        color: scheme.onSurface.withValues(alpha: 0.04),
                       ),
-                      child: Column(
+                      child: Row(
                         children: [
-                          SizedBox(
-                            height: 22,
-                            child: Text(
-                              _twoLineSkillName(skill.name),
-                              textAlign: TextAlign.center,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .labelSmall
-                                  ?.copyWith(
-                                    color: scheme.onSurfaceVariant,
-                                    fontSize: 9.5,
-                                    height: 1.15,
-                                    letterSpacing: -0.1,
-                                  ),
-                            ),
+                          Icon(
+                            skillIconFor(skill.id),
+                            size: 22,
+                            color: scheme.primary.withValues(alpha: 0.85),
                           ),
                           const Spacer(),
-                          Text.rich(
-                            TextSpan(
-                              children: [
-                                TextSpan(
-                                  text: '${skill.level}',
-                                  style: TextStyle(
-                                    color: scheme.onSurfaceVariant,
-                                    fontWeight: FontWeight.w700,
-                                    fontSize: 13.5,
-                                    height: 1.1,
-                                  ),
-                                ),
-                                TextSpan(
-                                  text: '/99',
-                                  style: TextStyle(
-                                    color: scheme.onSurfaceVariant.withValues(
-                                      alpha: 0.65,
-                                    ),
-                                    fontWeight: FontWeight.w500,
-                                    fontSize: 10,
-                                    height: 1.1,
-                                  ),
-                                ),
-                              ],
-                            ),
+                          _SkillLevelBadge(
+                            level: skill.level,
+                            color: scheme.onSurfaceVariant,
                           ),
                         ],
                       ),
@@ -685,11 +647,84 @@ class _SkillGrid extends StatelessWidget {
       },
     );
   }
+}
 
-  /// Always two lines (skills are always two words).
-  static String _twoLineSkillName(String name) {
-    final parts = name.trim().split(RegExp(r'\s+'));
-    if (parts.length < 2) return name;
-    return '${parts.first}\n${parts.sublist(1).join(' ')}';
+/// Level badge: current level top-left, 99 bottom-right, diagonal slash between.
+class _SkillLevelBadge extends StatelessWidget {
+  const _SkillLevelBadge({
+    required this.level,
+    required this.color,
+  });
+
+  final int level;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 25,
+      height: 28,
+      child: Stack(
+        children: [
+          CustomPaint(
+            size: const Size(25, 28),
+            painter: _DiagonalSlashPainter(
+              color: color.withValues(alpha: 0.35),
+            ),
+          ),
+          Positioned(
+            top: 0,
+            left: 0,
+            child: Text(
+              '$level',
+              style: TextStyle(
+                color: color,
+                fontWeight: FontWeight.w700,
+                fontSize: 12,
+                height: 1,
+              ),
+            ),
+          ),
+          Positioned(
+            right: 0,
+            bottom: 0,
+            child: Text(
+              '99',
+              style: TextStyle(
+                color: color.withValues(alpha: 0.5),
+                fontWeight: FontWeight.w500,
+                fontSize: 10,
+                height: 1,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
+}
+
+class _DiagonalSlashPainter extends CustomPainter {
+  _DiagonalSlashPainter({required this.color});
+
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = 1
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
+    // Diagonal between the two numbers.
+    canvas.drawLine(
+      Offset(size.width * 0.70, size.height * 0.28),
+      Offset(size.width * 0.30, size.height * 0.72),
+      paint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _DiagonalSlashPainter oldDelegate) =>
+      oldDelegate.color != color;
 }
