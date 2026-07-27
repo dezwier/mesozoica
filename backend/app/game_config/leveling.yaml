@@ -9,8 +9,8 @@
 # each skill's own level.
 
 rewards:
-  site_discover_exploration_xp: 30
-  fossil_discover_exploration_xp: 50
+  site_discover_exploration_xp: 10
+  fossil_discover_exploration_xp: 5
   active_km_exploration_xp: 30
   passive_km_exploration_xp: 5
 

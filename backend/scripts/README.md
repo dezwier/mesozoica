@@ -11,6 +11,7 @@ Scripts that touch production data use the **Railway Postgres database** and Rai
 | [`sync_dinosaur_images.py`](sync_dinosaur_images.py) | Upload curated dinosaur card images from `images/dinosaurs/` to Railway volume and set `main_image_url` |
 | [`sync_fossil_images.py`](sync_fossil_images.py) | Upload curated fossil card images from `images/fossils/` to Railway volume and set `main_image_url` |
 | [`sync_site_type_images.py`](sync_site_type_images.py) | Upload curated site-type card images from `images/site-types/` to Railway volume and set `main_image_url` |
+| [`backfill_user_levels.py`](backfill_user_levels.py) | Recompute user exploration/career XP from discoveries + distance using `leveling.yaml` rewards |
 
 All sync scripts support `.png`, `.jpg`, `.jpeg`, and `.webp`.
 
@@ -44,6 +45,10 @@ make sync-dinosaur-images CRON_EXTRA='--overwrite'
 make sync-fossil-images
 make sync-fossil-images CRON_EXTRA='--dry-run'
 make sync-fossil-images CRON_EXTRA='--overwrite'
+
+# User skill XP — recompute from history using current leveling.yaml
+make backfill-user-levels
+make backfill-user-levels CRON_EXTRA='--dry-run'
 
 # Target a specific Railway service
 make sync-dinosaur-images RAILWAY_SERVICE=my-service
