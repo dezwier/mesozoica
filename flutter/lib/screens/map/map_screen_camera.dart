@@ -49,6 +49,7 @@ mixin _MapScreenCameraMixin on State<MapScreen> {
       context.read<AerialMissionController>().startTracking();
       _consumePendingFocus();
       _consumePendingAerialFocus();
+      _consumePendingDrawCamera();
     });
   }
 
@@ -74,6 +75,58 @@ mixin _MapScreenCameraMixin on State<MapScreen> {
     final mission = recon.takePendingFocusMission();
     if (mission == null) return;
     unawaited(_focusAerialMission(mission));
+  }
+
+  void _consumePendingDrawCamera() {
+    if (!widget.isActive || !_mapboxReady) return;
+    final recon = context.read<AerialMissionController>();
+    if (!recon.isDrawMode) return;
+    if (!recon.takePendingDrawCamera()) return;
+    unawaited(_fitDrawModeCamera(recon));
+  }
+
+  /// North-fixed + zoom so screen height ≈ vehicle max route range.
+  Future<void> _fitDrawModeCamera(AerialMissionController recon) async {
+    if (!_mapboxReady) return;
+
+    if (_rotateMap) {
+      setState(() {
+        _rotateMap = false;
+        _followUser = true;
+        _followAerialScout = false;
+        _aerialFocusAnimating = false;
+      });
+      _mapboxCamera.clearPendingFollow();
+      context.read<GuidanceSessionController>().onRotateModeExited();
+    } else {
+      setState(() {
+        _followAerialScout = false;
+        _aerialFocusAnimating = false;
+      });
+      _mapboxCamera.clearPendingFollow();
+    }
+
+    await WidgetsBinding.instance.endOfFrame;
+    await WidgetsBinding.instance.endOfFrame;
+    if (!mounted || !_mapboxReady) return;
+    if (!context.read<AerialMissionController>().isDrawMode) return;
+
+    final location = context.read<LocationService>().currentLocation;
+    if (location == null) return;
+
+    final spanKm = recon.maxRouteKm;
+    if (spanKm <= 0) return;
+
+    await _mapboxCamera.fitVerticalSpanKm(
+      location,
+      spanKm,
+      durationMs: 1200,
+    );
+    if (!mounted) return;
+
+    final zoom = await _mapboxCamera.currentZoom();
+    if (!mounted || zoom == null) return;
+    setState(() => _zoomLevel = clampMapboxZoom(zoom));
   }
 
   Future<void> _focusAerialMission(AerialMission mission) async {

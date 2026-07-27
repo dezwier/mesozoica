@@ -33,6 +33,8 @@ class AerialMissionController extends ChangeNotifier {
   int _missionsFetchGeneration = 0;
   AerialMission? _focusedMission;
   AerialMission? _pendingFocusMission;
+  /// One-shot: MapScreen should fit the viewport to [maxRouteKm] on draw entry.
+  bool _pendingDrawCamera = false;
 
   bool get isDrawMode => _drawMode;
   ToolSummary? get tool => _tool;
@@ -46,6 +48,7 @@ class AerialMissionController extends ChangeNotifier {
   bool get missionsLoading => _missionsLoading;
   AerialMission? get focusedMission => _focusedMission;
   AerialMission? get pendingFocusMission => _pendingFocusMission;
+  bool get pendingDrawCamera => _pendingDrawCamera;
 
   /// Bumps while any flying mission is active so map layers can re-interpolate.
   int get progressTick => _progressTick;
@@ -107,6 +110,7 @@ class AerialMissionController extends ChangeNotifier {
     _route.clear();
     _drawing = false;
     _submitting = false;
+    _pendingDrawCamera = true;
     _message =
         'Draw with one finger; pinch to zoom. '
         'The loop starts and ends at your location. '
@@ -120,6 +124,7 @@ class AerialMissionController extends ChangeNotifier {
     _route.clear();
     _drawing = false;
     _submitting = false;
+    _pendingDrawCamera = false;
     _message = null;
     notifyListeners();
   }
@@ -324,6 +329,13 @@ class AerialMissionController extends ChangeNotifier {
     final mission = _pendingFocusMission;
     _pendingFocusMission = null;
     return mission;
+  }
+
+  /// One-shot draw-entry camera fit; cleared when MapScreen consumes it.
+  bool takePendingDrawCamera() {
+    if (!_pendingDrawCamera) return false;
+    _pendingDrawCamera = false;
+    return true;
   }
 
   /// Load missions from the server (cross-device). Call when map becomes active.

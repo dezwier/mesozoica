@@ -1,9 +1,17 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:mesozoica/config/game_config.dart';
 import 'package:mesozoica/controllers/aerial_mission_controller.dart';
+import 'package:mesozoica/models/tool.dart';
 import 'package:mesozoica/services/tool_service.dart';
 
+import 'helpers/game_config_test_helpers.dart';
+
 void main() {
+  tearDown(() {
+    GameConfig.debugReset();
+  });
+
   AerialMission mission({
     required int id,
     required String status,
@@ -39,6 +47,36 @@ void main() {
 
     controller.clearFocus();
     expect(controller.focusedMission, isNull);
+  });
+
+  test('beginDraw queues draw-camera fit; cancel clears it', () async {
+    GameConfig.debugSetInstance(await loadGameConfigForTest());
+    final controller = AerialMissionController();
+    const tool = ToolSummary(
+      id: 1,
+      name: 'Aerial Scout',
+      category: '1 site_discovery',
+      scientificTool: 'drone',
+      description: 'Scout loop',
+      rarity: 3,
+      action: 'Launch',
+      level: 1,
+    );
+
+    expect(controller.pendingDrawCamera, isFalse);
+    controller.beginDraw(tool);
+    expect(controller.isDrawMode, isTrue);
+    expect(controller.pendingDrawCamera, isTrue);
+
+    expect(controller.takePendingDrawCamera(), isTrue);
+    expect(controller.pendingDrawCamera, isFalse);
+    expect(controller.takePendingDrawCamera(), isFalse);
+
+    controller.beginDraw(tool);
+    expect(controller.pendingDrawCamera, isTrue);
+    controller.cancelDraw();
+    expect(controller.pendingDrawCamera, isFalse);
+    expect(controller.takePendingDrawCamera(), isFalse);
   });
 
   test('missions filter into ongoing vs past', () {

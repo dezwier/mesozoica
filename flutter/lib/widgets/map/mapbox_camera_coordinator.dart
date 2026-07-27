@@ -297,6 +297,50 @@ class MapboxCameraCoordinator {
     );
   }
 
+  /// Zoom so the visible map height is approximately [spanKm], centered on
+  /// [center] (north-fixed). Used when entering aerial-mission draw mode so
+  /// the screen height matches the vehicle's max route range.
+  Future<void> fitVerticalSpanKm(
+    LatLng center,
+    double spanKm, {
+    int durationMs = 1200,
+  }) async {
+    if (rotateWithHeading) return;
+    final map = _map;
+    if (map == null || spanKm <= 0) return;
+    clearPendingFollow();
+
+    const distance = Distance();
+    final halfM = spanKm * 500;
+    final north = distance.offset(center, halfM, 0);
+    final south = distance.offset(center, halfM, 180);
+    // Thin E–W extent so the N–S span is the constraining dimension (screen
+    // height ≈ [spanKm]), not a square that would letterbox on portrait.
+    final halfWidthM = halfM * 0.01 < 1.0 ? 1.0 : halfM * 0.01;
+    final corners = <LatLng>[
+      distance.offset(north, halfWidthM, 270),
+      distance.offset(north, halfWidthM, 90),
+      distance.offset(south, halfWidthM, 270),
+      distance.offset(south, halfWidthM, 90),
+    ];
+    final points = <Point>[
+      for (final p in corners)
+        Point(coordinates: Position(p.longitude, p.latitude)),
+    ];
+    final options = await map.cameraForCoordinatesPadding(
+      points,
+      CameraOptions(bearing: 0, pitch: 0),
+      MbxEdgeInsets(top: 0, left: 0, bottom: 0, right: 0),
+      null,
+      null,
+    );
+    _lastFollowedLocation = center;
+    await map.flyTo(
+      options,
+      MapAnimationOptions(duration: durationMs),
+    );
+  }
+
   Future<LatLng?> currentCenter() async {
     final map = _map;
     if (map == null) return null;

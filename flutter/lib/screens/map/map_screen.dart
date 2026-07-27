@@ -95,20 +95,6 @@ class _MapScreenState extends State<MapScreen>
     final aerialDrawMode = aerialRecon.isDrawMode;
     final guidance = context.watch<GuidanceSessionController>();
 
-    // Force north-fixed while drawing a scout loop.
-    if (aerialDrawMode && _rotateMap) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        if (context.read<AerialMissionController>().isDrawMode && _rotateMap) {
-          setState(() {
-            _rotateMap = false;
-            _followUser = true;
-          });
-          context.read<GuidanceSessionController>().onRotateModeExited();
-        }
-      });
-    }
-
     if (guidance.requestEnterRotate) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
@@ -131,6 +117,7 @@ class _MapScreenState extends State<MapScreen>
           _maybeFollowAerialScout();
           _consumePendingFocus();
           _consumePendingAerialFocus();
+          _consumePendingDrawCamera();
         });
 
         final startCenter =
@@ -210,6 +197,7 @@ class _MapScreenState extends State<MapScreen>
                       if (ready) {
                         _consumePendingFocus();
                         _consumePendingAerialFocus();
+                        _consumePendingDrawCamera();
                         _setInitialCamera(locationService: locationService);
                         _dismissSplash();
                       }
