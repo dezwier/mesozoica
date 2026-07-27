@@ -192,7 +192,7 @@ def test_backfill_from_history(session: Session) -> None:
     assert user.skill_breakdown["fossil_detection"]["fossils"] == 5
     assert user.skill_breakdown["site_discovery"]["active_distance"] == 60
     assert user.skill_breakdown["site_discovery"]["passive_distance"] == 15
-    assert get_skill_xp(user, "excavation") == 0
+    assert get_skill_xp(user, "fossil_excavation") == 0
 
 
 def test_profile_response_includes_skill_fields(session: Session) -> None:

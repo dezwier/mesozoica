@@ -177,7 +177,7 @@ class ProfileContent extends StatelessWidget {
           color: scheme.surfaceContainerHighest.withValues(alpha: 0.5),
           borderRadius: BorderRadius.circular(_cardRadius),
         ),
-        padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+        padding: const EdgeInsets.fromLTRB(14, 12, 14, 4),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -190,7 +190,7 @@ class ProfileContent extends StatelessWidget {
               emphasized: true,
             ),
             if (profile.skills.isNotEmpty) ...[
-              const SizedBox(height: 14),
+              const SizedBox(height: 12),
               _SkillGrid(
                 skills: profile.skills,
                 onSkillTap: (skill) => showProfileSkillDetailSheet(
@@ -596,56 +596,100 @@ class _SkillGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      itemCount: skills.length,
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 4,
-        mainAxisSpacing: 8,
-        crossAxisSpacing: 8,
-        childAspectRatio: 0.95,
-      ),
-      itemBuilder: (context, index) {
-        final skill = skills[index];
-        return Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: () => onSkillTap(skill),
-            borderRadius: BorderRadius.circular(8),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(8),
-                color: scheme.onSurface.withValues(alpha: 0.03),
-              ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    skill.name,
-                    textAlign: TextAlign.center,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          color: scheme.onSurfaceVariant,
-                          height: 1.15,
-                        ),
+    const crossAxisCount = 4;
+    const spacing = 8.0;
+    // Fixed tile height: padding + 2-line label + gap + level.
+    const tileHeight = 58.0;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final tileWidth =
+            (constraints.maxWidth - spacing * (crossAxisCount - 1)) /
+                crossAxisCount;
+        return Wrap(
+          spacing: spacing,
+          runSpacing: spacing,
+          children: [
+            for (final skill in skills)
+              SizedBox(
+                width: tileWidth,
+                height: tileHeight,
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: () => onSkillTap(skill),
+                    borderRadius: BorderRadius.circular(8),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 4,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(8),
+                        color: scheme.onSurface.withValues(alpha: 0.03),
+                      ),
+                      child: Column(
+                        children: [
+                          SizedBox(
+                            height: 22,
+                            child: Text(
+                              _twoLineSkillName(skill.name),
+                              textAlign: TextAlign.center,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .labelSmall
+                                  ?.copyWith(
+                                    color: scheme.onSurfaceVariant,
+                                    fontSize: 9.5,
+                                    height: 1.15,
+                                    letterSpacing: -0.1,
+                                  ),
+                            ),
+                          ),
+                          const Spacer(),
+                          Text.rich(
+                            TextSpan(
+                              children: [
+                                TextSpan(
+                                  text: '${skill.level}',
+                                  style: TextStyle(
+                                    color: scheme.onSurfaceVariant,
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 13.5,
+                                    height: 1.1,
+                                  ),
+                                ),
+                                TextSpan(
+                                  text: '/99',
+                                  style: TextStyle(
+                                    color: scheme.onSurfaceVariant.withValues(
+                                      alpha: 0.65,
+                                    ),
+                                    fontWeight: FontWeight.w500,
+                                    fontSize: 10,
+                                    height: 1.1,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
-                  const SizedBox(height: 6),
-                  Text(
-                    '${skill.level}/99',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: scheme.onSurfaceVariant.withValues(alpha: 0.85),
-                          fontWeight: FontWeight.w600,
-                        ),
-                  ),
-                ],
+                ),
               ),
-            ),
-          ),
+          ],
         );
       },
     );
+  }
+
+  /// Always two lines (skills are always two words).
+  static String _twoLineSkillName(String name) {
+    final parts = name.trim().split(RegExp(r'\s+'));
+    if (parts.length < 2) return name;
+    return '${parts.first}\n${parts.sublist(1).join(' ')}';
   }
 }

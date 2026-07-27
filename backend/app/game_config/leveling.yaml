@@ -13,20 +13,20 @@ skills:
     name: Fossil Detection
   - id: site_protection
     name: Site Protection
-  - id: excavation
-    name: Excavation
-  - id: preparation
-    name: Preparation
-  - id: extraction
-    name: Extraction
-  - id: transport
-    name: Transport
-  - id: storage
-    name: Storage
-  - id: analysis
-    name: Analysis
-  - id: reconstruction
-    name: Reconstruction
+  - id: fossil_excavation
+    name: Fossil Excavation
+  - id: fossil_preparation
+    name: Fossil Preparation
+  - id: fossil_extraction
+    name: Fossil Extraction
+  - id: fossil_transport
+    name: Fossil Transport
+  - id: fossil_storage
+    name: Fossil Storage
+  - id: fossil_analysis
+    name: Fossil Analysis
+  - id: dinosaur_reconstruction
+    name: Dinosaur Reconstruction
 
 rewards:
   site_discover_site_discovery_xp: 10
