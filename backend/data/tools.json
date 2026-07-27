@@ -57,7 +57,7 @@
   },
   {
     "name": "Terrain Echo",
-    "category": "site_detection",
+    "category": "1 site_discovery",
     "scientific_tool": "satellite or airborne radar remote sensing",
     "description": "Sends a wide-area survey pulse that highlights approximate zones where exposed or shallow fossil-bearing formations may occur.",
     "rarity": 3,

@@ -57,6 +57,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
   FieldDiscoveryCoordinator? _discoveryCoordinator;
   MapController? _mapController;
   AerialMissionController? _aerialRecon;
+  GuidanceSessionController? _guidance;
   int _lastAerialMissionsFetchGeneration = 0;
   final Set<int> _knownAerialDiscoveredSiteIds = {};
   Timer? _discoveryRefreshTimer;
@@ -90,10 +91,13 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
       _aerialRecon = aerial;
       aerial.addListener(_onAerialReconChanged);
 
-      context.read<GuidanceSessionController>().bind(
-            discovery: discovery,
-            location: context.read<LocationService>(),
-          );
+      final guidance = context.read<GuidanceSessionController>();
+      _guidance = guidance;
+      guidance.addListener(_onGuidanceChanged);
+      guidance.bind(
+        discovery: discovery,
+        location: context.read<LocationService>(),
+      );
 
       context.read<FieldSessionCoordinator>().bind(
             locationService: context.read<LocationService>(),
@@ -148,6 +152,23 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
         _toolsOpen = false;
       });
     }
+  }
+
+  void _onGuidanceChanged() {
+    if (!mounted) return;
+    final guidance = _guidance;
+    if (guidance == null) return;
+    // Activate requests rotate mode; close tool/profile overlays so the map
+    // is visible (mirrors aerial draw-mode behavior).
+    if (guidance.requestEnterRotate && _anyOverlayOpen) {
+      setState(() {
+        _profileOpen = false;
+        _catalogOpen = false;
+        _toolsOpen = false;
+      });
+      return;
+    }
+    setState(() {});
   }
 
   void _onAerialReconChanged() {
@@ -385,6 +406,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     _discoveryCoordinator?.removeListener(_onDiscoveryChanged);
     _mapController?.removeListener(_onMapSitesChanged);
     _aerialRecon?.removeListener(_onAerialReconChanged);
+    _guidance?.removeListener(_onGuidanceChanged);
     _catalogModeController?.removeListener(_onCatalogModeChanged);
     _discoveryRefreshTimer?.cancel();
     unawaited(_foregroundPushSub?.cancel() ?? Future<void>.value());

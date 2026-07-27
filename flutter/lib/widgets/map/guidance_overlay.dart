@@ -5,6 +5,9 @@ import 'package:provider/provider.dart';
 
 import '../../config/map_config.dart';
 import '../../controllers/guidance_session_controller.dart';
+import '../../models/guidance_tool_kind.dart';
+import '../../shell/map_chrome_insets.dart';
+import 'proximity_scanner_display.dart';
 
 /// Rotation-mode guidance chrome: direction glow, distance chip, retarget badge, timer.
 class GuidanceOverlay extends StatelessWidget {
@@ -17,6 +20,10 @@ class GuidanceOverlay extends StatelessWidget {
 
     final remaining = guidance.remaining;
     final minutesLeft = remaining?.inMinutes.clamp(0, 999);
+    final isProximityOnly = guidance.kind == GuidanceToolKind.proximityScanner;
+    final showDistance =
+        guidance.showDistance && guidance.distanceLabel != null;
+    final topInset = MapChromeInsets.top(context);
 
     return Stack(
       children: [
@@ -32,64 +39,44 @@ class GuidanceOverlay extends StatelessWidget {
             ),
           ),
         ),
-        if (guidance.showDistance && guidance.distanceLabel != null)
+        if (showDistance && isProximityOnly)
+          Align(
+            alignment: const Alignment(0, 0.55),
+            child: ProximityScannerDisplay(
+              label: guidance.distanceLabel!,
+            ),
+          )
+        else if (showDistance)
           Align(
             alignment: Alignment(
               0,
-              1 - (MapConfig.mapboxRotateFocusFromBottom * 2) + 0.12,
+              1 - (MapConfig.mapboxRotateFocusFromBottom * 2) + 0.18,
             ),
-            child: _DistanceChip(label: guidance.distanceLabel!),
+            child: ProximityScannerDisplay(
+              label: guidance.distanceLabel!,
+              compact: true,
+            ),
           ),
         if (guidance.showRetargetBadge)
-          SafeArea(
-            child: Align(
-              alignment: Alignment.topCenter,
-              child: Padding(
-                padding: const EdgeInsets.only(top: 72),
-                child: _RetargetBadge(),
-              ),
-            ),
+          Positioned(
+            top: topInset + 56,
+            left: 16,
+            right: 16,
+            child: Center(child: _RetargetBadge()),
           ),
-        SafeArea(
-          child: Align(
-            alignment: Alignment.topCenter,
-            child: Padding(
-              padding: const EdgeInsets.only(top: 12),
-              child: _SessionChrome(
-                title: guidance.kind?.toolName ?? 'Guidance',
-                minutesLeft: minutesLeft,
-                onStop: () => guidance.stop(),
-              ),
+        Positioned(
+          top: topInset + 8,
+          left: 16,
+          right: 16,
+          child: Center(
+            child: _SessionChrome(
+              title: guidance.kind?.toolName ?? 'Guidance',
+              minutesLeft: minutesLeft,
+              onStop: () => guidance.stop(),
             ),
           ),
         ),
       ],
-    );
-  }
-}
-
-class _DistanceChip extends StatelessWidget {
-  const _DistanceChip({required this.label});
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return Material(
-      color: scheme.surface.withValues(alpha: 0.88),
-      borderRadius: BorderRadius.circular(20),
-      elevation: 2,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-        child: Text(
-          label,
-          style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                fontWeight: FontWeight.w600,
-                letterSpacing: 0.2,
-              ),
-        ),
-      ),
     );
   }
 }
