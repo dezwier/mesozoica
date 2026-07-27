@@ -185,6 +185,7 @@ class ProfileContent extends StatelessWidget {
             _LevelProgressRow(
               name: 'Palaeontology Career',
               level: career.level,
+              maxLevel: 120,
               xp: career.xp,
               nextLevelXp: career.nextLevelXp,
               progress: career.progress,
@@ -502,11 +503,13 @@ class _LevelProgressRow extends StatelessWidget {
     required this.xp,
     required this.nextLevelXp,
     required this.progress,
+    this.maxLevel = 99,
     this.emphasized = false,
   });
 
   final String name;
   final int level;
+  final int maxLevel;
   final int xp;
   final int nextLevelXp;
   final double progress;
@@ -554,7 +557,7 @@ class _LevelProgressRow extends StatelessWidget {
             Expanded(
               child: Text(name, style: titleStyle),
             ),
-            Text('$level/99', style: levelStyle),
+            Text('$level/$maxLevel', style: levelStyle),
           ],
         ),
         const SizedBox(height: 6),

@@ -42,7 +42,7 @@ class User(SQLModel, table=True):
     current_location: str = Field(default="", max_length=200)
     is_admin: bool = Field(default=False)
 
-    # Skill XP (RuneScape-style). Career xp/level = sum / career thresholds.
+    # Skill XP (RuneScape-style). Career xp = sum of skills; career level 1–120.
     skill_xp: dict[str, int] = Field(
         default_factory=dict, sa_column=Column(JSON, nullable=False)
     )

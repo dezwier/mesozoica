@@ -10,7 +10,8 @@ def _title_for_level(level: int) -> str:
     titles = get_game_config().leveling.career_titles
     if not titles:
         return "Unknown"
-    idx = max(1, min(99, level)) - 1
+    # Titles cover levels 1..len(titles); higher career levels reuse the top title.
+    idx = max(1, int(level)) - 1
     if idx >= len(titles):
         idx = len(titles) - 1
     return titles[idx]

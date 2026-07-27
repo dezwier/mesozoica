@@ -20,8 +20,10 @@ from app.services.level_service.skills import (
 )
 from app.services.level_service.titles import career_title_for_level, career_title_for_user_xp
 from app.services.level_service.xp_table import (
+    CAREER_MAX_LEVEL,
+    CAREER_THRESHOLDS,
+    SKILL_MAX_LEVEL,
     SKILL_THRESHOLDS,
-    career_thresholds,
     get_career_thresholds,
     level_for_xp,
     next_level_xp,
@@ -31,6 +33,9 @@ from app.services.level_service.xp_table import (
 )
 
 __all__ = [
+    "CAREER_MAX_LEVEL",
+    "CAREER_THRESHOLDS",
+    "SKILL_MAX_LEVEL",
     "SKILL_THRESHOLDS",
     "all_skill_states",
     "award_distance_km_xp",
@@ -40,7 +45,6 @@ __all__ = [
     "backfill_all_users",
     "backfill_user_levels",
     "career_state",
-    "career_thresholds",
     "career_title_for_level",
     "career_title_for_user_xp",
     "get_career_thresholds",

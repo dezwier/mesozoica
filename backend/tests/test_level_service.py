@@ -12,21 +12,21 @@ from app.models.user_fossil import USER_FOSSIL_ROLE_DISCOVERER, UserFossil
 from app.models.user_site import USER_SITE_ROLE_DISCOVERER, UserSite
 from app.schemas.auth import UpdateDistanceRequest
 from app.services.level_service import (
+    CAREER_THRESHOLDS,
     SKILL_THRESHOLDS,
     award_distance_km_xp,
     award_fossil_discover_xp,
     award_site_discover_xp,
     backfill_user_levels,
+    career_title_for_level,
     career_title_for_user_xp,
     get_career_thresholds,
     get_skill_xp,
     level_for_xp,
     progress_in_level,
-    skill_count,
     xp_for_level,
 )
 from app.services.level_service.backfill import compute_skill_xp_from_history
-from app.services.level_service.xp_table import career_thresholds
 from app.services.user_service import user_to_profile_response
 from app.services.walk_distance_service import apply_distance_update
 
@@ -37,8 +37,10 @@ def test_xp_for_level_anchors() -> None:
     assert xp_for_level(99) == 13_034_431
     assert SKILL_THRESHOLDS[2] == 83
     assert SKILL_THRESHOLDS[99] == 13_034_431
-    assert career_thresholds(11)[2] == 83 * 11
-    assert career_thresholds(11)[99] == 13_034_431 * 11
+    assert CAREER_THRESHOLDS[2] == 83
+    assert CAREER_THRESHOLDS[99] == 13_034_431
+    assert CAREER_THRESHOLDS[120] == xp_for_level(120)
+    assert CAREER_THRESHOLDS[120] > CAREER_THRESHOLDS[99]
 
 
 def test_level_for_xp_skill_and_career() -> None:
@@ -46,10 +48,10 @@ def test_level_for_xp_skill_and_career() -> None:
     assert level_for_xp(82) == 1
     assert level_for_xp(83) == 2
     assert level_for_xp(13_034_431) == 99
-    assert level_for_xp(13_034_431 * 11, career=True) == 99
-    assert level_for_xp(82 * 11, career=True) == 1
-    assert level_for_xp(83 * 11, career=True) == 2
-    assert get_career_thresholds()[2] == 83 * skill_count()
+    assert level_for_xp(83, career=True) == 2
+    assert level_for_xp(13_034_431, career=True) == 99
+    assert level_for_xp(CAREER_THRESHOLDS[120], career=True) == 120
+    assert get_career_thresholds()[2] == 83
 
 
 def test_progress_in_level() -> None:
@@ -75,8 +77,10 @@ def test_leveling_yaml_loaded() -> None:
 def test_career_title_from_career_level() -> None:
     cfg = get_game_config().leveling
     assert career_title_for_user_xp(0) == cfg.career_titles[0]
-    title2 = career_title_for_user_xp(83 * skill_count())
+    title2 = career_title_for_user_xp(83)
     assert title2 == cfg.career_titles[1]
+    # Levels past the title list reuse the top title.
+    assert career_title_for_level(120) == cfg.career_titles[-1]
 
 
 def _make_user(session: Session, **kwargs) -> User:

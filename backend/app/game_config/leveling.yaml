@@ -1,8 +1,8 @@
 # Career / skill leveling (RuneScape-style XP).
 #
 # Per-skill thresholds: generated in code (OSRS formula, levels 1-99).
-# Career thresholds = per-skill threshold x number of skills (career XP = sum).
-# career_titles: 99 rich career ranks indexed by career level 1..99.
+# Career XP = sum of all skill XP; same OSRS thresholds, levels 1-120 (no multiplier).
+# career_titles: 99 rich career ranks indexed by career level 1..99 (120 reuses last).
 
 skills:
   - id: site_discovery
