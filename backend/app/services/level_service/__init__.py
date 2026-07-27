@@ -15,8 +15,10 @@ from app.services.level_service.xp_table import (
     SKILL_THRESHOLDS,
     average_skill_level,
     level_for_xp,
+    next_level_xp,
     progress_in_level,
     xp_for_level,
+    xp_to_next_level,
 )
 
 __all__ = [
@@ -30,9 +32,11 @@ __all__ = [
     "backfill_user_levels",
     "career_title_for_user_xp",
     "level_for_xp",
+    "next_level_xp",
     "passive_meters",
     "progress_in_level",
     "sync_career_from_skills",
     "whole_km",
     "xp_for_level",
+    "xp_to_next_level",
 ]

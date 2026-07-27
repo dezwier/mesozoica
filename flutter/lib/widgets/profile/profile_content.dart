@@ -42,8 +42,9 @@ class ProfileContent extends StatelessWidget {
 
   Widget _buildHeaderCard(BuildContext context, ColorScheme scheme) {
     final imageUrl = AuthService.imageUrl(profile.profileImage);
-    final careerLabel =
-        '${profile.careerTitle} - ${profile.level}';
+    final xpLabel = _formatXp(profile.xp);
+    final nextLabel = _formatXp(profile.nextLevelXp);
+    final toGoLabel = _formatXp(profile.xpToNextLevel);
     return AppCard.profile(
       borderRadius: _cardRadius,
       decoration: BoxDecoration(
@@ -131,12 +132,40 @@ class ProfileContent extends StatelessWidget {
             ),
             const SizedBox(height: 4),
             Text(
-              careerLabel,
+              profile.careerTitle,
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     color: scheme.primary,
                     fontWeight: FontWeight.w600,
                   ),
               textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 10),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: Column(
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(3),
+                    child: LinearProgressIndicator(
+                      value: profile.careerProgress.clamp(0.0, 1.0),
+                      minHeight: 4,
+                      backgroundColor:
+                          scheme.onSurface.withValues(alpha: 0.08),
+                      color: scheme.primary.withValues(alpha: 0.55),
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    '$xpLabel / $nextLabel  ·  $toGoLabel to go',
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: scheme.onSurfaceVariant.withValues(alpha: 0.85),
+                          fontWeight: FontWeight.w500,
+                          letterSpacing: 0.2,
+                        ),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
             ),
             const SizedBox(height: 12),
             Row(
@@ -163,6 +192,17 @@ class ProfileContent extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  static String _formatXp(int value) {
+    final s = value.toString();
+    final buf = StringBuffer();
+    for (var i = 0; i < s.length; i++) {
+      final fromEnd = s.length - i;
+      if (i > 0 && fromEnd % 3 == 0) buf.write(',');
+      buf.write(s[i]);
+    }
+    return buf.toString();
   }
 
   Widget _buildSkillGrid(BuildContext context, ColorScheme scheme) {

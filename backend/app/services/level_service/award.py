@@ -4,24 +4,21 @@ from __future__ import annotations
 
 from app.core.game_config import get_game_config
 from app.models.user import User
-from app.services.level_service.xp_table import average_skill_level, level_for_xp
+from app.services.level_service.xp_table import level_for_xp
 
 
 def sync_career_from_skills(user: User) -> None:
     """Set ``user.xp`` / ``user.level`` from the three skill totals.
 
-    ``xp`` remains the sum of skill XP. ``level`` is the rounded average of
-    the three skill levels.
+    ``xp`` is the sum of skill XP. ``level`` uses career thresholds (skill × 3).
     """
-    exploration_xp = int(user.exploration_xp or 0)
-    excavation_xp = int(user.excavation_xp or 0)
-    research_xp = int(user.research_xp or 0)
-    user.xp = exploration_xp + excavation_xp + research_xp
-    user.level = average_skill_level(
-        level_for_xp(exploration_xp),
-        level_for_xp(excavation_xp),
-        level_for_xp(research_xp),
+    career_xp = (
+        int(user.exploration_xp or 0)
+        + int(user.excavation_xp or 0)
+        + int(user.research_xp or 0)
     )
+    user.xp = career_xp
+    user.level = level_for_xp(career_xp, career=True)
 
 
 def award_exploration_xp(

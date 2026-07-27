@@ -114,11 +114,7 @@ def test_award_site_and_fossil_xp(session: Session) -> None:
     assert user.xp_from_sites == 30
     assert user.xp_from_fossils == 100
     assert user.xp == user.exploration_xp
-    assert user.level == average_skill_level(
-        level_for_xp(user.exploration_xp),
-        level_for_xp(user.excavation_xp),
-        level_for_xp(user.research_xp),
-    )
+    assert user.level == level_for_xp(user.xp, career=True)
 
 
 def test_award_distance_km_xp(session: Session) -> None:

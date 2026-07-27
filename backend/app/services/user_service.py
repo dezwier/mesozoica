@@ -84,7 +84,7 @@ def user_to_response(user: User) -> UserResponse:
         level_for_xp,
         progress_in_level,
     )
-    from app.services.level_service.xp_table import average_skill_level
+    from app.services.level_service.xp_table import next_level_xp, xp_to_next_level
 
     display = user.display_name or user.full_name or user.username
     exploration_xp = int(user.exploration_xp or 0)
@@ -107,9 +107,7 @@ def user_to_response(user: User) -> UserResponse:
         notable_discovery=user.notable_discovery,
         favorite_era=user.favorite_era,
         xp=career_xp,
-        level=average_skill_level(
-            exploration_level, excavation_level, research_level
-        ),
+        level=level_for_xp(career_xp, career=True),
         achievements=list(user.achievements or []),
         bio=user.bio,
         current_location=user.current_location,
@@ -138,6 +136,8 @@ def user_to_response(user: User) -> UserResponse:
         excavation_progress=progress_in_level(excavation_xp),
         research_progress=progress_in_level(research_xp),
         career_progress=progress_in_level(career_xp, career=True),
+        next_level_xp=next_level_xp(career_xp, career=True),
+        xp_to_next_level=xp_to_next_level(career_xp, career=True),
         xp_from_sites=int(user.xp_from_sites or 0),
         xp_from_fossils=int(user.xp_from_fossils or 0),
         xp_from_active_distance=int(user.xp_from_active_distance or 0),
@@ -153,20 +153,20 @@ def user_to_profile_response(session: Session, user: User) -> UserProfileRespons
 
 def user_to_list_entry(session: Session, user: User) -> UserListEntry:
     from app.services.level_service import level_for_xp
-    from app.services.level_service.xp_table import average_skill_level
 
     counts = collection_counts(session, user.id)
+    career_xp = (
+        int(user.exploration_xp or 0)
+        + int(user.excavation_xp or 0)
+        + int(user.research_xp or 0)
+    )
     return UserListEntry(
         id=user.id,
         username=user.username,
         display_name=user.display_name or user.full_name or user.username,
         full_name=user.full_name,
         image_url=user.image_url,
-        level=average_skill_level(
-            level_for_xp(int(user.exploration_xp or 0)),
-            level_for_xp(int(user.excavation_xp or 0)),
-            level_for_xp(int(user.research_xp or 0)),
-        ),
+        level=level_for_xp(career_xp, career=True),
         **counts,
     )
 

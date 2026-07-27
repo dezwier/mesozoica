@@ -56,11 +56,25 @@ def average_skill_level(
     excavation_level: int,
     research_level: int,
 ) -> int:
-    """Global user level = rounded mean of the three skill levels (1..99)."""
+    """Rounded mean of the three skill levels (1..99)."""
     avg = (
         int(exploration_level) + int(excavation_level) + int(research_level)
     ) / 3.0
     return max(1, min(99, int(round(avg))))
+
+
+def next_level_xp(xp: int, *, career: bool = False) -> int:
+    """XP threshold for the next level (current threshold if already 99)."""
+    level = level_for_xp(xp, career=career)
+    thresholds = CAREER_THRESHOLDS if career else SKILL_THRESHOLDS
+    if level >= 99:
+        return thresholds[99]
+    return thresholds[level + 1]
+
+
+def xp_to_next_level(xp: int, *, career: bool = False) -> int:
+    """XP still needed to reach the next level (0 at 99)."""
+    return max(0, next_level_xp(xp, career=career) - max(0, int(xp)))
 
 
 def progress_in_level(xp: int, *, career: bool = False) -> float:

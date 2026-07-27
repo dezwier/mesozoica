@@ -35,6 +35,8 @@ class Profile {
   final double excavationProgress;
   final double researchProgress;
   final double careerProgress;
+  final int nextLevelXp;
+  final int xpToNextLevel;
   final int xpFromSites;
   final int xpFromFossils;
   final int xpFromActiveDistance;
@@ -76,6 +78,8 @@ class Profile {
     this.excavationProgress = 0,
     this.researchProgress = 0,
     this.careerProgress = 0,
+    this.nextLevelXp = 0,
+    this.xpToNextLevel = 0,
     this.xpFromSites = 0,
     this.xpFromFossils = 0,
     this.xpFromActiveDistance = 0,
@@ -169,6 +173,12 @@ class Profile {
       careerProgress: (json['career_progress'] as num?)?.toDouble() ??
           (json['careerProgress'] as num?)?.toDouble() ??
           0,
+      nextLevelXp: json['next_level_xp'] as int? ??
+          json['nextLevelXp'] as int? ??
+          0,
+      xpToNextLevel: json['xp_to_next_level'] as int? ??
+          json['xpToNextLevel'] as int? ??
+          0,
       xpFromSites: json['xp_from_sites'] as int? ??
           json['xpFromSites'] as int? ??
           0,
@@ -229,6 +239,8 @@ class Profile {
         'excavationProgress': excavationProgress,
         'researchProgress': researchProgress,
         'careerProgress': careerProgress,
+        'nextLevelXp': nextLevelXp,
+        'xpToNextLevel': xpToNextLevel,
         'xpFromSites': xpFromSites,
         'xpFromFossils': xpFromFossils,
         'xpFromActiveDistance': xpFromActiveDistance,
@@ -284,6 +296,8 @@ class Profile {
       excavationProgress: excavationProgress,
       researchProgress: researchProgress,
       careerProgress: careerProgress,
+      nextLevelXp: nextLevelXp,
+      xpToNextLevel: xpToNextLevel,
       xpFromSites: xpFromSites,
       xpFromFossils: xpFromFossils,
       xpFromActiveDistance: xpFromActiveDistance,
