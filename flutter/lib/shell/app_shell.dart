@@ -429,6 +429,9 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
               .read<FieldDiscoveryCoordinator>()
               .refreshDiscoverableCache(force: true),
         );
+        unawaited(
+          context.read<GuidanceSessionController>().restoreActiveSession(),
+        );
         final auth = context.read<AuthController>();
         final userId = auth.currentUser?.id;
         if (userId != null) {
@@ -478,6 +481,9 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     context.read<MapController>().onUserChanged(isAdmin: isAdmin);
     context.read<ToolCatalogController>().onUserChanged(isAdmin: isAdmin);
     context.read<FieldDiscoveryCoordinator>().clearForUserChange();
+    unawaited(
+      context.read<GuidanceSessionController>().stop(notifyServer: false),
+    );
     context.read<SiteCatalogController>().load(force: true);
     context.read<ToolCatalogController>().load(force: true);
 
@@ -493,6 +499,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
       await notificationController.refreshInBackground(
         authenticatedUserId: userId,
       );
+      if (!mounted || _previousUserId != userId) return;
       await PushNotificationService.registerTokenIfLoggedIn();
       if (!mounted || _previousUserId != userId) return;
       unawaited(
@@ -500,6 +507,8 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
             .read<FieldDiscoveryCoordinator>()
             .refreshDiscoverableCache(force: true),
       );
+      if (!mounted || _previousUserId != userId) return;
+      await context.read<GuidanceSessionController>().restoreActiveSession();
     });
   }
 

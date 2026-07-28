@@ -104,8 +104,7 @@ mixin _MapScreenCameraMixin on State<MapScreen> {
       });
       _mapboxCamera.clearPendingFollow();
     }
-    // Aerial draw owns the map — end any guidance session.
-    context.read<GuidanceSessionController>().onLocationCenteredExited();
+    // Guidance keeps running under the draw overlay (hidden while drawing).
 
     await WidgetsBinding.instance.endOfFrame;
     await WidgetsBinding.instance.endOfFrame;
@@ -141,7 +140,6 @@ mixin _MapScreenCameraMixin on State<MapScreen> {
         _aerialFocusAnimating = false;
       });
       _mapboxCamera.clearPendingFollow();
-      context.read<GuidanceSessionController>().onLocationCenteredExited();
     } else {
       setState(() {
         _followUser = false;
@@ -240,7 +238,6 @@ mixin _MapScreenCameraMixin on State<MapScreen> {
         _followUser = false;
       });
       _mapboxCamera.clearPendingFollow();
-      context.read<GuidanceSessionController>().onLocationCenteredExited();
       // MapboxFieldMap exits FollowPuck → Idle + north-fixed camera.
     } else if (_rotateMap) {
       // Rotate mode stays locked on the user — don't pan away for site taps.
@@ -248,7 +245,6 @@ mixin _MapScreenCameraMixin on State<MapScreen> {
     } else {
       setState(() => _followUser = false);
       _mapboxCamera.clearPendingFollow();
-      context.read<GuidanceSessionController>().onLocationCenteredExited();
     }
 
     // Wait for followUser=false / FollowPuck exit to settle before flyTo.

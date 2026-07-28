@@ -186,9 +186,7 @@ class _MapScreenState extends State<MapScreen>
                           _followAerialScout = false;
                           _aerialFocusAnimating = false;
                         });
-                        context
-                            .read<GuidanceSessionController>()
-                            .onLocationCenteredExited();
+                        // Guidance sessions keep running until Stop / expiry.
                       }
                     },
                     onRotatePinchZoomOut: _exitToNorthFixedCentered,
@@ -453,9 +451,7 @@ class _MapScreenState extends State<MapScreen>
               )
             else if (aerialRecon.focusedMission != null)
               const AerialMissionFocusOverlay(),
-            if (!aerialDrawMode &&
-                guidance.isActive &&
-                (_rotateMap || _followUser))
+            if (!aerialDrawMode && guidance.isActive)
               GuidanceOverlay(rotateWithHeading: _rotateMap),
           ],
         );

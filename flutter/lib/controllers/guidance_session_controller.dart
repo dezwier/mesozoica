@@ -104,7 +104,10 @@ class GuidanceSessionController extends ChangeNotifier {
     required FieldDiscoveryCoordinator discovery,
     required LocationService location,
   }) {
-    if (_discovery == discovery && _location == location) return;
+    if (_discovery == discovery && _location == location) {
+      unawaited(restoreActiveSession());
+      return;
+    }
     _unbindListeners();
     _discovery = discovery;
     _location = location;
@@ -114,6 +117,38 @@ class GuidanceSessionController extends ChangeNotifier {
     discovery.addListener(_discoveryListener!);
     location.addListener(_locationListener!);
     location.headingListenable.addListener(_headingListener!);
+    unawaited(restoreActiveSession());
+  }
+
+  /// Re-attach a still-running server session (survives app restart / navigation).
+  Future<void> restoreActiveSession() async {
+    if (_activating) return;
+    try {
+      final session = await _toolService.fetchActiveGuidanceSession();
+      if (session == null || !session.isActive || session.isExpired) {
+        if (_session != null && !isActive) {
+          await stop(notifyServer: false);
+        }
+        return;
+      }
+      if (_session?.sessionId == session.sessionId && isActive) {
+        // Same session already loaded — refresh expiry fields only.
+        _session = session;
+        _ensureTickTimer();
+        _recomputeTarget(announceRetarget: false);
+        return;
+      }
+      _session = session;
+      _kind = GuidanceToolKind.tryParseActionKey(session.actionKey);
+      _tool = null;
+      _resetHint();
+      _recomputeTarget(announceRetarget: false);
+      _ensureTickTimer();
+      _message = '${_kind?.toolName ?? 'Guidance'} active';
+      notifyListeners();
+    } catch (error) {
+      debugPrint('Guidance restore failed: $error');
+    }
   }
 
   void consumeShowOnMapRequest() {
@@ -167,13 +202,6 @@ class GuidanceSessionController extends ChangeNotifier {
     _distanceM = null;
     _distanceLabel = null;
     if (hadSession) notifyListeners();
-  }
-
-  /// Stop when the map leaves location-centered modes (not rotate↔north-fixed).
-  void onLocationCenteredExited() {
-    if (isActive) {
-      unawaited(stop());
-    }
   }
 
   void _onDiscoveryChanged() => _recomputeTarget(announceRetarget: true);
