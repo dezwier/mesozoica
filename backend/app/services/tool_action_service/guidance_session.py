@@ -14,15 +14,15 @@ from app.models.guidance_session import (
     SESSION_STATUS_EXPIRED,
     GuidanceSession,
 )
-from app.models.tool import Tool
-from app.models.user_tool import UserTool
+from app.models.tool_type import ToolType
+from app.models.user_tool import USER_TOOL_ACTION_DEPLOYED, UserTool
 from app.services.site_service.geo_utils import haversine_km
 from app.services.site_service.nearby import list_discoverable_sites_in_radius
 from app.services.tool_action_service.guidance_kinds import (
     config_for_action_key,
     kind_for_tool_name,
 )
-
+from app.services.tool_service.collect import resolve_owned_instance
 
 def _utcnow() -> datetime:
     return datetime.now(timezone.utc).replace(tzinfo=None)
@@ -89,20 +89,21 @@ def start_guidance_session(
     user_id: int,
     tool_id: int,
 ) -> GuidanceSession:
-    """Validate ownership, replace any prior session, snapshot YAML knobs."""
-    tool = session.get(Tool, tool_id)
-    if tool is None:
+    """Validate ownership, replace any prior session, snapshot YAML knobs.
+
+    ``tool_id`` is the catalog tool_type id (API-stable). The session row stores
+    the owned tool instance id.
+    """
+    tool_type = session.get(ToolType, tool_id)
+    if tool_type is None:
         raise NotFoundError(f"Tool {tool_id} not found")
-    kind = kind_for_tool_name(tool.name)
+    kind = kind_for_tool_name(tool_type.name)
     cfg = config_for_action_key(kind.action_key)
 
-    owned = session.exec(
-        select(UserTool).where(
-            col(UserTool.user_id) == user_id,
-            col(UserTool.tool_id) == tool_id,
-        )
-    ).first()
-    if owned is None:
+    instance = resolve_owned_instance(
+        session, user_id=user_id, tool_type_id=tool_id
+    )
+    if instance is None:
         raise ValidationError(f"You must own {kind.display_label} to use it")
 
     cancel_active_guidance_sessions(session, user_id=user_id)
@@ -121,7 +122,7 @@ def start_guidance_session(
     )
     row = GuidanceSession(
         user_id=user_id,
-        tool_id=tool_id,
+        tool_id=int(instance.id),
         action_key=kind.action_key,
         status=SESSION_STATUS_ACTIVE,
         discovery_chance=discovery_chance,
@@ -134,6 +135,14 @@ def start_guidance_session(
         updated_at=now,
     )
     session.add(row)
+    session.add(
+        UserTool(
+            user_id=user_id,
+            tool_id=int(instance.id),
+            timestamp=datetime.now(timezone.utc),
+            action=USER_TOOL_ACTION_DEPLOYED,
+        )
+    )
     session.commit()
     session.refresh(row)
     return row

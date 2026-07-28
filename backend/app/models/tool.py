@@ -1,20 +1,38 @@
-"""Paleontological field tool catalog entries."""
+"""Individual tool occurrences (instances of a catalog tool type)."""
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
+
+from sqlalchemy import Column, DateTime, ForeignKey, Integer, text
 from sqlmodel import Field, SQLModel
 
 
+def _utc_now() -> datetime:
+    return datetime.now(timezone.utc)
+
+
 class Tool(SQLModel, table=True):
-    """One row per branded field tool in the catalog."""
+    """One owned/spawned occurrence of a tool type."""
 
     __tablename__ = "tool"
 
     id: int | None = Field(default=None, primary_key=True)
-    name: str = Field(max_length=100, unique=True, index=True)
-    category: str = Field(max_length=50)
-    scientific_tool: str = Field(max_length=100)
-    description: str = Field(max_length=500)
-    rarity: int = Field(ge=1, le=5)
-    action: str = Field(default="Use", max_length=40)
-    main_image_url: str | None = Field(default=None, max_length=512)
+    tool_type_id: int = Field(
+        sa_column=Column(
+            Integer,
+            ForeignKey("tool_type.id", ondelete="CASCADE"),
+            nullable=False,
+            index=True,
+        ),
+    )
+    spawn_date: datetime = Field(
+        default_factory=_utc_now,
+        sa_column=Column(
+            DateTime(timezone=True),
+            nullable=False,
+            server_default=text("CURRENT_TIMESTAMP"),
+            index=True,
+        ),
+    )
+    level: int = Field(default=1, ge=1)

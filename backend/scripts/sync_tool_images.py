@@ -11,7 +11,7 @@ from sqlmodel import Session, select
 from app.core.config import settings
 from app.core.database import engine
 from app.crons.railway_guard import require_railway_database
-from app.models.tool import Tool
+from app.models.tool_type import ToolType
 from app.services.curated_image_service.common import needs_curated_image_resync
 from app.services.tool_image_service.sync import (
     CURATED_MEDIA_PATH,
@@ -58,7 +58,7 @@ def run_sync(*, dry_run: bool = False, overwrite: bool = False) -> int:
         logger.warning("No image files found in %s", source_dir)
 
     with Session(engine) as session:
-        tools = session.exec(select(Tool)).all()
+        tools = session.exec(select(ToolType)).all()
         name_set = {row.name for row in tools}
         if image_files:
             matched, unmatched_files = match_image_files(image_files, name_set)
@@ -71,7 +71,9 @@ def run_sync(*, dry_run: bool = False, overwrite: bool = False) -> int:
         skipped = 0
         matched_names = {match.tool_name for match in matched}
         for match in matched:
-            row = session.exec(select(Tool).where(Tool.name == match.tool_name)).first()
+            row = session.exec(
+                select(ToolType).where(ToolType.name == match.tool_name)
+            ).first()
             main_image_url = row.main_image_url if row is not None else None
             if not needs_curated_image_resync(
                 overwrite=overwrite,

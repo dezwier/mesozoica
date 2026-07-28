@@ -20,8 +20,9 @@ from app.models.guidance_session import (
 from app.models.site import Site
 from app.models.site_type import SiteType
 from app.models.tool import Tool
+from app.models.tool_type import ToolType
 from app.models.user import User
-from app.models.user_tool import UserTool
+from app.models.user_tool import USER_TOOL_ACTION_OWNED, UserTool
 from app.services.site_service.discovery_params import resolve_site_discovery_params
 from app.services.tool_action_service.guidance_session import (
     start_guidance_session,
@@ -50,8 +51,8 @@ def _tool(
     *,
     name: str,
     action: str = "Consult",
-) -> Tool:
-    tool = Tool(
+) -> ToolType:
+    tool = ToolType(
         name=name,
         category="1 site_discovery",
         scientific_tool="guidance",
@@ -65,10 +66,20 @@ def _tool(
     return tool
 
 
-def _grant(session: Session, *, user_id: int, tool_id: int) -> None:
-    session.add(UserTool(user_id=user_id, tool_id=tool_id, level=1))
+def _grant(session: Session, *, user_id: int, tool_id: int) -> Tool:
+    instance = Tool(tool_type_id=tool_id, level=1)
+    session.add(instance)
+    session.flush()
+    session.add(
+        UserTool(
+            user_id=user_id,
+            tool_id=int(instance.id),
+            action=USER_TOOL_ACTION_OWNED,
+        )
+    )
     session.commit()
-
+    session.refresh(instance)
+    return instance
 
 def _site(
     session: Session,
@@ -217,14 +228,14 @@ def test_expired_session_ignored(session: Session) -> None:
     get_game_config.cache_clear()
     user = _user(session, username="expired")
     compass = _tool(session, name="Geo Compass")
-    _grant(session, user_id=int(user.id), tool_id=int(compass.id))
+    instance = _grant(session, user_id=int(user.id), tool_id=int(compass.id))
     site = _site(session, site_id=92021, lat=42.0, lon=-102.0)
 
     now = datetime.utcnow()
     session.add(
         GuidanceSession(
             user_id=int(user.id),
-            tool_id=int(compass.id),
+            tool_id=int(instance.id),
             action_key=ACTION_KEY_GEO_COMPASS,
             status=SESSION_STATUS_ACTIVE,
             discovery_chance=0.9,

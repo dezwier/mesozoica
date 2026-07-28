@@ -19,6 +19,7 @@ from app.models.tool_mission_event import (
     EVENT_TYPE_DISCOVER_SITE,
     ToolMissionEvent,
 )
+from app.models.tool_type import ToolType
 from app.models.user import User
 from app.schemas.tool import ToolCategoryItem, ToolCategoryListResponse, ToolListResponse, ToolSummary
 from app.services.tool_action_service import (
@@ -112,12 +113,14 @@ class GuidanceSessionResponse(BaseModel):
     cancelled_at: datetime | None = None
 
 
-def _guidance_session_response(row: GuidanceSession) -> GuidanceSessionResponse:
+def _guidance_session_response(
+    session: Session, row: GuidanceSession
+) -> GuidanceSessionResponse:
     return GuidanceSessionResponse(
         session_id=int(row.id),
         action_key=row.action_key,
         status=row.status,
-        tool_id=int(row.tool_id),
+        tool_id=_tool_type_id_for_instance(session, int(row.tool_id)),
         discovery_chance=row.discovery_chance,
         direction_exactness=row.direction_exactness,
         distance_exactness=row.distance_exactness,
@@ -128,9 +131,19 @@ def _guidance_session_response(row: GuidanceSession) -> GuidanceSessionResponse:
     )
 
 
-def _tool_image_url(session: Session, tool_id: int) -> str | None:
-    tool = session.get(Tool, tool_id)
-    return tool.main_image_url if tool is not None else None
+def _tool_type_id_for_instance(session: Session, tool_instance_id: int) -> int:
+    instance = session.get(Tool, tool_instance_id)
+    if instance is None:
+        return tool_instance_id
+    return int(instance.tool_type_id)
+
+
+def _tool_image_url(session: Session, tool_instance_id: int) -> str | None:
+    instance = session.get(Tool, tool_instance_id)
+    if instance is None:
+        return None
+    tool_type = session.get(ToolType, int(instance.tool_type_id))
+    return tool_type.main_image_url if tool_type is not None else None
 
 
 def _mission_flight_params(mission: ToolMission) -> tuple[float, float, float, float]:
@@ -210,8 +223,8 @@ def _mission_item(
         flight_started_at=mission.flight_started_at,
         flight_ends_at=mission.flight_ends_at,
         created_at=mission.created_at,
-        tool_id=mission.tool_id,
-        tool_image_url=_tool_image_url(session, mission.tool_id),
+        tool_id=_tool_type_id_for_instance(session, int(mission.tool_id)),
+        tool_image_url=_tool_image_url(session, int(mission.tool_id)),
         discovered_site_ids=site_ids,
     )
 
@@ -343,7 +356,7 @@ def get_active_guidance(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="No active guidance session",
         )
-    return _guidance_session_response(row)
+    return _guidance_session_response(session, row)
 
 
 @router.post(
@@ -360,7 +373,7 @@ def post_cancel_guidance_session(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="No active guidance session",
         )
-    return _guidance_session_response(row)
+    return _guidance_session_response(session, row)
 
 
 @router.post("/{tool_id}/collect", response_model=ToolSummary)
@@ -415,7 +428,7 @@ def post_guidance_session(
         user_id=int(current_user.id),
         tool_id=tool_id,
     )
-    return _guidance_session_response(row)
+    return _guidance_session_response(session, row)
 
 
 @router.get("/{tool_id}", response_model=ToolSummary)

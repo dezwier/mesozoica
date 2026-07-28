@@ -13,6 +13,7 @@ from app.models.data_source import DATA_SOURCE_FIELD
 from app.models.field_ensure_job import FieldEnsureJob
 from app.models.site import Site
 from app.models.tool import Tool
+from app.models.tool_type import ToolType
 from app.models.tool_mission import (
     ACTION_KEY_AERIAL_RECON,
     ACTION_KEY_AERIAL_SCOUT,
@@ -30,7 +31,7 @@ from app.models.tool_mission_event import (
     ToolMissionEvent,
 )
 from app.models.user import User
-from app.models.user_tool import UserTool
+from app.models.user_tool import USER_TOOL_ACTION_OWNED, UserTool
 from app.services.tool_action_service.aerial_mission import (
     cancel_aerial_mission,
     process_due_mission_events,
@@ -63,8 +64,8 @@ def _aerial_tool(
     scientific_tool: str = "helicopter",
     rarity: int = 5,
     action: str = "Deploy",
-) -> Tool:
-    tool = Tool(
+) -> ToolType:
+    tool = ToolType(
         name=name,
         category="1 site_discovery",
         scientific_tool=scientific_tool,
@@ -78,7 +79,7 @@ def _aerial_tool(
     return tool
 
 
-def _scout_tool(session: Session) -> Tool:
+def _scout_tool(session: Session) -> ToolType:
     return _aerial_tool(
         session,
         name="Aerial Scout",
@@ -88,9 +89,20 @@ def _scout_tool(session: Session) -> Tool:
     )
 
 
-def _grant(session: Session, *, user_id: int, tool_id: int) -> None:
-    session.add(UserTool(user_id=user_id, tool_id=tool_id, level=1))
+def _grant(session: Session, *, user_id: int, tool_id: int) -> Tool:
+    instance = Tool(tool_type_id=tool_id, level=1)
+    session.add(instance)
+    session.flush()
+    session.add(
+        UserTool(
+            user_id=user_id,
+            tool_id=int(instance.id),
+            action=USER_TOOL_ACTION_OWNED,
+        )
+    )
     session.commit()
+    session.refresh(instance)
+    return instance
 
 
 def _square_route(origin_lat: float, origin_lon: float, *, delta: float = 0.01):
@@ -429,11 +441,11 @@ def test_promote_schedules_events_in_route_order(session: Session):
 def test_due_events_discover_and_miss(session: Session):
     tool = _aerial_tool(session)
     user = _user(session)
-    _grant(session, user_id=int(user.id), tool_id=int(tool.id))
+    instance = _grant(session, user_id=int(user.id), tool_id=int(tool.id))
     now = datetime.utcnow()
     mission = ToolMission(
         user_id=int(user.id),
-        tool_id=int(tool.id),
+        tool_id=int(instance.id),
         action_key=ACTION_KEY_AERIAL_RECON,
         status=MISSION_STATUS_FLYING,
         route_json=json.dumps(
@@ -589,12 +601,12 @@ def test_prefix_up_to_fraction():
 def test_cancel_flying_truncates_and_skips_pending(client, session: Session):
     tool = _aerial_tool(session)
     user = _user(session)
-    _grant(session, user_id=int(user.id), tool_id=int(tool.id))
+    instance = _grant(session, user_id=int(user.id), tool_id=int(tool.id))
     now = datetime.utcnow()
     full_route = _square_route(40.0, -100.0, delta=0.02)
     mission = ToolMission(
         user_id=int(user.id),
-        tool_id=int(tool.id),
+        tool_id=int(instance.id),
         action_key=ACTION_KEY_AERIAL_RECON,
         status=MISSION_STATUS_FLYING,
         route_json=json.dumps(full_route),
@@ -661,11 +673,11 @@ def test_cancel_flying_truncates_and_skips_pending(client, session: Session):
 def test_cancel_done_rejected(client, session: Session):
     tool = _aerial_tool(session)
     user = _user(session)
-    _grant(session, user_id=int(user.id), tool_id=int(tool.id))
+    instance = _grant(session, user_id=int(user.id), tool_id=int(tool.id))
     now = datetime.utcnow()
     mission = ToolMission(
         user_id=int(user.id),
-        tool_id=int(tool.id),
+        tool_id=int(instance.id),
         action_key=ACTION_KEY_AERIAL_RECON,
         status=MISSION_STATUS_DONE,
         route_json=json.dumps(_square_route(40.0, -100.0)),

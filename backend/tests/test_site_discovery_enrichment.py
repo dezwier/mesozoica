@@ -141,13 +141,14 @@ def test_aerial_discover_sets_aerial_recon(session: Session, monkeypatch):
     from datetime import datetime
 
     from app.models.tool import Tool
+    from app.models.tool_type import ToolType
     from app.models.tool_mission import ACTION_KEY_AERIAL_RECON, ToolMission
     from app.models.user_site import USER_SITE_ROLE_DISCOVERER, UserSite
     from sqlmodel import col, select
 
     site = _field_site(session, site_id=2_000_000_002)
     user = _user(session, username="pilot")
-    tool = Tool(
+    tool_type = ToolType(
         name="Aerial Recon",
         category="1 site_discovery",
         scientific_tool="helicopter",
@@ -155,6 +156,10 @@ def test_aerial_discover_sets_aerial_recon(session: Session, monkeypatch):
         rarity=5,
         action="Deploy",
     )
+    session.add(tool_type)
+    session.commit()
+    session.refresh(tool_type)
+    tool = Tool(tool_type_id=int(tool_type.id), level=1)
     session.add(tool)
     session.commit()
     session.refresh(tool)
@@ -217,11 +222,12 @@ def test_aerial_discover_sets_aerial_scout(session: Session, monkeypatch):
     from datetime import datetime
 
     from app.models.tool import Tool
+    from app.models.tool_type import ToolType
     from app.models.tool_mission import ACTION_KEY_AERIAL_SCOUT, ToolMission
 
     site = _field_site(session, site_id=2_000_000_012)
     user = _user(session, username="drone_pilot")
-    tool = Tool(
+    tool_type = ToolType(
         name="Aerial Scout",
         category="1 site_discovery",
         scientific_tool="drone",
@@ -229,6 +235,10 @@ def test_aerial_discover_sets_aerial_scout(session: Session, monkeypatch):
         rarity=2,
         action="Launch",
     )
+    session.add(tool_type)
+    session.commit()
+    session.refresh(tool_type)
+    tool = Tool(tool_type_id=int(tool_type.id), level=1)
     session.add(tool)
     session.commit()
     session.refresh(tool)
@@ -281,6 +291,7 @@ def test_site_summary_includes_viewer_discovery(session: Session):
     from datetime import datetime, timezone
 
     from app.models.tool import Tool
+    from app.models.tool_type import ToolType
     from app.models.tool_mission import ACTION_KEY_AERIAL_RECON, ToolMission
     from app.models.user_site import USER_SITE_ROLE_DISCOVERER, UserSite
     from app.services.site_service.list import get_site_by_id
@@ -288,7 +299,7 @@ def test_site_summary_includes_viewer_discovery(session: Session):
 
     site = _field_site(session, site_id=2_000_000_003)
     user = _user(session, username="viewer")
-    tool = Tool(
+    tool_type = ToolType(
         name="Aerial Recon",
         category="1 site_discovery",
         scientific_tool="helicopter",
@@ -296,6 +307,10 @@ def test_site_summary_includes_viewer_discovery(session: Session):
         rarity=5,
         action="Deploy",
     )
+    session.add(tool_type)
+    session.commit()
+    session.refresh(tool_type)
+    tool = Tool(tool_type_id=int(tool_type.id), level=1)
     session.add(tool)
     session.commit()
     session.refresh(tool)

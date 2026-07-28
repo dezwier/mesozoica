@@ -4,12 +4,13 @@ from sqlmodel import Session, select
 
 from app.core.security import create_access_token
 from app.models.tool import Tool
+from app.models.tool_type import ToolType
 from app.models.user import User
-from app.models.user_tool import UserTool
+from app.models.user_tool import USER_TOOL_ACTION_OWNED, UserTool
 
 
-def _seed_tool(session: Session, *, name: str = "Orbit Survey") -> Tool:
-    row = Tool(
+def _seed_tool(session: Session, *, name: str = "Orbit Survey") -> ToolType:
+    row = ToolType(
         name=name,
         category="1 site_discovery",
         scientific_tool="satellite imagery",
@@ -46,12 +47,23 @@ def _auth_headers(user: User) -> dict[str, str]:
     return {"Authorization": f"Bearer {token}"}
 
 
-def _grant(session: Session, *, user_id: int, tool_id: int, level: int = 1) -> UserTool:
-    row = UserTool(user_id=user_id, tool_id=tool_id, level=level)
-    session.add(row)
+def _grant(
+    session: Session, *, user_id: int, tool_id: int, level: int = 1
+) -> Tool:
+    """Grant ownership of catalog tool_type ``tool_id`` via instance + owned event."""
+    instance = Tool(tool_type_id=tool_id, level=level)
+    session.add(instance)
+    session.flush()
+    session.add(
+        UserTool(
+            user_id=user_id,
+            tool_id=int(instance.id),
+            action=USER_TOOL_ACTION_OWNED,
+        )
+    )
     session.commit()
-    session.refresh(row)
-    return row
+    session.refresh(instance)
+    return instance
 
 
 def test_list_tools_anonymous_empty(client, session):
@@ -154,7 +166,7 @@ def test_get_tool_not_found(client):
 def test_list_tools_search(client, session):
     _seed_tool(session)
     session.add(
-        Tool(
+        ToolType(
             name="Geo Hammer",
             category="4 excavation",
             scientific_tool="geological hammer",
@@ -200,7 +212,7 @@ def test_list_tools_category_requires_seed(client, session):
 
 def test_list_tools_sort_by_category_sequence(client, session):
     session.add(
-        Tool(
+        ToolType(
             name="Zeta Tool",
             category="10 reconstruction",
             scientific_tool="z",
@@ -209,7 +221,7 @@ def test_list_tools_sort_by_category_sequence(client, session):
         )
     )
     session.add(
-        Tool(
+        ToolType(
             name="Alpha Tool",
             category="2 fossil_discovery",
             scientific_tool="a",
@@ -218,7 +230,7 @@ def test_list_tools_sort_by_category_sequence(client, session):
         )
     )
     session.add(
-        Tool(
+        ToolType(
             name="Beta Tool",
             category="2 fossil_discovery",
             scientific_tool="b",
@@ -249,7 +261,7 @@ def test_list_tools_sort_by_category_sequence(client, session):
 def test_list_tools_filter_by_category(client, session):
     _seed_tool(session)
     session.add(
-        Tool(
+        ToolType(
             name="Geo Hammer",
             category="4 excavation",
             scientific_tool="geological hammer",
@@ -276,7 +288,7 @@ def test_list_tools_filter_by_category(client, session):
 
 
 def test_list_tool_categories_owned_only(client, session):
-    owned = Tool(
+    owned = ToolType(
         name="Zeta Tool",
         category="10 reconstruction",
         scientific_tool="z",
@@ -285,7 +297,7 @@ def test_list_tool_categories_owned_only(client, session):
     )
     session.add(owned)
     session.add(
-        Tool(
+        ToolType(
             name="Alpha Tool",
             category="2 fossil_discovery",
             scientific_tool="a",
@@ -310,7 +322,7 @@ def test_list_tool_categories_owned_only(client, session):
 
 def test_list_tool_categories_show_all(client, session):
     session.add(
-        Tool(
+        ToolType(
             name="Zeta Tool",
             category="10 reconstruction",
             scientific_tool="z",
@@ -319,7 +331,7 @@ def test_list_tool_categories_show_all(client, session):
         )
     )
     session.add(
-        Tool(
+        ToolType(
             name="Alpha Tool",
             category="2 fossil_discovery",
             scientific_tool="a",
@@ -356,11 +368,14 @@ def test_collect_tool_creates_user_tool(client, session):
     assert body["id"] == tool.id
     assert body["level"] == 1
 
-    rows = session.exec(select(UserTool)).all()
-    assert len(rows) == 1
-    assert rows[0].user_id == admin.id
-    assert rows[0].tool_id == tool.id
-    assert rows[0].level == 1
+    events = session.exec(select(UserTool)).all()
+    assert len(events) == 1
+    assert events[0].user_id == admin.id
+    assert events[0].action == USER_TOOL_ACTION_OWNED
+    instance = session.get(Tool, events[0].tool_id)
+    assert instance is not None
+    assert instance.tool_type_id == tool.id
+    assert instance.level == 1
 
 
 def test_collect_tool_idempotent(client, session):
@@ -375,9 +390,11 @@ def test_collect_tool_idempotent(client, session):
     assert response.status_code == 200
     assert response.json()["level"] == 3
 
-    rows = session.exec(select(UserTool)).all()
-    assert len(rows) == 1
-    assert rows[0].level == 3
+    events = session.exec(select(UserTool)).all()
+    assert len(events) == 1
+    instance = session.get(Tool, events[0].tool_id)
+    assert instance is not None
+    assert instance.level == 3
 
 
 def test_collect_tool_requires_admin(client, session):

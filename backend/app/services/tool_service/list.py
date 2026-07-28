@@ -1,4 +1,4 @@
-"""Query helpers for tool read APIs."""
+"""Query helpers for tool read APIs (catalog = tool_type)."""
 
 from __future__ import annotations
 
@@ -11,9 +11,10 @@ from sqlmodel import Session, col, func as sqlmodel_func, select
 
 from app.core.exceptions import NotFoundError, ValidationError
 from app.models.tool import Tool
-from app.models.user_tool import UserTool
+from app.models.tool_type import ToolType
+from app.models.user_tool import USER_TOOL_ACTION_OWNED, UserTool
 from app.services.tool_image_service.sync import CURATED_MEDIA_PATH
-from app.services.tool_service.collect import ownership_levels_for_tools
+from app.services.tool_service.collect import ownership_levels_for_tool_types
 
 SortOption = Literal["name", "random", "category"]
 _MAX_SEED_LEN = 64
@@ -50,10 +51,10 @@ def list_tools(
     has_custom_image: bool = False,
     viewer_user_id: int | None = None,
     show_all: bool = False,
-) -> tuple[list[tuple[Tool, int | None]], int]:
-    """Return paginated (tool, level) rows.
+) -> tuple[list[tuple[ToolType, int | None]], int]:
+    """Return paginated (tool_type, level) rows.
 
-    When ``show_all`` is False, only tools owned by ``viewer_user_id`` are
+    When ``show_all`` is False, only types owned by ``viewer_user_id`` are
     returned (empty if no viewer). When True, the full catalog is returned and
     ``level`` is populated for the viewer when present.
     """
@@ -97,21 +98,23 @@ def list_tools(
     else:
         rows = list(
             session.exec(
-                filtered.order_by(Tool.name).offset(capped_offset).limit(capped_limit)
+                filtered.order_by(ToolType.name)
+                .offset(capped_offset)
+                .limit(capped_limit)
             ).all()
         )
 
     levels: dict[int, int] = {}
     if viewer_user_id is not None:
-        levels = ownership_levels_for_tools(
+        levels = ownership_levels_for_tool_types(
             session,
             user_id=viewer_user_id,
-            tool_ids=[int(row.id) for row in rows if row.id is not None],
+            tool_type_ids=[int(row.id) for row in rows if row.id is not None],
         )
 
-    return [(row, levels.get(int(row.id)) if row.id is not None else None) for row in rows], int(
-        total
-    )
+    return [
+        (row, levels.get(int(row.id)) if row.id is not None else None) for row in rows
+    ], int(total)
 
 
 def list_tool_categories(
@@ -124,13 +127,17 @@ def list_tool_categories(
     if not show_all and viewer_user_id is None:
         return []
 
-    stmt = select(Tool.category).distinct()
+    stmt = select(ToolType.category).distinct()
     if not show_all:
         assert viewer_user_id is not None
         stmt = (
-            select(Tool.category)
+            select(ToolType.category)
+            .join(Tool, col(Tool.tool_type_id) == col(ToolType.id))
             .join(UserTool, col(UserTool.tool_id) == col(Tool.id))
-            .where(col(UserTool.user_id) == viewer_user_id)
+            .where(
+                col(UserTool.user_id) == viewer_user_id,
+                col(UserTool.action) == USER_TOOL_ACTION_OWNED,
+            )
             .distinct()
         )
 
@@ -163,28 +170,33 @@ def _filtered_select(
     has_custom_image: bool,
     viewer_user_id: int | None,
 ):
-    stmt = select(Tool)
+    stmt = select(ToolType)
     if viewer_user_id is not None:
-        stmt = stmt.join(
-            UserTool,
-            (col(UserTool.tool_id) == col(Tool.id))
-            & (col(UserTool.user_id) == viewer_user_id),
+        stmt = (
+            stmt.join(Tool, col(Tool.tool_type_id) == col(ToolType.id))
+            .join(
+                UserTool,
+                (col(UserTool.tool_id) == col(Tool.id))
+                & (col(UserTool.user_id) == viewer_user_id)
+                & (col(UserTool.action) == USER_TOOL_ACTION_OWNED),
+            )
+            .distinct()
         )
     if has_custom_image:
         stmt = stmt.where(
-            col(Tool.main_image_url).is_not(None),
-            col(Tool.main_image_url).contains(CURATED_MEDIA_PATH),
+            col(ToolType.main_image_url).is_not(None),
+            col(ToolType.main_image_url).contains(CURATED_MEDIA_PATH),
         )
     if categories:
-        stmt = stmt.where(col(Tool.category).in_(categories))
+        stmt = stmt.where(col(ToolType.category).in_(categories))
     if normalized_q is not None:
         pattern = f"%{normalized_q}%"
         stmt = stmt.where(
             or_(
-                col(Tool.name).ilike(pattern),
-                col(Tool.scientific_tool).ilike(pattern),
-                col(Tool.category).ilike(pattern),
-                col(Tool.description).ilike(pattern),
+                col(ToolType.name).ilike(pattern),
+                col(ToolType.scientific_tool).ilike(pattern),
+                col(ToolType.category).ilike(pattern),
+                col(ToolType.description).ilike(pattern),
             )
         )
     return stmt
@@ -197,10 +209,10 @@ def _list_tools_random(
     seed: str,
     offset: int,
     limit: int,
-) -> list[Tool]:
+) -> list[ToolType]:
     dialect_name = session.get_bind().dialect.name
     if dialect_name == "postgresql":
-        order = func.md5(func.concat(Tool.id, seed))
+        order = func.md5(func.concat(ToolType.id, seed))
         rows = session.exec(
             filtered.order_by(order).offset(offset).limit(limit)
         ).all()
@@ -220,7 +232,7 @@ def _list_tools_by_category(
     seed: str,
     offset: int,
     limit: int,
-) -> list[Tool]:
+) -> list[ToolType]:
     """Order by numeric category sequence, then seed-stable shuffle within category."""
     all_rows = list(session.exec(filtered).all())
     all_rows.sort(
@@ -237,22 +249,22 @@ def get_tool_by_id(
     tool_id: int,
     *,
     viewer_user_id: int | None = None,
-) -> tuple[Tool, int | None]:
-    row = session.get(Tool, tool_id)
+) -> tuple[ToolType, int | None]:
+    row = session.get(ToolType, tool_id)
     if row is None:
         raise NotFoundError(f"Tool {tool_id} not found")
     level: int | None = None
     if viewer_user_id is not None and row.id is not None:
-        levels = ownership_levels_for_tools(
+        levels = ownership_levels_for_tool_types(
             session,
             user_id=viewer_user_id,
-            tool_ids=[int(row.id)],
+            tool_type_ids=[int(row.id)],
         )
         level = levels.get(int(row.id))
     return row, level
 
 
-def tool_to_summary(tool: Tool, level: int | None = None):
+def tool_to_summary(tool: ToolType, level: int | None = None):
     """Build ToolSummary with optional ownership level (imported lazily to avoid cycles)."""
     from app.schemas.tool import ToolSummary
 

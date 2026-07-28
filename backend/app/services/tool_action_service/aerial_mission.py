@@ -14,7 +14,6 @@ from app.core.exceptions import NotFoundError, ValidationError
 from app.models.data_source import DATA_SOURCE_FIELD
 from app.models.field_ensure_job import FieldEnsureJob
 from app.models.site import Site
-from app.models.tool import Tool
 from app.models.tool_mission import (
     AERIAL_MISSION_ACTION_KEYS,
     MISSION_STATUS_CANCELLED,
@@ -32,8 +31,9 @@ from app.models.tool_mission_event import (
     EVENT_TYPE_DISCOVER_SITE,
     ToolMissionEvent,
 )
+from app.models.tool_type import ToolType
 from app.models.user_site import USER_SITE_ROLE_DISCOVERER, UserSite
-from app.models.user_tool import UserTool
+from app.models.user_tool import USER_TOOL_ACTION_DEPLOYED, UserTool
 from app.services.site_service.field_ensure_queue import (
     STATUS_PENDING,
     STATUS_RUNNING,
@@ -54,7 +54,7 @@ from app.services.tool_action_service.route_geometry import (
     route_length_km,
     sample_along_route,
 )
-
+from app.services.tool_service.collect import resolve_owned_instance
 logger = logging.getLogger("aerial_mission")
 
 _ACTIVE_STATUSES = (MISSION_STATUS_ENSURING, MISSION_STATUS_FLYING)
@@ -91,21 +91,22 @@ def start_aerial_mission(
     origin_lat: float,
     origin_lon: float,
 ) -> ToolMission:
-    """Validate ownership + route, enqueue ensures, create ensuring mission."""
-    tool = session.get(Tool, tool_id)
-    if tool is None:
+    """Validate ownership + route, enqueue ensures, create ensuring mission.
+
+    ``tool_id`` is the catalog tool_type id (API-stable). The mission row stores
+    the owned tool instance id.
+    """
+    tool_type = session.get(ToolType, tool_id)
+    if tool_type is None:
         raise NotFoundError(f"Tool {tool_id} not found")
-    kind = kind_for_tool_name(tool.name)
+    kind = kind_for_tool_name(tool_type.name)
     action_key = kind.action_key
     label = kind.display_label
 
-    owned = session.exec(
-        select(UserTool).where(
-            col(UserTool.user_id) == user_id,
-            col(UserTool.tool_id) == tool_id,
-        )
-    ).first()
-    if owned is None:
+    instance = resolve_owned_instance(
+        session, user_id=user_id, tool_type_id=tool_id
+    )
+    if instance is None:
         raise ValidationError(f"You must own {label} to deploy it")
 
     active = session.exec(
@@ -152,7 +153,7 @@ def start_aerial_mission(
     now = _utcnow()
     mission = ToolMission(
         user_id=user_id,
-        tool_id=tool_id,
+        tool_id=int(instance.id),
         action_key=action_key,
         status=MISSION_STATUS_ENSURING,
         route_json=json.dumps(
@@ -170,6 +171,14 @@ def start_aerial_mission(
         updated_at=now,
     )
     session.add(mission)
+    session.add(
+        UserTool(
+            user_id=user_id,
+            tool_id=int(instance.id),
+            timestamp=datetime.now(timezone.utc),
+            action=USER_TOOL_ACTION_DEPLOYED,
+        )
+    )
     session.commit()
     session.refresh(mission)
     logger.info(

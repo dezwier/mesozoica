@@ -15,6 +15,7 @@ from app.models.fossil import Fossil
 from app.models.site import Site
 from app.models.site_type import SiteType
 from app.models.tool import Tool
+from app.models.tool_type import ToolType
 from app.models.tool_mission import ACTION_KEY_AERIAL_RECON, ToolMission
 from app.models.tool_mission_event import ToolMissionEvent
 from app.models.user import User
@@ -126,7 +127,7 @@ def _seed_field_world(session: Session) -> tuple[Site, Fossil, User]:
             status="done",
         )
     )
-    tool = Tool(
+    tool_type = ToolType(
         name="Scout Chopper",
         category="Aircraft",
         scientific_tool="Aerial recon",
@@ -134,6 +135,10 @@ def _seed_field_world(session: Session) -> tuple[Site, Fossil, User]:
         rarity=1,
         action="Deploy",
     )
+    session.add(tool_type)
+    session.commit()
+    session.refresh(tool_type)
+    tool = Tool(tool_type_id=int(tool_type.id), level=1)
     session.add(tool)
     session.commit()
     session.refresh(tool)

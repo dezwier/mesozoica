@@ -9,7 +9,7 @@ from dataclasses import dataclass, field
 from sqlmodel import Session, col, select
 
 from app.core.config import settings
-from app.models.tool import Tool
+from app.models.tool_type import ToolType
 from app.services.image_generation_service.client import (
     IMAGEN_ULTRA_COST_USD_PER_IMAGE,
     INTER_GENERATION_DELAY_SECONDS,
@@ -63,15 +63,15 @@ def _select_candidates(
     output_dir,
     existing_stems: set[str],
     tools: list[str] | None = None,
-) -> tuple[list[Tool], int]:
-    stmt = select(Tool).order_by(Tool.name)
+) -> tuple[list[ToolType], int]:
+    stmt = select(ToolType).order_by(ToolType.name)
     tool_filter = _normalize_tool_names(tools)
     if tool_filter is not None:
-        stmt = stmt.where(col(Tool.name).in_(sorted(tool_filter)))
+        stmt = stmt.where(col(ToolType.name).in_(sorted(tool_filter)))
 
     rows = session.exec(stmt).all()
     skipped_existing = 0
-    candidates: list[Tool] = []
+    candidates: list[ToolType] = []
     for tool in rows:
         if has_local_image(
             output_dir,

@@ -14,6 +14,7 @@ from app.models.site_type import SiteType
 from app.models.tool import Tool
 from app.models.tool_mission import ToolMission
 from app.models.tool_mission_event import ToolMissionEvent
+from app.models.tool_type import ToolType
 from app.models.user import User
 from app.models.user_auth_identity import UserAuthIdentity
 from app.models.user_device_token import UserDeviceToken
@@ -35,6 +36,7 @@ __all__ = [
     "Tool",
     "ToolMission",
     "ToolMissionEvent",
+    "ToolType",
     "User",
     "UserAuthIdentity",
     "UserDeviceToken",

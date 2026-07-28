@@ -10,7 +10,7 @@ from pathlib import Path
 
 from sqlmodel import Session, col, delete, select
 
-from app.models.tool import Tool
+from app.models.tool_type import ToolType
 
 logger = logging.getLogger("tool_sync")
 
@@ -67,8 +67,8 @@ def sync_tools(
     tool_filter = _normalize_tool_names(tools)
     counters = ToolSyncCounters()
 
-    existing_by_name: dict[str, Tool] = {
-        row.name: row for row in session.exec(select(Tool)).all()
+    existing_by_name: dict[str, ToolType] = {
+        row.name: row for row in session.exec(select(ToolType)).all()
     }
     seen_names: set[str] = set()
 
@@ -94,7 +94,7 @@ def sync_tools(
             logger.info('%s · INSERT', name)
             if not dry_run:
                 session.add(
-                    Tool(
+                    ToolType(
                         name=name,
                         category=category,
                         scientific_tool=scientific_tool,

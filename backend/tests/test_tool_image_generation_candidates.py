@@ -6,7 +6,7 @@ from pathlib import Path
 
 from sqlmodel import Session
 
-from app.models.tool import Tool
+from app.models.tool_type import ToolType
 from app.services.tool_image_generation_service.generate import _select_candidates
 
 
@@ -14,7 +14,7 @@ def test_select_candidates_skips_existing_local_image(
     session: Session, tmp_path: Path, monkeypatch
 ):
     session.add(
-        Tool(
+        ToolType(
             name="Orbit Survey",
             category="prospecting",
             scientific_tool="satellite imagery",
@@ -23,7 +23,7 @@ def test_select_candidates_skips_existing_local_image(
         )
     )
     session.add(
-        Tool(
+        ToolType(
             name="Geo Hammer",
             category="excavation",
             scientific_tool="geological hammer",
