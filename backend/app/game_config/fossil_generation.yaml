@@ -38,7 +38,7 @@ card_count_weights:
 
 # Burial depth buckets (weights = CDF masses via odd_depth). Sample uniform in [min_cm, max_cm].
 depth_buckets:
-  - weight: 0.20
+  - weight: 0.10
     min_cm: 0
     max_cm: 0
   - weight: 0.30
@@ -47,7 +47,7 @@ depth_buckets:
   - weight: 0.30
     min_cm: 51
     max_cm: 200
-  - weight: 0.10
+  - weight: 0.20
     min_cm: 201
     max_cm: 500
   - weight: 0.10
