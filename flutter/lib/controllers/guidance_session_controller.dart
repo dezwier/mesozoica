@@ -32,7 +32,7 @@ class GuidanceSessionController extends ChangeNotifier {
   ToolSummary? _tool;
   bool _activating = false;
   String? _message;
-  bool _requestEnterRotate = false;
+  bool _requestShowOnMap = false;
 
   int? _targetSiteId;
   SiteSummary? _targetSite;
@@ -54,7 +54,8 @@ class GuidanceSessionController extends ChangeNotifier {
   ToolSummary? get tool => _tool;
   bool get isActivating => _activating;
   String? get message => _message;
-  bool get requestEnterRotate => _requestEnterRotate;
+  /// True once after [activate] until the map consumes it (close overlays + follow).
+  bool get requestShowOnMap => _requestShowOnMap;
 
   int? get targetSiteId => _targetSiteId;
   SiteSummary? get targetSite => _targetSite;
@@ -85,9 +86,13 @@ class GuidanceSessionController extends ChangeNotifier {
     );
   }
 
-  /// Screen-relative arc center (0 = device forward).
-  double get rangeCenterScreenDeg {
-    final heading = _location?.headingDeg ?? 0;
+  /// Screen-relative arc center (0 = up on screen).
+  ///
+  /// In rotate mode, up is device forward so [rotateWithHeading] subtracts
+  /// heading. In north-fixed mode, up is north — pass false.
+  double rangeCenterScreenDeg({required bool rotateWithHeading}) {
+    final heading =
+        rotateWithHeading ? (_location?.headingDeg ?? 0.0) : 0.0;
     return GuidanceMath.rangeCenterScreenDeg(
       trueBearingDeg: _trueBearingDeg,
       deviceHeadingDeg: heading,
@@ -111,8 +116,8 @@ class GuidanceSessionController extends ChangeNotifier {
     location.headingListenable.addListener(_headingListener!);
   }
 
-  void consumeEnterRotateRequest() {
-    _requestEnterRotate = false;
+  void consumeShowOnMapRequest() {
+    _requestShowOnMap = false;
   }
 
   Future<void> activate(ToolSummary tool) async {
@@ -128,7 +133,7 @@ class GuidanceSessionController extends ChangeNotifier {
       _session = session;
       _kind = GuidanceToolKind.tryParseActionKey(session.actionKey) ?? kind;
       _tool = tool;
-      _requestEnterRotate = true;
+      _requestShowOnMap = true;
       _resetHint();
       _recomputeTarget(announceRetarget: false);
       _ensureTickTimer();
@@ -164,7 +169,8 @@ class GuidanceSessionController extends ChangeNotifier {
     if (hadSession) notifyListeners();
   }
 
-  void onRotateModeExited() {
+  /// Stop when the map leaves location-centered modes (not rotate↔north-fixed).
+  void onLocationCenteredExited() {
     if (isActive) {
       unawaited(stop());
     }

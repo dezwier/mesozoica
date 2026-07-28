@@ -9,9 +9,15 @@ import '../../models/guidance_tool_kind.dart';
 import '../../shell/map_chrome_insets.dart';
 import 'proximity_scanner_display.dart';
 
-/// Rotation-mode guidance chrome: direction glow, distance chip, retarget badge, timer.
+/// Guidance chrome (direction glow / proximity readout) for rotate or north-fixed follow.
 class GuidanceOverlay extends StatelessWidget {
-  const GuidanceOverlay({super.key});
+  const GuidanceOverlay({
+    super.key,
+    required this.rotateWithHeading,
+  });
+
+  /// True in AR rotate mode; false when the map is north-fixed.
+  final bool rotateWithHeading;
 
   @override
   Widget build(BuildContext context) {
@@ -24,6 +30,9 @@ class GuidanceOverlay extends StatelessWidget {
     final showDistance =
         guidance.showDistance && guidance.distanceLabel != null;
     final topInset = MapChromeInsets.top(context);
+    final focusFromBottom = rotateWithHeading
+        ? MapConfig.mapboxRotateFocusFromBottom
+        : 0.5;
 
     return Stack(
       children: [
@@ -32,16 +41,18 @@ class GuidanceOverlay extends StatelessWidget {
             child: CustomPaint(
               painter: _GuidanceRangePainter(
                 showRange: guidance.showNeedle && guidance.targetSite != null,
-                centerDeg: guidance.rangeCenterScreenDeg,
+                centerDeg: guidance.rangeCenterScreenDeg(
+                  rotateWithHeading: rotateWithHeading,
+                ),
                 rangeWidthDeg: guidance.rangeWidthDeg,
-                focusFromBottom: MapConfig.mapboxRotateFocusFromBottom,
+                focusFromBottom: focusFromBottom,
               ),
             ),
           ),
         ),
         if (showDistance && isProximityOnly)
           Align(
-            alignment: const Alignment(0, 0.55),
+            alignment: Alignment(0, rotateWithHeading ? 0.55 : 0.42),
             child: ProximityScannerDisplay(
               label: guidance.distanceLabel!,
             ),
@@ -50,7 +61,7 @@ class GuidanceOverlay extends StatelessWidget {
           Align(
             alignment: Alignment(
               0,
-              1 - (MapConfig.mapboxRotateFocusFromBottom * 2) + 0.18,
+              1 - (focusFromBottom * 2) + 0.18,
             ),
             child: ProximityScannerDisplay(
               label: guidance.distanceLabel!,

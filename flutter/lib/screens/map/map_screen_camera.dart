@@ -97,7 +97,6 @@ mixin _MapScreenCameraMixin on State<MapScreen> {
         _aerialFocusAnimating = false;
       });
       _mapboxCamera.clearPendingFollow();
-      context.read<GuidanceSessionController>().onRotateModeExited();
     } else {
       setState(() {
         _followAerialScout = false;
@@ -105,6 +104,8 @@ mixin _MapScreenCameraMixin on State<MapScreen> {
       });
       _mapboxCamera.clearPendingFollow();
     }
+    // Aerial draw owns the map — end any guidance session.
+    context.read<GuidanceSessionController>().onLocationCenteredExited();
 
     await WidgetsBinding.instance.endOfFrame;
     await WidgetsBinding.instance.endOfFrame;
@@ -140,7 +141,7 @@ mixin _MapScreenCameraMixin on State<MapScreen> {
         _aerialFocusAnimating = false;
       });
       _mapboxCamera.clearPendingFollow();
-      context.read<GuidanceSessionController>().onRotateModeExited();
+      context.read<GuidanceSessionController>().onLocationCenteredExited();
     } else {
       setState(() {
         _followUser = false;
@@ -239,7 +240,7 @@ mixin _MapScreenCameraMixin on State<MapScreen> {
         _followUser = false;
       });
       _mapboxCamera.clearPendingFollow();
-      context.read<GuidanceSessionController>().onRotateModeExited();
+      context.read<GuidanceSessionController>().onLocationCenteredExited();
       // MapboxFieldMap exits FollowPuck → Idle + north-fixed camera.
     } else if (_rotateMap) {
       // Rotate mode stays locked on the user — don't pan away for site taps.
@@ -247,6 +248,7 @@ mixin _MapScreenCameraMixin on State<MapScreen> {
     } else {
       setState(() => _followUser = false);
       _mapboxCamera.clearPendingFollow();
+      context.read<GuidanceSessionController>().onLocationCenteredExited();
     }
 
     // Wait for followUser=false / FollowPuck exit to settle before flyTo.
@@ -317,12 +319,15 @@ mixin _MapScreenCameraMixin on State<MapScreen> {
         _lastFollowedLocation = location;
       }
     });
-    context.read<GuidanceSessionController>().onRotateModeExited();
+    // Stay in guidance: north-fixed follow still shows compass / proximity.
     // MapboxFieldMap switches FollowPuck ↔ Idle from rotateWithHeading.
   }
 
-  void _ensureRotationMode() {
-    _enterRotationMode();
+  /// After activating a guidance tool: keep rotate if already in it, otherwise
+  /// center north-fixed on the user so overlays are visible.
+  void _ensureGuidanceVisibleOnMap() {
+    if (_rotateMap) return;
+    unawaited(_centerOnLocation(context.read<LocationService>()));
   }
 
   void _setInitialCamera({

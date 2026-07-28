@@ -96,13 +96,13 @@ class _MapScreenState extends State<MapScreen>
     final aerialDrawMode = aerialRecon.isDrawMode;
     final guidance = context.watch<GuidanceSessionController>();
 
-    if (guidance.requestEnterRotate) {
+    if (guidance.requestShowOnMap) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
         final g = context.read<GuidanceSessionController>();
-        if (!g.requestEnterRotate) return;
-        g.consumeEnterRotateRequest();
-        _ensureRotationMode();
+        if (!g.requestShowOnMap) return;
+        g.consumeShowOnMapRequest();
+        _ensureGuidanceVisibleOnMap();
       });
     }
 
@@ -186,6 +186,9 @@ class _MapScreenState extends State<MapScreen>
                           _followAerialScout = false;
                           _aerialFocusAnimating = false;
                         });
+                        context
+                            .read<GuidanceSessionController>()
+                            .onLocationCenteredExited();
                       }
                     },
                     onRotatePinchZoomOut: _exitToNorthFixedCentered,
@@ -450,8 +453,10 @@ class _MapScreenState extends State<MapScreen>
               )
             else if (aerialRecon.focusedMission != null)
               const AerialMissionFocusOverlay(),
-            if (_rotateMap && !aerialDrawMode && guidance.isActive)
-              const GuidanceOverlay(),
+            if (!aerialDrawMode &&
+                guidance.isActive &&
+                (_rotateMap || _followUser))
+              GuidanceOverlay(rotateWithHeading: _rotateMap),
           ],
         );
       },

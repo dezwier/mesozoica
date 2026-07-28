@@ -15,18 +15,18 @@ class ProximityScannerDisplay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final width = compact ? 168.0 : 248.0;
-    final pad = compact ? 10.0 : 14.0;
-    final screenPad = compact ? 10.0 : 14.0;
-    final titleSize = compact ? 8.0 : 10.0;
-    final valueSize = compact ? 22.0 : 34.0;
-    final unitSize = compact ? 9.0 : 11.0;
+    final width = compact ? 168.0 : 200.0;
+    final pad = compact ? 10.0 : 11.0;
+    final screenPad = compact ? 10.0 : 12.0;
+    final titleSize = compact ? 8.0 : 9.0;
+    final valueSize = compact ? 22.0 : 26.0;
+    final unitSize = compact ? 9.0 : 10.0;
 
     return SizedBox(
       width: width,
       child: DecoratedBox(
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(compact ? 10 : 14),
+          borderRadius: BorderRadius.circular(compact ? 10 : 12),
           gradient: const LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
@@ -69,7 +69,7 @@ class ProximityScannerDisplay extends StatelessWidget {
                   _Rivets(compact: compact),
                 ],
               ),
-              SizedBox(height: compact ? 8 : 10),
+              SizedBox(height: compact ? 8 : 8),
               _CrtScreen(
                 label: label,
                 screenPad: screenPad,
@@ -77,7 +77,7 @@ class ProximityScannerDisplay extends StatelessWidget {
                 unitSize: unitSize,
                 compact: compact,
               ),
-              SizedBox(height: compact ? 6 : 8),
+              SizedBox(height: compact ? 6 : 6),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -181,7 +181,7 @@ class _CrtScreen extends StatelessWidget {
             width: double.infinity,
             padding: EdgeInsets.symmetric(
               horizontal: screenPad,
-              vertical: compact ? 12 : 18,
+              vertical: compact ? 12 : 14,
             ),
             decoration: const BoxDecoration(
               gradient: LinearGradient(

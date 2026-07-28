@@ -35,6 +35,9 @@ class FieldSessionCoordinator extends ChangeNotifier {
   String? _pendingEnsureReason;
   VoidCallback? _locationListener;
   bool _openedEnsureDone = false;
+  /// Bumped on each foreground/background transition so a stale async
+  /// `_enterBackground` cannot stop GPS after a later resume.
+  int _lifecycleEpoch = 0;
 
   bool get isSessionActive => _sessionActive;
 
@@ -62,21 +65,25 @@ class FieldSessionCoordinator extends ChangeNotifier {
     locationService.removeListener(_locationListener!);
     locationService.addListener(_locationListener!);
     if (_lifecycle == AppLifecycleState.resumed) {
-      await _runResumeEnsure();
+      await _runResumeEnsure(_lifecycleEpoch);
     } else {
       await _syncSession();
     }
   }
 
-  Future<void> _runResumeEnsure() async {
+  Future<void> _runResumeEnsure(int epoch) async {
     await _syncSession();
+    if (epoch != _lifecycleEpoch) return;
     await _locationService?.onAppResumed();
+    if (epoch != _lifecycleEpoch) return;
     await _maybeEnsure(force: true, reason: reasonResume);
+    if (epoch != _lifecycleEpoch) return;
     _openedEnsureDone = true;
   }
 
   void _onLocationChanged(LocationService locationService) {
     if (!_sessionActive) return;
+    if (_lifecycle != AppLifecycleState.resumed) return;
 
     final pending = _pendingEnsureReason;
     if (pending != null && locationService.currentLocation != null) {
@@ -102,7 +109,8 @@ class FieldSessionCoordinator extends ChangeNotifier {
 
   void onForeground() {
     _lifecycle = AppLifecycleState.resumed;
-    unawaited(_runResumeEnsure());
+    final epoch = ++_lifecycleEpoch;
+    unawaited(_runResumeEnsure(epoch));
   }
 
   void onBackground() {
@@ -110,12 +118,16 @@ class FieldSessionCoordinator extends ChangeNotifier {
       return;
     }
     _lifecycle = AppLifecycleState.paused;
+    final epoch = ++_lifecycleEpoch;
     // Stop GPS while backgrounded; walked distance comes from Health instead.
-    unawaited(_enterBackground());
+    unawaited(_enterBackground(epoch));
   }
 
-  Future<void> _enterBackground() async {
+  Future<void> _enterBackground(int epoch) async {
     await _syncSession();
+    // A newer resume/background superseded this transition.
+    if (epoch != _lifecycleEpoch) return;
+    if (_lifecycle == AppLifecycleState.resumed) return;
     await _locationService?.onAppBackgrounded();
   }
 
@@ -195,9 +207,6 @@ class FieldSessionCoordinator extends ChangeNotifier {
     }
 
     _ensureInFlight = true;
-    if (reason != reasonScan) {
-      _lastEnsurePosition = location;
-    }
 
     try {
       final response = await _siteService.requestFieldSiteEnsure(
@@ -206,6 +215,11 @@ class FieldSessionCoordinator extends ChangeNotifier {
         radiusKm: nearbyRadiusKm,
         reason: reason,
       );
+      // Only advance the throttle on success so a failed/timeout request
+      // can retry on the next GPS tick once past the threshold again.
+      if (reason != reasonScan) {
+        _lastEnsurePosition = location;
+      }
       _logEnsure(
         'enqueued reason=$reason accepted=${response.accepted}',
       );

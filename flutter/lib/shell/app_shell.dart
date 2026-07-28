@@ -158,9 +158,9 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     if (!mounted) return;
     final guidance = _guidance;
     if (guidance == null) return;
-    // Activate requests rotate mode; close tool/profile overlays so the map
+    // Activate requests the map; close tool/profile overlays so the map
     // is visible (mirrors aerial draw-mode behavior).
-    if (guidance.requestEnterRotate && _anyOverlayOpen) {
+    if (guidance.requestShowOnMap && _anyOverlayOpen) {
       setState(() {
         _profileOpen = false;
         _catalogOpen = false;
@@ -443,6 +443,10 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
         );
         _showPendingCelebrationIfAny();
       case AppLifecycleState.inactive:
+        // Transient (Control Center, call banner, switcher). Keep GPS running
+        // so move-ensure and discovery stay alive; pausing here races resume
+        // and can leave location stuck off.
+        break;
       case AppLifecycleState.paused:
       case AppLifecycleState.hidden:
         _appInForeground = false;

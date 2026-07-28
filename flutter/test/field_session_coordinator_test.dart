@@ -17,6 +17,9 @@ class _FakeLocationService extends LocationService {
 
   LatLng? _location;
 
+  /// Optional delay inside [setFieldSession] to simulate slow GPS reconcile.
+  Future<void> Function()? setFieldSessionDelay;
+
   @override
   LatLng? get currentLocation => _location;
 
@@ -30,6 +33,10 @@ class _FakeLocationService extends LocationService {
     required bool active,
     bool backgroundPreferred = false,
   }) async {
+    final delay = setFieldSessionDelay;
+    if (delay != null) {
+      await delay();
+    }
     lastBackgroundPreferred = backgroundPreferred;
     notifyListeners();
   }
@@ -300,6 +307,53 @@ void main() {
     await pumpUntilIdle();
     expect(bodies.length, 2);
     expect(bodies.last['reason'], FieldSessionCoordinator.reasonResume);
+
+    coordinator.dispose();
+  });
+
+  test('stale background after resume does not stop GPS', () async {
+    final syncGate = Completer<void>();
+    final locationService = _FakeLocationService(const LatLng(51.0, 4.0))
+      ..setFieldSessionDelay = () => syncGate.future;
+
+    final coordinator = FieldSessionCoordinator(
+      siteService: SiteService(
+        client: MockClient((request) async {
+          return http.Response(
+            jsonEncode({
+              'accepted': true,
+              'existing_in_radius': 0,
+              'missing': 100,
+              'radius_km': 1.0,
+            }),
+            202,
+          );
+        }),
+      ),
+    );
+
+    coordinator.bind(locationService: locationService);
+    // Unblock the initial bind sync so the session can start.
+    syncGate.complete();
+    await pumpUntilIdle();
+    expect(locationService.backgroundedCalls, 0);
+
+    final backgroundGate = Completer<void>();
+    locationService.setFieldSessionDelay = () => backgroundGate.future;
+
+    // Simulate paused starting a slow _enterBackground (_syncSession).
+    coordinator.onBackground();
+    await pumpUntilIdle();
+    expect(locationService.backgroundedCalls, 0);
+
+    // Resume wins before the background sync finishes.
+    coordinator.onForeground();
+    backgroundGate.complete();
+    await pumpUntilIdle();
+
+    expect(locationService.backgroundedCalls, 0);
+    expect(locationService.resumedCalls, greaterThan(0));
+    expect(coordinator.isSessionActive, isTrue);
 
     coordinator.dispose();
   });
