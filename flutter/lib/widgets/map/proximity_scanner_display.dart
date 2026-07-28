@@ -2,25 +2,36 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../../shell/map_chrome_insets.dart';
+
 /// Vintage field-instrument readout for proximity distance bands.
 class ProximityScannerDisplay extends StatelessWidget {
   const ProximityScannerDisplay({
     super.key,
     required this.label,
     this.compact = false,
+    this.minutesLeft,
+    this.onStop,
   });
 
   final String label;
   final bool compact;
 
+  /// Remaining session minutes — shown on the full (non-compact) meter.
+  final int? minutesLeft;
+  final VoidCallback? onStop;
+
+  static const double fullWidth = 200;
+
   @override
   Widget build(BuildContext context) {
-    final width = compact ? 168.0 : 200.0;
+    final width = compact ? 168.0 : fullWidth;
     final pad = compact ? 10.0 : 11.0;
     final screenPad = compact ? 10.0 : 12.0;
     final titleSize = compact ? 8.0 : 9.0;
     final valueSize = compact ? 22.0 : 26.0;
     final unitSize = compact ? 9.0 : 10.0;
+    final showSessionControls = !compact && onStop != null;
 
     return SizedBox(
       width: width,
@@ -69,7 +80,7 @@ class ProximityScannerDisplay extends StatelessWidget {
                   _Rivets(compact: compact),
                 ],
               ),
-              SizedBox(height: compact ? 8 : 8),
+              const SizedBox(height: 8),
               _CrtScreen(
                 label: label,
                 screenPad: screenPad,
@@ -77,50 +88,177 @@ class ProximityScannerDisplay extends StatelessWidget {
                 unitSize: unitSize,
                 compact: compact,
               ),
-              SizedBox(height: compact ? 6 : 6),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'RANGE',
-                    style: TextStyle(
-                      fontFamily: 'Courier',
-                      fontFamilyFallback: const ['monospace'],
-                      fontSize: compact ? 7 : 8,
-                      letterSpacing: 1.2,
-                      color: const Color(0xFF9A8F78),
-                    ),
-                  ),
-                  Container(
-                    width: compact ? 6 : 8,
-                    height: compact ? 6 : 8,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: const Color(0xFF7CFF9A).withValues(alpha: 0.85),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFF7CFF9A).withValues(alpha: 0.55),
-                          blurRadius: 6,
-                        ),
-                      ],
-                    ),
-                  ),
-                  Text(
-                    'FIELD',
-                    style: TextStyle(
-                      fontFamily: 'Courier',
-                      fontFamilyFallback: const ['monospace'],
-                      fontSize: compact ? 7 : 8,
-                      letterSpacing: 1.2,
-                      color: const Color(0xFF9A8F78),
-                    ),
-                  ),
-                ],
-              ),
+              const SizedBox(height: 6),
+              if (showSessionControls)
+                _SessionFooter(
+                  minutesLeft: minutesLeft,
+                  onStop: onStop!,
+                )
+              else
+                _StatusFooter(compact: compact),
             ],
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Draggable proximity meter; defaults to center-bottom above map chrome.
+class DraggableProximityScanner extends StatefulWidget {
+  const DraggableProximityScanner({
+    super.key,
+    required this.label,
+    this.minutesLeft,
+    this.onStop,
+  });
+
+  final String label;
+  final int? minutesLeft;
+  final VoidCallback? onStop;
+
+  @override
+  State<DraggableProximityScanner> createState() =>
+      _DraggableProximityScannerState();
+}
+
+class _DraggableProximityScannerState extends State<DraggableProximityScanner> {
+  Offset _dragOffset = Offset.zero;
+
+  @override
+  Widget build(BuildContext context) {
+    final bottomClearance = MapChromeInsets.bottom(context) + 10;
+    return Padding(
+      padding: EdgeInsets.only(bottom: bottomClearance),
+      child: Align(
+        alignment: Alignment.bottomCenter,
+        child: Transform.translate(
+          offset: _dragOffset,
+          child: GestureDetector(
+            onPanUpdate: (details) {
+              setState(() => _dragOffset += details.delta);
+            },
+            child: ProximityScannerDisplay(
+              label: widget.label,
+              minutesLeft: widget.minutesLeft,
+              onStop: widget.onStop,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SessionFooter extends StatelessWidget {
+  const _SessionFooter({
+    required this.minutesLeft,
+    required this.onStop,
+  });
+
+  final int? minutesLeft;
+  final VoidCallback onStop;
+
+  @override
+  Widget build(BuildContext context) {
+    final time = minutesLeft == null ? '—' : '${minutesLeft}m';
+    return Row(
+      children: [
+        Text(
+          time,
+          style: const TextStyle(
+            fontFamily: 'Courier',
+            fontFamilyFallback: ['monospace'],
+            fontSize: 11,
+            letterSpacing: 1.0,
+            fontWeight: FontWeight.w700,
+            color: Color(0xFFC4B89A),
+          ),
+        ),
+        const Spacer(),
+        Container(
+          width: 7,
+          height: 7,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: const Color(0xFF7CFF9A).withValues(alpha: 0.85),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF7CFF9A).withValues(alpha: 0.55),
+                blurRadius: 6,
+              ),
+            ],
+          ),
+        ),
+        const Spacer(),
+        GestureDetector(
+          onTap: onStop,
+          behavior: HitTestBehavior.opaque,
+          child: const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+            child: Text(
+              'STOP',
+              style: TextStyle(
+                fontFamily: 'Courier',
+                fontFamilyFallback: ['monospace'],
+                fontSize: 11,
+                letterSpacing: 1.4,
+                fontWeight: FontWeight.w800,
+                color: Color(0xFFE07060),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _StatusFooter extends StatelessWidget {
+  const _StatusFooter({required this.compact});
+
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          'RANGE',
+          style: TextStyle(
+            fontFamily: 'Courier',
+            fontFamilyFallback: const ['monospace'],
+            fontSize: compact ? 7 : 8,
+            letterSpacing: 1.2,
+            color: const Color(0xFF9A8F78),
+          ),
+        ),
+        Container(
+          width: compact ? 6 : 8,
+          height: compact ? 6 : 8,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: const Color(0xFF7CFF9A).withValues(alpha: 0.85),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF7CFF9A).withValues(alpha: 0.55),
+                blurRadius: 6,
+              ),
+            ],
+          ),
+        ),
+        Text(
+          'FIELD',
+          style: TextStyle(
+            fontFamily: 'Courier',
+            fontFamilyFallback: const ['monospace'],
+            fontSize: compact ? 7 : 8,
+            letterSpacing: 1.2,
+            color: const Color(0xFF9A8F78),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -298,7 +436,6 @@ class _ScanlinePainter extends CustomPainter {
     for (var y = 0.0; y < size.height; y += 3) {
       canvas.drawLine(Offset(0, y), Offset(size.width, y), paint);
     }
-    // Soft horizontal glow band (fake CRT refresh).
     final bandY = size.height * (0.35 + 0.08 * math.sin(size.width));
     canvas.drawRect(
       Rect.fromLTWH(0, bandY, size.width, 10),

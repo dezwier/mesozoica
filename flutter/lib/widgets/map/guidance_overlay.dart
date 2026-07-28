@@ -5,7 +5,6 @@ import 'package:provider/provider.dart';
 
 import '../../config/map_config.dart';
 import '../../controllers/guidance_session_controller.dart';
-import '../../models/guidance_tool_kind.dart';
 import '../../shell/map_chrome_insets.dart';
 import 'proximity_scanner_display.dart';
 
@@ -26,9 +25,9 @@ class GuidanceOverlay extends StatelessWidget {
 
     final remaining = guidance.remaining;
     final minutesLeft = remaining?.inMinutes.clamp(0, 999);
-    final isProximityOnly = guidance.kind == GuidanceToolKind.proximityScanner;
     final showDistance =
         guidance.showDistance && guidance.distanceLabel != null;
+    final showSessionChrome = !showDistance;
     final topInset = MapChromeInsets.top(context);
     final focusFromBottom = rotateWithHeading
         ? MapConfig.mapboxRotateFocusFromBottom
@@ -50,23 +49,12 @@ class GuidanceOverlay extends StatelessWidget {
             ),
           ),
         ),
-        if (showDistance && isProximityOnly)
-          Align(
-            alignment: Alignment(0, rotateWithHeading ? 0.55 : 0.42),
-            child: ProximityScannerDisplay(
-              label: guidance.distanceLabel!,
-            ),
-          )
-        else if (showDistance)
-          Align(
-            alignment: Alignment(
-              0,
-              1 - (focusFromBottom * 2) + 0.18,
-            ),
-            child: ProximityScannerDisplay(
-              label: guidance.distanceLabel!,
-              compact: true,
-            ),
+        if (showDistance)
+          DraggableProximityScanner(
+            key: ValueKey(guidance.session?.sessionId ?? 0),
+            label: guidance.distanceLabel!,
+            minutesLeft: minutesLeft,
+            onStop: () => guidance.stop(),
           ),
         if (guidance.showRetargetBadge)
           Positioned(
@@ -75,18 +63,19 @@ class GuidanceOverlay extends StatelessWidget {
             right: 16,
             child: Center(child: _RetargetBadge()),
           ),
-        Positioned(
-          top: topInset + 8,
-          left: 16,
-          right: 16,
-          child: Center(
-            child: _SessionChrome(
-              title: guidance.kind?.toolName ?? 'Guidance',
-              minutesLeft: minutesLeft,
-              onStop: () => guidance.stop(),
+        if (showSessionChrome)
+          Positioned(
+            top: topInset + 8,
+            left: 16,
+            right: 16,
+            child: Center(
+              child: _SessionChrome(
+                title: guidance.kind?.toolName ?? 'Guidance',
+                minutesLeft: minutesLeft,
+                onStop: () => guidance.stop(),
+              ),
             ),
           ),
-        ),
       ],
     );
   }
