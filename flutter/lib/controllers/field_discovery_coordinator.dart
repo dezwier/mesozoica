@@ -13,7 +13,9 @@ import '../utils/discovery_haptic.dart';
 
 /// Auto-discovers nearby field sites on enter into [autoDiscoverRadiusM].
 ///
-/// Each walk-in triggers one discover attempt. A chance miss does not retry
+/// Discovery requires a real walk-in: the user must be observed outside the
+/// radius, then cross into it. Opening the app (or refreshing the cache) while
+/// already standing inside does not discover. A chance miss does not retry
 /// until the user leaves and re-enters the radius.
 class FieldDiscoveryCoordinator extends ChangeNotifier {
   FieldDiscoveryCoordinator({SiteService? siteService})
@@ -37,6 +39,9 @@ class FieldDiscoveryCoordinator extends ChangeNotifier {
   LatLng? _lastCachePosition;
   LatLng? _lastHandledLocation;
   final Set<int> _insideRadiusSiteIds = {};
+  /// Sites observed while the user was outside their discover radius.
+  /// Required before an inside fix can count as a walk-in enter.
+  final Set<int> _seenOutsideSiteIds = {};
   final Set<int> _attemptedThisVisitSiteIds = {};
   final Set<int> _inFlightSiteIds = {};
   final Map<int, DateTime> _retryAfterBySiteId = {};
@@ -123,6 +128,7 @@ class FieldDiscoveryCoordinator extends ChangeNotifier {
     if (site.latitude == null || site.longitude == null) return;
     _attemptedThisVisitSiteIds.remove(site.siteId);
     _insideRadiusSiteIds.remove(site.siteId);
+    _seenOutsideSiteIds.remove(site.siteId);
     _retryAfterBySiteId.remove(site.siteId);
     _discoverableCache.removeWhere((s) => s.siteId == site.siteId);
     _discoverableCache.add(site);
@@ -141,6 +147,7 @@ class FieldDiscoveryCoordinator extends ChangeNotifier {
     _lastCachePosition = null;
     _lastHandledLocation = null;
     _insideRadiusSiteIds.clear();
+    _seenOutsideSiteIds.clear();
     _attemptedThisVisitSiteIds.clear();
     _inFlightSiteIds.clear();
     _retryAfterBySiteId.clear();
@@ -270,6 +277,7 @@ class FieldDiscoveryCoordinator extends ChangeNotifier {
       final inside = distanceM <= autoDiscoverRadiusM;
 
       if (!inside) {
+        _seenOutsideSiteIds.add(site.siteId);
         if (_insideRadiusSiteIds.remove(site.siteId)) {
           _attemptedThisVisitSiteIds.remove(site.siteId);
           _log(
@@ -292,12 +300,22 @@ class FieldDiscoveryCoordinator extends ChangeNotifier {
         continue;
       }
 
-      // Enter edge: first fix inside, or re-enter after exit.
+      // Already here on first sight (app open / cache load) — not a walk-in.
+      if (!_seenOutsideSiteIds.contains(site.siteId)) {
+        _log(
+          'baseline inside site_id=${site.siteId} '
+          'distance_m=${distanceM.round()} — walk out and in to discover',
+        );
+        continue;
+      }
+
+      // Walk-in enter: previously outside, now inside.
       if (_attemptedThisVisitSiteIds.contains(site.siteId)) continue;
       if (_inFlightSiteIds.contains(site.siteId)) continue;
       final retryAfter = _retryAfterBySiteId[site.siteId];
       if (retryAfter != null && retryAfter.isAfter(now)) continue;
 
+      _seenOutsideSiteIds.remove(site.siteId);
       _inFlightSiteIds.add(site.siteId);
       try {
         final updated = await _siteService.discoverSite(
@@ -327,11 +345,13 @@ class FieldDiscoveryCoordinator extends ChangeNotifier {
           // Allow another enter-attempt after retry window: treat as not yet
           // rolled this visit, and clear inside so the next GPS tick can re-enter.
           _insideRadiusSiteIds.remove(site.siteId);
+          _seenOutsideSiteIds.add(site.siteId);
           _log('discover failed site_id=${site.siteId} error=$error');
         }
       } catch (error) {
         _retryAfterBySiteId[site.siteId] = now.add(discoverFailRetry);
         _insideRadiusSiteIds.remove(site.siteId);
+        _seenOutsideSiteIds.add(site.siteId);
         _log('discover failed site_id=${site.siteId} error=$error');
       } finally {
         _inFlightSiteIds.remove(site.siteId);

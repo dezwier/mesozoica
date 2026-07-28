@@ -58,6 +58,32 @@ Map<String, dynamic> _siteJson({
   };
 }
 
+Map<String, dynamic> _discoverResponseJson({
+  required int siteId,
+  required double lat,
+  required double lon,
+}) {
+  return {
+    'site': _siteJson(
+      siteId: siteId,
+      lat: lat,
+      lon: lon,
+      status: 'discovered',
+    ),
+    'status': 'done',
+    'onboarded': true,
+    'generated': false,
+    'fossils_ready': true,
+    'surface_fossils': <dynamic>[],
+  };
+}
+
+/// ~200 m south of (51.0, 4.0) — outside the 50 m discover radius.
+const _outside = LatLng(50.9982, 4.0000);
+
+/// ~11 m from (51.0, 4.0) — inside the discover radius.
+const _inside = LatLng(51.0001, 4.0000);
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -77,7 +103,55 @@ void main() {
     await Future<void>.delayed(const Duration(milliseconds: 40));
   }
 
-  test('auto-discovers when within 50m and ignores farther sites', () async {
+  test('does not discover when opening already inside radius', () async {
+    final discoverCalls = <int>[];
+    final coordinator = FieldDiscoveryCoordinator(
+      siteService: SiteService(
+        client: MockClient((request) async {
+          if (request.url.path.contains('nearby-discoverable')) {
+            return http.Response(
+              jsonEncode({
+                'items': [
+                  _siteJson(siteId: 1, lat: 51.0000, lon: 4.0000),
+                ],
+                'total': 1,
+                'generated': 0,
+                'radius_km': 1.0,
+              }),
+              200,
+            );
+          }
+          if (request.method == 'POST' &&
+              request.url.path.contains('/discover')) {
+            discoverCalls.add(int.parse(request.url.pathSegments[3]));
+            return http.Response(
+              jsonEncode(
+                _discoverResponseJson(siteId: 1, lat: 51.0, lon: 4.0),
+              ),
+              200,
+            );
+          }
+          return http.Response('{}', 404);
+        }),
+      ),
+    );
+
+    final locationService = _FakeLocationService(_inside);
+    coordinator.bind(locationService: locationService);
+    await pumpUntilIdle();
+
+    expect(discoverCalls, isEmpty);
+    expect(coordinator.pendingCelebration, isNull);
+
+    // Small move still inside — still not a walk-in.
+    locationService.setLocation(const LatLng(51.00005, 4.0000));
+    await pumpUntilIdle();
+    expect(discoverCalls, isEmpty);
+
+    coordinator.dispose();
+  });
+
+  test('auto-discovers on walk-in and ignores farther sites', () async {
     final discoverCalls = <int>[];
     final coordinator = FieldDiscoveryCoordinator(
       siteService: SiteService(
@@ -102,7 +176,7 @@ void main() {
             discoverCalls.add(siteId);
             return http.Response(
               jsonEncode(
-                _siteJson(siteId: siteId, lat: 51.0, lon: 4.0, status: 'discovered'),
+                _discoverResponseJson(siteId: siteId, lat: 51.0, lon: 4.0),
               ),
               200,
             );
@@ -112,13 +186,16 @@ void main() {
       ),
     );
 
-    // ~11m from site 1, ~1.1km from site 2
-    final locationService = _FakeLocationService(const LatLng(51.0001, 4.0000));
+    final locationService = _FakeLocationService(_outside);
     coordinator.bind(locationService: locationService);
+    await pumpUntilIdle();
+    expect(discoverCalls, isEmpty);
+
+    locationService.setLocation(_inside);
     await pumpUntilIdle();
 
     expect(discoverCalls, [1]);
-    expect(coordinator.pendingCelebration?.siteId, 1);
+    expect(coordinator.pendingCelebration?.site.siteId, 1);
 
     coordinator.dispose();
   });
@@ -146,7 +223,7 @@ void main() {
             discoverCount++;
             return http.Response(
               jsonEncode(
-                _siteJson(siteId: 7, lat: 51.0, lon: 4.0, status: 'discovered'),
+                _discoverResponseJson(siteId: 7, lat: 51.0, lon: 4.0),
               ),
               200,
             );
@@ -156,8 +233,11 @@ void main() {
       ),
     );
 
-    final locationService = _FakeLocationService(const LatLng(51.0001, 4.0000));
+    final locationService = _FakeLocationService(_outside);
     coordinator.bind(locationService: locationService);
+    await pumpUntilIdle();
+
+    locationService.setLocation(_inside);
     await pumpUntilIdle();
     expect(discoverCount, 1);
 
@@ -203,7 +283,7 @@ void main() {
             }
             return http.Response(
               jsonEncode(
-                _siteJson(siteId: 9, lat: 51.0, lon: 4.0, status: 'discovered'),
+                _discoverResponseJson(siteId: 9, lat: 51.0, lon: 4.0),
               ),
               200,
             );
@@ -213,8 +293,11 @@ void main() {
       ),
     );
 
-    final locationService = _FakeLocationService(const LatLng(51.0001, 4.0000));
+    final locationService = _FakeLocationService(_outside);
     coordinator.bind(locationService: locationService);
+    await pumpUntilIdle();
+
+    locationService.setLocation(_inside);
     await pumpUntilIdle();
     expect(discoverCount, 1);
     expect(coordinator.pendingCelebration, isNull);
@@ -224,15 +307,15 @@ void main() {
     await pumpUntilIdle();
     expect(discoverCount, 1);
 
-    // Exit beyond ~50 m (~200 m south).
-    locationService.setLocation(const LatLng(50.9982, 4.0000));
+    // Exit beyond ~50 m.
+    locationService.setLocation(_outside);
     await pumpUntilIdle();
 
     // Re-enter — second attempt succeeds.
-    locationService.setLocation(const LatLng(51.0001, 4.0000));
+    locationService.setLocation(_inside);
     await pumpUntilIdle();
     expect(discoverCount, 2);
-    expect(coordinator.pendingCelebration?.siteId, 9);
+    expect(coordinator.pendingCelebration?.site.siteId, 9);
 
     coordinator.dispose();
   });
@@ -272,8 +355,11 @@ void main() {
       ),
     );
 
-    final locationService = _FakeLocationService(const LatLng(51.0001, 4.0000));
+    final locationService = _FakeLocationService(_outside);
     coordinator.bind(locationService: locationService);
+    await pumpUntilIdle();
+
+    locationService.setLocation(_inside);
     await pumpUntilIdle();
     expect(discoverCount, 1);
     expect(coordinator.pendingCelebration, isNull);
@@ -307,12 +393,7 @@ void main() {
             discoverCalls.add(siteId);
             return http.Response(
               jsonEncode(
-                _siteJson(
-                  siteId: siteId,
-                  lat: 51.0,
-                  lon: 4.0,
-                  status: 'discovered',
-                ),
+                _discoverResponseJson(siteId: siteId, lat: 51.0, lon: 4.0),
               ),
               200,
             );
@@ -322,7 +403,7 @@ void main() {
       ),
     );
 
-    final locationService = _FakeLocationService(const LatLng(51.0001, 4.0000));
+    final locationService = _FakeLocationService(_outside);
     coordinator.bind(locationService: locationService);
     await pumpUntilIdle();
     expect(discoverCalls, isEmpty);
@@ -335,16 +416,21 @@ void main() {
         status: 'hidden',
       ),
     ]);
-    locationService.setLocation(const LatLng(51.00005, 4.0000));
+    // Still outside after ingest — marks seen-outside on next check.
+    locationService.setLocation(const LatLng(50.9983, 4.0000));
+    await pumpUntilIdle();
+    expect(discoverCalls, isEmpty);
+
+    locationService.setLocation(_inside);
     await pumpUntilIdle();
 
     expect(discoverCalls, [42]);
-    expect(coordinator.pendingCelebration?.siteId, 42);
+    expect(coordinator.pendingCelebration?.site.siteId, 42);
 
     coordinator.dispose();
   });
 
-  test('hiding a site allows rediscovery on the next move', () async {
+  test('hiding a site allows rediscovery after walk-out and walk-in', () async {
     final discoverCalls = <int>[];
     final coordinator = FieldDiscoveryCoordinator(
       siteService: SiteService(
@@ -368,12 +454,7 @@ void main() {
             discoverCalls.add(siteId);
             return http.Response(
               jsonEncode(
-                _siteJson(
-                  siteId: siteId,
-                  lat: 51.0,
-                  lon: 4.0,
-                  status: 'discovered',
-                ),
+                _discoverResponseJson(siteId: siteId, lat: 51.0, lon: 4.0),
               ),
               200,
             );
@@ -383,8 +464,11 @@ void main() {
       ),
     );
 
-    final locationService = _FakeLocationService(const LatLng(51.0001, 4.0000));
+    final locationService = _FakeLocationService(_outside);
     coordinator.bind(locationService: locationService);
+    await pumpUntilIdle();
+
+    locationService.setLocation(_inside);
     await pumpUntilIdle();
     expect(discoverCalls, [5]);
 
@@ -398,10 +482,18 @@ void main() {
       ),
     );
 
+    // Still standing inside after hide — baseline only, no discover.
     locationService.setLocation(const LatLng(51.00005, 4.0000));
     await pumpUntilIdle();
+    expect(discoverCalls, [5]);
+
+    // Walk out, then in again.
+    locationService.setLocation(_outside);
+    await pumpUntilIdle();
+    locationService.setLocation(_inside);
+    await pumpUntilIdle();
     expect(discoverCalls, [5, 5]);
-    expect(coordinator.pendingCelebration?.siteId, 5);
+    expect(coordinator.pendingCelebration?.site.siteId, 5);
 
     coordinator.dispose();
   });
