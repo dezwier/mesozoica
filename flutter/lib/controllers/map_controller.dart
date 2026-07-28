@@ -10,6 +10,7 @@ import '../controllers/catalog_mode_controller.dart';
 import '../models/site.dart';
 import '../models/site_map_filters.dart';
 import '../services/site_service.dart';
+import '../widgets/map/map_visible_bounds.dart';
 
 /// Separate map caches so archive / field-linked / field-show-all switch
 /// instantly like archive ↔ field, without reloading.
@@ -27,6 +28,10 @@ class _CatalogSnapshot {
   int maxFieldSiteId = 0;
   String? seed;
   int loadSeq = 0;
+  /// When the snapshot last finished loading (archive soft-refresh TTL).
+  DateTime? loadedAt;
+  /// Soft archive reload: replace geoSites on the first page instead of append.
+  bool replaceOnNextPage = false;
 
   void reset({required bool clearSeed}) {
     geoSites = [];
@@ -38,6 +43,8 @@ class _CatalogSnapshot {
     loading = false;
     error = null;
     maxFieldSiteId = 0;
+    loadedAt = null;
+    replaceOnNextPage = false;
     if (clearSeed) {
       seed = null;
     }
@@ -53,6 +60,8 @@ class MapController extends ChangeNotifier {
 
   static const pageSize = 500;
   static const fieldPollInterval = Duration(seconds: 60);
+  /// Archive catalog changes about weekly; soft-refresh without blanking toggles.
+  static const archiveCacheTtl = Duration(days: 7);
   /// Aggressive polling while a generation job is expected to be writing.
   static const _fieldPollBurstDelays = [
     Duration(seconds: 3),
@@ -85,6 +94,8 @@ class MapController extends ChangeNotifier {
   bool _showAllFieldSites = false;
   /// Last viewport used for admin show-all loads (reused by refresh/poll).
   LatLngBounds? _showAllBounds;
+  /// Bumped when a soft archive reload replaces the list (force marker rebuild).
+  int _archiveEpoch = 0;
 
   _MapCacheKey get _cacheKey {
     if (_dataSource == CatalogDataSource.archive) {
@@ -123,9 +134,12 @@ class MapController extends ChangeNotifier {
 
   bool get showAllFieldSites => _showAllFieldSites;
 
+  /// Included in the map marker dataset key after archive soft-refresh replace.
+  int get archiveEpoch => _archiveEpoch;
+
   /// Toggle admin show-all without wiping the other field cache (same idea as
   /// archive ↔ field). Show-all loads are viewport-scoped via
-  /// [loadShowAllInBounds] — enabling does not fetch the global catalog.
+  /// [loadShowAllInBounds] — enabling reuses a warm cache when bounds match.
   void setShowAllFieldSites(bool value) {
     if (_showAllFieldSites == value) return;
     _showAllFieldSites = value;
@@ -139,15 +153,17 @@ class MapController extends ChangeNotifier {
     _stopFieldPollBackoff();
 
     if (value) {
+      // Reuse fieldShowAll snapshot; [_reloadShowAllViewport] / loadShowAllInBounds
+      // no-ops when bounds are still valid and the snap is complete.
       final snap = _snap;
-      snap.reset(clearSeed: false);
-      snap.loadSeq++;
-      _showAllBounds = null;
+      if (snap.loadingComplete) {
+        _startFieldPoll(snap.loadSeq);
+      }
       notifyListeners();
       return;
     }
 
-    _showAllBounds = null;
+    // Keep _showAllBounds so re-enable can reuse without a full refetch.
     final snap = _snap;
     if (snap.loadingComplete) {
       _startFieldPoll(snap.loadSeq);
@@ -163,8 +179,14 @@ class MapController extends ChangeNotifier {
   }
 
   /// Admin show-all: replace markers with field sites inside [bounds].
+  ///
+  /// Keeps the current [geoSites] visible while the new viewport loads —
+  /// only mode switches (show-all ↔ linked, archive ↔ field) wipe markers.
   void loadShowAllInBounds(LatLngBounds bounds, {bool force = false}) {
     if (!_isFieldMode || !_showAllFieldSites) return;
+    final safe = clampBoundsForSitesApi(bounds);
+    if (safe == null) return;
+    bounds = safe;
     final snap = _snap;
     if (!force && snap.loading) return;
     if (!force &&
@@ -180,6 +202,7 @@ class MapController extends ChangeNotifier {
     snap.loading = true;
     snap.loadingComplete = false;
     snap.error = null;
+    // Do not clear geoSites — keep current markers until pages arrive.
     notifyListeners();
     unawaited(_loadShowAllPages(seq, bounds));
   }
@@ -241,6 +264,10 @@ class MapController extends ChangeNotifier {
         _startFieldPoll(snap.loadSeq);
         // Pick up sites generated while user was in archive mode.
         unawaited(_pollNewFieldSites(snap.loadSeq));
+      } else if (_archiveIsStale) {
+        notifyListeners();
+        _softRefreshArchive();
+        return;
       }
       notifyListeners();
       return;
@@ -252,6 +279,29 @@ class MapController extends ChangeNotifier {
     }
 
     load(force: false);
+  }
+
+  bool get _archiveIsStale {
+    final loadedAt = _snapshots[_MapCacheKey.archive]!.loadedAt;
+    if (loadedAt == null) return true;
+    return DateTime.now().difference(loadedAt) >= archiveCacheTtl;
+  }
+
+  /// Reload archive in the background without blanking markers on toggle.
+  void _softRefreshArchive() {
+    final snap = _snapshots[_MapCacheKey.archive]!;
+    if (snap.loading) return;
+    snap.seed = _newSeed();
+    snap.offset = 0;
+    snap.loadedCatalog = 0;
+    snap.totalCatalog = 0;
+    snap.error = null;
+    snap.replaceOnNextPage = true;
+    snap.loadedAt = null;
+    final seq = ++snap.loadSeq;
+    snap.loading = true;
+    snap.loadingComplete = false;
+    unawaited(_loadArchivePages(seq));
   }
 
   /// Starts or resumes background site pagination without blocking the map UI.
@@ -524,6 +574,7 @@ class MapController extends ChangeNotifier {
 
       if (seq != snap.loadSeq) return;
       snap.loadingComplete = true;
+      snap.loadedAt = DateTime.now();
       if (_isFieldMode && !_showAllFieldSites) {
         _startFieldPoll(seq);
       }
@@ -561,6 +612,9 @@ class MapController extends ChangeNotifier {
       var hasMore = true;
       var offset = 0;
       final allGeo = <SiteSummary>[];
+      // When we already have markers (pan/scan/poll), merge new ids in as pages
+      // arrive and only replace the full list when complete — avoids blanking.
+      final keepWhileLoading = snap.geoSites.isNotEmpty;
 
       while (hasMore) {
         if (seq != snap.loadSeq || !_showAllFieldSites) return;
@@ -581,12 +635,16 @@ class MapController extends ChangeNotifier {
         final geo = _withCoordinates(response.items);
         allGeo.addAll(geo);
         offset += response.items.length;
-        snap.geoSites = List<SiteSummary>.from(allGeo);
-        snap.siteBounds = _expandBounds(null, allGeo);
-        snap.maxFieldSiteId = allGeo.fold(
-          0,
-          (max, site) => site.siteId > max ? site.siteId : max,
-        );
+        if (keepWhileLoading) {
+          _mergeSites(snap, geo);
+        } else {
+          snap.geoSites = List<SiteSummary>.from(allGeo);
+          snap.siteBounds = _expandBounds(null, allGeo);
+          snap.maxFieldSiteId = allGeo.fold(
+            0,
+            (max, site) => site.siteId > max ? site.siteId : max,
+          );
+        }
         snap.loadedCatalog = offset;
         snap.totalCatalog = response.total;
         snap.error = null;
@@ -601,8 +659,9 @@ class MapController extends ChangeNotifier {
 
         if (kDebugMode) {
           debugPrint(
-            'MapController: show-all viewport page — ${snap.geoSites.length} geo '
-            '(${snap.loadedCatalog}/${snap.totalCatalog} in bbox)',
+            'MapController: show-all viewport page — ${allGeo.length} fetched '
+            '(${snap.loadedCatalog}/${snap.totalCatalog} in bbox, '
+            'showing ${snap.geoSites.length})',
           );
         }
 
@@ -612,9 +671,18 @@ class MapController extends ChangeNotifier {
       }
 
       if (seq != snap.loadSeq || !_showAllFieldSites) return;
+      // Final replace so markers outside the new viewport are pruned by sync.
+      snap.geoSites = List<SiteSummary>.from(allGeo);
+      snap.siteBounds = _expandBounds(null, allGeo);
+      snap.maxFieldSiteId = allGeo.fold(
+        0,
+        (max, site) => site.siteId > max ? site.siteId : max,
+      );
       snap.loadingComplete = true;
+      snap.loadedAt = DateTime.now();
       if (_isFieldMode && _showAllFieldSites) {
         _startFieldPoll(seq);
+        notifyListeners();
       }
     } on SiteServiceException catch (error) {
       if (seq != snap.loadSeq) return;
@@ -725,11 +793,19 @@ class MapController extends ChangeNotifier {
 
         final geo = _withCoordinates(response.items);
 
-        snap.geoSites = [...snap.geoSites, ...geo];
+        if (snap.offset == 0 && snap.replaceOnNextPage) {
+          snap.geoSites = geo;
+          snap.siteBounds = _expandBounds(null, geo);
+          snap.replaceOnNextPage = false;
+          // Force marker wipe+rebuild; append-only sync cannot drop removed ids.
+          _archiveEpoch++;
+        } else {
+          snap.geoSites = [...snap.geoSites, ...geo];
+          snap.siteBounds = _expandBounds(snap.siteBounds, geo);
+        }
         snap.offset += response.items.length;
         snap.loadedCatalog = snap.offset;
         snap.totalCatalog = response.total;
-        snap.siteBounds = _expandBounds(snap.siteBounds, geo);
         snap.error = null;
         if (!_isFieldMode) {
           notifyListeners();
@@ -754,6 +830,7 @@ class MapController extends ChangeNotifier {
 
       if (seq != snap.loadSeq) return;
       snap.loadingComplete = true;
+      snap.loadedAt = DateTime.now();
 
       if (kDebugMode) {
         debugPrint(

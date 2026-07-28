@@ -462,8 +462,16 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
         );
       }
     }
-    if (oldWidget.sites != widget.sites ||
-        oldWidget.markerDatasetKey != widget.markerDatasetKey) {
+    if (oldWidget.markerDatasetKey != widget.markerDatasetKey) {
+      // Dataset / filter switch: wipe immediately, then paint — no debounce.
+      if (widget.rotateWithHeading) {
+        _syncRotateOverlayFrame();
+      } else {
+        _annotationDebounce?.cancel();
+        unawaited(_switchDatasetAndSync());
+      }
+    } else if (oldWidget.sites != widget.sites) {
+      // Same dataset: debounce append-only paging / poll updates.
       if (widget.rotateWithHeading) {
         _syncRotateOverlayFrame();
       } else {
@@ -666,6 +674,25 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
     _annotationDebounce = Timer(const Duration(milliseconds: 80), () {
       unawaited(_syncAnnotations());
     });
+  }
+
+  /// Wipe markers as soon as the dataset key changes, then fill from cache.
+  Future<void> _switchDatasetAndSync() async {
+    final annotations = _annotations;
+    if (annotations == null || !_ready) return;
+    if (widget.rotateWithHeading || annotations.rotateModePaused) return;
+    try {
+      final key = widget.markerDatasetKey;
+      await annotations.beginDatasetSwitch(key);
+      if (!mounted) return;
+      // A newer switch won; that call will sync.
+      if (widget.markerDatasetKey != key) return;
+      await _syncAnnotations();
+    } catch (error) {
+      if (kDebugMode) {
+        debugPrint('MapboxFieldMap dataset switch failed: $error');
+      }
+    }
   }
 
   Future<void> _syncAnnotations() async {

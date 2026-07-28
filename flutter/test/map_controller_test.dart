@@ -477,4 +477,69 @@ void main() {
 
     controller.dispose();
   });
+
+  test('show-all toggle reuses warm cache when bounds unchanged', () async {
+    final requests = <Uri>[];
+    final catalogMode = CatalogModeController();
+    await catalogMode.initialize();
+    await catalogMode.setDataSource(CatalogDataSource.field);
+
+    final service = SiteService(
+      client: MockClient((request) async {
+        requests.add(request.url);
+        final showAll = request.url.queryParameters['show_all'] == 'true';
+        return http.Response(
+          jsonEncode({
+            'items': [
+              siteJson(
+                siteId: showAll ? 42 : 7,
+                latitude: 51.0,
+                longitude: 4.0,
+              ),
+            ],
+            'total': 1,
+            'limit': 500,
+            'offset': 0,
+            'has_next': false,
+          }),
+          200,
+        );
+      }),
+    );
+
+    final controller = MapController(
+      service: service,
+      catalogModeController: catalogMode,
+    );
+
+    // Warm the linked cache first.
+    controller.load();
+    await pumpUntilIdle();
+    expect(controller.geoSites.single.siteId, 7);
+
+    final bounds = LatLngBounds(const LatLng(50.0, 3.0), const LatLng(52.0, 5.0));
+    controller.setShowAllFieldSites(true);
+    controller.loadShowAllInBounds(bounds);
+    await pumpUntilIdle();
+    expect(controller.geoSites.single.siteId, 42);
+    final showAllRequests = () => requests
+        .where((u) => u.queryParameters['show_all'] == 'true')
+        .length;
+    expect(showAllRequests(), 1);
+
+    // Toggle off → linked cache, then on again without bounds change.
+    controller.setShowAllFieldSites(false);
+    expect(controller.geoSites.single.siteId, 7);
+
+    controller.setShowAllFieldSites(true);
+    expect(controller.geoSites.single.siteId, 42);
+    expect(controller.loadingComplete, isTrue);
+
+    controller.loadShowAllInBounds(bounds);
+    await pumpUntilIdle();
+    expect(showAllRequests(), 1);
+    expect(controller.geoSites.single.siteId, 42);
+
+    controller.dispose();
+  });
 }

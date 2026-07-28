@@ -13,9 +13,11 @@ const int mapboxMarkerBatchSize = 500;
 /// Syncs site markers onto Mapbox circles.
 ///
 /// - Same catalog dataset is filled lazily in batches of [mapboxMarkerBatchSize]
-///   as pages arrive (append-only createMulti).
+///   as pages arrive (createMulti for missing ids).
+/// - Viewport/poll updates prune ids that left the list via [deleteMulti] —
+///   never a full wipe, so pan/scan keep current markers while loading.
 /// - Switching archive ↔ field ↔ show-all (or filters) does one [deleteAll]
-///   then reloads in batches — never one-by-one deletes.
+///   then reloads in batches.
 /// - All dots share one radius via the layer default; selection is shown with
 ///   a small white inner dot (no size change).
 class MapboxSiteAnnotations {
@@ -80,6 +82,7 @@ class MapboxSiteAnnotations {
     if (shadowManager == null || manager == null || dotManager == null) {
       return;
     }
+    _syncSeq++;
     _selectionAnimToken++;
     await Future.wait([
       shadowManager.deleteAll(),
@@ -92,6 +95,38 @@ class MapboxSiteAnnotations {
     _selectionDot = null;
     _loadedDatasetKey = null;
     _selectedSiteId = null;
+  }
+
+  /// Wipe markers immediately for a dataset/filter switch.
+  ///
+  /// Call from the map widget as soon as [datasetKey] changes so the map
+  /// blanks without waiting on debounce or camera. A following [sync] then
+  /// fills in batches of [mapboxMarkerBatchSize].
+  Future<void> beginDatasetSwitch(String datasetKey) async {
+    if (_rotateModePaused) return;
+    if (_loadedDatasetKey == datasetKey) return;
+
+    final shadowManager = _shadowManager;
+    final manager = _manager;
+    final dotManager = _dotManager;
+    if (shadowManager == null || manager == null || dotManager == null) {
+      return;
+    }
+
+    final seq = ++_syncSeq;
+    _selectionAnimToken++;
+    await Future.wait([
+      shadowManager.deleteAll(),
+      manager.deleteAll(),
+      dotManager.deleteAll(),
+    ]);
+    if (seq != _syncSeq) return;
+    _bySiteId.clear();
+    _shadowBySiteId.clear();
+    _byAnnotationId.clear();
+    _selectionDot = null;
+    _selectedSiteId = null;
+    _loadedDatasetKey = datasetKey;
   }
 
   Future<void> attach({
@@ -186,18 +221,9 @@ class MapboxSiteAnnotations {
     }
 
     final seq = ++_syncSeq;
-    final camera = await map.getCameraState();
-    if (seq != _syncSeq) return;
-    final zoom = camera.zoom;
-    _baseRadius = mapboxMarkerRadiusForZoom(zoom);
 
-    final selectedId = selectedSite?.siteId;
-    // Selection may already be applied from the tap path — only snap if needed.
-    if (selectedId != _selectedSiteId) {
-      unawaited(applySelectedSiteId(selectedId));
-    }
-
-    // Dataset / filter switch → wipe once, then lazy-fill in batches.
+    // Dataset / filter switch → wipe first (before camera), then lazy-fill.
+    // [beginDatasetSwitch] may already have wiped; this covers sync-only paths.
     if (_loadedDatasetKey != datasetKey) {
       _selectionAnimToken++;
       await Future.wait([
@@ -210,13 +236,25 @@ class MapboxSiteAnnotations {
       _shadowBySiteId.clear();
       _byAnnotationId.clear();
       _selectionDot = null;
+      _selectedSiteId = null;
       _loadedDatasetKey = datasetKey;
-      await Future.wait([
-        shadowManager.setCircleRadius(_shadowRadius),
-        manager.setCircleRadius(_baseRadius),
-        dotManager.setCircleRadius(_dotRadius),
-      ]);
-      if (seq != _syncSeq) return;
+    }
+
+    final camera = await map.getCameraState();
+    if (seq != _syncSeq) return;
+    final zoom = camera.zoom;
+    _baseRadius = mapboxMarkerRadiusForZoom(zoom);
+    await Future.wait([
+      shadowManager.setCircleRadius(_shadowRadius),
+      manager.setCircleRadius(_baseRadius),
+      dotManager.setCircleRadius(_dotRadius),
+    ]);
+    if (seq != _syncSeq) return;
+
+    final selectedId = selectedSite?.siteId;
+    // Selection may already be applied from the tap path — only snap if needed.
+    if (selectedId != _selectedSiteId) {
+      unawaited(applySelectedSiteId(selectedId));
     }
 
     final desired = <int, SiteSummary>{};
@@ -225,7 +263,46 @@ class MapboxSiteAnnotations {
       desired[site.siteId] = site;
     }
 
-    // Append only — never delete one-by-one while paging the same dataset.
+    // Same-dataset updates (pan/scan/poll): drop markers no longer in the list
+    // without a full wipe so existing sites stay visible while new pages load.
+    final staleIds = _bySiteId.keys
+        .where((id) => !desired.containsKey(id))
+        .toList(growable: false);
+    for (var i = 0; i < staleIds.length; i += mapboxMarkerBatchSize) {
+      if (seq != _syncSeq) return;
+      final chunk = staleIds.skip(i).take(mapboxMarkerBatchSize).toList();
+      final fills = <CircleAnnotation>[];
+      final shadows = <CircleAnnotation>[];
+      for (final siteId in chunk) {
+        final fill = _bySiteId.remove(siteId);
+        if (fill != null) {
+          fills.add(fill);
+          _byAnnotationId.remove(fill.id);
+        }
+        final shadow = _shadowBySiteId.remove(siteId);
+        if (shadow != null) shadows.add(shadow);
+        if (siteId == _selectedSiteId) {
+          _selectedSiteId = null;
+          final dot = _selectionDot;
+          _selectionDot = null;
+          if (dot != null) {
+            await dotManager.delete(dot);
+            if (seq != _syncSeq) return;
+          }
+        }
+      }
+      await Future.wait([
+        if (fills.isNotEmpty) manager.deleteMulti(fills),
+        if (shadows.isNotEmpty) shadowManager.deleteMulti(shadows),
+      ]);
+      if (seq != _syncSeq) return;
+      if (i + mapboxMarkerBatchSize < staleIds.length) {
+        await Future<void>.delayed(Duration.zero);
+      }
+    }
+
+    // Append missing — paging the same dataset never deletes one-by-one above
+    // except for ids that left the catalog (viewport replace / filter).
     final missing = desired.keys
         .where((id) => !_bySiteId.containsKey(id))
         .toList(growable: false);

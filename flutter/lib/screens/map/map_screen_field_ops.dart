@@ -40,9 +40,10 @@ mixin _MapScreenFieldOpsMixin on State<MapScreen>, _MapScreenCameraMixin {
     if (!mapData.showAllFieldSites) return;
     final bounds = await _mapboxCamera.visibleBounds();
     if (!mounted || bounds == null || !mapData.showAllFieldSites) return;
-    // Antimeridian-spanning views aren't supported by the bbox API.
-    if (bounds.west > bounds.east) return;
-    mapData.loadShowAllInBounds(paddedVisibleBounds(bounds));
+    // Antimeridian / unwrapped Mapbox lons aren't accepted by the bbox API.
+    final safe = clampBoundsForSitesApi(paddedVisibleBounds(bounds));
+    if (safe == null) return;
+    mapData.loadShowAllInBounds(safe);
   }
 
   Future<void> _onScanFieldArea() async {

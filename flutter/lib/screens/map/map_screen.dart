@@ -158,7 +158,7 @@ class _MapScreenState extends State<MapScreen>
                           ? (mapData.showAllFieldSites
                               ? 'field:all'
                               : 'field:linked')
-                          : 'archive',
+                          : 'archive:${mapData.archiveEpoch}',
                       mapData.filters.markerFilterKey,
                     ].join('|'),
                     currentLocation: locationService.currentLocation,
@@ -303,34 +303,6 @@ class _MapScreenState extends State<MapScreen>
                   ),
                 ),
               ),
-            if (mapData.loading && !aerialDrawMode)
-              Positioned(
-                top: topInset + (locationService.error != null ? 44 : 0),
-                left: 0,
-                right: 0,
-                child: Center(
-                  child: Card(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 8,
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          ),
-                          const SizedBox(width: 8),
-                          Text(_siteLoadingLabel(mapData)),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
             if (mapData.error != null && !aerialDrawMode)
               Positioned(
                 top: topInset,
@@ -460,26 +432,5 @@ class _MapScreenState extends State<MapScreen>
         );
       },
     );
-  }
-
-  String _siteLoadingLabel(map_data.MapController mapData) {
-    if (context.read<CatalogModeController>().isField) {
-      if (mapData.totalCatalog > 0) {
-        return 'Loading field sites… ${mapData.geoSiteCount} found '
-            '(${mapData.loadedCatalog}/${mapData.totalCatalog})';
-      }
-      if (mapData.geoSiteCount > 0) {
-        return 'Loading field sites… ${mapData.geoSiteCount} found';
-      }
-      return 'Loading field sites…';
-    }
-    if (mapData.totalCatalog > 0) {
-      return 'Loading sites… ${mapData.geoSiteCount} found '
-          '(${mapData.loadedCatalog}/${mapData.totalCatalog})';
-    }
-    if (mapData.geoSiteCount > 0) {
-      return 'Loading sites… ${mapData.geoSiteCount} found';
-    }
-    return 'Loading sites…';
   }
 }
