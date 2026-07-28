@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../../shell/map_chrome_insets.dart';
+import 'vintage_guidance_compass.dart';
 
 /// Vintage field-instrument readout for proximity distance bands.
 class ProximityScannerDisplay extends StatelessWidget {
@@ -21,40 +22,46 @@ class ProximityScannerDisplay extends StatelessWidget {
   final int? minutesLeft;
   final VoidCallback? onStop;
 
-  static const double fullWidth = 200;
+  static const double fullWidth = 148;
+
+  /// Rough laid-out height for stacking other top chrome below the meter.
+  static const double mapHeightEstimate = 118;
 
   @override
   Widget build(BuildContext context) {
-    final width = compact ? 168.0 : fullWidth;
-    final pad = compact ? 10.0 : 11.0;
-    final screenPad = compact ? 10.0 : 12.0;
-    final titleSize = compact ? 8.0 : 9.0;
-    final valueSize = compact ? 22.0 : 26.0;
-    final unitSize = compact ? 9.0 : 10.0;
+    final width = compact ? 132.0 : fullWidth;
+    final pad = compact ? 7.0 : 8.0;
+    final screenPad = compact ? 8.0 : 9.0;
+    final titleSize = compact ? 7.0 : 7.5;
+    final valueSize = compact ? 16.0 : 18.0;
+    final unitSize = compact ? 8.0 : 8.5;
     final showSessionControls = !compact && onStop != null;
 
     return SizedBox(
       width: width,
       child: DecoratedBox(
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(compact ? 10 : 12),
+          borderRadius: BorderRadius.circular(compact ? 8 : 9),
           gradient: const LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              Color(0xFF6B6354),
-              Color(0xFF3E382E),
-              Color(0xFF2A261F),
+              VintageInstrumentStyle.brassLight,
+              VintageInstrumentStyle.brassMid,
+              VintageInstrumentStyle.brassDark,
             ],
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.45),
-              blurRadius: 12,
-              offset: const Offset(0, 6),
+              color: Colors.black.withValues(alpha: 0.4),
+              blurRadius: 8,
+              offset: const Offset(0, 4),
             ),
           ],
-          border: Border.all(color: const Color(0xFF8A8070), width: 1.2),
+          border: Border.all(
+            color: VintageInstrumentStyle.brassRim,
+            width: 1.0,
+          ),
         ),
         child: Padding(
           padding: EdgeInsets.all(pad),
@@ -67,20 +74,16 @@ class ProximityScannerDisplay extends StatelessWidget {
                   const Spacer(),
                   Text(
                     'PROX·SCAN',
-                    style: TextStyle(
-                      fontFamily: 'Courier',
-                      fontFamilyFallback: const ['monospace'],
+                    style: VintageInstrumentStyle.mono.copyWith(
                       fontSize: titleSize,
-                      letterSpacing: 1.6,
-                      fontWeight: FontWeight.w700,
-                      color: const Color(0xFFC4B89A),
+                      letterSpacing: 1.4,
                     ),
                   ),
                   const Spacer(),
                   _Rivets(compact: compact),
                 ],
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 5),
               _CrtScreen(
                 label: label,
                 screenPad: screenPad,
@@ -88,7 +91,7 @@ class ProximityScannerDisplay extends StatelessWidget {
                 unitSize: unitSize,
                 compact: compact,
               ),
-              const SizedBox(height: 6),
+              const SizedBox(height: 5),
               if (showSessionControls)
                 _SessionFooter(
                   minutesLeft: minutesLeft,
@@ -104,7 +107,7 @@ class ProximityScannerDisplay extends StatelessWidget {
   }
 }
 
-/// Draggable proximity meter; defaults to center-bottom above map chrome.
+/// Draggable proximity meter; defaults to center-top below archive/field chrome.
 class DraggableProximityScanner extends StatefulWidget {
   const DraggableProximityScanner({
     super.key,
@@ -127,11 +130,11 @@ class _DraggableProximityScannerState extends State<DraggableProximityScanner> {
 
   @override
   Widget build(BuildContext context) {
-    final bottomClearance = MapChromeInsets.bottom(context) + 10;
+    final topClearance = MapChromeInsets.top(context) + 8;
     return Padding(
-      padding: EdgeInsets.only(bottom: bottomClearance),
+      padding: EdgeInsets.only(top: topClearance),
       child: Align(
-        alignment: Alignment.bottomCenter,
+        alignment: Alignment.topCenter,
         child: Transform.translate(
           offset: _dragOffset,
           child: GestureDetector(
@@ -166,14 +169,7 @@ class _SessionFooter extends StatelessWidget {
       children: [
         Text(
           time,
-          style: const TextStyle(
-            fontFamily: 'Courier',
-            fontFamilyFallback: ['monospace'],
-            fontSize: 11,
-            letterSpacing: 1.0,
-            fontWeight: FontWeight.w700,
-            color: Color(0xFFC4B89A),
-          ),
+          style: VintageInstrumentStyle.mono.copyWith(fontSize: 11),
         ),
         const Spacer(),
         Container(
@@ -181,10 +177,10 @@ class _SessionFooter extends StatelessWidget {
           height: 7,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: const Color(0xFF7CFF9A).withValues(alpha: 0.85),
+            color: VintageInstrumentStyle.live.withValues(alpha: 0.85),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFF7CFF9A).withValues(alpha: 0.55),
+                color: VintageInstrumentStyle.live.withValues(alpha: 0.55),
                 blurRadius: 6,
               ),
             ],
@@ -194,17 +190,15 @@ class _SessionFooter extends StatelessWidget {
         GestureDetector(
           onTap: onStop,
           behavior: HitTestBehavior.opaque,
-          child: const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
             child: Text(
               'STOP',
-              style: TextStyle(
-                fontFamily: 'Courier',
-                fontFamilyFallback: ['monospace'],
+              style: VintageInstrumentStyle.mono.copyWith(
                 fontSize: 11,
                 letterSpacing: 1.4,
                 fontWeight: FontWeight.w800,
-                color: Color(0xFFE07060),
+                color: VintageInstrumentStyle.stop,
               ),
             ),
           ),
@@ -226,12 +220,11 @@ class _StatusFooter extends StatelessWidget {
       children: [
         Text(
           'RANGE',
-          style: TextStyle(
-            fontFamily: 'Courier',
-            fontFamilyFallback: const ['monospace'],
+          style: VintageInstrumentStyle.mono.copyWith(
             fontSize: compact ? 7 : 8,
             letterSpacing: 1.2,
-            color: const Color(0xFF9A8F78),
+            fontWeight: FontWeight.w400,
+            color: VintageInstrumentStyle.brassMuted,
           ),
         ),
         Container(
@@ -239,10 +232,10 @@ class _StatusFooter extends StatelessWidget {
           height: compact ? 6 : 8,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: const Color(0xFF7CFF9A).withValues(alpha: 0.85),
+            color: VintageInstrumentStyle.live.withValues(alpha: 0.85),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFF7CFF9A).withValues(alpha: 0.55),
+                color: VintageInstrumentStyle.live.withValues(alpha: 0.55),
                 blurRadius: 6,
               ),
             ],
@@ -250,12 +243,11 @@ class _StatusFooter extends StatelessWidget {
         ),
         Text(
           'FIELD',
-          style: TextStyle(
-            fontFamily: 'Courier',
-            fontFamilyFallback: const ['monospace'],
+          style: VintageInstrumentStyle.mono.copyWith(
             fontSize: compact ? 7 : 8,
             letterSpacing: 1.2,
-            color: const Color(0xFF9A8F78),
+            fontWeight: FontWeight.w400,
+            color: VintageInstrumentStyle.brassMuted,
           ),
         ),
       ],
@@ -270,7 +262,7 @@ class _Rivets extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final size = compact ? 5.0 : 6.0;
+    final size = compact ? 4.5 : 5.0;
     Widget rivet() => Container(
           width: size,
           height: size,
@@ -286,7 +278,7 @@ class _Rivets extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         rivet(),
-        SizedBox(width: compact ? 4 : 5),
+        SizedBox(width: compact ? 3 : 4),
         rivet(),
       ],
     );
@@ -319,7 +311,7 @@ class _CrtScreen extends StatelessWidget {
             width: double.infinity,
             padding: EdgeInsets.symmetric(
               horizontal: screenPad,
-              vertical: compact ? 12 : 14,
+              vertical: compact ? 8 : 9,
             ),
             decoration: const BoxDecoration(
               gradient: LinearGradient(
@@ -344,7 +336,7 @@ class _CrtScreen extends StatelessWidget {
                     color: const Color(0xFF3D8F4A).withValues(alpha: 0.75),
                   ),
                 ),
-                SizedBox(height: compact ? 4 : 6),
+                SizedBox(height: compact ? 2 : 3),
                 Text(
                   parts.value,
                   textAlign: TextAlign.center,
@@ -353,30 +345,30 @@ class _CrtScreen extends StatelessWidget {
                     fontFamilyFallback: const ['monospace'],
                     fontSize: valueSize,
                     fontWeight: FontWeight.w700,
-                    letterSpacing: 1.2,
+                    letterSpacing: 1.0,
                     height: 1.05,
                     color: const Color(0xFF7CFF9A),
                     shadows: [
                       Shadow(
                         color: const Color(0xFF7CFF9A).withValues(alpha: 0.55),
-                        blurRadius: 10,
+                        blurRadius: 8,
                       ),
                       Shadow(
                         color: const Color(0xFF7CFF9A).withValues(alpha: 0.25),
-                        blurRadius: 22,
+                        blurRadius: 16,
                       ),
                     ],
                   ),
                 ),
                 if (parts.unit != null) ...[
-                  SizedBox(height: compact ? 2 : 4),
+                  SizedBox(height: compact ? 1 : 2),
                   Text(
                     parts.unit!,
                     style: TextStyle(
                       fontFamily: 'Courier',
                       fontFamilyFallback: const ['monospace'],
                       fontSize: unitSize,
-                      letterSpacing: 2,
+                      letterSpacing: 1.6,
                       color: const Color(0xFF5CB86A).withValues(alpha: 0.9),
                     ),
                   ),

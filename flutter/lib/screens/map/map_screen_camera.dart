@@ -315,7 +315,8 @@ mixin _MapScreenCameraMixin on State<MapScreen> {
         _lastFollowedLocation = location;
       }
     });
-    // Stay in guidance: north-fixed follow still shows compass / proximity.
+    // Stay in guidance: north-fixed follow still shows the vintage compass
+    // (hidden again if the user pans away / leaves follow).
     // MapboxFieldMap switches FollowPuck ↔ Idle from rotateWithHeading.
   }
 

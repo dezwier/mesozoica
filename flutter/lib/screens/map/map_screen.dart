@@ -452,7 +452,10 @@ class _MapScreenState extends State<MapScreen>
             else if (aerialRecon.focusedMission != null)
               const AerialMissionFocusOverlay(),
             if (!aerialDrawMode && guidance.isActive)
-              GuidanceOverlay(rotateWithHeading: _rotateMap),
+              GuidanceOverlay(
+                rotateWithHeading: _rotateMap,
+                followUser: _followUser || _rotateMap,
+              ),
           ],
         );
       },
