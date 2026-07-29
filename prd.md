@@ -27,7 +27,7 @@ Four bottom tabs using an `IndexedStack` shell (mesosoica-style brown/sandstone 
 
 | Tab | Screen | v0 status |
 |-----|--------|-----------|
-| **Map** | Discovery map | Skeleton placeholder |
+| **Map** | Discovery map | Live Mapbox map (archive / field); marker UX contract in [`flutter/docs/map_site_markers.md`](flutter/docs/map_site_markers.md) |
 | **Tree** | Tree of Life | Skeleton placeholder |
 | **Dino** | Dinosaur catalog | Scrollable turnable cards for every row in `dinosaur` table |
 | **Profile** | Account & settings | Skeleton placeholder |
@@ -58,8 +58,9 @@ These remain part of the long-term vision but are deferred until core catalog + 
  * **The Lab (Preparation & Assembly):** Industrial workbench — clean fossils with tools, puzzle assembly to unlock dinosaur cards.
  * **The Museum (Exhibition):** Personal dimly lit hall showcasing *user-owned* completed skeletons (distinct from the global Dino catalog browse tab).
 
-#### Map (future mechanics)
- * Dark tactical satellite map with real-world geological boundaries and dig sites.
+#### Map (current + future)
+ * Live Mapbox discovery map with archive and field site markers. Paint rules: wipe only on Archive/Field or linked/show-all (or filter) toggles, then batches of 500 from cache; pan/zoom/scan keep markers and diff. Full contract: [`flutter/docs/map_site_markers.md`](flutter/docs/map_site_markers.md).
+ * Dark tactical satellite map with real-world geological boundaries and dig sites (future polish).
  * Proximity-based excavation nodes; check-in to begin a dig.
 
 #### Tree of Life (future mechanics)

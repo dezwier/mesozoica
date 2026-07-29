@@ -9,7 +9,9 @@ The main map tab uses **Mapbox Standard** for both modes:
 - **North-fixed** — flat (no tilt), bearing locked to north; pan/zoom free
 - **Rotate** — pitched 3D, bearing follows the phone; locked to max zoom and your location (no manual pan/zoom)
 
-Monochrome theme, no place/road/POI labels, and dawn/day/dusk/night from local time. Site markers are simple period-colored circles that tilt with the 3D globe; the full catalog is synced in batches of 500 (not viewport-culled).
+Monochrome theme, no place/road/POI labels, and dawn/day/dusk/night from local time. Site markers are period-colored circles (north-fixed) or near-user cards (rotate).
+
+**Marker contract** (wipe only on mode/filter toggle; keep-and-diff on pan/zoom; caches for archive / linked / show-all): see [docs/map_site_markers.md](docs/map_site_markers.md).
 
 Card mini-maps still use `flutter_map` + Carto.
 

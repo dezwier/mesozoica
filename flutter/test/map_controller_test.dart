@@ -542,4 +542,61 @@ void main() {
 
     controller.dispose();
   });
+
+  test('show-all preempts in-flight load with newer bounds', () async {
+    final requests = <Uri>[];
+    final catalogMode = CatalogModeController();
+    await catalogMode.initialize();
+    await catalogMode.setDataSource(CatalogDataSource.field);
+
+    final service = SiteService(
+      client: MockClient((request) async {
+        requests.add(request.url);
+        await Future<void>.delayed(const Duration(milliseconds: 40));
+        final minLat = request.url.queryParameters['min_lat'];
+        final siteId = minLat == '60.0' ? 99 : 42;
+        return http.Response(
+          jsonEncode({
+            'items': [
+              siteJson(
+                siteId: siteId,
+                latitude: double.parse(minLat ?? '50') + 1,
+                longitude: 4.0,
+              ),
+            ],
+            'total': 1,
+            'limit': 500,
+            'offset': 0,
+            'has_next': false,
+          }),
+          200,
+        );
+      }),
+    );
+
+    final controller = MapController(
+      service: service,
+      catalogModeController: catalogMode,
+    );
+    controller.setShowAllFieldSites(true);
+
+    controller.loadShowAllInBounds(
+      LatLngBounds(const LatLng(50.0, 3.0), const LatLng(52.0, 5.0)),
+    );
+    // Second idle while first is still loading — must not be dropped.
+    controller.loadShowAllInBounds(
+      LatLngBounds(const LatLng(60.0, 3.0), const LatLng(62.0, 5.0)),
+    );
+    await Future<void>.delayed(const Duration(milliseconds: 120));
+
+    final showAll = requests
+        .where((u) => u.queryParameters['show_all'] == 'true')
+        .toList();
+    expect(showAll.length, greaterThanOrEqualTo(2));
+    expect(showAll.last.queryParameters['min_lat'], '60.0');
+    expect(controller.geoSites.single.siteId, 99);
+    expect(controller.loadingComplete, isTrue);
+
+    controller.dispose();
+  });
 }

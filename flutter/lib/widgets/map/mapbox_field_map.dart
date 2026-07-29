@@ -343,11 +343,14 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
     if (!mounted) return;
     if (rotate && widget.mapActive) {
       _setRotateOverlayTickerActive(true);
+      // Keep circle annotations warm under opacity 0 while rotate is on.
+      _scheduleAnnotationSync();
     } else {
       _setRotateOverlayTickerActive(false);
       setState(() => _visibleRotateSites = const []);
       widget.rotateCardCount?.value = 0;
       if (!rotate) {
+        // Circles should already be painted; light sync + opacity restore.
         _scheduleAnnotationSync();
       }
     }
@@ -464,19 +467,18 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
     }
     if (oldWidget.markerDatasetKey != widget.markerDatasetKey) {
       // Dataset / filter switch: wipe immediately, then paint — no debounce.
+      // Keep circles warm under rotate (opacity 0) so north-fixed exit is instant.
       if (widget.rotateWithHeading) {
         _syncRotateOverlayFrame();
-      } else {
-        _annotationDebounce?.cancel();
-        unawaited(_switchDatasetAndSync());
       }
+      _annotationDebounce?.cancel();
+      unawaited(_switchDatasetAndSync());
     } else if (oldWidget.sites != widget.sites) {
-      // Same dataset: debounce append-only paging / poll updates.
+      // Same dataset: debounce circle sync; rotate overlay updates immediately.
       if (widget.rotateWithHeading) {
         _syncRotateOverlayFrame();
-      } else {
-        _scheduleAnnotationSync();
       }
+      _scheduleAnnotationSync();
     }
     // Location cull-center updates; heading is owned by FollowPuck / ticker —
     // do not rebuild-sync on headingDeg (would fight compass decoupling).
@@ -680,7 +682,6 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
   Future<void> _switchDatasetAndSync() async {
     final annotations = _annotations;
     if (annotations == null || !_ready) return;
-    if (widget.rotateWithHeading || annotations.rotateModePaused) return;
     try {
       final key = widget.markerDatasetKey;
       await annotations.beginDatasetSwitch(key);
@@ -699,7 +700,6 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
     final map = _map;
     final annotations = _annotations;
     if (map == null || annotations == null || !_ready) return;
-    if (widget.rotateWithHeading || annotations.rotateModePaused) return;
     try {
       await annotations.sync(
         map: map,

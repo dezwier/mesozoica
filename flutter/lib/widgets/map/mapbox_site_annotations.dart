@@ -12,14 +12,13 @@ const int mapboxMarkerBatchSize = 500;
 
 /// Syncs site markers onto Mapbox circles.
 ///
-/// - Same catalog dataset is filled lazily in batches of [mapboxMarkerBatchSize]
-///   as pages arrive (createMulti for missing ids).
-/// - Viewport/poll updates prune ids that left the list via [deleteMulti] —
-///   never a full wipe, so pan/scan keep current markers while loading.
-/// - Switching archive ↔ field ↔ show-all (or filters) does one [deleteAll]
-///   then reloads in batches.
-/// - All dots share one radius via the layer default; selection is shown with
-///   a small white inner dot (no size change).
+/// Contract:
+/// - Mode/filter switch → one [deleteAll], then [createMulti] in batches of
+///   [mapboxMarkerBatchSize].
+/// - Same dataset (pan/zoom/scan/poll) → create missing first, then prune
+///   extras (never blank the map).
+/// - Rotate mode only hides circles (opacity 0); sync keeps them warm so
+///   exiting to north-fixed is instant.
 class MapboxSiteAnnotations {
   MapboxSiteAnnotations({
     required this.onSiteTap,
@@ -39,6 +38,8 @@ class MapboxSiteAnnotations {
   final Map<int, CircleAnnotation> _shadowBySiteId = {};
   CircleAnnotation? _selectionDot;
   int? _selectedSiteId;
+  /// Bumped only on wipe ([beginDatasetSwitch] / [clearAllMarkers]) so an
+  /// in-flight create/prune can abort cleanly without page-notify races.
   int _syncSeq = 0;
   String? _loadedDatasetKey;
   double _baseRadius = 8.0;
@@ -46,14 +47,20 @@ class MapboxSiteAnnotations {
   bool _radiusInFlight = false;
   bool _rotateModePaused = false;
 
-  /// When true, circle markers are cleared and [sync] is a no-op.
+  bool _syncInFlight = false;
+  bool _syncDirty = false;
+  MapboxMap? _latestMap;
+  List<SiteSummary> _latestSites = const [];
+  SiteSummary? _latestSelectedSite;
+  String? _latestDatasetKey;
+
+  /// When true, circle opacity is 0 (rotate overlay owns the UI). Sync still
+  /// runs so north-fixed exit does not cold-create thousands of markers.
   bool get rotateModePaused => _rotateModePaused;
 
   Future<void> setRotateModePaused(bool paused) async {
     if (_rotateModePaused == paused) return;
     _rotateModePaused = paused;
-    // Hide without deleteAll so exiting rotate restores markers instantly;
-    // append-only sync then adds anything discovered while paused.
     final shadowManager = _shadowManager;
     final manager = _manager;
     final dotManager = _dotManager;
@@ -103,7 +110,6 @@ class MapboxSiteAnnotations {
   /// blanks without waiting on debounce or camera. A following [sync] then
   /// fills in batches of [mapboxMarkerBatchSize].
   Future<void> beginDatasetSwitch(String datasetKey) async {
-    if (_rotateModePaused) return;
     if (_loadedDatasetKey == datasetKey) return;
 
     final shadowManager = _shadowManager;
@@ -142,7 +148,9 @@ class MapboxSiteAnnotations {
     await shadowManager.setCirclePitchAlignment(CirclePitchAlignment.MAP);
     await shadowManager.setCirclePitchScale(CirclePitchScale.MAP);
     await shadowManager.setCircleColor(0xFF000000);
-    await shadowManager.setCircleOpacity(mapboxMarkerShadowOpacity);
+    await shadowManager.setCircleOpacity(
+      _rotateModePaused ? 0 : mapboxMarkerShadowOpacity,
+    );
     await shadowManager.setCircleBlur(mapboxMarkerShadowBlur);
     await shadowManager.setCircleStrokeWidth(0);
     await shadowManager.setCircleEmissiveStrength(1.0);
@@ -154,7 +162,7 @@ class MapboxSiteAnnotations {
     await manager.setCirclePitchScale(CirclePitchScale.MAP);
     await manager.setCircleStrokeWidth(1.5);
     await manager.setCircleStrokeColor(0xFFFFFFFF);
-    await manager.setCircleOpacity(0.95);
+    await manager.setCircleOpacity(_rotateModePaused ? 0 : 0.95);
     // Keep period colors fully lit under dusk lightPreset (same as day).
     await manager.setCircleEmissiveStrength(1.0);
     await manager.setCircleRadius(_baseRadius);
@@ -164,7 +172,7 @@ class MapboxSiteAnnotations {
     );
     await selectionDotManager.setCirclePitchScale(CirclePitchScale.MAP);
     await selectionDotManager.setCircleColor(0xFFFFFFFF);
-    await selectionDotManager.setCircleOpacity(1.0);
+    await selectionDotManager.setCircleOpacity(_rotateModePaused ? 0 : 1.0);
     await selectionDotManager.setCircleStrokeWidth(0);
     await selectionDotManager.setCircleEmissiveStrength(1.0);
     await selectionDotManager.setCircleRadius(_dotRadius);
@@ -177,6 +185,7 @@ class MapboxSiteAnnotations {
   double get _dotRadius => _baseRadius * mapboxMarkerSelectionDotScale;
 
   void _handleTap(CircleAnnotation annotation) {
+    if (_rotateModePaused) return;
     final site = _resolveSite(annotation);
     if (site == null) return;
     // Snap selection without awaiting so the card opens with no delay.
@@ -186,6 +195,7 @@ class MapboxSiteAnnotations {
 
   /// Apply selection immediately (tap / rebuild). No-op if already selected.
   Future<void> applySelectedSiteId(int? siteId) async {
+    if (_rotateModePaused) return;
     if (siteId == _selectedSiteId) return;
     final fromId = _selectedSiteId;
     _selectedSiteId = siteId;
@@ -205,14 +215,59 @@ class MapboxSiteAnnotations {
     return null;
   }
 
+  /// Coalesced sync: overlapping calls keep the latest sites and run once more
+  /// after the current pass finishes (no mid-prune cancel from page notifies).
   Future<void> sync({
     required MapboxMap map,
     required List<SiteSummary> sites,
     required SiteSummary? selectedSite,
     required String datasetKey,
   }) async {
-    if (_rotateModePaused) return;
+    _latestMap = map;
+    _latestSites = sites;
+    _latestSelectedSite = selectedSite;
+    _latestDatasetKey = datasetKey;
+    _syncDirty = true;
+    if (_syncInFlight) return;
+    _syncInFlight = true;
+    try {
+      while (_syncDirty) {
+        _syncDirty = false;
+        final runMap = _latestMap;
+        final runKey = _latestDatasetKey;
+        if (runMap == null || runKey == null) break;
+        await _runSync(
+          map: runMap,
+          sites: _latestSites,
+          selectedSite: _latestSelectedSite,
+          datasetKey: runKey,
+        );
+      }
+    } finally {
+      _syncInFlight = false;
+      if (_syncDirty) {
+        final map = _latestMap;
+        final key = _latestDatasetKey;
+        if (map != null && key != null) {
+          unawaited(
+            sync(
+              map: map,
+              sites: _latestSites,
+              selectedSite: _latestSelectedSite,
+              datasetKey: key,
+            ),
+          );
+        }
+      }
+    }
+  }
 
+  Future<void> _runSync({
+    required MapboxMap map,
+    required List<SiteSummary> sites,
+    required SiteSummary? selectedSite,
+    required String datasetKey,
+  }) async {
     final manager = _manager;
     final shadowManager = _shadowManager;
     final dotManager = _dotManager;
@@ -220,7 +275,8 @@ class MapboxSiteAnnotations {
       return;
     }
 
-    final seq = ++_syncSeq;
+    // Capture wipe generation — only abort when [beginDatasetSwitch] bumps it.
+    final seq = _syncSeq;
 
     // Dataset / filter switch → wipe first (before camera), then lazy-fill.
     // [beginDatasetSwitch] may already have wiped; this covers sync-only paths.
@@ -251,10 +307,11 @@ class MapboxSiteAnnotations {
     ]);
     if (seq != _syncSeq) return;
 
-    final selectedId = selectedSite?.siteId;
-    // Selection may already be applied from the tap path — only snap if needed.
-    if (selectedId != _selectedSiteId) {
-      unawaited(applySelectedSiteId(selectedId));
+    if (!_rotateModePaused) {
+      final selectedId = selectedSite?.siteId;
+      if (selectedId != _selectedSiteId) {
+        unawaited(applySelectedSiteId(selectedId));
+      }
     }
 
     final desired = <int, SiteSummary>{};
@@ -263,46 +320,7 @@ class MapboxSiteAnnotations {
       desired[site.siteId] = site;
     }
 
-    // Same-dataset updates (pan/scan/poll): drop markers no longer in the list
-    // without a full wipe so existing sites stay visible while new pages load.
-    final staleIds = _bySiteId.keys
-        .where((id) => !desired.containsKey(id))
-        .toList(growable: false);
-    for (var i = 0; i < staleIds.length; i += mapboxMarkerBatchSize) {
-      if (seq != _syncSeq) return;
-      final chunk = staleIds.skip(i).take(mapboxMarkerBatchSize).toList();
-      final fills = <CircleAnnotation>[];
-      final shadows = <CircleAnnotation>[];
-      for (final siteId in chunk) {
-        final fill = _bySiteId.remove(siteId);
-        if (fill != null) {
-          fills.add(fill);
-          _byAnnotationId.remove(fill.id);
-        }
-        final shadow = _shadowBySiteId.remove(siteId);
-        if (shadow != null) shadows.add(shadow);
-        if (siteId == _selectedSiteId) {
-          _selectedSiteId = null;
-          final dot = _selectionDot;
-          _selectionDot = null;
-          if (dot != null) {
-            await dotManager.delete(dot);
-            if (seq != _syncSeq) return;
-          }
-        }
-      }
-      await Future.wait([
-        if (fills.isNotEmpty) manager.deleteMulti(fills),
-        if (shadows.isNotEmpty) shadowManager.deleteMulti(shadows),
-      ]);
-      if (seq != _syncSeq) return;
-      if (i + mapboxMarkerBatchSize < staleIds.length) {
-        await Future<void>.delayed(Duration.zero);
-      }
-    }
-
-    // Append missing — paging the same dataset never deletes one-by-one above
-    // except for ids that left the catalog (viewport replace / filter).
+    // Create missing first so pan/scan never flash an empty map.
     final missing = desired.keys
         .where((id) => !_bySiteId.containsKey(id))
         .toList(growable: false);
@@ -315,7 +333,7 @@ class MapboxSiteAnnotations {
       for (final siteId in chunkIds) {
         final site = desired[siteId]!;
         final color = periodMarkerColor(site.effectivePeriod);
-        final selected = siteId == _selectedSiteId;
+        final selected = !_rotateModePaused && siteId == _selectedSiteId;
         final point = Point(
           coordinates: Position(site.longitude!, site.latitude!),
         );
@@ -357,6 +375,43 @@ class MapboxSiteAnnotations {
       }
     }
 
+    // Then prune ids that left the list (viewport replace / filter).
+    final staleIds = _bySiteId.keys
+        .where((id) => !desired.containsKey(id))
+        .toList(growable: false);
+    for (var i = 0; i < staleIds.length; i += mapboxMarkerBatchSize) {
+      if (seq != _syncSeq) return;
+      final chunk = staleIds.skip(i).take(mapboxMarkerBatchSize).toList();
+      final fills = <CircleAnnotation>[];
+      final shadows = <CircleAnnotation>[];
+      for (final siteId in chunk) {
+        final fill = _bySiteId.remove(siteId);
+        if (fill != null) {
+          fills.add(fill);
+          _byAnnotationId.remove(fill.id);
+        }
+        final shadow = _shadowBySiteId.remove(siteId);
+        if (shadow != null) shadows.add(shadow);
+        if (siteId == _selectedSiteId) {
+          _selectedSiteId = null;
+          final dot = _selectionDot;
+          _selectionDot = null;
+          if (dot != null) {
+            await dotManager.delete(dot);
+            if (seq != _syncSeq) return;
+          }
+        }
+      }
+      await Future.wait([
+        if (fills.isNotEmpty) manager.deleteMulti(fills),
+        if (shadows.isNotEmpty) shadowManager.deleteMulti(shadows),
+      ]);
+      if (seq != _syncSeq) return;
+      if (i + mapboxMarkerBatchSize < staleIds.length) {
+        await Future<void>.delayed(Duration.zero);
+      }
+    }
+
     for (final entry in desired.entries) {
       final annotation = _bySiteId[entry.key];
       if (annotation != null) {
@@ -364,8 +419,9 @@ class MapboxSiteAnnotations {
       }
     }
 
-    // Selection may have been set before the annotation existed — place the dot.
-    if (_selectedSiteId != null && _selectionDot == null) {
+    if (!_rotateModePaused &&
+        _selectedSiteId != null &&
+        _selectionDot == null) {
       await _syncSelectionDot(siteId: _selectedSiteId);
     }
   }
@@ -458,7 +514,8 @@ class MapboxSiteAnnotations {
     }
 
     final fill = _bySiteId[siteId];
-    if (fill?.geometry == null) {
+    final geometry = fill?.geometry;
+    if (geometry == null) {
       final existing = _selectionDot;
       if (existing != null) {
         _selectionDot = null;
@@ -467,7 +524,6 @@ class MapboxSiteAnnotations {
       return;
     }
 
-    final geometry = fill!.geometry!;
     final existing = _selectionDot;
     if (existing == null) {
       _selectionDot = await dotManager.create(
@@ -489,6 +545,11 @@ class MapboxSiteAnnotations {
     _syncSeq++;
     _selectionAnimToken++;
     _pendingZoomRadius = null;
+    _syncDirty = false;
+    _latestMap = null;
+    _latestSites = const [];
+    _latestSelectedSite = null;
+    _latestDatasetKey = null;
     _tapCancelable?.cancel();
     _tapCancelable = null;
     _byAnnotationId.clear();

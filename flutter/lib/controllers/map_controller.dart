@@ -182,13 +182,13 @@ class MapController extends ChangeNotifier {
   ///
   /// Keeps the current [geoSites] visible while the new viewport loads —
   /// only mode switches (show-all ↔ linked, archive ↔ field) wipe markers.
+  /// Newer bounds always preempt an in-flight load (via [loadSeq]).
   void loadShowAllInBounds(LatLngBounds bounds, {bool force = false}) {
     if (!_isFieldMode || !_showAllFieldSites) return;
     final safe = clampBoundsForSitesApi(bounds);
     if (safe == null) return;
     bounds = safe;
     final snap = _snap;
-    if (!force && snap.loading) return;
     if (!force &&
         snap.loadingComplete &&
         _showAllBounds != null &&
