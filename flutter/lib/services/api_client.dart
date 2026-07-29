@@ -112,6 +112,20 @@ class ApiClient {
     return timeout == null ? future : future.timeout(timeout);
   }
 
+  /// PATCH equivalent of [sendGet] for an already-built [uri].
+  Future<http.Response> sendPatch(
+    Uri uri, {
+    http.Client? client,
+    Map<String, String>? headers,
+    Object? body,
+    Duration? timeout,
+  }) {
+    final future = client != null
+        ? client.patch(uri, headers: headers, body: body)
+        : http.patch(uri, headers: headers, body: body);
+    return timeout == null ? future : future.timeout(timeout);
+  }
+
   Uri _uri(String path, [Map<String, String>? query]) {
     final base = AppConfig.baseApiUrl;
     final normalized = path.startsWith('/') ? path : '/$path';

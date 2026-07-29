@@ -120,14 +120,16 @@ def start_aerial_mission(
         raise ValidationError(f"An {label} mission is already in progress")
 
     cfg = config_for_action_key(action_key)
+    inst_p = instance.params_json or {}
     points = _parse_route(route)
     length_km = route_length_km(points)
-    if length_km > cfg.max_route_km:
+    eff_max_route = float(inst_p.get("max_route_km", cfg.max_route_km))
+    if length_km > eff_max_route:
         raise ValidationError(
-            f"Loop is {length_km:.1f} km; maximum allowed is {cfg.max_route_km:.0f} km"
+            f"Loop is {length_km:.1f} km; maximum allowed is {eff_max_route:.0f} km"
         )
 
-    tol_km = cfg.loop_endpoint_tolerance_m / 1000.0
+    tol_km = float(inst_p.get("loop_endpoint_tolerance_m", cfg.loop_endpoint_tolerance_m)) / 1000.0
     start_d = haversine_km(origin_lat, origin_lon, points[0].lat, points[0].lon)
     end_d = haversine_km(origin_lat, origin_lon, points[-1].lat, points[-1].lon)
     if start_d > tol_km or end_d > tol_km:
@@ -135,7 +137,10 @@ def start_aerial_mission(
             "Loop must start and end at your current location"
         )
 
-    samples = sample_along_route(points, spacing_km=cfg.ensure_sample_spacing_km)
+    samples = sample_along_route(
+        points,
+        spacing_km=float(inst_p.get("ensure_sample_spacing_km", cfg.ensure_sample_spacing_km)),
+    )
     job_ids: list[int] = []
     for sample in samples:
         _, job_id = enqueue_field_site_ensure(
@@ -147,7 +152,8 @@ def start_aerial_mission(
         if job_id is not None:
             job_ids.append(job_id)
 
-    speed = max(cfg.flight_speed_kmh, 1e-6)
+    eff_speed = float(inst_p.get("flight_speed_kmh", cfg.flight_speed_kmh))
+    speed = max(eff_speed, 1e-6)
     flight_duration_s = max(1, int(round(length_km / speed * 3600.0)))
 
     now = _utcnow()
@@ -162,10 +168,10 @@ def start_aerial_mission(
         ),
         route_length_km=length_km,
         flight_duration_s=flight_duration_s,
-        flight_speed_kmh=cfg.flight_speed_kmh,
-        max_route_km=cfg.max_route_km,
-        discovery_chance=cfg.discovery_chance,
-        discovery_distance_m=cfg.discovery_distance_m,
+        flight_speed_kmh=eff_speed,
+        max_route_km=eff_max_route,
+        discovery_chance=float(inst_p.get("discovery_chance", cfg.discovery_chance)),
+        discovery_distance_m=float(inst_p.get("discovery_distance_m", cfg.discovery_distance_m)),
         ensure_job_ids_json=json.dumps(job_ids),
         created_at=now,
         updated_at=now,

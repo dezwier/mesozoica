@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../config/game_config.dart';
 import '../../theme/dino_card_theme.dart';
-import '../tools/aerial_mission_flight_stats.dart';
+import '../tools/tool_stat_row.dart';
 
 /// Stats panel for site-guidance tools (compass / proximity / navigator).
 class GuidanceToolStats extends StatelessWidget {
@@ -18,30 +18,30 @@ class GuidanceToolStats extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cfg = GameConfig.instance.toolActions.guidanceConfigFor(actionKey);
-    final pairs = <AerialMissionStatPair>[
-      AerialMissionStatPair('Duration', '${cfg.durationMinutes} min'),
+    final pairs = <ToolStatPair>[
+      ToolStatPair('Duration', '${cfg.durationMinutes} min'),
     ];
 
     switch (actionKey) {
       case 'proximity_scanner':
         pairs.add(
-          AerialMissionStatPair(
+          ToolStatPair(
             'Exactness',
             _formatExactness(cfg.resolvedDistanceExactness),
           ),
         );
       case 'site_navigator':
         pairs.addAll([
-          AerialMissionStatPair(
+          ToolStatPair(
             'Direction',
             _formatExactness(cfg.resolvedDirectionExactness),
           ),
-          AerialMissionStatPair(
+          ToolStatPair(
             'Distance',
             _formatExactness(cfg.resolvedDistanceExactness),
           ),
           if (cfg.discoveryChance != null)
-            AerialMissionStatPair(
+            ToolStatPair(
               'Site chance',
               _formatChance(cfg.discoveryChance!),
             ),
@@ -49,12 +49,12 @@ class GuidanceToolStats extends StatelessWidget {
       case 'geo_compass':
       default:
         pairs.addAll([
-          AerialMissionStatPair(
+          ToolStatPair(
             'Exactness',
             _formatExactness(cfg.resolvedDirectionExactness),
           ),
           if (cfg.discoveryChance != null)
-            AerialMissionStatPair(
+            ToolStatPair(
               'Site chance',
               _formatChance(cfg.discoveryChance!),
             ),
@@ -72,29 +72,11 @@ class GuidanceToolStats extends StatelessWidget {
     final mutedStyle = cardTheme.bodyStyle(fontSize: 11).copyWith(
           color: cardTheme.cardTextMuted,
         );
-    final valueStyle = cardTheme.bodyStyle(fontSize: 13).copyWith(
-          fontWeight: FontWeight.w600,
-        );
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Wrap(
-          spacing: 16,
-          runSpacing: 8,
-          children: [
-            for (final pair in pairs)
-              SizedBox(
-                width: 120,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(pair.label, style: mutedStyle),
-                    Text(pair.value, style: valueStyle),
-                  ],
-                ),
-              ),
-          ],
+        ToolStatGrid(
+          pairs: pairs.map((p) => ToolStatPair(p.label, p.value)).toList(),
         ),
         if (cfg.statsExplanation.isNotEmpty) ...[
           const SizedBox(height: 10),

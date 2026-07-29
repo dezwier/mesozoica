@@ -12,14 +12,12 @@ class ToolFilterSheet extends StatefulWidget {
     required this.onApply,
     this.catalogTotal,
     this.availableCategories = const [],
-    this.isAdmin = false,
   });
 
   final ToolCatalogFilters initialFilters;
   final ValueChanged<ToolCatalogFilters> onApply;
   final int? catalogTotal;
   final List<ToolCategoryOption> availableCategories;
-  final bool isAdmin;
 
   static Future<void> show(
     BuildContext context, {
@@ -27,7 +25,6 @@ class ToolFilterSheet extends StatefulWidget {
     required ValueChanged<ToolCatalogFilters> onApply,
     int? catalogTotal,
     List<ToolCategoryOption> availableCategories = const [],
-    bool isAdmin = false,
   }) {
     return showModalBottomSheet<void>(
       context: context,
@@ -43,7 +40,6 @@ class ToolFilterSheet extends StatefulWidget {
         onApply: onApply,
         catalogTotal: catalogTotal,
         availableCategories: availableCategories,
-        isAdmin: isAdmin,
       ),
     );
   }
@@ -57,7 +53,6 @@ class _ToolFilterSheetState extends State<ToolFilterSheet> {
   late String _pendingSearch;
   late ToolCatalogSort _pendingSort;
   late Set<String> _pendingCategories;
-  late bool _pendingShowAll;
   bool _applied = false;
 
   @override
@@ -66,7 +61,6 @@ class _ToolFilterSheetState extends State<ToolFilterSheet> {
     _pendingSearch = widget.initialFilters.searchQuery;
     _pendingSort = widget.initialFilters.sort;
     _pendingCategories = {...widget.initialFilters.categories};
-    _pendingShowAll = widget.initialFilters.showAll;
     _searchController = TextEditingController(text: _pendingSearch);
   }
 
@@ -111,7 +105,7 @@ class _ToolFilterSheetState extends State<ToolFilterSheet> {
         searchQuery: _pendingSearch.trim(),
         sort: _pendingSort,
         categories: _categoriesForApply(),
-        showAll: widget.isAdmin && _pendingShowAll,
+        showAll: false,
       ),
     );
   }
@@ -121,7 +115,7 @@ class _ToolFilterSheetState extends State<ToolFilterSheet> {
       searchQuery: _pendingSearch.trim(),
       sort: _pendingSort,
       categories: _categoriesForApply(),
-      showAll: widget.isAdmin && _pendingShowAll,
+      showAll: false,
     );
   }
 
@@ -130,7 +124,6 @@ class _ToolFilterSheetState extends State<ToolFilterSheet> {
       _pendingSearch = '';
       _pendingSort = ToolCatalogSort.category;
       _pendingCategories = {};
-      _pendingShowAll = false;
       _searchController.clear();
     });
   }
@@ -223,44 +216,6 @@ class _ToolFilterSheetState extends State<ToolFilterSheet> {
                   },
                 ),
               ),
-              if (widget.isAdmin) ...[
-                const SizedBox(height: 20),
-                SettingsFormStyles.settingsRow(
-                  context: context,
-                  label: 'Visibility',
-                  description: 'Include tools normally hidden from the catalog.',
-                  controlWidth: 168,
-                  control: SettingsFormStyles.densePopupField<bool>(
-                    context: context,
-                    outlineBorder: outlineBorder,
-                    selectedChild: Text(
-                      _pendingShowAll ? 'Show all' : 'Default',
-                      style: theme.textTheme.bodyMedium,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    entries: [
-                      DensePopupEntry(
-                        value: false,
-                        child: Text(
-                          'Default',
-                          style: theme.textTheme.bodyMedium,
-                        ),
-                      ),
-                      DensePopupEntry(
-                        value: true,
-                        child: Text(
-                          'Show all',
-                          style: theme.textTheme.bodyMedium,
-                        ),
-                      ),
-                    ],
-                    onSelected: (value) {
-                      if (value == null) return;
-                      setState(() => _pendingShowAll = value);
-                    },
-                  ),
-                ),
-              ],
               if (categoryOptions.isNotEmpty) ...[
                 const SizedBox(height: 20),
                 SettingsFormStyles.settingsRow(
@@ -286,7 +241,8 @@ class _ToolFilterSheetState extends State<ToolFilterSheet> {
                         MultiSelectPopupEntry(
                           value: option.value,
                           label: option.label,
-                          selected: _pendingCategories.isEmpty ||
+                          selected:
+                              _pendingCategories.isEmpty ||
                               _pendingCategories.contains(option.value),
                         ),
                     ],

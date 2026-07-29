@@ -34,6 +34,7 @@ class ToolService {
     int limit = 200,
     int offset = 0,
     String sort = 'category',
+    String mode = 'inventory',
     String? seed,
     String? q,
     Set<String> categories = const {},
@@ -44,6 +45,7 @@ class ToolService {
       limit: limit,
       offset: offset,
       sort: sort,
+      mode: mode,
       seed: seed,
       q: q,
       categories: categories,
@@ -72,8 +74,9 @@ class ToolService {
 
   Future<List<ToolCategoryOption>> fetchCategories({
     bool showAll = false,
+    String mode = 'inventory',
   }) async {
-    final uri = AppConfig.toolCategoriesUri(showAll: showAll);
+    final uri = AppConfig.toolCategoriesUri(showAll: showAll, mode: mode);
     if (kDebugMode) {
       debugPrint('ToolService GET $uri');
     }
@@ -131,11 +134,7 @@ class ToolService {
       debugPrint('ToolService POST $uri');
     }
     final response = await ApiClient.instance
-        .sendPost(
-          uri,
-          client: _client,
-          headers: await _headers(jsonBody: true),
-        )
+        .sendPost(uri, client: _client, headers: await _headers(jsonBody: true))
         .timeout(const Duration(seconds: 15));
 
     if (response.statusCode != 200) {
@@ -151,6 +150,34 @@ class ToolService {
     return ToolSummary.fromJson(decoded);
   }
 
+  Future<ToolSummary> updateToolParams(
+    int toolId,
+    Map<String, dynamic> params,
+  ) async {
+    final uri = Uri.parse(
+      '${AppConfig.baseApiUrl}/api/v1/tools/$toolId/params',
+    );
+    if (kDebugMode) debugPrint('ToolService PATCH $uri');
+    final response = await ApiClient.instance
+        .sendPatch(
+          uri,
+          client: _client,
+          headers: await _headers(jsonBody: true),
+          body: jsonEncode({'params': params}),
+        )
+        .timeout(const Duration(seconds: 15));
+    if (response.statusCode != 200) {
+      throw ToolServiceException(
+        'Failed to update tool params (${response.statusCode})',
+      );
+    }
+    final decoded = jsonDecode(response.body);
+    if (decoded is! Map<String, dynamic>) {
+      throw const ToolServiceException('Invalid update params response');
+    }
+    return ToolSummary.fromJson(decoded);
+  }
+
   Future<AerialMission> startAerialMission({
     required int toolId,
     required List<LatLng> route,
@@ -159,7 +186,8 @@ class ToolService {
     final uri = AppConfig.toolAerialMissionUri(toolId);
     final body = jsonEncode({
       'route': [
-        for (final point in route) {'lat': point.latitude, 'lon': point.longitude},
+        for (final point in route)
+          {'lat': point.latitude, 'lon': point.longitude},
       ],
       'origin_lat': origin.latitude,
       'origin_lon': origin.longitude,
@@ -207,11 +235,15 @@ class ToolService {
 
     final decoded = jsonDecode(response.body);
     if (decoded is! Map<String, dynamic>) {
-      throw const ToolServiceException('Invalid aerial recon missions response');
+      throw const ToolServiceException(
+        'Invalid aerial recon missions response',
+      );
     }
     final items = decoded['items'];
     if (items is! List) {
-      throw const ToolServiceException('Invalid aerial recon missions response');
+      throw const ToolServiceException(
+        'Invalid aerial recon missions response',
+      );
     }
     return [
       for (final item in items)
@@ -225,11 +257,7 @@ class ToolService {
       debugPrint('ToolService POST $uri');
     }
     final response = await ApiClient.instance
-        .sendPost(
-          uri,
-          client: _client,
-          headers: await _headers(jsonBody: true),
-        )
+        .sendPost(uri, client: _client, headers: await _headers(jsonBody: true))
         .timeout(const Duration(seconds: 15));
 
     if (response.statusCode != 200) {
@@ -252,11 +280,7 @@ class ToolService {
       debugPrint('ToolService POST $uri');
     }
     final response = await ApiClient.instance
-        .sendPost(
-          uri,
-          client: _client,
-          headers: await _headers(jsonBody: true),
-        )
+        .sendPost(uri, client: _client, headers: await _headers(jsonBody: true))
         .timeout(const Duration(seconds: 15));
 
     if (response.statusCode != 201) {
@@ -301,11 +325,7 @@ class ToolService {
       debugPrint('ToolService POST $uri');
     }
     final response = await ApiClient.instance
-        .sendPost(
-          uri,
-          client: _client,
-          headers: await _headers(jsonBody: true),
-        )
+        .sendPost(uri, client: _client, headers: await _headers(jsonBody: true))
         .timeout(const Duration(seconds: 15));
 
     if (response.statusCode != 200) {
@@ -329,11 +349,7 @@ class ToolService {
       debugPrint('ToolService POST $uri');
     }
     final response = await ApiClient.instance
-        .sendPost(
-          uri,
-          client: _client,
-          headers: await _headers(jsonBody: true),
-        )
+        .sendPost(uri, client: _client, headers: await _headers(jsonBody: true))
         .timeout(const Duration(seconds: 15));
 
     if (response.statusCode != 201) {
@@ -382,11 +398,7 @@ class ToolService {
       debugPrint('ToolService POST $uri');
     }
     final response = await ApiClient.instance
-        .sendPost(
-          uri,
-          client: _client,
-          headers: await _headers(jsonBody: true),
-        )
+        .sendPost(uri, client: _client, headers: await _headers(jsonBody: true))
         .timeout(const Duration(seconds: 15));
 
     if (response.statusCode != 200) {
@@ -513,8 +525,7 @@ class AerialMission {
     // flight progress is not shifted into the past by the device offset.
     final hasTz =
         value.endsWith('Z') || RegExp(r'[+-]\d{2}:?\d{2}$').hasMatch(value);
-    final parsed =
-        DateTime.tryParse(hasTz ? value : '${value}Z');
+    final parsed = DateTime.tryParse(hasTz ? value : '${value}Z');
     return parsed?.toUtc();
   }
 }
@@ -547,8 +558,7 @@ class GuidanceSession {
   final DateTime? cancelledAt;
 
   bool get isActive => status == 'active';
-  bool get isExpired =>
-      !isActive || DateTime.now().toUtc().isAfter(expiresAt);
+  bool get isExpired => !isActive || DateTime.now().toUtc().isAfter(expiresAt);
 
   factory GuidanceSession.fromJson(Map<String, dynamic> json) {
     return GuidanceSession(
@@ -560,9 +570,11 @@ class GuidanceSession {
       directionExactness: (json['direction_exactness'] as num?)?.toDouble(),
       distanceExactness: (json['distance_exactness'] as num?)?.toDouble(),
       durationMinutes: json['duration_minutes'] as int? ?? 15,
-      startedAt: AerialMission._parseDate(json['started_at']) ??
+      startedAt:
+          AerialMission._parseDate(json['started_at']) ??
           DateTime.now().toUtc(),
-      expiresAt: AerialMission._parseDate(json['expires_at']) ??
+      expiresAt:
+          AerialMission._parseDate(json['expires_at']) ??
           DateTime.now().toUtc(),
       cancelledAt: AerialMission._parseDate(json['cancelled_at']),
     );
@@ -599,8 +611,7 @@ class FormationMapSession {
   final DateTime? cancelledAt;
 
   bool get isActive => status == 'active';
-  bool get isExpired =>
-      !isActive || DateTime.now().toUtc().isAfter(expiresAt);
+  bool get isExpired => !isActive || DateTime.now().toUtc().isAfter(expiresAt);
 
   double get resolvedRangeM => minRangeM + range * (maxRangeM - minRangeM);
 
@@ -615,9 +626,11 @@ class FormationMapSession {
       range: (json['range'] as num?)?.toDouble() ?? 0.35,
       minRangeM: (json['min_range_m'] as num?)?.toDouble() ?? 200.0,
       maxRangeM: (json['max_range_m'] as num?)?.toDouble() ?? 2000.0,
-      startedAt: AerialMission._parseDate(json['started_at']) ??
+      startedAt:
+          AerialMission._parseDate(json['started_at']) ??
           DateTime.now().toUtc(),
-      expiresAt: AerialMission._parseDate(json['expires_at']) ??
+      expiresAt:
+          AerialMission._parseDate(json['expires_at']) ??
           DateTime.now().toUtc(),
       cancelledAt: AerialMission._parseDate(json['cancelled_at']),
     );
@@ -626,10 +639,7 @@ class FormationMapSession {
 
 /// Progress along the route in 0..1 using the same arc-fraction timing as
 /// backend discovery scheduling.
-double aerialMissionProgressFraction(
-  AerialMission mission, {
-  DateTime? now,
-}) {
+double aerialMissionProgressFraction(AerialMission mission, {DateTime? now}) {
   if (mission.isEnsuring || mission.flightStartedAt == null) return 0;
   final started = mission.flightStartedAt!;
   final duration = mission.flightDurationS;

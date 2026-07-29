@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../config/game_config.dart';
 import '../../services/tool_service.dart';
 import '../../theme/dino_card_theme.dart';
+import '../tools/tool_stat_row.dart';
 
 /// Shared display of aerial recon flight / deploy knobs (4 params per row).
 class AerialMissionFlightStats extends StatelessWidget {
@@ -89,7 +90,9 @@ class AerialMissionFlightStats extends StatelessWidget {
           Text(explanation!, style: mutedStyle),
           const SizedBox(height: 10),
         ],
-        AerialMissionStatRow(pairs: pairs),
+        ToolStatGrid(
+          pairs: pairs.map((p) => ToolStatPair(p.label, p.value)).toList(),
+        ),
       ],
     );
   }
@@ -136,15 +139,15 @@ class AerialMissionSummaryLine extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final time = _timePair(mission);
-    return AerialMissionStatRow(
+    return ToolStatGrid(
       pairs: [
-        AerialMissionStatPair(
+        ToolStatPair(
           'Length',
           '${mission.routeLengthKm.toStringAsFixed(1)} km',
         ),
-        AerialMissionStatPair('Duration', _durationValue(mission)),
-        AerialMissionStatPair(time.label, time.value),
-        AerialMissionStatPair(
+        ToolStatPair('Duration', _durationValue(mission)),
+        ToolStatPair(time.label, time.value),
+        ToolStatPair(
           'Sites found',
           '${mission.discoveredSiteCount}',
         ),

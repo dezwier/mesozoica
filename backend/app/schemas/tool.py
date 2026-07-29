@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-from pydantic import BaseModel, ConfigDict
+from typing import Any
+
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class ToolSummary(BaseModel):
@@ -19,6 +21,9 @@ class ToolSummary(BaseModel):
     action: str = "Use"
     main_image_url: str | None = None
     level: int | None = None
+    tool_type_id: int | None = None
+    params: dict[str, Any] = Field(default_factory=dict)
+    base_params: dict[str, Any] = Field(default_factory=dict)
 
 
 class ToolListResponse(BaseModel):

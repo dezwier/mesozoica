@@ -7,6 +7,7 @@ import '../../controllers/tool_catalog_controller.dart';
 import '../../models/tool.dart';
 import '../../services/tool_service.dart';
 import '../../theme/dino_card_theme.dart';
+import '../tool/tool_params_edit_sheet.dart';
 import 'tool_card_back.dart';
 import 'tool_card_extension.dart';
 import 'tool_card_front.dart';
@@ -34,6 +35,7 @@ class ToolTurnableCard extends StatefulWidget {
 
 class _ToolTurnableCardState extends State<ToolTurnableCard> {
   bool _collectBusy = false;
+  bool _updateParamsBusy = false;
 
   Future<void> _onCollect() async {
     if (_collectBusy) return;
@@ -41,19 +43,19 @@ class _ToolTurnableCardState extends State<ToolTurnableCard> {
     try {
       await context.read<ToolCatalogController>().collectTool(widget.tool.id);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Added to your collection')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Added to your collection')));
     } on ToolServiceException catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.message)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.message)));
     } catch (_) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Failed to add tool')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Failed to add tool')));
     } finally {
       if (mounted) {
         setState(() => _collectBusy = false);
@@ -65,6 +67,41 @@ class _ToolTurnableCardState extends State<ToolTurnableCard> {
     ToolActionRouter.start(context, widget.tool);
   }
 
+  Future<void> _onEditParams() async {
+    if (_updateParamsBusy) return;
+    await ToolParamsEditSheet.show(
+      context,
+      params: widget.tool.params,
+      onSave: (updatedParams) async {
+        if (_updateParamsBusy) return;
+        setState(() => _updateParamsBusy = true);
+        try {
+          await ToolService().updateToolParams(widget.tool.id, updatedParams);
+          if (!mounted) return;
+          await context.read<ToolCatalogController>().refresh();
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Tool parameters updated')),
+          );
+        } on ToolServiceException catch (error) {
+          if (!mounted) return;
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(error.message)));
+        } catch (_) {
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Failed to update tool parameters')),
+          );
+        } finally {
+          if (mounted) {
+            setState(() => _updateParamsBusy = false);
+          }
+        }
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isAdmin =
@@ -74,6 +111,8 @@ class _ToolTurnableCardState extends State<ToolTurnableCard> {
     final onInfo = extension?.infoHandler(context, widget.tool);
     final statsChild = extension?.buildDeployStats(context, widget.tool);
     final ongoingChild = extension?.buildOngoingPanel(context, widget.tool);
+    final canEditParams =
+        widget.tool.isOwned && isAdmin && widget.tool.params.isNotEmpty;
 
     return TurnableYAxisCard(
       resetIdentity: widget.tool.id,
@@ -96,6 +135,7 @@ class _ToolTurnableCardState extends State<ToolTurnableCard> {
         subtitleFontSize: widget.subtitleFontSize,
         onAction: widget.tool.isOwned ? _onAction : null,
         onInfo: onInfo,
+        onEditParams: canEditParams ? _onEditParams : null,
         statsChild: statsChild,
         ongoingChild: ongoingChild,
       ),

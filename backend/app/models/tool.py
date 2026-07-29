@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from typing import Any
 
-from sqlalchemy import Column, DateTime, ForeignKey, Integer, text
+from sqlalchemy import JSON, Column, DateTime, ForeignKey, Integer, text
 from sqlmodel import Field, SQLModel
 
 
@@ -36,3 +37,7 @@ class Tool(SQLModel, table=True):
         ),
     )
     level: int = Field(default=1, ge=1)
+    params_json: dict[str, Any] = Field(
+        default_factory=dict,
+        sa_column=Column(JSON, nullable=False),
+    )

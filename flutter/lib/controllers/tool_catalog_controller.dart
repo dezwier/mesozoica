@@ -13,14 +13,14 @@ enum ToolCatalogSort {
   name;
 
   String get label => switch (this) {
-        ToolCatalogSort.category => 'Category',
-        ToolCatalogSort.name => 'A–Z',
-      };
+    ToolCatalogSort.category => 'Category',
+    ToolCatalogSort.name => 'A–Z',
+  };
 
   String get apiValue => switch (this) {
-        ToolCatalogSort.category => 'category',
-        ToolCatalogSort.name => 'name',
-      };
+    ToolCatalogSort.category => 'category',
+    ToolCatalogSort.name => 'name',
+  };
 
   static ToolCatalogSort fromApiValue(String value) {
     return switch (value) {
@@ -29,6 +29,8 @@ enum ToolCatalogSort {
     };
   }
 }
+
+enum ToolScreenMode { inventory, catalog }
 
 class ToolCatalogFilters {
   const ToolCatalogFilters({
@@ -46,8 +48,7 @@ class ToolCatalogFilters {
   bool get hasActiveFilters =>
       searchQuery.trim().isNotEmpty ||
       sort != ToolCatalogSort.category ||
-      categories.isNotEmpty ||
-      showAll;
+      categories.isNotEmpty;
 
   ToolCatalogFilters copyWith({
     String? searchQuery,
@@ -68,7 +69,7 @@ class ToolCatalogFilters {
 
 class ToolCatalogController extends CatalogController<ToolSummary> {
   ToolCatalogController({ToolService? service})
-      : _service = service ?? ToolService();
+    : _service = service ?? ToolService();
 
   static const pageSize = 20;
 
@@ -87,6 +88,7 @@ class ToolCatalogController extends CatalogController<ToolSummary> {
   bool _hasMore = false;
   int _total = 0;
   ToolCatalogFilters _filters = ToolCatalogFilters.defaults;
+  ToolScreenMode _mode = ToolScreenMode.inventory;
   bool? _categoriesShowAll;
 
   @override
@@ -104,14 +106,28 @@ class ToolCatalogController extends CatalogController<ToolSummary> {
   bool get isEmpty => !_loading && _error == null && _items.isEmpty;
   int get total => _total;
   ToolCatalogFilters get filters => _filters;
+  ToolScreenMode get mode => _mode;
   @override
   bool get hasActiveFilters => _filters.hasActiveFilters;
   bool get showAll => _filters.showAll;
   String? get chromeImageUrl => _chromeImageUrl;
 
+  void setMode(ToolScreenMode mode, {required bool isAdmin}) {
+    if (mode == ToolScreenMode.catalog && !isAdmin) {
+      return;
+    }
+    if (_mode == mode) return;
+    _mode = mode;
+    _filters = _filters.copyWith(showAll: mode == ToolScreenMode.catalog);
+    _availableCategories = [];
+    _categoriesShowAll = null;
+    load(force: true);
+  }
+
   /// Drop show-all when the viewer is no longer an admin.
   void onUserChanged({required bool isAdmin}) {
-    if (!isAdmin && _filters.showAll) {
+    if (!isAdmin && (_filters.showAll || _mode != ToolScreenMode.inventory)) {
+      _mode = ToolScreenMode.inventory;
       _filters = _filters.copyWith(showAll: false);
       _availableCategories = [];
       _categoriesShowAll = null;
@@ -191,6 +207,7 @@ class ToolCatalogController extends CatalogController<ToolSummary> {
         seed: _newSeed(),
         hasCustomImage: true,
         showAll: _filters.showAll,
+        mode: _mode == ToolScreenMode.catalog ? 'catalog' : 'inventory',
       );
       final curated = response.items
           .map((tool) => tool.mainImageUrl)
@@ -242,8 +259,9 @@ class ToolCatalogController extends CatalogController<ToolSummary> {
   Future<void> refresh() => load(force: true);
 
   Future<void> applyFilters(ToolCatalogFilters filters) async {
-    final showAllChanged = filters.showAll != _filters.showAll;
-    _filters = filters;
+    final nextShowAll = _mode == ToolScreenMode.catalog;
+    final showAllChanged = nextShowAll != _filters.showAll;
+    _filters = filters.copyWith(showAll: nextShowAll);
     if (showAllChanged) {
       _availableCategories = [];
       _categoriesShowAll = null;
@@ -252,7 +270,9 @@ class ToolCatalogController extends CatalogController<ToolSummary> {
   }
 
   Future<void> clearFilters() async {
-    _filters = ToolCatalogFilters.defaults;
+    _filters = ToolCatalogFilters.defaults.copyWith(
+      showAll: _mode == ToolScreenMode.catalog,
+    );
     _availableCategories = [];
     _categoriesShowAll = null;
     await load(force: true);
@@ -286,6 +306,7 @@ class ToolCatalogController extends CatalogController<ToolSummary> {
       q: trimmedQuery.isNotEmpty ? trimmedQuery : null,
       categories: _filters.categories,
       showAll: _filters.showAll,
+      mode: _mode == ToolScreenMode.catalog ? 'catalog' : 'inventory',
     );
   }
 
@@ -296,14 +317,14 @@ class ToolCatalogController extends CatalogController<ToolSummary> {
       return;
     }
     try {
-      _availableCategories =
-          await _service.fetchCategories(showAll: _filters.showAll);
+      _availableCategories = await _service.fetchCategories(
+        showAll: _filters.showAll,
+        mode: _mode == ToolScreenMode.catalog ? 'catalog' : 'inventory',
+      );
       _categoriesShowAll = _filters.showAll;
     } catch (error) {
       if (kDebugMode) {
-        debugPrint(
-          'ToolCatalogController: failed to load categories: $error',
-        );
+        debugPrint('ToolCatalogController: failed to load categories: $error');
       }
     }
   }

@@ -46,6 +46,8 @@ from app.services.tool_service import (
     list_tools,
     tool_to_summary,
 )
+from app.services.tool_service.list import ListMode, ToolListRow
+from app.services.tool_service.params import base_params_for_tool_type
 
 router = APIRouter(prefix="/tools", tags=["tools"])
 
@@ -289,10 +291,12 @@ def get_tools(
     category: list[str] | None = Query(default=None),
     has_custom_image: bool = Query(default=False),
     show_all: bool = Query(default=False),
+    mode: ListMode = Query(default="inventory"),
 ) -> ToolListResponse:
     if sort not in ("name", "random", "category"):
         raise ValidationError("sort must be one of: name, random, category")
-    _require_show_all_admin(current_user, show_all)
+    if mode == "catalog":
+        _require_show_all_admin(current_user, show_all=True)
     rows, total = list_tools(
         session,
         limit=limit,
@@ -303,9 +307,10 @@ def get_tools(
         categories=category,
         has_custom_image=has_custom_image,
         viewer_user_id=current_user.id if current_user is not None else None,
-        show_all=show_all,
+        show_all=show_all if mode == "catalog" else False,
+        mode=mode,
     )
-    items = [tool_to_summary(tool, level) for tool, level in rows]
+    items = [tool_to_summary(row) for row in rows]
     return ToolListResponse(
         items=items,
         total=total,
@@ -320,14 +325,19 @@ def get_tool_categories(
     session: Session = Depends(get_session),
     current_user: User | None = Depends(get_optional_current_user),
     show_all: bool = Query(default=False),
+    mode: ListMode = Query(default="inventory"),
 ) -> ToolCategoryListResponse:
-    _require_show_all_admin(current_user, show_all)
+    if mode == "catalog":
+        _require_show_all_admin(current_user, show_all=True)
+    else:
+        _require_show_all_admin(current_user, show_all)
     items = [
         ToolCategoryItem(value=value, label=label)
         for value, label in list_tool_categories(
             session,
             viewer_user_id=current_user.id if current_user is not None else None,
-            show_all=show_all,
+            show_all=show_all if mode == "catalog" else False,
+            mode=mode,
         )
     ]
     return ToolCategoryListResponse(items=items)
@@ -454,12 +464,45 @@ def post_collect_tool(
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_admin_user),
 ) -> ToolSummary:
-    tool, level = collect_tool_for_user(
+    tool_type, level = collect_tool_for_user(
         session,
         user_id=int(current_user.id),
         tool_id=tool_id,
     )
-    return tool_to_summary(tool, level)
+    return tool_to_summary(ToolListRow(tool_type=tool_type, level=level))
+
+
+class UpdateToolParamsRequest(BaseModel):
+    params: dict
+
+
+@router.patch("/{tool_id}/params", response_model=ToolSummary)
+def patch_tool_instance_params(
+    tool_id: int,
+    body: UpdateToolParamsRequest,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_admin_user),
+) -> ToolSummary:
+    """Admin-only: update per-instance params for an owned Tool occurrence."""
+    instance = session.get(Tool, tool_id)
+    if instance is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tool instance not found")
+    tool_type = session.get(ToolType, int(instance.tool_type_id))
+    if tool_type is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tool type not found")
+    merged = dict(base_params_for_tool_type(tool_type))
+    merged.update(body.params)
+    instance.params_json = merged
+    session.add(instance)
+    session.commit()
+    session.refresh(instance)
+    from app.services.tool_service.params import effective_params_for_instance
+    return tool_to_summary(ToolListRow(
+        tool_type=tool_type,
+        level=int(instance.level),
+        occurrence_id=int(instance.id),
+        params=effective_params_for_instance(tool_type, instance),
+    ))
 
 
 @router.post(
@@ -527,9 +570,9 @@ def get_tool(
     session: Session = Depends(get_session),
     current_user: User | None = Depends(get_optional_current_user),
 ) -> ToolSummary:
-    row, level = get_tool_by_id(
+    row = get_tool_by_id(
         session,
         tool_id,
         viewer_user_id=current_user.id if current_user is not None else None,
     )
-    return tool_to_summary(row, level)
+    return tool_to_summary(row)

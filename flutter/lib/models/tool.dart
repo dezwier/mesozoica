@@ -9,6 +9,9 @@ class ToolSummary {
     this.action = 'Use',
     this.mainImageUrl,
     this.level,
+    this.toolTypeId,
+    this.params = const {},
+    this.baseParams = const {},
   });
 
   final int id;
@@ -17,11 +20,16 @@ class ToolSummary {
   final String scientificTool;
   final String description;
   final int rarity;
+
   /// Verb shown on the card Actions panel (e.g. Deploy, Read).
   final String action;
   final String? mainImageUrl;
+
   /// Collection level when owned; null when not in the user's collection.
   final int? level;
+  final int? toolTypeId;
+  final Map<String, dynamic> params;
+  final Map<String, dynamic> baseParams;
 
   bool get isOwned => level != null;
 
@@ -35,6 +43,9 @@ class ToolSummary {
     String? action,
     String? mainImageUrl,
     int? level,
+    int? toolTypeId,
+    Map<String, dynamic>? params,
+    Map<String, dynamic>? baseParams,
     bool clearLevel = false,
   }) {
     return ToolSummary(
@@ -47,6 +58,9 @@ class ToolSummary {
       action: action ?? this.action,
       mainImageUrl: mainImageUrl ?? this.mainImageUrl,
       level: clearLevel ? null : (level ?? this.level),
+      toolTypeId: toolTypeId ?? this.toolTypeId,
+      params: params ?? this.params,
+      baseParams: baseParams ?? this.baseParams,
     );
   }
 
@@ -68,10 +82,13 @@ class ToolSummary {
       .join(' ');
 
   String get categoryWithScientific {
-    final scientific = displayScientificTool;
-    if (scientific.isEmpty) return displayCategory;
-    if (displayCategory.isEmpty) return scientific;
-    return '$displayCategory - $scientific';
+    final idPrefix = isOwned ? 'ID $id' : '';
+    final parts = <String>[
+      if (idPrefix.isNotEmpty) idPrefix,
+      if (displayCategory.isNotEmpty) displayCategory,
+      if (displayScientificTool.isNotEmpty) displayScientificTool,
+    ];
+    return parts.join(' - ');
   }
 
   static String _titleCaseWord(String word) {
@@ -90,6 +107,9 @@ class ToolSummary {
       action: json['action'] as String? ?? 'Use',
       mainImageUrl: json['main_image_url'] as String?,
       level: json['level'] as int?,
+      toolTypeId: json['tool_type_id'] as int?,
+      params: (json['params'] as Map<String, dynamic>?) ?? const {},
+      baseParams: (json['base_params'] as Map<String, dynamic>?) ?? const {},
     );
   }
 }
@@ -114,9 +134,9 @@ class ToolListResponse {
     return ToolListResponse(
       items: rawItems is List
           ? rawItems
-              .whereType<Map<String, dynamic>>()
-              .map(ToolSummary.fromJson)
-              .toList()
+                .whereType<Map<String, dynamic>>()
+                .map(ToolSummary.fromJson)
+                .toList()
           : const [],
       total: json['total'] as int? ?? 0,
       limit: json['limit'] as int? ?? 0,
@@ -127,10 +147,7 @@ class ToolListResponse {
 }
 
 class ToolCategoryOption {
-  const ToolCategoryOption({
-    required this.value,
-    required this.label,
-  });
+  const ToolCategoryOption({required this.value, required this.label});
 
   final String value;
   final String label;

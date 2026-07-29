@@ -22,19 +22,25 @@ class AppConfig {
   static bool get showDebugTestAccount => isDebugMode;
 
   /// Sign in with Apple requires a paid Apple Developer Program team in Xcode.
-  static const bool enableAppleSignIn =
-      bool.fromEnvironment('ENABLE_APPLE_SIGN_IN', defaultValue: true);
+  static const bool enableAppleSignIn = bool.fromEnvironment(
+    'ENABLE_APPLE_SIGN_IN',
+    defaultValue: true,
+  );
 
   /// Deployed FastAPI on Railway (default for all device builds).
   static const String productionApiUrl =
       'https://mesozoica-production.up.railway.app';
 
   /// Explicit override, e.g. `--dart-define=API_BASE_URL=http://10.0.2.2:8000`
-  static const String _dartDefineBaseUrl = String.fromEnvironment('API_BASE_URL');
+  static const String _dartDefineBaseUrl = String.fromEnvironment(
+    'API_BASE_URL',
+  );
 
   /// Local backend during dev: `--dart-define=USE_LOCAL_API=true`
-  static const bool _useLocalApi =
-      bool.fromEnvironment('USE_LOCAL_API', defaultValue: false);
+  static const bool _useLocalApi = bool.fromEnvironment(
+    'USE_LOCAL_API',
+    defaultValue: false,
+  );
 
   static String get baseApiUrl {
     if (_dartDefineBaseUrl.isNotEmpty) {
@@ -88,9 +94,9 @@ class AppConfig {
     if (llmEnriched != null) {
       params['llm_enriched'] = llmEnriched ? 'true' : 'false';
     }
-    return Uri.parse('$baseApiUrl/api/v1/dinosaurs').replace(
-      queryParameters: params,
-    );
+    return Uri.parse(
+      '$baseApiUrl/api/v1/dinosaurs',
+    ).replace(queryParameters: params);
   }
 
   static Uri dinosaurArticleUri(int id) =>
@@ -156,18 +162,17 @@ class AppConfig {
     if (includeHidden) {
       params['include_hidden'] = 'true';
     }
-    return Uri.parse('$baseApiUrl/api/v1/fossils').replace(
-      queryParameters: params,
-    );
+    return Uri.parse(
+      '$baseApiUrl/api/v1/fossils',
+    ).replace(queryParameters: params);
   }
 
   static Uri fossilUri(
     int id, {
     CatalogDataSource dataSource = CatalogDataSource.archive,
-  }) =>
-      Uri.parse('$baseApiUrl/api/v1/fossils/$id').replace(
-        queryParameters: {'data_source': dataSource.apiValue},
-      );
+  }) => Uri.parse(
+    '$baseApiUrl/api/v1/fossils/$id',
+  ).replace(queryParameters: {'data_source': dataSource.apiValue});
 
   static Uri sitesUri({
     int limit = 200,
@@ -227,18 +232,15 @@ class AppConfig {
       params['lat'] = '$lat';
       params['lon'] = '$lon';
     }
-    if (minLat != null &&
-        maxLat != null &&
-        minLon != null &&
-        maxLon != null) {
+    if (minLat != null && maxLat != null && minLon != null && maxLon != null) {
       params['min_lat'] = '$minLat';
       params['max_lat'] = '$maxLat';
       params['min_lon'] = '$minLon';
       params['max_lon'] = '$maxLon';
     }
-    var uri = Uri.parse('$baseApiUrl/api/v1/sites').replace(
-      queryParameters: params,
-    );
+    var uri = Uri.parse(
+      '$baseApiUrl/api/v1/sites',
+    ).replace(queryParameters: params);
     final methods = howDiscovered;
     if (methods != null && methods.isNotEmpty) {
       final extras = methods
@@ -263,25 +265,23 @@ class AppConfig {
     bool fossils = true,
     bool missionEvents = true,
     bool missions = true,
-  }) =>
-      Uri.parse('$baseApiUrl/api/v1/sites/field').replace(
-        queryParameters: {
-          'user_sites': '$userSites',
-          'user_fossils': '$userFossils',
-          'sites': '$sites',
-          'fossils': '$fossils',
-          'mission_events': '$missionEvents',
-          'missions': '$missions',
-        },
-      );
+  }) => Uri.parse('$baseApiUrl/api/v1/sites/field').replace(
+    queryParameters: {
+      'user_sites': '$userSites',
+      'user_fossils': '$userFossils',
+      'sites': '$sites',
+      'fossils': '$fossils',
+      'mission_events': '$missionEvents',
+      'missions': '$missions',
+    },
+  );
 
   static Uri siteUri(
     int id, {
     CatalogDataSource dataSource = CatalogDataSource.archive,
-  }) =>
-      Uri.parse('$baseApiUrl/api/v1/sites/$id').replace(
-        queryParameters: {'data_source': dataSource.apiValue},
-      );
+  }) => Uri.parse(
+    '$baseApiUrl/api/v1/sites/$id',
+  ).replace(queryParameters: {'data_source': dataSource.apiValue});
 
   static Uri siteDiscoverUri(int id) =>
       Uri.parse('$baseApiUrl/api/v1/sites/$id/discover');
@@ -301,11 +301,7 @@ class AppConfig {
     double radiusKm = 1.0,
   }) {
     return Uri.parse('$baseApiUrl/api/v1/sites/nearby-discoverable').replace(
-      queryParameters: {
-        'lat': '$lat',
-        'lon': '$lon',
-        'radius_km': '$radiusKm',
-      },
+      queryParameters: {'lat': '$lat', 'lon': '$lon', 'radius_km': '$radiusKm'},
     );
   }
 
@@ -325,9 +321,9 @@ class AppConfig {
     if (showAll) {
       params['show_all'] = 'true';
     }
-    return Uri.parse('$baseApiUrl/api/v1/sites/nearby').replace(
-      queryParameters: params,
-    );
+    return Uri.parse(
+      '$baseApiUrl/api/v1/sites/nearby',
+    ).replace(queryParameters: params);
   }
 
   static Uri siteFossilsUri(int siteId) =>
@@ -343,6 +339,7 @@ class AppConfig {
     int limit = 200,
     int offset = 0,
     String sort = 'category',
+    String mode = 'inventory',
     String? seed,
     String? q,
     Set<String> categories = const {},
@@ -354,6 +351,7 @@ class AppConfig {
       'offset=$offset',
       'sort=${Uri.encodeQueryComponent(sort)}',
     ];
+    parts.add('mode=${Uri.encodeQueryComponent(mode)}');
     if (seed != null && seed.isNotEmpty) {
       parts.add('seed=${Uri.encodeQueryComponent(seed)}');
     }
@@ -375,11 +373,15 @@ class AppConfig {
     return Uri.parse('$baseApiUrl/api/v1/tools?${parts.join('&')}');
   }
 
-  static Uri toolCategoriesUri({bool showAll = false}) {
-    if (!showAll) {
-      return Uri.parse('$baseApiUrl/api/v1/tools/categories');
+  static Uri toolCategoriesUri({
+    bool showAll = false,
+    String mode = 'inventory',
+  }) {
+    final parts = <String>['mode=${Uri.encodeQueryComponent(mode)}'];
+    if (showAll) {
+      parts.add('show_all=true');
     }
-    return Uri.parse('$baseApiUrl/api/v1/tools/categories?show_all=true');
+    return Uri.parse('$baseApiUrl/api/v1/tools/categories?${parts.join('&')}');
   }
 
   static Uri toolUri(int id) => Uri.parse('$baseApiUrl/api/v1/tools/$id');
@@ -416,7 +418,9 @@ class AppConfig {
 
   static Future<bool> checkApiHealth() async {
     try {
-      final response = await http.get(healthUri).timeout(const Duration(seconds: 15));
+      final response = await http
+          .get(healthUri)
+          .timeout(const Duration(seconds: 15));
       isApiRunning = response.statusCode == 200;
       if (isApiRunning && isDebugMode) {
         debugPrint('API health ($baseApiUrl): ${response.body}');

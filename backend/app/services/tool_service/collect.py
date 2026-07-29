@@ -10,6 +10,7 @@ from app.core.exceptions import NotFoundError
 from app.models.tool import Tool
 from app.models.tool_type import ToolType
 from app.models.user_tool import USER_TOOL_ACTION_OWNED, UserTool
+from app.services.tool_service.params import base_params_for_tool_type
 
 
 def _utc_now() -> datetime:
@@ -57,7 +58,12 @@ def collect_tool_for_user(
         return tool_type, int(existing.level)
 
     now = _utc_now()
-    instance = Tool(tool_type_id=tool_id, spawn_date=now, level=1)
+    instance = Tool(
+        tool_type_id=tool_id,
+        spawn_date=now,
+        level=1,
+        params_json=base_params_for_tool_type(tool_type),
+    )
     session.add(instance)
     session.flush()
     session.add(

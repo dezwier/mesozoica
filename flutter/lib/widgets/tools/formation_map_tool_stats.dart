@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../config/game_config.dart';
 import '../../theme/dino_card_theme.dart';
-import '../tools/aerial_mission_flight_stats.dart';
+import '../tools/tool_stat_row.dart';
 
 /// Stats panel for Formation Map.
 class FormationMapToolStats extends StatelessWidget {
@@ -20,15 +20,15 @@ class FormationMapToolStats extends StatelessWidget {
     final rangeLabel = rangeM >= 1000
         ? '${(rangeM / 1000).toStringAsFixed(1)} km'
         : '${rangeM.round()} m';
-    final pairs = <AerialMissionStatPair>[
-      AerialMissionStatPair('Duration', '${cfg.durationMinutes} min'),
-      AerialMissionStatPair(
+    final pairs = <ToolStatPair>[
+      ToolStatPair('Duration', '${cfg.durationMinutes} min'),
+      ToolStatPair(
         'Accuracy',
         cfg.accuracy.toStringAsFixed(
           cfg.accuracy == cfg.accuracy.roundToDouble() ? 0 : 2,
         ),
       ),
-      AerialMissionStatPair('Range', rangeLabel),
+      ToolStatPair('Range', rangeLabel),
     ];
 
     if (compact) {
@@ -42,29 +42,11 @@ class FormationMapToolStats extends StatelessWidget {
     final mutedStyle = cardTheme.bodyStyle(fontSize: 11).copyWith(
           color: cardTheme.cardTextMuted,
         );
-    final valueStyle = cardTheme.bodyStyle(fontSize: 13).copyWith(
-          fontWeight: FontWeight.w600,
-        );
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Wrap(
-          spacing: 16,
-          runSpacing: 8,
-          children: [
-            for (final pair in pairs)
-              SizedBox(
-                width: 120,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(pair.label, style: mutedStyle),
-                    Text(pair.value, style: valueStyle),
-                  ],
-                ),
-              ),
-          ],
+        ToolStatGrid(
+          pairs: pairs.map((p) => ToolStatPair(p.label, p.value)).toList(),
         ),
         if (cfg.statsExplanation.isNotEmpty) ...[
           const SizedBox(height: 10),

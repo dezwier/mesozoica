@@ -16,6 +16,7 @@ class ToolCardBack extends StatelessWidget {
     this.subtitleFontSize = 10,
     this.onAction,
     this.onInfo,
+    this.onEditParams,
     this.statsChild,
     this.ongoingChild,
   });
@@ -25,8 +26,11 @@ class ToolCardBack extends StatelessWidget {
   final double subtitleFontSize;
   final VoidCallback? onAction;
   final VoidCallback? onInfo;
+  final VoidCallback? onEditParams;
+
   /// Replaces the Rarity panel when non-null (e.g. deploy stats).
   final Widget? statsChild;
+
   /// Optional ongoing-mission panel below stats.
   final Widget? ongoingChild;
 
@@ -36,7 +40,8 @@ class ToolCardBack extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final actionEnabled = tool.isOwned && onAction != null;
-    final middle = statsChild ??
+    final middle =
+        statsChild ??
         CardSectionPanel(
           label: 'Rarity',
           child: _RarityRow(rarity: tool.rarity),
@@ -47,9 +52,7 @@ class ToolCardBack extends StatelessWidget {
       child: Stack(
         fit: StackFit.expand,
         children: [
-          CardBackBackdrop(
-            image: ToolCardImage(imageUrl: tool.mainImageUrl),
-          ),
+          CardBackBackdrop(image: ToolCardImage(imageUrl: tool.mainImageUrl)),
           Positioned(
             left: 18,
             right: 18,
@@ -71,7 +74,26 @@ class ToolCardBack extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                middle,
+                Stack(
+                  children: [
+                    middle,
+                    if (onEditParams != null)
+                      Positioned(
+                        top: 2,
+                        right: 2,
+                        child: IconButton(
+                          onPressed: onEditParams,
+                          icon: const Icon(Icons.settings, size: 18),
+                          tooltip: 'Edit parameters',
+                          visualDensity: VisualDensity.compact,
+                          constraints: const BoxConstraints(
+                            minWidth: 28,
+                            minHeight: 28,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
                 if (ongoingChild != null) ...[
                   const SizedBox(height: 8),
                   ongoingChild!,
@@ -131,10 +153,7 @@ class _RarityRow extends StatelessWidget {
           );
         }),
         const SizedBox(width: 8),
-        Text(
-          '$clamped/5',
-          style: cardTheme.bodyStyle(fontSize: 13),
-        ),
+        Text('$clamped/5', style: cardTheme.bodyStyle(fontSize: 13)),
       ],
     );
   }

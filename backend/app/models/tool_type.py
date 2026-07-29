@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from typing import Any
+
+from sqlalchemy import JSON, Column
 from sqlmodel import Field, SQLModel
 
 
@@ -18,3 +21,7 @@ class ToolType(SQLModel, table=True):
     rarity: int = Field(ge=1, le=5)
     action: str = Field(default="Use", max_length=40)
     main_image_url: str | None = Field(default=None, max_length=512)
+    default_params_json: dict[str, Any] = Field(
+        default_factory=dict,
+        sa_column=Column(JSON, nullable=False),
+    )

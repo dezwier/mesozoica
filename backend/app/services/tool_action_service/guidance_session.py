@@ -114,18 +114,25 @@ def start_guidance_session(
 
     cancel_active_formation_map_sessions(session, user_id=user_id)
 
+    inst_p = instance.params_json or {}
     now = _utcnow()
+    raw_chance = inst_p.get("discovery_chance", cfg.discovery_chance)
     discovery_chance = (
-        float(cfg.discovery_chance)
-        if kind.has_discovery_boost and cfg.discovery_chance is not None
+        float(raw_chance)
+        if kind.has_discovery_boost and raw_chance is not None
         else None
     )
     direction_exactness = (
-        cfg.resolved_direction_exactness() if kind.show_needle else None
+        float(inst_p.get("direction_exactness", cfg.resolved_direction_exactness()))
+        if kind.show_needle
+        else None
     )
     distance_exactness = (
-        cfg.resolved_distance_exactness() if kind.show_distance else None
+        float(inst_p.get("distance_exactness", cfg.resolved_distance_exactness()))
+        if kind.show_distance
+        else None
     )
+    eff_duration = int(inst_p.get("duration_minutes", cfg.duration_minutes))
     row = GuidanceSession(
         user_id=user_id,
         tool_id=int(instance.id),
@@ -134,9 +141,9 @@ def start_guidance_session(
         discovery_chance=discovery_chance,
         direction_exactness=direction_exactness,
         distance_exactness=distance_exactness,
-        duration_minutes=int(cfg.duration_minutes),
+        duration_minutes=eff_duration,
         started_at=now,
-        expires_at=now + timedelta(minutes=int(cfg.duration_minutes)),
+        expires_at=now + timedelta(minutes=eff_duration),
         created_at=now,
         updated_at=now,
     )

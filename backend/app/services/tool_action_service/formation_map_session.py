@@ -111,19 +111,21 @@ def start_formation_map_session(
     cancel_active_formation_map_sessions(session, user_id=user_id)
     cancel_active_guidance_sessions(session, user_id=user_id)
 
+    inst_p = instance.params_json or {}
     now = _utcnow()
+    eff_duration = int(inst_p.get("duration_minutes", cfg.duration_minutes))
     row = FormationMapSession(
         user_id=user_id,
         tool_id=int(instance.id),
         action_key=ACTION_KEY_FORMATION_MAP,
         status=SESSION_STATUS_ACTIVE,
-        duration_minutes=int(cfg.duration_minutes),
-        accuracy=float(cfg.accuracy),
-        range=float(cfg.range),
-        min_range_m=float(cfg.min_range_m),
-        max_range_m=float(cfg.max_range_m),
+        duration_minutes=eff_duration,
+        accuracy=float(inst_p.get("accuracy", cfg.accuracy)),
+        range=float(inst_p.get("range", cfg.range)),
+        min_range_m=float(inst_p.get("min_range_m", cfg.min_range_m)),
+        max_range_m=float(inst_p.get("max_range_m", cfg.max_range_m)),
         started_at=now,
-        expires_at=now + timedelta(minutes=int(cfg.duration_minutes)),
+        expires_at=now + timedelta(minutes=eff_duration),
         created_at=now,
         updated_at=now,
     )
