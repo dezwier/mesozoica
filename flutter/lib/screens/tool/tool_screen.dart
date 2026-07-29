@@ -61,15 +61,11 @@ class ToolScreenState extends State<ToolScreen> {
         return Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            ToolFilterFab(
-              hasActiveFilters: catalog.hasActiveFilters,
-              onPressed: () => _openFilterSheet(context, catalog),
-            ),
             if (isAdmin) ...[
-              const SizedBox(height: 8),
               ChromeFab(
                 heroTag: 'tool_mode_fab',
-                tone: ChromeFabTone.grey,
+                // Match the existing filter FAB tone so the UI feels consistent.
+                tone: ChromeFabTone.warm,
                 tooltip: mode == ToolScreenMode.catalog
                     ? 'Switch to Inventory'
                     : 'Switch to Catalog',
@@ -81,7 +77,12 @@ class ToolScreenState extends State<ToolScreen> {
                       : Icons.auto_stories_outlined,
                 ),
               ),
+              const SizedBox(height: 8),
             ],
+            ToolFilterFab(
+              hasActiveFilters: catalog.hasActiveFilters,
+              onPressed: () => _openFilterSheet(context, catalog),
+            ),
           ],
         );
       },

@@ -32,6 +32,9 @@ class ToolSummary {
   final Map<String, dynamic> baseParams;
 
   bool get isOwned => level != null;
+  /// True when this card represents a specific owned tool occurrence (inventory),
+  /// i.e. the instance `id` differs from the catalog `tool_type_id`.
+  bool get isToolInstance => toolTypeId != null && toolTypeId != id;
 
   ToolSummary copyWith({
     int? id,
@@ -82,7 +85,7 @@ class ToolSummary {
       .join(' ');
 
   String get categoryWithScientific {
-    final idPrefix = isOwned ? 'ID $id' : '';
+    final idPrefix = isToolInstance ? 'ID $id' : '';
     final parts = <String>[
       if (idPrefix.isNotEmpty) idPrefix,
       if (displayCategory.isNotEmpty) displayCategory,

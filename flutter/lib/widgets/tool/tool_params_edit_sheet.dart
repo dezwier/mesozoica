@@ -4,15 +4,19 @@ class ToolParamsEditSheet extends StatefulWidget {
   const ToolParamsEditSheet({
     super.key,
     required this.params,
+    this.editableKeys,
     required this.onSave,
   });
 
   final Map<String, dynamic> params;
+  /// When set, only these keys are shown/edited in the modal.
+  final List<String>? editableKeys;
   final ValueChanged<Map<String, dynamic>> onSave;
 
   static Future<void> show(
     BuildContext context, {
     required Map<String, dynamic> params,
+    List<String>? editableKeys,
     required ValueChanged<Map<String, dynamic>> onSave,
   }) {
     return showModalBottomSheet<void>(
@@ -20,7 +24,11 @@ class ToolParamsEditSheet extends StatefulWidget {
       isScrollControlled: true,
       useSafeArea: true,
       showDragHandle: true,
-      builder: (_) => ToolParamsEditSheet(params: params, onSave: onSave),
+      builder: (_) => ToolParamsEditSheet(
+        params: params,
+        editableKeys: editableKeys,
+        onSave: onSave,
+      ),
     );
   }
 
@@ -30,13 +38,19 @@ class ToolParamsEditSheet extends StatefulWidget {
 
 class _ToolParamsEditSheetState extends State<ToolParamsEditSheet> {
   final Map<String, TextEditingController> _controllers = {};
+  late final List<String> _editableKeys;
 
   @override
   void initState() {
     super.initState();
-    for (final entry in widget.params.entries) {
-      _controllers[entry.key] = TextEditingController(
-        text: entry.value?.toString() ?? '',
+    _editableKeys = (widget.editableKeys ?? widget.params.keys.toList())
+        .where(widget.params.containsKey)
+        .toList(growable: false);
+
+    for (final key in _editableKeys) {
+      final value = widget.params[key];
+      _controllers[key] = TextEditingController(
+        text: value?.toString() ?? '',
       );
     }
   }
@@ -51,9 +65,8 @@ class _ToolParamsEditSheetState extends State<ToolParamsEditSheet> {
 
   Map<String, dynamic> _buildUpdatedParams() {
     final updated = <String, dynamic>{};
-    for (final entry in widget.params.entries) {
-      final key = entry.key;
-      final originalValue = entry.value;
+    for (final key in _editableKeys) {
+      final originalValue = widget.params[key];
       final textValue = _controllers[key]?.text.trim() ?? '';
       updated[key] = _parseWithOriginalType(textValue, originalValue);
     }
@@ -98,10 +111,10 @@ class _ToolParamsEditSheetState extends State<ToolParamsEditSheet> {
           Flexible(
             child: ListView.separated(
               shrinkWrap: true,
-              itemCount: widget.params.length,
+              itemCount: _editableKeys.length,
               separatorBuilder: (_, __) => const SizedBox(height: 10),
               itemBuilder: (context, index) {
-                final key = widget.params.keys.elementAt(index);
+                final key = _editableKeys[index];
                 return TextFormField(
                   controller: _controllers[key],
                   decoration: InputDecoration(

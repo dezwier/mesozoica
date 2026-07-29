@@ -8,6 +8,9 @@ import '../../models/tool.dart';
 import '../../services/tool_service.dart';
 import '../../theme/dino_card_theme.dart';
 import '../tool/tool_params_edit_sheet.dart';
+import '../../models/aerial_mission_kind.dart';
+import '../../models/formation_map_kind.dart';
+import '../../models/guidance_tool_kind.dart';
 import 'tool_card_back.dart';
 import 'tool_card_extension.dart';
 import 'tool_card_front.dart';
@@ -36,6 +39,49 @@ class ToolTurnableCard extends StatefulWidget {
 class _ToolTurnableCardState extends State<ToolTurnableCard> {
   bool _collectBusy = false;
   bool _updateParamsBusy = false;
+
+  List<String> _editableKeysForBackStats(ToolSummary tool) {
+    final aerial = AerialMissionKind.tryParseToolName(tool.name);
+    if (aerial != null) {
+      return const [
+        'flight_speed_kmh',
+        'max_route_km',
+        'discovery_chance',
+        'discovery_distance_m',
+      ];
+    }
+
+    final guidance = GuidanceToolKind.tryParseToolName(tool.name);
+    if (guidance != null) {
+      return switch (guidance) {
+        GuidanceToolKind.geoCompass => const [
+            'duration_minutes',
+            'exactness',
+            'discovery_chance',
+          ],
+        GuidanceToolKind.proximityScanner => const [
+            'duration_minutes',
+            'exactness',
+          ],
+        GuidanceToolKind.siteNavigator => const [
+            'duration_minutes',
+            'direction_exactness',
+            'distance_exactness',
+            'discovery_chance',
+          ],
+      };
+    }
+
+    if (FormationMapKind.matchesToolName(tool.name)) {
+      return const [
+        'duration_minutes',
+        'accuracy',
+        'range',
+      ];
+    }
+
+    return tool.params.keys.toList(growable: false);
+  }
 
   Future<void> _onCollect() async {
     if (_collectBusy) return;
@@ -69,9 +115,18 @@ class _ToolTurnableCardState extends State<ToolTurnableCard> {
 
   Future<void> _onEditParams() async {
     if (_updateParamsBusy) return;
+    final editableKeys = _editableKeysForBackStats(widget.tool)
+        .where(widget.tool.params.containsKey)
+        .toList(growable: false);
+    // Defensive fallback: if the params payload doesn't include a key we
+    // expect, keep the modal usable by showing whatever keys we got.
+    final safeEditableKeys =
+        editableKeys.isNotEmpty ? editableKeys : widget.tool.params.keys.toList(growable: false);
+
     await ToolParamsEditSheet.show(
       context,
       params: widget.tool.params,
+      editableKeys: safeEditableKeys,
       onSave: (updatedParams) async {
         if (_updateParamsBusy) return;
         setState(() => _updateParamsBusy = true);
@@ -111,8 +166,10 @@ class _ToolTurnableCardState extends State<ToolTurnableCard> {
     final onInfo = extension?.infoHandler(context, widget.tool);
     final statsChild = extension?.buildDeployStats(context, widget.tool);
     final ongoingChild = extension?.buildOngoingPanel(context, widget.tool);
-    final canEditParams =
-        widget.tool.isOwned && isAdmin && widget.tool.params.isNotEmpty;
+    final canEditParams = widget.tool.isOwned &&
+        widget.tool.isToolInstance &&
+        isAdmin &&
+        widget.tool.params.isNotEmpty;
 
     return TurnableYAxisCard(
       resetIdentity: widget.tool.id,
