@@ -33,9 +33,14 @@ class LocationService extends ChangeNotifier {
   bool _fieldSession = false;
   bool _appForeground = true;
   bool _highPrecisionGps = false;
+  /// FlutterCompass only when rotate mode or guidance needle needs heading.
+  bool _headingWanted = false;
 
   /// Heading updates without [notifyListeners] (avoids ~60 Hz map rebuilds).
   final ValueNotifier<double> headingListenable = ValueNotifier<double>(0);
+
+  /// GPS fixes without forcing map-screen rebuilds — map listens directly.
+  final ValueNotifier<LatLng?> locationListenable = ValueNotifier<LatLng?>(null);
 
   // Perf HUD counters (monotonic; HUD diffs over a window).
   int _gpsUpdateCount = 0;
@@ -85,6 +90,13 @@ class LocationService extends ChangeNotifier {
     await _reconcileTracking(forceRestartLocation: true);
   }
 
+  /// Enable FlutterCompass while rotate mode or guidance needle needs heading.
+  Future<void> setHeadingWanted(bool wanted) async {
+    if (_headingWanted == wanted) return;
+    _headingWanted = wanted;
+    await _reconcileHeadingOnly();
+  }
+
   Future<void> setFieldSession({
     required bool active,
     @Deprecated('Background GPS is no longer supported')
@@ -119,15 +131,7 @@ class LocationService extends ChangeNotifier {
       _highPrecisionGps = false;
       return;
     }
-    // Compass is foreground-only UI for the map tab.
-    if (_mapForeground) {
-      _startHeading();
-    } else {
-      _headingSub?.cancel();
-      _headingSub = null;
-      _headingNotifyTimer?.cancel();
-      _headingNotifyTimer = null;
-    }
+    _reconcileHeadingStream();
     final wantHigh = _mapForeground;
     final profileChanged = wantHigh != _highPrecisionGps;
     await _startLocationStream(
@@ -135,13 +139,35 @@ class LocationService extends ChangeNotifier {
     );
   }
 
-  void _stopStreams() {
-    _locationSub?.cancel();
-    _locationSub = null;
+  Future<void> _reconcileHeadingOnly() async {
+    if (!_mapForeground || !_appForeground) {
+      _stopHeadingStream();
+      return;
+    }
+    _reconcileHeadingStream();
+  }
+
+  void _reconcileHeadingStream() {
+    // Compass is foreground-only UI for rotate / guidance needle — not all
+    // map-tab time (north-fixed FollowPuck uses native Mapbox heading).
+    if (_mapForeground && _appForeground && _headingWanted) {
+      _startHeading();
+    } else {
+      _stopHeadingStream();
+    }
+  }
+
+  void _stopHeadingStream() {
     _headingSub?.cancel();
     _headingSub = null;
     _headingNotifyTimer?.cancel();
     _headingNotifyTimer = null;
+  }
+
+  void _stopStreams() {
+    _locationSub?.cancel();
+    _locationSub = null;
+    _stopHeadingStream();
   }
 
   void _startHeading() {
@@ -289,6 +315,7 @@ class LocationService extends ChangeNotifier {
     _lastPositionAt = DateTime.now();
     _currentLocation = LatLng(position.latitude, position.longitude);
     _gpsUpdateCount++;
+    locationListenable.value = _currentLocation;
     notifyListeners();
   }
 
@@ -296,6 +323,7 @@ class LocationService extends ChangeNotifier {
   void dispose() {
     _stopStreams();
     headingListenable.dispose();
+    locationListenable.dispose();
     super.dispose();
   }
 }

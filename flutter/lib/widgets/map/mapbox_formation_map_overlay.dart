@@ -42,13 +42,13 @@ class MapboxFormationMapOverlay {
     if (map == null) return;
     final seq = ++_syncSeq;
 
-    // iOS uses UIImage(data:) and Android BitmapFactory.decodeByteArray —
-    // both require encoded PNG/JPEG, not raw RGBA (MbxImage docs are wrong).
-    final pngBytes = await _rgbaToPng(
-      raster.rgba,
-      raster.width,
-      raster.height,
-    );
+    // Prefer isolate-preencoded PNG; fall back to UI-thread encode.
+    final Uint8List pngBytes = raster.pngBytes ??
+        await _rgbaToPng(
+          raster.rgba,
+          raster.width,
+          raster.height,
+        );
     if (seq != _syncSeq) return;
 
     final image = MbxImage(

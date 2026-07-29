@@ -38,6 +38,10 @@ class FormationMapController extends ChangeNotifier {
   LatLng? _lastRasterOrigin;
   int _sitesRevision = 0;
 
+  /// Countdown for HUD / tool cards — does not trigger [notifyListeners].
+  final ValueNotifier<Duration?> remainingListenable =
+      ValueNotifier<Duration?>(null);
+
   bool get isActive =>
       _session != null && _session!.isActive && !_session!.isExpired;
   FormationMapSession? get session => _session;
@@ -49,12 +53,7 @@ class FormationMapController extends ChangeNotifier {
   /// Bumps when discoverable sites or GPS origin for the overlay change.
   int get sitesRevision => _sitesRevision;
 
-  Duration? get remaining {
-    final expires = _session?.expiresAt;
-    if (expires == null) return null;
-    final left = expires.difference(DateTime.now().toUtc());
-    return left.isNegative ? Duration.zero : left;
-  }
+  Duration? get remaining => remainingListenable.value;
 
   double get accuracy {
     final session = _session;
@@ -165,6 +164,7 @@ class FormationMapController extends ChangeNotifier {
     _lastRasterOrigin = null;
     _discovery?.setCacheRadiusOverrideKm(null);
     _message = null;
+    remainingListenable.value = null;
     _bumpSitesRevision();
     if (hadSession) notifyListeners();
   }
@@ -233,13 +233,33 @@ class FormationMapController extends ChangeNotifier {
 
   void _ensureTickTimer() {
     _tickTimer?.cancel();
+    _syncRemaining();
     _tickTimer = Timer.periodic(const Duration(milliseconds: 250), (_) {
       if (!isActive) {
         unawaited(stop(notifyServer: false));
         return;
       }
-      notifyListeners();
+      _syncRemaining();
     });
+  }
+
+  void _syncRemaining() {
+    final expires = _session?.expiresAt;
+    if (expires == null) {
+      if (remainingListenable.value != null) {
+        remainingListenable.value = null;
+      }
+      return;
+    }
+    final left = expires.difference(DateTime.now().toUtc());
+    final next = left.isNegative ? Duration.zero : left;
+    final prev = remainingListenable.value;
+    // HUD shows whole minutes — skip sub-minute notifier spam.
+    if (prev == null ||
+        prev.inMinutes != next.inMinutes ||
+        (next == Duration.zero && prev != Duration.zero)) {
+      remainingListenable.value = next;
+    }
   }
 
   void _bumpSitesRevision() {
@@ -261,6 +281,7 @@ class FormationMapController extends ChangeNotifier {
   void dispose() {
     _tickTimer?.cancel();
     _unbindListeners();
+    remainingListenable.dispose();
     super.dispose();
   }
 }

@@ -176,9 +176,8 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
         _catalogOpen = false;
         _toolsOpen = false;
       });
-      return;
     }
-    setState(() {});
+    // Do not setState on every guidance notify — map/HUD listen locally.
   }
 
   void _onFormationMapChanged() {
@@ -191,9 +190,8 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
         _catalogOpen = false;
         _toolsOpen = false;
       });
-      return;
     }
-    setState(() {});
+    // Do not setState on every formation notify — map/HUD listen locally.
   }
 
   void _onAerialReconChanged() {
@@ -228,6 +226,8 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
       );
     }
 
+    // Draw mode / focus / mission list changes need a shell rebuild; progress
+    // ticks use progressTickListenable and must not reach here.
     setState(() {});
   }
 

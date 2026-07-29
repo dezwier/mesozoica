@@ -172,11 +172,6 @@ class _GuidanceOngoingPanel extends StatelessWidget {
       return const SizedBox.shrink();
     }
 
-    final remaining = guidance.remaining;
-    final minutes = remaining == null
-        ? '—'
-        : '${remaining.inMinutes.clamp(0, 999)} min left';
-
     // Prefer the snapshotted session knobs (what the action actually used),
     // falling back to the tool-instance params for any missing fields.
     final sessionParams = <String, dynamic>{
@@ -195,9 +190,17 @@ class _GuidanceOngoingPanel extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(
-            minutes,
-            style: Theme.of(context).textTheme.bodyMedium,
+          ValueListenableBuilder<Duration?>(
+            valueListenable: guidance.remainingListenable,
+            builder: (context, remaining, _) {
+              final minutes = remaining == null
+                  ? '—'
+                  : '${remaining.inMinutes.clamp(0, 999)} min left';
+              return Text(
+                minutes,
+                style: Theme.of(context).textTheme.bodyMedium,
+              );
+            },
           ),
           const SizedBox(height: 8),
           GuidanceToolStats(
@@ -236,11 +239,6 @@ class _FormationMapOngoingPanel extends StatelessWidget {
       return const SizedBox.shrink();
     }
 
-    final remaining = formation.remaining;
-    final minutes = remaining == null
-        ? '—'
-        : '${remaining.inMinutes.clamp(0, 999)} min left';
-
     final sessionParams = <String, dynamic>{
       ...toolParams,
       'duration_minutes': session.durationMinutes,
@@ -255,9 +253,17 @@ class _FormationMapOngoingPanel extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(
-            minutes,
-            style: Theme.of(context).textTheme.bodyMedium,
+          ValueListenableBuilder<Duration?>(
+            valueListenable: formation.remainingListenable,
+            builder: (context, remaining, _) {
+              final minutes = remaining == null
+                  ? '—'
+                  : '${remaining.inMinutes.clamp(0, 999)} min left';
+              return Text(
+                minutes,
+                style: Theme.of(context).textTheme.bodyMedium,
+              );
+            },
           ),
           const SizedBox(height: 8),
           FormationMapToolStats(params: sessionParams, compact: true),
@@ -284,11 +290,6 @@ class _AerialMissionOngoingPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final aerial = context.watch<AerialMissionController>();
-    // Rebuild when poll updates discovered sites / remaining time.
-    // ignore: unused_local_variable
-    final _ = aerial.missionsFetchGeneration;
-    // ignore: unused_local_variable
-    final tick = aerial.progressTick;
 
     AerialMission? active;
     for (final m in aerial.missions) {
@@ -311,15 +312,20 @@ class _AerialMissionOngoingPanel extends StatelessWidget {
 
     return CardSectionPanel(
       label: 'Ongoing flight',
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          AerialMissionSummaryLine(mission: mission),
-          const SizedBox(height: 8),
-          AerialMissionFlightStats.fromMission(mission),
-          const SizedBox(height: 10),
-          AerialMissionActions(mission: mission),
-        ],
+      child: ListenableBuilder(
+        listenable: aerial.progressTickListenable,
+        builder: (context, _) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              AerialMissionSummaryLine(mission: mission),
+              const SizedBox(height: 8),
+              AerialMissionFlightStats.fromMission(mission),
+              const SizedBox(height: 10),
+              AerialMissionActions(mission: mission),
+            ],
+          );
+        },
       ),
     );
   }

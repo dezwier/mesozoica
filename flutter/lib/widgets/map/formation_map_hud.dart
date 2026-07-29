@@ -16,9 +16,6 @@ class FormationMapHud extends StatelessWidget {
     final formation = context.watch<FormationMapController>();
     if (!formation.isActive) return const SizedBox.shrink();
 
-    final remaining = formation.remaining;
-    final minutesLeft = remaining?.inMinutes.clamp(0, 999);
-    final time = minutesLeft == null ? '—' : '${minutesLeft}m';
     final top = MapChromeInsets.top(context) + 8;
 
     return Positioned(
@@ -51,12 +48,20 @@ class FormationMapHud extends StatelessWidget {
                 children: [
                   const _VintageMapIcon(size: 28),
                   const SizedBox(width: 8),
-                  Text(
-                    time,
-                    style: VintageInstrumentStyle.mono.copyWith(
-                      fontSize: 13,
-                      color: VintageInstrumentStyle.live,
-                    ),
+                  ValueListenableBuilder<Duration?>(
+                    valueListenable: formation.remainingListenable,
+                    builder: (context, remaining, _) {
+                      final minutesLeft = remaining?.inMinutes.clamp(0, 999);
+                      final time =
+                          minutesLeft == null ? '—' : '${minutesLeft}m';
+                      return Text(
+                        time,
+                        style: VintageInstrumentStyle.mono.copyWith(
+                          fontSize: 13,
+                          color: VintageInstrumentStyle.live,
+                        ),
+                      );
+                    },
                   ),
                   const SizedBox(width: 10),
                   GestureDetector(

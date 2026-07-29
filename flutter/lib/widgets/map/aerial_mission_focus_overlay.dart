@@ -15,12 +15,6 @@ class AerialMissionFocusOverlay extends StatelessWidget {
   Widget build(BuildContext context) {
     final aerial = context.watch<AerialMissionController>();
     final mission = aerial.focusedMission;
-    // Rebuild when flying so remaining time updates.
-    // ignore: unused_local_variable
-    final tick = aerial.progressTick;
-    // Rebuild when poll updates discovered sites.
-    // ignore: unused_local_variable
-    final gen = aerial.missionsFetchGeneration;
     if (mission == null) return const SizedBox.shrink();
 
     final topInset = MapChromeInsets.top(context);
@@ -41,24 +35,36 @@ class AerialMissionFocusOverlay extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      kind.toolName,
-                      style: theme.textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    AerialMissionSummaryLine(mission: mission),
-                    const SizedBox(height: 8),
-                    AerialMissionFlightStats.fromMission(mission),
-                    if (mission.isActive) ...[
-                      const SizedBox(height: 10),
-                      AerialMissionActions(mission: mission),
-                    ],
-                  ],
+                child: ListenableBuilder(
+                  listenable: Listenable.merge([
+                    aerial.progressTickListenable,
+                  ]),
+                  builder: (context, _) {
+                    // progressTick / fetch generation read for remaining time.
+                    // ignore: unused_local_variable
+                    final tick = aerial.progressTick;
+                    // ignore: unused_local_variable
+                    final gen = aerial.missionsFetchGeneration;
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          kind.toolName,
+                          style: theme.textTheme.titleSmall?.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        AerialMissionSummaryLine(mission: mission),
+                        const SizedBox(height: 8),
+                        AerialMissionFlightStats.fromMission(mission),
+                        if (mission.isActive) ...[
+                          const SizedBox(height: 10),
+                          AerialMissionActions(mission: mission),
+                        ],
+                      ],
+                    );
+                  },
                 ),
               ),
               IconButton(

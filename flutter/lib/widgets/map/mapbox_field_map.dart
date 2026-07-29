@@ -54,6 +54,7 @@ class MapboxFieldMap extends StatefulWidget {
     this.hiddenRotateSiteId,
     this.rotateCardCount,
     this.headingListenable,
+    this.locationListenable,
     this.aerialRecon,
     this.formationMap,
     this.showPastAerialRoutes = false,
@@ -74,6 +75,8 @@ class MapboxFieldMap extends StatefulWidget {
   final double headingDeg;
   /// Live heading without rebuilding this widget (compass decoupled).
   final ValueListenable<double>? headingListenable;
+  /// Live GPS without rebuilding the parent MapScreen tree.
+  final ValueListenable<LatLng?>? locationListenable;
   final bool followUser;
   final LatLng initialCenter;
   final double initialZoom;
@@ -142,6 +145,11 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
   late final double _seedHeading;
   /// Stable reference so MapWidget only transitions when we replace it.
   late ViewportState _viewport;
+  /// Latest GPS from [locationListenable] without parent rebuilds.
+  LatLng? _liveLocation;
+
+  LatLng? get _effectiveLocation =>
+      _liveLocation ?? widget.currentLocation;
 
   @override
   void initState() {
@@ -156,12 +164,16 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
       },
     );
     widget.camera.rotateWithHeading = widget.rotateWithHeading;
-    _seedCenter = widget.currentLocation ?? widget.initialCenter;
+    _liveLocation = widget.locationListenable?.value ?? widget.currentLocation;
+    _seedCenter = _liveLocation ?? widget.initialCenter;
     _seedZoom = clampMapboxZoom(
       widget.initialZoom < 10 ? MapConfig.mapboxFollowZoom : widget.initialZoom,
     );
     _seedHeading = widget.headingDeg;
+    widget.locationListenable?.addListener(_onLocationListenable);
     widget.aerialRecon?.addListener(_onAerialReconChanged);
+    widget.aerialRecon?.progressTickListenable
+        .addListener(_onAerialProgressTick);
     widget.formationMap?.addListener(_onFormationMapChanged);
     // Seed with a fixed camera; switch to FollowPuck after the location puck
     // is enabled (FollowPuck requires location).
@@ -229,7 +241,10 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
 
   @override
   void dispose() {
+    widget.locationListenable?.removeListener(_onLocationListenable);
     widget.aerialRecon?.removeListener(_onAerialReconChanged);
+    widget.aerialRecon?.progressTickListenable
+        .removeListener(_onAerialProgressTick);
     widget.formationMap?.removeListener(_onFormationMapChanged);
     _annotationDebounce?.cancel();
     _readyTimeout?.cancel();
@@ -251,7 +266,37 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
     super.dispose();
   }
 
+  void _onLocationListenable() {
+    if (!mounted) return;
+    final loc = widget.locationListenable?.value;
+    final prev = _liveLocation;
+    if (prev != null &&
+        loc != null &&
+        prev.latitude == loc.latitude &&
+        prev.longitude == loc.longitude) {
+      return;
+    }
+    if (prev == null && loc == null) return;
+    _liveLocation = loc;
+    final shouldFollow = widget.followUser && !widget.rotateWithHeading;
+    if (shouldFollow && loc != null) {
+      unawaited(
+        widget.camera.followLocation(
+          loc,
+          followUser: true,
+        ),
+      );
+    }
+    if (widget.rotateWithHeading && loc != null) {
+      _syncRotateOverlayFrame();
+    }
+  }
+
   void _onAerialReconChanged() {
+    unawaited(_syncAerialMission());
+  }
+
+  void _onAerialProgressTick() {
     unawaited(_syncAerialMission());
   }
 
@@ -268,7 +313,7 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
       await _formationOverlay.clear();
       return;
     }
-    final origin = formation.origin ?? widget.currentLocation;
+    final origin = formation.origin ?? _effectiveLocation;
     if (origin == null) {
       await _formationOverlay.clear();
       return;
@@ -311,15 +356,19 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
         triassic: palette.triassic,
       ),
     );
-    // 128² grid is cheap enough on the UI isolate; avoid compute() because
-    // custom request objects are not SendPort-safe.
-    final raster = buildFormationMapRaster(request);
+    // IDW + PNG on a worker isolate so walking with Formation Map active
+    // does not spike the UI isolate (custom request → SendPort-safe map).
+    final isolateResult = await compute(
+      buildFormationMapPngIsolate,
+      request.toIsolatePayload(),
+    );
     if (!mounted) return;
     if (widget.formationMap?.sitesRevision != revision) return;
     if (!(widget.formationMap?.isActive ?? false)) {
       await _formationOverlay.clear();
       return;
     }
+    final raster = formationMapResultFromIsolate(isolateResult);
     await _formationOverlay.sync(raster: raster);
   }
 
@@ -447,7 +496,7 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
       map: map,
       sites: widget.sites,
       viewportSize: size,
-      cullCenter: widget.currentLocation,
+      cullCenter: _effectiveLocation,
     );
   }
 
@@ -470,7 +519,7 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
     MapContentGestureContext context,
   ) async {
     final map = _map;
-    final location = widget.currentLocation;
+    final location = _effectiveLocation;
     if (map == null ||
         location == null ||
         !widget.mapActive ||
@@ -529,12 +578,13 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
         oldWidget.rotateWithHeading && !widget.rotateWithHeading;
     if (shouldFollow &&
         !exitingRotate &&
-        widget.currentLocation != null &&
-        (oldWidget.currentLocation != widget.currentLocation ||
-            oldWidget.followUser != widget.followUser)) {
+        _effectiveLocation != null &&
+        (oldWidget.followUser != widget.followUser ||
+            (widget.locationListenable == null &&
+                oldWidget.currentLocation != widget.currentLocation))) {
       unawaited(
         widget.camera.followLocation(
-          widget.currentLocation!,
+          _effectiveLocation!,
           followUser: true,
         ),
       );
@@ -565,8 +615,19 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
     // Location cull-center updates; heading is owned by FollowPuck / ticker —
     // do not rebuild-sync on headingDeg (would fight compass decoupling).
     if (widget.rotateWithHeading &&
+        widget.locationListenable == null &&
         oldWidget.currentLocation != widget.currentLocation) {
+      _liveLocation = widget.currentLocation;
       _syncRotateOverlayFrame();
+    }
+    if (oldWidget.locationListenable != widget.locationListenable) {
+      oldWidget.locationListenable?.removeListener(_onLocationListenable);
+      widget.locationListenable?.addListener(_onLocationListenable);
+      _liveLocation =
+          widget.locationListenable?.value ?? widget.currentLocation;
+    } else if (widget.locationListenable == null &&
+        oldWidget.currentLocation != widget.currentLocation) {
+      _liveLocation = widget.currentLocation;
     }
     if (oldWidget.mapActive != widget.mapActive ||
         oldWidget.rotateWithHeading != widget.rotateWithHeading) {
@@ -589,7 +650,11 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
     }
     if (oldWidget.aerialRecon != widget.aerialRecon) {
       oldWidget.aerialRecon?.removeListener(_onAerialReconChanged);
+      oldWidget.aerialRecon?.progressTickListenable
+          .removeListener(_onAerialProgressTick);
       widget.aerialRecon?.addListener(_onAerialReconChanged);
+      widget.aerialRecon?.progressTickListenable
+          .addListener(_onAerialProgressTick);
       unawaited(_syncAerialMission());
     }
     if (oldWidget.formationMap != widget.formationMap) {
@@ -741,7 +806,7 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
         _enterFollowPuck();
       } else {
         await widget.camera.seedCamera(
-          center: widget.currentLocation ?? _seedCenter,
+          center: _effectiveLocation ?? _seedCenter,
           zoom: _seedZoom,
           headingDeg: _liveHeadingDeg,
         );

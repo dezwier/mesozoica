@@ -73,91 +73,101 @@ class _GuidanceOverlayState extends State<GuidanceOverlay>
     final guidance = context.watch<GuidanceSessionController>();
     if (!guidance.isActive) return const SizedBox.shrink();
 
-    final remaining = guidance.remaining;
-    final minutesLeft = remaining?.inMinutes.clamp(0, 999);
-    final showDistance =
-        guidance.showDistance && guidance.distanceLabel != null;
-    // Keep compass visible during exit animation even if follow flickers.
-    final showCompass = guidance.showNeedle &&
-        guidance.targetSite != null &&
-        (widget.rotateWithHeading ||
-            widget.followUser ||
-            _modeAnim.isAnimating);
+    final location = context.read<LocationService>();
     final topInset = MapChromeInsets.top(context);
-    // Session controls: proximity meter when distance UI is up (site nav /
-    // proximity scanner); otherwise under the compass (geo compass).
-    final sessionOnProximity = showDistance;
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final compassSession = !sessionOnProximity;
-        final compassH = VintageGuidanceCompass.size +
-            (compassSession ? VintageGuidanceCompass.sessionStripHeight : 0);
-        // GuidanceSessionController already rebuilds on heading ticks.
-        final heading = context.read<LocationService>().headingDeg;
-        final compassTitle = 'COMPASS';
-        final centerNorth = guidance.rangeCenterScreenDeg(
-          rotateWithHeading: false,
-        );
-        final centerRotate = guidance.rangeCenterScreenDeg(
-          rotateWithHeading: true,
-        );
+    return ListenableBuilder(
+      listenable: Listenable.merge([
+        guidance.displayTickListenable,
+        guidance.remainingListenable,
+        location.headingListenable,
+      ]),
+      builder: (context, _) {
+        final remaining = guidance.remainingListenable.value;
+        final minutesLeft = remaining?.inMinutes.clamp(0, 999);
+        final showDistance =
+            guidance.showDistance && guidance.distanceLabel != null;
+        // Keep compass visible during exit animation even if follow flickers.
+        final showCompass = guidance.showNeedle &&
+            guidance.targetSite != null &&
+            (widget.rotateWithHeading ||
+                widget.followUser ||
+                _modeAnim.isAnimating);
+        // Session controls: proximity meter when distance UI is up (site nav /
+        // proximity scanner); otherwise under the compass (geo compass).
+        final sessionOnProximity = showDistance;
 
-        return Stack(
-          children: [
-            if (showCompass)
-              AnimatedBuilder(
-                animation: _rotateT,
-                builder: (context, _) {
-                  final t = _rotateT.value;
-                  final focusFromBottom = lerpDouble(
-                    0.5,
-                    MapConfig.mapboxRotateFocusFromBottom,
-                    t,
-                  )!;
-                  final focus = Offset(
-                    constraints.maxWidth / 2,
-                    constraints.maxHeight * (1 - focusFromBottom),
-                  );
-                  final centerDeg = _lerpDeg(centerNorth, centerRotate, t);
-                  final northDeg = lerpDouble(0.0, -heading, t)!;
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            final compassSession = !sessionOnProximity;
+            final compassH = VintageGuidanceCompass.size +
+                (compassSession ? VintageGuidanceCompass.sessionStripHeight : 0);
+            final heading = location.headingDeg;
+            const compassTitle = 'COMPASS';
+            final centerNorth = guidance.rangeCenterScreenDeg(
+              rotateWithHeading: false,
+            );
+            final centerRotate = guidance.rangeCenterScreenDeg(
+              rotateWithHeading: true,
+            );
 
-                  return Positioned(
-                    left: focus.dx - VintageGuidanceCompass.size / 2,
-                    top: focus.dy - VintageGuidanceCompass.size / 2,
-                    width: VintageGuidanceCompass.size,
-                    height: compassH,
-                    child: VintageGuidanceCompass(
-                      centerDeg: centerDeg,
-                      rangeWidthDeg: guidance.rangeWidthDeg,
-                      northDeg: northDeg,
-                      minutesLeft: compassSession ? minutesLeft : null,
-                      onStop:
-                          compassSession ? () => guidance.stop() : null,
-                      title: compassTitle,
-                    ),
-                  );
-                },
-              ),
-            if (showDistance)
-              DraggableProximityScanner(
-                key: ValueKey(guidance.session?.sessionId ?? 0),
-                label: guidance.distanceLabel!,
-                minutesLeft: minutesLeft,
-                onStop: () => guidance.stop(),
-              ),
-            if (guidance.showRetargetBadge)
-              Positioned(
-                top: topInset +
-                    8 +
-                    (showDistance
-                        ? ProximityScannerDisplay.mapHeightEstimate + 8
-                        : 0),
-                left: 16,
-                right: 16,
-                child: const Center(child: _RetargetBadge()),
-              ),
-          ],
+            return Stack(
+              children: [
+                if (showCompass)
+                  AnimatedBuilder(
+                    animation: _rotateT,
+                    builder: (context, _) {
+                      final t = _rotateT.value;
+                      final focusFromBottom = lerpDouble(
+                        0.5,
+                        MapConfig.mapboxRotateFocusFromBottom,
+                        t,
+                      )!;
+                      final focus = Offset(
+                        constraints.maxWidth / 2,
+                        constraints.maxHeight * (1 - focusFromBottom),
+                      );
+                      final centerDeg = _lerpDeg(centerNorth, centerRotate, t);
+                      final northDeg = lerpDouble(0.0, -heading, t)!;
+
+                      return Positioned(
+                        left: focus.dx - VintageGuidanceCompass.size / 2,
+                        top: focus.dy - VintageGuidanceCompass.size / 2,
+                        width: VintageGuidanceCompass.size,
+                        height: compassH,
+                        child: VintageGuidanceCompass(
+                          centerDeg: centerDeg,
+                          rangeWidthDeg: guidance.rangeWidthDeg,
+                          northDeg: northDeg,
+                          minutesLeft: compassSession ? minutesLeft : null,
+                          onStop:
+                              compassSession ? () => guidance.stop() : null,
+                          title: compassTitle,
+                        ),
+                      );
+                    },
+                  ),
+                if (showDistance)
+                  DraggableProximityScanner(
+                    key: ValueKey(guidance.session?.sessionId ?? 0),
+                    label: guidance.distanceLabel!,
+                    minutesLeft: minutesLeft,
+                    onStop: () => guidance.stop(),
+                  ),
+                if (guidance.showRetargetBadge)
+                  Positioned(
+                    top: topInset +
+                        8 +
+                        (showDistance
+                            ? ProximityScannerDisplay.mapHeightEstimate + 8
+                            : 0),
+                    left: 16,
+                    right: 16,
+                    child: const Center(child: _RetargetBadge()),
+                  ),
+              ],
+            );
+          },
         );
       },
     );

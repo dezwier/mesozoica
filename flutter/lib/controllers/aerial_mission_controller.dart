@@ -28,7 +28,6 @@ class AerialMissionController extends ChangeNotifier {
   bool _missionsLoading = false;
   Timer? _refreshTimer;
   Timer? _progressTimer;
-  int _progressTick = 0;
   /// Bumps only after a successful missions list fetch (not progress ticks).
   int _missionsFetchGeneration = 0;
   AerialMission? _focusedMission;
@@ -51,7 +50,12 @@ class AerialMissionController extends ChangeNotifier {
   bool get pendingDrawCamera => _pendingDrawCamera;
 
   /// Bumps while any flying mission is active so map layers can re-interpolate.
-  int get progressTick => _progressTick;
+  /// Prefer [progressTickListenable] for UI — progress ticks do not call
+  /// [notifyListeners].
+  int get progressTick => progressTickListenable.value;
+
+  /// Flying scout interpolation tick (~4 Hz) without rebuilding Provider trees.
+  final ValueNotifier<int> progressTickListenable = ValueNotifier<int>(0);
 
   /// Increments when missions are reloaded from the server.
   int get missionsFetchGeneration => _missionsFetchGeneration;
@@ -422,8 +426,7 @@ class AerialMissionController extends ChangeNotifier {
     if (needsTick) {
       // ~4 Hz keeps the scout puck moving smoothly without thrashing Mapbox.
       _progressTimer ??= Timer.periodic(const Duration(milliseconds: 250), (_) {
-        _progressTick++;
-        notifyListeners();
+        progressTickListenable.value = progressTickListenable.value + 1;
       });
     } else {
       _progressTimer?.cancel();
@@ -455,6 +458,7 @@ class AerialMissionController extends ChangeNotifier {
   @override
   void dispose() {
     stopTracking();
+    progressTickListenable.dispose();
     super.dispose();
   }
 }

@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'dart:math' as math;
 import 'dart:typed_data';
 
@@ -64,6 +65,64 @@ class FormationMapRasterRequest {
   /// Softness of period borders (0–1); accuracy still sharpens further.
   final double boundaryBlur;
   final FormationMapRasterColors colors;
+
+  /// SendPort-safe payload for [compute] / [buildFormationMapPngIsolate].
+  Map<String, dynamic> toIsolatePayload() {
+    return {
+      'originLat': originLat,
+      'originLon': originLon,
+      'rangeM': rangeM,
+      'accuracy': accuracy,
+      'gridSize': gridSize,
+      'baseAlpha': baseAlpha,
+      'rangeFade': rangeFade,
+      'boundaryBlur': boundaryBlur,
+      'cretaceous': [
+        colors.cretaceous.$1,
+        colors.cretaceous.$2,
+        colors.cretaceous.$3,
+      ],
+      'jurassic': [colors.jurassic.$1, colors.jurassic.$2, colors.jurassic.$3],
+      'triassic': [colors.triassic.$1, colors.triassic.$2, colors.triassic.$3],
+      'sites': [
+        for (final site in sites) [site.lat, site.lon, site.period],
+      ],
+    };
+  }
+
+  static FormationMapRasterRequest fromIsolatePayload(
+    Map<String, dynamic> payload,
+  ) {
+    (int, int, int) rgb(List<dynamic> raw) => (
+          (raw[0] as num).toInt(),
+          (raw[1] as num).toInt(),
+          (raw[2] as num).toInt(),
+        );
+    final sitesRaw = payload['sites'] as List<dynamic>? ?? const [];
+    return FormationMapRasterRequest(
+      originLat: (payload['originLat'] as num).toDouble(),
+      originLon: (payload['originLon'] as num).toDouble(),
+      rangeM: (payload['rangeM'] as num).toDouble(),
+      accuracy: (payload['accuracy'] as num).toDouble(),
+      gridSize: (payload['gridSize'] as num?)?.toInt() ?? 128,
+      baseAlpha: (payload['baseAlpha'] as num?)?.toDouble() ?? 0.48,
+      rangeFade: (payload['rangeFade'] as num?)?.toDouble() ?? 0.55,
+      boundaryBlur: (payload['boundaryBlur'] as num?)?.toDouble() ?? 0.7,
+      colors: FormationMapRasterColors(
+        cretaceous: rgb(payload['cretaceous'] as List<dynamic>),
+        jurassic: rgb(payload['jurassic'] as List<dynamic>),
+        triassic: rgb(payload['triassic'] as List<dynamic>),
+      ),
+      sites: [
+        for (final row in sitesRaw)
+          FormationMapSiteSample(
+            lat: ((row as List<dynamic>)[0] as num).toDouble(),
+            lon: (row[1] as num).toDouble(),
+            period: row[2] as String,
+          ),
+      ],
+    );
+  }
 }
 
 class FormationMapRasterResult {
@@ -75,6 +134,7 @@ class FormationMapRasterResult {
     required this.east,
     required this.south,
     required this.north,
+    this.pngBytes,
   });
 
   final int width;
@@ -85,6 +145,8 @@ class FormationMapRasterResult {
   final double east;
   final double south;
   final double north;
+  /// Pre-encoded PNG when built via [buildFormationMapPngIsolate].
+  final Uint8List? pngBytes;
 
   /// ImageSource corner order: top-left, top-right, bottom-right, bottom-left.
   List<List<double>> get coordinates => [
@@ -93,6 +155,86 @@ class FormationMapRasterResult {
         [east, south],
         [west, south],
       ];
+}
+
+/// Isolate entry: IDW raster + PNG encode off the UI thread.
+Map<String, dynamic> buildFormationMapPngIsolate(Map<String, dynamic> payload) {
+  final request = FormationMapRasterRequest.fromIsolatePayload(payload);
+  final raster = buildFormationMapRaster(request);
+  final png = encodeRgbaToPng(raster.rgba, raster.width, raster.height);
+  return {
+    'width': raster.width,
+    'height': raster.height,
+    'png': png,
+    'west': raster.west,
+    'east': raster.east,
+    'south': raster.south,
+    'north': raster.north,
+  };
+}
+
+FormationMapRasterResult formationMapResultFromIsolate(
+  Map<String, dynamic> result,
+) {
+  return FormationMapRasterResult(
+    width: (result['width'] as num).toInt(),
+    height: (result['height'] as num).toInt(),
+    rgba: Uint8List(0),
+    west: (result['west'] as num).toDouble(),
+    east: (result['east'] as num).toDouble(),
+    south: (result['south'] as num).toDouble(),
+    north: (result['north'] as num).toDouble(),
+    pngBytes: result['png'] as Uint8List,
+  );
+}
+
+/// Minimal RGBA8888 → PNG (zlib) encoder safe for background isolates.
+Uint8List encodeRgbaToPng(Uint8List rgba, int width, int height) {
+  final rowStride = width * 4;
+  final raw = Uint8List((rowStride + 1) * height);
+  for (var y = 0; y < height; y++) {
+    final dst = y * (rowStride + 1);
+    raw[dst] = 0; // filter none
+    raw.setRange(dst + 1, dst + 1 + rowStride, rgba, y * rowStride);
+  }
+  final compressed = ZLibEncoder().convert(raw);
+
+  final bytes = BytesBuilder(copy: false);
+  bytes.add(const [137, 80, 78, 71, 13, 10, 26, 10]);
+  void chunk(String type, List<int> data) {
+    final typeCodes = type.codeUnits;
+    final len = ByteData(4)..setUint32(0, data.length);
+    bytes.add(len.buffer.asUint8List());
+    bytes.add(typeCodes);
+    bytes.add(data);
+    final crc = _pngCrc([...typeCodes, ...data]);
+    final crcBytes = ByteData(4)..setUint32(0, crc);
+    bytes.add(crcBytes.buffer.asUint8List());
+  }
+
+  final ihdr = ByteData(13)
+    ..setUint32(0, width)
+    ..setUint32(4, height)
+    ..setUint8(8, 8) // bit depth
+    ..setUint8(9, 6) // RGBA
+    ..setUint8(10, 0)
+    ..setUint8(11, 0)
+    ..setUint8(12, 0);
+  chunk('IHDR', ihdr.buffer.asUint8List());
+  chunk('IDAT', compressed);
+  chunk('IEND', const []);
+  return bytes.toBytes();
+}
+
+int _pngCrc(List<int> data) {
+  var c = 0xffffffff;
+  for (final b in data) {
+    c ^= b;
+    for (var i = 0; i < 8; i++) {
+      c = (c & 1) != 0 ? (0xedb88320 ^ (c >> 1)) : (c >> 1);
+    }
+  }
+  return c ^ 0xffffffff;
 }
 
 /// Build a period-mosaic RGBA raster for Mapbox ImageSource (PNG-encoded later).

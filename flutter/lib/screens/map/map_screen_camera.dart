@@ -21,10 +21,66 @@ mixin _MapScreenCameraMixin on State<MapScreen> {
   LatLng? _lastFollowedLocation;
   String? _mapboxBannerMessage;
   Timer? _splashSafetyTimer;
+  VoidCallback? _aerialProgressListener;
+  AerialMissionController? _aerialProgressBound;
+  VoidCallback? _locationListenableListener;
+  LocationService? _locationListenableBound;
 
   void _disposeCameraMixin() {
     _splashSafetyTimer?.cancel();
+    _unbindAerialProgressListener();
+    _unbindLocationListenable();
     _rotateCardCount.dispose();
+  }
+
+  void _bindAerialProgressListener() {
+    final aerial = context.read<AerialMissionController>();
+    if (_aerialProgressBound == aerial && _aerialProgressListener != null) {
+      return;
+    }
+    _unbindAerialProgressListener();
+    _aerialProgressBound = aerial;
+    _aerialProgressListener = () {
+      if (!mounted) return;
+      _maybeFollowAerialScout();
+    };
+    aerial.progressTickListenable.addListener(_aerialProgressListener!);
+  }
+
+  void _unbindAerialProgressListener() {
+    final aerial = _aerialProgressBound;
+    final listener = _aerialProgressListener;
+    if (aerial != null && listener != null) {
+      aerial.progressTickListenable.removeListener(listener);
+    }
+    _aerialProgressBound = null;
+    _aerialProgressListener = null;
+  }
+
+  void _bindLocationListenable() {
+    final location = context.read<LocationService>();
+    if (_locationListenableBound == location &&
+        _locationListenableListener != null) {
+      return;
+    }
+    _unbindLocationListenable();
+    _locationListenableBound = location;
+    _locationListenableListener = () {
+      if (!mounted) return;
+      _setInitialCamera(locationService: location);
+      _maybeFollowUser(location);
+    };
+    location.locationListenable.addListener(_locationListenableListener!);
+  }
+
+  void _unbindLocationListenable() {
+    final location = _locationListenableBound;
+    final listener = _locationListenableListener;
+    if (location != null && listener != null) {
+      location.locationListenable.removeListener(listener);
+    }
+    _locationListenableBound = null;
+    _locationListenableListener = null;
   }
 
   void _dismissSplash() {
@@ -37,8 +93,11 @@ mixin _MapScreenCameraMixin on State<MapScreen> {
   void _activateIfNeeded() {
     if (!widget.isActive) {
       context.read<LocationService>().setMapForeground(false);
+      unawaited(context.read<LocationService>().setHeadingWanted(false));
       context.read<map_data.MapController>().pause();
       context.read<AerialMissionController>().stopTracking();
+      _unbindAerialProgressListener();
+      _unbindLocationListenable();
       return;
     }
 
@@ -47,10 +106,22 @@ mixin _MapScreenCameraMixin on State<MapScreen> {
       context.read<LocationService>().setMapForeground(true);
       context.read<map_data.MapController>().load();
       context.read<AerialMissionController>().startTracking();
+      _bindAerialProgressListener();
+      _bindLocationListenable();
+      _syncHeadingWanted();
       _consumePendingFocus();
       _consumePendingAerialFocus();
       _consumePendingDrawCamera();
     });
+  }
+
+  /// FlutterCompass only while rotate mode or guidance needle needs it.
+  void _syncHeadingWanted() {
+    if (!mounted) return;
+    final guidance = context.read<GuidanceSessionController>();
+    final wanted = widget.isActive &&
+        (_rotateMap || (guidance.isActive && guidance.showNeedle));
+    unawaited(context.read<LocationService>().setHeadingWanted(wanted));
   }
 
   void _consumePendingFocus() {
@@ -97,6 +168,7 @@ mixin _MapScreenCameraMixin on State<MapScreen> {
         _aerialFocusAnimating = false;
       });
       _mapboxCamera.clearPendingFollow();
+      _syncHeadingWanted();
     } else {
       setState(() {
         _followAerialScout = false;
@@ -140,6 +212,7 @@ mixin _MapScreenCameraMixin on State<MapScreen> {
         _aerialFocusAnimating = false;
       });
       _mapboxCamera.clearPendingFollow();
+      _syncHeadingWanted();
     } else {
       setState(() {
         _followUser = false;
@@ -207,9 +280,6 @@ mixin _MapScreenCameraMixin on State<MapScreen> {
       setState(() => _followAerialScout = false);
       return;
     }
-    // Rebuild trigger while flying (progressTick) so follow stays live.
-    // ignore: unused_local_variable
-    final tick = recon.progressTick;
     final target = recon.scoutPosition(mission);
     if (target == null) return;
     // Omit zoom so the slider can change level while we stay centered;
@@ -238,6 +308,7 @@ mixin _MapScreenCameraMixin on State<MapScreen> {
         _followUser = false;
       });
       _mapboxCamera.clearPendingFollow();
+      _syncHeadingWanted();
       // MapboxFieldMap exits FollowPuck → Idle + north-fixed camera.
     } else if (_rotateMap) {
       // Rotate mode stays locked on the user — don't pan away for site taps.
@@ -298,6 +369,7 @@ mixin _MapScreenCameraMixin on State<MapScreen> {
         _lastFollowedLocation = location;
       }
     });
+    _syncHeadingWanted();
     // MapboxFieldMap switches FollowPuck ↔ Idle from rotateWithHeading.
   }
 
@@ -315,6 +387,7 @@ mixin _MapScreenCameraMixin on State<MapScreen> {
         _lastFollowedLocation = location;
       }
     });
+    _syncHeadingWanted();
     // Stay in guidance: north-fixed follow still shows the vintage compass
     // (hidden again if the user pans away / leaves follow).
     // MapboxFieldMap switches FollowPuck ↔ Idle from rotateWithHeading.
@@ -323,6 +396,7 @@ mixin _MapScreenCameraMixin on State<MapScreen> {
   /// After activating a guidance tool: keep rotate if already in it, otherwise
   /// center north-fixed on the user so overlays are visible.
   void _ensureGuidanceVisibleOnMap() {
+    _syncHeadingWanted();
     if (_rotateMap) return;
     unawaited(_centerOnLocation(context.read<LocationService>()));
   }

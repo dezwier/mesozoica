@@ -47,6 +47,13 @@ class GuidanceSessionController extends ChangeNotifier {
   Timer? _badgeTimer;
   Timer? _tickTimer;
 
+  /// Countdown for HUD / tool cards — does not trigger [notifyListeners].
+  final ValueNotifier<Duration?> remainingListenable =
+      ValueNotifier<Duration?>(null);
+
+  /// Needle / distance chrome animation tick — does not trigger [notifyListeners].
+  final ValueNotifier<int> displayTickListenable = ValueNotifier<int>(0);
+
   bool get isActive =>
       _session != null && _session!.isActive && !_session!.isExpired;
   GuidanceSession? get session => _session;
@@ -66,12 +73,7 @@ class GuidanceSessionController extends ChangeNotifier {
   bool get showNeedle => _kind?.showNeedle == true && isActive;
   bool get showDistance => _kind?.showDistance == true && isActive;
 
-  Duration? get remaining {
-    final expires = _session?.expiresAt;
-    if (expires == null) return null;
-    final left = expires.difference(DateTime.now().toUtc());
-    return left.isNegative ? Duration.zero : left;
-  }
+  Duration? get remaining => remainingListenable.value;
 
   /// Full arc width in degrees for the direction glow.
   double get rangeWidthDeg {
@@ -201,6 +203,7 @@ class GuidanceSessionController extends ChangeNotifier {
     _targetSite = null;
     _distanceM = null;
     _distanceLabel = null;
+    remainingListenable.value = null;
     if (hadSession) notifyListeners();
   }
 
@@ -211,19 +214,44 @@ class GuidanceSessionController extends ChangeNotifier {
   void _onHeadingChanged() {
     if (!isActive) return;
     _updateHintInterpolation();
-    notifyListeners();
+    _bumpDisplayTick();
   }
 
   void _ensureTickTimer() {
     _tickTimer?.cancel();
+    _syncRemaining();
     _tickTimer = Timer.periodic(const Duration(milliseconds: 250), (_) {
       if (!isActive) {
         unawaited(stop(notifyServer: false));
         return;
       }
       _updateHintInterpolation();
-      notifyListeners();
+      _syncRemaining();
+      _bumpDisplayTick();
     });
+  }
+
+  void _syncRemaining() {
+    final expires = _session?.expiresAt;
+    if (expires == null) {
+      if (remainingListenable.value != null) {
+        remainingListenable.value = null;
+      }
+      return;
+    }
+    final left = expires.difference(DateTime.now().toUtc());
+    final next = left.isNegative ? Duration.zero : left;
+    final prev = remainingListenable.value;
+    // HUD shows whole minutes — skip sub-minute notifier spam.
+    if (prev == null ||
+        prev.inMinutes != next.inMinutes ||
+        (next == Duration.zero && prev != Duration.zero)) {
+      remainingListenable.value = next;
+    }
+  }
+
+  void _bumpDisplayTick() {
+    displayTickListenable.value = displayTickListenable.value + 1;
   }
 
   void _resetHint() {
@@ -352,6 +380,8 @@ class GuidanceSessionController extends ChangeNotifier {
     _badgeTimer?.cancel();
     _tickTimer?.cancel();
     _unbindListeners();
+    remainingListenable.dispose();
+    displayTickListenable.dispose();
     super.dispose();
   }
 }

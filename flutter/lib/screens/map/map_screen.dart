@@ -119,15 +119,15 @@ class _MapScreenState extends State<MapScreen>
       });
     }
 
-    return Consumer2<map_data.MapController, LocationService>(
-      builder: (context, mapData, locationService, _) {
+    return Consumer<map_data.MapController>(
+      builder: (context, mapData, _) {
+        final locationService = context.read<LocationService>();
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (!mounted) return;
           if (!isAdmin && mapData.showAllFieldSites) {
             mapData.setShowAllFieldSites(false);
           }
           _setInitialCamera(locationService: locationService);
-          _maybeFollowUser(locationService);
           _maybeFollowAerialScout();
           _consumePendingFocus();
           _consumePendingAerialFocus();
@@ -135,7 +135,9 @@ class _MapScreenState extends State<MapScreen>
         });
 
         final startCenter =
-            locationService.currentLocation ?? MapConfig.defaultCenter;
+            locationService.locationListenable.value ??
+                locationService.currentLocation ??
+                MapConfig.defaultCenter;
         final topInset = MapChromeInsets.top(context);
         final fabBottom = MapChromeInsets.fabBottom(context);
 
@@ -175,6 +177,7 @@ class _MapScreenState extends State<MapScreen>
                       mapData.filters.markerFilterKey,
                     ].join('|'),
                     currentLocation: locationService.currentLocation,
+                    locationListenable: locationService.locationListenable,
                     headingDeg: locationService.headingDeg,
                     headingListenable: locationService.headingListenable,
                     followUser: aerialDrawMode
@@ -406,29 +409,36 @@ class _MapScreenState extends State<MapScreen>
                   onPressed: () => _openFilterSheet(mapData, isFieldMode),
                 ),
               ),
-            if (locationService.error != null && !aerialDrawMode)
-              Positioned(
-                top: topInset + (mapData.loading || isFieldMode ? 44 : 0),
-                left: 16,
-                right: 16,
-                child: Material(
-                  color: Theme.of(context)
-                      .colorScheme
-                      .surfaceContainerHighest
-                      .withValues(alpha: 0.92),
-                  borderRadius: BorderRadius.circular(12),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 10,
-                    ),
-                    child: Text(
-                      locationService.error!,
-                      style: Theme.of(context).textTheme.bodySmall,
+            Selector<LocationService, String?>(
+              selector: (_, loc) => loc.error,
+              builder: (context, locationError, _) {
+                if (locationError == null || aerialDrawMode) {
+                  return const SizedBox.shrink();
+                }
+                return Positioned(
+                  top: topInset + (mapData.loading || isFieldMode ? 44 : 0),
+                  left: 16,
+                  right: 16,
+                  child: Material(
+                    color: Theme.of(context)
+                        .colorScheme
+                        .surfaceContainerHighest
+                        .withValues(alpha: 0.92),
+                    borderRadius: BorderRadius.circular(12),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 10,
+                      ),
+                      child: Text(
+                        locationError,
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
                     ),
                   ),
-                ),
-              ),
+                );
+              },
+            ),
             if (aerialDrawMode)
               AerialMissionDrawOverlay(
                 camera: _mapboxCamera,
