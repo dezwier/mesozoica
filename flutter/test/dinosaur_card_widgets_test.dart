@@ -1,6 +1,8 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mesozoica/controllers/auth_controller.dart';
+import 'package:mesozoica/controllers/catalog_mode_controller.dart';
 import 'package:mesozoica/models/dinosaur.dart';
 import 'package:mesozoica/widgets/cards/dinosaur_card_back.dart';
 import 'package:mesozoica/widgets/cards/dinosaur_card_edge_facts.dart';
@@ -8,6 +10,7 @@ import 'package:mesozoica/widgets/cards/dinosaur_card_fossil_map.dart';
 import 'package:mesozoica/widgets/cards/dinosaur_card_front.dart';
 import 'package:mesozoica/widgets/cards/dinosaur_card_image.dart';
 import 'package:mesozoica/widgets/cards/dinosaur_turnable_card.dart';
+import 'package:provider/provider.dart';
 
 const _fixture = DinosaurSummary(
   id: 1,
@@ -29,6 +32,16 @@ const _fixture = DinosaurSummary(
     'genus': 'Tyrannosaurus',
   },
 );
+
+Widget _wrapDinoCard(Widget child) {
+  return MultiProvider(
+    providers: [
+      ChangeNotifierProvider(create: (_) => CatalogModeController()),
+      ChangeNotifierProvider(create: (_) => AuthController()),
+    ],
+    child: MaterialApp(home: Scaffold(body: Center(child: child))),
+  );
+}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -137,14 +150,10 @@ void main() {
   testWidgets('DinosaurCardBack renders horizontal timeline, map, and cladogram',
       (tester) async {
     await tester.pumpWidget(
-      const MaterialApp(
-        home: Scaffold(
-          body: Center(
-            child: SizedBox(
-              width: 320,
-              child: DinosaurCardBack(dinosaur: _fixture),
-            ),
-          ),
+      _wrapDinoCard(
+        const SizedBox(
+          width: 320,
+          child: DinosaurCardBack(dinosaur: _fixture),
         ),
       ),
     );
@@ -175,6 +184,32 @@ void main() {
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
   });
 
+  testWidgets('DinosaurCardBack shows Reconstructed subtitle for inventory',
+      (tester) async {
+    final inventory = DinosaurSummary(
+      id: 99,
+      dinosaurTypeId: 1,
+      name: 'Tyrannosaurus rex',
+      wikipediaTitle: 'Tyrannosaurus',
+      birth: 68,
+      death: 66,
+      period: 'Late Cretaceous',
+      createdAt: DateTime.now().toUtc().subtract(const Duration(days: 2)),
+    );
+
+    await tester.pumpWidget(
+      _wrapDinoCard(
+        SizedBox(
+          width: 320,
+          child: DinosaurCardBack(dinosaur: inventory),
+        ),
+      ),
+    );
+
+    expect(find.text('Reconstructed 2d ago'), findsOneWidget);
+    expect(find.text('Tyrannosaurus'), findsNothing);
+  });
+
   testWidgets('DinosaurTurnableCard composes front and back', (tester) async {
     final originalOnError = FlutterError.onError;
     FlutterError.onError = (details) {
@@ -201,14 +236,10 @@ void main() {
     );
 
     await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: Center(
-            child: SizedBox(
-              width: 800,
-              child: DinosaurTurnableCard(dinosaur: compactFixture),
-            ),
-          ),
+      _wrapDinoCard(
+        SizedBox(
+          width: 800,
+          child: DinosaurTurnableCard(dinosaur: compactFixture),
         ),
       ),
     );

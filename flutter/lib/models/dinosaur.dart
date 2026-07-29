@@ -1,4 +1,5 @@
 import '../utils/display_text.dart';
+import '../utils/relative_time.dart';
 
 class CladogramNode {
   const CladogramNode({
@@ -28,6 +29,7 @@ class DinosaurSummary {
     this.shortDescription,
     this.cladogram = const {},
     this.mainImageUrl,
+    this.createdAt,
   });
 
   final int id;
@@ -45,6 +47,16 @@ class DinosaurSummary {
   final Map<String, dynamic> cladogram;
   final String? mainImageUrl;
 
+  /// Inventory reconstruction time; null for catalog rows.
+  final DateTime? createdAt;
+
+  /// Card-back subtitle for inventory occurrences.
+  String? get reconstructedSubtitle {
+    final at = createdAt;
+    if (at == null) return null;
+    return 'Reconstructed ${formatRelativeWhen(at)}';
+  }
+
   factory DinosaurSummary.fromJson(Map<String, dynamic> json) {
     return DinosaurSummary(
       id: json['id'] as int,
@@ -61,7 +73,13 @@ class DinosaurSummary {
       shortDescription: json['short_description'] as String?,
       cladogram: Map<String, dynamic>.from(json['cladogram'] as Map? ?? {}),
       mainImageUrl: json['main_image_url'] as String?,
+      createdAt: _parseDate(json['created_at']),
     );
+  }
+
+  static DateTime? _parseDate(Object? value) {
+    if (value is! String || value.isEmpty) return null;
+    return DateTime.tryParse(value)?.toUtc();
   }
 
   static String cladogramRankLabel(String rankKey) {

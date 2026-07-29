@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -24,6 +25,8 @@ class ToolSummary(BaseModel):
     tool_type_id: int | None = None
     params: dict[str, Any] = Field(default_factory=dict)
     base_params: dict[str, Any] = Field(default_factory=dict)
+    # Inventory occurrence obtain time; null for catalog rows.
+    spawn_date: datetime | None = None
 
 
 class ToolListResponse(BaseModel):

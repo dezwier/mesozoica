@@ -17,6 +17,7 @@ class SiteCardHeader extends StatelessWidget {
     this.useFrontTitleStyle = false,
     this.overlayOnImage = false,
     this.showSubtitle = true,
+    this.subtitleOverride,
     this.titleMaxLines = 1,
   });
 
@@ -27,6 +28,8 @@ class SiteCardHeader extends StatelessWidget {
   final bool useFrontTitleStyle;
   final bool overlayOnImage;
   final bool showSubtitle;
+  /// When set, shown as the subtitle instead of the collection line.
+  final String? subtitleOverride;
   final int titleMaxLines;
 
   @override
@@ -43,6 +46,8 @@ class SiteCardHeader extends StatelessWidget {
             color: cardTheme.cardTextMuted,
             fontWeight: FontWeight.w500,
           );
+    final subtitle = subtitleOverride ??
+        site.displaySubtitle(distanceMeters: _distanceMeters(context));
 
     return Column(
       crossAxisAlignment:
@@ -65,10 +70,10 @@ class SiteCardHeader extends StatelessWidget {
             textAlign: TextAlign.start,
             maxLines: titleMaxLines,
           ),
-        if (showSubtitle) ...[
+        if (showSubtitle && subtitle.isNotEmpty) ...[
           const SizedBox(height: 8),
           Text(
-            site.displaySubtitle(distanceMeters: _distanceMeters(context)),
+            subtitle,
             textAlign: centered ? TextAlign.center : TextAlign.start,
             style: subtitleStyle,
             maxLines: 1,

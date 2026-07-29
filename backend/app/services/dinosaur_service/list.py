@@ -349,4 +349,5 @@ def dinosaur_to_summary(row: DinosaurListRow):
             force_v1=row.force_v1_image,
             fallback_url=dino_type.main_image_url,
         ),
+        created_at=row.created_at,
     )

@@ -27,6 +27,8 @@ class DinosaurSummary(BaseModel):
     short_description: str | None = None
     cladogram: dict[str, Any] = {}
     main_image_url: str | None = None
+    # Inventory occurrence reconstruction time; null for catalog rows.
+    created_at: datetime | None = None
 
 
 class DinosaurListResponse(BaseModel):

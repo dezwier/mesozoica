@@ -15,6 +15,7 @@ class DinosaurCardHeader extends StatelessWidget {
     this.useFrontTitleStyle = false,
     this.overlayOnImage = false,
     this.showArticleButton = false,
+    this.subtitleOverride,
   });
 
   final DinosaurSummary dinosaur;
@@ -24,8 +25,11 @@ class DinosaurCardHeader extends StatelessWidget {
   final bool useFrontTitleStyle;
   final bool overlayOnImage;
   final bool showArticleButton;
+  /// When set, shown as the subtitle instead of the Wikipedia title.
+  final String? subtitleOverride;
 
   String? _subtitle() {
+    if (subtitleOverride != null) return subtitleOverride;
     final title = dinosaur.wikipediaTitle.trim();
     if (title.isEmpty || title.toLowerCase() == dinosaur.name.toLowerCase()) {
       return null;

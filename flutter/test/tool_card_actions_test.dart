@@ -50,6 +50,42 @@ void main() {
     expect(info.onPressed, isNull);
   });
 
+  testWidgets('ToolCardBack shows Obtained subtitle when spawnDate is set',
+      (tester) async {
+    final owned = ToolSummary(
+      id: 10,
+      toolTypeId: 1,
+      name: 'Aerial Recon',
+      category: '1 site_discovery',
+      scientificTool: 'helicopter',
+      description: 'Scout loop',
+      rarity: 5,
+      action: 'Deploy',
+      level: 1,
+      spawnDate: DateTime.now().toUtc().subtract(const Duration(minutes: 45)),
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: SizedBox(
+              width: 320,
+              child: ToolCardBack(
+                tool: owned,
+                showInstanceId: true,
+                onAction: () {},
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('Obtained 45m ago'), findsOneWidget);
+    expect(find.textContaining('Site Discovery'), findsNothing);
+  });
+
   testWidgets('ToolCardBack enables Info when onInfo is set', (tester) async {
     const owned = ToolSummary(
       id: 1,

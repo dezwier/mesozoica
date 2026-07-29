@@ -31,6 +31,7 @@ class DinosaurCardBack extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final nodes = dinosaur.cladogramNodes();
+    final reconstructedSubtitle = dinosaur.reconstructedSubtitle;
 
     return AspectRatio(
       aspectRatio: DinoCardTheme.cardAspectRatio,
@@ -50,6 +51,7 @@ class DinosaurCardBack extends StatelessWidget {
               subtitleFontSize: subtitleFontSize,
               centered: true,
               overlayOnImage: true,
+              subtitleOverride: reconstructedSubtitle,
             ),
           ),
           if (showArticleButton)
@@ -75,7 +77,7 @@ class DinosaurCardBack extends StatelessWidget {
           Positioned(
             left: 18,
             right: 18,
-            top: 72,
+            top: 96,
             bottom: 14,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,

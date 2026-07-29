@@ -33,6 +33,8 @@ class SiteCardBack extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final discoveredSubtitle = site.discoveredSubtitle;
+
     return AspectRatio(
       aspectRatio: DinoCardTheme.cardAspectRatio,
       child: Stack(
@@ -51,13 +53,14 @@ class SiteCardBack extends StatelessWidget {
               subtitleFontSize: subtitleFontSize,
               centered: true,
               overlayOnImage: true,
-              showSubtitle: false,
+              showSubtitle: discoveredSubtitle != null,
+              subtitleOverride: discoveredSubtitle,
             ),
           ),
           Positioned(
             left: 18,
             right: 18,
-            top: 72,
+            top: 96,
             bottom: 14,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,

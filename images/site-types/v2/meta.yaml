@@ -1,0 +1,47 @@
+prompt: 'Generate a 3:4 portrait photo of a natural but interesting geological field outcrop at a
+  paleontological dig site. Documentary iPhone photo with slight ''dramatic warm''
+  tone. Real geology and landscape, NOT cartoon, NOT CGI. Make it interesting and unique, more than just rocks and dirt.
+
+
+  Primary subject — rock type (most important):
+
+  - show {rock_type} clearly as the dominant exposed lithology: bedding, texture,
+  color, and weathering typical of this rock type in the field
+
+  - natural eroded cliff face, hillside cut, or badlands outcrop where a fossil site
+  would realistically occur
+
+  - dusty field setting, uneven daylight, authentic geological strata
+
+
+  Imperfect, scrappy field look (important — do NOT make it too clean):
+
+  - weathered, irregular exposure: cracked surfaces, loose talus, rubble at the base,
+  dust, lichen, partial erosion
+
+  - uneven lighting, slightly blown highlights or muddy shadows — casual handheld
+  iPhone snapshot, not a polished landscape photo
+
+  - do NOT beautify, over-sharpen, or CGI-polish the outcrop; avoid pristine cliff
+  faces and hyper-saturated colors
+
+
+  Geological period (secondary context):
+
+  - {period_context}
+
+
+  Hard constraints:
+
+  - no text, labels, signs, maps, or watermarks
+
+  - no people, vehicles, tools, tarps, tents, or excavation equipment
+
+  - no borders, frames, or graphic overlays
+
+  - only nature: rock, sediment, sky, and period-appropriate flora
+
+
+  Avoid: museum displays, polished rock slabs, studio backdrops, stock-photo perfection,
+  overly clean or manicured scenery.'
+run_date: '2026-07-29T00:00:00+00:00'

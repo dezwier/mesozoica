@@ -92,6 +92,7 @@ def test_list_tools_owned_only(client, session):
     item = body["items"][0]
     assert item["name"] == "Orbit Survey"
     assert item["level"] == 1
+    assert item["spawn_date"] is not None
 
 
 def test_list_tools_catalog_allows_non_admin(client, session):
@@ -155,6 +156,7 @@ def test_list_tools_returns_summary_fields(client, session):
     assert item["description"] == "Identifies exposed formations."
     assert item["action"] == "Use"
     assert item["level"] is None
+    assert item["spawn_date"] is None
 
 
 def test_get_tool_by_id(client, session):

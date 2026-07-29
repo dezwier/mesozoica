@@ -1,3 +1,5 @@
+import '../utils/relative_time.dart';
+
 class ToolSummary {
   const ToolSummary({
     required this.id,
@@ -12,6 +14,7 @@ class ToolSummary {
     this.toolTypeId,
     this.params = const {},
     this.baseParams = const {},
+    this.spawnDate,
   });
 
   final int id;
@@ -31,10 +34,20 @@ class ToolSummary {
   final Map<String, dynamic> params;
   final Map<String, dynamic> baseParams;
 
+  /// Inventory obtain time; null for catalog rows.
+  final DateTime? spawnDate;
+
   bool get isOwned => level != null;
   /// True when this card represents a specific owned tool occurrence (inventory),
   /// i.e. the instance `id` differs from the catalog `tool_type_id`.
   bool get isToolInstance => toolTypeId != null && toolTypeId != id;
+
+  /// Card-back subtitle for inventory occurrences.
+  String? get obtainedSubtitle {
+    final at = spawnDate;
+    if (at == null) return null;
+    return 'Obtained ${formatRelativeWhen(at)}';
+  }
 
   ToolSummary copyWith({
     int? id,
@@ -49,6 +62,7 @@ class ToolSummary {
     int? toolTypeId,
     Map<String, dynamic>? params,
     Map<String, dynamic>? baseParams,
+    DateTime? spawnDate,
     bool clearLevel = false,
   }) {
     return ToolSummary(
@@ -64,6 +78,7 @@ class ToolSummary {
       toolTypeId: toolTypeId ?? this.toolTypeId,
       params: params ?? this.params,
       baseParams: baseParams ?? this.baseParams,
+      spawnDate: spawnDate ?? this.spawnDate,
     );
   }
 
@@ -119,7 +134,13 @@ class ToolSummary {
       toolTypeId: json['tool_type_id'] as int?,
       params: (json['params'] as Map<String, dynamic>?) ?? const {},
       baseParams: (json['base_params'] as Map<String, dynamic>?) ?? const {},
+      spawnDate: _parseDate(json['spawn_date']),
     );
+  }
+
+  static DateTime? _parseDate(Object? value) {
+    if (value is! String || value.isEmpty) return null;
+    return DateTime.tryParse(value)?.toUtc();
   }
 }
 

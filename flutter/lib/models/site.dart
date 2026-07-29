@@ -1,5 +1,6 @@
 import '../utils/display_text.dart';
 import '../utils/period_for_ages.dart';
+import '../utils/relative_time.dart';
 import 'fossil.dart';
 
 class SiteSummary {
@@ -86,6 +87,13 @@ class SiteSummary {
       return parts.join(' ');
     }
     return displaySiteNumber;
+  }
+
+  /// Card-back subtitle when the viewer has discovered this site.
+  String? get discoveredSubtitle {
+    final at = discoveredAt;
+    if (at == null) return null;
+    return 'Discovered ${formatRelativeWhen(at)}';
   }
 
   /// Subtitle: `#id, lat, lon, region, distance`.

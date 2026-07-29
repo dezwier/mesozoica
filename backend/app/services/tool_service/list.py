@@ -439,4 +439,5 @@ def tool_to_summary(row: ToolListRow):
         level=row.level,
         params=dict(row.params or base_params_for_tool_type(row.tool_type)),
         base_params=base_params_for_tool_type(row.tool_type),
+        spawn_date=row.spawn_date,
     )

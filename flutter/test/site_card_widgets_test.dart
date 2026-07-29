@@ -178,6 +178,7 @@ void main() {
     expect(find.byType(SiteCardFossils), findsOneWidget);
     expect(find.text('Cretaceous Sandstone'), findsOneWidget);
     expect(find.text('#50001, 46.88, -110.36, Montana, US'), findsNothing);
+    expect(find.textContaining('Discovered'), findsNothing);
     expect(find.text('FOSSIL RECORD'), findsNothing);
     expect(find.text('TIME'), findsNothing);
     expect(find.text('COORDINATES'), findsOneWidget);
@@ -195,6 +196,44 @@ void main() {
     expect(find.textContaining('Montana'), findsOneWidget);
     expect(find.textContaining('Cretaceous, 66 – 68 Ma'), findsOneWidget);
     expect(find.text('Sandstone'), findsOneWidget);
+  });
+
+  testWidgets('SiteCardBack shows Discovered subtitle when discoveredAt is set',
+      (tester) async {
+    final discovered = SiteSummary(
+      siteId: 50001,
+      latitude: 46.8797,
+      longitude: -110.3626,
+      countryCode: 'US',
+      state: 'Montana',
+      rockType: 'sandstone',
+      siteTypePeriod: 'cretaceous',
+      siteTypeRockType: 'sandstone',
+      minAgeMa: 66,
+      maxAgeMa: 68,
+      discoveredAt: DateTime.now().toUtc().subtract(const Duration(hours: 3)),
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: SizedBox(
+              width: 800,
+              child: SiteCardBack(
+                site: discovered,
+                mapTileLayerBuilder: () => const SizedBox.shrink(),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.pump();
+
+    expect(find.text('Discovered 3h ago'), findsOneWidget);
+    expect(find.textContaining('#50001'), findsNothing);
   });
 
   testWidgets('SiteTurnableCard composes front and back', (tester) async {

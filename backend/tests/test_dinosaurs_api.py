@@ -67,6 +67,7 @@ def test_list_dinosaurs_returns_summary_fields(client, session):
     assert item["cladogram"]["genus"] == "Tyrannosaurus"
     assert item["main_image_url"].endswith("t-rex.jpg")
     assert "article" not in item
+    assert item["created_at"] is None
 
 
 def test_list_dinosaurs_defaults_to_catalog_mode(client, session):
@@ -99,6 +100,50 @@ def test_list_dinosaurs_inventory_empty_without_occurrences(client, session):
     assert response.status_code == 200
     assert response.json()["total"] == 0
     assert response.json()["items"] == []
+
+
+def test_list_dinosaurs_inventory_includes_created_at(client, session):
+    from app.core.security import create_access_token
+    from app.models.dinosaur import Dinosaur
+    from app.models.user import User
+    from app.models.user_dinosaur import USER_DINOSAUR_ROLE_DISCOVERER, UserDinosaur
+
+    dino_type = _seed_tyrannosaurus(session)
+    user = User(
+        username="dino-collector",
+        email="collector@example.com",
+        password="x",
+    )
+    session.add(user)
+    session.commit()
+    session.refresh(user)
+
+    occurrence = Dinosaur(dinosaur_type_id=int(dino_type.id))
+    session.add(occurrence)
+    session.commit()
+    session.refresh(occurrence)
+    session.add(
+        UserDinosaur(
+            user_id=int(user.id),
+            dinosaur_id=int(occurrence.id),
+            role=USER_DINOSAUR_ROLE_DISCOVERER,
+        )
+    )
+    session.commit()
+
+    token = create_access_token({"sub": str(user.id)})
+    response = client.get(
+        "/api/v1/dinosaurs",
+        params={"mode": "inventory", "sort": "name"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["total"] == 1
+    item = body["items"][0]
+    assert item["id"] == occurrence.id
+    assert item["dinosaur_type_id"] == dino_type.id
+    assert item["created_at"] is not None
 
 
 def test_list_dinosaurs_pagination(client, session):

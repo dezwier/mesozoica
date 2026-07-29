@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../controllers/aerial_mission_controller.dart';
 import '../../models/site.dart';
 import '../../theme/dino_card_theme.dart';
+import '../../utils/relative_time.dart';
 import 'card_section_panel.dart';
 
 /// A single moment on a site's user-relation timeline.
@@ -64,16 +65,6 @@ class SiteCardUserTimeline extends StatelessWidget {
       default:
         return how?.isNotEmpty == true ? how! : '—';
     }
-  }
-
-  static String formatRelativeWhen(DateTime utc) {
-    final local = utc.toLocal();
-    final diff = DateTime.now().difference(local);
-    if (diff.inMinutes < 1) return 'just now';
-    if (diff.inHours < 1) return '${diff.inMinutes}m ago';
-    if (diff.inDays < 1) return '${diff.inHours}h ago';
-    if (diff.inDays < 7) return '${diff.inDays}d ago';
-    return '${local.month}/${local.day}/${local.year}';
   }
 
   @override
