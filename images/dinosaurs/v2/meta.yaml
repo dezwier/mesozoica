@@ -1,4 +1,4 @@
-prompt: 'Generate a 3:4 image of the following dinosaur: {name}
+prompt: 'Generate a 3:4 image of the following dinosaur in it''s natural habitat, and full on alive and moving: {name}
 
   The image must have these features - according to latest science, be as truthful
   as possible (considering anatomy, color, surroundings, timing, etc) - within what
@@ -12,4 +12,4 @@ prompt: 'Generate a 3:4 image of the following dinosaur: {name}
   - consider the following wikipedia article as context
 
   {article}'
-run_date: '2026-01-29T00:00:00+00:00'
+run_date: '2026-07-29T16:33:12.017834+00:00'
