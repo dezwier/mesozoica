@@ -4,11 +4,11 @@ from datetime import datetime, timezone
 
 from sqlmodel import Session
 
-from app.models.dinosaur import Dinosaur
+from app.models.dinosaur_type import DinosaurType
 
 
-def _seed_tyrannosaurus(session: Session) -> Dinosaur:
-    row = Dinosaur(
+def _seed_tyrannosaurus(session: Session) -> DinosaurType:
+    row = DinosaurType(
         name="Tyrannosaurus",
         wikipedia_page_id=30467,
         wikipedia_title="Tyrannosaurus",
@@ -60,6 +60,7 @@ def test_list_dinosaurs_returns_summary_fields(client, session):
 
     item = body["items"][0]
     assert item["id"] == row.id
+    assert item["dinosaur_type_id"] == row.id
     assert item["name"] == "Tyrannosaurus"
     assert item["birth"] == 77.0
     assert item["death"] == 66.0
@@ -68,10 +69,42 @@ def test_list_dinosaurs_returns_summary_fields(client, session):
     assert "article" not in item
 
 
+def test_list_dinosaurs_defaults_to_catalog_mode(client, session):
+    _seed_tyrannosaurus(session)
+    response = client.get("/api/v1/dinosaurs", params={"mode": "catalog", "sort": "name"})
+    assert response.status_code == 200
+    assert response.json()["total"] == 1
+
+
+def test_list_dinosaurs_inventory_empty_without_occurrences(client, session):
+    from app.core.security import create_access_token
+    from app.models.user import User
+
+    _seed_tyrannosaurus(session)
+    user = User(
+        username="dino-owner",
+        email="dino@example.com",
+        password="x",
+    )
+    session.add(user)
+    session.commit()
+    session.refresh(user)
+    token = create_access_token({"sub": str(user.id)})
+
+    response = client.get(
+        "/api/v1/dinosaurs",
+        params={"mode": "inventory", "sort": "name"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert response.status_code == 200
+    assert response.json()["total"] == 0
+    assert response.json()["items"] == []
+
+
 def test_list_dinosaurs_pagination(client, session):
     for index, name in enumerate(["Brachiosaurus", "Stegosaurus", "Velociraptor"]):
         session.add(
-            Dinosaur(
+            DinosaurType(
                 name=name,
                 wikipedia_page_id=1000 + index,
                 wikipedia_title=name,
@@ -92,7 +125,7 @@ def test_list_dinosaurs_pagination(client, session):
 def test_list_dinosaurs_random_requires_seed(client, session):
     for index, name in enumerate(["Brachiosaurus", "Stegosaurus", "Velociraptor"]):
         session.add(
-            Dinosaur(
+            DinosaurType(
                 name=name,
                 wikipedia_page_id=2000 + index,
                 wikipedia_title=name,
@@ -107,7 +140,7 @@ def test_list_dinosaurs_random_requires_seed(client, session):
 def test_list_dinosaurs_random_stable_order_with_seed(client, session):
     for index, name in enumerate(["Brachiosaurus", "Stegosaurus", "Velociraptor"]):
         session.add(
-            Dinosaur(
+            DinosaurType(
                 name=name,
                 wikipedia_page_id=3000 + index,
                 wikipedia_title=name,
@@ -166,7 +199,7 @@ def test_get_dinosaur_article_not_found(client):
 
 
 def test_get_dinosaur_article_empty_when_no_html(client, session):
-    row = Dinosaur(
+    row = DinosaurType(
         name="EmptyArticle",
         wikipedia_page_id=999,
         wikipedia_title="EmptyArticle",
@@ -186,28 +219,28 @@ def _seed_timed_dinos(session: Session) -> None:
     """T-rex Cretaceous, Stegosaurus Jurassic, Brachiosaurus Jurassic."""
     session.add_all(
         [
-            Dinosaur(
+            DinosaurType(
                 name="Tyrannosaurus",
                 wikipedia_page_id=4001,
                 wikipedia_title="Tyrannosaurus",
                 birth=77.0,
                 death=66.0,
             ),
-            Dinosaur(
+            DinosaurType(
                 name="Stegosaurus",
                 wikipedia_page_id=4002,
                 wikipedia_title="Stegosaurus",
                 birth=155.0,
                 death=150.0,
             ),
-            Dinosaur(
+            DinosaurType(
                 name="Brachiosaurus",
                 wikipedia_page_id=4003,
                 wikipedia_title="Brachiosaurus",
                 birth=154.0,
                 death=153.0,
             ),
-            Dinosaur(
+            DinosaurType(
                 name="UnknownPeriod",
                 wikipedia_page_id=4004,
                 wikipedia_title="UnknownPeriod",
@@ -266,7 +299,7 @@ def test_list_dinosaurs_filter_combined(client, session):
 
 def test_list_dinosaurs_search_ignores_time_filter_for_undated_rows(client, session):
     session.add(
-        Dinosaur(
+        DinosaurType(
             name="Brachiosaurus",
             wikipedia_page_id=5001,
             wikipedia_title="Brachiosaurus",
@@ -311,19 +344,19 @@ def test_list_dinosaurs_filter_ma_requires_both_params(client, session):
 def test_list_dinosaurs_filter_has_custom_image(client, session):
     session.add_all(
         [
-            Dinosaur(
+            DinosaurType(
                 name="Tyrannosaurus",
                 wikipedia_page_id=6001,
                 wikipedia_title="Tyrannosaurus",
                 main_image_url="https://mesozoica-production.up.railway.app/media/dinosaurs/Tyrannosaurus.webp",
             ),
-            Dinosaur(
+            DinosaurType(
                 name="Stegosaurus",
                 wikipedia_page_id=6002,
                 wikipedia_title="Stegosaurus",
                 main_image_url="https://upload.wikimedia.org/wikipedia/commons/stego.jpg",
             ),
-            Dinosaur(
+            DinosaurType(
                 name="Brachiosaurus",
                 wikipedia_page_id=6003,
                 wikipedia_title="Brachiosaurus",
@@ -346,13 +379,13 @@ def test_list_dinosaurs_filter_has_custom_image(client, session):
 def test_list_dinosaurs_filter_llm_enriched(client, session):
     session.add_all(
         [
-            Dinosaur(
+            DinosaurType(
                 name="Tyrannosaurus",
                 wikipedia_page_id=6101,
                 wikipedia_title="Tyrannosaurus",
                 llm_enriched=True,
             ),
-            Dinosaur(
+            DinosaurType(
                 name="Stegosaurus",
                 wikipedia_page_id=6102,
                 wikipedia_title="Stegosaurus",

@@ -109,21 +109,35 @@ void main() {
     controller.dispose();
   });
 
-  test('applyFilters passes show_all for admin catalog', () async {
+  test('applyFilters passes show_all for catalog mode', () async {
     Uri? capturedUri;
     final service = ToolService(
       client: _mockClient(onToolsRequest: (uri) => capturedUri = uri),
     );
 
     final controller = ToolCatalogController(service: service);
-    await controller.applyFilters(
-      const ToolCatalogFilters(showAll: true),
-    );
+    controller.setMode(ToolScreenMode.catalog);
+    expect(controller.mode, ToolScreenMode.catalog);
+    expect(controller.showAll, isTrue);
+    await controller.refresh();
 
     expect(capturedUri, isNotNull);
+    expect(capturedUri!.queryParameters['mode'], 'catalog');
     expect(capturedUri!.queryParameters['show_all'], 'true');
+
+    controller.dispose();
+  });
+
+  test('default mode is inventory and catalog is allowed', () async {
+    final service = ToolService(
+      client: _mockClient(onToolsRequest: (_) {}),
+    );
+
+    final controller = ToolCatalogController(service: service);
+    expect(controller.mode, ToolScreenMode.inventory);
+    controller.setMode(ToolScreenMode.catalog);
+    expect(controller.mode, ToolScreenMode.catalog);
     expect(controller.showAll, isTrue);
-    expect(controller.hasActiveFilters, isTrue);
 
     controller.dispose();
   });

@@ -8,7 +8,7 @@ from unittest.mock import patch
 import pytest
 from sqlmodel import Session
 
-from app.models.dinosaur import Dinosaur
+from app.models.dinosaur_type import DinosaurType
 from app.services.dinosaur_enrichment_service.sync import (
     EnrichCounters,
     EnrichSummary,
@@ -41,7 +41,7 @@ def gemini_key(monkeypatch):
 
 
 def test_enrich_writes_fields_and_sets_flag(session: Session):
-    row = Dinosaur(
+    row = DinosaurType(
         name="Tyrannosaurus",
         wikipedia_page_id=30467,
         wikipedia_title="Tyrannosaurus",
@@ -69,7 +69,7 @@ def test_enrich_writes_fields_and_sets_flag(session: Session):
 
 
 def test_enrich_disables_gemini_thinking(session: Session):
-    row = Dinosaur(
+    row = DinosaurType(
         name="Tyrannosaurus",
         wikipedia_page_id=30468,
         wikipedia_title="Tyrannosaurus",
@@ -92,7 +92,7 @@ def test_enrich_disables_gemini_thinking(session: Session):
 
 
 def test_enrich_skips_already_enriched(session: Session):
-    row = Dinosaur(
+    row = DinosaurType(
         name="Velociraptor",
         wikipedia_page_id=999,
         wikipedia_title="Velociraptor",
@@ -113,7 +113,7 @@ def test_enrich_skips_already_enriched(session: Session):
 
 
 def test_enrich_overwrite_refreshes_enriched(session: Session):
-    row = Dinosaur(
+    row = DinosaurType(
         name="Velociraptor",
         wikipedia_page_id=999,
         wikipedia_title="Velociraptor",
@@ -138,7 +138,7 @@ def test_enrich_overwrite_refreshes_enriched(session: Session):
 
 
 def test_enrich_overwrite_resets_flags_before_processing(session: Session):
-    done = Dinosaur(
+    done = DinosaurType(
         name="Velociraptor",
         wikipedia_page_id=901,
         wikipedia_title="Velociraptor",
@@ -147,7 +147,7 @@ def test_enrich_overwrite_resets_flags_before_processing(session: Session):
         llm_enriched=True,
         short_description="Old description.",
     )
-    pending = Dinosaur(
+    pending = DinosaurType(
         name="Tyrannosaurus",
         wikipedia_page_id=902,
         wikipedia_title="Tyrannosaurus",
@@ -175,7 +175,7 @@ def test_enrich_overwrite_resets_flags_before_processing(session: Session):
 
 
 def test_enrich_resume_after_interrupted_overwrite(session: Session):
-    done = Dinosaur(
+    done = DinosaurType(
         name="Velociraptor",
         wikipedia_page_id=911,
         wikipedia_title="Velociraptor",
@@ -183,7 +183,7 @@ def test_enrich_resume_after_interrupted_overwrite(session: Session):
         article="<p>Small theropod.</p>",
         llm_enriched=True,
     )
-    pending = Dinosaur(
+    pending = DinosaurType(
         name="Tyrannosaurus",
         wikipedia_page_id=912,
         wikipedia_title="Tyrannosaurus",
@@ -215,7 +215,7 @@ def test_enrich_resume_after_interrupted_overwrite(session: Session):
 
 
 def test_reset_llm_enriched_flags_honors_dino_filter(session: Session):
-    tyranno = Dinosaur(
+    tyranno = DinosaurType(
         name="Tyrannosaurus",
         wikipedia_page_id=921,
         wikipedia_title="Tyrannosaurus",
@@ -223,7 +223,7 @@ def test_reset_llm_enriched_flags_honors_dino_filter(session: Session):
         article="<p>Big carnivore.</p>",
         llm_enriched=True,
     )
-    giga = Dinosaur(
+    giga = DinosaurType(
         name="Giganotosaurus",
         wikipedia_page_id=922,
         wikipedia_title="Giganotosaurus",
@@ -242,7 +242,7 @@ def test_reset_llm_enriched_flags_honors_dino_filter(session: Session):
 
 
 def test_enrich_failure_does_not_set_flag(session: Session):
-    row = Dinosaur(
+    row = DinosaurType(
         name="BadData",
         wikipedia_page_id=1001,
         wikipedia_title="BadData",
@@ -289,14 +289,14 @@ def test_enrich_requires_api_key(monkeypatch, session: Session):
 def test_enrich_prioritizes_custom_image_candidates(session: Session):
     session.add_all(
         [
-            Dinosaur(
+            DinosaurType(
                 name="Alpha",
                 wikipedia_page_id=7001,
                 wikipedia_title="Alpha",
                 cladogram={},
                 article="<p>First in id order, no custom image.</p>",
             ),
-            Dinosaur(
+            DinosaurType(
                 name="Beta",
                 wikipedia_page_id=7002,
                 wikipedia_title="Beta",
@@ -306,7 +306,7 @@ def test_enrich_prioritizes_custom_image_candidates(session: Session):
                     "https://mesozoica-production.up.railway.app/media/dinosaurs/Beta.webp"
                 ),
             ),
-            Dinosaur(
+            DinosaurType(
                 name="Gamma",
                 wikipedia_page_id=7003,
                 wikipedia_title="Gamma",
@@ -331,14 +331,14 @@ def test_enrich_prioritizes_custom_image_candidates(session: Session):
 def test_enrich_dinos_limits_candidates(session: Session):
     session.add_all(
         [
-            Dinosaur(
+            DinosaurType(
                 name="Tyrannosaurus",
                 wikipedia_page_id=8001,
                 wikipedia_title="Tyrannosaurus",
                 cladogram={},
                 article="<p>Big carnivore.</p>",
             ),
-            Dinosaur(
+            DinosaurType(
                 name="Velociraptor",
                 wikipedia_page_id=8002,
                 wikipedia_title="Velociraptor",

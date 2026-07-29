@@ -60,6 +60,28 @@ def normalize_version_name(raw: str | int | None) -> str:
     return f"v{int(text)}"
 
 
+def next_version_name(root: Path) -> str:
+    """Return ``v1`` when no versions exist, else ``v{max+1}``."""
+    versions = load_image_versions(root)
+    if not versions:
+        return "v1"
+    return f"v{max(v.number for v in versions) + 1}"
+
+
+def resolve_generation_version(
+    root: Path,
+    version: str | int | None = None,
+) -> str:
+    """Pick the target version folder for a generate run.
+
+    Explicit ``version`` wins. When omitted, auto-increment past existing
+    version folders (``v1`` if none exist).
+    """
+    if version is None or (isinstance(version, str) and not str(version).strip()):
+        return next_version_name(root)
+    return normalize_version_name(version)
+
+
 def parse_version_dir_name(name: str) -> int | None:
     match = _VERSION_DIR_RE.match(name.strip())
     if match is None:

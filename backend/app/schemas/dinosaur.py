@@ -14,6 +14,7 @@ class DinosaurSummary(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
+    dinosaur_type_id: int | None = None
     name: str
     wikipedia_title: str
     birth: float | None = None

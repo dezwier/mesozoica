@@ -1,14 +1,14 @@
-"""Tests for Dinosaur SQLModel."""
+"""Tests for DinosaurType SQLModel."""
 
 from datetime import datetime, timezone
 
 from sqlmodel import Session, select
 
-from app.models.dinosaur import Dinosaur
+from app.models.dinosaur_type import DinosaurType
 
 
 def test_dinosaur_roundtrip():
-    row = Dinosaur(
+    row = DinosaurType(
         name="Tyrannosaurus",
         wikipedia_page_id=30467,
         wikipedia_title="Tyrannosaurus",
@@ -35,7 +35,7 @@ def test_dinosaur_roundtrip():
         session.refresh(row)
 
         loaded = session.exec(
-            select(Dinosaur).where(Dinosaur.wikipedia_page_id == 30467)
+            select(DinosaurType).where(DinosaurType.wikipedia_page_id == 30467)
         ).first()
 
     assert loaded is not None

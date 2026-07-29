@@ -94,15 +94,24 @@ def test_list_tools_owned_only(client, session):
     assert item["level"] == 1
 
 
-def test_list_tools_show_all_requires_admin(client, session):
-    _seed_tool(session)
+def test_list_tools_catalog_allows_non_admin(client, session):
+    owned = _seed_tool(session, name="Orbit Survey")
+    other = _seed_tool(session, name="Geo Hammer")
     user = _user(session, is_admin=False)
+    _grant(session, user_id=int(user.id), tool_id=int(owned.id), level=1)
+
     response = client.get(
         "/api/v1/tools",
-        params={"sort": "name", "show_all": True, "mode": "catalog"},
+        params={"sort": "name", "mode": "catalog"},
         headers=_auth_headers(user),
     )
-    assert response.status_code == 403
+    assert response.status_code == 200
+    body = response.json()
+    assert body["total"] == 2
+    by_name = {item["name"]: item for item in body["items"]}
+    assert by_name["Orbit Survey"]["level"] == 1
+    assert by_name["Geo Hammer"]["id"] == other.id
+    assert by_name["Geo Hammer"]["level"] is None
 
 
 def test_list_tools_show_all_admin(client, session):

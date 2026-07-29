@@ -6,6 +6,7 @@ Run manually:
   python -m app.crons.runner --job tool_image_generate --max-items 5
   python -m app.crons.runner --job tool_image_generate --tools "Orbit Survey" --dry-run
   python -m app.crons.runner --job tool_image_generate --version 2
+  # Without --version: auto-increments to next folder (v1 if none, else v{max+1})
 """
 
 from __future__ import annotations

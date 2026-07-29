@@ -89,6 +89,39 @@ def resolve_tool_card_image_url(
     )
 
 
+def resolve_dinosaur_card_image_url(
+    *,
+    dinosaur_name: str,
+    as_of: datetime | None = None,
+    force_v1: bool = False,
+    fallback_url: str | None = None,
+) -> str | None:
+    """Pick the versioned dinosaur image URL for a card."""
+    from app.services.dinosaur_image_service.sync import CURATED_MEDIA_PATH as DINO_MEDIA_PATH
+
+    root = settings.resolved_dinosaur_images_dir
+    resolved = resolve_versioned_image_path(
+        root,
+        dinosaur_name,
+        as_of=as_of,
+        force_v1=force_v1,
+        case_insensitive=True,
+    )
+    if resolved is None:
+        return fallback_url
+    version, path = resolved
+    base = _public_base_url()
+    if not base:
+        return fallback_url
+    relative = f"{version.name}/{path.name}"
+    return build_versioned_media_url(
+        base,
+        DINO_MEDIA_PATH,
+        relative,
+        content_version=file_content_version(path),
+    )
+
+
 def any_versioned_stem_exists(root: Path, stem: str, *, case_insensitive: bool = False) -> bool:
     from app.services.curated_image_service.versions import load_image_versions, find_image_in_version
 

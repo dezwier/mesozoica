@@ -10,8 +10,14 @@ from sqlalchemy import func
 from sqlmodel import Session, col, select
 
 from app.core.config import settings
-from app.models.dinosaur import Dinosaur
+from app.models.dinosaur_type import DinosaurType
 from app.models.fossil import Fossil
+from app.services.curated_image_service.versions import (
+    ensure_version_meta,
+    migrate_flat_images_to_v1,
+    resolve_generation_version,
+    version_dir,
+)
 from app.services.dinosaur_image_service.sync import resolve_local_source_dir_for_sync
 from app.services.dinosaur_name_filter import dino_name_match_clause
 from app.services.image_generation_service.article_text import extract_article_text
@@ -27,8 +33,10 @@ from app.services.image_generation_service.local_files import (
     scan_existing_stems,
 )
 from app.services.image_generation_service.postprocess import save_processed_png
-from app.services.image_generation_service.prompting import build_dinosaur_image_prompt
-
+from app.services.image_generation_service.prompting import (
+    build_dinosaur_image_prompt,
+    dinosaur_image_prompt_template,
+)
 logger = logging.getLogger("dinosaur_image_generate")
 
 GENERATION_ATTEMPTS = 3
@@ -51,11 +59,11 @@ class GenerateSummary:
     elapsed_s: float = 0.0
     cost_usd: float = 0.0
     output_dir: str = ""
-
+    version: str = "v1"
 
 @dataclass(frozen=True)
 class DinosaurCandidate:
-    dinosaur: Dinosaur
+    dinosaur: DinosaurType
     fossil_count: int
 
 
@@ -67,12 +75,12 @@ def _select_candidates(
     dinos: list[str] | None = None,
 ) -> tuple[list[DinosaurCandidate], int]:
     stmt = (
-        select(Dinosaur, func.count(Fossil.id).label("fossil_count"))
-        .outerjoin(Fossil, Fossil.dinosaur_id == Dinosaur.id)
-        .where(col(Dinosaur.article).is_not(None))
-        .where(col(Dinosaur.article) != "")
-        .group_by(Dinosaur.id)
-        .order_by(func.count(Fossil.id).desc(), Dinosaur.name)
+        select(DinosaurType, func.count(Fossil.id).label("fossil_count"))
+        .outerjoin(Fossil, Fossil.dinosaur_id == DinosaurType.id)
+        .where(col(DinosaurType.article).is_not(None))
+        .where(col(DinosaurType.article) != "")
+        .group_by(DinosaurType.id)
+        .order_by(func.count(Fossil.id).desc(), DinosaurType.name)
     )
     if dinos:
         stmt = stmt.where(dino_name_match_clause(dinos))
@@ -101,12 +109,28 @@ def generate_dinosaur_images(
     dry_run: bool = False,
     max_items: int | None = None,
     dinos: list[str] | None = None,
+    version: str | int | None = None,
 ) -> GenerateSummary:
-    """Generate missing dinosaur card images to the local repo folder."""
+    """Generate missing dinosaur card images into ``images/dinosaurs/vN/``.
+
+    When ``version`` is omitted, auto-increments to the next version folder.
+    """
     if not settings.google_gemini_api_key.strip():
         raise RuntimeError("GOOGLE_GEMINI_API_KEY is required for dinosaur image generation")
 
-    output_dir = resolve_local_source_dir_for_sync()
+    root_dir = resolve_local_source_dir_for_sync()
+    migrate_flat_images_to_v1(
+        root_dir,
+        default_prompt=dinosaur_image_prompt_template(),
+    )
+    version_name = resolve_generation_version(root_dir, version)
+    output_dir = version_dir(root_dir, version_name)
+    meta = ensure_version_meta(
+        output_dir,
+        default_prompt=dinosaur_image_prompt_template(),
+    )
+    prompt_template = str(meta.get("prompt") or dinosaur_image_prompt_template())
+
     existing_stems = scan_existing_stems(output_dir, case_insensitive=True)
     start = time.monotonic()
     counters = GenerateCounters()
@@ -121,6 +145,7 @@ def generate_dinosaur_images(
 
     _log_header(
         output_dir=output_dir,
+        version=version_name,
         candidates=len(candidates),
         skipped_existing=skipped_existing,
         max_items=max_items,
@@ -152,7 +177,11 @@ def generate_dinosaur_images(
             logger.info('%s · SKIP · no article text', label)
             continue
 
-        prompt = build_dinosaur_image_prompt(dinosaur.name, article_text)
+        prompt = build_dinosaur_image_prompt(
+            dinosaur.name,
+            article_text,
+            template=prompt_template,
+        )
         output_path = output_png_path(output_dir, dinosaur.name)
 
         if dry_run:
@@ -175,7 +204,7 @@ def generate_dinosaur_images(
                 existing_stems.add(dinosaur.name.lower())
                 counters.generated += 1
                 generated = True
-                logger.info('%s · OK -> %s', label, output_path.name)
+                logger.info('%s · OK -> %s/%s', label, version_name, output_path.name)
                 break
             except FileExistsError:
                 counters.skipped += 1
@@ -205,6 +234,7 @@ def generate_dinosaur_images(
         elapsed_s=elapsed,
         cost_usd=cost_usd,
         output_dir=str(output_dir),
+        version=version_name,
     )
     _log_summary(summary)
     return summary
@@ -222,12 +252,14 @@ def generate_exit_code(summary: GenerateSummary) -> int:
 def _log_header(
     *,
     output_dir,
+    version: str,
     candidates: int,
     skipped_existing: int,
     max_items: int | None,
     dry_run: bool,
 ) -> None:
     logger.info("=== dinosaur_image_generate ===")
+    logger.info("version: %s", version)
     logger.info("output_dir: %s", output_dir)
     logger.info("model: %s", settings.gemini_image_model)
     logger.info(
@@ -245,7 +277,8 @@ def _log_header(
 def _log_summary(summary: GenerateSummary) -> None:
     logger.info("--- summary ---")
     logger.info(
-        "generated: %d  skipped: %d  failed: %d  elapsed: %.1fs  cost: $%.2f",
+        "version: %s  generated: %d  skipped: %d  failed: %d  elapsed: %.1fs  cost: $%.2f",
+        summary.version,
         summary.counters.generated,
         summary.counters.skipped,
         summary.counters.failed,

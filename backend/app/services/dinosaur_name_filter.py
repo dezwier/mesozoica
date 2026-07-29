@@ -5,7 +5,7 @@ from __future__ import annotations
 from sqlalchemy import func, or_
 from sqlmodel import Session, select
 
-from app.models.dinosaur import Dinosaur
+from app.models.dinosaur_type import DinosaurType
 
 
 def parse_dino_names(raw: list[str] | None) -> list[str] | None:
@@ -25,11 +25,11 @@ def dino_name_match_clause(dinos: list[str]):
     """SQLAlchemy filter matching name or wikipedia_title (case-insensitive)."""
     lowered = [name.lower() for name in dinos]
     return or_(
-        func.lower(Dinosaur.name).in_(lowered),
-        func.lower(Dinosaur.wikipedia_title).in_(lowered),
+        func.lower(DinosaurType.name).in_(lowered),
+        func.lower(DinosaurType.wikipedia_title).in_(lowered),
     )
 
 
-def find_dinosaurs_by_names(session: Session, dinos: list[str]) -> list[Dinosaur]:
-    stmt = select(Dinosaur).where(dino_name_match_clause(dinos))
+def find_dinosaurs_by_names(session: Session, dinos: list[str]) -> list[DinosaurType]:
+    stmt = select(DinosaurType).where(dino_name_match_clause(dinos))
     return list(session.exec(stmt).all())

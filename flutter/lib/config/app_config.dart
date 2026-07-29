@@ -71,11 +71,13 @@ class AppConfig {
     double? maOlder,
     bool hasCustomImage = false,
     bool? llmEnriched,
+    String mode = 'catalog',
   }) {
     final params = <String, String>{
       'limit': '$limit',
       'offset': '$offset',
       'sort': sort,
+      'mode': mode,
     };
     if (seed != null && seed.isNotEmpty) {
       params['seed'] = seed;

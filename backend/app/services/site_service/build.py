@@ -7,7 +7,7 @@ from dataclasses import dataclass
 
 from sqlmodel import Session, col, select
 
-from app.models.dinosaur import Dinosaur
+from app.models.dinosaur_type import DinosaurType
 from app.models.data_source import DATA_SOURCE_ARCHIVE
 from app.models.fossil import Fossil
 from app.models.site import Site
@@ -28,7 +28,7 @@ class SiteDraft:
 def fossil_query(session: Session, *, dinos: list[str] | None):
     stmt = select(Fossil).where(col(Fossil.data_source) == DATA_SOURCE_ARCHIVE)
     if dinos:
-        stmt = stmt.join(Dinosaur, col(Fossil.dinosaur_id) == col(Dinosaur.id)).where(
+        stmt = stmt.join(DinosaurType, col(Fossil.dinosaur_id) == col(DinosaurType.id)).where(
             dino_name_match_clause(dinos)
         )
     return stmt

@@ -8,7 +8,7 @@ from sqlmodel import Session, col, select
 
 from app.core.security import create_access_token
 from app.models.data_source import DATA_SOURCE_ARCHIVE, DATA_SOURCE_FIELD
-from app.models.dinosaur import Dinosaur
+from app.models.dinosaur_type import DinosaurType
 from app.models.field_ensure_job import FieldEnsureJob
 from app.models.field_survey_job import FieldSurveyJob
 from app.models.fossil import Fossil
@@ -64,7 +64,7 @@ def _seed_field_world(session: Session) -> tuple[Site, Fossil, User]:
     )
     session.add(archive)
     session.add(field)
-    dino = Dinosaur(
+    dino = DinosaurType(
         name="PurgeDino",
         wikipedia_page_id=9001,
         wikipedia_title="PurgeDino",

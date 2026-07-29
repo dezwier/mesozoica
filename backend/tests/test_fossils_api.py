@@ -5,7 +5,7 @@ from decimal import Decimal
 from sqlmodel import Session
 
 from app.core.security import create_access_token
-from app.models.dinosaur import Dinosaur
+from app.models.dinosaur_type import DinosaurType
 from app.models.fossil import Fossil
 from app.models.site import Site
 from app.models.site_type import SiteType
@@ -44,8 +44,8 @@ def _seed_hell_creek_site(session: Session, site_type: SiteType) -> Site:
     return row
 
 
-def _seed_tyrannosaurus(session: Session) -> Dinosaur:
-    row = Dinosaur(
+def _seed_tyrannosaurus(session: Session) -> DinosaurType:
+    row = DinosaurType(
         name="Tyrannosaurus",
         wikipedia_page_id=30467,
         wikipedia_title="Tyrannosaurus",
@@ -59,7 +59,7 @@ def _seed_tyrannosaurus(session: Session) -> Dinosaur:
     return row
 
 
-def _seed_hell_creek_fossil(session: Session, dinosaur: Dinosaur) -> Fossil:
+def _seed_hell_creek_fossil(session: Session, dinosaur: DinosaurType) -> Fossil:
     row = Fossil(
         id=100001,
         dinosaur_id=dinosaur.id,
@@ -245,12 +245,12 @@ def test_list_fossils_random_spreads_duplicate_names(client, session):
 
 
 def _seed_timed_fossils(session: Session) -> None:
-    cretaceous = Dinosaur(
+    cretaceous = DinosaurType(
         name="Tyrannosaurus",
         wikipedia_page_id=7001,
         wikipedia_title="Tyrannosaurus",
     )
-    jurassic = Dinosaur(
+    jurassic = DinosaurType(
         name="Stegosaurus",
         wikipedia_page_id=7002,
         wikipedia_title="Stegosaurus",
@@ -393,7 +393,7 @@ def test_list_fossils_filter_excludes_missing_dates_when_narrowed(client, sessio
 
 
 def test_list_fossils_search_ignores_time_filter_for_undated_rows(client, session):
-    dinosaur = Dinosaur(
+    dinosaur = DinosaurType(
         name="Brachiosaurus",
         wikipedia_page_id=8001,
         wikipedia_title="Brachiosaurus",
@@ -452,7 +452,7 @@ def test_list_fossils_filter_by_dinosaur_id(client, session):
     tyrannosaurus = _seed_tyrannosaurus(session)
     hell_creek = _seed_hell_creek_fossil(session, tyrannosaurus)
 
-    brachiosaurus = Dinosaur(
+    brachiosaurus = DinosaurType(
         name="Brachiosaurus",
         wikipedia_page_id=6001,
         wikipedia_title="Brachiosaurus",
@@ -491,7 +491,7 @@ def test_list_fossils_filter_by_unknown_dinosaur_id(client, session):
 
 def test_list_fossils_filter_has_custom_image(client, session):
     curated_dino = _seed_tyrannosaurus(session)
-    uncurated_dino = Dinosaur(
+    uncurated_dino = DinosaurType(
         name="Stegosaurus",
         wikipedia_page_id=6002,
         wikipedia_title="Stegosaurus",

@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 from sqlmodel import Session
 
-from app.models.dinosaur import Dinosaur
+from app.models.dinosaur_type import DinosaurType
 from app.models.fossil import Fossil
 from app.services.dinosaur_image_generation_service.generate import _select_candidates as select_dino_candidates
 from app.services.fossil_image_generation_service.generate import _select_candidates as select_fossil_candidates
@@ -19,8 +19,8 @@ from app.services.image_generation_service.local_files import (
 )
 
 
-def _dinosaur(*, name: str, page_id: int, article: str = "<p>Article text here for testing.</p>") -> Dinosaur:
-    return Dinosaur(
+def _dinosaur(*, name: str, page_id: int, article: str = "<p>Article text here for testing.</p>") -> DinosaurType:
+    return DinosaurType(
         name=name,
         wikipedia_page_id=page_id,
         wikipedia_title=name,

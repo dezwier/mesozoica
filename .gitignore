@@ -9,10 +9,10 @@ __pycache__/
 backend/app/data/osm/
 
 # Curated card + user images (local source; synced to Railway volume)
-images/dinosaurs/*.webp
-images/dinosaurs/*.jpg
-images/dinosaurs/*.jpeg
-images/dinosaurs/*.png
+images/dinosaurs/**/*.webp
+images/dinosaurs/**/*.jpg
+images/dinosaurs/**/*.jpeg
+images/dinosaurs/**/*.png
 images/fossils/*.webp
 images/fossils/*.jpg
 images/fossils/*.jpeg
@@ -25,6 +25,7 @@ images/tools/**/*.webp
 images/tools/**/*.jpg
 images/tools/**/*.jpeg
 images/tools/**/*.png
+!images/dinosaurs/**/meta.yaml
 !images/site-types/**/meta.yaml
 !images/tools/**/meta.yaml
 images/users/*

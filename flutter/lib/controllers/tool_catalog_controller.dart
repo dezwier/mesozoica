@@ -112,10 +112,7 @@ class ToolCatalogController extends CatalogController<ToolSummary> {
   bool get showAll => _filters.showAll;
   String? get chromeImageUrl => _chromeImageUrl;
 
-  void setMode(ToolScreenMode mode, {required bool isAdmin}) {
-    if (mode == ToolScreenMode.catalog && !isAdmin) {
-      return;
-    }
+  void setMode(ToolScreenMode mode) {
     if (_mode == mode) return;
     _mode = mode;
     _filters = _filters.copyWith(showAll: mode == ToolScreenMode.catalog);
@@ -124,16 +121,9 @@ class ToolCatalogController extends CatalogController<ToolSummary> {
     load(force: true);
   }
 
-  /// Drop show-all when the viewer is no longer an admin.
-  void onUserChanged({required bool isAdmin}) {
-    if (!isAdmin && (_filters.showAll || _mode != ToolScreenMode.inventory)) {
-      _mode = ToolScreenMode.inventory;
-      _filters = _filters.copyWith(showAll: false);
-      _availableCategories = [];
-      _categoriesShowAll = null;
-      load(force: true);
-    }
-  }
+  /// Kept for shell auth wiring; catalog is available to all users.
+  void onUserChanged({required bool isAdmin}) {}
+
 
   Future<void> load({bool force = false}) async {
     if (!force && _items.isNotEmpty) return;

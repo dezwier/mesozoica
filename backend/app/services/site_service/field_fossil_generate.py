@@ -17,7 +17,7 @@ from app.core.game_config import (
     get_game_config,
 )
 from app.models.data_source import DATA_SOURCE_ARCHIVE, DATA_SOURCE_FIELD
-from app.models.dinosaur import Dinosaur
+from app.models.dinosaur_type import DinosaurType
 from app.models.fossil import Fossil
 from app.models.site import Site
 from app.services.fossil_enrichment_service.validate import (
@@ -467,7 +467,7 @@ def _load_dino_names(session: Session, dino_ids: list[int]) -> dict[int, str]:
     if not dino_ids:
         return {}
     rows = session.exec(
-        select(Dinosaur.id, Dinosaur.name).where(col(Dinosaur.id).in_(dino_ids))
+        select(DinosaurType.id, DinosaurType.name).where(col(DinosaurType.id).in_(dino_ids))
     ).all()
     return {int(dino_id): name for dino_id, name in rows}
 

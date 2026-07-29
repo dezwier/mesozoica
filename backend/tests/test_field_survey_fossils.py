@@ -10,7 +10,7 @@ from sqlmodel import Session, col, select
 from app.core.game_config import get_game_config
 from app.core.security import create_access_token
 from app.models.data_source import DATA_SOURCE_ARCHIVE, DATA_SOURCE_FIELD
-from app.models.dinosaur import Dinosaur
+from app.models.dinosaur_type import DinosaurType
 from app.models.field_survey_job import FieldSurveyJob
 from app.models.fossil import Fossil
 from app.models.site import Site
@@ -53,7 +53,7 @@ def _auth_headers(
     return user, {"Authorization": f"Bearer {token}"}
 
 
-def _seed_archive_pool(session: Session) -> tuple[Site, list[Dinosaur]]:
+def _seed_archive_pool(session: Session) -> tuple[Site, list[DinosaurType]]:
     site_type = SiteType(period="cretaceous", rock_type="sandstone")
     session.add(site_type)
     session.commit()
@@ -72,9 +72,9 @@ def _seed_archive_pool(session: Session) -> tuple[Site, list[Dinosaur]]:
     )
     session.add(archive_site)
 
-    dinos: list[Dinosaur] = []
+    dinos: list[DinosaurType] = []
     for index, name in enumerate(("Tyrannosaurus", "Triceratops", "Edmontosaurus"), start=1):
-        dino = Dinosaur(
+        dino = DinosaurType(
             name=name,
             wikipedia_page_id=1000 + index,
             wikipedia_title=name,

@@ -4,7 +4,7 @@ from decimal import Decimal
 
 from sqlmodel import Session
 
-from app.models.dinosaur import Dinosaur
+from app.models.dinosaur_type import DinosaurType
 from app.models.fossil import Fossil
 from app.models.site import Site
 from app.models.site_type import SiteType
@@ -62,8 +62,8 @@ def _seed_hell_creek_site(session: Session, site_type: SiteType) -> Site:
     return row
 
 
-def _seed_tyrannosaurus(session: Session) -> Dinosaur:
-    row = Dinosaur(
+def _seed_tyrannosaurus(session: Session) -> DinosaurType:
+    row = DinosaurType(
         name="Tyrannosaurus",
         wikipedia_page_id=30467,
         wikipedia_title="Tyrannosaurus",
@@ -77,7 +77,7 @@ def _seed_tyrannosaurus(session: Session) -> Dinosaur:
     return row
 
 
-def _seed_hell_creek_fossil(session: Session, dinosaur: Dinosaur) -> Fossil:
+def _seed_hell_creek_fossil(session: Session, dinosaur: DinosaurType) -> Fossil:
     row = Fossil(
         id=100001,
         dinosaur_id=dinosaur.id,

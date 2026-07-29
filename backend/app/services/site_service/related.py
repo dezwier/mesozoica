@@ -8,7 +8,7 @@ from sqlmodel import Session, col, select
 
 from app.core.exceptions import NotFoundError
 from app.models.data_source import DATA_SOURCE_FIELD
-from app.models.dinosaur import Dinosaur
+from app.models.dinosaur_type import DinosaurType
 from app.models.fossil import Fossil
 from app.models.site import Site
 from app.models.user_fossil import (
@@ -128,8 +128,8 @@ def list_site_dinosaurs(
 ) -> list[SiteDinosaurThumb]:
     site = _ensure_site_exists(session, site_id)
     stmt = (
-        select(Dinosaur.id, Dinosaur.name, Dinosaur.main_image_url)
-        .join(Fossil, col(Fossil.dinosaur_id) == col(Dinosaur.id))
+        select(DinosaurType.id, DinosaurType.name, DinosaurType.main_image_url)
+        .join(Fossil, col(Fossil.dinosaur_id) == col(DinosaurType.id))
         .where(
             col(Fossil.site_id) == site_id,
             col(Fossil.data_source) == site.data_source,
@@ -145,7 +145,7 @@ def list_site_dinosaurs(
             & (col(UserFossil.role) == USER_FOSSIL_ROLE_DISCOVERER),
         )
     rows = session.exec(
-        stmt.distinct().order_by(Dinosaur.name, Dinosaur.id)
+        stmt.distinct().order_by(DinosaurType.name, DinosaurType.id)
     ).all()
     return [
         SiteDinosaurThumb(id=dino_id, name=name, main_image_url=main_image_url)
@@ -163,14 +163,14 @@ def list_site_dino_fossil_groups(
     site = _ensure_site_exists(session, site_id)
     stmt = (
         select(
-            Dinosaur.id,
-            Dinosaur.name,
-            Dinosaur.main_image_url,
+            DinosaurType.id,
+            DinosaurType.name,
+            DinosaurType.main_image_url,
             Fossil.id,
             Fossil.main_image_url,
             Fossil.identified_name,
         )
-        .join(Fossil, col(Fossil.dinosaur_id) == col(Dinosaur.id))
+        .join(Fossil, col(Fossil.dinosaur_id) == col(DinosaurType.id))
         .where(
             col(Fossil.site_id) == site_id,
             col(Fossil.data_source) == site.data_source,
@@ -191,7 +191,7 @@ def list_site_dino_fossil_groups(
             & (col(UserFossil.role) == USER_FOSSIL_ROLE_DISCOVERER),
         )
     rows = session.exec(
-        stmt.order_by(Dinosaur.name, Dinosaur.id, Fossil.id)
+        stmt.order_by(DinosaurType.name, DinosaurType.id, Fossil.id)
     ).all()
 
     groups: list[SiteDinoFossilGroup] = []

@@ -23,6 +23,7 @@ class DinosaurService {
     double? maOlder,
     bool hasCustomImage = false,
     bool? llmEnriched,
+    String mode = 'catalog',
   }) async {
     final uri = AppConfig.dinosaursUri(
       limit: limit,
@@ -34,6 +35,7 @@ class DinosaurService {
       maOlder: maOlder,
       hasCustomImage: hasCustomImage,
       llmEnriched: llmEnriched,
+      mode: mode,
     );
     if (kDebugMode) {
       debugPrint('DinosaurService GET $uri');

@@ -6,12 +6,18 @@ import logging
 import time
 from dataclasses import dataclass, field
 
+from pathlib import Path
+
 from sqlmodel import Session, col, select
 
 from app.core.config import settings
-from app.models.dinosaur import Dinosaur
+from app.models.dinosaur_type import DinosaurType
 from app.models.data_source import DATA_SOURCE_ARCHIVE
 from app.models.fossil import Fossil
+from app.services.curated_image_service.versions import (
+    migrate_flat_images_to_v1,
+    scan_versioned_image_files,
+)
 from app.services.dinosaur_image_service.sync import resolve_local_source_dir_for_sync
 from app.services.dinosaur_name_filter import dino_name_match_clause
 from app.services.fossil_image_service.sync import resolve_local_source_dir_for_sync as resolve_fossil_output_dir
@@ -28,12 +34,23 @@ from app.services.image_generation_service.local_files import (
     scan_existing_stems,
 )
 from app.services.image_generation_service.postprocess import save_processed_png
-from app.services.image_generation_service.prompting import build_fossil_image_prompt
+from app.services.image_generation_service.prompting import (
+    build_fossil_image_prompt,
+    dinosaur_image_prompt_template,
+)
 
 logger = logging.getLogger("fossil_image_generate")
 
 GENERATION_ATTEMPTS = 3
 GENERATION_RETRY_BACKOFF_SECONDS = 1.0
+
+
+def _scan_dinosaur_image_stems(dinosaur_dir: Path) -> set[str]:
+    """Lowercased stems across version folders (or flat fallback)."""
+    versioned = scan_versioned_image_files(dinosaur_dir)
+    if versioned:
+        return {Path(item.filename).stem.lower() for item in versioned}
+    return scan_existing_stems(dinosaur_dir, case_insensitive=True)
 
 
 @dataclass
@@ -70,8 +87,8 @@ def _select_candidates(
     dinos: list[str] | None = None,
 ) -> tuple[list[FossilCandidate], int]:
     stmt = (
-        select(Fossil, Dinosaur)
-        .join(Dinosaur, Fossil.dinosaur_id == Dinosaur.id)
+        select(Fossil, DinosaurType)
+        .join(DinosaurType, Fossil.dinosaur_id == DinosaurType.id)
         .where(
             Fossil.llm_enriched.is_(True),  # type: ignore[attr-defined]
             col(Fossil.data_source) == DATA_SOURCE_ARCHIVE,
@@ -120,8 +137,12 @@ def generate_fossil_images(
 
     output_dir = resolve_fossil_output_dir()
     dinosaur_dir = resolve_local_source_dir_for_sync()
+    migrate_flat_images_to_v1(
+        dinosaur_dir,
+        default_prompt=dinosaur_image_prompt_template(),
+    )
     existing_stems = scan_existing_stems(output_dir, case_insensitive=False)
-    dinosaur_image_stems = scan_existing_stems(dinosaur_dir, case_insensitive=True)
+    dinosaur_image_stems = _scan_dinosaur_image_stems(dinosaur_dir)
     start = time.monotonic()
     counters = GenerateCounters()
     cost_usd = 0.0

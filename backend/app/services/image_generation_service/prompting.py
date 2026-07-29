@@ -114,9 +114,20 @@ Visual style:
 Avoid: studio product shot, museum display, stock-photo perfection, CGI render, people faces, abstract infographics."""
 
 
-def build_dinosaur_image_prompt(name: str, article_text: str) -> str:
+def dinosaur_image_prompt_template() -> str:
+    """Instruction template stored in version meta.yaml for dinosaur images."""
+    return _DINOSAUR_INSTRUCTIONS
+
+
+def build_dinosaur_image_prompt(
+    name: str,
+    article_text: str,
+    *,
+    template: str | None = None,
+) -> str:
     """Build Imagen prompt for a dinosaur genus card image."""
-    return _DINOSAUR_INSTRUCTIONS.format(name=name.strip(), article=article_text.strip())
+    instructions = template if template and template.strip() else _DINOSAUR_INSTRUCTIONS
+    return instructions.format(name=name.strip(), article=article_text.strip())
 
 
 def build_fossil_preservation_brief(fossil_data: dict[str, Any]) -> str:

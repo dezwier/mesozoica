@@ -11,7 +11,7 @@ from sqlmodel import Session, select, update
 
 from app.services.dinosaur_name_filter import dino_name_match_clause, find_dinosaurs_by_names
 from app.core.config import settings
-from app.models.dinosaur import Dinosaur
+from app.models.dinosaur_type import DinosaurType
 from app.services.wikipedia_service.category import (
     CategoryMember,
     default_wikipedia_dinosaur_categories,
@@ -57,7 +57,7 @@ def _is_stale(db_date: datetime | None, wiki_date: datetime) -> bool:
     return wiki_aware > db_aware
 
 
-def _is_incomplete(existing: Dinosaur) -> bool:
+def _is_incomplete(existing: DinosaurType) -> bool:
     """True when a row looks synced but is missing core Wikipedia payload."""
     if not (existing.article or "").strip():
         return True
@@ -66,21 +66,21 @@ def _is_incomplete(existing: Dinosaur) -> bool:
     return False
 
 
-def _get_by_page_id(session: Session, page_id: int) -> Dinosaur | None:
-    return session.exec(select(Dinosaur).where(Dinosaur.wikipedia_page_id == page_id)).first()
+def _get_by_page_id(session: Session, page_id: int) -> DinosaurType | None:
+    return session.exec(select(DinosaurType).where(DinosaurType.wikipedia_page_id == page_id)).first()
 
 
-def _find_existing(session: Session, *, page_id: int, title: str) -> Dinosaur | None:
+def _find_existing(session: Session, *, page_id: int, title: str) -> DinosaurType | None:
     """Match by Wikipedia page id, then fall back to title for legacy stub rows."""
     by_page_id = _get_by_page_id(session, page_id)
     if by_page_id is not None:
         return by_page_id
     return session.exec(
-        select(Dinosaur).where(Dinosaur.wikipedia_title == title)
+        select(DinosaurType).where(DinosaurType.wikipedia_title == title)
     ).first()
 
 
-def _clear_llm_enrichment_fields(dinosaur: Dinosaur) -> None:
+def _clear_llm_enrichment_fields(dinosaur: DinosaurType) -> None:
     """Drop LLM-only fields so stale enrichment is not shown after a Wikipedia refresh."""
     dinosaur.length = None
     dinosaur.mass = None
@@ -98,7 +98,7 @@ def _bulk_clear_llm_enrichment_fields(
     """Clear LLM-only columns on dinosaur rows (used with --overwrite)."""
     if dinos:
         if dry_run:
-            stmt = select(Dinosaur).where(dino_name_match_clause(dinos))
+            stmt = select(DinosaurType).where(dino_name_match_clause(dinos))
             return len(list(session.exec(stmt).all()))
         rows = find_dinosaurs_by_names(session, dinos)
         for row in rows:
@@ -108,17 +108,17 @@ def _bulk_clear_llm_enrichment_fields(
         return len(rows)
 
     if dry_run:
-        stmt = select(Dinosaur).where(
-            (Dinosaur.length.is_not(None))  # type: ignore[union-attr]
-            | (Dinosaur.mass.is_not(None))  # type: ignore[union-attr]
-            | (Dinosaur.location.is_not(None))  # type: ignore[union-attr]
-            | (Dinosaur.short_description.is_not(None))  # type: ignore[union-attr]
-            | (Dinosaur.llm_enriched.is_(True))  # type: ignore[attr-defined]
+        stmt = select(DinosaurType).where(
+            (DinosaurType.length.is_not(None))  # type: ignore[union-attr]
+            | (DinosaurType.mass.is_not(None))  # type: ignore[union-attr]
+            | (DinosaurType.location.is_not(None))  # type: ignore[union-attr]
+            | (DinosaurType.short_description.is_not(None))  # type: ignore[union-attr]
+            | (DinosaurType.llm_enriched.is_(True))  # type: ignore[attr-defined]
         )
         return len(list(session.exec(stmt).all()))
 
     result = session.exec(
-        update(Dinosaur).values(
+        update(DinosaurType).values(
             length=None,
             mass=None,
             location=None,
@@ -130,10 +130,10 @@ def _bulk_clear_llm_enrichment_fields(
     return int(result.rowcount or 0)
 
 
-def _apply_parsed(existing: Dinosaur | None, *, title: str, page_id: int, metadata, parsed) -> Dinosaur:
+def _apply_parsed(existing: DinosaurType | None, *, title: str, page_id: int, metadata, parsed) -> DinosaurType:
     now = datetime.now(timezone.utc)
     if existing is None:
-        row = Dinosaur(
+        row = DinosaurType(
             name=title,
             wikipedia_page_id=page_id,
             wikipedia_title=title,

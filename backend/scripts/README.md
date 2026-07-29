@@ -8,21 +8,22 @@ Scripts that touch production data use the **Railway Postgres database** and Rai
 
 | Module | Description |
 |--------|-------------|
-| [`sync_dinosaur_images.py`](sync_dinosaur_images.py) | Upload curated dinosaur card images from `images/dinosaurs/` to Railway volume and set `main_image_url` |
+| [`sync_dinosaur_images.py`](sync_dinosaur_images.py) | Upload curated dinosaur card images from `images/dinosaurs/vN/` to Railway volume and set `main_image_url` |
 | [`sync_fossil_images.py`](sync_fossil_images.py) | Upload curated fossil card images from `images/fossils/` to Railway volume and set `main_image_url` |
 | [`sync_site_type_images.py`](sync_site_type_images.py) | Upload curated site-type card images from `images/site-types/vN/` to Railway volume and set `main_image_url` |
 | [`sync_tool_images.py`](sync_tool_images.py) | Upload curated tool card images from `images/tools/vN/` to Railway volume and set `main_image_url` |
-| [`migrate_image_versions_to_v1.py`](migrate_image_versions_to_v1.py) | Move flat site-type/tool images into `v1/` and write retroactive `meta.yaml` |
+| [`migrate_image_versions_to_v1.py`](migrate_image_versions_to_v1.py) | Move flat site-type/tool/dinosaur images into `v1/` and write retroactive `meta.yaml` |
 | [`backfill_user_levels.py`](backfill_user_levels.py) | Recompute user exploration/career XP from discoveries + distance using `leveling.yaml` rewards |
 
 All sync scripts support `.png`, `.jpg`, `.jpeg`, and `.webp`.
 
 ### Dinosaur images
 
-- **Source folder:** repo `images/dinosaurs/`
-- **Filename rule:** stem must match `dinosaur.name` (case-insensitive), e.g. `tyrannosaurus.png` → `Tyrannosaurus`
-- **Served at:** `https://<api-host>/media/dinosaurs/<DinosaurName>.<ext>`
+- **Source folder:** repo `images/dinosaurs/vN/` (versioned; flat files migrate to `v1/` on sync/generate)
+- **Filename rule:** stem must match `dinosaur_type.name` (case-insensitive), e.g. `v1/tyrannosaurus.png` → `Tyrannosaurus`
+- **Served at:** `https://<api-host>/media/dinosaurs/vN/<DinosaurName>.<ext>`
 - **Cache busting:** `main_image_url` includes a `?v=<content-hash>` query param so the app fetches updated files after re-sync
+- **Card resolution:** catalog always uses `v1`; inventory occurrences pick the newest version with `run_date <= dinosaur.created_at`
 
 ### Fossil images
 

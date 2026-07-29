@@ -15,7 +15,7 @@ from app.models.site_type import SiteType
 from app.services.curated_image_service.versions import (
     ensure_version_meta,
     migrate_flat_images_to_v1,
-    normalize_version_name,
+    resolve_generation_version,
     version_dir,
 )
 from app.services.image_generation_service.client import (
@@ -119,16 +119,20 @@ def generate_site_type_images(
     site_type_ids: list[int] | None = None,
     version: str | int | None = None,
 ) -> GenerateSummary:
-    """Generate missing site-type card images into ``images/site-types/vN/``."""
+    """Generate missing site-type card images into ``images/site-types/vN/``.
+
+    When ``version`` is omitted, auto-increments to the next version folder
+    (``v1`` if none exist yet).
+    """
     if not settings.google_gemini_api_key.strip():
         raise RuntimeError("GOOGLE_GEMINI_API_KEY is required for site-type image generation")
 
-    version_name = normalize_version_name(version)
     root_dir = resolve_local_source_dir_for_sync()
     migrate_flat_images_to_v1(
         root_dir,
         default_prompt=site_type_image_prompt_template(),
     )
+    version_name = resolve_generation_version(root_dir, version)
     output_dir = version_dir(root_dir, version_name)
     meta = ensure_version_meta(
         output_dir,

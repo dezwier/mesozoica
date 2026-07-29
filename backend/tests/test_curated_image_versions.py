@@ -24,6 +24,29 @@ def test_normalize_version_name():
     assert normalize_version_name(4) == "v4"
 
 
+def test_resolve_generation_version_auto_increments(tmp_path: Path):
+    from app.services.curated_image_service.versions import (
+        ensure_version_meta,
+        resolve_generation_version,
+    )
+
+    assert resolve_generation_version(tmp_path) == "v1"
+    ensure_version_meta(
+        tmp_path / "v1",
+        default_prompt="p1",
+        run_date=datetime(2025, 1, 1, tzinfo=timezone.utc),
+    )
+    assert resolve_generation_version(tmp_path) == "v2"
+    ensure_version_meta(
+        tmp_path / "v2",
+        default_prompt="p2",
+        run_date=datetime(2026, 1, 1, tzinfo=timezone.utc),
+    )
+    assert resolve_generation_version(tmp_path) == "v3"
+    assert resolve_generation_version(tmp_path, version=1) == "v1"
+    assert resolve_generation_version(tmp_path, version="v2") == "v2"
+
+
 def test_safe_versioned_relative_path():
     assert safe_versioned_relative_path("v1/cretaceous_claystone.png") == (
         "v1/cretaceous_claystone.png"
@@ -110,3 +133,42 @@ def test_pick_version_for_date_selects_newest_eligible(tmp_path: Path):
 
     forced = pick_version_for_date(versions, as_of=late.run_date, force_v1=True)
     assert forced is not None and forced.name == "v1"
+
+
+def test_resolve_dinosaur_card_image_url_catalog_forces_v1(tmp_path: Path, monkeypatch):
+    import app.core.config as config_module
+    from app.services.curated_image_service.resolve import resolve_dinosaur_card_image_url
+
+    root = tmp_path / "dinosaurs"
+    v1 = root / "v1"
+    v2 = root / "v2"
+    v1.mkdir(parents=True)
+    v2.mkdir(parents=True)
+    (v1 / "Tyrannosaurus.png").write_bytes(b"v1")
+    (v2 / "Tyrannosaurus.png").write_bytes(b"v2")
+    (v1 / "meta.yaml").write_text(
+        "run_date: '2025-01-01T00:00:00+00:00'\nprompt: p\n", encoding="utf-8"
+    )
+    (v2 / "meta.yaml").write_text(
+        "run_date: '2026-01-01T00:00:00+00:00'\nprompt: p\n", encoding="utf-8"
+    )
+
+    monkeypatch.setattr(config_module.settings, "dinosaur_images_dir", str(root))
+    monkeypatch.setattr(config_module.settings, "public_base_url", "https://example.com")
+
+    catalog = resolve_dinosaur_card_image_url(
+        dinosaur_name="Tyrannosaurus",
+        force_v1=True,
+        fallback_url="https://fallback",
+    )
+    assert catalog is not None
+    assert "/media/dinosaurs/v1/Tyrannosaurus.png" in catalog
+
+    inventory = resolve_dinosaur_card_image_url(
+        dinosaur_name="Tyrannosaurus",
+        as_of=datetime(2026, 6, 1, tzinfo=timezone.utc),
+        force_v1=False,
+        fallback_url="https://fallback",
+    )
+    assert inventory is not None
+    assert "/media/dinosaurs/v2/Tyrannosaurus.png" in inventory

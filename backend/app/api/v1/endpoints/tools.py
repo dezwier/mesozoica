@@ -304,8 +304,6 @@ def get_tools(
 ) -> ToolListResponse:
     if sort not in ("name", "random", "category"):
         raise ValidationError("sort must be one of: name, random, category")
-    if mode == "catalog":
-        _require_show_all_admin(current_user, show_all=True)
     rows, total = list_tools(
         session,
         limit=limit,
@@ -316,7 +314,7 @@ def get_tools(
         categories=category,
         has_custom_image=has_custom_image,
         viewer_user_id=current_user.id if current_user is not None else None,
-        show_all=show_all if mode == "catalog" else False,
+        show_all=True if mode == "catalog" else False,
         mode=mode,
     )
     items = [tool_to_summary(row) for row in rows]
@@ -336,16 +334,14 @@ def get_tool_categories(
     show_all: bool = Query(default=False),
     mode: ListMode = Query(default="inventory"),
 ) -> ToolCategoryListResponse:
-    if mode == "catalog":
-        _require_show_all_admin(current_user, show_all=True)
-    else:
+    if mode != "catalog":
         _require_show_all_admin(current_user, show_all)
     items = [
         ToolCategoryItem(value=value, label=label)
         for value, label in list_tool_categories(
             session,
             viewer_user_id=current_user.id if current_user is not None else None,
-            show_all=show_all if mode == "catalog" else False,
+            show_all=True if mode == "catalog" else False,
             mode=mode,
         )
     ]

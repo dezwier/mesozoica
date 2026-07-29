@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 
-import '../../controllers/auth_controller.dart';
 import '../../controllers/tool_catalog_controller.dart';
 import '../../models/tool.dart';
 import '../../widgets/cards/tool_turnable_card.dart';
@@ -52,8 +50,6 @@ class ToolScreenState extends State<ToolScreen> {
             : 'No tools in your collection yet.';
       },
       floatingActionsBuilder: (context, catalog) {
-        final isAdmin =
-            context.read<AuthController>().currentUser?.isAdmin ?? false;
         final mode = catalog.mode;
         final nextMode = mode == ToolScreenMode.catalog
             ? ToolScreenMode.inventory
@@ -61,23 +57,21 @@ class ToolScreenState extends State<ToolScreen> {
         return Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            if (isAdmin) ...[
-              ChromeFab(
-                heroTag: 'tool_mode_fab',
-                // Match the existing filter FAB tone so the UI feels consistent.
-                tone: ChromeFabTone.warm,
-                tooltip: mode == ToolScreenMode.catalog
-                    ? 'Switch to Inventory'
-                    : 'Switch to Catalog',
-                active: mode == ToolScreenMode.catalog,
-                onPressed: () => catalog.setMode(nextMode, isAdmin: isAdmin),
-                child: Icon(
-                  mode == ToolScreenMode.catalog
-                      ? Icons.inventory_2_outlined
-                      : Icons.auto_stories_outlined,
-                ),
+            ChromeFab(
+              heroTag: 'tool_mode_fab',
+              // Match the existing filter FAB tone so the UI feels consistent.
+              tone: ChromeFabTone.warm,
+              tooltip: mode == ToolScreenMode.catalog
+                  ? 'Switch to Inventory'
+                  : 'Switch to Catalog',
+              active: mode == ToolScreenMode.catalog,
+              onPressed: () => catalog.setMode(nextMode),
+              child: Icon(
+                mode == ToolScreenMode.catalog
+                    ? Icons.inventory_2_outlined
+                    : Icons.auto_stories_outlined,
               ),
-            ],
+            ),
             ToolFilterFab(
               hasActiveFilters: catalog.hasActiveFilters,
               onPressed: () => _openFilterSheet(context, catalog),

@@ -7,14 +7,14 @@ from decimal import Decimal
 
 from sqlmodel import Session, select
 
-from app.models.dinosaur import Dinosaur
+from app.models.dinosaur_type import DinosaurType
 from app.models.fossil import Fossil
 from app.models.site import Site
 from app.services.site_service.sync import site_sync_exit_code, sync_sites
 
 
-def _dinosaur(*, name: str = "Tyrannosaurus", page_id: int = 30467) -> Dinosaur:
-    return Dinosaur(
+def _dinosaur(*, name: str = "Tyrannosaurus", page_id: int = 30467) -> DinosaurType:
+    return DinosaurType(
         name=name,
         wikipedia_page_id=page_id,
         wikipedia_title=name,

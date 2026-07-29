@@ -1,0 +1,15 @@
+prompt: 'Generate a 3:4 image of the following dinosaur: {name}
+
+  The image must have these features - according to latest science, be as truthful
+  as possible (considering anatomy, color, surroundings, timing, etc) - within what
+  is scientifically correct, it can show something interesting about the dinosaur
+  itself, or their surrounding. Be correct however, don''t make stuff up - look like
+  an iphone photograph, so very realistic (NOT cartoonic) - in terms of color tone,
+  it should slightly have the iphone filter ''dramatic warm'' - no other special filtering,
+  no vignette, no special editing otherwise - have no borders, no text, or other elements
+  other than the photo itself
+
+  - consider the following wikipedia article as context
+
+  {article}'
+run_date: '2026-07-29T00:00:00+00:00'

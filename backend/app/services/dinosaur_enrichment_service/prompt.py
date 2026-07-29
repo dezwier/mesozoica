@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 
-from app.models.dinosaur import Dinosaur
+from app.models.dinosaur_type import DinosaurType
 
 _SYSTEM_INSTRUCTION = """You are a paleontology data assistant.
 Read the Wikipedia article HTML and return ONLY valid JSON (no markdown, no explanations).
@@ -30,7 +30,7 @@ Formatting rules for length and mass:
 Dinosaur name: """
 
 
-def build_enrichment_prompt(dinosaur: Dinosaur) -> tuple[str, str]:
+def build_enrichment_prompt(dinosaur: DinosaurType) -> tuple[str, str]:
     """Return (system_instruction, user_prompt) for Gemini."""
     payload = {
         "name": dinosaur.name,

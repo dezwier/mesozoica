@@ -8,7 +8,7 @@ from unittest.mock import patch
 import pytest
 from sqlmodel import Session
 
-from app.models.dinosaur import Dinosaur
+from app.models.dinosaur_type import DinosaurType
 from app.models.fossil import Fossil
 from app.services.fossil_enrichment_service.sync import (
     EnrichCounters,
@@ -38,8 +38,8 @@ def _seed_fossil(
     llm_enriched: bool = False,
     main_image_url: str | None = None,
     fossils_insert_time: datetime | None = None,
-) -> tuple[Fossil, Dinosaur]:
-    dinosaur = Dinosaur(
+) -> tuple[Fossil, DinosaurType]:
+    dinosaur = DinosaurType(
         name=dinosaur_name,
         wikipedia_page_id=fossil_id,
         wikipedia_title=dinosaur_name,
@@ -315,7 +315,7 @@ def test_enrich_dinos_limits_candidates(session: Session):
 
 
 def test_enrich_applies_pbdb_hints_when_llm_subcategory_unknown(session: Session):
-    dinosaur = Dinosaur(
+    dinosaur = DinosaurType(
         name="Tyrannosaurus",
         wikipedia_page_id=219975,
         wikipedia_title="Tyrannosaurus",

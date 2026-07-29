@@ -9,7 +9,7 @@ from dataclasses import dataclass, field
 from sqlalchemy import delete
 from sqlmodel import Session, col, select
 
-from app.models.dinosaur import Dinosaur
+from app.models.dinosaur_type import DinosaurType
 from app.models.data_source import DATA_SOURCE_ARCHIVE
 from app.models.fossil import Fossil
 from app.models.site import Site
@@ -45,7 +45,7 @@ def _sites_query(session: Session, *, dinos: list[str] | None):
     if dinos:
         stmt = (
             stmt.join(Fossil, col(Fossil.site_id) == col(Site.site_id))
-            .join(Dinosaur, col(Fossil.dinosaur_id) == col(Dinosaur.id))
+            .join(DinosaurType, col(Fossil.dinosaur_id) == col(DinosaurType.id))
             .where(dino_name_match_clause(dinos))
             .distinct()
         )

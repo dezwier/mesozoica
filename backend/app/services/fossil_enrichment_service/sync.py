@@ -10,7 +10,7 @@ from sqlalchemy import case, update
 from sqlmodel import Session, col, func, select
 
 from app.core.config import settings
-from app.models.dinosaur import Dinosaur
+from app.models.dinosaur_type import DinosaurType
 from app.models.data_source import DATA_SOURCE_ARCHIVE
 from app.models.fossil import Fossil
 from app.services.dinosaur_image_service.sync import CURATED_MEDIA_PATH
@@ -52,7 +52,7 @@ class EnrichSummary:
 @dataclass(frozen=True)
 class FossilCandidate:
     fossil: Fossil
-    dinosaur: Dinosaur
+    dinosaur: DinosaurType
 
 
 def reset_llm_enriched_flags(
@@ -68,7 +68,7 @@ def reset_llm_enriched_flags(
             col(Fossil.data_source) == DATA_SOURCE_ARCHIVE,
         )
         if dinos:
-            stmt = stmt.join(Dinosaur, Fossil.dinosaur_id == Dinosaur.id).where(
+            stmt = stmt.join(DinosaurType, Fossil.dinosaur_id == DinosaurType.id).where(
                 dino_name_match_clause(dinos)
             )
         return int(session.exec(stmt).one())
@@ -78,7 +78,7 @@ def reset_llm_enriched_flags(
         col(Fossil.data_source) == DATA_SOURCE_ARCHIVE,
     )
     if dinos:
-        dinosaur_ids = select(Dinosaur.id).where(dino_name_match_clause(dinos))  # type: ignore[arg-type]
+        dinosaur_ids = select(DinosaurType.id).where(dino_name_match_clause(dinos))  # type: ignore[arg-type]
         stmt = stmt.where(col(Fossil.dinosaur_id).in_(dinosaur_ids))
     result = session.exec(stmt)
     session.commit()
@@ -92,21 +92,21 @@ def _select_candidates(
     max_records: int | None,
     dinos: list[str] | None = None,
 ) -> list[FossilCandidate]:
-    stmt = select(Fossil, Dinosaur).join(
-        Dinosaur, Fossil.dinosaur_id == Dinosaur.id
+    stmt = select(Fossil, DinosaurType).join(
+        DinosaurType, Fossil.dinosaur_id == DinosaurType.id
     ).where(col(Fossil.data_source) == DATA_SOURCE_ARCHIVE)
     if not include_enriched:
         stmt = stmt.where(Fossil.llm_enriched.is_(False))  # type: ignore[attr-defined]
     if dinos:
         stmt = stmt.where(dino_name_match_clause(dinos))
     fossils_synced_priority = case(
-        (col(Dinosaur.fossils_insert_time).is_not(None), 0),
+        (col(DinosaurType.fossils_insert_time).is_not(None), 0),
         else_=1,
     )
     custom_image_priority = case(
         (
-            col(Dinosaur.main_image_url).is_not(None)
-            & col(Dinosaur.main_image_url).contains(CURATED_MEDIA_PATH),
+            col(DinosaurType.main_image_url).is_not(None)
+            & col(DinosaurType.main_image_url).contains(CURATED_MEDIA_PATH),
             0,
         ),
         else_=1,
@@ -114,7 +114,7 @@ def _select_candidates(
     stmt = stmt.order_by(
         fossils_synced_priority,
         custom_image_priority,
-        Dinosaur.name,
+        DinosaurType.name,
         Fossil.id,
     )  # type: ignore[arg-type]
     if max_records is not None:

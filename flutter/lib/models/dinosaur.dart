@@ -17,6 +17,7 @@ class DinosaurSummary {
     required this.id,
     required this.name,
     required this.wikipediaTitle,
+    this.dinosaurTypeId,
     this.birth,
     this.death,
     this.period,
@@ -32,6 +33,7 @@ class DinosaurSummary {
   final int id;
   final String name;
   final String wikipediaTitle;
+  final int? dinosaurTypeId;
   final double? birth;
   final double? death;
   final String? period;
@@ -48,6 +50,7 @@ class DinosaurSummary {
       id: json['id'] as int,
       name: json['name'] as String,
       wikipediaTitle: json['wikipedia_title'] as String,
+      dinosaurTypeId: json['dinosaur_type_id'] as int?,
       birth: (json['birth'] as num?)?.toDouble(),
       death: (json['death'] as num?)?.toDouble(),
       period: json['period'] as String?,

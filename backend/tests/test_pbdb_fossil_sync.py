@@ -9,7 +9,7 @@ from unittest.mock import MagicMock
 import pytest
 from sqlmodel import Session, select
 
-from app.models.dinosaur import Dinosaur
+from app.models.dinosaur_type import DinosaurType
 from app.models.fossil import Fossil
 from app.services.pbdb_service.sync import (
     build_fossil_description,
@@ -26,8 +26,8 @@ def _dinosaur(
     *,
     name: str = "Tyrannosaurus",
     page_id: int = 30467,
-) -> Dinosaur:
-    return Dinosaur(
+) -> DinosaurType:
+    return DinosaurType(
         name=name,
         wikipedia_page_id=page_id,
         wikipedia_title=name,

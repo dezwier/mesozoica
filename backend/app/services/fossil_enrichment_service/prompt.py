@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 
-from app.models.dinosaur import Dinosaur
+from app.models.dinosaur_type import DinosaurType
 from app.models.fossil import Fossil
 from app.services.image_generation_service.fossil_json import fossil_to_enrichment_prompt_dict
 
@@ -80,7 +80,7 @@ Rules:
 Occurrence id: """
 
 
-def build_enrichment_prompt(fossil: Fossil, *, dinosaur: Dinosaur) -> tuple[str, str]:
+def build_enrichment_prompt(fossil: Fossil, *, dinosaur: DinosaurType) -> tuple[str, str]:
     """Return (system_instruction, user_prompt) for Gemini."""
     payload = fossil_to_enrichment_prompt_dict(fossil, dinosaur_name=dinosaur.name)
     payload["dinosaur_period"] = dinosaur.period

@@ -11,7 +11,7 @@ from sqlalchemy import func, or_
 from sqlmodel import Session, col, func as sqlmodel_func, select
 
 from app.core.exceptions import NotFoundError, ValidationError
-from app.models.dinosaur import Dinosaur
+from app.models.dinosaur_type import DinosaurType
 from app.models.fossil import Fossil
 from app.models.site import Site
 from app.models.site_type import SiteType
@@ -122,7 +122,7 @@ def list_fossils(
 
     rows = session.exec(
         filtered.order_by(
-            func.coalesce(Fossil.identified_name, Dinosaur.name),
+            func.coalesce(Fossil.identified_name, DinosaurType.name),
             Fossil.id,
         )
         .offset(capped_offset)
@@ -197,8 +197,8 @@ def _filtered_select(
         stmt = stmt.where(col(Fossil.dinosaur_id) == dinosaur_id)
     if has_custom_image:
         stmt = stmt.where(
-            col(Dinosaur.main_image_url).is_not(None),
-            col(Dinosaur.main_image_url).contains(DINOSAUR_CURATED_MEDIA_PATH),
+            col(DinosaurType.main_image_url).is_not(None),
+            col(DinosaurType.main_image_url).contains(DINOSAUR_CURATED_MEDIA_PATH),
         )
     if has_custom_fossil_image:
         stmt = stmt.where(
@@ -209,7 +209,7 @@ def _filtered_select(
         stmt = stmt.where(col(Fossil.llm_enriched).is_(llm_enriched))
     if normalized_dino_q is not None:
         pattern = f"%{normalized_dino_q}%"
-        stmt = stmt.where(col(Dinosaur.name).ilike(pattern))
+        stmt = stmt.where(col(DinosaurType.name).ilike(pattern))
     if normalized_fossil_q is not None:
         pattern = f"%{normalized_fossil_q}%"
         stmt = stmt.where(col(Fossil.identified_name).ilike(pattern))
@@ -221,7 +221,7 @@ def _filtered_select(
                 col(Fossil.geological_formation).ilike(pattern),
                 col(Fossil.state).ilike(pattern),
                 col(Fossil.collectors).ilike(pattern),
-                col(Dinosaur.name).ilike(pattern),
+                col(DinosaurType.name).ilike(pattern),
             )
         )
     if time_filter_active:
@@ -273,12 +273,12 @@ def _base_select():
     return (
         select(
             Fossil,
-            Dinosaur.name,
-            Dinosaur.main_image_url,
+            DinosaurType.name,
+            DinosaurType.main_image_url,
             Site,
             SiteType,
         )
-        .join(Dinosaur, col(Fossil.dinosaur_id) == col(Dinosaur.id))
+        .join(DinosaurType, col(Fossil.dinosaur_id) == col(DinosaurType.id))
         .outerjoin(Site, col(Site.site_id) == col(Fossil.site_id))
         .outerjoin(SiteType, col(Site.site_type_id) == col(SiteType.id))
     )

@@ -20,7 +20,7 @@ class Fossil(SQLModel, table=True):
     dinosaur_id: int = Field(
         sa_column=Column(
             "dinosaur_id",
-            ForeignKey("dinosaur.id", ondelete="CASCADE"),
+            ForeignKey("dinosaur_type.id", ondelete="CASCADE"),
             nullable=False,
             index=True,
         ),

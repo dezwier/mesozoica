@@ -11,7 +11,7 @@ from sqlmodel import Session, col, func, select
 
 from app.services.dinosaur_name_filter import dino_name_match_clause
 from app.core.config import settings
-from app.models.dinosaur import Dinosaur
+from app.models.dinosaur_type import DinosaurType
 from app.services.dinosaur_enrichment_service.prompt import build_enrichment_prompt
 from app.services.dinosaur_enrichment_service.validate import validate_llm_enrichment
 from app.services.dinosaur_image_service.sync import CURATED_MEDIA_PATH
@@ -55,20 +55,20 @@ def reset_llm_enriched_flags(
 ) -> int:
     """Clear llm_enriched so an interrupted overwrite run can resume without --overwrite."""
     if dry_run:
-        stmt = select(func.count()).select_from(Dinosaur).where(
-            Dinosaur.llm_enriched.is_(True),  # type: ignore[attr-defined]
-            Dinosaur.article.is_not(None),  # type: ignore[union-attr]
+        stmt = select(func.count()).select_from(DinosaurType).where(
+            DinosaurType.llm_enriched.is_(True),  # type: ignore[attr-defined]
+            DinosaurType.article.is_not(None),  # type: ignore[union-attr]
         )
         if dinos:
             stmt = stmt.where(dino_name_match_clause(dinos))
         return int(session.exec(stmt).one())
 
     stmt = (
-        update(Dinosaur)
+        update(DinosaurType)
         .values(llm_enriched=False)
         .where(
-            Dinosaur.llm_enriched.is_(True),  # type: ignore[attr-defined]
-            Dinosaur.article.is_not(None),  # type: ignore[union-attr]
+            DinosaurType.llm_enriched.is_(True),  # type: ignore[attr-defined]
+            DinosaurType.article.is_not(None),  # type: ignore[union-attr]
         )
     )
     if dinos:
@@ -84,27 +84,27 @@ def _select_candidates(
     include_enriched: bool,
     max_records: int | None,
     dinos: list[str] | None = None,
-) -> list[Dinosaur]:
-    stmt = select(Dinosaur).where(Dinosaur.article.is_not(None))  # type: ignore[union-attr]
+) -> list[DinosaurType]:
+    stmt = select(DinosaurType).where(DinosaurType.article.is_not(None))  # type: ignore[union-attr]
     if not include_enriched:
-        stmt = stmt.where(Dinosaur.llm_enriched.is_(False))  # type: ignore[attr-defined]
+        stmt = stmt.where(DinosaurType.llm_enriched.is_(False))  # type: ignore[attr-defined]
     if dinos:
         stmt = stmt.where(dino_name_match_clause(dinos))
     custom_image_priority = case(
         (
-            col(Dinosaur.main_image_url).is_not(None)
-            & col(Dinosaur.main_image_url).contains(CURATED_MEDIA_PATH),
+            col(DinosaurType.main_image_url).is_not(None)
+            & col(DinosaurType.main_image_url).contains(CURATED_MEDIA_PATH),
             0,
         ),
         else_=1,
     )
-    stmt = stmt.order_by(custom_image_priority, Dinosaur.id)  # type: ignore[arg-type]
+    stmt = stmt.order_by(custom_image_priority, DinosaurType.id)  # type: ignore[arg-type]
     if max_records is not None:
         stmt = stmt.limit(max_records)
     return list(session.exec(stmt).all())
 
 
-def _apply_enrichment(dinosaur: Dinosaur, raw: dict) -> None:
+def _apply_enrichment(dinosaur: DinosaurType, raw: dict) -> None:
     validated = validate_llm_enrichment(raw)
     dinosaur.length = validated.length
     dinosaur.mass = validated.mass

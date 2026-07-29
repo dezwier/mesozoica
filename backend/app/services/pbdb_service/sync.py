@@ -12,7 +12,7 @@ from typing import Any
 from sqlalchemy import case, update
 from sqlmodel import Session, col, func, select
 
-from app.models.dinosaur import Dinosaur
+from app.models.dinosaur_type import DinosaurType
 from app.models.data_source import DATA_SOURCE_ARCHIVE
 from app.models.fossil import Fossil
 from app.services.dinosaur_image_service.sync import CURATED_MEDIA_PATH
@@ -408,25 +408,25 @@ def reset_fossils_insert_time(
 ) -> int:
     """Clear fossils_insert_time so an interrupted overwrite run can resume incrementally."""
     if dry_run:
-        stmt = select(func.count()).select_from(Dinosaur).where(
-            col(Dinosaur.fossils_insert_time).is_not(None)
+        stmt = select(func.count()).select_from(DinosaurType).where(
+            col(DinosaurType.fossils_insert_time).is_not(None)
         )
         if dinos:
             stmt = stmt.where(dino_name_match_clause(dinos))
         return int(session.exec(stmt).one())
 
-    stmt = update(Dinosaur).values(fossils_insert_time=None)
+    stmt = update(DinosaurType).values(fossils_insert_time=None)
     if dinos:
         stmt = stmt.where(dino_name_match_clause(dinos))
     else:
-        stmt = stmt.where(col(Dinosaur.fossils_insert_time).is_not(None))
+        stmt = stmt.where(col(DinosaurType.fossils_insert_time).is_not(None))
     result = session.exec(stmt)
     session.commit()
     return int(result.rowcount or 0)
 
 
 def _count_dinosaurs(session: Session, *, dinos: list[str] | None) -> int:
-    stmt = select(func.count()).select_from(Dinosaur)
+    stmt = select(func.count()).select_from(DinosaurType)
     if dinos:
         stmt = stmt.where(dino_name_match_clause(dinos))
     return int(session.exec(stmt).one())
@@ -438,27 +438,27 @@ def _load_dinosaurs(
     dinos: list[str] | None,
     since: datetime | None,
     overwrite: bool,
-) -> list[Dinosaur]:
-    stmt = select(Dinosaur)
+) -> list[DinosaurType]:
+    stmt = select(DinosaurType)
     if dinos:
         stmt = stmt.where(dino_name_match_clause(dinos))
     if not overwrite:
         if since is not None:
             stmt = stmt.where(
-                col(Dinosaur.fossils_insert_time).is_(None)
-                | (col(Dinosaur.fossils_insert_time) < since)
+                col(DinosaurType.fossils_insert_time).is_(None)
+                | (col(DinosaurType.fossils_insert_time) < since)
             )
         else:
-            stmt = stmt.where(col(Dinosaur.fossils_insert_time).is_(None))
+            stmt = stmt.where(col(DinosaurType.fossils_insert_time).is_(None))
     custom_image_priority = case(
         (
-            col(Dinosaur.main_image_url).is_not(None)
-            & col(Dinosaur.main_image_url).contains(CURATED_MEDIA_PATH),
+            col(DinosaurType.main_image_url).is_not(None)
+            & col(DinosaurType.main_image_url).contains(CURATED_MEDIA_PATH),
             0,
         ),
         else_=1,
     )
-    stmt = stmt.order_by(custom_image_priority, Dinosaur.name)
+    stmt = stmt.order_by(custom_image_priority, DinosaurType.name)
     return list(session.exec(stmt).all())
 
 

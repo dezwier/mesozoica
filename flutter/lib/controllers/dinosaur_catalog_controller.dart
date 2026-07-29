@@ -9,6 +9,8 @@ import '../services/dinosaur_service.dart';
 import '../widgets/cards/dinosaur_card_image.dart';
 import 'catalog_controller.dart';
 
+enum DinoScreenMode { catalog, inventory }
+
 class DinosaurCatalogFilters {
   const DinosaurCatalogFilters({
     this.searchQuery = '',
@@ -73,6 +75,7 @@ class DinosaurCatalogController extends CatalogController<DinosaurSummary> {
   bool _hasMore = false;
   int _total = 0;
   DinosaurCatalogFilters _filters = DinosaurCatalogFilters.defaults;
+  DinoScreenMode _mode = DinoScreenMode.catalog;
   bool _useClientCustomImageFilter = false;
 
   @override
@@ -88,8 +91,15 @@ class DinosaurCatalogController extends CatalogController<DinosaurSummary> {
   bool get isEmpty => !_loading && _error == null && _items.isEmpty;
   int get total => _total;
   DinosaurCatalogFilters get filters => _filters;
+  DinoScreenMode get mode => _mode;
   @override
   bool get hasActiveFilters => _filters.hasActiveFilters;
+
+  void setMode(DinoScreenMode mode) {
+    if (_mode == mode) return;
+    _mode = mode;
+    load(force: true);
+  }
 
   Future<void> load({bool force = false}) async {
     if (!force && _items.isNotEmpty) return;
@@ -212,6 +222,7 @@ class DinosaurCatalogController extends CatalogController<DinosaurSummary> {
       maOlder: !hasSearch && _filters.hasTimeFilter ? _filters.maOlder : null,
       hasCustomImage: _filters.onlyCustomImage,
       llmEnriched: _filters.onlyLlmEnriched,
+      mode: _mode == DinoScreenMode.inventory ? 'inventory' : 'catalog',
     );
 
     if (_filters.onlyCustomImage &&
@@ -255,6 +266,7 @@ class DinosaurCatalogController extends CatalogController<DinosaurSummary> {
             !hasSearch && _filters.hasTimeFilter ? _filters.maYounger : null,
         maOlder: !hasSearch && _filters.hasTimeFilter ? _filters.maOlder : null,
         llmEnriched: _filters.onlyLlmEnriched,
+        mode: _mode == DinoScreenMode.inventory ? 'inventory' : 'catalog',
       );
       curated.addAll(
         response.items.where(

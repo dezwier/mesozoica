@@ -8,7 +8,7 @@ from unittest.mock import MagicMock
 import pytest
 from sqlmodel import Session, select
 
-from app.models.dinosaur import Dinosaur
+from app.models.dinosaur_type import DinosaurType
 from app.services.wikipedia_service.category import CategoryMember
 from app.services.wikipedia_service.metadata import PageMetadata
 from app.services.wikipedia_service.parser import ParsedArticle
@@ -82,7 +82,7 @@ def test_sync_inserts_new_record(session: Session, fixture_html, monkeypatch):
     summary = sync_dinosaurs(session, client=client, dry_run=False)
     session.commit()
 
-    row = session.exec(select(Dinosaur).where(Dinosaur.wikipedia_page_id == 30467)).first()
+    row = session.exec(select(DinosaurType).where(DinosaurType.wikipedia_page_id == 30467)).first()
     assert row is not None
     assert row.short_description is None
     assert row.llm_enriched is False
@@ -113,13 +113,13 @@ def test_sync_inserts_main_image_url_from_metadata(session: Session, fixture_htm
     sync_dinosaurs(session, client=client, dry_run=False)
     session.commit()
 
-    row = session.exec(select(Dinosaur).where(Dinosaur.wikipedia_page_id == 30467)).first()
+    row = session.exec(select(DinosaurType).where(DinosaurType.wikipedia_page_id == 30467)).first()
     assert row is not None
     assert row.main_image_url == "https://upload.wikimedia.org/wikipedia/commons/t-rex.jpg"
 
 
 def test_sync_stale_update_fills_null_main_image_url(session: Session, fixture_html, monkeypatch):
-    existing = Dinosaur(
+    existing = DinosaurType(
         name="Tyrannosaurus",
         wikipedia_page_id=30467,
         wikipedia_title="Tyrannosaurus",
@@ -159,7 +159,7 @@ def test_sync_stale_update_fills_null_main_image_url(session: Session, fixture_h
 
 
 def test_sync_skips_up_to_date(session: Session, monkeypatch):
-    existing = Dinosaur(
+    existing = DinosaurType(
         name="Tyrannosaurus",
         wikipedia_page_id=30467,
         wikipedia_title="Tyrannosaurus",
@@ -195,7 +195,7 @@ def test_sync_skips_up_to_date(session: Session, monkeypatch):
 
 def test_sync_updates_stale_preserves_insert_date(session: Session, fixture_html, monkeypatch):
     insert_date = datetime(2024, 6, 1, tzinfo=timezone.utc)
-    existing = Dinosaur(
+    existing = DinosaurType(
         name="Tyrannosaurus",
         wikipedia_page_id=30467,
         wikipedia_title="Tyrannosaurus",
@@ -236,7 +236,7 @@ def test_sync_updates_stale_preserves_insert_date(session: Session, fixture_html
 
 
 def test_sync_refreshes_incomplete_stub(session: Session, fixture_html, monkeypatch):
-    existing = Dinosaur(
+    existing = DinosaurType(
         name="Brachiosaurus",
         wikipedia_page_id=12345,
         wikipedia_title="Brachiosaurus",
@@ -283,7 +283,7 @@ def test_sync_refreshes_incomplete_stub(session: Session, fixture_html, monkeypa
 def test_sync_updates_stub_matched_by_title_when_page_id_differs(
     session: Session, fixture_html, monkeypatch
 ):
-    existing = Dinosaur(
+    existing = DinosaurType(
         name="Allosaurus",
         wikipedia_page_id=99999,
         wikipedia_title="Allosaurus",
@@ -325,11 +325,11 @@ def test_sync_updates_stub_matched_by_title_when_page_id_differs(
     assert existing.wikipedia_page_id == 1347
     assert existing.period == "Late Cretaceous"
     assert existing.article is not None
-    assert len(session.exec(select(Dinosaur)).all()) == 1
+    assert len(session.exec(select(DinosaurType)).all()) == 1
 
 
 def test_sync_stale_update_resets_llm_enriched(session: Session, fixture_html, monkeypatch):
-    existing = Dinosaur(
+    existing = DinosaurType(
         name="Tyrannosaurus",
         wikipedia_page_id=30467,
         wikipedia_title="Tyrannosaurus",
@@ -399,8 +399,8 @@ def test_sync_keyboard_interrupt_preserves_committed_records(session: Session, f
     with pytest.raises(KeyboardInterrupt):
         sync_dinosaurs(session, client=client, dry_run=False)
 
-    saved = session.exec(select(Dinosaur).where(Dinosaur.wikipedia_page_id == 30467)).first()
-    missing = session.exec(select(Dinosaur).where(Dinosaur.wikipedia_page_id == 99999)).first()
+    saved = session.exec(select(DinosaurType).where(DinosaurType.wikipedia_page_id == 30467)).first()
+    missing = session.exec(select(DinosaurType).where(DinosaurType.wikipedia_page_id == 99999)).first()
 
     assert saved is not None
     assert saved.period == "Late Cretaceous"
@@ -409,7 +409,7 @@ def test_sync_keyboard_interrupt_preserves_committed_records(session: Session, f
 
 def test_sync_overwrite_bulk_clears_all_dinosaurs(session: Session, monkeypatch):
     """LLM fields are cleared up front so Ctrl+C mid-sync still leaves DB empty."""
-    synced = Dinosaur(
+    synced = DinosaurType(
         name="Tyrannosaurus",
         wikipedia_page_id=30467,
         wikipedia_title="Tyrannosaurus",
@@ -418,7 +418,7 @@ def test_sync_overwrite_bulk_clears_all_dinosaurs(session: Session, monkeypatch)
         mass="7 t",
         llm_enriched=True,
     )
-    unsynced = Dinosaur(
+    unsynced = DinosaurType(
         name="Velociraptor",
         wikipedia_page_id=99999,
         wikipedia_title="Velociraptor",
@@ -449,7 +449,7 @@ def test_sync_overwrite_bulk_clears_all_dinosaurs(session: Session, monkeypatch)
 
 
 def test_sync_overwrite_clears_llm_fields(session: Session, fixture_html, monkeypatch):
-    existing = Dinosaur(
+    existing = DinosaurType(
         name="Tyrannosaurus",
         wikipedia_page_id=30467,
         wikipedia_title="Tyrannosaurus",
@@ -495,7 +495,7 @@ def test_sync_overwrite_clears_llm_fields(session: Session, fixture_html, monkey
 
 
 def test_sync_overwrite_refetches_up_to_date(session: Session, fixture_html, monkeypatch):
-    existing = Dinosaur(
+    existing = DinosaurType(
         name="Tyrannosaurus",
         wikipedia_page_id=30467,
         wikipedia_title="Tyrannosaurus",
@@ -576,13 +576,13 @@ def test_sync_dinos_skips_category_listing(session: Session, fixture_html, monke
 
     assert list_batches_called is False
     assert summary.counters.fetched == 1
-    row = session.exec(select(Dinosaur).where(Dinosaur.wikipedia_page_id == 555)).first()
+    row = session.exec(select(DinosaurType).where(DinosaurType.wikipedia_page_id == 555)).first()
     assert row is not None
     assert row.name == "Giganotosaurus"
 
 
 def test_sync_overwrite_targeted_dinos_only_clears_those_rows(session: Session, monkeypatch):
-    synced = Dinosaur(
+    synced = DinosaurType(
         name="Tyrannosaurus",
         wikipedia_page_id=30467,
         wikipedia_title="Tyrannosaurus",
@@ -591,7 +591,7 @@ def test_sync_overwrite_targeted_dinos_only_clears_those_rows(session: Session, 
         mass="7 t",
         llm_enriched=True,
     )
-    untouched = Dinosaur(
+    untouched = DinosaurType(
         name="Velociraptor",
         wikipedia_page_id=99999,
         wikipedia_title="Velociraptor",

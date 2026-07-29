@@ -56,7 +56,38 @@ void main() {
     expect(capturedUri!.queryParameters.containsKey('ma_older'), isFalse);
     expect(capturedUri!.queryParameters['has_custom_image'], 'true');
     expect(capturedUri!.queryParameters['llm_enriched'], 'true');
+    expect(capturedUri!.queryParameters['mode'], 'catalog');
     expect(controller.items.map((d) => d.name), ['Velociraptor', 'Tyrannosaurus']);
+    expect(controller.mode, DinoScreenMode.catalog);
+
+    controller.dispose();
+  });
+
+  test('setMode inventory passes mode inventory', () async {
+    Uri? capturedUri;
+    final service = DinosaurService(
+      client: MockClient((request) async {
+        capturedUri = request.url;
+        return http.Response(
+          jsonEncode({
+            'items': <Map<String, dynamic>>[],
+            'total': 0,
+            'limit': 20,
+            'offset': 0,
+            'has_next': false,
+          }),
+          200,
+        );
+      }),
+    );
+
+    final controller = DinosaurCatalogController(service: service);
+    expect(controller.mode, DinoScreenMode.catalog);
+    controller.setMode(DinoScreenMode.inventory);
+    expect(controller.mode, DinoScreenMode.inventory);
+    await controller.refresh();
+
+    expect(capturedUri!.queryParameters['mode'], 'inventory');
 
     controller.dispose();
   });

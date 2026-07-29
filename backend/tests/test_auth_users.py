@@ -63,6 +63,7 @@ def test_profile_collection_counts_from_link_tables(
     from decimal import Decimal
 
     from app.models.dinosaur import Dinosaur
+    from app.models.dinosaur_type import DinosaurType
     from app.models.fossil import Fossil
     from app.models.site import Site
     from app.models.site_type import SiteType
@@ -106,27 +107,32 @@ def test_profile_collection_counts_from_link_tables(
             site_type_id=site_type.id,
         )
     )
-    dino_a = Dinosaur(
+    dino_type_a = DinosaurType(
         name="Tyrannosaurus",
         wikipedia_page_id=91001,
         wikipedia_title="Tyrannosaurus",
     )
-    dino_b = Dinosaur(
+    dino_type_b = DinosaurType(
         name="Triceratops",
         wikipedia_page_id=91002,
         wikipedia_title="Triceratops",
     )
-    session.add(dino_a)
-    session.add(dino_b)
+    session.add(dino_type_a)
+    session.add(dino_type_b)
     session.commit()
-    session.refresh(dino_a)
-    session.refresh(dino_b)
+    session.refresh(dino_type_a)
+    session.refresh(dino_type_b)
+
+    occurrence_a = Dinosaur(dinosaur_type_id=dino_type_a.id)
+    session.add(occurrence_a)
+    session.commit()
+    session.refresh(occurrence_a)
 
     fossil_a = Fossil(
-        id=91001, dinosaur_id=dino_a.id, identified_name="T. rex tooth"
+        id=91001, dinosaur_id=dino_type_a.id, identified_name="T. rex tooth"
     )
     fossil_b = Fossil(
-        id=91002, dinosaur_id=dino_b.id, identified_name="Triceratops horn"
+        id=91002, dinosaur_id=dino_type_b.id, identified_name="Triceratops horn"
     )
     session.add(fossil_a)
     session.add(fossil_b)
@@ -171,7 +177,7 @@ def test_profile_collection_counts_from_link_tables(
     session.add(
         UserDinosaur(
             user_id=user_id,
-            dinosaur_id=dino_a.id,
+            dinosaur_id=occurrence_a.id,
             role=USER_DINOSAUR_ROLE_DISCOVERER,
         )
     )
@@ -298,6 +304,7 @@ def test_delete_data_selective_and_scoped(client: TestClient, session: Session):
     from decimal import Decimal
 
     from app.models.dinosaur import Dinosaur
+    from app.models.dinosaur_type import DinosaurType
     from app.models.fossil import Fossil
     from app.models.site import Site
     from app.models.site_type import SiteType
@@ -340,17 +347,22 @@ def test_delete_data_selective_and_scoped(client: TestClient, session: Session):
             site_type_id=site_type.id,
         )
     )
-    dino = Dinosaur(
+    dino_type = DinosaurType(
         name="Stegosaurus",
         wikipedia_page_id=92001,
         wikipedia_title="Stegosaurus",
     )
-    session.add(dino)
+    session.add(dino_type)
     session.commit()
-    session.refresh(dino)
+    session.refresh(dino_type)
+
+    occurrence = Dinosaur(dinosaur_type_id=dino_type.id)
+    session.add(occurrence)
+    session.commit()
+    session.refresh(occurrence)
 
     fossil = Fossil(
-        id=92001, dinosaur_id=dino.id, identified_name="Stegosaurus plate"
+        id=92001, dinosaur_id=dino_type.id, identified_name="Stegosaurus plate"
     )
     session.add(fossil)
     session.commit()
@@ -380,7 +392,7 @@ def test_delete_data_selective_and_scoped(client: TestClient, session: Session):
         session.add(
             UserDinosaur(
                 user_id=uid,
-                dinosaur_id=dino.id,
+                dinosaur_id=occurrence.id,
                 role=USER_DINOSAUR_ROLE_DISCOVERER,
             )
         )

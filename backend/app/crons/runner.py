@@ -119,6 +119,7 @@ def _run_dinosaur_image_generate(params: dict[str, Any]) -> int:
         dry_run=bool(params.get("dry_run", False)),
         max_items=_parse_max_items(params.get("max_items")),
         dinos=params.get("dinos"),
+        version=params.get("version"),
     )
 
 
@@ -323,8 +324,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--version",
         metavar="N",
-        help="Image version folder for site-type/tool generation (e.g. 2 or v2). "
-        "Defaults to v1 (site_type_image_generate, tool_image_generate).",
+        help="Image version folder for site-type/tool/dinosaur generation (e.g. 2 or v2). "
+        "When omitted, auto-increments to the next version after existing folders "
+        "(site_type_image_generate, tool_image_generate, dinosaur_image_generate).",
     )
     parser.add_argument(
         "--prune",

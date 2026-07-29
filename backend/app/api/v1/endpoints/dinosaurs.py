@@ -7,8 +7,11 @@ from sqlmodel import Session
 
 from app.core.database import get_session
 from app.core.exceptions import ValidationError
+from app.core.security import get_optional_current_user
+from app.models.user import User
 from app.schemas.dinosaur import DinosaurArticleResponse, DinosaurListResponse, DinosaurSummary
 from app.services.dinosaur_service import get_dinosaur_by_id, list_dinosaurs
+from app.services.dinosaur_service.list import DinosaurListRow, ListMode, dinosaur_to_summary
 from app.services.wikipedia_service.parser import prepare_article_for_display
 
 router = APIRouter(prefix="/dinosaurs", tags=["dinosaurs"])
@@ -17,6 +20,7 @@ router = APIRouter(prefix="/dinosaurs", tags=["dinosaurs"])
 @router.get("", response_model=DinosaurListResponse)
 def get_dinosaurs(
     session: Session = Depends(get_session),
+    current_user: User | None = Depends(get_optional_current_user),
     limit: int = Query(default=200, ge=1, le=500),
     offset: int = Query(default=0, ge=0),
     sort: str = Query(default="name"),
@@ -26,9 +30,12 @@ def get_dinosaurs(
     ma_older: float | None = Query(default=None),
     has_custom_image: bool = Query(default=False),
     llm_enriched: bool | None = Query(default=None),
+    mode: ListMode = Query(default="catalog"),
 ) -> DinosaurListResponse:
     if sort not in ("name", "random"):
         raise ValidationError("sort must be one of: name, random")
+    if mode not in ("catalog", "inventory"):
+        raise ValidationError("mode must be one of: catalog, inventory")
     rows, total = list_dinosaurs(
         session,
         limit=limit,
@@ -40,8 +47,10 @@ def get_dinosaurs(
         ma_older=ma_older,
         has_custom_image=has_custom_image,
         llm_enriched=llm_enriched,
+        mode=mode,
+        viewer_user_id=current_user.id if current_user is not None else None,
     )
-    items = [DinosaurSummary.model_validate(row) for row in rows]
+    items = [dinosaur_to_summary(row) for row in rows]
     return DinosaurListResponse(
         items=items,
         total=total,
@@ -73,4 +82,6 @@ def get_dinosaur(
     session: Session = Depends(get_session),
 ) -> DinosaurSummary:
     row = get_dinosaur_by_id(session, dinosaur_id)
-    return DinosaurSummary.model_validate(row)
+    return dinosaur_to_summary(
+        DinosaurListRow(dinosaur_type=row, force_v1_image=True)
+    )
