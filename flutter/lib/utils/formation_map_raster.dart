@@ -38,7 +38,7 @@ class FormationMapRasterResult {
   const FormationMapRasterResult({
     required this.width,
     required this.height,
-    required this.rgbaPremultiplied,
+    required this.rgba,
     required this.west,
     required this.east,
     required this.south,
@@ -47,7 +47,8 @@ class FormationMapRasterResult {
 
   final int width;
   final int height;
-  final Uint8List rgbaPremultiplied;
+  /// Straight (non-premultiplied) RGBA — encode to PNG before Mapbox update.
+  final Uint8List rgba;
   final double west;
   final double east;
   final double south;
@@ -190,10 +191,10 @@ FormationMapRasterResult buildFormationMapRaster(
         b = (bAcc / wSum).round().clamp(0, 255);
       }
 
-      // Premultiplied RGBA.
-      bytes[offset] = (r * alpha / 255).round();
-      bytes[offset + 1] = (g * alpha / 255).round();
-      bytes[offset + 2] = (b * alpha / 255).round();
+      // Straight (non-premultiplied) RGBA — encoded to PNG for Mapbox iOS/Android.
+      bytes[offset] = r;
+      bytes[offset + 1] = g;
+      bytes[offset + 2] = b;
       bytes[offset + 3] = alpha;
     }
   }
@@ -201,7 +202,7 @@ FormationMapRasterResult buildFormationMapRaster(
   return FormationMapRasterResult(
     width: size,
     height: size,
-    rgbaPremultiplied: bytes,
+    rgba: bytes,
     west: west,
     east: east,
     south: south,

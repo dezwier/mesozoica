@@ -224,6 +224,8 @@ class FormationMapController extends ChangeNotifier {
         reason: 'formation_map',
       );
       await _discovery?.refreshDiscoverableCache(force: true);
+      _bumpSitesRevision();
+      notifyListeners();
     } catch (error) {
       debugPrint('Formation map ensure failed: $error');
     }

@@ -28,22 +28,18 @@ void main() {
 
     expect(result.width, 64);
     expect(result.height, 64);
-    expect(result.rgbaPremultiplied.length, 64 * 64 * 4);
+    expect(result.rgba.length, 64 * 64 * 4);
 
     // Center-north pixel should lean triassic orange (221,133,0).
     final northIdx = ((16 * 64) + 32) * 4;
-    final a = result.rgbaPremultiplied[northIdx + 3];
+    final a = result.rgba[northIdx + 3];
     expect(a, greaterThan(0));
-    final r = result.rgbaPremultiplied[northIdx];
-    final g = result.rgbaPremultiplied[northIdx + 1];
-    final b = result.rgbaPremultiplied[northIdx + 2];
-    // Premultiplied — un-premultiply roughly via alpha.
-    final ur = (r * 255 / a).round();
-    final ug = (g * 255 / a).round();
-    final ub = (b * 255 / a).round();
-    expect(ur, greaterThan(180));
-    expect(ug, lessThan(160));
-    expect(ub, lessThan(40));
+    final r = result.rgba[northIdx];
+    final g = result.rgba[northIdx + 1];
+    final b = result.rgba[northIdx + 2];
+    expect(r, greaterThan(180));
+    expect(g, lessThan(160));
+    expect(b, lessThan(40));
   });
 
   test('outside range is transparent', () {
@@ -60,7 +56,7 @@ void main() {
       ),
     );
     // Corner of AABB is outside the circle.
-    expect(result.rgbaPremultiplied[3], 0);
+    expect(result.rgba[3], 0);
   });
 
   test('low accuracy blends neighboring periods', () {
@@ -93,16 +89,16 @@ void main() {
     // Midpoint between sites (map center) should differ under soft blend.
     final mid = ((24 * 48) + 24) * 4;
     final sharpRgb = (
-      sharp.rgbaPremultiplied[mid],
-      sharp.rgbaPremultiplied[mid + 1],
-      sharp.rgbaPremultiplied[mid + 2],
+      sharp.rgba[mid],
+      sharp.rgba[mid + 1],
+      sharp.rgba[mid + 2],
     );
     final softRgb = (
-      soft.rgbaPremultiplied[mid],
-      soft.rgbaPremultiplied[mid + 1],
-      soft.rgbaPremultiplied[mid + 2],
+      soft.rgba[mid],
+      soft.rgba[mid + 1],
+      soft.rgba[mid + 2],
     );
-    expect(soft.rgbaPremultiplied[mid + 3], greaterThan(0));
+    expect(soft.rgba[mid + 3], greaterThan(0));
     // Soft IDW should not match pure nearest-only mid color for these sites.
     expect(softRgb == sharpRgb, isFalse);
   });

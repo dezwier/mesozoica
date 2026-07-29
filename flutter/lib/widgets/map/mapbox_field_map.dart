@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:developer' as developer;
 import 'dart:ui' as ui;
 
 import 'package:flutter/foundation.dart';
@@ -277,15 +278,21 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
 
     final samples = <FormationMapSiteSample>[
       for (final site in formation.discoverableSites)
-        if (site.latitude != null &&
-            site.longitude != null &&
-            (site.effectivePeriod ?? '').isNotEmpty)
+        if (site.latitude != null && site.longitude != null)
           FormationMapSiteSample(
             lat: site.latitude!,
             lon: site.longitude!,
-            period: site.effectivePeriod!,
+            period: site.effectivePeriod ?? 'cretaceous',
           ),
     ];
+    developer.log(
+      'Formation map raster sites=${samples.length} '
+      'rangeM=${formation.rangeM.toStringAsFixed(0)} '
+      'accuracy=${formation.accuracy.toStringAsFixed(2)} '
+      'origin=${origin.latitude.toStringAsFixed(5)},'
+      '${origin.longitude.toStringAsFixed(5)}',
+      name: 'formation_map',
+    );
     final request = FormationMapRasterRequest(
       originLat: origin.latitude,
       originLon: origin.longitude,

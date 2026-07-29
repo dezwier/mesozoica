@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'dart:developer' as developer;
+import 'dart:ui' as ui;
 
 import 'package:flutter/foundation.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
@@ -11,7 +13,6 @@ const String formationMapLayerId = 'formation-map-layer';
 /// Mapbox ImageSource + RasterLayer for the Formation Map mosaic.
 class MapboxFormationMapOverlay {
   MapboxMap? _map;
-  bool _installed = false;
   int _syncSeq = 0;
 
   void attach(MapboxMap map) {
@@ -30,11 +31,8 @@ class MapboxFormationMapOverlay {
         await map.style.removeStyleSource(formationMapSourceId);
       }
     } catch (error) {
-      if (kDebugMode) {
-        debugPrint('Formation map clear failed: $error');
-      }
+      developer.log('Formation map clear failed: $error', name: 'formation_map');
     }
-    _installed = false;
   }
 
   Future<void> sync({
@@ -43,10 +41,20 @@ class MapboxFormationMapOverlay {
     final map = _map;
     if (map == null) return;
     final seq = ++_syncSeq;
+
+    // iOS uses UIImage(data:) and Android BitmapFactory.decodeByteArray —
+    // both require encoded PNG/JPEG, not raw RGBA (MbxImage docs are wrong).
+    final pngBytes = await _rgbaToPng(
+      raster.rgba,
+      raster.width,
+      raster.height,
+    );
+    if (seq != _syncSeq) return;
+
     final image = MbxImage(
       width: raster.width,
       height: raster.height,
-      data: Uint8List.fromList(raster.rgbaPremultiplied),
+      data: pngBytes,
     );
     final coords = raster.coordinates;
 
@@ -55,6 +63,7 @@ class MapboxFormationMapOverlay {
       if (seq != _syncSeq) return;
 
       if (!hasSource) {
+        // Match Mapbox ImageSource example order: source → layer → image.
         await map.style.addSource(
           ImageSource(
             id: formationMapSourceId,
@@ -62,23 +71,17 @@ class MapboxFormationMapOverlay {
           ),
         );
         if (seq != _syncSeq) return;
-        final source = await map.style.getSource(formationMapSourceId);
-        if (source is ImageSource) {
-          await source.updateImage(image);
-        }
+        await _ensureLayer(map);
         if (seq != _syncSeq) return;
-        final hasLayer = await map.style.styleLayerExists(formationMapLayerId);
-        if (!hasLayer) {
-          await map.style.addLayer(
-            RasterLayer(
-              id: formationMapLayerId,
-              sourceId: formationMapSourceId,
-              rasterOpacity: 1.0,
-              rasterFadeDuration: 0,
-            ),
-          );
-        }
-        _installed = true;
+        await map.style.updateStyleImageSourceImage(
+          formationMapSourceId,
+          image,
+        );
+        developer.log(
+          'Formation map installed '
+          '${raster.width}x${raster.height} png=${pngBytes.length}B',
+          name: 'formation_map',
+        );
         return;
       }
 
@@ -88,33 +91,65 @@ class MapboxFormationMapOverlay {
         coords,
       );
       if (seq != _syncSeq) return;
-      final source = await map.style.getSource(formationMapSourceId);
-      if (source is ImageSource) {
-        await source.updateImage(image);
-      }
-      if (!_installed) {
-        final hasLayer = await map.style.styleLayerExists(formationMapLayerId);
-        if (!hasLayer) {
-          await map.style.addLayer(
-            RasterLayer(
-              id: formationMapLayerId,
-              sourceId: formationMapSourceId,
-              rasterOpacity: 1.0,
-              rasterFadeDuration: 0,
-            ),
-          );
-        }
-        _installed = true;
-      }
+      await _ensureLayer(map);
+      if (seq != _syncSeq) return;
+      await map.style.updateStyleImageSourceImage(
+        formationMapSourceId,
+        image,
+      );
     } catch (error, stack) {
+      developer.log(
+        'Formation map sync failed: $error\n$stack',
+        name: 'formation_map',
+      );
       if (kDebugMode) {
         debugPrint('Formation map sync failed: $error\n$stack');
       }
     }
   }
 
+  Future<void> _ensureLayer(MapboxMap map) async {
+    if (await map.style.styleLayerExists(formationMapLayerId)) return;
+    // Standard style lightPreset dims custom rasters unless emissive strength
+    // is raised (see mapbox_maps_flutter image_source_example.dart).
+    await map.style.addLayer(
+      RasterLayer(
+        id: formationMapLayerId,
+        sourceId: formationMapSourceId,
+        slot: 'middle',
+        rasterOpacity: 1.0,
+        rasterFadeDuration: 0,
+        rasterEmissiveStrength: 1.0,
+      ),
+    );
+  }
+
+  static Future<Uint8List> _rgbaToPng(
+    Uint8List rgba,
+    int width,
+    int height,
+  ) async {
+    final completer = Completer<ui.Image>();
+    ui.decodeImageFromPixels(
+      rgba,
+      width,
+      height,
+      ui.PixelFormat.rgba8888,
+      completer.complete,
+    );
+    final image = await completer.future;
+    try {
+      final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+      if (byteData == null) {
+        throw StateError('PNG encode failed for formation map raster');
+      }
+      return byteData.buffer.asUint8List();
+    } finally {
+      image.dispose();
+    }
+  }
+
   void dispose() {
     _map = null;
-    _installed = false;
   }
 }
