@@ -76,8 +76,8 @@ formation_map:
   boundary_blur: 0.8
   colors:
     cretaceous: "#8D6E63"
-    # Soft nature green with enough chroma to read on monochrome basemap
-    jurassic: "#4DB86A"
+    # Soft muted nature green (readable on monochrome, not fluorescent)
+    jurassic: "#5A9A6C"
     triassic: "#DD8500"
   stats_explanation: >-
     Colors the map by the period of the nearest undiscovered field site.

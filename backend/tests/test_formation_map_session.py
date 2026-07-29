@@ -100,7 +100,7 @@ def test_tool_actions_yaml_loads_formation_map_knobs() -> None:
     assert cfg.base_alpha == 0.55
     assert cfg.range_fade == 0.85
     assert cfg.boundary_blur == 0.8
-    assert cfg.colors.jurassic == (0x4D, 0xB8, 0x6A)
+    assert cfg.colors.jurassic == (0x5A, 0x9A, 0x6C)
     assert cfg.colors.cretaceous == (0x8D, 0x6E, 0x63)
     assert cfg.colors.triassic == (0xDD, 0x85, 0x00)
 

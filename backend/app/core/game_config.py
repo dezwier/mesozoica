@@ -356,7 +356,7 @@ class FormationMapPeriodColors(BaseModel):
     model_config = {"frozen": True}
 
     cretaceous: tuple[int, int, int] = (0x8D, 0x6E, 0x63)
-    jurassic: tuple[int, int, int] = (0x4D, 0xB8, 0x6A)
+    jurassic: tuple[int, int, int] = (0x5A, 0x9A, 0x6C)
     triassic: tuple[int, int, int] = (0xDD, 0x85, 0x00)
 
     @field_validator("cretaceous", "jurassic", "triassic", mode="before")
