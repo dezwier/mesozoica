@@ -72,10 +72,10 @@ void main() {
     expect(config.toolActions.formationMap.minRangeM, 200.0);
     expect(config.toolActions.formationMap.maxRangeM, 2000.0);
     expect(config.toolActions.formationMap.resolvedRangeM, closeTo(830.0, 0.01));
-    expect(config.toolActions.formationMap.baseAlpha, 0.55);
+    expect(config.toolActions.formationMap.baseAlpha, 0.42);
     expect(config.toolActions.formationMap.rangeFade, 0.85);
     expect(config.toolActions.formationMap.boundaryBlur, 0.8);
-    expect(config.toolActions.formationMap.colors.jurassic, (0x5A, 0x9A, 0x6C));
+    expect(config.toolActions.formationMap.colors.jurassic, (0x3F, 0x7A, 0x52));
     expect(config.toolActions.formationMap.colors.cretaceous, (0x8D, 0x6E, 0x63));
     expect(config.toolActions.formationMap.colors.triassic, (0xDD, 0x85, 0x00));
     expect(

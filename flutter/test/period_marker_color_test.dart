@@ -10,7 +10,7 @@ void main() {
 
     expect(periodMarkerColor('cretaceous'), lightPrimary);
     expect(periodMarkerColor('cretaceous'), isNot(darkPrimary));
-    expect(periodMarkerColor('jurassic'), const Color.fromARGB(255, 90, 154, 108));
+    expect(periodMarkerColor('jurassic'), const Color.fromARGB(255, 63, 122, 82));
     expect(periodMarkerColor('triassic'), const Color.fromARGB(255, 221, 133, 0));
     expect(periodMarkerColor('Cretaceous'), lightPrimary);
     expect(periodMarkerColor(null), lightPrimary);

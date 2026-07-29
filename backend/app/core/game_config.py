@@ -356,7 +356,7 @@ class FormationMapPeriodColors(BaseModel):
     model_config = {"frozen": True}
 
     cretaceous: tuple[int, int, int] = (0x8D, 0x6E, 0x63)
-    jurassic: tuple[int, int, int] = (0x5A, 0x9A, 0x6C)
+    jurassic: tuple[int, int, int] = (0x3F, 0x7A, 0x52)
     triassic: tuple[int, int, int] = (0xDD, 0x85, 0x00)
 
     @field_validator("cretaceous", "jurassic", "triassic", mode="before")
@@ -375,7 +375,7 @@ class FormationMapActionConfig(BaseModel):
     range: float = 0.35
     min_range_m: float = 200.0
     max_range_m: float = 2000.0
-    base_alpha: float = 0.55
+    base_alpha: float = 0.42
     range_fade: float = 0.55
     boundary_blur: float = 0.7
     colors: FormationMapPeriodColors = Field(
@@ -541,7 +541,7 @@ class ToolActionsConfig(BaseModel):
             range=0.35,
             min_range_m=200.0,
             max_range_m=2000.0,
-            base_alpha=0.55,
+            base_alpha=0.42,
             range_fade=0.55,
             boundary_blur=0.7,
             stats_explanation=(

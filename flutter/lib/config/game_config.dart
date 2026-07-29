@@ -590,7 +590,7 @@ class FormationMapPeriodColors {
 
   static const defaults = FormationMapPeriodColors(
     cretaceous: (0x8D, 0x6E, 0x63),
-    jurassic: (0x5A, 0x9A, 0x6C),
+    jurassic: (0x3F, 0x7A, 0x52),
     triassic: (0xDD, 0x85, 0x00),
   );
 
@@ -642,7 +642,7 @@ class FormationMapActionConfig {
           range: 0.35,
           minRangeM: 200.0,
           maxRangeM: 2000.0,
-          baseAlpha: 0.55,
+          baseAlpha: 0.42,
           rangeFade: 0.55,
           boundaryBlur: 0.7,
           colors: FormationMapPeriodColors.defaults,
