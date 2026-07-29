@@ -75,7 +75,7 @@ void main() {
     expect(config.toolActions.formationMap.baseAlpha, 0.55);
     expect(config.toolActions.formationMap.rangeFade, 0.85);
     expect(config.toolActions.formationMap.boundaryBlur, 0.8);
-    expect(config.toolActions.formationMap.colors.jurassic, (0xA8, 0xC9, 0xA0));
+    expect(config.toolActions.formationMap.colors.jurassic, (0x4D, 0xB8, 0x6A));
     expect(config.toolActions.formationMap.colors.cretaceous, (0x8D, 0x6E, 0x63));
     expect(config.toolActions.formationMap.colors.triassic, (0xDD, 0x85, 0x00));
     expect(

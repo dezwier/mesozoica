@@ -590,7 +590,7 @@ class FormationMapPeriodColors {
 
   static const defaults = FormationMapPeriodColors(
     cretaceous: (0x8D, 0x6E, 0x63),
-    jurassic: (0xA8, 0xC9, 0xA0),
+    jurassic: (0x4D, 0xB8, 0x6A),
     triassic: (0xDD, 0x85, 0x00),
   );
 

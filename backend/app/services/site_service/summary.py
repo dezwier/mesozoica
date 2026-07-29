@@ -51,8 +51,16 @@ def site_row_to_summary(
         min_age_ma=_decimal_to_float(site.min_age_ma),
         max_age_ma=_decimal_to_float(site.max_age_ma),
         site_type_id=site.site_type_id,
-        site_type_period=site_type.period if site_type else None,
-        site_type_rock_type=site_type.rock_type if site_type else None,
+    site_type_period=(
+            site_type.period
+            if site_type is not None
+            else (site.period if site.period else None)
+        ),
+        site_type_rock_type=(
+            site_type.rock_type
+            if site_type is not None
+            else (site.rock_type if site.rock_type else None)
+        ),
         main_image_url=site_type.main_image_url if site_type else None,
         data_source=site.data_source,
         how_discovered=site.how_discovered,

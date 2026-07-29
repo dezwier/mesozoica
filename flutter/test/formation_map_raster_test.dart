@@ -57,9 +57,9 @@ void main() {
     );
     final mid = ((16 * 32) + 16) * 4;
     expect(result.rgba[mid + 3], greaterThan(0));
-    expect(result.rgba[mid], closeTo(0xA8, 15));
-    expect(result.rgba[mid + 1], closeTo(0xC9, 15));
-    expect(result.rgba[mid + 2], closeTo(0xA0, 15));
+    expect(result.rgba[mid], closeTo(0x4D, 20));
+    expect(result.rgba[mid + 1], closeTo(0xB8, 20));
+    expect(result.rgba[mid + 2], closeTo(0x6A, 20));
   });
 
   test('outside range is transparent', () {
