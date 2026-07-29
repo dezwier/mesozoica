@@ -62,9 +62,23 @@ class AerialMissionController extends ChangeNotifier {
   AerialMissionActionConfig get _cfg =>
       drawKind.config(GameConfig.instance);
 
-  double get maxRouteKm => _cfg.maxRouteKm;
-  double get loopEndpointToleranceM => _cfg.loopEndpointToleranceM;
-  double get shortRouteWarnFraction => _cfg.shortRouteWarnFraction;
+  Map<String, dynamic> get _toolParams {
+    final tool = _tool;
+    if (tool == null) return const {};
+    if (tool.isOwned && tool.params.isNotEmpty) return tool.params;
+    return tool.baseParams;
+  }
+
+  double get maxRouteKm =>
+      (_toolParams['max_route_km'] as num?)?.toDouble() ?? _cfg.maxRouteKm;
+
+  double get loopEndpointToleranceM =>
+      (_toolParams['loop_endpoint_tolerance_m'] as num?)?.toDouble() ??
+      _cfg.loopEndpointToleranceM;
+
+  double get shortRouteWarnFraction =>
+      (_toolParams['short_route_warn_fraction'] as num?)?.toDouble() ??
+      _cfg.shortRouteWarnFraction;
 
   double routeLengthKm() {
     if (_route.length < 2) return 0;

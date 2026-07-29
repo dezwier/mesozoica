@@ -107,7 +107,14 @@ class GuidanceCardExtension implements ToolCardExtension {
   @override
   Widget? buildOngoingPanel(BuildContext context, ToolSummary tool) {
     final kind = GuidanceToolKind.requireToolName(tool.name);
-    return _GuidanceOngoingPanel(toolId: tool.id, actionKey: kind.actionKey);
+    final params = tool.isOwned && tool.params.isNotEmpty
+        ? tool.params
+        : tool.baseParams;
+    return _GuidanceOngoingPanel(
+      toolId: tool.id,
+      actionKey: kind.actionKey,
+      toolParams: params,
+    );
   }
 
   @override
@@ -134,7 +141,10 @@ class FormationMapCardExtension implements ToolCardExtension {
 
   @override
   Widget? buildOngoingPanel(BuildContext context, ToolSummary tool) {
-    return _FormationMapOngoingPanel(toolId: tool.id);
+    final params = tool.isOwned && tool.params.isNotEmpty
+        ? tool.params
+        : tool.baseParams;
+    return _FormationMapOngoingPanel(toolId: tool.id, toolParams: params);
   }
 
   @override
@@ -145,10 +155,12 @@ class _GuidanceOngoingPanel extends StatelessWidget {
   const _GuidanceOngoingPanel({
     required this.toolId,
     required this.actionKey,
+    required this.toolParams,
   });
 
   final int toolId;
   final String actionKey;
+  final Map<String, dynamic> toolParams;
 
   @override
   Widget build(BuildContext context) {
@@ -165,6 +177,19 @@ class _GuidanceOngoingPanel extends StatelessWidget {
         ? '—'
         : '${remaining.inMinutes.clamp(0, 999)} min left';
 
+    // Prefer the snapshotted session knobs (what the action actually used),
+    // falling back to the tool-instance params for any missing fields.
+    final sessionParams = <String, dynamic>{
+      ...toolParams,
+      'duration_minutes': session.durationMinutes,
+      if (session.discoveryChance != null)
+        'discovery_chance': session.discoveryChance,
+      if (session.directionExactness != null)
+        'direction_exactness': session.directionExactness,
+      if (session.distanceExactness != null)
+        'distance_exactness': session.distanceExactness,
+    };
+
     return CardSectionPanel(
       label: 'Active session',
       child: Column(
@@ -175,7 +200,11 @@ class _GuidanceOngoingPanel extends StatelessWidget {
             style: Theme.of(context).textTheme.bodyMedium,
           ),
           const SizedBox(height: 8),
-          GuidanceToolStats(actionKey: session.actionKey, compact: true),
+          GuidanceToolStats(
+            actionKey: session.actionKey,
+            params: sessionParams,
+            compact: true,
+          ),
           const SizedBox(height: 10),
           OutlinedButton(
             onPressed: () => guidance.stop(),
@@ -188,9 +217,13 @@ class _GuidanceOngoingPanel extends StatelessWidget {
 }
 
 class _FormationMapOngoingPanel extends StatelessWidget {
-  const _FormationMapOngoingPanel({required this.toolId});
+  const _FormationMapOngoingPanel({
+    required this.toolId,
+    required this.toolParams,
+  });
 
   final int toolId;
+  final Map<String, dynamic> toolParams;
 
   @override
   Widget build(BuildContext context) {
@@ -208,6 +241,15 @@ class _FormationMapOngoingPanel extends StatelessWidget {
         ? '—'
         : '${remaining.inMinutes.clamp(0, 999)} min left';
 
+    final sessionParams = <String, dynamic>{
+      ...toolParams,
+      'duration_minutes': session.durationMinutes,
+      'accuracy': session.accuracy,
+      'range': session.range,
+      'min_range_m': session.minRangeM,
+      'max_range_m': session.maxRangeM,
+    };
+
     return CardSectionPanel(
       label: 'Active session',
       child: Column(
@@ -218,7 +260,7 @@ class _FormationMapOngoingPanel extends StatelessWidget {
             style: Theme.of(context).textTheme.bodyMedium,
           ),
           const SizedBox(height: 8),
-          const FormationMapToolStats(compact: true),
+          FormationMapToolStats(params: sessionParams, compact: true),
           const SizedBox(height: 10),
           OutlinedButton(
             onPressed: () => formation.stop(),

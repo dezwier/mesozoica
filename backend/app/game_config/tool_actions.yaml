@@ -73,7 +73,7 @@ formation_map:
   # Outer fraction of the circle that fades to transparent (0=hard edge, 1=fade from center)
   range_fade: 0.85
   # Softness of period color borders (0=sharp, 1=very soft); accuracy still sharpens further
-  boundary_blur: 0.8
+  boundary_blur: 1
   stats_explanation: >-
     Colors the map by the period of the nearest undiscovered field site.
     Higher accuracy sharpens boundaries; higher range widens the circle
