@@ -59,8 +59,13 @@ class AerialMissionCardExtension implements ToolCardExtension {
   @override
   Widget? buildDeployStats(BuildContext context, ToolSummary tool) {
     final kind = AerialMissionKind.requireToolName(tool.name);
+    final params = tool.isOwned && tool.params.isNotEmpty
+        ? tool.params
+        : tool.baseParams;
     return CardSectionPanel(
-      child: AerialMissionFlightStats.fromConfig(actionKey: kind.actionKey),
+      child: params.isNotEmpty
+          ? AerialMissionFlightStats.fromParams(params)
+          : AerialMissionFlightStats.fromConfig(actionKey: kind.actionKey),
     );
   }
 
@@ -91,8 +96,11 @@ class GuidanceCardExtension implements ToolCardExtension {
   @override
   Widget? buildDeployStats(BuildContext context, ToolSummary tool) {
     final kind = GuidanceToolKind.requireToolName(tool.name);
+    final params = tool.isOwned && tool.params.isNotEmpty
+        ? tool.params
+        : tool.baseParams;
     return CardSectionPanel(
-      child: GuidanceToolStats(actionKey: kind.actionKey),
+      child: GuidanceToolStats(actionKey: kind.actionKey, params: params),
     );
   }
 
@@ -116,8 +124,11 @@ class FormationMapCardExtension implements ToolCardExtension {
 
   @override
   Widget? buildDeployStats(BuildContext context, ToolSummary tool) {
-    return const CardSectionPanel(
-      child: FormationMapToolStats(),
+    final params = tool.isOwned && tool.params.isNotEmpty
+        ? tool.params
+        : tool.baseParams;
+    return CardSectionPanel(
+      child: FormationMapToolStats(params: params),
     );
   }
 

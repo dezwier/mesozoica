@@ -36,6 +36,24 @@ class AerialMissionFlightStats extends StatelessWidget {
     );
   }
 
+  factory AerialMissionFlightStats.fromParams(
+    Map<String, dynamic> params, {
+    Key? key,
+    bool compact = false,
+    bool includeExplanation = true,
+  }) {
+    return AerialMissionFlightStats(
+      key: key,
+      flightSpeedKmh: (params['flight_speed_kmh'] as num?)?.toDouble() ?? 0,
+      maxRouteKm: (params['max_route_km'] as num?)?.toDouble() ?? 0,
+      discoveryChance: (params['discovery_chance'] as num?)?.toDouble() ?? 0,
+      discoveryDistanceM:
+          (params['discovery_distance_m'] as num?)?.toDouble() ?? 0,
+      explanation: includeExplanation ? params['stats_explanation'] as String? : null,
+      compact: compact,
+    );
+  }
+
   /// From a mission snapshot (with config fallback for legacy nulls).
   factory AerialMissionFlightStats.fromMission(
     AerialMission mission, {

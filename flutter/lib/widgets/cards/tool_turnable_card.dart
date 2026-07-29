@@ -145,9 +145,6 @@ class _ToolTurnableCardState extends State<ToolTurnableCard> {
           );
           if (!mounted) return;
           context.read<ToolCatalogController>().replaceToolSummary(updatedTool);
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Tool parameters updated')),
-          );
         } on ToolServiceException catch (error) {
           if (!mounted) return;
           ScaffoldMessenger.of(

@@ -8,24 +8,34 @@ import '../tools/tool_stat_row.dart';
 class FormationMapToolStats extends StatelessWidget {
   const FormationMapToolStats({
     super.key,
+    this.params,
     this.compact = false,
   });
 
+  final Map<String, dynamic>? params;
   final bool compact;
 
   @override
   Widget build(BuildContext context) {
     final cfg = GameConfig.instance.toolActions.formationMap;
-    final rangeM = cfg.resolvedRangeM;
+    final p = params;
+    final durationMinutes =
+        (p?['duration_minutes'] as num?)?.toInt() ?? cfg.durationMinutes;
+    final accuracy = (p?['accuracy'] as num?)?.toDouble() ?? cfg.accuracy;
+    final range = (p?['range'] as num?)?.toDouble() ?? cfg.range;
+    final minRangeM = (p?['min_range_m'] as num?)?.toDouble() ?? cfg.minRangeM;
+    final maxRangeM = (p?['max_range_m'] as num?)?.toDouble() ?? cfg.maxRangeM;
+    final explanation = p?['stats_explanation'] as String? ?? cfg.statsExplanation;
+    final rangeM = minRangeM + range * (maxRangeM - minRangeM);
     final rangeLabel = rangeM >= 1000
         ? '${(rangeM / 1000).toStringAsFixed(1)} km'
         : '${rangeM.round()} m';
     final pairs = <ToolStatPair>[
-      ToolStatPair('Duration', '${cfg.durationMinutes} min'),
+      ToolStatPair('Duration', '$durationMinutes min'),
       ToolStatPair(
         'Accuracy',
-        cfg.accuracy.toStringAsFixed(
-          cfg.accuracy == cfg.accuracy.roundToDouble() ? 0 : 2,
+        accuracy.toStringAsFixed(
+          accuracy == accuracy.roundToDouble() ? 0 : 2,
         ),
       ),
       ToolStatPair('Range', rangeLabel),
@@ -48,9 +58,9 @@ class FormationMapToolStats extends StatelessWidget {
         ToolStatGrid(
           pairs: pairs.map((p) => ToolStatPair(p.label, p.value)).toList(),
         ),
-        if (cfg.statsExplanation.isNotEmpty) ...[
+        if (explanation.isNotEmpty) ...[
           const SizedBox(height: 10),
-          Text(cfg.statsExplanation, style: mutedStyle),
+          Text(explanation, style: mutedStyle),
         ],
       ],
     );
