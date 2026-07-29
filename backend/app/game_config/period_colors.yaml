@@ -4,10 +4,12 @@
 
 site_markers:
   cretaceous: "#8D6E63"
-  jurassic: "#3F7A52"
+  # Soft mid green — readable pins, not too dark
+  jurassic: "#4F8F68"
   triassic: "#DD8500"
 
 formation_map:
   cretaceous: "#A86B45"
-  jurassic: "#3F7A52"
+  # Muted moss — low chroma so Mapbox wash stays soft
+  jurassic: "#356848"
   triassic: "#DD8500"

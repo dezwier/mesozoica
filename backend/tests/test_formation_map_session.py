@@ -101,11 +101,11 @@ def test_tool_actions_yaml_loads_formation_map_knobs() -> None:
     assert cfg.range_fade == 0.85
     assert cfg.boundary_blur == 0.8
     colors = get_game_config().period_colors
-    assert colors.formation_map.jurassic == (0x3F, 0x7A, 0x52)
+    assert colors.formation_map.jurassic == (0x35, 0x68, 0x48)
     assert colors.formation_map.cretaceous == (0xA8, 0x6B, 0x45)
     assert colors.formation_map.triassic == (0xDD, 0x85, 0x00)
     assert colors.site_markers.cretaceous == (0x8D, 0x6E, 0x63)
-    assert colors.site_markers.jurassic == (0x3F, 0x7A, 0x52)
+    assert colors.site_markers.jurassic == (0x4F, 0x8F, 0x68)
     assert colors.site_markers.triassic == (0xDD, 0x85, 0x00)
 
 
