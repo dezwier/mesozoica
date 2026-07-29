@@ -8,11 +8,26 @@ import UserNotifications
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
+    // Force splash index selection before Flutter asks for it.
+    _ = SplashLaunch.index
+
     GeneratedPluginRegistrant.register(with: self)
     let launched = super.application(application, didFinishLaunchingWithOptions: launchOptions)
+    setupSplash()
     setupAppBadgeChannel()
     setupMapboxViewportChannel()
     return launched
+  }
+
+  private func setupSplash() {
+    guard let controller = window?.rootViewController as? FlutterViewController else {
+      DispatchQueue.main.async { [weak self] in
+        self?.setupSplash()
+      }
+      return
+    }
+    SplashLaunch.installSplash(on: controller)
+    SplashLaunch.register(with: controller.binaryMessenger)
   }
 
   private func setupAppBadgeChannel() {

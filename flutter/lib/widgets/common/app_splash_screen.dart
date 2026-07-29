@@ -1,20 +1,36 @@
 import 'dart:async';
+import 'dart:math';
 
 import 'package:flutter/material.dart';
-
-import '../../theme/dino_card_theme.dart';
+import 'package:flutter/services.dart';
 
 /// Full-screen splash shown on cold start until the initial page is ready.
-/// Matches the native launch image (same placeholder asset) so the handoff
-/// does not change what is on screen.
+///
+/// Images live only in [splashAssets] (`assets/images/splash/`). Native iOS
+/// and Android load the same files from the Flutter asset bundle. Native picks
+/// the dinosaur for this launch; Flutter reuses that index so the handoff
+/// does not flash a different image.
 class AppSplashScreen extends StatelessWidget {
   const AppSplashScreen({super.key});
 
-  static const AssetImage imageProvider =
-      AssetImage(DinoCardTheme.frontPlaceholderAsset);
+  static const MethodChannel _channel = MethodChannel('mesozoica/splash');
 
-  /// Decode the splash asset while the native launch screen is still visible.
+  static const List<String> splashAssets = [
+    'assets/images/splash/giganotosaurus.png',
+    'assets/images/splash/tyrannosaurus.png',
+    'assets/images/splash/triceratops.png',
+    'assets/images/splash/spinosaurus.png',
+    'assets/images/splash/microraptor.png',
+    'assets/images/splash/argentinosaurus.png',
+  ];
+
+  static late final AssetImage imageProvider;
+
+  /// Resolve the launch-picked splash asset and decode it before [runApp].
   static Future<void> prepare() async {
+    final index = await _resolveSplashIndex();
+    imageProvider = AssetImage(splashAssets[index]);
+
     final dispatcher = WidgetsBinding.instance.platformDispatcher;
     final dpr = dispatcher.views.isNotEmpty
         ? dispatcher.views.first.devicePixelRatio
@@ -38,9 +54,28 @@ class AppSplashScreen extends StatelessWidget {
     await completer.future;
   }
 
+  static Future<int> _resolveSplashIndex() async {
+    // Native registers the channel during engine startup; retry briefly so we
+    // reuse the same index the native splash is already showing.
+    for (var attempt = 0; attempt < 40; attempt++) {
+      try {
+        final value = await _channel.invokeMethod<int>('getSplashIndex');
+        if (value != null && value >= 0 && value < splashAssets.length) {
+          return value;
+        }
+        break;
+      } on MissingPluginException {
+        await Future<void>.delayed(const Duration(milliseconds: 25));
+      } on PlatformException {
+        break;
+      }
+    }
+    return Random().nextInt(splashAssets.length);
+  }
+
   @override
   Widget build(BuildContext context) {
-    return const SizedBox.expand(
+    return SizedBox.expand(
       child: Image(
         image: imageProvider,
         fit: BoxFit.cover,

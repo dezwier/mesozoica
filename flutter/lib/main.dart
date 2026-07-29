@@ -36,8 +36,7 @@ import 'widgets/common/app_splash_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  // Decode the same placeholder the native launch screen shows, so the first
-  // Flutter frame matches with no visible change.
+  // Use the native-picked splash dinosaur so system + Flutter match.
   await AppSplashScreen.prepare();
   await GameConfig.load();
   await _configureMapboxAccessToken();

@@ -69,6 +69,7 @@ flutter:
     - assets/images/logo.png
     - assets/images/cards/
     - assets/images/cards/icons/
+    - assets/images/splash/
     - assets/game_config/site_generation.yaml
     - assets/game_config/site_discovery.yaml
     - assets/game_config/fossil_generation.yaml
