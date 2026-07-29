@@ -72,6 +72,12 @@ void main() {
     expect(config.toolActions.formationMap.minRangeM, 200.0);
     expect(config.toolActions.formationMap.maxRangeM, 2000.0);
     expect(config.toolActions.formationMap.resolvedRangeM, closeTo(830.0, 0.01));
+    expect(config.toolActions.formationMap.baseAlpha, 0.55);
+    expect(config.toolActions.formationMap.rangeFade, 0.55);
+    expect(config.toolActions.formationMap.boundaryBlur, 0.7);
+    expect(config.toolActions.formationMap.colors.jurassic, (0x60, 0x60, 0x60));
+    expect(config.toolActions.formationMap.colors.cretaceous, (0x8D, 0x6E, 0x63));
+    expect(config.toolActions.formationMap.colors.triassic, (0xDD, 0x85, 0x00));
     expect(
       config.toolActions.formationMap.statsExplanation,
       contains('undiscovered field site'),

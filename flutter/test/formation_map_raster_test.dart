@@ -42,6 +42,25 @@ void main() {
     expect(b, lessThan(40));
   });
 
+  test('jurassic uses dark grey', () {
+    final result = buildFormationMapRaster(
+      const FormationMapRasterRequest(
+        originLat: 40.0,
+        originLon: -100.0,
+        rangeM: 200,
+        accuracy: 1.0,
+        gridSize: 32,
+        sites: [
+          FormationMapSiteSample(lat: 40.0, lon: -100.0, period: 'jurassic'),
+        ],
+      ),
+    );
+    final mid = ((16 * 32) + 16) * 4;
+    expect(result.rgba[mid + 3], greaterThan(0));
+    expect(result.rgba[mid], lessThan(140));
+    expect(result.rgba[mid], greaterThan(60));
+  });
+
   test('outside range is transparent', () {
     final result = buildFormationMapRaster(
       const FormationMapRasterRequest(

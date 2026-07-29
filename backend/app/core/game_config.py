@@ -350,6 +350,21 @@ class GuidanceActionConfig(BaseModel):
         return 0.0
 
 
+class FormationMapPeriodColors(BaseModel):
+    """RGB period hues for the Formation Map mosaic overlay."""
+
+    model_config = {"frozen": True}
+
+    cretaceous: tuple[int, int, int] = (0x8D, 0x6E, 0x63)
+    jurassic: tuple[int, int, int] = (0x60, 0x60, 0x60)
+    triassic: tuple[int, int, int] = (0xDD, 0x85, 0x00)
+
+    @field_validator("cretaceous", "jurassic", "triassic", mode="before")
+    @classmethod
+    def _parse_rgb(cls, value: object) -> tuple[int, int, int]:
+        return _parse_rgb_color(value)
+
+
 class FormationMapActionConfig(BaseModel):
     """Knobs for the Formation Map period-mosaic overlay."""
 
@@ -360,9 +375,17 @@ class FormationMapActionConfig(BaseModel):
     range: float = 0.35
     min_range_m: float = 200.0
     max_range_m: float = 2000.0
+    base_alpha: float = 0.55
+    range_fade: float = 0.55
+    boundary_blur: float = 0.7
+    colors: FormationMapPeriodColors = Field(
+        default_factory=FormationMapPeriodColors
+    )
     stats_explanation: str = ""
 
-    @field_validator("accuracy", "range")
+    @field_validator(
+        "accuracy", "range", "base_alpha", "range_fade", "boundary_blur"
+    )
     @classmethod
     def _validate_unit(cls, value: float) -> float:
         return _clamp_unit_interval(value, label="unit interval")
@@ -391,6 +414,20 @@ class FormationMapActionConfig(BaseModel):
         return float(self.min_range_m) + float(self.range) * (
             float(self.max_range_m) - float(self.min_range_m)
         )
+
+
+def _parse_rgb_color(value: object) -> tuple[int, int, int]:
+    if isinstance(value, str):
+        raw = value.strip().lstrip("#")
+        if len(raw) == 6:
+            return (int(raw[0:2], 16), int(raw[2:4], 16), int(raw[4:6], 16))
+        raise ValueError(f"color must be #RRGGBB, got {value!r}")
+    if isinstance(value, (list, tuple)) and len(value) == 3:
+        rgb = tuple(int(v) for v in value)
+        if all(0 <= c <= 255 for c in rgb):
+            return rgb  # type: ignore[return-value]
+        raise ValueError(f"RGB channels must be 0–255, got {value!r}")
+    raise ValueError(f"color must be #RRGGBB or [r,g,b], got {value!r}")
 
 
 class LevelingSkillConfig(BaseModel):
@@ -504,6 +541,9 @@ class ToolActionsConfig(BaseModel):
             range=0.35,
             min_range_m=200.0,
             max_range_m=2000.0,
+            base_alpha=0.55,
+            range_fade=0.55,
+            boundary_blur=0.7,
             stats_explanation=(
                 "Colors the map by the period of the nearest undiscovered "
                 "field site. Higher accuracy sharpens boundaries; higher "

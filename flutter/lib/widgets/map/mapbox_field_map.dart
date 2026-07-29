@@ -9,6 +9,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 
 import '../../config/map_config.dart';
+import '../../config/game_config.dart';
 import '../../controllers/aerial_mission_controller.dart';
 import '../../controllers/formation_map_controller.dart';
 import '../../models/site.dart';
@@ -293,12 +294,21 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
       '${origin.longitude.toStringAsFixed(5)}',
       name: 'formation_map',
     );
+    final cfg = GameConfig.instance.toolActions.formationMap;
     final request = FormationMapRasterRequest(
       originLat: origin.latitude,
       originLon: origin.longitude,
       rangeM: formation.rangeM,
       accuracy: formation.accuracy,
       sites: samples,
+      baseAlpha: cfg.baseAlpha,
+      rangeFade: cfg.rangeFade,
+      boundaryBlur: cfg.boundaryBlur,
+      colors: FormationMapRasterColors(
+        cretaceous: cfg.colors.cretaceous,
+        jurassic: cfg.colors.jurassic,
+        triassic: cfg.colors.triassic,
+      ),
     );
     // 128² grid is cheap enough on the UI isolate; avoid compute() because
     // custom request objects are not SendPort-safe.

@@ -577,6 +577,32 @@ class GuidanceActionConfig {
   }
 }
 
+class FormationMapPeriodColors {
+  const FormationMapPeriodColors({
+    required this.cretaceous,
+    required this.jurassic,
+    required this.triassic,
+  });
+
+  final (int, int, int) cretaceous;
+  final (int, int, int) jurassic;
+  final (int, int, int) triassic;
+
+  static const defaults = FormationMapPeriodColors(
+    cretaceous: (0x8D, 0x6E, 0x63),
+    jurassic: (0x60, 0x60, 0x60),
+    triassic: (0xDD, 0x85, 0x00),
+  );
+
+  factory FormationMapPeriodColors.fromYaml(Map<String, dynamic> yaml) {
+    return FormationMapPeriodColors(
+      cretaceous: _asRgb(yaml['cretaceous'], defaults.cretaceous),
+      jurassic: _asRgb(yaml['jurassic'], defaults.jurassic),
+      triassic: _asRgb(yaml['triassic'], defaults.triassic),
+    );
+  }
+}
+
 class FormationMapActionConfig {
   const FormationMapActionConfig({
     required this.durationMinutes,
@@ -584,6 +610,10 @@ class FormationMapActionConfig {
     required this.range,
     required this.minRangeM,
     required this.maxRangeM,
+    required this.baseAlpha,
+    required this.rangeFade,
+    required this.boundaryBlur,
+    required this.colors,
     required this.statsExplanation,
   });
 
@@ -592,6 +622,10 @@ class FormationMapActionConfig {
   final double range;
   final double minRangeM;
   final double maxRangeM;
+  final double baseAlpha;
+  final double rangeFade;
+  final double boundaryBlur;
+  final FormationMapPeriodColors colors;
   final String statsExplanation;
 
   double get resolvedRangeM =>
@@ -608,6 +642,10 @@ class FormationMapActionConfig {
           range: 0.35,
           minRangeM: 200.0,
           maxRangeM: 2000.0,
+          baseAlpha: 0.55,
+          rangeFade: 0.55,
+          boundaryBlur: 0.7,
+          colors: FormationMapPeriodColors.defaults,
           statsExplanation:
               'Colors the map by the period of the nearest undiscovered '
               'field site. Higher accuracy sharpens boundaries; higher '
@@ -619,9 +657,45 @@ class FormationMapActionConfig {
       range: _asDouble(yaml['range'], d.range).clamp(0.0, 1.0),
       minRangeM: _asDouble(yaml['min_range_m'], d.minRangeM),
       maxRangeM: _asDouble(yaml['max_range_m'], d.maxRangeM),
+      baseAlpha: _asDouble(yaml['base_alpha'], d.baseAlpha).clamp(0.0, 1.0),
+      rangeFade: _asDouble(yaml['range_fade'], d.rangeFade).clamp(0.0, 1.0),
+      boundaryBlur:
+          _asDouble(yaml['boundary_blur'], d.boundaryBlur).clamp(0.0, 1.0),
+      colors: FormationMapPeriodColors.fromYaml(
+        GameConfig._asMap(yaml['colors']),
+      ),
       statsExplanation: _asString(yaml['stats_explanation'], d.statsExplanation),
     );
   }
+}
+
+(int, int, int) _asRgb(dynamic value, (int, int, int) fallback) {
+  if (value is String) {
+    final raw = value.trim().replaceFirst('#', '');
+    if (raw.length == 6) {
+      final r = int.tryParse(raw.substring(0, 2), radix: 16);
+      final g = int.tryParse(raw.substring(2, 4), radix: 16);
+      final b = int.tryParse(raw.substring(4, 6), radix: 16);
+      if (r != null && g != null && b != null) return (r, g, b);
+    }
+  }
+  if (value is List && value.length == 3) {
+    final r = value[0] is num ? (value[0] as num).round() : null;
+    final g = value[1] is num ? (value[1] as num).round() : null;
+    final b = value[2] is num ? (value[2] as num).round() : null;
+    if (r != null &&
+        g != null &&
+        b != null &&
+        r >= 0 &&
+        r <= 255 &&
+        g >= 0 &&
+        g <= 255 &&
+        b >= 0 &&
+        b <= 255) {
+      return (r, g, b);
+    }
+  }
+  return fallback;
 }
 
 class AerialMissionActionConfig {

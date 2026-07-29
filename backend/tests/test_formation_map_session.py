@@ -97,6 +97,12 @@ def test_tool_actions_yaml_loads_formation_map_knobs() -> None:
     assert cfg.min_range_m == 200.0
     assert cfg.max_range_m == 2000.0
     assert abs(cfg.resolved_range_m() - (200 + 0.35 * 1800)) < 1e-6
+    assert cfg.base_alpha == 0.55
+    assert cfg.range_fade == 0.55
+    assert cfg.boundary_blur == 0.7
+    assert cfg.colors.jurassic == (0x60, 0x60, 0x60)
+    assert cfg.colors.cretaceous == (0x8D, 0x6E, 0x63)
+    assert cfg.colors.triassic == (0xDD, 0x85, 0x00)
 
 
 def test_start_formation_map_session_snapshots_and_replaces(
