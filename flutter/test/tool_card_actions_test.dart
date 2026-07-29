@@ -82,8 +82,10 @@ void main() {
       ),
     );
 
-    expect(find.text('Obtained 45m ago'), findsOneWidget);
-    expect(find.textContaining('Site Discovery'), findsNothing);
+    expect(
+      find.text('ID 10 - Site Discovery - Helicopter - Obtained 45m ago'),
+      findsOneWidget,
+    );
   });
 
   testWidgets('ToolCardBack enables Info when onInfo is set', (tester) async {

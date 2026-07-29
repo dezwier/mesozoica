@@ -68,10 +68,9 @@ class ToolCardBack extends StatelessWidget {
               subtitleFontSize: subtitleFontSize,
               centered: true,
               overlayOnImage: true,
-              subtitleOverride: tool.obtainedSubtitle ??
-                  tool.categoryWithScientificDisplay(
-                    includeInstanceId: showInstanceId && tool.isOwned,
-                  ),
+              subtitleOverride: tool.inventoryBackSubtitle(
+                includeInstanceId: showInstanceId && tool.isOwned,
+              ),
             ),
           ),
           Positioned(

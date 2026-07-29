@@ -42,11 +42,16 @@ class ToolSummary {
   /// i.e. the instance `id` differs from the catalog `tool_type_id`.
   bool get isToolInstance => toolTypeId != null && toolTypeId != id;
 
-  /// Card-back subtitle for inventory occurrences.
-  String? get obtainedSubtitle {
+  /// Card-back subtitle: id / category / scientific, plus Obtained when known.
+  String inventoryBackSubtitle({required bool includeInstanceId}) {
+    final base = categoryWithScientificDisplay(
+      includeInstanceId: includeInstanceId,
+    );
     final at = spawnDate;
-    if (at == null) return null;
-    return 'Obtained ${formatRelativeWhen(at)}';
+    if (at == null) return base;
+    final obtained = 'Obtained ${formatRelativeWhen(at)}';
+    if (base.isEmpty) return obtained;
+    return '$base - $obtained';
   }
 
   ToolSummary copyWith({
