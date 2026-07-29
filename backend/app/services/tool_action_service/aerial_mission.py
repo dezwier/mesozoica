@@ -54,7 +54,7 @@ from app.services.tool_action_service.route_geometry import (
     route_length_km,
     sample_along_route,
 )
-from app.services.tool_service.collect import resolve_owned_instance
+from app.services.tool_service.collect import resolve_owned_tool_selection
 logger = logging.getLogger("aerial_mission")
 
 _ACTIVE_STATUSES = (MISSION_STATUS_ENSURING, MISSION_STATUS_FLYING)
@@ -96,18 +96,17 @@ def start_aerial_mission(
     ``tool_id`` is the catalog tool_type id (API-stable). The mission row stores
     the owned tool instance id.
     """
-    tool_type = session.get(ToolType, tool_id)
-    if tool_type is None:
-        raise NotFoundError(f"Tool {tool_id} not found")
+    selected = resolve_owned_tool_selection(session, user_id=user_id, tool_id=tool_id)
+    if selected is None:
+        tool_type = session.get(ToolType, tool_id)
+        if tool_type is None:
+            raise NotFoundError(f"Tool {tool_id} not found")
+        kind = kind_for_tool_name(tool_type.name)
+        raise ValidationError(f"You must own {kind.display_label} to deploy it")
+    tool_type, instance = selected
     kind = kind_for_tool_name(tool_type.name)
     action_key = kind.action_key
     label = kind.display_label
-
-    instance = resolve_owned_instance(
-        session, user_id=user_id, tool_type_id=tool_id
-    )
-    if instance is None:
-        raise ValidationError(f"You must own {label} to deploy it")
 
     active = session.exec(
         select(ToolMission).where(

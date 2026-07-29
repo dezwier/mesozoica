@@ -115,26 +115,36 @@ class _ToolTurnableCardState extends State<ToolTurnableCard> {
 
   Future<void> _onEditParams() async {
     if (_updateParamsBusy) return;
+    final inventoryMode =
+        context.read<ToolCatalogController>().mode == ToolScreenMode.inventory;
+    final paramsForEdit =
+        widget.tool.params.isNotEmpty ? widget.tool.params : widget.tool.baseParams;
+
     final editableKeys = _editableKeysForBackStats(widget.tool)
-        .where(widget.tool.params.containsKey)
+        .where(paramsForEdit.containsKey)
         .toList(growable: false);
+
     // Defensive fallback: if the params payload doesn't include a key we
     // expect, keep the modal usable by showing whatever keys we got.
     final safeEditableKeys =
-        editableKeys.isNotEmpty ? editableKeys : widget.tool.params.keys.toList(growable: false);
+        editableKeys.isNotEmpty ? editableKeys : paramsForEdit.keys.toList(growable: false);
+
+    if (!inventoryMode) return;
 
     await ToolParamsEditSheet.show(
       context,
-      params: widget.tool.params,
+      params: paramsForEdit,
       editableKeys: safeEditableKeys,
       onSave: (updatedParams) async {
         if (_updateParamsBusy) return;
         setState(() => _updateParamsBusy = true);
         try {
-          await ToolService().updateToolParams(widget.tool.id, updatedParams);
+          final updatedTool = await ToolService().updateToolParams(
+            widget.tool.id,
+            updatedParams,
+          );
           if (!mounted) return;
-          await context.read<ToolCatalogController>().refresh();
-          if (!mounted) return;
+          context.read<ToolCatalogController>().replaceToolSummary(updatedTool);
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Tool parameters updated')),
           );
@@ -161,15 +171,17 @@ class _ToolTurnableCardState extends State<ToolTurnableCard> {
   Widget build(BuildContext context) {
     final isAdmin =
         context.watch<AuthController>().currentUser?.isAdmin ?? false;
+    final inventoryMode =
+        context.watch<ToolCatalogController>().mode == ToolScreenMode.inventory;
+    final paramsForEdit =
+        widget.tool.params.isNotEmpty ? widget.tool.params : widget.tool.baseParams;
     final showCollectBadge = isAdmin && !widget.tool.isOwned;
     final extension = ToolCardExtensions.forTool(widget.tool);
     final onInfo = extension?.infoHandler(context, widget.tool);
     final statsChild = extension?.buildDeployStats(context, widget.tool);
     final ongoingChild = extension?.buildOngoingPanel(context, widget.tool);
-    final canEditParams = widget.tool.isOwned &&
-        widget.tool.isToolInstance &&
-        isAdmin &&
-        widget.tool.params.isNotEmpty;
+    final canEditParams =
+        widget.tool.isOwned && inventoryMode && isAdmin && paramsForEdit.isNotEmpty;
 
     return TurnableYAxisCard(
       resetIdentity: widget.tool.id,
@@ -190,9 +202,11 @@ class _ToolTurnableCardState extends State<ToolTurnableCard> {
         tool: widget.tool,
         titleFontSize: widget.titleFontSize,
         subtitleFontSize: widget.subtitleFontSize,
-        onAction: widget.tool.isOwned ? _onAction : null,
-        onInfo: onInfo,
+        onAction: inventoryMode && widget.tool.isOwned ? _onAction : null,
+        onInfo: inventoryMode ? onInfo : null,
         onEditParams: canEditParams ? _onEditParams : null,
+        showInstanceId: inventoryMode,
+        showActionButtons: inventoryMode,
         statsChild: statsChild,
         ongoingChild: ongoingChild,
       ),

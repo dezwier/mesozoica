@@ -20,7 +20,7 @@ from app.models.user_tool import USER_TOOL_ACTION_DEPLOYED, UserTool
 from app.services.tool_action_service.guidance_session import (
     cancel_active_guidance_sessions,
 )
-from app.services.tool_service.collect import resolve_owned_instance
+from app.services.tool_service.collect import resolve_owned_tool_selection
 
 TOOL_NAME_FORMATION_MAP = "Formation Map"
 
@@ -95,18 +95,19 @@ def start_formation_map_session(
     ``tool_id`` is the catalog tool_type id (API-stable). The session row stores
     the owned tool instance id.
     """
-    tool_type = session.get(ToolType, tool_id)
-    if tool_type is None:
-        raise NotFoundError(f"Tool {tool_id} not found")
+    selected = resolve_owned_tool_selection(session, user_id=user_id, tool_id=tool_id)
+    if selected is None:
+        tool_type = session.get(ToolType, tool_id)
+        if tool_type is None:
+            raise NotFoundError(f"Tool {tool_id} not found")
+        if tool_type.name != TOOL_NAME_FORMATION_MAP:
+            raise ValidationError("This action is only available for Formation Map")
+        raise ValidationError("You must own Formation Map to use it")
+    tool_type, instance = selected
     if tool_type.name != TOOL_NAME_FORMATION_MAP:
         raise ValidationError("This action is only available for Formation Map")
 
     cfg = get_game_config().tool_actions.formation_map
-    instance = resolve_owned_instance(
-        session, user_id=user_id, tool_type_id=tool_id
-    )
-    if instance is None:
-        raise ValidationError("You must own Formation Map to use it")
 
     cancel_active_formation_map_sessions(session, user_id=user_id)
     cancel_active_guidance_sessions(session, user_id=user_id)

@@ -290,6 +290,16 @@ class ToolCatalogController extends CatalogController<ToolSummary> {
     return updated;
   }
 
+  /// Replace a single card in-memory without reloading the whole catalog.
+  void replaceToolSummary(ToolSummary updated) {
+    final index = _items.indexWhere((item) => item.id == updated.id);
+    if (index >= 0) {
+      _items = [..._items];
+      _items[index] = updated;
+      notifyListeners();
+    }
+  }
+
   Future<ToolListResponse> _fetchPage({required int offset}) async {
     final useSeed = _filters.sort == ToolCatalogSort.category;
     final seed = useSeed ? _seed : null;

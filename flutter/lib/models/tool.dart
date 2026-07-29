@@ -85,7 +85,13 @@ class ToolSummary {
       .join(' ');
 
   String get categoryWithScientific {
-    final idPrefix = isToolInstance ? 'ID $id' : '';
+    return categoryWithScientificDisplay(includeInstanceId: isToolInstance);
+  }
+
+  String categoryWithScientificDisplay({
+    required bool includeInstanceId,
+  }) {
+    final idPrefix = includeInstanceId ? 'ID $id' : '';
     final parts = <String>[
       if (idPrefix.isNotEmpty) idPrefix,
       if (displayCategory.isNotEmpty) displayCategory,

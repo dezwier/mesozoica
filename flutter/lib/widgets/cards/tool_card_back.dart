@@ -17,6 +17,8 @@ class ToolCardBack extends StatelessWidget {
     this.onAction,
     this.onInfo,
     this.onEditParams,
+    this.showInstanceId = false,
+    this.showActionButtons = true,
     this.statsChild,
     this.ongoingChild,
   });
@@ -27,6 +29,9 @@ class ToolCardBack extends StatelessWidget {
   final VoidCallback? onAction;
   final VoidCallback? onInfo;
   final VoidCallback? onEditParams;
+  /// Inventory-only: show the owned tool instance id prefix in the subtitle.
+  final bool showInstanceId;
+  final bool showActionButtons;
 
   /// Replaces the Rarity panel when non-null (e.g. deploy stats).
   final Widget? statsChild;
@@ -63,7 +68,9 @@ class ToolCardBack extends StatelessWidget {
               subtitleFontSize: subtitleFontSize,
               centered: true,
               overlayOnImage: true,
-              subtitleOverride: tool.categoryWithScientific,
+              subtitleOverride: tool.categoryWithScientificDisplay(
+                includeInstanceId: showInstanceId && tool.isOwned,
+              ),
             ),
           ),
           Positioned(
@@ -99,27 +106,28 @@ class ToolCardBack extends StatelessWidget {
                   ongoingChild!,
                 ],
                 const Spacer(),
-                SizedBox(
-                  height: _actionHeight,
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Expanded(
-                        child: ChromeActionButton(
-                          label: tool.action,
-                          onPressed: actionEnabled ? onAction : null,
+                if (showActionButtons)
+                  SizedBox(
+                    height: _actionHeight,
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Expanded(
+                          child: ChromeActionButton(
+                            label: tool.action,
+                            onPressed: actionEnabled ? onAction : null,
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: _actionGap),
-                      Expanded(
-                        child: ChromeActionButton(
-                          label: 'Info',
-                          onPressed: onInfo,
+                        const SizedBox(width: _actionGap),
+                        Expanded(
+                          child: ChromeActionButton(
+                            label: 'Info',
+                            onPressed: onInfo,
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
               ],
             ),
           ),

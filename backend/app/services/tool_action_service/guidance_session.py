@@ -22,7 +22,7 @@ from app.services.tool_action_service.guidance_kinds import (
     config_for_action_key,
     kind_for_tool_name,
 )
-from app.services.tool_service.collect import resolve_owned_instance
+from app.services.tool_service.collect import resolve_owned_tool_selection
 
 def _utcnow() -> datetime:
     return datetime.now(timezone.utc).replace(tzinfo=None)
@@ -94,17 +94,16 @@ def start_guidance_session(
     ``tool_id`` is the catalog tool_type id (API-stable). The session row stores
     the owned tool instance id.
     """
-    tool_type = session.get(ToolType, tool_id)
-    if tool_type is None:
-        raise NotFoundError(f"Tool {tool_id} not found")
+    selected = resolve_owned_tool_selection(session, user_id=user_id, tool_id=tool_id)
+    if selected is None:
+        tool_type = session.get(ToolType, tool_id)
+        if tool_type is None:
+            raise NotFoundError(f"Tool {tool_id} not found")
+        kind = kind_for_tool_name(tool_type.name)
+        raise ValidationError(f"You must own {kind.display_label} to use it")
+    tool_type, instance = selected
     kind = kind_for_tool_name(tool_type.name)
     cfg = config_for_action_key(kind.action_key)
-
-    instance = resolve_owned_instance(
-        session, user_id=user_id, tool_type_id=tool_id
-    )
-    if instance is None:
-        raise ValidationError(f"You must own {kind.display_label} to use it")
 
     cancel_active_guidance_sessions(session, user_id=user_id)
     # Mutual exclusivity with Formation Map (competing map HUDs).

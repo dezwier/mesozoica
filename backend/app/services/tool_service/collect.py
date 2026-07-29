@@ -121,5 +121,45 @@ def resolve_owned_instance(
     )
 
 
+def resolve_owned_tool_selection(
+    session: Session,
+    *,
+    user_id: int,
+    tool_id: int,
+) -> tuple[ToolType, Tool] | None:
+    """Resolve a user's selected tool interaction target.
+
+    Inventory interactions operate on ``tool`` occurrences. To keep the API
+    compatible, accept either:
+    - a concrete owned ``tool.id`` instance id, or
+    - a ``tool_type.id`` and resolve the user's owned instance of that type.
+    """
+    instance = session.get(Tool, tool_id)
+    if instance is not None:
+        owned = session.exec(
+            select(UserTool)
+            .where(
+                col(UserTool.user_id) == user_id,
+                col(UserTool.tool_id) == int(instance.id),
+                col(UserTool.action) == USER_TOOL_ACTION_OWNED,
+            )
+            .order_by(col(UserTool.timestamp).desc())
+        ).first()
+        if owned is not None:
+            tool_type = session.get(ToolType, int(instance.tool_type_id))
+            if tool_type is not None:
+                return tool_type, instance
+
+    tool_type = session.get(ToolType, tool_id)
+    if tool_type is None:
+        return None
+    instance = resolve_owned_instance(
+        session, user_id=user_id, tool_type_id=int(tool_type.id)
+    )
+    if instance is None:
+        return None
+    return tool_type, instance
+
+
 # Back-compat alias used by older call sites / tests.
 ownership_levels_for_tools = ownership_levels_for_tool_types
