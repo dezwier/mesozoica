@@ -350,19 +350,28 @@ class GuidanceActionConfig(BaseModel):
         return 0.0
 
 
-class FormationMapPeriodColors(BaseModel):
-    """RGB period hues for the Formation Map mosaic overlay."""
+class PeriodRgbColors(BaseModel):
+    """RGB triple per geological period."""
 
     model_config = {"frozen": True}
 
-    cretaceous: tuple[int, int, int] = (0x8D, 0x6E, 0x63)
-    jurassic: tuple[int, int, int] = (0x3F, 0x7A, 0x52)
-    triassic: tuple[int, int, int] = (0xDD, 0x85, 0x00)
+    cretaceous: tuple[int, int, int]
+    jurassic: tuple[int, int, int]
+    triassic: tuple[int, int, int]
 
     @field_validator("cretaceous", "jurassic", "triassic", mode="before")
     @classmethod
     def _parse_rgb(cls, value: object) -> tuple[int, int, int]:
         return _parse_rgb_color(value)
+
+
+class PeriodColorsConfig(BaseModel):
+    """Site-marker and Formation Map overlay palettes (period_colors.yaml)."""
+
+    model_config = {"frozen": True}
+
+    site_markers: PeriodRgbColors
+    formation_map: PeriodRgbColors
 
 
 class FormationMapActionConfig(BaseModel):
@@ -375,12 +384,9 @@ class FormationMapActionConfig(BaseModel):
     range: float = 0.35
     min_range_m: float = 200.0
     max_range_m: float = 2000.0
-    base_alpha: float = 0.42
+    base_alpha: float = 0.48
     range_fade: float = 0.55
     boundary_blur: float = 0.7
-    colors: FormationMapPeriodColors = Field(
-        default_factory=FormationMapPeriodColors
-    )
     stats_explanation: str = ""
 
     @field_validator(
@@ -541,7 +547,7 @@ class ToolActionsConfig(BaseModel):
             range=0.35,
             min_range_m=200.0,
             max_range_m=2000.0,
-            base_alpha=0.42,
+            base_alpha=0.48,
             range_fade=0.55,
             boundary_blur=0.7,
             stats_explanation=(
@@ -562,6 +568,7 @@ class GameConfig(BaseModel):
     fossil_discovery: FossilDiscoveryConfig
     fossil_excavation: FossilExcavationConfig
     tool_actions: ToolActionsConfig
+    period_colors: PeriodColorsConfig
     leveling: LevelingConfig
 
 
@@ -596,6 +603,9 @@ def load_game_config(config_dir: Path | None = None) -> GameConfig:
         ),
         tool_actions=ToolActionsConfig.model_validate(
             _load_yaml(directory / "tool_actions.yaml")
+        ),
+        period_colors=PeriodColorsConfig.model_validate(
+            _load_yaml(directory / "period_colors.yaml")
         ),
         leveling=LevelingConfig.model_validate(
             _load_yaml(directory / "leveling.yaml")

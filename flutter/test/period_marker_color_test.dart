@@ -1,19 +1,27 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mesozoica/theme/mesozoica_theme.dart';
+import 'package:mesozoica/config/game_config.dart';
 import 'package:mesozoica/widgets/map/period_marker_color.dart';
 
-void main() {
-  test('periodMarkerColor uses light-theme colors in dark mode', () {
-    final lightPrimary = MesozoicaTheme.light.colorScheme.primary;
-    final darkPrimary = MesozoicaTheme.dark.colorScheme.primary;
+import 'helpers/game_config_test_helpers.dart';
 
-    expect(periodMarkerColor('cretaceous'), lightPrimary);
-    expect(periodMarkerColor('cretaceous'), isNot(darkPrimary));
-    expect(periodMarkerColor('jurassic'), const Color.fromARGB(255, 63, 122, 82));
-    expect(periodMarkerColor('triassic'), const Color.fromARGB(255, 221, 133, 0));
-    expect(periodMarkerColor('Cretaceous'), lightPrimary);
-    expect(periodMarkerColor(null), lightPrimary);
-    expect(mapMarkerPrimaryColor(), lightPrimary);
+void main() {
+  setUp(() async {
+    GameConfig.debugReset();
+    await loadGameConfigForTest();
+  });
+
+  tearDown(GameConfig.debugReset);
+
+  test('periodMarkerColor reads site_markers from period_colors.yaml', () {
+    final markers = GameConfig.instance.periodColors.siteMarkers;
+    Color rgb((int, int, int) c) => Color.fromARGB(255, c.$1, c.$2, c.$3);
+
+    expect(periodMarkerColor('cretaceous'), rgb(markers.cretaceous));
+    expect(periodMarkerColor('jurassic'), rgb(markers.jurassic));
+    expect(periodMarkerColor('triassic'), rgb(markers.triassic));
+    expect(periodMarkerColor('Cretaceous'), rgb(markers.cretaceous));
+    expect(periodMarkerColor(null), rgb(markers.cretaceous));
+    expect(mapMarkerPrimaryColor(), rgb(markers.cretaceous));
   });
 }

@@ -2,7 +2,25 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:mesozoica/utils/formation_map_raster.dart';
 
+import 'helpers/game_config_test_helpers.dart';
+import 'package:mesozoica/config/game_config.dart';
+
 void main() {
+  late FormationMapRasterColors palette;
+
+  setUp(() async {
+    GameConfig.debugReset();
+    await loadGameConfigForTest();
+    final c = GameConfig.instance.periodColors.formationMap;
+    palette = FormationMapRasterColors(
+      cretaceous: c.cretaceous,
+      jurassic: c.jurassic,
+      triassic: c.triassic,
+    );
+  });
+
+  tearDown(GameConfig.debugReset);
+
   test('nearest site wins at high accuracy', () {
     final result = buildFormationMapRaster(
       FormationMapRasterRequest(
@@ -11,6 +29,7 @@ void main() {
         rangeM: 500,
         accuracy: 1.0,
         gridSize: 64,
+        colors: palette,
         sites: const [
           FormationMapSiteSample(
             lat: 40.001,
@@ -30,7 +49,7 @@ void main() {
     expect(result.height, 64);
     expect(result.rgba.length, 64 * 64 * 4);
 
-    // Center-north pixel should lean triassic orange (221,133,0).
+    // Center-north pixel should lean triassic orange.
     final northIdx = ((16 * 64) + 32) * 4;
     final a = result.rgba[northIdx + 3];
     expect(a, greaterThan(0));
@@ -42,35 +61,37 @@ void main() {
     expect(b, lessThan(40));
   });
 
-  test('jurassic uses pastel green', () {
+  test('jurassic uses formation_map palette green', () {
     final result = buildFormationMapRaster(
-      const FormationMapRasterRequest(
+      FormationMapRasterRequest(
         originLat: 40.0,
         originLon: -100.0,
         rangeM: 200,
         accuracy: 1.0,
         gridSize: 32,
-        sites: [
+        colors: palette,
+        sites: const [
           FormationMapSiteSample(lat: 40.0, lon: -100.0, period: 'jurassic'),
         ],
       ),
     );
     final mid = ((16 * 32) + 16) * 4;
     expect(result.rgba[mid + 3], greaterThan(0));
-    expect(result.rgba[mid], closeTo(0x3F, 20));
-    expect(result.rgba[mid + 1], closeTo(0x7A, 20));
-    expect(result.rgba[mid + 2], closeTo(0x52, 20));
+    expect(result.rgba[mid], closeTo(palette.jurassic.$1, 20));
+    expect(result.rgba[mid + 1], closeTo(palette.jurassic.$2, 20));
+    expect(result.rgba[mid + 2], closeTo(palette.jurassic.$3, 20));
   });
 
   test('outside range is transparent', () {
     final result = buildFormationMapRaster(
-      const FormationMapRasterRequest(
+      FormationMapRasterRequest(
         originLat: 0,
         originLon: 0,
         rangeM: 200,
         accuracy: 0.5,
         gridSize: 32,
-        sites: [
+        colors: palette,
+        sites: const [
           FormationMapSiteSample(lat: 0.001, lon: 0, period: 'cretaceous'),
         ],
       ),
@@ -87,6 +108,7 @@ void main() {
         rangeM: 400,
         accuracy: 1.0,
         gridSize: 48,
+        colors: palette,
         sites: const [
           FormationMapSiteSample(lat: 40.001, lon: -100.0, period: 'triassic'),
           FormationMapSiteSample(lat: 39.999, lon: -100.0, period: 'jurassic'),
@@ -100,6 +122,7 @@ void main() {
         rangeM: 400,
         accuracy: 0.0,
         gridSize: 48,
+        colors: palette,
         sites: const [
           FormationMapSiteSample(lat: 40.001, lon: -100.0, period: 'triassic'),
           FormationMapSiteSample(lat: 39.999, lon: -100.0, period: 'jurassic'),

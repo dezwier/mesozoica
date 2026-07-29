@@ -121,7 +121,7 @@ class MapboxFormationMapOverlay {
         rasterFadeDuration: 0,
         // Keep some emissive so Standard lightPreset doesn't crush the
         // mosaic, but below 1.0 so period colors stay soft (not fluorescent).
-        rasterEmissiveStrength: 0.55,
+        rasterEmissiveStrength: 0.65,
       ),
     );
   }

@@ -13,6 +13,7 @@ class GameConfig {
     required this.fossilDiscovery,
     required this.fossilExcavation,
     required this.toolActions,
+    required this.periodColors,
     required this.leveling,
   });
 
@@ -22,6 +23,7 @@ class GameConfig {
   final FossilDiscoveryConfig fossilDiscovery;
   final FossilExcavationConfig fossilExcavation;
   final ToolActionsConfig toolActions;
+  final PeriodColorsConfig periodColors;
   final LevelingConfig leveling;
 
   static GameConfig? _instance;
@@ -60,6 +62,7 @@ class GameConfig {
       fossilDiscoveryYaml: await read('fossil_discovery.yaml'),
       fossilExcavationYaml: await read('fossil_excavation.yaml'),
       toolActionsYaml: await read('tool_actions.yaml'),
+      periodColorsYaml: await read('period_colors.yaml'),
       levelingYaml: await read('leveling.yaml'),
     );
     _instance = config;
@@ -74,6 +77,7 @@ class GameConfig {
     required String fossilDiscoveryYaml,
     required String fossilExcavationYaml,
     required String toolActionsYaml,
+    required String periodColorsYaml,
     required String levelingYaml,
   }) {
     final config = GameConfig(
@@ -94,6 +98,9 @@ class GameConfig {
       ),
       toolActions: ToolActionsConfig.fromYaml(
         _asMap(loadYaml(toolActionsYaml)),
+      ),
+      periodColors: PeriodColorsConfig.fromYaml(
+        _asMap(loadYaml(periodColorsYaml)),
       ),
       leveling: LevelingConfig.fromYaml(
         _asMap(loadYaml(levelingYaml)),
@@ -577,8 +584,8 @@ class GuidanceActionConfig {
   }
 }
 
-class FormationMapPeriodColors {
-  const FormationMapPeriodColors({
+class PeriodRgbColors {
+  const PeriodRgbColors({
     required this.cretaceous,
     required this.jurassic,
     required this.triassic,
@@ -588,17 +595,44 @@ class FormationMapPeriodColors {
   final (int, int, int) jurassic;
   final (int, int, int) triassic;
 
-  static const defaults = FormationMapPeriodColors(
-    cretaceous: (0x8D, 0x6E, 0x63),
-    jurassic: (0x3F, 0x7A, 0x52),
-    triassic: (0xDD, 0x85, 0x00),
-  );
+  factory PeriodRgbColors.fromYaml(Map<String, dynamic> yaml) {
+    return PeriodRgbColors(
+      cretaceous: _requireRgb(yaml['cretaceous'], 'cretaceous'),
+      jurassic: _requireRgb(yaml['jurassic'], 'jurassic'),
+      triassic: _requireRgb(yaml['triassic'], 'triassic'),
+    );
+  }
 
-  factory FormationMapPeriodColors.fromYaml(Map<String, dynamic> yaml) {
-    return FormationMapPeriodColors(
-      cretaceous: _asRgb(yaml['cretaceous'], defaults.cretaceous),
-      jurassic: _asRgb(yaml['jurassic'], defaults.jurassic),
-      triassic: _asRgb(yaml['triassic'], defaults.triassic),
+  (int, int, int) forPeriod(String period) {
+    switch (period.toLowerCase()) {
+      case 'jurassic':
+        return jurassic;
+      case 'triassic':
+        return triassic;
+      case 'cretaceous':
+      default:
+        return cretaceous;
+    }
+  }
+}
+
+class PeriodColorsConfig {
+  const PeriodColorsConfig({
+    required this.siteMarkers,
+    required this.formationMap,
+  });
+
+  final PeriodRgbColors siteMarkers;
+  final PeriodRgbColors formationMap;
+
+  factory PeriodColorsConfig.fromYaml(Map<String, dynamic> yaml) {
+    return PeriodColorsConfig(
+      siteMarkers: PeriodRgbColors.fromYaml(
+        GameConfig._asMap(yaml['site_markers']),
+      ),
+      formationMap: PeriodRgbColors.fromYaml(
+        GameConfig._asMap(yaml['formation_map']),
+      ),
     );
   }
 }
@@ -613,7 +647,6 @@ class FormationMapActionConfig {
     required this.baseAlpha,
     required this.rangeFade,
     required this.boundaryBlur,
-    required this.colors,
     required this.statsExplanation,
   });
 
@@ -625,7 +658,6 @@ class FormationMapActionConfig {
   final double baseAlpha;
   final double rangeFade;
   final double boundaryBlur;
-  final FormationMapPeriodColors colors;
   final String statsExplanation;
 
   double get resolvedRangeM =>
@@ -642,10 +674,9 @@ class FormationMapActionConfig {
           range: 0.35,
           minRangeM: 200.0,
           maxRangeM: 2000.0,
-          baseAlpha: 0.42,
+          baseAlpha: 0.48,
           rangeFade: 0.55,
           boundaryBlur: 0.7,
-          colors: FormationMapPeriodColors.defaults,
           statsExplanation:
               'Colors the map by the period of the nearest undiscovered '
               'field site. Higher accuracy sharpens boundaries; higher '
@@ -661,15 +692,12 @@ class FormationMapActionConfig {
       rangeFade: _asDouble(yaml['range_fade'], d.rangeFade).clamp(0.0, 1.0),
       boundaryBlur:
           _asDouble(yaml['boundary_blur'], d.boundaryBlur).clamp(0.0, 1.0),
-      colors: FormationMapPeriodColors.fromYaml(
-        GameConfig._asMap(yaml['colors']),
-      ),
       statsExplanation: _asString(yaml['stats_explanation'], d.statsExplanation),
     );
   }
 }
 
-(int, int, int) _asRgb(dynamic value, (int, int, int) fallback) {
+(int, int, int) _requireRgb(dynamic value, String key) {
   if (value is String) {
     final raw = value.trim().replaceFirst('#', '');
     if (raw.length == 6) {
@@ -695,7 +723,7 @@ class FormationMapActionConfig {
       return (r, g, b);
     }
   }
-  return fallback;
+  throw FormatException('period_colors.yaml: $key must be #RRGGBB');
 }
 
 class AerialMissionActionConfig {

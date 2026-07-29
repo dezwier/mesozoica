@@ -1,0 +1,13 @@
+# Period hues — edit here only.
+# site_markers: map pin / annotation colors
+# formation_map: Formation Map mosaic overlay (may differ for Mapbox readability)
+
+site_markers:
+  cretaceous: "#8D6E63"
+  jurassic: "#3F7A52"
+  triassic: "#DD8500"
+
+formation_map:
+  cretaceous: "#A86B45"
+  jurassic: "#3F7A52"
+  triassic: "#DD8500"

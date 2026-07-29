@@ -25,12 +25,6 @@ class FormationMapRasterColors {
   final (int, int, int) jurassic;
   final (int, int, int) triassic;
 
-  static const defaults = FormationMapRasterColors(
-    cretaceous: (0x8D, 0x6E, 0x63),
-    jurassic: (0x3F, 0x7A, 0x52),
-    triassic: (0xDD, 0x85, 0x00),
-  );
-
   (int, int, int) forPeriod(String period) {
     switch (period.toLowerCase()) {
       case 'jurassic':
@@ -52,10 +46,10 @@ class FormationMapRasterRequest {
     required this.accuracy,
     required this.sites,
     this.gridSize = 128,
-    this.baseAlpha = 0.42,
+    this.baseAlpha = 0.48,
     this.rangeFade = 0.55,
     this.boundaryBlur = 0.7,
-    this.colors = FormationMapRasterColors.defaults,
+    required this.colors,
   });
 
   final double originLat;

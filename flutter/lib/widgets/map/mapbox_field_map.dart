@@ -295,6 +295,7 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
       name: 'formation_map',
     );
     final cfg = GameConfig.instance.toolActions.formationMap;
+    final palette = GameConfig.instance.periodColors.formationMap;
     final request = FormationMapRasterRequest(
       originLat: origin.latitude,
       originLon: origin.longitude,
@@ -305,9 +306,9 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
       rangeFade: cfg.rangeFade,
       boundaryBlur: cfg.boundaryBlur,
       colors: FormationMapRasterColors(
-        cretaceous: cfg.colors.cretaceous,
-        jurassic: cfg.colors.jurassic,
-        triassic: cfg.colors.triassic,
+        cretaceous: palette.cretaceous,
+        jurassic: palette.jurassic,
+        triassic: palette.triassic,
       ),
     );
     // 128² grid is cheap enough on the UI isolate; avoid compute() because
