@@ -8,6 +8,7 @@ from decimal import Decimal
 
 from sqlmodel import Session, col, select
 
+from app.models.data_source import DATA_SOURCE_ARCHIVE
 from app.models.site import Site
 from app.models.site_type import SiteType
 from app.models.user_site import (
@@ -16,6 +17,7 @@ from app.models.user_site import (
     UserSite,
 )
 from app.schemas.site import SiteSummary
+from app.services.curated_image_service.resolve import resolve_site_type_card_image_url
 from app.services.site_service.site_type_fallback import effective_site_type
 
 
@@ -27,6 +29,19 @@ class SiteRow:
     viewer_has_surveyed: bool | None = None
     discovered_at: datetime | None = None
     discovering_mission_id: int | None = None
+
+
+def _site_card_image_url(site: Site, site_type: SiteType | None) -> str | None:
+    if site_type is None:
+        return None
+    force_v1 = (site.data_source or DATA_SOURCE_ARCHIVE) == DATA_SOURCE_ARCHIVE
+    return resolve_site_type_card_image_url(
+        period=site_type.period,
+        rock_type=site_type.rock_type,
+        as_of=None if force_v1 else site.created_at,
+        force_v1=force_v1,
+        fallback_url=site_type.main_image_url,
+    )
 
 
 def site_row_to_summary(
@@ -51,7 +66,7 @@ def site_row_to_summary(
         min_age_ma=_decimal_to_float(site.min_age_ma),
         max_age_ma=_decimal_to_float(site.max_age_ma),
         site_type_id=site.site_type_id,
-    site_type_period=(
+        site_type_period=(
             site_type.period
             if site_type is not None
             else (site.period if site.period else None)
@@ -61,7 +76,7 @@ def site_row_to_summary(
             if site_type is not None
             else (site.rock_type if site.rock_type else None)
         ),
-        main_image_url=site_type.main_image_url if site_type else None,
+        main_image_url=_site_card_image_url(site, site_type),
         data_source=site.data_source,
         how_discovered=site.how_discovered,
         status=row.status,

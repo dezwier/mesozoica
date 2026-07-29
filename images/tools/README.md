@@ -1,6 +1,19 @@
 # Tool card images
 
-Curated card-front images for the Mesozoica tool catalog. Files here are synced to Railway and served at `/media/tools/{filename}`.
+Curated card-front images for the Mesozoica tool catalog. Files live in version folders and are synced to Railway at `/media/tools/vN/{filename}`.
+
+## Layout
+
+```
+images/tools/v1/meta.yaml
+images/tools/v1/Orbit Survey.png
+images/tools/v2/...
+```
+
+`meta.yaml` fields:
+
+- `prompt` — Imagen instruction template used for this version (placeholders filled per tool)
+- `run_date` — UTC timestamp used when picking which version an inventory card shows
 
 ## Naming
 
@@ -8,9 +21,18 @@ Curated card-front images for the Mesozoica tool catalog. Files here are synced 
 - Examples: `Orbit Survey.webp`, `Geo Hammer.jpg`, `Field Codex.png`
 - Allowed extensions: `.webp`, `.jpg`, `.jpeg`, `.png`
 
+## Generate
+
+```bash
+make run-tool-image-generate-local CRON_EXTRA='--version 1'
+make run-tool-image-generate-local CRON_EXTRA='--version 2 --max-items 5'
+```
+
+If `meta.yaml` already has a `prompt`, that template is reused. Missing prompt/`run_date` are written from the current code template / now (existing `run_date` is preserved).
+
 ## Sync to Railway
 
-1. Add or update image files in this folder (`mesozoica/images/tools/` in your repo).
+1. Add or update image files under `images/tools/vN/`.
 2. On the **backend** Railway service (not Postgres): mount a volume at `/data` (recommended) or `/data/images/tools`, set `CURATED_IMAGES_DATA_ROOT=/data` and/or `TOOL_IMAGES_DIR=/data/images/tools`, and set `TOOL_IMAGE_SYNC_SECRET`.
 3. Run from the repo root — reads **local** files here, uploads to the **deployed** Railway API:
 
@@ -26,4 +48,4 @@ make sync-tool-images CRON_EXTRA='--dry-run'
 
 Set `PUBLIC_BASE_URL` on Railway (e.g. `https://mesozoica-production.up.railway.app`) and the same `TOOL_IMAGE_SYNC_SECRET` locally via `railway run` so `main_image_url` is stored correctly and uploads are authorized.
 
-Image binaries are gitignored; only this README and `.gitkeep` are tracked.
+Image binaries are gitignored; only this README and `.gitkeep` are tracked. Version `meta.yaml` files should be committed when present.

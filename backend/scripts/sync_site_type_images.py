@@ -12,15 +12,17 @@ from app.core.config import settings
 from app.core.database import engine
 from app.crons.railway_guard import require_railway_database
 from app.models.site_type import SiteType
+from app.services.curated_image_service.common import needs_curated_image_resync
+from app.services.curated_image_service.versions import load_image_versions
 from app.services.site_type_image_service.sync import (
+    CURATED_MEDIA_PATH,
     build_curated_image_url,
+    collect_versioned_matches,
     file_content_version,
     is_curated_image_url,
-    match_image_files,
-    needs_image_resync,
+    latest_relative_path_for_site_type,
     resolve_local_source_dir_for_sync,
     resolve_public_base_url_for_sync,
-    scan_local_image_files,
     site_type_image_key,
     upload_file_to_railway,
 )
@@ -53,16 +55,11 @@ def run_sync(*, dry_run: bool = False, overwrite: bool = False) -> int:
     public_base_url = resolve_public_base_url_for_sync()
     sync_secret = settings.site_type_image_sync_secret
 
-    image_files = scan_local_image_files(source_dir)
-    if not image_files:
-        logger.warning("No image files found in %s", source_dir)
-
     with Session(engine) as session:
         site_types = list(session.exec(select(SiteType)).all())
-        if image_files:
-            matched, unmatched_files = match_image_files(image_files, site_types)
-        else:
-            matched, unmatched_files = [], []
+        matched, unmatched_files = collect_versioned_matches(site_types)
+        if not matched:
+            logger.warning("No image files found under version folders in %s", source_dir)
 
         uploaded = 0
         updated = 0
@@ -72,62 +69,95 @@ def run_sync(*, dry_run: bool = False, overwrite: bool = False) -> int:
             site_type_image_key(period=match.period, rock_type=match.rock_type)
             for match in matched
         }
+
+        # Upload every versioned file.
         for match in matched:
             row = session.get(SiteType, match.site_type_id)
-            main_image_url = row.main_image_url if row is not None else None
-            if not needs_image_resync(
+            # Only compare content hash against DB URL when this file is the latest
+            # for the type; otherwise just check remote existence.
+            latest = latest_relative_path_for_site_type(
+                period=match.period,
+                rock_type=match.rock_type,
+                root=source_dir,
+            )
+            is_latest = latest is not None and latest[0] == match.relative_path
+            main_image_url = row.main_image_url if row is not None and is_latest else None
+            if not needs_curated_image_resync(
                 overwrite=overwrite,
                 local_path=match.path,
                 main_image_url=main_image_url,
                 public_base_url=public_base_url,
-                filename=match.filename,
+                filename=match.relative_path,
+                curated_media_path=CURATED_MEDIA_PATH,
             ):
-                logger.info("Skipping %s (already synced)", match.filename)
+                logger.info("Skipping %s (already synced)", match.relative_path)
                 skipped += 1
                 continue
 
             public_url = build_curated_image_url(
                 public_base_url,
-                match.filename,
+                match.relative_path,
                 version=file_content_version(match.path),
             )
             logger.info(
                 "%s %s -> %s",
                 "Would sync" if dry_run else "Syncing",
-                match.filename,
+                match.relative_path,
                 public_url,
             )
             if not dry_run:
                 upload_file_to_railway(
                     local_path=match.path,
-                    remote_filename=match.filename,
+                    remote_filename=match.relative_path,
                     public_base_url=public_base_url,
                     sync_secret=sync_secret,
                 )
                 uploaded += 1
 
-                if row is not None:
-                    row.main_image_url = public_url
-                    session.add(row)
-                    updated += 1
-
+        # Point main_image_url at the latest version by run_date.
         for row in site_types:
             key = site_type_image_key(period=row.period, rock_type=row.rock_type)
-            if key in matched_keys:
+            if key not in matched_keys:
+                if is_curated_image_url(row.main_image_url):
+                    logger.info(
+                        "%s site_type %s/%s main_image_url (no local image in %s)",
+                        "Would clear" if dry_run else "Clearing",
+                        row.period,
+                        row.rock_type,
+                        source_dir,
+                    )
+                    if not dry_run:
+                        row.main_image_url = None
+                        session.add(row)
+                    cleared += 1
                 continue
-            if not is_curated_image_url(row.main_image_url):
+
+            latest = latest_relative_path_for_site_type(
+                period=row.period,
+                rock_type=row.rock_type,
+                root=source_dir,
+            )
+            if latest is None:
+                continue
+            relative_path, local_path = latest
+            public_url = build_curated_image_url(
+                public_base_url,
+                relative_path,
+                version=file_content_version(local_path),
+            )
+            if row.main_image_url == public_url:
                 continue
             logger.info(
-                "%s site_type %s/%s main_image_url (no local image in %s)",
-                "Would clear" if dry_run else "Clearing",
+                "%s site_type %s/%s main_image_url -> %s",
+                "Would set" if dry_run else "Setting",
                 row.period,
                 row.rock_type,
-                source_dir,
+                public_url,
             )
             if not dry_run:
-                row.main_image_url = None
+                row.main_image_url = public_url
                 session.add(row)
-            cleared += 1
+                updated += 1
 
         if not dry_run:
             session.commit()
@@ -143,6 +173,15 @@ def run_sync(*, dry_run: bool = False, overwrite: bool = False) -> int:
                 "Unmatched local files (no site_type match): %s",
                 ", ".join(path.name for path in unmatched_files),
             )
+        versions = load_image_versions(source_dir)
+        logger.info(
+            "Versions: %s",
+            ", ".join(
+                f"{v.name}(run_date={v.run_date.isoformat() if v.run_date else 'none'})"
+                for v in versions
+            )
+            or "none",
+        )
         if site_types_without_images:
             logger.info(
                 "Site types without curated images: %d (first 10: %s)",

@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 from decimal import Decimal
 from typing import Optional
 
-from sqlalchemy import Column, ForeignKey, Numeric
+from sqlalchemy import Column, DateTime, ForeignKey, Numeric
 from sqlmodel import Field, SQLModel
 
 from app.models.data_source import DATA_SOURCE_ARCHIVE
@@ -60,6 +61,11 @@ class Site(SQLModel, table=True):
         default=None,
         max_length=32,
         description="First discovery method: walk, aerial_recon, aerial_scout, or manual",
+    )
+    created_at: Optional[datetime] = Field(
+        default=None,
+        sa_column=Column(DateTime(timezone=True), nullable=True, index=True),
+        description="UTC insert time for field sites; null for archive/legacy rows",
     )
     odd_dino_count: Optional[float] = Field(
         default=None,

@@ -67,25 +67,6 @@ def test_match_image_files_accepts_legacy_sorted_order_index():
     assert unmatched == []
 
 
-def test_run_rename_maps_legacy_id_files(session: Session, tmp_path: Path, monkeypatch):
-    from scripts import rename_site_type_images as rename_module
-
-    images_dir = tmp_path / "images/site-types"
-    images_dir.mkdir()
-    (images_dir / "1.png").write_bytes(b"x")
-
-    row = SiteType(id=1, period="cretaceous", rock_type="sandstone")
-    session.add(row)
-    session.commit()
-
-    monkeypatch.setenv("SITE_TYPE_IMAGES_SOURCE_DIR", str(images_dir))
-    monkeypatch.setenv("ALLOW_LOCAL_CRON", "1")
-
-    assert rename_module.run_rename(dry_run=False) == 0
-    assert not (images_dir / "1.png").exists()
-    assert (images_dir / "cretaceous_sandstone.png").read_bytes() == b"x"
-
-
 def test_run_sync_clears_curated_url_when_local_file_missing(
     session: Session,
     tmp_path: Path,
@@ -95,8 +76,13 @@ def test_run_sync_clears_curated_url_when_local_file_missing(
     from scripts import sync_site_type_images as sync_module
 
     images_dir = tmp_path / "images/site-types"
-    images_dir.mkdir()
-    (images_dir / "cretaceous_sandstone.png").write_bytes(b"x")
+    v1 = images_dir / "v1"
+    v1.mkdir(parents=True)
+    (v1 / "cretaceous_sandstone.png").write_bytes(b"x")
+    (v1 / "meta.yaml").write_text(
+        "run_date: '2026-07-29T00:00:00+00:00'\nprompt: test\n",
+        encoding="utf-8",
+    )
 
     synced = SiteType(
         id=1,
@@ -107,7 +93,7 @@ def test_run_sync_clears_curated_url_when_local_file_missing(
         id=2,
         period="jurassic",
         rock_type="mudstone",
-        main_image_url="https://example.com/media/site-types/jurassic_mudstone.png?v=old",
+        main_image_url="https://example.com/media/site-types/v1/jurassic_mudstone.png?v=old",
     )
     session.add(synced)
     session.add(stale)
@@ -123,6 +109,25 @@ def test_run_sync_clears_curated_url_when_local_file_missing(
     session.refresh(synced)
     session.refresh(stale)
     assert synced.main_image_url == (
-        "https://example.com/media/site-types/cretaceous_sandstone.png?v=9dd4e461268c"
+        "https://example.com/media/site-types/v1/cretaceous_sandstone.png?v=9dd4e461268c"
     )
     assert stale.main_image_url is None
+
+
+def test_run_rename_maps_legacy_id_files(session: Session, tmp_path: Path, monkeypatch):
+    from scripts import rename_site_type_images as rename_module
+
+    images_dir = tmp_path / "images/site-types"
+    images_dir.mkdir(parents=True)
+    (images_dir / "1.png").write_bytes(b"x")
+
+    row = SiteType(id=1, period="cretaceous", rock_type="sandstone")
+    session.add(row)
+    session.commit()
+
+    monkeypatch.setenv("SITE_TYPE_IMAGES_SOURCE_DIR", str(images_dir))
+    monkeypatch.setenv("ALLOW_LOCAL_CRON", "1")
+
+    assert rename_module.run_rename(dry_run=False) == 0
+    assert not (images_dir / "1.png").exists()
+    assert (images_dir / "cretaceous_sandstone.png").read_bytes() == b"x"

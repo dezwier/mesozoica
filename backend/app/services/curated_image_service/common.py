@@ -41,12 +41,10 @@ def scan_local_image_files(source_dir: Path) -> list[Path]:
 
 
 def _dir_has_image_files(path: Path) -> bool:
-    if not path.is_dir():
-        return False
-    return any(
-        child.is_file() and is_allowed_image_filename(child.name)
-        for child in path.iterdir()
-    )
+    """True when path has flat images or images under version folders (vN/)."""
+    from app.services.curated_image_service.versions import dir_has_versioned_or_flat_images
+
+    return dir_has_versioned_or_flat_images(path)
 
 
 def resolve_local_source_dir_for_sync(
@@ -154,8 +152,9 @@ def remote_curated_image_exists(
 ) -> bool:
     """Return True when the image is already served from Railway."""
     # Encode path segments so names with spaces (tool cards) HEAD correctly.
+    # Keep '/' so versioned paths like v1/Orbit%20Survey.png resolve.
     media_path = curated_media_path if curated_media_path.endswith("/") else f"{curated_media_path}/"
-    url = f"{public_base_url.rstrip('/')}{media_path}{quote(filename)}"
+    url = f"{public_base_url.rstrip('/')}{media_path}{quote(filename, safe='/')}"
     try:
         response = httpx.head(url, timeout=30.0, follow_redirects=True)
     except httpx.HTTPError:
@@ -180,7 +179,10 @@ def upload_curated_image_to_railway(
         raise RuntimeError(f"{sync_secret_env_var} must be set to upload images to Railway.")
 
     upload_root = admin_upload_path.rstrip("/")
-    url = f"{public_base_url.rstrip('/')}/{upload_root.lstrip('/')}/{quote(remote_filename)}"
+    url = (
+        f"{public_base_url.rstrip('/')}/{upload_root.lstrip('/')}/"
+        f"{quote(remote_filename, safe='/')}"
+    )
     if dry_run:
         return
 

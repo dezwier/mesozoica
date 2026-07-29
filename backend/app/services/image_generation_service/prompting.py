@@ -175,14 +175,30 @@ def build_fossil_image_prompt(fossil_data: dict[str, Any], *, dinosaur_name: str
     )
 
 
-def build_site_type_image_prompt(*, period: str, rock_type: str) -> str:
+def site_type_image_prompt_template() -> str:
+    """Instruction template stored in version meta.yaml for site-type images."""
+    return _SITE_TYPE_INSTRUCTIONS
+
+
+def tool_image_prompt_template() -> str:
+    """Instruction template stored in version meta.yaml for tool images."""
+    return _TOOL_INSTRUCTIONS
+
+
+def build_site_type_image_prompt(
+    *,
+    period: str,
+    rock_type: str,
+    template: str | None = None,
+) -> str:
     """Build Imagen prompt for a site-type card image (field outcrop by lithology + period)."""
     period_key = _normalize_key(period)
     period_context = _PERIOD_CONTEXT.get(
         period_key,
         f"{period.strip().capitalize()} period: Mesozoic geological landscape.",
     )
-    return _SITE_TYPE_INSTRUCTIONS.format(
+    instructions = template if template and template.strip() else _SITE_TYPE_INSTRUCTIONS
+    return instructions.format(
         rock_type=rock_type.strip(),
         period_context=period_context,
     )
@@ -199,12 +215,17 @@ def tool_to_image_prompt_dict(tool_data: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def build_tool_image_prompt(tool_data: dict[str, Any]) -> str:
+def build_tool_image_prompt(
+    tool_data: dict[str, Any],
+    *,
+    template: str | None = None,
+) -> str:
     """Build Imagen prompt for a tool catalog card image."""
     name = str(tool_data.get("name", "")).strip()
     scientific_tool = str(tool_data.get("scientific_tool", "")).strip()
     record = json.dumps(tool_to_image_prompt_dict(tool_data), indent=2, ensure_ascii=False)
-    return _TOOL_INSTRUCTIONS.format(
+    instructions = template if template and template.strip() else _TOOL_INSTRUCTIONS
+    return instructions.format(
         tool_record=record,
         name=name,
         scientific_tool=scientific_tool,

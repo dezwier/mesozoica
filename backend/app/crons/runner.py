@@ -148,6 +148,7 @@ def _run_site_type_image_generate(params: dict[str, Any]) -> int:
         dry_run=bool(params.get("dry_run", False)),
         max_items=_parse_max_items(params.get("max_items")),
         site_type_ids=_parse_site_type_ids(params.get("site_types")),
+        version=params.get("version"),
     )
 
 
@@ -197,6 +198,7 @@ def _run_tool_image_generate(params: dict[str, Any]) -> int:
         dry_run=bool(params.get("dry_run", False)),
         max_items=_parse_max_items(params.get("max_items")),
         tools=_parse_tool_names(params.get("tools")),
+        version=params.get("version"),
     )
 
 
@@ -319,6 +321,12 @@ def main(argv: list[str] | None = None) -> int:
         "Pass multiple names or comma-separated names in one argument.",
     )
     parser.add_argument(
+        "--version",
+        metavar="N",
+        help="Image version folder for site-type/tool generation (e.g. 2 or v2). "
+        "Defaults to v1 (site_type_image_generate, tool_image_generate).",
+    )
+    parser.add_argument(
         "--prune",
         action="store_true",
         help="Remove DB tool rows whose name is no longer in tools.json (tool_sync).",
@@ -350,6 +358,8 @@ def main(argv: list[str] | None = None) -> int:
     tool_names = _parse_tool_names(args.tools)
     if tool_names:
         overrides["tools"] = tool_names
+    if args.version is not None:
+        overrides["version"] = args.version
     if args.prune:
         overrides["prune"] = True
     if args.dry_run:

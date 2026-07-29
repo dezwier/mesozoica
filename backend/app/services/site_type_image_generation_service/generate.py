@@ -12,6 +12,12 @@ from sqlmodel import Session, col, select
 from app.core.config import settings
 from app.models.site import Site
 from app.models.site_type import SiteType
+from app.services.curated_image_service.versions import (
+    ensure_version_meta,
+    migrate_flat_images_to_v1,
+    normalize_version_name,
+    version_dir,
+)
 from app.services.image_generation_service.client import (
     IMAGEN_ULTRA_COST_USD_PER_IMAGE,
     ImageGenerationError,
@@ -24,7 +30,10 @@ from app.services.image_generation_service.local_files import (
     scan_existing_stems,
 )
 from app.services.image_generation_service.postprocess import save_processed_png
-from app.services.image_generation_service.prompting import build_site_type_image_prompt
+from app.services.image_generation_service.prompting import (
+    build_site_type_image_prompt,
+    site_type_image_prompt_template,
+)
 from app.services.site_type_image_service.sync import (
     resolve_local_source_dir_for_sync,
     site_type_image_key,
@@ -52,6 +61,7 @@ class GenerateSummary:
     elapsed_s: float = 0.0
     cost_usd: float = 0.0
     output_dir: str = ""
+    version: str = "v1"
 
 
 @dataclass(frozen=True)
@@ -107,12 +117,25 @@ def generate_site_type_images(
     dry_run: bool = False,
     max_items: int | None = None,
     site_type_ids: list[int] | None = None,
+    version: str | int | None = None,
 ) -> GenerateSummary:
-    """Generate missing site-type card images to the local repo folder."""
+    """Generate missing site-type card images into ``images/site-types/vN/``."""
     if not settings.google_gemini_api_key.strip():
         raise RuntimeError("GOOGLE_GEMINI_API_KEY is required for site-type image generation")
 
-    output_dir = resolve_local_source_dir_for_sync()
+    version_name = normalize_version_name(version)
+    root_dir = resolve_local_source_dir_for_sync()
+    migrate_flat_images_to_v1(
+        root_dir,
+        default_prompt=site_type_image_prompt_template(),
+    )
+    output_dir = version_dir(root_dir, version_name)
+    meta = ensure_version_meta(
+        output_dir,
+        default_prompt=site_type_image_prompt_template(),
+    )
+    prompt_template = str(meta.get("prompt") or site_type_image_prompt_template())
+
     existing_stems = scan_existing_stems(output_dir, case_insensitive=False)
     start = time.monotonic()
     counters = GenerateCounters()
@@ -127,6 +150,7 @@ def generate_site_type_images(
 
     _log_header(
         output_dir=output_dir,
+        version=version_name,
         candidates=len(candidates),
         skipped_existing=skipped_existing,
         max_items=max_items,
@@ -166,6 +190,7 @@ def generate_site_type_images(
         prompt = build_site_type_image_prompt(
             period=site_type.period,
             rock_type=site_type.rock_type,
+            template=prompt_template,
         )
         output_path = output_png_path(output_dir, stem)
 
@@ -189,7 +214,7 @@ def generate_site_type_images(
                 existing_stems.add(stem)
                 counters.generated += 1
                 generated = True
-                logger.info("%s · OK -> %s", label, output_path.name)
+                logger.info("%s · OK -> %s/%s", label, version_name, output_path.name)
                 break
             except FileExistsError:
                 counters.skipped += 1
@@ -219,6 +244,7 @@ def generate_site_type_images(
         elapsed_s=elapsed,
         cost_usd=cost_usd,
         output_dir=str(output_dir),
+        version=version_name,
     )
     _log_summary(summary)
     return summary
@@ -236,12 +262,14 @@ def generate_exit_code(summary: GenerateSummary) -> int:
 def _log_header(
     *,
     output_dir,
+    version: str,
     candidates: int,
     skipped_existing: int,
     max_items: int | None,
     dry_run: bool,
 ) -> None:
     logger.info("=== site_type_image_generate ===")
+    logger.info("version: %s", version)
     logger.info("output_dir: %s", output_dir)
     logger.info("model: %s", settings.gemini_image_model)
     logger.info(
@@ -259,7 +287,8 @@ def _log_header(
 def _log_summary(summary: GenerateSummary) -> None:
     logger.info("--- summary ---")
     logger.info(
-        "generated: %d  skipped: %d  failed: %d  elapsed: %.1fs  cost: $%.2f",
+        "version: %s  generated: %d  skipped: %d  failed: %d  elapsed: %.1fs  cost: $%.2f",
+        summary.version,
         summary.counters.generated,
         summary.counters.skipped,
         summary.counters.failed,

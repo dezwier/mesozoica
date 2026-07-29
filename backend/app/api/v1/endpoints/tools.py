@@ -179,11 +179,20 @@ def _tool_type_id_for_instance(session: Session, tool_instance_id: int) -> int:
 
 
 def _tool_image_url(session: Session, tool_instance_id: int) -> str | None:
+    from app.services.curated_image_service.resolve import resolve_tool_card_image_url
+
     instance = session.get(Tool, tool_instance_id)
     if instance is None:
         return None
     tool_type = session.get(ToolType, int(instance.tool_type_id))
-    return tool_type.main_image_url if tool_type is not None else None
+    if tool_type is None:
+        return None
+    return resolve_tool_card_image_url(
+        tool_name=tool_type.name,
+        as_of=instance.spawn_date,
+        force_v1=False,
+        fallback_url=tool_type.main_image_url,
+    )
 
 
 def _mission_flight_params(mission: ToolMission) -> tuple[float, float, float, float]:

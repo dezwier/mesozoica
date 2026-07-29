@@ -21,6 +21,14 @@ from app.services.curated_image_service.common import (
     upload_curated_image_to_railway,
     version_from_curated_url,
 )
+from app.services.curated_image_service.versions import (
+    VersionedImageFile,
+    build_versioned_media_url,
+    latest_version_with_stem,
+    migrate_flat_images_to_v1,
+    scan_versioned_image_files,
+)
+from app.services.image_generation_service.prompting import site_type_image_prompt_template
 
 CURATED_MEDIA_PATH = "/media/site-types/"
 
@@ -28,7 +36,9 @@ CURATED_MEDIA_PATH = "/media/site-types/"
 @dataclass(frozen=True)
 class SiteTypeImageFileMatch:
     path: Path
-    filename: str
+    filename: str  # basename used for DB key matching
+    relative_path: str  # e.g. v1/cretaceous_sandstone.png
+    version: str
     site_type_id: int
     period: str
     rock_type: str
@@ -50,11 +60,13 @@ def build_curated_image_url(
     *,
     version: str | None = None,
 ) -> str:
-    base = public_base_url.rstrip("/")
-    url = f"{base}{CURATED_MEDIA_PATH}{filename}"
-    if version:
-        return f"{url}?v={version}"
-    return url
+    """Build a public URL. ``filename`` may be versioned (``v1/foo.png``)."""
+    return build_versioned_media_url(
+        public_base_url,
+        CURATED_MEDIA_PATH,
+        filename,
+        content_version=version,
+    )
 
 
 def is_curated_image_url(url: str | None) -> bool:
@@ -95,10 +107,13 @@ def _resolve_site_type_for_stem(
 
 
 def match_image_files(
-    files: list[Path],
+    files: list[Path] | list[VersionedImageFile],
     site_types: list[SiteType],
 ) -> tuple[list[SiteTypeImageFileMatch], list[Path]]:
-    """Match local files by ``period_rocktype`` stem, with legacy numeric id fallback."""
+    """Match local files by ``period_rocktype`` stem, with legacy numeric id fallback.
+
+    Accepts either flat ``Path`` lists (tests/legacy) or ``VersionedImageFile`` lists.
+    """
     by_id = {row.id: row for row in site_types if row.id is not None}
     by_key = {
         site_type_image_key(period=row.period, rock_type=row.rock_type): row
@@ -109,11 +124,20 @@ def match_image_files(
 
     matched: list[SiteTypeImageFileMatch] = []
     unmatched: list[Path] = []
-    seen_ids: set[int] = set()
+    seen: set[tuple[int, str]] = set()
 
-    for path in files:
+    for item in files:
+        if isinstance(item, VersionedImageFile):
+            path = item.path
+            stem = Path(item.filename).stem
+            version_name = item.version
+        else:
+            path = item
+            stem = path.stem
+            version_name = ""
+
         site_type = _resolve_site_type_for_stem(
-            path.stem,
+            stem,
             by_id=by_id,
             by_key=by_key,
             by_legacy_order=by_legacy_order,
@@ -121,21 +145,32 @@ def match_image_files(
         if site_type is None or site_type.id is None:
             unmatched.append(path)
             continue
-        if site_type.id in seen_ids:
+
+        key = site_type_image_key(period=site_type.period, rock_type=site_type.rock_type)
+        filename = f"{key}{path.suffix.lower()}"
+        if isinstance(item, VersionedImageFile):
+            relative_path = f"{item.version}/{filename}"
+            version_name = item.version
+        else:
+            relative_path = filename
+
+        seen_key = (site_type.id, version_name or "flat")
+        if seen_key in seen:
             unmatched.append(path)
             continue
 
-        key = site_type_image_key(period=site_type.period, rock_type=site_type.rock_type)
         matched.append(
             SiteTypeImageFileMatch(
                 path=path,
-                filename=f"{key}{path.suffix.lower()}",
+                filename=filename,
+                relative_path=relative_path,
+                version=version_name or "flat",
                 site_type_id=site_type.id,
                 period=site_type.period,
                 rock_type=site_type.rock_type,
             )
         )
-        seen_ids.add(site_type.id)
+        seen.add(seen_key)
 
     return matched, unmatched
 
@@ -193,18 +228,55 @@ def resolve_local_source_dir_for_sync() -> Path:
     )
 
 
+def prepare_local_source_for_sync() -> Path:
+    """Migrate flat files if needed and return the site-types image root."""
+    root = resolve_local_source_dir_for_sync()
+    migrate_flat_images_to_v1(root, default_prompt=site_type_image_prompt_template())
+    return root
+
+
+def collect_versioned_matches(
+    site_types: list[SiteType],
+) -> tuple[list[SiteTypeImageFileMatch], list[Path]]:
+    root = prepare_local_source_for_sync()
+    versioned = scan_versioned_image_files(root)
+    if versioned:
+        return match_image_files(versioned, site_types)
+    # Legacy flat fallback for tests that still write flat files.
+    return match_image_files(scan_local_image_files(root), site_types)
+
+
+def latest_relative_path_for_site_type(
+    *,
+    period: str,
+    rock_type: str,
+    root: Path | None = None,
+) -> tuple[str, Path] | None:
+    source = root or resolve_local_source_dir_for_sync()
+    stem = site_type_image_key(period=period, rock_type=rock_type)
+    resolved = latest_version_with_stem(source, stem, case_insensitive=False)
+    if resolved is None:
+        return None
+    version, path = resolved
+    key = site_type_image_key(period=period, rock_type=rock_type)
+    return f"{version.name}/{key}{path.suffix.lower()}", path
+
+
 __all__ = [
     "ALLOWED_IMAGE_EXTENSIONS",
     "CURATED_MEDIA_PATH",
     "DEFAULT_PRODUCTION_BASE_URL",
     "SiteTypeImageFileMatch",
     "build_curated_image_url",
+    "collect_versioned_matches",
     "file_content_version",
     "is_allowed_image_filename",
     "is_curated_image_url",
+    "latest_relative_path_for_site_type",
     "match_image_files",
     "needs_image_resync",
     "normalize_public_base_url",
+    "prepare_local_source_for_sync",
     "remote_image_exists",
     "resolve_local_source_dir_for_sync",
     "resolve_public_base_url_for_sync",

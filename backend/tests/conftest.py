@@ -33,6 +33,21 @@ from app.main import app  # noqa: E402
 
 
 @pytest.fixture(autouse=True)
+def _isolate_versioned_curated_image_dirs(tmp_path_factory, monkeypatch):
+    """Keep API tests from resolving against the developer's real images/ tree."""
+    root = tmp_path_factory.mktemp("curated-images")
+    site_types = root / "site-types"
+    tools = root / "tools"
+    site_types.mkdir()
+    tools.mkdir()
+    monkeypatch.setattr(_config.settings, "site_type_images_dir", str(site_types))
+    monkeypatch.setattr(_config.settings, "tool_images_dir", str(tools))
+    monkeypatch.setattr(_config.settings, "curated_images_data_root", "")
+    monkeypatch.setenv("SITE_TYPE_IMAGES_SOURCE_DIR", str(site_types))
+    monkeypatch.setenv("TOOL_IMAGES_SOURCE_DIR", str(tools))
+
+
+@pytest.fixture(autouse=True)
 def _reset_db_between_tests():
     import app.models.models  # noqa: F401
 

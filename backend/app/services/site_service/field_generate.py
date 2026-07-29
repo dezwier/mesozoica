@@ -7,6 +7,7 @@ import random
 import time
 from collections import Counter
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from decimal import Decimal
 
 from sqlalchemy import func, text
@@ -334,6 +335,7 @@ def _build_field_site(
         period=period,
         site_type_id=site_type_id,
         data_source=DATA_SOURCE_FIELD,
+        created_at=datetime.now(timezone.utc),
         odd_dino_count=rng.random(),
         odd_fossil_count=rng.random(),
         odd_completeness=rng.random(),
@@ -817,6 +819,7 @@ def generate_field_sites(
             period=period,
             site_type_id=site_type_id,
             data_source=DATA_SOURCE_FIELD,
+            created_at=datetime.now(timezone.utc),
             odd_dino_count=random_source.random(),
             odd_fossil_count=random_source.random(),
             odd_completeness=random_source.random(),

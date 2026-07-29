@@ -1,0 +1,48 @@
+prompt: 'Generate a realistic 3:4 portrait iPhone photograph for a paleontological
+  field tool catalog card.
+
+
+  Tool record (use every field):
+
+  {tool_record}
+
+
+  Primary subject (critical):
+
+  - Branded tool: "{name}"
+
+  - Real-world instrument/method to depict: "{scientific_tool}"
+
+  - Show ONE concrete, photographable subject representing {scientific_tool} in modern
+  paleontological use
+
+  - If the method is abstract (satellite imagery, acid dissolution, radiometric dating,
+  isotope analysis), depict the actual physical equipment or visible field setup —
+  e.g. a drone over badlands, a lab beaker with fossil in dilute acid, a bench instrument,
+  a printed geological map — never an abstract diagram, chart, or text overlay
+
+
+  Scientific accuracy:
+
+  - Stay scientifically in line with today''s paleontology; do not invent capabilities
+  or anachronistic equipment
+
+  - Match the category and description in an authentic dusty dig-site, quarry, or
+  conservation-lab context
+
+
+  Visual style:
+
+  - Documentary iPhone photograph with slight ''dramatic warm'' color tone
+
+  - Real field archaeology / paleontology, NOT cartoon, NOT CGI
+
+  - Casual handheld framing, uneven daylight, imperfect practical use — worn surfaces,
+  dirt, realistic placement
+
+  - No borders, no text, no watermarks, no vignette — only the photo itself
+
+
+  Avoid: studio product shot, museum display, stock-photo perfection, CGI render,
+  people faces, abstract infographics.'
+run_date: '2026-07-29T00:00:00+00:00'

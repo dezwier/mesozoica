@@ -10,6 +10,12 @@ from sqlmodel import Session, col, select
 
 from app.core.config import settings
 from app.models.tool_type import ToolType
+from app.services.curated_image_service.versions import (
+    ensure_version_meta,
+    migrate_flat_images_to_v1,
+    normalize_version_name,
+    version_dir,
+)
 from app.services.image_generation_service.client import (
     IMAGEN_ULTRA_COST_USD_PER_IMAGE,
     INTER_GENERATION_DELAY_SECONDS,
@@ -23,7 +29,10 @@ from app.services.image_generation_service.local_files import (
     scan_existing_stems,
 )
 from app.services.image_generation_service.postprocess import save_processed_png
-from app.services.image_generation_service.prompting import build_tool_image_prompt
+from app.services.image_generation_service.prompting import (
+    build_tool_image_prompt,
+    tool_image_prompt_template,
+)
 from app.services.tool_image_service.sync import resolve_local_source_dir_for_sync
 
 logger = logging.getLogger("tool_image_generate")
@@ -47,6 +56,7 @@ class GenerateSummary:
     elapsed_s: float = 0.0
     cost_usd: float = 0.0
     output_dir: str = ""
+    version: str = "v1"
 
 
 def _normalize_tool_names(tools: list[str] | None) -> set[str] | None:
@@ -91,12 +101,25 @@ def generate_tool_images(
     dry_run: bool = False,
     max_items: int | None = None,
     tools: list[str] | None = None,
+    version: str | int | None = None,
 ) -> GenerateSummary:
-    """Generate missing tool card images to the local repo folder."""
+    """Generate missing tool card images into ``images/tools/vN/``."""
     if not settings.google_gemini_api_key.strip():
         raise RuntimeError("GOOGLE_GEMINI_API_KEY is required for tool image generation")
 
-    output_dir = resolve_local_source_dir_for_sync()
+    version_name = normalize_version_name(version)
+    root_dir = resolve_local_source_dir_for_sync()
+    migrate_flat_images_to_v1(
+        root_dir,
+        default_prompt=tool_image_prompt_template(),
+    )
+    output_dir = version_dir(root_dir, version_name)
+    meta = ensure_version_meta(
+        output_dir,
+        default_prompt=tool_image_prompt_template(),
+    )
+    prompt_template = str(meta.get("prompt") or tool_image_prompt_template())
+
     existing_stems = scan_existing_stems(output_dir, case_insensitive=True)
     start = time.monotonic()
     counters = GenerateCounters()
@@ -111,6 +134,7 @@ def generate_tool_images(
 
     _log_header(
         output_dir=output_dir,
+        version=version_name,
         candidates=len(candidates),
         skipped_existing=skipped_existing,
         max_items=max_items,
@@ -140,7 +164,8 @@ def generate_tool_images(
                 "scientific_tool": tool.scientific_tool,
                 "description": tool.description,
                 "rarity": tool.rarity,
-            }
+            },
+            template=prompt_template,
         )
         output_path = output_png_path(output_dir, tool.name)
 
@@ -164,7 +189,7 @@ def generate_tool_images(
                 existing_stems.add(tool.name.lower())
                 counters.generated += 1
                 generated = True
-                logger.info('%s · OK -> %s', label, output_path.name)
+                logger.info('%s · OK -> %s/%s', label, version_name, output_path.name)
                 time.sleep(INTER_GENERATION_DELAY_SECONDS)
                 break
             except FileExistsError:
@@ -180,7 +205,7 @@ def generate_tool_images(
 
         if not generated and not dry_run:
             counters.failed += 1
-            logger.error('%s · FAIL · %s', label, last_error)
+            logger.error('%s · FAIL · %s', label, short_generation_error(last_error))
 
     elapsed = time.monotonic() - start
     summary = GenerateSummary(
@@ -191,6 +216,7 @@ def generate_tool_images(
         elapsed_s=elapsed,
         cost_usd=cost_usd,
         output_dir=str(output_dir),
+        version=version_name,
     )
     _log_summary(summary)
     return summary
@@ -208,12 +234,14 @@ def generate_exit_code(summary: GenerateSummary) -> int:
 def _log_header(
     *,
     output_dir,
+    version: str,
     candidates: int,
     skipped_existing: int,
     max_items: int | None,
     dry_run: bool,
 ) -> None:
     logger.info("=== tool_image_generate ===")
+    logger.info("version: %s", version)
     logger.info("output_dir: %s", output_dir)
     logger.info("model: %s", settings.gemini_image_model)
     logger.info(
@@ -231,7 +259,8 @@ def _log_header(
 def _log_summary(summary: GenerateSummary) -> None:
     logger.info("--- summary ---")
     logger.info(
-        "generated: %d  skipped: %d  failed: %d  elapsed: %.1fs  cost: $%.2f",
+        "version: %s  generated: %d  skipped: %d  failed: %d  elapsed: %.1fs  cost: $%.2f",
+        summary.version,
         summary.counters.generated,
         summary.counters.skipped,
         summary.counters.failed,

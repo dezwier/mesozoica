@@ -10,7 +10,9 @@ Scripts that touch production data use the **Railway Postgres database** and Rai
 |--------|-------------|
 | [`sync_dinosaur_images.py`](sync_dinosaur_images.py) | Upload curated dinosaur card images from `images/dinosaurs/` to Railway volume and set `main_image_url` |
 | [`sync_fossil_images.py`](sync_fossil_images.py) | Upload curated fossil card images from `images/fossils/` to Railway volume and set `main_image_url` |
-| [`sync_site_type_images.py`](sync_site_type_images.py) | Upload curated site-type card images from `images/site-types/` to Railway volume and set `main_image_url` |
+| [`sync_site_type_images.py`](sync_site_type_images.py) | Upload curated site-type card images from `images/site-types/vN/` to Railway volume and set `main_image_url` |
+| [`sync_tool_images.py`](sync_tool_images.py) | Upload curated tool card images from `images/tools/vN/` to Railway volume and set `main_image_url` |
+| [`migrate_image_versions_to_v1.py`](migrate_image_versions_to_v1.py) | Move flat site-type/tool images into `v1/` and write retroactive `meta.yaml` |
 | [`backfill_user_levels.py`](backfill_user_levels.py) | Recompute user exploration/career XP from discoveries + distance using `leveling.yaml` rewards |
 
 All sync scripts support `.png`, `.jpg`, `.jpeg`, and `.webp`.
@@ -145,14 +147,32 @@ Regenerated images are detected via content hash and overwrite the remote file a
 
 ### Site-type card images
 
-- **Source folder:** repo `images/site-types/`
-- **Filename rule:** `<period>_<rock_type>.<ext>` — e.g. `cretaceous_sandstone.png`
-- **Served at:** `https://<api-host>/media/site-types/<period>_<rock_type>.<ext>`
+- **Source folder:** repo `images/site-types/vN/` (version folders; migrate flat files with `make migrate-image-versions-to-v1`)
+- **Filename rule:** `vN/<period>_<rock_type>.<ext>` — e.g. `v1/cretaceous_sandstone.png`
+- **meta.yaml:** each version folder stores `prompt` (generation template) and `run_date` (card version cutoff)
+- **Served at:** `https://<api-host>/media/site-types/vN/<period>_<rock_type>.<ext>`
+- **Generate:** `make run-site-type-image-generate CRON_EXTRA='--version 2'`
 
 ```bash
 make sync-site-type-images
 make sync-site-type-images CRON_EXTRA='--dry-run'
 make sync-site-type-images CRON_EXTRA='--overwrite'
+```
+
+### Tool card images
+
+Same versioned layout under `images/tools/vN/`. Catalog cards always use `v1`; inventory cards pick the newest version with `run_date <= Tool.spawn_date`.
+
+```bash
+make run-tool-image-generate-local CRON_EXTRA='--version 2 --max-items 3'
+make sync-tool-images
+```
+
+### Migrate flat images to v1
+
+```bash
+make migrate-image-versions-to-v1
+make migrate-image-versions-to-v1 CRON_EXTRA='--dry-run'
 ```
 
 ## Adding a script

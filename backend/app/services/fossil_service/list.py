@@ -302,7 +302,17 @@ def _fossil_site_main_image_url(
     )
     if effective is None:
         return None
-    return effective.main_image_url
+    from app.models.data_source import DATA_SOURCE_ARCHIVE
+    from app.services.curated_image_service.resolve import resolve_site_type_card_image_url
+
+    force_v1 = (row.site.data_source or DATA_SOURCE_ARCHIVE) == DATA_SOURCE_ARCHIVE
+    return resolve_site_type_card_image_url(
+        period=effective.period,
+        rock_type=effective.rock_type,
+        as_of=None if force_v1 else row.site.created_at,
+        force_v1=force_v1,
+        fallback_url=effective.main_image_url,
+    )
 
 
 def fossil_row_to_summary(

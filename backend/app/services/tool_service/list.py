@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import re
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Literal
 
 from sqlalchemy import func, or_
@@ -14,6 +15,7 @@ from app.core.exceptions import NotFoundError, ValidationError
 from app.models.tool import Tool
 from app.models.tool_type import ToolType
 from app.models.user_tool import USER_TOOL_ACTION_OWNED, UserTool
+from app.services.curated_image_service.resolve import resolve_tool_card_image_url
 from app.services.tool_image_service.sync import CURATED_MEDIA_PATH
 from app.services.tool_service.collect import ownership_levels_for_tool_types
 from app.services.tool_service.params import base_params_for_tool_type, effective_params_for_instance
@@ -48,6 +50,8 @@ class ToolListRow:
     level: int | None = None
     occurrence_id: int | None = None
     params: dict[str, object] | None = None
+    spawn_date: datetime | None = None
+    force_v1_image: bool = False
 
 
 def list_tools(
@@ -166,6 +170,7 @@ def _list_catalog_tools(
         ToolListRow(
             tool_type=row,
             level=levels.get(int(row.id)) if row.id is not None else None,
+            force_v1_image=True,
         )
         for row in rows
     ], int(total)
@@ -257,6 +262,8 @@ def _list_inventory_tools(
             level=int(instance.level),
             occurrence_id=int(instance.id),
             params=effective_params_for_instance(tool_type, instance),
+            spawn_date=instance.spawn_date,
+            force_v1_image=False,
         )
         for instance, tool_type in rows
     ], int(total)
@@ -407,7 +414,7 @@ def get_tool_by_id(
             tool_type_ids=[int(row.id)],
         )
         level = levels.get(int(row.id))
-    return ToolListRow(tool_type=row, level=level)
+    return ToolListRow(tool_type=row, level=level, force_v1_image=True)
 
 
 def tool_to_summary(row: ToolListRow):
@@ -423,7 +430,12 @@ def tool_to_summary(row: ToolListRow):
         description=row.tool_type.description,
         rarity=row.tool_type.rarity,
         action=row.tool_type.action or "Use",
-        main_image_url=row.tool_type.main_image_url,
+        main_image_url=resolve_tool_card_image_url(
+            tool_name=row.tool_type.name,
+            as_of=None if row.force_v1_image else row.spawn_date,
+            force_v1=row.force_v1_image,
+            fallback_url=row.tool_type.main_image_url,
+        ),
         level=row.level,
         params=dict(row.params or base_params_for_tool_type(row.tool_type)),
         base_params=base_params_for_tool_type(row.tool_type),

@@ -5,6 +5,7 @@ Run manually:
   python -m app.crons.runner --job site_type_image_generate
   python -m app.crons.runner --job site_type_image_generate --max-items 5
   python -m app.crons.runner --job site_type_image_generate --site-types 5 18 20 --dry-run
+  python -m app.crons.runner --job site_type_image_generate --version 2
 """
 
 from __future__ import annotations
@@ -26,6 +27,7 @@ def run_generate_job(
     dry_run: bool = False,
     max_items: int | None = None,
     site_type_ids: list[int] | None = None,
+    version: str | int | None = None,
 ) -> int:
     _require_gemini_key_in_production()
     with Session(engine) as session:
@@ -34,6 +36,7 @@ def run_generate_job(
             dry_run=dry_run,
             max_items=max_items,
             site_type_ids=site_type_ids,
+            version=version,
         )
     return generate_exit_code(summary)
 

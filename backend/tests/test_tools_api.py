@@ -99,7 +99,7 @@ def test_list_tools_show_all_requires_admin(client, session):
     user = _user(session, is_admin=False)
     response = client.get(
         "/api/v1/tools",
-        params={"sort": "name", "show_all": True},
+        params={"sort": "name", "show_all": True, "mode": "catalog"},
         headers=_auth_headers(user),
     )
     assert response.status_code == 403
@@ -113,7 +113,7 @@ def test_list_tools_show_all_admin(client, session):
 
     response = client.get(
         "/api/v1/tools",
-        params={"sort": "name", "show_all": True},
+        params={"sort": "name", "show_all": True, "mode": "catalog"},
         headers=_auth_headers(admin),
     )
     assert response.status_code == 200
@@ -131,7 +131,7 @@ def test_list_tools_returns_summary_fields(client, session):
 
     response = client.get(
         "/api/v1/tools",
-        params={"sort": "name", "show_all": True},
+        params={"sort": "name", "show_all": True, "mode": "catalog"},
         headers=_auth_headers(admin),
     )
     assert response.status_code == 200
@@ -179,7 +179,7 @@ def test_list_tools_search(client, session):
 
     response = client.get(
         "/api/v1/tools",
-        params={"q": "satellite", "sort": "name", "show_all": True},
+        params={"q": "satellite", "sort": "name", "show_all": True, "mode": "catalog"},
         headers=_auth_headers(admin),
     )
     assert response.status_code == 200
@@ -193,7 +193,7 @@ def test_list_tools_random_requires_seed(client, session):
     admin = _user(session, username="admin", is_admin=True)
     response = client.get(
         "/api/v1/tools",
-        params={"sort": "random", "show_all": True},
+        params={"sort": "random", "show_all": True, "mode": "catalog"},
         headers=_auth_headers(admin),
     )
     assert response.status_code == 400
@@ -204,7 +204,7 @@ def test_list_tools_category_requires_seed(client, session):
     admin = _user(session, username="admin", is_admin=True)
     response = client.get(
         "/api/v1/tools",
-        params={"sort": "category", "show_all": True},
+        params={"sort": "category", "show_all": True, "mode": "catalog"},
         headers=_auth_headers(admin),
     )
     assert response.status_code == 400
@@ -243,7 +243,7 @@ def test_list_tools_sort_by_category_sequence(client, session):
 
     response = client.get(
         "/api/v1/tools",
-        params={"sort": "category", "seed": "stable", "show_all": True},
+        params={"sort": "category", "seed": "stable", "show_all": True, "mode": "catalog"},
         headers=_auth_headers(admin),
     )
     assert response.status_code == 200
@@ -278,6 +278,7 @@ def test_list_tools_filter_by_category(client, session):
             ("sort", "name"),
             ("category", "4 excavation"),
             ("show_all", "true"),
+            ("mode", "catalog"),
         ],
         headers=_auth_headers(admin),
     )
@@ -344,7 +345,7 @@ def test_list_tool_categories_show_all(client, session):
 
     response = client.get(
         "/api/v1/tools/categories",
-        params={"show_all": True},
+        params={"show_all": True, "mode": "catalog"},
         headers=_auth_headers(admin),
     )
     assert response.status_code == 200
