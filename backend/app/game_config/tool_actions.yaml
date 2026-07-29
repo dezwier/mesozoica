@@ -61,3 +61,14 @@ site_navigator:
   stats_explanation: >-
     Combines a direction-range glow and distance bands for the nearest
     undiscovered site, with the listed walk-in discovery chance for that site.
+
+formation_map:
+  duration_minutes: 10
+  accuracy: 0.75
+  range: 0.35
+  min_range_m: 200
+  max_range_m: 2000
+  stats_explanation: >-
+    Colors the map by the period of the nearest undiscovered field site.
+    Higher accuracy sharpens boundaries; higher range widens the circle
+    (200 m–2 km).

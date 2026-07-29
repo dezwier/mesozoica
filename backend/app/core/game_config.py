@@ -350,6 +350,49 @@ class GuidanceActionConfig(BaseModel):
         return 0.0
 
 
+class FormationMapActionConfig(BaseModel):
+    """Knobs for the Formation Map period-mosaic overlay."""
+
+    model_config = {"frozen": True}
+
+    duration_minutes: int = 10
+    accuracy: float = 0.75
+    range: float = 0.35
+    min_range_m: float = 200.0
+    max_range_m: float = 2000.0
+    stats_explanation: str = ""
+
+    @field_validator("accuracy", "range")
+    @classmethod
+    def _validate_unit(cls, value: float) -> float:
+        return _clamp_unit_interval(value, label="unit interval")
+
+    @field_validator("duration_minutes")
+    @classmethod
+    def _validate_duration(cls, value: int) -> int:
+        if value < 1:
+            raise ValueError("duration_minutes must be >= 1")
+        return value
+
+    @field_validator("min_range_m", "max_range_m")
+    @classmethod
+    def _validate_range_m(cls, value: float) -> float:
+        if value <= 0:
+            raise ValueError("range meters must be > 0")
+        return value
+
+    @model_validator(mode="after")
+    def _validate_range_bounds(self) -> FormationMapActionConfig:
+        if self.max_range_m < self.min_range_m:
+            raise ValueError("max_range_m must be >= min_range_m")
+        return self
+
+    def resolved_range_m(self) -> float:
+        return float(self.min_range_m) + float(self.range) * (
+            float(self.max_range_m) - float(self.min_range_m)
+        )
+
+
 class LevelingSkillConfig(BaseModel):
     model_config = {"frozen": True}
 
@@ -451,6 +494,20 @@ class ToolActionsConfig(BaseModel):
             stats_explanation=(
                 "Combines compass direction and proximity readout for the "
                 "nearest undiscovered site."
+            ),
+        )
+    )
+    formation_map: FormationMapActionConfig = Field(
+        default_factory=lambda: FormationMapActionConfig(
+            duration_minutes=10,
+            accuracy=0.75,
+            range=0.35,
+            min_range_m=200.0,
+            max_range_m=2000.0,
+            stats_explanation=(
+                "Colors the map by the period of the nearest undiscovered "
+                "field site. Higher accuracy sharpens boundaries; higher "
+                "range widens the circle (200 m–2 km)."
             ),
         )
     )

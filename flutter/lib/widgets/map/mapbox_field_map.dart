@@ -9,10 +9,13 @@ import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 
 import '../../config/map_config.dart';
 import '../../controllers/aerial_mission_controller.dart';
+import '../../controllers/formation_map_controller.dart';
 import '../../models/site.dart';
+import '../../utils/formation_map_raster.dart';
 import 'mapbox_aerial_mission_annotations.dart';
 import 'mapbox_basemap_config.dart';
 import 'mapbox_camera_coordinator.dart';
+import 'mapbox_formation_map_overlay.dart';
 import 'mapbox_site_annotations.dart';
 import 'mapbox_viewport_native.dart';
 import 'map_center_crosshair.dart';
@@ -50,6 +53,7 @@ class MapboxFieldMap extends StatefulWidget {
     this.rotateCardCount,
     this.headingListenable,
     this.aerialRecon,
+    this.formationMap,
     this.showPastAerialRoutes = false,
     this.showAerialReconOverlays = true,
     this.onError,
@@ -90,6 +94,8 @@ class MapboxFieldMap extends StatefulWidget {
   final ValueNotifier<int>? rotateCardCount;
   /// Ongoing + past aerial recon routes / scout puck.
   final AerialMissionController? aerialRecon;
+  /// Timed Formation Map period mosaic.
+  final FormationMapController? formationMap;
   /// When true, draw past (done/cancelled) recon routes from the last 24h.
   final bool showPastAerialRoutes;
   /// When false (archive mode), never draw recon routes or scout.
@@ -106,7 +112,9 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
     with SingleTickerProviderStateMixin {
   MapboxSiteAnnotations? _annotations;
   MapboxAerialMissionAnnotations? _aerialReconAnnotations;
+  final MapboxFormationMapOverlay _formationOverlay = MapboxFormationMapOverlay();
   MapboxMap? _map;
+  int _lastFormationSitesRevision = -1;
   bool _ready = false;
   bool _readyNotified = false;
   bool _styleLoaded = false;
@@ -152,6 +160,7 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
     );
     _seedHeading = widget.headingDeg;
     widget.aerialRecon?.addListener(_onAerialReconChanged);
+    widget.formationMap?.addListener(_onFormationMapChanged);
     // Seed with a fixed camera; switch to FollowPuck after the location puck
     // is enabled (FollowPuck requires location).
     _viewport = CameraViewportState(
@@ -219,6 +228,7 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
   @override
   void dispose() {
     widget.aerialRecon?.removeListener(_onAerialReconChanged);
+    widget.formationMap?.removeListener(_onFormationMapChanged);
     _annotationDebounce?.cancel();
     _readyTimeout?.cancel();
     _readyNotifyFallback?.cancel();
@@ -231,6 +241,8 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
     _annotations = null;
     _aerialReconAnnotations?.dispose();
     _aerialReconAnnotations = null;
+    unawaited(_formationOverlay.clear());
+    _formationOverlay.dispose();
     if (_readyNotified) {
       widget.onReadyChanged(false);
     }
@@ -239,6 +251,58 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
 
   void _onAerialReconChanged() {
     unawaited(_syncAerialMission());
+  }
+
+  void _onFormationMapChanged() {
+    unawaited(_syncFormationMap());
+  }
+
+  Future<void> _syncFormationMap() async {
+    final map = _map;
+    final formation = widget.formationMap;
+    if (map == null || !_styleLoaded) return;
+    if (formation == null || !formation.isActive) {
+      _lastFormationSitesRevision = -1;
+      await _formationOverlay.clear();
+      return;
+    }
+    final origin = formation.origin ?? widget.currentLocation;
+    if (origin == null) {
+      await _formationOverlay.clear();
+      return;
+    }
+    final revision = formation.sitesRevision;
+    if (revision == _lastFormationSitesRevision) return;
+    _lastFormationSitesRevision = revision;
+
+    final samples = <FormationMapSiteSample>[
+      for (final site in formation.discoverableSites)
+        if (site.latitude != null &&
+            site.longitude != null &&
+            (site.effectivePeriod ?? '').isNotEmpty)
+          FormationMapSiteSample(
+            lat: site.latitude!,
+            lon: site.longitude!,
+            period: site.effectivePeriod!,
+          ),
+    ];
+    final request = FormationMapRasterRequest(
+      originLat: origin.latitude,
+      originLon: origin.longitude,
+      rangeM: formation.rangeM,
+      accuracy: formation.accuracy,
+      sites: samples,
+    );
+    // 128² grid is cheap enough on the UI isolate; avoid compute() because
+    // custom request objects are not SendPort-safe.
+    final raster = buildFormationMapRaster(request);
+    if (!mounted) return;
+    if (widget.formationMap?.sitesRevision != revision) return;
+    if (!(widget.formationMap?.isActive ?? false)) {
+      await _formationOverlay.clear();
+      return;
+    }
+    await _formationOverlay.sync(raster: raster);
   }
 
   MbxEdgeInsets? _paddingForCurrentHeight() {
@@ -510,6 +574,12 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
       widget.aerialRecon?.addListener(_onAerialReconChanged);
       unawaited(_syncAerialMission());
     }
+    if (oldWidget.formationMap != widget.formationMap) {
+      oldWidget.formationMap?.removeListener(_onFormationMapChanged);
+      widget.formationMap?.addListener(_onFormationMapChanged);
+      _lastFormationSitesRevision = -1;
+      unawaited(_syncFormationMap());
+    }
     if (oldWidget.showPastAerialRoutes != widget.showPastAerialRoutes ||
         oldWidget.showAerialReconOverlays != widget.showAerialReconOverlays) {
       unawaited(_syncAerialMission());
@@ -560,6 +630,9 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
       _aerialReconAnnotations?.dispose();
       _aerialReconAnnotations = aerial;
 
+      _formationOverlay.attach(map);
+      unawaited(_syncFormationMap());
+
       await _applyGestureMode();
       _scheduleAnnotationSync();
       unawaited(_syncAerialMission());
@@ -593,12 +666,16 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
     _styleLoaded = true;
     unawaited(_applyBasemapLook());
     unawaited(_seedAfterLayout());
+    _lastFormationSitesRevision = -1;
+    unawaited(_syncFormationMap());
   }
 
   void _onMapLoaded(MapLoadedEventData data) {
     _styleLoaded = true;
     unawaited(_applyBasemapLook());
     unawaited(_seedAfterLayout());
+    _lastFormationSitesRevision = -1;
+    unawaited(_syncFormationMap());
   }
 
   Future<void> _applyBasemapLook({bool force = false}) async {

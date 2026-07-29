@@ -38,6 +38,7 @@ class FieldDiscoveryCoordinator extends ChangeNotifier {
   List<SiteSummary> _discoverableCache = [];
   LatLng? _lastCachePosition;
   LatLng? _lastHandledLocation;
+  double? _cacheRadiusOverrideKm;
   final Set<int> _insideRadiusSiteIds = {};
   /// Sites observed while the user was outside their discover radius.
   /// Required before an inside fix can count as a walk-in enter.
@@ -56,6 +57,19 @@ class FieldDiscoveryCoordinator extends ChangeNotifier {
   /// Read-only snapshot of nearby discoverable (unlinked) field sites.
   List<SiteSummary> get discoverableCache =>
       List<SiteSummary>.unmodifiable(_discoverableCache);
+
+  double get effectiveCacheRadiusKm =>
+      _cacheRadiusOverrideKm ?? cacheRadiusKm;
+
+  /// Widen/narrow the nearby-discoverable fetch radius (e.g. Formation Map).
+  /// Pass null to restore the YAML default.
+  void setCacheRadiusOverrideKm(double? km) {
+    final next = km;
+    if (_cacheRadiusOverrideKm == next) return;
+    _cacheRadiusOverrideKm = next;
+    // Force a refresh on the next GPS tick / explicit refresh call.
+    _lastCachePosition = null;
+  }
 
   /// Nearest discoverable site to [from], or null if cache is empty.
   ({SiteSummary site, double distanceM})? nearestDiscoverable(LatLng from) {
@@ -146,6 +160,7 @@ class FieldDiscoveryCoordinator extends ChangeNotifier {
     _discoverableCache = [];
     _lastCachePosition = null;
     _lastHandledLocation = null;
+    _cacheRadiusOverrideKm = null;
     _insideRadiusSiteIds.clear();
     _seenOutsideSiteIds.clear();
     _attemptedThisVisitSiteIds.clear();
@@ -224,7 +239,7 @@ class FieldDiscoveryCoordinator extends ChangeNotifier {
         final response = await _siteService.fetchNearbyDiscoverableSites(
           lat: location.latitude,
           lon: location.longitude,
-          radiusKm: cacheRadiusKm,
+          radiusKm: effectiveCacheRadiusKm,
         );
         if (response.items.isNotEmpty) {
           // Prefer server list when present; keep map-ingested ids merged in.

@@ -329,6 +329,7 @@ class ToolActionsConfig {
     required this.geoCompass,
     required this.proximityScanner,
     required this.siteNavigator,
+    required this.formationMap,
   });
 
   final AerialMissionActionConfig aerialRecon;
@@ -336,6 +337,7 @@ class ToolActionsConfig {
   final GuidanceActionConfig geoCompass;
   final GuidanceActionConfig proximityScanner;
   final GuidanceActionConfig siteNavigator;
+  final FormationMapActionConfig formationMap;
 
   AerialMissionActionConfig configFor(String actionKey) {
     switch (actionKey) {
@@ -421,6 +423,9 @@ class ToolActionsConfig {
               'Combines a direction-range glow and distance bands for the '
               'nearest undiscovered site.',
         ),
+      ),
+      formationMap: FormationMapActionConfig.fromYaml(
+        GameConfig._asMap(yaml['formation_map']),
       ),
     );
   }
@@ -567,6 +572,53 @@ class GuidanceActionConfig {
         yaml['min_direction_range_deg'],
         d.minDirectionRangeDeg,
       ),
+      statsExplanation: _asString(yaml['stats_explanation'], d.statsExplanation),
+    );
+  }
+}
+
+class FormationMapActionConfig {
+  const FormationMapActionConfig({
+    required this.durationMinutes,
+    required this.accuracy,
+    required this.range,
+    required this.minRangeM,
+    required this.maxRangeM,
+    required this.statsExplanation,
+  });
+
+  final int durationMinutes;
+  final double accuracy;
+  final double range;
+  final double minRangeM;
+  final double maxRangeM;
+  final String statsExplanation;
+
+  double get resolvedRangeM =>
+      minRangeM + range * (maxRangeM - minRangeM);
+
+  factory FormationMapActionConfig.fromYaml(
+    Map<String, dynamic> yaml, {
+    FormationMapActionConfig? defaults,
+  }) {
+    final d = defaults ??
+        const FormationMapActionConfig(
+          durationMinutes: 10,
+          accuracy: 0.75,
+          range: 0.35,
+          minRangeM: 200.0,
+          maxRangeM: 2000.0,
+          statsExplanation:
+              'Colors the map by the period of the nearest undiscovered '
+              'field site. Higher accuracy sharpens boundaries; higher '
+              'range widens the circle (200 m–2 km).',
+        );
+    return FormationMapActionConfig(
+      durationMinutes: _asInt(yaml['duration_minutes'], d.durationMinutes),
+      accuracy: _asDouble(yaml['accuracy'], d.accuracy).clamp(0.0, 1.0),
+      range: _asDouble(yaml['range'], d.range).clamp(0.0, 1.0),
+      minRangeM: _asDouble(yaml['min_range_m'], d.minRangeM),
+      maxRangeM: _asDouble(yaml['max_range_m'], d.maxRangeM),
       statsExplanation: _asString(yaml['stats_explanation'], d.statsExplanation),
     );
   }

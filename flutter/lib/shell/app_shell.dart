@@ -11,6 +11,7 @@ import '../controllers/auth_controller.dart';
 import '../controllers/catalog_mode_controller.dart';
 import '../controllers/field_discovery_coordinator.dart';
 import '../controllers/field_session_coordinator.dart';
+import '../controllers/formation_map_controller.dart';
 import '../controllers/guidance_session_controller.dart';
 import '../controllers/map_controller.dart';
 import '../controllers/notification_controller.dart';
@@ -58,6 +59,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
   MapController? _mapController;
   AerialMissionController? _aerialRecon;
   GuidanceSessionController? _guidance;
+  FormationMapController? _formationMap;
   int _lastAerialMissionsFetchGeneration = 0;
   final Set<int> _knownAerialDiscoveredSiteIds = {};
   Timer? _discoveryRefreshTimer;
@@ -95,6 +97,14 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
       _guidance = guidance;
       guidance.addListener(_onGuidanceChanged);
       guidance.bind(
+        discovery: discovery,
+        location: context.read<LocationService>(),
+      );
+
+      final formation = context.read<FormationMapController>();
+      _formationMap = formation;
+      formation.addListener(_onFormationMapChanged);
+      formation.bind(
         discovery: discovery,
         location: context.read<LocationService>(),
       );
@@ -161,6 +171,21 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     // Activate requests the map; close tool/profile overlays so the map
     // is visible (mirrors aerial draw-mode behavior).
     if (guidance.requestShowOnMap && _anyOverlayOpen) {
+      setState(() {
+        _profileOpen = false;
+        _catalogOpen = false;
+        _toolsOpen = false;
+      });
+      return;
+    }
+    setState(() {});
+  }
+
+  void _onFormationMapChanged() {
+    if (!mounted) return;
+    final formation = _formationMap;
+    if (formation == null) return;
+    if (formation.requestShowOnMap && _anyOverlayOpen) {
       setState(() {
         _profileOpen = false;
         _catalogOpen = false;
@@ -407,6 +432,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     _mapController?.removeListener(_onMapSitesChanged);
     _aerialRecon?.removeListener(_onAerialReconChanged);
     _guidance?.removeListener(_onGuidanceChanged);
+    _formationMap?.removeListener(_onFormationMapChanged);
     _catalogModeController?.removeListener(_onCatalogModeChanged);
     _discoveryRefreshTimer?.cancel();
     unawaited(_foregroundPushSub?.cancel() ?? Future<void>.value());
@@ -431,6 +457,9 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
         );
         unawaited(
           context.read<GuidanceSessionController>().restoreActiveSession(),
+        );
+        unawaited(
+          context.read<FormationMapController>().restoreActiveSession(),
         );
         final auth = context.read<AuthController>();
         final userId = auth.currentUser?.id;
@@ -484,6 +513,9 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     unawaited(
       context.read<GuidanceSessionController>().stop(notifyServer: false),
     );
+    unawaited(
+      context.read<FormationMapController>().stop(notifyServer: false),
+    );
     context.read<SiteCatalogController>().load(force: true);
     context.read<ToolCatalogController>().load(force: true);
 
@@ -509,6 +541,8 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
       );
       if (!mounted || _previousUserId != userId) return;
       await context.read<GuidanceSessionController>().restoreActiveSession();
+      if (!mounted || _previousUserId != userId) return;
+      await context.read<FormationMapController>().restoreActiveSession();
     });
   }
 

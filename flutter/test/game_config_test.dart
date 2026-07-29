@@ -66,6 +66,17 @@ void main() {
       0.9,
     );
 
+    expect(config.toolActions.formationMap.durationMinutes, 10);
+    expect(config.toolActions.formationMap.accuracy, 0.75);
+    expect(config.toolActions.formationMap.range, 0.35);
+    expect(config.toolActions.formationMap.minRangeM, 200.0);
+    expect(config.toolActions.formationMap.maxRangeM, 2000.0);
+    expect(config.toolActions.formationMap.resolvedRangeM, closeTo(830.0, 0.01));
+    expect(
+      config.toolActions.formationMap.statsExplanation,
+      contains('undiscovered field site'),
+    );
+
     expect(config.leveling.rewards.siteDiscoverSiteDiscoveryXp, 10);
     expect(config.leveling.rewards.fossilDiscoverFossilDetectionXp, 5);
     expect(config.leveling.rewards.activeKmSiteDiscoveryXp, 30);

@@ -10,6 +10,7 @@ import '../../controllers/auth_controller.dart';
 import '../../controllers/catalog_mode_controller.dart';
 import '../../controllers/field_discovery_coordinator.dart';
 import '../../controllers/field_session_coordinator.dart';
+import '../../controllers/formation_map_controller.dart';
 import '../../controllers/fossil_catalog_controller.dart';
 import '../../controllers/guidance_session_controller.dart';
 import '../../controllers/map_controller.dart' as map_data;
@@ -28,6 +29,7 @@ import '../../widgets/dino/dinosaur_filter_fab.dart';
 import '../../widgets/map/aerial_mission_draw_overlay.dart';
 import '../../widgets/map/aerial_mission_focus_overlay.dart';
 import '../../widgets/map/field_data_purge_dialog.dart';
+import '../../widgets/map/formation_map_hud.dart';
 import '../../widgets/map/guidance_overlay.dart';
 import '../../widgets/map/map_control_buttons.dart';
 import '../../widgets/map/map_perf_hud.dart';
@@ -95,6 +97,7 @@ class _MapScreenState extends State<MapScreen>
     final aerialRecon = context.watch<AerialMissionController>();
     final aerialDrawMode = aerialRecon.isDrawMode;
     final guidance = context.watch<GuidanceSessionController>();
+    final formationMap = context.watch<FormationMapController>();
 
     if (guidance.requestShowOnMap) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -102,6 +105,16 @@ class _MapScreenState extends State<MapScreen>
         final g = context.read<GuidanceSessionController>();
         if (!g.requestShowOnMap) return;
         g.consumeShowOnMapRequest();
+        _ensureGuidanceVisibleOnMap();
+      });
+    }
+
+    if (formationMap.requestShowOnMap) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        final f = context.read<FormationMapController>();
+        if (!f.requestShowOnMap) return;
+        f.consumeShowOnMapRequest();
         _ensureGuidanceVisibleOnMap();
       });
     }
@@ -174,6 +187,7 @@ class _MapScreenState extends State<MapScreen>
                     avatarImageUrl: avatarUrl.isEmpty ? null : avatarUrl,
                     rotateCardCount: _rotateCardCount,
                     aerialRecon: aerialRecon,
+                    formationMap: formationMap,
                     showAerialReconOverlays: isFieldMode,
                     showPastAerialRoutes: mapData.filters.showPastAerialRoutes,
                     onSiteTap: aerialDrawMode ? (_) {} : _onSiteTap,
@@ -428,6 +442,8 @@ class _MapScreenState extends State<MapScreen>
                 rotateWithHeading: _rotateMap,
                 followUser: _followUser || _rotateMap,
               ),
+            if (!aerialDrawMode && formationMap.isActive)
+              const FormationMapHud(),
           ],
         );
       },

@@ -1,4 +1,4 @@
-"""Site-guidance sessions: timed overlays + nearest-site discovery boost."""
+"""Formation Map sessions: timed period-mosaic overlay."""
 
 from __future__ import annotations
 
@@ -8,27 +8,28 @@ from sqlmodel import Session, col, select
 
 from app.core.exceptions import NotFoundError, ValidationError
 from app.core.game_config import get_game_config
-from app.models.guidance_session import (
+from app.models.formation_map_session import (
+    ACTION_KEY_FORMATION_MAP,
     SESSION_STATUS_ACTIVE,
     SESSION_STATUS_CANCELLED,
     SESSION_STATUS_EXPIRED,
-    GuidanceSession,
+    FormationMapSession,
 )
 from app.models.tool_type import ToolType
 from app.models.user_tool import USER_TOOL_ACTION_DEPLOYED, UserTool
-from app.services.site_service.geo_utils import haversine_km
-from app.services.site_service.nearby import list_discoverable_sites_in_radius
-from app.services.tool_action_service.guidance_kinds import (
-    config_for_action_key,
-    kind_for_tool_name,
+from app.services.tool_action_service.guidance_session import (
+    cancel_active_guidance_sessions,
 )
 from app.services.tool_service.collect import resolve_owned_instance
+
+TOOL_NAME_FORMATION_MAP = "Formation Map"
+
 
 def _utcnow() -> datetime:
     return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
-def _expire_if_needed(session: Session, row: GuidanceSession) -> GuidanceSession:
+def _expire_if_needed(session: Session, row: FormationMapSession) -> FormationMapSession:
     if row.status != SESSION_STATUS_ACTIVE:
         return row
     if row.expires_at <= _utcnow():
@@ -40,19 +41,19 @@ def _expire_if_needed(session: Session, row: GuidanceSession) -> GuidanceSession
     return row
 
 
-def get_active_guidance_session(
+def get_active_formation_map_session(
     session: Session,
     *,
     user_id: int,
-) -> GuidanceSession | None:
-    """Return the user's active (non-expired) guidance session, if any."""
+) -> FormationMapSession | None:
+    """Return the user's active (non-expired) formation map session, if any."""
     row = session.exec(
-        select(GuidanceSession)
+        select(FormationMapSession)
         .where(
-            col(GuidanceSession.user_id) == user_id,
-            col(GuidanceSession.status) == SESSION_STATUS_ACTIVE,
+            col(FormationMapSession.user_id) == user_id,
+            col(FormationMapSession.status) == SESSION_STATUS_ACTIVE,
         )
-        .order_by(col(GuidanceSession.started_at).desc())
+        .order_by(col(FormationMapSession.started_at).desc())
     ).first()
     if row is None:
         return None
@@ -62,16 +63,16 @@ def get_active_guidance_session(
     return row
 
 
-def cancel_active_guidance_sessions(
+def cancel_active_formation_map_sessions(
     session: Session,
     *,
     user_id: int,
 ) -> None:
     now = _utcnow()
     rows = session.exec(
-        select(GuidanceSession).where(
-            col(GuidanceSession.user_id) == user_id,
-            col(GuidanceSession.status) == SESSION_STATUS_ACTIVE,
+        select(FormationMapSession).where(
+            col(FormationMapSession.user_id) == user_id,
+            col(FormationMapSession.status) == SESSION_STATUS_ACTIVE,
         )
     ).all()
     for row in rows:
@@ -83,12 +84,12 @@ def cancel_active_guidance_sessions(
         session.commit()
 
 
-def start_guidance_session(
+def start_formation_map_session(
     session: Session,
     *,
     user_id: int,
     tool_id: int,
-) -> GuidanceSession:
+) -> FormationMapSession:
     """Validate ownership, replace any prior session, snapshot YAML knobs.
 
     ``tool_id`` is the catalog tool_type id (API-stable). The session row stores
@@ -97,44 +98,30 @@ def start_guidance_session(
     tool_type = session.get(ToolType, tool_id)
     if tool_type is None:
         raise NotFoundError(f"Tool {tool_id} not found")
-    kind = kind_for_tool_name(tool_type.name)
-    cfg = config_for_action_key(kind.action_key)
+    if tool_type.name != TOOL_NAME_FORMATION_MAP:
+        raise ValidationError("This action is only available for Formation Map")
 
+    cfg = get_game_config().tool_actions.formation_map
     instance = resolve_owned_instance(
         session, user_id=user_id, tool_type_id=tool_id
     )
     if instance is None:
-        raise ValidationError(f"You must own {kind.display_label} to use it")
-
-    cancel_active_guidance_sessions(session, user_id=user_id)
-    # Mutual exclusivity with Formation Map (competing map HUDs).
-    from app.services.tool_action_service.formation_map_session import (
-        cancel_active_formation_map_sessions,
-    )
+        raise ValidationError("You must own Formation Map to use it")
 
     cancel_active_formation_map_sessions(session, user_id=user_id)
+    cancel_active_guidance_sessions(session, user_id=user_id)
 
     now = _utcnow()
-    discovery_chance = (
-        float(cfg.discovery_chance)
-        if kind.has_discovery_boost and cfg.discovery_chance is not None
-        else None
-    )
-    direction_exactness = (
-        cfg.resolved_direction_exactness() if kind.show_needle else None
-    )
-    distance_exactness = (
-        cfg.resolved_distance_exactness() if kind.show_distance else None
-    )
-    row = GuidanceSession(
+    row = FormationMapSession(
         user_id=user_id,
         tool_id=int(instance.id),
-        action_key=kind.action_key,
+        action_key=ACTION_KEY_FORMATION_MAP,
         status=SESSION_STATUS_ACTIVE,
-        discovery_chance=discovery_chance,
-        direction_exactness=direction_exactness,
-        distance_exactness=distance_exactness,
         duration_minutes=int(cfg.duration_minutes),
+        accuracy=float(cfg.accuracy),
+        range=float(cfg.range),
+        min_range_m=float(cfg.min_range_m),
+        max_range_m=float(cfg.max_range_m),
         started_at=now,
         expires_at=now + timedelta(minutes=int(cfg.duration_minutes)),
         created_at=now,
@@ -154,17 +141,17 @@ def start_guidance_session(
     return row
 
 
-def cancel_guidance_session(
+def cancel_formation_map_session(
     session: Session,
     *,
     user_id: int,
     session_id: int | None = None,
-) -> GuidanceSession | None:
+) -> FormationMapSession | None:
     """Cancel the active session (or a specific session_id owned by the user)."""
     if session_id is not None:
-        row = session.get(GuidanceSession, session_id)
+        row = session.get(FormationMapSession, session_id)
         if row is None or int(row.user_id) != user_id:
-            raise NotFoundError(f"Guidance session {session_id} not found")
+            raise NotFoundError(f"Formation map session {session_id} not found")
         row = _expire_if_needed(session, row)
         if row.status == SESSION_STATUS_ACTIVE:
             now = _utcnow()
@@ -176,7 +163,7 @@ def cancel_guidance_session(
             session.refresh(row)
         return row
 
-    row = get_active_guidance_session(session, user_id=user_id)
+    row = get_active_formation_map_session(session, user_id=user_id)
     if row is None:
         return None
     now = _utcnow()
@@ -187,34 +174,3 @@ def cancel_guidance_session(
     session.commit()
     session.refresh(row)
     return row
-
-
-def nearest_discoverable_site_id(
-    session: Session,
-    *,
-    user_id: int,
-    lat: float,
-    lon: float,
-) -> int | None:
-    """Id of the nearest still-discoverable field site, or None."""
-    radius_km = float(get_game_config().site_discovery.client.cache_radius_km)
-    rows = list_discoverable_sites_in_radius(
-        session,
-        lat=lat,
-        lon=lon,
-        radius_km=radius_km,
-        user_id=user_id,
-    )
-    best_id: int | None = None
-    best_km = float("inf")
-    for row in rows:
-        site = row.site
-        if site.latitude is None or site.longitude is None:
-            continue
-        dist = haversine_km(
-            lat, lon, float(site.latitude), float(site.longitude)
-        )
-        if dist < best_km:
-            best_km = dist
-            best_id = int(site.site_id)
-    return best_id

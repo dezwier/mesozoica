@@ -8,6 +8,7 @@ from app.models.dinosaur import Dinosaur
 from app.models.field_ensure_job import FieldEnsureJob
 from app.models.field_survey_job import FieldSurveyJob
 from app.models.fossil import Fossil
+from app.models.formation_map_session import FormationMapSession
 from app.models.guidance_session import GuidanceSession
 from app.models.site import Site
 from app.models.site_type import SiteType
@@ -30,6 +31,7 @@ __all__ = [
     "FieldEnsureJob",
     "FieldSurveyJob",
     "Fossil",
+    "FormationMapSession",
     "GuidanceSession",
     "Site",
     "SiteType",

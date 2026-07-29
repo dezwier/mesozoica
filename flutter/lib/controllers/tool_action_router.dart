@@ -4,8 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../controllers/aerial_mission_controller.dart';
+import '../controllers/formation_map_controller.dart';
 import '../controllers/guidance_session_controller.dart';
 import '../models/aerial_mission_kind.dart';
+import '../models/formation_map_kind.dart';
 import '../models/guidance_tool_kind.dart';
 import '../models/tool.dart';
 
@@ -22,7 +24,14 @@ class ToolActionRouter {
     }
 
     if (GuidanceToolKind.tryParseToolName(tool.name) != null) {
+      context.read<FormationMapController>().clearLocalSession();
       unawaited(context.read<GuidanceSessionController>().activate(tool));
+      return;
+    }
+
+    if (FormationMapKind.matchesToolName(tool.name)) {
+      context.read<GuidanceSessionController>().stop(notifyServer: false);
+      unawaited(context.read<FormationMapController>().activate(tool));
       return;
     }
 

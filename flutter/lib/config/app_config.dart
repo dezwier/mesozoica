@@ -393,6 +393,9 @@ class AppConfig {
   static Uri toolGuidanceSessionUri(int id) =>
       Uri.parse('$baseApiUrl/api/v1/tools/$id/actions/guidance-session');
 
+  static Uri toolFormationMapSessionUri(int id) =>
+      Uri.parse('$baseApiUrl/api/v1/tools/$id/actions/formation-map-session');
+
   static Uri aerialMissionsUri() =>
       Uri.parse('$baseApiUrl/api/v1/tools/missions/aerial');
 
@@ -404,6 +407,12 @@ class AppConfig {
 
   static Uri cancelGuidanceSessionUri() =>
       Uri.parse('$baseApiUrl/api/v1/tools/sessions/guidance/cancel');
+
+  static Uri activeFormationMapSessionUri() =>
+      Uri.parse('$baseApiUrl/api/v1/tools/sessions/formation-map/active');
+
+  static Uri cancelFormationMapSessionUri() =>
+      Uri.parse('$baseApiUrl/api/v1/tools/sessions/formation-map/cancel');
 
   static Future<bool> checkApiHealth() async {
     try {

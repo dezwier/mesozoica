@@ -2,14 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../controllers/aerial_mission_controller.dart';
+import '../../controllers/formation_map_controller.dart';
 import '../../controllers/guidance_session_controller.dart';
 import '../../models/aerial_mission_kind.dart';
+import '../../models/formation_map_kind.dart';
 import '../../models/guidance_tool_kind.dart';
 import '../../models/tool.dart';
 import '../../services/tool_service.dart';
 import '../tools/aerial_mission_flight_stats.dart';
 import '../tools/aerial_mission_actions.dart';
 import '../tools/aerial_mission_missions_sheet.dart';
+import '../tools/formation_map_tool_stats.dart';
 import '../tools/guidance_tool_stats.dart';
 import 'card_section_panel.dart';
 
@@ -34,6 +37,7 @@ class ToolCardExtensions {
   static final List<ToolCardExtension> _all = [
     AerialMissionCardExtension(),
     GuidanceCardExtension(),
+    FormationMapCardExtension(),
   ];
 
   static ToolCardExtension? forTool(ToolSummary tool) {
@@ -102,6 +106,30 @@ class GuidanceCardExtension implements ToolCardExtension {
   VoidCallback? infoHandler(BuildContext context, ToolSummary tool) => null;
 }
 
+class FormationMapCardExtension implements ToolCardExtension {
+  @override
+  String get actionKey => FormationMapKind.actionKey;
+
+  @override
+  bool matches(ToolSummary tool) =>
+      FormationMapKind.matchesToolName(tool.name);
+
+  @override
+  Widget? buildDeployStats(BuildContext context, ToolSummary tool) {
+    return const CardSectionPanel(
+      child: FormationMapToolStats(),
+    );
+  }
+
+  @override
+  Widget? buildOngoingPanel(BuildContext context, ToolSummary tool) {
+    return _FormationMapOngoingPanel(toolId: tool.id);
+  }
+
+  @override
+  VoidCallback? infoHandler(BuildContext context, ToolSummary tool) => null;
+}
+
 class _GuidanceOngoingPanel extends StatelessWidget {
   const _GuidanceOngoingPanel({
     required this.toolId,
@@ -140,6 +168,49 @@ class _GuidanceOngoingPanel extends StatelessWidget {
           const SizedBox(height: 10),
           OutlinedButton(
             onPressed: () => guidance.stop(),
+            child: const Text('Stop'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _FormationMapOngoingPanel extends StatelessWidget {
+  const _FormationMapOngoingPanel({required this.toolId});
+
+  final int toolId;
+
+  @override
+  Widget build(BuildContext context) {
+    final formation = context.watch<FormationMapController>();
+    if (!formation.isActive) return const SizedBox.shrink();
+    final session = formation.session;
+    if (session == null) return const SizedBox.shrink();
+    if (session.toolId != toolId &&
+        session.actionKey != FormationMapKind.actionKey) {
+      return const SizedBox.shrink();
+    }
+
+    final remaining = formation.remaining;
+    final minutes = remaining == null
+        ? '—'
+        : '${remaining.inMinutes.clamp(0, 999)} min left';
+
+    return CardSectionPanel(
+      label: 'Active session',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            minutes,
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
+          const SizedBox(height: 8),
+          const FormationMapToolStats(compact: true),
+          const SizedBox(height: 10),
+          OutlinedButton(
+            onPressed: () => formation.stop(),
             child: const Text('Stop'),
           ),
         ],

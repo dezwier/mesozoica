@@ -321,6 +321,90 @@ class ToolService {
     return GuidanceSession.fromJson(decoded);
   }
 
+  Future<FormationMapSession> startFormationMapSession({
+    required int toolId,
+  }) async {
+    final uri = AppConfig.toolFormationMapSessionUri(toolId);
+    if (kDebugMode) {
+      debugPrint('ToolService POST $uri');
+    }
+    final response = await ApiClient.instance
+        .sendPost(
+          uri,
+          client: _client,
+          headers: await _headers(jsonBody: true),
+        )
+        .timeout(const Duration(seconds: 15));
+
+    if (response.statusCode != 201) {
+      throw ToolServiceException(
+        _errorDetail(response.body) ??
+            'Failed to start formation map session (${response.statusCode})',
+      );
+    }
+
+    final decoded = jsonDecode(response.body);
+    if (decoded is! Map<String, dynamic>) {
+      throw const ToolServiceException(
+        'Invalid formation map session response',
+      );
+    }
+    return FormationMapSession.fromJson(decoded);
+  }
+
+  Future<FormationMapSession?> fetchActiveFormationMapSession() async {
+    final uri = AppConfig.activeFormationMapSessionUri();
+    if (kDebugMode) {
+      debugPrint('ToolService GET $uri');
+    }
+    final response = await ApiClient.instance
+        .sendGet(uri, client: _client, headers: await _headers())
+        .timeout(const Duration(seconds: 15));
+
+    if (response.statusCode == 404) return null;
+    if (response.statusCode != 200) {
+      throw ToolServiceException(
+        'Failed to load formation map session (${response.statusCode})',
+      );
+    }
+    final decoded = jsonDecode(response.body);
+    if (decoded is! Map<String, dynamic>) {
+      throw const ToolServiceException(
+        'Invalid formation map session response',
+      );
+    }
+    return FormationMapSession.fromJson(decoded);
+  }
+
+  Future<FormationMapSession> cancelFormationMapSession() async {
+    final uri = AppConfig.cancelFormationMapSessionUri();
+    if (kDebugMode) {
+      debugPrint('ToolService POST $uri');
+    }
+    final response = await ApiClient.instance
+        .sendPost(
+          uri,
+          client: _client,
+          headers: await _headers(jsonBody: true),
+        )
+        .timeout(const Duration(seconds: 15));
+
+    if (response.statusCode != 200) {
+      throw ToolServiceException(
+        _errorDetail(response.body) ??
+            'Failed to cancel formation map session (${response.statusCode})',
+      );
+    }
+
+    final decoded = jsonDecode(response.body);
+    if (decoded is! Map<String, dynamic>) {
+      throw const ToolServiceException(
+        'Invalid formation map session response',
+      );
+    }
+    return FormationMapSession.fromJson(decoded);
+  }
+
   static String? _errorDetail(String body) {
     final decoded = AppConfig.decodeJson(body);
     if (decoded == null) return null;
@@ -476,6 +560,61 @@ class GuidanceSession {
       directionExactness: (json['direction_exactness'] as num?)?.toDouble(),
       distanceExactness: (json['distance_exactness'] as num?)?.toDouble(),
       durationMinutes: json['duration_minutes'] as int? ?? 15,
+      startedAt: AerialMission._parseDate(json['started_at']) ??
+          DateTime.now().toUtc(),
+      expiresAt: AerialMission._parseDate(json['expires_at']) ??
+          DateTime.now().toUtc(),
+      cancelledAt: AerialMission._parseDate(json['cancelled_at']),
+    );
+  }
+}
+
+class FormationMapSession {
+  const FormationMapSession({
+    required this.sessionId,
+    required this.actionKey,
+    required this.status,
+    required this.toolId,
+    required this.durationMinutes,
+    required this.accuracy,
+    required this.range,
+    required this.minRangeM,
+    required this.maxRangeM,
+    required this.startedAt,
+    required this.expiresAt,
+    this.cancelledAt,
+  });
+
+  final int sessionId;
+  final String actionKey;
+  final String status;
+  final int toolId;
+  final int durationMinutes;
+  final double accuracy;
+  final double range;
+  final double minRangeM;
+  final double maxRangeM;
+  final DateTime startedAt;
+  final DateTime expiresAt;
+  final DateTime? cancelledAt;
+
+  bool get isActive => status == 'active';
+  bool get isExpired =>
+      !isActive || DateTime.now().toUtc().isAfter(expiresAt);
+
+  double get resolvedRangeM => minRangeM + range * (maxRangeM - minRangeM);
+
+  factory FormationMapSession.fromJson(Map<String, dynamic> json) {
+    return FormationMapSession(
+      sessionId: json['session_id'] as int? ?? 0,
+      actionKey: json['action_key'] as String? ?? '',
+      status: json['status'] as String? ?? '',
+      toolId: json['tool_id'] as int? ?? 0,
+      durationMinutes: json['duration_minutes'] as int? ?? 10,
+      accuracy: (json['accuracy'] as num?)?.toDouble() ?? 0.75,
+      range: (json['range'] as num?)?.toDouble() ?? 0.35,
+      minRangeM: (json['min_range_m'] as num?)?.toDouble() ?? 200.0,
+      maxRangeM: (json['max_range_m'] as num?)?.toDouble() ?? 2000.0,
       startedAt: AerialMission._parseDate(json['started_at']) ??
           DateTime.now().toUtc(),
       expiresAt: AerialMission._parseDate(json['expires_at']) ??

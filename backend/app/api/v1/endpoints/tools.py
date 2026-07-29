@@ -11,6 +11,7 @@ from sqlmodel import Session, col, select
 from app.core.database import get_session
 from app.core.exceptions import ValidationError
 from app.core.security import get_current_admin_user, get_current_user, get_optional_current_user
+from app.models.formation_map_session import FormationMapSession
 from app.models.guidance_session import GuidanceSession
 from app.models.tool import Tool
 from app.models.tool_mission import ToolMission
@@ -24,11 +25,14 @@ from app.models.user import User
 from app.schemas.tool import ToolCategoryItem, ToolCategoryListResponse, ToolListResponse, ToolSummary
 from app.services.tool_action_service import (
     cancel_aerial_mission,
+    cancel_formation_map_session,
     cancel_guidance_session,
+    get_active_formation_map_session,
     get_active_guidance_session,
     list_aerial_missions,
     mission_route_dicts,
     start_aerial_mission,
+    start_formation_map_session,
     start_guidance_session,
 )
 from app.services.tool_action_service.aerial_mission_kinds import (
@@ -113,6 +117,21 @@ class GuidanceSessionResponse(BaseModel):
     cancelled_at: datetime | None = None
 
 
+class FormationMapSessionResponse(BaseModel):
+    session_id: int
+    action_key: str
+    status: str
+    tool_id: int
+    duration_minutes: int
+    accuracy: float
+    range: float
+    min_range_m: float
+    max_range_m: float
+    started_at: datetime
+    expires_at: datetime
+    cancelled_at: datetime | None = None
+
+
 def _guidance_session_response(
     session: Session, row: GuidanceSession
 ) -> GuidanceSessionResponse:
@@ -125,6 +144,25 @@ def _guidance_session_response(
         direction_exactness=row.direction_exactness,
         distance_exactness=row.distance_exactness,
         duration_minutes=int(row.duration_minutes),
+        started_at=row.started_at,
+        expires_at=row.expires_at,
+        cancelled_at=row.cancelled_at,
+    )
+
+
+def _formation_map_session_response(
+    session: Session, row: FormationMapSession
+) -> FormationMapSessionResponse:
+    return FormationMapSessionResponse(
+        session_id=int(row.id),
+        action_key=row.action_key,
+        status=row.status,
+        tool_id=_tool_type_id_for_instance(session, int(row.tool_id)),
+        duration_minutes=int(row.duration_minutes),
+        accuracy=float(row.accuracy),
+        range=float(row.range),
+        min_range_m=float(row.min_range_m),
+        max_range_m=float(row.max_range_m),
         started_at=row.started_at,
         expires_at=row.expires_at,
         cancelled_at=row.cancelled_at,
@@ -376,6 +414,40 @@ def post_cancel_guidance_session(
     return _guidance_session_response(session, row)
 
 
+@router.get(
+    "/sessions/formation-map/active",
+    response_model=FormationMapSessionResponse,
+)
+def get_active_formation_map(
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+) -> FormationMapSessionResponse:
+    row = get_active_formation_map_session(session, user_id=int(current_user.id))
+    if row is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No active formation map session",
+        )
+    return _formation_map_session_response(session, row)
+
+
+@router.post(
+    "/sessions/formation-map/cancel",
+    response_model=FormationMapSessionResponse,
+)
+def post_cancel_formation_map_session(
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+) -> FormationMapSessionResponse:
+    row = cancel_formation_map_session(session, user_id=int(current_user.id))
+    if row is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No active formation map session",
+        )
+    return _formation_map_session_response(session, row)
+
+
 @router.post("/{tool_id}/collect", response_model=ToolSummary)
 def post_collect_tool(
     tool_id: int,
@@ -429,6 +501,24 @@ def post_guidance_session(
         tool_id=tool_id,
     )
     return _guidance_session_response(session, row)
+
+
+@router.post(
+    "/{tool_id}/actions/formation-map-session",
+    response_model=FormationMapSessionResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+def post_formation_map_session(
+    tool_id: int,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+) -> FormationMapSessionResponse:
+    row = start_formation_map_session(
+        session,
+        user_id=int(current_user.id),
+        tool_id=tool_id,
+    )
+    return _formation_map_session_response(session, row)
 
 
 @router.get("/{tool_id}", response_model=ToolSummary)
