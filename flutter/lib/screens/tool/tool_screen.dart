@@ -77,7 +77,6 @@ class ToolScreenState extends State<ToolScreen> {
                       : Icons.auto_stories_outlined,
                 ),
               ),
-              const SizedBox(height: 8),
             ],
             ToolFilterFab(
               hasActiveFilters: catalog.hasActiveFilters,

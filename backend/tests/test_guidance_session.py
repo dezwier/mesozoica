@@ -81,6 +81,32 @@ def _grant(session: Session, *, user_id: int, tool_id: int) -> Tool:
     session.refresh(instance)
     return instance
 
+
+def _grant_with_params(
+    session: Session,
+    *,
+    user_id: int,
+    tool_id: int,
+    params_json: dict,
+) -> Tool:
+    instance = Tool(
+        tool_type_id=tool_id,
+        level=1,
+        params_json=params_json,
+    )
+    session.add(instance)
+    session.flush()
+    session.add(
+        UserTool(
+            user_id=user_id,
+            tool_id=int(instance.id),
+            action=USER_TOOL_ACTION_OWNED,
+        )
+    )
+    session.commit()
+    session.refresh(instance)
+    return instance
+
 def _site(
     session: Session,
     *,
@@ -166,6 +192,59 @@ def test_start_guidance_session_snapshots_and_replaces(
     assert len(cancelled) == 1
     assert len(active) == 1
     assert active[0].action_key == ACTION_KEY_PROXIMITY_SCANNER
+
+
+def test_start_guidance_session_uses_instance_params(
+    client, session: Session
+) -> None:
+    get_game_config.cache_clear()
+    user = _user(session, username="instance_params")
+    compass = _tool(session, name="Geo Compass")
+    scanner = _tool(session, name="Proximity Scanner", action="Track")
+
+    _grant_with_params(
+        session,
+        user_id=int(user.id),
+        tool_id=int(compass.id),
+        params_json={
+            "duration_minutes": 7,
+            "exactness": 0.77,
+            "discovery_chance": 0.33,
+        },
+    )
+    _grant_with_params(
+        session,
+        user_id=int(user.id),
+        tool_id=int(scanner.id),
+        params_json={
+            "duration_minutes": 12,
+            "exactness": 0.25,
+        },
+    )
+    headers = _auth_headers(user)
+
+    compass_resp = client.post(
+        f"/api/v1/tools/{compass.id}/actions/guidance-session",
+        headers=headers,
+    )
+    assert compass_resp.status_code == 201, compass_resp.text
+    body = compass_resp.json()
+    assert body["action_key"] == ACTION_KEY_GEO_COMPASS
+    assert body["discovery_chance"] == 0.33
+    assert body["direction_exactness"] == 0.77
+    assert body["duration_minutes"] == 7
+
+    scanner_resp = client.post(
+        f"/api/v1/tools/{scanner.id}/actions/guidance-session",
+        headers=headers,
+    )
+    assert scanner_resp.status_code == 201, scanner_resp.text
+    body2 = scanner_resp.json()
+    assert body2["action_key"] == ACTION_KEY_PROXIMITY_SCANNER
+    assert body2["discovery_chance"] is None
+    assert body2["direction_exactness"] is None
+    assert body2["distance_exactness"] == 0.25
+    assert body2["duration_minutes"] == 12
 
 
 def test_resolve_discovery_boost_only_for_nearest(

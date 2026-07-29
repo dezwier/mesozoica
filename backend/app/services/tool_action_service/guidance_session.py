@@ -122,15 +122,35 @@ def start_guidance_session(
         if kind.has_discovery_boost and raw_chance is not None
         else None
     )
+    # Keep parity with `GuidanceActionConfig.resolved_*_exactness()`, but with
+    # instance-level overrides taking precedence.
+    direction_raw = (
+        inst_p.get("direction_exactness")
+        if inst_p.get("direction_exactness") is not None
+        else inst_p.get("exactness")
+    )
+    distance_raw = (
+        inst_p.get("distance_exactness")
+        if inst_p.get("distance_exactness") is not None
+        else inst_p.get("exactness")
+    )
     direction_exactness = (
-        float(inst_p.get("direction_exactness", cfg.resolved_direction_exactness()))
-        if kind.show_needle
-        else None
+        float(direction_raw)
+        if kind.show_needle and direction_raw is not None
+        else (
+            float(cfg.resolved_direction_exactness())
+            if kind.show_needle
+            else None
+        )
     )
     distance_exactness = (
-        float(inst_p.get("distance_exactness", cfg.resolved_distance_exactness()))
-        if kind.show_distance
-        else None
+        float(distance_raw)
+        if kind.show_distance and distance_raw is not None
+        else (
+            float(cfg.resolved_distance_exactness())
+            if kind.show_distance
+            else None
+        )
     )
     eff_duration = int(inst_p.get("duration_minutes", cfg.duration_minutes))
     row = GuidanceSession(
