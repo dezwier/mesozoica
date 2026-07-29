@@ -42,7 +42,7 @@ void main() {
     expect(b, lessThan(40));
   });
 
-  test('jurassic uses dark grey', () {
+  test('jurassic uses pastel green', () {
     final result = buildFormationMapRaster(
       const FormationMapRasterRequest(
         originLat: 40.0,
@@ -57,8 +57,9 @@ void main() {
     );
     final mid = ((16 * 32) + 16) * 4;
     expect(result.rgba[mid + 3], greaterThan(0));
-    expect(result.rgba[mid], lessThan(140));
-    expect(result.rgba[mid], greaterThan(60));
+    expect(result.rgba[mid], closeTo(0xA8, 15));
+    expect(result.rgba[mid + 1], closeTo(0xC9, 15));
+    expect(result.rgba[mid + 2], closeTo(0xA0, 15));
   });
 
   test('outside range is transparent', () {

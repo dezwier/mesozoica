@@ -27,7 +27,7 @@ class FormationMapRasterColors {
 
   static const defaults = FormationMapRasterColors(
     cretaceous: (0x8D, 0x6E, 0x63),
-    jurassic: (0x60, 0x60, 0x60),
+    jurassic: (0xA8, 0xC9, 0xA0),
     triassic: (0xDD, 0x85, 0x00),
   );
 

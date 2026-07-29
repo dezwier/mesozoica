@@ -71,12 +71,12 @@ formation_map:
   # Overlay look (client raster)
   base_alpha: 0.55
   # Outer fraction of the circle that fades to transparent (0=hard edge, 1=fade from center)
-  range_fade: 0.75
+  range_fade: 0.85
   # Softness of period color borders (0=sharp, 1=very soft); accuracy still sharpens further
   boundary_blur: 0.8
   colors:
     cretaceous: "#8D6E63"
-    jurassic: "#606060"
+    jurassic: "#A8C9A0"
     triassic: "#DD8500"
   stats_explanation: >-
     Colors the map by the period of the nearest undiscovered field site.
