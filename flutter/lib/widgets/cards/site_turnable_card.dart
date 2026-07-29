@@ -15,24 +15,28 @@ class SiteTurnableCard extends StatefulWidget {
     super.key,
     required this.site,
     this.turnable = true,
+    this.enableDragFlip = true,
     this.autoFlipOnce = false,
     this.autoFlipHoldOnBack = Duration.zero,
     this.titleFontSize = 36,
     this.subtitleFontSize = 10,
     this.overlayHeightFactor = 0.38,
     this.outerPadding = const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+    this.fixedFaceHeight,
     this.mapTileLayerBuilder = CardWorldMap.defaultTileLayerBuilder,
     this.onSiteUpdated,
   });
 
   final SiteSummary site;
   final bool turnable;
+  final bool enableDragFlip;
   final bool autoFlipOnce;
   final Duration autoFlipHoldOnBack;
   final double titleFontSize;
   final double subtitleFontSize;
   final double overlayHeightFactor;
   final EdgeInsets outerPadding;
+  final double? fixedFaceHeight;
   final Widget Function() mapTileLayerBuilder;
   final ValueChanged<SiteSummary>? onSiteUpdated;
 
@@ -80,8 +84,10 @@ class _SiteTurnableCardState extends State<SiteTurnableCard> {
       resetIdentity: _site.siteId,
       borderRadius: DinoCardTheme.borderRadius,
       outerPadding: widget.outerPadding,
+      fixedFaceHeight: widget.fixedFaceHeight,
       decoration: DinoCardTheme.of(context).chromeDecoration(),
       turnable: widget.turnable,
+      enableDragFlip: widget.enableDragFlip,
       autoFlipOnce: widget.autoFlipOnce,
       autoFlipHoldOnBack: widget.autoFlipHoldOnBack,
       front: SiteCardFront(

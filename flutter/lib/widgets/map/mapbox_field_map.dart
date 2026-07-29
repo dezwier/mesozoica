@@ -308,7 +308,7 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
     final map = _map;
     final formation = widget.formationMap;
     if (map == null || !_styleLoaded) return;
-    if (formation == null || !formation.isActive) {
+    if (!widget.mapActive || formation == null || !formation.isActive) {
       _lastFormationSitesRevision = -1;
       await _formationOverlay.clear();
       return;
@@ -487,6 +487,32 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
     }
   }
 
+  /// Hide site / aerial / formation / rotate overlays while shell screens are
+  /// open over the map; restore when the map becomes active again.
+  Future<void> _setMapOverlaysVisible(bool visible) async {
+    if (!visible) {
+      _setRotateOverlayTickerActive(false);
+      if (mounted) {
+        setState(() => _visibleRotateSites = const []);
+      }
+      widget.rotateCardCount?.value = 0;
+      await Future.wait([
+        _annotations?.setRotateModePaused(true) ?? Future<void>.value(),
+        _aerialReconAnnotations?.clear() ?? Future<void>.value(),
+        _formationOverlay.clear(),
+      ]);
+      return;
+    }
+    if (!_ready) return;
+    await _applyRotateMarkerMode(widget.rotateWithHeading);
+    if (!mounted) return;
+    _lastFormationSitesRevision = -1;
+    await Future.wait([
+      _syncAerialMission(),
+      _syncFormationMap(),
+    ]);
+  }
+
   void _syncRotateOverlayFrame() {
     if (!widget.rotateWithHeading || !widget.mapActive || !_ready) return;
     final size = _viewportSize;
@@ -631,7 +657,9 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
     }
     if (oldWidget.mapActive != widget.mapActive ||
         oldWidget.rotateWithHeading != widget.rotateWithHeading) {
-      if (widget.rotateWithHeading && widget.mapActive && _ready) {
+      if (oldWidget.mapActive != widget.mapActive) {
+        unawaited(_setMapOverlaysVisible(widget.mapActive));
+      } else if (widget.rotateWithHeading && widget.mapActive && _ready) {
         _setRotateOverlayTickerActive(true);
       } else {
         _setRotateOverlayTickerActive(false);
@@ -881,7 +909,9 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
     try {
       // Keep rotate mode uncluttered — no scout loops/pucks over FollowPuck.
       // Archive mode never shows recon overlays.
-      if (widget.rotateWithHeading ||
+      // Shell overlays (catalog/tools) keep the map as a clean backdrop.
+      if (!widget.mapActive ||
+          widget.rotateWithHeading ||
           controller == null ||
           !widget.showAerialReconOverlays) {
         await aerial.clear();
@@ -996,9 +1026,12 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
               },
             ),
             // Mode 1 only (north-fixed, not following). Hidden while centered.
-            if (!widget.rotateWithHeading && !widget.followUser && _ready)
+            if (widget.mapActive &&
+                !widget.rotateWithHeading &&
+                !widget.followUser &&
+                _ready)
               const MapCenterCrosshair(),
-            if (widget.rotateWithHeading && _ready)
+            if (widget.mapActive && widget.rotateWithHeading && _ready)
               Positioned.fill(
                 child: MapRotateSiteCardOverlay(
                   visibleSites: _visibleRotateSites,
@@ -1009,7 +1042,7 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
               ),
             // Translucent so mini-card taps still work; detects pinch-out to
             // leave rotate mode (FollowPuck locks Mapbox pinch gestures).
-            if (widget.rotateWithHeading && _ready)
+            if (widget.mapActive && widget.rotateWithHeading && _ready)
               Positioned.fill(
                 child: _RotatePinchZoomOutListener(
                   onZoomOut: widget.onRotatePinchZoomOut,

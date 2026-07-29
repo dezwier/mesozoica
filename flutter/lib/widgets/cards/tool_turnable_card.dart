@@ -21,6 +21,10 @@ class ToolTurnableCard extends StatefulWidget {
     super.key,
     required this.tool,
     this.turnable = true,
+    this.enableDragFlip = true,
+    this.outerPadding =
+        const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+    this.fixedFaceHeight,
     this.titleFontSize = 36,
     this.subtitleFontSize = 10,
     this.overlayHeightFactor = 0.52,
@@ -28,6 +32,9 @@ class ToolTurnableCard extends StatefulWidget {
 
   final ToolSummary tool;
   final bool turnable;
+  final bool enableDragFlip;
+  final EdgeInsets outerPadding;
+  final double? fixedFaceHeight;
   final double titleFontSize;
   final double subtitleFontSize;
   final double overlayHeightFactor;
@@ -183,9 +190,11 @@ class _ToolTurnableCardState extends State<ToolTurnableCard> {
     return TurnableYAxisCard(
       resetIdentity: widget.tool.id,
       borderRadius: DinoCardTheme.borderRadius,
-      outerPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      outerPadding: widget.outerPadding,
+      fixedFaceHeight: widget.fixedFaceHeight,
       decoration: DinoCardTheme.of(context).chromeDecoration(),
       turnable: widget.turnable,
+      enableDragFlip: widget.enableDragFlip,
       front: ToolCardFront(
         tool: widget.tool,
         titleFontSize: widget.titleFontSize,

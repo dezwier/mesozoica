@@ -13,6 +13,10 @@ class DinosaurTurnableCard extends StatelessWidget {
     this.showFrontFacts = true,
     this.showArticleButton,
     this.turnable = true,
+    this.enableDragFlip = true,
+    this.outerPadding =
+        const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+    this.fixedFaceHeight,
     this.titleFontSize = 36,
     this.subtitleFontSize = 10,
     this.overlayHeightFactor = 0.52,
@@ -22,6 +26,9 @@ class DinosaurTurnableCard extends StatelessWidget {
   final bool showFrontFacts;
   final bool? showArticleButton;
   final bool turnable;
+  final bool enableDragFlip;
+  final EdgeInsets outerPadding;
+  final double? fixedFaceHeight;
   final double titleFontSize;
   final double subtitleFontSize;
   final double overlayHeightFactor;
@@ -31,9 +38,11 @@ class DinosaurTurnableCard extends StatelessWidget {
     return TurnableYAxisCard(
       resetIdentity: dinosaur.id,
       borderRadius: DinoCardTheme.borderRadius,
-      outerPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      outerPadding: outerPadding,
+      fixedFaceHeight: fixedFaceHeight,
       decoration: DinoCardTheme.of(context).chromeDecoration(),
       turnable: turnable,
+      enableDragFlip: enableDragFlip,
       front: DinosaurCardFront(
         dinosaur: dinosaur,
         showFacts: showFrontFacts,

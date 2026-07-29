@@ -47,9 +47,13 @@ class MapScreen extends StatefulWidget {
   const MapScreen({
     super.key,
     this.isActive = false,
+    this.showControls = true,
   });
 
   final bool isActive;
+
+  /// When false, hides zoom / location / filter FABs (e.g. Catalog/Tools overlay).
+  final bool showControls;
 
   @override
   State<MapScreen> createState() => _MapScreenState();
@@ -355,7 +359,7 @@ class _MapScreenState extends State<MapScreen>
                   ),
                 ),
               ),
-            if (!aerialDrawMode)
+            if (!aerialDrawMode && widget.showControls)
               MapControlButtons(
                 currentZoom: _zoomLevel,
                 onZoomChanged: _onZoomChanged,
@@ -439,20 +443,20 @@ class _MapScreenState extends State<MapScreen>
                 );
               },
             ),
-            if (aerialDrawMode)
+            if (aerialDrawMode && widget.isActive)
               AerialMissionDrawOverlay(
                 camera: _mapboxCamera,
                 currentZoom: _zoomLevel,
                 onZoomChanged: _onZoomChanged,
               )
-            else if (aerialRecon.focusedMission != null)
+            else if (widget.isActive && aerialRecon.focusedMission != null)
               const AerialMissionFocusOverlay(),
-            if (!aerialDrawMode && guidance.isActive)
+            if (widget.isActive && !aerialDrawMode && guidance.isActive)
               GuidanceOverlay(
                 rotateWithHeading: _rotateMap,
                 followUser: _followUser || _rotateMap,
               ),
-            if (!aerialDrawMode && formationMap.isActive)
+            if (widget.isActive && !aerialDrawMode && formationMap.isActive)
               const FormationMapHud(),
           ],
         );

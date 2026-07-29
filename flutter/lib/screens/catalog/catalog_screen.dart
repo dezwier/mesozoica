@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../widgets/common/chrome_action_button.dart';
 import '../dino/dino_screen.dart';
 import '../fossil/fossil_screen.dart';
 import '../site/site_screen.dart';
@@ -16,43 +17,21 @@ class CatalogScreen extends StatefulWidget {
   State<CatalogScreen> createState() => CatalogScreenState();
 }
 
-class CatalogScreenState extends State<CatalogScreen>
-    with TickerProviderStateMixin {
+class CatalogScreenState extends State<CatalogScreen> {
   static const _siteTabIndex = 0;
   static const _fossilTabIndex = 1;
   static const _dinoTabIndex = 2;
 
-  late final TabController _tabController;
+  static const _categoryButtonHeight = 44.0;
+  static const _categoryGap = 6.0;
+
+  int _index = _dinoTabIndex;
   final _siteKey = GlobalKey<SiteScreenState>();
   final _fossilKey = GlobalKey<FossilScreenState>();
   final _dinoKey = GlobalKey<DinoScreenState>();
 
-  @override
-  void initState() {
-    super.initState();
-    _tabController = TabController(
-      length: 3,
-      vsync: this,
-      initialIndex: _dinoTabIndex,
-    );
-    _tabController.addListener(_onTabChanged);
-  }
-
-  void _onTabChanged() {
-    if (_tabController.indexIsChanging) return;
-    setState(() {});
-  }
-
-  @override
-  void dispose() {
-    _tabController
-      ..removeListener(_onTabChanged)
-      ..dispose();
-    super.dispose();
-  }
-
   void scrollActiveTabToTop() {
-    switch (_tabController.index) {
+    switch (_index) {
       case _siteTabIndex:
         _siteKey.currentState?.scrollToTop();
       case _fossilTabIndex:
@@ -62,76 +41,77 @@ class CatalogScreenState extends State<CatalogScreen>
     }
   }
 
+  void _selectCategory(int index) {
+    if (_index == index) return;
+    setState(() => _index = index);
+  }
+
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final activeTabIndex = _tabController.index;
-    final showActiveTabContent =
-        widget.isActive && !_tabController.indexIsChanging;
+    final showActiveTabContent = widget.isActive;
 
-    return Column(
+    // Stack category buttons over the carousel so Cover Flow gets the same
+    // viewport height as Tools (buttons no longer shrink the card area).
+    return Stack(
+      fit: StackFit.expand,
       children: [
-        TabBar(
-          controller: _tabController,
-          labelColor: colorScheme.primary,
-          unselectedLabelColor: colorScheme.onSurface.withValues(alpha: 0.6),
-          indicatorColor: colorScheme.primary,
-          tabs: const [
-            Tab(text: 'Site'),
-            Tab(text: 'Fossil'),
-            Tab(text: 'Dinosaur'),
+        IndexedStack(
+          index: _index,
+          children: [
+            SiteScreen(
+              key: _siteKey,
+              isActive: showActiveTabContent && _index == _siteTabIndex,
+            ),
+            FossilScreen(
+              key: _fossilKey,
+              isActive: showActiveTabContent && _index == _fossilTabIndex,
+            ),
+            DinoScreen(
+              key: _dinoKey,
+              isActive: showActiveTabContent && _index == _dinoTabIndex,
+            ),
           ],
         ),
-        Expanded(
-          child: TabBarView(
-            controller: _tabController,
-            children: [
-              _CatalogTab(
-                child: SiteScreen(
-                  key: _siteKey,
-                  isActive:
-                      showActiveTabContent && activeTabIndex == _siteTabIndex,
-                ),
+        Positioned(
+          top: 0,
+          left: 0,
+          right: 0,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+            child: SizedBox(
+              height: _categoryButtonHeight,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(
+                    child: ChromeActionButton(
+                      label: 'Site',
+                      selected: _index == _siteTabIndex,
+                      onPressed: () => _selectCategory(_siteTabIndex),
+                    ),
+                  ),
+                  const SizedBox(width: _categoryGap),
+                  Expanded(
+                    child: ChromeActionButton(
+                      label: 'Fossil',
+                      selected: _index == _fossilTabIndex,
+                      onPressed: () => _selectCategory(_fossilTabIndex),
+                    ),
+                  ),
+                  const SizedBox(width: _categoryGap),
+                  Expanded(
+                    child: ChromeActionButton(
+                      label: 'Dinosaur',
+                      selected: _index == _dinoTabIndex,
+                      onPressed: () => _selectCategory(_dinoTabIndex),
+                    ),
+                  ),
+                ],
               ),
-              _CatalogTab(
-                child: FossilScreen(
-                  key: _fossilKey,
-                  isActive:
-                      showActiveTabContent && activeTabIndex == _fossilTabIndex,
-                ),
-              ),
-              _CatalogTab(
-                child: DinoScreen(
-                  key: _dinoKey,
-                  isActive:
-                      showActiveTabContent && activeTabIndex == _dinoTabIndex,
-                ),
-              ),
-            ],
+            ),
           ),
         ),
       ],
     );
-  }
-}
-
-class _CatalogTab extends StatefulWidget {
-  const _CatalogTab({required this.child});
-
-  final Widget child;
-
-  @override
-  State<_CatalogTab> createState() => _CatalogTabState();
-}
-
-class _CatalogTabState extends State<_CatalogTab>
-    with AutomaticKeepAliveClientMixin {
-  @override
-  bool get wantKeepAlive => true;
-
-  @override
-  Widget build(BuildContext context) {
-    super.build(context);
-    return widget.child;
   }
 }

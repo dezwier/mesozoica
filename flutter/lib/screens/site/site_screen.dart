@@ -54,10 +54,15 @@ class SiteScreenState extends State<SiteScreen> {
       isActive: widget.isActive,
       isInitialLoading: (catalog) =>
           (catalog.loading || catalog.isLoadingMore) && catalog.items.isEmpty,
-      itemBuilder: (context, site) => SiteTurnableCard(
-        site: site,
-        onSiteUpdated: context.read<SiteCatalogController>().replaceSite,
-      ),
+      itemBuilder: (context, site, {required isFocused, required fixedFaceHeight}) =>
+          SiteTurnableCard(
+            site: site,
+            turnable: isFocused,
+            enableDragFlip: false,
+            outerPadding: EdgeInsets.zero,
+            fixedFaceHeight: fixedFaceHeight,
+            onSiteUpdated: context.read<SiteCatalogController>().replaceSite,
+          ),
       emptyMessageBuilder: (context, catalog) {
         final isField = context.watch<CatalogModeController>().isField;
         if (catalog.hasActiveFilters) return 'No sites match these filters.';

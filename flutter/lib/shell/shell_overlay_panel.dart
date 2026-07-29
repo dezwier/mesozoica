@@ -3,18 +3,27 @@ import 'package:flutter/material.dart';
 /// Fullscreen panel that hosts Profile, Catalog, or Tools over the map.
 ///
 /// Dismissal sits at bottom center over the content (no top chrome).
+///
+/// When [opaque] is false, the map stays visible under a dim scrim (Catalog /
+/// Tools). Profile keeps the opaque scaffold fill.
 class ShellOverlayPanel extends StatelessWidget {
   const ShellOverlayPanel({
     super.key,
     required this.onClose,
     required this.child,
+    this.opaque = true,
   });
 
   final VoidCallback onClose;
   final Widget child;
 
+  /// When true, fills with [ThemeData.scaffoldBackgroundColor]. When false,
+  /// uses a translucent black scrim so the map shows through.
+  final bool opaque;
+
   static const double dismissSize = 64;
   static const double dismissBottomPadding = 12;
+  static const Color _scrimColor = Color(0x8A000000); // ~black54
 
   /// Scroll padding so list content can clear the dismiss button.
   static double contentBottomInset(BuildContext context) =>
@@ -29,10 +38,14 @@ class ShellOverlayPanel extends StatelessWidget {
     final scheme = theme.colorScheme;
 
     return Material(
-      color: theme.scaffoldBackgroundColor,
+      color: opaque ? theme.scaffoldBackgroundColor : Colors.transparent,
       child: Stack(
         fit: StackFit.expand,
         children: [
+          if (!opaque)
+            const Positioned.fill(
+              child: ColoredBox(color: _scrimColor),
+            ),
           SafeArea(
             bottom: false,
             child: child,

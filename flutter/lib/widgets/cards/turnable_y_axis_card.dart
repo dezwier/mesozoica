@@ -20,6 +20,7 @@ class TurnableYAxisCard extends StatefulWidget {
     this.prelayoutFacesForHeight = true,
     this.decoration,
     this.turnable = true,
+    this.enableDragFlip = true,
     this.autoFlipOnce = false,
     this.autoFlipHoldOnBack = Duration.zero,
   });
@@ -33,6 +34,8 @@ class TurnableYAxisCard extends StatefulWidget {
   final bool prelayoutFacesForHeight;
   final BoxDecoration? decoration;
   final bool turnable;
+  /// When false, only tap left/right halves flip (catalog Cover Flow).
+  final bool enableDragFlip;
   final bool autoFlipOnce;
   /// After [autoFlipOnce] reaches the back, wait this long then flip to front.
   final Duration autoFlipHoldOnBack;
@@ -61,9 +64,15 @@ class _TurnableYAxisCardState extends State<TurnableYAxisCard>
 
   double get _rotationAngle => _flipController.value;
 
+  /// Keeps both faces mounted so images do not remount (and re-fade) on flip.
+  /// Back is deferred until the card has been turnable at least once so Cover
+  /// Flow side cards do not fire back-face network fetches.
+  bool _mountBack = false;
+
   @override
   void initState() {
     super.initState();
+    _mountBack = widget.turnable;
     _flipController = AnimationController.unbounded(
       vsync: this,
       value: 0,
@@ -103,6 +112,9 @@ class _TurnableYAxisCardState extends State<TurnableYAxisCard>
   @override
   void didUpdateWidget(covariant TurnableYAxisCard oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (widget.turnable) {
+      _mountBack = true;
+    }
     if (widget.resetIdentity != oldWidget.resetIdentity) {
       _flipController.value = 0;
       _lastTapTargetAngle = 0;
@@ -225,6 +237,7 @@ class _TurnableYAxisCardState extends State<TurnableYAxisCard>
   }
 
   /// Keeps both faces mounted so images do not remount (and re-fade) on flip.
+  /// Side cards in Cover Flow stay front-only until first focused ([_mountBack]).
   Widget _buildFaces({required bool isBackVisible}) {
     return Stack(
       alignment: Alignment.topCenter,
@@ -239,20 +252,21 @@ class _TurnableYAxisCardState extends State<TurnableYAxisCard>
             ),
           ),
         ),
-        ExcludeSemantics(
-          excluding: !isBackVisible,
-          child: IgnorePointer(
-            ignoring: !isBackVisible,
-            child: Opacity(
-              opacity: isBackVisible ? 1 : 0,
-              child: Transform(
-                alignment: Alignment.center,
-                transform: Matrix4.identity()..rotateY(math.pi),
-                child: _faceWithGlare(widget.back),
+        if (_mountBack)
+          ExcludeSemantics(
+            excluding: !isBackVisible,
+            child: IgnorePointer(
+              ignoring: !isBackVisible,
+              child: Opacity(
+                opacity: isBackVisible ? 1 : 0,
+                child: Transform(
+                  alignment: Alignment.center,
+                  transform: Matrix4.identity()..rotateY(math.pi),
+                  child: _faceWithGlare(widget.back),
+                ),
               ),
             ),
           ),
-        ),
       ],
     );
   }
@@ -330,10 +344,14 @@ class _TurnableYAxisCardState extends State<TurnableYAxisCard>
               final isLeftHalf = tapX <= (_cardWidth / 2);
               _flipByOneFace(turnLeft: isLeftHalf);
             },
-            onHorizontalDragStart: _onHorizontalDragStart,
-            onHorizontalDragUpdate: _onHorizontalDragUpdate,
-            onHorizontalDragEnd: _onHorizontalDragEnd,
-            onHorizontalDragCancel: _onHorizontalDragCancel,
+            onHorizontalDragStart:
+                widget.enableDragFlip ? _onHorizontalDragStart : null,
+            onHorizontalDragUpdate:
+                widget.enableDragFlip ? _onHorizontalDragUpdate : null,
+            onHorizontalDragEnd:
+                widget.enableDragFlip ? _onHorizontalDragEnd : null,
+            onHorizontalDragCancel:
+                widget.enableDragFlip ? _onHorizontalDragCancel : null,
             child: cardContent,
           )
         : cardContent;

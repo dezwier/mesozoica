@@ -6,12 +6,13 @@ import 'package:provider/provider.dart';
 import '../../controllers/catalog_controller.dart';
 import '../../shell/map_chrome_insets.dart';
 import '../../shell/shell_overlay_panel.dart';
+import '../../theme/dino_card_theme.dart';
+import 'cover_flow_carousel.dart';
 
-/// Generic scroll/paginate/refresh host shared by the dino, fossil, site,
-/// and tool catalog screens. Each screen supplies its card [itemBuilder],
-/// empty-state copy, and floating actions (filter FABs, etc); this widget
-/// owns the loading-more scroll listener and the loading/error/empty states
-/// that were otherwise duplicated across those four screens.
+/// Generic Cover Flow / paginate / refresh host shared by the dino, fossil,
+/// site, and tool catalog screens. Each screen supplies its card
+/// [itemBuilder], empty-state copy, and floating actions; this widget owns
+/// load-more paging and loading/error/empty states.
 class CatalogListScreen<C extends CatalogController<T>, T>
     extends StatefulWidget {
   const CatalogListScreen({
@@ -24,7 +25,14 @@ class CatalogListScreen<C extends CatalogController<T>, T>
   });
 
   final bool isActive;
-  final Widget Function(BuildContext context, T item) itemBuilder;
+
+  /// [isFocused] is true for the centered Cover Flow card only.
+  final Widget Function(
+    BuildContext context,
+    T item, {
+    required bool isFocused,
+    required double? fixedFaceHeight,
+  }) itemBuilder;
   final String Function(BuildContext context, C catalog) emptyMessageBuilder;
 
   /// Full-screen spinner condition. Defaults to
@@ -41,13 +49,13 @@ class CatalogListScreen<C extends CatalogController<T>, T>
 
 class CatalogListScreenState<C extends CatalogController<T>, T>
     extends State<CatalogListScreen<C, T>> {
-  final ScrollController _scrollController = ScrollController();
-  Timer? _scrollDebounceTimer;
+  final GlobalKey<CoverFlowCarouselState> _coverFlowKey =
+      GlobalKey<CoverFlowCarouselState>();
+  Timer? _pageDebounceTimer;
 
   @override
   void initState() {
     super.initState();
-    _scrollController.addListener(_onScroll);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       context.read<C>().refresh();
@@ -64,28 +72,21 @@ class CatalogListScreenState<C extends CatalogController<T>, T>
 
   @override
   void dispose() {
-    _scrollDebounceTimer?.cancel();
-    _scrollController
-      ..removeListener(_onScroll)
-      ..dispose();
+    _pageDebounceTimer?.cancel();
     super.dispose();
   }
 
   void scrollToTop() {
-    if (!_scrollController.hasClients) return;
-    _scrollController.animateTo(
-      0,
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeOut,
-    );
+    _coverFlowKey.currentState?.animateToFirst();
   }
 
-  void _onScroll() {
-    _scrollDebounceTimer?.cancel();
-    _scrollDebounceTimer = Timer(const Duration(milliseconds: 200), () {
-      if (!_scrollController.hasClients) return;
-      final position = _scrollController.position;
-      if (position.pixels >= position.maxScrollExtent * 0.8) {
+  void _onPageChanged(int page, C catalog) {
+    _pageDebounceTimer?.cancel();
+    _pageDebounceTimer = Timer(const Duration(milliseconds: 200), () {
+      if (!mounted) return;
+      final count = catalog.items.length;
+      if (count == 0) return;
+      if (page >= count * 0.8) {
         context.read<C>().loadMore();
       }
     });
@@ -113,6 +114,11 @@ class CatalogListScreenState<C extends CatalogController<T>, T>
   Widget _buildBody(BuildContext context, C catalog) {
     final isInitialLoading = widget.isInitialLoading?.call(catalog) ??
         (catalog.loading && catalog.items.isEmpty);
+    // Light copy for readability on the dimmed map scrim.
+    final overlayTextStyle = Theme.of(context).textTheme.bodyLarge?.copyWith(
+          color: const Color(0xFFF5F5F5),
+        );
+
     if (isInitialLoading) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -133,7 +139,7 @@ class CatalogListScreenState<C extends CatalogController<T>, T>
               Text(
                 catalog.error!,
                 textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.bodyLarge,
+                style: overlayTextStyle,
               ),
               const SizedBox(height: 16),
               FilledButton.icon(
@@ -151,32 +157,63 @@ class CatalogListScreenState<C extends CatalogController<T>, T>
       return Center(
         child: Text(
           widget.emptyMessageBuilder(context, catalog),
-          style: Theme.of(context).textTheme.bodyLarge,
+          textAlign: TextAlign.center,
+          style: overlayTextStyle,
         ),
       );
     }
 
-    return RefreshIndicator(
-      onRefresh: catalog.refresh,
-      child: ListView.builder(
-        controller: _scrollController,
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: EdgeInsets.only(
-          top: 8,
-          bottom: ShellOverlayPanel.contentBottomInset(context),
-        ),
-        itemCount: catalog.items.length + (catalog.isLoadingMore ? 1 : 0),
-        itemBuilder: (context, index) {
-          if (index >= catalog.items.length) {
-            return const Padding(
-              padding: EdgeInsets.symmetric(vertical: 24),
-              child: Center(child: CircularProgressIndicator()),
-            );
-          }
+    final bottomInset = ShellOverlayPanel.contentBottomInset(context);
 
-          return widget.itemBuilder(context, catalog.items[index]);
-        },
-      ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // Fit the card face in the viewport; Cover Flow centers the deck.
+        final maxFaceWidth = constraints.maxWidth * 0.85;
+        final maxFaceHeight = (constraints.maxHeight - 8).clamp(120.0, 2000.0);
+        final heightFromWidth =
+            maxFaceWidth / DinoCardTheme.cardAspectRatio;
+        final faceHeight = heightFromWidth <= maxFaceHeight
+            ? heightFromWidth
+            : maxFaceHeight;
+        final faceWidth = faceHeight * DinoCardTheme.cardAspectRatio;
+        final viewportFraction =
+            (faceWidth / constraints.maxWidth).clamp(0.55, 0.85);
+
+        return RefreshIndicator(
+          onRefresh: catalog.refresh,
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(
+              parent: BouncingScrollPhysics(),
+            ),
+            child: SizedBox(
+              height: constraints.maxHeight,
+              child: CoverFlowCarousel(
+                key: _coverFlowKey,
+                itemCount: catalog.items.length +
+                    (catalog.isLoadingMore ? 1 : 0),
+                viewportFraction: viewportFraction,
+                onPageChanged: (page) => _onPageChanged(page, catalog),
+                itemBuilder: (context, index, isFocused) {
+                  if (index >= catalog.items.length) {
+                    return Padding(
+                      padding: EdgeInsets.only(bottom: bottomInset * 0.35),
+                      child: const Center(
+                        child: CircularProgressIndicator(),
+                      ),
+                    );
+                  }
+                  return widget.itemBuilder(
+                    context,
+                    catalog.items[index],
+                    isFocused: isFocused,
+                    fixedFaceHeight: faceHeight,
+                  );
+                },
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }

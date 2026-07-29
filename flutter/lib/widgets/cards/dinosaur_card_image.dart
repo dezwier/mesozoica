@@ -13,7 +13,7 @@ class DinosaurCardImage extends StatelessWidget {
   final String? imageUrl;
 
   static const _curatedMediaPath = '/media/dinosaurs/';
-  static const _fadeInDuration = Duration(milliseconds: 500);
+  static const _fadeInDuration = Duration.zero;
 
   static bool isCuratedCardImageUrl(String? url) {
     if (url == null || url.trim().isEmpty) {

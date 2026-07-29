@@ -628,12 +628,16 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
               body: Stack(
                 fit: StackFit.expand,
                 children: [
-                  MapScreen(isActive: !_anyOverlayOpen),
+                  MapScreen(
+                    isActive: !_anyOverlayOpen,
+                    showControls: !_catalogOpen && !_toolsOpen,
+                  ),
                   Offstage(
                     offstage: !_catalogOpen,
                     child: TickerMode(
                       enabled: _catalogOpen,
                       child: ShellOverlayPanel(
+                        opaque: false,
                         onClose: _closeOverlays,
                         child: CatalogScreen(
                           key: _catalogScreenKey,
@@ -657,6 +661,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
                     child: TickerMode(
                       enabled: _toolsOpen,
                       child: ShellOverlayPanel(
+                        opaque: false,
                         onClose: _closeOverlays,
                         child: ToolScreen(
                           key: _toolScreenKey,

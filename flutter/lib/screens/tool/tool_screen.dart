@@ -38,7 +38,14 @@ class ToolScreenState extends State<ToolScreen> {
     return CatalogListScreen<ToolCatalogController, ToolSummary>(
       key: _listKey,
       isActive: widget.isActive,
-      itemBuilder: (context, tool) => ToolTurnableCard(tool: tool),
+      itemBuilder: (context, tool, {required isFocused, required fixedFaceHeight}) =>
+          ToolTurnableCard(
+            tool: tool,
+            turnable: isFocused,
+            enableDragFlip: false,
+            outerPadding: EdgeInsets.zero,
+            fixedFaceHeight: fixedFaceHeight,
+          ),
       emptyMessageBuilder: (context, catalog) {
         if (catalog.mode == ToolScreenMode.catalog) {
           return catalog.hasActiveFilters

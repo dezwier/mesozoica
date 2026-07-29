@@ -46,7 +46,15 @@ class FossilScreenState extends State<FossilScreen> {
     return CatalogListScreen<FossilCatalogController, FossilSummary>(
       key: _listKey,
       isActive: widget.isActive,
-      itemBuilder: (context, fossil) => FossilTurnableCard(fossil: fossil),
+      itemBuilder: (context, fossil, {required isFocused, required fixedFaceHeight}) =>
+          FossilTurnableCard(
+            key: ValueKey<int>(fossil.id),
+            fossil: fossil,
+            turnable: isFocused,
+            enableDragFlip: false,
+            outerPadding: EdgeInsets.zero,
+            fixedFaceHeight: fixedFaceHeight,
+          ),
       emptyMessageBuilder: (context, catalog) => catalog.hasActiveFilters
           ? 'No fossils match these filters.'
           : 'No fossils in the catalog yet.',

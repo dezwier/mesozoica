@@ -44,8 +44,14 @@ class DinoScreenState extends State<DinoScreen> {
     return CatalogListScreen<DinosaurCatalogController, DinosaurSummary>(
       key: _listKey,
       isActive: widget.isActive,
-      itemBuilder: (context, dinosaur) =>
-          DinosaurTurnableCard(dinosaur: dinosaur),
+      itemBuilder: (context, dinosaur, {required isFocused, required fixedFaceHeight}) =>
+          DinosaurTurnableCard(
+            dinosaur: dinosaur,
+            turnable: isFocused,
+            enableDragFlip: false,
+            outerPadding: EdgeInsets.zero,
+            fixedFaceHeight: fixedFaceHeight,
+          ),
       emptyMessageBuilder: (context, catalog) {
         if (catalog.mode == DinoScreenMode.inventory) {
           return catalog.hasActiveFilters
