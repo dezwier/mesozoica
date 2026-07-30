@@ -8,6 +8,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
+from sqlalchemy.exc import TimeoutError as SATimeoutError
 
 from app.api.v1 import api_router
 from app.core.config import settings
@@ -59,6 +60,25 @@ def _register_exception_handlers(app: FastAPI) -> None:
         return JSONResponse(
             status_code=status_code,
             content={"detail": str(exc), "type": type(exc).__name__},
+        )
+
+    @app.exception_handler(SATimeoutError)
+    async def sqlalchemy_timeout_handler(request: Request, exc: SATimeoutError):
+        logger.error(
+            "DB pool exhausted on %s %s: %s",
+            request.method,
+            request.url.path,
+            exc,
+        )
+        return JSONResponse(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            content={
+                "detail": (
+                    "Database connection pool exhausted — too many concurrent "
+                    "requests. Wait a moment and try again."
+                ),
+                "type": "DatabasePoolTimeout",
+            },
         )
 
     @app.exception_handler(Exception)

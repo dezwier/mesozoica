@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
@@ -77,13 +78,23 @@ class SiteService {
     if (kDebugMode) {
       debugPrint('SiteService GET $uri');
     }
-    final response = await ApiClient.instance
-        .sendGet(uri, client: _client, headers: await _headers())
-        .timeout(const Duration(seconds: 15));
+    final http.Response response;
+    try {
+      response = await ApiClient.instance
+          .sendGet(uri, client: _client, headers: await _headers())
+          .timeout(const Duration(seconds: 15));
+    } on TimeoutException {
+      throw const SiteServiceException(
+        'Timed out loading sites after 15s — server may be overloaded. Try again.',
+      );
+    }
 
     if (response.statusCode != 200) {
+      final detail = _errorDetail(response.body);
       throw SiteServiceException(
-        'Failed to load sites (${response.statusCode})',
+        detail != null && detail.isNotEmpty
+            ? 'Failed to load sites (${response.statusCode}): $detail'
+            : 'Failed to load sites (${response.statusCode})',
       );
     }
 

@@ -20,6 +20,7 @@ from app.services.site_service.geo_utils import haversine_km
 from app.services.site_service.status_join import (
     latest_user_site_join_condition,
     latest_user_site_subquery,
+    latest_user_sites_for_ids,
 )
 from app.services.site_service.summary import SiteRow
 from app.services.site_type_image_service.sync import CURATED_MEDIA_PATH
@@ -34,6 +35,9 @@ SortOption = Literal[
 _MAX_SEED_LEN = 64
 MESOZOIC_YOUNGER_MA = 66.0
 MESOZOIC_OLDER_MA = 252.0
+# Probe one past Flutter MapConfig.showAllMaxSites so dense viewports fail
+# fast without counting the entire bbox.
+_SHOW_ALL_COUNT_PROBE = 1001
 
 _LatestUserSite = aliased(UserSite)
 
@@ -116,17 +120,32 @@ def list_sites(
         bbox=bbox,
     )
 
-    total = session.exec(
-        select(sqlmodel_func.count()).select_from(filtered.subquery())
-    ).one()
+    # Never COUNT over a global user_site aggregation — status is attached to
+    # the page rows only. For admin show-all + bbox, probe at most
+    # _SHOW_ALL_COUNT_PROBE ids so dense tiles fail before a full scan.
+    filtered_subq = filtered.subquery()
+    if show_all and bbox is not None:
+        probe_ids = session.exec(
+            select(filtered_subq.c.site_id).limit(_SHOW_ALL_COUNT_PROBE)
+        ).all()
+        total = len(probe_ids)
+        if total >= _SHOW_ALL_COUNT_PROBE:
+            # Client will refuse (MapConfig.showAllMaxSites); skip the page fetch.
+            return [], total
+    else:
+        total = int(
+            session.exec(
+                select(sqlmodel_func.count()).select_from(filtered_subq)
+            ).one()
+        )
 
     if site_id_min is not None:
         if sort != "name":
             raise ValidationError("site_id_min requires sort=name")
-        rows = session.exec(
+        pairs = session.exec(
             filtered.order_by(col(Site.site_id)).limit(capped_limit)
         ).all()
-        return [_row_from_tuple(row) for row in rows], int(total)
+        return _site_rows_from_pairs(session, pairs), total
 
     if sort == "random":
         normalized_seed = (seed or "").strip()
@@ -140,7 +159,7 @@ def list_sites(
             offset=capped_offset,
             limit=capped_limit,
         )
-        return rows, int(total)
+        return rows, total
 
     if sort == "distance":
         assert origin_lat is not None and origin_lon is not None
@@ -152,7 +171,7 @@ def list_sites(
             offset=capped_offset,
             limit=capped_limit,
         )
-        return rows, int(total)
+        return rows, total
 
     if sort in ("discovered_at", "discovered_at_desc"):
         assert discovery_viewer_id is not None
@@ -164,9 +183,9 @@ def list_sites(
             offset=capped_offset,
             limit=capped_limit,
         )
-        return rows, int(total)
+        return rows, total
 
-    rows = session.exec(
+    pairs = session.exec(
         filtered.order_by(
             func.coalesce(Site.formation, ""),
             Site.site_id,
@@ -174,7 +193,7 @@ def list_sites(
         .offset(capped_offset)
         .limit(capped_limit)
     ).all()
-    return [_row_from_tuple(row) for row in rows], int(total)
+    return _site_rows_from_pairs(session, pairs), total
 
 
 def get_site_by_id(
@@ -347,15 +366,12 @@ def _filtered_select(
     require_coordinates: bool = False,
     bbox: tuple[float, float, float, float] | None = None,
 ):
-    max_ts = latest_user_site_subquery()
+    # Site + SiteType only. Latest user_site status is loaded for the page of
+    # rows after fetch — joining a global user_site aggregation here used to
+    # hold pool connections for tens of seconds on dense field tiles.
     stmt = (
-        select(Site, SiteType, _LatestUserSite)
+        select(Site, SiteType)
         .outerjoin(SiteType, col(Site.site_type_id) == col(SiteType.id))
-        .outerjoin(max_ts, col(Site.site_id) == max_ts.c.site_id)
-        .outerjoin(
-            _LatestUserSite,
-            latest_user_site_join_condition(_LatestUserSite, max_ts),
-        )
         .where(col(Site.data_source) == data_source)
     )
     if (
@@ -442,18 +458,18 @@ def _list_sites_random(
     dialect_name = session.get_bind().dialect.name
     if dialect_name == "postgresql":
         order = func.md5(func.concat(Site.site_id, seed))
-        rows = session.exec(
+        pairs = session.exec(
             filtered.order_by(order).offset(offset).limit(limit)
         ).all()
-        return [_row_from_tuple(row) for row in rows]
+        return _site_rows_from_pairs(session, pairs)
 
-    all_rows = session.exec(filtered).all()
-    all_rows.sort(
+    all_pairs = session.exec(filtered).all()
+    all_pairs.sort(
         key=lambda row: hashlib.md5(
             f"{row[0].site_id}{seed}".encode()
         ).hexdigest()
     )
-    return [_row_from_tuple(row) for row in all_rows[offset : offset + limit]]
+    return _site_rows_from_pairs(session, all_pairs[offset : offset + limit])
 
 
 def _list_sites_by_distance(
@@ -465,7 +481,7 @@ def _list_sites_by_distance(
     offset: int,
     limit: int,
 ) -> list[SiteRow]:
-    all_rows = session.exec(filtered).all()
+    all_pairs = session.exec(filtered).all()
 
     def distance_key(row: tuple) -> tuple[float, int]:
         site = row[0]
@@ -474,8 +490,8 @@ def _list_sites_by_distance(
         )
         return (dist, int(site.site_id))
 
-    all_rows.sort(key=distance_key)
-    return [_row_from_tuple(row) for row in all_rows[offset : offset + limit]]
+    all_pairs.sort(key=distance_key)
+    return _site_rows_from_pairs(session, all_pairs[offset : offset + limit])
 
 
 def _list_sites_by_discovered_at(
@@ -487,8 +503,8 @@ def _list_sites_by_discovered_at(
     offset: int,
     limit: int,
 ) -> list[SiteRow]:
-    all_rows = session.exec(filtered).all()
-    site_ids = [int(row[0].site_id) for row in all_rows]
+    all_pairs = session.exec(filtered).all()
+    site_ids = [int(row[0].site_id) for row in all_pairs]
     timestamps: dict[int, datetime] = {}
     if site_ids:
         links = session.exec(
@@ -514,8 +530,25 @@ def _list_sites_by_discovered_at(
             return (1 if missing else 0, -epoch, site_id)
         return (1 if missing else 0, epoch, site_id)
 
-    all_rows.sort(key=sort_key)
-    return [_row_from_tuple(row) for row in all_rows[offset : offset + limit]]
+    all_pairs.sort(key=sort_key)
+    return _site_rows_from_pairs(session, all_pairs[offset : offset + limit])
+
+
+def _site_rows_from_pairs(session: Session, pairs: list) -> list[SiteRow]:
+    """Attach latest user_site status for a page of (Site, SiteType) rows."""
+    site_ids = [int(site.site_id) for site, _site_type in pairs]
+    latest_by_id = latest_user_sites_for_ids(session, site_ids)
+    rows: list[SiteRow] = []
+    for site, site_type in pairs:
+        latest = latest_by_id.get(int(site.site_id))
+        if latest is not None:
+            status_value = role_to_status(latest.role)
+        elif site.data_source == DATA_SOURCE_FIELD:
+            status_value = role_to_status(None)
+        else:
+            status_value = None
+        rows.append(SiteRow(site=site, site_type=site_type, status=status_value))
+    return rows
 
 
 def _row_from_tuple(row: tuple) -> SiteRow:

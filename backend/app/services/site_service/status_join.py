@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from sqlalchemy import and_, func
-from sqlmodel import col, select
+from sqlmodel import Session, col, select
 
 from app.models.user_site import UserSite
 
@@ -26,3 +26,35 @@ def latest_user_site_join_condition(latest_user_site: type[UserSite], max_ts_sub
         col(latest_user_site.site_id) == max_ts_subq.c.site_id,
         col(latest_user_site.timestamp) == max_ts_subq.c.max_ts,
     )
+
+
+def latest_user_sites_for_ids(
+    session: Session, site_ids: list[int]
+) -> dict[int, UserSite]:
+    """Latest ``user_site`` row per site, scoped to ``site_ids`` only.
+
+    Prefer this over [latest_user_site_subquery] for list pages: aggregating
+    the full ``user_site`` table on every request saturates the DB pool when
+    field density is high (admin show-all viewport).
+    """
+    if not site_ids:
+        return {}
+    max_ts = (
+        select(
+            col(UserSite.site_id).label("site_id"),
+            func.max(col(UserSite.timestamp)).label("max_ts"),
+        )
+        .where(col(UserSite.site_id).in_(site_ids))
+        .group_by(col(UserSite.site_id))
+        .subquery()
+    )
+    rows = session.exec(
+        select(UserSite).join(
+            max_ts,
+            and_(
+                col(UserSite.site_id) == max_ts.c.site_id,
+                col(UserSite.timestamp) == max_ts.c.max_ts,
+            ),
+        )
+    ).all()
+    return {int(row.site_id): row for row in rows}

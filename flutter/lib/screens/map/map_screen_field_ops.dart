@@ -11,11 +11,15 @@ mixin _MapScreenFieldOpsMixin on State<MapScreen>, _MapScreenCameraMixin {
     _scanBannerTimer?.cancel();
   }
 
-  void _showScanBanner(String message, {bool autoDismiss = true}) {
+  void _showScanBanner(
+    String message, {
+    bool autoDismiss = true,
+    Duration duration = const Duration(seconds: 4),
+  }) {
     _scanBannerTimer?.cancel();
     setState(() => _scanBannerMessage = message);
     if (!autoDismiss) return;
-    _scanBannerTimer = Timer(const Duration(seconds: 4), () {
+    _scanBannerTimer = Timer(duration, () {
       if (!mounted) return;
       setState(() => _scanBannerMessage = null);
     });
@@ -63,9 +67,12 @@ mixin _MapScreenFieldOpsMixin on State<MapScreen>, _MapScreenCameraMixin {
         _showScanBanner(tooManyMessage);
       case map_data.ShowAllLoadResult.failed:
         final failMessage =
-            mapData.error ?? 'Could not load sites in view';
+            mapData.error ?? 'Could not load sites in view (unknown error)';
         mapData.setShowAllFieldSites(false);
-        _showScanBanner(failMessage);
+        _showScanBanner(
+          failMessage,
+          duration: const Duration(seconds: 10),
+        );
       case map_data.ShowAllLoadResult.cancelled:
         if (!mapData.showAllFieldSites) return;
         // Coalesced into a newer request — keep the loading banner.

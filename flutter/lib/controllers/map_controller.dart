@@ -207,6 +207,13 @@ class MapController extends ChangeNotifier {
       showAll.loadingComplete = false;
       showAll.loading = false;
       showAll.error = null;
+      // Abort any in-flight linked catalog pages so they don't compete for
+      // the API DB pool with the show-all viewport fetch.
+      final linked = _snapshots[_MapCacheKey.fieldLinked]!;
+      if (linked.loading) {
+        ++linked.loadSeq;
+        linked.loading = false;
+      }
       notifyListeners();
       return;
     }
@@ -246,7 +253,11 @@ class MapController extends ChangeNotifier {
       return ShowAllLoadResult.cancelled;
     }
     final safe = clampBoundsForSitesApi(bounds);
-    if (safe == null) return ShowAllLoadResult.failed;
+    if (safe == null) {
+      _snap.error =
+          'Map view is too large to load sites. Zoom in and try again.';
+      return ShowAllLoadResult.failed;
+    }
     bounds = safe;
     final snap = _snap;
     if (!force &&
@@ -768,12 +779,24 @@ class MapController extends ChangeNotifier {
       snap.loadingComplete = false;
       result = ShowAllLoadResult.failed;
       return result;
+    } on TimeoutException catch (error) {
+      if (seq != snap.loadSeq) return ShowAllLoadResult.cancelled;
+      _showAllAuthoritative = false;
+      snap.loadingComplete = false;
+      final secs = error.duration?.inSeconds;
+      snap.error = secs != null
+          ? 'Timed out loading sites in view after ${secs}s — try again.'
+          : 'Timed out loading sites in view — try again.';
+      if (kDebugMode) {
+        debugPrint('MapController.load show-all viewport timed out: $error');
+      }
+      result = ShowAllLoadResult.failed;
+      return result;
     } catch (error) {
       if (seq != snap.loadSeq) return ShowAllLoadResult.cancelled;
       _showAllAuthoritative = false;
       snap.loadingComplete = false;
-      snap.error =
-          'Could not load all field sites. Check your connection and try again.';
+      snap.error = 'Could not load sites in view: $error';
       if (kDebugMode) {
         debugPrint('MapController.load show-all viewport failed: $error');
       }
