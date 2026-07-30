@@ -7,11 +7,28 @@ import '../config/app_config.dart';
 import '../models/dinosaur.dart';
 import '../models/dinosaur_article.dart';
 import 'api_client.dart';
+import 'token_storage.dart';
 
 class DinosaurService {
   DinosaurService({http.Client? client}) : _client = client ?? http.Client();
 
   final http.Client _client;
+
+  Future<Map<String, String>> _headers({bool jsonBody = false}) async {
+    final headers = <String, String>{};
+    if (jsonBody) {
+      headers['Content-Type'] = 'application/json';
+    }
+    try {
+      final token = await TokenStorage.loadToken();
+      if (token != null && token.isNotEmpty) {
+        headers['Authorization'] = 'Bearer $token';
+      }
+    } catch (_) {
+      // SharedPreferences unavailable in some unit-test environments.
+    }
+    return headers;
+  }
 
   Future<DinosaurListResponse> fetchDinosaurs({
     int limit = 200,
@@ -23,7 +40,7 @@ class DinosaurService {
     double? maOlder,
     bool hasCustomImage = false,
     bool? llmEnriched,
-    String mode = 'catalog',
+    String mode = 'inventory',
   }) async {
     final uri = AppConfig.dinosaursUri(
       limit: limit,
@@ -40,7 +57,9 @@ class DinosaurService {
     if (kDebugMode) {
       debugPrint('DinosaurService GET $uri');
     }
-    final response = await ApiClient.instance.sendGet(uri, client: _client).timeout(const Duration(seconds: 15));
+    final response = await ApiClient.instance
+        .sendGet(uri, client: _client, headers: await _headers())
+        .timeout(const Duration(seconds: 15));
 
     if (response.statusCode != 200) {
       throw DinosaurServiceException(
@@ -60,8 +79,9 @@ class DinosaurService {
     if (kDebugMode) {
       debugPrint('DinosaurService GET $uri');
     }
-    final response =
-        await ApiClient.instance.sendGet(uri, client: _client).timeout(const Duration(seconds: 15));
+    final response = await ApiClient.instance
+        .sendGet(uri, client: _client, headers: await _headers())
+        .timeout(const Duration(seconds: 15));
 
     if (response.statusCode == 404) {
       throw DinosaurServiceException('Dinosaur not found');
@@ -81,8 +101,9 @@ class DinosaurService {
 
   Future<DinosaurArticle> fetchDinosaurArticle(int id) async {
     final uri = AppConfig.dinosaurArticleUri(id);
-    final response =
-        await ApiClient.instance.sendGet(uri, client: _client).timeout(const Duration(seconds: 20));
+    final response = await ApiClient.instance
+        .sendGet(uri, client: _client, headers: await _headers())
+        .timeout(const Duration(seconds: 20));
 
     if (response.statusCode == 404) {
       throw DinosaurServiceException('Dinosaur article not found');
@@ -112,7 +133,7 @@ class DinosaurService {
         .sendPost(
           uri,
           client: _client,
-          headers: const {'Content-Type': 'application/json'},
+          headers: await _headers(jsonBody: true),
           body: jsonEncode({'status': status}),
         )
         .timeout(const Duration(seconds: 15));

@@ -66,7 +66,7 @@ class DinosaurCatalogController extends CatalogController<DinosaurSummary> {
 
   String? _seed;
   DinosaurCatalogFilters _filters = DinosaurCatalogFilters.defaults;
-  DinoScreenMode _mode = DinoScreenMode.catalog;
+  DinoScreenMode _mode = DinoScreenMode.inventory;
   bool _useClientCustomImageFilter = false;
 
   DinosaurCatalogFilters get filters => _filters;

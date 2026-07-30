@@ -14,13 +14,22 @@ class DinosaurStatusOption {
   final String label;
 }
 
-const List<DinosaurStatusOption> kDinosaurStatusOptions = [
-  DinosaurStatusOption(apiStatus: 'hidden', label: 'Hidden'),
+/// Choices when adding a dinosaur from the catalog ("Add" badge).
+const List<DinosaurStatusOption> kDinosaurAddStatusOptions = [
   DinosaurStatusOption(apiStatus: 'modelled', label: 'Modelled'),
   DinosaurStatusOption(apiStatus: 'reconstructed', label: 'Reconstructed'),
 ];
 
+/// Choices when changing an existing collection status.
+const List<DinosaurStatusOption> kDinosaurStatusOptions = [
+  DinosaurStatusOption(apiStatus: 'hidden', label: 'Hidden'),
+  ...kDinosaurAddStatusOptions,
+];
+
 /// Subtle status chip for dinosaur cards with optional status menu.
+///
+/// On catalog cards with no collection link, [status] is `hidden` and the
+/// chip label shows **Add** with Modelled / Reconstructed choices.
 class DinosaurStatusBadge extends StatelessWidget {
   const DinosaurStatusBadge({
     super.key,
@@ -34,7 +43,11 @@ class DinosaurStatusBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cardTheme = DinoCardTheme.of(context);
-    final label = capitalizeLeadingLetter(status.trim());
+    final current = status.trim().toLowerCase();
+    final isAdd = current.isEmpty || current == 'hidden';
+    final label = isAdd && onStatusSelected != null
+        ? 'Add'
+        : capitalizeLeadingLetter(status.trim());
     if (label.isEmpty) return const SizedBox.shrink();
 
     final chip = DecoratedBox(
@@ -63,21 +76,22 @@ class DinosaurStatusBadge extends StatelessWidget {
 
     if (onStatusSelected == null) return chip;
 
-    final current = status.trim().toLowerCase();
+    final options =
+        isAdd ? kDinosaurAddStatusOptions : kDinosaurStatusOptions;
     return PopupMenuButton<String>(
-      tooltip: 'Change dinosaur status',
+      tooltip: isAdd ? 'Add to inventory' : 'Change dinosaur status',
       padding: EdgeInsets.zero,
       offset: const Offset(0, 28),
       onSelected: onStatusSelected,
       itemBuilder: (context) => [
-        for (final option in kDinosaurStatusOptions)
+        for (final option in options)
           PopupMenuItem<String>(
             value: option.apiStatus,
             child: Row(
               children: [
                 SizedBox(
                   width: 20,
-                  child: current == option.apiStatus
+                  child: !isAdd && current == option.apiStatus
                       ? Icon(
                           Icons.check,
                           size: 16,
