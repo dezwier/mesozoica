@@ -7,22 +7,18 @@
 skills:
   - id: site_discovery
     name: Site Discovery
-  - id: overburden_removal
-    name: Overburden Removal
-  - id: fossil_detection
-    name: Fossil Detection
   - id: site_protection
     name: Site Protection
+  - id: site_clearing
+    name: Site Clearing
+  - id: fossil_detection
+    name: Fossil Detection
   - id: fossil_excavation
     name: Fossil Excavation
-  - id: fossil_preparation
-    name: Fossil Preparation
-  - id: fossil_extraction
-    name: Fossil Extraction
   - id: fossil_transport
     name: Fossil Transport
-  - id: fossil_storage
-    name: Fossil Storage
+  - id: fossil_curation
+    name: Fossil Curation
   - id: fossil_analysis
     name: Fossil Analysis
   - id: dinosaur_reconstruction

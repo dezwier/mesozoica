@@ -68,9 +68,13 @@ def test_leveling_yaml_loaded() -> None:
     assert cfg.rewards.fossil_discover_fossil_detection_xp == 5
     assert cfg.rewards.active_km_site_discovery_xp == 30
     assert cfg.rewards.passive_km_site_discovery_xp == 5
-    assert len(cfg.skills) == 11
+    assert len(cfg.skills) == 9
     assert cfg.skills[0].id == "site_discovery"
-    assert cfg.skills[2].id == "fossil_detection"
+    assert cfg.skills[1].id == "site_protection"
+    assert cfg.skills[2].id == "site_clearing"
+    assert cfg.skills[3].id == "fossil_detection"
+    assert cfg.skills[4].id == "fossil_excavation"
+    assert cfg.skills[6].id == "fossil_curation"
     assert len(cfg.career_titles) == 99
 
 
@@ -206,7 +210,7 @@ def test_profile_response_includes_skill_fields(session: Session) -> None:
     session.commit()
     session.refresh(user)
     profile = user_to_profile_response(session, user)
-    assert len(profile.skills) == 11
+    assert len(profile.skills) == 9
     site = next(s for s in profile.skills if s.id == "site_discovery")
     assert site.xp == 10
     assert site.level == 1

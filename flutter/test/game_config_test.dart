@@ -90,7 +90,7 @@ void main() {
     expect(config.leveling.rewards.fossilDiscoverFossilDetectionXp, 5);
     expect(config.leveling.rewards.activeKmSiteDiscoveryXp, 30);
     expect(config.leveling.rewards.passiveKmSiteDiscoveryXp, 5);
-    expect(config.leveling.skills.length, 11);
+    expect(config.leveling.skills.length, 9);
     expect(config.leveling.careerTitles.length, 99);
 
     expect(GameConfig.isLoaded, isTrue);
