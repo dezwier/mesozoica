@@ -29,7 +29,7 @@ extension _MapControllerShowAll on MapController {
         }
 
         final response = await _service.fetchSites(
-          limit: pageSize,
+          limit: MapController.pageSize,
           offset: offset,
           sort: 'name',
           dataSource: CatalogDataSource.field,

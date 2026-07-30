@@ -81,7 +81,12 @@ class _MapScreenState extends State<MapScreen>
   @override
   void didUpdateWidget(covariant MapScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
-    _activateIfNeeded();
+    // Parent rebuilds (shell setState, auth, splash) recreate MapScreen; only
+    // react when map foreground actually changes — otherwise startTracking
+    // would refetch /api/.../missions/aerial on every notify.
+    if (oldWidget.isActive != widget.isActive) {
+      _activateIfNeeded();
+    }
   }
 
   @override

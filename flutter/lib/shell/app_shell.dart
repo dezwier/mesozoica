@@ -65,10 +65,11 @@ class _AppShellState extends State<AppShell>
   FormationMapController? _formationMap;
   StreamSubscription<RemoteMessage>? _foregroundPushSub;
   StreamSubscription<RemoteMessage>? _openedPushSub;
+  /// Cached so aerial mission list refreshes do not rebuild the shell.
+  bool _aerialDrawMode = false;
 
   bool get _anyOverlayOpen => _profileOpen || _catalogOpen || _toolsOpen;
-  bool get _hideChrome =>
-      _anyOverlayOpen || (_aerialRecon?.isDrawMode ?? false);
+  bool get _hideChrome => _anyOverlayOpen || _aerialDrawMode;
 
   @override
   void initState() {
@@ -89,6 +90,7 @@ class _AppShellState extends State<AppShell>
 
       final aerial = context.read<AerialMissionController>();
       _aerialRecon = aerial;
+      _aerialDrawMode = aerial.isDrawMode;
       aerial.addListener(_onAerialReconChanged);
 
       final guidance = context.read<GuidanceSessionController>();
@@ -201,6 +203,7 @@ class _AppShellState extends State<AppShell>
         _profileOpen = false;
         _catalogOpen = false;
         _toolsOpen = false;
+        _aerialDrawMode = true;
       });
       return;
     }
@@ -224,9 +227,13 @@ class _AppShellState extends State<AppShell>
       );
     }
 
-    // Draw mode / focus / mission list changes need a shell rebuild; progress
-    // ticks use progressTickListenable and must not reach here.
-    setState(() {});
+    // Only rebuild shell when draw mode toggles (chrome hide). MapScreen and
+    // tool cards already watch AerialMissionController; mission-list refreshes
+    // must not setState or they re-trigger startTracking → fetch loops.
+    final drawMode = aerial.isDrawMode;
+    if (drawMode != _aerialDrawMode) {
+      setState(() => _aerialDrawMode = drawMode);
+    }
   }
 
   void _setupPushHandling() {

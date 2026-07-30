@@ -394,8 +394,14 @@ class AerialMissionController extends ChangeNotifier {
     }
   }
 
-  /// One-shot fetch on map activate; poll only while a mission is active.
+  /// One-shot fetch when map tracking first enables; poll only while flying/ensuring.
+  ///
+  /// Idempotent: parent rebuilds must not re-hit the network.
   void startTracking() {
+    if (_mapTracking) {
+      _syncMissionTimers();
+      return;
+    }
     _mapTracking = true;
     unawaited(refreshMissions());
     _syncMissionTimers();
