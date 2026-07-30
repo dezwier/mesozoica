@@ -9,6 +9,7 @@ from app.services.tool_service.list import (
     tool_to_summary,
 )
 from app.services.tool_service.sync import sync_tools, tool_sync_exit_code
+from app.services.tool_service.update_params import update_tool_instance_params
 
 __all__ = [
     "ToolListRow",
@@ -19,4 +20,5 @@ __all__ = [
     "sync_tools",
     "tool_sync_exit_code",
     "tool_to_summary",
+    "update_tool_instance_params",
 ]

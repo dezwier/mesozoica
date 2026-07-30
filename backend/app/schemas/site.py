@@ -146,3 +146,21 @@ class SiteDinoFossilGroup(BaseModel):
 
 class SiteDinoFossilGroupListResponse(BaseModel):
     items: list[SiteDinoFossilGroup]
+
+
+class FieldEnsureRequest(BaseModel):
+    lat: float = Field(ge=-90, le=90)
+    lon: float = Field(ge=-180, le=180)
+    radius_km: float = Field(default=1.0, gt=0, le=50)
+    reason: str | None = Field(default=None, max_length=32)
+
+
+class DiscoverSiteRequest(BaseModel):
+    lat: float = Field(ge=-90, le=90)
+    lon: float = Field(ge=-180, le=180)
+
+
+class SetSiteStatusRequest(BaseModel):
+    status: str = Field(min_length=1, max_length=32)
+    lat: float | None = Field(default=None, ge=-90, le=90)
+    lon: float | None = Field(default=None, ge=-180, le=180)

@@ -5,7 +5,6 @@ from __future__ import annotations
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, Query
-from pydantic import BaseModel, Field
 from sqlmodel import Session
 
 from app.core.database import get_session
@@ -18,12 +17,15 @@ from app.core.security import (
 from app.models.data_source import DATA_SOURCE_ARCHIVE, DATA_SOURCE_FIELD
 from app.models.user import User
 from app.schemas.site import (
+    DiscoverSiteRequest,
     FieldDataPurgeResponse,
     FieldDiscoverResponse,
     FieldEnsureJobResponse,
+    FieldEnsureRequest,
     FieldEnsureResponse,
     FieldSurveyJobResponse,
     FieldSurveyResponse,
+    SetSiteStatusRequest,
     SiteDinosaurThumbListResponse,
     SiteDinoFossilGroupListResponse,
     SiteFossilThumbListResponse,
@@ -62,24 +64,6 @@ from app.services.site_service.field_generate import FieldSiteLazyConfig
 from app.services.site_service.field_site_logging import log_field_event, normalize_reason
 
 router = APIRouter(prefix="/sites", tags=["sites"])
-
-
-class FieldEnsureRequest(BaseModel):
-    lat: float = Field(ge=-90, le=90)
-    lon: float = Field(ge=-180, le=180)
-    radius_km: float = Field(default=1.0, gt=0, le=50)
-    reason: str | None = Field(default=None, max_length=32)
-
-
-class DiscoverSiteRequest(BaseModel):
-    lat: float = Field(ge=-90, le=90)
-    lon: float = Field(ge=-180, le=180)
-
-
-class SetSiteStatusRequest(BaseModel):
-    status: str = Field(min_length=1, max_length=32)
-    lat: float | None = Field(default=None, ge=-90, le=90)
-    lon: float | None = Field(default=None, ge=-180, le=180)
 
 
 def _field_visibility(
