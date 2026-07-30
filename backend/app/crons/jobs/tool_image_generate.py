@@ -2,11 +2,9 @@
 Tool card image generation job.
 
 Run manually:
-  python -m app.crons.runner --job tool_image_generate
-  python -m app.crons.runner --job tool_image_generate --max-items 5
-  python -m app.crons.runner --job tool_image_generate --tools "Orbit Survey" --dry-run
-  python -m app.crons.runner --job tool_image_generate --version 2
-  # Without --version: auto-increments to next folder (v1 if none, else v{max+1})
+  python -m app.crons.runner --job tool_image_generate --version Original
+  python -m app.crons.runner --job tool_image_generate --version "Summer 26" --max-items 5
+  python -m app.crons.runner --job tool_image_generate --version Original --tools "Orbit Survey" --dry-run
 """
 
 from __future__ import annotations
@@ -28,7 +26,7 @@ def run_generate_job(
     dry_run: bool = False,
     max_items: int | None = None,
     tools: list[str] | None = None,
-    version: str | int | None = None,
+    version: str,
 ) -> int:
     _require_gemini_key_in_production()
     with Session(engine) as session:

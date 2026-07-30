@@ -374,6 +374,7 @@ def test_collect_tool_creates_user_tool(client, session):
     response = client.post(
         f"/api/v1/tools/{tool.id}/collect",
         headers=_auth_headers(admin),
+        json={"version": "Original"},
     )
     assert response.status_code == 200
     body = response.json()
@@ -388,9 +389,23 @@ def test_collect_tool_creates_user_tool(client, session):
     assert instance is not None
     assert instance.tool_type_id == tool.id
     assert instance.level == 1
+    assert instance.version == "Original"
 
 
-def test_collect_tool_idempotent(client, session):
+def test_collect_tool_allows_duplicate_with_version(client, session, tmp_path, monkeypatch):
+    import app.core.config as config_module
+
+    tools_root = tmp_path / "tools"
+    (tools_root / "Original").mkdir(parents=True)
+    (tools_root / "Summer 26").mkdir(parents=True)
+    (tools_root / "Original" / "meta.yaml").write_text(
+        "run_date: '2025-01-01T00:00:00+00:00'\nprompt: p\n", encoding="utf-8"
+    )
+    (tools_root / "Summer 26" / "meta.yaml").write_text(
+        "run_date: '2026-01-01T00:00:00+00:00'\nprompt: p\n", encoding="utf-8"
+    )
+    monkeypatch.setattr(config_module.settings, "tool_images_dir", str(tools_root))
+
     tool = _seed_tool(session)
     admin = _user(session, username="admin", is_admin=True)
     _grant(session, user_id=int(admin.id), tool_id=int(tool.id), level=3)
@@ -398,15 +413,28 @@ def test_collect_tool_idempotent(client, session):
     response = client.post(
         f"/api/v1/tools/{tool.id}/collect",
         headers=_auth_headers(admin),
+        json={"version": "Summer 26"},
     )
     assert response.status_code == 200
     assert response.json()["level"] == 3
 
     events = session.exec(select(UserTool)).all()
-    assert len(events) == 1
-    instance = session.get(Tool, events[0].tool_id)
-    assert instance is not None
-    assert instance.level == 3
+    assert len(events) == 2
+    instances = [session.get(Tool, e.tool_id) for e in events]
+    versions = {i.version for i in instances if i is not None}
+    assert "Summer 26" in versions
+
+
+def test_collect_tool_requires_version(client, session):
+    tool = _seed_tool(session)
+    admin = _user(session, username="admin", is_admin=True)
+
+    response = client.post(
+        f"/api/v1/tools/{tool.id}/collect",
+        headers=_auth_headers(admin),
+        json={},
+    )
+    assert response.status_code == 422
 
 
 def test_collect_tool_requires_admin(client, session):
@@ -415,5 +443,6 @@ def test_collect_tool_requires_admin(client, session):
     response = client.post(
         f"/api/v1/tools/{tool.id}/collect",
         headers=_auth_headers(user),
+        json={"version": "Original"},
     )
     assert response.status_code == 403

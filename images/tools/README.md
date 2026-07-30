@@ -1,19 +1,19 @@
 # Tool card images
 
-Curated card-front images for the Mesozoica tool catalog. Files live in version folders and are synced to Railway at `/media/tools/vN/{filename}`.
+Curated card-front images for the Mesozoica tool catalog. Files live in named version folders and are synced to Railway at `/media/tools/<version>/{filename}`.
 
 ## Layout
 
 ```
-images/tools/v1/meta.yaml
-images/tools/v1/Orbit Survey.png
-images/tools/v2/...
+images/tools/Original/meta.yaml
+images/tools/Original/Orbit Survey.png
+images/tools/Summer 26/...
 ```
 
 `meta.yaml` fields:
 
 - `prompt` — Imagen instruction template used for this version (placeholders filled per tool)
-- `run_date` — UTC timestamp used when picking which version an inventory card shows
+- `run_date` — UTC timestamp used when assigning the newest version to new tool occurrences
 
 ## Naming
 
@@ -23,16 +23,18 @@ images/tools/v2/...
 
 ## Generate
 
+`--version` is required (named folder):
+
 ```bash
-make run-tool-image-generate-local CRON_EXTRA='--version 1'
-make run-tool-image-generate-local CRON_EXTRA='--version 2 --max-items 5'
+make run-tool-image-generate-local CRON_EXTRA='--version Original'
+make run-tool-image-generate-local CRON_EXTRA='--version "Summer 26" --max-items 5'
 ```
 
 If `meta.yaml` already has a `prompt`, that template is reused. Missing prompt/`run_date` are written from the current code template / now (existing `run_date` is preserved).
 
 ## Sync to Railway
 
-1. Add or update image files under `images/tools/vN/`.
+1. Add or update image files under `images/tools/<version>/`.
 2. On the **backend** Railway service (not Postgres): mount a volume at `/data` (recommended) or `/data/images/tools`, set `CURATED_IMAGES_DATA_ROOT=/data` and/or `TOOL_IMAGES_DIR=/data/images/tools`, and set `TOOL_IMAGE_SYNC_SECRET`.
 3. Run from the repo root — reads **local** files here, uploads to the **deployed** Railway API:
 

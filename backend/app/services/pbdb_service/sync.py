@@ -15,6 +15,7 @@ from sqlmodel import Session, col, func, select
 from app.models.dinosaur_type import DinosaurType
 from app.models.data_source import DATA_SOURCE_ARCHIVE
 from app.models.fossil import Fossil
+from app.services.curated_image_service.versions import latest_fossil_image_version
 from app.services.dinosaur_image_service.sync import CURATED_MEDIA_PATH
 from app.services.dinosaur_name_filter import dino_name_match_clause
 from app.services.pbdb_service.client import PbdbClient
@@ -129,6 +130,7 @@ def _record_to_fossil(record: dict[str, Any], *, dinosaur_id: int) -> Fossil | N
         id=occurrence_no,
         dinosaur_id=dinosaur_id,
         data_source=DATA_SOURCE_ARCHIVE,
+        version=latest_fossil_image_version(),
         identified_name=_parse_optional_str(record.get("identified_name"), max_len=255),
         identified_no=_parse_optional_int(record.get("identified_no")),
         identified_rank=_parse_optional_str(record.get("identified_rank"), max_len=50),

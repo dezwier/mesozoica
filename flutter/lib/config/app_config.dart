@@ -216,6 +216,9 @@ class AppConfig {
   static Uri toolCollectUri(int id) =>
       ApiEndpoints.toolCollectUri(id);
 
+  static Uri toolImageVersionsUri() =>
+      ApiEndpoints.toolImageVersionsUri();
+
   static Uri toolAerialMissionUri(int id) =>
       ApiEndpoints.toolAerialMissionUri(id);
 

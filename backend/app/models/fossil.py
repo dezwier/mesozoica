@@ -194,3 +194,8 @@ class Fossil(SQLModel, table=True):
     )
     # Burial depth for field fossils (cm); NULL for archive.
     depth_cm: Optional[int] = Field(default=None, index=True)
+    version: str = Field(
+        default="Original",
+        max_length=64,
+        description="Curated fossil image version folder name for this occurrence",
+    )

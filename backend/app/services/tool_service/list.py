@@ -51,7 +51,7 @@ class ToolListRow:
     occurrence_id: int | None = None
     params: dict[str, object] | None = None
     spawn_date: datetime | None = None
-    force_v1_image: bool = False
+    image_version: str | None = None
 
 
 def list_tools(
@@ -166,11 +166,13 @@ def _list_catalog_tools(
             tool_type_ids=[int(row.id) for row in rows if row.id is not None],
         )
 
+    from app.services.curated_image_service.versions import ORIGINAL_VERSION
+
     return [
         ToolListRow(
             tool_type=row,
             level=levels.get(int(row.id)) if row.id is not None else None,
-            force_v1_image=True,
+            image_version=ORIGINAL_VERSION,
         )
         for row in rows
     ], int(total)
@@ -263,7 +265,7 @@ def _list_inventory_tools(
             occurrence_id=int(instance.id),
             params=effective_params_for_instance(tool_type, instance),
             spawn_date=instance.spawn_date,
-            force_v1_image=False,
+            image_version=instance.version,
         )
         for instance, tool_type in rows
     ], int(total)
@@ -414,12 +416,15 @@ def get_tool_by_id(
             tool_type_ids=[int(row.id)],
         )
         level = levels.get(int(row.id))
-    return ToolListRow(tool_type=row, level=level, force_v1_image=True)
+    from app.services.curated_image_service.versions import ORIGINAL_VERSION
+
+    return ToolListRow(tool_type=row, level=level, image_version=ORIGINAL_VERSION)
 
 
 def tool_to_summary(row: ToolListRow):
     """Build ToolSummary with optional ownership level (imported lazily to avoid cycles)."""
     from app.schemas.tool import ToolSummary
+    from app.services.curated_image_service.versions import ORIGINAL_VERSION
 
     return ToolSummary(
         id=int(row.occurrence_id or row.tool_type.id),
@@ -432,8 +437,7 @@ def tool_to_summary(row: ToolListRow):
         action=row.tool_type.action or "Use",
         main_image_url=resolve_tool_card_image_url(
             tool_name=row.tool_type.name,
-            as_of=None if row.force_v1_image else row.spawn_date,
-            force_v1=row.force_v1_image,
+            version=row.image_version or ORIGINAL_VERSION,
             fallback_url=row.tool_type.main_image_url,
         ),
         level=row.level,

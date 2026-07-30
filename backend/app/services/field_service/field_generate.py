@@ -39,6 +39,7 @@ from app.services.field_service.field_distributions import (
     nearby_distribution,
     sample_pair,
 )
+from app.services.curated_image_service.versions import latest_site_type_image_version
 from app.services.field_service.field_site_logging import log_field_event
 from app.services.site_common.constants import FIELD_SITE_ID_START
 from app.services.site_common.geo_utils import haversine_km
@@ -341,6 +342,7 @@ def _build_field_site(
         odd_completeness=rng.random(),
         odd_quality=rng.random(),
         odd_depth=rng.random(),
+        version=latest_site_type_image_version(),
     )
 
 
@@ -825,6 +827,7 @@ def generate_field_sites(
             odd_completeness=random_source.random(),
             odd_quality=random_source.random(),
             odd_depth=random_source.random(),
+            version=latest_site_type_image_version(),
         )
         existing_coords.append((lat, lon))
         counters.generated += 1

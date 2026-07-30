@@ -11,8 +11,7 @@ from app.core.config import settings
 from app.models.tool_type import ToolType
 from app.services.curated_image_service.versions import (
     ensure_version_meta,
-    migrate_flat_images_to_v1,
-    resolve_generation_version,
+    require_generation_version,
     version_dir,
 )
 from app.services.image_generation_service.batch_types import (
@@ -93,22 +92,17 @@ def generate_tool_images(
     dry_run: bool = False,
     max_items: int | None = None,
     tools: list[str] | None = None,
-    version: str | int | None = None,
+    version: str,
 ) -> GenerateSummary:
-    """Generate missing tool card images into ``images/tools/vN/``.
+    """Generate missing tool card images into a named version folder.
 
-    When ``version`` is omitted, auto-increments to the next version folder
-    (``v1`` if none exist yet).
+    ``version`` is a required folder name (e.g. ``Original``, ``Summer 26``).
     """
     if not settings.google_gemini_api_key.strip():
         raise RuntimeError("GOOGLE_GEMINI_API_KEY is required for tool image generation")
 
     root_dir = resolve_local_source_dir_for_sync()
-    migrate_flat_images_to_v1(
-        root_dir,
-        default_prompt=tool_image_prompt_template(),
-    )
-    version_name = resolve_generation_version(root_dir, version)
+    version_name = require_generation_version(version)
     output_dir = version_dir(root_dir, version_name)
     meta = ensure_version_meta(
         output_dir,

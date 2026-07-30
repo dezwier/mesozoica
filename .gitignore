@@ -13,10 +13,10 @@ images/dinosaurs/**/*.webp
 images/dinosaurs/**/*.jpg
 images/dinosaurs/**/*.jpeg
 images/dinosaurs/**/*.png
-images/fossils/*.webp
-images/fossils/*.jpg
-images/fossils/*.jpeg
-images/fossils/*.png
+images/fossils/**/*.webp
+images/fossils/**/*.jpg
+images/fossils/**/*.jpeg
+images/fossils/**/*.png
 images/site-types/**/*.webp
 images/site-types/**/*.jpg
 images/site-types/**/*.jpeg
@@ -26,6 +26,7 @@ images/tools/**/*.jpg
 images/tools/**/*.jpeg
 images/tools/**/*.png
 !images/dinosaurs/**/meta.yaml
+!images/fossils/**/meta.yaml
 !images/site-types/**/meta.yaml
 !images/tools/**/meta.yaml
 images/users/*

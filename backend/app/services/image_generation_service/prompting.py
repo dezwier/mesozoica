@@ -119,6 +119,11 @@ def dinosaur_image_prompt_template() -> str:
     return _DINOSAUR_INSTRUCTIONS
 
 
+def fossil_image_prompt_template() -> str:
+    """Instruction template stored in version meta.yaml for fossil images."""
+    return _FOSSIL_INSTRUCTIONS
+
+
 def build_dinosaur_image_prompt(
     name: str,
     article_text: str,
@@ -176,11 +181,17 @@ def build_fossil_preservation_brief(fossil_data: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
-def build_fossil_image_prompt(fossil_data: dict[str, Any], *, dinosaur_name: str) -> str:
+def build_fossil_image_prompt(
+    fossil_data: dict[str, Any],
+    *,
+    dinosaur_name: str,
+    template: str | None = None,
+) -> str:
     """Build Imagen prompt for a fossil occurrence card image."""
     dinosaur = dinosaur_name.strip() or "dinosaur"
     spec_brief = build_fossil_preservation_brief(fossil_data)
-    return _FOSSIL_INSTRUCTIONS.format(
+    instructions = template if template and template.strip() else _FOSSIL_INSTRUCTIONS
+    return instructions.format(
         dinosaur=dinosaur,
         spec_brief=spec_brief,
     )

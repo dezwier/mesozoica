@@ -13,10 +13,13 @@ from app.schemas.tool import (
     AerialMissionListResponse,
     AerialMissionRequest,
     AerialMissionResponse,
+    CollectToolRequest,
     FormationMapSessionResponse,
     GuidanceSessionResponse,
     ToolCategoryItem,
     ToolCategoryListResponse,
+    ToolImageVersionItem,
+    ToolImageVersionListResponse,
     ToolListResponse,
     ToolSummary,
     UpdateToolParamsRequest,
@@ -46,7 +49,9 @@ from app.services.tool_service import (
     list_tools,
     tool_to_summary,
 )
+from app.services.tool_service.collect import list_tool_image_versions
 from app.services.tool_service.list import ListMode, ToolListRow
+from app.services.curated_image_service.versions import ORIGINAL_VERSION
 from app.services.tool_service.update_params import update_tool_instance_params
 
 router = APIRouter(prefix="/tools", tags=["tools"])
@@ -236,9 +241,21 @@ def post_cancel_formation_map_session(
     return formation_map_session_response(row)
 
 
+@router.get("/image-versions", response_model=ToolImageVersionListResponse)
+def get_tool_image_versions(
+    current_user: User = Depends(get_current_admin_user),
+) -> ToolImageVersionListResponse:
+    """List curated tool image version folders (admin collect picker)."""
+    del current_user
+    return ToolImageVersionListResponse(
+        items=[ToolImageVersionItem(**item) for item in list_tool_image_versions()]
+    )
+
+
 @router.post("/{tool_id}/collect", response_model=ToolSummary)
 def post_collect_tool(
     tool_id: int,
+    body: CollectToolRequest,
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_admin_user),
 ) -> ToolSummary:
@@ -246,8 +263,15 @@ def post_collect_tool(
         session,
         user_id=int(current_user.id),
         tool_id=tool_id,
+        version=body.version,
     )
-    return tool_to_summary(ToolListRow(tool_type=tool_type, level=level))
+    return tool_to_summary(
+        ToolListRow(
+            tool_type=tool_type,
+            level=level,
+            image_version=ORIGINAL_VERSION,
+        )
+    )
 
 
 @router.patch("/{tool_id}/params", response_model=ToolSummary)

@@ -24,7 +24,7 @@ class GenerateSummary:
     elapsed_s: float = 0.0
     cost_usd: float = 0.0
     output_dir: str = ""
-    version: str = "v1"
+    version: str = "Original"
 
 
 def generate_exit_code(summary: GenerateSummary) -> int:

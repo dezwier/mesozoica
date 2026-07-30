@@ -6,7 +6,7 @@ RAILWAY_SERVICE ?=
 RAILWAY_SERVICE_FLAG = $(if $(RAILWAY_SERVICE),--service $(RAILWAY_SERVICE),)
 CRON_EXTRA ?=
 
-.PHONY: help backend-install backend-test run-backend flutter-test run-flutter test-all run-cron run-field-ensure-worker fetch-coordinate-masks upload-coordinate-masks-railway run-field-site-coordinate-prune run-dinosaur-wiki-sync run-dinosaur-llm-enrich run-fossil-pbdb-sync run-fossil-llm-enrich run-site-sync run-site-type-sync run-tool-sync run-dinosaur-image-generate run-fossil-image-generate run-site-type-image-generate run-tool-image-generate run-tool-image-generate-local sync-dinosaur-images sync-fossil-images sync-site-type-images sync-tool-images rename-site-type-images migrate-image-versions-to-v1 backfill-user-levels
+.PHONY: help backend-install backend-test run-backend flutter-test run-flutter test-all run-cron run-field-ensure-worker fetch-coordinate-masks upload-coordinate-masks-railway run-field-site-coordinate-prune run-dinosaur-wiki-sync run-dinosaur-llm-enrich run-fossil-pbdb-sync run-fossil-llm-enrich run-site-sync run-site-type-sync run-tool-sync run-dinosaur-image-generate run-fossil-image-generate run-site-type-image-generate run-tool-image-generate run-tool-image-generate-local sync-dinosaur-images sync-fossil-images sync-site-type-images sync-tool-images rename-site-type-images migrate-image-versions-to-v1 migrate-named-image-versions backfill-user-levels
 
 help:
 	@echo "Available targets:"
@@ -36,7 +36,8 @@ help:
 	@echo "  sync-tool-images             Upload curated tool card images to Railway volume + DB"
 	@echo "  backfill-user-levels         Recompute skill XP from discoveries + distance (leveling.yaml)"
 	@echo "  rename-site-type-images      Rename legacy numeric site-type image files to period_rocktype"
-	@echo "  migrate-image-versions-to-v1 Move flat site-type/tool images into v1/ + write meta.yaml"
+	@echo "  migrate-image-versions-to-v1 Move flat images into Original/ + write meta.yaml"
+	@echo "  migrate-named-image-versions Rename v1/v2 -> Original/Summer 26; migrate flat fossils"
 	@echo "  flutter-test                 Run Flutter tests"
 	@echo "  run-flutter                  Start Flutter app"
 	@echo "  test-all                     Run backend and Flutter tests"
@@ -52,14 +53,13 @@ help:
 	@echo "  make run-fossil-pbdb-sync CRON_EXTRA='--dinos Tyrannosaurus --overwrite'"
 	@echo "  make run-fossil-llm-enrich CRON_EXTRA='--dinos Tyrannosaurus'"
 	@echo "  make run-fossil-llm-enrich CRON_EXTRA='--overwrite'"
-	@echo "  make run-dinosaur-image-generate CRON_EXTRA='--max-items 5'"
-	@echo "  make run-dinosaur-image-generate CRON_EXTRA='--dinos Tyrannosaurus --dry-run'"
-	@echo "  make run-fossil-image-generate CRON_EXTRA='--max-items 10'"
-	@echo "  make run-site-type-image-generate CRON_EXTRA='--max-items 3 --dry-run'"
-	@echo "  make run-site-type-image-generate CRON_EXTRA='--site-types 5 18 20'"
-	@echo "  make run-site-type-image-generate CRON_EXTRA='--version 2'"
-	@echo "  make run-tool-image-generate-local CRON_EXTRA='--version 2 --max-items 3'"
-	@echo "  make migrate-image-versions-to-v1"
+	@echo "  make run-dinosaur-image-generate CRON_EXTRA='--version Original --max-items 5'"
+	@echo "  make run-dinosaur-image-generate CRON_EXTRA='--version \"Summer 26\" --dinos Tyrannosaurus --dry-run'"
+	@echo "  make run-fossil-image-generate CRON_EXTRA='--version Original --max-items 10'"
+	@echo "  make run-site-type-image-generate CRON_EXTRA='--version Original --max-items 3 --dry-run'"
+	@echo "  make run-site-type-image-generate CRON_EXTRA='--version \"Summer 26\" --site-types 5 18 20'"
+	@echo "  make run-tool-image-generate-local CRON_EXTRA='--version \"Summer 26\" --max-items 3'"
+	@echo "  make migrate-named-image-versions"
 
 backend-install:
 	cd backend && python3 -m pip install --upgrade pip && pip install -r requirements.txt -r requirements-dev.txt
@@ -146,7 +146,10 @@ rename-site-type-images:
 	cd backend && RAILWAY_RUN=1 railway run $(RAILWAY_SERVICE_FLAG) python -m scripts.rename_site_type_images $(CRON_EXTRA)
 
 migrate-image-versions-to-v1:
-	cd backend && python -m scripts.migrate_image_versions_to_v1 $(CRON_EXTRA)
+	cd backend && .venv/bin/python -m scripts.migrate_image_versions_to_v1 $(CRON_EXTRA)
+
+migrate-named-image-versions:
+	cd backend && .venv/bin/python -m scripts.migrate_named_image_versions $(CRON_EXTRA)
 
 flutter-test:
 	cd flutter && flutter test

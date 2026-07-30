@@ -144,7 +144,7 @@ RAILWAY_RUN=1 railway run python -m app.crons.runner --job tool_image_generate -
 | `--since ISO8601` | `fossil_pbdb_sync`: only genera with `fossils_insert_time` null or before this UTC time (ignored with `--overwrite`) |
 | `--max-items N` | Image generation jobs: cap successful generations per run |
 | `--site-types ID …` | `site_type_image_generate`: limit to specific `site_type.id` values |
-| `--version N` | `site_type_image_generate` / `tool_image_generate` / `dinosaur_image_generate`: write into `vN/`. When omitted, auto-increments past existing versions |
+| `--version NAME` | **Required** for all four image generate jobs: named folder (e.g. `Original`, `Summer 26`) |
 | `--tools NAME …` | `tool_sync` / `tool_image_generate`: limit to specific branded tool names |
 | `--prune` | `tool_sync`: delete DB tool rows whose `name` is no longer in `tools.json` |
 | `--dry-run` | Image generation: list candidates without calling Imagen or writing files; `site_sync` / `site_type_sync` / `tool_sync`: compute without DB writes |
@@ -185,21 +185,22 @@ All `*_image_generate` jobs write PNGs locally under repo folders:
 
 | Entity | Output folder | Filename key |
 |--------|---------------|--------------|
-| Dinosaur | `images/dinosaurs/vN/` | `{dinosaur.name}.png` |
-| Fossil | `images/fossils/` | `{fossil.id}.png` |
-| Site type | `images/site-types/vN/` | `{period}_{rock_type}.png` |
-| Tool | `images/tools/vN/` | `{tool.name}.png` |
+| Dinosaur | `images/dinosaurs/<version>/` | `{dinosaur.name}.png` |
+| Fossil | `images/fossils/<version>/` | `{fossil.id}.png` |
+| Site type | `images/site-types/<version>/` | `{period}_{rock_type}.png` |
+| Tool | `images/tools/<version>/` | `{tool.name}.png` |
 
-Site-type, tool, and dinosaur images are versioned (`v1`, `v2`, …). Each version folder has a `meta.yaml` with the prompt template and `run_date`. Omit `--version` to auto-create the next folder (`v1` if none exist, else `v{max+1}`); pass `--version N` (or `vN`) to target a specific folder:
+All four kinds use named version folders (`Original`, `Summer 26`, …). Each folder has a `meta.yaml` with the prompt template and `run_date`. **`--version` is mandatory** (no auto-increment):
 
 ```bash
-make run-tool-image-generate          # → next version (e.g. v3 if v1+v2 exist)
-make run-site-type-image-generate CRON_EXTRA='--version 2 --max-items 5'
-make run-tool-image-generate-local CRON_EXTRA='--version 2'
-make run-dinosaur-image-generate CRON_EXTRA='--version 2 --max-items 5'
+make run-tool-image-generate CRON_EXTRA='--version "Summer 26"'
+make run-site-type-image-generate CRON_EXTRA='--version Original --max-items 5'
+make run-tool-image-generate-local CRON_EXTRA='--version "Summer 26"'
+make run-dinosaur-image-generate CRON_EXTRA='--version "Summer 26" --max-items 5'
+make run-fossil-image-generate CRON_EXTRA='--version Original --max-items 10'
 ```
 
-Field site cards pick the newest version with `run_date <= Site.created_at`. Archive sites, tool catalog, and dinosaur catalog always use `v1`. Inventory tools use `Tool.spawn_date`; inventory dinosaurs use `Dinosaur.created_at`.
+Catalog dinosaur/tool cards always use `Original`. Occurrences store a `version` string and resolve that folder. New occurrences are assigned the newest folder by `meta.yaml` `run_date`.
 
 Requires `GOOGLE_GEMINI_API_KEY`. Default model: `imagen-4.0-ultra-generate-001` (`GEMINI_IMAGE_MODEL`).
 
@@ -207,7 +208,7 @@ The client retries transient failures (503, capacity, timeouts) with exponential
 
 ```bash
 GEMINI_IMAGE_MODEL=imagen-4.0-fast-generate-001 \
-  make run-tool-image-generate-local CRON_EXTRA='--max-items 5'
+  make run-tool-image-generate-local CRON_EXTRA='--version Original --max-items 5'
 ```
 
 **Local tool generation** skips the `railway run` wrapper but still reads tools from Railway Postgres via `backend/.env`:

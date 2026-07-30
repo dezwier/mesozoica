@@ -19,6 +19,12 @@ from app.services.curated_image_service.common import (
     upload_curated_image_to_railway,
     version_from_curated_url,
 )
+from app.services.curated_image_service.versions import (
+    VersionedImageFile,
+    build_versioned_media_url,
+    latest_version_with_stem,
+    scan_versioned_image_files,
+)
 
 CURATED_MEDIA_PATH = "/media/fossils/"
 
@@ -27,6 +33,8 @@ CURATED_MEDIA_PATH = "/media/fossils/"
 class FossilImageFileMatch:
     path: Path
     filename: str
+    relative_path: str
+    version: str
     fossil_id: int
 
 
@@ -36,11 +44,12 @@ def build_curated_image_url(
     *,
     version: str | None = None,
 ) -> str:
-    base = public_base_url.rstrip("/")
-    url = f"{base}{CURATED_MEDIA_PATH}{filename}"
-    if version:
-        return f"{url}?v={version}"
-    return url
+    return build_versioned_media_url(
+        public_base_url,
+        CURATED_MEDIA_PATH,
+        filename,
+        content_version=version,
+    )
 
 
 def is_curated_image_url(url: str | None) -> bool:
@@ -50,29 +59,66 @@ def is_curated_image_url(url: str | None) -> bool:
 
 
 def match_image_files(
-    files: list[Path],
+    files: list[Path] | list[VersionedImageFile],
     fossil_ids: set[int],
 ) -> tuple[list[FossilImageFileMatch], list[Path]]:
     """Return (matched, unmatched); file stem matches fossil.id."""
     matched: list[FossilImageFileMatch] = []
     unmatched: list[Path] = []
-    for path in files:
+    seen: set[tuple[int, str]] = set()
+
+    for item in files:
+        if isinstance(item, VersionedImageFile):
+            path = item.path
+            stem = Path(item.filename).stem
+            version_name = item.version
+        else:
+            path = item
+            stem = path.stem
+            version_name = "flat"
+
         try:
-            fossil_id = int(path.stem)
+            fossil_id = int(stem)
         except ValueError:
             unmatched.append(path)
             continue
         if fossil_id not in fossil_ids:
             unmatched.append(path)
             continue
+
+        filename = f"{fossil_id}{path.suffix.lower()}"
+        relative_path = (
+            f"{version_name}/{filename}"
+            if version_name and version_name != "flat"
+            else filename
+        )
+        seen_key = (fossil_id, version_name)
+        if seen_key in seen:
+            unmatched.append(path)
+            continue
+
         matched.append(
             FossilImageFileMatch(
                 path=path,
-                filename=f"{fossil_id}{path.suffix.lower()}",
+                filename=filename,
+                relative_path=relative_path,
+                version=version_name,
                 fossil_id=fossil_id,
             )
         )
+        seen.add(seen_key)
     return matched, unmatched
+
+
+def latest_relative_path_for_fossil(
+    root: Path,
+    fossil_id: int,
+) -> tuple[str, Path] | None:
+    found = latest_version_with_stem(root, str(fossil_id), case_insensitive=False)
+    if found is None:
+        return None
+    info, path = found
+    return f"{info.name}/{path.name}", path
 
 
 def remote_image_exists(*, public_base_url: str, filename: str) -> bool:
@@ -128,6 +174,13 @@ def resolve_local_source_dir_for_sync() -> Path:
     )
 
 
+def scan_fossil_image_files(root: Path) -> list[VersionedImageFile] | list[Path]:
+    versioned = scan_versioned_image_files(root)
+    if versioned:
+        return versioned
+    return scan_local_image_files(root)
+
+
 __all__ = [
     "ALLOWED_IMAGE_EXTENSIONS",
     "CURATED_MEDIA_PATH",
@@ -137,12 +190,14 @@ __all__ = [
     "file_content_version",
     "is_allowed_image_filename",
     "is_curated_image_url",
+    "latest_relative_path_for_fossil",
     "match_image_files",
     "needs_image_resync",
     "normalize_public_base_url",
     "remote_image_exists",
     "resolve_local_source_dir_for_sync",
     "resolve_public_base_url_for_sync",
+    "scan_fossil_image_files",
     "scan_local_image_files",
     "upload_file_to_railway",
     "version_from_curated_url",

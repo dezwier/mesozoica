@@ -94,7 +94,34 @@ class _ToolTurnableCardState extends State<ToolTurnableCard> {
     if (_collectBusy) return;
     setState(() => _collectBusy = true);
     try {
-      await context.read<ToolCatalogController>().collectTool(widget.tool.id);
+      final versions = await ToolService().listToolImageVersions();
+      if (!mounted) return;
+      if (versions.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No image versions available')),
+        );
+        return;
+      }
+      final selected = await showDialog<String>(
+        context: context,
+        builder: (dialogContext) {
+          return SimpleDialog(
+            title: const Text('Choose image version'),
+            children: [
+              for (final name in versions)
+                SimpleDialogOption(
+                  onPressed: () => Navigator.of(dialogContext).pop(name),
+                  child: Text(name),
+                ),
+            ],
+          );
+        },
+      );
+      if (!mounted || selected == null) return;
+      await context.read<ToolCatalogController>().collectTool(
+            widget.tool.id,
+            version: selected,
+          );
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
@@ -179,7 +206,7 @@ class _ToolTurnableCardState extends State<ToolTurnableCard> {
         context.watch<ToolCatalogController>().mode == ToolScreenMode.inventory;
     final paramsForEdit =
         widget.tool.params.isNotEmpty ? widget.tool.params : widget.tool.baseParams;
-    final showCollectBadge = isAdmin && !widget.tool.isOwned;
+    final showCollectBadge = isAdmin;
     final extension = ToolCardExtensions.forTool(widget.tool);
     final onInfo = extension?.infoHandler(context, widget.tool);
     final statsChild = extension?.buildDeployStats(context, widget.tool);

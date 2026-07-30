@@ -35,3 +35,8 @@ class Dinosaur(SQLModel, table=True):
             index=True,
         ),
     )
+    version: str = Field(
+        default="Original",
+        max_length=64,
+        description="Curated image version folder name for this occurrence",
+    )

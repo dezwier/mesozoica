@@ -128,6 +128,7 @@ def _run_fossil_image_generate(params: dict[str, Any]) -> int:
         dry_run=bool(params.get("dry_run", False)),
         max_items=_parse_max_items(params.get("max_items")),
         dinos=params.get("dinos"),
+        version=params.get("version"),
     )
 
 
@@ -218,6 +219,24 @@ _JOB_HANDLERS: dict[str, Callable[[dict[str, Any]], int]] = {
     "field_site_coordinate_prune": _run_field_site_coordinate_prune,
 }
 
+_IMAGE_GENERATE_JOBS = frozenset(
+    {
+        "dinosaur_image_generate",
+        "fossil_image_generate",
+        "site_type_image_generate",
+        "tool_image_generate",
+    }
+)
+
+
+def _require_image_generate_version(params: dict[str, Any]) -> str | None:
+    """Return a non-empty version name, or None when missing/blank."""
+    raw = params.get("version")
+    if raw is None:
+        return None
+    text = str(raw).strip()
+    return text or None
+
 
 def run_single_job(job: CronJobDef, param_overrides: dict[str, Any] | None = None) -> int:
     handler = _JOB_HANDLERS.get(job.id)
@@ -227,6 +246,15 @@ def run_single_job(job: CronJobDef, param_overrides: dict[str, Any] | None = Non
     params = dict(job.params or {})
     if param_overrides:
         params.update(param_overrides)
+    if job.id in _IMAGE_GENERATE_JOBS:
+        version = _require_image_generate_version(params)
+        if version is None:
+            logger.error(
+                "Job %s requires --version (named folder, e.g. 'Original' or 'Summer 26')",
+                job.id,
+            )
+            return 1
+        params["version"] = version
     logger.info("Running cron job %s", job.id)
     return handler(params)
 
@@ -323,10 +351,10 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument(
         "--version",
-        metavar="N",
-        help="Image version folder for site-type/tool/dinosaur generation (e.g. 2 or v2). "
-        "When omitted, auto-increments to the next version after existing folders "
-        "(site_type_image_generate, tool_image_generate, dinosaur_image_generate).",
+        metavar="NAME",
+        help="Mandatory named image version folder for all four image generate jobs "
+        "(e.g. 'Original' or 'Summer 26'). Required for dinosaur_image_generate, "
+        "fossil_image_generate, site_type_image_generate, and tool_image_generate.",
     )
     parser.add_argument(
         "--prune",

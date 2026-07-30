@@ -130,3 +130,23 @@ class FormationMapSessionResponse(BaseModel):
 
 class UpdateToolParamsRequest(BaseModel):
     params: dict
+
+
+class CollectToolRequest(BaseModel):
+    """Admin collect body: curated image version folder name."""
+
+    version: str = Field(
+        ...,
+        min_length=1,
+        max_length=64,
+        description="Curated image version folder (e.g. Original, Summer 26)",
+    )
+
+
+class ToolImageVersionItem(BaseModel):
+    name: str
+    run_date: str | None = None
+
+
+class ToolImageVersionListResponse(BaseModel):
+    items: list[ToolImageVersionItem]

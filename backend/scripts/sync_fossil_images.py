@@ -12,15 +12,17 @@ from app.core.config import settings
 from app.core.database import engine
 from app.crons.railway_guard import require_railway_database
 from app.models.fossil import Fossil
+from app.services.curated_image_service.common import needs_curated_image_resync
 from app.services.fossil_image_service.sync import (
+    CURATED_MEDIA_PATH,
     build_curated_image_url,
     file_content_version,
     is_curated_image_url,
+    latest_relative_path_for_fossil,
     match_image_files,
-    needs_image_resync,
     resolve_local_source_dir_for_sync,
     resolve_public_base_url_for_sync,
-    scan_local_image_files,
+    scan_fossil_image_files,
     upload_file_to_railway,
 )
 
@@ -52,7 +54,7 @@ def run_sync(*, dry_run: bool = False, overwrite: bool = False) -> int:
     public_base_url = resolve_public_base_url_for_sync()
     sync_secret = settings.fossil_image_sync_secret
 
-    image_files = scan_local_image_files(source_dir)
+    image_files = scan_fossil_image_files(source_dir)
     if not image_files:
         logger.warning("No image files found in %s", source_dir)
 
@@ -68,67 +70,87 @@ def run_sync(*, dry_run: bool = False, overwrite: bool = False) -> int:
         updated = 0
         cleared = 0
         skipped = 0
+        matched_ids = {match.fossil_id for match in matched}
+
         for match in matched:
             row = session.get(Fossil, match.fossil_id)
-            main_image_url = row.main_image_url if row is not None else None
-            if not needs_image_resync(
+            latest = latest_relative_path_for_fossil(source_dir, match.fossil_id)
+            is_latest = latest is not None and latest[0] == match.relative_path
+            main_image_url = row.main_image_url if row is not None and is_latest else None
+            if not needs_curated_image_resync(
                 overwrite=overwrite,
                 local_path=match.path,
                 main_image_url=main_image_url,
                 public_base_url=public_base_url,
-                filename=match.filename,
+                filename=match.relative_path,
+                curated_media_path=CURATED_MEDIA_PATH,
             ):
-                logger.info("Skipping %s (already synced)", match.filename)
+                logger.info("Skipping %s (already synced)", match.relative_path)
                 skipped += 1
                 continue
 
             public_url = build_curated_image_url(
                 public_base_url,
-                match.filename,
+                match.relative_path,
                 version=file_content_version(match.path),
             )
             logger.info(
                 "%s %s -> %s",
                 "Would sync" if dry_run else "Syncing",
-                match.filename,
+                match.relative_path,
                 public_url,
             )
             if not dry_run:
                 upload_file_to_railway(
                     local_path=match.path,
-                    remote_filename=match.filename,
+                    remote_filename=match.relative_path,
                     public_base_url=public_base_url,
                     sync_secret=sync_secret,
                 )
                 uploaded += 1
 
-                if row is not None:
-                    row.main_image_url = public_url
-                    session.add(row)
-                    updated += 1
-
-        matched_ids = {match.fossil_id for match in matched}
         for row in fossils:
-            if row.id in matched_ids:
+            if row.id not in matched_ids:
+                if is_curated_image_url(row.main_image_url):
+                    logger.info(
+                        "%s fossil %d main_image_url (no local image in %s)",
+                        "Would clear" if dry_run else "Clearing",
+                        row.id,
+                        source_dir,
+                    )
+                    if not dry_run:
+                        row.main_image_url = None
+                        session.add(row)
+                    cleared += 1
                 continue
-            if not is_curated_image_url(row.main_image_url):
+
+            latest = latest_relative_path_for_fossil(source_dir, int(row.id))
+            if latest is None:
+                continue
+            relative_path, local_path = latest
+            public_url = build_curated_image_url(
+                public_base_url,
+                relative_path,
+                version=file_content_version(local_path),
+            )
+            if row.main_image_url == public_url:
                 continue
             logger.info(
-                "%s fossil %d main_image_url (no local image in %s)",
-                "Would clear" if dry_run else "Clearing",
+                "%s fossil %d main_image_url -> %s",
+                "Would set" if dry_run else "Setting",
                 row.id,
-                source_dir,
+                public_url,
             )
             if not dry_run:
-                row.main_image_url = None
+                row.main_image_url = public_url
                 session.add(row)
-            cleared += 1
+                updated += 1
 
         if not dry_run:
             session.commit()
 
         fossils_without_images = sorted(
-            fossil_id for fossil_id in id_set if not any(m.fossil_id == fossil_id for m in matched)
+            fossil_id for fossil_id in id_set if fossil_id not in matched_ids
         )
         if unmatched_files:
             logger.warning(

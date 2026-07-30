@@ -302,15 +302,13 @@ def _fossil_site_main_image_url(
     )
     if effective is None:
         return None
-    from app.models.data_source import DATA_SOURCE_ARCHIVE
     from app.services.curated_image_service.resolve import resolve_site_type_card_image_url
+    from app.services.curated_image_service.versions import ORIGINAL_VERSION
 
-    force_v1 = (row.site.data_source or DATA_SOURCE_ARCHIVE) == DATA_SOURCE_ARCHIVE
     return resolve_site_type_card_image_url(
         period=effective.period,
         rock_type=effective.rock_type,
-        as_of=None if force_v1 else row.site.created_at,
-        force_v1=force_v1,
+        version=row.site.version or ORIGINAL_VERSION,
         fallback_url=effective.main_image_url,
     )
 
@@ -335,6 +333,14 @@ def fossil_row_to_summary(
     payload = {
         name: _fossil_field_value(fossil, name) for name in Fossil.model_fields
     }
+    from app.services.curated_image_service.resolve import resolve_fossil_card_image_url
+    from app.services.curated_image_service.versions import ORIGINAL_VERSION
+
+    payload["main_image_url"] = resolve_fossil_card_image_url(
+        fossil_id=int(fossil.id),
+        version=fossil.version or ORIGINAL_VERSION,
+        fallback_url=fossil.main_image_url,
+    )
     payload["dinosaur_name"] = row.dinosaur_name
     payload["dinosaur_main_image_url"] = row.dinosaur_main_image_url
     payload["site_id"] = _fossil_site_id(row)

@@ -20,6 +20,7 @@ from app.models.data_source import DATA_SOURCE_ARCHIVE, DATA_SOURCE_FIELD
 from app.models.dinosaur_type import DinosaurType
 from app.models.fossil import Fossil
 from app.models.site import Site
+from app.services.curated_image_service.versions import latest_fossil_image_version
 from app.services.fossil_enrichment_service.validate import (
     BODY_SUBCATEGORIES,
     TRACE_SUBCATEGORIES,
@@ -253,6 +254,7 @@ def ensure_field_fossils_for_site(
                     data_source=DATA_SOURCE_FIELD,
                     depth_cm=depth_cm,
                     llm_enriched=True,
+                    version=latest_fossil_image_version(),
                 )
             )
 

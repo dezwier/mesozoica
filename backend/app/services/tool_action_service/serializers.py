@@ -39,8 +39,7 @@ def tool_image_url(session: Session, tool_instance_id: int) -> str | None:
         return None
     return resolve_tool_card_image_url(
         tool_name=tool_type.name,
-        as_of=instance.spawn_date,
-        force_v1=False,
+        version=instance.version,
         fallback_url=tool_type.main_image_url,
     )
 

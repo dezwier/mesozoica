@@ -37,6 +37,11 @@ class Tool(SQLModel, table=True):
         ),
     )
     level: int = Field(default=1, ge=1)
+    version: str = Field(
+        default="Original",
+        max_length=64,
+        description="Curated image version folder name for this occurrence",
+    )
     params_json: dict[str, Any] = Field(
         default_factory=dict,
         sa_column=Column(JSON, nullable=False),

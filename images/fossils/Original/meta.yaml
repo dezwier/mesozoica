@@ -1,0 +1,36 @@
+prompt: 'Generate a 3:4 portrait photo of a {dinosaur} fossil at an active field excavation
+  site.
+
+  The dinosaur genus is the primary subject — depict anatomy, proportions, and bone
+  texture consistent with that genus.
+
+
+  Documentary iPhone photograph with slight ''dramatic warm'' color tone. Real paleontology,
+  NOT cartoon, NOT CGI.
+
+  No borders, no text, no watermarks, no vignette — only the photo itself.
+
+
+  Show imperfect in-situ field documentation:
+
+  - fossil partially exposed in natural rock/sediment matrix, still embedded or freshly
+  uncovered
+
+  - dusty dig site, uneven daylight, casual handheld framing
+
+  - authentic wear: cracks, broken edges, matrix clinging to bone, irregular exposure
+
+  - do NOT beautify, over-restore, or museum-prepare the specimen
+
+
+  Avoid entirely: lab bench, glass case, mounted skeleton, polished specimen, studio
+  lighting, stock-photo perfection.
+
+
+  Depict this occurrence using ONLY the specification below. Every field is required
+  — show a realistic in-situ fossil of this dinosaur genus with the stated host rock,
+  fossil type, element or trace, completeness, and preservation quality all visible
+  together:
+
+  {spec_brief}'
+run_date: '2026-07-29T00:00:00+00:00'

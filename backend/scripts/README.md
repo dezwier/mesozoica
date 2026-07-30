@@ -8,31 +8,33 @@ Scripts that touch production data use the **Railway Postgres database** and Rai
 
 | Module | Description |
 |--------|-------------|
-| [`sync_dinosaur_images.py`](sync_dinosaur_images.py) | Upload curated dinosaur card images from `images/dinosaurs/vN/` to Railway volume and set `main_image_url` |
-| [`sync_fossil_images.py`](sync_fossil_images.py) | Upload curated fossil card images from `images/fossils/` to Railway volume and set `main_image_url` |
-| [`sync_site_type_images.py`](sync_site_type_images.py) | Upload curated site-type card images from `images/site-types/vN/` to Railway volume and set `main_image_url` |
-| [`sync_tool_images.py`](sync_tool_images.py) | Upload curated tool card images from `images/tools/vN/` to Railway volume and set `main_image_url` |
-| [`migrate_image_versions_to_v1.py`](migrate_image_versions_to_v1.py) | Move flat site-type/tool/dinosaur images into `v1/` and write retroactive `meta.yaml` |
+| [`sync_dinosaur_images.py`](sync_dinosaur_images.py) | Upload curated dinosaur card images from `images/dinosaurs/<version>/` to Railway volume and set `main_image_url` |
+| [`sync_fossil_images.py`](sync_fossil_images.py) | Upload curated fossil card images from `images/fossils/<version>/` to Railway volume and set `main_image_url` |
+| [`sync_site_type_images.py`](sync_site_type_images.py) | Upload curated site-type card images from `images/site-types/<version>/` to Railway volume and set `main_image_url` |
+| [`sync_tool_images.py`](sync_tool_images.py) | Upload curated tool card images from `images/tools/<version>/` to Railway volume and set `main_image_url` |
+| [`migrate_image_versions_to_v1.py`](migrate_image_versions_to_v1.py) | Move flat site-type/tool/dinosaur images into `Original/` and write retroactive `meta.yaml` |
+| [`migrate_named_image_versions.py`](migrate_named_image_versions.py) | Rename `v1`→`Original`, `v2`→`Summer 26`; migrate flat fossils into `Original/` |
 | [`backfill_user_levels.py`](backfill_user_levels.py) | Recompute user exploration/career XP from discoveries + distance using `leveling.yaml` rewards |
 
 All sync scripts support `.png`, `.jpg`, `.jpeg`, and `.webp`.
 
 ### Dinosaur images
 
-- **Source folder:** repo `images/dinosaurs/vN/` (versioned; flat files migrate to `v1/` on sync/generate)
-- **Filename rule:** stem must match `dinosaur_type.name` (case-insensitive), e.g. `v1/tyrannosaurus.png` → `Tyrannosaurus`
-- **Served at:** `https://<api-host>/media/dinosaurs/vN/<DinosaurName>.<ext>`
+- **Source folder:** repo `images/dinosaurs/<version>/` (e.g. `Original/`, `Summer 26/`)
+- **Filename rule:** stem must match `dinosaur_type.name` (case-insensitive), e.g. `Original/tyrannosaurus.png` → `Tyrannosaurus`
+- **Served at:** `https://<api-host>/media/dinosaurs/<version>/<DinosaurName>.<ext>`
 - **Cache busting:** `main_image_url` includes a `?v=<content-hash>` query param so the app fetches updated files after re-sync
-- **Card resolution:** catalog always uses `v1`; inventory occurrences pick the newest version with `run_date <= dinosaur.created_at`
+- **Card resolution:** catalog always uses `Original`; inventory occurrences use `dinosaur.version`
 
 ### Fossil images
 
-- **Source folder:** repo `images/fossils/`
-- **Filename rule:** `<occurrence_no>.<ext>` — stem is the PBDB occurrence number (stored as `fossil.id`), e.g. `139292.png`
-- **Served at:** `https://<api-host>/media/fossils/<occurrence_no>.<ext>`
+- **Source folder:** repo `images/fossils/<version>/` (e.g. `Original/`)
+- **Filename rule:** `<occurrence_no>.<ext>` — stem is the PBDB occurrence number (stored as `fossil.id`), e.g. `Original/139292.png`
+- **Served at:** `https://<api-host>/media/fossils/<version>/<occurrence_no>.<ext>`
 - **Cache busting:** `main_image_url` includes a `?v=<content-hash>` query param so the app fetches updated files after re-sync
+- **Card resolution:** uses `fossil.version`
 - **Re-sync:** Regenerated local files are re-uploaded automatically when their content hash differs from the stored `main_image_url` (no `--overwrite` required)
-- **Prune:** Fossils with a curated `main_image_url` but no matching file in `images/fossils/` get `main_image_url` cleared on sync (app shows placeholder)
+- **Prune:** Fossils with a curated `main_image_url` but no matching file under version folders get `main_image_url` cleared on sync (app shows placeholder)
 
 ## Make targets (recommended)
 
@@ -148,11 +150,11 @@ Regenerated images are detected via content hash and overwrite the remote file a
 
 ### Site-type card images
 
-- **Source folder:** repo `images/site-types/vN/` (version folders; migrate flat files with `make migrate-image-versions-to-v1`)
-- **Filename rule:** `vN/<period>_<rock_type>.<ext>` — e.g. `v1/cretaceous_sandstone.png`
-- **meta.yaml:** each version folder stores `prompt` (generation template) and `run_date` (card version cutoff)
-- **Served at:** `https://<api-host>/media/site-types/vN/<period>_<rock_type>.<ext>`
-- **Generate:** `make run-site-type-image-generate CRON_EXTRA='--version 2'`
+- **Source folder:** repo `images/site-types/<version>/` (e.g. `Original/`, `Summer 26/`)
+- **Filename rule:** `<version>/<period>_<rock_type>.<ext>` — e.g. `Original/cretaceous_sandstone.png`
+- **meta.yaml:** each version folder stores `prompt` (generation template) and `run_date` (used when assigning version to new site occurrences)
+- **Served at:** `https://<api-host>/media/site-types/<version>/<period>_<rock_type>.<ext>`
+- **Generate:** `make run-site-type-image-generate CRON_EXTRA='--version "Summer 26"'`
 
 ```bash
 make sync-site-type-images
@@ -162,18 +164,19 @@ make sync-site-type-images CRON_EXTRA='--overwrite'
 
 ### Tool card images
 
-Same versioned layout under `images/tools/vN/`. Catalog cards always use `v1`; inventory cards pick the newest version with `run_date <= Tool.spawn_date`.
+Same named-version layout under `images/tools/<version>/`. Catalog cards always use `Original`; inventory cards use `tool.version`.
 
 ```bash
-make run-tool-image-generate-local CRON_EXTRA='--version 2 --max-items 3'
+make run-tool-image-generate-local CRON_EXTRA='--version "Summer 26" --max-items 3'
 make sync-tool-images
 ```
 
-### Migrate flat images to v1
+### Migrate / rename version folders
 
 ```bash
-make migrate-image-versions-to-v1
-make migrate-image-versions-to-v1 CRON_EXTRA='--dry-run'
+make migrate-image-versions-to-v1          # flat files → Original/
+make migrate-named-image-versions         # v1→Original, v2→Summer 26; flat fossils → Original/
+make migrate-named-image-versions CRON_EXTRA='--dry-run'
 ```
 
 ## Adding a script

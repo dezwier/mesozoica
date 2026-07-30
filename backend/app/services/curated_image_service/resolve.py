@@ -1,13 +1,13 @@
-"""Resolve versioned curated image URLs for site-type and tool cards."""
+"""Resolve versioned curated image URLs for site-type, tool, dinosaur, and fossil cards."""
 
 from __future__ import annotations
 
-from datetime import datetime
 from pathlib import Path
 
 from app.core.config import settings
 from app.services.curated_image_service.common import file_content_version
 from app.services.curated_image_service.versions import (
+    ORIGINAL_VERSION,
     build_versioned_media_url,
     resolve_versioned_image_path,
 )
@@ -29,8 +29,7 @@ def resolve_site_type_card_image_url(
     *,
     period: str,
     rock_type: str,
-    as_of: datetime | None = None,
-    force_v1: bool = False,
+    version: str | None = None,
     fallback_url: str | None = None,
 ) -> str | None:
     """Pick the versioned site-type image URL for a card."""
@@ -39,17 +38,16 @@ def resolve_site_type_card_image_url(
     resolved = resolve_versioned_image_path(
         root,
         stem,
-        as_of=as_of,
-        force_v1=force_v1,
+        version=version or ORIGINAL_VERSION,
         case_insensitive=False,
     )
     if resolved is None:
         return fallback_url
-    version, path = resolved
+    info, path = resolved
     base = _public_base_url()
     if not base:
         return fallback_url
-    relative = f"{version.name}/{path.name}"
+    relative = f"{info.name}/{path.name}"
     return build_versioned_media_url(
         base,
         SITE_TYPE_MEDIA_PATH,
@@ -61,8 +59,7 @@ def resolve_site_type_card_image_url(
 def resolve_tool_card_image_url(
     *,
     tool_name: str,
-    as_of: datetime | None = None,
-    force_v1: bool = False,
+    version: str | None = None,
     fallback_url: str | None = None,
 ) -> str | None:
     """Pick the versioned tool image URL for a card."""
@@ -70,17 +67,16 @@ def resolve_tool_card_image_url(
     resolved = resolve_versioned_image_path(
         root,
         tool_name,
-        as_of=as_of,
-        force_v1=force_v1,
+        version=version or ORIGINAL_VERSION,
         case_insensitive=True,
     )
     if resolved is None:
         return fallback_url
-    version, path = resolved
+    info, path = resolved
     base = _public_base_url()
     if not base:
         return fallback_url
-    relative = f"{version.name}/{path.name}"
+    relative = f"{info.name}/{path.name}"
     return build_versioned_media_url(
         base,
         TOOL_MEDIA_PATH,
@@ -92,8 +88,7 @@ def resolve_tool_card_image_url(
 def resolve_dinosaur_card_image_url(
     *,
     dinosaur_name: str,
-    as_of: datetime | None = None,
-    force_v1: bool = False,
+    version: str | None = None,
     fallback_url: str | None = None,
 ) -> str | None:
     """Pick the versioned dinosaur image URL for a card."""
@@ -103,17 +98,16 @@ def resolve_dinosaur_card_image_url(
     resolved = resolve_versioned_image_path(
         root,
         dinosaur_name,
-        as_of=as_of,
-        force_v1=force_v1,
+        version=version or ORIGINAL_VERSION,
         case_insensitive=True,
     )
     if resolved is None:
         return fallback_url
-    version, path = resolved
+    info, path = resolved
     base = _public_base_url()
     if not base:
         return fallback_url
-    relative = f"{version.name}/{path.name}"
+    relative = f"{info.name}/{path.name}"
     return build_versioned_media_url(
         base,
         DINO_MEDIA_PATH,
@@ -122,10 +116,48 @@ def resolve_dinosaur_card_image_url(
     )
 
 
-def any_versioned_stem_exists(root: Path, stem: str, *, case_insensitive: bool = False) -> bool:
-    from app.services.curated_image_service.versions import load_image_versions, find_image_in_version
+def resolve_fossil_card_image_url(
+    *,
+    fossil_id: int,
+    version: str | None = None,
+    fallback_url: str | None = None,
+) -> str | None:
+    """Pick the versioned fossil image URL for a card."""
+    from app.services.fossil_image_service.sync import CURATED_MEDIA_PATH as FOSSIL_MEDIA_PATH
+
+    root = settings.resolved_fossil_images_dir
+    resolved = resolve_versioned_image_path(
+        root,
+        str(fossil_id),
+        version=version or ORIGINAL_VERSION,
+        case_insensitive=False,
+    )
+    if resolved is None:
+        return fallback_url
+    info, path = resolved
+    base = _public_base_url()
+    if not base:
+        return fallback_url
+    relative = f"{info.name}/{path.name}"
+    return build_versioned_media_url(
+        base,
+        FOSSIL_MEDIA_PATH,
+        relative,
+        content_version=file_content_version(path),
+    )
+
+
+def any_versioned_stem_exists(
+    root: Path, stem: str, *, case_insensitive: bool = False
+) -> bool:
+    from app.services.curated_image_service.versions import (
+        find_image_in_version,
+        load_image_versions,
+    )
 
     for version in load_image_versions(root):
-        if find_image_in_version(version.path, stem, case_insensitive=case_insensitive):
+        if find_image_in_version(
+            version.path, stem, case_insensitive=case_insensitive
+        ):
             return True
     return False

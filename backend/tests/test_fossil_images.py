@@ -11,6 +11,7 @@ from sqlmodel import Session
 import app.core.config as config_module
 from app.core.app_factory import create_app
 from app.models.fossil import Fossil
+from app.services.curated_image_service.versions import ORIGINAL_VERSION
 from app.services.fossil_image_service.sync import (
     build_curated_image_url,
     file_content_version,
@@ -24,22 +25,22 @@ from app.services.fossil_image_service.sync import (
 
 def test_build_curated_image_url():
     assert (
-        build_curated_image_url("https://example.com", "139292.webp")
-        == "https://example.com/media/fossils/139292.webp"
+        build_curated_image_url("https://example.com", f"{ORIGINAL_VERSION}/139292.webp")
+        == f"https://example.com/media/fossils/{ORIGINAL_VERSION}/139292.webp"
     )
     assert (
         build_curated_image_url(
             "https://example.com",
-            "139292.webp",
+            f"{ORIGINAL_VERSION}/139292.webp",
             version="abc123",
         )
-        == "https://example.com/media/fossils/139292.webp?v=abc123"
+        == f"https://example.com/media/fossils/{ORIGINAL_VERSION}/139292.webp?v=abc123"
     )
 
 
 def test_is_curated_image_url():
     assert is_curated_image_url(
-        "https://mesozoica-production.up.railway.app/media/fossils/139292.webp"
+        f"https://mesozoica-production.up.railway.app/media/fossils/{ORIGINAL_VERSION}/139292.webp"
     )
     assert not is_curated_image_url(
         "https://mesozoica-production.up.railway.app/media/dinosaurs/Tyrannosaurus.webp"
@@ -76,7 +77,7 @@ def test_upload_fossil_image_endpoint(tmp_path: Path, monkeypatch):
         )
 
     assert response.status_code == 204
-    assert (images_dir / "139292.png").read_bytes() == b"image-bytes"
+    assert (images_dir / ORIGINAL_VERSION / "139292.png").read_bytes() == b"image-bytes"
 
 
 def test_upload_file_to_railway_dry_run(tmp_path: Path):
@@ -84,11 +85,23 @@ def test_upload_file_to_railway_dry_run(tmp_path: Path):
     local.write_bytes(b"x")
     upload_file_to_railway(
         local_path=local,
-        remote_filename="139292.png",
+        remote_filename=f"{ORIGINAL_VERSION}/139292.png",
         public_base_url="https://example.com",
         sync_secret="",
         dry_run=True,
     )
+
+
+def _seed_original_image(images_dir: Path, fossil_id: int = 139292, content: bytes = b"x") -> Path:
+    version_dir = images_dir / ORIGINAL_VERSION
+    version_dir.mkdir(parents=True, exist_ok=True)
+    (version_dir / "meta.yaml").write_text(
+        "run_date: '2025-01-01T00:00:00+00:00'\nprompt: p\n",
+        encoding="utf-8",
+    )
+    path = version_dir / f"{fossil_id}.png"
+    path.write_bytes(content)
+    return path
 
 
 def test_run_sync_updates_main_image_url(
@@ -99,8 +112,7 @@ def test_run_sync_updates_main_image_url(
     from scripts import sync_fossil_images as sync_module
 
     images_dir = tmp_path / "images"
-    images_dir.mkdir()
-    (images_dir / "139292.png").write_bytes(b"x")
+    image_path = _seed_original_image(images_dir)
 
     row = Fossil(id=139292, dinosaur_id=1, identified_name="Tyrannosaurus rex")
     session.add(row)
@@ -121,7 +133,8 @@ def test_run_sync_updates_main_image_url(
 
     session.refresh(row)
     assert row.main_image_url == (
-        "https://example.com/media/fossils/139292.png?v=9dd4e461268c"
+        f"https://example.com/media/fossils/{ORIGINAL_VERSION}/139292.png"
+        f"?v={file_content_version(image_path)}"
     )
 
 
@@ -133,19 +146,19 @@ def test_run_sync_skips_existing_remote_images(
     from scripts import sync_fossil_images as sync_module
 
     images_dir = tmp_path / "images"
-    images_dir.mkdir()
-    image_path = images_dir / "139292.png"
-    image_path.write_bytes(b"x")
+    image_path = _seed_original_image(images_dir)
+    relative = f"{ORIGINAL_VERSION}/139292.png"
 
     row = Fossil(id=139292, dinosaur_id=1, identified_name="Tyrannosaurus rex")
     row.main_image_url = build_curated_image_url(
         "https://example.com",
-        "139292.png",
+        relative,
         version=file_content_version(image_path),
     )
     session.add(row)
     session.commit()
 
+    monkeypatch.setattr(config_module.settings, "public_base_url", "https://example.com")
     monkeypatch.setenv("FOSSIL_IMAGES_SOURCE_DIR", str(images_dir))
     upload_calls: list[str] = []
 
@@ -153,14 +166,20 @@ def test_run_sync_skips_existing_remote_images(
         upload_calls.append(kwargs["remote_filename"])
 
     monkeypatch.setattr(sync_module, "upload_file_to_railway", fake_upload)
+    monkeypatch.setattr(
+        "app.services.curated_image_service.common.remote_curated_image_exists",
+        lambda **kwargs: True,
+    )
     monkeypatch.setenv("ALLOW_LOCAL_CRON", "1")
 
     assert sync_module.run_sync(dry_run=False, overwrite=False) == 0
     assert upload_calls == []
 
     session.refresh(row)
-    assert row.main_image_url == (
-        "https://example.com/media/fossils/139292.png?v=9dd4e461268c"
+    assert row.main_image_url == build_curated_image_url(
+        "https://example.com",
+        relative,
+        version=file_content_version(image_path),
     )
 
 
@@ -172,13 +191,12 @@ def test_run_sync_resyncs_when_local_content_changed(
     from scripts import sync_fossil_images as sync_module
 
     images_dir = tmp_path / "images"
-    images_dir.mkdir()
-    image_path = images_dir / "139292.png"
-    image_path.write_bytes(b"new-image-bytes")
+    image_path = _seed_original_image(images_dir, content=b"new-image-bytes")
+    relative = f"{ORIGINAL_VERSION}/139292.png"
 
     row = Fossil(id=139292, dinosaur_id=1, identified_name="Tyrannosaurus rex")
     row.main_image_url = (
-        "https://example.com/media/fossils/139292.png?v=9dd4e461268c"
+        f"https://example.com/media/fossils/{ORIGINAL_VERSION}/139292.png?v=9dd4e461268c"
     )
     session.add(row)
     session.commit()
@@ -194,37 +212,43 @@ def test_run_sync_resyncs_when_local_content_changed(
     monkeypatch.setenv("ALLOW_LOCAL_CRON", "1")
 
     assert sync_module.run_sync(dry_run=False, overwrite=False) == 0
-    assert upload_calls == ["139292.png"]
+    assert upload_calls == [relative]
 
     session.refresh(row)
     assert row.main_image_url == (
-        f"https://example.com/media/fossils/139292.png?v={file_content_version(image_path)}"
+        f"https://example.com/media/fossils/{relative}"
+        f"?v={file_content_version(image_path)}"
     )
     assert row.main_image_url != (
-        "https://example.com/media/fossils/139292.png?v=9dd4e461268c"
+        f"https://example.com/media/fossils/{ORIGINAL_VERSION}/139292.png?v=9dd4e461268c"
     )
 
 
-def test_needs_image_resync_detects_stale_content(tmp_path: Path):
+def test_needs_image_resync_detects_stale_content(tmp_path: Path, monkeypatch):
     local = tmp_path / "139292.png"
     local.write_bytes(b"new")
+    relative = f"{ORIGINAL_VERSION}/139292.png"
+    monkeypatch.setattr(
+        "app.services.curated_image_service.common.remote_curated_image_exists",
+        lambda **kwargs: True,
+    )
     assert needs_image_resync(
         overwrite=False,
         local_path=local,
-        main_image_url="https://example.com/media/fossils/139292.png?v=oldhash",
+        main_image_url=f"https://example.com/media/fossils/{relative}?v=oldhash",
         public_base_url="https://example.com",
-        filename="139292.png",
+        filename=relative,
     )
     assert not needs_image_resync(
         overwrite=False,
         local_path=local,
         main_image_url=build_curated_image_url(
             "https://example.com",
-            "139292.png",
+            relative,
             version=file_content_version(local),
         ),
         public_base_url="https://example.com",
-        filename="139292.png",
+        filename=relative,
     )
 
 
@@ -236,8 +260,8 @@ def test_run_sync_overwrite_uploads_existing_remote_images(
     from scripts import sync_fossil_images as sync_module
 
     images_dir = tmp_path / "images"
-    images_dir.mkdir()
-    (images_dir / "139292.png").write_bytes(b"x")
+    image_path = _seed_original_image(images_dir)
+    relative = f"{ORIGINAL_VERSION}/139292.png"
 
     row = Fossil(id=139292, dinosaur_id=1, identified_name="Tyrannosaurus rex")
     session.add(row)
@@ -254,11 +278,12 @@ def test_run_sync_overwrite_uploads_existing_remote_images(
     monkeypatch.setenv("ALLOW_LOCAL_CRON", "1")
 
     assert sync_module.run_sync(dry_run=False, overwrite=True) == 0
-    assert upload_calls == ["139292.png"]
+    assert upload_calls == [relative]
 
     session.refresh(row)
     assert row.main_image_url == (
-        "https://example.com/media/fossils/139292.png?v=9dd4e461268c"
+        f"https://example.com/media/fossils/{relative}"
+        f"?v={file_content_version(image_path)}"
     )
 
 
@@ -270,15 +295,15 @@ def test_run_sync_clears_curated_url_when_local_file_missing(
     from scripts import sync_fossil_images as sync_module
 
     images_dir = tmp_path / "images"
-    images_dir.mkdir()
-    (images_dir / "139292.png").write_bytes(b"x")
+    image_path = _seed_original_image(images_dir)
+    relative = f"{ORIGINAL_VERSION}/139292.png"
 
     synced = Fossil(id=139292, dinosaur_id=1, identified_name="Tyrannosaurus rex")
     stale = Fossil(
         id=219975,
         dinosaur_id=1,
         identified_name="Tyrannosaurus rex",
-        main_image_url="https://example.com/media/fossils/219975.png?v=oldhash",
+        main_image_url=f"https://example.com/media/fossils/{ORIGINAL_VERSION}/219975.png?v=oldhash",
     )
     session.add(synced)
     session.add(stale)
@@ -294,14 +319,15 @@ def test_run_sync_clears_curated_url_when_local_file_missing(
     session.refresh(synced)
     session.refresh(stale)
     assert synced.main_image_url == (
-        "https://example.com/media/fossils/139292.png?v=9dd4e461268c"
+        f"https://example.com/media/fossils/{relative}"
+        f"?v={file_content_version(image_path)}"
     )
     assert stale.main_image_url is None
 
 
 def test_resolve_local_source_dir_for_sync_uses_repo_folder(monkeypatch, tmp_path: Path):
-    repo_images = tmp_path / "images/fossils"
-    repo_images.mkdir()
+    repo_images = tmp_path / "images" / "fossils"
+    repo_images.mkdir(parents=True)
     monkeypatch.setenv("FOSSIL_IMAGES_SOURCE_DIR", str(repo_images))
     monkeypatch.setenv("FOSSIL_IMAGES_DIR", "/data/images/fossils")
 

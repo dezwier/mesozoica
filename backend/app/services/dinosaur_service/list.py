@@ -29,7 +29,7 @@ class DinosaurListRow:
     dinosaur_type: DinosaurType
     occurrence_id: int | None = None
     created_at: datetime | None = None
-    force_v1_image: bool = True
+    image_version: str | None = None
 
 
 def list_dinosaurs(
@@ -131,8 +131,11 @@ def _list_catalog_dinosaurs(
             ).all()
         )
 
+    from app.services.curated_image_service.versions import ORIGINAL_VERSION
+
     return [
-        DinosaurListRow(dinosaur_type=row, force_v1_image=True) for row in rows
+        DinosaurListRow(dinosaur_type=row, image_version=ORIGINAL_VERSION)
+        for row in rows
     ], int(total)
 
 
@@ -226,7 +229,7 @@ def _list_inventory_dinosaurs(
             dinosaur_type=dino_type,
             occurrence_id=int(occurrence.id),
             created_at=occurrence.created_at,
-            force_v1_image=False,
+            image_version=occurrence.version,
         )
         for occurrence, dino_type in rows
     ], int(total)
@@ -326,6 +329,7 @@ def get_dinosaur_by_id(session: Session, dinosaur_id: int) -> DinosaurType:
 
 def dinosaur_to_summary(row: DinosaurListRow):
     from app.schemas.dinosaur import DinosaurSummary
+    from app.services.curated_image_service.versions import ORIGINAL_VERSION
 
     dino_type = row.dinosaur_type
     type_id = int(dino_type.id)
@@ -345,8 +349,7 @@ def dinosaur_to_summary(row: DinosaurListRow):
         cladogram=dict(dino_type.cladogram or {}),
         main_image_url=resolve_dinosaur_card_image_url(
             dinosaur_name=dino_type.name,
-            as_of=None if row.force_v1_image else row.created_at,
-            force_v1=row.force_v1_image,
+            version=row.image_version or ORIGINAL_VERSION,
             fallback_url=dino_type.main_image_url,
         ),
         created_at=row.created_at,

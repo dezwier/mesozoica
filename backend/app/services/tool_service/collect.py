@@ -6,10 +6,16 @@ from datetime import datetime, timezone
 
 from sqlmodel import Session, col, select
 
-from app.core.exceptions import NotFoundError
+from app.core.exceptions import NotFoundError, ValidationError
 from app.models.tool import Tool
 from app.models.tool_type import ToolType
 from app.models.user_tool import USER_TOOL_ACTION_OWNED, UserTool
+from app.services.curated_image_service.versions import (
+    is_version_dir_name,
+    latest_tool_image_version,
+    load_image_versions,
+    normalize_version_name,
+)
 from app.services.tool_service.params import base_params_for_tool_type
 
 
@@ -37,31 +43,71 @@ def _owned_instance_for_type(
     return rows[0] if rows else None
 
 
+def list_tool_image_versions() -> list[dict[str, str | None]]:
+    """Available curated tool image version folders for admin collect UI."""
+    from app.core.config import settings
+
+    versions = load_image_versions(settings.resolved_tool_images_dir)
+    # Newest first for picker convenience.
+    ordered = sorted(
+        versions,
+        key=lambda v: (
+            v.run_date is not None,
+            v.run_date or datetime.min.replace(tzinfo=timezone.utc),
+            v.name.lower(),
+        ),
+        reverse=True,
+    )
+    return [
+        {
+            "name": v.name,
+            "run_date": v.run_date.isoformat() if v.run_date else None,
+        }
+        for v in ordered
+    ]
+
+
+def _resolve_collect_version(version: str | None) -> str:
+    from app.core.config import settings
+
+    if version is None or not str(version).strip():
+        return latest_tool_image_version()
+    name = normalize_version_name(version)
+    root = settings.resolved_tool_images_dir
+    known = {v.name for v in load_image_versions(root)}
+    if known and name not in known:
+        raise ValidationError(
+            f"Unknown tool image version {name!r}; available: {sorted(known)}"
+        )
+    if not is_version_dir_name(name):
+        raise ValidationError(f"Invalid tool image version {name!r}")
+    return name
+
+
 def collect_tool_for_user(
     session: Session,
     *,
     user_id: int,
     tool_id: int,
+    version: str | None = None,
 ) -> tuple[ToolType, int]:
-    """Ensure the user owns an instance of catalog ``tool_id`` (tool_type id).
+    """Spawn a new owned instance of catalog ``tool_id`` (tool_type id).
 
-    Idempotent: if already owned, returns the existing instance level unchanged.
+    Always creates a new occurrence (admins may collect duplicates). When
+    ``version`` is omitted, uses the latest curated image version by run_date.
     """
     tool_type = session.get(ToolType, tool_id)
     if tool_type is None:
         raise NotFoundError(f"Tool {tool_id} not found")
 
-    existing = _owned_instance_for_type(
-        session, user_id=user_id, tool_type_id=tool_id
-    )
-    if existing is not None:
-        return tool_type, int(existing.level)
+    image_version = _resolve_collect_version(version)
 
     now = _utc_now()
     instance = Tool(
         tool_type_id=tool_id,
         spawn_date=now,
         level=1,
+        version=image_version,
         params_json=base_params_for_tool_type(tool_type),
     )
     session.add(instance)
@@ -76,7 +122,11 @@ def collect_tool_for_user(
     )
     session.commit()
     session.refresh(instance)
-    return tool_type, int(instance.level)
+    # Catalog cards annotate the highest owned level for the type.
+    levels = ownership_levels_for_tool_types(
+        session, user_id=user_id, tool_type_ids=[tool_id]
+    )
+    return tool_type, levels.get(tool_id, int(instance.level))
 
 
 def ownership_levels_for_tool_types(

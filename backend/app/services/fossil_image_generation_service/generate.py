@@ -14,8 +14,10 @@ from app.models.dinosaur_type import DinosaurType
 from app.models.data_source import DATA_SOURCE_ARCHIVE
 from app.models.fossil import Fossil
 from app.services.curated_image_service.versions import (
-    migrate_flat_images_to_v1,
+    ensure_version_meta,
+    require_generation_version,
     scan_versioned_image_files,
+    version_dir,
 )
 from app.services.dinosaur_image_service.sync import resolve_local_source_dir_for_sync
 from app.services.dinosaur_name_filter import dino_name_match_clause
@@ -36,7 +38,7 @@ from app.services.image_generation_service.local_files import (
 )
 from app.services.image_generation_service.prompting import (
     build_fossil_image_prompt,
-    dinosaur_image_prompt_template,
+    fossil_image_prompt_template,
 )
 from app.services.image_generation_service.runner import generate_with_retries
 
@@ -120,17 +122,25 @@ def generate_fossil_images(
     dry_run: bool = False,
     max_items: int | None = None,
     dinos: list[str] | None = None,
+    version: str,
 ) -> GenerateSummary:
-    """Generate missing fossil card images to the local repo folder."""
+    """Generate missing fossil card images into a named version folder.
+
+    ``version`` is a required folder name (e.g. ``Original``, ``Summer 26``).
+    """
     if not settings.google_gemini_api_key.strip():
         raise RuntimeError("GOOGLE_GEMINI_API_KEY is required for fossil image generation")
 
-    output_dir = resolve_fossil_output_dir()
-    dinosaur_dir = resolve_local_source_dir_for_sync()
-    migrate_flat_images_to_v1(
-        dinosaur_dir,
-        default_prompt=dinosaur_image_prompt_template(),
+    root_dir = resolve_fossil_output_dir()
+    version_name = require_generation_version(version)
+    output_dir = version_dir(root_dir, version_name)
+    meta = ensure_version_meta(
+        output_dir,
+        default_prompt=fossil_image_prompt_template(),
     )
+    prompt_template = str(meta.get("prompt") or fossil_image_prompt_template())
+
+    dinosaur_dir = resolve_local_source_dir_for_sync()
     existing_stems = scan_existing_stems(output_dir, case_insensitive=False)
     dinosaur_image_stems = _scan_dinosaur_image_stems(dinosaur_dir)
     start = time.monotonic()
@@ -147,6 +157,7 @@ def generate_fossil_images(
 
     _log_header(
         output_dir=output_dir,
+        version=version_name,
         candidates=len(candidates),
         skipped_existing=skipped_existing,
         max_items=max_items,
@@ -173,6 +184,7 @@ def generate_fossil_images(
         prompt = build_fossil_image_prompt(
             fossil_data,
             dinosaur_name=candidate.dinosaur_name,
+            template=prompt_template,
         )
         output_path = output_png_path(output_dir, stem)
 
@@ -196,7 +208,7 @@ def generate_fossil_images(
                 cost_usd += outcome.cost_usd
                 existing_stems.add(stem)
                 counters.generated += 1
-                logger.info('%s · OK -> %s', label, output_path.name)
+                logger.info('%s · OK -> %s/%s', label, version_name, output_path.name)
         else:
             counters.failed += 1
             logger.error('%s · FAIL · %s', label, short_generation_error(outcome.error))
@@ -210,6 +222,7 @@ def generate_fossil_images(
         elapsed_s=elapsed,
         cost_usd=cost_usd,
         output_dir=str(output_dir),
+        version=version_name,
     )
     _log_summary(summary)
     return summary
@@ -218,12 +231,14 @@ def generate_fossil_images(
 def _log_header(
     *,
     output_dir,
+    version: str,
     candidates: int,
     skipped_existing: int,
     max_items: int | None,
     dry_run: bool,
 ) -> None:
     logger.info("=== fossil_image_generate ===")
+    logger.info("version: %s", version)
     logger.info("output_dir: %s", output_dir)
     logger.info("model: %s", settings.gemini_image_model)
     logger.info(
@@ -241,7 +256,8 @@ def _log_header(
 def _log_summary(summary: GenerateSummary) -> None:
     logger.info("--- summary ---")
     logger.info(
-        "generated: %d  skipped: %d  failed: %d  elapsed: %.1fs  cost: $%.2f",
+        "version: %s  generated: %d  skipped: %d  failed: %d  elapsed: %.1fs  cost: $%.2f",
+        summary.version,
         summary.counters.generated,
         summary.counters.skipped,
         summary.counters.failed,

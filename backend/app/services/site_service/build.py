@@ -53,6 +53,8 @@ def build_site_draft(site_id: int, fossils_at_site: list[Fossil]) -> SiteDraft |
         return None
     ref = fossils_at_site[0]
     min_age_ma, max_age_ma = ages_for_site(fossils_at_site)
+    from app.services.curated_image_service.versions import latest_site_type_image_version
+
     return SiteDraft(
         site=Site(
             site_id=site_id,
@@ -65,6 +67,7 @@ def build_site_draft(site_id: int, fossils_at_site: list[Fossil]) -> SiteDraft |
             min_age_ma=min_age_ma,
             max_age_ma=max_age_ma,
             period=period_for_ages(min_age_ma, max_age_ma),
+            version=latest_site_type_image_version(),
         ),
     )
 

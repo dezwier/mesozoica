@@ -12,6 +12,7 @@ from app.models.user import User
 from app.schemas.dinosaur import DinosaurArticleResponse, DinosaurListResponse, DinosaurSummary
 from app.services.dinosaur_service import get_dinosaur_by_id, list_dinosaurs
 from app.services.dinosaur_service.list import DinosaurListRow, ListMode, dinosaur_to_summary
+from app.services.curated_image_service.versions import ORIGINAL_VERSION
 from app.services.wikipedia_service.parser import prepare_article_for_display
 
 router = APIRouter(prefix="/dinosaurs", tags=["dinosaurs"])
@@ -83,5 +84,5 @@ def get_dinosaur(
 ) -> DinosaurSummary:
     row = get_dinosaur_by_id(session, dinosaur_id)
     return dinosaur_to_summary(
-        DinosaurListRow(dinosaur_type=row, force_v1_image=True)
+        DinosaurListRow(dinosaur_type=row, image_version=ORIGINAL_VERSION)
     )

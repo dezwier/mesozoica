@@ -128,13 +128,53 @@ class ToolService {
     return ToolSummary.fromJson(decoded);
   }
 
-  Future<ToolSummary> collectTool(int id) async {
-    final uri = AppConfig.toolCollectUri(id);
+  Future<List<String>> listToolImageVersions() async {
+    final uri = AppConfig.toolImageVersionsUri();
     if (kDebugMode) {
-      debugPrint('ToolService POST $uri');
+      debugPrint('ToolService GET $uri');
     }
     final response = await ApiClient.instance
-        .sendPost(uri, client: _client, headers: await _headers(jsonBody: true))
+        .sendGet(uri, client: _client, headers: await _headers())
+        .timeout(const Duration(seconds: 15));
+
+    if (response.statusCode != 200) {
+      throw ToolServiceException(
+        'Failed to load tool image versions (${response.statusCode})',
+      );
+    }
+
+    final decoded = jsonDecode(response.body);
+    if (decoded is! Map<String, dynamic>) {
+      throw const ToolServiceException('Invalid tool image versions response');
+    }
+    final items = decoded['items'];
+    if (items is! List) {
+      throw const ToolServiceException('Invalid tool image versions items');
+    }
+    final names = <String>[];
+    for (final item in items) {
+      if (item is Map<String, dynamic>) {
+        final name = item['name'];
+        if (name is String && name.trim().isNotEmpty) {
+          names.add(name.trim());
+        }
+      }
+    }
+    return names;
+  }
+
+  Future<ToolSummary> collectTool(int id, {required String version}) async {
+    final uri = AppConfig.toolCollectUri(id);
+    if (kDebugMode) {
+      debugPrint('ToolService POST $uri version=$version');
+    }
+    final response = await ApiClient.instance
+        .sendPost(
+          uri,
+          client: _client,
+          headers: await _headers(jsonBody: true),
+          body: jsonEncode({'version': version}),
+        )
         .timeout(const Duration(seconds: 15));
 
     if (response.statusCode != 200) {

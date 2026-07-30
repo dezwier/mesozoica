@@ -1,9 +1,8 @@
-"""Versioned curated image folders (v1/, v2/, …) with meta.yaml."""
+"""Named curated image version folders (Original/, Summer 26/, …) with meta.yaml."""
 
 from __future__ import annotations
 
 import logging
-import re
 import shutil
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -22,16 +21,32 @@ from app.services.curated_image_service.common import (
 logger = logging.getLogger(__name__)
 
 META_FILENAME = "meta.yaml"
+ORIGINAL_VERSION = "Original"
+SUMMER_26_VERSION = "Summer 26"
 BACKFILL_RUN_DATE = datetime(2026, 7, 29, 0, 0, 0, tzinfo=timezone.utc)
-_VERSION_DIR_RE = re.compile(r"^v(\d+)$", re.IGNORECASE)
+
+# Legacy numeric folder names from before named versions.
+_LEGACY_VERSION_MAP = {
+    "v1": ORIGINAL_VERSION,
+    "v2": SUMMER_26_VERSION,
+}
+
+# Directories that are never treated as image version folders.
+_SKIP_DIR_NAMES = frozenset(
+    {
+        ".git",
+        ".DS_Store",
+        "__pycache__",
+        "node_modules",
+    }
+)
 
 
 @dataclass(frozen=True)
 class ImageVersionInfo:
     """One version folder under a curated image root."""
 
-    name: str  # e.g. "v1"
-    number: int
+    name: str
     path: Path
     run_date: datetime | None
     prompt: str | None
@@ -43,53 +58,30 @@ class VersionedImageFile:
 
     path: Path
     version: str
-    version_number: int
-    relative_path: str  # e.g. "v1/cretaceous_sandstone.png"
-    filename: str  # basename only, e.g. "cretaceous_sandstone.png"
+    relative_path: str  # e.g. "Original/cretaceous_sandstone.png"
+    filename: str
 
 
-def normalize_version_name(raw: str | int | None) -> str:
-    """Accept ``2``, ``v2``, or ``None`` (defaults to ``v1``)."""
-    if raw is None or (isinstance(raw, str) and not raw.strip()):
-        return "v1"
-    text = str(raw).strip().lower()
-    if text.startswith("v"):
-        text = text[1:]
-    if not text.isdigit():
-        raise ValueError(f"Invalid image version {raw!r}; expected e.g. 1 or v1")
-    return f"v{int(text)}"
+def normalize_version_name(raw: str | None) -> str:
+    """Accept a non-empty version folder name string."""
+    if raw is None or not str(raw).strip():
+        raise ValueError("Image version is required (e.g. 'Original' or 'Summer 26')")
+    text = str(raw).strip()
+    if "/" in text or "\\" in text or text in (".", ".."):
+        raise ValueError(f"Invalid image version {raw!r}")
+    # Map legacy CLI values if someone still passes v1/v2.
+    legacy = _LEGACY_VERSION_MAP.get(text.lower())
+    if legacy is not None:
+        return legacy
+    return text
 
 
-def next_version_name(root: Path) -> str:
-    """Return ``v1`` when no versions exist, else ``v{max+1}``."""
-    versions = load_image_versions(root)
-    if not versions:
-        return "v1"
-    return f"v{max(v.number for v in versions) + 1}"
-
-
-def resolve_generation_version(
-    root: Path,
-    version: str | int | None = None,
-) -> str:
-    """Pick the target version folder for a generate run.
-
-    Explicit ``version`` wins. When omitted, auto-increment past existing
-    version folders (``v1`` if none exist).
-    """
-    if version is None or (isinstance(version, str) and not str(version).strip()):
-        return next_version_name(root)
+def require_generation_version(version: str | None) -> str:
+    """Require an explicit version name for image generate jobs."""
     return normalize_version_name(version)
 
 
-def parse_version_dir_name(name: str) -> int | None:
-    match = _VERSION_DIR_RE.match(name.strip())
-    if match is None:
-        return None
-    return int(match.group(1))
-
-
-def version_dir(root: Path, version: str | int | None) -> Path:
+def version_dir(root: Path, version: str | None) -> Path:
     return root / normalize_version_name(version)
 
 
@@ -158,7 +150,6 @@ def ensure_version_meta(
         meta["run_date"] = _format_run_date(run_date or datetime.now(timezone.utc))
         changed = True
     else:
-        # Normalize stored form.
         formatted = _format_run_date(existing_run)
         if meta.get("run_date") != formatted:
             meta["run_date"] = formatted
@@ -169,33 +160,94 @@ def ensure_version_meta(
     return meta
 
 
+def is_version_dir_name(name: str) -> bool:
+    """True when ``name`` can be a curated image version folder."""
+    text = name.strip()
+    if not text or text.startswith(".") or text in _SKIP_DIR_NAMES:
+        return False
+    if "/" in text or "\\" in text:
+        return False
+    return True
+
+
 def load_image_versions(root: Path) -> list[ImageVersionInfo]:
-    """List version folders under ``root``, sorted by version number ascending."""
+    """List version folders under ``root``, sorted by run_date then name."""
     if not root.is_dir():
         return []
     versions: list[ImageVersionInfo] = []
     for child in sorted(root.iterdir(), key=lambda p: p.name.lower()):
-        number = parse_version_dir_name(child.name)
-        if number is None or not child.is_dir():
+        if not child.is_dir() or not is_version_dir_name(child.name):
             continue
-        name = f"v{number}"
         meta = read_meta(child)
         prompt = meta.get("prompt")
         prompt_str = prompt.strip() if isinstance(prompt, str) else None
         versions.append(
             ImageVersionInfo(
-                name=name,
-                number=number,
+                name=child.name,
                 path=child,
                 run_date=_parse_run_date(meta.get("run_date")),
                 prompt=prompt_str or None,
             )
         )
+    versions.sort(
+        key=lambda v: (
+            v.run_date or datetime.min.replace(tzinfo=timezone.utc),
+            v.name.lower(),
+        )
+    )
     return versions
 
 
+def latest_version_by_run_date(root: Path) -> ImageVersionInfo | None:
+    """Newest version by meta ``run_date`` (undated last). Used when creating occurrences."""
+    versions = load_image_versions(root)
+    if not versions:
+        return None
+    dated = [v for v in versions if v.run_date is not None]
+    if dated:
+        return max(
+            dated,
+            key=lambda v: (v.run_date or datetime.min.replace(tzinfo=timezone.utc), v.name),
+        )
+    # Prefer Original when nothing is dated, else last by name.
+    by_name = {v.name: v for v in versions}
+    if ORIGINAL_VERSION in by_name:
+        return by_name[ORIGINAL_VERSION]
+    return versions[-1]
+
+
+def latest_version_name(root: Path, *, default: str = ORIGINAL_VERSION) -> str:
+    """Folder name of the newest version, or ``default`` when none exist."""
+    latest = latest_version_by_run_date(root)
+    return latest.name if latest is not None else default
+
+
+def latest_tool_image_version() -> str:
+    from app.core.config import settings
+
+    return latest_version_name(settings.resolved_tool_images_dir)
+
+
+def latest_site_type_image_version() -> str:
+    from app.core.config import settings
+
+    return latest_version_name(settings.resolved_site_type_images_dir)
+
+
+def latest_fossil_image_version() -> str:
+    from app.core.config import settings
+
+    return latest_version_name(settings.resolved_fossil_images_dir)
+
+
+def latest_dinosaur_image_version() -> str:
+    from app.core.config import settings
+
+    return latest_version_name(settings.resolved_dinosaur_images_dir)
+
+
 def scan_versioned_image_files(root: Path) -> list[VersionedImageFile]:
-    """Scan all image files inside ``vN/`` folders under ``root``."""
+    """Scan all image files inside version folders under ``root``."""
     files: list[VersionedImageFile] = []
     for version in load_image_versions(root):
         for path in sorted(version.path.iterdir()):
@@ -205,7 +257,6 @@ def scan_versioned_image_files(root: Path) -> list[VersionedImageFile]:
                 VersionedImageFile(
                     path=path,
                     version=version.name,
-                    version_number=version.number,
                     relative_path=f"{version.name}/{path.name}",
                     filename=path.name,
                 )
@@ -232,66 +283,41 @@ def find_image_in_version(
     return None
 
 
-def pick_version_for_date(
-    versions: list[ImageVersionInfo],
-    *,
-    as_of: datetime | None,
-    force_v1: bool = False,
-) -> ImageVersionInfo | None:
-    """Pick the newest version whose run_date is <= as_of (or v1 when forced)."""
-    if not versions:
-        return None
-    by_number = {v.number: v for v in versions}
-    if force_v1:
-        return by_number.get(1) or min(versions, key=lambda v: v.number)
-
-    if as_of is None:
-        return by_number.get(1) or min(versions, key=lambda v: v.number)
-
-    as_of_utc = as_of if as_of.tzinfo else as_of.replace(tzinfo=timezone.utc)
-    as_of_utc = as_of_utc.astimezone(timezone.utc)
-
-    eligible = [
-        v
-        for v in versions
-        if v.run_date is not None and v.run_date <= as_of_utc
-    ]
-    if eligible:
-        return max(eligible, key=lambda v: (v.run_date or datetime.min.replace(tzinfo=timezone.utc), v.number))
-    return by_number.get(1) or min(versions, key=lambda v: v.number)
-
-
 def resolve_versioned_image_path(
     root: Path,
     stem: str,
     *,
-    as_of: datetime | None = None,
-    force_v1: bool = False,
+    version: str | None = None,
     case_insensitive: bool = False,
 ) -> tuple[ImageVersionInfo, Path] | None:
-    """Pick version + local file path for a stem, falling back to older versions."""
+    """Pick version + local file path for a stem by exact version name.
+
+    Falls back to ``Original``, then any version that has the stem.
+    """
     versions = load_image_versions(root)
     if not versions:
         return None
 
-    chosen = pick_version_for_date(versions, as_of=as_of, force_v1=force_v1)
-    if chosen is None:
-        return None
+    requested = (version or ORIGINAL_VERSION).strip() or ORIGINAL_VERSION
+    by_name = {v.name: v for v in versions}
 
-    # Prefer chosen version; if missing file, walk older versions by number desc.
-    candidates = sorted(
-        [v for v in versions if v.number <= chosen.number],
-        key=lambda v: v.number,
-        reverse=True,
-    )
-    for version in candidates:
+    candidates: list[ImageVersionInfo] = []
+    if requested in by_name:
+        candidates.append(by_name[requested])
+    if ORIGINAL_VERSION in by_name and by_name[ORIGINAL_VERSION] not in candidates:
+        candidates.append(by_name[ORIGINAL_VERSION])
+    for v in reversed(versions):
+        if v not in candidates:
+            candidates.append(v)
+
+    for info in candidates:
         path = find_image_in_version(
-            version.path,
+            info.path,
             stem,
             case_insensitive=case_insensitive,
         )
         if path is not None:
-            return version, path
+            return info, path
     return None
 
 
@@ -301,15 +327,15 @@ def latest_version_with_stem(
     *,
     case_insensitive: bool = False,
 ) -> tuple[ImageVersionInfo, Path] | None:
-    """Newest version (by run_date, then number) that contains ``stem``."""
+    """Newest version (by run_date) that contains ``stem``."""
     versions = load_image_versions(root)
     dated = [v for v in versions if v.run_date is not None]
     undated = [v for v in versions if v.run_date is None]
     ordered = sorted(
         dated,
-        key=lambda v: (v.run_date or datetime.min.replace(tzinfo=timezone.utc), v.number),
+        key=lambda v: (v.run_date or datetime.min.replace(tzinfo=timezone.utc), v.name),
         reverse=True,
-    ) + sorted(undated, key=lambda v: v.number, reverse=True)
+    ) + sorted(undated, key=lambda v: v.name, reverse=True)
     for version in ordered:
         path = find_image_in_version(
             version.path,
@@ -321,25 +347,26 @@ def latest_version_with_stem(
     return None
 
 
-def migrate_flat_images_to_v1(
+def migrate_flat_images_to_version(
     root: Path,
     *,
+    version_name: str = ORIGINAL_VERSION,
     default_prompt: str,
     backfill_run_date: datetime = BACKFILL_RUN_DATE,
     dry_run: bool = False,
 ) -> dict[str, int]:
-    """Move loose image files at ``root`` into ``v1/`` and ensure meta.yaml."""
+    """Move loose image files at ``root`` into a version folder and ensure meta.yaml."""
     moved = 0
     skipped = 0
-    v1 = root / "v1"
+    target = root / version_name
     if not dry_run:
-        v1.mkdir(parents=True, exist_ok=True)
+        target.mkdir(parents=True, exist_ok=True)
 
     if root.is_dir():
         for path in sorted(root.iterdir()):
             if not path.is_file() or not is_allowed_image_filename(path.name):
                 continue
-            dest = v1 / path.name
+            dest = target / path.name
             if dest.exists():
                 logger.warning("Skip move %s; destination exists", dest)
                 skipped += 1
@@ -351,7 +378,7 @@ def migrate_flat_images_to_v1(
 
     if not dry_run:
         ensure_version_meta(
-            v1,
+            target,
             default_prompt=default_prompt,
             run_date=backfill_run_date,
             preserve_existing_run_date=True,
@@ -359,24 +386,74 @@ def migrate_flat_images_to_v1(
     return {"moved": moved, "skipped": skipped}
 
 
+# Back-compat alias used by older scripts/tests.
+def migrate_flat_images_to_v1(
+    root: Path,
+    *,
+    default_prompt: str,
+    backfill_run_date: datetime = BACKFILL_RUN_DATE,
+    dry_run: bool = False,
+) -> dict[str, int]:
+    return migrate_flat_images_to_version(
+        root,
+        version_name=ORIGINAL_VERSION,
+        default_prompt=default_prompt,
+        backfill_run_date=backfill_run_date,
+        dry_run=dry_run,
+    )
+
+
+def rename_legacy_version_folders(
+    root: Path,
+    *,
+    dry_run: bool = False,
+) -> dict[str, int]:
+    """Rename ``v1``→``Original`` and ``v2``→``Summer 26`` under ``root``."""
+    renamed = 0
+    skipped = 0
+    if not root.is_dir():
+        return {"renamed": 0, "skipped": 0}
+    for legacy, target_name in (
+        ("v1", ORIGINAL_VERSION),
+        ("v2", SUMMER_26_VERSION),
+    ):
+        src = root / legacy
+        if not src.is_dir():
+            continue
+        dest = root / target_name
+        if dest.exists():
+            logger.warning("Skip rename %s; destination exists: %s", src, dest)
+            skipped += 1
+            continue
+        logger.info(
+            "%s %s -> %s",
+            "Would rename" if dry_run else "Renaming",
+            src,
+            dest,
+        )
+        if not dry_run:
+            src.rename(dest)
+        renamed += 1
+    return {"renamed": renamed, "skipped": skipped}
+
+
 def safe_versioned_relative_path(relative: str) -> str:
-    """Validate ``v1/foo.png`` style relative paths for admin upload."""
+    """Validate ``Original/foo.png`` style relative paths for admin upload."""
     text = relative.strip().replace("\\", "/")
     if not text or text.startswith("/") or ".." in text.split("/"):
         raise ValueError(f"Invalid relative image path: {relative!r}")
     parts = [p for p in text.split("/") if p]
     if len(parts) != 2:
         raise ValueError(
-            f"Expected versioned path like v1/name.png, got {relative!r}"
+            f"Expected versioned path like Original/name.png, got {relative!r}"
         )
     version_part, filename = parts
-    if parse_version_dir_name(version_part) is None:
+    version_part = normalize_version_name(version_part)
+    if not is_version_dir_name(version_part):
         raise ValueError(f"Invalid version folder in path: {relative!r}")
     if not is_allowed_image_filename(filename):
         raise ValueError(f"Invalid image filename in path: {relative!r}")
-    number = parse_version_dir_name(version_part)
-    assert number is not None
-    return f"v{number}/{filename}"
+    return f"{version_part}/{filename}"
 
 
 def build_versioned_media_url(
@@ -387,20 +464,24 @@ def build_versioned_media_url(
     content_version: str | None = None,
 ) -> str:
     media = curated_media_path if curated_media_path.endswith("/") else f"{curated_media_path}/"
-    url = f"{public_base_url.rstrip('/')}{media}{relative_path}"
+    # Encode spaces in version folder names for URLs.
+    encoded_relative = "/".join(
+        part.replace(" ", "%20") for part in relative_path.replace("\\", "/").split("/")
+    )
+    url = f"{public_base_url.rstrip('/')}{media}{encoded_relative}"
     if content_version:
         return f"{url}?v={content_version}"
     return url
 
 
 def dir_has_versioned_or_flat_images(path: Path) -> bool:
-    """True when path has flat images or any images under vN/ folders."""
+    """True when path has flat images or any images under version folders."""
     if not path.is_dir():
         return False
     for child in path.iterdir():
         if child.is_file() and is_allowed_image_filename(child.name):
             return True
-        if child.is_dir() and parse_version_dir_name(child.name) is not None:
+        if child.is_dir() and is_version_dir_name(child.name):
             if any(
                 p.is_file() and is_allowed_image_filename(p.name)
                 for p in child.iterdir()
@@ -422,10 +503,43 @@ def load_image_versions_cached(root: Path) -> list[ImageVersionInfo]:
     try:
         mtime = root.stat().st_mtime
         for child in root.iterdir():
-            if child.is_dir() and parse_version_dir_name(child.name) is not None:
+            if child.is_dir() and is_version_dir_name(child.name):
                 meta = child / META_FILENAME
                 if meta.is_file():
                     mtime = max(mtime, meta.stat().st_mtime)
     except OSError:
         return load_image_versions(root)
     return list(_cached_versions_signature(str(root.resolve()), mtime))
+
+
+# Re-export for callers that still import the cache-busting helper from here.
+__all__ = [
+    "ORIGINAL_VERSION",
+    "SUMMER_26_VERSION",
+    "BACKFILL_RUN_DATE",
+    "META_FILENAME",
+    "ImageVersionInfo",
+    "VersionedImageFile",
+    "normalize_version_name",
+    "require_generation_version",
+    "version_dir",
+    "ensure_version_meta",
+    "load_image_versions",
+    "latest_version_by_run_date",
+    "latest_version_name",
+    "scan_versioned_image_files",
+    "find_image_in_version",
+    "resolve_versioned_image_path",
+    "latest_version_with_stem",
+    "migrate_flat_images_to_version",
+    "migrate_flat_images_to_v1",
+    "rename_legacy_version_folders",
+    "safe_versioned_relative_path",
+    "build_versioned_media_url",
+    "dir_has_versioned_or_flat_images",
+    "load_image_versions_cached",
+    "is_version_dir_name",
+    "read_meta",
+    "write_meta",
+    "file_content_version",
+]

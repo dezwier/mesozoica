@@ -2,9 +2,9 @@
 Fossil card image generation job.
 
 Run manually:
-  python -m app.crons.runner --job fossil_image_generate
-  python -m app.crons.runner --job fossil_image_generate --max-items 10
-  python -m app.crons.runner --job fossil_image_generate --dinos Tyrannosaurus --dry-run
+  python -m app.crons.runner --job fossil_image_generate --version Original
+  python -m app.crons.runner --job fossil_image_generate --version "Summer 26" --max-items 10
+  python -m app.crons.runner --job fossil_image_generate --version Original --dinos Tyrannosaurus --dry-run
 """
 
 from __future__ import annotations
@@ -26,6 +26,7 @@ def run_generate_job(
     dry_run: bool = False,
     max_items: int | None = None,
     dinos: list[str] | None = None,
+    version: str,
 ) -> int:
     _require_gemini_key_in_production()
     with Session(engine) as session:
@@ -34,6 +35,7 @@ def run_generate_job(
             dry_run=dry_run,
             max_items=max_items,
             dinos=dinos,
+            version=version,
         )
     return generate_exit_code(summary)
 

@@ -33,10 +33,10 @@ def test_build_curated_image_url():
     assert (
         build_curated_image_url(
             "https://example.com",
-            "v1/Tyrannosaurus.webp",
+            "Original/Tyrannosaurus.webp",
             version="abc123",
         )
-        == "https://example.com/media/dinosaurs/v1/Tyrannosaurus.webp?v=abc123"
+        == "https://example.com/media/dinosaurs/Original/Tyrannosaurus.webp?v=abc123"
     )
 
 
@@ -48,7 +48,7 @@ def test_file_content_version(tmp_path: Path):
 
 def test_is_curated_image_url():
     assert is_curated_image_url(
-        "https://mesozoica-production.up.railway.app/media/dinosaurs/v1/Tyrannosaurus.webp"
+        "https://mesozoica-production.up.railway.app/media/dinosaurs/Original/Tyrannosaurus.webp"
     )
     assert not is_curated_image_url(
         "https://upload.wikimedia.org/wikipedia/commons/t-rex.jpg"
@@ -121,15 +121,15 @@ def test_resolve_public_base_url_for_sync_uses_railway_domain(monkeypatch):
 
 def test_serves_curated_image_from_static_mount(tmp_path: Path, monkeypatch):
     images_dir = tmp_path / "images"
-    v1 = images_dir / "v1"
-    v1.mkdir(parents=True)
-    (v1 / "Tyrannosaurus.webp").write_bytes(b"fake-image")
+    original = images_dir / "Original"
+    original.mkdir(parents=True)
+    (original / "Tyrannosaurus.webp").write_bytes(b"fake-image")
 
     monkeypatch.setattr(config_module.settings, "dinosaur_images_dir", str(images_dir))
 
     app = create_app()
     with TestClient(app) as client:
-        response = client.get("/media/dinosaurs/v1/Tyrannosaurus.webp")
+        response = client.get("/media/dinosaurs/Original/Tyrannosaurus.webp")
 
     assert response.status_code == 200
     assert response.content == b"fake-image"
@@ -142,7 +142,7 @@ def test_missing_curated_image_returns_404(tmp_path: Path, monkeypatch):
 
     app = create_app()
     with TestClient(app) as client:
-        response = client.get("/media/dinosaurs/v1/Missing.webp")
+        response = client.get("/media/dinosaurs/Original/Missing.webp")
 
     assert response.status_code == 404
 
@@ -155,19 +155,19 @@ def test_upload_dinosaur_image_endpoint(tmp_path: Path, monkeypatch):
     app = create_app()
     with TestClient(app) as client:
         unauthorized = client.put(
-            "/api/v1/admin/dinosaur-images/v1/Triceratops.png",
+            "/api/v1/admin/dinosaur-images/Original/Triceratops.png",
             content=b"image-bytes",
         )
         assert unauthorized.status_code == 401
 
         response = client.put(
-            "/api/v1/admin/dinosaur-images/v1/Triceratops.png",
+            "/api/v1/admin/dinosaur-images/Original/Triceratops.png",
             content=b"image-bytes",
             headers={"X-Dinosaur-Image-Sync-Key": "test-secret"},
         )
 
     assert response.status_code == 204
-    assert (images_dir / "v1" / "Triceratops.png").read_bytes() == b"image-bytes"
+    assert (images_dir / "Original" / "Triceratops.png").read_bytes() == b"image-bytes"
 
 
 def test_upload_file_to_railway_dry_run(tmp_path: Path):
@@ -175,7 +175,7 @@ def test_upload_file_to_railway_dry_run(tmp_path: Path):
     local.write_bytes(b"x")
     upload_file_to_railway(
         local_path=local,
-        remote_filename="v1/Tyrannosaurus.webp",
+        remote_filename="Original/Tyrannosaurus.webp",
         public_base_url="https://example.com",
         sync_secret="",
         dry_run=True,
@@ -190,11 +190,11 @@ def test_run_sync_skips_existing_remote_images(
     from scripts import sync_dinosaur_images as sync_module
 
     images_dir = tmp_path / "images"
-    v1 = images_dir / "v1"
-    v1.mkdir(parents=True)
-    image_path = v1 / "Tyrannosaurus.webp"
+    original = images_dir / "Original"
+    original.mkdir(parents=True)
+    image_path = original / "Tyrannosaurus.webp"
     image_path.write_bytes(b"x")
-    (v1 / "meta.yaml").write_text(
+    (original / "meta.yaml").write_text(
         "run_date: '2026-07-29T00:00:00+00:00'\nprompt: test\n",
         encoding="utf-8",
     )
@@ -206,7 +206,7 @@ def test_run_sync_skips_existing_remote_images(
     )
     row.main_image_url = build_curated_image_url(
         "https://example.com",
-        "v1/Tyrannosaurus.webp",
+        "Original/Tyrannosaurus.webp",
         version=file_content_version(image_path),
     )
     session.add(row)
@@ -231,7 +231,7 @@ def test_run_sync_skips_existing_remote_images(
 
     session.refresh(row)
     assert row.main_image_url == (
-        "https://example.com/media/dinosaurs/v1/Tyrannosaurus.webp?v=9dd4e461268c"
+        "https://example.com/media/dinosaurs/Original/Tyrannosaurus.webp?v=9dd4e461268c"
     )
 
 
@@ -243,10 +243,10 @@ def test_run_sync_overwrite_uploads_existing_remote_images(
     from scripts import sync_dinosaur_images as sync_module
 
     images_dir = tmp_path / "images"
-    v1 = images_dir / "v1"
-    v1.mkdir(parents=True)
-    (v1 / "Tyrannosaurus.webp").write_bytes(b"x")
-    (v1 / "meta.yaml").write_text(
+    original = images_dir / "Original"
+    original.mkdir(parents=True)
+    (original / "Tyrannosaurus.webp").write_bytes(b"x")
+    (original / "meta.yaml").write_text(
         "run_date: '2026-07-29T00:00:00+00:00'\nprompt: test\n",
         encoding="utf-8",
     )
@@ -270,11 +270,11 @@ def test_run_sync_overwrite_uploads_existing_remote_images(
     monkeypatch.setenv("ALLOW_LOCAL_CRON", "1")
 
     assert sync_module.run_sync(dry_run=False, overwrite=True) == 0
-    assert upload_calls == ["v1/Tyrannosaurus.webp"]
+    assert upload_calls == ["Original/Tyrannosaurus.webp"]
 
     session.refresh(row)
     assert row.main_image_url == (
-        "https://example.com/media/dinosaurs/v1/Tyrannosaurus.webp?v=9dd4e461268c"
+        "https://example.com/media/dinosaurs/Original/Tyrannosaurus.webp?v=9dd4e461268c"
     )
 
 
@@ -286,10 +286,10 @@ def test_run_sync_updates_main_image_url(
     from scripts import sync_dinosaur_images as sync_module
 
     images_dir = tmp_path / "images"
-    v1 = images_dir / "v1"
-    v1.mkdir(parents=True)
-    (v1 / "Tyrannosaurus.webp").write_bytes(b"x")
-    (v1 / "meta.yaml").write_text(
+    original = images_dir / "Original"
+    original.mkdir(parents=True)
+    (original / "Tyrannosaurus.webp").write_bytes(b"x")
+    (original / "meta.yaml").write_text(
         "run_date: '2026-07-29T00:00:00+00:00'\nprompt: test\n",
         encoding="utf-8",
     )
@@ -317,7 +317,7 @@ def test_run_sync_updates_main_image_url(
 
     session.refresh(row)
     assert row.main_image_url == (
-        "https://example.com/media/dinosaurs/v1/Tyrannosaurus.webp?v=9dd4e461268c"
+        "https://example.com/media/dinosaurs/Original/Tyrannosaurus.webp?v=9dd4e461268c"
     )
 
 
@@ -329,10 +329,10 @@ def test_run_sync_clears_curated_url_when_local_file_missing(
     from scripts import sync_dinosaur_images as sync_module
 
     images_dir = tmp_path / "images"
-    v1 = images_dir / "v1"
-    v1.mkdir(parents=True)
-    (v1 / "Tyrannosaurus.webp").write_bytes(b"x")
-    (v1 / "meta.yaml").write_text(
+    original = images_dir / "Original"
+    original.mkdir(parents=True)
+    (original / "Tyrannosaurus.webp").write_bytes(b"x")
+    (original / "meta.yaml").write_text(
         "run_date: '2026-07-29T00:00:00+00:00'\nprompt: test\n",
         encoding="utf-8",
     )
@@ -346,7 +346,7 @@ def test_run_sync_clears_curated_url_when_local_file_missing(
         name="Triceratops",
         wikipedia_page_id=2,
         wikipedia_title="Triceratops",
-        main_image_url="https://example.com/media/dinosaurs/v1/Triceratops.webp?v=old",
+        main_image_url="https://example.com/media/dinosaurs/Original/Triceratops.webp?v=old",
     )
     session.add(synced)
     session.add(stale)
@@ -362,6 +362,6 @@ def test_run_sync_clears_curated_url_when_local_file_missing(
     session.refresh(synced)
     session.refresh(stale)
     assert synced.main_image_url == (
-        "https://example.com/media/dinosaurs/v1/Tyrannosaurus.webp?v=9dd4e461268c"
+        "https://example.com/media/dinosaurs/Original/Tyrannosaurus.webp?v=9dd4e461268c"
     )
     assert stale.main_image_url is None

@@ -76,7 +76,7 @@ def test_run_sync_clears_curated_url_when_local_file_missing(
     from scripts import sync_site_type_images as sync_module
 
     images_dir = tmp_path / "images/site-types"
-    v1 = images_dir / "v1"
+    v1 = images_dir / "Original"
     v1.mkdir(parents=True)
     (v1 / "cretaceous_sandstone.png").write_bytes(b"x")
     (v1 / "meta.yaml").write_text(
@@ -93,7 +93,7 @@ def test_run_sync_clears_curated_url_when_local_file_missing(
         id=2,
         period="jurassic",
         rock_type="mudstone",
-        main_image_url="https://example.com/media/site-types/v1/jurassic_mudstone.png?v=old",
+        main_image_url="https://example.com/media/site-types/Original/jurassic_mudstone.png?v=old",
     )
     session.add(synced)
     session.add(stale)
@@ -109,7 +109,7 @@ def test_run_sync_clears_curated_url_when_local_file_missing(
     session.refresh(synced)
     session.refresh(stale)
     assert synced.main_image_url == (
-        "https://example.com/media/site-types/v1/cretaceous_sandstone.png?v=9dd4e461268c"
+        "https://example.com/media/site-types/Original/cretaceous_sandstone.png?v=9dd4e461268c"
     )
     assert stale.main_image_url is None
 

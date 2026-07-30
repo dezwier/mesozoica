@@ -87,3 +87,8 @@ class Site(SQLModel, table=True):
         default=None,
         description="Field-site Uniform(0,1) score biasing burial depth",
     )
+    version: str = Field(
+        default="Original",
+        max_length=64,
+        description="Curated site-type image version folder name for this occurrence",
+    )

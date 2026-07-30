@@ -8,7 +8,6 @@ from decimal import Decimal
 
 from sqlmodel import Session, col, select
 
-from app.models.data_source import DATA_SOURCE_ARCHIVE
 from app.models.site import Site
 from app.models.site_type import SiteType
 from app.models.user_site import (
@@ -34,12 +33,12 @@ class SiteRow:
 def _site_card_image_url(site: Site, site_type: SiteType | None) -> str | None:
     if site_type is None:
         return None
-    force_v1 = (site.data_source or DATA_SOURCE_ARCHIVE) == DATA_SOURCE_ARCHIVE
+    from app.services.curated_image_service.versions import ORIGINAL_VERSION
+
     return resolve_site_type_card_image_url(
         period=site_type.period,
         rock_type=site_type.rock_type,
-        as_of=None if force_v1 else site.created_at,
-        force_v1=force_v1,
+        version=site.version or ORIGINAL_VERSION,
         fallback_url=site_type.main_image_url,
     )
 

@@ -1,95 +1,92 @@
-"""Tests for versioned curated site-type / tool images."""
+"""Tests for named curated image version folders."""
 
 from __future__ import annotations
 
 from datetime import datetime, timezone
 from pathlib import Path
 
+import pytest
+
 from app.services.curated_image_service.versions import (
     BACKFILL_RUN_DATE,
+    ORIGINAL_VERSION,
+    SUMMER_26_VERSION,
     ensure_version_meta,
+    latest_version_by_run_date,
     load_image_versions,
-    migrate_flat_images_to_v1,
+    migrate_flat_images_to_version,
     normalize_version_name,
-    pick_version_for_date,
+    require_generation_version,
+    resolve_versioned_image_path,
     safe_versioned_relative_path,
 )
 from app.services.image_generation_service.prompting import site_type_image_prompt_template
 
 
 def test_normalize_version_name():
-    assert normalize_version_name(None) == "v1"
-    assert normalize_version_name("2") == "v2"
-    assert normalize_version_name("v3") == "v3"
-    assert normalize_version_name(4) == "v4"
+    assert normalize_version_name("Original") == "Original"
+    assert normalize_version_name("Summer 26") == "Summer 26"
+    assert normalize_version_name("v1") == ORIGINAL_VERSION
+    assert normalize_version_name("v2") == SUMMER_26_VERSION
+    with pytest.raises(ValueError):
+        normalize_version_name(None)
+    with pytest.raises(ValueError):
+        normalize_version_name("")
+    with pytest.raises(ValueError):
+        normalize_version_name("../x")
 
 
-def test_resolve_generation_version_auto_increments(tmp_path: Path):
-    from app.services.curated_image_service.versions import (
-        ensure_version_meta,
-        resolve_generation_version,
-    )
-
-    assert resolve_generation_version(tmp_path) == "v1"
-    ensure_version_meta(
-        tmp_path / "v1",
-        default_prompt="p1",
-        run_date=datetime(2025, 1, 1, tzinfo=timezone.utc),
-    )
-    assert resolve_generation_version(tmp_path) == "v2"
-    ensure_version_meta(
-        tmp_path / "v2",
-        default_prompt="p2",
-        run_date=datetime(2026, 1, 1, tzinfo=timezone.utc),
-    )
-    assert resolve_generation_version(tmp_path) == "v3"
-    assert resolve_generation_version(tmp_path, version=1) == "v1"
-    assert resolve_generation_version(tmp_path, version="v2") == "v2"
+def test_require_generation_version():
+    assert require_generation_version("Summer 26") == "Summer 26"
+    with pytest.raises(ValueError):
+        require_generation_version(None)
 
 
 def test_safe_versioned_relative_path():
-    assert safe_versioned_relative_path("v1/cretaceous_claystone.png") == (
-        "v1/cretaceous_claystone.png"
+    assert safe_versioned_relative_path("Original/cretaceous_claystone.png") == (
+        "Original/cretaceous_claystone.png"
     )
-    assert safe_versioned_relative_path("V2/Orbit Survey.png") == "v2/Orbit Survey.png"
+    assert safe_versioned_relative_path("Summer 26/Orbit Survey.png") == (
+        "Summer 26/Orbit Survey.png"
+    )
+    assert safe_versioned_relative_path("v1/x.png") == f"{ORIGINAL_VERSION}/x.png"
 
 
 def test_safe_versioned_relative_path_rejects_traversal():
-    import pytest
-
     with pytest.raises(ValueError):
-        safe_versioned_relative_path("../v1/x.png")
+        safe_versioned_relative_path("../Original/x.png")
     with pytest.raises(ValueError):
-        safe_versioned_relative_path("v1/../x.png")
+        safe_versioned_relative_path("Original/../x.png")
     with pytest.raises(ValueError):
         safe_versioned_relative_path("flat.png")
 
 
-def test_migrate_flat_images_to_v1(tmp_path: Path):
+def test_migrate_flat_images_to_original(tmp_path: Path):
     root = tmp_path / "site-types"
     root.mkdir()
     (root / "cretaceous_sandstone.png").write_bytes(b"img")
     (root / "README.md").write_text("keep", encoding="utf-8")
 
-    summary = migrate_flat_images_to_v1(
+    summary = migrate_flat_images_to_version(
         root,
+        version_name=ORIGINAL_VERSION,
         default_prompt=site_type_image_prompt_template(),
         backfill_run_date=BACKFILL_RUN_DATE,
     )
     assert summary["moved"] == 1
     assert not (root / "cretaceous_sandstone.png").exists()
-    assert (root / "v1" / "cretaceous_sandstone.png").read_bytes() == b"img"
+    assert (root / ORIGINAL_VERSION / "cretaceous_sandstone.png").read_bytes() == b"img"
     assert (root / "README.md").exists()
 
     versions = load_image_versions(root)
     assert len(versions) == 1
-    assert versions[0].name == "v1"
+    assert versions[0].name == ORIGINAL_VERSION
     assert versions[0].run_date == BACKFILL_RUN_DATE
     assert versions[0].prompt and "{rock_type}" in versions[0].prompt
 
 
 def test_ensure_version_meta_preserves_prompt_and_run_date(tmp_path: Path):
-    version_path = tmp_path / "v2"
+    version_path = tmp_path / SUMMER_26_VERSION
     ensure_version_meta(
         version_path,
         default_prompt="first prompt {rock_type}",
@@ -106,50 +103,64 @@ def test_ensure_version_meta_preserves_prompt_and_run_date(tmp_path: Path):
     assert versions[0].run_date == datetime(2025, 1, 1, tzinfo=timezone.utc)
 
 
-def test_pick_version_for_date_selects_newest_eligible(tmp_path: Path):
+def test_latest_version_by_run_date(tmp_path: Path):
     ensure_version_meta(
-        tmp_path / "v1",
+        tmp_path / ORIGINAL_VERSION,
         default_prompt="p1",
         run_date=datetime(2025, 1, 1, tzinfo=timezone.utc),
     )
     ensure_version_meta(
-        tmp_path / "v2",
+        tmp_path / SUMMER_26_VERSION,
         default_prompt="p2",
         run_date=datetime(2026, 1, 1, tzinfo=timezone.utc),
     )
-    versions = load_image_versions(tmp_path)
+    latest = latest_version_by_run_date(tmp_path)
+    assert latest is not None and latest.name == SUMMER_26_VERSION
 
-    early = pick_version_for_date(
-        versions,
-        as_of=datetime(2025, 4, 1, tzinfo=timezone.utc),
+
+def test_resolve_versioned_image_path_by_name(tmp_path: Path):
+    original = tmp_path / ORIGINAL_VERSION
+    summer = tmp_path / SUMMER_26_VERSION
+    original.mkdir(parents=True)
+    summer.mkdir(parents=True)
+    (original / "Tyrannosaurus.png").write_bytes(b"v1")
+    (summer / "Tyrannosaurus.png").write_bytes(b"v2")
+    (original / "meta.yaml").write_text(
+        "run_date: '2025-01-01T00:00:00+00:00'\nprompt: p\n", encoding="utf-8"
     )
-    assert early is not None and early.name == "v1"
-
-    late = pick_version_for_date(
-        versions,
-        as_of=datetime(2026, 2, 1, tzinfo=timezone.utc),
+    (summer / "meta.yaml").write_text(
+        "run_date: '2026-01-01T00:00:00+00:00'\nprompt: p\n", encoding="utf-8"
     )
-    assert late is not None and late.name == "v2"
 
-    forced = pick_version_for_date(versions, as_of=late.run_date, force_v1=True)
-    assert forced is not None and forced.name == "v1"
+    chosen = resolve_versioned_image_path(
+        tmp_path, "Tyrannosaurus", version=SUMMER_26_VERSION, case_insensitive=True
+    )
+    assert chosen is not None
+    assert chosen[0].name == SUMMER_26_VERSION
+    assert chosen[1].read_bytes() == b"v2"
+
+    catalog = resolve_versioned_image_path(
+        tmp_path, "Tyrannosaurus", version=ORIGINAL_VERSION, case_insensitive=True
+    )
+    assert catalog is not None
+    assert catalog[0].name == ORIGINAL_VERSION
 
 
-def test_resolve_dinosaur_card_image_url_catalog_forces_v1(tmp_path: Path, monkeypatch):
+def test_resolve_dinosaur_card_image_url_uses_version(tmp_path: Path, monkeypatch):
     import app.core.config as config_module
     from app.services.curated_image_service.resolve import resolve_dinosaur_card_image_url
 
     root = tmp_path / "dinosaurs"
-    v1 = root / "v1"
-    v2 = root / "v2"
-    v1.mkdir(parents=True)
-    v2.mkdir(parents=True)
-    (v1 / "Tyrannosaurus.png").write_bytes(b"v1")
-    (v2 / "Tyrannosaurus.png").write_bytes(b"v2")
-    (v1 / "meta.yaml").write_text(
+    original = root / ORIGINAL_VERSION
+    summer = root / SUMMER_26_VERSION
+    original.mkdir(parents=True)
+    summer.mkdir(parents=True)
+    (original / "Tyrannosaurus.png").write_bytes(b"v1")
+    (summer / "Tyrannosaurus.png").write_bytes(b"v2")
+    (original / "meta.yaml").write_text(
         "run_date: '2025-01-01T00:00:00+00:00'\nprompt: p\n", encoding="utf-8"
     )
-    (v2 / "meta.yaml").write_text(
+    (summer / "meta.yaml").write_text(
         "run_date: '2026-01-01T00:00:00+00:00'\nprompt: p\n", encoding="utf-8"
     )
 
@@ -158,17 +169,16 @@ def test_resolve_dinosaur_card_image_url_catalog_forces_v1(tmp_path: Path, monke
 
     catalog = resolve_dinosaur_card_image_url(
         dinosaur_name="Tyrannosaurus",
-        force_v1=True,
+        version=ORIGINAL_VERSION,
         fallback_url="https://fallback",
     )
     assert catalog is not None
-    assert "/media/dinosaurs/v1/Tyrannosaurus.png" in catalog
+    assert "/media/dinosaurs/Original/Tyrannosaurus.png" in catalog
 
     inventory = resolve_dinosaur_card_image_url(
         dinosaur_name="Tyrannosaurus",
-        as_of=datetime(2026, 6, 1, tzinfo=timezone.utc),
-        force_v1=False,
+        version=SUMMER_26_VERSION,
         fallback_url="https://fallback",
     )
     assert inventory is not None
-    assert "/media/dinosaurs/v2/Tyrannosaurus.png" in inventory
+    assert "/media/dinosaurs/Summer%2026/Tyrannosaurus.png" in inventory
