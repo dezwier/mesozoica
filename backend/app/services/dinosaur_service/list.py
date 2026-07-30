@@ -165,15 +165,15 @@ def _list_inventory_dinosaurs(
     )
     effective_time_filter = time_filter_active and normalized_q is None
 
+    linked_dinosaurs = (
+        select(col(UserDinosaur.dinosaur_id))
+        .where(col(UserDinosaur.user_id) == viewer_user_id)
+        .distinct()
+    )
     stmt = (
         select(Dinosaur, DinosaurType)
         .join(DinosaurType, col(Dinosaur.dinosaur_type_id) == col(DinosaurType.id))
-        .join(
-            UserDinosaur,
-            (col(UserDinosaur.dinosaur_id) == col(Dinosaur.id))
-            & (col(UserDinosaur.user_id) == viewer_user_id),
-        )
-        .distinct()
+        .where(col(Dinosaur.id).in_(linked_dinosaurs))
     )
     if has_custom_image:
         stmt = stmt.where(

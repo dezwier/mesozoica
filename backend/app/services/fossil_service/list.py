@@ -93,14 +93,17 @@ def list_fossils(
     # Field fossils are collection-gated for all viewers unless an admin
     # explicitly requests include_hidden (site/dino card admin peek).
     # Any user_fossil role links the fossil into the viewer's inventory.
+    # Use IN (subquery) instead of JOIN+DISTINCT so Postgres random ORDER BY
+    # (md5) remains valid.
     if normalized_data_source == DATA_SOURCE_FIELD and not include_hidden:
         if viewer_user_id is None:
             return [], 0
-        filtered = filtered.join(
-            UserFossil,
-            (col(UserFossil.fossil_id) == col(Fossil.id))
-            & (col(UserFossil.user_id) == viewer_user_id),
-        ).distinct()
+        linked_fossils = (
+            select(col(UserFossil.fossil_id))
+            .where(col(UserFossil.user_id) == viewer_user_id)
+            .distinct()
+        )
+        filtered = filtered.where(col(Fossil.id).in_(linked_fossils))
 
     total = session.exec(
         select(sqlmodel_func.count()).select_from(filtered.subquery())
