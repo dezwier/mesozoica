@@ -7,7 +7,7 @@ import '../config/geologic_timeline_constants.dart';
 import '../controllers/catalog_mode_controller.dart';
 import '../models/fossil.dart';
 import '../services/fossil_service.dart';
-import '../widgets/cards/fossil_card_image.dart';
+import '../utils/curated_image_url.dart';
 import 'catalog_controller.dart';
 
 class FossilCatalogFilters {
@@ -263,7 +263,7 @@ class FossilCatalogController extends CatalogController<FossilSummary> {
 
   bool _serverHonorsCustomImageFilter(FossilListResponse response) {
     return !response.items.any(
-      (fossil) => !FossilCardImage.isCuratedCardImageUrl(fossil.mainImageUrl),
+      (fossil) => !isCuratedFossilImageUrl(fossil.mainImageUrl),
     );
   }
 
@@ -290,7 +290,7 @@ class FossilCatalogController extends CatalogController<FossilSummary> {
       );
       curated.addAll(
         response.items.where(
-          (fossil) => FossilCardImage.isCuratedCardImageUrl(fossil.mainImageUrl),
+          (fossil) => isCuratedFossilImageUrl(fossil.mainImageUrl),
         ),
       );
       offset += response.items.length;

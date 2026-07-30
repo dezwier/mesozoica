@@ -5,7 +5,7 @@ import 'package:flutter/foundation.dart';
 import '../config/app_config.dart';
 import '../models/tool.dart';
 import '../services/tool_service.dart';
-import '../widgets/cards/tool_card_image.dart';
+import '../utils/curated_image_url.dart';
 import 'catalog_controller.dart';
 
 enum ToolCatalogSort {
@@ -201,7 +201,7 @@ class ToolCatalogController extends CatalogController<ToolSummary> {
       );
       final curated = response.items
           .map((tool) => tool.mainImageUrl)
-          .where(ToolCardImage.isCuratedCardImageUrl)
+          .where(isCuratedToolImageUrl)
           .cast<String>()
           .toList(growable: false);
       if (curated.isEmpty) return;
@@ -333,7 +333,7 @@ class ToolCatalogController extends CatalogController<ToolSummary> {
     if (_chromeImageUrl != null) return;
     final curated = _items
         .map((tool) => tool.mainImageUrl)
-        .where(ToolCardImage.isCuratedCardImageUrl)
+        .where(isCuratedToolImageUrl)
         .cast<String>()
         .toList(growable: false);
     if (curated.isEmpty) return;

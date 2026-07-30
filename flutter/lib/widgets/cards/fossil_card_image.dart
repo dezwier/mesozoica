@@ -2,6 +2,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
 import '../../theme/dino_card_theme.dart';
+import '../../utils/curated_image_url.dart';
 
 /// Card-front illustration: curated Railway image or bundled placeholder.
 class FossilCardImage extends StatelessWidget {
@@ -12,15 +13,10 @@ class FossilCardImage extends StatelessWidget {
 
   final String? imageUrl;
 
-  static const _curatedMediaPath = '/media/fossils/';
   static const _fadeInDuration = Duration.zero;
 
-  static bool isCuratedCardImageUrl(String? url) {
-    if (url == null || url.trim().isEmpty) {
-      return false;
-    }
-    return url.contains(_curatedMediaPath);
-  }
+  static bool isCuratedCardImageUrl(String? url) =>
+      isCuratedFossilImageUrl(url);
 
   @override
   Widget build(BuildContext context) {

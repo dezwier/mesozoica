@@ -11,7 +11,7 @@ import '../controllers/catalog_mode_controller.dart';
 import '../models/site.dart';
 import '../models/site_map_filters.dart';
 import '../services/site_service.dart';
-import '../widgets/map/map_visible_bounds.dart';
+import '../utils/map_visible_bounds.dart';
 
 /// Separate map caches so archive / field-linked / field-show-all switch
 /// instantly like archive ↔ field, without reloading.

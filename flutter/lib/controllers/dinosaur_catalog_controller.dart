@@ -6,7 +6,7 @@ import '../config/app_config.dart';
 import '../config/geologic_timeline_constants.dart';
 import '../models/dinosaur.dart';
 import '../services/dinosaur_service.dart';
-import '../widgets/cards/dinosaur_card_image.dart';
+import '../utils/curated_image_url.dart';
 import 'catalog_controller.dart';
 
 enum DinoScreenMode { catalog, inventory }
@@ -244,7 +244,7 @@ class DinosaurCatalogController extends CatalogController<DinosaurSummary> {
   bool _serverHonorsCustomImageFilter(DinosaurListResponse response) {
     return !response.items.any(
       (dinosaur) =>
-          !DinosaurCardImage.isCuratedCardImageUrl(dinosaur.mainImageUrl),
+          !isCuratedDinosaurImageUrl(dinosaur.mainImageUrl),
     );
   }
 
@@ -271,7 +271,7 @@ class DinosaurCatalogController extends CatalogController<DinosaurSummary> {
       curated.addAll(
         response.items.where(
           (dinosaur) =>
-              DinosaurCardImage.isCuratedCardImageUrl(dinosaur.mainImageUrl),
+              isCuratedDinosaurImageUrl(dinosaur.mainImageUrl),
         ),
       );
       offset += response.items.length;

@@ -5,9 +5,9 @@ import '../controllers/dinosaur_catalog_controller.dart';
 import '../models/dinosaur.dart';
 import '../models/phylo_tree.dart';
 import '../services/dinosaur_service.dart';
+import '../utils/curated_image_url.dart';
 import '../utils/fractal_tree_layout.dart';
 import '../utils/phylo_tree_builder.dart';
-import '../widgets/cards/dinosaur_card_image.dart';
 
 class PhyloTreeController extends ChangeNotifier {
   PhyloTreeController({
@@ -150,7 +150,7 @@ class PhyloTreeController extends ChangeNotifier {
   bool _serverHonorsCustomImageFilter(DinosaurListResponse response) {
     return !response.items.any(
       (dinosaur) =>
-          !DinosaurCardImage.isCuratedCardImageUrl(dinosaur.mainImageUrl),
+          !isCuratedDinosaurImageUrl(dinosaur.mainImageUrl),
     );
   }
 
@@ -174,7 +174,7 @@ class PhyloTreeController extends ChangeNotifier {
       curated.addAll(
         response.items.where(
           (dinosaur) =>
-              DinosaurCardImage.isCuratedCardImageUrl(dinosaur.mainImageUrl),
+              isCuratedDinosaurImageUrl(dinosaur.mainImageUrl),
         ),
       );
       offset += response.items.length;
