@@ -6,7 +6,7 @@ import hashlib
 from datetime import datetime
 from typing import Literal
 
-from sqlalchemy import func, or_
+from sqlalchemy import func, or_, text
 from sqlalchemy.orm import aliased
 from sqlmodel import Session, col, func as sqlmodel_func, select
 
@@ -38,6 +38,9 @@ MESOZOIC_OLDER_MA = 252.0
 # Probe one past Flutter MapConfig.showAllMaxSites so dense viewports fail
 # fast without counting the entire bbox.
 _SHOW_ALL_COUNT_PROBE = 1001
+# Cap admin show-all work so abandoned client requests cannot hold pool
+# connections until Railway kills the socket (SSL EOF on session close).
+_SHOW_ALL_STATEMENT_TIMEOUT_MS = 8000
 
 _LatestUserSite = aliased(UserSite)
 
@@ -120,19 +123,25 @@ def list_sites(
         bbox=bbox,
     )
 
-    # Never COUNT over a global user_site aggregation — status is attached to
-    # the page rows only. For admin show-all + bbox, probe at most
-    # _SHOW_ALL_COUNT_PROBE ids so dense tiles fail before a full scan.
-    filtered_subq = filtered.subquery()
+    # Admin show-all viewport: site-only probe (uses spatial index) + short
+    # statement timeout so a cancelled Flutter request cannot pin a pool slot.
     if show_all and bbox is not None:
-        probe_ids = session.exec(
-            select(filtered_subq.c.site_id).limit(_SHOW_ALL_COUNT_PROBE)
-        ).all()
-        total = len(probe_ids)
+        _set_statement_timeout_ms(session, _SHOW_ALL_STATEMENT_TIMEOUT_MS)
+        total = _probe_field_bbox_site_ids(
+            session,
+            data_source=normalized_data_source,
+            bbox=bbox,
+            normalized_q=normalized_q,
+            ma_younger=younger,
+            ma_older=older,
+            time_filter_active=effective_time_filter,
+            how_discovered=how_values,
+            site_id_min=site_id_min,
+        )
         if total >= _SHOW_ALL_COUNT_PROBE:
-            # Client will refuse (MapConfig.showAllMaxSites); skip the page fetch.
             return [], total
     else:
+        filtered_subq = filtered.subquery()
         total = int(
             session.exec(
                 select(sqlmodel_func.count()).select_from(filtered_subq)
@@ -346,6 +355,68 @@ def _normalize_bbox(
     if not (-180.0 <= min_lon <= 180.0 and -180.0 <= max_lon <= 180.0):
         raise ValidationError("longitude bounds must be between -180 and 180")
     return min_lat, max_lat, min_lon, max_lon
+
+
+def _set_statement_timeout_ms(session: Session, timeout_ms: int) -> None:
+    """Postgres only — no-op on SQLite test DB."""
+    bind = session.get_bind()
+    if bind is None or bind.dialect.name != "postgresql":
+        return
+    session.connection().execute(
+        text(f"SET LOCAL statement_timeout = '{int(timeout_ms)}'")
+    )
+
+
+def _probe_field_bbox_site_ids(
+    session: Session,
+    *,
+    data_source: str,
+    bbox: tuple[float, float, float, float],
+    normalized_q: str | None,
+    ma_younger: float | None,
+    ma_older: float | None,
+    time_filter_active: bool,
+    how_discovered: list[str] | None,
+    site_id_min: int | None,
+) -> int:
+    """Cheap site-only id probe for admin show-all (no joins)."""
+    box_min_lat, box_max_lat, box_min_lon, box_max_lon = bbox
+    stmt = (
+        select(col(Site.site_id))
+        .where(
+            col(Site.data_source) == data_source,
+            col(Site.latitude).is_not(None),
+            col(Site.longitude).is_not(None),
+            col(Site.latitude) >= box_min_lat,
+            col(Site.latitude) <= box_max_lat,
+            col(Site.longitude) >= box_min_lon,
+            col(Site.longitude) <= box_max_lon,
+        )
+        .limit(_SHOW_ALL_COUNT_PROBE)
+    )
+    if site_id_min is not None:
+        stmt = stmt.where(col(Site.site_id) > site_id_min)
+    if how_discovered is not None:
+        stmt = stmt.where(col(Site.how_discovered).in_(how_discovered))
+    if normalized_q is not None:
+        pattern = f"%{normalized_q}%"
+        stmt = stmt.where(
+            or_(
+                col(Site.formation).ilike(pattern),
+                col(Site.state).ilike(pattern),
+                col(Site.country_code).ilike(pattern),
+                col(Site.rock_type).ilike(pattern),
+            )
+        )
+    if time_filter_active:
+        assert ma_younger is not None and ma_older is not None
+        stmt = stmt.where(
+            col(Site.min_age_ma).is_not(None),
+            col(Site.max_age_ma).is_not(None),
+            col(Site.min_age_ma) <= ma_older,
+            col(Site.max_age_ma) >= ma_younger,
+        )
+    return len(session.exec(stmt).all())
 
 
 def _filtered_select(

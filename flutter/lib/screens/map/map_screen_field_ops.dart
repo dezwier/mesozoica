@@ -33,51 +33,90 @@ mixin _MapScreenFieldOpsMixin on State<MapScreen>, _MapScreenCameraMixin {
 
     _showScanBanner('Loading sites in view…', autoDismiss: false);
 
-    LatLngBounds? bounds;
     try {
-      if (_mapboxReady) {
-        bounds = await _mapboxCamera
-            .visibleBounds()
-            .timeout(const Duration(seconds: 2));
+      LatLngBounds? bounds;
+      try {
+        if (_mapboxReady) {
+          bounds = await _mapboxCamera
+              .visibleBounds()
+              .timeout(const Duration(seconds: 2));
+        }
+      } catch (_) {
+        // Fall through — null bounds → zoom-in prompt.
       }
-    } catch (_) {
-      // Fall through — null bounds → zoom-in prompt.
-    }
-    if (!mounted || !mapData.showAllFieldSites) return;
+      if (!mounted) return;
+      if (!mapData.showAllFieldSites) {
+        _clearScanBanner();
+        return;
+      }
 
-    final fetchBounds = showAllFetchBounds(visibleBounds: bounds);
-    if (fetchBounds == null) {
+      final fetchBounds = showAllFetchBounds(visibleBounds: bounds);
+      if (fetchBounds == null) {
+        mapData.setShowAllFieldSites(false);
+        _showScanBanner('Zoom in to load sites in this view');
+        return;
+      }
+
+      final result = await mapData
+          .loadShowAllInBounds(fetchBounds)
+          .timeout(const Duration(seconds: 20));
+      if (!mounted) return;
+
+      switch (result) {
+        case map_data.ShowAllLoadResult.success:
+          _showScanBanner(
+            'Showing ${mapData.filteredGeoSites.length} field sites in view',
+          );
+        case map_data.ShowAllLoadResult.tooMany:
+          final tooManyMessage = mapData.error ??
+              'Too many sites in this view. Zoom in and try again.';
+          mapData.setShowAllFieldSites(false);
+          _showScanBanner(tooManyMessage);
+        case map_data.ShowAllLoadResult.failed:
+          final failMessage =
+              mapData.error ?? 'Could not load sites in view (unknown error)';
+          mapData.setShowAllFieldSites(false);
+          _showScanBanner(
+            failMessage,
+            duration: const Duration(seconds: 10),
+          );
+        case map_data.ShowAllLoadResult.cancelled:
+          if (!mapData.showAllFieldSites) {
+            _clearScanBanner();
+            return;
+          }
+          // Coalesced into a newer request — keep the loading banner only while
+          // a fetch is still in flight. Otherwise the toggle looks wedged.
+          if (!mapData.loading) {
+            mapData.setShowAllFieldSites(false);
+            _showScanBanner(
+              mapData.error ??
+                  'Could not load sites in view (request cancelled)',
+              duration: const Duration(seconds: 8),
+            );
+          }
+      }
+    } on TimeoutException {
+      if (!mounted) return;
       mapData.setShowAllFieldSites(false);
-      _showScanBanner('Zoom in to load sites in this view');
-      return;
+      _showScanBanner(
+        'Timed out loading sites in view — try again.',
+        duration: const Duration(seconds: 10),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      mapData.setShowAllFieldSites(false);
+      _showScanBanner(
+        'Could not load sites in view: $error',
+        duration: const Duration(seconds: 10),
+      );
     }
+  }
 
-    final result = await mapData.loadShowAllInBounds(fetchBounds);
+  void _clearScanBanner() {
+    _scanBannerTimer?.cancel();
     if (!mounted) return;
-
-    switch (result) {
-      case map_data.ShowAllLoadResult.success:
-        _showScanBanner(
-          'Showing ${mapData.filteredGeoSites.length} field sites in view',
-        );
-      case map_data.ShowAllLoadResult.tooMany:
-        final tooManyMessage = mapData.error ??
-            'Too many sites in this view. Zoom in and try again.';
-        mapData.setShowAllFieldSites(false);
-        _showScanBanner(tooManyMessage);
-      case map_data.ShowAllLoadResult.failed:
-        final failMessage =
-            mapData.error ?? 'Could not load sites in view (unknown error)';
-        mapData.setShowAllFieldSites(false);
-        _showScanBanner(
-          failMessage,
-          duration: const Duration(seconds: 10),
-        );
-      case map_data.ShowAllLoadResult.cancelled:
-        if (!mapData.showAllFieldSites) return;
-        // Coalesced into a newer request — keep the loading banner.
-        break;
-    }
+    setState(() => _scanBannerMessage = null);
   }
 
   Future<void> _onScanFieldArea() async {

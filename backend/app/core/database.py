@@ -2,6 +2,7 @@ import asyncio
 import logging
 
 from sqlalchemy import text
+from sqlalchemy.exc import OperationalError
 from sqlmodel import Session, SQLModel, create_engine
 
 from app.core.config import settings
@@ -25,14 +26,34 @@ else:
         pool_pre_ping=True,
         pool_size=10,
         max_overflow=20,
-        pool_recycle=3600,
+        pool_recycle=300,
+        pool_timeout=10,
     )
 
 
 def get_session():
     """FastAPI dependency for database sessions."""
-    with Session(engine) as session:
+    session = Session(engine)
+    try:
         yield session
+    finally:
+        # Client disconnect / statement timeout can kill the TCP socket while a
+        # sync handler is still open — rollback-on-close then raises SSL EOF.
+        # Invalidate instead of cascading that into an ASGI exception storm.
+        try:
+            session.close()
+        except OperationalError as exc:
+            logger.warning("Session close failed (stale DB connection): %s", exc)
+            try:
+                session.invalidate()
+            except Exception:
+                pass
+        except Exception as exc:
+            logger.warning("Session close failed: %s", exc)
+            try:
+                session.invalidate()
+            except Exception:
+                pass
 
 
 def init_db() -> None:

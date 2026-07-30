@@ -8,7 +8,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
-from sqlalchemy.exc import TimeoutError as SATimeoutError
+from sqlalchemy.exc import OperationalError, TimeoutError as SATimeoutError
 
 from app.api.v1 import api_router
 from app.core.config import settings
@@ -78,6 +78,29 @@ def _register_exception_handlers(app: FastAPI) -> None:
                     "requests. Wait a moment and try again."
                 ),
                 "type": "DatabasePoolTimeout",
+            },
+        )
+
+    @app.exception_handler(OperationalError)
+    async def sqlalchemy_operational_handler(
+        request: Request, exc: OperationalError
+    ):
+        logger.error(
+            "DB operational error on %s %s: %s",
+            request.method,
+            request.url.path,
+            exc,
+        )
+        detail = str(exc.orig) if getattr(exc, "orig", None) else str(exc)
+        # Statement timeout / SSL drop — tell the client to retry rather than 500.
+        return JSONResponse(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            content={
+                "detail": (
+                    "Database temporarily unavailable. "
+                    f"{detail[:180]}"
+                ),
+                "type": "DatabaseOperationalError",
             },
         )
 

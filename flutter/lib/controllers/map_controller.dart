@@ -105,6 +105,8 @@ class MapController extends ChangeNotifier {
   LatLngBounds? _showAllBounds;
   /// Latest bounds requested while a show-all fetch is in flight (one at a time).
   LatLngBounds? _pendingShowAllBounds;
+  /// When the current show-all HTTP chain started (stale-lock recovery).
+  DateTime? _showAllLoadStartedAt;
   /// True only after a successful show_all API response — never after linked seed.
   bool _showAllAuthoritative = false;
   /// Bumped when a soft archive reload replaces the list (force marker rebuild).
@@ -207,13 +209,10 @@ class MapController extends ChangeNotifier {
       showAll.loadingComplete = false;
       showAll.loading = false;
       showAll.error = null;
-      // Abort any in-flight linked catalog pages so they don't compete for
-      // the API DB pool with the show-all viewport fetch.
-      final linked = _snapshots[_MapCacheKey.fieldLinked]!;
-      if (linked.loading) {
-        ++linked.loadSeq;
-        linked.loading = false;
-      }
+      _showAllLoadStartedAt = null;
+      // Keep linked markers (and any in-flight linked load). Show-all paints
+      // linked until authoritative; aborting linked here blanked the map when
+      // show-all timed out against a busy API.
       notifyListeners();
       return;
     }
@@ -221,24 +220,23 @@ class MapController extends ChangeNotifier {
     // Back to linked — keep show-all snap empty for the next enable.
     _showAllAuthoritative = false;
     final showAll = _snapshots[_MapCacheKey.fieldShowAll]!;
+    ++showAll.loadSeq; // abort any in-flight show-all HTTP pages
     showAll.geoSites = [];
     showAll.loadingComplete = false;
     showAll.loading = false;
     showAll.error = null;
     _showAllBounds = null;
     _pendingShowAllBounds = null;
+    _showAllLoadStartedAt = null;
 
     final snap = _snap;
-    if (snap.loadingComplete) {
-      _startFieldPoll(snap.loadSeq);
-      notifyListeners();
+    // After a failed/cancelled show-all, linked may be empty/incomplete — reload.
+    if (snap.geoSites.isEmpty || !snap.loadingComplete) {
+      load(force: true);
       return;
     }
-    if (snap.loading) {
-      notifyListeners();
-      return;
-    }
-    load(force: false);
+    _startFieldPoll(snap.loadSeq);
+    notifyListeners();
   }
 
   /// On-demand admin show-all: replace markers with every field site inside
@@ -269,13 +267,23 @@ class MapController extends ChangeNotifier {
     }
 
     // Coalesce: never stack concurrent show-all fetches (pool exhaustion).
+    // If a previous chain left loading=true after being superseded, recover.
     if (snap.loading) {
-      _pendingShowAllBounds = bounds;
-      return ShowAllLoadResult.cancelled;
+      final started = _showAllLoadStartedAt;
+      final stale = started != null &&
+          DateTime.now().difference(started) > const Duration(seconds: 25);
+      if (!stale) {
+        _pendingShowAllBounds = bounds;
+        return ShowAllLoadResult.cancelled;
+      }
+      ++snap.loadSeq;
+      snap.loading = false;
+      _pendingShowAllBounds = null;
     }
 
     _pendingShowAllBounds = null;
     _showAllBounds = bounds;
+    _showAllLoadStartedAt = DateTime.now();
     _stopFieldPoll();
     final seq = ++snap.loadSeq;
     snap.loading = true;
@@ -805,6 +813,7 @@ class MapController extends ChangeNotifier {
     } finally {
       if (seq == snap.loadSeq) {
         snap.loading = false;
+        _showAllLoadStartedAt = null;
         final pending = _pendingShowAllBounds;
         _pendingShowAllBounds = null;
         if (pending != null && _showAllFieldSites) {
