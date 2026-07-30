@@ -11,7 +11,6 @@ import 'dinosaur_card_fossil_map.dart';
 import 'dinosaur_card_header.dart';
 import 'dinosaur_card_image.dart';
 import 'geologic_timeline.dart';
-import 'occurrence_id_badge.dart';
 
 class DinosaurCardBack extends StatelessWidget {
   const DinosaurCardBack({
@@ -33,7 +32,6 @@ class DinosaurCardBack extends StatelessWidget {
   Widget build(BuildContext context) {
     final nodes = dinosaur.cladogramNodes();
     final reconstructedSubtitle = dinosaur.reconstructedSubtitle;
-    final showIdBadge = dinosaur.isInventoryOccurrence;
 
     return AspectRatio(
       aspectRatio: DinoCardTheme.cardAspectRatio,
@@ -56,35 +54,24 @@ class DinosaurCardBack extends StatelessWidget {
               subtitleOverride: reconstructedSubtitle,
             ),
           ),
-          if (showIdBadge || showArticleButton)
+          if (showArticleButton)
             Positioned(
               top: 14,
               right: 10,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (showArticleButton)
-                    IconButton(
-                      onPressed: () => DinosaurArticleDrawer.show(
-                        context,
-                        dinosaur: dinosaur,
-                      ),
-                      icon: const Icon(Icons.info_outline, size: 18),
-                      color: const Color(0xE6F5F0E8),
-                      tooltip: 'Read article',
-                      visualDensity: VisualDensity.compact,
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(
-                        minWidth: 28,
-                        minHeight: 28,
-                      ),
-                    ),
-                  if (showArticleButton && showIdBadge) const SizedBox(width: 4),
-                  if (showIdBadge)
-                    OccurrenceIdBadge(
-                      label: dinosaur.displayOccurrenceNumber,
-                    ),
-                ],
+              child: IconButton(
+                onPressed: () => DinosaurArticleDrawer.show(
+                  context,
+                  dinosaur: dinosaur,
+                ),
+                icon: const Icon(Icons.info_outline, size: 18),
+                color: const Color(0xE6F5F0E8),
+                tooltip: 'Read article',
+                visualDensity: VisualDensity.compact,
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(
+                  minWidth: 28,
+                  minHeight: 28,
+                ),
               ),
             ),
           Positioned(

@@ -73,7 +73,7 @@ class SiteCardFront extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   if (showIdBadge)
-                    OccurrenceIdBadge(label: site.displaySiteNumber),
+                    OccurrenceIdBadge(label: site.occurrenceIdBadgeLabel),
                   if (showIdBadge && showStatus) const SizedBox(height: 6),
                   if (showStatus)
                     SiteStatusBadge(

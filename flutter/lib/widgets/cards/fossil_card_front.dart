@@ -59,7 +59,7 @@ class FossilCardFront extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   if (showIdBadge)
-                    OccurrenceIdBadge(label: fossil.displayFossilNumber),
+                    OccurrenceIdBadge(label: fossil.occurrenceIdBadgeLabel),
                   if (showIdBadge && showStatus) const SizedBox(height: 6),
                   if (showStatus) FossilStatusBadge(status: status),
                 ],

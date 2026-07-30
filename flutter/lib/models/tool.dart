@@ -15,6 +15,7 @@ class ToolSummary {
     this.params = const {},
     this.baseParams = const {},
     this.spawnDate,
+    this.version,
   });
 
   final int id;
@@ -37,6 +38,9 @@ class ToolSummary {
   /// Inventory obtain time; null for catalog rows.
   final DateTime? spawnDate;
 
+  /// Curated image version folder; set for inventory occurrences.
+  final String? version;
+
   bool get isOwned => level != null;
   /// True when this card represents a specific owned tool occurrence (inventory).
   ///
@@ -48,8 +52,15 @@ class ToolSummary {
 
   String get displayOccurrenceNumber => '#$id';
 
+  /// Front top-right badge: `#10, Original`.
+  String get occurrenceIdBadgeLabel {
+    final versionPart = version?.trim() ?? '';
+    if (versionPart.isEmpty) return displayOccurrenceNumber;
+    return '$displayOccurrenceNumber, $versionPart';
+  }
+
   /// Card-back subtitle: category / scientific, plus Obtained when known.
-  /// Instance id is shown separately as [OccurrenceIdBadge].
+  /// Id and version are shown separately as [OccurrenceIdBadge] on the front.
   String inventoryBackSubtitle() {
     final base = categoryWithScientificDisplay();
     final at = spawnDate;
@@ -73,6 +84,7 @@ class ToolSummary {
     Map<String, dynamic>? params,
     Map<String, dynamic>? baseParams,
     DateTime? spawnDate,
+    String? version,
     bool clearLevel = false,
   }) {
     return ToolSummary(
@@ -89,6 +101,7 @@ class ToolSummary {
       params: params ?? this.params,
       baseParams: baseParams ?? this.baseParams,
       spawnDate: spawnDate ?? this.spawnDate,
+      version: version ?? this.version,
     );
   }
 
@@ -139,6 +152,9 @@ class ToolSummary {
       params: (json['params'] as Map<String, dynamic>?) ?? const {},
       baseParams: (json['base_params'] as Map<String, dynamic>?) ?? const {},
       spawnDate: _parseDate(json['spawn_date']),
+      version: (json['version'] as String?)?.trim().isNotEmpty == true
+          ? (json['version'] as String).trim()
+          : null,
     );
   }
 

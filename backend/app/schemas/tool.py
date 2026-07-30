@@ -27,6 +27,8 @@ class ToolSummary(BaseModel):
     base_params: dict[str, Any] = Field(default_factory=dict)
     # Inventory occurrence obtain time; null for catalog rows.
     spawn_date: datetime | None = None
+    # Curated image version folder; set for inventory occurrences.
+    version: str | None = None
 
 
 class ToolListResponse(BaseModel):

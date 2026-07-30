@@ -61,17 +61,19 @@ class DinosaurSummary {
 
   String get displayOccurrenceNumber => '#$id';
 
+  /// Front top-right badge: `#99, Original`.
+  String get occurrenceIdBadgeLabel {
+    final versionPart = version?.trim() ?? '';
+    if (versionPart.isEmpty) return displayOccurrenceNumber;
+    return '$displayOccurrenceNumber, $versionPart';
+  }
+
   /// Card-back subtitle for inventory occurrences.
-  /// Id is shown separately as [OccurrenceIdBadge].
+  /// Id and version are shown separately as [OccurrenceIdBadge] on the front.
   String? get reconstructedSubtitle {
     final at = createdAt;
     if (at == null) return null;
-    final versionPart = version?.trim() ?? '';
-    final parts = <String>[
-      if (versionPart.isNotEmpty) versionPart,
-      'Reconstructed ${formatRelativeWhen(at)}',
-    ];
-    return parts.join(' - ');
+    return 'Reconstructed ${formatRelativeWhen(at)}';
   }
 
   factory DinosaurSummary.fromJson(Map<String, dynamic> json) {

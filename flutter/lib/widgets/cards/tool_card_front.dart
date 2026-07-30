@@ -66,7 +66,7 @@ class ToolCardFront extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   if (showIdBadge)
-                    OccurrenceIdBadge(label: tool.displayOccurrenceNumber),
+                    OccurrenceIdBadge(label: tool.occurrenceIdBadgeLabel),
                   if (showIdBadge && showCollectBadge) const SizedBox(height: 6),
                   if (showCollectBadge)
                     ToolCollectBadge(

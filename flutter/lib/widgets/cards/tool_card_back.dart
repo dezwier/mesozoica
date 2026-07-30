@@ -5,7 +5,6 @@ import '../../theme/dino_card_theme.dart';
 import '../common/chrome_action_button.dart';
 import 'card_back_backdrop.dart';
 import 'card_section_panel.dart';
-import 'occurrence_id_badge.dart';
 import 'tool_card_header.dart';
 import 'tool_card_image.dart';
 
@@ -69,12 +68,6 @@ class ToolCardBack extends StatelessWidget {
               subtitleOverride: tool.inventoryBackSubtitle(),
             ),
           ),
-          if (tool.isToolInstance)
-            Positioned(
-              top: 14,
-              right: 14,
-              child: OccurrenceIdBadge(label: tool.displayOccurrenceNumber),
-            ),
           Positioned(
             left: 18,
             right: 18,

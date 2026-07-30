@@ -405,6 +405,7 @@ def test_collect_tool_creates_user_tool(client, session):
     body = response.json()
     assert body["id"] == tool.id
     assert body["level"] == 1
+    assert body["version"] == "Original"
 
     events = session.exec(select(UserTool)).all()
     assert len(events) == 1

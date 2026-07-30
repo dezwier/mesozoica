@@ -235,17 +235,19 @@ class FossilSummary {
 
   String get displayFossilNumber => formatFossilNumber(id);
 
+  /// Front top-right badge: `#67, Original`.
+  String get occurrenceIdBadgeLabel {
+    final versionPart = version.trim();
+    if (versionPart.isEmpty) return displayFossilNumber;
+    return '$displayFossilNumber, $versionPart';
+  }
+
   /// Card-back subtitle when the viewer has discovered this field fossil.
-  /// Id is shown separately as [OccurrenceIdBadge].
+  /// Id and version are shown separately as [OccurrenceIdBadge] on the front.
   String? get discoveredSubtitle {
     final at = discoveredAt;
     if (at == null) return null;
-    final versionPart = version.trim();
-    final parts = <String>[
-      if (versionPart.isNotEmpty) versionPart,
-      'Discovered ${formatRelativeWhen(at)}',
-    ];
-    return parts.join(' - ');
+    return 'Discovered ${formatRelativeWhen(at)}';
   }
 
   factory FossilSummary.fromJson(Map<String, dynamic> json) {

@@ -59,7 +59,7 @@ class DinosaurCardFront extends StatelessWidget {
               top: 14,
               right: 14,
               child: OccurrenceIdBadge(
-                label: dinosaur.displayOccurrenceNumber,
+                label: dinosaur.occurrenceIdBadgeLabel,
               ),
             ),
           Positioned(
