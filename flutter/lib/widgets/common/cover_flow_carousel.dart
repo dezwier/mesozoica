@@ -2,12 +2,13 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
-/// Apple-style Cover Flow: horizontal snap paging with Y-rotation, scale,
-/// overlap, and back-to-front paint order. Gestures: horizontal drag pages;
-/// taps fall through to the focused child (e.g. card flip).
+/// Apple-style Cover Flow, oriented vertically: snap paging with X-rotation,
+/// scale, overlap, and back-to-front paint order. Gestures: vertical drag
+/// pages; taps fall through to the focused child (e.g. card flip). Horizontal
+/// drags are left free for card flip.
 ///
-/// Layout: lower indices sit to the left of focus, higher to the right.
-/// Finger swipe left→right moves the deck left→right (toward earlier items).
+/// Layout: lower indices sit above focus, higher below.
+/// Finger swipe up moves the deck toward later items.
 ///
 /// Transforms tick via [AnimatedBuilder] on the [PageController] so card
 /// subtrees are not rebuilt (or remounted) every scroll frame — that was
@@ -18,10 +19,11 @@ class CoverFlowCarousel extends StatefulWidget {
     required this.itemCount,
     required this.itemBuilder,
     this.onPageChanged,
+    this.onRefresh,
     this.viewportFraction = 0.68,
     this.padEnds = true,
-    /// Vertical alignment of the deck in the viewport (-1 top, 0 center, 1 bottom).
-    this.alignment = const Alignment(0, -0.18),
+    /// Alignment of the deck in the viewport (-1 top, 0 center, 1 bottom).
+    this.alignment = Alignment.center,
   });
 
   final int itemCount;
@@ -31,6 +33,11 @@ class CoverFlowCarousel extends StatefulWidget {
       itemBuilder;
 
   final ValueChanged<int>? onPageChanged;
+
+  /// Pull-down past the first card triggers this (replaces a competing
+  /// [RefreshIndicator] scrollable on the vertical axis).
+  final Future<void> Function()? onRefresh;
+
   final double viewportFraction;
   final bool padEnds;
   final Alignment alignment;
@@ -42,10 +49,12 @@ class CoverFlowCarousel extends StatefulWidget {
 class CoverFlowCarouselState extends State<CoverFlowCarousel> {
   late PageController _controller;
   int _reportedPage = 0;
+  double _pullExtent = 0;
+  bool _refreshing = false;
 
-  static const double _maxRotateY = 0.95;
+  static const double _maxRotateX = 0.95;
   static const double _sideScale = 0.86;
-  /// Fraction of card width between neighbors (positive = higher index to right).
+  /// Fraction of card height between neighbors (positive = higher index below).
   static const double _spacingFactor = 0.42;
   static const double _sideDim = 0.82;
   static const int _visibleRadius = 2;
@@ -54,6 +63,7 @@ class CoverFlowCarouselState extends State<CoverFlowCarousel> {
   /// px/s per extra page on a strong fling.
   static const double _flingVelocityPerPage = 900;
   static const int _maxFlingPages = 4;
+  static const double _refreshThreshold = 72;
 
   PageController get controller => _controller;
 
@@ -135,50 +145,92 @@ class CoverFlowCarouselState extends State<CoverFlowCarousel> {
   }
 
   void _onDragUpdate(DragUpdateDetails details) {
-    if (!_controller.hasClients) return;
+    if (!_controller.hasClients || _refreshing) return;
     final position = _controller.position;
-    // Finger right (dx > 0) → earlier pages → pixels decrease → deck moves right.
-    final next = (position.pixels - details.delta.dx)
-        .clamp(position.minScrollExtent, position.maxScrollExtent);
-    position.jumpTo(next);
+    // Finger down (dy > 0) → earlier pages → pixels decrease → deck moves down.
+    final next = position.pixels - details.delta.dy;
+    if (widget.onRefresh != null &&
+        _reportedPage == 0 &&
+        next < position.minScrollExtent) {
+      final pull = position.minScrollExtent - next;
+      if (pull != _pullExtent) {
+        setState(() => _pullExtent = pull);
+      }
+      position.jumpTo(position.minScrollExtent);
+      return;
+    }
+    if (_pullExtent != 0) {
+      setState(() => _pullExtent = 0);
+    }
+    position.jumpTo(
+      next.clamp(position.minScrollExtent, position.maxScrollExtent),
+    );
   }
 
   void _onDragEnd(DragEndDetails details) {
-    if (!_controller.hasClients || widget.itemCount == 0) return;
+    if (!_controller.hasClients || widget.itemCount == 0 || _refreshing) {
+      return;
+    }
+    if (widget.onRefresh != null && _pullExtent >= _refreshThreshold) {
+      _triggerRefresh();
+      return;
+    }
+    if (_pullExtent != 0) {
+      setState(() => _pullExtent = 0);
+    }
     final page = _controller.page ?? _reportedPage.toDouble();
-    final vx = details.velocity.pixelsPerSecond.dx;
-    final target = _targetPageForFling(page: page, velocityDx: vx);
+    final vy = details.velocity.pixelsPerSecond.dy;
+    final target = _targetPageForFling(page: page, velocityDy: vy);
     animateToPage(target);
   }
 
+  Future<void> _triggerRefresh() async {
+    final refresh = widget.onRefresh;
+    if (refresh == null || _refreshing) return;
+    setState(() {
+      _refreshing = true;
+      _pullExtent = _refreshThreshold;
+    });
+    try {
+      await refresh();
+    } finally {
+      if (mounted) {
+        setState(() {
+          _refreshing = false;
+          _pullExtent = 0;
+        });
+      }
+    }
+  }
+
   /// Maps fling velocity to a page index. Stronger swipes skip multiple cards.
-  /// Finger left (vx < 0) → later pages; finger right → earlier pages.
+  /// Finger up (vy < 0) → later pages; finger down → earlier pages.
   int _targetPageForFling({
     required double page,
-    required double velocityDx,
+    required double velocityDy,
   }) {
     final maxIndex = widget.itemCount - 1;
-    if (velocityDx.abs() < _flingVelocityThreshold) {
+    if (velocityDy.abs() < _flingVelocityThreshold) {
       return page.round().clamp(0, maxIndex);
     }
-    final direction = velocityDx < 0 ? 1 : -1;
-    final steps = (velocityDx.abs() / _flingVelocityPerPage)
+    final direction = velocityDy < 0 ? 1 : -1;
+    final steps = (velocityDy.abs() / _flingVelocityPerPage)
         .round()
         .clamp(1, _maxFlingPages);
     return (page.round() + direction * steps).clamp(0, maxIndex);
   }
 
-  Matrix4 _transformForDelta(double delta, double cardWidth) {
+  Matrix4 _transformForDelta(double delta, double cardHeight) {
     final clamped = delta.clamp(-2.5, 2.5);
     final abs = clamped.abs();
-    // Higher index (delta > 0) → right of focus, yaw so left edge comes forward.
-    final rotateY = clamped.clamp(-1.0, 1.0) * _maxRotateY;
+    // Higher index (delta > 0) → below focus, pitch so top edge comes forward.
+    final rotateX = -clamped.clamp(-1.0, 1.0) * _maxRotateX;
     final scale = 1.0 - (1.0 - _sideScale) * abs.clamp(0.0, 1.0);
-    final translateX = clamped * cardWidth * _spacingFactor;
+    final translateY = clamped * cardHeight * _spacingFactor;
     return Matrix4.identity()
       ..setEntry(3, 2, 0.0012)
-      ..translateByDouble(translateX, 0.0, 0.0, 1.0)
-      ..rotateY(rotateY)
+      ..translateByDouble(0.0, translateY, 0.0, 1.0)
+      ..rotateX(rotateX)
       // ignore: deprecated_member_use
       ..scale(scale);
   }
@@ -196,7 +248,7 @@ class CoverFlowCarouselState extends State<CoverFlowCarousel> {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final cardWidth = constraints.maxWidth * widget.viewportFraction;
+        final cardHeight = constraints.maxHeight * widget.viewportFraction;
         final focused = _reportedPage.clamp(0, widget.itemCount - 1);
         // Keep a stable window around the focused index so cards are not
         // constantly added/removed during a drag (floor/ceil churn).
@@ -211,14 +263,33 @@ class CoverFlowCarouselState extends State<CoverFlowCarousel> {
 
         return GestureDetector(
           behavior: HitTestBehavior.opaque,
-          onHorizontalDragUpdate: _onDragUpdate,
-          onHorizontalDragEnd: _onDragEnd,
+          onVerticalDragUpdate: _onDragUpdate,
+          onVerticalDragEnd: _onDragEnd,
           child: Stack(
             alignment: widget.alignment,
             clipBehavior: Clip.none,
             children: [
+              if (_pullExtent > 0 || _refreshing)
+                Positioned(
+                  top: 12,
+                  left: 0,
+                  right: 0,
+                  child: Center(
+                    child: SizedBox(
+                      width: 28,
+                      height: 28,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2.5,
+                        value: _refreshing
+                            ? null
+                            : (_pullExtent / _refreshThreshold).clamp(0.0, 1.0),
+                      ),
+                    ),
+                  ),
+                ),
               IgnorePointer(
                 child: PageView.builder(
+                  scrollDirection: Axis.vertical,
                   controller: _controller,
                   itemCount: widget.itemCount,
                   padEnds: widget.padEnds,
@@ -237,7 +308,7 @@ class CoverFlowCarouselState extends State<CoverFlowCarousel> {
                     final delta = index - page;
                     return Transform(
                       alignment: Alignment.center,
-                      transform: _transformForDelta(delta, cardWidth),
+                      transform: _transformForDelta(delta, cardHeight),
                       // Always wrap Opacity so focus changes do not remount.
                       child: Opacity(
                         opacity: _dimForDelta(delta),
@@ -246,8 +317,8 @@ class CoverFlowCarouselState extends State<CoverFlowCarousel> {
                     );
                   },
                   child: SizedBox(
-                    width: cardWidth,
-                    height: constraints.maxHeight,
+                    width: constraints.maxWidth,
+                    height: cardHeight,
                     child: Align(
                       alignment: widget.alignment,
                       child: _CoverFlowCardHost(

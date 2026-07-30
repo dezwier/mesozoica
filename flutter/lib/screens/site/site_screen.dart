@@ -58,8 +58,6 @@ class SiteScreenState extends State<SiteScreen> {
           SiteTurnableCard(
             site: site,
             turnable: isFocused,
-            enableDragFlip: false,
-            outerPadding: EdgeInsets.zero,
             fixedFaceHeight: fixedFaceHeight,
             onSiteUpdated: context.read<SiteCatalogController>().replaceSite,
           ),

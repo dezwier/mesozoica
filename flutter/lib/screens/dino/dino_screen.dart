@@ -48,8 +48,6 @@ class DinoScreenState extends State<DinoScreen> {
           DinosaurTurnableCard(
             dinosaur: dinosaur,
             turnable: isFocused,
-            enableDragFlip: false,
-            outerPadding: EdgeInsets.zero,
             fixedFaceHeight: fixedFaceHeight,
           ),
       emptyMessageBuilder: (context, catalog) {

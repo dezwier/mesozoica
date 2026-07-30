@@ -51,8 +51,6 @@ class FossilScreenState extends State<FossilScreen> {
             key: ValueKey<int>(fossil.id),
             fossil: fossil,
             turnable: isFocused,
-            enableDragFlip: false,
-            outerPadding: EdgeInsets.zero,
             fixedFaceHeight: fixedFaceHeight,
           ),
       emptyMessageBuilder: (context, catalog) => catalog.hasActiveFilters

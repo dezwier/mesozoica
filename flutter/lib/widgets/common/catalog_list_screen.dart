@@ -9,8 +9,8 @@ import '../../shell/shell_overlay_panel.dart';
 import '../../theme/dino_card_theme.dart';
 import 'cover_flow_carousel.dart';
 
-/// Generic Cover Flow / paginate / refresh host shared by the dino, fossil,
-/// site, and tool catalog screens. Each screen supplies its card
+/// Generic vertical Cover Flow / paginate / refresh host shared by the dino,
+/// fossil, site, and tool catalog screens. Each screen supplies its card
 /// [itemBuilder], empty-state copy, and floating actions; this widget owns
 /// load-more paging and loading/error/empty states.
 class CatalogListScreen<C extends CatalogController<T>, T>
@@ -26,7 +26,7 @@ class CatalogListScreen<C extends CatalogController<T>, T>
 
   final bool isActive;
 
-  /// [isFocused] is true for the centered Cover Flow card only.
+  /// [isFocused] is true for the focused Cover Flow card only.
   final Widget Function(
     BuildContext context,
     T item, {
@@ -167,51 +167,46 @@ class CatalogListScreenState<C extends CatalogController<T>, T>
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        // Fit the card face in the viewport; Cover Flow centers the deck.
-        final maxFaceWidth = constraints.maxWidth * 0.85;
-        final maxFaceHeight = (constraints.maxHeight - 8).clamp(120.0, 2000.0);
+        // Full-width cards (same as dialogue); height follows aspect ratio,
+        // capped so neighbors peek in the vertical Cover Flow.
+        const horizontalInset = 16.0 * 2;
+        const verticalInset = 8.0 * 2;
+        final maxFaceWidth =
+            (constraints.maxWidth - horizontalInset).clamp(120.0, 2000.0);
+        final maxFaceHeight = (constraints.maxHeight * 0.72 - verticalInset)
+            .clamp(120.0, 2000.0);
         final heightFromWidth =
             maxFaceWidth / DinoCardTheme.cardAspectRatio;
         final faceHeight = heightFromWidth <= maxFaceHeight
             ? heightFromWidth
             : maxFaceHeight;
-        final faceWidth = faceHeight * DinoCardTheme.cardAspectRatio;
+        final slotHeight = faceHeight + verticalInset;
         final viewportFraction =
-            (faceWidth / constraints.maxWidth).clamp(0.55, 0.85);
+            (slotHeight / constraints.maxHeight).clamp(0.55, 0.85);
 
-        return RefreshIndicator(
+        return CoverFlowCarousel(
+          key: _coverFlowKey,
+          itemCount: catalog.items.length +
+              (catalog.isLoadingMore ? 1 : 0),
+          viewportFraction: viewportFraction,
+          onPageChanged: (page) => _onPageChanged(page, catalog),
           onRefresh: catalog.refresh,
-          child: SingleChildScrollView(
-            physics: const AlwaysScrollableScrollPhysics(
-              parent: BouncingScrollPhysics(),
-            ),
-            child: SizedBox(
-              height: constraints.maxHeight,
-              child: CoverFlowCarousel(
-                key: _coverFlowKey,
-                itemCount: catalog.items.length +
-                    (catalog.isLoadingMore ? 1 : 0),
-                viewportFraction: viewportFraction,
-                onPageChanged: (page) => _onPageChanged(page, catalog),
-                itemBuilder: (context, index, isFocused) {
-                  if (index >= catalog.items.length) {
-                    return Padding(
-                      padding: EdgeInsets.only(bottom: bottomInset * 0.35),
-                      child: const Center(
-                        child: CircularProgressIndicator(),
-                      ),
-                    );
-                  }
-                  return widget.itemBuilder(
-                    context,
-                    catalog.items[index],
-                    isFocused: isFocused,
-                    fixedFaceHeight: faceHeight,
-                  );
-                },
-              ),
-            ),
-          ),
+          itemBuilder: (context, index, isFocused) {
+            if (index >= catalog.items.length) {
+              return Padding(
+                padding: EdgeInsets.only(bottom: bottomInset * 0.35),
+                child: const Center(
+                  child: CircularProgressIndicator(),
+                ),
+              );
+            }
+            return widget.itemBuilder(
+              context,
+              catalog.items[index],
+              isFocused: isFocused,
+              fixedFaceHeight: faceHeight,
+            );
+          },
         );
       },
     );
