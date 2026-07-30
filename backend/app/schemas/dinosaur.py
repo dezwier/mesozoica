@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class DinosaurSummary(BaseModel):
@@ -31,6 +31,12 @@ class DinosaurSummary(BaseModel):
     created_at: datetime | None = None
     # Curated image version folder; set for inventory occurrences.
     version: str | None = None
+    # Viewer collection status (catalog: latest role for type; inventory: occurrence).
+    status: str | None = None
+
+
+class SetDinosaurStatusRequest(BaseModel):
+    status: str = Field(min_length=1, max_length=32)
 
 
 class DinosaurListResponse(BaseModel):

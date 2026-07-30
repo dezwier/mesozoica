@@ -1,4 +1,4 @@
-"""Fossil read endpoints."""
+"""Fossil read and status endpoints."""
 
 from __future__ import annotations
 
@@ -7,12 +7,17 @@ from sqlmodel import Session, col, select
 
 from app.core.database import get_session
 from app.core.exceptions import NotFoundError, ValidationError
-from app.core.security import get_optional_current_user
+from app.core.security import get_current_admin_user, get_optional_current_user
 from app.models.data_source import DATA_SOURCE_ARCHIVE, DATA_SOURCE_FIELD
 from app.models.user import User
-from app.models.user_fossil import USER_FOSSIL_ROLE_DISCOVERER, UserFossil
-from app.schemas.fossil import FossilListResponse, FossilSummary
+from app.models.user_fossil import UserFossil
+from app.schemas.fossil import (
+    FossilListResponse,
+    FossilSummary,
+    SetFossilStatusRequest,
+)
 from app.services.fossil_service.list import fossil_row_to_summary, get_fossil_by_id, list_fossils
+from app.services.fossil_service.set_status import set_fossil_status
 from app.services.site_service.site_type_fallback import load_site_types_by_period
 
 router = APIRouter(prefix="/fossils", tags=["fossils"])
@@ -85,6 +90,21 @@ def get_fossils(
     )
 
 
+@router.post("/{fossil_id}/status", response_model=FossilSummary)
+def post_set_fossil_status(
+    fossil_id: int,
+    body: SetFossilStatusRequest,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_admin_user),
+) -> FossilSummary:
+    return set_fossil_status(
+        session,
+        fossil_id=fossil_id,
+        user_id=current_user.id,
+        status=body.status,
+    )
+
+
 @router.get("/{fossil_id}", response_model=FossilSummary)
 def get_fossil(
     fossil_id: int,
@@ -103,7 +123,6 @@ def get_fossil(
             select(UserFossil).where(
                 col(UserFossil.user_id) == viewer_user_id,
                 col(UserFossil.fossil_id) == fossil_id,
-                col(UserFossil.role) == USER_FOSSIL_ROLE_DISCOVERER,
             )
         ).first()
         if link is None:

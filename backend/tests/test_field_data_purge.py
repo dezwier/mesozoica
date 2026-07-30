@@ -19,7 +19,7 @@ from app.models.tool_type import ToolType
 from app.models.tool_mission import ACTION_KEY_AERIAL_RECON, ToolMission
 from app.models.tool_mission_event import ToolMissionEvent
 from app.models.user import User
-from app.models.user_fossil import USER_FOSSIL_ROLE_DISCOVERER, UserFossil
+from app.models.user_fossil import USER_FOSSIL_ROLE_IN_SITU, UserFossil
 from app.models.user_site import USER_SITE_ROLE_DISCOVERER, UserSite
 from app.services.field_service.field_data_purge import purge_all_field_data
 
@@ -108,7 +108,7 @@ def _seed_field_world(session: Session) -> tuple[Site, Fossil, User]:
         UserFossil(
             user_id=user.id,
             fossil_id=1_000_000_001,
-            role=USER_FOSSIL_ROLE_DISCOVERER,
+            role=USER_FOSSIL_ROLE_IN_SITU,
         )
     )
     session.add(

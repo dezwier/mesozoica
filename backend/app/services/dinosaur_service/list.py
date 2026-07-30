@@ -13,7 +13,7 @@ from sqlmodel import Session, col, func as sqlmodel_func, select
 from app.core.exceptions import NotFoundError, ValidationError
 from app.models.dinosaur import Dinosaur
 from app.models.dinosaur_type import DinosaurType
-from app.models.user_dinosaur import USER_DINOSAUR_ROLE_DISCOVERER, UserDinosaur
+from app.models.user_dinosaur import UserDinosaur, role_to_status
 from app.services.curated_image_service.resolve import resolve_dinosaur_card_image_url
 from app.services.dinosaur_image_service.sync import CURATED_MEDIA_PATH
 
@@ -171,9 +171,9 @@ def _list_inventory_dinosaurs(
         .join(
             UserDinosaur,
             (col(UserDinosaur.dinosaur_id) == col(Dinosaur.id))
-            & (col(UserDinosaur.user_id) == viewer_user_id)
-            & (col(UserDinosaur.role) == USER_DINOSAUR_ROLE_DISCOVERER),
+            & (col(UserDinosaur.user_id) == viewer_user_id),
         )
+        .distinct()
     )
     if has_custom_image:
         stmt = stmt.where(
@@ -327,7 +327,11 @@ def get_dinosaur_by_id(session: Session, dinosaur_id: int) -> DinosaurType:
     return row
 
 
-def dinosaur_to_summary(row: DinosaurListRow):
+def dinosaur_to_summary(
+    row: DinosaurListRow,
+    *,
+    viewer_status: str | None = None,
+):
     from app.schemas.dinosaur import DinosaurSummary
     from app.services.curated_image_service.versions import ORIGINAL_VERSION
 
@@ -354,4 +358,52 @@ def dinosaur_to_summary(row: DinosaurListRow):
         ),
         created_at=row.created_at,
         version=row.image_version if row.occurrence_id is not None else None,
+        status=viewer_status,
     )
+
+
+def viewer_statuses_for_types(
+    session: Session,
+    *,
+    type_ids: list[int],
+    viewer_user_id: int | None,
+) -> dict[int, str]:
+    """Latest user_dinosaur status per dinosaur type for the viewer."""
+    if viewer_user_id is None or not type_ids:
+        return {}
+    links = session.exec(
+        select(UserDinosaur, Dinosaur.dinosaur_type_id)
+        .join(Dinosaur, col(Dinosaur.id) == col(UserDinosaur.dinosaur_id))
+        .where(
+            col(UserDinosaur.user_id) == viewer_user_id,
+            col(Dinosaur.dinosaur_type_id).in_(type_ids),
+        )
+        .order_by(col(UserDinosaur.timestamp).desc())
+    ).all()
+    result: dict[int, str] = {}
+    for link, type_id in links:
+        tid = int(type_id)
+        if tid not in result:
+            result[tid] = role_to_status(link.role)
+    return result
+
+
+def viewer_status_for_occurrence(
+    session: Session,
+    *,
+    occurrence_id: int,
+    viewer_user_id: int | None,
+) -> str | None:
+    if viewer_user_id is None:
+        return None
+    link = session.exec(
+        select(UserDinosaur)
+        .where(
+            col(UserDinosaur.user_id) == viewer_user_id,
+            col(UserDinosaur.dinosaur_id) == occurrence_id,
+        )
+        .order_by(col(UserDinosaur.timestamp).desc())
+    ).first()
+    if link is None:
+        return None
+    return role_to_status(link.role)

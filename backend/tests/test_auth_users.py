@@ -68,10 +68,10 @@ def test_profile_collection_counts_from_link_tables(
     from app.models.site import Site
     from app.models.site_type import SiteType
     from app.models.user_dinosaur import (
-        USER_DINOSAUR_ROLE_DISCOVERER,
+        USER_DINOSAUR_ROLE_MODELLED,
         UserDinosaur,
     )
-    from app.models.user_fossil import USER_FOSSIL_ROLE_DISCOVERER, UserFossil
+    from app.models.user_fossil import USER_FOSSIL_ROLE_IN_SITU, UserFossil
     from app.models.user_site import (
         USER_SITE_ROLE_DISCOVERER,
         USER_SITE_ROLE_SURVEYOR,
@@ -164,21 +164,21 @@ def test_profile_collection_counts_from_link_tables(
         UserFossil(
             user_id=user_id,
             fossil_id=91001,
-            role=USER_FOSSIL_ROLE_DISCOVERER,
+            role=USER_FOSSIL_ROLE_IN_SITU,
         )
     )
     session.add(
         UserFossil(
             user_id=user_id,
             fossil_id=91002,
-            role=USER_FOSSIL_ROLE_DISCOVERER,
+            role=USER_FOSSIL_ROLE_IN_SITU,
         )
     )
     session.add(
         UserDinosaur(
             user_id=user_id,
             dinosaur_id=occurrence_a.id,
-            role=USER_DINOSAUR_ROLE_DISCOVERER,
+            role=USER_DINOSAUR_ROLE_MODELLED,
         )
     )
     session.commit()
@@ -309,10 +309,10 @@ def test_delete_data_selective_and_scoped(client: TestClient, session: Session):
     from app.models.site import Site
     from app.models.site_type import SiteType
     from app.models.user_dinosaur import (
-        USER_DINOSAUR_ROLE_DISCOVERER,
+        USER_DINOSAUR_ROLE_MODELLED,
         UserDinosaur,
     )
-    from app.models.user_fossil import USER_FOSSIL_ROLE_DISCOVERER, UserFossil
+    from app.models.user_fossil import USER_FOSSIL_ROLE_IN_SITU, UserFossil
     from app.models.user_site import USER_SITE_ROLE_DISCOVERER, UserSite
     from sqlmodel import col, select
 
@@ -386,14 +386,14 @@ def test_delete_data_selective_and_scoped(client: TestClient, session: Session):
             UserFossil(
                 user_id=uid,
                 fossil_id=92001,
-                role=USER_FOSSIL_ROLE_DISCOVERER,
+                role=USER_FOSSIL_ROLE_IN_SITU,
             )
         )
         session.add(
             UserDinosaur(
                 user_id=uid,
                 dinosaur_id=occurrence.id,
-                role=USER_DINOSAUR_ROLE_DISCOVERER,
+                role=USER_DINOSAUR_ROLE_MODELLED,
             )
         )
     session.commit()

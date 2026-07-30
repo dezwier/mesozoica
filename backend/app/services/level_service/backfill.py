@@ -8,7 +8,7 @@ from sqlmodel import Session, col, select
 
 from app.core.game_config import get_game_config
 from app.models.user import User
-from app.models.user_fossil import USER_FOSSIL_ROLE_DISCOVERER, UserFossil
+from app.models.user_fossil import USER_FOSSIL_ROLE_IN_SITU, UserFossil
 from app.models.user_site import USER_SITE_ROLE_DISCOVERER, UserSite
 from app.services.level_service.award import (
     passive_meters,
@@ -32,7 +32,7 @@ def _discoverer_fossil_count(session: Session, user_id: int) -> int:
     count = session.exec(
         select(func.count()).select_from(UserFossil).where(
             col(UserFossil.user_id) == user_id,
-            col(UserFossil.role) == USER_FOSSIL_ROLE_DISCOVERER,
+            col(UserFossil.role) == USER_FOSSIL_ROLE_IN_SITU,
         )
     ).one()
     return int(count or 0)

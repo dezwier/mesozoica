@@ -100,6 +100,36 @@ class DinosaurService {
     return DinosaurArticle.fromJson(decoded);
   }
 
+  Future<DinosaurSummary> setDinosaurStatus({
+    required int dinosaurTypeId,
+    required String status,
+  }) async {
+    final uri = AppConfig.dinosaurStatusUri(dinosaurTypeId);
+    if (kDebugMode) {
+      debugPrint('DinosaurService POST $uri status=$status');
+    }
+    final response = await ApiClient.instance
+        .sendPost(
+          uri,
+          client: _client,
+          headers: const {'Content-Type': 'application/json'},
+          body: jsonEncode({'status': status}),
+        )
+        .timeout(const Duration(seconds: 15));
+
+    if (response.statusCode != 200) {
+      throw DinosaurServiceException(
+        'Failed to set dinosaur status (${response.statusCode})',
+      );
+    }
+
+    final decoded = jsonDecode(response.body);
+    if (decoded is! Map<String, dynamic>) {
+      throw const DinosaurServiceException('Invalid dinosaur status response');
+    }
+    return DinosaurSummary.fromJson(decoded);
+  }
+
   void dispose() {
     _client.close();
   }

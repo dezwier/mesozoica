@@ -106,7 +106,7 @@ def test_list_dinosaurs_inventory_includes_created_at(client, session):
     from app.core.security import create_access_token
     from app.models.dinosaur import Dinosaur
     from app.models.user import User
-    from app.models.user_dinosaur import USER_DINOSAUR_ROLE_DISCOVERER, UserDinosaur
+    from app.models.user_dinosaur import USER_DINOSAUR_ROLE_MODELLED, UserDinosaur
 
     dino_type = _seed_tyrannosaurus(session)
     user = User(
@@ -126,7 +126,7 @@ def test_list_dinosaurs_inventory_includes_created_at(client, session):
         UserDinosaur(
             user_id=int(user.id),
             dinosaur_id=int(occurrence.id),
-            role=USER_DINOSAUR_ROLE_DISCOVERER,
+            role=USER_DINOSAUR_ROLE_MODELLED,
         )
     )
     session.commit()
@@ -144,6 +144,104 @@ def test_list_dinosaurs_inventory_includes_created_at(client, session):
     assert item["id"] == occurrence.id
     assert item["dinosaur_type_id"] == dino_type.id
     assert item["created_at"] is not None
+    assert item["status"] == "modelled"
+
+
+def test_set_dinosaur_status_admin_flow(client, session):
+    from app.core.security import create_access_token
+    from app.models.user import User
+
+    dino_type = _seed_tyrannosaurus(session)
+    admin = User(
+        username="dino_status_admin",
+        email="dino_status_admin@example.com",
+        password="x",
+        is_admin=True,
+    )
+    non_admin = User(
+        username="dino_status_user",
+        email="dino_status_user@example.com",
+        password="x",
+        is_admin=False,
+    )
+    session.add(admin)
+    session.add(non_admin)
+    session.commit()
+    session.refresh(admin)
+    session.refresh(non_admin)
+    admin_headers = {
+        "Authorization": f"Bearer {create_access_token({'sub': str(admin.id)})}"
+    }
+    user_headers = {
+        "Authorization": f"Bearer {create_access_token({'sub': str(non_admin.id)})}"
+    }
+
+    forbidden = client.post(
+        f"/api/v1/dinosaurs/{dino_type.id}/status",
+        headers=user_headers,
+        json={"status": "modelled"},
+    )
+    assert forbidden.status_code == 403
+
+    catalog = client.get(
+        "/api/v1/dinosaurs",
+        params={"mode": "catalog", "sort": "name"},
+        headers=admin_headers,
+    )
+    assert catalog.status_code == 200
+    assert catalog.json()["items"][0]["status"] == "hidden"
+
+    modelled = client.post(
+        f"/api/v1/dinosaurs/{dino_type.id}/status",
+        headers=admin_headers,
+        json={"status": "modelled"},
+    )
+    assert modelled.status_code == 200
+    assert modelled.json()["status"] == "modelled"
+    assert modelled.json()["dinosaur_type_id"] == dino_type.id
+
+    inventory = client.get(
+        "/api/v1/dinosaurs",
+        params={"mode": "inventory", "sort": "name"},
+        headers=admin_headers,
+    )
+    assert inventory.status_code == 200
+    assert inventory.json()["total"] == 1
+    assert inventory.json()["items"][0]["dinosaur_type_id"] == dino_type.id
+    assert inventory.json()["items"][0]["status"] == "modelled"
+    assert inventory.json()["items"][0]["created_at"] is not None
+
+    reconstructed = client.post(
+        f"/api/v1/dinosaurs/{dino_type.id}/status",
+        headers=admin_headers,
+        json={"status": "reconstructed"},
+    )
+    assert reconstructed.status_code == 200
+    assert reconstructed.json()["status"] == "reconstructed"
+
+    # Still one inventory occurrence (find-or-create, not duplicate).
+    inventory2 = client.get(
+        "/api/v1/dinosaurs",
+        params={"mode": "inventory", "sort": "name"},
+        headers=admin_headers,
+    )
+    assert inventory2.json()["total"] == 1
+    assert inventory2.json()["items"][0]["status"] == "reconstructed"
+
+    hidden = client.post(
+        f"/api/v1/dinosaurs/{dino_type.id}/status",
+        headers=admin_headers,
+        json={"status": "hidden"},
+    )
+    assert hidden.status_code == 200
+    assert hidden.json()["status"] == "hidden"
+
+    inventory3 = client.get(
+        "/api/v1/dinosaurs",
+        params={"mode": "inventory", "sort": "name"},
+        headers=admin_headers,
+    )
+    assert inventory3.json()["total"] == 0
 
 
 def test_list_dinosaurs_pagination(client, session):

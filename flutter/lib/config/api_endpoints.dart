@@ -51,6 +51,9 @@ class ApiEndpoints {
   static Uri dinosaurUri(int id) =>
       Uri.parse('${AppConfig.baseApiUrl}/api/v1/dinosaurs/$id');
 
+  static Uri dinosaurStatusUri(int id) =>
+      Uri.parse('${AppConfig.baseApiUrl}/api/v1/dinosaurs/$id/status');
+
   static Uri fossilsUri({
     int limit = 200,
     int offset = 0,
@@ -119,6 +122,9 @@ class ApiEndpoints {
   }) => Uri.parse(
     '${AppConfig.baseApiUrl}/api/v1/fossils/$id',
   ).replace(queryParameters: {'data_source': dataSource.apiValue});
+
+  static Uri fossilStatusUri(int id) =>
+      Uri.parse('${AppConfig.baseApiUrl}/api/v1/fossils/$id/status');
 
   static Uri sitesUri({
     int limit = 200,

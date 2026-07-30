@@ -1,6 +1,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mesozoica/controllers/auth_controller.dart';
 import 'package:mesozoica/models/fossil.dart';
 import 'package:mesozoica/widgets/cards/dinosaur_card_image.dart';
 import 'package:mesozoica/widgets/cards/fossil_card_back.dart';
@@ -10,6 +11,7 @@ import 'package:mesozoica/widgets/cards/fossil_turnable_card.dart';
 import 'package:mesozoica/widgets/cards/geologic_timeline.dart';
 import 'package:mesozoica/widgets/cards/site_card_image.dart';
 import 'package:mesozoica/widgets/fossil/fossil_record_drawer.dart';
+import 'package:provider/provider.dart';
 
 const _fixture = FossilSummary(
   id: 100001,
@@ -308,12 +310,15 @@ void main() {
   testWidgets('FossilTurnableCard composes front and back faces',
       (tester) async {
     await tester.pumpWidget(
-      const MaterialApp(
-        home: Scaffold(
-          body: Center(
-            child: SizedBox(
-              width: 800,
-              child: FossilTurnableCard(fossil: _fixture),
+      ChangeNotifierProvider(
+        create: (_) => AuthController(),
+        child: const MaterialApp(
+          home: Scaffold(
+            body: Center(
+              child: SizedBox(
+                width: 800,
+                child: FossilTurnableCard(fossil: _fixture),
+              ),
             ),
           ),
         ),

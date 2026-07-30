@@ -16,12 +16,14 @@ class FossilCardFront extends StatelessWidget {
     this.titleFontSize = 36,
     this.subtitleFontSize = 10,
     this.overlayHeightFactor = 0.52,
+    this.onStatusSelected,
   });
 
   final FossilSummary fossil;
   final double titleFontSize;
   final double subtitleFontSize;
   final double overlayHeightFactor;
+  final ValueChanged<String>? onStatusSelected;
 
   @override
   Widget build(BuildContext context) {
@@ -61,7 +63,11 @@ class FossilCardFront extends StatelessWidget {
                   if (showIdBadge)
                     OccurrenceIdBadge(label: fossil.occurrenceIdBadgeLabel),
                   if (showIdBadge && showStatus) const SizedBox(height: 6),
-                  if (showStatus) FossilStatusBadge(status: status),
+                  if (showStatus)
+                    FossilStatusBadge(
+                      status: status,
+                      onStatusSelected: onStatusSelected,
+                    ),
                 ],
               ),
             ),

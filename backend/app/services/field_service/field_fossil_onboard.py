@@ -11,7 +11,7 @@ from app.models.data_source import DATA_SOURCE_FIELD
 from app.models.field_survey_job import FieldSurveyJob
 from app.models.fossil import Fossil
 from app.models.site import Site
-from app.models.user_fossil import USER_FOSSIL_ROLE_DISCOVERER, UserFossil
+from app.models.user_fossil import USER_FOSSIL_ROLE_IN_SITU, UserFossil
 from app.models.user_site import USER_SITE_ROLE_DISCOVERER, UserSite
 from app.services.field_service.field_fossil_generate import count_field_fossils_for_site
 from app.services.field_service.field_survey_queue import (
@@ -44,7 +44,7 @@ def ensure_fossils_on_site_discovery(
     """Enqueue/onboard global field fossil generation and grant surface finds.
 
     Ground-truth fossils are global (once per site). Every discoverer gets
-    ``user_fossil`` discoverer rows for depth_cm == 0 when fossils are ready.
+    ``user_fossil`` in_situ rows for depth_cm == 0 when fossils are ready.
     """
     site = session.get(Site, site_id)
     if site is None or site.data_source != DATA_SOURCE_FIELD:
@@ -161,7 +161,7 @@ def grant_surface_fossils_to_user(
     site_id: int,
     user_id: int,
 ) -> tuple[int, ...]:
-    """Insert discoverer roles for depth_cm == 0 field fossils; return fossil ids."""
+    """Insert in_situ roles for depth_cm == 0 field fossils; return fossil ids."""
     surface = session.exec(
         select(Fossil.id).where(
             col(Fossil.site_id) == site_id,
@@ -177,7 +177,7 @@ def grant_surface_fossils_to_user(
             select(UserFossil.fossil_id).where(
                 col(UserFossil.user_id) == user_id,
                 col(UserFossil.fossil_id).in_(list(surface)),
-                col(UserFossil.role) == USER_FOSSIL_ROLE_DISCOVERER,
+                col(UserFossil.role) == USER_FOSSIL_ROLE_IN_SITU,
             )
         ).all()
     )
@@ -193,7 +193,7 @@ def grant_surface_fossils_to_user(
             UserFossil(
                 user_id=user_id,
                 fossil_id=fid,
-                role=USER_FOSSIL_ROLE_DISCOVERER,
+                role=USER_FOSSIL_ROLE_IN_SITU,
                 timestamp=now,
             )
         )

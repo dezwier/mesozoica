@@ -14,8 +14,8 @@ from app.models.site import Site
 from app.models.user_fossil import (
     FOSSIL_STATUS_DISCOVERED,
     FOSSIL_STATUS_HIDDEN,
-    USER_FOSSIL_ROLE_DISCOVERER,
     UserFossil,
+    role_to_status,
 )
 from app.schemas.site import SiteDinosaurThumb, SiteDinoFossilGroup, SiteFossilThumb
 
@@ -27,7 +27,7 @@ def _ensure_site_exists(session: Session, site_id: int) -> Site:
     return row
 
 
-def _discovered_fossil_ids_for_user(
+def _linked_fossil_ids_for_user(
     session: Session,
     *,
     site_id: int,
@@ -38,7 +38,6 @@ def _discovered_fossil_ids_for_user(
         .join(Fossil, col(Fossil.id) == col(UserFossil.fossil_id))
         .where(
             col(UserFossil.user_id) == user_id,
-            col(UserFossil.role) == USER_FOSSIL_ROLE_DISCOVERER,
             col(Fossil.site_id) == site_id,
             col(Fossil.data_source) == DATA_SOURCE_FIELD,
         )
@@ -46,12 +45,29 @@ def _discovered_fossil_ids_for_user(
     return {int(fid) for fid in rows}
 
 
+def _fossil_status_for_viewer(
+    session: Session,
+    *,
+    fossil_id: int,
+    user_id: int,
+) -> str:
+    link = session.exec(
+        select(UserFossil)
+        .where(
+            col(UserFossil.user_id) == user_id,
+            col(UserFossil.fossil_id) == fossil_id,
+        )
+        .order_by(col(UserFossil.timestamp).desc())
+    ).first()
+    return role_to_status(link.role if link is not None else None)
+
+
 def _should_filter_field_fossils(
     site: Site,
     *,
     is_admin: bool,
 ) -> bool:
-    """Non-admins only see field fossils they have discovered.
+    """Non-admins only see field fossils they have a user_fossil link for.
 
     Admins still see all on site/dino cards (with status for dimming).
     """
@@ -63,15 +79,8 @@ def _thumb(
     fossil_id: int,
     main_image_url: str | None,
     identified_name: str | None,
-    discovered_ids: set[int] | None,
+    status: str,
 ) -> SiteFossilThumb:
-    if discovered_ids is None:
-        # Archive (or no viewer): no discovery gate — show at full opacity.
-        status = FOSSIL_STATUS_DISCOVERED
-    elif int(fossil_id) in discovered_ids:
-        status = FOSSIL_STATUS_DISCOVERED
-    else:
-        status = FOSSIL_STATUS_HIDDEN
     return SiteFossilThumb(
         id=fossil_id,
         main_image_url=main_image_url,
@@ -94,29 +103,39 @@ def list_site_fossils(
             col(Fossil.data_source) == site.data_source,
         )
     ).all()
-    discovered: set[int] | None = None
+    linked: set[int] | None = None
     if site.data_source == DATA_SOURCE_FIELD and viewer_user_id is not None:
-        discovered = _discovered_fossil_ids_for_user(
+        linked = _linked_fossil_ids_for_user(
             session, site_id=site_id, user_id=viewer_user_id
         )
     if _should_filter_field_fossils(site, is_admin=is_admin):
-        if viewer_user_id is None or discovered is None:
+        if viewer_user_id is None or linked is None:
             rows = []
         else:
-            rows = [row for row in rows if int(row[0]) in discovered]
+            rows = [row for row in rows if int(row[0]) in linked]
     rows = sorted(
         rows,
         key=lambda row: hashlib.md5(f"{row[0]}{site_id}".encode()).hexdigest(),
     )
-    return [
-        _thumb(
-            fossil_id=fossil_id,
-            main_image_url=main_image_url,
-            identified_name=identified_name,
-            discovered_ids=discovered,
+    result: list[SiteFossilThumb] = []
+    for fossil_id, main_image_url, identified_name in rows:
+        if site.data_source != DATA_SOURCE_FIELD or viewer_user_id is None:
+            status = FOSSIL_STATUS_DISCOVERED
+        elif linked is not None and int(fossil_id) in linked:
+            status = _fossil_status_for_viewer(
+                session, fossil_id=int(fossil_id), user_id=viewer_user_id
+            )
+        else:
+            status = FOSSIL_STATUS_HIDDEN
+        result.append(
+            _thumb(
+                fossil_id=fossil_id,
+                main_image_url=main_image_url,
+                identified_name=identified_name,
+                status=status,
+            )
         )
-        for fossil_id, main_image_url, identified_name in rows
-    ]
+    return result
 
 
 def list_site_dinosaurs(
@@ -141,8 +160,7 @@ def list_site_dinosaurs(
         stmt = stmt.join(
             UserFossil,
             (col(UserFossil.fossil_id) == col(Fossil.id))
-            & (col(UserFossil.user_id) == viewer_user_id)
-            & (col(UserFossil.role) == USER_FOSSIL_ROLE_DISCOVERER),
+            & (col(UserFossil.user_id) == viewer_user_id),
         )
     rows = session.exec(
         stmt.distinct().order_by(DinosaurType.name, DinosaurType.id)
@@ -176,9 +194,9 @@ def list_site_dino_fossil_groups(
             col(Fossil.data_source) == site.data_source,
         )
     )
-    discovered: set[int] | None = None
+    linked: set[int] | None = None
     if site.data_source == DATA_SOURCE_FIELD and viewer_user_id is not None:
-        discovered = _discovered_fossil_ids_for_user(
+        linked = _linked_fossil_ids_for_user(
             session, site_id=site_id, user_id=viewer_user_id
         )
     if _should_filter_field_fossils(site, is_admin=is_admin):
@@ -187,8 +205,7 @@ def list_site_dino_fossil_groups(
         stmt = stmt.join(
             UserFossil,
             (col(UserFossil.fossil_id) == col(Fossil.id))
-            & (col(UserFossil.user_id) == viewer_user_id)
-            & (col(UserFossil.role) == USER_FOSSIL_ROLE_DISCOVERER),
+            & (col(UserFossil.user_id) == viewer_user_id),
         )
     rows = session.exec(
         stmt.order_by(DinosaurType.name, DinosaurType.id, Fossil.id)
@@ -212,12 +229,20 @@ def list_site_dino_fossil_groups(
                 fossils=[],
             )
         assert current_group is not None
+        if site.data_source != DATA_SOURCE_FIELD or viewer_user_id is None:
+            status = FOSSIL_STATUS_DISCOVERED
+        elif linked is not None and int(fossil_id) in linked:
+            status = _fossil_status_for_viewer(
+                session, fossil_id=int(fossil_id), user_id=viewer_user_id
+            )
+        else:
+            status = FOSSIL_STATUS_HIDDEN
         current_group.fossils.append(
             _thumb(
                 fossil_id=fossil_id,
                 main_image_url=fossil_image,
                 identified_name=identified_name,
-                discovered_ids=discovered,
+                status=status,
             )
         )
 

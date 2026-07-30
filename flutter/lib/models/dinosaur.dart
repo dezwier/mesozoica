@@ -31,6 +31,7 @@ class DinosaurSummary {
     this.mainImageUrl,
     this.createdAt,
     this.version,
+    this.status,
   });
 
   final int id;
@@ -54,10 +55,16 @@ class DinosaurSummary {
   /// Curated image version folder; set for inventory occurrences.
   final String? version;
 
+  /// Viewer collection status (hidden / modelled / reconstructed).
+  final String? status;
+
   /// True for owned/reconstructed dinosaur cards (not catalog types).
   bool get isInventoryOccurrence =>
       createdAt != null ||
       (dinosaurTypeId != null && dinosaurTypeId != id);
+
+  bool get isHidden =>
+      (status ?? 'hidden').trim().toLowerCase() == 'hidden';
 
   String get displayOccurrenceNumber => '#$id';
 
@@ -96,6 +103,7 @@ class DinosaurSummary {
       version: (json['version'] as String?)?.trim().isNotEmpty == true
           ? (json['version'] as String).trim()
           : null,
+      status: json['status'] as String?,
     );
   }
 

@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
+import '../../controllers/auth_controller.dart';
 import '../../models/fossil.dart';
 import '../../theme/dino_card_theme.dart';
 import 'fossil_card_back.dart';
 import 'fossil_card_front.dart';
+import 'fossil_status_helper.dart';
 import 'turnable_y_axis_card.dart';
 
-class FossilTurnableCard extends StatelessWidget {
+class FossilTurnableCard extends StatefulWidget {
   const FossilTurnableCard({
     super.key,
     required this.fossil,
@@ -20,6 +23,7 @@ class FossilTurnableCard extends StatelessWidget {
     this.titleFontSize = 36,
     this.subtitleFontSize = 10,
     this.overlayHeightFactor = 0.38,
+    this.onFossilUpdated,
   });
 
   final FossilSummary fossil;
@@ -32,29 +36,69 @@ class FossilTurnableCard extends StatelessWidget {
   final double titleFontSize;
   final double subtitleFontSize;
   final double overlayHeightFactor;
+  final ValueChanged<FossilSummary>? onFossilUpdated;
+
+  @override
+  State<FossilTurnableCard> createState() => _FossilTurnableCardState();
+}
+
+class _FossilTurnableCardState extends State<FossilTurnableCard> {
+  late FossilSummary _fossil;
+
+  @override
+  void initState() {
+    super.initState();
+    _fossil = widget.fossil;
+  }
+
+  @override
+  void didUpdateWidget(covariant FossilTurnableCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.fossil.id != widget.fossil.id ||
+        oldWidget.fossil.status != widget.fossil.status) {
+      _fossil = widget.fossil;
+    }
+  }
+
+  Future<void> _onStatusSelected(String status) async {
+    final updated = await applyFossilStatusSelection(
+      context,
+      _fossil,
+      newStatus: status,
+    );
+    if (updated == null || !mounted) return;
+    setState(() => _fossil = updated);
+    widget.onFossilUpdated?.call(updated);
+  }
 
   @override
   Widget build(BuildContext context) {
+    final hasStatus = (_fossil.status?.trim().isNotEmpty ?? false);
+    final isAdmin =
+        context.watch<AuthController>().currentUser?.isAdmin ?? false;
+    final canEditStatus = hasStatus && isAdmin && _fossil.isField;
+
     return TurnableYAxisCard(
-      resetIdentity: fossil.id,
+      resetIdentity: _fossil.id,
       borderRadius: DinoCardTheme.borderRadius,
-      outerPadding: outerPadding,
-      fixedFaceHeight: fixedFaceHeight,
+      outerPadding: widget.outerPadding,
+      fixedFaceHeight: widget.fixedFaceHeight,
       decoration: DinoCardTheme.of(context).chromeDecoration(),
-      turnable: turnable,
-      enableDragFlip: enableDragFlip,
-      autoFlipOnce: autoFlipOnce,
-      autoFlipHoldOnBack: autoFlipHoldOnBack,
+      turnable: widget.turnable,
+      enableDragFlip: widget.enableDragFlip,
+      autoFlipOnce: widget.autoFlipOnce,
+      autoFlipHoldOnBack: widget.autoFlipHoldOnBack,
       front: FossilCardFront(
-        fossil: fossil,
-        titleFontSize: titleFontSize,
-        subtitleFontSize: subtitleFontSize,
-        overlayHeightFactor: overlayHeightFactor,
+        fossil: _fossil,
+        titleFontSize: widget.titleFontSize,
+        subtitleFontSize: widget.subtitleFontSize,
+        overlayHeightFactor: widget.overlayHeightFactor,
+        onStatusSelected: canEditStatus ? _onStatusSelected : null,
       ),
       back: FossilCardBack(
-        fossil: fossil,
-        titleFontSize: titleFontSize,
-        subtitleFontSize: subtitleFontSize,
+        fossil: _fossil,
+        titleFontSize: widget.titleFontSize,
+        subtitleFontSize: widget.subtitleFontSize,
       ),
     );
   }

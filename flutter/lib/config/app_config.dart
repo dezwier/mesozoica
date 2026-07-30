@@ -83,6 +83,9 @@ class AppConfig {
   static Uri dinosaurUri(int id) =>
       ApiEndpoints.dinosaurUri(id);
 
+  static Uri dinosaurStatusUri(int id) =>
+      ApiEndpoints.dinosaurStatusUri(id);
+
   static Uri fossilsUri({
     int limit = 200,
     int offset = 0,
@@ -107,6 +110,9 @@ class AppConfig {
     CatalogDataSource dataSource = CatalogDataSource.archive,
   }) =>
       ApiEndpoints.fossilUri(id, dataSource: dataSource);
+
+  static Uri fossilStatusUri(int id) =>
+      ApiEndpoints.fossilStatusUri(id);
 
   static Uri sitesUri({
     int limit = 200,

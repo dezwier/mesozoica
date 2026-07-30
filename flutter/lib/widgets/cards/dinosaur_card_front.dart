@@ -6,6 +6,7 @@ import '../../models/dinosaur.dart';
 import '../../theme/dino_card_theme.dart';
 import 'dinosaur_card_header.dart';
 import 'dinosaur_card_image.dart';
+import 'dinosaur_status_badge.dart';
 import 'occurrence_id_badge.dart';
 
 class DinosaurCardFront extends StatelessWidget {
@@ -16,6 +17,8 @@ class DinosaurCardFront extends StatelessWidget {
     this.titleFontSize = 36,
     this.subtitleFontSize = 10,
     this.overlayHeightFactor = 0.52,
+    this.showStatus = false,
+    this.onStatusSelected,
   });
 
   final DinosaurSummary dinosaur;
@@ -23,6 +26,8 @@ class DinosaurCardFront extends StatelessWidget {
   final double titleFontSize;
   final double subtitleFontSize;
   final double overlayHeightFactor;
+  final bool showStatus;
+  final ValueChanged<String>? onStatusSelected;
 
   String get _description =>
       dinosaur.shortDescription != null &&
@@ -33,6 +38,8 @@ class DinosaurCardFront extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cardTheme = DinoCardTheme.of(context);
+    final status = dinosaur.status?.trim() ?? 'hidden';
+    final showIdBadge = dinosaur.isInventoryOccurrence;
 
     return AspectRatio(
       aspectRatio: DinoCardTheme.cardAspectRatio,
@@ -54,12 +61,25 @@ class DinosaurCardFront extends StatelessWidget {
               ),
             ),
           ),
-          if (dinosaur.isInventoryOccurrence)
+          if (showIdBadge || showStatus)
             Positioned(
               top: 14,
               right: 14,
-              child: OccurrenceIdBadge(
-                label: dinosaur.occurrenceIdBadgeLabel,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (showIdBadge)
+                    OccurrenceIdBadge(
+                      label: dinosaur.occurrenceIdBadgeLabel,
+                    ),
+                  if (showIdBadge && showStatus) const SizedBox(height: 6),
+                  if (showStatus)
+                    DinosaurStatusBadge(
+                      status: status,
+                      onStatusSelected: onStatusSelected,
+                    ),
+                ],
               ),
             ),
           Positioned(

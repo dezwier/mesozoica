@@ -8,20 +8,49 @@ from typing import Optional
 from sqlalchemy import Column, DateTime, ForeignKey, Integer, UniqueConstraint, text
 from sqlmodel import Field, SQLModel
 
-USER_FOSSIL_ROLE_DISCOVERER = "discoverer"
+USER_FOSSIL_ROLE_IN_SITU = "in_situ"
+USER_FOSSIL_ROLE_LOCATED = "located"
+USER_FOSSIL_ROLE_EXCAVATED = "excavated"
+USER_FOSSIL_ROLE_TRANSPORT = "transport"
+USER_FOSSIL_ROLE_STORAGE = "storage"
+USER_FOSSIL_ROLE_ANALYSED = "analysed"
 
-USER_FOSSIL_ROLES: tuple[str, ...] = (USER_FOSSIL_ROLE_DISCOVERER,)
+USER_FOSSIL_ROLES: tuple[str, ...] = (
+    USER_FOSSIL_ROLE_IN_SITU,
+    USER_FOSSIL_ROLE_LOCATED,
+    USER_FOSSIL_ROLE_EXCAVATED,
+    USER_FOSSIL_ROLE_TRANSPORT,
+    USER_FOSSIL_ROLE_STORAGE,
+    USER_FOSSIL_ROLE_ANALYSED,
+)
 
 FOSSIL_STATUS_HIDDEN = "hidden"
+FOSSIL_STATUS_IN_SITU = "in_situ"
+FOSSIL_STATUS_LOCATED = "located"
+FOSSIL_STATUS_EXCAVATED = "excavated"
+FOSSIL_STATUS_TRANSPORT = "transport"
+FOSSIL_STATUS_STORAGE = "storage"
+FOSSIL_STATUS_ANALYSED = "analysed"
+# Archive fossils (not gated by user_fossil) always report this display status.
 FOSSIL_STATUS_DISCOVERED = "discovered"
 
 FOSSIL_STATUSES: tuple[str, ...] = (
     FOSSIL_STATUS_HIDDEN,
-    FOSSIL_STATUS_DISCOVERED,
+    FOSSIL_STATUS_IN_SITU,
+    FOSSIL_STATUS_LOCATED,
+    FOSSIL_STATUS_EXCAVATED,
+    FOSSIL_STATUS_TRANSPORT,
+    FOSSIL_STATUS_STORAGE,
+    FOSSIL_STATUS_ANALYSED,
 )
 
 ROLE_TO_STATUS: dict[str, str] = {
-    USER_FOSSIL_ROLE_DISCOVERER: FOSSIL_STATUS_DISCOVERED,
+    USER_FOSSIL_ROLE_IN_SITU: FOSSIL_STATUS_IN_SITU,
+    USER_FOSSIL_ROLE_LOCATED: FOSSIL_STATUS_LOCATED,
+    USER_FOSSIL_ROLE_EXCAVATED: FOSSIL_STATUS_EXCAVATED,
+    USER_FOSSIL_ROLE_TRANSPORT: FOSSIL_STATUS_TRANSPORT,
+    USER_FOSSIL_ROLE_STORAGE: FOSSIL_STATUS_STORAGE,
+    USER_FOSSIL_ROLE_ANALYSED: FOSSIL_STATUS_ANALYSED,
 }
 
 
@@ -68,7 +97,7 @@ class UserFossil(SQLModel, table=True):
     )
     role: str = Field(
         max_length=16,
-        description="discoverer (extend as gameplay roles grow)",
+        description="in_situ, located, excavated, transport, storage, or analysed",
     )
     timestamp: datetime = Field(
         default_factory=_utc_now,

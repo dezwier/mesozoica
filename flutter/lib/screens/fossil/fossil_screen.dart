@@ -52,6 +52,8 @@ class FossilScreenState extends State<FossilScreen> {
             fossil: fossil,
             turnable: isFocused,
             fixedFaceHeight: fixedFaceHeight,
+            onFossilUpdated:
+                context.read<FossilCatalogController>().replaceFossil,
           ),
       emptyMessageBuilder: (context, catalog) => catalog.hasActiveFilters
           ? 'No fossils match these filters.'

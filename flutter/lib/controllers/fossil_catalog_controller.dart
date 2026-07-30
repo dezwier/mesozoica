@@ -273,6 +273,21 @@ class FossilCatalogController extends CatalogController<FossilSummary> {
     );
   }
 
+  /// Update or remove a fossil after an admin status change.
+  void replaceFossil(FossilSummary fossil) {
+    final index = catalogItems.indexWhere((item) => item.id == fossil.id);
+    if (index < 0) return;
+    if (fossil.isHidden) {
+      final updated = [...catalogItems]..removeAt(index);
+      catalogItems = updated;
+    } else {
+      final updated = [...catalogItems];
+      updated[index] = fossil;
+      catalogItems = updated;
+    }
+    notifyListeners();
+  }
+
   @override
   void dispose() {
     _service.dispose();

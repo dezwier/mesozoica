@@ -16,7 +16,7 @@ from app.models.fossil import Fossil
 from app.models.site import Site
 from app.models.site_type import SiteType
 from app.models.user import User
-from app.models.user_fossil import USER_FOSSIL_ROLE_DISCOVERER, UserFossil
+from app.models.user_fossil import USER_FOSSIL_ROLE_IN_SITU, UserFossil
 from app.models.user_site import USER_SITE_ROLE_DISCOVERER, UserSite
 from app.services.site_service.discover import discover_site
 from app.services.field_service.field_fossil_generate import (
@@ -330,7 +330,7 @@ def test_discover_multi_user_lazy_once(session: Session, monkeypatch):
         links = session.exec(
             select(UserFossil).where(
                 col(UserFossil.user_id) == user.id,
-                col(UserFossil.role) == USER_FOSSIL_ROLE_DISCOVERER,
+                col(UserFossil.role) == USER_FOSSIL_ROLE_IN_SITU,
             )
         ).all()
         assert {link.fossil_id for link in links} == surface_ids
@@ -448,7 +448,7 @@ def test_discover_api_and_visibility(client, session: Session, monkeypatch):
     assert catalog.status_code == 200
     assert catalog.json()["total"] == len(again_body["surface_fossils"])
     for item in catalog.json()["items"]:
-        assert item["status"] == "discovered"
+        assert item["status"] == "in_situ"
         assert item["depth_cm"] == 0
 
     admin_catalog = client.get(
@@ -467,4 +467,4 @@ def test_discover_api_and_visibility(client, session: Session, monkeypatch):
     assert admin_site.status_code == 200
     assert len(admin_site.json()["items"]) >= len(fossils.json()["items"])
     statuses = {item["status"] for item in admin_site.json()["items"]}
-    assert "hidden" in statuses or "discovered" in statuses
+    assert "hidden" in statuses or "in_situ" in statuses

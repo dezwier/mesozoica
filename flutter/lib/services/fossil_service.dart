@@ -127,6 +127,39 @@ class FossilService {
     return FossilSummary.fromJson(decoded);
   }
 
+  Future<FossilSummary> setFossilStatus({
+    required int fossilId,
+    required String status,
+  }) async {
+    final uri = AppConfig.fossilStatusUri(fossilId);
+    if (kDebugMode) {
+      debugPrint('FossilService POST $uri status=$status');
+    }
+    final response = await ApiClient.instance
+        .sendPost(
+          uri,
+          client: _client,
+          headers: {
+            ...await _headers(),
+            'Content-Type': 'application/json',
+          },
+          body: jsonEncode({'status': status}),
+        )
+        .timeout(const Duration(seconds: 15));
+
+    if (response.statusCode != 200) {
+      throw FossilServiceException(
+        'Failed to set fossil status (${response.statusCode})',
+      );
+    }
+
+    final decoded = jsonDecode(response.body);
+    if (decoded is! Map<String, dynamic>) {
+      throw const FossilServiceException('Invalid fossil status response');
+    }
+    return FossilSummary.fromJson(decoded);
+  }
+
   void dispose() {
     _client.close();
   }

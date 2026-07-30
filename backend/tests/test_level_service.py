@@ -8,7 +8,7 @@ from sqlmodel import Session
 
 from app.core.game_config import get_game_config
 from app.models.user import User
-from app.models.user_fossil import USER_FOSSIL_ROLE_DISCOVERER, UserFossil
+from app.models.user_fossil import USER_FOSSIL_ROLE_IN_SITU, UserFossil
 from app.models.user_site import USER_SITE_ROLE_DISCOVERER, UserSite
 from app.schemas.auth import UpdateDistanceRequest
 from app.services.level_service import (
@@ -180,7 +180,7 @@ def test_backfill_from_history(session: Session) -> None:
     )
     session.add(
         UserFossil(
-            user_id=user.id, fossil_id=10, role=USER_FOSSIL_ROLE_DISCOVERER
+            user_id=user.id, fossil_id=10, role=USER_FOSSIL_ROLE_IN_SITU
         )
     )
     session.commit()

@@ -253,6 +253,19 @@ class DinosaurCatalogController extends CatalogController<DinosaurSummary> {
     );
   }
 
+  /// Update a catalog dinosaur after an admin status change.
+  void replaceDinosaur(DinosaurSummary dinosaur) {
+    final typeId = dinosaur.dinosaurTypeId ?? dinosaur.id;
+    final index = catalogItems.indexWhere(
+      (item) => (item.dinosaurTypeId ?? item.id) == typeId,
+    );
+    if (index < 0) return;
+    final updated = [...catalogItems];
+    updated[index] = dinosaur;
+    catalogItems = updated;
+    notifyListeners();
+  }
+
   @override
   void dispose() {
     _service.dispose();

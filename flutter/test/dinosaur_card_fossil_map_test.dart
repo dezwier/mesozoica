@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:mesozoica/controllers/auth_controller.dart';
 import 'package:mesozoica/controllers/catalog_mode_controller.dart';
 import 'package:mesozoica/models/fossil.dart';
 import 'package:mesozoica/services/fossil_service.dart';
@@ -13,6 +14,7 @@ import 'package:mesozoica/widgets/cards/dinosaur_card_fossil_map.dart';
 import 'package:mesozoica/widgets/cards/fossil_turnable_card.dart';
 import 'package:mesozoica/widgets/map/fossil_marker.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 Widget _noTileLayer() => const SizedBox.shrink();
 
@@ -43,14 +45,18 @@ FossilSummary _fossil({
 }
 
 Widget _wrapWithCatalogMode(Widget child) {
-  return ChangeNotifierProvider(
-    create: (_) => CatalogModeController(),
+  return MultiProvider(
+    providers: [
+      ChangeNotifierProvider(create: (_) => CatalogModeController()),
+      ChangeNotifierProvider(create: (_) => AuthController()),
+    ],
     child: MaterialApp(home: child),
   );
 }
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  SharedPreferences.setMockInitialValues({});
 
   group('fossil map helpers', () {
     test('geolocatedFossils keeps fossils with coordinates only', () {
@@ -142,7 +148,8 @@ void main() {
       ),
     );
 
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump();
 
     expect(find.byType(FlutterMap), findsOneWidget);
     expect(find.text('No geolocated occurrences'), findsNothing);
@@ -230,12 +237,14 @@ void main() {
       ),
     );
 
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump();
 
     expect(find.byType(FossilMarker), findsOneWidget);
 
     await tester.tap(find.byType(FossilMarker));
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump();
 
     expect(find.byType(FossilTurnableCard), findsOneWidget);
     expect(find.text('Tyrannosaurus rex'), findsWidgets);

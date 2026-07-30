@@ -88,19 +88,19 @@ def list_fossils(
         data_source=normalized_data_source,
     )
     from app.models.data_source import DATA_SOURCE_FIELD
-    from app.models.user_fossil import USER_FOSSIL_ROLE_DISCOVERER, UserFossil
+    from app.models.user_fossil import UserFossil
 
     # Field fossils are collection-gated for all viewers unless an admin
     # explicitly requests include_hidden (site/dino card admin peek).
+    # Any user_fossil role links the fossil into the viewer's inventory.
     if normalized_data_source == DATA_SOURCE_FIELD and not include_hidden:
         if viewer_user_id is None:
             return [], 0
         filtered = filtered.join(
             UserFossil,
             (col(UserFossil.fossil_id) == col(Fossil.id))
-            & (col(UserFossil.user_id) == viewer_user_id)
-            & (col(UserFossil.role) == USER_FOSSIL_ROLE_DISCOVERER),
-        )
+            & (col(UserFossil.user_id) == viewer_user_id),
+        ).distinct()
 
     total = session.exec(
         select(sqlmodel_func.count()).select_from(filtered.subquery())
@@ -324,7 +324,7 @@ def fossil_row_to_summary(
     from app.models.user_fossil import (
         FOSSIL_STATUS_DISCOVERED,
         FOSSIL_STATUS_HIDDEN,
-        USER_FOSSIL_ROLE_DISCOVERER,
+        USER_FOSSIL_ROLE_IN_SITU,
         UserFossil,
         role_to_status,
     )
@@ -355,18 +355,22 @@ def fossil_row_to_summary(
         # Archive fossils are not discovery-gated.
         status = FOSSIL_STATUS_DISCOVERED
     elif viewer_user_id is not None and session is not None:
-        link = session.exec(
-            select(UserFossil)
-            .where(
-                col(UserFossil.user_id) == viewer_user_id,
-                col(UserFossil.fossil_id) == fossil.id,
-            )
-            .order_by(col(UserFossil.timestamp).desc())
-        ).first()
-        if link is not None:
-            status = role_to_status(link.role)
-            if link.role == USER_FOSSIL_ROLE_DISCOVERER:
-                discovered_at = link.timestamp
+        links = list(
+            session.exec(
+                select(UserFossil)
+                .where(
+                    col(UserFossil.user_id) == viewer_user_id,
+                    col(UserFossil.fossil_id) == fossil.id,
+                )
+                .order_by(col(UserFossil.timestamp).desc())
+            ).all()
+        )
+        if links:
+            status = role_to_status(links[0].role)
+            for link in links:
+                if link.role == USER_FOSSIL_ROLE_IN_SITU:
+                    discovered_at = link.timestamp
+                    break
     payload["status"] = status
     payload["discovered_at"] = discovered_at
     payload["version"] = fossil.version or ORIGINAL_VERSION

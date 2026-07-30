@@ -10,7 +10,7 @@ from app.models.fossil import Fossil
 from app.models.site import Site
 from app.models.site_type import SiteType
 from app.models.user import User
-from app.models.user_fossil import USER_FOSSIL_ROLE_DISCOVERER, UserFossil
+from app.models.user_fossil import USER_FOSSIL_ROLE_IN_SITU, UserFossil
 
 
 def _seed_site_type(session: Session) -> SiteType:
@@ -593,7 +593,7 @@ def test_list_fossils_filters_by_data_source(client, session):
     assert admin_peek.json()["items"][0]["depth_cm"] == 100
 
 
-def test_list_field_fossils_includes_discoverer_links(client, session):
+def test_list_field_fossils_includes_in_situ_links(client, session):
     dinosaur = _seed_tyrannosaurus(session)
     site_type = _seed_site_type(session)
     _seed_hell_creek_site(session, site_type)
@@ -619,7 +619,7 @@ def test_list_field_fossils_includes_discoverer_links(client, session):
         UserFossil(
             user_id=user.id,
             fossil_id=200002,
-            role=USER_FOSSIL_ROLE_DISCOVERER,
+            role=USER_FOSSIL_ROLE_IN_SITU,
         )
     )
     session.commit()
@@ -644,7 +644,7 @@ def test_list_field_fossils_includes_discoverer_links(client, session):
     assert unfiltered.status_code == 200
     assert unfiltered.json()["total"] == 1
     assert unfiltered.json()["items"][0]["id"] == 200002
-    assert unfiltered.json()["items"][0]["status"] == "discovered"
+    assert unfiltered.json()["items"][0]["status"] == "in_situ"
 
     enriched_only = response.json()
     assert enriched_only["total"] == 0
@@ -653,3 +653,109 @@ def test_list_field_fossils_includes_discoverer_links(client, session):
 def test_list_fossils_rejects_invalid_data_source(client):
     response = client.get("/api/v1/fossils", params={"data_source": "invalid"})
     assert response.status_code == 400
+
+
+def test_set_fossil_status_admin_flow(client, session):
+    dinosaur = _seed_tyrannosaurus(session)
+    site_type = _seed_site_type(session)
+    _seed_hell_creek_site(session, site_type)
+    session.add(
+        Fossil(
+            id=200010,
+            dinosaur_id=dinosaur.id,
+            identified_name="Status specimen",
+            data_source="field",
+            depth_cm=50,
+            llm_enriched=False,
+            site_id=50001,
+        )
+    )
+    admin = User(
+        username="fossil_status_admin",
+        email="fossil_status_admin@example.com",
+        password="x",
+        is_admin=True,
+    )
+    non_admin = User(
+        username="fossil_status_user",
+        email="fossil_status_user@example.com",
+        password="x",
+        is_admin=False,
+    )
+    session.add(admin)
+    session.add(non_admin)
+    session.commit()
+    session.refresh(admin)
+    session.refresh(non_admin)
+    admin_headers = {
+        "Authorization": f"Bearer {create_access_token({'sub': str(admin.id)})}"
+    }
+    user_headers = {
+        "Authorization": f"Bearer {create_access_token({'sub': str(non_admin.id)})}"
+    }
+
+    forbidden = client.post(
+        "/api/v1/fossils/200010/status",
+        headers=user_headers,
+        json={"status": "located"},
+    )
+    assert forbidden.status_code == 403
+
+    located = client.post(
+        "/api/v1/fossils/200010/status",
+        headers=admin_headers,
+        json={"status": "located"},
+    )
+    assert located.status_code == 200
+    assert located.json()["status"] == "located"
+
+    inventory = client.get(
+        "/api/v1/fossils",
+        params={"data_source": "field", "sort": "name"},
+        headers=admin_headers,
+    )
+    assert inventory.status_code == 200
+    assert inventory.json()["total"] == 1
+    assert inventory.json()["items"][0]["id"] == 200010
+    assert inventory.json()["items"][0]["status"] == "located"
+
+    excavated = client.post(
+        "/api/v1/fossils/200010/status",
+        headers=admin_headers,
+        json={"status": "excavated"},
+    )
+    assert excavated.status_code == 200
+    assert excavated.json()["status"] == "excavated"
+
+    hidden = client.post(
+        "/api/v1/fossils/200010/status",
+        headers=admin_headers,
+        json={"status": "hidden"},
+    )
+    assert hidden.status_code == 200
+    assert hidden.json()["status"] == "hidden"
+
+    after_hidden = client.get(
+        "/api/v1/fossils",
+        params={"data_source": "field", "sort": "name"},
+        headers=admin_headers,
+    )
+    assert after_hidden.json()["total"] == 0
+
+    session.add(
+        Fossil(
+            id=100010,
+            dinosaur_id=dinosaur.id,
+            identified_name="Archive specimen",
+            data_source="archive",
+            llm_enriched=False,
+        )
+    )
+    session.commit()
+    archive = client.post(
+        "/api/v1/fossils/100010/status",
+        headers=admin_headers,
+        json={"status": "located"},
+    )
+    # Archive fossils are not status-editable (field only).
+    assert archive.status_code == 404

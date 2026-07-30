@@ -3,9 +3,9 @@ import 'package:flutter/material.dart';
 import '../../theme/dino_card_theme.dart';
 import '../../utils/display_text.dart';
 
-/// Field-fossil status options shown in the badge dropdown.
-class FossilStatusOption {
-  const FossilStatusOption({
+/// Dinosaur catalog status options shown in the badge dropdown.
+class DinosaurStatusOption {
+  const DinosaurStatusOption({
     required this.apiStatus,
     required this.label,
   });
@@ -14,19 +14,15 @@ class FossilStatusOption {
   final String label;
 }
 
-const List<FossilStatusOption> kFossilStatusOptions = [
-  FossilStatusOption(apiStatus: 'hidden', label: 'Hidden'),
-  FossilStatusOption(apiStatus: 'in_situ', label: 'In situ'),
-  FossilStatusOption(apiStatus: 'located', label: 'Located'),
-  FossilStatusOption(apiStatus: 'excavated', label: 'Excavated'),
-  FossilStatusOption(apiStatus: 'transport', label: 'Transport'),
-  FossilStatusOption(apiStatus: 'storage', label: 'Storage'),
-  FossilStatusOption(apiStatus: 'analysed', label: 'Analysed'),
+const List<DinosaurStatusOption> kDinosaurStatusOptions = [
+  DinosaurStatusOption(apiStatus: 'hidden', label: 'Hidden'),
+  DinosaurStatusOption(apiStatus: 'modelled', label: 'Modelled'),
+  DinosaurStatusOption(apiStatus: 'reconstructed', label: 'Reconstructed'),
 ];
 
-/// Subtle status chip for field fossil cards with optional status menu.
-class FossilStatusBadge extends StatelessWidget {
-  const FossilStatusBadge({
+/// Subtle status chip for dinosaur cards with optional status menu.
+class DinosaurStatusBadge extends StatelessWidget {
+  const DinosaurStatusBadge({
     super.key,
     required this.status,
     this.onStatusSelected,
@@ -38,7 +34,7 @@ class FossilStatusBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cardTheme = DinoCardTheme.of(context);
-    final label = capitalizeLeadingLetter(status.trim().replaceAll('_', ' '));
+    final label = capitalizeLeadingLetter(status.trim());
     if (label.isEmpty) return const SizedBox.shrink();
 
     final chip = DecoratedBox(
@@ -69,12 +65,12 @@ class FossilStatusBadge extends StatelessWidget {
 
     final current = status.trim().toLowerCase();
     return PopupMenuButton<String>(
-      tooltip: 'Change fossil status',
+      tooltip: 'Change dinosaur status',
       padding: EdgeInsets.zero,
       offset: const Offset(0, 28),
       onSelected: onStatusSelected,
       itemBuilder: (context) => [
-        for (final option in kFossilStatusOptions)
+        for (final option in kDinosaurStatusOptions)
           PopupMenuItem<String>(
             value: option.apiStatus,
             child: Row(

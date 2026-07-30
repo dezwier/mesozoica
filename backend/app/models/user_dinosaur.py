@@ -8,20 +8,27 @@ from typing import Optional
 from sqlalchemy import Column, DateTime, ForeignKey, Integer, UniqueConstraint, text
 from sqlmodel import Field, SQLModel
 
-USER_DINOSAUR_ROLE_DISCOVERER = "discoverer"
+USER_DINOSAUR_ROLE_MODELLED = "modelled"
+USER_DINOSAUR_ROLE_RECONSTRUCTED = "reconstructed"
 
-USER_DINOSAUR_ROLES: tuple[str, ...] = (USER_DINOSAUR_ROLE_DISCOVERER,)
+USER_DINOSAUR_ROLES: tuple[str, ...] = (
+    USER_DINOSAUR_ROLE_MODELLED,
+    USER_DINOSAUR_ROLE_RECONSTRUCTED,
+)
 
 DINOSAUR_STATUS_HIDDEN = "hidden"
-DINOSAUR_STATUS_DISCOVERED = "discovered"
+DINOSAUR_STATUS_MODELLED = "modelled"
+DINOSAUR_STATUS_RECONSTRUCTED = "reconstructed"
 
 DINOSAUR_STATUSES: tuple[str, ...] = (
     DINOSAUR_STATUS_HIDDEN,
-    DINOSAUR_STATUS_DISCOVERED,
+    DINOSAUR_STATUS_MODELLED,
+    DINOSAUR_STATUS_RECONSTRUCTED,
 )
 
 ROLE_TO_STATUS: dict[str, str] = {
-    USER_DINOSAUR_ROLE_DISCOVERER: DINOSAUR_STATUS_DISCOVERED,
+    USER_DINOSAUR_ROLE_MODELLED: DINOSAUR_STATUS_MODELLED,
+    USER_DINOSAUR_ROLE_RECONSTRUCTED: DINOSAUR_STATUS_RECONSTRUCTED,
 }
 
 
@@ -68,7 +75,7 @@ class UserDinosaur(SQLModel, table=True):
     )
     role: str = Field(
         max_length=16,
-        description="discoverer (extend as gameplay roles grow)",
+        description="modelled or reconstructed",
     )
     timestamp: datetime = Field(
         default_factory=_utc_now,
