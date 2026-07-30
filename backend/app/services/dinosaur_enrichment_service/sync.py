@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import logging
 import time
-from dataclasses import dataclass, field
 
 from sqlalchemy import case, update
 from sqlmodel import Session, col, func, select
@@ -15,6 +14,11 @@ from app.models.dinosaur_type import DinosaurType
 from app.services.dinosaur_enrichment_service.prompt import build_enrichment_prompt
 from app.services.dinosaur_enrichment_service.validate import validate_llm_enrichment
 from app.services.dinosaur_image_service.sync import CURATED_MEDIA_PATH
+from app.services.enrichment_common import (
+    EnrichCounters,
+    EnrichSummary,
+    enrich_exit_code as shared_enrich_exit_code,
+)
 from app.services.llm_service.client import call_gemini_api
 
 logger = logging.getLogger("dinosaur_enrich")
@@ -23,28 +27,14 @@ logger = logging.getLogger("dinosaur_enrich")
 # by internal reasoning (which caused truncated JSON at the old 2048 cap).
 _DINOSAUR_ENRICH_MAX_OUTPUT_TOKENS = 4096
 
-
-@dataclass
-class EnrichCounters:
-    enriched: int = 0
-    skipped: int = 0
-    failed: int = 0
-
-
-@dataclass
-class EnrichSummary:
-    total_candidates: int
-    counters: EnrichCounters = field(default_factory=EnrichCounters)
-    dry_run: bool = False
-    overwrite: bool = False
-    elapsed_s: float = 0.0
-
-    @property
-    def failure_rate(self) -> float:
-        attempted = self.counters.enriched + self.counters.failed
-        if attempted == 0:
-            return 0.0
-        return self.counters.failed / attempted
+# Re-export for callers/tests that import from this module.
+__all__ = [
+    "EnrichCounters",
+    "EnrichSummary",
+    "enrich_dinosaurs",
+    "enrich_exit_code",
+    "reset_llm_enriched_flags",
+]
 
 
 def reset_llm_enriched_flags(
@@ -217,9 +207,7 @@ def enrich_dinosaurs(
 
 def enrich_exit_code(summary: EnrichSummary) -> int:
     """Return non-zero if failure rate exceeds configured threshold."""
-    threshold = settings.dinosaur_enrich_failure_threshold
-    if summary.counters.failed == 0:
-        return 0
-    if summary.failure_rate > threshold:
-        return 1
-    return 0
+    return shared_enrich_exit_code(
+        summary,
+        failure_threshold=settings.dinosaur_enrich_failure_threshold,
+    )

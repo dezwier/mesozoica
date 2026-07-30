@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 from sqlalchemy import case, update
 from sqlmodel import Session, col, func, select
@@ -15,6 +15,11 @@ from app.models.data_source import DATA_SOURCE_ARCHIVE
 from app.models.fossil import Fossil
 from app.services.dinosaur_image_service.sync import CURATED_MEDIA_PATH
 from app.services.dinosaur_name_filter import dino_name_match_clause
+from app.services.enrichment_common import (
+    EnrichCounters,
+    EnrichSummary,
+    enrich_exit_code as shared_enrich_exit_code,
+)
 from app.services.fossil_enrichment_service.impute import impute_llm_fields
 from app.services.fossil_enrichment_service.pbdb_hints import apply_pbdb_hints
 from app.services.fossil_enrichment_service.prompt import build_enrichment_prompt
@@ -25,28 +30,14 @@ logger = logging.getLogger("fossil_enrich")
 
 _FOSSIL_ENRICH_MAX_OUTPUT_TOKENS = 4096
 
-
-@dataclass
-class EnrichCounters:
-    enriched: int = 0
-    skipped: int = 0
-    failed: int = 0
-
-
-@dataclass
-class EnrichSummary:
-    total_candidates: int
-    counters: EnrichCounters = field(default_factory=EnrichCounters)
-    dry_run: bool = False
-    overwrite: bool = False
-    elapsed_s: float = 0.0
-
-    @property
-    def failure_rate(self) -> float:
-        attempted = self.counters.enriched + self.counters.failed
-        if attempted == 0:
-            return 0.0
-        return self.counters.failed / attempted
+# Re-export for callers/tests that import from this module.
+__all__ = [
+    "EnrichCounters",
+    "EnrichSummary",
+    "enrich_exit_code",
+    "enrich_fossils",
+    "reset_llm_enriched_flags",
+]
 
 
 @dataclass(frozen=True)
@@ -243,9 +234,7 @@ def enrich_fossils(
 
 def enrich_exit_code(summary: EnrichSummary) -> int:
     """Return non-zero if failure rate exceeds configured threshold."""
-    threshold = settings.fossil_enrich_failure_threshold
-    if summary.counters.failed == 0:
-        return 0
-    if summary.failure_rate > threshold:
-        return 1
-    return 0
+    return shared_enrich_exit_code(
+        summary,
+        failure_threshold=settings.fossil_enrich_failure_threshold,
+    )

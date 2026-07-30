@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 from sqlalchemy import func
 from sqlmodel import Session, col, select
@@ -18,22 +18,24 @@ from app.services.curated_image_service.versions import (
     resolve_generation_version,
     version_dir,
 )
-from app.services.image_generation_service.client import (
-    IMAGEN_ULTRA_COST_USD_PER_IMAGE,
-    ImageGenerationError,
-    generate_image_with_gemini,
-    short_generation_error,
+from app.services.image_generation_service.batch_types import (
+    GENERATION_ATTEMPTS,
+    GENERATION_RETRY_BACKOFF_SECONDS,
+    GenerateCounters,
+    GenerateSummary,
+    generate_exit_code,
 )
+from app.services.image_generation_service.client import short_generation_error
 from app.services.image_generation_service.local_files import (
     has_local_image,
     output_png_path,
     scan_existing_stems,
 )
-from app.services.image_generation_service.postprocess import save_processed_png
 from app.services.image_generation_service.prompting import (
     build_site_type_image_prompt,
     site_type_image_prompt_template,
 )
+from app.services.image_generation_service.runner import generate_with_retries
 from app.services.site_type_image_service.sync import (
     resolve_local_source_dir_for_sync,
     site_type_image_key,
@@ -41,27 +43,15 @@ from app.services.site_type_image_service.sync import (
 
 logger = logging.getLogger("site_type_image_generate")
 
-GENERATION_ATTEMPTS = 3
-GENERATION_RETRY_BACKOFF_SECONDS = 1.0
-
-
-@dataclass
-class GenerateCounters:
-    generated: int = 0
-    skipped: int = 0
-    failed: int = 0
-
-
-@dataclass
-class GenerateSummary:
-    total_candidates: int
-    skipped_existing: int
-    counters: GenerateCounters = field(default_factory=GenerateCounters)
-    dry_run: bool = False
-    elapsed_s: float = 0.0
-    cost_usd: float = 0.0
-    output_dir: str = ""
-    version: str = "v1"
+# Re-export for callers/tests that import from this module.
+__all__ = [
+    "GENERATION_ATTEMPTS",
+    "GENERATION_RETRY_BACKOFF_SECONDS",
+    "GenerateCounters",
+    "GenerateSummary",
+    "generate_exit_code",
+    "generate_site_type_images",
+]
 
 
 @dataclass(frozen=True)
@@ -208,36 +198,20 @@ def generate_site_type_images(
             )
             continue
 
-        generated = False
-        last_error = "unknown error"
-        for attempt in range(1, GENERATION_ATTEMPTS + 1):
-            try:
-                image_bytes, usage = generate_image_with_gemini(prompt)
-                save_processed_png(image_bytes, output_path)
-                cost_usd += float(usage.get("cost_usd", IMAGEN_ULTRA_COST_USD_PER_IMAGE))
-                existing_stems.add(stem)
-                counters.generated += 1
-                generated = True
-                logger.info("%s · OK -> %s/%s", label, version_name, output_path.name)
-                break
-            except FileExistsError:
+        outcome = generate_with_retries(prompt, output_path)
+        if outcome.succeeded:
+            if outcome.existed:
                 counters.skipped += 1
                 existing_stems.add(stem)
                 logger.info("%s · SKIP · image exists", label)
-                generated = True
-                break
-            except ImageGenerationError as exc:
-                last_error = str(exc)
-                if attempt < GENERATION_ATTEMPTS:
-                    time.sleep(GENERATION_RETRY_BACKOFF_SECONDS * attempt)
-            except Exception as exc:
-                last_error = str(exc)
-                if attempt < GENERATION_ATTEMPTS:
-                    time.sleep(GENERATION_RETRY_BACKOFF_SECONDS * attempt)
-
-        if not generated and not dry_run:
+            else:
+                cost_usd += outcome.cost_usd
+                existing_stems.add(stem)
+                counters.generated += 1
+                logger.info("%s · OK -> %s/%s", label, version_name, output_path.name)
+        else:
             counters.failed += 1
-            logger.error("%s · FAIL · %s", label, short_generation_error(last_error))
+            logger.error("%s · FAIL · %s", label, short_generation_error(outcome.error))
 
     elapsed = time.monotonic() - start
     summary = GenerateSummary(
@@ -252,15 +226,6 @@ def generate_site_type_images(
     )
     _log_summary(summary)
     return summary
-
-
-def generate_exit_code(summary: GenerateSummary) -> int:
-    if summary.counters.failed == 0:
-        return 0
-    attempted = summary.counters.generated + summary.counters.failed
-    if attempted == 0:
-        return 0
-    return 1 if summary.counters.failed / attempted > 0.10 else 0
 
 
 def _log_header(
