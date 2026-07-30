@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:latlong2/latlong.dart';
 
-import '../config/app_config.dart';
 import '../controllers/catalog_mode_controller.dart';
 import '../models/site.dart';
 import '../models/site_map_filters.dart';
@@ -26,27 +25,19 @@ class SiteCatalogController extends CatalogController<SiteSummary> {
   final CatalogModeController? _catalogModeController;
   final LocationService? _locationService;
 
-  List<SiteSummary> _rawItems = [];
-  bool _loading = false;
-  bool _loadingMore = false;
-  String? _error;
-  int _loadSeq = 0;
-  int _offset = 0;
-  bool _hasMore = false;
-  int _total = 0;
   SiteMapFilters _filters = SiteMapFilters();
 
   /// Visible catalog rows after applying client-side period/rock/status filters.
   @override
   List<SiteSummary> get items {
     if (!_needsClientMatch) {
-      return List.unmodifiable(_rawItems);
+      return List.unmodifiable(catalogItems);
     }
-    return List.unmodifiable(_rawItems.where(_filters.matches));
+    return List.unmodifiable(catalogItems.where(_filters.matches));
   }
 
   /// Oldest discovery among loaded (unfiltered) catalog pages.
-  DateTime? get earliestDiscovery => earliestSiteDiscovery(_rawItems);
+  DateTime? get earliestDiscovery => earliestSiteDiscovery(catalogItems);
 
   /// Period/rock/status still filter client-side; discovery is also matched
   /// client-side as a safety net (and for empty checkbox groups).
@@ -63,16 +54,8 @@ class SiteCatalogController extends CatalogController<SiteSummary> {
   }
 
   @override
-  bool get loading => _loading;
-  @override
-  bool get isLoadingMore => _loadingMore;
-  bool get hasMore => _hasMore;
-  @override
-  String? get error => _error;
-  @override
   bool get isEmpty =>
-      !_loading && !_loadingMore && _error == null && items.isEmpty;
-  int get total => _total;
+      !loading && !isLoadingMore && error == null && items.isEmpty;
   SiteMapFilters get filters => _filters;
   @override
   bool get hasActiveFilters => _filters.hasActiveFilters;
@@ -85,69 +68,57 @@ class SiteCatalogController extends CatalogController<SiteSummary> {
   bool get _isFieldMode => _dataSource == CatalogDataSource.field;
 
   Future<void> load({bool force = false}) async {
-    if (!force && _rawItems.isNotEmpty) return;
+    final seq = beginLoadSequence(force: force);
+    if (seq == null) return;
 
-    final seq = ++_loadSeq;
-    final keepExistingItems = force && _rawItems.isNotEmpty;
+    final keepExistingItems = force && catalogItems.isNotEmpty;
 
-    _loading = true;
-    _error = null;
-    _offset = 0;
-    _hasMore = false;
     _filters = _filters.copyWith(filterByStatus: _isFieldMode);
-    if (!keepExistingItems) {
-      _rawItems = [];
-      _total = 0;
-    }
-    notifyListeners();
+    preparePrimaryLoad(keepExistingItems: keepExistingItems);
 
     var loadedOk = false;
     try {
       final response = await _fetchPage(offset: 0);
-      if (seq != _loadSeq) return;
-      _rawItems = response.items;
-      _offset = response.items.length;
-      _hasMore = response.hasMore;
-      _total = response.total;
-      _error = null;
+      if (!isCurrentLoad(seq)) return;
+      replaceCatalogPage(
+        items: response.items,
+        hasMore: response.hasMore,
+        total: response.total,
+      );
       loadedOk = true;
       if (kDebugMode) {
-        final preview = _rawItems.take(5).map((s) => s.displayTitle).join(', ');
+        final preview =
+            catalogItems.take(5).map((s) => s.displayTitle).join(', ');
         debugPrint(
-          'SiteCatalogController: loaded ${_rawItems.length}/$_total sites '
+          'SiteCatalogController: loaded ${catalogItems.length}/$total sites '
           '(sort=${_filters.sort.apiValue}) → $preview',
         );
       }
     } on SiteServiceException catch (error) {
-      if (seq != _loadSeq) return;
-      _error = error.message;
+      if (!isCurrentLoad(seq)) return;
+      setCatalogError(error.message);
     } catch (error) {
-      if (seq != _loadSeq) return;
-      _error =
-          'Could not reach the API at ${AppConfig.baseApiUrl}. '
-          'Check your connection or try again later.';
+      if (!isCurrentLoad(seq)) return;
+      setCatalogError(apiUnreachableMessage);
       if (kDebugMode) {
         debugPrint('SiteCatalogController.load failed: $error');
       }
     } finally {
-      if (seq == _loadSeq) {
-        _loading = false;
-        notifyListeners();
-      }
+      finishPrimaryLoad(seq);
     }
 
-    if (loadedOk && seq == _loadSeq) {
+    if (loadedOk && isCurrentLoad(seq)) {
       await _fillUntil(seq, minVisible: pageSize);
     }
   }
 
   @override
   Future<void> loadMore() async {
-    if (_loading || _loadingMore || !_hasMore || _error != null) return;
+    if (loading || isLoadingMore || !hasMore || error != null) return;
 
     if (_needsClientMatch) {
       final before = items.length;
-      await _fillUntil(_loadSeq, minVisible: before + 1);
+      await _fillUntil(loadSeq, minVisible: before + 1);
       return;
     }
 
@@ -167,64 +138,60 @@ class SiteCatalogController extends CatalogController<SiteSummary> {
   /// Keep paging until [items] reaches [minVisible] or the catalog is exhausted.
   Future<void> _fillUntil(int seq, {required int minVisible}) async {
     if (!_needsClientMatch) return;
-    while (seq == _loadSeq &&
-        _hasMore &&
-        _error == null &&
+    while (isCurrentLoad(seq) &&
+        catalogHasMore &&
+        catalogError == null &&
         items.length < minVisible) {
-      final before = _rawItems.length;
+      final before = catalogItems.length;
       await _fetchNextPage();
-      if (seq != _loadSeq) return;
-      if (_rawItems.length == before) return;
+      if (!isCurrentLoad(seq)) return;
+      if (catalogItems.length == before) return;
     }
   }
 
   Future<void> _fetchNextPage() async {
-    if (_loading || _loadingMore || !_hasMore) return;
-
-    _loadingMore = true;
-    notifyListeners();
+    if (!beginLoadMore()) return;
 
     try {
-      final response = await _fetchPage(offset: _offset);
-      _rawItems = [..._rawItems, ...response.items];
-      _offset += response.items.length;
-      _hasMore = response.hasMore;
-      _total = response.total;
-      _error = null;
+      final response = await _fetchPage(offset: catalogOffset);
+      appendCatalogPage(
+        items: response.items,
+        hasMore: response.hasMore,
+        total: response.total,
+      );
     } on SiteServiceException catch (error) {
-      _error = error.message;
+      setCatalogError(error.message);
     } catch (error) {
-      _error =
-          'Could not reach the API at ${AppConfig.baseApiUrl}. '
-          'Check your connection or try again later.';
+      setCatalogError(apiUnreachableMessage);
       if (kDebugMode) {
         debugPrint('SiteCatalogController.loadMore failed: $error');
       }
     } finally {
-      _loadingMore = false;
-      notifyListeners();
+      finishLoadMore();
     }
   }
 
   void replaceSite(SiteSummary site) {
-    final index = _rawItems.indexWhere((item) => item.siteId == site.siteId);
+    final index =
+        catalogItems.indexWhere((item) => item.siteId == site.siteId);
     if (index < 0) return;
-    final updated = [..._rawItems];
+    final updated = [...catalogItems];
     updated[index] = site;
-    _rawItems = updated;
+    catalogItems = updated;
     notifyListeners();
   }
 
   /// Insert or replace a site after discovery without a full catalog reload.
   void upsertSite(SiteSummary site) {
-    final index = _rawItems.indexWhere((item) => item.siteId == site.siteId);
+    final index =
+        catalogItems.indexWhere((item) => item.siteId == site.siteId);
     if (index < 0) {
-      _rawItems = [site, ..._rawItems];
-      _total += 1;
+      catalogItems = [site, ...catalogItems];
+      catalogTotal = catalogTotal + 1;
     } else {
-      final updated = [..._rawItems];
+      final updated = [...catalogItems];
       updated[index] = site;
-      _rawItems = updated;
+      catalogItems = updated;
     }
     notifyListeners();
   }

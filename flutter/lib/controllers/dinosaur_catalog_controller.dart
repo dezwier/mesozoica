@@ -2,7 +2,6 @@ import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 
-import '../config/app_config.dart';
 import '../config/geologic_timeline_constants.dart';
 import '../models/dinosaur.dart';
 import '../services/dinosaur_service.dart';
@@ -65,31 +64,11 @@ class DinosaurCatalogController extends CatalogController<DinosaurSummary> {
   final DinosaurService _service;
   final Random _random = Random();
 
-  List<DinosaurSummary> _items = [];
-  bool _loading = false;
-  bool _loadingMore = false;
-  String? _error;
   String? _seed;
-  int _loadSeq = 0;
-  int _offset = 0;
-  bool _hasMore = false;
-  int _total = 0;
   DinosaurCatalogFilters _filters = DinosaurCatalogFilters.defaults;
   DinoScreenMode _mode = DinoScreenMode.catalog;
   bool _useClientCustomImageFilter = false;
 
-  @override
-  List<DinosaurSummary> get items => List.unmodifiable(_items);
-  @override
-  bool get loading => _loading;
-  @override
-  bool get isLoadingMore => _loadingMore;
-  bool get hasMore => _hasMore;
-  @override
-  String? get error => _error;
-  @override
-  bool get isEmpty => !_loading && _error == null && _items.isEmpty;
-  int get total => _total;
   DinosaurCatalogFilters get filters => _filters;
   DinoScreenMode get mode => _mode;
   @override
@@ -102,89 +81,71 @@ class DinosaurCatalogController extends CatalogController<DinosaurSummary> {
   }
 
   Future<void> load({bool force = false}) async {
-    if (!force && _items.isNotEmpty) return;
+    final seq = beginLoadSequence(force: force);
+    if (seq == null) return;
 
-    final seq = ++_loadSeq;
-    final keepExistingItems = force && _items.isNotEmpty;
+    final keepExistingItems = force && catalogItems.isNotEmpty;
     final hasSearch = _filters.searchQuery.trim().isNotEmpty;
 
-    _loading = true;
-    _error = null;
     _useClientCustomImageFilter = false;
     if (!hasSearch) {
-      _seed = _newSeed();
+      _seed = newCatalogSeed(_random);
     }
-    _offset = 0;
-    _hasMore = false;
-    if (!keepExistingItems) {
-      _items = [];
-      _total = 0;
-    }
-    notifyListeners();
+    preparePrimaryLoad(keepExistingItems: keepExistingItems);
 
     try {
       final response = await _fetchPage(offset: 0);
-      if (seq != _loadSeq) return;
-      _items = response.items;
-      _offset = response.items.length;
-      _hasMore = response.hasMore;
-      _total = response.total;
-      _error = null;
+      if (!isCurrentLoad(seq)) return;
+      replaceCatalogPage(
+        items: response.items,
+        hasMore: response.hasMore,
+        total: response.total,
+      );
       if (kDebugMode) {
-        final preview = _items.take(5).map((d) => d.name).join(', ');
+        final preview = catalogItems.take(5).map((d) => d.name).join(', ');
         debugPrint(
-          'DinosaurCatalogController: loaded ${_items.length}/$_total dinos '
+          'DinosaurCatalogController: loaded ${catalogItems.length}/$total dinos '
           '(sort=${hasSearch ? 'name' : 'random'}, seed=$_seed) → $preview',
         );
       }
     } on DinosaurServiceException catch (error) {
-      if (seq != _loadSeq) return;
-      _error = error.message;
+      if (!isCurrentLoad(seq)) return;
+      setCatalogError(error.message);
     } catch (error) {
-      if (seq != _loadSeq) return;
-      _error =
-          'Could not reach the API at ${AppConfig.baseApiUrl}. '
-          'Check your connection or try again later.';
+      if (!isCurrentLoad(seq)) return;
+      setCatalogError(apiUnreachableMessage);
       if (kDebugMode) {
         debugPrint('DinosaurCatalogController.load failed: $error');
       }
     } finally {
-      if (seq == _loadSeq) {
-        _loading = false;
-        notifyListeners();
-      }
+      finishPrimaryLoad(seq);
     }
   }
 
   @override
   Future<void> loadMore() async {
-    if (_loading || _loadingMore || !_hasMore || _useClientCustomImageFilter) {
+    if (!beginLoadMore(
+      canProceed: () => !_useClientCustomImageFilter && _seed != null,
+    )) {
       return;
     }
-    if (_seed == null) return;
-
-    _loadingMore = true;
-    notifyListeners();
 
     try {
-      final response = await _fetchPage(offset: _offset);
-      _items = [..._items, ...response.items];
-      _offset += response.items.length;
-      _hasMore = response.hasMore;
-      _total = response.total;
-      _error = null;
+      final response = await _fetchPage(offset: catalogOffset);
+      appendCatalogPage(
+        items: response.items,
+        hasMore: response.hasMore,
+        total: response.total,
+      );
     } on DinosaurServiceException catch (error) {
-      _error = error.message;
+      setCatalogError(error.message);
     } catch (error) {
-      _error =
-          'Could not reach the API at ${AppConfig.baseApiUrl}. '
-          'Check your connection or try again later.';
+      setCatalogError(apiUnreachableMessage);
       if (kDebugMode) {
         debugPrint('DinosaurCatalogController.loadMore failed: $error');
       }
     } finally {
-      _loadingMore = false;
-      notifyListeners();
+      finishLoadMore();
     }
   }
 
@@ -250,7 +211,7 @@ class DinosaurCatalogController extends CatalogController<DinosaurSummary> {
 
   Future<DinosaurListResponse> _fetchAllCuratedClientSide() async {
     final hasSearch = _filters.searchQuery.trim().isNotEmpty;
-    final seed = _seed ?? _newSeed();
+    final seed = _seed ?? newCatalogSeed(_random);
     final curated = <DinosaurSummary>[];
     var offset = 0;
     var hasMore = true;
@@ -290,10 +251,6 @@ class DinosaurCatalogController extends CatalogController<DinosaurSummary> {
       offset: 0,
       hasNext: false,
     );
-  }
-
-  String _newSeed() {
-    return '${DateTime.now().microsecondsSinceEpoch}_${_random.nextInt(1 << 32)}';
   }
 
   @override

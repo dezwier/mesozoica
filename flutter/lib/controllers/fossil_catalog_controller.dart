@@ -2,7 +2,6 @@ import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 
-import '../config/app_config.dart';
 import '../config/geologic_timeline_constants.dart';
 import '../controllers/catalog_mode_controller.dart';
 import '../models/fossil.dart';
@@ -76,30 +75,10 @@ class FossilCatalogController extends CatalogController<FossilSummary> {
   final CatalogModeController? _catalogModeController;
   final Random _random = Random();
 
-  List<FossilSummary> _items = [];
-  bool _loading = false;
-  bool _loadingMore = false;
-  String? _error;
   String? _seed;
-  int _loadSeq = 0;
-  int _offset = 0;
-  bool _hasMore = false;
-  int _total = 0;
   FossilCatalogFilters _filters = FossilCatalogFilters.defaults;
   bool _useClientCustomImageFilter = false;
 
-  @override
-  List<FossilSummary> get items => List.unmodifiable(_items);
-  @override
-  bool get loading => _loading;
-  @override
-  bool get isLoadingMore => _loadingMore;
-  bool get hasMore => _hasMore;
-  @override
-  String? get error => _error;
-  @override
-  bool get isEmpty => !_loading && _error == null && _items.isEmpty;
-  int get total => _total;
   FossilCatalogFilters get filters => _filters;
   @override
   bool get hasActiveFilters {
@@ -121,89 +100,72 @@ class FossilCatalogController extends CatalogController<FossilSummary> {
       _catalogModeController?.dataSource ?? CatalogDataSource.archive;
 
   Future<void> load({bool force = false}) async {
-    if (!force && _items.isNotEmpty) return;
+    final seq = beginLoadSequence(force: force);
+    if (seq == null) return;
 
-    final seq = ++_loadSeq;
-    final keepExistingItems = force && _items.isNotEmpty;
+    final keepExistingItems = force && catalogItems.isNotEmpty;
     final hasSearch = _filters.hasSearch;
 
-    _loading = true;
-    _error = null;
     _useClientCustomImageFilter = false;
     if (!hasSearch) {
-      _seed = _newSeed();
+      _seed = newCatalogSeed(_random);
     }
-    _offset = 0;
-    _hasMore = false;
-    if (!keepExistingItems) {
-      _items = [];
-      _total = 0;
-    }
-    notifyListeners();
+    preparePrimaryLoad(keepExistingItems: keepExistingItems);
 
     try {
       final response = await _fetchPage(offset: 0);
-      if (seq != _loadSeq) return;
-      _items = response.items;
-      _offset = response.items.length;
-      _hasMore = response.hasMore;
-      _total = response.total;
-      _error = null;
+      if (!isCurrentLoad(seq)) return;
+      replaceCatalogPage(
+        items: response.items,
+        hasMore: response.hasMore,
+        total: response.total,
+      );
       if (kDebugMode) {
-        final preview = _items.take(5).map((f) => f.displayTitle).join(', ');
+        final preview =
+            catalogItems.take(5).map((f) => f.displayTitle).join(', ');
         debugPrint(
-          'FossilCatalogController: loaded ${_items.length}/$_total fossils '
+          'FossilCatalogController: loaded ${catalogItems.length}/$total fossils '
           '(sort=${hasSearch ? 'name' : 'random'}, seed=$_seed) → $preview',
         );
       }
     } on FossilServiceException catch (error) {
-      if (seq != _loadSeq) return;
-      _error = error.message;
+      if (!isCurrentLoad(seq)) return;
+      setCatalogError(error.message);
     } catch (error) {
-      if (seq != _loadSeq) return;
-      _error =
-          'Could not reach the API at ${AppConfig.baseApiUrl}. '
-          'Check your connection or try again later.';
+      if (!isCurrentLoad(seq)) return;
+      setCatalogError(apiUnreachableMessage);
       if (kDebugMode) {
         debugPrint('FossilCatalogController.load failed: $error');
       }
     } finally {
-      if (seq == _loadSeq) {
-        _loading = false;
-        notifyListeners();
-      }
+      finishPrimaryLoad(seq);
     }
   }
 
   @override
   Future<void> loadMore() async {
-    if (_loading || _loadingMore || !_hasMore || _useClientCustomImageFilter) {
+    if (!beginLoadMore(
+      canProceed: () => !_useClientCustomImageFilter && _seed != null,
+    )) {
       return;
     }
-    if (_seed == null) return;
-
-    _loadingMore = true;
-    notifyListeners();
 
     try {
-      final response = await _fetchPage(offset: _offset);
-      _items = [..._items, ...response.items];
-      _offset += response.items.length;
-      _hasMore = response.hasMore;
-      _total = response.total;
-      _error = null;
+      final response = await _fetchPage(offset: catalogOffset);
+      appendCatalogPage(
+        items: response.items,
+        hasMore: response.hasMore,
+        total: response.total,
+      );
     } on FossilServiceException catch (error) {
-      _error = error.message;
+      setCatalogError(error.message);
     } catch (error) {
-      _error =
-          'Could not reach the API at ${AppConfig.baseApiUrl}. '
-          'Check your connection or try again later.';
+      setCatalogError(apiUnreachableMessage);
       if (kDebugMode) {
         debugPrint('FossilCatalogController.loadMore failed: $error');
       }
     } finally {
-      _loadingMore = false;
-      notifyListeners();
+      finishLoadMore();
     }
   }
 
@@ -269,7 +231,7 @@ class FossilCatalogController extends CatalogController<FossilSummary> {
 
   Future<FossilListResponse> _fetchAllCuratedClientSide() async {
     final hasSearch = _filters.hasSearch;
-    final seed = _seed ?? _newSeed();
+    final seed = _seed ?? newCatalogSeed(_random);
     final curated = <FossilSummary>[];
     var offset = 0;
     var hasMore = true;
@@ -309,10 +271,6 @@ class FossilCatalogController extends CatalogController<FossilSummary> {
       offset: 0,
       hasNext: false,
     );
-  }
-
-  String _newSeed() {
-    return '${DateTime.now().microsecondsSinceEpoch}_${_random.nextInt(1 << 32)}';
   }
 
   @override

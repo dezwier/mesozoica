@@ -2,7 +2,6 @@ import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 
-import '../config/app_config.dart';
 import '../models/tool.dart';
 import '../services/tool_service.dart';
 import '../utils/curated_image_url.dart';
@@ -76,35 +75,15 @@ class ToolCatalogController extends CatalogController<ToolSummary> {
   final ToolService _service;
   final Random _random = Random();
 
-  List<ToolSummary> _items = [];
   List<ToolCategoryOption> _availableCategories = [];
-  bool _loading = false;
-  bool _loadingMore = false;
-  String? _error;
   String? _seed;
   String? _chromeImageUrl;
-  int _loadSeq = 0;
-  int _offset = 0;
-  bool _hasMore = false;
-  int _total = 0;
   ToolCatalogFilters _filters = ToolCatalogFilters.defaults;
   ToolScreenMode _mode = ToolScreenMode.inventory;
   bool? _categoriesShowAll;
 
-  @override
-  List<ToolSummary> get items => List.unmodifiable(_items);
   List<ToolCategoryOption> get availableCategories =>
       List.unmodifiable(_availableCategories);
-  @override
-  bool get loading => _loading;
-  @override
-  bool get isLoadingMore => _loadingMore;
-  bool get hasMore => _hasMore;
-  @override
-  String? get error => _error;
-  @override
-  bool get isEmpty => !_loading && _error == null && _items.isEmpty;
-  int get total => _total;
   ToolCatalogFilters get filters => _filters;
   ToolScreenMode get mode => _mode;
   @override
@@ -126,62 +105,49 @@ class ToolCatalogController extends CatalogController<ToolSummary> {
 
 
   Future<void> load({bool force = false}) async {
-    if (!force && _items.isNotEmpty) return;
+    final seq = beginLoadSequence(force: force);
+    if (seq == null) return;
 
-    final seq = ++_loadSeq;
-    final keepExistingItems = force && _items.isNotEmpty;
+    final keepExistingItems = force && catalogItems.isNotEmpty;
     final useSeed = _filters.sort == ToolCatalogSort.category;
 
-    _loading = true;
-    _error = null;
     if (useSeed) {
-      _seed = _newSeed();
+      _seed = newCatalogSeed(_random);
     }
-    _offset = 0;
-    _hasMore = false;
-    if (!keepExistingItems) {
-      _items = [];
-      _total = 0;
-    }
-    notifyListeners();
+    preparePrimaryLoad(keepExistingItems: keepExistingItems);
 
     try {
       final results = await Future.wait([
         _fetchPage(offset: 0),
         _ensureCategoriesLoaded(force: true),
       ]);
-      if (seq != _loadSeq) return;
+      if (!isCurrentLoad(seq)) return;
       final response = results[0] as ToolListResponse;
-      _items = response.items;
-      _offset = response.items.length;
-      _hasMore = response.hasMore;
-      _total = response.total;
-      _error = null;
+      replaceCatalogPage(
+        items: response.items,
+        hasMore: response.hasMore,
+        total: response.total,
+      );
       _maybePickChromeImage();
       if (kDebugMode) {
-        final preview = _items.take(5).map((t) => t.name).join(', ');
+        final preview = catalogItems.take(5).map((t) => t.name).join(', ');
         debugPrint(
-          'ToolCatalogController: loaded ${_items.length}/$_total tools '
+          'ToolCatalogController: loaded ${catalogItems.length}/$total tools '
           '(sort=${_filters.sort.apiValue}, showAll=${_filters.showAll}, '
           'seed=$_seed) → $preview',
         );
       }
     } on ToolServiceException catch (error) {
-      if (seq != _loadSeq) return;
-      _error = error.message;
+      if (!isCurrentLoad(seq)) return;
+      setCatalogError(error.message);
     } catch (error) {
-      if (seq != _loadSeq) return;
-      _error =
-          'Could not reach the API at ${AppConfig.baseApiUrl}. '
-          'Check your connection or try again later.';
+      if (!isCurrentLoad(seq)) return;
+      setCatalogError(apiUnreachableMessage);
       if (kDebugMode) {
         debugPrint('ToolCatalogController.load failed: $error');
       }
     } finally {
-      if (seq == _loadSeq) {
-        _loading = false;
-        notifyListeners();
-      }
+      finishPrimaryLoad(seq);
     }
   }
 
@@ -194,7 +160,7 @@ class ToolCatalogController extends CatalogController<ToolSummary> {
         limit: 40,
         offset: 0,
         sort: 'category',
-        seed: _newSeed(),
+        seed: newCatalogSeed(_random),
         hasCustomImage: true,
         showAll: _filters.showAll,
         mode: _mode == ToolScreenMode.catalog ? 'catalog' : 'inventory',
@@ -216,32 +182,30 @@ class ToolCatalogController extends CatalogController<ToolSummary> {
 
   @override
   Future<void> loadMore() async {
-    if (_loading || _loadingMore || !_hasMore) return;
-    if (_filters.sort == ToolCatalogSort.category && _seed == null) return;
-
-    _loadingMore = true;
-    notifyListeners();
+    if (!beginLoadMore(
+      canProceed: () =>
+          !(_filters.sort == ToolCatalogSort.category && _seed == null),
+    )) {
+      return;
+    }
 
     try {
-      final response = await _fetchPage(offset: _offset);
-      _items = [..._items, ...response.items];
-      _offset += response.items.length;
-      _hasMore = response.hasMore;
-      _total = response.total;
-      _error = null;
+      final response = await _fetchPage(offset: catalogOffset);
+      appendCatalogPage(
+        items: response.items,
+        hasMore: response.hasMore,
+        total: response.total,
+      );
       _maybePickChromeImage();
     } on ToolServiceException catch (error) {
-      _error = error.message;
+      setCatalogError(error.message);
     } catch (error) {
-      _error =
-          'Could not reach the API at ${AppConfig.baseApiUrl}. '
-          'Check your connection or try again later.';
+      setCatalogError(apiUnreachableMessage);
       if (kDebugMode) {
         debugPrint('ToolCatalogController.loadMore failed: $error');
       }
     } finally {
-      _loadingMore = false;
-      notifyListeners();
+      finishLoadMore();
     }
   }
 
@@ -271,10 +235,11 @@ class ToolCatalogController extends CatalogController<ToolSummary> {
   /// Admin collect: upsert ownership and update the in-memory card.
   Future<ToolSummary> collectTool(int toolId) async {
     final updated = await _service.collectTool(toolId);
-    final index = _items.indexWhere((item) => item.id == toolId);
+    final index = catalogItems.indexWhere((item) => item.id == toolId);
     if (index >= 0) {
-      _items = [..._items];
-      _items[index] = updated;
+      final next = [...catalogItems];
+      next[index] = updated;
+      catalogItems = next;
       notifyListeners();
     }
     return updated;
@@ -282,10 +247,11 @@ class ToolCatalogController extends CatalogController<ToolSummary> {
 
   /// Replace a single card in-memory without reloading the whole catalog.
   void replaceToolSummary(ToolSummary updated) {
-    final index = _items.indexWhere((item) => item.id == updated.id);
+    final index = catalogItems.indexWhere((item) => item.id == updated.id);
     if (index >= 0) {
-      _items = [..._items];
-      _items[index] = updated;
+      final next = [...catalogItems];
+      next[index] = updated;
+      catalogItems = next;
       notifyListeners();
     }
   }
@@ -331,17 +297,13 @@ class ToolCatalogController extends CatalogController<ToolSummary> {
 
   void _maybePickChromeImage() {
     if (_chromeImageUrl != null) return;
-    final curated = _items
+    final curated = catalogItems
         .map((tool) => tool.mainImageUrl)
         .where(isCuratedToolImageUrl)
         .cast<String>()
         .toList(growable: false);
     if (curated.isEmpty) return;
     _chromeImageUrl = curated[_random.nextInt(curated.length)];
-  }
-
-  String _newSeed() {
-    return '${DateTime.now().microsecondsSinceEpoch}_${_random.nextInt(1 << 32)}';
   }
 
   @override
