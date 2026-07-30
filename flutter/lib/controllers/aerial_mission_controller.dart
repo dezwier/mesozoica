@@ -26,6 +26,8 @@ class AerialMissionController extends ChangeNotifier {
 
   List<AerialMission> _missions = const [];
   bool _missionsLoading = false;
+  /// True while the map tab wants mission tracking (see [startTracking]).
+  bool _mapTracking = false;
   Timer? _refreshTimer;
   Timer? _progressTimer;
   /// Bumps only after a successful missions list fetch (not progress ticks).
@@ -287,7 +289,7 @@ class AerialMissionController extends ChangeNotifier {
   void focusMission(AerialMission mission) {
     _focusedMission = mission;
     _pendingFocusMission = mission;
-    _syncProgressTimer();
+    _syncMissionTimers();
     notifyListeners();
   }
 
@@ -318,7 +320,7 @@ class AerialMissionController extends ChangeNotifier {
     if (_focusedMission == null && _pendingFocusMission == null) return;
     _focusedMission = null;
     _pendingFocusMission = null;
-    _syncProgressTimer();
+    _syncMissionTimers();
     notifyListeners();
   }
 
@@ -376,7 +378,7 @@ class AerialMissionController extends ChangeNotifier {
         }
         if (match != null) _focusedMission = match;
       }
-      _syncProgressTimer();
+      _syncMissionTimers();
       notifyListeners();
     } on ToolServiceException catch (error) {
       if (kDebugMode) {
@@ -392,17 +394,15 @@ class AerialMissionController extends ChangeNotifier {
     }
   }
 
-  /// Start periodic status refresh (~5s) while the map is active.
+  /// One-shot fetch on map activate; poll only while a mission is active.
   void startTracking() {
-    _refreshTimer?.cancel();
-    _refreshTimer = Timer.periodic(const Duration(seconds: 5), (_) {
-      unawaited(refreshMissions());
-    });
+    _mapTracking = true;
     unawaited(refreshMissions());
-    _syncProgressTimer();
+    _syncMissionTimers();
   }
 
   void stopTracking() {
+    _mapTracking = false;
     _refreshTimer?.cancel();
     _refreshTimer = null;
     _progressTimer?.cancel();
@@ -416,8 +416,29 @@ class AerialMissionController extends ChangeNotifier {
         if (existing.missionId != mission.missionId) existing,
     ];
     _missions = next;
-    _syncProgressTimer();
+    _syncMissionTimers();
     notifyListeners();
+  }
+
+  bool get _hasActiveMission =>
+      _missions.any((m) => m.isActive) ||
+      (_focusedMission?.isActive ?? false);
+
+  void _syncMissionTimers() {
+    _syncRefreshTimer();
+    _syncProgressTimer();
+  }
+
+  /// Poll server (~5s) only while map tracking and a mission is ensuring/flying.
+  void _syncRefreshTimer() {
+    if (!_mapTracking || !_hasActiveMission) {
+      _refreshTimer?.cancel();
+      _refreshTimer = null;
+      return;
+    }
+    _refreshTimer ??= Timer.periodic(const Duration(seconds: 5), (_) {
+      unawaited(refreshMissions());
+    });
   }
 
   void _syncProgressTimer() {

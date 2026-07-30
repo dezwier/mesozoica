@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
 
@@ -172,14 +173,9 @@ class _MapScreenState extends State<MapScreen>
                     sites: mapData.filteredGeoSites,
                     selectedSite: mapData.selectedSite,
                     hiddenRotateSiteId: _hiddenRotateSiteId,
-                    markerDatasetKey: [
-                      isFieldMode
-                          ? (mapData.showAllFieldSites
-                              ? 'field:all'
-                              : 'field:linked')
-                          : 'archive:${mapData.archiveEpoch}',
-                      mapData.filters.markerFilterKey,
-                    ].join('|'),
+                    markerDatasetKey: mapData.mapMarkerDatasetKey(
+                      isFieldMode: isFieldMode,
+                    ),
                     currentLocation: locationService.currentLocation,
                     locationListenable: locationService.locationListenable,
                     headingDeg: locationService.headingDeg,
@@ -223,12 +219,8 @@ class _MapScreenState extends State<MapScreen>
                         _consumePendingDrawCamera();
                         _setInitialCamera(locationService: locationService);
                         _dismissSplash();
-                        if (mapData.showAllFieldSites) {
-                          unawaited(_reloadShowAllViewport());
-                        }
                       }
                     },
-                    onMapIdle: _onShowAllMapIdle,
                     onError: _onMapboxError,
                   ),
                 ),
@@ -377,12 +369,12 @@ class _MapScreenState extends State<MapScreen>
                         final enabling = !mapData.showAllFieldSites;
                         mapData.setShowAllFieldSites(enabling);
                         if (enabling) {
-                          unawaited(_reloadShowAllViewport());
+                          unawaited(_loadSitesInViewport());
                         }
                       },
                       tooltip: mapData.showAllFieldSites
-                          ? 'Showing field sites in view'
-                          : 'Show field sites in view',
+                          ? 'Hide sites in view'
+                          : 'Show all sites in view',
                       child: Icon(
                         mapData.showAllFieldSites
                             ? Icons.visibility

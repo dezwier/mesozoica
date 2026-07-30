@@ -115,6 +115,10 @@ class MapConfig {
   /// Camera fly-in duration when focusing an aerial recon mission.
   static const int mapboxAerialMissionFocusDurationMs = 450;
 
+  /// Admin on-demand "sites in view" refuses to paint when the viewport
+  /// bbox contains more than this many field sites.
+  static const int showAllMaxSites = 1000;
+
   static String get mapboxAccessToken {
     if (_mapboxAccessToken.isNotEmpty) return _mapboxAccessToken;
     return _mapboxAccessTokenAlias;

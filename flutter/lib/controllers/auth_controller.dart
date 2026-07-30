@@ -23,7 +23,12 @@ class AuthController extends ChangeNotifier {
     try {
       _currentUser = await _authService.loadStoredUser();
       if (_currentUser != null) {
-        _currentUser = await _authService.refreshProfile();
+        try {
+          _currentUser = await _authService.refreshProfile();
+        } catch (_) {
+          // Keep the cached profile (including isAdmin) when /users/me fails
+          // due to transient API / DB pool errors — do not log the user out.
+        }
         await PushNotificationService.registerTokenIfLoggedIn();
       }
     } catch (_) {
@@ -86,8 +91,12 @@ class AuthController extends ChangeNotifier {
 
   Future<void> refreshProfile() async {
     if (_currentUser == null) return;
-    _currentUser = await _authService.refreshProfile();
-    notifyListeners();
+    try {
+      _currentUser = await _authService.refreshProfile();
+      notifyListeners();
+    } catch (_) {
+      // Leave the existing profile in place on transient failures.
+    }
   }
 
   Future<void> applyUser(Profile user) async {

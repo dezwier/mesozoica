@@ -6,11 +6,9 @@ mixin _MapScreenFieldOpsMixin on State<MapScreen>, _MapScreenCameraMixin {
   int? _hiddenRotateSiteId;
   String? _scanBannerMessage;
   Timer? _scanBannerTimer;
-  Timer? _showAllViewportDebounce;
 
   void _disposeFieldOpsMixin() {
     _scanBannerTimer?.cancel();
-    _showAllViewportDebounce?.cancel();
   }
 
   void _showScanBanner(String message, {bool autoDismiss = true}) {
@@ -23,27 +21,56 @@ mixin _MapScreenFieldOpsMixin on State<MapScreen>, _MapScreenCameraMixin {
     });
   }
 
-  void _onShowAllMapIdle() {
-    if (!mounted || !widget.isActive) return;
+  /// On-demand admin load of every field site currently in the viewport.
+  Future<void> _loadSitesInViewport() async {
+    if (!mounted) return;
     final mapData = context.read<map_data.MapController>();
     if (!mapData.showAllFieldSites) return;
-    _showAllViewportDebounce?.cancel();
-    _showAllViewportDebounce = Timer(const Duration(milliseconds: 350), () {
-      if (!mounted) return;
-      unawaited(_reloadShowAllViewport());
-    });
-  }
 
-  Future<void> _reloadShowAllViewport() async {
-    if (!_mapboxReady || !mounted) return;
-    final mapData = context.read<map_data.MapController>();
-    if (!mapData.showAllFieldSites) return;
-    final bounds = await _mapboxCamera.visibleBounds();
-    if (!mounted || bounds == null || !mapData.showAllFieldSites) return;
-    // Antimeridian / unwrapped Mapbox lons aren't accepted by the bbox API.
-    final safe = clampBoundsForSitesApi(paddedVisibleBounds(bounds));
-    if (safe == null) return;
-    mapData.loadShowAllInBounds(safe);
+    _showScanBanner('Loading sites in view…', autoDismiss: false);
+
+    LatLngBounds? bounds;
+    try {
+      if (_mapboxReady) {
+        bounds = await _mapboxCamera
+            .visibleBounds()
+            .timeout(const Duration(seconds: 2));
+      }
+    } catch (_) {
+      // Fall through — null bounds → zoom-in prompt.
+    }
+    if (!mounted || !mapData.showAllFieldSites) return;
+
+    final fetchBounds = showAllFetchBounds(visibleBounds: bounds);
+    if (fetchBounds == null) {
+      mapData.setShowAllFieldSites(false);
+      _showScanBanner('Zoom in to load sites in this view');
+      return;
+    }
+
+    final result = await mapData.loadShowAllInBounds(fetchBounds);
+    if (!mounted) return;
+
+    switch (result) {
+      case map_data.ShowAllLoadResult.success:
+        _showScanBanner(
+          'Showing ${mapData.filteredGeoSites.length} field sites in view',
+        );
+      case map_data.ShowAllLoadResult.tooMany:
+        final tooManyMessage = mapData.error ??
+            'Too many sites in this view. Zoom in and try again.';
+        mapData.setShowAllFieldSites(false);
+        _showScanBanner(tooManyMessage);
+      case map_data.ShowAllLoadResult.failed:
+        final failMessage =
+            mapData.error ?? 'Could not load sites in view';
+        mapData.setShowAllFieldSites(false);
+        _showScanBanner(failMessage);
+      case map_data.ShowAllLoadResult.cancelled:
+        if (!mapData.showAllFieldSites) return;
+        // Coalesced into a newer request — keep the loading banner.
+        break;
+    }
   }
 
   Future<void> _onScanFieldArea() async {

@@ -6,6 +6,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../config/app_config.dart';
+import '../config/map_config.dart';
 import '../controllers/catalog_mode_controller.dart';
 import '../models/site.dart';
 import '../models/site_map_filters.dart';
@@ -15,6 +16,14 @@ import '../widgets/map/map_visible_bounds.dart';
 /// Separate map caches so archive / field-linked / field-show-all switch
 /// instantly like archive ↔ field, without reloading.
 enum _MapCacheKey { archive, fieldLinked, fieldShowAll }
+
+/// Result of an on-demand admin "sites in view" fetch.
+enum ShowAllLoadResult {
+  success,
+  tooMany,
+  failed,
+  cancelled,
+}
 
 class _CatalogSnapshot {
   List<SiteSummary> geoSites = [];
@@ -92,8 +101,12 @@ class MapController extends ChangeNotifier {
   int _fieldPollBackoffSeq = 0;
   SiteMapFilters _filters = SiteMapFilters();
   bool _showAllFieldSites = false;
-  /// Last viewport used for admin show-all loads (reused by refresh/poll).
+  /// Last viewport used for the on-demand admin show-all load.
   LatLngBounds? _showAllBounds;
+  /// Latest bounds requested while a show-all fetch is in flight (one at a time).
+  LatLngBounds? _pendingShowAllBounds;
+  /// True only after a successful show_all API response — never after linked seed.
+  bool _showAllAuthoritative = false;
   /// Bumped when a soft archive reload replaces the list (force marker rebuild).
   int _archiveEpoch = 0;
 
@@ -118,14 +131,40 @@ class MapController extends ChangeNotifier {
 
   List<SiteSummary> get geoSites => List.unmodifiable(_snap.geoSites);
 
-  /// Sites after applying [filters] (used for map markers).
+  /// Sites to paint on the map.
+  ///
+  /// Show-all only paints the show-all snapshot after a real `show_all` API
+  /// load ([_showAllAuthoritative]). Until then (or on failure) it keeps the
+  /// linked markers visible without copying them into the show-all cache.
   List<SiteSummary> get filteredGeoSites {
+    if (_showAllFieldSites && _isFieldMode) {
+      final showAll = _snapshots[_MapCacheKey.fieldShowAll]!;
+      if (_showAllAuthoritative) {
+        return List.unmodifiable(showAll.geoSites);
+      }
+      final linked = _snapshots[_MapCacheKey.fieldLinked]!;
+      if (!_filters.hasActiveFilters) {
+        return List.unmodifiable(linked.geoSites);
+      }
+      return List.unmodifiable(linked.geoSites.where(_filters.matches));
+    }
     if (!_filters.hasActiveFilters) {
       return geoSites;
     }
     return List.unmodifiable(
       _snap.geoSites.where(_filters.matches),
     );
+  }
+
+  /// Marker dataset key — stay on `field:linked` until show-all API data lands.
+  String mapMarkerDatasetKey({required bool isFieldMode}) {
+    if (!isFieldMode) {
+      return 'archive:$archiveEpoch|${_filters.markerFilterKey}';
+    }
+    if (_showAllFieldSites && _showAllAuthoritative) {
+      return 'field:all|all';
+    }
+    return 'field:linked|${_filters.markerFilterKey}';
   }
 
   SiteMapFilters get filters => _filters;
@@ -137,9 +176,10 @@ class MapController extends ChangeNotifier {
   /// Included in the map marker dataset key after archive soft-refresh replace.
   int get archiveEpoch => _archiveEpoch;
 
-  /// Toggle admin show-all without wiping the other field cache (same idea as
-  /// archive ↔ field). Show-all loads are viewport-scoped via
-  /// [loadShowAllInBounds] — enabling reuses a warm cache when bounds match.
+  /// Toggle on-demand admin "sites in view" without wiping the linked field
+  /// cache. Enabling clears the show-all snapshot; the screen then loads the
+  /// current viewport via [loadShowAllInBounds]. Disabling returns to
+  /// discovered/linked markers only.
   void setShowAllFieldSites(bool value) {
     if (_showAllFieldSites == value) return;
     _showAllFieldSites = value;
@@ -153,21 +193,37 @@ class MapController extends ChangeNotifier {
     _stopFieldPollBackoff();
 
     if (value) {
-      // Reuse fieldShowAll snapshot; [_reloadShowAllViewport] / loadShowAllInBounds
-      // no-ops when bounds are still valid and the snap is complete.
-      final snap = _snap;
-      if (snap.loadingComplete) {
-        _startFieldPoll(snap.loadSeq);
-      }
+      // Clean slate every enable: never paint stale/polluted show-all data.
+      _showAllBounds = null;
+      _pendingShowAllBounds = null;
+      _showAllAuthoritative = false;
+      final showAll = _snapshots[_MapCacheKey.fieldShowAll]!;
+      ++showAll.loadSeq;
+      showAll.geoSites = [];
+      showAll.siteBounds = null;
+      showAll.loadedCatalog = 0;
+      showAll.totalCatalog = 0;
+      showAll.maxFieldSiteId = 0;
+      showAll.loadingComplete = false;
+      showAll.loading = false;
+      showAll.error = null;
       notifyListeners();
       return;
     }
 
-    // Keep _showAllBounds so re-enable can reuse without a full refetch.
+    // Back to linked — keep show-all snap empty for the next enable.
+    _showAllAuthoritative = false;
+    final showAll = _snapshots[_MapCacheKey.fieldShowAll]!;
+    showAll.geoSites = [];
+    showAll.loadingComplete = false;
+    showAll.loading = false;
+    showAll.error = null;
+    _showAllBounds = null;
+    _pendingShowAllBounds = null;
+
     final snap = _snap;
     if (snap.loadingComplete) {
       _startFieldPoll(snap.loadSeq);
-      unawaited(_pollNewFieldSites(snap.loadSeq));
       notifyListeners();
       return;
     }
@@ -178,51 +234,52 @@ class MapController extends ChangeNotifier {
     load(force: false);
   }
 
-  /// Admin show-all: replace markers with field sites inside [bounds].
-  ///
-  /// Keeps the current [geoSites] visible while the new viewport loads —
-  /// only mode switches (show-all ↔ linked, archive ↔ field) wipe markers.
-  /// Newer bounds always preempt an in-flight load (via [loadSeq]).
-  void loadShowAllInBounds(LatLngBounds bounds, {bool force = false}) {
-    if (!_isFieldMode || !_showAllFieldSites) return;
+  /// On-demand admin show-all: replace markers with every field site inside
+  /// [bounds] (≤ [MapConfig.showAllMaxSites]). Paginate until complete, then
+  /// replace atomically. At most one show-all HTTP chain runs at a time;
+  /// newer bounds coalesce as pending.
+  Future<ShowAllLoadResult> loadShowAllInBounds(
+    LatLngBounds bounds, {
+    bool force = false,
+  }) async {
+    if (!_isFieldMode || !_showAllFieldSites) {
+      return ShowAllLoadResult.cancelled;
+    }
     final safe = clampBoundsForSitesApi(bounds);
-    if (safe == null) return;
+    if (safe == null) return ShowAllLoadResult.failed;
     bounds = safe;
     final snap = _snap;
     if (!force &&
         snap.loadingComplete &&
+        !snap.loading &&
         _showAllBounds != null &&
-        !_showAllBoundsChanged(_showAllBounds!, bounds)) {
-      return;
+        _sameBounds(_showAllBounds!, bounds)) {
+      return ShowAllLoadResult.success;
     }
 
+    // Coalesce: never stack concurrent show-all fetches (pool exhaustion).
+    if (snap.loading) {
+      _pendingShowAllBounds = bounds;
+      return ShowAllLoadResult.cancelled;
+    }
+
+    _pendingShowAllBounds = null;
     _showAllBounds = bounds;
     _stopFieldPoll();
     final seq = ++snap.loadSeq;
     snap.loading = true;
     snap.loadingComplete = false;
     snap.error = null;
-    // Do not clear geoSites — keep current markers until pages arrive.
+    // Keep linked markers until the full viewport page set arrives.
     notifyListeners();
-    unawaited(_loadShowAllPages(seq, bounds));
+    return _loadShowAllPages(seq, bounds);
   }
 
-  /// True when the viewport moved/zoomed enough to warrant a fresh fetch.
-  bool _showAllBoundsChanged(LatLngBounds previous, LatLngBounds next) {
-    final prevLat = previous.north - previous.south;
-    final prevLng = previous.east - previous.west;
-    if (prevLat <= 0 || prevLng <= 0) return true;
-    final nextLat = next.north - next.south;
-    final nextLng = next.east - next.west;
-    if ((nextLat / prevLat - 1).abs() > 0.2) return true;
-    if ((nextLng / prevLng - 1).abs() > 0.2) return true;
-    final prevCenterLat = (previous.north + previous.south) / 2;
-    final prevCenterLng = (previous.east + previous.west) / 2;
-    final nextCenterLat = (next.north + next.south) / 2;
-    final nextCenterLng = (next.east + next.west) / 2;
-    if ((nextCenterLat - prevCenterLat).abs() > prevLat * 0.25) return true;
-    if ((nextCenterLng - prevCenterLng).abs() > prevLng * 0.25) return true;
-    return false;
+  bool _sameBounds(LatLngBounds a, LatLngBounds b) {
+    return a.south == b.south &&
+        a.north == b.north &&
+        a.west == b.west &&
+        a.east == b.east;
   }
 
   void applyFilters(SiteMapFilters filters) {
@@ -352,6 +409,9 @@ class MapController extends ChangeNotifier {
     if (!isAdmin) {
       _showAllFieldSites = false;
     }
+    _showAllAuthoritative = false;
+    _showAllBounds = null;
+    _pendingShowAllBounds = null;
     for (final snap in _fieldSnaps) {
       snap.reset(clearSeed: false);
       snap.loadSeq++;
@@ -606,18 +666,31 @@ class MapController extends ChangeNotifier {
     }
   }
 
-  Future<void> _loadShowAllPages(int seq, LatLngBounds bounds) async {
+  /// On-demand show-all: paginate the viewport bbox (API max 500/page) and
+  /// replace markers once. Refuse when [MapConfig.showAllMaxSites] is exceeded.
+  Future<ShowAllLoadResult> _loadShowAllPages(
+    int seq,
+    LatLngBounds bounds,
+  ) async {
     final snap = _snapshots[_MapCacheKey.fieldShowAll]!;
+    var result = ShowAllLoadResult.failed;
     try {
-      var hasMore = true;
-      var offset = 0;
+      if (seq != snap.loadSeq || !_showAllFieldSites) {
+        return ShowAllLoadResult.cancelled;
+      }
+
+      // sort=name + LIMIT is a cheap SQL page. Avoid sort=distance here: the
+      // backend loads the full bbox into memory to rank, which times out on
+      // dense field tiles and leaves the toggle looking like a no-op.
       final allGeo = <SiteSummary>[];
-      // When we already have markers (pan/scan/poll), merge new ids in as pages
-      // arrive and only replace the full list when complete — avoids blanking.
-      final keepWhileLoading = snap.geoSites.isNotEmpty;
+      var offset = 0;
+      var total = 0;
+      var hasMore = true;
 
       while (hasMore) {
-        if (seq != snap.loadSeq || !_showAllFieldSites) return;
+        if (seq != snap.loadSeq || !_showAllFieldSites) {
+          return ShowAllLoadResult.cancelled;
+        }
 
         final response = await _service.fetchSites(
           limit: pageSize,
@@ -630,75 +703,90 @@ class MapController extends ChangeNotifier {
           minLon: bounds.west,
           maxLon: bounds.east,
         );
-        if (seq != snap.loadSeq || !_showAllFieldSites) return;
+        if (seq != snap.loadSeq || !_showAllFieldSites) {
+          return ShowAllLoadResult.cancelled;
+        }
+
+        total = response.total;
+        if (total > MapConfig.showAllMaxSites) {
+          _showAllAuthoritative = false;
+          snap.geoSites = [];
+          snap.siteBounds = null;
+          snap.loadedCatalog = 0;
+          snap.totalCatalog = total;
+          snap.maxFieldSiteId = 0;
+          snap.error =
+              'Too many sites in this view ($total). '
+              'Zoom in and try again (max ${MapConfig.showAllMaxSites}).';
+          snap.loadingComplete = false;
+          result = ShowAllLoadResult.tooMany;
+          return result;
+        }
 
         final geo = _withCoordinates(response.items);
         allGeo.addAll(geo);
         offset += response.items.length;
-        if (keepWhileLoading) {
-          _mergeSites(snap, geo);
-        } else {
-          snap.geoSites = List<SiteSummary>.from(allGeo);
-          snap.siteBounds = _expandBounds(null, allGeo);
-          snap.maxFieldSiteId = allGeo.fold(
-            0,
-            (max, site) => site.siteId > max ? site.siteId : max,
-          );
-        }
-        snap.loadedCatalog = offset;
-        snap.totalCatalog = response.total;
-        snap.error = null;
-        if (_isFieldMode && _showAllFieldSites) {
-          notifyListeners();
-        }
-
-        hasMore = response.hasMore;
-        if (response.items.isEmpty) {
-          hasMore = false;
-        }
-
-        if (kDebugMode) {
-          debugPrint(
-            'MapController: show-all viewport page — ${allGeo.length} fetched '
-            '(${snap.loadedCatalog}/${snap.totalCatalog} in bbox, '
-            'showing ${snap.geoSites.length})',
-          );
-        }
-
-        if (hasMore) {
-          await Future<void>.delayed(Duration.zero);
-        }
+        hasMore = response.hasMore &&
+            response.items.isNotEmpty &&
+            allGeo.length < total;
       }
 
-      if (seq != snap.loadSeq || !_showAllFieldSites) return;
-      // Final replace so markers outside the new viewport are pruned by sync.
+      if (seq != snap.loadSeq || !_showAllFieldSites) {
+        return ShowAllLoadResult.cancelled;
+      }
+
       snap.geoSites = List<SiteSummary>.from(allGeo);
       snap.siteBounds = _expandBounds(null, allGeo);
       snap.maxFieldSiteId = allGeo.fold(
         0,
         (max, site) => site.siteId > max ? site.siteId : max,
       );
+      snap.loadedCatalog = allGeo.length;
+      snap.totalCatalog = total;
+      snap.error = null;
       snap.loadingComplete = true;
       snap.loadedAt = DateTime.now();
+      _showAllAuthoritative = true;
+      result = ShowAllLoadResult.success;
+
+      if (kDebugMode) {
+        debugPrint(
+          'MapController: show-all viewport — ${allGeo.length} markers '
+          '(${snap.loadedCatalog}/${snap.totalCatalog} in bbox, '
+          'show_all authoritative)',
+        );
+      }
+
       if (_isFieldMode && _showAllFieldSites) {
-        _startFieldPoll(seq);
         notifyListeners();
       }
+      return result;
     } on SiteServiceException catch (error) {
-      if (seq != snap.loadSeq) return;
+      if (seq != snap.loadSeq) return ShowAllLoadResult.cancelled;
+      _showAllAuthoritative = false;
       snap.error = error.message;
+      snap.loadingComplete = false;
+      result = ShowAllLoadResult.failed;
+      return result;
     } catch (error) {
-      if (seq != snap.loadSeq) return;
+      if (seq != snap.loadSeq) return ShowAllLoadResult.cancelled;
+      _showAllAuthoritative = false;
+      snap.loadingComplete = false;
       snap.error =
-          'Could not reach the API at ${AppConfig.baseApiUrl}. '
-          'Check your connection or try again later.';
+          'Could not load all field sites. Check your connection and try again.';
       if (kDebugMode) {
         debugPrint('MapController.load show-all viewport failed: $error');
       }
+      result = ShowAllLoadResult.failed;
+      return result;
     } finally {
       if (seq == snap.loadSeq) {
         snap.loading = false;
-        if (_isFieldMode && _showAllFieldSites) {
+        final pending = _pendingShowAllBounds;
+        _pendingShowAllBounds = null;
+        if (pending != null && _showAllFieldSites) {
+          await loadShowAllInBounds(pending);
+        } else if (_isFieldMode && _showAllFieldSites) {
           notifyListeners();
         }
       }
@@ -728,13 +816,8 @@ class MapController extends ChangeNotifier {
     final snap = _activeFieldSnap;
     if (seq != snap.loadSeq) return;
 
-    if (_showAllFieldSites) {
-      final bounds = _showAllBounds;
-      if (bounds == null) return;
-      // Re-query the current viewport so new sites appear without a global dump.
-      loadShowAllInBounds(bounds, force: true);
-      return;
-    }
+    // Show-all is on-demand only — never auto-refresh while it is active.
+    if (_showAllFieldSites) return;
 
     try {
       var hasMore = true;
