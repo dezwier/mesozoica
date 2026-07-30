@@ -30,6 +30,7 @@ class DinosaurSummary {
     this.cladogram = const {},
     this.mainImageUrl,
     this.createdAt,
+    this.version,
   });
 
   final int id;
@@ -50,11 +51,20 @@ class DinosaurSummary {
   /// Inventory reconstruction time; null for catalog rows.
   final DateTime? createdAt;
 
+  /// Curated image version folder; set for inventory occurrences.
+  final String? version;
+
   /// Card-back subtitle for inventory occurrences.
   String? get reconstructedSubtitle {
     final at = createdAt;
     if (at == null) return null;
-    return 'Reconstructed ${formatRelativeWhen(at)}';
+    final versionPart = version?.trim() ?? '';
+    final parts = <String>[
+      '#$id',
+      if (versionPart.isNotEmpty) versionPart,
+      'Reconstructed ${formatRelativeWhen(at)}',
+    ];
+    return parts.join(' - ');
   }
 
   factory DinosaurSummary.fromJson(Map<String, dynamic> json) {
@@ -74,6 +84,9 @@ class DinosaurSummary {
       cladogram: Map<String, dynamic>.from(json['cladogram'] as Map? ?? {}),
       mainImageUrl: json['main_image_url'] as String?,
       createdAt: _parseDate(json['created_at']),
+      version: (json['version'] as String?)?.trim().isNotEmpty == true
+          ? (json['version'] as String).trim()
+          : null,
     );
   }
 

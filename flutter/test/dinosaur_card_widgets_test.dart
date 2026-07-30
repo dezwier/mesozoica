@@ -195,6 +195,7 @@ void main() {
       death: 66,
       period: 'Late Cretaceous',
       createdAt: DateTime.now().toUtc().subtract(const Duration(days: 2)),
+      version: 'Original',
     );
 
     await tester.pumpWidget(
@@ -206,7 +207,10 @@ void main() {
       ),
     );
 
-    expect(find.text('Reconstructed 2d ago'), findsOneWidget);
+    expect(
+      find.text('#99 - Original - Reconstructed 2d ago'),
+      findsOneWidget,
+    );
     expect(find.text('Tyrannosaurus'), findsNothing);
   });
 

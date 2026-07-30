@@ -14,6 +14,7 @@ class FossilCardHeader extends StatelessWidget {
     this.useFrontTitleStyle = false,
     this.overlayOnImage = false,
     this.showOccurrenceSubtitle = false,
+    this.subtitleOverride,
     this.wrapTitle = false,
   });
 
@@ -24,6 +25,8 @@ class FossilCardHeader extends StatelessWidget {
   final bool useFrontTitleStyle;
   final bool overlayOnImage;
   final bool showOccurrenceSubtitle;
+  /// When set, shown as the subtitle instead of [FossilSummary.displaySubtitle].
+  final String? subtitleOverride;
   final bool wrapTitle;
 
   @override
@@ -42,6 +45,8 @@ class FossilCardHeader extends StatelessWidget {
             color: cardTheme.cardTextMuted,
             fontWeight: FontWeight.w500,
           );
+    final subtitle = subtitleOverride ??
+        (showOccurrenceSubtitle ? fossil.displaySubtitle : null);
 
     return Column(
       crossAxisAlignment:
@@ -71,15 +76,18 @@ class FossilCardHeader extends StatelessWidget {
             overflow: wrapTitle ? TextOverflow.visible : TextOverflow.ellipsis,
             softWrap: true,
           ),
-        if (showOccurrenceSubtitle) ...[
+        if (subtitle != null && subtitle.isNotEmpty) ...[
           const SizedBox(height: 8),
           Text(
-            fossil.displaySubtitle,
+            subtitle,
             textAlign: centered ? TextAlign.center : TextAlign.start,
             style: subtitleStyle,
-            maxLines: fossil.isField ? null : 4,
-            overflow:
-                fossil.isField ? TextOverflow.visible : TextOverflow.ellipsis,
+            maxLines: subtitleOverride != null
+                ? 2
+                : (fossil.isField ? null : 4),
+            overflow: subtitleOverride != null || !fossil.isField
+                ? TextOverflow.ellipsis
+                : TextOverflow.visible,
             softWrap: true,
           ),
         ],

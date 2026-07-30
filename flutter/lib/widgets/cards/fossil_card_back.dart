@@ -29,6 +29,8 @@ class FossilCardBack extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final discoveredSubtitle = fossil.discoveredSubtitle;
+
     return AspectRatio(
       aspectRatio: DinoCardTheme.cardAspectRatio,
       child: Stack(
@@ -48,6 +50,7 @@ class FossilCardBack extends StatelessWidget {
               centered: true,
               overlayOnImage: true,
               showOccurrenceSubtitle: false,
+              subtitleOverride: discoveredSubtitle,
             ),
           ),
           if (showRecordButton)

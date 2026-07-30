@@ -48,6 +48,8 @@ def site_row_to_summary(
     *,
     types_by_period: dict[str, list[SiteType]] | None = None,
 ) -> SiteSummary:
+    from app.services.curated_image_service.versions import ORIGINAL_VERSION
+
     site = row.site
     site_type = (
         effective_site_type(site, row.site_type, types_by_period)
@@ -87,6 +89,7 @@ def site_row_to_summary(
         odd_completeness=site.odd_completeness,
         odd_quality=site.odd_quality,
         odd_depth=site.odd_depth,
+        version=site.version or ORIGINAL_VERSION,
     )
 
 

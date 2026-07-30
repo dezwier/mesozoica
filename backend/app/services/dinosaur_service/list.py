@@ -353,4 +353,5 @@ def dinosaur_to_summary(row: DinosaurListRow):
             fallback_url=dino_type.main_image_url,
         ),
         created_at=row.created_at,
+        version=row.image_version if row.occurrence_id is not None else None,
     )

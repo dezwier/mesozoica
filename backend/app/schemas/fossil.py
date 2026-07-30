@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import datetime
+
 from pydantic import BaseModel, ConfigDict
 
 
@@ -148,6 +150,9 @@ class FossilSummary(BaseModel):
     data_source: str = "archive"
     depth_cm: int | None = None
     status: str = "hidden"
+    version: str = "Original"
+    # Viewer's discoverer UserFossil timestamp (field fossils only).
+    discovered_at: datetime | None = None
 
 
 class FossilListResponse(BaseModel):

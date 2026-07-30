@@ -29,6 +29,8 @@ class DinosaurSummary(BaseModel):
     main_image_url: str | None = None
     # Inventory occurrence reconstruction time; null for catalog rows.
     created_at: datetime | None = None
+    # Curated image version folder; set for inventory occurrences.
+    version: str | None = None
 
 
 class DinosaurListResponse(BaseModel):

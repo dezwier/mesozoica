@@ -30,6 +30,7 @@ class SiteSummary {
     this.oddCompleteness,
     this.oddQuality,
     this.oddDepth,
+    this.version = 'Original',
   });
 
   final int siteId;
@@ -58,6 +59,8 @@ class SiteSummary {
   final double? oddCompleteness;
   final double? oddQuality;
   final double? oddDepth;
+  /// Curated site-type image version folder for this occurrence.
+  final String version;
 
   static const howDiscoveredWalk = 'walk';
   static const howDiscoveredAerialRecon = 'aerial_recon';
@@ -95,7 +98,13 @@ class SiteSummary {
   String? get discoveredSubtitle {
     final at = discoveredAt;
     if (at == null) return null;
-    return 'Discovered ${formatRelativeWhen(at)}';
+    final versionPart = version.trim();
+    final parts = <String>[
+      displaySiteNumber,
+      if (versionPart.isNotEmpty) versionPart,
+      'Discovered ${formatRelativeWhen(at)}',
+    ];
+    return parts.join(' - ');
   }
 
   /// Subtitle: `#id, lat, lon, region, distance`.
@@ -203,6 +212,9 @@ class SiteSummary {
       oddCompleteness: (json['odd_completeness'] as num?)?.toDouble(),
       oddQuality: (json['odd_quality'] as num?)?.toDouble(),
       oddDepth: (json['odd_depth'] as num?)?.toDouble(),
+      version: (json['version'] as String?)?.trim().isNotEmpty == true
+          ? (json['version'] as String).trim()
+          : 'Original',
     );
   }
 
@@ -247,6 +259,7 @@ class SiteSummary {
       oddCompleteness: oddCompleteness,
       oddQuality: oddQuality,
       oddDepth: oddDepth,
+      version: version,
     );
   }
 }

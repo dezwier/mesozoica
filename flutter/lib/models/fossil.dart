@@ -1,5 +1,6 @@
 import '../utils/display_text.dart';
 import '../utils/period_for_ages.dart';
+import '../utils/relative_time.dart';
 
 export 'fossil_list.dart';
 
@@ -112,6 +113,8 @@ class FossilSummary {
     this.dataSource = 'archive',
     this.depthCm,
     this.status,
+    this.version = 'Original',
+    this.discoveredAt,
   });
 
   final int id;
@@ -209,12 +212,29 @@ class FossilSummary {
   final String dataSource;
   final int? depthCm;
   final String? status;
+  /// Curated fossil image version folder for this occurrence.
+  final String version;
+  /// When the viewing user discovered this field fossil (from user_fossil).
+  final DateTime? discoveredAt;
 
   bool get isHidden => (status ?? 'hidden').trim().toLowerCase() == 'hidden';
 
   /// Field fossils always have burial depth; use that when [dataSource] is absent.
   bool get isField =>
       dataSource.trim().toLowerCase() == 'field' || depthCm != null;
+
+  /// Card-back subtitle when the viewer has discovered this field fossil.
+  String? get discoveredSubtitle {
+    final at = discoveredAt;
+    if (at == null) return null;
+    final versionPart = version.trim();
+    final parts = <String>[
+      '#$id',
+      if (versionPart.isNotEmpty) versionPart,
+      'Discovered ${formatRelativeWhen(at)}',
+    ];
+    return parts.join(' - ');
+  }
 
   factory FossilSummary.fromJson(Map<String, dynamic> json) {
     return FossilSummary(
@@ -315,7 +335,16 @@ class FossilSummary {
           : 'archive',
       depthCm: json['depth_cm'] as int?,
       status: json['status'] as String?,
+      version: (json['version'] as String?)?.trim().isNotEmpty == true
+          ? (json['version'] as String).trim()
+          : 'Original',
+      discoveredAt: _parseFossilDate(json['discovered_at']),
     );
+  }
+
+  static DateTime? _parseFossilDate(Object? value) {
+    if (value is! String || value.isEmpty) return null;
+    return DateTime.tryParse(value)?.toUtc();
   }
 
   String get displayTitle {

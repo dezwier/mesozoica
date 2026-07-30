@@ -39,6 +39,7 @@ class SiteSummary(BaseModel):
     odd_completeness: float | None = None
     odd_quality: float | None = None
     odd_depth: float | None = None
+    version: str = "Original"
 
 
 class SiteListResponse(BaseModel):

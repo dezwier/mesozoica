@@ -232,8 +232,7 @@ void main() {
 
     await tester.pump();
 
-    expect(find.text('Discovered 3h ago'), findsOneWidget);
-    expect(find.textContaining('#50001'), findsNothing);
+    expect(find.text('#50001 - Original - Discovered 3h ago'), findsOneWidget);
   });
 
   testWidgets('SiteTurnableCard composes front and back', (tester) async {
@@ -247,7 +246,7 @@ void main() {
                 width: 800,
                 child: SiteTurnableCard(
                   site: _fixture,
-                  turnable: false,
+                  turnable: true,
                   mapTileLayerBuilder: () => const SizedBox.shrink(),
                 ),
               ),

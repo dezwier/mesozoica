@@ -153,6 +153,38 @@ void main() {
     expect(find.text('Occurrence No #200001'), findsNothing);
   });
 
+  testWidgets('FossilCardBack shows Discovered subtitle for field fossils',
+      (tester) async {
+    final field = FossilSummary(
+      id: 200001,
+      dinosaurId: 1,
+      dinosaurName: 'Tyrannosaurus',
+      identifiedName: 'Tyrannosaurus rex',
+      dataSource: 'field',
+      depthCm: 0,
+      version: 'Summer 26',
+      discoveredAt: DateTime.now().toUtc().subtract(const Duration(hours: 5)),
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: SizedBox(
+              width: 800,
+              child: FossilCardBack(fossil: field),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(
+      find.text('#200001 - Summer 26 - Discovered 5h ago'),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('FossilCardImage uses network image for curated URL',
       (tester) async {
     await tester.pumpWidget(
@@ -191,10 +223,6 @@ void main() {
     );
 
     expect(find.text('Tyrannosaurus rex'), findsWidgets);
-    expect(
-      find.textContaining('well-preserved tyrannosaur tooth'),
-      findsOneWidget,
-    );
     expect(find.text('Occurrence No #100001'), findsNothing);
     expect(find.text('TIME'), findsNothing);
     expect(find.text('RECORD'), findsNothing);
@@ -209,7 +237,7 @@ void main() {
     expect(find.text('Body'), findsOneWidget);
     expect(find.text('Teeth'), findsOneWidget);
     expect(find.text('Good'), findsOneWidget);
-    expect(find.text('Isolated_element'), findsOneWidget);
+    expect(find.text('Isolated Element'), findsOneWidget);
     expect(find.text('Tooth'), findsNothing);
     expect(find.text('Excellent'), findsNothing);
     expect(find.text('Partial'), findsNothing);

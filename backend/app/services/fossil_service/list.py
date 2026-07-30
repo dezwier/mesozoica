@@ -324,6 +324,7 @@ def fossil_row_to_summary(
     from app.models.user_fossil import (
         FOSSIL_STATUS_DISCOVERED,
         FOSSIL_STATUS_HIDDEN,
+        USER_FOSSIL_ROLE_DISCOVERER,
         UserFossil,
         role_to_status,
     )
@@ -349,6 +350,7 @@ def fossil_row_to_summary(
         types_by_period=types_by_period,
     )
     status = FOSSIL_STATUS_HIDDEN
+    discovered_at = None
     if fossil.data_source != "field":
         # Archive fossils are not discovery-gated.
         status = FOSSIL_STATUS_DISCOVERED
@@ -363,7 +365,11 @@ def fossil_row_to_summary(
         ).first()
         if link is not None:
             status = role_to_status(link.role)
+            if link.role == USER_FOSSIL_ROLE_DISCOVERER:
+                discovered_at = link.timestamp
     payload["status"] = status
+    payload["discovered_at"] = discovered_at
+    payload["version"] = fossil.version or ORIGINAL_VERSION
     return FossilSummary.model_validate(payload)
 
 
