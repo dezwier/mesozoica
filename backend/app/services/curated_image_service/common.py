@@ -5,6 +5,8 @@ from __future__ import annotations
 import hashlib
 import os
 import re
+from datetime import timezone
+from email.utils import parsedate_to_datetime
 from pathlib import Path
 from urllib.parse import quote
 
@@ -114,6 +116,41 @@ def version_from_curated_url(url: str | None) -> str | None:
     return url.rsplit("?v=", 1)[-1].split("&", 1)[0] or None
 
 
+def _parse_http_last_modified(value: str | None) -> float | None:
+    """Parse an HTTP Last-Modified header to a UTC unix timestamp."""
+    if not value or not value.strip():
+        return None
+    try:
+        dt = parsedate_to_datetime(value)
+    except (TypeError, ValueError, IndexError, OverflowError):
+        return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt.timestamp()
+
+
+def head_remote_curated_image(
+    *,
+    public_base_url: str,
+    curated_media_path: str,
+    filename: str,
+) -> tuple[bool, float | None]:
+    """HEAD a served curated image.
+
+    Returns ``(exists, last_modified_unix)``. ``last_modified_unix`` is None when
+    the file is missing or the response has no usable Last-Modified header.
+    """
+    media_path = curated_media_path if curated_media_path.endswith("/") else f"{curated_media_path}/"
+    url = f"{public_base_url.rstrip('/')}{media_path}{quote(filename, safe='/')}"
+    try:
+        response = httpx.head(url, timeout=30.0, follow_redirects=True)
+    except httpx.HTTPError:
+        return False, None
+    if response.status_code != 200:
+        return False, None
+    return True, _parse_http_last_modified(response.headers.get("last-modified"))
+
+
 def needs_curated_image_resync(
     *,
     overwrite: bool,
@@ -123,25 +160,28 @@ def needs_curated_image_resync(
     filename: str,
     curated_media_path: str,
 ) -> bool:
-    """Return True when the local file should be uploaded and main_image_url refreshed."""
+    """Return True when the local file should be uploaded.
+
+    When the remote file already exists, upload only if the local file's mtime is
+    strictly later than the remote Last-Modified (or when ``overwrite`` is set).
+    ``main_image_url`` is unused for the upload decision; callers still refresh
+    DB URLs separately.
+    """
+    del main_image_url  # DB URL refresh is handled by sync scripts after upload.
     if overwrite:
         return True
 
-    if not remote_curated_image_exists(
+    exists, remote_mtime = head_remote_curated_image(
         public_base_url=public_base_url,
         curated_media_path=curated_media_path,
         filename=filename,
-    ):
+    )
+    if not exists:
         return True
-
-    local_version = file_content_version(local_path)
-    stored_version = version_from_curated_url(main_image_url)
-    # Content unchanged and already served — skip.
-    if stored_version == local_version:
+    if remote_mtime is None:
+        # Remote is present but ageless — do not overwrite without --overwrite.
         return False
-
-    # Remote file exists but local content changed or the DB URL is stale.
-    return True
+    return local_path.stat().st_mtime > remote_mtime
 
 
 def remote_curated_image_exists(
@@ -151,15 +191,12 @@ def remote_curated_image_exists(
     filename: str,
 ) -> bool:
     """Return True when the image is already served from Railway."""
-    # Encode path segments so names with spaces (tool cards) HEAD correctly.
-    # Keep '/' so versioned paths like v1/Orbit%20Survey.png resolve.
-    media_path = curated_media_path if curated_media_path.endswith("/") else f"{curated_media_path}/"
-    url = f"{public_base_url.rstrip('/')}{media_path}{quote(filename, safe='/')}"
-    try:
-        response = httpx.head(url, timeout=30.0, follow_redirects=True)
-    except httpx.HTTPError:
-        return False
-    return response.status_code == 200
+    exists, _ = head_remote_curated_image(
+        public_base_url=public_base_url,
+        curated_media_path=curated_media_path,
+        filename=filename,
+    )
+    return exists
 
 
 def upload_curated_image_to_railway(

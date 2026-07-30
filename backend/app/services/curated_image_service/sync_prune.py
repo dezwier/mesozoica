@@ -185,8 +185,8 @@ def prune_remote_managed_paths(
     deleted = 0
     for relative in orphans:
         logger.info(
-            "%s remote %s",
-            "Would prune" if dry_run else "Pruning",
+            "%s %s",
+            "Would prune" if dry_run else "Prune",
             relative,
         )
         delete_remote_managed_file(
@@ -223,7 +223,7 @@ def upload_local_meta_files(
         relative = f"{version.name}/{META_FILENAME}"
         logger.info(
             "%s %s",
-            "Would sync meta" if dry_run else "Syncing meta",
+            "Would upload" if dry_run else "Upload",
             relative,
         )
         upload_file(
@@ -270,7 +270,7 @@ def sync_meta_and_prune_remote(
         dry_run=dry_run,
     )
     logger.info(
-        "Meta/prune: meta_uploaded=%d remote=%d kept=%d pruned=%d",
+        "Meta/prune summary: meta_uploaded=%d remote=%d kept=%d pruned=%d",
         meta_uploaded,
         prune_summary["remote"],
         prune_summary["kept"],

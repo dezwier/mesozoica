@@ -14,7 +14,6 @@ from app.crons.railway_guard import require_railway_database
 from app.models.site_type import SiteType
 from app.services.curated_image_service.common import needs_curated_image_resync
 from app.services.curated_image_service.sync_prune import sync_meta_and_prune_remote
-from app.services.curated_image_service.versions import load_image_versions
 from app.services.site_type_image_service.sync import (
     CURATED_MEDIA_PATH,
     build_curated_image_url,
@@ -74,8 +73,8 @@ def run_sync(*, dry_run: bool = False, overwrite: bool = False) -> int:
         # Upload every versioned file.
         for match in matched:
             row = session.get(SiteType, match.site_type_id)
-            # Only compare content hash against DB URL when this file is the latest
-            # for the type; otherwise just check remote existence.
+            # Only HEAD remote age against this file when it is the latest for the
+            # type; otherwise just check remote existence / mtime for upload.
             latest = latest_relative_path_for_site_type(
                 period=match.period,
                 rock_type=match.rock_type,
@@ -91,20 +90,13 @@ def run_sync(*, dry_run: bool = False, overwrite: bool = False) -> int:
                 filename=match.relative_path,
                 curated_media_path=CURATED_MEDIA_PATH,
             ):
-                logger.info("Skipping %s (already synced)", match.relative_path)
                 skipped += 1
                 continue
 
-            public_url = build_curated_image_url(
-                public_base_url,
-                match.relative_path,
-                version=file_content_version(match.path),
-            )
             logger.info(
-                "%s %s -> %s",
-                "Would sync" if dry_run else "Syncing",
+                "%s %s",
+                "Would upload" if dry_run else "Upload",
                 match.relative_path,
-                public_url,
             )
             if not dry_run:
                 upload_file_to_railway(
@@ -113,20 +105,13 @@ def run_sync(*, dry_run: bool = False, overwrite: bool = False) -> int:
                     public_base_url=public_base_url,
                     sync_secret=sync_secret,
                 )
-                uploaded += 1
+            uploaded += 1
 
         # Point main_image_url at the latest version by run_date.
         for row in site_types:
             key = site_type_image_key(period=row.period, rock_type=row.rock_type)
             if key not in matched_keys:
                 if is_curated_image_url(row.main_image_url):
-                    logger.info(
-                        "%s site_type %s/%s main_image_url (no local image in %s)",
-                        "Would clear" if dry_run else "Clearing",
-                        row.period,
-                        row.rock_type,
-                        source_dir,
-                    )
                     if not dry_run:
                         row.main_image_url = None
                         session.add(row)
@@ -148,46 +133,18 @@ def run_sync(*, dry_run: bool = False, overwrite: bool = False) -> int:
             )
             if row.main_image_url == public_url:
                 continue
-            logger.info(
-                "%s site_type %s/%s main_image_url -> %s",
-                "Would set" if dry_run else "Setting",
-                row.period,
-                row.rock_type,
-                public_url,
-            )
             if not dry_run:
                 row.main_image_url = public_url
                 session.add(row)
-                updated += 1
+            updated += 1
 
         if not dry_run:
             session.commit()
 
-        site_types_without_images = sorted(
-            site_type_image_key(period=row.period, rock_type=row.rock_type)
-            for row in site_types
-            if site_type_image_key(period=row.period, rock_type=row.rock_type)
-            not in matched_keys
-        )
         if unmatched_files:
             logger.warning(
                 "Unmatched local files (no site_type match): %s",
                 ", ".join(path.name for path in unmatched_files),
-            )
-        versions = load_image_versions(source_dir)
-        logger.info(
-            "Versions: %s",
-            ", ".join(
-                f"{v.name}(run_date={v.run_date.isoformat() if v.run_date else 'none'})"
-                for v in versions
-            )
-            or "none",
-        )
-        if site_types_without_images:
-            logger.info(
-                "Site types without curated images: %d (first 10: %s)",
-                len(site_types_without_images),
-                ", ".join(site_types_without_images[:10]),
             )
 
         logger.info(
@@ -216,6 +173,7 @@ def run_sync(*, dry_run: bool = False, overwrite: bool = False) -> int:
 
 def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
+    logging.getLogger("httpx").setLevel(logging.WARNING)
     args = _parse_args()
     try:
         raise SystemExit(run_sync(dry_run=args.dry_run, overwrite=args.overwrite))

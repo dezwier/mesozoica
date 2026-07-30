@@ -14,7 +14,6 @@ from app.crons.railway_guard import require_railway_database
 from app.models.tool_type import ToolType
 from app.services.curated_image_service.common import needs_curated_image_resync
 from app.services.curated_image_service.sync_prune import sync_meta_and_prune_remote
-from app.services.curated_image_service.versions import load_image_versions
 from app.services.tool_image_service.sync import (
     CURATED_MEDIA_PATH,
     build_curated_image_url,
@@ -84,20 +83,13 @@ def run_sync(*, dry_run: bool = False, overwrite: bool = False) -> int:
                 filename=match.relative_path,
                 curated_media_path=CURATED_MEDIA_PATH,
             ):
-                logger.info("Skipping %s (already synced)", match.relative_path)
                 skipped += 1
                 continue
 
-            public_url = build_curated_image_url(
-                public_base_url,
-                match.relative_path,
-                version=file_content_version(match.path),
-            )
             logger.info(
-                "%s %s -> %s",
-                "Would sync" if dry_run else "Syncing",
+                "%s %s",
+                "Would upload" if dry_run else "Upload",
                 match.relative_path,
-                public_url,
             )
             if not dry_run:
                 upload_file_to_railway(
@@ -106,17 +98,11 @@ def run_sync(*, dry_run: bool = False, overwrite: bool = False) -> int:
                     public_base_url=public_base_url,
                     sync_secret=sync_secret,
                 )
-                uploaded += 1
+            uploaded += 1
 
         for row in tools:
             if row.name not in matched_names:
                 if is_curated_image_url(row.main_image_url):
-                    logger.info(
-                        "%s tool %s main_image_url (no local image in %s)",
-                        "Would clear" if dry_run else "Clearing",
-                        row.name,
-                        source_dir,
-                    )
                     if not dry_run:
                         row.main_image_url = None
                         session.add(row)
@@ -137,40 +123,18 @@ def run_sync(*, dry_run: bool = False, overwrite: bool = False) -> int:
             )
             if row.main_image_url == public_url:
                 continue
-            logger.info(
-                "%s tool %s main_image_url -> %s",
-                "Would set" if dry_run else "Setting",
-                row.name,
-                public_url,
-            )
             if not dry_run:
                 row.main_image_url = public_url
                 session.add(row)
-                updated += 1
+            updated += 1
 
         if not dry_run:
             session.commit()
 
-        tools_without_images = sorted(name for name in name_set if name not in matched_names)
         if unmatched_files:
             logger.warning(
                 "Unmatched local files (no tool.name): %s",
                 ", ".join(path.name for path in unmatched_files),
-            )
-        versions = load_image_versions(source_dir)
-        logger.info(
-            "Versions: %s",
-            ", ".join(
-                f"{v.name}(run_date={v.run_date.isoformat() if v.run_date else 'none'})"
-                for v in versions
-            )
-            or "none",
-        )
-        if tools_without_images:
-            logger.info(
-                "Tools without curated images: %d (first 10: %s)",
-                len(tools_without_images),
-                ", ".join(tools_without_images[:10]),
             )
 
         logger.info(
@@ -199,6 +163,7 @@ def run_sync(*, dry_run: bool = False, overwrite: bool = False) -> int:
 
 def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
+    logging.getLogger("httpx").setLevel(logging.WARNING)
     args = _parse_args()
     try:
         raise SystemExit(run_sync(dry_run=args.dry_run, overwrite=args.overwrite))

@@ -33,7 +33,7 @@ All sync scripts support `.png`, `.jpg`, `.jpeg`, and `.webp`.
 - **Served at:** `https://<api-host>/media/fossils/<version>/<occurrence_no>.<ext>`
 - **Cache busting:** `main_image_url` includes a `?v=<content-hash>` query param so the app fetches updated files after re-sync
 - **Card resolution:** uses `fossil.version`
-- **Re-sync:** Regenerated local files are re-uploaded automatically when their content hash differs from the stored `main_image_url` (no `--overwrite` required)
+- **Re-sync:** Local files are re-uploaded when missing remotely, or when the local file’s mtime is newer than the remote `Last-Modified` (use `--overwrite` to force every file)
 - **Prune:** Fossils with a curated `main_image_url` but no matching file under version folders get `main_image_url` cleared on sync (app shows placeholder)
 
 ## Make targets (recommended)
@@ -82,7 +82,7 @@ python -m scripts.sync_fossil_images --dry-run
 | Flag | Effect |
 |------|--------|
 | `--dry-run` | Log what would sync/prune; skip uploads, remote deletes, and database updates |
-| `--overwrite` | Force re-upload every matched image, even when content is unchanged |
+| `--overwrite` | Force re-upload every matched image, even when remote is newer or equal |
 
 ## Environment
 
@@ -129,7 +129,7 @@ make sync-dinosaur-images CRON_EXTRA='--dry-run'
 # 3. Upload to production (also syncs meta.yaml and deletes remote orphans)
 make sync-dinosaur-images
 
-# Re-upload changed images
+# Force re-upload every matched file
 make sync-dinosaur-images CRON_EXTRA='--overwrite'
 ```
 
@@ -142,11 +142,11 @@ ls images/fossils/
 # 2. Preview matches
 make sync-fossil-images CRON_EXTRA='--dry-run'
 
-# 3. Upload to production (re-uploads when local file content changed)
+# 3. Upload to production (re-uploads when local is newer than remote)
 make sync-fossil-images
 ```
 
-Regenerated images are detected via content hash and overwrite the remote file automatically. Use `--overwrite` only to force a full re-upload of every matched file.
+Local files are uploaded when missing remotely or when local mtime is newer than remote `Last-Modified`. Use `--overwrite` only to force a full re-upload of every matched file.
 
 ### Site-type card images
 

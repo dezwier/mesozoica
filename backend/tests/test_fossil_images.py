@@ -23,6 +23,19 @@ from app.services.fossil_image_service.sync import (
 )
 
 
+def _stub_meta_and_prune(monkeypatch, sync_module) -> None:
+    monkeypatch.setattr(
+        sync_module,
+        "sync_meta_and_prune_remote",
+        lambda **kwargs: {
+            "meta_uploaded": 0,
+            "remote": 0,
+            "kept": 0,
+            "pruned": 0,
+        },
+    )
+
+
 def test_build_curated_image_url():
     assert (
         build_curated_image_url("https://example.com", f"{ORIGINAL_VERSION}/139292.webp")
@@ -111,6 +124,7 @@ def test_run_sync_updates_main_image_url(
 ):
     from scripts import sync_fossil_images as sync_module
 
+    _stub_meta_and_prune(monkeypatch, sync_module)
     images_dir = tmp_path / "images"
     image_path = _seed_original_image(images_dir)
 
@@ -145,6 +159,7 @@ def test_run_sync_skips_existing_remote_images(
 ):
     from scripts import sync_fossil_images as sync_module
 
+    _stub_meta_and_prune(monkeypatch, sync_module)
     images_dir = tmp_path / "images"
     image_path = _seed_original_image(images_dir)
     relative = f"{ORIGINAL_VERSION}/139292.png"
@@ -167,8 +182,8 @@ def test_run_sync_skips_existing_remote_images(
 
     monkeypatch.setattr(sync_module, "upload_file_to_railway", fake_upload)
     monkeypatch.setattr(
-        "app.services.curated_image_service.common.remote_curated_image_exists",
-        lambda **kwargs: True,
+        "app.services.curated_image_service.common.head_remote_curated_image",
+        lambda **kwargs: (True, image_path.stat().st_mtime + 60),
     )
     monkeypatch.setenv("ALLOW_LOCAL_CRON", "1")
 
@@ -183,13 +198,14 @@ def test_run_sync_skips_existing_remote_images(
     )
 
 
-def test_run_sync_resyncs_when_local_content_changed(
+def test_run_sync_resyncs_when_local_is_newer_than_remote(
     session: Session,
     tmp_path: Path,
     monkeypatch,
 ):
     from scripts import sync_fossil_images as sync_module
 
+    _stub_meta_and_prune(monkeypatch, sync_module)
     images_dir = tmp_path / "images"
     image_path = _seed_original_image(images_dir, content=b"new-image-bytes")
     relative = f"{ORIGINAL_VERSION}/139292.png"
@@ -209,6 +225,10 @@ def test_run_sync_resyncs_when_local_content_changed(
         upload_calls.append(kwargs["remote_filename"])
 
     monkeypatch.setattr(sync_module, "upload_file_to_railway", fake_upload)
+    monkeypatch.setattr(
+        "app.services.curated_image_service.common.head_remote_curated_image",
+        lambda **kwargs: (True, image_path.stat().st_mtime - 60),
+    )
     monkeypatch.setenv("ALLOW_LOCAL_CRON", "1")
 
     assert sync_module.run_sync(dry_run=False, overwrite=False) == 0
@@ -224,13 +244,15 @@ def test_run_sync_resyncs_when_local_content_changed(
     )
 
 
-def test_needs_image_resync_detects_stale_content(tmp_path: Path, monkeypatch):
+def test_needs_image_resync_uses_remote_mtime(tmp_path: Path, monkeypatch):
     local = tmp_path / "139292.png"
     local.write_bytes(b"new")
     relative = f"{ORIGINAL_VERSION}/139292.png"
+    local_mtime = local.stat().st_mtime
+
     monkeypatch.setattr(
-        "app.services.curated_image_service.common.remote_curated_image_exists",
-        lambda **kwargs: True,
+        "app.services.curated_image_service.common.head_remote_curated_image",
+        lambda **kwargs: (True, local_mtime - 60),
     )
     assert needs_image_resync(
         overwrite=False,
@@ -238,6 +260,11 @@ def test_needs_image_resync_detects_stale_content(tmp_path: Path, monkeypatch):
         main_image_url=f"https://example.com/media/fossils/{relative}?v=oldhash",
         public_base_url="https://example.com",
         filename=relative,
+    )
+
+    monkeypatch.setattr(
+        "app.services.curated_image_service.common.head_remote_curated_image",
+        lambda **kwargs: (True, local_mtime + 60),
     )
     assert not needs_image_resync(
         overwrite=False,
@@ -259,6 +286,7 @@ def test_run_sync_overwrite_uploads_existing_remote_images(
 ):
     from scripts import sync_fossil_images as sync_module
 
+    _stub_meta_and_prune(monkeypatch, sync_module)
     images_dir = tmp_path / "images"
     image_path = _seed_original_image(images_dir)
     relative = f"{ORIGINAL_VERSION}/139292.png"
@@ -294,6 +322,7 @@ def test_run_sync_clears_curated_url_when_local_file_missing(
 ):
     from scripts import sync_fossil_images as sync_module
 
+    _stub_meta_and_prune(monkeypatch, sync_module)
     images_dir = tmp_path / "images"
     image_path = _seed_original_image(images_dir)
     relative = f"{ORIGINAL_VERSION}/139292.png"

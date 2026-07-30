@@ -25,6 +25,19 @@ from app.services.dinosaur_image_service.sync import (
 )
 
 
+def _stub_meta_and_prune(monkeypatch, sync_module) -> None:
+    monkeypatch.setattr(
+        sync_module,
+        "sync_meta_and_prune_remote",
+        lambda **kwargs: {
+            "meta_uploaded": 0,
+            "remote": 0,
+            "kept": 0,
+            "pruned": 0,
+        },
+    )
+
+
 def test_build_curated_image_url():
     assert (
         build_curated_image_url("https://example.com", "Tyrannosaurus.webp")
@@ -189,6 +202,7 @@ def test_run_sync_skips_existing_remote_images(
 ):
     from scripts import sync_dinosaur_images as sync_module
 
+    _stub_meta_and_prune(monkeypatch, sync_module)
     images_dir = tmp_path / "images"
     original = images_dir / "Original"
     original.mkdir(parents=True)
@@ -221,8 +235,8 @@ def test_run_sync_skips_existing_remote_images(
 
     monkeypatch.setattr(sync_module, "upload_file_to_railway", fake_upload)
     monkeypatch.setattr(
-        "app.services.curated_image_service.common.remote_curated_image_exists",
-        lambda **kwargs: True,
+        "app.services.curated_image_service.common.head_remote_curated_image",
+        lambda **kwargs: (True, image_path.stat().st_mtime + 60),
     )
     monkeypatch.setenv("ALLOW_LOCAL_CRON", "1")
 
@@ -242,6 +256,7 @@ def test_run_sync_overwrite_uploads_existing_remote_images(
 ):
     from scripts import sync_dinosaur_images as sync_module
 
+    _stub_meta_and_prune(monkeypatch, sync_module)
     images_dir = tmp_path / "images"
     original = images_dir / "Original"
     original.mkdir(parents=True)
@@ -285,6 +300,7 @@ def test_run_sync_updates_main_image_url(
 ):
     from scripts import sync_dinosaur_images as sync_module
 
+    _stub_meta_and_prune(monkeypatch, sync_module)
     images_dir = tmp_path / "images"
     original = images_dir / "Original"
     original.mkdir(parents=True)
@@ -328,6 +344,7 @@ def test_run_sync_clears_curated_url_when_local_file_missing(
 ):
     from scripts import sync_dinosaur_images as sync_module
 
+    _stub_meta_and_prune(monkeypatch, sync_module)
     images_dir = tmp_path / "images"
     original = images_dir / "Original"
     original.mkdir(parents=True)

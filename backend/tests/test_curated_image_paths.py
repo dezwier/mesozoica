@@ -20,12 +20,13 @@ from app.services.tool_image_service.sync import resolve_local_source_dir_for_sy
 
 def test_remote_curated_image_exists(monkeypatch):
     class FakeResponse:
-        def __init__(self, status_code: int):
+        def __init__(self, status_code: int, headers: dict[str, str] | None = None):
             self.status_code = status_code
+            self.headers = headers or {}
 
     def fake_head(url: str, **kwargs):
         if url.endswith("/media/dinosaurs/Tyrannosaurus.webp"):
-            return FakeResponse(200)
+            return FakeResponse(200, {"last-modified": "Thu, 01 Jan 2026 00:00:00 GMT"})
         if url.endswith("/media/tools/Orbit%20Survey.png"):
             return FakeResponse(200)
         return FakeResponse(404)
@@ -58,8 +59,8 @@ def test_needs_curated_image_resync_when_remote_missing(monkeypatch, tmp_path: P
     version = file_content_version(image)
 
     monkeypatch.setattr(
-        "app.services.curated_image_service.common.remote_curated_image_exists",
-        lambda **kwargs: False,
+        "app.services.curated_image_service.common.head_remote_curated_image",
+        lambda **kwargs: (False, None),
     )
 
     assert needs_curated_image_resync(
@@ -72,20 +73,64 @@ def test_needs_curated_image_resync_when_remote_missing(monkeypatch, tmp_path: P
     )
 
 
-def test_needs_curated_image_resync_skips_when_remote_matches(monkeypatch, tmp_path: Path):
+def test_needs_curated_image_resync_skips_when_remote_is_newer_or_equal(
+    monkeypatch, tmp_path: Path
+):
     image = tmp_path / "Orbit Survey.png"
     image.write_bytes(b"tool-bytes")
+    local_mtime = image.stat().st_mtime
     version = file_content_version(image)
 
     monkeypatch.setattr(
-        "app.services.curated_image_service.common.remote_curated_image_exists",
-        lambda **kwargs: True,
+        "app.services.curated_image_service.common.head_remote_curated_image",
+        lambda **kwargs: (True, local_mtime + 10),
     )
 
     assert not needs_curated_image_resync(
         overwrite=False,
         local_path=image,
         main_image_url=f"https://example.com/media/tools/Orbit Survey.png?v={version}",
+        public_base_url="https://example.com",
+        filename="Orbit Survey.png",
+        curated_media_path="/media/tools/",
+    )
+
+
+def test_needs_curated_image_resync_when_local_is_newer(monkeypatch, tmp_path: Path):
+    image = tmp_path / "Orbit Survey.png"
+    image.write_bytes(b"tool-bytes")
+    local_mtime = image.stat().st_mtime
+
+    monkeypatch.setattr(
+        "app.services.curated_image_service.common.head_remote_curated_image",
+        lambda **kwargs: (True, local_mtime - 60),
+    )
+
+    assert needs_curated_image_resync(
+        overwrite=False,
+        local_path=image,
+        main_image_url="https://example.com/media/tools/Orbit Survey.png?v=old",
+        public_base_url="https://example.com",
+        filename="Orbit Survey.png",
+        curated_media_path="/media/tools/",
+    )
+
+
+def test_needs_curated_image_resync_skips_when_remote_has_no_mtime(
+    monkeypatch, tmp_path: Path
+):
+    image = tmp_path / "Orbit Survey.png"
+    image.write_bytes(b"changed-bytes")
+
+    monkeypatch.setattr(
+        "app.services.curated_image_service.common.head_remote_curated_image",
+        lambda **kwargs: (True, None),
+    )
+
+    assert not needs_curated_image_resync(
+        overwrite=False,
+        local_path=image,
+        main_image_url="https://example.com/media/tools/Orbit Survey.png?v=old",
         public_base_url="https://example.com",
         filename="Orbit Survey.png",
         curated_media_path="/media/tools/",

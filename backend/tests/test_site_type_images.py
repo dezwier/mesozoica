@@ -75,6 +75,17 @@ def test_run_sync_clears_curated_url_when_local_file_missing(
     import app.core.config as config_module
     from scripts import sync_site_type_images as sync_module
 
+    monkeypatch.setattr(
+        sync_module,
+        "sync_meta_and_prune_remote",
+        lambda **kwargs: {
+            "meta_uploaded": 0,
+            "remote": 0,
+            "kept": 0,
+            "pruned": 0,
+        },
+    )
+
     images_dir = tmp_path / "images/site-types"
     v1 = images_dir / "Original"
     v1.mkdir(parents=True)
