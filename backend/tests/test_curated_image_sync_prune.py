@@ -91,6 +91,36 @@ def test_prune_remote_managed_paths_deletes_orphans(monkeypatch):
     assert deleted == ["Summer 26/gone.png", "v1/orphan.png"]
 
 
+def test_prune_remote_managed_paths_is_case_insensitive(monkeypatch):
+    deleted: list[str] = []
+
+    monkeypatch.setattr(
+        "app.services.curated_image_service.sync_prune.list_remote_managed_paths",
+        lambda **kwargs: [
+            "Original/Tyrannosaurus.png",
+            "Original/meta.yaml",
+            "v1/orphan.png",
+        ],
+    )
+    monkeypatch.setattr(
+        "app.services.curated_image_service.sync_prune.delete_remote_managed_file",
+        lambda *, remote_filename, **kwargs: deleted.append(remote_filename),
+    )
+
+    summary = prune_remote_managed_paths(
+        # Local disk often stores lowercase names; uploads use DB casing.
+        keep_relative_paths={"Original/tyrannosaurus.png", "Original/meta.yaml"},
+        public_base_url="https://example.com",
+        sync_secret="secret",
+        admin_upload_path="/api/v1/admin/dinosaur-images",
+        sync_header_name="X-Dinosaur-Image-Sync-Key",
+        sync_secret_env_var="DINOSAUR_IMAGE_SYNC_SECRET",
+    )
+
+    assert summary["pruned"] == 1
+    assert deleted == ["v1/orphan.png"]
+
+
 def test_sync_meta_and_prune_remote_uploads_meta_then_prunes(tmp_path: Path, monkeypatch):
     original = tmp_path / ORIGINAL_VERSION
     original.mkdir()

@@ -16,6 +16,7 @@ from app.services.curated_image_service.sync_prune import sync_meta_and_prune_re
 from app.services.dinosaur_image_service.sync import (
     CURATED_MEDIA_PATH,
     build_curated_image_url,
+    catalog_relative_path_for_dinosaur,
     collect_versioned_matches,
     file_content_version,
     is_curated_image_url,
@@ -108,7 +109,7 @@ def run_sync(*, dry_run: bool = False, overwrite: bool = False) -> int:
                     cleared += 1
                 continue
 
-            latest = latest_relative_path_for_dinosaur(
+            latest = catalog_relative_path_for_dinosaur(
                 dinosaur_name=row.name,
                 root=source_dir,
             )

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../theme/dino_card_theme.dart';
 
-/// Admin-only chip on tool cards to add the tool to the viewer's collection.
+/// Admin-only chip on catalog tool cards to add a new occurrence to inventory.
 class ToolCollectBadge extends StatelessWidget {
   const ToolCollectBadge({
     super.key,

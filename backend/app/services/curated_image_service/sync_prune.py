@@ -172,7 +172,11 @@ def prune_remote_managed_paths(
     sync_secret_env_var: str,
     dry_run: bool = False,
 ) -> dict[str, int]:
-    """Delete remote managed files that are not in ``keep_relative_paths``."""
+    """Delete remote managed files that are not in ``keep_relative_paths``.
+
+    Comparison is case-insensitive so local files like ``tyrannosaurus.png`` still
+    protect remote uploads stored under the canonical DB name ``Tyrannosaurus.png``.
+    """
     remote = list_remote_managed_paths(
         public_base_url=public_base_url,
         sync_secret=sync_secret,
@@ -181,7 +185,8 @@ def prune_remote_managed_paths(
         sync_secret_env_var=sync_secret_env_var,
         dry_run=dry_run,
     )
-    orphans = sorted(set(remote) - keep_relative_paths)
+    keep_lower = {path.lower() for path in keep_relative_paths}
+    orphans = sorted(path for path in set(remote) if path.lower() not in keep_lower)
     deleted = 0
     for relative in orphans:
         logger.info(

@@ -206,7 +206,7 @@ class _ToolTurnableCardState extends State<ToolTurnableCard> {
         context.watch<ToolCatalogController>().mode == ToolScreenMode.inventory;
     final paramsForEdit =
         widget.tool.params.isNotEmpty ? widget.tool.params : widget.tool.baseParams;
-    final showCollectBadge = isAdmin;
+    final showCollectBadge = isAdmin && !inventoryMode;
     final extension = ToolCardExtensions.forTool(widget.tool);
     final onInfo = extension?.infoHandler(context, widget.tool);
     final statsChild = extension?.buildDeployStats(context, widget.tool);

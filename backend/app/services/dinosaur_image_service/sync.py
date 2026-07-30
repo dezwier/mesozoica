@@ -169,12 +169,37 @@ def latest_relative_path_for_dinosaur(
     return f"{version.name}/{dinosaur_name}{path.suffix.lower()}", path
 
 
+def catalog_relative_path_for_dinosaur(
+    *,
+    dinosaur_name: str,
+    root: Path | None = None,
+) -> tuple[str, Path] | None:
+    """Relative path for catalog cards — always the Original version when present."""
+    from app.services.curated_image_service.versions import (
+        ORIGINAL_VERSION,
+        resolve_versioned_image_path,
+    )
+
+    source = root or resolve_local_source_dir_for_sync()
+    resolved = resolve_versioned_image_path(
+        source,
+        dinosaur_name,
+        version=ORIGINAL_VERSION,
+        case_insensitive=True,
+    )
+    if resolved is None:
+        return None
+    version, path = resolved
+    return f"{version.name}/{dinosaur_name}{path.suffix.lower()}", path
+
+
 __all__ = [
     "ALLOWED_IMAGE_EXTENSIONS",
     "CURATED_MEDIA_PATH",
     "DEFAULT_PRODUCTION_BASE_URL",
     "ImageFileMatch",
     "build_curated_image_url",
+    "catalog_relative_path_for_dinosaur",
     "collect_versioned_matches",
     "file_content_version",
     "is_allowed_image_filename",
