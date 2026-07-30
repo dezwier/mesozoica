@@ -65,7 +65,8 @@ class MapboxFieldMap extends StatefulWidget {
 
   final MapboxCameraCoordinator camera;
   final bool rotateWithHeading;
-  /// When false (catalog/profile/tools open), pause rotate overlay work.
+  /// When false (catalog/profile/tools open), freeze Mapbox work: pause
+  /// FollowPuck / location puck, hide markers, and skip rotate overlay ticks.
   final bool mapActive;
   final List<SiteSummary> sites;
   final SiteSummary? selectedSite;
@@ -398,6 +399,7 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
   }
 
   void _enterFollowPuck({bool animated = true}) {
+    if (!widget.mapActive) return;
     unawaited(MapboxViewportNative.disableIdleOnUserInteraction());
     setStateWithViewportAnimation(
       () => _viewport = _followPuckViewport(),
@@ -430,11 +432,16 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
 
   /// Belt-and-suspenders: if a tap still cancels FollowPuck, re-engage.
   void _scheduleFollowPuckReassert() {
-    if (!widget.rotateWithHeading || !_ready) return;
+    if (!widget.rotateWithHeading || !widget.mapActive || !_ready) return;
     unawaited(MapboxViewportNative.disableIdleOnUserInteraction());
     _followPuckReassertTimer?.cancel();
     _followPuckReassertTimer = Timer(const Duration(milliseconds: 50), () {
-      if (!mounted || !widget.rotateWithHeading || !_ready) return;
+      if (!mounted ||
+          !widget.rotateWithHeading ||
+          !widget.mapActive ||
+          !_ready) {
+        return;
+      }
       _enterFollowPuck(animated: false);
     });
   }
@@ -487,25 +494,48 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
     }
   }
 
-  /// Hide site / aerial / formation / rotate overlays while shell screens are
-  /// open over the map; restore when the map becomes active again.
+  /// Freeze Mapbox rendering work while shell screens are open (scrim backdrop
+  /// keeps the last frame), then restore when the map is active again.
+  ///
+  /// Hides site / aerial / formation / rotate overlays, cancels FollowPuck
+  /// tracking, and disables the location puck — the main GPU drains when the
+  /// map is only a dimmed backdrop.
   Future<void> _setMapOverlaysVisible(bool visible) async {
     if (!visible) {
+      _followPuckReassertTimer?.cancel();
       _setRotateOverlayTickerActive(false);
+      widget.camera.clearPendingFollow();
       if (mounted) {
-        setState(() => _visibleRotateSites = const []);
+        setState(() {
+          _visibleRotateSites = const [];
+          // Idle cancels FollowPuck / camera animations without flying away.
+          _viewport = const IdleViewportState();
+        });
       }
       widget.rotateCardCount?.value = 0;
+      final map = _map;
       await Future.wait([
         _annotations?.setRotateModePaused(true) ?? Future<void>.value(),
         _aerialReconAnnotations?.clear() ?? Future<void>.value(),
         _formationOverlay.clear(),
+        if (map != null)
+          map.location.updateSettings(
+            LocationComponentSettings(enabled: false),
+          ),
+        if (map != null) map.reduceMemoryUse(),
       ]);
       return;
     }
     if (!_ready) return;
+    await widget.camera.enableLocationPuck(
+      avatarImageUrl: widget.avatarImageUrl,
+    );
+    if (!mounted || !widget.mapActive) return;
+    if (widget.rotateWithHeading) {
+      _enterFollowPuck(animated: false);
+    }
     await _applyRotateMarkerMode(widget.rotateWithHeading);
-    if (!mounted) return;
+    if (!mounted || !widget.mapActive) return;
     _lastFormationSitesRevision = -1;
     await Future.wait([
       _syncAerialMission(),
