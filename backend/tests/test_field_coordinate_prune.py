@@ -9,12 +9,12 @@ from sqlmodel import Session, select
 
 from app.models.data_source import DATA_SOURCE_ARCHIVE, DATA_SOURCE_FIELD
 from app.models.site import Site
-from app.services.site_service.field_coordinate_filter import (
+from app.services.field_service.field_coordinate_filter import (
     CompositeCoordinateFilter,
     PolygonSetFilter,
     WaterExclusionFilter,
 )
-from app.services.site_service.field_coordinate_prune import prune_invalid_field_sites
+from app.services.field_service.field_coordinate_prune import prune_invalid_field_sites
 
 
 def _field_site(*, site_id: int, lat: float, lon: float) -> Site:
@@ -58,7 +58,7 @@ def test_prune_deletes_invalid_field_sites(session: Session, monkeypatch):
     session.commit()
 
     monkeypatch.setattr(
-        "app.services.site_service.field_coordinate_prune.build_osm_coordinate_filter",
+        "app.services.field_service.field_coordinate_prune.build_osm_coordinate_filter",
         _test_filter,
     )
 
@@ -86,7 +86,7 @@ def test_prune_dry_run_leaves_database_unchanged(session: Session, monkeypatch):
     session.commit()
 
     monkeypatch.setattr(
-        "app.services.site_service.field_coordinate_prune.build_osm_coordinate_filter",
+        "app.services.field_service.field_coordinate_prune.build_osm_coordinate_filter",
         _test_filter,
     )
 

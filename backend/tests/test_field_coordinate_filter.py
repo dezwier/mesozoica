@@ -8,8 +8,8 @@ from pathlib import Path
 import pytest
 from shapely.geometry import box
 
-from app.services.site_service.field_coordinate_enrich import CoordinateEnrichment, enrich_coordinate
-from app.services.site_service.field_coordinate_filter import (
+from app.services.field_service.field_coordinate_enrich import CoordinateEnrichment, enrich_coordinate
+from app.services.field_service.field_coordinate_filter import (
     CompositeCoordinateFilter,
     CoordinateSampleConfig,
     CoordinateSampler,
@@ -77,7 +77,7 @@ def test_load_land_polygon_filter_is_cached():
 
 def test_warm_coordinate_filter_cache_requires_osm_or_override(monkeypatch):
     monkeypatch.setattr(
-        "app.services.site_service.field_coordinate_filter.osm_coordinate_masks_available",
+        "app.services.field_service.field_coordinate_filter.osm_coordinate_masks_available",
         lambda: False,
     )
     clear_coordinate_filter_cache()
@@ -97,7 +97,7 @@ def test_build_coordinate_filter_allows_land_mask_override():
 
 def test_build_osm_coordinate_filter_requires_masks(monkeypatch):
     monkeypatch.setattr(
-        "app.services.site_service.field_coordinate_filter.osm_coordinate_masks_available",
+        "app.services.field_service.field_coordinate_filter.osm_coordinate_masks_available",
         lambda: False,
     )
     clear_coordinate_filter_cache()
@@ -106,7 +106,7 @@ def test_build_osm_coordinate_filter_requires_masks(monkeypatch):
 
 
 def test_resolve_coordinate_data_dir_falls_back_to_local_masks(monkeypatch):
-    from app.services.site_service.field_coordinate_filter import (
+    from app.services.field_service.field_coordinate_filter import (
         DEFAULT_DATA_DIR,
         resolve_coordinate_data_dir,
     )
@@ -114,7 +114,7 @@ def test_resolve_coordinate_data_dir_falls_back_to_local_masks(monkeypatch):
     monkeypatch.setenv("FIELD_COORDINATE_DATA_DIR", "/data")
     clear_coordinate_filter_cache()
     monkeypatch.setattr(
-        "app.services.site_service.field_coordinate_filter._osm_masks_available_at",
+        "app.services.field_service.field_coordinate_filter._osm_masks_available_at",
         lambda path: path == DEFAULT_DATA_DIR,
     )
     assert resolve_coordinate_data_dir() == DEFAULT_DATA_DIR
@@ -122,7 +122,7 @@ def test_resolve_coordinate_data_dir_falls_back_to_local_masks(monkeypatch):
 
 def test_enrich_coordinate_returns_structured_metadata(monkeypatch):
     monkeypatch.setattr(
-        "app.services.site_service.field_coordinate_enrich.lookup_country_state",
+        "app.services.field_service.field_coordinate_enrich.lookup_country_state",
         lambda lat, lon: ("US", "Montana"),
     )
 

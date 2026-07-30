@@ -33,11 +33,23 @@ from app.schemas.site import (
     SiteNearbyResponse,
     SiteSummary,
 )
+from app.services.field_service.field_data_purge import purge_all_field_data
+from app.services.field_service.field_ensure_background import schedule_field_site_ensure
+from app.services.field_service.field_ensure_queue import (
+    cell_key,
+    get_field_ensure_job,
+)
+from app.services.field_service.field_fossil_onboard import (
+    DiscoverFossilOnboardResult,
+    surface_fossil_summaries,
+)
+from app.services.field_service.field_generate import FieldSiteLazyConfig
+from app.services.field_service.field_site_logging import log_field_event, normalize_reason
+from app.services.field_service.field_survey_queue import get_field_survey_job as get_survey_job
 from app.services.site_service import (
     discover_site,
     enrich_site_rows_for_viewer,
     get_site_by_id,
-    get_survey_job,
     list_discoverable_sites_in_radius,
     list_site_dino_fossil_groups,
     list_site_dinosaurs,
@@ -50,18 +62,6 @@ from app.services.site_service import (
     survey_site,
 )
 from app.services.site_service.summary import SiteRow
-from app.services.site_service.field_fossil_onboard import (
-    DiscoverFossilOnboardResult,
-    surface_fossil_summaries,
-)
-from app.services.site_service.field_data_purge import purge_all_field_data
-from app.services.site_service.field_ensure_background import schedule_field_site_ensure
-from app.services.site_service.field_ensure_queue import (
-    cell_key,
-    get_field_ensure_job,
-)
-from app.services.site_service.field_generate import FieldSiteLazyConfig
-from app.services.site_service.field_site_logging import log_field_event, normalize_reason
 
 router = APIRouter(prefix="/sites", tags=["sites"])
 

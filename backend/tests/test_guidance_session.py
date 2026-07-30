@@ -23,7 +23,7 @@ from app.models.tool import Tool
 from app.models.tool_type import ToolType
 from app.models.user import User
 from app.models.user_tool import USER_TOOL_ACTION_OWNED, UserTool
-from app.services.site_service.discovery_params import resolve_site_discovery_params
+from app.services.site_common.discovery_params import resolve_site_discovery_params
 from app.services.tool_action_service.guidance_session import (
     start_guidance_session,
 )

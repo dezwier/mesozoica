@@ -21,14 +21,14 @@ from app.models.user_site import (
     UserSite,
 )
 from app.models.user import User
-from app.services.site_service.field_coordinate_filter import CoordinateSampler, LandPolygonFilter
-from app.services.site_service.field_generate import (
+from app.services.field_service.field_coordinate_filter import CoordinateSampler, LandPolygonFilter
+from app.services.field_service.field_generate import (
     FIELD_SITE_ID_START,
     FieldSiteLazyConfig,
     _next_field_site_id,
     ensure_field_sites_nearby,
 )
-from app.services.site_service.geo_utils import haversine_km
+from app.services.site_common.geo_utils import haversine_km
 
 
 def _archive_site(
@@ -209,7 +209,7 @@ def test_ensure_tops_up_when_sites_are_exhausted(session: Session, monkeypatch):
 def test_load_existing_field_coords_skips_exhausted(session: Session):
     from datetime import datetime, timezone
 
-    from app.services.site_service.field_generate import _load_existing_field_coords
+    from app.services.field_service.field_generate import _load_existing_field_coords
 
     center_lat, center_lon = 40.0, -100.0
     user = User(username="coord_user", email="coord@example.com", password="x")
@@ -283,7 +283,7 @@ def test_sites_nearby_api_is_read_only(client, session: Session, monkeypatch):
     session.commit()
 
     monkeypatch.setattr(
-        "app.services.site_service.field_generate.build_coordinate_sampler",
+        "app.services.field_service.field_generate.build_coordinate_sampler",
         lambda **kwargs: _test_coordinate_sampler(40.0, -100.0, radius_km=1.0),
     )
 
@@ -343,7 +343,7 @@ def test_field_ensure_api_enqueues_even_when_full(
 ):
     import logging
 
-    from app.services.site_service.field_site_logging import logger as field_site_logger
+    from app.services.field_service.field_site_logging import logger as field_site_logger
 
     field_site_logger.propagate = True
     site_type = _site_type(period="cretaceous", rock_type="sandstone")
@@ -415,7 +415,7 @@ def test_field_ensure_worker_noops_when_full(client, session: Session, monkeypat
     session.commit()
 
     monkeypatch.setattr(
-        "app.services.site_service.field_generate.build_coordinate_sampler",
+        "app.services.field_service.field_generate.build_coordinate_sampler",
         lambda **kwargs: _test_coordinate_sampler(center_lat, center_lon, radius_km=1.0),
     )
 
@@ -453,7 +453,7 @@ def test_field_ensure_worker_processes_job(client, session: Session, monkeypatch
     session.commit()
 
     monkeypatch.setattr(
-        "app.services.site_service.field_generate.build_coordinate_sampler",
+        "app.services.field_service.field_generate.build_coordinate_sampler",
         lambda **kwargs: _test_coordinate_sampler(40.0, -100.0, radius_km=1.0),
     )
 
@@ -481,7 +481,7 @@ def test_next_field_site_id_reads_postgresql_nextval_row(session: Session, monke
     from types import SimpleNamespace
 
     monkeypatch.setattr(
-        "app.services.site_service.field_generate.engine",
+        "app.services.field_service.field_generate.engine",
         SimpleNamespace(dialect=SimpleNamespace(name="postgresql")),
     )
 
@@ -531,11 +531,11 @@ def test_ensure_uses_fresh_ids_after_existing_field_site(
             return assigned[-1]
 
     monkeypatch.setattr(
-        "app.services.site_service.field_generate._FieldSiteIdAllocator",
+        "app.services.field_service.field_generate._FieldSiteIdAllocator",
         lambda session: _FakeAllocator(),
     )
     monkeypatch.setattr(
-        "app.services.site_service.field_generate.build_coordinate_sampler",
+        "app.services.field_service.field_generate.build_coordinate_sampler",
         lambda **kwargs: _test_coordinate_sampler(40.0, -100.0, radius_km=1.0),
     )
 

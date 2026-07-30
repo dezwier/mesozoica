@@ -13,24 +13,24 @@ from sqlmodel import Session
 from app.core.database import engine, run_migrations
 from app.models.field_ensure_job import FieldEnsureJob
 from app.models.field_survey_job import FieldSurveyJob
-from app.services.site_service.field_ensure_queue import (
+from app.services.field_service.field_ensure_queue import (
     claim_next_job,
     count_running_jobs,
     mark_job_done,
     mark_job_failed,
     recover_stale_running_jobs,
 )
-from app.services.site_service.field_coordinate_filter import (
+from app.services.field_service.field_coordinate_filter import (
     ensure_osm_coordinate_masks_on_disk,
     warm_coordinate_filter_cache,
 )
-from app.services.site_service.field_fossil_generate import ensure_field_fossils_for_site
-from app.services.site_service.field_generate import (
+from app.services.field_service.field_fossil_generate import ensure_field_fossils_for_site
+from app.services.field_service.field_generate import (
     FieldSiteLazyConfig,
     ensure_field_sites_nearby,
 )
-from app.services.site_service.field_site_logging import log_field_event, normalize_reason
-from app.services.site_service.field_survey_queue import (
+from app.services.field_service.field_site_logging import log_field_event, normalize_reason
+from app.services.field_service.field_survey_queue import (
     claim_next_survey_job,
     count_running_survey_jobs,
     mark_survey_job_done,
@@ -127,12 +127,12 @@ def process_one_survey_job(*, worker_id: str) -> bool:
             result = ensure_field_fossils_for_site(session, site_id=job.site_id)
             fossil_count = result.generated
             if result.skipped:
-                from app.services.site_service.field_fossil_generate import (
+                from app.services.field_service.field_fossil_generate import (
                     count_field_fossils_for_site,
                 )
 
                 fossil_count = count_field_fossils_for_site(session, job.site_id)
-            from app.services.site_service.field_fossil_onboard import (
+            from app.services.field_service.field_fossil_onboard import (
                 grant_surface_fossils_to_site_discoverers,
             )
 

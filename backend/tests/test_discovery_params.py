@@ -9,7 +9,7 @@ from sqlmodel import Session
 from app.core.game_config import get_game_config
 from app.models.site import Site
 from app.models.site_type import SiteType
-from app.services.site_service.discovery_params import (
+from app.services.site_common.discovery_params import (
     ResolvedSiteDiscoveryParams,
     resolve_site_discovery_params,
 )
@@ -64,7 +64,7 @@ def test_resolve_site_discovery_params_boost_hook(
         )
 
     monkeypatch.setattr(
-        "app.services.site_service.discovery_params.resolve_site_discovery_params",
+        "app.services.site_common.discovery_params.resolve_site_discovery_params",
         boosted,
     )
     from app.services.site_service import discovery_params as mod

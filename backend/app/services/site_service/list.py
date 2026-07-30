@@ -16,7 +16,7 @@ from app.models.site import HOW_DISCOVERED_VALUES, Site
 from app.models.site_type import SiteType
 from app.models.user_site import USER_SITE_ROLE_DISCOVERER, UserSite, role_to_status
 from app.services.data_source_filter import normalize_data_source
-from app.services.site_service.geo_utils import haversine_km
+from app.services.site_common.geo_utils import haversine_km
 from app.services.site_service.status_join import (
     latest_user_site_join_condition,
     latest_user_site_subquery,

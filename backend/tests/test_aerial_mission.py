@@ -572,7 +572,7 @@ def test_point_at_fraction_matches_discovery_timing():
     length = route_length_km(route)
     mid = point_at_fraction(route, 0.5)
     # Midpoint should be roughly halfway along arc.
-    from app.services.site_service.geo_utils import haversine_km
+    from app.services.site_common.geo_utils import haversine_km
 
     along = haversine_km(route[0].lat, route[0].lon, mid.lat, mid.lon)
     assert abs(along / length - 0.5) < 0.05

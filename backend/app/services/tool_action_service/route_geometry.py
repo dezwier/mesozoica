@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from app.services.site_service.geo_utils import haversine_km
+from app.services.site_common.geo_utils import haversine_km
 
 
 @dataclass(frozen=True)

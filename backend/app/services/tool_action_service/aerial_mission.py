@@ -34,12 +34,12 @@ from app.models.tool_mission_event import (
 from app.models.tool_type import ToolType
 from app.models.user_site import USER_SITE_ROLE_DISCOVERER, UserSite
 from app.models.user_tool import USER_TOOL_ACTION_DEPLOYED, UserTool
-from app.services.site_service.field_ensure_queue import (
+from app.services.field_service.field_ensure_queue import (
     STATUS_PENDING,
     STATUS_RUNNING,
     enqueue_field_site_ensure,
 )
-from app.services.site_service.geo_utils import haversine_km
+from app.services.site_common.geo_utils import haversine_km
 from app.services.tool_action_service.aerial_mission_kinds import (
     config_for_action_key,
     is_aerial_action_key,

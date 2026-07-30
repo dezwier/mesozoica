@@ -21,15 +21,15 @@ from app.models.user_site import (
     UserSite,
 )
 from app.services.push_service import send_site_discovered_push
-from app.services.site_service.field_coordinate_enrich import (
+from app.services.field_service.field_coordinate_enrich import (
     apply_site_discovery_enrichment,
 )
-from app.services.site_service.field_fossil_onboard import (
+from app.services.field_service.field_fossil_onboard import (
     DiscoverFossilOnboardResult,
     ensure_fossils_on_site_discovery,
 )
-from app.services.site_service.geo_utils import haversine_km
-from app.services.site_service.labels import site_display_title
+from app.services.site_common.geo_utils import haversine_km
+from app.services.site_common.labels import site_display_title
 from app.services.site_service.list import get_site_by_id
 
 

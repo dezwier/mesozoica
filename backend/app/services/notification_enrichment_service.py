@@ -8,7 +8,7 @@ from app.models.site import Site
 from app.models.user import User
 from app.models.user_notification import UserNotification
 from app.schemas.notification import UserNotificationResponse
-from app.services.site_service.labels import site_display_title
+from app.services.site_common.labels import site_display_title
 
 
 def notifications_to_response(

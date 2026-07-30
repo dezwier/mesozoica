@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
-from app.services.site_service.field_generate import FIELD_SITE_ID_START
-from app.services.site_service.labels import site_display_title
+from app.services.field_service.field_generate import FIELD_SITE_ID_START
+from app.services.site_common.labels import site_display_title
 
 
 def test_site_display_title_prefers_formation():

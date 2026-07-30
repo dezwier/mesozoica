@@ -6,7 +6,7 @@ import random
 from collections import Counter
 
 from app.core.game_config import DinoCountThreshold, get_game_config
-from app.services.site_service.field_fossil_generate import (
+from app.services.field_service.field_fossil_generate import (
     _sample_distinct_subcategories,
     clamp_odd,
     dino_count_from_score,

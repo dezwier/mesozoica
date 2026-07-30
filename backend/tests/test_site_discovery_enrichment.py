@@ -16,7 +16,7 @@ from app.models.site import (
 )
 from app.models.user import User
 from app.services.site_service.discover import discover_site
-from app.services.site_service.field_coordinate_enrich import (
+from app.services.field_service.field_coordinate_enrich import (
     CoordinateEnrichment,
     apply_site_discovery_enrichment,
 )
@@ -56,7 +56,7 @@ def _user(session: Session, *, username: str = "walker") -> User:
 def test_apply_site_discovery_enrichment_fills_geo_and_how(session: Session, monkeypatch):
     site = _field_site(session)
     monkeypatch.setattr(
-        "app.services.site_service.field_coordinate_enrich.enrich_coordinate",
+        "app.services.field_service.field_coordinate_enrich.enrich_coordinate",
         lambda lat, lon: CoordinateEnrichment(country_code="US", state="Montana"),
     )
 
@@ -86,7 +86,7 @@ def test_apply_site_discovery_enrichment_is_idempotent(session: Session, monkeyp
         return CoordinateEnrichment(country_code="US", state="Montana")
 
     monkeypatch.setattr(
-        "app.services.site_service.field_coordinate_enrich.enrich_coordinate",
+        "app.services.field_service.field_coordinate_enrich.enrich_coordinate",
         _enrich,
     )
 
@@ -106,7 +106,7 @@ def test_discover_site_sets_walk_and_enriches(session: Session, monkeypatch):
     site = _field_site(session)
     user = _user(session)
     monkeypatch.setattr(
-        "app.services.site_service.field_coordinate_enrich.enrich_coordinate",
+        "app.services.field_service.field_coordinate_enrich.enrich_coordinate",
         lambda lat, lon: CoordinateEnrichment(country_code="US", state="Kansas"),
     )
     monkeypatch.setattr(
@@ -180,7 +180,7 @@ def test_aerial_discover_sets_aerial_recon(session: Session, monkeypatch):
     session.refresh(mission)
 
     monkeypatch.setattr(
-        "app.services.site_service.field_coordinate_enrich.enrich_coordinate",
+        "app.services.field_service.field_coordinate_enrich.enrich_coordinate",
         lambda lat, lon: CoordinateEnrichment(country_code="US", state="Nebraska"),
     )
     monkeypatch.setattr(
@@ -259,7 +259,7 @@ def test_aerial_discover_sets_aerial_scout(session: Session, monkeypatch):
     session.refresh(mission)
 
     monkeypatch.setattr(
-        "app.services.site_service.field_coordinate_enrich.enrich_coordinate",
+        "app.services.field_service.field_coordinate_enrich.enrich_coordinate",
         lambda lat, lon: CoordinateEnrichment(country_code="US", state="Nebraska"),
     )
     monkeypatch.setattr(

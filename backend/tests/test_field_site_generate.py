@@ -13,12 +13,12 @@ from sqlmodel import Session, col, select
 from app.models.data_source import DATA_SOURCE_ARCHIVE, DATA_SOURCE_FIELD
 from app.models.site import Site
 from app.models.site_type import SiteType
-from app.services.site_service.field_coordinate_filter import (
+from app.services.field_service.field_coordinate_filter import (
     CoordinateSampleConfig,
     CoordinateSampler,
     LandPolygonFilter,
 )
-from app.services.site_service.field_distributions import (
+from app.services.field_service.field_distributions import (
     ArchiveSiteRef,
     DistributionWeights,
     blend_distributions,
@@ -28,7 +28,7 @@ from app.services.site_service.field_distributions import (
     sample_pair,
 )
 from app.services.site_service.summary import site_row_to_summary
-from app.services.site_service.field_generate import (
+from app.services.field_service.field_generate import (
     FIELD_SITE_ID_START,
     FieldSiteGenerateConfig,
     generate_field_sites,

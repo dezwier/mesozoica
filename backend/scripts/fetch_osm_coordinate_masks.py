@@ -12,7 +12,7 @@ from urllib.request import urlretrieve
 
 from shapely.geometry.base import BaseGeometry
 
-from app.services.site_service.field_coordinate_geodata import (
+from app.services.field_service.field_coordinate_geodata import (
     flatten_polygons,
     read_shapefile_polygons,
     write_shapefile_polygons,

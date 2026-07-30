@@ -21,7 +21,7 @@ from app.models.tool_mission_event import ToolMissionEvent
 from app.models.user import User
 from app.models.user_fossil import USER_FOSSIL_ROLE_DISCOVERER, UserFossil
 from app.models.user_site import USER_SITE_ROLE_DISCOVERER, UserSite
-from app.services.site_service.field_data_purge import purge_all_field_data
+from app.services.field_service.field_data_purge import purge_all_field_data
 
 
 def _auth_headers(session: Session, *, username: str, is_admin: bool = False):

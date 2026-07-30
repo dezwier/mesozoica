@@ -19,16 +19,16 @@ from app.models.user import User
 from app.models.user_fossil import USER_FOSSIL_ROLE_DISCOVERER, UserFossil
 from app.models.user_site import USER_SITE_ROLE_DISCOVERER, UserSite
 from app.services.site_service.discover import discover_site
-from app.services.site_service.field_fossil_generate import (
+from app.services.field_service.field_fossil_generate import (
     FIELD_FOSSIL_ID_START,
     count_field_fossils_for_site,
     ensure_field_fossils_for_site,
     sample_depth_cm,
 )
-from app.services.site_service.field_fossil_onboard import (
+from app.services.field_service.field_fossil_onboard import (
     ensure_fossils_on_site_discovery,
 )
-from app.services.site_service.field_survey_queue import (
+from app.services.field_service.field_survey_queue import (
     STATUS_PENDING,
     claim_next_survey_job,
     enqueue_field_survey,
@@ -187,7 +187,7 @@ def test_ensure_field_fossils_zero_dino_stays_done(session: Session, monkeypatch
         defaults = real_cfg.defaults
 
     monkeypatch.setattr(
-        "app.services.site_service.field_fossil_generate._fossil_gen",
+        "app.services.field_service.field_fossil_generate._fossil_gen",
         lambda: _ZeroNoiseCfg(),
     )
 
@@ -202,7 +202,7 @@ def test_ensure_field_fossils_zero_dino_stays_done(session: Session, monkeypatch
     assert not result.skipped
     assert result.generated == 0
 
-    from app.services.site_service.field_survey_queue import (
+    from app.services.field_service.field_survey_queue import (
         STATUS_DONE,
         mark_survey_job_done,
     )

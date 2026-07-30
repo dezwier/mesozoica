@@ -16,7 +16,7 @@ from app.models.guidance_session import (
 )
 from app.models.tool_type import ToolType
 from app.models.user_tool import USER_TOOL_ACTION_DEPLOYED, UserTool
-from app.services.site_service.geo_utils import haversine_km
+from app.services.site_common.geo_utils import haversine_km
 from app.services.site_service.nearby import list_discoverable_sites_in_radius
 from app.services.tool_action_service.guidance_kinds import (
     config_for_action_key,

@@ -11,11 +11,11 @@ from __future__ import annotations
 from sqlmodel import Session
 
 from app.core.database import engine
-from app.services.site_service.field_coordinate_filter import (
+from app.services.field_service.field_coordinate_filter import (
     ensure_osm_coordinate_masks_on_disk,
     warm_coordinate_filter_cache,
 )
-from app.services.site_service.field_coordinate_prune import (
+from app.services.field_service.field_coordinate_prune import (
     field_coordinate_prune_exit_code,
     prune_invalid_field_sites,
 )
