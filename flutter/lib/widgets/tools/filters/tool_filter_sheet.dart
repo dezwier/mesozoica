@@ -10,12 +10,14 @@ class ToolFilterSheet extends StatefulWidget {
     super.key,
     required this.initialFilters,
     required this.onApply,
+    this.mode = ToolScreenMode.inventory,
     this.catalogTotal,
     this.availableCategories = const [],
   });
 
   final ToolCatalogFilters initialFilters;
   final ValueChanged<ToolCatalogFilters> onApply;
+  final ToolScreenMode mode;
   final int? catalogTotal;
   final List<ToolCategoryOption> availableCategories;
 
@@ -23,6 +25,7 @@ class ToolFilterSheet extends StatefulWidget {
     BuildContext context, {
     required ToolCatalogFilters initialFilters,
     required ValueChanged<ToolCatalogFilters> onApply,
+    ToolScreenMode mode = ToolScreenMode.inventory,
     int? catalogTotal,
     List<ToolCategoryOption> availableCategories = const [],
   }) {
@@ -38,6 +41,7 @@ class ToolFilterSheet extends StatefulWidget {
       builder: (_) => ToolFilterSheet(
         initialFilters: initialFilters,
         onApply: onApply,
+        mode: mode,
         catalogTotal: catalogTotal,
         availableCategories: availableCategories,
       ),
@@ -122,7 +126,7 @@ class _ToolFilterSheetState extends State<ToolFilterSheet> {
   void _clearPending() {
     setState(() {
       _pendingSearch = '';
-      _pendingSort = ToolCatalogSort.category;
+      _pendingSort = ToolCatalogSort.defaultFor(widget.mode);
       _pendingCategories = {};
       _searchController.clear();
     });
@@ -201,7 +205,7 @@ class _ToolFilterSheetState extends State<ToolFilterSheet> {
                     overflow: TextOverflow.ellipsis,
                   ),
                   entries: [
-                    for (final sort in ToolCatalogSort.values)
+                    for (final sort in ToolCatalogSort.optionsFor(widget.mode))
                       DensePopupEntry(
                         value: sort,
                         child: Text(
@@ -259,7 +263,7 @@ class _ToolFilterSheetState extends State<ToolFilterSheet> {
               Row(
                 children: [
                   TextButton(
-                    onPressed: _buildPendingFilters().hasActiveFilters
+                    onPressed: _buildPendingFilters().hasActiveFiltersFor(widget.mode)
                         ? _clearPending
                         : null,
                     child: const Text('Clear'),

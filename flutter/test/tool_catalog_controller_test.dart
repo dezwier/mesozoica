@@ -41,7 +41,7 @@ void main() {
     });
   }
 
-  test('load requests category sort with seed by default', () async {
+  test('load requests spawn_date sort by default in inventory', () async {
     Uri? capturedUri;
     final service = ToolService(
       client: _mockClient(onToolsRequest: (uri) => capturedUri = uri),
@@ -51,8 +51,8 @@ void main() {
     await controller.load();
 
     expect(capturedUri, isNotNull);
-    expect(capturedUri!.queryParameters['sort'], 'category');
-    expect(capturedUri!.queryParameters['seed'], isNotEmpty);
+    expect(capturedUri!.queryParameters['sort'], 'spawn_date');
+    expect(capturedUri!.queryParameters.containsKey('seed'), isFalse);
     expect(capturedUri!.queryParameters.containsKey('q'), isFalse);
     expect(controller.hasActiveFilters, isFalse);
     expect(controller.availableCategories, hasLength(2));

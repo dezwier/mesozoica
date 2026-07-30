@@ -27,6 +27,7 @@ class ToolScreenState extends State<ToolScreen> {
     ToolFilterSheet.show(
       context,
       initialFilters: catalog.filters,
+      mode: catalog.mode,
       catalogTotal: catalog.total > 0 ? catalog.total : null,
       availableCategories: catalog.availableCategories,
       onApply: catalog.applyFilters,

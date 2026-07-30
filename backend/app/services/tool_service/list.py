@@ -20,7 +20,7 @@ from app.services.tool_image_service.sync import CURATED_MEDIA_PATH
 from app.services.tool_service.collect import ownership_levels_for_tool_types
 from app.services.tool_service.params import base_params_for_tool_type, effective_params_for_instance
 
-SortOption = Literal["name", "random", "category"]
+SortOption = Literal["name", "random", "category", "spawn_date"]
 ListMode = Literal["inventory", "catalog"]
 _MAX_SEED_LEN = 64
 _UNNUMBERED_SEQ = 999_999
@@ -131,7 +131,9 @@ def _list_catalog_tools(
         select(sqlmodel_func.count()).select_from(filtered.subquery())
     ).one()
 
-    if sort == "random":
+    effective_sort: SortOption = "category" if sort == "spawn_date" else sort
+
+    if effective_sort == "random":
         normalized_seed = _require_seed(seed)
         rows = _list_tools_random(
             session,
@@ -140,7 +142,7 @@ def _list_catalog_tools(
             offset=capped_offset,
             limit=capped_limit,
         )
-    elif sort == "category":
+    elif effective_sort == "category":
         normalized_seed = _require_seed(seed)
         rows = _list_tools_by_category(
             session,
@@ -249,6 +251,14 @@ def _list_inventory_tools(
             )
         )
         rows = rows[capped_offset : capped_offset + capped_limit]
+    elif sort == "spawn_date":
+        rows = list(
+            session.exec(
+                stmt.order_by(col(Tool.spawn_date).desc(), col(Tool.id).desc())
+                .offset(capped_offset)
+                .limit(capped_limit)
+            ).all()
+        )
     else:
         rows = list(
             session.exec(

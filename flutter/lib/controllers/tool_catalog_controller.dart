@@ -8,24 +8,41 @@ import '../utils/curated_image_url.dart';
 import 'catalog_controller.dart';
 
 enum ToolCatalogSort {
+  spawnDate,
   category,
   name;
 
   String get label => switch (this) {
+    ToolCatalogSort.spawnDate => 'Obtain date',
     ToolCatalogSort.category => 'Category',
     ToolCatalogSort.name => 'A–Z',
   };
 
   String get apiValue => switch (this) {
+    ToolCatalogSort.spawnDate => 'spawn_date',
     ToolCatalogSort.category => 'category',
     ToolCatalogSort.name => 'name',
   };
 
   static ToolCatalogSort fromApiValue(String value) {
     return switch (value) {
+      'spawn_date' => ToolCatalogSort.spawnDate,
       'name' => ToolCatalogSort.name,
       _ => ToolCatalogSort.category,
     };
+  }
+
+  static ToolCatalogSort defaultFor(ToolScreenMode mode) {
+    return mode == ToolScreenMode.inventory
+        ? ToolCatalogSort.spawnDate
+        : ToolCatalogSort.category;
+  }
+
+  static List<ToolCatalogSort> optionsFor(ToolScreenMode mode) {
+    if (mode == ToolScreenMode.inventory) {
+      return ToolCatalogSort.values;
+    }
+    return const [ToolCatalogSort.category, ToolCatalogSort.name];
   }
 }
 
@@ -34,7 +51,7 @@ enum ToolScreenMode { inventory, catalog }
 class ToolCatalogFilters {
   const ToolCatalogFilters({
     this.searchQuery = '',
-    this.sort = ToolCatalogSort.category,
+    this.sort = ToolCatalogSort.spawnDate,
     this.categories = const {},
     this.showAll = false,
   });
@@ -44,9 +61,9 @@ class ToolCatalogFilters {
   final Set<String> categories;
   final bool showAll;
 
-  bool get hasActiveFilters =>
+  bool hasActiveFiltersFor(ToolScreenMode mode) =>
       searchQuery.trim().isNotEmpty ||
-      sort != ToolCatalogSort.category ||
+      sort != ToolCatalogSort.defaultFor(mode) ||
       categories.isNotEmpty;
 
   ToolCatalogFilters copyWith({
@@ -61,6 +78,10 @@ class ToolCatalogFilters {
       categories: categories ?? this.categories,
       showAll: showAll ?? this.showAll,
     );
+  }
+
+  static ToolCatalogFilters defaultsFor(ToolScreenMode mode) {
+    return ToolCatalogFilters(sort: ToolCatalogSort.defaultFor(mode));
   }
 
   static const defaults = ToolCatalogFilters();
@@ -87,14 +108,16 @@ class ToolCatalogController extends CatalogController<ToolSummary> {
   ToolCatalogFilters get filters => _filters;
   ToolScreenMode get mode => _mode;
   @override
-  bool get hasActiveFilters => _filters.hasActiveFilters;
+  bool get hasActiveFilters => _filters.hasActiveFiltersFor(_mode);
   bool get showAll => _filters.showAll;
   String? get chromeImageUrl => _chromeImageUrl;
 
   void setMode(ToolScreenMode mode) {
     if (_mode == mode) return;
     _mode = mode;
-    _filters = _filters.copyWith(showAll: mode == ToolScreenMode.catalog);
+    _filters = ToolCatalogFilters.defaultsFor(mode).copyWith(
+      showAll: mode == ToolScreenMode.catalog,
+    );
     _availableCategories = [];
     _categoriesShowAll = null;
     load(force: true);
@@ -224,7 +247,7 @@ class ToolCatalogController extends CatalogController<ToolSummary> {
   }
 
   Future<void> clearFilters() async {
-    _filters = ToolCatalogFilters.defaults.copyWith(
+    _filters = ToolCatalogFilters.defaultsFor(_mode).copyWith(
       showAll: _mode == ToolScreenMode.catalog,
     );
     _availableCategories = [];

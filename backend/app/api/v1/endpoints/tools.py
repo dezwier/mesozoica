@@ -73,7 +73,7 @@ def get_tools(
     current_user: User | None = Depends(get_optional_current_user),
     limit: int = Query(default=200, ge=1, le=500),
     offset: int = Query(default=0, ge=0),
-    sort: str = Query(default="category"),
+    sort: str = Query(default="spawn_date"),
     seed: str | None = Query(default=None),
     q: str | None = Query(default=None),
     category: list[str] | None = Query(default=None),
@@ -81,8 +81,10 @@ def get_tools(
     show_all: bool = Query(default=False),
     mode: ListMode = Query(default="inventory"),
 ) -> ToolListResponse:
-    if sort not in ("name", "random", "category"):
-        raise ValidationError("sort must be one of: name, random, category")
+    if sort not in ("name", "random", "category", "spawn_date"):
+        raise ValidationError(
+            "sort must be one of: name, random, category, spawn_date"
+        )
     rows, total = list_tools(
         session,
         limit=limit,

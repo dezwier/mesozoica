@@ -95,6 +95,31 @@ def test_list_tools_owned_only(client, session):
     assert item["spawn_date"] is not None
 
 
+def test_list_tools_inventory_sort_spawn_date_desc(client, session):
+    from datetime import datetime, timedelta, timezone
+
+    older_type = _seed_tool(session, name="Older Tool")
+    newer_type = _seed_tool(session, name="Newer Tool")
+    user = _user(session)
+    older = _grant(session, user_id=int(user.id), tool_id=int(older_type.id))
+    newer = _grant(session, user_id=int(user.id), tool_id=int(newer_type.id))
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    older.spawn_date = now - timedelta(days=2)
+    newer.spawn_date = now - timedelta(hours=1)
+    session.add(older)
+    session.add(newer)
+    session.commit()
+
+    response = client.get(
+        "/api/v1/tools",
+        params={"sort": "spawn_date", "mode": "inventory"},
+        headers=_auth_headers(user),
+    )
+    assert response.status_code == 200
+    names = [item["name"] for item in response.json()["items"]]
+    assert names == ["Newer Tool", "Older Tool"]
+
+
 def test_list_tools_catalog_allows_non_admin(client, session):
     owned = _seed_tool(session, name="Orbit Survey")
     other = _seed_tool(session, name="Geo Hammer")
