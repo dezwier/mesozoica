@@ -42,7 +42,9 @@ If `meta.yaml` already has a `prompt`, that template is reused. Missing prompt/`
 make sync-tool-images
 ```
 
-Dry run (preview matches, no upload or DB changes):
+Sync also uploads each version’s `meta.yaml` and deletes remote files that are not present locally (for example old `v1/` folders after a rename).
+
+Dry run (preview matches, meta, and prune — no upload, delete, or DB changes):
 
 ```bash
 make sync-tool-images CRON_EXTRA='--dry-run'

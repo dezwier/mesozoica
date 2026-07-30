@@ -91,7 +91,8 @@ make run-tool-image-generate CRON_EXTRA='--tools "Geo Hammer" "Field Codex" --dr
 # Local tool image generation (no railway run wrapper; uses backend/.env)
 make run-tool-image-generate-local CRON_EXTRA='--max-items 1 --tools "Geo Hammer"'
 
-# Upload curated images to Railway volume + DB (separate from generation)
+# Upload curated images to Railway volume + DB (separate from generation).
+# Also uploads version meta.yaml and deletes remote files absent locally.
 make sync-dinosaur-images
 make sync-fossil-images
 make sync-site-type-images

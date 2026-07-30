@@ -13,6 +13,7 @@ from app.core.database import engine
 from app.crons.railway_guard import require_railway_database
 from app.models.tool_type import ToolType
 from app.services.curated_image_service.common import needs_curated_image_resync
+from app.services.curated_image_service.sync_prune import sync_meta_and_prune_remote
 from app.services.curated_image_service.versions import load_image_versions
 from app.services.tool_image_service.sync import (
     CURATED_MEDIA_PATH,
@@ -181,6 +182,17 @@ def run_sync(*, dry_run: bool = False, overwrite: bool = False) -> int:
             skipped,
             len(unmatched_files),
         )
+
+    sync_meta_and_prune_remote(
+        root=source_dir,
+        public_base_url=public_base_url,
+        sync_secret=sync_secret,
+        admin_upload_path="/api/v1/admin/tool-images",
+        sync_header_name="X-Tool-Image-Sync-Key",
+        sync_secret_env_var="TOOL_IMAGE_SYNC_SECRET",
+        upload_file=upload_file_to_railway,
+        dry_run=dry_run,
+    )
 
     return 0
 

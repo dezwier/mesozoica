@@ -1,18 +1,17 @@
-"""Admin upload endpoint for curated dinosaur card images."""
+"""Admin upload/list/delete endpoint for curated dinosaur card images."""
 
 from __future__ import annotations
 
-import secrets
-from pathlib import Path
-
-from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
+from fastapi import APIRouter, Depends, Header, Request
 from fastapi.responses import Response
 
 from app.core.config import settings
-from app.services.curated_image_service.versions import safe_versioned_relative_path
-from app.services.dinosaur_image_service.sync import (
-    ALLOWED_IMAGE_EXTENSIONS,
-    is_allowed_image_filename,
+from app.services.curated_image_service.admin_files import (
+    CuratedImageListResponse,
+    handle_delete,
+    handle_list,
+    handle_upload,
+    require_sync_secret,
 )
 
 router = APIRouter(prefix="/admin/dinosaur-images", tags=["admin"])
@@ -21,39 +20,19 @@ router = APIRouter(prefix="/admin/dinosaur-images", tags=["admin"])
 def _require_sync_secret(
     x_dinosaur_image_sync_key: str | None = Header(default=None),
 ) -> None:
-    expected = settings.dinosaur_image_sync_secret.strip()
-    if not expected:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Dinosaur image sync is not configured on this server.",
-        )
-    provided = (x_dinosaur_image_sync_key or "").strip()
-    if not provided or not secrets.compare_digest(provided, expected):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid dinosaur image sync key.",
-        )
+    require_sync_secret(
+        configured_secret=settings.dinosaur_image_sync_secret,
+        provided_header=x_dinosaur_image_sync_key,
+        unavailable_detail="Dinosaur image sync is not configured on this server.",
+        invalid_detail="Invalid dinosaur image sync key.",
+    )
 
 
-def _safe_relative_path(filename: str) -> str:
-    if "/" not in filename and "\\" not in filename:
-        name = Path(filename).name
-        if name != filename or not is_allowed_image_filename(name):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=(
-                    f"Invalid image filename. Allowed extensions: "
-                    f"{sorted(ALLOWED_IMAGE_EXTENSIONS)}"
-                ),
-            )
-        return name
-    try:
-        return safe_versioned_relative_path(filename)
-    except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(exc),
-        ) from exc
+@router.get("", response_model=CuratedImageListResponse)
+def list_dinosaur_images(
+    _: None = Depends(_require_sync_secret),
+) -> CuratedImageListResponse:
+    return handle_list(target_dir=settings.resolved_dinosaur_images_dir)
 
 
 @router.put("/{filepath:path}")
@@ -62,17 +41,19 @@ async def upload_dinosaur_image(
     request: Request,
     _: None = Depends(_require_sync_secret),
 ) -> Response:
-    body = await request.body()
-    safe_rel = _safe_relative_path(filepath)
-    if not body:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Image body must not be empty.",
-        )
+    return await handle_upload(
+        filepath=filepath,
+        request=request,
+        target_dir=settings.resolved_dinosaur_images_dir,
+    )
 
-    target_dir = settings.resolved_dinosaur_images_dir
-    target_path = target_dir / safe_rel
-    target_path.parent.mkdir(parents=True, exist_ok=True)
-    target_path.write_bytes(body)
 
-    return Response(status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{filepath:path}")
+def delete_dinosaur_image(
+    filepath: str,
+    _: None = Depends(_require_sync_secret),
+) -> Response:
+    return handle_delete(
+        filepath=filepath,
+        target_dir=settings.resolved_dinosaur_images_dir,
+    )

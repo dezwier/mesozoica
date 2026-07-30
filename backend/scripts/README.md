@@ -81,7 +81,7 @@ python -m scripts.sync_fossil_images --dry-run
 
 | Flag | Effect |
 |------|--------|
-| `--dry-run` | Log what would sync; skip uploads and database updates |
+| `--dry-run` | Log what would sync/prune; skip uploads, remote deletes, and database updates |
 | `--overwrite` | Force re-upload every matched image, even when content is unchanged |
 
 ## Environment
@@ -126,7 +126,7 @@ ls images/dinosaurs/
 # 2. Preview matches
 make sync-dinosaur-images CRON_EXTRA='--dry-run'
 
-# 3. Upload to production
+# 3. Upload to production (also syncs meta.yaml and deletes remote orphans)
 make sync-dinosaur-images
 
 # Re-upload changed images
