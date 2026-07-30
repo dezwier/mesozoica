@@ -5,6 +5,7 @@ import '../../theme/dino_card_theme.dart';
 import '../common/chrome_action_button.dart';
 import 'card_back_backdrop.dart';
 import 'card_section_panel.dart';
+import 'occurrence_id_badge.dart';
 import 'tool_card_header.dart';
 import 'tool_card_image.dart';
 
@@ -17,7 +18,6 @@ class ToolCardBack extends StatelessWidget {
     this.onAction,
     this.onInfo,
     this.onEditParams,
-    this.showInstanceId = false,
     this.showActionButtons = true,
     this.statsChild,
     this.ongoingChild,
@@ -29,8 +29,6 @@ class ToolCardBack extends StatelessWidget {
   final VoidCallback? onAction;
   final VoidCallback? onInfo;
   final VoidCallback? onEditParams;
-  /// Inventory-only: show the owned tool instance id prefix in the subtitle.
-  final bool showInstanceId;
   final bool showActionButtons;
 
   /// Replaces the Rarity panel when non-null (e.g. deploy stats).
@@ -68,11 +66,15 @@ class ToolCardBack extends StatelessWidget {
               subtitleFontSize: subtitleFontSize,
               centered: true,
               overlayOnImage: true,
-              subtitleOverride: tool.inventoryBackSubtitle(
-                includeInstanceId: showInstanceId && tool.isOwned,
-              ),
+              subtitleOverride: tool.inventoryBackSubtitle(),
             ),
           ),
+          if (tool.isToolInstance)
+            Positioned(
+              top: 14,
+              right: 14,
+              child: OccurrenceIdBadge(label: tool.displayOccurrenceNumber),
+            ),
           Positioned(
             left: 18,
             right: 18,

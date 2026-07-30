@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../models/tool.dart';
 import '../../theme/dino_card_theme.dart';
+import 'occurrence_id_badge.dart';
 import 'tool_card_header.dart';
 import 'tool_card_image.dart';
 import 'tool_collect_badge.dart';
@@ -34,6 +35,7 @@ class ToolCardFront extends StatelessWidget {
     final description = tool.description.trim().isNotEmpty
         ? tool.description.trim()
         : '—';
+    final showIdBadge = tool.isToolInstance;
 
     return AspectRatio(
       aspectRatio: DinoCardTheme.cardAspectRatio,
@@ -55,13 +57,23 @@ class ToolCardFront extends StatelessWidget {
               ),
             ),
           ),
-          if (showCollectBadge)
+          if (showIdBadge || showCollectBadge)
             Positioned(
               top: 14,
               right: 14,
-              child: ToolCollectBadge(
-                onPressed: onCollect,
-                busy: collectBusy,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (showIdBadge)
+                    OccurrenceIdBadge(label: tool.displayOccurrenceNumber),
+                  if (showIdBadge && showCollectBadge) const SizedBox(height: 6),
+                  if (showCollectBadge)
+                    ToolCollectBadge(
+                      onPressed: onCollect,
+                      busy: collectBusy,
+                    ),
+                ],
               ),
             ),
           Positioned(

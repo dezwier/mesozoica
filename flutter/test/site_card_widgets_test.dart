@@ -131,6 +131,8 @@ void main() {
     );
 
     expect(find.text('Protected'), findsOneWidget);
+    expect(find.text('#1'), findsOneWidget);
+    expect(find.text('40.00, -100.00'), findsOneWidget);
   });
 
   testWidgets('SiteCardFront omits status badge when status is null', (tester) async {
@@ -201,7 +203,7 @@ void main() {
   testWidgets('SiteCardBack shows Discovered subtitle when discoveredAt is set',
       (tester) async {
     final discovered = SiteSummary(
-      siteId: 50001,
+      siteId: 1000000067,
       latitude: 46.8797,
       longitude: -110.3626,
       countryCode: 'US',
@@ -211,6 +213,7 @@ void main() {
       siteTypeRockType: 'sandstone',
       minAgeMa: 66,
       maxAgeMa: 68,
+      version: 'Original',
       discoveredAt: DateTime.now().toUtc().subtract(const Duration(hours: 3)),
     );
 
@@ -232,7 +235,8 @@ void main() {
 
     await tester.pump();
 
-    expect(find.text('#50001 - Original - Discovered 3h ago'), findsOneWidget);
+    expect(find.text('Original - Discovered 3h ago'), findsOneWidget);
+    expect(find.text('#67'), findsNothing);
   });
 
   testWidgets('SiteTurnableCard composes front and back', (tester) async {

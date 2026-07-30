@@ -223,13 +223,25 @@ class FossilSummary {
   bool get isField =>
       dataSource.trim().toLowerCase() == 'field' || depthCm != null;
 
+  /// Field-generated fossil IDs start at 1_000_000_000; show the offset only.
+  static const int fieldFossilIdBase = 1000000000;
+
+  /// Short occurrence number for UI (`#67`, not `#1000000067`).
+  static String formatFossilNumber(int fossilId) {
+    final n =
+        fossilId >= fieldFossilIdBase ? fossilId - fieldFossilIdBase : fossilId;
+    return '#$n';
+  }
+
+  String get displayFossilNumber => formatFossilNumber(id);
+
   /// Card-back subtitle when the viewer has discovered this field fossil.
+  /// Id is shown separately as [OccurrenceIdBadge].
   String? get discoveredSubtitle {
     final at = discoveredAt;
     if (at == null) return null;
     final versionPart = version.trim();
     final parts = <String>[
-      '#$id',
       if (versionPart.isNotEmpty) versionPart,
       'Discovered ${formatRelativeWhen(at)}',
     ];

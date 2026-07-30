@@ -6,6 +6,7 @@ import '../../models/dinosaur.dart';
 import '../../theme/dino_card_theme.dart';
 import 'dinosaur_card_header.dart';
 import 'dinosaur_card_image.dart';
+import 'occurrence_id_badge.dart';
 
 class DinosaurCardFront extends StatelessWidget {
   const DinosaurCardFront({
@@ -53,6 +54,14 @@ class DinosaurCardFront extends StatelessWidget {
               ),
             ),
           ),
+          if (dinosaur.isInventoryOccurrence)
+            Positioned(
+              top: 14,
+              right: 14,
+              child: OccurrenceIdBadge(
+                label: dinosaur.displayOccurrenceNumber,
+              ),
+            ),
           Positioned(
             left: 18,
             right: 18,

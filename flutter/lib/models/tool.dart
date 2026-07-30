@@ -38,15 +38,20 @@ class ToolSummary {
   final DateTime? spawnDate;
 
   bool get isOwned => level != null;
-  /// True when this card represents a specific owned tool occurrence (inventory),
-  /// i.e. the instance `id` differs from the catalog `tool_type_id`.
-  bool get isToolInstance => toolTypeId != null && toolTypeId != id;
+  /// True when this card represents a specific owned tool occurrence (inventory).
+  ///
+  /// Prefer [spawnDate] over `id != toolTypeId`: the first occurrence of the
+  /// first tool type can share id `1` with its type, which would otherwise
+  /// look like a catalog row (e.g. Aerial Scout `#1`).
+  bool get isToolInstance =>
+      spawnDate != null || (toolTypeId != null && toolTypeId != id);
 
-  /// Card-back subtitle: id / category / scientific, plus Obtained when known.
-  String inventoryBackSubtitle({required bool includeInstanceId}) {
-    final base = categoryWithScientificDisplay(
-      includeInstanceId: includeInstanceId,
-    );
+  String get displayOccurrenceNumber => '#$id';
+
+  /// Card-back subtitle: category / scientific, plus Obtained when known.
+  /// Instance id is shown separately as [OccurrenceIdBadge].
+  String inventoryBackSubtitle() {
+    final base = categoryWithScientificDisplay();
     final at = spawnDate;
     if (at == null) return base;
     final obtained = 'Obtained ${formatRelativeWhen(at)}';
@@ -104,16 +109,10 @@ class ToolSummary {
       .map(_titleCaseWord)
       .join(' ');
 
-  String get categoryWithScientific {
-    return categoryWithScientificDisplay(includeInstanceId: isToolInstance);
-  }
+  String get categoryWithScientific => categoryWithScientificDisplay();
 
-  String categoryWithScientificDisplay({
-    required bool includeInstanceId,
-  }) {
-    final idPrefix = includeInstanceId ? 'ID $id' : '';
+  String categoryWithScientificDisplay() {
     final parts = <String>[
-      if (idPrefix.isNotEmpty) idPrefix,
       if (displayCategory.isNotEmpty) displayCategory,
       if (displayScientificTool.isNotEmpty) displayScientificTool,
     ];

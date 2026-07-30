@@ -54,13 +54,20 @@ class DinosaurSummary {
   /// Curated image version folder; set for inventory occurrences.
   final String? version;
 
+  /// True for owned/reconstructed dinosaur cards (not catalog types).
+  bool get isInventoryOccurrence =>
+      createdAt != null ||
+      (dinosaurTypeId != null && dinosaurTypeId != id);
+
+  String get displayOccurrenceNumber => '#$id';
+
   /// Card-back subtitle for inventory occurrences.
+  /// Id is shown separately as [OccurrenceIdBadge].
   String? get reconstructedSubtitle {
     final at = createdAt;
     if (at == null) return null;
     final versionPart = version?.trim() ?? '';
     final parts = <String>[
-      '#$id',
       if (versionPart.isNotEmpty) versionPart,
       'Reconstructed ${formatRelativeWhen(at)}',
     ];

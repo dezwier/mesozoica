@@ -238,7 +238,6 @@ class _ToolTurnableCardState extends State<ToolTurnableCard> {
         onAction: inventoryMode && widget.tool.isOwned ? _onAction : null,
         onInfo: inventoryMode ? onInfo : null,
         onEditParams: canEditParams ? _onEditParams : null,
-        showInstanceId: inventoryMode,
         showActionButtons: inventoryMode,
         statsChild: statsChild,
         ongoingChild: ongoingChild,

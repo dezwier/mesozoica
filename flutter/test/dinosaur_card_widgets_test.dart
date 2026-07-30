@@ -208,9 +208,10 @@ void main() {
     );
 
     expect(
-      find.text('#99 - Original - Reconstructed 2d ago'),
+      find.text('Original - Reconstructed 2d ago'),
       findsOneWidget,
     );
+    expect(find.text('#99'), findsOneWidget);
     expect(find.text('Tyrannosaurus'), findsNothing);
   });
 

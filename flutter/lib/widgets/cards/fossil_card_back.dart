@@ -53,7 +53,7 @@ class FossilCardBack extends StatelessWidget {
               subtitleOverride: discoveredSubtitle,
             ),
           ),
-          if (showRecordButton)
+          if (showRecordButton && !fossil.isField)
             Positioned(
               top: 14,
               right: 10,

@@ -70,6 +70,9 @@ class SiteSummary {
   /// Field-generated site IDs start at 1_000_000_000; show the offset only.
   static const int fieldSiteIdBase = 1000000000;
 
+  /// True for procedurally generated field sites (occurrence cards).
+  bool get isFieldOccurrence => siteId >= fieldSiteIdBase;
+
   /// Short collection number for UI (`#67`, not `#1000000067`).
   static String formatSiteNumber(int siteId) {
     final n = siteId >= fieldSiteIdBase ? siteId - fieldSiteIdBase : siteId;
@@ -95,19 +98,20 @@ class SiteSummary {
   }
 
   /// Card-back subtitle when the viewer has discovered this site.
+  /// Id is shown separately as [OccurrenceIdBadge].
   String? get discoveredSubtitle {
     final at = discoveredAt;
     if (at == null) return null;
     final versionPart = version.trim();
     final parts = <String>[
-      displaySiteNumber,
       if (versionPart.isNotEmpty) versionPart,
       'Discovered ${formatRelativeWhen(at)}',
     ];
     return parts.join(' - ');
   }
 
-  /// Subtitle: `#id, lat, lon, region, distance`.
+  /// Subtitle: `#id, lat, lon, region, distance` (archive) or
+  /// `lat, lon, region, distance` (field — id is a badge).
   ///
   /// [distanceMeters] is appended after region when known (e.g. `450m`, `1.23km`).
   String displaySubtitle({double? distanceMeters}) {
@@ -126,7 +130,10 @@ class SiteSummary {
     if (distanceMeters != null) {
       parts.add(formatSiteDistance(distanceMeters));
     }
-    if (parts.isEmpty) return displaySiteNumber;
+    if (parts.isEmpty) {
+      return isFieldOccurrence ? '' : displaySiteNumber;
+    }
+    if (isFieldOccurrence) return parts.join(', ');
     return '$displaySiteNumber, ${parts.join(', ')}';
   }
 

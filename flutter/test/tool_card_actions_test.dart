@@ -7,6 +7,35 @@ import 'package:mesozoica/widgets/common/chrome_action_button.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
+  test('isToolInstance is true when occurrence id equals tool type id', () {
+    final scout = ToolSummary(
+      id: 1,
+      toolTypeId: 1,
+      name: 'Aerial Scout',
+      category: '1 site_discovery',
+      scientificTool: 'drone',
+      description: 'Maps outcrops',
+      rarity: 2,
+      level: 1,
+      spawnDate: DateTime.utc(2026, 7, 1),
+    );
+    expect(scout.isToolInstance, isTrue);
+    expect(scout.displayOccurrenceNumber, '#1');
+  });
+
+  test('isToolInstance is false for catalog rows without spawnDate', () {
+    const catalog = ToolSummary(
+      id: 1,
+      toolTypeId: 1,
+      name: 'Aerial Scout',
+      category: '1 site_discovery',
+      scientificTool: 'drone',
+      description: 'Maps outcrops',
+      rarity: 2,
+    );
+    expect(catalog.isToolInstance, isFalse);
+  });
+
   testWidgets('ToolCardBack shows action verb and disabled Info by default', (tester) async {
     const owned = ToolSummary(
       id: 1,
@@ -73,7 +102,6 @@ void main() {
               width: 320,
               child: ToolCardBack(
                 tool: owned,
-                showInstanceId: true,
                 onAction: () {},
               ),
             ),
@@ -83,9 +111,10 @@ void main() {
     );
 
     expect(
-      find.text('ID 10 - Site Discovery - Helicopter - Obtained 45m ago'),
+      find.text('Site Discovery - Helicopter - Obtained 45m ago'),
       findsOneWidget,
     );
+    expect(find.text('#10'), findsOneWidget);
   });
 
   testWidgets('ToolCardBack enables Info when onInfo is set', (tester) async {

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../models/site.dart';
 import '../../theme/dino_card_theme.dart';
+import 'occurrence_id_badge.dart';
 import 'site_card_header.dart';
 import 'site_card_image.dart';
 import 'site_period_rock_type_lines.dart';
@@ -39,6 +40,9 @@ class SiteCardFront extends StatelessWidget {
   Widget build(BuildContext context) {
     final cardTheme = DinoCardTheme.of(context);
     final status = site.status?.trim();
+    final showIdBadge = site.isFieldOccurrence;
+    final showStatus =
+        showStatusBadge && status != null && status.isNotEmpty;
 
     return AspectRatio(
       aspectRatio: DinoCardTheme.cardAspectRatio,
@@ -60,13 +64,23 @@ class SiteCardFront extends StatelessWidget {
               ),
             ),
           ),
-          if (showStatusBadge && status != null && status.isNotEmpty)
+          if (showIdBadge || showStatus)
             Positioned(
               top: 14,
               right: 14,
-              child: SiteStatusBadge(
-                status: status,
-                onStatusSelected: onStatusSelected,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (showIdBadge)
+                    OccurrenceIdBadge(label: site.displaySiteNumber),
+                  if (showIdBadge && showStatus) const SizedBox(height: 6),
+                  if (showStatus)
+                    SiteStatusBadge(
+                      status: status,
+                      onStatusSelected: onStatusSelected,
+                    ),
+                ],
               ),
             ),
           Positioned(

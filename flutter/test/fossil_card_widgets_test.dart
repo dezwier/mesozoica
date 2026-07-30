@@ -156,7 +156,7 @@ void main() {
   testWidgets('FossilCardBack shows Discovered subtitle for field fossils',
       (tester) async {
     final field = FossilSummary(
-      id: 200001,
+      id: 1000000067,
       dinosaurId: 1,
       dinosaurName: 'Tyrannosaurus',
       identifiedName: 'Tyrannosaurus rex',
@@ -180,9 +180,11 @@ void main() {
     );
 
     expect(
-      find.text('#200001 - Summer 26 - Discovered 5h ago'),
+      find.text('Summer 26 - Discovered 5h ago'),
       findsOneWidget,
     );
+    expect(find.text('#67'), findsNothing);
+    expect(find.byIcon(Icons.info_outline), findsNothing);
   });
 
   testWidgets('FossilCardImage uses network image for curated URL',
