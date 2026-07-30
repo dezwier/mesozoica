@@ -101,7 +101,7 @@ void main() {
     expect(find.text('focus-0'), findsOneWidget);
   });
 
-  testWidgets('strong left fling advances multiple pages', (tester) async {
+  testWidgets('strong upward fling advances multiple pages', (tester) async {
     final pages = <int>[];
     await tester.pumpWidget(
       MaterialApp(
@@ -123,10 +123,10 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    // Finger swipes left (negative dx) → later cards.
+    // Finger swipes up (negative dy) → later cards.
     await tester.fling(
       find.byType(CoverFlowCarousel),
-      const Offset(-350, 0),
+      const Offset(0, -350),
       2500,
     );
     await tester.pumpAndSettle();

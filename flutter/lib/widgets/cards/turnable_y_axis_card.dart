@@ -34,7 +34,7 @@ class TurnableYAxisCard extends StatefulWidget {
   final bool prelayoutFacesForHeight;
   final BoxDecoration? decoration;
   final bool turnable;
-  /// When false, only tap left/right halves flip (catalog Cover Flow).
+  /// When false, only tap left/right halves flip.
   final bool enableDragFlip;
   final bool autoFlipOnce;
   /// After [autoFlipOnce] reaches the back, wait this long then flip to front.
