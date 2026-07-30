@@ -147,7 +147,7 @@ def test_list_dinosaurs_inventory_includes_created_at(client, session):
     assert item["status"] == "modelled"
 
 
-def test_set_dinosaur_status_admin_flow(client, session):
+def test_collect_dinosaur_admin_flow(client, session):
     from app.core.security import create_access_token
     from app.models.user import User
 
@@ -177,28 +177,23 @@ def test_set_dinosaur_status_admin_flow(client, session):
     }
 
     forbidden = client.post(
-        f"/api/v1/dinosaurs/{dino_type.id}/status",
+        f"/api/v1/dinosaurs/{dino_type.id}/collect",
         headers=user_headers,
-        json={"status": "modelled"},
+        json={"status": "modelled", "version": "Original"},
     )
     assert forbidden.status_code == 403
 
-    catalog = client.get(
-        "/api/v1/dinosaurs",
-        params={"mode": "catalog", "sort": "name"},
-        headers=admin_headers,
-    )
-    assert catalog.status_code == 200
-    assert catalog.json()["items"][0]["status"] == "hidden"
-
     modelled = client.post(
-        f"/api/v1/dinosaurs/{dino_type.id}/status",
+        f"/api/v1/dinosaurs/{dino_type.id}/collect",
         headers=admin_headers,
-        json={"status": "modelled"},
+        json={"status": "modelled", "version": "Original"},
     )
     assert modelled.status_code == 200
     assert modelled.json()["status"] == "modelled"
     assert modelled.json()["dinosaur_type_id"] == dino_type.id
+    assert modelled.json()["created_at"] is not None
+    assert modelled.json()["version"] == "Original"
+    first_id = modelled.json()["id"]
 
     inventory = client.get(
         "/api/v1/dinosaurs",
@@ -207,41 +202,32 @@ def test_set_dinosaur_status_admin_flow(client, session):
     )
     assert inventory.status_code == 200
     assert inventory.json()["total"] == 1
-    assert inventory.json()["items"][0]["dinosaur_type_id"] == dino_type.id
+    assert inventory.json()["items"][0]["id"] == first_id
     assert inventory.json()["items"][0]["status"] == "modelled"
-    assert inventory.json()["items"][0]["created_at"] is not None
 
+    # Collect again creates a second occurrence.
     reconstructed = client.post(
-        f"/api/v1/dinosaurs/{dino_type.id}/status",
+        f"/api/v1/dinosaurs/{dino_type.id}/collect",
         headers=admin_headers,
-        json={"status": "reconstructed"},
+        json={"status": "reconstructed", "version": "Original"},
     )
     assert reconstructed.status_code == 200
     assert reconstructed.json()["status"] == "reconstructed"
+    assert reconstructed.json()["id"] != first_id
 
-    # Still one inventory occurrence (find-or-create, not duplicate).
     inventory2 = client.get(
         "/api/v1/dinosaurs",
         params={"mode": "inventory", "sort": "name"},
         headers=admin_headers,
     )
-    assert inventory2.json()["total"] == 1
-    assert inventory2.json()["items"][0]["status"] == "reconstructed"
+    assert inventory2.json()["total"] == 2
 
-    hidden = client.post(
-        f"/api/v1/dinosaurs/{dino_type.id}/status",
-        headers=admin_headers,
-        json={"status": "hidden"},
-    )
-    assert hidden.status_code == 200
-    assert hidden.json()["status"] == "hidden"
-
-    inventory3 = client.get(
-        "/api/v1/dinosaurs",
-        params={"mode": "inventory", "sort": "name"},
+    versions = client.get(
+        "/api/v1/dinosaurs/image-versions",
         headers=admin_headers,
     )
-    assert inventory3.json()["total"] == 0
+    assert versions.status_code == 200
+    assert "items" in versions.json()
 
 
 def test_list_dinosaurs_pagination(client, session):

@@ -86,6 +86,12 @@ class AppConfig {
   static Uri dinosaurStatusUri(int id) =>
       ApiEndpoints.dinosaurStatusUri(id);
 
+  static Uri dinosaurCollectUri(int id) =>
+      ApiEndpoints.dinosaurCollectUri(id);
+
+  static Uri dinosaurImageVersionsUri() =>
+      ApiEndpoints.dinosaurImageVersionsUri();
+
   static Uri fossilsUri({
     int limit = 200,
     int offset = 0,

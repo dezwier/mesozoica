@@ -1,4 +1,4 @@
-"""Dinosaur read and status endpoints."""
+"""Dinosaur read and collect endpoints."""
 
 from __future__ import annotations
 
@@ -11,12 +11,18 @@ from app.core.security import get_current_admin_user, get_optional_current_user
 from app.models.user import User
 from app.models.user_dinosaur import DINOSAUR_STATUS_HIDDEN
 from app.schemas.dinosaur import (
+    CollectDinosaurRequest,
     DinosaurArticleResponse,
+    DinosaurImageVersionItem,
+    DinosaurImageVersionListResponse,
     DinosaurListResponse,
     DinosaurSummary,
-    SetDinosaurStatusRequest,
 )
 from app.services.dinosaur_service import get_dinosaur_by_id, list_dinosaurs
+from app.services.dinosaur_service.collect import (
+    collect_dinosaur_for_user,
+    list_dinosaur_image_versions,
+)
 from app.services.dinosaur_service.list import (
     DinosaurListRow,
     ListMode,
@@ -24,7 +30,6 @@ from app.services.dinosaur_service.list import (
     viewer_status_for_occurrence,
     viewer_statuses_for_types,
 )
-from app.services.dinosaur_service.set_status import set_dinosaur_status
 from app.services.curated_image_service.versions import ORIGINAL_VERSION
 from app.services.wikipedia_service.parser import prepare_article_for_display
 
@@ -104,19 +109,34 @@ def get_dinosaurs(
     )
 
 
-@router.post("/{dinosaur_id}/status", response_model=DinosaurSummary)
-def post_set_dinosaur_status(
+@router.get("/image-versions", response_model=DinosaurImageVersionListResponse)
+def get_dinosaur_image_versions(
+    current_user: User = Depends(get_current_admin_user),
+) -> DinosaurImageVersionListResponse:
+    """List curated dinosaur image version folders (admin collect picker)."""
+    del current_user
+    return DinosaurImageVersionListResponse(
+        items=[
+            DinosaurImageVersionItem(**item)
+            for item in list_dinosaur_image_versions()
+        ]
+    )
+
+
+@router.post("/{dinosaur_id}/collect", response_model=DinosaurSummary)
+def post_collect_dinosaur(
     dinosaur_id: int,
-    body: SetDinosaurStatusRequest,
+    body: CollectDinosaurRequest,
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_admin_user),
 ) -> DinosaurSummary:
-    """Set status for a catalog dinosaur type (creates inventory occurrence)."""
-    return set_dinosaur_status(
+    """Create a new inventory occurrence for a catalog dinosaur type."""
+    return collect_dinosaur_for_user(
         session,
+        user_id=int(current_user.id),
         dinosaur_type_id=dinosaur_id,
-        user_id=current_user.id,
         status=body.status,
+        version=body.version,
     )
 
 

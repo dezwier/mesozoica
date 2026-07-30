@@ -8,6 +8,7 @@ import 'dinosaur_card_header.dart';
 import 'dinosaur_card_image.dart';
 import 'dinosaur_status_badge.dart';
 import 'occurrence_id_badge.dart';
+import 'tool_collect_badge.dart';
 
 class DinosaurCardFront extends StatelessWidget {
   const DinosaurCardFront({
@@ -18,7 +19,9 @@ class DinosaurCardFront extends StatelessWidget {
     this.subtitleFontSize = 10,
     this.overlayHeightFactor = 0.52,
     this.showStatus = false,
-    this.onStatusSelected,
+    this.showCollectBadge = false,
+    this.collectBusy = false,
+    this.onCollect,
   });
 
   final DinosaurSummary dinosaur;
@@ -27,7 +30,9 @@ class DinosaurCardFront extends StatelessWidget {
   final double subtitleFontSize;
   final double overlayHeightFactor;
   final bool showStatus;
-  final ValueChanged<String>? onStatusSelected;
+  final bool showCollectBadge;
+  final bool collectBusy;
+  final VoidCallback? onCollect;
 
   String get _description =>
       dinosaur.shortDescription != null &&
@@ -38,7 +43,7 @@ class DinosaurCardFront extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cardTheme = DinoCardTheme.of(context);
-    final status = dinosaur.status?.trim() ?? 'hidden';
+    final status = dinosaur.status?.trim() ?? '';
     final showIdBadge = dinosaur.isInventoryOccurrence;
 
     return AspectRatio(
@@ -61,7 +66,7 @@ class DinosaurCardFront extends StatelessWidget {
               ),
             ),
           ),
-          if (showIdBadge || showStatus)
+          if (showIdBadge || showStatus || showCollectBadge)
             Positioned(
               top: 14,
               right: 14,
@@ -73,12 +78,15 @@ class DinosaurCardFront extends StatelessWidget {
                     OccurrenceIdBadge(
                       label: dinosaur.occurrenceIdBadgeLabel,
                     ),
-                  if (showIdBadge && showStatus) const SizedBox(height: 6),
-                  if (showStatus)
-                    DinosaurStatusBadge(
-                      status: status,
-                      onStatusSelected: onStatusSelected,
+                  if (showIdBadge && (showStatus || showCollectBadge))
+                    const SizedBox(height: 6),
+                  if (showCollectBadge)
+                    ToolCollectBadge(
+                      onPressed: onCollect,
+                      busy: collectBusy,
                     ),
+                  if (showStatus && status.isNotEmpty)
+                    DinosaurStatusBadge(status: status),
                 ],
               ),
             ),

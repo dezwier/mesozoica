@@ -121,32 +121,74 @@ class DinosaurService {
     return DinosaurArticle.fromJson(decoded);
   }
 
-  Future<DinosaurSummary> setDinosaurStatus({
+  Future<List<String>> listDinosaurImageVersions() async {
+    final uri = AppConfig.dinosaurImageVersionsUri();
+    if (kDebugMode) {
+      debugPrint('DinosaurService GET $uri');
+    }
+    final response = await ApiClient.instance
+        .sendGet(uri, client: _client, headers: await _headers())
+        .timeout(const Duration(seconds: 15));
+
+    if (response.statusCode != 200) {
+      throw DinosaurServiceException(
+        'Failed to load dinosaur image versions (${response.statusCode})',
+      );
+    }
+
+    final decoded = jsonDecode(response.body);
+    if (decoded is! Map<String, dynamic>) {
+      throw const DinosaurServiceException(
+        'Invalid dinosaur image versions response',
+      );
+    }
+    final items = decoded['items'];
+    if (items is! List) {
+      throw const DinosaurServiceException(
+        'Invalid dinosaur image versions items',
+      );
+    }
+    final names = <String>[];
+    for (final item in items) {
+      if (item is Map<String, dynamic>) {
+        final name = (item['name'] as String?)?.trim();
+        if (name != null && name.isNotEmpty) {
+          names.add(name);
+        }
+      }
+    }
+    return names;
+  }
+
+  Future<DinosaurSummary> collectDinosaur({
     required int dinosaurTypeId,
     required String status,
+    required String version,
   }) async {
-    final uri = AppConfig.dinosaurStatusUri(dinosaurTypeId);
+    final uri = AppConfig.dinosaurCollectUri(dinosaurTypeId);
     if (kDebugMode) {
-      debugPrint('DinosaurService POST $uri status=$status');
+      debugPrint(
+        'DinosaurService POST $uri status=$status version=$version',
+      );
     }
     final response = await ApiClient.instance
         .sendPost(
           uri,
           client: _client,
           headers: await _headers(jsonBody: true),
-          body: jsonEncode({'status': status}),
+          body: jsonEncode({'status': status, 'version': version}),
         )
         .timeout(const Duration(seconds: 15));
 
     if (response.statusCode != 200) {
       throw DinosaurServiceException(
-        'Failed to set dinosaur status (${response.statusCode})',
+        'Failed to collect dinosaur (${response.statusCode})',
       );
     }
 
     final decoded = jsonDecode(response.body);
     if (decoded is! Map<String, dynamic>) {
-      throw const DinosaurServiceException('Invalid dinosaur status response');
+      throw const DinosaurServiceException('Invalid dinosaur collect response');
     }
     return DinosaurSummary.fromJson(decoded);
   }

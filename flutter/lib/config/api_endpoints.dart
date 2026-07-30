@@ -54,6 +54,12 @@ class ApiEndpoints {
   static Uri dinosaurStatusUri(int id) =>
       Uri.parse('${AppConfig.baseApiUrl}/api/v1/dinosaurs/$id/status');
 
+  static Uri dinosaurCollectUri(int id) =>
+      Uri.parse('${AppConfig.baseApiUrl}/api/v1/dinosaurs/$id/collect');
+
+  static Uri dinosaurImageVersionsUri() =>
+      Uri.parse('${AppConfig.baseApiUrl}/api/v1/dinosaurs/image-versions');
+
   static Uri fossilsUri({
     int limit = 200,
     int offset = 0,

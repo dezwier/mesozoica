@@ -35,8 +35,25 @@ class DinosaurSummary(BaseModel):
     status: str | None = None
 
 
-class SetDinosaurStatusRequest(BaseModel):
+class CollectDinosaurRequest(BaseModel):
+    """Admin collect body: collection role status + curated image version."""
+
     status: str = Field(min_length=1, max_length=32)
+    version: str = Field(
+        ...,
+        min_length=1,
+        max_length=64,
+        description="Curated image version folder (e.g. Original, Summer 26)",
+    )
+
+
+class DinosaurImageVersionItem(BaseModel):
+    name: str
+    run_date: str | None = None
+
+
+class DinosaurImageVersionListResponse(BaseModel):
+    items: list[DinosaurImageVersionItem]
 
 
 class DinosaurListResponse(BaseModel):

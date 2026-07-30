@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 
 import '../../controllers/dinosaur_catalog_controller.dart';
 import '../../models/dinosaur.dart';
@@ -50,8 +49,6 @@ class DinoScreenState extends State<DinoScreen> {
             dinosaur: dinosaur,
             turnable: isFocused,
             fixedFaceHeight: fixedFaceHeight,
-            onDinosaurUpdated:
-                context.read<DinosaurCatalogController>().replaceDinosaur,
           ),
       emptyMessageBuilder: (context, catalog) {
         if (catalog.mode == DinoScreenMode.inventory) {
