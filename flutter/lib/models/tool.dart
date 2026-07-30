@@ -52,11 +52,11 @@ class ToolSummary {
 
   String get displayOccurrenceNumber => '#$id';
 
-  /// Front top-right badge: `#10, Original`.
+  /// Front top-right badge: `#10 · Original`.
   String get occurrenceIdBadgeLabel {
     final versionPart = version?.trim() ?? '';
     if (versionPart.isEmpty) return displayOccurrenceNumber;
-    return '$displayOccurrenceNumber, $versionPart';
+    return '$displayOccurrenceNumber · $versionPart';
   }
 
   /// Card-back subtitle: category / scientific, plus Obtained when known.

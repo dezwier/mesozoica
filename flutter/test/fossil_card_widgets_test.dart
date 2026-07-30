@@ -182,7 +182,7 @@ void main() {
     expect(find.text('Discovered 5h ago'), findsOneWidget);
     expect(find.text('Summer 26 - Discovered 5h ago'), findsNothing);
     expect(find.text('#67'), findsNothing);
-    expect(find.text('#67, Summer 26'), findsNothing);
+    expect(find.text('#67 · Summer 26'), findsNothing);
     expect(find.byIcon(Icons.info_outline), findsNothing);
   });
 

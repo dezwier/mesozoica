@@ -210,7 +210,7 @@ void main() {
     expect(find.text('Reconstructed 2d ago'), findsOneWidget);
     expect(find.text('Original - Reconstructed 2d ago'), findsNothing);
     expect(find.text('#99'), findsNothing);
-    expect(find.text('#99, Original'), findsNothing);
+    expect(find.text('#99 · Original'), findsNothing);
     expect(find.text('Tyrannosaurus'), findsNothing);
   });
 

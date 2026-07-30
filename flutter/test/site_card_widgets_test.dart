@@ -131,7 +131,7 @@ void main() {
     );
 
     expect(find.text('Protected'), findsOneWidget);
-    expect(find.text('#1, Original'), findsOneWidget);
+    expect(find.text('#1 · Original'), findsOneWidget);
     expect(find.text('40.00, -100.00'), findsOneWidget);
   });
 
@@ -238,7 +238,7 @@ void main() {
     expect(find.text('Discovered 3h ago'), findsOneWidget);
     expect(find.text('Original - Discovered 3h ago'), findsNothing);
     expect(find.text('#67'), findsNothing);
-    expect(find.text('#67, Original'), findsNothing);
+    expect(find.text('#67 · Original'), findsNothing);
   });
 
   testWidgets('SiteTurnableCard composes front and back', (tester) async {

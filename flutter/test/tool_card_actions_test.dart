@@ -24,7 +24,7 @@ void main() {
     expect(scout.occurrenceIdBadgeLabel, '#1');
 
     final withVersion = scout.copyWith(version: 'Summer 26');
-    expect(withVersion.occurrenceIdBadgeLabel, '#1, Summer 26');
+    expect(withVersion.occurrenceIdBadgeLabel, '#1 · Summer 26');
   });
 
   test('isToolInstance is false for catalog rows without spawnDate', () {
@@ -119,7 +119,7 @@ void main() {
       find.text('Site Discovery - Helicopter - Obtained 45m ago'),
       findsOneWidget,
     );
-    expect(find.text('#10, Original'), findsNothing);
+    expect(find.text('#10 · Original'), findsNothing);
     expect(find.text('#10'), findsNothing);
   });
 
