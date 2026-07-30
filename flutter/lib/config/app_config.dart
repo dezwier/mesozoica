@@ -6,6 +6,8 @@ import 'package:http/http.dart' as http;
 
 import '../models/catalog_data_source.dart';
 
+import 'api_endpoints.dart';
+
 /// Global application configuration.
 class AppConfig {
   AppConfig._();
@@ -72,40 +74,14 @@ class AppConfig {
     bool hasCustomImage = false,
     bool? llmEnriched,
     String mode = 'catalog',
-  }) {
-    final params = <String, String>{
-      'limit': '$limit',
-      'offset': '$offset',
-      'sort': sort,
-      'mode': mode,
-    };
-    if (seed != null && seed.isNotEmpty) {
-      params['seed'] = seed;
-    }
-    final trimmedQuery = q?.trim();
-    if (trimmedQuery != null && trimmedQuery.isNotEmpty) {
-      params['q'] = trimmedQuery;
-    }
-    if (maYounger != null && maOlder != null) {
-      params['ma_younger'] = '$maYounger';
-      params['ma_older'] = '$maOlder';
-    }
-    if (hasCustomImage) {
-      params['has_custom_image'] = 'true';
-    }
-    if (llmEnriched != null) {
-      params['llm_enriched'] = llmEnriched ? 'true' : 'false';
-    }
-    return Uri.parse(
-      '$baseApiUrl/api/v1/dinosaurs',
-    ).replace(queryParameters: params);
-  }
+  }) =>
+      ApiEndpoints.dinosaursUri(limit: limit, offset: offset, sort: sort, seed: seed, q: q, maYounger: maYounger, maOlder: maOlder, hasCustomImage: hasCustomImage, llmEnriched: llmEnriched, mode: mode);
 
   static Uri dinosaurArticleUri(int id) =>
-      Uri.parse('$baseApiUrl/api/v1/dinosaurs/$id/article');
+      ApiEndpoints.dinosaurArticleUri(id);
 
   static Uri dinosaurUri(int id) =>
-      Uri.parse('$baseApiUrl/api/v1/dinosaurs/$id');
+      ApiEndpoints.dinosaurUri(id);
 
   static Uri fossilsUri({
     int limit = 200,
@@ -123,58 +99,14 @@ class AppConfig {
     int? dinosaurId,
     CatalogDataSource dataSource = CatalogDataSource.archive,
     bool includeHidden = false,
-  }) {
-    final params = <String, String>{
-      'limit': '$limit',
-      'offset': '$offset',
-      'sort': sort,
-    };
-    if (seed != null && seed.isNotEmpty) {
-      params['seed'] = seed;
-    }
-    final trimmedQuery = q?.trim();
-    if (trimmedQuery != null && trimmedQuery.isNotEmpty) {
-      params['q'] = trimmedQuery;
-    }
-    final trimmedDinoQuery = dinoQ?.trim();
-    if (trimmedDinoQuery != null && trimmedDinoQuery.isNotEmpty) {
-      params['dino_q'] = trimmedDinoQuery;
-    }
-    final trimmedFossilQuery = fossilQ?.trim();
-    if (trimmedFossilQuery != null && trimmedFossilQuery.isNotEmpty) {
-      params['fossil_q'] = trimmedFossilQuery;
-    }
-    if (maYounger != null && maOlder != null) {
-      params['ma_younger'] = '$maYounger';
-      params['ma_older'] = '$maOlder';
-    }
-    if (hasCustomImage) {
-      params['has_custom_image'] = 'true';
-    }
-    if (hasCustomFossilImage) {
-      params['has_custom_fossil_image'] = 'true';
-    }
-    if (llmEnriched != null) {
-      params['llm_enriched'] = llmEnriched ? 'true' : 'false';
-    }
-    if (dinosaurId != null) {
-      params['dinosaur_id'] = '$dinosaurId';
-    }
-    params['data_source'] = dataSource.apiValue;
-    if (includeHidden) {
-      params['include_hidden'] = 'true';
-    }
-    return Uri.parse(
-      '$baseApiUrl/api/v1/fossils',
-    ).replace(queryParameters: params);
-  }
+  }) =>
+      ApiEndpoints.fossilsUri(limit: limit, offset: offset, sort: sort, seed: seed, q: q, dinoQ: dinoQ, fossilQ: fossilQ, maYounger: maYounger, maOlder: maOlder, hasCustomImage: hasCustomImage, hasCustomFossilImage: hasCustomFossilImage, llmEnriched: llmEnriched, dinosaurId: dinosaurId, dataSource: dataSource, includeHidden: includeHidden);
 
   static Uri fossilUri(
     int id, {
     CatalogDataSource dataSource = CatalogDataSource.archive,
-  }) => Uri.parse(
-    '$baseApiUrl/api/v1/fossils/$id',
-  ).replace(queryParameters: {'data_source': dataSource.apiValue});
+  }) =>
+      ApiEndpoints.fossilUri(id, dataSource: dataSource);
 
   static Uri sitesUri({
     int limit = 200,
@@ -197,68 +129,14 @@ class AppConfig {
     double? maxLat,
     double? minLon,
     double? maxLon,
-  }) {
-    final params = <String, String>{
-      'limit': '$limit',
-      'offset': '$offset',
-      'sort': sort,
-    };
-    if (seed != null && seed.isNotEmpty) {
-      params['seed'] = seed;
-    }
-    final trimmedQuery = q?.trim();
-    if (trimmedQuery != null && trimmedQuery.isNotEmpty) {
-      params['q'] = trimmedQuery;
-    }
-    if (maYounger != null && maOlder != null) {
-      params['ma_younger'] = '$maYounger';
-      params['ma_older'] = '$maOlder';
-    }
-    if (hasCustomImage) {
-      params['has_custom_image'] = 'true';
-    }
-    if (siteIdMin != null) {
-      params['site_id_min'] = '$siteIdMin';
-    }
-    params['data_source'] = dataSource.apiValue;
-    if (showAll) {
-      params['show_all'] = 'true';
-    }
-    if (discoveredAfter != null) {
-      params['discovered_after'] = discoveredAfter.toUtc().toIso8601String();
-    }
-    if (discoveredBefore != null) {
-      params['discovered_before'] = discoveredBefore.toUtc().toIso8601String();
-    }
-    if (lat != null && lon != null) {
-      params['lat'] = '$lat';
-      params['lon'] = '$lon';
-    }
-    if (minLat != null && maxLat != null && minLon != null && maxLon != null) {
-      params['min_lat'] = '$minLat';
-      params['max_lat'] = '$maxLat';
-      params['min_lon'] = '$minLon';
-      params['max_lon'] = '$maxLon';
-    }
-    var uri = Uri.parse(
-      '$baseApiUrl/api/v1/sites',
-    ).replace(queryParameters: params);
-    final methods = howDiscovered;
-    if (methods != null && methods.isNotEmpty) {
-      final extras = methods
-          .map((m) => 'how_discovered=${Uri.encodeQueryComponent(m)}')
-          .join('&');
-      final base = uri.toString();
-      uri = Uri.parse(base.contains('?') ? '$base&$extras' : '$base?$extras');
-    }
-    return uri;
-  }
+  }) =>
+      ApiEndpoints.sitesUri(limit: limit, offset: offset, sort: sort, seed: seed, q: q, maYounger: maYounger, maOlder: maOlder, hasCustomImage: hasCustomImage, dataSource: dataSource, siteIdMin: siteIdMin, showAll: showAll, howDiscovered: howDiscovered, discoveredAfter: discoveredAfter, discoveredBefore: discoveredBefore, lat: lat, lon: lon, minLat: minLat, maxLat: maxLat, minLon: minLon, maxLon: maxLon);
 
   static Uri fieldSiteEnsureUri() =>
-      Uri.parse('$baseApiUrl/api/v1/sites/field/ensure');
+      ApiEndpoints.fieldSiteEnsureUri();
 
   static Uri fieldSiteEnsureJobUri(int jobId) =>
-      Uri.parse('$baseApiUrl/api/v1/sites/field/ensure/jobs/$jobId');
+      ApiEndpoints.fieldSiteEnsureJobUri(jobId);
 
   static Uri fieldDataPurgeUri({
     bool userSites = true,
@@ -267,45 +145,33 @@ class AppConfig {
     bool fossils = true,
     bool missionEvents = true,
     bool missions = true,
-  }) => Uri.parse('$baseApiUrl/api/v1/sites/field').replace(
-    queryParameters: {
-      'user_sites': '$userSites',
-      'user_fossils': '$userFossils',
-      'sites': '$sites',
-      'fossils': '$fossils',
-      'mission_events': '$missionEvents',
-      'missions': '$missions',
-    },
-  );
+  }) =>
+      ApiEndpoints.fieldDataPurgeUri(userSites: userSites, userFossils: userFossils, sites: sites, fossils: fossils, missionEvents: missionEvents, missions: missions);
 
   static Uri siteUri(
     int id, {
     CatalogDataSource dataSource = CatalogDataSource.archive,
-  }) => Uri.parse(
-    '$baseApiUrl/api/v1/sites/$id',
-  ).replace(queryParameters: {'data_source': dataSource.apiValue});
+  }) =>
+      ApiEndpoints.siteUri(id, dataSource: dataSource);
 
   static Uri siteDiscoverUri(int id) =>
-      Uri.parse('$baseApiUrl/api/v1/sites/$id/discover');
+      ApiEndpoints.siteDiscoverUri(id);
 
   static Uri siteStatusUri(int id) =>
-      Uri.parse('$baseApiUrl/api/v1/sites/$id/status');
+      ApiEndpoints.siteStatusUri(id);
 
   static Uri siteSurveyUri(int id) =>
-      Uri.parse('$baseApiUrl/api/v1/sites/$id/survey');
+      ApiEndpoints.siteSurveyUri(id);
 
   static Uri fieldSurveyJobUri(int jobId) =>
-      Uri.parse('$baseApiUrl/api/v1/sites/survey/jobs/$jobId');
+      ApiEndpoints.fieldSurveyJobUri(jobId);
 
   static Uri sitesNearbyDiscoverableUri({
     required double lat,
     required double lon,
     double radiusKm = 1.0,
-  }) {
-    return Uri.parse('$baseApiUrl/api/v1/sites/nearby-discoverable').replace(
-      queryParameters: {'lat': '$lat', 'lon': '$lon', 'radius_km': '$radiusKm'},
-    );
-  }
+  }) =>
+      ApiEndpoints.sitesNearbyDiscoverableUri(lat: lat, lon: lon, radiusKm: radiusKm);
 
   static Uri sitesNearbyUri({
     required double lat,
@@ -313,29 +179,17 @@ class AppConfig {
     double radiusKm = 1.0,
     CatalogDataSource dataSource = CatalogDataSource.field,
     bool showAll = false,
-  }) {
-    final params = <String, String>{
-      'lat': '$lat',
-      'lon': '$lon',
-      'radius_km': '$radiusKm',
-      'data_source': dataSource.apiValue,
-    };
-    if (showAll) {
-      params['show_all'] = 'true';
-    }
-    return Uri.parse(
-      '$baseApiUrl/api/v1/sites/nearby',
-    ).replace(queryParameters: params);
-  }
+  }) =>
+      ApiEndpoints.sitesNearbyUri(lat: lat, lon: lon, radiusKm: radiusKm, dataSource: dataSource, showAll: showAll);
 
   static Uri siteFossilsUri(int siteId) =>
-      Uri.parse('$baseApiUrl/api/v1/sites/$siteId/fossils');
+      ApiEndpoints.siteFossilsUri(siteId);
 
   static Uri siteDinosaursUri(int siteId) =>
-      Uri.parse('$baseApiUrl/api/v1/sites/$siteId/dinosaurs');
+      ApiEndpoints.siteDinosaursUri(siteId);
 
   static Uri siteGroupsUri(int siteId) =>
-      Uri.parse('$baseApiUrl/api/v1/sites/$siteId/groups');
+      ApiEndpoints.siteGroupsUri(siteId);
 
   static Uri toolsUri({
     int limit = 200,
@@ -347,76 +201,47 @@ class AppConfig {
     Set<String> categories = const {},
     bool hasCustomImage = false,
     bool showAll = false,
-  }) {
-    final parts = <String>[
-      'limit=$limit',
-      'offset=$offset',
-      'sort=${Uri.encodeQueryComponent(sort)}',
-    ];
-    parts.add('mode=${Uri.encodeQueryComponent(mode)}');
-    if (seed != null && seed.isNotEmpty) {
-      parts.add('seed=${Uri.encodeQueryComponent(seed)}');
-    }
-    final trimmedQuery = q?.trim();
-    if (trimmedQuery != null && trimmedQuery.isNotEmpty) {
-      parts.add('q=${Uri.encodeQueryComponent(trimmedQuery)}');
-    }
-    if (hasCustomImage) {
-      parts.add('has_custom_image=true');
-    }
-    if (showAll) {
-      parts.add('show_all=true');
-    }
-    for (final value in categories) {
-      final trimmed = value.trim();
-      if (trimmed.isEmpty) continue;
-      parts.add('category=${Uri.encodeQueryComponent(trimmed)}');
-    }
-    return Uri.parse('$baseApiUrl/api/v1/tools?${parts.join('&')}');
-  }
+  }) =>
+      ApiEndpoints.toolsUri(limit: limit, offset: offset, sort: sort, mode: mode, seed: seed, q: q, categories: categories, hasCustomImage: hasCustomImage, showAll: showAll);
 
   static Uri toolCategoriesUri({
     bool showAll = false,
     String mode = 'inventory',
-  }) {
-    final parts = <String>['mode=${Uri.encodeQueryComponent(mode)}'];
-    if (showAll) {
-      parts.add('show_all=true');
-    }
-    return Uri.parse('$baseApiUrl/api/v1/tools/categories?${parts.join('&')}');
-  }
+  }) =>
+      ApiEndpoints.toolCategoriesUri(showAll: showAll, mode: mode);
 
-  static Uri toolUri(int id) => Uri.parse('$baseApiUrl/api/v1/tools/$id');
+  static Uri toolUri(int id) =>
+      ApiEndpoints.toolUri(id);
 
   static Uri toolCollectUri(int id) =>
-      Uri.parse('$baseApiUrl/api/v1/tools/$id/collect');
+      ApiEndpoints.toolCollectUri(id);
 
   static Uri toolAerialMissionUri(int id) =>
-      Uri.parse('$baseApiUrl/api/v1/tools/$id/actions/aerial-mission');
+      ApiEndpoints.toolAerialMissionUri(id);
 
   static Uri toolGuidanceSessionUri(int id) =>
-      Uri.parse('$baseApiUrl/api/v1/tools/$id/actions/guidance-session');
+      ApiEndpoints.toolGuidanceSessionUri(id);
 
   static Uri toolFormationMapSessionUri(int id) =>
-      Uri.parse('$baseApiUrl/api/v1/tools/$id/actions/formation-map-session');
+      ApiEndpoints.toolFormationMapSessionUri(id);
 
   static Uri aerialMissionsUri() =>
-      Uri.parse('$baseApiUrl/api/v1/tools/missions/aerial');
+      ApiEndpoints.aerialMissionsUri();
 
   static Uri aerialMissionCancelUri(int missionId) =>
-      Uri.parse('$baseApiUrl/api/v1/tools/missions/aerial/$missionId/cancel');
+      ApiEndpoints.aerialMissionCancelUri(missionId);
 
   static Uri activeGuidanceSessionUri() =>
-      Uri.parse('$baseApiUrl/api/v1/tools/sessions/guidance/active');
+      ApiEndpoints.activeGuidanceSessionUri();
 
   static Uri cancelGuidanceSessionUri() =>
-      Uri.parse('$baseApiUrl/api/v1/tools/sessions/guidance/cancel');
+      ApiEndpoints.cancelGuidanceSessionUri();
 
   static Uri activeFormationMapSessionUri() =>
-      Uri.parse('$baseApiUrl/api/v1/tools/sessions/formation-map/active');
+      ApiEndpoints.activeFormationMapSessionUri();
 
   static Uri cancelFormationMapSessionUri() =>
-      Uri.parse('$baseApiUrl/api/v1/tools/sessions/formation-map/cancel');
+      ApiEndpoints.cancelFormationMapSessionUri();
 
   static Future<bool> checkApiHealth() async {
     try {

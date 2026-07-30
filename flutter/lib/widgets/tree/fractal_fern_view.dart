@@ -4,8 +4,8 @@ import 'package:flutter/material.dart';
 
 import '../../models/dinosaur.dart';
 import '../../theme/dino_card_theme.dart';
-import '../../utils/fractal_label_placer.dart';
-import '../../utils/fractal_tree_layout.dart';
+import 'fractal_label_placer.dart';
+import 'fractal_tree_layout.dart';
 import '../cards/dinosaur_turnable_card.dart';
 import 'fractal_fern_painter.dart';
 

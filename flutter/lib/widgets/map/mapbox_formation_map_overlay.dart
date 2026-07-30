@@ -5,7 +5,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/foundation.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 
-import '../../utils/formation_map_raster.dart';
+import 'formation_map_raster.dart';
 
 const String formationMapSourceId = 'formation-map-source';
 const String formationMapLayerId = 'formation-map-layer';

@@ -13,7 +13,7 @@ import '../../config/game_config.dart';
 import '../../controllers/aerial_mission_controller.dart';
 import '../../controllers/formation_map_controller.dart';
 import '../../models/site.dart';
-import '../../utils/formation_map_raster.dart';
+import 'formation_map_raster.dart';
 import 'mapbox_aerial_mission_annotations.dart';
 import 'mapbox_basemap_config.dart';
 import 'mapbox_camera_coordinator.dart';

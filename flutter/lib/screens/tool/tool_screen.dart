@@ -5,8 +5,8 @@ import '../../models/tool.dart';
 import '../../widgets/cards/tool_turnable_card.dart';
 import '../../widgets/common/catalog_list_screen.dart';
 import '../../widgets/common/chrome_fab.dart';
-import '../../widgets/tool/tool_filter_fab.dart';
-import '../../widgets/tool/tool_filter_sheet.dart';
+import '../../widgets/tools/filters/tool_filter_fab.dart';
+import '../../widgets/tools/filters/tool_filter_sheet.dart';
 
 class ToolScreen extends StatefulWidget {
   const ToolScreen({super.key, this.isActive = true});

@@ -7,7 +7,7 @@ import '../../controllers/tool_catalog_controller.dart';
 import '../../models/tool.dart';
 import '../../services/tool_service.dart';
 import '../../theme/dino_card_theme.dart';
-import '../tool/tool_params_edit_sheet.dart';
+import '../tools/filters/tool_params_edit_sheet.dart';
 import '../../models/aerial_mission_kind.dart';
 import '../../models/formation_map_kind.dart';
 import '../../models/guidance_tool_kind.dart';
