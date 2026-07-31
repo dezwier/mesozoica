@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
 import '../../models/dinosaur.dart';
 import '../common/drawer_sheet_sizes.dart';
@@ -26,11 +27,19 @@ class DinosaurArticleDrawer extends StatelessWidget {
     );
   }
 
+  static String? wikipediaAsOfLabel(DateTime? insertDate) {
+    if (insertDate == null) return null;
+    final local = insertDate.toLocal();
+    final formatted = DateFormat.yMMMMd().format(local);
+    return 'Wikipedia as of $formatted';
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final title = dinosaur.wikipediaTitle.trim();
+    final asOfLabel = wikipediaAsOfLabel(dinosaur.insertDate);
 
     // Fixed height (not DraggableScrollableSheet) so the WebView owns
     // vertical scroll gestures instead of competing with sheet dragging.
@@ -42,18 +51,40 @@ class DinosaurArticleDrawer extends StatelessWidget {
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(1),
-                gradient: LinearGradient(
-                  colors: [
-                    colorScheme.outlineVariant.withValues(alpha: 0),
-                    colorScheme.outlineVariant.withValues(alpha: 0.7),
-                    colorScheme.outlineVariant.withValues(alpha: 0),
-                  ],
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (title.isNotEmpty)
+                  Text(
+                    title.replaceAll('_', ' '),
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                if (asOfLabel != null) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    asOfLabel,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 8),
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(1),
+                    gradient: LinearGradient(
+                      colors: [
+                        colorScheme.outlineVariant.withValues(alpha: 0),
+                        colorScheme.outlineVariant.withValues(alpha: 0.7),
+                        colorScheme.outlineVariant.withValues(alpha: 0),
+                      ],
+                    ),
+                  ),
+                  child: const SizedBox(height: 1),
                 ),
-              ),
-              child: const SizedBox(height: 1),
+              ],
             ),
           ),
           Expanded(
@@ -65,6 +96,7 @@ class DinosaurArticleDrawer extends StatelessWidget {
                   )
                 : DinosaurWikipediaView(
                     wikipediaTitle: title,
+                    asOf: dinosaur.insertDate,
                     preferDark: theme.brightness == Brightness.dark,
                   ),
           ),

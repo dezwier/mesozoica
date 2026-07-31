@@ -104,4 +104,14 @@ void main() {
     );
     expect(withMaInPeriod.displayPeriodName, 'Early Cretaceous');
   });
+
+  test('fromJson parses insert_date', () {
+    final dino = DinosaurSummary.fromJson({
+      'id': 1,
+      'name': 'Tyrannosaurus',
+      'wikipedia_title': 'Tyrannosaurus',
+      'insert_date': '2024-06-15T12:00:00Z',
+    });
+    expect(dino.insertDate, DateTime.utc(2024, 6, 15, 12));
+  });
 }

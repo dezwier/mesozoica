@@ -527,6 +527,7 @@ def dinosaur_to_summary(
             version=row.image_version or ORIGINAL_VERSION,
             fallback_url=dino_type.main_image_url,
         ),
+        insert_date=dino_type.insert_date,
         created_at=row.created_at,
         version=row.image_version if row.occurrence_id is not None else None,
         status=viewer_status,

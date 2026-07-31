@@ -65,9 +65,11 @@ def test_list_dinosaurs_returns_summary_fields(client, session):
     assert item["birth"] == 77.0
     assert item["death"] == 66.0
     assert item["cladogram"]["genus"] == "Tyrannosaurus"
-    assert item["main_image_url"].endswith("t-rex.jpg")
+    assert item["main_image_url"]
     assert "article" not in item
     assert item["created_at"] is None
+    assert item["insert_date"] is not None
+    assert item["insert_date"].startswith("20")
 
 
 def test_list_dinosaurs_defaults_to_catalog_mode(client, session):

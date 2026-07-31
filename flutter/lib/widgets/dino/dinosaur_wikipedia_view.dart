@@ -5,28 +5,51 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:webview_flutter_wkwebview/webview_flutter_wkwebview.dart';
 
+import '../../services/wikipedia_revision_service.dart';
+
 /// Builds the canonical en.wikipedia.org article URL for a Wikipedia title.
-Uri wikipediaArticleUri(String title) {
+Uri wikipediaArticleUri(String title, {int? oldId}) {
   final slug = title.trim().replaceAll(' ', '_');
-  return Uri.https('en.wikipedia.org', '/wiki/$slug');
+  if (oldId == null) {
+    return Uri.https('en.wikipedia.org', '/wiki/$slug');
+  }
+  return Uri.https('en.wikipedia.org', '/w/index.php', {
+    'title': slug,
+    'oldid': '$oldId',
+  });
 }
 
 /// Mobile Wikipedia URL — better fit for an in-app drawer.
-Uri wikipediaMobileArticleUri(String title) {
+Uri wikipediaMobileArticleUri(String title, {int? oldId}) {
   final slug = title.trim().replaceAll(' ', '_');
-  return Uri.https('en.m.wikipedia.org', '/wiki/$slug');
+  if (oldId == null) {
+    return Uri.https('en.m.wikipedia.org', '/wiki/$slug');
+  }
+  return Uri.https('en.m.wikipedia.org', '/w/index.php', {
+    'title': slug,
+    'oldid': '$oldId',
+  });
 }
 
-/// Embeds the live Wikipedia mobile article, with chrome stripped for reading.
+/// Embeds a Wikipedia mobile article (optionally a historical revision).
 class DinosaurWikipediaView extends StatefulWidget {
   const DinosaurWikipediaView({
     super.key,
     required this.wikipediaTitle,
+    this.asOf,
     this.preferDark = false,
+    this.revisionService,
   });
 
   final String wikipediaTitle;
+
+  /// When set, load the page revision current as of this timestamp.
+  final DateTime? asOf;
+
   final bool preferDark;
+
+  /// Injectable for tests; defaults to a live Wikipedia lookup.
+  final WikipediaRevisionService? revisionService;
 
   @override
   State<DinosaurWikipediaView> createState() => _DinosaurWikipediaViewState();
@@ -34,15 +57,26 @@ class DinosaurWikipediaView extends StatefulWidget {
 
 class _DinosaurWikipediaViewState extends State<DinosaurWikipediaView> {
   late final WebViewController _controller;
+  late final WikipediaRevisionService _revisionService;
   var _loading = true;
   var _hasError = false;
   var _chromeTrimmed = false;
+  int? _oldId;
 
-  Uri get _pageUri => wikipediaMobileArticleUri(widget.wikipediaTitle);
+  Uri get _pageUri => wikipediaMobileArticleUri(
+        widget.wikipediaTitle,
+        oldId: _oldId,
+      );
+
+  Uri get _desktopUri => wikipediaArticleUri(
+        widget.wikipediaTitle,
+        oldId: _oldId,
+      );
 
   @override
   void initState() {
     super.initState();
+    _revisionService = widget.revisionService ?? WikipediaRevisionService();
 
     final params = WebViewPlatform.instance is WebKitWebViewPlatform
         ? WebKitWebViewControllerCreationParams()
@@ -87,14 +121,33 @@ class _DinosaurWikipediaViewState extends State<DinosaurWikipediaView> {
             return NavigationDecision.prevent;
           },
         ),
-      )
-      ..loadRequest(_pageUri);
+      );
 
     final platform = _controller.platform;
     if (platform is WebKitWebViewController) {
       // Native iOS edge-swipe back/forward through WebView history.
       platform.setAllowsBackForwardNavigationGestures(true);
     }
+
+    _loadArticle();
+  }
+
+  Future<void> _loadArticle() async {
+    final asOf = widget.asOf;
+    if (asOf != null) {
+      try {
+        _oldId = await _revisionService.revisionAsOf(
+          title: widget.wikipediaTitle,
+          asOf: asOf,
+        );
+      } catch (_) {
+        _oldId = null;
+      }
+    } else {
+      _oldId = null;
+    }
+    if (!mounted) return;
+    await _controller.loadRequest(_pageUri);
   }
 
   Future<void> _goBackIfPossible() async {
@@ -167,12 +220,12 @@ $darkJs
       _hasError = false;
       _chromeTrimmed = false;
     });
-    _controller.loadRequest(_pageUri);
+    _loadArticle();
   }
 
   Future<void> _openInBrowser() async {
     await launchUrl(
-      wikipediaArticleUri(widget.wikipediaTitle),
+      _desktopUri,
       mode: LaunchMode.externalApplication,
     );
   }
