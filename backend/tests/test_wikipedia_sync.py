@@ -98,7 +98,7 @@ def test_sync_inserts_new_record(session: Session, fixture_html, monkeypatch):
     assert revision.short_description is None
     assert revision.llm_enriched is False
     assert revision.article is not None
-    assert summary.counters.fetched == 1
+    assert summary.counters.types_added == 1
 
 
 def test_sync_inserts_main_image_url_from_metadata(session: Session, fixture_html, monkeypatch):
@@ -243,7 +243,7 @@ def test_sync_updates_stale_preserves_insert_date(session: Session, fixture_html
     session.refresh(existing)
     revision = current_revision(session, existing)
 
-    assert summary.counters.updated == 1
+    assert summary.counters.revisions_appended == 1
     assert existing.insert_date.replace(tzinfo=None) == insert_date.replace(tzinfo=None)
     assert existing.main_image_url == "https://example.com/kept.jpg"
     assert revision is not None
@@ -288,7 +288,7 @@ def test_sync_refreshes_incomplete_stub(session: Session, fixture_html, monkeypa
     session.refresh(existing)
     revision = current_revision(session, existing)
 
-    assert summary.counters.updated == 1
+    assert summary.counters.revisions_appended == 1
     assert revision is not None
     assert revision.period == "Late Cretaceous"
     assert revision.cladogram["genus"] == "Tyrannosaurus"
@@ -334,8 +334,8 @@ def test_sync_updates_stub_matched_by_title_when_page_id_differs(
     session.refresh(existing)
     revision = current_revision(session, existing)
 
-    assert summary.counters.updated == 1
-    assert summary.counters.fetched == 0
+    assert summary.counters.revisions_appended == 1
+    assert summary.counters.types_added == 0
     assert existing.wikipedia_page_id == 1347
     assert revision is not None
     assert revision.period == "Late Cretaceous"
@@ -558,7 +558,7 @@ def test_sync_overwrite_refetches_up_to_date(session: Session, fixture_html, mon
     session.refresh(existing)
     revision = current_revision(session, existing)
 
-    assert summary.counters.updated == 1
+    assert summary.counters.revisions_appended == 1
     assert summary.counters.skipped == 0
     assert revision is not None
     assert revision.period == "Late Cretaceous"
@@ -620,14 +620,14 @@ def test_sync_exit_code_threshold():
     summary = SyncSummary(
         category="Category:Dinosaur_genera",
         total_candidates=10,
-        counters=SyncCounters(failed=2, fetched=8),
+        counters=SyncCounters(failed=2, types_added=8),
     )
     assert sync_exit_code(summary) == 1
 
     summary_ok = SyncSummary(
         category="Category:Dinosaur_genera",
         total_candidates=10,
-        counters=SyncCounters(failed=0, fetched=10),
+        counters=SyncCounters(failed=0, types_added=10),
     )
     assert sync_exit_code(summary_ok) == 0
 
@@ -665,7 +665,7 @@ def test_sync_dinos_skips_category_listing(session: Session, fixture_html, monke
     session.commit()
 
     assert list_batches_called is False
-    assert summary.counters.fetched == 1
+    assert summary.counters.types_added == 1
     row = session.exec(
         select(DinosaurType).where(DinosaurType.wikipedia_page_id == 555)
     ).first()

@@ -171,6 +171,7 @@ The Flutter app calls `POST /field/ensure` on app open/resume and every 500 m mo
 - **Content hash changed** → append a new revision (LLM empty) and advance `current_revision_id`.
 - **Same hash** → skip (may bump `article_date` only); does not wipe LLM.
 - Safe to re-run weekly or with `--overwrite`; prior snapshots remain for pinned occurrences.
+- Finish log counters: `types_added`, `revisions_appended`, `skipped`, `failed`.
 - Occurrence `dinosaur.version` is the curated **image** folder and is unrelated to content revisions.
 
 ### `dinosaur_llm_enrich` targets any unenriched revision

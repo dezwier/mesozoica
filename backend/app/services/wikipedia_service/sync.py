@@ -27,8 +27,8 @@ logger = logging.getLogger("wikipedia_sync")
 
 @dataclass
 class SyncCounters:
-    fetched: int = 0
-    updated: int = 0
+    types_added: int = 0
+    revisions_appended: int = 0
     skipped: int = 0
     failed: int = 0
     disambiguation: int = 0
@@ -44,7 +44,11 @@ class SyncSummary:
 
     @property
     def failure_rate(self) -> float:
-        attempted = self.counters.fetched + self.counters.updated + self.counters.failed
+        attempted = (
+            self.counters.types_added
+            + self.counters.revisions_appended
+            + self.counters.failed
+        )
         if attempted == 0:
             return 0.0
         return self.counters.failed / attempted
@@ -189,12 +193,12 @@ def sync_dinosaurs(
                             dry_run=dry_run,
                             overwrite=overwrite,
                         )
-                        if outcome == "fetch_new":
-                            counters.fetched += 1
-                            logger.info("%s action=fetch reason=new", prefix)
-                        elif outcome == "revision_appended":
-                            counters.updated += 1
-                            logger.info("%s action=fetch reason=revision_appended", prefix)
+                        if outcome == "types_added":
+                            counters.types_added += 1
+                            logger.info("%s action=types_added", prefix)
+                        elif outcome == "revisions_appended":
+                            counters.revisions_appended += 1
+                            logger.info("%s action=revisions_appended", prefix)
                         elif outcome == "skip_same_hash":
                             counters.skipped += 1
                             logger.info("%s action=skip reason=same_hash", prefix)
@@ -209,8 +213,8 @@ def sync_dinosaurs(
                             )
 
                         if not dry_run and outcome in (
-                            "fetch_new",
-                            "revision_appended",
+                            "types_added",
+                            "revisions_appended",
                             "skip_same_hash",
                         ):
                             session.commit()
@@ -243,10 +247,10 @@ def sync_dinosaurs(
         elapsed_s=elapsed,
     )
     logger.info(
-        "wikipedia_sync: finished fetched=%d updated=%d skipped=%d failed=%d "
-        "disambiguation=%d overwrite=%s dry_run=%s interrupted=%s elapsed_s=%.1f",
-        counters.fetched,
-        counters.updated,
+        "wikipedia_sync: finished types_added=%d revisions_appended=%d skipped=%d "
+        "failed=%d disambiguation=%d overwrite=%s dry_run=%s interrupted=%s elapsed_s=%.1f",
+        counters.types_added,
+        counters.revisions_appended,
         counters.skipped,
         counters.failed,
         counters.disambiguation,
@@ -293,10 +297,10 @@ def _process_member(
 
     if dry_run:
         if existing is None:
-            return "fetch_new"
+            return "types_added"
         if current is not None and current.content_hash == new_hash:
             return "skip_same_hash"
-        return "revision_appended"
+        return "revisions_appended"
 
     now = datetime.now(timezone.utc)
     if existing is None:
@@ -318,7 +322,7 @@ def _process_member(
         session.flush()
         row.current_revision_id = int(revision.id)
         session.add(row)
-        return "fetch_new"
+        return "types_added"
 
     # Identity / catalog image updates on the thin type row.
     existing.name = metadata.title
@@ -354,7 +358,7 @@ def _process_member(
             session.add(prior)
         existing.current_revision_id = int(prior.id)
         session.add(existing)
-        return "revision_appended"
+        return "revisions_appended"
 
     revision = _build_revision(
         dinosaur_type_id=int(existing.id),
@@ -365,7 +369,7 @@ def _process_member(
     session.flush()
     existing.current_revision_id = int(revision.id)
     session.add(existing)
-    return "revision_appended"
+    return "revisions_appended"
 
 
 def sync_exit_code(summary: SyncSummary) -> int:
