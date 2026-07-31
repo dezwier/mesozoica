@@ -31,9 +31,11 @@ import '../widgets/cards/fossil_discovery_celebration.dart';
 import '../widgets/cards/site_discovery_celebration.dart';
 import '../widgets/common/app_splash_screen.dart';
 import '../widgets/profile/community_drawer.dart';
-import '../screens/catalog/catalog_screen.dart';
+import '../screens/dino/dino_screen.dart';
+import '../screens/fossil/fossil_screen.dart';
 import '../screens/map/map_screen.dart';
 import '../screens/profile/profile_screen.dart';
+import '../screens/site/site_screen.dart';
 import '../screens/tool/tool_screen.dart';
 import 'map_bottom_chrome.dart';
 import 'map_top_chrome.dart';
@@ -51,9 +53,13 @@ class AppShell extends StatefulWidget {
 class _AppShellState extends State<AppShell>
     with WidgetsBindingObserver, _AppShellDiscoveryMixin {
   bool _profileOpen = false;
-  bool _catalogOpen = false;
+  bool _sitesOpen = false;
+  bool _fossilsOpen = false;
+  bool _dinosaursOpen = false;
   bool _toolsOpen = false;
-  final _catalogScreenKey = GlobalKey<CatalogScreenState>();
+  final _siteScreenKey = GlobalKey<SiteScreenState>();
+  final _fossilScreenKey = GlobalKey<FossilScreenState>();
+  final _dinoScreenKey = GlobalKey<DinoScreenState>();
   final _toolScreenKey = GlobalKey<ToolScreenState>();
   int? _previousUserId;
   CatalogDataSource? _previousCatalogDataSource;
@@ -68,8 +74,20 @@ class _AppShellState extends State<AppShell>
   /// Cached so aerial mission list refreshes do not rebuild the shell.
   bool _aerialDrawMode = false;
 
-  bool get _anyOverlayOpen => _profileOpen || _catalogOpen || _toolsOpen;
+  bool get _anyCatalogOpen =>
+      _sitesOpen || _fossilsOpen || _dinosaursOpen;
+  bool get _anyOverlayOpen =>
+      _profileOpen || _anyCatalogOpen || _toolsOpen;
+  /// Bottom / top chrome hide while any overlay is open (or aerial draw).
   bool get _hideChrome => _anyOverlayOpen || _aerialDrawMode;
+
+  void _clearOverlayFlags() {
+    _profileOpen = false;
+    _sitesOpen = false;
+    _fossilsOpen = false;
+    _dinosaursOpen = false;
+    _toolsOpen = false;
+  }
 
   @override
   void initState() {
@@ -156,11 +174,7 @@ class _AppShellState extends State<AppShell>
 
     // Card map taps queue a focus request; close overlays so MapScreen can pan.
     if (map.pendingFocusSite != null && _anyOverlayOpen) {
-      setState(() {
-        _profileOpen = false;
-        _catalogOpen = false;
-        _toolsOpen = false;
-      });
+      setState(_clearOverlayFlags);
     }
   }
 
@@ -171,11 +185,7 @@ class _AppShellState extends State<AppShell>
     // Activate requests the map; close tool/profile overlays so the map
     // is visible (mirrors aerial draw-mode behavior).
     if (guidance.requestShowOnMap && _anyOverlayOpen) {
-      setState(() {
-        _profileOpen = false;
-        _catalogOpen = false;
-        _toolsOpen = false;
-      });
+      setState(_clearOverlayFlags);
     }
     // Do not setState on every guidance notify — map/HUD listen locally.
   }
@@ -185,11 +195,7 @@ class _AppShellState extends State<AppShell>
     final formation = _formationMap;
     if (formation == null) return;
     if (formation.requestShowOnMap && _anyOverlayOpen) {
-      setState(() {
-        _profileOpen = false;
-        _catalogOpen = false;
-        _toolsOpen = false;
-      });
+      setState(_clearOverlayFlags);
     }
     // Do not setState on every formation notify — map/HUD listen locally.
   }
@@ -200,20 +206,14 @@ class _AppShellState extends State<AppShell>
     if (aerial == null) return;
     if (aerial.isDrawMode && _anyOverlayOpen) {
       setState(() {
-        _profileOpen = false;
-        _catalogOpen = false;
-        _toolsOpen = false;
+        _clearOverlayFlags();
         _aerialDrawMode = true;
       });
       return;
     }
     // Mission Info taps queue a focus request; close overlays so MapScreen can pan.
     if (aerial.pendingFocusMission != null && _anyOverlayOpen) {
-      setState(() {
-        _profileOpen = false;
-        _catalogOpen = false;
-        _toolsOpen = false;
-      });
+      setState(_clearOverlayFlags);
       return;
     }
 
@@ -410,21 +410,41 @@ class _AppShellState extends State<AppShell>
 
   void _openProfile() {
     setState(() {
-      _catalogOpen = false;
-      _toolsOpen = false;
+      _clearOverlayFlags();
       _profileOpen = true;
     });
   }
 
-  void _openCatalog() {
-    if (_catalogOpen) {
-      _catalogScreenKey.currentState?.scrollActiveTabToTop();
+  void _openSites() {
+    if (_sitesOpen) {
+      _siteScreenKey.currentState?.scrollToTop();
       return;
     }
     setState(() {
-      _profileOpen = false;
-      _toolsOpen = false;
-      _catalogOpen = true;
+      _clearOverlayFlags();
+      _sitesOpen = true;
+    });
+  }
+
+  void _openFossils() {
+    if (_fossilsOpen) {
+      _fossilScreenKey.currentState?.scrollToTop();
+      return;
+    }
+    setState(() {
+      _clearOverlayFlags();
+      _fossilsOpen = true;
+    });
+  }
+
+  void _openDinosaurs() {
+    if (_dinosaursOpen) {
+      _dinoScreenKey.currentState?.scrollToTop();
+      return;
+    }
+    setState(() {
+      _clearOverlayFlags();
+      _dinosaursOpen = true;
     });
   }
 
@@ -434,19 +454,14 @@ class _AppShellState extends State<AppShell>
       return;
     }
     setState(() {
-      _profileOpen = false;
-      _catalogOpen = false;
+      _clearOverlayFlags();
       _toolsOpen = true;
     });
   }
 
   void _closeOverlays() {
     if (!_anyOverlayOpen) return;
-    setState(() {
-      _profileOpen = false;
-      _catalogOpen = false;
-      _toolsOpen = false;
-    });
+    setState(_clearOverlayFlags);
   }
 
   void _onNotificationTap(UserNotificationItem item) {
@@ -492,18 +507,46 @@ class _AppShellState extends State<AppShell>
                 children: [
                   MapScreen(
                     isActive: !_anyOverlayOpen,
-                    showControls: !_catalogOpen && !_toolsOpen,
+                    showControls: !_anyCatalogOpen && !_toolsOpen,
                   ),
                   Offstage(
-                    offstage: !_catalogOpen,
+                    offstage: !_sitesOpen,
                     child: TickerMode(
-                      enabled: _catalogOpen,
+                      enabled: _sitesOpen,
                       child: ShellOverlayPanel(
                         opaque: false,
                         onClose: _closeOverlays,
-                        child: CatalogScreen(
-                          key: _catalogScreenKey,
-                          isActive: _catalogOpen,
+                        child: SiteScreen(
+                          key: _siteScreenKey,
+                          isActive: _sitesOpen,
+                        ),
+                      ),
+                    ),
+                  ),
+                  Offstage(
+                    offstage: !_fossilsOpen,
+                    child: TickerMode(
+                      enabled: _fossilsOpen,
+                      child: ShellOverlayPanel(
+                        opaque: false,
+                        onClose: _closeOverlays,
+                        child: FossilScreen(
+                          key: _fossilScreenKey,
+                          isActive: _fossilsOpen,
+                        ),
+                      ),
+                    ),
+                  ),
+                  Offstage(
+                    offstage: !_dinosaursOpen,
+                    child: TickerMode(
+                      enabled: _dinosaursOpen,
+                      child: ShellOverlayPanel(
+                        opaque: false,
+                        onClose: _closeOverlays,
+                        child: DinoScreen(
+                          key: _dinoScreenKey,
+                          isActive: _dinosaursOpen,
                         ),
                       ),
                     ),
@@ -539,7 +582,9 @@ class _AppShellState extends State<AppShell>
                     ),
                     MapBottomChrome(
                       onOpenProfile: _openProfile,
-                      onOpenCatalog: _openCatalog,
+                      onOpenSites: _openSites,
+                      onOpenFossils: _openFossils,
+                      onOpenDinosaurs: _openDinosaurs,
                       onOpenTools: _openTools,
                     ),
                   ],

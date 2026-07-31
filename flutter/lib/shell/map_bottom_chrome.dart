@@ -9,21 +9,27 @@ import '../theme/dino_card_theme.dart';
 import '../widgets/cards/tool_card_image.dart';
 import 'map_chrome_insets.dart';
 
-/// Floating bottom entry points: profile, catalog, and tools on the lower left.
+/// Floating bottom entry points: profile, sites, fossils, dinosaurs, tools.
 class MapBottomChrome extends StatefulWidget {
   const MapBottomChrome({
     super.key,
     required this.onOpenProfile,
-    required this.onOpenCatalog,
+    required this.onOpenSites,
+    required this.onOpenFossils,
+    required this.onOpenDinosaurs,
     required this.onOpenTools,
   });
 
   final VoidCallback onOpenProfile;
-  final VoidCallback onOpenCatalog;
+  final VoidCallback onOpenSites;
+  final VoidCallback onOpenFossils;
+  final VoidCallback onOpenDinosaurs;
   final VoidCallback onOpenTools;
 
-  static const double _buttonSize = 60;
-  static const double _buttonGap = 16;
+  static const double _outerButtonSize = MapChromeInsets.bottomOuterButtonSize;
+  static const double _buttonSize = MapChromeInsets.bottomButtonSize;
+  static const double _fossilButtonSize = MapChromeInsets.bottomFossilButtonSize;
+  static const double _borderWidth = 1.75;
 
   @override
   State<MapBottomChrome> createState() => _MapBottomChromeState();
@@ -69,34 +75,66 @@ class _MapBottomChromeState extends State<MapBottomChrome> {
             child: SizedBox(
               height: MapChromeInsets.bottomRowHeight,
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Align(
-                  alignment: Alignment.bottomLeft,
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      _ProfileEntry(
-                        size: MapBottomChrome._buttonSize,
-                        onTap: widget.onOpenProfile,
-                      ),
-                      const SizedBox(width: MapBottomChrome._buttonGap),
-                      _LabeledChromeButton(
-                        size: MapBottomChrome._buttonSize,
-                        label: 'Catalog',
-                        onTap: widget.onOpenCatalog,
-                        child: Image.asset(
-                          'assets/images/cards/dinosaur_card_front_placeholder.png',
-                          fit: BoxFit.cover,
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Expanded(
+                      child: Center(
+                        child: _ProfileEntry(
+                          size: MapBottomChrome._outerButtonSize,
+                          onTap: widget.onOpenProfile,
                         ),
                       ),
-                      const SizedBox(width: MapBottomChrome._buttonGap),
-                      _ToolsEntry(
-                        size: MapBottomChrome._buttonSize,
-                        onTap: widget.onOpenTools,
+                    ),
+                    Expanded(
+                      child: Center(
+                        child: _LabeledChromeButton(
+                          size: MapBottomChrome._buttonSize,
+                          label: 'Sites',
+                          onTap: widget.onOpenSites,
+                          child: Image.asset(
+                            DinoCardTheme.sitePlaceholderAsset,
+                            fit: BoxFit.cover,
+                          ),
+                        ),
                       ),
-                    ],
-                  ),
+                    ),
+                    Expanded(
+                      child: Center(
+                        child: _LabeledChromeButton(
+                          size: MapBottomChrome._fossilButtonSize,
+                          label: 'Fossils',
+                          onTap: widget.onOpenFossils,
+                          child: Image.asset(
+                            DinoCardTheme.fossilPlaceholderAsset,
+                            fit: BoxFit.cover,
+                          ),
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      child: Center(
+                        child: _LabeledChromeButton(
+                          size: MapBottomChrome._buttonSize,
+                          label: 'Dinosaurs',
+                          onTap: widget.onOpenDinosaurs,
+                          child: Image.asset(
+                            DinoCardTheme.frontPlaceholderAsset,
+                            fit: BoxFit.cover,
+                          ),
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      child: Center(
+                        child: _ToolsEntry(
+                          size: MapBottomChrome._outerButtonSize,
+                          onTap: widget.onOpenTools,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -233,26 +271,23 @@ class _LabeledChromeButton extends StatelessWidget {
             child: child,
           ),
           const SizedBox(height: 4),
-          ConstrainedBox(
-            constraints: BoxConstraints(maxWidth: size + 28),
-            child: Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                height: 1.1,
-                shadows: [
-                  Shadow(
-                    color: Color(0xCC000000),
-                    blurRadius: 6,
-                    offset: Offset(0, 1),
-                  ),
-                ],
-              ),
+          Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              height: 1.1,
+              shadows: [
+                Shadow(
+                  color: Color(0xCC000000),
+                  blurRadius: 6,
+                  offset: Offset(0, 1),
+                ),
+              ],
             ),
           ),
         ],
@@ -279,7 +314,10 @@ class _MapChromeCircleButton extends StatelessWidget {
       elevation: 4,
       shadowColor: Colors.black.withValues(alpha: 0.4),
       shape: const CircleBorder(
-        side: BorderSide(color: Colors.white, width: 2.5),
+        side: BorderSide(
+          color: Colors.white,
+          width: MapBottomChrome._borderWidth,
+        ),
       ),
       color: scheme.surface.withValues(alpha: 0.95),
       clipBehavior: Clip.antiAlias,

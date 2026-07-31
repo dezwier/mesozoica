@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../controllers/catalog_controller.dart';
-import '../../shell/map_chrome_insets.dart';
 import '../../shell/shell_overlay_panel.dart';
 import '../../theme/dino_card_theme.dart';
 import 'cover_flow_carousel.dart';
@@ -102,7 +101,7 @@ class CatalogListScreenState<C extends CatalogController<T>, T>
             if (widget.isActive && widget.floatingActionsBuilder != null)
               Positioned(
                 right: 12,
-                bottom: MapChromeInsets.fabBottom(context),
+                bottom: ShellOverlayPanel.fabBottom(context),
                 child: widget.floatingActionsBuilder!(context, catalog),
               ),
           ],

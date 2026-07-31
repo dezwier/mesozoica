@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 
-/// Fullscreen panel that hosts Profile, Catalog, or Tools over the map.
+/// Fullscreen panel that hosts Profile, Sites, Fossils, Dinosaurs, or Tools
+/// over the map.
 ///
 /// Dismissal sits at bottom center over the content (no top chrome).
 ///
-/// When [opaque] is false, the map stays visible under a dim scrim (Catalog /
+/// When [opaque] is false, the map stays visible under a dim scrim (catalog /
 /// Tools). Profile keeps the opaque scaffold fill.
 class ShellOverlayPanel extends StatelessWidget {
   const ShellOverlayPanel({
@@ -31,6 +32,10 @@ class ShellOverlayPanel extends StatelessWidget {
       dismissBottomPadding +
       dismissSize +
       24;
+
+  /// Places catalog FABs at the same bottom band as the dismiss button.
+  static double fabBottom(BuildContext context) =>
+      MediaQuery.paddingOf(context).bottom + dismissBottomPadding;
 
   @override
   Widget build(BuildContext context) {
