@@ -1,6 +1,8 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
+import '../../controllers/auth_controller.dart';
 import '../../models/owned_occurrence_thumb.dart';
 import '../../theme/dino_card_theme.dart';
 import '../../theme/map_chrome_theme.dart';
@@ -18,6 +20,7 @@ class CatalogAlbumTile extends StatefulWidget {
     required this.isCuratedUrl,
     this.title,
     this.onOwnedTap,
+    this.onAdminCollect,
   });
 
   final String? imageUrl;
@@ -30,6 +33,9 @@ class CatalogAlbumTile extends StatefulWidget {
   final String? title;
   final ValueChanged<OwnedOccurrenceThumb>? onOwnedTap;
 
+  /// Admin mode: long-press any tile to spawn a new occurrence.
+  final Future<void> Function()? onAdminCollect;
+
   @override
   State<CatalogAlbumTile> createState() => CatalogAlbumTileState();
 }
@@ -37,6 +43,7 @@ class CatalogAlbumTile extends StatefulWidget {
 class CatalogAlbumTileState extends State<CatalogAlbumTile> {
   late final PageController _pageController;
   int _pageIndex = 0;
+  bool _collectBusy = false;
 
   @override
   void initState() {
@@ -67,8 +74,21 @@ class CatalogAlbumTileState extends State<CatalogAlbumTile> {
     widget.onOwnedTap?.call(thumb);
   }
 
+  Future<void> _handleAdminCollect() async {
+    final collect = widget.onAdminCollect;
+    if (_collectBusy || collect == null) return;
+    setState(() => _collectBusy = true);
+    try {
+      await collect();
+    } finally {
+      if (mounted) setState(() => _collectBusy = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final showAdminUi = context.watch<AuthController>().showAdminUi;
+    final canAdminCollect = showAdminUi && widget.onAdminCollect != null;
     final radius = BorderRadius.circular(DinoCardTheme.borderRadius * 0.55);
     return AspectRatio(
       aspectRatio: DinoCardTheme.cardAspectRatio,
@@ -86,24 +106,42 @@ class CatalogAlbumTileState extends State<CatalogAlbumTile> {
         clipBehavior: Clip.antiAlias,
         child: InkWell(
           onTap: widget.owned ? _handleTap : null,
-          child: widget.owned
-              ? _OwnedGallery(
-                  title: widget.title,
-                  occurrences: widget.ownedOccurrences,
-                  fallbackImageUrl: widget.imageUrl,
-                  placeholderAsset: widget.placeholderAsset,
-                  isCuratedUrl: widget.isCuratedUrl,
-                  controller: _pageController,
-                  pageIndex: _pageIndex,
-                  onPageChanged: (index) {
-                    setState(() => _pageIndex = index);
-                  },
-                )
-              : CatalogSilhouetteImage(
-                  imageUrl: widget.imageUrl,
-                  placeholderAsset: widget.placeholderAsset,
-                  isCuratedUrl: widget.isCuratedUrl,
+          onLongPress:
+              canAdminCollect && !_collectBusy ? _handleAdminCollect : null,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              widget.owned
+                  ? _OwnedGallery(
+                      title: widget.title,
+                      occurrences: widget.ownedOccurrences,
+                      fallbackImageUrl: widget.imageUrl,
+                      placeholderAsset: widget.placeholderAsset,
+                      isCuratedUrl: widget.isCuratedUrl,
+                      controller: _pageController,
+                      pageIndex: _pageIndex,
+                      onPageChanged: (index) {
+                        setState(() => _pageIndex = index);
+                      },
+                    )
+                  : CatalogSilhouetteImage(
+                      imageUrl: widget.imageUrl,
+                      placeholderAsset: widget.placeholderAsset,
+                      isCuratedUrl: widget.isCuratedUrl,
+                    ),
+              if (_collectBusy)
+                const ColoredBox(
+                  color: Color(0x66000000),
+                  child: Center(
+                    child: SizedBox(
+                      width: 22,
+                      height: 22,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                  ),
                 ),
+            ],
+          ),
         ),
       ),
     );

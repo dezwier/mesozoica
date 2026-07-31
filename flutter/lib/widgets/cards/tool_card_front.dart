@@ -7,7 +7,6 @@ import '../../theme/dino_card_theme.dart';
 import 'occurrence_id_badge.dart';
 import 'tool_card_header.dart';
 import 'tool_card_image.dart';
-import 'tool_collect_badge.dart';
 
 class ToolCardFront extends StatelessWidget {
   const ToolCardFront({
@@ -16,18 +15,12 @@ class ToolCardFront extends StatelessWidget {
     this.titleFontSize = 36,
     this.subtitleFontSize = 10,
     this.overlayHeightFactor = 0.52,
-    this.showCollectBadge = false,
-    this.collectBusy = false,
-    this.onCollect,
   });
 
   final ToolSummary tool;
   final double titleFontSize;
   final double subtitleFontSize;
   final double overlayHeightFactor;
-  final bool showCollectBadge;
-  final bool collectBusy;
-  final VoidCallback? onCollect;
 
   @override
   Widget build(BuildContext context) {
@@ -62,15 +55,6 @@ class ToolCardFront extends StatelessWidget {
               top: 14,
               left: 14,
               child: OccurrenceIdBadge(label: tool.occurrenceIdBadgeLabel),
-            ),
-          if (showCollectBadge)
-            Positioned(
-              top: 14,
-              right: 14,
-              child: ToolCollectBadge(
-                onPressed: onCollect,
-                busy: collectBusy,
-              ),
             ),
           Positioned(
             left: 18,

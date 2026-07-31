@@ -44,7 +44,6 @@ class ToolTurnableCard extends StatefulWidget {
 }
 
 class _ToolTurnableCardState extends State<ToolTurnableCard> {
-  bool _collectBusy = false;
   bool _updateParamsBusy = false;
 
   List<String> _editableKeysForBackStats(ToolSummary tool) {
@@ -88,59 +87,6 @@ class _ToolTurnableCardState extends State<ToolTurnableCard> {
     }
 
     return tool.params.keys.toList(growable: false);
-  }
-
-  Future<void> _onCollect() async {
-    if (_collectBusy) return;
-    setState(() => _collectBusy = true);
-    try {
-      final versions = await ToolService().listToolImageVersions();
-      if (!mounted) return;
-      if (versions.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('No image versions available')),
-        );
-        return;
-      }
-      final selected = await showDialog<String>(
-        context: context,
-        builder: (dialogContext) {
-          return SimpleDialog(
-            title: const Text('Choose image version'),
-            children: [
-              for (final name in versions)
-                SimpleDialogOption(
-                  onPressed: () => Navigator.of(dialogContext).pop(name),
-                  child: Text(name),
-                ),
-            ],
-          );
-        },
-      );
-      if (!mounted || selected == null) return;
-      await context.read<ToolCatalogController>().collectTool(
-            widget.tool.id,
-            version: selected,
-          );
-      if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Added to your collection')));
-    } on ToolServiceException catch (error) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(error.message)));
-    } catch (_) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Failed to add tool')));
-    } finally {
-      if (mounted) {
-        setState(() => _collectBusy = false);
-      }
-    }
   }
 
   Future<void> _onAction() async {
@@ -205,7 +151,6 @@ class _ToolTurnableCardState extends State<ToolTurnableCard> {
         context.watch<ToolCatalogController>().mode == ToolScreenMode.inventory;
     final paramsForEdit =
         widget.tool.params.isNotEmpty ? widget.tool.params : widget.tool.baseParams;
-    final showCollectBadge = showAdminUi && !inventoryMode;
     final extension = ToolCardExtensions.forTool(widget.tool);
     final onInfo = extension?.infoHandler(context, widget.tool);
     final statsChild = extension?.buildDeployStats(context, widget.tool);
@@ -226,9 +171,6 @@ class _ToolTurnableCardState extends State<ToolTurnableCard> {
         titleFontSize: widget.titleFontSize,
         subtitleFontSize: widget.subtitleFontSize,
         overlayHeightFactor: widget.overlayHeightFactor,
-        showCollectBadge: showCollectBadge,
-        collectBusy: _collectBusy,
-        onCollect: showCollectBadge ? _onCollect : null,
       ),
       back: ToolCardBack(
         tool: widget.tool,

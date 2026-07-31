@@ -100,6 +100,22 @@ class ToolSummary {
     );
   }
 
+  /// Catalog album: append a newly collected occurrence thumb.
+  ToolSummary withAddedOwnedOccurrence(ToolSummary created) {
+    return copyWith(
+      level: created.level ?? level ?? 1,
+      ownedOccurrences: [
+        ...ownedOccurrences,
+        OwnedOccurrenceThumb(
+          id: created.id,
+          version: created.version,
+          mainImageUrl: created.mainImageUrl,
+          spawnDate: created.spawnDate,
+        ),
+      ],
+    );
+  }
+
   ToolSummary copyWith({
     int? id,
     String? name,

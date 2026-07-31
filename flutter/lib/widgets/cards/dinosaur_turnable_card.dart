@@ -1,9 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 
-import '../../controllers/auth_controller.dart';
 import '../../models/dinosaur.dart';
-import '../../services/dinosaur_service.dart';
 import '../../theme/dino_card_theme.dart';
 import 'dinosaur_card_back.dart';
 import 'dinosaur_card_front.dart';
@@ -24,7 +21,6 @@ class DinosaurTurnableCard extends StatefulWidget {
     this.subtitleFontSize = 10,
     this.overlayHeightFactor = 0.52,
     this.onDinosaurUpdated,
-    this.onDinosaurCollected,
   });
 
   final DinosaurSummary dinosaur;
@@ -38,7 +34,6 @@ class DinosaurTurnableCard extends StatefulWidget {
   final double subtitleFontSize;
   final double overlayHeightFactor;
   final ValueChanged<DinosaurSummary>? onDinosaurUpdated;
-  final ValueChanged<DinosaurSummary>? onDinosaurCollected;
 
   @override
   State<DinosaurTurnableCard> createState() => _DinosaurTurnableCardState();
@@ -46,7 +41,6 @@ class DinosaurTurnableCard extends StatefulWidget {
 
 class _DinosaurTurnableCardState extends State<DinosaurTurnableCard> {
   late DinosaurSummary _dinosaur;
-  bool _collectBusy = false;
 
   @override
   void initState() {
@@ -63,90 +57,9 @@ class _DinosaurTurnableCardState extends State<DinosaurTurnableCard> {
     }
   }
 
-  Future<void> _onCollect() async {
-    if (_collectBusy) return;
-    setState(() => _collectBusy = true);
-    final service = DinosaurService();
-    try {
-      final status = await showDialog<String>(
-        context: context,
-        builder: (dialogContext) {
-          return SimpleDialog(
-            title: const Text('Choose status'),
-            children: [
-              for (final option in const [
-                ('modelled', 'Modelled'),
-                ('reconstructed', 'Reconstructed'),
-              ])
-                SimpleDialogOption(
-                  onPressed: () => Navigator.of(dialogContext).pop(option.$1),
-                  child: Text(option.$2),
-                ),
-            ],
-          );
-        },
-      );
-      if (!mounted || status == null) return;
-
-      final versions = await service.listDinosaurImageVersions();
-      if (!mounted) return;
-      if (versions.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('No image versions available')),
-        );
-        return;
-      }
-      final selectedVersion = await showDialog<String>(
-        context: context,
-        builder: (dialogContext) {
-          return SimpleDialog(
-            title: const Text('Choose image version'),
-            children: [
-              for (final name in versions)
-                SimpleDialogOption(
-                  onPressed: () => Navigator.of(dialogContext).pop(name),
-                  child: Text(name),
-                ),
-            ],
-          );
-        },
-      );
-      if (!mounted || selectedVersion == null) return;
-
-      final typeId = _dinosaur.dinosaurTypeId ?? _dinosaur.id;
-      final created = await service.collectDinosaur(
-        dinosaurTypeId: typeId,
-        status: status,
-        version: selectedVersion,
-      );
-      if (!mounted) return;
-      widget.onDinosaurCollected?.call(created);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Added to your collection')),
-      );
-    } on DinosaurServiceException catch (error) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.message)),
-      );
-    } catch (_) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Failed to add dinosaur')),
-      );
-    } finally {
-      service.dispose();
-      if (mounted) {
-        setState(() => _collectBusy = false);
-      }
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
-    final showAdminUi = context.watch<AuthController>().showAdminUi;
     final isCatalog = !_dinosaur.isInventoryOccurrence;
-    final showCollectBadge = showAdminUi && isCatalog;
     final status = _dinosaur.status?.trim();
     final showInventoryStatus = !isCatalog &&
         status != null &&
@@ -167,9 +80,6 @@ class _DinosaurTurnableCardState extends State<DinosaurTurnableCard> {
         titleFontSize: widget.titleFontSize,
         subtitleFontSize: widget.subtitleFontSize,
         overlayHeightFactor: widget.overlayHeightFactor,
-        showCollectBadge: showCollectBadge,
-        collectBusy: _collectBusy,
-        onCollect: showCollectBadge ? _onCollect : null,
         showStatus: showInventoryStatus,
       ),
       back: DinosaurCardBack(

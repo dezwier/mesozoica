@@ -1,11 +1,26 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mesozoica/controllers/auth_controller.dart';
 import 'package:mesozoica/models/dinosaur.dart';
 import 'package:mesozoica/models/owned_occurrence_thumb.dart';
 import 'package:mesozoica/models/tool.dart';
 import 'package:mesozoica/theme/dino_card_theme.dart';
 import 'package:mesozoica/utils/curated_image_url.dart';
 import 'package:mesozoica/widgets/common/catalog_album_tile.dart';
+import 'package:provider/provider.dart';
+
+Widget _wrap(Widget child) {
+  return ChangeNotifierProvider(
+    create: (_) => AuthController(),
+    child: MaterialApp(
+      home: Scaffold(
+        body: Center(
+          child: SizedBox(width: 120, child: child),
+        ),
+      ),
+    ),
+  );
+}
 
 void main() {
   test('DinosaurSummary parses owned_occurrences', () {
@@ -71,21 +86,14 @@ void main() {
   testWidgets('unowned catalog tile is not tappable', (tester) async {
     var tapped = false;
     await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: Center(
-            child: SizedBox(
-              width: 120,
-              child: CatalogAlbumTile(
-                imageUrl: null,
-                owned: false,
-                ownedOccurrences: const [],
-                placeholderAsset: DinoCardTheme.frontPlaceholderAsset,
-                isCuratedUrl: isCuratedDinosaurImageUrl,
-                onOwnedTap: (_) => tapped = true,
-              ),
-            ),
-          ),
+      _wrap(
+        CatalogAlbumTile(
+          imageUrl: null,
+          owned: false,
+          ownedOccurrences: const [],
+          placeholderAsset: DinoCardTheme.frontPlaceholderAsset,
+          isCuratedUrl: isCuratedDinosaurImageUrl,
+          onOwnedTap: (_) => tapped = true,
         ),
       ),
     );
@@ -101,21 +109,14 @@ void main() {
     const second = OwnedOccurrenceThumb(id: 2, version: 'Summer 26');
 
     await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: Center(
-            child: SizedBox(
-              width: 120,
-              child: CatalogAlbumTile(
-                imageUrl: null,
-                owned: true,
-                ownedOccurrences: const [first, second],
-                placeholderAsset: DinoCardTheme.frontPlaceholderAsset,
-                isCuratedUrl: isCuratedDinosaurImageUrl,
-                onOwnedTap: (thumb) => tapped = thumb,
-              ),
-            ),
-          ),
+      _wrap(
+        CatalogAlbumTile(
+          imageUrl: null,
+          owned: true,
+          ownedOccurrences: const [first, second],
+          placeholderAsset: DinoCardTheme.frontPlaceholderAsset,
+          isCuratedUrl: isCuratedDinosaurImageUrl,
+          onOwnedTap: (thumb) => tapped = thumb,
         ),
       ),
     );

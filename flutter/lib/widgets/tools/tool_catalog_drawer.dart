@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
+import '../../controllers/tool_catalog_controller.dart';
 import '../../models/tool.dart';
 import '../../services/tool_service.dart';
 import '../../theme/dino_card_theme.dart';
@@ -7,6 +9,7 @@ import '../../utils/curated_image_url.dart';
 import '../cards/tool_card_dialog.dart';
 import '../common/catalog_album_drawer.dart';
 import '../common/catalog_album_tile.dart';
+import '../common/catalog_collect_flow.dart';
 
 /// Catalog album drawer for tool types (opened from inventory FAB).
 class ToolCatalogDrawer {
@@ -100,6 +103,21 @@ class _ToolCatalogAlbumBodyState extends State<_ToolCatalogAlbumBody> {
     showToolCardDialog(context, tool: occurrence);
   }
 
+  Future<void> _collectOccurrence(ToolSummary catalogRow) async {
+    final typeId = catalogRow.toolTypeId ?? catalogRow.id;
+    final created = await CatalogCollectFlow.collectTool(
+      context,
+      toolTypeId: typeId,
+    );
+    if (!mounted || created == null) return;
+    final index = _items.indexWhere((item) => item.id == catalogRow.id);
+    if (index < 0) return;
+    setState(() {
+      _items[index] = _items[index].withAddedOwnedOccurrence(created);
+    });
+    context.read<ToolCatalogController>().load(force: true);
+  }
+
   @override
   Widget build(BuildContext context) {
     return CatalogAlbumDrawer(
@@ -124,6 +142,7 @@ class _ToolCatalogAlbumBodyState extends State<_ToolCatalogAlbumBody> {
             placeholderAsset: DinoCardTheme.sitePlaceholderAsset,
             isCuratedUrl: isCuratedToolImageUrl,
             onOwnedTap: (thumb) => _openOccurrence(tool, thumb),
+            onAdminCollect: () => _collectOccurrence(tool),
           );
         },
       ),

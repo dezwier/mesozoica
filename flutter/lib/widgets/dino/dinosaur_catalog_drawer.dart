@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
+import '../../controllers/dinosaur_catalog_controller.dart';
 import '../../models/dinosaur.dart';
 import '../../services/dinosaur_service.dart';
 import '../../theme/dino_card_theme.dart';
@@ -7,6 +9,7 @@ import '../../utils/curated_image_url.dart';
 import '../cards/dinosaur_card_dialog.dart';
 import '../common/catalog_album_drawer.dart';
 import '../common/catalog_album_tile.dart';
+import '../common/catalog_collect_flow.dart';
 
 /// Catalog album drawer for dinosaur types (opened from inventory FAB).
 class DinosaurCatalogDrawer {
@@ -101,6 +104,22 @@ class _DinosaurCatalogAlbumBodyState extends State<_DinosaurCatalogAlbumBody> {
     showDinosaurCardDialog(context, dinosaur: occurrence);
   }
 
+  Future<void> _collectOccurrence(DinosaurSummary catalogRow) async {
+    final typeId = catalogRow.dinosaurTypeId ?? catalogRow.id;
+    final created = await CatalogCollectFlow.collectDinosaur(
+      context,
+      dinosaurTypeId: typeId,
+    );
+    if (!mounted || created == null) return;
+    final index = _items.indexWhere((item) => item.id == catalogRow.id);
+    if (index < 0) return;
+    setState(() {
+      _items[index] = _items[index].withAddedOwnedOccurrence(created);
+    });
+    // Keep inventory Cover Flow in sync under the drawer.
+    context.read<DinosaurCatalogController>().load(force: true);
+  }
+
   @override
   Widget build(BuildContext context) {
     return CatalogAlbumDrawer(
@@ -127,6 +146,7 @@ class _DinosaurCatalogAlbumBodyState extends State<_DinosaurCatalogAlbumBody> {
             placeholderAsset: DinoCardTheme.frontPlaceholderAsset,
             isCuratedUrl: isCuratedDinosaurImageUrl,
             onOwnedTap: (thumb) => _openOccurrence(dino, thumb),
+            onAdminCollect: () => _collectOccurrence(dino),
           );
         },
       ),

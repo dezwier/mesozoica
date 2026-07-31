@@ -116,6 +116,38 @@ class DinosaurSummary {
     );
   }
 
+  /// Catalog album: append a newly collected occurrence thumb.
+  DinosaurSummary withAddedOwnedOccurrence(DinosaurSummary created) {
+    return DinosaurSummary(
+      id: id,
+      name: name,
+      wikipediaTitle: wikipediaTitle,
+      dinosaurTypeId: dinosaurTypeId,
+      birth: birth,
+      death: death,
+      period: period,
+      dietType: dietType,
+      length: length,
+      mass: mass,
+      location: location,
+      shortDescription: shortDescription,
+      cladogram: cladogram,
+      mainImageUrl: mainImageUrl,
+      createdAt: createdAt,
+      version: version,
+      status: created.status ?? status,
+      ownedOccurrences: [
+        ...ownedOccurrences,
+        OwnedOccurrenceThumb(
+          id: created.id,
+          version: created.version,
+          mainImageUrl: created.mainImageUrl,
+          createdAt: created.createdAt,
+        ),
+      ],
+    );
+  }
+
   factory DinosaurSummary.fromJson(Map<String, dynamic> json) {
     final rawOwned = json['owned_occurrences'];
     final owned = rawOwned is List

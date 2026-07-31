@@ -8,7 +8,6 @@ import 'dinosaur_card_header.dart';
 import 'dinosaur_card_image.dart';
 import 'dinosaur_status_badge.dart';
 import 'occurrence_id_badge.dart';
-import 'tool_collect_badge.dart';
 
 class DinosaurCardFront extends StatelessWidget {
   const DinosaurCardFront({
@@ -19,9 +18,6 @@ class DinosaurCardFront extends StatelessWidget {
     this.subtitleFontSize = 10,
     this.overlayHeightFactor = 0.52,
     this.showStatus = false,
-    this.showCollectBadge = false,
-    this.collectBusy = false,
-    this.onCollect,
   });
 
   final DinosaurSummary dinosaur;
@@ -30,9 +26,6 @@ class DinosaurCardFront extends StatelessWidget {
   final double subtitleFontSize;
   final double overlayHeightFactor;
   final bool showStatus;
-  final bool showCollectBadge;
-  final bool collectBusy;
-  final VoidCallback? onCollect;
 
   String get _description =>
       dinosaur.shortDescription != null &&
@@ -74,23 +67,11 @@ class DinosaurCardFront extends StatelessWidget {
                 label: dinosaur.occurrenceIdBadgeLabel,
               ),
             ),
-          if (showStatus || showCollectBadge)
+          if (showStatus && status.isNotEmpty)
             Positioned(
               top: 14,
               right: 14,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (showCollectBadge)
-                    ToolCollectBadge(
-                      onPressed: onCollect,
-                      busy: collectBusy,
-                    ),
-                  if (showStatus && status.isNotEmpty)
-                    DinosaurStatusBadge(status: status),
-                ],
-              ),
+              child: DinosaurStatusBadge(status: status),
             ),
           Positioned(
             left: 18,

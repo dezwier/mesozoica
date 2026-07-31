@@ -255,19 +255,6 @@ class ToolCatalogController extends CatalogController<ToolSummary> {
     await load(force: true);
   }
 
-  /// Admin collect: spawn a new occurrence (may duplicate) and update the card.
-  Future<ToolSummary> collectTool(int toolId, {required String version}) async {
-    final updated = await _service.collectTool(toolId, version: version);
-    final index = catalogItems.indexWhere((item) => item.id == toolId);
-    if (index >= 0) {
-      final next = [...catalogItems];
-      next[index] = updated;
-      catalogItems = next;
-      notifyListeners();
-    }
-    return updated;
-  }
-
   /// Replace a single card in-memory without reloading the whole catalog.
   void replaceToolSummary(ToolSummary updated) {
     final index = catalogItems.indexWhere((item) => item.id == updated.id);
