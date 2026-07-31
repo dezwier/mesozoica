@@ -1,21 +1,27 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../controllers/catalog_mode_controller.dart';
+import '../../theme/map_chrome_theme.dart';
 
 class CatalogModeToggle extends StatelessWidget {
   const CatalogModeToggle({super.key});
-
-  static const _foregroundColor = Colors.white;
 
   @override
   Widget build(BuildContext context) {
     return Consumer<CatalogModeController>(
       builder: (context, controller, _) {
         final selected = controller.dataSource;
-        return DecoratedBox(
+        return Container(
+          padding: const EdgeInsets.all(3),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(20),
+            color: MapChromeTheme.darkGlassSoft,
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(
+              color: Colors.white.withValues(alpha: 0.18),
+            ),
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withValues(alpha: 0.35),
@@ -24,47 +30,137 @@ class CatalogModeToggle extends StatelessWidget {
               ),
             ],
           ),
-          child: SegmentedButton<CatalogDataSource>(
-            segments: const [
-              ButtonSegment(
-                value: CatalogDataSource.archive,
-                label: Text('Archive'),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _Segment(
+                label: 'Archive',
+                selected: selected == CatalogDataSource.archive,
+                onTap: () =>
+                    controller.setDataSource(CatalogDataSource.archive),
               ),
-              ButtonSegment(
-                value: CatalogDataSource.field,
-                label: Text('Field'),
+              _Segment(
+                label: 'Field',
+                selected: selected == CatalogDataSource.field,
+                showFootprint: true,
+                onTap: () => controller.setDataSource(CatalogDataSource.field),
               ),
             ],
-            selected: {selected},
-            onSelectionChanged: (selection) {
-              controller.setDataSource(selection.first);
-            },
-            style: ButtonStyle(
-              visualDensity: VisualDensity.compact,
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              minimumSize: const WidgetStatePropertyAll(Size(0, 28)),
-              padding: const WidgetStatePropertyAll(
-                EdgeInsets.symmetric(horizontal: 8),
-              ),
-              foregroundColor: WidgetStateProperty.resolveWith((states) {
-                if (states.contains(WidgetState.selected)) {
-                  return const Color(0xFF4A3F38);
-                }
-                return _foregroundColor;
-              }),
-              backgroundColor: WidgetStateProperty.resolveWith((states) {
-                if (states.contains(WidgetState.selected)) {
-                  return _foregroundColor;
-                }
-                return Colors.black.withValues(alpha: 0.35);
-              }),
-              side: WidgetStatePropertyAll(
-                BorderSide(color: Colors.white.withValues(alpha: 0.45)),
-              ),
-            ),
           ),
         );
       },
     );
   }
+}
+
+class _Segment extends StatelessWidget {
+  const _Segment({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+    this.showFootprint = false,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+  final bool showFootprint;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 160),
+        curve: Curves.easeOut,
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: selected ? MapChromeTheme.cream : Colors.transparent,
+          borderRadius: BorderRadius.circular(18),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (showFootprint && selected) ...[
+              CustomPaint(
+                size: const Size(12, 12),
+                painter: _DinoFootprintPainter(
+                  color: MapChromeTheme.brownText,
+                ),
+              ),
+              const SizedBox(width: 4),
+            ],
+            Text(
+              label,
+              style: TextStyle(
+                color: selected ? MapChromeTheme.brownText : Colors.white,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                height: 1.1,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Simple three-toed dinosaur footprint for the Field segment.
+class _DinoFootprintPainter extends CustomPainter {
+  _DinoFootprintPainter({required this.color});
+
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill;
+
+    final w = size.width;
+    final h = size.height;
+    final cx = w * 0.5;
+    final cy = h * 0.62;
+
+    // Heel pad
+    canvas.drawOval(
+      Rect.fromCenter(
+        center: Offset(cx, cy),
+        width: w * 0.42,
+        height: h * 0.38,
+      ),
+      paint,
+    );
+
+    // Three toes
+    for (final angle in [-0.55, 0.0, 0.55]) {
+      final tip = Offset(
+        cx + math.sin(angle) * w * 0.38,
+        cy - math.cos(angle) * h * 0.52,
+      );
+      final path = Path()
+        ..moveTo(cx + math.sin(angle) * w * 0.08, cy - h * 0.08)
+        ..quadraticBezierTo(
+          tip.dx,
+          tip.dy + h * 0.08,
+          tip.dx,
+          tip.dy,
+        )
+        ..quadraticBezierTo(
+          tip.dx + math.cos(angle) * w * 0.1,
+          tip.dy + h * 0.12,
+          cx + math.sin(angle) * w * 0.14,
+          cy - h * 0.02,
+        )
+        ..close();
+      canvas.drawPath(path, paint);
+      canvas.drawCircle(tip, w * 0.09, paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _DinoFootprintPainter oldDelegate) =>
+      oldDelegate.color != color;
 }

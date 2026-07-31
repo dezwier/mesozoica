@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../common/chrome_fab.dart';
+import '../../theme/map_chrome_theme.dart';
 
 class DinosaurFilterFab extends StatelessWidget {
   const DinosaurFilterFab({
@@ -32,14 +33,14 @@ class DinosaurFilterFab extends StatelessWidget {
             child: Container(
               width: 10,
               height: 10,
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.tertiary,
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: const Color(0xFF4A4542),
-                  width: 1.5,
+                decoration: BoxDecoration(
+                  color: MapChromeTheme.goldBright,
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.4),
+                    width: 1.5,
+                  ),
                 ),
-              ),
             ),
           ),
       ],

@@ -13,10 +13,11 @@ import '../../config/map_config.dart';
 import '../../services/token_storage.dart';
 import 'mapbox_site_annotations.dart';
 
-const Color _locationPuckGold = Color(0xFFD4AF37);
-const double _locationPuckLogicalSize = 28;
+const double _locationPuckLogicalSize = 32;
 const double _locationPuckPixelRatio = 3;
 const String _locationPuckFallbackAsset = 'assets/images/logo.png';
+/// Brown pulse matching map chrome earth tones.
+const Color _locationPuckPulse = Color(0xFF8D6E63);
 
 /// Drives Mapbox camera for north-fixed (flat) mode and one-shot transitions.
 ///
@@ -382,8 +383,7 @@ class MapboxCameraCoordinator {
     return camera.zoom;
   }
 
-  /// Avatar circle puck (chrome-style shadow + white border) with a heading
-  /// triangle. Avatar stays upright; only the triangle rotates with bearing.
+  /// Avatar puck with ground shadow, white heading arrow, and brown pulse.
   Future<void> enableLocationPuck({String? avatarImageUrl}) async {
     final map = _map;
     if (map == null) return;
@@ -399,33 +399,35 @@ class MapboxCameraCoordinator {
 
     final avatar = await _loadLocationPuckAvatar(avatarImageUrl);
     late final Uint8List puckImage;
-    late final Uint8List bearingImage;
     try {
       puckImage = await _renderAvatarLocationPuckPng(
         logicalSize: _locationPuckLogicalSize,
         avatar: avatar,
       );
-      // Triangle-only layer; Mapbox rotates this on top of [topImage].
-      bearingImage = await _renderHeadingTrianglePng(
-        logicalSize: _locationPuckLogicalSize,
-      );
     } finally {
       avatar?.dispose();
     }
+    final bearingImage = await _renderHeadingArrowPng(
+      logicalSize: _locationPuckLogicalSize,
+    );
+    final shadowImage = await _renderLocationPuckShadowPng(
+      logicalSize: _locationPuckLogicalSize,
+    );
 
     await map.location.updateSettings(
       LocationComponentSettings(
         enabled: true,
         puckBearingEnabled: true,
         puckBearing: PuckBearing.HEADING,
-        pulsingEnabled: false,
+        pulsingEnabled: true,
+        pulsingColor: _locationPuckPulse.toARGB32(),
+        pulsingMaxRadius: 48,
         locationPuck: LocationPuck(
           locationPuck2D: LocationPuck2D(
             topImage: puckImage,
             bearingImage: bearingImage,
-            // Disable Mapbox's default shadow image (we bake our own).
-            shadowImage: Uint8List.fromList(const []),
-            scaleExpression: '["literal", 1.15]',
+            shadowImage: shadowImage,
+            scaleExpression: '["literal", 1.1]',
             opacity: 1,
           ),
         ),
@@ -434,9 +436,22 @@ class MapboxCameraCoordinator {
   }
 }
 
+({
+  int dim,
+  Offset center,
+  double radius,
+  double borderWidth,
+}) _puckGeometry(double logicalSize) {
+  const pixelRatio = _locationPuckPixelRatio;
+  final dim = (logicalSize * pixelRatio * 1.6).round().clamp(64, 192);
+  final center = Offset(dim / 2, dim / 2);
+  final radius = logicalSize * pixelRatio * 0.38;
+  final borderWidth = 2.5 * pixelRatio;
+  return (dim: dim, center: center, radius: radius, borderWidth: borderWidth);
+}
+
 Future<ui.Image?> _loadLocationPuckAvatar(String? imageUrl) async {
   if (imageUrl != null && imageUrl.isNotEmpty) {
-    // Same provider/cache as the chrome profile button.
     final cached = await _imageFromProvider(
       CachedNetworkImageProvider(imageUrl),
     );
@@ -496,30 +511,30 @@ Future<ui.Image> _decodeUiImage(Uint8List bytes) async {
   return frame.image;
 }
 
-/// Circle stays the same pixel radius as before; [dim] grows so the heading
-/// triangle can sit outside without clipping. On-screen circle size is
-/// `radius * scale` (independent of padding).
-({
-  int dim,
-  Offset center,
-  double radius,
-  double borderWidth,
-}) _puckGeometry(double logicalSize) {
+Future<Uint8List> _renderLocationPuckShadowPng({
+  required double logicalSize,
+}) async {
   const pixelRatio = _locationPuckPixelRatio;
-  final circleSpan = (logicalSize * pixelRatio).round().clamp(48, 160);
-  final radius = circleSpan / 2 - pixelRatio * 2;
-  // Room outside the rim for the heading triangle (+ stroke / shadow).
-  final outerPad = radius * 0.55;
-  final dim = (circleSpan + 2 * outerPad).round();
-  final center = Offset(dim / 2, dim / 2);
-  // Matches map chrome circle buttons (white border width 2.5).
-  final borderWidth = 2.5 * pixelRatio;
-  return (
-    dim: dim,
-    center: center,
-    radius: radius,
-    borderWidth: borderWidth,
+  final geo = _puckGeometry(logicalSize);
+  final dim = geo.dim;
+  final center = geo.center;
+  final radius = geo.radius;
+
+  final recorder = ui.PictureRecorder();
+  final canvas = Canvas(recorder);
+
+  canvas.drawOval(
+    Rect.fromCenter(
+      center: center.translate(0, radius * 0.15),
+      width: radius * 2.4,
+      height: radius * 1.15,
+    ),
+    Paint()
+      ..color = const Color(0x66000000)
+      ..maskFilter = MaskFilter.blur(BlurStyle.normal, pixelRatio * 2.2),
   );
+
+  return _encodePng(recorder, dim);
 }
 
 Future<Uint8List> _renderAvatarLocationPuckPng({
@@ -536,18 +551,17 @@ Future<Uint8List> _renderAvatarLocationPuckPng({
   final recorder = ui.PictureRecorder();
   final canvas = Canvas(recorder);
 
-  // Soft drop shadow — same idea as Material elevation on chrome buttons.
+  // Soft drop shadow for depth.
   canvas.drawCircle(
-    center.translate(0, pixelRatio * 1.2),
+    center.translate(0, pixelRatio * 1.4),
     radius,
     Paint()
-      ..color = const Color(0x66000000)
-      ..maskFilter = MaskFilter.blur(BlurStyle.normal, pixelRatio * 1.4),
+      ..color = const Color(0x55000000)
+      ..maskFilter = MaskFilter.blur(BlurStyle.normal, pixelRatio * 1.6),
   );
 
   final innerRadius = radius - borderWidth / 2;
 
-  // Opaque disc so the photo never shows the map through it.
   canvas.drawCircle(
     center,
     innerRadius,
@@ -582,8 +596,8 @@ Future<Uint8List> _renderAvatarLocationPuckPng({
   return _encodePng(recorder, dim);
 }
 
-/// Transparent PNG with a heading triangle sitting outside the puck circle.
-Future<Uint8List> _renderHeadingTrianglePng({
+/// Transparent PNG with a white heading arrow; Mapbox rotates this layer.
+Future<Uint8List> _renderHeadingArrowPng({
   required double logicalSize,
 }) async {
   const pixelRatio = _locationPuckPixelRatio;
@@ -595,30 +609,31 @@ Future<Uint8List> _renderHeadingTrianglePng({
   final recorder = ui.PictureRecorder();
   final canvas = Canvas(recorder);
 
-  final height = radius * 0.4;
-  final halfWidth = radius * 0.3;
-  // Base on the outer rim; tip points outward (away from avatar).
-  final baseY = center.dy - radius;
-  final tip = Offset(center.dx, baseY - height);
+  final tip = Offset(center.dx, center.dy - radius * 0.55);
+  final left = Offset(center.dx - radius * 0.32, center.dy + radius * 0.38);
+  final right = Offset(center.dx + radius * 0.32, center.dy + radius * 0.38);
+  final notch = Offset(center.dx, center.dy + radius * 0.12);
+
   final path = ui.Path()
     ..moveTo(tip.dx, tip.dy)
-    ..lineTo(tip.dx + halfWidth, baseY)
-    ..lineTo(tip.dx - halfWidth, baseY)
+    ..lineTo(right.dx, right.dy)
+    ..lineTo(notch.dx, notch.dy)
+    ..lineTo(left.dx, left.dy)
     ..close();
 
   canvas.drawPath(
     path,
     Paint()
-      ..color = const Color(0x55000000)
-      ..maskFilter = MaskFilter.blur(BlurStyle.normal, pixelRatio * 0.7),
+      ..color = const Color(0x44000000)
+      ..maskFilter = MaskFilter.blur(BlurStyle.normal, pixelRatio * 0.6),
   );
-  canvas.drawPath(path, Paint()..color = _locationPuckGold);
+  canvas.drawPath(path, Paint()..color = Colors.white);
   canvas.drawPath(
     path,
     Paint()
-      ..color = Colors.white
+      ..color = Colors.white.withValues(alpha: 0.9)
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.4 * pixelRatio
+      ..strokeWidth = 0.8 * pixelRatio
       ..strokeJoin = StrokeJoin.round,
   );
 

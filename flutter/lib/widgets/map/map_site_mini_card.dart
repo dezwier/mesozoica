@@ -2,66 +2,212 @@ import 'package:flutter/material.dart';
 
 import '../../config/map_config.dart';
 import '../../models/site.dart';
-import '../../theme/dino_card_theme.dart';
+import '../../theme/map_chrome_theme.dart';
 import '../cards/site_card_image.dart';
-import '../cards/site_period_rock_type_lines.dart';
 
-/// Circular rotate-mode site marker — styled like map chrome profile/catalog buttons.
+/// Mockup site pin: photo circle, dark pointer behind image, cream label.
 class MapSiteMiniCard extends StatelessWidget {
   const MapSiteMiniCard({
     super.key,
     required this.site,
     this.selected = false,
     this.width = MapConfig.rotateMiniCardWidth,
+    this.distanceM,
   });
 
   final SiteSummary site;
   final bool selected;
   final double width;
 
-  /// Circular markers use diameter for both dimensions.
-  static double heightForWidth(double width) => width;
+  /// When set, shown under the site title (e.g. `153 m`).
+  final double? distanceM;
+
+  static const double _borderWidth = 2.5;
+  static const double _triangleH = 12;
+  static const double _triangleW = 14;
+  static const double _dot = 5;
+  static const double _labelOverlap = 14;
+
+  /// Total pin height from top of photo to bottom of ground dot.
+  static double heightForWidth(double width) {
+    // Triangle starts behind the image (~40% overlap).
+    final triangleVisible = _triangleH * 0.6;
+    return width + triangleVisible + 2 + _dot;
+  }
+
+  /// Horizontal span including the cream label to the right of the photo.
+  static double layoutWidthFor(double photoWidth) =>
+      photoWidth - _labelOverlap + photoWidth * 1.85;
+
+  /// Offset from layout left to the ground-dot center (photo center).
+  static double anchorXFor(double photoWidth) => photoWidth / 2;
+
+  /// Offset from layout top to the ground-dot center.
+  static double anchorYFor(double photoWidth) => heightForWidth(photoWidth);
+
+  static String formatDistance(double meters) {
+    if (meters < 1000) return '${meters.round()} m';
+    final km = meters / 1000;
+    if (km < 10) return '${km.toStringAsFixed(1)} km';
+    return '${km.round()} km';
+  }
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final cardTheme = DinoCardTheme.of(context);
-    final size = width;
-    final titleSize = (width * 0.13).clamp(5.0, 8.5);
-    final inset = (width * 0.1).clamp(4.0, 8.0);
-    final borderWidth = (width * 0.04).clamp(1.5, 2.5);
+    final photo = width;
+    final borderColor = selected ? MapChromeTheme.gold : Colors.white;
+    final triangleTop = photo - _triangleH * 0.4;
+    final labelMaxWidth = photo * 1.85;
 
     return SizedBox(
-      width: size,
-      height: size,
-      child: Material(
-        elevation: 4,
-        shadowColor: Colors.black.withValues(alpha: 0.4),
-        shape: CircleBorder(
-          side: BorderSide(
-            color: selected ? cardTheme.cardAccent : Colors.white,
-            width: selected ? borderWidth + 0.5 : borderWidth,
+      width: layoutWidthFor(photo),
+      height: heightForWidth(photo),
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          // Dark pointer — painted first so it sits behind the photo.
+          Positioned(
+            left: (photo - _triangleW) / 2,
+            top: triangleTop,
+            width: _triangleW,
+            height: _triangleH,
+            child: const CustomPaint(
+              painter: _PinTrianglePainter(color: Color(0xFF2A2420)),
+            ),
           ),
-        ),
-        color: scheme.surface.withValues(alpha: 0.95),
-        clipBehavior: Clip.antiAlias,
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            SiteCardImage(imageUrl: site.mainImageUrl),
-            Center(
-              child: Padding(
-                padding: EdgeInsets.symmetric(horizontal: inset),
-                child: SitePeriodRockTypeLines(
-                  site: site,
-                  fontSize: titleSize,
-                  mapMarker: true,
+          // Ground dot
+          Positioned(
+            left: (photo - _dot) / 2,
+            top: triangleTop + _triangleH + 1,
+            width: _dot,
+            height: _dot,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: selected ? MapChromeTheme.goldBright : Colors.white,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.35),
+                    blurRadius: 3,
+                    offset: const Offset(0, 1),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          // Cream label — starts behind the right edge of the photo, vertically
+          // centered with the image.
+          Positioned(
+            left: photo - _labelOverlap,
+            top: 0,
+            height: photo,
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: ConstrainedBox(
+                constraints: BoxConstraints(maxWidth: labelMaxWidth),
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: MapChromeTheme.creamCard,
+                    borderRadius: BorderRadius.circular(6),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.25),
+                        blurRadius: 4,
+                        offset: const Offset(0, 1),
+                      ),
+                    ],
+                  ),
+                  child: Padding(
+                    padding: EdgeInsets.fromLTRB(
+                      _labelOverlap + 4,
+                      5,
+                      10,
+                      5,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          site.displayTitle,
+                          maxLines: 2,
+                          softWrap: true,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: MapChromeTheme.brownText,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            height: 1.15,
+                          ),
+                        ),
+                        if (distanceM != null) ...[
+                          const SizedBox(height: 1),
+                          Text(
+                            formatDistance(distanceM!),
+                            style: const TextStyle(
+                              color: MapChromeTheme.labelMuted,
+                              fontSize: 9.5,
+                              fontWeight: FontWeight.w500,
+                              height: 1.1,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
                 ),
               ),
             ),
-          ],
-        ),
+          ),
+          // Photo circle on top so border + image cover triangle/label overlap.
+          Positioned(
+            left: 0,
+            top: 0,
+            width: photo,
+            height: photo,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white,
+                border: Border.all(color: borderColor, width: _borderWidth),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.35),
+                    blurRadius: 6,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(_borderWidth),
+                child: ClipOval(
+                  child: SiteCardImage(imageUrl: site.mainImageUrl),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
+}
+
+class _PinTrianglePainter extends CustomPainter {
+  const _PinTrianglePainter({required this.color});
+
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final path = Path()
+      ..moveTo(0, 0)
+      ..lineTo(size.width, 0)
+      ..lineTo(size.width / 2, size.height)
+      ..close();
+    canvas.drawPath(path, Paint()..color = color);
+  }
+
+  @override
+  bool shouldRepaint(covariant _PinTrianglePainter oldDelegate) =>
+      oldDelegate.color != color;
 }

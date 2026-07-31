@@ -73,6 +73,7 @@ class MapControlButtons extends StatelessWidget {
             heroTag: 'map_location_mode',
             onPressed: onLocationFabPressed,
             tooltip: tooltip,
+            tone: ChromeFabTone.warm,
             child: Icon(icon),
           ),
           ?filterFab,

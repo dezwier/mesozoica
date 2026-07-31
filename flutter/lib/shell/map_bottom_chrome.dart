@@ -1,49 +1,24 @@
-import 'package:cached_network_image/cached_network_image.dart';
-import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'dart:math' as math;
 
-import '../controllers/auth_controller.dart';
-import '../controllers/tool_catalog_controller.dart';
-import '../services/auth_service.dart';
-import '../theme/dino_card_theme.dart';
-import '../widgets/cards/tool_card_image.dart';
+import 'package:flutter/material.dart';
+
+import '../theme/map_chrome_theme.dart';
 import 'map_chrome_insets.dart';
 
-/// Floating bottom entry points: profile, sites, fossils, dinosaurs, tools.
-class MapBottomChrome extends StatefulWidget {
+/// Frosted bottom entry points: Sites, Fossils, Dinosaurs, Tools.
+class MapBottomChrome extends StatelessWidget {
   const MapBottomChrome({
     super.key,
-    required this.onOpenProfile,
     required this.onOpenSites,
     required this.onOpenFossils,
     required this.onOpenDinosaurs,
     required this.onOpenTools,
   });
 
-  final VoidCallback onOpenProfile;
   final VoidCallback onOpenSites;
   final VoidCallback onOpenFossils;
   final VoidCallback onOpenDinosaurs;
   final VoidCallback onOpenTools;
-
-  static const double _outerButtonSize = MapChromeInsets.bottomOuterButtonSize;
-  static const double _buttonSize = MapChromeInsets.bottomButtonSize;
-  static const double _fossilButtonSize = MapChromeInsets.bottomFossilButtonSize;
-  static const double _borderWidth = 1.75;
-
-  @override
-  State<MapBottomChrome> createState() => _MapBottomChromeState();
-}
-
-class _MapBottomChromeState extends State<MapBottomChrome> {
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      context.read<ToolCatalogController>().ensureChromeImage();
-    });
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -53,7 +28,6 @@ class _MapBottomChromeState extends State<MapBottomChrome> {
       bottom: 0,
       child: Stack(
         children: [
-          // Full-width fade is visual only; otherwise it blocks the map filter FAB.
           Positioned.fill(
             child: IgnorePointer(
               child: DecoratedBox(
@@ -62,7 +36,7 @@ class _MapBottomChromeState extends State<MapBottomChrome> {
                     begin: Alignment.bottomCenter,
                     end: Alignment.topCenter,
                     colors: [
-                      Colors.black.withValues(alpha: 0.45),
+                      Colors.black.withValues(alpha: 0.5),
                       Colors.black.withValues(alpha: 0.0),
                     ],
                   ),
@@ -72,66 +46,52 @@ class _MapBottomChromeState extends State<MapBottomChrome> {
           ),
           SafeArea(
             top: false,
-            child: SizedBox(
-              height: MapChromeInsets.bottomRowHeight,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(12, 0, 12, 6),
+              child: Container(
+                height: MapChromeInsets.bottomRowHeight - 6,
+                decoration: BoxDecoration(
+                  color: MapChromeTheme.darkGlass,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.12),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.35),
+                      blurRadius: 12,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
                 child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     Expanded(
-                      child: Center(
-                        child: _ProfileEntry(
-                          size: MapBottomChrome._outerButtonSize,
-                          onTap: widget.onOpenProfile,
-                        ),
+                      child: _NavItem(
+                        label: 'Sites',
+                        onTap: onOpenSites,
+                        painter: _RockIconPainter(),
                       ),
                     ),
                     Expanded(
-                      child: Center(
-                        child: _LabeledChromeButton(
-                          size: MapBottomChrome._buttonSize,
-                          label: 'Sites',
-                          onTap: widget.onOpenSites,
-                          child: Image.asset(
-                            DinoCardTheme.sitePlaceholderAsset,
-                            fit: BoxFit.cover,
-                          ),
-                        ),
+                      child: _NavItem(
+                        label: 'Fossils',
+                        onTap: onOpenFossils,
+                        painter: _BoneIconPainter(),
                       ),
                     ),
                     Expanded(
-                      child: Center(
-                        child: _LabeledChromeButton(
-                          size: MapBottomChrome._fossilButtonSize,
-                          label: 'Fossils',
-                          onTap: widget.onOpenFossils,
-                          child: Image.asset(
-                            DinoCardTheme.fossilPlaceholderAsset,
-                            fit: BoxFit.cover,
-                          ),
-                        ),
+                      child: _NavItem(
+                        label: 'Dinosaurs',
+                        onTap: onOpenDinosaurs,
+                        painter: _SkullIconPainter(),
                       ),
                     ),
                     Expanded(
-                      child: Center(
-                        child: _LabeledChromeButton(
-                          size: MapBottomChrome._buttonSize,
-                          label: 'Dinosaurs',
-                          onTap: widget.onOpenDinosaurs,
-                          child: Image.asset(
-                            DinoCardTheme.frontPlaceholderAsset,
-                            fit: BoxFit.cover,
-                          ),
-                        ),
-                      ),
-                    ),
-                    Expanded(
-                      child: Center(
-                        child: _ToolsEntry(
-                          size: MapBottomChrome._outerButtonSize,
-                          onTap: widget.onOpenTools,
-                        ),
+                      child: _NavItem(
+                        label: 'Tools',
+                        onTap: onOpenTools,
+                        painter: _ToolsIconPainter(),
                       ),
                     ),
                   ],
@@ -145,191 +105,240 @@ class _MapBottomChromeState extends State<MapBottomChrome> {
   }
 }
 
-class _ToolsEntry extends StatelessWidget {
-  const _ToolsEntry({
-    required this.size,
-    required this.onTap,
-  });
-
-  final double size;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Consumer<ToolCatalogController>(
-      builder: (context, catalog, _) {
-        final imageUrl = catalog.chromeImageUrl;
-        final curated = ToolCardImage.isCuratedCardImageUrl(imageUrl);
-        return _LabeledChromeButton(
-          size: size,
-          label: 'Tools',
-          onTap: onTap,
-          child: curated
-              ? CachedNetworkImage(
-                  imageUrl: imageUrl!.trim(),
-                  fit: BoxFit.cover,
-                  errorWidget: (context, _, _) => _fallbackToolImage(),
-                )
-              : _fallbackToolImage(),
-        );
-      },
-    );
-  }
-
-  Widget _fallbackToolImage() {
-    return Image.asset(
-      DinoCardTheme.sitePlaceholderAsset,
-      fit: BoxFit.cover,
-    );
-  }
-}
-
-class _ProfileEntry extends StatelessWidget {
-  const _ProfileEntry({
-    required this.size,
-    required this.onTap,
-  });
-
-  final double size;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Consumer<AuthController>(
-      builder: (context, auth, _) {
-        final profile = auth.currentUser;
-        final imageUrl =
-            profile != null ? AuthService.imageUrl(profile.profileImage) : '';
-        final label = _profileLabel(profile?.username, profile?.displayName);
-
-        return _LabeledChromeButton(
-          size: size,
-          label: label,
-          onTap: onTap,
-          child: imageUrl.isNotEmpty
-              ? CachedNetworkImage(
-                  imageUrl: imageUrl,
-                  fit: BoxFit.cover,
-                  errorWidget: (context, _, _) => _fallbackAvatar(),
-                )
-              : _fallbackAvatar(),
-        );
-      },
-    );
-  }
-
-  static String _profileLabel(String? username, String? displayName) {
-    final name = (username != null && username.trim().isNotEmpty)
-        ? username.trim()
-        : (displayName ?? '').trim();
-    if (name.isEmpty) return 'Profile';
-    return _toTitleCase(name);
-  }
-
-  static String _toTitleCase(String value) {
-    return value
-        .split(RegExp(r'\s+'))
-        .map((word) {
-          if (word.isEmpty) return word;
-          return '${word[0].toUpperCase()}${word.substring(1).toLowerCase()}';
-        })
-        .join(' ');
-  }
-
-  Widget _fallbackAvatar() {
-    return Image.asset(
-      'assets/images/logo.png',
-      fit: BoxFit.cover,
-    );
-  }
-}
-
-class _LabeledChromeButton extends StatelessWidget {
-  const _LabeledChromeButton({
-    required this.size,
+class _NavItem extends StatelessWidget {
+  const _NavItem({
     required this.label,
     required this.onTap,
-    required this.child,
+    required this.painter,
   });
 
-  final double size;
   final String label;
   final VoidCallback onTap;
-  final Widget child;
+  final CustomPainter painter;
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _MapChromeCircleButton(
-            size: size,
-            onTap: onTap,
-            child: child,
-          ),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-              height: 1.1,
-              shadows: [
-                Shadow(
-                  color: Color(0xCC000000),
-                  blurRadius: 6,
-                  offset: Offset(0, 1),
-                ),
-              ],
+    const color = MapChromeTheme.cream;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            SizedBox(
+              width: MapChromeInsets.bottomIconSize,
+              height: MapChromeInsets.bottomIconSize,
+              child: CustomPaint(
+                painter: _TintedPainter(painter, color),
+              ),
             ),
-          ),
-        ],
+            const SizedBox(height: 2),
+            Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: color,
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+                height: 1.1,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 }
 
-class _MapChromeCircleButton extends StatelessWidget {
-  const _MapChromeCircleButton({
-    required this.size,
-    required this.onTap,
-    required this.child,
-  });
+/// Applies a stroke/fill color to painters that use [Paint] with default black.
+class _TintedPainter extends CustomPainter {
+  _TintedPainter(this.inner, this.color);
 
-  final double size;
-  final VoidCallback onTap;
-  final Widget child;
+  final CustomPainter inner;
+  final Color color;
 
   @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return Material(
-      elevation: 4,
-      shadowColor: Colors.black.withValues(alpha: 0.4),
-      shape: const CircleBorder(
-        side: BorderSide(
-          color: Colors.white,
-          width: MapBottomChrome._borderWidth,
-        ),
-      ),
-      color: scheme.surface.withValues(alpha: 0.95),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        customBorder: const CircleBorder(),
-        child: SizedBox(
-          width: size,
-          height: size,
-          child: child,
-        ),
-      ),
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.6
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+    if (inner is _ChromeLineIconPainter) {
+      (inner as _ChromeLineIconPainter).paintWith(canvas, size, paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _TintedPainter oldDelegate) =>
+      oldDelegate.color != color || oldDelegate.inner != inner;
+}
+
+abstract class _ChromeLineIconPainter extends CustomPainter {
+  void paintWith(Canvas canvas, Size size, Paint paint);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    paintWith(
+      canvas,
+      size,
+      Paint()
+        ..color = Colors.white
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.6
+        ..strokeCap = StrokeCap.round
+        ..strokeJoin = StrokeJoin.round,
     );
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+class _RockIconPainter extends _ChromeLineIconPainter {
+  @override
+  void paintWith(Canvas canvas, Size size, Paint paint) {
+    final w = size.width;
+    final h = size.height;
+    final path = Path()
+      ..moveTo(w * 0.18, h * 0.72)
+      ..lineTo(w * 0.28, h * 0.38)
+      ..lineTo(w * 0.48, h * 0.28)
+      ..lineTo(w * 0.72, h * 0.36)
+      ..lineTo(w * 0.82, h * 0.62)
+      ..lineTo(w * 0.68, h * 0.78)
+      ..lineTo(w * 0.32, h * 0.78)
+      ..close();
+    canvas.drawPath(path, paint);
+    canvas.drawLine(
+      Offset(w * 0.38, h * 0.48),
+      Offset(w * 0.55, h * 0.58),
+      paint,
+    );
+  }
+}
+
+class _BoneIconPainter extends _ChromeLineIconPainter {
+  @override
+  void paintWith(Canvas canvas, Size size, Paint paint) {
+    final w = size.width;
+    final h = size.height;
+    final cx = w * 0.5;
+    final cy = h * 0.5;
+    canvas.save();
+    canvas.translate(cx, cy);
+    canvas.rotate(-math.pi / 5);
+    canvas.translate(-cx, -cy);
+
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromCenter(
+          center: Offset(cx, cy),
+          width: w * 0.12,
+          height: h * 0.55,
+        ),
+        const Radius.circular(4),
+      ),
+      paint,
+    );
+    for (final y in [h * 0.28, h * 0.72]) {
+      canvas.drawCircle(Offset(cx - w * 0.12, y), w * 0.1, paint);
+      canvas.drawCircle(Offset(cx + w * 0.12, y), w * 0.1, paint);
+    }
+    canvas.restore();
+  }
+}
+
+class _SkullIconPainter extends _ChromeLineIconPainter {
+  @override
+  void paintWith(Canvas canvas, Size size, Paint paint) {
+    final w = size.width;
+    final h = size.height;
+    final head = Path()
+      ..addOval(
+        Rect.fromCenter(
+          center: Offset(w * 0.5, h * 0.42),
+          width: w * 0.58,
+          height: h * 0.52,
+        ),
+      );
+    canvas.drawPath(head, paint);
+    canvas.drawOval(
+      Rect.fromCenter(
+        center: Offset(w * 0.38, h * 0.42),
+        width: w * 0.14,
+        height: h * 0.16,
+      ),
+      paint,
+    );
+    canvas.drawOval(
+      Rect.fromCenter(
+        center: Offset(w * 0.62, h * 0.42),
+        width: w * 0.14,
+        height: h * 0.16,
+      ),
+      paint,
+    );
+    // Snout / jaw
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromLTWH(w * 0.34, h * 0.58, w * 0.32, h * 0.22),
+        const Radius.circular(4),
+      ),
+      paint,
+    );
+    canvas.drawLine(
+      Offset(w * 0.42, h * 0.7),
+      Offset(w * 0.42, h * 0.78),
+      paint,
+    );
+    canvas.drawLine(
+      Offset(w * 0.58, h * 0.7),
+      Offset(w * 0.58, h * 0.78),
+      paint,
+    );
+  }
+}
+
+class _ToolsIconPainter extends _ChromeLineIconPainter {
+  @override
+  void paintWith(Canvas canvas, Size size, Paint paint) {
+    final w = size.width;
+    final h = size.height;
+    final cx = w * 0.5;
+    final cy = h * 0.5;
+    final handlePaint = Paint()
+      ..color = paint.color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.8
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+
+    void drawTool(double angle) {
+      canvas.save();
+      canvas.translate(cx, cy);
+      canvas.rotate(angle);
+      canvas.translate(-cx, -cy);
+      canvas.drawLine(
+        Offset(cx, h * 0.22),
+        Offset(cx, h * 0.72),
+        handlePaint,
+      );
+      final head = Path()
+        ..moveTo(cx - w * 0.18, h * 0.28)
+        ..lineTo(cx + w * 0.18, h * 0.28)
+        ..lineTo(cx + w * 0.12, h * 0.4)
+        ..lineTo(cx - w * 0.12, h * 0.4)
+        ..close();
+      canvas.drawPath(head, paint);
+      canvas.restore();
+    }
+
+    drawTool(-math.pi / 5);
+    drawTool(math.pi / 5);
   }
 }

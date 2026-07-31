@@ -5,12 +5,11 @@ import 'package:provider/provider.dart';
 import '../../controllers/auth_controller.dart';
 import '../../controllers/notification_controller.dart';
 import '../../models/user_notification.dart';
+import '../../theme/map_chrome_theme.dart';
 
 part 'notification_icon_button_list.dart';
 
-const Color _iconColor = Colors.white;
-
-/// Notification icon for the app bar with red badge count.
+/// Notification icon for map chrome — dark glass circle + gold unread dot.
 class NotificationIconButton extends StatelessWidget {
   static bool _notificationTapScheduled = false;
 
@@ -21,23 +20,61 @@ class NotificationIconButton extends StatelessWidget {
 
   final void Function(UserNotificationItem item) onTapNotification;
 
+  static const double _size = 36;
+
   @override
   Widget build(BuildContext context) {
     return Consumer<NotificationController>(
       builder: (context, store, _) {
         final unread = store.unreadCountForBadge;
-        return IconButton(
-          visualDensity: VisualDensity.compact,
-          icon: Badge(
-            isLabelVisible: unread > 0,
-            label: Text(
-              unread > 99 ? '99+' : '$unread',
-              style: const TextStyle(fontSize: 10, color: Colors.white),
+        return Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: () => _showNotificationList(context, store),
+            customBorder: const CircleBorder(),
+            child: Ink(
+              width: _size,
+              height: _size,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: MapChromeTheme.darkGlassSoft,
+                border: Border.all(
+                  color: Colors.white.withValues(alpha: 0.18),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.35),
+                    blurRadius: 8,
+                    offset: const Offset(0, 1),
+                  ),
+                ],
+              ),
+              child: Stack(
+                clipBehavior: Clip.none,
+                alignment: Alignment.center,
+                children: [
+                  const Icon(
+                    Icons.notifications_outlined,
+                    color: Colors.white,
+                    size: 20,
+                  ),
+                  if (unread > 0)
+                    Positioned(
+                      top: 6,
+                      right: 7,
+                      child: Container(
+                        width: 8,
+                        height: 8,
+                        decoration: const BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: MapChromeTheme.goldBright,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
             ),
-            backgroundColor: Colors.red,
-            child: const Icon(Icons.notifications_outlined, color: _iconColor),
           ),
-          onPressed: () => _showNotificationList(context, store),
         );
       },
     );

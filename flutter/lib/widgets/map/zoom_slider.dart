@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../config/map_config.dart';
+import '../../theme/map_chrome_theme.dart';
 
 class ZoomSlider extends StatelessWidget {
   const ZoomSlider({
@@ -18,21 +19,19 @@ class ZoomSlider extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
     return Container(
       width: 40,
       height: 150,
       decoration: BoxDecoration(
-        color: theme.colorScheme.surface.withValues(alpha: 0.9),
-        borderRadius: BorderRadius.circular(14),
+        color: MapChromeTheme.darkGlassSoft,
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: theme.colorScheme.outline.withValues(alpha: 0.3),
+          color: Colors.white.withValues(alpha: 0.18),
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1),
-            blurRadius: 4,
+            color: Colors.black.withValues(alpha: 0.35),
+            blurRadius: 8,
             offset: const Offset(0, 2),
           ),
         ],
@@ -43,10 +42,9 @@ class ZoomSlider extends StatelessWidget {
           quarterTurns: 3,
           child: SliderTheme(
             data: SliderTheme.of(context).copyWith(
-              activeTrackColor: theme.colorScheme.primary,
-              inactiveTrackColor:
-                  theme.colorScheme.outline.withValues(alpha: 0.3),
-              thumbColor: theme.colorScheme.primary,
+              activeTrackColor: MapChromeTheme.cream,
+              inactiveTrackColor: Colors.white.withValues(alpha: 0.25),
+              thumbColor: MapChromeTheme.cream,
               thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 8),
               trackHeight: 4,
               overlayShape: const RoundSliderOverlayShape(overlayRadius: 12),

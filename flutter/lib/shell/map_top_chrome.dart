@@ -4,17 +4,20 @@ import '../widgets/common/catalog_mode_toggle.dart';
 import '../widgets/common/notification_icon_button.dart';
 import '../models/user_notification.dart';
 import 'map_chrome_insets.dart';
+import 'map_user_hud.dart';
 
-/// Floating top controls over the map: logo, Archive/Field toggle, notifications.
+/// Floating top controls: profile HUD, Archive/Field toggle, notifications.
 class MapTopChrome extends StatelessWidget {
   const MapTopChrome({
     super.key,
     required this.showNotifications,
     required this.onTapNotification,
+    required this.onOpenProfile,
   });
 
   final bool showNotifications;
   final void Function(UserNotificationItem item) onTapNotification;
+  final VoidCallback onOpenProfile;
 
   @override
   Widget build(BuildContext context) {
@@ -28,9 +31,11 @@ class MapTopChrome extends StatelessWidget {
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              Colors.black.withValues(alpha: 0.45),
+              Colors.black.withValues(alpha: 0.62),
+              Colors.black.withValues(alpha: 0.28),
               Colors.black.withValues(alpha: 0.0),
             ],
+            stops: const [0.0, 0.55, 1.0],
           ),
         ),
         child: SafeArea(
@@ -38,28 +43,28 @@ class MapTopChrome extends StatelessWidget {
           child: SizedBox(
             height: MapChromeInsets.topRowHeight,
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              child: Stack(
-                alignment: Alignment.center,
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: Padding(
-                      padding: const EdgeInsets.only(left: 4),
-                      child: Image.asset(
-                        'assets/images/logo.png',
-                        height: 32,
-                      ),
+                  Expanded(
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: MapUserHud(onTap: onOpenProfile),
                     ),
                   ),
-                  const CatalogModeToggle(),
-                  if (showNotifications)
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: NotificationIconButton(
-                        onTapNotification: onTapNotification,
-                      ),
-                    ),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const CatalogModeToggle(),
+                      if (showNotifications) ...[
+                        const SizedBox(width: 8),
+                        NotificationIconButton(
+                          onTapNotification: onTapNotification,
+                        ),
+                      ],
+                    ],
+                  ),
                 ],
               ),
             ),

@@ -140,6 +140,9 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
   ui.Size? _viewportSize;
   List<MapRotateVisibleSite> _visibleRotateSites = const [];
   late final MapRotateOverlayController _overlayController;
+  /// North-fixed photo pins when zoomed in (hybrid with Mapbox dots).
+  bool _detailPinsActive = false;
+  double _lastKnownZoom = MapConfig.mapboxFollowZoom;
 
   late final LatLng _seedCenter;
   late final double _seedZoom;
@@ -289,6 +292,8 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
       );
     }
     if (widget.rotateWithHeading && loc != null) {
+      _syncRotateOverlayFrame();
+    } else if (_detailPinsActive && loc != null) {
       _syncRotateOverlayFrame();
     }
   }
@@ -476,22 +481,51 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
     }
   }
 
-  Future<void> _applyRotateMarkerMode(bool rotate) async {
-    await _annotations?.setRotateModePaused(rotate);
+  bool get _pinOverlayActive =>
+      widget.rotateWithHeading || _detailPinsActive;
+
+  Future<void> _setDetailPinsActive(bool active) async {
+    if (_detailPinsActive == active) return;
+    _detailPinsActive = active;
+    // Rotate mode owns circle opacity while active.
+    if (widget.rotateWithHeading) return;
+    await _annotations?.setRotateModePaused(active);
     if (!mounted) return;
-    if (rotate && widget.mapActive) {
-      _setRotateOverlayTickerActive(true);
-      // Keep circle annotations warm under opacity 0 while rotate is on.
-      _scheduleAnnotationSync();
+    if (active && widget.mapActive) {
+      _syncRotateOverlayFrame();
+      setState(() {});
     } else {
-      _setRotateOverlayTickerActive(false);
       setState(() => _visibleRotateSites = const []);
       widget.rotateCardCount?.value = 0;
-      if (!rotate) {
-        // Circles should already be painted; light sync + opacity restore.
+      _scheduleAnnotationSync();
+    }
+  }
+
+  Future<void> _applyRotateMarkerMode(bool rotate) async {
+    if (rotate) {
+      await _annotations?.setRotateModePaused(true);
+      if (!mounted) return;
+      if (widget.mapActive) {
+        _setRotateOverlayTickerActive(true);
+        // Keep circle annotations warm under opacity 0 while rotate is on.
         _scheduleAnnotationSync();
       }
+      return;
     }
+
+    _setRotateOverlayTickerActive(false);
+    final wantPins = _lastKnownZoom >= MapConfig.sitePinDetailZoom;
+    _detailPinsActive = wantPins;
+    await _annotations?.setRotateModePaused(wantPins);
+    if (!mounted) return;
+    if (wantPins && widget.mapActive) {
+      _syncRotateOverlayFrame();
+      setState(() {});
+    } else {
+      setState(() => _visibleRotateSites = const []);
+      widget.rotateCardCount?.value = 0;
+    }
+    _scheduleAnnotationSync();
   }
 
   /// Freeze Mapbox rendering work while shell screens are open (scrim backdrop
@@ -508,6 +542,7 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
       if (mounted) {
         setState(() {
           _visibleRotateSites = const [];
+          _detailPinsActive = false;
           // Idle cancels FollowPuck / camera animations without flying away.
           _viewport = const IdleViewportState();
         });
@@ -544,7 +579,7 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
   }
 
   void _syncRotateOverlayFrame() {
-    if (!widget.rotateWithHeading || !widget.mapActive || !_ready) return;
+    if (!_pinOverlayActive || !widget.mapActive || !_ready) return;
     final size = _viewportSize;
     final map = _map;
     if (size == null || map == null) return;
@@ -658,19 +693,21 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
       // Keep circles warm under rotate (opacity 0) so north-fixed exit is instant.
       if (widget.rotateWithHeading) {
         _syncRotateOverlayFrame();
+      } else if (_detailPinsActive) {
+        _syncRotateOverlayFrame();
       }
       _annotationDebounce?.cancel();
       unawaited(_switchDatasetAndSync());
     } else if (oldWidget.sites != widget.sites) {
-      // Same dataset: debounce circle sync; rotate overlay updates immediately.
-      if (widget.rotateWithHeading) {
+      // Same dataset: debounce circle sync; pin overlay updates immediately.
+      if (widget.rotateWithHeading || _detailPinsActive) {
         _syncRotateOverlayFrame();
       }
       _scheduleAnnotationSync();
     }
     // Location cull-center updates; heading is owned by FollowPuck / ticker —
     // do not rebuild-sync on headingDeg (would fight compass decoupling).
-    if (widget.rotateWithHeading &&
+    if ((widget.rotateWithHeading || _detailPinsActive) &&
         widget.locationListenable == null &&
         oldWidget.currentLocation != widget.currentLocation) {
       _liveLocation = widget.currentLocation;
@@ -873,10 +910,14 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
       _cameraSeeded = true;
       if (!mounted) return;
       _markInternallyReady();
+      _lastKnownZoom = _seedZoom;
       unawaited(_applyRotateMarkerMode(widget.rotateWithHeading));
       if (widget.rotateWithHeading) {
         _setRotateOverlayTickerActive(true);
       } else {
+        if (_seedZoom >= MapConfig.sitePinDetailZoom) {
+          unawaited(_setDetailPinsActive(true));
+        }
         _scheduleAnnotationSync();
       }
     } catch (error, stack) {
@@ -973,11 +1014,19 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
       // too queued stale projections and made cards jitter behind FollowPuck.
       return;
     }
-    widget.onZoomChanged(data.cameraState.zoom);
+    final zoom = data.cameraState.zoom;
+    _lastKnownZoom = zoom;
+    widget.onZoomChanged(zoom);
     // Update marker size immediately while zooming (no debounce / bucket wait).
     final annotations = _annotations;
-    if (annotations != null) {
-      unawaited(annotations.applyZoomRadius(data.cameraState.zoom));
+    if (annotations != null && !_detailPinsActive) {
+      unawaited(annotations.applyZoomRadius(zoom));
+    }
+    final wantPins = zoom >= MapConfig.sitePinDetailZoom;
+    if (wantPins != _detailPinsActive) {
+      unawaited(_setDetailPinsActive(wantPins));
+    } else if (_detailPinsActive) {
+      _syncRotateOverlayFrame();
     }
   }
 
@@ -1030,7 +1079,9 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
               });
             }
           }
-          if (sizeChanged && widget.rotateWithHeading && _ready) {
+          if (sizeChanged &&
+              (widget.rotateWithHeading || _detailPinsActive) &&
+              _ready) {
             WidgetsBinding.instance.addPostFrameCallback((_) {
               if (!mounted) return;
               _syncRotateOverlayFrame();
@@ -1061,7 +1112,9 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
                 !widget.followUser &&
                 _ready)
               const MapCenterCrosshair(),
-            if (widget.mapActive && widget.rotateWithHeading && _ready)
+            if (widget.mapActive &&
+                (widget.rotateWithHeading || _detailPinsActive) &&
+                _ready)
               Positioned.fill(
                 child: MapRotateSiteCardOverlay(
                   visibleSites: _visibleRotateSites,

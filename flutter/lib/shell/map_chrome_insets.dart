@@ -5,31 +5,24 @@ class MapChromeInsets {
   MapChromeInsets._();
 
   /// Height of the top control row (below the status bar).
-  static const double topRowHeight = 48;
+  static const double topRowHeight = 84;
 
-  /// Diameter of the mid chrome circle buttons (Sites / Dinosaurs).
-  static const double bottomButtonSize = 64;
+  /// Icon circle diameter in the frosted bottom bar.
+  static const double bottomIconSize = 36;
 
-  /// Diameter of the outer chrome circle buttons (Profile / Tools).
-  static const double bottomOuterButtonSize = 66;
-
-  /// Diameter of the Fossils chrome circle button.
-  static const double bottomFossilButtonSize = 62;
-
-  /// Space under the circles for the label (gap + text).
-  static const double bottomLabelBlockHeight = 20;
+  /// Space under icons for the label.
+  static const double bottomLabelBlockHeight = 18;
 
   /// Height of the bottom chrome row (above the home indicator).
-  static const double bottomRowHeight =
-      bottomOuterButtonSize + bottomLabelBlockHeight;
+  static const double bottomRowHeight = 64;
 
   /// Gap between FABs and the top of the bottom chrome row.
-  static const double fabChromeGap = 24;
+  static const double fabChromeGap = 20;
 
   static double top(BuildContext context) =>
       MediaQuery.paddingOf(context).top + topRowHeight;
 
-  /// Full bottom chrome clearance (circles + labels + home indicator).
+  /// Full bottom chrome clearance (bar + home indicator).
   static double bottom(BuildContext context) =>
       MediaQuery.paddingOf(context).bottom + bottomRowHeight;
 

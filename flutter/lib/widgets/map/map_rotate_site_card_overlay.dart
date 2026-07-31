@@ -10,7 +10,7 @@ import '../../config/map_config.dart';
 import '../../models/site.dart';
 import 'map_site_mini_card.dart';
 
-/// A site projected onto the map viewport for rotate-mode mini-cards.
+/// A site projected onto the map viewport for photo-pin overlays.
 class MapRotateVisibleSite {
   const MapRotateVisibleSite({
     required this.site,
@@ -27,27 +27,15 @@ class MapRotateVisibleSite {
   final double cardWidth;
 
   double get cardHeight => MapSiteMiniCard.heightForWidth(cardWidth);
+  double get layoutWidth => MapSiteMiniCard.layoutWidthFor(cardWidth);
 }
 
-/// Mini-card width scaled by distance from the user (closer = larger).
+/// Fixed pin diameter (no distance scaling).
 double rotateMiniCardWidthForDistance(double distanceM) {
-  const maxW = MapConfig.rotateMiniCardWidth;
-  final halfW = maxW * MapConfig.rotateMiniCardHalfSizeFactor;
-  const minW = MapConfig.rotateMiniCardMinWidth;
-  const nearM = MapConfig.rotateMiniCardFullSizeWithinM;
-  const halfAtM = MapConfig.rotateMiniCardHalfSizeAtM;
-  const farM = MapConfig.rotateCardCullRadiusM;
-
-  if (distanceM <= nearM) return maxW;
-  if (distanceM <= halfAtM) {
-    final t = ((distanceM - nearM) / (halfAtM - nearM)).clamp(0.0, 1.0);
-    return maxW + (halfW - maxW) * Curves.easeOut.transform(t);
-  }
-  final t = ((distanceM - halfAtM) / (farM - halfAtM)).clamp(0.0, 1.0);
-  return halfW + (minW - halfW) * Curves.easeIn.transform(t);
+  return MapConfig.rotateMiniCardWidth;
 }
 
-/// Projects and culls [sites] to those visible in the current rotate viewport.
+/// Projects and culls [sites] to those visible for the pin overlay.
 Future<List<MapRotateVisibleSite>> projectRotateVisibleSites({
   required MapboxMap map,
   required List<SiteSummary> sites,
@@ -125,12 +113,14 @@ Future<List<MapRotateVisibleSite>> projectRotateVisibleSites({
     if (x < minX || x > maxX || y < minY || y > maxY) continue;
 
     final cardW = rotateMiniCardWidthForDistance(entry.distanceM);
-    final cardH = MapSiteMiniCard.heightForWidth(cardW);
-    final left = x - cardW / 2;
-    final top = y - cardH;
-    if (left + cardW < minX ||
+    final layoutW = MapSiteMiniCard.layoutWidthFor(cardW);
+    final layoutH = MapSiteMiniCard.heightForWidth(cardW);
+    final anchorX = MapSiteMiniCard.anchorXFor(cardW);
+    final left = x - anchorX;
+    final top = y - layoutH;
+    if (left + layoutW < minX ||
         left > maxX ||
-        top + cardH < minY ||
+        top + layoutH < minY ||
         top > maxY) {
       continue;
     }
@@ -151,7 +141,7 @@ Future<List<MapRotateVisibleSite>> projectRotateVisibleSites({
 
 typedef MapRotateSiteTapCallback = void Function(SiteSummary site);
 
-/// Flutter overlay of upright mini-cards in rotate mode.
+/// Flutter overlay of upright photo pins (rotate + north-fixed detail zoom).
 class MapRotateSiteCardOverlay extends StatelessWidget {
   const MapRotateSiteCardOverlay({
     super.key,
@@ -176,13 +166,14 @@ class MapRotateSiteCardOverlay extends StatelessWidget {
         for (final entry in visibleSites)
           if (entry.site.siteId != hiddenSiteId)
             Positioned(
-              left: entry.screenX - entry.cardWidth / 2,
+              left: entry.screenX - MapSiteMiniCard.anchorXFor(entry.cardWidth),
               top: entry.screenY - entry.cardHeight,
-              width: entry.cardWidth,
+              width: entry.layoutWidth,
               height: entry.cardHeight,
               child: _MiniCardTapTarget(
                 site: entry.site,
                 width: entry.cardWidth,
+                distanceM: entry.distanceM,
                 selected: entry.site.siteId == selectedSiteId,
                 onTap: () => onSiteTap(entry.site),
               ),
@@ -196,12 +187,14 @@ class _MiniCardTapTarget extends StatelessWidget {
   const _MiniCardTapTarget({
     required this.site,
     required this.width,
+    required this.distanceM,
     required this.selected,
     required this.onTap,
   });
 
   final SiteSummary site;
   final double width;
+  final double distanceM;
   final bool selected;
   final VoidCallback onTap;
 
@@ -211,14 +204,18 @@ class _MiniCardTapTarget extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        customBorder: const CircleBorder(),
-        child: MapSiteMiniCard(site: site, selected: selected, width: width),
+        child: MapSiteMiniCard(
+          site: site,
+          selected: selected,
+          width: width,
+          distanceM: distanceM,
+        ),
       ),
     );
   }
 }
 
-/// Frame-synced projection driver for rotate-mode overlay cards.
+/// Frame-synced projection driver for pin overlays.
 class MapRotateOverlayController {
   MapRotateOverlayController({
     required this.onVisibleSitesChanged,
@@ -230,10 +227,6 @@ class MapRotateOverlayController {
   bool _syncInFlight = false;
   bool _syncQueued = false;
 
-  /// Project visible sites for the current map frame (coalesced).
-  ///
-  /// In-flight work is merged into one follow-up pass so we stay near vsync
-  /// without stacking parallel native projections (that lagged and jittered).
   void syncFrame({
     required MapboxMap? map,
     required List<SiteSummary> sites,

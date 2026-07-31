@@ -579,9 +579,9 @@ class _AppShellState extends State<AppShell>
                     MapTopChrome(
                       showNotifications: auth.isLoggedIn,
                       onTapNotification: _onNotificationTap,
+                      onOpenProfile: _openProfile,
                     ),
                     MapBottomChrome(
-                      onOpenProfile: _openProfile,
                       onOpenSites: _openSites,
                       onOpenFossils: _openFossils,
                       onOpenDinosaurs: _openDinosaurs,
