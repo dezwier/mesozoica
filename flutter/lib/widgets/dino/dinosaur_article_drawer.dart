@@ -1,15 +1,13 @@
 import 'package:flutter/material.dart';
 
 import '../../models/dinosaur.dart';
+import '../common/drawer_sheet_sizes.dart';
 import 'dinosaur_wikipedia_view.dart';
 
 class DinosaurArticleDrawer extends StatelessWidget {
   const DinosaurArticleDrawer({super.key, required this.dinosaur});
 
   final DinosaurSummary dinosaur;
-
-  /// Sheet height as a fraction of the screen — tall enough to read articles.
-  static const double _heightFraction = 0.9;
 
   static Future<void> show(
     BuildContext context, {
@@ -37,7 +35,8 @@ class DinosaurArticleDrawer extends StatelessWidget {
     // Fixed height (not DraggableScrollableSheet) so the WebView owns
     // vertical scroll gestures instead of competing with sheet dragging.
     return SizedBox(
-      height: MediaQuery.sizeOf(context).height * _heightFraction,
+      height: MediaQuery.sizeOf(context).height *
+          DrawerSheetSizes.initialChildSize,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [

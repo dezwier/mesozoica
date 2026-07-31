@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 
 import '../../utils/curated_image_url.dart';
 
-/// Catalog album tile network image: prefers album WebP, falls back to full art.
-class CatalogAlbumNetworkImage extends StatefulWidget {
+/// Catalog album tile network image: album WebP only (never full card art).
+class CatalogAlbumNetworkImage extends StatelessWidget {
   const CatalogAlbumNetworkImage({
     super.key,
     required this.fullUrl,
@@ -13,6 +13,7 @@ class CatalogAlbumNetworkImage extends StatefulWidget {
     this.imageBuilder,
   });
 
+  /// Full curated card URL from the API; used only to derive the album thumb URL.
   final String fullUrl;
   final Widget placeholder;
   final Widget errorWidget;
@@ -20,40 +21,19 @@ class CatalogAlbumNetworkImage extends StatefulWidget {
       imageBuilder;
 
   @override
-  State<CatalogAlbumNetworkImage> createState() =>
-      _CatalogAlbumNetworkImageState();
-}
-
-class _CatalogAlbumNetworkImageState extends State<CatalogAlbumNetworkImage> {
-  late bool _useAlbum;
-  late String? _albumUrl;
-
-  @override
-  void initState() {
-    super.initState();
-    _albumUrl = albumImageUrlFromCurated(widget.fullUrl);
-    _useAlbum = _albumUrl != null && _albumUrl != widget.fullUrl;
-  }
-
-  @override
-  void didUpdateWidget(covariant CatalogAlbumNetworkImage oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.fullUrl != widget.fullUrl) {
-      _albumUrl = albumImageUrlFromCurated(widget.fullUrl);
-      _useAlbum = _albumUrl != null && _albumUrl != widget.fullUrl;
-    }
-  }
-
-  @override
   Widget build(BuildContext context) {
+    final albumUrl = albumImageUrlFromCurated(fullUrl);
+    if (albumUrl == null) {
+      return errorWidget;
+    }
+
     return LayoutBuilder(
       builder: (context, constraints) {
         final dpr = MediaQuery.devicePixelRatioOf(context);
         final memW = _memCacheExtent(constraints.maxWidth, dpr);
         final memH = _memCacheExtent(constraints.maxHeight, dpr);
-        final url = _useAlbum ? _albumUrl! : widget.fullUrl;
         return CachedNetworkImage(
-          imageUrl: url,
+          imageUrl: albumUrl,
           fit: BoxFit.cover,
           fadeInDuration: Duration.zero,
           placeholderFadeInDuration: Duration.zero,
@@ -62,19 +42,9 @@ class _CatalogAlbumNetworkImageState extends State<CatalogAlbumNetworkImage> {
           httpHeaders: const {
             'User-Agent': 'Mesozoica/1.0 (mobile app; catalog album)',
           },
-          imageBuilder: widget.imageBuilder,
-          placeholder: (context, url) => widget.placeholder,
-          errorWidget: (context, url, error) {
-            if (_useAlbum) {
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                if (mounted && _useAlbum) {
-                  setState(() => _useAlbum = false);
-                }
-              });
-              return widget.placeholder;
-            }
-            return widget.errorWidget;
-          },
+          imageBuilder: imageBuilder,
+          placeholder: (context, url) => placeholder,
+          errorWidget: (context, url, error) => errorWidget,
         );
       },
     );

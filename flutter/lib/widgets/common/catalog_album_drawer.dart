@@ -19,8 +19,8 @@ class CatalogAlbumDrawer extends StatelessWidget {
   final String title;
   final Widget? leading;
 
-  /// Catalog album opens near full height.
-  static const double initialChildSize = 0.95;
+  /// Shared with filter / tree drawers via [DrawerSheetSizes].
+  static const double initialChildSize = DrawerSheetSizes.initialChildSize;
 
   static Future<void> show(
     BuildContext context, {
@@ -36,9 +36,9 @@ class CatalogAlbumDrawer extends StatelessWidget {
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (_) => DraggableSheetWrapper(
-        initialChildSize: initialChildSize,
+        initialChildSize: DrawerSheetSizes.initialChildSize,
         minChildSize: DrawerSheetSizes.minChildSize,
-        maxChildSize: initialChildSize,
+        maxChildSize: DrawerSheetSizes.maxChildSize,
         childBuilder: builder,
       ),
     );

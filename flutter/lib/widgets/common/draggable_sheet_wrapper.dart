@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 
+import 'drawer_sheet_sizes.dart';
+
 class DraggableSheetWrapper extends StatefulWidget {
   const DraggableSheetWrapper({
     super.key,
     required this.childBuilder,
-    this.initialChildSize = 0.9,
-    this.minChildSize = 0.25,
-    this.maxChildSize = 0.9,
+    this.initialChildSize = DrawerSheetSizes.initialChildSize,
+    this.minChildSize = DrawerSheetSizes.minChildSize,
+    this.maxChildSize = DrawerSheetSizes.maxChildSize,
   });
 
   final Widget Function(ScrollController scrollController) childBuilder;
