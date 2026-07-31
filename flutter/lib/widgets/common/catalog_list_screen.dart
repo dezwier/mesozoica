@@ -4,9 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../controllers/catalog_controller.dart';
+import '../../shell/overlay_bottom_chrome.dart';
 import '../../shell/shell_overlay_panel.dart';
 import '../../theme/dino_card_theme.dart';
 import 'cover_flow_carousel.dart';
+import 'overlay_chrome_button.dart';
 
 /// Generic vertical Cover Flow / paginate / refresh host shared by the dino,
 /// fossil, site, and tool catalog screens. Each screen supplies its card
@@ -38,7 +40,8 @@ class CatalogListScreen<C extends CatalogController<T>, T>
   /// `catalog.loading && catalog.items.isEmpty`.
   final bool Function(C catalog)? isInitialLoading;
 
-  final Widget Function(BuildContext context, C catalog)?
+  /// Leading bottom-chrome actions (Close is appended on the right).
+  final List<Widget> Function(BuildContext context, C catalog)?
       floatingActionsBuilder;
 
   @override
@@ -98,11 +101,9 @@ class CatalogListScreenState<C extends CatalogController<T>, T>
         return Stack(
           children: [
             Positioned.fill(child: _buildBody(context, catalog)),
-            if (widget.isActive && widget.floatingActionsBuilder != null)
-              Positioned(
-                right: 12,
-                bottom: ShellOverlayPanel.fabBottom(context),
-                child: widget.floatingActionsBuilder!(context, catalog),
+            if (widget.isActive)
+              OverlayBottomChrome(
+                child: _buildBottomChrome(context, catalog),
               ),
           ],
         );
@@ -110,7 +111,40 @@ class CatalogListScreenState<C extends CatalogController<T>, T>
     );
   }
 
+  Widget _buildBottomChrome(BuildContext context, C catalog) {
+    final scope = ShellOverlayScope.maybeOf(context);
+    final actions =
+        widget.floatingActionsBuilder?.call(context, catalog) ?? const [];
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        for (final action in actions) ...[
+          action,
+          const SizedBox(width: 8),
+        ],
+        if (scope != null)
+          OverlayChromeButton(
+            onPressed: scope.onClose,
+            icon: Icons.close_rounded,
+            label: 'Close',
+          ),
+      ],
+    );
+  }
+
   Widget _buildBody(BuildContext context, C catalog) {
+    // Reserve the bottom chrome band so the focused card centers in the
+    // space between the top of the screen and the dismiss row.
+    return Padding(
+      padding: EdgeInsets.only(
+        bottom: ShellOverlayPanel.bottomChromeHeight(context),
+      ),
+      child: _buildBodyContent(context, catalog),
+    );
+  }
+
+  Widget _buildBodyContent(BuildContext context, C catalog) {
     final isInitialLoading = widget.isInitialLoading?.call(catalog) ??
         (catalog.loading && catalog.items.isEmpty);
     // Light copy for readability on the dimmed map scrim.
@@ -162,12 +196,11 @@ class CatalogListScreenState<C extends CatalogController<T>, T>
       );
     }
 
-    final bottomInset = ShellOverlayPanel.contentBottomInset(context);
-
     return LayoutBuilder(
       builder: (context, constraints) {
-        // Full-width cards (same as dialogue); height follows aspect ratio,
-        // capped so neighbors peek in the vertical Cover Flow.
+        // Size to image aspect (3:4 / 1086×1448). Prefer full width; if the
+        // available height band is shorter, shrink width to match so the
+        // chrome never letterboxes beside the art.
         const horizontalInset = 16.0 * 2;
         const verticalInset = 8.0 * 2;
         final maxFaceWidth =
@@ -176,9 +209,12 @@ class CatalogListScreenState<C extends CatalogController<T>, T>
             .clamp(120.0, 2000.0);
         final heightFromWidth =
             maxFaceWidth / DinoCardTheme.cardAspectRatio;
-        final faceHeight = heightFromWidth <= maxFaceHeight
-            ? heightFromWidth
-            : maxFaceHeight;
+        final double faceHeight;
+        if (heightFromWidth <= maxFaceHeight) {
+          faceHeight = heightFromWidth;
+        } else {
+          faceHeight = maxFaceHeight;
+        }
         final slotHeight = faceHeight + verticalInset;
         final viewportFraction =
             (slotHeight / constraints.maxHeight).clamp(0.55, 0.85);
@@ -189,15 +225,10 @@ class CatalogListScreenState<C extends CatalogController<T>, T>
               (catalog.isLoadingMore ? 1 : 0),
           viewportFraction: viewportFraction,
           onPageChanged: (page) => _onPageChanged(page, catalog),
-          onRefresh: catalog.refresh,
+          onPullDismiss: ShellOverlayScope.maybeOf(context)?.onClose,
           itemBuilder: (context, index, isFocused) {
             if (index >= catalog.items.length) {
-              return Padding(
-                padding: EdgeInsets.only(bottom: bottomInset * 0.35),
-                child: const Center(
-                  child: CircularProgressIndicator(),
-                ),
-              );
+              return const Center(child: CircularProgressIndicator());
             }
             return widget.itemBuilder(
               context,

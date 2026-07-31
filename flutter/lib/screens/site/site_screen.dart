@@ -7,8 +7,7 @@ import '../../models/site.dart';
 import '../../services/location_service.dart';
 import '../../widgets/cards/site_turnable_card.dart';
 import '../../widgets/common/catalog_list_screen.dart';
-import '../../widgets/common/chrome_fab.dart';
-import '../../widgets/dino/dinosaur_filter_fab.dart';
+import '../../widgets/common/overlay_chrome_button.dart';
 import '../../widgets/map/site_filter_sheet.dart';
 import '../../widgets/site/site_catalog_drawer.dart';
 
@@ -71,24 +70,23 @@ class SiteScreenState extends State<SiteScreen> {
             : 'No sites in the catalog yet.';
       },
       floatingActionsBuilder: (context, catalog) {
-        return Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            ChromeFab(
-              heroTag: 'site_type_catalog_fab',
-              tone: ChromeFabTone.warm,
-              tooltip: 'Catalog',
-              onPressed: () => SiteCatalogDrawer.show(context),
-              child: const Icon(Icons.auto_stories_outlined),
-            ),
-            DinosaurFilterFab(
-              heroTag: 'site_catalog_filter_fab',
-              hasActiveFilters: catalog.hasActiveFilters,
-              onPressed: () => _openFilterSheet(context, catalog, isFieldMode),
-            ),
-          ],
-        );
+        return [
+          OverlayChromeButton(
+            heroTag: 'site_type_catalog_fab',
+            tooltip: 'Catalog',
+            icon: Icons.auto_stories_outlined,
+            label: 'Catalog',
+            onPressed: () => SiteCatalogDrawer.show(context),
+          ),
+          OverlayChromeButton(
+            heroTag: 'site_catalog_filter_fab',
+            tooltip: 'Filter',
+            icon: Icons.filter_list,
+            label: 'Filter',
+            showBadge: catalog.hasActiveFilters,
+            onPressed: () => _openFilterSheet(context, catalog, isFieldMode),
+          ),
+        ];
       },
     );
   }

@@ -18,7 +18,8 @@ class DinoCardTheme {
   static const double borderRadius = 16;
   static const double factPanelBorderRadius = 10;
 
-  /// Matches [frontPlaceholderAsset] (1086×1448) so the cover image is not cropped.
+  /// Matches [frontPlaceholderAsset] (1086×1448 ≈ 3:4 portrait) so cover art
+  /// fills the face without letterboxing.
   static const double cardAspectRatio = 1086 / 1448;
 
   /// Portrait 3:4 thumbnails for site and dinosaur cards on fossil card backs.

@@ -20,6 +20,7 @@ class CoverFlowCarousel extends StatefulWidget {
     required this.itemBuilder,
     this.onPageChanged,
     this.onRefresh,
+    this.onPullDismiss,
     this.viewportFraction = 0.68,
     this.padEnds = true,
     /// Alignment of the deck in the viewport (-1 top, 0 center, 1 bottom).
@@ -36,7 +37,11 @@ class CoverFlowCarousel extends StatefulWidget {
 
   /// Pull-down past the first card triggers this (replaces a competing
   /// [RefreshIndicator] scrollable on the vertical axis).
+  /// Ignored when [onPullDismiss] is set — that gesture dismisses instead.
   final Future<void> Function()? onRefresh;
+
+  /// Pull-down past the first card dismisses the host overlay / sheet.
+  final VoidCallback? onPullDismiss;
 
   final double viewportFraction;
   final bool padEnds;
@@ -64,6 +69,10 @@ class CoverFlowCarouselState extends State<CoverFlowCarousel> {
   static const double _flingVelocityPerPage = 900;
   static const int _maxFlingPages = 4;
   static const double _refreshThreshold = 72;
+  static const double _dismissThreshold = 72;
+
+  bool get _allowsOverscrollPull =>
+      widget.onPullDismiss != null || widget.onRefresh != null;
 
   PageController get controller => _controller;
 
@@ -148,20 +157,28 @@ class CoverFlowCarouselState extends State<CoverFlowCarousel> {
     if (!_controller.hasClients || _refreshing) return;
     final position = _controller.position;
     // Finger down (dy > 0) → earlier pages → pixels decrease → deck moves down.
-    final next = position.pixels - details.delta.dy;
-    if (widget.onRefresh != null &&
+    final atTop = _reportedPage == 0 &&
+        position.pixels <= position.minScrollExtent + 0.5;
+
+    // Rubber-band past the first card. Accumulate deltas — recomputing pull
+    // from jumpTo(min) only ever equals the last frame's dy.
+    if (_allowsOverscrollPull &&
         _reportedPage == 0 &&
-        next < position.minScrollExtent) {
-      final pull = position.minScrollExtent - next;
-      if (pull != _pullExtent) {
-        setState(() => _pullExtent = pull);
+        (_pullExtent > 0 || (atTop && details.delta.dy > 0))) {
+      final nextPull =
+          (_pullExtent + details.delta.dy).clamp(0.0, 280.0);
+      if (nextPull != _pullExtent) {
+        setState(() => _pullExtent = nextPull);
       }
       position.jumpTo(position.minScrollExtent);
-      return;
+      if (nextPull > 0) return;
+      // Pull released back to 0 — fall through to normal paging.
     }
+
     if (_pullExtent != 0) {
       setState(() => _pullExtent = 0);
     }
+    final next = position.pixels - details.delta.dy;
     position.jumpTo(
       next.clamp(position.minScrollExtent, position.maxScrollExtent),
     );
@@ -171,7 +188,19 @@ class CoverFlowCarouselState extends State<CoverFlowCarousel> {
     if (!_controller.hasClients || widget.itemCount == 0 || _refreshing) {
       return;
     }
-    if (widget.onRefresh != null && _pullExtent >= _refreshThreshold) {
+    final vy = details.velocity.pixelsPerSecond.dy;
+    if (widget.onPullDismiss != null &&
+        _reportedPage == 0 &&
+        (_pullExtent >= _dismissThreshold ||
+            (vy > _flingVelocityThreshold && _pullExtent > 24))) {
+      final dismiss = widget.onPullDismiss!;
+      setState(() => _pullExtent = 0);
+      dismiss();
+      return;
+    }
+    if (widget.onPullDismiss == null &&
+        widget.onRefresh != null &&
+        _pullExtent >= _refreshThreshold) {
       _triggerRefresh();
       return;
     }
@@ -179,7 +208,6 @@ class CoverFlowCarouselState extends State<CoverFlowCarousel> {
       setState(() => _pullExtent = 0);
     }
     final page = _controller.page ?? _reportedPage.toDouble();
-    final vy = details.velocity.pixelsPerSecond.dy;
     final target = _targetPageForFling(page: page, velocityDy: vy);
     animateToPage(target);
   }
@@ -269,7 +297,8 @@ class CoverFlowCarouselState extends State<CoverFlowCarousel> {
             alignment: widget.alignment,
             clipBehavior: Clip.none,
             children: [
-              if (_pullExtent > 0 || _refreshing)
+              if (widget.onPullDismiss == null &&
+                  (_pullExtent > 0 || _refreshing))
                 Positioned(
                   top: 12,
                   left: 0,
@@ -296,39 +325,51 @@ class CoverFlowCarouselState extends State<CoverFlowCarousel> {
                   itemBuilder: (context, index) => const SizedBox.expand(),
                 ),
               ),
-              for (final index in paintOrder)
-                AnimatedBuilder(
-                  key: ValueKey<String>('cover-$index'),
-                  animation: _controller,
-                  builder: (context, child) {
-                    final page = _controller.hasClients &&
-                            _controller.position.haveDimensions
-                        ? (_controller.page ?? focused.toDouble())
-                        : focused.toDouble();
-                    final delta = index - page;
-                    return Transform(
-                      alignment: Alignment.center,
-                      transform: _transformForDelta(delta, cardHeight),
-                      // Always wrap Opacity so focus changes do not remount.
-                      child: Opacity(
-                        opacity: _dimForDelta(delta),
-                        child: child,
-                      ),
-                    );
-                  },
-                  child: SizedBox(
-                    width: constraints.maxWidth,
-                    height: cardHeight,
-                    child: Align(
-                      alignment: widget.alignment,
-                      child: _CoverFlowCardHost(
-                        index: index,
-                        isFocused: index == focused,
-                        itemBuilder: widget.itemBuilder,
-                      ),
-                    ),
-                  ),
+              Transform.translate(
+                offset: Offset(
+                  0,
+                  widget.onPullDismiss != null ? _pullExtent * 0.55 : 0,
                 ),
+                child: Stack(
+                  alignment: widget.alignment,
+                  clipBehavior: Clip.none,
+                  children: [
+                    for (final index in paintOrder)
+                      AnimatedBuilder(
+                        key: ValueKey<String>('cover-$index'),
+                        animation: _controller,
+                        builder: (context, child) {
+                          final page = _controller.hasClients &&
+                                  _controller.position.haveDimensions
+                              ? (_controller.page ?? focused.toDouble())
+                              : focused.toDouble();
+                          final delta = index - page;
+                          return Transform(
+                            alignment: Alignment.center,
+                            transform: _transformForDelta(delta, cardHeight),
+                            // Always wrap Opacity so focus changes do not remount.
+                            child: Opacity(
+                              opacity: _dimForDelta(delta),
+                              child: child,
+                            ),
+                          );
+                        },
+                        child: SizedBox(
+                          width: constraints.maxWidth,
+                          height: cardHeight,
+                          child: Align(
+                            alignment: widget.alignment,
+                            child: _CoverFlowCardHost(
+                              index: index,
+                              isFocused: index == focused,
+                              itemBuilder: widget.itemBuilder,
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
             ],
           ),
         );

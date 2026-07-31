@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/physics.dart';
 
 import '../../config/discovery_config.dart';
+import '../../theme/dino_card_theme.dart';
 import 'card_face_specular_overlay.dart';
 
 /// Y-axis 3D flip shell — tap left/right half or horizontal drag to turn.
@@ -303,34 +304,46 @@ class _TurnableYAxisCardState extends State<TurnableYAxisCard>
           boxShadow: _boxShadowForAngle(angle),
         );
 
-        return Stack(
-          children: [
-            Transform(
-              alignment: Alignment.center,
-              transform: Matrix4.identity()
-                ..setEntry(3, 2, 0.0017)
-                ..rotateY(angle)
-                ..rotateZ(sideTilt)
-                // ignore: deprecated_member_use
-                ..scale(_isDraggingHorizontally ? 0.992 : 1.0),
-              child: DecoratedBox(
-                decoration: decoration,
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(r),
-                  clipBehavior: Clip.antiAlias,
-                  child: fixedH != null && fixedH > 0 && measurementWidth > 0
-                      ? SizedBox(
-                          width: measurementWidth,
-                          height: fixedH,
-                          child: faces,
-                        )
-                      : !widget.prelayoutFacesForHeight
-                          ? SizedBox.expand(child: faces)
-                          : faces,
-                ),
+        // Keep chrome + face at image aspect (width/height). A height-only
+        // cap with full width leaves empty surface bands beside the art.
+        final Widget faceSlot;
+        if (fixedH != null && fixedH > 0 && measurementWidth > 0) {
+          final faceWidth = math.min(
+            measurementWidth,
+            fixedH * DinoCardTheme.cardAspectRatio,
+          );
+          final faceHeight = faceWidth / DinoCardTheme.cardAspectRatio;
+          _cardWidth = faceWidth;
+          faceSlot = SizedBox(
+            width: faceWidth,
+            height: faceHeight,
+            child: faces,
+          );
+        } else if (!widget.prelayoutFacesForHeight) {
+          faceSlot = SizedBox.expand(child: faces);
+        } else {
+          faceSlot = faces;
+        }
+
+        return Align(
+          alignment: Alignment.center,
+          child: Transform(
+            alignment: Alignment.center,
+            transform: Matrix4.identity()
+              ..setEntry(3, 2, 0.0017)
+              ..rotateY(angle)
+              ..rotateZ(sideTilt)
+              // ignore: deprecated_member_use
+              ..scale(_isDraggingHorizontally ? 0.992 : 1.0),
+            child: DecoratedBox(
+              decoration: decoration,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(r),
+                clipBehavior: Clip.antiAlias,
+                child: faceSlot,
               ),
             ),
-          ],
+          ),
         );
       },
     );

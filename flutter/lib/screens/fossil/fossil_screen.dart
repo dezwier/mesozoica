@@ -6,7 +6,7 @@ import '../../controllers/fossil_catalog_controller.dart';
 import '../../models/fossil.dart';
 import '../../widgets/cards/fossil_turnable_card.dart';
 import '../../widgets/common/catalog_list_screen.dart';
-import '../../widgets/fossil/fossil_filter_fab.dart';
+import '../../widgets/common/overlay_chrome_button.dart';
 import '../../widgets/fossil/fossil_filter_sheet.dart';
 
 class FossilScreen extends StatefulWidget {
@@ -58,10 +58,16 @@ class FossilScreenState extends State<FossilScreen> {
       emptyMessageBuilder: (context, catalog) => catalog.hasActiveFilters
           ? 'No fossils match these filters.'
           : 'No fossils in the catalog yet.',
-      floatingActionsBuilder: (context, catalog) => FossilFilterFab(
-        hasActiveFilters: catalog.hasActiveFilters,
-        onPressed: () => _openFilterSheet(context, catalog),
-      ),
+      floatingActionsBuilder: (context, catalog) => [
+        OverlayChromeButton(
+          heroTag: 'fossil_filter_fab',
+          tooltip: 'Filter',
+          icon: Icons.filter_list,
+          label: 'Filter',
+          showBadge: catalog.hasActiveFilters,
+          onPressed: () => _openFilterSheet(context, catalog),
+        ),
+      ],
     );
   }
 }

@@ -526,6 +526,7 @@ class _AppShellState extends State<AppShell>
                       enabled: _sitesOpen,
                       child: ShellOverlayPanel(
                         opaque: false,
+                        showDismiss: false,
                         onClose: _closeOverlays,
                         child: SiteScreen(
                           key: _siteScreenKey,
@@ -540,6 +541,7 @@ class _AppShellState extends State<AppShell>
                       enabled: _fossilsOpen,
                       child: ShellOverlayPanel(
                         opaque: false,
+                        showDismiss: false,
                         onClose: _closeOverlays,
                         child: FossilScreen(
                           key: _fossilScreenKey,
@@ -554,6 +556,7 @@ class _AppShellState extends State<AppShell>
                       enabled: _dinosaursOpen,
                       child: ShellOverlayPanel(
                         opaque: false,
+                        showDismiss: false,
                         onClose: _closeOverlays,
                         child: DinoScreen(
                           key: _dinoScreenKey,
@@ -578,6 +581,7 @@ class _AppShellState extends State<AppShell>
                       enabled: _toolsOpen,
                       child: ShellOverlayPanel(
                         opaque: false,
+                        showDismiss: false,
                         onClose: _closeOverlays,
                         child: ToolScreen(
                           key: _toolScreenKey,

@@ -5,9 +5,8 @@ import '../../controllers/dinosaur_catalog_controller.dart';
 import '../../models/dinosaur.dart';
 import '../../widgets/cards/dinosaur_turnable_card.dart';
 import '../../widgets/common/catalog_list_screen.dart';
-import '../../widgets/common/chrome_fab.dart';
+import '../../widgets/common/overlay_chrome_button.dart';
 import '../../widgets/dino/dinosaur_catalog_drawer.dart';
-import '../../widgets/dino/dinosaur_filter_fab.dart';
 import '../../widgets/dino/dinosaur_filter_sheet.dart';
 import '../../widgets/dino/dinosaur_tree_sheet.dart';
 
@@ -68,29 +67,30 @@ class DinoScreenState extends State<DinoScreen> {
             : 'No dinosaurs in your collection yet.';
       },
       floatingActionsBuilder: (context, catalog) {
-        return Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            ChromeFab(
-              heroTag: 'dino_catalog_fab',
-              tone: ChromeFabTone.warm,
-              tooltip: 'Catalog',
-              onPressed: () => DinosaurCatalogDrawer.show(context),
-              child: const Icon(Icons.auto_stories_outlined),
-            ),
-            ChromeFab(
-              heroTag: 'dino_tree_fab',
-              tooltip: 'Phylogeny',
-              onPressed: () => DinosaurTreeSheet.show(context),
-              child: const Icon(Icons.account_tree),
-            ),
-            DinosaurFilterFab(
-              hasActiveFilters: catalog.hasActiveFilters,
-              onPressed: () => _openFilterSheet(context, catalog),
-            ),
-          ],
-        );
+        return [
+          OverlayChromeButton(
+            heroTag: 'dino_catalog_fab',
+            tooltip: 'Catalog',
+            icon: Icons.auto_stories_outlined,
+            label: 'Catalog',
+            onPressed: () => DinosaurCatalogDrawer.show(context),
+          ),
+          OverlayChromeButton(
+            heroTag: 'dino_tree_fab',
+            tooltip: 'Phylogeny',
+            icon: Icons.account_tree,
+            label: 'Tree',
+            onPressed: () => DinosaurTreeSheet.show(context),
+          ),
+          OverlayChromeButton(
+            heroTag: 'dino_filter_fab',
+            tooltip: 'Filter',
+            icon: Icons.filter_list,
+            label: 'Filter',
+            showBadge: catalog.hasActiveFilters,
+            onPressed: () => _openFilterSheet(context, catalog),
+          ),
+        ];
       },
     );
   }

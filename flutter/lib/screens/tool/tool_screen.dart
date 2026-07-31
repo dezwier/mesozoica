@@ -5,8 +5,7 @@ import '../../controllers/tool_catalog_controller.dart';
 import '../../models/tool.dart';
 import '../../widgets/cards/tool_turnable_card.dart';
 import '../../widgets/common/catalog_list_screen.dart';
-import '../../widgets/common/chrome_fab.dart';
-import '../../widgets/tools/filters/tool_filter_fab.dart';
+import '../../widgets/common/overlay_chrome_button.dart';
 import '../../widgets/tools/filters/tool_filter_sheet.dart';
 import '../../widgets/tools/tool_catalog_drawer.dart';
 
@@ -63,22 +62,23 @@ class ToolScreenState extends State<ToolScreen> {
             : 'No tools in your collection yet.';
       },
       floatingActionsBuilder: (context, catalog) {
-        return Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ChromeFab(
-              heroTag: 'tool_catalog_fab',
-              tone: ChromeFabTone.warm,
-              tooltip: 'Catalog',
-              onPressed: () => ToolCatalogDrawer.show(context),
-              child: const Icon(Icons.auto_stories_outlined),
-            ),
-            ToolFilterFab(
-              hasActiveFilters: catalog.hasActiveFilters,
-              onPressed: () => _openFilterSheet(context, catalog),
-            ),
-          ],
-        );
+        return [
+          OverlayChromeButton(
+            heroTag: 'tool_catalog_fab',
+            tooltip: 'Catalog',
+            icon: Icons.auto_stories_outlined,
+            label: 'Catalog',
+            onPressed: () => ToolCatalogDrawer.show(context),
+          ),
+          OverlayChromeButton(
+            heroTag: 'tool_filter_fab',
+            tooltip: 'Filter',
+            icon: Icons.filter_list,
+            label: 'Filter',
+            showBadge: catalog.hasActiveFilters,
+            onPressed: () => _openFilterSheet(context, catalog),
+          ),
+        ];
       },
     );
   }
