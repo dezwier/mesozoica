@@ -19,8 +19,8 @@ class CatalogAlbumDrawer extends StatelessWidget {
   final String title;
   final Widget? leading;
 
-  /// Catalog album opens taller than filter sheets.
-  static const double initialChildSize = 0.9;
+  /// Catalog album opens near full height.
+  static const double initialChildSize = 0.95;
 
   static Future<void> show(
     BuildContext context, {

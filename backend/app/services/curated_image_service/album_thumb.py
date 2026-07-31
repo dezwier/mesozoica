@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import io
 import logging
-import tempfile
 from pathlib import Path
 from typing import Callable
 
@@ -43,6 +42,14 @@ def album_relative_path_for(full_relative_path: str) -> str:
     if not stem:
         raise ValueError(f"Invalid image filename in path: {full_relative_path!r}")
     return f"{version}/{ALBUM_DIR_NAME}/{stem}{ALBUM_EXT}"
+
+
+def album_local_path_for(local_full_path: Path, full_relative_path: str) -> Path:
+    """Local disk path for the album thumb beside the full image version folder."""
+    # full lives at .../version/file; album at .../version/album/stem.webp
+    return local_full_path.parent / ALBUM_DIR_NAME / Path(
+        album_relative_path_for(full_relative_path)
+    ).name
 
 
 def is_album_relative_path(relative: str) -> bool:
@@ -102,6 +109,29 @@ def write_album_thumb(source_path: Path, dest_path: Path) -> Path:
     return dest_path
 
 
+def ensure_local_album_thumb(
+    *,
+    local_full_path: Path,
+    full_relative_path: str,
+    overwrite: bool = False,
+) -> Path:
+    """Write/refresh ``{version}/album/{stem}.webp`` next to the full card art.
+
+    Regenerates when missing, ``overwrite`` is set, or the full image is newer.
+    """
+    thumb_path = album_local_path_for(local_full_path, full_relative_path)
+    needs_write = overwrite or not thumb_path.is_file()
+    if not needs_write:
+        try:
+            needs_write = local_full_path.stat().st_mtime > thumb_path.stat().st_mtime
+        except OSError:
+            needs_write = True
+    if needs_write:
+        logger.info("Write local album %s", album_relative_path_for(full_relative_path))
+        write_album_thumb(local_full_path, thumb_path)
+    return thumb_path
+
+
 UploadFileFn = Callable[..., None]
 
 
@@ -116,11 +146,45 @@ def sync_album_thumb_for_image(
     overwrite: bool = False,
     dry_run: bool = False,
 ) -> bool:
-    """Generate and upload an album thumb when missing/stale. Returns True if uploaded."""
+    """Ensure a local album thumb exists, then upload when remote is missing/stale.
+
+    Returns True when an upload was performed (or would be, in dry-run).
+    """
     album_rel = album_relative_path_for(full_relative_path)
+    thumb_path = album_local_path_for(local_full_path, full_relative_path)
+
+    if dry_run:
+        would_write = overwrite or not thumb_path.is_file()
+        if not would_write and thumb_path.is_file():
+            try:
+                would_write = (
+                    local_full_path.stat().st_mtime > thumb_path.stat().st_mtime
+                )
+            except OSError:
+                would_write = True
+        if would_write:
+            logger.info("Would write local album %s", album_rel)
+        if not needs_curated_image_resync(
+            overwrite=overwrite,
+            local_path=thumb_path if thumb_path.is_file() else local_full_path,
+            main_image_url=None,
+            public_base_url=public_base_url,
+            filename=album_rel,
+            curated_media_path=curated_media_path,
+        ):
+            return False
+        logger.info("Would upload album %s", album_rel)
+        return True
+
+    thumb_path = ensure_local_album_thumb(
+        local_full_path=local_full_path,
+        full_relative_path=full_relative_path,
+        overwrite=overwrite,
+    )
+
     if not needs_curated_image_resync(
         overwrite=overwrite,
-        local_path=local_full_path,
+        local_path=thumb_path,
         main_image_url=None,
         public_base_url=public_base_url,
         filename=album_rel,
@@ -128,21 +192,11 @@ def sync_album_thumb_for_image(
     ):
         return False
 
-    logger.info(
-        "%s %s",
-        "Would upload album" if dry_run else "Upload album",
-        album_rel,
+    logger.info("Upload album %s", album_rel)
+    upload_file(
+        local_path=thumb_path,
+        remote_filename=album_rel,
+        public_base_url=public_base_url,
+        sync_secret=sync_secret,
     )
-    if dry_run:
-        return True
-
-    with tempfile.TemporaryDirectory(prefix="mesozoica-album-") as tmp:
-        thumb_path = Path(tmp) / Path(album_rel).name
-        write_album_thumb(local_full_path, thumb_path)
-        upload_file(
-            local_path=thumb_path,
-            remote_filename=album_rel,
-            public_base_url=public_base_url,
-            sync_secret=sync_secret,
-        )
     return True

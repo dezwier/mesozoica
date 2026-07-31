@@ -63,6 +63,25 @@ def test_write_album_thumb(tmp_path: Path):
     assert img.width <= ALBUM_MAX_WIDTH
 
 
+def test_ensure_local_album_thumb_writes_beside_full(tmp_path: Path):
+    from app.services.curated_image_service.album_thumb import ensure_local_album_thumb
+
+    version = tmp_path / "Original"
+    version.mkdir()
+    full = version / "Tyrannosaurus.png"
+    full.write_bytes(_rgb_png_bytes(768, 1024))
+
+    thumb = ensure_local_album_thumb(
+        local_full_path=full,
+        full_relative_path="Original/Tyrannosaurus.png",
+    )
+    assert thumb == version / "album" / "Tyrannosaurus.webp"
+    assert thumb.is_file()
+    img = PILImage.open(thumb)
+    assert img.format == "WEBP"
+    assert img.width <= ALBUM_MAX_WIDTH
+
+
 def test_derived_album_relative_paths(tmp_path: Path):
     original = tmp_path / ORIGINAL_VERSION
     original.mkdir()
