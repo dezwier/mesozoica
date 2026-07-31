@@ -293,6 +293,17 @@ class ApiEndpoints {
   static Uri siteGroupsUri(int siteId) =>
       Uri.parse('${AppConfig.baseApiUrl}/api/v1/sites/$siteId/groups');
 
+  static Uri siteTypesUri({
+    int limit = 200,
+    int offset = 0,
+  }) =>
+      Uri.parse('${AppConfig.baseApiUrl}/api/v1/site-types').replace(
+        queryParameters: {
+          'limit': '$limit',
+          'offset': '$offset',
+        },
+      );
+
   static Uri toolsUri({
     int limit = 200,
     int offset = 0,

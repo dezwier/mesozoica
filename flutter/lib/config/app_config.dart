@@ -160,6 +160,12 @@ class AppConfig {
   }) =>
       ApiEndpoints.fieldDataPurgeUri(userSites: userSites, userFossils: userFossils, sites: sites, fossils: fossils, missionEvents: missionEvents, missions: missions);
 
+  static Uri siteTypesUri({
+    int limit = 200,
+    int offset = 0,
+  }) =>
+      ApiEndpoints.siteTypesUri(limit: limit, offset: offset);
+
   static Uri siteUri(
     int id, {
     CatalogDataSource dataSource = CatalogDataSource.archive,

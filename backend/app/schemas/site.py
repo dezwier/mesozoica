@@ -9,6 +9,35 @@ from pydantic import BaseModel, ConfigDict, Field
 from app.schemas.fossil import FossilSummary
 
 
+class OwnedOccurrenceThumb(BaseModel):
+    """Viewer-owned site occurrence thumbnail for catalog album tiles."""
+
+    id: int
+    version: str | None = None
+    main_image_url: str | None = None
+    created_at: datetime | None = None
+
+
+class SiteTypeSummary(BaseModel):
+    """Catalog album row for a geological site type (period + rock)."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    period: str
+    rock_type: str
+    main_image_url: str | None = None
+    owned_occurrences: list[OwnedOccurrenceThumb] = Field(default_factory=list)
+
+
+class SiteTypeListResponse(BaseModel):
+    items: list[SiteTypeSummary]
+    total: int
+    limit: int
+    offset: int
+    has_next: bool
+
+
 class SiteSummary(BaseModel):
     """Card-facing site fields with joined site_type image data."""
 

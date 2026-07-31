@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 import '../config/app_config.dart';
 import '../models/catalog_data_source.dart';
 import '../models/site.dart';
+import '../models/site_type.dart';
 import 'api_client.dart';
 import 'token_storage.dart';
 
@@ -103,6 +104,41 @@ class SiteService {
       throw const SiteServiceException('Invalid sites response');
     }
     return SiteListResponse.fromJson(decoded);
+  }
+
+  Future<SiteTypeListResponse> fetchSiteTypes({
+    int limit = 200,
+    int offset = 0,
+  }) async {
+    final uri = AppConfig.siteTypesUri(limit: limit, offset: offset);
+    if (kDebugMode) {
+      debugPrint('SiteService GET $uri');
+    }
+    final http.Response response;
+    try {
+      response = await ApiClient.instance
+          .sendGet(uri, client: _client, headers: await _headers())
+          .timeout(const Duration(seconds: 15));
+    } on TimeoutException {
+      throw const SiteServiceException(
+        'Timed out loading site types after 15s — server may be overloaded. Try again.',
+      );
+    }
+
+    if (response.statusCode != 200) {
+      final detail = _errorDetail(response.body);
+      throw SiteServiceException(
+        detail != null && detail.isNotEmpty
+            ? 'Failed to load site types (${response.statusCode}): $detail'
+            : 'Failed to load site types (${response.statusCode})',
+      );
+    }
+
+    final decoded = jsonDecode(response.body);
+    if (decoded is! Map<String, dynamic>) {
+      throw const SiteServiceException('Invalid site types response');
+    }
+    return SiteTypeListResponse.fromJson(decoded);
   }
 
   Future<SiteSummary> fetchSiteById(

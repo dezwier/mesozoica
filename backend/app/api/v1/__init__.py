@@ -13,6 +13,7 @@ from app.api.v1.endpoints import (
     notifications,
     root,
     site_type_images,
+    site_types,
     sites,
     tool_images,
     tools,
@@ -25,6 +26,7 @@ api_router.include_router(root.router)
 api_router.include_router(dinosaurs.router)
 api_router.include_router(fossils.router)
 api_router.include_router(sites.router)
+api_router.include_router(site_types.router)
 api_router.include_router(dinosaur_images.router)
 api_router.include_router(fossil_images.router)
 api_router.include_router(site_type_images.router)
