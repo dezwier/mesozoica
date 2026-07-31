@@ -9,6 +9,7 @@ from datetime import datetime, timedelta, timezone
 from decimal import Decimal, InvalidOperation
 from typing import Any
 
+import httpx
 from sqlalchemy import case, update
 from sqlmodel import Session, col, func, select
 
@@ -19,6 +20,7 @@ from app.services.curated_image_service.versions import latest_fossil_image_vers
 from app.services.dinosaur_image_service.sync import CURATED_MEDIA_PATH
 from app.services.dinosaur_name_filter import dino_name_match_clause
 from app.services.pbdb_service.client import PbdbClient
+from app.services.wikipedia_service.category import is_wikipedia_list_title
 
 logger = logging.getLogger("fossil_pbdb_sync")
 
@@ -531,6 +533,16 @@ def sync_fossils(
             genus_skipped = 0
             try:
                 logger.info("%s action=start", prefix)
+                if is_wikipedia_list_title(dinosaur.name):
+                    # Feathered-dino category includes list pages; PBDB rejects them.
+                    counters.skipped += 1
+                    logger.info("%s action=skip reason=wikipedia_list_title", prefix)
+                    if not dry_run:
+                        dinosaur.fossils_insert_time = datetime.now(timezone.utc)
+                        session.add(dinosaur)
+                        session.commit()
+                    continue
+
                 for record in pbdb.iter_occurrences(base_name=dinosaur.name):
                     row = _record_to_fossil(record, dinosaur_id=dinosaur.id)
                     if row is None:
@@ -576,6 +588,24 @@ def sync_fossils(
                     dinosaur.fossils_insert_time = datetime.now(timezone.utc)
                     session.add(dinosaur)
                     session.commit()
+            except httpx.HTTPStatusError as exc:
+                # Invalid taxon names (and similar) return 400; stamp so stale
+                # re-runs do not keep failing the job.
+                if exc.response is not None and exc.response.status_code == 400:
+                    counters.skipped += 1
+                    logger.warning(
+                        "%s action=skip reason=pbdb_bad_request error=%s",
+                        prefix,
+                        exc,
+                    )
+                    if not dry_run:
+                        dinosaur.fossils_insert_time = datetime.now(timezone.utc)
+                        session.add(dinosaur)
+                        session.commit()
+                    continue
+                counters.failed += 1
+                logger.error("%s action=failed error=%s", prefix, exc)
+                session.rollback()
             except Exception as exc:
                 counters.failed += 1
                 logger.error("%s action=failed error=%s", prefix, exc)

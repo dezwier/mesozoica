@@ -568,3 +568,51 @@ def test_resolve_since_from_stale_days():
     assert cutoff is not None
     assert cutoff.tzinfo == timezone.utc
     assert (datetime.now(timezone.utc) - cutoff).days == 7
+
+
+def test_sync_skips_wikipedia_list_titles_without_failing(session: Session):
+    list_page = _dinosaur(
+        name="List of non-avian dinosaur species preserved with evidence of feathers",
+        page_id=999001,
+    )
+    session.add(list_page)
+    session.commit()
+    session.refresh(list_page)
+
+    client = MagicMock()
+    summary = sync_fossils(session, client=client, dry_run=False, overwrite=True)
+    session.commit()
+    session.refresh(list_page)
+
+    client.iter_occurrences.assert_not_called()
+    assert summary.counters.skipped == 1
+    assert summary.counters.failed == 0
+    assert sync_exit_code(summary) == 0
+    assert list_page.fossils_insert_time is not None
+
+
+def test_sync_skips_pbdb_400_without_failing(session: Session):
+    import httpx
+
+    dino = _dinosaur(name="NotARealTaxon", page_id=999002)
+    session.add(dino)
+    session.commit()
+    session.refresh(dino)
+
+    request = httpx.Request("GET", "https://paleobiodb.org/data1.2/occs/list.json")
+    response = httpx.Response(400, request=request)
+    client = MagicMock()
+    client.iter_occurrences.side_effect = httpx.HTTPStatusError(
+        "400 Bad Request",
+        request=request,
+        response=response,
+    )
+
+    summary = sync_fossils(session, client=client, dry_run=False, overwrite=True)
+    session.commit()
+    session.refresh(dino)
+
+    assert summary.counters.skipped == 1
+    assert summary.counters.failed == 0
+    assert sync_exit_code(summary) == 0
+    assert dino.fossils_insert_time is not None

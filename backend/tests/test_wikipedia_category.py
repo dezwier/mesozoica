@@ -8,10 +8,47 @@ import pytest
 
 from app.services.wikipedia_service.category import (
     CategoryMember,
+    is_wikipedia_list_title,
+    list_category_articles,
     list_dinosaur_sync_batches,
     list_dinosaur_sync_candidates,
     merge_category_members,
 )
+
+
+def test_is_wikipedia_list_title():
+    assert is_wikipedia_list_title(
+        "List of non-avian dinosaur species preserved with evidence of feathers"
+    )
+    assert is_wikipedia_list_title("lists of dinosaurs")
+    assert not is_wikipedia_list_title("Tyrannosaurus")
+    assert not is_wikipedia_list_title("Liston")
+
+
+def test_list_category_articles_skips_list_pages():
+    client = MagicMock()
+    client.action_api.return_value = {
+        "query": {
+            "categorymembers": [
+                {"pageid": 1, "title": "Archaeopteryx"},
+                {
+                    "pageid": 2,
+                    "title": (
+                        "List of non-avian dinosaur species preserved "
+                        "with evidence of feathers"
+                    ),
+                },
+                {"pageid": 3, "title": "Velociraptor"},
+            ]
+        }
+    }
+
+    members = list_category_articles(client, "Category:Feathered dinosaurs")
+
+    assert [member.title for member in members] == [
+        "Archaeopteryx",
+        "Velociraptor",
+    ]
 
 
 def test_merge_category_members_deduplicates_by_page_id():

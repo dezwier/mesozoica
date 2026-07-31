@@ -14,6 +14,12 @@ class CategoryMember:
     title: str
 
 
+def is_wikipedia_list_title(title: str) -> bool:
+    """True for Wikipedia list/meta pages that are not genus articles."""
+    key = title.strip().casefold()
+    return key.startswith("list of ") or key.startswith("lists of ")
+
+
 def default_wikipedia_dinosaur_categories() -> list[str]:
     """Default Wikipedia categories used by the dinosaur sync job."""
     categories = [
@@ -128,10 +134,13 @@ def list_category_articles(
 
         data = client.action_api(params)
         for item in data.get("query", {}).get("categorymembers", []):
+            title = str(item["title"])
+            if is_wikipedia_list_title(title):
+                continue
             members.append(
                 CategoryMember(
                     page_id=int(item["pageid"]),
-                    title=str(item["title"]),
+                    title=title,
                 )
             )
             if cap is not None and len(members) >= cap:
