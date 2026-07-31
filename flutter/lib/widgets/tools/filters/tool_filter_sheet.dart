@@ -58,12 +58,22 @@ class _ToolFilterSheetState extends State<ToolFilterSheet> {
   late ToolCatalogSort _pendingSort;
   late Set<String> _pendingCategories;
   bool _applied = false;
+  /// When opening catalog with inventory-only sort (obtain date), keep that
+  /// sort on apply unless the user picks a catalog-visible sort.
+  bool _preserveInventoryOnlySort = false;
 
   @override
   void initState() {
     super.initState();
     _pendingSearch = widget.initialFilters.searchQuery;
-    _pendingSort = widget.initialFilters.sort;
+    final sortOptions = ToolCatalogSort.optionsFor(widget.mode);
+    if (sortOptions.contains(widget.initialFilters.sort)) {
+      _pendingSort = widget.initialFilters.sort;
+      _preserveInventoryOnlySort = false;
+    } else {
+      _pendingSort = ToolCatalogSort.defaultFor(widget.mode);
+      _preserveInventoryOnlySort = true;
+    }
     _pendingCategories = {...widget.initialFilters.categories};
     _searchController = TextEditingController(text: _pendingSearch);
   }
@@ -107,17 +117,24 @@ class _ToolFilterSheetState extends State<ToolFilterSheet> {
     widget.onApply(
       ToolCatalogFilters(
         searchQuery: _pendingSearch.trim(),
-        sort: _pendingSort,
+        sort: _resolveSortForApply(),
         categories: _categoriesForApply(),
         showAll: false,
       ),
     );
   }
 
+  ToolCatalogSort _resolveSortForApply() {
+    if (_preserveInventoryOnlySort) {
+      return widget.initialFilters.sort;
+    }
+    return _pendingSort;
+  }
+
   ToolCatalogFilters _buildPendingFilters() {
     return ToolCatalogFilters(
       searchQuery: _pendingSearch.trim(),
-      sort: _pendingSort,
+      sort: _resolveSortForApply(),
       categories: _categoriesForApply(),
       showAll: false,
     );
@@ -128,6 +145,7 @@ class _ToolFilterSheetState extends State<ToolFilterSheet> {
       _pendingSearch = '';
       _pendingSort = ToolCatalogSort.defaultFor(widget.mode);
       _pendingCategories = {};
+      _preserveInventoryOnlySort = false;
       _searchController.clear();
     });
   }
@@ -216,7 +234,10 @@ class _ToolFilterSheetState extends State<ToolFilterSheet> {
                   ],
                   onSelected: (value) {
                     if (value == null) return;
-                    setState(() => _pendingSort = value);
+                    setState(() {
+                      _pendingSort = value;
+                      _preserveInventoryOnlySort = false;
+                    });
                   },
                 ),
               ),

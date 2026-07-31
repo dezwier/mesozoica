@@ -211,6 +211,13 @@ class SiteMapFilters {
         sort != SiteCatalogSort.distance;
   }
 
+  /// Filters that apply to site-type catalog (period + rock only).
+  bool get hasActiveCatalogFilters {
+    final periodActive = periods.length != sitePeriodOptions.length;
+    final rockActive = rockTypes.length != siteRockTypeOptions.length;
+    return periodActive || rockActive;
+  }
+
   /// Stable key so marker layer can wipe+reload when site filters change.
   /// Past recon routes / catalog sort do not affect this key.
   String get markerFilterKey {
@@ -305,6 +312,26 @@ class SiteMapFilters {
       final before = discoveredBefore?.toUtc();
       if (after != null && at.isBefore(after)) return false;
       if (before != null && at.isAfter(before)) return false;
+    }
+
+    return true;
+  }
+
+  /// Period / rock matching for site-type catalog rows.
+  bool matchesSiteType({
+    required String period,
+    required String rockType,
+  }) {
+    if (periods.length != sitePeriodOptions.length) {
+      if (periods.isEmpty) return false;
+      final value = period.trim().toLowerCase();
+      if (value.isEmpty || !periods.contains(value)) return false;
+    }
+
+    if (rockTypes.length != siteRockTypeOptions.length) {
+      if (rockTypes.isEmpty) return false;
+      final value = rockType.trim().toLowerCase();
+      if (value.isEmpty || !rockTypes.contains(value)) return false;
     }
 
     return true;

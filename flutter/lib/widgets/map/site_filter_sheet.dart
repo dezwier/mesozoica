@@ -13,6 +13,8 @@ class SiteFilterSheet extends StatefulWidget {
     this.showStatusSection = true,
     this.showReconRoutesSection = false,
     this.showSortSection = false,
+    this.showDiscoveryTimeSection = true,
+    this.showHowDiscoveredSection = true,
     this.canSortByDistance = true,
     this.earliestDiscovery,
   });
@@ -22,8 +24,14 @@ class SiteFilterSheet extends StatefulWidget {
   final bool showStatusSection;
   final bool showReconRoutesSection;
 
-  /// Catalog-only: Nearest / Discovered sorts.
+  /// Inventory-only: Nearest / Discovered sorts.
   final bool showSortSection;
+
+  /// Inventory/map-only: discovery-day range.
+  final bool showDiscoveryTimeSection;
+
+  /// Inventory/map-only: how the site was found.
+  final bool showHowDiscoveredSection;
 
   /// When false, Nearest falls back with a snackbar if selected.
   final bool canSortByDistance;
@@ -38,6 +46,8 @@ class SiteFilterSheet extends StatefulWidget {
     bool showStatusSection = true,
     bool showReconRoutesSection = false,
     bool showSortSection = false,
+    bool showDiscoveryTimeSection = true,
+    bool showHowDiscoveredSection = true,
     bool canSortByDistance = true,
     DateTime? earliestDiscovery,
   }) {
@@ -56,6 +66,8 @@ class SiteFilterSheet extends StatefulWidget {
         showStatusSection: showStatusSection,
         showReconRoutesSection: showReconRoutesSection,
         showSortSection: showSortSection,
+        showDiscoveryTimeSection: showDiscoveryTimeSection,
+        showHowDiscoveredSection: showHowDiscoveredSection,
         canSortByDistance: canSortByDistance,
         earliestDiscovery: earliestDiscovery,
       ),
@@ -150,24 +162,37 @@ class _SiteFilterSheetState extends State<SiteFilterSheet> {
           _pendingDiscoveryDays.end >= _dayCount - 0.001);
 
   SiteMapFilters _buildPendingFilters() {
-    final after =
-        _discoveryTimeIsFullSpan ? null : _dateAtDay(_pendingDiscoveryDays.start);
-    final before = _discoveryTimeIsFullSpan
-        ? null
-        : _dateAtDay(_pendingDiscoveryDays.end)
-            .add(const Duration(hours: 23, minutes: 59, seconds: 59));
+    final after = !widget.showDiscoveryTimeSection
+        ? widget.initialFilters.discoveredAfter
+        : (_discoveryTimeIsFullSpan
+            ? null
+            : _dateAtDay(_pendingDiscoveryDays.start));
+    final before = !widget.showDiscoveryTimeSection
+        ? widget.initialFilters.discoveredBefore
+        : (_discoveryTimeIsFullSpan
+            ? null
+            : _dateAtDay(_pendingDiscoveryDays.end)
+                .add(const Duration(hours: 23, minutes: 59, seconds: 59)));
     return SiteMapFilters(
-      statuses: _pendingStatuses,
+      statuses: widget.showStatusSection
+          ? _pendingStatuses
+          : widget.initialFilters.statuses,
       periods: _pendingPeriods,
       rockTypes: _pendingRockTypes,
-      howDiscovered: _pendingHowDiscovered,
+      howDiscovered: widget.showHowDiscoveredSection
+          ? _pendingHowDiscovered
+          : widget.initialFilters.howDiscovered,
       discoveredAfter: after,
       discoveredBefore: before,
-      sort: widget.showSortSection ? _pendingSort : SiteCatalogSort.distance,
-      filterByStatus: widget.showStatusSection,
+      sort: widget.showSortSection
+          ? _pendingSort
+          : widget.initialFilters.sort,
+      filterByStatus: widget.showStatusSection
+          ? true
+          : widget.initialFilters.filterByStatus,
       showPastAerialRoutes: widget.showReconRoutesSection
           ? _pendingShowPastReconRoutes
-          : false,
+          : widget.initialFilters.showPastAerialRoutes,
     );
   }
 
@@ -179,16 +204,37 @@ class _SiteFilterSheetState extends State<SiteFilterSheet> {
 
   void _clearPending() {
     setState(() {
-      _pendingStatuses = {...siteStatusOptions};
+      if (widget.showStatusSection) {
+        _pendingStatuses = {...siteStatusOptions};
+      }
       _pendingPeriods = {...sitePeriodOptions};
       _pendingRockTypes = {...siteRockTypeOptions};
-      _pendingHowDiscovered = {...siteHowDiscoveredOptions};
-      _pendingDiscoveryDays = RangeValues(0, _dayCount.toDouble());
-      _pendingSort = widget.canSortByDistance
-          ? SiteCatalogSort.distance
-          : SiteCatalogSort.discoveredAtDesc;
-      _pendingShowPastReconRoutes = false;
+      if (widget.showHowDiscoveredSection) {
+        _pendingHowDiscovered = {...siteHowDiscoveredOptions};
+      }
+      if (widget.showDiscoveryTimeSection) {
+        _pendingDiscoveryDays = RangeValues(0, _dayCount.toDouble());
+      }
+      if (widget.showSortSection) {
+        _pendingSort = widget.canSortByDistance
+            ? SiteCatalogSort.distance
+            : SiteCatalogSort.discoveredAtDesc;
+      }
+      if (widget.showReconRoutesSection) {
+        _pendingShowPastReconRoutes = false;
+      }
     });
+  }
+
+  bool get _clearEnabled {
+    final pending = _buildPendingFilters();
+    if (!widget.showSortSection &&
+        !widget.showStatusSection &&
+        !widget.showDiscoveryTimeSection &&
+        !widget.showHowDiscoveredSection) {
+      return pending.hasActiveCatalogFilters;
+    }
+    return pending.hasActiveFilters;
   }
 
   void _toggle(Set<String> target, String value, bool selected) {
@@ -283,69 +329,71 @@ class _SiteFilterSheetState extends State<SiteFilterSheet> {
                   ),
                 ),
               ],
-              const SizedBox(height: 20),
-              Text(
-                'Discovery time',
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
+              if (widget.showDiscoveryTimeSection) ...[
+                const SizedBox(height: 20),
+                Text(
+                  'Discovery time',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                'Limit sites by when you discovered them.',
-                style: SettingsFormStyles.finePrintStyle(context),
-              ),
-              if (!_hasDiscoveryDates)
-                Padding(
-                  padding: const EdgeInsets.only(top: 8),
-                  child: Text(
-                    'No discovery dates on current sites yet.',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: colorScheme.onSurfaceVariant,
+                const SizedBox(height: 2),
+                Text(
+                  'Limit sites by when you discovered them.',
+                  style: SettingsFormStyles.finePrintStyle(context),
+                ),
+                if (!_hasDiscoveryDates)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Text(
+                      'No discovery dates on current sites yet.',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  )
+                else if (!_canSlideDiscoveryDays)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Text(
+                      'All current sites were discovered on '
+                      '${_formatWindowDay(_windowStart)}.',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  )
+                else ...[
+                  RangeSlider(
+                    values: _pendingDiscoveryDays,
+                    min: 0,
+                    max: _dayCount.toDouble(),
+                    divisions: _dayCount,
+                    onChanged: (values) {
+                      setState(() => _pendingDiscoveryDays = values);
+                    },
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    child: Row(
+                      children: [
+                        Text(
+                          _formatDay(_pendingDiscoveryDays.start),
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                        const Spacer(),
+                        Text(
+                          _formatDay(_pendingDiscoveryDays.end),
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                )
-              else if (!_canSlideDiscoveryDays)
-                Padding(
-                  padding: const EdgeInsets.only(top: 8),
-                  child: Text(
-                    'All current sites were discovered on '
-                    '${_formatWindowDay(_windowStart)}.',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                )
-              else ...[
-                RangeSlider(
-                  values: _pendingDiscoveryDays,
-                  min: 0,
-                  max: _dayCount.toDouble(),
-                  divisions: _dayCount,
-                  onChanged: (values) {
-                    setState(() => _pendingDiscoveryDays = values);
-                  },
-                ),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 4),
-                  child: Row(
-                    children: [
-                      Text(
-                        _formatDay(_pendingDiscoveryDays.start),
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                      const Spacer(),
-                      Text(
-                        _formatDay(_pendingDiscoveryDays.end),
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+                ],
               ],
               if (widget.showStatusSection) ...[
                 const SizedBox(height: 20),
@@ -379,21 +427,23 @@ class _SiteFilterSheetState extends State<SiteFilterSheet> {
                   value,
                 ),
               ),
-              const SizedBox(height: 20),
-              _multiSelectRow(
-                context: context,
-                outlineBorder: outlineBorder,
-                label: 'Discovery',
-                description: 'How the site was found.',
-                options: siteHowDiscoveredOptions,
-                selected: _pendingHowDiscovered,
-                onToggle: (value, selected) =>
-                    _toggle(_pendingHowDiscovered, value, selected),
-                onSelectOnly: (value) => _selectOnly(
-                  (next) => _pendingHowDiscovered = next,
-                  value,
+              if (widget.showHowDiscoveredSection) ...[
+                const SizedBox(height: 20),
+                _multiSelectRow(
+                  context: context,
+                  outlineBorder: outlineBorder,
+                  label: 'Discovery',
+                  description: 'How the site was found.',
+                  options: siteHowDiscoveredOptions,
+                  selected: _pendingHowDiscovered,
+                  onToggle: (value, selected) =>
+                      _toggle(_pendingHowDiscovered, value, selected),
+                  onSelectOnly: (value) => _selectOnly(
+                    (next) => _pendingHowDiscovered = next,
+                    value,
+                  ),
                 ),
-              ),
+              ],
               const SizedBox(height: 20),
               _multiSelectRow(
                 context: context,
@@ -448,9 +498,7 @@ class _SiteFilterSheetState extends State<SiteFilterSheet> {
               Row(
                 children: [
                   TextButton(
-                    onPressed: _buildPendingFilters().hasActiveFilters
-                        ? _clearPending
-                        : null,
+                    onPressed: _clearEnabled ? _clearPending : null,
                     child: const Text('Clear'),
                   ),
                   const Spacer(),

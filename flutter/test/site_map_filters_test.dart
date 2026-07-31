@@ -238,4 +238,41 @@ void main() {
       4,
     );
   });
+
+  test('hasActiveCatalogFilters ignores inventory-only fields', () {
+    final filters = SiteMapFilters(
+      periods: {'cretaceous'},
+      sort: SiteCatalogSort.discoveredAtDesc,
+      filterByStatus: true,
+      statuses: {'discovered'},
+    );
+    expect(filters.hasActiveCatalogFilters, isTrue);
+    expect(
+      SiteMapFilters(
+        sort: SiteCatalogSort.discoveredAtDesc,
+        filterByStatus: true,
+        statuses: {'discovered'},
+      ).hasActiveCatalogFilters,
+      isFalse,
+    );
+  });
+
+  test('matchesSiteType filters by period and rock', () {
+    final filters = SiteMapFilters(
+      periods: {'cretaceous'},
+      rockTypes: {'sandstone'},
+    );
+    expect(
+      filters.matchesSiteType(period: 'cretaceous', rockType: 'sandstone'),
+      isTrue,
+    );
+    expect(
+      filters.matchesSiteType(period: 'jurassic', rockType: 'sandstone'),
+      isFalse,
+    );
+    expect(
+      filters.matchesSiteType(period: 'cretaceous', rockType: 'shale'),
+      isFalse,
+    );
+  });
 }
