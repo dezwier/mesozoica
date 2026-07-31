@@ -2,13 +2,11 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
 from unittest.mock import patch
 
 import pytest
 from sqlmodel import Session
 
-from app.models.dinosaur_type import DinosaurType
 from app.services.dinosaur_enrichment_service.sync import (
     EnrichCounters,
     EnrichSummary,
@@ -16,6 +14,7 @@ from app.services.dinosaur_enrichment_service.sync import (
     enrich_exit_code,
     reset_llm_enriched_flags,
 )
+from tests.helpers.dinosaur_fixtures import current_revision, seed_dinosaur_type
 
 
 def _llm_response():
@@ -41,16 +40,13 @@ def gemini_key(monkeypatch):
 
 
 def test_enrich_writes_fields_and_sets_flag(session: Session):
-    row = DinosaurType(
+    row = seed_dinosaur_type(
+        session,
         name="Tyrannosaurus",
         wikipedia_page_id=30467,
-        wikipedia_title="Tyrannosaurus",
         cladogram={"genus": "Tyrannosaurus"},
         article="<p>Tyrannosaurus was a large carnivore found in North America.</p>",
-        article_date=datetime(2026, 7, 8, tzinfo=timezone.utc),
     )
-    session.add(row)
-    session.commit()
 
     with patch(
         "app.services.dinosaur_enrichment_service.sync.call_gemini_api",
@@ -58,27 +54,25 @@ def test_enrich_writes_fields_and_sets_flag(session: Session):
     ):
         summary = enrich_dinosaurs(session, dry_run=False)
 
-    session.refresh(row)
+    revision = current_revision(session, row)
     assert summary.counters.enriched == 1
-    assert row.llm_enriched is True
-    assert row.length == "12 m"
-    assert row.mass == "7 t"
-    assert row.location == "North America"
-    assert row.diet_type == "carnivore"
-    assert row.short_description is not None
+    assert revision is not None
+    assert revision.llm_enriched is True
+    assert revision.length == "12 m"
+    assert revision.mass == "7 t"
+    assert revision.location == "North America"
+    assert revision.diet_type == "carnivore"
+    assert revision.short_description is not None
 
 
 def test_enrich_disables_gemini_thinking(session: Session):
-    row = DinosaurType(
+    seed_dinosaur_type(
+        session,
         name="Tyrannosaurus",
         wikipedia_page_id=30468,
-        wikipedia_title="Tyrannosaurus",
         cladogram={"genus": "Tyrannosaurus"},
         article="<p>Tyrannosaurus was a large carnivore found in North America.</p>",
-        article_date=datetime(2026, 7, 8, tzinfo=timezone.utc),
     )
-    session.add(row)
-    session.commit()
 
     with patch(
         "app.services.dinosaur_enrichment_service.sync.call_gemini_api",
@@ -92,17 +86,14 @@ def test_enrich_disables_gemini_thinking(session: Session):
 
 
 def test_enrich_skips_already_enriched(session: Session):
-    row = DinosaurType(
+    seed_dinosaur_type(
+        session,
         name="Velociraptor",
         wikipedia_page_id=999,
-        wikipedia_title="Velociraptor",
-        cladogram={},
         article="<p>Small theropod.</p>",
         llm_enriched=True,
         short_description="Already done.",
     )
-    session.add(row)
-    session.commit()
 
     with patch("app.services.dinosaur_enrichment_service.sync.call_gemini_api") as mock_api:
         summary = enrich_dinosaurs(session, dry_run=False)
@@ -113,18 +104,15 @@ def test_enrich_skips_already_enriched(session: Session):
 
 
 def test_enrich_overwrite_refreshes_enriched(session: Session):
-    row = DinosaurType(
+    row = seed_dinosaur_type(
+        session,
         name="Velociraptor",
         wikipedia_page_id=999,
-        wikipedia_title="Velociraptor",
-        cladogram={},
         article="<p>Small theropod.</p>",
         llm_enriched=True,
         short_description="Old description.",
         length="2 m",
     )
-    session.add(row)
-    session.commit()
 
     with patch(
         "app.services.dinosaur_enrichment_service.sync.call_gemini_api",
@@ -132,32 +120,29 @@ def test_enrich_overwrite_refreshes_enriched(session: Session):
     ):
         summary = enrich_dinosaurs(session, dry_run=False, overwrite=True)
 
-    session.refresh(row)
+    revision = current_revision(session, row)
     assert summary.counters.enriched == 1
-    assert row.length == "12 m"
+    assert revision is not None
+    assert revision.length == "12 m"
 
 
 def test_enrich_overwrite_resets_flags_before_processing(session: Session):
-    done = DinosaurType(
+    done = seed_dinosaur_type(
+        session,
         name="Velociraptor",
         wikipedia_page_id=901,
-        wikipedia_title="Velociraptor",
-        cladogram={},
         article="<p>Small theropod.</p>",
         llm_enriched=True,
         short_description="Old description.",
     )
-    pending = DinosaurType(
+    pending = seed_dinosaur_type(
+        session,
         name="Tyrannosaurus",
         wikipedia_page_id=902,
-        wikipedia_title="Tyrannosaurus",
-        cladogram={},
         article="<p>Big carnivore.</p>",
         llm_enriched=True,
         short_description="Also old.",
     )
-    session.add_all([done, pending])
-    session.commit()
 
     with patch(
         "app.services.dinosaur_enrichment_service.sync.call_gemini_api",
@@ -165,34 +150,30 @@ def test_enrich_overwrite_resets_flags_before_processing(session: Session):
     ) as mock_api:
         summary = enrich_dinosaurs(session, dry_run=False, overwrite=True, max_records=1)
 
-    session.refresh(done)
-    session.refresh(pending)
+    done_rev = current_revision(session, done)
+    pending_rev = current_revision(session, pending)
     assert summary.counters.enriched == 1
     assert mock_api.call_count == 1
-    enriched = [done.llm_enriched, pending.llm_enriched]
+    enriched = [done_rev.llm_enriched, pending_rev.llm_enriched]
     assert enriched.count(True) == 1
     assert enriched.count(False) == 1
 
 
 def test_enrich_resume_after_interrupted_overwrite(session: Session):
-    done = DinosaurType(
+    done = seed_dinosaur_type(
+        session,
         name="Velociraptor",
         wikipedia_page_id=911,
-        wikipedia_title="Velociraptor",
-        cladogram={},
         article="<p>Small theropod.</p>",
         llm_enriched=True,
     )
-    pending = DinosaurType(
+    pending = seed_dinosaur_type(
+        session,
         name="Tyrannosaurus",
         wikipedia_page_id=912,
-        wikipedia_title="Tyrannosaurus",
-        cladogram={},
         article="<p>Big carnivore.</p>",
         llm_enriched=True,
     )
-    session.add_all([done, pending])
-    session.commit()
 
     with patch(
         "app.services.dinosaur_enrichment_service.sync.call_gemini_api",
@@ -208,49 +189,38 @@ def test_enrich_resume_after_interrupted_overwrite(session: Session):
 
     assert summary.counters.enriched == 1
     mock_api.assert_called_once()
-    session.refresh(done)
-    session.refresh(pending)
-    assert done.llm_enriched is True
-    assert pending.llm_enriched is True
+    assert current_revision(session, done).llm_enriched is True
+    assert current_revision(session, pending).llm_enriched is True
 
 
 def test_reset_llm_enriched_flags_honors_dino_filter(session: Session):
-    tyranno = DinosaurType(
+    tyranno = seed_dinosaur_type(
+        session,
         name="Tyrannosaurus",
         wikipedia_page_id=921,
-        wikipedia_title="Tyrannosaurus",
-        cladogram={},
         article="<p>Big carnivore.</p>",
         llm_enriched=True,
     )
-    giga = DinosaurType(
+    giga = seed_dinosaur_type(
+        session,
         name="Giganotosaurus",
         wikipedia_page_id=922,
-        wikipedia_title="Giganotosaurus",
-        cladogram={},
         article="<p>Another big carnivore.</p>",
         llm_enriched=True,
     )
-    session.add_all([tyranno, giga])
-    session.commit()
 
     assert reset_llm_enriched_flags(session, dinos=["Tyrannosaurus"]) == 1
-    session.refresh(tyranno)
-    session.refresh(giga)
-    assert tyranno.llm_enriched is False
-    assert giga.llm_enriched is True
+    assert current_revision(session, tyranno).llm_enriched is False
+    assert current_revision(session, giga).llm_enriched is True
 
 
 def test_enrich_failure_does_not_set_flag(session: Session):
-    row = DinosaurType(
+    row = seed_dinosaur_type(
+        session,
         name="BadData",
         wikipedia_page_id=1001,
-        wikipedia_title="BadData",
-        cladogram={},
         article="<p>Some article.</p>",
     )
-    session.add(row)
-    session.commit()
 
     with patch(
         "app.services.dinosaur_enrichment_service.sync.call_gemini_api",
@@ -258,9 +228,10 @@ def test_enrich_failure_does_not_set_flag(session: Session):
     ):
         summary = enrich_dinosaurs(session, dry_run=False)
 
-    session.refresh(row)
+    revision = current_revision(session, row)
     assert summary.counters.failed == 1
-    assert row.llm_enriched is False
+    assert revision is not None
+    assert revision.llm_enriched is False
 
 
 def test_enrich_exit_code_threshold():
@@ -287,35 +258,27 @@ def test_enrich_requires_api_key(monkeypatch, session: Session):
 
 
 def test_enrich_prioritizes_custom_image_candidates(session: Session):
-    session.add_all(
-        [
-            DinosaurType(
-                name="Alpha",
-                wikipedia_page_id=7001,
-                wikipedia_title="Alpha",
-                cladogram={},
-                article="<p>First in id order, no custom image.</p>",
-            ),
-            DinosaurType(
-                name="Beta",
-                wikipedia_page_id=7002,
-                wikipedia_title="Beta",
-                cladogram={},
-                article="<p>Has a curated card image.</p>",
-                main_image_url=(
-                    "https://mesozoica-production.up.railway.app/media/dinosaurs/Beta.webp"
-                ),
-            ),
-            DinosaurType(
-                name="Gamma",
-                wikipedia_page_id=7003,
-                wikipedia_title="Gamma",
-                cladogram={},
-                article="<p>Later id, no custom image.</p>",
-            ),
-        ]
+    seed_dinosaur_type(
+        session,
+        name="Alpha",
+        wikipedia_page_id=7001,
+        article="<p>First in id order, no custom image.</p>",
     )
-    session.commit()
+    seed_dinosaur_type(
+        session,
+        name="Beta",
+        wikipedia_page_id=7002,
+        article="<p>Has a curated card image.</p>",
+        main_image_url=(
+            "https://mesozoica-production.up.railway.app/media/dinosaurs/Beta.webp"
+        ),
+    )
+    seed_dinosaur_type(
+        session,
+        name="Gamma",
+        wikipedia_page_id=7003,
+        article="<p>Later id, no custom image.</p>",
+    )
 
     with patch(
         "app.services.dinosaur_enrichment_service.sync.call_gemini_api",
@@ -325,29 +288,22 @@ def test_enrich_prioritizes_custom_image_candidates(session: Session):
 
     assert summary.counters.enriched == 1
     mock_api.assert_called_once()
-    assert mock_api.call_args.kwargs["log_context"] == "Beta"
+    assert mock_api.call_args.kwargs["log_context"].startswith("Beta#")
 
 
 def test_enrich_dinos_limits_candidates(session: Session):
-    session.add_all(
-        [
-            DinosaurType(
-                name="Tyrannosaurus",
-                wikipedia_page_id=8001,
-                wikipedia_title="Tyrannosaurus",
-                cladogram={},
-                article="<p>Big carnivore.</p>",
-            ),
-            DinosaurType(
-                name="Velociraptor",
-                wikipedia_page_id=8002,
-                wikipedia_title="Velociraptor",
-                cladogram={},
-                article="<p>Small theropod.</p>",
-            ),
-        ]
+    seed_dinosaur_type(
+        session,
+        name="Tyrannosaurus",
+        wikipedia_page_id=8001,
+        article="<p>Big carnivore.</p>",
     )
-    session.commit()
+    seed_dinosaur_type(
+        session,
+        name="Velociraptor",
+        wikipedia_page_id=8002,
+        article="<p>Small theropod.</p>",
+    )
 
     with patch(
         "app.services.dinosaur_enrichment_service.sync.call_gemini_api",
@@ -357,4 +313,39 @@ def test_enrich_dinos_limits_candidates(session: Session):
 
     assert summary.counters.enriched == 1
     mock_api.assert_called_once()
-    assert mock_api.call_args.kwargs["log_context"] == "Velociraptor"
+    assert mock_api.call_args.kwargs["log_context"].startswith("Velociraptor#")
+
+
+def test_enrich_any_unenriched_revision_not_only_current(session: Session):
+    """Older non-current revisions with article still get enriched."""
+    row = seed_dinosaur_type(
+        session,
+        name="Tyrannosaurus",
+        wikipedia_page_id=30467,
+        article="<p>Current article.</p>",
+        llm_enriched=True,
+        length="12 m",
+    )
+    from app.models.dinosaur_type_revision import DinosaurTypeRevision
+    from app.services.wikipedia_service.content_hash import revision_content_hash
+
+    old = DinosaurTypeRevision(
+        dinosaur_type_id=int(row.id),
+        content_hash=revision_content_hash(article="<p>Older article.</p>"),
+        article="<p>Older article.</p>",
+        cladogram={},
+        llm_enriched=False,
+    )
+    session.add(old)
+    session.commit()
+
+    with patch(
+        "app.services.dinosaur_enrichment_service.sync.call_gemini_api",
+        return_value=(_llm_response(), {}),
+    ) as mock_api:
+        summary = enrich_dinosaurs(session, dry_run=False)
+
+    session.refresh(old)
+    assert summary.counters.enriched == 1
+    assert old.llm_enriched is True
+    assert mock_api.call_count == 1

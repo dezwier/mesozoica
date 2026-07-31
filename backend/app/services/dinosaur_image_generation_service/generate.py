@@ -11,6 +11,7 @@ from sqlmodel import Session, col, select
 
 from app.core.config import settings
 from app.models.dinosaur_type import DinosaurType
+from app.models.dinosaur_type_revision import DinosaurTypeRevision
 from app.models.fossil import Fossil
 from app.services.curated_image_service.versions import (
     ensure_version_meta,
@@ -55,6 +56,7 @@ __all__ = [
 @dataclass(frozen=True)
 class DinosaurCandidate:
     dinosaur: DinosaurType
+    article: str
     fossil_count: int
 
 
@@ -66,11 +68,19 @@ def _select_candidates(
     dinos: list[str] | None = None,
 ) -> tuple[list[DinosaurCandidate], int]:
     stmt = (
-        select(DinosaurType, func.count(Fossil.id).label("fossil_count"))
+        select(
+            DinosaurType,
+            DinosaurTypeRevision.article,
+            func.count(Fossil.id).label("fossil_count"),
+        )
+        .join(
+            DinosaurTypeRevision,
+            col(DinosaurTypeRevision.id) == col(DinosaurType.current_revision_id),
+        )
         .outerjoin(Fossil, Fossil.dinosaur_id == DinosaurType.id)
-        .where(col(DinosaurType.article).is_not(None))
-        .where(col(DinosaurType.article) != "")
-        .group_by(DinosaurType.id)
+        .where(col(DinosaurTypeRevision.article).is_not(None))
+        .where(col(DinosaurTypeRevision.article) != "")
+        .group_by(DinosaurType.id, DinosaurTypeRevision.article)
         .order_by(func.count(Fossil.id).desc(), DinosaurType.name)
     )
     if dinos:
@@ -79,7 +89,7 @@ def _select_candidates(
     rows = session.exec(stmt).all()
     skipped_existing = 0
     candidates: list[DinosaurCandidate] = []
-    for dinosaur, fossil_count in rows:
+    for dinosaur, article, fossil_count in rows:
         if has_local_image(
             output_dir,
             dinosaur.name,
@@ -89,7 +99,11 @@ def _select_candidates(
             skipped_existing += 1
             continue
         candidates.append(
-            DinosaurCandidate(dinosaur=dinosaur, fossil_count=int(fossil_count or 0))
+            DinosaurCandidate(
+                dinosaur=dinosaur,
+                article=article or "",
+                fossil_count=int(fossil_count or 0),
+            )
         )
     return candidates, skipped_existing
 
@@ -158,7 +172,7 @@ def generate_dinosaur_images(
             logger.info('%s · SKIP · image exists', label)
             continue
 
-        article_text = extract_article_text(dinosaur.article or "")
+        article_text = extract_article_text(candidate.article or "")
         if not article_text.strip():
             counters.skipped += 1
             logger.info('%s · SKIP · no article text', label)

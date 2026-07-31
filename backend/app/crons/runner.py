@@ -295,7 +295,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--overwrite",
         action="store_true",
-        help="Re-fetch Wikipedia records even when already up to date (dinosaur_wiki_sync). "
+        help="Re-fetch Wikipedia records even when already up to date (dinosaur_wiki_sync); "
+        "appends a new dinosaur_type_revision only when content hash differs. "
         "Re-run LLM enrichment (dinosaur_llm_enrich, fossil_llm_enrich); clears llm_enriched "
         "first so an interrupted overwrite can resume without --overwrite. "
         "Re-fetch PBDB fossil occurrences even when already synced (fossil_pbdb_sync); "

@@ -13,6 +13,7 @@ from sqlmodel import Session, col, func as sqlmodel_func, select
 from app.core.exceptions import NotFoundError, ValidationError
 from app.models.dinosaur import Dinosaur
 from app.models.dinosaur_type import DinosaurType
+from app.models.dinosaur_type_revision import DinosaurTypeRevision
 from app.models.user_dinosaur import UserDinosaur, role_to_status
 from app.services.curated_image_service.resolve import resolve_dinosaur_card_image_url
 from app.services.dinosaur_image_service.sync import CURATED_MEDIA_PATH
@@ -38,9 +39,11 @@ _CATALOG_IMAGE_PRIORITY = case(
     else_=1,
 )
 
+
 @dataclass(frozen=True)
 class DinosaurListRow:
     dinosaur_type: DinosaurType
+    revision: DinosaurTypeRevision | None = None
     occurrence_id: int | None = None
     created_at: datetime | None = None
     image_version: str | None = None
@@ -136,7 +139,7 @@ def _list_catalog_dinosaurs(
     mass_range = _normalize_size_range(mass_kg_min, mass_kg_max, label="mass_kg")
     size_filter_active = length_range is not None or mass_range is not None
 
-    filtered = _filtered_select(
+    filtered = _filtered_catalog_select(
         normalized_q=normalized_q,
         ma_younger=younger,
         ma_older=older,
@@ -151,32 +154,40 @@ def _list_catalog_dinosaurs(
     if size_filter_active:
         all_rows = list(session.exec(filtered).all())
         all_rows = [
-            row
-            for row in all_rows
-            if _dino_type_matches_size(row, length_range=length_range, mass_range=mass_range)
+            (dino_type, revision)
+            for dino_type, revision in all_rows
+            if _revision_matches_size(
+                revision, length_range=length_range, mass_range=mass_range
+            )
         ]
         total = len(all_rows)
         if sort == "random":
             normalized_seed = _require_seed(seed)
             all_rows.sort(
-                key=lambda row: hashlib.md5(f"{row.id}{normalized_seed}".encode()).hexdigest()
+                key=lambda row: hashlib.md5(
+                    f"{row[0].id}{normalized_seed}".encode()
+                ).hexdigest()
             )
         else:
             all_rows.sort(
                 key=lambda row: (
                     0
                     if (
-                        row.main_image_url
-                        and CURATED_MEDIA_PATH in row.main_image_url
+                        row[0].main_image_url
+                        and CURATED_MEDIA_PATH in row[0].main_image_url
                     )
                     else 1,
-                    row.name or "",
+                    row[0].name or "",
                 )
             )
         page = all_rows[capped_offset : capped_offset + capped_limit]
         return [
-            DinosaurListRow(dinosaur_type=row, image_version=ORIGINAL_VERSION)
-            for row in page
+            DinosaurListRow(
+                dinosaur_type=dino_type,
+                revision=revision,
+                image_version=ORIGINAL_VERSION,
+            )
+            for dino_type, revision in page
         ], total
 
     total = session.exec(
@@ -185,7 +196,7 @@ def _list_catalog_dinosaurs(
 
     if sort == "random":
         normalized_seed = _require_seed(seed)
-        rows = _list_types_random(
+        rows = _list_catalog_random(
             session,
             filtered=filtered,
             seed=normalized_seed,
@@ -202,8 +213,12 @@ def _list_catalog_dinosaurs(
         )
 
     return [
-        DinosaurListRow(dinosaur_type=row, image_version=ORIGINAL_VERSION)
-        for row in rows
+        DinosaurListRow(
+            dinosaur_type=dino_type,
+            revision=revision,
+            image_version=ORIGINAL_VERSION,
+        )
+        for dino_type, revision in rows
     ], int(total)
 
 
@@ -247,9 +262,18 @@ def _list_inventory_dinosaurs(
         .where(col(UserDinosaur.user_id) == viewer_user_id)
         .distinct()
     )
+    # Prefer pinned occurrence revision; fall back to type current revision.
     stmt = (
-        select(Dinosaur, DinosaurType)
+        select(Dinosaur, DinosaurType, DinosaurTypeRevision)
         .join(DinosaurType, col(Dinosaur.dinosaur_type_id) == col(DinosaurType.id))
+        .outerjoin(
+            DinosaurTypeRevision,
+            col(DinosaurTypeRevision.id)
+            == func.coalesce(
+                col(Dinosaur.dinosaur_type_revision_id),
+                col(DinosaurType.current_revision_id),
+            ),
+        )
         .where(col(Dinosaur.id).in_(linked_dinosaurs))
     )
     if has_custom_image:
@@ -258,9 +282,9 @@ def _list_inventory_dinosaurs(
             col(DinosaurType.main_image_url).contains(CURATED_MEDIA_PATH),
         )
     if llm_enriched is not None:
-        stmt = stmt.where(col(DinosaurType.llm_enriched).is_(llm_enriched))
+        stmt = stmt.where(col(DinosaurTypeRevision.llm_enriched).is_(llm_enriched))
     if diets:
-        stmt = stmt.where(func.lower(DinosaurType.diet_type).in_(diets))
+        stmt = stmt.where(func.lower(DinosaurTypeRevision.diet_type).in_(diets))
     if normalized_q is not None:
         pattern = f"%{normalized_q}%"
         stmt = stmt.where(
@@ -272,19 +296,19 @@ def _list_inventory_dinosaurs(
     if effective_time_filter:
         assert younger is not None and older is not None
         stmt = stmt.where(
-            col(DinosaurType.birth).is_not(None),
-            col(DinosaurType.death).is_not(None),
-            col(DinosaurType.death) <= older,
-            col(DinosaurType.birth) >= younger,
+            col(DinosaurTypeRevision.birth).is_not(None),
+            col(DinosaurTypeRevision.death).is_not(None),
+            col(DinosaurTypeRevision.death) <= older,
+            col(DinosaurTypeRevision.birth) >= younger,
         )
 
     if size_filter_active:
         rows = list(session.exec(stmt).all())
         rows = [
-            (occurrence, dino_type)
-            for occurrence, dino_type in rows
-            if _dino_type_matches_size(
-                dino_type, length_range=length_range, mass_range=mass_range
+            (occurrence, dino_type, revision)
+            for occurrence, dino_type, revision in rows
+            if _revision_matches_size(
+                revision, length_range=length_range, mass_range=mass_range
             )
         ]
         total = len(rows)
@@ -301,11 +325,12 @@ def _list_inventory_dinosaurs(
         return [
             DinosaurListRow(
                 dinosaur_type=dino_type,
+                revision=revision,
                 occurrence_id=int(occurrence.id),
                 created_at=occurrence.created_at,
                 image_version=occurrence.version,
             )
-            for occurrence, dino_type in page
+            for occurrence, dino_type, revision in page
         ], total
 
     total = session.exec(
@@ -333,11 +358,12 @@ def _list_inventory_dinosaurs(
     return [
         DinosaurListRow(
             dinosaur_type=dino_type,
+            revision=revision,
             occurrence_id=int(occurrence.id),
             created_at=occurrence.created_at,
             image_version=occurrence.version,
         )
-        for occurrence, dino_type in rows
+        for occurrence, dino_type, revision in rows
     ], int(total)
 
 
@@ -396,20 +422,22 @@ def _normalize_size_range(
     return lo, hi
 
 
-def _dino_type_matches_size(
-    dino_type: DinosaurType,
+def _revision_matches_size(
+    revision: DinosaurTypeRevision | None,
     *,
     length_range: tuple[float, float] | None,
     mass_range: tuple[float, float] | None,
 ) -> bool:
+    if revision is None:
+        return False
     if length_range is not None:
-        parsed = parse_length_m(dino_type.length)
+        parsed = parse_length_m(revision.length)
         if parsed is None:
             return False
         if not ranges_overlap(parsed[0], parsed[1], length_range[0], length_range[1]):
             return False
     if mass_range is not None:
-        parsed = parse_mass_kg(dino_type.mass)
+        parsed = parse_mass_kg(revision.mass)
         if parsed is None:
             return False
         if not ranges_overlap(parsed[0], parsed[1], mass_range[0], mass_range[1]):
@@ -424,7 +452,7 @@ def _require_seed(seed: str | None) -> str:
     return normalized_seed[:_MAX_SEED_LEN]
 
 
-def _filtered_select(
+def _filtered_catalog_select(
     *,
     normalized_q: str | None,
     ma_younger: float | None,
@@ -434,16 +462,22 @@ def _filtered_select(
     llm_enriched: bool | None,
     diets: list[str] | None,
 ):
-    stmt = select(DinosaurType)
+    stmt = (
+        select(DinosaurType, DinosaurTypeRevision)
+        .outerjoin(
+            DinosaurTypeRevision,
+            col(DinosaurTypeRevision.id) == col(DinosaurType.current_revision_id),
+        )
+    )
     if has_custom_image:
         stmt = stmt.where(
             col(DinosaurType.main_image_url).is_not(None),
             col(DinosaurType.main_image_url).contains(CURATED_MEDIA_PATH),
         )
     if llm_enriched is not None:
-        stmt = stmt.where(col(DinosaurType.llm_enriched).is_(llm_enriched))
+        stmt = stmt.where(col(DinosaurTypeRevision.llm_enriched).is_(llm_enriched))
     if diets:
-        stmt = stmt.where(func.lower(DinosaurType.diet_type).in_(diets))
+        stmt = stmt.where(func.lower(DinosaurTypeRevision.diet_type).in_(diets))
     if normalized_q is not None:
         pattern = f"%{normalized_q}%"
         stmt = stmt.where(
@@ -455,22 +489,22 @@ def _filtered_select(
     if time_filter_active:
         assert ma_younger is not None and ma_older is not None
         stmt = stmt.where(
-            col(DinosaurType.birth).is_not(None),
-            col(DinosaurType.death).is_not(None),
-            col(DinosaurType.death) <= ma_older,
-            col(DinosaurType.birth) >= ma_younger,
+            col(DinosaurTypeRevision.birth).is_not(None),
+            col(DinosaurTypeRevision.death).is_not(None),
+            col(DinosaurTypeRevision.death) <= ma_older,
+            col(DinosaurTypeRevision.birth) >= ma_younger,
         )
     return stmt
 
 
-def _list_types_random(
+def _list_catalog_random(
     session: Session,
     *,
     filtered,
     seed: str,
     offset: int,
     limit: int,
-) -> list[DinosaurType]:
+) -> list[tuple[DinosaurType, DinosaurTypeRevision | None]]:
     dialect_name = session.get_bind().dialect.name
     if dialect_name == "postgresql":
         order = func.md5(func.concat(DinosaurType.id, seed))
@@ -481,7 +515,7 @@ def _list_types_random(
 
     all_rows = session.exec(filtered).all()
     all_rows.sort(
-        key=lambda row: hashlib.md5(f"{row.id}{seed}".encode()).hexdigest()
+        key=lambda row: hashlib.md5(f"{row[0].id}{seed}".encode()).hexdigest()
     )
     return all_rows[offset : offset + limit]
 
@@ -494,6 +528,17 @@ def get_dinosaur_by_id(session: Session, dinosaur_id: int) -> DinosaurType:
     return row
 
 
+def get_dinosaur_with_revision(
+    session: Session, dinosaur_id: int
+) -> tuple[DinosaurType, DinosaurTypeRevision | None]:
+    """Fetch catalog type plus its current content revision."""
+    dino_type = get_dinosaur_by_id(session, dinosaur_id)
+    revision = None
+    if dino_type.current_revision_id is not None:
+        revision = session.get(DinosaurTypeRevision, dino_type.current_revision_id)
+    return dino_type, revision
+
+
 def dinosaur_to_summary(
     row: DinosaurListRow,
     *,
@@ -504,6 +549,7 @@ def dinosaur_to_summary(
     from app.services.curated_image_service.versions import ORIGINAL_VERSION
 
     dino_type = row.dinosaur_type
+    revision = row.revision
     type_id = int(dino_type.id)
     thumbs: list[OwnedOccurrenceThumb] = []
     if owned_occurrences:
@@ -513,15 +559,15 @@ def dinosaur_to_summary(
         dinosaur_type_id=type_id,
         name=dino_type.name,
         wikipedia_title=dino_type.wikipedia_title,
-        birth=dino_type.birth,
-        death=dino_type.death,
-        period=dino_type.period,
-        diet_type=dino_type.diet_type,
-        length=dino_type.length,
-        mass=dino_type.mass,
-        location=dino_type.location,
-        short_description=dino_type.short_description,
-        cladogram=dict(dino_type.cladogram or {}),
+        birth=revision.birth if revision else None,
+        death=revision.death if revision else None,
+        period=revision.period if revision else None,
+        diet_type=revision.diet_type if revision else None,
+        length=revision.length if revision else None,
+        mass=revision.mass if revision else None,
+        location=revision.location if revision else None,
+        short_description=revision.short_description if revision else None,
+        cladogram=dict(revision.cladogram or {}) if revision else {},
         main_image_url=resolve_dinosaur_card_image_url(
             dinosaur_name=dino_type.name,
             version=row.image_version or ORIGINAL_VERSION,

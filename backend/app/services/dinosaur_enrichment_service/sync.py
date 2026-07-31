@@ -1,4 +1,4 @@
-"""Orchestrate Gemini enrichment of dinosaur records."""
+"""Orchestrate Gemini enrichment of dinosaur content revisions."""
 
 from __future__ import annotations
 
@@ -8,12 +8,13 @@ import time
 from sqlalchemy import case, update
 from sqlmodel import Session, col, func, select
 
-from app.services.dinosaur_name_filter import dino_name_match_clause
 from app.core.config import settings
 from app.models.dinosaur_type import DinosaurType
+from app.models.dinosaur_type_revision import DinosaurTypeRevision
 from app.services.dinosaur_enrichment_service.prompt import build_enrichment_prompt
 from app.services.dinosaur_enrichment_service.validate import validate_llm_enrichment
 from app.services.dinosaur_image_service.sync import CURATED_MEDIA_PATH
+from app.services.dinosaur_name_filter import dino_name_match_clause
 from app.services.enrichment_common import (
     EnrichCounters,
     EnrichSummary,
@@ -45,24 +46,42 @@ def reset_llm_enriched_flags(
 ) -> int:
     """Clear llm_enriched so an interrupted overwrite run can resume without --overwrite."""
     if dry_run:
-        stmt = select(func.count()).select_from(DinosaurType).where(
-            DinosaurType.llm_enriched.is_(True),  # type: ignore[attr-defined]
-            DinosaurType.article.is_not(None),  # type: ignore[union-attr]
+        stmt = (
+            select(func.count())
+            .select_from(DinosaurTypeRevision)
+            .join(
+                DinosaurType,
+                col(DinosaurTypeRevision.dinosaur_type_id) == col(DinosaurType.id),
+            )
+            .where(
+                DinosaurTypeRevision.llm_enriched.is_(True),  # type: ignore[attr-defined]
+                DinosaurTypeRevision.article.is_not(None),  # type: ignore[union-attr]
+            )
         )
         if dinos:
             stmt = stmt.where(dino_name_match_clause(dinos))
         return int(session.exec(stmt).one())
 
-    stmt = (
-        update(DinosaurType)
-        .values(llm_enriched=False)
-        .where(
-            DinosaurType.llm_enriched.is_(True),  # type: ignore[attr-defined]
-            DinosaurType.article.is_not(None),  # type: ignore[union-attr]
-        )
-    )
     if dinos:
-        stmt = stmt.where(dino_name_match_clause(dinos))
+        type_ids = select(DinosaurType.id).where(dino_name_match_clause(dinos))
+        stmt = (
+            update(DinosaurTypeRevision)
+            .values(llm_enriched=False)
+            .where(
+                DinosaurTypeRevision.llm_enriched.is_(True),  # type: ignore[attr-defined]
+                DinosaurTypeRevision.article.is_not(None),  # type: ignore[union-attr]
+                col(DinosaurTypeRevision.dinosaur_type_id).in_(type_ids),
+            )
+        )
+    else:
+        stmt = (
+            update(DinosaurTypeRevision)
+            .values(llm_enriched=False)
+            .where(
+                DinosaurTypeRevision.llm_enriched.is_(True),  # type: ignore[attr-defined]
+                DinosaurTypeRevision.article.is_not(None),  # type: ignore[union-attr]
+            )
+        )
     result = session.exec(stmt)
     session.commit()
     return int(result.rowcount or 0)
@@ -74,10 +93,18 @@ def _select_candidates(
     include_enriched: bool,
     max_records: int | None,
     dinos: list[str] | None = None,
-) -> list[DinosaurType]:
-    stmt = select(DinosaurType).where(DinosaurType.article.is_not(None))  # type: ignore[union-attr]
+) -> list[tuple[DinosaurTypeRevision, DinosaurType]]:
+    """Any revision with article that still needs enrichment (not only current)."""
+    stmt = (
+        select(DinosaurTypeRevision, DinosaurType)
+        .join(
+            DinosaurType,
+            col(DinosaurTypeRevision.dinosaur_type_id) == col(DinosaurType.id),
+        )
+        .where(DinosaurTypeRevision.article.is_not(None))  # type: ignore[union-attr]
+    )
     if not include_enriched:
-        stmt = stmt.where(DinosaurType.llm_enriched.is_(False))  # type: ignore[attr-defined]
+        stmt = stmt.where(DinosaurTypeRevision.llm_enriched.is_(False))  # type: ignore[attr-defined]
     if dinos:
         stmt = stmt.where(dino_name_match_clause(dinos))
     custom_image_priority = case(
@@ -88,20 +115,23 @@ def _select_candidates(
         ),
         else_=1,
     )
-    stmt = stmt.order_by(custom_image_priority, DinosaurType.id)  # type: ignore[arg-type]
+    stmt = stmt.order_by(
+        custom_image_priority,
+        DinosaurTypeRevision.id,  # type: ignore[arg-type]
+    )
     if max_records is not None:
         stmt = stmt.limit(max_records)
     return list(session.exec(stmt).all())
 
 
-def _apply_enrichment(dinosaur: DinosaurType, raw: dict) -> None:
+def _apply_enrichment(revision: DinosaurTypeRevision, raw: dict) -> None:
     validated = validate_llm_enrichment(raw)
-    dinosaur.length = validated.length
-    dinosaur.mass = validated.mass
-    dinosaur.location = validated.location
-    dinosaur.diet_type = validated.diet_type
-    dinosaur.short_description = validated.short_description
-    dinosaur.llm_enriched = True
+    revision.length = validated.length
+    revision.mass = validated.mass
+    revision.location = validated.location
+    revision.diet_type = validated.diet_type
+    revision.short_description = validated.short_description
+    revision.llm_enriched = True
 
 
 def enrich_dinosaurs(
@@ -112,7 +142,7 @@ def enrich_dinosaurs(
     max_records: int | None = None,
     dinos: list[str] | None = None,
 ) -> EnrichSummary:
-    """Enrich dinosaur records via Gemini API."""
+    """Enrich dinosaur content revisions via Gemini API."""
     if not settings.google_gemini_api_key:
         raise RuntimeError("GOOGLE_GEMINI_API_KEY is required for dinosaur enrichment")
 
@@ -145,15 +175,21 @@ def enrich_dinosaurs(
         dinos,
     )
 
-    for index, dinosaur in enumerate(candidates, start=1):
-        prefix = f"dinosaur_enrich: [{index}/{total}] {dinosaur.name}"
+    for index, (revision, dino_type) in enumerate(candidates, start=1):
+        prefix = (
+            f"dinosaur_enrich: [{index}/{total}] {dino_type.name} "
+            f"revision={revision.id}"
+        )
         try:
-            if not dinosaur.article:
+            if not revision.article:
                 counters.skipped += 1
                 logger.info("%s action=skip reason=no_article", prefix)
                 continue
 
-            system_instruction, user_prompt = build_enrichment_prompt(dinosaur)
+            system_instruction, user_prompt = build_enrichment_prompt(
+                name=dino_type.name,
+                article=revision.article,
+            )
             raw, _usage = call_gemini_api(
                 user_prompt,
                 system_instruction=system_instruction,
@@ -161,7 +197,7 @@ def enrich_dinosaurs(
                 max_output_tokens=_DINOSAUR_ENRICH_MAX_OUTPUT_TOKENS,
                 thinking_budget=0,
                 timeout_seconds=120,
-                log_context=dinosaur.name,
+                log_context=f"{dino_type.name}#{revision.id}",
             )
 
             if dry_run:
@@ -169,8 +205,8 @@ def enrich_dinosaurs(
                 counters.enriched += 1
                 logger.info("%s action=enrich reason=dry_run", prefix)
             else:
-                _apply_enrichment(dinosaur, raw)
-                session.add(dinosaur)
+                _apply_enrichment(revision, raw)
+                session.add(revision)
                 session.commit()
                 counters.enriched += 1
                 reason = "overwrite" if overwrite else "new"

@@ -26,6 +26,15 @@ class Dinosaur(SQLModel, table=True):
             index=True,
         ),
     )
+    dinosaur_type_revision_id: int | None = Field(
+        default=None,
+        sa_column=Column(
+            Integer,
+            ForeignKey("dinosaur_type_revision.id", ondelete="SET NULL"),
+            nullable=True,
+            index=True,
+        ),
+    )
     created_at: datetime = Field(
         default_factory=_utc_now,
         sa_column=Column(

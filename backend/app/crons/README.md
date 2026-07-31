@@ -10,7 +10,7 @@ Image **generation** writes local PNGs to repo folders; **image sync** (`make sy
 
 | ID | Schedule (UTC) | Description |
 |----|----------------|-------------|
-| `dinosaur_wiki_sync` | `0 3 * * 0` (Sun 03:00) | Sync dinosaur records from Wikipedia |
+| `dinosaur_wiki_sync` | `0 3 * * 0` (Sun 03:00) | Sync dinosaur types + append Wikipedia content revisions |
 | `dinosaur_llm_enrich` | `0 4 * * 0` (Sun 04:00) | LLM enrichment (Gemini) for dinosaurs |
 | `fossil_pbdb_sync` | `0 5 * * 0` (Sun 05:00) | Sync fossil occurrences from PBDB |
 | `fossil_llm_enrich` | `0 6 * * 0` (Sun 06:00) | LLM enrichment (Gemini) for fossil occurrences |
@@ -138,7 +138,7 @@ RAILWAY_RUN=1 railway run python -m app.crons.runner --job tool_image_generate -
 | Flag | Effect |
 |------|--------|
 | `--job ID` | Run one job immediately (ignores schedule) |
-| `--overwrite` | Re-fetch / re-enrich even when already up to date. For `fossil_pbdb_sync`, also clears `fossils_insert_time` first so an interrupted run can resume without `--overwrite`. For `dinosaur_llm_enrich` and `fossil_llm_enrich`, clears `llm_enriched` first so an interrupted overwrite can resume without `--overwrite`. |
+| `--overwrite` | Re-fetch / re-enrich even when already up to date. For `dinosaur_wiki_sync`, forces a Wikipedia fetch and appends a new `dinosaur_type_revision` only when content hash differs (prior revisions + their LLM fields are kept). For `fossil_pbdb_sync`, also clears `fossils_insert_time` first so an interrupted run can resume without `--overwrite`. For `dinosaur_llm_enrich` and `fossil_llm_enrich`, clears `llm_enriched` first so an interrupted overwrite can resume without `--overwrite`. |
 | `--dinos NAME …` | Limit to specific Wikipedia titles (space- or comma-separated) |
 | `--category NAME` | `dinosaur_wiki_sync`: limit to one Wikipedia category |
 | `--stale-days N` | `fossil_pbdb_sync`: only genera with `fossils_insert_time` null or older than N days (ignored with `--overwrite`) |
@@ -162,6 +162,20 @@ Field sites (`data_source=field`) are **global** `Site` rows (shared density poo
 - **`GET /api/v1/sites/nearby`** — read-only listing within a radius (no generation); same linked-only / admin `show_all` rules as list.
 
 The Flutter app calls `POST /field/ensure` on app open/resume and every 500 m move while the app process is alive (foreground or background). Map polling is map-tab-only. Auto-discovery runs on every GPS fix within 50 m.
+
+### `dinosaur_wiki_sync` content revisions
+
+- `dinosaur_type` stays one row per genus (identity + `current_revision_id`).
+- Wikipedia article, parsed fields, and LLM enrichment live on `dinosaur_type_revision`.
+- **New genus** → insert type + initial revision.
+- **Content hash changed** → append a new revision (LLM empty) and advance `current_revision_id`.
+- **Same hash** → skip (may bump `article_date` only); does not wipe LLM.
+- Safe to re-run weekly or with `--overwrite`; prior snapshots remain for pinned occurrences.
+- Occurrence `dinosaur.version` is the curated **image** folder and is unrelated to content revisions.
+
+### `dinosaur_llm_enrich` targets any unenriched revision
+
+Enrichment selects any `dinosaur_type_revision` with an article and `llm_enriched=false` (not only the current revision).
 
 ### `fossil_pbdb_sync` resume behavior
 

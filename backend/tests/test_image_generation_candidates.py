@@ -10,23 +10,36 @@ from sqlmodel import Session
 
 from app.models.dinosaur_type import DinosaurType
 from app.models.fossil import Fossil
-from app.services.dinosaur_image_generation_service.generate import _select_candidates as select_dino_candidates
-from app.services.fossil_image_generation_service.generate import _select_candidates as select_fossil_candidates
+from app.services.dinosaur_image_generation_service.generate import (
+    _select_candidates as select_dino_candidates,
+)
+from app.services.fossil_image_generation_service.generate import (
+    _select_candidates as select_fossil_candidates,
+)
 from app.services.image_generation_service.local_files import (
     has_local_image,
     output_png_path,
     scan_existing_stems,
 )
+from tests.helpers.dinosaur_fixtures import seed_dinosaur_type
 
 
-def _dinosaur(*, name: str, page_id: int, article: str = "<p>Article text here for testing.</p>") -> DinosaurType:
-    return DinosaurType(
+def _dinosaur(
+    session: Session,
+    *,
+    name: str,
+    page_id: int,
+    article: str = "<p>Article text here for testing.</p>",
+    main_image_url: str | None = None,
+) -> DinosaurType:
+    return seed_dinosaur_type(
+        session,
         name=name,
         wikipedia_page_id=page_id,
-        wikipedia_title=name,
         cladogram={"genus": name},
         article=article,
         article_date=datetime(2026, 7, 8, tzinfo=timezone.utc),
+        main_image_url=main_image_url,
     )
 
 
@@ -40,7 +53,9 @@ def test_has_local_image_respects_existing_stems(tmp_path: Path):
     (tmp_path / "Allosaurus.jpg").write_bytes(b"jpg")
     stems = scan_existing_stems(tmp_path, case_insensitive=True)
     assert has_local_image(tmp_path, "allosaurus", existing_stems=stems, case_insensitive=True)
-    assert not has_local_image(tmp_path, "Velociraptor", existing_stems=stems, case_insensitive=True)
+    assert not has_local_image(
+        tmp_path, "Velociraptor", existing_stems=stems, case_insensitive=True
+    )
 
 
 def test_output_png_path_refuses_overwrite(tmp_path: Path):
@@ -53,13 +68,8 @@ def test_output_png_path_refuses_overwrite(tmp_path: Path):
 
 
 def test_dinosaur_candidates_prioritize_fossil_count(session: Session, tmp_path: Path):
-    low = _dinosaur(name="LowCount", page_id=1)
-    high = _dinosaur(name="HighCount", page_id=2)
-    session.add(low)
-    session.add(high)
-    session.commit()
-    session.refresh(low)
-    session.refresh(high)
+    low = _dinosaur(session, name="LowCount", page_id=1)
+    high = _dinosaur(session, name="HighCount", page_id=2)
 
     session.add(Fossil(id=101, dinosaur_id=high.id, pres_mode="body"))
     session.add(Fossil(id=102, dinosaur_id=high.id, pres_mode="body"))
@@ -78,9 +88,7 @@ def test_dinosaur_candidates_prioritize_fossil_count(session: Session, tmp_path:
 
 
 def test_dinosaur_candidates_skip_existing_image(session: Session, tmp_path: Path):
-    dino = _dinosaur(name="ExistingDino", page_id=10)
-    session.add(dino)
-    session.commit()
+    _dinosaur(session, name="ExistingDino", page_id=10)
     (tmp_path / "ExistingDino.png").write_bytes(b"png")
     existing = scan_existing_stems(tmp_path, case_insensitive=True)
 
@@ -94,16 +102,15 @@ def test_dinosaur_candidates_skip_existing_image(session: Session, tmp_path: Pat
 
 
 def test_fossil_candidates_prioritize_dinos_with_images(session: Session, tmp_path: Path):
-    dino_with = _dinosaur(name="WithImage", page_id=20)
-    dino_without = _dinosaur(name="WithoutImage", page_id=21)
-    session.add(dino_with)
-    session.add(dino_without)
-    session.commit()
-    session.refresh(dino_with)
-    session.refresh(dino_without)
+    dino_with = _dinosaur(session, name="WithImage", page_id=20)
+    dino_without = _dinosaur(session, name="WithoutImage", page_id=21)
 
-    fossil_a = Fossil(id=201, dinosaur_id=dino_without.id, pres_mode="body", llm_enriched=True)
-    fossil_b = Fossil(id=202, dinosaur_id=dino_with.id, pres_mode="body", llm_enriched=True)
+    fossil_a = Fossil(
+        id=201, dinosaur_id=dino_without.id, pres_mode="body", llm_enriched=True
+    )
+    fossil_b = Fossil(
+        id=202, dinosaur_id=dino_with.id, pres_mode="body", llm_enriched=True
+    )
     session.add(fossil_a)
     session.add(fossil_b)
     session.commit()
@@ -130,10 +137,7 @@ def test_fossil_candidates_prioritize_dinos_with_images(session: Session, tmp_pa
 
 
 def test_fossil_candidates_skip_not_llm_enriched(session: Session, tmp_path: Path):
-    dino = _dinosaur(name="EnrichedOnly", page_id=30)
-    session.add(dino)
-    session.commit()
-    session.refresh(dino)
+    dino = _dinosaur(session, name="EnrichedOnly", page_id=30)
 
     enriched = Fossil(id=301, dinosaur_id=dino.id, pres_mode="body", llm_enriched=True)
     pending = Fossil(id=302, dinosaur_id=dino.id, pres_mode="body", llm_enriched=False)

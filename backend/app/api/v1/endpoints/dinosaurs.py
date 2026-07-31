@@ -18,7 +18,7 @@ from app.schemas.dinosaur import (
     DinosaurListResponse,
     DinosaurSummary,
 )
-from app.services.dinosaur_service import get_dinosaur_by_id, list_dinosaurs
+from app.services.dinosaur_service import list_dinosaurs
 from app.services.dinosaur_service.collect import (
     collect_dinosaur_for_user,
     list_dinosaur_image_versions,
@@ -27,6 +27,7 @@ from app.services.dinosaur_service.list import (
     DinosaurListRow,
     ListMode,
     dinosaur_to_summary,
+    get_dinosaur_with_revision,
     owned_occurrences_for_types,
     viewer_status_for_occurrence,
     viewer_statuses_for_types,
@@ -160,14 +161,14 @@ def get_dinosaur_article(
     dinosaur_id: int,
     session: Session = Depends(get_session),
 ) -> DinosaurArticleResponse:
-    row = get_dinosaur_by_id(session, dinosaur_id)
-    article = prepare_article_for_display(row.article)
+    row, revision = get_dinosaur_with_revision(session, dinosaur_id)
+    article = prepare_article_for_display(revision.article if revision else None)
     return DinosaurArticleResponse(
         id=row.id,
         name=row.name,
         wikipedia_title=row.wikipedia_title,
         article=article,
-        article_date=row.article_date,
+        article_date=revision.article_date if revision else None,
     )
 
 
@@ -177,7 +178,7 @@ def get_dinosaur(
     session: Session = Depends(get_session),
     current_user: User | None = Depends(get_optional_current_user),
 ) -> DinosaurSummary:
-    row = get_dinosaur_by_id(session, dinosaur_id)
+    row, revision = get_dinosaur_with_revision(session, dinosaur_id)
     viewer_user_id = current_user.id if current_user is not None else None
     status = None
     if viewer_user_id is not None:
@@ -186,6 +187,10 @@ def get_dinosaur(
         )
         status = statuses.get(dinosaur_id, DINOSAUR_STATUS_HIDDEN)
     return dinosaur_to_summary(
-        DinosaurListRow(dinosaur_type=row, image_version=ORIGINAL_VERSION),
+        DinosaurListRow(
+            dinosaur_type=row,
+            revision=revision,
+            image_version=ORIGINAL_VERSION,
+        ),
         viewer_status=status,
     )

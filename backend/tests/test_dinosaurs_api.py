@@ -5,13 +5,14 @@ from datetime import datetime, timezone
 from sqlmodel import Session
 
 from app.models.dinosaur_type import DinosaurType
+from tests.helpers.dinosaur_fixtures import seed_dinosaur_type
 
 
 def _seed_tyrannosaurus(session: Session) -> DinosaurType:
-    row = DinosaurType(
+    return seed_dinosaur_type(
+        session,
         name="Tyrannosaurus",
         wikipedia_page_id=30467,
-        wikipedia_title="Tyrannosaurus",
         birth=77.0,
         death=66.0,
         period="Late Cretaceous",
@@ -32,10 +33,6 @@ def _seed_tyrannosaurus(session: Session) -> DinosaurType:
         main_image_url="https://upload.wikimedia.org/wikipedia/commons/t-rex.jpg",
         llm_enriched=True,
     )
-    session.add(row)
-    session.commit()
-    session.refresh(row)
-    return row
 
 
 def test_list_dinosaurs_empty(client):
@@ -417,7 +414,6 @@ def test_get_dinosaur_article_empty_when_no_html(client, session):
         name="EmptyArticle",
         wikipedia_page_id=999,
         wikipedia_title="EmptyArticle",
-        article=None,
     )
     session.add(row)
     session.commit()
@@ -431,37 +427,36 @@ def test_get_dinosaur_article_empty_when_no_html(client, session):
 
 def _seed_timed_dinos(session: Session) -> None:
     """T-rex Cretaceous, Stegosaurus Jurassic, Brachiosaurus Jurassic."""
-    session.add_all(
-        [
-            DinosaurType(
-                name="Tyrannosaurus",
-                wikipedia_page_id=4001,
-                wikipedia_title="Tyrannosaurus",
-                birth=77.0,
-                death=66.0,
-            ),
-            DinosaurType(
-                name="Stegosaurus",
-                wikipedia_page_id=4002,
-                wikipedia_title="Stegosaurus",
-                birth=155.0,
-                death=150.0,
-            ),
-            DinosaurType(
-                name="Brachiosaurus",
-                wikipedia_page_id=4003,
-                wikipedia_title="Brachiosaurus",
-                birth=154.0,
-                death=153.0,
-            ),
-            DinosaurType(
-                name="UnknownPeriod",
-                wikipedia_page_id=4004,
-                wikipedia_title="UnknownPeriod",
-            ),
-        ]
+    seed_dinosaur_type(
+        session,
+        name="Tyrannosaurus",
+        wikipedia_page_id=4001,
+        birth=77.0,
+        death=66.0,
+        article="<p>t</p>",
     )
-    session.commit()
+    seed_dinosaur_type(
+        session,
+        name="Stegosaurus",
+        wikipedia_page_id=4002,
+        birth=155.0,
+        death=150.0,
+        article="<p>s</p>",
+    )
+    seed_dinosaur_type(
+        session,
+        name="Brachiosaurus",
+        wikipedia_page_id=4003,
+        birth=154.0,
+        death=153.0,
+        article="<p>b</p>",
+    )
+    seed_dinosaur_type(
+        session,
+        name="UnknownPeriod",
+        wikipedia_page_id=4004,
+        article="<p>u</p>",
+    )
 
 
 def test_list_dinosaurs_filter_by_name(client, session):
@@ -636,23 +631,20 @@ def test_list_dinosaurs_catalog_sorts_imaged_first_then_name(client, session):
 
 
 def test_list_dinosaurs_filter_llm_enriched(client, session):
-    session.add_all(
-        [
-            DinosaurType(
-                name="Tyrannosaurus",
-                wikipedia_page_id=6101,
-                wikipedia_title="Tyrannosaurus",
-                llm_enriched=True,
-            ),
-            DinosaurType(
-                name="Stegosaurus",
-                wikipedia_page_id=6102,
-                wikipedia_title="Stegosaurus",
-                llm_enriched=False,
-            ),
-        ]
+    seed_dinosaur_type(
+        session,
+        name="Tyrannosaurus",
+        wikipedia_page_id=6101,
+        article="<p>t</p>",
+        llm_enriched=True,
     )
-    session.commit()
+    seed_dinosaur_type(
+        session,
+        name="Stegosaurus",
+        wikipedia_page_id=6102,
+        article="<p>s</p>",
+        llm_enriched=False,
+    )
 
     response = client.get("/api/v1/dinosaurs?llm_enriched=true&sort=name")
     assert response.status_code == 200
@@ -667,29 +659,27 @@ def test_list_dinosaurs_filter_llm_enriched(client, session):
 
 
 def test_list_dinosaurs_filter_diet(client, session):
-    session.add_all(
-        [
-            DinosaurType(
-                name="Tyrannosaurus",
-                wikipedia_page_id=7101,
-                wikipedia_title="Tyrannosaurus",
-                diet_type="Carnivore",
-            ),
-            DinosaurType(
-                name="Triceratops",
-                wikipedia_page_id=7102,
-                wikipedia_title="Triceratops",
-                diet_type="herbivore",
-            ),
-            DinosaurType(
-                name="Omnivorasaurus",
-                wikipedia_page_id=7103,
-                wikipedia_title="Omnivorasaurus",
-                diet_type="omnivore",
-            ),
-        ]
+    seed_dinosaur_type(
+        session,
+        name="Tyrannosaurus",
+        wikipedia_page_id=7101,
+        diet_type="Carnivore",
+        article="<p>t</p>",
     )
-    session.commit()
+    seed_dinosaur_type(
+        session,
+        name="Triceratops",
+        wikipedia_page_id=7102,
+        diet_type="herbivore",
+        article="<p>t</p>",
+    )
+    seed_dinosaur_type(
+        session,
+        name="Omnivorasaurus",
+        wikipedia_page_id=7103,
+        diet_type="omnivore",
+        article="<p>o</p>",
+    )
 
     response = client.get(
         "/api/v1/dinosaurs",
@@ -705,39 +695,36 @@ def test_list_dinosaurs_filter_diet(client, session):
 
 
 def test_list_dinosaurs_filter_length_and_mass(client, session):
-    session.add_all(
-        [
-            DinosaurType(
-                name="Tyrannosaurus",
-                wikipedia_page_id=7201,
-                wikipedia_title="Tyrannosaurus",
-                length="12 m",
-                mass="7 t",
-            ),
-            DinosaurType(
-                name="Compsognathus",
-                wikipedia_page_id=7202,
-                wikipedia_title="Compsognathus",
-                length="1 m",
-                mass="3 kg",
-            ),
-            DinosaurType(
-                name="Brachiosaurus",
-                wikipedia_page_id=7203,
-                wikipedia_title="Brachiosaurus",
-                length="~20 – 25 m",
-                mass="~30 – 50 tonnes",
-            ),
-            DinosaurType(
-                name="Unknownosaurus",
-                wikipedia_page_id=7204,
-                wikipedia_title="Unknownosaurus",
-                length=None,
-                mass=None,
-            ),
-        ]
+    seed_dinosaur_type(
+        session,
+        name="Tyrannosaurus",
+        wikipedia_page_id=7201,
+        length="12 m",
+        mass="7 t",
+        article="<p>t</p>",
     )
-    session.commit()
+    seed_dinosaur_type(
+        session,
+        name="Compsognathus",
+        wikipedia_page_id=7202,
+        length="1 m",
+        mass="3 kg",
+        article="<p>c</p>",
+    )
+    seed_dinosaur_type(
+        session,
+        name="Brachiosaurus",
+        wikipedia_page_id=7203,
+        length="~20 – 25 m",
+        mass="~30 – 50 tonnes",
+        article="<p>b</p>",
+    )
+    seed_dinosaur_type(
+        session,
+        name="Unknownosaurus",
+        wikipedia_page_id=7204,
+        article="<p>u</p>",
+    )
 
     response = client.get(
         "/api/v1/dinosaurs",
@@ -784,26 +771,24 @@ def test_list_dinosaurs_filter_diet_and_size_inventory(client, session):
     from app.models.user import User
     from app.models.user_dinosaur import USER_DINOSAUR_ROLE_MODELLED, UserDinosaur
 
-    carnivore = DinosaurType(
+    carnivore = seed_dinosaur_type(
+        session,
         name="Tyrannosaurus",
         wikipedia_page_id=7301,
-        wikipedia_title="Tyrannosaurus",
         diet_type="carnivore",
         length="12 m",
         mass="7 t",
+        article="<p>t</p>",
     )
-    herbivore = DinosaurType(
+    herbivore = seed_dinosaur_type(
+        session,
         name="Triceratops",
         wikipedia_page_id=7302,
-        wikipedia_title="Triceratops",
         diet_type="herbivore",
         length="9 m",
         mass="6 t",
+        article="<p>t</p>",
     )
-    session.add_all([carnivore, herbivore])
-    session.commit()
-    session.refresh(carnivore)
-    session.refresh(herbivore)
 
     user = User(username="size-filter", email="size@example.com", password="x")
     session.add(user)
@@ -811,7 +796,10 @@ def test_list_dinosaurs_filter_diet_and_size_inventory(client, session):
     session.refresh(user)
 
     for dino_type in (carnivore, herbivore):
-        occurrence = Dinosaur(dinosaur_type_id=int(dino_type.id))
+        occurrence = Dinosaur(
+            dinosaur_type_id=int(dino_type.id),
+            dinosaur_type_revision_id=dino_type.current_revision_id,
+        )
         session.add(occurrence)
         session.commit()
         session.refresh(occurrence)

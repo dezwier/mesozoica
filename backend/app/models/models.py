@@ -6,6 +6,7 @@ Alembic imports this module to detect schema changes.
 
 from app.models.dinosaur import Dinosaur
 from app.models.dinosaur_type import DinosaurType
+from app.models.dinosaur_type_revision import DinosaurTypeRevision
 from app.models.field_ensure_job import FieldEnsureJob
 from app.models.field_survey_job import FieldSurveyJob
 from app.models.fossil import Fossil
@@ -30,6 +31,7 @@ from app.models.user_user import UserUser
 __all__ = [
     "Dinosaur",
     "DinosaurType",
+    "DinosaurTypeRevision",
     "FieldEnsureJob",
     "FieldSurveyJob",
     "Fossil",

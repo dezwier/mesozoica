@@ -1,11 +1,11 @@
-"""Dinosaur catalog genus (Wikipedia-synced master data)."""
+"""Dinosaur catalog genus identity (Wikipedia-synced master key)."""
 
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Any, Optional
+from typing import Optional
 
-from sqlalchemy import Column, JSON, Text
+from sqlalchemy import Column, ForeignKey, Integer
 from sqlmodel import Field, SQLModel
 
 
@@ -14,7 +14,12 @@ def _utc_now() -> datetime:
 
 
 class DinosaurType(SQLModel, table=True):
-    """Wikipedia-sourced dinosaur genus record (catalog)."""
+    """Wikipedia-sourced dinosaur genus identity (one row per genus).
+
+    Article text, parsed fields, and LLM enrichment live on
+    ``dinosaur_type_revision``; this row points at the live revision via
+    ``current_revision_id``.
+    """
 
     __tablename__ = "dinosaur_type"
 
@@ -22,24 +27,23 @@ class DinosaurType(SQLModel, table=True):
     name: str = Field(index=True, max_length=255)
     wikipedia_page_id: int = Field(unique=True, index=True)
     wikipedia_title: str = Field(unique=True, max_length=255)
-    birth: Optional[float] = Field(default=None, description="Earliest appearance in Ma")
-    death: Optional[float] = Field(default=None, description="Latest extinction in Ma")
-    period: Optional[str] = Field(default=None, max_length=255)
-    cladogram: dict[str, Any] = Field(
-        default_factory=dict, sa_column=Column(JSON, nullable=False)
-    )
-    diet_type: Optional[str] = Field(default=None, max_length=64)
-    length: Optional[str] = Field(default=None, max_length=128)
-    mass: Optional[str] = Field(default=None, max_length=128)
-    location: Optional[str] = Field(default=None, max_length=512)
-    short_description: Optional[str] = Field(default=None, sa_column=Column(Text))
-    long_description: Optional[str] = Field(default=None, sa_column=Column(Text))
-    article: Optional[str] = Field(default=None, sa_column=Column(Text))
-    article_date: Optional[datetime] = Field(default=None)
     insert_date: datetime = Field(default_factory=_utc_now)
     fossils_insert_time: Optional[datetime] = Field(
         default=None,
         description="Last time PBDB fossil occurrences were retrieved for this genus",
     )
     main_image_url: Optional[str] = Field(default=None, max_length=2048)
-    llm_enriched: bool = Field(default=False, index=True)
+    current_revision_id: Optional[int] = Field(
+        default=None,
+        sa_column=Column(
+            Integer,
+            ForeignKey(
+                "dinosaur_type_revision.id",
+                ondelete="SET NULL",
+                use_alter=True,
+                name="fk_dinosaur_type_current_revision_id",
+            ),
+            nullable=True,
+            index=True,
+        ),
+    )

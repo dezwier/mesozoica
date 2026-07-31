@@ -177,8 +177,18 @@ def enrich_fossils(
         dinosaur = candidate.dinosaur
         prefix = f"fossil_enrich: [{index}/{total}] {fossil.id} ({dinosaur.name})"
         try:
+            from app.models.dinosaur_type_revision import DinosaurTypeRevision
+
+            revision = None
+            if dinosaur.current_revision_id is not None:
+                revision = session.get(
+                    DinosaurTypeRevision, dinosaur.current_revision_id
+                )
             system_instruction, user_prompt = build_enrichment_prompt(
-                fossil, dinosaur=dinosaur
+                fossil,
+                dinosaur=dinosaur,
+                period=revision.period if revision else None,
+                short_description=revision.short_description if revision else None,
             )
             raw, _usage = call_gemini_api(
                 user_prompt,

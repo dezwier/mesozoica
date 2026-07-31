@@ -80,11 +80,17 @@ Rules:
 Occurrence id: """
 
 
-def build_enrichment_prompt(fossil: Fossil, *, dinosaur: DinosaurType) -> tuple[str, str]:
+def build_enrichment_prompt(
+    fossil: Fossil,
+    *,
+    dinosaur: DinosaurType,
+    period: str | None = None,
+    short_description: str | None = None,
+) -> tuple[str, str]:
     """Return (system_instruction, user_prompt) for Gemini."""
     payload = fossil_to_enrichment_prompt_dict(fossil, dinosaur_name=dinosaur.name)
-    payload["dinosaur_period"] = dinosaur.period
-    payload["dinosaur_short_description"] = dinosaur.short_description
+    payload["dinosaur_period"] = period
+    payload["dinosaur_short_description"] = short_description
     user_prompt = (
         _USER_PREFIX
         + str(fossil.id)

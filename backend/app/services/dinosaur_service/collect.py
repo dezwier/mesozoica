@@ -9,6 +9,7 @@ from sqlmodel import Session
 from app.core.exceptions import NotFoundError, ValidationError
 from app.models.dinosaur import Dinosaur
 from app.models.dinosaur_type import DinosaurType
+from app.models.dinosaur_type_revision import DinosaurTypeRevision
 from app.models.user_dinosaur import (
     DINOSAUR_STATUS_HIDDEN,
     DINOSAUR_STATUSES,
@@ -96,9 +97,14 @@ def collect_dinosaur_for_user(
         raise NotFoundError(f"DinosaurType {dinosaur_type_id} not found")
 
     image_version = _resolve_collect_version(version)
+    revision = None
+    if dino_type.current_revision_id is not None:
+        revision = session.get(DinosaurTypeRevision, dino_type.current_revision_id)
+
     now = datetime.now(timezone.utc)
     occurrence = Dinosaur(
         dinosaur_type_id=dinosaur_type_id,
+        dinosaur_type_revision_id=dino_type.current_revision_id,
         version=image_version,
         created_at=now,
     )
@@ -119,6 +125,7 @@ def collect_dinosaur_for_user(
     return dinosaur_to_summary(
         DinosaurListRow(
             dinosaur_type=dino_type,
+            revision=revision,
             occurrence_id=int(occurrence.id),
             created_at=occurrence.created_at,
             image_version=image_version,

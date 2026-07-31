@@ -7,17 +7,18 @@ import time
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 
-from sqlmodel import Session, select, update
+from sqlmodel import Session, select
 
-from app.services.dinosaur_name_filter import dino_name_match_clause, find_dinosaurs_by_names
 from app.core.config import settings
 from app.models.dinosaur_type import DinosaurType
+from app.models.dinosaur_type_revision import DinosaurTypeRevision
 from app.services.wikipedia_service.category import (
     CategoryMember,
     default_wikipedia_dinosaur_categories,
     list_dinosaur_sync_batches,
 )
 from app.services.wikipedia_service.client import WikipediaClient
+from app.services.wikipedia_service.content_hash import revision_content_hash
 from app.services.wikipedia_service.metadata import fetch_page_metadata
 from app.services.wikipedia_service.parser import parse_article_html
 
@@ -57,17 +58,21 @@ def _is_stale(db_date: datetime | None, wiki_date: datetime) -> bool:
     return wiki_aware > db_aware
 
 
-def _is_incomplete(existing: DinosaurType) -> bool:
-    """True when a row looks synced but is missing core Wikipedia payload."""
-    if not (existing.article or "").strip():
+def _is_incomplete(revision: DinosaurTypeRevision | None) -> bool:
+    """True when a type has no usable current Wikipedia payload."""
+    if revision is None:
         return True
-    if not existing.cladogram:
+    if not (revision.article or "").strip():
+        return True
+    if not revision.cladogram:
         return True
     return False
 
 
 def _get_by_page_id(session: Session, page_id: int) -> DinosaurType | None:
-    return session.exec(select(DinosaurType).where(DinosaurType.wikipedia_page_id == page_id)).first()
+    return session.exec(
+        select(DinosaurType).where(DinosaurType.wikipedia_page_id == page_id)
+    ).first()
 
 
 def _find_existing(session: Session, *, page_id: int, title: str) -> DinosaurType | None:
@@ -80,91 +85,42 @@ def _find_existing(session: Session, *, page_id: int, title: str) -> DinosaurTyp
     ).first()
 
 
-def _clear_llm_enrichment_fields(dinosaur: DinosaurType) -> None:
-    """Drop LLM-only fields so stale enrichment is not shown after a Wikipedia refresh."""
-    dinosaur.length = None
-    dinosaur.mass = None
-    dinosaur.location = None
-    dinosaur.short_description = None
-    dinosaur.llm_enriched = False
+def _current_revision(
+    session: Session, dino_type: DinosaurType
+) -> DinosaurTypeRevision | None:
+    if dino_type.current_revision_id is None:
+        return None
+    return session.get(DinosaurTypeRevision, dino_type.current_revision_id)
 
 
-def _bulk_clear_llm_enrichment_fields(
-    session: Session,
+def _build_revision(
     *,
-    dry_run: bool,
-    dinos: list[str] | None = None,
-) -> int:
-    """Clear LLM-only columns on dinosaur rows (used with --overwrite)."""
-    if dinos:
-        if dry_run:
-            stmt = select(DinosaurType).where(dino_name_match_clause(dinos))
-            return len(list(session.exec(stmt).all()))
-        rows = find_dinosaurs_by_names(session, dinos)
-        for row in rows:
-            _clear_llm_enrichment_fields(row)
-            session.add(row)
-        session.commit()
-        return len(rows)
-
-    if dry_run:
-        stmt = select(DinosaurType).where(
-            (DinosaurType.length.is_not(None))  # type: ignore[union-attr]
-            | (DinosaurType.mass.is_not(None))  # type: ignore[union-attr]
-            | (DinosaurType.location.is_not(None))  # type: ignore[union-attr]
-            | (DinosaurType.short_description.is_not(None))  # type: ignore[union-attr]
-            | (DinosaurType.llm_enriched.is_(True))  # type: ignore[attr-defined]
-        )
-        return len(list(session.exec(stmt).all()))
-
-    result = session.exec(
-        update(DinosaurType).values(
-            length=None,
-            mass=None,
-            location=None,
-            short_description=None,
-            llm_enriched=False,
-        )
+    dinosaur_type_id: int,
+    metadata,
+    parsed,
+) -> DinosaurTypeRevision:
+    content_hash = revision_content_hash(
+        article=parsed.article_html,
+        long_description=parsed.long_description,
+        birth=parsed.birth,
+        death=parsed.death,
+        period=parsed.period,
+        diet_type=parsed.diet_type,
+        cladogram=parsed.cladogram,
     )
-    session.commit()
-    return int(result.rowcount or 0)
-
-
-def _apply_parsed(existing: DinosaurType | None, *, title: str, page_id: int, metadata, parsed) -> DinosaurType:
-    now = datetime.now(timezone.utc)
-    if existing is None:
-        row = DinosaurType(
-            name=title,
-            wikipedia_page_id=page_id,
-            wikipedia_title=title,
-            birth=parsed.birth,
-            death=parsed.death,
-            period=parsed.period,
-            cladogram=parsed.cladogram,
-            diet_type=parsed.diet_type,
-            long_description=parsed.long_description,
-            article=parsed.article_html,
-            article_date=metadata.article_date,
-            insert_date=now,
-            main_image_url=metadata.image_url,
-        )
-        return row
-
-    existing.name = title
-    existing.wikipedia_page_id = page_id
-    existing.wikipedia_title = title
-    existing.birth = parsed.birth
-    existing.death = parsed.death
-    existing.period = parsed.period
-    existing.cladogram = parsed.cladogram
-    existing.diet_type = parsed.diet_type
-    existing.long_description = parsed.long_description
-    existing.article = parsed.article_html
-    existing.article_date = metadata.article_date
-    if existing.main_image_url is None and metadata.image_url:
-        existing.main_image_url = metadata.image_url
-    _clear_llm_enrichment_fields(existing)
-    return existing
+    return DinosaurTypeRevision(
+        dinosaur_type_id=dinosaur_type_id,
+        article_date=metadata.article_date,
+        content_hash=content_hash,
+        birth=parsed.birth,
+        death=parsed.death,
+        period=parsed.period,
+        cladogram=parsed.cladogram or {},
+        diet_type=parsed.diet_type,
+        long_description=parsed.long_description,
+        article=parsed.article_html,
+        llm_enriched=False,
+    )
 
 
 def sync_dinosaurs(
@@ -191,27 +147,6 @@ def sync_dinosaurs(
     batches: list[tuple[str, list[CategoryMember]]] = []
     total = 0
     try:
-        if overwrite and not dry_run:
-            cleared = _bulk_clear_llm_enrichment_fields(
-                session, dry_run=False, dinos=dinos
-            )
-            scope = f"{len(dinos)} targeted" if dinos else "all"
-            logger.info(
-                "wikipedia_sync: cleared LLM fields on %d dinosaur row(s) (%s) before overwrite refresh",
-                cleared,
-                scope,
-            )
-        elif overwrite and dry_run:
-            would_clear = _bulk_clear_llm_enrichment_fields(
-                session, dry_run=True, dinos=dinos
-            )
-            scope = f"{len(dinos)} targeted" if dinos else "all"
-            logger.info(
-                "wikipedia_sync: dry_run would clear LLM fields on %d dinosaur row(s) (%s)",
-                would_clear,
-                scope,
-            )
-
         if dinos:
             batches = [
                 (
@@ -257,28 +192,26 @@ def sync_dinosaurs(
                         if outcome == "fetch_new":
                             counters.fetched += 1
                             logger.info("%s action=fetch reason=new", prefix)
-                        elif outcome == "fetch_update_stale":
+                        elif outcome == "revision_appended":
                             counters.updated += 1
-                            logger.info("%s action=fetch reason=stale", prefix)
-                        elif outcome == "fetch_update_incomplete":
-                            counters.updated += 1
-                            logger.info("%s action=fetch reason=incomplete", prefix)
-                        elif outcome == "fetch_update_overwrite":
-                            counters.updated += 1
-                            logger.info("%s action=fetch reason=overwrite", prefix)
+                            logger.info("%s action=fetch reason=revision_appended", prefix)
+                        elif outcome == "skip_same_hash":
+                            counters.skipped += 1
+                            logger.info("%s action=skip reason=same_hash", prefix)
                         elif outcome == "skip_current":
                             counters.skipped += 1
                             logger.info("%s action=skip reason=up_to_date", prefix)
                         elif outcome == "skip_disambiguation":
                             counters.disambiguation += 1
                             counters.skipped += 1
-                            logger.warning("%s action=skip reason=disambiguation", prefix)
+                            logger.warning(
+                                "%s action=skip reason=disambiguation", prefix
+                            )
 
                         if not dry_run and outcome in (
                             "fetch_new",
-                            "fetch_update_stale",
-                            "fetch_update_incomplete",
-                            "fetch_update_overwrite",
+                            "revision_appended",
+                            "skip_same_hash",
                         ):
                             session.commit()
                     except Exception as exc:
@@ -340,34 +273,99 @@ def _process_member(
         return "skip_disambiguation"
 
     existing = _find_existing(session, page_id=metadata.page_id, title=metadata.title)
-    is_stale = _is_stale(existing.article_date if existing else None, metadata.article_date)
-    incomplete = existing is not None and _is_incomplete(existing)
+    current = _current_revision(session, existing) if existing else None
+    is_stale = _is_stale(current.article_date if current else None, metadata.article_date)
+    incomplete = _is_incomplete(current)
     if existing and not overwrite and not is_stale and not incomplete:
         return "skip_current"
 
     payload = wiki.page_with_html(member.title)
     parsed = parse_article_html(str(payload.get("html", "")))
-    row = _apply_parsed(existing, title=metadata.title, page_id=metadata.page_id, metadata=metadata, parsed=parsed)
+    new_hash = revision_content_hash(
+        article=parsed.article_html,
+        long_description=parsed.long_description,
+        birth=parsed.birth,
+        death=parsed.death,
+        period=parsed.period,
+        diet_type=parsed.diet_type,
+        cladogram=parsed.cladogram,
+    )
 
     if dry_run:
         if existing is None:
             return "fetch_new"
-        if overwrite and not is_stale:
-            return "fetch_update_overwrite"
-        if incomplete:
-            return "fetch_update_incomplete"
-        return "fetch_update_stale"
+        if current is not None and current.content_hash == new_hash:
+            return "skip_same_hash"
+        return "revision_appended"
 
+    now = datetime.now(timezone.utc)
     if existing is None:
+        row = DinosaurType(
+            name=metadata.title,
+            wikipedia_page_id=metadata.page_id,
+            wikipedia_title=metadata.title,
+            insert_date=now,
+            main_image_url=metadata.image_url,
+        )
+        session.add(row)
+        session.flush()
+        revision = _build_revision(
+            dinosaur_type_id=int(row.id),
+            metadata=metadata,
+            parsed=parsed,
+        )
+        session.add(revision)
+        session.flush()
+        row.current_revision_id = int(revision.id)
         session.add(row)
         return "fetch_new"
 
-    session.add(row)
-    if overwrite and not is_stale:
-        return "fetch_update_overwrite"
-    if incomplete:
-        return "fetch_update_incomplete"
-    return "fetch_update_stale"
+    # Identity / catalog image updates on the thin type row.
+    existing.name = metadata.title
+    existing.wikipedia_page_id = metadata.page_id
+    existing.wikipedia_title = metadata.title
+    if existing.main_image_url is None and metadata.image_url:
+        existing.main_image_url = metadata.image_url
+
+    if current is not None and current.content_hash == new_hash:
+        # Absorb timestamp-only Wikipedia bumps without a new revision.
+        if (
+            metadata.article_date is not None
+            and current.article_date != metadata.article_date
+        ):
+            current.article_date = metadata.article_date
+            session.add(current)
+        session.add(existing)
+        return "skip_same_hash"
+
+    # Content may have reverted to an older revision — reuse that row.
+    prior = session.exec(
+        select(DinosaurTypeRevision).where(
+            DinosaurTypeRevision.dinosaur_type_id == existing.id,
+            DinosaurTypeRevision.content_hash == new_hash,
+        )
+    ).first()
+    if prior is not None:
+        if (
+            metadata.article_date is not None
+            and prior.article_date != metadata.article_date
+        ):
+            prior.article_date = metadata.article_date
+            session.add(prior)
+        existing.current_revision_id = int(prior.id)
+        session.add(existing)
+        return "revision_appended"
+
+    revision = _build_revision(
+        dinosaur_type_id=int(existing.id),
+        metadata=metadata,
+        parsed=parsed,
+    )
+    session.add(revision)
+    session.flush()
+    existing.current_revision_id = int(revision.id)
+    session.add(existing)
+    return "revision_appended"
 
 
 def sync_exit_code(summary: SyncSummary) -> int:
