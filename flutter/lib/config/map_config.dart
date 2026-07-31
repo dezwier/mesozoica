@@ -98,7 +98,7 @@ class MapConfig {
   static const double rotateCardCullRadiusM = 1500.0;
 
   /// Zoom at/above which north-fixed mode shows photo pins instead of dots.
-  static const double sitePinDetailZoom = 14.0;
+  static const double sitePinDetailZoom = 16.0;
 
   /// Expand the viewport bounds used to keep mini-cards (fraction of span).
   static const double rotateViewportPadding = 0.18;
@@ -108,7 +108,7 @@ class MapConfig {
   static const double mapboxRotateFocusFromBottom = 1 / 3;
 
   /// Zoom used when centering on the user in north-fixed mode.
-  static const double mapboxFollowZoom = 16.0;
+  static const double mapboxFollowZoom = 17.0;
 
   /// Initial zoom when linking to an aerial recon scout (more pulled out than
   /// [mapboxFollowZoom] so the route context is visible). Continuous follow

@@ -3,7 +3,6 @@ part of 'map_screen.dart';
 /// Field-mode admin actions (scan/purge), site tap handling, filter sheet,
 /// and transient banner messages for [MapScreen].
 mixin _MapScreenFieldOpsMixin on State<MapScreen>, _MapScreenCameraMixin {
-  int? _hiddenRotateSiteId;
   String? _scanBannerMessage;
   Timer? _scanBannerTimer;
 
@@ -243,9 +242,6 @@ mixin _MapScreenFieldOpsMixin on State<MapScreen>, _MapScreenCameraMixin {
     final mapData = context.read<map_data.MapController>();
     // Keep selection after the card closes; only another tap replaces it.
     mapData.selectSite(site);
-    if (_rotateMap) {
-      setState(() => _hiddenRotateSiteId = site.siteId);
-    }
     final displayFuture = mapData.siteForDisplay(site);
     if (!_rotateMap) {
       unawaited(_panToSite(site));
@@ -253,8 +249,5 @@ mixin _MapScreenFieldOpsMixin on State<MapScreen>, _MapScreenCameraMixin {
     final displaySite = await displayFuture;
     if (!mounted) return;
     await showSiteMapCardDialog(context, displaySite);
-    if (mounted) {
-      setState(() => _hiddenRotateSiteId = null);
-    }
   }
 }

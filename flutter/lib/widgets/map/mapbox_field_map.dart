@@ -51,7 +51,6 @@ class MapboxFieldMap extends StatefulWidget {
     required this.onLocationPuckTap,
     this.mapActive = true,
     this.avatarImageUrl,
-    this.hiddenRotateSiteId,
     this.rotateCardCount,
     this.headingListenable,
     this.locationListenable,
@@ -94,8 +93,6 @@ class MapboxFieldMap extends StatefulWidget {
   final VoidCallback onLocationPuckTap;
   /// Profile image for the location puck (falls back to app logo).
   final String? avatarImageUrl;
-  /// Hide this site's mini-card while the detail sheet morphs open.
-  final int? hiddenRotateSiteId;
   /// Optional admin HUD counter for visible rotate mini-cards.
   final ValueNotifier<int>? rotateCardCount;
   /// Ongoing + past aerial recon routes / scout puck.
@@ -1119,7 +1116,6 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
                 child: MapRotateSiteCardOverlay(
                   visibleSites: _visibleRotateSites,
                   selectedSiteId: widget.selectedSite?.siteId,
-                  hiddenSiteId: widget.hiddenRotateSiteId,
                   onSiteTap: _onRotateMiniCardTap,
                 ),
               ),

@@ -147,13 +147,11 @@ class MapRotateSiteCardOverlay extends StatelessWidget {
     super.key,
     required this.visibleSites,
     required this.selectedSiteId,
-    required this.hiddenSiteId,
     required this.onSiteTap,
   });
 
   final List<MapRotateVisibleSite> visibleSites;
   final int? selectedSiteId;
-  final int? hiddenSiteId;
   final MapRotateSiteTapCallback onSiteTap;
 
   @override
@@ -164,20 +162,19 @@ class MapRotateSiteCardOverlay extends StatelessWidget {
       clipBehavior: Clip.none,
       children: [
         for (final entry in visibleSites)
-          if (entry.site.siteId != hiddenSiteId)
-            Positioned(
-              left: entry.screenX - MapSiteMiniCard.anchorXFor(entry.cardWidth),
-              top: entry.screenY - entry.cardHeight,
-              width: entry.layoutWidth,
-              height: entry.cardHeight,
-              child: _MiniCardTapTarget(
-                site: entry.site,
-                width: entry.cardWidth,
-                distanceM: entry.distanceM,
-                selected: entry.site.siteId == selectedSiteId,
-                onTap: () => onSiteTap(entry.site),
-              ),
+          Positioned(
+            left: entry.screenX - MapSiteMiniCard.anchorXFor(entry.cardWidth),
+            top: entry.screenY - entry.cardHeight,
+            width: entry.layoutWidth,
+            height: entry.cardHeight,
+            child: _MiniCardTapTarget(
+              site: entry.site,
+              width: entry.cardWidth,
+              distanceM: entry.distanceM,
+              selected: entry.site.siteId == selectedSiteId,
+              onTap: () => onSiteTap(entry.site),
             ),
+          ),
       ],
     );
   }

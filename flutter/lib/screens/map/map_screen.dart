@@ -179,7 +179,6 @@ class _MapScreenState extends State<MapScreen>
                     mapActive: widget.isActive,
                     sites: mapData.filteredGeoSites,
                     selectedSite: mapData.selectedSite,
-                    hiddenRotateSiteId: _hiddenRotateSiteId,
                     markerDatasetKey: mapData.mapMarkerDatasetKey(
                       isFieldMode: isFieldMode,
                     ),
