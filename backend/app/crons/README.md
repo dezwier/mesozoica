@@ -168,8 +168,9 @@ The Flutter app calls `POST /field/ensure` on app open/resume and every 500 m mo
 - `dinosaur_type` stays one row per genus (identity + `current_revision_id`).
 - Wikipedia article, parsed fields, and LLM enrichment live on `dinosaur_type_revision`.
 - **New genus** → insert type + initial revision.
-- **Content hash changed** → append a new revision (LLM empty) and advance `current_revision_id`.
-- **Same hash** → skip (may bump `article_date` only); does not wipe LLM.
+- **Significant content change** → append a new revision (LLM empty) and advance `current_revision_id`. Significant means any of: structural field change (`birth`/`death`/`period`/`diet_type`/`cladogram`/`long_description`), article length delta ≥ 15%, token Jaccard &lt; 0.85, or absolute char delta ≥ 2000.
+- **Same hash** → skip (may bump `article_date` only).
+- **Minor hash change** → skip (bump `article_date` only; do not append a revision).
 - Safe to re-run weekly or with `--overwrite`; prior snapshots remain for pinned occurrences.
 - Finish log counters: `types_added`, `revisions_appended`, `skipped`, `failed`.
 - Occurrence `dinosaur.version` is the curated **image** folder and is unrelated to content revisions.

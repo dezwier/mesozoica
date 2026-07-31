@@ -616,6 +616,68 @@ def test_sync_same_hash_skips_new_revision(session: Session, fixture_html, monke
     )
 
 
+def test_sync_minor_change_skips_new_revision(session: Session, fixture_html, monkeypatch):
+    """Tiny article edit (hash differs) must not append a revision."""
+    parsed = _parsed(fixture_html)
+    existing = seed_dinosaur_type(
+        session,
+        name="Tyrannosaurus",
+        wikipedia_page_id=30467,
+        birth=parsed.birth,
+        death=parsed.death,
+        period=parsed.period,
+        cladogram=parsed.cladogram,
+        diet_type=parsed.diet_type,
+        long_description=parsed.long_description,
+        article=parsed.article_html,
+        article_date=datetime(2025, 1, 1, tzinfo=timezone.utc),
+        llm_enriched=True,
+        length="12 m",
+    )
+    old_revision_id = int(existing.current_revision_id)
+
+    # One-word typo-style change: keeps structural fields + almost all tokens.
+    minor_html = parsed.article_html.replace("</p>", " x</p>", 1)
+    assert minor_html != parsed.article_html
+
+    client = MagicMock()
+    client.page_with_html.return_value = {"html": fixture_html}
+
+    monkeypatch.setattr(
+        "app.services.wikipedia_service.sync.list_dinosaur_sync_batches",
+        lambda *_args, **_kwargs: _sync_batches(
+            CategoryMember(page_id=30467, title="Tyrannosaurus"),
+        ),
+    )
+    monkeypatch.setattr(
+        "app.services.wikipedia_service.sync.fetch_page_metadata",
+        lambda *_args, **_kwargs: _metadata(ts=datetime(2026, 7, 8, tzinfo=timezone.utc)),
+    )
+    monkeypatch.setattr(
+        "app.services.wikipedia_service.sync.parse_article_html",
+        lambda _html: ParsedArticle(
+            birth=parsed.birth,
+            death=parsed.death,
+            period=parsed.period,
+            cladogram=parsed.cladogram,
+            diet_type=parsed.diet_type,
+            long_description=parsed.long_description,
+            article_html=minor_html,
+        ),
+    )
+
+    summary = sync_dinosaurs(session, client=client, overwrite=True)
+    session.refresh(existing)
+    revision = current_revision(session, existing)
+
+    assert summary.counters.revisions_appended == 0
+    assert summary.counters.skipped == 1
+    assert existing.current_revision_id == old_revision_id
+    assert revision is not None
+    assert revision.article == parsed.article_html
+    assert revision.llm_enriched is True
+
+
 def test_sync_exit_code_threshold():
     summary = SyncSummary(
         category="Category:Dinosaur_genera",

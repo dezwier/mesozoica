@@ -18,7 +18,10 @@ from app.services.wikipedia_service.category import (
     list_dinosaur_sync_batches,
 )
 from app.services.wikipedia_service.client import WikipediaClient
-from app.services.wikipedia_service.content_hash import revision_content_hash
+from app.services.wikipedia_service.content_hash import (
+    article_change_metrics,
+    revision_content_hash,
+)
 from app.services.wikipedia_service.metadata import fetch_page_metadata
 from app.services.wikipedia_service.parser import parse_article_html
 
@@ -202,6 +205,9 @@ def sync_dinosaurs(
                         elif outcome == "skip_same_hash":
                             counters.skipped += 1
                             logger.info("%s action=skip reason=same_hash", prefix)
+                        elif outcome == "skip_minor_change":
+                            counters.skipped += 1
+                            logger.info("%s action=skip reason=minor_change", prefix)
                         elif outcome == "skip_current":
                             counters.skipped += 1
                             logger.info("%s action=skip reason=up_to_date", prefix)
@@ -216,6 +222,7 @@ def sync_dinosaurs(
                             "types_added",
                             "revisions_appended",
                             "skip_same_hash",
+                            "skip_minor_change",
                         ):
                             session.commit()
                     except Exception as exc:
@@ -264,6 +271,64 @@ def sync_dinosaurs(
     return summary
 
 
+def _change_metrics(current: DinosaurTypeRevision | None, parsed):
+    if current is None:
+        return None
+    return article_change_metrics(
+        old_article=current.article,
+        new_article=parsed.article_html,
+        old_birth=current.birth,
+        new_birth=parsed.birth,
+        old_death=current.death,
+        new_death=parsed.death,
+        old_period=current.period,
+        new_period=parsed.period,
+        old_diet_type=current.diet_type,
+        new_diet_type=parsed.diet_type,
+        old_cladogram=current.cladogram,
+        new_cladogram=parsed.cladogram,
+        old_long_description=current.long_description,
+        new_long_description=parsed.long_description,
+    )
+
+
+def _bump_article_date(
+    revision: DinosaurTypeRevision,
+    *,
+    article_date: datetime | None,
+) -> None:
+    if article_date is not None and revision.article_date != article_date:
+        revision.article_date = article_date
+
+
+def _log_revision_decision(
+    *,
+    title: str,
+    action: str,
+    current: DinosaurTypeRevision | None,
+    parsed,
+    reused_prior: bool = False,
+) -> None:
+    """Log change metrics for append / minor-skip decisions."""
+    if current is None:
+        logger.info(
+            "wikipedia_sync: %s %s detail=no_prior_revision",
+            title,
+            action,
+        )
+        return
+    metrics = _change_metrics(current, parsed)
+    assert metrics is not None
+    reuse = " reused_prior=true" if reused_prior else ""
+    logger.info(
+        "wikipedia_sync: %s %s %s%s",
+        title,
+        action,
+        metrics.summary(),
+        reuse,
+    )
+
+
 def _process_member(
     session: Session,
     wiki: WikipediaClient,
@@ -295,11 +360,33 @@ def _process_member(
         cladogram=parsed.cladogram,
     )
 
+    def _significant_vs_current() -> bool:
+        # First revision / incomplete stub with no usable content → always append.
+        if current is None or incomplete:
+            return True
+        metrics = _change_metrics(current, parsed)
+        assert metrics is not None
+        return metrics.is_significant
+
     if dry_run:
         if existing is None:
             return "types_added"
         if current is not None and current.content_hash == new_hash:
             return "skip_same_hash"
+        if not _significant_vs_current():
+            _log_revision_decision(
+                title=metadata.title,
+                action="skip_minor_change",
+                current=current,
+                parsed=parsed,
+            )
+            return "skip_minor_change"
+        _log_revision_decision(
+            title=metadata.title,
+            action="revisions_appended",
+            current=current,
+            parsed=parsed,
+        )
         return "revisions_appended"
 
     now = datetime.now(timezone.utc)
@@ -333,14 +420,24 @@ def _process_member(
 
     if current is not None and current.content_hash == new_hash:
         # Absorb timestamp-only Wikipedia bumps without a new revision.
-        if (
-            metadata.article_date is not None
-            and current.article_date != metadata.article_date
-        ):
-            current.article_date = metadata.article_date
-            session.add(current)
+        _bump_article_date(current, article_date=metadata.article_date)
+        session.add(current)
         session.add(existing)
         return "skip_same_hash"
+
+    if not _significant_vs_current():
+        # Tiny wiki edits: keep pinned content; only advance article_date watermark.
+        assert current is not None
+        _bump_article_date(current, article_date=metadata.article_date)
+        session.add(current)
+        session.add(existing)
+        _log_revision_decision(
+            title=metadata.title,
+            action="skip_minor_change",
+            current=current,
+            parsed=parsed,
+        )
+        return "skip_minor_change"
 
     # Content may have reverted to an older revision — reuse that row.
     prior = session.exec(
@@ -350,14 +447,17 @@ def _process_member(
         )
     ).first()
     if prior is not None:
-        if (
-            metadata.article_date is not None
-            and prior.article_date != metadata.article_date
-        ):
-            prior.article_date = metadata.article_date
-            session.add(prior)
+        _bump_article_date(prior, article_date=metadata.article_date)
+        session.add(prior)
         existing.current_revision_id = int(prior.id)
         session.add(existing)
+        _log_revision_decision(
+            title=metadata.title,
+            action="revisions_appended",
+            current=current,
+            parsed=parsed,
+            reused_prior=True,
+        )
         return "revisions_appended"
 
     revision = _build_revision(
@@ -369,6 +469,12 @@ def _process_member(
     session.flush()
     existing.current_revision_id = int(revision.id)
     session.add(existing)
+    _log_revision_decision(
+        title=metadata.title,
+        action="revisions_appended",
+        current=current,
+        parsed=parsed,
+    )
     return "revisions_appended"
 
 
