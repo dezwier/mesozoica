@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
 
 import '../../models/dinosaur.dart';
-import '../../models/dinosaur_article.dart';
-import '../../services/dinosaur_service.dart';
-import '../common/drawer_sheet_sizes.dart';
-import 'dinosaur_article_html_view.dart';
+import 'dinosaur_wikipedia_view.dart';
 
-class DinosaurArticleDrawer extends StatefulWidget {
+class DinosaurArticleDrawer extends StatelessWidget {
   const DinosaurArticleDrawer({super.key, required this.dinosaur});
 
   final DinosaurSummary dinosaur;
+
+  /// Sheet height as a fraction of the screen — tall enough to read articles.
+  static const double _heightFraction = 0.9;
 
   static Future<void> show(
     BuildContext context, {
@@ -29,107 +29,48 @@ class DinosaurArticleDrawer extends StatefulWidget {
   }
 
   @override
-  State<DinosaurArticleDrawer> createState() => _DinosaurArticleDrawerState();
-}
-
-class _DinosaurArticleDrawerState extends State<DinosaurArticleDrawer> {
-  final DinosaurService _service = DinosaurService();
-  late Future<DinosaurArticle> _articleFuture;
-
-  @override
-  void initState() {
-    super.initState();
-    _articleFuture = _service.fetchDinosaurArticle(widget.dinosaur.id);
-  }
-
-  @override
-  void dispose() {
-    _service.dispose();
-    super.dispose();
-  }
-
-  void _retry() {
-    setState(() {
-      _articleFuture = _service.fetchDinosaurArticle(widget.dinosaur.id);
-    });
-  }
-
-  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final title = dinosaur.wikipediaTitle.trim();
 
-    return DraggableScrollableSheet(
-      expand: false,
-      initialChildSize: DrawerSheetSizes.initialChildSize,
-      minChildSize: DrawerSheetSizes.minChildSize,
-      maxChildSize: DrawerSheetSizes.maxChildSize,
-      builder: (context, scrollController) {
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    widget.dinosaur.name,
-                    style: theme.textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    'Wikipedia · ${widget.dinosaur.wikipediaTitle}',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                ],
+    // Fixed height (not DraggableScrollableSheet) so the WebView owns
+    // vertical scroll gestures instead of competing with sheet dragging.
+    return SizedBox(
+      height: MediaQuery.sizeOf(context).height * _heightFraction,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(1),
+                gradient: LinearGradient(
+                  colors: [
+                    colorScheme.outlineVariant.withValues(alpha: 0),
+                    colorScheme.outlineVariant.withValues(alpha: 0.7),
+                    colorScheme.outlineVariant.withValues(alpha: 0),
+                  ],
+                ),
               ),
+              child: const SizedBox(height: 1),
             ),
-            const Divider(height: 1),
-            Expanded(
-              child: FutureBuilder<DinosaurArticle>(
-                future: _articleFuture,
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
-
-                  if (snapshot.hasError) {
-                    return _MessagePane(
-                      icon: Icons.cloud_off_outlined,
-                      message: snapshot.error is DinosaurServiceException
-                          ? (snapshot.error! as DinosaurServiceException).message
-                          : 'Could not load the article.',
-                      actionLabel: 'Retry',
-                      onAction: _retry,
-                    );
-                  }
-
-                  final article = snapshot.data?.article;
-                  if (article == null || article.trim().isEmpty) {
-                    return _MessagePane(
-                      icon: Icons.article_outlined,
-                      message:
-                          'No Wikipedia article is available for this dinosaur yet.',
-                      actionLabel: 'Retry',
-                      onAction: _retry,
-                    );
-                  }
-
-                  return DinosaurArticleHtmlView(
-                    html: article,
-                    scrollController: scrollController,
-                  );
-                },
-              ),
-            ),
-          ],
-        );
-      },
+          ),
+          Expanded(
+            child: title.isEmpty
+                ? const _MessagePane(
+                    icon: Icons.article_outlined,
+                    message:
+                        'No Wikipedia article is linked for this dinosaur yet.',
+                  )
+                : DinosaurWikipediaView(
+                    wikipediaTitle: title,
+                    preferDark: theme.brightness == Brightness.dark,
+                  ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -138,14 +79,10 @@ class _MessagePane extends StatelessWidget {
   const _MessagePane({
     required this.icon,
     required this.message,
-    required this.actionLabel,
-    required this.onAction,
   });
 
   final IconData icon;
   final String message;
-  final String actionLabel;
-  final VoidCallback onAction;
 
   @override
   Widget build(BuildContext context) {
@@ -162,8 +99,6 @@ class _MessagePane extends StatelessWidget {
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.bodyLarge,
             ),
-            const SizedBox(height: 16),
-            FilledButton(onPressed: onAction, child: Text(actionLabel)),
           ],
         ),
       ),
