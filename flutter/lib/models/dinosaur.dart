@@ -33,6 +33,7 @@ class DinosaurSummary {
     this.cladogram = const {},
     this.mainImageUrl,
     this.insertDate,
+    this.articleDate,
     this.createdAt,
     this.version,
     this.status,
@@ -56,6 +57,9 @@ class DinosaurSummary {
 
   /// When the catalog dinosaur_type row was first inserted.
   final DateTime? insertDate;
+
+  /// Wikipedia article timestamp for this card's content revision.
+  final DateTime? articleDate;
 
   /// Inventory reconstruction time; null for catalog rows.
   final DateTime? createdAt;
@@ -115,6 +119,7 @@ class DinosaurSummary {
       cladogram: cladogram,
       mainImageUrl: thumb.mainImageUrl ?? mainImageUrl,
       insertDate: insertDate,
+      articleDate: articleDate,
       createdAt: thumb.createdAt,
       version: thumb.version,
       status: status,
@@ -139,6 +144,7 @@ class DinosaurSummary {
       cladogram: cladogram,
       mainImageUrl: mainImageUrl,
       insertDate: insertDate,
+      articleDate: articleDate,
       createdAt: createdAt,
       version: version,
       status: created.status ?? status,
@@ -178,6 +184,7 @@ class DinosaurSummary {
       cladogram: Map<String, dynamic>.from(json['cladogram'] as Map? ?? {}),
       mainImageUrl: json['main_image_url'] as String?,
       insertDate: _parseDate(json['insert_date']),
+      articleDate: _parseDate(json['article_date']),
       createdAt: _parseDate(json['created_at']),
       version: (json['version'] as String?)?.trim().isNotEmpty == true
           ? (json['version'] as String).trim()

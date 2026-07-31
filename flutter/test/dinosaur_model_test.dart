@@ -114,4 +114,15 @@ void main() {
     });
     expect(dino.insertDate, DateTime.utc(2024, 6, 15, 12));
   });
+
+  test('fromJson parses article_date', () {
+    final dino = DinosaurSummary.fromJson({
+      'id': 20,
+      'name': 'Triceratops',
+      'wikipedia_title': 'Triceratops',
+      'insert_date': '2026-07-01T12:00:00Z',
+      'article_date': '2026-07-27T20:07:44.000Z',
+    });
+    expect(dino.articleDate, DateTime.utc(2026, 7, 27, 20, 7, 44));
+  });
 }

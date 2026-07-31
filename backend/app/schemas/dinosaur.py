@@ -38,6 +38,9 @@ class DinosaurSummary(BaseModel):
     main_image_url: str | None = None
     # When the dinosaur_type catalog row was first inserted (Wikipedia snapshot anchor).
     insert_date: datetime | None = None
+    # Wikipedia article timestamp for the content revision shown on this card
+    # (pinned revision for inventory; current revision for catalog).
+    article_date: datetime | None = None
     # Inventory occurrence reconstruction time; null for catalog rows.
     created_at: datetime | None = None
     # Curated image version folder; set for inventory occurrences.

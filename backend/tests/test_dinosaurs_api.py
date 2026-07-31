@@ -67,6 +67,8 @@ def test_list_dinosaurs_returns_summary_fields(client, session):
     assert item["created_at"] is None
     assert item["insert_date"] is not None
     assert item["insert_date"].startswith("20")
+    assert item["article_date"] is not None
+    assert item["article_date"].startswith("2026-07-08")
 
 
 def test_list_dinosaurs_defaults_to_catalog_mode(client, session):

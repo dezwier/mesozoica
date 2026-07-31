@@ -48,7 +48,10 @@ class _DinosaurArticleDrawerState extends State<DinosaurArticleDrawer> {
   void initState() {
     super.initState();
     _service = widget.dinosaurService ?? DinosaurService();
-    _asOf = widget.dinosaur.insertDate;
+    // Prefer the content revision's Wikipedia timestamp (pinned for inventory
+    // occurrences). insertDate is type-level and shared across all cards of a
+    // genus, so it must not be the primary as-of for inventory.
+    _asOf = widget.dinosaur.articleDate ?? widget.dinosaur.insertDate;
     if (_asOf == null) {
       _resolveAsOf();
     }
@@ -57,29 +60,18 @@ class _DinosaurArticleDrawerState extends State<DinosaurArticleDrawer> {
   Future<void> _resolveAsOf() async {
     setState(() => _resolvingAsOf = true);
     try {
-      try {
-        final fresh = await _service.fetchDinosaurById(_typeId);
-        if (fresh.insertDate != null) {
-          if (!mounted) return;
-          setState(() {
-            _asOf = fresh.insertDate;
-            _resolvingAsOf = false;
-          });
-          return;
-        }
-      } catch (_) {
-        // Fall through to article_date (available on production today).
-      }
-
       final article = await _service.fetchDinosaurArticle(_typeId);
       if (!mounted) return;
       setState(() {
-        _asOf = article.articleDate;
+        _asOf = article.articleDate ?? widget.dinosaur.insertDate;
         _resolvingAsOf = false;
       });
     } catch (_) {
       if (!mounted) return;
-      setState(() => _resolvingAsOf = false);
+      setState(() {
+        _asOf = widget.dinosaur.insertDate;
+        _resolvingAsOf = false;
+      });
     }
   }
 
