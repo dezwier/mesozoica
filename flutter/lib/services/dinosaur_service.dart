@@ -40,6 +40,11 @@ class DinosaurService {
     double? maOlder,
     bool hasCustomImage = false,
     bool? llmEnriched,
+    Set<String> diets = const {},
+    double? lengthMMin,
+    double? lengthMMax,
+    double? massKgMin,
+    double? massKgMax,
     String mode = 'inventory',
   }) async {
     final uri = AppConfig.dinosaursUri(
@@ -52,6 +57,11 @@ class DinosaurService {
       maOlder: maOlder,
       hasCustomImage: hasCustomImage,
       llmEnriched: llmEnriched,
+      diets: diets,
+      lengthMMin: lengthMMin,
+      lengthMMax: lengthMMax,
+      massKgMin: massKgMin,
+      massKgMax: massKgMax,
       mode: mode,
     );
     if (kDebugMode) {

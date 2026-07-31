@@ -73,9 +73,30 @@ class AppConfig {
     double? maOlder,
     bool hasCustomImage = false,
     bool? llmEnriched,
+    Set<String> diets = const {},
+    double? lengthMMin,
+    double? lengthMMax,
+    double? massKgMin,
+    double? massKgMax,
     String mode = 'catalog',
   }) =>
-      ApiEndpoints.dinosaursUri(limit: limit, offset: offset, sort: sort, seed: seed, q: q, maYounger: maYounger, maOlder: maOlder, hasCustomImage: hasCustomImage, llmEnriched: llmEnriched, mode: mode);
+      ApiEndpoints.dinosaursUri(
+        limit: limit,
+        offset: offset,
+        sort: sort,
+        seed: seed,
+        q: q,
+        maYounger: maYounger,
+        maOlder: maOlder,
+        hasCustomImage: hasCustomImage,
+        llmEnriched: llmEnriched,
+        diets: diets,
+        lengthMMin: lengthMMin,
+        lengthMMax: lengthMMax,
+        massKgMin: massKgMin,
+        massKgMax: massKgMax,
+        mode: mode,
+      );
 
   static Uri dinosaurArticleUri(int id) =>
       ApiEndpoints.dinosaurArticleUri(id);

@@ -662,3 +662,181 @@ def test_list_dinosaurs_filter_llm_enriched(client, session):
     assert response.status_code == 200
     assert response.json()["total"] == 1
     assert response.json()["items"][0]["name"] == "Stegosaurus"
+
+
+def test_list_dinosaurs_filter_diet(client, session):
+    session.add_all(
+        [
+            DinosaurType(
+                name="Tyrannosaurus",
+                wikipedia_page_id=7101,
+                wikipedia_title="Tyrannosaurus",
+                diet_type="Carnivore",
+            ),
+            DinosaurType(
+                name="Triceratops",
+                wikipedia_page_id=7102,
+                wikipedia_title="Triceratops",
+                diet_type="herbivore",
+            ),
+            DinosaurType(
+                name="Omnivorasaurus",
+                wikipedia_page_id=7103,
+                wikipedia_title="Omnivorasaurus",
+                diet_type="omnivore",
+            ),
+        ]
+    )
+    session.commit()
+
+    response = client.get(
+        "/api/v1/dinosaurs",
+        params=[("diet", "carnivore"), ("diet", "herbivore"), ("sort", "name")],
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["total"] == 2
+    assert [item["name"] for item in body["items"]] == [
+        "Triceratops",
+        "Tyrannosaurus",
+    ]
+
+
+def test_list_dinosaurs_filter_length_and_mass(client, session):
+    session.add_all(
+        [
+            DinosaurType(
+                name="Tyrannosaurus",
+                wikipedia_page_id=7201,
+                wikipedia_title="Tyrannosaurus",
+                length="12 m",
+                mass="7 t",
+            ),
+            DinosaurType(
+                name="Compsognathus",
+                wikipedia_page_id=7202,
+                wikipedia_title="Compsognathus",
+                length="1 m",
+                mass="3 kg",
+            ),
+            DinosaurType(
+                name="Brachiosaurus",
+                wikipedia_page_id=7203,
+                wikipedia_title="Brachiosaurus",
+                length="~20 – 25 m",
+                mass="~30 – 50 tonnes",
+            ),
+            DinosaurType(
+                name="Unknownosaurus",
+                wikipedia_page_id=7204,
+                wikipedia_title="Unknownosaurus",
+                length=None,
+                mass=None,
+            ),
+        ]
+    )
+    session.commit()
+
+    response = client.get(
+        "/api/v1/dinosaurs",
+        params={
+            "sort": "name",
+            "length_m_min": 8,
+            "length_m_max": 15,
+        },
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["total"] == 1
+    assert body["items"][0]["name"] == "Tyrannosaurus"
+
+    response = client.get(
+        "/api/v1/dinosaurs",
+        params={
+            "sort": "name",
+            "mass_kg_min": 20000,
+            "mass_kg_max": 60000,
+        },
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["total"] == 1
+    assert body["items"][0]["name"] == "Brachiosaurus"
+
+    # Overlap: Brachiosaurus 20–25 m overlaps 22–40.
+    response = client.get(
+        "/api/v1/dinosaurs",
+        params={
+            "sort": "name",
+            "length_m_min": 22,
+            "length_m_max": 40,
+        },
+    )
+    assert response.status_code == 200
+    assert [item["name"] for item in response.json()["items"]] == ["Brachiosaurus"]
+
+
+def test_list_dinosaurs_filter_diet_and_size_inventory(client, session):
+    from app.core.security import create_access_token
+    from app.models.dinosaur import Dinosaur
+    from app.models.user import User
+    from app.models.user_dinosaur import USER_DINOSAUR_ROLE_MODELLED, UserDinosaur
+
+    carnivore = DinosaurType(
+        name="Tyrannosaurus",
+        wikipedia_page_id=7301,
+        wikipedia_title="Tyrannosaurus",
+        diet_type="carnivore",
+        length="12 m",
+        mass="7 t",
+    )
+    herbivore = DinosaurType(
+        name="Triceratops",
+        wikipedia_page_id=7302,
+        wikipedia_title="Triceratops",
+        diet_type="herbivore",
+        length="9 m",
+        mass="6 t",
+    )
+    session.add_all([carnivore, herbivore])
+    session.commit()
+    session.refresh(carnivore)
+    session.refresh(herbivore)
+
+    user = User(username="size-filter", email="size@example.com", password="x")
+    session.add(user)
+    session.commit()
+    session.refresh(user)
+
+    for dino_type in (carnivore, herbivore):
+        occurrence = Dinosaur(dinosaur_type_id=int(dino_type.id))
+        session.add(occurrence)
+        session.commit()
+        session.refresh(occurrence)
+        session.add(
+            UserDinosaur(
+                user_id=int(user.id),
+                dinosaur_id=int(occurrence.id),
+                role=USER_DINOSAUR_ROLE_MODELLED,
+            )
+        )
+    session.commit()
+
+    token = create_access_token({"sub": str(user.id)})
+    response = client.get(
+        "/api/v1/dinosaurs",
+        params={
+            "mode": "inventory",
+            "sort": "name",
+            "diet": "carnivore",
+            "length_m_min": 10,
+            "length_m_max": 15,
+            "mass_kg_min": 5000,
+            "mass_kg_max": 10000,
+        },
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["total"] == 1
+    assert body["items"][0]["name"] == "Tyrannosaurus"

@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 
 import '../../controllers/dinosaur_catalog_controller.dart';
+import '../../utils/display_text.dart';
 import '../cards/geologic_timeline.dart';
 import '../common/drawer_sheet_sizes.dart';
 import '../profile/settings_form_styles.dart';
+
+String dinosaurDietFilterLabel(String value) =>
+    toTitleCase(value.replaceAll('-', ' '));
 
 class DinosaurFilterSheet extends StatefulWidget {
   const DinosaurFilterSheet({
@@ -50,8 +54,9 @@ class _DinosaurFilterSheetState extends State<DinosaurFilterSheet> {
   late final TextEditingController _searchController;
   late String _pendingSearch;
   late RangeValues _pendingRange;
-  late bool _pendingOnlyCustomImage;
-  late bool _pendingOnlyLlmEnriched;
+  late Set<String> _pendingDiets;
+  late RangeValues _pendingLengthM;
+  late RangeValues _pendingMassT;
 
   @override
   void initState() {
@@ -62,8 +67,15 @@ class _DinosaurFilterSheetState extends State<DinosaurFilterSheet> {
       widget.initialFilters.maYounger,
       widget.initialFilters.maOlder,
     );
-    _pendingOnlyCustomImage = widget.initialFilters.onlyCustomImage;
-    _pendingOnlyLlmEnriched = widget.initialFilters.onlyLlmEnriched;
+    _pendingDiets = Set<String>.from(widget.initialFilters.diets);
+    _pendingLengthM = RangeValues(
+      widget.initialFilters.lengthMMin,
+      widget.initialFilters.lengthMMax,
+    );
+    _pendingMassT = RangeValues(
+      widget.initialFilters.massTMin,
+      widget.initialFilters.massTMax,
+    );
   }
 
   @override
@@ -77,8 +89,11 @@ class _DinosaurFilterSheetState extends State<DinosaurFilterSheet> {
       searchQuery: _pendingSearch.trim(),
       maYounger: _pendingRange.start,
       maOlder: _pendingRange.end,
-      onlyCustomImage: _pendingOnlyCustomImage,
-      onlyLlmEnriched: _pendingOnlyLlmEnriched,
+      diets: Set<String>.from(_pendingDiets),
+      lengthMMin: _pendingLengthM.start,
+      lengthMMax: _pendingLengthM.end,
+      massKgMin: _pendingMassT.start * 1000.0,
+      massKgMax: _pendingMassT.end * 1000.0,
     );
   }
 
@@ -95,9 +110,24 @@ class _DinosaurFilterSheetState extends State<DinosaurFilterSheet> {
         GeologicTimeline.mesozoicYoungerMa,
         GeologicTimeline.mesozoicOlderMa,
       );
-      _pendingOnlyCustomImage = true;
-      _pendingOnlyLlmEnriched = true;
+      _pendingDiets = {};
+      _pendingLengthM = const RangeValues(lengthMMinBound, lengthMMaxBound);
+      _pendingMassT = const RangeValues(massTMinBound, massTMaxBound);
     });
+  }
+
+  void _toggleDiet(String value, bool selected) {
+    _updatePending(() {
+      if (selected) {
+        _pendingDiets.add(value);
+      } else {
+        _pendingDiets.remove(value);
+      }
+    });
+  }
+
+  void _selectOnlyDiet(String value) {
+    _updatePending(() => _pendingDiets = {value});
   }
 
   @override
@@ -108,6 +138,8 @@ class _DinosaurFilterSheetState extends State<DinosaurFilterSheet> {
     final divisions =
         (GeologicTimeline.mesozoicOlderMa - GeologicTimeline.mesozoicYoungerMa)
             .round();
+    final lengthDivisions = (lengthMMaxBound - lengthMMinBound).round();
+    final massDivisions = (massTMaxBound - massTMinBound).round();
 
     return DraggableScrollableSheet(
       expand: false,
@@ -148,70 +180,93 @@ class _DinosaurFilterSheetState extends State<DinosaurFilterSheet> {
               ),
             _buildSearchField(context),
             const SizedBox(height: 20),
-            SettingsFormStyles.settingsRow(
+            _multiSelectRow(
               context: context,
-              label: 'Illustrated',
-              description: 'Hide cards using the placeholder illustration.',
-              controlWidth: 168,
-              control: SettingsFormStyles.densePopupField<bool>(
-                context: context,
-                outlineBorder: outlineBorder,
-                selectedChild: Text(
-                  _pendingOnlyCustomImage ? 'Illustrated only' : 'All',
-                  style: theme.textTheme.bodyMedium,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                entries: [
-                  DensePopupEntry(
-                    value: false,
-                    child: Text('All', style: theme.textTheme.bodyMedium),
-                  ),
-                  DensePopupEntry(
-                    value: true,
-                    child: Text(
-                      'Illustrated only',
-                      style: theme.textTheme.bodyMedium,
-                    ),
-                  ),
-                ],
-                onSelected: (value) {
-                  if (value == null) return;
-                  _updatePending(() => _pendingOnlyCustomImage = value);
-                },
-              ),
+              outlineBorder: outlineBorder,
+              label: 'Diet',
+              description: 'Feeding habit of the dinosaur.',
+              options: dinosaurDietFilterOptions,
+              selected: _pendingDiets,
+              onToggle: _toggleDiet,
+              onSelectOnly: _selectOnlyDiet,
             ),
             const SizedBox(height: 20),
-            SettingsFormStyles.settingsRow(
-              context: context,
-              label: 'Enriched',
-              description: 'Only show dinosaurs with LLM enrichment completed.',
-              controlWidth: 168,
-              control: SettingsFormStyles.densePopupField<bool>(
-                context: context,
-                outlineBorder: outlineBorder,
-                selectedChild: Text(
-                  _pendingOnlyLlmEnriched ? 'Enriched only' : 'All',
-                  style: theme.textTheme.bodyMedium,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                entries: [
-                  DensePopupEntry(
-                    value: false,
-                    child: Text('All', style: theme.textTheme.bodyMedium),
-                  ),
-                  DensePopupEntry(
-                    value: true,
-                    child: Text(
-                      'Enriched only',
-                      style: theme.textTheme.bodyMedium,
-                    ),
-                  ),
-                ],
-                onSelected: (value) {
-                  if (value == null) return;
-                  _updatePending(() => _pendingOnlyLlmEnriched = value);
-                },
+            Text(
+              'Length',
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
               ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              'Showing ${_formatMeters(_pendingLengthM.start)} – '
+              '${_formatMeters(_pendingLengthM.end)} m',
+              style: SettingsFormStyles.finePrintStyle(context),
+            ),
+            RangeSlider(
+              values: _pendingLengthM,
+              min: lengthMMinBound,
+              max: lengthMMaxBound,
+              divisions: lengthDivisions,
+              onChanged: (values) {
+                _updatePending(() => _pendingLengthM = values);
+              },
+            ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  '${lengthMMinBound.round()} m',
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                Text(
+                  '${lengthMMaxBound.round()} m',
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            Text(
+              'Mass',
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              'Showing ${_formatTonnes(_pendingMassT.start)} – '
+              '${_formatTonnes(_pendingMassT.end)} t',
+              style: SettingsFormStyles.finePrintStyle(context),
+            ),
+            RangeSlider(
+              values: _pendingMassT,
+              min: massTMinBound,
+              max: massTMaxBound,
+              divisions: massDivisions,
+              onChanged: (values) {
+                _updatePending(() => _pendingMassT = values);
+              },
+            ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  '${massTMinBound.round()} t',
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                Text(
+                  '${massTMaxBound.round()} t',
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 20),
             Text(
@@ -277,6 +332,47 @@ class _DinosaurFilterSheetState extends State<DinosaurFilterSheet> {
     );
   }
 
+  Widget _multiSelectRow({
+    required BuildContext context,
+    required InputBorder outlineBorder,
+    required String label,
+    required String description,
+    required List<String> options,
+    required Set<String> selected,
+    required void Function(String value, bool selected) onToggle,
+    required void Function(String value) onSelectOnly,
+  }) {
+    final theme = Theme.of(context);
+    return SettingsFormStyles.settingsRow(
+      context: context,
+      label: label,
+      description: description,
+      controlWidth: 168,
+      control: SettingsFormStyles.multiSelectDensePopup(
+        context: context,
+        outlineBorder: outlineBorder,
+        selectedChild: Text(
+          SettingsFormStyles.multiSelectSummary(
+            selectedCount: selected.length,
+            totalCount: options.length,
+          ),
+          style: theme.textTheme.bodyMedium,
+          overflow: TextOverflow.ellipsis,
+        ),
+        entries: [
+          for (final value in options)
+            MultiSelectPopupEntry(
+              value: value,
+              label: dinosaurDietFilterLabel(value),
+              selected: selected.contains(value),
+            ),
+        ],
+        onToggle: onToggle,
+        onSelectOnly: onSelectOnly,
+      ),
+    );
+  }
+
   Widget _buildSearchField(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
 
@@ -318,5 +414,15 @@ class _DinosaurFilterSheetState extends State<DinosaurFilterSheet> {
         ),
       ),
     );
+  }
+
+  String _formatMeters(double value) {
+    if (value == value.roundToDouble()) return '${value.round()}';
+    return value.toStringAsFixed(1);
+  }
+
+  String _formatTonnes(double value) {
+    if (value == value.roundToDouble()) return '${value.round()}';
+    return value.toStringAsFixed(1);
   }
 }

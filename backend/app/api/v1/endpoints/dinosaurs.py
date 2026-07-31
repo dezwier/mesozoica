@@ -50,6 +50,11 @@ def get_dinosaurs(
     ma_older: float | None = Query(default=None),
     has_custom_image: bool = Query(default=False),
     llm_enriched: bool | None = Query(default=None),
+    diet: list[str] | None = Query(default=None),
+    length_m_min: float | None = Query(default=None),
+    length_m_max: float | None = Query(default=None),
+    mass_kg_min: float | None = Query(default=None),
+    mass_kg_max: float | None = Query(default=None),
     mode: ListMode = Query(default="catalog"),
 ) -> DinosaurListResponse:
     if sort not in ("name", "random"):
@@ -68,6 +73,11 @@ def get_dinosaurs(
         ma_older=ma_older,
         has_custom_image=has_custom_image,
         llm_enriched=llm_enriched,
+        diet=diet,
+        length_m_min=length_m_min,
+        length_m_max=length_m_max,
+        mass_kg_min=mass_kg_min,
+        mass_kg_max=mass_kg_max,
         mode=mode,
         viewer_user_id=viewer_user_id,
     )

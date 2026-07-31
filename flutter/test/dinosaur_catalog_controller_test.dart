@@ -54,8 +54,11 @@ void main() {
     expect(capturedUri!.queryParameters.containsKey('q'), isFalse);
     expect(capturedUri!.queryParameters.containsKey('ma_younger'), isFalse);
     expect(capturedUri!.queryParameters.containsKey('ma_older'), isFalse);
-    expect(capturedUri!.queryParameters['has_custom_image'], 'true');
-    expect(capturedUri!.queryParameters['llm_enriched'], 'true');
+    expect(capturedUri!.queryParameters.containsKey('has_custom_image'), isFalse);
+    expect(capturedUri!.queryParameters.containsKey('llm_enriched'), isFalse);
+    expect(capturedUri!.queryParameters.containsKey('diet'), isFalse);
+    expect(capturedUri!.queryParameters.containsKey('length_m_min'), isFalse);
+    expect(capturedUri!.queryParameters.containsKey('mass_kg_min'), isFalse);
     expect(capturedUri!.queryParameters['mode'], 'inventory');
     expect(controller.items.map((d) => d.name), ['Velociraptor', 'Tyrannosaurus']);
     expect(controller.mode, DinoScreenMode.inventory);
@@ -133,7 +136,6 @@ void main() {
     expect(capturedUri!.queryParameters['q'], 'tyranno');
     expect(capturedUri!.queryParameters.containsKey('ma_younger'), isFalse);
     expect(capturedUri!.queryParameters.containsKey('ma_older'), isFalse);
-    expect(capturedUri!.queryParameters['has_custom_image'], 'true');
     expect(controller.hasActiveFilters, isTrue);
     expect(controller.total, 1);
     expect(controller.items.single.name, 'Tyrannosaurus');
@@ -170,7 +172,6 @@ void main() {
     expect(capturedUris.last.queryParameters.containsKey('q'), isFalse);
     expect(capturedUris.last.queryParameters.containsKey('ma_younger'), isFalse);
     expect(capturedUris.last.queryParameters['sort'], 'random');
-    expect(capturedUris.last.queryParameters['has_custom_image'], 'true');
     expect(controller.hasActiveFilters, isFalse);
 
     controller.dispose();
@@ -199,12 +200,11 @@ void main() {
 
     expect(capturedUri!.queryParameters.containsKey('ma_younger'), isFalse);
     expect(capturedUri!.queryParameters.containsKey('ma_older'), isFalse);
-    expect(capturedUri!.queryParameters['has_custom_image'], 'true');
 
     controller.dispose();
   });
 
-  test('onlyCustomImage false omits has_custom_image param', () async {
+  test('diet and size filters are sent as query params', () async {
     Uri? capturedUri;
     final service = DinosaurService(
       client: MockClient((request) async {
@@ -224,17 +224,28 @@ void main() {
 
     final controller = DinosaurCatalogController(service: service);
     await controller.applyFilters(
-      const DinosaurCatalogFilters(onlyCustomImage: false),
+      const DinosaurCatalogFilters(
+        diets: {'carnivore', 'herbivore'},
+        lengthMMin: 5,
+        lengthMMax: 15,
+        massKgMin: 1000,
+        massKgMax: 20000,
+      ),
     );
 
-    expect(capturedUri!.queryParameters.containsKey('has_custom_image'), isFalse);
-    expect(capturedUri!.queryParameters['llm_enriched'], 'true');
+    expect(capturedUri, isNotNull);
+    final diets = capturedUri!.queryParametersAll['diet'] ?? const [];
+    expect(diets.toSet(), {'carnivore', 'herbivore'});
+    expect(capturedUri!.queryParameters['length_m_min'], '5.0');
+    expect(capturedUri!.queryParameters['length_m_max'], '15.0');
+    expect(capturedUri!.queryParameters['mass_kg_min'], '1000.0');
+    expect(capturedUri!.queryParameters['mass_kg_max'], '20000.0');
     expect(controller.hasActiveFilters, isTrue);
 
     controller.dispose();
   });
 
-  test('onlyLlmEnriched false sends llm_enriched=false', () async {
+  test('default size ranges omit length and mass params', () async {
     Uri? capturedUri;
     final service = DinosaurService(
       client: MockClient((request) async {
@@ -254,94 +265,13 @@ void main() {
 
     final controller = DinosaurCatalogController(service: service);
     await controller.applyFilters(
-      const DinosaurCatalogFilters(onlyLlmEnriched: false),
+      const DinosaurCatalogFilters(diets: {}),
     );
 
-    expect(capturedUri!.queryParameters['llm_enriched'], 'false');
-    expect(controller.hasActiveFilters, isTrue);
-
-    controller.dispose();
-  });
-
-  test('onlyCustomImage scans client-side when API ignores filter', () async {
-    final capturedUris = <Uri>[];
-    final service = DinosaurService(
-      client: MockClient((request) async {
-        capturedUris.add(request.url);
-        final limit = int.parse(request.url.queryParameters['limit'] ?? '20');
-        final offset = int.parse(request.url.queryParameters['offset'] ?? '0');
-        if (limit == 20 && offset == 0) {
-          return http.Response(
-            jsonEncode({
-              'items': [
-                {
-                  'id': 1,
-                  'name': 'Alpha',
-                  'wikipedia_title': 'Alpha',
-                  'cladogram': {},
-                },
-                {
-                  'id': 2,
-                  'name': 'Beta',
-                  'wikipedia_title': 'Beta',
-                  'cladogram': {},
-                  'main_image_url': curatedImageUrl,
-                },
-              ],
-              'total': 3,
-              'limit': 20,
-              'offset': 0,
-              'has_next': true,
-            }),
-            200,
-          );
-        }
-        return http.Response(
-          jsonEncode({
-            'items': [
-              {
-                'id': 2,
-                'name': 'Beta',
-                'wikipedia_title': 'Beta',
-                'cladogram': {},
-                'main_image_url': curatedImageUrl,
-              },
-              {
-                'id': 3,
-                'name': 'Gamma',
-                'wikipedia_title': 'Gamma',
-                'cladogram': {},
-                'main_image_url': curatedImageUrl,
-              },
-              {
-                'id': 1,
-                'name': 'Alpha',
-                'wikipedia_title': 'Alpha',
-                'cladogram': {},
-              },
-            ],
-            'total': 3,
-            'limit': 500,
-            'offset': 0,
-            'has_next': false,
-          }),
-          200,
-        );
-      }),
-    );
-
-    final controller = DinosaurCatalogController(service: service);
-    await controller.load();
-
-    expect(capturedUris.length, 2);
-    expect(capturedUris.first.queryParameters['has_custom_image'], 'true');
-    expect(capturedUris.last.queryParameters.containsKey('has_custom_image'), isFalse);
-    expect(controller.total, 2);
-    expect(
-      controller.items.map((d) => d.name).toSet(),
-      {'Beta', 'Gamma'},
-    );
-    expect(controller.hasMore, isFalse);
+    expect(capturedUri!.queryParameters.containsKey('length_m_min'), isFalse);
+    expect(capturedUri!.queryParameters.containsKey('mass_kg_min'), isFalse);
+    expect(capturedUri!.queryParameters.containsKey('diet'), isFalse);
+    expect(controller.hasActiveFilters, isFalse);
 
     controller.dispose();
   });

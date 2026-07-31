@@ -5,7 +5,6 @@ import '../controllers/dinosaur_catalog_controller.dart';
 import '../models/dinosaur.dart';
 import '../models/phylo_tree.dart';
 import '../services/dinosaur_service.dart';
-import '../utils/curated_image_url.dart';
 import '../widgets/tree/fractal_tree_layout.dart';
 import '../utils/phylo_tree_builder.dart';
 
@@ -30,7 +29,6 @@ class PhyloTreeController extends ChangeNotifier {
   int _unplacedCount = 0;
   int _totalGenera = 0;
   DinosaurCatalogFilters _filters = DinosaurCatalogFilters.defaults;
-  bool _useClientCustomImageFilter = false;
 
   bool get loading => _loading;
   bool get loaded => _loaded;
@@ -56,7 +54,6 @@ class PhyloTreeController extends ChangeNotifier {
   Future<void> reload() async {
     _loading = true;
     _error = null;
-    _useClientCustomImageFilter = false;
     notifyListeners();
 
     try {
@@ -103,10 +100,6 @@ class PhyloTreeController extends ChangeNotifier {
   }
 
   Future<List<DinosaurSummary>> _fetchAllDinosaurs() async {
-    if (_filters.onlyCustomImage && _useClientCustomImageFilter) {
-      return _fetchAllCuratedClientSide();
-    }
-
     final all = <DinosaurSummary>[];
     var offset = 0;
     var hasMore = true;
@@ -121,22 +114,12 @@ class PhyloTreeController extends ChangeNotifier {
         maYounger:
             !hasSearch && _filters.hasTimeFilter ? _filters.maYounger : null,
         maOlder: !hasSearch && _filters.hasTimeFilter ? _filters.maOlder : null,
-        hasCustomImage: _filters.onlyCustomImage,
-        llmEnriched: _filters.onlyLlmEnriched,
+        diets: _filters.diets,
+        lengthMMin: _filters.hasLengthFilter ? _filters.lengthMMin : null,
+        lengthMMax: _filters.hasLengthFilter ? _filters.lengthMMax : null,
+        massKgMin: _filters.hasMassFilter ? _filters.massKgMin : null,
+        massKgMax: _filters.hasMassFilter ? _filters.massKgMax : null,
       );
-
-      if (_filters.onlyCustomImage &&
-          offset == 0 &&
-          !_serverHonorsCustomImageFilter(response)) {
-        _useClientCustomImageFilter = true;
-        if (kDebugMode) {
-          debugPrint(
-            'PhyloTreeController: API ignored has_custom_image; '
-            'scanning catalog client-side',
-          );
-        }
-        return _fetchAllCuratedClientSide();
-      }
 
       all.addAll(response.items);
       offset += response.items.length;
@@ -145,44 +128,6 @@ class PhyloTreeController extends ChangeNotifier {
     }
 
     return all;
-  }
-
-  bool _serverHonorsCustomImageFilter(DinosaurListResponse response) {
-    return !response.items.any(
-      (dinosaur) =>
-          !isCuratedDinosaurImageUrl(dinosaur.mainImageUrl),
-    );
-  }
-
-  Future<List<DinosaurSummary>> _fetchAllCuratedClientSide() async {
-    final hasSearch = _filters.searchQuery.trim().isNotEmpty;
-    final curated = <DinosaurSummary>[];
-    var offset = 0;
-    var hasMore = true;
-
-    while (hasMore) {
-      final response = await _service.fetchDinosaurs(
-        limit: _pageSize,
-        offset: offset,
-        sort: 'name',
-        q: hasSearch ? _filters.searchQuery.trim() : null,
-        maYounger:
-            !hasSearch && _filters.hasTimeFilter ? _filters.maYounger : null,
-        maOlder: !hasSearch && _filters.hasTimeFilter ? _filters.maOlder : null,
-        llmEnriched: _filters.onlyLlmEnriched,
-      );
-      curated.addAll(
-        response.items.where(
-          (dinosaur) =>
-              isCuratedDinosaurImageUrl(dinosaur.mainImageUrl),
-        ),
-      );
-      offset += response.items.length;
-      hasMore = response.hasMore;
-      if (response.items.isEmpty) break;
-    }
-
-    return curated;
   }
 
   @override

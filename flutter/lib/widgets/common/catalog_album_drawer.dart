@@ -11,11 +11,13 @@ class CatalogAlbumDrawer extends StatelessWidget {
     required this.scrollController,
     required this.body,
     this.title = 'Catalog',
+    this.leading,
   });
 
   final ScrollController scrollController;
   final Widget body;
   final String title;
+  final Widget? leading;
 
   /// Catalog album opens taller than filter sheets.
   static const double initialChildSize = 0.9;
@@ -74,6 +76,11 @@ class CatalogAlbumDrawer extends StatelessWidget {
                       color: headerColor,
                     ),
                   ),
+                  if (leading != null)
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: leading!,
+                    ),
                   Align(
                     alignment: Alignment.centerRight,
                     child: IconButton(

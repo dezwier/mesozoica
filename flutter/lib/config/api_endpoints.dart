@@ -15,34 +15,50 @@ class ApiEndpoints {
     double? maOlder,
     bool hasCustomImage = false,
     bool? llmEnriched,
+    Set<String> diets = const {},
+    double? lengthMMin,
+    double? lengthMMax,
+    double? massKgMin,
+    double? massKgMax,
     String mode = 'catalog',
   }) {
-    final params = <String, String>{
-      'limit': '$limit',
-      'offset': '$offset',
-      'sort': sort,
-      'mode': mode,
-    };
+    final parts = <String>[
+      'limit=$limit',
+      'offset=$offset',
+      'sort=${Uri.encodeQueryComponent(sort)}',
+      'mode=${Uri.encodeQueryComponent(mode)}',
+    ];
     if (seed != null && seed.isNotEmpty) {
-      params['seed'] = seed;
+      parts.add('seed=${Uri.encodeQueryComponent(seed)}');
     }
     final trimmedQuery = q?.trim();
     if (trimmedQuery != null && trimmedQuery.isNotEmpty) {
-      params['q'] = trimmedQuery;
+      parts.add('q=${Uri.encodeQueryComponent(trimmedQuery)}');
     }
     if (maYounger != null && maOlder != null) {
-      params['ma_younger'] = '$maYounger';
-      params['ma_older'] = '$maOlder';
+      parts.add('ma_younger=$maYounger');
+      parts.add('ma_older=$maOlder');
     }
     if (hasCustomImage) {
-      params['has_custom_image'] = 'true';
+      parts.add('has_custom_image=true');
     }
     if (llmEnriched != null) {
-      params['llm_enriched'] = llmEnriched ? 'true' : 'false';
+      parts.add('llm_enriched=${llmEnriched ? 'true' : 'false'}');
     }
-    return Uri.parse(
-      '${AppConfig.baseApiUrl}/api/v1/dinosaurs',
-    ).replace(queryParameters: params);
+    if (lengthMMin != null && lengthMMax != null) {
+      parts.add('length_m_min=$lengthMMin');
+      parts.add('length_m_max=$lengthMMax');
+    }
+    if (massKgMin != null && massKgMax != null) {
+      parts.add('mass_kg_min=$massKgMin');
+      parts.add('mass_kg_max=$massKgMax');
+    }
+    for (final value in diets) {
+      final trimmed = value.trim();
+      if (trimmed.isEmpty) continue;
+      parts.add('diet=${Uri.encodeQueryComponent(trimmed)}');
+    }
+    return Uri.parse('${AppConfig.baseApiUrl}/api/v1/dinosaurs?${parts.join('&')}');
   }
 
   static Uri dinosaurArticleUri(int id) =>

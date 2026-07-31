@@ -16,6 +16,11 @@ from app.models.dinosaur_type import DinosaurType
 from app.models.user_dinosaur import UserDinosaur, role_to_status
 from app.services.curated_image_service.resolve import resolve_dinosaur_card_image_url
 from app.services.dinosaur_image_service.sync import CURATED_MEDIA_PATH
+from app.services.dinosaur_service.size_parse import (
+    parse_length_m,
+    parse_mass_kg,
+    ranges_overlap,
+)
 
 SortOption = Literal["name", "random"]
 ListMode = Literal["catalog", "inventory"]
@@ -53,6 +58,11 @@ def list_dinosaurs(
     ma_older: float | None = None,
     has_custom_image: bool = False,
     llm_enriched: bool | None = None,
+    diet: list[str] | None = None,
+    length_m_min: float | None = None,
+    length_m_max: float | None = None,
+    mass_kg_min: float | None = None,
+    mass_kg_max: float | None = None,
     mode: ListMode = "catalog",
     viewer_user_id: int | None = None,
 ) -> tuple[list[DinosaurListRow], int]:
@@ -69,6 +79,11 @@ def list_dinosaurs(
             ma_older=ma_older,
             has_custom_image=has_custom_image,
             llm_enriched=llm_enriched,
+            diet=diet,
+            length_m_min=length_m_min,
+            length_m_max=length_m_max,
+            mass_kg_min=mass_kg_min,
+            mass_kg_max=mass_kg_max,
             viewer_user_id=viewer_user_id,
         )
     return _list_catalog_dinosaurs(
@@ -82,6 +97,11 @@ def list_dinosaurs(
         ma_older=ma_older,
         has_custom_image=has_custom_image,
         llm_enriched=llm_enriched,
+        diet=diet,
+        length_m_min=length_m_min,
+        length_m_max=length_m_max,
+        mass_kg_min=mass_kg_min,
+        mass_kg_max=mass_kg_max,
     )
 
 
@@ -97,6 +117,11 @@ def _list_catalog_dinosaurs(
     ma_older: float | None,
     has_custom_image: bool,
     llm_enriched: bool | None,
+    diet: list[str] | None,
+    length_m_min: float | None,
+    length_m_max: float | None,
+    mass_kg_min: float | None,
+    mass_kg_max: float | None,
 ) -> tuple[list[DinosaurListRow], int]:
     capped_limit = max(1, min(limit, 500))
     capped_offset = max(0, offset)
@@ -106,6 +131,11 @@ def _list_catalog_dinosaurs(
         ma_older=ma_older,
     )
     effective_time_filter = time_filter_active and normalized_q is None
+    diets = _normalize_diets(diet)
+    length_range = _normalize_size_range(length_m_min, length_m_max, label="length_m")
+    mass_range = _normalize_size_range(mass_kg_min, mass_kg_max, label="mass_kg")
+    size_filter_active = length_range is not None or mass_range is not None
+
     filtered = _filtered_select(
         normalized_q=normalized_q,
         ma_younger=younger,
@@ -113,17 +143,48 @@ def _list_catalog_dinosaurs(
         time_filter_active=effective_time_filter,
         has_custom_image=has_custom_image,
         llm_enriched=llm_enriched,
+        diets=diets,
     )
+
+    from app.services.curated_image_service.versions import ORIGINAL_VERSION
+
+    if size_filter_active:
+        all_rows = list(session.exec(filtered).all())
+        all_rows = [
+            row
+            for row in all_rows
+            if _dino_type_matches_size(row, length_range=length_range, mass_range=mass_range)
+        ]
+        total = len(all_rows)
+        if sort == "random":
+            normalized_seed = _require_seed(seed)
+            all_rows.sort(
+                key=lambda row: hashlib.md5(f"{row.id}{normalized_seed}".encode()).hexdigest()
+            )
+        else:
+            all_rows.sort(
+                key=lambda row: (
+                    0
+                    if (
+                        row.main_image_url
+                        and CURATED_MEDIA_PATH in row.main_image_url
+                    )
+                    else 1,
+                    row.name or "",
+                )
+            )
+        page = all_rows[capped_offset : capped_offset + capped_limit]
+        return [
+            DinosaurListRow(dinosaur_type=row, image_version=ORIGINAL_VERSION)
+            for row in page
+        ], total
 
     total = session.exec(
         select(sqlmodel_func.count()).select_from(filtered.subquery())
     ).one()
 
     if sort == "random":
-        normalized_seed = (seed or "").strip()
-        if not normalized_seed:
-            raise ValidationError("seed is required when sort=random")
-        normalized_seed = normalized_seed[:_MAX_SEED_LEN]
+        normalized_seed = _require_seed(seed)
         rows = _list_types_random(
             session,
             filtered=filtered,
@@ -139,8 +200,6 @@ def _list_catalog_dinosaurs(
                 .limit(capped_limit)
             ).all()
         )
-
-    from app.services.curated_image_service.versions import ORIGINAL_VERSION
 
     return [
         DinosaurListRow(dinosaur_type=row, image_version=ORIGINAL_VERSION)
@@ -160,6 +219,11 @@ def _list_inventory_dinosaurs(
     ma_older: float | None,
     has_custom_image: bool,
     llm_enriched: bool | None,
+    diet: list[str] | None,
+    length_m_min: float | None,
+    length_m_max: float | None,
+    mass_kg_min: float | None,
+    mass_kg_max: float | None,
     viewer_user_id: int | None,
 ) -> tuple[list[DinosaurListRow], int]:
     if viewer_user_id is None:
@@ -173,6 +237,10 @@ def _list_inventory_dinosaurs(
         ma_older=ma_older,
     )
     effective_time_filter = time_filter_active and normalized_q is None
+    diets = _normalize_diets(diet)
+    length_range = _normalize_size_range(length_m_min, length_m_max, label="length_m")
+    mass_range = _normalize_size_range(mass_kg_min, mass_kg_max, label="mass_kg")
+    size_filter_active = length_range is not None or mass_range is not None
 
     linked_dinosaurs = (
         select(col(UserDinosaur.dinosaur_id))
@@ -191,6 +259,8 @@ def _list_inventory_dinosaurs(
         )
     if llm_enriched is not None:
         stmt = stmt.where(col(DinosaurType.llm_enriched).is_(llm_enriched))
+    if diets:
+        stmt = stmt.where(func.lower(DinosaurType.diet_type).in_(diets))
     if normalized_q is not None:
         pattern = f"%{normalized_q}%"
         stmt = stmt.where(
@@ -208,15 +278,42 @@ def _list_inventory_dinosaurs(
             col(DinosaurType.birth) >= younger,
         )
 
+    if size_filter_active:
+        rows = list(session.exec(stmt).all())
+        rows = [
+            (occurrence, dino_type)
+            for occurrence, dino_type in rows
+            if _dino_type_matches_size(
+                dino_type, length_range=length_range, mass_range=mass_range
+            )
+        ]
+        total = len(rows)
+        if sort == "random":
+            normalized_seed = _require_seed(seed)
+            rows.sort(
+                key=lambda row: hashlib.md5(
+                    f"{row[0].id}{row[1].id}{normalized_seed}".encode()
+                ).hexdigest()
+            )
+        else:
+            rows.sort(key=lambda row: (row[1].name or "", row[0].id))
+        page = rows[capped_offset : capped_offset + capped_limit]
+        return [
+            DinosaurListRow(
+                dinosaur_type=dino_type,
+                occurrence_id=int(occurrence.id),
+                created_at=occurrence.created_at,
+                image_version=occurrence.version,
+            )
+            for occurrence, dino_type in page
+        ], total
+
     total = session.exec(
         select(sqlmodel_func.count()).select_from(stmt.subquery())
     ).one()
 
     if sort == "random":
-        normalized_seed = (seed or "").strip()
-        if not normalized_seed:
-            raise ValidationError("seed is required when sort=random")
-        normalized_seed = normalized_seed[:_MAX_SEED_LEN]
+        normalized_seed = _require_seed(seed)
         rows = list(session.exec(stmt).all())
         rows.sort(
             key=lambda row: hashlib.md5(
@@ -269,6 +366,64 @@ def _normalize_filters(
     return normalized_q, younger, older, time_filter_active
 
 
+def _normalize_diets(diet: list[str] | None) -> list[str] | None:
+    if not diet:
+        return None
+    cleaned = sorted(
+        {
+            value.strip().lower()
+            for value in diet
+            if value and value.strip()
+        }
+    )
+    return cleaned or None
+
+
+def _normalize_size_range(
+    minimum: float | None,
+    maximum: float | None,
+    *,
+    label: str,
+) -> tuple[float, float] | None:
+    if minimum is None and maximum is None:
+        return None
+    if minimum is None or maximum is None:
+        raise ValidationError(f"{label}_min and {label}_max must both be provided")
+    lo = float(minimum)
+    hi = float(maximum)
+    if lo > hi:
+        raise ValidationError(f"{label}_min must be less than or equal to {label}_max")
+    return lo, hi
+
+
+def _dino_type_matches_size(
+    dino_type: DinosaurType,
+    *,
+    length_range: tuple[float, float] | None,
+    mass_range: tuple[float, float] | None,
+) -> bool:
+    if length_range is not None:
+        parsed = parse_length_m(dino_type.length)
+        if parsed is None:
+            return False
+        if not ranges_overlap(parsed[0], parsed[1], length_range[0], length_range[1]):
+            return False
+    if mass_range is not None:
+        parsed = parse_mass_kg(dino_type.mass)
+        if parsed is None:
+            return False
+        if not ranges_overlap(parsed[0], parsed[1], mass_range[0], mass_range[1]):
+            return False
+    return True
+
+
+def _require_seed(seed: str | None) -> str:
+    normalized_seed = (seed or "").strip()
+    if not normalized_seed:
+        raise ValidationError("seed is required when sort=random")
+    return normalized_seed[:_MAX_SEED_LEN]
+
+
 def _filtered_select(
     *,
     normalized_q: str | None,
@@ -277,6 +432,7 @@ def _filtered_select(
     time_filter_active: bool,
     has_custom_image: bool,
     llm_enriched: bool | None,
+    diets: list[str] | None,
 ):
     stmt = select(DinosaurType)
     if has_custom_image:
@@ -286,6 +442,8 @@ def _filtered_select(
         )
     if llm_enriched is not None:
         stmt = stmt.where(col(DinosaurType.llm_enriched).is_(llm_enriched))
+    if diets:
+        stmt = stmt.where(func.lower(DinosaurType.diet_type).in_(diets))
     if normalized_q is not None:
         pattern = f"%{normalized_q}%"
         stmt = stmt.where(
