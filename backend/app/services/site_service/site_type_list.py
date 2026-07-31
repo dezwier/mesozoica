@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from sqlalchemy import case
 from sqlmodel import Session, col, func as sqlmodel_func, select
 
 from app.models.site import Site
@@ -11,6 +12,14 @@ from app.schemas.site import OwnedOccurrenceThumb, SiteTypeSummary
 from app.services.curated_image_service.resolve import resolve_site_type_card_image_url
 from app.services.curated_image_service.versions import ORIGINAL_VERSION
 
+# Geological order: oldest → youngest.
+_PERIOD_ORDER = case(
+    (col(SiteType.period) == "triassic", 0),
+    (col(SiteType.period) == "jurassic", 1),
+    (col(SiteType.period) == "cretaceous", 2),
+    else_=3,
+)
+
 
 def list_site_types(
     session: Session,
@@ -18,13 +27,13 @@ def list_site_types(
     limit: int = 200,
     offset: int = 0,
 ) -> tuple[list[SiteType], int]:
-    """Return paginated site types ordered by period, then rock_type."""
+    """Return paginated site types ordered by period (geo), then rock_type."""
     capped_limit = max(1, min(limit, 500))
     capped_offset = max(0, offset)
     total = session.exec(select(sqlmodel_func.count()).select_from(SiteType)).one()
     rows = session.exec(
         select(SiteType)
-        .order_by(col(SiteType.period).asc(), col(SiteType.rock_type).asc())
+        .order_by(_PERIOD_ORDER.asc(), col(SiteType.rock_type).asc())
         .offset(capped_offset)
         .limit(capped_limit)
     ).all()

@@ -96,6 +96,7 @@ def test_list_site_types_empty(client):
 def test_list_site_types_ordered_and_anonymous_has_no_owned(client, session):
     _seed_site_type(session, period="jurassic", rock_type="mudstone")
     owned_type = _seed_site_type(session, period="cretaceous", rock_type="sandstone")
+    _seed_site_type(session, period="triassic", rock_type="shale")
     site = _seed_site(session, owned_type)
     user = _user(session)
     _link_site(session, user_id=int(user.id), site_id=int(site.site_id))
@@ -103,10 +104,10 @@ def test_list_site_types_ordered_and_anonymous_has_no_owned(client, session):
     response = client.get("/api/v1/site-types")
     assert response.status_code == 200
     body = response.json()
-    assert body["total"] == 2
+    assert body["total"] == 3
     periods = [item["period"] for item in body["items"]]
-    # cretaceous before jurassic alphabetically
-    assert periods == ["cretaceous", "jurassic"]
+    # Geological order: triassic → jurassic → cretaceous
+    assert periods == ["triassic", "jurassic", "cretaceous"]
     assert all(item["owned_occurrences"] == [] for item in body["items"])
 
 
