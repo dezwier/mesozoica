@@ -60,7 +60,7 @@ class MapBottomChrome extends StatelessWidget {
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    padding: const EdgeInsets.symmetric(vertical: 6),
                     child: Row(
                       children: [
                         Expanded(
@@ -119,7 +119,7 @@ class _NavSeparator extends StatelessWidget {
       child: Center(
         child: SizedBox(
           width: 2.5,
-          height: 40,
+          height: 36,
           child: DecoratedBox(
             decoration: BoxDecoration(
               borderRadius: BorderRadius.all(Radius.circular(1.25)),
@@ -127,18 +127,14 @@ class _NavSeparator extends StatelessWidget {
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
                 colors: [
+                  Color(0x00C2B29A), // fade out
                   Color(0x99C2B29A), // brassLight @ ~0.6
                   Color(0x8A9A8A74), // brassMid @ ~0.54
                   Color(0x99C2B29A),
+                  Color(0x00C2B29A), // fade out
                 ],
+                stops: [0.0, 0.22, 0.5, 0.78, 1.0],
               ),
-              boxShadow: [
-                BoxShadow(
-                  color: Color(0x55000000),
-                  blurRadius: 1,
-                  offset: Offset(0.5, 0),
-                ),
-              ],
             ),
           ),
         ),
