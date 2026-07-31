@@ -2,7 +2,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:mesozoica/services/wikipedia_revision_service.dart';
-import 'package:mesozoica/widgets/dino/dinosaur_article_drawer.dart';
 import 'package:mesozoica/widgets/dino/dinosaur_wikipedia_view.dart';
 
 void main() {
@@ -32,16 +31,21 @@ void main() {
   });
 
   test('wikipediaAsOfLabel formats insert date', () {
-    final label = DinosaurArticleDrawer.wikipediaAsOfLabel(
-      DateTime.utc(2024, 6, 15),
-    );
+    final label = wikipediaAsOfLabel(DateTime.utc(2024, 6, 15));
     expect(label, isNotNull);
     expect(label, contains('Wikipedia as of'));
     expect(label, contains('2024'));
   });
 
   test('wikipediaAsOfLabel is null without date', () {
-    expect(DinosaurArticleDrawer.wikipediaAsOfLabel(null), isNull);
+    expect(wikipediaAsOfLabel(null), isNull);
+  });
+
+  test('wikipediaLiveFallbackWarning is a short notice', () {
+    expect(
+      wikipediaLiveFallbackWarning,
+      'Historical version unavailable — showing current page',
+    );
   });
 
   test('WikipediaRevisionService parses revid from action API', () async {

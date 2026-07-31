@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:webview_flutter_wkwebview/webview_flutter_wkwebview.dart';
@@ -31,6 +32,18 @@ Uri wikipediaMobileArticleUri(String title, {int? oldId}) {
   });
 }
 
+/// Label for a historical Wikipedia snapshot date.
+String? wikipediaAsOfLabel(DateTime? insertDate) {
+  if (insertDate == null) return null;
+  final local = insertDate.toLocal();
+  final formatted = DateFormat.yMMMMd().format(local);
+  return 'Wikipedia as of $formatted';
+}
+
+/// Shown when historical revision lookup fails.
+const wikipediaLiveFallbackWarning =
+    'Historical version unavailable — showing current page';
+
 /// Embeds a Wikipedia mobile article (optionally a historical revision).
 class DinosaurWikipediaView extends StatefulWidget {
   const DinosaurWikipediaView({
@@ -38,7 +51,9 @@ class DinosaurWikipediaView extends StatefulWidget {
     required this.wikipediaTitle,
     this.asOf,
     this.preferDark = false,
+    this.showStatusBanner = true,
     this.revisionService,
+    this.onHistoricalLookup,
   });
 
   final String wikipediaTitle;
@@ -48,8 +63,14 @@ class DinosaurWikipediaView extends StatefulWidget {
 
   final bool preferDark;
 
+  /// When false, the parent owns the as-of / fallback status line.
+  final bool showStatusBanner;
+
   /// Injectable for tests; defaults to a live Wikipedia lookup.
   final WikipediaRevisionService? revisionService;
+
+  /// Called after an [asOf] lookup: `true` when falling back to the live page.
+  final ValueChanged<bool>? onHistoricalLookup;
 
   @override
   State<DinosaurWikipediaView> createState() => _DinosaurWikipediaViewState();
@@ -61,7 +82,9 @@ class _DinosaurWikipediaViewState extends State<DinosaurWikipediaView> {
   var _loading = true;
   var _hasError = false;
   var _chromeTrimmed = false;
+  var _resolvingRevision = false;
   int? _oldId;
+  var _usedLiveFallback = false;
 
   Uri get _pageUri => wikipediaMobileArticleUri(
         widget.wikipediaTitle,
@@ -73,10 +96,21 @@ class _DinosaurWikipediaViewState extends State<DinosaurWikipediaView> {
         oldId: _oldId,
       );
 
+  String? get _statusBannerText {
+    if (!widget.showStatusBanner) return null;
+    if (widget.asOf == null) return null;
+    if (_resolvingRevision) {
+      return wikipediaAsOfLabel(widget.asOf);
+    }
+    if (_usedLiveFallback) return wikipediaLiveFallbackWarning;
+    return wikipediaAsOfLabel(widget.asOf);
+  }
+
   @override
   void initState() {
     super.initState();
     _revisionService = widget.revisionService ?? WikipediaRevisionService();
+    _resolvingRevision = widget.asOf != null;
 
     final params = WebViewPlatform.instance is WebKitWebViewPlatform
         ? WebKitWebViewControllerCreationParams()
@@ -134,7 +168,13 @@ class _DinosaurWikipediaViewState extends State<DinosaurWikipediaView> {
 
   Future<void> _loadArticle() async {
     final asOf = widget.asOf;
+    _usedLiveFallback = false;
     if (asOf != null) {
+      if (mounted) {
+        setState(() => _resolvingRevision = true);
+      } else {
+        _resolvingRevision = true;
+      }
       try {
         _oldId = await _revisionService.revisionAsOf(
           title: widget.wikipediaTitle,
@@ -143,8 +183,16 @@ class _DinosaurWikipediaViewState extends State<DinosaurWikipediaView> {
       } catch (_) {
         _oldId = null;
       }
+      _usedLiveFallback = _oldId == null;
+      if (mounted) {
+        setState(() => _resolvingRevision = false);
+      } else {
+        _resolvingRevision = false;
+      }
+      widget.onHistoricalLookup?.call(_usedLiveFallback);
     } else {
       _oldId = null;
+      _resolvingRevision = false;
     }
     if (!mounted) return;
     await _controller.loadRequest(_pageUri);
@@ -249,38 +297,60 @@ $darkJs
         defaultTargetPlatform != TargetPlatform.iOS &&
         defaultTargetPlatform != TargetPlatform.macOS;
 
-    return Stack(
+    final theme = Theme.of(context);
+    final statusText = _statusBannerText;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        WebViewWidget(
-          controller: _controller,
-          // Claim vertical drags so parent sheets/scrollables don't steal them.
-          gestureRecognizers: <Factory<OneSequenceGestureRecognizer>>{
-            Factory<VerticalDragGestureRecognizer>(
-              VerticalDragGestureRecognizer.new,
+        if (statusText != null)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            child: Text(
+              statusText,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: _usedLiveFallback
+                    ? theme.colorScheme.error
+                    : theme.colorScheme.onSurfaceVariant,
+              ),
             ),
-          },
+          ),
+        Expanded(
+          child: Stack(
+            children: [
+              WebViewWidget(
+                controller: _controller,
+                // Claim vertical drags so parent sheets/scrollables don't steal them.
+                gestureRecognizers: <Factory<OneSequenceGestureRecognizer>>{
+                  Factory<VerticalDragGestureRecognizer>(
+                    VerticalDragGestureRecognizer.new,
+                  ),
+                },
+              ),
+              if (useEdgeSwipeBack)
+                Positioned(
+                  left: 0,
+                  top: 0,
+                  bottom: 0,
+                  width: 28,
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.translucent,
+                    onHorizontalDragEnd: (details) {
+                      final velocity = details.primaryVelocity ?? 0;
+                      if (velocity > 250) {
+                        _goBackIfPossible();
+                      }
+                    },
+                  ),
+                ),
+              if (_loading)
+                const ColoredBox(
+                  color: Colors.transparent,
+                  child: Center(child: CircularProgressIndicator()),
+                ),
+            ],
+          ),
         ),
-        if (useEdgeSwipeBack)
-          Positioned(
-            left: 0,
-            top: 0,
-            bottom: 0,
-            width: 28,
-            child: GestureDetector(
-              behavior: HitTestBehavior.translucent,
-              onHorizontalDragEnd: (details) {
-                final velocity = details.primaryVelocity ?? 0;
-                if (velocity > 250) {
-                  _goBackIfPossible();
-                }
-              },
-            ),
-          ),
-        if (_loading)
-          const ColoredBox(
-            color: Colors.transparent,
-            child: Center(child: CircularProgressIndicator()),
-          ),
       ],
     );
   }
