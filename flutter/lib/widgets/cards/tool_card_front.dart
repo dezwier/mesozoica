@@ -57,23 +57,19 @@ class ToolCardFront extends StatelessWidget {
               ),
             ),
           ),
-          if (showIdBadge || showCollectBadge)
+          if (showIdBadge)
+            Positioned(
+              top: 14,
+              left: 14,
+              child: OccurrenceIdBadge(label: tool.occurrenceIdBadgeLabel),
+            ),
+          if (showCollectBadge)
             Positioned(
               top: 14,
               right: 14,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (showIdBadge)
-                    OccurrenceIdBadge(label: tool.occurrenceIdBadgeLabel),
-                  if (showIdBadge && showCollectBadge) const SizedBox(height: 6),
-                  if (showCollectBadge)
-                    ToolCollectBadge(
-                      onPressed: onCollect,
-                      busy: collectBusy,
-                    ),
-                ],
+              child: ToolCollectBadge(
+                onPressed: onCollect,
+                busy: collectBusy,
               ),
             ),
           Positioned(

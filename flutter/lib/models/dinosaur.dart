@@ -68,7 +68,7 @@ class DinosaurSummary {
 
   String get displayOccurrenceNumber => '#$id';
 
-  /// Front top-right badge: `#99 · Original`.
+  /// Front top-left badge: `#99 · Original`.
   String get occurrenceIdBadgeLabel {
     final versionPart = version?.trim() ?? '';
     if (versionPart.isEmpty) return displayOccurrenceNumber;

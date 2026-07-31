@@ -52,23 +52,19 @@ class FossilCardFront extends StatelessWidget {
               ),
             ),
           ),
-          if (showIdBadge || showStatus)
+          if (showIdBadge)
+            Positioned(
+              top: 14,
+              left: 14,
+              child: OccurrenceIdBadge(label: fossil.occurrenceIdBadgeLabel),
+            ),
+          if (showStatus)
             Positioned(
               top: 14,
               right: 14,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (showIdBadge)
-                    OccurrenceIdBadge(label: fossil.occurrenceIdBadgeLabel),
-                  if (showIdBadge && showStatus) const SizedBox(height: 6),
-                  if (showStatus)
-                    FossilStatusBadge(
-                      status: status,
-                      onStatusSelected: onStatusSelected,
-                    ),
-                ],
+              child: FossilStatusBadge(
+                status: status,
+                onStatusSelected: onStatusSelected,
               ),
             ),
           Positioned(

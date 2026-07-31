@@ -66,7 +66,15 @@ class DinosaurCardFront extends StatelessWidget {
               ),
             ),
           ),
-          if (showIdBadge || showStatus || showCollectBadge)
+          if (showIdBadge)
+            Positioned(
+              top: 14,
+              left: 14,
+              child: OccurrenceIdBadge(
+                label: dinosaur.occurrenceIdBadgeLabel,
+              ),
+            ),
+          if (showStatus || showCollectBadge)
             Positioned(
               top: 14,
               right: 14,
@@ -74,12 +82,6 @@ class DinosaurCardFront extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  if (showIdBadge)
-                    OccurrenceIdBadge(
-                      label: dinosaur.occurrenceIdBadgeLabel,
-                    ),
-                  if (showIdBadge && (showStatus || showCollectBadge))
-                    const SizedBox(height: 6),
                   if (showCollectBadge)
                     ToolCollectBadge(
                       onPressed: onCollect,

@@ -52,7 +52,7 @@ class ToolSummary {
 
   String get displayOccurrenceNumber => '#$id';
 
-  /// Front top-right badge: `#10 · Original`.
+  /// Front top-left badge: `#10 · Original`.
   String get occurrenceIdBadgeLabel {
     final versionPart = version?.trim() ?? '';
     if (versionPart.isEmpty) return displayOccurrenceNumber;

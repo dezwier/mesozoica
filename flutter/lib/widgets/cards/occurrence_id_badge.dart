@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../theme/dino_card_theme.dart';
 
-/// Top-right chip showing occurrence id and image version (e.g. `#67 · Original`).
+/// Top-left chip showing occurrence id and image version (e.g. `#67 · Original`).
 class OccurrenceIdBadge extends StatelessWidget {
   const OccurrenceIdBadge({
     super.key,

@@ -81,7 +81,7 @@ class SiteSummary {
 
   String get displaySiteNumber => formatSiteNumber(siteId);
 
-  /// Front top-right badge: `#67 · Original`.
+  /// Front top-left badge: `#67 · Original`.
   String get occurrenceIdBadgeLabel {
     final versionPart = version.trim();
     if (versionPart.isEmpty) return displaySiteNumber;

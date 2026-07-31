@@ -64,23 +64,19 @@ class SiteCardFront extends StatelessWidget {
               ),
             ),
           ),
-          if (showIdBadge || showStatus)
+          if (showIdBadge)
+            Positioned(
+              top: 14,
+              left: 14,
+              child: OccurrenceIdBadge(label: site.occurrenceIdBadgeLabel),
+            ),
+          if (showStatus)
             Positioned(
               top: 14,
               right: 14,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (showIdBadge)
-                    OccurrenceIdBadge(label: site.occurrenceIdBadgeLabel),
-                  if (showIdBadge && showStatus) const SizedBox(height: 6),
-                  if (showStatus)
-                    SiteStatusBadge(
-                      status: status,
-                      onStatusSelected: onStatusSelected,
-                    ),
-                ],
+              child: SiteStatusBadge(
+                status: status,
+                onStatusSelected: onStatusSelected,
               ),
             ),
           Positioned(
