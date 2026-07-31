@@ -588,6 +588,51 @@ def test_list_dinosaurs_filter_has_custom_image(client, session):
     assert all_response.json()["total"] == 3
 
 
+def test_list_dinosaurs_catalog_sorts_imaged_first_then_name(client, session):
+    session.add_all(
+        [
+            DinosaurType(
+                name="Zebraosaurus",
+                wikipedia_page_id=7001,
+                wikipedia_title="Zebraosaurus",
+                main_image_url="https://mesozoica-production.up.railway.app/media/dinosaurs/Zebraosaurus.webp",
+            ),
+            DinosaurType(
+                name="Allosaurus",
+                wikipedia_page_id=7002,
+                wikipedia_title="Allosaurus",
+            ),
+            DinosaurType(
+                name="Stegosaurus",
+                wikipedia_page_id=7003,
+                wikipedia_title="Stegosaurus",
+                main_image_url="https://mesozoica-production.up.railway.app/media/dinosaurs/Stegosaurus.webp",
+            ),
+            DinosaurType(
+                name="Brachiosaurus",
+                wikipedia_page_id=7004,
+                wikipedia_title="Brachiosaurus",
+                main_image_url="https://upload.wikimedia.org/wikipedia/commons/brachio.jpg",
+            ),
+        ]
+    )
+    session.commit()
+
+    response = client.get(
+        "/api/v1/dinosaurs",
+        params={"mode": "catalog", "sort": "name"},
+    )
+    assert response.status_code == 200
+    names = [item["name"] for item in response.json()["items"]]
+    # Curated /media/dinosaurs/ first (alpha), then without curated image (alpha).
+    assert names == [
+        "Stegosaurus",
+        "Zebraosaurus",
+        "Allosaurus",
+        "Brachiosaurus",
+    ]
+
+
 def test_list_dinosaurs_filter_llm_enriched(client, session):
     session.add_all(
         [

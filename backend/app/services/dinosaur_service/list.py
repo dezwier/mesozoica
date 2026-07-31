@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Literal
 
-from sqlalchemy import func, or_
+from sqlalchemy import case, func, or_
 from sqlmodel import Session, col, func as sqlmodel_func, select
 
 from app.core.exceptions import NotFoundError, ValidationError
@@ -23,6 +23,15 @@ _MAX_SEED_LEN = 64
 MESOZOIC_YOUNGER_MA = 66.0
 MESOZOIC_OLDER_MA = 252.0
 
+# Catalog name sort: types with curated images first, then alphabetical.
+_CATALOG_IMAGE_PRIORITY = case(
+    (
+        col(DinosaurType.main_image_url).is_not(None)
+        & col(DinosaurType.main_image_url).contains(CURATED_MEDIA_PATH),
+        0,
+    ),
+    else_=1,
+)
 
 @dataclass(frozen=True)
 class DinosaurListRow:
@@ -125,7 +134,7 @@ def _list_catalog_dinosaurs(
     else:
         rows = list(
             session.exec(
-                filtered.order_by(DinosaurType.name)
+                filtered.order_by(_CATALOG_IMAGE_PRIORITY.asc(), DinosaurType.name)
                 .offset(capped_offset)
                 .limit(capped_limit)
             ).all()
