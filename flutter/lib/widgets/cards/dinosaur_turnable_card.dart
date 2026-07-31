@@ -144,10 +144,9 @@ class _DinosaurTurnableCardState extends State<DinosaurTurnableCard> {
 
   @override
   Widget build(BuildContext context) {
-    final isAdmin =
-        context.watch<AuthController>().currentUser?.isAdmin ?? false;
+    final showAdminUi = context.watch<AuthController>().showAdminUi;
     final isCatalog = !_dinosaur.isInventoryOccurrence;
-    final showCollectBadge = isAdmin && isCatalog;
+    final showCollectBadge = showAdminUi && isCatalog;
     final status = _dinosaur.status?.trim();
     final showInventoryStatus = !isCatalog &&
         status != null &&

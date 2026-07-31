@@ -27,52 +27,49 @@ class NotificationIconButton extends StatelessWidget {
     return Consumer<NotificationController>(
       builder: (context, store, _) {
         final unread = store.unreadCountForBadge;
-        return Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: () => _showNotificationList(context, store),
-            customBorder: const CircleBorder(),
-            child: Ink(
-              width: _size,
-              height: _size,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: MapChromeTheme.darkGlassSoft,
-                border: Border.all(
-                  color: Colors.white.withValues(alpha: 0.18),
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.35),
-                    blurRadius: 8,
-                    offset: const Offset(0, 1),
-                  ),
-                ],
+        return GestureDetector(
+          onTap: () => _showNotificationList(context, store),
+          behavior: HitTestBehavior.opaque,
+          child: Container(
+            width: _size,
+            height: _size,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: MapChromeTheme.darkGlassSoft,
+              border: Border.all(
+                color: Colors.white.withValues(alpha: 0.18),
               ),
-              child: Stack(
-                clipBehavior: Clip.none,
-                alignment: Alignment.center,
-                children: [
-                  const Icon(
-                    Icons.notifications_outlined,
-                    color: Colors.white,
-                    size: 20,
-                  ),
-                  if (unread > 0)
-                    Positioned(
-                      top: 6,
-                      right: 7,
-                      child: Container(
-                        width: 8,
-                        height: 8,
-                        decoration: const BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: MapChromeTheme.goldBright,
-                        ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.35),
+                  blurRadius: 8,
+                  offset: const Offset(0, 1),
+                ),
+              ],
+            ),
+            child: Stack(
+              clipBehavior: Clip.none,
+              alignment: Alignment.center,
+              children: [
+                const Icon(
+                  Icons.notifications_outlined,
+                  color: Colors.white,
+                  size: 20,
+                ),
+                if (unread > 0)
+                  Positioned(
+                    top: 6,
+                    right: 7,
+                    child: Container(
+                      width: 8,
+                      height: 8,
+                      decoration: const BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: MapChromeTheme.goldBright,
                       ),
                     ),
-                ],
-              ),
+                  ),
+              ],
             ),
           ),
         );

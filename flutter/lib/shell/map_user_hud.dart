@@ -109,21 +109,33 @@ class MapUserHud extends StatelessWidget {
                         const SizedBox(height: 3),
                         Text.rich(
                           TextSpan(
+                            style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.75),
+                              fontSize: 8,
+                              fontWeight: FontWeight.w600,
+                              height: 1.1,
+                              letterSpacing: 0.15,
+                              shadows: const [
+                                Shadow(
+                                  color: Color(0xAA000000),
+                                  blurRadius: 4,
+                                  offset: Offset(0, 1),
+                                ),
+                              ],
+                            ),
                             children: [
                               TextSpan(
                                 text: nextXp > 0
                                     ? '${_xpFormat.format(xp)} / ${_xpFormat.format(nextXp)}'
                                     : _xpFormat.format(xp),
                               ),
-                              const TextSpan(text: ' XP'),
+                              const TextSpan(
+                                text: ' XP',
+                                style: TextStyle(
+                                  color: MapChromeTheme.gold,
+                                ),
+                              ),
                             ],
-                          ),
-                          style: const TextStyle(
-                            color: MapChromeTheme.gold,
-                            fontSize: 8,
-                            fontWeight: FontWeight.w600,
-                            height: 1.1,
-                            letterSpacing: 0.15,
                           ),
                         ),
                       ],
@@ -193,7 +205,7 @@ class _AvatarWithLevel extends StatelessWidget {
                 ],
               ),
               child: Padding(
-                padding: const EdgeInsets.all(2.5),
+                padding: const EdgeInsets.all(1.0),
                 child: ClipOval(
                   child: imageUrl.isNotEmpty
                       ? CachedNetworkImage(

@@ -105,8 +105,7 @@ class _DinosaurCardFossilListState extends State<DinosaurCardFossilList> {
   @override
   Widget build(BuildContext context) {
     final source = context.watch<CatalogModeController>().dataSource;
-    final includeHidden =
-        context.watch<AuthController>().currentUser?.isAdmin ?? false;
+    final includeHidden = context.watch<AuthController>().showAdminUi;
     _ensureLoaded(source, includeHidden: includeHidden);
     final cardTheme = DinoCardTheme.of(context);
 

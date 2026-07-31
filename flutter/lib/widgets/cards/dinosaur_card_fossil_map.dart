@@ -96,8 +96,7 @@ class _DinosaurCardFossilMapState extends State<DinosaurCardFossilMap> {
   @override
   Widget build(BuildContext context) {
     final source = context.watch<CatalogModeController>().dataSource;
-    final includeHidden =
-        context.watch<AuthController>().currentUser?.isAdmin ?? false;
+    final includeHidden = context.watch<AuthController>().showAdminUi;
     if (_loadedForSource != source ||
         _loadedForDinosaurId != widget.dinosaurId ||
         _loadedIncludeHidden != includeHidden) {

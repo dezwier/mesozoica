@@ -74,9 +74,8 @@ class _FossilTurnableCardState extends State<FossilTurnableCard> {
   @override
   Widget build(BuildContext context) {
     final hasStatus = (_fossil.status?.trim().isNotEmpty ?? false);
-    final isAdmin =
-        context.watch<AuthController>().currentUser?.isAdmin ?? false;
-    final canEditStatus = hasStatus && isAdmin && _fossil.isField;
+    final showAdminUi = context.watch<AuthController>().showAdminUi;
+    final canEditStatus = hasStatus && showAdminUi && _fossil.isField;
 
     return TurnableYAxisCard(
       resetIdentity: _fossil.id,

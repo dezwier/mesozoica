@@ -200,19 +200,18 @@ class _ToolTurnableCardState extends State<ToolTurnableCard> {
 
   @override
   Widget build(BuildContext context) {
-    final isAdmin =
-        context.watch<AuthController>().currentUser?.isAdmin ?? false;
+    final showAdminUi = context.watch<AuthController>().showAdminUi;
     final inventoryMode =
         context.watch<ToolCatalogController>().mode == ToolScreenMode.inventory;
     final paramsForEdit =
         widget.tool.params.isNotEmpty ? widget.tool.params : widget.tool.baseParams;
-    final showCollectBadge = isAdmin && !inventoryMode;
+    final showCollectBadge = showAdminUi && !inventoryMode;
     final extension = ToolCardExtensions.forTool(widget.tool);
     final onInfo = extension?.infoHandler(context, widget.tool);
     final statsChild = extension?.buildDeployStats(context, widget.tool);
     final ongoingChild = extension?.buildOngoingPanel(context, widget.tool);
     final canEditParams =
-        widget.tool.isOwned && inventoryMode && isAdmin && paramsForEdit.isNotEmpty;
+        widget.tool.isOwned && inventoryMode && showAdminUi && paramsForEdit.isNotEmpty;
 
     return TurnableYAxisCard(
       resetIdentity: widget.tool.id,

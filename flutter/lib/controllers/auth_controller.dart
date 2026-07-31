@@ -13,11 +13,27 @@ class AuthController extends ChangeNotifier {
   Profile? _currentUser;
   bool _isLoading = false;
   bool _isInitializing = true;
+  bool _adminModeEnabled = false;
 
   Profile? get currentUser => _currentUser;
   bool get isLoggedIn => _currentUser != null;
   bool get isLoading => _isLoading;
   bool get isInitializing => _isInitializing;
+  bool get isAdmin => _currentUser?.isAdmin ?? false;
+  bool get adminModeEnabled => _adminModeEnabled;
+  bool get showAdminUi => isAdmin && _adminModeEnabled;
+
+  void setAdminModeEnabled(bool value) {
+    if (_adminModeEnabled == value) return;
+    _adminModeEnabled = value;
+    notifyListeners();
+  }
+
+  void toggleAdminMode() => setAdminModeEnabled(!_adminModeEnabled);
+
+  void _resetAdminMode() {
+    _adminModeEnabled = false;
+  }
 
   Future<void> initialize() async {
     try {
@@ -33,6 +49,7 @@ class AuthController extends ChangeNotifier {
       }
     } catch (_) {
       _currentUser = null;
+      _resetAdminMode();
       await _authService.clearStoredAuth();
     } finally {
       _isInitializing = false;
@@ -93,6 +110,7 @@ class AuthController extends ChangeNotifier {
     if (_currentUser == null) return;
     try {
       _currentUser = await _authService.refreshProfile();
+      if (!isAdmin) _resetAdminMode();
       notifyListeners();
     } catch (_) {
       // Leave the existing profile in place on transient failures.
@@ -101,12 +119,14 @@ class AuthController extends ChangeNotifier {
 
   Future<void> applyUser(Profile user) async {
     _currentUser = user;
+    if (!isAdmin) _resetAdminMode();
     notifyListeners();
   }
 
   Future<void> logout() async {
     await _authService.clearStoredAuth();
     _currentUser = null;
+    _resetAdminMode();
     notifyListeners();
   }
 

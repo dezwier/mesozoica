@@ -77,8 +77,7 @@ class _SiteTurnableCardState extends State<SiteTurnableCard> {
   @override
   Widget build(BuildContext context) {
     final hasStatus = (_site.status?.trim().isNotEmpty ?? false);
-    final isAdmin =
-        context.watch<AuthController>().currentUser?.isAdmin ?? false;
+    final showAdminUi = context.watch<AuthController>().showAdminUi;
 
     return TurnableYAxisCard(
       resetIdentity: _site.siteId,
@@ -95,7 +94,7 @@ class _SiteTurnableCardState extends State<SiteTurnableCard> {
         titleFontSize: widget.titleFontSize,
         subtitleFontSize: widget.subtitleFontSize,
         overlayHeightFactor: widget.overlayHeightFactor,
-        onStatusSelected: hasStatus && isAdmin ? _onStatusSelected : null,
+        onStatusSelected: hasStatus && showAdminUi ? _onStatusSelected : null,
       ),
       back: SiteCardBack(
         site: _site,

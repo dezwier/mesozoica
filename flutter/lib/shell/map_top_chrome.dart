@@ -19,57 +19,75 @@ class MapTopChrome extends StatelessWidget {
   final void Function(UserNotificationItem item) onTapNotification;
   final VoidCallback onOpenProfile;
 
+  /// Extra fade below the control row so the scrim reaches further down.
+  static const double _fadeExtension = 48;
+
   @override
   Widget build(BuildContext context) {
+    final topPad = MediaQuery.paddingOf(context).top;
+    final fadeHeight =
+        topPad + MapChromeInsets.topRowHeight + _fadeExtension;
+
     return Positioned(
       top: 0,
       left: 0,
       right: 0,
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Colors.black.withValues(alpha: 0.62),
-              Colors.black.withValues(alpha: 0.28),
-              Colors.black.withValues(alpha: 0.0),
-            ],
-            stops: const [0.0, 0.55, 1.0],
-          ),
-        ),
-        child: SafeArea(
-          bottom: false,
-          child: SizedBox(
-            height: MapChromeInsets.topRowHeight,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Expanded(
-                    child: Align(
-                      alignment: Alignment.centerLeft,
-                      child: MapUserHud(onTap: onOpenProfile),
-                    ),
-                  ),
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const CatalogModeToggle(),
-                      if (showNotifications) ...[
-                        const SizedBox(width: 8),
-                        NotificationIconButton(
-                          onTapNotification: onTapNotification,
-                        ),
-                      ],
+      child: Stack(
+        children: [
+          IgnorePointer(
+            child: SizedBox(
+              height: fadeHeight,
+              width: double.infinity,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.black.withValues(alpha: 0.88),
+                      Colors.black.withValues(alpha: 0.58),
+                      Colors.black.withValues(alpha: 0.25),
+                      Colors.black.withValues(alpha: 0.0),
                     ],
+                    stops: const [0.0, 0.32, 0.68, 1.0],
                   ),
-                ],
+                ),
               ),
             ),
           ),
-        ),
+          SafeArea(
+            bottom: false,
+            child: SizedBox(
+              height: MapChromeInsets.topRowHeight,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Expanded(
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: MapUserHud(onTap: onOpenProfile),
+                      ),
+                    ),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const CatalogModeToggle(),
+                        if (showNotifications) ...[
+                          const SizedBox(width: 8),
+                          NotificationIconButton(
+                            onTapNotification: onTapNotification,
+                          ),
+                        ],
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

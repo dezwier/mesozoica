@@ -100,7 +100,9 @@ class _MapScreenState extends State<MapScreen>
   Widget build(BuildContext context) {
     final isFieldMode = context.watch<CatalogModeController>().isField;
     final auth = context.watch<AuthController>();
-    final isAdmin = auth.currentUser?.isAdmin ?? false;
+    final isAdmin = auth.isAdmin;
+    final showAdminUi = auth.showAdminUi;
+    final adminMode = auth.adminModeEnabled;
     final basemapTheme = context.watch<ThemeController>().mapBasemapTheme;
     final mapBrightness = Theme.of(context).brightness;
     final avatarUrl = AuthService.imageUrl(auth.currentUser?.profileImage);
@@ -134,7 +136,7 @@ class _MapScreenState extends State<MapScreen>
         final locationService = context.read<LocationService>();
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (!mounted) return;
-          if (!isAdmin && mapData.showAllFieldSites) {
+          if (!showAdminUi && mapData.showAllFieldSites) {
             mapData.setShowAllFieldSites(false);
           }
           _setInitialCamera(locationService: locationService);
@@ -230,7 +232,7 @@ class _MapScreenState extends State<MapScreen>
                   ),
                 ),
               ),
-            if (isAdmin && widget.isActive && !aerialDrawMode)
+            if (showAdminUi && widget.isActive && !aerialDrawMode)
               Positioned(
                 top: topInset,
                 left: 8,
@@ -365,40 +367,60 @@ class _MapScreenState extends State<MapScreen>
                     _onLocationFabPressed(locationService),
                 bottom: fabBottom,
                 leadingActions: [
-                  if (isFieldMode && isAdmin) ...[
-                    ChromeFab(
-                      heroTag: 'show_all_field_sites',
-                      tone: ChromeFabTone.grey,
-                      active: mapData.showAllFieldSites,
-                      onPressed: () {
-                        final enabling = !mapData.showAllFieldSites;
-                        mapData.setShowAllFieldSites(enabling);
-                        if (enabling) {
-                          unawaited(_loadSitesInViewport());
-                        }
-                      },
-                      tooltip: mapData.showAllFieldSites
-                          ? 'Hide sites in view'
-                          : 'Show all sites in view',
-                      child: Icon(
-                        mapData.showAllFieldSites
-                            ? Icons.visibility
-                            : Icons.visibility_outlined,
+                  if (isAdmin) ...[
+                    if (isFieldMode && showAdminUi) ...[
+                      ChromeFab(
+                        heroTag: 'show_all_field_sites',
+                        tone: mapData.showAllFieldSites
+                            ? ChromeFabTone.warm
+                            : ChromeFabTone.grey,
+                        active: mapData.showAllFieldSites,
+                        onPressed: () {
+                          final enabling = !mapData.showAllFieldSites;
+                          mapData.setShowAllFieldSites(enabling);
+                          if (enabling) {
+                            unawaited(_loadSitesInViewport());
+                          }
+                        },
+                        tooltip: mapData.showAllFieldSites
+                            ? 'Hide sites in view'
+                            : 'Show all sites in view',
+                        child: Icon(
+                          mapData.showAllFieldSites
+                              ? Icons.visibility
+                              : Icons.visibility_outlined,
+                        ),
                       ),
-                    ),
+                      ChromeFab(
+                        heroTag: 'scan_field_area',
+                        tone: ChromeFabTone.grey,
+                        onPressed: _onScanFieldArea,
+                        tooltip: 'Scan map center for field sites',
+                        child: const Icon(Icons.radar_outlined),
+                      ),
+                      ChromeFab(
+                        heroTag: 'purge_field_data',
+                        tone: ChromeFabTone.grey,
+                        onPressed: _onPurgeFieldData,
+                        tooltip: 'Delete field data',
+                        child: const Icon(Icons.delete_forever_outlined),
+                      ),
+                    ],
                     ChromeFab(
-                      heroTag: 'scan_field_area',
-                      tone: ChromeFabTone.grey,
-                      onPressed: _onScanFieldArea,
-                      tooltip: 'Scan map center for field sites',
-                      child: const Icon(Icons.radar_outlined),
-                    ),
-                    ChromeFab(
-                      heroTag: 'purge_field_data',
-                      tone: ChromeFabTone.grey,
-                      onPressed: _onPurgeFieldData,
-                      tooltip: 'Delete field data',
-                      child: const Icon(Icons.delete_forever_outlined),
+                      heroTag: 'admin_mode_toggle',
+                      tone: adminMode
+                          ? ChromeFabTone.warm
+                          : ChromeFabTone.grey,
+                      active: adminMode,
+                      onPressed: auth.toggleAdminMode,
+                      tooltip: adminMode
+                          ? 'Exit admin mode'
+                          : 'Enter admin mode',
+                      child: Icon(
+                        adminMode
+                            ? Icons.admin_panel_settings
+                            : Icons.admin_panel_settings_outlined,
+                      ),
                     ),
                     // Keep admin tools clearly above the regular map FABs.
                     const SizedBox(height: 28),
