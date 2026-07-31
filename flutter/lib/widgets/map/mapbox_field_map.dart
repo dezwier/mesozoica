@@ -13,6 +13,7 @@ import '../../config/game_config.dart';
 import '../../controllers/aerial_mission_controller.dart';
 import '../../controllers/formation_map_controller.dart';
 import '../../models/site.dart';
+import '../../theme/map_chrome_theme.dart';
 import 'formation_map_raster.dart';
 import 'mapbox_aerial_mission_annotations.dart';
 import 'mapbox_basemap_config.dart';
@@ -1102,6 +1103,10 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
               onMapLoadErrorListener: (event) {
                 widget.onError?.call(event.message);
               },
+            ),
+            // Soft sandstone grade — ColorFilter doesn't compose with Mapbox.
+            const IgnorePointer(
+              child: ColoredBox(color: MapChromeTheme.mapSandstoneWash),
             ),
             // Mode 1 only (north-fixed, not following). Hidden while centered.
             if (widget.mapActive &&

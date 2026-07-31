@@ -47,6 +47,9 @@ abstract final class MapChromeTheme {
   static const Color parchmentEdge = Color(0xFFD0C6B4);
   static const Color parchmentShadow = Color(0xFFF0EAE0);
 
+  /// Soft sandstone wash over the basemap (~15%).
+  static const Color mapSandstoneWash = Color.fromARGB(61, 210, 180, 140);
+
   /// Muted gold for chrome labels (nav, inactive toggle).
   static const Color mutedGold = Color(0xFFC4B8A4);
   static const Color hudGold = Color(0xFFD4C8B4);
