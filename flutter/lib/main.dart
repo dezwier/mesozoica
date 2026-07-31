@@ -132,7 +132,11 @@ class MesozoicaApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => AerialMissionController()),
         ChangeNotifierProvider(create: (_) => GuidanceSessionController()),
         ChangeNotifierProvider(create: (_) => FormationMapController()),
-        ChangeNotifierProvider(create: (_) => PhyloTreeController()),
+        ChangeNotifierProvider(
+          create: (context) => PhyloTreeController(
+            catalogController: context.read<DinosaurCatalogController>(),
+          ),
+        ),
         ChangeNotifierProvider(
           create: (context) => MapController(
             catalogModeController: context.read<CatalogModeController>(),

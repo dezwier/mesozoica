@@ -44,19 +44,19 @@ void main() {
 
     expect(result.placedCount, 2);
     expect(result.unplacedCount, 0);
-    expect(result.root.name, 'Dinosauria');
+    // Single-child Dinosauria → Theropoda is pruned; root is the owned LCA.
+    expect(result.root.name, 'Theropoda');
+    expect(result.root.depth, 0);
+    expect(result.root.children, hasLength(2));
 
-    final theropoda = result.root.findChildByName('Theropoda');
-    expect(theropoda, isNotNull);
-    expect(theropoda!.children, hasLength(2));
-
-    final tyrannosauridae = theropoda.findChildByName('Tyrannosauridae');
+    final tyrannosauridae = result.root.findChildByName('Tyrannosauridae');
     expect(tyrannosauridae, isNotNull);
-    final tyrannosaurus = tyrannosauridae!.findChildByName('Tyrannosaurus');
+    expect(tyrannosauridae!.depth, 1);
+    final tyrannosaurus = tyrannosauridae.findChildByName('Tyrannosaurus');
     expect(tyrannosaurus?.dinosaurs.single.id, 1);
   });
 
-  test('creates Saurischia and Ornithischia split when present in data', () {
+  test('keeps Dinosauria when owned dinos span multiple major clades', () {
     final result = builder.build([
       _dino(
         id: 1,
@@ -80,6 +80,7 @@ void main() {
       ),
     ]);
 
+    expect(result.root.name, 'Dinosauria');
     expect(result.root.children, hasLength(2));
     expect(result.root.findChildByName('Saurischia'), isNotNull);
     expect(result.root.findChildByName('Ornithischia'), isNotNull);
@@ -108,7 +109,9 @@ void main() {
     expect(result.placedCount, 1);
     expect(result.unplacedCount, 1);
     expect(result.totalGenera, 1);
-    expect(result.root.findChildByName('Tyrannosaurus')?.dinosaurs.single.id, 2);
+    // Single placed path collapses to the genus leaf.
+    expect(result.root.name, 'Tyrannosaurus');
+    expect(result.root.dinosaurs.single.id, 2);
   });
 
   test('attaches multiple records under the same genus name', () {
@@ -131,9 +134,9 @@ void main() {
       ),
     ]);
 
-    final genusNode = result.root.findChildByName('Tyrannosaurus');
-    expect(genusNode?.dinosaurs, hasLength(2));
-    expect(genusNode?.dinosaurs.map((d) => d.id), containsAll([1, 2]));
+    expect(result.root.name, 'Tyrannosaurus');
+    expect(result.root.dinosaurs, hasLength(2));
+    expect(result.root.dinosaurs.map((d) => d.id), containsAll([1, 2]));
   });
 
   test('merges clade variants with different whitespace or markers', () {
@@ -170,11 +173,11 @@ void main() {
       ),
     ]);
 
-    final saurischia = result.root.findChildByName('Saurischia');
-    expect(saurischia, isNotNull);
-    expect(saurischia!.children, hasLength(2));
+    // Shared Saurischia path is pruned; root is the LCA of owned dinos.
+    expect(result.root.name, 'Saurischia');
+    expect(result.root.children, hasLength(2));
 
-    final sauropodomorpha = saurischia.findChildByName('Sauropodomorpha');
+    final sauropodomorpha = result.root.findChildByName('Sauropodomorpha');
     expect(sauropodomorpha, isNotNull);
     expect(sauropodomorpha!.children, hasLength(2));
     expect(
@@ -215,11 +218,10 @@ void main() {
       ),
     ]);
 
-    final theropoda = result.root.findChildByName('Theropoda');
-    expect(theropoda, isNotNull);
-    expect(theropoda!.children, hasLength(3));
+    expect(result.root.name, 'Theropoda');
+    expect(result.root.children, hasLength(3));
     expect(
-      theropoda.children.map((child) => child.name).toList(),
+      result.root.children.map((child) => child.name).toList(),
       ['Allosaurus', 'Zuniceratops', 'Coelurosauria'],
     );
   });
@@ -249,13 +251,12 @@ void main() {
       ),
     ]);
 
-    final theropoda = result.root.findChildByName('Theropoda');
-    expect(theropoda, isNotNull);
-    expect(theropoda!.children, hasLength(2));
-    expect(theropoda.children.first.name, 'Carnosauria');
-    expect(theropoda.children.first.branchNestDepth, 1);
-    expect(theropoda.children[1].name, 'Coelurosauria');
-    expect(theropoda.children[1].branchNestDepth, 2);
+    expect(result.root.name, 'Theropoda');
+    expect(result.root.children, hasLength(2));
+    expect(result.root.children.first.name, 'Carnosauria');
+    expect(result.root.children.first.branchNestDepth, 1);
+    expect(result.root.children[1].name, 'Coelurosauria');
+    expect(result.root.children[1].branchNestDepth, 2);
   });
 
   test('sorts leaves alphabetically within the leaf group', () {
@@ -280,9 +281,9 @@ void main() {
       ),
     ]);
 
-    final theropoda = result.root.findChildByName('Theropoda');
+    expect(result.root.name, 'Theropoda');
     expect(
-      theropoda!.children.map((child) => child.name).toList(),
+      result.root.children.map((child) => child.name).toList(),
       ['Allosaurus', 'Zuniceratops'],
     );
   });

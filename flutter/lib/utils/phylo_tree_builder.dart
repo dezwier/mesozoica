@@ -31,12 +31,28 @@ class PhyloTreeBuilder {
 
     root.sortChildrenRecursively();
 
+    // Collapse single-child chains so the visible root is the LCA of owned
+    // (placed) dinosaurs rather than always Dinosauria.
+    final visibleRoot = _pruneToOwnedLca(root);
+
     return PhyloTreeBuildResult(
-      root: root,
+      root: visibleRoot,
       placedCount: placedCount,
       unplacedCount: unplacedCount,
       totalGenera: totalGenera,
     );
+  }
+
+  /// Walks down while there is exactly one child and no dinos on the node.
+  PhyloTreeNode _pruneToOwnedLca(PhyloTreeNode root) {
+    var current = root;
+    while (current.children.length == 1 && current.dinosaurs.isEmpty) {
+      current = current.children.single;
+    }
+    if (!identical(current, root)) {
+      current.redepth();
+    }
+    return current;
   }
 
   void _insertPath(

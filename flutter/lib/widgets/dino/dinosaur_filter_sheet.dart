@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../controllers/dinosaur_catalog_controller.dart';
+import '../../theme/map_chrome_theme.dart';
 import '../../utils/display_text.dart';
 import '../cards/geologic_timeline.dart';
 import '../common/drawer_sheet_sizes.dart';
@@ -135,6 +136,10 @@ class _DinosaurFilterSheetState extends State<DinosaurFilterSheet> {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final outlineBorder = SettingsFormStyles.outlineBorder(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final dividerColor = isDark
+        ? MapChromeTheme.leather.withValues(alpha: 0.85)
+        : MapChromeTheme.parchmentEdge.withValues(alpha: 0.85);
     final divisions =
         (GeologicTimeline.mesozoicOlderMa - GeologicTimeline.mesozoicYoungerMa)
             .round();
@@ -178,6 +183,8 @@ class _DinosaurFilterSheetState extends State<DinosaurFilterSheet> {
                   ),
                 ),
               ),
+            Divider(height: 1, thickness: 1, color: dividerColor),
+            const SizedBox(height: 16),
             _buildSearchField(context),
             const SizedBox(height: 20),
             _multiSelectRow(
@@ -191,124 +198,60 @@ class _DinosaurFilterSheetState extends State<DinosaurFilterSheet> {
               onSelectOnly: _selectOnlyDiet,
             ),
             const SizedBox(height: 20),
-            Text(
-              'Length',
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              'Showing ${_formatMeters(_pendingLengthM.start)} – '
-              '${_formatMeters(_pendingLengthM.end)} m',
-              style: SettingsFormStyles.finePrintStyle(context),
-            ),
-            RangeSlider(
-              values: _pendingLengthM,
-              min: lengthMMinBound,
-              max: lengthMMaxBound,
-              divisions: lengthDivisions,
-              onChanged: (values) {
-                _updatePending(() => _pendingLengthM = values);
-              },
-            ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  '${lengthMMinBound.round()} m',
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    color: colorScheme.onSurfaceVariant,
-                  ),
-                ),
-                Text(
-                  '${lengthMMaxBound.round()} m',
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    color: colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-            Text(
-              'Mass',
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              'Showing ${_formatTonnes(_pendingMassT.start)} – '
-              '${_formatTonnes(_pendingMassT.end)} t',
-              style: SettingsFormStyles.finePrintStyle(context),
-            ),
-            RangeSlider(
-              values: _pendingMassT,
-              min: massTMinBound,
-              max: massTMaxBound,
-              divisions: massDivisions,
-              onChanged: (values) {
-                _updatePending(() => _pendingMassT = values);
-              },
-            ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  '${massTMinBound.round()} t',
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    color: colorScheme.onSurfaceVariant,
-                  ),
-                ),
-                Text(
-                  '${massTMaxBound.round()} t',
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    color: colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-            Text(
-              'Time range',
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              'Showing ${_pendingRange.end.round()} – ${_pendingRange.start.round()} Ma',
-              style: SettingsFormStyles.finePrintStyle(context),
-            ),
-            Transform(
-              alignment: Alignment.center,
-              transform: Matrix4.identity()..scaleByDouble(-1.0, 1.0, 1.0, 1.0),
-              child: RangeSlider(
-                values: _pendingRange,
-                min: GeologicTimeline.mesozoicYoungerMa,
-                max: GeologicTimeline.mesozoicOlderMa,
-                divisions: divisions,
+            _sliderRow(
+              context: context,
+              label: 'Length',
+              description:
+                  'Showing ${_formatMeters(_pendingLengthM.start)} – '
+                  '${_formatMeters(_pendingLengthM.end)} m',
+              slider: RangeSlider(
+                values: _pendingLengthM,
+                min: lengthMMinBound,
+                max: lengthMMaxBound,
+                divisions: lengthDivisions,
                 onChanged: (values) {
-                  _updatePending(() => _pendingRange = values);
+                  _updatePending(() => _pendingLengthM = values);
                 },
               ),
             ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  '${GeologicTimeline.mesozoicOlderMa.round()} Ma',
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    color: colorScheme.onSurfaceVariant,
-                  ),
+            const SizedBox(height: 12),
+            _sliderRow(
+              context: context,
+              label: 'Mass',
+              description:
+                  'Showing ${_formatTonnes(_pendingMassT.start)} – '
+                  '${_formatTonnes(_pendingMassT.end)} t',
+              slider: RangeSlider(
+                values: _pendingMassT,
+                min: massTMinBound,
+                max: massTMaxBound,
+                divisions: massDivisions,
+                onChanged: (values) {
+                  _updatePending(() => _pendingMassT = values);
+                },
+              ),
+            ),
+            const SizedBox(height: 12),
+            _sliderRow(
+              context: context,
+              label: 'Time range',
+              description:
+                  'Showing ${_pendingRange.end.round()} – '
+                  '${_pendingRange.start.round()} Ma',
+              slider: Transform(
+                alignment: Alignment.center,
+                transform: Matrix4.identity()
+                  ..scaleByDouble(-1.0, 1.0, 1.0, 1.0),
+                child: RangeSlider(
+                  values: _pendingRange,
+                  min: GeologicTimeline.mesozoicYoungerMa,
+                  max: GeologicTimeline.mesozoicOlderMa,
+                  divisions: divisions,
+                  onChanged: (values) {
+                    _updatePending(() => _pendingRange = values);
+                  },
                 ),
-                Text(
-                  '${GeologicTimeline.mesozoicYoungerMa.round()} Ma',
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    color: colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              ],
+              ),
             ),
             const SizedBox(height: 24),
             Row(
@@ -329,6 +272,51 @@ class _DinosaurFilterSheetState extends State<DinosaurFilterSheet> {
           ],
         );
       },
+    );
+  }
+
+  Widget _sliderRow({
+    required BuildContext context,
+    required String label,
+    required String description,
+    required Widget slider,
+  }) {
+    final theme = Theme.of(context);
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Expanded(
+          flex: 2,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                label,
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                description,
+                style: SettingsFormStyles.finePrintStyle(context),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          flex: 3,
+          child: SliderTheme(
+            data: SliderTheme.of(context).copyWith(
+              overlayShape: SliderComponentShape.noOverlay,
+              rangeTrackShape: const RoundedRectRangeSliderTrackShape(),
+            ),
+            child: slider,
+          ),
+        ),
+      ],
     );
   }
 

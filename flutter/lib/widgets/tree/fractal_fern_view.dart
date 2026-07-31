@@ -713,6 +713,7 @@ class _FadingInlineGenusCardLayerState extends State<_FadingInlineGenusCardLayer
         child: DinosaurTurnableCard(
           dinosaur: widget.card.candidate.dinosaur,
           showFrontFacts: showFacts,
+          showFrontBadges: showFacts,
           showArticleButton: showFacts,
           turnable: showFacts,
           titleFontSize:

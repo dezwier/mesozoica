@@ -11,6 +11,7 @@ class DinosaurTurnableCard extends StatefulWidget {
     super.key,
     required this.dinosaur,
     this.showFrontFacts = true,
+    this.showFrontBadges = true,
     this.showArticleButton,
     this.turnable = true,
     this.enableDragFlip = true,
@@ -25,6 +26,7 @@ class DinosaurTurnableCard extends StatefulWidget {
 
   final DinosaurSummary dinosaur;
   final bool showFrontFacts;
+  final bool showFrontBadges;
   final bool? showArticleButton;
   final bool turnable;
   final bool enableDragFlip;
@@ -77,6 +79,7 @@ class _DinosaurTurnableCardState extends State<DinosaurTurnableCard> {
       front: DinosaurCardFront(
         dinosaur: _dinosaur,
         showFacts: widget.showFrontFacts,
+        showBadges: widget.showFrontBadges,
         titleFontSize: widget.titleFontSize,
         subtitleFontSize: widget.subtitleFontSize,
         overlayHeightFactor: widget.overlayHeightFactor,

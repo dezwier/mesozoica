@@ -14,9 +14,17 @@ class PhyloTreeNode {
 
   final String name;
   final String rankKey;
-  final int depth;
+  int depth;
   final List<DinosaurSummary> dinosaurs;
   final List<PhyloTreeNode> children;
+
+  /// Reassigns [depth] for this node and all descendants.
+  void redepth([int newDepth = 0]) {
+    depth = newDepth;
+    for (final child in children) {
+      child.redepth(newDepth + 1);
+    }
+  }
 
   bool get isGenus => rankKey == 'genus' || dinosaurs.isNotEmpty;
 

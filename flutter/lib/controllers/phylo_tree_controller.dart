@@ -10,13 +10,18 @@ import '../utils/phylo_tree_builder.dart';
 
 class PhyloTreeController extends ChangeNotifier {
   PhyloTreeController({
+    required DinosaurCatalogController catalogController,
     DinosaurService? service,
     PhyloTreeBuilder? builder,
-  })  : _service = service ?? DinosaurService(),
-        _builder = builder ?? const PhyloTreeBuilder();
+  })  : _catalog = catalogController,
+        _service = service ?? DinosaurService(),
+        _builder = builder ?? const PhyloTreeBuilder() {
+    _catalog.addListener(_onCatalogChanged);
+  }
 
   static const _pageSize = 500;
 
+  final DinosaurCatalogController _catalog;
   final DinosaurService _service;
   final PhyloTreeBuilder _builder;
 
@@ -28,7 +33,7 @@ class PhyloTreeController extends ChangeNotifier {
   int _placedCount = 0;
   int _unplacedCount = 0;
   int _totalGenera = 0;
-  DinosaurCatalogFilters _filters = DinosaurCatalogFilters.defaults;
+  DinosaurCatalogFilters? _appliedFilters;
 
   bool get loading => _loading;
   bool get loaded => _loaded;
@@ -38,16 +43,25 @@ class PhyloTreeController extends ChangeNotifier {
   int get placedCount => _placedCount;
   int get unplacedCount => _unplacedCount;
   int get totalGenera => _totalGenera;
-  DinosaurCatalogFilters get filters => _filters;
-  bool get hasActiveFilters => _filters.hasActiveFilters;
+  DinosaurCatalogFilters get filters => _catalog.filters;
+  bool get hasActiveFilters => _catalog.hasActiveFilters;
 
-  Future<void> loadIfNeeded() async {
-    if (_loaded || _loading) return;
-    await reload();
+  void _onCatalogChanged() {
+    if (!_loaded && !_loading) return;
+    if (_appliedFilters != null &&
+        _filtersEqual(_appliedFilters!, _catalog.filters)) {
+      return;
+    }
+    reload();
   }
 
-  Future<void> applyFilters(DinosaurCatalogFilters filters) async {
-    _filters = filters;
+  Future<void> loadIfNeeded() async {
+    if (_loading) return;
+    if (_loaded &&
+        _appliedFilters != null &&
+        _filtersEqual(_appliedFilters!, _catalog.filters)) {
+      return;
+    }
     await reload();
   }
 
@@ -56,8 +70,10 @@ class PhyloTreeController extends ChangeNotifier {
     _error = null;
     notifyListeners();
 
+    final filters = _catalog.filters;
+
     try {
-      final dinosaurs = await _fetchAllDinosaurs();
+      final dinosaurs = await _fetchAllDinosaurs(filters);
       final result = _builder.build(dinosaurs);
 
       final layout = FractalTreeLayout(
@@ -73,6 +89,7 @@ class PhyloTreeController extends ChangeNotifier {
       _placedCount = result.placedCount;
       _unplacedCount = result.unplacedCount;
       _totalGenera = result.totalGenera;
+      _appliedFilters = filters;
       _loaded = true;
       _error = null;
 
@@ -99,26 +116,29 @@ class PhyloTreeController extends ChangeNotifier {
     }
   }
 
-  Future<List<DinosaurSummary>> _fetchAllDinosaurs() async {
+  Future<List<DinosaurSummary>> _fetchAllDinosaurs(
+    DinosaurCatalogFilters filters,
+  ) async {
     final all = <DinosaurSummary>[];
     var offset = 0;
     var hasMore = true;
-    final hasSearch = _filters.searchQuery.trim().isNotEmpty;
+    final hasSearch = filters.searchQuery.trim().isNotEmpty;
 
     while (hasMore) {
       final response = await _service.fetchDinosaurs(
         limit: _pageSize,
         offset: offset,
         sort: 'name',
-        q: hasSearch ? _filters.searchQuery.trim() : null,
+        mode: 'inventory',
+        q: hasSearch ? filters.searchQuery.trim() : null,
         maYounger:
-            !hasSearch && _filters.hasTimeFilter ? _filters.maYounger : null,
-        maOlder: !hasSearch && _filters.hasTimeFilter ? _filters.maOlder : null,
-        diets: _filters.diets,
-        lengthMMin: _filters.hasLengthFilter ? _filters.lengthMMin : null,
-        lengthMMax: _filters.hasLengthFilter ? _filters.lengthMMax : null,
-        massKgMin: _filters.hasMassFilter ? _filters.massKgMin : null,
-        massKgMax: _filters.hasMassFilter ? _filters.massKgMax : null,
+            !hasSearch && filters.hasTimeFilter ? filters.maYounger : null,
+        maOlder: !hasSearch && filters.hasTimeFilter ? filters.maOlder : null,
+        diets: filters.diets,
+        lengthMMin: filters.hasLengthFilter ? filters.lengthMMin : null,
+        lengthMMax: filters.hasLengthFilter ? filters.lengthMMax : null,
+        massKgMin: filters.hasMassFilter ? filters.massKgMin : null,
+        massKgMax: filters.hasMassFilter ? filters.massKgMax : null,
       );
 
       all.addAll(response.items);
@@ -130,8 +150,23 @@ class PhyloTreeController extends ChangeNotifier {
     return all;
   }
 
+  static bool _filtersEqual(
+    DinosaurCatalogFilters a,
+    DinosaurCatalogFilters b,
+  ) {
+    return a.searchQuery == b.searchQuery &&
+        a.maYounger == b.maYounger &&
+        a.maOlder == b.maOlder &&
+        a.lengthMMin == b.lengthMMin &&
+        a.lengthMMax == b.lengthMMax &&
+        a.massKgMin == b.massKgMin &&
+        a.massKgMax == b.massKgMax &&
+        setEquals(a.diets, b.diets);
+  }
+
   @override
   void dispose() {
+    _catalog.removeListener(_onCatalogChanged);
     _service.dispose();
     super.dispose();
   }

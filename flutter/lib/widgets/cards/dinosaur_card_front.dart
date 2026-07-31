@@ -14,6 +14,7 @@ class DinosaurCardFront extends StatelessWidget {
     super.key,
     required this.dinosaur,
     this.showFacts = true,
+    this.showBadges = true,
     this.titleFontSize = 36,
     this.subtitleFontSize = 10,
     this.overlayHeightFactor = 0.52,
@@ -22,6 +23,7 @@ class DinosaurCardFront extends StatelessWidget {
 
   final DinosaurSummary dinosaur;
   final bool showFacts;
+  final bool showBadges;
   final double titleFontSize;
   final double subtitleFontSize;
   final double overlayHeightFactor;
@@ -37,7 +39,7 @@ class DinosaurCardFront extends StatelessWidget {
   Widget build(BuildContext context) {
     final cardTheme = DinoCardTheme.of(context);
     final status = dinosaur.status?.trim() ?? '';
-    final showIdBadge = dinosaur.isInventoryOccurrence;
+    final showIdBadge = showBadges && dinosaur.isInventoryOccurrence;
 
     return AspectRatio(
       aspectRatio: DinoCardTheme.cardAspectRatio,
@@ -67,7 +69,7 @@ class DinosaurCardFront extends StatelessWidget {
                 label: dinosaur.occurrenceIdBadgeLabel,
               ),
             ),
-          if (showStatus && status.isNotEmpty)
+          if (showBadges && showStatus && status.isNotEmpty)
             Positioned(
               top: 14,
               right: 14,

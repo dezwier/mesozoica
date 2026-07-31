@@ -71,12 +71,13 @@ class PhyloTreePanelState extends State<PhyloTreePanel> {
     }
 
     final layout = treeController.layout;
-    if (layout == null || layout.root.children.isEmpty) {
+    if (layout == null ||
+        (layout.root.children.isEmpty && layout.root.treeNode.dinosaurs.isEmpty)) {
       return Center(
         child: Text(
           treeController.hasActiveFilters
               ? 'No dinosaurs match these filters.'
-              : 'No phylogeny data available yet.',
+              : 'No dinosaurs in your collection yet.',
           style: Theme.of(context).textTheme.bodyLarge,
         ),
       );

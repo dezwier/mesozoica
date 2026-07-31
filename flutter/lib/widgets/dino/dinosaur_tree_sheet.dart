@@ -1,12 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 
-import '../../controllers/phylo_tree_controller.dart';
 import '../common/chrome_fab.dart';
 import '../common/drawer_sheet_sizes.dart';
 import '../tree/phylo_tree_panel.dart';
-import 'dinosaur_filter_fab.dart';
-import 'dinosaur_filter_sheet.dart';
 
 class DinosaurTreeSheet {
   DinosaurTreeSheet._();
@@ -42,16 +38,6 @@ class _DinosaurTreeSheetBody extends StatefulWidget {
 
 class _DinosaurTreeSheetBodyState extends State<_DinosaurTreeSheetBody> {
   final _panelKey = GlobalKey<PhyloTreePanelState>();
-
-  void _openFilterSheet(PhyloTreeController treeController) {
-    DinosaurFilterSheet.show(
-      context,
-      initialFilters: treeController.filters,
-      catalogTotal:
-          treeController.totalGenera > 0 ? treeController.totalGenera : null,
-      onApply: treeController.applyFilters,
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -93,27 +79,11 @@ class _DinosaurTreeSheetBodyState extends State<_DinosaurTreeSheetBody> {
               Positioned(
                 top: 8,
                 right: 12,
-                child: Consumer<PhyloTreeController>(
-                  builder: (context, treeController, _) {
-                    return Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        ChromeFab(
-                          heroTag: 'tree_reset_fab',
-                          tooltip: 'Reset view',
-                          onPressed: () =>
-                              _panelKey.currentState?.resetView(),
-                          child: const Icon(Icons.center_focus_strong),
-                        ),
-                        const SizedBox(width: 10),
-                        DinosaurFilterFab(
-                          heroTag: 'tree_filter_fab',
-                          hasActiveFilters: treeController.hasActiveFilters,
-                          onPressed: () => _openFilterSheet(treeController),
-                        ),
-                      ],
-                    );
-                  },
+                child: ChromeFab(
+                  heroTag: 'tree_reset_fab',
+                  tooltip: 'Reset view',
+                  onPressed: () => _panelKey.currentState?.resetView(),
+                  child: const Icon(Icons.center_focus_strong),
                 ),
               ),
             ],
