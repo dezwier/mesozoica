@@ -331,12 +331,16 @@ def dinosaur_to_summary(
     row: DinosaurListRow,
     *,
     viewer_status: str | None = None,
+    owned_occurrences: list | None = None,
 ):
-    from app.schemas.dinosaur import DinosaurSummary
+    from app.schemas.dinosaur import DinosaurSummary, OwnedOccurrenceThumb
     from app.services.curated_image_service.versions import ORIGINAL_VERSION
 
     dino_type = row.dinosaur_type
     type_id = int(dino_type.id)
+    thumbs: list[OwnedOccurrenceThumb] = []
+    if owned_occurrences:
+        thumbs = list(owned_occurrences)
     return DinosaurSummary(
         id=int(row.occurrence_id or type_id),
         dinosaur_type_id=type_id,
@@ -359,7 +363,57 @@ def dinosaur_to_summary(
         created_at=row.created_at,
         version=row.image_version if row.occurrence_id is not None else None,
         status=viewer_status,
+        owned_occurrences=thumbs,
     )
+
+
+def owned_occurrences_for_types(
+    session: Session,
+    *,
+    type_ids: list[int],
+    viewer_user_id: int | None,
+) -> dict[int, list]:
+    """Owned occurrence thumbs keyed by dinosaur type id for the viewer."""
+    from app.schemas.dinosaur import OwnedOccurrenceThumb
+    from app.services.curated_image_service.versions import ORIGINAL_VERSION
+
+    if viewer_user_id is None or not type_ids:
+        return {}
+
+    # Distinct occurrences the viewer has any user_dinosaur link for.
+    rows = session.exec(
+        select(Dinosaur, DinosaurType)
+        .join(DinosaurType, col(DinosaurType.id) == col(Dinosaur.dinosaur_type_id))
+        .join(UserDinosaur, col(UserDinosaur.dinosaur_id) == col(Dinosaur.id))
+        .where(
+            col(UserDinosaur.user_id) == viewer_user_id,
+            col(Dinosaur.dinosaur_type_id).in_(type_ids),
+        )
+        .order_by(col(Dinosaur.created_at).asc(), col(Dinosaur.id).asc())
+    ).all()
+
+    result: dict[int, list[OwnedOccurrenceThumb]] = {tid: [] for tid in type_ids}
+    seen_occurrence_ids: set[int] = set()
+    for occurrence, dino_type in rows:
+        occ_id = int(occurrence.id)
+        if occ_id in seen_occurrence_ids:
+            continue
+        seen_occurrence_ids.add(occ_id)
+        type_id = int(occurrence.dinosaur_type_id)
+        version = (occurrence.version or ORIGINAL_VERSION).strip() or ORIGINAL_VERSION
+        result.setdefault(type_id, []).append(
+            OwnedOccurrenceThumb(
+                id=occ_id,
+                version=version,
+                main_image_url=resolve_dinosaur_card_image_url(
+                    dinosaur_name=dino_type.name,
+                    version=version,
+                    fallback_url=dino_type.main_image_url,
+                ),
+                created_at=occurrence.created_at,
+            )
+        )
+    return result
 
 
 def viewer_statuses_for_types(

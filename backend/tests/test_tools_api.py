@@ -138,6 +138,39 @@ def test_list_tools_catalog_allows_non_admin(client, session):
     assert by_name["Orbit Survey"]["level"] == 1
     assert by_name["Geo Hammer"]["id"] == other.id
     assert by_name["Geo Hammer"]["level"] is None
+    assert len(by_name["Orbit Survey"]["owned_occurrences"]) == 1
+    assert by_name["Orbit Survey"]["owned_occurrences"][0]["id"] is not None
+    assert by_name["Geo Hammer"]["owned_occurrences"] == []
+
+
+def test_list_tools_catalog_owned_occurrences_multiple(client, session):
+    tool_type = _seed_tool(session, name="Orbit Survey")
+    user = _user(session)
+    first = _grant(session, user_id=int(user.id), tool_id=int(tool_type.id), level=1)
+    second = Tool(tool_type_id=int(tool_type.id), level=1, version="Summer 26")
+    session.add(second)
+    session.flush()
+    session.add(
+        UserTool(
+            user_id=int(user.id),
+            tool_id=int(second.id),
+            action=USER_TOOL_ACTION_OWNED,
+        )
+    )
+    session.commit()
+    session.refresh(second)
+
+    response = client.get(
+        "/api/v1/tools",
+        params={"sort": "name", "mode": "catalog"},
+        headers=_auth_headers(user),
+    )
+    assert response.status_code == 200
+    item = response.json()["items"][0]
+    owned = item["owned_occurrences"]
+    assert len(owned) == 2
+    assert {row["id"] for row in owned} == {first.id, second.id}
+    assert {row["version"] for row in owned} == {"Original", "Summer 26"}
 
 
 def test_list_tools_show_all_admin(client, session):

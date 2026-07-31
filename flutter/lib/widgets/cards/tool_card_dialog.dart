@@ -1,52 +1,49 @@
 import 'package:flutter/material.dart';
 
-import '../../models/dinosaur.dart';
-import '../../services/dinosaur_service.dart';
+import '../../models/tool.dart';
+import '../../services/tool_service.dart';
 import 'card_detail_sheet.dart';
-import 'dinosaur_turnable_card.dart';
+import 'tool_turnable_card.dart';
 
-Future<void> showDinosaurCardDialog(
+Future<void> showToolCardDialog(
   BuildContext context, {
-  int? dinosaurId,
-  DinosaurSummary? dinosaur,
+  int? toolId,
+  ToolSummary? tool,
 }) {
-  assert(
-    dinosaur != null || dinosaurId != null,
-    'Provide dinosaur or dinosaurId',
-  );
+  assert(tool != null || toolId != null, 'Provide tool or toolId');
   return CardDetailSheet.show<void>(
     context,
-    builder: (context) => _DinosaurCardSheet(
-      dinosaurId: dinosaurId,
-      dinosaur: dinosaur,
+    builder: (context) => _ToolCardSheet(
+      toolId: toolId,
+      tool: tool,
     ),
   );
 }
 
-class _DinosaurCardSheet extends StatefulWidget {
-  const _DinosaurCardSheet({
-    this.dinosaurId,
-    this.dinosaur,
+class _ToolCardSheet extends StatefulWidget {
+  const _ToolCardSheet({
+    this.toolId,
+    this.tool,
   });
 
-  final int? dinosaurId;
-  final DinosaurSummary? dinosaur;
+  final int? toolId;
+  final ToolSummary? tool;
 
   @override
-  State<_DinosaurCardSheet> createState() => _DinosaurCardSheetState();
+  State<_ToolCardSheet> createState() => _ToolCardSheetState();
 }
 
-class _DinosaurCardSheetState extends State<_DinosaurCardSheet> {
-  final DinosaurService _service = DinosaurService();
-  late final Future<DinosaurSummary> _dinosaurFuture;
+class _ToolCardSheetState extends State<_ToolCardSheet> {
+  final ToolService _service = ToolService();
+  late final Future<ToolSummary> _toolFuture;
 
   @override
   void initState() {
     super.initState();
-    final preloaded = widget.dinosaur;
-    _dinosaurFuture = preloaded != null
-        ? Future<DinosaurSummary>.value(preloaded)
-        : _service.fetchDinosaurById(widget.dinosaurId!);
+    final preloaded = widget.tool;
+    _toolFuture = preloaded != null
+        ? Future<ToolSummary>.value(preloaded)
+        : _service.fetchToolById(widget.toolId!);
   }
 
   @override
@@ -57,8 +54,8 @@ class _DinosaurCardSheetState extends State<_DinosaurCardSheet> {
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<DinosaurSummary>(
-      future: _dinosaurFuture,
+    return FutureBuilder<ToolSummary>(
+      future: _toolFuture,
       builder: (context, snapshot) {
         if (snapshot.connectionState != ConnectionState.done) {
           return const SizedBox.shrink();
@@ -72,7 +69,7 @@ class _DinosaurCardSheetState extends State<_DinosaurCardSheet> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    snapshot.error?.toString() ?? 'Could not load dinosaur.',
+                    snapshot.error?.toString() ?? 'Could not load tool.',
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.bodyMedium,
                   ),
@@ -88,7 +85,7 @@ class _DinosaurCardSheetState extends State<_DinosaurCardSheet> {
         }
 
         return CardDetailSheetContent(
-          child: DinosaurTurnableCard(dinosaur: snapshot.data!),
+          child: ToolTurnableCard(tool: snapshot.data!),
         );
       },
     );

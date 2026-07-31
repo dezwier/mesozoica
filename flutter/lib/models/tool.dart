@@ -1,4 +1,7 @@
 import '../utils/relative_time.dart';
+import 'owned_occurrence_thumb.dart';
+
+export 'owned_occurrence_thumb.dart';
 
 class ToolSummary {
   const ToolSummary({
@@ -16,6 +19,7 @@ class ToolSummary {
     this.baseParams = const {},
     this.spawnDate,
     this.version,
+    this.ownedOccurrences = const [],
   });
 
   final int id;
@@ -41,7 +45,13 @@ class ToolSummary {
   /// Curated image version folder; set for inventory occurrences.
   final String? version;
 
-  bool get isOwned => level != null;
+  /// Catalog mode: owned occurrence thumbs for the album gallery.
+  final List<OwnedOccurrenceThumb> ownedOccurrences;
+
+  bool get isOwned => level != null || ownedOccurrences.isNotEmpty;
+
+  /// True when the viewer owns at least one occurrence of this catalog type.
+  bool get isCatalogOwned => ownedOccurrences.isNotEmpty;
   /// True when this card represents a specific owned tool occurrence (inventory).
   ///
   /// Prefer [spawnDate] over `id != toolTypeId`: the first occurrence of the
@@ -70,6 +80,26 @@ class ToolSummary {
     return '$base - $obtained';
   }
 
+  /// Build an inventory-style summary for a catalog owned occurrence thumb.
+  ToolSummary occurrenceFromThumb(OwnedOccurrenceThumb thumb) {
+    return ToolSummary(
+      id: thumb.id,
+      name: name,
+      category: category,
+      scientificTool: scientificTool,
+      description: description,
+      rarity: rarity,
+      action: action,
+      mainImageUrl: thumb.mainImageUrl ?? mainImageUrl,
+      level: level ?? 1,
+      toolTypeId: toolTypeId ?? id,
+      params: params,
+      baseParams: baseParams,
+      spawnDate: thumb.spawnDate,
+      version: thumb.version,
+    );
+  }
+
   ToolSummary copyWith({
     int? id,
     String? name,
@@ -85,6 +115,7 @@ class ToolSummary {
     Map<String, dynamic>? baseParams,
     DateTime? spawnDate,
     String? version,
+    List<OwnedOccurrenceThumb>? ownedOccurrences,
     bool clearLevel = false,
   }) {
     return ToolSummary(
@@ -102,6 +133,7 @@ class ToolSummary {
       baseParams: baseParams ?? this.baseParams,
       spawnDate: spawnDate ?? this.spawnDate,
       version: version ?? this.version,
+      ownedOccurrences: ownedOccurrences ?? this.ownedOccurrences,
     );
   }
 
@@ -138,6 +170,13 @@ class ToolSummary {
   }
 
   factory ToolSummary.fromJson(Map<String, dynamic> json) {
+    final rawOwned = json['owned_occurrences'];
+    final owned = rawOwned is List
+        ? rawOwned
+            .whereType<Map<String, dynamic>>()
+            .map(OwnedOccurrenceThumb.fromJson)
+            .toList()
+        : const <OwnedOccurrenceThumb>[];
     return ToolSummary(
       id: json['id'] as int,
       name: json['name'] as String? ?? '',
@@ -155,6 +194,7 @@ class ToolSummary {
       version: (json['version'] as String?)?.trim().isNotEmpty == true
           ? (json['version'] as String).trim()
           : null,
+      ownedOccurrences: owned,
     );
   }
 

@@ -1,5 +1,8 @@
 import '../utils/display_text.dart';
 import '../utils/relative_time.dart';
+import 'owned_occurrence_thumb.dart';
+
+export 'owned_occurrence_thumb.dart';
 
 class CladogramNode {
   const CladogramNode({
@@ -32,6 +35,7 @@ class DinosaurSummary {
     this.createdAt,
     this.version,
     this.status,
+    this.ownedOccurrences = const [],
   });
 
   final int id;
@@ -58,6 +62,12 @@ class DinosaurSummary {
   /// Viewer collection status (hidden / modelled / reconstructed).
   final String? status;
 
+  /// Catalog mode: owned occurrence thumbs for the album gallery.
+  final List<OwnedOccurrenceThumb> ownedOccurrences;
+
+  /// True when the viewer owns at least one occurrence of this catalog type.
+  bool get isCatalogOwned => ownedOccurrences.isNotEmpty;
+
   /// True for owned/reconstructed dinosaur cards (not catalog types).
   bool get isInventoryOccurrence =>
       createdAt != null ||
@@ -83,7 +93,37 @@ class DinosaurSummary {
     return 'Reconstructed ${formatRelativeWhen(at)}';
   }
 
+  /// Build an inventory-style summary for a catalog owned occurrence thumb.
+  DinosaurSummary occurrenceFromThumb(OwnedOccurrenceThumb thumb) {
+    return DinosaurSummary(
+      id: thumb.id,
+      name: name,
+      wikipediaTitle: wikipediaTitle,
+      dinosaurTypeId: dinosaurTypeId ?? id,
+      birth: birth,
+      death: death,
+      period: period,
+      dietType: dietType,
+      length: length,
+      mass: mass,
+      location: location,
+      shortDescription: shortDescription,
+      cladogram: cladogram,
+      mainImageUrl: thumb.mainImageUrl ?? mainImageUrl,
+      createdAt: thumb.createdAt,
+      version: thumb.version,
+      status: status,
+    );
+  }
+
   factory DinosaurSummary.fromJson(Map<String, dynamic> json) {
+    final rawOwned = json['owned_occurrences'];
+    final owned = rawOwned is List
+        ? rawOwned
+            .whereType<Map<String, dynamic>>()
+            .map(OwnedOccurrenceThumb.fromJson)
+            .toList()
+        : const <OwnedOccurrenceThumb>[];
     return DinosaurSummary(
       id: json['id'] as int,
       name: json['name'] as String,
@@ -104,6 +144,7 @@ class DinosaurSummary {
           ? (json['version'] as String).trim()
           : null,
       status: json['status'] as String?,
+      ownedOccurrences: owned,
     );
   }
 

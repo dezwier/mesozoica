@@ -431,10 +431,14 @@ def get_tool_by_id(
     return ToolListRow(tool_type=row, level=level, image_version=ORIGINAL_VERSION)
 
 
-def tool_to_summary(row: ToolListRow):
+def tool_to_summary(row: ToolListRow, *, owned_occurrences: list | None = None):
     """Build ToolSummary with optional ownership level (imported lazily to avoid cycles)."""
-    from app.schemas.tool import ToolSummary
+    from app.schemas.tool import OwnedOccurrenceThumb, ToolSummary
     from app.services.curated_image_service.versions import ORIGINAL_VERSION
+
+    thumbs: list[OwnedOccurrenceThumb] = []
+    if owned_occurrences:
+        thumbs = list(owned_occurrences)
 
     return ToolSummary(
         id=int(row.occurrence_id or row.tool_type.id),
@@ -455,4 +459,54 @@ def tool_to_summary(row: ToolListRow):
         base_params=base_params_for_tool_type(row.tool_type),
         spawn_date=row.spawn_date,
         version=row.image_version or ORIGINAL_VERSION,
+        owned_occurrences=thumbs,
     )
+
+
+def owned_occurrences_for_tool_types(
+    session: Session,
+    *,
+    type_ids: list[int],
+    viewer_user_id: int | None,
+) -> dict[int, list]:
+    """Owned occurrence thumbs keyed by tool type id for the viewer."""
+    from app.schemas.tool import OwnedOccurrenceThumb
+    from app.services.curated_image_service.versions import ORIGINAL_VERSION
+
+    if viewer_user_id is None or not type_ids:
+        return {}
+
+    rows = session.exec(
+        select(Tool, ToolType)
+        .join(ToolType, col(ToolType.id) == col(Tool.tool_type_id))
+        .join(UserTool, col(UserTool.tool_id) == col(Tool.id))
+        .where(
+            col(UserTool.user_id) == viewer_user_id,
+            col(UserTool.action) == USER_TOOL_ACTION_OWNED,
+            col(Tool.tool_type_id).in_(type_ids),
+        )
+        .order_by(col(Tool.spawn_date).asc(), col(Tool.id).asc())
+    ).all()
+
+    result: dict[int, list[OwnedOccurrenceThumb]] = {tid: [] for tid in type_ids}
+    seen_occurrence_ids: set[int] = set()
+    for occurrence, tool_type in rows:
+        occ_id = int(occurrence.id)
+        if occ_id in seen_occurrence_ids:
+            continue
+        seen_occurrence_ids.add(occ_id)
+        type_id = int(occurrence.tool_type_id)
+        version = (occurrence.version or ORIGINAL_VERSION).strip() or ORIGINAL_VERSION
+        result.setdefault(type_id, []).append(
+            OwnedOccurrenceThumb(
+                id=occ_id,
+                version=version,
+                main_image_url=resolve_tool_card_image_url(
+                    tool_name=tool_type.name,
+                    version=version,
+                    fallback_url=tool_type.main_image_url,
+                ),
+                spawn_date=occurrence.spawn_date,
+            )
+        )
+    return result

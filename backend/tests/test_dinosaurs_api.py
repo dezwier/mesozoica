@@ -147,6 +147,89 @@ def test_list_dinosaurs_inventory_includes_created_at(client, session):
     assert item["status"] == "modelled"
 
 
+def test_list_dinosaurs_catalog_owned_occurrences(client, session):
+    from app.core.security import create_access_token
+    from app.models.dinosaur import Dinosaur
+    from app.models.user import User
+    from app.models.user_dinosaur import USER_DINOSAUR_ROLE_MODELLED, UserDinosaur
+
+    dino_type = _seed_tyrannosaurus(session)
+    user = User(
+        username="catalog-owner",
+        email="catalog-owner@example.com",
+        password="x",
+    )
+    session.add(user)
+    session.commit()
+    session.refresh(user)
+
+    first = Dinosaur(dinosaur_type_id=int(dino_type.id), version="Original")
+    second = Dinosaur(dinosaur_type_id=int(dino_type.id), version="Summer 26")
+    session.add(first)
+    session.add(second)
+    session.commit()
+    session.refresh(first)
+    session.refresh(second)
+    session.add(
+        UserDinosaur(
+            user_id=int(user.id),
+            dinosaur_id=int(first.id),
+            role=USER_DINOSAUR_ROLE_MODELLED,
+        )
+    )
+    session.add(
+        UserDinosaur(
+            user_id=int(user.id),
+            dinosaur_id=int(second.id),
+            role=USER_DINOSAUR_ROLE_MODELLED,
+        )
+    )
+    session.commit()
+
+    token = create_access_token({"sub": str(user.id)})
+    response = client.get(
+        "/api/v1/dinosaurs",
+        params={"mode": "catalog", "sort": "name"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert response.status_code == 200
+    item = response.json()["items"][0]
+    assert item["status"] == "modelled"
+    owned = item["owned_occurrences"]
+    assert len(owned) == 2
+    assert {row["id"] for row in owned} == {first.id, second.id}
+    assert {row["version"] for row in owned} == {"Original", "Summer 26"}
+    for row in owned:
+        assert "main_image_url" in row
+
+
+def test_list_dinosaurs_catalog_owned_occurrences_empty_without_links(
+    client, session
+):
+    from app.core.security import create_access_token
+    from app.models.user import User
+
+    _seed_tyrannosaurus(session)
+    user = User(
+        username="catalog-empty",
+        email="catalog-empty@example.com",
+        password="x",
+    )
+    session.add(user)
+    session.commit()
+    session.refresh(user)
+    token = create_access_token({"sub": str(user.id)})
+    response = client.get(
+        "/api/v1/dinosaurs",
+        params={"mode": "catalog", "sort": "name"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert response.status_code == 200
+    item = response.json()["items"][0]
+    assert item["owned_occurrences"] == []
+    assert item["status"] == "hidden"
+
+
 def test_collect_dinosaur_admin_flow(client, session):
     from app.core.security import create_access_token
     from app.models.user import User

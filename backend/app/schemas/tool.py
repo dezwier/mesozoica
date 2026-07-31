@@ -8,6 +8,15 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict, Field
 
 
+class OwnedOccurrenceThumb(BaseModel):
+    """Viewer-owned occurrence thumbnail for catalog album tiles."""
+
+    id: int
+    version: str | None = None
+    main_image_url: str | None = None
+    spawn_date: datetime | None = None
+
+
 class ToolSummary(BaseModel):
     """Card-facing tool fields."""
 
@@ -29,6 +38,8 @@ class ToolSummary(BaseModel):
     spawn_date: datetime | None = None
     # Curated image version folder; set for inventory occurrences.
     version: str | None = None
+    # Catalog mode only: viewer's owned occurrences of this type (gallery thumbs).
+    owned_occurrences: list[OwnedOccurrenceThumb] = Field(default_factory=list)
 
 
 class ToolListResponse(BaseModel):

@@ -50,7 +50,7 @@ from app.services.tool_service import (
     tool_to_summary,
 )
 from app.services.tool_service.collect import list_tool_image_versions
-from app.services.tool_service.list import ListMode, ToolListRow
+from app.services.tool_service.list import ListMode, ToolListRow, owned_occurrences_for_tool_types
 from app.services.curated_image_service.versions import ORIGINAL_VERSION
 from app.services.tool_service.update_params import update_tool_instance_params
 
@@ -98,7 +98,23 @@ def get_tools(
         show_all=True if mode == "catalog" else False,
         mode=mode,
     )
-    items = [tool_to_summary(row) for row in rows]
+    viewer_user_id = current_user.id if current_user is not None else None
+    if mode == "catalog":
+        type_ids = [int(row.tool_type.id) for row in rows if row.tool_type.id is not None]
+        owned = owned_occurrences_for_tool_types(
+            session, type_ids=type_ids, viewer_user_id=viewer_user_id
+        )
+        items = [
+            tool_to_summary(
+                row,
+                owned_occurrences=owned.get(int(row.tool_type.id), [])
+                if row.tool_type.id is not None
+                else [],
+            )
+            for row in rows
+        ]
+    else:
+        items = [tool_to_summary(row) for row in rows]
     return ToolListResponse(
         items=items,
         total=total,

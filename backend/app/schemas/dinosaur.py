@@ -8,6 +8,15 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict, Field
 
 
+class OwnedOccurrenceThumb(BaseModel):
+    """Viewer-owned occurrence thumbnail for catalog album tiles."""
+
+    id: int
+    version: str | None = None
+    main_image_url: str | None = None
+    created_at: datetime | None = None
+
+
 class DinosaurSummary(BaseModel):
     """Card-facing dinosaur fields (excludes heavy article HTML)."""
 
@@ -33,6 +42,8 @@ class DinosaurSummary(BaseModel):
     version: str | None = None
     # Viewer collection status (catalog: latest role for type; inventory: occurrence).
     status: str | None = None
+    # Catalog mode only: viewer's owned occurrences of this type (gallery thumbs).
+    owned_occurrences: list[OwnedOccurrenceThumb] = Field(default_factory=list)
 
 
 class CollectDinosaurRequest(BaseModel):

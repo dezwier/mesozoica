@@ -27,6 +27,7 @@ from app.services.dinosaur_service.list import (
     DinosaurListRow,
     ListMode,
     dinosaur_to_summary,
+    owned_occurrences_for_types,
     viewer_status_for_occurrence,
     viewer_statuses_for_types,
 )
@@ -75,6 +76,9 @@ def get_dinosaurs(
         statuses = viewer_statuses_for_types(
             session, type_ids=type_ids, viewer_user_id=viewer_user_id
         )
+        owned = owned_occurrences_for_types(
+            session, type_ids=type_ids, viewer_user_id=viewer_user_id
+        )
         items = [
             dinosaur_to_summary(
                 row,
@@ -83,6 +87,7 @@ def get_dinosaurs(
                 )
                 if viewer_user_id is not None
                 else None,
+                owned_occurrences=owned.get(int(row.dinosaur_type.id), []),
             )
             for row in rows
         ]
