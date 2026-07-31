@@ -45,6 +45,12 @@ class CatalogAlbumDrawer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final headerColor =
+        isDark ? MapChromeTheme.cream : MapChromeTheme.brownText;
+    final dividerColor = isDark
+        ? MapChromeTheme.leather.withValues(alpha: 0.85)
+        : MapChromeTheme.parchmentEdge.withValues(alpha: 0.85);
     return Material(
       color: theme.colorScheme.surface,
       borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
@@ -65,7 +71,7 @@ class CatalogAlbumDrawer extends StatelessWidget {
                     style: theme.textTheme.headlineSmall?.copyWith(
                       fontFamily: MapChromeTheme.serifFont,
                       fontWeight: FontWeight.w600,
-                      color: MapChromeTheme.brownText,
+                      color: headerColor,
                     ),
                   ),
                   Align(
@@ -75,7 +81,7 @@ class CatalogAlbumDrawer extends StatelessWidget {
                       onPressed: () => Navigator.of(context).maybePop(),
                       icon: Icon(
                         Icons.close,
-                        color: MapChromeTheme.brownText.withValues(alpha: 0.75),
+                        color: headerColor.withValues(alpha: 0.75),
                       ),
                     ),
                   ),
@@ -86,7 +92,7 @@ class CatalogAlbumDrawer extends StatelessWidget {
           Divider(
             height: 1,
             thickness: 1,
-            color: MapChromeTheme.parchmentEdge.withValues(alpha: 0.85),
+            color: dividerColor,
           ),
           Expanded(child: body),
         ],

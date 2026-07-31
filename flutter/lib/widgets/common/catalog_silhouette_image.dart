@@ -18,11 +18,26 @@ class CatalogSilhouetteImage extends StatelessWidget {
   final String placeholderAsset;
   final bool Function(String? url) isCuratedUrl;
 
-  /// Soft parchment ground behind the art.
-  static const Color ground = MapChromeTheme.parchment;
+  /// Soft parchment ground behind the art (light theme).
+  static const Color groundLight = MapChromeTheme.parchment;
 
-  /// Near-black wash over the mono image so detail stays hard to read.
-  static const Color obscureWash = Color(0x731A1510); // ~0.45
+  /// Dark leather ground while images load (dark theme).
+  static const Color groundDark = MapChromeTheme.leather;
+
+  /// Soft parchment ground behind the art.
+  static const Color ground = groundLight;
+
+  /// Theme-aware tile / placeholder ground.
+  static Color groundFor(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return isDark ? groundDark : groundLight;
+  }
+
+  /// Near-black wash over the mono image (dark theme).
+  static const Color obscureWashDark = Color(0x731A1510); // ~0.45
+
+  /// Light grey wash over the mono image (light theme).
+  static const Color obscureWashLight = Color(0xB8D0CBC2); // ~0.72
 
   /// True grayscale, moderately crushed (less midtone / color left).
   static const List<double> _obscureMono = <double>[
@@ -32,14 +47,23 @@ class CatalogSilhouetteImage extends StatelessWidget {
     0, 0, 0, 1, 0,
   ];
 
+  /// Theme-aware wash: dark brown in dark mode, light grey in light mode.
+  static Color obscureWashFor(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return isDark ? obscureWashDark : obscureWashLight;
+  }
+
   @override
   Widget build(BuildContext context) {
     final curated = isCuratedUrl(imageUrl) ? imageUrl!.trim() : null;
+    final wash = obscureWashFor(context);
+    final groundColor = groundFor(context);
 
     return ColoredBox(
-      color: ground,
+      color: groundColor,
       child: curated == null
           ? _SilhouetteLayer(
+              wash: wash,
               child: Image.asset(placeholderAsset, fit: BoxFit.cover),
             )
           : CachedNetworkImage(
@@ -51,10 +75,12 @@ class CatalogSilhouetteImage extends StatelessWidget {
                 'User-Agent': 'Mesozoica/1.0 (mobile app; catalog album)',
               },
               imageBuilder: (context, provider) => _SilhouetteLayer(
+                wash: wash,
                 child: Image(image: provider, fit: BoxFit.cover),
               ),
-              placeholder: (context, url) => const ColoredBox(color: ground),
+              placeholder: (context, url) => ColoredBox(color: groundColor),
               errorWidget: (context, url, error) => _SilhouetteLayer(
+                wash: wash,
                 child: Image.asset(placeholderAsset, fit: BoxFit.cover),
               ),
             ),
@@ -63,9 +89,13 @@ class CatalogSilhouetteImage extends StatelessWidget {
 }
 
 class _SilhouetteLayer extends StatelessWidget {
-  const _SilhouetteLayer({required this.child});
+  const _SilhouetteLayer({
+    required this.child,
+    required this.wash,
+  });
 
   final Widget child;
+  final Color wash;
 
   @override
   Widget build(BuildContext context) {
@@ -78,7 +108,7 @@ class _SilhouetteLayer extends StatelessWidget {
           ),
           child: child,
         ),
-        const ColoredBox(color: CatalogSilhouetteImage.obscureWash),
+        ColoredBox(color: wash),
       ],
     );
   }

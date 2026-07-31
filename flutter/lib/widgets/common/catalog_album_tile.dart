@@ -90,16 +90,20 @@ class CatalogAlbumTileState extends State<CatalogAlbumTile> {
     final showAdminUi = context.watch<AuthController>().showAdminUi;
     final canAdminCollect = showAdminUi && widget.onAdminCollect != null;
     final radius = BorderRadius.circular(DinoCardTheme.borderRadius * 0.55);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final borderColor = isDark
+        ? MapChromeTheme.leather.withValues(alpha: 0.95)
+        : MapChromeTheme.parchmentEdge.withValues(alpha: 0.9);
     return AspectRatio(
       aspectRatio: DinoCardTheme.cardAspectRatio,
       child: Material(
-        color: CatalogSilhouetteImage.ground,
+        color: CatalogSilhouetteImage.groundFor(context),
         elevation: widget.owned ? 2 : 0,
         shadowColor: Colors.black26,
         shape: RoundedRectangleBorder(
           borderRadius: radius,
           side: BorderSide(
-            color: MapChromeTheme.parchmentEdge.withValues(alpha: 0.9),
+            color: borderColor,
             width: 1,
           ),
         ),
@@ -183,44 +187,61 @@ class _OwnedGallery extends StatelessWidget {
       children: [
         image,
         Positioned(
-          left: 5,
-          right: 5,
-          bottom: 6,
+          left: 0,
+          right: 0,
+          bottom: 0,
           child: IgnorePointer(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (multi) ...[
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: List.generate(occurrences.length, (index) {
-                      return Container(
-                        width: 5,
-                        height: 5,
-                        margin: const EdgeInsets.symmetric(horizontal: 2),
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: Colors.white.withValues(
-                            alpha: index == pageIndex ? 0.95 : 0.45,
-                          ),
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: showTitle
+                    ? LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Colors.transparent,
+                          Colors.black.withValues(alpha: 0.55),
+                        ],
+                      )
+                    : null,
+              ),
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(5, showTitle ? 22 : 0, 5, 6),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (multi) ...[
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: List.generate(occurrences.length, (index) {
+                          return Container(
+                            width: 5,
+                            height: 5,
+                            margin: const EdgeInsets.symmetric(horizontal: 2),
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: Colors.white.withValues(
+                                alpha: index == pageIndex ? 0.95 : 0.45,
+                              ),
+                            ),
+                          );
+                        }),
+                      ),
+                      if (showTitle) const SizedBox(height: 4),
+                    ],
+                    if (showTitle)
+                      CardAdaptiveTitleText(
+                        text: label,
+                        textAlign: TextAlign.center,
+                        style: DinoCardTheme.dark.frontOverlayTitleStyle(
+                          fontSize: 13,
+                        ).copyWith(
+                          fontFamily: MapChromeTheme.serifFont,
+                          letterSpacing: 0.4,
                         ),
-                      );
-                    }),
-                  ),
-                  if (showTitle) const SizedBox(height: 4),
-                ],
-                if (showTitle)
-                  CardAdaptiveTitleText(
-                    text: label,
-                    textAlign: TextAlign.center,
-                    style: DinoCardTheme.dark.frontOverlayTitleStyle(
-                      fontSize: 13,
-                    ).copyWith(
-                      fontFamily: MapChromeTheme.serifFont,
-                      letterSpacing: 0.4,
-                    ),
-                  ),
-              ],
+                      ),
+                  ],
+                ),
+              ),
             ),
           ),
         ),
@@ -285,7 +306,7 @@ class _ColorImage extends StatelessWidget {
         'User-Agent': 'Mesozoica/1.0 (mobile app; catalog album)',
       },
       placeholder: (context, url) =>
-          const ColoredBox(color: CatalogSilhouetteImage.ground),
+          ColoredBox(color: CatalogSilhouetteImage.groundFor(context)),
       errorWidget: (context, url, error) =>
           Image.asset(placeholderAsset, fit: BoxFit.cover),
     );
