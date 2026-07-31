@@ -27,6 +27,7 @@ import '../services/api_response_cache.dart';
 import '../services/location_service.dart';
 import '../services/push_notification_service.dart';
 import '../services/site_service.dart';
+import '../widgets/cards/card_detail_sheet.dart';
 import '../widgets/cards/fossil_discovery_celebration.dart';
 import '../widgets/cards/site_discovery_celebration.dart';
 import '../widgets/common/app_splash_screen.dart';
@@ -78,8 +79,10 @@ class _AppShellState extends State<AppShell>
       _sitesOpen || _fossilsOpen || _dinosaursOpen;
   bool get _anyOverlayOpen =>
       _profileOpen || _anyCatalogOpen || _toolsOpen;
-  /// Bottom / top chrome hide while any overlay is open (or aerial draw).
-  bool get _hideChrome => _anyOverlayOpen || _aerialDrawMode;
+  bool get _cardDetailOpen => CardDetailSheet.isOpen;
+  /// Bottom / top chrome hide while any overlay / card dialog is open (or aerial draw).
+  bool get _hideChrome =>
+      _anyOverlayOpen || _aerialDrawMode || _cardDetailOpen;
 
   void _clearOverlayFlags() {
     _profileOpen = false;
@@ -93,6 +96,7 @@ class _AppShellState extends State<AppShell>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    CardDetailSheet.openCount.addListener(_onCardDetailOverlayChanged);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       _attachCatalogModeListener();
@@ -200,6 +204,11 @@ class _AppShellState extends State<AppShell>
     // Do not setState on every formation notify — map/HUD listen locally.
   }
 
+  void _onCardDetailOverlayChanged() {
+    if (!mounted) return;
+    setState(() {});
+  }
+
   void _onAerialReconChanged() {
     if (!mounted) return;
     final aerial = _aerialRecon;
@@ -290,6 +299,7 @@ class _AppShellState extends State<AppShell>
 
   @override
   void dispose() {
+    CardDetailSheet.openCount.removeListener(_onCardDetailOverlayChanged);
     _discoveryCoordinator?.removeListener(_onDiscoveryChanged);
     _mapController?.removeListener(_onMapSitesChanged);
     _aerialRecon?.removeListener(_onAerialReconChanged);
@@ -506,8 +516,9 @@ class _AppShellState extends State<AppShell>
                 fit: StackFit.expand,
                 children: [
                   MapScreen(
-                    isActive: !_anyOverlayOpen,
-                    showControls: !_anyCatalogOpen && !_toolsOpen,
+                    isActive: !_anyOverlayOpen && !_cardDetailOpen,
+                    showControls:
+                        !_anyCatalogOpen && !_toolsOpen && !_cardDetailOpen,
                   ),
                   Offstage(
                     offstage: !_sitesOpen,

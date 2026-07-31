@@ -2,29 +2,29 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
-import '../../shell/map_chrome_insets.dart';
-
 /// Shared presentation for card detail overlays (map taps, cross-links).
 ///
 /// Catalog screens embed turnable cards inline; this sheet is only for the
 /// floating overlays that appear in front of the map / other tabs.
+///
+/// [openCount] lets [AppShell] freeze the map and hide chrome while any card
+/// dialog is up (same treatment as catalog / tools overlays).
 class CardDetailSheet {
   CardDetailSheet._();
 
-  /// Clears the floating bottom map chrome plus a small gap.
-  static const double navigationBarClearance = MapChromeInsets.bottomRowHeight;
+  /// Nested show/dismiss depth; AppShell listens to hide map chrome + freeze.
+  static final ValueNotifier<int> openCount = ValueNotifier<int>(0);
+
+  static bool get isOpen => openCount.value > 0;
 
   static const double bottomGap = 16;
 
-  /// Extra lift so the card sits a bit higher than nav clearance alone,
-  /// leaving a tappable dismiss band below the card.
+  /// Extra lift so the card sits above the home indicator, leaving a tappable
+  /// dismiss band below. Map chrome is hidden while the sheet is open.
   static const double cardLift = 56;
 
   static double bottomOffset(BuildContext context) {
-    return navigationBarClearance +
-        bottomGap +
-        cardLift +
-        MediaQuery.paddingOf(context).bottom;
+    return bottomGap + cardLift + MediaQuery.paddingOf(context).bottom;
   }
 
   static double maxContentHeight(BuildContext context) {
@@ -39,6 +39,7 @@ class CardDetailSheet {
   }) {
     final barrierLabel =
         MaterialLocalizations.of(context).modalBarrierDismissLabel;
+    openCount.value += 1;
     return showGeneralDialog<T>(
       context: context,
       useRootNavigator: true,
@@ -66,7 +67,11 @@ class CardDetailSheet {
           ),
         );
       },
-    );
+    ).whenComplete(() {
+      if (openCount.value > 0) {
+        openCount.value -= 1;
+      }
+    });
   }
 }
 
