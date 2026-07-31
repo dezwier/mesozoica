@@ -38,7 +38,7 @@ class CatalogAlbumDrawer extends StatelessWidget {
       builder: (_) => DraggableSheetWrapper(
         initialChildSize: initialChildSize,
         minChildSize: DrawerSheetSizes.minChildSize,
-        maxChildSize: DrawerSheetSizes.maxChildSize,
+        maxChildSize: initialChildSize,
         childBuilder: builder,
       ),
     );

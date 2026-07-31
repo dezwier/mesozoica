@@ -8,6 +8,11 @@ from urllib.parse import quote
 
 import httpx
 
+from app.services.curated_image_service.album_thumb import (
+    ALBUM_DIR_NAME,
+    derived_album_relative_paths,
+    list_local_album_relative_paths,
+)
 from app.services.curated_image_service.common import (
     is_allowed_image_filename,
     scan_local_image_files,
@@ -23,7 +28,7 @@ logger = logging.getLogger(__name__)
 
 
 def list_managed_relative_paths(root: Path) -> list[str]:
-    """Relative paths managed under a curated image root (images + meta.yaml)."""
+    """Relative paths managed under a curated image root (images + meta + album thumbs)."""
     paths: set[str] = set()
     if not root.is_dir():
         return []
@@ -39,11 +44,19 @@ def list_managed_relative_paths(root: Path) -> list[str]:
     for flat in scan_local_image_files(root):
         paths.add(flat.name)
 
+    # Local album files plus derived album paths for every full image so remote
+    # thumbs are not pruned when they only exist on Railway.
+    paths.update(list_local_album_relative_paths(root))
+    paths.update(derived_album_relative_paths(root))
+
     return sorted(paths)
 
 
 def safe_managed_relative_path(relative: str) -> str:
-    """Validate ``Original/foo.png``, ``Original/meta.yaml``, or flat ``foo.png``.
+    """Validate managed paths under a curated root.
+
+    Accepts flat ``foo.png``, ``Original/foo.png``, ``Original/meta.yaml``, or
+    album thumbs ``Original/album/foo.webp``.
 
     Does not remap legacy names (``v1`` stays ``v1``) so prune can delete remote
     folders that still use old layout names.
@@ -57,9 +70,22 @@ def safe_managed_relative_path(relative: str) -> str:
         if not is_allowed_image_filename(filename):
             raise ValueError(f"Invalid image filename in path: {relative!r}")
         return filename
+    if len(parts) == 3:
+        version_part, album_part, filename = parts
+        version_part = version_part.strip()
+        if not is_version_dir_name(version_part):
+            raise ValueError(f"Invalid version folder in path: {relative!r}")
+        if album_part != ALBUM_DIR_NAME:
+            raise ValueError(
+                f"Expected album path like Original/album/name.webp, got {relative!r}"
+            )
+        if not is_allowed_image_filename(filename):
+            raise ValueError(f"Invalid image filename in path: {relative!r}")
+        return f"{version_part}/{ALBUM_DIR_NAME}/{filename}"
     if len(parts) != 2:
         raise ValueError(
-            f"Expected path like Original/name.png or Original/meta.yaml, got {relative!r}"
+            f"Expected path like Original/name.png or Original/album/name.webp, "
+            f"got {relative!r}"
         )
     version_part, filename = parts
     version_part = version_part.strip()

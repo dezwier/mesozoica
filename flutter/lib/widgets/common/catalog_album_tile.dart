@@ -1,4 +1,3 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -7,6 +6,7 @@ import '../../models/owned_occurrence_thumb.dart';
 import '../../theme/dino_card_theme.dart';
 import '../../theme/map_chrome_theme.dart';
 import '../cards/card_adaptive_title_text.dart';
+import 'catalog_album_network_image.dart';
 import 'catalog_silhouette_image.dart';
 
 /// Compact catalog-album cell: silhouette when locked, color gallery when owned.
@@ -297,18 +297,11 @@ class _ColorImage extends StatelessWidget {
     if (curated == null) {
       return Image.asset(placeholderAsset, fit: BoxFit.cover);
     }
-    return CachedNetworkImage(
-      imageUrl: curated,
-      fit: BoxFit.cover,
-      fadeInDuration: Duration.zero,
-      placeholderFadeInDuration: Duration.zero,
-      httpHeaders: const {
-        'User-Agent': 'Mesozoica/1.0 (mobile app; catalog album)',
-      },
-      placeholder: (context, url) =>
+    return CatalogAlbumNetworkImage(
+      fullUrl: curated,
+      placeholder:
           ColoredBox(color: CatalogSilhouetteImage.groundFor(context)),
-      errorWidget: (context, url, error) =>
-          Image.asset(placeholderAsset, fit: BoxFit.cover),
+      errorWidget: Image.asset(placeholderAsset, fit: BoxFit.cover),
     );
   }
 }

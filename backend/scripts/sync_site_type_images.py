@@ -12,6 +12,7 @@ from app.core.config import settings
 from app.core.database import engine
 from app.crons.railway_guard import require_railway_database
 from app.models.site_type import SiteType
+from app.services.curated_image_service.album_thumb import sync_album_thumb_for_image
 from app.services.curated_image_service.common import needs_curated_image_resync
 from app.services.curated_image_service.sync_prune import sync_meta_and_prune_remote
 from app.services.site_type_image_service.sync import (
@@ -62,6 +63,7 @@ def run_sync(*, dry_run: bool = False, overwrite: bool = False) -> int:
             logger.warning("No image files found under version folders in %s", source_dir)
 
         uploaded = 0
+        album_uploaded = 0
         updated = 0
         cleared = 0
         skipped = 0
@@ -82,7 +84,7 @@ def run_sync(*, dry_run: bool = False, overwrite: bool = False) -> int:
             )
             is_latest = latest is not None and latest[0] == match.relative_path
             main_image_url = row.main_image_url if row is not None and is_latest else None
-            if not needs_curated_image_resync(
+            if needs_curated_image_resync(
                 overwrite=overwrite,
                 local_path=match.path,
                 main_image_url=main_image_url,
@@ -90,22 +92,33 @@ def run_sync(*, dry_run: bool = False, overwrite: bool = False) -> int:
                 filename=match.relative_path,
                 curated_media_path=CURATED_MEDIA_PATH,
             ):
-                skipped += 1
-                continue
-
-            logger.info(
-                "%s %s",
-                "Would upload" if dry_run else "Upload",
-                match.relative_path,
-            )
-            if not dry_run:
-                upload_file_to_railway(
-                    local_path=match.path,
-                    remote_filename=match.relative_path,
-                    public_base_url=public_base_url,
-                    sync_secret=sync_secret,
+                logger.info(
+                    "%s %s",
+                    "Would upload" if dry_run else "Upload",
+                    match.relative_path,
                 )
-            uploaded += 1
+                if not dry_run:
+                    upload_file_to_railway(
+                        local_path=match.path,
+                        remote_filename=match.relative_path,
+                        public_base_url=public_base_url,
+                        sync_secret=sync_secret,
+                    )
+                uploaded += 1
+            else:
+                skipped += 1
+
+            if sync_album_thumb_for_image(
+                local_full_path=match.path,
+                full_relative_path=match.relative_path,
+                public_base_url=public_base_url,
+                curated_media_path=CURATED_MEDIA_PATH,
+                sync_secret=sync_secret,
+                upload_file=upload_file_to_railway,
+                overwrite=overwrite,
+                dry_run=dry_run,
+            ):
+                album_uploaded += 1
 
         # Point main_image_url at the latest version by run_date.
         for row in site_types:
@@ -148,9 +161,11 @@ def run_sync(*, dry_run: bool = False, overwrite: bool = False) -> int:
             )
 
         logger.info(
-            "Summary: %d matched, %d uploaded, %d db_updated, %d cleared, %d skipped, %d unmatched files",
+            "Summary: %d matched, %d uploaded, %d album_uploaded, %d db_updated, "
+            "%d cleared, %d skipped, %d unmatched files",
             len(matched),
             uploaded,
+            album_uploaded,
             updated,
             cleared,
             skipped,

@@ -28,6 +28,7 @@ def test_list_managed_relative_paths_includes_images_and_meta(tmp_path: Path):
 
     assert list_managed_relative_paths(tmp_path) == [
         "Original/Tyrannosaurus.png",
+        "Original/album/Tyrannosaurus.webp",
         "Original/meta.yaml",
         "loose.png",
     ]
@@ -38,6 +39,23 @@ def test_safe_managed_relative_path_rejects_traversal():
         safe_managed_relative_path("../escape.png")
     with pytest.raises(ValueError):
         safe_managed_relative_path("Original/../escape.png")
+
+
+def test_safe_managed_relative_path_allows_album_thumbs():
+    assert (
+        safe_managed_relative_path("Original/album/Tyrannosaurus.webp")
+        == "Original/album/Tyrannosaurus.webp"
+    )
+    assert resolve_upload_relative_path("Summer 26/album/foo.webp") == (
+        "Summer 26/album/foo.webp"
+    )
+
+
+def test_safe_managed_relative_path_rejects_bad_album_paths():
+    with pytest.raises(ValueError):
+        safe_managed_relative_path("Original/thumbs/foo.webp")
+    with pytest.raises(ValueError):
+        safe_managed_relative_path("Original/album/../foo.webp")
 
 
 def test_delete_local_managed_file_removes_empty_version_dir(tmp_path: Path):
@@ -154,6 +172,10 @@ def test_sync_meta_and_prune_remote_uploads_meta_then_prunes(tmp_path: Path, mon
     )
 
     assert uploaded == ["Original/meta.yaml"]
-    assert pruned_keep == {"Original/keep.png", "Original/meta.yaml"}
+    assert pruned_keep == {
+        "Original/keep.png",
+        "Original/album/keep.webp",
+        "Original/meta.yaml",
+    }
     assert summary["meta_uploaded"] == 1
     assert summary["pruned"] == 1

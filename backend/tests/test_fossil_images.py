@@ -34,6 +34,11 @@ def _stub_meta_and_prune(monkeypatch, sync_module) -> None:
             "pruned": 0,
         },
     )
+    monkeypatch.setattr(
+        sync_module,
+        "sync_album_thumb_for_image",
+        lambda **kwargs: False,
+    )
 
 
 def test_build_curated_image_url():

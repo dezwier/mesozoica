@@ -85,6 +85,11 @@ def test_run_sync_clears_curated_url_when_local_file_missing(
             "pruned": 0,
         },
     )
+    monkeypatch.setattr(
+        sync_module,
+        "sync_album_thumb_for_image",
+        lambda **kwargs: False,
+    )
 
     images_dir = tmp_path / "images/site-types"
     v1 = images_dir / "Original"

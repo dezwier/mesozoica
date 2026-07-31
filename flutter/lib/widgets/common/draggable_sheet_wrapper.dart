@@ -47,6 +47,17 @@ class _DraggableSheetWrapperState extends State<DraggableSheetWrapper> {
     super.dispose();
   }
 
+  List<double>? get _snapSizes {
+    // snapSizes must be strictly between min and max (Flutter requirement).
+    final sizes = <double>{};
+    if (widget.initialChildSize > widget.minChildSize &&
+        widget.initialChildSize < widget.maxChildSize) {
+      sizes.add(widget.initialChildSize);
+    }
+    if (sizes.isEmpty) return null;
+    return sizes.toList()..sort();
+  }
+
   @override
   Widget build(BuildContext context) {
     return DraggableScrollableSheet(
@@ -56,6 +67,7 @@ class _DraggableSheetWrapperState extends State<DraggableSheetWrapper> {
       maxChildSize: widget.maxChildSize,
       expand: false,
       snap: true,
+      snapSizes: _snapSizes,
       builder: (context, scrollController) =>
           widget.childBuilder(scrollController),
     );

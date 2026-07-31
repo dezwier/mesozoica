@@ -1,9 +1,9 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
 import '../../theme/dino_card_theme.dart';
 import '../../theme/map_chrome_theme.dart';
 import '../../utils/curated_image_url.dart';
+import 'catalog_album_network_image.dart';
 
 /// Locked catalog tile art: heavily obscured black-and-white contour.
 class CatalogSilhouetteImage extends StatelessWidget {
@@ -66,22 +66,16 @@ class CatalogSilhouetteImage extends StatelessWidget {
               wash: wash,
               child: Image.asset(placeholderAsset, fit: BoxFit.cover),
             )
-          : CachedNetworkImage(
-              imageUrl: curated,
-              fit: BoxFit.cover,
-              fadeInDuration: Duration.zero,
-              placeholderFadeInDuration: Duration.zero,
-              httpHeaders: const {
-                'User-Agent': 'Mesozoica/1.0 (mobile app; catalog album)',
-              },
+          : CatalogAlbumNetworkImage(
+              fullUrl: curated,
+              placeholder: ColoredBox(color: groundColor),
+              errorWidget: _SilhouetteLayer(
+                wash: wash,
+                child: Image.asset(placeholderAsset, fit: BoxFit.cover),
+              ),
               imageBuilder: (context, provider) => _SilhouetteLayer(
                 wash: wash,
                 child: Image(image: provider, fit: BoxFit.cover),
-              ),
-              placeholder: (context, url) => ColoredBox(color: groundColor),
-              errorWidget: (context, url, error) => _SilhouetteLayer(
-                wash: wash,
-                child: Image.asset(placeholderAsset, fit: BoxFit.cover),
               ),
             ),
     );
