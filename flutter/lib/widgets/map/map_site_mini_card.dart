@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../config/map_config.dart';
 import '../../models/site.dart';
+import '../../theme/map_chrome_decorations.dart';
 import '../../theme/map_chrome_theme.dart';
 import '../cards/site_card_image.dart';
 
@@ -106,52 +107,56 @@ class MapSiteMiniCard extends StatelessWidget {
               child: ConstrainedBox(
                 constraints: BoxConstraints(maxWidth: labelMaxWidth),
                 child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: MapChromeTheme.creamCard,
-                    borderRadius: BorderRadius.circular(6),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.25),
-                        blurRadius: 4,
-                        offset: const Offset(0, 1),
-                      ),
-                    ],
+                  decoration: MapChromeDecorations.parchmentPanel(
+                    borderRadius: BorderRadius.circular(5),
                   ),
-                  child: Padding(
-                    padding: EdgeInsets.fromLTRB(
-                      _labelOverlap + 4,
-                      5,
-                      10,
-                      5,
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(5),
+                    child: Stack(
                       children: [
-                        Text(
-                          site.displayTitle,
-                          maxLines: 2,
-                          softWrap: true,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: MapChromeTheme.brownText,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                            height: 1.15,
+                        const Positioned.fill(
+                          child: CustomPaint(
+                            painter: ParchmentGrainPainter(alpha: 0.015),
                           ),
                         ),
-                        if (distanceM != null) ...[
-                          const SizedBox(height: 1),
-                          Text(
-                            formatDistance(distanceM!),
-                            style: const TextStyle(
-                              color: MapChromeTheme.labelMuted,
-                              fontSize: 9.5,
-                              fontWeight: FontWeight.w500,
-                              height: 1.1,
-                            ),
+                        Padding(
+                          padding: EdgeInsets.fromLTRB(
+                            _labelOverlap + 4,
+                            5,
+                            10,
+                            5,
                           ),
-                        ],
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                site.displayTitle,
+                                maxLines: 2,
+                                softWrap: true,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  color: MapChromeTheme.brownText,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  height: 1.15,
+                                ),
+                              ),
+                              if (distanceM != null) ...[
+                                const SizedBox(height: 1),
+                                Text(
+                                  formatDistance(distanceM!),
+                                  style: const TextStyle(
+                                    color: MapChromeTheme.labelMuted,
+                                    fontSize: 9.5,
+                                    fontWeight: FontWeight.w500,
+                                    height: 1.1,
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
                       ],
                     ),
                   ),

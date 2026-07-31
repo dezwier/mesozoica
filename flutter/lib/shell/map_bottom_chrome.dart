@@ -1,11 +1,10 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 
+import '../theme/map_chrome_decorations.dart';
 import '../theme/map_chrome_theme.dart';
 import 'map_chrome_insets.dart';
 
-/// Frosted bottom entry points: Sites, Fossils, Dinosaurs, Tools.
+/// Vintage leather bottom entry points: Sites, Fossils, Dinosaurs, Tools.
 class MapBottomChrome extends StatelessWidget {
   const MapBottomChrome({
     super.key,
@@ -19,6 +18,11 @@ class MapBottomChrome extends StatelessWidget {
   final VoidCallback onOpenFossils;
   final VoidCallback onOpenDinosaurs;
   final VoidCallback onOpenTools;
+
+  static const _sitesAsset = 'assets/images/chrome/nav/sites.png';
+  static const _fossilsAsset = 'assets/images/chrome/nav/fossils.png';
+  static const _dinosaursAsset = 'assets/images/chrome/nav/dinosaurs.png';
+  static const _toolsAsset = 'assets/images/chrome/nav/tools.png';
 
   @override
   Widget build(BuildContext context) {
@@ -47,54 +51,52 @@ class MapBottomChrome extends StatelessWidget {
           SafeArea(
             top: false,
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(12, 0, 12, 6),
-              child: Container(
-                height: MapChromeInsets.bottomRowHeight - 6,
-                decoration: BoxDecoration(
-                  color: MapChromeTheme.darkGlass,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.12),
+              // Match FAB side inset (map FABs use right: 12); sit closer to bottom.
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 2),
+              child: SizedBox(
+                height: MapChromeInsets.bottomRowHeight - 2,
+                child: DecoratedBox(
+                  decoration: MapChromeDecorations.leatherPanel(
+                    borderRadius: BorderRadius.circular(16),
                   ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.35),
-                      blurRadius: 12,
-                      offset: const Offset(0, 2),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: _NavItem(
+                            label: 'SITES',
+                            asset: _sitesAsset,
+                            onTap: onOpenSites,
+                          ),
+                        ),
+                        const _NavSeparator(),
+                        Expanded(
+                          child: _NavItem(
+                            label: 'FOSSILS',
+                            asset: _fossilsAsset,
+                            onTap: onOpenFossils,
+                          ),
+                        ),
+                        const _NavSeparator(),
+                        Expanded(
+                          child: _NavItem(
+                            label: 'DINOSAURS',
+                            asset: _dinosaursAsset,
+                            onTap: onOpenDinosaurs,
+                          ),
+                        ),
+                        const _NavSeparator(),
+                        Expanded(
+                          child: _NavItem(
+                            label: 'TOOLS',
+                            asset: _toolsAsset,
+                            onTap: onOpenTools,
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: _NavItem(
-                        label: 'Sites',
-                        onTap: onOpenSites,
-                        painter: _RockIconPainter(),
-                      ),
-                    ),
-                    Expanded(
-                      child: _NavItem(
-                        label: 'Fossils',
-                        onTap: onOpenFossils,
-                        painter: _BoneIconPainter(),
-                      ),
-                    ),
-                    Expanded(
-                      child: _NavItem(
-                        label: 'Dinosaurs',
-                        onTap: onOpenDinosaurs,
-                        painter: _SkullIconPainter(),
-                      ),
-                    ),
-                    Expanded(
-                      child: _NavItem(
-                        label: 'Tools',
-                        onTap: onOpenTools,
-                        painter: _ToolsIconPainter(),
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
               ),
             ),
@@ -105,240 +107,116 @@ class MapBottomChrome extends StatelessWidget {
   }
 }
 
-class _NavItem extends StatelessWidget {
-  const _NavItem({
-    required this.label,
-    required this.onTap,
-    required this.painter,
-  });
-
-  final String label;
-  final VoidCallback onTap;
-  final CustomPainter painter;
+/// Soft brass vertical strip between nav tabs.
+class _NavSeparator extends StatelessWidget {
+  const _NavSeparator();
 
   @override
   Widget build(BuildContext context) {
-    const color = MapChromeTheme.cream;
+    // Explicit height — a width-only SizedBox in a Row collapses to 0 tall.
+    return const SizedBox(
+      width: 12,
+      child: Center(
+        child: SizedBox(
+          width: 2.5,
+          height: 40,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.all(Radius.circular(1.25)),
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Color(0x99C2B29A), // brassLight @ ~0.6
+                  Color(0x8A9A8A74), // brassMid @ ~0.54
+                  Color(0x99C2B29A),
+                ],
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Color(0x55000000),
+                  blurRadius: 1,
+                  offset: Offset(0.5, 0),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _NavItem extends StatefulWidget {
+  const _NavItem({
+    required this.label,
+    required this.asset,
+    required this.onTap,
+  });
+
+  final String label;
+  final String asset;
+  final VoidCallback onTap;
+
+  @override
+  State<_NavItem> createState() => _NavItemState();
+}
+
+class _NavItemState extends State<_NavItem> {
+  bool _pressed = false;
+
+  @override
+  Widget build(BuildContext context) {
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            SizedBox(
-              width: MapChromeInsets.bottomIconSize,
-              height: MapChromeInsets.bottomIconSize,
-              child: CustomPaint(
-                painter: _TintedPainter(painter, color),
-              ),
+        onTap: widget.onTap,
+        onHighlightChanged: (v) => setState(() => _pressed = v),
+        borderRadius: BorderRadius.circular(12),
+        splashColor: MapChromeTheme.parchment.withValues(alpha: 0.25),
+        highlightColor: MapChromeTheme.parchment.withValues(alpha: 0.15),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 120),
+            decoration: _pressed
+                ? MapChromeDecorations.parchmentPanel(
+                    borderRadius: BorderRadius.circular(8),
+                  )
+                : null,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                SizedBox(
+                  width: MapChromeInsets.bottomIconSize,
+                  height: MapChromeInsets.bottomIconSize,
+                  child: Image.asset(
+                    widget.asset,
+                    fit: BoxFit.contain,
+                    filterQuality: FilterQuality.medium,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  widget.label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: _pressed
+                        ? MapChromeTheme.brownText
+                        : MapChromeTheme.mutedGold,
+                    fontSize: 9,
+                    fontWeight: FontWeight.w600,
+                    fontFamily: MapChromeTheme.serifFont,
+                    letterSpacing: 0.4,
+                    height: 1.1,
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 2),
-            Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: color,
-                fontSize: 10,
-                fontWeight: FontWeight.w600,
-                height: 1.1,
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );
-  }
-}
-
-/// Applies a stroke/fill color to painters that use [Paint] with default black.
-class _TintedPainter extends CustomPainter {
-  _TintedPainter(this.inner, this.color);
-
-  final CustomPainter inner;
-  final Color color;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = color
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.6
-      ..strokeCap = StrokeCap.round
-      ..strokeJoin = StrokeJoin.round;
-    if (inner is _ChromeLineIconPainter) {
-      (inner as _ChromeLineIconPainter).paintWith(canvas, size, paint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _TintedPainter oldDelegate) =>
-      oldDelegate.color != color || oldDelegate.inner != inner;
-}
-
-abstract class _ChromeLineIconPainter extends CustomPainter {
-  void paintWith(Canvas canvas, Size size, Paint paint);
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    paintWith(
-      canvas,
-      size,
-      Paint()
-        ..color = Colors.white
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.6
-        ..strokeCap = StrokeCap.round
-        ..strokeJoin = StrokeJoin.round,
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
-
-class _RockIconPainter extends _ChromeLineIconPainter {
-  @override
-  void paintWith(Canvas canvas, Size size, Paint paint) {
-    final w = size.width;
-    final h = size.height;
-    final path = Path()
-      ..moveTo(w * 0.18, h * 0.72)
-      ..lineTo(w * 0.28, h * 0.38)
-      ..lineTo(w * 0.48, h * 0.28)
-      ..lineTo(w * 0.72, h * 0.36)
-      ..lineTo(w * 0.82, h * 0.62)
-      ..lineTo(w * 0.68, h * 0.78)
-      ..lineTo(w * 0.32, h * 0.78)
-      ..close();
-    canvas.drawPath(path, paint);
-    canvas.drawLine(
-      Offset(w * 0.38, h * 0.48),
-      Offset(w * 0.55, h * 0.58),
-      paint,
-    );
-  }
-}
-
-class _BoneIconPainter extends _ChromeLineIconPainter {
-  @override
-  void paintWith(Canvas canvas, Size size, Paint paint) {
-    final w = size.width;
-    final h = size.height;
-    final cx = w * 0.5;
-    final cy = h * 0.5;
-    canvas.save();
-    canvas.translate(cx, cy);
-    canvas.rotate(-math.pi / 5);
-    canvas.translate(-cx, -cy);
-
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        Rect.fromCenter(
-          center: Offset(cx, cy),
-          width: w * 0.12,
-          height: h * 0.55,
-        ),
-        const Radius.circular(4),
-      ),
-      paint,
-    );
-    for (final y in [h * 0.28, h * 0.72]) {
-      canvas.drawCircle(Offset(cx - w * 0.12, y), w * 0.1, paint);
-      canvas.drawCircle(Offset(cx + w * 0.12, y), w * 0.1, paint);
-    }
-    canvas.restore();
-  }
-}
-
-class _SkullIconPainter extends _ChromeLineIconPainter {
-  @override
-  void paintWith(Canvas canvas, Size size, Paint paint) {
-    final w = size.width;
-    final h = size.height;
-    final head = Path()
-      ..addOval(
-        Rect.fromCenter(
-          center: Offset(w * 0.5, h * 0.42),
-          width: w * 0.58,
-          height: h * 0.52,
-        ),
-      );
-    canvas.drawPath(head, paint);
-    canvas.drawOval(
-      Rect.fromCenter(
-        center: Offset(w * 0.38, h * 0.42),
-        width: w * 0.14,
-        height: h * 0.16,
-      ),
-      paint,
-    );
-    canvas.drawOval(
-      Rect.fromCenter(
-        center: Offset(w * 0.62, h * 0.42),
-        width: w * 0.14,
-        height: h * 0.16,
-      ),
-      paint,
-    );
-    // Snout / jaw
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        Rect.fromLTWH(w * 0.34, h * 0.58, w * 0.32, h * 0.22),
-        const Radius.circular(4),
-      ),
-      paint,
-    );
-    canvas.drawLine(
-      Offset(w * 0.42, h * 0.7),
-      Offset(w * 0.42, h * 0.78),
-      paint,
-    );
-    canvas.drawLine(
-      Offset(w * 0.58, h * 0.7),
-      Offset(w * 0.58, h * 0.78),
-      paint,
-    );
-  }
-}
-
-class _ToolsIconPainter extends _ChromeLineIconPainter {
-  @override
-  void paintWith(Canvas canvas, Size size, Paint paint) {
-    final w = size.width;
-    final h = size.height;
-    final cx = w * 0.5;
-    final cy = h * 0.5;
-    final handlePaint = Paint()
-      ..color = paint.color
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.8
-      ..strokeCap = StrokeCap.round
-      ..strokeJoin = StrokeJoin.round;
-
-    void drawTool(double angle) {
-      canvas.save();
-      canvas.translate(cx, cy);
-      canvas.rotate(angle);
-      canvas.translate(-cx, -cy);
-      canvas.drawLine(
-        Offset(cx, h * 0.22),
-        Offset(cx, h * 0.72),
-        handlePaint,
-      );
-      final head = Path()
-        ..moveTo(cx - w * 0.18, h * 0.28)
-        ..lineTo(cx + w * 0.18, h * 0.28)
-        ..lineTo(cx + w * 0.12, h * 0.4)
-        ..lineTo(cx - w * 0.12, h * 0.4)
-        ..close();
-      canvas.drawPath(head, paint);
-      canvas.restore();
-    }
-
-    drawTool(-math.pi / 5);
-    drawTool(math.pi / 5);
   }
 }

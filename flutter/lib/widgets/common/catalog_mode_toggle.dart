@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../controllers/catalog_mode_controller.dart';
+import '../../theme/map_chrome_decorations.dart';
 import '../../theme/map_chrome_theme.dart';
 
 class CatalogModeToggle extends StatelessWidget {
@@ -16,19 +17,9 @@ class CatalogModeToggle extends StatelessWidget {
         final selected = controller.dataSource;
         return Container(
           padding: const EdgeInsets.all(3),
-          decoration: BoxDecoration(
-            color: MapChromeTheme.darkGlassSoft,
+          decoration: MapChromeDecorations.leatherPanel(
             borderRadius: BorderRadius.circular(22),
-            border: Border.all(
-              color: Colors.white.withValues(alpha: 0.18),
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.35),
-                blurRadius: 8,
-                offset: const Offset(0, 1),
-              ),
-            ],
+            soft: true,
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
@@ -75,10 +66,13 @@ class _Segment extends StatelessWidget {
         duration: const Duration(milliseconds: 160),
         curve: Curves.easeOut,
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        decoration: BoxDecoration(
-          color: selected ? MapChromeTheme.cream : Colors.transparent,
-          borderRadius: BorderRadius.circular(18),
-        ),
+        decoration: selected
+            ? MapChromeDecorations.parchmentPanel(
+                borderRadius: BorderRadius.circular(18),
+              )
+            : const BoxDecoration(
+                borderRadius: BorderRadius.all(Radius.circular(18)),
+              ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -94,9 +88,12 @@ class _Segment extends StatelessWidget {
             Text(
               label,
               style: TextStyle(
-                color: selected ? MapChromeTheme.brownText : Colors.white,
+                color: selected
+                    ? MapChromeTheme.brownText
+                    : MapChromeTheme.mutedGold,
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
+                fontFamily: MapChromeTheme.serifFont,
                 height: 1.1,
               ),
             ),

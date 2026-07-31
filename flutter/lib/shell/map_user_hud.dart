@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 
 import '../controllers/auth_controller.dart';
 import '../services/auth_service.dart';
+import '../theme/map_chrome_decorations.dart';
 import '../theme/map_chrome_theme.dart';
 
 /// Top-left map profile chip: avatar, level, name, title, XP bar.
@@ -55,9 +56,10 @@ class MapUserHud extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
-                        color: Colors.white,
+                        color: Color(0xFFF8F4EC),
                         fontSize: 15,
                         fontWeight: FontWeight.w700,
+                        fontFamily: MapChromeTheme.serifFont,
                         height: 1.15,
                         shadows: [
                           Shadow(
@@ -74,9 +76,10 @@ class MapUserHud extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.75),
+                        color: Colors.white.withValues(alpha: 0.82),
                         fontSize: 10,
                         fontWeight: FontWeight.w500,
+                        fontFamily: MapChromeTheme.serifFont,
                         height: 1.15,
                         shadows: const [
                           Shadow(
@@ -93,15 +96,24 @@ class MapUserHud extends StatelessWidget {
                       children: [
                         SizedBox(
                           width: 72,
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(2),
-                            child: SizedBox(
-                              height: 4,
-                              child: LinearProgressIndicator(
-                                value: nextXp > 0 ? progress : 1,
-                                backgroundColor:
-                                    Colors.black.withValues(alpha: 0.45),
-                                color: MapChromeTheme.gold,
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(3),
+                              border: Border.all(
+                                color: MapChromeTheme.brassDark,
+                                width: 0.75,
+                              ),
+                              color: MapChromeTheme.dialFace,
+                            ),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(2),
+                              child: SizedBox(
+                                height: 4,
+                                child: LinearProgressIndicator(
+                                  value: nextXp > 0 ? progress : 1,
+                                  backgroundColor: Colors.transparent,
+                                  color: MapChromeTheme.gold,
+                                ),
                               ),
                             ),
                           ),
@@ -110,7 +122,7 @@ class MapUserHud extends StatelessWidget {
                         Text.rich(
                           TextSpan(
                             style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.75),
+                              color: Colors.white.withValues(alpha: 0.78),
                               fontSize: 8,
                               fontWeight: FontWeight.w600,
                               height: 1.1,
@@ -187,34 +199,44 @@ class _AvatarWithLevel extends StatelessWidget {
           Positioned(
             left: 2,
             top: 0,
-            child: Container(
+            child: SizedBox(
               width: _size,
               height: _size,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: MapChromeTheme.gold,
-                  width: 2.5,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.4),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  DecoratedBox(
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: MapChromeTheme.parchment,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.45),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: const SizedBox.expand(),
+                  ),
+                  const Positioned.fill(
+                    child: CustomPaint(
+                      painter: BrassRimPainter(rimFraction: 0.08),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.all(4.0),
+                    child: ClipOval(
+                      child: imageUrl.isNotEmpty
+                          ? CachedNetworkImage(
+                              imageUrl: imageUrl,
+                              fit: BoxFit.cover,
+                              errorWidget: (context, _, _) => _fallback(),
+                            )
+                          : _fallback(),
+                    ),
                   ),
                 ],
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(1.0),
-                child: ClipOval(
-                  child: imageUrl.isNotEmpty
-                      ? CachedNetworkImage(
-                          imageUrl: imageUrl,
-                          fit: BoxFit.cover,
-                          errorWidget: (context, _, _) => _fallback(),
-                        )
-                      : _fallback(),
-                ),
               ),
             ),
           ),
@@ -227,19 +249,39 @@ class _AvatarWithLevel extends StatelessWidget {
               alignment: Alignment.center,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: const Color(0xFF1A1512),
-                border: Border.all(
-                  color: MapChromeTheme.gold,
-                  width: 1.5,
+                gradient: const RadialGradient(
+                  center: Alignment(-0.3, -0.35),
+                  colors: [
+                    MapChromeTheme.brassLight,
+                    MapChromeTheme.brassMid,
+                    MapChromeTheme.brassDark,
+                  ],
                 ),
+                border: Border.all(
+                  color: MapChromeTheme.brassRim,
+                  width: 1.25,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.4),
+                    blurRadius: 3,
+                    offset: const Offset(0, 1),
+                  ),
+                ],
               ),
               child: Text(
                 '$level',
                 style: const TextStyle(
-                  color: MapChromeTheme.gold,
+                  color: MapChromeTheme.cream,
                   fontSize: 11,
                   fontWeight: FontWeight.w700,
                   height: 1,
+                  shadows: [
+                    Shadow(
+                      color: Color(0x88000000),
+                      blurRadius: 2,
+                    ),
+                  ],
                 ),
               ),
             ),

@@ -1,20 +1,21 @@
 import 'package:flutter/material.dart';
 
+import '../../theme/map_chrome_decorations.dart';
 import '../../theme/map_chrome_theme.dart';
 
 /// FAB tones for map controls.
 enum ChromeFabTone {
-  /// Dark glass (default mockup style).
+  /// Dark recessed dial (default vintage style).
   glass,
 
-  /// Warm earth fill for primary location-style actions.
+  /// Warm leather fill for primary location-style actions.
   warm,
 
   /// Neutral gray for admin tools.
   grey,
 }
 
-/// Circular dark-glass FAB matching the map chrome mockup.
+/// Circular leather FAB with a simple brass border (matches Archive/Field toggle).
 ///
 /// Layout is 48×48 (padded tap target) with a 40×40 visual.
 class ChromeFab extends StatelessWidget {
@@ -41,31 +42,15 @@ class ChromeFab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final enabled = onPressed != null;
-    final fill = _fillColor(tone: tone, enabled: enabled, active: active);
+    final dial = _dialColor(tone: tone, enabled: enabled, active: active);
 
     Widget button = SizedBox(
       width: layoutSize,
       height: layoutSize,
       child: Center(
         child: DecoratedBox(
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: fill,
-            border: Border.all(
-              color: enabled
-                  ? Colors.white.withValues(alpha: 0.2)
-                  : Colors.white.withValues(alpha: 0.1),
-              width: 0.75,
-            ),
-            boxShadow: enabled
-                ? [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.4),
-                      blurRadius: 10,
-                      offset: const Offset(0, 2),
-                    ),
-                  ]
-                : null,
+          decoration: MapChromeDecorations.brassCircle(
+            dialFace: dial,
           ),
           child: Material(
             color: Colors.transparent,
@@ -74,8 +59,8 @@ class ChromeFab extends StatelessWidget {
             child: InkWell(
               onTap: onPressed,
               customBorder: const CircleBorder(),
-              splashColor: Colors.white24,
-              highlightColor: Colors.white10,
+              splashColor: MapChromeTheme.brassLight.withValues(alpha: 0.25),
+              highlightColor: MapChromeTheme.brassLight.withValues(alpha: 0.12),
               child: SizedBox(
                 width: visualSize,
                 height: visualSize,
@@ -84,7 +69,7 @@ class ChromeFab extends StatelessWidget {
                     color: enabled
                         ? MapChromeTheme.cream
                         : MapChromeTheme.cream.withValues(alpha: 0.45),
-                    size: 22,
+                    size: 20,
                   ),
                   child: Center(child: child),
                 ),
@@ -104,27 +89,27 @@ class ChromeFab extends StatelessWidget {
     return button;
   }
 
-  static Color _fillColor({
+  static Color _dialColor({
     required ChromeFabTone tone,
     required bool enabled,
     required bool active,
   }) {
     if (!enabled) {
-      return const Color(0x66000000);
+      return MapChromeTheme.dialFaceDeep;
     }
     switch (tone) {
       case ChromeFabTone.glass:
         return active
-            ? MapChromeTheme.darkGlass
-            : MapChromeTheme.darkGlassSoft;
+            ? MapChromeTheme.dialFaceWarm
+            : MapChromeTheme.dialFace;
       case ChromeFabTone.warm:
         return active
-            ? MapChromeTheme.warmFab.withValues(alpha: 0.95)
-            : MapChromeTheme.warmFab.withValues(alpha: 0.85);
+            ? MapChromeTheme.warmFab
+            : MapChromeTheme.dialFaceWarm;
       case ChromeFabTone.grey:
         return active
-            ? const Color(0xAA5A5A5A)
-            : const Color(0x885A5A5A);
+            ? MapChromeTheme.dialFaceGrey
+            : const Color(0xFF5A544C);
     }
   }
 }

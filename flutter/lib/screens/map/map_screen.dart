@@ -422,8 +422,6 @@ class _MapScreenState extends State<MapScreen>
                             : Icons.admin_panel_settings_outlined,
                       ),
                     ),
-                    // Keep admin tools clearly above the regular map FABs.
-                    const SizedBox(height: 28),
                   ],
                 ],
                 filterFab: DinosaurFilterFab(

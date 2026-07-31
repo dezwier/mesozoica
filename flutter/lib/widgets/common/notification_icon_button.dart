@@ -5,11 +5,12 @@ import 'package:provider/provider.dart';
 import '../../controllers/auth_controller.dart';
 import '../../controllers/notification_controller.dart';
 import '../../models/user_notification.dart';
+import '../../theme/map_chrome_decorations.dart';
 import '../../theme/map_chrome_theme.dart';
 
 part 'notification_icon_button_list.dart';
 
-/// Notification icon for map chrome — dark glass circle + gold unread dot.
+/// Notification icon for map chrome — brass rim circle + gold unread dot.
 class NotificationIconButton extends StatelessWidget {
   static bool _notificationTapScheduled = false;
 
@@ -30,42 +31,46 @@ class NotificationIconButton extends StatelessWidget {
         return GestureDetector(
           onTap: () => _showNotificationList(context, store),
           behavior: HitTestBehavior.opaque,
-          child: Container(
+          child: SizedBox(
             width: _size,
             height: _size,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: MapChromeTheme.darkGlassSoft,
-              border: Border.all(
-                color: Colors.white.withValues(alpha: 0.18),
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.35),
-                  blurRadius: 8,
-                  offset: const Offset(0, 1),
-                ),
-              ],
-            ),
             child: Stack(
               clipBehavior: Clip.none,
               alignment: Alignment.center,
               children: [
+                DecoratedBox(
+                  decoration: MapChromeDecorations.brassCircle(
+                    dialFace: MapChromeTheme.dialFace,
+                  ),
+                  child: const SizedBox.expand(),
+                ),
                 const Icon(
                   Icons.notifications_outlined,
-                  color: Colors.white,
-                  size: 20,
+                  color: MapChromeTheme.cream,
+                  size: 18,
                 ),
                 if (unread > 0)
                   Positioned(
-                    top: 6,
-                    right: 7,
+                    top: 4,
+                    right: 5,
                     child: Container(
                       width: 8,
                       height: 8,
-                      decoration: const BoxDecoration(
+                      decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         color: MapChromeTheme.goldBright,
+                        border: Border.all(
+                          color: MapChromeTheme.dialFaceDeep,
+                          width: 1,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: MapChromeTheme.goldBright.withValues(
+                              alpha: 0.55,
+                            ),
+                            blurRadius: 4,
+                          ),
+                        ],
                       ),
                     ),
                   ),
