@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -51,9 +53,7 @@ class DinosaurWikipediaView extends StatefulWidget {
     required this.wikipediaTitle,
     this.asOf,
     this.preferDark = false,
-    this.showStatusBanner = true,
     this.revisionService,
-    this.onHistoricalLookup,
   });
 
   final String wikipediaTitle;
@@ -63,14 +63,8 @@ class DinosaurWikipediaView extends StatefulWidget {
 
   final bool preferDark;
 
-  /// When false, the parent owns the as-of / fallback status line.
-  final bool showStatusBanner;
-
   /// Injectable for tests; defaults to a live Wikipedia lookup.
   final WikipediaRevisionService? revisionService;
-
-  /// Called after an [asOf] lookup: `true` when falling back to the live page.
-  final ValueChanged<bool>? onHistoricalLookup;
 
   @override
   State<DinosaurWikipediaView> createState() => _DinosaurWikipediaViewState();
@@ -82,9 +76,9 @@ class _DinosaurWikipediaViewState extends State<DinosaurWikipediaView> {
   var _loading = true;
   var _hasError = false;
   var _chromeTrimmed = false;
-  var _resolvingRevision = false;
   int? _oldId;
   var _usedLiveFallback = false;
+  var _injectStatusOnNextFinish = false;
 
   Uri get _pageUri => wikipediaMobileArticleUri(
         widget.wikipediaTitle,
@@ -97,11 +91,7 @@ class _DinosaurWikipediaViewState extends State<DinosaurWikipediaView> {
       );
 
   String? get _statusBannerText {
-    if (!widget.showStatusBanner) return null;
-    if (widget.asOf == null) return null;
-    if (_resolvingRevision) {
-      return wikipediaAsOfLabel(widget.asOf);
-    }
+    if (widget.asOf == null && !_usedLiveFallback) return null;
     if (_usedLiveFallback) return wikipediaLiveFallbackWarning;
     return wikipediaAsOfLabel(widget.asOf);
   }
@@ -110,7 +100,6 @@ class _DinosaurWikipediaViewState extends State<DinosaurWikipediaView> {
   void initState() {
     super.initState();
     _revisionService = widget.revisionService ?? WikipediaRevisionService();
-    _resolvingRevision = widget.asOf != null;
 
     final params = WebViewPlatform.instance is WebKitWebViewPlatform
         ? WebKitWebViewControllerCreationParams()
@@ -133,6 +122,10 @@ class _DinosaurWikipediaViewState extends State<DinosaurWikipediaView> {
           },
           onPageFinished: (_) async {
             await _trimWikipediaChrome();
+            if (_injectStatusOnNextFinish) {
+              await _injectStatusBanner();
+              _injectStatusOnNextFinish = false;
+            }
             if (!mounted) return;
             setState(() => _loading = false);
           },
@@ -169,12 +162,8 @@ class _DinosaurWikipediaViewState extends State<DinosaurWikipediaView> {
   Future<void> _loadArticle() async {
     final asOf = widget.asOf;
     _usedLiveFallback = false;
+    _injectStatusOnNextFinish = false;
     if (asOf != null) {
-      if (mounted) {
-        setState(() => _resolvingRevision = true);
-      } else {
-        _resolvingRevision = true;
-      }
       try {
         _oldId = await _revisionService.revisionAsOf(
           title: widget.wikipediaTitle,
@@ -184,15 +173,9 @@ class _DinosaurWikipediaViewState extends State<DinosaurWikipediaView> {
         _oldId = null;
       }
       _usedLiveFallback = _oldId == null;
-      if (mounted) {
-        setState(() => _resolvingRevision = false);
-      } else {
-        _resolvingRevision = false;
-      }
-      widget.onHistoricalLookup?.call(_usedLiveFallback);
+      _injectStatusOnNextFinish = true;
     } else {
       _oldId = null;
-      _resolvingRevision = false;
     }
     if (!mounted) return;
     await _controller.loadRequest(_pageUri);
@@ -247,6 +230,24 @@ $darkJs
     body {
       padding-top: 0 !important;
     }
+    #mesozoica-wiki-status {
+      display: block !important;
+      font-size: 14px !important;
+      line-height: 1.4 !important;
+      font-weight: 500 !important;
+      margin: 4px 0 14px 0 !important;
+      padding: 0 !important;
+      color: #5c6670 !important;
+    }
+    #mesozoica-wiki-status.is-warning {
+      color: #c62828 !important;
+    }
+    .skin-theme-clientpref-night #mesozoica-wiki-status {
+      color: #b0b8c0 !important;
+    }
+    .skin-theme-clientpref-night #mesozoica-wiki-status.is-warning {
+      color: #ef9a9a !important;
+    }
   `;
   var style = document.getElementById('mesozoica-wiki-embed');
   if (!style) {
@@ -257,6 +258,64 @@ $darkJs
   style.textContent = css;
 })();
 ''');
+    } catch (_) {
+      // Page may have navigated away; ignore injection failures.
+    }
+  }
+
+  Future<void> _injectStatusBanner() async {
+    final text = _statusBannerText;
+    if (text == null) return;
+    final warning = _usedLiveFallback;
+    final literal = jsonEncode(text);
+    try {
+      // Retry: Minerva often hydrates content after the first page-finished.
+      for (var attempt = 0; attempt < 6; attempt++) {
+        if (attempt > 0) {
+          await Future<void>.delayed(Duration(milliseconds: 120 * attempt));
+        }
+        if (!mounted) return;
+        final result = await _controller.runJavaScriptReturningResult('''
+(function () {
+  var text = $literal;
+  var warning = ${warning ? 'true' : 'false'};
+  var existing = document.getElementById('mesozoica-wiki-status');
+  if (existing) existing.remove();
+
+  var banner = document.createElement('p');
+  banner.id = 'mesozoica-wiki-status';
+  if (warning) banner.className = 'is-warning';
+  banner.textContent = text;
+
+  var hosts = [
+    document.querySelector('.mw-parser-output'),
+    document.querySelector('.mw-body-content'),
+    document.querySelector('#bodyContent'),
+    document.querySelector('#content'),
+    document.querySelector('.mw-body'),
+    document.querySelector('.content'),
+    document.querySelector('main'),
+    document.body
+  ];
+  var host = null;
+  for (var i = 0; i < hosts.length; i++) {
+    if (hosts[i]) { host = hosts[i]; break; }
+  }
+  if (!host) return 'no-host';
+
+  // Prefer inserting above the article title when present.
+  var title = host.querySelector('h1, .page-heading, .mw-first-heading');
+  if (title && title.parentElement) {
+    title.parentElement.insertBefore(banner, title);
+  } else {
+    host.insertBefore(banner, host.firstChild);
+  }
+  return document.getElementById('mesozoica-wiki-status') ? 'ok' : 'missing';
+})();
+''');
+        final ok = result.toString().contains('ok');
+        if (ok) return;
+      }
     } catch (_) {
       // Page may have navigated away; ignore injection failures.
     }
@@ -297,60 +356,38 @@ $darkJs
         defaultTargetPlatform != TargetPlatform.iOS &&
         defaultTargetPlatform != TargetPlatform.macOS;
 
-    final theme = Theme.of(context);
-    final statusText = _statusBannerText;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+    return Stack(
       children: [
-        if (statusText != null)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-            child: Text(
-              statusText,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: _usedLiveFallback
-                    ? theme.colorScheme.error
-                    : theme.colorScheme.onSurfaceVariant,
-              ),
+        WebViewWidget(
+          controller: _controller,
+          // Claim vertical drags so parent sheets/scrollables don't steal them.
+          gestureRecognizers: <Factory<OneSequenceGestureRecognizer>>{
+            Factory<VerticalDragGestureRecognizer>(
+              VerticalDragGestureRecognizer.new,
+            ),
+          },
+        ),
+        if (useEdgeSwipeBack)
+          Positioned(
+            left: 0,
+            top: 0,
+            bottom: 0,
+            width: 28,
+            child: GestureDetector(
+              behavior: HitTestBehavior.translucent,
+              onHorizontalDragEnd: (details) {
+                final velocity = details.primaryVelocity ?? 0;
+                if (velocity > 250) {
+                  _goBackIfPossible();
+                }
+              },
             ),
           ),
-        Expanded(
-          child: Stack(
-            children: [
-              WebViewWidget(
-                controller: _controller,
-                // Claim vertical drags so parent sheets/scrollables don't steal them.
-                gestureRecognizers: <Factory<OneSequenceGestureRecognizer>>{
-                  Factory<VerticalDragGestureRecognizer>(
-                    VerticalDragGestureRecognizer.new,
-                  ),
-                },
-              ),
-              if (useEdgeSwipeBack)
-                Positioned(
-                  left: 0,
-                  top: 0,
-                  bottom: 0,
-                  width: 28,
-                  child: GestureDetector(
-                    behavior: HitTestBehavior.translucent,
-                    onHorizontalDragEnd: (details) {
-                      final velocity = details.primaryVelocity ?? 0;
-                      if (velocity > 250) {
-                        _goBackIfPossible();
-                      }
-                    },
-                  ),
-                ),
-              if (_loading)
-                const ColoredBox(
-                  color: Colors.transparent,
-                  child: Center(child: CircularProgressIndicator()),
-                ),
-            ],
+        if (_loading)
+          const ColoredBox(
+            color: Colors.transparent,
+            child: Center(child: CircularProgressIndicator()),
           ),
-        ),
       ],
     );
   }

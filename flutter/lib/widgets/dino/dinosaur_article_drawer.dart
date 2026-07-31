@@ -40,8 +40,6 @@ class _DinosaurArticleDrawerState extends State<DinosaurArticleDrawer> {
   late final DinosaurService _service;
   DateTime? _asOf;
   var _resolvingAsOf = false;
-  var _lookupFailed = false;
-  var _usedLiveFallback = false;
 
   int get _typeId =>
       widget.dinosaur.dinosaurTypeId ?? widget.dinosaur.id;
@@ -57,12 +55,8 @@ class _DinosaurArticleDrawerState extends State<DinosaurArticleDrawer> {
   }
 
   Future<void> _resolveAsOf() async {
-    setState(() {
-      _resolvingAsOf = true;
-      _lookupFailed = false;
-    });
+    setState(() => _resolvingAsOf = true);
     try {
-      // Prefer catalog insert_date once the API exposes it.
       try {
         final fresh = await _service.fetchDinosaurById(_typeId);
         if (fresh.insertDate != null) {
@@ -81,33 +75,18 @@ class _DinosaurArticleDrawerState extends State<DinosaurArticleDrawer> {
       if (!mounted) return;
       setState(() {
         _asOf = article.articleDate;
-        _lookupFailed = article.articleDate == null;
         _resolvingAsOf = false;
       });
     } catch (_) {
       if (!mounted) return;
-      setState(() {
-        _lookupFailed = true;
-        _resolvingAsOf = false;
-      });
+      setState(() => _resolvingAsOf = false);
     }
-  }
-
-  String? get _statusLabel {
-    if (_usedLiveFallback) return wikipediaLiveFallbackWarning;
-    if (_asOf != null) return wikipediaAsOfLabel(_asOf);
-    if (_resolvingAsOf) return 'Loading Wikipedia date…';
-    if (_lookupFailed) return wikipediaLiveFallbackWarning;
-    return null;
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
     final title = widget.dinosaur.wikipediaTitle.trim();
-    final statusLabel = _statusLabel;
-    final statusIsWarning = _usedLiveFallback || (_asOf == null && _lookupFailed);
 
     // Fixed height (not DraggableScrollableSheet) so the WebView owns
     // vertical scroll gestures instead of competing with sheet dragging.
@@ -120,41 +99,14 @@ class _DinosaurArticleDrawerState extends State<DinosaurArticleDrawer> {
               message:
                   'No Wikipedia article is linked for this dinosaur yet.',
             )
-          : Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                if (statusLabel != null)
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
-                    child: Text(
-                      statusLabel,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: statusIsWarning
-                            ? colorScheme.error
-                            : colorScheme.onSurfaceVariant,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                Expanded(
-                  child: _resolvingAsOf && _asOf == null
-                      ? const Center(child: CircularProgressIndicator())
-                      : DinosaurWikipediaView(
-                          key: ValueKey(
-                            _asOf?.toIso8601String() ?? 'live',
-                          ),
-                          wikipediaTitle: title,
-                          asOf: _asOf,
-                          preferDark: theme.brightness == Brightness.dark,
-                          showStatusBanner: false,
-                          onHistoricalLookup: (usedLiveFallback) {
-                            if (!mounted) return;
-                            setState(() => _usedLiveFallback = usedLiveFallback);
-                          },
-                        ),
+          : _resolvingAsOf && _asOf == null
+              ? const Center(child: CircularProgressIndicator())
+              : DinosaurWikipediaView(
+                  key: ValueKey(_asOf?.toIso8601String() ?? 'live'),
+                  wikipediaTitle: title,
+                  asOf: _asOf,
+                  preferDark: theme.brightness == Brightness.dark,
                 ),
-              ],
-            ),
     );
   }
 }
