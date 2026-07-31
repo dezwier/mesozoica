@@ -5,7 +5,7 @@ import '../../theme/dino_card_theme.dart';
 import '../../theme/map_chrome_theme.dart';
 import '../../utils/curated_image_url.dart';
 
-/// Locked catalog tile art: warm sandstone monochrome of the card image.
+/// Locked catalog tile art: heavily obscured black-and-white contour.
 class CatalogSilhouetteImage extends StatelessWidget {
   const CatalogSilhouetteImage({
     super.key,
@@ -21,11 +21,14 @@ class CatalogSilhouetteImage extends StatelessWidget {
   /// Soft parchment ground behind the art.
   static const Color ground = MapChromeTheme.parchment;
 
-  /// Warm dark monochrome — keeps subject contours readable on parchment.
-  static const List<double> _sandstoneMono = <double>[
-    0.18, 0.32, 0.05, 0, 10,
-    0.14, 0.26, 0.04, 0, 8,
-    0.10, 0.18, 0.03, 0, 5,
+  /// Near-black wash over the mono image so detail stays hard to read.
+  static const Color obscureWash = Color(0x731A1510); // ~0.45
+
+  /// True grayscale, moderately crushed (less midtone / color left).
+  static const List<double> _obscureMono = <double>[
+    0.128, 0.429, 0.043, 0, 0,
+    0.128, 0.429, 0.043, 0, 0,
+    0.128, 0.429, 0.043, 0, 0,
     0, 0, 0, 1, 0,
   ];
 
@@ -66,11 +69,17 @@ class _SilhouetteLayer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ColorFiltered(
-      colorFilter: const ColorFilter.matrix(
-        CatalogSilhouetteImage._sandstoneMono,
-      ),
-      child: child,
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        ColorFiltered(
+          colorFilter: const ColorFilter.matrix(
+            CatalogSilhouetteImage._obscureMono,
+          ),
+          child: child,
+        ),
+        const ColoredBox(color: CatalogSilhouetteImage.obscureWash),
+      ],
     );
   }
 }

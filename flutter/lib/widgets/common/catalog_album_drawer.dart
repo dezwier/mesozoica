@@ -17,6 +17,9 @@ class CatalogAlbumDrawer extends StatelessWidget {
   final Widget body;
   final String title;
 
+  /// Catalog album opens taller than filter sheets.
+  static const double initialChildSize = 0.9;
+
   static Future<void> show(
     BuildContext context, {
     required Widget Function(ScrollController scrollController) builder,
@@ -31,7 +34,7 @@ class CatalogAlbumDrawer extends StatelessWidget {
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (_) => DraggableSheetWrapper(
-        initialChildSize: DrawerSheetSizes.initialChildSize,
+        initialChildSize: initialChildSize,
         minChildSize: DrawerSheetSizes.minChildSize,
         maxChildSize: DrawerSheetSizes.maxChildSize,
         childBuilder: builder,
@@ -50,16 +53,40 @@ class CatalogAlbumDrawer extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
-            child: Text(
-              title,
-              textAlign: TextAlign.center,
-              style: theme.textTheme.headlineSmall?.copyWith(
-                fontFamily: MapChromeTheme.serifFont,
-                fontWeight: FontWeight.w600,
-                color: MapChromeTheme.brownText,
+            padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+            child: SizedBox(
+              height: 44,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  Text(
+                    title,
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.headlineSmall?.copyWith(
+                      fontFamily: MapChromeTheme.serifFont,
+                      fontWeight: FontWeight.w600,
+                      color: MapChromeTheme.brownText,
+                    ),
+                  ),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: IconButton(
+                      tooltip: 'Close',
+                      onPressed: () => Navigator.of(context).maybePop(),
+                      icon: Icon(
+                        Icons.close,
+                        color: MapChromeTheme.brownText.withValues(alpha: 0.75),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
+          ),
+          Divider(
+            height: 1,
+            thickness: 1,
+            color: MapChromeTheme.parchmentEdge.withValues(alpha: 0.85),
           ),
           Expanded(child: body),
         ],
@@ -140,7 +167,7 @@ class CatalogAlbumGrid extends StatelessWidget {
         controller: scrollController,
         slivers: [
           SliverPadding(
-            padding: const EdgeInsets.fromLTRB(12, 0, 12, 24),
+            padding: const EdgeInsets.fromLTRB(12, 12, 12, 24),
             sliver: SliverGrid(
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: crossAxisCount,

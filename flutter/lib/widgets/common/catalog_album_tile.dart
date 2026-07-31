@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import '../../models/owned_occurrence_thumb.dart';
 import '../../theme/dino_card_theme.dart';
 import '../../theme/map_chrome_theme.dart';
-import '../../utils/curated_image_url.dart';
+import '../cards/card_adaptive_title_text.dart';
 import 'catalog_silhouette_image.dart';
 
 /// Compact catalog-album cell: silhouette when locked, color gallery when owned.
@@ -16,6 +16,7 @@ class CatalogAlbumTile extends StatefulWidget {
     required this.ownedOccurrences,
     required this.placeholderAsset,
     required this.isCuratedUrl,
+    this.title,
     this.onOwnedTap,
   });
 
@@ -24,6 +25,9 @@ class CatalogAlbumTile extends StatefulWidget {
   final List<OwnedOccurrenceThumb> ownedOccurrences;
   final String placeholderAsset;
   final bool Function(String? url) isCuratedUrl;
+
+  /// Shown on owned tiles only (bottom center, width-fitted).
+  final String? title;
   final ValueChanged<OwnedOccurrenceThumb>? onOwnedTap;
 
   @override
@@ -84,6 +88,7 @@ class CatalogAlbumTileState extends State<CatalogAlbumTile> {
           onTap: widget.owned ? _handleTap : null,
           child: widget.owned
               ? _OwnedGallery(
+                  title: widget.title,
                   occurrences: widget.ownedOccurrences,
                   fallbackImageUrl: widget.imageUrl,
                   placeholderAsset: widget.placeholderAsset,
@@ -114,6 +119,7 @@ class _OwnedGallery extends StatelessWidget {
     required this.controller,
     required this.pageIndex,
     required this.onPageChanged,
+    this.title,
   });
 
   final List<OwnedOccurrenceThumb> occurrences;
@@ -123,9 +129,68 @@ class _OwnedGallery extends StatelessWidget {
   final PageController controller;
   final int pageIndex;
   final ValueChanged<int> onPageChanged;
+  final String? title;
 
   @override
   Widget build(BuildContext context) {
+    final image = _buildImage();
+    final label = title?.trim();
+    final showTitle = label != null && label.isNotEmpty;
+    final multi = occurrences.length > 1;
+
+    if (!showTitle && !multi) return image;
+
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        image,
+        Positioned(
+          left: 5,
+          right: 5,
+          bottom: 6,
+          child: IgnorePointer(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (multi) ...[
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: List.generate(occurrences.length, (index) {
+                      return Container(
+                        width: 5,
+                        height: 5,
+                        margin: const EdgeInsets.symmetric(horizontal: 2),
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Colors.white.withValues(
+                            alpha: index == pageIndex ? 0.95 : 0.45,
+                          ),
+                        ),
+                      );
+                    }),
+                  ),
+                  if (showTitle) const SizedBox(height: 4),
+                ],
+                if (showTitle)
+                  CardAdaptiveTitleText(
+                    text: label,
+                    textAlign: TextAlign.center,
+                    style: DinoCardTheme.dark.frontOverlayTitleStyle(
+                      fontSize: 13,
+                    ).copyWith(
+                      fontFamily: MapChromeTheme.serifFont,
+                      letterSpacing: 0.4,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildImage() {
     if (occurrences.isEmpty) {
       return _ColorImage(
         imageUrl: fallbackImageUrl,
@@ -140,46 +205,18 @@ class _OwnedGallery extends StatelessWidget {
         isCuratedUrl: isCuratedUrl,
       );
     }
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        PageView.builder(
-          controller: controller,
-          onPageChanged: onPageChanged,
-          itemCount: occurrences.length,
-          itemBuilder: (context, index) {
-            final thumb = occurrences[index];
-            return _ColorImage(
-              imageUrl: thumb.mainImageUrl ?? fallbackImageUrl,
-              placeholderAsset: placeholderAsset,
-              isCuratedUrl: isCuratedUrl,
-            );
-          },
-        ),
-        Positioned(
-          left: 0,
-          right: 0,
-          bottom: 6,
-          child: IgnorePointer(
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: List.generate(occurrences.length, (index) {
-                return Container(
-                  width: 5,
-                  height: 5,
-                  margin: const EdgeInsets.symmetric(horizontal: 2),
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Colors.white.withValues(
-                      alpha: index == pageIndex ? 0.95 : 0.45,
-                    ),
-                  ),
-                );
-              }),
-            ),
-          ),
-        ),
-      ],
+    return PageView.builder(
+      controller: controller,
+      onPageChanged: onPageChanged,
+      itemCount: occurrences.length,
+      itemBuilder: (context, index) {
+        final thumb = occurrences[index];
+        return _ColorImage(
+          imageUrl: thumb.mainImageUrl ?? fallbackImageUrl,
+          placeholderAsset: placeholderAsset,
+          isCuratedUrl: isCuratedUrl,
+        );
+      },
     );
   }
 }
@@ -216,9 +253,3 @@ class _ColorImage extends StatelessWidget {
     );
   }
 }
-
-/// Convenience: dinosaur curated URL check.
-bool catalogIsDinosaurImageUrl(String? url) => isCuratedDinosaurImageUrl(url);
-
-/// Convenience: tool curated URL check.
-bool catalogIsToolImageUrl(String? url) => isCuratedToolImageUrl(url);

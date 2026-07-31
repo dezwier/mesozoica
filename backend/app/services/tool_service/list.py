@@ -143,11 +143,9 @@ def _list_catalog_tools(
             limit=capped_limit,
         )
     elif effective_sort == "category":
-        normalized_seed = _require_seed(seed)
         rows = _list_tools_by_category(
             session,
             filtered=filtered,
-            seed=normalized_seed,
             offset=capped_offset,
             limit=capped_limit,
         )
@@ -240,14 +238,12 @@ def _list_inventory_tools(
         )
         rows = rows[capped_offset : capped_offset + capped_limit]
     elif sort == "category":
-        normalized_seed = _require_seed(seed)
         rows = list(session.exec(stmt).all())
         rows.sort(
             key=lambda row: (
                 category_sequence(row[1].category),
-                hashlib.md5(
-                    f"{row[0].id}{row[1].id}{normalized_seed}".encode()
-                ).hexdigest(),
+                (row[1].name or "").casefold(),
+                int(row[0].id or 0),
             )
         )
         rows = rows[capped_offset : capped_offset + capped_limit]
@@ -324,7 +320,7 @@ def _normalize_categories(categories: list[str] | None) -> list[str] | None:
 def _require_seed(seed: str | None) -> str:
     normalized_seed = (seed or "").strip()
     if not normalized_seed:
-        raise ValidationError("seed is required when sort=random or sort=category")
+        raise ValidationError("seed is required when sort=random")
     return normalized_seed[:_MAX_SEED_LEN]
 
 
@@ -394,16 +390,16 @@ def _list_tools_by_category(
     session: Session,
     *,
     filtered,
-    seed: str,
     offset: int,
     limit: int,
 ) -> list[ToolType]:
-    """Order by numeric category sequence, then seed-stable shuffle within category."""
+    """Order by numeric category sequence, then name A–Z within category."""
     all_rows = list(session.exec(filtered).all())
     all_rows.sort(
         key=lambda row: (
             category_sequence(row.category),
-            hashlib.md5(f"{row.id}{seed}".encode()).hexdigest(),
+            (row.name or "").casefold(),
+            int(row.id or 0),
         )
     )
     return all_rows[offset : offset + limit]

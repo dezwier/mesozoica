@@ -268,7 +268,7 @@ def test_list_tools_random_requires_seed(client, session):
     assert response.status_code == 400
 
 
-def test_list_tools_category_requires_seed(client, session):
+def test_list_tools_category_does_not_require_seed(client, session):
     _seed_tool(session)
     admin = _user(session, username="admin", is_admin=True)
     response = client.get(
@@ -276,7 +276,8 @@ def test_list_tools_category_requires_seed(client, session):
         params={"sort": "category", "show_all": True, "mode": "catalog"},
         headers=_auth_headers(admin),
     )
-    assert response.status_code == 400
+    assert response.status_code == 200
+    assert response.json()["total"] == 1
 
 
 def test_list_tools_sort_by_category_sequence(client, session):
@@ -312,7 +313,7 @@ def test_list_tools_sort_by_category_sequence(client, session):
 
     response = client.get(
         "/api/v1/tools",
-        params={"sort": "category", "seed": "stable", "show_all": True, "mode": "catalog"},
+        params={"sort": "category", "show_all": True, "mode": "catalog"},
         headers=_auth_headers(admin),
     )
     assert response.status_code == 200
@@ -324,7 +325,7 @@ def test_list_tools_sort_by_category_sequence(client, session):
         "10 reconstruction",
     ]
     names_in_cat2 = [item["name"] for item in items if item["category"].startswith("2 ")]
-    assert set(names_in_cat2) == {"Alpha Tool", "Beta Tool"}
+    assert names_in_cat2 == ["Alpha Tool", "Beta Tool"]
 
 
 def test_list_tools_filter_by_category(client, session):

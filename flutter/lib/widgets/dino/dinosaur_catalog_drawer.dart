@@ -1,5 +1,3 @@
-import 'dart:math';
-
 import 'package:flutter/material.dart';
 
 import '../../models/dinosaur.dart';
@@ -38,10 +36,8 @@ class _DinosaurCatalogAlbumBodyState extends State<_DinosaurCatalogAlbumBody> {
   static const _pageSize = 60;
 
   final DinosaurService _service = DinosaurService();
-  final Random _random = Random();
 
   final List<DinosaurSummary> _items = [];
-  String? _seed;
   String? _error;
   bool _loading = false;
   bool _hasMore = true;
@@ -50,8 +46,6 @@ class _DinosaurCatalogAlbumBodyState extends State<_DinosaurCatalogAlbumBody> {
   @override
   void initState() {
     super.initState();
-    _seed = DateTime.now().millisecondsSinceEpoch.toRadixString(16) +
-        _random.nextInt(1 << 20).toRadixString(16);
     _load(reset: true);
   }
 
@@ -76,11 +70,8 @@ class _DinosaurCatalogAlbumBodyState extends State<_DinosaurCatalogAlbumBody> {
       final response = await _service.fetchDinosaurs(
         limit: _pageSize,
         offset: reset ? 0 : _items.length,
-        sort: 'random',
-        seed: _seed,
+        sort: 'name',
         mode: 'catalog',
-        hasCustomImage: true,
-        llmEnriched: true,
       );
       if (!mounted) return;
       setState(() {
@@ -114,6 +105,7 @@ class _DinosaurCatalogAlbumBodyState extends State<_DinosaurCatalogAlbumBody> {
   Widget build(BuildContext context) {
     return CatalogAlbumDrawer(
       scrollController: widget.scrollController,
+      title: 'Dinosaur Catalog',
       body: CatalogAlbumGrid(
         scrollController: widget.scrollController,
         itemCount: _items.length,
@@ -131,6 +123,7 @@ class _DinosaurCatalogAlbumBodyState extends State<_DinosaurCatalogAlbumBody> {
             imageUrl: dino.mainImageUrl,
             owned: dino.isCatalogOwned,
             ownedOccurrences: dino.ownedOccurrences,
+            title: dino.name,
             placeholderAsset: DinoCardTheme.frontPlaceholderAsset,
             isCuratedUrl: isCuratedDinosaurImageUrl,
             onOwnedTap: (thumb) => _openOccurrence(dino, thumb),

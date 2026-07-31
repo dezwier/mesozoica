@@ -1,5 +1,3 @@
-import 'dart:math';
-
 import 'package:flutter/material.dart';
 
 import '../../models/tool.dart';
@@ -37,10 +35,8 @@ class _ToolCatalogAlbumBodyState extends State<_ToolCatalogAlbumBody> {
   static const _pageSize = 60;
 
   final ToolService _service = ToolService();
-  final Random _random = Random();
 
   final List<ToolSummary> _items = [];
-  String? _seed;
   String? _error;
   bool _loading = false;
   bool _hasMore = true;
@@ -48,8 +44,6 @@ class _ToolCatalogAlbumBodyState extends State<_ToolCatalogAlbumBody> {
   @override
   void initState() {
     super.initState();
-    _seed = DateTime.now().millisecondsSinceEpoch.toRadixString(16) +
-        _random.nextInt(1 << 20).toRadixString(16);
     _load(reset: true);
   }
 
@@ -75,7 +69,6 @@ class _ToolCatalogAlbumBodyState extends State<_ToolCatalogAlbumBody> {
         limit: _pageSize,
         offset: reset ? 0 : _items.length,
         sort: 'category',
-        seed: _seed,
         mode: 'catalog',
         showAll: true,
         hasCustomImage: true,
@@ -111,6 +104,7 @@ class _ToolCatalogAlbumBodyState extends State<_ToolCatalogAlbumBody> {
   Widget build(BuildContext context) {
     return CatalogAlbumDrawer(
       scrollController: widget.scrollController,
+      title: 'Tool Catalog',
       body: CatalogAlbumGrid(
         scrollController: widget.scrollController,
         itemCount: _items.length,
@@ -126,6 +120,7 @@ class _ToolCatalogAlbumBodyState extends State<_ToolCatalogAlbumBody> {
             imageUrl: tool.mainImageUrl,
             owned: tool.isCatalogOwned,
             ownedOccurrences: tool.ownedOccurrences,
+            title: tool.name,
             placeholderAsset: DinoCardTheme.sitePlaceholderAsset,
             isCuratedUrl: isCuratedToolImageUrl,
             onOwnedTap: (thumb) => _openOccurrence(tool, thumb),
