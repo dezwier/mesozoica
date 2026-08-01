@@ -353,7 +353,7 @@
   },
   {
     "name": "Anatomy Archive",
-    "category": "8 fossil_analysis",
+    "category": "9 fossil_analysis",
     "scientific_tool": "comparative anatomy collection",
     "description": "Compares a specimen with identified skeletons, casts and reference material.",
     "rarity": 3,
@@ -361,7 +361,7 @@
   },
   {
     "name": "CT Vault",
-    "category": "8 fossil_analysis",
+    "category": "9 fossil_analysis",
     "scientific_tool": "CT scanner",
     "description": "Reveals internal anatomy and enclosed structures without physically opening the fossil.",
     "rarity": 5,
@@ -369,7 +369,7 @@
   },
   {
     "name": "Isotope Engine",
-    "category": "8 fossil_analysis",
+    "category": "9 fossil_analysis",
     "scientific_tool": "isotope analysis",
     "description": "Investigates diet, environment, migration or alteration using isotopic composition.",
     "rarity": 5,
@@ -377,7 +377,7 @@
   },
   {
     "name": "Micro Lens",
-    "category": "8 fossil_analysis",
+    "category": "9 fossil_analysis",
     "scientific_tool": "microscope",
     "description": "Examines fine anatomy, surface textures, sediments and microfossils.",
     "rarity": 2,
@@ -385,7 +385,7 @@
   },
   {
     "name": "Radiometric Clock",
-    "category": "8 fossil_analysis",
+    "category": "9 fossil_analysis",
     "scientific_tool": "radiometric dating",
     "description": "Dates suitable volcanic minerals or layers associated with the fossil site.",
     "rarity": 5,
@@ -393,7 +393,7 @@
   },
   {
     "name": "Strata Reader",
-    "category": "8 fossil_analysis",
+    "category": "9 fossil_analysis",
     "scientific_tool": "stratigraphic analysis",
     "description": "Determines the fossil's position and context within the surrounding rock sequence.",
     "rarity": 2,
@@ -401,7 +401,7 @@
   },
   {
     "name": "Surface Scanner",
-    "category": "8 fossil_analysis",
+    "category": "9 fossil_analysis",
     "scientific_tool": "photogrammetry or 3D scanner",
     "description": "Produces an accurate digital model of a fossil or excavation surface.",
     "rarity": 3,
@@ -409,7 +409,7 @@
   },
   {
     "name": "UV Imaging Rig",
-    "category": "8 fossil_analysis",
+    "category": "9 fossil_analysis",
     "scientific_tool": "ultraviolet imaging",
     "description": "Makes some fossils, repairs and minerals easier to distinguish through fluorescence.",
     "rarity": 3,
@@ -417,7 +417,7 @@
   },
   {
     "name": "Digital Restorer",
-    "category": "9 dinosaur_modelling",
+    "category": "10 dinosaur_modelling",
     "scientific_tool": "digital reconstruction software",
     "description": "Reassembles scanned elements and tests alternative anatomical arrangements.",
     "rarity": 3,
@@ -425,7 +425,7 @@
   },
   {
     "name": "Missing Element Model",
-    "category": "9 dinosaur_modelling",
+    "category": "10 dinosaur_modelling",
     "scientific_tool": "comparative reconstruction",
     "description": "Estimates absent bones from mirrored anatomy and closely related specimens.",
     "rarity": 4,
@@ -433,7 +433,7 @@
   },
   {
     "name": "Soft-Tissue Model",
-    "category": "9 dinosaur_modelling",
+    "category": "10 dinosaur_modelling",
     "scientific_tool": "soft-tissue inference",
     "description": "Estimates muscles and other missing tissues using attachment marks and living relatives.",
     "rarity": 4,
@@ -441,7 +441,7 @@
   },
   {
     "name": "Mount Armature",
-    "category": "10 dinosaur_mounting",
+    "category": "11 dinosaur_mounting",
     "scientific_tool": "skeletal mount frame",
     "description": "Supports an assembled skeleton while minimizing contact with original bones.",
     "rarity": 4,

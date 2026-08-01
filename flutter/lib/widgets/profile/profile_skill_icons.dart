@@ -9,9 +9,11 @@ const skillIconAssets = <String, String>{
   'fossil_excavation': 'assets/images/chrome/skills/fossil_excavation.png',
   'fossil_transport': 'assets/images/chrome/skills/fossil_transport.png',
   'fossil_curation': 'assets/images/chrome/skills/fossil_curation.png',
+  'fossil_preparation': 'assets/images/chrome/skills/fossil_preparation.png',
   'fossil_analysis': 'assets/images/chrome/skills/fossil_analysis.png',
   'dinosaur_modelling': 'assets/images/chrome/skills/dinosaur_modelling.png',
   'dinosaur_mounting': 'assets/images/chrome/skills/dinosaur_mounting.png',
+  'academic_publishing': 'assets/images/chrome/skills/academic_publishing.png',
 };
 
 String? skillIconAssetFor(String skillId) => skillIconAssets[skillId];
