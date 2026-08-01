@@ -1,0 +1,27 @@
+# Distinct hues for Formation Map rock-type mosaic. Edit here only.
+# Keys are lowercase rock_type strings; unknown falls back to "other".
+
+formation_map:
+  mudstone: "#8B7355"
+  shale: "#5C6B4A"
+  siltstone: "#C4A574"
+  sandstone: "#D4A017"
+  conglomerate: "#A0522D"
+  limestone: "#E8D5B7"
+  marl: "#9CAF88"
+  chalk: "#F5F0E6"
+  claystone: "#7A6A5A"
+  coal: "#2C2C2C"
+  volcanic_ash: "#B8A0C8"
+  tuff: "#8B7B8B"
+  ironstone: "#B7410E"
+  phosphorite: "#6B8E6B"
+  evaporite: "#E0CDA8"
+  siliciclastic: "#A89070"
+  "lime mudstone": "#D2C4A8"
+  carbonate: "#DED0B8"
+  lignite: "#4A3728"
+  chert: "#6E8B7A"
+  wackestone: "#C9B896"
+  gravel: "#9A8B7A"
+  other: "#888888"

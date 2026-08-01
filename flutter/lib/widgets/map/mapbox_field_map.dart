@@ -12,13 +12,16 @@ import '../../config/map_config.dart';
 import '../../config/game_config.dart';
 import '../../controllers/aerial_mission_controller.dart';
 import '../../controllers/formation_map_controller.dart';
+import '../../controllers/orbit_survey_controller.dart';
 import '../../models/site.dart';
 import '../../theme/map_chrome_theme.dart';
 import 'formation_map_raster.dart';
+import 'orbit_survey_raster.dart';
 import 'mapbox_aerial_mission_annotations.dart';
 import 'mapbox_basemap_config.dart';
 import 'mapbox_camera_coordinator.dart';
 import 'mapbox_formation_map_overlay.dart';
+import 'mapbox_orbit_survey_overlay.dart';
 import 'mapbox_site_annotations.dart';
 import 'mapbox_viewport_native.dart';
 import 'map_center_crosshair.dart';
@@ -56,6 +59,7 @@ class MapboxFieldMap extends StatefulWidget {
     this.headingListenable,
     this.locationListenable,
     this.aerialRecon,
+    this.orbitSurvey,
     this.formationMap,
     this.showPastAerialRoutes = false,
     this.showAerialReconOverlays = true,
@@ -98,7 +102,9 @@ class MapboxFieldMap extends StatefulWidget {
   final ValueNotifier<int>? rotateCardCount;
   /// Ongoing + past aerial recon routes / scout puck.
   final AerialMissionController? aerialRecon;
-  /// Timed Formation Map period mosaic.
+  /// Timed Orbit Survey period mosaic.
+  final OrbitSurveyController? orbitSurvey;
+  /// Timed Formation Map rock-type square mosaic.
   final FormationMapController? formationMap;
   /// When true, draw past (done/cancelled) recon routes from the last 24h.
   final bool showPastAerialRoutes;
@@ -116,9 +122,11 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
     with SingleTickerProviderStateMixin {
   MapboxSiteAnnotations? _annotations;
   MapboxAerialMissionAnnotations? _aerialReconAnnotations;
-  final MapboxFormationMapOverlay _formationOverlay = MapboxFormationMapOverlay();
+  final MapboxOrbitSurveyOverlay _orbitSurveyOverlay = MapboxOrbitSurveyOverlay();
+  final MapboxFormationMapOverlay _formationMapOverlay = MapboxFormationMapOverlay();
   MapboxMap? _map;
-  int _lastFormationSitesRevision = -1;
+  int _lastOrbitSurveySitesRevision = -1;
+  int _lastFormationMapSitesRevision = -1;
   bool _ready = false;
   bool _readyNotified = false;
   bool _styleLoaded = false;
@@ -176,6 +184,7 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
     widget.aerialRecon?.addListener(_onAerialReconChanged);
     widget.aerialRecon?.progressTickListenable
         .addListener(_onAerialProgressTick);
+    widget.orbitSurvey?.addListener(_onOrbitSurveyChanged);
     widget.formationMap?.addListener(_onFormationMapChanged);
     // Seed with a fixed camera; switch to FollowPuck after the location puck
     // is enabled (FollowPuck requires location).
@@ -247,6 +256,7 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
     widget.aerialRecon?.removeListener(_onAerialReconChanged);
     widget.aerialRecon?.progressTickListenable
         .removeListener(_onAerialProgressTick);
+    widget.orbitSurvey?.removeListener(_onOrbitSurveyChanged);
     widget.formationMap?.removeListener(_onFormationMapChanged);
     _annotationDebounce?.cancel();
     _readyTimeout?.cancel();
@@ -260,8 +270,10 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
     _annotations = null;
     _aerialReconAnnotations?.dispose();
     _aerialReconAnnotations = null;
-    unawaited(_formationOverlay.clear());
-    _formationOverlay.dispose();
+    unawaited(_orbitSurveyOverlay.clear());
+    _orbitSurveyOverlay.dispose();
+    unawaited(_formationMapOverlay.clear());
+    _formationMapOverlay.dispose();
     if (_readyNotified) {
       widget.onReadyChanged(false);
     }
@@ -304,32 +316,32 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
     unawaited(_syncAerialMission());
   }
 
-  void _onFormationMapChanged() {
-    unawaited(_syncFormationMap());
+  void _onOrbitSurveyChanged() {
+    unawaited(_syncOrbitSurvey());
   }
 
-  Future<void> _syncFormationMap() async {
+  Future<void> _syncOrbitSurvey() async {
     final map = _map;
-    final formation = widget.formationMap;
+    final formation = widget.orbitSurvey;
     if (map == null || !_styleLoaded) return;
     if (!widget.mapActive || formation == null || !formation.isActive) {
-      _lastFormationSitesRevision = -1;
-      await _formationOverlay.clear();
+      _lastOrbitSurveySitesRevision = -1;
+      await _orbitSurveyOverlay.clear();
       return;
     }
     final origin = formation.origin ?? _effectiveLocation;
     if (origin == null) {
-      await _formationOverlay.clear();
+      await _orbitSurveyOverlay.clear();
       return;
     }
     final revision = formation.sitesRevision;
-    if (revision == _lastFormationSitesRevision) return;
-    _lastFormationSitesRevision = revision;
+    if (revision == _lastOrbitSurveySitesRevision) return;
+    _lastOrbitSurveySitesRevision = revision;
 
-    final samples = <FormationMapSiteSample>[
+    final samples = <OrbitSurveySiteSample>[
       for (final site in formation.discoverableSites)
         if (site.latitude != null && site.longitude != null)
-          FormationMapSiteSample(
+          OrbitSurveySiteSample(
             lat: site.latitude!,
             lon: site.longitude!,
             period: site.effectivePeriod ?? 'cretaceous',
@@ -341,11 +353,11 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
       'accuracy=${formation.accuracy.toStringAsFixed(2)} '
       'origin=${origin.latitude.toStringAsFixed(5)},'
       '${origin.longitude.toStringAsFixed(5)}',
-      name: 'formation_map',
+      name: 'orbit_survey',
     );
-    final cfg = GameConfig.instance.toolActions.formationMap;
-    final palette = GameConfig.instance.periodColors.formationMap;
-    final request = FormationMapRasterRequest(
+    final cfg = GameConfig.instance.toolActions.orbitSurvey;
+    final palette = GameConfig.instance.periodColors.orbitSurvey;
+    final request = OrbitSurveyRasterRequest(
       originLat: origin.latitude,
       originLon: origin.longitude,
       rangeM: formation.rangeM,
@@ -354,14 +366,73 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
       baseAlpha: cfg.baseAlpha,
       rangeFade: cfg.rangeFade,
       boundaryBlur: cfg.boundaryBlur,
-      colors: FormationMapRasterColors(
+      colors: OrbitSurveyRasterColors(
         cretaceous: palette.cretaceous,
         jurassic: palette.jurassic,
         triassic: palette.triassic,
       ),
     );
-    // IDW + PNG on a worker isolate so walking with Formation Map active
+    // IDW + PNG on a worker isolate so walking with Orbit Survey active
     // does not spike the UI isolate (custom request → SendPort-safe map).
+    final isolateResult = await compute(
+      buildOrbitSurveyPngIsolate,
+      request.toIsolatePayload(),
+    );
+    if (!mounted) return;
+    if (widget.orbitSurvey?.sitesRevision != revision) return;
+    if (!(widget.orbitSurvey?.isActive ?? false)) {
+      await _orbitSurveyOverlay.clear();
+      return;
+    }
+    final raster = orbitSurveyResultFromIsolate(isolateResult);
+    await _orbitSurveyOverlay.sync(raster: raster);
+  }
+
+
+  void _onFormationMapChanged() {
+    unawaited(_syncFormationMap());
+  }
+
+  Future<void> _syncFormationMap() async {
+    final map = _map;
+    final formation = widget.formationMap;
+    if (map == null || !_styleLoaded) return;
+    if (!widget.mapActive || formation == null || !formation.isActive) {
+      _lastFormationMapSitesRevision = -1;
+      await _formationMapOverlay.clear();
+      return;
+    }
+    final footprint = formation.footprint;
+    if (footprint == null) {
+      await _formationMapOverlay.clear();
+      return;
+    }
+    final revision = formation.sitesRevision;
+    if (revision == _lastFormationMapSitesRevision) return;
+    _lastFormationMapSitesRevision = revision;
+
+    final samples = <FormationMapSiteSample>[
+      for (final site in formation.discoverableSites)
+        if (site.latitude != null && site.longitude != null)
+          FormationMapSiteSample(
+            lat: site.latitude!,
+            lon: site.longitude!,
+            rockType: (site.rockType ?? site.siteTypeRockType ?? 'other'),
+          ),
+    ];
+    final cfg = GameConfig.instance.toolActions.formationMap;
+    final palette = GameConfig.instance.rockTypeColors.formationMap;
+    final request = FormationMapRasterRequest(
+      west: footprint.west,
+      east: footprint.east,
+      south: footprint.south,
+      north: footprint.north,
+      accuracy: formation.accuracy,
+      sites: samples,
+      baseAlpha: cfg.baseAlpha,
+      boundaryBlur: cfg.boundaryBlur,
+      colors: palette,
+    );
     final isolateResult = await compute(
       buildFormationMapPngIsolate,
       request.toIsolatePayload(),
@@ -369,11 +440,11 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
     if (!mounted) return;
     if (widget.formationMap?.sitesRevision != revision) return;
     if (!(widget.formationMap?.isActive ?? false)) {
-      await _formationOverlay.clear();
+      await _formationMapOverlay.clear();
       return;
     }
     final raster = formationMapResultFromIsolate(isolateResult);
-    await _formationOverlay.sync(raster: raster);
+    await _formationMapOverlay.sync(raster: raster);
   }
 
   MbxEdgeInsets? _paddingForCurrentHeight() {
@@ -550,7 +621,8 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
       await Future.wait([
         _annotations?.setRotateModePaused(true) ?? Future<void>.value(),
         _aerialReconAnnotations?.clear() ?? Future<void>.value(),
-        _formationOverlay.clear(),
+        _orbitSurveyOverlay.clear(),
+        _formationMapOverlay.clear(),
         if (map != null)
           map.location.updateSettings(
             LocationComponentSettings(enabled: false),
@@ -569,9 +641,11 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
     }
     await _applyRotateMarkerMode(widget.rotateWithHeading);
     if (!mounted || !widget.mapActive) return;
-    _lastFormationSitesRevision = -1;
+    _lastOrbitSurveySitesRevision = -1;
+    _lastFormationMapSitesRevision = -1;
     await Future.wait([
       _syncAerialMission(),
+      _syncOrbitSurvey(),
       _syncFormationMap(),
     ]);
   }
@@ -750,10 +824,16 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
           .addListener(_onAerialProgressTick);
       unawaited(_syncAerialMission());
     }
+    if (oldWidget.orbitSurvey != widget.orbitSurvey) {
+      oldWidget.orbitSurvey?.removeListener(_onOrbitSurveyChanged);
+      widget.orbitSurvey?.addListener(_onOrbitSurveyChanged);
+      _lastOrbitSurveySitesRevision = -1;
+      unawaited(_syncOrbitSurvey());
+    }
     if (oldWidget.formationMap != widget.formationMap) {
       oldWidget.formationMap?.removeListener(_onFormationMapChanged);
       widget.formationMap?.addListener(_onFormationMapChanged);
-      _lastFormationSitesRevision = -1;
+      _lastFormationMapSitesRevision = -1;
       unawaited(_syncFormationMap());
     }
     if (oldWidget.showPastAerialRoutes != widget.showPastAerialRoutes ||
@@ -806,7 +886,9 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
       _aerialReconAnnotations?.dispose();
       _aerialReconAnnotations = aerial;
 
-      _formationOverlay.attach(map);
+      _orbitSurveyOverlay.attach(map);
+      _formationMapOverlay.attach(map);
+      unawaited(_syncOrbitSurvey());
       unawaited(_syncFormationMap());
 
       await _applyGestureMode();
@@ -842,7 +924,9 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
     _styleLoaded = true;
     unawaited(_applyBasemapLook());
     unawaited(_seedAfterLayout());
-    _lastFormationSitesRevision = -1;
+    _lastOrbitSurveySitesRevision = -1;
+    _lastFormationMapSitesRevision = -1;
+    unawaited(_syncOrbitSurvey());
     unawaited(_syncFormationMap());
   }
 
@@ -850,7 +934,9 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
     _styleLoaded = true;
     unawaited(_applyBasemapLook());
     unawaited(_seedAfterLayout());
-    _lastFormationSitesRevision = -1;
+    _lastOrbitSurveySitesRevision = -1;
+    _lastFormationMapSitesRevision = -1;
+    unawaited(_syncOrbitSurvey());
     unawaited(_syncFormationMap());
   }
 

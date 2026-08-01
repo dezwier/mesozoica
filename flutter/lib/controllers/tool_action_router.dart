@@ -5,9 +5,11 @@ import 'package:provider/provider.dart';
 
 import '../controllers/aerial_mission_controller.dart';
 import '../controllers/formation_map_controller.dart';
+import '../controllers/orbit_survey_controller.dart';
 import '../controllers/guidance_session_controller.dart';
 import '../models/aerial_mission_kind.dart';
 import '../models/formation_map_kind.dart';
+import '../models/orbit_survey_kind.dart';
 import '../models/guidance_tool_kind.dart';
 import '../models/tool.dart';
 
@@ -24,13 +26,22 @@ class ToolActionRouter {
     }
 
     if (GuidanceToolKind.tryParseToolName(tool.name) != null) {
+      context.read<OrbitSurveyController>().clearLocalSession();
       context.read<FormationMapController>().clearLocalSession();
       unawaited(context.read<GuidanceSessionController>().activate(tool));
       return;
     }
 
+    if (OrbitSurveyKind.matchesToolName(tool.name)) {
+      context.read<GuidanceSessionController>().stop(notifyServer: false);
+      context.read<FormationMapController>().clearLocalSession();
+      unawaited(context.read<OrbitSurveyController>().activate(tool));
+      return;
+    }
+
     if (FormationMapKind.matchesToolName(tool.name)) {
       context.read<GuidanceSessionController>().stop(notifyServer: false);
+      context.read<OrbitSurveyController>().clearLocalSession();
       unawaited(context.read<FormationMapController>().activate(tool));
       return;
     }

@@ -383,8 +383,8 @@ class ApiEndpoints {
   static Uri toolGuidanceSessionUri(int id) =>
       Uri.parse('${AppConfig.baseApiUrl}/api/v1/tools/$id/actions/guidance-session');
 
-  static Uri toolFormationMapSessionUri(int id) =>
-      Uri.parse('${AppConfig.baseApiUrl}/api/v1/tools/$id/actions/formation-map-session');
+  static Uri toolOrbitSurveySessionUri(int id) =>
+      Uri.parse('${AppConfig.baseApiUrl}/api/v1/tools/$id/actions/orbit-survey-session');
 
   static Uri aerialMissionsUri() =>
       Uri.parse('${AppConfig.baseApiUrl}/api/v1/tools/missions/aerial');
@@ -397,6 +397,15 @@ class ApiEndpoints {
 
   static Uri cancelGuidanceSessionUri() =>
       Uri.parse('${AppConfig.baseApiUrl}/api/v1/tools/sessions/guidance/cancel');
+
+  static Uri activeOrbitSurveySessionUri() =>
+      Uri.parse('${AppConfig.baseApiUrl}/api/v1/tools/sessions/orbit-survey/active');
+
+  static Uri cancelOrbitSurveySessionUri() =>
+      Uri.parse('${AppConfig.baseApiUrl}/api/v1/tools/sessions/orbit-survey/cancel');
+
+  static Uri toolFormationMapSessionUri(int id) =>
+      Uri.parse('${AppConfig.baseApiUrl}/api/v1/tools/$id/actions/formation-map-session');
 
   static Uri activeFormationMapSessionUri() =>
       Uri.parse('${AppConfig.baseApiUrl}/api/v1/tools/sessions/formation-map/active');

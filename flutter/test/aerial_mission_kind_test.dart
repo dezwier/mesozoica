@@ -12,7 +12,7 @@ void main() {
       AerialMissionKind.tryParseToolName('Aerial Scout'),
       AerialMissionKind.scout,
     );
-    expect(AerialMissionKind.tryParseToolName('Formation Map'), isNull);
+    expect(AerialMissionKind.tryParseToolName('Orbit Survey'), isNull);
 
     expect(AerialMissionKind.scout.activeRouteColor, const Color(0xFF4A4A4A));
     expect(AerialMissionKind.scout.pastRouteColor, const Color(0xFF8A8A8A));

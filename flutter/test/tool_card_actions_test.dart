@@ -161,12 +161,12 @@ void main() {
   testWidgets('ToolCardBack disables action when not owned', (tester) async {
     const unowned = ToolSummary(
       id: 2,
-      name: 'Formation Map',
+      name: 'Orbit Survey',
       category: '1 site_discovery',
-      scientificTool: 'geological map',
+      scientificTool: 'satellite imagery',
       description: 'Read formations',
       rarity: 1,
-      action: 'Read',
+      action: 'Scan',
     );
 
     await tester.pumpWidget(
@@ -183,7 +183,7 @@ void main() {
     );
 
     final deploy = tester.widget<ChromeActionButton>(
-      find.widgetWithText(ChromeActionButton, 'Read'),
+      find.widgetWithText(ChromeActionButton, 'Scan'),
     );
     expect(deploy.onPressed, isNull);
   });

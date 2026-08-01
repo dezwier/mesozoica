@@ -5,13 +5,13 @@ import 'dart:ui' as ui;
 import 'package:flutter/foundation.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 
-import 'formation_map_raster.dart';
+import 'orbit_survey_raster.dart';
 
-const String formationMapSourceId = 'formation-map-source';
-const String formationMapLayerId = 'formation-map-layer';
+const String orbitSurveySourceId = 'orbit-survey-source';
+const String orbitSurveyLayerId = 'orbit-survey-layer';
 
-/// Mapbox ImageSource + RasterLayer for the Formation Map square mosaic.
-class MapboxFormationMapOverlay {
+/// Mapbox ImageSource + RasterLayer for the Orbit Survey mosaic.
+class MapboxOrbitSurveyOverlay {
   MapboxMap? _map;
   int _syncSeq = 0;
 
@@ -24,24 +24,25 @@ class MapboxFormationMapOverlay {
     final map = _map;
     if (map == null) return;
     try {
-      if (await map.style.styleLayerExists(formationMapLayerId)) {
-        await map.style.removeStyleLayer(formationMapLayerId);
+      if (await map.style.styleLayerExists(orbitSurveyLayerId)) {
+        await map.style.removeStyleLayer(orbitSurveyLayerId);
       }
-      if (await map.style.styleSourceExists(formationMapSourceId)) {
-        await map.style.removeStyleSource(formationMapSourceId);
+      if (await map.style.styleSourceExists(orbitSurveySourceId)) {
+        await map.style.removeStyleSource(orbitSurveySourceId);
       }
     } catch (error) {
-      developer.log('Formation map clear failed: $error', name: 'formation_map');
+      developer.log('Formation map clear failed: $error', name: 'orbit_survey');
     }
   }
 
   Future<void> sync({
-    required FormationMapRasterResult raster,
+    required OrbitSurveyRasterResult raster,
   }) async {
     final map = _map;
     if (map == null) return;
     final seq = ++_syncSeq;
 
+    // Prefer isolate-preencoded PNG; fall back to UI-thread encode.
     final Uint8List pngBytes = raster.pngBytes ??
         await _rgbaToPng(
           raster.rgba,
@@ -58,13 +59,14 @@ class MapboxFormationMapOverlay {
     final coords = raster.coordinates;
 
     try {
-      final hasSource = await map.style.styleSourceExists(formationMapSourceId);
+      final hasSource = await map.style.styleSourceExists(orbitSurveySourceId);
       if (seq != _syncSeq) return;
 
       if (!hasSource) {
+        // Match Mapbox ImageSource example order: source → layer → image.
         await map.style.addSource(
           ImageSource(
-            id: formationMapSourceId,
+            id: orbitSurveySourceId,
             coordinates: coords,
           ),
         );
@@ -72,14 +74,19 @@ class MapboxFormationMapOverlay {
         await _ensureLayer(map);
         if (seq != _syncSeq) return;
         await map.style.updateStyleImageSourceImage(
-          formationMapSourceId,
+          orbitSurveySourceId,
           image,
+        );
+        developer.log(
+          'Formation map installed '
+          '${raster.width}x${raster.height} png=${pngBytes.length}B',
+          name: 'orbit_survey',
         );
         return;
       }
 
       await map.style.setStyleSourceProperty(
-        formationMapSourceId,
+        orbitSurveySourceId,
         'coordinates',
         coords,
       );
@@ -87,13 +94,13 @@ class MapboxFormationMapOverlay {
       await _ensureLayer(map);
       if (seq != _syncSeq) return;
       await map.style.updateStyleImageSourceImage(
-        formationMapSourceId,
+        orbitSurveySourceId,
         image,
       );
     } catch (error, stack) {
       developer.log(
         'Formation map sync failed: $error\n$stack',
-        name: 'formation_map',
+        name: 'orbit_survey',
       );
       if (kDebugMode) {
         debugPrint('Formation map sync failed: $error\n$stack');
@@ -102,14 +109,18 @@ class MapboxFormationMapOverlay {
   }
 
   Future<void> _ensureLayer(MapboxMap map) async {
-    if (await map.style.styleLayerExists(formationMapLayerId)) return;
+    if (await map.style.styleLayerExists(orbitSurveyLayerId)) return;
+    // Standard style lightPreset dims custom rasters unless emissive strength
+    // is raised (see mapbox_maps_flutter image_source_example.dart).
     await map.style.addLayer(
       RasterLayer(
-        id: formationMapLayerId,
-        sourceId: formationMapSourceId,
+        id: orbitSurveyLayerId,
+        sourceId: orbitSurveySourceId,
         slot: 'middle',
         rasterOpacity: 1.0,
         rasterFadeDuration: 0,
+        // Keep some emissive so Standard lightPreset doesn't crush the
+        // mosaic, but below 1.0 so period colors stay soft (not fluorescent).
         rasterEmissiveStrength: 0.65,
       ),
     );

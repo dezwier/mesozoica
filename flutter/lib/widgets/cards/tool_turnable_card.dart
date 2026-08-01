@@ -10,6 +10,7 @@ import '../../theme/dino_card_theme.dart';
 import '../tools/filters/tool_params_edit_sheet.dart';
 import '../../models/aerial_mission_kind.dart';
 import '../../models/formation_map_kind.dart';
+import '../../models/orbit_survey_kind.dart';
 import '../../models/guidance_tool_kind.dart';
 import 'tool_card_back.dart';
 import 'tool_card_extension.dart';
@@ -78,7 +79,8 @@ class _ToolTurnableCardState extends State<ToolTurnableCard> {
       };
     }
 
-    if (FormationMapKind.matchesToolName(tool.name)) {
+    if (FormationMapKind.matchesToolName(tool.name) ||
+        OrbitSurveyKind.matchesToolName(tool.name)) {
       return const [
         'duration_minutes',
         'accuracy',

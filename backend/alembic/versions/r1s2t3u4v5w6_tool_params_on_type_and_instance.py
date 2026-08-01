@@ -30,7 +30,7 @@ def _defaults_by_tool_name() -> dict[str, dict[str, Any]]:
         "Geo Compass": cfg.geo_compass.model_dump(mode="json"),
         "Proximity Scanner": cfg.proximity_scanner.model_dump(mode="json"),
         "Site Navigator": cfg.site_navigator.model_dump(mode="json"),
-        "Formation Map": cfg.formation_map.model_dump(mode="json"),
+        "Orbit Survey": cfg.orbit_survey.model_dump(mode="json"),
     }
 
 

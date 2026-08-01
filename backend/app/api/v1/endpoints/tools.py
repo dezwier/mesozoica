@@ -15,6 +15,8 @@ from app.schemas.tool import (
     AerialMissionResponse,
     CollectToolRequest,
     FormationMapSessionResponse,
+    FormationMapSessionStartRequest,
+    OrbitSurveySessionResponse,
     GuidanceSessionResponse,
     ToolCategoryItem,
     ToolCategoryListResponse,
@@ -27,17 +29,21 @@ from app.schemas.tool import (
 from app.services.tool_action_service import (
     cancel_aerial_mission,
     cancel_formation_map_session,
+    cancel_orbit_survey_session,
     cancel_guidance_session,
     get_active_formation_map_session,
+    get_active_orbit_survey_session,
     get_active_guidance_session,
     list_aerial_missions,
     start_aerial_mission,
     start_formation_map_session,
+    start_orbit_survey_session,
     start_guidance_session,
 )
 from app.services.tool_action_service.serializers import (
     discovered_site_ids_by_mission,
     formation_map_session_response,
+    orbit_survey_session_response,
     guidance_session_response,
     mission_item,
     mission_response,
@@ -226,6 +232,40 @@ def post_cancel_guidance_session(
 
 
 @router.get(
+    "/sessions/orbit-survey/active",
+    response_model=OrbitSurveySessionResponse,
+)
+def get_active_orbit_survey(
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+) -> OrbitSurveySessionResponse:
+    row = get_active_orbit_survey_session(session, user_id=int(current_user.id))
+    if row is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No active orbit survey session",
+        )
+    return orbit_survey_session_response(row)
+
+
+@router.post(
+    "/sessions/orbit-survey/cancel",
+    response_model=OrbitSurveySessionResponse,
+)
+def post_cancel_orbit_survey_session(
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+) -> OrbitSurveySessionResponse:
+    row = cancel_orbit_survey_session(session, user_id=int(current_user.id))
+    if row is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No active orbit survey session",
+        )
+    return orbit_survey_session_response(row)
+
+
+@router.get(
     "/sessions/formation-map/active",
     response_model=FormationMapSessionResponse,
 )
@@ -349,19 +389,41 @@ def post_guidance_session(
 
 
 @router.post(
+    "/{tool_id}/actions/orbit-survey-session",
+    response_model=OrbitSurveySessionResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+def post_orbit_survey_session(
+    tool_id: int,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+) -> OrbitSurveySessionResponse:
+    row = start_orbit_survey_session(
+        session,
+        user_id=int(current_user.id),
+        tool_id=tool_id,
+    )
+    return orbit_survey_session_response(row)
+
+
+@router.post(
     "/{tool_id}/actions/formation-map-session",
     response_model=FormationMapSessionResponse,
     status_code=status.HTTP_201_CREATED,
 )
 def post_formation_map_session(
     tool_id: int,
+    body: FormationMapSessionStartRequest | None = None,
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ) -> FormationMapSessionResponse:
+    payload = body or FormationMapSessionStartRequest()
     row = start_formation_map_session(
         session,
         user_id=int(current_user.id),
         tool_id=tool_id,
+        lat=payload.lat,
+        lon=payload.lon,
     )
     return formation_map_session_response(row)
 

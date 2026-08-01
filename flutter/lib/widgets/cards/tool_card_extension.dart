@@ -3,9 +3,11 @@ import 'package:provider/provider.dart';
 
 import '../../controllers/aerial_mission_controller.dart';
 import '../../controllers/formation_map_controller.dart';
+import '../../controllers/orbit_survey_controller.dart';
 import '../../controllers/guidance_session_controller.dart';
 import '../../models/aerial_mission_kind.dart';
 import '../../models/formation_map_kind.dart';
+import '../../models/orbit_survey_kind.dart';
 import '../../models/guidance_tool_kind.dart';
 import '../../models/tool.dart';
 import '../../services/tool_service.dart';
@@ -13,6 +15,7 @@ import '../tools/aerial_mission_flight_stats.dart';
 import '../tools/aerial_mission_actions.dart';
 import '../tools/aerial_mission_missions_sheet.dart';
 import '../tools/formation_map_tool_stats.dart';
+import '../tools/orbit_survey_tool_stats.dart';
 import '../tools/guidance_tool_stats.dart';
 import 'card_section_panel.dart';
 
@@ -37,6 +40,7 @@ class ToolCardExtensions {
   static final List<ToolCardExtension> _all = [
     AerialMissionCardExtension(),
     GuidanceCardExtension(),
+    OrbitSurveyCardExtension(),
     FormationMapCardExtension(),
   ];
 
@@ -120,6 +124,37 @@ class GuidanceCardExtension implements ToolCardExtension {
   @override
   VoidCallback? infoHandler(BuildContext context, ToolSummary tool) => null;
 }
+
+class OrbitSurveyCardExtension implements ToolCardExtension {
+  @override
+  String get actionKey => OrbitSurveyKind.actionKey;
+
+  @override
+  bool matches(ToolSummary tool) =>
+      OrbitSurveyKind.matchesToolName(tool.name);
+
+  @override
+  Widget? buildDeployStats(BuildContext context, ToolSummary tool) {
+    final params = tool.isOwned && tool.params.isNotEmpty
+        ? tool.params
+        : tool.baseParams;
+    return CardSectionPanel(
+      child: OrbitSurveyToolStats(params: params),
+    );
+  }
+
+  @override
+  Widget? buildOngoingPanel(BuildContext context, ToolSummary tool) {
+    final params = tool.isOwned && tool.params.isNotEmpty
+        ? tool.params
+        : tool.baseParams;
+    return _OrbitSurveyOngoingPanel(toolId: tool.id, toolParams: params);
+  }
+
+  @override
+  VoidCallback? infoHandler(BuildContext context, ToolSummary tool) => null;
+}
+
 
 class FormationMapCardExtension implements ToolCardExtension {
   @override
@@ -219,6 +254,66 @@ class _GuidanceOngoingPanel extends StatelessWidget {
   }
 }
 
+class _OrbitSurveyOngoingPanel extends StatelessWidget {
+  const _OrbitSurveyOngoingPanel({
+    required this.toolId,
+    required this.toolParams,
+  });
+
+  final int toolId;
+  final Map<String, dynamic> toolParams;
+
+  @override
+  Widget build(BuildContext context) {
+    final formation = context.watch<OrbitSurveyController>();
+    if (!formation.isActive) return const SizedBox.shrink();
+    final session = formation.session;
+    if (session == null) return const SizedBox.shrink();
+    if (session.toolId != toolId &&
+        session.actionKey != OrbitSurveyKind.actionKey) {
+      return const SizedBox.shrink();
+    }
+
+    final sessionParams = <String, dynamic>{
+      ...toolParams,
+      'duration_minutes': session.durationMinutes,
+      'accuracy': session.accuracy,
+      'range': session.range,
+      'min_range_m': session.minRangeM,
+      'max_range_m': session.maxRangeM,
+    };
+
+    return CardSectionPanel(
+      label: 'Active session',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          ValueListenableBuilder<Duration?>(
+            valueListenable: formation.remainingListenable,
+            builder: (context, remaining, _) {
+              final minutes = remaining == null
+                  ? '—'
+                  : '${remaining.inMinutes.clamp(0, 999)} min left';
+              return Text(
+                minutes,
+                style: Theme.of(context).textTheme.bodyMedium,
+              );
+            },
+          ),
+          const SizedBox(height: 8),
+          OrbitSurveyToolStats(params: sessionParams, compact: true),
+          const SizedBox(height: 10),
+          OutlinedButton(
+            onPressed: () => formation.stop(),
+            child: const Text('Stop'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+
 class _FormationMapOngoingPanel extends StatelessWidget {
   const _FormationMapOngoingPanel({
     required this.toolId,
@@ -243,9 +338,9 @@ class _FormationMapOngoingPanel extends StatelessWidget {
       ...toolParams,
       'duration_minutes': session.durationMinutes,
       'accuracy': session.accuracy,
-      'range': session.range,
-      'min_range_m': session.minRangeM,
-      'max_range_m': session.maxRangeM,
+      'wideness_m': session.widenessM,
+      'center_lat': session.centerLat,
+      'center_lon': session.centerLon,
     };
 
     return CardSectionPanel(

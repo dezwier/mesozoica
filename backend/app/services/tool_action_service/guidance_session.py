@@ -106,11 +106,15 @@ def start_guidance_session(
     cfg = config_for_action_key(kind.action_key)
 
     cancel_active_guidance_sessions(session, user_id=user_id)
-    # Mutual exclusivity with Formation Map (competing map HUDs).
+    # Mutual exclusivity with mosaic overlays (competing map HUDs).
     from app.services.tool_action_service.formation_map_session import (
         cancel_active_formation_map_sessions,
     )
+    from app.services.tool_action_service.orbit_survey_session import (
+        cancel_active_orbit_survey_sessions,
+    )
 
+    cancel_active_orbit_survey_sessions(session, user_id=user_id)
     cancel_active_formation_map_sessions(session, user_id=user_id)
 
     inst_p = instance.params_json or {}

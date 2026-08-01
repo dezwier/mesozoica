@@ -62,7 +62,7 @@ site_navigator:
     Combines a direction-range glow and distance bands for the nearest
     undiscovered site, with the listed walk-in discovery chance for that site.
 
-formation_map:
+orbit_survey:
   duration_minutes: 10
   accuracy: 0.75
   range: 0.35
@@ -75,6 +75,21 @@ formation_map:
   # Softness of period color borders (0=sharp, 1=very soft); accuracy still sharpens further
   boundary_blur: 1
   stats_explanation: >-
-    Colors the map by the period of the nearest undiscovered field site.
+    Colors the map by the period of nearby undiscovered field sites.
     Higher accuracy sharpens boundaries; higher range widens the circle
     (200 m–2 km).
+
+formation_map:
+  duration_minutes: 10
+  accuracy: 0.75
+  wideness_m: 200
+  min_wideness_m: 200
+  max_wideness_m: 2000
+  cell_size_m: 200
+  base_alpha: 0.48
+  range_fade: 0
+  boundary_blur: 1
+  stats_explanation: >-
+    Colors a fixed square of the map by rock type. Higher accuracy sharpens
+    boundaries; wideness sets the side length (200 m–2 km) of the square
+    locked to this tool occurrence.

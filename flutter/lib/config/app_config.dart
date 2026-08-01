@@ -264,8 +264,8 @@ class AppConfig {
   static Uri toolGuidanceSessionUri(int id) =>
       ApiEndpoints.toolGuidanceSessionUri(id);
 
-  static Uri toolFormationMapSessionUri(int id) =>
-      ApiEndpoints.toolFormationMapSessionUri(id);
+  static Uri toolOrbitSurveySessionUri(int id) =>
+      ApiEndpoints.toolOrbitSurveySessionUri(id);
 
   static Uri aerialMissionsUri() =>
       ApiEndpoints.aerialMissionsUri();
@@ -278,6 +278,15 @@ class AppConfig {
 
   static Uri cancelGuidanceSessionUri() =>
       ApiEndpoints.cancelGuidanceSessionUri();
+
+  static Uri activeOrbitSurveySessionUri() =>
+      ApiEndpoints.activeOrbitSurveySessionUri();
+
+  static Uri cancelOrbitSurveySessionUri() =>
+      ApiEndpoints.cancelOrbitSurveySessionUri();
+
+  static Uri toolFormationMapSessionUri(int id) =>
+      ApiEndpoints.toolFormationMapSessionUri(id);
 
   static Uri activeFormationMapSessionUri() =>
       ApiEndpoints.activeFormationMapSessionUri();

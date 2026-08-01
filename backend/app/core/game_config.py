@@ -366,16 +366,40 @@ class PeriodRgbColors(BaseModel):
 
 
 class PeriodColorsConfig(BaseModel):
-    """Site-marker and Formation Map overlay palettes (period_colors.yaml)."""
+    """Site-marker and Orbit Survey overlay palettes (period_colors.yaml)."""
 
     model_config = {"frozen": True}
 
     site_markers: PeriodRgbColors
-    formation_map: PeriodRgbColors
+    orbit_survey: PeriodRgbColors
 
 
-class FormationMapActionConfig(BaseModel):
-    """Knobs for the Formation Map period-mosaic overlay."""
+class RockTypeColorsConfig(BaseModel):
+    """Formation Map rock-type overlay palettes (rock_type_colors.yaml)."""
+
+    model_config = {"frozen": True}
+
+    formation_map: dict[str, tuple[int, int, int]] = Field(default_factory=dict)
+
+    @field_validator("formation_map", mode="before")
+    @classmethod
+    def _parse_formation_map(cls, value: object) -> dict[str, tuple[int, int, int]]:
+        if not isinstance(value, dict):
+            raise ValueError("formation_map rock colors must be a mapping")
+        return {
+            str(key).strip().lower(): _parse_rgb_color(color)
+            for key, color in value.items()
+        }
+
+    def for_rock_type(self, rock_type: str | None) -> tuple[int, int, int]:
+        key = (rock_type or "").strip().lower()
+        if key and key in self.formation_map:
+            return self.formation_map[key]
+        return self.formation_map.get("other", (0x88, 0x88, 0x88))
+
+
+class OrbitSurveyActionConfig(BaseModel):
+    """Knobs for the Orbit Survey period-mosaic overlay."""
 
     model_config = {"frozen": True}
 
@@ -411,7 +435,7 @@ class FormationMapActionConfig(BaseModel):
         return value
 
     @model_validator(mode="after")
-    def _validate_range_bounds(self) -> FormationMapActionConfig:
+    def _validate_range_bounds(self) -> OrbitSurveyActionConfig:
         if self.max_range_m < self.min_range_m:
             raise ValueError("max_range_m must be >= min_range_m")
         return self
@@ -420,6 +444,58 @@ class FormationMapActionConfig(BaseModel):
         return float(self.min_range_m) + float(self.range) * (
             float(self.max_range_m) - float(self.min_range_m)
         )
+
+
+class FormationMapActionConfig(BaseModel):
+    """Knobs for the Formation Map rock-type square mosaic."""
+
+    model_config = {"frozen": True}
+
+    duration_minutes: int = 10
+    accuracy: float = 0.75
+    wideness_m: float = 200.0
+    min_wideness_m: float = 200.0
+    max_wideness_m: float = 2000.0
+    cell_size_m: float = 200.0
+    base_alpha: float = 0.48
+    range_fade: float = 0.0
+    boundary_blur: float = 1.0
+    stats_explanation: str = ""
+
+    @field_validator("accuracy", "base_alpha", "range_fade", "boundary_blur")
+    @classmethod
+    def _validate_unit(cls, value: float) -> float:
+        return _clamp_unit_interval(value, label="unit interval")
+
+    @field_validator("duration_minutes")
+    @classmethod
+    def _validate_duration(cls, value: int) -> int:
+        if value < 1:
+            raise ValueError("duration_minutes must be >= 1")
+        return value
+
+    @field_validator(
+        "wideness_m", "min_wideness_m", "max_wideness_m", "cell_size_m"
+    )
+    @classmethod
+    def _validate_meters(cls, value: float) -> float:
+        if value <= 0:
+            raise ValueError("meters must be > 0")
+        return value
+
+    @model_validator(mode="after")
+    def _validate_wideness_bounds(self) -> FormationMapActionConfig:
+        if self.max_wideness_m < self.min_wideness_m:
+            raise ValueError("max_wideness_m must be >= min_wideness_m")
+        return self
+
+    def resolved_wideness_m(self) -> float:
+        cell = float(self.cell_size_m)
+        lo = max(float(self.min_wideness_m), cell)
+        hi = max(float(self.max_wideness_m), lo)
+        raw = max(lo, min(hi, float(self.wideness_m)))
+        n = max(1, int(round(raw / cell)))
+        return float(n * cell)
 
 
 def _parse_rgb_color(value: object) -> tuple[int, int, int]:
@@ -540,8 +616,8 @@ class ToolActionsConfig(BaseModel):
             ),
         )
     )
-    formation_map: FormationMapActionConfig = Field(
-        default_factory=lambda: FormationMapActionConfig(
+    orbit_survey: OrbitSurveyActionConfig = Field(
+        default_factory=lambda: OrbitSurveyActionConfig(
             duration_minutes=10,
             accuracy=0.75,
             range=0.35,
@@ -551,9 +627,28 @@ class ToolActionsConfig(BaseModel):
             range_fade=0.55,
             boundary_blur=0.7,
             stats_explanation=(
-                "Colors the map by the period of the nearest undiscovered "
-                "field site. Higher accuracy sharpens boundaries; higher "
+                "Colors the map by the period of nearby undiscovered "
+                "field sites. Higher accuracy sharpens boundaries; higher "
                 "range widens the circle (200 m–2 km)."
+            ),
+        )
+    )
+    formation_map: FormationMapActionConfig = Field(
+        default_factory=lambda: FormationMapActionConfig(
+            duration_minutes=10,
+            accuracy=0.75,
+            wideness_m=200.0,
+            min_wideness_m=200.0,
+            max_wideness_m=2000.0,
+            cell_size_m=200.0,
+            base_alpha=0.48,
+            range_fade=0.0,
+            boundary_blur=1.0,
+            stats_explanation=(
+                "Colors a fixed square of the map by rock type. Higher "
+                "accuracy sharpens boundaries; wideness sets the side "
+                "length (200 m–2 km) of the square locked to this tool "
+                "occurrence."
             ),
         )
     )
@@ -569,6 +664,7 @@ class GameConfig(BaseModel):
     fossil_excavation: FossilExcavationConfig
     tool_actions: ToolActionsConfig
     period_colors: PeriodColorsConfig
+    rock_type_colors: RockTypeColorsConfig
     leveling: LevelingConfig
 
 
@@ -606,6 +702,9 @@ def load_game_config(config_dir: Path | None = None) -> GameConfig:
         ),
         period_colors=PeriodColorsConfig.model_validate(
             _load_yaml(directory / "period_colors.yaml")
+        ),
+        rock_type_colors=RockTypeColorsConfig.model_validate(
+            _load_yaml(directory / "rock_type_colors.yaml")
         ),
         leveling=LevelingConfig.model_validate(
             _load_yaml(directory / "leveling.yaml")

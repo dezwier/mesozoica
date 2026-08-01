@@ -5,6 +5,7 @@ from __future__ import annotations
 from sqlmodel import Session, col, select
 
 from app.models.formation_map_session import FormationMapSession
+from app.models.orbit_survey_session import OrbitSurveySession
 from app.models.guidance_session import GuidanceSession
 from app.models.tool import Tool
 from app.models.tool_mission import ToolMission
@@ -18,6 +19,7 @@ from app.schemas.tool import (
     AerialMissionItem,
     AerialMissionResponse,
     FormationMapSessionResponse,
+    OrbitSurveySessionResponse,
     GuidanceSessionResponse,
     RoutePointBody,
 )
@@ -155,6 +157,25 @@ def guidance_session_response(row: GuidanceSession) -> GuidanceSessionResponse:
     )
 
 
+def orbit_survey_session_response(
+    row: OrbitSurveySession,
+) -> OrbitSurveySessionResponse:
+    return OrbitSurveySessionResponse(
+        session_id=int(row.id),
+        action_key=row.action_key,
+        status=row.status,
+        tool_id=int(row.tool_id),
+        duration_minutes=int(row.duration_minutes),
+        accuracy=float(row.accuracy),
+        range=float(row.range),
+        min_range_m=float(row.min_range_m),
+        max_range_m=float(row.max_range_m),
+        started_at=row.started_at,
+        expires_at=row.expires_at,
+        cancelled_at=row.cancelled_at,
+    )
+
+
 def formation_map_session_response(
     row: FormationMapSession,
 ) -> FormationMapSessionResponse:
@@ -165,9 +186,10 @@ def formation_map_session_response(
         tool_id=int(row.tool_id),
         duration_minutes=int(row.duration_minutes),
         accuracy=float(row.accuracy),
-        range=float(row.range),
-        min_range_m=float(row.min_range_m),
-        max_range_m=float(row.max_range_m),
+        wideness_m=float(row.wideness_m),
+        cell_size_m=float(row.cell_size_m),
+        center_lat=float(row.center_lat),
+        center_lon=float(row.center_lon),
         started_at=row.started_at,
         expires_at=row.expires_at,
         cancelled_at=row.cancelled_at,

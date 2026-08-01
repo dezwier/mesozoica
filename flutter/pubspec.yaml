@@ -80,6 +80,7 @@ flutter:
     - assets/game_config/fossil_excavation.yaml
     - assets/game_config/tool_actions.yaml
     - assets/game_config/period_colors.yaml
+    - assets/game_config/rock_type_colors.yaml
     - assets/game_config/leveling.yaml
   fonts:
     - family: tt_ramilas

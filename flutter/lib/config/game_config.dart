@@ -14,6 +14,7 @@ class GameConfig {
     required this.fossilExcavation,
     required this.toolActions,
     required this.periodColors,
+    required this.rockTypeColors,
     required this.leveling,
   });
 
@@ -24,6 +25,7 @@ class GameConfig {
   final FossilExcavationConfig fossilExcavation;
   final ToolActionsConfig toolActions;
   final PeriodColorsConfig periodColors;
+  final RockTypeColorsConfig rockTypeColors;
   final LevelingConfig leveling;
 
   static GameConfig? _instance;
@@ -63,6 +65,7 @@ class GameConfig {
       fossilExcavationYaml: await read('fossil_excavation.yaml'),
       toolActionsYaml: await read('tool_actions.yaml'),
       periodColorsYaml: await read('period_colors.yaml'),
+      rockTypeColorsYaml: await read('rock_type_colors.yaml'),
       levelingYaml: await read('leveling.yaml'),
     );
     _instance = config;
@@ -78,6 +81,7 @@ class GameConfig {
     required String fossilExcavationYaml,
     required String toolActionsYaml,
     required String periodColorsYaml,
+    required String rockTypeColorsYaml,
     required String levelingYaml,
   }) {
     final config = GameConfig(
@@ -101,6 +105,9 @@ class GameConfig {
       ),
       periodColors: PeriodColorsConfig.fromYaml(
         _asMap(loadYaml(periodColorsYaml)),
+      ),
+      rockTypeColors: RockTypeColorsConfig.fromYaml(
+        _asMap(loadYaml(rockTypeColorsYaml)),
       ),
       leveling: LevelingConfig.fromYaml(
         _asMap(loadYaml(levelingYaml)),
@@ -336,6 +343,7 @@ class ToolActionsConfig {
     required this.geoCompass,
     required this.proximityScanner,
     required this.siteNavigator,
+    required this.orbitSurvey,
     required this.formationMap,
   });
 
@@ -344,6 +352,7 @@ class ToolActionsConfig {
   final GuidanceActionConfig geoCompass;
   final GuidanceActionConfig proximityScanner;
   final GuidanceActionConfig siteNavigator;
+  final OrbitSurveyActionConfig orbitSurvey;
   final FormationMapActionConfig formationMap;
 
   AerialMissionActionConfig configFor(String actionKey) {
@@ -430,6 +439,9 @@ class ToolActionsConfig {
               'Combines a direction-range glow and distance bands for the '
               'nearest undiscovered site.',
         ),
+      ),
+      orbitSurvey: OrbitSurveyActionConfig.fromYaml(
+        GameConfig._asMap(yaml['orbit_survey']),
       ),
       formationMap: FormationMapActionConfig.fromYaml(
         GameConfig._asMap(yaml['formation_map']),
@@ -619,26 +631,26 @@ class PeriodRgbColors {
 class PeriodColorsConfig {
   const PeriodColorsConfig({
     required this.siteMarkers,
-    required this.formationMap,
+    required this.orbitSurvey,
   });
 
   final PeriodRgbColors siteMarkers;
-  final PeriodRgbColors formationMap;
+  final PeriodRgbColors orbitSurvey;
 
   factory PeriodColorsConfig.fromYaml(Map<String, dynamic> yaml) {
     return PeriodColorsConfig(
       siteMarkers: PeriodRgbColors.fromYaml(
         GameConfig._asMap(yaml['site_markers']),
       ),
-      formationMap: PeriodRgbColors.fromYaml(
-        GameConfig._asMap(yaml['formation_map']),
+      orbitSurvey: PeriodRgbColors.fromYaml(
+        GameConfig._asMap(yaml['orbit_survey']),
       ),
     );
   }
 }
 
-class FormationMapActionConfig {
-  const FormationMapActionConfig({
+class OrbitSurveyActionConfig {
+  const OrbitSurveyActionConfig({
     required this.durationMinutes,
     required this.accuracy,
     required this.range,
@@ -663,12 +675,12 @@ class FormationMapActionConfig {
   double get resolvedRangeM =>
       minRangeM + range * (maxRangeM - minRangeM);
 
-  factory FormationMapActionConfig.fromYaml(
+  factory OrbitSurveyActionConfig.fromYaml(
     Map<String, dynamic> yaml, {
-    FormationMapActionConfig? defaults,
+    OrbitSurveyActionConfig? defaults,
   }) {
     final d = defaults ??
-        const FormationMapActionConfig(
+        const OrbitSurveyActionConfig(
           durationMinutes: 10,
           accuracy: 0.75,
           range: 0.35,
@@ -682,7 +694,7 @@ class FormationMapActionConfig {
               'field site. Higher accuracy sharpens boundaries; higher '
               'range widens the circle (200 m–2 km).',
         );
-    return FormationMapActionConfig(
+    return OrbitSurveyActionConfig(
       durationMinutes: _asInt(yaml['duration_minutes'], d.durationMinutes),
       accuracy: _asDouble(yaml['accuracy'], d.accuracy).clamp(0.0, 1.0),
       range: _asDouble(yaml['range'], d.range).clamp(0.0, 1.0),
@@ -724,6 +736,101 @@ class FormationMapActionConfig {
     }
   }
   throw FormatException('period_colors.yaml: $key must be #RRGGBB');
+}
+
+class FormationMapActionConfig {
+  const FormationMapActionConfig({
+    required this.durationMinutes,
+    required this.accuracy,
+    required this.widenessM,
+    required this.minWidenessM,
+    required this.maxWidenessM,
+    required this.cellSizeM,
+    required this.baseAlpha,
+    required this.rangeFade,
+    required this.boundaryBlur,
+    required this.statsExplanation,
+  });
+
+  final int durationMinutes;
+  final double accuracy;
+  final double widenessM;
+  final double minWidenessM;
+  final double maxWidenessM;
+  final double cellSizeM;
+  final double baseAlpha;
+  final double rangeFade;
+  final double boundaryBlur;
+  final String statsExplanation;
+
+  double get resolvedWidenessM {
+    final cell = cellSizeM <= 0 ? 200.0 : cellSizeM;
+    final lo = minWidenessM < cell ? cell : minWidenessM;
+    final hi = maxWidenessM < lo ? lo : maxWidenessM;
+    final raw = widenessM.clamp(lo, hi);
+    final n = (raw / cell).round().clamp(1, 100);
+    return n * cell;
+  }
+
+  factory FormationMapActionConfig.fromYaml(
+    Map<String, dynamic> yaml, {
+    FormationMapActionConfig? defaults,
+  }) {
+    final d = defaults ??
+        const FormationMapActionConfig(
+          durationMinutes: 10,
+          accuracy: 0.75,
+          widenessM: 200.0,
+          minWidenessM: 200.0,
+          maxWidenessM: 2000.0,
+          cellSizeM: 200.0,
+          baseAlpha: 0.48,
+          rangeFade: 0.0,
+          boundaryBlur: 1.0,
+          statsExplanation:
+              'Colors a fixed square of the map by rock type. Higher '
+              'accuracy sharpens boundaries; wideness sets the side '
+              'length (200 m–2 km) of the square locked to this tool '
+              'occurrence.',
+        );
+    return FormationMapActionConfig(
+      durationMinutes: _asInt(yaml['duration_minutes'], d.durationMinutes),
+      accuracy: _asDouble(yaml['accuracy'], d.accuracy).clamp(0.0, 1.0),
+      widenessM: _asDouble(yaml['wideness_m'], d.widenessM),
+      minWidenessM: _asDouble(yaml['min_wideness_m'], d.minWidenessM),
+      maxWidenessM: _asDouble(yaml['max_wideness_m'], d.maxWidenessM),
+      cellSizeM: _asDouble(yaml['cell_size_m'], d.cellSizeM),
+      baseAlpha: _asDouble(yaml['base_alpha'], d.baseAlpha).clamp(0.0, 1.0),
+      rangeFade: _asDouble(yaml['range_fade'], d.rangeFade).clamp(0.0, 1.0),
+      boundaryBlur:
+          _asDouble(yaml['boundary_blur'], d.boundaryBlur).clamp(0.0, 1.0),
+      statsExplanation: _asString(yaml['stats_explanation'], d.statsExplanation),
+    );
+  }
+}
+
+class RockTypeColorsConfig {
+  const RockTypeColorsConfig({required this.formationMap});
+
+  final Map<String, (int, int, int)> formationMap;
+
+  (int, int, int) forRockType(String? rockType) {
+    final key = (rockType ?? '').trim().toLowerCase();
+    if (key.isNotEmpty && formationMap.containsKey(key)) {
+      return formationMap[key]!;
+    }
+    return formationMap['other'] ?? (0x88, 0x88, 0x88);
+  }
+
+  factory RockTypeColorsConfig.fromYaml(Map<String, dynamic> yaml) {
+    final raw = GameConfig._asMap(yaml['formation_map']);
+    final colors = <String, (int, int, int)>{};
+    for (final entry in raw.entries) {
+      colors[entry.key.toString().trim().toLowerCase()] =
+          _requireRgb(entry.value, entry.key.toString());
+    }
+    return RockTypeColorsConfig(formationMap: colors);
+  }
 }
 
 class AerialMissionActionConfig {

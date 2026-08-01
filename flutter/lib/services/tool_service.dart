@@ -381,15 +381,102 @@ class ToolService {
     return GuidanceSession.fromJson(decoded);
   }
 
-  Future<FormationMapSession> startFormationMapSession({
+  Future<OrbitSurveySession> startOrbitSurveySession({
     required int toolId,
   }) async {
-    final uri = AppConfig.toolFormationMapSessionUri(toolId);
+    final uri = AppConfig.toolOrbitSurveySessionUri(toolId);
     if (kDebugMode) {
       debugPrint('ToolService POST $uri');
     }
     final response = await ApiClient.instance
         .sendPost(uri, client: _client, headers: await _headers(jsonBody: true))
+        .timeout(const Duration(seconds: 15));
+
+    if (response.statusCode != 201) {
+      throw ToolServiceException(
+        _errorDetail(response.body) ??
+            'Failed to start orbit survey session (${response.statusCode})',
+      );
+    }
+
+    final decoded = jsonDecode(response.body);
+    if (decoded is! Map<String, dynamic>) {
+      throw const ToolServiceException(
+        'Invalid orbit survey session response',
+      );
+    }
+    return OrbitSurveySession.fromJson(decoded);
+  }
+
+  Future<OrbitSurveySession?> fetchActiveOrbitSurveySession() async {
+    final uri = AppConfig.activeOrbitSurveySessionUri();
+    if (kDebugMode) {
+      debugPrint('ToolService GET $uri');
+    }
+    final response = await ApiClient.instance
+        .sendGet(uri, client: _client, headers: await _headers())
+        .timeout(const Duration(seconds: 15));
+
+    if (response.statusCode == 404) return null;
+    if (response.statusCode != 200) {
+      throw ToolServiceException(
+        'Failed to load orbit survey session (${response.statusCode})',
+      );
+    }
+    final decoded = jsonDecode(response.body);
+    if (decoded is! Map<String, dynamic>) {
+      throw const ToolServiceException(
+        'Invalid orbit survey session response',
+      );
+    }
+    return OrbitSurveySession.fromJson(decoded);
+  }
+
+  Future<OrbitSurveySession> cancelOrbitSurveySession() async {
+    final uri = AppConfig.cancelOrbitSurveySessionUri();
+    if (kDebugMode) {
+      debugPrint('ToolService POST $uri');
+    }
+    final response = await ApiClient.instance
+        .sendPost(uri, client: _client, headers: await _headers(jsonBody: true))
+        .timeout(const Duration(seconds: 15));
+
+    if (response.statusCode != 200) {
+      throw ToolServiceException(
+        _errorDetail(response.body) ??
+            'Failed to cancel orbit survey session (${response.statusCode})',
+      );
+    }
+
+    final decoded = jsonDecode(response.body);
+    if (decoded is! Map<String, dynamic>) {
+      throw const ToolServiceException(
+        'Invalid orbit survey session response',
+      );
+    }
+    return OrbitSurveySession.fromJson(decoded);
+  }
+
+
+  Future<FormationMapSession> startFormationMapSession({
+    required int toolId,
+    double? lat,
+    double? lon,
+  }) async {
+    final uri = AppConfig.toolFormationMapSessionUri(toolId);
+    if (kDebugMode) {
+      debugPrint('ToolService POST $uri');
+    }
+    final body = <String, dynamic>{};
+    if (lat != null) body['lat'] = lat;
+    if (lon != null) body['lon'] = lon;
+    final response = await ApiClient.instance
+        .sendPost(
+          uri,
+          client: _client,
+          headers: await _headers(jsonBody: true),
+          body: jsonEncode(body),
+        )
         .timeout(const Duration(seconds: 15));
 
     if (response.statusCode != 201) {
@@ -621,8 +708,8 @@ class GuidanceSession {
   }
 }
 
-class FormationMapSession {
-  const FormationMapSession({
+class OrbitSurveySession {
+  const OrbitSurveySession({
     required this.sessionId,
     required this.actionKey,
     required this.status,
@@ -655,8 +742,8 @@ class FormationMapSession {
 
   double get resolvedRangeM => minRangeM + range * (maxRangeM - minRangeM);
 
-  factory FormationMapSession.fromJson(Map<String, dynamic> json) {
-    return FormationMapSession(
+  factory OrbitSurveySession.fromJson(Map<String, dynamic> json) {
+    return OrbitSurveySession(
       sessionId: json['session_id'] as int? ?? 0,
       actionKey: json['action_key'] as String? ?? '',
       status: json['status'] as String? ?? '',
@@ -687,6 +774,64 @@ double aerialMissionProgressFraction(AerialMission mission, {DateTime? now}) {
   final clock = now ?? DateTime.now().toUtc();
   final elapsed = clock.difference(started).inMilliseconds / 1000.0;
   return (elapsed / duration).clamp(0.0, 1.0);
+}
+
+
+class FormationMapSession {
+  const FormationMapSession({
+    required this.sessionId,
+    required this.actionKey,
+    required this.status,
+    required this.toolId,
+    required this.durationMinutes,
+    required this.accuracy,
+    required this.widenessM,
+    required this.cellSizeM,
+    required this.centerLat,
+    required this.centerLon,
+    required this.startedAt,
+    required this.expiresAt,
+    this.cancelledAt,
+  });
+
+  final int sessionId;
+  final String actionKey;
+  final String status;
+  final int toolId;
+  final int durationMinutes;
+  final double accuracy;
+  final double widenessM;
+  final double cellSizeM;
+  final double centerLat;
+  final double centerLon;
+  final DateTime startedAt;
+  final DateTime expiresAt;
+  final DateTime? cancelledAt;
+
+  bool get isActive => status == 'active';
+  bool get isExpired => !isActive || DateTime.now().toUtc().isAfter(expiresAt);
+
+  factory FormationMapSession.fromJson(Map<String, dynamic> json) {
+    return FormationMapSession(
+      sessionId: json['session_id'] as int? ?? 0,
+      actionKey: json['action_key'] as String? ?? '',
+      status: json['status'] as String? ?? '',
+      toolId: json['tool_id'] as int? ?? 0,
+      durationMinutes: json['duration_minutes'] as int? ?? 10,
+      accuracy: (json['accuracy'] as num?)?.toDouble() ?? 0.75,
+      widenessM: (json['wideness_m'] as num?)?.toDouble() ?? 200.0,
+      cellSizeM: (json['cell_size_m'] as num?)?.toDouble() ?? 200.0,
+      centerLat: (json['center_lat'] as num?)?.toDouble() ?? 0.0,
+      centerLon: (json['center_lon'] as num?)?.toDouble() ?? 0.0,
+      startedAt:
+          AerialMission._parseDate(json['started_at']) ??
+          DateTime.now().toUtc(),
+      expiresAt:
+          AerialMission._parseDate(json['expires_at']) ??
+          DateTime.now().toUtc(),
+      cancelledAt: AerialMission._parseDate(json['cancelled_at']),
+    );
+  }
 }
 
 class ToolServiceException implements Exception {

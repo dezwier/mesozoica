@@ -1,29 +1,29 @@
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mesozoica/utils/formation_map_raster.dart';
+import 'package:mesozoica/utils/orbit_survey_raster.dart';
 
 void main() {
   test('isolate payload round-trips and PNG has signature', () {
-    final request = FormationMapRasterRequest(
+    final request = OrbitSurveyRasterRequest(
       originLat: 50.0,
       originLon: 4.0,
       rangeM: 500,
       accuracy: 0.5,
       sites: const [
-        FormationMapSiteSample(lat: 50.001, lon: 4.001, period: 'jurassic'),
-        FormationMapSiteSample(lat: 49.999, lon: 3.999, period: 'triassic'),
+        OrbitSurveySiteSample(lat: 50.001, lon: 4.001, period: 'jurassic'),
+        OrbitSurveySiteSample(lat: 49.999, lon: 3.999, period: 'triassic'),
       ],
       gridSize: 32,
-      colors: const FormationMapRasterColors(
+      colors: const OrbitSurveyRasterColors(
         cretaceous: (200, 100, 50),
         jurassic: (50, 150, 80),
         triassic: (80, 60, 160),
       ),
     );
 
-    final result = buildFormationMapPngIsolate(request.toIsolatePayload());
-    final raster = formationMapResultFromIsolate(result);
+    final result = buildOrbitSurveyPngIsolate(request.toIsolatePayload());
+    final raster = orbitSurveyResultFromIsolate(result);
     expect(raster.width, 32);
     expect(raster.height, 32);
     expect(raster.pngBytes, isNotNull);

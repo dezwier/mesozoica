@@ -32,6 +32,7 @@ Future<GameConfig> loadGameConfigForTest() async {
     fossilExcavationYaml: read('fossil_excavation.yaml'),
     toolActionsYaml: read('tool_actions.yaml'),
     periodColorsYaml: read('period_colors.yaml'),
+    rockTypeColorsYaml: read('rock_type_colors.yaml'),
     levelingYaml: read('leveling.yaml'),
   );
 }

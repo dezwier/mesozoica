@@ -17,6 +17,7 @@ import 'controllers/field_discovery_coordinator.dart';
 import 'controllers/fossil_catalog_controller.dart';
 import 'controllers/field_session_coordinator.dart';
 import 'controllers/formation_map_controller.dart';
+import 'controllers/orbit_survey_controller.dart';
 import 'controllers/guidance_session_controller.dart';
 import 'controllers/map_controller.dart';
 import 'controllers/phylo_tree_controller.dart';
@@ -131,6 +132,7 @@ class MesozoicaApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => ToolCatalogController()),
         ChangeNotifierProvider(create: (_) => AerialMissionController()),
         ChangeNotifierProvider(create: (_) => GuidanceSessionController()),
+        ChangeNotifierProvider(create: (_) => OrbitSurveyController()),
         ChangeNotifierProvider(create: (_) => FormationMapController()),
         ChangeNotifierProvider(
           create: (context) => PhyloTreeController(

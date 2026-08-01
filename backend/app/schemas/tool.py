@@ -126,7 +126,7 @@ class GuidanceSessionResponse(BaseModel):
     cancelled_at: datetime | None = None
 
 
-class FormationMapSessionResponse(BaseModel):
+class OrbitSurveySessionResponse(BaseModel):
     session_id: int
     action_key: str
     status: str
@@ -136,6 +136,27 @@ class FormationMapSessionResponse(BaseModel):
     range: float
     min_range_m: float
     max_range_m: float
+    started_at: datetime
+    expires_at: datetime
+    cancelled_at: datetime | None = None
+
+
+class FormationMapSessionStartRequest(BaseModel):
+    lat: float | None = None
+    lon: float | None = None
+
+
+class FormationMapSessionResponse(BaseModel):
+    session_id: int
+    action_key: str
+    status: str
+    tool_id: int
+    duration_minutes: int
+    accuracy: float
+    wideness_m: float
+    cell_size_m: float
+    center_lat: float
+    center_lon: float
     started_at: datetime
     expires_at: datetime
     cancelled_at: datetime | None = None

@@ -1,6 +1,6 @@
 # Period hues — edit here only.
 # site_markers: map pin / annotation colors
-# formation_map: Formation Map mosaic overlay (may differ for Mapbox readability)
+# orbit_survey: Orbit Survey mosaic overlay (may differ for Mapbox readability)
 
 site_markers:
   cretaceous: "#8D6E63"
@@ -8,7 +8,7 @@ site_markers:
   jurassic: "#4F8F68"
   triassic: "#DD8500"
 
-formation_map:
+orbit_survey:
   cretaceous: "#A86B45"
   # Muted moss — low chroma so Mapbox wash stays soft
   jurassic: "#356848"

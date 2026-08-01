@@ -1,4 +1,4 @@
-"""Formation Map sessions: timed period-mosaic overlay."""
+"""Formation Map sessions: timed rock-type square mosaic overlay."""
 
 from __future__ import annotations
 
@@ -19,6 +19,11 @@ from app.models.tool_type import ToolType
 from app.models.user_tool import USER_TOOL_ACTION_DEPLOYED, UserTool
 from app.services.tool_action_service.guidance_session import (
     cancel_active_guidance_sessions,
+)
+from app.services.tool_action_service.survey_grid import (
+    footprint_for_center,
+    snap_to_cell_center,
+    snap_wideness_m,
 )
 from app.services.tool_service.collect import resolve_owned_tool_selection
 
@@ -46,7 +51,6 @@ def get_active_formation_map_session(
     *,
     user_id: int,
 ) -> FormationMapSession | None:
-    """Return the user's active (non-expired) formation map session, if any."""
     row = session.exec(
         select(FormationMapSession)
         .where(
@@ -89,12 +93,10 @@ def start_formation_map_session(
     *,
     user_id: int,
     tool_id: int,
+    lat: float | None = None,
+    lon: float | None = None,
 ) -> FormationMapSession:
-    """Validate ownership, replace any prior session, snapshot YAML knobs.
-
-    ``tool_id`` is the catalog tool_type id (API-stable). The session row stores
-    the owned tool instance id.
-    """
+    """Validate ownership, snap/persist center on first use, snapshot knobs."""
     selected = resolve_owned_tool_selection(session, user_id=user_id, tool_id=tool_id)
     if selected is None:
         tool_type = session.get(ToolType, tool_id)
@@ -108,11 +110,56 @@ def start_formation_map_session(
         raise ValidationError("This action is only available for Formation Map")
 
     cfg = get_game_config().tool_actions.formation_map
+    inst_p = dict(instance.params_json or {})
+
+    cell_size = float(inst_p.get("cell_size_m", cfg.cell_size_m))
+    wideness = snap_wideness_m(
+        float(inst_p.get("wideness_m", cfg.wideness_m)),
+        cell_size_m=cell_size,
+        min_wideness_m=float(inst_p.get("min_wideness_m", cfg.min_wideness_m)),
+        max_wideness_m=float(inst_p.get("max_wideness_m", cfg.max_wideness_m)),
+    )
+
+    center_lat = inst_p.get("center_lat")
+    center_lon = inst_p.get("center_lon")
+    if center_lat is None or center_lon is None:
+        if lat is None or lon is None:
+            raise ValidationError(
+                "GPS coordinates are required to place a new Formation Map"
+            )
+        center_lat, center_lon = snap_to_cell_center(
+            float(lat), float(lon), cell_size_m=cell_size
+        )
+        inst_p["center_lat"] = float(center_lat)
+        inst_p["center_lon"] = float(center_lon)
+        inst_p["wideness_m"] = float(wideness)
+        inst_p["cell_size_m"] = float(cell_size)
+        instance.params_json = inst_p
+        session.add(instance)
+    else:
+        center_lat = float(center_lat)
+        center_lon = float(center_lon)
+        # Normalize stored center onto the grid.
+        center_lat, center_lon = snap_to_cell_center(
+            center_lat, center_lon, cell_size_m=cell_size
+        )
+
+    footprint = footprint_for_center(
+        float(center_lat),
+        float(center_lon),
+        wideness_m=wideness,
+        cell_size_m=cell_size,
+    )
 
     cancel_active_formation_map_sessions(session, user_id=user_id)
+    # Late import avoids cycle with orbit_survey_session.
+    from app.services.tool_action_service.orbit_survey_session import (
+        cancel_active_orbit_survey_sessions,
+    )
+
+    cancel_active_orbit_survey_sessions(session, user_id=user_id)
     cancel_active_guidance_sessions(session, user_id=user_id)
 
-    inst_p = instance.params_json or {}
     now = _utcnow()
     eff_duration = int(inst_p.get("duration_minutes", cfg.duration_minutes))
     row = FormationMapSession(
@@ -122,9 +169,10 @@ def start_formation_map_session(
         status=SESSION_STATUS_ACTIVE,
         duration_minutes=eff_duration,
         accuracy=float(inst_p.get("accuracy", cfg.accuracy)),
-        range=float(inst_p.get("range", cfg.range)),
-        min_range_m=float(inst_p.get("min_range_m", cfg.min_range_m)),
-        max_range_m=float(inst_p.get("max_range_m", cfg.max_range_m)),
+        wideness_m=float(footprint.wideness_m),
+        cell_size_m=float(cell_size),
+        center_lat=float(footprint.center_lat),
+        center_lon=float(footprint.center_lon),
         started_at=now,
         expires_at=now + timedelta(minutes=eff_duration),
         created_at=now,
@@ -150,7 +198,6 @@ def cancel_formation_map_session(
     user_id: int,
     session_id: int | None = None,
 ) -> FormationMapSession | None:
-    """Cancel the active session (or a specific session_id owned by the user)."""
     if session_id is not None:
         row = session.get(FormationMapSession, session_id)
         if row is None or int(row.user_id) != user_id:

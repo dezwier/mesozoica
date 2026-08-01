@@ -61,7 +61,7 @@ class FieldDiscoveryCoordinator extends ChangeNotifier {
   double get effectiveCacheRadiusKm =>
       _cacheRadiusOverrideKm ?? cacheRadiusKm;
 
-  /// Widen/narrow the nearby-discoverable fetch radius (e.g. Formation Map).
+  /// Widen/narrow the nearby-discoverable fetch radius (e.g. Orbit Survey).
   /// Pass null to restore the YAML default.
   void setCacheRadiusOverrideKm(double? km) {
     final next = km;

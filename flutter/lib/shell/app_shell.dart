@@ -12,6 +12,7 @@ import '../controllers/catalog_mode_controller.dart';
 import '../controllers/field_discovery_coordinator.dart';
 import '../controllers/field_session_coordinator.dart';
 import '../controllers/formation_map_controller.dart';
+import '../controllers/orbit_survey_controller.dart';
 import '../controllers/guidance_session_controller.dart';
 import '../controllers/map_controller.dart';
 import '../controllers/notification_controller.dart';
@@ -69,6 +70,7 @@ class _AppShellState extends State<AppShell>
   MapController? _mapController;
   AerialMissionController? _aerialRecon;
   GuidanceSessionController? _guidance;
+  OrbitSurveyController? _orbitSurvey;
   FormationMapController? _formationMap;
   StreamSubscription<RemoteMessage>? _foregroundPushSub;
   StreamSubscription<RemoteMessage>? _openedPushSub;
@@ -123,10 +125,18 @@ class _AppShellState extends State<AppShell>
         location: context.read<LocationService>(),
       );
 
-      final formation = context.read<FormationMapController>();
-      _formationMap = formation;
-      formation.addListener(_onFormationMapChanged);
-      formation.bind(
+      final orbit = context.read<OrbitSurveyController>();
+      _orbitSurvey = orbit;
+      orbit.addListener(_onOrbitSurveyChanged);
+      orbit.bind(
+        discovery: discovery,
+        location: context.read<LocationService>(),
+      );
+
+      final formationMap = context.read<FormationMapController>();
+      _formationMap = formationMap;
+      formationMap.addListener(_onFormationMapChanged);
+      formationMap.bind(
         discovery: discovery,
         location: context.read<LocationService>(),
       );
@@ -194,6 +204,15 @@ class _AppShellState extends State<AppShell>
     // Do not setState on every guidance notify — map/HUD listen locally.
   }
 
+  void _onOrbitSurveyChanged() {
+    if (!mounted) return;
+    final orbit = _orbitSurvey;
+    if (orbit == null) return;
+    if (orbit.requestShowOnMap && _anyOverlayOpen) {
+      setState(_clearOverlayFlags);
+    }
+  }
+
   void _onFormationMapChanged() {
     if (!mounted) return;
     final formation = _formationMap;
@@ -201,7 +220,6 @@ class _AppShellState extends State<AppShell>
     if (formation.requestShowOnMap && _anyOverlayOpen) {
       setState(_clearOverlayFlags);
     }
-    // Do not setState on every formation notify — map/HUD listen locally.
   }
 
   void _onCardDetailOverlayChanged() {
@@ -304,6 +322,7 @@ class _AppShellState extends State<AppShell>
     _mapController?.removeListener(_onMapSitesChanged);
     _aerialRecon?.removeListener(_onAerialReconChanged);
     _guidance?.removeListener(_onGuidanceChanged);
+    _orbitSurvey?.removeListener(_onOrbitSurveyChanged);
     _formationMap?.removeListener(_onFormationMapChanged);
     _catalogModeController?.removeListener(_onCatalogModeChanged);
     _discoveryRefreshTimer?.cancel();
@@ -329,6 +348,9 @@ class _AppShellState extends State<AppShell>
         );
         unawaited(
           context.read<GuidanceSessionController>().restoreActiveSession(),
+        );
+        unawaited(
+          context.read<OrbitSurveyController>().restoreActiveSession(),
         );
         unawaited(
           context.read<FormationMapController>().restoreActiveSession(),
@@ -386,6 +408,9 @@ class _AppShellState extends State<AppShell>
       context.read<GuidanceSessionController>().stop(notifyServer: false),
     );
     unawaited(
+      context.read<OrbitSurveyController>().stop(notifyServer: false),
+    );
+    unawaited(
       context.read<FormationMapController>().stop(notifyServer: false),
     );
     context.read<SiteCatalogController>().load(force: true);
@@ -413,6 +438,8 @@ class _AppShellState extends State<AppShell>
       );
       if (!mounted || _previousUserId != userId) return;
       await context.read<GuidanceSessionController>().restoreActiveSession();
+      if (!mounted || _previousUserId != userId) return;
+      await context.read<OrbitSurveyController>().restoreActiveSession();
       if (!mounted || _previousUserId != userId) return;
       await context.read<FormationMapController>().restoreActiveSession();
     });
