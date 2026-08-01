@@ -40,17 +40,16 @@ class SiteTypeSyncSummary:
 
 
 def _sites_query(session: Session, *, dinos: list[str] | None):
-    """Return sites to assign. Full sync includes archive + field; --dinos is archive-only."""
+    """Archive sites only — site types are derived from PBDB/archive geology."""
+    stmt = select(Site).where(col(Site.data_source) == DATA_SOURCE_ARCHIVE)
     if dinos:
-        return (
-            select(Site)
-            .where(col(Site.data_source) == DATA_SOURCE_ARCHIVE)
-            .join(Fossil, col(Fossil.site_id) == col(Site.site_id))
+        stmt = (
+            stmt.join(Fossil, col(Fossil.site_id) == col(Site.site_id))
             .join(DinosaurType, col(Fossil.dinosaur_id) == col(DinosaurType.id))
             .where(dino_name_match_clause(dinos))
             .distinct()
         )
-    return select(Site)
+    return stmt
 
 
 def _site_type_pairs(sites: list[Site]) -> set[tuple[str, str]]:
@@ -109,11 +108,11 @@ def sync_site_types(
     dry_run: bool = False,
     dinos: list[str] | None = None,
 ) -> SiteTypeSyncSummary:
-    """Upsert ``site_type`` rows and set ``site.site_type_id`` from existing sites.
+    """Upsert ``site_type`` from archive sites and set archive ``site.site_type_id``.
 
-    Never deletes ``site_type`` rows, so existing FKs (including field sites) stay valid.
-    Missing ``(period, rock_type)`` pairs are inserted; existing rows keep their ids and
-    ``main_image_url``.
+    Only archive sites contribute ``(period, rock_type)`` pairs and get reassigned.
+    Never deletes ``site_type`` rows, so field-site FKs stay valid. Missing pairs are
+    inserted; existing rows keep their ids and ``main_image_url``.
     """
     started = time.monotonic()
     sites = list(session.exec(_sites_query(session, dinos=dinos)).all())
