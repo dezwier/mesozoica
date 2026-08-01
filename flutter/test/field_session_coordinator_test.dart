@@ -6,9 +6,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:mesozoica/config/game_config.dart';
 import 'package:mesozoica/controllers/field_session_coordinator.dart';
 import 'package:mesozoica/services/location_service.dart';
 import 'package:mesozoica/services/site_service.dart';
+import 'package:mesozoica/utils/survey_grid.dart';
 
 import 'helpers/game_config_test_helpers.dart';
 
@@ -98,7 +100,7 @@ void main() {
     coordinator.dispose();
   });
 
-  test('ensures on foreground and throttles movement', () async {
+  test('ensures on foreground and on entering a new 500m cell', () async {
     final bodies = <Map<String, dynamic>>[];
     final coordinator = FieldSessionCoordinator(
       siteService: SiteService(
@@ -117,7 +119,17 @@ void main() {
       ),
     );
 
-    final locationService = _FakeLocationService(const LatLng(51.0, 4.0));
+    final cellSize = GameConfig.instance.siteGeneration.cellSizeM;
+    final start = const LatLng(51.0, 4.0);
+    final (ix, iy) = cellIndices(
+      start.latitude,
+      start.longitude,
+      cellSizeM: cellSize,
+    );
+    final sameCell = cellCenterLatLon(ix, iy, cellSizeM: cellSize);
+    final nextCell = cellCenterLatLon(ix + 1, iy, cellSizeM: cellSize);
+
+    final locationService = _FakeLocationService(start);
     coordinator.bind(locationService: locationService);
     await pumpUntilIdle();
     expect(bodies.length, 1);
@@ -128,11 +140,13 @@ void main() {
     expect(bodies.length, 2);
     expect(bodies.last['reason'], FieldSessionCoordinator.reasonResume);
 
-    locationService.setLocation(const LatLng(51.001, 4.0));
+    // Same density square — no new ensure.
+    locationService.setLocation(LatLng(sameCell.$1, sameCell.$2));
     await pumpUntilIdle();
     expect(bodies.length, 2);
 
-    locationService.setLocation(const LatLng(51.01, 4.0));
+    // New 500 m square — ensure.
+    locationService.setLocation(LatLng(nextCell.$1, nextCell.$2));
     await pumpUntilIdle();
     expect(bodies.length, 3);
     expect(bodies.last['reason'], FieldSessionCoordinator.reasonMove500m);

@@ -14,6 +14,10 @@ import '../services/tool_service.dart';
 import '../utils/survey_grid.dart';
 
 /// Active timed Formation Map session (fixed rock-type square overlay).
+///
+/// May top up field sites at the locked map center using the same global ensure
+/// knobs as walk-around ensure ([SiteGenerationClientConfig.nearbyRadiusKm] /
+/// backend `max_sites_per_cell` / `cell_size_m`) — never the Formation Map footprint size.
 class FormationMapController extends ChangeNotifier {
   FormationMapController({
     ToolService? toolService,
@@ -116,13 +120,14 @@ class FormationMapController extends ChangeNotifier {
       if (_session?.sessionId == session.sessionId && isActive) {
         _session = session;
         _ensureTickTimer();
-        await _syncDiscoveryRadius(forceRefresh: false);
+        await _refreshDiscoverableForFootprint(force: false);
         return;
       }
       _session = session;
       _tool = null;
       _ensureTickTimer();
-      await _syncDiscoveryRadius(forceRefresh: true);
+      await _refreshDiscoverableForFootprint(force: true);
+      unawaited(_ensureFieldSitesAtMapCenter());
       _message = '${FormationMapKind.toolName} active';
       _bumpSitesRevision();
       notifyListeners();
@@ -153,8 +158,8 @@ class FormationMapController extends ChangeNotifier {
       _tool = tool;
       _requestShowOnMap = true;
       _ensureTickTimer();
-      await _syncDiscoveryRadius(forceRefresh: true);
-      unawaited(_ensureFieldSites());
+      await _refreshDiscoverableForFootprint(force: true);
+      unawaited(_ensureFieldSitesAtMapCenter());
       _message = '${FormationMapKind.toolName} active';
       _bumpSitesRevision();
     } catch (error) {
@@ -194,24 +199,28 @@ class FormationMapController extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> _syncDiscoveryRadius({required bool forceRefresh}) async {
+  /// Widen discoverable *fetch* so the square can paint existing sites.
+  Future<void> _refreshDiscoverableForFootprint({required bool force}) async {
     final discovery = _discovery;
     final fp = footprint;
     if (discovery == null || !isActive || fp == null) return;
     discovery.setCacheRadiusOverrideKm(fp.halfDiagonalM / 1000.0);
-    if (forceRefresh) {
+    if (force) {
       await discovery.refreshDiscoverableCache(force: true);
     }
   }
 
-  Future<void> _ensureFieldSites() async {
+  /// Top up sites at the locked map center with global ensure radius/density.
+  Future<void> _ensureFieldSitesAtMapCenter() async {
     final fp = footprint;
     if (fp == null) return;
+    final radiusKm =
+        GameConfig.instance.siteGeneration.client.nearbyRadiusKm;
     try {
       await _siteService.requestFieldSiteEnsure(
         lat: fp.centerLat,
         lon: fp.centerLon,
-        radiusKm: fp.halfDiagonalM / 1000.0,
+        radiusKm: radiusKm,
         reason: 'formation_map',
       );
       await _discovery?.refreshDiscoverableCache(force: true);

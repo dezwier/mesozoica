@@ -25,7 +25,7 @@ from app.services.tool_action_service.orbit_survey_session import (
     get_active_orbit_survey_session,
     start_orbit_survey_session,
 )
-from app.services.tool_action_service.survey_grid import snap_to_cell_center
+from app.services.site_common.survey_grid import snap_to_cell_center
 
 
 def _auth_headers(user: User) -> dict[str, str]:

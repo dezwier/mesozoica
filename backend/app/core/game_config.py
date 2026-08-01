@@ -31,10 +31,12 @@ def _weights_must_sum_to_one(weights: dict[int, float], *, label: str) -> None:
 
 
 class SiteGenerationLazyConfig(BaseModel):
+    """Lazy ensure density: max N sites per axis-aligned square cell (server-only)."""
+
     model_config = {"frozen": True}
 
-    min_sites_in_radius: int = 100
-    radius_km: float = 1.0
+    max_sites_per_cell: int = 100
+    cell_size_m: float = 500.0
     min_separation_km: float = 0.01
     nearby_radius_km: float = 100.0
     closest_neighbor_count: int = 20
@@ -44,11 +46,19 @@ class SiteGenerationLazyConfig(BaseModel):
     max_coordinate_attempts: int = 200
 
     @model_validator(mode="after")
-    def _validate_weights(self) -> SiteGenerationLazyConfig:
+    def _validate_lazy(self) -> SiteGenerationLazyConfig:
+        if self.max_sites_per_cell < 1:
+            raise ValueError("max_sites_per_cell must be >= 1")
+        if self.cell_size_m <= 0:
+            raise ValueError("cell_size_m must be > 0")
         total = self.weight_global + self.weight_nearby + self.weight_closest
         if abs(total - 1.0) > 1e-6:
             raise ValueError("lazy distribution weights must sum to 1.0")
         return self
+
+    @property
+    def cell_size_km(self) -> float:
+        return float(self.cell_size_m) / 1000.0
 
 
 class SiteGenerationBulkConfig(BaseModel):
@@ -74,7 +84,6 @@ class SiteGenerationBulkConfig(BaseModel):
 class SiteGenerationClientConfig(BaseModel):
     model_config = {"frozen": True}
 
-    ensure_move_threshold_m: float = 500.0
     nearby_radius_km: float = 1.0
 
 

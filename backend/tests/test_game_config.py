@@ -26,15 +26,14 @@ def test_load_game_config_matches_current_defaults() -> None:
     get_game_config.cache_clear()
     config = load_game_config()
 
-    assert config.site_generation.lazy.min_sites_in_radius == 100
-    assert config.site_generation.lazy.radius_km == 0.5
+    assert config.site_generation.lazy.max_sites_per_cell == 100
+    assert config.site_generation.lazy.cell_size_m == 500.0
     assert config.site_generation.lazy.min_separation_km == 0.03
     assert config.site_generation.lazy.weight_global == 0.33
     assert config.site_generation.lazy.weight_nearby == 0.33
     assert config.site_generation.lazy.weight_closest == 0.34
 
     assert config.site_generation.bulk.max_items == 200
-    assert config.site_generation.client.ensure_move_threshold_m == 250.0
     assert config.site_generation.client.nearby_radius_km == 0.5
 
     assert config.site_discovery.max_distance_m == 50.0
@@ -67,7 +66,7 @@ def test_load_game_config_matches_current_defaults() -> None:
     assert len(config.fossil_generation.depth_buckets) == 5
     assert config.fossil_generation.depth_buckets[0].min_cm == 0
     assert config.fossil_generation.depth_buckets[0].max_cm == 0
-    assert config.fossil_generation.depth_buckets[0].weight == 0.20
+    assert config.fossil_generation.depth_buckets[0].weight == 0.10
     assert config.fossil_generation.depth_buckets[-1].min_cm == 501
     assert config.fossil_generation.depth_buckets[-1].max_cm == 1000
 

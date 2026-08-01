@@ -231,3 +231,103 @@ def count_sites_in_radius(
         )
     ).one()
     return int(row[0])
+
+
+_BBOX_COUNT_SQL = text(
+    """
+    SELECT COUNT(*)
+    FROM site
+    WHERE data_source = :data_source
+      AND latitude IS NOT NULL
+      AND longitude IS NOT NULL
+      AND latitude >= :min_lat
+      AND latitude < :max_lat
+      AND longitude >= :min_lon
+      AND longitude < :max_lon
+      AND NOT EXISTS (
+        SELECT 1
+        FROM user_site us
+        WHERE us.site_id = site.site_id
+          AND us.role = :exhauster_role
+          AND us.timestamp = (
+            SELECT MAX(us2.timestamp)
+            FROM user_site us2
+            WHERE us2.site_id = site.site_id
+          )
+      )
+    """
+)
+
+
+def count_sites_in_bbox(
+    session: Session,
+    *,
+    south: float,
+    north: float,
+    west: float,
+    east: float,
+    data_source: str,
+) -> int:
+    """Count non-exhausted sites inside an axis-aligned lat/lon square [south,north)×[west,east)."""
+    from app.models.user_site import USER_SITE_ROLE_EXHAUSTER
+
+    normalized_data_source = normalize_data_source(data_source)
+    row = session.exec(
+        _BBOX_COUNT_SQL.bindparams(
+            data_source=normalized_data_source,
+            min_lat=min(south, north),
+            max_lat=max(south, north),
+            min_lon=min(west, east),
+            max_lon=max(west, east),
+            exhauster_role=USER_SITE_ROLE_EXHAUSTER,
+        )
+    ).one()
+    return int(row[0])
+
+
+def list_sites_in_bbox(
+    session: Session,
+    *,
+    south: float,
+    north: float,
+    west: float,
+    east: float,
+    data_source: str,
+    limit: int = 500,
+    show_all: bool = True,
+) -> list[SiteRow]:
+    """List sites inside an axis-aligned square (same filters as list_sites_in_radius)."""
+    from app.models.data_source import DATA_SOURCE_FIELD
+
+    normalized_data_source = normalize_data_source(data_source)
+    min_lat, max_lat = min(south, north), max(south, north)
+    min_lon, max_lon = min(west, east), max(west, east)
+    max_ts = latest_user_site_subquery()
+    stmt = (
+        select(Site, SiteType, _LatestUserSite)
+        .outerjoin(SiteType, col(Site.site_type_id) == col(SiteType.id))
+        .outerjoin(max_ts, col(Site.site_id) == max_ts.c.site_id)
+        .outerjoin(
+            _LatestUserSite,
+            latest_user_site_join_condition(_LatestUserSite, max_ts),
+        )
+        .where(
+            col(Site.data_source) == normalized_data_source,
+            col(Site.latitude).is_not(None),
+            col(Site.longitude).is_not(None),
+            col(Site.latitude) >= min_lat,
+            col(Site.latitude) < max_lat,
+            col(Site.longitude) >= min_lon,
+            col(Site.longitude) < max_lon,
+        )
+    )
+    if normalized_data_source == DATA_SOURCE_FIELD and not show_all:
+        stmt = stmt.where(col(Site.site_id).is_(None))
+
+    rows = session.exec(stmt).all()
+    items: list[SiteRow] = []
+    for row in rows:
+        items.append(_row_from_tuple(row))
+        if len(items) >= limit:
+            break
+    return items

@@ -57,7 +57,8 @@ def process_one_ensure_job(*, worker_id: str) -> bool:
         if job is None:
             return False
 
-    config = FieldSiteLazyConfig.from_game_config(radius_km=job.radius_km)
+    # Always use server YAML density (square cell); never job/client radius.
+    config = FieldSiteLazyConfig.from_game_config()
     reason = normalize_reason(job.reason)
     started = time.monotonic()
     try:

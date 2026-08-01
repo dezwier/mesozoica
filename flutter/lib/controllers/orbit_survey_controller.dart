@@ -216,11 +216,15 @@ class OrbitSurveyController extends ChangeNotifier {
   Future<void> _ensureFieldSites() async {
     final loc = _location?.currentLocation;
     if (loc == null) return;
+    // Server ignores client radius and uses YAML square density; send the
+    // global nearby hint for logging/compat only.
+    final radiusKm =
+        GameConfig.instance.siteGeneration.client.nearbyRadiusKm;
     try {
       await _siteService.requestFieldSiteEnsure(
         lat: loc.latitude,
         lon: loc.longitude,
-        radiusKm: rangeM / 1000.0,
+        radiusKm: radiusKm,
         reason: 'orbit_survey',
       );
       await _discovery?.refreshDiscoverableCache(force: true);

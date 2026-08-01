@@ -28,7 +28,9 @@ from app.services.field_service.field_generate import (
     _next_field_site_id,
     ensure_field_sites_nearby,
 )
+from app.services.field_service.field_ensure_queue import cell_key
 from app.services.site_common.geo_utils import haversine_km
+from app.services.site_common.survey_grid import footprint_for_center, snap_to_cell_center
 
 
 def _archive_site(
@@ -55,10 +57,17 @@ def _site_type(*, period: str, rock_type: str) -> SiteType:
     return SiteType(period=period, rock_type=rock_type)
 
 
-def _test_coordinate_sampler(center_lat: float, center_lon: float, radius_km: float) -> CoordinateSampler:
-    lat_delta = radius_km / 111.0
+def _test_coordinate_sampler(
+    center_lat: float,
+    center_lon: float,
+    *,
+    cell_size_m: float = 1000.0,
+) -> CoordinateSampler:
+    # Land mask covers a square slightly larger than the density cell.
+    half_km = (cell_size_m / 1000.0) * 0.75  # generous pad for sampling
+    lat_delta = half_km / 111.0
     cos_lat = max(abs(math.cos(math.radians(center_lat))), 1e-6)
-    lon_delta = radius_km / (111.0 * cos_lat)
+    lon_delta = half_km / (111.0 * cos_lat)
     geometry = box(
         center_lon - lon_delta,
         center_lat - lat_delta,
@@ -76,10 +85,10 @@ def test_ensure_generates_when_below_minimum(session: Session, monkeypatch):
 
 
     center_lat, center_lon = 40.0, -100.0
-    mask = _test_coordinate_sampler(center_lat, center_lon, radius_km=1.0)
+    mask = _test_coordinate_sampler(center_lat, center_lon, cell_size_m=1000.0)
     config = FieldSiteLazyConfig(
-        min_sites_in_radius=5,
-        radius_km=1.0,
+        max_sites_per_cell=5,
+        cell_size_m=1000.0,
         min_separation_km=0.05,
         max_coordinate_attempts=50,
     )
@@ -106,7 +115,7 @@ def test_ensure_generates_when_below_minimum(session: Session, monkeypatch):
             float(site.latitude),
             float(site.longitude),
         )
-        assert distance <= config.radius_km
+        assert distance <= config.cell_size_km
 
 
 def test_ensure_skips_when_minimum_already_met(session: Session, monkeypatch):
@@ -116,13 +125,14 @@ def test_ensure_skips_when_minimum_already_met(session: Session, monkeypatch):
     session.commit()
     session.refresh(site_type)
 
-    center_lat, center_lon = 40.0, -100.0
+    cell_m = 1000.0
+    center_lat, center_lon = snap_to_cell_center(40.0, -100.0, cell_size_m=cell_m)
     for index in range(3):
         session.add(
             Site(
                 site_id=FIELD_SITE_ID_START + index,
-                latitude=Decimal(str(center_lat + index * 0.001)),
-                longitude=Decimal(str(center_lon + index * 0.001)),
+                latitude=Decimal(str(center_lat + index * 0.0005)),
+                longitude=Decimal(str(center_lon + index * 0.0005)),
                 rock_type="sandstone",
                 period="cretaceous",
                 site_type_id=site_type.id,
@@ -131,14 +141,15 @@ def test_ensure_skips_when_minimum_already_met(session: Session, monkeypatch):
         )
     session.commit()
 
-
-    config = FieldSiteLazyConfig(min_sites_in_radius=3, radius_km=1.0)
+    config = FieldSiteLazyConfig(max_sites_per_cell=3, cell_size_m=cell_m)
     result = ensure_field_sites_nearby(
         session,
-        lat=center_lat,
-        lon=center_lon,
+        lat=40.0,
+        lon=-100.0,
         config=config,
-        coordinate_sampler=_test_coordinate_sampler(center_lat, center_lon, radius_km=1.0),
+        coordinate_sampler=_test_coordinate_sampler(
+            center_lat, center_lon, cell_size_m=cell_m
+        ),
     )
 
     assert result.generated == 0
@@ -155,14 +166,15 @@ def test_ensure_tops_up_when_sites_are_exhausted(session: Session, monkeypatch):
     session.commit()
     session.refresh(user)
 
-    center_lat, center_lon = 40.0, -100.0
+    cell_m = 1000.0
+    center_lat, center_lon = snap_to_cell_center(40.0, -100.0, cell_size_m=cell_m)
     for index in range(5):
         site_id = FIELD_SITE_ID_START + index
         session.add(
             Site(
                 site_id=site_id,
-                latitude=Decimal(str(center_lat + index * 0.001)),
-                longitude=Decimal(str(center_lon + index * 0.001)),
+                latitude=Decimal(str(center_lat + index * 0.0005)),
+                longitude=Decimal(str(center_lon + index * 0.0005)),
                 rock_type="sandstone",
                 period="cretaceous",
                 data_source=DATA_SOURCE_FIELD,
@@ -179,20 +191,21 @@ def test_ensure_tops_up_when_sites_are_exhausted(session: Session, monkeypatch):
             )
     session.commit()
 
-
-    # 2 non-exhausted + 3 exhausted → need 3 more to reach min of 5
+    # 2 non-exhausted + 3 exhausted → need 3 more to reach max of 5
     result = ensure_field_sites_nearby(
         session,
-        lat=center_lat,
-        lon=center_lon,
+        lat=40.0,
+        lon=-100.0,
         config=FieldSiteLazyConfig(
-            min_sites_in_radius=5,
-            radius_km=1.0,
+            max_sites_per_cell=5,
+            cell_size_m=cell_m,
             min_separation_km=0.05,
             max_coordinate_attempts=50,
         ),
         rng=random.Random(3),
-        coordinate_sampler=_test_coordinate_sampler(center_lat, center_lon, radius_km=1.0),
+        coordinate_sampler=_test_coordinate_sampler(
+            center_lat, center_lon, cell_size_m=cell_m
+        ),
     )
 
     assert result.generated == 3
@@ -246,11 +259,15 @@ def test_load_existing_field_coords_skips_exhausted(session: Session):
     )
     session.commit()
 
+    fp = footprint_for_center(
+        center_lat, center_lon, wideness_m=1000.0, cell_size_m=1000.0
+    )
     coords = _load_existing_field_coords(
         session,
-        lat=center_lat,
-        lon=center_lon,
-        radius_km=1.0,
+        south=fp.south,
+        north=fp.north,
+        west=fp.west,
+        east=fp.east,
     )
     assert len(coords) == 1
     assert abs(coords[0][0] - (center_lat + 0.001)) < 1e-6
@@ -267,9 +284,9 @@ def test_ensure_does_not_delete_archive_sites(session: Session, monkeypatch):
         session,
         lat=center_lat,
         lon=center_lon,
-        config=FieldSiteLazyConfig(min_sites_in_radius=2, radius_km=1.0, min_separation_km=0.05),
+        config=FieldSiteLazyConfig(max_sites_per_cell=2, cell_size_m=1000.0, min_separation_km=0.05),
         rng=random.Random(3),
-        coordinate_sampler=_test_coordinate_sampler(center_lat, center_lon, radius_km=1.0),
+        coordinate_sampler=_test_coordinate_sampler(center_lat, center_lon, cell_size_m=1000.0),
     )
 
     archive_sites = list(session.exec(select(Site).where(Site.data_source == DATA_SOURCE_ARCHIVE)).all())
@@ -284,7 +301,7 @@ def test_sites_nearby_api_is_read_only(client, session: Session, monkeypatch):
 
     monkeypatch.setattr(
         "app.services.field_service.field_generate.build_coordinate_sampler",
-        lambda **kwargs: _test_coordinate_sampler(40.0, -100.0, radius_km=1.0),
+        lambda **kwargs: _test_coordinate_sampler(40.0, -100.0, cell_size_m=1000.0),
     )
 
     response = client.get(
@@ -325,7 +342,9 @@ def test_field_ensure_api_enqueues_job(client, session: Session):
     jobs = list(session.exec(select(FieldEnsureJob)).all())
     assert len(jobs) == 1
     assert jobs[0].status == "pending"
-    assert jobs[0].cell_key == "40.0:-100.0:1.0"
+    assert jobs[0].cell_key == cell_key(40.0, -100.0, cell_size_m=500.0)
+    assert jobs[0].radius_km == 0.5
+    assert payload["radius_km"] == 0.5
     assert jobs[0].id == payload["job_id"]
 
     duplicate = client.post(
@@ -416,7 +435,7 @@ def test_field_ensure_worker_noops_when_full(client, session: Session, monkeypat
 
     monkeypatch.setattr(
         "app.services.field_service.field_generate.build_coordinate_sampler",
-        lambda **kwargs: _test_coordinate_sampler(center_lat, center_lon, radius_km=1.0),
+        lambda **kwargs: _test_coordinate_sampler(center_lat, center_lon, cell_size_m=1000.0),
     )
 
     response = client.post(
@@ -454,7 +473,7 @@ def test_field_ensure_worker_processes_job(client, session: Session, monkeypatch
 
     monkeypatch.setattr(
         "app.services.field_service.field_generate.build_coordinate_sampler",
-        lambda **kwargs: _test_coordinate_sampler(40.0, -100.0, radius_km=1.0),
+        lambda **kwargs: _test_coordinate_sampler(40.0, -100.0, cell_size_m=1000.0),
     )
 
     response = client.post(
@@ -536,14 +555,14 @@ def test_ensure_uses_fresh_ids_after_existing_field_site(
     )
     monkeypatch.setattr(
         "app.services.field_service.field_generate.build_coordinate_sampler",
-        lambda **kwargs: _test_coordinate_sampler(40.0, -100.0, radius_km=1.0),
+        lambda **kwargs: _test_coordinate_sampler(40.0, -100.0, cell_size_m=1000.0),
     )
 
     result = ensure_field_sites_nearby(
         session,
         lat=40.0,
         lon=-100.0,
-        config=FieldSiteLazyConfig(min_sites_in_radius=3, radius_km=1.0),
+        config=FieldSiteLazyConfig(max_sites_per_cell=3, cell_size_m=1000.0),
     )
 
     assert result.generated == 2
@@ -559,10 +578,10 @@ def test_ensure_generates_100_sites_within_time_budget(session: Session, monkeyp
 
 
     center_lat, center_lon = 40.0, -100.0
-    mask = _test_coordinate_sampler(center_lat, center_lon, radius_km=1.0)
+    mask = _test_coordinate_sampler(center_lat, center_lon, cell_size_m=1000.0)
     config = FieldSiteLazyConfig(
-        min_sites_in_radius=100,
-        radius_km=1.0,
+        max_sites_per_cell=100,
+        cell_size_m=1000.0,
         min_separation_km=0.01,
         max_coordinate_attempts=200,
     )

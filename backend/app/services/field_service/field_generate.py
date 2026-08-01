@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import math
 import random
 import time
 from collections import Counter
@@ -45,8 +46,14 @@ from app.services.site_common.constants import FIELD_SITE_ID_START
 from app.services.site_common.geo_utils import haversine_km
 from app.services.site_service.nearby import (
     _bbox,
+    count_sites_in_bbox,
     count_sites_in_radius,
+    list_sites_in_bbox,
     list_sites_in_radius,
+)
+from app.services.site_common.survey_grid import (
+    footprint_for_center,
+    snap_to_cell_center,
 )
 from app.services.site_service.status_join import (
     latest_user_site_join_condition,
@@ -155,8 +162,10 @@ class FieldSiteGenerateSummary:
 
 @dataclass(frozen=True)
 class FieldSiteLazyConfig:
-    min_sites_in_radius: int = 100
-    radius_km: float = 1.0
+    """Server-enforced density: max sites per axis-aligned square cell."""
+
+    max_sites_per_cell: int = 100
+    cell_size_m: float = 500.0
     min_separation_km: float = 0.01
 
     nearby_radius_km: float = 100.0
@@ -174,14 +183,14 @@ class FieldSiteLazyConfig:
     def from_game_config(
         cls,
         *,
-        radius_km: float | None = None,
         exclude_military: bool = False,
         land_mask_path: str | None = None,
     ) -> FieldSiteLazyConfig:
+        """Load density knobs from YAML only — never from client radius."""
         lazy = _site_gen().lazy
         return cls(
-            min_sites_in_radius=lazy.min_sites_in_radius,
-            radius_km=lazy.radius_km if radius_km is None else radius_km,
+            max_sites_per_cell=lazy.max_sites_per_cell,
+            cell_size_m=lazy.cell_size_m,
             min_separation_km=lazy.min_separation_km,
             nearby_radius_km=lazy.nearby_radius_km,
             closest_neighbor_count=lazy.closest_neighbor_count,
@@ -194,10 +203,10 @@ class FieldSiteLazyConfig:
         )
 
     def validate(self) -> None:
-        if self.min_sites_in_radius <= 0:
-            raise ValueError("min_sites_in_radius must be positive")
-        if self.radius_km <= 0:
-            raise ValueError("radius_km must be positive")
+        if self.max_sites_per_cell <= 0:
+            raise ValueError("max_sites_per_cell must be positive")
+        if self.cell_size_m <= 0:
+            raise ValueError("cell_size_m must be positive")
         if self.closest_neighbor_count <= 0:
             raise ValueError("closest_neighbor_count must be positive")
         if self.nearby_radius_km <= 0:
@@ -209,6 +218,10 @@ class FieldSiteLazyConfig:
             logger.warning(
                 "exclude_military=true is not implemented yet; using land-only sampling"
             )
+
+    @property
+    def cell_size_km(self) -> float:
+        return float(self.cell_size_m) / 1000.0
 
     @property
     def coordinate_config(self) -> CoordinateSampleConfig:
@@ -373,18 +386,31 @@ def ensure_field_sites_nearby(
     rng: random.Random | None = None,
     coordinate_sampler: CoordinateSampler | None = None,
 ) -> EnsureFieldSitesResult:
-    """Top up non-exhausted field sites within ``radius_km`` to ``min_sites_in_radius``.
+    """Top up non-exhausted field sites in the ``cell_size_m`` square containing
+    ``(lat, lon)`` up to ``max_sites_per_cell`` (hard cap; never exceeded).
 
-    Exhausted sites are ignored for both the density quota and min-separation
-    coordinate blocking, so new ``hidden`` sites can replace them as others
-    become exhausted.
-
-    Short DB transactions: read → commit, then sample and commit every
-    ``WRITE_BATCH_SIZE`` sites so the map can poll progressive batches.
+    Density geometry is always the server YAML square — client radius is ignored.
+    Exhausted sites are ignored for quota and min-separation blocking.
     """
     cfg = config or FieldSiteLazyConfig.from_game_config()
     cfg.validate()
     random_source = rng or random.Random()
+
+    center_lat, center_lon = snap_to_cell_center(
+        lat, lon, cell_size_m=cfg.cell_size_m
+    )
+    footprint = footprint_for_center(
+        center_lat,
+        center_lon,
+        wideness_m=cfg.cell_size_m,
+        cell_size_m=cfg.cell_size_m,
+    )
+    south, north, west, east = (
+        footprint.south,
+        footprint.north,
+        footprint.west,
+        footprint.east,
+    )
 
     # --- Short read transaction ---
     context = _build_generation_context(
@@ -397,42 +423,44 @@ def ensure_field_sites_nearby(
         closest_neighbor_count=cfg.closest_neighbor_count,
     )
 
-    existing_count = count_sites_in_radius(
+    existing_count = count_sites_in_bbox(
         session,
-        lat=lat,
-        lon=lon,
-        radius_km=cfg.radius_km,
+        south=south,
+        north=north,
+        west=west,
+        east=east,
         data_source=DATA_SOURCE_FIELD,
     )
-    missing = max(0, cfg.min_sites_in_radius - existing_count)
+    # Hard cap: never schedule more than remaining slots under max_sites_per_cell.
+    missing = max(0, min(cfg.max_sites_per_cell, cfg.max_sites_per_cell - existing_count))
 
     if missing == 0:
-        items = list_sites_in_radius(
+        items = list_sites_in_bbox(
             session,
-            lat=lat,
-            lon=lon,
-            radius_km=cfg.radius_km,
+            south=south,
+            north=north,
+            west=west,
+            east=east,
             data_source=DATA_SOURCE_FIELD,
             show_all=True,
         )
         session.commit()
         return EnsureFieldSitesResult(
             generated=0,
-            # Density metric: non-exhausted only (may be < len(items) if some
-            # are exhausted).
             total_in_radius=existing_count,
             skipped_coords=0,
             skipped_no_site_type=0,
             items=items,
-            radius_km=cfg.radius_km,
+            radius_km=cfg.cell_size_km,
         )
 
     _sync_field_site_id_sequence(session)
     existing_coords = _load_existing_field_coords(
         session,
-        lat=lat,
-        lon=lon,
-        radius_km=cfg.radius_km,
+        south=south,
+        north=north,
+        west=west,
+        east=east,
         min_separation_km=cfg.min_separation_km,
     )
     session.commit()
@@ -451,11 +479,15 @@ def ensure_field_sites_nearby(
     for _ in range(max_attempts):
         if generated >= missing:
             break
+        # Re-check hard cap against in-memory placements this run.
+        if existing_count + generated >= cfg.max_sites_per_cell:
+            break
 
-        sampled = context.sampler.sample_in_radius(
-            center_lat=lat,
-            center_lon=lon,
-            radius_km=cfg.radius_km,
+        sampled = context.sampler.sample_in_square(
+            south=south,
+            north=north,
+            west=west,
+            east=east,
             existing=existing_coords,
             config=cfg.coordinate_config,
             rng=random_source,
@@ -490,22 +522,32 @@ def ensure_field_sites_nearby(
 
     _flush_pending_sites(session, pending_rows)
 
-    items = list_sites_in_radius(
+    items = list_sites_in_bbox(
         session,
-        lat=lat,
-        lon=lon,
-        radius_km=cfg.radius_km,
+        south=south,
+        north=north,
+        west=west,
+        east=east,
         data_source=DATA_SOURCE_FIELD,
         show_all=True,
     )
-    # Same metric as density top-up: non-exhausted field sites only.
-    total_in_radius = count_sites_in_radius(
+    total_in_radius = count_sites_in_bbox(
         session,
-        lat=lat,
-        lon=lon,
-        radius_km=cfg.radius_km,
+        south=south,
+        north=north,
+        west=west,
+        east=east,
         data_source=DATA_SOURCE_FIELD,
     )
+    # Absolute hard cap safety (should never trip if loop guards hold).
+    if total_in_radius > cfg.max_sites_per_cell:
+        logger.error(
+            "ensure overshot max_sites_per_cell=%s total=%s cell=(%s,%s)",
+            cfg.max_sites_per_cell,
+            total_in_radius,
+            center_lat,
+            center_lon,
+        )
     session.commit()
     return EnsureFieldSitesResult(
         generated=generated,
@@ -513,7 +555,7 @@ def ensure_field_sites_nearby(
         skipped_coords=skipped_coords,
         skipped_no_site_type=skipped_no_site_type,
         items=items,
-        radius_km=cfg.radius_km,
+        radius_km=cfg.cell_size_km,
     )
 
 
@@ -554,6 +596,10 @@ def _load_existing_field_coords(
     lat: float | None = None,
     lon: float | None = None,
     radius_km: float | None = None,
+    south: float | None = None,
+    north: float | None = None,
+    west: float | None = None,
+    east: float | None = None,
     min_separation_km: float = 0.01,
 ) -> list[tuple[float, float]]:
     """Coords of non-exhausted field sites used for min-separation sampling."""
@@ -567,7 +613,31 @@ def _load_existing_field_coords(
         )
         .where(col(Site.data_source) == DATA_SOURCE_FIELD)
     )
-    if lat is not None and lon is not None and radius_km is not None:
+    use_square = (
+        south is not None
+        and north is not None
+        and west is not None
+        and east is not None
+    )
+    if use_square:
+        # Expand square slightly so neighbors just outside still block placement.
+        pad_deg = min_separation_km / 111.0
+        min_lat = min(south, north) - pad_deg
+        max_lat = max(south, north) + pad_deg
+        mid_lat = (min_lat + max_lat) / 2.0
+        cos_lat = max(abs(math.cos(math.radians(mid_lat))), 1e-6)
+        pad_lon = min_separation_km / (111.0 * cos_lat)
+        min_lon = min(west, east) - pad_lon
+        max_lon = max(west, east) + pad_lon
+        stmt = stmt.where(
+            col(Site.latitude).is_not(None),
+            col(Site.longitude).is_not(None),
+            col(Site.latitude) >= min_lat,
+            col(Site.latitude) <= max_lat,
+            col(Site.longitude) >= min_lon,
+            col(Site.longitude) <= max_lon,
+        )
+    elif lat is not None and lon is not None and radius_km is not None:
         search_radius = radius_km + min_separation_km
         min_lat, max_lat, min_lon, max_lon = _bbox(lat, lon, search_radius)
         stmt = stmt.where(
@@ -589,7 +659,12 @@ def _load_existing_field_coords(
             continue
         site_lat = float(site.latitude)
         site_lon = float(site.longitude)
-        if lat is not None and lon is not None and radius_km is not None:
+        if (
+            not use_square
+            and lat is not None
+            and lon is not None
+            and radius_km is not None
+        ):
             if haversine_km(lat, lon, site_lat, site_lon) > radius_km + min_separation_km:
                 continue
         coords.append((site_lat, site_lon))

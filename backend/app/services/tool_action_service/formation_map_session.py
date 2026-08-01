@@ -20,7 +20,7 @@ from app.models.user_tool import USER_TOOL_ACTION_DEPLOYED, UserTool
 from app.services.tool_action_service.guidance_session import (
     cancel_active_guidance_sessions,
 )
-from app.services.tool_action_service.survey_grid import (
+from app.services.site_common.survey_grid import (
     footprint_for_center,
     snap_to_cell_center,
     snap_wideness_m,

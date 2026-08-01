@@ -598,6 +598,33 @@ def test_prefix_up_to_fraction():
     assert abs(route_length_km(half) / route_length_km(route) - 0.5) < 0.05
 
 
+def test_cells_along_route_covers_crossed_squares():
+    from app.services.site_common.survey_grid import cell_indices
+    from app.services.tool_action_service.route_geometry import (
+        RoutePoint,
+        cells_along_route,
+        route_length_km,
+    )
+
+    # ~11 km north — spans many 500 m cells.
+    route = [
+        RoutePoint(40.0, -100.0),
+        RoutePoint(40.1, -100.0),
+    ]
+    cell_m = 500.0
+    cells = cells_along_route(route, cell_size_m=cell_m)
+    assert len(cells) >= int(route_length_km(route) * 1000 / cell_m) - 1
+
+    keys = {
+        cell_indices(p.lat, p.lon, cell_size_m=cell_m) for p in cells
+    }
+    assert len(keys) == len(cells)
+    start_key = cell_indices(route[0].lat, route[0].lon, cell_size_m=cell_m)
+    end_key = cell_indices(route[1].lat, route[1].lon, cell_size_m=cell_m)
+    assert start_key in keys
+    assert end_key in keys
+
+
 def test_cancel_flying_truncates_and_skips_pending(client, session: Session):
     tool = _aerial_tool(session)
     user = _user(session)

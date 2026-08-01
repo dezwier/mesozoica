@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from app.services.tool_action_service.survey_grid import (
+from app.services.site_common.survey_grid import (
     cell_indices,
     footprint_for_center,
     snap_to_cell_center,

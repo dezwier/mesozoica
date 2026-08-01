@@ -137,6 +137,46 @@ def sample_along_route(
     return samples
 
 
+def cells_along_route(
+    points: list[RoutePoint],
+    *,
+    cell_size_m: float,
+) -> list[RoutePoint]:
+    """Return one cell-center point per density square the route enters.
+
+    Densely samples the polyline (half-cell spacing) so diagonal cuts do not
+    skip squares, then dedupes by cell index.
+    """
+    from app.services.site_common.survey_grid import (
+        cell_center_latlon,
+        cell_indices,
+    )
+
+    if not points:
+        return []
+    cell_m = max(float(cell_size_m), 1.0)
+    spacing_km = (cell_m / 1000.0) * 0.5
+    samples = sample_along_route(points, spacing_km=spacing_km)
+
+    # Also include every route vertex so sharp corners are not missed.
+    probe = list(samples)
+    for p in points:
+        if not probe or probe[-1] != p:
+            probe.append(p)
+
+    seen: dict[tuple[int, int], RoutePoint] = {}
+    order: list[tuple[int, int]] = []
+    for p in probe:
+        ix, iy = cell_indices(p.lat, p.lon, cell_size_m=cell_m)
+        key = (ix, iy)
+        if key in seen:
+            continue
+        clat, clon = cell_center_latlon(ix, iy, cell_size_m=cell_m)
+        seen[key] = RoutePoint(lat=clat, lon=clon)
+        order.append(key)
+    return [seen[k] for k in order]
+
+
 def point_to_route_distance_km(
     point: RoutePoint,
     route: list[RoutePoint],

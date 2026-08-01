@@ -238,7 +238,8 @@ def get_sites_nearby_discoverable(
 
 @router.post("/field/ensure", response_model=FieldEnsureResponse, status_code=202)
 def post_field_site_ensure(body: FieldEnsureRequest) -> FieldEnsureResponse:
-    config = FieldSiteLazyConfig.from_game_config(radius_km=body.radius_km)
+    # Density knobs are server-only; client radius_km is intentionally ignored.
+    config = FieldSiteLazyConfig.from_game_config()
     reason = normalize_reason(body.reason)
     accepted, job_id = schedule_field_site_ensure(
         lat=body.lat,
@@ -246,14 +247,15 @@ def post_field_site_ensure(body: FieldEnsureRequest) -> FieldEnsureResponse:
         config=config,
         reason=body.reason,
     )
+    key = cell_key(body.lat, body.lon, cell_size_m=config.cell_size_m)
     log_field_event(
         "ensure_enqueued" if accepted else "ensure_deduped",
         service="api",
         reason=reason,
         lat=body.lat,
         lon=body.lon,
-        radius_km=body.radius_km,
-        cell=cell_key(body.lat, body.lon, body.radius_km),
+        radius_km=config.cell_size_km,
+        cell=key,
         enqueued=accepted,
         job_id=job_id,
     )
@@ -265,7 +267,7 @@ def post_field_site_ensure(body: FieldEnsureRequest) -> FieldEnsureResponse:
         missing=None,
         generated=None,
         total_in_radius=None,
-        radius_km=body.radius_km,
+        radius_km=config.cell_size_km,
     )
 
 

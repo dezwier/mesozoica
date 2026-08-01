@@ -9,14 +9,16 @@ import '../config/game_config.dart';
 import '../models/site.dart';
 import '../services/location_service.dart';
 import '../services/site_service.dart';
+import '../utils/survey_grid.dart';
 
 /// Orchestrates field-site ensure calls across app lifecycle.
 class FieldSessionCoordinator extends ChangeNotifier {
   FieldSessionCoordinator({SiteService? siteService})
       : _siteService = siteService ?? SiteService();
 
-  static double get ensureMoveThresholdM =>
-      GameConfig.instance.siteGeneration.client.ensureMoveThresholdM;
+  /// Density square size; walk ensure fires on entering a new cell.
+  static double get ensureCellSizeM =>
+      GameConfig.instance.siteGeneration.cellSizeM;
   static double get nearbyRadiusKm =>
       GameConfig.instance.siteGeneration.client.nearbyRadiusKm;
 
@@ -31,7 +33,7 @@ class FieldSessionCoordinator extends ChangeNotifier {
   AppLifecycleState _lifecycle = AppLifecycleState.resumed;
   bool _sessionActive = false;
   bool _ensureInFlight = false;
-  LatLng? _lastEnsurePosition;
+  (int, int)? _lastEnsureCell;
   String? _pendingEnsureReason;
   VoidCallback? _locationListener;
   bool _openedEnsureDone = false;
@@ -200,9 +202,12 @@ class FieldSessionCoordinator extends ChangeNotifier {
     }
 
     _pendingEnsureReason = null;
-    if (!force &&
-        _lastEnsurePosition != null &&
-        _distance(_lastEnsurePosition!, location) < ensureMoveThresholdM) {
+    final cell = cellIndices(
+      location.latitude,
+      location.longitude,
+      cellSizeM: ensureCellSizeM,
+    );
+    if (!force && _lastEnsureCell != null && _lastEnsureCell == cell) {
       return null;
     }
 
@@ -215,13 +220,14 @@ class FieldSessionCoordinator extends ChangeNotifier {
         radiusKm: nearbyRadiusKm,
         reason: reason,
       );
-      // Only advance the throttle on success so a failed/timeout request
-      // can retry on the next GPS tick once past the threshold again.
+      // Only advance the cell throttle on success so a failed/timeout request
+      // can retry on the next GPS tick once the cell is still new.
       if (reason != reasonScan) {
-        _lastEnsurePosition = location;
+        _lastEnsureCell = cell;
       }
       _logEnsure(
-        'enqueued reason=$reason accepted=${response.accepted}',
+        'enqueued reason=$reason accepted=${response.accepted} '
+        'cell=${cell.$1}:${cell.$2}',
       );
       _onEnsureScheduled?.call();
       return response;
@@ -240,8 +246,6 @@ class FieldSessionCoordinator extends ChangeNotifier {
       }
     }
   }
-
-  final Distance _distance = const Distance();
 
   void _logEnsure(String message) {
     developer.log(

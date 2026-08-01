@@ -11,7 +11,7 @@ void main() {
   test('loads shared YAML with current game defaults', () async {
     final config = await loadGameConfigForTest();
 
-    expect(config.siteGeneration.client.ensureMoveThresholdM, 250.0);
+    expect(config.siteGeneration.cellSizeM, 500.0);
     expect(config.siteGeneration.client.nearbyRadiusKm, 0.5);
 
     expect(config.siteDiscovery.maxDistanceM, 50.0);

@@ -39,6 +39,7 @@ from app.services.field_service.field_ensure_queue import (
     STATUS_RUNNING,
     enqueue_field_site_ensure,
 )
+from app.services.field_service.field_generate import FieldSiteLazyConfig
 from app.services.site_common.geo_utils import haversine_km
 from app.services.tool_action_service.aerial_mission_kinds import (
     config_for_action_key,
@@ -49,10 +50,10 @@ from app.services.tool_action_service.aerial_mission_kinds import (
 from app.services.tool_action_service.discover_aerial import discover_site_from_aerial
 from app.services.tool_action_service.route_geometry import (
     RoutePoint,
+    cells_along_route,
     point_to_route_distance_km,
     prefix_up_to_fraction,
     route_length_km,
-    sample_along_route,
 )
 from app.services.tool_service.collect import resolve_owned_tool_selection
 logger = logging.getLogger("aerial_mission")
@@ -136,10 +137,9 @@ def start_aerial_mission(
             "Loop must start and end at your current location"
         )
 
-    samples = sample_along_route(
-        points,
-        spacing_km=float(inst_p.get("ensure_sample_spacing_km", cfg.ensure_sample_spacing_km)),
-    )
+    # Top up every 500 m density square the full route crosses.
+    lazy = FieldSiteLazyConfig.from_game_config()
+    samples = cells_along_route(points, cell_size_m=lazy.cell_size_m)
     job_ids: list[int] = []
     for sample in samples:
         _, job_id = enqueue_field_site_ensure(

@@ -218,6 +218,33 @@ class CoordinateSampler:
             return lat, lon
         return None
 
+    def sample_in_square(
+        self,
+        *,
+        south: float,
+        north: float,
+        west: float,
+        east: float,
+        existing: list[tuple[float, float]],
+        config: CoordinateSampleConfig,
+        rng: random.Random | None = None,
+    ) -> tuple[float, float] | None:
+        """Uniform sample inside an axis-aligned lat/lon square."""
+        random_source = rng or random
+        lo_lat, hi_lat = min(south, north), max(south, north)
+        lo_lon, hi_lon = min(west, east), max(west, east)
+        if hi_lat <= lo_lat or hi_lon <= lo_lon:
+            return None
+        for _ in range(config.max_coordinate_attempts):
+            lat = random_source.uniform(lo_lat, hi_lat)
+            lon = random_source.uniform(lo_lon, hi_lon)
+            if not self.filter.allows(lat, lon):
+                continue
+            if _too_close(lat, lon, existing, config.min_separation_km):
+                continue
+            return lat, lon
+        return None
+
 
 def _too_close(
     lat: float,

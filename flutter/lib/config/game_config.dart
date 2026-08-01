@@ -127,12 +127,19 @@ class GameConfig {
 }
 
 class SiteGenerationConfig {
-  const SiteGenerationConfig({required this.client});
+  const SiteGenerationConfig({
+    required this.cellSizeM,
+    required this.client,
+  });
 
+  /// Density square size from YAML `lazy.cell_size_m` (walk ensure cell).
+  final double cellSizeM;
   final SiteGenerationClientConfig client;
 
   factory SiteGenerationConfig.fromYaml(Map<String, dynamic> yaml) {
+    final lazy = GameConfig._asMap(yaml['lazy']);
     return SiteGenerationConfig(
+      cellSizeM: _asDouble(lazy['cell_size_m'], 500.0),
       client: SiteGenerationClientConfig.fromYaml(
         GameConfig._asMap(yaml['client']),
       ),
@@ -142,16 +149,13 @@ class SiteGenerationConfig {
 
 class SiteGenerationClientConfig {
   const SiteGenerationClientConfig({
-    required this.ensureMoveThresholdM,
     required this.nearbyRadiusKm,
   });
 
-  final double ensureMoveThresholdM;
   final double nearbyRadiusKm;
 
   factory SiteGenerationClientConfig.fromYaml(Map<String, dynamic> yaml) {
     return SiteGenerationClientConfig(
-      ensureMoveThresholdM: _asDouble(yaml['ensure_move_threshold_m'], 500.0),
       nearbyRadiusKm: _asDouble(yaml['nearby_radius_km'], 1.0),
     );
   }

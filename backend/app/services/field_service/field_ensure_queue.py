@@ -11,6 +11,7 @@ from app.core.database import engine
 from app.models.field_ensure_job import FieldEnsureJob
 from app.services.field_service.field_generate import FieldSiteLazyConfig
 from app.services.field_service.field_site_logging import log_field_event, normalize_reason
+from app.services.site_common.survey_grid import cell_indices, snap_to_cell_center
 
 STATUS_PENDING = "pending"
 STATUS_RUNNING = "running"
@@ -18,8 +19,10 @@ STATUS_DONE = "done"
 STATUS_FAILED = "failed"
 
 
-def cell_key(lat: float, lon: float, radius_km: float) -> str:
-    return f"{round(lat, 2)}:{round(lon, 2)}:{radius_km}"
+def cell_key(lat: float, lon: float, *, cell_size_m: float) -> str:
+    """Stable ensure-job key for the density square containing ``(lat, lon)``."""
+    ix, iy = cell_indices(lat, lon, cell_size_m=cell_size_m)
+    return f"{ix}:{iy}:{int(cell_size_m)}"
 
 
 def enqueue_field_site_ensure(
@@ -32,14 +35,17 @@ def enqueue_field_site_ensure(
 ) -> tuple[bool, int | None]:
     """Enqueue a worker job for density check and generation.
 
-    Does not count sites in radius — the worker re-counts before generating.
+    Snaps to the server density square; ignores any client radius.
     Returns ``(accepted, job_id)``. ``accepted`` is False when the cell already
     has a pending/running job; ``job_id`` is still the existing job when present.
     """
     cfg = config or FieldSiteLazyConfig.from_game_config()
     cfg.validate()
     trigger = normalize_reason(reason)
-    key = cell_key(lat, lon, cfg.radius_km)
+    center_lat, center_lon = snap_to_cell_center(
+        lat, lon, cell_size_m=cfg.cell_size_m
+    )
+    key = cell_key(center_lat, center_lon, cell_size_m=cfg.cell_size_m)
 
     job = session.exec(
         select(FieldEnsureJob).where(col(FieldEnsureJob.cell_key) == key)
@@ -49,9 +55,9 @@ def enqueue_field_site_ensure(
         if job.status in (STATUS_PENDING, STATUS_RUNNING):
             return False, job.id
 
-        job.lat = lat
-        job.lon = lon
-        job.radius_km = cfg.radius_km
+        job.lat = center_lat
+        job.lon = center_lon
+        job.radius_km = cfg.cell_size_km
         job.missing_count = 0
         job.generated_count = None
         job.total_in_radius = None
@@ -68,9 +74,9 @@ def enqueue_field_site_ensure(
 
     job = FieldEnsureJob(
         cell_key=key,
-        lat=lat,
-        lon=lon,
-        radius_km=cfg.radius_km,
+        lat=center_lat,
+        lon=center_lon,
+        radius_km=cfg.cell_size_km,
         missing_count=0,
         reason=trigger,
         status=STATUS_PENDING,
