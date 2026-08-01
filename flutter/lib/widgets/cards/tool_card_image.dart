@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../../theme/dino_card_theme.dart';
 import '../../utils/curated_image_url.dart';
+import '../../utils/network_image_mem_cache.dart';
 
 class ToolCardImage extends StatelessWidget {
   const ToolCardImage({
@@ -25,19 +26,29 @@ class ToolCardImage extends StatelessWidget {
       return const _FadingPlaceholderImage();
     }
 
-    return SizedBox.expand(
-      child: CachedNetworkImage(
-        imageUrl: curatedUrl,
-        fit: BoxFit.cover,
-        fadeInDuration: _fadeInDuration,
-        fadeInCurve: Curves.easeIn,
-        placeholderFadeInDuration: Duration.zero,
-        httpHeaders: const {
-          'User-Agent': 'Mesozoica/1.0 (mobile app; tool catalog)',
-        },
-        placeholder: (context, url) => const SizedBox.shrink(),
-        errorWidget: (context, url, error) => const _FadingPlaceholderImage(),
-      ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final dpr = MediaQuery.devicePixelRatioOf(context);
+        return SizedBox.expand(
+          child: CachedNetworkImage(
+            imageUrl: curatedUrl,
+            fit: BoxFit.cover,
+            fadeInDuration: _fadeInDuration,
+            fadeInCurve: Curves.easeIn,
+            placeholderFadeInDuration: Duration.zero,
+            memCacheWidth:
+                networkImageMemCacheExtent(constraints.maxWidth, dpr),
+            memCacheHeight:
+                networkImageMemCacheExtent(constraints.maxHeight, dpr),
+            httpHeaders: const {
+              'User-Agent': 'Mesozoica/1.0 (mobile app; tool catalog)',
+            },
+            placeholder: (context, url) => const SizedBox.shrink(),
+            errorWidget: (context, url, error) =>
+                const _FadingPlaceholderImage(),
+          ),
+        );
+      },
     );
   }
 }

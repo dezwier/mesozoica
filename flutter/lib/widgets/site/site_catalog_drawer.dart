@@ -40,7 +40,7 @@ class _SiteCatalogAlbumBody extends StatefulWidget {
 }
 
 class _SiteCatalogAlbumBodyState extends State<_SiteCatalogAlbumBody> {
-  static const _pageSize = 60;
+  static const _pageSize = 20;
 
   final SiteService _service = SiteService();
 

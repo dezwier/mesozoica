@@ -40,7 +40,7 @@ class _ToolCatalogAlbumBody extends StatefulWidget {
 }
 
 class _ToolCatalogAlbumBodyState extends State<_ToolCatalogAlbumBody> {
-  static const _pageSize = 60;
+  static const _pageSize = 20;
 
   final ToolService _service = ToolService();
 

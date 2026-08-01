@@ -39,7 +39,7 @@ class _DinosaurCatalogAlbumBody extends StatefulWidget {
 }
 
 class _DinosaurCatalogAlbumBodyState extends State<_DinosaurCatalogAlbumBody> {
-  static const _pageSize = 60;
+  static const _pageSize = 20;
 
   final DinosaurService _service = DinosaurService();
 

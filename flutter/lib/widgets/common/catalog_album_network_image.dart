@@ -1,7 +1,9 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
+import '../../services/catalog_album_cache.dart';
 import '../../utils/curated_image_url.dart';
+import '../../utils/network_image_mem_cache.dart';
 
 /// Catalog album tile network image: album WebP only (never full card art).
 class CatalogAlbumNetworkImage extends StatelessWidget {
@@ -30,10 +32,11 @@ class CatalogAlbumNetworkImage extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final dpr = MediaQuery.devicePixelRatioOf(context);
-        final memW = _memCacheExtent(constraints.maxWidth, dpr);
-        final memH = _memCacheExtent(constraints.maxHeight, dpr);
+        final memW = networkImageMemCacheExtent(constraints.maxWidth, dpr);
+        final memH = networkImageMemCacheExtent(constraints.maxHeight, dpr);
         return CachedNetworkImage(
           imageUrl: albumUrl,
+          cacheManager: CatalogAlbumCache.instance,
           fit: BoxFit.cover,
           fadeInDuration: Duration.zero,
           placeholderFadeInDuration: Duration.zero,
@@ -49,11 +52,4 @@ class CatalogAlbumNetworkImage extends StatelessWidget {
       },
     );
   }
-}
-
-int _memCacheExtent(double logicalPx, double dpr) {
-  if (!logicalPx.isFinite || logicalPx <= 0) {
-    return (128 * dpr).round().clamp(1, 2048);
-  }
-  return (logicalPx * dpr).round().clamp(1, 2048);
 }
