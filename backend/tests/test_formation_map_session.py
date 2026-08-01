@@ -6,6 +6,7 @@ from sqlmodel import Session, select
 
 from app.core.game_config import get_game_config
 from app.core.security import create_access_token
+from app.models.field_ensure_job import FieldEnsureJob
 from app.models.formation_map_session import (
     ACTION_KEY_FORMATION_MAP,
     SESSION_STATUS_ACTIVE,
@@ -83,13 +84,15 @@ def _grant(session: Session, *, user_id: int, tool_id: int) -> Tool:
 
 def test_tool_actions_yaml_loads_formation_map_knobs() -> None:
     get_game_config.cache_clear()
-    cfg = get_game_config().tool_actions.formation_map
+    game = get_game_config()
+    cfg = game.tool_actions.formation_map
     assert cfg.duration_minutes == 10
     assert cfg.accuracy == 0.75
-    assert cfg.wideness_m == 200.0
-    assert cfg.resolved_wideness_m() == 200.0
+    assert cfg.cell_size_m == game.site_generation.lazy.cell_size_m == 500.0
+    assert cfg.wideness_m == 500.0
+    assert cfg.resolved_wideness_m() == 500.0
     assert cfg.range_fade == 0.0
-    colors = get_game_config().rock_type_colors
+    colors = game.rock_type_colors
     assert colors.for_rock_type("sandstone") == (0xD4, 0xA0, 0x17)
     assert colors.for_rock_type("unknown_xyz") == (0x88, 0x88, 0x88)
 
@@ -102,7 +105,8 @@ def test_start_formation_map_snaps_center_once(client, session: Session) -> None
     headers = _auth_headers(user)
 
     lat, lon = 50.8503, 4.3517
-    expected = snap_to_cell_center(lat, lon, cell_size_m=200.0)
+    cell_m = get_game_config().site_generation.lazy.cell_size_m
+    expected = snap_to_cell_center(lat, lon, cell_size_m=cell_m)
 
     first = client.post(
         f"/api/v1/tools/{fmap.id}/actions/formation-map-session",
@@ -112,7 +116,8 @@ def test_start_formation_map_snaps_center_once(client, session: Session) -> None
     assert first.status_code == 201, first.text
     body = first.json()
     assert body["action_key"] == ACTION_KEY_FORMATION_MAP
-    assert body["wideness_m"] == 200.0
+    assert body["wideness_m"] == 500.0
+    assert body["cell_size_m"] == cell_m
     assert abs(body["center_lat"] - expected[0]) < 1e-6
     assert abs(body["center_lon"] - expected[1]) < 1e-6
 
@@ -136,6 +141,11 @@ def test_start_formation_map_snaps_center_once(client, session: Session) -> None
     assert len(rows) == 2
     assert sum(1 for r in rows if r.status == SESSION_STATUS_CANCELLED) == 1
     assert sum(1 for r in rows if r.status == SESSION_STATUS_ACTIVE) == 1
+
+    # Default 500 m wideness → one shared density cell ensure.
+    jobs = list(session.exec(select(FieldEnsureJob)).all())
+    assert len(jobs) == 1
+    assert jobs[0].reason == ACTION_KEY_FORMATION_MAP
 
 
 def test_mutual_cancel_with_orbit_survey(session: Session) -> None:

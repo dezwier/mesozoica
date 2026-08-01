@@ -479,11 +479,12 @@ def test_field_ensure_worker_noops_when_full(client, session: Session, monkeypat
     session.commit()
     session.refresh(site_type)
 
-    # Seed 100 sites inside the server density cell (500 m from YAML).
+    # Seed max_sites_per_cell sites inside the server density cell.
     cell_m = 500.0
+    max_sites = 50
     center_lat, center_lon = snap_to_cell_center(40.0, -100.0, cell_size_m=cell_m)
     cx, cy = latlon_to_meters(center_lat, center_lon)
-    for index in range(100):
+    for index in range(max_sites):
         # Stay well inside the meter square (not a lat/lon diagonal that can exit).
         dx = ((index % 10) - 4.5) * 40.0
         dy = ((index // 10) - 4.5) * 40.0
@@ -519,20 +520,20 @@ def test_field_ensure_worker_noops_when_full(client, session: Session, monkeypat
     assert process_one_job(worker_id="test-worker") is True
 
     field_sites = list(session.exec(select(Site).where(Site.data_source == DATA_SOURCE_FIELD)).all())
-    assert len(field_sites) == 100
+    assert len(field_sites) == max_sites
 
     job = session.exec(select(FieldEnsureJob)).first()
     assert job is not None
     assert job.status == "done"
     assert job.generated_count == 0
-    assert job.total_in_radius == 100
+    assert job.total_in_radius == max_sites
 
     status = client.get(f"/api/v1/sites/field/ensure/jobs/{job.id}")
     assert status.status_code == 200
     body = status.json()
     assert body["status"] == "done"
     assert body["generated"] == 0
-    assert body["total_in_radius"] == 100
+    assert body["total_in_radius"] == max_sites
 
 
 def test_field_ensure_worker_processes_job(client, session: Session, monkeypatch):
@@ -557,13 +558,13 @@ def test_field_ensure_worker_processes_job(client, session: Session, monkeypatch
     assert process_one_job(worker_id="test-worker") is True
 
     field_sites = list(session.exec(select(Site).where(Site.data_source == DATA_SOURCE_FIELD)).all())
-    assert len(field_sites) == 100
+    assert len(field_sites) == 50
 
     job = session.exec(select(FieldEnsureJob)).first()
     assert job is not None
     assert job.status == "done"
-    assert job.generated_count == 100
-    assert job.total_in_radius == 100
+    assert job.generated_count == 50
+    assert job.total_in_radius == 50
 
 
 def test_next_field_site_id_reads_postgresql_nextval_row(session: Session, monkeypatch):
@@ -641,7 +642,7 @@ def test_ensure_uses_fresh_ids_after_existing_field_site(
 
 
 @pytest.mark.slow
-def test_ensure_generates_100_sites_within_time_budget(session: Session, monkeypatch):
+def test_ensure_generates_50_sites_within_time_budget(session: Session, monkeypatch):
     session.add(_site_type(period="cretaceous", rock_type="sandstone"))
     session.add(_archive_site(site_id=100, lat=40.0, lon=-100.0))
     session.commit()
@@ -650,7 +651,7 @@ def test_ensure_generates_100_sites_within_time_budget(session: Session, monkeyp
     center_lat, center_lon = 40.0, -100.0
     mask = _test_coordinate_sampler(center_lat, center_lon, cell_size_m=1000.0)
     config = FieldSiteLazyConfig(
-        max_sites_per_cell=100,
+        max_sites_per_cell=50,
         cell_size_m=1000.0,
         min_separation_km=0.01,
         max_coordinate_attempts=200,
@@ -667,9 +668,9 @@ def test_ensure_generates_100_sites_within_time_budget(session: Session, monkeyp
     )
     elapsed_s = time.monotonic() - started
 
-    assert result.generated == 100
-    assert result.total_in_radius == 100
+    assert result.generated == 50
+    assert result.total_in_radius == 50
     assert elapsed_s < 30.0, (
-        f"expected 100-site batch within 30s, got {elapsed_s:.1f}s "
+        f"expected 50-site batch within 30s, got {elapsed_s:.1f}s "
         f"(skipped_coords={result.skipped_coords})"
     )

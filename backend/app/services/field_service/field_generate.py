@@ -165,7 +165,7 @@ class FieldSiteGenerateSummary:
 class FieldSiteLazyConfig:
     """Server-enforced density: max sites per axis-aligned square cell."""
 
-    max_sites_per_cell: int = 100
+    max_sites_per_cell: int = 50
     cell_size_m: float = 500.0
     min_separation_km: float = 0.01
 

@@ -17,6 +17,7 @@ from app.models.formation_map_session import (
 )
 from app.models.tool_type import ToolType
 from app.models.user_tool import USER_TOOL_ACTION_DEPLOYED, UserTool
+from app.services.field_service.field_ensure_queue import enqueue_field_site_ensure
 from app.services.tool_action_service.guidance_session import (
     cancel_active_guidance_sessions,
 )
@@ -109,10 +110,12 @@ def start_formation_map_session(
     if tool_type.name != TOOL_NAME_FORMATION_MAP:
         raise ValidationError("This action is only available for Formation Map")
 
-    cfg = get_game_config().tool_actions.formation_map
+    game = get_game_config()
+    cfg = game.tool_actions.formation_map
     inst_p = dict(instance.params_json or {})
 
-    cell_size = float(inst_p.get("cell_size_m", cfg.cell_size_m))
+    # Same fixed world grid as field-site density (never a separate FM grid).
+    cell_size = float(game.site_generation.lazy.cell_size_m)
     wideness = snap_wideness_m(
         float(inst_p.get("wideness_m", cfg.wideness_m)),
         cell_size_m=cell_size,
@@ -139,10 +142,13 @@ def start_formation_map_session(
     else:
         center_lat = float(center_lat)
         center_lon = float(center_lon)
-        # Normalize stored center onto the grid.
+        # Normalize stored center onto the shared density grid.
         center_lat, center_lon = snap_to_cell_center(
             center_lat, center_lon, cell_size_m=cell_size
         )
+        inst_p["cell_size_m"] = float(cell_size)
+        instance.params_json = inst_p
+        session.add(instance)
 
     footprint = footprint_for_center(
         float(center_lat),
@@ -150,6 +156,15 @@ def start_formation_map_session(
         wideness_m=wideness,
         cell_size_m=cell_size,
     )
+
+    # Top up every density cell covered by the map (deduped by cell_key).
+    for cell_lat, cell_lon in footprint.cell_centers():
+        enqueue_field_site_ensure(
+            session,
+            lat=cell_lat,
+            lon=cell_lon,
+            reason=ACTION_KEY_FORMATION_MAP,
+        )
 
     cancel_active_formation_map_sessions(session, user_id=user_id)
     # Late import avoids cycle with orbit_survey_session.

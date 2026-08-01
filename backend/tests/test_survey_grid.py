@@ -51,19 +51,21 @@ def test_cell_meter_bounds_and_point_in_cell() -> None:
 
 
 def test_footprint_one_cell_and_even_bias() -> None:
-    center = snap_to_cell_center(50.85, 4.35, cell_size_m=200.0)
+    center = snap_to_cell_center(50.85, 4.35, cell_size_m=500.0)
     one = footprint_for_center(
-        center[0], center[1], wideness_m=200.0, cell_size_m=200.0
+        center[0], center[1], wideness_m=500.0, cell_size_m=500.0
     )
     assert one.n == 1
-    assert abs(one.wideness_m - 200.0) < 1e-6
+    assert abs(one.wideness_m - 500.0) < 1e-6
     assert one.west < one.east
     assert one.south < one.north
+    assert len(one.cell_centers()) == 1
 
     two = footprint_for_center(
-        center[0], center[1], wideness_m=400.0, cell_size_m=200.0
+        center[0], center[1], wideness_m=1000.0, cell_size_m=500.0
     )
     assert two.n == 2
+    assert len(two.cell_centers()) == 4
     # Even N biases +E/+N → footprint larger than one cell on both axes.
     assert (two.east - two.west) > (one.east - one.west)
     assert (two.north - two.south) > (one.north - one.south)

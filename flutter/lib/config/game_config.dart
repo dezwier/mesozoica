@@ -768,7 +768,7 @@ class FormationMapActionConfig {
   final String statsExplanation;
 
   double get resolvedWidenessM {
-    final cell = cellSizeM <= 0 ? 200.0 : cellSizeM;
+    final cell = cellSizeM <= 0 ? 500.0 : cellSizeM;
     final lo = minWidenessM < cell ? cell : minWidenessM;
     final hi = maxWidenessM < lo ? lo : maxWidenessM;
     final raw = widenessM.clamp(lo, hi);
@@ -784,18 +784,18 @@ class FormationMapActionConfig {
         const FormationMapActionConfig(
           durationMinutes: 10,
           accuracy: 0.75,
-          widenessM: 200.0,
-          minWidenessM: 200.0,
+          widenessM: 500.0,
+          minWidenessM: 500.0,
           maxWidenessM: 2000.0,
-          cellSizeM: 200.0,
+          cellSizeM: 500.0,
           baseAlpha: 0.48,
           rangeFade: 0.0,
           boundaryBlur: 1.0,
           statsExplanation:
               'Colors a fixed square of the map by rock type. Higher '
               'accuracy sharpens boundaries; wideness sets the side '
-              'length (200 m–2 km) of the square locked to this tool '
-              'occurrence.',
+              'length (500 m–2 km) on the same 500 m grid used for field '
+              'sites, locked to this tool occurrence.',
         );
     return FormationMapActionConfig(
       durationMinutes: _asInt(yaml['duration_minutes'], d.durationMinutes),

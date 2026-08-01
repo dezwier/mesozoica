@@ -35,7 +35,7 @@ class SiteGenerationLazyConfig(BaseModel):
 
     model_config = {"frozen": True}
 
-    max_sites_per_cell: int = 100
+    max_sites_per_cell: int = 50
     cell_size_m: float = 500.0
     min_separation_km: float = 0.01
     nearby_radius_km: float = 100.0
@@ -462,10 +462,11 @@ class FormationMapActionConfig(BaseModel):
 
     duration_minutes: int = 10
     accuracy: float = 0.75
-    wideness_m: float = 200.0
-    min_wideness_m: float = 200.0
+    wideness_m: float = 500.0
+    min_wideness_m: float = 500.0
     max_wideness_m: float = 2000.0
-    cell_size_m: float = 200.0
+    # Must match site_generation.lazy.cell_size_m (same fixed world grid).
+    cell_size_m: float = 500.0
     base_alpha: float = 0.48
     range_fade: float = 0.0
     boundary_blur: float = 1.0

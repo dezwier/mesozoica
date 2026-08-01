@@ -87,8 +87,9 @@ void main() {
     );
 
     expect(config.toolActions.formationMap.durationMinutes, 10);
-    expect(config.toolActions.formationMap.widenessM, 200.0);
-    expect(config.toolActions.formationMap.resolvedWidenessM, 200.0);
+    expect(config.toolActions.formationMap.cellSizeM, config.siteGeneration.cellSizeM);
+    expect(config.toolActions.formationMap.widenessM, 500.0);
+    expect(config.toolActions.formationMap.resolvedWidenessM, 500.0);
     expect(config.toolActions.formationMap.rangeFade, 0.0);
     expect(
       config.rockTypeColors.forRockType('sandstone'),

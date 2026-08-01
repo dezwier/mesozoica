@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
-/// Shared 200 m survey grid math (must match backend survey_grid.py).
+/// Shared fixed-world survey grid math (must match backend survey_grid.py).
+/// Field ensure and Formation Map both use site_generation.lazy.cell_size_m.
 const metersPerDegLat = 111320.0;
 
 double metersPerDegLon(double lat) {
@@ -46,7 +47,7 @@ double snapWidenessM(
   required double minWidenessM,
   required double maxWidenessM,
 }) {
-  final cell = cellSizeM <= 0 ? 200.0 : cellSizeM;
+  final cell = cellSizeM <= 0 ? 500.0 : cellSizeM;
   final lo = math.max(minWidenessM, cell);
   final hi = math.max(maxWidenessM, lo);
   final raw = widenessM.clamp(lo, hi);
@@ -61,6 +62,10 @@ class GridFootprint {
     required this.widenessM,
     required this.cellSizeM,
     required this.n,
+    required this.ix0,
+    required this.ix1,
+    required this.iy0,
+    required this.iy1,
     required this.west,
     required this.east,
     required this.south,
@@ -73,11 +78,26 @@ class GridFootprint {
   final double widenessM;
   final double cellSizeM;
   final int n;
+  final int ix0;
+  final int ix1;
+  final int iy0;
+  final int iy1;
   final double west;
   final double east;
   final double south;
   final double north;
   final double halfDiagonalM;
+
+  /// Center lat/lon for every density cell inside this footprint.
+  List<(double, double)> cellCenters() {
+    final centers = <(double, double)>[];
+    for (var ix = ix0; ix <= ix1; ix++) {
+      for (var iy = iy0; iy <= iy1; iy++) {
+        centers.add(cellCenterLatLon(ix, iy, cellSizeM: cellSizeM));
+      }
+    }
+    return centers;
+  }
 }
 
 GridFootprint footprintForCenter(
@@ -86,7 +106,7 @@ GridFootprint footprintForCenter(
   required double widenessM,
   required double cellSizeM,
 }) {
-  final cell = cellSizeM <= 0 ? 200.0 : cellSizeM;
+  final cell = cellSizeM <= 0 ? 500.0 : cellSizeM;
   final n = math.max(1, (widenessM / cell).round());
   final sideM = n * cell;
   var (ix, iy) = cellIndices(centerLat, centerLon, cellSizeM: cell);
@@ -118,6 +138,10 @@ GridFootprint footprintForCenter(
     widenessM: sideM,
     cellSizeM: cell,
     n: n,
+    ix0: ix0,
+    ix1: ix1,
+    iy0: iy0,
+    iy1: iy1,
     west: math.min(swLon, nwLon),
     east: math.max(seLon, neLon),
     south: math.min(swLat, seLat),

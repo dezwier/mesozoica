@@ -4,7 +4,7 @@
 # inside a cell_size_m axis-aligned square. Client radius_km is ignored.
 
 lazy:
-  max_sites_per_cell: 100
+  max_sites_per_cell: 50
   cell_size_m: 500
   min_separation_km: 0.030
   # Archive geology blend window around each new site (not density geometry)

@@ -1,7 +1,8 @@
-"""Shared 200 m survey grid math (Formation Map footprint / snap).
+"""Shared fixed-world survey grid math (Formation Map + field density cells).
 
 Uses equirectangular meters with latitude-scaled longitude so client and
-server snap the same GPS point to the same cell center.
+server snap the same GPS point to the same cell center. Field ensure and
+Formation Map both use ``site_generation.lazy.cell_size_m`` (500 m).
 """
 
 from __future__ import annotations
@@ -121,11 +122,25 @@ class GridFootprint:
     wideness_m: float
     cell_size_m: float
     n: int
+    ix0: int
+    ix1: int
+    iy0: int
+    iy1: int
     west: float
     east: float
     south: float
     north: float
     half_diagonal_m: float
+
+    def cell_centers(self) -> list[tuple[float, float]]:
+        """Center lat/lon for every density cell inside this footprint."""
+        centers: list[tuple[float, float]] = []
+        for ix in range(self.ix0, self.ix1 + 1):
+            for iy in range(self.iy0, self.iy1 + 1):
+                centers.append(
+                    cell_center_latlon(ix, iy, cell_size_m=self.cell_size_m)
+                )
+        return centers
 
 
 def footprint_for_center(
@@ -170,6 +185,10 @@ def footprint_for_center(
         wideness_m=side_m,
         cell_size_m=cell,
         n=n,
+        ix0=ix0,
+        ix1=ix1,
+        iy0=iy0,
+        iy1=iy1,
         west=west,
         east=east,
         south=south,

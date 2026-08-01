@@ -15,9 +15,9 @@ import '../utils/survey_grid.dart';
 
 /// Active timed Formation Map session (fixed rock-type square overlay).
 ///
-/// May top up field sites at the locked map center using the same global ensure
-/// knobs as walk-around ensure ([SiteGenerationClientConfig.nearbyRadiusKm] /
-/// backend `max_sites_per_cell` / `cell_size_m`) — never the Formation Map footprint size.
+/// Uses the same fixed world grid as field-site density
+/// ([SiteGenerationConfig.cellSizeM]). Ensure tops up every cell in the
+/// footprint (server also enqueues on session start).
 class FormationMapController extends ChangeNotifier {
   FormationMapController({
     ToolService? toolService,
@@ -68,7 +68,8 @@ class FormationMapController extends ChangeNotifier {
   double get cellSizeM {
     final session = _session;
     if (session != null) return session.cellSizeM;
-    return GameConfig.instance.toolActions.formationMap.cellSizeM;
+    // Same fixed grid as field-site density.
+    return GameConfig.instance.siteGeneration.cellSizeM;
   }
 
   LatLng? get center {
@@ -210,19 +211,21 @@ class FormationMapController extends ChangeNotifier {
     }
   }
 
-  /// Top up sites at the locked map center with global ensure radius/density.
+  /// Top up sites in every density cell covered by the Formation Map square.
   Future<void> _ensureFieldSitesAtMapCenter() async {
     final fp = footprint;
     if (fp == null) return;
     final radiusKm =
         GameConfig.instance.siteGeneration.client.nearbyRadiusKm;
     try {
-      await _siteService.requestFieldSiteEnsure(
-        lat: fp.centerLat,
-        lon: fp.centerLon,
-        radiusKm: radiusKm,
-        reason: 'formation_map',
-      );
+      for (final center in fp.cellCenters()) {
+        await _siteService.requestFieldSiteEnsure(
+          lat: center.$1,
+          lon: center.$2,
+          radiusKm: radiusKm,
+          reason: 'formation_map',
+        );
+      }
       await _discovery?.refreshDiscoverableCache(force: true);
       _bumpSitesRevision();
       notifyListeners();

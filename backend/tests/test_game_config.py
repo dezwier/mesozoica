@@ -26,7 +26,7 @@ def test_load_game_config_matches_current_defaults() -> None:
     get_game_config.cache_clear()
     config = load_game_config()
 
-    assert config.site_generation.lazy.max_sites_per_cell == 100
+    assert config.site_generation.lazy.max_sites_per_cell == 50
     assert config.site_generation.lazy.cell_size_m == 500.0
     assert config.site_generation.lazy.min_separation_km == 0.03
     assert config.site_generation.lazy.weight_global == 0.33

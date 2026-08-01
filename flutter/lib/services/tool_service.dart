@@ -820,7 +820,7 @@ class FormationMapSession {
       durationMinutes: json['duration_minutes'] as int? ?? 10,
       accuracy: (json['accuracy'] as num?)?.toDouble() ?? 0.75,
       widenessM: (json['wideness_m'] as num?)?.toDouble() ?? 200.0,
-      cellSizeM: (json['cell_size_m'] as num?)?.toDouble() ?? 200.0,
+      cellSizeM: (json['cell_size_m'] as num?)?.toDouble() ?? 500.0,
       centerLat: (json['center_lat'] as num?)?.toDouble() ?? 0.0,
       centerLon: (json['center_lon'] as num?)?.toDouble() ?? 0.0,
       startedAt:
