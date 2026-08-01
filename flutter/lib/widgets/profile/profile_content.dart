@@ -597,55 +597,65 @@ class _SkillGrid extends StatelessWidget {
   final List<SkillState> skills;
   final ValueChanged<SkillState> onSkillTap;
 
+  static const _crossAxisCount = 3;
+  static const _spacing = 6.0;
+  static const _tileHeight = 56.0;
+
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    const crossAxisCount = 4;
-    const spacing = 6.0;
-    const tileHeight = 44.0;
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final tileWidth =
-            (constraints.maxWidth - spacing * (crossAxisCount - 1)) /
-                crossAxisCount;
-        return Wrap(
-          spacing: spacing,
-          runSpacing: spacing,
-          children: [
-            for (final skill in skills)
-              SizedBox(
-                width: tileWidth,
-                height: tileHeight,
-                child: Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    onTap: () => onSkillTap(skill),
-                    borderRadius: BorderRadius.circular(6),
-                    child: Container(
-                      padding: const EdgeInsets.fromLTRB(6, 4, 6, 4),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(6),
-                        color: scheme.onSurface.withValues(alpha: 0.04),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          SkillIcon(
-                            skillId: skill.id,
-                            size: 22,
-                          ),
-                          const SizedBox(width: 8),
-                          _SkillLevelBadge(
-                            level: skill.level,
-                            color: scheme.onSurfaceVariant,
-                          ),
-                        ],
+    const avatarPad = 7.0;
+    const avatarSize = _tileHeight - avatarPad * 2;
+    return GridView.builder(
+      shrinkWrap: true,
+      primary: false,
+      padding: EdgeInsets.zero,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: skills.length,
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: _crossAxisCount,
+        crossAxisSpacing: _spacing,
+        mainAxisSpacing: _spacing,
+        mainAxisExtent: _tileHeight,
+      ),
+      itemBuilder: (context, index) {
+        final skill = skills[index];
+        return Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: () => onSkillTap(skill),
+            borderRadius: BorderRadius.circular(8),
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(8),
+                color: scheme.onSurface.withValues(alpha: 0.04),
+              ),
+              child: Row(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.all(avatarPad),
+                    child: SizedBox(
+                      width: avatarSize,
+                      height: avatarSize,
+                      child: SkillIcon(
+                        skillId: skill.id,
+                        circular: true,
                       ),
                     ),
                   ),
-                ),
+                  Expanded(
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: _SkillLevelBadge(
+                        level: skill.level,
+                        color: scheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ),
+                ],
               ),
-          ],
+            ),
+          ),
         );
       },
     );
@@ -662,41 +672,52 @@ class _SkillLevelBadge extends StatelessWidget {
   final int level;
   final Color color;
 
+  static const _size = Size(34, 34);
+
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: 25,
-      height: 28,
+      width: _size.width,
+      height: _size.height,
       child: Stack(
         children: [
           CustomPaint(
-            size: const Size(25, 28),
+            size: _size,
             painter: _DiagonalSlashPainter(
               color: color.withValues(alpha: 0.35),
             ),
           ),
           Positioned(
-            top: 0,
+            top: 1,
             left: 0,
+            width: 18,
             child: Text(
               '$level',
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              softWrap: false,
+              overflow: TextOverflow.visible,
               style: TextStyle(
                 color: color,
                 fontWeight: FontWeight.w700,
-                fontSize: 12,
+                fontSize: 13,
                 height: 1,
               ),
             ),
           ),
           Positioned(
             right: 0,
-            bottom: 0,
+            bottom: 1,
+            width: 16,
             child: Text(
               '99',
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              softWrap: false,
               style: TextStyle(
                 color: color.withValues(alpha: 0.5),
                 fontWeight: FontWeight.w500,
-                fontSize: 10,
+                fontSize: 10.5,
                 height: 1,
               ),
             ),
@@ -719,10 +740,10 @@ class _DiagonalSlashPainter extends CustomPainter {
       ..strokeWidth = 1
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round;
-    // Diagonal between the two numbers.
+    // Shorter diagonal leaves room for centered 2-digit levels.
     canvas.drawLine(
-      Offset(size.width * 0.70, size.height * 0.28),
-      Offset(size.width * 0.30, size.height * 0.72),
+      Offset(size.width * 0.78, size.height * 0.22),
+      Offset(size.width * 0.22, size.height * 0.78),
       paint,
     );
   }

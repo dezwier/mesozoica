@@ -43,7 +43,8 @@ void showProfileSkillDetailSheet(
               children: [
                 SkillIcon(
                   skillId: skill.id,
-                  size: 28,
+                  size: 36,
+                  circular: true,
                 ),
                 const SizedBox(width: 12),
                 Flexible(
