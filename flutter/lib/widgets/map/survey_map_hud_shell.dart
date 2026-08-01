@@ -20,12 +20,16 @@ class SurveyMapHudShell extends StatefulWidget {
     required this.remainingListenable,
     required this.onStop,
     required this.legend,
+    this.collapseLegendToTwoLines = false,
   });
 
   final Widget icon;
   final ValueNotifier<Duration?> remainingListenable;
   final VoidCallback onStop;
   final List<SurveyLegendEntry> legend;
+
+  /// When true, legend shows 2 lines with a MORE/LESS toggle if it overflows.
+  final bool collapseLegendToTwoLines;
 
   @override
   State<SurveyMapHudShell> createState() => _SurveyMapHudShellState();
@@ -112,14 +116,16 @@ class _SurveyMapHudShellState extends State<SurveyMapHudShell> {
                           const SizedBox(height: 6),
                           ConstrainedBox(
                             constraints: const BoxConstraints(maxWidth: 280),
-                            child: Wrap(
-                              spacing: 6,
-                              runSpacing: 3,
-                              children: [
-                                for (final entry in widget.legend)
-                                  _LegendChip(entry: entry),
-                              ],
-                            ),
+                            child: widget.collapseLegendToTwoLines
+                                ? _CollapsibleLegend(entries: widget.legend)
+                                : Wrap(
+                                    spacing: 6,
+                                    runSpacing: 3,
+                                    children: [
+                                      for (final entry in widget.legend)
+                                        _LegendChip(entry: entry),
+                                    ],
+                                  ),
                           ),
                         ],
                       ],
@@ -135,6 +141,112 @@ class _SurveyMapHudShellState extends State<SurveyMapHudShell> {
   }
 }
 
+class _CollapsibleLegend extends StatefulWidget {
+  const _CollapsibleLegend({required this.entries});
+
+  final List<SurveyLegendEntry> entries;
+
+  @override
+  State<_CollapsibleLegend> createState() => _CollapsibleLegendState();
+}
+
+class _CollapsibleLegendState extends State<_CollapsibleLegend> {
+  static const _chipLineHeight = 12.0;
+  static const _runSpacing = 3.0;
+  static const _collapsedHeight = _chipLineHeight * 2 + _runSpacing;
+
+  bool _expanded = false;
+  bool _overflows = false;
+  final GlobalKey _measureKey = GlobalKey();
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _measureOverflow());
+  }
+
+  @override
+  void didUpdateWidget(covariant _CollapsibleLegend oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.entries.length != widget.entries.length ||
+        !_sameLabels(oldWidget.entries, widget.entries)) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _measureOverflow());
+    }
+  }
+
+  bool _sameLabels(
+    List<SurveyLegendEntry> a,
+    List<SurveyLegendEntry> b,
+  ) {
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i].label != b[i].label) return false;
+    }
+    return true;
+  }
+
+  void _measureOverflow() {
+    final box = _measureKey.currentContext?.findRenderObject() as RenderBox?;
+    if (box == null || !box.hasSize) return;
+    final overflows = box.size.height > _collapsedHeight + 0.5;
+    if (overflows != _overflows && mounted) {
+      setState(() => _overflows = overflows);
+    }
+  }
+
+  Widget _buildWrap() {
+    return Wrap(
+      spacing: 6,
+      runSpacing: _runSpacing,
+      children: [
+        for (final entry in widget.entries) _LegendChip(entry: entry),
+      ],
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Offstage full wrap to measure natural height.
+        Offstage(
+          offstage: true,
+          child: KeyedSubtree(key: _measureKey, child: _buildWrap()),
+        ),
+        ClipRect(
+          child: AnimatedSize(
+            duration: const Duration(milliseconds: 160),
+            curve: Curves.easeOut,
+            alignment: Alignment.topLeft,
+            child: SizedBox(
+              width: double.infinity,
+              height: (_expanded || !_overflows) ? null : _collapsedHeight,
+              child: _buildWrap(),
+            ),
+          ),
+        ),
+        if (_overflows) ...[
+          const SizedBox(height: 4),
+          GestureDetector(
+            onTap: () => setState(() => _expanded = !_expanded),
+            behavior: HitTestBehavior.opaque,
+            child: Text(
+              _expanded ? 'LESS' : 'MORE',
+              style: VintageInstrumentStyle.mono.copyWith(
+                fontSize: 9,
+                letterSpacing: 0.8,
+                color: VintageInstrumentStyle.brassRim,
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
 class _LegendChip extends StatelessWidget {
   const _LegendChip({required this.entry});
 
@@ -142,31 +254,35 @@ class _LegendChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 8,
-          height: 8,
-          decoration: BoxDecoration(
-            color: entry.color,
-            borderRadius: BorderRadius.circular(1.5),
-            border: Border.all(
-              color: VintageInstrumentStyle.brassRim.withValues(alpha: 0.7),
-              width: 0.6,
+    return SizedBox(
+      height: _CollapsibleLegendState._chipLineHeight,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 8,
+            height: 8,
+            decoration: BoxDecoration(
+              color: entry.color,
+              borderRadius: BorderRadius.circular(1.5),
+              border: Border.all(
+                color: VintageInstrumentStyle.brassRim.withValues(alpha: 0.7),
+                width: 0.6,
+              ),
             ),
           ),
-        ),
-        const SizedBox(width: 3),
-        Text(
-          entry.label,
-          style: VintageInstrumentStyle.mono.copyWith(
-            fontSize: 9,
-            letterSpacing: 0.6,
-            color: VintageInstrumentStyle.brassMuted,
+          const SizedBox(width: 3),
+          Text(
+            entry.label,
+            style: VintageInstrumentStyle.mono.copyWith(
+              fontSize: 9,
+              letterSpacing: 0.6,
+              color: VintageInstrumentStyle.brassMuted,
+              height: 1.0,
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
@@ -174,14 +290,13 @@ class _LegendChip extends StatelessWidget {
 Color surveyRgbColor((int, int, int) rgb) =>
     Color.fromARGB(255, rgb.$1, rgb.$2, rgb.$3);
 
-String surveyLegendLabel(String raw, {int maxChars = 8}) {
+/// Title-case rock/period labels; never truncates.
+String surveyLegendLabel(String raw) {
   final cleaned = raw.trim().replaceAll('_', ' ');
   if (cleaned.isEmpty) return '?';
-  final titled = cleaned
+  return cleaned
       .split(RegExp(r'\s+'))
       .where((w) => w.isNotEmpty)
       .map((w) => '${w[0].toUpperCase()}${w.substring(1)}')
       .join(' ');
-  if (titled.length <= maxChars) return titled;
-  return '${titled.substring(0, maxChars - 1)}…';
 }

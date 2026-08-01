@@ -166,7 +166,7 @@ FormationMapRasterResult formationMapResultFromIsolate(
 
 /// Fixed outer-edge soft fade for the Formation Map rectangle (meters).
 /// Independent of accuracy / Orbit Survey range_fade knobs.
-const formationMapEdgeFadeM = 40.0;
+const formationMapEdgeFadeM = 20.0;
 
 /// Rectangular rock-type IDW mosaic for Mapbox ImageSource.
 ///

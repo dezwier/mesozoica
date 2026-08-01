@@ -10,8 +10,6 @@ import 'vintage_guidance_compass.dart';
 class FormationMapHud extends StatelessWidget {
   const FormationMapHud({super.key});
 
-  static const _maxLegendEntries = 10;
-
   @override
   Widget build(BuildContext context) {
     final formation = context.watch<FormationMapController>();
@@ -25,41 +23,37 @@ class FormationMapHud extends StatelessWidget {
       ),
       remainingListenable: formation.remainingListenable,
       onStop: () => formation.stop(),
+      collapseLegendToTwoLines: true,
       legend: _legendFor(formation),
     );
   }
 
   List<SurveyLegendEntry> _legendFor(FormationMapController formation) {
     final palette = GameConfig.instance.rockTypeColors;
-    final present = <String>{};
+    final counts = <String, int>{};
     for (final site in formation.discoverableSites) {
       final rock = (site.rockType ?? site.siteTypeRockType)?.trim();
       if (rock == null || rock.isEmpty) continue;
-      present.add(rock.toLowerCase());
+      final key = rock.toLowerCase();
+      counts[key] = (counts[key] ?? 0) + 1;
     }
 
-    // Prefer rocks actually on the overlay; fall back to full palette keys.
-    final keys = present.isNotEmpty
-        ? (present.toList()..sort())
+    // Most common rocks first; fall back to palette A–Z when none are loaded.
+    final keys = counts.isNotEmpty
+        ? (counts.keys.toList()
+          ..sort((a, b) {
+            final byCount = counts[b]!.compareTo(counts[a]!);
+            if (byCount != 0) return byCount;
+            return a.compareTo(b);
+          }))
         : (palette.formationMap.keys.toList()..sort());
 
-    final shown = keys.take(_maxLegendEntries).toList();
-    final overflow = keys.length - shown.length;
-    final entries = <SurveyLegendEntry>[
-      for (final key in shown)
+    return [
+      for (final key in keys)
         SurveyLegendEntry(
           label: surveyLegendLabel(key),
           color: surveyRgbColor(palette.forRockType(key)),
         ),
     ];
-    if (overflow > 0) {
-      entries.add(
-        SurveyLegendEntry(
-          label: '+$overflow',
-          color: VintageInstrumentStyle.brassMuted,
-        ),
-      );
-    }
-    return entries;
   }
 }
