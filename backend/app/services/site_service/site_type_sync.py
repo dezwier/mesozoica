@@ -1,4 +1,4 @@
-"""Rebuild site_type rows and assign site.site_type_id from site data."""
+"""Upsert site_type rows and assign site.site_type_id from site data."""
 
 from __future__ import annotations
 
@@ -6,7 +6,6 @@ import logging
 import time
 from dataclasses import dataclass, field
 
-from sqlalchemy import delete
 from sqlmodel import Session, col, select
 
 from app.models.dinosaur_type import DinosaurType
@@ -41,15 +40,17 @@ class SiteTypeSyncSummary:
 
 
 def _sites_query(session: Session, *, dinos: list[str] | None):
-    stmt = select(Site).where(col(Site.data_source) == DATA_SOURCE_ARCHIVE)
+    """Return sites to assign. Full sync includes archive + field; --dinos is archive-only."""
     if dinos:
-        stmt = (
-            stmt.join(Fossil, col(Fossil.site_id) == col(Site.site_id))
+        return (
+            select(Site)
+            .where(col(Site.data_source) == DATA_SOURCE_ARCHIVE)
+            .join(Fossil, col(Fossil.site_id) == col(Site.site_id))
             .join(DinosaurType, col(Fossil.dinosaur_id) == col(DinosaurType.id))
             .where(dino_name_match_clause(dinos))
             .distinct()
         )
-    return stmt
+    return select(Site)
 
 
 def _site_type_pairs(sites: list[Site]) -> set[tuple[str, str]]:
@@ -64,32 +65,10 @@ def _site_type_pairs(sites: list[Site]) -> set[tuple[str, str]]:
 def _write_site_types(
     session: Session,
     pairs: set[tuple[str, str]],
-    *,
-    full_refresh: bool,
 ) -> dict[tuple[str, str], int]:
-    preserved_urls: dict[tuple[str, str], str] = {}
-    if full_refresh:
-        for row in session.exec(select(SiteType)).all():
-            if row.main_image_url:
-                preserved_urls[(row.period, row.rock_type)] = row.main_image_url
-        session.exec(delete(SiteType))
-        session.flush()
-
+    """Upsert by (period, rock_type): reuse existing rows, insert missing ones. Never deletes."""
     mapping: dict[tuple[str, str], int] = {}
     for period, rock_type in sorted(pairs):
-        if full_refresh:
-            row = SiteType(
-                period=period,
-                rock_type=rock_type,
-                main_image_url=preserved_urls.get((period, rock_type)),
-            )
-            session.add(row)
-            session.flush()
-            if row.id is None:
-                session.refresh(row)
-            mapping[(period, rock_type)] = row.id
-            continue
-
         stmt = select(SiteType).where(
             SiteType.period == period,
             SiteType.rock_type == rock_type,
@@ -130,7 +109,12 @@ def sync_site_types(
     dry_run: bool = False,
     dinos: list[str] | None = None,
 ) -> SiteTypeSyncSummary:
-    """Upsert ``site_type`` rows and set ``site.site_type_id`` from existing sites."""
+    """Upsert ``site_type`` rows and set ``site.site_type_id`` from existing sites.
+
+    Never deletes ``site_type`` rows, so existing FKs (including field sites) stay valid.
+    Missing ``(period, rock_type)`` pairs are inserted; existing rows keep their ids and
+    ``main_image_url``.
+    """
     started = time.monotonic()
     sites = list(session.exec(_sites_query(session, dinos=dinos)).all())
     site_type_pairs = _site_type_pairs(sites)
@@ -159,8 +143,7 @@ def sync_site_types(
     if dry_run:
         return summary
 
-    full_refresh = not dinos
-    site_type_ids = _write_site_types(session, site_type_pairs, full_refresh=full_refresh)
+    site_type_ids = _write_site_types(session, site_type_pairs)
     period_to_ids = period_to_type_ids(load_site_types_by_period(session))
 
     for site in sites:

@@ -1,5 +1,5 @@
 """
-Site type table rebuild job.
+Site type upsert job (add missing, reuse existing; never deletes).
 
 Run manually:
   python -m app.crons.runner --job site_type_sync

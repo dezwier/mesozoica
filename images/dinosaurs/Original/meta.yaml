@@ -1,15 +1,44 @@
-prompt: 'Generate a 3:4 image of the following dinosaur: {name}
+prompt: 'Generate a 3:4 image of the following dinosaur in its natural habitat,
+  fully alive and in motion: {name}
 
-  The image must have these features - according to latest science, be as truthful
-  as possible (considering anatomy, color, surroundings, timing, etc) - within what
-  is scientifically correct, it can show something interesting about the dinosaur
-  itself, or their surrounding. Be correct however, don''t make stuff up - look like
-  an iphone photograph, so very realistic (NOT cartoonic) - in terms of color tone,
-  it should slightly have the iphone filter ''dramatic warm'' - no other special filtering,
-  no vignette, no special editing otherwise - have no borders, no text, or other elements
-  other than the photo itself
 
-  - consider the following wikipedia article as context
+  Primary source of truth (critical):
+
+  - Carefully read the Wikipedia article below before generating anything
+
+  - Depict this dinosaur accurately according to that article — anatomy, size cues,
+  integument (scales, feathers, armor, etc.), posture, behavior if described, habitat,
+  geologic period, and geographic setting
+
+  - Prefer the article over generic dinosaur stereotypes; do not invent traits, colors,
+  environments, or behaviors the article does not support
+
+  - Where the article is uncertain or silent, stay conservative and scientifically
+  plausible; never fabricate distinctive features
+
+
+  Scientific accuracy:
+
+  - Follow the latest science reflected in the article (anatomy, coloration when known,
+  surroundings, timing/period)
+
+  - Within what is scientifically correct, you may show something interesting about
+  the animal or its surroundings — but stay truthful; do not make things up
+
+
+  Visual style:
+
+  - Look like a real iPhone photograph: very realistic, NOT cartoon, NOT illustration,
+  NOT CGI-polished
+
+  - Slight iPhone ''Dramatic Warm'' color tone only
+
+  - No other special filtering, no vignette, no extra editing
+
+  - No borders, no text, no watermarks, no graphic overlays — only the photo itself
+
+
+  Wikipedia article:
 
   {article}'
 run_date: '2026-01-29T00:00:00+00:00'

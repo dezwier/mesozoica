@@ -18,7 +18,7 @@ Image **generation** writes local PNGs to repo folders; **image sync** (`make sy
 | `fossil_image_generate` | `0 7 * * 0` (Sun 07:00) | Generate fossil card images via Gemini Imagen |
 | `site_type_image_generate` | `0 8 * * 0` (Sun 08:00) | Generate site-type card images via Gemini Imagen |
 | `site_sync` | `0 9 * * 0` (Sun 09:00) | Rebuild `site` derived table and link `fossil.site_id` |
-| `site_type_sync` | `30 9 * * 0` (Sun 09:30) | Rebuild `site_type` rows and assign `site.site_type_id` |
+| `site_type_sync` | `30 9 * * 0` (Sun 09:30) | Upsert `site_type` rows and assign `site.site_type_id` (no deletes) |
 | `tool_sync` | `0 10 * * 0` (Sun 10:00) | Upsert tool catalog from [`backend/data/tools.json`](../data/tools.json) |
 | `tool_image_generate` | `30 10 * * 0` (Sun 10:30) | Generate tool card images via Gemini Imagen |
 

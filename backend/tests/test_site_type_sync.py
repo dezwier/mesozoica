@@ -7,6 +7,7 @@ from decimal import Decimal
 
 from sqlmodel import Session, select
 
+from app.models.data_source import DATA_SOURCE_FIELD
 from app.models.dinosaur_type import DinosaurType
 from app.models.fossil import Fossil
 from app.models.site import Site
@@ -98,7 +99,7 @@ def test_site_type_sync_dry_run_writes_nothing(session: Session):
     assert site.site_type_id is None
 
 
-def test_site_type_sync_preserves_main_image_url_on_full_refresh(session: Session):
+def test_site_type_sync_preserves_id_and_main_image_url(session: Session):
     dinosaur = _dinosaur()
     session.add(dinosaur)
     session.commit()
@@ -107,8 +108,9 @@ def test_site_type_sync_preserves_main_image_url_on_full_refresh(session: Sessio
     session.commit()
     sync_sites(session)
 
-    first = sync_site_types(session)
+    sync_site_types(session)
     site_type = session.exec(select(SiteType)).one()
+    original_id = site_type.id
     site_type.main_image_url = (
         "https://example.com/media/site-types/cretaceous_sandstone.png?v=abc"
     )
@@ -118,11 +120,47 @@ def test_site_type_sync_preserves_main_image_url_on_full_refresh(session: Sessio
     sync_site_types(session)
 
     refreshed = session.exec(select(SiteType)).one()
+    assert refreshed.id == original_id
     assert refreshed.main_image_url == (
         "https://example.com/media/site-types/cretaceous_sandstone.png?v=abc"
     )
     assert refreshed.period == "cretaceous"
     assert refreshed.rock_type == "sandstone"
+
+
+def test_site_type_sync_preserves_field_site_links(session: Session):
+    dinosaur = _dinosaur()
+    session.add(dinosaur)
+    session.commit()
+    session.refresh(dinosaur)
+    session.add(_fossil(occurrence_no=139292, dinosaur_id=dinosaur.id))
+    session.commit()
+    sync_sites(session)
+    sync_site_types(session)
+
+    site_type = session.exec(select(SiteType)).one()
+    field_site = Site(
+        site_id=9_000_001,
+        latitude=Decimal("51.900000"),
+        longitude=Decimal("-113.020000"),
+        country_code="CA",
+        state="Alberta",
+        rock_type="sandstone",
+        min_age_ma=Decimal("66.00"),
+        max_age_ma=Decimal("72.20"),
+        period="cretaceous",
+        site_type_id=site_type.id,
+        data_source=DATA_SOURCE_FIELD,
+    )
+    session.add(field_site)
+    session.commit()
+
+    sync_site_types(session)
+
+    refreshed_type = session.exec(select(SiteType)).one()
+    refreshed_field = session.exec(select(Site).where(Site.site_id == 9_000_001)).one()
+    assert refreshed_type.id == site_type.id
+    assert refreshed_field.site_type_id == site_type.id
 
 
 def test_site_type_sync_partial_dino_filter(session: Session):
