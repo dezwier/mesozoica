@@ -1,88 +1,65 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../config/game_config.dart';
 import '../../controllers/formation_map_controller.dart';
-import '../../shell/map_chrome_insets.dart';
+import 'survey_map_hud_shell.dart';
 import 'vintage_guidance_compass.dart';
 
-/// Compact vintage map chip: timer + stop for Formation Map.
+/// Compact vintage map chip: timer, stop, rock-type legend (draggable).
 class FormationMapHud extends StatelessWidget {
   const FormationMapHud({super.key});
+
+  static const _maxLegendEntries = 10;
 
   @override
   Widget build(BuildContext context) {
     final formation = context.watch<FormationMapController>();
     if (!formation.isActive) return const SizedBox.shrink();
 
-    final top = MapChromeInsets.top(context) + 8;
-
-    return Positioned(
-      top: top,
-      left: 0,
-      right: 0,
-      child: Center(
-        child: Material(
-          color: Colors.transparent,
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              color: VintageInstrumentStyle.dialFace.withValues(alpha: 0.92),
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(
-                color: VintageInstrumentStyle.brassRim,
-                width: 1.2,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.35),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.grid_on,
-                    size: 22,
-                    color: VintageInstrumentStyle.brassRim,
-                  ),
-                  const SizedBox(width: 8),
-                  ValueListenableBuilder<Duration?>(
-                    valueListenable: formation.remainingListenable,
-                    builder: (context, remaining, _) {
-                      final minutesLeft = remaining?.inMinutes.clamp(0, 999);
-                      final time =
-                          minutesLeft == null ? '—' : '${minutesLeft}m';
-                      return Text(
-                        time,
-                        style: VintageInstrumentStyle.mono.copyWith(
-                          fontSize: 13,
-                          color: VintageInstrumentStyle.live,
-                        ),
-                      );
-                    },
-                  ),
-                  const SizedBox(width: 10),
-                  GestureDetector(
-                    onTap: () => formation.stop(),
-                    behavior: HitTestBehavior.opaque,
-                    child: Text(
-                      'STOP',
-                      style: VintageInstrumentStyle.mono.copyWith(
-                        fontSize: 12,
-                        color: VintageInstrumentStyle.stop,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
+    return SurveyMapHudShell(
+      icon: Icon(
+        Icons.grid_on,
+        size: 22,
+        color: VintageInstrumentStyle.brassRim,
       ),
+      remainingListenable: formation.remainingListenable,
+      onStop: () => formation.stop(),
+      legend: _legendFor(formation),
     );
+  }
+
+  List<SurveyLegendEntry> _legendFor(FormationMapController formation) {
+    final palette = GameConfig.instance.rockTypeColors;
+    final present = <String>{};
+    for (final site in formation.discoverableSites) {
+      final rock = (site.rockType ?? site.siteTypeRockType)?.trim();
+      if (rock == null || rock.isEmpty) continue;
+      present.add(rock.toLowerCase());
+    }
+
+    // Prefer rocks actually on the overlay; fall back to full palette keys.
+    final keys = present.isNotEmpty
+        ? (present.toList()..sort())
+        : (palette.formationMap.keys.toList()..sort());
+
+    final shown = keys.take(_maxLegendEntries).toList();
+    final overflow = keys.length - shown.length;
+    final entries = <SurveyLegendEntry>[
+      for (final key in shown)
+        SurveyLegendEntry(
+          label: surveyLegendLabel(key),
+          color: surveyRgbColor(palette.forRockType(key)),
+        ),
+    ];
+    if (overflow > 0) {
+      entries.add(
+        SurveyLegendEntry(
+          label: '+$overflow',
+          color: VintageInstrumentStyle.brassMuted,
+        ),
+      );
+    }
+    return entries;
   }
 }

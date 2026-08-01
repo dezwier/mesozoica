@@ -164,7 +164,14 @@ FormationMapRasterResult formationMapResultFromIsolate(
   return colors['other'] ?? (0x88, 0x88, 0x88);
 }
 
-/// Sharp rectangular rock-type IDW mosaic for Mapbox ImageSource.
+/// Fixed outer-edge soft fade for the Formation Map rectangle (meters).
+/// Independent of accuracy / Orbit Survey range_fade knobs.
+const formationMapEdgeFadeM = 40.0;
+
+/// Rectangular rock-type IDW mosaic for Mapbox ImageSource.
+///
+/// Outer border uses a fixed soft alpha fade; rock-type blends still follow
+/// accuracy / boundary_blur.
 FormationMapRasterResult buildFormationMapRaster(
   FormationMapRasterRequest request,
 ) {
@@ -185,6 +192,10 @@ FormationMapRasterResult buildFormationMapRaster(
   final heightM = ((north - south) * metersPerDegLat).abs().clamp(1.0, 1e7);
   final halfW = widthM / 2.0;
   final halfH = heightM / 2.0;
+  final edgeFadeM = math.min(
+    formationMapEdgeFadeM,
+    math.min(halfW, halfH) * 0.35,
+  );
 
   final sites = <_SiteXY>[];
   for (final site in request.sites) {
@@ -209,8 +220,24 @@ FormationMapRasterResult buildFormationMapRaster(
       final tX = col / (size - 1);
       final dx = halfW * (2.0 * tX - 1.0);
       final offset = (row * size + col) * 4;
-      // Sharp rectangle: every pixel inside the bbox is opaque (no range fade).
       if (dx.abs() > halfW + 1e-6 || dy.abs() > halfH + 1e-6 || sites.isEmpty) {
+        bytes[offset] = 0;
+        bytes[offset + 1] = 0;
+        bytes[offset + 2] = 0;
+        bytes[offset + 3] = 0;
+        continue;
+      }
+
+      // Fixed soft fade toward the rectangle edge (not accuracy-linked).
+      final distToEdge = math.min(halfW - dx.abs(), halfH - dy.abs());
+      var edgeFade = 1.0;
+      if (edgeFadeM > 0 && distToEdge < edgeFadeM) {
+        final t = (1.0 - distToEdge / edgeFadeM).clamp(0.0, 1.0);
+        final s = t * t * (3.0 - 2.0 * t);
+        edgeFade = 1.0 - s;
+      }
+      final alpha = (baseAlpha * edgeFade).round().clamp(0, 255);
+      if (alpha == 0) {
         bytes[offset] = 0;
         bytes[offset + 1] = 0;
         bytes[offset + 2] = 0;
@@ -244,7 +271,7 @@ FormationMapRasterResult buildFormationMapRaster(
       bytes[offset] = (rAcc / wSum).round().clamp(0, 255);
       bytes[offset + 1] = (gAcc / wSum).round().clamp(0, 255);
       bytes[offset + 2] = (bAcc / wSum).round().clamp(0, 255);
-      bytes[offset + 3] = baseAlpha;
+      bytes[offset + 3] = alpha;
     }
   }
 

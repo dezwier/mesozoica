@@ -2,7 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mesozoica/widgets/map/formation_map_raster.dart';
 
 void main() {
-  test('rectangle raster colors by rock type with sharp edges', () {
+  test('rectangle raster softens outer border with fixed fade', () {
     final request = FormationMapRasterRequest(
       west: 4.0,
       east: 4.01,
@@ -28,11 +28,11 @@ void main() {
     expect(raster.height, 32);
     expect(raster.rgba.length, 32 * 32 * 4);
 
-    // Center pixel should be opaque.
-    final mid = ((16 * 32 + 16) * 4);
-    expect(raster.rgba[mid + 3], greaterThan(0));
+    // Center pixel should keep full base alpha.
+    final mid = (16 * 32 + 16) * 4;
+    expect(raster.rgba[mid + 3], 128);
 
-    // Corners of the image are still inside the bbox for this request.
-    expect(raster.rgba[3], greaterThan(0));
+    // Outer corner is inside the bbox but soft-faded (near-zero alpha).
+    expect(raster.rgba[3], lessThan(raster.rgba[mid + 3]));
   });
 }

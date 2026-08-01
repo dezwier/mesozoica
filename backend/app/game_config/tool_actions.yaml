@@ -86,9 +86,11 @@ formation_map:
   max_wideness_m: 2000
   cell_size_m: 500
   base_alpha: 0.48
+  # Outer rectangle edge uses a fixed soft fade in the client raster (not this knob).
   range_fade: 0
   boundary_blur: 1
   stats_explanation: >-
     Colors a fixed square of the map by rock type. Higher accuracy sharpens
-    boundaries; wideness sets the side length (500 m–2 km) on the same 500 m
-    grid used for field sites, locked to this tool occurrence.
+    rock-type boundaries; the outer edge has a slight fixed soft fade.
+    Wideness sets the side length (500 m–2 km) on the same 500 m grid used
+    for field sites, locked to this tool occurrence.

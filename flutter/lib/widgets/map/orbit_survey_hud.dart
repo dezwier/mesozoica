@@ -1,86 +1,41 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../config/game_config.dart';
 import '../../controllers/orbit_survey_controller.dart';
-import '../../shell/map_chrome_insets.dart';
+import 'survey_map_hud_shell.dart';
 import 'vintage_guidance_compass.dart';
 
-/// Compact vintage map chip under Archive/Field: timer + stop.
+/// Compact vintage map chip: timer, stop, period legend (draggable).
 class OrbitSurveyHud extends StatelessWidget {
   const OrbitSurveyHud({super.key});
 
-  static const double iconSize = 44;
-
   @override
   Widget build(BuildContext context) {
-    final formation = context.watch<OrbitSurveyController>();
-    if (!formation.isActive) return const SizedBox.shrink();
+    final survey = context.watch<OrbitSurveyController>();
+    if (!survey.isActive) return const SizedBox.shrink();
 
-    final top = MapChromeInsets.top(context) + 8;
-
-    return Positioned(
-      top: top,
-      left: 0,
-      right: 0,
-      child: Center(
-        child: Material(
-          color: Colors.transparent,
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              color: VintageInstrumentStyle.dialFace.withValues(alpha: 0.92),
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(
-                color: VintageInstrumentStyle.brassRim,
-                width: 1.2,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.35),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const _VintageMapIcon(size: 28),
-                  const SizedBox(width: 8),
-                  ValueListenableBuilder<Duration?>(
-                    valueListenable: formation.remainingListenable,
-                    builder: (context, remaining, _) {
-                      final minutesLeft = remaining?.inMinutes.clamp(0, 999);
-                      final time =
-                          minutesLeft == null ? '—' : '${minutesLeft}m';
-                      return Text(
-                        time,
-                        style: VintageInstrumentStyle.mono.copyWith(
-                          fontSize: 13,
-                          color: VintageInstrumentStyle.live,
-                        ),
-                      );
-                    },
-                  ),
-                  const SizedBox(width: 10),
-                  GestureDetector(
-                    onTap: () => formation.stop(),
-                    behavior: HitTestBehavior.opaque,
-                    child: Text(
-                      'STOP',
-                      style: VintageInstrumentStyle.mono.copyWith(
-                        fontSize: 12,
-                        color: VintageInstrumentStyle.stop,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
+    final colors = GameConfig.instance.periodColors.orbitSurvey;
+    final legend = [
+      SurveyLegendEntry(
+        label: 'Cret',
+        color: surveyRgbColor(colors.cretaceous),
       ),
+      SurveyLegendEntry(
+        label: 'Jur',
+        color: surveyRgbColor(colors.jurassic),
+      ),
+      SurveyLegendEntry(
+        label: 'Tri',
+        color: surveyRgbColor(colors.triassic),
+      ),
+    ];
+
+    return SurveyMapHudShell(
+      icon: const _VintageMapIcon(size: 28),
+      remainingListenable: survey.remainingListenable,
+      onStop: () => survey.stop(),
+      legend: legend,
     );
   }
 }
