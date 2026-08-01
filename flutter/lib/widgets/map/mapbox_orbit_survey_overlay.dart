@@ -31,7 +31,7 @@ class MapboxOrbitSurveyOverlay {
         await map.style.removeStyleSource(orbitSurveySourceId);
       }
     } catch (error) {
-      developer.log('Formation map clear failed: $error', name: 'orbit_survey');
+      developer.log('Orbit survey clear failed: $error', name: 'orbit_survey');
     }
   }
 
@@ -78,7 +78,7 @@ class MapboxOrbitSurveyOverlay {
           image,
         );
         developer.log(
-          'Formation map installed '
+          'Orbit survey installed '
           '${raster.width}x${raster.height} png=${pngBytes.length}B',
           name: 'orbit_survey',
         );
@@ -99,11 +99,11 @@ class MapboxOrbitSurveyOverlay {
       );
     } catch (error, stack) {
       developer.log(
-        'Formation map sync failed: $error\n$stack',
+        'Orbit survey sync failed: $error\n$stack',
         name: 'orbit_survey',
       );
       if (kDebugMode) {
-        debugPrint('Formation map sync failed: $error\n$stack');
+        debugPrint('Orbit survey sync failed: $error\n$stack');
       }
     }
   }

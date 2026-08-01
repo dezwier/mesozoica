@@ -348,7 +348,7 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
           ),
     ];
     developer.log(
-      'Formation map raster sites=${samples.length} '
+      'Orbit survey raster sites=${samples.length} '
       'rangeM=${formation.rangeM.toStringAsFixed(0)} '
       'accuracy=${formation.accuracy.toStringAsFixed(2)} '
       'origin=${origin.latitude.toStringAsFixed(5)},'

@@ -273,7 +273,6 @@ class AerialMissionActionConfig(BaseModel):
     flight_speed_kmh: float = 50.0
     discovery_chance: float = 0.2
     discovery_distance_m: float = 200.0
-    ensure_sample_spacing_km: float = 0.5
     ensure_timeout_s: int = 600
     short_route_warn_fraction: float = 0.7
     stats_explanation: str = (

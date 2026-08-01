@@ -43,12 +43,8 @@ from app.services.field_service.field_distributions import (
 from app.services.curated_image_service.versions import latest_site_type_image_version
 from app.services.field_service.field_site_logging import log_field_event
 from app.services.site_common.constants import FIELD_SITE_ID_START
-from app.services.site_common.geo_utils import haversine_km
 from app.services.site_service.nearby import (
-    _bbox,
-    count_sites_in_bbox,
     count_sites_in_cell,
-    list_sites_in_bbox,
     list_sites_in_cell,
 )
 from app.services.site_common.survey_grid import (
@@ -588,16 +584,18 @@ def _load_site_type_map(session: Session) -> dict[tuple[str, str], int]:
 def _load_existing_field_coords(
     session: Session,
     *,
-    lat: float | None = None,
-    lon: float | None = None,
-    radius_km: float | None = None,
     south: float | None = None,
     north: float | None = None,
     west: float | None = None,
     east: float | None = None,
     min_separation_km: float = 0.01,
 ) -> list[tuple[float, float]]:
-    """Coords of non-exhausted field sites used for min-separation sampling."""
+    """Coords of non-exhausted field sites used for min-separation sampling.
+
+    When a lat/lon bbox is provided, expand it slightly so neighbors just
+    outside the density cell still block placement. With no bbox, load all
+    non-exhausted field coords (bulk generate).
+    """
     max_ts = latest_user_site_subquery()
     stmt = (
         select(Site, _LatestUserSite)
@@ -608,14 +606,12 @@ def _load_existing_field_coords(
         )
         .where(col(Site.data_source) == DATA_SOURCE_FIELD)
     )
-    use_square = (
+    if (
         south is not None
         and north is not None
         and west is not None
         and east is not None
-    )
-    if use_square:
-        # Expand square slightly so neighbors just outside still block placement.
+    ):
         pad_deg = min_separation_km / 111.0
         min_lat = min(south, north) - pad_deg
         max_lat = max(south, north) + pad_deg
@@ -624,17 +620,6 @@ def _load_existing_field_coords(
         pad_lon = min_separation_km / (111.0 * cos_lat)
         min_lon = min(west, east) - pad_lon
         max_lon = max(west, east) + pad_lon
-        stmt = stmt.where(
-            col(Site.latitude).is_not(None),
-            col(Site.longitude).is_not(None),
-            col(Site.latitude) >= min_lat,
-            col(Site.latitude) <= max_lat,
-            col(Site.longitude) >= min_lon,
-            col(Site.longitude) <= max_lon,
-        )
-    elif lat is not None and lon is not None and radius_km is not None:
-        search_radius = radius_km + min_separation_km
-        min_lat, max_lat, min_lon, max_lon = _bbox(lat, lon, search_radius)
         stmt = stmt.where(
             col(Site.latitude).is_not(None),
             col(Site.longitude).is_not(None),
@@ -652,17 +637,7 @@ def _load_existing_field_coords(
         )
         if status == SITE_STATUS_EXHAUSTED:
             continue
-        site_lat = float(site.latitude)
-        site_lon = float(site.longitude)
-        if (
-            not use_square
-            and lat is not None
-            and lon is not None
-            and radius_km is not None
-        ):
-            if haversine_km(lat, lon, site_lat, site_lon) > radius_km + min_separation_km:
-                continue
-        coords.append((site_lat, site_lon))
+        coords.append((float(site.latitude), float(site.longitude)))
     return coords
 
 

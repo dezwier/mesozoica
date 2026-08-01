@@ -8,7 +8,17 @@ from typing import Any
 
 logger = logging.getLogger("field_site_generate")
 
-FIELD_ENSURE_REASONS = frozenset({"resume", "move_500m", "scan", "field_mode_on"})
+FIELD_ENSURE_REASONS = frozenset(
+    {
+        "resume",
+        "move_500m",
+        "scan",
+        "orbit_survey",
+        "formation_map",
+        "aerial_recon",
+        "aerial_scout",
+    }
+)
 
 _configured = False
 

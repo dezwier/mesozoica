@@ -158,10 +158,10 @@ Field sites (`data_source=field`) are **global** `Site` rows (shared density poo
 - **`GET /api/v1/sites?data_source=field&site_id_min=N&sort=name`** — incremental poll for sites written since the last id (Flutter polls every ~60 s while the map tab is open).
 - **`GET /api/v1/sites/nearby-discoverable`** — field sites in radius that the current user can still discover (`hidden`, or discovered by someone else and not yet linked to them).
 - **`POST /api/v1/sites/{id}/discover`** — create this user’s discoverer link when within 50 m (also sends inbox + FCM push).
-- **`POST /api/v1/sites/field/ensure`** — returns `202` immediately and enqueues a row in `field_ensure_job`. Optional JSON field `reason`: `resume`, `move_500m`, `scan`, or `field_mode_on` (logged on enqueue/skip/noop). A dedicated Railway worker service (`python -m app.workers.field_ensure_worker`, see [`app/workers/README.md`](../workers/README.md)) claims jobs with `FOR UPDATE SKIP LOCKED`, re-counts density, and generates only the still-missing count within 1 km (land-only coordinates, geology sampled from archive sites). Jobs dedupe by `cell_key` (`round(lat,2):round(lon,2):radius_km`).
+- **`POST /api/v1/sites/field/ensure`** — returns `202` immediately and enqueues a row in `field_ensure_job`. Optional JSON field `reason` (e.g. `resume`, `move_500m`, `scan`, `formation_map`, `orbit_survey`, aerial action keys). A dedicated Railway worker service (`python -m app.workers.field_ensure_worker`, see [`app/workers/README.md`](../workers/README.md)) claims jobs with `FOR UPDATE SKIP LOCKED`, re-counts density, and tops up the fixed `cell_size_m` square (YAML `max_sites_per_cell`; land-only coordinates, geology sampled from archive sites). Jobs dedupe by `cell_key` (`{ix}:{iy}:{cell_size_m}`).
 - **`GET /api/v1/sites/nearby`** — read-only listing within a radius (no generation); same linked-only / admin `show_all` rules as list.
 
-The Flutter app calls `POST /field/ensure` on app open/resume and every 500 m move while the app process is alive (foreground or background). Map polling is map-tab-only. Auto-discovery runs on every GPS fix within 50 m.
+The Flutter app calls `POST /field/ensure` on app open/resume and when the player enters a new density cell while foregrounded. Map polling is map-tab-only. Auto-discovery runs on every GPS fix within 50 m.
 
 ### `dinosaur_wiki_sync` content revisions
 

@@ -41,7 +41,7 @@ Sites are committed in batches of **25** (`WRITE_BATCH_SIZE`) *during* generatio
 4. Set `OSM_SIMPLIFY_TOLERANCE=0.0001` and allocate **4 GB RAM**.
 5. Run Alembic migrations before starting the worker.
 
-Jobs are deduped by `cell_key` (`round(lat,2):round(lon,2):radius_km`). The API enqueues without counting; the worker re-counts density before generating.
+Jobs are deduped by `cell_key` (`{ix}:{iy}:{cell_size_m}` on the fixed density grid). The API enqueues without counting; the worker re-counts density in that square before generating.
 
 ## Ops verification checklist
 

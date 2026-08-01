@@ -114,7 +114,7 @@ class OrbitSurveyController extends ChangeNotifier {
       _bumpSitesRevision();
       notifyListeners();
     } catch (error) {
-      debugPrint('Formation map restore failed: $error');
+      debugPrint('Orbit survey restore failed: $error');
     }
   }
 
@@ -231,7 +231,7 @@ class OrbitSurveyController extends ChangeNotifier {
       _bumpSitesRevision();
       notifyListeners();
     } catch (error) {
-      debugPrint('Formation map ensure failed: $error');
+      debugPrint('Orbit survey ensure failed: $error');
     }
   }
 

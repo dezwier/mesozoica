@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import math
 
-from sqlalchemy import text
 from sqlalchemy.orm import aliased
 from sqlmodel import Session, col, select
 
@@ -28,48 +27,6 @@ def _bbox(lat: float, lon: float, radius_km: float) -> tuple[float, float, float
     cos_lat = max(abs(math.cos(math.radians(lat))), 1e-6)
     lon_radius = radius_km / (111.0 * cos_lat)
     return lat - lat_radius, lat + lat_radius, lon - lon_radius, lon + lon_radius
-
-
-_HAVERSINE_COUNT_SQL = text(
-    """
-    SELECT COUNT(*)
-    FROM site
-    WHERE data_source = :data_source
-      AND latitude IS NOT NULL
-      AND longitude IS NOT NULL
-      AND latitude >= :min_lat
-      AND latitude <= :max_lat
-      AND longitude >= :min_lon
-      AND longitude <= :max_lon
-      AND (
-        6371.0 * 2 * ATAN2(
-          SQRT(
-            POWER(SIN(RADIANS(latitude - :lat) / 2), 2)
-            + COS(RADIANS(:lat)) * COS(RADIANS(latitude))
-            * POWER(SIN(RADIANS(longitude - :lon) / 2), 2)
-          ),
-          SQRT(
-            1 - (
-              POWER(SIN(RADIANS(latitude - :lat) / 2), 2)
-              + COS(RADIANS(:lat)) * COS(RADIANS(latitude))
-              * POWER(SIN(RADIANS(longitude - :lon) / 2), 2)
-            )
-          )
-        )
-      ) <= :radius_km
-      AND NOT EXISTS (
-        SELECT 1
-        FROM user_site us
-        WHERE us.site_id = site.site_id
-          AND us.role = :exhauster_role
-          AND us.timestamp = (
-            SELECT MAX(us2.timestamp)
-            FROM user_site us2
-            WHERE us2.site_id = site.site_id
-          )
-      )
-    """
-)
 
 
 def list_sites_in_radius(
@@ -202,87 +159,6 @@ def list_discoverable_sites_in_radius(
             if len(nearby) >= limit:
                 break
     return nearby
-
-
-def count_sites_in_radius(
-    session: Session,
-    *,
-    lat: float,
-    lon: float,
-    radius_km: float,
-    data_source: str,
-) -> int:
-    """Count field/archive sites in radius, excluding latest-role ``exhauster``."""
-    from app.models.user_site import USER_SITE_ROLE_EXHAUSTER
-
-    normalized_data_source = normalize_data_source(data_source)
-    min_lat, max_lat, min_lon, max_lon = _bbox(lat, lon, radius_km)
-    row = session.exec(
-        _HAVERSINE_COUNT_SQL.bindparams(
-            data_source=normalized_data_source,
-            lat=lat,
-            lon=lon,
-            radius_km=radius_km,
-            min_lat=min_lat,
-            max_lat=max_lat,
-            min_lon=min_lon,
-            max_lon=max_lon,
-            exhauster_role=USER_SITE_ROLE_EXHAUSTER,
-        )
-    ).one()
-    return int(row[0])
-
-
-_BBOX_COUNT_SQL = text(
-    """
-    SELECT COUNT(*)
-    FROM site
-    WHERE data_source = :data_source
-      AND latitude IS NOT NULL
-      AND longitude IS NOT NULL
-      AND latitude >= :min_lat
-      AND latitude < :max_lat
-      AND longitude >= :min_lon
-      AND longitude < :max_lon
-      AND NOT EXISTS (
-        SELECT 1
-        FROM user_site us
-        WHERE us.site_id = site.site_id
-          AND us.role = :exhauster_role
-          AND us.timestamp = (
-            SELECT MAX(us2.timestamp)
-            FROM user_site us2
-            WHERE us2.site_id = site.site_id
-          )
-      )
-    """
-)
-
-
-def count_sites_in_bbox(
-    session: Session,
-    *,
-    south: float,
-    north: float,
-    west: float,
-    east: float,
-    data_source: str,
-) -> int:
-    """Count non-exhausted sites inside an axis-aligned lat/lon square [south,north)×[west,east)."""
-    from app.models.user_site import USER_SITE_ROLE_EXHAUSTER
-
-    normalized_data_source = normalize_data_source(data_source)
-    row = session.exec(
-        _BBOX_COUNT_SQL.bindparams(
-            data_source=normalized_data_source,
-            min_lat=min(south, north),
-            max_lat=max(south, north),
-            min_lon=min(west, east),
-            max_lon=max(west, east),
-            exhauster_role=USER_SITE_ROLE_EXHAUSTER,
-        )
-    ).one()
-    return int(row[0])
 
 
 def list_sites_in_cell(

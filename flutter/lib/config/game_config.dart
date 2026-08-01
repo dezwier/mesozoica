@@ -394,7 +394,6 @@ class ToolActionsConfig {
           flightSpeedKmh: 35.0,
           discoveryChance: 0.008,
           discoveryDistanceM: 120.0,
-          ensureSampleSpacingKm: 0.5,
           ensureTimeoutS: 600,
           shortRouteWarnFraction: 0.7,
           statsExplanation:
@@ -844,7 +843,6 @@ class AerialMissionActionConfig {
     required this.flightSpeedKmh,
     required this.discoveryChance,
     required this.discoveryDistanceM,
-    required this.ensureSampleSpacingKm,
     required this.ensureTimeoutS,
     required this.shortRouteWarnFraction,
     required this.statsExplanation,
@@ -855,7 +853,6 @@ class AerialMissionActionConfig {
   final double flightSpeedKmh;
   final double discoveryChance;
   final double discoveryDistanceM;
-  final double ensureSampleSpacingKm;
   final int ensureTimeoutS;
   final double shortRouteWarnFraction;
   final String statsExplanation;
@@ -871,7 +868,6 @@ class AerialMissionActionConfig {
           flightSpeedKmh: 50.0,
           discoveryChance: 0.2,
           discoveryDistanceM: 200.0,
-          ensureSampleSpacingKm: 0.5,
           ensureTimeoutS: 600,
           shortRouteWarnFraction: 0.7,
           statsExplanation:
@@ -889,10 +885,6 @@ class AerialMissionActionConfig {
       discoveryDistanceM: _asDouble(
         yaml['discovery_distance_m'],
         d.discoveryDistanceM,
-      ),
-      ensureSampleSpacingKm: _asDouble(
-        yaml['ensure_sample_spacing_km'],
-        d.ensureSampleSpacingKm,
       ),
       ensureTimeoutS: _asInt(yaml['ensure_timeout_s'], d.ensureTimeoutS),
       shortRouteWarnFraction: _asDouble(
