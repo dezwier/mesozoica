@@ -70,6 +70,7 @@ flutter:
     - assets/images/cards/
     - assets/images/cards/icons/
     - assets/images/chrome/nav/
+    - assets/images/chrome/skills/
     - assets/images/splash/
     - assets/game_config/site_generation.yaml
     - assets/game_config/site_discovery.yaml

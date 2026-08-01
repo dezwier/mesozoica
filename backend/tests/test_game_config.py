@@ -75,7 +75,7 @@ def test_load_game_config_matches_current_defaults() -> None:
     assert config.fossil_excavation.enabled is False
 
     assert config.leveling.rewards.site_discover_site_discovery_xp == 10
-    assert len(config.leveling.skills) == 9
+    assert len(config.leveling.skills) == 10
     assert len(config.leveling.career_titles) == 99
 
 

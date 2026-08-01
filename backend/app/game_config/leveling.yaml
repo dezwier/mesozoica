@@ -7,8 +7,8 @@
 skills:
   - id: site_discovery
     name: Site Discovery
-  - id: site_protection
-    name: Site Protection
+  - id: site_survey
+    name: Site Survey
   - id: site_clearing
     name: Site Clearing
   - id: fossil_detection
@@ -21,8 +21,10 @@ skills:
     name: Fossil Curation
   - id: fossil_analysis
     name: Fossil Analysis
-  - id: dinosaur_reconstruction
-    name: Dinosaur Reconstruction
+  - id: dinosaur_modelling
+    name: Dinosaur Modelling
+  - id: dinosaur_mounting
+    name: Dinosaur Mounting
 
 rewards:
   site_discover_site_discovery_xp: 10

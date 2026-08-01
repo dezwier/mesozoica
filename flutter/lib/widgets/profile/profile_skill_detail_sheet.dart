@@ -41,9 +41,8 @@ void showProfileSkillDetailSheet(
           children: [
             Row(
               children: [
-                Icon(
-                  skillIconFor(skill.id),
-                  color: scheme.primary,
+                SkillIcon(
+                  skillId: skill.id,
                   size: 28,
                 ),
                 const SizedBox(width: 12),

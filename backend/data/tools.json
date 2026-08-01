@@ -153,7 +153,7 @@
   },
   {
     "name": "Field Canopy",
-    "category": "2 site_protection",
+    "category": "2 site_survey",
     "scientific_tool": "portable shelter",
     "description": "Protects an exposed excavation from sun, rain and wind.",
     "rarity": 2,
@@ -161,7 +161,7 @@
   },
   {
     "name": "Perimeter Guard",
-    "category": "2 site_protection",
+    "category": "2 site_survey",
     "scientific_tool": "fencing or barrier tape",
     "description": "Prevents visitors, animals and vehicles from damaging the site.",
     "rarity": 2,
@@ -169,7 +169,7 @@
   },
   {
     "name": "Site Veil",
-    "category": "2 site_protection",
+    "category": "2 site_survey",
     "scientific_tool": "tarp or geotextile",
     "description": "Covers excavated surfaces during pauses or bad weather.",
     "rarity": 1,
@@ -417,7 +417,7 @@
   },
   {
     "name": "Digital Restorer",
-    "category": "9 dinosaur_reconstruction",
+    "category": "9 dinosaur_modelling",
     "scientific_tool": "digital reconstruction software",
     "description": "Reassembles scanned elements and tests alternative anatomical arrangements.",
     "rarity": 3,
@@ -425,26 +425,26 @@
   },
   {
     "name": "Missing Element Model",
-    "category": "9 dinosaur_reconstruction",
+    "category": "9 dinosaur_modelling",
     "scientific_tool": "comparative reconstruction",
     "description": "Estimates absent bones from mirrored anatomy and closely related specimens.",
     "rarity": 4,
     "action": "Estimate"
   },
   {
-    "name": "Mount Armature",
-    "category": "9 dinosaur_reconstruction",
-    "scientific_tool": "skeletal mount frame",
-    "description": "Supports an assembled skeleton while minimizing contact with original bones.",
-    "rarity": 4,
-    "action": "Mount"
-  },
-  {
     "name": "Soft-Tissue Model",
-    "category": "9 dinosaur_reconstruction",
+    "category": "9 dinosaur_modelling",
     "scientific_tool": "soft-tissue inference",
     "description": "Estimates muscles and other missing tissues using attachment marks and living relatives.",
     "rarity": 4,
     "action": "Infer"
+  },
+  {
+    "name": "Mount Armature",
+    "category": "10 dinosaur_mounting",
+    "scientific_tool": "skeletal mount frame",
+    "description": "Supports an assembled skeleton while minimizing contact with original bones.",
+    "rarity": 4,
+    "action": "Mount"
   }
 ]
