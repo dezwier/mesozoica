@@ -47,12 +47,13 @@ from app.services.site_common.geo_utils import haversine_km
 from app.services.site_service.nearby import (
     _bbox,
     count_sites_in_bbox,
-    count_sites_in_radius,
+    count_sites_in_cell,
     list_sites_in_bbox,
-    list_sites_in_radius,
+    list_sites_in_cell,
 )
 from app.services.site_common.survey_grid import (
-    footprint_for_center,
+    cell_indices,
+    cell_latlon_bbox,
     snap_to_cell_center,
 )
 from app.services.site_service.status_join import (
@@ -389,27 +390,24 @@ def ensure_field_sites_nearby(
     """Top up non-exhausted field sites in the ``cell_size_m`` square containing
     ``(lat, lon)`` up to ``max_sites_per_cell`` (hard cap; never exceeded).
 
-    Density geometry is always the server YAML square — client radius is ignored.
+    Density check and coordinate writes both use the meter-space cell square
+    (never a haversine circle or lat/lon AABB). Client radius is ignored.
     Exhausted sites are ignored for quota and min-separation blocking.
     """
     cfg = config or FieldSiteLazyConfig.from_game_config()
     cfg.validate()
     random_source = rng or random.Random()
 
+    ix, iy = cell_indices(lat, lon, cell_size_m=cfg.cell_size_m)
     center_lat, center_lon = snap_to_cell_center(
         lat, lon, cell_size_m=cfg.cell_size_m
     )
-    footprint = footprint_for_center(
-        center_lat,
-        center_lon,
-        wideness_m=cfg.cell_size_m,
+    # Padded lat/lon AABB for neighbor lookups only (min-separation).
+    south, north, west, east = cell_latlon_bbox(
+        ix,
+        iy,
         cell_size_m=cfg.cell_size_m,
-    )
-    south, north, west, east = (
-        footprint.south,
-        footprint.north,
-        footprint.west,
-        footprint.east,
+        pad_m=max(cfg.min_separation_km * 1000.0, 2.0),
     )
 
     # --- Short read transaction ---
@@ -423,24 +421,22 @@ def ensure_field_sites_nearby(
         closest_neighbor_count=cfg.closest_neighbor_count,
     )
 
-    existing_count = count_sites_in_bbox(
+    existing_count = count_sites_in_cell(
         session,
-        south=south,
-        north=north,
-        west=west,
-        east=east,
+        ix=ix,
+        iy=iy,
+        cell_size_m=cfg.cell_size_m,
         data_source=DATA_SOURCE_FIELD,
     )
     # Hard cap: never schedule more than remaining slots under max_sites_per_cell.
     missing = max(0, min(cfg.max_sites_per_cell, cfg.max_sites_per_cell - existing_count))
 
     if missing == 0:
-        items = list_sites_in_bbox(
+        items = list_sites_in_cell(
             session,
-            south=south,
-            north=north,
-            west=west,
-            east=east,
+            ix=ix,
+            iy=iy,
+            cell_size_m=cfg.cell_size_m,
             data_source=DATA_SOURCE_FIELD,
             show_all=True,
         )
@@ -483,11 +479,10 @@ def ensure_field_sites_nearby(
         if existing_count + generated >= cfg.max_sites_per_cell:
             break
 
-        sampled = context.sampler.sample_in_square(
-            south=south,
-            north=north,
-            west=west,
-            east=east,
+        sampled = context.sampler.sample_in_cell(
+            ix=ix,
+            iy=iy,
+            cell_size_m=cfg.cell_size_m,
             existing=existing_coords,
             config=cfg.coordinate_config,
             rng=random_source,
@@ -522,31 +517,31 @@ def ensure_field_sites_nearby(
 
     _flush_pending_sites(session, pending_rows)
 
-    items = list_sites_in_bbox(
+    items = list_sites_in_cell(
         session,
-        south=south,
-        north=north,
-        west=west,
-        east=east,
+        ix=ix,
+        iy=iy,
+        cell_size_m=cfg.cell_size_m,
         data_source=DATA_SOURCE_FIELD,
         show_all=True,
     )
-    total_in_radius = count_sites_in_bbox(
+    total_in_radius = count_sites_in_cell(
         session,
-        south=south,
-        north=north,
-        west=west,
-        east=east,
+        ix=ix,
+        iy=iy,
+        cell_size_m=cfg.cell_size_m,
         data_source=DATA_SOURCE_FIELD,
     )
     # Absolute hard cap safety (should never trip if loop guards hold).
     if total_in_radius > cfg.max_sites_per_cell:
         logger.error(
-            "ensure overshot max_sites_per_cell=%s total=%s cell=(%s,%s)",
+            "ensure overshot max_sites_per_cell=%s total=%s cell=(%s,%s) ix=%s iy=%s",
             cfg.max_sites_per_cell,
             total_in_radius,
             center_lat,
             center_lon,
+            ix,
+            iy,
         )
     session.commit()
     return EnsureFieldSitesResult(

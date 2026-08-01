@@ -29,8 +29,13 @@ from app.services.field_service.field_generate import (
     ensure_field_sites_nearby,
 )
 from app.services.field_service.field_ensure_queue import cell_key
-from app.services.site_common.geo_utils import haversine_km
-from app.services.site_common.survey_grid import footprint_for_center, snap_to_cell_center
+from app.services.site_common.survey_grid import (
+    cell_indices,
+    footprint_for_center,
+    latlon_to_meters,
+    meters_to_latlon,
+    snap_to_cell_center,
+)
 
 
 def _archive_site(
@@ -105,17 +110,73 @@ def test_ensure_generates_when_below_minimum(session: Session, monkeypatch):
     assert result.generated == 5
     assert result.total_in_radius == 5
     assert len(result.items) == 5
+    expected_cell = cell_indices(
+        center_lat, center_lon, cell_size_m=config.cell_size_m
+    )
     for row in result.items:
         site = row.site
         assert site.data_source == DATA_SOURCE_FIELD
         assert row.status == SITE_STATUS_HIDDEN
-        distance = haversine_km(
-            center_lat,
-            center_lon,
-            float(site.latitude),
-            float(site.longitude),
+        assert (
+            cell_indices(
+                float(site.latitude),
+                float(site.longitude),
+                cell_size_m=config.cell_size_m,
+            )
+            == expected_cell
         )
-        assert distance <= config.cell_size_km
+
+
+def test_ensure_writes_meter_square_not_disk(session: Session, monkeypatch):
+    """Sites fill the cell square, including near corners outside the inscribed circle."""
+    session.add(_site_type(period="cretaceous", rock_type="sandstone"))
+    session.add(_archive_site(site_id=100, lat=40.0, lon=-100.0))
+    session.commit()
+
+    cell_m = 1000.0
+    center_lat, center_lon = snap_to_cell_center(40.0, -100.0, cell_size_m=cell_m)
+    config = FieldSiteLazyConfig(
+        max_sites_per_cell=40,
+        cell_size_m=cell_m,
+        min_separation_km=0.04,
+        max_coordinate_attempts=80,
+    )
+    result = ensure_field_sites_nearby(
+        session,
+        lat=center_lat,
+        lon=center_lon,
+        config=config,
+        rng=random.Random(7),
+        coordinate_sampler=_test_coordinate_sampler(
+            center_lat, center_lon, cell_size_m=cell_m
+        ),
+    )
+    assert result.generated >= 20
+    expected_cell = cell_indices(center_lat, center_lon, cell_size_m=cell_m)
+    cx, cy = latlon_to_meters(center_lat, center_lon)
+    half = cell_m / 2.0
+    # Inscribed-circle radius; corners of the square lie beyond this.
+    inscribed_r = half
+    outside_inscribed = 0
+    max_abs_x = 0.0
+    max_abs_y = 0.0
+    for row in result.items:
+        lat = float(row.site.latitude)
+        lon = float(row.site.longitude)
+        assert cell_indices(lat, lon, cell_size_m=cell_m) == expected_cell
+        x, y = latlon_to_meters(lat, lon)
+        dx, dy = x - cx, y - cy
+        max_abs_x = max(max_abs_x, abs(dx))
+        max_abs_y = max(max_abs_y, abs(dy))
+        if dx * dx + dy * dy > inscribed_r * inscribed_r:
+            outside_inscribed += 1
+    assert max_abs_x > half * 0.6
+    assert max_abs_y > half * 0.6
+    assert outside_inscribed >= 1
+
+    # A lat/lon AABB sample would spill; meter sampling must not write neighbors.
+    neighbor = meters_to_latlon(cx + half + 50.0, cy)
+    assert cell_indices(neighbor[0], neighbor[1], cell_size_m=cell_m) != expected_cell
 
 
 def test_ensure_skips_when_minimum_already_met(session: Session, monkeypatch):
@@ -418,13 +479,20 @@ def test_field_ensure_worker_noops_when_full(client, session: Session, monkeypat
     session.commit()
     session.refresh(site_type)
 
-    center_lat, center_lon = 40.0, -100.0
+    # Seed 100 sites inside the server density cell (500 m from YAML).
+    cell_m = 500.0
+    center_lat, center_lon = snap_to_cell_center(40.0, -100.0, cell_size_m=cell_m)
+    cx, cy = latlon_to_meters(center_lat, center_lon)
     for index in range(100):
+        # Stay well inside the meter square (not a lat/lon diagonal that can exit).
+        dx = ((index % 10) - 4.5) * 40.0
+        dy = ((index // 10) - 4.5) * 40.0
+        lat, lon = meters_to_latlon(cx + dx, cy + dy)
         session.add(
             Site(
                 site_id=FIELD_SITE_ID_START + index,
-                latitude=Decimal(str(center_lat + index * 0.00001)),
-                longitude=Decimal(str(center_lon + index * 0.00001)),
+                latitude=Decimal(str(round(lat, 6))),
+                longitude=Decimal(str(round(lon, 6))),
                 rock_type="sandstone",
                 period="cretaceous",
                 site_type_id=site_type.id,
@@ -435,7 +503,9 @@ def test_field_ensure_worker_noops_when_full(client, session: Session, monkeypat
 
     monkeypatch.setattr(
         "app.services.field_service.field_generate.build_coordinate_sampler",
-        lambda **kwargs: _test_coordinate_sampler(center_lat, center_lon, cell_size_m=1000.0),
+        lambda **kwargs: _test_coordinate_sampler(
+            center_lat, center_lon, cell_size_m=cell_m
+        ),
     )
 
     response = client.post(

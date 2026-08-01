@@ -285,6 +285,74 @@ def count_sites_in_bbox(
     return int(row[0])
 
 
+def list_sites_in_cell(
+    session: Session,
+    *,
+    ix: int,
+    iy: int,
+    cell_size_m: float,
+    data_source: str,
+    limit: int = 500,
+    show_all: bool = True,
+) -> list[SiteRow]:
+    """List sites inside the meter-space density cell ``(ix, iy)``.
+
+    Lat/lon bbox is only a prefilter — lon edges curve under the projection, so
+    every candidate is filtered with ``cell_indices``.
+    """
+    from app.services.site_common.survey_grid import cell_indices, cell_latlon_bbox
+
+    south, north, west, east = cell_latlon_bbox(
+        ix, iy, cell_size_m=cell_size_m, pad_m=2.0
+    )
+    candidates = list_sites_in_bbox(
+        session,
+        south=south,
+        north=north,
+        west=west,
+        east=east,
+        data_source=data_source,
+        show_all=show_all,
+        limit=max(limit * 4, 500),
+    )
+    items: list[SiteRow] = []
+    for row in candidates:
+        site = row.site
+        if site.latitude is None or site.longitude is None:
+            continue
+        if cell_indices(
+            float(site.latitude), float(site.longitude), cell_size_m=cell_size_m
+        ) != (ix, iy):
+            continue
+        items.append(row)
+        if len(items) >= limit:
+            break
+    return items
+
+
+def count_sites_in_cell(
+    session: Session,
+    *,
+    ix: int,
+    iy: int,
+    cell_size_m: float,
+    data_source: str,
+) -> int:
+    """Count non-exhausted sites inside the meter-space density cell ``(ix, iy)``."""
+    from app.models.user_site import SITE_STATUS_EXHAUSTED
+
+    items = list_sites_in_cell(
+        session,
+        ix=ix,
+        iy=iy,
+        cell_size_m=cell_size_m,
+        data_source=data_source,
+        show_all=True,
+        limit=10_000,
+    )
+    return sum(1 for row in items if row.status != SITE_STATUS_EXHAUSTED)
+
+
 def list_sites_in_bbox(
     session: Session,
     *,

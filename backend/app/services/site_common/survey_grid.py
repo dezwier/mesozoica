@@ -41,6 +41,52 @@ def cell_center_latlon(ix: int, iy: int, *, cell_size_m: float) -> tuple[float, 
     return meters_to_latlon(x, y)
 
 
+def cell_meter_bounds(
+    ix: int, iy: int, *, cell_size_m: float
+) -> tuple[float, float, float, float]:
+    """Return ``(x0, x1, y0, y1)`` half-open meter bounds for cell ``(ix, iy)``."""
+    cell = max(float(cell_size_m), 1.0)
+    x0 = ix * cell
+    y0 = iy * cell
+    return x0, x0 + cell, y0, y0 + cell
+
+
+def cell_latlon_bbox(
+    ix: int,
+    iy: int,
+    *,
+    cell_size_m: float,
+    pad_m: float = 1.0,
+) -> tuple[float, float, float, float]:
+    """Lat/lon AABB covering the meter-space cell (for SQL prefilter only).
+
+    Returns ``(south, north, west, east)``. Always pad slightly — lon edges are
+    curved in lat/lon, so callers must still filter with ``cell_indices``.
+    """
+    x0, x1, y0, y1 = cell_meter_bounds(ix, iy, cell_size_m=cell_size_m)
+    pad = max(float(pad_m), 0.0)
+    corners = (
+        meters_to_latlon(x0 - pad, y0 - pad),
+        meters_to_latlon(x1 + pad, y0 - pad),
+        meters_to_latlon(x0 - pad, y1 + pad),
+        meters_to_latlon(x1 + pad, y1 + pad),
+    )
+    lats = [c[0] for c in corners]
+    lons = [c[1] for c in corners]
+    return min(lats), max(lats), min(lons), max(lons)
+
+
+def point_in_cell(
+    lat: float,
+    lon: float,
+    *,
+    ix: int,
+    iy: int,
+    cell_size_m: float,
+) -> bool:
+    return cell_indices(lat, lon, cell_size_m=cell_size_m) == (ix, iy)
+
+
 def snap_to_cell_center(
     lat: float,
     lon: float,

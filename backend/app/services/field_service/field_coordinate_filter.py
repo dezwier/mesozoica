@@ -229,7 +229,7 @@ class CoordinateSampler:
         config: CoordinateSampleConfig,
         rng: random.Random | None = None,
     ) -> tuple[float, float] | None:
-        """Uniform sample inside an axis-aligned lat/lon square."""
+        """Uniform sample inside an axis-aligned lat/lon square (legacy helper)."""
         random_source = rng or random
         lo_lat, hi_lat = min(south, north), max(south, north)
         lo_lon, hi_lon = min(west, east), max(west, east)
@@ -238,6 +238,41 @@ class CoordinateSampler:
         for _ in range(config.max_coordinate_attempts):
             lat = random_source.uniform(lo_lat, hi_lat)
             lon = random_source.uniform(lo_lon, hi_lon)
+            if not self.filter.allows(lat, lon):
+                continue
+            if _too_close(lat, lon, existing, config.min_separation_km):
+                continue
+            return lat, lon
+        return None
+
+    def sample_in_cell(
+        self,
+        *,
+        ix: int,
+        iy: int,
+        cell_size_m: float,
+        existing: list[tuple[float, float]],
+        config: CoordinateSampleConfig,
+        rng: random.Random | None = None,
+    ) -> tuple[float, float] | None:
+        """Uniform sample inside the meter-space density square ``(ix, iy)``.
+
+        Sampling in projected meters (not lat/lon) keeps sites inside the true
+        cell; a lat/lon AABB overshoots curved lon edges into neighbor cells.
+        """
+        from app.services.site_common.survey_grid import (
+            cell_meter_bounds,
+            meters_to_latlon,
+        )
+
+        random_source = rng or random
+        x0, x1, y0, y1 = cell_meter_bounds(ix, iy, cell_size_m=cell_size_m)
+        # Keep samples in the half-open cell [x0, x1) × [y0, y1).
+        eps = min(1e-3, (x1 - x0) * 1e-9)
+        for _ in range(config.max_coordinate_attempts):
+            x = random_source.uniform(x0, x1 - eps)
+            y = random_source.uniform(y0, y1 - eps)
+            lat, lon = meters_to_latlon(x, y)
             if not self.filter.allows(lat, lon):
                 continue
             if _too_close(lat, lon, existing, config.min_separation_km):
