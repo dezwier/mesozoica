@@ -16,6 +16,7 @@ class MapTileLayer extends StatelessWidget {
       urlTemplate: MapConfig.tileUrlForBrightness(
         isDark ? Brightness.dark : Brightness.light,
       ),
+      retinaMode: RetinaMode.isHighDensity(context),
       subdomains: MapConfig.tileSubdomains,
       userAgentPackageName: MapConfig.userAgentPackageName,
       tileProvider: MapTileCache.tileProvider,
