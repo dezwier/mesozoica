@@ -78,14 +78,18 @@ void main() {
     expect(find.text('15m 0s left'), findsOneWidget);
     expect(find.text('HISTORY'), findsOneWidget);
     expect(find.text('No history yet'), findsOneWidget);
-    expect(find.textContaining('Site Discovery'), findsOneWidget);
+    expect(find.text('Helicopter'), findsOneWidget);
+    expect(find.textContaining('Site Discovery'), findsNothing);
+    expect(find.text('Rarity'), findsNothing);
+    expect(find.byIcon(Icons.star_rounded), findsNWidgets(5));
 
     await tester.tap(find.text('Deploy'));
     await tester.pump();
     expect(tapped, isTrue);
   });
 
-  testWidgets('ToolCardBack omits Obtained from subtitle', (tester) async {
+  testWidgets('ToolCardBack shows scientific subtitle and filled rarity stars',
+      (tester) async {
     final owned = ToolSummary(
       id: 10,
       toolTypeId: 1,
@@ -93,7 +97,7 @@ void main() {
       category: '1 site_discovery',
       scientificTool: 'helicopter',
       description: 'Scout loop',
-      rarity: 5,
+      rarity: 3,
       action: 'Deploy',
       level: 1,
       version: 'Original',
@@ -116,10 +120,12 @@ void main() {
       ),
     );
 
-    expect(find.text('Site Discovery - Helicopter'), findsOneWidget);
+    expect(find.text('Helicopter'), findsOneWidget);
+    expect(find.textContaining('Site Discovery'), findsNothing);
     expect(find.textContaining('Obtained'), findsNothing);
-    expect(find.text('#10 · Original'), findsNothing);
-    expect(find.text('#10'), findsNothing);
+    expect(find.byIcon(Icons.star_rounded), findsNWidgets(3));
+    expect(find.byIcon(Icons.star_border), findsNothing);
+    expect(find.text('Rarity'), findsNothing);
   });
 
   testWidgets('ToolCardBack lists compact history', (tester) async {

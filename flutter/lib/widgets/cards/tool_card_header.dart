@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../models/tool.dart';
 import '../../theme/dino_card_theme.dart';
+import '../profile/profile_skill_icons.dart';
 import 'card_adaptive_title_text.dart';
 
 class ToolCardHeader extends StatelessWidget {
@@ -14,6 +15,9 @@ class ToolCardHeader extends StatelessWidget {
     this.overlayOnImage = false,
     this.showScientificSubtitle = false,
     this.subtitleOverride,
+    this.showSkillBadge = false,
+    this.showRarityStars = false,
+    this.skillBadgeSize = 44,
   });
 
   final ToolSummary tool;
@@ -24,6 +28,11 @@ class ToolCardHeader extends StatelessWidget {
   final bool showScientificSubtitle;
   /// When set, shown as the subtitle instead of scientific name.
   final String? subtitleOverride;
+  /// Top-right skill avatar (back side).
+  final bool showSkillBadge;
+  /// Filled rarity stars below the scientific subtitle (back side).
+  final bool showRarityStars;
+  final double skillBadgeSize;
 
   @override
   Widget build(BuildContext context) {
@@ -38,37 +47,108 @@ class ToolCardHeader extends StatelessWidget {
             fontWeight: FontWeight.w500,
           );
 
-    final subtitle = subtitleOverride ??
-        (showScientificSubtitle ? tool.scientificTool : null);
+    final subtitleText = subtitleOverride ??
+        (showScientificSubtitle || showRarityStars
+            ? tool.displayScientificTool
+            : null);
+    final hasSubtitle = subtitleText != null && subtitleText.isNotEmpty;
+    final rarity = showRarityStars ? tool.rarity.clamp(0, 5) : 0;
+    final starColor = overlayOnImage
+        ? const Color(0xFFE6C35C)
+        : cardTheme.cardAccent;
 
-    return Column(
+    // With a skill badge, title/subtitle center in the remaining width.
+    final centerInSpace = showSkillBadge || centered;
+
+    final titleBlock = Column(
       crossAxisAlignment:
-          centered ? CrossAxisAlignment.center : CrossAxisAlignment.start,
+          centerInSpace ? CrossAxisAlignment.center : CrossAxisAlignment.start,
       children: [
-        if (overlayOnImage && centered)
-          SizedBox(
-            width: double.infinity,
-            child: CardAdaptiveTitleText(
-              text: tool.name,
-              style: titleStyle,
-              textAlign: TextAlign.center,
-            ),
-          )
-        else
-          CardAdaptiveTitleText(
+        SizedBox(
+          width: double.infinity,
+          child: CardAdaptiveTitleText(
             text: tool.name,
             style: titleStyle,
+            textAlign: centerInSpace ? TextAlign.center : TextAlign.start,
           ),
-        if (subtitle != null && subtitle.isNotEmpty) ...[
+        ),
+        if (hasSubtitle) ...[
           const SizedBox(height: 2),
-          Text(
-            subtitle,
-            textAlign: centered ? TextAlign.center : TextAlign.start,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: subtitleStyle,
+          SizedBox(
+            width: double.infinity,
+            child: Text(
+              subtitleText,
+              textAlign: centerInSpace ? TextAlign.center : TextAlign.start,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: subtitleStyle,
+            ),
           ),
         ],
+        if (rarity > 0) ...[
+          const SizedBox(height: 4),
+          _RarityStars(
+            rarity: rarity,
+            starSize: (subtitleStyle.fontSize ?? 10) + 3,
+            color: starColor,
+          ),
+        ],
+      ],
+    );
+
+    final skillId = tool.skillId;
+    if (!showSkillBadge || skillId == null) {
+      return titleBlock;
+    }
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(child: titleBlock),
+        const SizedBox(width: 10),
+        SkillIcon(
+          skillId: skillId,
+          size: skillBadgeSize,
+          circular: true,
+        ),
+      ],
+    );
+  }
+}
+
+class _RarityStars extends StatelessWidget {
+  const _RarityStars({
+    required this.rarity,
+    required this.starSize,
+    required this.color,
+  });
+
+  final int rarity;
+  final double starSize;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        for (var i = 0; i < rarity; i++)
+          Padding(
+            padding: EdgeInsets.only(left: i == 0 ? 0 : 1),
+            child: Icon(
+              Icons.star_rounded,
+              size: starSize,
+              color: color,
+              shadows: const [
+                Shadow(
+                  color: Color(0x66000000),
+                  blurRadius: 3,
+                  offset: Offset(0, 1),
+                ),
+              ],
+            ),
+          ),
       ],
     );
   }

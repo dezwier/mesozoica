@@ -37,7 +37,7 @@ class ToolCardBack extends StatelessWidget {
   /// True when this occurrence already has a live session.
   final bool inUse;
 
-  /// Replaces the Rarity panel when non-null (e.g. deploy stats).
+  /// Optional deploy/stats panel above History (e.g. tool action knobs).
   final Widget? statsChild;
 
   /// Compact card history: uses + role changes, newest first.
@@ -56,12 +56,18 @@ class ToolCardBack extends StatelessWidget {
         onAction != null &&
         (remaining == null || remaining > 0);
     final actionLabel = inUse ? 'In use' : tool.action;
-    final middle =
-        statsChild ??
-        CardSectionPanel(
-          label: 'Rarity',
-          child: _RarityRow(rarity: tool.rarity),
-        );
+    final editButton = onEditParams == null
+        ? null
+        : IconButton(
+            onPressed: onEditParams,
+            icon: const Icon(Icons.settings, size: 18),
+            tooltip: 'Edit parameters',
+            visualDensity: VisualDensity.compact,
+            constraints: const BoxConstraints(
+              minWidth: 28,
+              minHeight: 28,
+            ),
+          );
 
     return AspectRatio(
       aspectRatio: DinoCardTheme.cardAspectRatio,
@@ -77,9 +83,9 @@ class ToolCardBack extends StatelessWidget {
               tool: tool,
               titleFontSize: titleFontSize,
               subtitleFontSize: subtitleFontSize,
-              centered: true,
               overlayOnImage: true,
-              subtitleOverride: tool.inventoryBackSubtitle(),
+              showSkillBadge: true,
+              showRarityStars: true,
             ),
           ),
           Positioned(
@@ -90,40 +96,55 @@ class ToolCardBack extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Stack(
-                  children: [
-                    middle,
-                    if (onEditParams != null)
-                      Positioned(
-                        top: 2,
-                        right: 2,
-                        child: IconButton(
-                          onPressed: onEditParams,
-                          icon: const Icon(Icons.settings, size: 18),
-                          tooltip: 'Edit parameters',
-                          visualDensity: VisualDensity.compact,
-                          constraints: const BoxConstraints(
-                            minWidth: 28,
-                            minHeight: 28,
-                          ),
+                if (statsChild != null) ...[
+                  Stack(
+                    children: [
+                      statsChild!,
+                      if (editButton != null)
+                        Positioned(
+                          top: 2,
+                          right: 2,
+                          child: editButton,
                         ),
-                      ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Expanded(
-                  child: CardSectionPanel(
-                    label: 'History',
-                    expandChild: true,
-                    padding: const EdgeInsets.fromLTRB(10, 8, 10, 6),
-                    child: _HistoryList(
-                      history: history,
-                      loading: historyLoading,
-                      onHistoryTap: onHistoryTap,
-                    ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                ],
+                // Caps at remaining space; shrinks when history is short.
+                Flexible(
+                  fit: FlexFit.loose,
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      return ConstrainedBox(
+                        constraints: BoxConstraints(
+                          maxHeight: constraints.maxHeight,
+                        ),
+                        child: Stack(
+                          children: [
+                            CardSectionPanel(
+                              label: 'History',
+                              padding:
+                                  const EdgeInsets.fromLTRB(10, 8, 10, 6),
+                              child: _HistoryList(
+                                history: history,
+                                loading: historyLoading,
+                                onHistoryTap: onHistoryTap,
+                              ),
+                            ),
+                            if (statsChild == null && editButton != null)
+                              Positioned(
+                                top: 2,
+                                right: 2,
+                                child: editButton,
+                              ),
+                          ],
+                        ),
+                      );
+                    },
                   ),
                 ),
                 if (showActionButtons) ...[
+                  const Spacer(),
                   const SizedBox(height: 8),
                   SizedBox(
                     height: _actionHeight,
@@ -194,11 +215,14 @@ class _HistoryList extends StatelessWidget {
   Widget build(BuildContext context) {
     final cardTheme = DinoCardTheme.of(context);
     if (loading && history.isEmpty) {
-      return const Center(
-        child: SizedBox(
-          width: 18,
-          height: 18,
-          child: CircularProgressIndicator(strokeWidth: 2),
+      return const SizedBox(
+        height: 22,
+        child: Center(
+          child: SizedBox(
+            width: 18,
+            height: 18,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
         ),
       );
     }
@@ -216,23 +240,21 @@ class _HistoryList extends StatelessWidget {
       thickness: 0.5,
       color: cardTheme.cardTextMuted.withValues(alpha: 0.22),
     );
-    return SingleChildScrollView(
-      // Clamping: no bounce/drag when content fits; scrolls only on overflow.
+    // shrinkWrap: size to rows when short; parent maxHeight enables scroll.
+    return ListView.separated(
+      shrinkWrap: true,
       physics: const ClampingScrollPhysics(),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          for (var i = 0; i < history.length; i++) ...[
-            if (i > 0) divider,
-            _HistoryRow(
-              entry: history[i],
-              onTap: onHistoryTap == null || history[i].session == null
-                  ? null
-                  : () => onHistoryTap!(history[i].session!),
-            ),
-          ],
-        ],
-      ),
+      padding: EdgeInsets.zero,
+      itemCount: history.length,
+      separatorBuilder: (_, _) => divider,
+      itemBuilder: (context, i) {
+        return _HistoryRow(
+          entry: history[i],
+          onTap: onHistoryTap == null || history[i].session == null
+              ? null
+              : () => onHistoryTap!(history[i].session!),
+        );
+      },
     );
   }
 }
@@ -366,32 +388,3 @@ class _HistoryRow extends StatelessWidget {
   }
 }
 
-class _RarityRow extends StatelessWidget {
-  const _RarityRow({required this.rarity});
-
-  final int rarity;
-
-  @override
-  Widget build(BuildContext context) {
-    final cardTheme = DinoCardTheme.of(context);
-    final clamped = rarity.clamp(1, 5);
-
-    return Row(
-      children: [
-        ...List.generate(5, (index) {
-          final filled = index < clamped;
-          return Padding(
-            padding: EdgeInsets.only(right: index == 4 ? 0 : 4),
-            child: Icon(
-              filled ? Icons.star : Icons.star_border,
-              size: 18,
-              color: filled ? cardTheme.cardAccent : cardTheme.cardTextMuted,
-            ),
-          );
-        }),
-        const SizedBox(width: 8),
-        Text('$clamped/5', style: cardTheme.bodyStyle(fontSize: 13)),
-      ],
-    );
-  }
-}

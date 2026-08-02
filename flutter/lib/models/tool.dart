@@ -78,9 +78,15 @@ class ToolSummary {
     return '$displayOccurrenceNumber · $versionPart';
   }
 
-  /// Card-back subtitle: category / scientific.
-  /// Obtained time lives in History; id/version on the front badge.
-  String inventoryBackSubtitle() => categoryWithScientificDisplay();
+  /// Card-back subtitle: scientific name only (rarity stars are separate).
+  String inventoryBackSubtitle() => displayScientificTool;
+
+  /// Profile skill id inferred from [category] (`1 site_discovery` → `site_discovery`).
+  String? get skillId {
+    final stripped = category.replaceFirst(RegExp(r'^\d+\s+'), '').trim();
+    if (stripped.isEmpty) return null;
+    return stripped.replaceAll(' ', '_').toLowerCase();
+  }
 
   /// Build an inventory-style summary for a catalog owned occurrence thumb.
   ToolSummary occurrenceFromThumb(OwnedOccurrenceThumb thumb) {
