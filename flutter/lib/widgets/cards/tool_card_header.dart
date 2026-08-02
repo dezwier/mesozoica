@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
+import '../../controllers/auth_controller.dart';
+import '../../models/profile.dart';
 import '../../models/tool.dart';
 import '../../theme/dino_card_theme.dart';
+import '../profile/profile_skill_detail_sheet.dart';
 import '../profile/profile_skill_icons.dart';
 import 'card_adaptive_title_text.dart';
 
@@ -106,12 +110,52 @@ class ToolCardHeader extends StatelessWidget {
       children: [
         Expanded(child: titleBlock),
         const SizedBox(width: 10),
-        SkillIcon(
-          skillId: skillId,
-          size: skillBadgeSize,
-          circular: true,
+        Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: () => _openSkillSheet(context, tool),
+            customBorder: const CircleBorder(),
+            child: SkillIcon(
+              skillId: skillId,
+              size: skillBadgeSize,
+              circular: true,
+            ),
+          ),
         ),
       ],
+    );
+  }
+
+  static void _openSkillSheet(BuildContext context, ToolSummary tool) {
+    final skillId = tool.skillId;
+    if (skillId == null) return;
+
+    final profile = context.read<AuthController>().currentUser;
+    SkillState? skill;
+    Map<String, int>? breakdown;
+    if (profile != null) {
+      for (final item in profile.skills) {
+        if (item.id == skillId) {
+          skill = item;
+          break;
+        }
+      }
+      breakdown = profile.skillBreakdown[skillId];
+    }
+    skill ??= SkillState(
+      id: skillId,
+      name: tool.displayCategory.isNotEmpty ? tool.displayCategory : skillId,
+      xp: 0,
+      level: 1,
+      nextLevelXp: 0,
+      xpToNext: 0,
+      progress: 0,
+    );
+
+    showProfileSkillDetailSheet(
+      context,
+      skill: skill,
+      breakdown: breakdown,
     );
   }
 }
