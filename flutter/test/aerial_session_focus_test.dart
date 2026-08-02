@@ -96,4 +96,31 @@ void main() {
     expect(ongoing.map((m) => m.sessionId), [1, 2]);
     expect(past.map((m) => m.sessionId), [3, 4, 5]);
   });
+
+  test('hudSession hides completed and arrived flights', () {
+    final controller = AerialSessionController();
+    final completed = session(id: 3, status: 'completed');
+    controller.focusSession(completed);
+    expect(controller.hudSession, isNull);
+
+    final arrived = ToolSession(
+      sessionId: 7,
+      toolId: 1,
+      actionKey: 'aerial_recon',
+      status: 'active',
+      startedAt: DateTime.utc(2026, 1, 1),
+      state: {
+        'route': [
+          {'lat': 40.0, 'lon': -100.0},
+          {'lat': 40.1, 'lon': -100.0},
+        ],
+        'route_length_km': 11,
+        'flight_duration_s': 60,
+        'flight_started_at': '2026-01-01T00:00:00.000',
+        'flight_ends_at': '2026-01-01T00:01:00.000',
+      },
+    );
+    controller.focusSession(arrived);
+    expect(controller.hudSession, isNull);
+  });
 }

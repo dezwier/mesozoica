@@ -327,15 +327,11 @@ def start_timed_session(
     cancel_live_timed_sessions(session, user_id=user_id)
 
     game = get_game_config()
-    min_duration: int | None = None
-    if action_key == ACTION_KEY_TERRAIN_ECHO:
-        min_duration = int(game.tool_actions.terrain_echo.min_duration_minutes)
-
+    # Same as other timed tools: use whatever battery remains (no floor).
     remaining_s = allocate_remaining_for_start(
         session,
         tool_type=tool_type,
         instance=instance,
-        min_duration_minutes=min_duration,
     )
     eff_duration = max(1, (remaining_s + 59) // 60)
     inst_p = instance.params_json or {}

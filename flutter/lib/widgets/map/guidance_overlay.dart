@@ -84,7 +84,6 @@ class _GuidanceOverlayState extends State<GuidanceOverlay>
       ]),
       builder: (context, _) {
         final remaining = guidance.remainingListenable.value;
-        final minutesLeft = remaining?.inMinutes.clamp(0, 999);
         final showDistance =
             guidance.showDistance && guidance.distanceLabel != null;
         // Keep compass visible during exit animation even if follow flickers.
@@ -139,7 +138,7 @@ class _GuidanceOverlayState extends State<GuidanceOverlay>
                           centerDeg: centerDeg,
                           rangeWidthDeg: guidance.rangeWidthDeg,
                           northDeg: northDeg,
-                          minutesLeft: compassSession ? minutesLeft : null,
+                          remaining: compassSession ? remaining : null,
                           onStop:
                               compassSession ? () => guidance.stop() : null,
                           title: compassTitle,
@@ -151,7 +150,7 @@ class _GuidanceOverlayState extends State<GuidanceOverlay>
                   DraggableProximityScanner(
                     key: ValueKey(guidance.session?.sessionId ?? 0),
                     label: guidance.distanceLabel!,
-                    minutesLeft: minutesLeft,
+                    remaining: remaining,
                     onStop: () => guidance.stop(),
                   ),
                 if (guidance.showRetargetBadge)

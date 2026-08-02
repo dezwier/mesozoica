@@ -9,9 +9,10 @@ import '../tools/aerial_session_actions.dart';
 import 'active_tool_hud_shell.dart';
 import 'vintage_guidance_compass.dart';
 
-/// Compact vintage map chip for focused / active aerial sessions (draggable).
+/// Compact vintage map chip for live aerial sessions (draggable).
 ///
-/// Tap (not drag) follows the flight; ABORT cancels an active session.
+/// Dismisses automatically when the flight is aborted or arrives.
+/// Tap (not drag) follows the craft; ABORT cancels an active session.
 class AerialHud extends StatelessWidget {
   const AerialHud({super.key});
 
@@ -22,19 +23,12 @@ class AerialHud extends StatelessWidget {
     if (session == null) return const SizedBox.shrink();
 
     final kind = AerialActionKind.fromActionKey(session.actionKey);
-    final active = session.isActive;
 
     return ActiveToolHudShell(
       icon: _AerialHudIcon(kind: kind, size: 26),
       remainingListenable: aerial.remainingListenable,
-      stopLabel: active ? 'ABORT' : 'CLOSE',
-      onStop: () {
-        if (active) {
-          AerialSessionActions.confirmAbort(context, session);
-        } else {
-          context.read<AerialSessionController>().clearFocus();
-        }
-      },
+      stopLabel: 'ABORT',
+      onStop: () => AerialSessionActions.confirmAbort(context, session),
       onTap: () => context.read<AerialSessionController>().focusSession(session),
       body: ListenableBuilder(
         listenable: aerial.progressTickListenable,

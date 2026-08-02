@@ -53,13 +53,26 @@ class AerialSessionController extends ChangeNotifier {
   ToolSession? get pendingFocusSession => _pendingFocusSession;
   bool get pendingDrawCamera => _pendingDrawCamera;
 
-  /// Session shown on the map HUD: focused route, else first active flight.
+  /// Session shown on the map HUD: focused live flight, else first live flight.
+  ///
+  /// Past / arrived / aborted sessions never keep the HUD up.
   ToolSession? get hudSession {
-    if (_focusedSession != null) return _focusedSession;
+    final focused = _focusedSession;
+    if (focused != null && _sessionShowsHud(focused)) return focused;
     for (final s in _sessions) {
-      if (s.isActive) return s;
+      if (_sessionShowsHud(s)) return s;
     }
     return null;
+  }
+
+  /// True while the craft is still preparing or in flight (not arrived/aborted).
+  bool _sessionShowsHud(ToolSession session) {
+    if (session.isPast) return false;
+    if (session.isPending) return true;
+    if (!session.isInFlight) return false;
+    final ends = session.flightEndsAt;
+    if (ends == null) return true;
+    return DateTime.now().toUtc().isBefore(ends);
   }
 
   /// Bumps while any flying session is active so map layers can re-interpolate.
@@ -389,12 +402,14 @@ class AerialSessionController extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Cancel an active session; keeps focus on the truncated cancelled route.
+  /// Cancel an active session and dismiss the HUD.
   Future<bool> cancelSession(int sessionId) async {
     try {
       final session = await _toolService.cancelSession(sessionId);
-      if (_focusedSession?.sessionId == sessionId) {
-        _focusedSession = session;
+      if (_focusedSession?.sessionId == sessionId ||
+          _pendingFocusSession?.sessionId == sessionId) {
+        _focusedSession = null;
+        _pendingFocusSession = null;
       }
       _upsertSession(session);
       return true;
@@ -469,7 +484,12 @@ class AerialSessionController extends ChangeNotifier {
             break;
           }
         }
-        if (match != null) _focusedSession = match;
+        if (match != null && _sessionShowsHud(match)) {
+          _focusedSession = match;
+        } else {
+          _focusedSession = null;
+          _pendingFocusSession = null;
+        }
       }
       _syncSessionTimers();
       notifyListeners();
@@ -535,17 +555,24 @@ class AerialSessionController extends ChangeNotifier {
   }
 
   void _syncRemaining() {
+    _dismissHudIfFlightFinished();
     final session = hudSession;
     Duration? next;
     if (session != null && session.isInFlight && session.flightEndsAt != null) {
       final left = session.flightEndsAt!.difference(DateTime.now().toUtc());
       next = left.isNegative ? Duration.zero : left;
-    } else if (session != null && session.isPast) {
-      next = Duration.zero;
     }
     if (remainingListenable.value != next) {
       remainingListenable.value = next;
     }
+  }
+
+  /// Drop focus when the focused craft has arrived (or session is otherwise done).
+  void _dismissHudIfFlightFinished() {
+    final focused = _focusedSession;
+    if (focused == null) return;
+    if (_sessionShowsHud(focused)) return;
+    clearFocus();
   }
 
   /// Poll server (~5s) only while map tracking and a session is pending/active.

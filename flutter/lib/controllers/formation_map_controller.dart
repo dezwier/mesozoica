@@ -13,6 +13,7 @@ import '../services/location_service.dart';
 import '../services/site_service.dart';
 import '../services/tool_service.dart';
 import '../utils/survey_grid.dart';
+import 'timed_session_remaining.dart';
 
 /// Active timed Formation Map session (fixed rock-type square overlay).
 ///
@@ -241,30 +242,20 @@ class FormationMapController extends ChangeNotifier {
     _tickTimer?.cancel();
     _syncRemaining();
     _tickTimer = Timer.periodic(const Duration(milliseconds: 250), (_) {
+      if (_syncRemaining()) return;
       if (!isActive) {
         unawaited(stop(notifyServer: false));
-        return;
       }
-      _syncRemaining();
     });
   }
 
-  void _syncRemaining() {
-    final expires = _session?.expiresAt;
-    if (expires == null) {
-      if (remainingListenable.value != null) {
-        remainingListenable.value = null;
-      }
-      return;
-    }
-    final left = expires.difference(DateTime.now().toUtc());
-    final next = left.isNegative ? Duration.zero : left;
-    final prev = remainingListenable.value;
-    if (prev == null ||
-        prev.inMinutes != next.inMinutes ||
-        (next == Duration.zero && prev != Duration.zero)) {
-      remainingListenable.value = next;
-    }
+  /// Returns true when the session expired and local cleanup was started.
+  bool _syncRemaining() {
+    return syncTimedSessionRemaining(
+      session: _session,
+      remainingListenable: remainingListenable,
+      onExpired: () => unawaited(stop(notifyServer: false)),
+    );
   }
 
   void _bumpSitesRevision() {

@@ -6,6 +6,10 @@ import 'package:provider/provider.dart';
 import '../../config/game_config.dart';
 import '../../controllers/aerial_session_controller.dart';
 import '../../controllers/auth_controller.dart';
+import '../../controllers/formation_map_controller.dart';
+import '../../controllers/guidance_session_controller.dart';
+import '../../controllers/orbit_survey_controller.dart';
+import '../../controllers/terrain_echo_controller.dart';
 import '../../controllers/tool_action_router.dart';
 import '../../controllers/tool_catalog_controller.dart';
 import '../../models/aerial_action_kind.dart';
@@ -48,10 +52,16 @@ class ToolTurnableCard extends StatefulWidget {
 
 class _ToolTurnableCardState extends State<ToolTurnableCard> {
   bool _updateParamsBusy = false;
-  bool _usesLoading = false;
-  List<ToolSession> _uses = const [];
+  bool _historyLoading = false;
+  List<ToolSession> _history = const [];
   int? _remainingDurationS;
+  int? _totalDurationS;
+  Timer? _remainingTick;
   int? _loadedForToolId;
+  String? _lastSessionFingerprint;
+  bool _historyRefreshQueued = false;
+  bool _sessionSyncQueued = false;
+  int _historyFetchGen = 0;
 
   /// Params shown/edited: instance → base → game-config YAML defaults.
   Map<String, dynamic> _paramsForEdit(ToolSummary tool) {
@@ -76,29 +86,32 @@ class _ToolTurnableCardState extends State<ToolTurnableCard> {
     ToolActionRouter.start(context, widget.tool);
   }
 
-  Future<void> _loadUsesIfNeeded() async {
+  bool get _canLoadHistory =>
+      widget.tool.isOwned && widget.tool.isToolInstance;
+
+  Future<void> _refreshHistory({bool showSpinner = false}) async {
     final tool = widget.tool;
-    if (!tool.isOwned || !tool.isToolInstance) return;
-    if (_loadedForToolId == tool.id && (_uses.isNotEmpty || !_usesLoading)) {
-      // Still refresh remaining when tool summary already has it.
-      if (_remainingDurationS == null && tool.remainingDurationS != null) {
-        setState(() => _remainingDurationS = tool.remainingDurationS);
-      }
-      return;
-    }
+    if (!_canLoadHistory) return;
+    final gen = ++_historyFetchGen;
     _loadedForToolId = tool.id;
-    setState(() {
-      _usesLoading = true;
-      _remainingDurationS = tool.remainingDurationS;
-    });
+    if (showSpinner || _history.isEmpty) {
+      setState(() {
+        _historyLoading = true;
+        _remainingDurationS = tool.remainingDurationS;
+        _totalDurationS = tool.totalDurationS;
+      });
+    }
     try {
       final response = await ToolService().fetchToolSessions(tool.id);
-      if (!mounted || widget.tool.id != tool.id) return;
+      if (!mounted || widget.tool.id != tool.id || gen != _historyFetchGen) {
+        return;
+      }
       setState(() {
-        _uses = response.items;
+        _history = response.items;
         _remainingDurationS =
             response.remainingDurationS ?? tool.remainingDurationS;
-        _usesLoading = false;
+        _totalDurationS = response.totalDurationS ?? tool.totalDurationS;
+        _historyLoading = false;
       });
       context.read<ToolCatalogController>().replaceToolSummary(
             tool.copyWith(
@@ -107,19 +120,91 @@ class _ToolTurnableCardState extends State<ToolTurnableCard> {
             ),
           );
     } catch (_) {
-      if (!mounted || widget.tool.id != tool.id) return;
+      if (!mounted || widget.tool.id != tool.id || gen != _historyFetchGen) {
+        return;
+      }
       setState(() {
-        _usesLoading = false;
-        _loadedForToolId = null;
+        _historyLoading = false;
+        if (_history.isEmpty) _loadedForToolId = null;
       });
     }
+  }
+
+  void _queueHistoryRefresh({bool showSpinner = false}) {
+    if (_historyRefreshQueued) return;
+    _historyRefreshQueued = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _historyRefreshQueued = false;
+      if (!mounted) return;
+      unawaited(_refreshHistory(showSpinner: showSpinner));
+    });
+  }
+
+  /// Stable signature of this tool's live/known sessions across controllers.
+  String _sessionFingerprint({
+    required AerialSessionController aerial,
+    required GuidanceSessionController guidance,
+    required OrbitSurveyController orbit,
+    required FormationMapController formation,
+    required TerrainEchoController terrain,
+  }) {
+    final toolId = widget.tool.id;
+    final parts = <String>[];
+
+    for (final s in aerial.sessions) {
+      if (s.toolId != toolId) continue;
+      parts.add(
+        'a:${s.sessionId}:${s.status}:${s.stopReason}:'
+        '${s.discoveredCount}:${s.endedAt?.millisecondsSinceEpoch ?? 0}',
+      );
+    }
+
+    void addTimed(String tag, ToolSession? session, ToolSummary? tool) {
+      if (session == null) return;
+      if (session.toolId != toolId && tool?.id != toolId) return;
+      parts.add(
+        '$tag:${session.sessionId}:${session.status}:${session.stopReason}:'
+        '${session.endedAt?.millisecondsSinceEpoch ?? 0}',
+      );
+    }
+
+    addTimed('g', guidance.session, guidance.tool);
+    addTimed('o', orbit.session, orbit.tool);
+    addTimed('f', formation.session, formation.tool);
+    addTimed('t', terrain.session, terrain.tool);
+    return parts.join('|');
+  }
+
+  void _syncHistoryToSessions({
+    required AerialSessionController aerial,
+    required GuidanceSessionController guidance,
+    required OrbitSurveyController orbit,
+    required FormationMapController formation,
+    required TerrainEchoController terrain,
+  }) {
+    if (!_canLoadHistory) return;
+    final fingerprint = _sessionFingerprint(
+      aerial: aerial,
+      guidance: guidance,
+      orbit: orbit,
+      formation: formation,
+      terrain: terrain,
+    );
+    if (fingerprint == _lastSessionFingerprint) {
+      if (_loadedForToolId != widget.tool.id && !_historyLoading) {
+        _queueHistoryRefresh(showSpinner: true);
+      }
+      return;
+    }
+    final firstLoad = _lastSessionFingerprint == null;
+    _lastSessionFingerprint = fingerprint;
+    _queueHistoryRefresh(showSpinner: firstLoad && _history.isEmpty);
   }
 
   Future<void> _onEditParams() async {
     if (_updateParamsBusy) return;
     final paramsForEdit = _paramsForEdit(widget.tool);
     final preferredKeys = _editableKeysForBackStats(widget.tool);
-    // Prefer extension keys (order), but keep any that exist in the payload.
     final editableKeys = preferredKeys.isNotEmpty
         ? preferredKeys
         : paramsForEdit.keys.toList(growable: false);
@@ -138,8 +223,7 @@ class _ToolTurnableCardState extends State<ToolTurnableCard> {
           );
           if (!mounted) return;
           context.read<ToolCatalogController>().replaceToolSummary(updatedTool);
-          _loadedForToolId = null;
-          await _loadUsesIfNeeded();
+          await _refreshHistory(showSpinner: true);
         } on ToolServiceException catch (error) {
           if (!mounted) return;
           ScaffoldMessenger.of(
@@ -159,7 +243,7 @@ class _ToolTurnableCardState extends State<ToolTurnableCard> {
     );
   }
 
-  void _onUseTap(ToolSession session) {
+  void _onHistoryTap(ToolSession session) {
     if (!AerialActionKind.isAerialActionKey(session.actionKey)) return;
     final aerial = context.read<AerialSessionController>();
     for (final item in aerial.sessions) {
@@ -171,16 +255,90 @@ class _ToolTurnableCardState extends State<ToolTurnableCard> {
     unawaited(aerial.focusSessionById(session.sessionId));
   }
 
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    final inventoryMode =
-        context.read<ToolCatalogController>().mode == ToolScreenMode.inventory;
-    if (inventoryMode && widget.tool.isOwned) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _loadUsesIfNeeded();
-      });
+  /// Lifetime battery left — recomputed from sessions so live rows tick down.
+  int? _liveRemainingS({
+    required AerialSessionController aerial,
+    required GuidanceSessionController guidance,
+    required OrbitSurveyController orbit,
+    required FormationMapController formation,
+    required TerrainEchoController terrain,
+  }) {
+    final total = _totalDurationS ?? widget.tool.totalDurationS;
+    final fallback = _remainingDurationS ?? widget.tool.remainingDurationS;
+    if (total == null) return fallback;
+
+    final toolId = widget.tool.id;
+    final byId = <int, ToolSession>{
+      for (final session in _history) session.sessionId: session,
+    };
+    void upsert(ToolSession? session) {
+      if (session == null || session.toolId != toolId) return;
+      byId[session.sessionId] = session;
     }
+
+    for (final session in aerial.sessions) {
+      upsert(session);
+    }
+    upsert(guidance.session);
+    upsert(orbit.session);
+    upsert(formation.session);
+    upsert(terrain.session);
+
+    if (byId.isEmpty) return fallback;
+
+    final now = DateTime.now().toUtc();
+    var used = 0;
+    for (final session in byId.values) {
+      used += session.batteryChargeS(now: now);
+    }
+    final left = total - used;
+    return left < 0 ? 0 : left;
+  }
+
+  void _syncRemainingTick({required bool inUse}) {
+    final needsTick = inUse || _history.any((s) => s.isActive);
+    if (needsTick) {
+      _remainingTick ??= Timer.periodic(const Duration(seconds: 1), (_) {
+        if (!mounted) return;
+        setState(() {});
+      });
+    } else if (_remainingTick != null) {
+      _remainingTick!.cancel();
+      _remainingTick = null;
+    }
+  }
+
+  bool _matchesTool(ToolSession? session, ToolSummary? tool) {
+    if (session == null) return false;
+    final toolId = widget.tool.id;
+    return session.toolId == toolId || tool?.id == toolId;
+  }
+
+  bool _isToolInUse({
+    required AerialSessionController aerial,
+    required GuidanceSessionController guidance,
+    required OrbitSurveyController orbit,
+    required FormationMapController formation,
+    required TerrainEchoController terrain,
+  }) {
+    final toolId = widget.tool.id;
+    if (aerial.sessions.any((s) => s.toolId == toolId && s.isActive)) {
+      return true;
+    }
+    if (guidance.isActive && _matchesTool(guidance.session, guidance.tool)) {
+      return true;
+    }
+    if (orbit.isActive && _matchesTool(orbit.session, orbit.tool)) {
+      return true;
+    }
+    if (formation.isActive &&
+        _matchesTool(formation.session, formation.tool)) {
+      return true;
+    }
+    if (terrain.isActive && _matchesTool(terrain.session, terrain.tool)) {
+      return true;
+    }
+    return _history.any((s) => s.isActive);
   }
 
   @override
@@ -188,9 +346,27 @@ class _ToolTurnableCardState extends State<ToolTurnableCard> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.tool.id != widget.tool.id) {
       _loadedForToolId = null;
-      _uses = const [];
+      _history = const [];
       _remainingDurationS = widget.tool.remainingDurationS;
+      _totalDurationS = widget.tool.totalDurationS;
+      _lastSessionFingerprint = null;
+      _historyFetchGen++;
+    } else {
+      if (oldWidget.tool.remainingDurationS != widget.tool.remainingDurationS &&
+          _remainingDurationS == oldWidget.tool.remainingDurationS) {
+        _remainingDurationS = widget.tool.remainingDurationS;
+      }
+      if (oldWidget.tool.totalDurationS != widget.tool.totalDurationS &&
+          _totalDurationS == oldWidget.tool.totalDurationS) {
+        _totalDurationS = widget.tool.totalDurationS;
+      }
     }
+  }
+
+  @override
+  void dispose() {
+    _remainingTick?.cancel();
+    super.dispose();
   }
 
   @override
@@ -198,12 +374,65 @@ class _ToolTurnableCardState extends State<ToolTurnableCard> {
     final showAdminUi = context.watch<AuthController>().showAdminUi;
     final inventoryMode =
         context.watch<ToolCatalogController>().mode == ToolScreenMode.inventory;
+    final aerial = context.watch<AerialSessionController>();
+    final guidance = context.watch<GuidanceSessionController>();
+    final orbit = context.watch<OrbitSurveyController>();
+    final formation = context.watch<FormationMapController>();
+    final terrain = context.watch<TerrainEchoController>();
+
+    if (inventoryMode && _canLoadHistory && !_sessionSyncQueued) {
+      _sessionSyncQueued = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _sessionSyncQueued = false;
+        if (!mounted) return;
+        _syncHistoryToSessions(
+          aerial: aerial,
+          guidance: guidance,
+          orbit: orbit,
+          formation: formation,
+          terrain: terrain,
+        );
+      });
+    }
+
     final extension = ToolCardExtensions.forTool(widget.tool);
     final statsChild = extension?.buildDeployStats(context, widget.tool);
-    final ongoingChild = extension?.buildOngoingPanel(context, widget.tool);
-    // Admin toggle on: always show the params cog on owned tool cards.
     final canEditParams = showAdminUi && widget.tool.isOwned;
-    final remaining = _remainingDurationS ?? widget.tool.remainingDurationS;
+    final inUse = _isToolInUse(
+      aerial: aerial,
+      guidance: guidance,
+      orbit: orbit,
+      formation: formation,
+      terrain: terrain,
+    );
+    _syncRemainingTick(inUse: inUse);
+    final remaining = _liveRemainingS(
+      aerial: aerial,
+      guidance: guidance,
+      orbit: orbit,
+      formation: formation,
+      terrain: terrain,
+    );
+
+    final back = ToolCardBack(
+      tool: widget.tool,
+      titleFontSize: widget.titleFontSize,
+      subtitleFontSize: widget.subtitleFontSize,
+      onAction: inventoryMode &&
+              widget.tool.isOwned &&
+              !inUse &&
+              (remaining == null || remaining > 0)
+          ? _onAction
+          : null,
+      onEditParams: canEditParams ? _onEditParams : null,
+      showActionButtons: inventoryMode,
+      inUse: inUse,
+      statsChild: statsChild,
+      history: _history,
+      historyLoading: _historyLoading,
+      remainingDurationS: remaining,
+      onHistoryTap: _onHistoryTap,
+    );
 
     return TurnableYAxisCard(
       resetIdentity: widget.tool.id,
@@ -219,24 +448,7 @@ class _ToolTurnableCardState extends State<ToolTurnableCard> {
         subtitleFontSize: widget.subtitleFontSize,
         overlayHeightFactor: widget.overlayHeightFactor,
       ),
-      back: ToolCardBack(
-        tool: widget.tool,
-        titleFontSize: widget.titleFontSize,
-        subtitleFontSize: widget.subtitleFontSize,
-        onAction: inventoryMode &&
-                widget.tool.isOwned &&
-                (remaining == null || remaining > 0)
-            ? _onAction
-            : null,
-        onEditParams: canEditParams ? _onEditParams : null,
-        showActionButtons: inventoryMode,
-        statsChild: statsChild,
-        ongoingChild: ongoingChild,
-        uses: _uses,
-        usesLoading: _usesLoading,
-        remainingDurationS: remaining,
-        onUseTap: _onUseTap,
-      ),
+      back: back,
     );
   }
 }

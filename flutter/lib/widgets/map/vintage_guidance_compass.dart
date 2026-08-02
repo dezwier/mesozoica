@@ -26,9 +26,24 @@ abstract final class VintageInstrumentStyle {
   );
 }
 
+/// Shared countdown label for tool HUDs (`3m 12s`, `45s`, …).
+String formatActiveToolHudRemaining(Duration? remaining) {
+  if (remaining == null) return '—';
+  final total = remaining.inSeconds.clamp(0, 359999);
+  final m = total ~/ 60;
+  final s = total % 60;
+  if (m >= 60) {
+    final h = m ~/ 60;
+    final mins = m % 60;
+    return '${h}h ${mins}m ${s}s';
+  }
+  if (m > 0) return '${m}m ${s}s';
+  return '${s}s';
+}
+
 /// Vintage brass compass dial for Geo Compass and Site Navigator.
 ///
-/// Optional [onStop] / [minutesLeft] show a session strip under the dial
+/// Optional [onStop] / [remaining] show a session strip under the dial
 /// (Geo Compass). Site Navigator keeps those on the proximity meter instead.
 ///
 /// [centerDeg] is screen-relative (0 = up). [northDeg] places the N marker.
@@ -38,7 +53,7 @@ class VintageGuidanceCompass extends StatelessWidget {
     required this.centerDeg,
     required this.rangeWidthDeg,
     required this.northDeg,
-    this.minutesLeft,
+    this.remaining,
     this.onStop,
     this.title = 'COMPASS',
   });
@@ -46,7 +61,7 @@ class VintageGuidanceCompass extends StatelessWidget {
   final double centerDeg;
   final double rangeWidthDeg;
   final double northDeg;
-  final int? minutesLeft;
+  final Duration? remaining;
   final VoidCallback? onStop;
   final String title;
 
@@ -58,7 +73,7 @@ class VintageGuidanceCompass extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final time = minutesLeft == null ? '—' : '${minutesLeft}m';
+    final time = formatActiveToolHudRemaining(remaining);
     return SizedBox(
       width: size,
       height: size + (onStop != null ? sessionStripHeight : 0),

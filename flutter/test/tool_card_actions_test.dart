@@ -75,8 +75,9 @@ void main() {
 
     expect(find.text('Deploy'), findsOneWidget);
     expect(find.text('Info'), findsNothing);
-    expect(find.text('15m left'), findsOneWidget);
-    expect(find.text('USES'), findsOneWidget);
+    expect(find.text('15m 0s left'), findsOneWidget);
+    expect(find.text('HISTORY'), findsOneWidget);
+    expect(find.text('No history yet'), findsOneWidget);
     expect(find.textContaining('Site Discovery'), findsOneWidget);
 
     await tester.tap(find.text('Deploy'));
@@ -124,7 +125,7 @@ void main() {
     expect(find.text('#10'), findsNothing);
   });
 
-  testWidgets('ToolCardBack lists compact uses', (tester) async {
+  testWidgets('ToolCardBack lists compact history', (tester) async {
     const owned = ToolSummary(
       id: 1,
       name: 'Aerial Recon',
@@ -135,7 +136,7 @@ void main() {
       action: 'Deploy',
       level: 1,
     );
-    final uses = [
+    final history = [
       ToolSession(
         sessionId: 9,
         toolId: 1,
@@ -164,7 +165,7 @@ void main() {
               child: ToolCardBack(
                 tool: owned,
                 onAction: () {},
-                uses: uses,
+                history: history,
                 remainingDurationS: 900,
               ),
             ),
@@ -208,6 +209,46 @@ void main() {
     expect(deploy.onPressed, isNull);
   });
 
+  testWidgets('ToolCardBack shows In use and disables action when inUse',
+      (tester) async {
+    const owned = ToolSummary(
+      id: 1,
+      name: 'Aerial Recon',
+      category: '1 site_discovery',
+      scientificTool: 'helicopter',
+      description: 'Scout loop',
+      rarity: 5,
+      action: 'Deploy',
+      level: 1,
+      remainingDurationS: 900,
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: SizedBox(
+              width: 320,
+              child: ToolCardBack(
+                tool: owned,
+                onAction: () {},
+                inUse: true,
+                remainingDurationS: 900,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('In use'), findsOneWidget);
+    expect(find.text('Deploy'), findsNothing);
+    final action = tester.widget<ChromeActionButton>(
+      find.widgetWithText(ChromeActionButton, 'In use'),
+    );
+    expect(action.onPressed, isNull);
+  });
+
   testWidgets('ToolCardBack disables action when remaining is zero',
       (tester) async {
     const owned = ToolSummary(
@@ -243,6 +284,6 @@ void main() {
       find.widgetWithText(ChromeActionButton, 'Consult'),
     );
     expect(action.onPressed, isNull);
-    expect(find.text('0m left'), findsOneWidget);
+    expect(find.text('0s left'), findsOneWidget);
   });
 }

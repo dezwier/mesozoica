@@ -131,6 +131,44 @@ class ToolSession {
   /// Effective duration for history UI (used seconds, else elapsed).
   int get durationS {
     if (usedDurationS != null) return usedDurationS!;
+    final start = flightStartedAt ?? startedAt;
+    if (isActive) {
+      final secs = DateTime.now().toUtc().difference(start).inSeconds;
+      return secs < 0 ? 0 : secs;
+    }
+    final end = endedAt ?? flightEndsAt ?? expiresAt;
+    if (end == null) return 0;
+    final secs = end.difference(start).inSeconds;
+    return secs < 0 ? 0 : secs;
+  }
+
+  /// Lifetime battery charge for this row (mirrors backend budget charge).
+  int batteryChargeS({DateTime? now}) {
+    if (usedDurationS != null) return usedDurationS! < 0 ? 0 : usedDurationS!;
+    final clock = now ?? DateTime.now().toUtc();
+
+    final isAerial = actionKey.startsWith('aerial_');
+    if (isAerial) {
+      final flightS = flightDurationS < 0 ? 0 : flightDurationS;
+      final started = flightStartedAt;
+      if (isPending) return flightS;
+      if (isInFlight && started != null) {
+        final elapsed = clock.difference(started).inSeconds;
+        if (elapsed <= 0) return 0;
+        return elapsed > flightS ? flightS : elapsed;
+      }
+      final end = endedAt ?? flightEndsAt;
+      if (started == null || end == null) return 0;
+      final secs = end.difference(started).inSeconds;
+      return secs < 0 ? 0 : secs;
+    }
+
+    if (isActive && expiresAt != null) {
+      final allocated = expiresAt!.difference(startedAt).inSeconds;
+      final elapsed = clock.difference(startedAt).inSeconds;
+      final capped = elapsed > allocated ? allocated : elapsed;
+      return capped < 0 ? 0 : capped;
+    }
     final end = endedAt ?? expiresAt;
     if (end == null) return 0;
     final secs = end.difference(startedAt).inSeconds;

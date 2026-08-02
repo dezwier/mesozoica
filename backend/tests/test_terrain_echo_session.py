@@ -63,8 +63,18 @@ def _tool(
     return tool
 
 
-def _grant(session: Session, *, user_id: int, tool_id: int) -> Tool:
-    instance = Tool(tool_type_id=tool_id, level=1)
+def _grant(
+    session: Session,
+    *,
+    user_id: int,
+    tool_id: int,
+    params_json: dict | None = None,
+) -> Tool:
+    instance = Tool(
+        tool_type_id=tool_id,
+        level=1,
+        params_json=params_json,
+    )
     session.add(instance)
     session.flush()
     session.add(
@@ -196,6 +206,51 @@ def test_expired_terrain_echo_session_ignored(session: Session) -> None:
     )
     row = session.exec(select(ToolSession)).one()
     assert row.status == SESSION_STATUS_COMPLETED
+
+
+def test_start_terrain_echo_uses_partial_remaining_battery(
+    client, session: Session
+) -> None:
+    """Terrain Echo must start on whatever time is left (< catalog min)."""
+    get_game_config.cache_clear()
+    user = _user(session, username="echo_partial")
+    echo = _tool(session, name="Terrain Echo")
+    instance = _grant(
+        session,
+        user_id=int(user.id),
+        tool_id=int(echo.id),
+        params_json={"duration_minutes": 5},
+    )
+    now = datetime.utcnow()
+    session.add(
+        ToolSession(
+            user_id=int(user.id),
+            tool_id=int(instance.id),
+            action_key=ACTION_KEY_TERRAIN_ECHO,
+            status=SESSION_STATUS_COMPLETED,
+            started_at=now - timedelta(minutes=4),
+            expires_at=now - timedelta(minutes=2),
+            ended_at=now - timedelta(minutes=2),
+            used_duration_s=3 * 60,
+            params_json={"duration_minutes": 5, "accuracy": 0.0, "range_m": 20.0},
+            state_json={},
+            created_at=now - timedelta(minutes=4),
+            updated_at=now - timedelta(minutes=2),
+        )
+    )
+    session.commit()
+    headers = _auth_headers(user)
+
+    started = client.post(
+        f"/api/v1/tools/{echo.id}/sessions",
+        headers=headers,
+    )
+    assert started.status_code in (201, 202), started.text
+    body = started.json()
+    assert body["action_key"] == ACTION_KEY_TERRAIN_ECHO
+    assert body["status"] == SESSION_STATUS_ACTIVE
+    # ~2 minutes left → ceil to minutes in params
+    assert body["params"]["duration_minutes"] == 2
 
 
 def test_mutual_cancel_with_orbit_survey(session: Session) -> None:

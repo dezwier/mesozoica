@@ -11,15 +11,15 @@ class ProximityScannerDisplay extends StatelessWidget {
     super.key,
     required this.label,
     this.compact = false,
-    this.minutesLeft,
+    this.remaining,
     this.onStop,
   });
 
   final String label;
   final bool compact;
 
-  /// Remaining session minutes — shown on the full (non-compact) meter.
-  final int? minutesLeft;
+  /// Remaining session time — shown on the full (non-compact) meter.
+  final Duration? remaining;
   final VoidCallback? onStop;
 
   static const double fullWidth = 148;
@@ -94,7 +94,7 @@ class ProximityScannerDisplay extends StatelessWidget {
               const SizedBox(height: 5),
               if (showSessionControls)
                 _SessionFooter(
-                  minutesLeft: minutesLeft,
+                  remaining: remaining,
                   onStop: onStop!,
                 )
               else
@@ -112,12 +112,12 @@ class DraggableProximityScanner extends StatefulWidget {
   const DraggableProximityScanner({
     super.key,
     required this.label,
-    this.minutesLeft,
+    this.remaining,
     this.onStop,
   });
 
   final String label;
-  final int? minutesLeft;
+  final Duration? remaining;
   final VoidCallback? onStop;
 
   @override
@@ -143,7 +143,7 @@ class _DraggableProximityScannerState extends State<DraggableProximityScanner> {
             },
             child: ProximityScannerDisplay(
               label: widget.label,
-              minutesLeft: widget.minutesLeft,
+              remaining: widget.remaining,
               onStop: widget.onStop,
             ),
           ),
@@ -155,16 +155,16 @@ class _DraggableProximityScannerState extends State<DraggableProximityScanner> {
 
 class _SessionFooter extends StatelessWidget {
   const _SessionFooter({
-    required this.minutesLeft,
+    required this.remaining,
     required this.onStop,
   });
 
-  final int? minutesLeft;
+  final Duration? remaining;
   final VoidCallback onStop;
 
   @override
   Widget build(BuildContext context) {
-    final time = minutesLeft == null ? '—' : '${minutesLeft}m';
+    final time = formatActiveToolHudRemaining(remaining);
     return Row(
       children: [
         Text(

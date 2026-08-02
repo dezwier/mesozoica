@@ -19,12 +19,12 @@ class ToolCardBack extends StatelessWidget {
     this.onAction,
     this.onEditParams,
     this.showActionButtons = true,
+    this.inUse = false,
     this.statsChild,
-    this.ongoingChild,
-    this.uses = const [],
-    this.usesLoading = false,
+    this.history = const [],
+    this.historyLoading = false,
     this.remainingDurationS,
-    this.onUseTap,
+    this.onHistoryTap,
   });
 
   final ToolSummary tool;
@@ -34,25 +34,28 @@ class ToolCardBack extends StatelessWidget {
   final VoidCallback? onEditParams;
   final bool showActionButtons;
 
+  /// True when this occurrence already has a live session.
+  final bool inUse;
+
   /// Replaces the Rarity panel when non-null (e.g. deploy stats).
   final Widget? statsChild;
 
-  /// Optional ongoing-session panel below stats.
-  final Widget? ongoingChild;
-
-  /// Compact use history (newest first).
-  final List<ToolSession> uses;
-  final bool usesLoading;
+  /// Compact session history (newest first).
+  final List<ToolSession> history;
+  final bool historyLoading;
   final int? remainingDurationS;
-  final ValueChanged<ToolSession>? onUseTap;
+  final ValueChanged<ToolSession>? onHistoryTap;
 
   static const double _actionHeight = 44;
 
   @override
   Widget build(BuildContext context) {
     final remaining = remainingDurationS ?? tool.remainingDurationS;
-    final actionEnabled =
-        tool.isOwned && onAction != null && (remaining == null || remaining > 0);
+    final actionEnabled = !inUse &&
+        tool.isOwned &&
+        onAction != null &&
+        (remaining == null || remaining > 0);
+    final actionLabel = inUse ? 'In use' : tool.action;
     final middle =
         statsChild ??
         CardSectionPanel(
@@ -110,20 +113,16 @@ class ToolCardBack extends StatelessWidget {
                 const SizedBox(height: 8),
                 Expanded(
                   child: CardSectionPanel(
-                    label: 'Uses',
+                    label: 'History',
                     expandChild: true,
                     padding: const EdgeInsets.fromLTRB(10, 8, 10, 6),
-                    child: _UsesList(
-                      uses: uses,
-                      loading: usesLoading,
-                      onUseTap: onUseTap,
+                    child: _HistoryList(
+                      history: history,
+                      loading: historyLoading,
+                      onHistoryTap: onHistoryTap,
                     ),
                   ),
                 ),
-                if (ongoingChild != null) ...[
-                  const SizedBox(height: 8),
-                  ongoingChild!,
-                ],
                 if (showActionButtons) ...[
                   const SizedBox(height: 8),
                   SizedBox(
@@ -133,7 +132,7 @@ class ToolCardBack extends StatelessWidget {
                       children: [
                         Expanded(
                           child: ChromeActionButton(
-                            label: tool.action,
+                            label: actionLabel,
                             onPressed: actionEnabled ? onAction : null,
                           ),
                         ),
@@ -142,9 +141,18 @@ class ToolCardBack extends StatelessWidget {
                           Center(
                             child: Text(
                               _formatRemaining(remaining),
-                              style: DinoCardTheme.of(context).bodyStyle(
-                                fontSize: 13,
-                              ),
+                              style: DinoCardTheme.of(context)
+                                  .bodyStyle(fontSize: 13)
+                                  .copyWith(
+                                    color: const Color(0xFFF0EBE3),
+                                    shadows: const [
+                                      Shadow(
+                                        color: Color(0x99000000),
+                                        blurRadius: 4,
+                                        offset: Offset(0, 1),
+                                      ),
+                                    ],
+                                  ),
                             ),
                           ),
                         ],
@@ -161,31 +169,31 @@ class ToolCardBack extends StatelessWidget {
   }
 
   static String _formatRemaining(int seconds) {
-    if (seconds <= 0) return '0m left';
-    final mins = (seconds + 59) ~/ 60;
-    if (mins < 60) return '${mins}m left';
-    final h = mins ~/ 60;
-    final m = mins % 60;
-    if (m == 0) return '${h}h left';
-    return '${h}h ${m}m left';
+    if (seconds <= 0) return '0s left';
+    final h = seconds ~/ 3600;
+    final m = (seconds % 3600) ~/ 60;
+    final s = seconds % 60;
+    if (h > 0) return '${h}h ${m}m ${s}s left';
+    if (m > 0) return '${m}m ${s}s left';
+    return '${s}s left';
   }
 }
 
-class _UsesList extends StatelessWidget {
-  const _UsesList({
-    required this.uses,
+class _HistoryList extends StatelessWidget {
+  const _HistoryList({
+    required this.history,
     required this.loading,
-    this.onUseTap,
+    this.onHistoryTap,
   });
 
-  final List<ToolSession> uses;
+  final List<ToolSession> history;
   final bool loading;
-  final ValueChanged<ToolSession>? onUseTap;
+  final ValueChanged<ToolSession>? onHistoryTap;
 
   @override
   Widget build(BuildContext context) {
     final cardTheme = DinoCardTheme.of(context);
-    if (loading && uses.isEmpty) {
+    if (loading && history.isEmpty) {
       return const Center(
         child: SizedBox(
           width: 18,
@@ -194,38 +202,45 @@ class _UsesList extends StatelessWidget {
         ),
       );
     }
-    if (uses.isEmpty) {
+    if (history.isEmpty) {
       return Text(
-        'No uses yet',
+        'No history yet',
         style: cardTheme.bodyStyle(fontSize: 12).copyWith(
               color: cardTheme.cardTextMuted,
             ),
       );
     }
 
-    return ListView.separated(
-      padding: EdgeInsets.zero,
-      itemCount: uses.length,
-      separatorBuilder: (_, _) => Divider(
-        height: 1,
-        thickness: 0.5,
-        color: cardTheme.cardTextMuted.withValues(alpha: 0.22),
+    final divider = Divider(
+      height: 1,
+      thickness: 0.5,
+      color: cardTheme.cardTextMuted.withValues(alpha: 0.22),
+    );
+    return SingleChildScrollView(
+      // Clamping: no bounce/drag when content fits; scrolls only on overflow.
+      physics: const ClampingScrollPhysics(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          for (var i = 0; i < history.length; i++) ...[
+            if (i > 0) divider,
+            _HistoryRow(
+              session: history[i],
+              onTap: onHistoryTap == null
+                  ? null
+                  : () => onHistoryTap!(history[i]),
+            ),
+          ],
+        ],
       ),
-      itemBuilder: (context, index) {
-        final use = uses[index];
-        return _UseRow(
-          use: use,
-          onTap: onUseTap == null ? null : () => onUseTap!(use),
-        );
-      },
     );
   }
 }
 
-class _UseRow extends StatelessWidget {
-  const _UseRow({required this.use, this.onTap});
+class _HistoryRow extends StatelessWidget {
+  const _HistoryRow({required this.session, this.onTap});
 
-  final ToolSession use;
+  final ToolSession session;
   final VoidCallback? onTap;
 
   @override
@@ -233,15 +248,15 @@ class _UseRow extends StatelessWidget {
     final cardTheme = DinoCardTheme.of(context);
     final primary = cardTheme.bodyStyle(fontSize: 11);
     final muted = primary.copyWith(color: cardTheme.cardTextMuted);
-    final when = formatRelativeWhen(use.startedAt);
-    final dur = _formatDuration(use.durationS);
-    final status = _statusLabel(use);
-    final discovered = use.discoveredCount;
+    final when = formatRelativeWhen(session.startedAt);
+    final dur = _formatDuration(session.durationS);
+    final status = _statusLabel(session);
+    final discovered = session.discoveredCount;
     final result = discovered > 0
         ? '$discovered site${discovered == 1 ? '' : 's'}'
         : null;
 
-    final statusColor = use.isActive
+    final statusColor = session.isActive
         ? cardTheme.cardAccent
         : cardTheme.cardTextMuted;
 
@@ -275,7 +290,7 @@ class _UseRow extends StatelessWidget {
             status,
             style: muted.copyWith(
               color: statusColor,
-              fontWeight: use.isActive ? FontWeight.w600 : FontWeight.w400,
+              fontWeight: session.isActive ? FontWeight.w600 : FontWeight.w400,
               fontSize: 10,
               letterSpacing: 0.3,
             ),
@@ -293,12 +308,12 @@ class _UseRow extends StatelessWidget {
     );
   }
 
-  static String _statusLabel(ToolSession use) {
-    if (use.isActive) return 'live';
-    if (use.isManualStop) return 'stopped';
-    if (use.isExhausted) return 'done';
-    if (use.stopReason == 'failed') return 'failed';
-    return use.status;
+  static String _statusLabel(ToolSession session) {
+    if (session.isActive) return 'live';
+    if (session.isManualStop) return 'stopped';
+    if (session.isExhausted) return 'done';
+    if (session.stopReason == 'failed') return 'failed';
+    return session.status;
   }
 
   static String _formatDuration(int seconds) {

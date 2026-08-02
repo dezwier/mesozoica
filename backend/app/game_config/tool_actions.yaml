@@ -119,6 +119,7 @@ terrain_echo:
   sweep_period_s: 4
   stats_explanation: >-
     Duration is this card's lifetime battery (editable within min/max); each
-    use runs until you stop or time runs out. Rotating survey pulse around
-    your position. Blips mark nearby sites you have not discovered yet.
-    Higher accuracy tightens blips; range sets pulse radius (20–200 m).
+    use runs on whatever time remains until you stop or it runs out. Rotating
+    survey pulse around your position. Blips mark nearby sites you have not
+    discovered yet. Higher accuracy tightens blips; range sets pulse radius
+    (20–200 m).

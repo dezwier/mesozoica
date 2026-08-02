@@ -117,10 +117,8 @@ class ActiveToolHudShell extends StatelessWidget {
               ValueListenableBuilder<Duration?>(
                 valueListenable: remainingListenable,
                 builder: (context, remaining, _) {
-                  final minutesLeft = remaining?.inMinutes.clamp(0, 999);
-                  final time = minutesLeft == null ? '—' : '${minutesLeft}m';
                   return Text(
-                    time,
+                    formatActiveToolHudRemaining(remaining),
                     style: VintageInstrumentStyle.mono.copyWith(
                       fontSize: 13,
                       color: VintageInstrumentStyle.live,

@@ -13,6 +13,7 @@ import '../models/tool_session.dart';
 import '../services/location_service.dart';
 import '../services/tool_service.dart';
 import '../utils/guidance_math.dart';
+import 'timed_session_remaining.dart';
 
 /// Active timed site-guidance session (direction range / distance overlays).
 class GuidanceSessionController extends ChangeNotifier {
@@ -231,33 +232,23 @@ class GuidanceSessionController extends ChangeNotifier {
     _tickTimer?.cancel();
     _syncRemaining();
     _tickTimer = Timer.periodic(const Duration(milliseconds: 250), (_) {
+      if (_syncRemaining()) return;
       if (!isActive) {
         unawaited(stop(notifyServer: false));
         return;
       }
       _updateHintInterpolation();
-      _syncRemaining();
       _bumpDisplayTick();
     });
   }
 
-  void _syncRemaining() {
-    final expires = _session?.expiresAt;
-    if (expires == null) {
-      if (remainingListenable.value != null) {
-        remainingListenable.value = null;
-      }
-      return;
-    }
-    final left = expires.difference(DateTime.now().toUtc());
-    final next = left.isNegative ? Duration.zero : left;
-    final prev = remainingListenable.value;
-    // HUD shows whole minutes — skip sub-minute notifier spam.
-    if (prev == null ||
-        prev.inMinutes != next.inMinutes ||
-        (next == Duration.zero && prev != Duration.zero)) {
-      remainingListenable.value = next;
-    }
+  /// Returns true when the session expired and local cleanup was started.
+  bool _syncRemaining() {
+    return syncTimedSessionRemaining(
+      session: _session,
+      remainingListenable: remainingListenable,
+      onExpired: () => unawaited(stop(notifyServer: false)),
+    );
   }
 
   void _bumpDisplayTick() {
