@@ -145,7 +145,7 @@
   },
   {
     "name": "Field Codex",
-    "category": "4 fossil_detection",
+    "category": "2 site_survey",
     "scientific_tool": "field notebook",
     "description": "Records locality, geology, specimen context and excavation decisions.",
     "rarity": 1,
