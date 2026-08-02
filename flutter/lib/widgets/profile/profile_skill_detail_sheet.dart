@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../../config/game_config.dart';
+import '../../controllers/guidance_session_controller.dart';
+import '../../controllers/tool_catalog_controller.dart';
+import '../../models/guidance_tool_kind.dart';
 import '../../models/profile.dart';
+import '../../models/tool.dart';
 import 'profile_skill_icons.dart';
 
 const _breakdownLabels = <String, String>{
@@ -22,17 +27,16 @@ const _mainParamLabels = <String, String>{
   'quality_weights': 'Quality weights',
 };
 
-const _toolActionLabels = <String, String>{
-  'geo_compass': 'Geo Compass',
-  'site_navigator': 'Site Navigator',
-  'proximity_scanner': 'Proximity Scanner',
-};
+enum _ParamFormat { chance, meters, kmh, plain }
 
 void showProfileSkillDetailSheet(
   BuildContext context, {
   required SkillState skill,
   Map<String, int>? breakdown,
 }) {
+  final ownedActionKeys = _ownedGuidanceActionKeys(context);
+  final activeActionKey = _activeGuidanceActionKey(context);
+
   final scheme = Theme.of(context).colorScheme;
   showModalBottomSheet<void>(
     context: context,
@@ -51,7 +55,11 @@ void showProfileSkillDetailSheet(
           const [];
       final skillProgress = (skill.level.clamp(1, 99) / 99.0).clamp(0.0, 1.0);
       final levelProgress = skill.progress.clamp(0.0, 1.0);
-      final mainParamRows = _mainParamRowsForSkill(skill);
+      final mainParamRows = _mainParamRowsForSkill(
+        skill,
+        ownedActionKeys: ownedActionKeys,
+        activeActionKey: activeActionKey,
+      );
 
       return DraggableScrollableSheet(
         expand: false,
@@ -179,18 +187,59 @@ void showProfileSkillDetailSheet(
   );
 }
 
+Set<String> _ownedGuidanceActionKeys(BuildContext context) {
+  final out = <String>{};
+  try {
+    final catalog = context.read<ToolCatalogController>();
+    for (final tool in catalog.items) {
+      if (!_toolIsOwned(tool)) continue;
+      final kind = GuidanceToolKind.tryParseToolName(tool.name);
+      if (kind != null) out.add(kind.actionKey);
+    }
+  } catch (_) {
+    // Provider unavailable (e.g. tests).
+  }
+  return out;
+}
+
+String? _activeGuidanceActionKey(BuildContext context) {
+  try {
+    final guidance = context.read<GuidanceSessionController>();
+    if (!guidance.isActive) return null;
+    return guidance.kind?.actionKey ?? guidance.session?.actionKey;
+  } catch (_) {
+    return null;
+  }
+}
+
+bool _toolIsOwned(ToolSummary tool) =>
+    tool.isOwned || tool.ownedOccurrences.isNotEmpty;
+
+class _DistEntry {
+  const _DistEntry({required this.label, required this.value});
+
+  final String label;
+  final String value;
+}
+
 class _MainParamDisplay {
   const _MainParamDisplay({
     required this.label,
-    required this.baseValue,
-    this.levelNote,
-    this.toolNotes = const [],
-  });
+    this.effectiveValue,
+    this.calculation,
+    this.distribution,
+  }) : assert(effectiveValue != null || distribution != null);
 
   final String label;
-  final String baseValue;
-  final String? levelNote;
-  final List<String> toolNotes;
+
+  /// Scalar params: the resolved value shown on the right.
+  final String? effectiveValue;
+
+  /// Small-print breakdown when tools/levels affect the value; null if base-only.
+  final String? calculation;
+
+  /// Distribution params: stacked label/value rows under the title.
+  final List<_DistEntry>? distribution;
 }
 
 class _MainParamRow extends StatelessWidget {
@@ -201,57 +250,96 @@ class _MainParamRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final body = Theme.of(context).textTheme.bodyMedium;
+    final small = Theme.of(context).textTheme.bodySmall?.copyWith(
+          color: scheme.onSurfaceVariant,
+          height: 1.35,
+        );
+    final valueStyle = body?.copyWith(
+      color: scheme.primary,
+      fontWeight: FontWeight.w600,
+    );
+    final distValueStyle = Theme.of(context).textTheme.bodySmall?.copyWith(
+          color: scheme.primary,
+          fontWeight: FontWeight.w600,
+          height: 1.35,
+        );
+
+    final dist = row.distribution;
+    if (dist != null) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(row.label, style: body?.copyWith(fontWeight: FontWeight.w600)),
+          const SizedBox(height: 6),
+          for (final entry in dist)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 3),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.baseline,
+                textBaseline: TextBaseline.alphabetic,
+                children: [
+                  Expanded(child: Text(entry.label, style: small)),
+                  const SizedBox(width: 12),
+                  Text(entry.value, style: distValueStyle),
+                ],
+              ),
+            ),
+          if (row.calculation != null) ...[
+            const SizedBox(height: 4),
+            Text(row.calculation!, style: small),
+          ],
+        ],
+      );
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Row(
           children: [
-            Expanded(
-              child: Text(
-                row.label,
-                style: Theme.of(context).textTheme.bodyMedium,
-              ),
-            ),
-            Text(
-              row.baseValue,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: scheme.primary,
-                    fontWeight: FontWeight.w600,
-                  ),
-            ),
+            Expanded(child: Text(row.label, style: body)),
+            Text(row.effectiveValue!, style: valueStyle),
           ],
         ),
-        if (row.levelNote != null) ...[
+        if (row.calculation != null) ...[
           const SizedBox(height: 4),
-          Text(
-            row.levelNote!,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: scheme.onSurfaceVariant,
-                ),
-          ),
-        ],
-        for (final note in row.toolNotes) ...[
-          const SizedBox(height: 2),
-          Text(
-            note,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: scheme.onSurfaceVariant,
-                ),
-          ),
+          Text(row.calculation!, style: small),
         ],
       ],
     );
   }
 }
 
-List<_MainParamDisplay> _mainParamRowsForSkill(SkillState skill) {
+class _ActiveToolMod {
+  const _ActiveToolMod({
+    required this.toolName,
+    required this.whenLabel,
+    required this.mod,
+  });
+
+  final String toolName;
+  final String whenLabel;
+  final ParamModifier mod;
+}
+
+List<_MainParamDisplay> _mainParamRowsForSkill(
+  SkillState skill, {
+  required Set<String> ownedActionKeys,
+  required String? activeActionKey,
+}) {
   if (!GameConfig.isLoaded) return const [];
   final domain = GameConfig.instance.skillDomain(skill.id);
   if (domain is SiteDiscoveryConfig) {
-    return _siteDiscoveryRows(domain, skill.level);
+    return _siteDiscoveryRows(
+      domain,
+      skill.level,
+      ownedActionKeys: ownedActionKeys,
+      activeActionKey: activeActionKey,
+    );
   }
   if (domain is SiteSurveyConfig) {
-    return _siteSurveyRows(domain, skill.level);
+    return _siteSurveyRows(domain);
   }
   if (domain is SkillStubConfig) {
     if (!domain.hasMainParams) return const [];
@@ -259,11 +347,7 @@ List<_MainParamDisplay> _mainParamRowsForSkill(SkillState skill) {
       for (final entry in domain.mainParams.entries)
         _MainParamDisplay(
           label: _mainParamLabels[entry.key] ?? entry.key,
-          baseValue: entry.value.toString(),
-          levelNote: _levelNote(
-            domain.levelModifiers[entry.key],
-            skill.level,
-          ),
+          effectiveValue: entry.value.toString(),
         ),
     ];
   }
@@ -272,128 +356,293 @@ List<_MainParamDisplay> _mainParamRowsForSkill(SkillState skill) {
 
 List<_MainParamDisplay> _siteDiscoveryRows(
   SiteDiscoveryConfig cfg,
-  int skillLevel,
-) {
-  final toolMods = _toolModifierNotesForSkill('site_discovery');
+  int skillLevel, {
+  required Set<String> ownedActionKeys,
+  required String? activeActionKey,
+}) {
   return [
-    _MainParamDisplay(
+    _resolveScalarParam(
       label: 'Visibility distance',
-      baseValue: _formatMeters(cfg.visibilityDistanceM),
-      levelNote: _levelNote(
-        cfg.levelModifiers['visibility_distance_m'],
-        skillLevel,
-      ),
-      toolNotes: toolMods['visibility_distance_m'] ?? const [],
+      paramKey: 'visibility_distance_m',
+      skillId: 'site_discovery',
+      base: cfg.visibilityDistanceM,
+      levelEntries: cfg.levelModifiers['visibility_distance_m'],
+      skillLevel: skillLevel,
+      format: _ParamFormat.meters,
+      clampUnit: false,
+      ownedActionKeys: ownedActionKeys,
+      activeActionKey: activeActionKey,
     ),
-    _MainParamDisplay(
+    _resolveScalarParam(
       label: 'Discovery chance',
-      baseValue: _formatChance(cfg.discoveryChance),
-      levelNote: _levelNote(
-        cfg.levelModifiers['discovery_chance'],
-        skillLevel,
-      ),
-      toolNotes: toolMods['discovery_chance'] ?? const [],
+      paramKey: 'discovery_chance',
+      skillId: 'site_discovery',
+      base: cfg.discoveryChance,
+      levelEntries: cfg.levelModifiers['discovery_chance'],
+      skillLevel: skillLevel,
+      format: _ParamFormat.chance,
+      clampUnit: true,
+      ownedActionKeys: ownedActionKeys,
+      activeActionKey: activeActionKey,
     ),
-    _MainParamDisplay(
+    _resolveScalarParam(
       label: 'Max discovery speed',
-      baseValue: _formatKmh(cfg.maxDiscoverySpeedKmh),
-      levelNote: _levelNote(
-        cfg.levelModifiers['max_discovery_speed_kmh'],
-        skillLevel,
-      ),
-      toolNotes: toolMods['max_discovery_speed_kmh'] ?? const [],
+      paramKey: 'max_discovery_speed_kmh',
+      skillId: 'site_discovery',
+      base: cfg.maxDiscoverySpeedKmh,
+      levelEntries: cfg.levelModifiers['max_discovery_speed_kmh'],
+      skillLevel: skillLevel,
+      format: _ParamFormat.kmh,
+      clampUnit: false,
+      ownedActionKeys: ownedActionKeys,
+      activeActionKey: activeActionKey,
     ),
   ];
 }
 
-List<_MainParamDisplay> _siteSurveyRows(SiteSurveyConfig cfg, int skillLevel) {
+List<_MainParamDisplay> _siteSurveyRows(SiteSurveyConfig cfg) {
+  // Weight/threshold tables: stacked rows, not a single cramped line.
   return [
     _MainParamDisplay(
       label: 'Dino count',
-      baseValue: '${cfg.dinoCount.length} tiers',
-      levelNote: _levelNote(cfg.levelModifiers['dino_count'], skillLevel),
+      distribution: _dinoCountEntries(cfg.dinoCount),
     ),
     _MainParamDisplay(
       label: 'Fossil count',
-      baseValue: _formatWeightMap(cfg.fossilCount.map(
-        (k, v) => MapEntry(k.toString(), v),
-      )),
-      levelNote: _levelNote(cfg.levelModifiers['fossil_count'], skillLevel),
+      distribution: [
+        for (final e in cfg.fossilCount.entries)
+          _DistEntry(label: '${e.key}', value: _formatChance(e.value)),
+      ],
     ),
     _MainParamDisplay(
-      label: 'Depth weights',
-      baseValue: '${cfg.depthWeights.length} buckets',
-      levelNote: _levelNote(cfg.levelModifiers['depth_weights'], skillLevel),
+      label: 'Depth',
+      distribution: [
+        for (final b in cfg.depthWeights)
+          _DistEntry(
+            label: _formatDepthRange(b.minCm, b.maxCm),
+            value: _formatChance(b.weight),
+          ),
+      ],
     ),
     _MainParamDisplay(
-      label: 'Completeness weights',
-      baseValue: _formatWeightMap(cfg.completenessWeights),
-      levelNote: _levelNote(
-        cfg.levelModifiers['completeness_weights'],
-        skillLevel,
-      ),
+      label: 'Completeness',
+      distribution: [
+        for (final e in cfg.completenessWeights.entries)
+          _DistEntry(
+            label: _humanizeKey(e.key),
+            value: _formatChance(e.value),
+          ),
+      ],
     ),
     _MainParamDisplay(
-      label: 'Quality weights',
-      baseValue: _formatWeightMap(cfg.qualityWeights),
-      levelNote: _levelNote(cfg.levelModifiers['quality_weights'], skillLevel),
+      label: 'Quality',
+      distribution: [
+        for (final e in cfg.qualityWeights.entries)
+          _DistEntry(
+            label: _humanizeKey(e.key),
+            value: _formatChance(e.value),
+          ),
+      ],
     ),
   ];
 }
 
-Map<String, List<String>> _toolModifierNotesForSkill(String skillId) {
-  if (!GameConfig.isLoaded) return const {};
+List<_DistEntry> _dinoCountEntries(List<DinoCountThreshold> tiers) {
+  final out = <_DistEntry>[];
+  var prev = 0.0;
+  for (final tier in tiers) {
+    final lo = prev;
+    final hi = tier.maxOdd;
+    out.add(
+      _DistEntry(
+        label: _formatOddRange(lo, hi),
+        value: '${tier.count}',
+      ),
+    );
+    prev = hi;
+  }
+  return out;
+}
+
+String _formatOddRange(double lo, double hi) {
+  final loPct = _formatChance(lo);
+  final hiPct = _formatChance(hi);
+  if (lo <= 0) return '≤ $hiPct';
+  return '$loPct – $hiPct';
+}
+
+String _formatDepthRange(int minCm, int maxCm) {
+  if (minCm == 0 && maxCm == 0) return 'Surface';
+  if (minCm == maxCm) return '$minCm cm';
+  return '$minCm–$maxCm cm';
+}
+
+String _humanizeKey(String key) {
+  return key
+      .split('_')
+      .where((part) => part.isNotEmpty)
+      .map((part) => '${part[0].toUpperCase()}${part.substring(1)}')
+      .join(' ');
+}
+
+_MainParamDisplay _resolveScalarParam({
+  required String label,
+  required String paramKey,
+  required String skillId,
+  required double base,
+  required List<LevelModifierEntry>? levelEntries,
+  required int skillLevel,
+  required _ParamFormat format,
+  required bool clampUnit,
+  required Set<String> ownedActionKeys,
+  required String? activeActionKey,
+}) {
+  final parts = <String>['base ${_formatScalar(base, format)}'];
+  var value = base;
+  var affected = false;
+
+  final levelMod = _applicableLevelModifier(levelEntries, skillLevel);
+  if (levelMod != null) {
+    value = _applyModifier(value, levelMod);
+    parts.add('level ${_formatModifierShort(levelMod, format)}');
+    affected = true;
+  }
+
+  for (final toolMod in _activeToolModsForParam(
+    skillId: skillId,
+    paramKey: paramKey,
+    ownedActionKeys: ownedActionKeys,
+    activeActionKey: activeActionKey,
+  )) {
+    value = _applyModifier(value, toolMod.mod);
+    parts.add(
+      '${toolMod.toolName} (${toolMod.whenLabel}) '
+      '${_formatModifierShort(toolMod.mod, format)}',
+    );
+    affected = true;
+  }
+
+  if (clampUnit) {
+    value = value.clamp(0.0, 1.0);
+  }
+
+  return _MainParamDisplay(
+    label: label,
+    effectiveValue: _formatScalar(value, format),
+    calculation: affected ? parts.join(' · ') : null,
+  );
+}
+
+List<_ActiveToolMod> _activeToolModsForParam({
+  required String skillId,
+  required String paramKey,
+  required Set<String> ownedActionKeys,
+  required String? activeActionKey,
+}) {
+  if (!GameConfig.isLoaded) return const [];
   final tools = GameConfig.instance.toolActions;
-  final out = <String, List<String>>{};
-  for (final entry in {
-    'geo_compass': tools.geoCompass,
-    'proximity_scanner': tools.proximityScanner,
-    'site_navigator': tools.siteNavigator,
-  }.entries) {
-    final mods = entry.value.modifiesMainParams;
+  final out = <_ActiveToolMod>[];
+
+  for (final kind in GuidanceToolKind.values) {
+    final cfg = tools.guidanceConfigFor(kind.actionKey);
+    final mods = cfg.modifiesMainParams;
     if (mods == null || !mods.affectsSkill(skillId)) continue;
-    final toolName = _toolActionLabels[entry.key] ?? entry.key;
-    for (final bucket in [
-      (mods.paramsFor('owning', skillId), 'while owned'),
-      (mods.paramsFor('using', skillId), 'while using'),
-    ]) {
-      for (final param in bucket.$1.entries) {
-        final note = '$toolName (${bucket.$2}): ${_formatModifier(param.value)}';
-        out.putIfAbsent(param.key, () => []).add(note);
+
+    // Owning: only if player owns this tool.
+    if (ownedActionKeys.contains(kind.actionKey)) {
+      final owning = mods.paramsFor('owning', skillId)[paramKey];
+      if (owning != null) {
+        out.add(
+          _ActiveToolMod(
+            toolName: kind.toolName,
+            whenLabel: 'owned',
+            mod: owning,
+          ),
+        );
+      }
+    }
+
+    // Using: only while this tool session is active.
+    if (activeActionKey == kind.actionKey) {
+      final using = mods.paramsFor('using', skillId)[paramKey];
+      if (using != null) {
+        out.add(
+          _ActiveToolMod(
+            toolName: kind.toolName,
+            whenLabel: 'using',
+            mod: using,
+          ),
+        );
       }
     }
   }
   return out;
 }
 
-String? _levelNote(List<LevelModifierEntry>? entries, int skillLevel) {
+LevelModifierEntry? _applicableLevelModifier(
+  List<LevelModifierEntry>? entries,
+  int skillLevel,
+) {
   if (entries == null || entries.isEmpty) return null;
   final applicable = entries.where((e) => e.level <= skillLevel).toList();
-  if (applicable.isEmpty) {
-    final next = entries.reduce((a, b) => a.level < b.level ? a : b);
-    return 'Lv ${next.level}: ${_formatModifier(ParamModifier(op: next.op, value: next.value))}';
-  }
-  final best = applicable.reduce((a, b) => a.level > b.level ? a : b);
-  return 'Lv ${best.level}: ${_formatModifier(ParamModifier(op: best.op, value: best.value))}';
+  if (applicable.isEmpty) return null;
+  return applicable.reduce((a, b) => a.level > b.level ? a : b);
 }
 
-String _formatModifier(ParamModifier mod) {
-  switch (mod.op) {
+double _applyModifier(double base, Object mod) {
+  final op = mod is ParamModifier
+      ? mod.op
+      : (mod as LevelModifierEntry).op;
+  final value = mod is ParamModifier
+      ? mod.value
+      : (mod as LevelModifierEntry).value;
+  switch (op) {
     case 'replace':
-      return 'set ${_formatLoose(mod.value)}';
+      return value;
     case 'add':
-      return '+${_formatLoose(mod.value)}';
+      return base + value;
     case 'multiply':
-      return '×${_formatLoose(mod.value)}';
+      return base * value;
     default:
-      return '${mod.op} ${_formatLoose(mod.value)}';
+      return base;
   }
 }
 
-String _formatLoose(double value) {
-  if (value >= 0 && value <= 1) return _formatChance(value);
-  if (value == value.roundToDouble()) return value.toStringAsFixed(0);
-  return value.toStringAsFixed(2);
+String _formatModifierShort(Object mod, _ParamFormat format) {
+  final op = mod is ParamModifier
+      ? mod.op
+      : (mod as LevelModifierEntry).op;
+  final value = mod is ParamModifier
+      ? mod.value
+      : (mod as LevelModifierEntry).value;
+  switch (op) {
+    case 'replace':
+      return '→ ${_formatScalar(value, format)}';
+    case 'add':
+      final formatted = _formatScalar(value.abs(), format);
+      return value >= 0 ? '+$formatted' : '-$formatted';
+    case 'multiply':
+      if (value == value.roundToDouble()) {
+        return '×${value.toStringAsFixed(0)}';
+      }
+      return '×${value.toStringAsFixed(2)}';
+    default:
+      return '$op ${_formatScalar(value, format)}';
+  }
+}
+
+String _formatScalar(double value, _ParamFormat format) {
+  switch (format) {
+    case _ParamFormat.chance:
+      return _formatChance(value);
+    case _ParamFormat.meters:
+      return _formatMeters(value);
+    case _ParamFormat.kmh:
+      return _formatKmh(value);
+    case _ParamFormat.plain:
+      if (value == value.roundToDouble()) return value.toStringAsFixed(0);
+      return value.toStringAsFixed(2);
+  }
 }
 
 String _formatChance(double value) {
@@ -410,13 +659,6 @@ String _formatMeters(double value) {
 String _formatKmh(double value) {
   if (value == value.roundToDouble()) return '${value.toStringAsFixed(0)} km/h';
   return '${value.toStringAsFixed(1)} km/h';
-}
-
-String _formatWeightMap(Map<String, double> weights) {
-  if (weights.isEmpty) return '—';
-  return weights.entries
-      .map((e) => '${e.key} ${_formatChance(e.value)}')
-      .join(' · ');
 }
 
 class _SkillProgressBar extends StatelessWidget {
