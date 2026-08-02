@@ -197,14 +197,20 @@ class _UsesList extends StatelessWidget {
     if (uses.isEmpty) {
       return Text(
         'No uses yet',
-        style: cardTheme.bodyStyle(fontSize: 12),
+        style: cardTheme.bodyStyle(fontSize: 12).copyWith(
+              color: cardTheme.cardTextMuted,
+            ),
       );
     }
 
     return ListView.separated(
       padding: EdgeInsets.zero,
       itemCount: uses.length,
-      separatorBuilder: (_, _) => const SizedBox(height: 6),
+      separatorBuilder: (_, _) => Divider(
+        height: 1,
+        thickness: 0.5,
+        color: cardTheme.cardTextMuted.withValues(alpha: 0.22),
+      ),
       itemBuilder: (context, index) {
         final use = uses[index];
         return _UseRow(
@@ -225,58 +231,74 @@ class _UseRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cardTheme = DinoCardTheme.of(context);
+    final primary = cardTheme.bodyStyle(fontSize: 11);
+    final muted = primary.copyWith(color: cardTheme.cardTextMuted);
     final when = formatRelativeWhen(use.startedAt);
     final dur = _formatDuration(use.durationS);
-    final stop = use.isActive
-        ? 'active'
-        : use.isManualStop
-            ? 'stopped'
-            : use.isExhausted
-                ? 'exhausted'
-                : (use.stopReason ?? use.status);
-    final params = _compactParams(use.params);
-    final resultBits = <String>[];
+    final status = _statusLabel(use);
     final discovered = use.discoveredCount;
-    if (discovered != null && discovered > 0) {
-      resultBits.add('$discovered site${discovered == 1 ? '' : 's'}');
-    }
-    final detail = [
-      if (params.isNotEmpty) params,
-      if (resultBits.isNotEmpty) resultBits.join(', '),
-    ].join(' · ');
+    final result = (discovered != null && discovered > 0)
+        ? '$discovered site${discovered == 1 ? '' : 's'}'
+        : null;
 
-    final child = Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          '$when · $dur · $stop',
-          style: cardTheme.bodyStyle(fontSize: 11),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
-        if (detail.isNotEmpty) ...[
-          const SizedBox(height: 2),
+    final statusColor = use.isActive
+        ? cardTheme.cardAccent
+        : cardTheme.cardTextMuted;
+
+    final row = SizedBox(
+      height: 22,
+      child: Row(
+        children: [
+          Text(when, style: muted, maxLines: 1),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 5),
+            child: Text('·', style: muted),
+          ),
+          Text(dur, style: primary.copyWith(fontWeight: FontWeight.w600)),
+          if (result != null) ...[
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 5),
+              child: Text('·', style: muted),
+            ),
+            Flexible(
+              child: Text(
+                result,
+                style: muted,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ] else
+            const Spacer(),
+          const SizedBox(width: 8),
           Text(
-            detail,
-            style: cardTheme.bodyStyle(fontSize: 10).copyWith(
-                  color: cardTheme.cardTextMuted,
-                ),
+            status,
+            style: muted.copyWith(
+              color: statusColor,
+              fontWeight: use.isActive ? FontWeight.w600 : FontWeight.w400,
+              fontSize: 10,
+              letterSpacing: 0.3,
+            ),
             maxLines: 1,
-            overflow: TextOverflow.ellipsis,
           ),
         ],
-      ],
-    );
-
-    if (onTap == null) return child;
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(6),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 2),
-        child: child,
       ),
     );
+
+    if (onTap == null) return row;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(4),
+      child: row,
+    );
+  }
+
+  static String _statusLabel(ToolUse use) {
+    if (use.isActive) return 'live';
+    if (use.isManualStop) return 'stopped';
+    if (use.isExhausted) return 'done';
+    if (use.stopReason == 'failed') return 'failed';
+    return use.status;
   }
 
   static String _formatDuration(int seconds) {
@@ -287,39 +309,6 @@ class _UseRow extends StatelessWidget {
     final m = mins % 60;
     if (m == 0) return '${h}h';
     return '${h}h ${m}m';
-  }
-
-  static String _compactParams(Map<String, dynamic> params) {
-    const keys = [
-      'accuracy',
-      'range',
-      'range_m',
-      'wideness_m',
-      'discovery_chance',
-      'flight_speed_kmh',
-      'route_length_km',
-      'exactness',
-      'direction_exactness',
-      'distance_exactness',
-    ];
-    final parts = <String>[];
-    for (final key in keys) {
-      final value = params[key];
-      if (value is! num) continue;
-      if (key.contains('chance')) {
-        parts.add('${(value * 100).round()}%');
-      } else if (key == 'route_length_km') {
-        parts.add('${value.toStringAsFixed(1)} km');
-      } else if (key == 'flight_speed_kmh') {
-        parts.add('${value.round()} km/h');
-      } else if (key.endsWith('_m')) {
-        parts.add('${value.round()} m');
-      } else {
-        parts.add(value.toStringAsFixed(value == value.roundToDouble() ? 0 : 2));
-      }
-      if (parts.length >= 2) break;
-    }
-    return parts.join(' · ');
   }
 }
 

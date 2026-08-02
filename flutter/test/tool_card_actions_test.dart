@@ -169,7 +169,8 @@ void main() {
       ),
     );
 
-    expect(find.textContaining('exhausted'), findsOneWidget);
+    expect(find.text('done'), findsOneWidget);
+    expect(find.text('45m'), findsOneWidget);
     expect(find.textContaining('2 sites'), findsOneWidget);
   });
 
