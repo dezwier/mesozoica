@@ -383,6 +383,18 @@ class MapboxCameraCoordinator {
     return camera.zoom;
   }
 
+  /// Current pitch/bearing in degrees (Mapbox camera state).
+  Future<({double pitch, double bearing})?> currentAttitude() async {
+    final map = _map;
+    if (map == null) return null;
+    try {
+      final camera = await map.getCameraState();
+      return (pitch: camera.pitch, bearing: camera.bearing);
+    } catch (_) {
+      return null;
+    }
+  }
+
   /// Avatar puck with ground shadow, white heading arrow, and brown pulse.
   Future<void> enableLocationPuck({String? avatarImageUrl}) async {
     final map = _map;

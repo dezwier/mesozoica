@@ -505,7 +505,10 @@ class _MapScreenState extends State<MapScreen>
             if (widget.isActive && !aerialDrawMode && formationMap.isActive)
               const FormationMapHud(),
             if (widget.isActive && !aerialDrawMode && terrainEcho.isActive) ...[
-              TerrainEchoOverlay(camera: _mapboxCamera),
+              TerrainEchoOverlay(
+                camera: _mapboxCamera,
+                rotateWithHeading: _rotateMap,
+              ),
               const TerrainEchoHud(),
             ],
           ],

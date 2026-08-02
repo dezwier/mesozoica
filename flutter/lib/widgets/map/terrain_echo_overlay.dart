@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart' hide Path;
 import 'package:provider/provider.dart';
@@ -14,15 +15,20 @@ import 'mapbox_camera_coordinator.dart';
 
 /// Vintage brown/amber georeferenced radar around the player location.
 ///
-/// Drawn in a ground-plane basis (east/north → screen) so the disc tilts with
-/// map pitch in rotate mode. Blips ping when the sweep passes, then fade.
+/// One visualization: a ground circle sized from a short on-screen probe.
+/// North-fixed draws it as a circle; rotate foreshortens it by pitch into an
+/// ellipse (same circle, tilted) — never projects the full range rim.
 class TerrainEchoOverlay extends StatefulWidget {
   const TerrainEchoOverlay({
     super.key,
     required this.camera,
+    this.rotateWithHeading = false,
   });
 
   final MapboxCameraCoordinator camera;
+
+  /// When true, reproject every animation frame (FollowPuck moves continuously).
+  final bool rotateWithHeading;
 
   @override
   State<TerrainEchoOverlay> createState() => _TerrainEchoOverlayState();
@@ -38,24 +44,38 @@ class _TerrainEchoOverlayState extends State<TerrainEchoOverlay>
   int _lastSitesRevision = -1;
   double _prevSweepT = 0;
 
+  bool _projectInFlight = false;
+  bool _projectQueued = false;
+  int _framesSinceProject = 0;
+
   Offset? _centerPx;
-  Offset _eastPx = Offset.zero;
-  Offset _northPx = Offset.zero;
+  List<Offset> _rimPx = const [];
+  List<List<Offset>> _ringPx = const [];
   List<_EchoBlip> _blips = const [];
   final Map<int, double> _blipHitAtMs = {};
 
   static const _amber = Color(0xFFC4A35A);
   static const _amberBright = Color(0xFFE8C060);
-  static const _disc = Color(0xFF140E08);
+  static const _discGrey = Color(0xFF3A342C);
+  static const _discBrown = Color(0xFF2A2018);
 
-  /// Blip fade after the sweep hits (seconds).
-  static const _blipFadeS = 0.45;
+  static const _rimSamples = 64;
+  static const _helperRingCount = 3;
+  static const _blipFadeS = 0.4;
 
   @override
   void initState() {
     super.initState();
-    _sweep = AnimationController(vsync: this)
-      ..addListener(_onSweepTick);
+    _sweep = AnimationController(vsync: this)..addListener(_onSweepTick);
+  }
+
+  @override
+  void didUpdateWidget(covariant TerrainEchoOverlay oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.rotateWithHeading != widget.rotateWithHeading) {
+      _restartProjectSchedule();
+      _requestReproject();
+    }
   }
 
   @override
@@ -83,6 +103,15 @@ class _TerrainEchoOverlayState extends State<TerrainEchoOverlay>
   void _onSweepTick() {
     _updateBlipHits(_prevSweepT, _sweep.value);
     _prevSweepT = _sweep.value;
+
+    if (widget.rotateWithHeading && (_echo?.isActive ?? false)) {
+      _framesSinceProject++;
+      if (_framesSinceProject >= 2) {
+        _framesSinceProject = 0;
+        _requestReproject();
+      }
+    }
+
     if (mounted) setState(() {});
   }
 
@@ -92,7 +121,7 @@ class _TerrainEchoOverlayState extends State<TerrainEchoOverlay>
     _syncActive(echo);
     if (echo.sitesRevision != _lastSitesRevision) {
       _lastSitesRevision = echo.sitesRevision;
-      unawaited(_reproject());
+      _requestReproject();
     }
   }
 
@@ -117,164 +146,278 @@ class _TerrainEchoOverlayState extends State<TerrainEchoOverlay>
     }
 
     if (echo.isActive) {
-      _projectTimer ??= Timer.periodic(
-        const Duration(milliseconds: 200),
-        (_) => unawaited(_reproject()),
-      );
-      unawaited(_reproject());
+      _restartProjectSchedule();
+      _requestReproject();
     } else {
       _projectTimer?.cancel();
       _projectTimer = null;
       _blipHitAtMs.clear();
-      if (_centerPx != null || _blips.isNotEmpty) {
+      if (_centerPx != null || _rimPx.isNotEmpty) {
         setState(() {
           _centerPx = null;
-          _eastPx = Offset.zero;
-          _northPx = Offset.zero;
+          _rimPx = const [];
+          _ringPx = const [];
           _blips = const [];
         });
       }
     }
   }
 
+  void _restartProjectSchedule() {
+    _projectTimer?.cancel();
+    _projectTimer = null;
+    if (!(_echo?.isActive ?? false)) return;
+    if (!widget.rotateWithHeading) {
+      _projectTimer = Timer.periodic(
+        const Duration(milliseconds: 80),
+        (_) => _requestReproject(),
+      );
+    }
+  }
+
+  void _requestReproject() {
+    if (_projectInFlight) {
+      _projectQueued = true;
+      return;
+    }
+    unawaited(_reproject());
+  }
+
   void _updateBlipHits(double prevT, double currT) {
     if (_blips.isEmpty) return;
     final nowMs = DateTime.now().millisecondsSinceEpoch.toDouble();
-    // Leading-edge angles in [0, 1) of a full turn.
     var prev = prevT % 1.0;
     var curr = currT % 1.0;
-    if (curr < prev) curr += 1.0; // wrap
+    if (prev < 0) prev += 1.0;
+    if (curr < 0) curr += 1.0;
+    if (curr < prev) curr += 1.0;
 
     for (final blip in _blips) {
-      var hitT = blip.angle / (math.pi * 2);
-      hitT = hitT % 1.0;
+      var hitT = blip.angleFrac % 1.0;
       if (hitT < 0) hitT += 1.0;
-      // Also check +1 for wrap window.
-      final hit = hitT;
-      final hitWrapped = hitT + 1.0;
-      if ((hit > prev && hit <= curr) ||
-          (hitWrapped > prev && hitWrapped <= curr)) {
+      if ((hitT > prev && hitT <= curr) ||
+          (hitT + 1.0 > prev && hitT + 1.0 <= curr)) {
         _blipHitAtMs[blip.siteId] = nowMs;
       }
     }
   }
 
+  static bool _finiteOffset(Offset? p) =>
+      p != null && p.dx.isFinite && p.dy.isFinite;
+
   Future<void> _reproject() async {
     final echo = _echo;
     if (echo == null || !echo.isActive || !mounted) {
-      if (_centerPx != null || _blips.isNotEmpty) {
+      if (_centerPx != null || _rimPx.isNotEmpty) {
         setState(() {
           _centerPx = null;
-          _eastPx = Offset.zero;
-          _northPx = Offset.zero;
+          _rimPx = const [];
+          _ringPx = const [];
           _blips = const [];
         });
       }
       return;
     }
 
-    final origin =
-        echo.origin ?? context.read<LocationService>().currentLocation;
-    if (origin == null) return;
-
+    _projectInFlight = true;
     final seq = ++_projectSeq;
-    final rangeM = echo.rangeM;
-    final east = _offsetMeters(origin, eastM: rangeM, northM: 0);
-    final north = _offsetMeters(origin, eastM: 0, northM: rangeM);
 
-    final sitesInRange = <SiteSummary>[];
-    for (final site in echo.discoverableSites) {
-      final lat = site.latitude;
-      final lon = site.longitude;
-      if (lat == null || lon == null) continue;
-      final d = Geolocator.distanceBetween(
-        origin.latitude,
-        origin.longitude,
-        lat,
-        lon,
+    try {
+      final origin =
+          echo.origin ?? context.read<LocationService>().currentLocation;
+      if (origin == null) return;
+
+      final rangeM = echo.rangeM;
+      final sitesInRange = <SiteSummary>[];
+      for (final site in echo.discoverableSites) {
+        final lat = site.latitude;
+        final lon = site.longitude;
+        if (lat == null || lon == null) continue;
+        final d = Geolocator.distanceBetween(
+          origin.latitude,
+          origin.longitude,
+          lat,
+          lon,
+        );
+        if (d <= rangeM) sitesInRange.add(site);
+      }
+
+      await _reprojectGeometry(
+        echo: echo,
+        origin: origin,
+        rangeM: rangeM,
+        sitesInRange: sitesInRange,
+        seq: seq,
       );
-      if (d <= rangeM) sitesInRange.add(site);
+    } finally {
+      _projectInFlight = false;
+      if (_projectQueued) {
+        _projectQueued = false;
+        SchedulerBinding.instance.scheduleFrameCallback((_) {
+          if (mounted) _requestReproject();
+        });
+      }
     }
+  }
 
-    final points = <LatLng>[
+  /// Same ground circle in both modes. Scale from a short lateral probe;
+  /// rotate mode only adds pitch foreshortening (tilted ellipse).
+  Future<void> _reprojectGeometry({
+    required TerrainEchoController echo,
+    required LatLng origin,
+    required double rangeM,
+    required List<SiteSummary> sitesInRange,
+    required int seq,
+  }) async {
+    final attitude = await widget.camera.currentAttitude();
+    if (!mounted || seq != _projectSeq) return;
+
+    // North-fixed is locked north-up / pitch-0. Rotate uses live camera.
+    final bearingDeg =
+        widget.rotateWithHeading ? (attitude?.bearing ?? 0.0) : 0.0;
+    final pitchDeg =
+        widget.rotateWithHeading ? (attitude?.pitch ?? 0.0) : 0.0;
+    final bearing = bearingDeg * math.pi / 180.0;
+    final foreshorten =
+        math.cos(pitchDeg * math.pi / 180.0).clamp(0.2, 1.0);
+
+    // Lateral probe (screen-right) — stays near the puck at any zoom/pitch.
+    final probeM = math.min(8.0, rangeM * 0.1).clamp(2.0, 8.0);
+    final rightEast = math.cos(bearing) * probeM;
+    final rightNorth = -math.sin(bearing) * probeM;
+    final probe = _offsetMeters(
       origin,
-      east,
-      north,
-      for (final s in sitesInRange) LatLng(s.latitude!, s.longitude!),
-    ];
-    final pixels = await widget.camera.pixelsForCoordinates(points);
+      eastM: rightEast,
+      northM: rightNorth,
+    );
+
+    final pixels = await widget.camera.pixelsForCoordinates([origin, probe]);
     if (!mounted || seq != _projectSeq) return;
 
     final center = pixels.isNotEmpty ? pixels[0] : null;
-    final eastP = pixels.length > 1 ? pixels[1] : null;
-    final northP = pixels.length > 2 ? pixels[2] : null;
-    if (center == null || eastP == null || northP == null) return;
+    final probePx = pixels.length > 1 ? pixels[1] : null;
+    if (!_finiteOffset(center) || !_finiteOffset(probePx)) return;
+    final centerPx = center!;
+    final probeDist = (probePx! - centerPx).distance;
+    if (probeDist < 0.5) return;
+    final radiusPx = probeDist * (rangeM / probeM);
+    if (radiusPx < 4) return;
 
-    final eastVec = eastP - center;
-    final northVec = northP - center;
-    if (eastVec.distance < 4 || northVec.distance < 4) return;
+    final rings = <List<Offset>>[
+      for (var r = 1; r <= _helperRingCount; r++)
+        _tiltedRing(
+          center: centerPx,
+          radiusPx: radiusPx * (r / _helperRingCount),
+          bearingRad: bearing,
+          foreshorten: foreshorten,
+        ),
+    ];
+    final rim = rings.last;
 
     final accuracy = echo.accuracy.clamp(0.0, 1.0);
     final blips = <_EchoBlip>[];
     for (var i = 0; i < sitesInRange.length; i++) {
-      final px = pixels[i + 3];
-      if (px == null) continue;
       final site = sitesInRange[i];
-      final unit = _screenToUnit(px - center, eastVec, northVec);
-      if (unit == null) continue;
-      // Accuracy jitter in unit space (fraction of range).
+      final geo = _geoEastNorthMeters(
+        origin,
+        LatLng(site.latitude!, site.longitude!),
+      );
+      final angle = math.atan2(geo.dy, geo.dx);
+      var angleFrac = angle / (math.pi * 2);
+      angleFrac %= 1.0;
+      if (angleFrac < 0) angleFrac += 1.0;
+
+      var pos = _groundToScreen(
+        center: centerPx,
+        eastM: geo.dx,
+        northM: geo.dy,
+        rangeM: rangeM,
+        radiusPx: radiusPx,
+        bearingRad: bearing,
+        foreshorten: foreshorten,
+      );
+
       final jitterFrac = (1.0 - accuracy) * 0.08;
-      final jitter = _stableJitterUnit(site.siteId, jitterFrac);
-      final ux = (unit.dx + jitter.dx).clamp(-1.2, 1.2);
-      final uy = (unit.dy + jitter.dy).clamp(-1.2, 1.2);
+      if (jitterFrac > 0) {
+        pos = Offset.lerp(pos, _rimAt(rim, angleFrac), jitterFrac)!;
+      }
+
       blips.add(
-        _EchoBlip(
-          unitX: ux,
-          unitY: uy,
-          // Unit +y = north; Flutter sweep angles increase toward local +y,
-          // so atan2(north, east) matches the leading-edge angle.
-          angle: math.atan2(uy, ux),
-          siteId: site.siteId,
-        ),
+        _EchoBlip(position: pos, angleFrac: angleFrac, siteId: site.siteId),
       );
     }
 
     final liveIds = {for (final b in blips) b.siteId};
     _blipHitAtMs.removeWhere((id, _) => !liveIds.contains(id));
 
-    final centerChanged =
-        _centerPx == null || (_centerPx! - center).distance > 0.5;
-    final basisChanged = (_eastPx - eastVec).distance > 0.5 ||
-        (_northPx - northVec).distance > 0.5;
-    final blipsChanged =
-        _blips.length != blips.length || !_sameBlips(_blips, blips);
-    if (!centerChanged && !basisChanged && !blipsChanged) return;
-
+    if (!mounted || seq != _projectSeq) return;
     setState(() {
-      _centerPx = center;
-      _eastPx = eastVec;
-      _northPx = northVec;
+      _centerPx = centerPx;
+      _rimPx = rim;
+      _ringPx = rings;
       _blips = blips;
     });
   }
 
-  /// Inverse of [east]*x + [north]*y → screen delta.
-  static Offset? _screenToUnit(Offset screen, Offset east, Offset north) {
-    final det = east.dx * north.dy - east.dy * north.dx;
-    if (det.abs() < 1e-6) return null;
-    final x = (screen.dx * north.dy - screen.dy * north.dx) / det;
-    final y = (east.dx * screen.dy - east.dy * screen.dx) / det;
-    return Offset(x, y);
+  /// Geographic east/north → screen, with map bearing and pitch foreshorten.
+  static Offset _groundToScreen({
+    required Offset center,
+    required double eastM,
+    required double northM,
+    required double rangeM,
+    required double radiusPx,
+    required double bearingRad,
+    required double foreshorten,
+  }) {
+    final scale = radiusPx / rangeM;
+    final right =
+        (eastM * math.cos(bearingRad) - northM * math.sin(bearingRad)) * scale;
+    final forward =
+        (eastM * math.sin(bearingRad) + northM * math.cos(bearingRad)) * scale;
+    return Offset(
+      center.dx + right,
+      center.dy - forward * foreshorten,
+    );
   }
 
-  static bool _sameBlips(List<_EchoBlip> a, List<_EchoBlip> b) {
-    if (a.length != b.length) return false;
-    for (var i = 0; i < a.length; i++) {
-      if (a[i].siteId != b[i].siteId) return false;
-      if ((a[i].unitX - b[i].unitX).abs() > 0.01) return false;
-      if ((a[i].unitY - b[i].unitY).abs() > 0.01) return false;
-    }
-    return true;
+  static List<Offset> _tiltedRing({
+    required Offset center,
+    required double radiusPx,
+    required double bearingRad,
+    required double foreshorten,
+  }) {
+    return [
+      for (var i = 0; i < _rimSamples; i++)
+        _groundToScreen(
+          center: center,
+          eastM: math.cos(i / _rimSamples * math.pi * 2) * radiusPx,
+          northM: math.sin(i / _rimSamples * math.pi * 2) * radiusPx,
+          rangeM: radiusPx, // eastM/northM already in px-equivalent units
+          radiusPx: radiusPx,
+          bearingRad: bearingRad,
+          foreshorten: foreshorten,
+        ),
+    ];
+  }
+
+  static Offset _rimAt(List<Offset> rim, double angleFrac) {
+    if (rim.isEmpty) return Offset.zero;
+    final n = rim.length;
+    final f = ((angleFrac % 1.0) + 1.0) % 1.0 * n;
+    final i0 = f.floor() % n;
+    final i1 = (i0 + 1) % n;
+    final u = f - f.floor();
+    return Offset.lerp(rim[i0], rim[i1], u)!;
+  }
+
+  static Offset _geoEastNorthMeters(LatLng origin, LatLng target) {
+    const metersPerDegLat = 111320.0;
+    final latRad = origin.latitude * math.pi / 180.0;
+    final metersPerDegLon =
+        metersPerDegLat * math.cos(latRad).abs().clamp(0.2, 1.0);
+    final north = (target.latitude - origin.latitude) * metersPerDegLat;
+    final east = (target.longitude - origin.longitude) * metersPerDegLon;
+    return Offset(east, north);
   }
 
   static LatLng _offsetMeters(
@@ -292,16 +435,6 @@ class _TerrainEchoOverlayState extends State<TerrainEchoOverlay>
     );
   }
 
-  static Offset _stableJitterUnit(int siteId, double frac) {
-    if (frac <= 0) return Offset.zero;
-    final seed = siteId * 2654435761;
-    final a = ((seed >> 16) & 0xffff) / 65535.0;
-    final b = (seed & 0xffff) / 65535.0;
-    final angle = a * math.pi * 2;
-    final dist = b * frac;
-    return Offset(math.cos(angle) * dist, math.sin(angle) * dist);
-  }
-
   Map<int, double> _blipAlphas() {
     final nowMs = DateTime.now().millisecondsSinceEpoch.toDouble();
     final fadeMs = _blipFadeS * 1000.0;
@@ -309,7 +442,6 @@ class _TerrainEchoOverlayState extends State<TerrainEchoOverlay>
     for (final entry in _blipHitAtMs.entries) {
       final age = nowMs - entry.value;
       if (age < 0 || age >= fadeMs) continue;
-      // Fast ease-out fade.
       final t = 1.0 - (age / fadeMs);
       out[entry.key] = Curves.easeOut.transform(t);
     }
@@ -322,9 +454,7 @@ class _TerrainEchoOverlayState extends State<TerrainEchoOverlay>
     if (!echo.isActive) return const SizedBox.shrink();
 
     final center = _centerPx;
-    if (center == null ||
-        _eastPx.distance < 4 ||
-        _northPx.distance < 4) {
+    if (center == null || _rimPx.length < 8 || _ringPx.length != 3) {
       return const SizedBox.shrink();
     }
 
@@ -333,10 +463,8 @@ class _TerrainEchoOverlayState extends State<TerrainEchoOverlay>
         child: CustomPaint(
           painter: _TerrainEchoPainter(
             center: center,
-            eastPx: _eastPx,
-            northPx: _northPx,
-            rangeM: echo.rangeM,
-            ringIncrementM: echo.ringIncrementM,
+            rimPx: _rimPx,
+            ringPx: _ringPx,
             degrees: echo.degrees,
             accuracy: echo.accuracy,
             sweepT: _sweep.value,
@@ -344,7 +472,8 @@ class _TerrainEchoOverlayState extends State<TerrainEchoOverlay>
             blipAlphas: _blipAlphas(),
             amber: _amber,
             amberBright: _amberBright,
-            disc: _disc,
+            discGrey: _discGrey,
+            discBrown: _discBrown,
           ),
         ),
       ),
@@ -354,26 +483,21 @@ class _TerrainEchoOverlayState extends State<TerrainEchoOverlay>
 
 class _EchoBlip {
   const _EchoBlip({
-    required this.unitX,
-    required this.unitY,
-    required this.angle,
+    required this.position,
+    required this.angleFrac,
     required this.siteId,
   });
 
-  /// East/north unit coords (1 = range edge).
-  final double unitX;
-  final double unitY;
-  final double angle;
+  final Offset position;
+  final double angleFrac;
   final int siteId;
 }
 
 class _TerrainEchoPainter extends CustomPainter {
   _TerrainEchoPainter({
     required this.center,
-    required this.eastPx,
-    required this.northPx,
-    required this.rangeM,
-    required this.ringIncrementM,
+    required this.rimPx,
+    required this.ringPx,
     required this.degrees,
     required this.accuracy,
     required this.sweepT,
@@ -381,14 +505,13 @@ class _TerrainEchoPainter extends CustomPainter {
     required this.blipAlphas,
     required this.amber,
     required this.amberBright,
-    required this.disc,
+    required this.discGrey,
+    required this.discBrown,
   });
 
   final Offset center;
-  final Offset eastPx;
-  final Offset northPx;
-  final double rangeM;
-  final double ringIncrementM;
+  final List<Offset> rimPx;
+  final List<List<Offset>> ringPx;
   final double degrees;
   final double accuracy;
   final double sweepT;
@@ -396,154 +519,153 @@ class _TerrainEchoPainter extends CustomPainter {
   final Map<int, double> blipAlphas;
   final Color amber;
   final Color amberBright;
-  final Color disc;
+  final Color discGrey;
+  final Color discBrown;
+
+  Path _pathFrom(List<Offset> pts) {
+    final path = Path();
+    if (pts.isEmpty) return path;
+    path.moveTo(pts.first.dx, pts.first.dy);
+    for (var i = 1; i < pts.length; i++) {
+      final p = pts[i];
+      if (!p.dx.isFinite || !p.dy.isFinite) continue;
+      path.lineTo(p.dx, p.dy);
+    }
+    path.close();
+    return path;
+  }
+
+  Offset _rimAtFrac(double angleFrac) {
+    final n = rimPx.length;
+    final f = ((angleFrac % 1.0) + 1.0) % 1.0 * n;
+    final i0 = f.floor() % n;
+    final i1 = (i0 + 1) % n;
+    final u = f - f.floor();
+    return Offset.lerp(rimPx[i0], rimPx[i1], u)!;
+  }
 
   @override
   void paint(Canvas canvas, Size size) {
-    final basis = Matrix4.identity()
-      ..setEntry(0, 0, eastPx.dx)
-      ..setEntry(1, 0, eastPx.dy)
-      ..setEntry(0, 1, northPx.dx)
-      ..setEntry(1, 1, northPx.dy)
-      ..setEntry(0, 3, center.dx)
-      ..setEntry(1, 3, center.dy);
-
     canvas.save();
-    // Ground-plane basis: unit +x = east, +y = north → screen (tilts with pitch).
-    canvas.transform(basis.storage);
+    canvas.clipRect(Offset.zero & size);
 
-    // Soft outer fade via radial alpha on the disc.
-    final discShader = ui.Gradient.radial(
-      Offset.zero,
-      1.0,
+    final discPath = _pathFrom(rimPx);
+    final discShader = ui.Gradient.linear(
+      rimPx.first,
+      rimPx[rimPx.length ~/ 2],
       [
-        disc.withValues(alpha: 0.82),
-        disc.withValues(alpha: 0.55),
-        disc.withValues(alpha: 0.18),
-        disc.withValues(alpha: 0.0),
+        discGrey.withValues(alpha: 0.16),
+        discBrown.withValues(alpha: 0.16),
       ],
-      const [0.0, 0.62, 0.88, 1.0],
     );
-    canvas.drawCircle(Offset.zero, 1.0, Paint()..shader = discShader);
+    canvas.drawPath(discPath, Paint()..shader = discShader);
 
-    final increment = ringIncrementM <= 0 ? 20.0 : ringIncrementM;
-    final ringCount = (rangeM / increment).ceil().clamp(1, 20);
-    for (var i = 1; i <= ringCount; i++) {
-      final r = (i * increment / rangeM).clamp(0.0, 1.0);
-      final ringAlpha = ui.lerpDouble(0.55, 0.12, r)!;
-      canvas.drawCircle(
-        Offset.zero,
-        r,
+    final ringPaint = Paint()
+      ..color = amber.withValues(alpha: 0.7)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.15
+      ..isAntiAlias = true;
+    for (final ring in ringPx) {
+      canvas.drawPath(_pathFrom(ring), ringPaint);
+    }
+
+    final crossPaint = Paint()
+      ..color = amber.withValues(alpha: 0.35)
+      ..strokeWidth = 0.9
+      ..isAntiAlias = true;
+    final n = rimPx.length;
+    canvas.drawLine(rimPx[0], rimPx[n ~/ 2], crossPaint);
+    canvas.drawLine(rimPx[n ~/ 4], rimPx[(3 * n) ~/ 4], crossPaint);
+
+    final sweepFrac = ((sweepT % 1.0) + 1.0) % 1.0;
+    final wedgeFrac = (degrees.clamp(1.0, 360.0) / 360.0).clamp(0.01, 1.0);
+    const segments = 36;
+    canvas.save();
+    canvas.clipPath(discPath);
+    for (var i = 0; i < segments; i++) {
+      final t0 = i / segments;
+      final t1 = (i + 1) / segments;
+      final a0 = sweepFrac - wedgeFrac * (1.0 - t0);
+      final a1 = sweepFrac - wedgeFrac * (1.0 - t1);
+      final p0 = _rimAtFrac(a0);
+      final p1 = _rimAtFrac(a1);
+      final strength = Curves.easeIn.transform(t1);
+      final path = Path()
+        ..moveTo(center.dx, center.dy)
+        ..lineTo(p0.dx, p0.dy)
+        ..lineTo(p1.dx, p1.dy)
+        ..close();
+      canvas.drawPath(
+        path,
         Paint()
-          ..color = amber.withValues(alpha: ringAlpha)
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 0.012 / r.clamp(0.25, 1.0),
+          ..color = amberBright.withValues(alpha: 0.38 * strength)
+          ..isAntiAlias = true,
       );
     }
 
+    final leadEnd = _rimAtFrac(sweepFrac);
     canvas.drawLine(
-      const Offset(-1, 0),
-      const Offset(1, 0),
+      center,
+      leadEnd,
       Paint()
-        ..color = amber.withValues(alpha: 0.28)
-        ..strokeWidth = 0.01,
+        ..color = amberBright.withValues(alpha: 0.9)
+        ..strokeWidth = 1.6
+        ..strokeCap = StrokeCap.round
+        ..isAntiAlias = true,
     );
-    canvas.drawLine(
-      const Offset(0, -1),
-      const Offset(0, 1),
-      Paint()
-        ..color = amber.withValues(alpha: 0.28)
-        ..strokeWidth = 0.01,
-    );
-
-    final sweepRad = sweepT * math.pi * 2;
-    final wedgeRad = (degrees.clamp(1.0, 360.0) * math.pi / 180.0);
-    final start = sweepRad - wedgeRad;
-
-    // Smooth trailing fade (dense stops) — avoids hard ray banding.
-    final sweepShader = ui.Gradient.sweep(
-      Offset.zero,
-      [
-        amberBright.withValues(alpha: 0.0),
-        amber.withValues(alpha: 0.02),
-        amber.withValues(alpha: 0.06),
-        amber.withValues(alpha: 0.14),
-        amber.withValues(alpha: 0.28),
-        amberBright.withValues(alpha: 0.42),
-      ],
-      const [0.0, 0.2, 0.4, 0.65, 0.85, 1.0],
-      TileMode.clamp,
-      start,
-      sweepRad,
-    );
-    canvas.drawArc(
-      const Rect.fromLTWH(-1, -1, 2, 2),
-      start,
-      wedgeRad,
-      true,
-      Paint()..shader = sweepShader,
-    );
-
-    // Soft leading edge (thin, low alpha — not a hard ray).
-    // Leading edge in Flutter canvas angles (clockwise from +x).
-    canvas.drawLine(
-      Offset.zero,
-      Offset(math.cos(sweepRad), math.sin(sweepRad)),
-      Paint()
-        ..color = amberBright.withValues(alpha: 0.35)
-        ..strokeWidth = 0.014
-        ..strokeCap = StrokeCap.round,
-    );
-
-    canvas.drawCircle(
-      Offset.zero,
-      1.0,
-      Paint()
-        ..color = amber.withValues(alpha: 0.35)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 0.018,
-    );
-
     canvas.restore();
 
-    // Blips in screen space so blur stays in pixels (only while fading).
-    final scale = (eastPx.distance + northPx.distance) * 0.5;
-    final blurSigma = ui.lerpDouble(14.0, 2.0, accuracy.clamp(0.0, 1.0))!;
-    final blipRadius =
-        ui.lerpDouble(scale * 0.09, scale * 0.035, accuracy.clamp(0.0, 1.0))!;
+    canvas.drawPath(
+      discPath,
+      Paint()
+        ..color = amber.withValues(alpha: 0.55)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.2
+        ..isAntiAlias = true,
+    );
+
+    final span = rimPx.fold<double>(
+      0,
+      (m, p) => math.max(m, (p - center).distance),
+    );
+    final blurSigma = ui.lerpDouble(10.0, 2.0, accuracy.clamp(0.0, 1.0))!;
+    final blipRadius = ui
+        .lerpDouble(
+          (span * 0.06).clamp(10.0, 26.0),
+          (span * 0.025).clamp(5.0, 12.0),
+          accuracy.clamp(0.0, 1.0),
+        )!
+        .toDouble();
     for (final blip in blips) {
       final alpha = blipAlphas[blip.siteId] ?? 0.0;
       if (alpha <= 0.01) continue;
-      final pos = Offset(
-        center.dx + eastPx.dx * blip.unitX + northPx.dx * blip.unitY,
-        center.dy + eastPx.dy * blip.unitX + northPx.dy * blip.unitY,
-      );
+      if (!blip.position.dx.isFinite || !blip.position.dy.isFinite) continue;
       canvas.drawCircle(
-        pos,
-        blipRadius * 1.8,
+        blip.position,
+        blipRadius * 1.7,
         Paint()
-          ..color = amberBright.withValues(alpha: 0.45 * alpha)
+          ..color = amberBright.withValues(alpha: 0.4 * alpha)
           ..maskFilter = MaskFilter.blur(BlurStyle.normal, blurSigma),
       );
       canvas.drawCircle(
-        pos,
-        blipRadius * 0.55,
+        blip.position,
+        blipRadius * 0.5,
         Paint()..color = amberBright.withValues(alpha: 0.95 * alpha),
       );
     }
+
+    canvas.restore();
   }
 
   @override
   bool shouldRepaint(covariant _TerrainEchoPainter oldDelegate) {
     return oldDelegate.center != center ||
-        oldDelegate.eastPx != eastPx ||
-        oldDelegate.northPx != northPx ||
-        oldDelegate.rangeM != rangeM ||
-        oldDelegate.ringIncrementM != ringIncrementM ||
+        !identical(oldDelegate.rimPx, rimPx) ||
+        !identical(oldDelegate.ringPx, ringPx) ||
         oldDelegate.degrees != degrees ||
         oldDelegate.accuracy != accuracy ||
         oldDelegate.sweepT != sweepT ||
-        oldDelegate.blips != blips ||
+        !identical(oldDelegate.blips, blips) ||
         oldDelegate.blipAlphas != blipAlphas;
   }
 }
