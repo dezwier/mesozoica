@@ -162,6 +162,20 @@ class FormationMapSessionResponse(BaseModel):
     cancelled_at: datetime | None = None
 
 
+class TerrainEchoSessionResponse(BaseModel):
+    session_id: int
+    action_key: str
+    status: str
+    tool_id: int
+    duration_minutes: int
+    degrees: float
+    accuracy: float
+    range_m: float
+    started_at: datetime
+    expires_at: datetime
+    cancelled_at: datetime | None = None
+
+
 class UpdateToolParamsRequest(BaseModel):
     params: dict
 

@@ -6,6 +6,7 @@ from sqlmodel import Session, col, select
 
 from app.models.formation_map_session import FormationMapSession
 from app.models.orbit_survey_session import OrbitSurveySession
+from app.models.terrain_echo_session import TerrainEchoSession
 from app.models.guidance_session import GuidanceSession
 from app.models.tool import Tool
 from app.models.tool_mission import ToolMission
@@ -20,6 +21,7 @@ from app.schemas.tool import (
     AerialMissionResponse,
     FormationMapSessionResponse,
     OrbitSurveySessionResponse,
+    TerrainEchoSessionResponse,
     GuidanceSessionResponse,
     RoutePointBody,
 )
@@ -190,6 +192,24 @@ def formation_map_session_response(
         cell_size_m=float(row.cell_size_m),
         center_lat=float(row.center_lat),
         center_lon=float(row.center_lon),
+        started_at=row.started_at,
+        expires_at=row.expires_at,
+        cancelled_at=row.cancelled_at,
+    )
+
+
+def terrain_echo_session_response(
+    row: TerrainEchoSession,
+) -> TerrainEchoSessionResponse:
+    return TerrainEchoSessionResponse(
+        session_id=int(row.id),
+        action_key=row.action_key,
+        status=row.status,
+        tool_id=int(row.tool_id),
+        duration_minutes=int(row.duration_minutes),
+        degrees=float(row.degrees),
+        accuracy=float(row.accuracy),
+        range_m=float(row.range_m),
         started_at=row.started_at,
         expires_at=row.expires_at,
         cancelled_at=row.cancelled_at,

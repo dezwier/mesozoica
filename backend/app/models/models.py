@@ -12,6 +12,7 @@ from app.models.field_survey_job import FieldSurveyJob
 from app.models.fossil import Fossil
 from app.models.formation_map_session import FormationMapSession
 from app.models.orbit_survey_session import OrbitSurveySession
+from app.models.terrain_echo_session import TerrainEchoSession
 from app.models.guidance_session import GuidanceSession
 from app.models.site import Site
 from app.models.site_type import SiteType
@@ -38,6 +39,7 @@ __all__ = [
     "Fossil",
     "FormationMapSession",
     "OrbitSurveySession",
+    "TerrainEchoSession",
     "GuidanceSession",
     "Site",
     "SiteType",

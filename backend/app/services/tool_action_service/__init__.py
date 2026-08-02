@@ -17,6 +17,11 @@ from app.services.tool_action_service.orbit_survey_session import (
     get_active_orbit_survey_session,
     start_orbit_survey_session,
 )
+from app.services.tool_action_service.terrain_echo_session import (
+    cancel_terrain_echo_session,
+    get_active_terrain_echo_session,
+    start_terrain_echo_session,
+)
 from app.services.tool_action_service.guidance_session import (
     cancel_guidance_session,
     get_active_guidance_session,
@@ -27,9 +32,11 @@ __all__ = [
     "cancel_aerial_mission",
     "cancel_formation_map_session",
     "cancel_orbit_survey_session",
+    "cancel_terrain_echo_session",
     "cancel_guidance_session",
     "get_active_formation_map_session",
     "get_active_orbit_survey_session",
+    "get_active_terrain_echo_session",
     "get_active_guidance_session",
     "list_aerial_missions",
     "mission_route_dicts",
@@ -37,5 +44,6 @@ __all__ = [
     "start_aerial_mission",
     "start_formation_map_session",
     "start_orbit_survey_session",
+    "start_terrain_echo_session",
     "start_guidance_session",
 ]

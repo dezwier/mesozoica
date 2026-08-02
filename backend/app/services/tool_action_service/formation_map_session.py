@@ -174,6 +174,11 @@ def start_formation_map_session(
 
     cancel_active_orbit_survey_sessions(session, user_id=user_id)
     cancel_active_guidance_sessions(session, user_id=user_id)
+    from app.services.tool_action_service.terrain_echo_session import (
+        cancel_active_terrain_echo_sessions,
+    )
+
+    cancel_active_terrain_echo_sessions(session, user_id=user_id)
 
     now = _utcnow()
     eff_duration = int(inst_p.get("duration_minutes", cfg.duration_minutes))

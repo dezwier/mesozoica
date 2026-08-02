@@ -21,6 +21,7 @@ def yaml_defaults_for_tool_type(tool_type: ToolType) -> dict[str, Any]:
         "Site Navigator": cfg.site_navigator.model_dump(mode="json"),
         "Orbit Survey": cfg.orbit_survey.model_dump(mode="json"),
         "Formation Map": cfg.formation_map.model_dump(mode="json"),
+        "Terrain Echo": cfg.terrain_echo.model_dump(mode="json"),
     }
     payload = by_name.get(tool_type.name, _EMPTY)
     return dict(payload)

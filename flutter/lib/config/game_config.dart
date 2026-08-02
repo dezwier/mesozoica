@@ -349,6 +349,7 @@ class ToolActionsConfig {
     required this.siteNavigator,
     required this.orbitSurvey,
     required this.formationMap,
+    required this.terrainEcho,
   });
 
   final AerialMissionActionConfig aerialRecon;
@@ -358,6 +359,7 @@ class ToolActionsConfig {
   final GuidanceActionConfig siteNavigator;
   final OrbitSurveyActionConfig orbitSurvey;
   final FormationMapActionConfig formationMap;
+  final TerrainEchoActionConfig terrainEcho;
 
   AerialMissionActionConfig configFor(String actionKey) {
     switch (actionKey) {
@@ -448,6 +450,9 @@ class ToolActionsConfig {
       ),
       formationMap: FormationMapActionConfig.fromYaml(
         GameConfig._asMap(yaml['formation_map']),
+      ),
+      terrainEcho: TerrainEchoActionConfig.fromYaml(
+        GameConfig._asMap(yaml['terrain_echo']),
       ),
     );
   }
@@ -707,6 +712,80 @@ class OrbitSurveyActionConfig {
       rangeFade: _asDouble(yaml['range_fade'], d.rangeFade).clamp(0.0, 1.0),
       boundaryBlur:
           _asDouble(yaml['boundary_blur'], d.boundaryBlur).clamp(0.0, 1.0),
+      statsExplanation: _asString(yaml['stats_explanation'], d.statsExplanation),
+    );
+  }
+}
+
+class TerrainEchoActionConfig {
+  const TerrainEchoActionConfig({
+    required this.degrees,
+    required this.accuracy,
+    required this.rangeM,
+    required this.minRangeM,
+    required this.maxRangeM,
+    required this.minDegrees,
+    required this.maxDegrees,
+    required this.durationMinutes,
+    required this.minDurationMinutes,
+    required this.maxDurationMinutes,
+    required this.ringIncrementM,
+    required this.sweepPeriodS,
+    required this.statsExplanation,
+  });
+
+  final double degrees;
+  final double accuracy;
+  final double rangeM;
+  final double minRangeM;
+  final double maxRangeM;
+  final double minDegrees;
+  final double maxDegrees;
+  final int durationMinutes;
+  final int minDurationMinutes;
+  final int maxDurationMinutes;
+  final double ringIncrementM;
+  final double sweepPeriodS;
+  final String statsExplanation;
+
+  factory TerrainEchoActionConfig.fromYaml(
+    Map<String, dynamic> yaml, {
+    TerrainEchoActionConfig? defaults,
+  }) {
+    final d = defaults ??
+        const TerrainEchoActionConfig(
+          degrees: 20.0,
+          accuracy: 0.0,
+          rangeM: 20.0,
+          minRangeM: 20.0,
+          maxRangeM: 200.0,
+          minDegrees: 20.0,
+          maxDegrees: 360.0,
+          durationMinutes: 5,
+          minDurationMinutes: 5,
+          maxDurationMinutes: 20,
+          ringIncrementM: 20.0,
+          sweepPeriodS: 4.0,
+          statsExplanation:
+              'Rotating survey pulse around your position. Blips mark nearby '
+              'sites you have not discovered yet. Higher accuracy tightens '
+              'blips; range sets pulse radius (20–200 m).',
+        );
+    return TerrainEchoActionConfig(
+      degrees: _asDouble(yaml['degrees'], d.degrees),
+      accuracy: _asDouble(yaml['accuracy'], d.accuracy).clamp(0.0, 1.0),
+      rangeM: _asDouble(yaml['range_m'], d.rangeM),
+      minRangeM: _asDouble(yaml['min_range_m'], d.minRangeM),
+      maxRangeM: _asDouble(yaml['max_range_m'], d.maxRangeM),
+      minDegrees: _asDouble(yaml['min_degrees'], d.minDegrees),
+      maxDegrees: _asDouble(yaml['max_degrees'], d.maxDegrees),
+      durationMinutes: _asInt(yaml['duration_minutes'], d.durationMinutes),
+      minDurationMinutes:
+          _asInt(yaml['min_duration_minutes'], d.minDurationMinutes),
+      maxDurationMinutes:
+          _asInt(yaml['max_duration_minutes'], d.maxDurationMinutes),
+      ringIncrementM: _asDouble(yaml['ring_increment_m'], d.ringIncrementM),
+      sweepPeriodS: _asDouble(yaml['sweep_period_s'], d.sweepPeriodS),
       statsExplanation: _asString(yaml['stats_explanation'], d.statsExplanation),
     );
   }

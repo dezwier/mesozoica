@@ -13,6 +13,7 @@ import '../../controllers/field_discovery_coordinator.dart';
 import '../../controllers/field_session_coordinator.dart';
 import '../../controllers/formation_map_controller.dart';
 import '../../controllers/orbit_survey_controller.dart';
+import '../../controllers/terrain_echo_controller.dart';
 import '../../controllers/fossil_catalog_controller.dart';
 import '../../controllers/guidance_session_controller.dart';
 import '../../controllers/map_controller.dart' as map_data;
@@ -33,6 +34,8 @@ import '../../widgets/map/aerial_mission_focus_overlay.dart';
 import '../../widgets/map/field_data_purge_dialog.dart';
 import '../../widgets/map/formation_map_hud.dart';
 import '../../widgets/map/orbit_survey_hud.dart';
+import '../../widgets/map/terrain_echo_hud.dart';
+import '../../widgets/map/terrain_echo_overlay.dart';
 import '../../widgets/map/guidance_overlay.dart';
 import '../../widgets/map/map_control_buttons.dart';
 import '../../widgets/map/map_perf_hud.dart';
@@ -113,6 +116,7 @@ class _MapScreenState extends State<MapScreen>
     final guidance = context.watch<GuidanceSessionController>();
     final orbitSurvey = context.watch<OrbitSurveyController>();
     final formationMap = context.watch<FormationMapController>();
+    final terrainEcho = context.watch<TerrainEchoController>();
 
     if (guidance.requestShowOnMap) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -140,6 +144,16 @@ class _MapScreenState extends State<MapScreen>
         final f = context.read<FormationMapController>();
         if (!f.requestShowOnMap) return;
         f.consumeShowOnMapRequest();
+        _ensureGuidanceVisibleOnMap();
+      });
+    }
+
+    if (terrainEcho.requestShowOnMap) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        final e = context.read<TerrainEchoController>();
+        if (!e.requestShowOnMap) return;
+        e.consumeShowOnMapRequest();
         _ensureGuidanceVisibleOnMap();
       });
     }
@@ -490,6 +504,10 @@ class _MapScreenState extends State<MapScreen>
               const OrbitSurveyHud(),
             if (widget.isActive && !aerialDrawMode && formationMap.isActive)
               const FormationMapHud(),
+            if (widget.isActive && !aerialDrawMode && terrainEcho.isActive) ...[
+              TerrainEchoOverlay(camera: _mapboxCamera),
+              const TerrainEchoHud(),
+            ],
           ],
         );
       },

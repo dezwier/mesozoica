@@ -294,6 +294,15 @@ class AppConfig {
   static Uri cancelFormationMapSessionUri() =>
       ApiEndpoints.cancelFormationMapSessionUri();
 
+  static Uri toolTerrainEchoSessionUri(int id) =>
+      ApiEndpoints.toolTerrainEchoSessionUri(id);
+
+  static Uri activeTerrainEchoSessionUri() =>
+      ApiEndpoints.activeTerrainEchoSessionUri();
+
+  static Uri cancelTerrainEchoSessionUri() =>
+      ApiEndpoints.cancelTerrainEchoSessionUri();
+
   static Future<bool> checkApiHealth() async {
     try {
       final response = await http

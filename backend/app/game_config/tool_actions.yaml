@@ -94,3 +94,21 @@ formation_map:
     rock-type boundaries; the outer edge has a slight fixed soft fade.
     Wideness sets the side length (500 m–2 km) on the same 500 m grid used
     for field sites, locked to this tool occurrence.
+
+terrain_echo:
+  degrees: 20
+  accuracy: 0.0
+  range_m: 20
+  min_range_m: 20
+  max_range_m: 200
+  min_degrees: 20
+  max_degrees: 360
+  duration_minutes: 5
+  min_duration_minutes: 5
+  max_duration_minutes: 20
+  ring_increment_m: 20
+  sweep_period_s: 4
+  stats_explanation: >-
+    Rotating survey pulse around your position. Blips mark nearby
+    sites you have not discovered yet. Higher accuracy tightens
+    blips; range sets pulse radius (20–200 m).

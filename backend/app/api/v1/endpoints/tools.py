@@ -17,6 +17,7 @@ from app.schemas.tool import (
     FormationMapSessionResponse,
     FormationMapSessionStartRequest,
     OrbitSurveySessionResponse,
+    TerrainEchoSessionResponse,
     GuidanceSessionResponse,
     ToolCategoryItem,
     ToolCategoryListResponse,
@@ -30,20 +31,24 @@ from app.services.tool_action_service import (
     cancel_aerial_mission,
     cancel_formation_map_session,
     cancel_orbit_survey_session,
+    cancel_terrain_echo_session,
     cancel_guidance_session,
     get_active_formation_map_session,
     get_active_orbit_survey_session,
+    get_active_terrain_echo_session,
     get_active_guidance_session,
     list_aerial_missions,
     start_aerial_mission,
     start_formation_map_session,
     start_orbit_survey_session,
+    start_terrain_echo_session,
     start_guidance_session,
 )
 from app.services.tool_action_service.serializers import (
     discovered_site_ids_by_mission,
     formation_map_session_response,
     orbit_survey_session_response,
+    terrain_echo_session_response,
     guidance_session_response,
     mission_item,
     mission_response,
@@ -299,6 +304,40 @@ def post_cancel_formation_map_session(
     return formation_map_session_response(row)
 
 
+@router.get(
+    "/sessions/terrain-echo/active",
+    response_model=TerrainEchoSessionResponse,
+)
+def get_active_terrain_echo(
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+) -> TerrainEchoSessionResponse:
+    row = get_active_terrain_echo_session(session, user_id=int(current_user.id))
+    if row is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No active terrain echo session",
+        )
+    return terrain_echo_session_response(row)
+
+
+@router.post(
+    "/sessions/terrain-echo/cancel",
+    response_model=TerrainEchoSessionResponse,
+)
+def post_cancel_terrain_echo_session(
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+) -> TerrainEchoSessionResponse:
+    row = cancel_terrain_echo_session(session, user_id=int(current_user.id))
+    if row is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No active terrain echo session",
+        )
+    return terrain_echo_session_response(row)
+
+
 @router.get("/image-versions", response_model=ToolImageVersionListResponse)
 def get_tool_image_versions(
     current_user: User = Depends(get_current_admin_user),
@@ -426,6 +465,24 @@ def post_formation_map_session(
         lon=payload.lon,
     )
     return formation_map_session_response(row)
+
+
+@router.post(
+    "/{tool_id}/actions/terrain-echo-session",
+    response_model=TerrainEchoSessionResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+def post_terrain_echo_session(
+    tool_id: int,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+) -> TerrainEchoSessionResponse:
+    row = start_terrain_echo_session(
+        session,
+        user_id=int(current_user.id),
+        tool_id=tool_id,
+    )
+    return terrain_echo_session_response(row)
 
 
 @router.get("/{tool_id}", response_model=ToolSummary)

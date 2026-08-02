@@ -13,6 +13,7 @@ import '../controllers/field_discovery_coordinator.dart';
 import '../controllers/field_session_coordinator.dart';
 import '../controllers/formation_map_controller.dart';
 import '../controllers/orbit_survey_controller.dart';
+import '../controllers/terrain_echo_controller.dart';
 import '../controllers/guidance_session_controller.dart';
 import '../controllers/map_controller.dart';
 import '../controllers/notification_controller.dart';
@@ -72,6 +73,7 @@ class _AppShellState extends State<AppShell>
   GuidanceSessionController? _guidance;
   OrbitSurveyController? _orbitSurvey;
   FormationMapController? _formationMap;
+  TerrainEchoController? _terrainEcho;
   StreamSubscription<RemoteMessage>? _foregroundPushSub;
   StreamSubscription<RemoteMessage>? _openedPushSub;
   /// Cached so aerial mission list refreshes do not rebuild the shell.
@@ -137,6 +139,14 @@ class _AppShellState extends State<AppShell>
       _formationMap = formationMap;
       formationMap.addListener(_onFormationMapChanged);
       formationMap.bind(
+        discovery: discovery,
+        location: context.read<LocationService>(),
+      );
+
+      final terrainEcho = context.read<TerrainEchoController>();
+      _terrainEcho = terrainEcho;
+      terrainEcho.addListener(_onTerrainEchoChanged);
+      terrainEcho.bind(
         discovery: discovery,
         location: context.read<LocationService>(),
       );
@@ -218,6 +228,15 @@ class _AppShellState extends State<AppShell>
     final formation = _formationMap;
     if (formation == null) return;
     if (formation.requestShowOnMap && _anyOverlayOpen) {
+      setState(_clearOverlayFlags);
+    }
+  }
+
+  void _onTerrainEchoChanged() {
+    if (!mounted) return;
+    final echo = _terrainEcho;
+    if (echo == null) return;
+    if (echo.requestShowOnMap && _anyOverlayOpen) {
       setState(_clearOverlayFlags);
     }
   }
@@ -324,6 +343,7 @@ class _AppShellState extends State<AppShell>
     _guidance?.removeListener(_onGuidanceChanged);
     _orbitSurvey?.removeListener(_onOrbitSurveyChanged);
     _formationMap?.removeListener(_onFormationMapChanged);
+    _terrainEcho?.removeListener(_onTerrainEchoChanged);
     _catalogModeController?.removeListener(_onCatalogModeChanged);
     _discoveryRefreshTimer?.cancel();
     unawaited(_foregroundPushSub?.cancel() ?? Future<void>.value());
@@ -354,6 +374,9 @@ class _AppShellState extends State<AppShell>
         );
         unawaited(
           context.read<FormationMapController>().restoreActiveSession(),
+        );
+        unawaited(
+          context.read<TerrainEchoController>().restoreActiveSession(),
         );
         final auth = context.read<AuthController>();
         final userId = auth.currentUser?.id;
@@ -413,6 +436,9 @@ class _AppShellState extends State<AppShell>
     unawaited(
       context.read<FormationMapController>().stop(notifyServer: false),
     );
+    unawaited(
+      context.read<TerrainEchoController>().stop(notifyServer: false),
+    );
     context.read<SiteCatalogController>().load(force: true);
     context.read<ToolCatalogController>().load(force: true);
 
@@ -442,6 +468,8 @@ class _AppShellState extends State<AppShell>
       await context.read<OrbitSurveyController>().restoreActiveSession();
       if (!mounted || _previousUserId != userId) return;
       await context.read<FormationMapController>().restoreActiveSession();
+      if (!mounted || _previousUserId != userId) return;
+      await context.read<TerrainEchoController>().restoreActiveSession();
     });
   }
 

@@ -111,12 +111,16 @@ def start_orbit_survey_session(
 
     cancel_active_orbit_survey_sessions(session, user_id=user_id)
     cancel_active_guidance_sessions(session, user_id=user_id)
-    # Late import avoids cycle with formation_map_session.
+    # Late import avoids cycle with formation_map / terrain_echo sessions.
     from app.services.tool_action_service.formation_map_session import (
         cancel_active_formation_map_sessions,
     )
+    from app.services.tool_action_service.terrain_echo_session import (
+        cancel_active_terrain_echo_sessions,
+    )
 
     cancel_active_formation_map_sessions(session, user_id=user_id)
+    cancel_active_terrain_echo_sessions(session, user_id=user_id)
 
     inst_p = instance.params_json or {}
     now = _utcnow()

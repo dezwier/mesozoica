@@ -507,6 +507,80 @@ class FormationMapActionConfig(BaseModel):
         return float(n * cell)
 
 
+class TerrainEchoActionConfig(BaseModel):
+    """Knobs for the Terrain Echo vintage radar overlay."""
+
+    model_config = {"frozen": True}
+
+    degrees: float = 20.0
+    accuracy: float = 0.0
+    range_m: float = 20.0
+    min_range_m: float = 20.0
+    max_range_m: float = 200.0
+    min_degrees: float = 20.0
+    max_degrees: float = 360.0
+    duration_minutes: int = 5
+    min_duration_minutes: int = 5
+    max_duration_minutes: int = 20
+    ring_increment_m: float = 20.0
+    sweep_period_s: float = 4.0
+    stats_explanation: str = ""
+
+    @field_validator("accuracy")
+    @classmethod
+    def _validate_accuracy(cls, value: float) -> float:
+        return _clamp_unit_interval(value, label="accuracy")
+
+    @field_validator(
+        "degrees",
+        "range_m",
+        "min_range_m",
+        "max_range_m",
+        "min_degrees",
+        "max_degrees",
+        "ring_increment_m",
+        "sweep_period_s",
+    )
+    @classmethod
+    def _validate_positive(cls, value: float) -> float:
+        if value <= 0:
+            raise ValueError("value must be > 0")
+        return value
+
+    @field_validator(
+        "duration_minutes", "min_duration_minutes", "max_duration_minutes"
+    )
+    @classmethod
+    def _validate_duration(cls, value: int) -> int:
+        if value < 1:
+            raise ValueError("duration_minutes must be >= 1")
+        return value
+
+    @model_validator(mode="after")
+    def _validate_bounds(self) -> TerrainEchoActionConfig:
+        if self.max_range_m < self.min_range_m:
+            raise ValueError("max_range_m must be >= min_range_m")
+        if self.max_degrees < self.min_degrees:
+            raise ValueError("max_degrees must be >= min_degrees")
+        if self.max_duration_minutes < self.min_duration_minutes:
+            raise ValueError(
+                "max_duration_minutes must be >= min_duration_minutes"
+            )
+        if not (self.min_degrees <= self.degrees <= self.max_degrees):
+            raise ValueError("degrees must be within min/max_degrees")
+        if not (self.min_range_m <= self.range_m <= self.max_range_m):
+            raise ValueError("range_m must be within min/max_range_m")
+        if not (
+            self.min_duration_minutes
+            <= self.duration_minutes
+            <= self.max_duration_minutes
+        ):
+            raise ValueError(
+                "duration_minutes must be within min/max_duration_minutes"
+            )
+        return self
+
+
 def _parse_rgb_color(value: object) -> tuple[int, int, int]:
     if isinstance(value, str):
         raw = value.strip().lstrip("#")
@@ -658,6 +732,27 @@ class ToolActionsConfig(BaseModel):
                 "accuracy sharpens boundaries; wideness sets the side "
                 "length (200 m–2 km) of the square locked to this tool "
                 "occurrence."
+            ),
+        )
+    )
+    terrain_echo: TerrainEchoActionConfig = Field(
+        default_factory=lambda: TerrainEchoActionConfig(
+            degrees=20.0,
+            accuracy=0.0,
+            range_m=20.0,
+            min_range_m=20.0,
+            max_range_m=200.0,
+            min_degrees=20.0,
+            max_degrees=360.0,
+            duration_minutes=5,
+            min_duration_minutes=5,
+            max_duration_minutes=20,
+            ring_increment_m=20.0,
+            sweep_period_s=4.0,
+            stats_explanation=(
+                "Rotating survey pulse around your position. Blips mark "
+                "nearby sites you have not discovered yet. Higher accuracy "
+                "tightens blips; range sets pulse radius (20–200 m)."
             ),
         )
     )

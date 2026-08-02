@@ -413,4 +413,13 @@ class ApiEndpoints {
   static Uri cancelFormationMapSessionUri() =>
       Uri.parse('${AppConfig.baseApiUrl}/api/v1/tools/sessions/formation-map/cancel');
 
+  static Uri toolTerrainEchoSessionUri(int id) =>
+      Uri.parse('${AppConfig.baseApiUrl}/api/v1/tools/$id/actions/terrain-echo-session');
+
+  static Uri activeTerrainEchoSessionUri() =>
+      Uri.parse('${AppConfig.baseApiUrl}/api/v1/tools/sessions/terrain-echo/active');
+
+  static Uri cancelTerrainEchoSessionUri() =>
+      Uri.parse('${AppConfig.baseApiUrl}/api/v1/tools/sessions/terrain-echo/cancel');
+
 }

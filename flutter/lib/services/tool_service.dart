@@ -544,6 +544,82 @@ class ToolService {
     return FormationMapSession.fromJson(decoded);
   }
 
+  Future<TerrainEchoSession> startTerrainEchoSession({
+    required int toolId,
+  }) async {
+    final uri = AppConfig.toolTerrainEchoSessionUri(toolId);
+    if (kDebugMode) {
+      debugPrint('ToolService POST $uri');
+    }
+    final response = await ApiClient.instance
+        .sendPost(uri, client: _client, headers: await _headers(jsonBody: true))
+        .timeout(const Duration(seconds: 15));
+
+    if (response.statusCode != 201) {
+      throw ToolServiceException(
+        _errorDetail(response.body) ??
+            'Failed to start terrain echo session (${response.statusCode})',
+      );
+    }
+
+    final decoded = jsonDecode(response.body);
+    if (decoded is! Map<String, dynamic>) {
+      throw const ToolServiceException(
+        'Invalid terrain echo session response',
+      );
+    }
+    return TerrainEchoSession.fromJson(decoded);
+  }
+
+  Future<TerrainEchoSession?> fetchActiveTerrainEchoSession() async {
+    final uri = AppConfig.activeTerrainEchoSessionUri();
+    if (kDebugMode) {
+      debugPrint('ToolService GET $uri');
+    }
+    final response = await ApiClient.instance
+        .sendGet(uri, client: _client, headers: await _headers())
+        .timeout(const Duration(seconds: 15));
+
+    if (response.statusCode == 404) return null;
+    if (response.statusCode != 200) {
+      throw ToolServiceException(
+        'Failed to load terrain echo session (${response.statusCode})',
+      );
+    }
+    final decoded = jsonDecode(response.body);
+    if (decoded is! Map<String, dynamic>) {
+      throw const ToolServiceException(
+        'Invalid terrain echo session response',
+      );
+    }
+    return TerrainEchoSession.fromJson(decoded);
+  }
+
+  Future<TerrainEchoSession> cancelTerrainEchoSession() async {
+    final uri = AppConfig.cancelTerrainEchoSessionUri();
+    if (kDebugMode) {
+      debugPrint('ToolService POST $uri');
+    }
+    final response = await ApiClient.instance
+        .sendPost(uri, client: _client, headers: await _headers(jsonBody: true))
+        .timeout(const Duration(seconds: 15));
+
+    if (response.statusCode != 200) {
+      throw ToolServiceException(
+        _errorDetail(response.body) ??
+            'Failed to cancel terrain echo session (${response.statusCode})',
+      );
+    }
+
+    final decoded = jsonDecode(response.body);
+    if (decoded is! Map<String, dynamic>) {
+      throw const ToolServiceException(
+        'Invalid terrain echo session response',
+      );
+    }
+    return TerrainEchoSession.fromJson(decoded);
+  }
+
   static String? _errorDetail(String body) {
     final decoded = AppConfig.decodeJson(body);
     if (decoded == null) return null;
@@ -823,6 +899,57 @@ class FormationMapSession {
       cellSizeM: (json['cell_size_m'] as num?)?.toDouble() ?? 500.0,
       centerLat: (json['center_lat'] as num?)?.toDouble() ?? 0.0,
       centerLon: (json['center_lon'] as num?)?.toDouble() ?? 0.0,
+      startedAt:
+          AerialMission._parseDate(json['started_at']) ??
+          DateTime.now().toUtc(),
+      expiresAt:
+          AerialMission._parseDate(json['expires_at']) ??
+          DateTime.now().toUtc(),
+      cancelledAt: AerialMission._parseDate(json['cancelled_at']),
+    );
+  }
+}
+
+class TerrainEchoSession {
+  const TerrainEchoSession({
+    required this.sessionId,
+    required this.actionKey,
+    required this.status,
+    required this.toolId,
+    required this.durationMinutes,
+    required this.degrees,
+    required this.accuracy,
+    required this.rangeM,
+    required this.startedAt,
+    required this.expiresAt,
+    this.cancelledAt,
+  });
+
+  final int sessionId;
+  final String actionKey;
+  final String status;
+  final int toolId;
+  final int durationMinutes;
+  final double degrees;
+  final double accuracy;
+  final double rangeM;
+  final DateTime startedAt;
+  final DateTime expiresAt;
+  final DateTime? cancelledAt;
+
+  bool get isActive => status == 'active';
+  bool get isExpired => !isActive || DateTime.now().toUtc().isAfter(expiresAt);
+
+  factory TerrainEchoSession.fromJson(Map<String, dynamic> json) {
+    return TerrainEchoSession(
+      sessionId: json['session_id'] as int? ?? 0,
+      actionKey: json['action_key'] as String? ?? '',
+      status: json['status'] as String? ?? '',
+      toolId: json['tool_id'] as int? ?? 0,
+      durationMinutes: json['duration_minutes'] as int? ?? 5,
+      degrees: (json['degrees'] as num?)?.toDouble() ?? 20.0,
+      accuracy: (json['accuracy'] as num?)?.toDouble() ?? 0.0,
+      rangeM: (json['range_m'] as num?)?.toDouble() ?? 20.0,
       startedAt:
           AerialMission._parseDate(json['started_at']) ??
           DateTime.now().toUtc(),
