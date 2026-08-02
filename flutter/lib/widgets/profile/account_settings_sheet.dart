@@ -15,6 +15,7 @@ import '../../models/profile.dart';
 import '../../services/api_response_cache.dart';
 import '../../services/oauth_sign_in_service.dart';
 import '../common/app_toast.dart';
+import '../common/drawer_sheet_sizes.dart';
 import 'delete_data_dialog.dart';
 import 'settings_account_tab.dart';
 import 'settings_app_tab.dart';
@@ -166,7 +167,8 @@ class _AccountSettingsSheetState extends State<AccountSettingsSheet>
       builder: (context, constraints) {
         final height = widget.scrollController != null
             ? constraints.maxHeight
-            : MediaQuery.of(context).size.height * 0.9;
+            : MediaQuery.of(context).size.height *
+                DrawerSheetSizes.initialChildSize;
 
         return Container(
           height: height,

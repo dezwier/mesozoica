@@ -8,6 +8,7 @@ import '../../models/user_list_entry.dart';
 import '../../services/profile_service.dart';
 import '../../services/user_relationship_service.dart';
 import '../common/draggable_sheet_wrapper.dart';
+import '../common/drawer_sheet_sizes.dart';
 import '../common/section_card.dart';
 import 'profile_content.dart';
 import 'user_list_item.dart';
@@ -329,7 +330,8 @@ class _CommunityDrawerState extends State<CommunityDrawer> {
       builder: (context, constraints) {
         final height = widget.scrollController != null
             ? constraints.maxHeight
-            : MediaQuery.of(context).size.height * 0.9;
+            : MediaQuery.of(context).size.height *
+                DrawerSheetSizes.initialChildSize;
 
         return GestureDetector(
           behavior: HitTestBehavior.translucent,

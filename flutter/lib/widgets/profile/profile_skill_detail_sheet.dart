@@ -7,6 +7,7 @@ import '../../controllers/tool_catalog_controller.dart';
 import '../../models/guidance_tool_kind.dart';
 import '../../models/profile.dart';
 import '../../models/tool.dart';
+import '../common/draggable_sheet_wrapper.dart';
 import 'profile_skill_icons.dart';
 
 const _breakdownLabels = <String, String>{
@@ -27,6 +28,8 @@ const _mainParamLabels = <String, String>{
   'quality_weights': 'Quality weights',
 };
 
+const _cardRadius = 10.0;
+
 enum _ParamFormat { chance, meters, kmh, plain }
 
 void showProfileSkillDetailSheet(
@@ -37,154 +40,374 @@ void showProfileSkillDetailSheet(
   final ownedActionKeys = _ownedGuidanceActionKeys(context);
   final activeActionKey = _activeGuidanceActionKey(context);
 
-  final scheme = Theme.of(context).colorScheme;
   showModalBottomSheet<void>(
     context: context,
-    showDragHandle: true,
     isScrollControlled: true,
-    builder: (sheetContext) {
-      final rows = breakdown?.entries
-              .where((entry) => entry.value > 0)
-              .map(
-                (entry) => (
-                  _breakdownLabels[entry.key] ?? entry.key,
-                  entry.value,
-                ),
-              )
-              .toList() ??
-          const [];
-      final skillProgress = (skill.level.clamp(1, 99) / 99.0).clamp(0.0, 1.0);
-      final levelProgress = skill.progress.clamp(0.0, 1.0);
-      final mainParamRows = _mainParamRowsForSkill(
-        skill,
+    backgroundColor: Colors.transparent,
+    builder: (_) => DraggableSheetWrapper(
+      childBuilder: (scrollController) => _SkillDetailDrawer(
+        skill: skill,
+        breakdown: breakdown,
         ownedActionKeys: ownedActionKeys,
         activeActionKey: activeActionKey,
-      );
+        scrollController: scrollController,
+      ),
+    ),
+  );
+}
 
-      return DraggableScrollableSheet(
-        expand: false,
-        initialChildSize: 0.55,
-        minChildSize: 0.35,
-        maxChildSize: 0.9,
-        builder: (context, scrollController) {
-          return ListView(
-            controller: scrollController,
-            padding: const EdgeInsets.fromLTRB(24, 8, 24, 32),
+class _SkillDetailDrawer extends StatelessWidget {
+  const _SkillDetailDrawer({
+    required this.skill,
+    required this.ownedActionKeys,
+    required this.activeActionKey,
+    required this.scrollController,
+    this.breakdown,
+  });
+
+  final SkillState skill;
+  final Map<String, int>? breakdown;
+  final Set<String> ownedActionKeys;
+  final String? activeActionKey;
+  final ScrollController scrollController;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final xpRows = breakdown?.entries
+            .where((entry) => entry.value > 0)
+            .map(
+              (entry) => (
+                _breakdownLabels[entry.key] ?? entry.key,
+                entry.value,
+              ),
+            )
+            .toList() ??
+        const <(String, int)>[];
+    final paramRows = _mainParamRowsForSkill(
+      skill,
+      ownedActionKeys: ownedActionKeys,
+      activeActionKey: activeActionKey,
+    );
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return Container(
+          height: constraints.maxHeight,
+          decoration: BoxDecoration(
+            color: scheme.surface,
+            borderRadius:
+                const BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: Column(
             children: [
-              Row(
-                children: [
-                  SkillIcon(
-                    skillId: skill.id,
-                    size: 36,
-                    circular: true,
+              const SizedBox(height: 12),
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: scheme.onSurface.withValues(alpha: 0.3),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              Expanded(
+                child: ListView(
+                  controller: scrollController,
+                  padding: const EdgeInsets.fromLTRB(16, 20, 16, 32),
+                  children: [
+                    _SkillHud(skill: skill),
+                    const SizedBox(height: 16),
+                    if (xpRows.isNotEmpty) ...[
+                      _SkillSectionCard(
+                        icon: Icons.bolt_outlined,
+                        title: 'XP sources',
+                        child: Column(
+                          children: [
+                            for (var i = 0; i < xpRows.length; i++) ...[
+                              if (i > 0) const SizedBox(height: 10),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      xpRows[i].$1,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodyMedium,
+                                    ),
+                                  ),
+                                  Text(
+                                    '${xpRows[i].$2} XP',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .bodyMedium
+                                        ?.copyWith(
+                                          color: scheme.primary,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 5),
+                    ],
+                    _SkillSectionCard(
+                      icon: Icons.tune,
+                      title: 'Skill parameters',
+                      child: paramRows.isEmpty
+                          ? Text(
+                              'No global params yet',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodyMedium
+                                  ?.copyWith(
+                                    color: scheme.onSurfaceVariant,
+                                  ),
+                            )
+                          : Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                for (var i = 0; i < paramRows.length; i++) ...[
+                                  if (i > 0) const SizedBox(height: 14),
+                                  _MainParamRow(
+                                    row: paramRows[i],
+                                    scheme: scheme,
+                                  ),
+                                ],
+                              ],
+                            ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// Big skill mark + title / level / dual progress — profile analogue of map HUD.
+class _SkillHud extends StatelessWidget {
+  const _SkillHud({required this.skill});
+
+  final SkillState skill;
+
+  static const double _iconSize = 92;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final skillProgress = (skill.level.clamp(1, 99) / 99.0).clamp(0.0, 1.0);
+    final levelProgress = skill.progress.clamp(0.0, 1.0);
+    final muted = scheme.onSurfaceVariant;
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        SizedBox(
+          width: _iconSize + 6,
+          height: _iconSize + 6,
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Positioned(
+                left: 4,
+                top: 0,
+                child: SkillIcon(
+                  skillId: skill.id,
+                  size: _iconSize,
+                  circular: true,
+                ),
+              ),
+              Positioned(
+                left: 0,
+                bottom: 0,
+                child: Container(
+                  width: 28,
+                  height: 28,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: scheme.primary,
+                    border: Border.all(
+                      color: scheme.surface,
+                      width: 2,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: scheme.shadow.withValues(alpha: 0.25),
+                        blurRadius: 4,
+                        offset: const Offset(0, 1),
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 12),
-                  Flexible(
-                    child: Text(
-                      skill.name,
-                      style: Theme.of(sheetContext)
-                          .textTheme
-                          .titleMedium
-                          ?.copyWith(fontWeight: FontWeight.bold),
+                  child: Text(
+                    '${skill.level}',
+                    style: TextStyle(
+                      color: scheme.onPrimary,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      height: 1,
                     ),
                   ),
-                  const SizedBox(width: 8),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 14),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                skill.name,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      height: 1.15,
+                    ),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Text(
+                    'Level',
+                    style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                          color: muted,
+                          fontWeight: FontWeight.w500,
+                        ),
+                  ),
+                  const Spacer(),
                   Text(
                     '${skill.level}/99',
-                    style:
-                        Theme.of(sheetContext).textTheme.titleMedium?.copyWith(
-                              color: scheme.primary,
-                              fontWeight: FontWeight.w700,
-                            ),
+                    style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                          color: scheme.primary,
+                          fontWeight: FontWeight.w700,
+                        ),
                   ),
                 ],
               ),
+              const SizedBox(height: 4),
+              _HudProgressBar(progress: skillProgress, emphasized: true),
               const SizedBox(height: 10),
-              _SkillProgressBar(
-                progress: skillProgress,
-                emphasized: true,
-              ),
-              const SizedBox(height: 18),
               Row(
                 children: [
                   Expanded(
                     child: Text(
-                      '${_formatXp(skill.xp)} / ${_formatXp(skill.nextLevelXp)} xp',
-                      style: Theme.of(sheetContext).textTheme.bodyLarge,
+                      '${_formatXp(skill.xp)} / ${_formatXp(skill.nextLevelXp)} XP',
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                            color: muted,
+                            fontWeight: FontWeight.w500,
+                            letterSpacing: 0.1,
+                          ),
                     ),
                   ),
                   Text(
                     '${_formatXp(skill.xpToNext)} left',
-                    style: Theme.of(sheetContext).textTheme.bodyMedium?.copyWith(
-                          color: scheme.onSurfaceVariant,
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: muted.withValues(alpha: 0.75),
                         ),
                   ),
                 ],
               ),
-              const SizedBox(height: 10),
-              _SkillProgressBar(
-                progress: levelProgress,
-                emphasized: false,
-              ),
-              const SizedBox(height: 20),
-              Text(
-                'Main params',
-                style: Theme.of(sheetContext).textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-              ),
-              const SizedBox(height: 12),
-              if (mainParamRows.isEmpty)
+              const SizedBox(height: 4),
+              _HudProgressBar(progress: levelProgress, emphasized: false),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _HudProgressBar extends StatelessWidget {
+  const _HudProgressBar({
+    required this.progress,
+    required this.emphasized,
+  });
+
+  final double progress;
+  final bool emphasized;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(3),
+        border: Border.all(
+          color: scheme.outline.withValues(alpha: emphasized ? 0.4 : 0.28),
+          width: 0.75,
+        ),
+        color: scheme.onSurface.withValues(alpha: 0.04),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(2),
+        child: LinearProgressIndicator(
+          value: progress,
+          minHeight: emphasized ? 6 : 4,
+          backgroundColor: Colors.transparent,
+          color: scheme.primary.withValues(alpha: emphasized ? 0.9 : 0.5),
+        ),
+      ),
+    );
+  }
+}
+
+class _SkillSectionCard extends StatelessWidget {
+  const _SkillSectionCard({
+    required this.icon,
+    required this.title,
+    required this.child,
+  });
+
+  final IconData icon;
+  final String title;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Card(
+      elevation: 1,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(_cardRadius),
+      ),
+      child: Container(
+        width: double.infinity,
+        decoration: BoxDecoration(
+          color: scheme.surfaceContainerHighest.withValues(alpha: 0.5),
+          borderRadius: BorderRadius.circular(_cardRadius),
+        ),
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                Icon(icon, color: scheme.primary, size: 20),
+                const SizedBox(width: 8),
                 Text(
-                  'No global params yet',
-                  style: Theme.of(sheetContext).textTheme.bodyMedium?.copyWith(
-                        color: scheme.onSurfaceVariant,
-                      ),
-                )
-              else
-                for (final row in mainParamRows) ...[
-                  _MainParamRow(row: row, scheme: scheme),
-                  const SizedBox(height: 12),
-                ],
-              if (rows.isNotEmpty) ...[
-                const SizedBox(height: 8),
-                Text(
-                  'XP sources',
-                  style: Theme.of(sheetContext).textTheme.titleSmall?.copyWith(
+                  title,
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
                         fontWeight: FontWeight.w600,
                       ),
                 ),
-                const SizedBox(height: 12),
-                for (final row in rows) ...[
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          row.$1,
-                          style: Theme.of(sheetContext).textTheme.bodyMedium,
-                        ),
-                      ),
-                      Text(
-                        '${row.$2} XP',
-                        style: Theme.of(sheetContext)
-                            .textTheme
-                            .bodyMedium
-                            ?.copyWith(
-                              color: scheme.primary,
-                              fontWeight: FontWeight.w600,
-                            ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                ],
               ],
-            ],
-          );
-        },
-      );
-    },
-  );
+            ),
+            const SizedBox(height: 12),
+            child,
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 Set<String> _ownedGuidanceActionKeys(BuildContext context) {
@@ -659,32 +882,6 @@ String _formatMeters(double value) {
 String _formatKmh(double value) {
   if (value == value.roundToDouble()) return '${value.toStringAsFixed(0)} km/h';
   return '${value.toStringAsFixed(1)} km/h';
-}
-
-class _SkillProgressBar extends StatelessWidget {
-  const _SkillProgressBar({
-    required this.progress,
-    required this.emphasized,
-  });
-
-  final double progress;
-  final bool emphasized;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(3),
-      child: LinearProgressIndicator(
-        value: progress,
-        minHeight: emphasized ? 7 : 5,
-        backgroundColor: scheme.onSurface.withValues(
-          alpha: emphasized ? 0.08 : 0.05,
-        ),
-        color: scheme.primary.withValues(alpha: emphasized ? 0.8 : 0.45),
-      ),
-    );
-  }
 }
 
 String _formatXp(int value) {

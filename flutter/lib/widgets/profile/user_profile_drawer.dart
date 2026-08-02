@@ -188,7 +188,8 @@ class _UserProfileDrawerState extends State<UserProfileDrawer> {
       builder: (context, constraints) {
         final height = widget.scrollController != null
             ? constraints.maxHeight
-            : MediaQuery.of(context).size.height * 0.9;
+            : MediaQuery.of(context).size.height *
+                DrawerSheetSizes.initialChildSize;
 
         return Container(
           height: height,
