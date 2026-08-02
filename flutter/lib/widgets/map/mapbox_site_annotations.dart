@@ -12,6 +12,10 @@ const int mapboxMarkerBatchSize = 500;
 
 /// Syncs site markers onto Mapbox circles.
 ///
+/// Each site is a small stacked "puck": soft ground shadow, dark rim, period
+/// fill with white bevel stroke, and a soft specular highlight. Layers paint
+/// in attach order (shadow → rim → fill → highlight → selection).
+///
 /// Contract:
 /// - Mode/filter switch → one [deleteAll], then [createMulti] in batches of
 ///   [mapboxMarkerBatchSize].
@@ -26,16 +30,19 @@ class MapboxSiteAnnotations {
 
   ValueChangedSite onSiteTap;
 
-  /// Created first so it paints under the colored fill knobs.
+  /// Paint order: shadow → rim → fill → highlight → selection dot.
   CircleAnnotationManager? _shadowManager;
+  CircleAnnotationManager? _rimManager;
   CircleAnnotationManager? _manager;
-  /// Created last so the selection knob paints on top of fills.
+  CircleAnnotationManager? _highlightManager;
   CircleAnnotationManager? _dotManager;
   Cancelable? _tapCancelable;
   int _selectionAnimToken = 0;
   final Map<String, SiteSummary> _byAnnotationId = {};
   final Map<int, CircleAnnotation> _bySiteId = {};
   final Map<int, CircleAnnotation> _shadowBySiteId = {};
+  final Map<int, CircleAnnotation> _rimBySiteId = {};
+  final Map<int, CircleAnnotation> _highlightBySiteId = {};
   CircleAnnotation? _selectionDot;
   int? _selectedSiteId;
   /// Bumped only on wipe ([beginDatasetSwitch] / [clearAllMarkers]) so an
@@ -58,48 +65,61 @@ class MapboxSiteAnnotations {
   /// runs so north-fixed exit does not cold-create thousands of markers.
   bool get rotateModePaused => _rotateModePaused;
 
+  bool get _managersReady =>
+      _shadowManager != null &&
+      _rimManager != null &&
+      _manager != null &&
+      _highlightManager != null &&
+      _dotManager != null;
+
+  Future<void> _deleteAllLayers() async {
+    await Future.wait([
+      _shadowManager!.deleteAll(),
+      _rimManager!.deleteAll(),
+      _manager!.deleteAll(),
+      _highlightManager!.deleteAll(),
+      _dotManager!.deleteAll(),
+    ]);
+  }
+
+  void _clearLocalMaps() {
+    _bySiteId.clear();
+    _shadowBySiteId.clear();
+    _rimBySiteId.clear();
+    _highlightBySiteId.clear();
+    _byAnnotationId.clear();
+    _selectionDot = null;
+  }
+
   Future<void> setRotateModePaused(bool paused) async {
     if (_rotateModePaused == paused) return;
     _rotateModePaused = paused;
-    final shadowManager = _shadowManager;
-    final manager = _manager;
-    final dotManager = _dotManager;
-    if (shadowManager == null || manager == null || dotManager == null) {
-      return;
-    }
+    if (!_managersReady) return;
     if (paused) {
       await Future.wait([
-        shadowManager.setCircleOpacity(0),
-        manager.setCircleOpacity(0),
-        dotManager.setCircleOpacity(0),
+        _shadowManager!.setCircleOpacity(0),
+        _rimManager!.setCircleOpacity(0),
+        _manager!.setCircleOpacity(0),
+        _highlightManager!.setCircleOpacity(0),
+        _dotManager!.setCircleOpacity(0),
       ]);
     } else {
       await Future.wait([
-        shadowManager.setCircleOpacity(mapboxMarkerShadowOpacity),
-        manager.setCircleOpacity(0.95),
-        dotManager.setCircleOpacity(1.0),
+        _shadowManager!.setCircleOpacity(mapboxMarkerShadowOpacity),
+        _rimManager!.setCircleOpacity(mapboxMarkerRimOpacity),
+        _manager!.setCircleOpacity(0.96),
+        _highlightManager!.setCircleOpacity(mapboxMarkerHighlightOpacity),
+        _dotManager!.setCircleOpacity(1.0),
       ]);
     }
   }
 
   Future<void> clearAllMarkers() async {
-    final shadowManager = _shadowManager;
-    final manager = _manager;
-    final dotManager = _dotManager;
-    if (shadowManager == null || manager == null || dotManager == null) {
-      return;
-    }
+    if (!_managersReady) return;
     _syncSeq++;
     _selectionAnimToken++;
-    await Future.wait([
-      shadowManager.deleteAll(),
-      manager.deleteAll(),
-      dotManager.deleteAll(),
-    ]);
-    _bySiteId.clear();
-    _shadowBySiteId.clear();
-    _byAnnotationId.clear();
-    _selectionDot = null;
+    await _deleteAllLayers();
+    _clearLocalMaps();
     _loadedDatasetKey = null;
     _selectedSiteId = null;
   }
@@ -111,70 +131,73 @@ class MapboxSiteAnnotations {
   /// fills in batches of [mapboxMarkerBatchSize].
   Future<void> beginDatasetSwitch(String datasetKey) async {
     if (_loadedDatasetKey == datasetKey) return;
-
-    final shadowManager = _shadowManager;
-    final manager = _manager;
-    final dotManager = _dotManager;
-    if (shadowManager == null || manager == null || dotManager == null) {
-      return;
-    }
+    if (!_managersReady) return;
 
     final seq = ++_syncSeq;
     _selectionAnimToken++;
-    await Future.wait([
-      shadowManager.deleteAll(),
-      manager.deleteAll(),
-      dotManager.deleteAll(),
-    ]);
+    await _deleteAllLayers();
     if (seq != _syncSeq) return;
-    _bySiteId.clear();
-    _shadowBySiteId.clear();
-    _byAnnotationId.clear();
-    _selectionDot = null;
+    _clearLocalMaps();
     _selectedSiteId = null;
     _loadedDatasetKey = datasetKey;
   }
 
   Future<void> attach({
     required CircleAnnotationManager shadowManager,
+    required CircleAnnotationManager rimManager,
     required CircleAnnotationManager manager,
+    required CircleAnnotationManager highlightManager,
     required CircleAnnotationManager selectionDotManager,
   }) async {
     _tapCancelable?.cancel();
     _shadowManager = shadowManager;
+    _rimManager = rimManager;
     _manager = manager;
+    _highlightManager = highlightManager;
     _dotManager = selectionDotManager;
 
-    await shadowManager.setCirclePitchAlignment(CirclePitchAlignment.MAP);
-    await shadowManager.setCirclePitchScale(CirclePitchScale.MAP);
+    Future<void> configureMapAligned(CircleAnnotationManager m) async {
+      await m.setCirclePitchAlignment(CirclePitchAlignment.MAP);
+      await m.setCirclePitchScale(CirclePitchScale.MAP);
+      await m.setCircleEmissiveStrength(1.0);
+    }
+
+    await configureMapAligned(shadowManager);
     await shadowManager.setCircleColor(0xFF000000);
     await shadowManager.setCircleOpacity(
       _rotateModePaused ? 0 : mapboxMarkerShadowOpacity,
     );
     await shadowManager.setCircleBlur(mapboxMarkerShadowBlur);
     await shadowManager.setCircleStrokeWidth(0);
-    await shadowManager.setCircleEmissiveStrength(1.0);
-    await shadowManager.setCircleRadius(
-      _baseRadius * mapboxMarkerShadowRadiusScale,
-    );
+    await shadowManager.setCircleRadius(_shadowRadius);
 
-    await manager.setCirclePitchAlignment(CirclePitchAlignment.MAP);
-    await manager.setCirclePitchScale(CirclePitchScale.MAP);
-    await manager.setCircleStrokeWidth(1.5);
+    await configureMapAligned(rimManager);
+    await rimManager.setCircleOpacity(
+      _rotateModePaused ? 0 : mapboxMarkerRimOpacity,
+    );
+    await rimManager.setCircleStrokeWidth(0);
+    await rimManager.setCircleRadius(_rimRadius);
+
+    await configureMapAligned(manager);
+    await manager.setCircleStrokeWidth(1.35);
     await manager.setCircleStrokeColor(0xFFFFFFFF);
-    await manager.setCircleOpacity(_rotateModePaused ? 0 : 0.95);
+    await manager.setCircleStrokeOpacity(0.92);
+    await manager.setCircleOpacity(_rotateModePaused ? 0 : 0.96);
     // Keep period colors fully lit under dusk lightPreset (same as day).
-    await manager.setCircleEmissiveStrength(1.0);
     await manager.setCircleRadius(_baseRadius);
 
-    await selectionDotManager.setCirclePitchAlignment(
-      CirclePitchAlignment.MAP,
+    await configureMapAligned(highlightManager);
+    await highlightManager.setCircleOpacity(
+      _rotateModePaused ? 0 : mapboxMarkerHighlightOpacity,
     );
-    await selectionDotManager.setCirclePitchScale(CirclePitchScale.MAP);
+    await highlightManager.setCircleBlur(mapboxMarkerHighlightBlur);
+    await highlightManager.setCircleStrokeWidth(0);
+    await highlightManager.setCircleRadius(_highlightRadius);
+
+    await configureMapAligned(selectionDotManager);
     await selectionDotManager.setCircleColor(0xFFFFFFFF);
     await selectionDotManager.setCircleOpacity(_rotateModePaused ? 0 : 1.0);
     await selectionDotManager.setCircleStrokeWidth(0);
-    await selectionDotManager.setCircleEmissiveStrength(1.0);
     await selectionDotManager.setCircleRadius(_dotRadius);
 
     _tapCancelable = manager.tapEvents(onTap: _handleTap);
@@ -182,7 +205,22 @@ class MapboxSiteAnnotations {
 
   double get _shadowRadius => _baseRadius * mapboxMarkerShadowRadiusScale;
 
+  double get _rimRadius => _baseRadius * mapboxMarkerRimRadiusScale;
+
+  double get _highlightRadius =>
+      _baseRadius * mapboxMarkerHighlightRadiusScale;
+
   double get _dotRadius => _baseRadius * mapboxMarkerSelectionDotScale;
+
+  Future<void> _applyLayerRadii() async {
+    await Future.wait([
+      _shadowManager!.setCircleRadius(_shadowRadius),
+      _rimManager!.setCircleRadius(_rimRadius),
+      _manager!.setCircleRadius(_baseRadius),
+      _highlightManager!.setCircleRadius(_highlightRadius),
+      _dotManager!.setCircleRadius(_dotRadius),
+    ]);
+  }
 
   void _handleTap(CircleAnnotation annotation) {
     if (_rotateModePaused) return;
@@ -268,12 +306,12 @@ class MapboxSiteAnnotations {
     required SiteSummary? selectedSite,
     required String datasetKey,
   }) async {
-    final manager = _manager;
-    final shadowManager = _shadowManager;
-    final dotManager = _dotManager;
-    if (manager == null || shadowManager == null || dotManager == null) {
-      return;
-    }
+    if (!_managersReady) return;
+    final manager = _manager!;
+    final shadowManager = _shadowManager!;
+    final rimManager = _rimManager!;
+    final highlightManager = _highlightManager!;
+    final dotManager = _dotManager!;
 
     // Capture wipe generation — only abort when [beginDatasetSwitch] bumps it.
     final seq = _syncSeq;
@@ -282,16 +320,9 @@ class MapboxSiteAnnotations {
     // [beginDatasetSwitch] may already have wiped; this covers sync-only paths.
     if (_loadedDatasetKey != datasetKey) {
       _selectionAnimToken++;
-      await Future.wait([
-        shadowManager.deleteAll(),
-        manager.deleteAll(),
-        dotManager.deleteAll(),
-      ]);
+      await _deleteAllLayers();
       if (seq != _syncSeq) return;
-      _bySiteId.clear();
-      _shadowBySiteId.clear();
-      _byAnnotationId.clear();
-      _selectionDot = null;
+      _clearLocalMaps();
       _selectedSiteId = null;
       _loadedDatasetKey = datasetKey;
     }
@@ -300,11 +331,7 @@ class MapboxSiteAnnotations {
     if (seq != _syncSeq) return;
     final zoom = camera.zoom;
     _baseRadius = mapboxMarkerRadiusForZoom(zoom);
-    await Future.wait([
-      shadowManager.setCircleRadius(_shadowRadius),
-      manager.setCircleRadius(_baseRadius),
-      dotManager.setCircleRadius(_dotRadius),
-    ]);
+    await _applyLayerRadii();
     if (seq != _syncSeq) return;
 
     if (!_rotateModePaused) {
@@ -329,37 +356,58 @@ class MapboxSiteAnnotations {
       final chunkIds = missing.skip(i).take(mapboxMarkerBatchSize).toList();
       final fillOptions = <CircleAnnotationOptions>[];
       final shadowOptions = <CircleAnnotationOptions>[];
+      final rimOptions = <CircleAnnotationOptions>[];
+      final highlightOptions = <CircleAnnotationOptions>[];
       final optionSites = <SiteSummary>[];
       for (final siteId in chunkIds) {
         final site = desired[siteId]!;
         final color = periodMarkerColor(site.effectivePeriod);
         final selected = !_rotateModePaused && siteId == _selectedSiteId;
+        final sortKey = selected ? 10.0 : 1.0;
         final point = Point(
           coordinates: Position(site.longitude!, site.latitude!),
         );
         shadowOptions.add(
           CircleAnnotationOptions(
             geometry: point,
-            circleSortKey: selected ? 10.0 : 1.0,
+            circleSortKey: sortKey,
+          ),
+        );
+        rimOptions.add(
+          CircleAnnotationOptions(
+            geometry: point,
+            circleColor: mapboxMarkerRimColor(color).toARGB32(),
+            circleSortKey: sortKey,
           ),
         );
         fillOptions.add(
           CircleAnnotationOptions(
             geometry: point,
             circleColor: color.toARGB32(),
-            circleSortKey: selected ? 10.0 : 1.0,
+            circleSortKey: sortKey,
             customData: {'siteId': '$siteId'},
+          ),
+        );
+        highlightOptions.add(
+          CircleAnnotationOptions(
+            geometry: point,
+            circleColor: mapboxMarkerHighlightColor(color).toARGB32(),
+            circleSortKey: sortKey,
           ),
         );
         optionSites.add(site);
       }
       final created = await Future.wait([
         shadowManager.createMulti(shadowOptions),
+        rimManager.createMulti(rimOptions),
         manager.createMulti(fillOptions),
+        highlightManager.createMulti(highlightOptions),
       ]);
       if (seq != _syncSeq) return;
       final shadows = created[0];
-      final fills = created[1];
+      final rims = created[1];
+      final fills = created[2];
+      final highlights = created[3];
       for (var j = 0; j < fills.length; j++) {
         final fill = fills[j];
         if (fill == null || j >= optionSites.length) continue;
@@ -368,6 +416,12 @@ class MapboxSiteAnnotations {
         _byAnnotationId[fill.id] = site;
         if (j < shadows.length && shadows[j] != null) {
           _shadowBySiteId[site.siteId] = shadows[j]!;
+        }
+        if (j < rims.length && rims[j] != null) {
+          _rimBySiteId[site.siteId] = rims[j]!;
+        }
+        if (j < highlights.length && highlights[j] != null) {
+          _highlightBySiteId[site.siteId] = highlights[j]!;
         }
       }
       if (i + mapboxMarkerBatchSize < missing.length) {
@@ -384,6 +438,8 @@ class MapboxSiteAnnotations {
       final chunk = staleIds.skip(i).take(mapboxMarkerBatchSize).toList();
       final fills = <CircleAnnotation>[];
       final shadows = <CircleAnnotation>[];
+      final rims = <CircleAnnotation>[];
+      final highlights = <CircleAnnotation>[];
       for (final siteId in chunk) {
         final fill = _bySiteId.remove(siteId);
         if (fill != null) {
@@ -392,6 +448,10 @@ class MapboxSiteAnnotations {
         }
         final shadow = _shadowBySiteId.remove(siteId);
         if (shadow != null) shadows.add(shadow);
+        final rim = _rimBySiteId.remove(siteId);
+        if (rim != null) rims.add(rim);
+        final highlight = _highlightBySiteId.remove(siteId);
+        if (highlight != null) highlights.add(highlight);
         if (siteId == _selectedSiteId) {
           _selectedSiteId = null;
           final dot = _selectionDot;
@@ -405,6 +465,8 @@ class MapboxSiteAnnotations {
       await Future.wait([
         if (fills.isNotEmpty) manager.deleteMulti(fills),
         if (shadows.isNotEmpty) shadowManager.deleteMulti(shadows),
+        if (rims.isNotEmpty) rimManager.deleteMulti(rims),
+        if (highlights.isNotEmpty) highlightManager.deleteMulti(highlights),
       ]);
       if (seq != _syncSeq) return;
       if (i + mapboxMarkerBatchSize < staleIds.length) {
@@ -434,26 +496,17 @@ class MapboxSiteAnnotations {
     _radiusInFlight = true;
     try {
       while (_pendingZoomRadius != null) {
-        final manager = _manager;
-        final shadowManager = _shadowManager;
-        final dotManager = _dotManager;
-        if (manager == null || shadowManager == null || dotManager == null) {
-          return;
-        }
+        if (!_managersReady) return;
         final nextZoom = _pendingZoomRadius!;
         _pendingZoomRadius = null;
         final radius = mapboxMarkerRadiusForZoom(nextZoom);
         if ((radius - _baseRadius).abs() < 0.02) continue;
         _baseRadius = radius;
-        final updates = <Future<void>>[
-          shadowManager.setCircleRadius(_shadowRadius),
-          manager.setCircleRadius(radius),
-          dotManager.setCircleRadius(_dotRadius),
-        ];
+        final updates = <Future<void>>[_applyLayerRadii()];
         final selectionDot = _selectionDot;
         if (selectionDot != null) {
           selectionDot.circleRadius = _dotRadius;
-          updates.add(dotManager.update(selectionDot));
+          updates.add(_dotManager!.update(selectionDot));
         }
         await Future.wait(updates);
       }
@@ -463,38 +516,38 @@ class MapboxSiteAnnotations {
   }
 
   Future<void> _snapSelection({int? fromId, int? toId}) async {
-    final manager = _manager;
-    final shadowManager = _shadowManager;
-    if (manager == null || shadowManager == null) return;
+    if (!_managersReady) return;
     if (fromId == toId) return;
 
     final token = ++_selectionAnimToken;
     final updates = <Future<void>>[];
 
-    if (fromId != null) {
-      final fill = _bySiteId[fromId];
-      final shadow = _shadowBySiteId[fromId];
+    void bumpSort(int? siteId, double sortKey) {
+      if (siteId == null) return;
+      final fill = _bySiteId[siteId];
+      final shadow = _shadowBySiteId[siteId];
+      final rim = _rimBySiteId[siteId];
+      final highlight = _highlightBySiteId[siteId];
       if (fill != null) {
-        fill.circleSortKey = 1.0;
-        updates.add(manager.update(fill));
+        fill.circleSortKey = sortKey;
+        updates.add(_manager!.update(fill));
       }
       if (shadow != null) {
-        shadow.circleSortKey = 1.0;
-        updates.add(shadowManager.update(shadow));
+        shadow.circleSortKey = sortKey;
+        updates.add(_shadowManager!.update(shadow));
+      }
+      if (rim != null) {
+        rim.circleSortKey = sortKey;
+        updates.add(_rimManager!.update(rim));
+      }
+      if (highlight != null) {
+        highlight.circleSortKey = sortKey;
+        updates.add(_highlightManager!.update(highlight));
       }
     }
-    if (toId != null) {
-      final fill = _bySiteId[toId];
-      final shadow = _shadowBySiteId[toId];
-      if (fill != null) {
-        fill.circleSortKey = 10.0;
-        updates.add(manager.update(fill));
-      }
-      if (shadow != null) {
-        shadow.circleSortKey = 10.0;
-        updates.add(shadowManager.update(shadow));
-      }
-    }
+
+    bumpSort(fromId, 1.0);
+    bumpSort(toId, 10.0);
     updates.add(_syncSelectionDot(siteId: toId));
     if (updates.isNotEmpty) await Future.wait(updates);
     if (token != _selectionAnimToken) return;
@@ -552,14 +605,13 @@ class MapboxSiteAnnotations {
     _latestDatasetKey = null;
     _tapCancelable?.cancel();
     _tapCancelable = null;
-    _byAnnotationId.clear();
-    _bySiteId.clear();
-    _shadowBySiteId.clear();
-    _selectionDot = null;
+    _clearLocalMaps();
     _loadedDatasetKey = null;
     _selectedSiteId = null;
     _manager = null;
     _shadowManager = null;
+    _rimManager = null;
+    _highlightManager = null;
     _dotManager = null;
   }
 }

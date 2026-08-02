@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mesozoica/config/map_config.dart';
 import 'package:mesozoica/widgets/map/mapbox_marker_images.dart';
@@ -84,6 +85,26 @@ void main() {
       final linearMid = (far + near) / 2;
       expect(mid, lessThan(linearMid));
       expect(mid, closeTo(far, (near - far) * 0.35));
+    });
+  });
+
+  group('mapboxMarker puck shades', () {
+    test('rim is darker than fill, highlight is lighter', () {
+      const fill = Color(0xFF8D6E63);
+      final rim = mapboxMarkerRimColor(fill);
+      final highlight = mapboxMarkerHighlightColor(fill);
+      expect(rim.computeLuminance(), lessThan(fill.computeLuminance()));
+      expect(highlight.computeLuminance(), greaterThan(fill.computeLuminance()));
+    });
+
+    test('layer radius scales keep rim outside fill and highlight inside', () {
+      expect(mapboxMarkerRimRadiusScale, greaterThan(1.0));
+      expect(mapboxMarkerShadowRadiusScale, greaterThan(mapboxMarkerRimRadiusScale));
+      expect(mapboxMarkerHighlightRadiusScale, lessThan(1.0));
+      expect(
+        mapboxMarkerSelectionDotScale,
+        lessThan(mapboxMarkerHighlightRadiusScale),
+      );
     });
   });
 }

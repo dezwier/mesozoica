@@ -853,15 +853,22 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
     unawaited(_seedAfterLayout());
 
     try {
+      // Paint order = creation order: shadow → rim → fill → highlight → selection.
       final shadowManager =
           await map.annotations.createCircleAnnotationManager();
+      final rimManager =
+          await map.annotations.createCircleAnnotationManager();
       final manager = await map.annotations.createCircleAnnotationManager();
+      final highlightManager =
+          await map.annotations.createCircleAnnotationManager();
       final selectionDotManager =
           await map.annotations.createCircleAnnotationManager();
       final annotations = MapboxSiteAnnotations(onSiteTap: _onSiteTap);
       await annotations.attach(
         shadowManager: shadowManager,
+        rimManager: rimManager,
         manager: manager,
+        highlightManager: highlightManager,
         selectionDotManager: selectionDotManager,
       );
       _annotations?.dispose();
