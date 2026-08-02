@@ -61,12 +61,6 @@ class TerrainEchoController extends ChangeNotifier {
     return GameConfig.instance.toolActions.terrainEcho.accuracy;
   }
 
-  double get degrees {
-    final session = _session;
-    if (session != null) return session.degrees;
-    return GameConfig.instance.toolActions.terrainEcho.degrees;
-  }
-
   double get rangeM {
     final session = _session;
     if (session != null) return session.rangeM;

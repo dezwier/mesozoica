@@ -18,7 +18,6 @@ class TerrainEchoCardExtension implements ToolCardExtension {
   @override
   List<String> editableParamKeys(ToolSummary tool) => const [
         'duration_minutes',
-        'degrees',
         'accuracy',
         'range_m',
       ];
@@ -68,7 +67,6 @@ class _TerrainEchoOngoingPanel extends StatelessWidget {
     final sessionParams = <String, dynamic>{
       ...toolParams,
       'duration_minutes': session.durationMinutes,
-      'degrees': session.degrees,
       'accuracy': session.accuracy,
       'range_m': session.rangeM,
     };

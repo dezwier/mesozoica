@@ -168,7 +168,6 @@ class TerrainEchoSessionResponse(BaseModel):
     status: str
     tool_id: int
     duration_minutes: int
-    degrees: float
     accuracy: float
     range_m: float
     started_at: datetime

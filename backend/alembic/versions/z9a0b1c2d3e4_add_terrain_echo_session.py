@@ -26,7 +26,6 @@ def upgrade() -> None:
         sa.Column("action_key", sa.String(length=64), nullable=False),
         sa.Column("status", sa.String(length=16), nullable=False),
         sa.Column("duration_minutes", sa.Integer(), nullable=False),
-        sa.Column("degrees", sa.Float(), nullable=False),
         sa.Column("accuracy", sa.Float(), nullable=False),
         sa.Column("range_m", sa.Float(), nullable=False),
         sa.Column("started_at", sa.DateTime(), nullable=False),

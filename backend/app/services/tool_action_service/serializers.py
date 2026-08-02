@@ -207,7 +207,6 @@ def terrain_echo_session_response(
         status=row.status,
         tool_id=int(row.tool_id),
         duration_minutes=int(row.duration_minutes),
-        degrees=float(row.degrees),
         accuracy=float(row.accuracy),
         range_m=float(row.range_m),
         started_at=row.started_at,

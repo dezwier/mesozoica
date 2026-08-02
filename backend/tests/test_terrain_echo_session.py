@@ -88,7 +88,6 @@ def test_tool_actions_yaml_loads_terrain_echo_knobs() -> None:
     cfg = get_game_config().tool_actions.terrain_echo
     assert cfg.duration_minutes == 5
     assert cfg.accuracy == 0.0
-    assert cfg.degrees == 20.0
     assert cfg.range_m == 20.0
     assert cfg.min_range_m == 20.0
     assert cfg.max_range_m == 200.0
@@ -113,9 +112,9 @@ def test_start_terrain_echo_session_snapshots_and_replaces(
     assert body["action_key"] == ACTION_KEY_TERRAIN_ECHO
     assert body["status"] == SESSION_STATUS_ACTIVE
     assert body["duration_minutes"] == 5
-    assert body["degrees"] == 20.0
     assert body["accuracy"] == 0.0
     assert body["range_m"] == 20.0
+    assert "degrees" not in body
 
     second = client.post(
         f"/api/v1/tools/{echo.id}/actions/terrain-echo-session",
@@ -174,7 +173,6 @@ def test_expired_terrain_echo_session_ignored(session: Session) -> None:
             action_key=ACTION_KEY_TERRAIN_ECHO,
             status=SESSION_STATUS_ACTIVE,
             duration_minutes=5,
-            degrees=20.0,
             accuracy=0.0,
             range_m=20.0,
             started_at=now - timedelta(minutes=10),

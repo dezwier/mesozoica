@@ -25,7 +25,6 @@ class TerrainEchoSession(SQLModel, table=True):
     status: str = Field(default=SESSION_STATUS_ACTIVE, max_length=16, index=True)
     # Snapshotted from tool_actions.yaml at start.
     duration_minutes: int = Field(default=5)
-    degrees: float = Field(default=20.0)
     accuracy: float = Field(default=0.0)
     range_m: float = Field(default=20.0)
     started_at: datetime = Field(default_factory=datetime.utcnow)

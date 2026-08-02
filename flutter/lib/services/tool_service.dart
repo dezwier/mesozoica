@@ -917,7 +917,6 @@ class TerrainEchoSession {
     required this.status,
     required this.toolId,
     required this.durationMinutes,
-    required this.degrees,
     required this.accuracy,
     required this.rangeM,
     required this.startedAt,
@@ -930,7 +929,6 @@ class TerrainEchoSession {
   final String status;
   final int toolId;
   final int durationMinutes;
-  final double degrees;
   final double accuracy;
   final double rangeM;
   final DateTime startedAt;
@@ -947,7 +945,6 @@ class TerrainEchoSession {
       status: json['status'] as String? ?? '',
       toolId: json['tool_id'] as int? ?? 0,
       durationMinutes: json['duration_minutes'] as int? ?? 5,
-      degrees: (json['degrees'] as num?)?.toDouble() ?? 20.0,
       accuracy: (json['accuracy'] as num?)?.toDouble() ?? 0.0,
       rangeM: (json['range_m'] as num?)?.toDouble() ?? 20.0,
       startedAt:

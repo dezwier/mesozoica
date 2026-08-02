@@ -782,13 +782,10 @@ class OrbitSurveyActionConfig {
 
 class TerrainEchoActionConfig {
   const TerrainEchoActionConfig({
-    required this.degrees,
     required this.accuracy,
     required this.rangeM,
     required this.minRangeM,
     required this.maxRangeM,
-    required this.minDegrees,
-    required this.maxDegrees,
     required this.durationMinutes,
     required this.minDurationMinutes,
     required this.maxDurationMinutes,
@@ -797,13 +794,10 @@ class TerrainEchoActionConfig {
     required this.statsExplanation,
   });
 
-  final double degrees;
   final double accuracy;
   final double rangeM;
   final double minRangeM;
   final double maxRangeM;
-  final double minDegrees;
-  final double maxDegrees;
   final int durationMinutes;
   final int minDurationMinutes;
   final int maxDurationMinutes;
@@ -812,13 +806,10 @@ class TerrainEchoActionConfig {
   final String statsExplanation;
 
   Map<String, dynamic> toParamsJson() => {
-        'degrees': degrees,
         'accuracy': accuracy,
         'range_m': rangeM,
         'min_range_m': minRangeM,
         'max_range_m': maxRangeM,
-        'min_degrees': minDegrees,
-        'max_degrees': maxDegrees,
         'duration_minutes': durationMinutes,
         'min_duration_minutes': minDurationMinutes,
         'max_duration_minutes': maxDurationMinutes,
@@ -833,13 +824,10 @@ class TerrainEchoActionConfig {
   }) {
     final d = defaults ??
         const TerrainEchoActionConfig(
-          degrees: 20.0,
           accuracy: 0.0,
           rangeM: 20.0,
           minRangeM: 20.0,
           maxRangeM: 200.0,
-          minDegrees: 20.0,
-          maxDegrees: 360.0,
           durationMinutes: 5,
           minDurationMinutes: 5,
           maxDurationMinutes: 20,
@@ -851,13 +839,10 @@ class TerrainEchoActionConfig {
               'blips; range sets pulse radius (20–200 m).',
         );
     return TerrainEchoActionConfig(
-      degrees: _asDouble(yaml['degrees'], d.degrees),
       accuracy: _asDouble(yaml['accuracy'], d.accuracy).clamp(0.0, 1.0),
       rangeM: _asDouble(yaml['range_m'], d.rangeM),
       minRangeM: _asDouble(yaml['min_range_m'], d.minRangeM),
       maxRangeM: _asDouble(yaml['max_range_m'], d.maxRangeM),
-      minDegrees: _asDouble(yaml['min_degrees'], d.minDegrees),
-      maxDegrees: _asDouble(yaml['max_degrees'], d.maxDegrees),
       durationMinutes: _asInt(yaml['duration_minutes'], d.durationMinutes),
       minDurationMinutes:
           _asInt(yaml['min_duration_minutes'], d.minDurationMinutes),

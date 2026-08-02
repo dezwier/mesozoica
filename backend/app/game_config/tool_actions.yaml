@@ -96,13 +96,10 @@ formation_map:
     for field sites, locked to this tool occurrence.
 
 terrain_echo:
-  degrees: 20
   accuracy: 0.0
   range_m: 20
   min_range_m: 20
   max_range_m: 200
-  min_degrees: 20
-  max_degrees: 360
   duration_minutes: 5
   min_duration_minutes: 5
   max_duration_minutes: 20

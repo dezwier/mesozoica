@@ -63,7 +63,6 @@ class _TerrainEchoOverlayState extends State<TerrainEchoOverlay>
   double _calibBearing = 0;
   double _calibForeshorten = 1;
   double _calibRangeM = 1;
-  double _calibAccuracy = 1;
   List<_CalibBlip> _calibBlips = const [];
 
   static const _sweepColor = Color(0xFFC4A35A);
@@ -218,7 +217,6 @@ class _TerrainEchoOverlayState extends State<TerrainEchoOverlay>
     final bearing = bearingRad ?? _calibBearing;
     final fore = foreshorten ?? _calibForeshorten;
     final rangeM = _calibRangeM;
-    final accuracy = _calibAccuracy;
 
     final rim = _tiltedRing(
       center: center,
@@ -229,21 +227,20 @@ class _TerrainEchoOverlayState extends State<TerrainEchoOverlay>
 
     final blips = <_EchoBlip>[];
     for (final b in _calibBlips) {
-      var pos = _groundToScreen(
-        center: center,
-        eastM: b.eastM,
-        northM: b.northM,
-        rangeM: rangeM,
-        radiusPx: radiusPx,
-        bearingRad: bearing,
-        foreshorten: fore,
-      );
-      final jitterFrac = (1.0 - accuracy) * 0.08;
-      if (jitterFrac > 0) {
-        pos = Offset.lerp(pos, _rimAt(rim, b.angleFrac), jitterFrac)!;
-      }
       blips.add(
-        _EchoBlip(position: pos, angleFrac: b.angleFrac, siteId: b.siteId),
+        _EchoBlip(
+          position: _groundToScreen(
+            center: center,
+            eastM: b.eastM,
+            northM: b.northM,
+            rangeM: rangeM,
+            radiusPx: radiusPx,
+            bearingRad: bearing,
+            foreshorten: fore,
+          ),
+          angleFrac: b.angleFrac,
+          siteId: b.siteId,
+        ),
       );
     }
 
@@ -384,7 +381,6 @@ class _TerrainEchoOverlayState extends State<TerrainEchoOverlay>
     final radiusPx = probeDist * (rangeM / probeM);
     if (radiusPx < 4) return;
 
-    final accuracy = echo.accuracy.clamp(0.0, 1.0);
     final calibBlips = <_CalibBlip>[];
     for (final site in sitesInRange) {
       final geo = _geoEastNorthMeters(
@@ -415,7 +411,6 @@ class _TerrainEchoOverlayState extends State<TerrainEchoOverlay>
     _calibBearing = bearing;
     _calibForeshorten = foreshorten;
     _calibRangeM = rangeM;
-    _calibAccuracy = accuracy;
     _calibBlips = calibBlips;
 
     // Apply at the live zoom so a pinch during the await doesn't jump.
@@ -466,16 +461,6 @@ class _TerrainEchoOverlayState extends State<TerrainEchoOverlay>
           foreshorten: foreshorten,
         ),
     ];
-  }
-
-  static Offset _rimAt(List<Offset> rim, double angleFrac) {
-    if (rim.isEmpty) return Offset.zero;
-    final n = rim.length;
-    final f = ((angleFrac % 1.0) + 1.0) % 1.0 * n;
-    final i0 = f.floor() % n;
-    final i1 = (i0 + 1) % n;
-    final u = f - f.floor();
-    return Offset.lerp(rim[i0], rim[i1], u)!;
   }
 
   static Offset _geoEastNorthMeters(LatLng origin, LatLng target) {
@@ -532,7 +517,6 @@ class _TerrainEchoOverlayState extends State<TerrainEchoOverlay>
           painter: _TerrainEchoPainter(
             center: center,
             rimPx: _rimPx,
-            degrees: echo.degrees,
             accuracy: echo.accuracy,
             sweepT: _sweep.value,
             blips: _blips,
@@ -577,7 +561,6 @@ class _TerrainEchoPainter extends CustomPainter {
   _TerrainEchoPainter({
     required this.center,
     required this.rimPx,
-    required this.degrees,
     required this.accuracy,
     required this.sweepT,
     required this.blips,
@@ -589,7 +572,6 @@ class _TerrainEchoPainter extends CustomPainter {
 
   final Offset center;
   final List<Offset> rimPx;
-  final double degrees;
   final double accuracy;
   final double sweepT;
   final List<_EchoBlip> blips;
@@ -597,6 +579,9 @@ class _TerrainEchoPainter extends CustomPainter {
   final Color sweepColor;
   final Color discColor;
   final Color blipColor;
+
+  /// Fixed trail width behind the lead ray (fraction of a full turn).
+  static const _wedgeFrac = 28 / 360;
 
   Path _pathFrom(List<Offset> pts) {
     final path = Path();
@@ -609,6 +594,12 @@ class _TerrainEchoPainter extends CustomPainter {
     }
     path.close();
     return path;
+  }
+
+  Path _scaledRingPath(double unit) {
+    return _pathFrom([
+      for (final p in rimPx) Offset.lerp(center, p, unit)!,
+    ]);
   }
 
   Offset _rimAtFrac(double angleFrac) {
@@ -631,23 +622,32 @@ class _TerrainEchoPainter extends CustomPainter {
       (m, p) => math.max(m, (p - center).distance),
     );
 
-    // Subtle disc + short soft falloff that follows the rim (circle or ellipse).
+    // Subtle disc fill.
     canvas.save();
     canvas.clipPath(discPath);
     canvas.drawPaint(Paint()..color = discColor.withValues(alpha: 0.055));
     canvas.restore();
-    canvas.drawPath(
+
+    // Soft ring stroke, clipped to the ring interior → blurry inward, sharp out.
+    final ringStroke = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = (span * 0.04).clamp(6.0, 14.0)
+      ..color = discColor.withValues(alpha: 0.05)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4)
+      ..isAntiAlias = true;
+    for (final path in [
       discPath,
-      Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = (span * 0.04).clamp(6.0, 14.0)
-        ..color = discColor.withValues(alpha: 0.05)
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4)
-        ..isAntiAlias = true,
-    );
+      _scaledRingPath(2 / 3),
+      _scaledRingPath(1 / 3),
+    ]) {
+      canvas.save();
+      canvas.clipPath(path);
+      canvas.drawPath(path, ringStroke);
+      canvas.restore();
+    }
 
     final sweepFrac = ((sweepT % 1.0) + 1.0) % 1.0;
-    final wedgeFrac = (degrees.clamp(1.0, 360.0) / 360.0).clamp(0.01, 1.0);
+    const wedgeFrac = _wedgeFrac;
     const segments = 36;
     canvas.save();
     canvas.clipPath(discPath);
@@ -684,29 +684,23 @@ class _TerrainEchoPainter extends CustomPainter {
     );
     canvas.restore();
 
-    final blurSigma = ui.lerpDouble(10.0, 2.0, accuracy.clamp(0.0, 1.0))!;
-    final blipRadius = ui
-        .lerpDouble(
-          (span * 0.06).clamp(10.0, 26.0),
-          (span * 0.025).clamp(5.0, 12.0),
-          accuracy.clamp(0.0, 1.0),
-        )!
-        .toDouble();
+    // Always a soft blur — never a hard marker. 0 = diffuse/wide; 1 = tighter.
+    final acc = accuracy.clamp(0.0, 1.0);
+    final blurSigma = ui.lerpDouble(16.0, 5.0, acc)!;
+    final glowRadius =
+        ui.lerpDouble((span * 0.1).clamp(18.0, 42.0), 8.0, acc)!;
+    final glowAlpha = ui.lerpDouble(0.5, 0.65, acc)!;
     for (final blip in blips) {
       final alpha = blipAlphas[blip.siteId] ?? 0.0;
       if (alpha <= 0.01) continue;
       if (!blip.position.dx.isFinite || !blip.position.dy.isFinite) continue;
       canvas.drawCircle(
         blip.position,
-        blipRadius * 1.7,
+        glowRadius,
         Paint()
-          ..color = blipColor.withValues(alpha: 0.45 * alpha)
-          ..maskFilter = MaskFilter.blur(BlurStyle.normal, blurSigma),
-      );
-      canvas.drawCircle(
-        blip.position,
-        blipRadius * 0.5,
-        Paint()..color = blipColor.withValues(alpha: 0.95 * alpha),
+          ..color = blipColor.withValues(alpha: glowAlpha * alpha)
+          ..maskFilter = MaskFilter.blur(BlurStyle.normal, blurSigma)
+          ..isAntiAlias = true,
       );
     }
 
@@ -717,7 +711,6 @@ class _TerrainEchoPainter extends CustomPainter {
   bool shouldRepaint(covariant _TerrainEchoPainter oldDelegate) {
     return oldDelegate.center != center ||
         !identical(oldDelegate.rimPx, rimPx) ||
-        oldDelegate.degrees != degrees ||
         oldDelegate.accuracy != accuracy ||
         oldDelegate.sweepT != sweepT ||
         !identical(oldDelegate.blips, blips) ||

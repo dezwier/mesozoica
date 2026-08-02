@@ -130,7 +130,6 @@ def start_terrain_echo_session(
         action_key=ACTION_KEY_TERRAIN_ECHO,
         status=SESSION_STATUS_ACTIVE,
         duration_minutes=eff_duration,
-        degrees=float(inst_p.get("degrees", cfg.degrees)),
         accuracy=float(inst_p.get("accuracy", cfg.accuracy)),
         range_m=float(inst_p.get("range_m", cfg.range_m)),
         started_at=now,

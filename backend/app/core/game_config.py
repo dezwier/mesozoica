@@ -512,13 +512,10 @@ class TerrainEchoActionConfig(BaseModel):
 
     model_config = {"frozen": True}
 
-    degrees: float = 20.0
     accuracy: float = 0.0
     range_m: float = 20.0
     min_range_m: float = 20.0
     max_range_m: float = 200.0
-    min_degrees: float = 20.0
-    max_degrees: float = 360.0
     duration_minutes: int = 5
     min_duration_minutes: int = 5
     max_duration_minutes: int = 20
@@ -532,12 +529,9 @@ class TerrainEchoActionConfig(BaseModel):
         return _clamp_unit_interval(value, label="accuracy")
 
     @field_validator(
-        "degrees",
         "range_m",
         "min_range_m",
         "max_range_m",
-        "min_degrees",
-        "max_degrees",
         "ring_increment_m",
         "sweep_period_s",
     )
@@ -560,14 +554,10 @@ class TerrainEchoActionConfig(BaseModel):
     def _validate_bounds(self) -> TerrainEchoActionConfig:
         if self.max_range_m < self.min_range_m:
             raise ValueError("max_range_m must be >= min_range_m")
-        if self.max_degrees < self.min_degrees:
-            raise ValueError("max_degrees must be >= min_degrees")
         if self.max_duration_minutes < self.min_duration_minutes:
             raise ValueError(
                 "max_duration_minutes must be >= min_duration_minutes"
             )
-        if not (self.min_degrees <= self.degrees <= self.max_degrees):
-            raise ValueError("degrees must be within min/max_degrees")
         if not (self.min_range_m <= self.range_m <= self.max_range_m):
             raise ValueError("range_m must be within min/max_range_m")
         if not (
@@ -737,13 +727,10 @@ class ToolActionsConfig(BaseModel):
     )
     terrain_echo: TerrainEchoActionConfig = Field(
         default_factory=lambda: TerrainEchoActionConfig(
-            degrees=20.0,
             accuracy=0.0,
             range_m=20.0,
             min_range_m=20.0,
             max_range_m=200.0,
-            min_degrees=20.0,
-            max_degrees=360.0,
             duration_minutes=5,
             min_duration_minutes=5,
             max_duration_minutes=20,

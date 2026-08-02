@@ -21,7 +21,6 @@ class TerrainEchoToolStats extends StatelessWidget {
     final p = params;
     final durationMinutes =
         (p?['duration_minutes'] as num?)?.toInt() ?? cfg.durationMinutes;
-    final degrees = (p?['degrees'] as num?)?.toDouble() ?? cfg.degrees;
     final accuracy = (p?['accuracy'] as num?)?.toDouble() ?? cfg.accuracy;
     final rangeM = (p?['range_m'] as num?)?.toDouble() ?? cfg.rangeM;
     final explanation =
@@ -31,7 +30,6 @@ class TerrainEchoToolStats extends StatelessWidget {
         : '${rangeM.round()} m';
     final pairs = <ToolStatPair>[
       ToolStatPair('Duration', '$durationMinutes min'),
-      ToolStatPair('Degrees', '${degrees.round()}°'),
       ToolStatPair(
         'Accuracy',
         accuracy.toStringAsFixed(
