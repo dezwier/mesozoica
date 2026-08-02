@@ -356,6 +356,19 @@ class AuthService {
     return user;
   }
 
+  Future<Profile> setSkillXp({
+    required String skillId,
+    required int xp,
+  }) async {
+    final response = await ApiClient.instance.patch(
+      '/api/v1/users/me/skills/$skillId/xp',
+      body: {'xp': xp},
+    );
+    final user = Profile.fromJson(response);
+    await _storeUser(user);
+    return user;
+  }
+
   static String imageUrl(String? path) {
     if (path == null || path.isEmpty) return '';
     if (path.startsWith('http://') || path.startsWith('https://')) return path;

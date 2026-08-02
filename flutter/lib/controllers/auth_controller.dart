@@ -123,6 +123,15 @@ class AuthController extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<Profile> setSkillXp({
+    required String skillId,
+    required int xp,
+  }) async {
+    final user = await _authService.setSkillXp(skillId: skillId, xp: xp);
+    await applyUser(user);
+    return user;
+  }
+
   Future<void> logout() async {
     await _authService.clearStoredAuth();
     _currentUser = null;

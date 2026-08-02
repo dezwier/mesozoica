@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../../config/game_config.dart';
+import '../../controllers/auth_controller.dart';
 import '../../controllers/guidance_session_controller.dart';
 import '../../controllers/tool_catalog_controller.dart';
 import '../../models/guidance_tool_kind.dart';
 import '../../models/profile.dart';
 import '../../models/tool.dart';
+import '../../services/api_client.dart';
 import '../common/draggable_sheet_wrapper.dart';
 import 'profile_skill_icons.dart';
 
@@ -76,10 +79,91 @@ class _SkillDetailDrawer extends StatelessWidget {
   final String? activeActionKey;
   final ScrollController scrollController;
 
+  SkillState _liveSkill(Profile? profile) {
+    if (profile == null) return skill;
+    for (final candidate in profile.skills) {
+      if (candidate.id == skill.id) return candidate;
+    }
+    return skill;
+  }
+
+  Map<String, int>? _liveBreakdown(Profile? profile) {
+    if (profile == null) return breakdown;
+    return profile.skillBreakdown[skill.id] ?? breakdown;
+  }
+
+  Future<void> _onEditXp(BuildContext context, SkillState skill) async {
+    final controller = TextEditingController(text: '${skill.xp}');
+    final xp = await showDialog<int>(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          title: Text('Set ${skill.name} XP'),
+          content: TextField(
+            controller: controller,
+            autofocus: true,
+            keyboardType: TextInputType.number,
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            decoration: const InputDecoration(
+              labelText: 'XP',
+              border: OutlineInputBorder(),
+            ),
+            onSubmitted: (value) {
+              final parsed = int.tryParse(value.trim());
+              if (parsed == null) return;
+              Navigator.of(ctx).pop(parsed);
+            },
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () {
+                final parsed = int.tryParse(controller.text.trim());
+                if (parsed == null) return;
+                Navigator.of(ctx).pop(parsed);
+              },
+              child: const Text('Save'),
+            ),
+          ],
+        );
+      },
+    );
+    controller.dispose();
+    if (xp == null || !context.mounted) return;
+
+    try {
+      await context.read<AuthController>().setSkillXp(
+            skillId: skill.id,
+            xp: xp,
+          );
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('${skill.name} XP set to $xp')),
+      );
+    } on ApiException catch (error) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.message)),
+      );
+    } catch (error) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to set skill XP: $error')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final auth = context.watch<AuthController>();
+    final liveSkill = _liveSkill(auth.currentUser);
+    final liveBreakdown = _liveBreakdown(auth.currentUser);
+    final showAdminUi = auth.showAdminUi;
     final scheme = Theme.of(context).colorScheme;
-    final xpRows = breakdown?.entries
+    final xpRows = liveBreakdown?.entries
             .where((entry) => entry.value > 0)
             .map(
               (entry) => (
@@ -90,7 +174,7 @@ class _SkillDetailDrawer extends StatelessWidget {
             .toList() ??
         const <(String, int)>[];
     final paramRows = _mainParamRowsForSkill(
-      skill,
+      liveSkill,
       ownedActionKeys: ownedActionKeys,
       activeActionKey: activeActionKey,
     );
@@ -120,7 +204,12 @@ class _SkillDetailDrawer extends StatelessWidget {
                   controller: scrollController,
                   padding: const EdgeInsets.fromLTRB(16, 20, 16, 32),
                   children: [
-                    _SkillHud(skill: skill),
+                    _SkillHud(
+                      skill: liveSkill,
+                      onEditXp: showAdminUi
+                          ? () => _onEditXp(context, liveSkill)
+                          : null,
+                    ),
                     const SizedBox(height: 16),
                     if (xpRows.isNotEmpty) ...[
                       _SkillSectionCard(
@@ -197,9 +286,13 @@ class _SkillDetailDrawer extends StatelessWidget {
 
 /// Big skill mark + title / level / dual progress — profile analogue of map HUD.
 class _SkillHud extends StatelessWidget {
-  const _SkillHud({required this.skill});
+  const _SkillHud({
+    required this.skill,
+    this.onEditXp,
+  });
 
   final SkillState skill;
+  final VoidCallback? onEditXp;
 
   static const double _iconSize = 92;
 
@@ -269,14 +362,33 @@ class _SkillHud extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                skill.name,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
-                      height: 1.15,
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      skill.name,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style:
+                          Theme.of(context).textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.w700,
+                                height: 1.15,
+                              ),
                     ),
+                  ),
+                  if (onEditXp != null)
+                    IconButton(
+                      onPressed: onEditXp,
+                      icon: const Icon(Icons.settings, size: 20),
+                      tooltip: 'Set XP',
+                      visualDensity: VisualDensity.compact,
+                      constraints: const BoxConstraints(
+                        minWidth: 32,
+                        minHeight: 32,
+                      ),
+                      padding: EdgeInsets.zero,
+                    ),
+                ],
               ),
               const SizedBox(height: 8),
               Row(

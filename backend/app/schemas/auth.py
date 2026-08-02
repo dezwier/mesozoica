@@ -88,6 +88,10 @@ class UpdateDistanceRequest(BaseModel):
     reset_weekly: bool = False
 
 
+class UpdateSkillXpRequest(BaseModel):
+    xp: int = Field(..., ge=0, description="Absolute skill XP to set")
+
+
 class UserListEntry(BaseModel):
     id: int
     username: str

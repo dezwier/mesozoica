@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
@@ -23,9 +24,9 @@ class SiteCardDimensions extends StatelessWidget {
     final accuracies = _accuraciesFor();
 
     final horizontal = <(SiteDimensionKey, String, double?)>[
-      (SiteDimensionKey.dino, 'Dinos', site.oddDinoCount),
-      (SiteDimensionKey.fossil, 'Fossils', site.oddFossilCount),
-      (SiteDimensionKey.completeness, 'Complete', site.oddCompleteness),
+      (SiteDimensionKey.dino, 'Dino count', site.oddDinoCount),
+      (SiteDimensionKey.fossil, 'Fossils count', site.oddFossilCount),
+      (SiteDimensionKey.completeness, 'Completeness', site.oddCompleteness),
       (SiteDimensionKey.quality, 'Quality', site.oddQuality),
     ];
 
@@ -74,7 +75,7 @@ class SiteCardDimensions extends StatelessWidget {
             ),
             const SizedBox(width: 10),
             SizedBox(
-              width: 36,
+              width: 40,
               child: _VerticalDepthAxis(
                 display: depthDisplay,
                 cardTheme: cardTheme,
@@ -134,10 +135,10 @@ class _HorizontalDimensionRow extends StatelessWidget {
     return Row(
       children: [
         SizedBox(
-          width: 52,
+          width: 78,
           child: Text(
             label.toUpperCase(),
-            style: cardTheme.statLabelStyle(fontSize: 7),
+            style: cardTheme.statLabelStyle(fontSize: 6.5),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
@@ -148,11 +149,11 @@ class _HorizontalDimensionRow extends StatelessWidget {
               ? _AxisTrackPlaceholder(cardTheme: cardTheme)
               : CustomPaint(
                   painter: _HorizontalAxisPainter(
-                    value: display!.displayValue,
+                    rangeStart: display!.rangeStart,
+                    rangeEnd: display!.rangeEnd,
                     blurSigma: display!.blurSigma,
                     trackColor: cardTheme.cardTextMuted.withValues(alpha: 0.35),
-                    fillColor: cardTheme.cardAccent.withValues(alpha: 0.55),
-                    markerColor: cardTheme.cardAccent,
+                    bandColor: cardTheme.cardAccent,
                   ),
                 ),
         ),
@@ -186,11 +187,11 @@ class _VerticalDepthAxis extends StatelessWidget {
               ? _AxisTrackPlaceholder(cardTheme: cardTheme, vertical: true)
               : CustomPaint(
                   painter: _VerticalAxisPainter(
-                    value: display!.displayValue,
+                    rangeStart: display!.rangeStart,
+                    rangeEnd: display!.rangeEnd,
                     blurSigma: display!.blurSigma,
                     trackColor: cardTheme.cardTextMuted.withValues(alpha: 0.35),
-                    fillColor: cardTheme.cardAccent.withValues(alpha: 0.55),
-                    markerColor: cardTheme.cardAccent,
+                    bandColor: cardTheme.cardAccent,
                   ),
                 ),
         ),
@@ -213,18 +214,18 @@ class _AxisTrackPlaceholder extends StatelessWidget {
     return CustomPaint(
       painter: vertical
           ? _VerticalAxisPainter(
-              value: null,
+              rangeStart: null,
+              rangeEnd: null,
               blurSigma: 0,
               trackColor: cardTheme.cardTextMuted.withValues(alpha: 0.25),
-              fillColor: Colors.transparent,
-              markerColor: Colors.transparent,
+              bandColor: Colors.transparent,
             )
           : _HorizontalAxisPainter(
-              value: null,
+              rangeStart: null,
+              rangeEnd: null,
               blurSigma: 0,
               trackColor: cardTheme.cardTextMuted.withValues(alpha: 0.25),
-              fillColor: Colors.transparent,
-              markerColor: Colors.transparent,
+              bandColor: Colors.transparent,
             ),
     );
   }
@@ -232,149 +233,164 @@ class _AxisTrackPlaceholder extends StatelessWidget {
 
 class _HorizontalAxisPainter extends CustomPainter {
   _HorizontalAxisPainter({
-    required this.value,
+    required this.rangeStart,
+    required this.rangeEnd,
     required this.blurSigma,
     required this.trackColor,
-    required this.fillColor,
-    required this.markerColor,
+    required this.bandColor,
   });
 
-  final double? value;
+  final double? rangeStart;
+  final double? rangeEnd;
   final double blurSigma;
   final Color trackColor;
-  final Color fillColor;
-  final Color markerColor;
+  final Color bandColor;
 
   @override
   void paint(Canvas canvas, Size size) {
     final cy = size.height / 2;
     const trackH = 3.0;
-    final trackR = RRect.fromLTRBR(
-      0,
-      cy - trackH / 2,
-      size.width,
-      cy + trackH / 2,
-      const Radius.circular(1.5),
-    );
-    canvas.drawRRect(trackR, Paint()..color = trackColor);
-
-    if (value == null) return;
-
-    final x = value!.clamp(0.0, 1.0) * size.width;
-    if (x > 0) {
-      final fillR = RRect.fromLTRBR(
+    canvas.drawRRect(
+      RRect.fromLTRBR(
         0,
         cy - trackH / 2,
-        x,
+        size.width,
         cy + trackH / 2,
         const Radius.circular(1.5),
-      );
-      canvas.drawRRect(fillR, Paint()..color = fillColor);
-    }
+      ),
+      Paint()..color = trackColor,
+    );
 
-    _paintSoftMarker(
+    if (rangeStart == null || rangeEnd == null) return;
+
+    final lo = rangeStart!.clamp(0.0, 1.0);
+    final hi = rangeEnd!.clamp(0.0, 1.0);
+    final x0 = lo * size.width;
+    final x1 = hi * size.width;
+    final bandH = (5.0 + blurSigma * 0.55).clamp(5.0, 12.0);
+
+    _paintSoftBand(
       canvas,
-      Offset(x, cy),
-      radius: 4.0,
-      color: markerColor,
+      Rect.fromLTRB(x0, cy - bandH / 2, math.max(x1, x0 + 2.0), cy + bandH / 2),
+      color: bandColor,
       blurSigma: blurSigma,
+      radius: bandH / 2,
     );
   }
 
   @override
   bool shouldRepaint(covariant _HorizontalAxisPainter oldDelegate) {
-    return oldDelegate.value != value ||
+    return oldDelegate.rangeStart != rangeStart ||
+        oldDelegate.rangeEnd != rangeEnd ||
         oldDelegate.blurSigma != blurSigma ||
         oldDelegate.trackColor != trackColor ||
-        oldDelegate.fillColor != fillColor ||
-        oldDelegate.markerColor != markerColor;
+        oldDelegate.bandColor != bandColor;
   }
 }
 
 class _VerticalAxisPainter extends CustomPainter {
   _VerticalAxisPainter({
-    required this.value,
+    required this.rangeStart,
+    required this.rangeEnd,
     required this.blurSigma,
     required this.trackColor,
-    required this.fillColor,
-    required this.markerColor,
+    required this.bandColor,
   });
 
-  final double? value;
+  final double? rangeStart;
+  final double? rangeEnd;
   final double blurSigma;
   final Color trackColor;
-  final Color fillColor;
-  final Color markerColor;
+  final Color bandColor;
 
   @override
   void paint(Canvas canvas, Size size) {
     final cx = size.width / 2;
     const trackW = 3.0;
-    final trackR = RRect.fromLTRBR(
-      cx - trackW / 2,
-      0,
-      cx + trackW / 2,
-      size.height,
-      const Radius.circular(1.5),
-    );
-    canvas.drawRRect(trackR, Paint()..color = trackColor);
-
-    if (value == null) return;
-
-    // Depth: 0 at top (surface), 1 at bottom.
-    final y = value!.clamp(0.0, 1.0) * size.height;
-    if (y > 0) {
-      final fillR = RRect.fromLTRBR(
+    canvas.drawRRect(
+      RRect.fromLTRBR(
         cx - trackW / 2,
         0,
         cx + trackW / 2,
-        y,
+        size.height,
         const Radius.circular(1.5),
-      );
-      canvas.drawRRect(fillR, Paint()..color = fillColor);
-    }
+      ),
+      Paint()..color = trackColor,
+    );
 
-    _paintSoftMarker(
+    if (rangeStart == null || rangeEnd == null) return;
+
+    // Depth: 0 at top (surface / in situ), 1 at bottom.
+    final lo = rangeStart!.clamp(0.0, 1.0);
+    final hi = rangeEnd!.clamp(0.0, 1.0);
+    final y0 = lo * size.height;
+    final y1 = hi * size.height;
+    final bandW = (5.0 + blurSigma * 0.55).clamp(5.0, 14.0);
+
+    _paintSoftBand(
       canvas,
-      Offset(cx, y),
-      radius: 4.0,
-      color: markerColor,
+      Rect.fromLTRB(cx - bandW / 2, y0, cx + bandW / 2, math.max(y1, y0 + 2.0)),
+      color: bandColor,
       blurSigma: blurSigma,
+      radius: bandW / 2,
     );
   }
 
   @override
   bool shouldRepaint(covariant _VerticalAxisPainter oldDelegate) {
-    return oldDelegate.value != value ||
+    return oldDelegate.rangeStart != rangeStart ||
+        oldDelegate.rangeEnd != rangeEnd ||
         oldDelegate.blurSigma != blurSigma ||
         oldDelegate.trackColor != trackColor ||
-        oldDelegate.fillColor != fillColor ||
-        oldDelegate.markerColor != markerColor;
+        oldDelegate.bandColor != bandColor;
   }
 }
 
-void _paintSoftMarker(
+void _paintSoftBand(
   Canvas canvas,
-  Offset center, {
-  required double radius,
+  Rect rect, {
   required Color color,
   required double blurSigma,
+  required double radius,
 }) {
+  final rrect = RRect.fromRectAndRadius(rect, Radius.circular(radius));
+
   if (blurSigma > 0.05) {
-    final paint = Paint()
-      ..color = color.withValues(alpha: 0.55)
-      ..maskFilter = ui.MaskFilter.blur(ui.BlurStyle.normal, blurSigma);
-    // Wider soft cloud so low accuracy visually covers more of the axis.
-    canvas.drawCircle(center, radius + blurSigma * 1.4, paint);
+    // Soft outer haze — wideness + blur hide the true value.
+    canvas.drawRRect(
+      rrect.inflate(blurSigma * 0.65),
+      Paint()
+        ..color = color.withValues(alpha: 0.28)
+        ..maskFilter = ui.MaskFilter.blur(ui.BlurStyle.normal, blurSigma),
+    );
+    canvas.drawRRect(
+      rrect,
+      Paint()
+        ..color = color.withValues(alpha: 0.45)
+        ..maskFilter =
+            ui.MaskFilter.blur(ui.BlurStyle.normal, blurSigma * 0.55),
+    );
   }
-  canvas.drawCircle(
-    center,
-    radius,
-    Paint()..color = color,
+
+  // Core band — sharp when accurate, still soft-edged when not.
+  canvas.drawRRect(
+    rrect,
+    Paint()..color = color.withValues(alpha: blurSigma > 0.05 ? 0.72 : 0.95),
   );
-  canvas.drawCircle(
-    center,
-    radius * 0.35,
-    Paint()..color = Colors.white.withValues(alpha: 0.85),
-  );
+
+  // Precise tip highlight when the band collapses.
+  if (blurSigma <= 0.05 && rect.shortestSide <= 6) {
+    final cx = rect.center.dx;
+    final cy = rect.center.dy;
+    canvas.drawCircle(
+      Offset(cx, cy),
+      3.2,
+      Paint()..color = color,
+    );
+    canvas.drawCircle(
+      Offset(cx, cy),
+      1.1,
+      Paint()..color = Colors.white.withValues(alpha: 0.9),
+    );
+  }
 }

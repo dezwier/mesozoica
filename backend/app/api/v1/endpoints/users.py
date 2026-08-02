@@ -4,13 +4,16 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlmodel import Session, select
 
 from app.core.database import get_session
-from app.core.security import get_current_user
+from app.core.security import get_current_admin_user, get_current_user
 from app.models.user import User
 from app.schemas.auth import (
     UpdateDistanceRequest,
+    UpdateSkillXpRequest,
     UserListResponse,
     UserProfileResponse,
 )
+from app.services.level_service import set_skill_xp, sync_career_from_skills
+from app.services.level_service.skills import skill_by_id
 from app.services.user_service import user_to_list_entry, user_to_profile_response
 from app.services.walk_distance_service import apply_distance_update
 
@@ -36,6 +39,30 @@ async def update_my_distance(
     if user is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
     return apply_distance_update(session, user, payload)
+
+
+@router.patch("/me/skills/{skill_id}/xp", response_model=UserProfileResponse)
+async def update_my_skill_xp(
+    skill_id: str,
+    payload: UpdateSkillXpRequest,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_admin_user),
+):
+    """Admin-only: set absolute XP for one of the caller's skills."""
+    if skill_by_id(skill_id) is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Unknown skill id: {skill_id}",
+        )
+    user = session.get(User, current_user.id)
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    set_skill_xp(user, skill_id, payload.xp)
+    sync_career_from_skills(user)
+    session.add(user)
+    session.commit()
+    session.refresh(user)
+    return user_to_profile_response(session, user)
 
 
 @router.get("/list", response_model=UserListResponse)

@@ -183,9 +183,9 @@ void main() {
     expect(find.text('COUNTRY'), findsNothing);
     expect(find.text('PERIOD'), findsNothing);
     expect(find.text('ROCK TYPE'), findsNothing);
-    expect(find.text('DINOS'), findsOneWidget);
-    expect(find.text('FOSSILS'), findsOneWidget);
-    expect(find.text('COMPLETE'), findsOneWidget);
+    expect(find.text('DINO COUNT'), findsOneWidget);
+    expect(find.text('FOSSILS COUNT'), findsOneWidget);
+    expect(find.text('COMPLETENESS'), findsOneWidget);
     expect(find.text('QUALITY'), findsOneWidget);
     expect(find.text('DEPTH'), findsOneWidget);
     expect(find.text('0.42'), findsNothing);
