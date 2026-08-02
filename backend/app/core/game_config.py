@@ -440,6 +440,13 @@ class FossilOddNoiseConfig(BaseModel):
 class SiteSurveyMainParams(BaseModel):
     model_config = {"frozen": True}
 
+    # Site-card display precision for each odd_* axis (0 = blurry/jittered, 1 = exact).
+    dino_accuracy: float = 0.0
+    fossil_accuracy: float = 0.0
+    completeness_accuracy: float = 0.0
+    quality_accuracy: float = 0.0
+    depth_accuracy: float = 0.0
+
     dino_count: list[DinoCountThreshold] = Field(
         default_factory=lambda: [
             DinoCountThreshold(max_odd=0.10, count=0),
@@ -489,6 +496,17 @@ class SiteSurveyMainParams(BaseModel):
             "exceptional": 0.05,
         }
     )
+
+    @field_validator(
+        "dino_accuracy",
+        "fossil_accuracy",
+        "completeness_accuracy",
+        "quality_accuracy",
+        "depth_accuracy",
+    )
+    @classmethod
+    def _validate_accuracy(cls, value: float) -> float:
+        return _clamp_unit_interval(value, label="accuracy")
 
     @field_validator("fossil_count", mode="before")
     @classmethod

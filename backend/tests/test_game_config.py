@@ -47,6 +47,11 @@ def test_load_game_config_matches_current_defaults() -> None:
     assert config.site_discovery.client.discover_fail_retry_s == 20
     assert config.site_discovery.level_modifiers["discovery_chance"] == []
 
+    assert config.site_survey.main_params.dino_accuracy == 0.0
+    assert config.site_survey.main_params.fossil_accuracy == 0.0
+    assert config.site_survey.main_params.completeness_accuracy == 0.0
+    assert config.site_survey.main_params.quality_accuracy == 0.0
+    assert config.site_survey.main_params.depth_accuracy == 0.0
     assert config.site_survey.odd_noise.dino_count == 0.0
     assert config.site_survey.odd_noise.fossil_count == 0.5
     assert config.site_survey.odd_noise.completeness == 0.3

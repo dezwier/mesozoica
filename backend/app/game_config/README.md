@@ -63,13 +63,19 @@ Field fossils on survey (once per site). `main_params`:
 
 | Key | Meaning |
 |-----|---------|
+| `dino_accuracy` | Card display precision for dino axis (0–1) |
+| `fossil_accuracy` | Card display precision for fossil axis (0–1) |
+| `completeness_accuracy` | Card display precision for completeness axis (0–1) |
+| `quality_accuracy` | Card display precision for quality axis (0–1) |
+| `depth_accuracy` | Card display precision for depth axis (0–1; depth 0 always exact) |
 | `dino_count` | Thresholds → distinct dinosaurs |
 | `fossil_count` | Cards-per-dino CDF masses |
 | `depth_weights` | Burial depth buckets |
 | `completeness_weights` | Completeness tier CDF (YAML; not archive) |
 | `quality_weights` | Preservation quality tier CDF (YAML; not archive) |
 
-Subcategory is still archive-weighted. `odd_noise` / `defaults` sit beside `main_params`.
+Accuracy params are display-only on the site card for now. Subcategory is still
+archive-weighted. `odd_noise` / `defaults` sit beside `main_params`.
 
 ### Tool modifiers (`tool_actions.yaml`)
 

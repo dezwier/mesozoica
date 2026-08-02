@@ -4,12 +4,11 @@ import 'package:mesozoica/controllers/auth_controller.dart';
 import 'package:mesozoica/models/site.dart';
 import 'package:mesozoica/widgets/cards/geologic_timeline.dart';
 import 'package:mesozoica/widgets/cards/site_card_back.dart';
-import 'package:mesozoica/widgets/cards/site_card_edge_facts.dart';
+import 'package:mesozoica/widgets/cards/site_card_dimensions.dart';
 import 'package:mesozoica/widgets/cards/site_card_front.dart';
 import 'package:mesozoica/widgets/cards/site_card_header.dart';
 import 'package:mesozoica/widgets/cards/site_card_image.dart';
 import 'package:mesozoica/widgets/cards/site_card_location_map.dart';
-import 'package:mesozoica/widgets/cards/site_card_odd_facts.dart';
 import 'package:mesozoica/widgets/cards/site_card_related_lists.dart';
 import 'package:mesozoica/widgets/cards/site_turnable_card.dart';
 import 'package:mesozoica/widgets/map/fossil_marker.dart';
@@ -101,7 +100,6 @@ void main() {
     expect(find.byType(SiteCardImage), findsOneWidget);
     expect(find.text('Cretaceous Sandstone'), findsOneWidget);
     expect(find.text('#50001, 46.88, -110.36, Montana, US'), findsOneWidget);
-    expect(find.byType(SiteCardEdgeFacts), findsNothing);
     expect(find.text('COORDINATES'), findsNothing);
     expect(find.text('COUNTRY'), findsNothing);
     expect(find.text('ROCK TYPE'), findsNothing);
@@ -153,7 +151,7 @@ void main() {
     expect(find.text('Protected'), findsNothing);
   });
 
-  testWidgets('SiteCardBack renders timeline, attributes, map, and fossil record',
+  testWidgets('SiteCardBack renders timeline, dimensions, map, and fossils',
       (tester) async {
     await tester.pumpWidget(
       MaterialApp(
@@ -175,32 +173,26 @@ void main() {
 
     expect(find.byType(SiteCardLocationMap), findsOneWidget);
     expect(find.byType(GeologicTimeline), findsOneWidget);
-    expect(find.byType(SiteCardEdgeFacts), findsOneWidget);
-    expect(find.byType(SiteCardOddFacts), findsOneWidget);
+    expect(find.byType(SiteCardDimensions), findsOneWidget);
     expect(find.byType(SiteCardFossils), findsOneWidget);
     expect(find.text('Cretaceous Sandstone'), findsOneWidget);
     expect(find.text('#50001, 46.88, -110.36, Montana, US'), findsNothing);
     expect(find.textContaining('Discovered'), findsNothing);
-    expect(find.text('FOSSIL RECORD'), findsNothing);
-    expect(find.text('TIME'), findsNothing);
-    expect(find.text('COORDINATES'), findsOneWidget);
-    expect(find.text('COUNTRY'), findsOneWidget);
-    expect(find.text('PERIOD'), findsOneWidget);
-    expect(find.text('ROCK TYPE'), findsOneWidget);
+    expect(find.text('SITE DIMENSIONS'), findsOneWidget);
+    expect(find.text('COORDINATES'), findsNothing);
+    expect(find.text('COUNTRY'), findsNothing);
+    expect(find.text('PERIOD'), findsNothing);
+    expect(find.text('ROCK TYPE'), findsNothing);
     expect(find.text('DINOS'), findsOneWidget);
     expect(find.text('FOSSILS'), findsOneWidget);
     expect(find.text('COMPLETE'), findsOneWidget);
     expect(find.text('QUALITY'), findsOneWidget);
     expect(find.text('DEPTH'), findsOneWidget);
-    expect(find.text('0.42'), findsOneWidget);
-    expect(find.text('0.55'), findsOneWidget);
-    expect(find.textContaining('46.88'), findsOneWidget);
-    expect(find.textContaining('Montana'), findsOneWidget);
-    expect(find.textContaining('Cretaceous, 66 – 68 Ma'), findsOneWidget);
-    expect(find.text('Sandstone'), findsOneWidget);
+    expect(find.text('0.42'), findsNothing);
+    expect(find.text('0.55'), findsNothing);
   });
 
-  testWidgets('SiteCardBack shows Discovered subtitle when discoveredAt is set',
+  testWidgets('SiteCardBack omits Discovered subtitle when discoveredAt is set',
       (tester) async {
     final discovered = SiteSummary(
       siteId: 1000000067,
@@ -235,10 +227,12 @@ void main() {
 
     await tester.pump();
 
-    expect(find.text('Discovered 3h ago'), findsOneWidget);
+    // Header subtitle is suppressed; discovery still appears in the Timeline.
+    expect(find.text('Discovered 3h ago'), findsNothing);
     expect(find.text('Original - Discovered 3h ago'), findsNothing);
     expect(find.text('#67'), findsNothing);
     expect(find.text('#67 · Original'), findsNothing);
+    expect(find.text('SITE DIMENSIONS'), findsOneWidget);
   });
 
   testWidgets('SiteTurnableCard composes front and back', (tester) async {

@@ -8,6 +8,14 @@
 skill_id: site_survey
 
 main_params:
+  # Card display precision for each odd_* axis (0 = full-axis blur/jitter, 1 = exact).
+  # Display-only for now; survey sampling still uses odd_noise below.
+  dino_accuracy: 0
+  fossil_accuracy: 0
+  completeness_accuracy: 0
+  quality_accuracy: 0
+  depth_accuracy: 0
+
   # How many distinct dinosaurs to sample for the site (from clamp(odd_dino_count)).
   dino_count:
     - max_odd: 0.10
@@ -70,6 +78,11 @@ main_params:
 
 # Identity for v1 — tune later.
 level_modifiers:
+  dino_accuracy: []
+  fossil_accuracy: []
+  completeness_accuracy: []
+  quality_accuracy: []
+  depth_accuracy: []
   dino_count: []
   fossil_count: []
   depth_weights: []

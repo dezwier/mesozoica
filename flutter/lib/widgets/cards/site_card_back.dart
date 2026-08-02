@@ -6,11 +6,10 @@ import 'card_back_backdrop.dart';
 import 'card_section_panel.dart';
 import 'card_world_map.dart';
 import 'geologic_timeline.dart';
-import 'site_card_edge_facts.dart';
+import 'site_card_dimensions.dart';
 import 'site_card_header.dart';
 import 'site_card_image.dart';
 import 'site_card_location_map.dart';
-import 'site_card_odd_facts.dart';
 import 'site_card_related_lists.dart';
 import 'site_card_user_timeline.dart';
 
@@ -33,8 +32,6 @@ class SiteCardBack extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final discoveredSubtitle = site.discoveredSubtitle;
-
     return AspectRatio(
       aspectRatio: DinoCardTheme.cardAspectRatio,
       child: Stack(
@@ -53,8 +50,7 @@ class SiteCardBack extends StatelessWidget {
               subtitleFontSize: subtitleFontSize,
               centered: true,
               overlayOnImage: true,
-              showSubtitle: discoveredSubtitle != null,
-              subtitleOverride: discoveredSubtitle,
+              showSubtitle: false,
             ),
           ),
           Positioned(
@@ -78,9 +74,7 @@ class SiteCardBack extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 6),
-                SiteCardEdgeFacts(site: site),
-                const SizedBox(height: 6),
-                SiteCardOddFacts(site: site),
+                SiteCardDimensions(site: site),
                 const SizedBox(height: 6),
                 SizedBox(
                   height: _bottomRowHeight,

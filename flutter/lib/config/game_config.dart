@@ -530,6 +530,11 @@ class SiteSurveyConfig {
 
 class SiteSurveyMainParams {
   const SiteSurveyMainParams({
+    required this.dinoAccuracy,
+    required this.fossilAccuracy,
+    required this.completenessAccuracy,
+    required this.qualityAccuracy,
+    required this.depthAccuracy,
     required this.dinoCount,
     required this.fossilCount,
     required this.depthWeights,
@@ -537,6 +542,11 @@ class SiteSurveyMainParams {
     required this.qualityWeights,
   });
 
+  final double dinoAccuracy;
+  final double fossilAccuracy;
+  final double completenessAccuracy;
+  final double qualityAccuracy;
+  final double depthAccuracy;
   final List<DinoCountThreshold> dinoCount;
   final Map<int, double> fossilCount;
   final List<FossilDepthBucket> depthWeights;
@@ -574,6 +584,11 @@ class SiteSurveyMainParams {
       }
     }
     return SiteSurveyMainParams(
+      dinoAccuracy: _asDouble(yaml['dino_accuracy'], 0),
+      fossilAccuracy: _asDouble(yaml['fossil_accuracy'], 0),
+      completenessAccuracy: _asDouble(yaml['completeness_accuracy'], 0),
+      qualityAccuracy: _asDouble(yaml['quality_accuracy'], 0),
+      depthAccuracy: _asDouble(yaml['depth_accuracy'], 0),
       dinoCount: thresholds,
       fossilCount: _asIntDoubleMap(
         yaml['fossil_count'] ?? yaml['card_count_weights'],

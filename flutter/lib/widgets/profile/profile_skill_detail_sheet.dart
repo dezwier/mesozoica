@@ -21,6 +21,11 @@ const _mainParamLabels = <String, String>{
   'visibility_distance_m': 'Visibility distance',
   'discovery_chance': 'Discovery chance',
   'max_discovery_speed_kmh': 'Max discovery speed',
+  'dino_accuracy': 'Dinosaur accuracy',
+  'fossil_accuracy': 'Fossil accuracy',
+  'completeness_accuracy': 'Completeness accuracy',
+  'quality_accuracy': 'Quality accuracy',
+  'depth_accuracy': 'Depth accuracy',
   'dino_count': 'Dino count',
   'fossil_count': 'Fossil count',
   'depth_weights': 'Depth weights',
@@ -562,7 +567,12 @@ List<_MainParamDisplay> _mainParamRowsForSkill(
     );
   }
   if (domain is SiteSurveyConfig) {
-    return _siteSurveyRows(domain);
+    return _siteSurveyRows(
+      domain,
+      skill.level,
+      ownedActionKeys: ownedActionKeys,
+      activeActionKey: activeActionKey,
+    );
   }
   if (domain is SkillStubConfig) {
     if (!domain.hasMainParams) return const [];
@@ -623,9 +633,75 @@ List<_MainParamDisplay> _siteDiscoveryRows(
   ];
 }
 
-List<_MainParamDisplay> _siteSurveyRows(SiteSurveyConfig cfg) {
-  // Weight/threshold tables: stacked rows, not a single cramped line.
+List<_MainParamDisplay> _siteSurveyRows(
+  SiteSurveyConfig cfg,
+  int skillLevel, {
+  required Set<String> ownedActionKeys,
+  required String? activeActionKey,
+}) {
+  final mp = cfg.mainParams;
+  // Accuracy scalars first (level/tool resolvable), then distribution tables.
   return [
+    _resolveScalarParam(
+      label: 'Dinosaur accuracy',
+      paramKey: 'dino_accuracy',
+      skillId: 'site_survey',
+      base: mp.dinoAccuracy,
+      levelEntries: cfg.levelModifiers['dino_accuracy'],
+      skillLevel: skillLevel,
+      format: _ParamFormat.chance,
+      clampUnit: true,
+      ownedActionKeys: ownedActionKeys,
+      activeActionKey: activeActionKey,
+    ),
+    _resolveScalarParam(
+      label: 'Fossil accuracy',
+      paramKey: 'fossil_accuracy',
+      skillId: 'site_survey',
+      base: mp.fossilAccuracy,
+      levelEntries: cfg.levelModifiers['fossil_accuracy'],
+      skillLevel: skillLevel,
+      format: _ParamFormat.chance,
+      clampUnit: true,
+      ownedActionKeys: ownedActionKeys,
+      activeActionKey: activeActionKey,
+    ),
+    _resolveScalarParam(
+      label: 'Completeness accuracy',
+      paramKey: 'completeness_accuracy',
+      skillId: 'site_survey',
+      base: mp.completenessAccuracy,
+      levelEntries: cfg.levelModifiers['completeness_accuracy'],
+      skillLevel: skillLevel,
+      format: _ParamFormat.chance,
+      clampUnit: true,
+      ownedActionKeys: ownedActionKeys,
+      activeActionKey: activeActionKey,
+    ),
+    _resolveScalarParam(
+      label: 'Quality accuracy',
+      paramKey: 'quality_accuracy',
+      skillId: 'site_survey',
+      base: mp.qualityAccuracy,
+      levelEntries: cfg.levelModifiers['quality_accuracy'],
+      skillLevel: skillLevel,
+      format: _ParamFormat.chance,
+      clampUnit: true,
+      ownedActionKeys: ownedActionKeys,
+      activeActionKey: activeActionKey,
+    ),
+    _resolveScalarParam(
+      label: 'Depth accuracy',
+      paramKey: 'depth_accuracy',
+      skillId: 'site_survey',
+      base: mp.depthAccuracy,
+      levelEntries: cfg.levelModifiers['depth_accuracy'],
+      skillLevel: skillLevel,
+      format: _ParamFormat.chance,
+      clampUnit: true,
+      ownedActionKeys: ownedActionKeys,
+      activeActionKey: activeActionKey,
+    ),
     _MainParamDisplay(
       label: 'Dino count',
       distribution: _dinoCountEntries(cfg.dinoCount),

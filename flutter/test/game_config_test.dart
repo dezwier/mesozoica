@@ -23,6 +23,11 @@ void main() {
     expect(config.siteDiscovery.client.cacheRefreshMoveThresholdM, 500.0);
     expect(config.siteDiscovery.client.discoverFailRetryS, 20);
 
+    expect(config.siteSurvey.mainParams.dinoAccuracy, 0.0);
+    expect(config.siteSurvey.mainParams.fossilAccuracy, 0.0);
+    expect(config.siteSurvey.mainParams.completenessAccuracy, 0.0);
+    expect(config.siteSurvey.mainParams.qualityAccuracy, 0.0);
+    expect(config.siteSurvey.mainParams.depthAccuracy, 0.0);
     expect(config.siteSurvey.oddNoise.dinoCount, 0.0);
     expect(config.siteSurvey.oddNoise.fossilCount, 0.5);
     expect(config.siteSurvey.oddNoise.completeness, 0.3);
