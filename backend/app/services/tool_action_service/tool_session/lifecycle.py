@@ -100,6 +100,51 @@ def cancel_live_timed_sessions(session: Session, *, user_id: int) -> None:
         session.commit()
 
 
+def cancel_live_sessions_for_tool(
+    session: Session,
+    *,
+    user_id: int,
+    tool_id: int,
+) -> None:
+    """Cancel every live session for a user+tool occurrence (discard path)."""
+    now = _utcnow()
+    rows = list(
+        session.exec(
+            select(ToolSession).where(
+                col(ToolSession.user_id) == user_id,
+                col(ToolSession.tool_id) == tool_id,
+                col(ToolSession.status).in_(LIVE_STATUSES),
+            )
+        ).all()
+    )
+    if not rows:
+        return
+
+    from app.models.tool_session_event import (
+        EVENT_STATUS_PENDING,
+        EVENT_STATUS_SKIPPED,
+        ToolSessionEvent,
+    )
+
+    for row in rows:
+        if row.action_key in AERIAL_ACTION_KEYS:
+            pending = list(
+                session.exec(
+                    select(ToolSessionEvent).where(
+                        col(ToolSessionEvent.session_id) == row.id,
+                        col(ToolSessionEvent.status) == EVENT_STATUS_PENDING,
+                    )
+                ).all()
+            )
+            for event in pending:
+                event.status = EVENT_STATUS_SKIPPED
+                session.add(event)
+        row.status = SESSION_STATUS_CANCELLED
+        close_session(row, now=now, stop_reason=STOP_REASON_MANUAL)
+        session.add(row)
+    session.commit()
+
+
 def _tool_display_name(session: Session, *, instance_id: int) -> str:
     from app.models.tool import Tool
     from app.models.tool_type import ToolType

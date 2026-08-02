@@ -280,11 +280,21 @@ class FossilCatalogController extends CatalogController<FossilSummary> {
     if (fossil.isHidden) {
       final updated = [...catalogItems]..removeAt(index);
       catalogItems = updated;
+      if (catalogTotal > 0) catalogTotal = catalogTotal - 1;
     } else {
       final updated = [...catalogItems];
       updated[index] = fossil;
       catalogItems = updated;
     }
+    notifyListeners();
+  }
+
+  /// Remove a field fossil after throw-away.
+  void removeFossil(int fossilId) {
+    final index = catalogItems.indexWhere((item) => item.id == fossilId);
+    if (index < 0) return;
+    catalogItems = [...catalogItems]..removeAt(index);
+    if (catalogTotal > 0) catalogTotal = catalogTotal - 1;
     notifyListeners();
   }
 

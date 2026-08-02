@@ -4,6 +4,7 @@ from app.services.dinosaur_service.collect import (
     collect_dinosaur_for_user,
     list_dinosaur_image_versions,
 )
+from app.services.dinosaur_service.discard import discard_dinosaur_for_user
 from app.services.dinosaur_service.list import (
     get_dinosaur_by_id,
     get_dinosaur_with_revision,
@@ -12,6 +13,7 @@ from app.services.dinosaur_service.list import (
 
 __all__ = [
     "collect_dinosaur_for_user",
+    "discard_dinosaur_for_user",
     "get_dinosaur_by_id",
     "get_dinosaur_with_revision",
     "list_dinosaur_image_versions",

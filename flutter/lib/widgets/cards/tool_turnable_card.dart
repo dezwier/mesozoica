@@ -19,6 +19,7 @@ import '../../services/tool_service.dart';
 import '../../theme/dino_card_theme.dart';
 import '../common/app_toast.dart';
 import '../tools/filters/tool_params_edit_sheet.dart';
+import 'card_discard_helper.dart';
 import 'tool_card_back.dart';
 import 'tool_card_extension.dart';
 import 'tool_card_front.dart';
@@ -30,6 +31,7 @@ class ToolTurnableCard extends StatefulWidget {
     required this.tool,
     this.turnable = true,
     this.enableDragFlip = true,
+    this.enableLongPressActions = false,
     this.outerPadding =
         const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
     this.fixedFaceHeight,
@@ -41,6 +43,7 @@ class ToolTurnableCard extends StatefulWidget {
   final ToolSummary tool;
   final bool turnable;
   final bool enableDragFlip;
+  final bool enableLongPressActions;
   final EdgeInsets outerPadding;
   final double? fixedFaceHeight;
   final double titleFontSize;
@@ -451,6 +454,14 @@ class _ToolTurnableCardState extends State<ToolTurnableCard> {
       decoration: DinoCardTheme.of(context).chromeDecoration(),
       turnable: widget.turnable,
       enableDragFlip: widget.enableDragFlip,
+      enableLongPressActions: widget.enableLongPressActions,
+      onSettingsPressed: widget.enableLongPressActions
+          ? () => openInventoryCardSettings(
+                context: context,
+                onThrowAway: () =>
+                    discardToolFromInventory(context, widget.tool),
+              )
+          : null,
       front: ToolCardFront(
         tool: widget.tool,
         titleFontSize: widget.titleFontSize,

@@ -59,6 +59,7 @@ class DinoScreenState extends State<DinoScreen> {
           DinosaurTurnableCard(
             dinosaur: dinosaur,
             turnable: isFocused,
+            enableLongPressActions: isFocused,
             fixedFaceHeight: fixedFaceHeight,
           ),
       emptyMessageBuilder: (context, catalog) {

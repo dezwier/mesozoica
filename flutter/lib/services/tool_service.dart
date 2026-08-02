@@ -191,6 +191,26 @@ class ToolService {
     return ToolSummary.fromJson(decoded);
   }
 
+  Future<void> discardTool(int toolId) async {
+    final uri = AppConfig.toolDiscardUri(toolId);
+    if (kDebugMode) {
+      debugPrint('ToolService POST $uri');
+    }
+    final response = await ApiClient.instance
+        .sendPost(
+          uri,
+          client: _client,
+          headers: await _headers(),
+        )
+        .timeout(const Duration(seconds: 15));
+
+    if (response.statusCode != 204) {
+      throw ToolServiceException(
+        'Failed to discard tool (${response.statusCode})',
+      );
+    }
+  }
+
   Future<ToolSessionListResponse> fetchToolSessions(int toolId) async {
     final uri = AppConfig.toolSessionsUri(toolId);
     if (kDebugMode) debugPrint('ToolService GET $uri');

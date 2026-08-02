@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../controllers/auth_controller.dart';
 import '../../models/fossil.dart';
 import '../../theme/dino_card_theme.dart';
+import 'card_discard_helper.dart';
 import 'fossil_card_back.dart';
 import 'fossil_card_front.dart';
 import 'fossil_status_helper.dart';
@@ -15,6 +16,7 @@ class FossilTurnableCard extends StatefulWidget {
     required this.fossil,
     this.turnable = true,
     this.enableDragFlip = true,
+    this.enableLongPressActions = false,
     this.autoFlipOnce = false,
     this.autoFlipHoldOnBack = Duration.zero,
     this.outerPadding =
@@ -29,6 +31,7 @@ class FossilTurnableCard extends StatefulWidget {
   final FossilSummary fossil;
   final bool turnable;
   final bool enableDragFlip;
+  final bool enableLongPressActions;
   final bool autoFlipOnce;
   final Duration autoFlipHoldOnBack;
   final EdgeInsets outerPadding;
@@ -85,6 +88,14 @@ class _FossilTurnableCardState extends State<FossilTurnableCard> {
       decoration: DinoCardTheme.of(context).chromeDecoration(),
       turnable: widget.turnable,
       enableDragFlip: widget.enableDragFlip,
+      enableLongPressActions: widget.enableLongPressActions,
+      onSettingsPressed: widget.enableLongPressActions
+          ? () => openInventoryCardSettings(
+                context: context,
+                onThrowAway: () =>
+                    discardFossilFromInventory(context, _fossil),
+              )
+          : null,
       autoFlipOnce: widget.autoFlipOnce,
       autoFlipHoldOnBack: widget.autoFlipHoldOnBack,
       front: FossilCardFront(

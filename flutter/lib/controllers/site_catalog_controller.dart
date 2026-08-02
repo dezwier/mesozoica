@@ -181,6 +181,15 @@ class SiteCatalogController extends CatalogController<SiteSummary> {
     notifyListeners();
   }
 
+  /// Remove a field site after throw-away.
+  void removeSite(int siteId) {
+    final index = catalogItems.indexWhere((item) => item.siteId == siteId);
+    if (index < 0) return;
+    catalogItems = [...catalogItems]..removeAt(index);
+    if (catalogTotal > 0) catalogTotal = catalogTotal - 1;
+    notifyListeners();
+  }
+
   /// Insert or replace a site after discovery without a full catalog reload.
   void upsertSite(SiteSummary site) {
     final index =

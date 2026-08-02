@@ -160,6 +160,26 @@ class FossilService {
     return FossilSummary.fromJson(decoded);
   }
 
+  Future<void> discardFossil(int fossilId) async {
+    final uri = AppConfig.fossilDiscardUri(fossilId);
+    if (kDebugMode) {
+      debugPrint('FossilService POST $uri');
+    }
+    final response = await ApiClient.instance
+        .sendPost(
+          uri,
+          client: _client,
+          headers: await _headers(),
+        )
+        .timeout(const Duration(seconds: 15));
+
+    if (response.statusCode != 204) {
+      throw FossilServiceException(
+        'Failed to discard fossil (${response.statusCode})',
+      );
+    }
+  }
+
   void dispose() {
     _client.close();
   }

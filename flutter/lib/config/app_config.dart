@@ -110,6 +110,9 @@ class AppConfig {
   static Uri dinosaurCollectUri(int id) =>
       ApiEndpoints.dinosaurCollectUri(id);
 
+  static Uri dinosaurDiscardUri(int id) =>
+      ApiEndpoints.dinosaurDiscardUri(id);
+
   static Uri dinosaurImageVersionsUri() =>
       ApiEndpoints.dinosaurImageVersionsUri();
 
@@ -140,6 +143,9 @@ class AppConfig {
 
   static Uri fossilStatusUri(int id) =>
       ApiEndpoints.fossilStatusUri(id);
+
+  static Uri fossilDiscardUri(int id) =>
+      ApiEndpoints.fossilDiscardUri(id);
 
   static Uri sitesUri({
     int limit = 200,
@@ -206,6 +212,9 @@ class AppConfig {
   static Uri siteStatusUri(int id) =>
       ApiEndpoints.siteStatusUri(id);
 
+  static Uri siteDiscardUri(int id) =>
+      ApiEndpoints.siteDiscardUri(id);
+
   static Uri siteSurveyUri(int id) =>
       ApiEndpoints.siteSurveyUri(id);
 
@@ -261,6 +270,9 @@ class AppConfig {
 
   static Uri toolCollectUri(int id) =>
       ApiEndpoints.toolCollectUri(id);
+
+  static Uri toolDiscardUri(int id) =>
+      ApiEndpoints.toolDiscardUri(id);
 
   static Uri toolImageVersionsUri() =>
       ApiEndpoints.toolImageVersionsUri();

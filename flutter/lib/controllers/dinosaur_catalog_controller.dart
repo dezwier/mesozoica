@@ -236,6 +236,15 @@ class DinosaurCatalogController extends CatalogController<DinosaurSummary> {
     notifyListeners();
   }
 
+  /// Remove an inventory occurrence after throw-away.
+  void removeDinosaur(int dinosaurId) {
+    final index = catalogItems.indexWhere((item) => item.id == dinosaurId);
+    if (index < 0) return;
+    catalogItems = [...catalogItems]..removeAt(index);
+    if (catalogTotal > 0) catalogTotal = catalogTotal - 1;
+    notifyListeners();
+  }
+
   @override
   void dispose() {
     _service.dispose();

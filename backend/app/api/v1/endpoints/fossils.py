@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Response, status
 from sqlmodel import Session, col, select
 
 from app.core.database import get_session
 from app.core.exceptions import NotFoundError, ValidationError
-from app.core.security import get_current_admin_user, get_optional_current_user
+from app.core.security import (
+    get_current_admin_user,
+    get_current_user,
+    get_optional_current_user,
+)
 from app.models.data_source import DATA_SOURCE_ARCHIVE, DATA_SOURCE_FIELD
 from app.models.user import User
 from app.models.user_fossil import UserFossil
@@ -16,6 +20,7 @@ from app.schemas.fossil import (
     FossilSummary,
     SetFossilStatusRequest,
 )
+from app.services.fossil_service.discard import discard_fossil_for_user
 from app.services.fossil_service.list import fossil_row_to_summary, get_fossil_by_id, list_fossils
 from app.services.fossil_service.set_status import set_fossil_status
 from app.services.site_service.site_type_fallback import load_site_types_by_period
@@ -103,6 +108,21 @@ def post_set_fossil_status(
         user_id=current_user.id,
         status=body.status,
     )
+
+
+@router.post("/{fossil_id}/discard", status_code=status.HTTP_204_NO_CONTENT)
+def post_discard_fossil(
+    fossil_id: int,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+) -> Response:
+    """Remove the caller's links to a field fossil."""
+    discard_fossil_for_user(
+        session,
+        fossil_id=fossil_id,
+        user_id=int(current_user.id),
+    )
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.get("/{fossil_id}", response_model=FossilSummary)

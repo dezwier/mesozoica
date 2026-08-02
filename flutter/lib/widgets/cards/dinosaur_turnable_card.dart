@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../models/dinosaur.dart';
 import '../../theme/dino_card_theme.dart';
+import 'card_discard_helper.dart';
 import 'dinosaur_card_back.dart';
 import 'dinosaur_card_front.dart';
 import 'turnable_y_axis_card.dart';
@@ -15,6 +16,7 @@ class DinosaurTurnableCard extends StatefulWidget {
     this.showArticleButton,
     this.turnable = true,
     this.enableDragFlip = true,
+    this.enableLongPressActions = false,
     this.outerPadding =
         const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
     this.fixedFaceHeight,
@@ -30,6 +32,7 @@ class DinosaurTurnableCard extends StatefulWidget {
   final bool? showArticleButton;
   final bool turnable;
   final bool enableDragFlip;
+  final bool enableLongPressActions;
   final EdgeInsets outerPadding;
   final double? fixedFaceHeight;
   final double titleFontSize;
@@ -76,6 +79,14 @@ class _DinosaurTurnableCardState extends State<DinosaurTurnableCard> {
       decoration: DinoCardTheme.of(context).chromeDecoration(),
       turnable: widget.turnable,
       enableDragFlip: widget.enableDragFlip,
+      enableLongPressActions: widget.enableLongPressActions,
+      onSettingsPressed: widget.enableLongPressActions
+          ? () => openInventoryCardSettings(
+                context: context,
+                onThrowAway: () =>
+                    discardDinosaurFromInventory(context, _dinosaur),
+              )
+          : null,
       front: DinosaurCardFront(
         dinosaur: _dinosaur,
         showFacts: widget.showFrontFacts,

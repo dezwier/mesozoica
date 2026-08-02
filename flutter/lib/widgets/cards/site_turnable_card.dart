@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../controllers/auth_controller.dart';
 import '../../models/site.dart';
 import '../../theme/dino_card_theme.dart';
+import 'card_discard_helper.dart';
 import 'card_world_map.dart';
 import 'site_card_back.dart';
 import 'site_card_front.dart';
@@ -16,6 +17,7 @@ class SiteTurnableCard extends StatefulWidget {
     required this.site,
     this.turnable = true,
     this.enableDragFlip = true,
+    this.enableLongPressActions = false,
     this.autoFlipOnce = false,
     this.autoFlipHoldOnBack = Duration.zero,
     this.titleFontSize = 36,
@@ -30,6 +32,7 @@ class SiteTurnableCard extends StatefulWidget {
   final SiteSummary site;
   final bool turnable;
   final bool enableDragFlip;
+  final bool enableLongPressActions;
   final bool autoFlipOnce;
   final Duration autoFlipHoldOnBack;
   final double titleFontSize;
@@ -87,6 +90,13 @@ class _SiteTurnableCardState extends State<SiteTurnableCard> {
       decoration: DinoCardTheme.of(context).chromeDecoration(),
       turnable: widget.turnable,
       enableDragFlip: widget.enableDragFlip,
+      enableLongPressActions: widget.enableLongPressActions,
+      onSettingsPressed: widget.enableLongPressActions
+          ? () => openInventoryCardSettings(
+                context: context,
+                onThrowAway: () => discardSiteFromInventory(context, _site),
+              )
+          : null,
       autoFlipOnce: widget.autoFlipOnce,
       autoFlipHoldOnBack: widget.autoFlipHoldOnBack,
       front: SiteCardFront(

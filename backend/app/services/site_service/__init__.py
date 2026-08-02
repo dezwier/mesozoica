@@ -21,6 +21,7 @@ from app.services.site_service.summary import (
 from app.services.site_service.survey import survey_site, user_has_surveyed
 
 __all__ = [
+    "discard_site_for_user",
     "discover_site",
     "enrich_site_rows_for_viewer",
     "get_site_by_id",
@@ -48,4 +49,8 @@ def __getattr__(name: str):
         from app.services.site_service.set_status import set_site_status
 
         return set_site_status
+    if name == "discard_site_for_user":
+        from app.services.site_service.discard import discard_site_for_user
+
+        return discard_site_for_user
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

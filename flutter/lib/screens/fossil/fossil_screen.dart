@@ -43,6 +43,7 @@ class FossilScreenState extends State<FossilScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isFieldMode = context.watch<CatalogModeController>().isField;
     return CatalogListScreen<FossilCatalogController, FossilSummary>(
       key: _listKey,
       isActive: widget.isActive,
@@ -51,6 +52,7 @@ class FossilScreenState extends State<FossilScreen> {
             key: ValueKey<int>(fossil.id),
             fossil: fossil,
             turnable: isFocused,
+            enableLongPressActions: isFocused && isFieldMode,
             fixedFaceHeight: fixedFaceHeight,
             onFossilUpdated:
                 context.read<FossilCatalogController>().replaceFossil,

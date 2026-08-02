@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlmodel import Session
 
 from app.core.database import get_session
@@ -38,6 +38,7 @@ from app.services.tool_action_service.tool_session.serialize import (
 )
 from app.services.tool_service import (
     collect_tool_for_user,
+    discard_tool_for_user,
     get_tool_by_id,
     list_tool_categories,
     list_tools,
@@ -263,6 +264,21 @@ def post_collect_tool(
             image_version=ORIGINAL_VERSION,
         )
     )
+
+
+@router.post("/{tool_id}/discard", status_code=status.HTTP_204_NO_CONTENT)
+def post_discard_tool(
+    tool_id: int,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+) -> Response:
+    """Remove the caller's links to a tool inventory occurrence."""
+    discard_tool_for_user(
+        session,
+        tool_id=tool_id,
+        user_id=int(current_user.id),
+    )
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.patch("/{tool_id}/params", response_model=ToolSummary)

@@ -3,9 +3,11 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/physics.dart';
+import 'package:flutter/services.dart';
 
 import '../../config/discovery_config.dart';
 import '../../theme/dino_card_theme.dart';
+import 'card_action_overlay.dart';
 import 'card_face_specular_overlay.dart';
 
 /// Y-axis 3D flip shell — tap left/right half or horizontal drag to turn.
@@ -24,6 +26,8 @@ class TurnableYAxisCard extends StatefulWidget {
     this.enableDragFlip = true,
     this.autoFlipOnce = false,
     this.autoFlipHoldOnBack = Duration.zero,
+    this.enableLongPressActions = false,
+    this.onSettingsPressed,
   });
 
   final Widget front;
@@ -40,6 +44,9 @@ class TurnableYAxisCard extends StatefulWidget {
   final bool autoFlipOnce;
   /// After [autoFlipOnce] reaches the back, wait this long then flip to front.
   final Duration autoFlipHoldOnBack;
+  /// When true, long-press shows a centered settings action overlay.
+  final bool enableLongPressActions;
+  final Future<void> Function()? onSettingsPressed;
 
   @override
   State<TurnableYAxisCard> createState() => _TurnableYAxisCardState();
@@ -53,6 +60,7 @@ class _TurnableYAxisCardState extends State<TurnableYAxisCard>
   double _lastTapTargetAngle = 0;
   bool _didAutoFlip = false;
   bool _autoFlipCancelled = false;
+  bool _showActionOverlay = false;
 
   static const double _halfTurnRadians = math.pi;
   static const double _fullTurnRadians = 2 * math.pi;
@@ -110,13 +118,35 @@ class _TurnableYAxisCardState extends State<TurnableYAxisCard>
     _autoFlipCancelled = true;
   }
 
+  void _hideActionOverlay() {
+    if (!_showActionOverlay) return;
+    setState(() => _showActionOverlay = false);
+  }
+
+  void _onLongPress() {
+    if (!widget.enableLongPressActions || _showActionOverlay) return;
+    HapticFeedback.mediumImpact();
+    setState(() => _showActionOverlay = true);
+  }
+
+  Future<void> _onSettingsPressed() async {
+    _hideActionOverlay();
+    final handler = widget.onSettingsPressed;
+    if (handler == null) return;
+    await handler();
+  }
+
   @override
   void didUpdateWidget(covariant TurnableYAxisCard oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.turnable) {
       _mountBack = true;
     }
+    if (!widget.enableLongPressActions && _showActionOverlay) {
+      _showActionOverlay = false;
+    }
     if (widget.resetIdentity != oldWidget.resetIdentity) {
+      _showActionOverlay = false;
       _flipController.value = 0;
       _lastTapTargetAngle = 0;
     }
@@ -294,6 +324,17 @@ class _TurnableYAxisCardState extends State<TurnableYAxisCard>
             normalizedAngle < (3 * math.pi / 2);
 
         final faces = _buildFaces(isBackVisible: isBackVisible);
+        final facesWithOverlay = _showActionOverlay
+            ? Stack(
+                children: [
+                  faces,
+                  CardActionOverlay(
+                    onDismiss: _hideActionOverlay,
+                    onSettings: (_) => _onSettingsPressed(),
+                  ),
+                ],
+              )
+            : faces;
 
         final decoration = (widget.decoration ??
                 BoxDecoration(
@@ -317,12 +358,12 @@ class _TurnableYAxisCardState extends State<TurnableYAxisCard>
           faceSlot = SizedBox(
             width: faceWidth,
             height: faceHeight,
-            child: faces,
+            child: facesWithOverlay,
           );
         } else if (!widget.prelayoutFacesForHeight) {
-          faceSlot = SizedBox.expand(child: faces);
+          faceSlot = SizedBox.expand(child: facesWithOverlay);
         } else {
-          faceSlot = faces;
+          faceSlot = facesWithOverlay;
         }
 
         return Align(
@@ -348,23 +389,36 @@ class _TurnableYAxisCardState extends State<TurnableYAxisCard>
       },
     );
 
-    final wrappedCard = widget.turnable
+    final needsGestures =
+        widget.turnable || widget.enableLongPressActions;
+    final wrappedCard = needsGestures
         ? GestureDetector(
             behavior: HitTestBehavior.opaque,
             onTapUp: (details) {
+              if (_showActionOverlay) {
+                _hideActionOverlay();
+                return;
+              }
+              if (!widget.turnable) return;
               _cancelAutoFlip();
               final tapX = details.localPosition.dx;
               final isLeftHalf = tapX <= (_cardWidth / 2);
               _flipByOneFace(turnLeft: isLeftHalf);
             },
-            onHorizontalDragStart:
-                widget.enableDragFlip ? _onHorizontalDragStart : null,
-            onHorizontalDragUpdate:
-                widget.enableDragFlip ? _onHorizontalDragUpdate : null,
-            onHorizontalDragEnd:
-                widget.enableDragFlip ? _onHorizontalDragEnd : null,
-            onHorizontalDragCancel:
-                widget.enableDragFlip ? _onHorizontalDragCancel : null,
+            onLongPress:
+                widget.enableLongPressActions ? _onLongPress : null,
+            onHorizontalDragStart: widget.turnable && widget.enableDragFlip
+                ? _onHorizontalDragStart
+                : null,
+            onHorizontalDragUpdate: widget.turnable && widget.enableDragFlip
+                ? _onHorizontalDragUpdate
+                : null,
+            onHorizontalDragEnd: widget.turnable && widget.enableDragFlip
+                ? _onHorizontalDragEnd
+                : null,
+            onHorizontalDragCancel: widget.turnable && widget.enableDragFlip
+                ? _onHorizontalDragCancel
+                : null,
             child: cardContent,
           )
         : cardContent;

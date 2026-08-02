@@ -59,6 +59,7 @@ class SiteScreenState extends State<SiteScreen> {
           SiteTurnableCard(
             site: site,
             turnable: isFocused,
+            enableLongPressActions: isFocused && isFieldMode,
             fixedFaceHeight: fixedFaceHeight,
             onSiteUpdated: context.read<SiteCatalogController>().replaceSite,
           ),

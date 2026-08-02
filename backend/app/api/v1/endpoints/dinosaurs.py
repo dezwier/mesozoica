@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Response, status
 from sqlmodel import Session
 
 from app.core.database import get_session
 from app.core.exceptions import ValidationError
-from app.core.security import get_current_admin_user, get_optional_current_user
+from app.core.security import (
+    get_current_admin_user,
+    get_current_user,
+    get_optional_current_user,
+)
 from app.models.user import User
 from app.models.user_dinosaur import DINOSAUR_STATUS_HIDDEN
 from app.schemas.dinosaur import (
@@ -23,6 +27,7 @@ from app.services.dinosaur_service.collect import (
     collect_dinosaur_for_user,
     list_dinosaur_image_versions,
 )
+from app.services.dinosaur_service.discard import discard_dinosaur_for_user
 from app.services.dinosaur_service.list import (
     DinosaurListRow,
     ListMode,
@@ -154,6 +159,21 @@ def post_collect_dinosaur(
         status=body.status,
         version=body.version,
     )
+
+
+@router.post("/{dinosaur_id}/discard", status_code=status.HTTP_204_NO_CONTENT)
+def post_discard_dinosaur(
+    dinosaur_id: int,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+) -> Response:
+    """Remove the caller's links to a dinosaur inventory occurrence."""
+    discard_dinosaur_for_user(
+        session,
+        dinosaur_id=dinosaur_id,
+        user_id=int(current_user.id),
+    )
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.get("/{dinosaur_id}/article", response_model=DinosaurArticleResponse)

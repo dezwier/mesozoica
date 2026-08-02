@@ -73,6 +73,9 @@ class ApiEndpoints {
   static Uri dinosaurCollectUri(int id) =>
       Uri.parse('${AppConfig.baseApiUrl}/api/v1/dinosaurs/$id/collect');
 
+  static Uri dinosaurDiscardUri(int id) =>
+      Uri.parse('${AppConfig.baseApiUrl}/api/v1/dinosaurs/$id/discard');
+
   static Uri dinosaurImageVersionsUri() =>
       Uri.parse('${AppConfig.baseApiUrl}/api/v1/dinosaurs/image-versions');
 
@@ -147,6 +150,9 @@ class ApiEndpoints {
 
   static Uri fossilStatusUri(int id) =>
       Uri.parse('${AppConfig.baseApiUrl}/api/v1/fossils/$id/status');
+
+  static Uri fossilDiscardUri(int id) =>
+      Uri.parse('${AppConfig.baseApiUrl}/api/v1/fossils/$id/discard');
 
   static Uri sitesUri({
     int limit = 200,
@@ -263,6 +269,9 @@ class ApiEndpoints {
   static Uri siteStatusUri(int id) =>
       Uri.parse('${AppConfig.baseApiUrl}/api/v1/sites/$id/status');
 
+  static Uri siteDiscardUri(int id) =>
+      Uri.parse('${AppConfig.baseApiUrl}/api/v1/sites/$id/discard');
+
   static Uri siteSurveyUri(int id) =>
       Uri.parse('${AppConfig.baseApiUrl}/api/v1/sites/$id/survey');
 
@@ -373,6 +382,9 @@ class ApiEndpoints {
 
   static Uri toolCollectUri(int id) =>
       Uri.parse('${AppConfig.baseApiUrl}/api/v1/tools/$id/collect');
+
+  static Uri toolDiscardUri(int id) =>
+      Uri.parse('${AppConfig.baseApiUrl}/api/v1/tools/$id/discard');
 
   static Uri toolImageVersionsUri() =>
       Uri.parse('${AppConfig.baseApiUrl}/api/v1/tools/image-versions');

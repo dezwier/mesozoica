@@ -266,6 +266,15 @@ class ToolCatalogController extends CatalogController<ToolSummary> {
     }
   }
 
+  /// Remove an inventory occurrence after throw-away.
+  void removeTool(int toolId) {
+    final index = catalogItems.indexWhere((item) => item.id == toolId);
+    if (index < 0) return;
+    catalogItems = [...catalogItems]..removeAt(index);
+    if (catalogTotal > 0) catalogTotal = catalogTotal - 1;
+    notifyListeners();
+  }
+
   Future<ToolListResponse> _fetchPage({required int offset}) async {
     final useSeed = _filters.sort == ToolCatalogSort.category;
     final seed = useSeed ? _seed : null;

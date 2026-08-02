@@ -218,6 +218,27 @@ class SiteService {
     return result.site;
   }
 
+  Future<void> discardSite(int siteId) async {
+    final uri = AppConfig.siteDiscardUri(siteId);
+    if (kDebugMode) {
+      debugPrint('SiteService POST $uri');
+    }
+    final response = await ApiClient.instance
+        .sendPost(
+          uri,
+          client: _client,
+          headers: await _headers(),
+        )
+        .timeout(const Duration(seconds: 15));
+
+    if (response.statusCode != 204) {
+      final detail = _errorDetail(response.body);
+      throw SiteServiceException(
+        detail ?? 'Failed to discard site (${response.statusCode})',
+      );
+    }
+  }
+
   /// Like [setSiteStatus], but returns fossil onboard metadata when discovering.
   Future<FieldDiscoverResponse> setSiteStatusDetailed({
     required int siteId,

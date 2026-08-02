@@ -203,6 +203,26 @@ class DinosaurService {
     return DinosaurSummary.fromJson(decoded);
   }
 
+  Future<void> discardDinosaur(int dinosaurId) async {
+    final uri = AppConfig.dinosaurDiscardUri(dinosaurId);
+    if (kDebugMode) {
+      debugPrint('DinosaurService POST $uri');
+    }
+    final response = await ApiClient.instance
+        .sendPost(
+          uri,
+          client: _client,
+          headers: await _headers(),
+        )
+        .timeout(const Duration(seconds: 15));
+
+    if (response.statusCode != 204) {
+      throw DinosaurServiceException(
+        'Failed to discard dinosaur (${response.statusCode})',
+      );
+    }
+  }
+
   void dispose() {
     _client.close();
   }

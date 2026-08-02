@@ -54,6 +54,7 @@ class ToolScreenState extends State<ToolScreen> {
           ToolTurnableCard(
             tool: tool,
             turnable: isFocused,
+            enableLongPressActions: isFocused,
             fixedFaceHeight: fixedFaceHeight,
           ),
       emptyMessageBuilder: (context, catalog) {

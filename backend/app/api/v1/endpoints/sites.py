@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Response, status
 from sqlmodel import Session
 
 from app.core.database import get_session
@@ -47,6 +47,7 @@ from app.services.field_service.field_generate import FieldSiteLazyConfig
 from app.services.field_service.field_site_logging import log_field_event, normalize_reason
 from app.services.field_service.field_survey_queue import get_field_survey_job as get_survey_job
 from app.services.site_service import (
+    discard_site_for_user,
     discover_site,
     enrich_site_rows_for_viewer,
     get_site_by_id,
@@ -468,6 +469,21 @@ def post_set_site_status(
         session, [row], viewer_user_id=int(current_user.id)
     )[0]
     return site_row_to_summary(enriched, types_by_period=types_by_period)
+
+
+@router.post("/{site_id}/discard", status_code=status.HTTP_204_NO_CONTENT)
+def post_discard_site(
+    site_id: int,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+) -> Response:
+    """Remove the caller's links to a field site (caller-scoped)."""
+    discard_site_for_user(
+        session,
+        site_id=site_id,
+        user_id=int(current_user.id),
+    )
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.get("/{site_id}", response_model=SiteSummary)
