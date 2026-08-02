@@ -54,8 +54,16 @@ Chance params are clamped to 0..1 after modifiers.
 | main_param | Meaning |
 |------------|---------|
 | `visibility_distance_m` | Walk-in discover radius (was `max_distance_m`) |
-| `discovery_chance` | P(success) on enter |
+| `discovery_chance` | P(success) per attempt (enter or dwell re-roll) |
 | `max_discovery_speed_kmh` | GPS odometer speed cap for walk XP |
+
+Client-only (not main params): `discovery_reroll_interval_s` — seconds between
+re-rolls while staying inside the discover radius (default 10). Walk-in still
+rolls immediately; app-open already inside does not (dwell timer starts).
+
+The location-puck pulse max radius is the effective `visibility_distance_m`
+(base → level → owning/using tool mods), converted to screen pixels at the
+current map zoom so the ring matches the real discover range.
 
 ### Site Survey (`02_site_survey.yaml`)
 

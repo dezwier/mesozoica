@@ -473,12 +473,14 @@ class SiteDiscoveryClientConfig {
     required this.cacheRadiusKm,
     required this.cacheRefreshMoveThresholdM,
     required this.discoverFailRetryS,
+    required this.discoveryRerollIntervalS,
   });
 
   final double autoDiscoverRadiusM;
   final double cacheRadiusKm;
   final double cacheRefreshMoveThresholdM;
   final int discoverFailRetryS;
+  final int discoveryRerollIntervalS;
 
   factory SiteDiscoveryClientConfig.fromYaml(Map<String, dynamic> yaml) {
     return SiteDiscoveryClientConfig(
@@ -489,6 +491,7 @@ class SiteDiscoveryClientConfig {
         500.0,
       ),
       discoverFailRetryS: _asInt(yaml['discover_fail_retry_s'], 20),
+      discoveryRerollIntervalS: _asInt(yaml['discovery_reroll_interval_s'], 10),
     );
   }
 }

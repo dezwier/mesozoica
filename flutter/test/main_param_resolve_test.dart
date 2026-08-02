@@ -42,4 +42,26 @@ void main() {
     expect(result['dino_accuracy'], closeTo(0.15, 1e-9));
     expect(result['fossil_accuracy'], closeTo(0.10, 1e-9));
   });
+
+  test('site discovery visibility defaults to main param', () async {
+    await loadGameConfigForTest();
+    final base = GameConfig.instance.siteDiscovery.visibilityDistanceM;
+    expect(
+      resolveSiteDiscoveryVisibilityDistanceM(skillLevel: 1),
+      closeTo(base, 1e-9),
+    );
+  });
+
+  test('site discovery visibility applies owning tool add', () async {
+    await loadGameConfigForTest();
+    // Inject a temporary owning visibility boost via resolve helpers' tool scan
+    // by using a synthetic ParamModifier path through resolveScalarMainParam.
+    final boosted = resolveScalarMainParam(
+      base: 50,
+      levelEntries: const [],
+      skillLevel: 1,
+      toolMod: const ParamModifier(op: 'add', value: 25),
+    );
+    expect(boosted, closeTo(75, 1e-9));
+  });
 }

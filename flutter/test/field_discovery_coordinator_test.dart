@@ -78,11 +78,25 @@ Map<String, dynamic> _discoverResponseJson({
   };
 }
 
+http.Response _chanceMissResponse() {
+  return http.Response(
+    jsonEncode({
+      'detail':
+          'Discovery chance miss - stay nearby or re-enter range to try again',
+      'type': 'DiscoveryChanceMissError',
+    }),
+    400,
+  );
+}
+
 /// ~200 m south of (51.0, 4.0) — outside the 50 m discover radius.
 const _outside = LatLng(50.9982, 4.0000);
 
 /// ~11 m from (51.0, 4.0) — inside the discover radius.
 const _inside = LatLng(51.0001, 4.0000);
+
+/// Longer than [pumpUntilIdle] so the dwell timer does not fire mid-setup.
+const _shortReroll = Duration(milliseconds: 200);
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -103,9 +117,11 @@ void main() {
     await Future<void>.delayed(const Duration(milliseconds: 40));
   }
 
-  test('does not discover when opening already inside radius', () async {
+  test('does not discover immediately when opening already inside radius',
+      () async {
     final discoverCalls = <int>[];
     final coordinator = FieldDiscoveryCoordinator(
+      discoveryRerollIntervalOverride: const Duration(seconds: 60),
       siteService: SiteService(
         client: MockClient((request) async {
           if (request.url.path.contains('nearby-discoverable')) {
@@ -143,10 +159,56 @@ void main() {
     expect(discoverCalls, isEmpty);
     expect(coordinator.pendingCelebration, isNull);
 
-    // Small move still inside — still not a walk-in.
+    // Small move still inside — still not an immediate free roll.
     locationService.setLocation(const LatLng(51.00005, 4.0000));
     await pumpUntilIdle();
     expect(discoverCalls, isEmpty);
+
+    coordinator.dispose();
+  });
+
+  test('baseline inside discovers after dwell interval', () async {
+    final discoverCalls = <int>[];
+    final coordinator = FieldDiscoveryCoordinator(
+      discoveryRerollIntervalOverride: _shortReroll,
+      siteService: SiteService(
+        client: MockClient((request) async {
+          if (request.url.path.contains('nearby-discoverable')) {
+            return http.Response(
+              jsonEncode({
+                'items': [
+                  _siteJson(siteId: 1, lat: 51.0000, lon: 4.0000),
+                ],
+                'total': 1,
+                'generated': 0,
+                'radius_km': 1.0,
+              }),
+              200,
+            );
+          }
+          if (request.method == 'POST' &&
+              request.url.path.contains('/discover')) {
+            discoverCalls.add(int.parse(request.url.pathSegments[3]));
+            return http.Response(
+              jsonEncode(
+                _discoverResponseJson(siteId: 1, lat: 51.0, lon: 4.0),
+              ),
+              200,
+            );
+          }
+          return http.Response('{}', 404);
+        }),
+      ),
+    );
+
+    final locationService = _FakeLocationService(_inside);
+    coordinator.bind(locationService: locationService);
+    await pumpUntilIdle();
+    expect(discoverCalls, isEmpty);
+
+    await Future<void>.delayed(_shortReroll + const Duration(milliseconds: 40));
+    expect(discoverCalls, [1]);
+    expect(coordinator.pendingCelebration?.site.siteId, 1);
 
     coordinator.dispose();
   });
@@ -200,7 +262,7 @@ void main() {
     coordinator.dispose();
   });
 
-  test('does not re-attempt while still inside after enter', () async {
+  test('does not re-attempt while still inside after successful enter', () async {
     var discoverCount = 0;
     final coordinator = FieldDiscoveryCoordinator(
       siteService: SiteService(
@@ -252,6 +314,7 @@ void main() {
   test('re-attempts after exit beyond radius then re-enter', () async {
     var discoverCount = 0;
     final coordinator = FieldDiscoveryCoordinator(
+      discoveryRerollIntervalOverride: const Duration(seconds: 60),
       siteService: SiteService(
         client: MockClient((request) async {
           if (request.url.path.contains('nearby-discoverable')) {
@@ -272,14 +335,7 @@ void main() {
             discoverCount++;
             // First enter misses; second enter succeeds.
             if (discoverCount == 1) {
-              return http.Response(
-                jsonEncode({
-                  'detail':
-                      'Discovery chance miss - leave and re-enter range to try again',
-                  'type': 'DiscoveryChanceMissError',
-                }),
-                400,
-              );
+              return _chanceMissResponse();
             }
             return http.Response(
               jsonEncode(
@@ -302,16 +358,11 @@ void main() {
     expect(discoverCount, 1);
     expect(coordinator.pendingCelebration, isNull);
 
-    // Stay inside — no second attempt.
-    locationService.setLocation(const LatLng(51.00005, 4.0000));
-    await pumpUntilIdle();
-    expect(discoverCount, 1);
-
-    // Exit beyond ~50 m.
+    // Exit beyond ~50 m before dwell fires — clears scheduled re-roll.
     locationService.setLocation(_outside);
     await pumpUntilIdle();
 
-    // Re-enter — second attempt succeeds.
+    // Re-enter — immediate second attempt succeeds.
     locationService.setLocation(_inside);
     await pumpUntilIdle();
     expect(discoverCount, 2);
@@ -320,9 +371,11 @@ void main() {
     coordinator.dispose();
   });
 
-  test('chance miss does not celebrate and does not retry until exit', () async {
+  test('chance miss re-rolls after dwell interval while staying inside',
+      () async {
     var discoverCount = 0;
     final coordinator = FieldDiscoveryCoordinator(
+      discoveryRerollIntervalOverride: _shortReroll,
       siteService: SiteService(
         client: MockClient((request) async {
           if (request.url.path.contains('nearby-discoverable')) {
@@ -341,13 +394,14 @@ void main() {
           if (request.method == 'POST' &&
               request.url.path.contains('/discover')) {
             discoverCount++;
+            if (discoverCount == 1) {
+              return _chanceMissResponse();
+            }
             return http.Response(
-              jsonEncode({
-                'detail':
-                    'Discovery chance miss - leave and re-enter range to try again',
-                'type': 'DiscoveryChanceMissError',
-              }),
-              400,
+              jsonEncode(
+                _discoverResponseJson(siteId: 3, lat: 51.0, lon: 4.0),
+              ),
+              200,
             );
           }
           return http.Response('{}', 404);
@@ -364,9 +418,14 @@ void main() {
     expect(discoverCount, 1);
     expect(coordinator.pendingCelebration, isNull);
 
+    // GPS nudge before interval — no re-roll yet.
     locationService.setLocation(const LatLng(51.00008, 4.0000));
     await pumpUntilIdle();
     expect(discoverCount, 1);
+
+    await Future<void>.delayed(_shortReroll + const Duration(milliseconds: 40));
+    expect(discoverCount, 2);
+    expect(coordinator.pendingCelebration?.site.siteId, 3);
 
     coordinator.dispose();
   });

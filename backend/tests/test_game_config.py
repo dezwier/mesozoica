@@ -45,6 +45,7 @@ def test_load_game_config_matches_current_defaults() -> None:
     assert config.site_discovery.client.cache_radius_km == 1.0
     assert config.site_discovery.client.cache_refresh_move_threshold_m == 500.0
     assert config.site_discovery.client.discover_fail_retry_s == 20
+    assert config.site_discovery.client.discovery_reroll_interval_s == 10
     assert config.site_discovery.level_modifiers["discovery_chance"] == []
 
     assert config.site_survey.main_params.dino_accuracy == 0.0

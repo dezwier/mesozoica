@@ -94,7 +94,7 @@ def discover_site(
     roller = rng if rng is not None else random
     if roller.random() >= params.discovery_chance:
         raise DiscoveryChanceMissError(
-            "Discovery chance miss - leave and re-enter range to try again"
+            "Discovery chance miss - stay nearby or re-enter range to try again"
         )
 
     session.add(

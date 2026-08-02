@@ -22,6 +22,7 @@ void main() {
     expect(config.siteDiscovery.client.cacheRadiusKm, 1.0);
     expect(config.siteDiscovery.client.cacheRefreshMoveThresholdM, 500.0);
     expect(config.siteDiscovery.client.discoverFailRetryS, 20);
+    expect(config.siteDiscovery.client.discoveryRerollIntervalS, 10);
 
     expect(config.siteSurvey.mainParams.dinoAccuracy, 0.0);
     expect(config.siteSurvey.mainParams.fossilAccuracy, 0.0);

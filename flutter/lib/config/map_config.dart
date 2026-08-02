@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
 
@@ -136,5 +138,28 @@ class MapConfig {
   static double fossilMarkerSize(double zoom, {bool selected = false}) {
     // [selected] kept for call-site compatibility; size no longer grows.
     return (zoom + 3).clamp(12.0, 18.0);
+  }
+
+  /// Web-Mercator meters-per-logical-pixel at [latitudeDeg] / [zoom].
+  static double metersPerPixel({
+    required double latitudeDeg,
+    required double zoom,
+  }) {
+    final cosLat = math.cos(latitudeDeg * math.pi / 180.0).abs().clamp(0.01, 1.0);
+    return 156543.03392804097 * cosLat / math.pow(2.0, zoom);
+  }
+
+  /// Screen radius (logical px) for a ground circle of [radiusM].
+  ///
+  /// Used for the location-puck discovery pulse so it tracks zoom and matches
+  /// [visibility_distance_m].
+  static double groundRadiusToPulsePx({
+    required double radiusM,
+    required double latitudeDeg,
+    required double zoom,
+  }) {
+    final mPerPx = metersPerPixel(latitudeDeg: latitudeDeg, zoom: zoom);
+    if (mPerPx <= 0) return 8.0;
+    return (radiusM / mPerPx).clamp(8.0, 2048.0);
   }
 }

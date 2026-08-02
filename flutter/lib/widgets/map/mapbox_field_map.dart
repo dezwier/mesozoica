@@ -11,11 +11,18 @@ import 'package:provider/provider.dart';
 
 import '../../config/map_config.dart';
 import '../../config/game_config.dart';
+import '../../config/main_param_resolve.dart';
 import '../../controllers/aerial_session_controller.dart';
+import '../../controllers/auth_controller.dart';
+import '../../controllers/field_discovery_coordinator.dart';
 import '../../controllers/formation_map_controller.dart';
+import '../../controllers/guidance_session_controller.dart';
 import '../../controllers/orbit_survey_controller.dart';
 import '../../controllers/terrain_echo_controller.dart';
+import '../../controllers/tool_catalog_controller.dart';
+import '../../models/guidance_tool_kind.dart';
 import '../../models/site.dart';
+import '../../models/tool.dart';
 import '../../theme/map_chrome_theme.dart';
 import 'formation_map_raster.dart';
 import 'orbit_survey_raster.dart';
@@ -160,6 +167,10 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
   late ViewportState _viewport;
   /// Latest GPS from [locationListenable] without parent rebuilds.
   LatLng? _liveLocation;
+  AuthController? _auth;
+  ToolCatalogController? _toolCatalog;
+  GuidanceSessionController? _guidance;
+  VoidCallback? _visibilityListener;
 
   LatLng? get _effectiveLocation =>
       _liveLocation ?? widget.currentLocation;
@@ -254,7 +265,125 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _bindVisibilitySources();
+  }
+
+  void _bindVisibilitySources() {
+    AuthController? auth;
+    ToolCatalogController? tools;
+    GuidanceSessionController? guidance;
+    try {
+      auth = context.read<AuthController>();
+      tools = context.read<ToolCatalogController>();
+      guidance = context.read<GuidanceSessionController>();
+    } on ProviderNotFoundException {
+      return;
+    }
+
+    _visibilityListener ??= _onVisibilityInputsChanged;
+    if (!identical(_auth, auth)) {
+      _auth?.removeListener(_visibilityListener!);
+      _auth = auth;
+      _auth?.addListener(_visibilityListener!);
+    }
+    if (!identical(_toolCatalog, tools)) {
+      _toolCatalog?.removeListener(_visibilityListener!);
+      _toolCatalog = tools;
+      _toolCatalog?.addListener(_visibilityListener!);
+    }
+    if (!identical(_guidance, guidance)) {
+      _guidance?.removeListener(_visibilityListener!);
+      _guidance = guidance;
+      _guidance?.addListener(_visibilityListener!);
+    }
+    _syncDiscoveryPulse();
+  }
+
+  void _onVisibilityInputsChanged() {
+    _syncDiscoveryPulse();
+  }
+
+  double _resolveVisibilityDistanceM() {
+    var skillLevel = 1;
+    final profile = _auth?.currentUser;
+    if (profile != null) {
+      for (final skill in profile.skills) {
+        if (skill.id == 'site_discovery') {
+          skillLevel = skill.level.clamp(1, 99);
+          break;
+        }
+      }
+    }
+
+    final owned = <String>{};
+    final catalog = _toolCatalog;
+    if (catalog != null) {
+      for (final tool in catalog.items) {
+        if (!_toolIsOwned(tool)) continue;
+        final kind = GuidanceToolKind.tryParseToolName(tool.name);
+        if (kind != null) owned.add(kind.actionKey);
+      }
+    }
+
+    String? activeKey;
+    final guidance = _guidance;
+    if (guidance != null && guidance.isActive) {
+      activeKey = guidance.kind?.actionKey ?? guidance.session?.actionKey;
+    }
+
+    return resolveSiteDiscoveryVisibilityDistanceM(
+      skillLevel: skillLevel,
+      ownedActionKeys: owned,
+      activeActionKey: activeKey,
+    );
+  }
+
+  static bool _toolIsOwned(ToolSummary tool) =>
+      tool.isOwned || tool.ownedOccurrences.isNotEmpty;
+
+  void _syncDiscoveryPulse() {
+    if (!mounted || !_ready || !widget.mapActive) return;
+    final visibilityM = _resolveVisibilityDistanceM();
+    try {
+      context.read<FieldDiscoveryCoordinator>().setDiscoverRadiusM(visibilityM);
+    } on ProviderNotFoundException {
+      // Tests / previews without discovery coordinator.
+    }
+    final loc = _effectiveLocation ?? widget.initialCenter;
+    unawaited(
+      widget.camera.syncLocationPuckPulse(
+        visibilityDistanceM: visibilityM,
+        latitudeDeg: loc.latitude,
+        zoom: _lastKnownZoom,
+      ),
+    );
+  }
+
+  Future<void> _enableLocationPuck() async {
+    final visibilityM = _resolveVisibilityDistanceM();
+    try {
+      context.read<FieldDiscoveryCoordinator>().setDiscoverRadiusM(visibilityM);
+    } on ProviderNotFoundException {
+      // Tests / previews without discovery coordinator.
+    }
+    final loc = _effectiveLocation ?? widget.initialCenter;
+    await widget.camera.enableLocationPuck(
+      avatarImageUrl: widget.avatarImageUrl,
+      visibilityDistanceM: visibilityM,
+      latitudeDeg: loc.latitude,
+      zoom: _lastKnownZoom,
+    );
+  }
+
+  @override
   void dispose() {
+    if (_visibilityListener != null) {
+      _auth?.removeListener(_visibilityListener!);
+      _toolCatalog?.removeListener(_visibilityListener!);
+      _guidance?.removeListener(_visibilityListener!);
+    }
     widget.locationListenable?.removeListener(_onLocationListenable);
     widget.aerialRecon?.removeListener(_onAerialReconChanged);
     widget.aerialRecon?.progressTickListenable
@@ -308,6 +437,9 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
       _syncRotateOverlayFrame();
     } else if (_detailPinsActive && loc != null) {
       _syncRotateOverlayFrame();
+    }
+    if (loc != null) {
+      _syncDiscoveryPulse();
     }
   }
 
@@ -635,9 +767,7 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
       return;
     }
     if (!_ready) return;
-    await widget.camera.enableLocationPuck(
-      avatarImageUrl: widget.avatarImageUrl,
-    );
+    await _enableLocationPuck();
     if (!mounted || !widget.mapActive) return;
     if (widget.rotateWithHeading) {
       _enterFollowPuck(animated: false);
@@ -812,11 +942,7 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
       unawaited(_applyBasemapLook(force: true));
     }
     if (oldWidget.avatarImageUrl != widget.avatarImageUrl) {
-      unawaited(
-        widget.camera.enableLocationPuck(
-          avatarImageUrl: widget.avatarImageUrl,
-        ),
-      );
+      unawaited(_enableLocationPuck());
     }
     if (oldWidget.aerialRecon != widget.aerialRecon) {
       oldWidget.aerialRecon?.removeListener(_onAerialReconChanged);
@@ -986,9 +1112,7 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
 
       // FollowPuck needs the location component; enable before entering it.
       try {
-        await widget.camera.enableLocationPuck(
-          avatarImageUrl: widget.avatarImageUrl,
-        );
+        await _enableLocationPuck();
       } catch (_) {}
 
       if (widget.rotateWithHeading) {
@@ -1104,7 +1228,11 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
   void _onCameraChange(CameraChangedEventData data) {
     if (!_ready || !widget.mapActive) return;
     final zoom = data.cameraState.zoom;
+    final zoomChanged = (zoom - _lastKnownZoom).abs() > 0.01;
     _lastKnownZoom = zoom;
+    if (zoomChanged) {
+      _syncDiscoveryPulse();
+    }
     if (widget.rotateWithHeading) {
       // Rotate mini-cards are driven by the vsync ticker only. Syncing here
       // too queued stale projections and made cards jitter behind FollowPuck.

@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:developer' as developer;
 
+import 'package:clock/clock.dart';
 import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
@@ -11,16 +12,20 @@ import '../services/location_service.dart';
 import '../services/site_service.dart';
 import '../utils/discovery_haptic.dart';
 
-/// Auto-discovers nearby field sites on enter into [autoDiscoverRadiusM].
+/// Auto-discovers nearby field sites inside [discoverRadiusM].
 ///
-/// Discovery requires a real walk-in: the user must be observed outside the
-/// radius, then cross into it. Opening the app (or refreshing the cache) while
-/// already standing inside does not discover. A chance miss does not retry
-/// until the user leaves and re-enters the radius.
+/// Walk-in (observed outside → inside) rolls immediately. Opening the app
+/// already inside does not roll for free — a dwell timer starts instead.
+/// After a chance miss (or while dwelling from baseline), re-rolls every
+/// [discoveryRerollInterval] while the user stays inside.
 class FieldDiscoveryCoordinator extends ChangeNotifier {
-  FieldDiscoveryCoordinator({SiteService? siteService})
-      : _siteService = siteService ?? SiteService();
+  FieldDiscoveryCoordinator({
+    SiteService? siteService,
+    Duration? discoveryRerollIntervalOverride,
+  })  : _siteService = siteService ?? SiteService(),
+        _discoveryRerollIntervalOverride = discoveryRerollIntervalOverride;
 
+  /// YAML client fallback (kept for tests / pre-boost default).
   static double get autoDiscoverRadiusM =>
       GameConfig.instance.siteDiscovery.client.autoDiscoverRadiusM;
   static double get cacheRadiusKm =>
@@ -30,8 +35,36 @@ class FieldDiscoveryCoordinator extends ChangeNotifier {
   static Duration get discoverFailRetry => Duration(
         seconds: GameConfig.instance.siteDiscovery.client.discoverFailRetryS,
       );
+  static Duration get discoveryRerollIntervalDefault => Duration(
+        seconds:
+            GameConfig.instance.siteDiscovery.client.discoveryRerollIntervalS,
+      );
 
   final SiteService _siteService;
+  final Duration? _discoveryRerollIntervalOverride;
+  /// Effective visibility distance (main param + level/tool). Null → YAML.
+  double? _discoverRadiusOverrideM;
+
+  Duration get discoveryRerollInterval =>
+      _discoveryRerollIntervalOverride ?? discoveryRerollIntervalDefault;
+
+  /// Ground radius used for walk-in / dwell discovery checks.
+  double get discoverRadiusM {
+    final override = _discoverRadiusOverrideM;
+    if (override != null && override > 0) return override;
+    if (GameConfig.isLoaded) {
+      return GameConfig.instance.siteDiscovery.visibilityDistanceM;
+    }
+    return autoDiscoverRadiusM;
+  }
+
+  /// Keep auto-discover aligned with the location-puck pulse / main param.
+  void setDiscoverRadiusM(double meters) {
+    if (meters <= 0) return;
+    if (_discoverRadiusOverrideM == meters) return;
+    _discoverRadiusOverrideM = meters;
+  }
+
   LocationService? _locationService;
   VoidCallback? _locationListener;
 
@@ -41,11 +74,12 @@ class FieldDiscoveryCoordinator extends ChangeNotifier {
   double? _cacheRadiusOverrideKm;
   final Set<int> _insideRadiusSiteIds = {};
   /// Sites observed while the user was outside their discover radius.
-  /// Required before an inside fix can count as a walk-in enter.
+  /// Required before an inside fix can count as an immediate walk-in roll.
   final Set<int> _seenOutsideSiteIds = {};
-  final Set<int> _attemptedThisVisitSiteIds = {};
   final Set<int> _inFlightSiteIds = {};
-  final Map<int, DateTime> _retryAfterBySiteId = {};
+  /// Earliest time a discover attempt may run for a site (dwell / network retry).
+  final Map<int, DateTime> _nextDiscoverAtBySiteId = {};
+  Timer? _dwellTimer;
   Future<void>? _cacheRefreshFuture;
   FieldDiscoverResponse? _pendingCelebration;
   bool _celebrationConsumed = false;
@@ -104,6 +138,7 @@ class FieldDiscoveryCoordinator extends ChangeNotifier {
     locationService.addListener(_locationListener!);
     final location = locationService.currentLocation;
     if (location != null) {
+      _lastHandledLocation = location;
       unawaited(_handleLocationMove(location));
     }
   }
@@ -116,19 +151,12 @@ class FieldDiscoveryCoordinator extends ChangeNotifier {
   }
 
   /// Merge hidden map sites into the discoverable cache.
-  ///
-  /// If a site was auto-discovered then set back to hidden, clear visit state
-  /// so the next enter (or current enter) can discover it again.
   void ingestMapSites(Iterable<SiteSummary> sites) {
     var added = 0;
     for (final site in sites) {
       final status = (site.status ?? 'hidden').trim().toLowerCase();
       if (status != 'hidden') continue;
       if (site.latitude == null || site.longitude == null) continue;
-
-      _attemptedThisVisitSiteIds.remove(site.siteId);
-      _retryAfterBySiteId.remove(site.siteId);
-
       if (_discoverableCache.any((s) => s.siteId == site.siteId)) continue;
       _discoverableCache.add(site);
       added++;
@@ -140,12 +168,12 @@ class FieldDiscoveryCoordinator extends ChangeNotifier {
   /// Call when the user manually sets a site back to hidden.
   void siteBecameHidden(SiteSummary site) {
     if (site.latitude == null || site.longitude == null) return;
-    _attemptedThisVisitSiteIds.remove(site.siteId);
     _insideRadiusSiteIds.remove(site.siteId);
     _seenOutsideSiteIds.remove(site.siteId);
-    _retryAfterBySiteId.remove(site.siteId);
+    _nextDiscoverAtBySiteId.remove(site.siteId);
     _discoverableCache.removeWhere((s) => s.siteId == site.siteId);
     _discoverableCache.add(site);
+    _armDwellTimer();
     _log('site_id=${site.siteId} hidden again — rediscovery enabled');
   }
 
@@ -157,15 +185,17 @@ class FieldDiscoveryCoordinator extends ChangeNotifier {
 
   /// Drop all proximity state when the signed-in user changes.
   void clearForUserChange() {
+    _dwellTimer?.cancel();
+    _dwellTimer = null;
     _discoverableCache = [];
     _lastCachePosition = null;
     _lastHandledLocation = null;
     _cacheRadiusOverrideKm = null;
+    _discoverRadiusOverrideM = null;
     _insideRadiusSiteIds.clear();
     _seenOutsideSiteIds.clear();
-    _attemptedThisVisitSiteIds.clear();
     _inFlightSiteIds.clear();
-    _retryAfterBySiteId.clear();
+    _nextDiscoverAtBySiteId.clear();
     _pendingCelebration = null;
     _celebrationConsumed = false;
     _cacheRefreshFuture = null;
@@ -274,10 +304,11 @@ class FieldDiscoveryCoordinator extends ChangeNotifier {
   Future<void> _checkProximity(LatLng location) async {
     if (_discoverableCache.isEmpty) {
       _log('proximity skip — discoverable cache empty');
+      _armDwellTimer();
       return;
     }
 
-    final now = DateTime.now();
+    final now = clock.now();
     for (final site in List<SiteSummary>.from(_discoverableCache)) {
       final lat = site.latitude;
       final lon = site.longitude;
@@ -289,20 +320,21 @@ class FieldDiscoveryCoordinator extends ChangeNotifier {
         lat,
         lon,
       );
-      final inside = distanceM <= autoDiscoverRadiusM;
+      final radiusM = discoverRadiusM;
+      final inside = distanceM <= radiusM;
 
       if (!inside) {
         _seenOutsideSiteIds.add(site.siteId);
         if (_insideRadiusSiteIds.remove(site.siteId)) {
-          _attemptedThisVisitSiteIds.remove(site.siteId);
           _log(
             'exited site_id=${site.siteId} distance_m=${distanceM.round()}',
           );
         }
-        if (kDebugMode && distanceM <= autoDiscoverRadiusM * 2) {
+        _nextDiscoverAtBySiteId.remove(site.siteId);
+        if (kDebugMode && distanceM <= radiusM * 2) {
           _log(
             'near site_id=${site.siteId} distance_m=${distanceM.round()} '
-            '(need <= ${autoDiscoverRadiusM.round()})',
+            '(need <= ${radiusM.round()})',
           );
         }
         continue;
@@ -310,25 +342,26 @@ class FieldDiscoveryCoordinator extends ChangeNotifier {
 
       final wasInside = _insideRadiusSiteIds.contains(site.siteId);
       _insideRadiusSiteIds.add(site.siteId);
-      if (wasInside) {
-        // Still inside this visit — do not re-attempt.
-        continue;
-      }
 
-      // Already here on first sight (app open / cache load) — not a walk-in.
-      if (!_seenOutsideSiteIds.contains(site.siteId)) {
+      // App open / first sight already inside — no free roll; start dwell clock.
+      if (!wasInside && !_seenOutsideSiteIds.contains(site.siteId)) {
+        _nextDiscoverAtBySiteId[site.siteId] = now.add(discoveryRerollInterval);
         _log(
           'baseline inside site_id=${site.siteId} '
-          'distance_m=${distanceM.round()} — walk out and in to discover',
+          'distance_m=${distanceM.round()} — dwell '
+          '${discoveryRerollInterval.inMilliseconds}ms before first roll',
         );
         continue;
       }
 
-      // Walk-in enter: previously outside, now inside.
-      if (_attemptedThisVisitSiteIds.contains(site.siteId)) continue;
       if (_inFlightSiteIds.contains(site.siteId)) continue;
-      final retryAfter = _retryAfterBySiteId[site.siteId];
-      if (retryAfter != null && retryAfter.isAfter(now)) continue;
+
+      final nextAt = _nextDiscoverAtBySiteId[site.siteId];
+      final isWalkIn = !wasInside && _seenOutsideSiteIds.contains(site.siteId);
+      if (!isWalkIn) {
+        // Still inside: only roll when a dwell/retry is due.
+        if (nextAt == null || nextAt.isAfter(now)) continue;
+      }
 
       _seenOutsideSiteIds.remove(site.siteId);
       _inFlightSiteIds.add(site.siteId);
@@ -338,8 +371,7 @@ class FieldDiscoveryCoordinator extends ChangeNotifier {
           lat: location.latitude,
           lon: location.longitude,
         );
-        _attemptedThisVisitSiteIds.add(site.siteId);
-        _retryAfterBySiteId.remove(site.siteId);
+        _nextDiscoverAtBySiteId.remove(site.siteId);
         _discoverableCache.removeWhere((s) => s.siteId == site.siteId);
         _insideRadiusSiteIds.remove(site.siteId);
         _pendingCelebration = updated;
@@ -349,29 +381,47 @@ class FieldDiscoveryCoordinator extends ChangeNotifier {
         notifyListeners();
       } on SiteServiceException catch (error) {
         if (error.isDiscoveryChanceMiss) {
-          _attemptedThisVisitSiteIds.add(site.siteId);
-          _retryAfterBySiteId.remove(site.siteId);
+          _nextDiscoverAtBySiteId[site.siteId] =
+              clock.now().add(discoveryRerollInterval);
           _log(
             'chance miss site_id=${site.siteId} '
-            'distance_m=${distanceM.round()} — wait for exit',
+            'distance_m=${distanceM.round()} — dwell '
+            '${discoveryRerollInterval.inMilliseconds}ms',
           );
         } else {
-          _retryAfterBySiteId[site.siteId] = now.add(discoverFailRetry);
-          // Allow another enter-attempt after retry window: treat as not yet
-          // rolled this visit, and clear inside so the next GPS tick can re-enter.
-          _insideRadiusSiteIds.remove(site.siteId);
-          _seenOutsideSiteIds.add(site.siteId);
+          _nextDiscoverAtBySiteId[site.siteId] =
+              clock.now().add(discoverFailRetry);
           _log('discover failed site_id=${site.siteId} error=$error');
         }
       } catch (error) {
-        _retryAfterBySiteId[site.siteId] = now.add(discoverFailRetry);
-        _insideRadiusSiteIds.remove(site.siteId);
-        _seenOutsideSiteIds.add(site.siteId);
+        _nextDiscoverAtBySiteId[site.siteId] =
+            clock.now().add(discoverFailRetry);
         _log('discover failed site_id=${site.siteId} error=$error');
       } finally {
         _inFlightSiteIds.remove(site.siteId);
       }
     }
+
+    _armDwellTimer();
+  }
+
+  /// Wake proximity checks while camping (no GPS move) when a dwell is due.
+  void _armDwellTimer() {
+    _dwellTimer?.cancel();
+    _dwellTimer = null;
+    if (_nextDiscoverAtBySiteId.isEmpty) return;
+
+    final now = clock.now();
+    var soonest = _nextDiscoverAtBySiteId.values.first;
+    for (final at in _nextDiscoverAtBySiteId.values) {
+      if (at.isBefore(soonest)) soonest = at;
+    }
+    final delay = soonest.difference(now);
+    _dwellTimer = Timer(delay.isNegative ? Duration.zero : delay, () {
+      final location = _locationService?.currentLocation;
+      if (location == null) return;
+      unawaited(_checkProximity(location));
+    });
   }
 
   double _distanceM(LatLng a, LatLng b) {
@@ -395,6 +445,8 @@ class FieldDiscoveryCoordinator extends ChangeNotifier {
 
   @override
   void dispose() {
+    _dwellTimer?.cancel();
+    _dwellTimer = null;
     if (_locationListener != null) {
       _locationService?.removeListener(_locationListener!);
     }

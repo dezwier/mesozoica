@@ -38,6 +38,10 @@ class MapboxCameraCoordinator {
   double? _viewportHeight;
   double? _viewportWidth;
   bool rotateWithHeading = false;
+  double? _lastPulseRadiusPx;
+  double _pulseVisibilityDistanceM = 50.0;
+  double _pulseLatitudeDeg = 0.0;
+  double _pulseZoom = MapConfig.mapboxFollowZoom;
 
   void attach(MapboxMap map) {
     _map = map;
@@ -48,6 +52,7 @@ class MapboxCameraCoordinator {
     _lastFollowedLocation = null;
     _pendingFollowLocation = null;
     _pendingFollowZoom = null;
+    _lastPulseRadiusPx = null;
   }
 
   MapboxMap? get map => _map;
@@ -396,7 +401,16 @@ class MapboxCameraCoordinator {
   }
 
   /// Avatar puck with ground shadow, white heading arrow, and brown pulse.
-  Future<void> enableLocationPuck({String? avatarImageUrl}) async {
+  ///
+  /// [visibilityDistanceM] is the effective site-discovery radius (main param
+  /// after level/tool boosts). The pulse max radius is that ground distance in
+  /// screen pixels at [latitudeDeg] / [zoom].
+  Future<void> enableLocationPuck({
+    String? avatarImageUrl,
+    double? visibilityDistanceM,
+    double? latitudeDeg,
+    double? zoom,
+  }) async {
     final map = _map;
     if (map == null) return;
 
@@ -426,6 +440,13 @@ class MapboxCameraCoordinator {
       logicalSize: _locationPuckLogicalSize,
     );
 
+    final pulsePx = _pulseRadiusPx(
+      visibilityDistanceM: visibilityDistanceM,
+      latitudeDeg: latitudeDeg,
+      zoom: zoom,
+    );
+    _lastPulseRadiusPx = pulsePx;
+
     await map.location.updateSettings(
       LocationComponentSettings(
         enabled: true,
@@ -433,7 +454,7 @@ class MapboxCameraCoordinator {
         puckBearing: PuckBearing.HEADING,
         pulsingEnabled: true,
         pulsingColor: _locationPuckPulse.toARGB32(),
-        pulsingMaxRadius: 48,
+        pulsingMaxRadius: pulsePx,
         locationPuck: LocationPuck(
           locationPuck2D: LocationPuck2D(
             topImage: puckImage,
@@ -444,6 +465,52 @@ class MapboxCameraCoordinator {
           ),
         ),
       ),
+    );
+  }
+
+  /// Update only the discovery pulse radius (zoom / visibility / latitude).
+  Future<void> syncLocationPuckPulse({
+    double? visibilityDistanceM,
+    double? latitudeDeg,
+    double? zoom,
+  }) async {
+    final map = _map;
+    if (map == null) return;
+    final pulsePx = _pulseRadiusPx(
+      visibilityDistanceM: visibilityDistanceM,
+      latitudeDeg: latitudeDeg,
+      zoom: zoom,
+    );
+    final previous = _lastPulseRadiusPx;
+    if (previous != null && (pulsePx - previous).abs() < 0.5) return;
+    _lastPulseRadiusPx = pulsePx;
+    await map.location.updateSettings(
+      LocationComponentSettings(
+        pulsingEnabled: true,
+        pulsingColor: _locationPuckPulse.toARGB32(),
+        pulsingMaxRadius: pulsePx,
+      ),
+    );
+  }
+
+  double _pulseRadiusPx({
+    double? visibilityDistanceM,
+    double? latitudeDeg,
+    double? zoom,
+  }) {
+    if (visibilityDistanceM != null && visibilityDistanceM > 0) {
+      _pulseVisibilityDistanceM = visibilityDistanceM;
+    }
+    if (latitudeDeg != null) {
+      _pulseLatitudeDeg = latitudeDeg;
+    }
+    if (zoom != null) {
+      _pulseZoom = zoom;
+    }
+    return MapConfig.groundRadiusToPulsePx(
+      radiusM: _pulseVisibilityDistanceM,
+      latitudeDeg: _pulseLatitudeDeg,
+      zoom: _pulseZoom,
     );
   }
 }

@@ -305,6 +305,7 @@ class SiteDiscoveryClientConfig(BaseModel):
     cache_radius_km: float = 1.0
     cache_refresh_move_threshold_m: float = 500.0
     discover_fail_retry_s: int = 20
+    discovery_reroll_interval_s: int = 10
 
 
 class SiteDiscoveryMainParams(BaseModel):
