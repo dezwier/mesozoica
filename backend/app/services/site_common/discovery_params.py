@@ -1,4 +1,4 @@
-"""Resolve effective site-discovery params (baseline + level + guidance boosts)."""
+"""Resolve effective site-discovery params (baseline + level + tool boosts)."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ from sqlmodel import Session
 
 from app.core.game_config import get_game_config
 from app.models.site import Site
-from app.models.tool_session import GUIDANCE_ACTION_KEYS
+from app.models.tool_session import ACTION_KEY_RIDGE_GLASS, GUIDANCE_ACTION_KEYS
 from app.services.level_service.main_params import (
     resolve_site_discovery_main_params,
     tool_mods_from_session_params,
@@ -78,11 +78,11 @@ def resolve_site_discovery_params(
     lat: float | None = None,
     lon: float | None = None,
 ) -> ResolvedSiteDiscoveryParams:
-    """Baseline main_params + level modifiers; guidance may replace nearest-site chance.
+    """Baseline main_params + level modifiers; active tools may boost.
 
-    Guidance ``modifies_main_params.using`` applies only while a guidance
-    session is active. That chance replaces the baseline **only** if [site]
-    is the nearest still-discoverable site to (lat, lon).
+    Ridge Glass ``modifies_main_params.using`` applies globally to every site
+    while the session is active. Guidance tools still replace discovery chance
+    only for the nearest still-discoverable site.
     """
     # Lazy import: tool_session → site nearby → discover → this module.
     from app.services.tool_action_service.tool_session import (
@@ -92,12 +92,22 @@ def resolve_site_discovery_params(
     skill_level = _skill_level_for_user(session, user_id)
     tool_mods = None
 
-    if lat is not None and lon is not None:
+    ridge = get_active_timed_session(
+        session, user_id=user_id, action_keys=(ACTION_KEY_RIDGE_GLASS,)
+    )
+    if ridge is not None:
+        ridge_mods = tool_mods_from_session_params(
+            ridge.params_json or {},
+            when="using",
+            skill_id="site_discovery",
+        )
+        if ridge_mods:
+            tool_mods = ridge_mods
+    elif lat is not None and lon is not None:
         guidance = get_active_timed_session(
             session, user_id=user_id, action_keys=GUIDANCE_ACTION_KEYS
         )
         params = (guidance.params_json if guidance is not None else None) or {}
-        raw_mods = params.get("modifies_main_params")
         # Active session → apply `using` / site_discovery only.
         using_mods = tool_mods_from_session_params(
             params, when="using", skill_id="site_discovery"

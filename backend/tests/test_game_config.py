@@ -105,6 +105,18 @@ def test_load_game_config_matches_current_defaults() -> None:
     assert config.tool_actions.aerial_recon.flight_discovery_chance == 0.01
     assert config.tool_actions.aerial_scout.flight_discovery_distance_m == 50
 
+    ridge = config.tool_actions.ridge_glass
+    assert ridge.duration_minutes == 60
+    assert ridge.added_visibility_range_m == 20.0
+    assert ridge.added_discovery_rate == 0.1
+    ridge_mods = ridge.modifies_main_params
+    assert ridge_mods is not None
+    assert ridge_mods.affects_skill("site_discovery")
+    modifying = [
+        key for key, _ in config.tool_actions.tools_modifying_skill("site_discovery")
+    ]
+    assert "ridge_glass" in modifying
+
     assert config.leveling.rewards.site_discover_site_discovery_xp == 10
     assert len(config.leveling.skills) == 12
     assert len(config.leveling.career_titles) == 99

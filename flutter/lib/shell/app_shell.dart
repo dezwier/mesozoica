@@ -13,6 +13,7 @@ import '../controllers/field_discovery_coordinator.dart';
 import '../controllers/field_session_coordinator.dart';
 import '../controllers/formation_map_controller.dart';
 import '../controllers/orbit_survey_controller.dart';
+import '../controllers/ridge_glass_controller.dart';
 import '../controllers/terrain_echo_controller.dart';
 import '../controllers/guidance_session_controller.dart';
 import '../controllers/map_controller.dart';
@@ -74,6 +75,7 @@ class _AppShellState extends State<AppShell>
   OrbitSurveyController? _orbitSurvey;
   FormationMapController? _formationMap;
   TerrainEchoController? _terrainEcho;
+  RidgeGlassController? _ridgeGlass;
   StreamSubscription<RemoteMessage>? _foregroundPushSub;
   StreamSubscription<RemoteMessage>? _openedPushSub;
   /// Cached so aerial session list refreshes do not rebuild the shell.
@@ -150,6 +152,11 @@ class _AppShellState extends State<AppShell>
         discovery: discovery,
         location: context.read<LocationService>(),
       );
+
+      final ridgeGlass = context.read<RidgeGlassController>();
+      _ridgeGlass = ridgeGlass;
+      ridgeGlass.addListener(_onRidgeGlassChanged);
+      unawaited(ridgeGlass.restoreActiveSession());
 
       context.read<FieldSessionCoordinator>().bind(
             locationService: context.read<LocationService>(),
@@ -237,6 +244,15 @@ class _AppShellState extends State<AppShell>
     final echo = _terrainEcho;
     if (echo == null) return;
     if (echo.requestShowOnMap && _anyOverlayOpen) {
+      setState(_clearOverlayFlags);
+    }
+  }
+
+  void _onRidgeGlassChanged() {
+    if (!mounted) return;
+    final ridge = _ridgeGlass;
+    if (ridge == null) return;
+    if (ridge.requestShowOnMap && _anyOverlayOpen) {
       setState(_clearOverlayFlags);
     }
   }
@@ -344,6 +360,7 @@ class _AppShellState extends State<AppShell>
     _orbitSurvey?.removeListener(_onOrbitSurveyChanged);
     _formationMap?.removeListener(_onFormationMapChanged);
     _terrainEcho?.removeListener(_onTerrainEchoChanged);
+    _ridgeGlass?.removeListener(_onRidgeGlassChanged);
     _catalogModeController?.removeListener(_onCatalogModeChanged);
     _discoveryRefreshTimer?.cancel();
     unawaited(_foregroundPushSub?.cancel() ?? Future<void>.value());
@@ -377,6 +394,9 @@ class _AppShellState extends State<AppShell>
         );
         unawaited(
           context.read<TerrainEchoController>().restoreActiveSession(),
+        );
+        unawaited(
+          context.read<RidgeGlassController>().restoreActiveSession(),
         );
         final auth = context.read<AuthController>();
         final userId = auth.currentUser?.id;
@@ -439,6 +459,9 @@ class _AppShellState extends State<AppShell>
     unawaited(
       context.read<TerrainEchoController>().stop(notifyServer: false),
     );
+    unawaited(
+      context.read<RidgeGlassController>().stop(notifyServer: false),
+    );
     context.read<SiteCatalogController>().load(force: true);
     context.read<ToolCatalogController>().load(force: true);
 
@@ -470,6 +493,8 @@ class _AppShellState extends State<AppShell>
       await context.read<FormationMapController>().restoreActiveSession();
       if (!mounted || _previousUserId != userId) return;
       await context.read<TerrainEchoController>().restoreActiveSession();
+      if (!mounted || _previousUserId != userId) return;
+      await context.read<RidgeGlassController>().restoreActiveSession();
     });
   }
 

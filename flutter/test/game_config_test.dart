@@ -134,6 +134,15 @@ void main() {
       (0xD4, 0xA0, 0x17),
     );
 
+    expect(config.toolActions.ridgeGlass.durationMinutes, 60);
+    expect(config.toolActions.ridgeGlass.addedVisibilityRangeM, 20.0);
+    expect(config.toolActions.ridgeGlass.addedDiscoveryRate, 0.1);
+    expect(
+      config.toolActions.ridgeGlass.modifiesMainParams
+          ?.affectsSkill('site_discovery'),
+      isTrue,
+    );
+
     expect(config.leveling.rewards.siteDiscoverSiteDiscoveryXp, 10);
     expect(config.leveling.rewards.fossilDiscoverFossilDetectionXp, 5);
     expect(config.leveling.rewards.activeKmSiteDiscoveryXp, 30);

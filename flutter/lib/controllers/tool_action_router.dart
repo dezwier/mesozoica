@@ -7,11 +7,13 @@ import '../controllers/aerial_session_controller.dart';
 import '../controllers/formation_map_controller.dart';
 import '../controllers/orbit_survey_controller.dart';
 import '../controllers/guidance_session_controller.dart';
+import '../controllers/ridge_glass_controller.dart';
 import '../controllers/terrain_echo_controller.dart';
 import '../models/aerial_action_kind.dart';
 import '../models/formation_map_kind.dart';
 import '../models/orbit_survey_kind.dart';
 import '../models/guidance_tool_kind.dart';
+import '../models/ridge_glass_kind.dart';
 import '../models/terrain_echo_kind.dart';
 import '../models/tool.dart';
 import '../models/tool_session.dart';
@@ -29,6 +31,7 @@ class ToolActionRouter {
     _startOrbitSurvey,
     _startFormationMap,
     _startTerrainEcho,
+    _startRidgeGlass,
   ];
 
   static void start(BuildContext context, ToolSummary tool) {
@@ -87,6 +90,11 @@ class ToolActionRouter {
       return terrain.tool?.name ?? TerrainEchoKind.toolName;
     }
 
+    final ridge = context.read<RidgeGlassController>();
+    if (ridge.isActive) {
+      return ridge.tool?.name ?? RidgeGlassKind.toolName;
+    }
+
     return null;
   }
 
@@ -102,6 +110,9 @@ class ToolActionRouter {
             : null) ??
         (session.actionKey == TerrainEchoKind.actionKey
             ? TerrainEchoKind.toolName
+            : null) ??
+        (session.actionKey == RidgeGlassKind.actionKey
+            ? RidgeGlassKind.toolName
             : null);
   }
 
@@ -132,6 +143,12 @@ class ToolActionRouter {
   static bool _startTerrainEcho(BuildContext context, ToolSummary tool) {
     if (!TerrainEchoKind.matchesToolName(tool.name)) return false;
     unawaited(context.read<TerrainEchoController>().activate(tool));
+    return true;
+  }
+
+  static bool _startRidgeGlass(BuildContext context, ToolSummary tool) {
+    if (!RidgeGlassKind.matchesToolName(tool.name)) return false;
+    unawaited(context.read<RidgeGlassController>().activate(tool));
     return true;
   }
 }

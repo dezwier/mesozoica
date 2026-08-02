@@ -5,6 +5,7 @@ import 'tool_extensions/aerial_session_card_extension.dart';
 import 'tool_extensions/formation_map_card_extension.dart';
 import 'tool_extensions/guidance_card_extension.dart';
 import 'tool_extensions/orbit_survey_card_extension.dart';
+import 'tool_extensions/ridge_glass_card_extension.dart';
 import 'tool_extensions/terrain_echo_card_extension.dart';
 
 /// Per-action-key extras for tool card backs (stats, params).
@@ -30,6 +31,7 @@ class ToolCardExtensions {
     OrbitSurveyCardExtension(),
     FormationMapCardExtension(),
     TerrainEchoCardExtension(),
+    RidgeGlassCardExtension(),
   ];
 
   static ToolCardExtension? forTool(ToolSummary tool) {

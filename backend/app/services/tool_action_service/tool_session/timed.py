@@ -12,6 +12,7 @@ from app.core.game_config import get_game_config
 from app.models.tool_session import (
     ACTION_KEY_FORMATION_MAP,
     ACTION_KEY_ORBIT_SURVEY,
+    ACTION_KEY_RIDGE_GLASS,
     ACTION_KEY_TERRAIN_ECHO,
     LIVE_STATUSES,
     SESSION_STATUS_ACTIVE,
@@ -46,6 +47,7 @@ from app.services.tool_service.collect import resolve_owned_tool_selection
 TOOL_NAME_ORBIT_SURVEY = "Orbit Survey"
 TOOL_NAME_FORMATION_MAP = "Formation Map"
 TOOL_NAME_TERRAIN_ECHO = "Terrain Echo"
+TOOL_NAME_RIDGE_GLASS = "Ridge Glass"
 
 
 def _utcnow() -> datetime:
@@ -59,6 +61,8 @@ def _action_key_for_tool_name(tool_name: str) -> str:
         return ACTION_KEY_FORMATION_MAP
     if tool_name == TOOL_NAME_TERRAIN_ECHO:
         return ACTION_KEY_TERRAIN_ECHO
+    if tool_name == TOOL_NAME_RIDGE_GLASS:
+        return ACTION_KEY_RIDGE_GLASS
     return guidance_kind_for_tool_name(tool_name).action_key
 
 
@@ -144,6 +148,25 @@ def _terrain_params(
         "accuracy": float(inst_p.get("accuracy", cfg.accuracy)),
         "range_m": float(inst_p.get("range_m", cfg.range_m)),
     }
+
+
+def _ridge_glass_params(
+    *,
+    cfg: Any,
+    inst_p: dict[str, Any],
+    duration_minutes: int,
+) -> dict[str, Any]:
+    """Snapshot duration + site_discovery buffs for an active Ridge Glass use."""
+    raw_mods = inst_p.get("modifies_main_params")
+    if raw_mods is None:
+        mods = getattr(cfg, "modifies_main_params", None)
+        raw_mods = (
+            mods.model_dump() if mods is not None and hasattr(mods, "model_dump") else mods
+        )
+    params: dict[str, Any] = {"duration_minutes": duration_minutes}
+    if raw_mods is not None:
+        params["modifies_main_params"] = raw_mods
+    return params
 
 
 def _place_formation_center(
@@ -361,6 +384,13 @@ def start_timed_session(
             raise ValidationError("This action is only available for Terrain Echo")
         cfg = game.tool_actions.terrain_echo
         params = _terrain_params(cfg=cfg, inst_p=inst_p, duration_minutes=eff_duration)
+    elif action_key == ACTION_KEY_RIDGE_GLASS:
+        if tool_type.name != TOOL_NAME_RIDGE_GLASS:
+            raise ValidationError("This action is only available for Ridge Glass")
+        cfg = game.tool_actions.ridge_glass
+        params = _ridge_glass_params(
+            cfg=cfg, inst_p=inst_p, duration_minutes=eff_duration
+        )
     else:
         raise ValidationError(f"Unsupported timed action_key: {action_key}")
 

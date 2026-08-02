@@ -18,9 +18,11 @@ import '../../controllers/field_discovery_coordinator.dart';
 import '../../controllers/formation_map_controller.dart';
 import '../../controllers/guidance_session_controller.dart';
 import '../../controllers/orbit_survey_controller.dart';
+import '../../controllers/ridge_glass_controller.dart';
 import '../../controllers/terrain_echo_controller.dart';
 import '../../controllers/tool_catalog_controller.dart';
 import '../../models/guidance_tool_kind.dart';
+import '../../models/ridge_glass_kind.dart';
 import '../../models/site.dart';
 import '../../models/tool.dart';
 import '../../theme/map_chrome_theme.dart';
@@ -170,6 +172,7 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
   AuthController? _auth;
   ToolCatalogController? _toolCatalog;
   GuidanceSessionController? _guidance;
+  RidgeGlassController? _ridgeGlass;
   VoidCallback? _visibilityListener;
 
   LatLng? get _effectiveLocation =>
@@ -274,10 +277,12 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
     AuthController? auth;
     ToolCatalogController? tools;
     GuidanceSessionController? guidance;
+    RidgeGlassController? ridgeGlass;
     try {
       auth = context.read<AuthController>();
       tools = context.read<ToolCatalogController>();
       guidance = context.read<GuidanceSessionController>();
+      ridgeGlass = context.read<RidgeGlassController>();
     } on ProviderNotFoundException {
       return;
     }
@@ -297,6 +302,11 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
       _guidance?.removeListener(_visibilityListener!);
       _guidance = guidance;
       _guidance?.addListener(_visibilityListener!);
+    }
+    if (!identical(_ridgeGlass, ridgeGlass)) {
+      _ridgeGlass?.removeListener(_visibilityListener!);
+      _ridgeGlass = ridgeGlass;
+      _ridgeGlass?.addListener(_visibilityListener!);
     }
     _syncDiscoveryPulse();
   }
@@ -324,13 +334,21 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
         if (!_toolIsOwned(tool)) continue;
         final kind = GuidanceToolKind.tryParseToolName(tool.name);
         if (kind != null) owned.add(kind.actionKey);
+        if (RidgeGlassKind.matchesToolName(tool.name)) {
+          owned.add(RidgeGlassKind.actionKey);
+        }
       }
     }
 
     String? activeKey;
-    final guidance = _guidance;
-    if (guidance != null && guidance.isActive) {
-      activeKey = guidance.kind?.actionKey ?? guidance.session?.actionKey;
+    final ridge = _ridgeGlass;
+    if (ridge != null && ridge.isActive) {
+      activeKey = ridge.session?.actionKey ?? RidgeGlassKind.actionKey;
+    } else {
+      final guidance = _guidance;
+      if (guidance != null && guidance.isActive) {
+        activeKey = guidance.kind?.actionKey ?? guidance.session?.actionKey;
+      }
     }
 
     return resolveSiteDiscoveryVisibilityDistanceM(
@@ -383,6 +401,7 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
       _auth?.removeListener(_visibilityListener!);
       _toolCatalog?.removeListener(_visibilityListener!);
       _guidance?.removeListener(_visibilityListener!);
+      _ridgeGlass?.removeListener(_visibilityListener!);
     }
     widget.locationListenable?.removeListener(_onLocationListenable);
     widget.aerialRecon?.removeListener(_onAerialReconChanged);

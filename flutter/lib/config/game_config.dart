@@ -676,6 +676,7 @@ class ToolActionsConfig {
     required this.orbitSurvey,
     required this.formationMap,
     required this.terrainEcho,
+    required this.ridgeGlass,
   });
 
   final AerialActionConfig aerialRecon;
@@ -686,6 +687,7 @@ class ToolActionsConfig {
   final OrbitSurveyActionConfig orbitSurvey;
   final FormationMapActionConfig formationMap;
   final TerrainEchoActionConfig terrainEcho;
+  final RidgeGlassActionConfig ridgeGlass;
 
   AerialActionConfig configFor(String actionKey) {
     switch (actionKey) {
@@ -728,6 +730,8 @@ class ToolActionsConfig {
         return formationMap.toParamsJson();
       case 'Terrain Echo':
         return terrainEcho.toParamsJson();
+      case 'Ridge Glass':
+        return ridgeGlass.toParamsJson();
       default:
         return const {};
     }
@@ -815,6 +819,9 @@ class ToolActionsConfig {
       ),
       terrainEcho: TerrainEchoActionConfig.fromYaml(
         GameConfig._asMap(yaml['terrain_echo']),
+      ),
+      ridgeGlass: RidgeGlassActionConfig.fromYaml(
+        GameConfig._asMap(yaml['ridge_glass']),
       ),
     );
   }
@@ -1226,6 +1233,88 @@ class TerrainEchoActionConfig {
           _asInt(yaml['max_duration_minutes'], d.maxDurationMinutes),
       ringIncrementM: _asDouble(yaml['ring_increment_m'], d.ringIncrementM),
       sweepPeriodS: _asDouble(yaml['sweep_period_s'], d.sweepPeriodS),
+      statsExplanation: _asString(yaml['stats_explanation'], d.statsExplanation),
+    );
+  }
+}
+
+class RidgeGlassActionConfig {
+  const RidgeGlassActionConfig({
+    required this.durationMinutes,
+    this.modifiesMainParams,
+    required this.statsExplanation,
+  });
+
+  final int durationMinutes;
+  final ModifiesMainParams? modifiesMainParams;
+  final String statsExplanation;
+
+  double? get addedVisibilityRangeM {
+    final mod =
+        modifiesMainParams?.paramsFor('using', 'site_discovery')['visibility_distance_m'];
+    if (mod == null || mod.op != 'add') return null;
+    return mod.value;
+  }
+
+  double? get addedDiscoveryRate {
+    final mod =
+        modifiesMainParams?.paramsFor('using', 'site_discovery')['discovery_chance'];
+    if (mod == null || mod.op != 'add') return null;
+    return mod.value;
+  }
+
+  Map<String, dynamic> toParamsJson() {
+    final out = <String, dynamic>{
+      'duration_minutes': durationMinutes,
+      'stats_explanation': statsExplanation,
+    };
+    final mods = modifiesMainParams;
+    if (mods != null && mods.hasAny) {
+      Map<String, dynamic> encodeSkillMap(
+        Map<String, Map<String, ParamModifier>> skillMap,
+      ) =>
+          {
+            for (final skill in skillMap.entries)
+              skill.key: {
+                for (final p in skill.value.entries)
+                  p.key: {'op': p.value.op, 'value': p.value.value},
+              },
+          };
+      out['modifies_main_params'] = {
+        if (mods.owning.isNotEmpty) 'owning': encodeSkillMap(mods.owning),
+        if (mods.using.isNotEmpty) 'using': encodeSkillMap(mods.using),
+      };
+    }
+    return out;
+  }
+
+  factory RidgeGlassActionConfig.fromYaml(
+    Map<String, dynamic> yaml, {
+    RidgeGlassActionConfig? defaults,
+  }) {
+    final d = defaults ??
+        RidgeGlassActionConfig(
+          durationMinutes: 60,
+          modifiesMainParams: const ModifiesMainParams(
+            using: {
+              'site_discovery': {
+                'visibility_distance_m': ParamModifier(op: 'add', value: 20),
+                'discovery_chance': ParamModifier(op: 'add', value: 0.1),
+              },
+            },
+          ),
+          statsExplanation:
+              'While active, adds 20 m to site visibility range and '
+              '+10 percentage points to walk-in discovery chance for all sites.',
+        );
+    ModifiesMainParams? mods = d.modifiesMainParams;
+    final rawMods = yaml['modifies_main_params'];
+    if (rawMods is Map) {
+      mods = ModifiesMainParams.fromYaml(GameConfig._asMap(rawMods));
+    }
+    return RidgeGlassActionConfig(
+      durationMinutes: _asInt(yaml['duration_minutes'], d.durationMinutes),
+      modifiesMainParams: mods,
       statsExplanation: _asString(yaml['stats_explanation'], d.statsExplanation),
     );
   }

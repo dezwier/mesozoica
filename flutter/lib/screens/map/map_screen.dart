@@ -13,6 +13,7 @@ import '../../controllers/field_discovery_coordinator.dart';
 import '../../controllers/field_session_coordinator.dart';
 import '../../controllers/formation_map_controller.dart';
 import '../../controllers/orbit_survey_controller.dart';
+import '../../controllers/ridge_glass_controller.dart';
 import '../../controllers/terrain_echo_controller.dart';
 import '../../controllers/fossil_catalog_controller.dart';
 import '../../controllers/guidance_session_controller.dart';
@@ -35,6 +36,7 @@ import '../../widgets/map/aerial_hud.dart';
 import '../../widgets/map/field_data_purge_dialog.dart';
 import '../../widgets/map/formation_map_hud.dart';
 import '../../widgets/map/orbit_survey_hud.dart';
+import '../../widgets/map/ridge_glass_hud.dart';
 import '../../widgets/map/terrain_echo_hud.dart';
 import '../../widgets/map/guidance_overlay.dart';
 import '../../widgets/map/map_control_buttons.dart';
@@ -117,6 +119,7 @@ class _MapScreenState extends State<MapScreen>
     final orbitSurvey = context.watch<OrbitSurveyController>();
     final formationMap = context.watch<FormationMapController>();
     final terrainEcho = context.watch<TerrainEchoController>();
+    final ridgeGlass = context.watch<RidgeGlassController>();
 
     if (guidance.requestShowOnMap) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -154,6 +157,16 @@ class _MapScreenState extends State<MapScreen>
         final e = context.read<TerrainEchoController>();
         if (!e.requestShowOnMap) return;
         e.consumeShowOnMapRequest();
+        _ensureGuidanceVisibleOnMap();
+      });
+    }
+
+    if (ridgeGlass.requestShowOnMap) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        final r = context.read<RidgeGlassController>();
+        if (!r.requestShowOnMap) return;
+        r.consumeShowOnMapRequest();
         _ensureGuidanceVisibleOnMap();
       });
     }
@@ -273,6 +286,8 @@ class _MapScreenState extends State<MapScreen>
               const FormationMapHud(),
             if (widget.isActive && !aerialDrawMode && terrainEcho.isActive)
               const TerrainEchoHud(),
+            if (widget.isActive && !aerialDrawMode && ridgeGlass.isActive)
+              const RidgeGlassHud(),
             if (showAdminUi && widget.isActive && !aerialDrawMode)
               Positioned(
                 top: topInset,

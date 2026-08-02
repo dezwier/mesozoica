@@ -64,4 +64,14 @@ void main() {
     );
     expect(boosted, closeTo(45, 1e-9));
   });
+
+  test('ridge glass using mods add visibility range', () async {
+    await loadGameConfigForTest();
+    final base = GameConfig.instance.siteDiscovery.visibilityDistanceM;
+    final boosted = resolveSiteDiscoveryVisibilityDistanceM(
+      skillLevel: 1,
+      activeActionKey: 'ridge_glass',
+    );
+    expect(boosted, closeTo(base + 20, 1e-9));
+  });
 }

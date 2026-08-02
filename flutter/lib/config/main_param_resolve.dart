@@ -1,4 +1,5 @@
 import '../models/guidance_tool_kind.dart';
+import '../models/ridge_glass_kind.dart';
 import 'game_config.dart';
 
 /// Apply a level or tool modifier to [base].
@@ -60,6 +61,25 @@ double resolveScalarMainParam({
   return value;
 }
 
+void _appendModsFor(
+  List<ParamModifier> out, {
+  required ModifiesMainParams? mods,
+  required String paramKey,
+  required String actionKey,
+  required Set<String> ownedActionKeys,
+  required String? activeActionKey,
+}) {
+  if (mods == null || !mods.affectsSkill('site_discovery')) return;
+  if (ownedActionKeys.contains(actionKey)) {
+    final owning = mods.paramsFor('owning', 'site_discovery')[paramKey];
+    if (owning != null) out.add(owning);
+  }
+  if (activeActionKey == actionKey) {
+    final using = mods.paramsFor('using', 'site_discovery')[paramKey];
+    if (using != null) out.add(using);
+  }
+}
+
 /// Owning + active-using tool modifiers for one site_discovery main param.
 List<ParamModifier> siteDiscoveryToolModsForParam({
   required String paramKey,
@@ -71,18 +91,23 @@ List<ParamModifier> siteDiscoveryToolModsForParam({
   final out = <ParamModifier>[];
 
   for (final kind in GuidanceToolKind.values) {
-    final mods = tools.guidanceConfigFor(kind.actionKey).modifiesMainParams;
-    if (mods == null || !mods.affectsSkill('site_discovery')) continue;
-
-    if (ownedActionKeys.contains(kind.actionKey)) {
-      final owning = mods.paramsFor('owning', 'site_discovery')[paramKey];
-      if (owning != null) out.add(owning);
-    }
-    if (activeActionKey == kind.actionKey) {
-      final using = mods.paramsFor('using', 'site_discovery')[paramKey];
-      if (using != null) out.add(using);
-    }
+    _appendModsFor(
+      out,
+      mods: tools.guidanceConfigFor(kind.actionKey).modifiesMainParams,
+      paramKey: paramKey,
+      actionKey: kind.actionKey,
+      ownedActionKeys: ownedActionKeys,
+      activeActionKey: activeActionKey,
+    );
   }
+  _appendModsFor(
+    out,
+    mods: tools.ridgeGlass.modifiesMainParams,
+    paramKey: paramKey,
+    actionKey: RidgeGlassKind.actionKey,
+    ownedActionKeys: ownedActionKeys,
+    activeActionKey: activeActionKey,
+  );
   return out;
 }
 

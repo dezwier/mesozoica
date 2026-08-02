@@ -925,6 +925,43 @@ class TerrainEchoActionConfig(BaseModel):
         return self
 
 
+class RidgeGlassActionConfig(BaseModel):
+    """Knobs for Ridge Glass walk-in visibility / discovery buffs."""
+
+    model_config = {"frozen": True}
+
+    duration_minutes: int = 60
+    modifies_main_params: ModifiesMainParams | None = None
+    stats_explanation: str = ""
+
+    @field_validator("duration_minutes")
+    @classmethod
+    def _validate_duration(cls, value: int) -> int:
+        if value < 1:
+            raise ValueError("duration_minutes must be >= 1")
+        return value
+
+    def _using_site_discovery_mod(self, param: str) -> ParamModifier | None:
+        mods = self.modifies_main_params
+        if mods is None:
+            return None
+        return mods.params_for("using", "site_discovery").get(param)
+
+    @property
+    def added_visibility_range_m(self) -> float | None:
+        mod = self._using_site_discovery_mod("visibility_distance_m")
+        if mod is None or mod.op != "add":
+            return None
+        return float(mod.value)
+
+    @property
+    def added_discovery_rate(self) -> float | None:
+        mod = self._using_site_discovery_mod("discovery_chance")
+        if mod is None or mod.op != "add":
+            return None
+        return float(mod.value)
+
+
 def _parse_rgb_color(value: object) -> tuple[int, int, int]:
     if isinstance(value, str):
         raw = value.strip().lstrip("#")
@@ -1110,6 +1147,25 @@ class ToolActionsConfig(BaseModel):
             ),
         )
     )
+    ridge_glass: RidgeGlassActionConfig = Field(
+        default_factory=lambda: RidgeGlassActionConfig(
+            duration_minutes=60,
+            modifies_main_params=ModifiesMainParams(
+                using={
+                    "site_discovery": {
+                        "visibility_distance_m": ParamModifier(
+                            op="add", value=20.0
+                        ),
+                        "discovery_chance": ParamModifier(op="add", value=0.1),
+                    }
+                },
+            ),
+            stats_explanation=(
+                "While active, adds 20 m to site visibility range and "
+                "+10 percentage points to walk-in discovery chance for all sites."
+            ),
+        )
+    )
 
     def guidance_config_for(self, action_key: str) -> GuidanceActionConfig:
         mapping = {
@@ -1123,12 +1179,13 @@ class ToolActionsConfig(BaseModel):
             raise KeyError(f"unknown guidance action: {action_key}") from exc
 
     def tools_modifying_skill(self, skill_id: str) -> list[tuple[str, ModifiesMainParams]]:
-        """Return (action_key, mods) for guidance tools that modify ``skill_id``."""
+        """Return (action_key, mods) for tools that modify ``skill_id``."""
         out: list[tuple[str, ModifiesMainParams]] = []
         for key, cfg in (
             ("geo_compass", self.geo_compass),
             ("proximity_scanner", self.proximity_scanner),
             ("site_navigator", self.site_navigator),
+            ("ridge_glass", self.ridge_glass),
         ):
             mods = cfg.modifies_main_params
             if mods is not None and mods.affects_skill(skill_id):

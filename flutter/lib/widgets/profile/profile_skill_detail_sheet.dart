@@ -5,9 +5,11 @@ import 'package:provider/provider.dart';
 import '../../config/game_config.dart';
 import '../../controllers/auth_controller.dart';
 import '../../controllers/guidance_session_controller.dart';
+import '../../controllers/ridge_glass_controller.dart';
 import '../../controllers/tool_catalog_controller.dart';
 import '../../models/guidance_tool_kind.dart';
 import '../../models/profile.dart';
+import '../../models/ridge_glass_kind.dart';
 import '../../models/tool.dart';
 import '../../services/api_client.dart';
 import '../common/draggable_sheet_wrapper.dart';
@@ -535,6 +537,9 @@ Set<String> _ownedGuidanceActionKeys(BuildContext context) {
       if (!_toolIsOwned(tool)) continue;
       final kind = GuidanceToolKind.tryParseToolName(tool.name);
       if (kind != null) out.add(kind.actionKey);
+      if (RidgeGlassKind.matchesToolName(tool.name)) {
+        out.add(RidgeGlassKind.actionKey);
+      }
     }
   } catch (_) {
     // Provider unavailable (e.g. tests).
@@ -544,6 +549,10 @@ Set<String> _ownedGuidanceActionKeys(BuildContext context) {
 
 String? _activeGuidanceActionKey(BuildContext context) {
   try {
+    final ridge = context.read<RidgeGlassController>();
+    if (ridge.isActive) {
+      return ridge.session?.actionKey ?? RidgeGlassKind.actionKey;
+    }
     final guidance = context.read<GuidanceSessionController>();
     if (!guidance.isActive) return null;
     return guidance.kind?.actionKey ?? guidance.session?.actionKey;
@@ -954,18 +963,19 @@ List<_ActiveToolMod> _activeToolModsForParam({
   final tools = GameConfig.instance.toolActions;
   final out = <_ActiveToolMod>[];
 
-  for (final kind in GuidanceToolKind.values) {
-    final cfg = tools.guidanceConfigFor(kind.actionKey);
-    final mods = cfg.modifiesMainParams;
-    if (mods == null || !mods.affectsSkill(skillId)) continue;
+  void appendFor({
+    required String actionKey,
+    required String toolName,
+    required ModifiesMainParams? mods,
+  }) {
+    if (mods == null || !mods.affectsSkill(skillId)) return;
 
-    // Owning: only if player owns this tool.
-    if (ownedActionKeys.contains(kind.actionKey)) {
+    if (ownedActionKeys.contains(actionKey)) {
       final owning = mods.paramsFor('owning', skillId)[paramKey];
       if (owning != null) {
         out.add(
           _ActiveToolMod(
-            toolName: kind.toolName,
+            toolName: toolName,
             whenLabel: 'owned',
             mod: owning,
           ),
@@ -973,13 +983,12 @@ List<_ActiveToolMod> _activeToolModsForParam({
       }
     }
 
-    // Using: only while this tool session is active.
-    if (activeActionKey == kind.actionKey) {
+    if (activeActionKey == actionKey) {
       final using = mods.paramsFor('using', skillId)[paramKey];
       if (using != null) {
         out.add(
           _ActiveToolMod(
-            toolName: kind.toolName,
+            toolName: toolName,
             whenLabel: 'using',
             mod: using,
           ),
@@ -987,6 +996,19 @@ List<_ActiveToolMod> _activeToolModsForParam({
       }
     }
   }
+
+  for (final kind in GuidanceToolKind.values) {
+    appendFor(
+      actionKey: kind.actionKey,
+      toolName: kind.toolName,
+      mods: tools.guidanceConfigFor(kind.actionKey).modifiesMainParams,
+    );
+  }
+  appendFor(
+    actionKey: RidgeGlassKind.actionKey,
+    toolName: RidgeGlassKind.toolName,
+    mods: tools.ridgeGlass.modifiesMainParams,
+  );
   return out;
 }
 
