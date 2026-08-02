@@ -149,7 +149,7 @@ class SiteMapFilters {
     this.discoveredBefore,
     this.sort = SiteCatalogSort.distance,
     this.filterByStatus = false,
-    this.showPastAerialRoutes = false,
+    this.showPastAerialRoutes = true,
   })  : statuses = statuses ?? Set<String>.from(siteStatusOptions),
         periods = periods ?? Set<String>.from(sitePeriodOptions),
         rockTypes = rockTypes ?? Set<String>.from(siteRockTypeOptions),
@@ -173,7 +173,7 @@ class SiteMapFilters {
   /// When false (archive mode), status checkboxes are ignored.
   final bool filterByStatus;
 
-  /// Opt-in: show completed aerial recon polylines from the last 24h.
+  /// Show completed aerial recon polylines from the last 24h (default on).
   final bool showPastAerialRoutes;
 
   bool get howDiscoveredActive =>
@@ -207,7 +207,7 @@ class SiteMapFilters {
         statusActive ||
         howDiscoveredActive ||
         discoveryTimeActive() ||
-        showPastAerialRoutes ||
+        !showPastAerialRoutes ||
         sort != SiteCatalogSort.distance;
   }
 

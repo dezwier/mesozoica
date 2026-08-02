@@ -221,7 +221,7 @@ class _SiteFilterSheetState extends State<SiteFilterSheet> {
             : SiteCatalogSort.discoveredAtDesc;
       }
       if (widget.showReconRoutesSection) {
-        _pendingShowPastReconRoutes = false;
+        _pendingShowPastReconRoutes = true;
       }
     });
   }

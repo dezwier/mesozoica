@@ -35,7 +35,6 @@ import '../../widgets/map/field_data_purge_dialog.dart';
 import '../../widgets/map/formation_map_hud.dart';
 import '../../widgets/map/orbit_survey_hud.dart';
 import '../../widgets/map/terrain_echo_hud.dart';
-import '../../widgets/map/terrain_echo_overlay.dart';
 import '../../widgets/map/guidance_overlay.dart';
 import '../../widgets/map/map_control_buttons.dart';
 import '../../widgets/map/map_perf_hud.dart';
@@ -504,13 +503,8 @@ class _MapScreenState extends State<MapScreen>
               const OrbitSurveyHud(),
             if (widget.isActive && !aerialDrawMode && formationMap.isActive)
               const FormationMapHud(),
-            if (widget.isActive && !aerialDrawMode && terrainEcho.isActive) ...[
-              TerrainEchoOverlay(
-                camera: _mapboxCamera,
-                rotateWithHeading: _rotateMap,
-              ),
+            if (widget.isActive && !aerialDrawMode && terrainEcho.isActive)
               const TerrainEchoHud(),
-            ],
           ],
         );
       },

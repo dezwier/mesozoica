@@ -40,7 +40,7 @@ void main() {
     expect(visible.map((m) => m.missionId), [1]);
   });
 
-  test('hides past missions by default', () {
+  test('hides past missions when disabled', () {
     final now = DateTime.utc(2026, 7, 23, 12);
     final past = mission(
       id: 2,

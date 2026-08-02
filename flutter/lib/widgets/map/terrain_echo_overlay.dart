@@ -23,12 +23,16 @@ class TerrainEchoOverlay extends StatefulWidget {
     super.key,
     required this.camera,
     this.rotateWithHeading = false,
+    required this.zoom,
   });
 
   final MapboxCameraCoordinator camera;
 
   /// When true, reproject every animation frame (FollowPuck moves continuously).
   final bool rotateWithHeading;
+
+  /// Live map zoom — used to scale the circle instantly while pinching.
+  final double zoom;
 
   @override
   State<TerrainEchoOverlay> createState() => _TerrainEchoOverlayState();
@@ -50,17 +54,23 @@ class _TerrainEchoOverlayState extends State<TerrainEchoOverlay>
 
   Offset? _centerPx;
   List<Offset> _rimPx = const [];
-  List<List<Offset>> _ringPx = const [];
   List<_EchoBlip> _blips = const [];
   final Map<int, double> _blipHitAtMs = {};
 
-  static const _amber = Color(0xFFC4A35A);
-  static const _amberBright = Color(0xFFE8C060);
-  static const _discGrey = Color(0xFF3A342C);
-  static const _discBrown = Color(0xFF2A2018);
+  /// Last probe calibration — live zoom scales from this without awaiting Mapbox.
+  double? _calibZoom;
+  double? _calibRadiusPx;
+  double _calibBearing = 0;
+  double _calibForeshorten = 1;
+  double _calibRangeM = 1;
+  double _calibAccuracy = 1;
+  List<_CalibBlip> _calibBlips = const [];
+
+  static const _sweepColor = Color(0xFFC4A35A);
+  static const _discColor = Color(0xFF3A2E24);
+  static const _blipColor = Color(0xFF6B4A36);
 
   static const _rimSamples = 64;
-  static const _helperRingCount = 3;
   static const _blipFadeS = 0.4;
 
   @override
@@ -74,6 +84,14 @@ class _TerrainEchoOverlayState extends State<TerrainEchoOverlay>
     super.didUpdateWidget(oldWidget);
     if (oldWidget.rotateWithHeading != widget.rotateWithHeading) {
       _restartProjectSchedule();
+      _requestReproject();
+    } else if (oldWidget.zoom != widget.zoom && _calibZoom != null) {
+      // Instant mercator scale — no round-trip to Mapbox.
+      _applyCalibratedGeometry(
+        center: _centerPx,
+        zoom: widget.zoom,
+      );
+      // Coalesced probe to correct center if the zoom focal point shifted it.
       _requestReproject();
     }
   }
@@ -152,27 +170,88 @@ class _TerrainEchoOverlayState extends State<TerrainEchoOverlay>
       _projectTimer?.cancel();
       _projectTimer = null;
       _blipHitAtMs.clear();
+      _clearCalibration();
       if (_centerPx != null || _rimPx.isNotEmpty) {
         setState(() {
           _centerPx = null;
           _rimPx = const [];
-          _ringPx = const [];
           _blips = const [];
         });
       }
     }
   }
 
+  void _clearCalibration() {
+    _calibZoom = null;
+    _calibRadiusPx = null;
+    _calibBlips = const [];
+  }
+
   void _restartProjectSchedule() {
     _projectTimer?.cancel();
     _projectTimer = null;
     if (!(_echo?.isActive ?? false)) return;
+    // Zoom is live-scaled; timer only recalibrates center after pan/settle.
     if (!widget.rotateWithHeading) {
       _projectTimer = Timer.periodic(
-        const Duration(milliseconds: 80),
+        const Duration(milliseconds: 200),
         (_) => _requestReproject(),
       );
     }
+  }
+
+  /// Rebuild rim/blips from the last probe using mercator zoom scaling.
+  void _applyCalibratedGeometry({
+    required Offset? center,
+    required double zoom,
+    double? bearingRad,
+    double? foreshorten,
+  }) {
+    final calibZoom = _calibZoom;
+    final calibRadius = _calibRadiusPx;
+    if (center == null || calibZoom == null || calibRadius == null) return;
+
+    final radiusPx =
+        calibRadius * math.pow(2.0, zoom - calibZoom).toDouble();
+    if (radiusPx < 4) return;
+
+    final bearing = bearingRad ?? _calibBearing;
+    final fore = foreshorten ?? _calibForeshorten;
+    final rangeM = _calibRangeM;
+    final accuracy = _calibAccuracy;
+
+    final rim = _tiltedRing(
+      center: center,
+      radiusPx: radiusPx,
+      bearingRad: bearing,
+      foreshorten: fore,
+    );
+
+    final blips = <_EchoBlip>[];
+    for (final b in _calibBlips) {
+      var pos = _groundToScreen(
+        center: center,
+        eastM: b.eastM,
+        northM: b.northM,
+        rangeM: rangeM,
+        radiusPx: radiusPx,
+        bearingRad: bearing,
+        foreshorten: fore,
+      );
+      final jitterFrac = (1.0 - accuracy) * 0.08;
+      if (jitterFrac > 0) {
+        pos = Offset.lerp(pos, _rimAt(rim, b.angleFrac), jitterFrac)!;
+      }
+      blips.add(
+        _EchoBlip(position: pos, angleFrac: b.angleFrac, siteId: b.siteId),
+      );
+    }
+
+    setState(() {
+      _centerPx = center;
+      _rimPx = rim;
+      _blips = blips;
+    });
   }
 
   void _requestReproject() {
@@ -212,7 +291,6 @@ class _TerrainEchoOverlayState extends State<TerrainEchoOverlay>
         setState(() {
           _centerPx = null;
           _rimPx = const [];
-          _ringPx = const [];
           _blips = const [];
         });
       }
@@ -269,6 +347,9 @@ class _TerrainEchoOverlayState extends State<TerrainEchoOverlay>
     required List<SiteSummary> sitesInRange,
     required int seq,
   }) async {
+    // Capture zoom before awaits — radius is valid for this zoom.
+    final zoomAtProbe = widget.zoom;
+
     final attitude = await widget.camera.currentAttitude();
     if (!mounted || seq != _projectSeq) return;
 
@@ -303,21 +384,9 @@ class _TerrainEchoOverlayState extends State<TerrainEchoOverlay>
     final radiusPx = probeDist * (rangeM / probeM);
     if (radiusPx < 4) return;
 
-    final rings = <List<Offset>>[
-      for (var r = 1; r <= _helperRingCount; r++)
-        _tiltedRing(
-          center: centerPx,
-          radiusPx: radiusPx * (r / _helperRingCount),
-          bearingRad: bearing,
-          foreshorten: foreshorten,
-        ),
-    ];
-    final rim = rings.last;
-
     final accuracy = echo.accuracy.clamp(0.0, 1.0);
-    final blips = <_EchoBlip>[];
-    for (var i = 0; i < sitesInRange.length; i++) {
-      final site = sitesInRange[i];
+    final calibBlips = <_CalibBlip>[];
+    for (final site in sitesInRange) {
       final geo = _geoEastNorthMeters(
         origin,
         LatLng(site.latitude!, site.longitude!),
@@ -326,37 +395,36 @@ class _TerrainEchoOverlayState extends State<TerrainEchoOverlay>
       var angleFrac = angle / (math.pi * 2);
       angleFrac %= 1.0;
       if (angleFrac < 0) angleFrac += 1.0;
-
-      var pos = _groundToScreen(
-        center: centerPx,
-        eastM: geo.dx,
-        northM: geo.dy,
-        rangeM: rangeM,
-        radiusPx: radiusPx,
-        bearingRad: bearing,
-        foreshorten: foreshorten,
-      );
-
-      final jitterFrac = (1.0 - accuracy) * 0.08;
-      if (jitterFrac > 0) {
-        pos = Offset.lerp(pos, _rimAt(rim, angleFrac), jitterFrac)!;
-      }
-
-      blips.add(
-        _EchoBlip(position: pos, angleFrac: angleFrac, siteId: site.siteId),
+      calibBlips.add(
+        _CalibBlip(
+          eastM: geo.dx,
+          northM: geo.dy,
+          angleFrac: angleFrac,
+          siteId: site.siteId,
+        ),
       );
     }
 
-    final liveIds = {for (final b in blips) b.siteId};
+    final liveIds = {for (final b in calibBlips) b.siteId};
     _blipHitAtMs.removeWhere((id, _) => !liveIds.contains(id));
 
     if (!mounted || seq != _projectSeq) return;
-    setState(() {
-      _centerPx = centerPx;
-      _rimPx = rim;
-      _ringPx = rings;
-      _blips = blips;
-    });
+
+    _calibZoom = zoomAtProbe;
+    _calibRadiusPx = radiusPx;
+    _calibBearing = bearing;
+    _calibForeshorten = foreshorten;
+    _calibRangeM = rangeM;
+    _calibAccuracy = accuracy;
+    _calibBlips = calibBlips;
+
+    // Apply at the live zoom so a pinch during the await doesn't jump.
+    _applyCalibratedGeometry(
+      center: centerPx,
+      zoom: widget.zoom,
+      bearingRad: bearing,
+      foreshorten: foreshorten,
+    );
   }
 
   /// Geographic east/north → screen, with map bearing and pitch foreshorten.
@@ -454,7 +522,7 @@ class _TerrainEchoOverlayState extends State<TerrainEchoOverlay>
     if (!echo.isActive) return const SizedBox.shrink();
 
     final center = _centerPx;
-    if (center == null || _rimPx.length < 8 || _ringPx.length != 3) {
+    if (center == null || _rimPx.length < 8) {
       return const SizedBox.shrink();
     }
 
@@ -464,21 +532,33 @@ class _TerrainEchoOverlayState extends State<TerrainEchoOverlay>
           painter: _TerrainEchoPainter(
             center: center,
             rimPx: _rimPx,
-            ringPx: _ringPx,
             degrees: echo.degrees,
             accuracy: echo.accuracy,
             sweepT: _sweep.value,
             blips: _blips,
             blipAlphas: _blipAlphas(),
-            amber: _amber,
-            amberBright: _amberBright,
-            discGrey: _discGrey,
-            discBrown: _discBrown,
+            sweepColor: _sweepColor,
+            discColor: _discColor,
+            blipColor: _blipColor,
           ),
         ),
       ),
     );
   }
+}
+
+class _CalibBlip {
+  const _CalibBlip({
+    required this.eastM,
+    required this.northM,
+    required this.angleFrac,
+    required this.siteId,
+  });
+
+  final double eastM;
+  final double northM;
+  final double angleFrac;
+  final int siteId;
 }
 
 class _EchoBlip {
@@ -497,30 +577,26 @@ class _TerrainEchoPainter extends CustomPainter {
   _TerrainEchoPainter({
     required this.center,
     required this.rimPx,
-    required this.ringPx,
     required this.degrees,
     required this.accuracy,
     required this.sweepT,
     required this.blips,
     required this.blipAlphas,
-    required this.amber,
-    required this.amberBright,
-    required this.discGrey,
-    required this.discBrown,
+    required this.sweepColor,
+    required this.discColor,
+    required this.blipColor,
   });
 
   final Offset center;
   final List<Offset> rimPx;
-  final List<List<Offset>> ringPx;
   final double degrees;
   final double accuracy;
   final double sweepT;
   final List<_EchoBlip> blips;
   final Map<int, double> blipAlphas;
-  final Color amber;
-  final Color amberBright;
-  final Color discGrey;
-  final Color discBrown;
+  final Color sweepColor;
+  final Color discColor;
+  final Color blipColor;
 
   Path _pathFrom(List<Offset> pts) {
     final path = Path();
@@ -550,32 +626,25 @@ class _TerrainEchoPainter extends CustomPainter {
     canvas.clipRect(Offset.zero & size);
 
     final discPath = _pathFrom(rimPx);
-    final discShader = ui.Gradient.linear(
-      rimPx.first,
-      rimPx[rimPx.length ~/ 2],
-      [
-        discGrey.withValues(alpha: 0.16),
-        discBrown.withValues(alpha: 0.16),
-      ],
+    final span = rimPx.fold<double>(
+      0,
+      (m, p) => math.max(m, (p - center).distance),
     );
-    canvas.drawPath(discPath, Paint()..shader = discShader);
 
-    final ringPaint = Paint()
-      ..color = amber.withValues(alpha: 0.7)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.15
-      ..isAntiAlias = true;
-    for (final ring in ringPx) {
-      canvas.drawPath(_pathFrom(ring), ringPaint);
-    }
-
-    final crossPaint = Paint()
-      ..color = amber.withValues(alpha: 0.35)
-      ..strokeWidth = 0.9
-      ..isAntiAlias = true;
-    final n = rimPx.length;
-    canvas.drawLine(rimPx[0], rimPx[n ~/ 2], crossPaint);
-    canvas.drawLine(rimPx[n ~/ 4], rimPx[(3 * n) ~/ 4], crossPaint);
+    // Subtle disc + short soft falloff that follows the rim (circle or ellipse).
+    canvas.save();
+    canvas.clipPath(discPath);
+    canvas.drawPaint(Paint()..color = discColor.withValues(alpha: 0.055));
+    canvas.restore();
+    canvas.drawPath(
+      discPath,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = (span * 0.04).clamp(6.0, 14.0)
+        ..color = discColor.withValues(alpha: 0.05)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4)
+        ..isAntiAlias = true,
+    );
 
     final sweepFrac = ((sweepT % 1.0) + 1.0) % 1.0;
     final wedgeFrac = (degrees.clamp(1.0, 360.0) / 360.0).clamp(0.01, 1.0);
@@ -598,7 +667,7 @@ class _TerrainEchoPainter extends CustomPainter {
       canvas.drawPath(
         path,
         Paint()
-          ..color = amberBright.withValues(alpha: 0.38 * strength)
+          ..color = sweepColor.withValues(alpha: 0.22 * strength)
           ..isAntiAlias = true,
       );
     }
@@ -608,26 +677,13 @@ class _TerrainEchoPainter extends CustomPainter {
       center,
       leadEnd,
       Paint()
-        ..color = amberBright.withValues(alpha: 0.9)
-        ..strokeWidth = 1.6
+        ..color = sweepColor.withValues(alpha: 0.55)
+        ..strokeWidth = 1.4
         ..strokeCap = StrokeCap.round
         ..isAntiAlias = true,
     );
     canvas.restore();
 
-    canvas.drawPath(
-      discPath,
-      Paint()
-        ..color = amber.withValues(alpha: 0.55)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.2
-        ..isAntiAlias = true,
-    );
-
-    final span = rimPx.fold<double>(
-      0,
-      (m, p) => math.max(m, (p - center).distance),
-    );
     final blurSigma = ui.lerpDouble(10.0, 2.0, accuracy.clamp(0.0, 1.0))!;
     final blipRadius = ui
         .lerpDouble(
@@ -644,13 +700,13 @@ class _TerrainEchoPainter extends CustomPainter {
         blip.position,
         blipRadius * 1.7,
         Paint()
-          ..color = amberBright.withValues(alpha: 0.4 * alpha)
+          ..color = blipColor.withValues(alpha: 0.45 * alpha)
           ..maskFilter = MaskFilter.blur(BlurStyle.normal, blurSigma),
       );
       canvas.drawCircle(
         blip.position,
         blipRadius * 0.5,
-        Paint()..color = amberBright.withValues(alpha: 0.95 * alpha),
+        Paint()..color = blipColor.withValues(alpha: 0.95 * alpha),
       );
     }
 
@@ -661,7 +717,6 @@ class _TerrainEchoPainter extends CustomPainter {
   bool shouldRepaint(covariant _TerrainEchoPainter oldDelegate) {
     return oldDelegate.center != center ||
         !identical(oldDelegate.rimPx, rimPx) ||
-        !identical(oldDelegate.ringPx, ringPx) ||
         oldDelegate.degrees != degrees ||
         oldDelegate.accuracy != accuracy ||
         oldDelegate.sweepT != sweepT ||

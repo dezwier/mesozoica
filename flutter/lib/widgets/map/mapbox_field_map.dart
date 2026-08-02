@@ -7,12 +7,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
+import 'package:provider/provider.dart';
 
 import '../../config/map_config.dart';
 import '../../config/game_config.dart';
 import '../../controllers/aerial_mission_controller.dart';
 import '../../controllers/formation_map_controller.dart';
 import '../../controllers/orbit_survey_controller.dart';
+import '../../controllers/terrain_echo_controller.dart';
 import '../../models/site.dart';
 import '../../theme/map_chrome_theme.dart';
 import 'formation_map_raster.dart';
@@ -26,6 +28,7 @@ import 'mapbox_site_annotations.dart';
 import 'mapbox_viewport_native.dart';
 import 'map_center_crosshair.dart';
 import 'map_rotate_site_card_overlay.dart';
+import 'terrain_echo_overlay.dart';
 
 typedef MapSiteTapCallback = void Function(SiteSummary site);
 
@@ -61,7 +64,7 @@ class MapboxFieldMap extends StatefulWidget {
     this.aerialRecon,
     this.orbitSurvey,
     this.formationMap,
-    this.showPastAerialRoutes = false,
+    this.showPastAerialRoutes = true,
     this.showAerialReconOverlays = true,
     this.onError,
     this.onMapIdle,
@@ -1093,13 +1096,13 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
 
   void _onCameraChange(CameraChangedEventData data) {
     if (!_ready || !widget.mapActive) return;
+    final zoom = data.cameraState.zoom;
+    _lastKnownZoom = zoom;
     if (widget.rotateWithHeading) {
       // Rotate mini-cards are driven by the vsync ticker only. Syncing here
       // too queued stale projections and made cards jitter behind FollowPuck.
       return;
     }
-    final zoom = data.cameraState.zoom;
-    _lastKnownZoom = zoom;
     widget.onZoomChanged(zoom);
     // Update marker size immediately while zooming (no debounce / bucket wait).
     final annotations = _annotations;
@@ -1194,6 +1197,18 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
             const IgnorePointer(
               child: ColoredBox(color: MapChromeTheme.mapSandstoneWash),
             ),
+            // Below site cards / chrome; HUD stays in MapScreen above FABs.
+            if (widget.mapActive && _ready)
+              Consumer<TerrainEchoController>(
+                builder: (context, echo, _) {
+                  if (!echo.isActive) return const SizedBox.shrink();
+                  return TerrainEchoOverlay(
+                    camera: widget.camera,
+                    rotateWithHeading: widget.rotateWithHeading,
+                    zoom: _lastKnownZoom,
+                  );
+                },
+              ),
             // Mode 1 only (north-fixed, not following). Hidden while centered.
             if (widget.mapActive &&
                 !widget.rotateWithHeading &&
