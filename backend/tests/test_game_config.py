@@ -52,6 +52,13 @@ def test_load_game_config_matches_current_defaults() -> None:
     assert config.site_survey.main_params.completeness_accuracy == 0.0
     assert config.site_survey.main_params.quality_accuracy == 0.0
     assert config.site_survey.main_params.depth_accuracy == 0.0
+    dino_acc_mods = config.site_survey.level_modifiers["dino_accuracy"]
+    assert len(dino_acc_mods) == 99
+    assert dino_acc_mods[0].level == 1 and dino_acc_mods[0].value == 0.01
+    assert dino_acc_mods[-1].level == 99 and dino_acc_mods[-1].value == 0.99
+    assert (
+        len(config.site_survey.level_modifiers["fossil_accuracy"]) == 99
+    )
     assert config.site_survey.odd_noise.dino_count == 0.0
     assert config.site_survey.odd_noise.fossil_count == 0.5
     assert config.site_survey.odd_noise.completeness == 0.3

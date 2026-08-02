@@ -28,6 +28,13 @@ void main() {
     expect(config.siteSurvey.mainParams.completenessAccuracy, 0.0);
     expect(config.siteSurvey.mainParams.qualityAccuracy, 0.0);
     expect(config.siteSurvey.mainParams.depthAccuracy, 0.0);
+    final dinoAccMods = config.siteSurvey.levelModifiers['dino_accuracy']!;
+    expect(dinoAccMods.length, 99);
+    expect(dinoAccMods.first.level, 1);
+    expect(dinoAccMods.first.value, 0.01);
+    expect(dinoAccMods.last.level, 99);
+    expect(dinoAccMods.last.value, 0.99);
+    expect(config.siteSurvey.levelModifiers['fossil_accuracy']!.length, 99);
     expect(config.siteSurvey.oddNoise.dinoCount, 0.0);
     expect(config.siteSurvey.oddNoise.fossilCount, 0.5);
     expect(config.siteSurvey.oddNoise.completeness, 0.3);

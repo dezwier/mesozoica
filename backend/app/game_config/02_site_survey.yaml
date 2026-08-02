@@ -76,13 +76,113 @@ main_params:
     excellent: 0.15
     exceptional: 0.05
 
-# Identity for v1 — tune later.
+# Accuracy: +0.01 per level (1..99). Distribution tables: identity for v1.
 level_modifiers:
-  dino_accuracy: []
-  fossil_accuracy: []
-  completeness_accuracy: []
-  quality_accuracy: []
-  depth_accuracy: []
+  # +1% per site_survey level (highest matching entry; base 0 + level + tools).
+  dino_accuracy: &site_survey_accuracy_levels
+    - { level: 1, op: add, value: 0.01 }
+    - { level: 2, op: add, value: 0.02 }
+    - { level: 3, op: add, value: 0.03 }
+    - { level: 4, op: add, value: 0.04 }
+    - { level: 5, op: add, value: 0.05 }
+    - { level: 6, op: add, value: 0.06 }
+    - { level: 7, op: add, value: 0.07 }
+    - { level: 8, op: add, value: 0.08 }
+    - { level: 9, op: add, value: 0.09 }
+    - { level: 10, op: add, value: 0.10 }
+    - { level: 11, op: add, value: 0.11 }
+    - { level: 12, op: add, value: 0.12 }
+    - { level: 13, op: add, value: 0.13 }
+    - { level: 14, op: add, value: 0.14 }
+    - { level: 15, op: add, value: 0.15 }
+    - { level: 16, op: add, value: 0.16 }
+    - { level: 17, op: add, value: 0.17 }
+    - { level: 18, op: add, value: 0.18 }
+    - { level: 19, op: add, value: 0.19 }
+    - { level: 20, op: add, value: 0.20 }
+    - { level: 21, op: add, value: 0.21 }
+    - { level: 22, op: add, value: 0.22 }
+    - { level: 23, op: add, value: 0.23 }
+    - { level: 24, op: add, value: 0.24 }
+    - { level: 25, op: add, value: 0.25 }
+    - { level: 26, op: add, value: 0.26 }
+    - { level: 27, op: add, value: 0.27 }
+    - { level: 28, op: add, value: 0.28 }
+    - { level: 29, op: add, value: 0.29 }
+    - { level: 30, op: add, value: 0.30 }
+    - { level: 31, op: add, value: 0.31 }
+    - { level: 32, op: add, value: 0.32 }
+    - { level: 33, op: add, value: 0.33 }
+    - { level: 34, op: add, value: 0.34 }
+    - { level: 35, op: add, value: 0.35 }
+    - { level: 36, op: add, value: 0.36 }
+    - { level: 37, op: add, value: 0.37 }
+    - { level: 38, op: add, value: 0.38 }
+    - { level: 39, op: add, value: 0.39 }
+    - { level: 40, op: add, value: 0.40 }
+    - { level: 41, op: add, value: 0.41 }
+    - { level: 42, op: add, value: 0.42 }
+    - { level: 43, op: add, value: 0.43 }
+    - { level: 44, op: add, value: 0.44 }
+    - { level: 45, op: add, value: 0.45 }
+    - { level: 46, op: add, value: 0.46 }
+    - { level: 47, op: add, value: 0.47 }
+    - { level: 48, op: add, value: 0.48 }
+    - { level: 49, op: add, value: 0.49 }
+    - { level: 50, op: add, value: 0.50 }
+    - { level: 51, op: add, value: 0.51 }
+    - { level: 52, op: add, value: 0.52 }
+    - { level: 53, op: add, value: 0.53 }
+    - { level: 54, op: add, value: 0.54 }
+    - { level: 55, op: add, value: 0.55 }
+    - { level: 56, op: add, value: 0.56 }
+    - { level: 57, op: add, value: 0.57 }
+    - { level: 58, op: add, value: 0.58 }
+    - { level: 59, op: add, value: 0.59 }
+    - { level: 60, op: add, value: 0.60 }
+    - { level: 61, op: add, value: 0.61 }
+    - { level: 62, op: add, value: 0.62 }
+    - { level: 63, op: add, value: 0.63 }
+    - { level: 64, op: add, value: 0.64 }
+    - { level: 65, op: add, value: 0.65 }
+    - { level: 66, op: add, value: 0.66 }
+    - { level: 67, op: add, value: 0.67 }
+    - { level: 68, op: add, value: 0.68 }
+    - { level: 69, op: add, value: 0.69 }
+    - { level: 70, op: add, value: 0.70 }
+    - { level: 71, op: add, value: 0.71 }
+    - { level: 72, op: add, value: 0.72 }
+    - { level: 73, op: add, value: 0.73 }
+    - { level: 74, op: add, value: 0.74 }
+    - { level: 75, op: add, value: 0.75 }
+    - { level: 76, op: add, value: 0.76 }
+    - { level: 77, op: add, value: 0.77 }
+    - { level: 78, op: add, value: 0.78 }
+    - { level: 79, op: add, value: 0.79 }
+    - { level: 80, op: add, value: 0.80 }
+    - { level: 81, op: add, value: 0.81 }
+    - { level: 82, op: add, value: 0.82 }
+    - { level: 83, op: add, value: 0.83 }
+    - { level: 84, op: add, value: 0.84 }
+    - { level: 85, op: add, value: 0.85 }
+    - { level: 86, op: add, value: 0.86 }
+    - { level: 87, op: add, value: 0.87 }
+    - { level: 88, op: add, value: 0.88 }
+    - { level: 89, op: add, value: 0.89 }
+    - { level: 90, op: add, value: 0.90 }
+    - { level: 91, op: add, value: 0.91 }
+    - { level: 92, op: add, value: 0.92 }
+    - { level: 93, op: add, value: 0.93 }
+    - { level: 94, op: add, value: 0.94 }
+    - { level: 95, op: add, value: 0.95 }
+    - { level: 96, op: add, value: 0.96 }
+    - { level: 97, op: add, value: 0.97 }
+    - { level: 98, op: add, value: 0.98 }
+    - { level: 99, op: add, value: 0.99 }
+  fossil_accuracy: *site_survey_accuracy_levels
+  completeness_accuracy: *site_survey_accuracy_levels
+  quality_accuracy: *site_survey_accuracy_levels
+  depth_accuracy: *site_survey_accuracy_levels
   dino_count: []
   fossil_count: []
   depth_weights: []

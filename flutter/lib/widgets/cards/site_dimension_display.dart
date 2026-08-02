@@ -44,7 +44,7 @@ const double kSiteDimensionMaxRangeWidth = 1.0;
 const double kSiteDimensionMaxCenterJitter = 0.45;
 
 /// Blur sigma (logical px) when accuracy is 0.
-const double kSiteDimensionMaxBlurSigma = 8.0;
+const double kSiteDimensionMaxBlurSigma = 16.0;
 
 /// Depth values at/near surface are always shown precisely (in situ).
 const double kSiteDimensionDepthPreciseEpsilon = 1e-9;
