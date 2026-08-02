@@ -10,7 +10,7 @@ class AerialMissionFlightStats extends StatelessWidget {
   const AerialMissionFlightStats({
     super.key,
     required this.flightSpeedKmh,
-    required this.maxRouteKm,
+    required this.durationMinutes,
     required this.discoveryChance,
     required this.discoveryDistanceM,
     this.explanation,
@@ -28,7 +28,7 @@ class AerialMissionFlightStats extends StatelessWidget {
     return AerialMissionFlightStats(
       key: key,
       flightSpeedKmh: cfg.flightSpeedKmh,
-      maxRouteKm: cfg.maxRouteKm,
+      durationMinutes: cfg.durationMinutes,
       discoveryChance: cfg.discoveryChance,
       discoveryDistanceM: cfg.discoveryDistanceM,
       explanation: includeExplanation ? cfg.statsExplanation : null,
@@ -42,10 +42,12 @@ class AerialMissionFlightStats extends StatelessWidget {
     bool compact = false,
     bool includeExplanation = true,
   }) {
+    final speed = (params['flight_speed_kmh'] as num?)?.toDouble() ?? 0;
+    final duration = _durationMinutesFromParams(params, speed: speed);
     return AerialMissionFlightStats(
       key: key,
-      flightSpeedKmh: (params['flight_speed_kmh'] as num?)?.toDouble() ?? 0,
-      maxRouteKm: (params['max_route_km'] as num?)?.toDouble() ?? 0,
+      flightSpeedKmh: speed,
+      durationMinutes: duration,
       discoveryChance: (params['discovery_chance'] as num?)?.toDouble() ?? 0,
       discoveryDistanceM:
           (params['discovery_distance_m'] as num?)?.toDouble() ?? 0,
@@ -61,10 +63,15 @@ class AerialMissionFlightStats extends StatelessWidget {
     bool compact = false,
   }) {
     final cfg = GameConfig.instance.toolActions.configFor(mission.actionKey);
+    final speed = mission.flightSpeedKmh ?? cfg.flightSpeedKmh;
+    final maxRoute = mission.maxRouteKm ?? cfg.maxRouteKm;
+    final duration = speed > 0
+        ? (maxRoute / speed * 60).round()
+        : cfg.durationMinutes;
     return AerialMissionFlightStats(
       key: key,
-      flightSpeedKmh: mission.flightSpeedKmh ?? cfg.flightSpeedKmh,
-      maxRouteKm: mission.maxRouteKm ?? cfg.maxRouteKm,
+      flightSpeedKmh: speed,
+      durationMinutes: duration,
       discoveryChance: mission.discoveryChance ?? cfg.discoveryChance,
       discoveryDistanceM:
           mission.discoveryDistanceM ?? cfg.discoveryDistanceM,
@@ -73,7 +80,7 @@ class AerialMissionFlightStats extends StatelessWidget {
   }
 
   final double flightSpeedKmh;
-  final double maxRouteKm;
+  final int durationMinutes;
   final double discoveryChance;
   final double discoveryDistanceM;
   final String? explanation;
@@ -83,7 +90,7 @@ class AerialMissionFlightStats extends StatelessWidget {
   Widget build(BuildContext context) {
     final pairs = <AerialMissionStatPair>[
       AerialMissionStatPair('Speed', _formatKmh(flightSpeedKmh)),
-      AerialMissionStatPair('Max range', _formatKm(maxRouteKm)),
+      AerialMissionStatPair('Duration', _formatDuration(durationMinutes)),
       AerialMissionStatPair('Site chance', _formatChance(discoveryChance)),
       AerialMissionStatPair('Visibility', _formatMeters(discoveryDistanceM)),
     ];
@@ -115,6 +122,19 @@ class AerialMissionFlightStats extends StatelessWidget {
     );
   }
 
+  static int _durationMinutesFromParams(
+    Map<String, dynamic> params, {
+    required double speed,
+  }) {
+    final duration = (params['duration_minutes'] as num?)?.toInt();
+    if (duration != null) return duration;
+    final maxRoute = (params['max_route_km'] as num?)?.toDouble();
+    if (maxRoute != null && speed > 0) {
+      return (maxRoute / speed * 60).round();
+    }
+    return 0;
+  }
+
   static String _formatKmh(double v) {
     final label = v == v.roundToDouble()
         ? v.toStringAsFixed(0)
@@ -122,11 +142,13 @@ class AerialMissionFlightStats extends StatelessWidget {
     return '$label km/h';
   }
 
-  static String _formatKm(double v) {
-    final label = v == v.roundToDouble()
-        ? v.toStringAsFixed(0)
-        : v.toStringAsFixed(1);
-    return '$label km';
+  static String _formatDuration(int minutes) {
+    if (minutes <= 0) return '—';
+    if (minutes < 60) return '$minutes min';
+    final hours = minutes ~/ 60;
+    final rem = minutes % 60;
+    if (rem == 0) return hours == 1 ? '1 hour' : '$hours hours';
+    return '${hours}h ${rem}m';
   }
 
   static String _formatChance(double v) {

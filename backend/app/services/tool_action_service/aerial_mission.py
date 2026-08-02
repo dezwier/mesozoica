@@ -65,6 +65,20 @@ def _utcnow() -> datetime:
     return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
+def _max_route_km(
+    cfg: Any,
+    inst_p: dict[str, Any],
+    *,
+    flight_speed_kmh: float,
+) -> float:
+    """Max loop length from duration × speed; legacy max_route_km still accepted."""
+    if "duration_minutes" in inst_p:
+        return float(flight_speed_kmh) * float(inst_p["duration_minutes"]) / 60.0
+    if "max_route_km" in inst_p:
+        return float(inst_p["max_route_km"])
+    return float(flight_speed_kmh) * float(cfg.duration_minutes) / 60.0
+
+
 def _parse_route(raw: list[dict[str, Any]]) -> list[RoutePoint]:
     if not isinstance(raw, list) or len(raw) < 3:
         raise ValidationError("Route must include at least 3 points")
@@ -123,7 +137,8 @@ def start_aerial_mission(
     inst_p = instance.params_json or {}
     points = _parse_route(route)
     length_km = route_length_km(points)
-    eff_max_route = float(inst_p.get("max_route_km", cfg.max_route_km))
+    eff_speed = float(inst_p.get("flight_speed_kmh", cfg.flight_speed_kmh))
+    eff_max_route = _max_route_km(cfg, inst_p, flight_speed_kmh=eff_speed)
     if length_km > eff_max_route:
         raise ValidationError(
             f"Loop is {length_km:.1f} km; maximum allowed is {eff_max_route:.0f} km"
@@ -151,7 +166,6 @@ def start_aerial_mission(
         if job_id is not None:
             job_ids.append(job_id)
 
-    eff_speed = float(inst_p.get("flight_speed_kmh", cfg.flight_speed_kmh))
     speed = max(eff_speed, 1e-6)
     flight_duration_s = max(1, int(round(length_km / speed * 3600.0)))
 

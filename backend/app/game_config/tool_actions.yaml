@@ -1,7 +1,8 @@
 # Per-tool action parameters (gameplay knobs, not catalog copy).
 
 aerial_recon:
-  max_route_km: 50
+  # Battery / flight budget; max route km = flight_speed_kmh × duration_minutes / 60
+  duration_minutes: 60
   # start/end must be within this of the player's GPS origin
   loop_endpoint_tolerance_m: 75
   # Flight time = route_length_km / flight_speed_kmh (snapshotted as flight_duration_s)
@@ -10,15 +11,15 @@ aerial_recon:
   discovery_distance_m: 200
   # promote ensuring → flying even if some ensure jobs are still pending
   ensure_timeout_s: 600
-  # warn on confirm when drawn length is below this fraction of max_route_km
+  # warn on confirm when drawn length is below this fraction of max route
   short_route_warn_fraction: 0.7
   # One-line blurb shown on the tool card stats panel
   stats_explanation: >-
-    Scout loops fly at this speed within the max range; sites within
+    Scout loops fly at this speed for the listed duration; sites within
     discovery distance are rolled at the listed chance.
 
 aerial_scout:
-  max_route_km: 5
+  duration_minutes: 10
   loop_endpoint_tolerance_m: 75
   flight_speed_kmh: 35
   discovery_chance: 0.008
@@ -26,7 +27,7 @@ aerial_scout:
   ensure_timeout_s: 600
   short_route_warn_fraction: 0.7
   stats_explanation: >-
-    Drone loops fly at this speed within the max range; sites within
+    Drone loops fly at this speed for the listed duration; sites within
     discovery distance are rolled at the listed chance.
 
 geo_compass:

@@ -22,7 +22,7 @@ class AerialMissionCardExtension implements ToolCardExtension {
   @override
   List<String> editableParamKeys(ToolSummary tool) => const [
         'flight_speed_kmh',
-        'max_route_km',
+        'duration_minutes',
         'discovery_chance',
         'discovery_distance_m',
       ];

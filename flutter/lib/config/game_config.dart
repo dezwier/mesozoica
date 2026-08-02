@@ -415,7 +415,7 @@ class ToolActionsConfig {
       aerialScout: AerialMissionActionConfig.fromYaml(
         GameConfig._asMap(yaml['aerial_scout']),
         defaults: const AerialMissionActionConfig(
-          maxRouteKm: 30.0,
+          durationMinutes: 10,
           loopEndpointToleranceM: 75.0,
           flightSpeedKmh: 35.0,
           discoveryChance: 0.008,
@@ -423,7 +423,7 @@ class ToolActionsConfig {
           ensureTimeoutS: 600,
           shortRouteWarnFraction: 0.7,
           statsExplanation:
-              'Drone loops fly at this speed within the max range; sites within '
+              'Drone loops fly at this speed for the listed duration; sites within '
               'discovery distance are rolled at the listed chance.',
         ),
       ),
@@ -994,7 +994,7 @@ class RockTypeColorsConfig {
 
 class AerialMissionActionConfig {
   const AerialMissionActionConfig({
-    required this.maxRouteKm,
+    required this.durationMinutes,
     required this.loopEndpointToleranceM,
     required this.flightSpeedKmh,
     required this.discoveryChance,
@@ -1004,7 +1004,7 @@ class AerialMissionActionConfig {
     required this.statsExplanation,
   });
 
-  final double maxRouteKm;
+  final int durationMinutes;
   final double loopEndpointToleranceM;
   final double flightSpeedKmh;
   final double discoveryChance;
@@ -1013,8 +1013,11 @@ class AerialMissionActionConfig {
   final double shortRouteWarnFraction;
   final String statsExplanation;
 
+  /// Derived draw/deploy limit: speed × duration.
+  double get maxRouteKm => flightSpeedKmh * durationMinutes / 60.0;
+
   Map<String, dynamic> toParamsJson() => {
-        'max_route_km': maxRouteKm,
+        'duration_minutes': durationMinutes,
         'loop_endpoint_tolerance_m': loopEndpointToleranceM,
         'flight_speed_kmh': flightSpeedKmh,
         'discovery_chance': discoveryChance,
@@ -1030,7 +1033,7 @@ class AerialMissionActionConfig {
   }) {
     final d = defaults ??
         const AerialMissionActionConfig(
-          maxRouteKm: 100.0,
+          durationMinutes: 60,
           loopEndpointToleranceM: 75.0,
           flightSpeedKmh: 50.0,
           discoveryChance: 0.2,
@@ -1038,11 +1041,11 @@ class AerialMissionActionConfig {
           ensureTimeoutS: 600,
           shortRouteWarnFraction: 0.7,
           statsExplanation:
-              'Scout loops fly at this speed within the max range; sites within '
+              'Scout loops fly at this speed for the listed duration; sites within '
               'discovery distance are rolled at the listed chance.',
         );
     return AerialMissionActionConfig(
-      maxRouteKm: _asDouble(yaml['max_route_km'], d.maxRouteKm),
+      durationMinutes: _asInt(yaml['duration_minutes'], d.durationMinutes),
       loopEndpointToleranceM: _asDouble(
         yaml['loop_endpoint_tolerance_m'],
         d.loopEndpointToleranceM,

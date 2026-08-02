@@ -547,12 +547,14 @@ def test_tool_summary_includes_action(client, session: Session):
 def test_game_config_loads_aerial_mission():
     get_game_config.cache_clear()
     recon = get_game_config().tool_actions.aerial_recon
-    assert recon.max_route_km == 50
+    assert recon.duration_minutes == 60
     assert recon.flight_speed_kmh == 50
+    assert recon.max_route_km == 50
     assert 0 < recon.discovery_chance <= 1
     scout = get_game_config().tool_actions.aerial_scout
-    assert scout.max_route_km == 5
+    assert scout.duration_minutes == 10
     assert scout.flight_speed_kmh == 35
+    assert scout.max_route_km == 35.0 * 10 / 60
     assert 0 < scout.discovery_chance <= 1
     assert scout.discovery_distance_m == 50
 

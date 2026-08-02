@@ -34,8 +34,9 @@ void main() {
     expect(config.fossilDiscovery.enabled, isFalse);
     expect(config.fossilExcavation.enabled, isFalse);
 
-    expect(config.toolActions.aerialRecon.maxRouteKm, 50.0);
+    expect(config.toolActions.aerialRecon.durationMinutes, 60);
     expect(config.toolActions.aerialRecon.flightSpeedKmh, 50.0);
+    expect(config.toolActions.aerialRecon.maxRouteKm, 50.0);
     expect(config.toolActions.aerialRecon.discoveryChance, 0.01);
     expect(config.toolActions.aerialRecon.discoveryDistanceM, 200.0);
     expect(config.toolActions.aerialRecon.shortRouteWarnFraction, 0.7);
@@ -43,13 +44,14 @@ void main() {
       config.toolActions.aerialRecon.statsExplanation,
       contains('Scout loops'),
     );
-    expect(config.toolActions.aerialScout.maxRouteKm, 5.0);
+    expect(config.toolActions.aerialScout.durationMinutes, 10);
     expect(config.toolActions.aerialScout.flightSpeedKmh, 35.0);
+    expect(config.toolActions.aerialScout.maxRouteKm, closeTo(35.0 * 10 / 60, 1e-9));
     expect(config.toolActions.aerialScout.discoveryChance, 0.008);
     expect(config.toolActions.aerialScout.discoveryDistanceM, 50.0);
     expect(
-      config.toolActions.configFor('aerial_scout').maxRouteKm,
-      5.0,
+      config.toolActions.configFor('aerial_scout').durationMinutes,
+      10,
     );
 
     expect(config.toolActions.geoCompass.exactness, 0.0);

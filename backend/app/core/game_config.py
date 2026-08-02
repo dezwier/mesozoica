@@ -268,7 +268,7 @@ class FossilExcavationConfig(BaseModel):
 class AerialMissionActionConfig(BaseModel):
     model_config = {"frozen": True}
 
-    max_route_km: float = 100.0
+    duration_minutes: int = 60
     loop_endpoint_tolerance_m: float = 75.0
     flight_speed_kmh: float = 50.0
     discovery_chance: float = 0.2
@@ -276,9 +276,21 @@ class AerialMissionActionConfig(BaseModel):
     ensure_timeout_s: int = 600
     short_route_warn_fraction: float = 0.7
     stats_explanation: str = (
-        "Scout loops fly at this speed within the max range; sites within "
+        "Scout loops fly at this speed for the listed duration; sites within "
         "discovery distance are rolled at the listed chance."
     )
+
+    @property
+    def max_route_km(self) -> float:
+        """Derived draw/deploy limit: speed × duration."""
+        return float(self.flight_speed_kmh) * float(self.duration_minutes) / 60.0
+
+    @field_validator("duration_minutes")
+    @classmethod
+    def _validate_duration(cls, value: int) -> int:
+        if value < 1:
+            raise ValueError("duration_minutes must be >= 1")
+        return value
 
     @field_validator("discovery_chance")
     @classmethod
@@ -646,12 +658,12 @@ class ToolActionsConfig(BaseModel):
     )
     aerial_scout: AerialMissionActionConfig = Field(
         default_factory=lambda: AerialMissionActionConfig(
-            max_route_km=30.0,
+            duration_minutes=10,
             flight_speed_kmh=35.0,
             discovery_chance=0.008,
             discovery_distance_m=120.0,
             stats_explanation=(
-                "Drone loops fly at this speed within the max range; sites within "
+                "Drone loops fly at this speed for the listed duration; sites within "
                 "discovery distance are rolled at the listed chance."
             ),
         )
