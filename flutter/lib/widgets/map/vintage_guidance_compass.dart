@@ -86,24 +86,24 @@ class VintageGuidanceCompass extends StatelessWidget {
             child: DecoratedBox(
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                gradient: const RadialGradient(
-                  center: Alignment(-0.35, -0.4),
+                gradient: RadialGradient(
+                  center: const Alignment(-0.35, -0.4),
                   radius: 1.05,
                   colors: [
-                    VintageInstrumentStyle.brassLight,
-                    VintageInstrumentStyle.brassMid,
-                    VintageInstrumentStyle.brassDark,
+                    VintageInstrumentStyle.brassLight.withValues(alpha: 0.78),
+                    VintageInstrumentStyle.brassMid.withValues(alpha: 0.78),
+                    VintageInstrumentStyle.brassDark.withValues(alpha: 0.78),
                   ],
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.45),
+                    color: Colors.black.withValues(alpha: 0.3),
                     blurRadius: 10,
                     offset: const Offset(0, 5),
                   ),
                 ],
                 border: Border.all(
-                  color: VintageInstrumentStyle.brassRim,
+                  color: VintageInstrumentStyle.brassRim.withValues(alpha: 0.85),
                   width: 1.3,
                 ),
               ),

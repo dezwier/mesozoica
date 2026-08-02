@@ -42,24 +42,24 @@ class ProximityScannerDisplay extends StatelessWidget {
       child: DecoratedBox(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(compact ? 8 : 9),
-          gradient: const LinearGradient(
+          gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              VintageInstrumentStyle.brassLight,
-              VintageInstrumentStyle.brassMid,
-              VintageInstrumentStyle.brassDark,
+              VintageInstrumentStyle.brassLight.withValues(alpha: 0.78),
+              VintageInstrumentStyle.brassMid.withValues(alpha: 0.78),
+              VintageInstrumentStyle.brassDark.withValues(alpha: 0.78),
             ],
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.4),
+              color: Colors.black.withValues(alpha: 0.28),
               blurRadius: 8,
               offset: const Offset(0, 4),
             ),
           ],
           border: Border.all(
-            color: VintageInstrumentStyle.brassRim,
+            color: VintageInstrumentStyle.brassRim.withValues(alpha: 0.85),
             width: 1.0,
           ),
         ),

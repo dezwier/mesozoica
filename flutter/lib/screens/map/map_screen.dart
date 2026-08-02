@@ -259,6 +259,20 @@ class _MapScreenState extends State<MapScreen>
                   ),
                 ),
               ),
+            // Tool HUDs: above map overlays/markers, below chrome + FABs.
+            if (widget.isActive && !aerialDrawMode && aerialRecon.hudSession != null)
+              const AerialHud(),
+            if (widget.isActive && !aerialDrawMode && guidance.isActive)
+              GuidanceOverlay(
+                rotateWithHeading: _rotateMap,
+                followUser: _followUser || _rotateMap,
+              ),
+            if (widget.isActive && !aerialDrawMode && orbitSurvey.isActive)
+              const OrbitSurveyHud(),
+            if (widget.isActive && !aerialDrawMode && formationMap.isActive)
+              const FormationMapHud(),
+            if (widget.isActive && !aerialDrawMode && terrainEcho.isActive)
+              const TerrainEchoHud(),
             if (showAdminUi && widget.isActive && !aerialDrawMode)
               Positioned(
                 top: topInset,
@@ -493,19 +507,6 @@ class _MapScreenState extends State<MapScreen>
                 currentZoom: _zoomLevel,
                 onZoomChanged: _onZoomChanged,
               ),
-            if (widget.isActive && !aerialDrawMode && aerialRecon.hudSession != null)
-              const AerialHud(),
-            if (widget.isActive && !aerialDrawMode && guidance.isActive)
-              GuidanceOverlay(
-                rotateWithHeading: _rotateMap,
-                followUser: _followUser || _rotateMap,
-              ),
-            if (widget.isActive && !aerialDrawMode && orbitSurvey.isActive)
-              const OrbitSurveyHud(),
-            if (widget.isActive && !aerialDrawMode && formationMap.isActive)
-              const FormationMapHud(),
-            if (widget.isActive && !aerialDrawMode && terrainEcho.isActive)
-              const TerrainEchoHud(),
           ],
         );
       },

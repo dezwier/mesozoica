@@ -43,7 +43,7 @@ class _VintageMapHudChipState extends State<VintageMapHudChip> {
                 color: Colors.transparent,
                 child: DecoratedBox(
                   decoration: BoxDecoration(
-                    color: VintageInstrumentStyle.dialFace.withValues(alpha: 0.92),
+                    color: VintageInstrumentStyle.dialFace.withValues(alpha: 0.72),
                     borderRadius: BorderRadius.circular(10),
                     border: Border.all(
                       color: VintageInstrumentStyle.brassRim,

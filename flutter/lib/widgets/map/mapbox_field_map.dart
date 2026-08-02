@@ -1197,7 +1197,7 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
             const IgnorePointer(
               child: ColoredBox(color: MapChromeTheme.mapSandstoneWash),
             ),
-            // Below site cards / chrome; HUD stays in MapScreen above FABs.
+            // Below site cards / chrome; tool HUDs live in MapScreen under FABs.
             if (widget.mapActive && _ready)
               Consumer<TerrainEchoController>(
                 builder: (context, echo, _) {
