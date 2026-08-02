@@ -439,7 +439,7 @@ def tool_to_summary(
     from app.models.tool import Tool
     from app.schemas.tool import OwnedOccurrenceThumb, ToolSummary
     from app.services.curated_image_service.versions import ORIGINAL_VERSION
-    from app.services.tool_action_service.tool_use.budget import (
+    from app.services.tool_action_service.tool_session.budget import (
         remaining_duration_s as compute_remaining,
         total_duration_s_for_instance,
     )

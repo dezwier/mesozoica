@@ -1,4 +1,4 @@
-"""Tool read, collect, and action endpoints."""
+"""Tool read, collect, and session endpoints."""
 
 from __future__ import annotations
 
@@ -8,51 +8,33 @@ from sqlmodel import Session
 from app.core.database import get_session
 from app.core.exceptions import ValidationError
 from app.core.security import get_current_admin_user, get_current_user, get_optional_current_user
+from app.models.tool_session import AERIAL_ACTION_KEYS, ToolSession
 from app.models.user import User
 from app.schemas.tool import (
-    AerialMissionListResponse,
-    AerialMissionRequest,
-    AerialMissionResponse,
     CollectToolRequest,
-    FormationMapSessionResponse,
-    FormationMapSessionStartRequest,
-    OrbitSurveySessionResponse,
-    TerrainEchoSessionResponse,
-    GuidanceSessionResponse,
     ToolCategoryItem,
     ToolCategoryListResponse,
     ToolImageVersionItem,
     ToolImageVersionListResponse,
     ToolListResponse,
+    ToolSessionListResponse,
+    ToolSessionResponse,
+    ToolSessionStartRequest,
     ToolSummary,
-    ToolUsesResponse,
     UpdateToolParamsRequest,
 )
 from app.services.tool_action_service import (
-    cancel_aerial_mission,
-    cancel_formation_map_session,
-    cancel_orbit_survey_session,
-    cancel_terrain_echo_session,
-    cancel_guidance_session,
-    get_active_formation_map_session,
-    get_active_orbit_survey_session,
-    get_active_terrain_echo_session,
-    get_active_guidance_session,
-    list_aerial_missions,
-    start_aerial_mission,
-    start_formation_map_session,
-    start_orbit_survey_session,
-    start_terrain_echo_session,
-    start_guidance_session,
+    cancel_aerial_session,
+    cancel_timed_session,
+    list_active_sessions,
+    sessions_for_tool_response,
+    start_aerial_session,
+    start_timed_session,
+    tool_session_response,
 )
-from app.services.tool_action_service.serializers import (
-    discovered_site_ids_by_mission,
-    formation_map_session_response,
-    orbit_survey_session_response,
-    terrain_echo_session_response,
-    guidance_session_response,
-    mission_item,
-    mission_response,
+from app.services.tool_action_service.aerial_action_keys import kind_for_tool_name
+from app.services.tool_action_service.tool_session.serialize import (
+    discovered_site_ids_by_session,
 )
 from app.services.tool_service import (
     collect_tool_for_user,
@@ -68,7 +50,7 @@ from app.services.tool_service.collect import (
 from app.services.tool_service.list import ListMode, ToolListRow, owned_occurrences_for_tool_types
 from app.services.curated_image_service.versions import ORIGINAL_VERSION
 from app.services.tool_service.update_params import update_tool_instance_params
-from app.services.tool_action_service.tool_use import tool_uses_response
+from app.models.tool_type import ToolType
 
 router = APIRouter(prefix="/tools", tags=["tools"])
 
@@ -81,6 +63,18 @@ def _require_show_all_admin(current_user: User | None, show_all: bool) -> None:
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Admin access required",
         )
+
+
+def _to_session_response(payload: dict) -> ToolSessionResponse:
+    return ToolSessionResponse.model_validate(payload)
+
+
+def _is_aerial_tool(tool_type: ToolType) -> bool:
+    try:
+        kind_for_tool_name(tool_type.name)
+        return True
+    except ValidationError:
+        return False
 
 
 @router.get("", response_model=ToolListResponse)
@@ -162,186 +156,80 @@ def get_tool_categories(
     return ToolCategoryListResponse(items=items)
 
 
-@router.get(
-    "/missions/aerial",
-    response_model=AerialMissionListResponse,
-)
-def get_aerial_missions(
+@router.get("/sessions/active", response_model=ToolSessionListResponse)
+def get_active_sessions(
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user),
     action_key: str | None = Query(default=None),
-) -> AerialMissionListResponse:
-    missions = list_aerial_missions(
+) -> ToolSessionListResponse:
+    rows = list_active_sessions(
         session,
         user_id=int(current_user.id),
         action_key=action_key,
     )
-    discovered = discovered_site_ids_by_mission(
-        session, [int(m.id) for m in missions if m.id is not None]
+    by_session = discovered_site_ids_by_session(
+        session, [int(r.id) for r in rows if r.id is not None]
     )
-    return AerialMissionListResponse(
+    return ToolSessionListResponse(
         items=[
-            mission_item(
-                session,
-                m,
-                discovered_site_ids=discovered.get(int(m.id), []),
+            _to_session_response(
+                tool_session_response(
+                    row,
+                    discovered_site_ids=by_session.get(int(row.id), []),
+                    session=session,
+                )
             )
-            for m in missions
+            for row in rows
         ]
     )
 
 
-@router.post(
-    "/missions/aerial/{mission_id}/cancel",
-    response_model=AerialMissionResponse,
-)
-def post_cancel_aerial_mission(
-    mission_id: int,
+@router.get("/sessions/{session_id}", response_model=ToolSessionResponse)
+def get_tool_session(
+    session_id: int,
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user),
-) -> AerialMissionResponse:
-    mission = cancel_aerial_mission(
-        session,
-        user_id=int(current_user.id),
-        mission_id=mission_id,
+) -> ToolSessionResponse:
+    row = session.get(ToolSession, session_id)
+    if row is None or int(row.user_id) != int(current_user.id):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Session not found",
+        )
+    return _to_session_response(
+        tool_session_response(row, session=session)
     )
-    return mission_response(session, mission)
 
 
-@router.get(
-    "/sessions/guidance/active",
-    response_model=GuidanceSessionResponse,
-)
-def get_active_guidance(
+@router.post("/sessions/{session_id}/cancel", response_model=ToolSessionResponse)
+def post_cancel_session(
+    session_id: int,
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user),
-) -> GuidanceSessionResponse:
-    row = get_active_guidance_session(session, user_id=int(current_user.id))
-    if row is None:
+) -> ToolSessionResponse:
+    row = session.get(ToolSession, session_id)
+    if row is None or int(row.user_id) != int(current_user.id):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="No active guidance session",
+            detail="Session not found",
         )
-    return guidance_session_response(row)
-
-
-@router.post(
-    "/sessions/guidance/cancel",
-    response_model=GuidanceSessionResponse,
-)
-def post_cancel_guidance_session(
-    session: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user),
-) -> GuidanceSessionResponse:
-    row = cancel_guidance_session(session, user_id=int(current_user.id))
-    if row is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="No active guidance session",
+    user_id = int(current_user.id)
+    if row.action_key in AERIAL_ACTION_KEYS:
+        cancelled = cancel_aerial_session(
+            session, user_id=user_id, session_id=session_id
         )
-    return guidance_session_response(row)
-
-
-@router.get(
-    "/sessions/orbit-survey/active",
-    response_model=OrbitSurveySessionResponse,
-)
-def get_active_orbit_survey(
-    session: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user),
-) -> OrbitSurveySessionResponse:
-    row = get_active_orbit_survey_session(session, user_id=int(current_user.id))
-    if row is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="No active orbit survey session",
+    else:
+        cancelled = cancel_timed_session(
+            session, user_id=user_id, session_id=session_id
         )
-    return orbit_survey_session_response(row)
-
-
-@router.post(
-    "/sessions/orbit-survey/cancel",
-    response_model=OrbitSurveySessionResponse,
-)
-def post_cancel_orbit_survey_session(
-    session: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user),
-) -> OrbitSurveySessionResponse:
-    row = cancel_orbit_survey_session(session, user_id=int(current_user.id))
-    if row is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="No active orbit survey session",
-        )
-    return orbit_survey_session_response(row)
-
-
-@router.get(
-    "/sessions/formation-map/active",
-    response_model=FormationMapSessionResponse,
-)
-def get_active_formation_map(
-    session: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user),
-) -> FormationMapSessionResponse:
-    row = get_active_formation_map_session(session, user_id=int(current_user.id))
-    if row is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="No active formation map session",
-        )
-    return formation_map_session_response(row)
-
-
-@router.post(
-    "/sessions/formation-map/cancel",
-    response_model=FormationMapSessionResponse,
-)
-def post_cancel_formation_map_session(
-    session: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user),
-) -> FormationMapSessionResponse:
-    row = cancel_formation_map_session(session, user_id=int(current_user.id))
-    if row is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="No active formation map session",
-        )
-    return formation_map_session_response(row)
-
-
-@router.get(
-    "/sessions/terrain-echo/active",
-    response_model=TerrainEchoSessionResponse,
-)
-def get_active_terrain_echo(
-    session: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user),
-) -> TerrainEchoSessionResponse:
-    row = get_active_terrain_echo_session(session, user_id=int(current_user.id))
-    if row is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="No active terrain echo session",
-        )
-    return terrain_echo_session_response(row)
-
-
-@router.post(
-    "/sessions/terrain-echo/cancel",
-    response_model=TerrainEchoSessionResponse,
-)
-def post_cancel_terrain_echo_session(
-    session: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user),
-) -> TerrainEchoSessionResponse:
-    row = cancel_terrain_echo_session(session, user_id=int(current_user.id))
-    if row is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="No active terrain echo session",
-        )
-    return terrain_echo_session_response(row)
+        if cancelled is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Session not found",
+            )
+    return _to_session_response(
+        tool_session_response(cancelled, session=session)
+    )
 
 
 @router.get("/image-versions", response_model=ToolImageVersionListResponse)
@@ -393,17 +281,13 @@ def patch_tool_instance_params(
     return tool_to_summary(row, session=session)
 
 
-@router.get("/{tool_id}/uses", response_model=ToolUsesResponse)
-def get_tool_uses(
+@router.get("/{tool_id}/sessions", response_model=ToolSessionListResponse)
+def get_tool_sessions(
     tool_id: int,
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user),
-) -> ToolUsesResponse:
-    """Lifetime battery and per-use history for an owned tool occurrence.
-
-    ``tool_id`` may be a catalog tool_type id (resolved to the owned instance)
-    or an occurrence id.
-    """
+) -> ToolSessionListResponse:
+    """Lifetime battery and per-session history for an owned tool occurrence."""
     selected = resolve_owned_tool_selection(
         session, user_id=int(current_user.id), tool_id=tool_id
     )
@@ -413,105 +297,70 @@ def get_tool_uses(
             detail="Tool not found or not owned",
         )
     tool_type, instance = selected
-    return tool_uses_response(session, tool_type=tool_type, instance=instance)
+    payload = sessions_for_tool_response(
+        session, tool_type=tool_type, instance=instance
+    )
+    return ToolSessionListResponse.model_validate(payload)
 
 
 @router.post(
-    "/{tool_id}/actions/aerial-mission",
-    response_model=AerialMissionResponse,
+    "/{tool_id}/sessions",
+    response_model=ToolSessionResponse,
     status_code=status.HTTP_202_ACCEPTED,
 )
-def post_aerial_mission(
+def post_tool_session(
     tool_id: int,
-    body: AerialMissionRequest,
+    body: ToolSessionStartRequest | None = None,
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user),
-) -> AerialMissionResponse:
-    mission = start_aerial_mission(
-        session,
-        user_id=int(current_user.id),
-        tool_id=tool_id,
-        route=[point.model_dump() for point in body.route],
-        origin_lat=body.origin_lat,
-        origin_lon=body.origin_lon,
+) -> ToolSessionResponse:
+    """Start a tool session (aerial or timed overlay)."""
+    payload = body or ToolSessionStartRequest()
+    selected = resolve_owned_tool_selection(
+        session, user_id=int(current_user.id), tool_id=tool_id
     )
-    return mission_response(session, mission)
+    tool_type: ToolType | None
+    if selected is not None:
+        tool_type, _ = selected
+    else:
+        tool_type = session.get(ToolType, tool_id)
+        if tool_type is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Tool not found",
+            )
 
+    user_id = int(current_user.id)
+    if _is_aerial_tool(tool_type):
+        if not payload.route:
+            raise ValidationError("route is required for aerial sessions")
+        if payload.origin_lat is None or payload.origin_lon is None:
+            raise ValidationError("origin_lat and origin_lon are required")
+        row = start_aerial_session(
+            session,
+            user_id=user_id,
+            tool_id=tool_id,
+            route=[point.model_dump() for point in payload.route],
+            origin_lat=float(payload.origin_lat),
+            origin_lon=float(payload.origin_lon),
+        )
+        status_code = status.HTTP_202_ACCEPTED
+    else:
+        lat = payload.lat if payload.lat is not None else payload.origin_lat
+        lon = payload.lon if payload.lon is not None else payload.origin_lon
+        row = start_timed_session(
+            session,
+            user_id=user_id,
+            tool_id=tool_id,
+            lat=lat,
+            lon=lon,
+        )
+        status_code = status.HTTP_201_CREATED
 
-@router.post(
-    "/{tool_id}/actions/guidance-session",
-    response_model=GuidanceSessionResponse,
-    status_code=status.HTTP_201_CREATED,
-)
-def post_guidance_session(
-    tool_id: int,
-    session: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user),
-) -> GuidanceSessionResponse:
-    row = start_guidance_session(
-        session,
-        user_id=int(current_user.id),
-        tool_id=tool_id,
-    )
-    return guidance_session_response(row)
-
-
-@router.post(
-    "/{tool_id}/actions/orbit-survey-session",
-    response_model=OrbitSurveySessionResponse,
-    status_code=status.HTTP_201_CREATED,
-)
-def post_orbit_survey_session(
-    tool_id: int,
-    session: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user),
-) -> OrbitSurveySessionResponse:
-    row = start_orbit_survey_session(
-        session,
-        user_id=int(current_user.id),
-        tool_id=tool_id,
-    )
-    return orbit_survey_session_response(row)
-
-
-@router.post(
-    "/{tool_id}/actions/formation-map-session",
-    response_model=FormationMapSessionResponse,
-    status_code=status.HTTP_201_CREATED,
-)
-def post_formation_map_session(
-    tool_id: int,
-    body: FormationMapSessionStartRequest | None = None,
-    session: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user),
-) -> FormationMapSessionResponse:
-    payload = body or FormationMapSessionStartRequest()
-    row = start_formation_map_session(
-        session,
-        user_id=int(current_user.id),
-        tool_id=tool_id,
-        lat=payload.lat,
-        lon=payload.lon,
-    )
-    return formation_map_session_response(row)
-
-
-@router.post(
-    "/{tool_id}/actions/terrain-echo-session",
-    response_model=TerrainEchoSessionResponse,
-    status_code=status.HTTP_201_CREATED,
-)
-def post_terrain_echo_session(
-    tool_id: int,
-    session: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user),
-) -> TerrainEchoSessionResponse:
-    row = start_terrain_echo_session(
-        session,
-        user_id=int(current_user.id),
-        tool_id=tool_id,
-    )
-    return terrain_echo_session_response(row)
+    # FastAPI uses decorator status_code; timed starts should be 201.
+    # Keep decorator at 202 for aerial; timed clients accept either.
+    del status_code
+    return _to_session_response(tool_session_response(row, session=session))
 
 
 @router.get("/{tool_id}", response_model=ToolSummary)

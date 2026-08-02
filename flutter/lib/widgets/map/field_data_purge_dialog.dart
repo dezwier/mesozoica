@@ -7,40 +7,40 @@ class FieldDataPurgeSelection {
     this.userFossils = true,
     this.sites = true,
     this.fossils = true,
-    this.missionEvents = true,
-    this.missions = true,
+    this.sessionEvents = true,
+    this.sessions = true,
   });
 
   final bool userSites;
   final bool userFossils;
   final bool sites;
   final bool fossils;
-  final bool missionEvents;
-  final bool missions;
+  final bool sessionEvents;
+  final bool sessions;
 
   bool get hasAny =>
       userSites ||
       userFossils ||
       sites ||
       fossils ||
-      missionEvents ||
-      missions;
+      sessionEvents ||
+      sessions;
 
   FieldDataPurgeSelection copyWith({
     bool? userSites,
     bool? userFossils,
     bool? sites,
     bool? fossils,
-    bool? missionEvents,
-    bool? missions,
+    bool? sessionEvents,
+    bool? sessions,
   }) {
     return FieldDataPurgeSelection(
       userSites: userSites ?? this.userSites,
       userFossils: userFossils ?? this.userFossils,
       sites: sites ?? this.sites,
       fossils: fossils ?? this.fossils,
-      missionEvents: missionEvents ?? this.missionEvents,
-      missions: missions ?? this.missions,
+      sessionEvents: sessionEvents ?? this.sessionEvents,
+      sessions: sessions ?? this.sessions,
     );
   }
 }
@@ -125,24 +125,24 @@ class _FieldDataPurgeDialogState extends State<FieldDataPurgeDialog> {
             CheckboxListTile(
               contentPadding: EdgeInsets.zero,
               dense: true,
-              value: _selection.missionEvents,
+              value: _selection.sessionEvents,
               onChanged: (value) => setState(() {
                 _selection =
-                    _selection.copyWith(missionEvents: value ?? false);
+                    _selection.copyWith(sessionEvents: value ?? false);
               }),
-              title: const Text('Mission events'),
-              subtitle: const Text('tool_mission_event'),
+              title: const Text('Session events'),
+              subtitle: const Text('tool_session_event'),
               controlAffinity: ListTileControlAffinity.leading,
             ),
             CheckboxListTile(
               contentPadding: EdgeInsets.zero,
               dense: true,
-              value: _selection.missions,
+              value: _selection.sessions,
               onChanged: (value) => setState(() {
-                _selection = _selection.copyWith(missions: value ?? false);
+                _selection = _selection.copyWith(sessions: value ?? false);
               }),
-              title: const Text('Tool missions'),
-              subtitle: const Text('tool_mission'),
+              title: const Text('Tool sessions'),
+              subtitle: const Text('tool_session'),
               controlAffinity: ListTileControlAffinity.leading,
             ),
           ],

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../models/tool.dart';
-import 'tool_extensions/aerial_mission_card_extension.dart';
+import 'tool_extensions/aerial_session_card_extension.dart';
 import 'tool_extensions/formation_map_card_extension.dart';
 import 'tool_extensions/guidance_card_extension.dart';
 import 'tool_extensions/orbit_survey_card_extension.dart';
@@ -27,7 +27,7 @@ class ToolCardExtensions {
   ToolCardExtensions._();
 
   static final List<ToolCardExtension> _all = [
-    AerialMissionCardExtension(),
+    AerialSessionCardExtension(),
     GuidanceCardExtension(),
     OrbitSurveyCardExtension(),
     FormationMapCardExtension(),

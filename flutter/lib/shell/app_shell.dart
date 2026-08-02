@@ -6,7 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
-import '../controllers/aerial_mission_controller.dart';
+import '../controllers/aerial_session_controller.dart';
 import '../controllers/auth_controller.dart';
 import '../controllers/catalog_mode_controller.dart';
 import '../controllers/field_discovery_coordinator.dart';
@@ -69,14 +69,14 @@ class _AppShellState extends State<AppShell>
   CatalogModeController? _catalogModeController;
   FieldDiscoveryCoordinator? _discoveryCoordinator;
   MapController? _mapController;
-  AerialMissionController? _aerialRecon;
+  AerialSessionController? _aerialRecon;
   GuidanceSessionController? _guidance;
   OrbitSurveyController? _orbitSurvey;
   FormationMapController? _formationMap;
   TerrainEchoController? _terrainEcho;
   StreamSubscription<RemoteMessage>? _foregroundPushSub;
   StreamSubscription<RemoteMessage>? _openedPushSub;
-  /// Cached so aerial mission list refreshes do not rebuild the shell.
+  /// Cached so aerial session list refreshes do not rebuild the shell.
   bool _aerialDrawMode = false;
 
   bool get _anyCatalogOpen =>
@@ -114,7 +114,7 @@ class _AppShellState extends State<AppShell>
       map.addListener(_onMapSitesChanged);
       discovery.ingestMapSites(map.geoSites);
 
-      final aerial = context.read<AerialMissionController>();
+      final aerial = context.read<AerialSessionController>();
       _aerialRecon = aerial;
       _aerialDrawMode = aerial.isDrawMode;
       aerial.addListener(_onAerialReconChanged);
@@ -257,24 +257,24 @@ class _AppShellState extends State<AppShell>
       });
       return;
     }
-    // Mission Info taps queue a focus request; close overlays so MapScreen can pan.
-    if (aerial.pendingFocusMission != null && _anyOverlayOpen) {
+    // Session Info taps queue a focus request; close overlays so MapScreen can pan.
+    if (aerial.pendingFocusSession != null && _anyOverlayOpen) {
       setState(_clearOverlayFlags);
       return;
     }
 
-    // Missions poll reports successful discover event site IDs. Upsert only
+    // Session poll reports successful discover event site IDs. Upsert only
     // newly seen IDs into map + site catalog (no blind full reload).
-    final gen = aerial.missionsFetchGeneration;
-    if (gen != _lastAerialMissionsFetchGeneration) {
-      _lastAerialMissionsFetchGeneration = gen;
+    final gen = aerial.sessionsFetchGeneration;
+    if (gen != _lastToolSessionsFetchGeneration) {
+      _lastToolSessionsFetchGeneration = gen;
       _ingestAerialDiscoveredSites(
-        aerial.missions.expand((m) => m.discoveredSiteIds),
+        aerial.sessions.expand((m) => m.discoveredSiteIds),
       );
     }
 
     // Only rebuild shell when draw mode toggles (chrome hide). MapScreen and
-    // tool cards already watch AerialMissionController; mission-list refreshes
+    // tool cards already watch AerialSessionController; session-list refreshes
     // must not setState or they re-trigger startTracking → fetch loops.
     final drawMode = aerial.isDrawMode;
     if (drawMode != _aerialDrawMode) {

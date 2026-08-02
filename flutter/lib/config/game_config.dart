@@ -352,8 +352,8 @@ class ToolActionsConfig {
     required this.terrainEcho,
   });
 
-  final AerialMissionActionConfig aerialRecon;
-  final AerialMissionActionConfig aerialScout;
+  final AerialActionConfig aerialRecon;
+  final AerialActionConfig aerialScout;
   final GuidanceActionConfig geoCompass;
   final GuidanceActionConfig proximityScanner;
   final GuidanceActionConfig siteNavigator;
@@ -361,7 +361,7 @@ class ToolActionsConfig {
   final FormationMapActionConfig formationMap;
   final TerrainEchoActionConfig terrainEcho;
 
-  AerialMissionActionConfig configFor(String actionKey) {
+  AerialActionConfig configFor(String actionKey) {
     switch (actionKey) {
       case 'aerial_scout':
         return aerialScout;
@@ -409,12 +409,12 @@ class ToolActionsConfig {
 
   factory ToolActionsConfig.fromYaml(Map<String, dynamic> yaml) {
     return ToolActionsConfig(
-      aerialRecon: AerialMissionActionConfig.fromYaml(
+      aerialRecon: AerialActionConfig.fromYaml(
         GameConfig._asMap(yaml['aerial_recon']),
       ),
-      aerialScout: AerialMissionActionConfig.fromYaml(
+      aerialScout: AerialActionConfig.fromYaml(
         GameConfig._asMap(yaml['aerial_scout']),
-        defaults: const AerialMissionActionConfig(
+        defaults: const AerialActionConfig(
           durationMinutes: 10,
           loopEndpointToleranceM: 75.0,
           flightSpeedKmh: 35.0,
@@ -993,8 +993,8 @@ class RockTypeColorsConfig {
   }
 }
 
-class AerialMissionActionConfig {
-  const AerialMissionActionConfig({
+class AerialActionConfig {
+  const AerialActionConfig({
     required this.durationMinutes,
     required this.loopEndpointToleranceM,
     required this.flightSpeedKmh,
@@ -1028,12 +1028,12 @@ class AerialMissionActionConfig {
         'stats_explanation': statsExplanation,
       };
 
-  factory AerialMissionActionConfig.fromYaml(
+  factory AerialActionConfig.fromYaml(
     Map<String, dynamic> yaml, {
-    AerialMissionActionConfig? defaults,
+    AerialActionConfig? defaults,
   }) {
     final d = defaults ??
-        const AerialMissionActionConfig(
+        const AerialActionConfig(
           durationMinutes: 60,
           loopEndpointToleranceM: 75.0,
           flightSpeedKmh: 50.0,
@@ -1046,7 +1046,7 @@ class AerialMissionActionConfig {
               'you can draw (speed × remaining). Flight time is drawn length ÷ speed. '
               'Sites within discovery distance are rolled at the listed chance.',
         );
-    return AerialMissionActionConfig(
+    return AerialActionConfig(
       durationMinutes: _asInt(yaml['duration_minutes'], d.durationMinutes),
       loopEndpointToleranceM: _asDouble(
         yaml['loop_endpoint_tolerance_m'],

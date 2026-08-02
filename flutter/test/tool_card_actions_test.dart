@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mesozoica/models/tool.dart';
-import 'package:mesozoica/models/tool_use.dart';
+import 'package:mesozoica/models/tool_session.dart';
 import 'package:mesozoica/widgets/cards/tool_card_back.dart';
 import 'package:mesozoica/widgets/common/chrome_action_button.dart';
 
@@ -136,17 +136,21 @@ void main() {
       level: 1,
     );
     final uses = [
-      ToolUse(
-        id: 9,
-        kind: 'aerial_mission',
+      ToolSession(
+        sessionId: 9,
+        toolId: 1,
         actionKey: 'aerial_recon',
-        status: 'done',
+        status: 'completed',
         startedAt: DateTime.now().toUtc().subtract(const Duration(hours: 2)),
         endedAt: DateTime.now().toUtc().subtract(const Duration(hours: 1)),
-        durationS: 2700,
+        usedDurationS: 2700,
         stopReason: 'exhausted',
-        params: const {'route_length_km': 12.5, 'flight_speed_kmh': 50},
-        result: const {'discovered_count': 2},
+        params: const {'flight_speed_kmh': 50},
+        state: const {'route_length_km': 12.5},
+        eventsSummary: const ToolSessionEventsSummary(
+          discoveredSiteIds: [1, 2],
+          discoveredCount: 2,
+        ),
       ),
     ];
 

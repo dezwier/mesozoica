@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../../controllers/aerial_mission_controller.dart';
+import '../../controllers/aerial_session_controller.dart';
 import '../../models/site.dart';
 import '../../theme/dino_card_theme.dart';
 import '../../utils/relative_time.dart';
@@ -39,7 +39,7 @@ class SiteCardUserTimeline extends StatelessWidget {
     }
     final aerial = (how == SiteSummary.howDiscoveredAerialRecon ||
             how == SiteSummary.howDiscoveredAerialScout) &&
-        site.discoveringMissionId != null;
+        site.discoveringSessionId != null;
     return [
       SiteTimelineEntry(
         moment: 'Discovered',
@@ -71,9 +71,9 @@ class SiteCardUserTimeline extends StatelessWidget {
   Widget build(BuildContext context) {
     final entries = entriesFor(
       site,
-      onAerialTap: site.discoveringMissionId == null
+      onAerialTap: site.discoveringSessionId == null
           ? null
-          : () => _focusAerial(context, site.discoveringMissionId!),
+          : () => _focusAerial(context, site.discoveringSessionId!),
     );
     if (entries.isEmpty) return const SizedBox.shrink();
 
@@ -95,9 +95,9 @@ class SiteCardUserTimeline extends StatelessWidget {
     );
   }
 
-  Future<void> _focusAerial(BuildContext context, int missionId) async {
-    final recon = Provider.of<AerialMissionController>(context, listen: false);
-    final ok = await recon.focusMissionById(missionId);
+  Future<void> _focusAerial(BuildContext context, int sessionId) async {
+    final recon = Provider.of<AerialSessionController>(context, listen: false);
+    final ok = await recon.focusSessionById(sessionId);
     if (!context.mounted) return;
     if (!ok) {
       ScaffoldMessenger.of(context).showSnackBar(

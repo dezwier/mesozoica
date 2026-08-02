@@ -10,15 +10,11 @@ from app.models.dinosaur_type_revision import DinosaurTypeRevision
 from app.models.field_ensure_job import FieldEnsureJob
 from app.models.field_survey_job import FieldSurveyJob
 from app.models.fossil import Fossil
-from app.models.formation_map_session import FormationMapSession
-from app.models.orbit_survey_session import OrbitSurveySession
-from app.models.terrain_echo_session import TerrainEchoSession
-from app.models.guidance_session import GuidanceSession
 from app.models.site import Site
 from app.models.site_type import SiteType
 from app.models.tool import Tool
-from app.models.tool_mission import ToolMission
-from app.models.tool_mission_event import ToolMissionEvent
+from app.models.tool_session import ToolSession
+from app.models.tool_session_event import ToolSessionEvent
 from app.models.tool_type import ToolType
 from app.models.user import User
 from app.models.user_auth_identity import UserAuthIdentity
@@ -37,15 +33,11 @@ __all__ = [
     "FieldEnsureJob",
     "FieldSurveyJob",
     "Fossil",
-    "FormationMapSession",
-    "OrbitSurveySession",
-    "TerrainEchoSession",
-    "GuidanceSession",
     "Site",
     "SiteType",
     "Tool",
-    "ToolMission",
-    "ToolMissionEvent",
+    "ToolSession",
+    "ToolSessionEvent",
     "ToolType",
     "User",
     "UserAuthIdentity",

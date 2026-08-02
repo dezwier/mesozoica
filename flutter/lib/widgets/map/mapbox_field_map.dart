@@ -11,7 +11,7 @@ import 'package:provider/provider.dart';
 
 import '../../config/map_config.dart';
 import '../../config/game_config.dart';
-import '../../controllers/aerial_mission_controller.dart';
+import '../../controllers/aerial_session_controller.dart';
 import '../../controllers/formation_map_controller.dart';
 import '../../controllers/orbit_survey_controller.dart';
 import '../../controllers/terrain_echo_controller.dart';
@@ -19,7 +19,7 @@ import '../../models/site.dart';
 import '../../theme/map_chrome_theme.dart';
 import 'formation_map_raster.dart';
 import 'orbit_survey_raster.dart';
-import 'mapbox_aerial_mission_annotations.dart';
+import 'mapbox_aerial_annotations.dart';
 import 'mapbox_basemap_config.dart';
 import 'mapbox_camera_coordinator.dart';
 import 'mapbox_formation_map_overlay.dart';
@@ -104,7 +104,7 @@ class MapboxFieldMap extends StatefulWidget {
   /// Optional admin HUD counter for visible rotate mini-cards.
   final ValueNotifier<int>? rotateCardCount;
   /// Ongoing + past aerial recon routes / scout puck.
-  final AerialMissionController? aerialRecon;
+  final AerialSessionController? aerialRecon;
   /// Timed Orbit Survey period mosaic.
   final OrbitSurveyController? orbitSurvey;
   /// Timed Formation Map rock-type square mosaic.
@@ -124,7 +124,7 @@ class MapboxFieldMap extends StatefulWidget {
 class _MapboxFieldMapState extends State<MapboxFieldMap>
     with SingleTickerProviderStateMixin {
   MapboxSiteAnnotations? _annotations;
-  MapboxAerialMissionAnnotations? _aerialReconAnnotations;
+  MapboxAerialAnnotations? _aerialReconAnnotations;
   final MapboxOrbitSurveyOverlay _orbitSurveyOverlay = MapboxOrbitSurveyOverlay();
   final MapboxFormationMapOverlay _formationMapOverlay = MapboxFormationMapOverlay();
   MapboxMap? _map;
@@ -222,7 +222,7 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
     _readyTimeout?.cancel();
     if (!mounted) return;
     setState(() => _ready = true);
-    unawaited(_syncAerialMission());
+    unawaited(_syncToolSession());
     _readyNotifyFallback?.cancel();
     _readyNotifyFallback = Timer(const Duration(milliseconds: 2500), () {
       _notifyParentReady();
@@ -312,11 +312,11 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
   }
 
   void _onAerialReconChanged() {
-    unawaited(_syncAerialMission());
+    unawaited(_syncToolSession());
   }
 
   void _onAerialProgressTick() {
-    unawaited(_syncAerialMission());
+    unawaited(_syncToolSession());
   }
 
   void _onOrbitSurveyChanged() {
@@ -647,7 +647,7 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
     _lastOrbitSurveySitesRevision = -1;
     _lastFormationMapSitesRevision = -1;
     await Future.wait([
-      _syncAerialMission(),
+      _syncToolSession(),
       _syncOrbitSurvey(),
       _syncFormationMap(),
     ]);
@@ -733,7 +733,7 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
       } else {
         _exitFollowPuck();
       }
-      unawaited(_syncAerialMission());
+      unawaited(_syncToolSession());
     }
 
     // North-fixed GPS follow only — rotate mode is owned by FollowPuck.
@@ -825,7 +825,7 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
       widget.aerialRecon?.addListener(_onAerialReconChanged);
       widget.aerialRecon?.progressTickListenable
           .addListener(_onAerialProgressTick);
-      unawaited(_syncAerialMission());
+      unawaited(_syncToolSession());
     }
     if (oldWidget.orbitSurvey != widget.orbitSurvey) {
       oldWidget.orbitSurvey?.removeListener(_onOrbitSurveyChanged);
@@ -841,7 +841,7 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
     }
     if (oldWidget.showPastAerialRoutes != widget.showPastAerialRoutes ||
         oldWidget.showAerialReconOverlays != widget.showAerialReconOverlays) {
-      unawaited(_syncAerialMission());
+      unawaited(_syncToolSession());
     }
   }
 
@@ -871,16 +871,16 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
           await map.annotations.createPolylineAnnotationManager();
       final scoutManager =
           await map.annotations.createPointAnnotationManager();
-      final aerial = MapboxAerialMissionAnnotations();
+      final aerial = MapboxAerialAnnotations();
       await aerial.attach(
         lineManager: lineManager,
         scoutManager: scoutManager,
-        onScoutTap: (missionId) {
+        onScoutTap: (sessionId) {
           final recon = widget.aerialRecon;
           if (recon == null) return;
-          for (final mission in recon.missions) {
-            if (mission.missionId == missionId) {
-              recon.focusMission(mission);
+          for (final session in recon.sessions) {
+            if (session.sessionId == sessionId) {
+              recon.focusSession(session);
               return;
             }
           }
@@ -896,7 +896,7 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
 
       await _applyGestureMode();
       _scheduleAnnotationSync();
-      unawaited(_syncAerialMission());
+      unawaited(_syncToolSession());
     } catch (error, stack) {
       if (kDebugMode) {
         debugPrint('MapboxFieldMap setup failed: $error\n$stack');
@@ -1060,7 +1060,7 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
     }
   }
 
-  Future<void> _syncAerialMission() async {
+  Future<void> _syncToolSession() async {
     final aerial = _aerialReconAnnotations;
     final controller = widget.aerialRecon;
     if (aerial == null || !_ready) return;

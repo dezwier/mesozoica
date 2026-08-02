@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from sqlalchemy import delete, func
+from sqlalchemy import delete, func, update
 from sqlmodel import Session, col, select
 
 from app.models.data_source import DATA_SOURCE_FIELD
@@ -12,8 +12,8 @@ from app.models.field_ensure_job import FieldEnsureJob
 from app.models.field_survey_job import FieldSurveyJob
 from app.models.fossil import Fossil
 from app.models.site import Site
-from app.models.tool_mission import ToolMission
-from app.models.tool_mission_event import ToolMissionEvent
+from app.models.tool_session import ToolSession
+from app.models.tool_session_event import ToolSessionEvent
 from app.models.user_fossil import UserFossil
 from app.models.user_site import UserSite
 
@@ -26,8 +26,8 @@ class FieldDataPurgeResult:
     fossils_deleted: int
     survey_jobs_deleted: int
     ensure_jobs_deleted: int
-    mission_events_deleted: int
-    missions_deleted: int
+    session_events_deleted: int
+    sessions_deleted: int
 
 
 def purge_all_field_data(
@@ -37,13 +37,13 @@ def purge_all_field_data(
     user_fossils: bool = True,
     sites: bool = True,
     fossils: bool = True,
-    mission_events: bool = True,
-    missions: bool = True,
+    session_events: bool = True,
+    sessions: bool = True,
 ) -> FieldDataPurgeResult:
     """Delete selected field scopes.
 
     Bulk SQL deletes do not reliably fire ORM cascades (esp. SQLite tests),
-    so linked user_site / user_fossil / tool_mission_event rows are removed
+    so linked user_site / user_fossil / tool_session_event rows are removed
     when their parents are deleted even if those checkboxes were left unchecked.
     """
     field_fossil_ids = list(
@@ -72,8 +72,8 @@ def purge_all_field_data(
     sites_deleted = 0
     survey_jobs_deleted = 0
     ensure_jobs_deleted = 0
-    mission_events_deleted = 0
-    missions_deleted = 0
+    session_events_deleted = 0
+    sessions_deleted = 0
 
     if field_site_ids and (user_sites or sites):
         user_sites_deleted = _count_user_sites(session, field_site_ids)
@@ -81,33 +81,37 @@ def purge_all_field_data(
             delete(UserSite).where(col(UserSite.site_id).in_(field_site_ids))
         )
 
-    # tool_mission_event.site_id → site: clear before deleting field sites.
+    # tool_session_event.site_id → site: clear before deleting field sites.
     if field_site_ids and sites:
-        mission_events_deleted += _delete_mission_events_for_sites(
+        session_events_deleted += _delete_session_events_for_sites(
             session, field_site_ids
         )
 
-    if mission_events:
+    if session_events:
         remaining = int(
-            session.exec(select(func.count()).select_from(ToolMissionEvent)).one()
+            session.exec(select(func.count()).select_from(ToolSessionEvent)).one()
         )
         if remaining:
-            session.exec(delete(ToolMissionEvent))
-            mission_events_deleted += remaining
+            session.exec(delete(ToolSessionEvent))
+            session_events_deleted += remaining
 
-    if missions:
-        # tool_mission_event.mission_id → tool_mission
+    if sessions:
+        # Events and discoverer FKs must go before tool_session rows.
         remaining_events = int(
-            session.exec(select(func.count()).select_from(ToolMissionEvent)).one()
+            session.exec(select(func.count()).select_from(ToolSessionEvent)).one()
         )
         if remaining_events:
-            session.exec(delete(ToolMissionEvent))
-            mission_events_deleted += remaining_events
-        missions_deleted = int(
-            session.exec(select(func.count()).select_from(ToolMission)).one()
+            session.exec(delete(ToolSessionEvent))
+            session_events_deleted += remaining_events
+        # user_site.source_session_id → tool_session (SET NULL; explicit for SQLite)
+        session.exec(
+            update(UserSite).values(source_session_id=None)
         )
-        if missions_deleted:
-            session.exec(delete(ToolMission))
+        sessions_deleted = int(
+            session.exec(select(func.count()).select_from(ToolSession)).one()
+        )
+        if sessions_deleted:
+            session.exec(delete(ToolSession))
 
     if sites:
         if field_site_ids:
@@ -134,23 +138,23 @@ def purge_all_field_data(
         fossils_deleted=fossils_deleted,
         survey_jobs_deleted=survey_jobs_deleted,
         ensure_jobs_deleted=ensure_jobs_deleted,
-        mission_events_deleted=mission_events_deleted,
-        missions_deleted=missions_deleted,
+        session_events_deleted=session_events_deleted,
+        sessions_deleted=sessions_deleted,
     )
 
 
-def _delete_mission_events_for_sites(session: Session, site_ids: list[int]) -> int:
+def _delete_session_events_for_sites(session: Session, site_ids: list[int]) -> int:
     count = int(
         session.exec(
             select(func.count())
-            .select_from(ToolMissionEvent)
-            .where(col(ToolMissionEvent.site_id).in_(site_ids))
+            .select_from(ToolSessionEvent)
+            .where(col(ToolSessionEvent.site_id).in_(site_ids))
         ).one()
     )
     if count:
         session.exec(
-            delete(ToolMissionEvent).where(
-                col(ToolMissionEvent.site_id).in_(site_ids)
+            delete(ToolSessionEvent).where(
+                col(ToolSessionEvent.site_id).in_(site_ids)
             )
         )
     return count

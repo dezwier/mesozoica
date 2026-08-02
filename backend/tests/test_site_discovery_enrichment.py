@@ -20,7 +20,7 @@ from app.services.field_service.field_coordinate_enrich import (
     CoordinateEnrichment,
     apply_site_discovery_enrichment,
 )
-from app.services.tool_action_service.discover_aerial import discover_site_from_aerial
+from app.services.tool_action_service.discover_session import discover_site_from_aerial
 
 
 def _field_site(session: Session, *, site_id: int = 2_000_000_001) -> Site:
@@ -142,7 +142,11 @@ def test_aerial_discover_sets_aerial_recon(session: Session, monkeypatch):
 
     from app.models.tool import Tool
     from app.models.tool_type import ToolType
-    from app.models.tool_mission import ACTION_KEY_AERIAL_RECON, ToolMission
+    from app.models.tool_session import (
+        ACTION_KEY_AERIAL_RECON,
+        SESSION_STATUS_ACTIVE,
+        ToolSession,
+    )
     from app.models.user_site import USER_SITE_ROLE_DISCOVERER, UserSite
     from sqlmodel import col, select
 
@@ -164,31 +168,35 @@ def test_aerial_discover_sets_aerial_recon(session: Session, monkeypatch):
     session.commit()
     session.refresh(tool)
     now = datetime.utcnow()
-    mission = ToolMission(
+    tool_session = ToolSession(
         user_id=int(user.id),
         tool_id=int(tool.id),
         action_key=ACTION_KEY_AERIAL_RECON,
-        status="flying",
-        route_json='[{"lat":40,"lon":-100}]',
-        route_length_km=1.0,
-        flight_duration_s=60,
+        status=SESSION_STATUS_ACTIVE,
+        started_at=now,
+        params_json={},
+        state_json={
+            "route": [{"lat": 40.0, "lon": -100.0}],
+            "route_length_km": 1.0,
+            "flight_duration_s": 60,
+        },
         created_at=now,
         updated_at=now,
     )
-    session.add(mission)
+    session.add(tool_session)
     session.commit()
-    session.refresh(mission)
+    session.refresh(tool_session)
 
     monkeypatch.setattr(
         "app.services.field_service.field_coordinate_enrich.enrich_coordinate",
         lambda lat, lon: CoordinateEnrichment(country_code="US", state="Nebraska"),
     )
     monkeypatch.setattr(
-        "app.services.tool_action_service.discover_aerial.ensure_fossils_on_site_discovery",
+        "app.services.tool_action_service.discover_session.ensure_fossils_on_site_discovery",
         lambda session, site_id, user_id: "ok",
     )
     monkeypatch.setattr(
-        "app.services.tool_action_service.discover_aerial.send_site_discovered_push",
+        "app.services.tool_action_service.discover_session.send_site_discovered_push",
         lambda *args, **kwargs: None,
     )
 
@@ -201,7 +209,7 @@ def test_aerial_discover_sets_aerial_recon(session: Session, monkeypatch):
         max_distance_m=500.0,
         discovery_chance=1.0,
         how_discovered=HOW_DISCOVERED_AERIAL_RECON,
-        mission_id=int(mission.id),
+        session_id=int(tool_session.id),
     )
     assert result == "ok"
     session.refresh(site)
@@ -215,7 +223,7 @@ def test_aerial_discover_sets_aerial_recon(session: Session, monkeypatch):
             col(UserSite.role) == USER_SITE_ROLE_DISCOVERER,
         )
     ).one()
-    assert link.source_mission_id == int(mission.id)
+    assert link.source_session_id == int(tool_session.id)
 
 
 def test_aerial_discover_sets_aerial_scout(session: Session, monkeypatch):
@@ -223,7 +231,11 @@ def test_aerial_discover_sets_aerial_scout(session: Session, monkeypatch):
 
     from app.models.tool import Tool
     from app.models.tool_type import ToolType
-    from app.models.tool_mission import ACTION_KEY_AERIAL_SCOUT, ToolMission
+    from app.models.tool_session import (
+        ACTION_KEY_AERIAL_SCOUT,
+        SESSION_STATUS_ACTIVE,
+        ToolSession,
+    )
 
     site = _field_site(session, site_id=2_000_000_012)
     user = _user(session, username="drone_pilot")
@@ -243,31 +255,35 @@ def test_aerial_discover_sets_aerial_scout(session: Session, monkeypatch):
     session.commit()
     session.refresh(tool)
     now = datetime.utcnow()
-    mission = ToolMission(
+    tool_session = ToolSession(
         user_id=int(user.id),
         tool_id=int(tool.id),
         action_key=ACTION_KEY_AERIAL_SCOUT,
-        status="flying",
-        route_json='[{"lat":40,"lon":-100}]',
-        route_length_km=1.0,
-        flight_duration_s=60,
+        status=SESSION_STATUS_ACTIVE,
+        started_at=now,
+        params_json={},
+        state_json={
+            "route": [{"lat": 40.0, "lon": -100.0}],
+            "route_length_km": 1.0,
+            "flight_duration_s": 60,
+        },
         created_at=now,
         updated_at=now,
     )
-    session.add(mission)
+    session.add(tool_session)
     session.commit()
-    session.refresh(mission)
+    session.refresh(tool_session)
 
     monkeypatch.setattr(
         "app.services.field_service.field_coordinate_enrich.enrich_coordinate",
         lambda lat, lon: CoordinateEnrichment(country_code="US", state="Nebraska"),
     )
     monkeypatch.setattr(
-        "app.services.tool_action_service.discover_aerial.ensure_fossils_on_site_discovery",
+        "app.services.tool_action_service.discover_session.ensure_fossils_on_site_discovery",
         lambda session, site_id, user_id: "ok",
     )
     monkeypatch.setattr(
-        "app.services.tool_action_service.discover_aerial.send_site_discovered_push",
+        "app.services.tool_action_service.discover_session.send_site_discovered_push",
         lambda *args, **kwargs: None,
     )
 
@@ -280,7 +296,7 @@ def test_aerial_discover_sets_aerial_scout(session: Session, monkeypatch):
         max_distance_m=500.0,
         discovery_chance=1.0,
         how_discovered=HOW_DISCOVERED_AERIAL_SCOUT,
-        mission_id=int(mission.id),
+        session_id=int(tool_session.id),
     )
     assert result == "ok"
     session.refresh(site)
@@ -292,7 +308,11 @@ def test_site_summary_includes_viewer_discovery(session: Session):
 
     from app.models.tool import Tool
     from app.models.tool_type import ToolType
-    from app.models.tool_mission import ACTION_KEY_AERIAL_RECON, ToolMission
+    from app.models.tool_session import (
+        ACTION_KEY_AERIAL_RECON,
+        SESSION_STATUS_COMPLETED,
+        ToolSession,
+    )
     from app.models.user_site import USER_SITE_ROLE_DISCOVERER, UserSite
     from app.services.site_service.list import get_site_by_id
     from app.services.site_service.summary import site_row_to_summary
@@ -315,20 +335,26 @@ def test_site_summary_includes_viewer_discovery(session: Session):
     session.commit()
     session.refresh(tool)
     now = datetime.utcnow()
-    mission = ToolMission(
+    tool_session = ToolSession(
         user_id=int(user.id),
         tool_id=int(tool.id),
         action_key=ACTION_KEY_AERIAL_RECON,
-        status="done",
-        route_json='[{"lat":40,"lon":-100}]',
-        route_length_km=1.0,
-        flight_duration_s=60,
+        status=SESSION_STATUS_COMPLETED,
+        started_at=now,
+        ended_at=now,
+        used_duration_s=60,
+        params_json={},
+        state_json={
+            "route": [{"lat": 40.0, "lon": -100.0}],
+            "route_length_km": 1.0,
+            "flight_duration_s": 60,
+        },
         created_at=now,
         updated_at=now,
     )
-    session.add(mission)
+    session.add(tool_session)
     session.commit()
-    session.refresh(mission)
+    session.refresh(tool_session)
 
     discovered_at = datetime(2026, 7, 1, 12, 0, tzinfo=timezone.utc)
     session.add(
@@ -336,7 +362,7 @@ def test_site_summary_includes_viewer_discovery(session: Session):
             user_id=int(user.id),
             site_id=int(site.site_id),
             role=USER_SITE_ROLE_DISCOVERER,
-            source_mission_id=int(mission.id),
+            source_session_id=int(tool_session.id),
             timestamp=discovered_at,
         )
     )
@@ -350,7 +376,7 @@ def test_site_summary_includes_viewer_discovery(session: Session):
     )
     summary = site_row_to_summary(row)
     assert summary.discovered_at is not None
-    assert summary.discovering_mission_id == int(mission.id)
+    assert summary.discovering_session_id == int(tool_session.id)
 
 
 def test_manual_constant_available():

@@ -27,7 +27,7 @@ class SiteRow:
     status: str | None = None
     viewer_has_surveyed: bool | None = None
     discovered_at: datetime | None = None
-    discovering_mission_id: int | None = None
+    discovering_session_id: int | None = None
 
 
 def _site_card_image_url(site: Site, site_type: SiteType | None) -> str | None:
@@ -83,7 +83,7 @@ def site_row_to_summary(
         status=row.status,
         viewer_has_surveyed=row.viewer_has_surveyed,
         discovered_at=row.discovered_at,
-        discovering_mission_id=row.discovering_mission_id,
+        discovering_session_id=row.discovering_session_id,
         odd_dino_count=site.odd_dino_count,
         odd_fossil_count=site.odd_fossil_count,
         odd_completeness=site.odd_completeness,
@@ -99,7 +99,7 @@ def enrich_site_rows_for_viewer(
     *,
     viewer_user_id: int,
 ) -> list[SiteRow]:
-    """Attach viewer discoverer timestamp / mission id and survey flag (batch)."""
+    """Attach viewer discoverer timestamp / session id and survey flag (batch)."""
     if not rows:
         return rows
     site_ids = [int(row.site.site_id) for row in rows if row.site.site_id is not None]
@@ -139,9 +139,9 @@ def enrich_site_rows_for_viewer(
                 status=row.status,
                 viewer_has_surveyed=surveyed,
                 discovered_at=discover.timestamp if discover is not None else None,
-                discovering_mission_id=(
-                    int(discover.source_mission_id)
-                    if discover is not None and discover.source_mission_id is not None
+                discovering_session_id=(
+                    int(discover.source_session_id)
+                    if discover is not None and discover.source_session_id is not None
                     else None
                 ),
             )

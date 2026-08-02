@@ -10,23 +10,21 @@ from sqlmodel import Session, select
 from app.core.game_config import get_game_config
 from app.core.security import create_access_token
 from app.models.data_source import DATA_SOURCE_FIELD
-from app.models.guidance_session import (
+from app.models.site import Site
+from app.models.site_type import SiteType
+from app.models.tool import Tool
+from app.models.tool_session import (
     ACTION_KEY_GEO_COMPASS,
     ACTION_KEY_PROXIMITY_SCANNER,
     SESSION_STATUS_ACTIVE,
     SESSION_STATUS_CANCELLED,
-    GuidanceSession,
+    ToolSession,
 )
-from app.models.site import Site
-from app.models.site_type import SiteType
-from app.models.tool import Tool
 from app.models.tool_type import ToolType
 from app.models.user import User
 from app.models.user_tool import USER_TOOL_ACTION_OWNED, UserTool
 from app.services.site_common.discovery_params import resolve_site_discovery_params
-from app.services.tool_action_service.guidance_session import (
-    start_guidance_session,
-)
+from app.services.tool_action_service.tool_session import start_timed_session
 
 
 def _auth_headers(user: User) -> dict[str, str]:
@@ -107,6 +105,7 @@ def _grant_with_params(
     session.refresh(instance)
     return instance
 
+
 def _site(
     session: Session,
     *,
@@ -165,27 +164,27 @@ def test_start_guidance_session_snapshots_and_replaces(
     headers = _auth_headers(user)
 
     first = client.post(
-        f"/api/v1/tools/{compass.id}/actions/guidance-session",
+        f"/api/v1/tools/{compass.id}/sessions",
         headers=headers,
     )
-    assert first.status_code == 201, first.text
+    assert first.status_code in (201, 202), first.text
     body = first.json()
     assert body["action_key"] == ACTION_KEY_GEO_COMPASS
-    assert body["discovery_chance"] == 0.9
-    assert body["direction_exactness"] == 0.0
+    assert body["params"]["discovery_chance"] == 0.9
+    assert body["params"]["direction_exactness"] == 0.0
     assert body["status"] == SESSION_STATUS_ACTIVE
 
     second = client.post(
-        f"/api/v1/tools/{scanner.id}/actions/guidance-session",
+        f"/api/v1/tools/{scanner.id}/sessions",
         headers=headers,
     )
-    assert second.status_code == 201, second.text
+    assert second.status_code in (201, 202), second.text
     body2 = second.json()
     assert body2["action_key"] == ACTION_KEY_PROXIMITY_SCANNER
-    assert body2["discovery_chance"] is None
-    assert body2["distance_exactness"] == 0.0
+    assert body2["params"].get("discovery_chance") is None
+    assert body2["params"]["distance_exactness"] == 0.0
 
-    rows = session.exec(select(GuidanceSession)).all()
+    rows = session.exec(select(ToolSession)).all()
     assert len(rows) == 2
     cancelled = [r for r in rows if r.status == SESSION_STATUS_CANCELLED]
     active = [r for r in rows if r.status == SESSION_STATUS_ACTIVE]
@@ -224,27 +223,27 @@ def test_start_guidance_session_uses_instance_params(
     headers = _auth_headers(user)
 
     compass_resp = client.post(
-        f"/api/v1/tools/{compass.id}/actions/guidance-session",
+        f"/api/v1/tools/{compass.id}/sessions",
         headers=headers,
     )
-    assert compass_resp.status_code == 201, compass_resp.text
+    assert compass_resp.status_code in (201, 202), compass_resp.text
     body = compass_resp.json()
     assert body["action_key"] == ACTION_KEY_GEO_COMPASS
-    assert body["discovery_chance"] == 0.33
-    assert body["direction_exactness"] == 0.77
-    assert body["duration_minutes"] == 7
+    assert body["params"]["discovery_chance"] == 0.33
+    assert body["params"]["direction_exactness"] == 0.77
+    assert body["params"]["duration_minutes"] == 7
 
     scanner_resp = client.post(
-        f"/api/v1/tools/{scanner.id}/actions/guidance-session",
+        f"/api/v1/tools/{scanner.id}/sessions",
         headers=headers,
     )
-    assert scanner_resp.status_code == 201, scanner_resp.text
+    assert scanner_resp.status_code in (201, 202), scanner_resp.text
     body2 = scanner_resp.json()
     assert body2["action_key"] == ACTION_KEY_PROXIMITY_SCANNER
-    assert body2["discovery_chance"] is None
-    assert body2["direction_exactness"] is None
-    assert body2["distance_exactness"] == 0.25
-    assert body2["duration_minutes"] == 12
+    assert body2["params"].get("discovery_chance") is None
+    assert body2["params"].get("direction_exactness") is None
+    assert body2["params"]["distance_exactness"] == 0.25
+    assert body2["params"]["duration_minutes"] == 12
 
 
 def test_resolve_discovery_boost_only_for_nearest(
@@ -258,7 +257,7 @@ def test_resolve_discovery_boost_only_for_nearest(
     near = _site(session, site_id=92001, lat=40.0, lon=-100.0)
     far = _site(session, site_id=92002, lat=40.01, lon=-100.0)
 
-    start_guidance_session(
+    start_timed_session(
         session, user_id=int(user.id), tool_id=int(compass.id)
     )
     baseline = get_game_config().site_discovery.discovery_chance
@@ -289,7 +288,7 @@ def test_proximity_session_does_not_boost(session: Session) -> None:
     _grant(session, user_id=int(user.id), tool_id=int(scanner.id))
     site = _site(session, site_id=92011, lat=41.0, lon=-101.0)
 
-    start_guidance_session(
+    start_timed_session(
         session, user_id=int(user.id), tool_id=int(scanner.id)
     )
     baseline = get_game_config().site_discovery.discovery_chance
@@ -312,16 +311,19 @@ def test_expired_session_ignored(session: Session) -> None:
 
     now = datetime.utcnow()
     session.add(
-        GuidanceSession(
+        ToolSession(
             user_id=int(user.id),
             tool_id=int(instance.id),
             action_key=ACTION_KEY_GEO_COMPASS,
             status=SESSION_STATUS_ACTIVE,
-            discovery_chance=0.9,
-            direction_exactness=0.0,
-            duration_minutes=15,
             started_at=now - timedelta(minutes=20),
             expires_at=now - timedelta(minutes=5),
+            params_json={
+                "duration_minutes": 15,
+                "discovery_chance": 0.9,
+                "direction_exactness": 0.0,
+            },
+            state_json={},
             created_at=now - timedelta(minutes=20),
             updated_at=now - timedelta(minutes=20),
         )

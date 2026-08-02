@@ -237,16 +237,16 @@ class ApiEndpoints {
     bool userFossils = true,
     bool sites = true,
     bool fossils = true,
-    bool missionEvents = true,
-    bool missions = true,
+    bool sessionEvents = true,
+    bool sessions = true,
   }) => Uri.parse('${AppConfig.baseApiUrl}/api/v1/sites/field').replace(
     queryParameters: {
       'user_sites': '$userSites',
       'user_fossils': '$userFossils',
       'sites': '$sites',
       'fossils': '$fossils',
-      'mission_events': '$missionEvents',
-      'missions': '$missions',
+      'session_events': '$sessionEvents',
+      'sessions': '$sessions',
     },
   );
 
@@ -371,58 +371,29 @@ class ApiEndpoints {
 
   static Uri toolUri(int id) => Uri.parse('${AppConfig.baseApiUrl}/api/v1/tools/$id');
 
-  static Uri toolUsesUri(int id) =>
-      Uri.parse('${AppConfig.baseApiUrl}/api/v1/tools/$id/uses');
-
   static Uri toolCollectUri(int id) =>
       Uri.parse('${AppConfig.baseApiUrl}/api/v1/tools/$id/collect');
 
   static Uri toolImageVersionsUri() =>
       Uri.parse('${AppConfig.baseApiUrl}/api/v1/tools/image-versions');
 
-  static Uri toolAerialMissionUri(int id) =>
-      Uri.parse('${AppConfig.baseApiUrl}/api/v1/tools/$id/actions/aerial-mission');
+  static Uri toolSessionsUri(int toolId) =>
+      Uri.parse('${AppConfig.baseApiUrl}/api/v1/tools/$toolId/sessions');
 
-  static Uri toolGuidanceSessionUri(int id) =>
-      Uri.parse('${AppConfig.baseApiUrl}/api/v1/tools/$id/actions/guidance-session');
+  static Uri activeToolSessionsUri({String? actionKey}) {
+    final base = '${AppConfig.baseApiUrl}/api/v1/tools/sessions/active';
+    if (actionKey == null || actionKey.isEmpty) {
+      return Uri.parse(base);
+    }
+    return Uri.parse(
+      '$base?action_key=${Uri.encodeQueryComponent(actionKey)}',
+    );
+  }
 
-  static Uri toolOrbitSurveySessionUri(int id) =>
-      Uri.parse('${AppConfig.baseApiUrl}/api/v1/tools/$id/actions/orbit-survey-session');
+  static Uri toolSessionUri(int sessionId) =>
+      Uri.parse('${AppConfig.baseApiUrl}/api/v1/tools/sessions/$sessionId');
 
-  static Uri aerialMissionsUri() =>
-      Uri.parse('${AppConfig.baseApiUrl}/api/v1/tools/missions/aerial');
-
-  static Uri aerialMissionCancelUri(int missionId) =>
-      Uri.parse('${AppConfig.baseApiUrl}/api/v1/tools/missions/aerial/$missionId/cancel');
-
-  static Uri activeGuidanceSessionUri() =>
-      Uri.parse('${AppConfig.baseApiUrl}/api/v1/tools/sessions/guidance/active');
-
-  static Uri cancelGuidanceSessionUri() =>
-      Uri.parse('${AppConfig.baseApiUrl}/api/v1/tools/sessions/guidance/cancel');
-
-  static Uri activeOrbitSurveySessionUri() =>
-      Uri.parse('${AppConfig.baseApiUrl}/api/v1/tools/sessions/orbit-survey/active');
-
-  static Uri cancelOrbitSurveySessionUri() =>
-      Uri.parse('${AppConfig.baseApiUrl}/api/v1/tools/sessions/orbit-survey/cancel');
-
-  static Uri toolFormationMapSessionUri(int id) =>
-      Uri.parse('${AppConfig.baseApiUrl}/api/v1/tools/$id/actions/formation-map-session');
-
-  static Uri activeFormationMapSessionUri() =>
-      Uri.parse('${AppConfig.baseApiUrl}/api/v1/tools/sessions/formation-map/active');
-
-  static Uri cancelFormationMapSessionUri() =>
-      Uri.parse('${AppConfig.baseApiUrl}/api/v1/tools/sessions/formation-map/cancel');
-
-  static Uri toolTerrainEchoSessionUri(int id) =>
-      Uri.parse('${AppConfig.baseApiUrl}/api/v1/tools/$id/actions/terrain-echo-session');
-
-  static Uri activeTerrainEchoSessionUri() =>
-      Uri.parse('${AppConfig.baseApiUrl}/api/v1/tools/sessions/terrain-echo/active');
-
-  static Uri cancelTerrainEchoSessionUri() =>
-      Uri.parse('${AppConfig.baseApiUrl}/api/v1/tools/sessions/terrain-echo/cancel');
+  static Uri toolSessionCancelUri(int sessionId) =>
+      Uri.parse('${AppConfig.baseApiUrl}/api/v1/tools/sessions/$sessionId/cancel');
 
 }

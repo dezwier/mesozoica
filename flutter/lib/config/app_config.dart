@@ -176,10 +176,17 @@ class AppConfig {
     bool userFossils = true,
     bool sites = true,
     bool fossils = true,
-    bool missionEvents = true,
-    bool missions = true,
+    bool sessionEvents = true,
+    bool sessions = true,
   }) =>
-      ApiEndpoints.fieldDataPurgeUri(userSites: userSites, userFossils: userFossils, sites: sites, fossils: fossils, missionEvents: missionEvents, missions: missions);
+      ApiEndpoints.fieldDataPurgeUri(
+        userSites: userSites,
+        userFossils: userFossils,
+        sites: sites,
+        fossils: fossils,
+        sessionEvents: sessionEvents,
+        sessions: sessions,
+      );
 
   static Uri siteTypesUri({
     int limit = 200,
@@ -258,50 +265,17 @@ class AppConfig {
   static Uri toolImageVersionsUri() =>
       ApiEndpoints.toolImageVersionsUri();
 
-  static Uri toolAerialMissionUri(int id) =>
-      ApiEndpoints.toolAerialMissionUri(id);
+  static Uri toolSessionsUri(int toolId) =>
+      ApiEndpoints.toolSessionsUri(toolId);
 
-  static Uri toolGuidanceSessionUri(int id) =>
-      ApiEndpoints.toolGuidanceSessionUri(id);
+  static Uri activeToolSessionsUri({String? actionKey}) =>
+      ApiEndpoints.activeToolSessionsUri(actionKey: actionKey);
 
-  static Uri toolOrbitSurveySessionUri(int id) =>
-      ApiEndpoints.toolOrbitSurveySessionUri(id);
+  static Uri toolSessionUri(int sessionId) =>
+      ApiEndpoints.toolSessionUri(sessionId);
 
-  static Uri aerialMissionsUri() =>
-      ApiEndpoints.aerialMissionsUri();
-
-  static Uri aerialMissionCancelUri(int missionId) =>
-      ApiEndpoints.aerialMissionCancelUri(missionId);
-
-  static Uri activeGuidanceSessionUri() =>
-      ApiEndpoints.activeGuidanceSessionUri();
-
-  static Uri cancelGuidanceSessionUri() =>
-      ApiEndpoints.cancelGuidanceSessionUri();
-
-  static Uri activeOrbitSurveySessionUri() =>
-      ApiEndpoints.activeOrbitSurveySessionUri();
-
-  static Uri cancelOrbitSurveySessionUri() =>
-      ApiEndpoints.cancelOrbitSurveySessionUri();
-
-  static Uri toolFormationMapSessionUri(int id) =>
-      ApiEndpoints.toolFormationMapSessionUri(id);
-
-  static Uri activeFormationMapSessionUri() =>
-      ApiEndpoints.activeFormationMapSessionUri();
-
-  static Uri cancelFormationMapSessionUri() =>
-      ApiEndpoints.cancelFormationMapSessionUri();
-
-  static Uri toolTerrainEchoSessionUri(int id) =>
-      ApiEndpoints.toolTerrainEchoSessionUri(id);
-
-  static Uri activeTerrainEchoSessionUri() =>
-      ApiEndpoints.activeTerrainEchoSessionUri();
-
-  static Uri cancelTerrainEchoSessionUri() =>
-      ApiEndpoints.cancelTerrainEchoSessionUri();
+  static Uri toolSessionCancelUri(int sessionId) =>
+      ApiEndpoints.toolSessionCancelUri(sessionId);
 
   static Future<bool> checkApiHealth() async {
     try {

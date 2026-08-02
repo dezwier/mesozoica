@@ -24,7 +24,7 @@ class SiteSummary {
     this.status,
     this.viewerHasSurveyed,
     this.discoveredAt,
-    this.discoveringMissionId,
+    this.discoveringSessionId,
     this.oddDinoCount,
     this.oddFossilCount,
     this.oddCompleteness,
@@ -52,8 +52,8 @@ class SiteSummary {
   final bool? viewerHasSurveyed;
   /// When the viewing user became discoverer (from user_site).
   final DateTime? discoveredAt;
-  /// Aerial mission that discovered this site for the viewer.
-  final int? discoveringMissionId;
+  /// Aerial session that discovered this site for the viewer.
+  final int? discoveringSessionId;
   final double? oddDinoCount;
   final double? oddFossilCount;
   final double? oddCompleteness;
@@ -215,7 +215,7 @@ class SiteSummary {
       status: json['status'] as String?,
       viewerHasSurveyed: json['viewer_has_surveyed'] as bool?,
       discoveredAt: _parseSiteDate(json['discovered_at']),
-      discoveringMissionId: json['discovering_mission_id'] as int?,
+      discoveringSessionId: json['discovering_session_id'] as int?,
       oddDinoCount: (json['odd_dino_count'] as num?)?.toDouble(),
       oddFossilCount: (json['odd_fossil_count'] as num?)?.toDouble(),
       oddCompleteness: (json['odd_completeness'] as num?)?.toDouble(),
@@ -240,7 +240,7 @@ class SiteSummary {
     bool? viewerHasSurveyed,
     String? mainImageUrl,
     DateTime? discoveredAt,
-    int? discoveringMissionId,
+    int? discoveringSessionId,
     String? howDiscovered,
   }) {
     return SiteSummary(
@@ -261,8 +261,8 @@ class SiteSummary {
       status: status ?? this.status,
       viewerHasSurveyed: viewerHasSurveyed ?? this.viewerHasSurveyed,
       discoveredAt: discoveredAt ?? this.discoveredAt,
-      discoveringMissionId:
-          discoveringMissionId ?? this.discoveringMissionId,
+      discoveringSessionId:
+          discoveringSessionId ?? this.discoveringSessionId,
       oddDinoCount: oddDinoCount,
       oddFossilCount: oddFossilCount,
       oddCompleteness: oddCompleteness,

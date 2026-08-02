@@ -3,12 +3,12 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../controllers/aerial_mission_controller.dart';
+import '../controllers/aerial_session_controller.dart';
 import '../controllers/formation_map_controller.dart';
 import '../controllers/orbit_survey_controller.dart';
 import '../controllers/guidance_session_controller.dart';
 import '../controllers/terrain_echo_controller.dart';
-import '../models/aerial_mission_kind.dart';
+import '../models/aerial_action_kind.dart';
 import '../models/formation_map_kind.dart';
 import '../models/orbit_survey_kind.dart';
 import '../models/guidance_tool_kind.dart';
@@ -42,8 +42,8 @@ class ToolActionRouter {
   }
 
   static bool _startAerial(BuildContext context, ToolSummary tool) {
-    if (AerialMissionKind.tryParseToolName(tool.name) == null) return false;
-    context.read<AerialMissionController>().beginDraw(tool);
+    if (AerialActionKind.tryParseToolName(tool.name) == null) return false;
+    context.read<AerialSessionController>().beginDraw(tool);
     return true;
   }
 

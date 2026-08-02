@@ -325,7 +325,7 @@ class MapboxCameraCoordinator {
   }
 
   /// Zoom so the visible map height is approximately [spanKm], centered on
-  /// [center] (north-fixed). Used when entering aerial-mission draw mode so
+  /// [center] (north-fixed). Used when entering aerial draw mode so
   /// the screen height matches the vehicle's max route range.
   Future<void> fitVerticalSpanKm(
     LatLng center,

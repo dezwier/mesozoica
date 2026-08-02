@@ -10,7 +10,7 @@ import 'config/app_config.dart';
 import 'config/game_config.dart';
 import 'config/map_config.dart';
 import 'controllers/auth_controller.dart';
-import 'controllers/aerial_mission_controller.dart';
+import 'controllers/aerial_session_controller.dart';
 import 'controllers/catalog_mode_controller.dart';
 import 'controllers/dinosaur_catalog_controller.dart';
 import 'controllers/field_discovery_coordinator.dart';
@@ -131,7 +131,7 @@ class MesozoicaApp extends StatelessWidget {
           ),
         ),
         ChangeNotifierProvider(create: (_) => ToolCatalogController()),
-        ChangeNotifierProvider(create: (_) => AerialMissionController()),
+        ChangeNotifierProvider(create: (_) => AerialSessionController()),
         ChangeNotifierProvider(create: (_) => GuidanceSessionController()),
         ChangeNotifierProvider(create: (_) => OrbitSurveyController()),
         ChangeNotifierProvider(create: (_) => FormationMapController()),

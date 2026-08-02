@@ -7,26 +7,23 @@ from sqlmodel import Session, select
 from app.core.game_config import get_game_config
 from app.core.security import create_access_token
 from app.models.field_ensure_job import FieldEnsureJob
-from app.models.formation_map_session import (
+from app.models.tool import Tool
+from app.models.tool_session import (
     ACTION_KEY_FORMATION_MAP,
+    ACTION_KEY_ORBIT_SURVEY,
     SESSION_STATUS_ACTIVE,
     SESSION_STATUS_CANCELLED,
-    FormationMapSession,
+    ToolSession,
 )
-from app.models.orbit_survey_session import OrbitSurveySession
-from app.models.tool import Tool
 from app.models.tool_type import ToolType
 from app.models.user import User
 from app.models.user_tool import USER_TOOL_ACTION_OWNED, UserTool
-from app.services.tool_action_service.formation_map_session import (
-    get_active_formation_map_session,
-    start_formation_map_session,
-)
-from app.services.tool_action_service.orbit_survey_session import (
-    get_active_orbit_survey_session,
-    start_orbit_survey_session,
-)
 from app.services.site_common.survey_grid import snap_to_cell_center
+from app.services.tool_action_service.tool_session import (
+    get_active_timed_session,
+    start_formation_session,
+    start_timed_session,
+)
 
 
 def _auth_headers(user: User) -> dict[str, str]:
@@ -109,17 +106,17 @@ def test_start_formation_map_snaps_center_once(client, session: Session) -> None
     expected = snap_to_cell_center(lat, lon, cell_size_m=cell_m)
 
     first = client.post(
-        f"/api/v1/tools/{fmap.id}/actions/formation-map-session",
+        f"/api/v1/tools/{fmap.id}/sessions",
         headers=headers,
         json={"lat": lat, "lon": lon},
     )
-    assert first.status_code == 201, first.text
+    assert first.status_code in (201, 202), first.text
     body = first.json()
     assert body["action_key"] == ACTION_KEY_FORMATION_MAP
-    assert body["wideness_m"] == 500.0
-    assert body["cell_size_m"] == cell_m
-    assert abs(body["center_lat"] - expected[0]) < 1e-6
-    assert abs(body["center_lon"] - expected[1]) < 1e-6
+    assert body["params"]["wideness_m"] == 500.0
+    assert body["params"]["cell_size_m"] == cell_m
+    assert abs(body["params"]["center_lat"] - expected[0]) < 1e-6
+    assert abs(body["params"]["center_lon"] - expected[1]) < 1e-6
 
     session.refresh(instance)
     assert instance.params_json is not None
@@ -128,21 +125,20 @@ def test_start_formation_map_snaps_center_once(client, session: Session) -> None
 
     # Far away GPS must not move the locked center.
     second = client.post(
-        f"/api/v1/tools/{fmap.id}/actions/formation-map-session",
+        f"/api/v1/tools/{fmap.id}/sessions",
         headers=headers,
         json={"lat": 0.0, "lon": 0.0},
     )
-    assert second.status_code == 201, second.text
+    assert second.status_code in (201, 202), second.text
     body2 = second.json()
-    assert abs(body2["center_lat"] - expected[0]) < 1e-6
-    assert abs(body2["center_lon"] - expected[1]) < 1e-6
+    assert abs(body2["params"]["center_lat"] - expected[0]) < 1e-6
+    assert abs(body2["params"]["center_lon"] - expected[1]) < 1e-6
 
-    rows = session.exec(select(FormationMapSession)).all()
+    rows = session.exec(select(ToolSession)).all()
     assert len(rows) == 2
     assert sum(1 for r in rows if r.status == SESSION_STATUS_CANCELLED) == 1
     assert sum(1 for r in rows if r.status == SESSION_STATUS_ACTIVE) == 1
 
-    # Default 500 m wideness → one shared density cell ensure.
     jobs = list(session.exec(select(FieldEnsureJob)).all())
     assert len(jobs) == 1
     assert jobs[0].reason == ACTION_KEY_FORMATION_MAP
@@ -156,21 +152,43 @@ def test_mutual_cancel_with_orbit_survey(session: Session) -> None:
     _grant(session, user_id=int(user.id), tool_id=int(fmap.id))
     _grant(session, user_id=int(user.id), tool_id=int(orbit.id))
 
-    start_orbit_survey_session(
+    start_timed_session(
         session, user_id=int(user.id), tool_id=int(orbit.id)
     )
-    assert get_active_orbit_survey_session(session, user_id=int(user.id)) is not None
+    assert (
+        get_active_timed_session(
+            session,
+            user_id=int(user.id),
+            action_keys=(ACTION_KEY_ORBIT_SURVEY,),
+        )
+        is not None
+    )
 
-    start_formation_map_session(
+    start_formation_session(
         session,
         user_id=int(user.id),
         tool_id=int(fmap.id),
         lat=50.85,
         lon=4.35,
     )
-    assert get_active_formation_map_session(session, user_id=int(user.id)) is not None
-    assert get_active_orbit_survey_session(session, user_id=int(user.id)) is None
+    assert (
+        get_active_timed_session(
+            session,
+            user_id=int(user.id),
+            action_keys=(ACTION_KEY_FORMATION_MAP,),
+        )
+        is not None
+    )
+    assert (
+        get_active_timed_session(
+            session,
+            user_id=int(user.id),
+            action_keys=(ACTION_KEY_ORBIT_SURVEY,),
+        )
+        is None
+    )
     assert any(
         r.status == SESSION_STATUS_CANCELLED
-        for r in session.exec(select(OrbitSurveySession)).all()
+        and r.action_key == ACTION_KEY_ORBIT_SURVEY
+        for r in session.exec(select(ToolSession)).all()
     )

@@ -9,6 +9,7 @@ import '../controllers/field_discovery_coordinator.dart';
 import '../models/site.dart';
 import '../models/terrain_echo_kind.dart';
 import '../models/tool.dart';
+import '../models/tool_session.dart';
 import '../services/location_service.dart';
 import '../services/site_service.dart';
 import '../services/tool_service.dart';
@@ -29,7 +30,7 @@ class TerrainEchoController extends ChangeNotifier {
   VoidCallback? _discoveryListener;
   VoidCallback? _locationListener;
 
-  TerrainEchoSession? _session;
+  ToolSession? _session;
   ToolSummary? _tool;
   bool _activating = false;
   String? _message;
@@ -44,7 +45,7 @@ class TerrainEchoController extends ChangeNotifier {
 
   bool get isActive =>
       _session != null && _session!.isActive && !_session!.isExpired;
-  TerrainEchoSession? get session => _session;
+  ToolSession? get session => _session;
   ToolSummary? get tool => _tool;
   bool get isActivating => _activating;
   String? get message => _message;
@@ -99,7 +100,9 @@ class TerrainEchoController extends ChangeNotifier {
   Future<void> restoreActiveSession() async {
     if (_activating) return;
     try {
-      final session = await _toolService.fetchActiveTerrainEchoSession();
+      final session = await _toolService.fetchActiveSession(
+        actionKey: TerrainEchoKind.actionKey,
+      );
       if (session == null || !session.isActive || session.isExpired) {
         if (_session != null && !isActive) {
           await stop(notifyServer: false);
@@ -137,7 +140,7 @@ class TerrainEchoController extends ChangeNotifier {
     notifyListeners();
     try {
       final session =
-          await _toolService.startTerrainEchoSession(toolId: tool.id);
+          await _toolService.startToolSession(toolId: tool.id);
       _session = session;
       _tool = tool;
       _requestShowOnMap = true;
@@ -160,7 +163,7 @@ class TerrainEchoController extends ChangeNotifier {
     final hadSession = _session != null;
     if (notifyServer && hadSession) {
       try {
-        await _toolService.cancelTerrainEchoSession();
+        await _toolService.cancelSession(_session!.sessionId);
       } catch (_) {
         // Local stop still clears overlays.
       }

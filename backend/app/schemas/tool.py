@@ -34,13 +34,9 @@ class ToolSummary(BaseModel):
     tool_type_id: int | None = None
     params: dict[str, Any] = Field(default_factory=dict)
     base_params: dict[str, Any] = Field(default_factory=dict)
-    # Inventory occurrence obtain time; null for catalog rows.
     spawn_date: datetime | None = None
-    # Curated image version folder; set for inventory occurrences.
     version: str | None = None
-    # Catalog mode only: viewer's owned occurrences of this type (gallery thumbs).
     owned_occurrences: list[OwnedOccurrenceThumb] = Field(default_factory=list)
-    # Lifetime battery remaining (owned occurrences only).
     remaining_duration_s: int | None = None
     total_duration_s: int | None = None
 
@@ -67,136 +63,48 @@ class RoutePointBody(BaseModel):
     lon: float
 
 
-class AerialMissionRequest(BaseModel):
-    route: list[RoutePointBody] = Field(min_length=3)
-    origin_lat: float
-    origin_lon: float
+class ToolSessionStartRequest(BaseModel):
+    """Start body; fields used depend on action_key of the tool."""
 
-
-class AerialMissionItem(BaseModel):
-    mission_id: int
-    action_key: str
-    status: str
-    route: list[RoutePointBody]
-    route_length_km: float
-    flight_duration_s: int
-    flight_speed_kmh: float
-    max_route_km: float
-    discovery_chance: float
-    discovery_distance_m: float
-    flight_started_at: datetime | None = None
-    flight_ends_at: datetime | None = None
-    created_at: datetime
-    tool_id: int
-    tool_image_url: str | None = None
-    discovered_site_ids: list[int] = Field(default_factory=list)
-
-
-class AerialMissionListResponse(BaseModel):
-    items: list[AerialMissionItem]
-
-
-class AerialMissionResponse(BaseModel):
-    mission_id: int
-    action_key: str
-    status: str
-    route: list[RoutePointBody]
-    route_length_km: float
-    flight_duration_s: int
-    flight_speed_kmh: float
-    max_route_km: float
-    discovery_chance: float
-    discovery_distance_m: float
-    flight_started_at: datetime | None = None
-    flight_ends_at: datetime | None = None
-    created_at: datetime
-    tool_id: int
-    tool_image_url: str | None = None
-    discovered_site_ids: list[int] = Field(default_factory=list)
-
-
-class GuidanceSessionResponse(BaseModel):
-    session_id: int
-    action_key: str
-    status: str
-    tool_id: int
-    discovery_chance: float | None = None
-    direction_exactness: float | None = None
-    distance_exactness: float | None = None
-    duration_minutes: int
-    started_at: datetime
-    expires_at: datetime
-    cancelled_at: datetime | None = None
-
-
-class OrbitSurveySessionResponse(BaseModel):
-    session_id: int
-    action_key: str
-    status: str
-    tool_id: int
-    duration_minutes: int
-    accuracy: float
-    range: float
-    min_range_m: float
-    max_range_m: float
-    started_at: datetime
-    expires_at: datetime
-    cancelled_at: datetime | None = None
-
-
-class FormationMapSessionStartRequest(BaseModel):
+    route: list[RoutePointBody] | None = None
+    origin_lat: float | None = None
+    origin_lon: float | None = None
     lat: float | None = None
     lon: float | None = None
 
 
-class FormationMapSessionResponse(BaseModel):
+class ToolSessionEventsSummary(BaseModel):
+    discovered_site_ids: list[int] = Field(default_factory=list)
+    discovered_count: int = 0
+    pending_count: int = 0
+    miss_count: int = 0
+    done_count: int = 0
+
+
+class ToolSessionResponse(BaseModel):
     session_id: int
-    action_key: str
-    status: str
     tool_id: int
-    duration_minutes: int
-    accuracy: float
-    wideness_m: float
-    cell_size_m: float
-    center_lat: float
-    center_lon: float
-    started_at: datetime
-    expires_at: datetime
-    cancelled_at: datetime | None = None
-
-
-class TerrainEchoSessionResponse(BaseModel):
-    session_id: int
-    action_key: str
-    status: str
-    tool_id: int
-    duration_minutes: int
-    accuracy: float
-    range_m: float
-    started_at: datetime
-    expires_at: datetime
-    cancelled_at: datetime | None = None
-
-
-class ToolUseItem(BaseModel):
-    id: int
-    kind: str
     action_key: str
     status: str
     started_at: datetime
+    expires_at: datetime | None = None
     ended_at: datetime | None = None
-    duration_s: int
+    used_duration_s: int | None = None
     stop_reason: str | None = None
     params: dict[str, Any] = Field(default_factory=dict)
-    result: dict[str, Any] | None = None
+    state: dict[str, Any] = Field(default_factory=dict)
+    events_summary: ToolSessionEventsSummary = Field(
+        default_factory=ToolSessionEventsSummary
+    )
+    tool_image_url: str | None = None
 
 
-class ToolUsesResponse(BaseModel):
-    tool_id: int
-    total_duration_s: int
-    used_duration_s: int
-    remaining_duration_s: int
-    items: list[ToolUseItem] = Field(default_factory=list)
+class ToolSessionListResponse(BaseModel):
+    tool_id: int | None = None
+    total_duration_s: int | None = None
+    used_duration_s: int | None = None
+    remaining_duration_s: int | None = None
+    items: list[ToolSessionResponse] = Field(default_factory=list)
 
 
 class UpdateToolParamsRequest(BaseModel):

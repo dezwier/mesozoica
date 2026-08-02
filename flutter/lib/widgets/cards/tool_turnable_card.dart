@@ -1,14 +1,16 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../config/game_config.dart';
-import '../../controllers/aerial_mission_controller.dart';
+import '../../controllers/aerial_session_controller.dart';
 import '../../controllers/auth_controller.dart';
 import '../../controllers/tool_action_router.dart';
 import '../../controllers/tool_catalog_controller.dart';
-import '../../models/aerial_mission_kind.dart';
+import '../../models/aerial_action_kind.dart';
 import '../../models/tool.dart';
-import '../../models/tool_use.dart';
+import '../../models/tool_session.dart';
 import '../../services/tool_service.dart';
 import '../../theme/dino_card_theme.dart';
 import '../tools/filters/tool_params_edit_sheet.dart';
@@ -47,7 +49,7 @@ class ToolTurnableCard extends StatefulWidget {
 class _ToolTurnableCardState extends State<ToolTurnableCard> {
   bool _updateParamsBusy = false;
   bool _usesLoading = false;
-  List<ToolUse> _uses = const [];
+  List<ToolSession> _uses = const [];
   int? _remainingDurationS;
   int? _loadedForToolId;
 
@@ -90,11 +92,12 @@ class _ToolTurnableCardState extends State<ToolTurnableCard> {
       _remainingDurationS = tool.remainingDurationS;
     });
     try {
-      final response = await ToolService().fetchToolUses(tool.id);
+      final response = await ToolService().fetchToolSessions(tool.id);
       if (!mounted || widget.tool.id != tool.id) return;
       setState(() {
         _uses = response.items;
-        _remainingDurationS = response.remainingDurationS;
+        _remainingDurationS =
+            response.remainingDurationS ?? tool.remainingDurationS;
         _usesLoading = false;
       });
       context.read<ToolCatalogController>().replaceToolSummary(
@@ -156,17 +159,16 @@ class _ToolTurnableCardState extends State<ToolTurnableCard> {
     );
   }
 
-  void _onUseTap(ToolUse use) {
-    if (use.kind != 'aerial_mission') return;
-    final kind = AerialMissionKind.tryParseToolName(widget.tool.name);
-    if (kind == null) return;
-    final aerial = context.read<AerialMissionController>();
-    for (final mission in aerial.missions) {
-      if (mission.missionId == use.id) {
-        aerial.focusMission(mission);
-        break;
+  void _onUseTap(ToolSession session) {
+    if (!AerialActionKind.isAerialActionKey(session.actionKey)) return;
+    final aerial = context.read<AerialSessionController>();
+    for (final item in aerial.sessions) {
+      if (item.sessionId == session.sessionId) {
+        aerial.focusSession(item);
+        return;
       }
     }
+    unawaited(aerial.focusSessionById(session.sessionId));
   }
 
   @override

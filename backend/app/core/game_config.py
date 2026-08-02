@@ -265,7 +265,7 @@ class FossilExcavationConfig(BaseModel):
     enabled: bool = False
 
 
-class AerialMissionActionConfig(BaseModel):
+class AerialActionConfig(BaseModel):
     model_config = {"frozen": True}
 
     duration_minutes: int = 60
@@ -309,7 +309,7 @@ class AerialMissionActionConfig(BaseModel):
 
 
 # Back-compat alias for older imports/tests.
-AerialReconActionConfig = AerialMissionActionConfig
+AerialReconActionConfig = AerialActionConfig
 
 
 def _clamp_unit_interval(value: float, *, label: str) -> float:
@@ -654,11 +654,11 @@ class LevelingConfig(BaseModel):
 class ToolActionsConfig(BaseModel):
     model_config = {"frozen": True}
 
-    aerial_recon: AerialMissionActionConfig = Field(
-        default_factory=AerialMissionActionConfig
+    aerial_recon: AerialActionConfig = Field(
+        default_factory=AerialActionConfig
     )
-    aerial_scout: AerialMissionActionConfig = Field(
-        default_factory=lambda: AerialMissionActionConfig(
+    aerial_scout: AerialActionConfig = Field(
+        default_factory=lambda: AerialActionConfig(
             duration_minutes=10,
             flight_speed_kmh=35.0,
             discovery_chance=0.008,

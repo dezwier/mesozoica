@@ -8,6 +8,7 @@ import '../controllers/field_discovery_coordinator.dart';
 import '../models/formation_map_kind.dart';
 import '../models/site.dart';
 import '../models/tool.dart';
+import '../models/tool_session.dart';
 import '../services/location_service.dart';
 import '../services/site_service.dart';
 import '../services/tool_service.dart';
@@ -32,7 +33,7 @@ class FormationMapController extends ChangeNotifier {
   LocationService? _location;
   VoidCallback? _discoveryListener;
 
-  FormationMapSession? _session;
+  ToolSession? _session;
   ToolSummary? _tool;
   bool _activating = false;
   String? _message;
@@ -45,7 +46,7 @@ class FormationMapController extends ChangeNotifier {
 
   bool get isActive =>
       _session != null && _session!.isActive && !_session!.isExpired;
-  FormationMapSession? get session => _session;
+  ToolSession? get session => _session;
   ToolSummary? get tool => _tool;
   bool get isActivating => _activating;
   String? get message => _message;
@@ -111,7 +112,9 @@ class FormationMapController extends ChangeNotifier {
   Future<void> restoreActiveSession() async {
     if (_activating) return;
     try {
-      final session = await _toolService.fetchActiveFormationMapSession();
+      final session = await _toolService.fetchActiveSession(
+        actionKey: FormationMapKind.actionKey,
+      );
       if (session == null || !session.isActive || session.isExpired) {
         if (_session != null && !isActive) {
           await stop(notifyServer: false);
@@ -150,7 +153,7 @@ class FormationMapController extends ChangeNotifier {
     notifyListeners();
     try {
       final loc = _location?.currentLocation;
-      final session = await _toolService.startFormationMapSession(
+      final session = await _toolService.startToolSession(
         toolId: tool.id,
         lat: loc?.latitude,
         lon: loc?.longitude,
@@ -177,7 +180,7 @@ class FormationMapController extends ChangeNotifier {
     final hadSession = _session != null;
     if (notifyServer && hadSession) {
       try {
-        await _toolService.cancelFormationMapSession();
+        await _toolService.cancelSession(_session!.sessionId);
       } catch (_) {}
     }
     _session = null;

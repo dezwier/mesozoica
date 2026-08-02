@@ -16,8 +16,8 @@ from app.models.site import Site
 from app.models.site_type import SiteType
 from app.models.tool import Tool
 from app.models.tool_type import ToolType
-from app.models.tool_mission import ACTION_KEY_AERIAL_RECON, ToolMission
-from app.models.tool_mission_event import ToolMissionEvent
+from app.models.tool_session import ACTION_KEY_AERIAL_RECON, ToolSession
+from app.models.tool_session_event import ToolSessionEvent
 from app.models.user import User
 from app.models.user_fossil import USER_FOSSIL_ROLE_IN_SITU, UserFossil
 from app.models.user_site import USER_SITE_ROLE_DISCOVERER, UserSite
@@ -142,28 +142,31 @@ def _seed_field_world(session: Session) -> tuple[Site, Fossil, User]:
     session.add(tool)
     session.commit()
     session.refresh(tool)
-    mission = ToolMission(
+    tool_session = ToolSession(
         user_id=int(user.id),
         tool_id=int(tool.id),
         action_key=ACTION_KEY_AERIAL_RECON,
-        status="done",
-        route_json='[{"lat":40.0,"lon":-100.0},{"lat":40.1,"lon":-100.0}]',
-        route_length_km=11.0,
-        flight_duration_s=100,
+        status="completed",
+        params_json={},
+        state_json={
+            "route": [{"lat": 40.0, "lon": -100.0}, {"lat": 40.1, "lon": -100.0}],
+            "route_length_km": 11.0,
+            "flight_duration_s": 100,
+        },
     )
-    session.add(mission)
+    session.add(tool_session)
     session.commit()
-    session.refresh(mission)
+    session.refresh(tool_session)
     session.add(
-        ToolMissionEvent(
-            mission_id=int(mission.id),
+        ToolSessionEvent(
+            session_id=int(tool_session.id),
             event_type="discover_site",
             site_id=field.site_id,
-            due_at=mission.created_at,
+            due_at=tool_session.created_at,
             status="done",
             lat=40.0,
             lon=-100.0,
-            distance_along_km=0.0,
+            payload_json={"distance_along_km": 0.0},
         )
     )
     session.commit()
@@ -181,8 +184,8 @@ def test_purge_all_field_data_service(session: Session):
     assert result.user_fossils_deleted == 1
     assert result.survey_jobs_deleted == 1
     assert result.ensure_jobs_deleted == 1
-    assert result.mission_events_deleted == 1
-    assert result.missions_deleted == 1
+    assert result.session_events_deleted == 1
+    assert result.sessions_deleted == 1
 
     assert session.get(Site, 42) is not None
     assert session.get(Site, field_site_id) is None
@@ -190,8 +193,8 @@ def test_purge_all_field_data_service(session: Session):
     assert session.get(Fossil, field_fossil_id) is None
     assert session.exec(select(FieldSurveyJob)).all() == []
     assert session.exec(select(FieldEnsureJob)).all() == []
-    assert session.exec(select(ToolMissionEvent)).all() == []
-    assert session.exec(select(ToolMission)).all() == []
+    assert session.exec(select(ToolSessionEvent)).all() == []
+    assert session.exec(select(ToolSession)).all() == []
     assert (
         session.exec(
             select(UserSite).where(col(UserSite.site_id) == field_site_id)
@@ -208,8 +211,8 @@ def test_purge_user_progress_only(session: Session):
         user_fossils=True,
         sites=False,
         fossils=False,
-        mission_events=False,
-        missions=False,
+        session_events=False,
+        sessions=False,
     )
     assert result.user_sites_deleted == 1
     assert result.user_fossils_deleted == 1
@@ -217,8 +220,8 @@ def test_purge_user_progress_only(session: Session):
     assert result.fossils_deleted == 0
     assert result.survey_jobs_deleted == 0
     assert result.ensure_jobs_deleted == 0
-    assert result.mission_events_deleted == 0
-    assert result.missions_deleted == 0
+    assert result.session_events_deleted == 0
+    assert result.sessions_deleted == 0
 
     assert session.get(Site, field.site_id) is not None
     assert session.get(Fossil, field_fossil.id) is not None
@@ -236,12 +239,12 @@ def test_purge_user_progress_only(session: Session):
     )
     assert session.exec(select(FieldSurveyJob)).all() != []
     assert session.exec(select(FieldEnsureJob)).all() != []
-    assert session.exec(select(ToolMissionEvent)).all() != []
-    assert session.exec(select(ToolMission)).all() != []
+    assert session.exec(select(ToolSessionEvent)).all() != []
+    assert session.exec(select(ToolSession)).all() != []
 
 
-def test_purge_field_sites_clears_mission_event_fk(session: Session):
-    """Deleting sites must remove tool_mission_event rows that reference them."""
+def test_purge_field_sites_clears_session_event_fk(session: Session):
+    """Deleting sites must remove tool_session_event rows that reference them."""
     field, _fossil, _user = _seed_field_world(session)
     field_site_id = field.site_id
     result = purge_all_field_data(
@@ -250,18 +253,18 @@ def test_purge_field_sites_clears_mission_event_fk(session: Session):
         user_fossils=False,
         sites=True,
         fossils=False,
-        mission_events=False,
-        missions=False,
+        session_events=False,
+        sessions=False,
     )
     assert result.sites_deleted == 1
-    assert result.mission_events_deleted == 1
-    assert result.missions_deleted == 0
+    assert result.session_events_deleted == 1
+    assert result.sessions_deleted == 0
     assert session.get(Site, field_site_id) is None
-    assert session.exec(select(ToolMissionEvent)).all() == []
-    assert session.exec(select(ToolMission)).all() != []
+    assert session.exec(select(ToolSessionEvent)).all() == []
+    assert session.exec(select(ToolSession)).all() != []
 
 
-def test_purge_missions_only(session: Session):
+def test_purge_sessions_only(session: Session):
     _seed_field_world(session)
     result = purge_all_field_data(
         session,
@@ -269,14 +272,14 @@ def test_purge_missions_only(session: Session):
         user_fossils=False,
         sites=False,
         fossils=False,
-        mission_events=True,
-        missions=True,
+        session_events=True,
+        sessions=True,
     )
-    assert result.mission_events_deleted == 1
-    assert result.missions_deleted == 1
+    assert result.session_events_deleted == 1
+    assert result.sessions_deleted == 1
     assert result.sites_deleted == 0
-    assert session.exec(select(ToolMissionEvent)).all() == []
-    assert session.exec(select(ToolMission)).all() == []
+    assert session.exec(select(ToolSessionEvent)).all() == []
+    assert session.exec(select(ToolSession)).all() == []
     assert session.exec(
         select(Site).where(col(Site.data_source) == DATA_SOURCE_FIELD)
     ).all() != []
@@ -292,19 +295,19 @@ def test_purge_field_entities_only(session: Session):
         user_fossils=False,
         sites=True,
         fossils=True,
-        mission_events=False,
-        missions=False,
+        session_events=False,
+        sessions=False,
     )
     assert result.sites_deleted == 1
     assert result.fossils_deleted == 1
-    # Progress + mission events still removed to satisfy FKs when parents go.
+    # Progress + session events still removed to satisfy FKs when parents go.
     assert result.user_sites_deleted == 1
     assert result.user_fossils_deleted == 1
-    assert result.mission_events_deleted == 1
-    assert result.missions_deleted == 0
+    assert result.session_events_deleted == 1
+    assert result.sessions_deleted == 0
     assert session.get(Site, field_site_id) is None
     assert session.get(Fossil, field_fossil_id) is None
-    assert session.exec(select(ToolMission)).all() != []
+    assert session.exec(select(ToolSession)).all() != []
 
 
 def test_purge_field_data_api_requires_admin(client, session: Session):
@@ -337,8 +340,8 @@ def test_purge_field_data_api_admin(client, session: Session):
     body = response.json()
     assert body["sites_deleted"] == 1
     assert body["fossils_deleted"] == 0
-    assert body["mission_events_deleted"] == 0
-    assert body["missions_deleted"] == 0
+    assert body["session_events_deleted"] == 0
+    assert body["sessions_deleted"] == 0
     assert session.get(Site, 1_000_000_099) is None
 
 
@@ -352,8 +355,8 @@ def test_purge_field_data_api_rejects_empty_scope(client, session: Session):
             "user_fossils": "false",
             "sites": "false",
             "fossils": "false",
-            "mission_events": "false",
-            "missions": "false",
+            "session_events": "false",
+            "sessions": "false",
         },
     )
     assert response.status_code == 400

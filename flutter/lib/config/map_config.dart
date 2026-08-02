@@ -113,10 +113,10 @@ class MapConfig {
   /// Initial zoom when linking to an aerial recon scout (more pulled out than
   /// [mapboxFollowZoom] so the route context is visible). Continuous follow
   /// preserves whatever zoom the user picks afterward.
-  static const double mapboxAerialMissionZoom = 14.0;
+  static const double mapboxAerialSessionZoom = 14.0;
 
-  /// Camera fly-in duration when focusing an aerial recon mission.
-  static const int mapboxAerialMissionFocusDurationMs = 450;
+  /// Camera fly-in duration when focusing an aerial session.
+  static const int mapboxAerialSessionFocusDurationMs = 450;
 
   /// Admin on-demand "sites in view" refuses to paint when the viewport
   /// bbox contains more than this many field sites.

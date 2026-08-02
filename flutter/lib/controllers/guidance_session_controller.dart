@@ -9,6 +9,7 @@ import '../controllers/field_discovery_coordinator.dart';
 import '../models/guidance_tool_kind.dart';
 import '../models/site.dart';
 import '../models/tool.dart';
+import '../models/tool_session.dart';
 import '../services/location_service.dart';
 import '../services/tool_service.dart';
 import '../utils/guidance_math.dart';
@@ -27,7 +28,7 @@ class GuidanceSessionController extends ChangeNotifier {
   VoidCallback? _locationListener;
   VoidCallback? _headingListener;
 
-  GuidanceSession? _session;
+  ToolSession? _session;
   GuidanceToolKind? _kind;
   ToolSummary? _tool;
   bool _activating = false;
@@ -56,7 +57,7 @@ class GuidanceSessionController extends ChangeNotifier {
 
   bool get isActive =>
       _session != null && _session!.isActive && !_session!.isExpired;
-  GuidanceSession? get session => _session;
+  ToolSession? get session => _session;
   GuidanceToolKind? get kind => _kind;
   ToolSummary? get tool => _tool;
   bool get isActivating => _activating;
@@ -126,8 +127,17 @@ class GuidanceSessionController extends ChangeNotifier {
   Future<void> restoreActiveSession() async {
     if (_activating) return;
     try {
-      final session = await _toolService.fetchActiveGuidanceSession();
-      if (session == null || !session.isActive || session.isExpired) {
+      final live = await _toolService.fetchActiveSessions();
+      ToolSession? session;
+      for (final item in live) {
+        if (GuidanceToolKind.tryParseActionKey(item.actionKey) != null &&
+            item.isActive &&
+            !item.isExpired) {
+          session = item;
+          break;
+        }
+      }
+      if (session == null) {
         if (_session != null && !isActive) {
           await stop(notifyServer: false);
         }
@@ -166,7 +176,7 @@ class GuidanceSessionController extends ChangeNotifier {
     _message = null;
     notifyListeners();
     try {
-      final session = await _toolService.startGuidanceSession(toolId: tool.id);
+      final session = await _toolService.startToolSession(toolId: tool.id);
       _session = session;
       _kind = GuidanceToolKind.tryParseActionKey(session.actionKey) ?? kind;
       _tool = tool;
@@ -191,7 +201,7 @@ class GuidanceSessionController extends ChangeNotifier {
     final hadSession = _session != null;
     if (notifyServer && hadSession) {
       try {
-        await _toolService.cancelGuidanceSession();
+        await _toolService.cancelSession(_session!.sessionId);
       } catch (_) {
         // Local stop still clears overlays.
       }

@@ -6,7 +6,7 @@ from dataclasses import dataclass
 
 from app.core.exceptions import ValidationError
 from app.core.game_config import GuidanceActionConfig, ToolActionsConfig, get_game_config
-from app.models.guidance_session import (
+from app.models.tool_session import (
     ACTION_KEY_GEO_COMPASS,
     ACTION_KEY_PROXIMITY_SCANNER,
     ACTION_KEY_SITE_NAVIGATOR,

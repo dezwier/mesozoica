@@ -6,7 +6,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
 
 import '../../config/map_config.dart';
-import '../../controllers/aerial_mission_controller.dart';
+import '../../controllers/aerial_session_controller.dart';
 import '../../controllers/auth_controller.dart';
 import '../../controllers/catalog_mode_controller.dart';
 import '../../controllers/field_discovery_coordinator.dart';
@@ -20,17 +20,18 @@ import '../../controllers/map_controller.dart' as map_data;
 import '../../controllers/site_catalog_controller.dart';
 import '../../controllers/splash_hold_controller.dart';
 import '../../controllers/theme_controller.dart';
+import '../../controllers/tool_catalog_controller.dart';
 import '../../models/site.dart';
 import '../../models/site_map_filters.dart';
+import '../../models/tool_session.dart';
 import '../../services/auth_service.dart';
 import '../../services/location_service.dart';
 import '../../services/site_service.dart';
-import '../../services/tool_service.dart';
 import '../../shell/map_chrome_insets.dart';
 import '../../widgets/common/chrome_fab.dart';
 import '../../widgets/dino/dinosaur_filter_fab.dart';
-import '../../widgets/map/aerial_mission_draw_overlay.dart';
-import '../../widgets/map/aerial_mission_hud.dart';
+import '../../widgets/map/aerial_draw_overlay.dart';
+import '../../widgets/map/aerial_hud.dart';
 import '../../widgets/map/field_data_purge_dialog.dart';
 import '../../widgets/map/formation_map_hud.dart';
 import '../../widgets/map/orbit_survey_hud.dart';
@@ -87,7 +88,7 @@ class _MapScreenState extends State<MapScreen>
     super.didUpdateWidget(oldWidget);
     // Parent rebuilds (shell setState, auth, splash) recreate MapScreen; only
     // react when map foreground actually changes — otherwise startTracking
-    // would refetch /api/.../missions/aerial on every notify.
+    // would refetch /api/.../sessions/active on every notify.
     if (oldWidget.isActive != widget.isActive) {
       _activateIfNeeded();
     }
@@ -110,7 +111,7 @@ class _MapScreenState extends State<MapScreen>
     final basemapTheme = context.watch<ThemeController>().mapBasemapTheme;
     final mapBrightness = Theme.of(context).brightness;
     final avatarUrl = AuthService.imageUrl(auth.currentUser?.profileImage);
-    final aerialRecon = context.watch<AerialMissionController>();
+    final aerialRecon = context.watch<AerialSessionController>();
     final aerialDrawMode = aerialRecon.isDrawMode;
     final guidance = context.watch<GuidanceSessionController>();
     final orbitSurvey = context.watch<OrbitSurveyController>();
@@ -487,13 +488,13 @@ class _MapScreenState extends State<MapScreen>
               },
             ),
             if (aerialDrawMode && widget.isActive)
-              AerialMissionDrawOverlay(
+              AerialDrawOverlay(
                 camera: _mapboxCamera,
                 currentZoom: _zoomLevel,
                 onZoomChanged: _onZoomChanged,
               ),
-            if (widget.isActive && !aerialDrawMode && aerialRecon.hudMission != null)
-              const AerialMissionHud(),
+            if (widget.isActive && !aerialDrawMode && aerialRecon.hudSession != null)
+              const AerialHud(),
             if (widget.isActive && !aerialDrawMode && guidance.isActive)
               GuidanceOverlay(
                 rotateWithHeading: _rotateMap,

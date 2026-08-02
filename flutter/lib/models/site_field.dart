@@ -180,8 +180,8 @@ class FieldDataPurgeResult {
     required this.fossilsDeleted,
     required this.surveyJobsDeleted,
     required this.ensureJobsDeleted,
-    this.missionEventsDeleted = 0,
-    this.missionsDeleted = 0,
+    this.sessionEventsDeleted = 0,
+    this.sessionsDeleted = 0,
   });
 
   final int userSitesDeleted;
@@ -190,8 +190,8 @@ class FieldDataPurgeResult {
   final int fossilsDeleted;
   final int surveyJobsDeleted;
   final int ensureJobsDeleted;
-  final int missionEventsDeleted;
-  final int missionsDeleted;
+  final int sessionEventsDeleted;
+  final int sessionsDeleted;
 
   factory FieldDataPurgeResult.fromJson(Map<String, dynamic> json) {
     return FieldDataPurgeResult(
@@ -201,8 +201,8 @@ class FieldDataPurgeResult {
       fossilsDeleted: json['fossils_deleted'] as int? ?? 0,
       surveyJobsDeleted: json['survey_jobs_deleted'] as int? ?? 0,
       ensureJobsDeleted: json['ensure_jobs_deleted'] as int? ?? 0,
-      missionEventsDeleted: json['mission_events_deleted'] as int? ?? 0,
-      missionsDeleted: json['missions_deleted'] as int? ?? 0,
+      sessionEventsDeleted: json['session_events_deleted'] as int? ?? 0,
+      sessionsDeleted: json['sessions_deleted'] as int? ?? 0,
     );
   }
 }

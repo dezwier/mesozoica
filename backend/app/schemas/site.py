@@ -62,7 +62,7 @@ class SiteSummary(BaseModel):
     viewer_has_surveyed: bool | None = None
     # Viewer's discoverer UserSite (when authenticated and linked).
     discovered_at: datetime | None = None
-    discovering_mission_id: int | None = None
+    discovering_session_id: int | None = None
     odd_dino_count: float | None = None
     odd_fossil_count: float | None = None
     odd_completeness: float | None = None
@@ -132,8 +132,8 @@ class FieldDataPurgeResponse(BaseModel):
     fossils_deleted: int
     survey_jobs_deleted: int
     ensure_jobs_deleted: int
-    mission_events_deleted: int = 0
-    missions_deleted: int = 0
+    session_events_deleted: int = 0
+    sessions_deleted: int = 0
 
 
 class FieldDiscoverResponse(BaseModel):

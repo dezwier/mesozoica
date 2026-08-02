@@ -21,13 +21,13 @@ void main() {
     expect(entries.single.onHowTap, isNull);
   });
 
-  test('timeline aerial row is tappable when mission id present', () {
+  test('timeline aerial row is tappable when session id present', () {
     var tapped = false;
     final site = SiteSummary(
       siteId: 3,
       howDiscovered: SiteSummary.howDiscoveredAerialRecon,
       discoveredAt: DateTime.utc(2026, 7, 1, 12),
-      discoveringMissionId: 7,
+      discoveringSessionId: 7,
     );
     final entries = SiteCardUserTimeline.entriesFor(
       site,
@@ -44,10 +44,10 @@ void main() {
       'site_id': 9,
       'how_discovered': 'aerial_recon',
       'discovered_at': '2026-07-01T12:00:00',
-      'discovering_mission_id': 42,
+      'discovering_session_id': 42,
     });
     expect(site.howDiscovered, SiteSummary.howDiscoveredAerialRecon);
-    expect(site.discoveringMissionId, 42);
+    expect(site.discoveringSessionId, 42);
     expect(site.discoveredAt?.toUtc(), DateTime.utc(2026, 7, 1, 12));
   });
 }

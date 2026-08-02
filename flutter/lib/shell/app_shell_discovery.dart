@@ -2,7 +2,7 @@ part of 'app_shell.dart';
 
 /// Discovery celebration / site-discovered side effects for [AppShell].
 mixin _AppShellDiscoveryMixin on State<AppShell> {
-  int _lastAerialMissionsFetchGeneration = 0;
+  int _lastToolSessionsFetchGeneration = 0;
   final Set<int> _knownAerialDiscoveredSiteIds = {};
   Timer? _discoveryRefreshTimer;
   bool _celebrationShowing = false;

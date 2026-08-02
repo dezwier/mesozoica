@@ -199,22 +199,32 @@ mixin _MapScreenFieldOpsMixin on State<MapScreen>, _MapScreenCameraMixin {
         userFossils: selection.userFossils,
         sites: selection.sites,
         fossils: selection.fossils,
-        missionEvents: selection.missionEvents,
-        missions: selection.missions,
+        sessionEvents: selection.sessionEvents,
+        sessions: selection.sessions,
       );
       if (!mounted) return;
       context.read<FieldDiscoveryCoordinator>().clearForUserChange();
       context.read<map_data.MapController>().load(force: true);
       context.read<SiteCatalogController>().load(force: true);
       context.read<FossilCatalogController>().load(force: true);
-      unawaited(context.read<AerialMissionController>().refreshMissions());
+      context.read<ToolCatalogController>().load(force: true);
+      // Wipe local tool-session UI for every card kind (server rows already gone).
+      if (selection.sessions || selection.sessionEvents) {
+        context.read<AerialSessionController>().clearAllLocalSessions();
+        unawaited(
+          context.read<GuidanceSessionController>().stop(notifyServer: false),
+        );
+        context.read<OrbitSurveyController>().clearLocalSession();
+        context.read<FormationMapController>().clearLocalSession();
+        context.read<TerrainEchoController>().clearLocalSession();
+      }
       _showScanBanner(
         'Deleted ${result.userSitesDeleted} user sites · '
         '${result.userFossilsDeleted} user fossils · '
         '${result.sitesDeleted} sites · '
         '${result.fossilsDeleted} fossils · '
-        '${result.missionEventsDeleted} mission events · '
-        '${result.missionsDeleted} missions',
+        '${result.sessionEventsDeleted} session events · '
+        '${result.sessionsDeleted} sessions',
       );
     } on SiteServiceException catch (error) {
       if (!mounted) return;

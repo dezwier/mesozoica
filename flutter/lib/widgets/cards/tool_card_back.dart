@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../models/tool.dart';
-import '../../models/tool_use.dart';
+import '../../models/tool_session.dart';
 import '../../theme/dino_card_theme.dart';
 import '../../utils/relative_time.dart';
 import '../common/chrome_action_button.dart';
@@ -37,14 +37,14 @@ class ToolCardBack extends StatelessWidget {
   /// Replaces the Rarity panel when non-null (e.g. deploy stats).
   final Widget? statsChild;
 
-  /// Optional ongoing-mission panel below stats.
+  /// Optional ongoing-session panel below stats.
   final Widget? ongoingChild;
 
   /// Compact use history (newest first).
-  final List<ToolUse> uses;
+  final List<ToolSession> uses;
   final bool usesLoading;
   final int? remainingDurationS;
-  final ValueChanged<ToolUse>? onUseTap;
+  final ValueChanged<ToolSession>? onUseTap;
 
   static const double _actionHeight = 44;
 
@@ -178,9 +178,9 @@ class _UsesList extends StatelessWidget {
     this.onUseTap,
   });
 
-  final List<ToolUse> uses;
+  final List<ToolSession> uses;
   final bool loading;
-  final ValueChanged<ToolUse>? onUseTap;
+  final ValueChanged<ToolSession>? onUseTap;
 
   @override
   Widget build(BuildContext context) {
@@ -225,7 +225,7 @@ class _UsesList extends StatelessWidget {
 class _UseRow extends StatelessWidget {
   const _UseRow({required this.use, this.onTap});
 
-  final ToolUse use;
+  final ToolSession use;
   final VoidCallback? onTap;
 
   @override
@@ -237,7 +237,7 @@ class _UseRow extends StatelessWidget {
     final dur = _formatDuration(use.durationS);
     final status = _statusLabel(use);
     final discovered = use.discoveredCount;
-    final result = (discovered != null && discovered > 0)
+    final result = discovered > 0
         ? '$discovered site${discovered == 1 ? '' : 's'}'
         : null;
 
@@ -293,7 +293,7 @@ class _UseRow extends StatelessWidget {
     );
   }
 
-  static String _statusLabel(ToolUse use) {
+  static String _statusLabel(ToolSession use) {
     if (use.isActive) return 'live';
     if (use.isManualStop) return 'stopped';
     if (use.isExhausted) return 'done';
