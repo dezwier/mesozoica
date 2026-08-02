@@ -166,6 +166,8 @@ def start_aerial_mission(
         if job_id is not None:
             job_ids.append(job_id)
 
+    # Flight clock follows the drawn loop, not the battery/duration budget param.
+    # Budget only caps max route (= speed × duration_minutes).
     speed = max(eff_speed, 1e-6)
     flight_duration_s = max(1, int(round(length_km / speed * 3600.0)))
 

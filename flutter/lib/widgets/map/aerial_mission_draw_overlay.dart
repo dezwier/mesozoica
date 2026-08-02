@@ -8,8 +8,11 @@ import 'package:provider/provider.dart';
 
 import '../../config/map_config.dart';
 import '../../controllers/aerial_mission_controller.dart';
+import '../../models/aerial_mission_kind.dart';
 import '../../services/location_service.dart';
+import 'active_tool_hud_shell.dart';
 import 'mapbox_camera_coordinator.dart';
+import 'vintage_guidance_compass.dart';
 
 /// Full-screen draw layer for aerial mission scout loops.
 ///
@@ -375,9 +378,7 @@ class _AerialMissionDrawOverlayState extends State<AerialMissionDrawOverlay> {
       builder: (context, recon, location, _) {
         if (!recon.isDrawMode) return const SizedBox.shrink();
 
-        final top = MediaQuery.paddingOf(context).top + 12;
         final bottom = MediaQuery.paddingOf(context).bottom + 16;
-        final scheme = Theme.of(context).colorScheme;
         final kind = recon.drawKind;
 
         return Positioned.fill(
@@ -403,49 +404,55 @@ class _AerialMissionDrawOverlayState extends State<AerialMissionDrawOverlay> {
                   ),
                 ),
               ),
-              Positioned(
-                top: top,
-                left: 16,
-                right: 16,
-                child: Material(
-                  color: scheme.surfaceContainerHighest.withValues(alpha: 0.94),
-                  borderRadius: BorderRadius.circular(12),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 12,
+              VintageMapHudChip(
+                maxWidth: 320,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      kind == AerialMissionKind.scout ? 'SCOUT' : 'RECON',
+                      style: VintageInstrumentStyle.mono.copyWith(
+                        fontSize: 9,
+                        letterSpacing: 1.2,
+                        color: VintageInstrumentStyle.brassMuted,
+                      ),
                     ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          recon.message ??
-                              'Draw with one finger; pinch to zoom. '
-                              'The loop starts and ends at your location.',
-                          style: Theme.of(context).textTheme.bodyMedium,
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          recon.rangeHint,
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                color: scheme.onSurfaceVariant,
-                              ),
-                        ),
-                        if (recon.hasRoute && recon.isShortRoute) ...[
-                          const SizedBox(height: 8),
-                          Text(
-                            'This loop uses less than '
-                            '${(recon.shortRouteWarnFraction * 100).round()}% '
-                            'of the allowed range.',
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                  color: scheme.error,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                          ),
-                        ],
-                      ],
+                    const SizedBox(height: 4),
+                    Text(
+                      recon.message ??
+                          'Draw with one finger; pinch to zoom. '
+                          'The loop starts and ends at your location.',
+                      style: VintageInstrumentStyle.mono.copyWith(
+                        fontSize: 10,
+                        letterSpacing: 0.4,
+                        height: 1.35,
+                        fontWeight: FontWeight.w600,
+                        color: VintageInstrumentStyle.brassText,
+                      ),
                     ),
-                  ),
+                    const SizedBox(height: 5),
+                    Text(
+                      recon.rangeHint,
+                      style: VintageInstrumentStyle.mono.copyWith(
+                        fontSize: 9,
+                        letterSpacing: 0.5,
+                        color: VintageInstrumentStyle.brassMuted,
+                      ),
+                    ),
+                    if (recon.hasRoute && recon.isShortRoute) ...[
+                      const SizedBox(height: 6),
+                      Text(
+                        'SHORT LOOP · UNDER '
+                        '${(recon.shortRouteWarnFraction * 100).round()}% RANGE',
+                        style: VintageInstrumentStyle.mono.copyWith(
+                          fontSize: 9,
+                          letterSpacing: 0.7,
+                          color: VintageInstrumentStyle.stop,
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
               ),
               Positioned(
@@ -455,25 +462,20 @@ class _AerialMissionDrawOverlayState extends State<AerialMissionDrawOverlay> {
                 child: Row(
                   children: [
                     Expanded(
-                      child: OutlinedButton(
+                      child: _VintageDrawButton(
+                        label: 'ABORT',
+                        emphasized: false,
+                        danger: true,
                         onPressed: recon.isSubmitting
                             ? null
                             : () => recon.cancelDraw(),
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 12,
-                          ),
-                        ),
-                        child: const Text(
-                          'Abort Recon',
-                          textAlign: TextAlign.center,
-                        ),
                       ),
                     ),
                     const SizedBox(width: 8),
                     Expanded(
-                      child: OutlinedButton(
+                      child: _VintageDrawButton(
+                        label: 'CLEAR',
+                        emphasized: false,
                         onPressed: recon.isSubmitting || !recon.hasRoute
                             ? null
                             : () {
@@ -483,44 +485,19 @@ class _AerialMissionDrawOverlayState extends State<AerialMissionDrawOverlay> {
                                   _markScreenDirty();
                                 });
                               },
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 12,
-                          ),
-                        ),
-                        child: const Text(
-                          'Clear Route',
-                          textAlign: TextAlign.center,
-                        ),
                       ),
                     ),
                     const SizedBox(width: 8),
                     Expanded(
-                      child: FilledButton(
+                      child: _VintageDrawButton(
+                        label: kind.deployVerb.toUpperCase(),
+                        emphasized: true,
                         onPressed: recon.isSubmitting || !recon.hasRoute
                             ? null
                             : () {
                                 unawaited(_deployMission());
                               },
-                        style: FilledButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 12,
-                          ),
-                        ),
-                        child: recon.isSubmitting
-                            ? const SizedBox(
-                                width: 18,
-                                height: 18,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                ),
-                              )
-                            : Text(
-                                kind.deployVerb,
-                                textAlign: TextAlign.center,
-                              ),
+                        busy: recon.isSubmitting,
                       ),
                     ),
                   ],
@@ -530,6 +507,77 @@ class _AerialMissionDrawOverlayState extends State<AerialMissionDrawOverlay> {
           ),
         );
       },
+    );
+  }
+}
+
+class _VintageDrawButton extends StatelessWidget {
+  const _VintageDrawButton({
+    required this.label,
+    required this.onPressed,
+    this.emphasized = false,
+    this.danger = false,
+    this.busy = false,
+  });
+
+  final String label;
+  final VoidCallback? onPressed;
+  final bool emphasized;
+  final bool danger;
+  final bool busy;
+
+  @override
+  Widget build(BuildContext context) {
+    final enabled = onPressed != null && !busy;
+    final border = danger
+        ? VintageInstrumentStyle.stop
+        : emphasized
+            ? VintageInstrumentStyle.gold
+            : VintageInstrumentStyle.brassRim;
+    final fg = !enabled
+        ? VintageInstrumentStyle.brassMuted.withValues(alpha: 0.45)
+        : danger
+            ? VintageInstrumentStyle.stop
+            : emphasized
+                ? VintageInstrumentStyle.gold
+                : VintageInstrumentStyle.brassText;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: enabled ? onPressed : null,
+        borderRadius: BorderRadius.circular(8),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: VintageInstrumentStyle.dialFace.withValues(alpha: 0.92),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: border.withValues(alpha: enabled ? 1 : 0.4)),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+            child: Center(
+              child: busy
+                  ? SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: fg,
+                      ),
+                    )
+                  : Text(
+                      label,
+                      textAlign: TextAlign.center,
+                      style: VintageInstrumentStyle.mono.copyWith(
+                        fontSize: 11,
+                        letterSpacing: 1.0,
+                        color: fg,
+                      ),
+                    ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

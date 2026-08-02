@@ -276,8 +276,9 @@ class AerialMissionActionConfig(BaseModel):
     ensure_timeout_s: int = 600
     short_route_warn_fraction: float = 0.7
     stats_explanation: str = (
-        "Scout loops fly at this speed for the listed duration; sites within "
-        "discovery distance are rolled at the listed chance."
+        "Duration caps how far you can draw (speed × duration). Flight time is "
+        "drawn length ÷ speed. Sites within discovery distance are rolled at the "
+        "listed chance."
     )
 
     @property
@@ -663,8 +664,9 @@ class ToolActionsConfig(BaseModel):
             discovery_chance=0.008,
             discovery_distance_m=120.0,
             stats_explanation=(
-                "Drone loops fly at this speed for the listed duration; sites within "
-                "discovery distance are rolled at the listed chance."
+                "Duration caps how far you can draw (speed × duration). Flight time is "
+                "drawn length ÷ speed. Sites within discovery distance are rolled at the "
+                "listed chance."
             ),
         )
     )

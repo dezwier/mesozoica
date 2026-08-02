@@ -1,11 +1,11 @@
 # Per-tool action parameters (gameplay knobs, not catalog copy).
 
 aerial_recon:
-  # Battery / flight budget; max route km = flight_speed_kmh × duration_minutes / 60
+  # Battery / draw budget; max route km = flight_speed_kmh × duration_minutes / 60.
+  # Actual flight time after deploy = drawn_route_km / flight_speed_kmh.
   duration_minutes: 60
   # start/end must be within this of the player's GPS origin
   loop_endpoint_tolerance_m: 75
-  # Flight time = route_length_km / flight_speed_kmh (snapshotted as flight_duration_s)
   flight_speed_kmh: 50
   discovery_chance: 0.01
   discovery_distance_m: 200
@@ -15,8 +15,9 @@ aerial_recon:
   short_route_warn_fraction: 0.7
   # One-line blurb shown on the tool card stats panel
   stats_explanation: >-
-    Scout loops fly at this speed for the listed duration; sites within
-    discovery distance are rolled at the listed chance.
+    Duration caps how far you can draw (speed × duration). Flight time is
+    drawn length ÷ speed. Sites within discovery distance are rolled at the
+    listed chance.
 
 aerial_scout:
   duration_minutes: 10
@@ -27,8 +28,9 @@ aerial_scout:
   ensure_timeout_s: 600
   short_route_warn_fraction: 0.7
   stats_explanation: >-
-    Drone loops fly at this speed for the listed duration; sites within
-    discovery distance are rolled at the listed chance.
+    Duration caps how far you can draw (speed × duration). Flight time is
+    drawn length ÷ speed. Sites within discovery distance are rolled at the
+    listed chance.
 
 geo_compass:
   exactness: 0.0

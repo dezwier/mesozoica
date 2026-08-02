@@ -3,35 +3,30 @@ import 'package:flutter/material.dart';
 import '../../shell/map_chrome_insets.dart';
 import 'vintage_guidance_compass.dart';
 
-/// Shared draggable map chip for timed tool sessions (duration + STOP).
-///
-/// Defaults to center-top under archive/field chrome; drag anywhere on screen.
-/// Optional [body] holds tool-specific extras (legends, etc.).
-class ActiveToolHudShell extends StatefulWidget {
-  const ActiveToolHudShell({
+/// Draggable brass map chip chrome shared by timed-tool and aerial HUDs.
+class VintageMapHudChip extends StatefulWidget {
+  const VintageMapHudChip({
     super.key,
-    required this.icon,
-    required this.remainingListenable,
-    required this.onStop,
-    this.body,
+    required this.child,
+    this.maxWidth = 280,
+    this.onTap,
   });
 
-  final Widget icon;
-  final ValueNotifier<Duration?> remainingListenable;
-  final VoidCallback onStop;
-  final Widget? body;
+  final Widget child;
+  final double maxWidth;
+  /// Fired on a tap that is not a drag (e.g. follow / re-center).
+  final VoidCallback? onTap;
 
   @override
-  State<ActiveToolHudShell> createState() => _ActiveToolHudShellState();
+  State<VintageMapHudChip> createState() => _VintageMapHudChipState();
 }
 
-class _ActiveToolHudShellState extends State<ActiveToolHudShell> {
+class _VintageMapHudChipState extends State<VintageMapHudChip> {
   Offset _dragOffset = Offset.zero;
 
   @override
   Widget build(BuildContext context) {
     final top = MapChromeInsets.top(context) + 8;
-    final body = widget.body;
     return Positioned.fill(
       child: Padding(
         padding: EdgeInsets.only(top: top),
@@ -40,6 +35,7 @@ class _ActiveToolHudShellState extends State<ActiveToolHudShell> {
           child: Transform.translate(
             offset: _dragOffset,
             child: GestureDetector(
+              onTap: widget.onTap,
               onPanUpdate: (details) {
                 setState(() => _dragOffset += details.delta);
               },
@@ -61,56 +57,11 @@ class _ActiveToolHudShellState extends State<ActiveToolHudShell> {
                       ),
                     ],
                   ),
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(10, 6, 10, 7),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            widget.icon,
-                            const SizedBox(width: 8),
-                            ValueListenableBuilder<Duration?>(
-                              valueListenable: widget.remainingListenable,
-                              builder: (context, remaining, _) {
-                                final minutesLeft =
-                                    remaining?.inMinutes.clamp(0, 999);
-                                final time = minutesLeft == null
-                                    ? '—'
-                                    : '${minutesLeft}m';
-                                return Text(
-                                  time,
-                                  style: VintageInstrumentStyle.mono.copyWith(
-                                    fontSize: 13,
-                                    color: VintageInstrumentStyle.live,
-                                  ),
-                                );
-                              },
-                            ),
-                            const SizedBox(width: 10),
-                            GestureDetector(
-                              onTap: widget.onStop,
-                              behavior: HitTestBehavior.opaque,
-                              child: Text(
-                                'STOP',
-                                style: VintageInstrumentStyle.mono.copyWith(
-                                  fontSize: 12,
-                                  color: VintageInstrumentStyle.stop,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        if (body != null) ...[
-                          const SizedBox(height: 6),
-                          ConstrainedBox(
-                            constraints: const BoxConstraints(maxWidth: 280),
-                            child: body,
-                          ),
-                        ],
-                      ],
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(maxWidth: widget.maxWidth),
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(10, 6, 10, 7),
+                      child: widget.child,
                     ),
                   ),
                 ),
@@ -118,6 +69,88 @@ class _ActiveToolHudShellState extends State<ActiveToolHudShell> {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Shared draggable map chip for timed tool sessions (duration + STOP).
+///
+/// Defaults to center-top under archive/field chrome; drag anywhere on screen.
+/// Optional [body] holds tool-specific extras (legends, etc.).
+class ActiveToolHudShell extends StatelessWidget {
+  const ActiveToolHudShell({
+    super.key,
+    required this.icon,
+    required this.remainingListenable,
+    required this.onStop,
+    this.stopLabel = 'STOP',
+    this.onTap,
+    this.body,
+    this.maxWidth = 280,
+  });
+
+  final Widget icon;
+  final ValueNotifier<Duration?> remainingListenable;
+  final VoidCallback onStop;
+  final String stopLabel;
+  /// Chip tap (not drag / not STOP) — e.g. follow an aerial scout.
+  final VoidCallback? onTap;
+  final Widget? body;
+  final double maxWidth;
+
+  @override
+  Widget build(BuildContext context) {
+    final body = this.body;
+    return VintageMapHudChip(
+      maxWidth: maxWidth,
+      onTap: onTap,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              icon,
+              const SizedBox(width: 8),
+              ValueListenableBuilder<Duration?>(
+                valueListenable: remainingListenable,
+                builder: (context, remaining, _) {
+                  final minutesLeft = remaining?.inMinutes.clamp(0, 999);
+                  final time = minutesLeft == null ? '—' : '${minutesLeft}m';
+                  return Text(
+                    time,
+                    style: VintageInstrumentStyle.mono.copyWith(
+                      fontSize: 13,
+                      color: VintageInstrumentStyle.live,
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(width: 10),
+              GestureDetector(
+                onTap: onStop,
+                behavior: HitTestBehavior.opaque,
+                // Absorb so chip [onTap] (e.g. follow) does not also fire.
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 2, horizontal: 2),
+                  child: Text(
+                    stopLabel,
+                    style: VintageInstrumentStyle.mono.copyWith(
+                      fontSize: 12,
+                      color: VintageInstrumentStyle.stop,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          if (body != null) ...[
+            const SizedBox(height: 6),
+            body,
+          ],
+        ],
       ),
     );
   }

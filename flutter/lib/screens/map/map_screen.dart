@@ -30,7 +30,7 @@ import '../../shell/map_chrome_insets.dart';
 import '../../widgets/common/chrome_fab.dart';
 import '../../widgets/dino/dinosaur_filter_fab.dart';
 import '../../widgets/map/aerial_mission_draw_overlay.dart';
-import '../../widgets/map/aerial_mission_focus_overlay.dart';
+import '../../widgets/map/aerial_mission_hud.dart';
 import '../../widgets/map/field_data_purge_dialog.dart';
 import '../../widgets/map/formation_map_hud.dart';
 import '../../widgets/map/orbit_survey_hud.dart';
@@ -491,9 +491,9 @@ class _MapScreenState extends State<MapScreen>
                 camera: _mapboxCamera,
                 currentZoom: _zoomLevel,
                 onZoomChanged: _onZoomChanged,
-              )
-            else if (widget.isActive && aerialRecon.focusedMission != null)
-              const AerialMissionFocusOverlay(),
+              ),
+            if (widget.isActive && !aerialDrawMode && aerialRecon.hudMission != null)
+              const AerialMissionHud(),
             if (widget.isActive && !aerialDrawMode && guidance.isActive)
               GuidanceOverlay(
                 rotateWithHeading: _rotateMap,

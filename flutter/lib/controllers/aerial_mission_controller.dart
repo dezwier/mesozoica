@@ -51,6 +51,15 @@ class AerialMissionController extends ChangeNotifier {
   AerialMission? get pendingFocusMission => _pendingFocusMission;
   bool get pendingDrawCamera => _pendingDrawCamera;
 
+  /// Mission shown on the map HUD: focused route, else first active flight.
+  AerialMission? get hudMission {
+    if (_focusedMission != null) return _focusedMission;
+    for (final m in _missions) {
+      if (m.isActive) return m;
+    }
+    return null;
+  }
+
   /// Bumps while any flying mission is active so map layers can re-interpolate.
   /// Prefer [progressTickListenable] for UI — progress ticks do not call
   /// [notifyListeners].
@@ -58,6 +67,10 @@ class AerialMissionController extends ChangeNotifier {
 
   /// Flying scout interpolation tick (~4 Hz) without rebuilding Provider trees.
   final ValueNotifier<int> progressTickListenable = ValueNotifier<int>(0);
+
+  /// Remaining flight time for [hudMission] (null while ensuring / unknown).
+  final ValueNotifier<Duration?> remainingListenable =
+      ValueNotifier<Duration?>(null);
 
   /// Increments when missions are reloaded from the server.
   int get missionsFetchGeneration => _missionsFetchGeneration;
@@ -445,6 +458,21 @@ class AerialMissionController extends ChangeNotifier {
   void _syncMissionTimers() {
     _syncRefreshTimer();
     _syncProgressTimer();
+    _syncRemaining();
+  }
+
+  void _syncRemaining() {
+    final mission = hudMission;
+    Duration? next;
+    if (mission != null && mission.isFlying && mission.flightEndsAt != null) {
+      final left = mission.flightEndsAt!.difference(DateTime.now().toUtc());
+      next = left.isNegative ? Duration.zero : left;
+    } else if (mission != null && mission.isPast) {
+      next = Duration.zero;
+    }
+    if (remainingListenable.value != next) {
+      remainingListenable.value = next;
+    }
   }
 
   /// Poll server (~5s) only while map tracking and a mission is ensuring/flying.
@@ -466,6 +494,7 @@ class AerialMissionController extends ChangeNotifier {
       // ~4 Hz keeps the scout puck moving smoothly without thrashing Mapbox.
       _progressTimer ??= Timer.periodic(const Duration(milliseconds: 250), (_) {
         progressTickListenable.value = progressTickListenable.value + 1;
+        _syncRemaining();
       });
     } else {
       _progressTimer?.cancel();
@@ -511,6 +540,7 @@ class AerialMissionController extends ChangeNotifier {
   void dispose() {
     stopTracking();
     progressTickListenable.dispose();
+    remainingListenable.dispose();
     super.dispose();
   }
 }

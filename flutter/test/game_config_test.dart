@@ -42,7 +42,7 @@ void main() {
     expect(config.toolActions.aerialRecon.shortRouteWarnFraction, 0.7);
     expect(
       config.toolActions.aerialRecon.statsExplanation,
-      contains('Scout loops'),
+      contains('Flight time'),
     );
     expect(config.toolActions.aerialScout.durationMinutes, 10);
     expect(config.toolActions.aerialScout.flightSpeedKmh, 35.0);

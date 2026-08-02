@@ -57,6 +57,9 @@ class AerialMissionFlightStats extends StatelessWidget {
   }
 
   /// From a mission snapshot (with config fallback for legacy nulls).
+  ///
+  /// Duration is the actual flight time from route length ÷ speed, not the
+  /// tool's battery/budget [duration_minutes] param.
   factory AerialMissionFlightStats.fromMission(
     AerialMission mission, {
     Key? key,
@@ -64,14 +67,10 @@ class AerialMissionFlightStats extends StatelessWidget {
   }) {
     final cfg = GameConfig.instance.toolActions.configFor(mission.actionKey);
     final speed = mission.flightSpeedKmh ?? cfg.flightSpeedKmh;
-    final maxRoute = mission.maxRouteKm ?? cfg.maxRouteKm;
-    final duration = speed > 0
-        ? (maxRoute / speed * 60).round()
-        : cfg.durationMinutes;
     return AerialMissionFlightStats(
       key: key,
       flightSpeedKmh: speed,
-      durationMinutes: duration,
+      durationMinutes: _minutesFromFlightSeconds(mission.flightDurationS),
       discoveryChance: mission.discoveryChance ?? cfg.discoveryChance,
       discoveryDistanceM:
           mission.discoveryDistanceM ?? cfg.discoveryDistanceM,
@@ -133,6 +132,12 @@ class AerialMissionFlightStats extends StatelessWidget {
       return (maxRoute / speed * 60).round();
     }
     return 0;
+  }
+
+  static int _minutesFromFlightSeconds(int seconds) {
+    if (seconds <= 0) return 0;
+    final minutes = (seconds / 60).round();
+    return minutes < 1 ? 1 : minutes;
   }
 
   static String _formatKmh(double v) {
