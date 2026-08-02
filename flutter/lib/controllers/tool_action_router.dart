@@ -14,6 +14,7 @@ import '../models/orbit_survey_kind.dart';
 import '../models/guidance_tool_kind.dart';
 import '../models/terrain_echo_kind.dart';
 import '../models/tool.dart';
+import '../models/tool_session.dart';
 
 typedef _ToolActivator = bool Function(BuildContext context, ToolSummary tool);
 
@@ -32,6 +33,14 @@ class ToolActionRouter {
   static void start(BuildContext context, ToolSummary tool) {
     if (!tool.isOwned) return;
 
+    final blocking = cardInUseLabel(context, forTool: tool);
+    if (blocking != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('$blocking is already in use')),
+      );
+      return;
+    }
+
     for (final activator in _activators) {
       if (activator(context, tool)) return;
     }
@@ -39,6 +48,64 @@ class ToolActionRouter {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('${tool.action} coming soon')),
     );
+  }
+
+  /// Display name of a live tool card that blocks starting [forTool], if any.
+  ///
+  /// Includes the same card when it already has a live session / draw.
+  static String? cardInUseLabel(
+    BuildContext context, {
+    required ToolSummary forTool,
+  }) {
+    final aerial = context.read<AerialSessionController>();
+    if (aerial.isDrawMode) {
+      final drawTool = aerial.tool;
+      if (drawTool != null) return drawTool.name;
+    }
+    for (final session in aerial.sessions) {
+      if (!session.isActive) continue;
+      return _labelForSession(session) ?? forTool.name;
+    }
+
+    final guidance = context.read<GuidanceSessionController>();
+    if (guidance.isActive) {
+      return guidance.kind?.toolName ??
+          guidance.tool?.name ??
+          _labelForSession(guidance.session) ??
+          'Guidance tool';
+    }
+
+    final orbit = context.read<OrbitSurveyController>();
+    if (orbit.isActive) {
+      return orbit.tool?.name ?? OrbitSurveyKind.toolName;
+    }
+
+    final formation = context.read<FormationMapController>();
+    if (formation.isActive) {
+      return formation.tool?.name ?? FormationMapKind.toolName;
+    }
+
+    final terrain = context.read<TerrainEchoController>();
+    if (terrain.isActive) {
+      return terrain.tool?.name ?? TerrainEchoKind.toolName;
+    }
+
+    return null;
+  }
+
+  static String? _labelForSession(ToolSession? session) {
+    if (session == null) return null;
+    return AerialActionKind.tryParseActionKey(session.actionKey)?.toolName ??
+        GuidanceToolKind.tryParseActionKey(session.actionKey)?.toolName ??
+        (session.actionKey == OrbitSurveyKind.actionKey
+            ? OrbitSurveyKind.toolName
+            : null) ??
+        (session.actionKey == FormationMapKind.actionKey
+            ? FormationMapKind.toolName
+            : null) ??
+        (session.actionKey == TerrainEchoKind.actionKey
+            ? TerrainEchoKind.toolName
+            : null);
   }
 
   static bool _startAerial(BuildContext context, ToolSummary tool) {
@@ -49,36 +116,24 @@ class ToolActionRouter {
 
   static bool _startGuidance(BuildContext context, ToolSummary tool) {
     if (GuidanceToolKind.tryParseToolName(tool.name) == null) return false;
-    context.read<OrbitSurveyController>().clearLocalSession();
-    context.read<FormationMapController>().clearLocalSession();
-    context.read<TerrainEchoController>().clearLocalSession();
     unawaited(context.read<GuidanceSessionController>().activate(tool));
     return true;
   }
 
   static bool _startOrbitSurvey(BuildContext context, ToolSummary tool) {
     if (!OrbitSurveyKind.matchesToolName(tool.name)) return false;
-    context.read<GuidanceSessionController>().stop(notifyServer: false);
-    context.read<FormationMapController>().clearLocalSession();
-    context.read<TerrainEchoController>().clearLocalSession();
     unawaited(context.read<OrbitSurveyController>().activate(tool));
     return true;
   }
 
   static bool _startFormationMap(BuildContext context, ToolSummary tool) {
     if (!FormationMapKind.matchesToolName(tool.name)) return false;
-    context.read<GuidanceSessionController>().stop(notifyServer: false);
-    context.read<OrbitSurveyController>().clearLocalSession();
-    context.read<TerrainEchoController>().clearLocalSession();
     unawaited(context.read<FormationMapController>().activate(tool));
     return true;
   }
 
   static bool _startTerrainEcho(BuildContext context, ToolSummary tool) {
     if (!TerrainEchoKind.matchesToolName(tool.name)) return false;
-    context.read<GuidanceSessionController>().stop(notifyServer: false);
-    context.read<OrbitSurveyController>().clearLocalSession();
-    context.read<FormationMapController>().clearLocalSession();
     unawaited(context.read<TerrainEchoController>().activate(tool));
     return true;
   }

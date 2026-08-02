@@ -37,8 +37,8 @@ from app.services.tool_action_service.tool_session.budget import (
     allocate_remaining_for_start,
 )
 from app.services.tool_action_service.tool_session.lifecycle import (
-    cancel_live_timed_sessions,
     close_session,
+    ensure_exclusive_tool_session,
     expire_if_needed,
 )
 from app.services.tool_service.collect import resolve_owned_tool_selection
@@ -270,7 +270,9 @@ def start_formation_session(
             reason=ACTION_KEY_FORMATION_MAP,
         )
 
-    cancel_live_timed_sessions(session, user_id=user_id)
+    ensure_exclusive_tool_session(
+        session, user_id=user_id, instance_id=int(instance.id)
+    )
 
     remaining_s = allocate_remaining_for_start(
         session, tool_type=tool_type, instance=instance
@@ -324,7 +326,9 @@ def start_timed_session(
             session, user_id=user_id, tool_id=tool_id, lat=lat, lon=lon
         )
 
-    cancel_live_timed_sessions(session, user_id=user_id)
+    ensure_exclusive_tool_session(
+        session, user_id=user_id, instance_id=int(instance.id)
+    )
 
     game = get_game_config()
     # Same as other timed tools: use whatever battery remains (no floor).

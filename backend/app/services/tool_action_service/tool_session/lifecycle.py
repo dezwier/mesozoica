@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 
 from sqlmodel import Session, col, select
 
+from app.core.exceptions import ValidationError
 from app.models.tool_session import (
     AERIAL_ACTION_KEYS,
     LIVE_STATUSES,
@@ -82,7 +83,7 @@ def expire_if_needed(session: Session, row: ToolSession) -> ToolSession:
 
 
 def cancel_live_timed_sessions(session: Session, *, user_id: int) -> None:
-    """Cancel all live timed overlay sessions for mutual exclusivity."""
+    """Cancel all live timed overlay sessions (legacy helper / tests)."""
     now = _utcnow()
     rows = session.exec(
         select(ToolSession).where(
@@ -97,3 +98,42 @@ def cancel_live_timed_sessions(session: Session, *, user_id: int) -> None:
         session.add(row)
     if rows:
         session.commit()
+
+
+def _tool_display_name(session: Session, *, instance_id: int) -> str:
+    from app.models.tool import Tool
+    from app.models.tool_type import ToolType
+
+    instance = session.get(Tool, instance_id)
+    if instance is None:
+        return "Another tool"
+    tool_type = session.get(ToolType, int(instance.tool_type_id))
+    if tool_type is None or not tool_type.name:
+        return "Another tool"
+    return str(tool_type.name)
+
+
+def ensure_exclusive_tool_session(
+    session: Session,
+    *,
+    user_id: int,
+    instance_id: int,
+) -> None:
+    """Enforce one live tool card at a time.
+
+    Any live session (including this same card) raises with that card's name.
+    """
+    rows = list(
+        session.exec(
+            select(ToolSession).where(
+                col(ToolSession.user_id) == user_id,
+                col(ToolSession.status).in_(LIVE_STATUSES),
+            )
+        ).all()
+    )
+    for row in rows:
+        refreshed = expire_if_needed(session, row)
+        if refreshed.status not in LIVE_STATUSES:
+            continue
+        name = _tool_display_name(session, instance_id=int(refreshed.tool_id))
+        raise ValidationError(f"{name} is already in use")

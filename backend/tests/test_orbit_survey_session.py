@@ -4,8 +4,10 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta
 
+import pytest
 from sqlmodel import Session, select
 
+from app.core.exceptions import ValidationError
 from app.core.game_config import get_game_config
 from app.core.security import create_access_token
 from app.models.tool import Tool
@@ -128,14 +130,12 @@ def test_start_orbit_survey_session_snapshots_and_replaces(
         f"/api/v1/tools/{fmap.id}/sessions",
         headers=headers,
     )
-    assert second.status_code in (201, 202), second.text
+    assert second.status_code == 400
+    assert "Orbit Survey is already in use" in second.json()["detail"]
 
     rows = session.exec(select(ToolSession)).all()
-    assert len(rows) == 2
-    cancelled = [r for r in rows if r.status == SESSION_STATUS_CANCELLED]
-    active = [r for r in rows if r.status == SESSION_STATUS_ACTIVE]
-    assert len(cancelled) == 1
-    assert len(active) == 1
+    assert len(rows) == 1
+    assert rows[0].status == SESSION_STATUS_ACTIVE
 
 
 def test_cancel_and_restore_orbit_survey(client, session: Session) -> None:
@@ -218,7 +218,7 @@ def test_expired_orbit_survey_session_ignored(session: Session) -> None:
     assert row.status == SESSION_STATUS_COMPLETED
 
 
-def test_mutual_cancel_with_guidance(session: Session) -> None:
+def test_rejects_when_guidance_already_in_use(session: Session) -> None:
     get_game_config.cache_clear()
     user = _user(session, username="fmap_mutex")
     fmap = _tool(session, name="Orbit Survey")
@@ -231,40 +231,10 @@ def test_mutual_cancel_with_guidance(session: Session) -> None:
     )
     assert get_active_timed_session(session, user_id=int(user.id)) is not None
 
-    start_timed_session(
-        session, user_id=int(user.id), tool_id=int(fmap.id)
-    )
-    assert (
-        get_active_timed_session(
-            session,
-            user_id=int(user.id),
-            action_keys=(ACTION_KEY_ORBIT_SURVEY,),
+    with pytest.raises(ValidationError, match="Geo Compass is already in use"):
+        start_timed_session(
+            session, user_id=int(user.id), tool_id=int(fmap.id)
         )
-        is not None
-    )
-    assert (
-        get_active_timed_session(
-            session,
-            user_id=int(user.id),
-            action_keys=(ACTION_KEY_GEO_COMPASS,),
-        )
-        is None
-    )
-
-    rows = session.exec(select(ToolSession)).all()
-    assert any(
-        r.status == SESSION_STATUS_CANCELLED
-        and r.action_key == ACTION_KEY_GEO_COMPASS
-        for r in rows
-    )
-    assert not any(
-        r.status == SESSION_STATUS_ACTIVE and r.action_key == ACTION_KEY_GEO_COMPASS
-        for r in rows
-    )
-
-    start_timed_session(
-        session, user_id=int(user.id), tool_id=int(compass.id)
-    )
     assert (
         get_active_timed_session(
             session,

@@ -174,23 +174,26 @@ def test_start_guidance_session_snapshots_and_replaces(
     assert body["params"]["direction_exactness"] == 0.0
     assert body["status"] == SESSION_STATUS_ACTIVE
 
-    second = client.post(
+    # Another card must not steal the live session.
+    blocked = client.post(
         f"/api/v1/tools/{scanner.id}/sessions",
         headers=headers,
     )
-    assert second.status_code in (201, 202), second.text
-    body2 = second.json()
-    assert body2["action_key"] == ACTION_KEY_PROXIMITY_SCANNER
-    assert body2["params"].get("discovery_chance") is None
-    assert body2["params"]["distance_exactness"] == 0.0
+    assert blocked.status_code == 400
+    assert "Geo Compass is already in use" in blocked.json()["detail"]
+
+    # Same card restart is also blocked while live.
+    second = client.post(
+        f"/api/v1/tools/{compass.id}/sessions",
+        headers=headers,
+    )
+    assert second.status_code == 400
+    assert "Geo Compass is already in use" in second.json()["detail"]
 
     rows = session.exec(select(ToolSession)).all()
-    assert len(rows) == 2
-    cancelled = [r for r in rows if r.status == SESSION_STATUS_CANCELLED]
-    active = [r for r in rows if r.status == SESSION_STATUS_ACTIVE]
-    assert len(cancelled) == 1
-    assert len(active) == 1
-    assert active[0].action_key == ACTION_KEY_PROXIMITY_SCANNER
+    assert len(rows) == 1
+    assert rows[0].status == SESSION_STATUS_ACTIVE
+    assert rows[0].action_key == ACTION_KEY_GEO_COMPASS
 
 
 def test_start_guidance_session_uses_instance_params(
@@ -232,6 +235,12 @@ def test_start_guidance_session_uses_instance_params(
     assert body["params"]["discovery_chance"] == 0.33
     assert body["params"]["direction_exactness"] == 0.77
     assert body["params"]["duration_minutes"] == 7
+
+    cancelled = client.post(
+        f"/api/v1/tools/sessions/{body['session_id']}/cancel",
+        headers=headers,
+    )
+    assert cancelled.status_code == 200
 
     scanner_resp = client.post(
         f"/api/v1/tools/{scanner.id}/sessions",

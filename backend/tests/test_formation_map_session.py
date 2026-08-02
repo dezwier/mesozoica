@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import pytest
 from sqlmodel import Session, select
 
+from app.core.exceptions import ValidationError
 from app.core.game_config import get_game_config
 from app.core.security import create_access_token
 from app.models.field_ensure_job import FieldEnsureJob
@@ -123,7 +125,13 @@ def test_start_formation_map_snaps_center_once(client, session: Session) -> None
     assert abs(float(instance.params_json["center_lat"]) - expected[0]) < 1e-6
     assert abs(float(instance.params_json["center_lon"]) - expected[1]) < 1e-6
 
-    # Far away GPS must not move the locked center.
+    # Far away GPS must not move the locked center after stop + restart.
+    cancelled = client.post(
+        f"/api/v1/tools/sessions/{body['session_id']}/cancel",
+        headers=headers,
+    )
+    assert cancelled.status_code == 200
+
     second = client.post(
         f"/api/v1/tools/{fmap.id}/sessions",
         headers=headers,
@@ -144,7 +152,7 @@ def test_start_formation_map_snaps_center_once(client, session: Session) -> None
     assert jobs[0].reason == ACTION_KEY_FORMATION_MAP
 
 
-def test_mutual_cancel_with_orbit_survey(session: Session) -> None:
+def test_rejects_when_orbit_survey_already_in_use(session: Session) -> None:
     get_game_config.cache_clear()
     user = _user(session, username="fmap_mutex")
     fmap = _tool(session, name="Formation Map")
@@ -164,18 +172,19 @@ def test_mutual_cancel_with_orbit_survey(session: Session) -> None:
         is not None
     )
 
-    start_formation_session(
-        session,
-        user_id=int(user.id),
-        tool_id=int(fmap.id),
-        lat=50.85,
-        lon=4.35,
-    )
+    with pytest.raises(ValidationError, match="Orbit Survey is already in use"):
+        start_formation_session(
+            session,
+            user_id=int(user.id),
+            tool_id=int(fmap.id),
+            lat=50.85,
+            lon=4.35,
+        )
     assert (
         get_active_timed_session(
             session,
             user_id=int(user.id),
-            action_keys=(ACTION_KEY_FORMATION_MAP,),
+            action_keys=(ACTION_KEY_ORBIT_SURVEY,),
         )
         is not None
     )
@@ -183,12 +192,7 @@ def test_mutual_cancel_with_orbit_survey(session: Session) -> None:
         get_active_timed_session(
             session,
             user_id=int(user.id),
-            action_keys=(ACTION_KEY_ORBIT_SURVEY,),
+            action_keys=(ACTION_KEY_FORMATION_MAP,),
         )
         is None
-    )
-    assert any(
-        r.status == SESSION_STATUS_CANCELLED
-        and r.action_key == ACTION_KEY_ORBIT_SURVEY
-        for r in session.exec(select(ToolSession)).all()
     )

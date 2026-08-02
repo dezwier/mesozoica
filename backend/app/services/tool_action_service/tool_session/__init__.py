@@ -24,6 +24,7 @@ from app.services.tool_action_service.tool_session.budget import (
 from app.services.tool_action_service.tool_session.lifecycle import (
     cancel_live_timed_sessions,
     close_session,
+    ensure_exclusive_tool_session,
     expire_if_needed,
 )
 from app.services.tool_action_service.tool_session.list_sessions import (
@@ -50,6 +51,7 @@ __all__ = [
     "cancel_timed_session",
     "close_session",
     "discovered_site_ids_by_session",
+    "ensure_exclusive_tool_session",
     "expire_if_needed",
     "flight_duration_s",
     "flight_ends_at",

@@ -4,8 +4,10 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta
 
+import pytest
 from sqlmodel import Session, select
 
+from app.core.exceptions import ValidationError
 from app.core.game_config import get_game_config
 from app.core.security import create_access_token
 from app.models.tool import Tool
@@ -126,12 +128,11 @@ def test_start_terrain_echo_session_snapshots_and_replaces(
         f"/api/v1/tools/{echo.id}/sessions",
         headers=headers,
     )
-    assert second.status_code in (201, 202), second.text
+    assert second.status_code == 400
+    assert "Terrain Echo is already in use" in second.json()["detail"]
     rows = session.exec(select(ToolSession)).all()
-    assert len(rows) == 2
-    statuses = {r.status for r in rows}
-    assert SESSION_STATUS_CANCELLED in statuses
-    assert SESSION_STATUS_ACTIVE in statuses
+    assert len(rows) == 1
+    assert rows[0].status == SESSION_STATUS_ACTIVE
 
 
 def test_cancel_and_restore_terrain_echo(client, session: Session) -> None:
@@ -253,7 +254,7 @@ def test_start_terrain_echo_uses_partial_remaining_battery(
     assert body["params"]["duration_minutes"] == 2
 
 
-def test_mutual_cancel_with_orbit_survey(session: Session) -> None:
+def test_rejects_when_orbit_survey_already_in_use(session: Session) -> None:
     user = _user(session)
     echo = _tool(session, name="Terrain Echo")
     orbit = _tool(session, name="Orbit Survey", action="Scan")
@@ -272,14 +273,15 @@ def test_mutual_cancel_with_orbit_survey(session: Session) -> None:
         is not None
     )
 
-    start_timed_session(
-        session, user_id=int(user.id), tool_id=int(echo.id)
-    )
+    with pytest.raises(ValidationError, match="Orbit Survey is already in use"):
+        start_timed_session(
+            session, user_id=int(user.id), tool_id=int(echo.id)
+        )
     assert (
         get_active_timed_session(
             session,
             user_id=int(user.id),
-            action_keys=(ACTION_KEY_TERRAIN_ECHO,),
+            action_keys=(ACTION_KEY_ORBIT_SURVEY,),
         )
         is not None
     )
@@ -287,12 +289,7 @@ def test_mutual_cancel_with_orbit_survey(session: Session) -> None:
         get_active_timed_session(
             session,
             user_id=int(user.id),
-            action_keys=(ACTION_KEY_ORBIT_SURVEY,),
+            action_keys=(ACTION_KEY_TERRAIN_ECHO,),
         )
         is None
-    )
-    assert any(
-        r.status == SESSION_STATUS_CANCELLED
-        and r.action_key == ACTION_KEY_ORBIT_SURVEY
-        for r in session.exec(select(ToolSession)).all()
     )

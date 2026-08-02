@@ -63,7 +63,10 @@ from app.services.tool_action_service.tool_session.budget import (
     remaining_minutes_for_route,
     _parse_iso,
 )
-from app.services.tool_action_service.tool_session.lifecycle import close_session
+from app.services.tool_action_service.tool_session.lifecycle import (
+    close_session,
+    ensure_exclusive_tool_session,
+)
 from app.services.tool_service.collect import resolve_owned_tool_selection
 
 logger = logging.getLogger("tool_session.aerial")
@@ -161,17 +164,10 @@ def start_aerial_session(
     tool_type, instance = selected
     kind = kind_for_tool_name(tool_type.name)
     action_key = kind.action_key
-    label = kind.display_label
 
-    active = session.exec(
-        select(ToolSession).where(
-            col(ToolSession.user_id) == user_id,
-            col(ToolSession.action_key) == action_key,
-            col(ToolSession.status).in_(LIVE_STATUSES),
-        )
-    ).first()
-    if active is not None:
-        raise ValidationError(f"An {label} session is already in progress")
+    ensure_exclusive_tool_session(
+        session, user_id=user_id, instance_id=int(instance.id)
+    )
 
     cfg = config_for_action_key(action_key)
     inst_p = instance.params_json or {}
