@@ -28,10 +28,13 @@ def yaml_defaults_for_tool_type(tool_type: ToolType) -> dict[str, Any]:
 
 
 def base_params_for_tool_type(tool_type: ToolType) -> dict[str, Any]:
+    # YAML is the schema/default source; DB overrides win for overlapping keys
+    # so newly added knobs still appear when default_params_json is stale.
+    payload = yaml_defaults_for_tool_type(tool_type)
     configured = tool_type.default_params_json or {}
     if configured:
-        return dict(configured)
-    return yaml_defaults_for_tool_type(tool_type)
+        payload.update(configured)
+    return payload
 
 
 def effective_params_for_instance(tool_type: ToolType, instance: Tool) -> dict[str, Any]:

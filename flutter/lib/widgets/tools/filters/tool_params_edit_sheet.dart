@@ -43,9 +43,11 @@ class _ToolParamsEditSheetState extends State<ToolParamsEditSheet> {
   @override
   void initState() {
     super.initState();
-    _editableKeys = (widget.editableKeys ?? widget.params.keys.toList())
-        .where(widget.params.containsKey)
-        .toList(growable: false);
+    final preferred = widget.editableKeys ?? widget.params.keys.toList();
+    // Keep declared edit keys even when a value is missing (seed empty field).
+    _editableKeys = preferred.isNotEmpty
+        ? List<String>.from(preferred)
+        : widget.params.keys.toList(growable: false);
 
     for (final key in _editableKeys) {
       final value = widget.params[key];
@@ -84,6 +86,12 @@ class _ToolParamsEditSheetState extends State<ToolParamsEditSheet> {
     if (originalValue is double) {
       return double.tryParse(value) ?? originalValue;
     }
+    if (originalValue == null && value.isNotEmpty) {
+      final asInt = int.tryParse(value);
+      if (asInt != null) return asInt;
+      final asDouble = double.tryParse(value);
+      if (asDouble != null) return asDouble;
+    }
     return value;
   }
 
@@ -108,23 +116,32 @@ class _ToolParamsEditSheetState extends State<ToolParamsEditSheet> {
             ),
           ),
           const SizedBox(height: 12),
-          Flexible(
-            child: ListView.separated(
-              shrinkWrap: true,
-              itemCount: _editableKeys.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 10),
-              itemBuilder: (context, index) {
-                final key = _editableKeys[index];
-                return TextFormField(
-                  controller: _controllers[key],
-                  decoration: InputDecoration(
-                    labelText: key,
-                    border: const OutlineInputBorder(),
-                  ),
-                );
-              },
+          if (_editableKeys.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              child: Text(
+                'No editable parameters for this tool.',
+                style: theme.textTheme.bodyMedium,
+              ),
+            )
+          else
+            Flexible(
+              child: ListView.separated(
+                shrinkWrap: true,
+                itemCount: _editableKeys.length,
+                separatorBuilder: (_, _) => const SizedBox(height: 10),
+                itemBuilder: (context, index) {
+                  final key = _editableKeys[index];
+                  return TextFormField(
+                    controller: _controllers[key],
+                    decoration: InputDecoration(
+                      labelText: key,
+                      border: const OutlineInputBorder(),
+                    ),
+                  );
+                },
+              ),
             ),
-          ),
           const SizedBox(height: 14),
           Row(
             children: [

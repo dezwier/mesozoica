@@ -383,6 +383,30 @@ class ToolActionsConfig {
     }
   }
 
+  /// YAML / game-config defaults keyed like API `params` / `base_params`.
+  Map<String, dynamic> defaultsForToolName(String name) {
+    switch (name) {
+      case 'Aerial Recon':
+        return aerialRecon.toParamsJson();
+      case 'Aerial Scout':
+        return aerialScout.toParamsJson();
+      case 'Geo Compass':
+        return geoCompass.toParamsJson(actionKey: 'geo_compass');
+      case 'Proximity Scanner':
+        return proximityScanner.toParamsJson(actionKey: 'proximity_scanner');
+      case 'Site Navigator':
+        return siteNavigator.toParamsJson(actionKey: 'site_navigator');
+      case 'Orbit Survey':
+        return orbitSurvey.toParamsJson();
+      case 'Formation Map':
+        return formationMap.toParamsJson();
+      case 'Terrain Echo':
+        return terrainEcho.toParamsJson();
+      default:
+        return const {};
+    }
+  }
+
   factory ToolActionsConfig.fromYaml(Map<String, dynamic> yaml) {
     return ToolActionsConfig(
       aerialRecon: AerialMissionActionConfig.fromYaml(
@@ -559,6 +583,33 @@ class GuidanceActionConfig {
   double get resolvedDistanceExactness =>
       distanceExactness ?? exactness ?? 0.0;
 
+  Map<String, dynamic> toParamsJson({required String actionKey}) {
+    final out = <String, dynamic>{
+      'duration_minutes': durationMinutes,
+      'direction_hint_period_s': directionHintPeriodS,
+      'max_direction_range_deg': maxDirectionRangeDeg,
+      'min_direction_range_deg': minDirectionRangeDeg,
+      'stats_explanation': statsExplanation,
+    };
+    switch (actionKey) {
+      case 'site_navigator':
+        out['direction_exactness'] = resolvedDirectionExactness;
+        out['distance_exactness'] = resolvedDistanceExactness;
+        if (discoveryChance != null) {
+          out['discovery_chance'] = discoveryChance;
+        }
+      case 'proximity_scanner':
+        out['exactness'] = resolvedDistanceExactness;
+      case 'geo_compass':
+      default:
+        out['exactness'] = resolvedDirectionExactness;
+        if (discoveryChance != null) {
+          out['discovery_chance'] = discoveryChance;
+        }
+    }
+    return out;
+  }
+
   factory GuidanceActionConfig.fromYaml(
     Map<String, dynamic> yaml, {
     GuidanceActionConfig? defaults,
@@ -683,6 +734,18 @@ class OrbitSurveyActionConfig {
   double get resolvedRangeM =>
       minRangeM + range * (maxRangeM - minRangeM);
 
+  Map<String, dynamic> toParamsJson() => {
+        'duration_minutes': durationMinutes,
+        'accuracy': accuracy,
+        'range': range,
+        'min_range_m': minRangeM,
+        'max_range_m': maxRangeM,
+        'base_alpha': baseAlpha,
+        'range_fade': rangeFade,
+        'boundary_blur': boundaryBlur,
+        'stats_explanation': statsExplanation,
+      };
+
   factory OrbitSurveyActionConfig.fromYaml(
     Map<String, dynamic> yaml, {
     OrbitSurveyActionConfig? defaults,
@@ -747,6 +810,22 @@ class TerrainEchoActionConfig {
   final double ringIncrementM;
   final double sweepPeriodS;
   final String statsExplanation;
+
+  Map<String, dynamic> toParamsJson() => {
+        'degrees': degrees,
+        'accuracy': accuracy,
+        'range_m': rangeM,
+        'min_range_m': minRangeM,
+        'max_range_m': maxRangeM,
+        'min_degrees': minDegrees,
+        'max_degrees': maxDegrees,
+        'duration_minutes': durationMinutes,
+        'min_duration_minutes': minDurationMinutes,
+        'max_duration_minutes': maxDurationMinutes,
+        'ring_increment_m': ringIncrementM,
+        'sweep_period_s': sweepPeriodS,
+        'stats_explanation': statsExplanation,
+      };
 
   factory TerrainEchoActionConfig.fromYaml(
     Map<String, dynamic> yaml, {
@@ -854,6 +933,19 @@ class FormationMapActionConfig {
     return n * cell;
   }
 
+  Map<String, dynamic> toParamsJson() => {
+        'duration_minutes': durationMinutes,
+        'accuracy': accuracy,
+        'wideness_m': widenessM,
+        'min_wideness_m': minWidenessM,
+        'max_wideness_m': maxWidenessM,
+        'cell_size_m': cellSizeM,
+        'base_alpha': baseAlpha,
+        'range_fade': rangeFade,
+        'boundary_blur': boundaryBlur,
+        'stats_explanation': statsExplanation,
+      };
+
   factory FormationMapActionConfig.fromYaml(
     Map<String, dynamic> yaml, {
     FormationMapActionConfig? defaults,
@@ -935,6 +1027,17 @@ class AerialMissionActionConfig {
   final int ensureTimeoutS;
   final double shortRouteWarnFraction;
   final String statsExplanation;
+
+  Map<String, dynamic> toParamsJson() => {
+        'max_route_km': maxRouteKm,
+        'loop_endpoint_tolerance_m': loopEndpointToleranceM,
+        'flight_speed_kmh': flightSpeedKmh,
+        'discovery_chance': discoveryChance,
+        'discovery_distance_m': discoveryDistanceM,
+        'ensure_timeout_s': ensureTimeoutS,
+        'short_route_warn_fraction': shortRouteWarnFraction,
+        'stats_explanation': statsExplanation,
+      };
 
   factory AerialMissionActionConfig.fromYaml(
     Map<String, dynamic> yaml, {

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../config/game_config.dart';
 import '../../controllers/auth_controller.dart';
 import '../../controllers/tool_action_router.dart';
 import '../../controllers/tool_catalog_controller.dart';
@@ -43,12 +44,23 @@ class ToolTurnableCard extends StatefulWidget {
 class _ToolTurnableCardState extends State<ToolTurnableCard> {
   bool _updateParamsBusy = false;
 
+  /// Params shown/edited: instance → base → game-config YAML defaults.
+  Map<String, dynamic> _paramsForEdit(ToolSummary tool) {
+    final defaults =
+        GameConfig.instance.toolActions.defaultsForToolName(tool.name);
+    final fromTool =
+        tool.params.isNotEmpty ? tool.params : tool.baseParams;
+    if (fromTool.isEmpty) return Map<String, dynamic>.from(defaults);
+    if (defaults.isEmpty) return Map<String, dynamic>.from(fromTool);
+    return {...defaults, ...fromTool};
+  }
+
   List<String> _editableKeysForBackStats(ToolSummary tool) {
     final extension = ToolCardExtensions.forTool(tool);
     if (extension != null) {
       return extension.editableParamKeys(tool);
     }
-    return tool.params.keys.toList(growable: false);
+    return _paramsForEdit(tool).keys.toList(growable: false);
   }
 
   Future<void> _onAction() async {
@@ -57,26 +69,17 @@ class _ToolTurnableCardState extends State<ToolTurnableCard> {
 
   Future<void> _onEditParams() async {
     if (_updateParamsBusy) return;
-    final inventoryMode =
-        context.read<ToolCatalogController>().mode == ToolScreenMode.inventory;
-    final paramsForEdit =
-        widget.tool.params.isNotEmpty ? widget.tool.params : widget.tool.baseParams;
-
-    final editableKeys = _editableKeysForBackStats(widget.tool)
-        .where(paramsForEdit.containsKey)
-        .toList(growable: false);
-
-    // Defensive fallback: if the params payload doesn't include a key we
-    // expect, keep the modal usable by showing whatever keys we got.
-    final safeEditableKeys =
-        editableKeys.isNotEmpty ? editableKeys : paramsForEdit.keys.toList(growable: false);
-
-    if (!inventoryMode) return;
+    final paramsForEdit = _paramsForEdit(widget.tool);
+    final preferredKeys = _editableKeysForBackStats(widget.tool);
+    // Prefer extension keys (order), but keep any that exist in the payload.
+    final editableKeys = preferredKeys.isNotEmpty
+        ? preferredKeys
+        : paramsForEdit.keys.toList(growable: false);
 
     await ToolParamsEditSheet.show(
       context,
       params: paramsForEdit,
-      editableKeys: safeEditableKeys,
+      editableKeys: editableKeys,
       onSave: (updatedParams) async {
         if (_updateParamsBusy) return;
         setState(() => _updateParamsBusy = true);
@@ -111,14 +114,12 @@ class _ToolTurnableCardState extends State<ToolTurnableCard> {
     final showAdminUi = context.watch<AuthController>().showAdminUi;
     final inventoryMode =
         context.watch<ToolCatalogController>().mode == ToolScreenMode.inventory;
-    final paramsForEdit =
-        widget.tool.params.isNotEmpty ? widget.tool.params : widget.tool.baseParams;
     final extension = ToolCardExtensions.forTool(widget.tool);
     final onInfo = extension?.infoHandler(context, widget.tool);
     final statsChild = extension?.buildDeployStats(context, widget.tool);
     final ongoingChild = extension?.buildOngoingPanel(context, widget.tool);
-    final canEditParams =
-        widget.tool.isOwned && inventoryMode && showAdminUi && paramsForEdit.isNotEmpty;
+    // Admin toggle on: always show the params cog on owned tool cards.
+    final canEditParams = showAdminUi && widget.tool.isOwned;
 
     return TurnableYAxisCard(
       resetIdentity: widget.tool.id,
