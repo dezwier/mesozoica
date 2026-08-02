@@ -87,11 +87,18 @@ class ToolSession {
 
   double? get maxRouteKm => (params['max_route_km'] as num?)?.toDouble();
 
-  double? get discoveryChance =>
+  double? get flightDiscoveryChance =>
+      (params['flight_discovery_chance'] as num?)?.toDouble() ??
       (params['discovery_chance'] as num?)?.toDouble();
 
-  double? get discoveryDistanceM =>
+  double? get flightDiscoveryDistanceM =>
+      (params['flight_discovery_distance_m'] as num?)?.toDouble() ??
       (params['discovery_distance_m'] as num?)?.toDouble();
+
+  /// Back-compat aliases.
+  double? get discoveryChance => flightDiscoveryChance;
+
+  double? get discoveryDistanceM => flightDiscoveryDistanceM;
 
   int get durationMinutes =>
       (params['duration_minutes'] as num?)?.toInt() ?? 0;

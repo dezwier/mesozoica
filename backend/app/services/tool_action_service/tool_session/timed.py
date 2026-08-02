@@ -69,6 +69,7 @@ def _guidance_params(
     inst_p: dict[str, Any],
     duration_minutes: int,
 ) -> dict[str, Any]:
+    mods = getattr(cfg, "modifies_main_params", None)
     raw_chance = inst_p.get("discovery_chance", cfg.discovery_chance)
     discovery_chance = (
         float(raw_chance)
@@ -106,6 +107,10 @@ def _guidance_params(
     params: dict[str, Any] = {"duration_minutes": duration_minutes}
     if discovery_chance is not None:
         params["discovery_chance"] = discovery_chance
+    if mods is not None:
+        params["modifies_main_params"] = (
+            mods.model_dump() if hasattr(mods, "model_dump") else mods
+        )
     if direction_exactness is not None:
         params["direction_exactness"] = direction_exactness
     if distance_exactness is not None:

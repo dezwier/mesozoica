@@ -217,8 +217,8 @@ def test_aerial_session_accepts_and_enqueues_ensure(client, session: Session):
     cfg = get_game_config().tool_actions.aerial_recon
     assert params["flight_speed_kmh"] == cfg.flight_speed_kmh
     assert params["max_route_km"] == cfg.max_route_km
-    assert params["discovery_chance"] == cfg.discovery_chance
-    assert params["discovery_distance_m"] == cfg.discovery_distance_m
+    assert params["flight_discovery_chance"] == cfg.flight_discovery_chance
+    assert params["flight_discovery_distance_m"] == cfg.flight_discovery_distance_m
     job_ids = rows[0].state_json.get("ensure_job_ids") or []
     assert len(job_ids) >= 1
     jobs = list(session.exec(select(FieldEnsureJob)).all())
@@ -247,8 +247,10 @@ def test_aerial_scout_accepts_with_scout_config(client, session: Session):
     state = body["state"]
     assert params["flight_speed_kmh"] == cfg.flight_speed_kmh
     assert params["max_route_km"] == cfg.max_route_km
-    assert params["discovery_chance"] == cfg.discovery_chance
-    assert params["discovery_distance_m"] == cfg.discovery_distance_m
+    assert params["flight_discovery_chance"] == cfg.flight_discovery_chance
+    assert (
+        params["flight_discovery_distance_m"] == cfg.flight_discovery_distance_m
+    )
     expected_s = max(
         1, int(round(state["route_length_km"] / cfg.flight_speed_kmh * 3600.0))
     )
@@ -557,13 +559,13 @@ def test_game_config_loads_aerial_session():
     assert recon.duration_minutes == 60
     assert recon.flight_speed_kmh == 50
     assert recon.max_route_km == 50
-    assert 0 < recon.discovery_chance <= 1
+    assert 0 < recon.flight_discovery_chance <= 1
     scout = get_game_config().tool_actions.aerial_scout
     assert scout.duration_minutes == 10
     assert scout.flight_speed_kmh == 35
     assert scout.max_route_km == 35.0 * 10 / 60
-    assert 0 < scout.discovery_chance <= 1
-    assert scout.discovery_distance_m == 50
+    assert 0 < scout.flight_discovery_chance <= 1
+    assert scout.flight_discovery_distance_m == 50
 
 
 def test_point_at_fraction_matches_discovery_timing():

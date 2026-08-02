@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../config/game_config.dart';
 import '../models/profile.dart';
 import '../services/api_client.dart';
 import '../services/gps_odometer.dart';
@@ -27,7 +28,20 @@ class WalkDistanceController extends ChangeNotifier {
     GpsOdometer? odometer,
   })  : _health = healthService ?? HealthDistanceService(),
         _api = apiClient ?? ApiClient.instance,
-        _odometer = odometer ?? GpsOdometer();
+        _odometer = odometer ??
+            GpsOdometer(
+              maxSpeedMps: _maxDiscoverySpeedMps(),
+            );
+
+  static double _maxDiscoverySpeedMps() {
+    try {
+      final kmh =
+          GameConfig.instance.siteDiscovery.maxDiscoverySpeedKmh;
+      return kmh * 1000.0 / 3600.0;
+    } catch (_) {
+      return 5.56; // 20 km/h fallback before GameConfig.load
+    }
+  }
 
   static const _prefsPrefix = 'walk_distance_v2';
   static const _keyActive = '${_prefsPrefix}_active_m';

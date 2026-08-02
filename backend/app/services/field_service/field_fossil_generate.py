@@ -33,7 +33,7 @@ FIELD_FOSSIL_ID_START = 1_000_000_000
 _DEFAULT_ODD = 0.5
 _T = TypeVar("_T")
 
-# Worst → best for archive-biased CDF lookup.
+# Worst → best order for YAML weight CDF lookup.
 COMPLETENESS_ORDER: tuple[str, ...] = (
     "trace_only",
     "isolated_element",
@@ -52,8 +52,8 @@ QUALITY_ORDER: tuple[str, ...] = (
 )
 
 
-def _fossil_gen():
-    return get_game_config().fossil_generation
+def _site_survey():
+    return get_game_config().site_survey
 
 
 @dataclass(frozen=True)
@@ -158,8 +158,8 @@ def ensure_field_fossils_for_site(
         raise ValueError(f"Site {site_id} missing period/rock_type for fossil generation")
 
     random_source = rng or random.Random()
-    fossil_cfg = _fossil_gen()
-    noise = fossil_cfg.odd_noise
+    survey_cfg = _site_survey()
+    noise = survey_cfg.odd_noise
 
     dino_counts = _dino_distribution(session, period=period, rock_type=rock_type)
     if not dino_counts:
@@ -170,12 +170,12 @@ def ensure_field_fossils_for_site(
         )
         return FieldFossilGenerateResult(generated=0, skipped=True)
 
-    attr_dists = _attribute_distributions(session, period=period)
+    subcategory_counts = _subcategory_distribution(session, period=period)
     dino_ids = _sample_dino_ids(
         dino_counts,
         odd=site.odd_dino_count,
         noise=noise.dino_count,
-        thresholds=fossil_cfg.dino_count_thresholds,
+        thresholds=survey_cfg.dino_count,
         rng=random_source,
     )
     dino_names = _load_dino_names(session, dino_ids)
@@ -188,33 +188,33 @@ def ensure_field_fossils_for_site(
         card_score = clamp_odd(
             site.odd_fossil_count, noise.fossil_count, rng=random_source
         )
-        card_keys = sorted(fossil_cfg.card_count_weights.keys())
+        card_keys = sorted(survey_cfg.fossil_count.keys())
         card_count = tier_from_cdf(
             card_score,
             card_keys,
-            [fossil_cfg.card_count_weights[k] for k in card_keys],
+            [survey_cfg.fossil_count[k] for k in card_keys],
         )
         subcategories = _sample_distinct_subcategories(
-            attr_dists.subcategory,
+            subcategory_counts,
             count=card_count,
-            default=fossil_cfg.defaults.subcategory,
+            default=survey_cfg.defaults.subcategory,
             rng=random_source,
         )
         for subcategory in subcategories:
-            completeness = _sample_ordered_from_counter(
-                attr_dists.completeness,
+            completeness = _sample_ordered_from_weights(
+                survey_cfg.completeness_weights,
                 order=COMPLETENESS_ORDER,
                 odd=site.odd_completeness,
                 noise=noise.completeness,
-                default=fossil_cfg.defaults.completeness,
+                default=survey_cfg.defaults.completeness,
                 rng=random_source,
             )
-            quality = _sample_ordered_from_counter(
-                attr_dists.preservation_quality,
+            quality = _sample_ordered_from_weights(
+                survey_cfg.quality_weights,
                 order=QUALITY_ORDER,
                 odd=site.odd_quality,
                 noise=noise.quality,
-                default=fossil_cfg.defaults.quality,
+                default=survey_cfg.defaults.quality,
                 rng=random_source,
             )
             category = _category_for_subcategory(subcategory)
@@ -223,7 +223,7 @@ def ensure_field_fossils_for_site(
             fossil_id = id_allocator.next_id()
             depth_score = clamp_odd(site.odd_depth, noise.depth, rng=random_source)
             depth_cm = sample_depth_cm(
-                fossil_cfg.depth_buckets,
+                survey_cfg.depth_weights,
                 score=depth_score,
                 rng=random_source,
             )
@@ -267,13 +267,6 @@ def ensure_field_fossils_for_site(
     return FieldFossilGenerateResult(generated=len(pending), skipped=False)
 
 
-@dataclass(frozen=True)
-class _AttributeDistributions:
-    subcategory: Counter[str]
-    completeness: Counter[str]
-    preservation_quality: Counter[str]
-
-
 def _dino_distribution(
     session: Session,
     *,
@@ -315,15 +308,10 @@ def _count_dinos_by_site_geology(
     return Counter({int(dino_id): int(count) for dino_id, count in rows if dino_id})
 
 
-def _attribute_distributions(
-    session: Session, *, period: str
-) -> _AttributeDistributions:
+def _subcategory_distribution(session: Session, *, period: str) -> Counter[str]:
+    """Archive subcategory frequencies for the site period (still archive-weighted)."""
     rows = session.exec(
-        select(
-            Fossil.llm_imp_subcategory,
-            Fossil.llm_imp_completeness,
-            Fossil.llm_imp_preservation_quality,
-        )
+        select(Fossil.llm_imp_subcategory)
         .join(Site, col(Site.site_id) == col(Fossil.site_id))
         .where(
             col(Fossil.data_source) == DATA_SOURCE_ARCHIVE,
@@ -333,17 +321,9 @@ def _attribute_distributions(
     ).all()
 
     subcategory: Counter[str] = Counter()
-    completeness: Counter[str] = Counter()
-    quality: Counter[str] = Counter()
-    for sub, comp, qual in rows:
+    for sub in rows:
         _bump_if_known(subcategory, sub)
-        _bump_if_known(completeness, comp)
-        _bump_if_known(quality, qual)
-    return _AttributeDistributions(
-        subcategory=subcategory,
-        completeness=completeness,
-        preservation_quality=quality,
-    )
+    return subcategory
 
 
 def _bump_if_known(counter: Counter[str], value: str | None) -> None:
@@ -434,6 +414,23 @@ def _sample_distinct_subcategories(
     if not chosen:
         return [default]
     return chosen
+
+
+def _sample_ordered_from_weights(
+    weights: dict[str, float],
+    *,
+    order: tuple[str, ...],
+    odd: float | None,
+    noise: float,
+    default: str,
+    rng: random.Random,
+) -> str:
+    """Pick tier from YAML weights with odd+noise via ordered inverse-CDF."""
+    items = [key for key in order if weights.get(key, 0) > 0]
+    if not items:
+        return default
+    score = clamp_odd(odd, noise, rng=rng)
+    return tier_from_cdf(score, items, [weights[k] for k in items])
 
 
 def _sample_ordered_from_counter(

@@ -1,0 +1,11 @@
+# Skill 5 — Fossil Excavation (stub).
+
+skill_id: fossil_excavation
+enabled: false
+main_params: {}
+level_modifiers: {}
+
+# Future knobs (examples):
+# main_params:
+#   dig_duration_s: 30
+#   loot_rolls_per_dig: 1

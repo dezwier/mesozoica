@@ -1,0 +1,25 @@
+# Skill 1 — Site Discovery
+# Proximity rules for discovering a field site.
+
+skill_id: site_discovery
+
+main_params:
+  # Server enforces this on POST /sites/{id}/discover (and set-status).
+  visibility_distance_m: 50.0
+  # P(success) on each walk-in to visibility_distance_m. Re-rolls only after exit + re-enter.
+  discovery_chance: 0.1
+  # Max GPS speed credited toward discovery / walk XP (Pokémon GO style filter).
+  max_discovery_speed_kmh: 20.0
+
+# Identity for v1 — tune later. Each list entry: { level, op: add|multiply|replace, value }.
+level_modifiers:
+  visibility_distance_m: []
+  discovery_chance: []
+  max_discovery_speed_kmh: []
+
+# Flutter auto-discover + nearby-discoverable cache.
+client:
+  auto_discover_radius_m: 50.0
+  cache_radius_km: 1.0
+  cache_refresh_move_threshold_m: 500.0
+  discover_fail_retry_s: 20

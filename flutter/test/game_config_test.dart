@@ -14,31 +14,36 @@ void main() {
     expect(config.siteGeneration.cellSizeM, 500.0);
     expect(config.siteGeneration.client.nearbyRadiusKm, 0.5);
 
+    expect(config.siteDiscovery.visibilityDistanceM, 50.0);
     expect(config.siteDiscovery.maxDistanceM, 50.0);
     expect(config.siteDiscovery.discoveryChance, 0.1);
+    expect(config.siteDiscovery.maxDiscoverySpeedKmh, 20.0);
     expect(config.siteDiscovery.client.autoDiscoverRadiusM, 50.0);
     expect(config.siteDiscovery.client.cacheRadiusKm, 1.0);
     expect(config.siteDiscovery.client.cacheRefreshMoveThresholdM, 500.0);
     expect(config.siteDiscovery.client.discoverFailRetryS, 20);
 
-    expect(config.fossilGeneration.oddNoise.dinoCount, 0.0);
-    expect(config.fossilGeneration.oddNoise.fossilCount, 0.5);
-    expect(config.fossilGeneration.oddNoise.completeness, 0.3);
-    expect(config.fossilGeneration.oddNoise.quality, 0.3);
-    expect(config.fossilGeneration.oddNoise.depth, 0.3);
-    expect(config.fossilGeneration.dinoCountThresholds.length, 6);
-    expect(config.fossilGeneration.dinoCountThresholds.first.count, 0);
-    expect(config.fossilGeneration.dinoCountThresholds.last.count, 5);
-    expect(config.fossilGeneration.cardCountWeights[6], 0.05);
+    expect(config.siteSurvey.oddNoise.dinoCount, 0.0);
+    expect(config.siteSurvey.oddNoise.fossilCount, 0.5);
+    expect(config.siteSurvey.oddNoise.completeness, 0.3);
+    expect(config.siteSurvey.oddNoise.quality, 0.3);
+    expect(config.siteSurvey.oddNoise.depth, 0.3);
+    expect(config.siteSurvey.dinoCount.length, 6);
+    expect(config.siteSurvey.dinoCount.first.count, 0);
+    expect(config.siteSurvey.dinoCount.last.count, 5);
+    expect(config.siteSurvey.fossilCount[6], 0.05);
+    expect(config.siteSurvey.completenessWeights.isNotEmpty, isTrue);
+    expect(config.siteSurvey.qualityWeights.isNotEmpty, isTrue);
 
-    expect(config.fossilDiscovery.enabled, isFalse);
+    expect(config.fossilDetection.enabled, isFalse);
     expect(config.fossilExcavation.enabled, isFalse);
+    expect(config.siteClearing.enabled, isFalse);
 
     expect(config.toolActions.aerialRecon.durationMinutes, 60);
     expect(config.toolActions.aerialRecon.flightSpeedKmh, 50.0);
     expect(config.toolActions.aerialRecon.maxRouteKm, 50.0);
-    expect(config.toolActions.aerialRecon.discoveryChance, 0.01);
-    expect(config.toolActions.aerialRecon.discoveryDistanceM, 200.0);
+    expect(config.toolActions.aerialRecon.flightDiscoveryChance, 0.01);
+    expect(config.toolActions.aerialRecon.flightDiscoveryDistanceM, 200.0);
     expect(config.toolActions.aerialRecon.shortRouteWarnFraction, 0.7);
     expect(
       config.toolActions.aerialRecon.statsExplanation,
@@ -47,8 +52,8 @@ void main() {
     expect(config.toolActions.aerialScout.durationMinutes, 10);
     expect(config.toolActions.aerialScout.flightSpeedKmh, 35.0);
     expect(config.toolActions.aerialScout.maxRouteKm, closeTo(35.0 * 10 / 60, 1e-9));
-    expect(config.toolActions.aerialScout.discoveryChance, 0.008);
-    expect(config.toolActions.aerialScout.discoveryDistanceM, 50.0);
+    expect(config.toolActions.aerialScout.flightDiscoveryChance, 0.008);
+    expect(config.toolActions.aerialScout.flightDiscoveryDistanceM, 50.0);
     expect(
       config.toolActions.configFor('aerial_scout').durationMinutes,
       10,
@@ -56,6 +61,24 @@ void main() {
 
     expect(config.toolActions.geoCompass.exactness, 0.0);
     expect(config.toolActions.geoCompass.discoveryChance, 0.9);
+    expect(
+      config.toolActions.geoCompass.modifiesMainParams
+          ?.affectsSkill('site_discovery'),
+      isTrue,
+    );
+    expect(
+      config.toolActions.geoCompass.modifiesMainParams
+          ?.paramsFor('using', 'site_discovery')
+          .containsKey('discovery_chance'),
+      isTrue,
+    );
+    expect(config.toolActions.geoCompass.modifiesMainParams?.owning, isEmpty);
+    expect(
+      config.toolActions.siteNavigator.modifiesMainParams
+          ?.paramsFor('using', 'site_discovery')
+          .containsKey('discovery_chance'),
+      isTrue,
+    );
     expect(config.toolActions.geoCompass.durationMinutes, 15);
     expect(config.toolActions.geoCompass.maxDirectionRangeDeg, 180.0);
     expect(config.toolActions.geoCompass.minDirectionRangeDeg, 4.0);

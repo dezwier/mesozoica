@@ -222,11 +222,19 @@ def start_aerial_session(
         params_json={
             "flight_speed_kmh": eff_speed,
             "max_route_km": eff_max_route,
-            "discovery_chance": float(
-                inst_p.get("discovery_chance", cfg.discovery_chance)
+            "flight_discovery_chance": float(
+                inst_p.get(
+                    "flight_discovery_chance",
+                    inst_p.get("discovery_chance", cfg.flight_discovery_chance),
+                )
             ),
-            "discovery_distance_m": float(
-                inst_p.get("discovery_distance_m", cfg.discovery_distance_m)
+            "flight_discovery_distance_m": float(
+                inst_p.get(
+                    "flight_discovery_distance_m",
+                    inst_p.get(
+                        "discovery_distance_m", cfg.flight_discovery_distance_m
+                    ),
+                )
             ),
         },
         state_json={
@@ -422,7 +430,10 @@ def _promote_to_active(session: Session, row: ToolSession) -> None:
     route = load_route(row)
     length_km = max(route_length_km_of(row), 1e-6)
     distance_m = float(
-        params.get("discovery_distance_m", cfg.discovery_distance_m)
+        params.get(
+            "flight_discovery_distance_m",
+            params.get("discovery_distance_m", cfg.flight_discovery_distance_m),
+        )
     )
     max_dist_km = distance_m / 1000.0
     duration_s = flight_duration_s(row)
@@ -542,9 +553,19 @@ def process_due_events(
         cfg = config_for_action_key(row.action_key)
         params = _params(row)
         distance_m = float(
-            params.get("discovery_distance_m", cfg.discovery_distance_m)
+            params.get(
+                "flight_discovery_distance_m",
+                params.get(
+                    "discovery_distance_m", cfg.flight_discovery_distance_m
+                ),
+            )
         )
-        chance = float(params.get("discovery_chance", cfg.discovery_chance))
+        chance = float(
+            params.get(
+                "flight_discovery_chance",
+                params.get("discovery_chance", cfg.flight_discovery_chance),
+            )
+        )
 
         try:
             result = discover_site_from_aerial(

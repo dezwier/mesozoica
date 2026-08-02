@@ -34,7 +34,7 @@ def discover_max_distance_m() -> float:
     """Server-side max distance (meters) to discover / change site status."""
     from app.core.game_config import get_game_config
 
-    return get_game_config().site_discovery.max_distance_m
+    return get_game_config().site_discovery.visibility_distance_m
 
 
 def _site_label(site: Site) -> str:

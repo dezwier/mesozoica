@@ -52,8 +52,9 @@ class _AerialHudBody extends StatelessWidget {
     final cfg = GameConfig.instance.toolActions.configFor(session.actionKey);
     final speed = session.flightSpeedKmh ?? cfg.flightSpeedKmh;
     final durationMin = _minutesFromFlightSeconds(session.flightDurationS);
-    final chance = session.discoveryChance ?? cfg.discoveryChance;
-    final visibility = session.discoveryDistanceM ?? cfg.discoveryDistanceM;
+    final chance = session.flightDiscoveryChance ?? cfg.flightDiscoveryChance;
+    final visibility =
+        session.flightDiscoveryDistanceM ?? cfg.flightDiscoveryDistanceM;
 
     final status = session.isPending
         ? 'PREP'

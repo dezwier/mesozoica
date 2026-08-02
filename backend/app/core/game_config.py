@@ -5,13 +5,31 @@ from __future__ import annotations
 import os
 from functools import lru_cache
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 import yaml
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 _PACKAGE_DIR = Path(__file__).resolve().parent
 _DEFAULT_CONFIG_DIR = _PACKAGE_DIR.parent / "game_config"
+
+# Numbered skill-domain YAML files (order matches leveling.yaml skills).
+SKILL_YAML_FILES: tuple[tuple[str, str], ...] = (
+    ("site_discovery", "01_site_discovery.yaml"),
+    ("site_survey", "02_site_survey.yaml"),
+    ("site_clearing", "03_site_clearing.yaml"),
+    ("fossil_detection", "04_fossil_detection.yaml"),
+    ("fossil_excavation", "05_fossil_excavation.yaml"),
+    ("fossil_transport", "06_fossil_transport.yaml"),
+    ("fossil_curation", "07_fossil_curation.yaml"),
+    ("fossil_preparation", "08_fossil_preparation.yaml"),
+    ("fossil_analysis", "09_fossil_analysis.yaml"),
+    ("dinosaur_modelling", "10_dinosaur_modelling.yaml"),
+    ("dinosaur_mounting", "11_dinosaur_mounting.yaml"),
+    ("academic_publishing", "12_academic_publishing.yaml"),
+)
+
+ModifierOp = Literal["add", "multiply", "replace"]
 
 
 def _load_yaml(path: Path) -> dict[str, Any]:
@@ -24,10 +42,188 @@ def _load_yaml(path: Path) -> dict[str, Any]:
     return data
 
 
-def _weights_must_sum_to_one(weights: dict[int, float], *, label: str) -> None:
+def _weights_must_sum_to_one(weights: dict[Any, float], *, label: str) -> None:
     total = sum(weights.values())
     if abs(total - 1.0) > 1e-6:
         raise ValueError(f"{label} must sum to 1.0 (got {total})")
+
+
+def _clamp_unit_interval(value: float, *, label: str) -> float:
+    if value < 0.0 or value > 1.0:
+        raise ValueError(f"{label} must be between 0.0 and 1.0")
+    return value
+
+
+# ---------------------------------------------------------------------------
+# Shared modifier / skill stub models
+# ---------------------------------------------------------------------------
+
+
+class LevelModifierEntry(BaseModel):
+    """Apply when skill level >= ``level`` (highest matching entry wins per param)."""
+
+    model_config = {"frozen": True}
+
+    level: int
+    op: ModifierOp
+    value: float
+
+    @field_validator("level")
+    @classmethod
+    def _validate_level(cls, value: int) -> int:
+        if value < 1:
+            raise ValueError("level_modifiers level must be >= 1")
+        return value
+
+
+class ParamModifier(BaseModel):
+    model_config = {"frozen": True}
+
+    op: ModifierOp
+    value: float
+
+
+ModifierWhen = Literal["using", "owning"]
+
+# skill_id → param_name → modifier
+SkillParamMods = dict[str, dict[str, ParamModifier]]
+
+
+def _looks_like_param_modifier(value: object) -> bool:
+    return isinstance(value, dict) and "op" in value and "value" in value
+
+
+def _looks_like_param_map(value: object) -> bool:
+    return isinstance(value, dict) and (
+        not value or all(_looks_like_param_modifier(v) for v in value.values())
+    )
+
+
+def _coerce_param_modifier_map(value: object) -> dict[str, ParamModifier]:
+    if value is None:
+        return {}
+    if not isinstance(value, dict):
+        raise ValueError("modifier params must be a mapping")
+    return {str(k): ParamModifier.model_validate(v) for k, v in value.items()}
+
+
+def _coerce_skill_param_mods(value: object) -> SkillParamMods:
+    if value is None:
+        return {}
+    if not isinstance(value, dict):
+        raise ValueError("skill modifier map must be a mapping")
+    out: SkillParamMods = {}
+    for skill_id, params in value.items():
+        out[str(skill_id)] = _coerce_param_modifier_map(params)
+    return out
+
+
+class ModifiesMainParams(BaseModel):
+    """Tool impact on one or more skills' main_params.
+
+    Preferred form (multi-skill; owning/using can differ)::
+
+        owning:
+          site_discovery: { discovery_chance: { op: add, value: 0.05 } }
+          site_survey: { fossil_count: { op: multiply, value: 1.1 } }
+        using:
+          site_discovery: { discovery_chance: { op: replace, value: 0.9 } }
+
+    Single-skill shorthand still accepted::
+
+        skill: site_discovery
+        using: { discovery_chance: { op: replace, value: 0.9 } }
+
+    Legacy ``when`` + ``params`` also accepted.
+    """
+
+    model_config = {"frozen": True}
+
+    owning: SkillParamMods = Field(default_factory=dict)
+    using: SkillParamMods = Field(default_factory=dict)
+
+    @model_validator(mode="before")
+    @classmethod
+    def _normalize_shapes(cls, value: object) -> object:
+        if not isinstance(value, dict):
+            return value
+        data = dict(value)
+        skill = data.pop("skill", None)
+
+        # Legacy: when + params → owning/using param map.
+        if "params" in data and ("owning" not in data and "using" not in data):
+            when = str(data.pop("when", "using") or "using").strip().lower()
+            params = data.pop("params") or {}
+            if when == "owning":
+                data["owning"] = params
+            else:
+                data["using"] = params
+
+        # Single-skill shorthand: owning/using are param maps, not skill maps.
+        if skill is not None:
+            skill_id = str(skill)
+            for key in ("owning", "using"):
+                bucket = data.get(key)
+                if _looks_like_param_map(bucket):
+                    data[key] = {skill_id: bucket}
+        return data
+
+    @field_validator("owning", "using", mode="before")
+    @classmethod
+    def _coerce_buckets(cls, value: object) -> SkillParamMods:
+        return _coerce_skill_param_mods(value)
+
+    def params_for(
+        self, when: ModifierWhen, skill_id: str
+    ) -> dict[str, ParamModifier]:
+        bucket = self.owning if when == "owning" else self.using
+        return dict(bucket.get(skill_id, {}))
+
+    def affects_skill(self, skill_id: str) -> bool:
+        return skill_id in self.owning or skill_id in self.using
+
+    def skill_ids(self) -> set[str]:
+        return set(self.owning) | set(self.using)
+
+    def entries(
+        self,
+    ) -> list[tuple[ModifierWhen, str, dict[str, ParamModifier]]]:
+        """(when, skill_id, params) for each non-empty skill bucket."""
+        out: list[tuple[ModifierWhen, str, dict[str, ParamModifier]]] = []
+        for when, bucket in (("owning", self.owning), ("using", self.using)):
+            for skill_id, params in bucket.items():
+                if params:
+                    out.append((when, skill_id, dict(params)))
+        return out
+
+    @property
+    def has_any(self) -> bool:
+        return bool(self.owning or self.using)
+
+
+class SkillStubConfig(BaseModel):
+    """Placeholder skill domain until main_params are defined."""
+
+    model_config = {"frozen": True}
+
+    skill_id: str
+    enabled: bool = False
+    main_params: dict[str, Any] = Field(default_factory=dict)
+    level_modifiers: dict[str, list[LevelModifierEntry]] = Field(default_factory=dict)
+
+    @field_validator("level_modifiers", mode="before")
+    @classmethod
+    def _coerce_level_modifiers(cls, value: object) -> dict[str, list]:
+        if value is None:
+            return {}
+        if not isinstance(value, dict):
+            raise ValueError("level_modifiers must be a mapping")
+        return {str(k): (v if isinstance(v, list) else []) for k, v in value.items()}
+
+
+# ---------------------------------------------------------------------------
+# Site generation (not a skill)
+# ---------------------------------------------------------------------------
 
 
 class SiteGenerationLazyConfig(BaseModel):
@@ -97,6 +293,11 @@ class SiteGenerationConfig(BaseModel):
     )
 
 
+# ---------------------------------------------------------------------------
+# Skill 1 — Site Discovery
+# ---------------------------------------------------------------------------
+
+
 class SiteDiscoveryClientConfig(BaseModel):
     model_config = {"frozen": True}
 
@@ -106,21 +307,68 @@ class SiteDiscoveryClientConfig(BaseModel):
     discover_fail_retry_s: int = 20
 
 
-class SiteDiscoveryConfig(BaseModel):
+class SiteDiscoveryMainParams(BaseModel):
     model_config = {"frozen": True}
 
-    max_distance_m: float = 50.0
-    discovery_chance: float = 0.3
-    client: SiteDiscoveryClientConfig = Field(
-        default_factory=SiteDiscoveryClientConfig
-    )
+    visibility_distance_m: float = 50.0
+    discovery_chance: float = 0.1
+    max_discovery_speed_kmh: float = 20.0
 
     @field_validator("discovery_chance")
     @classmethod
     def _validate_discovery_chance(cls, value: float) -> float:
-        if value < 0.0 or value > 1.0:
-            raise ValueError("discovery_chance must be between 0.0 and 1.0")
+        return _clamp_unit_interval(value, label="discovery_chance")
+
+    @field_validator("visibility_distance_m", "max_discovery_speed_kmh")
+    @classmethod
+    def _validate_positive(cls, value: float) -> float:
+        if value <= 0:
+            raise ValueError("must be > 0")
         return value
+
+
+class SiteDiscoveryConfig(BaseModel):
+    model_config = {"frozen": True}
+
+    skill_id: str = "site_discovery"
+    main_params: SiteDiscoveryMainParams = Field(
+        default_factory=SiteDiscoveryMainParams
+    )
+    level_modifiers: dict[str, list[LevelModifierEntry]] = Field(default_factory=dict)
+    client: SiteDiscoveryClientConfig = Field(
+        default_factory=SiteDiscoveryClientConfig
+    )
+
+    @field_validator("level_modifiers", mode="before")
+    @classmethod
+    def _coerce_level_modifiers(cls, value: object) -> dict[str, list]:
+        if value is None:
+            return {}
+        if not isinstance(value, dict):
+            raise ValueError("level_modifiers must be a mapping")
+        return {str(k): (v if isinstance(v, list) else []) for k, v in value.items()}
+
+    @property
+    def visibility_distance_m(self) -> float:
+        return float(self.main_params.visibility_distance_m)
+
+    @property
+    def discovery_chance(self) -> float:
+        return float(self.main_params.discovery_chance)
+
+    @property
+    def max_discovery_speed_kmh(self) -> float:
+        return float(self.main_params.max_discovery_speed_kmh)
+
+    # Back-compat alias used by older call sites / tests.
+    @property
+    def max_distance_m(self) -> float:
+        return self.visibility_distance_m
+
+
+# ---------------------------------------------------------------------------
+# Skill 2 — Site Survey (field fossil generation)
+# ---------------------------------------------------------------------------
 
 
 class FossilGenerationDefaults(BaseModel):
@@ -158,9 +406,9 @@ class DinoCountThreshold(BaseModel):
     @model_validator(mode="after")
     def _validate_threshold(self) -> DinoCountThreshold:
         if self.max_odd < 0.0 or self.max_odd > 1.0:
-            raise ValueError("dino_count_thresholds max_odd must be in [0, 1]")
+            raise ValueError("dino_count max_odd must be in [0, 1]")
         if self.count < 0:
-            raise ValueError("dino_count_thresholds count must be >= 0")
+            raise ValueError("dino_count count must be >= 0")
         return self
 
 
@@ -189,11 +437,10 @@ class FossilOddNoiseConfig(BaseModel):
         return value
 
 
-class FossilGenerationConfig(BaseModel):
+class SiteSurveyMainParams(BaseModel):
     model_config = {"frozen": True}
 
-    odd_noise: FossilOddNoiseConfig = Field(default_factory=FossilOddNoiseConfig)
-    dino_count_thresholds: list[DinoCountThreshold] = Field(
+    dino_count: list[DinoCountThreshold] = Field(
         default_factory=lambda: [
             DinoCountThreshold(max_odd=0.10, count=0),
             DinoCountThreshold(max_odd=0.60, count=1),
@@ -203,7 +450,7 @@ class FossilGenerationConfig(BaseModel):
             DinoCountThreshold(max_odd=1.00, count=5),
         ]
     )
-    card_count_weights: dict[int, float] = Field(
+    fossil_count: dict[int, float] = Field(
         default_factory=lambda: {
             1: 0.25,
             2: 0.25,
@@ -213,56 +460,137 @@ class FossilGenerationConfig(BaseModel):
             6: 0.05,
         }
     )
-    depth_buckets: list[FossilDepthBucket] = Field(
+    depth_weights: list[FossilDepthBucket] = Field(
         default_factory=lambda: [
-            FossilDepthBucket(weight=0.20, min_cm=0, max_cm=0),
+            FossilDepthBucket(weight=0.10, min_cm=0, max_cm=0),
             FossilDepthBucket(weight=0.30, min_cm=1, max_cm=50),
             FossilDepthBucket(weight=0.30, min_cm=51, max_cm=200),
-            FossilDepthBucket(weight=0.10, min_cm=201, max_cm=500),
+            FossilDepthBucket(weight=0.20, min_cm=201, max_cm=500),
             FossilDepthBucket(weight=0.10, min_cm=501, max_cm=1000),
         ]
     )
+    completeness_weights: dict[str, float] = Field(
+        default_factory=lambda: {
+            "trace_only": 0.05,
+            "isolated_element": 0.20,
+            "fragmentary": 0.30,
+            "partial": 0.25,
+            "substantial": 0.15,
+            "nearly_complete": 0.05,
+        }
+    )
+    quality_weights: dict[str, float] = Field(
+        default_factory=lambda: {
+            "very_poor": 0.05,
+            "poor": 0.15,
+            "moderate": 0.35,
+            "good": 0.25,
+            "excellent": 0.15,
+            "exceptional": 0.05,
+        }
+    )
+
+    @field_validator("fossil_count", mode="before")
+    @classmethod
+    def _coerce_int_keys(cls, value: Any) -> dict[int, float]:
+        if not isinstance(value, dict):
+            raise TypeError("fossil_count must be a mapping")
+        return {int(k): float(v) for k, v in value.items()}
+
+    @field_validator("completeness_weights", "quality_weights", mode="before")
+    @classmethod
+    def _coerce_str_weights(cls, value: Any) -> dict[str, float]:
+        if not isinstance(value, dict):
+            raise TypeError("weights must be a mapping")
+        return {str(k): float(v) for k, v in value.items()}
+
+    @model_validator(mode="after")
+    def _validate_weights(self) -> SiteSurveyMainParams:
+        if not self.dino_count:
+            raise ValueError("dino_count must not be empty")
+        prev = -1.0
+        for threshold in self.dino_count:
+            if threshold.max_odd < prev:
+                raise ValueError("dino_count must be ordered by max_odd")
+            prev = threshold.max_odd
+        if abs(self.dino_count[-1].max_odd - 1.0) > 1e-6:
+            raise ValueError("dino_count final max_odd must be 1.0")
+        _weights_must_sum_to_one(self.fossil_count, label="fossil_count")
+        if not self.depth_weights:
+            raise ValueError("depth_weights must not be empty")
+        total = sum(bucket.weight for bucket in self.depth_weights)
+        if abs(total - 1.0) > 1e-6:
+            raise ValueError(f"depth_weights weights must sum to 1.0 (got {total})")
+        _weights_must_sum_to_one(
+            self.completeness_weights, label="completeness_weights"
+        )
+        _weights_must_sum_to_one(self.quality_weights, label="quality_weights")
+        return self
+
+
+class SiteSurveyConfig(BaseModel):
+    """Field fossil spawn knobs for the Site Survey skill."""
+
+    model_config = {"frozen": True}
+
+    skill_id: str = "site_survey"
+    main_params: SiteSurveyMainParams = Field(default_factory=SiteSurveyMainParams)
+    level_modifiers: dict[str, list[LevelModifierEntry]] = Field(default_factory=dict)
+    odd_noise: FossilOddNoiseConfig = Field(default_factory=FossilOddNoiseConfig)
     defaults: FossilGenerationDefaults = Field(
         default_factory=FossilGenerationDefaults
     )
 
-    @field_validator("card_count_weights", mode="before")
+    @field_validator("level_modifiers", mode="before")
     @classmethod
-    def _coerce_int_keys(cls, value: Any) -> dict[int, float]:
+    def _coerce_level_modifiers(cls, value: object) -> dict[str, list]:
+        if value is None:
+            return {}
         if not isinstance(value, dict):
-            raise TypeError("weights must be a mapping")
-        return {int(k): float(v) for k, v in value.items()}
+            raise ValueError("level_modifiers must be a mapping")
+        return {str(k): (v if isinstance(v, list) else []) for k, v in value.items()}
 
-    @model_validator(mode="after")
-    def _validate_weights(self) -> FossilGenerationConfig:
-        if not self.dino_count_thresholds:
-            raise ValueError("dino_count_thresholds must not be empty")
-        prev = -1.0
-        for threshold in self.dino_count_thresholds:
-            if threshold.max_odd < prev:
-                raise ValueError("dino_count_thresholds must be ordered by max_odd")
-            prev = threshold.max_odd
-        if abs(self.dino_count_thresholds[-1].max_odd - 1.0) > 1e-6:
-            raise ValueError("dino_count_thresholds final max_odd must be 1.0")
-        _weights_must_sum_to_one(self.card_count_weights, label="card_count_weights")
-        if not self.depth_buckets:
-            raise ValueError("depth_buckets must not be empty")
-        total = sum(bucket.weight for bucket in self.depth_buckets)
-        if abs(total - 1.0) > 1e-6:
-            raise ValueError(f"depth_buckets weights must sum to 1.0 (got {total})")
-        return self
+    @property
+    def dino_count(self) -> list[DinoCountThreshold]:
+        return list(self.main_params.dino_count)
+
+    @property
+    def fossil_count(self) -> dict[int, float]:
+        return dict(self.main_params.fossil_count)
+
+    @property
+    def depth_weights(self) -> list[FossilDepthBucket]:
+        return list(self.main_params.depth_weights)
+
+    @property
+    def completeness_weights(self) -> dict[str, float]:
+        return dict(self.main_params.completeness_weights)
+
+    @property
+    def quality_weights(self) -> dict[str, float]:
+        return dict(self.main_params.quality_weights)
+
+    # Back-compat aliases for call sites / tests during migration.
+    @property
+    def dino_count_thresholds(self) -> list[DinoCountThreshold]:
+        return self.dino_count
+
+    @property
+    def card_count_weights(self) -> dict[int, float]:
+        return self.fossil_count
+
+    @property
+    def depth_buckets(self) -> list[FossilDepthBucket]:
+        return self.depth_weights
 
 
-class FossilDiscoveryConfig(BaseModel):
-    model_config = {"frozen": True}
-
-    enabled: bool = False
+# Back-compat alias.
+FossilGenerationConfig = SiteSurveyConfig
 
 
-class FossilExcavationConfig(BaseModel):
-    model_config = {"frozen": True}
-
-    enabled: bool = False
+# ---------------------------------------------------------------------------
+# Tool actions
+# ---------------------------------------------------------------------------
 
 
 class AerialActionConfig(BaseModel):
@@ -271,14 +599,14 @@ class AerialActionConfig(BaseModel):
     duration_minutes: int = 60
     loop_endpoint_tolerance_m: float = 75.0
     flight_speed_kmh: float = 50.0
-    discovery_chance: float = 0.2
-    discovery_distance_m: float = 200.0
+    flight_discovery_chance: float = 0.2
+    flight_discovery_distance_m: float = 200.0
     ensure_timeout_s: int = 600
     short_route_warn_fraction: float = 0.7
     stats_explanation: str = (
         "Duration caps how far you can draw (speed × duration). Flight time is "
-        "drawn length ÷ speed. Sites within discovery distance are rolled at the "
-        "listed chance."
+        "drawn length ÷ speed. Sites within flight discovery distance are rolled "
+        "at the listed chance."
     )
 
     @property
@@ -293,29 +621,19 @@ class AerialActionConfig(BaseModel):
             raise ValueError("duration_minutes must be >= 1")
         return value
 
-    @field_validator("discovery_chance")
+    @field_validator("flight_discovery_chance")
     @classmethod
-    def _validate_discovery_chance(cls, value: float) -> float:
-        if value < 0.0 or value > 1.0:
-            raise ValueError("discovery_chance must be between 0.0 and 1.0")
-        return value
+    def _validate_flight_discovery_chance(cls, value: float) -> float:
+        return _clamp_unit_interval(value, label="flight_discovery_chance")
 
     @field_validator("short_route_warn_fraction")
     @classmethod
     def _validate_short_route_warn_fraction(cls, value: float) -> float:
-        if value < 0.0 or value > 1.0:
-            raise ValueError("short_route_warn_fraction must be between 0.0 and 1.0")
-        return value
+        return _clamp_unit_interval(value, label="short_route_warn_fraction")
 
 
 # Back-compat alias for older imports/tests.
 AerialReconActionConfig = AerialActionConfig
-
-
-def _clamp_unit_interval(value: float, *, label: str) -> float:
-    if value < 0.0 or value > 1.0:
-        raise ValueError(f"{label} must be between 0.0 and 1.0")
-    return value
 
 
 class GuidanceActionConfig(BaseModel):
@@ -329,7 +647,7 @@ class GuidanceActionConfig(BaseModel):
     # Site navigator dual axes.
     direction_exactness: float | None = None
     distance_exactness: float | None = None
-    discovery_chance: float | None = None
+    modifies_main_params: ModifiesMainParams | None = None
     direction_hint_period_s: float = 3.0
     max_direction_range_deg: float = 180.0
     min_direction_range_deg: float = 4.0
@@ -341,13 +659,6 @@ class GuidanceActionConfig(BaseModel):
         if value is None:
             return None
         return _clamp_unit_interval(value, label="exactness")
-
-    @field_validator("discovery_chance")
-    @classmethod
-    def _validate_discovery_chance(cls, value: float | None) -> float | None:
-        if value is None:
-            return None
-        return _clamp_unit_interval(value, label="discovery_chance")
 
     @field_validator("duration_minutes")
     @classmethod
@@ -369,6 +680,17 @@ class GuidanceActionConfig(BaseModel):
         if self.exactness is not None:
             return float(self.exactness)
         return 0.0
+
+    @property
+    def discovery_chance(self) -> float | None:
+        """Walk-in discovery_chance from using/site_discovery modifiers."""
+        mods = self.modifies_main_params
+        if mods is None:
+            return None
+        mod = mods.params_for("using", "site_discovery").get("discovery_chance")
+        if mod is None:
+            return None
+        return float(mod.value)
 
 
 class PeriodRgbColors(BaseModel):
@@ -661,20 +983,26 @@ class ToolActionsConfig(BaseModel):
         default_factory=lambda: AerialActionConfig(
             duration_minutes=10,
             flight_speed_kmh=35.0,
-            discovery_chance=0.008,
-            discovery_distance_m=120.0,
+            flight_discovery_chance=0.008,
+            flight_discovery_distance_m=50.0,
             stats_explanation=(
                 "Duration caps how far you can draw (speed × duration). Flight time is "
-                "drawn length ÷ speed. Sites within discovery distance are rolled at the "
-                "listed chance."
+                "drawn length ÷ speed. Sites within flight discovery distance are "
+                "rolled at the listed chance."
             ),
         )
     )
     geo_compass: GuidanceActionConfig = Field(
         default_factory=lambda: GuidanceActionConfig(
             exactness=0.0,
-            discovery_chance=0.9,
             duration_minutes=15,
+            modifies_main_params=ModifiesMainParams(
+                using={
+                    "site_discovery": {
+                        "discovery_chance": ParamModifier(op="replace", value=0.9),
+                    }
+                },
+            ),
             stats_explanation=(
                 "Points toward the nearest undiscovered site for this duration; "
                 "lower exactness adds needle drift."
@@ -685,7 +1013,7 @@ class ToolActionsConfig(BaseModel):
         default_factory=lambda: GuidanceActionConfig(
             exactness=0.0,
             duration_minutes=15,
-            discovery_chance=None,
+            modifies_main_params=None,
             stats_explanation=(
                 "Shows how far you are from the nearest undiscovered site."
             ),
@@ -695,8 +1023,14 @@ class ToolActionsConfig(BaseModel):
         default_factory=lambda: GuidanceActionConfig(
             direction_exactness=0.0,
             distance_exactness=0.0,
-            discovery_chance=0.9,
             duration_minutes=15,
+            modifies_main_params=ModifiesMainParams(
+                using={
+                    "site_discovery": {
+                        "discovery_chance": ParamModifier(op="replace", value=0.9),
+                    }
+                },
+            ),
             stats_explanation=(
                 "Combines compass direction and proximity readout for the "
                 "nearest undiscovered site."
@@ -758,19 +1092,81 @@ class ToolActionsConfig(BaseModel):
         )
     )
 
+    def guidance_config_for(self, action_key: str) -> GuidanceActionConfig:
+        mapping = {
+            "geo_compass": self.geo_compass,
+            "proximity_scanner": self.proximity_scanner,
+            "site_navigator": self.site_navigator,
+        }
+        try:
+            return mapping[action_key]
+        except KeyError as exc:
+            raise KeyError(f"unknown guidance action: {action_key}") from exc
+
+    def tools_modifying_skill(self, skill_id: str) -> list[tuple[str, ModifiesMainParams]]:
+        """Return (action_key, mods) for guidance tools that modify ``skill_id``."""
+        out: list[tuple[str, ModifiesMainParams]] = []
+        for key, cfg in (
+            ("geo_compass", self.geo_compass),
+            ("proximity_scanner", self.proximity_scanner),
+            ("site_navigator", self.site_navigator),
+        ):
+            mods = cfg.modifies_main_params
+            if mods is not None and mods.affects_skill(skill_id):
+                out.append((key, mods))
+        return out
+
 
 class GameConfig(BaseModel):
     model_config = {"frozen": True}
 
     site_generation: SiteGenerationConfig
     site_discovery: SiteDiscoveryConfig
-    fossil_generation: FossilGenerationConfig
-    fossil_discovery: FossilDiscoveryConfig
-    fossil_excavation: FossilExcavationConfig
+    site_survey: SiteSurveyConfig
+    site_clearing: SkillStubConfig
+    fossil_detection: SkillStubConfig
+    fossil_excavation: SkillStubConfig
+    fossil_transport: SkillStubConfig
+    fossil_curation: SkillStubConfig
+    fossil_preparation: SkillStubConfig
+    fossil_analysis: SkillStubConfig
+    dinosaur_modelling: SkillStubConfig
+    dinosaur_mounting: SkillStubConfig
+    academic_publishing: SkillStubConfig
     tool_actions: ToolActionsConfig
     period_colors: PeriodColorsConfig
     rock_type_colors: RockTypeColorsConfig
     leveling: LevelingConfig
+
+    # Back-compat aliases.
+    @property
+    def fossil_generation(self) -> SiteSurveyConfig:
+        return self.site_survey
+
+    @property
+    def fossil_discovery(self) -> SkillStubConfig:
+        return self.fossil_detection
+
+    def skill_domain(self, skill_id: str) -> Any:
+        """Return the config object for a skill id (rich or stub)."""
+        mapping: dict[str, Any] = {
+            "site_discovery": self.site_discovery,
+            "site_survey": self.site_survey,
+            "site_clearing": self.site_clearing,
+            "fossil_detection": self.fossil_detection,
+            "fossil_excavation": self.fossil_excavation,
+            "fossil_transport": self.fossil_transport,
+            "fossil_curation": self.fossil_curation,
+            "fossil_preparation": self.fossil_preparation,
+            "fossil_analysis": self.fossil_analysis,
+            "dinosaur_modelling": self.dinosaur_modelling,
+            "dinosaur_mounting": self.dinosaur_mounting,
+            "academic_publishing": self.academic_publishing,
+        }
+        try:
+            return mapping[skill_id]
+        except KeyError as exc:
+            raise KeyError(f"unknown skill id: {skill_id}") from exc
 
 
 def resolve_game_config_dir() -> Path:
@@ -786,21 +1182,41 @@ def load_game_config(config_dir: Path | None = None) -> GameConfig:
     if not directory.is_dir():
         raise FileNotFoundError(f"Missing game config directory: {directory}")
 
+    skill_raw: dict[str, dict[str, Any]] = {}
+    for skill_id, filename in SKILL_YAML_FILES:
+        skill_raw[skill_id] = _load_yaml(directory / filename)
+
     return GameConfig(
         site_generation=SiteGenerationConfig.model_validate(
             _load_yaml(directory / "site_generation.yaml")
         ),
         site_discovery=SiteDiscoveryConfig.model_validate(
-            _load_yaml(directory / "site_discovery.yaml")
+            skill_raw["site_discovery"]
         ),
-        fossil_generation=FossilGenerationConfig.model_validate(
-            _load_yaml(directory / "fossil_generation.yaml")
+        site_survey=SiteSurveyConfig.model_validate(skill_raw["site_survey"]),
+        site_clearing=SkillStubConfig.model_validate(skill_raw["site_clearing"]),
+        fossil_detection=SkillStubConfig.model_validate(
+            skill_raw["fossil_detection"]
         ),
-        fossil_discovery=FossilDiscoveryConfig.model_validate(
-            _load_yaml(directory / "fossil_discovery.yaml")
+        fossil_excavation=SkillStubConfig.model_validate(
+            skill_raw["fossil_excavation"]
         ),
-        fossil_excavation=FossilExcavationConfig.model_validate(
-            _load_yaml(directory / "fossil_excavation.yaml")
+        fossil_transport=SkillStubConfig.model_validate(
+            skill_raw["fossil_transport"]
+        ),
+        fossil_curation=SkillStubConfig.model_validate(skill_raw["fossil_curation"]),
+        fossil_preparation=SkillStubConfig.model_validate(
+            skill_raw["fossil_preparation"]
+        ),
+        fossil_analysis=SkillStubConfig.model_validate(skill_raw["fossil_analysis"]),
+        dinosaur_modelling=SkillStubConfig.model_validate(
+            skill_raw["dinosaur_modelling"]
+        ),
+        dinosaur_mounting=SkillStubConfig.model_validate(
+            skill_raw["dinosaur_mounting"]
+        ),
+        academic_publishing=SkillStubConfig.model_validate(
+            skill_raw["academic_publishing"]
         ),
         tool_actions=ToolActionsConfig.model_validate(
             _load_yaml(directory / "tool_actions.yaml")

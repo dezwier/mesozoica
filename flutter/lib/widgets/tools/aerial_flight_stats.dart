@@ -29,8 +29,8 @@ class AerialFlightStats extends StatelessWidget {
       key: key,
       flightSpeedKmh: cfg.flightSpeedKmh,
       durationMinutes: cfg.durationMinutes,
-      discoveryChance: cfg.discoveryChance,
-      discoveryDistanceM: cfg.discoveryDistanceM,
+      discoveryChance: cfg.flightDiscoveryChance,
+      discoveryDistanceM: cfg.flightDiscoveryDistanceM,
       explanation: includeExplanation ? cfg.statsExplanation : null,
       compact: compact,
     );
@@ -48,9 +48,13 @@ class AerialFlightStats extends StatelessWidget {
       key: key,
       flightSpeedKmh: speed,
       durationMinutes: duration,
-      discoveryChance: (params['discovery_chance'] as num?)?.toDouble() ?? 0,
+      discoveryChance: (params['flight_discovery_chance'] as num?)?.toDouble() ??
+          (params['discovery_chance'] as num?)?.toDouble() ??
+          0,
       discoveryDistanceM:
-          (params['discovery_distance_m'] as num?)?.toDouble() ?? 0,
+          (params['flight_discovery_distance_m'] as num?)?.toDouble() ??
+              (params['discovery_distance_m'] as num?)?.toDouble() ??
+              0,
       explanation: includeExplanation ? params['stats_explanation'] as String? : null,
       compact: compact,
     );
@@ -71,9 +75,10 @@ class AerialFlightStats extends StatelessWidget {
       key: key,
       flightSpeedKmh: speed,
       durationMinutes: _minutesFromFlightSeconds(session.flightDurationS),
-      discoveryChance: session.discoveryChance ?? cfg.discoveryChance,
+      discoveryChance:
+          session.flightDiscoveryChance ?? cfg.flightDiscoveryChance,
       discoveryDistanceM:
-          session.discoveryDistanceM ?? cfg.discoveryDistanceM,
+          session.flightDiscoveryDistanceM ?? cfg.flightDiscoveryDistanceM,
       compact: compact,
     );
   }
@@ -90,8 +95,8 @@ class AerialFlightStats extends StatelessWidget {
     final pairs = <AerialFlightStatPair>[
       AerialFlightStatPair('Speed', _formatKmh(flightSpeedKmh)),
       AerialFlightStatPair('Duration', _formatDuration(durationMinutes)),
-      AerialFlightStatPair('Site chance', _formatChance(discoveryChance)),
-      AerialFlightStatPair('Visibility', _formatMeters(discoveryDistanceM)),
+      AerialFlightStatPair('Flight chance', _formatChance(discoveryChance)),
+      AerialFlightStatPair('Flight range', _formatMeters(discoveryDistanceM)),
     ];
 
     if (compact) {

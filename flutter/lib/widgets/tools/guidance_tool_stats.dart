@@ -56,7 +56,7 @@ class GuidanceToolStats extends StatelessWidget {
           ),
           if (discoveryChance != null)
             ToolStatPair(
-              'Site chance',
+              'Discovery chance',
               _formatChance(discoveryChance),
             ),
         ]);
@@ -69,7 +69,7 @@ class GuidanceToolStats extends StatelessWidget {
           ),
           if (discoveryChance != null)
             ToolStatPair(
-              'Site chance',
+              'Discovery chance',
               _formatChance(discoveryChance),
             ),
         ]);

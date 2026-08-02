@@ -1,9 +1,0 @@
-# Fossil proximity discovery (not implemented yet).
-
-enabled: false
-
-# Future knobs (examples):
-# max_distance_m: 10.0
-# client:
-#   auto_discover_radius_m: 10.0
-#   cache_radius_km: 0.5

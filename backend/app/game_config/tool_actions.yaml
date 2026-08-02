@@ -1,6 +1,26 @@
 # Per-tool action parameters (gameplay knobs, not catalog copy).
 # duration_minutes is the lifetime battery on each owned tool card.
 # Starting an action uses all remaining time; HUD stop charges only elapsed.
+#
+# modifies_main_params: optional impact on one or more skills' main_params.
+#   owning: while the player owns a card (passive)
+#   using:  while a tool session is active (in use)
+#   Each bucket maps skill_id → { param_name: { op, value } }
+#   Ops:
+#     replace  — set absolute value (e.g. discovery_chance → 0.9)
+#     multiply — scale base (e.g. 1.1 = +10%)
+#     add      — offset base (e.g. visibility_distance_m + 50)
+# Example:
+#   owning:
+#     site_discovery:
+#       visibility_distance_m: { op: add, value: 50 }        # +50 m
+#       discovery_chance: { op: multiply, value: 1.1 }       # +10%
+#     site_survey:
+#       fossil_count: { op: multiply, value: 1.1 }
+#   using:
+#     site_discovery:
+#       discovery_chance: { op: replace, value: 0.9 }        # set to 90%
+# Guidance tools (compass / navigator) use `using` / site_discovery today.
 
 aerial_recon:
   # Lifetime battery; max route km = flight_speed_kmh × remaining_minutes / 60.
@@ -9,8 +29,8 @@ aerial_recon:
   # start/end must be within this of the player's GPS origin
   loop_endpoint_tolerance_m: 75
   flight_speed_kmh: 50
-  discovery_chance: 0.01
-  discovery_distance_m: 200
+  flight_discovery_chance: 0.01
+  flight_discovery_distance_m: 200
   # promote ensuring → flying even if some ensure jobs are still pending
   ensure_timeout_s: 600
   # warn on confirm when drawn length is below this fraction of max route
@@ -19,28 +39,31 @@ aerial_recon:
   stats_explanation: >-
     Duration is this card's lifetime battery. Remaining time caps how far
     you can draw (speed × remaining). Flight time is drawn length ÷ speed.
-    Sites within discovery distance are rolled at the listed chance.
+    Sites within flight discovery distance are rolled at the listed chance.
 
 aerial_scout:
   duration_minutes: 10
   loop_endpoint_tolerance_m: 75
   flight_speed_kmh: 35
-  discovery_chance: 0.008
-  discovery_distance_m: 50
+  flight_discovery_chance: 0.008
+  flight_discovery_distance_m: 50
   ensure_timeout_s: 600
   short_route_warn_fraction: 0.7
   stats_explanation: >-
     Duration is this card's lifetime battery. Remaining time caps how far
     you can draw (speed × remaining). Flight time is drawn length ÷ speed.
-    Sites within discovery distance are rolled at the listed chance.
+    Sites within flight discovery distance are rolled at the listed chance.
 
 geo_compass:
   exactness: 0.0
-  discovery_chance: 0.9
   duration_minutes: 15
   direction_hint_period_s: 3
   max_direction_range_deg: 180
   min_direction_range_deg: 4
+  modifies_main_params:
+    using:
+      site_discovery:
+        discovery_chance: { op: replace, value: 0.9 }
   stats_explanation: >-
     Duration is this card's lifetime battery; each use runs until you stop
     or time runs out. Shows a direction range toward the nearest undiscovered
@@ -59,11 +82,14 @@ proximity_scanner:
 site_navigator:
   direction_exactness: 0.0
   distance_exactness: 0.0
-  discovery_chance: 0.9
   duration_minutes: 15
   direction_hint_period_s: 3
   max_direction_range_deg: 180
   min_direction_range_deg: 4
+  modifies_main_params:
+    using:
+      site_discovery:
+        discovery_chance: { op: replace, value: 0.9 }
   stats_explanation: >-
     Duration is this card's lifetime battery; each use runs until you stop
     or time runs out. Combines a direction-range glow and distance bands for

@@ -17,8 +17,9 @@ def test_resolve_default_game_config_dir() -> None:
     directory = resolve_game_config_dir()
     assert directory.is_dir()
     assert (directory / "site_generation.yaml").is_file()
-    assert (directory / "site_discovery.yaml").is_file()
-    assert (directory / "fossil_generation.yaml").is_file()
+    assert (directory / "01_site_discovery.yaml").is_file()
+    assert (directory / "02_site_survey.yaml").is_file()
+    assert (directory / "04_fossil_detection.yaml").is_file()
     assert (directory / "leveling.yaml").is_file()
 
 
@@ -36,21 +37,22 @@ def test_load_game_config_matches_current_defaults() -> None:
     assert config.site_generation.bulk.max_items == 200
     assert config.site_generation.client.nearby_radius_km == 0.5
 
+    assert config.site_discovery.visibility_distance_m == 50.0
     assert config.site_discovery.max_distance_m == 50.0
     assert config.site_discovery.discovery_chance == 0.1
+    assert config.site_discovery.max_discovery_speed_kmh == 20.0
     assert config.site_discovery.client.auto_discover_radius_m == 50.0
     assert config.site_discovery.client.cache_radius_km == 1.0
     assert config.site_discovery.client.cache_refresh_move_threshold_m == 500.0
     assert config.site_discovery.client.discover_fail_retry_s == 20
+    assert config.site_discovery.level_modifiers["discovery_chance"] == []
 
-    assert config.fossil_generation.odd_noise.dino_count == 0.0
-    assert config.fossil_generation.odd_noise.fossil_count == 0.5
-    assert config.fossil_generation.odd_noise.completeness == 0.3
-    assert config.fossil_generation.odd_noise.quality == 0.3
-    assert config.fossil_generation.odd_noise.depth == 0.3
-    assert [
-        (t.max_odd, t.count) for t in config.fossil_generation.dino_count_thresholds
-    ] == [
+    assert config.site_survey.odd_noise.dino_count == 0.0
+    assert config.site_survey.odd_noise.fossil_count == 0.5
+    assert config.site_survey.odd_noise.completeness == 0.3
+    assert config.site_survey.odd_noise.quality == 0.3
+    assert config.site_survey.odd_noise.depth == 0.3
+    assert [(t.max_odd, t.count) for t in config.site_survey.dino_count] == [
         (0.10, 0),
         (0.60, 1),
         (0.80, 2),
@@ -58,20 +60,37 @@ def test_load_game_config_matches_current_defaults() -> None:
         (0.95, 4),
         (1.00, 5),
     ]
-    assert config.fossil_generation.card_count_weights[1] == 0.25
-    assert config.fossil_generation.card_count_weights[6] == 0.05
-    assert config.fossil_generation.defaults.subcategory == "teeth"
-    assert config.fossil_generation.defaults.completeness == "fragmentary"
-    assert config.fossil_generation.defaults.quality == "moderate"
-    assert len(config.fossil_generation.depth_buckets) == 5
-    assert config.fossil_generation.depth_buckets[0].min_cm == 0
-    assert config.fossil_generation.depth_buckets[0].max_cm == 0
-    assert config.fossil_generation.depth_buckets[0].weight == 0.10
-    assert config.fossil_generation.depth_buckets[-1].min_cm == 501
-    assert config.fossil_generation.depth_buckets[-1].max_cm == 1000
+    assert config.site_survey.fossil_count[1] == 0.25
+    assert config.site_survey.fossil_count[6] == 0.05
+    assert config.site_survey.defaults.subcategory == "teeth"
+    assert config.site_survey.defaults.completeness == "fragmentary"
+    assert config.site_survey.defaults.quality == "moderate"
+    assert len(config.site_survey.depth_weights) == 5
+    assert config.site_survey.depth_weights[0].min_cm == 0
+    assert config.site_survey.depth_weights[0].max_cm == 0
+    assert config.site_survey.depth_weights[0].weight == 0.10
+    assert config.site_survey.depth_weights[-1].min_cm == 501
+    assert config.site_survey.depth_weights[-1].max_cm == 1000
+    assert abs(sum(config.site_survey.completeness_weights.values()) - 1.0) < 1e-6
+    assert abs(sum(config.site_survey.quality_weights.values()) - 1.0) < 1e-6
 
-    assert config.fossil_discovery.enabled is False
+    # Back-compat aliases
+    assert config.fossil_generation is config.site_survey
+    assert config.fossil_detection.enabled is False
     assert config.fossil_excavation.enabled is False
+    assert config.site_clearing.enabled is False
+
+    assert config.tool_actions.geo_compass.discovery_chance == 0.9
+    assert config.tool_actions.geo_compass.modifies_main_params is not None
+    geo_mods = config.tool_actions.geo_compass.modifies_main_params
+    assert geo_mods.affects_skill("site_discovery")
+    assert "discovery_chance" in geo_mods.params_for("using", "site_discovery")
+    assert geo_mods.owning == {}
+    nav_mods = config.tool_actions.site_navigator.modifies_main_params
+    assert nav_mods is not None
+    assert "discovery_chance" in nav_mods.params_for("using", "site_discovery")
+    assert config.tool_actions.aerial_recon.flight_discovery_chance == 0.01
+    assert config.tool_actions.aerial_scout.flight_discovery_distance_m == 50
 
     assert config.leveling.rewards.site_discover_site_discovery_xp == 10
     assert len(config.leveling.skills) == 12

@@ -1,0 +1,14 @@
+# Skill 4 — Fossil Detection
+# Fossil proximity discovery (not fully implemented yet).
+
+skill_id: fossil_detection
+enabled: false
+main_params: {}
+level_modifiers: {}
+
+# Future knobs (examples):
+# main_params:
+#   visibility_distance_m: 10.0
+# client:
+#   auto_discover_radius_m: 10.0
+#   cache_radius_km: 0.5

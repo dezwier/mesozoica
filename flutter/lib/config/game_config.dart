@@ -9,9 +9,17 @@ class GameConfig {
   GameConfig({
     required this.siteGeneration,
     required this.siteDiscovery,
-    required this.fossilGeneration,
-    required this.fossilDiscovery,
+    required this.siteSurvey,
+    required this.siteClearing,
+    required this.fossilDetection,
     required this.fossilExcavation,
+    required this.fossilTransport,
+    required this.fossilCuration,
+    required this.fossilPreparation,
+    required this.fossilAnalysis,
+    required this.dinosaurModelling,
+    required this.dinosaurMounting,
+    required this.academicPublishing,
     required this.toolActions,
     required this.periodColors,
     required this.rockTypeColors,
@@ -20,13 +28,55 @@ class GameConfig {
 
   final SiteGenerationConfig siteGeneration;
   final SiteDiscoveryConfig siteDiscovery;
-  final FossilGenerationConfig fossilGeneration;
-  final FossilDiscoveryConfig fossilDiscovery;
-  final FossilExcavationConfig fossilExcavation;
+  final SiteSurveyConfig siteSurvey;
+  final SkillStubConfig siteClearing;
+  final SkillStubConfig fossilDetection;
+  final SkillStubConfig fossilExcavation;
+  final SkillStubConfig fossilTransport;
+  final SkillStubConfig fossilCuration;
+  final SkillStubConfig fossilPreparation;
+  final SkillStubConfig fossilAnalysis;
+  final SkillStubConfig dinosaurModelling;
+  final SkillStubConfig dinosaurMounting;
+  final SkillStubConfig academicPublishing;
   final ToolActionsConfig toolActions;
   final PeriodColorsConfig periodColors;
   final RockTypeColorsConfig rockTypeColors;
   final LevelingConfig leveling;
+
+  /// Back-compat alias for site survey fossil spawn knobs.
+  SiteSurveyConfig get fossilGeneration => siteSurvey;
+
+  Object? skillDomain(String skillId) {
+    switch (skillId) {
+      case 'site_discovery':
+        return siteDiscovery;
+      case 'site_survey':
+        return siteSurvey;
+      case 'site_clearing':
+        return siteClearing;
+      case 'fossil_detection':
+        return fossilDetection;
+      case 'fossil_excavation':
+        return fossilExcavation;
+      case 'fossil_transport':
+        return fossilTransport;
+      case 'fossil_curation':
+        return fossilCuration;
+      case 'fossil_preparation':
+        return fossilPreparation;
+      case 'fossil_analysis':
+        return fossilAnalysis;
+      case 'dinosaur_modelling':
+        return dinosaurModelling;
+      case 'dinosaur_mounting':
+        return dinosaurMounting;
+      case 'academic_publishing':
+        return academicPublishing;
+      default:
+        return null;
+    }
+  }
 
   static GameConfig? _instance;
 
@@ -59,10 +109,18 @@ class GameConfig {
 
     final config = loadFromYamlStrings(
       siteGenerationYaml: await read('site_generation.yaml'),
-      siteDiscoveryYaml: await read('site_discovery.yaml'),
-      fossilGenerationYaml: await read('fossil_generation.yaml'),
-      fossilDiscoveryYaml: await read('fossil_discovery.yaml'),
-      fossilExcavationYaml: await read('fossil_excavation.yaml'),
+      siteDiscoveryYaml: await read('01_site_discovery.yaml'),
+      siteSurveyYaml: await read('02_site_survey.yaml'),
+      siteClearingYaml: await read('03_site_clearing.yaml'),
+      fossilDetectionYaml: await read('04_fossil_detection.yaml'),
+      fossilExcavationYaml: await read('05_fossil_excavation.yaml'),
+      fossilTransportYaml: await read('06_fossil_transport.yaml'),
+      fossilCurationYaml: await read('07_fossil_curation.yaml'),
+      fossilPreparationYaml: await read('08_fossil_preparation.yaml'),
+      fossilAnalysisYaml: await read('09_fossil_analysis.yaml'),
+      dinosaurModellingYaml: await read('10_dinosaur_modelling.yaml'),
+      dinosaurMountingYaml: await read('11_dinosaur_mounting.yaml'),
+      academicPublishingYaml: await read('12_academic_publishing.yaml'),
       toolActionsYaml: await read('tool_actions.yaml'),
       periodColorsYaml: await read('period_colors.yaml'),
       rockTypeColorsYaml: await read('rock_type_colors.yaml'),
@@ -76,9 +134,17 @@ class GameConfig {
   static GameConfig loadFromYamlStrings({
     required String siteGenerationYaml,
     required String siteDiscoveryYaml,
-    required String fossilGenerationYaml,
-    required String fossilDiscoveryYaml,
+    required String siteSurveyYaml,
+    required String siteClearingYaml,
+    required String fossilDetectionYaml,
     required String fossilExcavationYaml,
+    required String fossilTransportYaml,
+    required String fossilCurationYaml,
+    required String fossilPreparationYaml,
+    required String fossilAnalysisYaml,
+    required String dinosaurModellingYaml,
+    required String dinosaurMountingYaml,
+    required String academicPublishingYaml,
     required String toolActionsYaml,
     required String periodColorsYaml,
     required String rockTypeColorsYaml,
@@ -91,14 +157,38 @@ class GameConfig {
       siteDiscovery: SiteDiscoveryConfig.fromYaml(
         _asMap(loadYaml(siteDiscoveryYaml)),
       ),
-      fossilGeneration: FossilGenerationConfig.fromYaml(
-        _asMap(loadYaml(fossilGenerationYaml)),
+      siteSurvey: SiteSurveyConfig.fromYaml(
+        _asMap(loadYaml(siteSurveyYaml)),
       ),
-      fossilDiscovery: FossilDiscoveryConfig.fromYaml(
-        _asMap(loadYaml(fossilDiscoveryYaml)),
+      siteClearing: SkillStubConfig.fromYaml(
+        _asMap(loadYaml(siteClearingYaml)),
       ),
-      fossilExcavation: FossilExcavationConfig.fromYaml(
+      fossilDetection: SkillStubConfig.fromYaml(
+        _asMap(loadYaml(fossilDetectionYaml)),
+      ),
+      fossilExcavation: SkillStubConfig.fromYaml(
         _asMap(loadYaml(fossilExcavationYaml)),
+      ),
+      fossilTransport: SkillStubConfig.fromYaml(
+        _asMap(loadYaml(fossilTransportYaml)),
+      ),
+      fossilCuration: SkillStubConfig.fromYaml(
+        _asMap(loadYaml(fossilCurationYaml)),
+      ),
+      fossilPreparation: SkillStubConfig.fromYaml(
+        _asMap(loadYaml(fossilPreparationYaml)),
+      ),
+      fossilAnalysis: SkillStubConfig.fromYaml(
+        _asMap(loadYaml(fossilAnalysisYaml)),
+      ),
+      dinosaurModelling: SkillStubConfig.fromYaml(
+        _asMap(loadYaml(dinosaurModellingYaml)),
+      ),
+      dinosaurMounting: SkillStubConfig.fromYaml(
+        _asMap(loadYaml(dinosaurMountingYaml)),
+      ),
+      academicPublishing: SkillStubConfig.fromYaml(
+        _asMap(loadYaml(academicPublishingYaml)),
       ),
       toolActions: ToolActionsConfig.fromYaml(
         _asMap(loadYaml(toolActionsYaml)),
@@ -163,22 +253,216 @@ class SiteGenerationClientConfig {
 
 class SiteDiscoveryConfig {
   const SiteDiscoveryConfig({
-    required this.maxDistanceM,
-    required this.discoveryChance,
+    required this.skillId,
+    required this.mainParams,
+    required this.levelModifiers,
     required this.client,
   });
 
-  final double maxDistanceM;
-  final double discoveryChance;
+  final String skillId;
+  final SiteDiscoveryMainParams mainParams;
+  final Map<String, List<LevelModifierEntry>> levelModifiers;
   final SiteDiscoveryClientConfig client;
 
+  double get visibilityDistanceM => mainParams.visibilityDistanceM;
+  double get discoveryChance => mainParams.discoveryChance;
+  double get maxDiscoverySpeedKmh => mainParams.maxDiscoverySpeedKmh;
+
+  /// Back-compat alias.
+  double get maxDistanceM => visibilityDistanceM;
+
   factory SiteDiscoveryConfig.fromYaml(Map<String, dynamic> yaml) {
+    final main = GameConfig._asMap(yaml['main_params']);
     return SiteDiscoveryConfig(
-      maxDistanceM: _asDouble(yaml['max_distance_m'], 50.0),
-      discoveryChance: _asDouble(yaml['discovery_chance'], 0.3),
+      skillId: yaml['skill_id'] as String? ?? 'site_discovery',
+      mainParams: SiteDiscoveryMainParams.fromYaml(main),
+      levelModifiers: LevelModifierEntry.mapFromYaml(yaml['level_modifiers']),
       client: SiteDiscoveryClientConfig.fromYaml(
         GameConfig._asMap(yaml['client']),
       ),
+    );
+  }
+}
+
+class SiteDiscoveryMainParams {
+  const SiteDiscoveryMainParams({
+    required this.visibilityDistanceM,
+    required this.discoveryChance,
+    required this.maxDiscoverySpeedKmh,
+  });
+
+  final double visibilityDistanceM;
+  final double discoveryChance;
+  final double maxDiscoverySpeedKmh;
+
+  factory SiteDiscoveryMainParams.fromYaml(Map<String, dynamic> yaml) {
+    return SiteDiscoveryMainParams(
+      visibilityDistanceM: _asDouble(
+        yaml['visibility_distance_m'] ?? yaml['max_distance_m'],
+        50.0,
+      ),
+      discoveryChance: _asDouble(yaml['discovery_chance'], 0.1),
+      maxDiscoverySpeedKmh: _asDouble(yaml['max_discovery_speed_kmh'], 20.0),
+    );
+  }
+}
+
+class LevelModifierEntry {
+  const LevelModifierEntry({
+    required this.level,
+    required this.op,
+    required this.value,
+  });
+
+  final int level;
+  final String op;
+  final double value;
+
+  static Map<String, List<LevelModifierEntry>> mapFromYaml(Object? raw) {
+    if (raw is! Map) return const {};
+    final out = <String, List<LevelModifierEntry>>{};
+    for (final entry in raw.entries) {
+      final list = <LevelModifierEntry>[];
+      if (entry.value is List) {
+        for (final item in entry.value as List) {
+          if (item is Map) {
+            list.add(
+              LevelModifierEntry(
+                level: _asInt(item['level'], 1),
+                op: item['op'] as String? ?? 'add',
+                value: _asDouble(item['value'], 0),
+              ),
+            );
+          }
+        }
+      }
+      out[entry.key.toString()] = list;
+    }
+    return out;
+  }
+}
+
+class ParamModifier {
+  const ParamModifier({required this.op, required this.value});
+
+  final String op;
+  final double value;
+
+  factory ParamModifier.fromYaml(Map<String, dynamic> yaml) {
+    return ParamModifier(
+      op: yaml['op'] as String? ?? 'replace',
+      value: _asDouble(yaml['value'], 0),
+    );
+  }
+}
+
+class ModifiesMainParams {
+  const ModifiesMainParams({
+    this.owning = const {},
+    this.using = const {},
+  });
+
+  /// Passiveive: skill_id → param → modifier, while owned.
+  final Map<String, Map<String, ParamModifier>> owning;
+
+  /// Active: skill_id → param → modifier, while tool session is in use.
+  final Map<String, Map<String, ParamModifier>> using;
+
+  bool get hasAny => owning.isNotEmpty || using.isNotEmpty;
+
+  bool affectsSkill(String skillId) =>
+      owning.containsKey(skillId) || using.containsKey(skillId);
+
+  Map<String, ParamModifier> paramsFor(String when, String skillId) {
+    final bucket = when == 'owning' ? owning : using;
+    return bucket[skillId] ?? const {};
+  }
+
+  static bool _looksLikeParamModifier(Object? value) {
+    if (value is! Map) return false;
+    return value.containsKey('op') && value.containsKey('value');
+  }
+
+  static bool _looksLikeParamMap(Object? value) {
+    if (value is! Map) return false;
+    if (value.isEmpty) return true;
+    return value.values.every(_looksLikeParamModifier);
+  }
+
+  static Map<String, ParamModifier> _parseParamMap(Object? raw) {
+    final map = GameConfig._asMap(raw);
+    final out = <String, ParamModifier>{};
+    for (final entry in map.entries) {
+      if (entry.value is Map) {
+        out[entry.key] = ParamModifier.fromYaml(GameConfig._asMap(entry.value));
+      }
+    }
+    return out;
+  }
+
+  static Map<String, Map<String, ParamModifier>> _parseSkillMap(Object? raw) {
+    final map = GameConfig._asMap(raw);
+    final out = <String, Map<String, ParamModifier>>{};
+    for (final entry in map.entries) {
+      out[entry.key] = _parseParamMap(entry.value);
+    }
+    return out;
+  }
+
+  factory ModifiesMainParams.fromYaml(Map<String, dynamic> yaml) {
+    final skill = yaml['skill'] as String?;
+    Object? owningRaw = yaml['owning'];
+    Object? usingRaw = yaml['using'];
+
+    // Legacy: when + params
+    if (owningRaw == null && usingRaw == null && yaml['params'] != null) {
+      final whenRaw =
+          (yaml['when'] as String?)?.trim().toLowerCase() ?? 'using';
+      if (whenRaw == 'owning') {
+        owningRaw = yaml['params'];
+      } else {
+        usingRaw = yaml['params'];
+      }
+    }
+
+    // Single-skill shorthand: owning/using are param maps.
+    if (skill != null) {
+      if (_looksLikeParamMap(owningRaw)) {
+        owningRaw = {skill: owningRaw};
+      }
+      if (_looksLikeParamMap(usingRaw)) {
+        usingRaw = {skill: usingRaw};
+      }
+    }
+
+    return ModifiesMainParams(
+      owning: _parseSkillMap(owningRaw),
+      using: _parseSkillMap(usingRaw),
+    );
+  }
+}
+
+class SkillStubConfig {
+  const SkillStubConfig({
+    required this.skillId,
+    required this.enabled,
+    required this.mainParams,
+    required this.levelModifiers,
+  });
+
+  final String skillId;
+  final bool enabled;
+  final Map<String, dynamic> mainParams;
+  final Map<String, List<LevelModifierEntry>> levelModifiers;
+
+  bool get hasMainParams => mainParams.isNotEmpty;
+
+  factory SkillStubConfig.fromYaml(Map<String, dynamic> yaml) {
+    return SkillStubConfig(
+      skillId: yaml['skill_id'] as String? ?? '',
+      enabled: yaml['enabled'] == true,
+      mainParams: GameConfig._asMap(yaml['main_params']),
+      levelModifiers: LevelModifierEntry.mapFromYaml(yaml['level_modifiers']),
     );
   }
 }
@@ -209,21 +493,58 @@ class SiteDiscoveryClientConfig {
   }
 }
 
-class FossilGenerationConfig {
-  const FossilGenerationConfig({
+class SiteSurveyConfig {
+  const SiteSurveyConfig({
+    required this.skillId,
+    required this.mainParams,
+    required this.levelModifiers,
     required this.oddNoise,
-    required this.dinoCountThresholds,
-    required this.cardCountWeights,
-    required this.depthBuckets,
   });
 
+  final String skillId;
+  final SiteSurveyMainParams mainParams;
+  final Map<String, List<LevelModifierEntry>> levelModifiers;
   final FossilOddNoiseConfig oddNoise;
-  final List<DinoCountThreshold> dinoCountThresholds;
-  final Map<int, double> cardCountWeights;
-  final List<FossilDepthBucket> depthBuckets;
 
-  factory FossilGenerationConfig.fromYaml(Map<String, dynamic> yaml) {
-    final rawBuckets = yaml['depth_buckets'];
+  List<DinoCountThreshold> get dinoCount => mainParams.dinoCount;
+  Map<int, double> get fossilCount => mainParams.fossilCount;
+  List<FossilDepthBucket> get depthWeights => mainParams.depthWeights;
+  Map<String, double> get completenessWeights => mainParams.completenessWeights;
+  Map<String, double> get qualityWeights => mainParams.qualityWeights;
+
+  /// Back-compat aliases.
+  List<DinoCountThreshold> get dinoCountThresholds => dinoCount;
+  Map<int, double> get cardCountWeights => fossilCount;
+  List<FossilDepthBucket> get depthBuckets => depthWeights;
+
+  factory SiteSurveyConfig.fromYaml(Map<String, dynamic> yaml) {
+    final main = GameConfig._asMap(yaml['main_params']);
+    return SiteSurveyConfig(
+      skillId: yaml['skill_id'] as String? ?? 'site_survey',
+      mainParams: SiteSurveyMainParams.fromYaml(main),
+      levelModifiers: LevelModifierEntry.mapFromYaml(yaml['level_modifiers']),
+      oddNoise: FossilOddNoiseConfig.fromYaml(yaml['odd_noise']),
+    );
+  }
+}
+
+class SiteSurveyMainParams {
+  const SiteSurveyMainParams({
+    required this.dinoCount,
+    required this.fossilCount,
+    required this.depthWeights,
+    required this.completenessWeights,
+    required this.qualityWeights,
+  });
+
+  final List<DinoCountThreshold> dinoCount;
+  final Map<int, double> fossilCount;
+  final List<FossilDepthBucket> depthWeights;
+  final Map<String, double> completenessWeights;
+  final Map<String, double> qualityWeights;
+
+  factory SiteSurveyMainParams.fromYaml(Map<String, dynamic> yaml) {
+    final rawBuckets = yaml['depth_weights'] ?? yaml['depth_buckets'];
     final buckets = <FossilDepthBucket>[];
     if (rawBuckets is List) {
       for (final entry in rawBuckets) {
@@ -238,7 +559,7 @@ class FossilGenerationConfig {
         }
       }
     }
-    final rawThresholds = yaml['dino_count_thresholds'];
+    final rawThresholds = yaml['dino_count'] ?? yaml['dino_count_thresholds'];
     final thresholds = <DinoCountThreshold>[];
     if (rawThresholds is List) {
       for (final entry in rawThresholds) {
@@ -252,14 +573,20 @@ class FossilGenerationConfig {
         }
       }
     }
-    return FossilGenerationConfig(
-      oddNoise: FossilOddNoiseConfig.fromYaml(yaml['odd_noise']),
-      dinoCountThresholds: thresholds,
-      cardCountWeights: _asIntDoubleMap(yaml['card_count_weights']),
-      depthBuckets: buckets,
+    return SiteSurveyMainParams(
+      dinoCount: thresholds,
+      fossilCount: _asIntDoubleMap(
+        yaml['fossil_count'] ?? yaml['card_count_weights'],
+      ),
+      depthWeights: buckets,
+      completenessWeights: _asStringDoubleMap(yaml['completeness_weights']),
+      qualityWeights: _asStringDoubleMap(yaml['quality_weights']),
     );
   }
 }
+
+/// Back-compat typedef name.
+typedef FossilGenerationConfig = SiteSurveyConfig;
 
 class FossilOddNoiseConfig {
   const FossilOddNoiseConfig({
@@ -320,25 +647,6 @@ class FossilDepthBucket {
   final int maxCm;
 }
 
-class FossilDiscoveryConfig {
-  const FossilDiscoveryConfig({required this.enabled});
-
-  final bool enabled;
-
-  factory FossilDiscoveryConfig.fromYaml(Map<String, dynamic> yaml) {
-    return FossilDiscoveryConfig(enabled: yaml['enabled'] == true);
-  }
-}
-
-class FossilExcavationConfig {
-  const FossilExcavationConfig({required this.enabled});
-
-  final bool enabled;
-
-  factory FossilExcavationConfig.fromYaml(Map<String, dynamic> yaml) {
-    return FossilExcavationConfig(enabled: yaml['enabled'] == true);
-  }
-}
 
 class ToolActionsConfig {
   const ToolActionsConfig({
@@ -418,22 +726,28 @@ class ToolActionsConfig {
           durationMinutes: 10,
           loopEndpointToleranceM: 75.0,
           flightSpeedKmh: 35.0,
-          discoveryChance: 0.008,
-          discoveryDistanceM: 120.0,
+          flightDiscoveryChance: 0.008,
+          flightDiscoveryDistanceM: 50.0,
           ensureTimeoutS: 600,
           shortRouteWarnFraction: 0.7,
           statsExplanation:
               'Duration is this card\'s lifetime battery. Remaining time caps how far '
               'you can draw (speed × remaining). Flight time is drawn length ÷ speed. '
-              'Sites within discovery distance are rolled at the listed chance.',
+              'Sites within flight discovery distance are rolled at the listed chance.',
         ),
       ),
       geoCompass: GuidanceActionConfig.fromYaml(
         GameConfig._asMap(yaml['geo_compass']),
-        defaults: const GuidanceActionConfig(
+        defaults: GuidanceActionConfig(
           durationMinutes: 15,
           exactness: 0.0,
-          discoveryChance: 0.9,
+          modifiesMainParams: const ModifiesMainParams(
+            using: {
+              'site_discovery': {
+                'discovery_chance': ParamModifier(op: 'replace', value: 0.9),
+              },
+            },
+          ),
           directionHintPeriodS: 3.0,
           maxDirectionRangeDeg: 180.0,
           minDirectionRangeDeg: 4.0,
@@ -447,7 +761,6 @@ class ToolActionsConfig {
         defaults: const GuidanceActionConfig(
           durationMinutes: 15,
           exactness: 0.0,
-          discoveryChance: null,
           directionHintPeriodS: 3.0,
           maxDirectionRangeDeg: 180.0,
           minDirectionRangeDeg: 4.0,
@@ -457,11 +770,17 @@ class ToolActionsConfig {
       ),
       siteNavigator: GuidanceActionConfig.fromYaml(
         GameConfig._asMap(yaml['site_navigator']),
-        defaults: const GuidanceActionConfig(
+        defaults: GuidanceActionConfig(
           durationMinutes: 15,
           directionExactness: 0.0,
           distanceExactness: 0.0,
-          discoveryChance: 0.9,
+          modifiesMainParams: const ModifiesMainParams(
+            using: {
+              'site_discovery': {
+                'discovery_chance': ParamModifier(op: 'replace', value: 0.9),
+              },
+            },
+          ),
           directionHintPeriodS: 3.0,
           maxDirectionRangeDeg: 180.0,
           minDirectionRangeDeg: 4.0,
@@ -561,7 +880,7 @@ class GuidanceActionConfig {
     this.exactness,
     this.directionExactness,
     this.distanceExactness,
-    this.discoveryChance,
+    this.modifiesMainParams,
     required this.directionHintPeriodS,
     required this.maxDirectionRangeDeg,
     required this.minDirectionRangeDeg,
@@ -572,11 +891,16 @@ class GuidanceActionConfig {
   final double? exactness;
   final double? directionExactness;
   final double? distanceExactness;
-  final double? discoveryChance;
+  final ModifiesMainParams? modifiesMainParams;
   final double directionHintPeriodS;
   final double maxDirectionRangeDeg;
   final double minDirectionRangeDeg;
   final String statsExplanation;
+
+  /// Walk-in discovery chance from using/site_discovery modifiers.
+  double? get discoveryChance => modifiesMainParams
+      ?.paramsFor('using', 'site_discovery')['discovery_chance']
+      ?.value;
 
   double get resolvedDirectionExactness =>
       directionExactness ?? exactness ?? 0.0;
@@ -592,6 +916,23 @@ class GuidanceActionConfig {
       'min_direction_range_deg': minDirectionRangeDeg,
       'stats_explanation': statsExplanation,
     };
+    final mods = modifiesMainParams;
+    if (mods != null && mods.hasAny) {
+      Map<String, dynamic> encodeSkillMap(
+        Map<String, Map<String, ParamModifier>> skillMap,
+      ) =>
+          {
+            for (final skill in skillMap.entries)
+              skill.key: {
+                for (final p in skill.value.entries)
+                  p.key: {'op': p.value.op, 'value': p.value.value},
+              },
+          };
+      out['modifies_main_params'] = {
+        if (mods.owning.isNotEmpty) 'owning': encodeSkillMap(mods.owning),
+        if (mods.using.isNotEmpty) 'using': encodeSkillMap(mods.using),
+      };
+    }
     switch (actionKey) {
       case 'site_navigator':
         out['direction_exactness'] = resolvedDirectionExactness;
@@ -624,6 +965,25 @@ class GuidanceActionConfig {
           minDirectionRangeDeg: 4.0,
           statsExplanation: '',
         );
+    ModifiesMainParams? mods = d.modifiesMainParams;
+    final rawMods = yaml['modifies_main_params'];
+    if (rawMods is Map) {
+      mods = ModifiesMainParams.fromYaml(GameConfig._asMap(rawMods));
+    } else if (yaml.containsKey('discovery_chance')) {
+      // Legacy bare discovery_chance → formalize as replace modifier.
+      final chance = _asOptionalDouble(yaml['discovery_chance'], null);
+      if (chance != null) {
+        mods = ModifiesMainParams(
+          using: {
+            'site_discovery': {
+              'discovery_chance': ParamModifier(op: 'replace', value: chance),
+            },
+          },
+        );
+      } else {
+        mods = null;
+      }
+    }
     return GuidanceActionConfig(
       durationMinutes: _asInt(yaml['duration_minutes'], d.durationMinutes),
       exactness: _asOptionalDouble(yaml['exactness'], d.exactness),
@@ -635,10 +995,7 @@ class GuidanceActionConfig {
         yaml['distance_exactness'],
         d.distanceExactness,
       ),
-      discoveryChance: _asOptionalDouble(
-        yaml['discovery_chance'],
-        d.discoveryChance,
-      ),
+      modifiesMainParams: mods,
       directionHintPeriodS: _asDouble(
         yaml['direction_hint_period_s'],
         d.directionHintPeriodS,
@@ -998,8 +1355,8 @@ class AerialActionConfig {
     required this.durationMinutes,
     required this.loopEndpointToleranceM,
     required this.flightSpeedKmh,
-    required this.discoveryChance,
-    required this.discoveryDistanceM,
+    required this.flightDiscoveryChance,
+    required this.flightDiscoveryDistanceM,
     required this.ensureTimeoutS,
     required this.shortRouteWarnFraction,
     required this.statsExplanation,
@@ -1008,8 +1365,8 @@ class AerialActionConfig {
   final int durationMinutes;
   final double loopEndpointToleranceM;
   final double flightSpeedKmh;
-  final double discoveryChance;
-  final double discoveryDistanceM;
+  final double flightDiscoveryChance;
+  final double flightDiscoveryDistanceM;
   final int ensureTimeoutS;
   final double shortRouteWarnFraction;
   final String statsExplanation;
@@ -1021,8 +1378,8 @@ class AerialActionConfig {
         'duration_minutes': durationMinutes,
         'loop_endpoint_tolerance_m': loopEndpointToleranceM,
         'flight_speed_kmh': flightSpeedKmh,
-        'discovery_chance': discoveryChance,
-        'discovery_distance_m': discoveryDistanceM,
+        'flight_discovery_chance': flightDiscoveryChance,
+        'flight_discovery_distance_m': flightDiscoveryDistanceM,
         'ensure_timeout_s': ensureTimeoutS,
         'short_route_warn_fraction': shortRouteWarnFraction,
         'stats_explanation': statsExplanation,
@@ -1037,14 +1394,14 @@ class AerialActionConfig {
           durationMinutes: 60,
           loopEndpointToleranceM: 75.0,
           flightSpeedKmh: 50.0,
-          discoveryChance: 0.2,
-          discoveryDistanceM: 200.0,
+          flightDiscoveryChance: 0.2,
+          flightDiscoveryDistanceM: 200.0,
           ensureTimeoutS: 600,
           shortRouteWarnFraction: 0.7,
           statsExplanation:
               'Duration is this card\'s lifetime battery. Remaining time caps how far '
               'you can draw (speed × remaining). Flight time is drawn length ÷ speed. '
-              'Sites within discovery distance are rolled at the listed chance.',
+              'Sites within flight discovery distance are rolled at the listed chance.',
         );
     return AerialActionConfig(
       durationMinutes: _asInt(yaml['duration_minutes'], d.durationMinutes),
@@ -1053,10 +1410,13 @@ class AerialActionConfig {
         d.loopEndpointToleranceM,
       ),
       flightSpeedKmh: _asDouble(yaml['flight_speed_kmh'], d.flightSpeedKmh),
-      discoveryChance: _asDouble(yaml['discovery_chance'], d.discoveryChance),
-      discoveryDistanceM: _asDouble(
-        yaml['discovery_distance_m'],
-        d.discoveryDistanceM,
+      flightDiscoveryChance: _asDouble(
+        yaml['flight_discovery_chance'] ?? yaml['discovery_chance'],
+        d.flightDiscoveryChance,
+      ),
+      flightDiscoveryDistanceM: _asDouble(
+        yaml['flight_discovery_distance_m'] ?? yaml['discovery_distance_m'],
+        d.flightDiscoveryDistanceM,
       ),
       ensureTimeoutS: _asInt(yaml['ensure_timeout_s'], d.ensureTimeoutS),
       shortRouteWarnFraction: _asDouble(
@@ -1116,6 +1476,18 @@ Map<int, double> _asIntDoubleMap(dynamic raw) {
     final value = entry.value;
     if (value is num) {
       out[key] = value.toDouble();
+    }
+  }
+  return out;
+}
+
+Map<String, double> _asStringDoubleMap(dynamic raw) {
+  if (raw is! Map) return {};
+  final out = <String, double>{};
+  for (final entry in raw.entries) {
+    final value = entry.value;
+    if (value is num) {
+      out[entry.key.toString()] = value.toDouble();
     }
   }
   return out;
