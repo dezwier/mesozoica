@@ -5,7 +5,7 @@ skill_id: site_discovery
 
 main_params:
   # Server enforces this on POST /sites/{id}/discover (and set-status).
-  visibility_distance_m: 50.0
+  visibility_distance_m: 20.0
   # P(success) per discover attempt (walk-in enter or dwell re-roll).
   discovery_chance: 0.1
   # Max GPS speed credited toward discovery / walk XP (Pokémon GO style filter).
@@ -19,7 +19,7 @@ level_modifiers:
 
 # Flutter auto-discover + nearby-discoverable cache.
 client:
-  auto_discover_radius_m: 50.0
+  auto_discover_radius_m: 20.0
   cache_radius_km: 1.0
   cache_refresh_move_threshold_m: 500.0
   discover_fail_retry_s: 20

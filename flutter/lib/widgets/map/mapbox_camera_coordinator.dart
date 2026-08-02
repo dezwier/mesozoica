@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 import 'dart:ui' as ui;
 
 import 'package:cached_network_image/cached_network_image.dart';
@@ -39,9 +40,13 @@ class MapboxCameraCoordinator {
   double? _viewportWidth;
   bool rotateWithHeading = false;
   double? _lastPulseRadiusPx;
-  double _pulseVisibilityDistanceM = 50.0;
+  double _pulseVisibilityDistanceM = 20.0;
   double _pulseLatitudeDeg = 0.0;
   double _pulseZoom = MapConfig.mapboxFollowZoom;
+  /// Cached so pulse-only updates do not fall back to Mapbox's blue default puck.
+  Uint8List? _puckTopImage;
+  Uint8List? _puckBearingImage;
+  Uint8List? _puckShadowImage;
 
   void attach(MapboxMap map) {
     _map = map;
@@ -53,6 +58,9 @@ class MapboxCameraCoordinator {
     _pendingFollowLocation = null;
     _pendingFollowZoom = null;
     _lastPulseRadiusPx = null;
+    _puckTopImage = null;
+    _puckBearingImage = null;
+    _puckShadowImage = null;
   }
 
   MapboxMap? get map => _map;
@@ -403,11 +411,12 @@ class MapboxCameraCoordinator {
   /// Avatar puck with ground shadow, white heading arrow, and brown pulse.
   ///
   /// [visibilityDistanceM] is the effective site-discovery radius (main param
-  /// after level/tool boosts). The pulse max radius is that ground distance in
-  /// screen pixels at [latitudeDeg] / [zoom].
+  /// after level/tool boosts). The pulse max radius is that ground distance
+  /// projected to screen pixels at [center].
   Future<void> enableLocationPuck({
     String? avatarImageUrl,
     double? visibilityDistanceM,
+    LatLng? center,
     double? latitudeDeg,
     double? zoom,
   }) async {
@@ -439,79 +448,123 @@ class MapboxCameraCoordinator {
     final shadowImage = await _renderLocationPuckShadowPng(
       logicalSize: _locationPuckLogicalSize,
     );
+    _puckTopImage = puckImage;
+    _puckBearingImage = bearingImage;
+    _puckShadowImage = shadowImage;
 
-    final pulsePx = _pulseRadiusPx(
+    final pulsePx = await _resolvePulseRadiusPx(
       visibilityDistanceM: visibilityDistanceM,
+      center: center,
       latitudeDeg: latitudeDeg,
       zoom: zoom,
     );
     _lastPulseRadiusPx = pulsePx;
 
-    await map.location.updateSettings(
-      LocationComponentSettings(
-        enabled: true,
-        puckBearingEnabled: true,
-        puckBearing: PuckBearing.HEADING,
-        pulsingEnabled: true,
-        pulsingColor: _locationPuckPulse.toARGB32(),
-        pulsingMaxRadius: pulsePx,
-        locationPuck: LocationPuck(
-          locationPuck2D: LocationPuck2D(
-            topImage: puckImage,
-            bearingImage: bearingImage,
-            shadowImage: shadowImage,
-            scaleExpression: '["literal", 1.1]',
-            opacity: 1,
-          ),
-        ),
-      ),
-    );
+    await map.location.updateSettings(_locationPuckSettings(pulsePx: pulsePx));
   }
 
-  /// Update only the discovery pulse radius (zoom / visibility / latitude).
+  /// Update the discovery pulse radius (zoom / visibility / location).
+  ///
+  /// Always re-applies the cached avatar puck: Mapbox Flutter replaces a null
+  /// [LocationComponentSettings.locationPuck] with the blue default 2D puck.
   Future<void> syncLocationPuckPulse({
     double? visibilityDistanceM,
+    LatLng? center,
     double? latitudeDeg,
     double? zoom,
   }) async {
     final map = _map;
-    if (map == null) return;
-    final pulsePx = _pulseRadiusPx(
+    if (map == null || _puckTopImage == null) return;
+    final pulsePx = await _resolvePulseRadiusPx(
       visibilityDistanceM: visibilityDistanceM,
+      center: center,
       latitudeDeg: latitudeDeg,
       zoom: zoom,
     );
     final previous = _lastPulseRadiusPx;
     if (previous != null && (pulsePx - previous).abs() < 0.5) return;
     _lastPulseRadiusPx = pulsePx;
-    await map.location.updateSettings(
-      LocationComponentSettings(
-        pulsingEnabled: true,
-        pulsingColor: _locationPuckPulse.toARGB32(),
-        pulsingMaxRadius: pulsePx,
+    await map.location.updateSettings(_locationPuckSettings(pulsePx: pulsePx));
+  }
+
+  LocationComponentSettings _locationPuckSettings({required double pulsePx}) {
+    return LocationComponentSettings(
+      enabled: true,
+      puckBearingEnabled: true,
+      puckBearing: PuckBearing.HEADING,
+      pulsingEnabled: true,
+      pulsingColor: _locationPuckPulse.toARGB32(),
+      pulsingMaxRadius: pulsePx,
+      locationPuck: LocationPuck(
+        locationPuck2D: LocationPuck2D(
+          topImage: _puckTopImage,
+          bearingImage: _puckBearingImage,
+          shadowImage: _puckShadowImage,
+          scaleExpression: '["literal", 1.1]',
+          opacity: 1,
+        ),
       ),
     );
   }
 
-  double _pulseRadiusPx({
+  /// Prefer Mapbox projection (same approach as terrain-echo); Mercator fallback.
+  Future<double> _resolvePulseRadiusPx({
     double? visibilityDistanceM,
+    LatLng? center,
     double? latitudeDeg,
     double? zoom,
-  }) {
+  }) async {
     if (visibilityDistanceM != null && visibilityDistanceM > 0) {
       _pulseVisibilityDistanceM = visibilityDistanceM;
-    }
-    if (latitudeDeg != null) {
-      _pulseLatitudeDeg = latitudeDeg;
     }
     if (zoom != null) {
       _pulseZoom = zoom;
     }
+    final origin = center ??
+        (latitudeDeg != null ? LatLng(latitudeDeg, 0) : null);
+    if (origin != null) {
+      _pulseLatitudeDeg = origin.latitude;
+    } else if (latitudeDeg != null) {
+      _pulseLatitudeDeg = latitudeDeg;
+    }
+
+    if (origin != null && center != null) {
+      final projected = await _projectGroundRadiusPx(
+        center: center,
+        radiusM: _pulseVisibilityDistanceM,
+      );
+      if (projected != null) return projected;
+    }
+
     return MapConfig.groundRadiusToPulsePx(
       radiusM: _pulseVisibilityDistanceM,
       latitudeDeg: _pulseLatitudeDeg,
       zoom: _pulseZoom,
     );
+  }
+
+  /// Scale a short lateral probe to [radiusM] via Mapbox screen projection.
+  Future<double?> _projectGroundRadiusPx({
+    required LatLng center,
+    required double radiusM,
+  }) async {
+    final probeM = math.min(12.0, radiusM * 0.2).clamp(4.0, 12.0);
+    final probe = _offsetMetersEast(center, probeM);
+    final pixels = await pixelsForCoordinates([center, probe]);
+    if (pixels.length < 2) return null;
+    final originPx = pixels[0];
+    final probePx = pixels[1];
+    if (originPx == null || probePx == null) return null;
+    final probeDist = (probePx - originPx).distance;
+    if (probeDist < 0.5) return null;
+    return (probeDist * (radiusM / probeM)).clamp(8.0, 4096.0);
+  }
+
+  static LatLng _offsetMetersEast(LatLng origin, double eastM) {
+    final latRad = origin.latitude * math.pi / 180.0;
+    final metersPerDegLon = 111320.0 * math.cos(latRad).abs().clamp(0.01, 1.0);
+    final dLon = eastM / metersPerDegLon;
+    return LatLng(origin.latitude, origin.longitude + dLon);
   }
 }
 

@@ -299,7 +299,7 @@ class SiteDiscoveryMainParams {
     return SiteDiscoveryMainParams(
       visibilityDistanceM: _asDouble(
         yaml['visibility_distance_m'] ?? yaml['max_distance_m'],
-        50.0,
+        20.0,
       ),
       discoveryChance: _asDouble(yaml['discovery_chance'], 0.1),
       maxDiscoverySpeedKmh: _asDouble(yaml['max_discovery_speed_kmh'], 20.0),
@@ -484,7 +484,7 @@ class SiteDiscoveryClientConfig {
 
   factory SiteDiscoveryClientConfig.fromYaml(Map<String, dynamic> yaml) {
     return SiteDiscoveryClientConfig(
-      autoDiscoverRadiusM: _asDouble(yaml['auto_discover_radius_m'], 50.0),
+      autoDiscoverRadiusM: _asDouble(yaml['auto_discover_radius_m'], 20.0),
       cacheRadiusKm: _asDouble(yaml['cache_radius_km'], 1.0),
       cacheRefreshMoveThresholdM: _asDouble(
         yaml['cache_refresh_move_threshold_m'],

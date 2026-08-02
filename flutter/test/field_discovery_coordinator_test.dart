@@ -89,7 +89,7 @@ http.Response _chanceMissResponse() {
   );
 }
 
-/// ~200 m south of (51.0, 4.0) — outside the 50 m discover radius.
+/// ~200 m south of (51.0, 4.0) — outside the 20 m discover radius.
 const _outside = LatLng(50.9982, 4.0000);
 
 /// ~11 m from (51.0, 4.0) — inside the discover radius.
@@ -358,7 +358,7 @@ void main() {
     expect(discoverCount, 1);
     expect(coordinator.pendingCelebration, isNull);
 
-    // Exit beyond ~50 m before dwell fires — clears scheduled re-roll.
+    // Exit beyond discover radius before dwell fires — clears scheduled re-roll.
     locationService.setLocation(_outside);
     await pumpUntilIdle();
 

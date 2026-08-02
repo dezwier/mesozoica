@@ -57,11 +57,11 @@ void main() {
     // Inject a temporary owning visibility boost via resolve helpers' tool scan
     // by using a synthetic ParamModifier path through resolveScalarMainParam.
     final boosted = resolveScalarMainParam(
-      base: 50,
+      base: 20,
       levelEntries: const [],
       skillLevel: 1,
       toolMod: const ParamModifier(op: 'add', value: 25),
     );
-    expect(boosted, closeTo(75, 1e-9));
+    expect(boosted, closeTo(45, 1e-9));
   });
 }

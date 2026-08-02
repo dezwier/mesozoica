@@ -92,7 +92,7 @@ double resolveSiteDiscoveryVisibilityDistanceM({
   Set<String> ownedActionKeys = const {},
   String? activeActionKey,
 }) {
-  if (!GameConfig.isLoaded) return 50.0;
+  if (!GameConfig.isLoaded) return 20.0;
   final cfg = GameConfig.instance.siteDiscovery;
   var value = resolveScalarMainParam(
     base: cfg.visibilityDistanceM,

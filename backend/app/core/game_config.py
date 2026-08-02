@@ -301,7 +301,7 @@ class SiteGenerationConfig(BaseModel):
 class SiteDiscoveryClientConfig(BaseModel):
     model_config = {"frozen": True}
 
-    auto_discover_radius_m: float = 50.0
+    auto_discover_radius_m: float = 20.0
     cache_radius_km: float = 1.0
     cache_refresh_move_threshold_m: float = 500.0
     discover_fail_retry_s: int = 20
@@ -311,7 +311,7 @@ class SiteDiscoveryClientConfig(BaseModel):
 class SiteDiscoveryMainParams(BaseModel):
     model_config = {"frozen": True}
 
-    visibility_distance_m: float = 50.0
+    visibility_distance_m: float = 20.0
     discovery_chance: float = 0.1
     max_discovery_speed_kmh: float = 20.0
 

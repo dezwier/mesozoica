@@ -16,7 +16,8 @@ void main() {
       zoom: 18,
     );
     expect(at18, closeTo(at17 * 2, 0.5));
-    expect(at17, greaterThan(20));
+    // Mapbox 512px tiles: ~2× the old 256px-tile formula.
+    expect(at17, greaterThan(100));
   });
 
   test('larger visibility distance yields larger pulse', () {
@@ -33,5 +34,12 @@ void main() {
       zoom: zoom,
     );
     expect(large, closeTo(small * 2, 0.5));
+  });
+
+  test('Mapbox meters-per-pixel uses 512px tile constant', () {
+    final mPerPx = MapConfig.metersPerPixel(latitudeDeg: 0, zoom: 0);
+    expect(mPerPx, closeTo(MapConfig.mapboxMetersPerPixelAtZoom0, 1e-6));
+    // Must not use the Leaflet/Google 256px constant (156543).
+    expect(mPerPx, lessThan(100000));
   });
 }

@@ -140,19 +140,26 @@ class MapConfig {
     return (zoom + 3).clamp(12.0, 18.0);
   }
 
+  /// Earth circumference / Mapbox 512px tile size at zoom 0 (equator).
+  ///
+  /// Mapbox GL uses 512px tiles; the Leaflet/Google 256px constant (156543)
+  /// is 2× too large here and made the discovery pulse ~half real size.
+  static const double mapboxMetersPerPixelAtZoom0 = 78271.51696402044;
+
   /// Web-Mercator meters-per-logical-pixel at [latitudeDeg] / [zoom].
   static double metersPerPixel({
     required double latitudeDeg,
     required double zoom,
   }) {
-    final cosLat = math.cos(latitudeDeg * math.pi / 180.0).abs().clamp(0.01, 1.0);
-    return 156543.03392804097 * cosLat / math.pow(2.0, zoom);
+    final cosLat =
+        math.cos(latitudeDeg * math.pi / 180.0).abs().clamp(0.01, 1.0);
+    return mapboxMetersPerPixelAtZoom0 * cosLat / math.pow(2.0, zoom);
   }
 
   /// Screen radius (logical px) for a ground circle of [radiusM].
   ///
-  /// Used for the location-puck discovery pulse so it tracks zoom and matches
-  /// [visibility_distance_m].
+  /// Fallback when Mapbox projection is unavailable; prefer projecting a
+  /// probe via [MapboxCameraCoordinator.syncLocationPuckPulse].
   static double groundRadiusToPulsePx({
     required double radiusM,
     required double latitudeDeg,
@@ -160,6 +167,6 @@ class MapConfig {
   }) {
     final mPerPx = metersPerPixel(latitudeDeg: latitudeDeg, zoom: zoom);
     if (mPerPx <= 0) return 8.0;
-    return (radiusM / mPerPx).clamp(8.0, 2048.0);
+    return (radiusM / mPerPx).clamp(8.0, 4096.0);
   }
 }

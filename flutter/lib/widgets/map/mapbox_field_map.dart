@@ -355,7 +355,7 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
     unawaited(
       widget.camera.syncLocationPuckPulse(
         visibilityDistanceM: visibilityM,
-        latitudeDeg: loc.latitude,
+        center: loc,
         zoom: _lastKnownZoom,
       ),
     );
@@ -372,7 +372,7 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
     await widget.camera.enableLocationPuck(
       avatarImageUrl: widget.avatarImageUrl,
       visibilityDistanceM: visibilityM,
-      latitudeDeg: loc.latitude,
+      center: loc,
       zoom: _lastKnownZoom,
     );
   }

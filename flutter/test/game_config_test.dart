@@ -14,11 +14,11 @@ void main() {
     expect(config.siteGeneration.cellSizeM, 500.0);
     expect(config.siteGeneration.client.nearbyRadiusKm, 0.5);
 
-    expect(config.siteDiscovery.visibilityDistanceM, 50.0);
-    expect(config.siteDiscovery.maxDistanceM, 50.0);
+    expect(config.siteDiscovery.visibilityDistanceM, 20.0);
+    expect(config.siteDiscovery.maxDistanceM, 20.0);
     expect(config.siteDiscovery.discoveryChance, 0.1);
     expect(config.siteDiscovery.maxDiscoverySpeedKmh, 20.0);
-    expect(config.siteDiscovery.client.autoDiscoverRadiusM, 50.0);
+    expect(config.siteDiscovery.client.autoDiscoverRadiusM, 20.0);
     expect(config.siteDiscovery.client.cacheRadiusKm, 1.0);
     expect(config.siteDiscovery.client.cacheRefreshMoveThresholdM, 500.0);
     expect(config.siteDiscovery.client.discoverFailRetryS, 20);
@@ -142,7 +142,7 @@ void main() {
     expect(config.leveling.careerTitles.length, 99);
 
     expect(GameConfig.isLoaded, isTrue);
-    expect(GameConfig.instance.siteDiscovery.maxDistanceM, 50.0);
+    expect(GameConfig.instance.siteDiscovery.maxDistanceM, 20.0);
   });
 
   test('instance throws before load', () {

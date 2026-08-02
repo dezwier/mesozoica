@@ -37,11 +37,11 @@ def test_load_game_config_matches_current_defaults() -> None:
     assert config.site_generation.bulk.max_items == 200
     assert config.site_generation.client.nearby_radius_km == 0.5
 
-    assert config.site_discovery.visibility_distance_m == 50.0
-    assert config.site_discovery.max_distance_m == 50.0
+    assert config.site_discovery.visibility_distance_m == 20.0
+    assert config.site_discovery.max_distance_m == 20.0
     assert config.site_discovery.discovery_chance == 0.1
     assert config.site_discovery.max_discovery_speed_kmh == 20.0
-    assert config.site_discovery.client.auto_discover_radius_m == 50.0
+    assert config.site_discovery.client.auto_discover_radius_m == 20.0
     assert config.site_discovery.client.cache_radius_km == 1.0
     assert config.site_discovery.client.cache_refresh_move_threshold_m == 500.0
     assert config.site_discovery.client.discover_fail_retry_s == 20
