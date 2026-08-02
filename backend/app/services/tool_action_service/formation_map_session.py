@@ -13,6 +13,8 @@ from app.models.formation_map_session import (
     SESSION_STATUS_ACTIVE,
     SESSION_STATUS_CANCELLED,
     SESSION_STATUS_EXPIRED,
+    STOP_REASON_EXHAUSTED,
+    STOP_REASON_MANUAL,
     FormationMapSession,
 )
 from app.models.tool_type import ToolType
@@ -20,6 +22,10 @@ from app.models.user_tool import USER_TOOL_ACTION_DEPLOYED, UserTool
 from app.services.field_service.field_ensure_queue import enqueue_field_site_ensure
 from app.services.tool_action_service.guidance_session import (
     cancel_active_guidance_sessions,
+)
+from app.services.tool_action_service.tool_use import (
+    allocate_remaining_for_start,
+    close_session,
 )
 from app.services.site_common.survey_grid import (
     footprint_for_center,
@@ -39,8 +45,9 @@ def _expire_if_needed(session: Session, row: FormationMapSession) -> FormationMa
     if row.status != SESSION_STATUS_ACTIVE:
         return row
     if row.expires_at <= _utcnow():
+        now = _utcnow()
         row.status = SESSION_STATUS_EXPIRED
-        row.updated_at = _utcnow()
+        close_session(row, now=now, stop_reason=STOP_REASON_EXHAUSTED)
         session.add(row)
         session.commit()
         session.refresh(row)
@@ -82,8 +89,7 @@ def cancel_active_formation_map_sessions(
     ).all()
     for row in rows:
         row.status = SESSION_STATUS_CANCELLED
-        row.cancelled_at = now
-        row.updated_at = now
+        close_session(row, now=now, stop_reason=STOP_REASON_MANUAL)
         session.add(row)
     if rows:
         session.commit()
@@ -180,8 +186,12 @@ def start_formation_map_session(
 
     cancel_active_terrain_echo_sessions(session, user_id=user_id)
 
+    remaining_s = allocate_remaining_for_start(
+        session, tool_type=tool_type, instance=instance
+    )
+
     now = _utcnow()
-    eff_duration = int(inst_p.get("duration_minutes", cfg.duration_minutes))
+    eff_duration = max(1, (remaining_s + 59) // 60)
     row = FormationMapSession(
         user_id=user_id,
         tool_id=int(instance.id),
@@ -194,7 +204,7 @@ def start_formation_map_session(
         center_lat=float(footprint.center_lat),
         center_lon=float(footprint.center_lon),
         started_at=now,
-        expires_at=now + timedelta(minutes=eff_duration),
+        expires_at=now + timedelta(seconds=remaining_s),
         created_at=now,
         updated_at=now,
     )
@@ -226,8 +236,7 @@ def cancel_formation_map_session(
         if row.status == SESSION_STATUS_ACTIVE:
             now = _utcnow()
             row.status = SESSION_STATUS_CANCELLED
-            row.cancelled_at = now
-            row.updated_at = now
+            close_session(row, now=now, stop_reason=STOP_REASON_MANUAL)
             session.add(row)
             session.commit()
             session.refresh(row)
@@ -238,8 +247,7 @@ def cancel_formation_map_session(
         return None
     now = _utcnow()
     row.status = SESSION_STATUS_CANCELLED
-    row.cancelled_at = now
-    row.updated_at = now
+    close_session(row, now=now, stop_reason=STOP_REASON_MANUAL)
     session.add(row)
     session.commit()
     session.refresh(row)

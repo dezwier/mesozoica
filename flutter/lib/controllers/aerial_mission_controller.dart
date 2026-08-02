@@ -88,15 +88,27 @@ class AerialMissionController extends ChangeNotifier {
     return tool.baseParams;
   }
 
-  int get durationMinutes =>
-      (_toolParams['duration_minutes'] as num?)?.toInt() ?? _cfg.durationMinutes;
+  int get durationMinutes {
+    final remainingS = _tool?.remainingDurationS;
+    if (remainingS != null) {
+      return (remainingS / 60).ceil().clamp(0, 24 * 60);
+    }
+    return (_toolParams['duration_minutes'] as num?)?.toInt() ??
+        _cfg.durationMinutes;
+  }
 
   double get flightSpeedKmh =>
       (_toolParams['flight_speed_kmh'] as num?)?.toDouble() ??
       _cfg.flightSpeedKmh;
 
-  /// Draw/deploy limit from speed × duration.
-  double get maxRouteKm => flightSpeedKmh * durationMinutes / 60.0;
+  /// Draw/deploy limit from speed × remaining battery.
+  double get maxRouteKm {
+    final remainingS = _tool?.remainingDurationS;
+    if (remainingS != null) {
+      return flightSpeedKmh * remainingS / 3600.0;
+    }
+    return flightSpeedKmh * durationMinutes / 60.0;
+  }
 
   double get loopEndpointToleranceM =>
       (_toolParams['loop_endpoint_tolerance_m'] as num?)?.toDouble() ??

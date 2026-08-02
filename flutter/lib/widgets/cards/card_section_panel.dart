@@ -48,9 +48,13 @@ class CardSectionPanel extends StatelessWidget {
       );
     }
 
-    return DecoratedBox(
+    final panel = DecoratedBox(
       decoration: cardTheme.factPanelDecoration(context),
       child: content,
     );
+    if (expandChild) {
+      return SizedBox.expand(child: panel);
+    }
+    return panel;
   }
 }

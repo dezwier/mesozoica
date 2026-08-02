@@ -423,9 +423,9 @@ class ToolActionsConfig {
           ensureTimeoutS: 600,
           shortRouteWarnFraction: 0.7,
           statsExplanation:
-              'Duration caps how far you can draw (speed × duration). Flight time is '
-              'drawn length ÷ speed. Sites within discovery distance are rolled at the '
-              'listed chance.',
+              'Duration is this card\'s lifetime battery. Remaining time caps how far '
+              'you can draw (speed × remaining). Flight time is drawn length ÷ speed. '
+              'Sites within discovery distance are rolled at the listed chance.',
         ),
       ),
       geoCompass: GuidanceActionConfig.fromYaml(
@@ -1042,9 +1042,9 @@ class AerialMissionActionConfig {
           ensureTimeoutS: 600,
           shortRouteWarnFraction: 0.7,
           statsExplanation:
-              'Duration caps how far you can draw (speed × duration). Flight time is '
-              'drawn length ÷ speed. Sites within discovery distance are rolled at the '
-              'listed chance.',
+              'Duration is this card\'s lifetime battery. Remaining time caps how far '
+              'you can draw (speed × remaining). Flight time is drawn length ÷ speed. '
+              'Sites within discovery distance are rolled at the listed chance.',
         );
     return AerialMissionActionConfig(
       durationMinutes: _asInt(yaml['duration_minutes'], d.durationMinutes),

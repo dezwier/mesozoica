@@ -39,9 +39,6 @@ class TerrainEchoCardExtension implements ToolCardExtension {
         : tool.baseParams;
     return _TerrainEchoOngoingPanel(toolId: tool.id, toolParams: params);
   }
-
-  @override
-  VoidCallback? infoHandler(BuildContext context, ToolSummary tool) => null;
 }
 
 class _TerrainEchoOngoingPanel extends StatelessWidget {

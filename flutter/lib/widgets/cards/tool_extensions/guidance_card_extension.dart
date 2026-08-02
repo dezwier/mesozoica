@@ -61,9 +61,6 @@ class GuidanceCardExtension implements ToolCardExtension {
       toolParams: params,
     );
   }
-
-  @override
-  VoidCallback? infoHandler(BuildContext context, ToolSummary tool) => null;
 }
 
 class _GuidanceOngoingPanel extends StatelessWidget {

@@ -40,6 +40,9 @@ class ToolSummary(BaseModel):
     version: str | None = None
     # Catalog mode only: viewer's owned occurrences of this type (gallery thumbs).
     owned_occurrences: list[OwnedOccurrenceThumb] = Field(default_factory=list)
+    # Lifetime battery remaining (owned occurrences only).
+    remaining_duration_s: int | None = None
+    total_duration_s: int | None = None
 
 
 class ToolListResponse(BaseModel):
@@ -173,6 +176,27 @@ class TerrainEchoSessionResponse(BaseModel):
     started_at: datetime
     expires_at: datetime
     cancelled_at: datetime | None = None
+
+
+class ToolUseItem(BaseModel):
+    id: int
+    kind: str
+    action_key: str
+    status: str
+    started_at: datetime
+    ended_at: datetime | None = None
+    duration_s: int
+    stop_reason: str | None = None
+    params: dict[str, Any] = Field(default_factory=dict)
+    result: dict[str, Any] | None = None
+
+
+class ToolUsesResponse(BaseModel):
+    tool_id: int
+    total_duration_s: int
+    used_duration_s: int
+    remaining_duration_s: int
+    items: list[ToolUseItem] = Field(default_factory=list)
 
 
 class UpdateToolParamsRequest(BaseModel):

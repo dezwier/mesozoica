@@ -20,6 +20,8 @@ class ToolSummary {
     this.spawnDate,
     this.version,
     this.ownedOccurrences = const [],
+    this.remainingDurationS,
+    this.totalDurationS,
   });
 
   final int id;
@@ -48,7 +50,15 @@ class ToolSummary {
   /// Catalog mode: owned occurrence thumbs for the album gallery.
   final List<OwnedOccurrenceThumb> ownedOccurrences;
 
+  /// Lifetime battery remaining (owned occurrences).
+  final int? remainingDurationS;
+  final int? totalDurationS;
+
   bool get isOwned => level != null || ownedOccurrences.isNotEmpty;
+
+  /// True when the card has no usable battery left.
+  bool get hasDurationRemaining =>
+      remainingDurationS == null || remainingDurationS! > 0;
 
   /// True when the viewer owns at least one occurrence of this catalog type.
   bool get isCatalogOwned => ownedOccurrences.isNotEmpty;
@@ -132,6 +142,8 @@ class ToolSummary {
     DateTime? spawnDate,
     String? version,
     List<OwnedOccurrenceThumb>? ownedOccurrences,
+    int? remainingDurationS,
+    int? totalDurationS,
     bool clearLevel = false,
   }) {
     return ToolSummary(
@@ -150,6 +162,8 @@ class ToolSummary {
       spawnDate: spawnDate ?? this.spawnDate,
       version: version ?? this.version,
       ownedOccurrences: ownedOccurrences ?? this.ownedOccurrences,
+      remainingDurationS: remainingDurationS ?? this.remainingDurationS,
+      totalDurationS: totalDurationS ?? this.totalDurationS,
     );
   }
 
@@ -211,6 +225,8 @@ class ToolSummary {
           ? (json['version'] as String).trim()
           : null,
       ownedOccurrences: owned,
+      remainingDurationS: (json['remaining_duration_s'] as num?)?.toInt(),
+      totalDurationS: (json['total_duration_s'] as num?)?.toInt(),
     );
   }
 

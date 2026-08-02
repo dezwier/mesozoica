@@ -40,9 +40,6 @@ class FormationMapCardExtension implements ToolCardExtension {
         : tool.baseParams;
     return _FormationMapOngoingPanel(toolId: tool.id, toolParams: params);
   }
-
-  @override
-  VoidCallback? infoHandler(BuildContext context, ToolSummary tool) => null;
 }
 
 class _FormationMapOngoingPanel extends StatelessWidget {

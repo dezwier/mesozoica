@@ -13,6 +13,10 @@ MISSION_STATUS_DONE = "done"
 MISSION_STATUS_FAILED = "failed"
 MISSION_STATUS_CANCELLED = "cancelled"
 
+STOP_REASON_MANUAL = "manual"
+STOP_REASON_EXHAUSTED = "exhausted"
+STOP_REASON_FAILED = "failed"
+
 ACTION_KEY_AERIAL_RECON = "aerial_recon"
 ACTION_KEY_AERIAL_SCOUT = "aerial_scout"
 AERIAL_MISSION_ACTION_KEYS = (
@@ -40,6 +44,9 @@ class ToolMission(SQLModel, table=True):
     ensure_job_ids_json: Optional[str] = Field(default=None)
     flight_started_at: Optional[datetime] = Field(default=None)
     flight_ends_at: Optional[datetime] = Field(default=None)
+    ended_at: Optional[datetime] = Field(default=None)
+    used_duration_s: Optional[int] = Field(default=None)
+    stop_reason: Optional[str] = Field(default=None, max_length=16)
     error_message: Optional[str] = Field(default=None, max_length=2000)
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)

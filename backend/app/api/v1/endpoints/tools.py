@@ -25,6 +25,7 @@ from app.schemas.tool import (
     ToolImageVersionListResponse,
     ToolListResponse,
     ToolSummary,
+    ToolUsesResponse,
     UpdateToolParamsRequest,
 )
 from app.services.tool_action_service import (
@@ -60,10 +61,14 @@ from app.services.tool_service import (
     list_tools,
     tool_to_summary,
 )
-from app.services.tool_service.collect import list_tool_image_versions
+from app.services.tool_service.collect import (
+    list_tool_image_versions,
+    resolve_owned_tool_selection,
+)
 from app.services.tool_service.list import ListMode, ToolListRow, owned_occurrences_for_tool_types
 from app.services.curated_image_service.versions import ORIGINAL_VERSION
 from app.services.tool_service.update_params import update_tool_instance_params
+from app.services.tool_action_service.tool_use import tool_uses_response
 
 router = APIRouter(prefix="/tools", tags=["tools"])
 
@@ -121,11 +126,12 @@ def get_tools(
                 owned_occurrences=owned.get(int(row.tool_type.id), [])
                 if row.tool_type.id is not None
                 else [],
+                session=session,
             )
             for row in rows
         ]
     else:
-        items = [tool_to_summary(row) for row in rows]
+        items = [tool_to_summary(row, session=session) for row in rows]
     return ToolListResponse(
         items=items,
         total=total,
@@ -384,7 +390,30 @@ def patch_tool_instance_params(
         tool_id=tool_id,
         params=body.params,
     )
-    return tool_to_summary(row)
+    return tool_to_summary(row, session=session)
+
+
+@router.get("/{tool_id}/uses", response_model=ToolUsesResponse)
+def get_tool_uses(
+    tool_id: int,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+) -> ToolUsesResponse:
+    """Lifetime battery and per-use history for an owned tool occurrence.
+
+    ``tool_id`` may be a catalog tool_type id (resolved to the owned instance)
+    or an occurrence id.
+    """
+    selected = resolve_owned_tool_selection(
+        session, user_id=int(current_user.id), tool_id=tool_id
+    )
+    if selected is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Tool not found or not owned",
+        )
+    tool_type, instance = selected
+    return tool_uses_response(session, tool_type=tool_type, instance=instance)
 
 
 @router.post(
@@ -496,4 +525,4 @@ def get_tool(
         tool_id,
         viewer_user_id=current_user.id if current_user is not None else None,
     )
-    return tool_to_summary(row)
+    return tool_to_summary(row, session=session)

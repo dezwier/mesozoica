@@ -1,7 +1,9 @@
 # Per-tool action parameters (gameplay knobs, not catalog copy).
+# duration_minutes is the lifetime battery on each owned tool card.
+# Starting an action uses all remaining time; HUD stop charges only elapsed.
 
 aerial_recon:
-  # Battery / draw budget; max route km = flight_speed_kmh × duration_minutes / 60.
+  # Lifetime battery; max route km = flight_speed_kmh × remaining_minutes / 60.
   # Actual flight time after deploy = drawn_route_km / flight_speed_kmh.
   duration_minutes: 60
   # start/end must be within this of the player's GPS origin
@@ -15,9 +17,9 @@ aerial_recon:
   short_route_warn_fraction: 0.7
   # One-line blurb shown on the tool card stats panel
   stats_explanation: >-
-    Duration caps how far you can draw (speed × duration). Flight time is
-    drawn length ÷ speed. Sites within discovery distance are rolled at the
-    listed chance.
+    Duration is this card's lifetime battery. Remaining time caps how far
+    you can draw (speed × remaining). Flight time is drawn length ÷ speed.
+    Sites within discovery distance are rolled at the listed chance.
 
 aerial_scout:
   duration_minutes: 10
@@ -28,9 +30,9 @@ aerial_scout:
   ensure_timeout_s: 600
   short_route_warn_fraction: 0.7
   stats_explanation: >-
-    Duration caps how far you can draw (speed × duration). Flight time is
-    drawn length ÷ speed. Sites within discovery distance are rolled at the
-    listed chance.
+    Duration is this card's lifetime battery. Remaining time caps how far
+    you can draw (speed × remaining). Flight time is drawn length ÷ speed.
+    Sites within discovery distance are rolled at the listed chance.
 
 geo_compass:
   exactness: 0.0
@@ -40,16 +42,19 @@ geo_compass:
   max_direction_range_deg: 180
   min_direction_range_deg: 4
   stats_explanation: >-
-    Shows a direction range toward the nearest undiscovered site; lower
-    exactness widens the glow. Walk-in discovery of that nearest site uses
-    the listed chance instead of the base rate.
+    Duration is this card's lifetime battery; each use runs until you stop
+    or time runs out. Shows a direction range toward the nearest undiscovered
+    site; lower exactness widens the glow. Walk-in discovery of that nearest
+    site uses the listed chance instead of the base rate.
 
 proximity_scanner:
   exactness: 0.0
   duration_minutes: 15
   stats_explanation: >-
-    Shows distance to the nearest undiscovered site as meter bands; lower
-    exactness uses coarser rounding (up to 200 m), higher is finer (down to 1 m).
+    Duration is this card's lifetime battery; each use runs until you stop
+    or time runs out. Shows distance to the nearest undiscovered site as
+    meter bands; lower exactness uses coarser rounding (up to 200 m), higher
+    is finer (down to 1 m).
 
 site_navigator:
   direction_exactness: 0.0
@@ -60,8 +65,10 @@ site_navigator:
   max_direction_range_deg: 180
   min_direction_range_deg: 4
   stats_explanation: >-
-    Combines a direction-range glow and distance bands for the nearest
-    undiscovered site, with the listed walk-in discovery chance for that site.
+    Duration is this card's lifetime battery; each use runs until you stop
+    or time runs out. Combines a direction-range glow and distance bands for
+    the nearest undiscovered site, with the listed walk-in discovery chance
+    for that site.
 
 orbit_survey:
   duration_minutes: 10
@@ -76,9 +83,10 @@ orbit_survey:
   # Softness of period color borders (0=sharp, 1=very soft); accuracy still sharpens further
   boundary_blur: 1
   stats_explanation: >-
-    Colors the map by the period of nearby undiscovered field sites.
-    Higher accuracy sharpens boundaries; higher range widens the circle
-    (200 m–2 km).
+    Duration is this card's lifetime battery; each use runs until you stop
+    or time runs out. Colors the map by the period of nearby undiscovered
+    field sites. Higher accuracy sharpens boundaries; higher range widens
+    the circle (200 m–2 km).
 
 formation_map:
   duration_minutes: 10
@@ -93,10 +101,11 @@ formation_map:
   range_fade: 0
   boundary_blur: 1
   stats_explanation: >-
-    Colors a fixed square of the map by rock type. Higher accuracy sharpens
-    rock-type boundaries; the outer edge has a slight fixed soft fade.
-    Wideness sets the side length (500 m–2 km) on the same 500 m grid used
-    for field sites, locked to this tool occurrence.
+    Duration is this card's lifetime battery; each use runs until you stop
+    or time runs out. Colors a fixed square of the map by rock type. Higher
+    accuracy sharpens rock-type boundaries; the outer edge has a slight fixed
+    soft fade. Wideness sets the side length (500 m–2 km) on the same 500 m
+    grid used for field sites, locked to this tool occurrence.
 
 terrain_echo:
   accuracy: 0.0
@@ -109,6 +118,7 @@ terrain_echo:
   ring_increment_m: 20
   sweep_period_s: 4
   stats_explanation: >-
-    Rotating survey pulse around your position. Blips mark nearby
-    sites you have not discovered yet. Higher accuracy tightens
-    blips; range sets pulse radius (20–200 m).
+    Duration is this card's lifetime battery (editable within min/max); each
+    use runs until you stop or time runs out. Rotating survey pulse around
+    your position. Blips mark nearby sites you have not discovered yet.
+    Higher accuracy tightens blips; range sets pulse radius (20–200 m).

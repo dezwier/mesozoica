@@ -7,7 +7,7 @@ import 'tool_extensions/guidance_card_extension.dart';
 import 'tool_extensions/orbit_survey_card_extension.dart';
 import 'tool_extensions/terrain_echo_card_extension.dart';
 
-/// Per-action-key extras for tool card backs (stats, ongoing, info, params).
+/// Per-action-key extras for tool card backs (stats, ongoing, params).
 abstract class ToolCardExtension {
   String get actionKey;
 
@@ -20,8 +20,6 @@ abstract class ToolCardExtension {
   Widget? buildDeployStats(BuildContext context, ToolSummary tool);
 
   Widget? buildOngoingPanel(BuildContext context, ToolSummary tool);
-
-  VoidCallback? infoHandler(BuildContext context, ToolSummary tool);
 }
 
 /// Registry of [ToolCardExtension]s keyed for lookup by tool.

@@ -7,7 +7,6 @@ import '../../../models/tool.dart';
 import '../../../services/tool_service.dart';
 import '../../tools/aerial_mission_actions.dart';
 import '../../tools/aerial_mission_flight_stats.dart';
-import '../../tools/aerial_mission_missions_sheet.dart';
 import '../card_section_panel.dart';
 import '../tool_card_extension.dart';
 
@@ -47,12 +46,6 @@ class AerialMissionCardExtension implements ToolCardExtension {
       toolId: tool.id,
       actionKey: kind.actionKey,
     );
-  }
-
-  @override
-  VoidCallback? infoHandler(BuildContext context, ToolSummary tool) {
-    final kind = AerialMissionKind.requireToolName(tool.name);
-    return () => AerialMissionsSheet.show(context, kind: kind);
   }
 }
 

@@ -4,8 +4,10 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
 
+import '../config/api_endpoints.dart';
 import '../config/app_config.dart';
 import '../models/tool.dart';
+import '../models/tool_use.dart';
 import 'api_client.dart';
 import 'token_storage.dart';
 
@@ -188,6 +190,24 @@ class ToolService {
       throw const ToolServiceException('Invalid collect response');
     }
     return ToolSummary.fromJson(decoded);
+  }
+
+  Future<ToolUsesResponse> fetchToolUses(int toolId) async {
+    final uri = ApiEndpoints.toolUsesUri(toolId);
+    if (kDebugMode) debugPrint('ToolService GET $uri');
+    final response = await ApiClient.instance
+        .sendGet(uri, client: _client, headers: await _headers())
+        .timeout(const Duration(seconds: 15));
+    if (response.statusCode != 200) {
+      throw ToolServiceException(
+        'Failed to load tool uses (${response.statusCode})',
+      );
+    }
+    final decoded = jsonDecode(response.body);
+    if (decoded is! Map<String, dynamic>) {
+      throw const ToolServiceException('Invalid tool uses response');
+    }
+    return ToolUsesResponse.fromJson(decoded);
   }
 
   Future<ToolSummary> updateToolParams(

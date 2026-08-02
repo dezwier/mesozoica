@@ -371,6 +371,9 @@ class ApiEndpoints {
 
   static Uri toolUri(int id) => Uri.parse('${AppConfig.baseApiUrl}/api/v1/tools/$id');
 
+  static Uri toolUsesUri(int id) =>
+      Uri.parse('${AppConfig.baseApiUrl}/api/v1/tools/$id/uses');
+
   static Uri toolCollectUri(int id) =>
       Uri.parse('${AppConfig.baseApiUrl}/api/v1/tools/$id/collect');
 

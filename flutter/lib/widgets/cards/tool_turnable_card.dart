@@ -2,10 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../config/game_config.dart';
+import '../../controllers/aerial_mission_controller.dart';
 import '../../controllers/auth_controller.dart';
 import '../../controllers/tool_action_router.dart';
 import '../../controllers/tool_catalog_controller.dart';
+import '../../models/aerial_mission_kind.dart';
 import '../../models/tool.dart';
+import '../../models/tool_use.dart';
 import '../../services/tool_service.dart';
 import '../../theme/dino_card_theme.dart';
 import '../tools/filters/tool_params_edit_sheet.dart';
@@ -43,6 +46,10 @@ class ToolTurnableCard extends StatefulWidget {
 
 class _ToolTurnableCardState extends State<ToolTurnableCard> {
   bool _updateParamsBusy = false;
+  bool _usesLoading = false;
+  List<ToolUse> _uses = const [];
+  int? _remainingDurationS;
+  int? _loadedForToolId;
 
   /// Params shown/edited: instance → base → game-config YAML defaults.
   Map<String, dynamic> _paramsForEdit(ToolSummary tool) {
@@ -65,6 +72,44 @@ class _ToolTurnableCardState extends State<ToolTurnableCard> {
 
   Future<void> _onAction() async {
     ToolActionRouter.start(context, widget.tool);
+  }
+
+  Future<void> _loadUsesIfNeeded() async {
+    final tool = widget.tool;
+    if (!tool.isOwned || !tool.isToolInstance) return;
+    if (_loadedForToolId == tool.id && (_uses.isNotEmpty || !_usesLoading)) {
+      // Still refresh remaining when tool summary already has it.
+      if (_remainingDurationS == null && tool.remainingDurationS != null) {
+        setState(() => _remainingDurationS = tool.remainingDurationS);
+      }
+      return;
+    }
+    _loadedForToolId = tool.id;
+    setState(() {
+      _usesLoading = true;
+      _remainingDurationS = tool.remainingDurationS;
+    });
+    try {
+      final response = await ToolService().fetchToolUses(tool.id);
+      if (!mounted || widget.tool.id != tool.id) return;
+      setState(() {
+        _uses = response.items;
+        _remainingDurationS = response.remainingDurationS;
+        _usesLoading = false;
+      });
+      context.read<ToolCatalogController>().replaceToolSummary(
+            tool.copyWith(
+              remainingDurationS: response.remainingDurationS,
+              totalDurationS: response.totalDurationS,
+            ),
+          );
+    } catch (_) {
+      if (!mounted || widget.tool.id != tool.id) return;
+      setState(() {
+        _usesLoading = false;
+        _loadedForToolId = null;
+      });
+    }
   }
 
   Future<void> _onEditParams() async {
@@ -90,6 +135,8 @@ class _ToolTurnableCardState extends State<ToolTurnableCard> {
           );
           if (!mounted) return;
           context.read<ToolCatalogController>().replaceToolSummary(updatedTool);
+          _loadedForToolId = null;
+          await _loadUsesIfNeeded();
         } on ToolServiceException catch (error) {
           if (!mounted) return;
           ScaffoldMessenger.of(
@@ -109,17 +156,52 @@ class _ToolTurnableCardState extends State<ToolTurnableCard> {
     );
   }
 
+  void _onUseTap(ToolUse use) {
+    if (use.kind != 'aerial_mission') return;
+    final kind = AerialMissionKind.tryParseToolName(widget.tool.name);
+    if (kind == null) return;
+    final aerial = context.read<AerialMissionController>();
+    for (final mission in aerial.missions) {
+      if (mission.missionId == use.id) {
+        aerial.focusMission(mission);
+        break;
+      }
+    }
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final inventoryMode =
+        context.read<ToolCatalogController>().mode == ToolScreenMode.inventory;
+    if (inventoryMode && widget.tool.isOwned) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _loadUsesIfNeeded();
+      });
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant ToolTurnableCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.tool.id != widget.tool.id) {
+      _loadedForToolId = null;
+      _uses = const [];
+      _remainingDurationS = widget.tool.remainingDurationS;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final showAdminUi = context.watch<AuthController>().showAdminUi;
     final inventoryMode =
         context.watch<ToolCatalogController>().mode == ToolScreenMode.inventory;
     final extension = ToolCardExtensions.forTool(widget.tool);
-    final onInfo = extension?.infoHandler(context, widget.tool);
     final statsChild = extension?.buildDeployStats(context, widget.tool);
     final ongoingChild = extension?.buildOngoingPanel(context, widget.tool);
     // Admin toggle on: always show the params cog on owned tool cards.
     final canEditParams = showAdminUi && widget.tool.isOwned;
+    final remaining = _remainingDurationS ?? widget.tool.remainingDurationS;
 
     return TurnableYAxisCard(
       resetIdentity: widget.tool.id,
@@ -139,12 +221,19 @@ class _ToolTurnableCardState extends State<ToolTurnableCard> {
         tool: widget.tool,
         titleFontSize: widget.titleFontSize,
         subtitleFontSize: widget.subtitleFontSize,
-        onAction: inventoryMode && widget.tool.isOwned ? _onAction : null,
-        onInfo: inventoryMode ? onInfo : null,
+        onAction: inventoryMode &&
+                widget.tool.isOwned &&
+                (remaining == null || remaining > 0)
+            ? _onAction
+            : null,
         onEditParams: canEditParams ? _onEditParams : null,
         showActionButtons: inventoryMode,
         statsChild: statsChild,
         ongoingChild: ongoingChild,
+        uses: _uses,
+        usesLoading: _usesLoading,
+        remainingDurationS: remaining,
+        onUseTap: _onUseTap,
       ),
     );
   }

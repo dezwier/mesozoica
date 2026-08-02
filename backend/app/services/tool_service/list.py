@@ -427,14 +427,41 @@ def get_tool_by_id(
     return ToolListRow(tool_type=row, level=level, image_version=ORIGINAL_VERSION)
 
 
-def tool_to_summary(row: ToolListRow, *, owned_occurrences: list | None = None):
+def tool_to_summary(
+    row: ToolListRow,
+    *,
+    owned_occurrences: list | None = None,
+    remaining_duration_s: int | None = None,
+    total_duration_s: int | None = None,
+    session: Session | None = None,
+):
     """Build ToolSummary with optional ownership level (imported lazily to avoid cycles)."""
+    from app.models.tool import Tool
     from app.schemas.tool import OwnedOccurrenceThumb, ToolSummary
     from app.services.curated_image_service.versions import ORIGINAL_VERSION
+    from app.services.tool_action_service.tool_use.budget import (
+        remaining_duration_s as compute_remaining,
+        total_duration_s_for_instance,
+    )
 
     thumbs: list[OwnedOccurrenceThumb] = []
     if owned_occurrences:
         thumbs = list(owned_occurrences)
+
+    rem = remaining_duration_s
+    tot = total_duration_s
+    if (
+        session is not None
+        and row.occurrence_id is not None
+        and rem is None
+        and tot is None
+    ):
+        instance = session.get(Tool, int(row.occurrence_id))
+        if instance is not None:
+            tot = total_duration_s_for_instance(row.tool_type, instance)
+            rem = compute_remaining(
+                session, tool_type=row.tool_type, instance=instance
+            )
 
     return ToolSummary(
         id=int(row.occurrence_id or row.tool_type.id),
@@ -456,6 +483,8 @@ def tool_to_summary(row: ToolListRow, *, owned_occurrences: list | None = None):
         spawn_date=row.spawn_date,
         version=row.image_version or ORIGINAL_VERSION,
         owned_occurrences=thumbs,
+        remaining_duration_s=rem,
+        total_duration_s=tot,
     )
 
 

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mesozoica/models/tool.dart';
+import 'package:mesozoica/models/tool_use.dart';
 import 'package:mesozoica/widgets/cards/tool_card_back.dart';
 import 'package:mesozoica/widgets/common/chrome_action_button.dart';
 
@@ -40,7 +41,8 @@ void main() {
     expect(catalog.isToolInstance, isFalse);
   });
 
-  testWidgets('ToolCardBack shows action verb and disabled Info by default', (tester) async {
+  testWidgets('ToolCardBack shows centered action and remaining, no Info',
+      (tester) async {
     const owned = ToolSummary(
       id: 1,
       name: 'Aerial Recon',
@@ -50,6 +52,7 @@ void main() {
       rarity: 5,
       action: 'Deploy',
       level: 1,
+      remainingDurationS: 900,
     );
 
     var tapped = false;
@@ -62,6 +65,7 @@ void main() {
               child: ToolCardBack(
                 tool: owned,
                 onAction: () => tapped = true,
+                remainingDurationS: 900,
               ),
             ),
           ),
@@ -70,17 +74,14 @@ void main() {
     );
 
     expect(find.text('Deploy'), findsOneWidget);
-    expect(find.text('Info'), findsOneWidget);
+    expect(find.text('Info'), findsNothing);
+    expect(find.text('15m left'), findsOneWidget);
+    expect(find.text('USES'), findsOneWidget);
     expect(find.textContaining('Site Discovery'), findsOneWidget);
 
     await tester.tap(find.text('Deploy'));
     await tester.pump();
     expect(tapped, isTrue);
-
-    final info = tester.widget<ChromeActionButton>(
-      find.widgetWithText(ChromeActionButton, 'Info'),
-    );
-    expect(info.onPressed, isNull);
   });
 
   testWidgets('ToolCardBack shows Obtained subtitle when spawnDate is set',
@@ -123,7 +124,7 @@ void main() {
     expect(find.text('#10'), findsNothing);
   });
 
-  testWidgets('ToolCardBack enables Info when onInfo is set', (tester) async {
+  testWidgets('ToolCardBack lists compact uses', (tester) async {
     const owned = ToolSummary(
       id: 1,
       name: 'Aerial Recon',
@@ -134,18 +135,33 @@ void main() {
       action: 'Deploy',
       level: 1,
     );
+    final uses = [
+      ToolUse(
+        id: 9,
+        kind: 'aerial_mission',
+        actionKey: 'aerial_recon',
+        status: 'done',
+        startedAt: DateTime.now().toUtc().subtract(const Duration(hours: 2)),
+        endedAt: DateTime.now().toUtc().subtract(const Duration(hours: 1)),
+        durationS: 2700,
+        stopReason: 'exhausted',
+        params: const {'route_length_km': 12.5, 'flight_speed_kmh': 50},
+        result: const {'discovered_count': 2},
+      ),
+    ];
 
-    var infoTapped = false;
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
           body: Center(
             child: SizedBox(
               width: 320,
+              height: 480,
               child: ToolCardBack(
                 tool: owned,
                 onAction: () {},
-                onInfo: () => infoTapped = true,
+                uses: uses,
+                remainingDurationS: 900,
               ),
             ),
           ),
@@ -153,9 +169,8 @@ void main() {
       ),
     );
 
-    await tester.tap(find.text('Info'));
-    await tester.pump();
-    expect(infoTapped, isTrue);
+    expect(find.textContaining('exhausted'), findsOneWidget);
+    expect(find.textContaining('2 sites'), findsOneWidget);
   });
 
   testWidgets('ToolCardBack disables action when not owned', (tester) async {
@@ -186,5 +201,43 @@ void main() {
       find.widgetWithText(ChromeActionButton, 'Scan'),
     );
     expect(deploy.onPressed, isNull);
+  });
+
+  testWidgets('ToolCardBack disables action when remaining is zero',
+      (tester) async {
+    const owned = ToolSummary(
+      id: 1,
+      name: 'Geo Compass',
+      category: '1 site_discovery',
+      scientificTool: 'compass',
+      description: 'Point',
+      rarity: 1,
+      action: 'Consult',
+      level: 1,
+      remainingDurationS: 0,
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: SizedBox(
+              width: 320,
+              child: ToolCardBack(
+                tool: owned,
+                onAction: () {},
+                remainingDurationS: 0,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    final action = tester.widget<ChromeActionButton>(
+      find.widgetWithText(ChromeActionButton, 'Consult'),
+    );
+    expect(action.onPressed, isNull);
+    expect(find.text('0m left'), findsOneWidget);
   });
 }

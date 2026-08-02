@@ -39,9 +39,6 @@ class OrbitSurveyCardExtension implements ToolCardExtension {
         : tool.baseParams;
     return _OrbitSurveyOngoingPanel(toolId: tool.id, toolParams: params);
   }
-
-  @override
-  VoidCallback? infoHandler(BuildContext context, ToolSummary tool) => null;
 }
 
 class _OrbitSurveyOngoingPanel extends StatelessWidget {

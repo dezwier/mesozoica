@@ -21,6 +21,9 @@ from app.models.tool_mission import (
     MISSION_STATUS_ENSURING,
     MISSION_STATUS_FAILED,
     MISSION_STATUS_FLYING,
+    STOP_REASON_EXHAUSTED,
+    STOP_REASON_FAILED,
+    STOP_REASON_MANUAL,
     ToolMission,
 )
 from app.models.tool_mission_event import (
@@ -55,6 +58,11 @@ from app.services.tool_action_service.route_geometry import (
     prefix_up_to_fraction,
     route_length_km,
 )
+from app.services.tool_action_service.tool_use.budget import (
+    allocate_remaining_for_start,
+    remaining_minutes_for_route,
+)
+from app.services.tool_action_service.tool_use.closeout import close_mission
 from app.services.tool_service.collect import resolve_owned_tool_selection
 logger = logging.getLogger("aerial_mission")
 
@@ -66,17 +74,12 @@ def _utcnow() -> datetime:
 
 
 def _max_route_km(
-    cfg: Any,
-    inst_p: dict[str, Any],
     *,
     flight_speed_kmh: float,
+    remaining_minutes: float,
 ) -> float:
-    """Max loop length from duration × speed; legacy max_route_km still accepted."""
-    if "duration_minutes" in inst_p:
-        return float(flight_speed_kmh) * float(inst_p["duration_minutes"]) / 60.0
-    if "max_route_km" in inst_p:
-        return float(inst_p["max_route_km"])
-    return float(flight_speed_kmh) * float(cfg.duration_minutes) / 60.0
+    """Max loop length from remaining battery minutes × speed."""
+    return float(flight_speed_kmh) * max(0.0, float(remaining_minutes)) / 60.0
 
 
 def _parse_route(raw: list[dict[str, Any]]) -> list[RoutePoint]:
@@ -138,7 +141,14 @@ def start_aerial_mission(
     points = _parse_route(route)
     length_km = route_length_km(points)
     eff_speed = float(inst_p.get("flight_speed_kmh", cfg.flight_speed_kmh))
-    eff_max_route = _max_route_km(cfg, inst_p, flight_speed_kmh=eff_speed)
+    allocate_remaining_for_start(session, tool_type=tool_type, instance=instance)
+    remaining_minutes = remaining_minutes_for_route(
+        session, tool_type=tool_type, instance=instance
+    )
+    eff_max_route = _max_route_km(
+        flight_speed_kmh=eff_speed,
+        remaining_minutes=remaining_minutes,
+    )
     if length_km > eff_max_route:
         raise ValidationError(
             f"Loop is {length_km:.1f} km; maximum allowed is {eff_max_route:.0f} km"
@@ -166,8 +176,7 @@ def start_aerial_mission(
         if job_id is not None:
             job_ids.append(job_id)
 
-    # Flight clock follows the drawn loop, not the battery/duration budget param.
-    # Budget only caps max route (= speed × duration_minutes).
+    # Flight clock follows the drawn loop; battery remaining caps max route.
     speed = max(eff_speed, 1e-6)
     flight_duration_s = max(1, int(round(length_km / speed * 3600.0)))
 
@@ -296,7 +305,7 @@ def cancel_aerial_mission(
     mission.route_length_km = route_length_km(truncated)
     mission.status = MISSION_STATUS_CANCELLED
     mission.flight_ends_at = now
-    mission.updated_at = now
+    close_mission(mission, now=now, stop_reason=STOP_REASON_MANUAL)
     session.add(mission)
 
     pending = list(
@@ -372,9 +381,10 @@ def promote_ensuring_missions(session: Session) -> int:
             promoted += 1
         except Exception as exc:
             logger.exception("Failed to promote mission %s", mission.id)
+            now = _utcnow()
             mission.status = MISSION_STATUS_FAILED
             mission.error_message = str(exc)[:2000]
-            mission.updated_at = _utcnow()
+            close_mission(mission, now=now, stop_reason=STOP_REASON_FAILED)
             session.add(mission)
             session.commit()
     return promoted
@@ -572,7 +582,7 @@ def _finalize_completed_missions(session: Session) -> None:
         if pending is not None:
             continue
         mission.status = MISSION_STATUS_DONE
-        mission.updated_at = now
+        close_mission(mission, now=now, stop_reason=STOP_REASON_EXHAUSTED)
         session.add(mission)
         session.commit()
 

@@ -14,6 +14,10 @@ SESSION_STATUS_ACTIVE = "active"
 SESSION_STATUS_CANCELLED = "cancelled"
 SESSION_STATUS_EXPIRED = "expired"
 
+STOP_REASON_MANUAL = "manual"
+STOP_REASON_EXHAUSTED = "exhausted"
+STOP_REASON_FAILED = "failed"
+
 
 class FormationMapSession(SQLModel, table=True):
     __tablename__ = "formation_map_session"
@@ -32,5 +36,8 @@ class FormationMapSession(SQLModel, table=True):
     started_at: datetime = Field(default_factory=datetime.utcnow)
     expires_at: datetime = Field(index=True)
     cancelled_at: Optional[datetime] = Field(default=None)
+    ended_at: Optional[datetime] = Field(default=None)
+    used_duration_s: Optional[int] = Field(default=None)
+    stop_reason: Optional[str] = Field(default=None, max_length=16)
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
