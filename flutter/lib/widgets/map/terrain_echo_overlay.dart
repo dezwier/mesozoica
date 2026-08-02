@@ -105,6 +105,9 @@ class _TerrainEchoOverlayState extends State<TerrainEchoOverlay>
       _echoListener = _onEchoChanged;
       echo.addListener(_echoListener!);
       _syncActive(echo);
+    } else {
+      // Remount / TickerMode re-enable: restart sweep without a full reproject.
+      _ensureSweepRunning(echo);
     }
   }
 
@@ -142,30 +145,30 @@ class _TerrainEchoOverlayState extends State<TerrainEchoOverlay>
     }
   }
 
-  void _syncActive(TerrainEchoController echo) {
+  void _ensureSweepRunning(TerrainEchoController echo) {
+    if (!echo.isActive) return;
     final periodS = echo.sweepPeriodS.clamp(1.0, 60.0);
     final next = Duration(milliseconds: (periodS * 1000).round());
     if (_sweep.duration != next) {
-      final progress = _sweep.isAnimating ? _sweep.value : 0.0;
+      // Jump first — assigning [.value] after [repeat] stops the animation.
+      final progress = _sweep.value;
       _sweep.duration = next;
-      if (echo.isActive) {
-        _sweep.repeat();
-        _sweep.value = progress;
-        _prevSweepT = progress;
-      } else {
-        _sweep.stop();
-      }
-    } else if (echo.isActive && !_sweep.isAnimating) {
+      _sweep.value = progress;
+      _prevSweepT = progress;
+    }
+    if (!_sweep.isAnimating) {
       _sweep.repeat();
       _prevSweepT = _sweep.value;
-    } else if (!echo.isActive && _sweep.isAnimating) {
-      _sweep.stop();
     }
+  }
 
+  void _syncActive(TerrainEchoController echo) {
     if (echo.isActive) {
+      _ensureSweepRunning(echo);
       _restartProjectSchedule();
       _requestReproject();
     } else {
+      if (_sweep.isAnimating) _sweep.stop();
       _projectTimer?.cancel();
       _projectTimer = null;
       _blipHitAtMs.clear();
