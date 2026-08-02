@@ -106,9 +106,9 @@ mixin _AccountSettingsSheetLogicMixin on State<AccountSettingsSheet> {
     setState(() => _isUploadingImage = false);
     if (result['success'] == true) {
       await context.read<AuthController>().applyUser(result['user'] as Profile);
-      _showSnack('Profile photo updated');
+      _showSuccess('Profile photo updated');
     } else {
-      _showSnack(result['message'] as String? ?? 'Upload failed');
+      _showError(result['message'] as String? ?? 'Upload failed');
     }
   }
 
@@ -153,7 +153,7 @@ mixin _AccountSettingsSheetLogicMixin on State<AccountSettingsSheet> {
     setState(() => _isSaving = false);
     if (result['success'] == true) {
       await context.read<AuthController>().applyUser(result['user'] as Profile);
-      _showSnack('Settings saved');
+      _showSuccess('Settings saved');
       Navigator.of(context).pop();
     } else {
       setState(() => _saveError = result['message'] as String? ?? 'Save failed');
@@ -179,14 +179,14 @@ mixin _AccountSettingsSheetLogicMixin on State<AccountSettingsSheet> {
         setState(
           () => _linkedProviders = (result['providers'] as List).cast<String>(),
         );
-        _showSnack('Google linked');
+        _showSuccess('Google linked');
       } else {
-        _showSnack(result['message'] as String? ?? 'Link failed');
+        _showError(result['message'] as String? ?? 'Link failed');
       }
     } catch (error) {
       if (mounted) {
         setState(() => _activeLinkedProviderAction = null);
-        _showSnack(error.toString());
+        _showError(error.toString());
       }
     }
   }
@@ -211,14 +211,14 @@ mixin _AccountSettingsSheetLogicMixin on State<AccountSettingsSheet> {
         setState(
           () => _linkedProviders = (result['providers'] as List).cast<String>(),
         );
-        _showSnack('Apple linked');
+        _showSuccess('Apple linked');
       } else {
-        _showSnack(result['message'] as String? ?? 'Link failed');
+        _showError(result['message'] as String? ?? 'Link failed');
       }
     } catch (error) {
       if (mounted) {
         setState(() => _activeLinkedProviderAction = null);
-        _showSnack(error.toString());
+        _showError(error.toString());
       }
     }
   }
@@ -253,7 +253,7 @@ mixin _AccountSettingsSheetLogicMixin on State<AccountSettingsSheet> {
     if (result['success'] == true) {
       setState(() => _linkedProviders = (result['providers'] as List).cast<String>());
     } else {
-      _showSnack(result['message'] as String? ?? 'Unlink failed');
+      _showError(result['message'] as String? ?? 'Unlink failed');
     }
   }
 
@@ -281,7 +281,7 @@ mixin _AccountSettingsSheetLogicMixin on State<AccountSettingsSheet> {
     if (!mounted) return;
 
     if (result['success'] != true) {
-      _showSnack(result['message'] as String? ?? 'Delete failed');
+      _showError(result['message'] as String? ?? 'Delete failed');
       return;
     }
 
@@ -319,7 +319,7 @@ mixin _AccountSettingsSheetLogicMixin on State<AccountSettingsSheet> {
     if (selection.dinosaurs) {
       parts.add('${result['deleted_dinosaurs'] ?? 0} dino rows');
     }
-    _showSnack(
+    _showSuccess(
       parts.isEmpty ? 'Data deleted' : 'Deleted ${parts.join(', ')}',
     );
   }
@@ -352,11 +352,11 @@ mixin _AccountSettingsSheetLogicMixin on State<AccountSettingsSheet> {
       await context.read<AuthController>().logout();
       if (mounted) Navigator.of(context).pop();
     } else {
-      _showSnack(result['message'] as String? ?? 'Delete failed');
+      _showError(result['message'] as String? ?? 'Delete failed');
     }
   }
 
-  void _showSnack(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
-  }
+  void _showSuccess(String message) => AppToast.success(context, message);
+
+  void _showError(String message) => AppToast.error(context, message);
 }

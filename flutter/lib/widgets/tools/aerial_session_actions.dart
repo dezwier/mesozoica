@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../controllers/aerial_session_controller.dart';
 import '../../models/aerial_action_kind.dart';
 import '../../models/tool_session.dart';
+import '../common/app_toast.dart';
 
 /// Shared Follow / Abort controls for an active aerial session.
 class AerialSessionActions extends StatelessWidget {
@@ -94,10 +95,9 @@ class AerialSessionActions extends StatelessWidget {
     if (!context.mounted) return;
     if (!ok) {
       final message = context.read<AerialSessionController>().message;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(message ?? 'Failed to abort ${kind.toolName}'),
-        ),
+      AppToast.error(
+        context,
+        message ?? 'Failed to abort ${kind.toolName}',
       );
     }
   }

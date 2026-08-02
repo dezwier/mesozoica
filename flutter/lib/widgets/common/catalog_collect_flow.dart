@@ -4,6 +4,7 @@ import '../../models/dinosaur.dart';
 import '../../models/tool.dart';
 import '../../services/dinosaur_service.dart';
 import '../../services/tool_service.dart';
+import 'app_toast.dart';
 
 /// Shared admin collect dialogs / API calls for catalog album tiles.
 class CatalogCollectFlow {
@@ -64,9 +65,7 @@ class CatalogCollectFlow {
       final versions = await service.listDinosaurImageVersions();
       if (!context.mounted) return null;
       if (versions.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('No image versions available')),
-        );
+        AppToast.warning(context, 'No image versions available');
         return null;
       }
       final version = await pickImageVersion(context, versions);
@@ -78,22 +77,16 @@ class CatalogCollectFlow {
         version: version,
       );
       if (!context.mounted) return created;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Added to your collection')),
-      );
+      AppToast.success(context, 'Added to your collection');
       return created;
     } on DinosaurServiceException catch (error) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(error.message)),
-        );
+        AppToast.error(context, error.message);
       }
       return null;
     } catch (_) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Failed to add dinosaur')),
-        );
+        AppToast.error(context, 'Failed to add dinosaur');
       }
       return null;
     } finally {
@@ -111,9 +104,7 @@ class CatalogCollectFlow {
       final versions = await service.listToolImageVersions();
       if (!context.mounted) return null;
       if (versions.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('No image versions available')),
-        );
+        AppToast.warning(context, 'No image versions available');
         return null;
       }
       final version = await pickImageVersion(context, versions);
@@ -124,22 +115,16 @@ class CatalogCollectFlow {
         version: version,
       );
       if (!context.mounted) return created;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Added to your collection')),
-      );
+      AppToast.success(context, 'Added to your collection');
       return created;
     } on ToolServiceException catch (error) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(error.message)),
-        );
+        AppToast.error(context, error.message);
       }
       return null;
     } catch (_) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Failed to add tool')),
-        );
+        AppToast.error(context, 'Failed to add tool');
       }
       return null;
     } finally {

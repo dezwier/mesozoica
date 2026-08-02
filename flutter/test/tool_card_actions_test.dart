@@ -85,8 +85,7 @@ void main() {
     expect(tapped, isTrue);
   });
 
-  testWidgets('ToolCardBack shows Obtained subtitle when spawnDate is set',
-      (tester) async {
+  testWidgets('ToolCardBack omits Obtained from subtitle', (tester) async {
     final owned = ToolSummary(
       id: 10,
       toolTypeId: 1,
@@ -117,10 +116,8 @@ void main() {
       ),
     );
 
-    expect(
-      find.text('Site Discovery - Helicopter - Obtained 45m ago'),
-      findsOneWidget,
-    );
+    expect(find.text('Site Discovery - Helicopter'), findsOneWidget);
+    expect(find.textContaining('Obtained'), findsNothing);
     expect(find.text('#10 · Original'), findsNothing);
     expect(find.text('#10'), findsNothing);
   });
@@ -136,22 +133,35 @@ void main() {
       action: 'Deploy',
       level: 1,
     );
+    final started =
+        DateTime.now().toUtc().subtract(const Duration(hours: 2));
+    final obtained =
+        DateTime.now().toUtc().subtract(const Duration(days: 3));
     final history = [
-      ToolSession(
-        sessionId: 9,
-        toolId: 1,
-        actionKey: 'aerial_recon',
-        status: 'completed',
-        startedAt: DateTime.now().toUtc().subtract(const Duration(hours: 2)),
-        endedAt: DateTime.now().toUtc().subtract(const Duration(hours: 1)),
-        usedDurationS: 2700,
-        stopReason: 'exhausted',
-        params: const {'flight_speed_kmh': 50},
-        state: const {'route_length_km': 12.5},
-        eventsSummary: const ToolSessionEventsSummary(
-          discoveredSiteIds: [1, 2],
-          discoveredCount: 2,
+      ToolHistoryEntry(
+        kind: 'session',
+        at: started,
+        session: ToolSession(
+          sessionId: 9,
+          toolId: 1,
+          actionKey: 'aerial_recon',
+          status: 'completed',
+          startedAt: started,
+          endedAt: DateTime.now().toUtc().subtract(const Duration(hours: 1)),
+          usedDurationS: 2700,
+          stopReason: 'exhausted',
+          params: const {'flight_speed_kmh': 50},
+          state: const {'route_length_km': 12.5},
+          eventsSummary: const ToolSessionEventsSummary(
+            discoveredSiteIds: [1, 2],
+            discoveredCount: 2,
+          ),
         ),
+      ),
+      ToolHistoryEntry(
+        kind: 'role',
+        at: obtained,
+        roleAction: 'owned',
       ),
     ];
 
@@ -177,6 +187,7 @@ void main() {
     expect(find.text('done'), findsOneWidget);
     expect(find.text('45m'), findsOneWidget);
     expect(find.textContaining('2 sites'), findsOneWidget);
+    expect(find.text('Obtained'), findsOneWidget);
   });
 
   testWidgets('ToolCardBack disables action when not owned', (tester) async {

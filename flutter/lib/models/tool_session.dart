@@ -235,6 +235,38 @@ class ToolSessionEventsSummary {
   }
 }
 
+/// Unified card history: a [session] use or a [role] change (e.g. obtained).
+class ToolHistoryEntry {
+  const ToolHistoryEntry({
+    required this.kind,
+    required this.at,
+    this.session,
+    this.roleAction,
+  });
+
+  final String kind; // session | role
+  final DateTime at;
+  final ToolSession? session;
+  final String? roleAction;
+
+  bool get isSession => kind == 'session' && session != null;
+  bool get isRole => kind == 'role';
+
+  factory ToolHistoryEntry.fromJson(Map<String, dynamic> json) {
+    final role = json['role'];
+    final roleMap = role is Map ? _asStringKeyedMap(role) : const <String, dynamic>{};
+    final sessionRaw = json['session'];
+    return ToolHistoryEntry(
+      kind: json['kind'] as String? ?? 'session',
+      at: parseSessionDate(json['at']) ?? DateTime.fromMillisecondsSinceEpoch(0),
+      session: sessionRaw is Map
+          ? ToolSession.fromJson(_asStringKeyedMap(sessionRaw))
+          : null,
+      roleAction: roleMap['action'] as String?,
+    );
+  }
+}
+
 class ToolSessionListResponse {
   const ToolSessionListResponse({
     this.toolId,
@@ -242,6 +274,7 @@ class ToolSessionListResponse {
     this.usedDurationS,
     this.remainingDurationS,
     this.items = const [],
+    this.history = const [],
   });
 
   final int? toolId;
@@ -249,20 +282,30 @@ class ToolSessionListResponse {
   final int? usedDurationS;
   final int? remainingDurationS;
   final List<ToolSession> items;
+  final List<ToolHistoryEntry> history;
 
   factory ToolSessionListResponse.fromJson(Map<String, dynamic> json) {
     final raw = json['items'];
+    final rawHistory = json['history'];
+    final items = raw is List
+        ? raw
+            .whereType<Map>()
+            .map((e) => ToolSession.fromJson(_asStringKeyedMap(e)))
+            .toList(growable: false)
+        : const <ToolSession>[];
+    final history = rawHistory is List
+        ? rawHistory
+            .whereType<Map>()
+            .map((e) => ToolHistoryEntry.fromJson(_asStringKeyedMap(e)))
+            .toList(growable: false)
+        : const <ToolHistoryEntry>[];
     return ToolSessionListResponse(
       toolId: (json['tool_id'] as num?)?.toInt(),
       totalDurationS: (json['total_duration_s'] as num?)?.toInt(),
       usedDurationS: (json['used_duration_s'] as num?)?.toInt(),
       remainingDurationS: (json['remaining_duration_s'] as num?)?.toInt(),
-      items: raw is List
-          ? raw
-              .whereType<Map<String, dynamic>>()
-              .map(ToolSession.fromJson)
-              .toList(growable: false)
-          : const [],
+      items: items,
+      history: history,
     );
   }
 }

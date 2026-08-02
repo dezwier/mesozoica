@@ -17,6 +17,7 @@ import '../../models/tool.dart';
 import '../../models/tool_session.dart';
 import '../../services/tool_service.dart';
 import '../../theme/dino_card_theme.dart';
+import '../common/app_toast.dart';
 import '../tools/filters/tool_params_edit_sheet.dart';
 import 'tool_card_back.dart';
 import 'tool_card_extension.dart';
@@ -53,7 +54,8 @@ class ToolTurnableCard extends StatefulWidget {
 class _ToolTurnableCardState extends State<ToolTurnableCard> {
   bool _updateParamsBusy = false;
   bool _historyLoading = false;
-  List<ToolSession> _history = const [];
+  List<ToolHistoryEntry> _history = const [];
+  List<ToolSession> _sessions = const [];
   int? _remainingDurationS;
   int? _totalDurationS;
   Timer? _remainingTick;
@@ -107,7 +109,17 @@ class _ToolTurnableCardState extends State<ToolTurnableCard> {
         return;
       }
       setState(() {
-        _history = response.items;
+        _sessions = response.items;
+        _history = response.history.isNotEmpty
+            ? response.history
+            : [
+                for (final session in response.items)
+                  ToolHistoryEntry(
+                    kind: 'session',
+                    at: session.startedAt,
+                    session: session,
+                  ),
+              ];
         _remainingDurationS =
             response.remainingDurationS ?? tool.remainingDurationS;
         _totalDurationS = response.totalDurationS ?? tool.totalDurationS;
@@ -226,14 +238,10 @@ class _ToolTurnableCardState extends State<ToolTurnableCard> {
           await _refreshHistory(showSpinner: true);
         } on ToolServiceException catch (error) {
           if (!mounted) return;
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text(error.message)));
+          AppToast.error(context, error.message);
         } catch (_) {
           if (!mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Failed to update tool parameters')),
-          );
+          AppToast.error(context, 'Failed to update tool parameters');
         } finally {
           if (mounted) {
             setState(() => _updateParamsBusy = false);
@@ -269,7 +277,7 @@ class _ToolTurnableCardState extends State<ToolTurnableCard> {
 
     final toolId = widget.tool.id;
     final byId = <int, ToolSession>{
-      for (final session in _history) session.sessionId: session,
+      for (final session in _sessions) session.sessionId: session,
     };
     void upsert(ToolSession? session) {
       if (session == null || session.toolId != toolId) return;
@@ -296,7 +304,7 @@ class _ToolTurnableCardState extends State<ToolTurnableCard> {
   }
 
   void _syncRemainingTick({required bool inUse}) {
-    final needsTick = inUse || _history.any((s) => s.isActive);
+    final needsTick = inUse || _sessions.any((s) => s.isActive);
     if (needsTick) {
       _remainingTick ??= Timer.periodic(const Duration(seconds: 1), (_) {
         if (!mounted) return;
@@ -338,7 +346,7 @@ class _ToolTurnableCardState extends State<ToolTurnableCard> {
     if (terrain.isActive && _matchesTool(terrain.session, terrain.tool)) {
       return true;
     }
-    return _history.any((s) => s.isActive);
+    return _sessions.any((s) => s.isActive);
   }
 
   @override
@@ -347,6 +355,7 @@ class _ToolTurnableCardState extends State<ToolTurnableCard> {
     if (oldWidget.tool.id != widget.tool.id) {
       _loadedForToolId = null;
       _history = const [];
+      _sessions = const [];
       _remainingDurationS = widget.tool.remainingDurationS;
       _totalDurationS = widget.tool.totalDurationS;
       _lastSessionFingerprint = null;

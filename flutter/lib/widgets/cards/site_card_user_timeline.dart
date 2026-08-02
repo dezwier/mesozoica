@@ -5,6 +5,7 @@ import '../../controllers/aerial_session_controller.dart';
 import '../../models/site.dart';
 import '../../theme/dino_card_theme.dart';
 import '../../utils/relative_time.dart';
+import '../common/app_toast.dart';
 import 'card_section_panel.dart';
 
 /// A single moment on a site's user-relation timeline.
@@ -100,9 +101,7 @@ class SiteCardUserTimeline extends StatelessWidget {
     final ok = await recon.focusSessionById(sessionId);
     if (!context.mounted) return;
     if (!ok) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Could not find that recon flight')),
-      );
+      AppToast.warning(context, 'Could not find that recon flight');
       return;
     }
     // Close site sheet / dialog if presented as a modal.

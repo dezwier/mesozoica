@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../../models/site_map_filters.dart';
+import '../common/app_toast.dart';
 import '../common/drawer_sheet_sizes.dart';
 import '../profile/settings_form_styles.dart';
 
@@ -315,12 +316,9 @@ class _SiteFilterSheetState extends State<SiteFilterSheet> {
                       if (value == null) return;
                       if (value == SiteCatalogSort.distance &&
                           !widget.canSortByDistance) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text(
-                              'Waiting for your current location to sort by nearest',
-                            ),
-                          ),
+                        AppToast.info(
+                          context,
+                          'Waiting for your current location to sort by nearest',
                         );
                         return;
                       }

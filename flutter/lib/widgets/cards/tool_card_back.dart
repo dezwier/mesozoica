@@ -40,8 +40,8 @@ class ToolCardBack extends StatelessWidget {
   /// Replaces the Rarity panel when non-null (e.g. deploy stats).
   final Widget? statsChild;
 
-  /// Compact session history (newest first).
-  final List<ToolSession> history;
+  /// Compact card history: uses + role changes, newest first.
+  final List<ToolHistoryEntry> history;
   final bool historyLoading;
   final int? remainingDurationS;
   final ValueChanged<ToolSession>? onHistoryTap;
@@ -186,7 +186,7 @@ class _HistoryList extends StatelessWidget {
     this.onHistoryTap,
   });
 
-  final List<ToolSession> history;
+  final List<ToolHistoryEntry> history;
   final bool loading;
   final ValueChanged<ToolSession>? onHistoryTap;
 
@@ -225,10 +225,10 @@ class _HistoryList extends StatelessWidget {
           for (var i = 0; i < history.length; i++) ...[
             if (i > 0) divider,
             _HistoryRow(
-              session: history[i],
-              onTap: onHistoryTap == null
+              entry: history[i],
+              onTap: onHistoryTap == null || history[i].session == null
                   ? null
-                  : () => onHistoryTap!(history[i]),
+                  : () => onHistoryTap!(history[i].session!),
             ),
           ],
         ],
@@ -238,9 +238,9 @@ class _HistoryList extends StatelessWidget {
 }
 
 class _HistoryRow extends StatelessWidget {
-  const _HistoryRow({required this.session, this.onTap});
+  const _HistoryRow({required this.entry, this.onTap});
 
-  final ToolSession session;
+  final ToolHistoryEntry entry;
   final VoidCallback? onTap;
 
   @override
@@ -248,7 +248,33 @@ class _HistoryRow extends StatelessWidget {
     final cardTheme = DinoCardTheme.of(context);
     final primary = cardTheme.bodyStyle(fontSize: 11);
     final muted = primary.copyWith(color: cardTheme.cardTextMuted);
-    final when = formatRelativeWhen(session.startedAt);
+    final when = formatRelativeWhen(entry.at);
+
+    if (entry.isRole) {
+      final label = _roleLabel(entry.roleAction);
+      return SizedBox(
+        height: 22,
+        child: Row(
+          children: [
+            Text(when, style: muted, maxLines: 1),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 5),
+              child: Text('·', style: muted),
+            ),
+            Text(
+              label,
+              style: primary.copyWith(fontWeight: FontWeight.w600),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+        ),
+      );
+    }
+
+    final session = entry.session;
+    if (session == null) return const SizedBox.shrink();
+
     final dur = _formatDuration(session.durationS);
     final status = _statusLabel(session);
     final discovered = session.discoveredCount;
@@ -306,6 +332,19 @@ class _HistoryRow extends StatelessWidget {
       borderRadius: BorderRadius.circular(4),
       child: row,
     );
+  }
+
+  static String _roleLabel(String? action) {
+    switch (action) {
+      case 'owned':
+        return 'Obtained';
+      case null:
+      case '':
+        return 'Role change';
+      default:
+        if (action.isEmpty) return 'Role change';
+        return '${action[0].toUpperCase()}${action.substring(1)}';
+    }
   }
 
   static String _statusLabel(ToolSession session) {

@@ -8,6 +8,7 @@ import '../../models/site.dart';
 import '../../services/location_service.dart';
 import '../../services/site_service.dart';
 import '../../utils/discovery_haptic.dart';
+import '../common/app_toast.dart';
 import 'fossil_discovery_celebration.dart';
 import 'site_discovery_celebration.dart';
 
@@ -77,17 +78,20 @@ Future<SiteSummary?> applySiteStatusSelection(
         await showFossilDiscoveryCelebrations(context, fossils: fossils);
       }
     } else {
-      _snack(context, 'Status updated to ${updated.status ?? next}.');
+      AppToast.success(
+        context,
+        'Status updated to ${updated.status ?? next}.',
+      );
     }
     return updated;
   } on SiteServiceException catch (error) {
     if (context.mounted) {
-      _snack(context, error.message);
+      AppToast.error(context, error.message);
     }
     return null;
   } catch (_) {
     if (context.mounted) {
-      _snack(context, 'Could not update status. Try again.');
+      AppToast.error(context, 'Could not update status. Try again.');
     }
     return null;
   } finally {
@@ -95,8 +99,4 @@ Future<SiteSummary?> applySiteStatusSelection(
       service.dispose();
     }
   }
-}
-
-void _snack(BuildContext context, String message) {
-  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
 }

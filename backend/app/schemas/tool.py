@@ -99,12 +99,29 @@ class ToolSessionResponse(BaseModel):
     tool_image_url: str | None = None
 
 
+class ToolHistoryRoleEvent(BaseModel):
+    """A user_tool role event (e.g. owned / obtained)."""
+
+    action: str
+    at: datetime
+
+
+class ToolHistoryEntry(BaseModel):
+    """Unified card history row: a use (session) or a role change."""
+
+    kind: str  # "session" | "role"
+    at: datetime
+    session: ToolSessionResponse | None = None
+    role: ToolHistoryRoleEvent | None = None
+
+
 class ToolSessionListResponse(BaseModel):
     tool_id: int | None = None
     total_duration_s: int | None = None
     used_duration_s: int | None = None
     remaining_duration_s: int | None = None
     items: list[ToolSessionResponse] = Field(default_factory=list)
+    history: list[ToolHistoryEntry] = Field(default_factory=list)
 
 
 class UpdateToolParamsRequest(BaseModel):

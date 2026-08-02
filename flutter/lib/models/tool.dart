@@ -1,4 +1,3 @@
-import '../utils/relative_time.dart';
 import 'owned_occurrence_thumb.dart';
 
 export 'owned_occurrence_thumb.dart';
@@ -79,16 +78,9 @@ class ToolSummary {
     return '$displayOccurrenceNumber · $versionPart';
   }
 
-  /// Card-back subtitle: category / scientific, plus Obtained when known.
-  /// Id and version are shown separately as [OccurrenceIdBadge] on the front.
-  String inventoryBackSubtitle() {
-    final base = categoryWithScientificDisplay();
-    final at = spawnDate;
-    if (at == null) return base;
-    final obtained = 'Obtained ${formatRelativeWhen(at)}';
-    if (base.isEmpty) return obtained;
-    return '$base - $obtained';
-  }
+  /// Card-back subtitle: category / scientific.
+  /// Obtained time lives in History; id/version on the front badge.
+  String inventoryBackSubtitle() => categoryWithScientificDisplay();
 
   /// Build an inventory-style summary for a catalog owned occurrence thumb.
   ToolSummary occurrenceFromThumb(OwnedOccurrenceThumb thumb) {

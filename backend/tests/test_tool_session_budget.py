@@ -211,3 +211,13 @@ def test_sessions_list_endpoint(client, session: Session) -> None:
     assert item["action_key"] == ACTION_KEY_GEO_COMPASS
     assert item["stop_reason"] == STOP_REASON_MANUAL
     assert (item["used_duration_s"] or 0) >= 0
+
+    history = body["history"]
+    assert len(history) == 2
+    kinds = [entry["kind"] for entry in history]
+    assert kinds.count("session") == 1
+    assert kinds.count("role") == 1
+    # Newest first.
+    assert history[0]["at"] >= history[1]["at"]
+    role = next(entry for entry in history if entry["kind"] == "role")
+    assert role["role"]["action"] == "owned"

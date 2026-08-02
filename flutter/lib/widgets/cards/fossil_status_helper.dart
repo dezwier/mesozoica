@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../models/fossil.dart';
 import '../../services/fossil_service.dart';
+import '../common/app_toast.dart';
 
 /// Apply a status chosen from the admin fossil badge dropdown.
 ///
@@ -24,17 +25,20 @@ Future<FossilSummary?> applyFossilStatusSelection(
       status: next,
     );
     if (context.mounted) {
-      _snack(context, 'Status updated to ${updated.status ?? next}.');
+      AppToast.success(
+        context,
+        'Status updated to ${updated.status ?? next}.',
+      );
     }
     return updated;
   } on FossilServiceException catch (error) {
     if (context.mounted) {
-      _snack(context, error.message);
+      AppToast.error(context, error.message);
     }
     return null;
   } catch (_) {
     if (context.mounted) {
-      _snack(context, 'Could not update status. Try again.');
+      AppToast.error(context, 'Could not update status. Try again.');
     }
     return null;
   } finally {
@@ -42,8 +46,4 @@ Future<FossilSummary?> applyFossilStatusSelection(
       service.dispose();
     }
   }
-}
-
-void _snack(BuildContext context, String message) {
-  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
 }

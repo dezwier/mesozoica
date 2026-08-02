@@ -11,6 +11,7 @@ import '../../controllers/walk_distance_controller.dart';
 import '../../models/profile.dart';
 import '../../services/oauth_sign_in_service.dart';
 import '../../shell/shell_overlay_panel.dart';
+import '../../widgets/common/app_toast.dart';
 import '../../widgets/common/draggable_sheet_wrapper.dart';
 import '../../widgets/profile/account_settings_sheet.dart';
 import '../../widgets/profile/auth_view.dart';
@@ -69,8 +70,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   void _showError(String message) {
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(message)));
+    AppToast.error(context, message);
   }
 
   Future<void> _handleLogin() async {

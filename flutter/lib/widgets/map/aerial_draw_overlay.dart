@@ -10,6 +10,7 @@ import '../../config/map_config.dart';
 import '../../controllers/aerial_session_controller.dart';
 import '../../models/aerial_action_kind.dart';
 import '../../services/location_service.dart';
+import '../common/app_toast.dart';
 import 'active_tool_hud_shell.dart';
 import 'mapbox_camera_coordinator.dart';
 import 'vintage_guidance_compass.dart';
@@ -252,9 +253,7 @@ class _AerialDrawOverlayState extends State<AerialDrawOverlay> {
       setState(() => _screenPoints.clear());
       return;
     }
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(kind.deployedSnack)),
-    );
+    AppToast.success(context, kind.deployedSnack);
   }
 
   void _onPointerDown(PointerDownEvent event) {

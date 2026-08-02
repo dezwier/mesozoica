@@ -15,6 +15,7 @@ import '../models/guidance_tool_kind.dart';
 import '../models/terrain_echo_kind.dart';
 import '../models/tool.dart';
 import '../models/tool_session.dart';
+import '../widgets/common/app_toast.dart';
 
 typedef _ToolActivator = bool Function(BuildContext context, ToolSummary tool);
 
@@ -35,9 +36,7 @@ class ToolActionRouter {
 
     final blocking = cardInUseLabel(context, forTool: tool);
     if (blocking != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('$blocking is already in use')),
-      );
+      AppToast.warning(context, '$blocking is already in use');
       return;
     }
 
@@ -45,9 +44,7 @@ class ToolActionRouter {
       if (activator(context, tool)) return;
     }
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('${tool.action} coming soon')),
-    );
+    AppToast.info(context, '${tool.action} coming soon');
   }
 
   /// Display name of a live tool card that blocks starting [forTool], if any.
