@@ -108,14 +108,25 @@ class AerialMissionController extends ChangeNotifier {
   }
 
   String get rangeHint {
-    final maxLabel = maxRouteKm == maxRouteKm.roundToDouble()
-        ? maxRouteKm.toStringAsFixed(0)
-        : maxRouteKm.toStringAsFixed(1);
+    final budget =
+        '${_formatDuration(durationMinutes)} at ${_formatKmh(flightSpeedKmh)}';
     final drawn = routeLengthKm();
     if (drawn <= 0) {
-      return 'Allowed range: up to $maxLabel km';
+      return 'Allowed range: up to ${_formatKm(maxRouteKm)} ($budget)';
     }
-    return 'Drawn ${drawn.toStringAsFixed(1)} km · allowed up to $maxLabel km';
+    return 'Drawn ${drawn.toStringAsFixed(1)} km · '
+        'allowed up to ${_formatKm(maxRouteKm)} ($budget)';
+  }
+
+  String _allowedRangeMessage() {
+    return 'Allowed range: up to ${_formatKm(maxRouteKm)} '
+        '(${_formatDuration(durationMinutes)} at ${_formatKmh(flightSpeedKmh)})';
+  }
+
+  String _drawIntroMessage() {
+    return 'Draw with one finger; pinch to zoom. '
+        'The loop starts and ends at your location. '
+        '${_allowedRangeMessage()}.';
   }
 
   /// Scout position for [mission] at [now] (UTC).
@@ -138,10 +149,7 @@ class AerialMissionController extends ChangeNotifier {
     _drawing = false;
     _submitting = false;
     _pendingDrawCamera = true;
-    _message =
-        'Draw with one finger; pinch to zoom. '
-        'The loop starts and ends at your location. '
-        'Allowed range: up to ${_formatKm(maxRouteKm)}.';
+    _message = _drawIntroMessage();
     notifyListeners();
   }
 
@@ -168,10 +176,7 @@ class AerialMissionController extends ChangeNotifier {
     if (!_drawMode || _submitting) return;
     _route.clear();
     _drawing = false;
-    _message =
-        'Draw with one finger; pinch to zoom. '
-        'The loop starts and ends at your location. '
-        'Allowed range: up to ${_formatKm(maxRouteKm)}.';
+    _message = _drawIntroMessage();
     notifyListeners();
   }
 
@@ -487,6 +492,19 @@ class AerialMissionController extends ChangeNotifier {
   static String _formatKm(double km) {
     if (km == km.roundToDouble()) return '${km.toStringAsFixed(0)} km';
     return '${km.toStringAsFixed(1)} km';
+  }
+
+  static String _formatKmh(double kmh) {
+    if (kmh == kmh.roundToDouble()) return '${kmh.toStringAsFixed(0)} km/h';
+    return '${kmh.toStringAsFixed(1)} km/h';
+  }
+
+  static String _formatDuration(int minutes) {
+    if (minutes < 60) return '$minutes min';
+    final hours = minutes ~/ 60;
+    final rem = minutes % 60;
+    if (rem == 0) return hours == 1 ? '1 hour' : '$hours hours';
+    return '${hours}h ${rem}m';
   }
 
   @override
