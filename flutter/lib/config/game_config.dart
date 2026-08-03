@@ -674,11 +674,11 @@ class SiteStewardshipMainParams {
 
   factory SiteStewardshipMainParams.fromYaml(Map<String, dynamic> yaml) {
     return SiteStewardshipMainParams(
-      dinoAccuracy: _asDouble(yaml['dino_accuracy'], 0),
-      fossilAccuracy: _asDouble(yaml['fossil_accuracy'], 0),
-      completenessAccuracy: _asDouble(yaml['completeness_accuracy'], 0),
-      qualityAccuracy: _asDouble(yaml['quality_accuracy'], 0),
-      depthAccuracy: _asDouble(yaml['depth_accuracy'], 0),
+      dinoAccuracy: _asDouble(yaml['dino_accuracy'], 0.01),
+      fossilAccuracy: _asDouble(yaml['fossil_accuracy'], 0.01),
+      completenessAccuracy: _asDouble(yaml['completeness_accuracy'], 0.01),
+      qualityAccuracy: _asDouble(yaml['quality_accuracy'], 0.01),
+      depthAccuracy: _asDouble(yaml['depth_accuracy'], 0.01),
       rivalDiscovery: _asDouble(yaml['rival_discovery'], 1),
       successfulSiteDisguiseXp:
           _asDouble(yaml['successful_site_disguise_xp'], 50),

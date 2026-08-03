@@ -560,12 +560,13 @@ class SiteStewardshipMainParams(BaseModel):
 
     model_config = {"frozen": True}
 
-    # Site-card display precision for each odd_* axis (0 = blurry/jittered, 1 = exact).
-    dino_accuracy: float = 0.0
-    fossil_accuracy: float = 0.0
-    completeness_accuracy: float = 0.0
-    quality_accuracy: float = 0.0
-    depth_accuracy: float = 0.0
+    # Site-card display estimation for each odd_* axis (0 = blurry/jittered, 1 = exact).
+    # Base 1%; level multiplies by skill level (clamped to unit interval).
+    dino_accuracy: float = 0.01
+    fossil_accuracy: float = 0.01
+    completeness_accuracy: float = 0.01
+    quality_accuracy: float = 0.01
+    depth_accuracy: float = 0.01
     # Multiplier on discovery_chance for rivals on sites you discovered.
     rival_discovery: float = 1.0
     # XP when a rival discovery roll would hit but your disguise blocked it.

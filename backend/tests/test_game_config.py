@@ -61,15 +61,22 @@ def test_load_game_config_matches_current_defaults() -> None:
     ]
     assert dawn_xp[0].op == "multiply" and dawn_xp[0].value == 1.2
 
-    assert config.site_stewardship.main_params.dino_accuracy == 0.0
-    assert config.site_stewardship.main_params.fossil_accuracy == 0.0
-    assert config.site_stewardship.main_params.completeness_accuracy == 0.0
-    assert config.site_stewardship.main_params.quality_accuracy == 0.0
-    assert config.site_stewardship.main_params.depth_accuracy == 0.0
+    assert config.site_stewardship.main_params.dino_accuracy == 0.01
+    assert config.site_stewardship.main_params.fossil_accuracy == 0.01
+    assert config.site_stewardship.main_params.completeness_accuracy == 0.01
+    assert config.site_stewardship.main_params.quality_accuracy == 0.01
+    assert config.site_stewardship.main_params.depth_accuracy == 0.01
     dino_acc_mods = config.site_stewardship.level_modifiers["dino_accuracy"]
     assert len(dino_acc_mods) == 99
-    assert dino_acc_mods[0].level == 1 and dino_acc_mods[0].value == 0.01
-    assert dino_acc_mods[-1].level == 99 and dino_acc_mods[-1].value == 0.99
+    assert dino_acc_mods[0].level == 1 and dino_acc_mods[0].op == "multiply"
+    assert dino_acc_mods[0].value == 1
+    assert dino_acc_mods[-1].level == 99 and dino_acc_mods[-1].value == 99
+    rival_mods = config.site_stewardship.level_modifiers["rival_discovery"]
+    assert len(rival_mods) == 99
+    assert rival_mods[0].level == 1 and rival_mods[0].op == "multiply"
+    assert rival_mods[0].value == 1
+    assert rival_mods[-1].level == 99 and rival_mods[-1].op == "multiply"
+    assert rival_mods[-1].value == 0.5
     assert (
         len(config.site_stewardship.level_modifiers["fossil_accuracy"]) == 99
     )

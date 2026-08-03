@@ -109,11 +109,12 @@ abstract final class ToolParamsEdit {
       'visibility_distance_m': 'Visibility distance',
       'discovery_chance': 'Discovery chance',
       'max_discovery_speed_kmh': 'Max discovery speed',
-      'dino_accuracy': 'Dinosaur accuracy',
-      'fossil_accuracy': 'Fossil accuracy',
-      'completeness_accuracy': 'Completeness accuracy',
-      'quality_accuracy': 'Quality accuracy',
-      'depth_accuracy': 'Depth accuracy',
+      'dino_accuracy': 'Dinosaur count estimation',
+      'fossil_accuracy': 'Fossil count estimation',
+      'completeness_accuracy': 'Completeness estimation',
+      'quality_accuracy': 'Fossil quality estimation',
+      'depth_accuracy': 'Depth estimation',
+      'rival_discovery': 'Rival discovery',
     };
     return known[key] ?? _humanizeKey(key);
   }

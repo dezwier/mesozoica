@@ -111,17 +111,21 @@ resolvable):
 
 | Key | Meaning |
 |-----|---------|
-| `dino_accuracy` | Card display precision for dino axis (0–1; +1%/level) |
-| `fossil_accuracy` | Card display precision for fossil axis (0–1; +1%/level) |
-| `completeness_accuracy` | Card display precision for completeness (0–1; +1%/level) |
-| `quality_accuracy` | Card display precision for quality axis (0–1; +1%/level) |
-| `depth_accuracy` | Card display precision for depth (0–1; +1%/level; depth 0 always exact) |
-| `rival_discovery` | Multiplier on discovery_chance for other users on your discovered sites (default 1) |
+| `dino_accuracy` | Dinosaur count estimation (base 1% × skill level) |
+| `fossil_accuracy` | Fossil count estimation (base 1% × skill level) |
+| `completeness_accuracy` | Completeness estimation (base 1% × skill level) |
+| `quality_accuracy` | Fossil quality estimation (base 1% × skill level) |
+| `depth_accuracy` | Depth estimation (base 1% × skill level; depth 0 always exact) |
+| `rival_discovery` | Multiplier on discovery_chance for rivals on your sites (×1 at L1 → ×0.5 at L99) |
 | `successful_site_disguise_xp` | XP when a rival discovery roll would hit but your active disguise blocks it |
 
-Accuracy params are display-only on the site card for now. Base is 0; each
-site_stewardship level adds 0.01 (level 1 → 1%, level 99 → 99%), then tool
-`modifies_main_params` (none yet).
+Accuracy params are display-only on the site card for now. Base is 1%; each
+site_stewardship level multiplies by the level (level 1 → 1%, level 50 → 50%,
+level 99 → 99%), then tool `modifies_main_params` (none yet).
+
+`rival_discovery` is multiplied by skill level (×1.0 at L1 → ×0.5 at L99,
+linear; all sites). Site-scoped tools (Brush Scrim / Blackout Cover) multiply
+further on the covered site only.
 
 Fixed global distribution tables (beside `main_params`; not subject to
 multipliers):

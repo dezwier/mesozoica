@@ -146,11 +146,11 @@ abstract final class WeatherDisplay {
       'active_km_xp': 'Active km XP',
       'passive_km_xp': 'Passive km XP',
       'fossil_discovery_xp': 'Fossil discovery XP',
-      'dino_accuracy': 'Dinosaur accuracy',
-      'fossil_accuracy': 'Fossil accuracy',
-      'completeness_accuracy': 'Completeness accuracy',
-      'quality_accuracy': 'Quality accuracy',
-      'depth_accuracy': 'Depth accuracy',
+      'dino_accuracy': 'Dinosaur count estimation',
+      'fossil_accuracy': 'Fossil count estimation',
+      'completeness_accuracy': 'Completeness estimation',
+      'quality_accuracy': 'Fossil quality estimation',
+      'depth_accuracy': 'Depth estimation',
     };
     return labels[paramKey] ??
         paramKey

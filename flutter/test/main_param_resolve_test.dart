@@ -26,7 +26,7 @@ void main() {
     GameConfig.debugReset();
   });
 
-  test('site stewardship accuracies add 1% per skill level', () async {
+  test('site stewardship estimations are base 1% times skill level', () async {
     await loadGameConfigForTest();
 
     final level1 = resolveSiteStewardshipAccuracies(skillLevel: 1);
