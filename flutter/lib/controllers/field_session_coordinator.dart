@@ -85,7 +85,9 @@ class FieldSessionCoordinator extends ChangeNotifier {
 
   void _onLocationChanged(LocationService locationService) {
     if (!_sessionActive) return;
-    if (_lifecycle != AppLifecycleState.resumed) return;
+    final allowBackground = locationService.isBackgroundExploring &&
+        _lifecycle != AppLifecycleState.detached;
+    if (_lifecycle != AppLifecycleState.resumed && !allowBackground) return;
 
     final pending = _pendingEnsureReason;
     if (pending != null && locationService.currentLocation != null) {
@@ -121,7 +123,7 @@ class FieldSessionCoordinator extends ChangeNotifier {
     }
     _lifecycle = AppLifecycleState.paused;
     final epoch = ++_lifecycleEpoch;
-    // Stop GPS while backgrounded; walked distance comes from Health instead.
+    // Switch to background GPS profile when exploring is on; otherwise stop.
     unawaited(_enterBackground(epoch));
   }
 
@@ -171,8 +173,8 @@ class FieldSessionCoordinator extends ChangeNotifier {
     }
 
     _sessionActive = true;
-    // Foreground-only GPS for proximity discovery + field ensure on every tab
-    // while the app is open (Pokémon GO style; no background location).
+    // Field GPS on every tab while the app is open; continues in background
+    // when the user opts into Explore in background.
     await locationService.setFieldSession(active: true);
   }
 

@@ -123,7 +123,9 @@ class MesozoicaApp extends StatelessWidget {
         ),
         ChangeNotifierProvider(create: (_) => NotificationController()),
         ChangeNotifierProvider(create: (_) => DinosaurCatalogController()),
-        ChangeNotifierProvider(create: (_) => LocationService()),
+        ChangeNotifierProvider(
+          create: (_) => LocationService()..loadPreferences(),
+        ),
         ChangeNotifierProvider(
           create: (context) => WeatherController(
             locationService: context.read<LocationService>(),

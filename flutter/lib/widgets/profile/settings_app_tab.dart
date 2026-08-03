@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../../config/map_config.dart';
 import '../../controllers/theme_controller.dart';
+import '../../services/location_service.dart';
 import 'settings_form_styles.dart';
 
 class SettingsAppTab extends StatelessWidget {
@@ -11,6 +12,7 @@ class SettingsAppTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final themeController = context.watch<ThemeController>();
+    final locationService = context.watch<LocationService>();
     final theme = Theme.of(context);
     final themeMode = themeController.themeMode;
     final mapBasemapTheme = themeController.mapBasemapTheme;
@@ -79,6 +81,35 @@ class SettingsAppTab extends StatelessWidget {
               ],
               onSelected: (value) {
                 if (value != null) themeController.setMapBasemapTheme(value);
+              },
+            ),
+          ),
+          const SizedBox(height: 24),
+          SettingsFormStyles.settingsRow(
+            context: context,
+            label: 'Explore in background',
+            description:
+                'Keep site discovery, walk XP, and site exploration running '
+                'while the phone is locked. Uses more battery. Requires Always '
+                'location permission.',
+            controlWidth: 56,
+            control: Switch.adaptive(
+              value: locationService.isBackgroundExploring,
+              onChanged: (value) async {
+                final ok =
+                    await locationService.setBackgroundExploring(value);
+                if (!context.mounted) return;
+                if (value && !ok) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        locationService.error ??
+                            'Always location permission is required. '
+                            'Enable it in system Settings.',
+                      ),
+                    ),
+                  );
+                }
               },
             ),
           ),

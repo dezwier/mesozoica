@@ -101,8 +101,9 @@ class SiteExplorationController extends ChangeNotifier {
     }
     _location = location;
     _locationListener = () {
-      if (!_appForeground) return;
-      if (!location.isAppForeground) return;
+      final allow =
+          location.isAppForeground || location.isBackgroundExploring;
+      if (!allow) return;
       unawaited(_ingestPosition(location.lastPosition));
     };
     location.addListener(_locationListener!);
@@ -168,12 +169,18 @@ class SiteExplorationController extends ChangeNotifier {
 
   void onAppResumed() {
     _appForeground = true;
-    _odometer.reset();
+    final exploring = _location?.isBackgroundExploring ?? false;
+    if (!exploring) {
+      _odometer.reset();
+    }
   }
 
   Future<void> onAppBackgrounded() async {
     _appForeground = false;
-    _odometer.reset();
+    final exploring = _location?.isBackgroundExploring ?? false;
+    if (!exploring) {
+      _odometer.reset();
+    }
     await _syncToBackend(force: true);
   }
 
@@ -214,7 +221,10 @@ class SiteExplorationController extends ChangeNotifier {
   }
 
   Future<void> _ingestPosition(Position? position) async {
-    if (!_appForeground || position == null) return;
+    if (position == null) return;
+    final allow = _appForeground ||
+        (_location?.isBackgroundExploring ?? false);
+    if (!allow) return;
     final accuracy = position.accuracy;
     final speed = position.speed;
     final result = _odometer.addFix(

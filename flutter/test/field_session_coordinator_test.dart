@@ -33,17 +33,25 @@ class _FakeLocationService extends LocationService {
   @override
   Future<void> setFieldSession({
     required bool active,
-    bool backgroundPreferred = false,
   }) async {
     final delay = setFieldSessionDelay;
     if (delay != null) {
       await delay();
     }
-    lastBackgroundPreferred = backgroundPreferred;
+    lastFieldSessionActive = active;
     notifyListeners();
   }
 
-  bool? lastBackgroundPreferred;
+  bool? lastFieldSessionActive;
+  bool _backgroundExploring = false;
+
+  @override
+  bool get isBackgroundExploring => _backgroundExploring;
+
+  void setBackgroundExploringFlag(bool value) {
+    _backgroundExploring = value;
+    notifyListeners();
+  }
 
   @override
   Future<void> onAppResumed() async {
@@ -95,7 +103,7 @@ void main() {
 
     expect(ensureCalls, 1);
     expect(coordinator.isSessionActive, isTrue);
-    expect(locationService.lastBackgroundPreferred, isFalse);
+    expect(locationService.lastFieldSessionActive, isTrue);
 
     coordinator.dispose();
   });
@@ -154,7 +162,8 @@ void main() {
     coordinator.dispose();
   });
 
-  test('background lifecycle stops GPS via onAppBackgrounded', () async {
+  test('background lifecycle notifies LocationService via onAppBackgrounded',
+      () async {
     final coordinator = FieldSessionCoordinator(
       siteService: SiteService(
         client: MockClient((request) async {
@@ -181,6 +190,94 @@ void main() {
     await pumpUntilIdle();
     expect(locationService.backgroundedCalls, 1);
     expect(coordinator.isSessionActive, isTrue);
+
+    coordinator.dispose();
+  });
+
+  test('background exploring still ensures on new 500m cell', () async {
+    final bodies = <Map<String, dynamic>>[];
+    final coordinator = FieldSessionCoordinator(
+      siteService: SiteService(
+        client: MockClient((request) async {
+          bodies.add(jsonDecode(request.body) as Map<String, dynamic>);
+          return http.Response(
+            jsonEncode({
+              'accepted': true,
+              'existing_in_radius': 0,
+              'missing': 100,
+              'radius_km': 1.0,
+            }),
+            202,
+          );
+        }),
+      ),
+    );
+
+    final cellSize = GameConfig.instance.siteGeneration.cellSizeM;
+    final start = const LatLng(51.0, 4.0);
+    final (ix, iy) = cellIndices(
+      start.latitude,
+      start.longitude,
+      cellSizeM: cellSize,
+    );
+    final nextCell = cellCenterLatLon(ix + 1, iy, cellSizeM: cellSize);
+
+    final locationService = _FakeLocationService(start)
+      ..setBackgroundExploringFlag(true);
+    coordinator.bind(locationService: locationService);
+    await pumpUntilIdle();
+    expect(bodies.length, 1);
+
+    coordinator.onBackground();
+    await pumpUntilIdle();
+
+    locationService.setLocation(LatLng(nextCell.$1, nextCell.$2));
+    await pumpUntilIdle();
+    expect(bodies.length, 2);
+    expect(bodies.last['reason'], FieldSessionCoordinator.reasonMove500m);
+
+    coordinator.dispose();
+  });
+
+  test('without background exploring, paused app ignores cell moves', () async {
+    final bodies = <Map<String, dynamic>>[];
+    final coordinator = FieldSessionCoordinator(
+      siteService: SiteService(
+        client: MockClient((request) async {
+          bodies.add(jsonDecode(request.body) as Map<String, dynamic>);
+          return http.Response(
+            jsonEncode({
+              'accepted': true,
+              'existing_in_radius': 0,
+              'missing': 100,
+              'radius_km': 1.0,
+            }),
+            202,
+          );
+        }),
+      ),
+    );
+
+    final cellSize = GameConfig.instance.siteGeneration.cellSizeM;
+    final start = const LatLng(51.0, 4.0);
+    final (ix, iy) = cellIndices(
+      start.latitude,
+      start.longitude,
+      cellSizeM: cellSize,
+    );
+    final nextCell = cellCenterLatLon(ix + 1, iy, cellSizeM: cellSize);
+
+    final locationService = _FakeLocationService(start);
+    coordinator.bind(locationService: locationService);
+    await pumpUntilIdle();
+    expect(bodies.length, 1);
+
+    coordinator.onBackground();
+    await pumpUntilIdle();
+
+    locationService.setLocation(LatLng(nextCell.$1, nextCell.$2));
+    await pumpUntilIdle();
+    expect(bodies.length, 1);
 
     coordinator.dispose();
   });

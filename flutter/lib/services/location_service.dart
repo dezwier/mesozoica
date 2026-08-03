@@ -5,34 +5,72 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_compass/flutter_compass.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+/// GPS precision / battery profile for the active stream.
+enum GpsProfile {
+  /// Map tab foreground — tight follow for map fluency.
+  high,
+
+  /// App open, not on map — discovery / field ensure.
+  fieldForeground,
+
+  /// Background exploring while moving (or recently moved).
+  fieldBackground,
+
+  /// Background exploring while stationary — sparse updates.
+  idleBackground,
+}
 
 /// Whether GPS should be actively streaming.
-///
-/// Location is While-In-Use only (Pokémon GO style): no background GPS when
-/// the app is paused/locked. Discovery and map follow resume on foreground.
 @visibleForTesting
 bool shouldTrackLocation({
   required bool wantsLocation,
   required bool appForeground,
+  required bool backgroundExploring,
 }) {
-  return wantsLocation && appForeground;
+  return wantsLocation && (appForeground || backgroundExploring);
+}
+
+/// Resolve which GPS profile to use for the current UI / motion state.
+@visibleForTesting
+GpsProfile resolveGpsProfile({
+  required bool mapForeground,
+  required bool appForeground,
+  required bool backgroundExploring,
+  required bool stationary,
+}) {
+  if (mapForeground && appForeground) return GpsProfile.high;
+  if (appForeground) return GpsProfile.fieldForeground;
+  if (backgroundExploring) {
+    return stationary ? GpsProfile.idleBackground : GpsProfile.fieldBackground;
+  }
+  return GpsProfile.fieldForeground;
 }
 
 /// User location for the map tab and field-session ensure tracking.
 class LocationService extends ChangeNotifier {
+  static const prefsKeyBackgroundExploring = 'background_exploring';
+  static const _stationarySpeedMps = 0.5;
+  static const _stationaryAfter = Duration(seconds: 60);
+
   LatLng? _currentLocation;
   Position? _lastPosition;
   DateTime? _lastPositionAt;
+  DateTime? _lastSignificantMoveAt;
   double _headingDeg = 0;
   bool _isLoading = false;
   String? _error;
   StreamSubscription<Position>? _locationSub;
   StreamSubscription<double>? _headingSub;
   Timer? _headingNotifyTimer;
+  Timer? _stationaryCheckTimer;
   bool _mapForeground = false;
   bool _fieldSession = false;
   bool _appForeground = true;
-  bool _highPrecisionGps = false;
+  bool _backgroundExploring = false;
+  bool _prefsLoaded = false;
+  GpsProfile _activeProfile = GpsProfile.fieldForeground;
   /// FlutterCompass only when rotate mode or guidance needle needs heading.
   bool _headingWanted = false;
 
@@ -57,9 +95,11 @@ class LocationService extends ChangeNotifier {
   bool get hasLocation => _currentLocation != null;
   bool get isMapForeground => _mapForeground;
   bool get isFieldSession => _fieldSession;
+  bool get isBackgroundExploring => _backgroundExploring;
   bool get isGpsStreamActive => _locationSub != null;
   bool get isHeadingStreamActive => _headingSub != null;
-  bool get isHighPrecisionGps => _highPrecisionGps;
+  bool get isHighPrecisionGps => _activeProfile == GpsProfile.high;
+  GpsProfile get activeProfile => _activeProfile;
   bool get isTracking =>
       _mapForeground || (_fieldSession && _locationSub != null);
 
@@ -67,11 +107,12 @@ class LocationService extends ChangeNotifier {
   int get headingNotifyCount => _headingNotifyCount;
   int get headingSampleCount => _headingSampleCount;
 
-  /// True when a foreground GPS stream should be running.
+  /// True when a GPS stream should be running.
   @visibleForTesting
   bool get isLocationStreamDesired => shouldTrackLocation(
         wantsLocation: _mapForeground || _fieldSession,
         appForeground: _appForeground,
+        backgroundExploring: _backgroundExploring,
       );
 
   /// Age of the last GPS fix, or null if never fixed.
@@ -79,6 +120,57 @@ class LocationService extends ChangeNotifier {
     final at = _lastPositionAt;
     if (at == null) return null;
     return DateTime.now().difference(at);
+  }
+
+  bool get isStationary {
+    final movedAt = _lastSignificantMoveAt;
+    if (movedAt == null) return false;
+    return DateTime.now().difference(movedAt) >= _stationaryAfter;
+  }
+
+  /// Load persisted background-exploring preference (call once at startup).
+  Future<void> loadPreferences() async {
+    if (_prefsLoaded) return;
+    _prefsLoaded = true;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      _backgroundExploring =
+          prefs.getBool(prefsKeyBackgroundExploring) ?? false;
+    } catch (error) {
+      if (kDebugMode) {
+        debugPrint('LocationService.loadPreferences: $error');
+      }
+    }
+  }
+
+  /// Opt in/out of background field GPS. Requests Always permission when
+  /// enabling. Returns whether background exploring is now on.
+  Future<bool> setBackgroundExploring(bool enabled) async {
+    await loadPreferences();
+    if (enabled == _backgroundExploring) return _backgroundExploring;
+
+    if (enabled) {
+      final permitted = await _ensureAlwaysPermission();
+      if (!permitted) {
+        _error ??= 'Always location permission is required for background '
+            'exploring.';
+        notifyListeners();
+        return false;
+      }
+    }
+
+    _backgroundExploring = enabled;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(prefsKeyBackgroundExploring, enabled);
+    } catch (error) {
+      if (kDebugMode) {
+        debugPrint('LocationService.setBackgroundExploring persist: $error');
+      }
+    }
+    notifyListeners();
+    await _reconcileTracking(forceRestartLocation: true);
+    return _backgroundExploring;
   }
 
   Future<void> setMapForeground(bool active) async {
@@ -99,8 +191,6 @@ class LocationService extends ChangeNotifier {
 
   Future<void> setFieldSession({
     required bool active,
-    @Deprecated('Background GPS is no longer supported')
-    bool backgroundPreferred = false,
   }) async {
     final settingsChanged = _fieldSession != active;
     _fieldSession = active;
@@ -114,10 +204,10 @@ class LocationService extends ChangeNotifier {
     await _reconcileTracking(forceRestartLocation: wasBackground);
   }
 
-  /// Stop GPS while the app is backgrounded or locked.
+  /// Switch to background profile (or stop) when the app is backgrounded.
   ///
-  /// Walked distance continues via HealthKit / Health Connect; proximity
-  /// discovery resumes when the app returns to the foreground.
+  /// When [isBackgroundExploring] is on, GPS keeps running with a relaxed
+  /// profile so discovery / walk XP / exploration continue while locked.
   Future<void> onAppBackgrounded() async {
     if (!_appForeground) return;
     _appForeground = false;
@@ -126,16 +216,52 @@ class LocationService extends ChangeNotifier {
 
   Future<void> _reconcileTracking({bool forceRestartLocation = false}) async {
     final wantsLocation = _mapForeground || _fieldSession;
-    if (!wantsLocation || !_appForeground) {
+    if (!shouldTrackLocation(
+      wantsLocation: wantsLocation,
+      appForeground: _appForeground,
+      backgroundExploring: _backgroundExploring,
+    )) {
       _stopStreams();
-      _highPrecisionGps = false;
+      _activeProfile = GpsProfile.fieldForeground;
+      _stationaryCheckTimer?.cancel();
+      _stationaryCheckTimer = null;
       return;
     }
     _reconcileHeadingStream();
-    final wantHigh = _mapForeground;
-    final profileChanged = wantHigh != _highPrecisionGps;
+    _scheduleStationaryCheck();
+    final wantProfile = resolveGpsProfile(
+      mapForeground: _mapForeground,
+      appForeground: _appForeground,
+      backgroundExploring: _backgroundExploring,
+      stationary: isStationary,
+    );
+    final profileChanged = wantProfile != _activeProfile;
     await _startLocationStream(
       forceRestart: forceRestartLocation || profileChanged,
+      profile: wantProfile,
+    );
+  }
+
+  void _scheduleStationaryCheck() {
+    if (!_backgroundExploring || _appForeground) {
+      _stationaryCheckTimer?.cancel();
+      _stationaryCheckTimer = null;
+      return;
+    }
+    _stationaryCheckTimer ??= Timer.periodic(
+      const Duration(seconds: 15),
+      (_) {
+        if (!_backgroundExploring || _appForeground) return;
+        final want = resolveGpsProfile(
+          mapForeground: _mapForeground,
+          appForeground: _appForeground,
+          backgroundExploring: _backgroundExploring,
+          stationary: isStationary,
+        );
+        if (want != _activeProfile) {
+          unawaited(_reconcileTracking(forceRestartLocation: true));
+        }
+      },
     );
   }
 
@@ -227,20 +353,71 @@ class LocationService extends ChangeNotifier {
     return true;
   }
 
-  /// Tighter GPS on the map tab; relaxed while only the field session needs it.
-  LocationSettings _locationSettings({required bool highPrecision}) {
-    final accuracy =
-        highPrecision ? LocationAccuracy.high : LocationAccuracy.medium;
-    final distanceFilter = highPrecision ? 5 : 10;
-    final interval = highPrecision
-        ? const Duration(seconds: 1)
-        : const Duration(seconds: 2);
+  /// Upgrade from When-In-Use to Always for background exploring.
+  Future<bool> _ensureAlwaysPermission() async {
+    final whileInUseOk = await _ensurePermission();
+    if (!whileInUseOk) return false;
+
+    var permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.always) {
+      _error = null;
+      return true;
+    }
+
+    // Second prompt (iOS) / background location step (Android 10+).
+    permission = await Geolocator.requestPermission();
+    if (permission == LocationPermission.always) {
+      _error = null;
+      return true;
+    }
+
+    _error = 'Always location permission is required for background exploring. '
+        'You can enable it in system Settings.';
+    return false;
+  }
+
+  LocationSettings _locationSettings({required GpsProfile profile}) {
+    final (accuracy, distanceFilter, interval) = switch (profile) {
+      GpsProfile.high => (
+          LocationAccuracy.high,
+          5,
+          const Duration(seconds: 1),
+        ),
+      GpsProfile.fieldForeground => (
+          LocationAccuracy.medium,
+          10,
+          const Duration(seconds: 2),
+        ),
+      GpsProfile.fieldBackground => (
+          LocationAccuracy.medium,
+          15,
+          const Duration(seconds: 5),
+        ),
+      GpsProfile.idleBackground => (
+          LocationAccuracy.low,
+          75,
+          const Duration(seconds: 30),
+        ),
+    };
+
+    final allowBackground = _backgroundExploring && !_appForeground;
 
     if (!kIsWeb && Platform.isAndroid) {
       return AndroidSettings(
         accuracy: accuracy,
         distanceFilter: distanceFilter,
         intervalDuration: interval,
+        foregroundNotificationConfig: _backgroundExploring
+            ? const ForegroundNotificationConfig(
+                notificationTitle: 'Exploring fossil sites',
+                notificationText:
+                    'Mesozoica is tracking your location for discoveries '
+                    'and walk XP. Turn off in Settings to stop.',
+                notificationChannelName: 'Field exploring',
+                enableWakeLock: true,
+                setOngoing: true,
+              )
+            : null,
       );
     }
 
@@ -248,9 +425,9 @@ class LocationService extends ChangeNotifier {
       return AppleSettings(
         accuracy: accuracy,
         distanceFilter: distanceFilter,
-        allowBackgroundLocationUpdates: false,
-        showBackgroundLocationIndicator: false,
-        pauseLocationUpdatesAutomatically: false,
+        allowBackgroundLocationUpdates: allowBackground || _backgroundExploring,
+        showBackgroundLocationIndicator: _backgroundExploring,
+        pauseLocationUpdatesAutomatically: profile == GpsProfile.idleBackground,
         activityType: ActivityType.fitness,
       );
     }
@@ -261,8 +438,11 @@ class LocationService extends ChangeNotifier {
     );
   }
 
-  Future<void> _startLocationStream({required bool forceRestart}) async {
-    if (_locationSub != null && !forceRestart) {
+  Future<void> _startLocationStream({
+    required bool forceRestart,
+    required GpsProfile profile,
+  }) async {
+    if (_locationSub != null && !forceRestart && _activeProfile == profile) {
       return;
     }
 
@@ -274,15 +454,22 @@ class LocationService extends ChangeNotifier {
       if (!permitted) {
         return;
       }
+      if (_backgroundExploring) {
+        final alwaysOk = await _ensureAlwaysPermission();
+        if (!alwaysOk && !_appForeground) {
+          // Can't run background without Always — fall back to stopped.
+          _stopStreams();
+          return;
+        }
+      }
 
       final lastKnown = await Geolocator.getLastKnownPosition();
       if (lastKnown != null) {
         _applyPosition(lastKnown);
       }
 
-      final highPrecision = _mapForeground;
-      _highPrecisionGps = highPrecision;
-      final settings = _locationSettings(highPrecision: highPrecision);
+      _activeProfile = profile;
+      final settings = _locationSettings(profile: profile);
       final position = await Geolocator.getCurrentPosition(
         locationSettings: settings,
       );
@@ -311,16 +498,36 @@ class LocationService extends ChangeNotifier {
   }
 
   void _applyPosition(Position position) {
+    final previous = _currentLocation;
     _lastPosition = position;
     _lastPositionAt = DateTime.now();
     _currentLocation = LatLng(position.latitude, position.longitude);
     _gpsUpdateCount++;
+
+    final speed = position.speed;
+    final movingBySpeed = speed.isFinite && speed >= _stationarySpeedMps;
+    var movedMeters = 0.0;
+    if (previous != null) {
+      movedMeters = Geolocator.distanceBetween(
+        previous.latitude,
+        previous.longitude,
+        position.latitude,
+        position.longitude,
+      );
+    }
+    if (movingBySpeed || movedMeters >= 5) {
+      _lastSignificantMoveAt = DateTime.now();
+    } else {
+      _lastSignificantMoveAt ??= DateTime.now();
+    }
+
     locationListenable.value = _currentLocation;
     notifyListeners();
   }
 
   @override
   void dispose() {
+    _stationaryCheckTimer?.cancel();
     _stopStreams();
     headingListenable.dispose();
     locationListenable.dispose();

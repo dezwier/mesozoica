@@ -70,7 +70,6 @@ class WalkDistanceController extends ChangeNotifier {
   LocationService? _location;
   VoidCallback? _locationListener;
   bool _loaded = false;
-  bool _appForeground = true;
   /// After a one-time weekly schema heal, push reset_weekly on the next sync.
   bool _pendingWeeklyReset = false;
 
@@ -151,7 +150,13 @@ class WalkDistanceController extends ChangeNotifier {
   }
 
   Future<void> onAppBackgrounded() async {
-    _appForeground = false;
+    final exploring = _location?.isBackgroundExploring ?? false;
+    if (exploring) {
+      // Keep the GPS odometer warm — active meters continue in background.
+      await _persistLocal();
+      await _syncToBackend(force: true);
+      return;
+    }
     _odometer.reset();
     _closedSince = DateTime.now();
     await _persistLocal();
@@ -159,8 +164,10 @@ class WalkDistanceController extends ChangeNotifier {
   }
 
   Future<void> onAppResumed({Profile? profile}) async {
-    _appForeground = true;
-    _odometer.reset();
+    final exploring = _location?.isBackgroundExploring ?? false;
+    if (!exploring) {
+      _odometer.reset();
+    }
     await refresh(
       profile: profile,
       requestPermissionIfNeeded: false,
@@ -228,9 +235,10 @@ class WalkDistanceController extends ChangeNotifier {
   }
 
   void _onLocationChanged() {
-    if (!_appForeground) return;
     final location = _location;
-    if (location == null || !location.isAppForeground) return;
+    if (location == null) return;
+    final allow = location.isAppForeground || location.isBackgroundExploring;
+    if (!allow) return;
     final position = location.lastPosition;
     if (position == null) return;
     unawaited(_ingestPosition(position));

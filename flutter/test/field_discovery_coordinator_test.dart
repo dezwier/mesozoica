@@ -57,7 +57,6 @@ class _FakeLocationService extends LocationService {
   @override
   Future<void> setFieldSession({
     required bool active,
-    bool backgroundPreferred = false,
   }) async {
     notifyListeners();
   }

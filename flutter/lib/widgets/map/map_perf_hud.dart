@@ -167,7 +167,8 @@ class _MapPerfHudState extends State<MapPerfHud> {
                       '±${pos?.accuracy.toStringAsFixed(0) ?? '—'}m  '
                       'age${ageMs ?? '—'}ms  '
                       '${loc.isGpsStreamActive ? 'on' : 'off'}'
-                      '${loc.isHighPrecisionGps ? ' hi' : ' lo'}',
+                      ' ${loc.activeProfile.name}'
+                      '${loc.isBackgroundExploring ? ' bg' : ''}',
                   'CMP ${_compassHz.toStringAsFixed(0)}Hz  '
                       'hdg${loc.headingDeg.toStringAsFixed(0)}°  '
                       '${loc.isHeadingStreamActive ? 'on' : 'off'}',
