@@ -37,11 +37,6 @@ const _mainParamLabels = <String, String>{
   'completeness_accuracy': 'Completeness accuracy',
   'quality_accuracy': 'Quality accuracy',
   'depth_accuracy': 'Depth accuracy',
-  'dino_count': 'Dino count',
-  'fossil_count': 'Fossil count',
-  'depth_weights': 'Depth weights',
-  'completeness_weights': 'Completeness weights',
-  'quality_weights': 'Quality weights',
 };
 
 const _cardRadius = 10.0;
@@ -843,7 +838,8 @@ List<_MainParamDisplay> _siteSurveyRows(
   String? weatherType,
 }) {
   final mp = cfg.mainParams;
-  // Accuracy scalars first (level/tool resolvable), then distribution tables.
+  // Accuracy scalars first (level/tool resolvable), then fixed global
+  // distribution tables (not subject to multipliers).
   return [
     _resolveScalarParam(
       label: 'Dinosaur accuracy',

@@ -571,6 +571,11 @@ class SiteSurveyConfig {
   const SiteSurveyConfig({
     required this.skillId,
     required this.mainParams,
+    required this.dinoCount,
+    required this.fossilCount,
+    required this.depthWeights,
+    required this.completenessWeights,
+    required this.qualityWeights,
     required this.levelModifiers,
     required this.oddNoise,
     this.weatherTimeModifiers = const {},
@@ -579,16 +584,16 @@ class SiteSurveyConfig {
 
   final String skillId;
   final SiteSurveyMainParams mainParams;
+  /// Fixed global distribution tables (not subject to level/tool multipliers).
+  final List<DinoCountThreshold> dinoCount;
+  final Map<int, double> fossilCount;
+  final List<FossilDepthBucket> depthWeights;
+  final Map<String, double> completenessWeights;
+  final Map<String, double> qualityWeights;
   final Map<String, List<LevelModifierEntry>> levelModifiers;
   final Map<String, Map<String, List<ParamModifier>>> weatherTimeModifiers;
   final Map<String, Map<String, List<ParamModifier>>> weatherTypeModifiers;
   final FossilOddNoiseConfig oddNoise;
-
-  List<DinoCountThreshold> get dinoCount => mainParams.dinoCount;
-  Map<int, double> get fossilCount => mainParams.fossilCount;
-  List<FossilDepthBucket> get depthWeights => mainParams.depthWeights;
-  Map<String, double> get completenessWeights => mainParams.completenessWeights;
-  Map<String, double> get qualityWeights => mainParams.qualityWeights;
 
   /// Back-compat aliases.
   List<DinoCountThreshold> get dinoCountThresholds => dinoCount;
@@ -597,47 +602,6 @@ class SiteSurveyConfig {
 
   factory SiteSurveyConfig.fromYaml(Map<String, dynamic> yaml) {
     final main = GameConfig._asMap(yaml['main_params']);
-    return SiteSurveyConfig(
-      skillId: yaml['skill_id'] as String? ?? 'site_survey',
-      mainParams: SiteSurveyMainParams.fromYaml(main),
-      levelModifiers: LevelModifierEntry.mapFromYaml(yaml['level_modifiers']),
-      weatherTimeModifiers: ambientModifiersFromYaml(
-        yaml['weather_time_modifiers'],
-      ),
-      weatherTypeModifiers: ambientModifiersFromYaml(
-        yaml['weather_type_modifiers'],
-      ),
-      oddNoise: FossilOddNoiseConfig.fromYaml(yaml['odd_noise']),
-    );
-  }
-}
-
-class SiteSurveyMainParams {
-  const SiteSurveyMainParams({
-    required this.dinoAccuracy,
-    required this.fossilAccuracy,
-    required this.completenessAccuracy,
-    required this.qualityAccuracy,
-    required this.depthAccuracy,
-    required this.dinoCount,
-    required this.fossilCount,
-    required this.depthWeights,
-    required this.completenessWeights,
-    required this.qualityWeights,
-  });
-
-  final double dinoAccuracy;
-  final double fossilAccuracy;
-  final double completenessAccuracy;
-  final double qualityAccuracy;
-  final double depthAccuracy;
-  final List<DinoCountThreshold> dinoCount;
-  final Map<int, double> fossilCount;
-  final List<FossilDepthBucket> depthWeights;
-  final Map<String, double> completenessWeights;
-  final Map<String, double> qualityWeights;
-
-  factory SiteSurveyMainParams.fromYaml(Map<String, dynamic> yaml) {
     final rawBuckets = yaml['depth_weights'] ?? yaml['depth_buckets'];
     final buckets = <FossilDepthBucket>[];
     if (rawBuckets is List) {
@@ -667,12 +631,9 @@ class SiteSurveyMainParams {
         }
       }
     }
-    return SiteSurveyMainParams(
-      dinoAccuracy: _asDouble(yaml['dino_accuracy'], 0),
-      fossilAccuracy: _asDouble(yaml['fossil_accuracy'], 0),
-      completenessAccuracy: _asDouble(yaml['completeness_accuracy'], 0),
-      qualityAccuracy: _asDouble(yaml['quality_accuracy'], 0),
-      depthAccuracy: _asDouble(yaml['depth_accuracy'], 0),
+    return SiteSurveyConfig(
+      skillId: yaml['skill_id'] as String? ?? 'site_survey',
+      mainParams: SiteSurveyMainParams.fromYaml(main),
       dinoCount: thresholds,
       fossilCount: _asIntDoubleMap(
         yaml['fossil_count'] ?? yaml['card_count_weights'],
@@ -680,6 +641,40 @@ class SiteSurveyMainParams {
       depthWeights: buckets,
       completenessWeights: _asStringDoubleMap(yaml['completeness_weights']),
       qualityWeights: _asStringDoubleMap(yaml['quality_weights']),
+      levelModifiers: LevelModifierEntry.mapFromYaml(yaml['level_modifiers']),
+      weatherTimeModifiers: ambientModifiersFromYaml(
+        yaml['weather_time_modifiers'],
+      ),
+      weatherTypeModifiers: ambientModifiersFromYaml(
+        yaml['weather_type_modifiers'],
+      ),
+      oddNoise: FossilOddNoiseConfig.fromYaml(yaml['odd_noise']),
+    );
+  }
+}
+
+class SiteSurveyMainParams {
+  const SiteSurveyMainParams({
+    required this.dinoAccuracy,
+    required this.fossilAccuracy,
+    required this.completenessAccuracy,
+    required this.qualityAccuracy,
+    required this.depthAccuracy,
+  });
+
+  final double dinoAccuracy;
+  final double fossilAccuracy;
+  final double completenessAccuracy;
+  final double qualityAccuracy;
+  final double depthAccuracy;
+
+  factory SiteSurveyMainParams.fromYaml(Map<String, dynamic> yaml) {
+    return SiteSurveyMainParams(
+      dinoAccuracy: _asDouble(yaml['dino_accuracy'], 0),
+      fossilAccuracy: _asDouble(yaml['fossil_accuracy'], 0),
+      completenessAccuracy: _asDouble(yaml['completeness_accuracy'], 0),
+      qualityAccuracy: _asDouble(yaml['quality_accuracy'], 0),
+      depthAccuracy: _asDouble(yaml['depth_accuracy'], 0),
     );
   }
 }

@@ -197,7 +197,7 @@ class ModifiesMainParams(BaseModel):
 
         owning:
           site_discovery: { discovery_chance: { op: add, value: 0.05 } }
-          site_survey: { fossil_count: { op: multiply, value: 1.1 } }
+          site_survey: { dino_accuracy: { op: add, value: 0.1 } }
         using:
           site_discovery: { discovery_chance: { op: replace, value: 0.9 } }
 
@@ -556,6 +556,8 @@ class FossilOddNoiseConfig(BaseModel):
 
 
 class SiteSurveyMainParams(BaseModel):
+    """Player-facing accuracy knobs (level / weather / tool resolvable)."""
+
     model_config = {"frozen": True}
 
     # Site-card display precision for each odd_* axis (0 = blurry/jittered, 1 = exact).
@@ -565,6 +567,26 @@ class SiteSurveyMainParams(BaseModel):
     quality_accuracy: float = 0.0
     depth_accuracy: float = 0.0
 
+    @field_validator(
+        "dino_accuracy",
+        "fossil_accuracy",
+        "completeness_accuracy",
+        "quality_accuracy",
+        "depth_accuracy",
+    )
+    @classmethod
+    def _validate_accuracy(cls, value: float) -> float:
+        return _clamp_unit_interval(value, label="accuracy")
+
+
+class SiteSurveyConfig(BaseModel):
+    """Field fossil spawn knobs for the Site Survey skill."""
+
+    model_config = {"frozen": True}
+
+    skill_id: str = "site_survey"
+    main_params: SiteSurveyMainParams = Field(default_factory=SiteSurveyMainParams)
+    # Fixed global distribution tables (not subject to level/tool multipliers).
     dino_count: list[DinoCountThreshold] = Field(
         default_factory=lambda: [
             DinoCountThreshold(max_odd=0.10, count=0),
@@ -614,17 +636,13 @@ class SiteSurveyMainParams(BaseModel):
             "exceptional": 0.05,
         }
     )
-
-    @field_validator(
-        "dino_accuracy",
-        "fossil_accuracy",
-        "completeness_accuracy",
-        "quality_accuracy",
-        "depth_accuracy",
+    level_modifiers: dict[str, list[LevelModifierEntry]] = Field(default_factory=dict)
+    weather_time_modifiers: WeatherTimeModifiers = Field(default_factory=dict)
+    weather_type_modifiers: WeatherTypeModifiers = Field(default_factory=dict)
+    odd_noise: FossilOddNoiseConfig = Field(default_factory=FossilOddNoiseConfig)
+    defaults: FossilGenerationDefaults = Field(
+        default_factory=FossilGenerationDefaults
     )
-    @classmethod
-    def _validate_accuracy(cls, value: float) -> float:
-        return _clamp_unit_interval(value, label="accuracy")
 
     @field_validator("fossil_count", mode="before")
     @classmethod
@@ -641,7 +659,7 @@ class SiteSurveyMainParams(BaseModel):
         return {str(k): float(v) for k, v in value.items()}
 
     @model_validator(mode="after")
-    def _validate_weights(self) -> SiteSurveyMainParams:
+    def _validate_distributions(self) -> SiteSurveyConfig:
         if not self.dino_count:
             raise ValueError("dino_count must not be empty")
         prev = -1.0
@@ -663,22 +681,6 @@ class SiteSurveyMainParams(BaseModel):
         _weights_must_sum_to_one(self.quality_weights, label="quality_weights")
         return self
 
-
-class SiteSurveyConfig(BaseModel):
-    """Field fossil spawn knobs for the Site Survey skill."""
-
-    model_config = {"frozen": True}
-
-    skill_id: str = "site_survey"
-    main_params: SiteSurveyMainParams = Field(default_factory=SiteSurveyMainParams)
-    level_modifiers: dict[str, list[LevelModifierEntry]] = Field(default_factory=dict)
-    weather_time_modifiers: WeatherTimeModifiers = Field(default_factory=dict)
-    weather_type_modifiers: WeatherTypeModifiers = Field(default_factory=dict)
-    odd_noise: FossilOddNoiseConfig = Field(default_factory=FossilOddNoiseConfig)
-    defaults: FossilGenerationDefaults = Field(
-        default_factory=FossilGenerationDefaults
-    )
-
     @field_validator("level_modifiers", mode="before")
     @classmethod
     def _coerce_level_modifiers(cls, value: object) -> dict[str, list]:
@@ -698,38 +700,18 @@ class SiteSurveyConfig(BaseModel):
     def _coerce_weather_type_modifiers(cls, value: object) -> WeatherTypeModifiers:
         return coerce_weather_type_modifiers(value)
 
-    @property
-    def dino_count(self) -> list[DinoCountThreshold]:
-        return list(self.main_params.dino_count)
-
-    @property
-    def fossil_count(self) -> dict[int, float]:
-        return dict(self.main_params.fossil_count)
-
-    @property
-    def depth_weights(self) -> list[FossilDepthBucket]:
-        return list(self.main_params.depth_weights)
-
-    @property
-    def completeness_weights(self) -> dict[str, float]:
-        return dict(self.main_params.completeness_weights)
-
-    @property
-    def quality_weights(self) -> dict[str, float]:
-        return dict(self.main_params.quality_weights)
-
     # Back-compat aliases for call sites / tests during migration.
     @property
     def dino_count_thresholds(self) -> list[DinoCountThreshold]:
-        return self.dino_count
+        return list(self.dino_count)
 
     @property
     def card_count_weights(self) -> dict[int, float]:
-        return self.fossil_count
+        return dict(self.fossil_count)
 
     @property
     def depth_buckets(self) -> list[FossilDepthBucket]:
-        return self.depth_weights
+        return list(self.depth_weights)
 
 
 # Back-compat alias.

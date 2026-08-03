@@ -16,67 +16,69 @@ main_params:
   quality_accuracy: 0
   depth_accuracy: 0
 
-  # How many distinct dinosaurs to sample for the site (from clamp(odd_dino_count)).
-  dino_count:
-    - max_odd: 0.10
-      count: 0
-    - max_odd: 0.60
-      count: 1
-    - max_odd: 0.80
-      count: 2
-    - max_odd: 0.90
-      count: 3
-    - max_odd: 0.95
-      count: 4
-    - max_odd: 1.00
-      count: 5
+# Fixed global distribution tables (not subject to level/tool multipliers).
 
-  # How many fossil cards per sampled dinosaur (CDF masses; inverse-CDF via odd_fossil_count).
-  fossil_count:
-    1: 0.25
-    2: 0.25
-    3: 0.20
-    4: 0.15
-    5: 0.10
-    6: 0.05
+# How many distinct dinosaurs to sample for the site (from clamp(odd_dino_count)).
+dino_count:
+  - max_odd: 0.10
+    count: 0
+  - max_odd: 0.60
+    count: 1
+  - max_odd: 0.80
+    count: 2
+  - max_odd: 0.90
+    count: 3
+  - max_odd: 0.95
+    count: 4
+  - max_odd: 1.00
+    count: 5
 
-  # Burial depth buckets (weights = CDF masses via odd_depth). Sample uniform in [min_cm, max_cm].
-  depth_weights:
-    - weight: 0.10
-      min_cm: 0
-      max_cm: 0
-    - weight: 0.30
-      min_cm: 1
-      max_cm: 50
-    - weight: 0.30
-      min_cm: 51
-      max_cm: 200
-    - weight: 0.20
-      min_cm: 201
-      max_cm: 500
-    - weight: 0.10
-      min_cm: 501
-      max_cm: 1000
+# How many fossil cards per sampled dinosaur (CDF masses; inverse-CDF via odd_fossil_count).
+fossil_count:
+  1: 0.25
+  2: 0.25
+  3: 0.20
+  4: 0.15
+  5: 0.10
+  6: 0.05
 
-  # Completeness tiers worst→best (CDF masses via odd_completeness). Replaces archive CDFs.
-  completeness_weights:
-    trace_only: 0.05
-    isolated_element: 0.20
-    fragmentary: 0.30
-    partial: 0.25
-    substantial: 0.15
-    nearly_complete: 0.05
+# Burial depth buckets (weights = CDF masses via odd_depth). Sample uniform in [min_cm, max_cm].
+depth_weights:
+  - weight: 0.10
+    min_cm: 0
+    max_cm: 0
+  - weight: 0.30
+    min_cm: 1
+    max_cm: 50
+  - weight: 0.30
+    min_cm: 51
+    max_cm: 200
+  - weight: 0.20
+    min_cm: 201
+    max_cm: 500
+  - weight: 0.10
+    min_cm: 501
+    max_cm: 1000
 
-  # Preservation quality tiers worst→best (CDF masses via odd_quality). Replaces archive CDFs.
-  quality_weights:
-    very_poor: 0.05
-    poor: 0.15
-    moderate: 0.35
-    good: 0.25
-    excellent: 0.15
-    exceptional: 0.05
+# Completeness tiers worst→best (CDF masses via odd_completeness). Replaces archive CDFs.
+completeness_weights:
+  trace_only: 0.05
+  isolated_element: 0.20
+  fragmentary: 0.30
+  partial: 0.25
+  substantial: 0.15
+  nearly_complete: 0.05
 
-# Accuracy: +0.01 per level (1..99). Distribution tables: identity for v1.
+# Preservation quality tiers worst→best (CDF masses via odd_quality). Replaces archive CDFs.
+quality_weights:
+  very_poor: 0.05
+  poor: 0.15
+  moderate: 0.35
+  good: 0.25
+  excellent: 0.15
+  exceptional: 0.05
+
+# Accuracy: +0.01 per level (1..99).
 level_modifiers:
   # +1% per site_survey level (highest matching entry; base 0 + level + tools).
   dino_accuracy: &site_survey_accuracy_levels
@@ -183,11 +185,6 @@ level_modifiers:
   completeness_accuracy: *site_survey_accuracy_levels
   quality_accuracy: *site_survey_accuracy_levels
   depth_accuracy: *site_survey_accuracy_levels
-  dino_count: []
-  fossil_count: []
-  depth_weights: []
-  completeness_weights: []
-  quality_weights: []
 
 # Per-sampler ±noise applied to each odd_* score before tier lookup.
 odd_noise:

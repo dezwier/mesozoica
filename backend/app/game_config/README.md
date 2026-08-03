@@ -106,7 +106,8 @@ night +50%).
 
 ### Site Survey (`02_site_survey.yaml`)
 
-Field fossils on survey (once per site). `main_params`:
+Field fossils on survey (once per site). `main_params` (level / weather / tool
+resolvable):
 
 | Key | Meaning |
 |-----|---------|
@@ -115,16 +116,24 @@ Field fossils on survey (once per site). `main_params`:
 | `completeness_accuracy` | Card display precision for completeness (0–1; +1%/level) |
 | `quality_accuracy` | Card display precision for quality axis (0–1; +1%/level) |
 | `depth_accuracy` | Card display precision for depth (0–1; +1%/level; depth 0 always exact) |
+
+Accuracy params are display-only on the site card for now. Base is 0; each
+site_survey level adds 0.01 (level 1 → 1%, level 99 → 99%), then tool
+`modifies_main_params` (none yet).
+
+Fixed global distribution tables (beside `main_params`; not subject to
+multipliers):
+
+| Key | Meaning |
+|-----|---------|
 | `dino_count` | Thresholds → distinct dinosaurs |
 | `fossil_count` | Cards-per-dino CDF masses |
 | `depth_weights` | Burial depth buckets |
 | `completeness_weights` | Completeness tier CDF (YAML; not archive) |
 | `quality_weights` | Preservation quality tier CDF (YAML; not archive) |
 
-Accuracy params are display-only on the site card for now. Base is 0; each
-site_survey level adds 0.01 (level 1 → 1%, level 99 → 99%), then tool
-`modifies_main_params` (none yet). Subcategory is still archive-weighted.
-`odd_noise` / `defaults` sit beside `main_params`.
+Subcategory is still archive-weighted. `odd_noise` / `defaults` also sit
+beside `main_params`.
 
 ### Tool modifiers (`tool_actions.yaml`)
 
@@ -137,7 +146,7 @@ some_tool:
       site_discovery:
         discovery_chance: { op: add, value: 0.05 }
       site_survey:
-        fossil_count: { op: multiply, value: 1.1 }
+        dino_accuracy: { op: add, value: 0.1 }
     using:
       site_discovery:
         discovery_chance: { op: replace, value: 0.9 }

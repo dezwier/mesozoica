@@ -180,7 +180,7 @@ def test_modifies_main_params_multi_skill() -> None:
                     "discovery_chance": {"op": "add", "value": 0.05}
                 },
                 "site_survey": {
-                    "fossil_count": {"op": "multiply", "value": 1.1}
+                    "dino_accuracy": {"op": "add", "value": 0.1}
                 },
             },
             "using": {
