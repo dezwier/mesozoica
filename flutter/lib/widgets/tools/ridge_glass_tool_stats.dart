@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 
 import '../../config/game_config.dart';
+import '../../config/tool_instance_params.dart';
 import '../../theme/dino_card_theme.dart';
 import '../tools/tool_stat_row.dart';
 import '../weather/weather_display.dart';
 
 /// Stats panel for Ridge Glass.
 ///
-/// Buff rows come from [modifies_main_params] (tool params, else game config).
+/// Buff rows come from the tool instance's [modifies_main_params] only.
 class RidgeGlassToolStats extends StatelessWidget {
   const RidgeGlassToolStats({
     super.key,
@@ -24,12 +25,13 @@ class RidgeGlassToolStats extends StatelessWidget {
     final p = params;
     final durationMinutes =
         (p?['duration_minutes'] as num?)?.toInt() ?? cfg.durationMinutes;
-    final visibilityMod = _siteDiscoveryMod(p, 'visibility_distance_m') ??
-        cfg.siteDiscoveryMod('visibility_distance_m');
-    final discoveryMod = _siteDiscoveryMod(p, 'discovery_chance') ??
-        cfg.siteDiscoveryMod('discovery_chance');
-    final explanation =
-        p?['stats_explanation'] as String? ?? cfg.statsExplanation;
+    // Instance params only — never fall back to live YAML for buffs.
+    final mods = modifiesMainParamsFromParams(p);
+    final visibilityMod =
+        mods?.paramsFor('using', 'site_discovery')['visibility_distance_m'];
+    final discoveryMod =
+        mods?.paramsFor('using', 'site_discovery')['discovery_chance'];
+    final explanation = p?['stats_explanation'] as String? ?? '';
 
     final pairs = <ToolStatPair>[
       ToolStatPair('Duration', '$durationMinutes min'),
@@ -68,24 +70,6 @@ class RidgeGlassToolStats extends StatelessWidget {
         ],
       ],
     );
-  }
-
-  static ParamModifier? _siteDiscoveryMod(
-    Map<String, dynamic>? params,
-    String paramKey,
-  ) {
-    final raw = params?['modifies_main_params'];
-    if (raw is! Map) return null;
-    final using = raw['using'];
-    if (using is! Map) return null;
-    final skill = using['site_discovery'];
-    if (skill is! Map) return null;
-    final entry = skill[paramKey];
-    if (entry is! Map) return null;
-    final op = entry['op'];
-    final value = entry['value'];
-    if (op is! String || value is! num) return null;
-    return ParamModifier(op: op, value: value.toDouble());
   }
 
   static String _formatMod(

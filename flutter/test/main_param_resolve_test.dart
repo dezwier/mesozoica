@@ -1,8 +1,25 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mesozoica/config/game_config.dart';
 import 'package:mesozoica/config/main_param_resolve.dart';
+import 'package:mesozoica/config/tool_instance_params.dart';
 
 import 'helpers/game_config_test_helpers.dart';
+
+ToolModBinding _ridgeUsing({required double multiply}) {
+  return ToolModBinding(
+    actionKey: 'ridge_glass',
+    toolName: 'Ridge Glass',
+    mods: ModifiesMainParams(
+      using: {
+        'site_discovery': {
+          'visibility_distance_m': ParamModifier(op: 'multiply', value: multiply),
+          'discovery_chance': ParamModifier(op: 'multiply', value: multiply),
+        },
+      },
+    ),
+    applyUsing: true,
+  );
+}
 
 void main() {
   tearDown(() {
@@ -54,8 +71,6 @@ void main() {
 
   test('site discovery visibility applies owning tool add', () async {
     await loadGameConfigForTest();
-    // Inject a temporary owning visibility boost via resolve helpers' tool scan
-    // by using a synthetic ParamModifier path through resolveScalarMainParam.
     final boosted = resolveScalarMainParam(
       base: 20,
       levelEntries: const [],
@@ -65,14 +80,20 @@ void main() {
     expect(boosted, closeTo(45, 1e-9));
   });
 
-  test('ridge glass using mods add visibility range', () async {
+  test('ridge glass using mods come from instance bindings not yaml', () async {
     await loadGameConfigForTest();
     final base = GameConfig.instance.siteDiscovery.visibilityDistanceM;
+    // Instance is 1.4 even if YAML baseline differs.
     final boosted = resolveSiteDiscoveryVisibilityDistanceM(
       skillLevel: 1,
-      activeActionKey: 'ridge_glass',
+      toolBindings: [_ridgeUsing(multiply: 1.4)],
     );
-    expect(boosted, closeTo(base * 1.3, 1e-9));
+    expect(boosted, closeTo(base * 1.4, 1e-9));
+    // Without bindings, YAML is never auto-applied.
+    expect(
+      resolveSiteDiscoveryVisibilityDistanceM(skillLevel: 1),
+      closeTo(base, 1e-9),
+    );
   });
 
   test('weather_time and weather_type stack before tools', () async {
@@ -120,15 +141,31 @@ void main() {
       ),
       closeTo(base * 0.8, 1e-9),
     );
-    // ambient before tools: night *0.6 * thunderstorm *0.8 then ridge ×1.3
     expect(
       resolveSiteDiscoveryVisibilityDistanceM(
         skillLevel: 1,
         weatherTime: 'night',
         weatherType: 'thunderstorm',
-        activeActionKey: 'ridge_glass',
+        toolBindings: [_ridgeUsing(multiply: 1.3)],
       ),
       closeTo(base * 0.6 * 0.8 * 1.3, 1e-9),
+    );
+  });
+
+  test('modifiesMainParamsFromParams parses instance payload', () {
+    final mods = modifiesMainParamsFromParams({
+      'modifies_main_params': {
+        'using': {
+          'site_discovery': {
+            'visibility_distance_m': {'op': 'multiply', 'value': 1.4},
+          },
+        },
+      },
+    });
+    expect(mods, isNotNull);
+    expect(
+      mods!.paramsFor('using', 'site_discovery')['visibility_distance_m']?.value,
+      1.4,
     );
   });
 }

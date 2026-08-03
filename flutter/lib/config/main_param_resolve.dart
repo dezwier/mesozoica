@@ -1,6 +1,5 @@
-import '../models/guidance_tool_kind.dart';
-import '../models/ridge_glass_kind.dart';
 import 'game_config.dart';
+import 'tool_instance_params.dart';
 
 /// Apply a level, ambient, or tool modifier to [base].
 double applyMainParamModifier(
@@ -103,53 +102,25 @@ double resolveScalarMainParam({
   return value;
 }
 
-void _appendModsFor(
-  List<ParamModifier> out, {
-  required ModifiesMainParams? mods,
-  required String paramKey,
-  required String actionKey,
-  required Set<String> ownedActionKeys,
-  required String? activeActionKey,
-}) {
-  if (mods == null || !mods.affectsSkill('site_discovery')) return;
-  if (ownedActionKeys.contains(actionKey)) {
-    final owning = mods.paramsFor('owning', 'site_discovery')[paramKey];
-    if (owning != null) out.add(owning);
-  }
-  if (activeActionKey == actionKey) {
-    final using = mods.paramsFor('using', 'site_discovery')[paramKey];
-    if (using != null) out.add(using);
-  }
-}
-
-/// Owning + active-using tool modifiers for one site_discovery main param.
+/// Owning + using modifiers from tool *instances* (never YAML baselines).
 List<ParamModifier> siteDiscoveryToolModsForParam({
   required String paramKey,
-  Set<String> ownedActionKeys = const {},
-  String? activeActionKey,
+  List<ToolModBinding> toolBindings = const [],
+  String skillId = 'site_discovery',
 }) {
-  if (!GameConfig.isLoaded) return const [];
-  final tools = GameConfig.instance.toolActions;
   final out = <ParamModifier>[];
-
-  for (final kind in GuidanceToolKind.values) {
-    _appendModsFor(
-      out,
-      mods: tools.guidanceConfigFor(kind.actionKey).modifiesMainParams,
-      paramKey: paramKey,
-      actionKey: kind.actionKey,
-      ownedActionKeys: ownedActionKeys,
-      activeActionKey: activeActionKey,
-    );
+  for (final binding in toolBindings) {
+    final mods = binding.mods;
+    if (!mods.affectsSkill(skillId)) continue;
+    if (binding.applyOwning) {
+      final owning = mods.paramsFor('owning', skillId)[paramKey];
+      if (owning != null) out.add(owning);
+    }
+    if (binding.applyUsing) {
+      final using = mods.paramsFor('using', skillId)[paramKey];
+      if (using != null) out.add(using);
+    }
   }
-  _appendModsFor(
-    out,
-    mods: tools.ridgeGlass.modifiesMainParams,
-    paramKey: paramKey,
-    actionKey: RidgeGlassKind.actionKey,
-    ownedActionKeys: ownedActionKeys,
-    activeActionKey: activeActionKey,
-  );
   return out;
 }
 
@@ -158,8 +129,7 @@ double resolveSiteDiscoveryVisibilityDistanceM({
   required int skillLevel,
   String? weatherTime,
   String? weatherType,
-  Set<String> ownedActionKeys = const {},
-  String? activeActionKey,
+  List<ToolModBinding> toolBindings = const [],
 }) {
   if (!GameConfig.isLoaded) return 20.0;
   final cfg = GameConfig.instance.siteDiscovery;
@@ -180,8 +150,7 @@ double resolveSiteDiscoveryVisibilityDistanceM({
   );
   for (final mod in siteDiscoveryToolModsForParam(
     paramKey: 'visibility_distance_m',
-    ownedActionKeys: ownedActionKeys,
-    activeActionKey: activeActionKey,
+    toolBindings: toolBindings,
   )) {
     value = applyMainParamModifier(value, op: mod.op, value: mod.value);
   }

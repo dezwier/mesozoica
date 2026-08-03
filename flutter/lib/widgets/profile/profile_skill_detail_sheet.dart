@@ -3,15 +3,15 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../../config/game_config.dart';
+import '../../config/tool_instance_params.dart';
 import '../../controllers/auth_controller.dart';
 import '../../controllers/guidance_session_controller.dart';
 import '../../controllers/ridge_glass_controller.dart';
 import '../../controllers/tool_catalog_controller.dart';
 import '../../controllers/weather_controller.dart';
-import '../../models/guidance_tool_kind.dart';
 import '../../models/profile.dart';
-import '../../models/ridge_glass_kind.dart';
 import '../../models/tool.dart';
+import '../../models/tool_session.dart';
 import '../../services/api_client.dart';
 import '../common/draggable_sheet_wrapper.dart';
 import 'profile_skill_icons.dart';
@@ -48,8 +48,7 @@ void showProfileSkillDetailSheet(
   required SkillState skill,
   Map<String, int>? breakdown,
 }) {
-  final ownedActionKeys = _ownedGuidanceActionKeys(context);
-  final activeActionKey = _activeGuidanceActionKey(context);
+  final toolBindings = _toolModBindings(context);
 
   showModalBottomSheet<void>(
     context: context,
@@ -59,8 +58,7 @@ void showProfileSkillDetailSheet(
       childBuilder: (scrollController) => _SkillDetailDrawer(
         skill: skill,
         breakdown: breakdown,
-        ownedActionKeys: ownedActionKeys,
-        activeActionKey: activeActionKey,
+        toolBindings: toolBindings,
         scrollController: scrollController,
       ),
     ),
@@ -70,16 +68,14 @@ void showProfileSkillDetailSheet(
 class _SkillDetailDrawer extends StatelessWidget {
   const _SkillDetailDrawer({
     required this.skill,
-    required this.ownedActionKeys,
-    required this.activeActionKey,
+    required this.toolBindings,
     required this.scrollController,
     this.breakdown,
   });
 
   final SkillState skill;
   final Map<String, int>? breakdown;
-  final Set<String> ownedActionKeys;
-  final String? activeActionKey;
+  final List<ToolModBinding> toolBindings;
   final ScrollController scrollController;
 
   SkillState _liveSkill(Profile? profile) {
@@ -181,8 +177,7 @@ class _SkillDetailDrawer extends StatelessWidget {
         const <(String, int)>[];
     final paramRows = _mainParamRowsForSkill(
       liveSkill,
-      ownedActionKeys: ownedActionKeys,
-      activeActionKey: activeActionKey,
+      toolBindings: toolBindings,
       weatherTime: weatherTime,
       weatherType: weatherType,
     );
@@ -535,40 +530,38 @@ class _SkillSectionCard extends StatelessWidget {
   }
 }
 
-Set<String> _ownedGuidanceActionKeys(BuildContext context) {
-  final out = <String>{};
+List<ToolModBinding> _toolModBindings(BuildContext context) {
   try {
-    final catalog = context.read<ToolCatalogController>();
-    for (final tool in catalog.items) {
-      if (!_toolIsOwned(tool)) continue;
-      final kind = GuidanceToolKind.tryParseToolName(tool.name);
-      if (kind != null) out.add(kind.actionKey);
-      if (RidgeGlassKind.matchesToolName(tool.name)) {
-        out.add(RidgeGlassKind.actionKey);
-      }
-    }
-  } catch (_) {
-    // Provider unavailable (e.g. tests).
-  }
-  return out;
-}
+    final catalog = context.read<ToolCatalogController>().items;
+    ToolSession? activeSession;
+    String? activeActionKey;
+    String? activeToolName;
 
-String? _activeGuidanceActionKey(BuildContext context) {
-  try {
     final ridge = context.read<RidgeGlassController>();
     if (ridge.isActive) {
-      return ridge.session?.actionKey ?? RidgeGlassKind.actionKey;
+      activeSession = ridge.session;
+      activeActionKey = ridge.session?.actionKey ?? 'ridge_glass';
+      activeToolName = ridge.tool?.name;
+    } else {
+      final guidance = context.read<GuidanceSessionController>();
+      if (guidance.isActive) {
+        activeSession = guidance.session;
+        activeActionKey =
+            guidance.kind?.actionKey ?? guidance.session?.actionKey;
+        activeToolName = guidance.tool?.name;
+      }
     }
-    final guidance = context.read<GuidanceSessionController>();
-    if (!guidance.isActive) return null;
-    return guidance.kind?.actionKey ?? guidance.session?.actionKey;
+
+    return toolModBindingsFromInstances(
+      catalog: catalog,
+      activeSession: activeSession,
+      activeActionKey: activeActionKey,
+      activeToolName: activeToolName,
+    );
   } catch (_) {
-    return null;
+    return const [];
   }
 }
-
-bool _toolIsOwned(ToolSummary tool) =>
-    tool.isOwned || tool.ownedOccurrences.isNotEmpty;
 
 class _DistEntry {
   const _DistEntry({required this.label, required this.value});
@@ -680,8 +673,7 @@ class _ActiveToolMod {
 
 List<_MainParamDisplay> _mainParamRowsForSkill(
   SkillState skill, {
-  required Set<String> ownedActionKeys,
-  required String? activeActionKey,
+  required List<ToolModBinding> toolBindings,
   String? weatherTime,
   String? weatherType,
 }) {
@@ -691,8 +683,7 @@ List<_MainParamDisplay> _mainParamRowsForSkill(
     return _siteDiscoveryRows(
       domain,
       skill.level,
-      ownedActionKeys: ownedActionKeys,
-      activeActionKey: activeActionKey,
+      toolBindings: toolBindings,
       weatherTime: weatherTime,
       weatherType: weatherType,
     );
@@ -701,8 +692,7 @@ List<_MainParamDisplay> _mainParamRowsForSkill(
     return _siteSurveyRows(
       domain,
       skill.level,
-      ownedActionKeys: ownedActionKeys,
-      activeActionKey: activeActionKey,
+      toolBindings: toolBindings,
       weatherTime: weatherTime,
       weatherType: weatherType,
     );
@@ -723,8 +713,7 @@ List<_MainParamDisplay> _mainParamRowsForSkill(
 List<_MainParamDisplay> _siteDiscoveryRows(
   SiteDiscoveryConfig cfg,
   int skillLevel, {
-  required Set<String> ownedActionKeys,
-  required String? activeActionKey,
+  required List<ToolModBinding> toolBindings,
   String? weatherTime,
   String? weatherType,
 }) {
@@ -742,8 +731,7 @@ List<_MainParamDisplay> _siteDiscoveryRows(
       skillLevel: skillLevel,
       format: _ParamFormat.meters,
       clampUnit: false,
-      ownedActionKeys: ownedActionKeys,
-      activeActionKey: activeActionKey,
+      toolBindings: toolBindings,
     ),
     _resolveScalarParam(
       label: 'Discovery chance',
@@ -758,8 +746,7 @@ List<_MainParamDisplay> _siteDiscoveryRows(
       skillLevel: skillLevel,
       format: _ParamFormat.chance,
       clampUnit: true,
-      ownedActionKeys: ownedActionKeys,
-      activeActionKey: activeActionKey,
+      toolBindings: toolBindings,
     ),
     _resolveScalarParam(
       label: 'Max discovery speed',
@@ -774,8 +761,7 @@ List<_MainParamDisplay> _siteDiscoveryRows(
       skillLevel: skillLevel,
       format: _ParamFormat.kmh,
       clampUnit: false,
-      ownedActionKeys: ownedActionKeys,
-      activeActionKey: activeActionKey,
+      toolBindings: toolBindings,
     ),
   ];
 }
@@ -783,8 +769,7 @@ List<_MainParamDisplay> _siteDiscoveryRows(
 List<_MainParamDisplay> _siteSurveyRows(
   SiteSurveyConfig cfg,
   int skillLevel, {
-  required Set<String> ownedActionKeys,
-  required String? activeActionKey,
+  required List<ToolModBinding> toolBindings,
   String? weatherTime,
   String? weatherType,
 }) {
@@ -804,8 +789,7 @@ List<_MainParamDisplay> _siteSurveyRows(
       skillLevel: skillLevel,
       format: _ParamFormat.chance,
       clampUnit: true,
-      ownedActionKeys: ownedActionKeys,
-      activeActionKey: activeActionKey,
+      toolBindings: toolBindings,
     ),
     _resolveScalarParam(
       label: 'Fossil accuracy',
@@ -820,8 +804,7 @@ List<_MainParamDisplay> _siteSurveyRows(
       skillLevel: skillLevel,
       format: _ParamFormat.chance,
       clampUnit: true,
-      ownedActionKeys: ownedActionKeys,
-      activeActionKey: activeActionKey,
+      toolBindings: toolBindings,
     ),
     _resolveScalarParam(
       label: 'Completeness accuracy',
@@ -836,8 +819,7 @@ List<_MainParamDisplay> _siteSurveyRows(
       skillLevel: skillLevel,
       format: _ParamFormat.chance,
       clampUnit: true,
-      ownedActionKeys: ownedActionKeys,
-      activeActionKey: activeActionKey,
+      toolBindings: toolBindings,
     ),
     _resolveScalarParam(
       label: 'Quality accuracy',
@@ -852,8 +834,7 @@ List<_MainParamDisplay> _siteSurveyRows(
       skillLevel: skillLevel,
       format: _ParamFormat.chance,
       clampUnit: true,
-      ownedActionKeys: ownedActionKeys,
-      activeActionKey: activeActionKey,
+      toolBindings: toolBindings,
     ),
     _resolveScalarParam(
       label: 'Depth accuracy',
@@ -868,8 +849,7 @@ List<_MainParamDisplay> _siteSurveyRows(
       skillLevel: skillLevel,
       format: _ParamFormat.chance,
       clampUnit: true,
-      ownedActionKeys: ownedActionKeys,
-      activeActionKey: activeActionKey,
+      toolBindings: toolBindings,
     ),
     _MainParamDisplay(
       label: 'Dino count',
@@ -966,8 +946,7 @@ _MainParamDisplay _resolveScalarParam({
   required int skillLevel,
   required _ParamFormat format,
   required bool clampUnit,
-  required Set<String> ownedActionKeys,
-  required String? activeActionKey,
+  required List<ToolModBinding> toolBindings,
 }) {
   final parts = <String>['base ${_formatScalar(base, format)}'];
   var value = base;
@@ -1000,8 +979,7 @@ _MainParamDisplay _resolveScalarParam({
   for (final toolMod in _activeToolModsForParam(
     skillId: skillId,
     paramKey: paramKey,
-    ownedActionKeys: ownedActionKeys,
-    activeActionKey: activeActionKey,
+    toolBindings: toolBindings,
   )) {
     value = _applyModifier(value, toolMod.mod);
     parts.add(
@@ -1025,39 +1003,30 @@ _MainParamDisplay _resolveScalarParam({
 List<_ActiveToolMod> _activeToolModsForParam({
   required String skillId,
   required String paramKey,
-  required Set<String> ownedActionKeys,
-  required String? activeActionKey,
+  required List<ToolModBinding> toolBindings,
 }) {
-  if (!GameConfig.isLoaded) return const [];
-  final tools = GameConfig.instance.toolActions;
   final out = <_ActiveToolMod>[];
-
-  void appendFor({
-    required String actionKey,
-    required String toolName,
-    required ModifiesMainParams? mods,
-  }) {
-    if (mods == null || !mods.affectsSkill(skillId)) return;
-
-    if (ownedActionKeys.contains(actionKey)) {
+  for (final binding in toolBindings) {
+    final mods = binding.mods;
+    if (!mods.affectsSkill(skillId)) continue;
+    if (binding.applyOwning) {
       final owning = mods.paramsFor('owning', skillId)[paramKey];
       if (owning != null) {
         out.add(
           _ActiveToolMod(
-            toolName: toolName,
+            toolName: binding.toolName,
             whenLabel: 'owned',
             mod: owning,
           ),
         );
       }
     }
-
-    if (activeActionKey == actionKey) {
+    if (binding.applyUsing) {
       final using = mods.paramsFor('using', skillId)[paramKey];
       if (using != null) {
         out.add(
           _ActiveToolMod(
-            toolName: toolName,
+            toolName: binding.toolName,
             whenLabel: 'using',
             mod: using,
           ),
@@ -1065,19 +1034,6 @@ List<_ActiveToolMod> _activeToolModsForParam({
       }
     }
   }
-
-  for (final kind in GuidanceToolKind.values) {
-    appendFor(
-      actionKey: kind.actionKey,
-      toolName: kind.toolName,
-      mods: tools.guidanceConfigFor(kind.actionKey).modifiesMainParams,
-    );
-  }
-  appendFor(
-    actionKey: RidgeGlassKind.actionKey,
-    toolName: RidgeGlassKind.toolName,
-    mods: tools.ridgeGlass.modifiesMainParams,
-  );
   return out;
 }
 

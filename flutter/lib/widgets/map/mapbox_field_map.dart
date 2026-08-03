@@ -12,6 +12,7 @@ import 'package:provider/provider.dart';
 import '../../config/map_config.dart';
 import '../../config/game_config.dart';
 import '../../config/main_param_resolve.dart';
+import '../../config/tool_instance_params.dart';
 import '../../controllers/aerial_session_controller.dart';
 import '../../controllers/auth_controller.dart';
 import '../../controllers/field_discovery_coordinator.dart';
@@ -22,10 +23,10 @@ import '../../controllers/ridge_glass_controller.dart';
 import '../../controllers/terrain_echo_controller.dart';
 import '../../controllers/tool_catalog_controller.dart';
 import '../../controllers/weather_controller.dart';
-import '../../models/guidance_tool_kind.dart';
 import '../../models/ridge_glass_kind.dart';
 import '../../models/site.dart';
 import '../../models/tool.dart';
+import '../../models/tool_session.dart';
 import '../../theme/map_chrome_theme.dart';
 import 'formation_map_raster.dart';
 import 'orbit_survey_raster.dart';
@@ -325,7 +326,7 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
     _syncDiscoveryPulse();
   }
 
-  ({int skillLevel, Set<String> owned, String? activeKey}) _visibilityInputs() {
+  ({int skillLevel, List<ToolModBinding> toolBindings}) _visibilityInputs() {
     var skillLevel = 1;
     final profile = _auth?.currentUser;
     if (profile != null) {
@@ -337,40 +338,58 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
       }
     }
 
-    final owned = <String>{};
-    final catalog = _toolCatalog;
-    if (catalog != null) {
-      for (final tool in catalog.items) {
-        if (!_toolIsOwned(tool)) continue;
-        final kind = GuidanceToolKind.tryParseToolName(tool.name);
-        if (kind != null) owned.add(kind.actionKey);
-        if (RidgeGlassKind.matchesToolName(tool.name)) {
-          owned.add(RidgeGlassKind.actionKey);
-        }
-      }
-    }
-
-    String? activeKey;
+    ToolSession? activeSession;
+    String? activeActionKey;
+    String? activeToolName;
     final ridge = _ridgeGlass;
     if (ridge != null && ridge.isActive) {
-      activeKey = ridge.session?.actionKey ?? RidgeGlassKind.actionKey;
+      activeSession = ridge.session;
+      activeActionKey = ridge.session?.actionKey ?? RidgeGlassKind.actionKey;
+      activeToolName = ridge.tool?.name ?? RidgeGlassKind.toolName;
     } else {
       final guidance = _guidance;
       if (guidance != null && guidance.isActive) {
-        activeKey = guidance.kind?.actionKey ?? guidance.session?.actionKey;
+        activeSession = guidance.session;
+        activeActionKey =
+            guidance.kind?.actionKey ?? guidance.session?.actionKey;
+        activeToolName = guidance.tool?.name ??
+            (activeActionKey != null
+                ? toolNameForActionKey(activeActionKey)
+                : null);
       }
     }
-    return (skillLevel: skillLevel, owned: owned, activeKey: activeKey);
+
+    final catalog = _toolCatalog?.items ?? const <ToolSummary>[];
+    final toolBindings = toolModBindingsFromInstances(
+      catalog: catalog,
+      activeSession: activeSession,
+      activeActionKey: activeActionKey,
+      activeToolName: activeToolName,
+    );
+    return (skillLevel: skillLevel, toolBindings: toolBindings);
   }
 
   double _resolveVisibilityDistanceM({bool ignoreActiveTool = false}) {
     final inputs = _visibilityInputs();
+    var bindings = inputs.toolBindings;
+    if (ignoreActiveTool) {
+      bindings = [
+        for (final b in bindings)
+          if (b.applyOwning)
+            ToolModBinding(
+              actionKey: b.actionKey,
+              toolName: b.toolName,
+              mods: b.mods,
+              applyOwning: true,
+              applyUsing: false,
+            ),
+      ];
+    }
     return resolveSiteDiscoveryVisibilityDistanceM(
       skillLevel: inputs.skillLevel,
       weatherTime: _weather?.weatherTime,
       weatherType: _weather?.status?.weatherType,
-      ownedActionKeys: inputs.owned,
-      activeActionKey: ignoreActiveTool ? null : inputs.activeKey,
+      toolBindings: bindings,
     );
   }
 
@@ -378,9 +397,6 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
     final ridge = _ridgeGlass;
     return ridge != null && ridge.isActive;
   }
-
-  static bool _toolIsOwned(ToolSummary tool) =>
-      tool.isOwned || tool.ownedOccurrences.isNotEmpty;
 
   void _syncDiscoveryPulse() {
     if (!mounted || !_ready || !widget.mapActive) return;
