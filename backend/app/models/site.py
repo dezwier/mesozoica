@@ -60,7 +60,12 @@ class Site(SQLModel, table=True):
     how_discovered: Optional[str] = Field(
         default=None,
         max_length=32,
-        description="First discovery method: walk, aerial_recon, aerial_scout, or manual",
+        description=(
+            "Denormalized first discovery method for filters/UI "
+            "(walk, aerial_recon, aerial_scout, or manual). "
+            "Firstness for XP uses live discoverer user_site rows, not this column. "
+            "Clear whenever all discoverer links are removed."
+        ),
     )
     created_at: Optional[datetime] = Field(
         default=None,

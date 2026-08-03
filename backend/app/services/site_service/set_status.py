@@ -119,9 +119,8 @@ def set_site_status(
                 col(UserSite.role) == USER_SITE_ROLE_DISCOVERER,
             )
         ).first()
-        is_first_discovery = (
-            prior_discoverer is None and site.how_discovered is None
-        )
+        # Source of truth for firstness is live discoverer rows.
+        is_first_discovery = prior_discoverer is None
     if existing is None:
         session.add(
             UserSite(

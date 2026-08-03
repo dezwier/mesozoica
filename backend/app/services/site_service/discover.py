@@ -117,9 +117,9 @@ def discover_site(
             col(UserSite.role) == USER_SITE_ROLE_DISCOVERER,
         )
     ).first()
-    # Prefer live discoverer rows; fall back to how_discovered for sites whose
-    # user_site links were cleared without resetting first-discovery metadata.
-    is_first_discovery = prior_discoverer is None and site.how_discovered is None
+    # Source of truth for firstness is live discoverer rows, not site.how_discovered
+    # (that column is only the denormalized discovery method for filters/UI).
+    is_first_discovery = prior_discoverer is None
     session.add(
         UserSite(
             user_id=user_id,

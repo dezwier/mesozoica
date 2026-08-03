@@ -107,7 +107,8 @@ def discover_site_from_aerial(
             col(UserSite.role) == USER_SITE_ROLE_DISCOVERER,
         )
     ).first()
-    is_first_discovery = prior_discoverer is None and site.how_discovered is None
+    # Source of truth for firstness is live discoverer rows, not site.how_discovered.
+    is_first_discovery = prior_discoverer is None
     session.add(
         UserSite(
             user_id=user_id,

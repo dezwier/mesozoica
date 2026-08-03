@@ -204,7 +204,13 @@ def test_purge_all_field_data_service(session: Session):
 
 
 def test_purge_user_progress_only(session: Session):
+    from app.models.site import HOW_DISCOVERED_WALK
+
     field, field_fossil, user = _seed_field_world(session)
+    field.how_discovered = HOW_DISCOVERED_WALK
+    session.add(field)
+    session.commit()
+
     result = purge_all_field_data(
         session,
         user_sites=True,
@@ -223,7 +229,9 @@ def test_purge_user_progress_only(session: Session):
     assert result.session_events_deleted == 0
     assert result.sessions_deleted == 0
 
+    session.refresh(field)
     assert session.get(Site, field.site_id) is not None
+    assert field.how_discovered is None
     assert session.get(Fossil, field_fossil.id) is not None
     assert (
         session.exec(

@@ -225,6 +225,64 @@ def test_second_discoverer_skips_first_discovery_xp(session: Session, monkeypatc
     assert second_link.was_first is False
 
 
+def test_orphan_how_discovered_does_not_block_first_xp(session: Session, monkeypatch):
+    """Stale site.how_discovered without discoverer rows must not block the bonus."""
+    site = _field_site(session, site_id=2_000_000_092)
+    site.how_discovered = HOW_DISCOVERED_WALK
+    session.add(site)
+    session.commit()
+    user = _user(session, username="orphan_finder")
+    monkeypatch.setattr(
+        "app.services.field_service.field_coordinate_enrich.enrich_coordinate",
+        lambda lat, lon: CoordinateEnrichment(country_code="US", state="Kansas"),
+    )
+    monkeypatch.setattr(
+        "app.services.site_service.discover.resolve_site_discovery_params",
+        lambda session, *, user_id, site, lat=None, lon=None: type(
+            "P",
+            (),
+            {
+                "max_distance_m": 500.0,
+                "discovery_chance": 1.0,
+                "base_discovery_chance": 1.0,
+                "site_discovery_xp": 20.0,
+                "first_discovery_xp": 20.0,
+            },
+        )(),
+    )
+    monkeypatch.setattr(
+        "app.services.site_service.discover.ensure_fossils_on_site_discovery",
+        lambda session, site_id, user_id: None,
+    )
+    monkeypatch.setattr(
+        "app.services.site_service.discover.send_site_discovered_push",
+        lambda *args, **kwargs: None,
+    )
+
+    discover_site(
+        session,
+        site_id=int(site.site_id),
+        user_id=int(user.id),
+        lat=40.0,
+        lon=-100.0,
+    )
+    session.refresh(user)
+    assert user.skill_breakdown["site_discovery"]["first_discovery"] == 20
+
+    from sqlmodel import col, select
+
+    from app.models.user_site import USER_SITE_ROLE_DISCOVERER, UserSite
+
+    link = session.exec(
+        select(UserSite).where(
+            col(UserSite.user_id) == user.id,
+            col(UserSite.site_id) == site.site_id,
+            col(UserSite.role) == USER_SITE_ROLE_DISCOVERER,
+        )
+    ).one()
+    assert link.was_first is True
+
+
 def test_aerial_discover_sets_aerial_recon(session: Session, monkeypatch):
     from datetime import datetime
 

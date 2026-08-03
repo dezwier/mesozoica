@@ -90,6 +90,15 @@ def purge_all_field_data(
             delete(UserSite).where(col(UserSite.site_id).in_(field_site_ids))
         )
 
+    # Keep denormalized discovery method in sync with discoverer links.
+    # Hide-status already clears this; purge of user_sites alone must too.
+    if field_site_ids and user_sites and not sites:
+        session.exec(
+            update(Site)
+            .where(col(Site.site_id).in_(field_site_ids))
+            .values(how_discovered=None)
+        )
+
     # tool_session_event.site_id → site: clear before deleting field sites.
     if field_site_ids and sites:
         session_events_deleted += _delete_session_events_for_sites(
