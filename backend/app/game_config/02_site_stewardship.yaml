@@ -29,7 +29,7 @@ main_params:
   site_documentation_xp: 100
   # Bonus XP when you are the first user to fully document a site (all dimensions
   # at 100% accuracy). Later documenters still get site_documentation_xp only.
-  first_documentation_xp: 200
+  first_documentation_xp: 100
 
 # Fixed global distribution tables (not subject to level/tool multipliers).
 

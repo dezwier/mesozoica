@@ -18,7 +18,8 @@ void main() {
     expect(config.siteDiscovery.maxDistanceM, 20.0);
     expect(config.siteDiscovery.discoveryChance, 0.1);
     expect(config.siteDiscovery.maxDiscoverySpeedKmh, 10.0);
-    expect(config.siteDiscovery.siteDiscoveryXp, 10.0);
+    expect(config.siteDiscovery.siteDiscoveryXp, 20.0);
+    expect(config.siteDiscovery.firstDiscoveryXp, 20.0);
     expect(config.siteDiscovery.activeKmXp, 30.0);
     expect(config.siteDiscovery.passiveKmXp, 5.0);
     expect(config.siteDiscovery.client.autoDiscoverRadiusM, 20.0);
@@ -35,6 +36,7 @@ void main() {
     expect(config.siteStewardship.mainParams.siteVisibilityM, 50.0);
     expect(config.siteStewardship.mainParams.siteExplorationXp, 20.0);
     expect(config.siteStewardship.mainParams.siteDocumentationXp, 100.0);
+    expect(config.siteStewardship.mainParams.firstDocumentationXp, 100.0);
     final dinoAccMods = config.siteStewardship.levelModifiers['dino_accuracy']!;
     expect(dinoAccMods.length, 99);
     expect(dinoAccMods.first.level, 1);

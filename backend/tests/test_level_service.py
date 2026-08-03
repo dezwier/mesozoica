@@ -69,8 +69,8 @@ def test_leveling_yaml_loaded() -> None:
     cfg = get_game_config().leveling
     site = get_game_config().site_discovery
     fossil = get_game_config().fossil_detection
-    assert site.site_discovery_xp == 10
-    assert site.first_discovery_xp == 50
+    assert site.site_discovery_xp == 20
+    assert site.first_discovery_xp == 20
     assert site.active_km_xp == 30
     assert site.passive_km_xp == 5
     assert float(fossil.main_params["fossil_discovery_xp"]) == 5
@@ -120,12 +120,12 @@ def test_award_site_and_fossil_xp(session: Session) -> None:
     session.add(user)
     session.commit()
     session.refresh(user)
-    assert get_skill_xp(user, "site_discovery") == 60
+    assert get_skill_xp(user, "site_discovery") == 40
     assert get_skill_xp(user, "fossil_detection") == 10
-    assert user.skill_breakdown["site_discovery"]["sites"] == 10
-    assert user.skill_breakdown["site_discovery"]["first_discovery"] == 50
+    assert user.skill_breakdown["site_discovery"]["sites"] == 20
+    assert user.skill_breakdown["site_discovery"]["first_discovery"] == 20
     assert user.skill_breakdown["fossil_detection"]["fossils"] == 10
-    assert user.xp == 70
+    assert user.xp == 50
     assert user.level == level_for_xp(user.xp, career=True)
 
 
@@ -136,9 +136,9 @@ def test_award_first_documentation_xp(session: Session) -> None:
     session.add(user)
     session.commit()
     session.refresh(user)
-    assert get_skill_xp(user, "site_stewardship") == 300
+    assert get_skill_xp(user, "site_stewardship") == 200
     assert user.skill_breakdown["site_stewardship"]["site_documentation"] == 100
-    assert user.skill_breakdown["site_stewardship"]["first_documentation"] == 200
+    assert user.skill_breakdown["site_stewardship"]["first_documentation"] == 100
 
 
 def test_award_distance_km_xp(session: Session) -> None:
@@ -221,7 +221,7 @@ def test_backfill_from_history(session: Session) -> None:
     session.refresh(user)
     assert user.skill_xp["site_discovery"] == skill_xp["site_discovery"]
     assert user.skill_xp["fossil_detection"] == skill_xp["fossil_detection"]
-    assert user.skill_breakdown["site_discovery"]["sites"] == 20
+    assert user.skill_breakdown["site_discovery"]["sites"] == 40
     assert user.skill_breakdown["fossil_detection"]["fossils"] == 5
     assert user.skill_breakdown["site_discovery"]["active_distance"] == 60
     assert user.skill_breakdown["site_discovery"]["passive_distance"] == 15
@@ -237,9 +237,9 @@ def test_profile_response_includes_skill_fields(session: Session) -> None:
     profile = user_to_profile_response(session, user)
     assert len(profile.skills) == 12
     site = next(s for s in profile.skills if s.id == "site_discovery")
-    assert site.xp == 10
+    assert site.xp == 20
     assert site.level == 1
     assert profile.career_title
     assert profile.career is not None
-    assert profile.skill_breakdown["site_discovery"]["sites"] == 10
+    assert profile.skill_breakdown["site_discovery"]["sites"] == 20
     assert 0.0 <= profile.career.progress <= 1.0

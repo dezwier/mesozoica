@@ -233,7 +233,7 @@ def test_documentation_completes_and_freezes(session: Session) -> None:
     ).first()
     assert doc_role is not None
     assert profile.skill_breakdown["site_stewardship"]["site_documentation"] == 100
-    assert profile.skill_breakdown["site_stewardship"]["first_documentation"] == 200
+    assert profile.skill_breakdown["site_stewardship"]["first_documentation"] == 100
 
     xp_after = get_skill_xp(user, "site_stewardship")
     apply_site_exploration_update(
@@ -255,7 +255,7 @@ def test_documentation_completes_and_freezes(session: Session) -> None:
         user.skill_breakdown["site_stewardship"]["site_documentation"] == 100
     )
     assert (
-        user.skill_breakdown["site_stewardship"]["first_documentation"] == 200
+        user.skill_breakdown["site_stewardship"]["first_documentation"] == 100
     )
 
 
@@ -298,7 +298,7 @@ def test_second_documenter_skips_first_documentation_xp(session: Session) -> Non
         ),
     )
     assert first.skill_breakdown["site_stewardship"]["site_documentation"] == 100
-    assert first.skill_breakdown["site_stewardship"]["first_documentation"] == 200
+    assert first.skill_breakdown["site_stewardship"]["first_documentation"] == 100
 
     apply_site_exploration_update(
         session,

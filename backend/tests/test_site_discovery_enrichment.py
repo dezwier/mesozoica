@@ -118,8 +118,8 @@ def test_discover_site_sets_walk_and_enriches(session: Session, monkeypatch):
                 "max_distance_m": 500.0,
                 "discovery_chance": 1.0,
                 "base_discovery_chance": 1.0,
-                "site_discovery_xp": 10.0,
-                "first_discovery_xp": 50.0,
+                "site_discovery_xp": 20.0,
+                "first_discovery_xp": 20.0,
             },
         )(),
     )

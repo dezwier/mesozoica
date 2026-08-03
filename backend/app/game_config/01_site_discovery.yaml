@@ -11,10 +11,10 @@ main_params:
   # Max GPS speed for walk XP credit and walk-in / dwell discovery rolls.
   max_discovery_speed_kmh: 10.0
   # XP awarded when a site is discovered.
-  site_discovery_xp: 10
+  site_discovery_xp: 20
   # Bonus XP when you are the first user to discover a site (others still get
   # site_discovery_xp later, but not this reward).
-  first_discovery_xp: 50
+  first_discovery_xp: 20
   # XP per whole active kilometer walked.
   active_km_xp: 30
   # XP per whole passive kilometer walked.
