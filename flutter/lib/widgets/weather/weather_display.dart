@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
 /// Shared labels, icons, and day/night asset paths for weather HUD + detail sheet.
 ///
@@ -60,6 +61,32 @@ abstract final class WeatherDisplay {
     }
   }
 
+  /// Accent color for weather-type icons on the map chrome.
+  static Color weatherIconColor(String type) {
+    switch (type == 'sunny' ? 'clear' : type) {
+      case 'clear':
+        return const Color(0xFFFFC107);
+      case 'cloudy':
+        return const Color(0xFFB0BEC5);
+      case 'overcast':
+        return const Color(0xFF90A4AE);
+      case 'fog':
+        return const Color(0xFFCFD8DC);
+      case 'drizzle':
+        return const Color(0xFF80DEEA);
+      case 'rain':
+        return const Color(0xFF4FC3F7);
+      case 'snow':
+        return const Color(0xFFE3F2FD);
+      case 'hail':
+        return const Color(0xFFB3E5FC);
+      case 'thunderstorm':
+        return const Color(0xFFFFEE58);
+      default:
+        return const Color(0xFFF8F4EC);
+    }
+  }
+
   static String weatherLabel(String type) {
     switch (type == 'sunny' ? 'clear' : type) {
       case 'clear':
@@ -97,6 +124,15 @@ abstract final class WeatherDisplay {
       default:
         return 'Daytime';
     }
+  }
+
+  /// Period label with local clock time, e.g. `Daytime · 14:32`.
+  static String timeLabelWithClock(
+    String period, {
+    DateTime? at,
+  }) {
+    final clock = DateFormat.Hm().format((at ?? DateTime.now()).toLocal());
+    return '${timeLabel(period)} · $clock';
   }
 
   static String paramLabel(String paramKey) {

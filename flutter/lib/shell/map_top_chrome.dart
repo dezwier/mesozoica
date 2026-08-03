@@ -7,7 +7,7 @@ import 'map_chrome_insets.dart';
 import 'map_user_hud.dart';
 import 'map_weather_chip.dart';
 
-/// Floating top controls: profile HUD, weather chip, Archive/Field toggle, notifications.
+/// Floating top controls: profile HUD, Archive/Field toggle, notifications, weather.
 class MapTopChrome extends StatelessWidget {
   const MapTopChrome({
     super.key,
@@ -63,7 +63,7 @@ class MapTopChrome extends StatelessWidget {
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 12),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   SizedBox(
@@ -92,8 +92,10 @@ class MapTopChrome extends StatelessWidget {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 4),
-                  const MapWeatherChip(),
+                  const Align(
+                    alignment: Alignment.centerRight,
+                    child: MapWeatherChip(),
+                  ),
                 ],
               ),
             ),

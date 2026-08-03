@@ -6,7 +6,6 @@ import '../../controllers/weather_controller.dart';
 import '../../models/weather_status.dart';
 import '../common/draggable_sheet_wrapper.dart';
 import 'weather_display.dart';
-import 'weather_scene.dart';
 
 /// Opens the ambient weather report drawer (same height as skill / profile sheets).
 void showWeatherDetailSheet(BuildContext context) {
@@ -77,8 +76,9 @@ class WeatherDetailDrawer extends StatelessWidget {
                           _ImpactSectionCard(
                             icon: Icons.schedule,
                             title: 'Time of day',
-                            subtitle:
-                                WeatherDisplay.timeLabel(status.weatherTime),
+                            subtitle: WeatherDisplay.timeLabelWithClock(
+                              status.weatherTime,
+                            ),
                             rows: _weatherTimeImpactRows(status.weatherTime),
                           ),
                           const SizedBox(height: 5),
@@ -203,69 +203,130 @@ class _WeatherHero extends StatelessWidget {
 
   final WeatherStatus status;
 
+  static const _overlayShadows = <Shadow>[
+    Shadow(
+      color: Color(0xCC000000),
+      blurRadius: 14,
+      offset: Offset(0, 2),
+    ),
+    Shadow(
+      color: Color(0x99000000),
+      blurRadius: 4,
+      offset: Offset(0, 1),
+    ),
+  ];
+
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
     final tempReady =
         !(status.weatherType == 'unknown' && status.observedAt == null);
     final tempText =
         tempReady ? '${status.temperatureC.round()}°' : '—';
+    final asset = WeatherDisplay.assetPath(
+      status.weatherType,
+      weatherTime: status.weatherTime,
+    );
+    final radius = BorderRadius.circular(WeatherDetailDrawer._cardRadius);
 
     return Card(
       elevation: 1,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(WeatherDetailDrawer._cardRadius),
-      ),
-      child: Container(
-        width: double.infinity,
-        decoration: BoxDecoration(
-          color: scheme.surfaceContainerHighest.withValues(alpha: 0.5),
-          borderRadius:
-              BorderRadius.circular(WeatherDetailDrawer._cardRadius),
-        ),
-        padding: const EdgeInsets.fromLTRB(16, 18, 16, 18),
-        child: Column(
+      clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(borderRadius: radius),
+      child: AspectRatio(
+        aspectRatio: 1,
+        child: Stack(
+          fit: StackFit.expand,
           children: [
-            WeatherScene(
-              weatherType: status.weatherType,
-              weatherTime: status.weatherTime,
-              size: 220,
-              circular: true,
-            ),
-            const SizedBox(height: 14),
-            Text(
-              WeatherDisplay.weatherLabel(status.weatherType),
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
-            ),
-            const SizedBox(height: 12),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  tempText,
-                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                        fontWeight: FontWeight.w700,
-                        height: 1,
-                      ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  child: Container(
-                    width: 1,
-                    height: 22,
-                    color: scheme.onSurface.withValues(alpha: 0.2),
+            if (asset != null)
+              Image.asset(
+                asset,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) => ColoredBox(
+                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                  child: Center(
+                    child: Icon(
+                      WeatherDisplay.weatherIcon(status.weatherType),
+                      size: 64,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
                   ),
                 ),
-                Text(
-                  WeatherDisplay.timeLabel(status.weatherTime),
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                        color: scheme.onSurfaceVariant,
-                      ),
+              )
+            else
+              ColoredBox(
+                color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                child: Center(
+                  child: Icon(
+                    WeatherDisplay.weatherIcon(status.weatherType),
+                    size: 64,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
                 ),
-              ],
+              ),
+            const DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Color(0x00000000),
+                    Color(0x33000000),
+                    Color(0xB8000000),
+                  ],
+                  stops: [0.42, 0.68, 1.0],
+                ),
+              ),
+            ),
+            Positioned(
+              left: 16,
+              right: 16,
+              bottom: 16,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    WeatherDisplay.weatherLabel(status.weatherType),
+                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w800,
+                          height: 1.1,
+                          shadows: _overlayShadows,
+                        ),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Text(
+                        tempText,
+                        style:
+                            Theme.of(context).textTheme.headlineMedium?.copyWith(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w700,
+                                  height: 1,
+                                  shadows: _overlayShadows,
+                                ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        child: Container(
+                          width: 1,
+                          height: 22,
+                          color: Colors.white.withValues(alpha: 0.45),
+                        ),
+                      ),
+                      Text(
+                        WeatherDisplay.timeLabelWithClock(status.weatherTime),
+                        style:
+                            Theme.of(context).textTheme.titleMedium?.copyWith(
+                                  color: Colors.white.withValues(alpha: 0.95),
+                                  fontWeight: FontWeight.w600,
+                                  shadows: _overlayShadows,
+                                ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ],
         ),

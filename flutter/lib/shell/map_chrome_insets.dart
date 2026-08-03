@@ -7,8 +7,8 @@ class MapChromeInsets {
   /// Height of the top control row (below the status bar).
   static const double topRowHeight = 84;
 
-  /// Compact weather chip under the profile HUD (+ gap).
-  static const double weatherChipHeight = 32;
+  /// Compact weather control under notifications (+ gap).
+  static const double weatherChipHeight = 44;
 
   /// Icon size in the bottom bar (bar height stays fixed).
   static const double bottomIconSize = 40;
