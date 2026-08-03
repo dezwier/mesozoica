@@ -74,6 +74,11 @@ def expire_if_needed(session: Session, row: ToolSession) -> ToolSession:
     if row.expires_at is None or row.expires_at > _utcnow():
         return row
     now = _utcnow()
+    from app.services.tool_action_service.disguise_session import (
+        clear_disguiser_link_for_session,
+    )
+
+    clear_disguiser_link_for_session(session, row)
     row.status = SESSION_STATUS_COMPLETED
     close_session(row, now=now, stop_reason=STOP_REASON_EXHAUSTED)
     session.add(row)
@@ -92,7 +97,12 @@ def cancel_live_timed_sessions(session: Session, *, user_id: int) -> None:
             col(ToolSession.status).in_(LIVE_STATUSES),
         )
     ).all()
+    from app.services.tool_action_service.disguise_session import (
+        clear_disguiser_link_for_session,
+    )
+
     for row in rows:
+        clear_disguiser_link_for_session(session, row)
         row.status = SESSION_STATUS_CANCELLED
         close_session(row, now=now, stop_reason=STOP_REASON_MANUAL)
         session.add(row)
@@ -139,6 +149,11 @@ def cancel_live_sessions_for_tool(
             for event in pending:
                 event.status = EVENT_STATUS_SKIPPED
                 session.add(event)
+        from app.services.tool_action_service.disguise_session import (
+            clear_disguiser_link_for_session,
+        )
+
+        clear_disguiser_link_for_session(session, row)
         row.status = SESSION_STATUS_CANCELLED
         close_session(row, now=now, stop_reason=STOP_REASON_MANUAL)
         session.add(row)

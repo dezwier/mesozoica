@@ -1077,6 +1077,36 @@ class RidgeGlassActionConfig(BaseModel):
         return float(mod.value)
 
 
+class DisguiseActionConfig(BaseModel):
+    """Knobs for site-stewardship disguise covers (Brush Scrim / Blackout Cover)."""
+
+    model_config = {"frozen": True}
+
+    duration_minutes: int = 60
+    discovery_chance_multiplier: float = 0.5
+    xp: int = 5
+    stats_explanation: str = ""
+
+    @field_validator("duration_minutes")
+    @classmethod
+    def _validate_duration(cls, value: int) -> int:
+        if value < 1:
+            raise ValueError("duration_minutes must be >= 1")
+        return value
+
+    @field_validator("discovery_chance_multiplier")
+    @classmethod
+    def _validate_multiplier(cls, value: float) -> float:
+        return _clamp_unit_interval(value, label="discovery_chance_multiplier")
+
+    @field_validator("xp")
+    @classmethod
+    def _validate_xp(cls, value: int) -> int:
+        if value < 0:
+            raise ValueError("xp must be >= 0")
+        return value
+
+
 def _parse_rgb_color(value: object) -> tuple[int, int, int]:
     if isinstance(value, str):
         raw = value.strip().lstrip("#")
@@ -1295,6 +1325,28 @@ class ToolActionsConfig(BaseModel):
             ),
         )
     )
+    brush_scrim: DisguiseActionConfig = Field(
+        default_factory=lambda: DisguiseActionConfig(
+            duration_minutes=60,
+            discovery_chance_multiplier=0.5,
+            xp=5,
+            stats_explanation=(
+                "Covers one discovered site; rival discovery chance is "
+                "halved. Awards site-stewardship XP when a rival still finds it."
+            ),
+        )
+    )
+    blackout_cover: DisguiseActionConfig = Field(
+        default_factory=lambda: DisguiseActionConfig(
+            duration_minutes=60,
+            discovery_chance_multiplier=0.0,
+            xp=10,
+            stats_explanation=(
+                "Covers one discovered site; rival discovery chance is "
+                "multiplied to zero while active."
+            ),
+        )
+    )
 
     def guidance_config_for(self, action_key: str) -> GuidanceActionConfig:
         mapping = {
@@ -1306,6 +1358,16 @@ class ToolActionsConfig(BaseModel):
             return mapping[action_key]
         except KeyError as exc:
             raise KeyError(f"unknown guidance action: {action_key}") from exc
+
+    def disguise_config_for(self, action_key: str) -> DisguiseActionConfig:
+        mapping = {
+            "brush_scrim": self.brush_scrim,
+            "blackout_cover": self.blackout_cover,
+        }
+        try:
+            return mapping[action_key]
+        except KeyError as exc:
+            raise KeyError(f"unknown disguise action: {action_key}") from exc
 
     def tools_modifying_skill(self, skill_id: str) -> list[tuple[str, ModifiesMainParams]]:
         """Return (action_key, mods) for tools that modify ``skill_id``."""

@@ -754,6 +754,8 @@ class ToolActionsConfig {
     required this.terrainEcho,
     required this.ridgeGlass,
     required this.expeditionDrivetrain,
+    required this.brushScrim,
+    required this.blackoutCover,
   });
 
   final AerialActionConfig aerialRecon;
@@ -766,6 +768,8 @@ class ToolActionsConfig {
   final TerrainEchoActionConfig terrainEcho;
   final RidgeGlassActionConfig ridgeGlass;
   final RidgeGlassActionConfig expeditionDrivetrain;
+  final DisguiseActionConfig brushScrim;
+  final DisguiseActionConfig blackoutCover;
 
   AerialActionConfig configFor(String actionKey) {
     switch (actionKey) {
@@ -786,6 +790,16 @@ class ToolActionsConfig {
       case 'geo_compass':
       default:
         return geoCompass;
+    }
+  }
+
+  DisguiseActionConfig disguiseConfigFor(String actionKey) {
+    switch (actionKey) {
+      case 'blackout_cover':
+        return blackoutCover;
+      case 'brush_scrim':
+      default:
+        return brushScrim;
     }
   }
 
@@ -812,6 +826,10 @@ class ToolActionsConfig {
         return ridgeGlass.toParamsJson();
       case 'Expedition Drivetrain':
         return expeditionDrivetrain.toParamsJson();
+      case 'Brush Scrim':
+        return brushScrim.toParamsJson();
+      case 'Blackout Cover':
+        return blackoutCover.toParamsJson();
       default:
         return const {};
     }
@@ -918,6 +936,26 @@ class ToolActionsConfig {
           statsExplanation:
               'While active, raises max discovery speed by 150% so bicycle '
               'travel still counts toward discovery distance.',
+        ),
+      ),
+      brushScrim: DisguiseActionConfig.fromYaml(
+        GameConfig._asMap(yaml['brush_scrim']),
+        defaults: const DisguiseActionConfig(
+          durationMinutes: 60,
+          discoveryChanceMultiplier: 0.5,
+          xp: 5,
+          statsExplanation:
+              'Covers one discovered site; rival discovery chance is halved.',
+        ),
+      ),
+      blackoutCover: DisguiseActionConfig.fromYaml(
+        GameConfig._asMap(yaml['blackout_cover']),
+        defaults: const DisguiseActionConfig(
+          durationMinutes: 60,
+          discoveryChanceMultiplier: 0.0,
+          xp: 10,
+          statsExplanation:
+              'Covers one discovered site; rival discovery chance is zero.',
         ),
       ),
     );
@@ -1388,6 +1426,50 @@ class RidgeGlassActionConfig {
       durationMinutes: _asInt(yaml['duration_minutes'], d.durationMinutes),
       modifiesMainParams: mods,
       statsExplanation: _asString(yaml['stats_explanation'], d.statsExplanation),
+    );
+  }
+}
+
+class DisguiseActionConfig {
+  const DisguiseActionConfig({
+    required this.durationMinutes,
+    required this.discoveryChanceMultiplier,
+    required this.xp,
+    required this.statsExplanation,
+  });
+
+  final int durationMinutes;
+  final double discoveryChanceMultiplier;
+  final int xp;
+  final String statsExplanation;
+
+  Map<String, dynamic> toParamsJson() => {
+        'duration_minutes': durationMinutes,
+        'discovery_chance_multiplier': discoveryChanceMultiplier,
+        'xp': xp,
+        'stats_explanation': statsExplanation,
+      };
+
+  factory DisguiseActionConfig.fromYaml(
+    Map<String, dynamic> yaml, {
+    DisguiseActionConfig? defaults,
+  }) {
+    final d = defaults ??
+        const DisguiseActionConfig(
+          durationMinutes: 60,
+          discoveryChanceMultiplier: 0.5,
+          xp: 5,
+          statsExplanation: '',
+        );
+    return DisguiseActionConfig(
+      durationMinutes: _asInt(yaml['duration_minutes'], d.durationMinutes),
+      discoveryChanceMultiplier: _asDouble(
+        yaml['discovery_chance_multiplier'],
+        d.discoveryChanceMultiplier,
+      ).clamp(0.0, 1.0),
+      xp: _asInt(yaml['xp'], d.xp),
+      statsExplanation:
+          _asString(yaml['stats_explanation'], d.statsExplanation),
     );
   }
 }

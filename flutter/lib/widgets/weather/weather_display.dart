@@ -139,8 +139,10 @@ abstract final class WeatherDisplay {
     const labels = <String, String>{
       'visibility_distance_m': 'Visibility distance',
       'discovery_chance': 'Discovery chance',
+      'discovery_chance_multiplier': 'Rival chance multiplier',
       'max_discovery_speed_kmh': 'Max discovery speed',
       'site_discovery_xp': 'Site discovery XP',
+      'xp': 'Stewardship XP',
       'active_km_xp': 'Active km XP',
       'passive_km_xp': 'Passive km XP',
       'fossil_discovery_xp': 'Fossil discovery XP',

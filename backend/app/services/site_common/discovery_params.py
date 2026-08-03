@@ -141,8 +141,19 @@ def resolve_site_discovery_params(
         weather_type=weather_type,
         tool_mods=tool_mods,
     )
+    discovery_chance = float(resolved["discovery_chance"])
+    from app.services.tool_action_service.disguise_session import (
+        rival_discovery_chance_multiplier,
+    )
+
+    mult = rival_discovery_chance_multiplier(
+        session, site_id=int(site.site_id), rolling_user_id=user_id
+    )
+    if mult != 1.0:
+        discovery_chance = max(0.0, min(1.0, discovery_chance * mult))
+
     return ResolvedSiteDiscoveryParams(
         visibility_distance_m=float(resolved["visibility_distance_m"]),
-        discovery_chance=float(resolved["discovery_chance"]),
+        discovery_chance=discovery_chance,
         site_discovery_xp=float(resolved["site_discovery_xp"]),
     )

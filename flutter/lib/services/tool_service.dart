@@ -263,6 +263,7 @@ class ToolService {
     LatLng? origin,
     double? lat,
     double? lon,
+    int? siteId,
   }) async {
     final uri = AppConfig.toolSessionsUri(toolId);
     final body = <String, dynamic>{};
@@ -278,6 +279,7 @@ class ToolService {
     }
     if (lat != null) body['lat'] = lat;
     if (lon != null) body['lon'] = lon;
+    if (siteId != null) body['site_id'] = siteId;
     if (kDebugMode) {
       debugPrint('ToolService POST $uri');
     }

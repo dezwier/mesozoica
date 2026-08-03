@@ -20,6 +20,7 @@ import 'controllers/formation_map_controller.dart';
 import 'controllers/orbit_survey_controller.dart';
 import 'controllers/ridge_glass_controller.dart';
 import 'controllers/expedition_drivetrain_controller.dart';
+import 'controllers/disguise_session_controller.dart';
 import 'controllers/terrain_echo_controller.dart';
 import 'controllers/guidance_session_controller.dart';
 import 'controllers/map_controller.dart';
@@ -146,6 +147,7 @@ class MesozoicaApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => TerrainEchoController()),
         ChangeNotifierProvider(create: (_) => RidgeGlassController()),
         ChangeNotifierProvider(create: (_) => ExpeditionDrivetrainController()),
+        ChangeNotifierProvider(create: (_) => DisguiseSessionController()),
         ChangeNotifierProvider(
           create: (context) => PhyloTreeController(
             catalogController: context.read<DinosaurCatalogController>(),

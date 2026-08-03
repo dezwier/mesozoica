@@ -71,6 +71,7 @@ class ToolSessionStartRequest(BaseModel):
     origin_lon: float | None = None
     lat: float | None = None
     lon: float | None = None
+    site_id: int | None = None
 
 
 class ToolSessionEventsSummary(BaseModel):

@@ -15,7 +15,7 @@ from app.models.tool_session import (
     ACTION_KEY_ORBIT_SURVEY,
     ACTION_KEY_RIDGE_GLASS,
     ACTION_KEY_TERRAIN_ECHO,
-    LIVE_STATUSES,
+    DISGUISE_ACTION_KEYS,
     SESSION_STATUS_ACTIVE,
     SESSION_STATUS_CANCELLED,
     STOP_REASON_MANUAL,
@@ -57,6 +57,11 @@ def _utcnow() -> datetime:
 
 
 def _action_key_for_tool_name(tool_name: str) -> str:
+    from app.services.tool_action_service.disguise_session import (
+        action_key_for_disguise_tool_name,
+        is_disguise_tool_name,
+    )
+
     if tool_name == TOOL_NAME_ORBIT_SURVEY:
         return ACTION_KEY_ORBIT_SURVEY
     if tool_name == TOOL_NAME_FORMATION_MAP:
@@ -67,6 +72,8 @@ def _action_key_for_tool_name(tool_name: str) -> str:
         return ACTION_KEY_RIDGE_GLASS
     if tool_name == TOOL_NAME_EXPEDITION_DRIVETRAIN:
         return ACTION_KEY_EXPEDITION_DRIVETRAIN
+    if is_disguise_tool_name(tool_name):
+        return action_key_for_disguise_tool_name(tool_name)
     return guidance_kind_for_tool_name(tool_name).action_key
 
 
@@ -245,6 +252,7 @@ def _create_timed_row(
     action_key: str,
     params: dict[str, Any],
     remaining_s: int,
+    state_json: dict[str, Any] | None = None,
 ) -> ToolSession:
     now = _utcnow()
     row = ToolSession(
@@ -255,7 +263,7 @@ def _create_timed_row(
         started_at=now,
         expires_at=now + timedelta(seconds=remaining_s),
         params_json=params,
-        state_json={},
+        state_json=dict(state_json or {}),
         created_at=now,
         updated_at=now,
     )
@@ -270,6 +278,47 @@ def _create_timed_row(
     )
     session.commit()
     session.refresh(row)
+    return row
+
+
+def start_disguise_session(
+    session: Session,
+    *,
+    user_id: int,
+    tool_id: int,
+    site_id: int,
+) -> ToolSession:
+    """Deploy a disguise cover on a site the user has already discovered."""
+    from app.services.tool_action_service.disguise_session import (
+        attach_disguiser_link,
+        prepare_disguise_start,
+    )
+
+    tool_type, instance, action_key, disguise_params = prepare_disguise_start(
+        session, user_id=user_id, tool_id=tool_id, site_id=site_id
+    )
+
+    ensure_exclusive_tool_session(
+        session, user_id=user_id, instance_id=int(instance.id)
+    )
+
+    remaining_s = allocate_remaining_for_start(
+        session, tool_type=tool_type, instance=instance
+    )
+    eff_duration = max(1, (remaining_s + 59) // 60)
+    params = {**disguise_params, "duration_minutes": eff_duration}
+    row = _create_timed_row(
+        session,
+        user_id=user_id,
+        instance_id=int(instance.id),
+        action_key=action_key,
+        params=params,
+        remaining_s=remaining_s,
+        state_json={"site_id": int(site_id)},
+    )
+    attach_disguiser_link(
+        session, user_id=user_id, site_id=int(site_id), tool_session=row
+    )
     return row
 
 
@@ -351,11 +400,13 @@ def start_timed_session(
     tool_id: int,
     lat: float | None = None,
     lon: float | None = None,
+    site_id: int | None = None,
 ) -> ToolSession:
     """Start a timed overlay session for the owned tool card.
 
     ``tool_id`` is the catalog tool_type id. Session length is remaining battery.
     Formation Map uses [lat]/[lon] for first placement.
+    Disguise tools require ``site_id``.
     """
     selected = resolve_owned_tool_selection(session, user_id=user_id, tool_id=tool_id)
     if selected is None:
@@ -372,6 +423,13 @@ def start_timed_session(
     if action_key == ACTION_KEY_FORMATION_MAP:
         return start_formation_session(
             session, user_id=user_id, tool_id=tool_id, lat=lat, lon=lon
+        )
+
+    if action_key in DISGUISE_ACTION_KEYS:
+        if site_id is None:
+            raise ValidationError("site_id is required to deploy a disguise cover")
+        return start_disguise_session(
+            session, user_id=user_id, tool_id=tool_id, site_id=int(site_id)
         )
 
     ensure_exclusive_tool_session(
@@ -479,6 +537,11 @@ def cancel_timed_session(
         row = expire_if_needed(session, row)
         if row.status == SESSION_STATUS_ACTIVE:
             now = _utcnow()
+            from app.services.tool_action_service.disguise_session import (
+                clear_disguiser_link_for_session,
+            )
+
+            clear_disguiser_link_for_session(session, row)
             row.status = SESSION_STATUS_CANCELLED
             close_session(row, now=now, stop_reason=STOP_REASON_MANUAL)
             session.add(row)
@@ -492,6 +555,11 @@ def cancel_timed_session(
     if row is None:
         return None
     now = _utcnow()
+    from app.services.tool_action_service.disguise_session import (
+        clear_disguiser_link_for_session,
+    )
+
+    clear_disguiser_link_for_session(session, row)
     row.status = SESSION_STATUS_CANCELLED
     close_session(row, now=now, stop_reason=STOP_REASON_MANUAL)
     session.add(row)

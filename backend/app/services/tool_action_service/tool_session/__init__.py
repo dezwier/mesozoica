@@ -39,6 +39,7 @@ from app.services.tool_action_service.tool_session.serialize import (
 from app.services.tool_action_service.tool_session.timed import (
     cancel_timed_session,
     get_active_timed_session,
+    start_disguise_session,
     start_formation_session,
     start_timed_session,
 )
@@ -69,6 +70,7 @@ __all__ = [
     "session_route_dicts",
     "sessions_for_tool_response",
     "start_aerial_session",
+    "start_disguise_session",
     "start_formation_session",
     "start_timed_session",
     "tool_session_response",

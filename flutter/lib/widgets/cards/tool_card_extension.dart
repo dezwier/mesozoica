@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../models/tool.dart';
 import 'tool_extensions/aerial_session_card_extension.dart';
+import 'tool_extensions/disguise_card_extension.dart';
 import 'tool_extensions/expedition_drivetrain_card_extension.dart';
 import 'tool_extensions/formation_map_card_extension.dart';
 import 'tool_extensions/guidance_card_extension.dart';
@@ -34,6 +35,7 @@ class ToolCardExtensions {
     TerrainEchoCardExtension(),
     RidgeGlassCardExtension(),
     ExpeditionDrivetrainCardExtension(),
+    DisguiseCardExtension(),
   ];
 
   static ToolCardExtension? forTool(ToolSummary tool) {

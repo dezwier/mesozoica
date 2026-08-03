@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../controllers/aerial_session_controller.dart';
+import '../controllers/disguise_session_controller.dart';
 import '../controllers/expedition_drivetrain_controller.dart';
 import '../controllers/formation_map_controller.dart';
 import '../controllers/orbit_survey_controller.dart';
@@ -11,6 +12,7 @@ import '../controllers/guidance_session_controller.dart';
 import '../controllers/ridge_glass_controller.dart';
 import '../controllers/terrain_echo_controller.dart';
 import '../models/aerial_action_kind.dart';
+import '../models/disguise_tool_kind.dart';
 import '../models/expedition_drivetrain_kind.dart';
 import '../models/formation_map_kind.dart';
 import '../models/orbit_survey_kind.dart';
@@ -20,6 +22,7 @@ import '../models/terrain_echo_kind.dart';
 import '../models/tool.dart';
 import '../models/tool_session.dart';
 import '../widgets/common/app_toast.dart';
+import '../widgets/tools/disguise_site_picker.dart';
 
 typedef _ToolActivator = bool Function(BuildContext context, ToolSummary tool);
 
@@ -35,6 +38,7 @@ class ToolActionRouter {
     _startTerrainEcho,
     _startRidgeGlass,
     _startExpeditionDrivetrain,
+    _startDisguise,
   ];
 
   static void start(BuildContext context, ToolSummary tool) {
@@ -56,6 +60,7 @@ class ToolActionRouter {
   /// Display name of a live tool card that blocks starting [forTool], if any.
   ///
   /// Includes the same card when it already has a live session / draw.
+  /// Disguise → disguise is allowed (server replaces the prior cover).
   static String? cardInUseLabel(
     BuildContext context, {
     required ToolSummary forTool,
@@ -103,6 +108,17 @@ class ToolActionRouter {
       return drive.tool?.name ?? ExpeditionDrivetrainKind.toolName;
     }
 
+    final disguise = context.read<DisguiseSessionController>();
+    if (disguise.isActive) {
+      if (DisguiseToolKind.matchesToolName(forTool.name)) {
+        return null;
+      }
+      return disguise.tool?.name ??
+          disguise.kind?.toolName ??
+          _labelForSession(disguise.session) ??
+          'Disguise tool';
+    }
+
     return null;
   }
 
@@ -124,7 +140,8 @@ class ToolActionRouter {
             : null) ??
         (session.actionKey == ExpeditionDrivetrainKind.actionKey
             ? ExpeditionDrivetrainKind.toolName
-            : null);
+            : null) ??
+        DisguiseToolKind.tryParseActionKey(session.actionKey)?.toolName;
   }
 
   static bool _startAerial(BuildContext context, ToolSummary tool) {
@@ -167,5 +184,31 @@ class ToolActionRouter {
     if (!ExpeditionDrivetrainKind.matchesToolName(tool.name)) return false;
     unawaited(context.read<ExpeditionDrivetrainController>().activate(tool));
     return true;
+  }
+
+  static bool _startDisguise(BuildContext context, ToolSummary tool) {
+    if (!DisguiseToolKind.matchesToolName(tool.name)) return false;
+    unawaited(_activateDisguise(context, tool));
+    return true;
+  }
+
+  static Future<void> _activateDisguise(
+    BuildContext context,
+    ToolSummary tool,
+  ) async {
+    final siteId = await showDisguiseSitePicker(context);
+    if (siteId == null || !context.mounted) return;
+    await context.read<DisguiseSessionController>().activate(
+          tool,
+          siteId: siteId,
+        );
+    if (!context.mounted) return;
+    final controller = context.read<DisguiseSessionController>();
+    final message = controller.message;
+    if (message != null && !controller.isActive) {
+      AppToast.error(context, message);
+    } else if (controller.isActive) {
+      AppToast.info(context, message ?? '${tool.name} active');
+    }
   }
 }

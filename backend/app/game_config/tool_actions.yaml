@@ -173,3 +173,41 @@ expedition_drivetrain:
     Duration is this card's lifetime battery; each use runs until you stop
     or time runs out. While active, raises max discovery speed by 150% so
     bicycle travel still counts toward discovery distance.
+
+brush_scrim:
+  duration_minutes: 60
+  discovery_chance_multiplier: 0.5
+  xp: 5
+  stats_explanation: >-
+    Duration is this card's lifetime battery; each use covers one discovered
+    site until you stop or time runs out. Rival walk-in and aerial discovery
+    chance on that site is multiplied by the listed factor. When a rival still
+    discovers it, you gain the listed site-stewardship XP. One disguise at a time.
+
+blackout_cover:
+  duration_minutes: 60
+  discovery_chance_multiplier: 0.0
+  xp: 10
+  stats_explanation: >-
+    Duration is this card's lifetime battery; each use covers one discovered
+    site until you stop or time runs out. Rival discovery chance on that site
+    is multiplied to zero while active. One disguise at a time.
+
+brush_scrim:
+  duration_minutes: 60
+  discovery_chance_multiplier: 0.5
+  xp: 5
+  stats_explanation: >-
+    Duration is this card's lifetime battery; each use covers one discovered
+    site until you stop or time runs out. Rival walk-in and aerial discovery
+    chance on that site is multiplied by the listed factor. When a rival still
+    discovers it, you gain the listed site-stewardship XP. One disguise at a time.
+
+blackout_cover:
+  duration_minutes: 60
+  discovery_chance_multiplier: 0.0
+  xp: 10
+  stats_explanation: >-
+    Duration is this card's lifetime battery; each use covers one discovered
+    site until you stop or time runs out. Rival discovery chance on that site
+    is multiplied to zero while active. One disguise at a time.

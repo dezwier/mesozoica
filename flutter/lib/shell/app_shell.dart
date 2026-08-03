@@ -13,6 +13,7 @@ import '../controllers/aerial_session_controller.dart';
 import '../controllers/auth_controller.dart';
 import '../controllers/catalog_mode_controller.dart';
 import '../controllers/expedition_drivetrain_controller.dart';
+import '../controllers/disguise_session_controller.dart';
 import '../controllers/field_discovery_coordinator.dart';
 import '../controllers/field_session_coordinator.dart';
 import '../controllers/formation_map_controller.dart';
@@ -170,6 +171,7 @@ class _AppShellState extends State<AppShell>
       unawaited(() async {
         await ridgeGlass.restoreActiveSession();
         await expeditionDrivetrain.restoreActiveSession();
+        await context.read<DisguiseSessionController>().restoreActiveSession();
         if (mounted) _syncMaxDiscoverySpeed();
       }());
 
@@ -467,6 +469,9 @@ class _AppShellState extends State<AppShell>
         unawaited(
           context.read<ExpeditionDrivetrainController>().restoreActiveSession(),
         );
+        unawaited(
+          context.read<DisguiseSessionController>().restoreActiveSession(),
+        );
         final auth = context.read<AuthController>();
         final userId = auth.currentUser?.id;
         if (userId != null) {
@@ -534,6 +539,9 @@ class _AppShellState extends State<AppShell>
     unawaited(
       context.read<ExpeditionDrivetrainController>().stop(notifyServer: false),
     );
+    unawaited(
+      context.read<DisguiseSessionController>().stop(notifyServer: false),
+    );
     context.read<SiteCatalogController>().load(force: true);
     context.read<ToolCatalogController>().load(force: true);
 
@@ -569,6 +577,8 @@ class _AppShellState extends State<AppShell>
       await context.read<RidgeGlassController>().restoreActiveSession();
       if (!mounted || _previousUserId != userId) return;
       await context.read<ExpeditionDrivetrainController>().restoreActiveSession();
+      if (!mounted || _previousUserId != userId) return;
+      await context.read<DisguiseSessionController>().restoreActiveSession();
       if (!mounted || _previousUserId != userId) return;
       _syncMaxDiscoverySpeed();
     });

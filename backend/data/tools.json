@@ -184,6 +184,22 @@
     "action": "Cover"
   },
   {
+    "name": "Brush Scrim",
+    "category": "2 site_stewardship",
+    "scientific_tool": "camouflage netting",
+    "description": "Drapes brush-toned netting over a locality so rivals are half as likely to notice it.",
+    "rarity": 2,
+    "action": "Conceal"
+  },
+  {
+    "name": "Blackout Cover",
+    "category": "2 site_stewardship",
+    "scientific_tool": "opaque tarp",
+    "description": "Fully shrouds a site under an opaque tarp, hiding it from anyone who has not already found it.",
+    "rarity": 3,
+    "action": "Shroud"
+  },
+  {
     "name": "Detail Brush",
     "category": "5 fossil_excavation",
     "scientific_tool": "brush",

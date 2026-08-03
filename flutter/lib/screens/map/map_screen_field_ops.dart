@@ -219,6 +219,7 @@ mixin _MapScreenFieldOpsMixin on State<MapScreen>, _MapScreenCameraMixin {
         context.read<TerrainEchoController>().clearLocalSession();
         context.read<RidgeGlassController>().clearLocalSession();
         context.read<ExpeditionDrivetrainController>().clearLocalSession();
+        context.read<DisguiseSessionController>().clearLocalSession();
       }
       _showScanBanner(
         'Deleted ${result.userSitesDeleted} user sites · '

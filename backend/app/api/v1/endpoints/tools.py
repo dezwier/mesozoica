@@ -370,6 +370,7 @@ def post_tool_session(
             tool_id=tool_id,
             lat=lat,
             lon=lon,
+            site_id=payload.site_id,
         )
         status_code = status.HTTP_201_CREATED
 

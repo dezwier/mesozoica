@@ -97,6 +97,14 @@ def discover_site(
             "Discovery chance miss - stay nearby or re-enter range to try again"
         )
 
+    from app.services.tool_action_service.disguise_session import (
+        award_disguise_xp_on_rival_discover,
+    )
+
+    award_disguise_xp_on_rival_discover(
+        session, site_id=site_id, discovering_user_id=user_id
+    )
+
     session.add(
         UserSite(
             user_id=user_id,

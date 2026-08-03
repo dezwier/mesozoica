@@ -13,13 +13,20 @@ USER_SITE_ROLE_SURVEYOR = "surveyor"
 USER_SITE_ROLE_EXCAVATOR = "excavator"
 USER_SITE_ROLE_EXHAUSTER = "exhauster"
 USER_SITE_ROLE_PROTECTOR = "protector"
+USER_SITE_ROLE_DISGUISER = "disguiser"
 
-USER_SITE_ROLES: tuple[str, ...] = (
+# Roles that participate in global site status (latest timestamp wins).
+STATUS_ROLES: tuple[str, ...] = (
     USER_SITE_ROLE_DISCOVERER,
     USER_SITE_ROLE_SURVEYOR,
     USER_SITE_ROLE_EXCAVATOR,
     USER_SITE_ROLE_EXHAUSTER,
     USER_SITE_ROLE_PROTECTOR,
+)
+
+USER_SITE_ROLES: tuple[str, ...] = (
+    *STATUS_ROLES,
+    USER_SITE_ROLE_DISGUISER,
 )
 
 SITE_STATUS_HIDDEN = "hidden"
@@ -85,7 +92,9 @@ class UserSite(SQLModel, table=True):
     )
     role: str = Field(
         max_length=16,
-        description="discoverer, surveyor, excavator, exhauster, or protector",
+        description=(
+            "discoverer, surveyor, excavator, exhauster, protector, or disguiser"
+        ),
     )
     source_session_id: Optional[int] = Field(
         default=None,

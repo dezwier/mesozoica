@@ -24,6 +24,8 @@ def yaml_defaults_for_tool_type(tool_type: ToolType) -> dict[str, Any]:
         "Terrain Echo": cfg.terrain_echo.model_dump(mode="json"),
         "Ridge Glass": cfg.ridge_glass.model_dump(mode="json"),
         "Expedition Drivetrain": cfg.expedition_drivetrain.model_dump(mode="json"),
+        "Brush Scrim": cfg.brush_scrim.model_dump(mode="json"),
+        "Blackout Cover": cfg.blackout_cover.model_dump(mode="json"),
     }
     payload = by_name.get(tool_type.name, _EMPTY)
     return dict(payload)
