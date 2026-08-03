@@ -17,8 +17,6 @@ class DisguiseCardExtension implements ToolCardExtension {
   @override
   List<String> editableParamKeys(ToolSummary tool) => const [
         'duration_minutes',
-        'discovery_chance_multiplier',
-        'xp',
       ];
 
   @override

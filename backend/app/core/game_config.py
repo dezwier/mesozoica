@@ -566,7 +566,9 @@ class SiteStewardshipMainParams(BaseModel):
     completeness_accuracy: float = 0.0
     quality_accuracy: float = 0.0
     depth_accuracy: float = 0.0
-    # XP when a rival discovers a site the player has actively disguised.
+    # Multiplier on discovery_chance for rivals on sites you discovered.
+    rival_discovery: float = 1.0
+    # XP when a rival discovery roll would hit but your disguise blocked it.
     successful_site_disguise_xp: float = 50.0
 
     @field_validator(
@@ -579,6 +581,13 @@ class SiteStewardshipMainParams(BaseModel):
     @classmethod
     def _validate_accuracy(cls, value: float) -> float:
         return _clamp_unit_interval(value, label="accuracy")
+
+    @field_validator("rival_discovery")
+    @classmethod
+    def _validate_rival_discovery(cls, value: float) -> float:
+        if value < 0.0:
+            raise ValueError("rival_discovery must be >= 0")
+        return value
 
     @field_validator("successful_site_disguise_xp")
     @classmethod
@@ -725,6 +734,10 @@ class SiteStewardshipConfig(BaseModel):
     @property
     def successful_site_disguise_xp(self) -> float:
         return float(self.main_params.successful_site_disguise_xp)
+
+    @property
+    def rival_discovery(self) -> float:
+        return float(self.main_params.rival_discovery)
 
 
 # Back-compat alias.
@@ -1096,7 +1109,7 @@ class DisguiseActionConfig(BaseModel):
     model_config = {"frozen": True}
 
     duration_minutes: int = 60
-    discovery_chance_multiplier: float = 0.5
+    modifies_main_params: ModifiesMainParams | None = None
     stats_explanation: str = ""
 
     @field_validator("duration_minutes")
@@ -1106,10 +1119,15 @@ class DisguiseActionConfig(BaseModel):
             raise ValueError("duration_minutes must be >= 1")
         return value
 
-    @field_validator("discovery_chance_multiplier")
-    @classmethod
-    def _validate_multiplier(cls, value: float) -> float:
-        return _clamp_unit_interval(value, label="discovery_chance_multiplier")
+    def site_stewardship_mod(self, param: str) -> ParamModifier | None:
+        mods = self.modifies_main_params
+        if mods is None:
+            return None
+        return mods.params_for("using", "site_stewardship").get(param)
+
+    @property
+    def rival_discovery_mod(self) -> ParamModifier | None:
+        return self.site_stewardship_mod("rival_discovery")
 
 
 def _parse_rgb_color(value: object) -> tuple[int, int, int]:
@@ -1333,21 +1351,32 @@ class ToolActionsConfig(BaseModel):
     brush_scrim: DisguiseActionConfig = Field(
         default_factory=lambda: DisguiseActionConfig(
             duration_minutes=60,
-            discovery_chance_multiplier=0.5,
+            modifies_main_params=ModifiesMainParams(
+                using={
+                    "site_stewardship": {
+                        "rival_discovery": ParamModifier(op="replace", value=0.5),
+                    },
+                },
+            ),
             stats_explanation=(
-                "Covers one discovered site; rival discovery chance is "
-                "halved. Awards successful site disguise XP when a rival "
-                "still finds it."
+                "Covers one discovered site; sets rival_discovery to 0.5 "
+                "while active."
             ),
         )
     )
     blackout_cover: DisguiseActionConfig = Field(
         default_factory=lambda: DisguiseActionConfig(
             duration_minutes=60,
-            discovery_chance_multiplier=0.0,
+            modifies_main_params=ModifiesMainParams(
+                using={
+                    "site_stewardship": {
+                        "rival_discovery": ParamModifier(op="replace", value=0.0),
+                    },
+                },
+            ),
             stats_explanation=(
-                "Covers one discovered site; rival discovery chance is "
-                "multiplied to zero while active."
+                "Covers one discovered site; sets rival_discovery to 0 "
+                "while active."
             ),
         )
     )
@@ -1382,6 +1411,8 @@ class ToolActionsConfig(BaseModel):
             ("site_navigator", self.site_navigator),
             ("ridge_glass", self.ridge_glass),
             ("expedition_drivetrain", self.expedition_drivetrain),
+            ("brush_scrim", self.brush_scrim),
+            ("blackout_cover", self.blackout_cover),
         ):
             mods = cfg.modifies_main_params
             if mods is not None and mods.affects_skill(skill_id):

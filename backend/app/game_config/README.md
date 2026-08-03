@@ -116,6 +116,7 @@ resolvable):
 | `completeness_accuracy` | Card display precision for completeness (0–1; +1%/level) |
 | `quality_accuracy` | Card display precision for quality axis (0–1; +1%/level) |
 | `depth_accuracy` | Card display precision for depth (0–1; +1%/level; depth 0 always exact) |
+| `rival_discovery` | Multiplier on discovery_chance for other users on your discovered sites (default 1) |
 | `successful_site_disguise_xp` | XP when a rival discovery roll would hit but your active disguise blocks it |
 
 Accuracy params are display-only on the site card for now. Base is 0; each

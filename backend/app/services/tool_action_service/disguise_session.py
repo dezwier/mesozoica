@@ -31,6 +31,12 @@ from app.models.user_site import (
     UserSite,
 )
 from app.services.level_service import award_successful_site_disguise_xp
+from app.services.level_service.main_params import (
+    resolve_site_stewardship_main_params,
+    tool_mods_from_session_params,
+)
+from app.services.level_service.skills import get_skill_xp
+from app.services.level_service.xp_table import level_for_xp
 from app.services.tool_action_service.tool_session.lifecycle import (
     close_session,
     expire_if_needed,
@@ -68,7 +74,8 @@ class ActiveDisguise:
     user_id: int
     site_id: int
     session_id: int
-    discovery_chance_multiplier: float
+    rival_discovery: float
+    params_json: dict
 
 
 def clear_disguiser_link_for_session(session: Session, row: ToolSession) -> None:
@@ -181,18 +188,28 @@ def prepare_disguise_start(
     action_key = action_key_for_disguise_tool_name(tool_type.name)
     cfg = get_game_config().tool_actions.disguise_config_for(action_key)
     inst_p = instance.params_json or {}
-    multiplier = float(
-        inst_p.get(
-            "discovery_chance_multiplier",
-            cfg.discovery_chance_multiplier,
-        )
-    )
-    params = {
-        "discovery_chance_multiplier": max(0.0, min(1.0, multiplier)),
+    raw_mods = inst_p.get("modifies_main_params")
+    if raw_mods is None and cfg.modifies_main_params is not None:
+        raw_mods = cfg.modifies_main_params.model_dump(mode="json")
+    params: dict = {
         "stats_explanation": inst_p.get(
             "stats_explanation", cfg.stats_explanation
         ),
     }
+    if raw_mods is not None:
+        params["modifies_main_params"] = raw_mods
+    elif inst_p.get("discovery_chance_multiplier") is not None:
+        # Legacy instance knobs still accepted until catalogs are re-seeded.
+        params["modifies_main_params"] = {
+            "using": {
+                "site_stewardship": {
+                    "rival_discovery": {
+                        "op": "replace",
+                        "value": float(inst_p["discovery_chance_multiplier"]),
+                    }
+                }
+            }
+        }
     return tool_type, instance, action_key, params
 
 
@@ -261,27 +278,68 @@ def list_active_disguises_for_site(
             clear_disguiser_link_for_session(session, row)
             session.commit()
             continue
-        params = row.params_json or {}
+        params = dict(row.params_json or {})
         out.append(
             ActiveDisguise(
                 user_id=int(link.user_id),
                 site_id=int(site_id),
                 session_id=int(row.id),
-                discovery_chance_multiplier=float(
-                    params.get("discovery_chance_multiplier", 1.0)
+                rival_discovery=_resolve_cover_rival_discovery(
+                    session, user_id=int(link.user_id), params=params
                 ),
+                params_json=params,
             )
         )
     return out
 
 
-def rival_discovery_chance_multiplier(
+def _resolve_cover_rival_discovery(
+    session: Session,
+    *,
+    user_id: int,
+    params: dict,
+) -> float:
+    """Effective ``rival_discovery`` for one active cover session."""
+    user = session.get(User, user_id)
+    skill_level = 1
+    if user is not None:
+        skill_level = level_for_xp(get_skill_xp(user, "site_stewardship"))
+    tool_mods = tool_mods_from_session_params(
+        params, when="using", skill_id="site_stewardship"
+    )
+    # Legacy snapshot: bare discovery_chance_multiplier.
+    if (
+        "rival_discovery" not in tool_mods
+        and params.get("discovery_chance_multiplier") is not None
+    ):
+        from app.core.game_config import ParamModifier
+
+        tool_mods = {
+            **tool_mods,
+            "rival_discovery": ParamModifier(
+                op="replace",
+                value=float(params["discovery_chance_multiplier"]),
+            ),
+        }
+    resolved = resolve_site_stewardship_main_params(
+        skill_level=skill_level,
+        tool_mods=tool_mods,
+    )
+    return max(0.0, float(resolved["rival_discovery"]))
+
+
+def rival_discovery_multiplier(
     session: Session,
     *,
     site_id: int,
     rolling_user_id: int,
 ) -> float:
-    """Strongest (minimum) disguise multiplier for a non-discoverer, else 1.0."""
+    """Effective ``rival_discovery`` for ``rolling_user_id`` on ``site_id``.
+
+    Discoverers are unaffected (1.0). With active rival covers, returns the
+    strongest (minimum) resolved ``rival_discovery``. Otherwise the skill
+    baseline (default 1).
+    """
     has_discoverer = (
         session.exec(
             select(UserSite).where(
@@ -296,12 +354,18 @@ def rival_discovery_chance_multiplier(
         return 1.0
 
     disguises = list_active_disguises_for_site(session, site_id=site_id)
-    if not disguises:
-        return 1.0
     others = [d for d in disguises if d.user_id != rolling_user_id]
-    if not others:
-        return 1.0
-    return min(d.discovery_chance_multiplier for d in others)
+    if others:
+        return min(d.rival_discovery for d in others)
+
+    return max(
+        0.0,
+        float(resolve_site_stewardship_main_params()["rival_discovery"]),
+    )
+
+
+# Back-compat alias.
+rival_discovery_chance_multiplier = rival_discovery_multiplier
 
 
 DisguiseDiscoveryRoll = Literal["hit", "blocked", "miss"]
@@ -315,7 +379,7 @@ def roll_discovery_with_disguise(
     base_chance: float,
     rng: random.Random | None = None,
 ) -> DisguiseDiscoveryRoll:
-    """Single Uniform roll against base chance, reduced by rival disguises.
+    """Single Uniform roll against base chance, reduced by rival_discovery.
 
     - ``hit``: roll clears the disguised (effective) chance → rival discovers.
     - ``blocked``: roll would have cleared base chance, but disguise stopped it
@@ -323,7 +387,7 @@ def roll_discovery_with_disguise(
     - ``miss``: roll misses even the undisguised base chance.
     """
     base = max(0.0, min(1.0, float(base_chance)))
-    mult = rival_discovery_chance_multiplier(
+    mult = rival_discovery_multiplier(
         session, site_id=site_id, rolling_user_id=rolling_user_id
     )
     effective = max(0.0, min(1.0, base * mult))

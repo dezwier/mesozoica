@@ -139,7 +139,7 @@ abstract final class WeatherDisplay {
     const labels = <String, String>{
       'visibility_distance_m': 'Visibility distance',
       'discovery_chance': 'Discovery chance',
-      'discovery_chance_multiplier': 'Rival chance multiplier',
+      'rival_discovery': 'Rival discovery',
       'max_discovery_speed_kmh': 'Max discovery speed',
       'site_discovery_xp': 'Site discovery XP',
       'successful_site_disguise_xp': 'Successful site disguise XP',

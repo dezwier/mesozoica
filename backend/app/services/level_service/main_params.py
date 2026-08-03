@@ -286,6 +286,9 @@ def resolve_site_stewardship_main_params(
         "depth_accuracy": _resolve(
             "depth_accuracy", base=float(mp.depth_accuracy), clamp_unit=True
         ),
+        "rival_discovery": _resolve(
+            "rival_discovery", base=float(mp.rival_discovery)
+        ),
         "successful_site_disguise_xp": _resolve(
             "successful_site_disguise_xp",
             base=float(mp.successful_site_disguise_xp),

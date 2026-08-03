@@ -15,6 +15,9 @@ main_params:
   completeness_accuracy: 0
   quality_accuracy: 0
   depth_accuracy: 0
+  # Multiplier on discovery_chance for other users on sites you discovered.
+  # Tools (Brush Scrim / Blackout Cover / later cards) drive this up or down.
+  rival_discovery: 1
   # XP when a rival discovery roll would have hit but your disguise blocked it
   # (Brush Scrim / Blackout Cover). Blackout still rolls; effective odds are 0.
   successful_site_disguise_xp: 50
@@ -83,6 +86,7 @@ quality_weights:
 
 # Accuracy: +0.01 per level (1..99).
 level_modifiers:
+  rival_discovery: []
   successful_site_disguise_xp: []
   # +1% per site_stewardship level (highest matching entry; base 0 + level + tools).
   dino_accuracy: &site_stewardship_accuracy_levels

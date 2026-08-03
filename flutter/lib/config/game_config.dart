@@ -660,6 +660,7 @@ class SiteStewardshipMainParams {
     required this.completenessAccuracy,
     required this.qualityAccuracy,
     required this.depthAccuracy,
+    required this.rivalDiscovery,
     required this.successfulSiteDisguiseXp,
   });
 
@@ -668,6 +669,7 @@ class SiteStewardshipMainParams {
   final double completenessAccuracy;
   final double qualityAccuracy;
   final double depthAccuracy;
+  final double rivalDiscovery;
   final double successfulSiteDisguiseXp;
 
   factory SiteStewardshipMainParams.fromYaml(Map<String, dynamic> yaml) {
@@ -677,6 +679,7 @@ class SiteStewardshipMainParams {
       completenessAccuracy: _asDouble(yaml['completeness_accuracy'], 0),
       qualityAccuracy: _asDouble(yaml['quality_accuracy'], 0),
       depthAccuracy: _asDouble(yaml['depth_accuracy'], 0),
+      rivalDiscovery: _asDouble(yaml['rival_discovery'], 1),
       successfulSiteDisguiseXp:
           _asDouble(yaml['successful_site_disguise_xp'], 50),
     );
@@ -946,18 +949,30 @@ class ToolActionsConfig {
         GameConfig._asMap(yaml['brush_scrim']),
         defaults: const DisguiseActionConfig(
           durationMinutes: 60,
-          discoveryChanceMultiplier: 0.5,
+          modifiesMainParams: ModifiesMainParams(
+            using: {
+              'site_stewardship': {
+                'rival_discovery': ParamModifier(op: 'replace', value: 0.5),
+              },
+            },
+          ),
           statsExplanation:
-              'Covers one discovered site; rival discovery chance is halved.',
+              'Covers one discovered site; sets rival_discovery to 0.5.',
         ),
       ),
       blackoutCover: DisguiseActionConfig.fromYaml(
         GameConfig._asMap(yaml['blackout_cover']),
         defaults: const DisguiseActionConfig(
           durationMinutes: 60,
-          discoveryChanceMultiplier: 0.0,
+          modifiesMainParams: ModifiesMainParams(
+            using: {
+              'site_stewardship': {
+                'rival_discovery': ParamModifier(op: 'replace', value: 0),
+              },
+            },
+          ),
           statsExplanation:
-              'Covers one discovered site; rival discovery chance is zero.',
+              'Covers one discovered site; sets rival_discovery to 0.',
         ),
       ),
     );
@@ -1435,19 +1450,44 @@ class RidgeGlassActionConfig {
 class DisguiseActionConfig {
   const DisguiseActionConfig({
     required this.durationMinutes,
-    required this.discoveryChanceMultiplier,
+    this.modifiesMainParams,
     required this.statsExplanation,
   });
 
   final int durationMinutes;
-  final double discoveryChanceMultiplier;
+  final ModifiesMainParams? modifiesMainParams;
   final String statsExplanation;
 
-  Map<String, dynamic> toParamsJson() => {
-        'duration_minutes': durationMinutes,
-        'discovery_chance_multiplier': discoveryChanceMultiplier,
-        'stats_explanation': statsExplanation,
+  ParamModifier? siteStewardshipMod(String paramKey) {
+    return modifiesMainParams?.paramsFor('using', 'site_stewardship')[paramKey];
+  }
+
+  ParamModifier? get rivalDiscoveryMod => siteStewardshipMod('rival_discovery');
+
+  Map<String, dynamic> toParamsJson() {
+    final out = <String, dynamic>{
+      'duration_minutes': durationMinutes,
+      'stats_explanation': statsExplanation,
+    };
+    final mods = modifiesMainParams;
+    if (mods != null && mods.hasAny) {
+      Map<String, dynamic> encodeSkillMap(
+        Map<String, Map<String, ParamModifier>> skillMap,
+      ) =>
+          {
+            for (final skill in skillMap.entries)
+              skill.key: {
+                for (final p in skill.value.entries)
+                  p.key: {'op': p.value.op, 'value': p.value.value},
+              },
+          };
+      out['modifies_main_params'] = {
+        if (mods.owning.isNotEmpty) 'owning': encodeSkillMap(mods.owning),
+        if (mods.using.isNotEmpty) 'using': encodeSkillMap(mods.using),
       };
+    }
+    return out;
+  }
 
   factory DisguiseActionConfig.fromYaml(
     Map<String, dynamic> yaml, {
@@ -1456,15 +1496,33 @@ class DisguiseActionConfig {
     final d = defaults ??
         const DisguiseActionConfig(
           durationMinutes: 60,
-          discoveryChanceMultiplier: 0.5,
+          modifiesMainParams: ModifiesMainParams(
+            using: {
+              'site_stewardship': {
+                'rival_discovery': ParamModifier(op: 'replace', value: 0.5),
+              },
+            },
+          ),
           statsExplanation: '',
         );
+    ModifiesMainParams? mods = d.modifiesMainParams;
+    final rawMods = yaml['modifies_main_params'];
+    if (rawMods is Map) {
+      mods = ModifiesMainParams.fromYaml(GameConfig._asMap(rawMods));
+    } else if (yaml.containsKey('discovery_chance_multiplier')) {
+      // Legacy bare multiplier → formalize as rival_discovery replace.
+      final value = _asDouble(yaml['discovery_chance_multiplier'], 0.5);
+      mods = ModifiesMainParams(
+        using: {
+          'site_stewardship': {
+            'rival_discovery': ParamModifier(op: 'replace', value: value),
+          },
+        },
+      );
+    }
     return DisguiseActionConfig(
       durationMinutes: _asInt(yaml['duration_minutes'], d.durationMinutes),
-      discoveryChanceMultiplier: _asDouble(
-        yaml['discovery_chance_multiplier'],
-        d.discoveryChanceMultiplier,
-      ).clamp(0.0, 1.0),
+      modifiesMainParams: mods,
       statsExplanation:
           _asString(yaml['stats_explanation'], d.statsExplanation),
     );

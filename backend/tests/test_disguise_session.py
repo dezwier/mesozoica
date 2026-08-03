@@ -165,8 +165,12 @@ def test_tool_actions_yaml_loads_disguise_knobs() -> None:
     scrim = get_game_config().tool_actions.brush_scrim
     cover = get_game_config().tool_actions.blackout_cover
     assert scrim.duration_minutes == 60
-    assert scrim.discovery_chance_multiplier == 0.5
-    assert cover.discovery_chance_multiplier == 0.0
+    assert scrim.rival_discovery_mod is not None
+    assert scrim.rival_discovery_mod.op == "replace"
+    assert scrim.rival_discovery_mod.value == 0.5
+    assert cover.rival_discovery_mod is not None
+    assert cover.rival_discovery_mod.value == 0.0
+    assert get_game_config().site_stewardship.rival_discovery == 1.0
     assert get_game_config().site_stewardship.successful_site_disguise_xp == 50.0
 
 
@@ -207,8 +211,9 @@ def test_deploy_creates_disguiser_and_ignores_status(
     assert body["action_key"] == ACTION_KEY_BRUSH_SCRIM
     assert body["status"] == SESSION_STATUS_ACTIVE
     assert body["state"]["site_id"] == site.site_id
-    assert body["params"]["discovery_chance_multiplier"] == 0.5
-    assert "xp" not in body["params"]
+    assert body["params"]["modifies_main_params"]["using"]["site_stewardship"][
+        "rival_discovery"
+    ] == {"op": "replace", "value": 0.5}
 
     disguiser = session.exec(
         select(UserSite).where(

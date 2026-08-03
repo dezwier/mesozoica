@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 
 import '../../config/game_config.dart';
+import '../../config/tool_instance_params.dart';
 import '../../models/disguise_tool_kind.dart';
 import '../../theme/dino_card_theme.dart';
 import '../tools/tool_stat_row.dart';
+import '../weather/weather_display.dart';
 
 /// Stats panel for Brush Scrim / Blackout Cover.
 class DisguiseToolStats extends StatelessWidget {
@@ -24,16 +26,14 @@ class DisguiseToolStats extends StatelessWidget {
     final p = params;
     final durationMinutes =
         (p?['duration_minutes'] as num?)?.toInt() ?? cfg.durationMinutes;
-    final multiplier = (p?['discovery_chance_multiplier'] as num?)?.toDouble() ??
-        cfg.discoveryChanceMultiplier;
+    final mods = modifiesMainParamsFromParams(p) ?? cfg.modifiesMainParams;
+    final rivalMod = mods?.paramsFor('using', 'site_stewardship')['rival_discovery'];
     final explanation = p?['stats_explanation'] as String? ?? '';
 
     final pairs = <ToolStatPair>[
       ToolStatPair('Duration', '$durationMinutes min'),
-      ToolStatPair(
-        'Rival chance',
-        '×${multiplier.toStringAsFixed(multiplier == 0 || multiplier == 1 ? 0 : 1)}',
-      ),
+      if (rivalMod != null)
+        ToolStatPair('Rival discovery', _formatRivalMod(rivalMod)),
     ];
 
     if (compact) {
@@ -59,5 +59,14 @@ class DisguiseToolStats extends StatelessWidget {
         ],
       ],
     );
+  }
+
+  static String _formatRivalMod(ParamModifier mod) {
+    if (mod.op == 'replace') {
+      final v = mod.value;
+      final text = v == 0 || v == 1 ? v.toStringAsFixed(0) : v.toStringAsFixed(1);
+      return '→ ×$text';
+    }
+    return WeatherDisplay.formatModifierShort(op: mod.op, value: mod.value);
   }
 }
