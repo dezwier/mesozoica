@@ -129,12 +129,18 @@ class _ToolTurnableCardState extends State<ToolTurnableCard> {
         _totalDurationS = response.totalDurationS ?? tool.totalDurationS;
         _historyLoading = false;
       });
-      context.read<ToolCatalogController>().replaceToolSummary(
-            tool.copyWith(
-              remainingDurationS: response.remainingDurationS,
-              totalDurationS: response.totalDurationS,
-            ),
-          );
+      // Prefer the catalog's current row over [widget.tool] so a concurrent
+      // params update is not overwritten by this duration-only refresh.
+      final catalog = context.read<ToolCatalogController>();
+      final index =
+          catalog.catalogItems.indexWhere((item) => item.id == tool.id);
+      final base = index >= 0 ? catalog.catalogItems[index] : tool;
+      catalog.replaceToolSummary(
+        base.copyWith(
+          remainingDurationS: response.remainingDurationS,
+          totalDurationS: response.totalDurationS,
+        ),
+      );
     } catch (_) {
       if (!mounted || widget.tool.id != tool.id || gen != _historyFetchGen) {
         return;
@@ -243,7 +249,6 @@ class _ToolTurnableCardState extends State<ToolTurnableCard> {
           );
           if (!mounted) return;
           context.read<ToolCatalogController>().replaceToolSummary(updatedTool);
-          await _refreshHistory(showSpinner: true);
         } on ToolServiceException catch (error) {
           if (!mounted) return;
           AppToast.error(context, error.message);
