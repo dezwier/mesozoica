@@ -157,8 +157,8 @@ ridge_glass:
       site_discovery:
         visibility_distance_m: { op: multiply, value: 1.3 }
         discovery_chance: { op: multiply, value: 1.3 }
-        max_discovery_speed_kmh: { op: multiply, value: 1.3 }
+        max_discovery_speed_kmh: { op: multiply, value: 0.7 }
   stats_explanation: >-
     Duration is this card's lifetime battery; each use runs until you stop
-    or time runs out. While active, multiplies site visibility range,
-    walk-in discovery chance, and max discovery speed by 1.3 for all sites.
+    or time runs out. While active, boosts site visibility range and
+    walk-in discovery chance, and decreases max discovery speed for all sites.
