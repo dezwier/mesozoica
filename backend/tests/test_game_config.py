@@ -41,7 +41,7 @@ def test_load_game_config_matches_current_defaults() -> None:
     assert config.site_discovery.visibility_distance_m == 20.0
     assert config.site_discovery.max_distance_m == 20.0
     assert config.site_discovery.discovery_chance == 0.1
-    assert config.site_discovery.max_discovery_speed_kmh == 20.0
+    assert config.site_discovery.max_discovery_speed_kmh == 15.0
     assert config.site_discovery.site_discovery_xp == 10.0
     assert config.site_discovery.active_km_xp == 30.0
     assert config.site_discovery.passive_km_xp == 5.0
@@ -124,6 +124,9 @@ def test_load_game_config_matches_current_defaults() -> None:
         op="multiply", value=1.3
     )
     assert ridge.site_discovery_mod("discovery_chance") == ParamModifier(
+        op="multiply", value=1.3
+    )
+    assert ridge.site_discovery_mod("max_discovery_speed_kmh") == ParamModifier(
         op="multiply", value=1.3
     )
     assert ridge.added_visibility_range_m is None

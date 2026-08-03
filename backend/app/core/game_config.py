@@ -397,7 +397,7 @@ class SiteDiscoveryMainParams(BaseModel):
 
     visibility_distance_m: float = 20.0
     discovery_chance: float = 0.1
-    max_discovery_speed_kmh: float = 20.0
+    max_discovery_speed_kmh: float = 15.0
     site_discovery_xp: float = 10.0
     active_km_xp: float = 30.0
     passive_km_xp: float = 5.0
@@ -1282,12 +1282,15 @@ class ToolActionsConfig(BaseModel):
                         "discovery_chance": ParamModifier(
                             op="multiply", value=1.3
                         ),
+                        "max_discovery_speed_kmh": ParamModifier(
+                            op="multiply", value=1.3
+                        ),
                     }
                 },
             ),
             stats_explanation=(
-                "While active, multiplies site visibility range and walk-in "
-                "discovery chance by 1.3 for all sites."
+                "While active, multiplies site visibility range, walk-in "
+                "discovery chance, and max discovery speed by 1.3 for all sites."
             ),
         )
     )

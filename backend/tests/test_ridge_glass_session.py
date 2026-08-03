@@ -150,8 +150,10 @@ def test_tool_actions_yaml_loads_ridge_glass_knobs() -> None:
     assert cfg.duration_minutes == 60
     vis = cfg.site_discovery_mod("visibility_distance_m")
     chance = cfg.site_discovery_mod("discovery_chance")
+    speed = cfg.site_discovery_mod("max_discovery_speed_kmh")
     assert vis == ParamModifier(op="multiply", value=1.3)
     assert chance == ParamModifier(op="multiply", value=1.3)
+    assert speed == ParamModifier(op="multiply", value=1.3)
     assert cfg.added_visibility_range_m is None  # multiply, not add
     assert cfg.added_discovery_rate is None
     mods = cfg.modifies_main_params
@@ -159,6 +161,7 @@ def test_tool_actions_yaml_loads_ridge_glass_knobs() -> None:
     assert mods.affects_skill("site_discovery")
     assert "visibility_distance_m" in mods.params_for("using", "site_discovery")
     assert "discovery_chance" in mods.params_for("using", "site_discovery")
+    assert "max_discovery_speed_kmh" in mods.params_for("using", "site_discovery")
 
 
 def test_start_ridge_glass_session_snapshots_and_replaces(

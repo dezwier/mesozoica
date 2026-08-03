@@ -31,6 +31,8 @@ class RidgeGlassToolStats extends StatelessWidget {
         mods?.paramsFor('using', 'site_discovery')['visibility_distance_m'];
     final discoveryMod =
         mods?.paramsFor('using', 'site_discovery')['discovery_chance'];
+    final speedMod =
+        mods?.paramsFor('using', 'site_discovery')['max_discovery_speed_kmh'];
     final explanation = p?['stats_explanation'] as String? ?? '';
 
     final pairs = <ToolStatPair>[
@@ -44,6 +46,11 @@ class RidgeGlassToolStats extends StatelessWidget {
         ToolStatPair(
           'Discovery rate',
           _formatMod(discoveryMod, chance: true),
+        ),
+      if (speedMod != null)
+        ToolStatPair(
+          'Max speed',
+          _formatMod(speedMod),
         ),
     ];
 

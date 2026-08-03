@@ -323,7 +323,7 @@ class SiteDiscoveryMainParams {
         20.0,
       ),
       discoveryChance: _asDouble(yaml['discovery_chance'], 0.1),
-      maxDiscoverySpeedKmh: _asDouble(yaml['max_discovery_speed_kmh'], 20.0),
+      maxDiscoverySpeedKmh: _asDouble(yaml['max_discovery_speed_kmh'], 15.0),
       siteDiscoveryXp: _asDouble(yaml['site_discovery_xp'], 10.0),
       activeKmXp: _asDouble(yaml['active_km_xp'], 30.0),
       passiveKmXp: _asDouble(yaml['passive_km_xp'], 5.0),
@@ -1354,12 +1354,14 @@ class RidgeGlassActionConfig {
                 'visibility_distance_m':
                     ParamModifier(op: 'multiply', value: 1.3),
                 'discovery_chance': ParamModifier(op: 'multiply', value: 1.3),
+                'max_discovery_speed_kmh':
+                    ParamModifier(op: 'multiply', value: 1.3),
               },
             },
           ),
           statsExplanation:
-              'While active, multiplies site visibility range and walk-in '
-              'discovery chance by 1.3 for all sites.',
+              'While active, multiplies site visibility range, walk-in '
+              'discovery chance, and max discovery speed by 1.3 for all sites.',
         );
     ModifiesMainParams? mods = d.modifiesMainParams;
     final rawMods = yaml['modifies_main_params'];
