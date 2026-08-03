@@ -103,6 +103,9 @@ def _fetch_open_meteo(lat: float, lon: float) -> tuple[WeatherType, float, int]:
                 "latitude": lat,
                 "longitude": lon,
                 "current": "temperature_2m,weather_code",
+                # DWD ICON via seamless blend — Open-Meteo's default
+                # (often KNMI in BE/NL) can report overcast when sky is clear.
+                "models": "icon_seamless",
             },
         )
         response.raise_for_status()
