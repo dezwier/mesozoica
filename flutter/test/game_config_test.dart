@@ -183,6 +183,18 @@ void main() {
       2.5,
     );
     expect(
+      config.toolActions.expeditionDrivetrain
+          .siteDiscoveryMod('visibility_distance_m')
+          ?.value,
+      0.95,
+    );
+    expect(
+      config.toolActions.expeditionDrivetrain
+          .siteDiscoveryMod('discovery_chance')
+          ?.value,
+      0.95,
+    );
+    expect(
       config.toolActions.expeditionDrivetrain.modifiesMainParams
           ?.affectsSkill('site_discovery'),
       isTrue,

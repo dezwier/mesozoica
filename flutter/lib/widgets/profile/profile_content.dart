@@ -604,7 +604,7 @@ class _SkillGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    const avatarPad = 7.0;
+    const avatarPad = 4.0;
     const avatarSize = _tileHeight - avatarPad * 2;
     return GridView.builder(
       shrinkWrap: true,

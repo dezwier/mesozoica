@@ -326,7 +326,7 @@ class _SkillHud extends StatelessWidget {
   final SkillState skill;
   final VoidCallback? onEditXp;
 
-  static const double _iconSize = 92;
+  static const double _iconSize = 104;
 
   @override
   Widget build(BuildContext context) {
@@ -1159,13 +1159,20 @@ _MainParamDisplay _resolveScalarParam({
   required bool clampUnit,
   required List<ToolModBinding> toolBindings,
 }) {
-  final factors = <_ParamFactor>[];
-  var value = base;
+  // YAML base + level → skill "base level" shown in the drawer / tooltip.
+  var levelBase = base;
+  final levelMod = _applicableLevelModifier(levelEntries, skillLevel);
+  if (levelMod != null) {
+    levelBase = _applyModifier(levelBase, levelMod);
+  }
+
+  final changeFactors = <_ParamFactor>[];
+  var value = levelBase;
 
   void applyStep(String factorLabel, Object mod) {
     final before = value;
     value = _applyModifier(value, mod);
-    factors.add(
+    changeFactors.add(
       _ParamFactor(
         label: factorLabel,
         deltaText: _formatStepDelta(
@@ -1176,11 +1183,6 @@ _MainParamDisplay _resolveScalarParam({
         ),
       ),
     );
-  }
-
-  final levelMod = _applicableLevelModifier(levelEntries, skillLevel);
-  if (levelMod != null) {
-    applyStep('Level', levelMod);
   }
 
   if (weatherTime != null && weatherTimeMods != null) {
@@ -1208,9 +1210,20 @@ _MainParamDisplay _resolveScalarParam({
     value = value.clamp(0.0, 1.0);
   }
 
+  final factors = <_ParamFactor>[];
+  if (changeFactors.isNotEmpty) {
+    factors.add(
+      _ParamFactor(
+        label: 'Base (level $skillLevel)',
+        deltaText: _formatScalar(levelBase, format),
+      ),
+    );
+    factors.addAll(changeFactors);
+  }
+
   double? overallDeltaPct;
-  if ((value - base).abs() > 1e-12 && base.abs() > 1e-12) {
-    overallDeltaPct = ((value - base) / base) * 100.0;
+  if ((value - levelBase).abs() > 1e-12 && levelBase.abs() > 1e-12) {
+    overallDeltaPct = ((value - levelBase) / levelBase) * 100.0;
   }
 
   return _MainParamDisplay(

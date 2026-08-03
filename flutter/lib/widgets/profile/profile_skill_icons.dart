@@ -21,7 +21,8 @@ String? skillIconAssetFor(String skillId) => skillIconAssets[skillId];
 /// Skill logo image; falls back to a generic icon when no asset exists.
 ///
 /// When [size] is null, expands to fill the parent (use inside a bounded box).
-/// When [circular] is true, renders as a round avatar with a subtle ring.
+/// When [circular] is true, renders as a rounded-rectangle frame that fills
+/// its box (legacy name; no longer a circle).
 class SkillIcon extends StatelessWidget {
   const SkillIcon({
     super.key,
@@ -35,6 +36,8 @@ class SkillIcon extends StatelessWidget {
   final double? size;
   final Color? color;
   final bool circular;
+
+  static const _frameRadius = 8.0;
 
   @override
   Widget build(BuildContext context) {
@@ -50,8 +53,10 @@ class SkillIcon extends StatelessWidget {
     } else {
       image = Image.asset(
         asset,
-        fit: BoxFit.contain,
+        fit: circular ? BoxFit.cover : BoxFit.contain,
         filterQuality: FilterQuality.medium,
+        width: double.infinity,
+        height: double.infinity,
       );
     }
 
@@ -63,7 +68,7 @@ class SkillIcon extends StatelessWidget {
     final avatar = Container(
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
-        shape: BoxShape.circle,
+        borderRadius: BorderRadius.circular(_frameRadius),
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
@@ -85,8 +90,11 @@ class SkillIcon extends StatelessWidget {
         ],
       ),
       child: Padding(
-        padding: const EdgeInsets.all(5),
-        child: image,
+        padding: const EdgeInsets.all(2),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(_frameRadius - 2),
+          child: image,
+        ),
       ),
     );
 

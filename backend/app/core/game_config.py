@@ -1337,6 +1337,12 @@ class ToolActionsConfig(BaseModel):
             modifies_main_params=ModifiesMainParams(
                 using={
                     "site_discovery": {
+                        "visibility_distance_m": ParamModifier(
+                            op="multiply", value=0.95
+                        ),
+                        "discovery_chance": ParamModifier(
+                            op="multiply", value=0.95
+                        ),
                         "max_discovery_speed_kmh": ParamModifier(
                             op="multiply", value=2.5
                         ),
@@ -1345,7 +1351,8 @@ class ToolActionsConfig(BaseModel):
             ),
             stats_explanation=(
                 "While active, raises max discovery speed by 150% so bicycle "
-                "travel still counts toward discovery distance."
+                "travel still counts toward discovery distance, but visibility "
+                "range and walk-in discovery chance drop 5%."
             ),
         )
     )

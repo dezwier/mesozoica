@@ -114,7 +114,9 @@ class ToolCardHeader extends StatelessWidget {
           color: Colors.transparent,
           child: InkWell(
             onTap: () => _openSkillSheet(context, tool),
-            customBorder: const CircleBorder(),
+            customBorder: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
             child: SkillIcon(
               skillId: skillId,
               size: skillBadgeSize,

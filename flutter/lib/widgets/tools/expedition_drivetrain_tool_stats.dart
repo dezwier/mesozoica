@@ -26,12 +26,32 @@ class ExpeditionDrivetrainToolStats extends StatelessWidget {
     final durationMinutes =
         (p?['duration_minutes'] as num?)?.toInt() ?? cfg.durationMinutes;
     final mods = modifiesMainParamsFromParams(p);
+    final visibilityMod =
+        mods?.paramsFor('using', 'site_discovery')['visibility_distance_m'];
+    final discoveryMod =
+        mods?.paramsFor('using', 'site_discovery')['discovery_chance'];
     final speedMod =
         mods?.paramsFor('using', 'site_discovery')['max_discovery_speed_kmh'];
     final explanation = p?['stats_explanation'] as String? ?? '';
 
     final pairs = <ToolStatPair>[
       ToolStatPair('Duration', '$durationMinutes min'),
+      if (visibilityMod != null)
+        ToolStatPair(
+          'Visibility',
+          WeatherDisplay.formatModifierShort(
+            op: visibilityMod.op,
+            value: visibilityMod.value,
+          ),
+        ),
+      if (discoveryMod != null)
+        ToolStatPair(
+          'Discovery rate',
+          WeatherDisplay.formatModifierShort(
+            op: discoveryMod.op,
+            value: discoveryMod.value,
+          ),
+        ),
       if (speedMod != null)
         ToolStatPair(
           'Max speed',

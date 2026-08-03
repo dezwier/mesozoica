@@ -385,7 +385,8 @@ def test_start_expedition_drivetrain_session(client, session: Session) -> None:
     assert body["status"] == SESSION_STATUS_ACTIVE
     mods = body["params"]["modifies_main_params"]["using"]["site_discovery"]
     assert mods["max_discovery_speed_kmh"] == {"op": "multiply", "value": 2.5}
-    assert "visibility_distance_m" not in mods
+    assert mods["visibility_distance_m"] == {"op": "multiply", "value": 0.95}
+    assert mods["discovery_chance"] == {"op": "multiply", "value": 0.95}
 
 
 def test_tool_actions_yaml_loads_expedition_drivetrain_knobs() -> None:
@@ -394,6 +395,12 @@ def test_tool_actions_yaml_loads_expedition_drivetrain_knobs() -> None:
     assert cfg.duration_minutes == 60
     speed = cfg.site_discovery_mod("max_discovery_speed_kmh")
     assert speed == ParamModifier(op="multiply", value=2.5)
+    assert cfg.site_discovery_mod("visibility_distance_m") == ParamModifier(
+        op="multiply", value=0.95
+    )
+    assert cfg.site_discovery_mod("discovery_chance") == ParamModifier(
+        op="multiply", value=0.95
+    )
     mods = cfg.modifies_main_params
     assert mods is not None
     assert mods.affects_skill("site_discovery")

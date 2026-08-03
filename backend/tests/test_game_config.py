@@ -147,6 +147,12 @@ def test_load_game_config_matches_current_defaults() -> None:
     assert drive.site_discovery_mod("max_discovery_speed_kmh") == ParamModifier(
         op="multiply", value=2.5
     )
+    assert drive.site_discovery_mod("visibility_distance_m") == ParamModifier(
+        op="multiply", value=0.95
+    )
+    assert drive.site_discovery_mod("discovery_chance") == ParamModifier(
+        op="multiply", value=0.95
+    )
     drive_mods = drive.modifies_main_params
     assert drive_mods is not None
     assert drive_mods.affects_skill("site_discovery")
