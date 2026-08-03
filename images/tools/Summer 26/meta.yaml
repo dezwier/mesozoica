@@ -22,23 +22,35 @@ prompt: 'Generate a realistic 3:4 portrait iPhone photograph for a paleontologic
   a printed geological map — never an abstract diagram, chart, or text overlay
 
 
+  Description drives scene (critical — obey the description field):
+
+  - Treat the description as binding for when, where, and how the tool is used
+
+  - If the description implies night, darkness, after dark, low light, or night-vision,
+  the photo MUST be a nighttime field scene (starlight/moonlight/headlamp/NVG green
+  glow as appropriate) — never daylight
+
+  - If the description does not specify time of day, default to an authentic dusty
+  dig-site, quarry, or conservation-lab with uneven daylight
+
+
   Scientific accuracy:
 
   - Stay scientifically in line with today''s paleontology; do not invent capabilities
   or anachronistic equipment
 
-  - Match the category and description in an authentic dusty dig-site, quarry, or
-  conservation-lab context
+  - Match the category and description in context
 
 
   Visual style:
 
-  - Documentary iPhone photograph with slight ''dramatic warm'' color tone
+  - Documentary iPhone photograph with slight ''dramatic warm'' color tone (at night:
+  cooler moonlight / NVG-green is OK; keep the photo look, not CGI)
 
   - Real field archaeology / paleontology, NOT cartoon, NOT CGI
 
-  - Casual handheld framing, uneven daylight, imperfect practical use — worn surfaces,
-  dirt, realistic placement
+  - Casual handheld framing, imperfect practical use — worn surfaces, dirt, realistic
+  placement
 
   - No borders, no text, no watermarks, no vignette — only the photo itself
 
@@ -47,4 +59,4 @@ prompt: 'Generate a realistic 3:4 portrait iPhone photograph for a paleontologic
   people faces, abstract infographics.
   
   Don''t put text on the photo.'
-run_date: '2026-07-30T00:00:00+00:00'
+run_date: '2026-08-03T00:00:00+00:00'

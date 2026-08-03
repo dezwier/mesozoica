@@ -101,14 +101,19 @@ Primary subject (critical):
 - Show ONE concrete, photographable subject representing {scientific_tool} in modern paleontological use
 - If the method is abstract (satellite imagery, acid dissolution, radiometric dating, isotope analysis), depict the actual physical equipment or visible field setup — e.g. a drone over badlands, a lab beaker with fossil in dilute acid, a bench instrument, a printed geological map — never an abstract diagram, chart, or text overlay
 
+Description drives scene (critical — obey the description field):
+- Treat the description as binding for when, where, and how the tool is used
+- If the description implies night, darkness, after dark, low light, or night-vision, the photo MUST be a nighttime field scene (starlight/moonlight/headlamp/NVG green glow as appropriate) — never daylight
+- If the description does not specify time of day, default to an authentic dusty dig-site, quarry, or conservation-lab with uneven daylight
+
 Scientific accuracy:
 - Stay scientifically in line with today's paleontology; do not invent capabilities or anachronistic equipment
-- Match the category and description in an authentic dusty dig-site, quarry, or conservation-lab context
+- Match the category and description in context
 
 Visual style:
-- Documentary iPhone photograph with slight 'dramatic warm' color tone
+- Documentary iPhone photograph with slight 'dramatic warm' color tone (at night: cooler moonlight / NVG-green is OK; keep the photo look, not CGI)
 - Real field archaeology / paleontology, NOT cartoon, NOT CGI
-- Casual handheld framing, uneven daylight, imperfect practical use — worn surfaces, dirt, realistic placement
+- Casual handheld framing, imperfect practical use — worn surfaces, dirt, realistic placement
 - No borders, no text, no watermarks, no vignette — only the photo itself
 
 Avoid: studio product shot, museum display, stock-photo perfection, CGI render, people faces, abstract infographics."""

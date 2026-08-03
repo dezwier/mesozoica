@@ -75,7 +75,7 @@
     "name": "Nocturne Lens",
     "category": "1 site_discovery",
     "scientific_tool": "night-vision goggles",
-    "description": "Amplifies low-light contrast so distant outcrops and surface clues stay readable after dark.",
+    "description": "Night-only field optics: worn after dark to amplify low-light contrast so distant outcrops and surface clues stay readable at night.",
     "rarity": 2,
     "action": "Pierce"
   },

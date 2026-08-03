@@ -248,3 +248,25 @@ def test_build_tool_image_prompt_includes_full_record_and_style():
     assert "dramatic warm" in prompt
     assert "iphone photograph" in prompt.lower()
     assert "today's paleontology" in prompt.lower()
+    assert "Description drives scene" in prompt
+    assert "never daylight" in prompt
+
+
+def test_build_tool_image_prompt_carries_night_description():
+    prompt = build_tool_image_prompt(
+        {
+            "name": "Nocturne Lens",
+            "category": "1 site_discovery",
+            "scientific_tool": "night-vision goggles",
+            "description": (
+                "Night-only field optics: worn after dark to amplify low-light "
+                "contrast so distant outcrops stay readable at night."
+            ),
+            "rarity": 2,
+        }
+    )
+    assert "Nocturne Lens" in prompt
+    assert "night-vision goggles" in prompt
+    assert "Night-only field optics" in prompt
+    assert "after dark" in prompt
+    assert "MUST be a nighttime field scene" in prompt
