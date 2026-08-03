@@ -18,7 +18,9 @@ const double _locationPuckLogicalSize = 32;
 const double _locationPuckPixelRatio = 3;
 const String _locationPuckFallbackAsset = 'assets/images/logo.png';
 /// Brown pulse matching map chrome earth tones.
-const Color _locationPuckPulse = Color(0xFF8D6E63);
+const Color locationPuckPulseBrown = Color(0xFF8D6E63);
+/// Golden pulse for Ridge Glass added visibility range.
+const Color locationPuckPulseGold = Color(0xFFD4AF37);
 
 /// Drives Mapbox camera for north-fixed (flat) mode and one-shot transitions.
 ///
@@ -40,6 +42,8 @@ class MapboxCameraCoordinator {
   double? _viewportWidth;
   bool rotateWithHeading = false;
   double? _lastPulseRadiusPx;
+  Color _lastPulseColor = locationPuckPulseBrown;
+  bool _lastPulsingEnabled = true;
   double _pulseVisibilityDistanceM = 20.0;
   double _pulseLatitudeDeg = 0.0;
   double _pulseZoom = MapConfig.mapboxFollowZoom;
@@ -419,6 +423,8 @@ class MapboxCameraCoordinator {
     LatLng? center,
     double? latitudeDeg,
     double? zoom,
+    Color? pulseColor,
+    bool pulsingEnabled = true,
   }) async {
     final map = _map;
     if (map == null) return;
@@ -459,8 +465,16 @@ class MapboxCameraCoordinator {
       zoom: zoom,
     );
     _lastPulseRadiusPx = pulsePx;
+    _lastPulseColor = pulseColor ?? locationPuckPulseBrown;
+    _lastPulsingEnabled = pulsingEnabled;
 
-    await map.location.updateSettings(_locationPuckSettings(pulsePx: pulsePx));
+    await map.location.updateSettings(
+      _locationPuckSettings(
+        pulsePx: pulsePx,
+        pulseColor: _lastPulseColor,
+        pulsingEnabled: pulsingEnabled,
+      ),
+    );
   }
 
   /// Update the discovery pulse radius (zoom / visibility / location).
@@ -472,6 +486,8 @@ class MapboxCameraCoordinator {
     LatLng? center,
     double? latitudeDeg,
     double? zoom,
+    Color? pulseColor,
+    bool? pulsingEnabled,
   }) async {
     final map = _map;
     if (map == null || _puckTopImage == null) return;
@@ -481,19 +497,47 @@ class MapboxCameraCoordinator {
       latitudeDeg: latitudeDeg,
       zoom: zoom,
     );
+    final color = pulseColor ?? locationPuckPulseBrown;
+    final enabled = pulsingEnabled ?? _lastPulsingEnabled;
     final previous = _lastPulseRadiusPx;
-    if (previous != null && (pulsePx - previous).abs() < 0.5) return;
+    final colorChanged = color.toARGB32() != _lastPulseColor.toARGB32();
+    final enabledChanged = enabled != _lastPulsingEnabled;
+    if (previous != null &&
+        (pulsePx - previous).abs() < 0.5 &&
+        !colorChanged &&
+        !enabledChanged) {
+      return;
+    }
     _lastPulseRadiusPx = pulsePx;
-    await map.location.updateSettings(_locationPuckSettings(pulsePx: pulsePx));
+    _lastPulseColor = color;
+    _lastPulsingEnabled = enabled;
+    await map.location.updateSettings(
+      _locationPuckSettings(
+        pulsePx: pulsePx,
+        pulseColor: color,
+        pulsingEnabled: enabled,
+      ),
+    );
   }
 
-  LocationComponentSettings _locationPuckSettings({required double pulsePx}) {
+  /// Project a ground radius in meters to screen pixels at [center].
+  Future<double?> projectGroundRadiusPx({
+    required LatLng center,
+    required double radiusM,
+  }) =>
+      _projectGroundRadiusPx(center: center, radiusM: radiusM);
+
+  LocationComponentSettings _locationPuckSettings({
+    required double pulsePx,
+    required Color pulseColor,
+    required bool pulsingEnabled,
+  }) {
     return LocationComponentSettings(
       enabled: true,
       puckBearingEnabled: true,
       puckBearing: PuckBearing.HEADING,
-      pulsingEnabled: true,
-      pulsingColor: _locationPuckPulse.toARGB32(),
+      pulsingEnabled: pulsingEnabled,
+      pulsingColor: pulseColor.toARGB32(),
       pulsingMaxRadius: pulsePx,
       locationPuck: LocationPuck(
         locationPuck2D: LocationPuck2D(

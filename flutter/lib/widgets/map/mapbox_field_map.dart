@@ -37,6 +37,7 @@ import 'mapbox_site_annotations.dart';
 import 'mapbox_viewport_native.dart';
 import 'map_center_crosshair.dart';
 import 'map_rotate_site_card_overlay.dart';
+import 'ridge_glass_pulse_overlay.dart';
 import 'terrain_echo_overlay.dart';
 
 typedef MapSiteTapCallback = void Function(SiteSummary site);
@@ -315,7 +316,7 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
     _syncDiscoveryPulse();
   }
 
-  double _resolveVisibilityDistanceM() {
+  ({int skillLevel, Set<String> owned, String? activeKey}) _visibilityInputs() {
     var skillLevel = 1;
     final profile = _auth?.currentUser;
     if (profile != null) {
@@ -350,12 +351,21 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
         activeKey = guidance.kind?.actionKey ?? guidance.session?.actionKey;
       }
     }
+    return (skillLevel: skillLevel, owned: owned, activeKey: activeKey);
+  }
 
+  double _resolveVisibilityDistanceM({bool ignoreActiveTool = false}) {
+    final inputs = _visibilityInputs();
     return resolveSiteDiscoveryVisibilityDistanceM(
-      skillLevel: skillLevel,
-      ownedActionKeys: owned,
-      activeActionKey: activeKey,
+      skillLevel: inputs.skillLevel,
+      ownedActionKeys: inputs.owned,
+      activeActionKey: ignoreActiveTool ? null : inputs.activeKey,
     );
+  }
+
+  bool get _ridgeGlassPulseActive {
+    final ridge = _ridgeGlass;
+    return ridge != null && ridge.isActive;
   }
 
   static bool _toolIsOwned(ToolSummary tool) =>
@@ -363,36 +373,53 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
 
   void _syncDiscoveryPulse() {
     if (!mounted || !_ready || !widget.mapActive) return;
-    final visibilityM = _resolveVisibilityDistanceM();
+    final fullM = _resolveVisibilityDistanceM();
+    // Brown native pulse stays at baseline; gold overlay covers the bonus band.
+    final pulseM = _ridgeGlassPulseActive
+        ? _resolveVisibilityDistanceM(ignoreActiveTool: true)
+        : fullM;
     try {
-      context.read<FieldDiscoveryCoordinator>().setDiscoverRadiusM(visibilityM);
+      context.read<FieldDiscoveryCoordinator>().setDiscoverRadiusM(fullM);
     } on ProviderNotFoundException {
       // Tests / previews without discovery coordinator.
     }
     final loc = _effectiveLocation ?? widget.initialCenter;
+    final ridgePulse = _ridgeGlassPulseActive;
     unawaited(
       widget.camera.syncLocationPuckPulse(
-        visibilityDistanceM: visibilityM,
+        // While Ridge Glass draws both rings itself, keep the native pulse off
+        // so timing stays locked to the overlay animation.
+        visibilityDistanceM: ridgePulse ? fullM : pulseM,
         center: loc,
         zoom: _lastKnownZoom,
+        pulseColor: locationPuckPulseBrown,
+        pulsingEnabled: !ridgePulse,
       ),
     );
+    if (ridgePulse && mounted) setState(() {});
   }
 
   Future<void> _enableLocationPuck() async {
-    final visibilityM = _resolveVisibilityDistanceM();
+    final fullM = _resolveVisibilityDistanceM();
+    final pulseM = _ridgeGlassPulseActive
+        ? _resolveVisibilityDistanceM(ignoreActiveTool: true)
+        : fullM;
+    final ridgePulse = _ridgeGlassPulseActive;
     try {
-      context.read<FieldDiscoveryCoordinator>().setDiscoverRadiusM(visibilityM);
+      context.read<FieldDiscoveryCoordinator>().setDiscoverRadiusM(fullM);
     } on ProviderNotFoundException {
       // Tests / previews without discovery coordinator.
     }
     final loc = _effectiveLocation ?? widget.initialCenter;
     await widget.camera.enableLocationPuck(
       avatarImageUrl: widget.avatarImageUrl,
-      visibilityDistanceM: visibilityM,
+      visibilityDistanceM: ridgePulse ? fullM : pulseM,
       center: loc,
       zoom: _lastKnownZoom,
+      pulseColor: locationPuckPulseBrown,
+      pulsingEnabled: !ridgePulse,
     );
+    if (ridgePulse && mounted) setState(() {});
   }
 
   @override
@@ -1362,6 +1389,15 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
                     zoom: _lastKnownZoom,
                   );
                 },
+              ),
+            if (widget.mapActive && _ready && _ridgeGlassPulseActive)
+              RidgeGlassPulseOverlay(
+                camera: widget.camera,
+                baseVisibilityM:
+                    _resolveVisibilityDistanceM(ignoreActiveTool: true),
+                fullVisibilityM: _resolveVisibilityDistanceM(),
+                rotateWithHeading: widget.rotateWithHeading,
+                zoom: _lastKnownZoom,
               ),
             // Mode 1 only (north-fixed, not following). Hidden while centered.
             if (widget.mapActive &&
