@@ -26,12 +26,12 @@ void main() {
     GameConfig.debugReset();
   });
 
-  test('site survey accuracies add 1% per skill level', () async {
+  test('site stewardship accuracies add 1% per skill level', () async {
     await loadGameConfigForTest();
 
-    final level1 = resolveSiteSurveyAccuracies(skillLevel: 1);
-    final level10 = resolveSiteSurveyAccuracies(skillLevel: 10);
-    final level99 = resolveSiteSurveyAccuracies(skillLevel: 99);
+    final level1 = resolveSiteStewardshipAccuracies(skillLevel: 1);
+    final level10 = resolveSiteStewardshipAccuracies(skillLevel: 10);
+    final level99 = resolveSiteStewardshipAccuracies(skillLevel: 99);
 
     for (final key in [
       'dino_accuracy',
@@ -46,10 +46,10 @@ void main() {
     }
   });
 
-  test('tool mods apply after level on site survey accuracies', () async {
+  test('tool mods apply after level on site stewardship accuracies', () async {
     await loadGameConfigForTest();
 
-    final result = resolveSiteSurveyAccuracies(
+    final result = resolveSiteStewardshipAccuracies(
       skillLevel: 10,
       toolMods: {
         'dino_accuracy': const ParamModifier(op: 'add', value: 0.05),

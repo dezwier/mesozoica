@@ -72,7 +72,7 @@ def test_leveling_yaml_loaded() -> None:
     assert float(fossil.main_params["fossil_discovery_xp"]) == 5
     assert len(cfg.skills) == 12
     assert cfg.skills[0].id == "site_discovery"
-    assert cfg.skills[1].id == "site_survey"
+    assert cfg.skills[1].id == "site_stewardship"
     assert cfg.skills[2].id == "site_clearing"
     assert cfg.skills[3].id == "fossil_detection"
     assert cfg.skills[4].id == "fossil_excavation"

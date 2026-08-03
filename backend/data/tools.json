@@ -145,7 +145,7 @@
   },
   {
     "name": "Field Codex",
-    "category": "2 site_survey",
+    "category": "2 site_stewardship",
     "scientific_tool": "field notebook",
     "description": "Records locality, geology, specimen context and excavation decisions.",
     "rarity": 1,
@@ -153,7 +153,7 @@
   },
   {
     "name": "Field Canopy",
-    "category": "2 site_survey",
+    "category": "2 site_stewardship",
     "scientific_tool": "portable shelter",
     "description": "Protects an exposed excavation from sun, rain and wind.",
     "rarity": 2,
@@ -161,7 +161,7 @@
   },
   {
     "name": "Perimeter Guard",
-    "category": "2 site_survey",
+    "category": "2 site_stewardship",
     "scientific_tool": "fencing or barrier tape",
     "description": "Prevents visitors, animals and vehicles from damaging the site.",
     "rarity": 2,
@@ -169,7 +169,7 @@
   },
   {
     "name": "Site Veil",
-    "category": "2 site_survey",
+    "category": "2 site_stewardship",
     "scientific_tool": "tarp or geotextile",
     "description": "Covers excavated surfaces during pauses or bad weather.",
     "rarity": 1,

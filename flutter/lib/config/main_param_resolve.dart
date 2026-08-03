@@ -161,7 +161,7 @@ double resolveSiteDiscoveryVisibilityDistanceM({
 ///
 /// Keys: `dino_accuracy`, `fossil_accuracy`, `completeness_accuracy`,
 /// `quality_accuracy`, `depth_accuracy`.
-Map<String, double> resolveSiteSurveyAccuracies({
+Map<String, double> resolveSiteStewardshipAccuracies({
   required int skillLevel,
   String? weatherTime,
   String? weatherType,
@@ -177,7 +177,7 @@ Map<String, double> resolveSiteSurveyAccuracies({
   if (!GameConfig.isLoaded) {
     return {for (final key in keys) key: 0.0};
   }
-  final cfg = GameConfig.instance.siteSurvey;
+  final cfg = GameConfig.instance.siteStewardship;
   final mp = cfg.mainParams;
   final mods = toolMods ?? const <String, ParamModifier>{};
   final bases = <String, double>{

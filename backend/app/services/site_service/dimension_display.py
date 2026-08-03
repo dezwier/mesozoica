@@ -42,9 +42,9 @@ _ACCURACY_KEYS: dict[SiteDimensionKey, str] = {
 }
 
 
-def resolve_site_survey_accuracies(*, skill_level: int = 1) -> dict[str, float]:
+def resolve_site_stewardship_accuracies(*, skill_level: int = 1) -> dict[str, float]:
     """Effective site-survey accuracy params: base → level modifiers."""
-    cfg = get_game_config().site_survey
+    cfg = get_game_config().site_stewardship
     mp = cfg.main_params
     bases = {
         "dino_accuracy": float(mp.dino_accuracy),
@@ -125,7 +125,7 @@ def build_site_dimension_bands(
     odd_depth: float | None,
     skill_level: int = 1,
 ) -> dict[SiteDimensionKey, SiteDimensionBand | None]:
-    accuracies = resolve_site_survey_accuracies(skill_level=skill_level)
+    accuracies = resolve_site_stewardship_accuracies(skill_level=skill_level)
     values = {
         SiteDimensionKey.DINO: odd_dino_count,
         SiteDimensionKey.FOSSIL: odd_fossil_count,

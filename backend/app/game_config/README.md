@@ -104,7 +104,7 @@ multipliers (see `weather_time_modifiers` / `weather_type_modifiers` in this YAM
 Same solar-period XP multipliers as site discovery (day +0%, dawn/dusk +20%,
 night +50%).
 
-### Site Survey (`02_site_survey.yaml`)
+### Site Stewardship (`02_site_stewardship.yaml`)
 
 Field fossils on survey (once per site). `main_params` (level / weather / tool
 resolvable):
@@ -118,7 +118,7 @@ resolvable):
 | `depth_accuracy` | Card display precision for depth (0–1; +1%/level; depth 0 always exact) |
 
 Accuracy params are display-only on the site card for now. Base is 0; each
-site_survey level adds 0.01 (level 1 → 1%, level 99 → 99%), then tool
+site_stewardship level adds 0.01 (level 1 → 1%, level 99 → 99%), then tool
 `modifies_main_params` (none yet).
 
 Fixed global distribution tables (beside `main_params`; not subject to
@@ -145,7 +145,7 @@ some_tool:
     owning:
       site_discovery:
         discovery_chance: { op: add, value: 0.05 }
-      site_survey:
+      site_stewardship:
         dino_accuracy: { op: add, value: 0.1 }
     using:
       site_discovery:
@@ -161,7 +161,7 @@ Aerial tools use **flight-only** keys (`flight_discovery_chance`,
 `flight_discovery_distance_m`) so they are not confused with site_discovery
 main params.
 
-## Field fossil generation (`02_site_survey.yaml`)
+## Field fossil generation (`02_site_stewardship.yaml`)
 
 When a **field** site is created it gets five independent Uniform(0,1) scores
 stored on the site row (also shown on the site card back):

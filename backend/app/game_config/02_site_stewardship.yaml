@@ -1,11 +1,11 @@
-# Skill 2 — Site Survey
+# Skill 2 — Site Stewardship
 # Field fossils spawned when a site is surveyed (once per site, global).
 #
 # Each field site has five odd_* scores Uniform(0,1). On survey, attributes use
 # score = clamp(odd + Uniform(-noise, +noise), 0, 1) then pick a tier.
 # See README.md in this directory for the full mechanics.
 
-skill_id: site_survey
+skill_id: site_stewardship
 
 main_params:
   # Card display precision for each odd_* axis (0 = full-axis blur/jitter, 1 = exact).
@@ -80,8 +80,8 @@ quality_weights:
 
 # Accuracy: +0.01 per level (1..99).
 level_modifiers:
-  # +1% per site_survey level (highest matching entry; base 0 + level + tools).
-  dino_accuracy: &site_survey_accuracy_levels
+  # +1% per site_stewardship level (highest matching entry; base 0 + level + tools).
+  dino_accuracy: &site_stewardship_accuracy_levels
     - { level: 1, op: add, value: 0.01 }
     - { level: 2, op: add, value: 0.02 }
     - { level: 3, op: add, value: 0.03 }
@@ -181,10 +181,10 @@ level_modifiers:
     - { level: 97, op: add, value: 0.97 }
     - { level: 98, op: add, value: 0.98 }
     - { level: 99, op: add, value: 0.99 }
-  fossil_accuracy: *site_survey_accuracy_levels
-  completeness_accuracy: *site_survey_accuracy_levels
-  quality_accuracy: *site_survey_accuracy_levels
-  depth_accuracy: *site_survey_accuracy_levels
+  fossil_accuracy: *site_stewardship_accuracy_levels
+  completeness_accuracy: *site_stewardship_accuracy_levels
+  quality_accuracy: *site_stewardship_accuracy_levels
+  depth_accuracy: *site_stewardship_accuracy_levels
 
 # Per-sampler ±noise applied to each odd_* score before tier lookup.
 odd_noise:

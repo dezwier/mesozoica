@@ -29,8 +29,8 @@ class SiteCardDimensions extends StatelessWidget {
     } on ProviderNotFoundException {
       // Widget tests / previews without AuthController.
     }
-    final skillLevel = _siteSurveyLevel(context);
-    final accuracies = resolveSiteSurveyAccuracies(skillLevel: skillLevel);
+    final skillLevel = _siteStewardshipLevel(context);
+    final accuracies = resolveSiteStewardshipAccuracies(skillLevel: skillLevel);
 
     final horizontal =
         <(SiteDimensionKey, String, String, double?, SiteDimensionBand?)>[
@@ -127,12 +127,12 @@ class SiteCardDimensions extends StatelessWidget {
     );
   }
 
-  static int _siteSurveyLevel(BuildContext context) {
+  static int _siteStewardshipLevel(BuildContext context) {
     try {
       final profile = context.watch<AuthController>().currentUser;
       if (profile != null) {
         for (final skill in profile.skills) {
-          if (skill.id == 'site_survey') return skill.level.clamp(1, 99);
+          if (skill.id == 'site_stewardship') return skill.level.clamp(1, 99);
         }
       }
     } on ProviderNotFoundException {

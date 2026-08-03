@@ -77,7 +77,7 @@ flutter:
     - assets/images/weather/
     - assets/game_config/site_generation.yaml
     - assets/game_config/01_site_discovery.yaml
-    - assets/game_config/02_site_survey.yaml
+    - assets/game_config/02_site_stewardship.yaml
     - assets/game_config/03_site_clearing.yaml
     - assets/game_config/04_fossil_detection.yaml
     - assets/game_config/05_fossil_excavation.yaml

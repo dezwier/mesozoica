@@ -688,8 +688,8 @@ List<_MainParamDisplay> _mainParamRowsForSkill(
       weatherType: weatherType,
     );
   }
-  if (domain is SiteSurveyConfig) {
-    return _siteSurveyRows(
+  if (domain is SiteStewardshipConfig) {
+    return _siteStewardshipRows(
       domain,
       skill.level,
       toolBindings: toolBindings,
@@ -830,8 +830,8 @@ List<_MainParamDisplay> _siteDiscoveryRows(
   ];
 }
 
-List<_MainParamDisplay> _siteSurveyRows(
-  SiteSurveyConfig cfg,
+List<_MainParamDisplay> _siteStewardshipRows(
+  SiteStewardshipConfig cfg,
   int skillLevel, {
   required List<ToolModBinding> toolBindings,
   String? weatherTime,
@@ -844,7 +844,7 @@ List<_MainParamDisplay> _siteSurveyRows(
     _resolveScalarParam(
       label: 'Dinosaur accuracy',
       paramKey: 'dino_accuracy',
-      skillId: 'site_survey',
+      skillId: 'site_stewardship',
       base: mp.dinoAccuracy,
       levelEntries: cfg.levelModifiers['dino_accuracy'],
       weatherTimeMods: cfg.weatherTimeModifiers['dino_accuracy'],
@@ -859,7 +859,7 @@ List<_MainParamDisplay> _siteSurveyRows(
     _resolveScalarParam(
       label: 'Fossil accuracy',
       paramKey: 'fossil_accuracy',
-      skillId: 'site_survey',
+      skillId: 'site_stewardship',
       base: mp.fossilAccuracy,
       levelEntries: cfg.levelModifiers['fossil_accuracy'],
       weatherTimeMods: cfg.weatherTimeModifiers['fossil_accuracy'],
@@ -874,7 +874,7 @@ List<_MainParamDisplay> _siteSurveyRows(
     _resolveScalarParam(
       label: 'Completeness accuracy',
       paramKey: 'completeness_accuracy',
-      skillId: 'site_survey',
+      skillId: 'site_stewardship',
       base: mp.completenessAccuracy,
       levelEntries: cfg.levelModifiers['completeness_accuracy'],
       weatherTimeMods: cfg.weatherTimeModifiers['completeness_accuracy'],
@@ -889,7 +889,7 @@ List<_MainParamDisplay> _siteSurveyRows(
     _resolveScalarParam(
       label: 'Quality accuracy',
       paramKey: 'quality_accuracy',
-      skillId: 'site_survey',
+      skillId: 'site_stewardship',
       base: mp.qualityAccuracy,
       levelEntries: cfg.levelModifiers['quality_accuracy'],
       weatherTimeMods: cfg.weatherTimeModifiers['quality_accuracy'],
@@ -904,7 +904,7 @@ List<_MainParamDisplay> _siteSurveyRows(
     _resolveScalarParam(
       label: 'Depth accuracy',
       paramKey: 'depth_accuracy',
-      skillId: 'site_survey',
+      skillId: 'site_stewardship',
       base: mp.depthAccuracy,
       levelEntries: cfg.levelModifiers['depth_accuracy'],
       weatherTimeMods: cfg.weatherTimeModifiers['depth_accuracy'],

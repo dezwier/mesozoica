@@ -9,7 +9,7 @@ class GameConfig {
   GameConfig({
     required this.siteGeneration,
     required this.siteDiscovery,
-    required this.siteSurvey,
+    required this.siteStewardship,
     required this.siteClearing,
     required this.fossilDetection,
     required this.fossilExcavation,
@@ -28,7 +28,7 @@ class GameConfig {
 
   final SiteGenerationConfig siteGeneration;
   final SiteDiscoveryConfig siteDiscovery;
-  final SiteSurveyConfig siteSurvey;
+  final SiteStewardshipConfig siteStewardship;
   final SkillStubConfig siteClearing;
   final SkillStubConfig fossilDetection;
   final SkillStubConfig fossilExcavation;
@@ -45,14 +45,14 @@ class GameConfig {
   final LevelingConfig leveling;
 
   /// Back-compat alias for site survey fossil spawn knobs.
-  SiteSurveyConfig get fossilGeneration => siteSurvey;
+  SiteStewardshipConfig get fossilGeneration => siteStewardship;
 
   Object? skillDomain(String skillId) {
     switch (skillId) {
       case 'site_discovery':
         return siteDiscovery;
-      case 'site_survey':
-        return siteSurvey;
+      case 'site_stewardship':
+        return siteStewardship;
       case 'site_clearing':
         return siteClearing;
       case 'fossil_detection':
@@ -110,7 +110,7 @@ class GameConfig {
     final config = loadFromYamlStrings(
       siteGenerationYaml: await read('site_generation.yaml'),
       siteDiscoveryYaml: await read('01_site_discovery.yaml'),
-      siteSurveyYaml: await read('02_site_survey.yaml'),
+      siteStewardshipYaml: await read('02_site_stewardship.yaml'),
       siteClearingYaml: await read('03_site_clearing.yaml'),
       fossilDetectionYaml: await read('04_fossil_detection.yaml'),
       fossilExcavationYaml: await read('05_fossil_excavation.yaml'),
@@ -134,7 +134,7 @@ class GameConfig {
   static GameConfig loadFromYamlStrings({
     required String siteGenerationYaml,
     required String siteDiscoveryYaml,
-    required String siteSurveyYaml,
+    required String siteStewardshipYaml,
     required String siteClearingYaml,
     required String fossilDetectionYaml,
     required String fossilExcavationYaml,
@@ -157,8 +157,8 @@ class GameConfig {
       siteDiscovery: SiteDiscoveryConfig.fromYaml(
         _asMap(loadYaml(siteDiscoveryYaml)),
       ),
-      siteSurvey: SiteSurveyConfig.fromYaml(
-        _asMap(loadYaml(siteSurveyYaml)),
+      siteStewardship: SiteStewardshipConfig.fromYaml(
+        _asMap(loadYaml(siteStewardshipYaml)),
       ),
       siteClearing: SkillStubConfig.fromYaml(
         _asMap(loadYaml(siteClearingYaml)),
@@ -567,8 +567,8 @@ class SiteDiscoveryClientConfig {
   }
 }
 
-class SiteSurveyConfig {
-  const SiteSurveyConfig({
+class SiteStewardshipConfig {
+  const SiteStewardshipConfig({
     required this.skillId,
     required this.mainParams,
     required this.dinoCount,
@@ -583,7 +583,7 @@ class SiteSurveyConfig {
   });
 
   final String skillId;
-  final SiteSurveyMainParams mainParams;
+  final SiteStewardshipMainParams mainParams;
   /// Fixed global distribution tables (not subject to level/tool multipliers).
   final List<DinoCountThreshold> dinoCount;
   final Map<int, double> fossilCount;
@@ -600,7 +600,7 @@ class SiteSurveyConfig {
   Map<int, double> get cardCountWeights => fossilCount;
   List<FossilDepthBucket> get depthBuckets => depthWeights;
 
-  factory SiteSurveyConfig.fromYaml(Map<String, dynamic> yaml) {
+  factory SiteStewardshipConfig.fromYaml(Map<String, dynamic> yaml) {
     final main = GameConfig._asMap(yaml['main_params']);
     final rawBuckets = yaml['depth_weights'] ?? yaml['depth_buckets'];
     final buckets = <FossilDepthBucket>[];
@@ -631,9 +631,9 @@ class SiteSurveyConfig {
         }
       }
     }
-    return SiteSurveyConfig(
-      skillId: yaml['skill_id'] as String? ?? 'site_survey',
-      mainParams: SiteSurveyMainParams.fromYaml(main),
+    return SiteStewardshipConfig(
+      skillId: yaml['skill_id'] as String? ?? 'site_stewardship',
+      mainParams: SiteStewardshipMainParams.fromYaml(main),
       dinoCount: thresholds,
       fossilCount: _asIntDoubleMap(
         yaml['fossil_count'] ?? yaml['card_count_weights'],
@@ -653,8 +653,8 @@ class SiteSurveyConfig {
   }
 }
 
-class SiteSurveyMainParams {
-  const SiteSurveyMainParams({
+class SiteStewardshipMainParams {
+  const SiteStewardshipMainParams({
     required this.dinoAccuracy,
     required this.fossilAccuracy,
     required this.completenessAccuracy,
@@ -668,8 +668,8 @@ class SiteSurveyMainParams {
   final double qualityAccuracy;
   final double depthAccuracy;
 
-  factory SiteSurveyMainParams.fromYaml(Map<String, dynamic> yaml) {
-    return SiteSurveyMainParams(
+  factory SiteStewardshipMainParams.fromYaml(Map<String, dynamic> yaml) {
+    return SiteStewardshipMainParams(
       dinoAccuracy: _asDouble(yaml['dino_accuracy'], 0),
       fossilAccuracy: _asDouble(yaml['fossil_accuracy'], 0),
       completenessAccuracy: _asDouble(yaml['completeness_accuracy'], 0),
@@ -680,7 +680,7 @@ class SiteSurveyMainParams {
 }
 
 /// Back-compat typedef name.
-typedef FossilGenerationConfig = SiteSurveyConfig;
+typedef FossilGenerationConfig = SiteStewardshipConfig;
 
 class FossilOddNoiseConfig {
   const FossilOddNoiseConfig({

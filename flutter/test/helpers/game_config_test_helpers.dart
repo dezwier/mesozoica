@@ -27,7 +27,7 @@ Future<GameConfig> loadGameConfigForTest() async {
   return GameConfig.loadFromYamlStrings(
     siteGenerationYaml: read('site_generation.yaml'),
     siteDiscoveryYaml: read('01_site_discovery.yaml'),
-    siteSurveyYaml: read('02_site_survey.yaml'),
+    siteStewardshipYaml: read('02_site_stewardship.yaml'),
     siteClearingYaml: read('03_site_clearing.yaml'),
     fossilDetectionYaml: read('04_fossil_detection.yaml'),
     fossilExcavationYaml: read('05_fossil_excavation.yaml'),

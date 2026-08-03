@@ -179,7 +179,7 @@ def test_modifies_main_params_multi_skill() -> None:
                 "site_discovery": {
                     "discovery_chance": {"op": "add", "value": 0.05}
                 },
-                "site_survey": {
+                "site_stewardship": {
                     "dino_accuracy": {"op": "add", "value": 0.1}
                 },
             },
@@ -194,7 +194,7 @@ def test_modifies_main_params_multi_skill() -> None:
         }
     )
     assert mods.affects_skill("site_discovery")
-    assert mods.affects_skill("site_survey")
+    assert mods.affects_skill("site_stewardship")
     assert mods.affects_skill("fossil_detection")
     assert mods.params_for("owning", "site_discovery")[
         "discovery_chance"

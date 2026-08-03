@@ -15,8 +15,8 @@
 #     site_discovery:
 #       visibility_distance_m: { op: add, value: 50 }        # +50 m
 #       discovery_chance: { op: multiply, value: 1.1 }       # +10%
-#     site_survey:
-#       fossil_count: { op: multiply, value: 1.1 }
+#     site_stewardship:
+#       dino_accuracy: { op: add, value: 0.1 }
 #   using:
 #     site_discovery:
 #       discovery_chance: { op: replace, value: 0.9 }        # set to 90%

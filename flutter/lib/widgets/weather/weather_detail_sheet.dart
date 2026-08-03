@@ -125,7 +125,7 @@ class WeatherDetailDrawer extends StatelessWidget {
     final game = GameConfig.instance;
     return _ambientImpactRows(period, [
       ('site_discovery', game.siteDiscovery.weatherTimeModifiers),
-      ('site_survey', game.siteSurvey.weatherTimeModifiers),
+      ('site_stewardship', game.siteStewardship.weatherTimeModifiers),
       for (final stub in _skillStubs(game))
         (stub.skillId, stub.weatherTimeModifiers),
     ]);
@@ -138,7 +138,7 @@ class WeatherDetailDrawer extends StatelessWidget {
     final game = GameConfig.instance;
     return _ambientImpactRows(key, [
       ('site_discovery', game.siteDiscovery.weatherTypeModifiers),
-      ('site_survey', game.siteSurvey.weatherTypeModifiers),
+      ('site_stewardship', game.siteStewardship.weatherTypeModifiers),
       for (final stub in _skillStubs(game))
         (stub.skillId, stub.weatherTypeModifiers),
     ]);

@@ -16,7 +16,7 @@ _DEFAULT_CONFIG_DIR = _PACKAGE_DIR.parent / "game_config"
 # Numbered skill-domain YAML files (order matches leveling.yaml skills).
 SKILL_YAML_FILES: tuple[tuple[str, str], ...] = (
     ("site_discovery", "01_site_discovery.yaml"),
-    ("site_survey", "02_site_survey.yaml"),
+    ("site_stewardship", "02_site_stewardship.yaml"),
     ("site_clearing", "03_site_clearing.yaml"),
     ("fossil_detection", "04_fossil_detection.yaml"),
     ("fossil_excavation", "05_fossil_excavation.yaml"),
@@ -197,7 +197,7 @@ class ModifiesMainParams(BaseModel):
 
         owning:
           site_discovery: { discovery_chance: { op: add, value: 0.05 } }
-          site_survey: { dino_accuracy: { op: add, value: 0.1 } }
+          site_stewardship: { dino_accuracy: { op: add, value: 0.1 } }
         using:
           site_discovery: { discovery_chance: { op: replace, value: 0.9 } }
 
@@ -485,7 +485,7 @@ class SiteDiscoveryConfig(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# Skill 2 — Site Survey (field fossil generation)
+# Skill 2 — Site Stewardship (field fossil generation)
 # ---------------------------------------------------------------------------
 
 
@@ -555,7 +555,7 @@ class FossilOddNoiseConfig(BaseModel):
         return value
 
 
-class SiteSurveyMainParams(BaseModel):
+class SiteStewardshipMainParams(BaseModel):
     """Player-facing accuracy knobs (level / weather / tool resolvable)."""
 
     model_config = {"frozen": True}
@@ -579,13 +579,13 @@ class SiteSurveyMainParams(BaseModel):
         return _clamp_unit_interval(value, label="accuracy")
 
 
-class SiteSurveyConfig(BaseModel):
-    """Field fossil spawn knobs for the Site Survey skill."""
+class SiteStewardshipConfig(BaseModel):
+    """Field fossil spawn knobs for the Site Stewardship skill."""
 
     model_config = {"frozen": True}
 
-    skill_id: str = "site_survey"
-    main_params: SiteSurveyMainParams = Field(default_factory=SiteSurveyMainParams)
+    skill_id: str = "site_stewardship"
+    main_params: SiteStewardshipMainParams = Field(default_factory=SiteStewardshipMainParams)
     # Fixed global distribution tables (not subject to level/tool multipliers).
     dino_count: list[DinoCountThreshold] = Field(
         default_factory=lambda: [
@@ -659,7 +659,7 @@ class SiteSurveyConfig(BaseModel):
         return {str(k): float(v) for k, v in value.items()}
 
     @model_validator(mode="after")
-    def _validate_distributions(self) -> SiteSurveyConfig:
+    def _validate_distributions(self) -> SiteStewardshipConfig:
         if not self.dino_count:
             raise ValueError("dino_count must not be empty")
         prev = -1.0
@@ -715,7 +715,7 @@ class SiteSurveyConfig(BaseModel):
 
 
 # Back-compat alias.
-FossilGenerationConfig = SiteSurveyConfig
+FossilGenerationConfig = SiteStewardshipConfig
 
 
 # ---------------------------------------------------------------------------
@@ -1308,7 +1308,7 @@ class GameConfig(BaseModel):
 
     site_generation: SiteGenerationConfig
     site_discovery: SiteDiscoveryConfig
-    site_survey: SiteSurveyConfig
+    site_stewardship: SiteStewardshipConfig
     site_clearing: SkillStubConfig
     fossil_detection: SkillStubConfig
     fossil_excavation: SkillStubConfig
@@ -1326,8 +1326,8 @@ class GameConfig(BaseModel):
 
     # Back-compat aliases.
     @property
-    def fossil_generation(self) -> SiteSurveyConfig:
-        return self.site_survey
+    def fossil_generation(self) -> SiteStewardshipConfig:
+        return self.site_stewardship
 
     @property
     def fossil_discovery(self) -> SkillStubConfig:
@@ -1337,7 +1337,7 @@ class GameConfig(BaseModel):
         """Return the config object for a skill id (rich or stub)."""
         mapping: dict[str, Any] = {
             "site_discovery": self.site_discovery,
-            "site_survey": self.site_survey,
+            "site_stewardship": self.site_stewardship,
             "site_clearing": self.site_clearing,
             "fossil_detection": self.fossil_detection,
             "fossil_excavation": self.fossil_excavation,
@@ -1379,7 +1379,7 @@ def load_game_config(config_dir: Path | None = None) -> GameConfig:
         site_discovery=SiteDiscoveryConfig.model_validate(
             skill_raw["site_discovery"]
         ),
-        site_survey=SiteSurveyConfig.model_validate(skill_raw["site_survey"]),
+        site_stewardship=SiteStewardshipConfig.model_validate(skill_raw["site_stewardship"]),
         site_clearing=SkillStubConfig.model_validate(skill_raw["site_clearing"]),
         fossil_detection=SkillStubConfig.model_validate(
             skill_raw["fossil_detection"]

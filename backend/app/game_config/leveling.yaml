@@ -7,8 +7,8 @@
 skills:
   - id: site_discovery
     name: Site Discovery
-  - id: site_survey
-    name: Site Survey
+  - id: site_stewardship
+    name: Site Stewardship
   - id: site_clearing
     name: Site Clearing
   - id: fossil_detection

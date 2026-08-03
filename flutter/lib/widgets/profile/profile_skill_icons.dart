@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 /// Asset paths for palaeontology skill tile / detail-sheet logos.
 const skillIconAssets = <String, String>{
   'site_discovery': 'assets/images/chrome/skills/site_discovery.png',
-  'site_survey': 'assets/images/chrome/skills/site_survey.png',
+  'site_stewardship': 'assets/images/chrome/skills/site_stewardship.png',
   'site_clearing': 'assets/images/chrome/skills/site_clearing.png',
   'fossil_detection': 'assets/images/chrome/skills/fossil_detection.png',
   'fossil_excavation': 'assets/images/chrome/skills/fossil_excavation.png',

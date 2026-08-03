@@ -19,7 +19,7 @@ def test_resolve_default_game_config_dir() -> None:
     assert directory.is_dir()
     assert (directory / "site_generation.yaml").is_file()
     assert (directory / "01_site_discovery.yaml").is_file()
-    assert (directory / "02_site_survey.yaml").is_file()
+    assert (directory / "02_site_stewardship.yaml").is_file()
     assert (directory / "04_fossil_detection.yaml").is_file()
     assert (directory / "leveling.yaml").is_file()
 
@@ -61,24 +61,24 @@ def test_load_game_config_matches_current_defaults() -> None:
     ]
     assert dawn_xp[0].op == "multiply" and dawn_xp[0].value == 1.2
 
-    assert config.site_survey.main_params.dino_accuracy == 0.0
-    assert config.site_survey.main_params.fossil_accuracy == 0.0
-    assert config.site_survey.main_params.completeness_accuracy == 0.0
-    assert config.site_survey.main_params.quality_accuracy == 0.0
-    assert config.site_survey.main_params.depth_accuracy == 0.0
-    dino_acc_mods = config.site_survey.level_modifiers["dino_accuracy"]
+    assert config.site_stewardship.main_params.dino_accuracy == 0.0
+    assert config.site_stewardship.main_params.fossil_accuracy == 0.0
+    assert config.site_stewardship.main_params.completeness_accuracy == 0.0
+    assert config.site_stewardship.main_params.quality_accuracy == 0.0
+    assert config.site_stewardship.main_params.depth_accuracy == 0.0
+    dino_acc_mods = config.site_stewardship.level_modifiers["dino_accuracy"]
     assert len(dino_acc_mods) == 99
     assert dino_acc_mods[0].level == 1 and dino_acc_mods[0].value == 0.01
     assert dino_acc_mods[-1].level == 99 and dino_acc_mods[-1].value == 0.99
     assert (
-        len(config.site_survey.level_modifiers["fossil_accuracy"]) == 99
+        len(config.site_stewardship.level_modifiers["fossil_accuracy"]) == 99
     )
-    assert config.site_survey.odd_noise.dino_count == 0.0
-    assert config.site_survey.odd_noise.fossil_count == 0.5
-    assert config.site_survey.odd_noise.completeness == 0.3
-    assert config.site_survey.odd_noise.quality == 0.3
-    assert config.site_survey.odd_noise.depth == 0.3
-    assert [(t.max_odd, t.count) for t in config.site_survey.dino_count] == [
+    assert config.site_stewardship.odd_noise.dino_count == 0.0
+    assert config.site_stewardship.odd_noise.fossil_count == 0.5
+    assert config.site_stewardship.odd_noise.completeness == 0.3
+    assert config.site_stewardship.odd_noise.quality == 0.3
+    assert config.site_stewardship.odd_noise.depth == 0.3
+    assert [(t.max_odd, t.count) for t in config.site_stewardship.dino_count] == [
         (0.10, 0),
         (0.60, 1),
         (0.80, 2),
@@ -86,22 +86,22 @@ def test_load_game_config_matches_current_defaults() -> None:
         (0.95, 4),
         (1.00, 5),
     ]
-    assert config.site_survey.fossil_count[1] == 0.25
-    assert config.site_survey.fossil_count[6] == 0.05
-    assert config.site_survey.defaults.subcategory == "teeth"
-    assert config.site_survey.defaults.completeness == "fragmentary"
-    assert config.site_survey.defaults.quality == "moderate"
-    assert len(config.site_survey.depth_weights) == 5
-    assert config.site_survey.depth_weights[0].min_cm == 0
-    assert config.site_survey.depth_weights[0].max_cm == 0
-    assert config.site_survey.depth_weights[0].weight == 0.10
-    assert config.site_survey.depth_weights[-1].min_cm == 501
-    assert config.site_survey.depth_weights[-1].max_cm == 1000
-    assert abs(sum(config.site_survey.completeness_weights.values()) - 1.0) < 1e-6
-    assert abs(sum(config.site_survey.quality_weights.values()) - 1.0) < 1e-6
+    assert config.site_stewardship.fossil_count[1] == 0.25
+    assert config.site_stewardship.fossil_count[6] == 0.05
+    assert config.site_stewardship.defaults.subcategory == "teeth"
+    assert config.site_stewardship.defaults.completeness == "fragmentary"
+    assert config.site_stewardship.defaults.quality == "moderate"
+    assert len(config.site_stewardship.depth_weights) == 5
+    assert config.site_stewardship.depth_weights[0].min_cm == 0
+    assert config.site_stewardship.depth_weights[0].max_cm == 0
+    assert config.site_stewardship.depth_weights[0].weight == 0.10
+    assert config.site_stewardship.depth_weights[-1].min_cm == 501
+    assert config.site_stewardship.depth_weights[-1].max_cm == 1000
+    assert abs(sum(config.site_stewardship.completeness_weights.values()) - 1.0) < 1e-6
+    assert abs(sum(config.site_stewardship.quality_weights.values()) - 1.0) < 1e-6
 
     # Back-compat aliases
-    assert config.fossil_generation is config.site_survey
+    assert config.fossil_generation is config.site_stewardship
     assert config.fossil_detection.enabled is False
     assert config.fossil_excavation.enabled is False
     assert config.site_clearing.enabled is False

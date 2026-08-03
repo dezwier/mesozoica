@@ -171,7 +171,7 @@ def test_ensure_field_fossils_zero_dino_stays_done(session: Session, monkeypatch
 
     from app.core.game_config import FossilOddNoiseConfig
 
-    real_cfg = get_game_config().site_survey
+    real_cfg = get_game_config().site_stewardship
 
     class _ZeroNoiseCfg:
         odd_noise = FossilOddNoiseConfig(
@@ -189,7 +189,7 @@ def test_ensure_field_fossils_zero_dino_stays_done(session: Session, monkeypatch
         defaults = real_cfg.defaults
 
     monkeypatch.setattr(
-        "app.services.field_service.field_fossil_generate._site_survey",
+        "app.services.field_service.field_fossil_generate._site_stewardship",
         lambda: _ZeroNoiseCfg(),
     )
 

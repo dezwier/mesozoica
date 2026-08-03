@@ -52,8 +52,8 @@ QUALITY_ORDER: tuple[str, ...] = (
 )
 
 
-def _site_survey():
-    return get_game_config().site_survey
+def _site_stewardship():
+    return get_game_config().site_stewardship
 
 
 @dataclass(frozen=True)
@@ -158,7 +158,7 @@ def ensure_field_fossils_for_site(
         raise ValueError(f"Site {site_id} missing period/rock_type for fossil generation")
 
     random_source = rng or random.Random()
-    survey_cfg = _site_survey()
+    survey_cfg = _site_stewardship()
     noise = survey_cfg.odd_noise
 
     dino_counts = _dino_distribution(session, period=period, rock_type=rock_type)
