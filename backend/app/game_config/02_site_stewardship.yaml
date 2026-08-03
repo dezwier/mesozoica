@@ -308,10 +308,9 @@ odd_noise:
   depth: 0.3
 
 # Per-axis jitter around skill baseline accuracy on the site card (not a main_param;
-# not level/tool resolvable). relative = ± fraction of baseline; min_abs = floor.
+# not level/tool resolvable). max_delta = ± absolute accuracy points (e.g. 0.30 → ±30%).
 accuracy_noise:
-  relative: 0.30
-  min_abs: 0.03
+  max_delta: 0.30
 
 # Fallback attributes when distributions are empty.
 defaults:

@@ -738,26 +738,20 @@ class FossilOddNoiseConfig {
 /// Per-axis jitter around skill baseline accuracy (display-only; not a main_param).
 class AccuracyNoiseConfig {
   const AccuracyNoiseConfig({
-    required this.relative,
-    required this.minAbs,
+    required this.maxDelta,
   });
 
-  /// Half-amplitude as a fraction of baseline (± relative).
-  final double relative;
-
-  /// Floor amplitude so near-zero baselines still vary a little.
-  final double minAbs;
+  /// Absolute half-amplitude (± accuracy points on [0, 1]), independent of baseline.
+  final double maxDelta;
 
   static const AccuracyNoiseConfig defaults = AccuracyNoiseConfig(
-    relative: 0.30,
-    minAbs: 0.03,
+    maxDelta: 0.30,
   );
 
   factory AccuracyNoiseConfig.fromYaml(Object? raw) {
     if (raw is! Map) return AccuracyNoiseConfig.defaults;
     return AccuracyNoiseConfig(
-      relative: _asDouble(raw['relative'], defaults.relative),
-      minAbs: _asDouble(raw['min_abs'], defaults.minAbs),
+      maxDelta: _asDouble(raw['max_delta'], defaults.maxDelta),
     );
   }
 }

@@ -162,8 +162,15 @@ void main() {
       );
       expect(a, b);
       expect(a, isNot(c));
-      expect(a, inInclusiveRange(0.35, 0.65));
-      expect(c, inInclusiveRange(0.35, 0.65));
+      expect(a, inInclusiveRange(0.20, 0.80));
+      expect(c, inInclusiveRange(0.20, 0.80));
+      final low = applyDimensionAccuracyNoise(
+        baseAccuracy: 0.10,
+        siteId: 42,
+        dimension: SiteDimensionKey.dino,
+      );
+      expect(low, inInclusiveRange(0.0, 0.40));
+      expect((low - 0.10).abs(), lessThanOrEqualTo(0.30 + 1e-9));
     });
   });
 }

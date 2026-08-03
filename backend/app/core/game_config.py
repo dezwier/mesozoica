@@ -560,16 +560,14 @@ class AccuracyNoiseConfig(BaseModel):
 
     model_config = {"frozen": True}
 
-    # Half-amplitude as a fraction of baseline (± relative).
-    relative: float = 0.30
-    # Floor amplitude so near-zero baselines still vary a little.
-    min_abs: float = 0.03
+    # Absolute half-amplitude (± accuracy points on [0, 1]), independent of baseline.
+    max_delta: float = 0.30
 
-    @field_validator("relative", "min_abs")
+    @field_validator("max_delta")
     @classmethod
     def _validate_non_negative(cls, value: float) -> float:
         if value < 0.0:
-            raise ValueError("accuracy_noise values must be >= 0")
+            raise ValueError("accuracy_noise.max_delta must be >= 0")
         return value
 
 

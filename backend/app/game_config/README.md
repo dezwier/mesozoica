@@ -145,8 +145,8 @@ multipliers):
 Subcategory is still archive-weighted. `odd_noise`, `accuracy_noise`, and
 `defaults` also sit beside `main_params` (fixed; not level/tool resolvable).
 
-`accuracy_noise.relative` / `min_abs` control per-axis jitter around skill
-baseline accuracy on the site card (± fraction of baseline, with a floor).
+`accuracy_noise.max_delta` is absolute ± accuracy points around the skill
+baseline on the site card (independent of baseline size; e.g. 0.30 → ±30%).
 
 ### Tool modifiers (`tool_actions.yaml`)
 

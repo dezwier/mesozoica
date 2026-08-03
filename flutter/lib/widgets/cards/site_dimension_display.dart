@@ -80,7 +80,7 @@ double applyDimensionAccuracyNoise({
   final unit =
       ByteData.sublistView(Uint8List.fromList(digest)).getUint32(0, Endian.big) /
           0x100000000;
-  final amp = math.max(noise.minAbs, base.abs() * noise.relative);
+  final amp = noise.maxDelta;
   final delta = (unit * 2.0 - 1.0) * amp;
   return (base + delta).clamp(0.0, 1.0);
 }

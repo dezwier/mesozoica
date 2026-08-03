@@ -63,7 +63,7 @@ def apply_dimension_accuracy_noise(
     digest = hashlib.md5(seed_material).digest()
     # [0, 1) from first 4 bytes — must match Flutter Endian.big Uint32 / 2^32.
     unit = int.from_bytes(digest[:4], "big") / 0x100000000
-    amplitude = max(float(noise.min_abs), abs(base) * float(noise.relative))
+    amplitude = float(noise.max_delta)
     jitter = (unit * 2.0 - 1.0) * amplitude
     return min(1.0, max(0.0, base + jitter))
 

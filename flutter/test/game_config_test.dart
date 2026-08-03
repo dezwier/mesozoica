@@ -53,8 +53,7 @@ void main() {
     expect(config.siteStewardship.oddNoise.completeness, 0.3);
     expect(config.siteStewardship.oddNoise.quality, 0.3);
     expect(config.siteStewardship.oddNoise.depth, 0.3);
-    expect(config.siteStewardship.accuracyNoise.relative, 0.30);
-    expect(config.siteStewardship.accuracyNoise.minAbs, 0.03);
+    expect(config.siteStewardship.accuracyNoise.maxDelta, 0.30);
     expect(config.siteStewardship.dinoCount.length, 6);
     expect(config.siteStewardship.dinoCount.first.count, 0);
     expect(config.siteStewardship.dinoCount.last.count, 5);

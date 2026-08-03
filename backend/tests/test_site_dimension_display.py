@@ -26,9 +26,16 @@ def test_dimension_accuracy_noise_is_stable_and_varies_by_axis():
     assert a == b
     assert a != c
     assert 0.0 <= a <= 1.0
-    # ±30% of 0.50 → [0.35, 0.65]
-    assert 0.35 <= a <= 0.65
-    assert 0.35 <= c <= 0.65
+    # ±0.30 absolute around 0.50 → [0.20, 0.80]
+    assert 0.20 <= a <= 0.80
+    assert 0.20 <= c <= 0.80
+
+    low = apply_dimension_accuracy_noise(
+        0.10, site_id=42, dimension=SiteDimensionKey.DINO
+    )
+    # Same absolute amplitude regardless of baseline (clamped to [0, 1]).
+    assert 0.0 <= low <= 0.40
+    assert abs(low - 0.10) <= 0.30 + 1e-9
 
 
 def test_build_bands_apply_noise_before_exploration():
