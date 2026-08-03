@@ -53,6 +53,7 @@ class SiteService {
     double? maxLat,
     double? minLon,
     double? maxLon,
+    bool includeExactOdds = false,
   }) async {
     final uri = AppConfig.sitesUri(
       limit: limit,
@@ -75,6 +76,7 @@ class SiteService {
       maxLat: maxLat,
       minLon: minLon,
       maxLon: maxLon,
+      includeExactOdds: includeExactOdds,
     );
     if (kDebugMode) {
       debugPrint('SiteService GET $uri');
@@ -144,8 +146,13 @@ class SiteService {
   Future<SiteSummary> fetchSiteById(
     int id, {
     CatalogDataSource dataSource = CatalogDataSource.archive,
+    bool includeExactOdds = false,
   }) async {
-    final uri = AppConfig.siteUri(id, dataSource: dataSource);
+    final uri = AppConfig.siteUri(
+      id,
+      dataSource: dataSource,
+      includeExactOdds: includeExactOdds,
+    );
     if (kDebugMode) {
       debugPrint('SiteService GET $uri');
     }
@@ -289,6 +296,7 @@ class SiteService {
     double radiusKm = 1.0,
     CatalogDataSource dataSource = CatalogDataSource.field,
     bool showAll = false,
+    bool includeExactOdds = false,
   }) async {
     final uri = AppConfig.sitesNearbyUri(
       lat: lat,
@@ -296,6 +304,7 @@ class SiteService {
       radiusKm: radiusKm,
       dataSource: dataSource,
       showAll: showAll,
+      includeExactOdds: includeExactOdds,
     );
     if (kDebugMode) {
       debugPrint('SiteService GET $uri');
@@ -321,11 +330,13 @@ class SiteService {
     required double lat,
     required double lon,
     double radiusKm = 1.0,
+    bool includeExactOdds = false,
   }) async {
     final uri = AppConfig.sitesNearbyDiscoverableUri(
       lat: lat,
       lon: lon,
       radiusKm: radiusKm,
+      includeExactOdds: includeExactOdds,
     );
     if (kDebugMode) {
       debugPrint('SiteService GET $uri');
@@ -535,8 +546,11 @@ class SiteService {
     }
   }
 
-  Future<List<SiteFossilThumb>> fetchFossilsForSite(int siteId) async {
-    final uri = AppConfig.siteFossilsUri(siteId);
+  Future<List<SiteFossilThumb>> fetchFossilsForSite(
+    int siteId, {
+    bool includeHidden = false,
+  }) async {
+    final uri = AppConfig.siteFossilsUri(siteId, includeHidden: includeHidden);
     if (kDebugMode) {
       debugPrint('SiteService GET $uri');
     }

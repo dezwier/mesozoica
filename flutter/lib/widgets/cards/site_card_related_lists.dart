@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
+import '../../controllers/auth_controller.dart';
 import '../../models/site.dart';
 import '../../services/site_service.dart';
 import '../../theme/dino_card_theme.dart';
@@ -27,7 +29,9 @@ class SiteCardFossils extends StatefulWidget {
 class _SiteCardFossilsState extends State<SiteCardFossils> {
   late final SiteService _service;
   late final bool _ownsService;
-  late Future<List<SiteFossilThumb>> _fossilsFuture;
+  Future<List<SiteFossilThumb>>? _fossilsFuture;
+  int? _loadedForSiteId;
+  bool? _loadedIncludeHidden;
 
   static const _gap = 6.0;
 
@@ -57,19 +61,34 @@ class _SiteCardFossilsState extends State<SiteCardFossils> {
     super.initState();
     _ownsService = widget.siteService == null;
     _service = widget.siteService ?? SiteService();
-    _fossilsFuture = _loadFossils();
+  }
+
+  void _ensureLoaded({required bool includeHidden}) {
+    if (_loadedForSiteId == widget.siteId &&
+        _loadedIncludeHidden == includeHidden &&
+        _fossilsFuture != null) {
+      return;
+    }
+    _loadedForSiteId = widget.siteId;
+    _loadedIncludeHidden = includeHidden;
+    _fossilsFuture = _loadFossils(includeHidden: includeHidden);
   }
 
   @override
   void didUpdateWidget(covariant SiteCardFossils oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.siteId != widget.siteId) {
-      _fossilsFuture = _loadFossils();
+      _loadedForSiteId = null;
     }
   }
 
-  Future<List<SiteFossilThumb>> _loadFossils() async {
-    return _service.fetchFossilsForSite(widget.siteId);
+  Future<List<SiteFossilThumb>> _loadFossils({
+    required bool includeHidden,
+  }) async {
+    return _service.fetchFossilsForSite(
+      widget.siteId,
+      includeHidden: includeHidden,
+    );
   }
 
   @override
@@ -83,6 +102,13 @@ class _SiteCardFossilsState extends State<SiteCardFossils> {
   @override
   Widget build(BuildContext context) {
     final cardTheme = DinoCardTheme.of(context);
+    var includeHidden = false;
+    try {
+      includeHidden = context.watch<AuthController>().showAdminUi;
+    } on ProviderNotFoundException {
+      // Widget tests / previews without AuthController.
+    }
+    _ensureLoaded(includeHidden: includeHidden);
 
     return FutureBuilder<List<SiteFossilThumb>>(
       future: _fossilsFuture,

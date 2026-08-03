@@ -23,28 +23,44 @@ class SiteCardDimensions extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cardTheme = DinoCardTheme.of(context);
+    var showExactMarker = false;
+    try {
+      showExactMarker = context.watch<AuthController>().showAdminUi;
+    } on ProviderNotFoundException {
+      // Widget tests / previews without AuthController.
+    }
     final skillLevel = _siteSurveyLevel(context);
     final accuracies = resolveSiteSurveyAccuracies(skillLevel: skillLevel);
 
-    final horizontal = <(SiteDimensionKey, String, String, double?)>[
-      (SiteDimensionKey.dino, 'Dino count', 'dino_accuracy', site.oddDinoCount),
+    final horizontal =
+        <(SiteDimensionKey, String, String, double?, SiteDimensionBand?)>[
+      (
+        SiteDimensionKey.dino,
+        'Dino count',
+        'dino_accuracy',
+        site.oddDinoCount,
+        site.oddDinoBand,
+      ),
       (
         SiteDimensionKey.fossil,
         'Fossils count',
         'fossil_accuracy',
         site.oddFossilCount,
+        site.oddFossilBand,
       ),
       (
         SiteDimensionKey.completeness,
         'Completeness',
         'completeness_accuracy',
         site.oddCompleteness,
+        site.oddCompletenessBand,
       ),
       (
         SiteDimensionKey.quality,
         'Quality',
         'quality_accuracy',
         site.oddQuality,
+        site.oddQualityBand,
       ),
     ];
 
@@ -56,7 +72,9 @@ class SiteCardDimensions extends StatelessWidget {
             site: site,
             key: entry.$1,
             trueValue: entry.$4,
+            band: entry.$5,
             accuracy: accuracies[entry.$3] ?? 0,
+            showExactMarker: showExactMarker,
           ),
         ),
     ];
@@ -64,7 +82,9 @@ class SiteCardDimensions extends StatelessWidget {
       site: site,
       key: SiteDimensionKey.depth,
       trueValue: site.oddDepth,
+      band: site.oddDepthBand,
       accuracy: accuracies['depth_accuracy'] ?? 0,
+      showExactMarker: showExactMarker,
     );
 
     return CardSectionPanel(
@@ -85,6 +105,7 @@ class SiteCardDimensions extends StatelessWidget {
                         label: horizontalDisplays[i].$1,
                         display: horizontalDisplays[i].$2,
                         cardTheme: cardTheme,
+                        showExactMarker: showExactMarker,
                       ),
                     ),
                   ],
@@ -97,6 +118,7 @@ class SiteCardDimensions extends StatelessWidget {
               child: _VerticalDepthAxis(
                 display: depthDisplay,
                 cardTheme: cardTheme,
+                showExactMarker: showExactMarker,
               ),
             ),
           ],
@@ -123,15 +145,40 @@ class SiteCardDimensions extends StatelessWidget {
     required SiteSummary site,
     required SiteDimensionKey key,
     required double? trueValue,
+    required SiteDimensionBand? band,
     required double accuracy,
+    required bool showExactMarker,
   }) {
+    // Exact marker only when admin UI is on and the server sent exact odds.
+    final exactValue = showExactMarker ? trueValue : null;
+
+    if (band != null) {
+      return SiteDimensionDisplay(
+        trueValue: exactValue,
+        rangeStart: band.rangeStart,
+        rangeEnd: band.rangeEnd,
+        blurSigma: band.blurSigma,
+        effectiveAccuracy: band.effectiveAccuracy,
+      );
+    }
+
+    // Fallback for tests/fixtures that only provide exact odd_* values.
     if (trueValue == null) return null;
-    return resolveSiteDimensionDisplay(
+    final resolved = resolveSiteDimensionDisplay(
       dimension: key,
       trueValue: trueValue,
       accuracy: accuracy,
       siteId: site.siteId,
     );
+    if (exactValue == null) {
+      return SiteDimensionDisplay(
+        rangeStart: resolved.rangeStart,
+        rangeEnd: resolved.rangeEnd,
+        blurSigma: resolved.blurSigma,
+        effectiveAccuracy: resolved.effectiveAccuracy,
+      );
+    }
+    return resolved;
   }
 }
 
@@ -140,11 +187,13 @@ class _HorizontalDimensionRow extends StatelessWidget {
     required this.label,
     required this.display,
     required this.cardTheme,
+    required this.showExactMarker,
   });
 
   final String label;
   final SiteDimensionDisplay? display;
   final DinoCardTheme cardTheme;
+  final bool showExactMarker;
 
   @override
   Widget build(BuildContext context) {
@@ -167,8 +216,10 @@ class _HorizontalDimensionRow extends StatelessWidget {
                   painter: _HorizontalAxisPainter(
                     rangeStart: display!.rangeStart,
                     rangeEnd: display!.rangeEnd,
+                    trueValue: display!.trueValue,
                     blurSigma: display!.blurSigma,
                     accuracy: display!.effectiveAccuracy,
+                    showExactMarker: showExactMarker,
                     trackColor: cardTheme.cardTextMuted.withValues(alpha: 0.28),
                     tickColor: cardTheme.cardTextMuted.withValues(alpha: 0.45),
                     bandColor: cardTheme.cardAccent,
@@ -184,10 +235,12 @@ class _VerticalDepthAxis extends StatelessWidget {
   const _VerticalDepthAxis({
     required this.display,
     required this.cardTheme,
+    required this.showExactMarker,
   });
 
   final SiteDimensionDisplay? display;
   final DinoCardTheme cardTheme;
+  final bool showExactMarker;
 
   @override
   Widget build(BuildContext context) {
@@ -207,8 +260,10 @@ class _VerticalDepthAxis extends StatelessWidget {
                   painter: _VerticalAxisPainter(
                     rangeStart: display!.rangeStart,
                     rangeEnd: display!.rangeEnd,
+                    trueValue: display!.trueValue,
                     blurSigma: display!.blurSigma,
                     accuracy: display!.effectiveAccuracy,
+                    showExactMarker: showExactMarker,
                     trackColor: cardTheme.cardTextMuted.withValues(alpha: 0.28),
                     tickColor: cardTheme.cardTextMuted.withValues(alpha: 0.45),
                     bandColor: cardTheme.cardAccent,
@@ -236,8 +291,10 @@ class _AxisTrackPlaceholder extends StatelessWidget {
           ? _VerticalAxisPainter(
               rangeStart: null,
               rangeEnd: null,
+              trueValue: null,
               blurSigma: 0,
               accuracy: 0,
+              showExactMarker: false,
               trackColor: cardTheme.cardTextMuted.withValues(alpha: 0.22),
               tickColor: cardTheme.cardTextMuted.withValues(alpha: 0.35),
               bandColor: Colors.transparent,
@@ -245,8 +302,10 @@ class _AxisTrackPlaceholder extends StatelessWidget {
           : _HorizontalAxisPainter(
               rangeStart: null,
               rangeEnd: null,
+              trueValue: null,
               blurSigma: 0,
               accuracy: 0,
+              showExactMarker: false,
               trackColor: cardTheme.cardTextMuted.withValues(alpha: 0.22),
               tickColor: cardTheme.cardTextMuted.withValues(alpha: 0.35),
               bandColor: Colors.transparent,
@@ -259,8 +318,10 @@ class _HorizontalAxisPainter extends CustomPainter {
   _HorizontalAxisPainter({
     required this.rangeStart,
     required this.rangeEnd,
+    required this.trueValue,
     required this.blurSigma,
     required this.accuracy,
+    required this.showExactMarker,
     required this.trackColor,
     required this.tickColor,
     required this.bandColor,
@@ -268,8 +329,10 @@ class _HorizontalAxisPainter extends CustomPainter {
 
   final double? rangeStart;
   final double? rangeEnd;
+  final double? trueValue;
   final double blurSigma;
   final double accuracy;
+  final bool showExactMarker;
   final Color trackColor;
   final Color tickColor;
   final Color bandColor;
@@ -307,6 +370,11 @@ class _HorizontalAxisPainter extends CustomPainter {
       uncertainty: uncertainty,
       vertical: false,
     );
+
+    if (showExactMarker && trueValue != null) {
+      final exact = Offset(trueValue!.clamp(0.0, 1.0) * size.width, cy);
+      _paintPreciseMarker(canvas, exact, color: bandColor, vertical: false);
+    }
   }
 
   void _paintHorizontalTrack(Canvas canvas, Size size, double cy) {
@@ -351,8 +419,10 @@ class _HorizontalAxisPainter extends CustomPainter {
   bool shouldRepaint(covariant _HorizontalAxisPainter oldDelegate) {
     return oldDelegate.rangeStart != rangeStart ||
         oldDelegate.rangeEnd != rangeEnd ||
+        oldDelegate.trueValue != trueValue ||
         oldDelegate.blurSigma != blurSigma ||
         oldDelegate.accuracy != accuracy ||
+        oldDelegate.showExactMarker != showExactMarker ||
         oldDelegate.trackColor != trackColor ||
         oldDelegate.tickColor != tickColor ||
         oldDelegate.bandColor != bandColor;
@@ -363,8 +433,10 @@ class _VerticalAxisPainter extends CustomPainter {
   _VerticalAxisPainter({
     required this.rangeStart,
     required this.rangeEnd,
+    required this.trueValue,
     required this.blurSigma,
     required this.accuracy,
+    required this.showExactMarker,
     required this.trackColor,
     required this.tickColor,
     required this.bandColor,
@@ -372,8 +444,10 @@ class _VerticalAxisPainter extends CustomPainter {
 
   final double? rangeStart;
   final double? rangeEnd;
+  final double? trueValue;
   final double blurSigma;
   final double accuracy;
+  final bool showExactMarker;
   final Color trackColor;
   final Color tickColor;
   final Color bandColor;
@@ -412,6 +486,11 @@ class _VerticalAxisPainter extends CustomPainter {
       uncertainty: uncertainty,
       vertical: true,
     );
+
+    if (showExactMarker && trueValue != null) {
+      final exact = Offset(cx, trueValue!.clamp(0.0, 1.0) * size.height);
+      _paintPreciseMarker(canvas, exact, color: bandColor, vertical: true);
+    }
   }
 
   void _paintVerticalTrack(Canvas canvas, Size size, double cx) {
@@ -454,8 +533,10 @@ class _VerticalAxisPainter extends CustomPainter {
   bool shouldRepaint(covariant _VerticalAxisPainter oldDelegate) {
     return oldDelegate.rangeStart != rangeStart ||
         oldDelegate.rangeEnd != rangeEnd ||
+        oldDelegate.trueValue != trueValue ||
         oldDelegate.blurSigma != blurSigma ||
         oldDelegate.accuracy != accuracy ||
+        oldDelegate.showExactMarker != showExactMarker ||
         oldDelegate.trackColor != trackColor ||
         oldDelegate.tickColor != tickColor ||
         oldDelegate.bandColor != bandColor;

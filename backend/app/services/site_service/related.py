@@ -65,13 +65,13 @@ def _fossil_status_for_viewer(
 def _should_filter_field_fossils(
     site: Site,
     *,
-    is_admin: bool,
+    include_hidden: bool,
 ) -> bool:
-    """Non-admins only see field fossils they have a user_fossil link for.
+    """Without include_hidden, only fossils with a user_fossil link are returned.
 
-    Admins still see all on site/dino cards (with status for dimming).
+    Admins must pass include_hidden=true for the card admin peek (faded thumbs).
     """
-    return site.data_source == DATA_SOURCE_FIELD and not is_admin
+    return site.data_source == DATA_SOURCE_FIELD and not include_hidden
 
 
 def _thumb(
@@ -94,7 +94,7 @@ def list_site_fossils(
     site_id: int,
     *,
     viewer_user_id: int | None = None,
-    is_admin: bool = False,
+    include_hidden: bool = False,
 ) -> list[SiteFossilThumb]:
     site = _ensure_site_exists(session, site_id)
     rows = session.exec(
@@ -108,7 +108,7 @@ def list_site_fossils(
         linked = _linked_fossil_ids_for_user(
             session, site_id=site_id, user_id=viewer_user_id
         )
-    if _should_filter_field_fossils(site, is_admin=is_admin):
+    if _should_filter_field_fossils(site, include_hidden=include_hidden):
         if viewer_user_id is None or linked is None:
             rows = []
         else:
@@ -143,7 +143,7 @@ def list_site_dinosaurs(
     site_id: int,
     *,
     viewer_user_id: int | None = None,
-    is_admin: bool = False,
+    include_hidden: bool = False,
 ) -> list[SiteDinosaurThumb]:
     site = _ensure_site_exists(session, site_id)
     stmt = (
@@ -154,7 +154,7 @@ def list_site_dinosaurs(
             col(Fossil.data_source) == site.data_source,
         )
     )
-    if _should_filter_field_fossils(site, is_admin=is_admin):
+    if _should_filter_field_fossils(site, include_hidden=include_hidden):
         if viewer_user_id is None:
             return []
         stmt = stmt.join(
@@ -176,7 +176,7 @@ def list_site_dino_fossil_groups(
     site_id: int,
     *,
     viewer_user_id: int | None = None,
-    is_admin: bool = False,
+    include_hidden: bool = False,
 ) -> list[SiteDinoFossilGroup]:
     site = _ensure_site_exists(session, site_id)
     stmt = (
@@ -199,7 +199,7 @@ def list_site_dino_fossil_groups(
         linked = _linked_fossil_ids_for_user(
             session, site_id=site_id, user_id=viewer_user_id
         )
-    if _should_filter_field_fossils(site, is_admin=is_admin):
+    if _should_filter_field_fossils(site, include_hidden=include_hidden):
         if viewer_user_id is None:
             return []
         stmt = stmt.join(

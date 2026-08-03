@@ -175,6 +175,7 @@ class ApiEndpoints {
     double? maxLat,
     double? minLon,
     double? maxLon,
+    bool includeExactOdds = false,
   }) {
     final params = <String, String>{
       'limit': '$limit',
@@ -218,6 +219,9 @@ class ApiEndpoints {
       params['min_lon'] = '$minLon';
       params['max_lon'] = '$maxLon';
     }
+    if (includeExactOdds) {
+      params['include_exact_odds'] = 'true';
+    }
     var uri = Uri.parse(
       '${AppConfig.baseApiUrl}/api/v1/sites',
     ).replace(queryParameters: params);
@@ -259,9 +263,18 @@ class ApiEndpoints {
   static Uri siteUri(
     int id, {
     CatalogDataSource dataSource = CatalogDataSource.archive,
-  }) => Uri.parse(
-    '${AppConfig.baseApiUrl}/api/v1/sites/$id',
-  ).replace(queryParameters: {'data_source': dataSource.apiValue});
+    bool includeExactOdds = false,
+  }) {
+    final params = <String, String>{
+      'data_source': dataSource.apiValue,
+    };
+    if (includeExactOdds) {
+      params['include_exact_odds'] = 'true';
+    }
+    return Uri.parse(
+      '${AppConfig.baseApiUrl}/api/v1/sites/$id',
+    ).replace(queryParameters: params);
+  }
 
   static Uri siteDiscoverUri(int id) =>
       Uri.parse('${AppConfig.baseApiUrl}/api/v1/sites/$id/discover');
@@ -282,10 +295,19 @@ class ApiEndpoints {
     required double lat,
     required double lon,
     double radiusKm = 1.0,
+    bool includeExactOdds = false,
   }) {
-    return Uri.parse('${AppConfig.baseApiUrl}/api/v1/sites/nearby-discoverable').replace(
-      queryParameters: {'lat': '$lat', 'lon': '$lon', 'radius_km': '$radiusKm'},
-    );
+    final params = <String, String>{
+      'lat': '$lat',
+      'lon': '$lon',
+      'radius_km': '$radiusKm',
+    };
+    if (includeExactOdds) {
+      params['include_exact_odds'] = 'true';
+    }
+    return Uri.parse(
+      '${AppConfig.baseApiUrl}/api/v1/sites/nearby-discoverable',
+    ).replace(queryParameters: params);
   }
 
   static Uri sitesNearbyUri({
@@ -294,6 +316,7 @@ class ApiEndpoints {
     double radiusKm = 1.0,
     CatalogDataSource dataSource = CatalogDataSource.field,
     bool showAll = false,
+    bool includeExactOdds = false,
   }) {
     final params = <String, String>{
       'lat': '$lat',
@@ -304,13 +327,19 @@ class ApiEndpoints {
     if (showAll) {
       params['show_all'] = 'true';
     }
+    if (includeExactOdds) {
+      params['include_exact_odds'] = 'true';
+    }
     return Uri.parse(
       '${AppConfig.baseApiUrl}/api/v1/sites/nearby',
     ).replace(queryParameters: params);
   }
 
-  static Uri siteFossilsUri(int siteId) =>
-      Uri.parse('${AppConfig.baseApiUrl}/api/v1/sites/$siteId/fossils');
+  static Uri siteFossilsUri(int siteId, {bool includeHidden = false}) {
+    final uri = Uri.parse('${AppConfig.baseApiUrl}/api/v1/sites/$siteId/fossils');
+    if (!includeHidden) return uri;
+    return uri.replace(queryParameters: {'include_hidden': 'true'});
+  }
 
   static Uri siteDinosaursUri(int siteId) =>
       Uri.parse('${AppConfig.baseApiUrl}/api/v1/sites/$siteId/dinosaurs');

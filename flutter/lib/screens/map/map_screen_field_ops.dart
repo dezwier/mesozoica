@@ -253,7 +253,12 @@ mixin _MapScreenFieldOpsMixin on State<MapScreen>, _MapScreenCameraMixin {
     final mapData = context.read<map_data.MapController>();
     // Keep selection after the card closes; only another tap replaces it.
     mapData.selectSite(site);
-    final displayFuture = mapData.siteForDisplay(site);
+    final includeExactOdds =
+        context.read<AuthController>().showAdminUi;
+    final displayFuture = mapData.siteForDisplay(
+      site,
+      includeExactOdds: includeExactOdds,
+    );
     if (!_rotateMap) {
       unawaited(_panToSite(site));
     }

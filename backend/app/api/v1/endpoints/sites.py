@@ -63,6 +63,8 @@ from app.services.site_service import (
     survey_site,
 )
 from app.services.site_service.summary import SiteRow
+from app.services.level_service.skills import get_skill_xp
+from app.services.level_service.xp_table import level_for_xp
 
 router = APIRouter(prefix="/sites", tags=["sites"])
 
@@ -99,6 +101,35 @@ def _maybe_enrich_viewer(
     )
 
 
+def _require_admin_flag(flag: bool, *, name: str, current_user: User | None) -> bool:
+    """Validate an admin-only peek flag; return the effective (admin-gated) value."""
+    is_admin = bool(current_user is not None and current_user.is_admin)
+    if flag and not is_admin:
+        raise ValidationError(f"{name} requires admin")
+    return flag and is_admin
+
+
+def _survey_skill_level(current_user: User | None) -> int:
+    if current_user is None:
+        return 1
+    return level_for_xp(get_skill_xp(current_user, "site_survey"))
+
+
+def _to_summary(
+    row: SiteRow,
+    *,
+    types_by_period,
+    current_user: User | None,
+    include_exact_odds: bool,
+) -> SiteSummary:
+    return site_row_to_summary(
+        row,
+        types_by_period=types_by_period,
+        include_exact_odds=include_exact_odds,
+        survey_skill_level=_survey_skill_level(current_user),
+    )
+
+
 @router.get("", response_model=SiteListResponse)
 def get_sites(
     session: Session = Depends(get_session),
@@ -123,6 +154,10 @@ def get_sites(
     max_lat: float | None = Query(default=None, ge=-90, le=90),
     min_lon: float | None = Query(default=None, ge=-180, le=180),
     max_lon: float | None = Query(default=None, ge=-180, le=180),
+    include_exact_odds: bool = Query(
+        default=False,
+        description="Admin-only: include exact odd_* values (card peek).",
+    ),
 ) -> SiteListResponse:
     allowed_sorts = (
         "name",
@@ -133,6 +168,9 @@ def get_sites(
     )
     if sort not in allowed_sorts:
         raise ValidationError(f"sort must be one of: {', '.join(allowed_sorts)}")
+    exact = _require_admin_flag(
+        include_exact_odds, name="include_exact_odds", current_user=current_user
+    )
     linked_user_id, effective_show_all = _field_visibility(
         data_source=data_source,
         show_all=show_all,
@@ -165,7 +203,15 @@ def get_sites(
     )
     rows = _maybe_enrich_viewer(session, rows, current_user)
     types_by_period = load_site_types_by_period(session)
-    items = [site_row_to_summary(row, types_by_period=types_by_period) for row in rows]
+    items = [
+        _to_summary(
+            row,
+            types_by_period=types_by_period,
+            current_user=current_user,
+            include_exact_odds=exact,
+        )
+        for row in rows
+    ]
     return SiteListResponse(
         items=items,
         total=total,
@@ -184,7 +230,14 @@ def get_sites_nearby(
     radius_km: float = Query(default=1.0, gt=0, le=50),
     data_source: str = Query(default=DATA_SOURCE_FIELD),
     show_all: bool = Query(default=False),
+    include_exact_odds: bool = Query(
+        default=False,
+        description="Admin-only: include exact odd_* values (card peek).",
+    ),
 ) -> SiteNearbyResponse:
+    exact = _require_admin_flag(
+        include_exact_odds, name="include_exact_odds", current_user=current_user
+    )
     linked_user_id, effective_show_all = _field_visibility(
         data_source=data_source,
         show_all=show_all,
@@ -201,7 +254,15 @@ def get_sites_nearby(
     )
     rows = _maybe_enrich_viewer(session, rows, current_user)
     types_by_period = load_site_types_by_period(session)
-    items = [site_row_to_summary(row, types_by_period=types_by_period) for row in rows]
+    items = [
+        _to_summary(
+            row,
+            types_by_period=types_by_period,
+            current_user=current_user,
+            include_exact_odds=exact,
+        )
+        for row in rows
+    ]
     return SiteNearbyResponse(
         items=items,
         total=len(items),
@@ -217,8 +278,15 @@ def get_sites_nearby_discoverable(
     lat: float = Query(..., ge=-90, le=90),
     lon: float = Query(..., ge=-180, le=180),
     radius_km: float = Query(default=1.0, gt=0, le=50),
+    include_exact_odds: bool = Query(
+        default=False,
+        description="Admin-only: include exact odd_* values (card peek).",
+    ),
 ) -> SiteNearbyResponse:
     """Field sites near the user that they can still discover (not yet linked)."""
+    exact = _require_admin_flag(
+        include_exact_odds, name="include_exact_odds", current_user=current_user
+    )
     rows = list_discoverable_sites_in_radius(
         session,
         lat=lat,
@@ -228,7 +296,15 @@ def get_sites_nearby_discoverable(
     )
     rows = _maybe_enrich_viewer(session, rows, current_user)
     types_by_period = load_site_types_by_period(session)
-    items = [site_row_to_summary(row, types_by_period=types_by_period) for row in rows]
+    items = [
+        _to_summary(
+            row,
+            types_by_period=types_by_period,
+            current_user=current_user,
+            include_exact_odds=exact,
+        )
+        for row in rows
+    ]
     return SiteNearbyResponse(
         items=items,
         total=len(items),
@@ -381,6 +457,7 @@ def post_survey_site(
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ) -> FieldSurveyResponse:
+    exact = False
     result = survey_site(
         session,
         site_id=site_id,
@@ -391,7 +468,12 @@ def post_survey_site(
         session, [result.site], viewer_user_id=int(current_user.id)
     )[0]
     return FieldSurveyResponse(
-        site=site_row_to_summary(enriched, types_by_period=types_by_period),
+        site=_to_summary(
+            enriched,
+            types_by_period=types_by_period,
+            current_user=current_user,
+            include_exact_odds=exact,
+        ),
         job_id=None,
         status="done",
         onboarded=True,
@@ -404,14 +486,20 @@ def _discover_response(
     session: Session,
     result: DiscoverFossilOnboardResult,
     *,
-    viewer_user_id: int,
+    current_user: User,
 ) -> FieldDiscoverResponse:
+    exact = False
     types_by_period = load_site_types_by_period(session)
     enriched = enrich_site_rows_for_viewer(
-        session, [result.site], viewer_user_id=viewer_user_id
+        session, [result.site], viewer_user_id=int(current_user.id)
     )[0]
     return FieldDiscoverResponse(
-        site=site_row_to_summary(enriched, types_by_period=types_by_period),
+        site=_to_summary(
+            enriched,
+            types_by_period=types_by_period,
+            current_user=current_user,
+            include_exact_odds=exact,
+        ),
         job_id=result.job_id,
         status=result.job_status,
         onboarded=result.onboarded,
@@ -420,7 +508,7 @@ def _discover_response(
         surface_fossils=surface_fossil_summaries(
             session,
             fossil_ids=result.surface_fossil_ids,
-            viewer_user_id=viewer_user_id,
+            viewer_user_id=int(current_user.id),
         ),
     )
 
@@ -439,9 +527,7 @@ def post_discover_site(
         lat=body.lat,
         lon=body.lon,
     )
-    return _discover_response(
-        session, result, viewer_user_id=current_user.id
-    )
+    return _discover_response(session, result, current_user=current_user)
 
 
 @router.post("/{site_id}/status", response_model=SiteSummary | FieldDiscoverResponse)
@@ -451,6 +537,7 @@ def post_set_site_status(
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ) -> SiteSummary | FieldDiscoverResponse:
+    exact = False
     row = set_site_status(
         session,
         site_id=site_id,
@@ -461,14 +548,17 @@ def post_set_site_status(
         skip_distance_check=bool(current_user.is_admin),
     )
     if isinstance(row, DiscoverFossilOnboardResult):
-        return _discover_response(
-            session, row, viewer_user_id=current_user.id
-        )
+        return _discover_response(session, row, current_user=current_user)
     types_by_period = load_site_types_by_period(session)
     enriched = enrich_site_rows_for_viewer(
         session, [row], viewer_user_id=int(current_user.id)
     )[0]
-    return site_row_to_summary(enriched, types_by_period=types_by_period)
+    return _to_summary(
+        enriched,
+        types_by_period=types_by_period,
+        current_user=current_user,
+        include_exact_odds=exact,
+    )
 
 
 @router.post("/{site_id}/discard", status_code=status.HTTP_204_NO_CONTENT)
@@ -492,7 +582,14 @@ def get_site(
     session: Session = Depends(get_session),
     current_user: User | None = Depends(get_optional_current_user),
     data_source: str = Query(default=DATA_SOURCE_ARCHIVE),
+    include_exact_odds: bool = Query(
+        default=False,
+        description="Admin-only: include exact odd_* values (card peek).",
+    ),
 ) -> SiteSummary:
+    exact = _require_admin_flag(
+        include_exact_odds, name="include_exact_odds", current_user=current_user
+    )
     row = get_site_by_id(
         session,
         site_id,
@@ -500,7 +597,12 @@ def get_site(
         viewer_user_id=current_user.id if current_user is not None else None,
     )
     types_by_period = load_site_types_by_period(session)
-    return site_row_to_summary(row, types_by_period=types_by_period)
+    return _to_summary(
+        row,
+        types_by_period=types_by_period,
+        current_user=current_user,
+        include_exact_odds=exact,
+    )
 
 
 @router.get("/{site_id}/fossils", response_model=SiteFossilThumbListResponse)
@@ -508,12 +610,19 @@ def get_site_fossils(
     site_id: int,
     session: Session = Depends(get_session),
     current_user: User | None = Depends(get_optional_current_user),
+    include_hidden: bool = Query(
+        default=False,
+        description="Admin-only: include undiscovered field fossils (card peek).",
+    ),
 ) -> SiteFossilThumbListResponse:
+    hidden = _require_admin_flag(
+        include_hidden, name="include_hidden", current_user=current_user
+    )
     items = list_site_fossils(
         session,
         site_id,
         viewer_user_id=current_user.id if current_user is not None else None,
-        is_admin=bool(current_user is not None and current_user.is_admin),
+        include_hidden=hidden,
     )
     return SiteFossilThumbListResponse(items=items)
 
@@ -523,12 +632,19 @@ def get_site_dinosaurs(
     site_id: int,
     session: Session = Depends(get_session),
     current_user: User | None = Depends(get_optional_current_user),
+    include_hidden: bool = Query(
+        default=False,
+        description="Admin-only: include undiscovered field fossils (card peek).",
+    ),
 ) -> SiteDinosaurThumbListResponse:
+    hidden = _require_admin_flag(
+        include_hidden, name="include_hidden", current_user=current_user
+    )
     items = list_site_dinosaurs(
         session,
         site_id,
         viewer_user_id=current_user.id if current_user is not None else None,
-        is_admin=bool(current_user is not None and current_user.is_admin),
+        include_hidden=hidden,
     )
     return SiteDinosaurThumbListResponse(items=items)
 
@@ -538,11 +654,18 @@ def get_site_dino_fossil_groups(
     site_id: int,
     session: Session = Depends(get_session),
     current_user: User | None = Depends(get_optional_current_user),
+    include_hidden: bool = Query(
+        default=False,
+        description="Admin-only: include undiscovered field fossils (card peek).",
+    ),
 ) -> SiteDinoFossilGroupListResponse:
+    hidden = _require_admin_flag(
+        include_hidden, name="include_hidden", current_user=current_user
+    )
     items = list_site_dino_fossil_groups(
         session,
         site_id,
         viewer_user_id=current_user.id if current_user is not None else None,
-        is_admin=bool(current_user is not None and current_user.is_admin),
+        include_hidden=hidden,
     )
     return SiteDinoFossilGroupListResponse(items=items)

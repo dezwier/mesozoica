@@ -168,8 +168,9 @@ class AppConfig {
     double? maxLat,
     double? minLon,
     double? maxLon,
+    bool includeExactOdds = false,
   }) =>
-      ApiEndpoints.sitesUri(limit: limit, offset: offset, sort: sort, seed: seed, q: q, maYounger: maYounger, maOlder: maOlder, hasCustomImage: hasCustomImage, dataSource: dataSource, siteIdMin: siteIdMin, showAll: showAll, howDiscovered: howDiscovered, discoveredAfter: discoveredAfter, discoveredBefore: discoveredBefore, lat: lat, lon: lon, minLat: minLat, maxLat: maxLat, minLon: minLon, maxLon: maxLon);
+      ApiEndpoints.sitesUri(limit: limit, offset: offset, sort: sort, seed: seed, q: q, maYounger: maYounger, maOlder: maOlder, hasCustomImage: hasCustomImage, dataSource: dataSource, siteIdMin: siteIdMin, showAll: showAll, howDiscovered: howDiscovered, discoveredAfter: discoveredAfter, discoveredBefore: discoveredBefore, lat: lat, lon: lon, minLat: minLat, maxLat: maxLat, minLon: minLon, maxLon: maxLon, includeExactOdds: includeExactOdds);
 
   static Uri fieldSiteEnsureUri() =>
       ApiEndpoints.fieldSiteEnsureUri();
@@ -203,8 +204,13 @@ class AppConfig {
   static Uri siteUri(
     int id, {
     CatalogDataSource dataSource = CatalogDataSource.archive,
+    bool includeExactOdds = false,
   }) =>
-      ApiEndpoints.siteUri(id, dataSource: dataSource);
+      ApiEndpoints.siteUri(
+        id,
+        dataSource: dataSource,
+        includeExactOdds: includeExactOdds,
+      );
 
   static Uri siteDiscoverUri(int id) =>
       ApiEndpoints.siteDiscoverUri(id);
@@ -225,8 +231,14 @@ class AppConfig {
     required double lat,
     required double lon,
     double radiusKm = 1.0,
+    bool includeExactOdds = false,
   }) =>
-      ApiEndpoints.sitesNearbyDiscoverableUri(lat: lat, lon: lon, radiusKm: radiusKm);
+      ApiEndpoints.sitesNearbyDiscoverableUri(
+        lat: lat,
+        lon: lon,
+        radiusKm: radiusKm,
+        includeExactOdds: includeExactOdds,
+      );
 
   static Uri sitesNearbyUri({
     required double lat,
@@ -234,11 +246,19 @@ class AppConfig {
     double radiusKm = 1.0,
     CatalogDataSource dataSource = CatalogDataSource.field,
     bool showAll = false,
+    bool includeExactOdds = false,
   }) =>
-      ApiEndpoints.sitesNearbyUri(lat: lat, lon: lon, radiusKm: radiusKm, dataSource: dataSource, showAll: showAll);
+      ApiEndpoints.sitesNearbyUri(
+        lat: lat,
+        lon: lon,
+        radiusKm: radiusKm,
+        dataSource: dataSource,
+        showAll: showAll,
+        includeExactOdds: includeExactOdds,
+      );
 
-  static Uri siteFossilsUri(int siteId) =>
-      ApiEndpoints.siteFossilsUri(siteId);
+  static Uri siteFossilsUri(int siteId, {bool includeHidden = false}) =>
+      ApiEndpoints.siteFossilsUri(siteId, includeHidden: includeHidden);
 
   static Uri siteDinosaursUri(int siteId) =>
       ApiEndpoints.siteDinosaursUri(siteId);

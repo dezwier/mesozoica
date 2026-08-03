@@ -215,8 +215,13 @@ def test_generate_field_sites_sets_expected_fields(session: Session, monkeypatch
     row = get_site_by_id(session, site.site_id, data_source=DATA_SOURCE_FIELD)
     assert row.status == "hidden"
     summary = site_row_to_summary(row)
-    assert summary.odd_dino_count == site.odd_dino_count
-    assert summary.odd_depth == site.odd_depth
+    assert summary.odd_dino_count is None
+    assert summary.odd_depth is None
+    assert summary.odd_dino_band is not None
+    assert summary.odd_depth_band is not None
+    exact = site_row_to_summary(row, include_exact_odds=True)
+    assert exact.odd_dino_count == site.odd_dino_count
+    assert exact.odd_depth == site.odd_depth
     assert summary.how_discovered is None
 
 

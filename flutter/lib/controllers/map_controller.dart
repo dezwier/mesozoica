@@ -541,11 +541,15 @@ class MapController extends ChangeNotifier {
   }
 
   /// Loads the latest site row so formation and other card fields are current.
-  Future<SiteSummary> siteForDisplay(SiteSummary site) async {
+  Future<SiteSummary> siteForDisplay(
+    SiteSummary site, {
+    bool includeExactOdds = false,
+  }) async {
     try {
       final fresh = await _service.fetchSiteById(
         site.siteId,
         dataSource: _dataSource,
+        includeExactOdds: includeExactOdds,
       );
       _replaceCachedSite(fresh);
       return fresh;

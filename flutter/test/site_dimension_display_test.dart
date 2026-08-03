@@ -10,6 +10,7 @@ void main() {
         accuracy: 1.0,
         siteId: 50001,
       );
+      expect(result.trueValue, closeTo(0.42, 1e-9));
       expect(result.rangeStart, closeTo(0.42, 1e-9));
       expect(result.rangeEnd, closeTo(0.42, 1e-9));
       expect(result.blurSigma, 0.0);
@@ -118,6 +119,17 @@ void main() {
       expect(precise.rangeStart, closeTo(0.78, 1e-9));
       expect(blurry.blurSigma, kSiteDimensionMaxBlurSigma);
       expect(blurry.rangeWidth, greaterThan(0.7));
+    });
+
+    test('keeps trueValue even when the blurry band is jittered', () {
+      final result = resolveSiteDimensionDisplay(
+        dimension: SiteDimensionKey.quality,
+        trueValue: 0.33,
+        accuracy: 0.25,
+        siteId: 99,
+      );
+      expect(result.trueValue, closeTo(0.33, 1e-9));
+      expect(result.isPrecise, isFalse);
     });
   });
 }

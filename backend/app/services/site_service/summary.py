@@ -15,8 +15,12 @@ from app.models.user_site import (
     USER_SITE_ROLE_SURVEYOR,
     UserSite,
 )
-from app.schemas.site import SiteSummary
+from app.schemas.site import SiteDimensionBand, SiteSummary
 from app.services.curated_image_service.resolve import resolve_site_type_card_image_url
+from app.services.site_service.dimension_display import (
+    SiteDimensionKey,
+    build_site_dimension_bands,
+)
 from app.services.site_service.site_type_fallback import effective_site_type
 
 
@@ -43,10 +47,23 @@ def _site_card_image_url(site: Site, site_type: SiteType | None) -> str | None:
     )
 
 
+def _band_schema(band) -> SiteDimensionBand | None:
+    if band is None:
+        return None
+    return SiteDimensionBand(
+        range_start=band.range_start,
+        range_end=band.range_end,
+        blur_sigma=band.blur_sigma,
+        effective_accuracy=band.effective_accuracy,
+    )
+
+
 def site_row_to_summary(
     row: SiteRow,
     *,
     types_by_period: dict[str, list[SiteType]] | None = None,
+    include_exact_odds: bool = False,
+    survey_skill_level: int = 1,
 ) -> SiteSummary:
     from app.services.curated_image_service.versions import ORIGINAL_VERSION
 
@@ -55,6 +72,15 @@ def site_row_to_summary(
         effective_site_type(site, row.site_type, types_by_period)
         if types_by_period is not None
         else row.site_type
+    )
+    bands = build_site_dimension_bands(
+        site_id=int(site.site_id),
+        odd_dino_count=site.odd_dino_count,
+        odd_fossil_count=site.odd_fossil_count,
+        odd_completeness=site.odd_completeness,
+        odd_quality=site.odd_quality,
+        odd_depth=site.odd_depth,
+        skill_level=survey_skill_level,
     )
     return SiteSummary(
         site_id=site.site_id,
@@ -84,11 +110,16 @@ def site_row_to_summary(
         viewer_has_surveyed=row.viewer_has_surveyed,
         discovered_at=row.discovered_at,
         discovering_session_id=row.discovering_session_id,
-        odd_dino_count=site.odd_dino_count,
-        odd_fossil_count=site.odd_fossil_count,
-        odd_completeness=site.odd_completeness,
-        odd_quality=site.odd_quality,
-        odd_depth=site.odd_depth,
+        odd_dino_count=site.odd_dino_count if include_exact_odds else None,
+        odd_fossil_count=site.odd_fossil_count if include_exact_odds else None,
+        odd_completeness=site.odd_completeness if include_exact_odds else None,
+        odd_quality=site.odd_quality if include_exact_odds else None,
+        odd_depth=site.odd_depth if include_exact_odds else None,
+        odd_dino_band=_band_schema(bands[SiteDimensionKey.DINO]),
+        odd_fossil_band=_band_schema(bands[SiteDimensionKey.FOSSIL]),
+        odd_completeness_band=_band_schema(bands[SiteDimensionKey.COMPLETENESS]),
+        odd_quality_band=_band_schema(bands[SiteDimensionKey.QUALITY]),
+        odd_depth_band=_band_schema(bands[SiteDimensionKey.DEPTH]),
         version=site.version or ORIGINAL_VERSION,
     )
 

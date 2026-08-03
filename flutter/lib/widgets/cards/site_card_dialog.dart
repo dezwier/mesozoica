@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
+import '../../controllers/auth_controller.dart';
 import '../../models/catalog_data_source.dart';
 import '../../models/site.dart';
 import '../../services/site_service.dart';
@@ -40,16 +42,25 @@ class _SiteCardSheet extends StatefulWidget {
 class _SiteCardSheetState extends State<_SiteCardSheet> {
   late final SiteService _service;
   late final bool _ownsService;
-  late final Future<SiteSummary> _siteFuture;
+  Future<SiteSummary>? _siteFuture;
+  bool? _loadedIncludeExactOdds;
 
   @override
   void initState() {
     super.initState();
     _ownsService = widget.siteService == null;
     _service = widget.siteService ?? SiteService();
+  }
+
+  void _ensureLoaded({required bool includeExactOdds}) {
+    if (_siteFuture != null && _loadedIncludeExactOdds == includeExactOdds) {
+      return;
+    }
+    _loadedIncludeExactOdds = includeExactOdds;
     _siteFuture = _service.fetchSiteById(
       widget.siteId,
       dataSource: widget.dataSource,
+      includeExactOdds: includeExactOdds,
     );
   }
 
@@ -63,6 +74,14 @@ class _SiteCardSheetState extends State<_SiteCardSheet> {
 
   @override
   Widget build(BuildContext context) {
+    var includeExactOdds = false;
+    try {
+      includeExactOdds = context.watch<AuthController>().showAdminUi;
+    } on ProviderNotFoundException {
+      // Previews / tests without AuthController.
+    }
+    _ensureLoaded(includeExactOdds: includeExactOdds);
+
     return FutureBuilder<SiteSummary>(
       future: _siteFuture,
       builder: (context, snapshot) {

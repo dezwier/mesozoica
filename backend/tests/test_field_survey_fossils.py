@@ -467,6 +467,22 @@ def test_discover_api_and_visibility(client, session: Session, monkeypatch):
         headers=admin_headers,
     )
     assert admin_site.status_code == 200
-    assert len(admin_site.json()["items"]) >= len(fossils.json()["items"])
-    statuses = {item["status"] for item in admin_site.json()["items"]}
+    # Without include_hidden, admins only see linked fossils (same as players).
+    assert len(admin_site.json()["items"]) == len(fossils.json()["items"])
+
+    admin_peek = client.get(
+        f"/api/v1/sites/{field_site.site_id}/fossils",
+        params={"include_hidden": "true"},
+        headers=admin_headers,
+    )
+    assert admin_peek.status_code == 200
+    assert len(admin_peek.json()["items"]) >= len(fossils.json()["items"])
+    statuses = {item["status"] for item in admin_peek.json()["items"]}
     assert "hidden" in statuses or "in_situ" in statuses
+
+    denied = client.get(
+        f"/api/v1/sites/{field_site.site_id}/fossils",
+        params={"include_hidden": "true"},
+        headers=headers,
+    )
+    assert denied.status_code == 400

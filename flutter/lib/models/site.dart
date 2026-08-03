@@ -5,6 +5,31 @@ import '../utils/relative_time.dart';
 export 'site_field.dart';
 export 'site_related.dart';
 
+/// Server-provided blurry display range for one site odd_* axis.
+class SiteDimensionBand {
+  const SiteDimensionBand({
+    required this.rangeStart,
+    required this.rangeEnd,
+    required this.blurSigma,
+    required this.effectiveAccuracy,
+  });
+
+  final double rangeStart;
+  final double rangeEnd;
+  final double blurSigma;
+  final double effectiveAccuracy;
+
+  factory SiteDimensionBand.fromJson(Map<String, dynamic> json) {
+    return SiteDimensionBand(
+      rangeStart: (json['range_start'] as num).toDouble(),
+      rangeEnd: (json['range_end'] as num).toDouble(),
+      blurSigma: (json['blur_sigma'] as num?)?.toDouble() ?? 0.0,
+      effectiveAccuracy:
+          (json['effective_accuracy'] as num?)?.toDouble() ?? 0.0,
+    );
+  }
+}
+
 class SiteSummary {
   const SiteSummary({
     required this.siteId,
@@ -30,6 +55,11 @@ class SiteSummary {
     this.oddCompleteness,
     this.oddQuality,
     this.oddDepth,
+    this.oddDinoBand,
+    this.oddFossilBand,
+    this.oddCompletenessBand,
+    this.oddQualityBand,
+    this.oddDepthBand,
     this.version = 'Original',
   });
 
@@ -59,6 +89,11 @@ class SiteSummary {
   final double? oddCompleteness;
   final double? oddQuality;
   final double? oddDepth;
+  final SiteDimensionBand? oddDinoBand;
+  final SiteDimensionBand? oddFossilBand;
+  final SiteDimensionBand? oddCompletenessBand;
+  final SiteDimensionBand? oddQualityBand;
+  final SiteDimensionBand? oddDepthBand;
   /// Curated site-type image version folder for this occurrence.
   final String version;
 
@@ -196,6 +231,11 @@ class SiteSummary {
     return '—';
   }
 
+  static SiteDimensionBand? _bandFromJson(Object? value) {
+    if (value is! Map<String, dynamic>) return null;
+    return SiteDimensionBand.fromJson(value);
+  }
+
   factory SiteSummary.fromJson(Map<String, dynamic> json) {
     return SiteSummary(
       siteId: json['site_id'] as int,
@@ -221,6 +261,11 @@ class SiteSummary {
       oddCompleteness: (json['odd_completeness'] as num?)?.toDouble(),
       oddQuality: (json['odd_quality'] as num?)?.toDouble(),
       oddDepth: (json['odd_depth'] as num?)?.toDouble(),
+      oddDinoBand: _bandFromJson(json['odd_dino_band']),
+      oddFossilBand: _bandFromJson(json['odd_fossil_band']),
+      oddCompletenessBand: _bandFromJson(json['odd_completeness_band']),
+      oddQualityBand: _bandFromJson(json['odd_quality_band']),
+      oddDepthBand: _bandFromJson(json['odd_depth_band']),
       version: (json['version'] as String?)?.trim().isNotEmpty == true
           ? (json['version'] as String).trim()
           : 'Original',
@@ -268,6 +313,11 @@ class SiteSummary {
       oddCompleteness: oddCompleteness,
       oddQuality: oddQuality,
       oddDepth: oddDepth,
+      oddDinoBand: oddDinoBand,
+      oddFossilBand: oddFossilBand,
+      oddCompletenessBand: oddCompletenessBand,
+      oddQualityBand: oddQualityBand,
+      oddDepthBand: oddDepthBand,
       version: version,
     );
   }

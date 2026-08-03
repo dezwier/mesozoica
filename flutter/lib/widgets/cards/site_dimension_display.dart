@@ -12,11 +12,15 @@ enum SiteDimensionKey {
 /// Resolved blurry range for one site dimension axis.
 class SiteDimensionDisplay {
   const SiteDimensionDisplay({
+    this.trueValue,
     required this.rangeStart,
     required this.rangeEnd,
     required this.blurSigma,
     required this.effectiveAccuracy,
   });
+
+  /// Ground-truth value on the unit axis (admin exact marker when non-null).
+  final double? trueValue;
 
   /// Inclusive low end of the uncertainty band on the unit axis.
   final double rangeStart;
@@ -69,6 +73,7 @@ SiteDimensionDisplay resolveSiteDimensionDisplay({
 
   if (uncertainty <= 0) {
     return SiteDimensionDisplay(
+      trueValue: clampedTrue,
       rangeStart: clampedTrue,
       rangeEnd: clampedTrue,
       blurSigma: 0.0,
@@ -98,6 +103,7 @@ SiteDimensionDisplay resolveSiteDimensionDisplay({
   }
 
   return SiteDimensionDisplay(
+    trueValue: clampedTrue,
     rangeStart: start,
     rangeEnd: end,
     blurSigma: uncertainty * kSiteDimensionMaxBlurSigma,

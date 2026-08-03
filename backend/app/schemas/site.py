@@ -38,6 +38,15 @@ class SiteTypeListResponse(BaseModel):
     has_next: bool
 
 
+class SiteDimensionBand(BaseModel):
+    """Blurry display range for one site odd_* axis (no exact value)."""
+
+    range_start: float
+    range_end: float
+    blur_sigma: float = 0.0
+    effective_accuracy: float = 0.0
+
+
 class SiteSummary(BaseModel):
     """Card-facing site fields with joined site_type image data."""
 
@@ -63,11 +72,17 @@ class SiteSummary(BaseModel):
     # Viewer's discoverer UserSite (when authenticated and linked).
     discovered_at: datetime | None = None
     discovering_session_id: int | None = None
+    # Exact odd_* values are admin-only (include_exact_odds). Everyone gets bands.
     odd_dino_count: float | None = None
     odd_fossil_count: float | None = None
     odd_completeness: float | None = None
     odd_quality: float | None = None
     odd_depth: float | None = None
+    odd_dino_band: SiteDimensionBand | None = None
+    odd_fossil_band: SiteDimensionBand | None = None
+    odd_completeness_band: SiteDimensionBand | None = None
+    odd_quality_band: SiteDimensionBand | None = None
+    odd_depth_band: SiteDimensionBand | None = None
     version: str = "Original"
 
 
