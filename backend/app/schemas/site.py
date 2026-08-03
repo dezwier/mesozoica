@@ -68,7 +68,6 @@ class SiteSummary(BaseModel):
     data_source: str = "archive"
     how_discovered: str | None = None
     status: str | None = None
-    viewer_has_surveyed: bool | None = None
     # Viewer's discoverer UserSite (when authenticated and linked).
     discovered_at: datetime | None = None
     discovering_session_id: int | None = None
@@ -85,6 +84,10 @@ class SiteSummary(BaseModel):
     odd_depth_band: SiteDimensionBand | None = None
     # Viewer meters walked inside site_visibility_m (discoverer progress).
     explored_distance_m: float | None = None
+    # True when all five dimension accuracies reached 100% (meters frozen).
+    documented: bool | None = None
+    # True when the viewer has a documenter role on this site.
+    viewer_has_documented: bool | None = None
     version: str = "Original"
 
 
@@ -123,15 +126,6 @@ class FieldEnsureJobResponse(BaseModel):
     total_in_radius: int | None = None
     radius_km: float
     error_message: str | None = None
-
-
-class FieldSurveyResponse(BaseModel):
-    site: SiteSummary
-    job_id: int | None = None
-    status: str = "done"
-    onboarded: bool = False
-    generated: bool = False
-    fossils_ready: bool = True
 
 
 class FieldSurveyJobResponse(BaseModel):

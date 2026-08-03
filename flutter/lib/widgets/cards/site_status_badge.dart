@@ -17,7 +17,7 @@ class SiteStatusOption {
 const List<SiteStatusOption> kSiteStatusOptions = [
   SiteStatusOption(apiStatus: 'hidden', label: 'Hidden'),
   SiteStatusOption(apiStatus: 'discovered', label: 'Discover'),
-  SiteStatusOption(apiStatus: 'surveyed', label: 'Survey'),
+  SiteStatusOption(apiStatus: 'documented', label: 'Document'),
   SiteStatusOption(apiStatus: 'protected', label: 'Protect'),
   SiteStatusOption(apiStatus: 'excavation', label: 'Excavate'),
   SiteStatusOption(apiStatus: 'exhausted', label: 'Exhaust'),

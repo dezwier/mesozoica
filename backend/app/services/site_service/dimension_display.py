@@ -77,8 +77,36 @@ def apply_exploration_accuracy_boost(
     return min(1.0, max(0.0, float(skill_accuracy) + boost))
 
 
+def site_is_fully_documented(
+    *,
+    site_id: int,
+    odd_dino_count: float | None,
+    odd_fossil_count: float | None,
+    odd_completeness: float | None,
+    odd_quality: float | None,
+    odd_depth: float | None,
+    skill_level: int,
+    explored_distance_m: float,
+) -> bool:
+    """True when all five display accuracies are at 100%."""
+    bands = build_site_dimension_bands(
+        site_id=site_id,
+        odd_dino_count=odd_dino_count,
+        odd_fossil_count=odd_fossil_count,
+        odd_completeness=odd_completeness,
+        odd_quality=odd_quality,
+        odd_depth=odd_depth,
+        skill_level=skill_level,
+        explored_distance_m=explored_distance_m,
+    )
+    present = [band for band in bands.values() if band is not None]
+    if len(present) < len(SiteDimensionKey):
+        return False
+    return all(band.effective_accuracy >= 1.0 - 1e-9 for band in present)
+
+
 def resolve_site_stewardship_accuracies(*, skill_level: int = 1) -> dict[str, float]:
-    """Effective site-survey accuracy params: base → level modifiers."""
+    """Effective site-dimension accuracy params: base → level modifiers."""
     cfg = get_game_config().site_stewardship
     mp = cfg.main_params
     bases = {

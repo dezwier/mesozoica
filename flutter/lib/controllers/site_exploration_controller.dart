@@ -37,6 +37,7 @@ class SiteExplorationController extends ChangeNotifier {
 
   /// Local explored meters by site id (monotonic).
   final Map<int, double> _exploredBySite = {};
+  final Set<int> _documentedSiteIds = {};
   final Set<int> _dirtySiteIds = {};
   DateTime? _lastSyncAttemptAt;
   bool _appForeground = true;
@@ -44,10 +45,16 @@ class SiteExplorationController extends ChangeNotifier {
 
   Map<int, double> get exploredBySite => Map.unmodifiable(_exploredBySite);
 
+  bool isDocumented(int siteId) => _documentedSiteIds.contains(siteId);
+
   /// Best-known explored meters for [siteId] (local buffer wins when ahead).
+  /// Documented sites stay frozen at the known value (no local overshoot).
   double exploredMetersFor(int siteId, {double fallback = 0.0}) {
     final local = _exploredBySite[siteId];
     if (local == null) return fallback;
+    if (_documentedSiteIds.contains(siteId)) {
+      return local;
+    }
     return local > fallback ? local : fallback;
   }
 
@@ -86,6 +93,12 @@ class SiteExplorationController extends ChangeNotifier {
     _onSiteUpdated = onSiteUpdated;
     if (_location != null) return;
     await _loadLocal();
+    // One-shot sync so backend can award documentation on already-complete sites.
+    for (final id in _exploredBySite.keys) {
+      if (!_documentedSiteIds.contains(id)) {
+        _dirtySiteIds.add(id);
+      }
+    }
     _location = location;
     _locationListener = () {
       if (!_appForeground) return;
@@ -93,15 +106,29 @@ class SiteExplorationController extends ChangeNotifier {
       unawaited(_ingestPosition(location.lastPosition));
     };
     location.addListener(_locationListener!);
+    if (_dirtySiteIds.isNotEmpty) {
+      unawaited(_syncToBackend(force: true));
+    }
   }
 
   /// Seed / raise local counters from server site summaries.
   void ingestSites(Iterable<SiteSummary> sites) {
     var changed = false;
     for (final site in sites) {
+      if (site.documented == true) {
+        if (_documentedSiteIds.add(site.siteId)) changed = true;
+      }
       final server = site.exploredDistanceM;
       if (server == null) continue;
       final local = _exploredBySite[site.siteId] ?? 0.0;
+      if (site.documented == true) {
+        // Freeze at server value once documentation completes.
+        if ((_exploredBySite[site.siteId] ?? -1) != server) {
+          _exploredBySite[site.siteId] = server;
+          changed = true;
+        }
+        continue;
+      }
       if (server > local) {
         _exploredBySite[site.siteId] = server;
         changed = true;
@@ -195,6 +222,10 @@ class SiteExplorationController extends ChangeNotifier {
         lon,
       );
       if (distance > radius) continue;
+      if (site.documented == true ||
+          _documentedSiteIds.contains(site.siteId)) {
+        continue;
+      }
       final previous =
           _exploredBySite[site.siteId] ?? site.exploredDistanceM ?? 0.0;
       _exploredBySite[site.siteId] = previous + result.acceptedMeters;
@@ -244,16 +275,14 @@ class SiteExplorationController extends ChangeNotifier {
       }
       final sitesJson = response['sites'];
       if (sitesJson is List) {
+        final synced = <SiteSummary>[];
         for (final raw in sitesJson) {
           if (raw is! Map<String, dynamic>) continue;
           final site = SiteSummary.fromJson(raw);
-          final server = site.exploredDistanceM ?? 0.0;
-          final local = _exploredBySite[site.siteId] ?? 0.0;
-          if (server > local) {
-            _exploredBySite[site.siteId] = server;
-          }
+          synced.add(site);
           _onSiteUpdated?.call(site);
         }
+        ingestSites(synced);
       }
       await _persistLocal();
       notifyListeners();

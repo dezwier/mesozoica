@@ -47,7 +47,7 @@ class SiteSummary {
     this.mainImageUrl,
     this.howDiscovered,
     this.status,
-    this.viewerHasSurveyed,
+    this.viewerHasDocumented,
     this.discoveredAt,
     this.discoveringSessionId,
     this.oddDinoCount,
@@ -61,6 +61,7 @@ class SiteSummary {
     this.oddQualityBand,
     this.oddDepthBand,
     this.exploredDistanceM,
+    this.documented,
     this.version = 'Original',
   });
 
@@ -80,7 +81,8 @@ class SiteSummary {
   /// First discovery method: walk, aerial_recon, aerial_scout, or manual.
   final String? howDiscovered;
   final String? status;
-  final bool? viewerHasSurveyed;
+  /// True when the viewing user has a documenter role on this site.
+  final bool? viewerHasDocumented;
   /// When the viewing user became discoverer (from user_site).
   final DateTime? discoveredAt;
   /// Aerial session that discovered this site for the viewer.
@@ -97,6 +99,8 @@ class SiteSummary {
   final SiteDimensionBand? oddDepthBand;
   /// Meters walked inside site visibility (discoverer progress).
   final double? exploredDistanceM;
+  /// True when all five dimension accuracies reached 100% (meters frozen).
+  final bool? documented;
   /// Curated site-type image version folder for this occurrence.
   final String version;
 
@@ -256,7 +260,7 @@ class SiteSummary {
       mainImageUrl: json['main_image_url'] as String?,
       howDiscovered: json['how_discovered'] as String?,
       status: json['status'] as String?,
-      viewerHasSurveyed: json['viewer_has_surveyed'] as bool?,
+      viewerHasDocumented: json['viewer_has_documented'] as bool?,
       discoveredAt: _parseSiteDate(json['discovered_at']),
       discoveringSessionId: json['discovering_session_id'] as int?,
       oddDinoCount: (json['odd_dino_count'] as num?)?.toDouble(),
@@ -270,6 +274,7 @@ class SiteSummary {
       oddQualityBand: _bandFromJson(json['odd_quality_band']),
       oddDepthBand: _bandFromJson(json['odd_depth_band']),
       exploredDistanceM: (json['explored_distance_m'] as num?)?.toDouble(),
+      documented: json['documented'] as bool?,
       version: (json['version'] as String?)?.trim().isNotEmpty == true
           ? (json['version'] as String).trim()
           : 'Original',
@@ -286,12 +291,13 @@ class SiteSummary {
 
   SiteSummary copyWith({
     String? status,
-    bool? viewerHasSurveyed,
+    bool? viewerHasDocumented,
     String? mainImageUrl,
     DateTime? discoveredAt,
     int? discoveringSessionId,
     String? howDiscovered,
     double? exploredDistanceM,
+    bool? documented,
     SiteDimensionBand? oddDinoBand,
     SiteDimensionBand? oddFossilBand,
     SiteDimensionBand? oddCompletenessBand,
@@ -314,7 +320,7 @@ class SiteSummary {
       mainImageUrl: mainImageUrl ?? this.mainImageUrl,
       howDiscovered: howDiscovered ?? this.howDiscovered,
       status: status ?? this.status,
-      viewerHasSurveyed: viewerHasSurveyed ?? this.viewerHasSurveyed,
+      viewerHasDocumented: viewerHasDocumented ?? this.viewerHasDocumented,
       discoveredAt: discoveredAt ?? this.discoveredAt,
       discoveringSessionId:
           discoveringSessionId ?? this.discoveringSessionId,
@@ -329,6 +335,7 @@ class SiteSummary {
       oddQualityBand: oddQualityBand ?? this.oddQualityBand,
       oddDepthBand: oddDepthBand ?? this.oddDepthBand,
       exploredDistanceM: exploredDistanceM ?? this.exploredDistanceM,
+      documented: documented ?? this.documented,
       version: version,
     );
   }

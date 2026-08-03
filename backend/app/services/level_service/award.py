@@ -171,6 +171,34 @@ def award_site_exploration_xp(
     )
 
 
+def award_site_documentation_xp(
+    user: User,
+    *,
+    amount: int | None = None,
+    weather_time: str | None = None,
+    weather_type: str | None = None,
+    tool_mods: Mapping[str, ParamModifier] | None = None,
+) -> int:
+    """Award site_stewardship XP when all five dimension accuracies hit 100%."""
+    if amount is None:
+        skill_level = level_for_xp(get_skill_xp(user, "site_stewardship"))
+        resolved = resolve_site_stewardship_main_params(
+            skill_level=skill_level,
+            weather_time=weather_time,
+            weather_type=weather_type,
+            tool_mods=tool_mods,
+        )
+        amount = _xp_int(resolved["site_documentation_xp"])
+    if amount <= 0:
+        return 0
+    return award_skill_xp(
+        user,
+        "site_stewardship",
+        amount=amount,
+        breakdown_delta={"site_documentation": amount},
+    )
+
+
 def award_distance_km_xp(
     user: User,
     *,

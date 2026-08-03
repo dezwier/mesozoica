@@ -285,9 +285,6 @@ class ApiEndpoints {
   static Uri siteDiscardUri(int id) =>
       Uri.parse('${AppConfig.baseApiUrl}/api/v1/sites/$id/discard');
 
-  static Uri siteSurveyUri(int id) =>
-      Uri.parse('${AppConfig.baseApiUrl}/api/v1/sites/$id/survey');
-
   static Uri fieldSurveyJobUri(int jobId) =>
       Uri.parse('${AppConfig.baseApiUrl}/api/v1/sites/survey/jobs/$jobId');
 

@@ -33,7 +33,6 @@ from app.services.field_service.field_survey_queue import (
     claim_next_survey_job,
     enqueue_field_survey,
 )
-from app.services.site_service.survey import survey_site
 from app.workers.field_ensure_worker import process_one_survey_job
 
 
@@ -349,24 +348,6 @@ def test_discover_multi_user_lazy_once(session: Session, monkeypatch):
     )
     assert third.fossils_ready is True
     assert third.generated is False
-
-
-def test_survey_no_longer_enqueues_fossils(session: Session):
-    _seed_archive_pool(session)
-    field_site = _seed_field_site(session, site_id=1_000_000_510)
-    user = User(username="survey_only", email="s@example.com", password="x")
-    session.add(user)
-    session.commit()
-    session.refresh(user)
-
-    result = survey_site(session, site_id=field_site.site_id, user_id=user.id)
-    assert result.site is not None
-    jobs = session.exec(select(FieldSurveyJob)).all()
-    assert jobs == []
-    fossils = session.exec(
-        select(Fossil).where(col(Fossil.site_id) == field_site.site_id)
-    ).all()
-    assert fossils == []
 
 
 def test_enqueue_onboards_active_job(session: Session):

@@ -27,9 +27,9 @@ void main() {
       );
       expect(a.blurSigma, kSiteDimensionMaxBlurSigma);
       expect(a.effectiveAccuracy, 0.0);
-      expect(a.rangeStart, 0.0);
-      expect(a.rangeEnd, 1.0);
-      expect(a.rangeWidth, 1.0);
+      expect(a.rangeStart, closeTo(0.0, 1e-9));
+      expect(a.rangeEnd, closeTo(1.0, 1e-9));
+      expect(a.rangeWidth, closeTo(1.0, 1e-9));
     });
 
     test('mid accuracy yields different seeded ranges per site', () {

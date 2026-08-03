@@ -591,6 +591,8 @@ class SiteStewardshipMainParams(BaseModel):
     successful_site_disguise_xp: float = 50.0
     # XP to site_stewardship per 20 m walked inside site_visibility_m.
     site_exploration_xp: float = 20.0
+    # XP when all five site-dimension accuracies reach 100%.
+    site_documentation_xp: float = 100.0
 
     @field_validator(
         "dino_accuracy",
@@ -617,7 +619,11 @@ class SiteStewardshipMainParams(BaseModel):
             raise ValueError("site_visibility_m must be >= 0")
         return value
 
-    @field_validator("successful_site_disguise_xp", "site_exploration_xp")
+    @field_validator(
+        "successful_site_disguise_xp",
+        "site_exploration_xp",
+        "site_documentation_xp",
+    )
     @classmethod
     def _validate_xp(cls, value: float) -> float:
         if value < 0.0:
@@ -767,6 +773,10 @@ class SiteStewardshipConfig(BaseModel):
     @property
     def site_exploration_xp(self) -> float:
         return float(self.main_params.site_exploration_xp)
+
+    @property
+    def site_documentation_xp(self) -> float:
+        return float(self.main_params.site_documentation_xp)
 
     @property
     def site_visibility_m(self) -> float:

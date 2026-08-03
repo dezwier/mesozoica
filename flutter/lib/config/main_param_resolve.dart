@@ -157,7 +157,7 @@ double resolveSiteDiscoveryVisibilityDistanceM({
   return value;
 }
 
-/// Effective site-survey accuracy params: base → level → ambient → tools.
+/// Effective site-dimension accuracy params: base → level → ambient → tools.
 ///
 /// Keys: `dino_accuracy`, `fossil_accuracy`, `completeness_accuracy`,
 /// `quality_accuracy`, `depth_accuracy`.

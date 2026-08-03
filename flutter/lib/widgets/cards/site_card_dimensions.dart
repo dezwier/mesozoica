@@ -114,7 +114,7 @@ class SiteCardDimensions extends StatelessWidget {
 
     return CardSectionPanel(
       labelWidget: Text(
-        'Site dimensions · mapped ${exploredM.floor()} m',
+        'Site dimensions · Documented ${exploredM.floor()} m',
         textAlign: TextAlign.center,
         style: cardTheme.sectionLabelStyle(fontSize: 13).copyWith(
               fontWeight: FontWeight.w700,
@@ -361,19 +361,18 @@ class _VerticalDepthAxis extends StatelessWidget {
     final shownAccuracy = display?.effectiveAccuracy ?? accuracy;
     return Column(
       children: [
-        Text.rich(
-          TextSpan(
-            children: [
-              TextSpan(text: 'DEPTH ', style: labelStyle),
-              TextSpan(
-                text: SiteCardDimensions.accuracyPercentLabel(shownAccuracy),
-                style: accuracyStyle,
-              ),
-            ],
-          ),
+        Text(
+          'DEPTH',
           textAlign: TextAlign.center,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
+          style: labelStyle,
+        ),
+        Text(
+          SiteCardDimensions.accuracyPercentLabel(shownAccuracy),
+          textAlign: TextAlign.center,
+          maxLines: 1,
+          style: accuracyStyle,
         ),
         const SizedBox(height: 2),
         Expanded(

@@ -9,7 +9,7 @@ from sqlalchemy import Column, DateTime, ForeignKey, Integer, UniqueConstraint, 
 from sqlmodel import Field, SQLModel
 
 USER_SITE_ROLE_DISCOVERER = "discoverer"
-USER_SITE_ROLE_SURVEYOR = "surveyor"
+USER_SITE_ROLE_DOCUMENTER = "documenter"
 USER_SITE_ROLE_EXCAVATOR = "excavator"
 USER_SITE_ROLE_EXHAUSTER = "exhauster"
 USER_SITE_ROLE_PROTECTOR = "protector"
@@ -18,7 +18,7 @@ USER_SITE_ROLE_DISGUISER = "disguiser"
 # Roles that participate in global site status (latest timestamp wins).
 STATUS_ROLES: tuple[str, ...] = (
     USER_SITE_ROLE_DISCOVERER,
-    USER_SITE_ROLE_SURVEYOR,
+    USER_SITE_ROLE_DOCUMENTER,
     USER_SITE_ROLE_EXCAVATOR,
     USER_SITE_ROLE_EXHAUSTER,
     USER_SITE_ROLE_PROTECTOR,
@@ -31,7 +31,7 @@ USER_SITE_ROLES: tuple[str, ...] = (
 
 SITE_STATUS_HIDDEN = "hidden"
 SITE_STATUS_DISCOVERED = "discovered"
-SITE_STATUS_SURVEYED = "surveyed"
+SITE_STATUS_DOCUMENTED = "documented"
 SITE_STATUS_EXCAVATION = "excavation"
 SITE_STATUS_EXHAUSTED = "exhausted"
 SITE_STATUS_PROTECTED = "protected"
@@ -39,7 +39,7 @@ SITE_STATUS_PROTECTED = "protected"
 SITE_STATUSES: tuple[str, ...] = (
     SITE_STATUS_HIDDEN,
     SITE_STATUS_DISCOVERED,
-    SITE_STATUS_SURVEYED,
+    SITE_STATUS_DOCUMENTED,
     SITE_STATUS_EXCAVATION,
     SITE_STATUS_EXHAUSTED,
     SITE_STATUS_PROTECTED,
@@ -47,7 +47,7 @@ SITE_STATUSES: tuple[str, ...] = (
 
 ROLE_TO_STATUS: dict[str, str] = {
     USER_SITE_ROLE_DISCOVERER: SITE_STATUS_DISCOVERED,
-    USER_SITE_ROLE_SURVEYOR: SITE_STATUS_SURVEYED,
+    USER_SITE_ROLE_DOCUMENTER: SITE_STATUS_DOCUMENTED,
     USER_SITE_ROLE_EXCAVATOR: SITE_STATUS_EXCAVATION,
     USER_SITE_ROLE_EXHAUSTER: SITE_STATUS_EXHAUSTED,
     USER_SITE_ROLE_PROTECTOR: SITE_STATUS_PROTECTED,
@@ -93,7 +93,7 @@ class UserSite(SQLModel, table=True):
     role: str = Field(
         max_length=16,
         description=(
-            "discoverer, surveyor, excavator, exhauster, protector, or disguiser"
+            "discoverer, documenter, excavator, exhauster, protector, or disguiser"
         ),
     )
     source_session_id: Optional[int] = Field(
@@ -110,6 +110,13 @@ class UserSite(SQLModel, table=True):
         default=0.0,
         description=(
             "Meters walked inside site_visibility_m (discoverer row only)"
+        ),
+    )
+    documented: bool = Field(
+        default=False,
+        description=(
+            "True when all five dimension accuracies reached 100%; "
+            "exploration meters are frozen"
         ),
     )
     timestamp: datetime = Field(

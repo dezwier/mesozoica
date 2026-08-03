@@ -72,35 +72,6 @@ class FieldEnsureJobStatus {
   }
 }
 
-class FieldSurveyResponse {
-  const FieldSurveyResponse({
-    required this.site,
-    this.jobId,
-    required this.status,
-    this.onboarded = false,
-    this.generated = false,
-    this.fossilsReady = false,
-  });
-
-  final SiteSummary site;
-  final int? jobId;
-  final String status;
-  final bool onboarded;
-  final bool generated;
-  final bool fossilsReady;
-
-  factory FieldSurveyResponse.fromJson(Map<String, dynamic> json) {
-    return FieldSurveyResponse(
-      site: SiteSummary.fromJson(json['site'] as Map<String, dynamic>),
-      jobId: json['job_id'] as int?,
-      status: json['status'] as String? ?? 'pending',
-      onboarded: json['onboarded'] as bool? ?? false,
-      generated: json['generated'] as bool? ?? false,
-      fossilsReady: json['fossils_ready'] as bool? ?? false,
-    );
-  }
-}
-
 class FieldDiscoverResponse {
   const FieldDiscoverResponse({
     required this.site,

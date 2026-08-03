@@ -157,8 +157,12 @@ def test_build_bands_apply_explored_boost() -> None:
         boosted[SiteDimensionKey.DINO].effective_accuracy
         > baseline[SiteDimensionKey.DINO].effective_accuracy
     )
-    # L1 skill ≈ 0.01 + 50×0.01 = 0.51
-    assert abs(boosted[SiteDimensionKey.DINO].effective_accuracy - 0.51) < 1e-6
+    # Exploration adds a flat +0.50 regardless of per-axis noise.
+    assert abs(
+        boosted[SiteDimensionKey.DINO].effective_accuracy
+        - baseline[SiteDimensionKey.DINO].effective_accuracy
+        - 0.50
+    ) < 1e-6
 
 
 def test_site_row_to_summary_includes_explored_distance() -> None:
@@ -175,7 +179,80 @@ def test_site_row_to_summary_includes_explored_distance() -> None:
     )
     assert summary.explored_distance_m == 30.0
     assert summary.odd_dino_band is not None
-    assert abs(summary.odd_dino_band.effective_accuracy - 0.31) < 1e-6
+    # L1 baseline (~0.01) ± noise + 0.30 exploration.
+    assert 0.30 <= summary.odd_dino_band.effective_accuracy <= 0.61
+    assert summary.documented is None
+
+
+def test_documentation_completes_and_freezes(session: Session) -> None:
+    from app.services.level_service.skills import set_skill_xp
+    from app.services.level_service.xp_table import SKILL_THRESHOLDS
+
+    user = _make_user(session, username="doc", email="doc@example.com")
+    # High stewardship level so less walking is needed to hit 100%.
+    set_skill_xp(user, "site_stewardship", SKILL_THRESHOLDS[90])
+    session.add(user)
+    session.commit()
+    session.refresh(user)
+
+    site = _seed_field_site(session, site_id=1_000_000_777)
+    link = UserSite(
+        user_id=user.id,
+        site_id=site.site_id,
+        role=USER_SITE_ROLE_DISCOVERER,
+        explored_distance_m=0.0,
+    )
+    session.add(link)
+    session.commit()
+
+    # Plenty of meters to clear ±30 pt noise even from a low roll.
+    profile, summaries = apply_site_exploration_update(
+        session,
+        user,
+        SiteExplorationUpdateRequest(
+            sites=[
+                SiteExplorationEntry(
+                    site_id=site.site_id,
+                    explored_distance_m=80.0,
+                )
+            ]
+        ),
+    )
+    session.refresh(link)
+    assert link.documented is True
+    assert link.explored_distance_m == 80.0
+    assert summaries[0].documented is True
+    assert summaries[0].viewer_has_documented is True
+    assert summaries[0].status == "documented"
+    doc_role = session.exec(
+        select(UserSite).where(
+            col(UserSite.user_id) == user.id,
+            col(UserSite.site_id) == site.site_id,
+            col(UserSite.role) == "documenter",
+        )
+    ).first()
+    assert doc_role is not None
+    assert profile.skill_breakdown["site_stewardship"]["site_documentation"] == 100
+
+    xp_after = get_skill_xp(user, "site_stewardship")
+    apply_site_exploration_update(
+        session,
+        user,
+        SiteExplorationUpdateRequest(
+            sites=[
+                SiteExplorationEntry(
+                    site_id=site.site_id,
+                    explored_distance_m=200.0,
+                )
+            ]
+        ),
+    )
+    session.refresh(link)
+    assert link.explored_distance_m == 80.0
+    assert get_skill_xp(user, "site_stewardship") == xp_after
+    assert (
+        user.skill_breakdown["site_stewardship"]["site_documentation"] == 100
+    )
 
 
 def test_apply_site_exploration_update_monotonic_resume(session: Session) -> None:

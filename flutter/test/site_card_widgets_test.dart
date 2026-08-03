@@ -191,7 +191,7 @@ void main() {
     expect(find.textContaining('Discovered'), findsNothing);
     expect(find.text('SITE DIMENSIONS'), findsNothing);
     expect(
-      find.text('Site dimensions · mapped 0 m'),
+      find.text('Site dimensions · Documented 0 m'),
       findsOneWidget,
     );
     expect(find.text('COORDINATES'), findsNothing);
@@ -203,8 +203,8 @@ void main() {
     expect(find.textContaining('COMPLETENESS'), findsOneWidget);
     expect(find.textContaining('QUALITY'), findsOneWidget);
     expect(find.textContaining('DEPTH'), findsOneWidget);
-    // Skill L1 ≈ 1% accuracy shown inline with each dimension label.
-    expect(find.textContaining('1%'), findsWidgets);
+    // Skill L1 + absolute noise (±30 pts) → inline % labels, not a fixed 1%.
+    expect(find.textContaining('%'), findsWidgets);
     expect(find.text('MOMENT'), findsNothing);
     expect(find.text('WHEN'), findsNothing);
     expect(find.text('HOW'), findsNothing);
@@ -212,7 +212,7 @@ void main() {
     expect(find.text('0.55'), findsNothing);
   });
 
-  testWidgets('SiteCardBack timeline shows Mapped meters when discovered',
+  testWidgets('SiteCardBack timeline shows Documented meters when discovered',
       (tester) async {
     final discovered = SiteSummary(
       siteId: 1000000067,
@@ -254,12 +254,12 @@ void main() {
     expect(find.textContaining(' · '), findsWidgets);
     expect(find.text('Mapped 30m'), findsNothing);
     expect(
-      find.text('Site dimensions · mapped 30 m'),
+      find.text('Site dimensions · Documented 30 m'),
       findsOneWidget,
     );
     expect(find.text('MOMENT'), findsNothing);
-    // 1% skill + 30m exploration ≈ 31%
-    expect(find.textContaining('31%'), findsWidgets);
+    // Skill + noise + 30m exploration → inline % labels (not a fixed 31%).
+    expect(find.textContaining('%'), findsWidgets);
     expect(find.textContaining('DEPTH'), findsOneWidget);
   });
 
@@ -303,7 +303,7 @@ void main() {
     expect(find.text('Original - Discovered 3h ago'), findsNothing);
     expect(find.text('#67'), findsNothing);
     expect(find.text('#67 · Original'), findsNothing);
-    expect(find.textContaining('Site dimensions · mapped'), findsOneWidget);
+    expect(find.textContaining('Site dimensions · Documented'), findsOneWidget);
   });
 
   testWidgets('SiteTurnableCard composes front and back', (tester) async {

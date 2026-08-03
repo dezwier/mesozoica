@@ -24,7 +24,6 @@ from app.schemas.site import (
     FieldEnsureRequest,
     FieldEnsureResponse,
     FieldSurveyJobResponse,
-    FieldSurveyResponse,
     SetSiteStatusRequest,
     SiteDinosaurThumbListResponse,
     SiteDinoFossilGroupListResponse,
@@ -60,7 +59,6 @@ from app.services.site_service import (
     load_site_types_by_period,
     set_site_status,
     site_row_to_summary,
-    survey_site,
 )
 from app.services.site_service.summary import SiteRow
 from app.services.level_service.skills import get_skill_xp
@@ -109,7 +107,7 @@ def _require_admin_flag(flag: bool, *, name: str, current_user: User | None) -> 
     return flag and is_admin
 
 
-def _survey_skill_level(current_user: User | None) -> int:
+def _stewardship_skill_level(current_user: User | None) -> int:
     if current_user is None:
         return 1
     return level_for_xp(get_skill_xp(current_user, "site_stewardship"))
@@ -126,7 +124,7 @@ def _to_summary(
         row,
         types_by_period=types_by_period,
         include_exact_odds=include_exact_odds,
-        survey_skill_level=_survey_skill_level(current_user),
+        stewardship_skill_level=_stewardship_skill_level(current_user),
     )
 
 
@@ -448,37 +446,6 @@ def get_field_survey_job_status(
         status=job.status,
         fossil_count=job.fossil_count,
         error_message=job.error_message,
-    )
-
-
-@router.post("/{site_id}/survey", response_model=FieldSurveyResponse)
-def post_survey_site(
-    site_id: int,
-    session: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user),
-) -> FieldSurveyResponse:
-    exact = False
-    result = survey_site(
-        session,
-        site_id=site_id,
-        user_id=current_user.id,
-    )
-    types_by_period = load_site_types_by_period(session)
-    enriched = enrich_site_rows_for_viewer(
-        session, [result.site], viewer_user_id=int(current_user.id)
-    )[0]
-    return FieldSurveyResponse(
-        site=_to_summary(
-            enriched,
-            types_by_period=types_by_period,
-            current_user=current_user,
-            include_exact_odds=exact,
-        ),
-        job_id=None,
-        status="done",
-        onboarded=True,
-        generated=False,
-        fossils_ready=True,
     )
 
 

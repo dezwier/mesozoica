@@ -442,29 +442,6 @@ class SiteService {
     }
   }
 
-  Future<FieldSurveyResponse> surveySite(int siteId) async {
-    final uri = AppConfig.siteSurveyUri(siteId);
-    if (kDebugMode) {
-      debugPrint('SiteService POST $uri');
-    }
-    final response = await ApiClient.instance
-        .sendPost(uri, client: _client, headers: await _headers(jsonBody: true))
-        .timeout(const Duration(seconds: 15));
-
-    if (response.statusCode != 200 && response.statusCode != 202) {
-      final detail = _errorDetail(response.body);
-      throw SiteServiceException(
-        detail ?? 'Failed to survey site (${response.statusCode})',
-      );
-    }
-
-    final decoded = jsonDecode(response.body);
-    if (decoded is! Map<String, dynamic>) {
-      throw const SiteServiceException('Invalid survey response');
-    }
-    return FieldSurveyResponse.fromJson(decoded);
-  }
-
   /// Admin-only: delete selected field scopes (progress / sites / fossils).
   Future<FieldDataPurgeResult> purgeAllFieldData({
     bool userSites = true,

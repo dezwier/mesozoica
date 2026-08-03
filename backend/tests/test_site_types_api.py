@@ -170,7 +170,7 @@ def test_list_site_types_dedupes_multiple_user_site_roles(client, session):
         UserSite(
             user_id=int(user.id),
             site_id=int(site.site_id),
-            role="surveyor",
+            role="documenter",
         )
     )
     session.commit()

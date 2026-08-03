@@ -1,7 +1,7 @@
 # Skill 2 — Site Stewardship
-# Field fossils spawned when a site is surveyed (once per site, global).
+# Field fossils spawn when a site is discovered (once per site, global).
 #
-# Each field site has five odd_* scores Uniform(0,1). On survey, attributes use
+# Each field site has five odd_* scores Uniform(0,1). On discovery, attributes use
 # score = clamp(odd + Uniform(-noise, +noise), 0, 1) then pick a tier.
 # See README.md in this directory for the full mechanics.
 
@@ -25,6 +25,8 @@ main_params:
   successful_site_disguise_xp: 50
   # XP to site_stewardship per 20 m walked inside site_visibility_m.
   site_exploration_xp: 20
+  # XP when all five site-dimension accuracies reach 100% (documentation complete).
+  site_documentation_xp: 100
 
 # Fixed global distribution tables (not subject to level/tool multipliers).
 
@@ -93,6 +95,7 @@ level_modifiers:
   successful_site_disguise_xp: []
   site_visibility_m: []
   site_exploration_xp: []
+  site_documentation_xp: []
   # Rival discovery: ×1.0 at L1 → ×0.5 at L99 (linear; all sites).
   rival_discovery:
     - { level: 1, op: multiply, value: 1 }

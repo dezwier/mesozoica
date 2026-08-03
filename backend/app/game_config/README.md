@@ -106,7 +106,7 @@ night +50%).
 
 ### Site Stewardship (`02_site_stewardship.yaml`)
 
-Field fossils on survey (once per site). `main_params` (level / weather / tool
+Field fossils on discovery (once per site). `main_params` (level / weather / tool
 resolvable):
 
 | Key | Meaning |
@@ -120,12 +120,14 @@ resolvable):
 | `site_visibility_m` | Radius around a discovered site where walking accrues exploration meters |
 | `successful_site_disguise_xp` | XP when a rival discovery roll would hit but your active disguise blocks it |
 | `site_exploration_xp` | XP to site_stewardship per 20 m walked inside `site_visibility_m` |
+| `site_documentation_xp` | XP when all five site-dimension accuracies reach 100% (freezes further exploration) |
 
 Accuracy params are display-only on the site card for now. Stack per axis:
 skill baseline (base 1% × level → L50 ≈ 50%) → stable per-site / per-dimension
 noise (`accuracy_noise` in `02_site_stewardship.yaml`) → tool
 `modifies_main_params` (none yet) → exploration (+1% per meter walked inside
-`site_visibility_m`, additive, capped at 100%).
+`site_visibility_m`, additive, capped at 100%). When all five axes reach 100%,
+`site_documentation_xp` is awarded once and further exploration is frozen.
 
 `rival_discovery` is multiplied by skill level (×1.0 at L1 → ×0.5 at L99,
 linear; all sites). Site-scoped tools (Brush Scrim / Blackout Cover) multiply
@@ -187,7 +189,7 @@ stored on the site row (also shown on the site card back):
 | `odd_quality` | Preservation quality tier |
 | `odd_depth` | Burial depth bucket |
 
-On survey (once per site), each attribute uses:
+On discovery (once per site), each attribute uses:
 
 ```text
 score = clamp(odd + Uniform(-noise, +noise), 0, 1)

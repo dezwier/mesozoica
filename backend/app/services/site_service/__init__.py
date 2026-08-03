@@ -18,7 +18,6 @@ from app.services.site_service.summary import (
     enrich_site_rows_for_viewer,
     site_row_to_summary,
 )
-from app.services.site_service.survey import survey_site, user_has_surveyed
 
 __all__ = [
     "discard_site_for_user",
@@ -34,8 +33,6 @@ __all__ = [
     "load_site_types_by_period",
     "set_site_status",
     "site_row_to_summary",
-    "survey_site",
-    "user_has_surveyed",
 ]
 
 

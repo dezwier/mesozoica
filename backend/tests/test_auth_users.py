@@ -74,7 +74,7 @@ def test_profile_collection_counts_from_link_tables(
     from app.models.user_fossil import USER_FOSSIL_ROLE_IN_SITU, UserFossil
     from app.models.user_site import (
         USER_SITE_ROLE_DISCOVERER,
-        USER_SITE_ROLE_SURVEYOR,
+        USER_SITE_ROLE_DOCUMENTER,
         UserSite,
     )
 
@@ -150,7 +150,7 @@ def test_profile_collection_counts_from_link_tables(
         UserSite(
             user_id=user_id,
             site_id=91001,
-            role=USER_SITE_ROLE_SURVEYOR,
+            role=USER_SITE_ROLE_DOCUMENTER,
         )
     )
     session.add(

@@ -89,7 +89,7 @@ class _SiteTurnableCardState extends State<SiteTurnableCard> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.site.siteId != widget.site.siteId ||
         oldWidget.site.status != widget.site.status ||
-        oldWidget.site.viewerHasSurveyed != widget.site.viewerHasSurveyed ||
+        oldWidget.site.viewerHasDocumented != widget.site.viewerHasDocumented ||
         oldWidget.site.exploredDistanceM != widget.site.exploredDistanceM ||
         oldWidget.site.oddDinoBand?.effectiveAccuracy !=
             widget.site.oddDinoBand?.effectiveAccuracy) {

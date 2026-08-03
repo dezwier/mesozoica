@@ -27,6 +27,7 @@ const _breakdownLabels = <String, String>{
   'passive_distance': 'Passive distance',
   'disguise': 'Site disguise',
   'site_exploration': 'Site exploration',
+  'site_documentation': 'Site documentation',
 };
 
 /// Maps XP-source main_param keys → skill_breakdown keys.
@@ -37,6 +38,7 @@ const _xpSourceBreakdownKeys = <String, String>{
   'fossil_discovery_xp': 'fossils',
   'successful_site_disguise_xp': 'disguise',
   'site_exploration_xp': 'site_exploration',
+  'site_documentation_xp': 'site_documentation',
 };
 
 const _mainParamLabels = <String, String>{
@@ -49,6 +51,7 @@ const _mainParamLabels = <String, String>{
   'fossil_discovery_xp': 'Fossil discovery',
   'successful_site_disguise_xp': 'Site disguise',
   'site_exploration_xp': 'Site exploration (20m)',
+  'site_documentation_xp': 'Site documentation',
   'rival_discovery': 'Rival discovery',
   'site_visibility_m': 'Site visibility',
   'dino_accuracy': 'Dinosaur count estimation',
@@ -1179,6 +1182,21 @@ _SkillParamGroups _siteStewardshipRows(
         weatherTimeMods: cfg.weatherTimeModifiers['site_exploration_xp'],
         weatherTime: weatherTime,
         weatherTypeMods: cfg.weatherTypeModifiers['site_exploration_xp'],
+        weatherType: weatherType,
+        skillLevel: skillLevel,
+        format: _ParamFormat.xp,
+        clampUnit: false,
+        toolBindings: toolBindings,
+      ),
+      _resolveScalarParam(
+        label: 'Site documentation',
+        paramKey: 'site_documentation_xp',
+        skillId: 'site_stewardship',
+        base: mp.siteDocumentationXp,
+        levelEntries: cfg.levelModifiers['site_documentation_xp'],
+        weatherTimeMods: cfg.weatherTimeModifiers['site_documentation_xp'],
+        weatherTime: weatherTime,
+        weatherTypeMods: cfg.weatherTypeModifiers['site_documentation_xp'],
         weatherType: weatherType,
         skillLevel: skillLevel,
         format: _ParamFormat.xp,

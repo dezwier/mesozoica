@@ -300,6 +300,10 @@ def resolve_site_stewardship_main_params(
             "site_exploration_xp",
             base=float(mp.site_exploration_xp),
         ),
+        "site_documentation_xp": _resolve(
+            "site_documentation_xp",
+            base=float(mp.site_documentation_xp),
+        ),
     }
 
 

@@ -5,7 +5,7 @@ import 'site.dart';
 const siteStatusOptions = <String>[
   'hidden',
   'discovered',
-  'surveyed',
+  'documented',
   'excavation',
   'exhausted',
   'protected',
