@@ -44,6 +44,13 @@ class SiteExplorationController extends ChangeNotifier {
 
   Map<int, double> get exploredBySite => Map.unmodifiable(_exploredBySite);
 
+  /// Best-known explored meters for [siteId] (local buffer wins when ahead).
+  double exploredMetersFor(int siteId, {double fallback = 0.0}) {
+    final local = _exploredBySite[siteId];
+    if (local == null) return fallback;
+    return local > fallback ? local : fallback;
+  }
+
   static double _maxDiscoverySpeedMps() {
     try {
       final kmh = GameConfig.instance.siteDiscovery.maxDiscoverySpeedKmh;

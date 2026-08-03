@@ -23,7 +23,7 @@ class SiteTimelineEntry {
   final VoidCallback? onHowTap;
 }
 
-/// Compact table of user moments for a site (discovery first; more later).
+/// Compact list of user moments for a site (discovery first; more later).
 class SiteCardUserTimeline extends StatelessWidget {
   const SiteCardUserTimeline({super.key, required this.site});
 
@@ -78,16 +78,13 @@ class SiteCardUserTimeline extends StatelessWidget {
     );
     if (entries.isEmpty) return const SizedBox.shrink();
 
-    final cardTheme = DinoCardTheme.of(context);
-
     return CardSectionPanel(
       label: 'Timeline',
       padding: const EdgeInsets.fromLTRB(10, 6, 10, 6),
       labelGap: 3,
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _HeaderRow(style: cardTheme.sectionLabelStyle(fontSize: 8)),
-          const SizedBox(height: 2),
           for (var i = 0; i < entries.length; i++) ...[
             if (i > 0) const SizedBox(height: 4),
             _EntryRow(entry: entries[i]),
@@ -113,23 +110,6 @@ class SiteCardUserTimeline extends StatelessWidget {
   }
 }
 
-class _HeaderRow extends StatelessWidget {
-  const _HeaderRow({required this.style});
-
-  final TextStyle style;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(flex: 3, child: Text('MOMENT', style: style)),
-        Expanded(flex: 3, child: Text('WHEN', style: style)),
-        Expanded(flex: 4, child: Text('HOW', style: style)),
-      ],
-    );
-  }
-}
-
 class _EntryRow extends StatelessWidget {
   const _EntryRow({required this.entry});
 
@@ -148,22 +128,28 @@ class _EntryRow extends StatelessWidget {
           )
         : body;
 
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(flex: 3, child: Text(entry.moment, style: body)),
-        Expanded(flex: 3, child: Text(entry.whenLabel, style: body)),
-        Expanded(
-          flex: 4,
-          child: entry.onHowTap == null
-              ? Text(entry.howLabel, style: howStyle)
-              : GestureDetector(
-                  onTap: entry.onHowTap,
-                  behavior: HitTestBehavior.opaque,
-                  child: Text(entry.howLabel, style: howStyle),
-                ),
-        ),
-      ],
+    return Text.rich(
+      TextSpan(
+        style: body,
+        children: [
+          TextSpan(text: entry.moment),
+          const TextSpan(text: ' · '),
+          TextSpan(text: entry.whenLabel),
+          const TextSpan(text: ' · '),
+          if (entry.onHowTap == null)
+            TextSpan(text: entry.howLabel, style: howStyle)
+          else
+            WidgetSpan(
+              alignment: PlaceholderAlignment.baseline,
+              baseline: TextBaseline.alphabetic,
+              child: GestureDetector(
+                onTap: entry.onHowTap,
+                behavior: HitTestBehavior.opaque,
+                child: Text(entry.howLabel, style: howStyle),
+              ),
+            ),
+        ],
+      ),
     );
   }
 }

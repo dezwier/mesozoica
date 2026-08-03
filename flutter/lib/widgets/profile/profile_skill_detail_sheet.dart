@@ -25,19 +25,30 @@ const _breakdownLabels = <String, String>{
   'fossils': 'Fossils discovered',
   'active_distance': 'Active distance',
   'passive_distance': 'Passive distance',
-  'disguise': 'Successful site disguise',
+  'disguise': 'Site disguise',
+  'site_exploration': 'Site exploration',
+};
+
+/// Maps XP-source main_param keys → skill_breakdown keys.
+const _xpSourceBreakdownKeys = <String, String>{
+  'site_discovery_xp': 'sites',
+  'active_km_xp': 'active_distance',
+  'passive_km_xp': 'passive_distance',
+  'fossil_discovery_xp': 'fossils',
+  'successful_site_disguise_xp': 'disguise',
+  'site_exploration_xp': 'site_exploration',
 };
 
 const _mainParamLabels = <String, String>{
   'visibility_distance_m': 'Visibility distance',
   'discovery_chance': 'Discovery chance',
   'max_discovery_speed_kmh': 'Max discovery speed',
-  'site_discovery_xp': 'Site discovery XP',
-  'active_km_xp': 'Active km XP',
-  'passive_km_xp': 'Passive km XP',
-  'fossil_discovery_xp': 'Fossil discovery XP',
-  'successful_site_disguise_xp': 'Successful site disguise XP',
-  'site_exploration_xp': 'Site exploration XP',
+  'site_discovery_xp': 'Site discovery',
+  'active_km_xp': 'Active km',
+  'passive_km_xp': 'Passive km',
+  'fossil_discovery_xp': 'Fossil discovery',
+  'successful_site_disguise_xp': 'Site disguise',
+  'site_exploration_xp': 'Site exploration (20m)',
   'rival_discovery': 'Rival discovery',
   'site_visibility_m': 'Site visibility',
   'dino_accuracy': 'Dinosaur count estimation',
@@ -173,16 +184,11 @@ class _SkillDetailDrawer extends StatelessWidget {
     final liveBreakdown = _liveBreakdown(auth.currentUser);
     final showAdminUi = auth.showAdminUi;
     final scheme = Theme.of(context).colorScheme;
-    final xpRows = liveBreakdown?.entries
-            .where((entry) => entry.value > 0)
-            .map(
-              (entry) => (
-                _breakdownLabels[entry.key] ?? entry.key,
-                entry.value,
-              ),
-            )
-            .toList() ??
-        const <(String, int)>[];
+    final breakdownTotals = <String, int>{
+      if (liveBreakdown != null)
+        for (final entry in liveBreakdown.entries)
+          if (entry.value > 0) entry.key: entry.value,
+    };
     final paramGroups = _mainParamRowsForSkill(
       liveSkill,
       toolBindings: toolBindings,
@@ -191,6 +197,10 @@ class _SkillDetailDrawer extends StatelessWidget {
     );
     final xpSourceRows = paramGroups.xpSources;
     final skillParamRows = paramGroups.skillParams;
+    final xpRows = _mergedXpSourceRows(
+      xpSourceRows: xpSourceRows,
+      breakdownTotals: breakdownTotals,
+    );
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -252,7 +262,7 @@ class _SkillDetailDrawer extends StatelessWidget {
                               ],
                             ),
                     ),
-                    if (xpSourceRows.isNotEmpty) ...[
+                    if (xpRows.isNotEmpty) ...[
                       const SizedBox(height: 5),
                       _SkillSectionCard(
                         icon: Icons.bolt_outlined,
@@ -260,47 +270,21 @@ class _SkillDetailDrawer extends StatelessWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            for (var i = 0; i < xpSourceRows.length; i++) ...[
-                              if (i > 0) const SizedBox(height: 14),
-                              _MainParamRow(
-                                row: xpSourceRows[i],
-                                scheme: scheme,
-                              ),
-                            ],
-                          ],
-                        ),
-                      ),
-                    ],
-                    if (xpRows.isNotEmpty) ...[
-                      const SizedBox(height: 5),
-                      _SkillSectionCard(
-                        icon: Icons.pie_chart_outline,
-                        title: 'XP breakdown',
-                        child: Column(
-                          children: [
+                            const _XpSourceHeader(),
+                            const SizedBox(height: 8),
                             for (var i = 0; i < xpRows.length; i++) ...[
-                              if (i > 0) const SizedBox(height: 10),
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: Text(
-                                      xpRows[i].$1,
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .bodyMedium,
-                                    ),
-                                  ),
-                                  Text(
-                                    '${xpRows[i].$2} XP',
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .bodyMedium
-                                        ?.copyWith(
-                                          color: scheme.primary,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                  ),
-                                ],
+                              if (i > 0) const SizedBox(height: 12),
+                              _MainParamRow(
+                                row: _MainParamDisplay(
+                                  label: xpRows[i].label,
+                                  effectiveValue: xpRows[i].valueText,
+                                  overallDeltaPct: xpRows[i].overallDeltaPct,
+                                  factors: xpRows[i].factors,
+                                ),
+                                scheme: scheme,
+                                totalText: '${xpRows[i].totalXp} XP',
+                                valueColumnWidth: _xpValueColumnWidth,
+                                totalColumnWidth: _xpTotalColumnWidth,
                               ),
                             ],
                           ],
@@ -316,6 +300,95 @@ class _SkillDetailDrawer extends StatelessWidget {
       },
     );
   }
+}
+
+class _XpSourceMergedRow {
+  const _XpSourceMergedRow({
+    required this.label,
+    required this.valueText,
+    required this.totalXp,
+    this.overallDeltaPct,
+    this.factors = const [],
+  });
+
+  final String label;
+  final String valueText;
+  final int totalXp;
+  final double? overallDeltaPct;
+  final List<_ParamFactor> factors;
+}
+
+const _xpValueColumnWidth = 76.0;
+const _xpTotalColumnWidth = 72.0;
+const _xpColumnGap = 16.0;
+
+class _XpSourceHeader extends StatelessWidget {
+  const _XpSourceHeader();
+
+  @override
+  Widget build(BuildContext context) {
+    final style = Theme.of(context).textTheme.labelSmall?.copyWith(
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0.3,
+        );
+    return Row(
+      children: [
+        const Expanded(child: SizedBox.shrink()),
+        SizedBox(
+          width: _xpValueColumnWidth,
+          child: Text('Value', textAlign: TextAlign.right, style: style),
+        ),
+        const SizedBox(width: _xpColumnGap),
+        SizedBox(
+          width: _xpTotalColumnWidth,
+          child: Text('Total', textAlign: TextAlign.right, style: style),
+        ),
+      ],
+    );
+  }
+}
+
+List<_XpSourceMergedRow> _mergedXpSourceRows({
+  required List<_MainParamDisplay> xpSourceRows,
+  required Map<String, int> breakdownTotals,
+}) {
+  final usedBreakdownKeys = <String>{};
+  final rows = <_XpSourceMergedRow>[];
+
+  for (final source in xpSourceRows) {
+    final breakdownKey = source.paramKey == null
+        ? null
+        : _xpSourceBreakdownKeys[source.paramKey!];
+    if (breakdownKey != null) usedBreakdownKeys.add(breakdownKey);
+    rows.add(
+      _XpSourceMergedRow(
+        label: source.label,
+        valueText: source.effectiveValue,
+        totalXp: breakdownKey == null
+            ? 0
+            : (breakdownTotals[breakdownKey] ?? 0),
+        overallDeltaPct: source.overallDeltaPct,
+        factors: source.factors,
+      ),
+    );
+  }
+
+  // Orphan breakdown totals with no matching XP-source param.
+  final leftovers = breakdownTotals.entries
+      .where((e) => !usedBreakdownKeys.contains(e.key))
+      .toList()
+    ..sort((a, b) => a.key.compareTo(b.key));
+  for (final entry in leftovers) {
+    rows.add(
+      _XpSourceMergedRow(
+        label: _breakdownLabels[entry.key] ?? entry.key,
+        valueText: '—',
+        totalXp: entry.value,
+      ),
+    );
+  }
+  return rows;
 }
 
 /// Big skill mark + title / level / dual progress — profile analogue of map HUD.
@@ -616,11 +689,13 @@ class _MainParamDisplay {
   const _MainParamDisplay({
     required this.label,
     required this.effectiveValue,
+    this.paramKey,
     this.overallDeltaPct,
     this.factors = const [],
   });
 
   final String label;
+  final String? paramKey;
 
   /// The resolved value shown on the right.
   final String effectiveValue;
@@ -633,10 +708,21 @@ class _MainParamDisplay {
 }
 
 class _MainParamRow extends StatefulWidget {
-  const _MainParamRow({required this.row, required this.scheme});
+  const _MainParamRow({
+    required this.row,
+    required this.scheme,
+    this.totalText,
+    this.valueColumnWidth,
+    this.totalColumnWidth,
+  });
 
   final _MainParamDisplay row;
   final ColorScheme scheme;
+
+  /// When set, shows a second numeric column (XP Sources total).
+  final String? totalText;
+  final double? valueColumnWidth;
+  final double? totalColumnWidth;
 
   @override
   State<_MainParamRow> createState() => _MainParamRowState();
@@ -763,9 +849,9 @@ class _MainParamRowState extends State<_MainParamRow> {
     const negativeColor = Color(0xFFC62828);
     final badgeColor = positive ? positiveColor : negativeColor;
 
-    return Row(
+    final valueCell = Row(
+      mainAxisSize: MainAxisSize.min,
       children: [
-        Expanded(child: Text(row.label, style: body)),
         Text(row.effectiveValue, style: valueStyle),
         if (showDelta) ...[
           const SizedBox(width: 8),
@@ -814,6 +900,40 @@ class _MainParamRowState extends State<_MainParamRow> {
             ),
           ),
         ],
+      ],
+    );
+
+    final totalText = widget.totalText;
+    if (totalText == null) {
+      return Row(
+        children: [
+          Expanded(child: Text(row.label, style: body)),
+          valueCell,
+        ],
+      );
+    }
+
+    final valueWidth = widget.valueColumnWidth ?? _xpValueColumnWidth;
+    final totalWidth = widget.totalColumnWidth ?? _xpTotalColumnWidth;
+    return Row(
+      children: [
+        Expanded(child: Text(row.label, style: body)),
+        SizedBox(
+          width: valueWidth,
+          child: Align(
+            alignment: Alignment.centerRight,
+            child: valueCell,
+          ),
+        ),
+        const SizedBox(width: _xpColumnGap),
+        SizedBox(
+          width: totalWidth,
+          child: Text(
+            totalText,
+            textAlign: TextAlign.right,
+            style: valueStyle,
+          ),
+        ),
       ],
     );
   }
@@ -977,7 +1097,7 @@ _SkillParamGroups _siteDiscoveryRows(
     ],
     xpSources: [
       _resolveScalarParam(
-        label: 'Site discovery XP',
+        label: 'Site discovery',
         paramKey: 'site_discovery_xp',
         skillId: 'site_discovery',
         base: cfg.siteDiscoveryXp,
@@ -992,7 +1112,7 @@ _SkillParamGroups _siteDiscoveryRows(
         toolBindings: toolBindings,
       ),
       _resolveScalarParam(
-        label: 'Active km XP',
+        label: 'Active km',
         paramKey: 'active_km_xp',
         skillId: 'site_discovery',
         base: cfg.activeKmXp,
@@ -1007,7 +1127,7 @@ _SkillParamGroups _siteDiscoveryRows(
         toolBindings: toolBindings,
       ),
       _resolveScalarParam(
-        label: 'Passive km XP',
+        label: 'Passive km',
         paramKey: 'passive_km_xp',
         skillId: 'site_discovery',
         base: cfg.passiveKmXp,
@@ -1036,7 +1156,7 @@ _SkillParamGroups _siteStewardshipRows(
   return _SkillParamGroups(
     xpSources: [
       _resolveScalarParam(
-        label: 'Successful site disguise XP',
+        label: 'Site disguise',
         paramKey: 'successful_site_disguise_xp',
         skillId: 'site_stewardship',
         base: mp.successfulSiteDisguiseXp,
@@ -1051,7 +1171,7 @@ _SkillParamGroups _siteStewardshipRows(
         toolBindings: toolBindings,
       ),
       _resolveScalarParam(
-        label: 'Site exploration XP',
+        label: 'Site exploration (20m)',
         paramKey: 'site_exploration_xp',
         skillId: 'site_stewardship',
         base: mp.siteExplorationXp,
@@ -1260,6 +1380,7 @@ _MainParamDisplay _resolveScalarParam({
 
   return _MainParamDisplay(
     label: label,
+    paramKey: paramKey,
     effectiveValue: _formatScalar(value, format),
     overallDeltaPct: overallDeltaPct,
     factors: factors,

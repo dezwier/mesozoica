@@ -143,7 +143,7 @@ abstract final class WeatherDisplay {
       'site_visibility_m': 'Site visibility',
       'max_discovery_speed_kmh': 'Max discovery speed',
       'site_discovery_xp': 'Site discovery XP',
-      'successful_site_disguise_xp': 'Successful site disguise XP',
+      'successful_site_disguise_xp': 'Site disguise',
       'site_exploration_xp': 'Site exploration XP',
       'active_km_xp': 'Active km XP',
       'passive_km_xp': 'Passive km XP',

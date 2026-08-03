@@ -141,4 +141,29 @@ void main() {
       expect(applyExplorationAccuracyBoost(0.99, 5), 1.0);
     });
   });
+
+  group('applyDimensionAccuracyNoise', () {
+    test('is stable per site/axis and varies across axes', () {
+      const base = 0.50;
+      final a = applyDimensionAccuracyNoise(
+        baseAccuracy: base,
+        siteId: 42,
+        dimension: SiteDimensionKey.dino,
+      );
+      final b = applyDimensionAccuracyNoise(
+        baseAccuracy: base,
+        siteId: 42,
+        dimension: SiteDimensionKey.dino,
+      );
+      final c = applyDimensionAccuracyNoise(
+        baseAccuracy: base,
+        siteId: 42,
+        dimension: SiteDimensionKey.fossil,
+      );
+      expect(a, b);
+      expect(a, isNot(c));
+      expect(a, inInclusiveRange(0.35, 0.65));
+      expect(c, inInclusiveRange(0.35, 0.65));
+    });
+  });
 }

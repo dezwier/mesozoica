@@ -21,6 +21,14 @@ void main() {
     expect(entries.single.onHowTap, isNull);
   });
 
+  test('SiteSummary parses explored_distance_m', () {
+    final site = SiteSummary.fromJson({
+      'site_id': 11,
+      'explored_distance_m': 42.5,
+    });
+    expect(site.exploredDistanceM, 42.5);
+  });
+
   test('timeline aerial row is tappable when session id present', () {
     var tapped = false;
     final site = SiteSummary(

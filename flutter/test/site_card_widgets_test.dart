@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mesozoica/config/game_config.dart';
 import 'package:mesozoica/controllers/auth_controller.dart';
 import 'package:mesozoica/models/site.dart';
 import 'package:mesozoica/widgets/cards/geologic_timeline.dart';
@@ -13,6 +14,8 @@ import 'package:mesozoica/widgets/cards/site_card_related_lists.dart';
 import 'package:mesozoica/widgets/cards/site_turnable_card.dart';
 import 'package:mesozoica/widgets/map/fossil_marker.dart';
 import 'package:provider/provider.dart';
+
+import 'helpers/game_config_test_helpers.dart';
 
 const _fixture = SiteSummary(
   siteId: 50001,
@@ -38,6 +41,14 @@ const _fixture = SiteSummary(
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+
+  setUp(() async {
+    await loadGameConfigForTest();
+  });
+
+  tearDown(() {
+    GameConfig.debugReset();
+  });
 
   test('SiteCardImage detects curated URLs', () {
     expect(
@@ -178,18 +189,78 @@ void main() {
     expect(find.text('Cretaceous Sandstone'), findsOneWidget);
     expect(find.text('#50001, 46.88, -110.36, Montana, US'), findsNothing);
     expect(find.textContaining('Discovered'), findsNothing);
-    expect(find.text('SITE DIMENSIONS'), findsOneWidget);
+    expect(find.text('SITE DIMENSIONS'), findsNothing);
+    expect(
+      find.text('Site dimensions · mapped 0 m'),
+      findsOneWidget,
+    );
     expect(find.text('COORDINATES'), findsNothing);
     expect(find.text('COUNTRY'), findsNothing);
     expect(find.text('PERIOD'), findsNothing);
     expect(find.text('ROCK TYPE'), findsNothing);
-    expect(find.text('DINO COUNT'), findsOneWidget);
-    expect(find.text('FOSSILS COUNT'), findsOneWidget);
-    expect(find.text('COMPLETENESS'), findsOneWidget);
-    expect(find.text('QUALITY'), findsOneWidget);
-    expect(find.text('DEPTH'), findsOneWidget);
+    expect(find.textContaining('DINO COUNT'), findsOneWidget);
+    expect(find.textContaining('FOSSILS COUNT'), findsOneWidget);
+    expect(find.textContaining('COMPLETENESS'), findsOneWidget);
+    expect(find.textContaining('QUALITY'), findsOneWidget);
+    expect(find.textContaining('DEPTH'), findsOneWidget);
+    // Skill L1 ≈ 1% accuracy shown inline with each dimension label.
+    expect(find.textContaining('1%'), findsWidgets);
+    expect(find.text('MOMENT'), findsNothing);
+    expect(find.text('WHEN'), findsNothing);
+    expect(find.text('HOW'), findsNothing);
     expect(find.text('0.42'), findsNothing);
     expect(find.text('0.55'), findsNothing);
+  });
+
+  testWidgets('SiteCardBack timeline shows Mapped meters when discovered',
+      (tester) async {
+    final discovered = SiteSummary(
+      siteId: 1000000067,
+      latitude: 46.8797,
+      longitude: -110.3626,
+      countryCode: 'US',
+      state: 'Montana',
+      rockType: 'sandstone',
+      siteTypePeriod: 'cretaceous',
+      siteTypeRockType: 'sandstone',
+      status: 'discovered',
+      howDiscovered: SiteSummary.howDiscoveredWalk,
+      discoveredAt: DateTime.utc(2026, 7, 1, 12),
+      exploredDistanceM: 30,
+      oddDinoCount: 0.42,
+      oddFossilCount: 0.55,
+      oddCompleteness: 0.61,
+      oddQuality: 0.33,
+      oddDepth: 0.78,
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: SizedBox(
+              width: 800,
+              child: SiteCardBack(
+                site: discovered,
+                mapTileLayerBuilder: () => const SizedBox.shrink(),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.textContaining('Discovered'), findsOneWidget);
+    expect(find.textContaining(' · '), findsWidgets);
+    expect(find.text('Mapped 30m'), findsNothing);
+    expect(
+      find.text('Site dimensions · mapped 30 m'),
+      findsOneWidget,
+    );
+    expect(find.text('MOMENT'), findsNothing);
+    // 1% skill + 30m exploration ≈ 31%
+    expect(find.textContaining('31%'), findsWidgets);
+    expect(find.textContaining('DEPTH'), findsOneWidget);
   });
 
   testWidgets('SiteCardBack omits Discovered subtitle when discoveredAt is set',
@@ -232,7 +303,7 @@ void main() {
     expect(find.text('Original - Discovered 3h ago'), findsNothing);
     expect(find.text('#67'), findsNothing);
     expect(find.text('#67 · Original'), findsNothing);
-    expect(find.text('SITE DIMENSIONS'), findsOneWidget);
+    expect(find.textContaining('Site dimensions · mapped'), findsOneWidget);
   });
 
   testWidgets('SiteTurnableCard composes front and back', (tester) async {

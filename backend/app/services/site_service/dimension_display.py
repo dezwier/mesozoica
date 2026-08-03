@@ -17,6 +17,10 @@ _MAX_BLUR_SIGMA = 16.0
 _DEPTH_PRECISE_EPSILON = 1e-9
 # +1% accuracy per meter walked inside site_visibility_m (additive, capped).
 EXPLORATION_ACCURACY_PER_M = 0.01
+# Per-dimension noise around skill baseline (± relative, with a floor).
+# Keep in sync with Flutter site_dimension_display.dart
+_ACCURACY_NOISE_RELATIVE = 0.30
+_ACCURACY_NOISE_MIN_ABS = 0.03
 
 
 class SiteDimensionKey(IntEnum):
@@ -42,6 +46,28 @@ _ACCURACY_KEYS: dict[SiteDimensionKey, str] = {
     SiteDimensionKey.QUALITY: "quality_accuracy",
     SiteDimensionKey.DEPTH: "depth_accuracy",
 }
+
+
+def apply_dimension_accuracy_noise(
+    baseline_accuracy: float,
+    *,
+    site_id: int,
+    dimension: SiteDimensionKey,
+) -> float:
+    """Stable per-site / per-axis jitter around the skill baseline accuracy.
+
+    Applied after level (and before tools / exploration boost). Same seed →
+    same offset for a given site axis. Keep in sync with Flutter
+    ``applyDimensionAccuracyNoise``.
+    """
+    base = min(1.0, max(0.0, float(baseline_accuracy)))
+    seed_material = f"{int(site_id)}:{int(dimension)}:acc".encode()
+    digest = hashlib.md5(seed_material).digest()
+    # [0, 1) from first 4 bytes — must match Flutter Endian.big Uint32 / 2^32.
+    unit = int.from_bytes(digest[:4], "big") / 0x100000000
+    amplitude = max(_ACCURACY_NOISE_MIN_ABS, abs(base) * _ACCURACY_NOISE_RELATIVE)
+    jitter = (unit * 2.0 - 1.0) * amplitude
+    return min(1.0, max(0.0, base + jitter))
 
 
 def apply_exploration_accuracy_boost(
@@ -152,11 +178,14 @@ def build_site_dimension_bands(
             continue
         accuracy_key = _ACCURACY_KEYS[key]
         skill_acc = accuracies.get(accuracy_key, 0.0)
+        noisy_acc = apply_dimension_accuracy_noise(
+            skill_acc, site_id=site_id, dimension=key
+        )
         out[key] = resolve_site_dimension_band(
             dimension=key,
             true_value=float(true_value),
             accuracy=apply_exploration_accuracy_boost(
-                skill_acc, explored_distance_m
+                noisy_acc, explored_distance_m
             ),
             site_id=site_id,
         )

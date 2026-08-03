@@ -4,10 +4,51 @@ from __future__ import annotations
 
 from app.services.site_service.dimension_display import (
     SiteDimensionKey,
+    apply_dimension_accuracy_noise,
+    build_site_dimension_bands,
     resolve_site_dimension_band,
 )
 from app.services.site_service.summary import SiteRow, site_row_to_summary
 from app.models.site import Site
+
+
+def test_dimension_accuracy_noise_is_stable_and_varies_by_axis():
+    base = 0.50
+    a = apply_dimension_accuracy_noise(
+        base, site_id=42, dimension=SiteDimensionKey.DINO
+    )
+    b = apply_dimension_accuracy_noise(
+        base, site_id=42, dimension=SiteDimensionKey.DINO
+    )
+    c = apply_dimension_accuracy_noise(
+        base, site_id=42, dimension=SiteDimensionKey.FOSSIL
+    )
+    assert a == b
+    assert a != c
+    assert 0.0 <= a <= 1.0
+    # ±30% of 0.50 → [0.35, 0.65]
+    assert 0.35 <= a <= 0.65
+    assert 0.35 <= c <= 0.65
+
+
+def test_build_bands_apply_noise_before_exploration():
+    bands = build_site_dimension_bands(
+        site_id=99,
+        odd_dino_count=0.5,
+        odd_fossil_count=0.5,
+        odd_completeness=0.5,
+        odd_quality=0.5,
+        odd_depth=0.5,
+        skill_level=50,
+        explored_distance_m=0.0,
+    )
+    accs = {
+        k: bands[k].effective_accuracy
+        for k in SiteDimensionKey
+        if bands[k] is not None
+    }
+    # Without noise every axis would be exactly 0.50 at L50.
+    assert len(set(round(v, 6) for v in accs.values())) > 1
 
 
 def test_resolve_site_dimension_band_precise_at_accuracy_1():

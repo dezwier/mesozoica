@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 
 import '../../config/main_param_resolve.dart';
 import '../../controllers/auth_controller.dart';
+import '../../controllers/site_exploration_controller.dart';
 import '../../models/site.dart';
 import '../../theme/dino_card_theme.dart';
 import 'card_section_panel.dart';
@@ -32,10 +33,25 @@ class SiteCardDimensions extends StatelessWidget {
     final skillLevel = _siteStewardshipLevel(context);
     final baseAccuracies =
         resolveSiteStewardshipAccuracies(skillLevel: skillLevel);
-    final exploredM = site.exploredDistanceM ?? 0.0;
+    final exploredM = _resolvedExploredMeters(context, site);
+    // Stack: skill baseline → per-dimension noise → exploration (tools later).
+    const dimByAccuracyKey = <String, SiteDimensionKey>{
+      'dino_accuracy': SiteDimensionKey.dino,
+      'fossil_accuracy': SiteDimensionKey.fossil,
+      'completeness_accuracy': SiteDimensionKey.completeness,
+      'quality_accuracy': SiteDimensionKey.quality,
+      'depth_accuracy': SiteDimensionKey.depth,
+    };
     final accuracies = {
       for (final e in baseAccuracies.entries)
-        e.key: applyExplorationAccuracyBoost(e.value, exploredM),
+        e.key: applyExplorationAccuracyBoost(
+          applyDimensionAccuracyNoise(
+            baseAccuracy: e.value,
+            siteId: site.siteId,
+            dimension: dimByAccuracyKey[e.key]!,
+          ),
+          exploredM,
+        ),
     };
 
     final horizontal =
@@ -70,7 +86,8 @@ class SiteCardDimensions extends StatelessWidget {
       ),
     ];
 
-    final horizontalDisplays = <(String, SiteDimensionDisplay?)>[
+    final horizontalDisplays =
+        <(String, SiteDimensionDisplay?, double)>[
       for (final entry in horizontal)
         (
           entry.$2,
@@ -82,55 +99,86 @@ class SiteCardDimensions extends StatelessWidget {
             accuracy: accuracies[entry.$3] ?? 0,
             showExactMarker: showExactMarker,
           ),
+          accuracies[entry.$3] ?? 0,
         ),
     ];
+    final depthAccuracy = accuracies['depth_accuracy'] ?? 0;
     final depthDisplay = _displayFor(
       site: site,
       key: SiteDimensionKey.depth,
       trueValue: site.oddDepth,
       band: site.oddDepthBand,
-      accuracy: accuracies['depth_accuracy'] ?? 0,
+      accuracy: depthAccuracy,
       showExactMarker: showExactMarker,
     );
 
     return CardSectionPanel(
-      label: 'Site dimensions',
-      padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
-      child: SizedBox(
-        height: 88,
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Expanded(
-              child: Column(
-                children: [
-                  for (var i = 0; i < horizontalDisplays.length; i++) ...[
-                    if (i > 0) const SizedBox(height: 4),
-                    Expanded(
-                      child: _HorizontalDimensionRow(
-                        label: horizontalDisplays[i].$1,
-                        display: horizontalDisplays[i].$2,
-                        cardTheme: cardTheme,
-                        showExactMarker: showExactMarker,
-                      ),
-                    ),
-                  ],
-                ],
-              ),
+      labelWidget: Text(
+        'Site dimensions · mapped ${exploredM.floor()} m',
+        textAlign: TextAlign.center,
+        style: cardTheme.sectionLabelStyle(fontSize: 13).copyWith(
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.15,
             ),
-            const SizedBox(width: 10),
-            SizedBox(
-              width: 40,
-              child: _VerticalDepthAxis(
-                display: depthDisplay,
-                cardTheme: cardTheme,
-                showExactMarker: showExactMarker,
-              ),
+      ),
+      padding: const EdgeInsets.fromLTRB(10, 10, 6, 10),
+      labelGap: 8,
+      child: Center(
+        child: FractionallySizedBox(
+          widthFactor: 0.98,
+          child: SizedBox(
+            height: 104,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(
+                  child: Column(
+                    children: [
+                      for (var i = 0; i < horizontalDisplays.length; i++) ...[
+                        if (i > 0) const SizedBox(height: 5),
+                        Expanded(
+                          child: _HorizontalDimensionRow(
+                            label: horizontalDisplays[i].$1,
+                            accuracy: horizontalDisplays[i].$3,
+                            display: horizontalDisplays[i].$2,
+                            cardTheme: cardTheme,
+                            showExactMarker: showExactMarker,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                SizedBox(
+                  width: 40,
+                  child: _VerticalDepthAxis(
+                    display: depthDisplay,
+                    accuracy: depthAccuracy,
+                    cardTheme: cardTheme,
+                    showExactMarker: showExactMarker,
+                  ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
+  }
+
+  static double _resolvedExploredMeters(
+    BuildContext context,
+    SiteSummary site,
+  ) {
+    final server = site.exploredDistanceM ?? 0.0;
+    try {
+      return context
+          .watch<SiteExplorationController>()
+          .exploredMetersFor(site.siteId, fallback: server);
+    } on ProviderNotFoundException {
+      return server;
+    }
   }
 
   static int _siteStewardshipLevel(BuildContext context) {
@@ -147,6 +195,11 @@ class SiteCardDimensions extends StatelessWidget {
     return 1;
   }
 
+  static String accuracyPercentLabel(double accuracy) {
+    final pct = (accuracy.clamp(0.0, 1.0) * 100).round();
+    return '$pct%';
+  }
+
   static SiteDimensionDisplay? _displayFor({
     required SiteSummary site,
     required SiteDimensionKey key,
@@ -158,7 +211,40 @@ class SiteCardDimensions extends StatelessWidget {
     // Exact marker only when admin UI is on and the server sent exact odds.
     final exactValue = showExactMarker ? trueValue : null;
 
+    if (trueValue != null) {
+      final resolved = resolveSiteDimensionDisplay(
+        dimension: key,
+        trueValue: trueValue,
+        accuracy: accuracy,
+        siteId: site.siteId,
+      );
+      if (exactValue == null) {
+        return SiteDimensionDisplay(
+          rangeStart: resolved.rangeStart,
+          rangeEnd: resolved.rangeEnd,
+          blurSigma: resolved.blurSigma,
+          effectiveAccuracy: resolved.effectiveAccuracy,
+        );
+      }
+      return resolved;
+    }
+
     if (band != null) {
+      return _scaleBandToAccuracy(band, accuracy, exactValue: exactValue);
+    }
+
+    return null;
+  }
+
+  /// Shrink an existing server band toward its midpoint as accuracy rises.
+  static SiteDimensionDisplay _scaleBandToAccuracy(
+    SiteDimensionBand band,
+    double accuracy, {
+    double? exactValue,
+  }) {
+    final newAcc = accuracy.clamp(0.0, 1.0);
+    final oldAcc = band.effectiveAccuracy.clamp(0.0, 1.0);
+    if ((newAcc - oldAcc).abs() < 1e-9) {
       return SiteDimensionDisplay(
         trueValue: exactValue,
         rangeStart: band.rangeStart,
@@ -167,54 +253,69 @@ class SiteCardDimensions extends StatelessWidget {
         effectiveAccuracy: band.effectiveAccuracy,
       );
     }
-
-    // Fallback for tests/fixtures that only provide exact odd_* values.
-    if (trueValue == null) return null;
-    final resolved = resolveSiteDimensionDisplay(
-      dimension: key,
-      trueValue: trueValue,
-      accuracy: accuracy,
-      siteId: site.siteId,
+    final oldUncertainty = (1.0 - oldAcc).clamp(0.0, 1.0);
+    final newUncertainty = 1.0 - newAcc;
+    final scale =
+        oldUncertainty > 1e-9 ? (newUncertainty / oldUncertainty) : 0.0;
+    final mid = (band.rangeStart + band.rangeEnd) / 2.0;
+    final half = ((band.rangeEnd - band.rangeStart) / 2.0) * scale;
+    return SiteDimensionDisplay(
+      trueValue: exactValue,
+      rangeStart: (mid - half).clamp(0.0, 1.0),
+      rangeEnd: (mid + half).clamp(0.0, 1.0),
+      blurSigma: band.blurSigma * scale,
+      effectiveAccuracy: newAcc,
     );
-    if (exactValue == null) {
-      return SiteDimensionDisplay(
-        rangeStart: resolved.rangeStart,
-        rangeEnd: resolved.rangeEnd,
-        blurSigma: resolved.blurSigma,
-        effectiveAccuracy: resolved.effectiveAccuracy,
-      );
-    }
-    return resolved;
   }
 }
 
 class _HorizontalDimensionRow extends StatelessWidget {
   const _HorizontalDimensionRow({
     required this.label,
+    required this.accuracy,
     required this.display,
     required this.cardTheme,
     required this.showExactMarker,
   });
 
   final String label;
+  final double accuracy;
   final SiteDimensionDisplay? display;
   final DinoCardTheme cardTheme;
   final bool showExactMarker;
 
   @override
   Widget build(BuildContext context) {
+    final labelStyle = cardTheme.statLabelStyle(fontSize: 7);
+    final accuracyStyle = labelStyle.copyWith(
+      color: cardTheme.cardAccent,
+      fontWeight: FontWeight.w700,
+    );
+    // Prefer live effective accuracy from the display when present.
+    final shownAccuracy = display?.effectiveAccuracy ?? accuracy;
     return Row(
       children: [
         SizedBox(
-          width: 78,
-          child: Text(
-            label.toUpperCase(),
-            style: cardTheme.statLabelStyle(fontSize: 6.5),
+          width: 98,
+          child: Text.rich(
+            TextSpan(
+              children: [
+                TextSpan(
+                  text: '${label.toUpperCase()} ',
+                  style: labelStyle,
+                ),
+                TextSpan(
+                  text: SiteCardDimensions.accuracyPercentLabel(shownAccuracy),
+                  style: accuracyStyle,
+                ),
+              ],
+            ),
+            textAlign: TextAlign.right,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
         ),
-        const SizedBox(width: 4),
+        const SizedBox(width: 6),
         Expanded(
           child: display == null
               ? _AxisTrackPlaceholder(cardTheme: cardTheme)
@@ -240,25 +341,41 @@ class _HorizontalDimensionRow extends StatelessWidget {
 class _VerticalDepthAxis extends StatelessWidget {
   const _VerticalDepthAxis({
     required this.display,
+    required this.accuracy,
     required this.cardTheme,
     required this.showExactMarker,
   });
 
   final SiteDimensionDisplay? display;
+  final double accuracy;
   final DinoCardTheme cardTheme;
   final bool showExactMarker;
 
   @override
   Widget build(BuildContext context) {
+    final labelStyle = cardTheme.statLabelStyle(fontSize: 7);
+    final accuracyStyle = labelStyle.copyWith(
+      color: cardTheme.cardAccent,
+      fontWeight: FontWeight.w700,
+    );
+    final shownAccuracy = display?.effectiveAccuracy ?? accuracy;
     return Column(
       children: [
-        Text(
-          'DEPTH',
-          style: cardTheme.statLabelStyle(fontSize: 6.5),
+        Text.rich(
+          TextSpan(
+            children: [
+              TextSpan(text: 'DEPTH ', style: labelStyle),
+              TextSpan(
+                text: SiteCardDimensions.accuracyPercentLabel(shownAccuracy),
+                style: accuracyStyle,
+              ),
+            ],
+          ),
+          textAlign: TextAlign.center,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: 2),
         Expanded(
           child: display == null
               ? _AxisTrackPlaceholder(cardTheme: cardTheme, vertical: true)
@@ -362,7 +479,7 @@ class _HorizontalAxisPainter extends CustomPainter {
     }
 
     final uncertainty = (1.0 - accuracy).clamp(0.0, 1.0);
-    final bandH = (4.5 + blurSigma * 0.7).clamp(4.5, 14.0);
+    final bandH = (6.0 + blurSigma * 0.75).clamp(6.0, 16.0);
     _paintUncertaintyBand(
       canvas,
       Rect.fromLTRB(
@@ -384,7 +501,7 @@ class _HorizontalAxisPainter extends CustomPainter {
   }
 
   void _paintHorizontalTrack(Canvas canvas, Size size, double cy) {
-    const trackH = 2.5;
+    const trackH = 3.5;
     // Soft trough behind the rail.
     canvas.drawRRect(
       RRect.fromLTRBR(
@@ -478,7 +595,7 @@ class _VerticalAxisPainter extends CustomPainter {
     }
 
     final uncertainty = (1.0 - accuracy).clamp(0.0, 1.0);
-    final bandW = (4.5 + blurSigma * 0.7).clamp(4.5, 16.0);
+    final bandW = (6.0 + blurSigma * 0.75).clamp(6.0, 16.0);
     _paintUncertaintyBand(
       canvas,
       Rect.fromLTRB(
@@ -500,7 +617,7 @@ class _VerticalAxisPainter extends CustomPainter {
   }
 
   void _paintVerticalTrack(Canvas canvas, Size size, double cx) {
-    const trackW = 2.5;
+    const trackW = 3.5;
     canvas.drawRRect(
       RRect.fromLTRBR(
         cx - trackW,
