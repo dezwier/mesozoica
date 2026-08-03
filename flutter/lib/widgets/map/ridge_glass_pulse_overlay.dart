@@ -175,13 +175,21 @@ class _RidgeGlassPulseOverlayState extends State<RidgeGlassPulseOverlay>
       if (!mounted || seq != _projectSeq) return;
       final center = pixels.isNotEmpty ? pixels[0] : null;
       final probePx = pixels.length > 1 ? pixels[1] : null;
-      if (center == null ||
-          probePx == null ||
-          !center.dx.isFinite ||
-          !probePx.dx.isFinite) {
+      if (!_finiteOffset(center) || !_finiteOffset(probePx)) {
+        _clearGeometry();
         return;
       }
-      final probeDist = (probePx - center).distance;
+
+      // Far off-screen (or Mapbox's (0,0) sentinel mixed with a real probe)
+      // yields a tiny/absurd probe scale and a mega-ring at the origin.
+      final viewport = widget.camera.viewportSize;
+      if (viewport != null &&
+          !_isNearViewport(center!, size: viewport)) {
+        _clearGeometry();
+        return;
+      }
+
+      final probeDist = (probePx! - center!).distance;
       if (probeDist < 0.5) return;
 
       final outer = probeDist * (rangeM / probeM);
@@ -189,6 +197,21 @@ class _RidgeGlassPulseOverlayState extends State<RidgeGlassPulseOverlay>
           ? 0.0
           : probeDist * (widget.baseVisibilityM / probeM);
       if (outer < 4) return;
+      // Guard against projection blow-ups when one sample is invalid.
+      final maxDim = viewport != null
+          ? math.max(viewport.width, viewport.height)
+          : 1024.0;
+      if (outer > maxDim * 4.0) {
+        _clearGeometry();
+        return;
+      }
+      // (0,0) is on-screen, so the margin check alone misses Mapbox's
+      // unprojectable-point sentinel. A real pan never teleports this far.
+      final prev = _centerPx;
+      if (prev != null && (center - prev).distance > maxDim) {
+        _clearGeometry();
+        return;
+      }
 
       _calibZoom = zoomAtProbe;
       _calibOuterPx = outer;
@@ -210,6 +233,29 @@ class _RidgeGlassPulseOverlayState extends State<RidgeGlassPulseOverlay>
         });
       }
     }
+  }
+
+  static bool _finiteOffset(Offset? p) =>
+      p != null && p.dx.isFinite && p.dy.isFinite;
+
+  /// True when [p] is inside the map (or just outside so a ring can clip in).
+  static bool _isNearViewport(Offset p, {required Size size}) {
+    final margin = math.max(size.width, size.height);
+    return p.dx >= -margin &&
+        p.dy >= -margin &&
+        p.dx <= size.width + margin &&
+        p.dy <= size.height + margin;
+  }
+
+  void _clearGeometry() {
+    if (_centerPx == null && _outerRadiusPx == 0 && _innerRadiusPx == 0) {
+      return;
+    }
+    setState(() {
+      _centerPx = null;
+      _innerRadiusPx = 0;
+      _outerRadiusPx = 0;
+    });
   }
 
   void _applyCalibratedGeometry({

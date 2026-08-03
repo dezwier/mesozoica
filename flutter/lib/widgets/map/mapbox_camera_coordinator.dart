@@ -124,6 +124,16 @@ class MapboxCameraCoordinator {
     _viewportHeight = height;
   }
 
+  /// Last layout size of the map widget, if known.
+  ui.Size? get viewportSize {
+    final width = _viewportWidth;
+    final height = _viewportHeight;
+    if (width == null || height == null || width <= 0 || height <= 0) {
+      return null;
+    }
+    return ui.Size(width, height);
+  }
+
   /// Approximate WGS84 bounds of the visible map (corners via screen→geo).
   Future<LatLngBounds?> visibleBounds() async {
     final map = _map;
