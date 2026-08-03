@@ -112,7 +112,13 @@ def test_discover_site_sets_walk_and_enriches(session: Session, monkeypatch):
     monkeypatch.setattr(
         "app.services.site_service.discover.resolve_site_discovery_params",
         lambda session, *, user_id, site, lat=None, lon=None: type(
-            "P", (), {"max_distance_m": 500.0, "discovery_chance": 1.0}
+            "P",
+            (),
+            {
+                "max_distance_m": 500.0,
+                "discovery_chance": 1.0,
+                "site_discovery_xp": 10.0,
+            },
         )(),
     )
     monkeypatch.setattr(

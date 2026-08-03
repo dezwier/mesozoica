@@ -24,6 +24,7 @@ from app.services.weather_service.solar import period_at
 class ResolvedSiteDiscoveryParams:
     visibility_distance_m: float
     discovery_chance: float  # clamped 0..1
+    site_discovery_xp: float
 
     # Back-compat alias.
     @property
@@ -143,4 +144,5 @@ def resolve_site_discovery_params(
     return ResolvedSiteDiscoveryParams(
         visibility_distance_m=float(resolved["visibility_distance_m"]),
         discovery_chance=float(resolved["discovery_chance"]),
+        site_discovery_xp=float(resolved["site_discovery_xp"]),
     )

@@ -64,10 +64,12 @@ def test_progress_in_level() -> None:
 def test_leveling_yaml_loaded() -> None:
     get_game_config.cache_clear()
     cfg = get_game_config().leveling
-    assert cfg.rewards.site_discover_site_discovery_xp == 10
-    assert cfg.rewards.fossil_discover_fossil_detection_xp == 5
-    assert cfg.rewards.active_km_site_discovery_xp == 30
-    assert cfg.rewards.passive_km_site_discovery_xp == 5
+    site = get_game_config().site_discovery
+    fossil = get_game_config().fossil_detection
+    assert site.site_discovery_xp == 10
+    assert site.active_km_xp == 30
+    assert site.passive_km_xp == 5
+    assert float(fossil.main_params["fossil_discovery_xp"]) == 5
     assert len(cfg.skills) == 12
     assert cfg.skills[0].id == "site_discovery"
     assert cfg.skills[1].id == "site_survey"

@@ -398,13 +398,22 @@ class SiteDiscoveryMainParams(BaseModel):
     visibility_distance_m: float = 20.0
     discovery_chance: float = 0.1
     max_discovery_speed_kmh: float = 20.0
+    site_discovery_xp: float = 10.0
+    active_km_xp: float = 30.0
+    passive_km_xp: float = 5.0
 
     @field_validator("discovery_chance")
     @classmethod
     def _validate_discovery_chance(cls, value: float) -> float:
         return _clamp_unit_interval(value, label="discovery_chance")
 
-    @field_validator("visibility_distance_m", "max_discovery_speed_kmh")
+    @field_validator(
+        "visibility_distance_m",
+        "max_discovery_speed_kmh",
+        "site_discovery_xp",
+        "active_km_xp",
+        "passive_km_xp",
+    )
     @classmethod
     def _validate_positive(cls, value: float) -> float:
         if value <= 0:
@@ -456,6 +465,18 @@ class SiteDiscoveryConfig(BaseModel):
     @property
     def max_discovery_speed_kmh(self) -> float:
         return float(self.main_params.max_discovery_speed_kmh)
+
+    @property
+    def site_discovery_xp(self) -> float:
+        return float(self.main_params.site_discovery_xp)
+
+    @property
+    def active_km_xp(self) -> float:
+        return float(self.main_params.active_km_xp)
+
+    @property
+    def passive_km_xp(self) -> float:
+        return float(self.main_params.passive_km_xp)
 
     # Back-compat alias used by older call sites / tests.
     @property
@@ -1095,20 +1116,10 @@ class LevelingSkillConfig(BaseModel):
     name: str
 
 
-class LevelingRewardsConfig(BaseModel):
-    model_config = {"frozen": True}
-
-    site_discover_site_discovery_xp: int = 10
-    fossil_discover_fossil_detection_xp: int = 5
-    active_km_site_discovery_xp: int = 30
-    passive_km_site_discovery_xp: int = 5
-
-
 class LevelingConfig(BaseModel):
     model_config = {"frozen": True}
 
     skills: tuple[LevelingSkillConfig, ...] = ()
-    rewards: LevelingRewardsConfig = Field(default_factory=LevelingRewardsConfig)
     career_titles: tuple[str, ...] = ()
 
     @field_validator("skills", mode="before")

@@ -110,10 +110,21 @@ def discover_site_from_aerial(
 
     from app.models.user import User
     from app.services.level_service import award_site_discover_xp
+    from app.services.weather_service.solar import period_at
 
     user = session.get(User, user_id)
     if user is not None:
-        award_site_discover_xp(user)
+        weather_time = period_at(latitude=lat, longitude=lon)
+        weather_type = None
+        try:
+            from app.services.weather_service import get_weather
+
+            weather_type = get_weather(lat=lat, lon=lon).weather_type
+        except Exception:
+            weather_type = None
+        award_site_discover_xp(
+            user, weather_time=weather_time, weather_type=weather_type
+        )
         session.add(user)
 
     session.commit()

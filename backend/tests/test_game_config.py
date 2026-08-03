@@ -42,12 +42,24 @@ def test_load_game_config_matches_current_defaults() -> None:
     assert config.site_discovery.max_distance_m == 20.0
     assert config.site_discovery.discovery_chance == 0.1
     assert config.site_discovery.max_discovery_speed_kmh == 20.0
+    assert config.site_discovery.site_discovery_xp == 10.0
+    assert config.site_discovery.active_km_xp == 30.0
+    assert config.site_discovery.passive_km_xp == 5.0
     assert config.site_discovery.client.auto_discover_radius_m == 20.0
     assert config.site_discovery.client.cache_radius_km == 1.0
     assert config.site_discovery.client.cache_refresh_move_threshold_m == 500.0
     assert config.site_discovery.client.discover_fail_retry_s == 20
     assert config.site_discovery.client.discovery_reroll_interval_s == 10
     assert config.site_discovery.level_modifiers["discovery_chance"] == []
+    assert float(config.fossil_detection.main_params["fossil_discovery_xp"]) == 5.0
+    night_xp = config.site_discovery.weather_time_modifiers["site_discovery_xp"][
+        "night"
+    ]
+    assert night_xp[0].op == "multiply" and night_xp[0].value == 1.5
+    dawn_xp = config.fossil_detection.weather_time_modifiers["fossil_discovery_xp"][
+        "dawn"
+    ]
+    assert dawn_xp[0].op == "multiply" and dawn_xp[0].value == 1.2
 
     assert config.site_survey.main_params.dino_accuracy == 0.0
     assert config.site_survey.main_params.fossil_accuracy == 0.0
@@ -124,7 +136,6 @@ def test_load_game_config_matches_current_defaults() -> None:
     ]
     assert "ridge_glass" in modifying
 
-    assert config.leveling.rewards.site_discover_site_discovery_xp == 10
     assert len(config.leveling.skills) == 12
     assert len(config.leveling.career_titles) == 99
 

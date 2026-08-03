@@ -21,7 +21,7 @@ def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
             "Backfill skill / career XP for all users from site & fossil "
-            "discoveries plus walked distance, using rewards in leveling.yaml."
+            "discoveries plus walked distance, using skill main_params XP."
         )
     )
     parser.add_argument(
@@ -40,13 +40,14 @@ def main() -> int:
         require_railway_database()
 
     get_game_config.cache_clear()
-    rewards = get_game_config().leveling.rewards
+    site_cfg = get_game_config().site_discovery
+    fossil_cfg = get_game_config().fossil_detection
     logger.info(
-        "rewards site_discovery=%s fossil_detection=%s active_km=%s passive_km=%s",
-        rewards.site_discover_site_discovery_xp,
-        rewards.fossil_discover_fossil_detection_xp,
-        rewards.active_km_site_discovery_xp,
-        rewards.passive_km_site_discovery_xp,
+        "xp site_discovery=%s fossil_discovery=%s active_km=%s passive_km=%s",
+        site_cfg.site_discovery_xp,
+        fossil_cfg.main_params.get("fossil_discovery_xp"),
+        site_cfg.active_km_xp,
+        site_cfg.passive_km_xp,
     )
 
     with Session(engine) as session:

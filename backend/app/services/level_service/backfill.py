@@ -46,15 +46,20 @@ def compute_skill_xp_from_history(
     active_distance_m: float,
 ) -> tuple[dict[str, int], dict[str, dict[str, int]]]:
     """Return (skill_xp, skill_breakdown) from historical activity."""
-    rewards = get_game_config().leveling.rewards
-    from_sites = int(site_count) * int(rewards.site_discover_site_discovery_xp)
-    from_fossils = int(fossil_count) * int(
-        rewards.fossil_discover_fossil_detection_xp
+    site_cfg = get_game_config().site_discovery
+    fossil_cfg = get_game_config().fossil_detection
+    site_xp = int(round(float(site_cfg.site_discovery_xp)))
+    fossil_xp = int(
+        round(float(fossil_cfg.main_params.get("fossil_discovery_xp", 5)))
     )
+    active_xp = int(round(float(site_cfg.active_km_xp)))
+    passive_xp = int(round(float(site_cfg.passive_km_xp)))
+    from_sites = int(site_count) * site_xp
+    from_fossils = int(fossil_count) * fossil_xp
     active_km = whole_km(active_distance_m)
     passive_km = whole_km(passive_meters(total_distance_m, active_distance_m))
-    from_active = active_km * int(rewards.active_km_site_discovery_xp)
-    from_passive = passive_km * int(rewards.passive_km_site_discovery_xp)
+    from_active = active_km * active_xp
+    from_passive = passive_km * passive_xp
 
     skill_xp = empty_skill_xp()
     skill_xp["site_discovery"] = from_sites + from_active + from_passive

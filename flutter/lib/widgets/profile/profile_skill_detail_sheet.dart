@@ -28,6 +28,10 @@ const _mainParamLabels = <String, String>{
   'visibility_distance_m': 'Visibility distance',
   'discovery_chance': 'Discovery chance',
   'max_discovery_speed_kmh': 'Max discovery speed',
+  'site_discovery_xp': 'Site discovery XP',
+  'active_km_xp': 'Active km XP',
+  'passive_km_xp': 'Passive km XP',
+  'fossil_discovery_xp': 'Fossil discovery XP',
   'dino_accuracy': 'Dinosaur accuracy',
   'fossil_accuracy': 'Fossil accuracy',
   'completeness_accuracy': 'Completeness accuracy',
@@ -42,7 +46,7 @@ const _mainParamLabels = <String, String>{
 
 const _cardRadius = 10.0;
 
-enum _ParamFormat { chance, meters, kmh, plain }
+enum _ParamFormat { chance, meters, kmh, xp, plain }
 
 void showProfileSkillDetailSheet(
   BuildContext context, {
@@ -702,10 +706,29 @@ List<_MainParamDisplay> _mainParamRowsForSkill(
     if (!domain.hasMainParams) return const [];
     return [
       for (final entry in domain.mainParams.entries)
-        _MainParamDisplay(
-          label: _mainParamLabels[entry.key] ?? entry.key,
-          effectiveValue: entry.value.toString(),
-        ),
+        if (entry.value is num)
+          _resolveScalarParam(
+            label: _mainParamLabels[entry.key] ?? entry.key,
+            paramKey: entry.key,
+            skillId: domain.skillId,
+            base: (entry.value as num).toDouble(),
+            levelEntries: domain.levelModifiers[entry.key],
+            weatherTimeMods: domain.weatherTimeModifiers[entry.key],
+            weatherTime: weatherTime,
+            weatherTypeMods: domain.weatherTypeModifiers[entry.key],
+            weatherType: weatherType,
+            skillLevel: skill.level,
+            format: entry.key.endsWith('_xp')
+                ? _ParamFormat.xp
+                : _ParamFormat.plain,
+            clampUnit: false,
+            toolBindings: toolBindings,
+          )
+        else
+          _MainParamDisplay(
+            label: _mainParamLabels[entry.key] ?? entry.key,
+            effectiveValue: entry.value.toString(),
+          ),
     ];
   }
   return const [];
@@ -761,6 +784,51 @@ List<_MainParamDisplay> _siteDiscoveryRows(
       weatherType: weatherType,
       skillLevel: skillLevel,
       format: _ParamFormat.kmh,
+      clampUnit: false,
+      toolBindings: toolBindings,
+    ),
+    _resolveScalarParam(
+      label: 'Site discovery XP',
+      paramKey: 'site_discovery_xp',
+      skillId: 'site_discovery',
+      base: cfg.siteDiscoveryXp,
+      levelEntries: cfg.levelModifiers['site_discovery_xp'],
+      weatherTimeMods: cfg.weatherTimeModifiers['site_discovery_xp'],
+      weatherTime: weatherTime,
+      weatherTypeMods: cfg.weatherTypeModifiers['site_discovery_xp'],
+      weatherType: weatherType,
+      skillLevel: skillLevel,
+      format: _ParamFormat.xp,
+      clampUnit: false,
+      toolBindings: toolBindings,
+    ),
+    _resolveScalarParam(
+      label: 'Active km XP',
+      paramKey: 'active_km_xp',
+      skillId: 'site_discovery',
+      base: cfg.activeKmXp,
+      levelEntries: cfg.levelModifiers['active_km_xp'],
+      weatherTimeMods: cfg.weatherTimeModifiers['active_km_xp'],
+      weatherTime: weatherTime,
+      weatherTypeMods: cfg.weatherTypeModifiers['active_km_xp'],
+      weatherType: weatherType,
+      skillLevel: skillLevel,
+      format: _ParamFormat.xp,
+      clampUnit: false,
+      toolBindings: toolBindings,
+    ),
+    _resolveScalarParam(
+      label: 'Passive km XP',
+      paramKey: 'passive_km_xp',
+      skillId: 'site_discovery',
+      base: cfg.passiveKmXp,
+      levelEntries: cfg.levelModifiers['passive_km_xp'],
+      weatherTimeMods: cfg.weatherTimeModifiers['passive_km_xp'],
+      weatherTime: weatherTime,
+      weatherTypeMods: cfg.weatherTypeModifiers['passive_km_xp'],
+      weatherType: weatherType,
+      skillLevel: skillLevel,
+      format: _ParamFormat.xp,
       clampUnit: false,
       toolBindings: toolBindings,
     ),
@@ -1095,6 +1163,9 @@ String _formatScalar(double value, _ParamFormat format) {
       return _formatMeters(value);
     case _ParamFormat.kmh:
       return _formatKmh(value);
+    case _ParamFormat.xp:
+      if (value == value.roundToDouble()) return '${value.toStringAsFixed(0)} XP';
+      return '${value.toStringAsFixed(1)} XP';
     case _ParamFormat.plain:
       if (value == value.roundToDouble()) return value.toStringAsFixed(0);
       return value.toStringAsFixed(2);

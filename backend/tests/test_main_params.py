@@ -26,6 +26,9 @@ def test_resolve_site_discovery_identity_level() -> None:
     assert resolved["visibility_distance_m"] == cfg.visibility_distance_m
     assert resolved["discovery_chance"] == cfg.discovery_chance
     assert resolved["max_discovery_speed_kmh"] == cfg.max_discovery_speed_kmh
+    assert resolved["site_discovery_xp"] == cfg.site_discovery_xp
+    assert resolved["active_km_xp"] == cfg.active_km_xp
+    assert resolved["passive_km_xp"] == cfg.passive_km_xp
 
 
 def test_resolve_site_discovery_tool_replace() -> None:
@@ -37,6 +40,48 @@ def test_resolve_site_discovery_tool_replace() -> None:
         },
     )
     assert resolved["discovery_chance"] == 0.9
+
+
+def test_resolve_site_discovery_xp_weather_time() -> None:
+    get_game_config.cache_clear()
+    cfg = get_game_config().site_discovery
+    base = cfg.site_discovery_xp
+
+    day = resolve_site_discovery_main_params(skill_level=1, weather_time="day")
+    assert day["site_discovery_xp"] == pytest.approx(base)
+    assert day["active_km_xp"] == pytest.approx(cfg.active_km_xp)
+    assert day["passive_km_xp"] == pytest.approx(cfg.passive_km_xp)
+
+    dusk = resolve_site_discovery_main_params(skill_level=1, weather_time="dusk")
+    assert dusk["site_discovery_xp"] == pytest.approx(base * 1.2)
+    assert dusk["active_km_xp"] == pytest.approx(cfg.active_km_xp * 1.2)
+
+    dawn = resolve_site_discovery_main_params(skill_level=1, weather_time="dawn")
+    assert dawn["passive_km_xp"] == pytest.approx(cfg.passive_km_xp * 1.2)
+
+    night = resolve_site_discovery_main_params(
+        skill_level=1, weather_time="night"
+    )
+    assert night["site_discovery_xp"] == pytest.approx(base * 1.5)
+    assert night["active_km_xp"] == pytest.approx(cfg.active_km_xp * 1.5)
+    assert night["passive_km_xp"] == pytest.approx(cfg.passive_km_xp * 1.5)
+
+
+def test_resolve_fossil_detection_xp_weather_time() -> None:
+    get_game_config.cache_clear()
+    from app.services.level_service.main_params import (
+        resolve_fossil_detection_main_params,
+    )
+
+    base = float(
+        get_game_config().fossil_detection.main_params["fossil_discovery_xp"]
+    )
+    day = resolve_fossil_detection_main_params(skill_level=1, weather_time="day")
+    assert day["fossil_discovery_xp"] == pytest.approx(base)
+    night = resolve_fossil_detection_main_params(
+        skill_level=1, weather_time="night"
+    )
+    assert night["fossil_discovery_xp"] == pytest.approx(base * 1.5)
 
 
 def test_resolve_site_discovery_weather_time_visibility() -> None:

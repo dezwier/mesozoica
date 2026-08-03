@@ -62,6 +62,7 @@ def test_resolve_site_discovery_params_boost_hook(
         return ResolvedSiteDiscoveryParams(
             visibility_distance_m=cfg.visibility_distance_m,
             discovery_chance=chance,
+            site_discovery_xp=cfg.site_discovery_xp,
         )
 
     monkeypatch.setattr(

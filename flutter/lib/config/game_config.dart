@@ -273,6 +273,9 @@ class SiteDiscoveryConfig {
   double get visibilityDistanceM => mainParams.visibilityDistanceM;
   double get discoveryChance => mainParams.discoveryChance;
   double get maxDiscoverySpeedKmh => mainParams.maxDiscoverySpeedKmh;
+  double get siteDiscoveryXp => mainParams.siteDiscoveryXp;
+  double get activeKmXp => mainParams.activeKmXp;
+  double get passiveKmXp => mainParams.passiveKmXp;
 
   /// Back-compat alias.
   double get maxDistanceM => visibilityDistanceM;
@@ -301,11 +304,17 @@ class SiteDiscoveryMainParams {
     required this.visibilityDistanceM,
     required this.discoveryChance,
     required this.maxDiscoverySpeedKmh,
+    required this.siteDiscoveryXp,
+    required this.activeKmXp,
+    required this.passiveKmXp,
   });
 
   final double visibilityDistanceM;
   final double discoveryChance;
   final double maxDiscoverySpeedKmh;
+  final double siteDiscoveryXp;
+  final double activeKmXp;
+  final double passiveKmXp;
 
   factory SiteDiscoveryMainParams.fromYaml(Map<String, dynamic> yaml) {
     return SiteDiscoveryMainParams(
@@ -315,6 +324,9 @@ class SiteDiscoveryMainParams {
       ),
       discoveryChance: _asDouble(yaml['discovery_chance'], 0.1),
       maxDiscoverySpeedKmh: _asDouble(yaml['max_discovery_speed_kmh'], 20.0),
+      siteDiscoveryXp: _asDouble(yaml['site_discovery_xp'], 10.0),
+      activeKmXp: _asDouble(yaml['active_km_xp'], 30.0),
+      passiveKmXp: _asDouble(yaml['passive_km_xp'], 5.0),
     );
   }
 }
@@ -899,20 +911,15 @@ class ToolActionsConfig {
 class LevelingConfig {
   const LevelingConfig({
     required this.skills,
-    required this.rewards,
     required this.careerTitles,
   });
 
   final List<LevelingSkillConfig> skills;
-  final LevelingRewardsConfig rewards;
   final List<String> careerTitles;
 
   factory LevelingConfig.fromYaml(Map<String, dynamic> yaml) {
     return LevelingConfig(
       skills: LevelingSkillConfig.listFromYaml(yaml['skills']),
-      rewards: LevelingRewardsConfig.fromYaml(
-        GameConfig._asMap(yaml['rewards']),
-      ),
       careerTitles: _asStringList(yaml['career_titles']),
     );
   }
@@ -938,32 +945,6 @@ class LevelingSkillConfig {
     return LevelingSkillConfig(
       id: yaml['id'] as String? ?? '',
       name: yaml['name'] as String? ?? '',
-    );
-  }
-}
-
-class LevelingRewardsConfig {
-  const LevelingRewardsConfig({
-    required this.siteDiscoverSiteDiscoveryXp,
-    required this.fossilDiscoverFossilDetectionXp,
-    required this.activeKmSiteDiscoveryXp,
-    required this.passiveKmSiteDiscoveryXp,
-  });
-
-  final int siteDiscoverSiteDiscoveryXp;
-  final int fossilDiscoverFossilDetectionXp;
-  final int activeKmSiteDiscoveryXp;
-  final int passiveKmSiteDiscoveryXp;
-
-  factory LevelingRewardsConfig.fromYaml(Map<String, dynamic> yaml) {
-    return LevelingRewardsConfig(
-      siteDiscoverSiteDiscoveryXp:
-          _asInt(yaml['site_discover_site_discovery_xp'], 10),
-      fossilDiscoverFossilDetectionXp:
-          _asInt(yaml['fossil_discover_fossil_detection_xp'], 5),
-      activeKmSiteDiscoveryXp: _asInt(yaml['active_km_site_discovery_xp'], 30),
-      passiveKmSiteDiscoveryXp:
-          _asInt(yaml['passive_km_site_discovery_xp'], 5),
     );
   }
 }

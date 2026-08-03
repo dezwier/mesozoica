@@ -2,8 +2,14 @@
 
 from __future__ import annotations
 
-from app.core.game_config import get_game_config
+from typing import Mapping
+
+from app.core.game_config import ParamModifier
 from app.models.user import User
+from app.services.level_service.main_params import (
+    resolve_fossil_detection_main_params,
+    resolve_site_discovery_main_params,
+)
 from app.services.level_service.skills import (
     add_skill_breakdown,
     get_skill_xp,
@@ -39,8 +45,27 @@ def award_skill_xp(
     return add
 
 
-def award_site_discover_xp(user: User) -> int:
-    amount = int(get_game_config().leveling.rewards.site_discover_site_discovery_xp)
+def _xp_int(value: float) -> int:
+    return max(0, int(round(float(value))))
+
+
+def award_site_discover_xp(
+    user: User,
+    *,
+    amount: int | None = None,
+    weather_time: str | None = None,
+    weather_type: str | None = None,
+    tool_mods: Mapping[str, ParamModifier] | None = None,
+) -> int:
+    if amount is None:
+        skill_level = level_for_xp(get_skill_xp(user, "site_discovery"))
+        resolved = resolve_site_discovery_main_params(
+            skill_level=skill_level,
+            weather_time=weather_time,
+            weather_type=weather_type,
+            tool_mods=tool_mods,
+        )
+        amount = _xp_int(resolved["site_discovery_xp"])
     return award_skill_xp(
         user,
         "site_discovery",
@@ -49,11 +74,27 @@ def award_site_discover_xp(user: User) -> int:
     )
 
 
-def award_fossil_discover_xp(user: User, *, count: int = 1) -> int:
+def award_fossil_discover_xp(
+    user: User,
+    *,
+    count: int = 1,
+    amount_per: int | None = None,
+    weather_time: str | None = None,
+    weather_type: str | None = None,
+    tool_mods: Mapping[str, ParamModifier] | None = None,
+) -> int:
     if count <= 0:
         return 0
-    per = int(get_game_config().leveling.rewards.fossil_discover_fossil_detection_xp)
-    total = per * int(count)
+    if amount_per is None:
+        skill_level = level_for_xp(get_skill_xp(user, "fossil_detection"))
+        resolved = resolve_fossil_detection_main_params(
+            skill_level=skill_level,
+            weather_time=weather_time,
+            weather_type=weather_type,
+            tool_mods=tool_mods,
+        )
+        amount_per = _xp_int(resolved["fossil_discovery_xp"])
+    total = amount_per * int(count)
     return award_skill_xp(
         user,
         "fossil_detection",
@@ -67,13 +108,20 @@ def award_distance_km_xp(
     *,
     active_km_delta: int,
     passive_km_delta: int,
+    weather_time: str | None = None,
+    weather_type: str | None = None,
+    tool_mods: Mapping[str, ParamModifier] | None = None,
 ) -> int:
     """Award site-discovery XP for whole-kilometer floor increases."""
-    rewards = get_game_config().leveling.rewards
-    active_add = max(0, int(active_km_delta)) * int(rewards.active_km_site_discovery_xp)
-    passive_add = max(0, int(passive_km_delta)) * int(
-        rewards.passive_km_site_discovery_xp
+    skill_level = level_for_xp(get_skill_xp(user, "site_discovery"))
+    resolved = resolve_site_discovery_main_params(
+        skill_level=skill_level,
+        weather_time=weather_time,
+        weather_type=weather_type,
+        tool_mods=tool_mods,
     )
+    active_add = max(0, int(active_km_delta)) * _xp_int(resolved["active_km_xp"])
+    passive_add = max(0, int(passive_km_delta)) * _xp_int(resolved["passive_km_xp"])
     total = active_add + passive_add
     if total <= 0:
         return 0

@@ -119,7 +119,7 @@ def discover_site(
 
     user = session.get(User, user_id)
     if user is not None:
-        award_site_discover_xp(user)
+        award_site_discover_xp(user, amount=int(round(params.site_discovery_xp)))
         session.add(user)
 
     session.commit()

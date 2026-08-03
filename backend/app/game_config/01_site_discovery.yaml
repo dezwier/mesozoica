@@ -10,12 +10,21 @@ main_params:
   discovery_chance: 0.1
   # Max GPS speed credited toward discovery / walk XP (Pokémon GO style filter).
   max_discovery_speed_kmh: 20.0
+  # XP awarded when a site is discovered.
+  site_discovery_xp: 10
+  # XP per whole active kilometer walked.
+  active_km_xp: 30
+  # XP per whole passive kilometer walked.
+  passive_km_xp: 5
 
 # Identity for v1 — tune later. Each list entry: { level, op: add|multiply|replace, value }.
 level_modifiers:
   visibility_distance_m: []
   discovery_chance: []
   max_discovery_speed_kmh: []
+  site_discovery_xp: []
+  active_km_xp: []
+  passive_km_xp: []
 
 # Ambient solar period (dawn|day|dusk|night). After level, before weather_type + tools.
 weather_time_modifiers:
@@ -26,6 +35,14 @@ weather_time_modifiers:
     night: [{ op: multiply, value: 0.6 }]
   discovery_chance: *site_discovery_weather_time
   max_discovery_speed_kmh: {}
+  # XP: day +0%, dawn/dusk +20%, night +50%.
+  site_discovery_xp: &site_discovery_xp_weather_time
+    day: []
+    dawn: [{ op: multiply, value: 1.2 }]
+    dusk: [{ op: multiply, value: 1.2 }]
+    night: [{ op: multiply, value: 1.5 }]
+  active_km_xp: *site_discovery_xp_weather_time
+  passive_km_xp: *site_discovery_xp_weather_time
 
 # Ambient weather type (clear|cloudy|…). After weather_time, before tools.
 weather_type_modifiers:
@@ -41,6 +58,9 @@ weather_type_modifiers:
     snow: []
   discovery_chance: *site_discovery_weather_type
   max_discovery_speed_kmh: {}
+  site_discovery_xp: {}
+  active_km_xp: {}
+  passive_km_xp: {}
 
 # Flutter auto-discover + nearby-discoverable cache.
 client:

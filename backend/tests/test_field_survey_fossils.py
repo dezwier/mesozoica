@@ -277,7 +277,13 @@ def test_discover_multi_user_lazy_once(session: Session, monkeypatch):
     monkeypatch.setattr(
         "app.services.site_service.discover.resolve_site_discovery_params",
         lambda *args, **kwargs: type(
-            "P", (), {"max_distance_m": 50_000.0, "discovery_chance": 1.0}
+            "P",
+            (),
+            {
+                "max_distance_m": 50_000.0,
+                "discovery_chance": 1.0,
+                "site_discovery_xp": 10.0,
+            },
         )(),
     )
 
@@ -399,7 +405,13 @@ def test_discover_api_and_visibility(client, session: Session, monkeypatch):
     monkeypatch.setattr(
         "app.services.site_service.discover.resolve_site_discovery_params",
         lambda *args, **kwargs: type(
-            "P", (), {"max_distance_m": 50_000.0, "discovery_chance": 1.0}
+            "P",
+            (),
+            {
+                "max_distance_m": 50_000.0,
+                "discovery_chance": 1.0,
+                "site_discovery_xp": 10.0,
+            },
         )(),
     )
 

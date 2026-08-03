@@ -18,6 +18,9 @@ void main() {
     expect(config.siteDiscovery.maxDistanceM, 20.0);
     expect(config.siteDiscovery.discoveryChance, 0.1);
     expect(config.siteDiscovery.maxDiscoverySpeedKmh, 20.0);
+    expect(config.siteDiscovery.siteDiscoveryXp, 10.0);
+    expect(config.siteDiscovery.activeKmXp, 30.0);
+    expect(config.siteDiscovery.passiveKmXp, 5.0);
     expect(config.siteDiscovery.client.autoDiscoverRadiusM, 20.0);
     expect(config.siteDiscovery.client.cacheRadiusKm, 1.0);
     expect(config.siteDiscovery.client.cacheRefreshMoveThresholdM, 500.0);
@@ -159,10 +162,8 @@ void main() {
       isTrue,
     );
 
-    expect(config.leveling.rewards.siteDiscoverSiteDiscoveryXp, 10);
-    expect(config.leveling.rewards.fossilDiscoverFossilDetectionXp, 5);
-    expect(config.leveling.rewards.activeKmSiteDiscoveryXp, 30);
-    expect(config.leveling.rewards.passiveKmSiteDiscoveryXp, 5);
+    expect(config.fossilDetection.mainParams['fossil_discovery_xp'], 5);
+    expect(config.leveling.skills.length, 12);
     expect(config.leveling.skills.length, 12);
     expect(config.leveling.careerTitles.length, 99);
 

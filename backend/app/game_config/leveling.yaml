@@ -30,11 +30,8 @@ skills:
   - id: academic_publishing
     name: Academic Publishing
 
-rewards:
-  site_discover_site_discovery_xp: 10
-  fossil_discover_fossil_detection_xp: 5
-  active_km_site_discovery_xp: 30
-  passive_km_site_discovery_xp: 5
+# XP reward amounts live on skill domain main_params
+# (site_discovery_xp / active_km_xp / passive_km_xp / fossil_discovery_xp).
 
 career_titles:
   - Curious Wanderer

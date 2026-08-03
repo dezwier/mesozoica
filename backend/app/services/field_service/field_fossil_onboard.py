@@ -206,7 +206,31 @@ def grant_surface_fossils_to_user(
 
         user = session.get(User, user_id)
         if user is not None:
-            award_fossil_discover_xp(user, count=newly_granted)
+            weather_time = None
+            weather_type = None
+            site = session.get(Site, site_id)
+            if (
+                site is not None
+                and site.latitude is not None
+                and site.longitude is not None
+            ):
+                from app.services.weather_service.solar import period_at
+
+                lat = float(site.latitude)
+                lon = float(site.longitude)
+                weather_time = period_at(latitude=lat, longitude=lon)
+                try:
+                    from app.services.weather_service import get_weather
+
+                    weather_type = get_weather(lat=lat, lon=lon).weather_type
+                except Exception:
+                    weather_type = None
+            award_fossil_discover_xp(
+                user,
+                count=newly_granted,
+                weather_time=weather_time,
+                weather_type=weather_type,
+            )
             session.add(user)
 
     session.commit()

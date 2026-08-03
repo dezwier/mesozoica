@@ -8,6 +8,7 @@ from app.core.game_config import (
     LevelModifierEntry,
     ParamModifier,
     SiteDiscoveryConfig,
+    SkillStubConfig,
     get_game_config,
 )
 
@@ -119,47 +120,93 @@ def resolve_site_discovery_main_params(
     """Effective site_discovery main_params after level + ambient + tool modifiers."""
     cfg = get_game_config().site_discovery
     mods = tool_mods or {}
+
+    def _resolve(param: str, *, base: float, clamp_unit: bool = False) -> float:
+        return resolve_scalar_main_param(
+            base=base,
+            level_entries=site_discovery_level_entries(cfg, param),
+            skill_level=skill_level,
+            weather_time_entries=site_discovery_weather_time_entries(
+                cfg, param, weather_time
+            ),
+            weather_type_entries=site_discovery_weather_type_entries(
+                cfg, param, weather_type
+            ),
+            tool_mod=mods.get(param),
+            clamp_unit=clamp_unit,
+        )
+
     return {
-        "visibility_distance_m": resolve_scalar_main_param(
-            base=cfg.visibility_distance_m,
-            level_entries=site_discovery_level_entries(
-                cfg, "visibility_distance_m"
-            ),
-            skill_level=skill_level,
-            weather_time_entries=site_discovery_weather_time_entries(
-                cfg, "visibility_distance_m", weather_time
-            ),
-            weather_type_entries=site_discovery_weather_type_entries(
-                cfg, "visibility_distance_m", weather_type
-            ),
-            tool_mod=mods.get("visibility_distance_m"),
+        "visibility_distance_m": _resolve(
+            "visibility_distance_m", base=cfg.visibility_distance_m
         ),
-        "discovery_chance": resolve_scalar_main_param(
-            base=cfg.discovery_chance,
-            level_entries=site_discovery_level_entries(cfg, "discovery_chance"),
-            skill_level=skill_level,
-            weather_time_entries=site_discovery_weather_time_entries(
-                cfg, "discovery_chance", weather_time
-            ),
-            weather_type_entries=site_discovery_weather_type_entries(
-                cfg, "discovery_chance", weather_type
-            ),
-            tool_mod=mods.get("discovery_chance"),
-            clamp_unit=True,
+        "discovery_chance": _resolve(
+            "discovery_chance", base=cfg.discovery_chance, clamp_unit=True
         ),
-        "max_discovery_speed_kmh": resolve_scalar_main_param(
-            base=cfg.max_discovery_speed_kmh,
-            level_entries=site_discovery_level_entries(
-                cfg, "max_discovery_speed_kmh"
-            ),
+        "max_discovery_speed_kmh": _resolve(
+            "max_discovery_speed_kmh", base=cfg.max_discovery_speed_kmh
+        ),
+        "site_discovery_xp": _resolve(
+            "site_discovery_xp", base=cfg.site_discovery_xp
+        ),
+        "active_km_xp": _resolve("active_km_xp", base=cfg.active_km_xp),
+        "passive_km_xp": _resolve("passive_km_xp", base=cfg.passive_km_xp),
+    }
+
+
+def _stub_level_entries(
+    cfg: SkillStubConfig, param: str
+) -> list[LevelModifierEntry]:
+    return list(cfg.level_modifiers.get(param, []))
+
+
+def _stub_weather_time_entries(
+    cfg: SkillStubConfig,
+    param: str,
+    weather_time: str | None,
+) -> list[ParamModifier]:
+    if not weather_time:
+        return []
+    periods = cfg.weather_time_modifiers.get(param) or {}
+    return list(periods.get(weather_time, []))
+
+
+def _stub_weather_type_entries(
+    cfg: SkillStubConfig,
+    param: str,
+    weather_type: str | None,
+) -> list[ParamModifier]:
+    if not weather_type:
+        return []
+    key = "clear" if weather_type == "sunny" else weather_type
+    types = cfg.weather_type_modifiers.get(param) or {}
+    return list(types.get(key, []))
+
+
+def resolve_fossil_detection_main_params(
+    *,
+    skill_level: int = 1,
+    weather_time: str | None = None,
+    weather_type: str | None = None,
+    tool_mods: Mapping[str, ParamModifier] | None = None,
+) -> dict[str, float]:
+    """Effective fossil_detection scalar main_params after modifiers."""
+    cfg = get_game_config().fossil_detection
+    mods = tool_mods or {}
+    raw = cfg.main_params.get("fossil_discovery_xp", 5)
+    base = float(raw)
+    return {
+        "fossil_discovery_xp": resolve_scalar_main_param(
+            base=base,
+            level_entries=_stub_level_entries(cfg, "fossil_discovery_xp"),
             skill_level=skill_level,
-            weather_time_entries=site_discovery_weather_time_entries(
-                cfg, "max_discovery_speed_kmh", weather_time
+            weather_time_entries=_stub_weather_time_entries(
+                cfg, "fossil_discovery_xp", weather_time
             ),
-            weather_type_entries=site_discovery_weather_type_entries(
-                cfg, "max_discovery_speed_kmh", weather_type
+            weather_type_entries=_stub_weather_type_entries(
+                cfg, "fossil_discovery_xp", weather_type
             ),
-            tool_mod=mods.get("max_discovery_speed_kmh"),
+            tool_mod=mods.get("fossil_discovery_xp"),
         ),
     }
 

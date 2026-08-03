@@ -3,8 +3,25 @@
 
 skill_id: fossil_detection
 enabled: false
-main_params: {}
-level_modifiers: {}
+
+main_params:
+  # XP awarded when a fossil is discovered / granted in situ.
+  fossil_discovery_xp: 5
+
+level_modifiers:
+  fossil_discovery_xp: []
+
+# Ambient solar period (dawn|day|dusk|night). After level, before weather_type + tools.
+weather_time_modifiers:
+  # XP: day +0%, dawn/dusk +20%, night +50%.
+  fossil_discovery_xp:
+    day: []
+    dawn: [{ op: multiply, value: 1.2 }]
+    dusk: [{ op: multiply, value: 1.2 }]
+    night: [{ op: multiply, value: 1.5 }]
+
+weather_type_modifiers:
+  fossil_discovery_xp: {}
 
 # Future knobs (examples):
 # main_params:

@@ -13,7 +13,7 @@ Single source of truth for Mesozoica game-mechanics knobs.
 | `site_generation.yaml` | Field site density, spacing, geology blend, client ensure triggers (not a skill) |
 | `01_site_discovery.yaml` … `12_academic_publishing.yaml` | Numbered skill domains (order matches `leveling.yaml`) |
 | `tool_actions.yaml` | Per-tool action knobs + `modifies_main_params` |
-| `leveling.yaml` | Skill XP rewards + 99 career title words (thresholds in code) |
+| `leveling.yaml` | Skill list + 99 career titles (XP amounts live on skill `main_params`) |
 | `period_colors.yaml` / `rock_type_colors.yaml` | Overlay / marker palettes |
 
 Skill YAML files use the `NN_skill_id.yaml` convention so they sort in skill order.
@@ -79,6 +79,11 @@ name under each main_param. All list entries for the current key apply in order
 | `visibility_distance_m` | Walk-in discover radius (was `max_distance_m`) |
 | `discovery_chance` | P(success) per attempt (enter or dwell re-roll) |
 | `max_discovery_speed_kmh` | GPS odometer speed cap for walk XP |
+| `site_discovery_xp` | XP awarded when a site is discovered |
+| `active_km_xp` | XP per whole active kilometer walked |
+| `passive_km_xp` | XP per whole passive kilometer walked |
+
+XP params share solar-period multipliers: day +0%, dawn/dusk +20%, night +50%.
 
 Client-only (not main params): `discovery_reroll_interval_s` — seconds between
 re-rolls while staying inside the discover radius (default 10). Walk-in still
@@ -89,6 +94,15 @@ The location-puck pulse max radius is the effective `visibility_distance_m`
 to screen pixels at the current map zoom so the ring matches the real discover
 range. Site Discovery visibility and discovery chance share the same ambient
 multipliers (see `weather_time_modifiers` / `weather_type_modifiers` in this YAML).
+
+### Fossil Detection (`04_fossil_detection.yaml`)
+
+| main_param | Meaning |
+|------------|---------|
+| `fossil_discovery_xp` | XP awarded when a fossil is discovered / granted in situ |
+
+Same solar-period XP multipliers as site discovery (day +0%, dawn/dusk +20%,
+night +50%).
 
 ### Site Survey (`02_site_survey.yaml`)
 
