@@ -24,6 +24,7 @@ import '../../controllers/fossil_catalog_controller.dart';
 import '../../controllers/guidance_session_controller.dart';
 import '../../controllers/map_controller.dart' as map_data;
 import '../../controllers/site_catalog_controller.dart';
+import '../../controllers/site_exploration_controller.dart';
 import '../../controllers/splash_hold_controller.dart';
 import '../../controllers/theme_controller.dart';
 import '../../controllers/tool_catalog_controller.dart';

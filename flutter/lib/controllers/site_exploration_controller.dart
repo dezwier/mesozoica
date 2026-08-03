@@ -112,32 +112,58 @@ class SiteExplorationController extends ChangeNotifier {
   }
 
   /// Seed / raise local counters from server site summaries.
+  ///
+  /// Server is authoritative when the viewer has no discoverer progress
+  /// (`exploredDistanceM == null`) or when local is not dirty and behind.
   void ingestSites(Iterable<SiteSummary> sites) {
     var changed = false;
     for (final site in sites) {
+      final server = site.exploredDistanceM;
+      if (server == null) {
+        // No discoverer link / progress for viewer — drop stale local buffer.
+        if (_exploredBySite.remove(site.siteId) != null) changed = true;
+        if (_documentedSiteIds.remove(site.siteId)) changed = true;
+        _dirtySiteIds.remove(site.siteId);
+        continue;
+      }
+
       if (site.documented == true) {
         if (_documentedSiteIds.add(site.siteId)) changed = true;
-      }
-      final server = site.exploredDistanceM;
-      if (server == null) continue;
-      final local = _exploredBySite[site.siteId] ?? 0.0;
-      if (site.documented == true) {
-        // Freeze at server value once documentation completes.
         if ((_exploredBySite[site.siteId] ?? -1) != server) {
           _exploredBySite[site.siteId] = server;
           changed = true;
         }
         continue;
       }
-      if (server > local) {
-        _exploredBySite[site.siteId] = server;
-        changed = true;
+
+      if (_documentedSiteIds.remove(site.siteId)) changed = true;
+      final local = _exploredBySite[site.siteId];
+      final dirty = _dirtySiteIds.contains(site.siteId);
+      if (local == null || server > local || (!dirty && server < local)) {
+        if (local != server) {
+          _exploredBySite[site.siteId] = server;
+          changed = true;
+        }
       }
     }
     if (changed) {
       unawaited(_persistLocal());
       notifyListeners();
     }
+  }
+
+  /// Wipe local exploration / documentation progress (e.g. after admin purge).
+  Future<void> clearAllProgress() async {
+    if (_exploredBySite.isEmpty &&
+        _documentedSiteIds.isEmpty &&
+        _dirtySiteIds.isEmpty) {
+      return;
+    }
+    _exploredBySite.clear();
+    _documentedSiteIds.clear();
+    _dirtySiteIds.clear();
+    await _persistLocal();
+    notifyListeners();
   }
 
   void onAppResumed() {

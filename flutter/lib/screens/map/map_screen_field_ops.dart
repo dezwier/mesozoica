@@ -204,6 +204,9 @@ mixin _MapScreenFieldOpsMixin on State<MapScreen>, _MapScreenCameraMixin {
       );
       if (!mounted) return;
       context.read<FieldDiscoveryCoordinator>().clearForUserChange();
+      if (selection.userSites) {
+        await context.read<SiteExplorationController>().clearAllProgress();
+      }
       context.read<map_data.MapController>().load(force: true);
       context.read<SiteCatalogController>().load(force: true);
       context.read<FossilCatalogController>().load(force: true);
