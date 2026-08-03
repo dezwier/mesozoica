@@ -116,6 +116,7 @@ resolvable):
 | `completeness_accuracy` | Card display precision for completeness (0–1; +1%/level) |
 | `quality_accuracy` | Card display precision for quality axis (0–1; +1%/level) |
 | `depth_accuracy` | Card display precision for depth (0–1; +1%/level; depth 0 always exact) |
+| `successful_site_disguise_xp` | XP when a rival discovery roll would hit but your active disguise blocks it |
 
 Accuracy params are display-only on the site card for now. Base is 0; each
 site_stewardship level adds 0.01 (level 1 → 1%, level 99 → 99%), then tool

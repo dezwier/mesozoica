@@ -9,6 +9,7 @@ from app.models.user import User
 from app.services.level_service.main_params import (
     resolve_fossil_detection_main_params,
     resolve_site_discovery_main_params,
+    resolve_site_stewardship_main_params,
 )
 from app.services.level_service.skills import (
     add_skill_breakdown,
@@ -100,6 +101,32 @@ def award_fossil_discover_xp(
         "fossil_detection",
         amount=total,
         breakdown_delta={"fossils": total},
+    )
+
+
+def award_successful_site_disguise_xp(
+    user: User,
+    *,
+    amount: int | None = None,
+    weather_time: str | None = None,
+    weather_type: str | None = None,
+    tool_mods: Mapping[str, ParamModifier] | None = None,
+) -> int:
+    """Award site_stewardship XP when a disguise blocks a would-be rival discovery."""
+    if amount is None:
+        skill_level = level_for_xp(get_skill_xp(user, "site_stewardship"))
+        resolved = resolve_site_stewardship_main_params(
+            skill_level=skill_level,
+            weather_time=weather_time,
+            weather_type=weather_type,
+            tool_mods=tool_mods,
+        )
+        amount = _xp_int(resolved["successful_site_disguise_xp"])
+    return award_skill_xp(
+        user,
+        "site_stewardship",
+        amount=amount,
+        breakdown_delta={"disguise": amount},
     )
 
 

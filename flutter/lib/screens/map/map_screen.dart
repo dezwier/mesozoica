@@ -16,6 +16,9 @@ import '../../controllers/orbit_survey_controller.dart';
 import '../../controllers/ridge_glass_controller.dart';
 import '../../controllers/expedition_drivetrain_controller.dart';
 import '../../controllers/disguise_session_controller.dart';
+import '../../models/disguise_tool_kind.dart';
+import '../../widgets/common/app_toast.dart';
+import '../../widgets/map/disguise_hud.dart';
 import '../../controllers/terrain_echo_controller.dart';
 import '../../controllers/fossil_catalog_controller.dart';
 import '../../controllers/guidance_session_controller.dart';
@@ -125,6 +128,7 @@ class _MapScreenState extends State<MapScreen>
     final ridgeGlass = context.watch<RidgeGlassController>();
     final expeditionDrivetrain =
         context.watch<ExpeditionDrivetrainController>();
+    final disguise = context.watch<DisguiseSessionController>();
 
     if (guidance.requestShowOnMap) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -180,6 +184,16 @@ class _MapScreenState extends State<MapScreen>
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
         final d = context.read<ExpeditionDrivetrainController>();
+        if (!d.requestShowOnMap) return;
+        d.consumeShowOnMapRequest();
+        _ensureGuidanceVisibleOnMap();
+      });
+    }
+
+    if (disguise.requestShowOnMap) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        final d = context.read<DisguiseSessionController>();
         if (!d.requestShowOnMap) return;
         d.consumeShowOnMapRequest();
         _ensureGuidanceVisibleOnMap();
@@ -253,6 +267,9 @@ class _MapScreenState extends State<MapScreen>
                     aerialRecon: aerialRecon,
                     orbitSurvey: orbitSurvey,
                     formationMap: formationMap,
+                    disguisedSiteId: disguise.isActive
+                        ? disguise.coveredSiteId
+                        : null,
                     showAerialReconOverlays: isFieldMode,
                     showPastAerialRoutes: mapData.filters.showPastAerialRoutes,
                     onSiteTap: aerialDrawMode ? (_) {} : _onSiteTap,
@@ -307,6 +324,10 @@ class _MapScreenState extends State<MapScreen>
                 !aerialDrawMode &&
                 expeditionDrivetrain.isActive)
               const ExpeditionDrivetrainHud(),
+            if (widget.isActive &&
+                !aerialDrawMode &&
+                (disguise.isPickMode || disguise.isActive))
+              const DisguiseHud(),
             if (showAdminUi && widget.isActive && !aerialDrawMode)
               Positioned(
                 top: topInset,

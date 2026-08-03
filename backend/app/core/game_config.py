@@ -566,6 +566,8 @@ class SiteStewardshipMainParams(BaseModel):
     completeness_accuracy: float = 0.0
     quality_accuracy: float = 0.0
     depth_accuracy: float = 0.0
+    # XP when a rival discovers a site the player has actively disguised.
+    successful_site_disguise_xp: float = 50.0
 
     @field_validator(
         "dino_accuracy",
@@ -577,6 +579,13 @@ class SiteStewardshipMainParams(BaseModel):
     @classmethod
     def _validate_accuracy(cls, value: float) -> float:
         return _clamp_unit_interval(value, label="accuracy")
+
+    @field_validator("successful_site_disguise_xp")
+    @classmethod
+    def _validate_disguise_xp(cls, value: float) -> float:
+        if value < 0.0:
+            raise ValueError("successful_site_disguise_xp must be >= 0")
+        return value
 
 
 class SiteStewardshipConfig(BaseModel):
@@ -712,6 +721,10 @@ class SiteStewardshipConfig(BaseModel):
     @property
     def depth_buckets(self) -> list[FossilDepthBucket]:
         return list(self.depth_weights)
+
+    @property
+    def successful_site_disguise_xp(self) -> float:
+        return float(self.main_params.successful_site_disguise_xp)
 
 
 # Back-compat alias.
@@ -1084,7 +1097,6 @@ class DisguiseActionConfig(BaseModel):
 
     duration_minutes: int = 60
     discovery_chance_multiplier: float = 0.5
-    xp: int = 5
     stats_explanation: str = ""
 
     @field_validator("duration_minutes")
@@ -1098,13 +1110,6 @@ class DisguiseActionConfig(BaseModel):
     @classmethod
     def _validate_multiplier(cls, value: float) -> float:
         return _clamp_unit_interval(value, label="discovery_chance_multiplier")
-
-    @field_validator("xp")
-    @classmethod
-    def _validate_xp(cls, value: int) -> int:
-        if value < 0:
-            raise ValueError("xp must be >= 0")
-        return value
 
 
 def _parse_rgb_color(value: object) -> tuple[int, int, int]:
@@ -1329,10 +1334,10 @@ class ToolActionsConfig(BaseModel):
         default_factory=lambda: DisguiseActionConfig(
             duration_minutes=60,
             discovery_chance_multiplier=0.5,
-            xp=5,
             stats_explanation=(
                 "Covers one discovered site; rival discovery chance is "
-                "halved. Awards site-stewardship XP when a rival still finds it."
+                "halved. Awards successful site disguise XP when a rival "
+                "still finds it."
             ),
         )
     )
@@ -1340,7 +1345,6 @@ class ToolActionsConfig(BaseModel):
         default_factory=lambda: DisguiseActionConfig(
             duration_minutes=60,
             discovery_chance_multiplier=0.0,
-            xp=10,
             stats_explanation=(
                 "Covers one discovered site; rival discovery chance is "
                 "multiplied to zero while active."

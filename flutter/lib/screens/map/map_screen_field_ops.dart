@@ -252,6 +252,12 @@ mixin _MapScreenFieldOpsMixin on State<MapScreen>, _MapScreenCameraMixin {
   }
 
   Future<void> _onSiteTap(SiteSummary site) async {
+    final disguise = context.read<DisguiseSessionController>();
+    if (disguise.isPickMode) {
+      await _confirmDisguiseCover(site);
+      return;
+    }
+
     final mapData = context.read<map_data.MapController>();
     // Keep selection after the card closes; only another tap replaces it.
     mapData.selectSite(site);
@@ -267,5 +273,55 @@ mixin _MapScreenFieldOpsMixin on State<MapScreen>, _MapScreenCameraMixin {
     final displaySite = await displayFuture;
     if (!mounted) return;
     await showSiteMapCardDialog(context, displaySite);
+  }
+
+  Future<void> _confirmDisguiseCover(SiteSummary site) async {
+    final disguise = context.read<DisguiseSessionController>();
+    final tool = disguise.tool;
+    final kind = disguise.kind;
+    if (tool == null || kind == null) {
+      disguise.cancelPick();
+      return;
+    }
+
+    final mapData = context.read<map_data.MapController>();
+    mapData.selectSite(site);
+    if (!_rotateMap) {
+      unawaited(_panToSite(site));
+    }
+
+    final action = kind == DisguiseToolKind.blackoutCover ? 'Shroud' : 'Conceal';
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text('$action this site?'),
+          content: Text(
+            'Cover ${site.displayTitle} with ${kind.toolName}?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: Text(action),
+            ),
+          ],
+        );
+      },
+    );
+    if (!mounted) return;
+    if (confirmed != true) return;
+
+    await disguise.activate(tool, siteId: site.siteId);
+    if (!mounted) return;
+    final message = disguise.message;
+    if (message != null && !disguise.isActive) {
+      AppToast.error(context, message);
+    } else if (disguise.isActive) {
+      AppToast.info(context, message ?? '${tool.name} active');
+    }
   }
 }

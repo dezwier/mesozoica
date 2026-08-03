@@ -92,18 +92,24 @@ def discover_site(
         )
 
     roller = rng if rng is not None else random
-    if roller.random() >= params.discovery_chance:
+    from app.services.tool_action_service.disguise_session import (
+        roll_discovery_with_disguise,
+    )
+
+    outcome = roll_discovery_with_disguise(
+        session,
+        site_id=site_id,
+        rolling_user_id=user_id,
+        base_chance=params.base_discovery_chance,
+        rng=roller,
+    )
+    if outcome != "hit":
+        if outcome == "blocked":
+            # Persist disguise XP even though discovery itself missed.
+            session.commit()
         raise DiscoveryChanceMissError(
             "Discovery chance miss - stay nearby or re-enter range to try again"
         )
-
-    from app.services.tool_action_service.disguise_session import (
-        award_disguise_xp_on_rival_discover,
-    )
-
-    award_disguise_xp_on_rival_discover(
-        session, site_id=site_id, discovering_user_id=user_id
-    )
 
     session.add(
         UserSite(

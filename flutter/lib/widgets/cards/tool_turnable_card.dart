@@ -397,7 +397,9 @@ class _ToolTurnableCardState extends State<ToolTurnableCard> {
     if (drive.isActive && _matchesTool(drive.session, drive.tool)) {
       return true;
     }
-    if (disguise.isActive && _matchesTool(disguise.session, disguise.tool)) {
+    if ((disguise.isPickMode || disguise.isActive) &&
+        (disguise.tool?.id == toolId ||
+            _matchesTool(disguise.session, disguise.tool))) {
       return true;
     }
     return _sessions.any((s) => s.isActive);

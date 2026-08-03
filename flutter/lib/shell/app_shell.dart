@@ -82,6 +82,7 @@ class _AppShellState extends State<AppShell>
   TerrainEchoController? _terrainEcho;
   RidgeGlassController? _ridgeGlass;
   ExpeditionDrivetrainController? _expeditionDrivetrain;
+  DisguiseSessionController? _disguise;
   StreamSubscription<RemoteMessage>? _foregroundPushSub;
   StreamSubscription<RemoteMessage>? _openedPushSub;
   /// Cached so aerial session list refreshes do not rebuild the shell.
@@ -168,10 +169,14 @@ class _AppShellState extends State<AppShell>
       _expeditionDrivetrain = expeditionDrivetrain;
       expeditionDrivetrain.addListener(_onExpeditionDrivetrainChanged);
 
+      final disguise = context.read<DisguiseSessionController>();
+      _disguise = disguise;
+      disguise.addListener(_onDisguiseChanged);
+
       unawaited(() async {
         await ridgeGlass.restoreActiveSession();
         await expeditionDrivetrain.restoreActiveSession();
-        await context.read<DisguiseSessionController>().restoreActiveSession();
+        await disguise.restoreActiveSession();
         if (mounted) _syncMaxDiscoverySpeed();
       }());
 
@@ -283,6 +288,16 @@ class _AppShellState extends State<AppShell>
       setState(_clearOverlayFlags);
     }
     _syncMaxDiscoverySpeed();
+  }
+
+  void _onDisguiseChanged() {
+    if (!mounted) return;
+    final disguise = _disguise;
+    if (disguise == null) return;
+    if ((disguise.requestShowOnMap || disguise.isPickMode) &&
+        _anyOverlayOpen) {
+      setState(_clearOverlayFlags);
+    }
   }
 
   /// Apply active tool buffs to the GPS odometer + discovery speed gate.
@@ -429,6 +444,7 @@ class _AppShellState extends State<AppShell>
     _terrainEcho?.removeListener(_onTerrainEchoChanged);
     _ridgeGlass?.removeListener(_onRidgeGlassChanged);
     _expeditionDrivetrain?.removeListener(_onExpeditionDrivetrainChanged);
+    _disguise?.removeListener(_onDisguiseChanged);
     _catalogModeController?.removeListener(_onCatalogModeChanged);
     _discoveryRefreshTimer?.cancel();
     unawaited(_foregroundPushSub?.cancel() ?? Future<void>.value());

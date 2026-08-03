@@ -88,26 +88,18 @@ def discover_site_from_aerial(
 
     roller = rng if rng is not None else random
     from app.services.tool_action_service.disguise_session import (
-        award_disguise_xp_on_rival_discover,
-        rival_discovery_chance_multiplier,
+        roll_discovery_with_disguise,
     )
 
-    effective_chance = max(
-        0.0,
-        min(
-            1.0,
-            float(discovery_chance)
-            * rival_discovery_chance_multiplier(
-                session, site_id=site_id, rolling_user_id=user_id
-            ),
-        ),
+    outcome = roll_discovery_with_disguise(
+        session,
+        site_id=site_id,
+        rolling_user_id=user_id,
+        base_chance=float(discovery_chance),
+        rng=roller,
     )
-    if roller.random() >= effective_chance:
+    if outcome != "hit":
         return None
-
-    award_disguise_xp_on_rival_discover(
-        session, site_id=site_id, discovering_user_id=user_id
-    )
 
     session.add(
         UserSite(

@@ -8,7 +8,7 @@ import '../models/tool_session.dart';
 import '../services/tool_service.dart';
 import 'timed_session_remaining.dart';
 
-/// Active timed disguise cover on one discovered site.
+/// Active timed disguise cover, or map pick-mode before deploy.
 class DisguiseSessionController extends ChangeNotifier {
   DisguiseSessionController({ToolService? toolService})
       : _toolService = toolService ?? ToolService();
@@ -19,6 +19,8 @@ class DisguiseSessionController extends ChangeNotifier {
   ToolSummary? _tool;
   DisguiseToolKind? _kind;
   bool _activating = false;
+  bool _pickMode = false;
+  bool _requestShowOnMap = false;
   String? _message;
   Timer? _tickTimer;
 
@@ -27,6 +29,8 @@ class DisguiseSessionController extends ChangeNotifier {
 
   bool get isActive =>
       _session != null && _session!.isActive && !_session!.isExpired;
+  bool get isPickMode => _pickMode;
+  bool get requestShowOnMap => _requestShowOnMap;
   ToolSession? get session => _session;
   ToolSummary? get tool => _tool;
   DisguiseToolKind? get kind => _kind;
@@ -40,6 +44,34 @@ class DisguiseSessionController extends ChangeNotifier {
   }
 
   Duration? get remaining => remainingListenable.value;
+
+  void consumeShowOnMapRequest() {
+    _requestShowOnMap = false;
+  }
+
+  /// Enter map pick mode for [tool]; user taps a site then confirms.
+  void beginPick(ToolSummary tool) {
+    if (!tool.isOwned) return;
+    final kind = DisguiseToolKind.tryParseToolName(tool.name);
+    if (kind == null) return;
+    _pickMode = true;
+    _tool = tool;
+    _kind = kind;
+    _message = null;
+    _requestShowOnMap = true;
+    notifyListeners();
+  }
+
+  void cancelPick() {
+    if (!_pickMode) return;
+    _pickMode = false;
+    if (!isActive) {
+      _tool = null;
+      _kind = null;
+    }
+    _message = null;
+    notifyListeners();
+  }
 
   Future<void> restoreActiveSession() async {
     if (_activating) return;
@@ -60,6 +92,7 @@ class DisguiseSessionController extends ChangeNotifier {
         _session = session;
         _tool = null;
         _kind = kind;
+        _pickMode = false;
         _ensureTickTimer();
         _message = '${kind.toolName} active';
         notifyListeners();
@@ -79,6 +112,7 @@ class DisguiseSessionController extends ChangeNotifier {
     if (kind == null) return;
 
     _activating = true;
+    _pickMode = false;
     _message = null;
     notifyListeners();
     try {
@@ -103,6 +137,7 @@ class DisguiseSessionController extends ChangeNotifier {
     _tickTimer?.cancel();
     _tickTimer = null;
     final hadSession = _session != null;
+    final wasPicking = _pickMode;
     if (notifyServer && hadSession) {
       try {
         await _toolService.cancelSession(_session!.sessionId);
@@ -113,13 +148,14 @@ class DisguiseSessionController extends ChangeNotifier {
     _session = null;
     _tool = null;
     _kind = null;
+    _pickMode = false;
     _message = null;
     remainingListenable.value = null;
-    if (hadSession) notifyListeners();
+    if (hadSession || wasPicking) notifyListeners();
   }
 
   void clearLocalSession() {
-    if (_session == null) return;
+    if (_session == null && !_pickMode) return;
     unawaited(stop(notifyServer: false));
   }
 

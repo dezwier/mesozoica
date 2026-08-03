@@ -24,6 +24,7 @@ const _breakdownLabels = <String, String>{
   'fossils': 'Fossils discovered',
   'active_distance': 'Active distance',
   'passive_distance': 'Passive distance',
+  'disguise': 'Successful site disguise',
 };
 
 const _mainParamLabels = <String, String>{
@@ -34,6 +35,7 @@ const _mainParamLabels = <String, String>{
   'active_km_xp': 'Active km XP',
   'passive_km_xp': 'Passive km XP',
   'fossil_discovery_xp': 'Fossil discovery XP',
+  'successful_site_disguise_xp': 'Successful site disguise XP',
   'dino_accuracy': 'Dinosaur accuracy',
   'fossil_accuracy': 'Fossil accuracy',
   'completeness_accuracy': 'Completeness accuracy',
@@ -870,14 +872,12 @@ _SkillParamGroups _mainParamRowsForSkill(
     );
   }
   if (domain is SiteStewardshipConfig) {
-    return _SkillParamGroups(
-      skillParams: _siteStewardshipRows(
-        domain,
-        skill.level,
-        toolBindings: toolBindings,
-        weatherTime: weatherTime,
-        weatherType: weatherType,
-      ),
+    return _siteStewardshipRows(
+      domain,
+      skill.level,
+      toolBindings: toolBindings,
+      weatherTime: weatherTime,
+      weatherType: weatherType,
     );
   }
   if (domain is SkillStubConfig) {
@@ -1023,7 +1023,7 @@ _SkillParamGroups _siteDiscoveryRows(
   );
 }
 
-List<_MainParamDisplay> _siteStewardshipRows(
+_SkillParamGroups _siteStewardshipRows(
   SiteStewardshipConfig cfg,
   int skillLevel, {
   required List<ToolModBinding> toolBindings,
@@ -1031,83 +1031,102 @@ List<_MainParamDisplay> _siteStewardshipRows(
   String? weatherType,
 }) {
   final mp = cfg.mainParams;
-  return [
-    _resolveScalarParam(
-      label: 'Dinosaur accuracy',
-      paramKey: 'dino_accuracy',
-      skillId: 'site_stewardship',
-      base: mp.dinoAccuracy,
-      levelEntries: cfg.levelModifiers['dino_accuracy'],
-      weatherTimeMods: cfg.weatherTimeModifiers['dino_accuracy'],
-      weatherTime: weatherTime,
-      weatherTypeMods: cfg.weatherTypeModifiers['dino_accuracy'],
-      weatherType: weatherType,
-      skillLevel: skillLevel,
-      format: _ParamFormat.chance,
-      clampUnit: true,
-      toolBindings: toolBindings,
-    ),
-    _resolveScalarParam(
-      label: 'Fossil accuracy',
-      paramKey: 'fossil_accuracy',
-      skillId: 'site_stewardship',
-      base: mp.fossilAccuracy,
-      levelEntries: cfg.levelModifiers['fossil_accuracy'],
-      weatherTimeMods: cfg.weatherTimeModifiers['fossil_accuracy'],
-      weatherTime: weatherTime,
-      weatherTypeMods: cfg.weatherTypeModifiers['fossil_accuracy'],
-      weatherType: weatherType,
-      skillLevel: skillLevel,
-      format: _ParamFormat.chance,
-      clampUnit: true,
-      toolBindings: toolBindings,
-    ),
-    _resolveScalarParam(
-      label: 'Completeness accuracy',
-      paramKey: 'completeness_accuracy',
-      skillId: 'site_stewardship',
-      base: mp.completenessAccuracy,
-      levelEntries: cfg.levelModifiers['completeness_accuracy'],
-      weatherTimeMods: cfg.weatherTimeModifiers['completeness_accuracy'],
-      weatherTime: weatherTime,
-      weatherTypeMods: cfg.weatherTypeModifiers['completeness_accuracy'],
-      weatherType: weatherType,
-      skillLevel: skillLevel,
-      format: _ParamFormat.chance,
-      clampUnit: true,
-      toolBindings: toolBindings,
-    ),
-    _resolveScalarParam(
-      label: 'Quality accuracy',
-      paramKey: 'quality_accuracy',
-      skillId: 'site_stewardship',
-      base: mp.qualityAccuracy,
-      levelEntries: cfg.levelModifiers['quality_accuracy'],
-      weatherTimeMods: cfg.weatherTimeModifiers['quality_accuracy'],
-      weatherTime: weatherTime,
-      weatherTypeMods: cfg.weatherTypeModifiers['quality_accuracy'],
-      weatherType: weatherType,
-      skillLevel: skillLevel,
-      format: _ParamFormat.chance,
-      clampUnit: true,
-      toolBindings: toolBindings,
-    ),
-    _resolveScalarParam(
-      label: 'Depth accuracy',
-      paramKey: 'depth_accuracy',
-      skillId: 'site_stewardship',
-      base: mp.depthAccuracy,
-      levelEntries: cfg.levelModifiers['depth_accuracy'],
-      weatherTimeMods: cfg.weatherTimeModifiers['depth_accuracy'],
-      weatherTime: weatherTime,
-      weatherTypeMods: cfg.weatherTypeModifiers['depth_accuracy'],
-      weatherType: weatherType,
-      skillLevel: skillLevel,
-      format: _ParamFormat.chance,
-      clampUnit: true,
-      toolBindings: toolBindings,
-    ),
-  ];
+  return _SkillParamGroups(
+    xpSources: [
+      _resolveScalarParam(
+        label: 'Successful site disguise XP',
+        paramKey: 'successful_site_disguise_xp',
+        skillId: 'site_stewardship',
+        base: mp.successfulSiteDisguiseXp,
+        levelEntries: cfg.levelModifiers['successful_site_disguise_xp'],
+        weatherTimeMods: cfg.weatherTimeModifiers['successful_site_disguise_xp'],
+        weatherTime: weatherTime,
+        weatherTypeMods: cfg.weatherTypeModifiers['successful_site_disguise_xp'],
+        weatherType: weatherType,
+        skillLevel: skillLevel,
+        format: _ParamFormat.xp,
+        clampUnit: false,
+        toolBindings: toolBindings,
+      ),
+    ],
+    skillParams: [
+      _resolveScalarParam(
+        label: 'Dinosaur accuracy',
+        paramKey: 'dino_accuracy',
+        skillId: 'site_stewardship',
+        base: mp.dinoAccuracy,
+        levelEntries: cfg.levelModifiers['dino_accuracy'],
+        weatherTimeMods: cfg.weatherTimeModifiers['dino_accuracy'],
+        weatherTime: weatherTime,
+        weatherTypeMods: cfg.weatherTypeModifiers['dino_accuracy'],
+        weatherType: weatherType,
+        skillLevel: skillLevel,
+        format: _ParamFormat.chance,
+        clampUnit: true,
+        toolBindings: toolBindings,
+      ),
+      _resolveScalarParam(
+        label: 'Fossil accuracy',
+        paramKey: 'fossil_accuracy',
+        skillId: 'site_stewardship',
+        base: mp.fossilAccuracy,
+        levelEntries: cfg.levelModifiers['fossil_accuracy'],
+        weatherTimeMods: cfg.weatherTimeModifiers['fossil_accuracy'],
+        weatherTime: weatherTime,
+        weatherTypeMods: cfg.weatherTypeModifiers['fossil_accuracy'],
+        weatherType: weatherType,
+        skillLevel: skillLevel,
+        format: _ParamFormat.chance,
+        clampUnit: true,
+        toolBindings: toolBindings,
+      ),
+      _resolveScalarParam(
+        label: 'Completeness accuracy',
+        paramKey: 'completeness_accuracy',
+        skillId: 'site_stewardship',
+        base: mp.completenessAccuracy,
+        levelEntries: cfg.levelModifiers['completeness_accuracy'],
+        weatherTimeMods: cfg.weatherTimeModifiers['completeness_accuracy'],
+        weatherTime: weatherTime,
+        weatherTypeMods: cfg.weatherTypeModifiers['completeness_accuracy'],
+        weatherType: weatherType,
+        skillLevel: skillLevel,
+        format: _ParamFormat.chance,
+        clampUnit: true,
+        toolBindings: toolBindings,
+      ),
+      _resolveScalarParam(
+        label: 'Quality accuracy',
+        paramKey: 'quality_accuracy',
+        skillId: 'site_stewardship',
+        base: mp.qualityAccuracy,
+        levelEntries: cfg.levelModifiers['quality_accuracy'],
+        weatherTimeMods: cfg.weatherTimeModifiers['quality_accuracy'],
+        weatherTime: weatherTime,
+        weatherTypeMods: cfg.weatherTypeModifiers['quality_accuracy'],
+        weatherType: weatherType,
+        skillLevel: skillLevel,
+        format: _ParamFormat.chance,
+        clampUnit: true,
+        toolBindings: toolBindings,
+      ),
+      _resolveScalarParam(
+        label: 'Depth accuracy',
+        paramKey: 'depth_accuracy',
+        skillId: 'site_stewardship',
+        base: mp.depthAccuracy,
+        levelEntries: cfg.levelModifiers['depth_accuracy'],
+        weatherTimeMods: cfg.weatherTimeModifiers['depth_accuracy'],
+        weatherTime: weatherTime,
+        weatherTypeMods: cfg.weatherTypeModifiers['depth_accuracy'],
+        weatherType: weatherType,
+        skillLevel: skillLevel,
+        format: _ParamFormat.chance,
+        clampUnit: true,
+        toolBindings: toolBindings,
+      ),
+    ],
+  );
 }
 
 _MainParamDisplay _resolveScalarParam({

@@ -8,6 +8,7 @@ from app.core.game_config import (
     LevelModifierEntry,
     ParamModifier,
     SiteDiscoveryConfig,
+    SiteStewardshipConfig,
     SkillStubConfig,
     get_game_config,
 )
@@ -207,6 +208,87 @@ def resolve_fossil_detection_main_params(
                 cfg, "fossil_discovery_xp", weather_type
             ),
             tool_mod=mods.get("fossil_discovery_xp"),
+        ),
+    }
+
+
+def _stewardship_level_entries(
+    cfg: SiteStewardshipConfig, param: str
+) -> list[LevelModifierEntry]:
+    return list(cfg.level_modifiers.get(param, []))
+
+
+def _stewardship_weather_time_entries(
+    cfg: SiteStewardshipConfig,
+    param: str,
+    weather_time: str | None,
+) -> list[ParamModifier]:
+    if not weather_time:
+        return []
+    periods = cfg.weather_time_modifiers.get(param) or {}
+    return list(periods.get(weather_time, []))
+
+
+def _stewardship_weather_type_entries(
+    cfg: SiteStewardshipConfig,
+    param: str,
+    weather_type: str | None,
+) -> list[ParamModifier]:
+    if not weather_type:
+        return []
+    key = "clear" if weather_type == "sunny" else weather_type
+    types = cfg.weather_type_modifiers.get(param) or {}
+    return list(types.get(key, []))
+
+
+def resolve_site_stewardship_main_params(
+    *,
+    skill_level: int = 1,
+    weather_time: str | None = None,
+    weather_type: str | None = None,
+    tool_mods: Mapping[str, ParamModifier] | None = None,
+) -> dict[str, float]:
+    """Effective site_stewardship scalar main_params after modifiers."""
+    cfg = get_game_config().site_stewardship
+    mods = tool_mods or {}
+
+    def _resolve(param: str, *, base: float, clamp_unit: bool = False) -> float:
+        return resolve_scalar_main_param(
+            base=base,
+            level_entries=_stewardship_level_entries(cfg, param),
+            skill_level=skill_level,
+            weather_time_entries=_stewardship_weather_time_entries(
+                cfg, param, weather_time
+            ),
+            weather_type_entries=_stewardship_weather_type_entries(
+                cfg, param, weather_type
+            ),
+            tool_mod=mods.get(param),
+            clamp_unit=clamp_unit,
+        )
+
+    mp = cfg.main_params
+    return {
+        "dino_accuracy": _resolve(
+            "dino_accuracy", base=float(mp.dino_accuracy), clamp_unit=True
+        ),
+        "fossil_accuracy": _resolve(
+            "fossil_accuracy", base=float(mp.fossil_accuracy), clamp_unit=True
+        ),
+        "completeness_accuracy": _resolve(
+            "completeness_accuracy",
+            base=float(mp.completeness_accuracy),
+            clamp_unit=True,
+        ),
+        "quality_accuracy": _resolve(
+            "quality_accuracy", base=float(mp.quality_accuracy), clamp_unit=True
+        ),
+        "depth_accuracy": _resolve(
+            "depth_accuracy", base=float(mp.depth_accuracy), clamp_unit=True
+        ),
+        "successful_site_disguise_xp": _resolve(
+            "successful_site_disguise_xp",
+            base=float(mp.successful_site_disguise_xp),
         ),
     }
 

@@ -22,7 +22,6 @@ import '../models/terrain_echo_kind.dart';
 import '../models/tool.dart';
 import '../models/tool_session.dart';
 import '../widgets/common/app_toast.dart';
-import '../widgets/tools/disguise_site_picker.dart';
 
 typedef _ToolActivator = bool Function(BuildContext context, ToolSummary tool);
 
@@ -109,7 +108,7 @@ class ToolActionRouter {
     }
 
     final disguise = context.read<DisguiseSessionController>();
-    if (disguise.isActive) {
+    if (disguise.isPickMode || disguise.isActive) {
       if (DisguiseToolKind.matchesToolName(forTool.name)) {
         return null;
       }
@@ -188,27 +187,7 @@ class ToolActionRouter {
 
   static bool _startDisguise(BuildContext context, ToolSummary tool) {
     if (!DisguiseToolKind.matchesToolName(tool.name)) return false;
-    unawaited(_activateDisguise(context, tool));
+    context.read<DisguiseSessionController>().beginPick(tool);
     return true;
-  }
-
-  static Future<void> _activateDisguise(
-    BuildContext context,
-    ToolSummary tool,
-  ) async {
-    final siteId = await showDisguiseSitePicker(context);
-    if (siteId == null || !context.mounted) return;
-    await context.read<DisguiseSessionController>().activate(
-          tool,
-          siteId: siteId,
-        );
-    if (!context.mounted) return;
-    final controller = context.read<DisguiseSessionController>();
-    final message = controller.message;
-    if (message != null && !controller.isActive) {
-      AppToast.error(context, message);
-    } else if (controller.isActive) {
-      AppToast.info(context, message ?? '${tool.name} active');
-    }
   }
 }

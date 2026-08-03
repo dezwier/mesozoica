@@ -78,6 +78,7 @@ class MapboxFieldMap extends StatefulWidget {
     this.aerialRecon,
     this.orbitSurvey,
     this.formationMap,
+    this.disguisedSiteId,
     this.showPastAerialRoutes = true,
     this.showAerialReconOverlays = true,
     this.onError,
@@ -123,6 +124,8 @@ class MapboxFieldMap extends StatefulWidget {
   final OrbitSurveyController? orbitSurvey;
   /// Timed Formation Map rock-type square mosaic.
   final FormationMapController? formationMap;
+  /// Site currently covered by this user's disguise tool, if any.
+  final int? disguisedSiteId;
   /// When true, draw past (done/cancelled) recon routes from the last 24h.
   final bool showPastAerialRoutes;
   /// When false (archive mode), never draw recon routes or scout.
@@ -987,6 +990,10 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
         );
       }
     }
+    if (oldWidget.disguisedSiteId != widget.disguisedSiteId &&
+        (widget.rotateWithHeading || _detailPinsActive)) {
+      _syncRotateOverlayFrame();
+    }
     if (oldWidget.markerDatasetKey != widget.markerDatasetKey) {
       // Dataset / filter switch: wipe immediately, then paint — no debounce.
       // Keep circles warm under rotate (opacity 0) so north-fixed exit is instant.
@@ -1460,6 +1467,7 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
                 child: MapRotateSiteCardOverlay(
                   visibleSites: _visibleRotateSites,
                   selectedSiteId: widget.selectedSite?.siteId,
+                  disguisedSiteId: widget.disguisedSiteId,
                   onSiteTap: _onRotateMiniCardTap,
                 ),
               ),

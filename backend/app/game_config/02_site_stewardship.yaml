@@ -15,6 +15,9 @@ main_params:
   completeness_accuracy: 0
   quality_accuracy: 0
   depth_accuracy: 0
+  # XP when a rival discovery roll would have hit but your disguise blocked it
+  # (Brush Scrim / Blackout Cover). Blackout still rolls; effective odds are 0.
+  successful_site_disguise_xp: 50
 
 # Fixed global distribution tables (not subject to level/tool multipliers).
 
@@ -80,6 +83,7 @@ quality_weights:
 
 # Accuracy: +0.01 per level (1..99).
 level_modifiers:
+  successful_site_disguise_xp: []
   # +1% per site_stewardship level (highest matching entry; base 0 + level + tools).
   dino_accuracy: &site_stewardship_accuracy_levels
     - { level: 1, op: add, value: 0.01 }

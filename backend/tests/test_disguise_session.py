@@ -166,9 +166,8 @@ def test_tool_actions_yaml_loads_disguise_knobs() -> None:
     cover = get_game_config().tool_actions.blackout_cover
     assert scrim.duration_minutes == 60
     assert scrim.discovery_chance_multiplier == 0.5
-    assert scrim.xp == 5
     assert cover.discovery_chance_multiplier == 0.0
-    assert cover.xp == 10
+    assert get_game_config().site_stewardship.successful_site_disguise_xp == 50.0
 
 
 def test_deploy_requires_discoverer(client, session: Session) -> None:
@@ -209,7 +208,7 @@ def test_deploy_creates_disguiser_and_ignores_status(
     assert body["status"] == SESSION_STATUS_ACTIVE
     assert body["state"]["site_id"] == site.site_id
     assert body["params"]["discovery_chance_multiplier"] == 0.5
-    assert body["params"]["xp"] == 5
+    assert "xp" not in body["params"]
 
     disguiser = session.exec(
         select(UserSite).where(
@@ -346,10 +345,12 @@ def test_blackout_zeros_rival_chance(
     assert rival_params.discovery_chance == 0.0
 
 
-def test_rival_success_awards_stewardship_xp(
+def test_rival_blocked_roll_awards_stewardship_xp(
     session: Session, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    """Blackout (×0) still rolls; a would-be hit is blocked and awards XP."""
     _stub_overcast_weather(monkeypatch)
+    from app.core.exceptions import DiscoveryChanceMissError
     from app.services.field_service.field_coordinate_enrich import (
         CoordinateEnrichment,
     )
@@ -371,6 +372,64 @@ def test_rival_success_awards_stewardship_xp(
     rival = _user(session, username="rival6")
     site = _site(session, site_id=91007)
     _link_discoverer(session, user_id=int(owner.id), site_id=int(site.site_id))
+    cover = _tool(session, name="Blackout Cover", action="Shroud")
+    _grant(session, user_id=int(owner.id), tool_id=int(cover.id))
+
+    start_timed_session(
+        session,
+        user_id=int(owner.id),
+        tool_id=int(cover.id),
+        site_id=int(site.site_id),
+    )
+    session.refresh(owner)
+    before = get_skill_xp(owner, "site_stewardship")
+
+    class WouldHaveHit:
+        def random(self) -> float:
+            return 0.0
+
+    with pytest.raises(DiscoveryChanceMissError):
+        discover_site(
+            session,
+            site_id=int(site.site_id),
+            user_id=int(rival.id),
+            lat=50.0,
+            lon=4.0,
+            rng=WouldHaveHit(),  # type: ignore[arg-type]
+        )
+
+    session.refresh(owner)
+    after = get_skill_xp(owner, "site_stewardship")
+    assert after == before + 50
+
+
+def test_brush_scrim_blocked_band_awards_stewardship_xp(
+    session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Brush Scrim: rolls in (effective, base] are blocked and award XP."""
+    _stub_overcast_weather(monkeypatch)
+    from app.core.exceptions import DiscoveryChanceMissError
+    from app.services.field_service.field_coordinate_enrich import (
+        CoordinateEnrichment,
+    )
+
+    monkeypatch.setattr(
+        "app.services.site_service.discover.send_site_discovered_push",
+        lambda *args, **kwargs: None,
+    )
+    monkeypatch.setattr(
+        "app.services.site_service.discover.ensure_fossils_on_site_discovery",
+        lambda session, site_id, user_id: None,
+    )
+    monkeypatch.setattr(
+        "app.services.field_service.field_coordinate_enrich.enrich_coordinate",
+        lambda lat, lon: CoordinateEnrichment(country_code="BE", state="Flanders"),
+    )
+
+    owner = _user(session, username="owner6b")
+    rival = _user(session, username="rival6b")
+    site = _site(session, site_id=91008)
+    _link_discoverer(session, user_id=int(owner.id), site_id=int(site.site_id))
     scrim = _tool(session, name="Brush Scrim")
     _grant(session, user_id=int(owner.id), tool_id=int(scrim.id))
 
@@ -380,25 +439,39 @@ def test_rival_success_awards_stewardship_xp(
         tool_id=int(scrim.id),
         site_id=int(site.site_id),
     )
+
+    rival_params = resolve_site_discovery_params(
+        session,
+        user_id=int(rival.id),
+        site=site,
+        lat=50.0,
+        lon=4.0,
+    )
+    # Midpoint of the blocked band [effective, base).
+    blocked_u = (
+        rival_params.discovery_chance + rival_params.base_discovery_chance
+    ) / 2.0
+    assert rival_params.discovery_chance < blocked_u < rival_params.base_discovery_chance
+
     session.refresh(owner)
     before = get_skill_xp(owner, "site_stewardship")
 
-    class AlwaysHit:
+    class BlockedBand:
         def random(self) -> float:
-            return 0.0
+            return blocked_u
 
-    discover_site(
-        session,
-        site_id=int(site.site_id),
-        user_id=int(rival.id),
-        lat=50.0,
-        lon=4.0,
-        rng=AlwaysHit(),  # type: ignore[arg-type]
-    )
+    with pytest.raises(DiscoveryChanceMissError):
+        discover_site(
+            session,
+            site_id=int(site.site_id),
+            user_id=int(rival.id),
+            lat=50.0,
+            lon=4.0,
+            rng=BlockedBand(),  # type: ignore[arg-type]
+        )
 
     session.refresh(owner)
-    after = get_skill_xp(owner, "site_stewardship")
-    assert after == before + 5
+    assert get_skill_xp(owner, "site_stewardship") == before + 50
 
 
 def test_stop_clears_disguiser_and_restores_chance(

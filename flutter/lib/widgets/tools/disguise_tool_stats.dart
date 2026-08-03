@@ -26,7 +26,6 @@ class DisguiseToolStats extends StatelessWidget {
         (p?['duration_minutes'] as num?)?.toInt() ?? cfg.durationMinutes;
     final multiplier = (p?['discovery_chance_multiplier'] as num?)?.toDouble() ??
         cfg.discoveryChanceMultiplier;
-    final xp = (p?['xp'] as num?)?.toInt() ?? cfg.xp;
     final explanation = p?['stats_explanation'] as String? ?? '';
 
     final pairs = <ToolStatPair>[
@@ -35,7 +34,6 @@ class DisguiseToolStats extends StatelessWidget {
         'Rival chance',
         '×${multiplier.toStringAsFixed(multiplier == 0 || multiplier == 1 ? 0 : 1)}',
       ),
-      ToolStatPair('Stewardship XP', '$xp'),
     ];
 
     if (compact) {

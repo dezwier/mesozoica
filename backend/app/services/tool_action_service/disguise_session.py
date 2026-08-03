@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import random
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from typing import Literal
 
 from sqlmodel import Session, col, select
 
@@ -28,7 +30,7 @@ from app.models.user_site import (
     USER_SITE_ROLE_DISGUISER,
     UserSite,
 )
-from app.services.level_service import award_skill_xp
+from app.services.level_service import award_successful_site_disguise_xp
 from app.services.tool_action_service.tool_session.lifecycle import (
     close_session,
     expire_if_needed,
@@ -67,7 +69,6 @@ class ActiveDisguise:
     site_id: int
     session_id: int
     discovery_chance_multiplier: float
-    xp: int
 
 
 def clear_disguiser_link_for_session(session: Session, row: ToolSession) -> None:
@@ -186,10 +187,8 @@ def prepare_disguise_start(
             cfg.discovery_chance_multiplier,
         )
     )
-    xp = int(inst_p.get("xp", cfg.xp))
     params = {
         "discovery_chance_multiplier": max(0.0, min(1.0, multiplier)),
-        "xp": max(0, xp),
         "stats_explanation": inst_p.get(
             "stats_explanation", cfg.stats_explanation
         ),
@@ -271,7 +270,6 @@ def list_active_disguises_for_site(
                 discovery_chance_multiplier=float(
                     params.get("discovery_chance_multiplier", 1.0)
                 ),
-                xp=max(0, int(params.get("xp", 0))),
             )
         )
     return out
@@ -306,28 +304,60 @@ def rival_discovery_chance_multiplier(
     return min(d.discovery_chance_multiplier for d in others)
 
 
-def award_disguise_xp_on_rival_discover(
+DisguiseDiscoveryRoll = Literal["hit", "blocked", "miss"]
+
+
+def roll_discovery_with_disguise(
     session: Session,
     *,
     site_id: int,
-    discovering_user_id: int,
+    rolling_user_id: int,
+    base_chance: float,
+    rng: random.Random | None = None,
+) -> DisguiseDiscoveryRoll:
+    """Single Uniform roll against base chance, reduced by rival disguises.
+
+    - ``hit``: roll clears the disguised (effective) chance → rival discovers.
+    - ``blocked``: roll would have cleared base chance, but disguise stopped it
+      (including Blackout Cover at ×0). Awards stewardship XP to disguisers.
+    - ``miss``: roll misses even the undisguised base chance.
+    """
+    base = max(0.0, min(1.0, float(base_chance)))
+    mult = rival_discovery_chance_multiplier(
+        session, site_id=site_id, rolling_user_id=rolling_user_id
+    )
+    effective = max(0.0, min(1.0, base * mult))
+    roller = rng if rng is not None else random
+    u = float(roller.random())
+    if u < effective:
+        return "hit"
+    if mult < 1.0 and u < base:
+        award_disguise_xp_on_rival_blocked(
+            session, site_id=site_id, rolling_user_id=rolling_user_id
+        )
+        return "blocked"
+    return "miss"
+
+
+def award_disguise_xp_on_rival_blocked(
+    session: Session,
+    *,
+    site_id: int,
+    rolling_user_id: int,
 ) -> int:
-    """Award site_stewardship XP to each active disguiser. Returns total XP."""
+    """Award site_stewardship XP when a disguise blocks a would-be discovery."""
     disguises = list_active_disguises_for_site(session, site_id=site_id)
     total = 0
     for cover in disguises:
-        if cover.user_id == discovering_user_id:
-            continue
-        if cover.xp <= 0:
+        if cover.user_id == rolling_user_id:
             continue
         user = session.get(User, cover.user_id)
         if user is None:
             continue
-        total += award_skill_xp(
-            user,
-            "site_stewardship",
-            amount=cover.xp,
-            breakdown_delta={"disguise": cover.xp},
-        )
+        total += award_successful_site_disguise_xp(user)
         session.add(user)
     return total
+
+
+# Back-compat alias used by older call sites / tests.
+award_disguise_xp_on_rival_discover = award_disguise_xp_on_rival_blocked

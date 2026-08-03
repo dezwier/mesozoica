@@ -23,7 +23,8 @@ from app.services.weather_service.solar import period_at
 @dataclass(frozen=True)
 class ResolvedSiteDiscoveryParams:
     visibility_distance_m: float
-    discovery_chance: float  # clamped 0..1
+    discovery_chance: float  # effective (disguise-applied), clamped 0..1
+    base_discovery_chance: float  # before rival disguise multiplier
     site_discovery_xp: float
 
     # Back-compat alias.
@@ -141,7 +142,7 @@ def resolve_site_discovery_params(
         weather_type=weather_type,
         tool_mods=tool_mods,
     )
-    discovery_chance = float(resolved["discovery_chance"])
+    base_chance = float(resolved["discovery_chance"])
     from app.services.tool_action_service.disguise_session import (
         rival_discovery_chance_multiplier,
     )
@@ -149,11 +150,13 @@ def resolve_site_discovery_params(
     mult = rival_discovery_chance_multiplier(
         session, site_id=int(site.site_id), rolling_user_id=user_id
     )
+    discovery_chance = base_chance
     if mult != 1.0:
-        discovery_chance = max(0.0, min(1.0, discovery_chance * mult))
+        discovery_chance = max(0.0, min(1.0, base_chance * mult))
 
     return ResolvedSiteDiscoveryParams(
         visibility_distance_m=float(resolved["visibility_distance_m"]),
         discovery_chance=discovery_chance,
+        base_discovery_chance=base_chance,
         site_discovery_xp=float(resolved["site_discovery_xp"]),
     )

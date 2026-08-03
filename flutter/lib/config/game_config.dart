@@ -660,6 +660,7 @@ class SiteStewardshipMainParams {
     required this.completenessAccuracy,
     required this.qualityAccuracy,
     required this.depthAccuracy,
+    required this.successfulSiteDisguiseXp,
   });
 
   final double dinoAccuracy;
@@ -667,6 +668,7 @@ class SiteStewardshipMainParams {
   final double completenessAccuracy;
   final double qualityAccuracy;
   final double depthAccuracy;
+  final double successfulSiteDisguiseXp;
 
   factory SiteStewardshipMainParams.fromYaml(Map<String, dynamic> yaml) {
     return SiteStewardshipMainParams(
@@ -675,6 +677,8 @@ class SiteStewardshipMainParams {
       completenessAccuracy: _asDouble(yaml['completeness_accuracy'], 0),
       qualityAccuracy: _asDouble(yaml['quality_accuracy'], 0),
       depthAccuracy: _asDouble(yaml['depth_accuracy'], 0),
+      successfulSiteDisguiseXp:
+          _asDouble(yaml['successful_site_disguise_xp'], 50),
     );
   }
 }
@@ -943,7 +947,6 @@ class ToolActionsConfig {
         defaults: const DisguiseActionConfig(
           durationMinutes: 60,
           discoveryChanceMultiplier: 0.5,
-          xp: 5,
           statsExplanation:
               'Covers one discovered site; rival discovery chance is halved.',
         ),
@@ -953,7 +956,6 @@ class ToolActionsConfig {
         defaults: const DisguiseActionConfig(
           durationMinutes: 60,
           discoveryChanceMultiplier: 0.0,
-          xp: 10,
           statsExplanation:
               'Covers one discovered site; rival discovery chance is zero.',
         ),
@@ -1434,19 +1436,16 @@ class DisguiseActionConfig {
   const DisguiseActionConfig({
     required this.durationMinutes,
     required this.discoveryChanceMultiplier,
-    required this.xp,
     required this.statsExplanation,
   });
 
   final int durationMinutes;
   final double discoveryChanceMultiplier;
-  final int xp;
   final String statsExplanation;
 
   Map<String, dynamic> toParamsJson() => {
         'duration_minutes': durationMinutes,
         'discovery_chance_multiplier': discoveryChanceMultiplier,
-        'xp': xp,
         'stats_explanation': statsExplanation,
       };
 
@@ -1458,7 +1457,6 @@ class DisguiseActionConfig {
         const DisguiseActionConfig(
           durationMinutes: 60,
           discoveryChanceMultiplier: 0.5,
-          xp: 5,
           statsExplanation: '',
         );
     return DisguiseActionConfig(
@@ -1467,7 +1465,6 @@ class DisguiseActionConfig {
         yaml['discovery_chance_multiplier'],
         d.discoveryChanceMultiplier,
       ).clamp(0.0, 1.0),
-      xp: _asInt(yaml['xp'], d.xp),
       statsExplanation:
           _asString(yaml['stats_explanation'], d.statsExplanation),
     );

@@ -282,6 +282,7 @@ def test_discover_multi_user_lazy_once(session: Session, monkeypatch):
             {
                 "max_distance_m": 50_000.0,
                 "discovery_chance": 1.0,
+                "base_discovery_chance": 1.0,
                 "site_discovery_xp": 10.0,
             },
         )(),
@@ -410,6 +411,7 @@ def test_discover_api_and_visibility(client, session: Session, monkeypatch):
             {
                 "max_distance_m": 50_000.0,
                 "discovery_chance": 1.0,
+                "base_discovery_chance": 1.0,
                 "site_discovery_xp": 10.0,
             },
         )(),

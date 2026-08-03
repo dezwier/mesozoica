@@ -12,16 +12,22 @@ class MapSiteMiniCard extends StatelessWidget {
     super.key,
     required this.site,
     this.selected = false,
+    this.disguised = false,
     this.width = MapConfig.rotateMiniCardWidth,
     this.distanceM,
   });
 
   final SiteSummary site;
   final bool selected;
+  /// Active disguise cover on this site (subtle light-gold title).
+  final bool disguised;
   final double width;
 
   /// When set, shown under the site title (e.g. `153 m`).
   final double? distanceM;
+
+  /// Pale gold for disguised site titles (light, not brown).
+  static const Color disguisedLabelGold = Color(0xFFD4B86A);
 
   static const double _borderWidth = 2.5;
   static const double _triangleH = 12;
@@ -56,9 +62,16 @@ class MapSiteMiniCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final photo = width;
-    final borderColor = selected ? MapChromeTheme.gold : Colors.white;
+    final borderColor = selected
+        ? MapChromeTheme.gold
+        : disguised
+            ? MapSiteMiniCard.disguisedLabelGold
+            : Colors.white;
     final triangleTop = photo - _triangleH * 0.4;
     final labelMaxWidth = photo * 1.85;
+    final titleColor = disguised
+        ? MapSiteMiniCard.disguisedLabelGold
+        : MapChromeTheme.brownText;
 
     return SizedBox(
       width: layoutWidthFor(photo),
@@ -85,7 +98,11 @@ class MapSiteMiniCard extends StatelessWidget {
             child: DecoratedBox(
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: selected ? MapChromeTheme.goldBright : Colors.white,
+                color: selected
+                    ? MapChromeTheme.goldBright
+                    : disguised
+                        ? MapSiteMiniCard.disguisedLabelGold
+                        : Colors.white,
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withValues(alpha: 0.35),
@@ -135,8 +152,8 @@ class MapSiteMiniCard extends StatelessWidget {
                                 maxLines: 2,
                                 softWrap: true,
                                 overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  color: MapChromeTheme.brownText,
+                                style: TextStyle(
+                                  color: titleColor,
                                   fontSize: 11,
                                   fontWeight: FontWeight.w700,
                                   height: 1.15,
