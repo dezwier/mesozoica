@@ -15,6 +15,7 @@ from app.models.user_site import (
 from app.schemas.auth import UserProfileResponse
 from app.schemas.site import SiteExplorationUpdateRequest, SiteSummary
 from app.services.level_service import (
+    award_first_documentation_xp,
     award_site_documentation_xp,
     award_site_exploration_xp,
     get_skill_xp,
@@ -93,7 +94,16 @@ def _maybe_complete_documentation(
         explored_distance_m=explored,
     ):
         return False
+    existing_documenter = session.exec(
+        select(UserSite).where(
+            col(UserSite.site_id) == int(link.site_id),
+            col(UserSite.role) == USER_SITE_ROLE_DOCUMENTER,
+        )
+    ).first()
+    is_first_documentation = existing_documenter is None
     award_site_documentation_xp(user)
+    if is_first_documentation:
+        award_first_documentation_xp(user)
     link.documented = True
     session.add(link)
     _upsert_documenter(

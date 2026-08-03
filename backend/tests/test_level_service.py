@@ -15,8 +15,11 @@ from app.services.level_service import (
     CAREER_THRESHOLDS,
     SKILL_THRESHOLDS,
     award_distance_km_xp,
+    award_first_discovery_xp,
+    award_first_documentation_xp,
     award_fossil_discover_xp,
     award_site_discover_xp,
+    award_site_documentation_xp,
     backfill_user_levels,
     career_title_for_level,
     career_title_for_user_xp,
@@ -67,6 +70,7 @@ def test_leveling_yaml_loaded() -> None:
     site = get_game_config().site_discovery
     fossil = get_game_config().fossil_detection
     assert site.site_discovery_xp == 10
+    assert site.first_discovery_xp == 50
     assert site.active_km_xp == 30
     assert site.passive_km_xp == 5
     assert float(fossil.main_params["fossil_discovery_xp"]) == 5
@@ -111,16 +115,30 @@ def _make_user(session: Session, **kwargs) -> User:
 def test_award_site_and_fossil_xp(session: Session) -> None:
     user = _make_user(session)
     award_site_discover_xp(user)
+    award_first_discovery_xp(user)
     award_fossil_discover_xp(user, count=2)
     session.add(user)
     session.commit()
     session.refresh(user)
-    assert get_skill_xp(user, "site_discovery") == 10
+    assert get_skill_xp(user, "site_discovery") == 60
     assert get_skill_xp(user, "fossil_detection") == 10
     assert user.skill_breakdown["site_discovery"]["sites"] == 10
+    assert user.skill_breakdown["site_discovery"]["first_discovery"] == 50
     assert user.skill_breakdown["fossil_detection"]["fossils"] == 10
-    assert user.xp == 20
+    assert user.xp == 70
     assert user.level == level_for_xp(user.xp, career=True)
+
+
+def test_award_first_documentation_xp(session: Session) -> None:
+    user = _make_user(session, username="doc_first", email="doc_first@example.com")
+    award_site_documentation_xp(user)
+    award_first_documentation_xp(user)
+    session.add(user)
+    session.commit()
+    session.refresh(user)
+    assert get_skill_xp(user, "site_stewardship") == 300
+    assert user.skill_breakdown["site_stewardship"]["site_documentation"] == 100
+    assert user.skill_breakdown["site_stewardship"]["first_documentation"] == 200
 
 
 def test_award_distance_km_xp(session: Session) -> None:

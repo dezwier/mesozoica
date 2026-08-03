@@ -43,6 +43,7 @@ def test_load_game_config_matches_current_defaults() -> None:
     assert config.site_discovery.discovery_chance == 0.1
     assert config.site_discovery.max_discovery_speed_kmh == 10.0
     assert config.site_discovery.site_discovery_xp == 10.0
+    assert config.site_discovery.first_discovery_xp == 50.0
     assert config.site_discovery.active_km_xp == 30.0
     assert config.site_discovery.passive_km_xp == 5.0
     assert config.site_discovery.client.auto_discover_radius_m == 20.0
@@ -69,9 +70,11 @@ def test_load_game_config_matches_current_defaults() -> None:
     assert config.site_stewardship.main_params.site_visibility_m == 50.0
     assert config.site_stewardship.main_params.site_exploration_xp == 20.0
     assert config.site_stewardship.main_params.site_documentation_xp == 100.0
+    assert config.site_stewardship.main_params.first_documentation_xp == 200.0
     assert config.site_stewardship.site_visibility_m == 50.0
     assert config.site_stewardship.site_exploration_xp == 20.0
     assert config.site_stewardship.site_documentation_xp == 100.0
+    assert config.site_stewardship.first_documentation_xp == 200.0
     dino_acc_mods = config.site_stewardship.level_modifiers["dino_accuracy"]
     assert len(dino_acc_mods) == 99
     assert dino_acc_mods[0].level == 1 and dino_acc_mods[0].op == "multiply"

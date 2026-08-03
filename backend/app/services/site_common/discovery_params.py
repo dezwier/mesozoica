@@ -26,6 +26,7 @@ class ResolvedSiteDiscoveryParams:
     discovery_chance: float  # effective (disguise-applied), clamped 0..1
     base_discovery_chance: float  # before rival disguise multiplier
     site_discovery_xp: float
+    first_discovery_xp: float
 
     # Back-compat alias.
     @property
@@ -159,4 +160,5 @@ def resolve_site_discovery_params(
         discovery_chance=discovery_chance,
         base_discovery_chance=base_chance,
         site_discovery_xp=float(resolved["site_discovery_xp"]),
+        first_discovery_xp=float(resolved["first_discovery_xp"]),
     )

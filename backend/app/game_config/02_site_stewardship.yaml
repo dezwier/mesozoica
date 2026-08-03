@@ -27,6 +27,9 @@ main_params:
   site_exploration_xp: 20
   # XP when all five site-dimension accuracies reach 100% (documentation complete).
   site_documentation_xp: 100
+  # Bonus XP when you are the first user to fully document a site (all dimensions
+  # at 100% accuracy). Later documenters still get site_documentation_xp only.
+  first_documentation_xp: 200
 
 # Fixed global distribution tables (not subject to level/tool multipliers).
 
@@ -96,6 +99,7 @@ level_modifiers:
   site_visibility_m: []
   site_exploration_xp: []
   site_documentation_xp: []
+  first_documentation_xp: []
   # Rival discovery: ×1.0 at L1 → ×0.5 at L99 (linear; all sites).
   rival_discovery:
     - { level: 1, op: multiply, value: 1 }

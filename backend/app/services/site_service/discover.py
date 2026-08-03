@@ -111,6 +111,7 @@ def discover_site(
             "Discovery chance miss - stay nearby or re-enter range to try again"
         )
 
+    is_first_discovery = site.how_discovered is None
     session.add(
         UserSite(
             user_id=user_id,
@@ -129,11 +130,18 @@ def discover_site(
     session.add(notification)
 
     from app.models.user import User
-    from app.services.level_service import award_site_discover_xp
+    from app.services.level_service import (
+        award_first_discovery_xp,
+        award_site_discover_xp,
+    )
 
     user = session.get(User, user_id)
     if user is not None:
         award_site_discover_xp(user, amount=int(round(params.site_discovery_xp)))
+        if is_first_discovery:
+            award_first_discovery_xp(
+                user, amount=int(round(params.first_discovery_xp))
+            )
         session.add(user)
 
     session.commit()

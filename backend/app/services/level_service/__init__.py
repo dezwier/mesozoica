@@ -2,6 +2,8 @@
 
 from app.services.level_service.award import (
     award_distance_km_xp,
+    award_first_discovery_xp,
+    award_first_documentation_xp,
     award_fossil_discover_xp,
     award_site_discover_xp,
     award_site_documentation_xp,
@@ -44,6 +46,8 @@ __all__ = [
     "SKILL_THRESHOLDS",
     "all_skill_states",
     "award_distance_km_xp",
+    "award_first_discovery_xp",
+    "award_first_documentation_xp",
     "award_fossil_discover_xp",
     "award_site_discover_xp",
     "award_site_documentation_xp",

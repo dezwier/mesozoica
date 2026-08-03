@@ -233,6 +233,7 @@ def test_documentation_completes_and_freezes(session: Session) -> None:
     ).first()
     assert doc_role is not None
     assert profile.skill_breakdown["site_stewardship"]["site_documentation"] == 100
+    assert profile.skill_breakdown["site_stewardship"]["first_documentation"] == 200
 
     xp_after = get_skill_xp(user, "site_stewardship")
     apply_site_exploration_update(
@@ -252,6 +253,68 @@ def test_documentation_completes_and_freezes(session: Session) -> None:
     assert get_skill_xp(user, "site_stewardship") == xp_after
     assert (
         user.skill_breakdown["site_stewardship"]["site_documentation"] == 100
+    )
+    assert (
+        user.skill_breakdown["site_stewardship"]["first_documentation"] == 200
+    )
+
+
+def test_second_documenter_skips_first_documentation_xp(session: Session) -> None:
+    from app.services.level_service.skills import set_skill_xp
+    from app.services.level_service.xp_table import SKILL_THRESHOLDS
+
+    first = _make_user(session, username="doc1", email="doc1@example.com")
+    second = _make_user(session, username="doc2", email="doc2@example.com")
+    set_skill_xp(first, "site_stewardship", SKILL_THRESHOLDS[90])
+    set_skill_xp(second, "site_stewardship", SKILL_THRESHOLDS[90])
+    session.add(first)
+    session.add(second)
+    session.commit()
+    session.refresh(first)
+    session.refresh(second)
+
+    site = _seed_field_site(session, site_id=1_000_000_778)
+    for user in (first, second):
+        session.add(
+            UserSite(
+                user_id=user.id,
+                site_id=site.site_id,
+                role=USER_SITE_ROLE_DISCOVERER,
+                explored_distance_m=0.0,
+            )
+        )
+    session.commit()
+
+    apply_site_exploration_update(
+        session,
+        first,
+        SiteExplorationUpdateRequest(
+            sites=[
+                SiteExplorationEntry(
+                    site_id=site.site_id,
+                    explored_distance_m=80.0,
+                )
+            ]
+        ),
+    )
+    assert first.skill_breakdown["site_stewardship"]["site_documentation"] == 100
+    assert first.skill_breakdown["site_stewardship"]["first_documentation"] == 200
+
+    apply_site_exploration_update(
+        session,
+        second,
+        SiteExplorationUpdateRequest(
+            sites=[
+                SiteExplorationEntry(
+                    site_id=site.site_id,
+                    explored_distance_m=80.0,
+                )
+            ]
+        ),
+    )
+    assert second.skill_breakdown["site_stewardship"]["site_documentation"] == 100
+    assert "first_documentation" not in (
+        second.skill_breakdown.get("site_stewardship") or {}
     )
 
 

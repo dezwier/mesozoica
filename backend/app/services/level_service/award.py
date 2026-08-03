@@ -75,6 +75,34 @@ def award_site_discover_xp(
     )
 
 
+def award_first_discovery_xp(
+    user: User,
+    *,
+    amount: int | None = None,
+    weather_time: str | None = None,
+    weather_type: str | None = None,
+    tool_mods: Mapping[str, ParamModifier] | None = None,
+) -> int:
+    """Award site_discovery XP for being the first user to discover a site."""
+    if amount is None:
+        skill_level = level_for_xp(get_skill_xp(user, "site_discovery"))
+        resolved = resolve_site_discovery_main_params(
+            skill_level=skill_level,
+            weather_time=weather_time,
+            weather_type=weather_type,
+            tool_mods=tool_mods,
+        )
+        amount = _xp_int(resolved["first_discovery_xp"])
+    if amount <= 0:
+        return 0
+    return award_skill_xp(
+        user,
+        "site_discovery",
+        amount=amount,
+        breakdown_delta={"first_discovery": amount},
+    )
+
+
 def award_fossil_discover_xp(
     user: User,
     *,
@@ -196,6 +224,34 @@ def award_site_documentation_xp(
         "site_stewardship",
         amount=amount,
         breakdown_delta={"site_documentation": amount},
+    )
+
+
+def award_first_documentation_xp(
+    user: User,
+    *,
+    amount: int | None = None,
+    weather_time: str | None = None,
+    weather_type: str | None = None,
+    tool_mods: Mapping[str, ParamModifier] | None = None,
+) -> int:
+    """Award site_stewardship XP for being the first to fully document a site."""
+    if amount is None:
+        skill_level = level_for_xp(get_skill_xp(user, "site_stewardship"))
+        resolved = resolve_site_stewardship_main_params(
+            skill_level=skill_level,
+            weather_time=weather_time,
+            weather_type=weather_type,
+            tool_mods=tool_mods,
+        )
+        amount = _xp_int(resolved["first_documentation_xp"])
+    if amount <= 0:
+        return 0
+    return award_skill_xp(
+        user,
+        "site_stewardship",
+        amount=amount,
+        breakdown_delta={"first_documentation": amount},
     )
 
 

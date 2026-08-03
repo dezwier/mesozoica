@@ -12,6 +12,9 @@ main_params:
   max_discovery_speed_kmh: 10.0
   # XP awarded when a site is discovered.
   site_discovery_xp: 10
+  # Bonus XP when you are the first user to discover a site (others still get
+  # site_discovery_xp later, but not this reward).
+  first_discovery_xp: 50
   # XP per whole active kilometer walked.
   active_km_xp: 30
   # XP per whole passive kilometer walked.
@@ -23,6 +26,7 @@ level_modifiers:
   discovery_chance: []
   max_discovery_speed_kmh: []
   site_discovery_xp: []
+  first_discovery_xp: []
   active_km_xp: []
   passive_km_xp: []
 
@@ -41,6 +45,7 @@ weather_time_modifiers:
     dawn: [{ op: multiply, value: 1.2 }]
     dusk: [{ op: multiply, value: 1.2 }]
     night: [{ op: multiply, value: 1.5 }]
+  first_discovery_xp: *site_discovery_xp_weather_time
   active_km_xp: *site_discovery_xp_weather_time
   passive_km_xp: *site_discovery_xp_weather_time
 
@@ -59,6 +64,7 @@ weather_type_modifiers:
   discovery_chance: *site_discovery_weather_type
   max_discovery_speed_kmh: {}
   site_discovery_xp: {}
+  first_discovery_xp: {}
   active_km_xp: {}
   passive_km_xp: {}
 

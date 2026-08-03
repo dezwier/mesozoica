@@ -274,6 +274,7 @@ class SiteDiscoveryConfig {
   double get discoveryChance => mainParams.discoveryChance;
   double get maxDiscoverySpeedKmh => mainParams.maxDiscoverySpeedKmh;
   double get siteDiscoveryXp => mainParams.siteDiscoveryXp;
+  double get firstDiscoveryXp => mainParams.firstDiscoveryXp;
   double get activeKmXp => mainParams.activeKmXp;
   double get passiveKmXp => mainParams.passiveKmXp;
 
@@ -305,6 +306,7 @@ class SiteDiscoveryMainParams {
     required this.discoveryChance,
     required this.maxDiscoverySpeedKmh,
     required this.siteDiscoveryXp,
+    required this.firstDiscoveryXp,
     required this.activeKmXp,
     required this.passiveKmXp,
   });
@@ -313,6 +315,7 @@ class SiteDiscoveryMainParams {
   final double discoveryChance;
   final double maxDiscoverySpeedKmh;
   final double siteDiscoveryXp;
+  final double firstDiscoveryXp;
   final double activeKmXp;
   final double passiveKmXp;
 
@@ -325,6 +328,7 @@ class SiteDiscoveryMainParams {
       discoveryChance: _asDouble(yaml['discovery_chance'], 0.1),
       maxDiscoverySpeedKmh: _asDouble(yaml['max_discovery_speed_kmh'], 10.0),
       siteDiscoveryXp: _asDouble(yaml['site_discovery_xp'], 10.0),
+      firstDiscoveryXp: _asDouble(yaml['first_discovery_xp'], 50.0),
       activeKmXp: _asDouble(yaml['active_km_xp'], 30.0),
       passiveKmXp: _asDouble(yaml['passive_km_xp'], 5.0),
     );
@@ -668,6 +672,7 @@ class SiteStewardshipMainParams {
     required this.successfulSiteDisguiseXp,
     required this.siteExplorationXp,
     required this.siteDocumentationXp,
+    required this.firstDocumentationXp,
   });
 
   final double dinoAccuracy;
@@ -680,6 +685,7 @@ class SiteStewardshipMainParams {
   final double successfulSiteDisguiseXp;
   final double siteExplorationXp;
   final double siteDocumentationXp;
+  final double firstDocumentationXp;
 
   factory SiteStewardshipMainParams.fromYaml(Map<String, dynamic> yaml) {
     return SiteStewardshipMainParams(
@@ -694,6 +700,7 @@ class SiteStewardshipMainParams {
           _asDouble(yaml['successful_site_disguise_xp'], 50),
       siteExplorationXp: _asDouble(yaml['site_exploration_xp'], 20),
       siteDocumentationXp: _asDouble(yaml['site_documentation_xp'], 100),
+      firstDocumentationXp: _asDouble(yaml['first_documentation_xp'], 200),
     );
   }
 }

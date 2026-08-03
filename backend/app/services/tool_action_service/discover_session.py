@@ -101,6 +101,7 @@ def discover_site_from_aerial(
     if outcome != "hit":
         return None
 
+    is_first_discovery = site.how_discovered is None
     session.add(
         UserSite(
             user_id=user_id,
@@ -120,7 +121,10 @@ def discover_site_from_aerial(
     session.add(notification)
 
     from app.models.user import User
-    from app.services.level_service import award_site_discover_xp
+    from app.services.level_service import (
+        award_first_discovery_xp,
+        award_site_discover_xp,
+    )
     from app.services.weather_service.solar import period_at
 
     user = session.get(User, user_id)
@@ -136,6 +140,10 @@ def discover_site_from_aerial(
         award_site_discover_xp(
             user, weather_time=weather_time, weather_type=weather_type
         )
+        if is_first_discovery:
+            award_first_discovery_xp(
+                user, weather_time=weather_time, weather_type=weather_type
+            )
         session.add(user)
 
     session.commit()

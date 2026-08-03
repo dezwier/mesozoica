@@ -150,6 +150,9 @@ def resolve_site_discovery_main_params(
         "site_discovery_xp": _resolve(
             "site_discovery_xp", base=cfg.site_discovery_xp
         ),
+        "first_discovery_xp": _resolve(
+            "first_discovery_xp", base=cfg.first_discovery_xp
+        ),
         "active_km_xp": _resolve("active_km_xp", base=cfg.active_km_xp),
         "passive_km_xp": _resolve("passive_km_xp", base=cfg.passive_km_xp),
     }
@@ -303,6 +306,10 @@ def resolve_site_stewardship_main_params(
         "site_documentation_xp": _resolve(
             "site_documentation_xp",
             base=float(mp.site_documentation_xp),
+        ),
+        "first_documentation_xp": _resolve(
+            "first_documentation_xp",
+            base=float(mp.first_documentation_xp),
         ),
     }
 

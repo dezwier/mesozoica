@@ -64,6 +64,7 @@ def test_resolve_site_discovery_params_boost_hook(
             discovery_chance=chance,
             base_discovery_chance=chance,
             site_discovery_xp=cfg.site_discovery_xp,
+            first_discovery_xp=cfg.first_discovery_xp,
         )
 
     monkeypatch.setattr(

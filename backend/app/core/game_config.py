@@ -399,6 +399,7 @@ class SiteDiscoveryMainParams(BaseModel):
     discovery_chance: float = 0.1
     max_discovery_speed_kmh: float = 10.0
     site_discovery_xp: float = 10.0
+    first_discovery_xp: float = 50.0
     active_km_xp: float = 30.0
     passive_km_xp: float = 5.0
 
@@ -411,6 +412,7 @@ class SiteDiscoveryMainParams(BaseModel):
         "visibility_distance_m",
         "max_discovery_speed_kmh",
         "site_discovery_xp",
+        "first_discovery_xp",
         "active_km_xp",
         "passive_km_xp",
     )
@@ -469,6 +471,10 @@ class SiteDiscoveryConfig(BaseModel):
     @property
     def site_discovery_xp(self) -> float:
         return float(self.main_params.site_discovery_xp)
+
+    @property
+    def first_discovery_xp(self) -> float:
+        return float(self.main_params.first_discovery_xp)
 
     @property
     def active_km_xp(self) -> float:
@@ -593,6 +599,8 @@ class SiteStewardshipMainParams(BaseModel):
     site_exploration_xp: float = 20.0
     # XP when all five site-dimension accuracies reach 100%.
     site_documentation_xp: float = 100.0
+    # Bonus XP when you are the first user to fully document a site.
+    first_documentation_xp: float = 200.0
 
     @field_validator(
         "dino_accuracy",
@@ -623,6 +631,7 @@ class SiteStewardshipMainParams(BaseModel):
         "successful_site_disguise_xp",
         "site_exploration_xp",
         "site_documentation_xp",
+        "first_documentation_xp",
     )
     @classmethod
     def _validate_xp(cls, value: float) -> float:
@@ -777,6 +786,10 @@ class SiteStewardshipConfig(BaseModel):
     @property
     def site_documentation_xp(self) -> float:
         return float(self.main_params.site_documentation_xp)
+
+    @property
+    def first_documentation_xp(self) -> float:
+        return float(self.main_params.first_documentation_xp)
 
     @property
     def site_visibility_m(self) -> float:

@@ -80,6 +80,7 @@ name under each main_param. All list entries for the current key apply in order
 | `discovery_chance` | P(success) per attempt (enter or dwell re-roll) |
 | `max_discovery_speed_kmh` | Max GPS speed for walk XP credit and discovery dice rolls |
 | `site_discovery_xp` | XP awarded when a site is discovered |
+| `first_discovery_xp` | Bonus XP when you are the first user to discover a site |
 | `active_km_xp` | XP per whole active kilometer walked |
 | `passive_km_xp` | XP per whole passive kilometer walked |
 
@@ -121,6 +122,7 @@ resolvable):
 | `successful_site_disguise_xp` | XP when a rival discovery roll would hit but your active disguise blocks it |
 | `site_exploration_xp` | XP to site_stewardship per 20 m walked inside `site_visibility_m` |
 | `site_documentation_xp` | XP when all five site-dimension accuracies reach 100% (freezes further exploration) |
+| `first_documentation_xp` | Bonus XP when you are the first user to fully document a site |
 
 Accuracy params are display-only on the site card for now. Stack per axis:
 skill baseline (base 1% × level → L50 ≈ 50%) → stable per-site / per-dimension
@@ -128,6 +130,7 @@ noise (`accuracy_noise` in `02_site_stewardship.yaml`) → tool
 `modifies_main_params` (none yet) → exploration (+1% per meter walked inside
 `site_visibility_m`, additive, capped at 100%). When all five axes reach 100%,
 `site_documentation_xp` is awarded once and further exploration is frozen.
+The first user to complete documentation also receives `first_documentation_xp`.
 
 `rival_discovery` is multiplied by skill level (×1.0 at L1 → ×0.5 at L99,
 linear; all sites). Site-scoped tools (Brush Scrim / Blackout Cover) multiply
