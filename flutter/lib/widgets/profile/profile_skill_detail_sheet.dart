@@ -10,6 +10,7 @@ import '../../controllers/guidance_session_controller.dart';
 import '../../controllers/ridge_glass_controller.dart';
 import '../../controllers/tool_catalog_controller.dart';
 import '../../controllers/weather_controller.dart';
+import '../../models/disguise_tool_kind.dart';
 import '../../models/expedition_drivetrain_kind.dart';
 import '../../models/profile.dart';
 import '../../models/tool.dart';
@@ -755,10 +756,42 @@ class _MainParamRowState extends State<_MainParamRow> {
     );
     final deltaPct = row.overallDeltaPct;
     final showDelta = deltaPct != null && row.factors.isNotEmpty;
+    final showPreviewOnly =
+        !showDelta && row.factors.isNotEmpty;
     final positive = (deltaPct ?? 0) >= 0;
     const positiveColor = Color(0xFF2E7D32);
     const negativeColor = Color(0xFFC62828);
     final badgeColor = positive ? positiveColor : negativeColor;
+
+    Widget? breakdownAffordance({
+      required Color color,
+      required Widget child,
+    }) {
+      return CompositedTransformTarget(
+        link: _link,
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: _toggleBreakdown,
+            borderRadius: BorderRadius.circular(999),
+            child: Ink(
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(999),
+                border: Border.all(
+                  color: color.withValues(alpha: 0.35),
+                  width: 0.75,
+                ),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(8, 3, 6, 3),
+                child: child,
+              ),
+            ),
+          ),
+        ),
+      );
+    }
 
     return Row(
       children: [
@@ -766,50 +799,52 @@ class _MainParamRowState extends State<_MainParamRow> {
         Text(row.effectiveValue, style: valueStyle),
         if (showDelta) ...[
           const SizedBox(width: 8),
-          CompositedTransformTarget(
-            link: _link,
-            child: Material(
-              color: Colors.transparent,
-              child: InkWell(
-                onTap: _toggleBreakdown,
-                borderRadius: BorderRadius.circular(999),
-                child: Ink(
-                  decoration: BoxDecoration(
-                    color: badgeColor.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(999),
-                    border: Border.all(
-                      color: badgeColor.withValues(alpha: 0.35),
-                      width: 0.75,
-                    ),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(8, 3, 6, 3),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          _formatSignedPctNumber(deltaPct),
-                          style: Theme.of(context)
-                              .textTheme
-                              .labelSmall
-                              ?.copyWith(
-                                color: badgeColor,
-                                fontWeight: FontWeight.w700,
-                                height: 1.1,
-                                letterSpacing: 0.1,
-                              ),
-                        ),
-                        const SizedBox(width: 2),
-                        Icon(
-                          Icons.expand_more,
-                          size: 14,
-                          color: badgeColor.withValues(alpha: 0.85),
-                        ),
-                      ],
-                    ),
-                  ),
+          breakdownAffordance(
+            color: badgeColor,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  _formatSignedPctNumber(deltaPct),
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: badgeColor,
+                        fontWeight: FontWeight.w700,
+                        height: 1.1,
+                        letterSpacing: 0.1,
+                      ),
                 ),
-              ),
+                const SizedBox(width: 2),
+                Icon(
+                  Icons.expand_more,
+                  size: 14,
+                  color: badgeColor.withValues(alpha: 0.85),
+                ),
+              ],
+            ),
+          ),
+        ] else if (showPreviewOnly) ...[
+          const SizedBox(width: 8),
+          breakdownAffordance(
+            color: scheme.onSurfaceVariant,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'tools',
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                        fontWeight: FontWeight.w700,
+                        height: 1.1,
+                        letterSpacing: 0.1,
+                      ),
+                ),
+                const SizedBox(width: 2),
+                Icon(
+                  Icons.expand_more,
+                  size: 14,
+                  color: scheme.onSurfaceVariant.withValues(alpha: 0.85),
+                ),
+              ],
             ),
           ),
         ],
@@ -1205,12 +1240,23 @@ _MainParamDisplay _resolveScalarParam({
     applyStep('${toolMod.toolName} (${toolMod.whenLabel})', toolMod.mod);
   }
 
+  // Site-scoped `using` mods (disguise covers) do not change the global
+  // displayed value — they only apply on the covered site — but still show
+  // as tap-breakdown factors when you own the card.
+  for (final preview in _siteScopedToolPreviewFactors(
+    skillId: skillId,
+    paramKey: paramKey,
+    toolBindings: toolBindings,
+  )) {
+    factors.add(preview);
+  }
+
   if (clampUnit) {
     value = value.clamp(0.0, 1.0);
   }
 
   double? overallDeltaPct;
-  if (factors.isNotEmpty && base.abs() > 1e-12) {
+  if ((value - base).abs() > 1e-12 && base.abs() > 1e-12) {
     overallDeltaPct = ((value - base) / base) * 100.0;
   }
 
@@ -1256,6 +1302,8 @@ List<_ActiveToolMod> _activeToolModsForParam({
   for (final binding in toolBindings) {
     final mods = binding.mods;
     if (!mods.affectsSkill(skillId)) continue;
+    // Site-scoped disguise covers never rewrite the global skill number.
+    if (DisguiseToolKind.matchesActionKey(binding.actionKey)) continue;
     if (binding.applyOwning) {
       final owning = mods.paramsFor('owning', skillId)[paramKey];
       if (owning != null) {
@@ -1280,6 +1328,31 @@ List<_ActiveToolMod> _activeToolModsForParam({
         );
       }
     }
+  }
+  return out;
+}
+
+List<_ParamFactor> _siteScopedToolPreviewFactors({
+  required String skillId,
+  required String paramKey,
+  required List<ToolModBinding> toolBindings,
+}) {
+  final out = <_ParamFactor>[];
+  final seen = <String>{};
+  for (final binding in toolBindings) {
+    if (!DisguiseToolKind.matchesActionKey(binding.actionKey)) continue;
+    final mod = binding.mods.paramsFor('using', skillId)[paramKey];
+    if (mod == null) continue;
+    if (!seen.add(binding.actionKey)) continue;
+    out.add(
+      _ParamFactor(
+        label: '${binding.toolName} (covered site)',
+        deltaText: WeatherDisplay.formatModifierShort(
+          op: mod.op,
+          value: mod.value,
+        ),
+      ),
+    );
   }
   return out;
 }

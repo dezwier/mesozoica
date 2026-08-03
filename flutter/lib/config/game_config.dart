@@ -952,12 +952,12 @@ class ToolActionsConfig {
           modifiesMainParams: ModifiesMainParams(
             using: {
               'site_stewardship': {
-                'rival_discovery': ParamModifier(op: 'replace', value: 0.5),
+                'rival_discovery': ParamModifier(op: 'multiply', value: 0.5),
               },
             },
           ),
           statsExplanation:
-              'Covers one discovered site; sets rival_discovery to 0.5.',
+              'Covers one discovered site; multiplies rival_discovery by 0.5.',
         ),
       ),
       blackoutCover: DisguiseActionConfig.fromYaml(
@@ -967,12 +967,12 @@ class ToolActionsConfig {
           modifiesMainParams: ModifiesMainParams(
             using: {
               'site_stewardship': {
-                'rival_discovery': ParamModifier(op: 'replace', value: 0),
+                'rival_discovery': ParamModifier(op: 'multiply', value: 0),
               },
             },
           ),
           statsExplanation:
-              'Covers one discovered site; sets rival_discovery to 0.',
+              'Covers one discovered site; multiplies rival_discovery by 0.',
         ),
       ),
     );
@@ -1499,7 +1499,7 @@ class DisguiseActionConfig {
           modifiesMainParams: ModifiesMainParams(
             using: {
               'site_stewardship': {
-                'rival_discovery': ParamModifier(op: 'replace', value: 0.5),
+                'rival_discovery': ParamModifier(op: 'multiply', value: 0.5),
               },
             },
           ),
@@ -1510,12 +1510,12 @@ class DisguiseActionConfig {
     if (rawMods is Map) {
       mods = ModifiesMainParams.fromYaml(GameConfig._asMap(rawMods));
     } else if (yaml.containsKey('discovery_chance_multiplier')) {
-      // Legacy bare multiplier → formalize as rival_discovery replace.
+      // Legacy bare multiplier → formalize as rival_discovery multiply.
       final value = _asDouble(yaml['discovery_chance_multiplier'], 0.5);
       mods = ModifiesMainParams(
         using: {
           'site_stewardship': {
-            'rival_discovery': ParamModifier(op: 'replace', value: value),
+            'rival_discovery': ParamModifier(op: 'multiply', value: value),
           },
         },
       );

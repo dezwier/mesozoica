@@ -62,6 +62,11 @@ class DisguiseToolStats extends StatelessWidget {
   }
 
   static String _formatRivalMod(ParamModifier mod) {
+    if (mod.op == 'multiply') {
+      final v = mod.value;
+      final text = v == 0 || v == 1 ? v.toStringAsFixed(0) : v.toStringAsFixed(1);
+      return '×$text';
+    }
     if (mod.op == 'replace') {
       final v = mod.value;
       final text = v == 0 || v == 1 ? v.toStringAsFixed(0) : v.toStringAsFixed(1);

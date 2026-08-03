@@ -204,7 +204,7 @@ def prepare_disguise_start(
             "using": {
                 "site_stewardship": {
                     "rival_discovery": {
-                        "op": "replace",
+                        "op": "multiply",
                         "value": float(inst_p["discovery_chance_multiplier"]),
                     }
                 }
@@ -317,7 +317,7 @@ def _resolve_cover_rival_discovery(
         tool_mods = {
             **tool_mods,
             "rival_discovery": ParamModifier(
-                op="replace",
+                op="multiply",
                 value=float(params["discovery_chance_multiplier"]),
             ),
         }

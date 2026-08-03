@@ -179,11 +179,11 @@ brush_scrim:
   modifies_main_params:
     using:
       site_stewardship:
-        rival_discovery: { op: replace, value: 0.5 }
+        rival_discovery: { op: multiply, value: 0.5 }
   stats_explanation: >-
     Duration is this card's lifetime battery; each use covers one discovered
-    site until you stop or time runs out. While active, sets rival_discovery
-    on that site to 0.5 so other players' discovery chance is halved.
+    site until you stop or time runs out. While active on that site, multiplies
+    rival_discovery by 0.5 so other players' discovery chance is halved.
     Discovery rolls still happen: when a rival's roll would have succeeded but
     the cover blocks it, you gain successful site disguise XP. One disguise
     at a time.
@@ -193,9 +193,9 @@ blackout_cover:
   modifies_main_params:
     using:
       site_stewardship:
-        rival_discovery: { op: replace, value: 0 }
+        rival_discovery: { op: multiply, value: 0 }
   stats_explanation: >-
     Duration is this card's lifetime battery; each use covers one discovered
-    site until you stop or time runs out. While active, sets rival_discovery
-    on that site to 0. Discovery rolls still run so a would-be hit awards you
-    successful site disguise XP. One disguise at a time.
+    site until you stop or time runs out. While active on that site, multiplies
+    rival_discovery by 0. Discovery rolls still run so a would-be hit awards
+    you successful site disguise XP. One disguise at a time.

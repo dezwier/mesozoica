@@ -1,3 +1,4 @@
+import '../models/disguise_tool_kind.dart';
 import '../models/expedition_drivetrain_kind.dart';
 import '../models/guidance_tool_kind.dart';
 import '../models/ridge_glass_kind.dart';
@@ -42,6 +43,8 @@ String? actionKeyForToolName(String name) {
   if (ExpeditionDrivetrainKind.matchesToolName(name)) {
     return ExpeditionDrivetrainKind.actionKey;
   }
+  final disguise = DisguiseToolKind.tryParseToolName(name);
+  if (disguise != null) return disguise.actionKey;
   return null;
 }
 
@@ -52,6 +55,8 @@ String toolNameForActionKey(String actionKey) {
   if (actionKey == ExpeditionDrivetrainKind.actionKey) {
     return ExpeditionDrivetrainKind.toolName;
   }
+  final disguise = DisguiseToolKind.tryParseActionKey(actionKey);
+  if (disguise != null) return disguise.toolName;
   return actionKey;
 }
 
@@ -72,7 +77,16 @@ List<ToolModBinding> toolModBindingsFromInstances({
     if (!_toolIsOwned(tool)) continue;
     final actionKey = actionKeyForToolName(tool.name);
     if (actionKey == null) continue;
-    final mods = modifiesMainParamsFromParams(ownedToolInstanceParams(tool));
+    var mods = modifiesMainParamsFromParams(ownedToolInstanceParams(tool));
+    // Disguise cards store site-scoped `using` mods; fall back to YAML defaults
+    // when an older owned instance has not been re-seeded yet.
+    if (mods == null && DisguiseToolKind.matchesToolName(tool.name)) {
+      if (GameConfig.isLoaded) {
+        mods = modifiesMainParamsFromParams(
+          GameConfig.instance.toolActions.defaultsForToolName(tool.name),
+        );
+      }
+    }
     if (mods == null) continue;
 
     // Catalog cards contribute owning mods only. Active `using` comes from the

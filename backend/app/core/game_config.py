@@ -1354,13 +1354,13 @@ class ToolActionsConfig(BaseModel):
             modifies_main_params=ModifiesMainParams(
                 using={
                     "site_stewardship": {
-                        "rival_discovery": ParamModifier(op="replace", value=0.5),
+                        "rival_discovery": ParamModifier(op="multiply", value=0.5),
                     },
                 },
             ),
             stats_explanation=(
-                "Covers one discovered site; sets rival_discovery to 0.5 "
-                "while active."
+                "Covers one discovered site; multiplies rival_discovery by "
+                "0.5 while active on that site."
             ),
         )
     )
@@ -1370,13 +1370,13 @@ class ToolActionsConfig(BaseModel):
             modifies_main_params=ModifiesMainParams(
                 using={
                     "site_stewardship": {
-                        "rival_discovery": ParamModifier(op="replace", value=0.0),
+                        "rival_discovery": ParamModifier(op="multiply", value=0.0),
                     },
                 },
             ),
             stats_explanation=(
-                "Covers one discovered site; sets rival_discovery to 0 "
-                "while active."
+                "Covers one discovered site; multiplies rival_discovery by "
+                "0 while active on that site."
             ),
         )
     )
