@@ -1122,13 +1122,19 @@ class TerrainEchoActionConfig(BaseModel):
         return self
 
 
-class RidgeGlassActionConfig(BaseModel):
-    """Knobs for Ridge Glass walk-in visibility / discovery buffs."""
+class MainParamBuffActionConfig(BaseModel):
+    """Knobs for timed global main-param buffs (Ridge Glass, Drivetrain, Nocturne).
+
+    When ``active_weather_times`` is set, the session may only start in those
+    solar periods and is auto-stopped when the period leaves the list.
+    """
 
     model_config = {"frozen": True}
 
     duration_minutes: int = 60
     modifies_main_params: ModifiesMainParams | None = None
+    # None = always active; e.g. ["night"] for Nocturne Lens.
+    active_weather_times: tuple[WeatherTimePeriod, ...] | None = None
     stats_explanation: str = ""
 
     @field_validator("duration_minutes")
@@ -1137,6 +1143,28 @@ class RidgeGlassActionConfig(BaseModel):
         if value < 1:
             raise ValueError("duration_minutes must be >= 1")
         return value
+
+    @field_validator("active_weather_times", mode="before")
+    @classmethod
+    def _coerce_active_weather_times(
+        cls, value: object
+    ) -> tuple[WeatherTimePeriod, ...] | None:
+        if value is None:
+            return None
+        if isinstance(value, (list, tuple)):
+            out: list[WeatherTimePeriod] = []
+            for item in value:
+                key = str(item)
+                if key not in VALID_WEATHER_TIMES:
+                    raise ValueError(
+                        f"active_weather_times entry must be one of "
+                        f"{sorted(VALID_WEATHER_TIMES)}, got {key!r}"
+                    )
+                out.append(key)  # type: ignore[arg-type]
+            if not out:
+                raise ValueError("active_weather_times must not be empty when set")
+            return tuple(out)
+        raise ValueError("active_weather_times must be a sequence or null")
 
     def _using_site_discovery_mod(self, param: str) -> ParamModifier | None:
         mods = self.modifies_main_params
@@ -1147,6 +1175,15 @@ class RidgeGlassActionConfig(BaseModel):
     def site_discovery_mod(self, param: str) -> ParamModifier | None:
         """Active ``using`` / ``site_discovery`` modifier for ``param``, if any."""
         return self._using_site_discovery_mod(param)
+
+    def is_active_for_weather_time(self, weather_time: str | None) -> bool:
+        """True when buff mods apply for ``weather_time`` (always if unrestricted)."""
+        allowed = self.active_weather_times
+        if allowed is None:
+            return True
+        if weather_time is None:
+            return False
+        return weather_time in allowed
 
     @property
     def added_visibility_range_m(self) -> float | None:
@@ -1161,6 +1198,10 @@ class RidgeGlassActionConfig(BaseModel):
         if mod is None or mod.op != "add":
             return None
         return float(mod.value)
+
+
+# Back-compat alias for older imports / tests.
+RidgeGlassActionConfig = MainParamBuffActionConfig
 
 
 class DisguiseActionConfig(BaseModel):
@@ -1365,8 +1406,8 @@ class ToolActionsConfig(BaseModel):
             ),
         )
     )
-    ridge_glass: RidgeGlassActionConfig = Field(
-        default_factory=lambda: RidgeGlassActionConfig(
+    ridge_glass: MainParamBuffActionConfig = Field(
+        default_factory=lambda: MainParamBuffActionConfig(
             duration_minutes=60,
             modifies_main_params=ModifiesMainParams(
                 using={
@@ -1390,8 +1431,8 @@ class ToolActionsConfig(BaseModel):
         )
     )
     # Same shape as Ridge Glass (duration + modifies_main_params).
-    expedition_drivetrain: RidgeGlassActionConfig = Field(
-        default_factory=lambda: RidgeGlassActionConfig(
+    expedition_drivetrain: MainParamBuffActionConfig = Field(
+        default_factory=lambda: MainParamBuffActionConfig(
             duration_minutes=60,
             modifies_main_params=ModifiesMainParams(
                 using={
@@ -1412,6 +1453,29 @@ class ToolActionsConfig(BaseModel):
                 "While active, raises max discovery speed by 150% so bicycle "
                 "travel still counts toward discovery distance, but visibility "
                 "range and walk-in discovery chance drop 5%."
+            ),
+        )
+    )
+    nocturne_lens: MainParamBuffActionConfig = Field(
+        default_factory=lambda: MainParamBuffActionConfig(
+            duration_minutes=60,
+            active_weather_times=("night",),
+            modifies_main_params=ModifiesMainParams(
+                using={
+                    "site_discovery": {
+                        "visibility_distance_m": ParamModifier(
+                            op="multiply", value=1.4
+                        ),
+                        "discovery_chance": ParamModifier(
+                            op="multiply", value=1.4
+                        ),
+                    }
+                },
+            ),
+            stats_explanation=(
+                "Lifetime battery; only starts and runs at night. Boosts "
+                "visibility range and walk-in discovery chance by 40%. Stops "
+                "automatically when night ends (dawn / day / dusk)."
             ),
         )
     )
@@ -1469,6 +1533,17 @@ class ToolActionsConfig(BaseModel):
         except KeyError as exc:
             raise KeyError(f"unknown disguise action: {action_key}") from exc
 
+    def main_param_buff_config_for(self, action_key: str) -> MainParamBuffActionConfig:
+        mapping = {
+            "ridge_glass": self.ridge_glass,
+            "expedition_drivetrain": self.expedition_drivetrain,
+            "nocturne_lens": self.nocturne_lens,
+        }
+        try:
+            return mapping[action_key]
+        except KeyError as exc:
+            raise KeyError(f"unknown main-param buff action: {action_key}") from exc
+
     def tools_modifying_skill(self, skill_id: str) -> list[tuple[str, ModifiesMainParams]]:
         """Return (action_key, mods) for tools that modify ``skill_id``."""
         out: list[tuple[str, ModifiesMainParams]] = []
@@ -1478,6 +1553,7 @@ class ToolActionsConfig(BaseModel):
             ("site_navigator", self.site_navigator),
             ("ridge_glass", self.ridge_glass),
             ("expedition_drivetrain", self.expedition_drivetrain),
+            ("nocturne_lens", self.nocturne_lens),
             ("brush_scrim", self.brush_scrim),
             ("blackout_cover", self.blackout_cover),
         ):

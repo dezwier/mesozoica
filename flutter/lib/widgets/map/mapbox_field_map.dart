@@ -19,13 +19,10 @@ import '../../controllers/field_discovery_coordinator.dart';
 import '../../controllers/formation_map_controller.dart';
 import '../../controllers/guidance_session_controller.dart';
 import '../../controllers/orbit_survey_controller.dart';
-import '../../controllers/ridge_glass_controller.dart';
-import '../../controllers/expedition_drivetrain_controller.dart';
+import '../../controllers/main_param_buff_controller.dart';
 import '../../controllers/terrain_echo_controller.dart';
 import '../../controllers/tool_catalog_controller.dart';
 import '../../controllers/weather_controller.dart';
-import '../../models/expedition_drivetrain_kind.dart';
-import '../../models/ridge_glass_kind.dart';
 import '../../models/site.dart';
 import '../../models/tool.dart';
 import '../../models/tool_session.dart';
@@ -180,8 +177,7 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
   AuthController? _auth;
   ToolCatalogController? _toolCatalog;
   GuidanceSessionController? _guidance;
-  RidgeGlassController? _ridgeGlass;
-  ExpeditionDrivetrainController? _expeditionDrivetrain;
+  MainParamBuffController? _mainParamBuff;
   WeatherController? _weather;
   VoidCallback? _visibilityListener;
 
@@ -287,15 +283,13 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
     AuthController? auth;
     ToolCatalogController? tools;
     GuidanceSessionController? guidance;
-    RidgeGlassController? ridgeGlass;
-    ExpeditionDrivetrainController? expeditionDrivetrain;
+    MainParamBuffController? mainParamBuff;
     WeatherController? weather;
     try {
       auth = context.read<AuthController>();
       tools = context.read<ToolCatalogController>();
       guidance = context.read<GuidanceSessionController>();
-      ridgeGlass = context.read<RidgeGlassController>();
-      expeditionDrivetrain = context.read<ExpeditionDrivetrainController>();
+      mainParamBuff = context.read<MainParamBuffController>();
       weather = context.read<WeatherController>();
     } on ProviderNotFoundException {
       return;
@@ -317,15 +311,10 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
       _guidance = guidance;
       _guidance?.addListener(_visibilityListener!);
     }
-    if (!identical(_ridgeGlass, ridgeGlass)) {
-      _ridgeGlass?.removeListener(_visibilityListener!);
-      _ridgeGlass = ridgeGlass;
-      _ridgeGlass?.addListener(_visibilityListener!);
-    }
-    if (!identical(_expeditionDrivetrain, expeditionDrivetrain)) {
-      _expeditionDrivetrain?.removeListener(_visibilityListener!);
-      _expeditionDrivetrain = expeditionDrivetrain;
-      _expeditionDrivetrain?.addListener(_visibilityListener!);
+    if (!identical(_mainParamBuff, mainParamBuff)) {
+      _mainParamBuff?.removeListener(_visibilityListener!);
+      _mainParamBuff = mainParamBuff;
+      _mainParamBuff?.addListener(_visibilityListener!);
     }
     if (!identical(_weather, weather)) {
       _weather?.removeListener(_visibilityListener!);
@@ -354,30 +343,21 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
     ToolSession? activeSession;
     String? activeActionKey;
     String? activeToolName;
-    final ridge = _ridgeGlass;
-    if (ridge != null && ridge.isActive) {
-      activeSession = ridge.session;
-      activeActionKey = ridge.session?.actionKey ?? RidgeGlassKind.actionKey;
-      activeToolName = ridge.tool?.name ?? RidgeGlassKind.toolName;
+    final buff = _mainParamBuff;
+    if (buff != null && buff.isActive) {
+      activeSession = buff.session;
+      activeActionKey = buff.session?.actionKey ?? buff.kind?.actionKey;
+      activeToolName = buff.tool?.name ?? buff.kind?.toolName;
     } else {
-      final drive = _expeditionDrivetrain;
-      if (drive != null && drive.isActive) {
-        activeSession = drive.session;
+      final guidance = _guidance;
+      if (guidance != null && guidance.isActive) {
+        activeSession = guidance.session;
         activeActionKey =
-            drive.session?.actionKey ?? ExpeditionDrivetrainKind.actionKey;
-        activeToolName =
-            drive.tool?.name ?? ExpeditionDrivetrainKind.toolName;
-      } else {
-        final guidance = _guidance;
-        if (guidance != null && guidance.isActive) {
-          activeSession = guidance.session;
-          activeActionKey =
-              guidance.kind?.actionKey ?? guidance.session?.actionKey;
-          activeToolName = guidance.tool?.name ??
-              (activeActionKey != null
-                  ? toolNameForActionKey(activeActionKey)
-                  : null);
-        }
+            guidance.kind?.actionKey ?? guidance.session?.actionKey;
+        activeToolName = guidance.tool?.name ??
+            (activeActionKey != null
+                ? toolNameForActionKey(activeActionKey)
+                : null);
       }
     }
 
@@ -416,8 +396,8 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
   }
 
   bool get _ridgeGlassPulseActive {
-    final ridge = _ridgeGlass;
-    return ridge != null && ridge.isActive;
+    final buff = _mainParamBuff;
+    return buff != null && buff.isRidgeGlassActive;
   }
 
   void _syncDiscoveryPulse() {
@@ -477,8 +457,7 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
       _auth?.removeListener(_visibilityListener!);
       _toolCatalog?.removeListener(_visibilityListener!);
       _guidance?.removeListener(_visibilityListener!);
-      _ridgeGlass?.removeListener(_visibilityListener!);
-      _expeditionDrivetrain?.removeListener(_visibilityListener!);
+      _mainParamBuff?.removeListener(_visibilityListener!);
       _weather?.removeListener(_visibilityListener!);
     }
     widget.locationListenable?.removeListener(_onLocationListenable);

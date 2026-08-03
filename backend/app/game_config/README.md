@@ -184,6 +184,15 @@ some_tool:
 Either bucket / skill may be omitted. Guidance tools today only set
 `using.site_discovery.discovery_chance`.
 
+Global buff tools (Ridge Glass, Expedition Drivetrain, Nocturne Lens) set
+`using.site_discovery` multipliers while a timed session is active. Optional
+`active_weather_times` (e.g. `[night]` on Nocturne Lens) means:
+
+1. Session start is rejected unless the current solar period is in the list.
+2. When the period leaves the list, the session auto-stops (battery charges
+   for elapsed time like a normal STOP).
+3. Resolve paths skip `using` mods if the period is outside the list.
+
 Aerial tools use **flight-only** keys (`flight_discovery_chance`,
 `flight_discovery_distance_m`) so they are not confused with site_discovery
 main params.

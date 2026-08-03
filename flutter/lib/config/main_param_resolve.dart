@@ -107,6 +107,7 @@ List<ParamModifier> siteDiscoveryToolModsForParam({
   required String paramKey,
   List<ToolModBinding> toolBindings = const [],
   String skillId = 'site_discovery',
+  String? weatherTime,
 }) {
   final out = <ParamModifier>[];
   for (final binding in toolBindings) {
@@ -117,6 +118,7 @@ List<ParamModifier> siteDiscoveryToolModsForParam({
       if (owning != null) out.add(owning);
     }
     if (binding.applyUsing) {
+      if (!binding.usingAllowedForWeatherTime(weatherTime)) continue;
       final using = mods.paramsFor('using', skillId)[paramKey];
       if (using != null) out.add(using);
     }
@@ -151,6 +153,7 @@ double resolveSiteDiscoveryVisibilityDistanceM({
   for (final mod in siteDiscoveryToolModsForParam(
     paramKey: 'visibility_distance_m',
     toolBindings: toolBindings,
+    weatherTime: weatherTime,
   )) {
     value = applyMainParamModifier(value, op: mod.op, value: mod.value);
   }

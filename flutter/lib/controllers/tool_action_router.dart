@@ -5,22 +5,21 @@ import 'package:provider/provider.dart';
 
 import '../controllers/aerial_session_controller.dart';
 import '../controllers/disguise_session_controller.dart';
-import '../controllers/expedition_drivetrain_controller.dart';
 import '../controllers/formation_map_controller.dart';
 import '../controllers/orbit_survey_controller.dart';
 import '../controllers/guidance_session_controller.dart';
-import '../controllers/ridge_glass_controller.dart';
+import '../controllers/main_param_buff_controller.dart';
 import '../controllers/terrain_echo_controller.dart';
 import '../models/aerial_action_kind.dart';
 import '../models/disguise_tool_kind.dart';
-import '../models/expedition_drivetrain_kind.dart';
 import '../models/formation_map_kind.dart';
 import '../models/orbit_survey_kind.dart';
 import '../models/guidance_tool_kind.dart';
-import '../models/ridge_glass_kind.dart';
+import '../models/main_param_buff_kind.dart';
 import '../models/terrain_echo_kind.dart';
 import '../models/tool.dart';
 import '../models/tool_session.dart';
+import '../services/location_service.dart';
 import '../widgets/common/app_toast.dart';
 
 typedef _ToolActivator = bool Function(BuildContext context, ToolSummary tool);
@@ -35,8 +34,7 @@ class ToolActionRouter {
     _startOrbitSurvey,
     _startFormationMap,
     _startTerrainEcho,
-    _startRidgeGlass,
-    _startExpeditionDrivetrain,
+    _startMainParamBuff,
     _startDisguise,
   ];
 
@@ -97,14 +95,9 @@ class ToolActionRouter {
       return terrain.tool?.name ?? TerrainEchoKind.toolName;
     }
 
-    final ridge = context.read<RidgeGlassController>();
-    if (ridge.isActive) {
-      return ridge.tool?.name ?? RidgeGlassKind.toolName;
-    }
-
-    final drive = context.read<ExpeditionDrivetrainController>();
-    if (drive.isActive) {
-      return drive.tool?.name ?? ExpeditionDrivetrainKind.toolName;
+    final buff = context.read<MainParamBuffController>();
+    if (buff.isActive) {
+      return buff.tool?.name ?? buff.kind?.toolName ?? 'Buff tool';
     }
 
     final disguise = context.read<DisguiseSessionController>();
@@ -134,12 +127,7 @@ class ToolActionRouter {
         (session.actionKey == TerrainEchoKind.actionKey
             ? TerrainEchoKind.toolName
             : null) ??
-        (session.actionKey == RidgeGlassKind.actionKey
-            ? RidgeGlassKind.toolName
-            : null) ??
-        (session.actionKey == ExpeditionDrivetrainKind.actionKey
-            ? ExpeditionDrivetrainKind.toolName
-            : null) ??
+        (MainParamBuffKind.tryParseActionKey(session.actionKey)?.toolName) ??
         DisguiseToolKind.tryParseActionKey(session.actionKey)?.toolName;
   }
 
@@ -173,15 +161,16 @@ class ToolActionRouter {
     return true;
   }
 
-  static bool _startRidgeGlass(BuildContext context, ToolSummary tool) {
-    if (!RidgeGlassKind.matchesToolName(tool.name)) return false;
-    unawaited(context.read<RidgeGlassController>().activate(tool));
-    return true;
-  }
-
-  static bool _startExpeditionDrivetrain(BuildContext context, ToolSummary tool) {
-    if (!ExpeditionDrivetrainKind.matchesToolName(tool.name)) return false;
-    unawaited(context.read<ExpeditionDrivetrainController>().activate(tool));
+  static bool _startMainParamBuff(BuildContext context, ToolSummary tool) {
+    if (!MainParamBuffKind.matchesToolName(tool.name)) return false;
+    final loc = context.read<LocationService>().currentLocation;
+    unawaited(
+      context.read<MainParamBuffController>().activate(
+            tool,
+            lat: loc?.latitude,
+            lon: loc?.longitude,
+          ),
+    );
     return true;
   }
 

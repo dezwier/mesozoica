@@ -1,7 +1,6 @@
 import '../models/disguise_tool_kind.dart';
-import '../models/expedition_drivetrain_kind.dart';
 import '../models/guidance_tool_kind.dart';
-import '../models/ridge_glass_kind.dart';
+import '../models/main_param_buff_kind.dart';
 import '../models/tool.dart';
 import '../models/tool_session.dart';
 import 'game_config.dart';
@@ -14,6 +13,7 @@ class ToolModBinding {
     required this.mods,
     this.applyOwning = false,
     this.applyUsing = false,
+    this.activeWeatherTimes,
   });
 
   final String actionKey;
@@ -21,6 +21,16 @@ class ToolModBinding {
   final ModifiesMainParams mods;
   final bool applyOwning;
   final bool applyUsing;
+
+  /// When set, `using` mods only apply if [weatherTime] is in this list.
+  final List<String>? activeWeatherTimes;
+
+  bool usingAllowedForWeatherTime(String? weatherTime) {
+    final allowed = activeWeatherTimes;
+    if (allowed == null) return true;
+    if (weatherTime == null) return false;
+    return allowed.contains(weatherTime);
+  }
 }
 
 /// Parse [modifies_main_params] from tool/session params. Never reads YAML.
@@ -31,6 +41,12 @@ ModifiesMainParams? modifiesMainParamsFromParams(Map<String, dynamic>? params) {
   return mods.hasAny ? mods : null;
 }
 
+List<String>? activeWeatherTimesFromParams(Map<String, dynamic>? params) {
+  final raw = params?['active_weather_times'];
+  if (raw is! List) return null;
+  return raw.map((e) => e.toString()).toList();
+}
+
 /// Owned-card params (instance), never catalog YAML [baseParams].
 Map<String, dynamic> ownedToolInstanceParams(ToolSummary tool) {
   return tool.params;
@@ -39,10 +55,8 @@ Map<String, dynamic> ownedToolInstanceParams(ToolSummary tool) {
 String? actionKeyForToolName(String name) {
   final guidance = GuidanceToolKind.tryParseToolName(name);
   if (guidance != null) return guidance.actionKey;
-  if (RidgeGlassKind.matchesToolName(name)) return RidgeGlassKind.actionKey;
-  if (ExpeditionDrivetrainKind.matchesToolName(name)) {
-    return ExpeditionDrivetrainKind.actionKey;
-  }
+  final buff = MainParamBuffKind.tryParseToolName(name);
+  if (buff != null) return buff.actionKey;
   final disguise = DisguiseToolKind.tryParseToolName(name);
   if (disguise != null) return disguise.actionKey;
   return null;
@@ -51,10 +65,8 @@ String? actionKeyForToolName(String name) {
 String toolNameForActionKey(String actionKey) {
   final guidance = GuidanceToolKind.tryParseActionKey(actionKey);
   if (guidance != null) return guidance.toolName;
-  if (actionKey == RidgeGlassKind.actionKey) return RidgeGlassKind.toolName;
-  if (actionKey == ExpeditionDrivetrainKind.actionKey) {
-    return ExpeditionDrivetrainKind.toolName;
-  }
+  final buff = MainParamBuffKind.tryParseActionKey(actionKey);
+  if (buff != null) return buff.toolName;
   final disguise = DisguiseToolKind.tryParseActionKey(actionKey);
   if (disguise != null) return disguise.toolName;
   return actionKey;
@@ -98,6 +110,9 @@ List<ToolModBinding> toolModBindingsFromInstances({
         mods: mods,
         applyOwning: true,
         applyUsing: false,
+        activeWeatherTimes: activeWeatherTimesFromParams(
+          ownedToolInstanceParams(tool),
+        ),
       ),
     );
   }
@@ -115,6 +130,8 @@ List<ToolModBinding> toolModBindingsFromInstances({
           mods: mods,
           applyOwning: false,
           applyUsing: true,
+          activeWeatherTimes:
+              activeWeatherTimesFromParams(activeSession.params),
         ),
       );
     }

@@ -224,8 +224,7 @@ mixin _MapScreenFieldOpsMixin on State<MapScreen>, _MapScreenCameraMixin {
         context.read<OrbitSurveyController>().clearLocalSession();
         context.read<FormationMapController>().clearLocalSession();
         context.read<TerrainEchoController>().clearLocalSession();
-        context.read<RidgeGlassController>().clearLocalSession();
-        context.read<ExpeditionDrivetrainController>().clearLocalSession();
+        context.read<MainParamBuffController>().clearLocalSession();
         context.read<DisguiseSessionController>().clearLocalSession();
       }
       _showScanBanner(

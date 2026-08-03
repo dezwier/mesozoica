@@ -206,6 +206,24 @@ void main() {
       isTrue,
     );
 
+    expect(config.toolActions.nocturneLens.durationMinutes, 60);
+    expect(config.toolActions.nocturneLens.activeWeatherTimes, ['night']);
+    expect(
+      config.toolActions.nocturneLens
+          .siteDiscoveryMod('visibility_distance_m')
+          ?.value,
+      1.4,
+    );
+    expect(
+      config.toolActions.nocturneLens.siteDiscoveryMod('discovery_chance')?.value,
+      1.4,
+    );
+    expect(
+      config.toolActions.nocturneLens
+          .siteDiscoveryMod('max_discovery_speed_kmh'),
+      isNull,
+    );
+
     expect(config.fossilDetection.mainParams['fossil_discovery_xp'], 5);
     expect(config.leveling.skills.length, 12);
     expect(config.leveling.skills.length, 12);

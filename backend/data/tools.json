@@ -72,6 +72,14 @@
     "action": "Ping"
   },
   {
+    "name": "Nocturne Lens",
+    "category": "1 site_discovery",
+    "scientific_tool": "night-vision goggles",
+    "description": "Amplifies low-light contrast so distant outcrops and surface clues stay readable after dark.",
+    "rarity": 2,
+    "action": "Pierce"
+  },
+  {
     "name": "Controlled Break",
     "category": "3 site_clearing",
     "scientific_tool": "controlled explosives",

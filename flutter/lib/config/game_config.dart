@@ -801,6 +801,7 @@ class ToolActionsConfig {
     required this.terrainEcho,
     required this.ridgeGlass,
     required this.expeditionDrivetrain,
+    required this.nocturneLens,
     required this.brushScrim,
     required this.blackoutCover,
   });
@@ -813,8 +814,9 @@ class ToolActionsConfig {
   final OrbitSurveyActionConfig orbitSurvey;
   final FormationMapActionConfig formationMap;
   final TerrainEchoActionConfig terrainEcho;
-  final RidgeGlassActionConfig ridgeGlass;
-  final RidgeGlassActionConfig expeditionDrivetrain;
+  final MainParamBuffActionConfig ridgeGlass;
+  final MainParamBuffActionConfig expeditionDrivetrain;
+  final MainParamBuffActionConfig nocturneLens;
   final DisguiseActionConfig brushScrim;
   final DisguiseActionConfig blackoutCover;
 
@@ -873,6 +875,8 @@ class ToolActionsConfig {
         return ridgeGlass.toParamsJson();
       case 'Expedition Drivetrain':
         return expeditionDrivetrain.toParamsJson();
+      case 'Nocturne Lens':
+        return nocturneLens.toParamsJson();
       case 'Brush Scrim':
         return brushScrim.toParamsJson();
       case 'Blackout Cover':
@@ -965,12 +969,12 @@ class ToolActionsConfig {
       terrainEcho: TerrainEchoActionConfig.fromYaml(
         GameConfig._asMap(yaml['terrain_echo']),
       ),
-      ridgeGlass: RidgeGlassActionConfig.fromYaml(
+      ridgeGlass: MainParamBuffActionConfig.fromYaml(
         GameConfig._asMap(yaml['ridge_glass']),
       ),
-      expeditionDrivetrain: RidgeGlassActionConfig.fromYaml(
+      expeditionDrivetrain: MainParamBuffActionConfig.fromYaml(
         GameConfig._asMap(yaml['expedition_drivetrain']),
-        defaults: const RidgeGlassActionConfig(
+        defaults: const MainParamBuffActionConfig(
           durationMinutes: 60,
           modifiesMainParams: ModifiesMainParams(
             using: {
@@ -983,6 +987,25 @@ class ToolActionsConfig {
           statsExplanation:
               'While active, raises max discovery speed by 150% so bicycle '
               'travel still counts toward discovery distance.',
+        ),
+      ),
+      nocturneLens: MainParamBuffActionConfig.fromYaml(
+        GameConfig._asMap(yaml['nocturne_lens']),
+        defaults: const MainParamBuffActionConfig(
+          durationMinutes: 60,
+          activeWeatherTimes: ['night'],
+          modifiesMainParams: ModifiesMainParams(
+            using: {
+              'site_discovery': {
+                'visibility_distance_m':
+                    ParamModifier(op: 'multiply', value: 1.4),
+                'discovery_chance': ParamModifier(op: 'multiply', value: 1.4),
+              },
+            },
+          ),
+          statsExplanation:
+              'Lifetime battery; only starts and runs at night. Boosts '
+              'visibility range and walk-in discovery chance by 40%.',
         ),
       ),
       brushScrim: DisguiseActionConfig.fromYaml(
@@ -1399,15 +1422,17 @@ class TerrainEchoActionConfig {
   }
 }
 
-class RidgeGlassActionConfig {
-  const RidgeGlassActionConfig({
+class MainParamBuffActionConfig {
+  const MainParamBuffActionConfig({
     required this.durationMinutes,
     this.modifiesMainParams,
+    this.activeWeatherTimes,
     required this.statsExplanation,
   });
 
   final int durationMinutes;
   final ModifiesMainParams? modifiesMainParams;
+  final List<String>? activeWeatherTimes;
   final String statsExplanation;
 
   double? get addedVisibilityRangeM {
@@ -1427,11 +1452,22 @@ class RidgeGlassActionConfig {
     return modifiesMainParams?.paramsFor('using', 'site_discovery')[paramKey];
   }
 
+  bool isActiveForWeatherTime(String? weatherTime) {
+    final allowed = activeWeatherTimes;
+    if (allowed == null) return true;
+    if (weatherTime == null) return false;
+    return allowed.contains(weatherTime);
+  }
+
   Map<String, dynamic> toParamsJson() {
     final out = <String, dynamic>{
       'duration_minutes': durationMinutes,
       'stats_explanation': statsExplanation,
     };
+    final times = activeWeatherTimes;
+    if (times != null) {
+      out['active_weather_times'] = List<String>.from(times);
+    }
     final mods = modifiesMainParams;
     if (mods != null && mods.hasAny) {
       Map<String, dynamic> encodeSkillMap(
@@ -1452,14 +1488,14 @@ class RidgeGlassActionConfig {
     return out;
   }
 
-  factory RidgeGlassActionConfig.fromYaml(
+  factory MainParamBuffActionConfig.fromYaml(
     Map<String, dynamic> yaml, {
-    RidgeGlassActionConfig? defaults,
+    MainParamBuffActionConfig? defaults,
   }) {
     final d = defaults ??
-        RidgeGlassActionConfig(
+        const MainParamBuffActionConfig(
           durationMinutes: 60,
-          modifiesMainParams: const ModifiesMainParams(
+          modifiesMainParams: ModifiesMainParams(
             using: {
               'site_discovery': {
                 'visibility_distance_m':
@@ -1479,13 +1515,21 @@ class RidgeGlassActionConfig {
     if (rawMods is Map) {
       mods = ModifiesMainParams.fromYaml(GameConfig._asMap(rawMods));
     }
-    return RidgeGlassActionConfig(
+    List<String>? activeTimes = d.activeWeatherTimes;
+    final rawTimes = yaml['active_weather_times'];
+    if (rawTimes is List) {
+      activeTimes = rawTimes.map((e) => e.toString()).toList();
+    }
+    return MainParamBuffActionConfig(
       durationMinutes: _asInt(yaml['duration_minutes'], d.durationMinutes),
       modifiesMainParams: mods,
+      activeWeatherTimes: activeTimes,
       statsExplanation: _asString(yaml['stats_explanation'], d.statsExplanation),
     );
   }
 }
+
+typedef RidgeGlassActionConfig = MainParamBuffActionConfig;
 
 class DisguiseActionConfig {
   const DisguiseActionConfig({

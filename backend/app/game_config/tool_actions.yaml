@@ -177,6 +177,19 @@ expedition_drivetrain:
     bicycle travel still counts toward discovery distance, but visibility
     range and walk-in discovery chance drop 5% (you see less while riding).
 
+nocturne_lens:
+  duration_minutes: 60
+  active_weather_times: [night]
+  modifies_main_params:
+    using:
+      site_discovery:
+        visibility_distance_m: { op: multiply, value: 1.4 }
+        discovery_chance: { op: multiply, value: 1.4 }
+  stats_explanation: >-
+    Lifetime battery; only starts and runs at night. Boosts visibility
+    range and walk-in discovery chance by 40%. Stops automatically when
+    night ends (dawn / day / dusk).
+
 brush_scrim:
   duration_minutes: 60
   modifies_main_params:

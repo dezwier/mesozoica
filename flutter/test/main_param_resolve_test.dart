@@ -21,6 +21,23 @@ ToolModBinding _ridgeUsing({required double multiply}) {
   );
 }
 
+ToolModBinding _nocturneUsing({required double multiply}) {
+  return ToolModBinding(
+    actionKey: 'nocturne_lens',
+    toolName: 'Nocturne Lens',
+    mods: ModifiesMainParams(
+      using: {
+        'site_discovery': {
+          'visibility_distance_m': ParamModifier(op: 'multiply', value: multiply),
+          'discovery_chance': ParamModifier(op: 'multiply', value: multiply),
+        },
+      },
+    ),
+    applyUsing: true,
+    activeWeatherTimes: const ['night'],
+  );
+}
+
 void main() {
   tearDown(() {
     GameConfig.debugReset();
@@ -173,6 +190,36 @@ void main() {
     expect(
       mods!.paramsFor('using', 'site_discovery')['visibility_distance_m']?.value,
       1.4,
+    );
+  });
+
+  test('nocturne using mods apply only at night', () async {
+    await loadGameConfigForTest();
+    final base = GameConfig.instance.siteDiscovery.visibilityDistanceM;
+    final bindings = [_nocturneUsing(multiply: 1.4)];
+    expect(
+      resolveSiteDiscoveryVisibilityDistanceM(
+        skillLevel: 1,
+        weatherTime: 'night',
+        toolBindings: bindings,
+      ),
+      closeTo(base * 0.6 * 1.4, 1e-9),
+    );
+    expect(
+      resolveSiteDiscoveryVisibilityDistanceM(
+        skillLevel: 1,
+        weatherTime: 'dusk',
+        toolBindings: bindings,
+      ),
+      closeTo(base, 1e-9),
+    );
+    expect(
+      resolveSiteDiscoveryVisibilityDistanceM(
+        skillLevel: 1,
+        weatherTime: 'day',
+        toolBindings: bindings,
+      ),
+      closeTo(base * 1.1, 1e-9),
     );
   });
 }

@@ -84,29 +84,52 @@ def resolve_site_discovery_params(
 ) -> ResolvedSiteDiscoveryParams:
     """Baseline main_params + level + weather_time; active tools may boost.
 
-    Global buff tools (Ridge Glass, Expedition Drivetrain) apply
-    ``modifies_main_params.using`` to every site while active. Guidance tools
-    still replace discovery chance only for the nearest still-discoverable site.
+    Global buff tools (Ridge Glass, Expedition Drivetrain, Nocturne Lens) apply
+    ``modifies_main_params.using`` to every site while active. Period-gated
+    buffs auto-stop when solar time leaves ``active_weather_times``. Guidance
+    tools still replace discovery chance only for the nearest still-discoverable
+    site.
     """
     # Lazy import: tool_session → site nearby → discover → this module.
     from app.services.tool_action_service.tool_session import (
         get_active_timed_session,
     )
+    from app.services.tool_action_service.tool_session.timed import (
+        auto_stop_buff_if_period_left,
+        buff_mods_allowed_for_period,
+    )
 
     skill_level = _skill_level_for_user(session, user_id)
     tool_mods = None
+
+    weather_time = None
+    weather_type = None
+    if lat is not None and lon is not None:
+        weather_time = period_at(latitude=lat, longitude=lon)
+        try:
+            from app.services.weather_service import get_weather
+
+            weather_type = get_weather(lat=lat, lon=lon).weather_type
+        except Exception:
+            weather_type = None
 
     buff = get_active_timed_session(
         session, user_id=user_id, action_keys=GLOBAL_BUFF_ACTION_KEYS
     )
     if buff is not None:
-        buff_mods = tool_mods_from_session_params(
-            buff.params_json or {},
-            when="using",
-            skill_id="site_discovery",
+        closed = auto_stop_buff_if_period_left(
+            session, buff, weather_time=weather_time
         )
-        if buff_mods:
-            tool_mods = buff_mods
+        if closed is None and buff_mods_allowed_for_period(
+            buff.params_json or {}, weather_time=weather_time
+        ):
+            buff_mods = tool_mods_from_session_params(
+                buff.params_json or {},
+                when="using",
+                skill_id="site_discovery",
+            )
+            if buff_mods:
+                tool_mods = buff_mods
     elif lat is not None and lon is not None:
         guidance = get_active_timed_session(
             session, user_id=user_id, action_keys=GUIDANCE_ACTION_KEYS
@@ -125,17 +148,6 @@ def resolve_site_discovery_params(
             )
             if nearest_id is not None and int(site.site_id) == nearest_id:
                 tool_mods = using_mods
-
-    weather_time = None
-    weather_type = None
-    if lat is not None and lon is not None:
-        weather_time = period_at(latitude=lat, longitude=lon)
-        try:
-            from app.services.weather_service import get_weather
-
-            weather_type = get_weather(lat=lat, lon=lon).weather_type
-        except Exception:
-            weather_type = None
 
     resolved = resolve_site_discovery_main_params(
         skill_level=skill_level,

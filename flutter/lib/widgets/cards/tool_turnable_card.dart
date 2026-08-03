@@ -8,11 +8,10 @@ import '../../config/tool_params_edit.dart';
 import '../../controllers/aerial_session_controller.dart';
 import '../../controllers/auth_controller.dart';
 import '../../controllers/disguise_session_controller.dart';
-import '../../controllers/expedition_drivetrain_controller.dart';
 import '../../controllers/formation_map_controller.dart';
 import '../../controllers/guidance_session_controller.dart';
 import '../../controllers/orbit_survey_controller.dart';
-import '../../controllers/ridge_glass_controller.dart';
+import '../../controllers/main_param_buff_controller.dart';
 import '../../controllers/terrain_echo_controller.dart';
 import '../../controllers/tool_action_router.dart';
 import '../../controllers/tool_catalog_controller.dart';
@@ -181,8 +180,7 @@ class _ToolTurnableCardState extends State<ToolTurnableCard> {
     required OrbitSurveyController orbit,
     required FormationMapController formation,
     required TerrainEchoController terrain,
-    required RidgeGlassController ridge,
-    required ExpeditionDrivetrainController drive,
+    required MainParamBuffController buff,
     required DisguiseSessionController disguise,
   }) {
     final toolId = widget.tool.id;
@@ -209,8 +207,7 @@ class _ToolTurnableCardState extends State<ToolTurnableCard> {
     addTimed('o', orbit.session, orbit.tool);
     addTimed('f', formation.session, formation.tool);
     addTimed('t', terrain.session, terrain.tool);
-    addTimed('r', ridge.session, ridge.tool);
-    addTimed('d', drive.session, drive.tool);
+    addTimed('b', buff.session, buff.tool);
     addTimed('x', disguise.session, disguise.tool);
     return parts.join('|');
   }
@@ -221,8 +218,7 @@ class _ToolTurnableCardState extends State<ToolTurnableCard> {
     required OrbitSurveyController orbit,
     required FormationMapController formation,
     required TerrainEchoController terrain,
-    required RidgeGlassController ridge,
-    required ExpeditionDrivetrainController drive,
+    required MainParamBuffController buff,
     required DisguiseSessionController disguise,
   }) {
     if (!_canLoadHistory) return;
@@ -232,8 +228,7 @@ class _ToolTurnableCardState extends State<ToolTurnableCard> {
       orbit: orbit,
       formation: formation,
       terrain: terrain,
-      ridge: ridge,
-      drive: drive,
+      buff: buff,
       disguise: disguise,
     );
     if (fingerprint == _lastSessionFingerprint) {
@@ -306,8 +301,7 @@ class _ToolTurnableCardState extends State<ToolTurnableCard> {
     required OrbitSurveyController orbit,
     required FormationMapController formation,
     required TerrainEchoController terrain,
-    required RidgeGlassController ridge,
-    required ExpeditionDrivetrainController drive,
+    required MainParamBuffController buff,
     required DisguiseSessionController disguise,
   }) {
     final total = _totalDurationS ?? widget.tool.totalDurationS;
@@ -330,8 +324,7 @@ class _ToolTurnableCardState extends State<ToolTurnableCard> {
     upsert(orbit.session);
     upsert(formation.session);
     upsert(terrain.session);
-    upsert(ridge.session);
-    upsert(drive.session);
+    upsert(buff.session);
     upsert(disguise.session);
 
     if (byId.isEmpty) return fallback;
@@ -370,8 +363,7 @@ class _ToolTurnableCardState extends State<ToolTurnableCard> {
     required OrbitSurveyController orbit,
     required FormationMapController formation,
     required TerrainEchoController terrain,
-    required RidgeGlassController ridge,
-    required ExpeditionDrivetrainController drive,
+    required MainParamBuffController buff,
     required DisguiseSessionController disguise,
   }) {
     final toolId = widget.tool.id;
@@ -391,10 +383,7 @@ class _ToolTurnableCardState extends State<ToolTurnableCard> {
     if (terrain.isActive && _matchesTool(terrain.session, terrain.tool)) {
       return true;
     }
-    if (ridge.isActive && _matchesTool(ridge.session, ridge.tool)) {
-      return true;
-    }
-    if (drive.isActive && _matchesTool(drive.session, drive.tool)) {
+    if (buff.isActive && _matchesTool(buff.session, buff.tool)) {
       return true;
     }
     if ((disguise.isPickMode || disguise.isActive) &&
@@ -444,8 +433,7 @@ class _ToolTurnableCardState extends State<ToolTurnableCard> {
     final orbit = context.watch<OrbitSurveyController>();
     final formation = context.watch<FormationMapController>();
     final terrain = context.watch<TerrainEchoController>();
-    final ridge = context.watch<RidgeGlassController>();
-    final drive = context.watch<ExpeditionDrivetrainController>();
+    final buff = context.watch<MainParamBuffController>();
     final disguise = context.watch<DisguiseSessionController>();
 
     if (inventoryMode && _canLoadHistory && !_sessionSyncQueued) {
@@ -459,8 +447,7 @@ class _ToolTurnableCardState extends State<ToolTurnableCard> {
           orbit: orbit,
           formation: formation,
           terrain: terrain,
-          ridge: ridge,
-          drive: drive,
+          buff: buff,
           disguise: disguise,
         );
       });
@@ -475,8 +462,7 @@ class _ToolTurnableCardState extends State<ToolTurnableCard> {
       orbit: orbit,
       formation: formation,
       terrain: terrain,
-      ridge: ridge,
-      drive: drive,
+      buff: buff,
       disguise: disguise,
     );
     _syncRemainingTick(inUse: inUse);
@@ -486,8 +472,7 @@ class _ToolTurnableCardState extends State<ToolTurnableCard> {
       orbit: orbit,
       formation: formation,
       terrain: terrain,
-      ridge: ridge,
-      drive: drive,
+      buff: buff,
       disguise: disguise,
     );
 

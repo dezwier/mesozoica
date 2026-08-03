@@ -6,7 +6,7 @@ import 'package:flutter/scheduler.dart';
 import 'package:latlong2/latlong.dart' hide Path;
 import 'package:provider/provider.dart';
 
-import '../../controllers/ridge_glass_controller.dart';
+import '../../controllers/main_param_buff_controller.dart';
 import '../../services/location_service.dart';
 import 'mapbox_camera_coordinator.dart';
 import 'vintage_guidance_compass.dart';
@@ -303,9 +303,9 @@ class _RidgeGlassPulseOverlayState extends State<RidgeGlassPulseOverlay>
 
   @override
   Widget build(BuildContext context) {
-    final ridge = context.watch<RidgeGlassController>();
+    final ridge = context.watch<MainParamBuffController>();
     final center = _centerPx;
-    if (!ridge.isActive ||
+    if (!ridge.isRidgeGlassActive ||
         center == null ||
         _outerRadiusPx <= _innerRadiusPx + 1) {
       return const SizedBox.shrink();

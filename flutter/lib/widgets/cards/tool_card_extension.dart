@@ -3,11 +3,10 @@ import 'package:flutter/material.dart';
 import '../../models/tool.dart';
 import 'tool_extensions/aerial_session_card_extension.dart';
 import 'tool_extensions/disguise_card_extension.dart';
-import 'tool_extensions/expedition_drivetrain_card_extension.dart';
 import 'tool_extensions/formation_map_card_extension.dart';
 import 'tool_extensions/guidance_card_extension.dart';
+import 'tool_extensions/main_param_buff_card_extension.dart';
 import 'tool_extensions/orbit_survey_card_extension.dart';
-import 'tool_extensions/ridge_glass_card_extension.dart';
 import 'tool_extensions/terrain_echo_card_extension.dart';
 
 /// Per-action-key extras for tool card backs (stats, params).
@@ -33,8 +32,7 @@ class ToolCardExtensions {
     OrbitSurveyCardExtension(),
     FormationMapCardExtension(),
     TerrainEchoCardExtension(),
-    RidgeGlassCardExtension(),
-    ExpeditionDrivetrainCardExtension(),
+    MainParamBuffCardExtension(),
     DisguiseCardExtension(),
   ];
 

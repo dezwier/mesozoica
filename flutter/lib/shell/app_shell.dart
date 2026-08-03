@@ -12,13 +12,12 @@ import '../config/tool_instance_params.dart';
 import '../controllers/aerial_session_controller.dart';
 import '../controllers/auth_controller.dart';
 import '../controllers/catalog_mode_controller.dart';
-import '../controllers/expedition_drivetrain_controller.dart';
 import '../controllers/disguise_session_controller.dart';
 import '../controllers/field_discovery_coordinator.dart';
 import '../controllers/field_session_coordinator.dart';
 import '../controllers/formation_map_controller.dart';
+import '../controllers/main_param_buff_controller.dart';
 import '../controllers/orbit_survey_controller.dart';
-import '../controllers/ridge_glass_controller.dart';
 import '../controllers/terrain_echo_controller.dart';
 import '../controllers/guidance_session_controller.dart';
 import '../controllers/map_controller.dart';
@@ -28,6 +27,7 @@ import '../controllers/fossil_catalog_controller.dart';
 import '../controllers/splash_hold_controller.dart';
 import '../controllers/tool_catalog_controller.dart';
 import '../controllers/walk_distance_controller.dart';
+import '../controllers/weather_controller.dart';
 import '../controllers/site_exploration_controller.dart';
 import '../models/fossil.dart';
 import '../models/site.dart';
@@ -81,9 +81,9 @@ class _AppShellState extends State<AppShell>
   OrbitSurveyController? _orbitSurvey;
   FormationMapController? _formationMap;
   TerrainEchoController? _terrainEcho;
-  RidgeGlassController? _ridgeGlass;
-  ExpeditionDrivetrainController? _expeditionDrivetrain;
+  MainParamBuffController? _mainParamBuff;
   DisguiseSessionController? _disguise;
+  WeatherController? _weather;
   StreamSubscription<RemoteMessage>? _foregroundPushSub;
   StreamSubscription<RemoteMessage>? _openedPushSub;
   /// Cached so aerial session list refreshes do not rebuild the shell.
@@ -161,24 +161,25 @@ class _AppShellState extends State<AppShell>
         location: context.read<LocationService>(),
       );
 
-      final ridgeGlass = context.read<RidgeGlassController>();
-      _ridgeGlass = ridgeGlass;
-      ridgeGlass.addListener(_onRidgeGlassChanged);
-
-      final expeditionDrivetrain =
-          context.read<ExpeditionDrivetrainController>();
-      _expeditionDrivetrain = expeditionDrivetrain;
-      expeditionDrivetrain.addListener(_onExpeditionDrivetrainChanged);
+      final mainParamBuff = context.read<MainParamBuffController>();
+      _mainParamBuff = mainParamBuff;
+      mainParamBuff.addListener(_onMainParamBuffChanged);
 
       final disguise = context.read<DisguiseSessionController>();
       _disguise = disguise;
       disguise.addListener(_onDisguiseChanged);
 
+      final weather = context.read<WeatherController>();
+      _weather = weather;
+      weather.addListener(_onWeatherChanged);
+
       unawaited(() async {
-        await ridgeGlass.restoreActiveSession();
-        await expeditionDrivetrain.restoreActiveSession();
+        await mainParamBuff.restoreActiveSession();
         await disguise.restoreActiveSession();
-        if (mounted) _syncMaxDiscoverySpeed();
+        if (mounted) {
+          await mainParamBuff.stopIfPeriodLeft(weather.weatherTime);
+          _syncMaxDiscoverySpeed();
+        }
       }());
 
       context.read<FieldSessionCoordinator>().bind(
@@ -294,24 +295,22 @@ class _AppShellState extends State<AppShell>
     }
   }
 
-  void _onRidgeGlassChanged() {
+  void _onMainParamBuffChanged() {
     if (!mounted) return;
-    final ridge = _ridgeGlass;
-    if (ridge == null) return;
-    if (ridge.requestShowOnMap && _anyOverlayOpen) {
+    final buff = _mainParamBuff;
+    if (buff == null) return;
+    if (buff.requestShowOnMap && _anyOverlayOpen) {
       setState(_clearOverlayFlags);
     }
     _syncMaxDiscoverySpeed();
   }
 
-  void _onExpeditionDrivetrainChanged() {
+  void _onWeatherChanged() {
     if (!mounted) return;
-    final drive = _expeditionDrivetrain;
-    if (drive == null) return;
-    if (drive.requestShowOnMap && _anyOverlayOpen) {
-      setState(_clearOverlayFlags);
-    }
-    _syncMaxDiscoverySpeed();
+    final buff = _mainParamBuff;
+    final weather = _weather;
+    if (buff == null || weather == null) return;
+    unawaited(buff.stopIfPeriodLeft(weather.weatherTime));
   }
 
   void _onDisguiseChanged() {
@@ -339,15 +338,11 @@ class _AppShellState extends State<AppShell>
     })();
 
     ParamModifier? speedMod;
-    final ridge = _ridgeGlass;
-    if (ridge != null && ridge.isActive) {
-      final mods = modifiesMainParamsFromParams(ridge.session?.params);
-      speedMod =
-          mods?.paramsFor('using', 'site_discovery')['max_discovery_speed_kmh'];
-    }
-    final drive = _expeditionDrivetrain;
-    if (drive != null && drive.isActive) {
-      final mods = modifiesMainParamsFromParams(drive.session?.params);
+    final buff = _mainParamBuff;
+    if (buff != null &&
+        buff.isActive &&
+        buff.isLiveForWeatherTime(_weather?.weatherTime)) {
+      final mods = modifiesMainParamsFromParams(buff.session?.params);
       speedMod =
           mods?.paramsFor('using', 'site_discovery')['max_discovery_speed_kmh'];
     }
@@ -468,9 +463,9 @@ class _AppShellState extends State<AppShell>
     _orbitSurvey?.removeListener(_onOrbitSurveyChanged);
     _formationMap?.removeListener(_onFormationMapChanged);
     _terrainEcho?.removeListener(_onTerrainEchoChanged);
-    _ridgeGlass?.removeListener(_onRidgeGlassChanged);
-    _expeditionDrivetrain?.removeListener(_onExpeditionDrivetrainChanged);
+    _mainParamBuff?.removeListener(_onMainParamBuffChanged);
     _disguise?.removeListener(_onDisguiseChanged);
+    _weather?.removeListener(_onWeatherChanged);
     _catalogModeController?.removeListener(_onCatalogModeChanged);
     _discoveryRefreshTimer?.cancel();
     unawaited(_foregroundPushSub?.cancel() ?? Future<void>.value());
@@ -506,10 +501,13 @@ class _AppShellState extends State<AppShell>
           context.read<TerrainEchoController>().restoreActiveSession(),
         );
         unawaited(
-          context.read<RidgeGlassController>().restoreActiveSession(),
-        );
-        unawaited(
-          context.read<ExpeditionDrivetrainController>().restoreActiveSession(),
+          context.read<MainParamBuffController>().restoreActiveSession().then((_) {
+            if (!mounted) return;
+            final weather = context.read<WeatherController>();
+            return context
+                .read<MainParamBuffController>()
+                .stopIfPeriodLeft(weather.weatherTime);
+          }),
         );
         unawaited(
           context.read<DisguiseSessionController>().restoreActiveSession(),
@@ -583,10 +581,7 @@ class _AppShellState extends State<AppShell>
       context.read<TerrainEchoController>().stop(notifyServer: false),
     );
     unawaited(
-      context.read<RidgeGlassController>().stop(notifyServer: false),
-    );
-    unawaited(
-      context.read<ExpeditionDrivetrainController>().stop(notifyServer: false),
+      context.read<MainParamBuffController>().stop(notifyServer: false),
     );
     unawaited(
       context.read<DisguiseSessionController>().stop(notifyServer: false),
@@ -623,9 +618,11 @@ class _AppShellState extends State<AppShell>
       if (!mounted || _previousUserId != userId) return;
       await context.read<TerrainEchoController>().restoreActiveSession();
       if (!mounted || _previousUserId != userId) return;
-      await context.read<RidgeGlassController>().restoreActiveSession();
+      await context.read<MainParamBuffController>().restoreActiveSession();
       if (!mounted || _previousUserId != userId) return;
-      await context.read<ExpeditionDrivetrainController>().restoreActiveSession();
+      await context.read<MainParamBuffController>().stopIfPeriodLeft(
+            context.read<WeatherController>().weatherTime,
+          );
       if (!mounted || _previousUserId != userId) return;
       await context.read<DisguiseSessionController>().restoreActiveSession();
       if (!mounted || _previousUserId != userId) return;

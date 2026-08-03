@@ -167,11 +167,23 @@ def test_load_game_config_matches_current_defaults() -> None:
     assert drive_mods is not None
     assert drive_mods.affects_skill("site_discovery")
 
+    nocturne = config.tool_actions.nocturne_lens
+    assert nocturne.duration_minutes == 60
+    assert nocturne.active_weather_times == ("night",)
+    assert nocturne.site_discovery_mod("visibility_distance_m") == ParamModifier(
+        op="multiply", value=1.4
+    )
+    assert nocturne.site_discovery_mod("discovery_chance") == ParamModifier(
+        op="multiply", value=1.4
+    )
+    assert nocturne.site_discovery_mod("max_discovery_speed_kmh") is None
+
     modifying = [
         key for key, _ in config.tool_actions.tools_modifying_skill("site_discovery")
     ]
     assert "ridge_glass" in modifying
     assert "expedition_drivetrain" in modifying
+    assert "nocturne_lens" in modifying
 
     assert len(config.leveling.skills) == 12
     assert len(config.leveling.career_titles) == 99

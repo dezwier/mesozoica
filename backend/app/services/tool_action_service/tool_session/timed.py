@@ -10,10 +10,8 @@ from sqlmodel import Session, col, select
 from app.core.exceptions import NotFoundError, ValidationError
 from app.core.game_config import get_game_config
 from app.models.tool_session import (
-    ACTION_KEY_EXPEDITION_DRIVETRAIN,
     ACTION_KEY_FORMATION_MAP,
     ACTION_KEY_ORBIT_SURVEY,
-    ACTION_KEY_RIDGE_GLASS,
     ACTION_KEY_TERRAIN_ECHO,
     DISGUISE_ACTION_KEYS,
     SESSION_STATUS_ACTIVE,
@@ -35,6 +33,12 @@ from app.services.tool_action_service.guidance_kinds import (
     kind_for_tool_name as guidance_kind_for_tool_name,
     is_guidance_action_key,
 )
+from app.services.tool_action_service.main_param_buff_kinds import (
+    config_for_action_key as main_param_buff_config_for_action_key,
+    is_main_param_buff_action_key,
+    is_main_param_buff_tool_name,
+    kind_for_tool_name as main_param_buff_kind_for_tool_name,
+)
 from app.services.tool_action_service.tool_session.budget import (
     allocate_remaining_for_start,
 )
@@ -44,12 +48,11 @@ from app.services.tool_action_service.tool_session.lifecycle import (
     expire_if_needed,
 )
 from app.services.tool_service.collect import resolve_owned_tool_selection
+from app.services.weather_service.solar import period_at
 
 TOOL_NAME_ORBIT_SURVEY = "Orbit Survey"
 TOOL_NAME_FORMATION_MAP = "Formation Map"
 TOOL_NAME_TERRAIN_ECHO = "Terrain Echo"
-TOOL_NAME_RIDGE_GLASS = "Ridge Glass"
-TOOL_NAME_EXPEDITION_DRIVETRAIN = "Expedition Drivetrain"
 
 
 def _utcnow() -> datetime:
@@ -68,13 +71,49 @@ def _action_key_for_tool_name(tool_name: str) -> str:
         return ACTION_KEY_FORMATION_MAP
     if tool_name == TOOL_NAME_TERRAIN_ECHO:
         return ACTION_KEY_TERRAIN_ECHO
-    if tool_name == TOOL_NAME_RIDGE_GLASS:
-        return ACTION_KEY_RIDGE_GLASS
-    if tool_name == TOOL_NAME_EXPEDITION_DRIVETRAIN:
-        return ACTION_KEY_EXPEDITION_DRIVETRAIN
+    if is_main_param_buff_tool_name(tool_name):
+        return main_param_buff_kind_for_tool_name(tool_name).action_key
     if is_disguise_tool_name(tool_name):
         return action_key_for_disguise_tool_name(tool_name)
     return guidance_kind_for_tool_name(tool_name).action_key
+
+
+def _active_weather_times_from(
+    *,
+    cfg: Any,
+    inst_p: dict[str, Any],
+) -> list[str] | None:
+    """Resolve period gate from instance params or YAML config."""
+    raw = inst_p.get("active_weather_times")
+    if raw is None:
+        allowed = getattr(cfg, "active_weather_times", None)
+        if allowed is None:
+            return None
+        return [str(p) for p in allowed]
+    if isinstance(raw, (list, tuple)):
+        return [str(p) for p in raw]
+    return None
+
+
+def _assert_buff_weather_time_ok(
+    *,
+    tool_name: str,
+    allowed: list[str] | None,
+    lat: float | None,
+    lon: float | None,
+) -> None:
+    if not allowed:
+        return
+    if lat is None or lon is None:
+        raise ValidationError(
+            f"{tool_name} needs your location to check the time of day"
+        )
+    weather_time = period_at(latitude=float(lat), longitude=float(lon))
+    if weather_time not in allowed:
+        periods = ", ".join(allowed)
+        raise ValidationError(
+            f"{tool_name} only works during {periods} (now: {weather_time})"
+        )
 
 
 def _guidance_params(
@@ -189,11 +228,63 @@ def _main_param_buff_params(
     params: dict[str, Any] = {"duration_minutes": duration_minutes}
     if raw_mods is not None:
         params["modifies_main_params"] = raw_mods
+    active_times = _active_weather_times_from(cfg=cfg, inst_p=inst_p)
+    if active_times is not None:
+        params["active_weather_times"] = active_times
     return params
 
 
 # Back-compat alias used by Ridge Glass tests / callers.
 _ridge_glass_params = _main_param_buff_params
+
+
+def session_active_weather_times(params: dict[str, Any] | None) -> list[str] | None:
+    """Return snapshotted ``active_weather_times`` from session params, if any."""
+    if not params:
+        return None
+    raw = params.get("active_weather_times")
+    if raw is None:
+        return None
+    if isinstance(raw, (list, tuple)):
+        return [str(p) for p in raw]
+    return None
+
+
+def buff_mods_allowed_for_period(
+    params: dict[str, Any] | None,
+    *,
+    weather_time: str | None,
+) -> bool:
+    """Whether session ``using`` mods should apply for ``weather_time``."""
+    allowed = session_active_weather_times(params)
+    if allowed is None:
+        return True
+    if weather_time is None:
+        return False
+    return weather_time in allowed
+
+
+def auto_stop_buff_if_period_left(
+    session: Session,
+    row: ToolSession,
+    *,
+    weather_time: str | None,
+) -> ToolSession | None:
+    """Close a period-gated buff session when ``weather_time`` leaves its list.
+
+    Returns the closed row, or None if the session remains active.
+    """
+    if row.status != SESSION_STATUS_ACTIVE:
+        return None
+    if buff_mods_allowed_for_period(row.params_json or {}, weather_time=weather_time):
+        return None
+    now = _utcnow()
+    row.status = SESSION_STATUS_CANCELLED
+    close_session(row, now=now, stop_reason=STOP_REASON_MANUAL)
+    session.add(row)
+    session.commit()
+    session.refresh(row)
+    return row
 
 
 def _place_formation_center(
@@ -462,19 +553,20 @@ def start_timed_session(
             raise ValidationError("This action is only available for Terrain Echo")
         cfg = game.tool_actions.terrain_echo
         params = _terrain_params(cfg=cfg, inst_p=inst_p, duration_minutes=eff_duration)
-    elif action_key == ACTION_KEY_RIDGE_GLASS:
-        if tool_type.name != TOOL_NAME_RIDGE_GLASS:
-            raise ValidationError("This action is only available for Ridge Glass")
-        cfg = game.tool_actions.ridge_glass
-        params = _main_param_buff_params(
-            cfg=cfg, inst_p=inst_p, duration_minutes=eff_duration
-        )
-    elif action_key == ACTION_KEY_EXPEDITION_DRIVETRAIN:
-        if tool_type.name != TOOL_NAME_EXPEDITION_DRIVETRAIN:
+    elif is_main_param_buff_action_key(action_key):
+        kind = main_param_buff_kind_for_tool_name(tool_type.name)
+        if kind.action_key != action_key:
             raise ValidationError(
-                "This action is only available for Expedition Drivetrain"
+                f"This action is only available for {kind.tool_name}"
             )
-        cfg = game.tool_actions.expedition_drivetrain
+        cfg = main_param_buff_config_for_action_key(action_key)
+        allowed = _active_weather_times_from(cfg=cfg, inst_p=inst_p)
+        _assert_buff_weather_time_ok(
+            tool_name=kind.tool_name,
+            allowed=allowed,
+            lat=lat,
+            lon=lon,
+        )
         params = _main_param_buff_params(
             cfg=cfg, inst_p=inst_p, duration_minutes=eff_duration
         )

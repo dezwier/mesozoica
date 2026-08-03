@@ -5,13 +5,12 @@ import 'package:provider/provider.dart';
 import '../../config/game_config.dart';
 import '../../config/tool_instance_params.dart';
 import '../../controllers/auth_controller.dart';
-import '../../controllers/expedition_drivetrain_controller.dart';
 import '../../controllers/guidance_session_controller.dart';
-import '../../controllers/ridge_glass_controller.dart';
+import '../../controllers/main_param_buff_controller.dart';
 import '../../controllers/tool_catalog_controller.dart';
 import '../../controllers/weather_controller.dart';
 import '../../models/disguise_tool_kind.dart';
-import '../../models/expedition_drivetrain_kind.dart';
+import '../../models/main_param_buff_kind.dart';
 import '../../models/profile.dart';
 import '../../models/tool.dart';
 import '../../models/tool_session.dart';
@@ -650,26 +649,19 @@ List<ToolModBinding> _toolModBindings(BuildContext context) {
     String? activeActionKey;
     String? activeToolName;
 
-    final ridge = context.read<RidgeGlassController>();
-    if (ridge.isActive) {
-      activeSession = ridge.session;
-      activeActionKey = ridge.session?.actionKey ?? 'ridge_glass';
-      activeToolName = ridge.tool?.name;
+    final buff = context.read<MainParamBuffController>();
+    if (buff.isActive) {
+      activeSession = buff.session;
+      activeActionKey =
+          buff.session?.actionKey ?? buff.kind?.actionKey;
+      activeToolName = buff.tool?.name ?? buff.kind?.toolName;
     } else {
-      final drive = context.read<ExpeditionDrivetrainController>();
-      if (drive.isActive) {
-        activeSession = drive.session;
+      final guidance = context.read<GuidanceSessionController>();
+      if (guidance.isActive) {
+        activeSession = guidance.session;
         activeActionKey =
-            drive.session?.actionKey ?? ExpeditionDrivetrainKind.actionKey;
-        activeToolName = drive.tool?.name;
-      } else {
-        final guidance = context.read<GuidanceSessionController>();
-        if (guidance.isActive) {
-          activeSession = guidance.session;
-          activeActionKey =
-              guidance.kind?.actionKey ?? guidance.session?.actionKey;
-          activeToolName = guidance.tool?.name;
-        }
+            guidance.kind?.actionKey ?? guidance.session?.actionKey;
+        activeToolName = guidance.tool?.name;
       }
     }
 
