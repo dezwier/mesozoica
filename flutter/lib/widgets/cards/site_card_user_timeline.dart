@@ -14,16 +14,18 @@ class SiteTimelineEntry {
     required this.moment,
     required this.whenLabel,
     required this.howLabel,
+    this.wasFirst = false,
     this.onHowTap,
   });
 
   final String moment;
   final String whenLabel;
   final String howLabel;
+  final bool wasFirst;
   final VoidCallback? onHowTap;
 }
 
-/// Compact list of user moments for a site (discovery first; more later).
+/// Compact list of user moments for a site (discovery / documentation).
 class SiteCardUserTimeline extends StatelessWidget {
   const SiteCardUserTimeline({super.key, required this.site});
 
@@ -33,24 +35,47 @@ class SiteCardUserTimeline extends StatelessWidget {
     SiteSummary site, {
     VoidCallback? onAerialTap,
   }) {
+    final entries = <SiteTimelineEntry>[];
     final discoveredAt = site.discoveredAt;
     final how = site.howDiscovered;
-    if (discoveredAt == null && (how == null || how.isEmpty)) {
-      return const [];
+    final hasDiscovery =
+        discoveredAt != null || (how != null && how.isNotEmpty);
+    if (hasDiscovery) {
+      final aerial = (how == SiteSummary.howDiscoveredAerialRecon ||
+              how == SiteSummary.howDiscoveredAerialScout) &&
+          site.discoveringSessionId != null;
+      entries.add(
+        SiteTimelineEntry(
+          moment: 'Discovered',
+          whenLabel: discoveredAt != null
+              ? formatRelativeWhen(discoveredAt)
+              : '—',
+          howLabel: howDiscoveredLabel(how),
+          wasFirst: site.viewerWasFirstDiscovery == true,
+          onHowTap: aerial ? onAerialTap : null,
+        ),
+      );
     }
-    final aerial = (how == SiteSummary.howDiscoveredAerialRecon ||
-            how == SiteSummary.howDiscoveredAerialScout) &&
-        site.discoveringSessionId != null;
-    return [
-      SiteTimelineEntry(
-        moment: 'Discovered',
-        whenLabel: discoveredAt != null
-            ? formatRelativeWhen(discoveredAt)
-            : '—',
-        howLabel: howDiscoveredLabel(how),
-        onHowTap: aerial ? onAerialTap : null,
-      ),
-    ];
+
+    final documented = site.documented == true ||
+        site.viewerHasDocumented == true ||
+        site.documentedAt != null;
+    if (documented) {
+      final documentedAt = site.documentedAt ?? discoveredAt;
+      final wasFirst = site.viewerWasFirstDocumentation == true;
+      entries.add(
+        SiteTimelineEntry(
+          moment: 'Documented',
+          whenLabel: documentedAt != null
+              ? formatRelativeWhen(documentedAt)
+              : '—',
+          howLabel: wasFirst ? 'First' : '—',
+          wasFirst: wasFirst,
+        ),
+      );
+    }
+
+    return entries;
   }
 
   static String howDiscoveredLabel(String? how) {
@@ -135,19 +160,25 @@ class _EntryRow extends StatelessWidget {
           TextSpan(text: entry.moment),
           const TextSpan(text: ' · '),
           TextSpan(text: entry.whenLabel),
-          const TextSpan(text: ' · '),
-          if (entry.onHowTap == null)
-            TextSpan(text: entry.howLabel, style: howStyle)
-          else
-            WidgetSpan(
-              alignment: PlaceholderAlignment.baseline,
-              baseline: TextBaseline.alphabetic,
-              child: GestureDetector(
-                onTap: entry.onHowTap,
-                behavior: HitTestBehavior.opaque,
-                child: Text(entry.howLabel, style: howStyle),
+          if (entry.wasFirst && entry.howLabel != 'First') ...[
+            const TextSpan(text: ' · '),
+            const TextSpan(text: 'First'),
+          ],
+          if (entry.howLabel.isNotEmpty) ...[
+            const TextSpan(text: ' · '),
+            if (entry.onHowTap == null)
+              TextSpan(text: entry.howLabel, style: howStyle)
+            else
+              WidgetSpan(
+                alignment: PlaceholderAlignment.baseline,
+                baseline: TextBaseline.alphabetic,
+                child: GestureDetector(
+                  onTap: entry.onHowTap,
+                  behavior: HitTestBehavior.opaque,
+                  child: Text(entry.howLabel, style: howStyle),
+                ),
               ),
-            ),
+          ],
         ],
       ),
     );

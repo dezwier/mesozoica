@@ -119,6 +119,13 @@ class UserSite(SQLModel, table=True):
             "exploration meters are frozen"
         ),
     )
+    was_first: bool = Field(
+        default=False,
+        description=(
+            "True when this role grant was the first for the site "
+            "(first discoverer / first documenter)"
+        ),
+    )
     timestamp: datetime = Field(
         default_factory=_utc_now,
         sa_column=Column(

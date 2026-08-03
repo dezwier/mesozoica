@@ -80,6 +80,12 @@ mixin _AppShellDiscoveryMixin on State<AppShell> {
     final pending = discovery.pendingCelebration;
     if (pending == null) return;
 
+    // Apply discover response immediately so timeline / first-discovery flags
+    // show on the card back without waiting for the debounced refetch.
+    context.read<MapController>().upsertSite(pending.site);
+    context.read<SiteCatalogController>().upsertSite(pending.site);
+    unawaited(context.read<AuthController>().refreshProfile());
+
     // Always refresh map/catalog/inbox; push already covers background UX.
     _scheduleDiscoveryRefresh(siteId: pending.site.siteId);
 

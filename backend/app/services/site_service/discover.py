@@ -111,12 +111,21 @@ def discover_site(
             "Discovery chance miss - stay nearby or re-enter range to try again"
         )
 
-    is_first_discovery = site.how_discovered is None
+    prior_discoverer = session.exec(
+        select(UserSite).where(
+            col(UserSite.site_id) == site_id,
+            col(UserSite.role) == USER_SITE_ROLE_DISCOVERER,
+        )
+    ).first()
+    # Prefer live discoverer rows; fall back to how_discovered for sites whose
+    # user_site links were cleared without resetting first-discovery metadata.
+    is_first_discovery = prior_discoverer is None and site.how_discovered is None
     session.add(
         UserSite(
             user_id=user_id,
             site_id=site_id,
             role=USER_SITE_ROLE_DISCOVERER,
+            was_first=is_first_discovery,
         )
     )
     apply_site_discovery_enrichment(

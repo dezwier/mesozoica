@@ -101,13 +101,20 @@ def discover_site_from_aerial(
     if outcome != "hit":
         return None
 
-    is_first_discovery = site.how_discovered is None
+    prior_discoverer = session.exec(
+        select(UserSite).where(
+            col(UserSite.site_id) == site_id,
+            col(UserSite.role) == USER_SITE_ROLE_DISCOVERER,
+        )
+    ).first()
+    is_first_discovery = prior_discoverer is None and site.how_discovered is None
     session.add(
         UserSite(
             user_id=user_id,
             site_id=site_id,
             role=USER_SITE_ROLE_DISCOVERER,
             source_session_id=session_id,
+            was_first=is_first_discovery,
         )
     )
     apply_site_discovery_enrichment(

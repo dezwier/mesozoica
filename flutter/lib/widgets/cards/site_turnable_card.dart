@@ -90,6 +90,14 @@ class _SiteTurnableCardState extends State<SiteTurnableCard> {
     if (oldWidget.site.siteId != widget.site.siteId ||
         oldWidget.site.status != widget.site.status ||
         oldWidget.site.viewerHasDocumented != widget.site.viewerHasDocumented ||
+        oldWidget.site.documented != widget.site.documented ||
+        oldWidget.site.discoveredAt != widget.site.discoveredAt ||
+        oldWidget.site.documentedAt != widget.site.documentedAt ||
+        oldWidget.site.howDiscovered != widget.site.howDiscovered ||
+        oldWidget.site.viewerWasFirstDiscovery !=
+            widget.site.viewerWasFirstDiscovery ||
+        oldWidget.site.viewerWasFirstDocumentation !=
+            widget.site.viewerWasFirstDocumentation ||
         oldWidget.site.exploredDistanceM != widget.site.exploredDistanceM ||
         oldWidget.site.oddDinoBand?.effectiveAccuracy !=
             widget.site.oddDinoBand?.effectiveAccuracy) {

@@ -140,9 +140,89 @@ def test_discover_site_sets_walk_and_enriches(session: Session, monkeypatch):
         lon=-100.0,
     )
     session.refresh(site)
+    session.refresh(user)
     assert site.how_discovered == HOW_DISCOVERED_WALK
     assert site.country_code == "US"
     assert site.state == "Kansas"
+    assert user.skill_breakdown["site_discovery"]["sites"] == 20
+    assert user.skill_breakdown["site_discovery"]["first_discovery"] == 20
+    from sqlmodel import col, select
+
+    from app.models.user_site import USER_SITE_ROLE_DISCOVERER, UserSite
+
+    link = session.exec(
+        select(UserSite).where(
+            col(UserSite.user_id) == user.id,
+            col(UserSite.site_id) == site.site_id,
+            col(UserSite.role) == USER_SITE_ROLE_DISCOVERER,
+        )
+    ).one()
+    assert link.was_first is True
+
+
+def test_second_discoverer_skips_first_discovery_xp(session: Session, monkeypatch):
+    site = _field_site(session, site_id=2_000_000_091)
+    first = _user(session, username="first_finder")
+    second = _user(session, username="second_finder")
+    monkeypatch.setattr(
+        "app.services.field_service.field_coordinate_enrich.enrich_coordinate",
+        lambda lat, lon: CoordinateEnrichment(country_code="US", state="Kansas"),
+    )
+    monkeypatch.setattr(
+        "app.services.site_service.discover.resolve_site_discovery_params",
+        lambda session, *, user_id, site, lat=None, lon=None: type(
+            "P",
+            (),
+            {
+                "max_distance_m": 500.0,
+                "discovery_chance": 1.0,
+                "base_discovery_chance": 1.0,
+                "site_discovery_xp": 20.0,
+                "first_discovery_xp": 20.0,
+            },
+        )(),
+    )
+    monkeypatch.setattr(
+        "app.services.site_service.discover.ensure_fossils_on_site_discovery",
+        lambda session, site_id, user_id: None,
+    )
+    monkeypatch.setattr(
+        "app.services.site_service.discover.send_site_discovered_push",
+        lambda *args, **kwargs: None,
+    )
+
+    discover_site(
+        session,
+        site_id=int(site.site_id),
+        user_id=int(first.id),
+        lat=40.0,
+        lon=-100.0,
+    )
+    discover_site(
+        session,
+        site_id=int(site.site_id),
+        user_id=int(second.id),
+        lat=40.0,
+        lon=-100.0,
+    )
+    session.refresh(first)
+    session.refresh(second)
+    assert first.skill_breakdown["site_discovery"]["first_discovery"] == 20
+    assert second.skill_breakdown["site_discovery"]["sites"] == 20
+    assert "first_discovery" not in (second.skill_breakdown.get("site_discovery") or {})
+
+    from sqlmodel import col, select
+
+    from app.models.user_site import USER_SITE_ROLE_DISCOVERER, UserSite
+
+    second_link = session.exec(
+        select(UserSite).where(
+            col(UserSite.user_id) == second.id,
+            col(UserSite.site_id) == site.site_id,
+            col(UserSite.role) == USER_SITE_ROLE_DISCOVERER,
+        )
+    ).one()
+    assert second_link.was_first is False
 
 
 def test_aerial_discover_sets_aerial_recon(session: Session, monkeypatch):
@@ -372,6 +452,7 @@ def test_site_summary_includes_viewer_discovery(session: Session):
             role=USER_SITE_ROLE_DISCOVERER,
             source_session_id=int(tool_session.id),
             timestamp=discovered_at,
+            was_first=True,
         )
     )
     session.commit()
@@ -385,6 +466,7 @@ def test_site_summary_includes_viewer_discovery(session: Session):
     summary = site_row_to_summary(row)
     assert summary.discovered_at is not None
     assert summary.discovering_session_id == int(tool_session.id)
+    assert summary.viewer_was_first_discovery is True
 
 
 def test_manual_constant_available():

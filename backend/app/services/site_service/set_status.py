@@ -79,6 +79,10 @@ def set_site_status(
         ).all()
         for row in rows:
             session.delete(row)
+        # Allow a later discoverer to claim first-discovery again.
+        if site.how_discovered is not None:
+            site.how_discovered = None
+            session.add(site)
         session.commit()
         return get_site_by_id(session, site_id, data_source=DATA_SOURCE_FIELD)
 
@@ -106,6 +110,18 @@ def set_site_status(
             col(UserSite.role) == role,
         )
     ).first()
+    is_new_role = existing is None
+    is_first_discovery = False
+    if is_new_role and role == USER_SITE_ROLE_DISCOVERER:
+        prior_discoverer = session.exec(
+            select(UserSite).where(
+                col(UserSite.site_id) == site_id,
+                col(UserSite.role) == USER_SITE_ROLE_DISCOVERER,
+            )
+        ).first()
+        is_first_discovery = (
+            prior_discoverer is None and site.how_discovered is None
+        )
     if existing is None:
         session.add(
             UserSite(
@@ -113,6 +129,7 @@ def set_site_status(
                 site_id=site_id,
                 role=role,
                 timestamp=now,
+                was_first=is_first_discovery,
             )
         )
     else:
@@ -133,6 +150,20 @@ def set_site_status(
             else HOW_DISCOVERED_WALK
         )
         apply_site_discovery_enrichment(session, site, how_discovered=how)
+
+    if is_new_role and role == USER_SITE_ROLE_DISCOVERER:
+        from app.models.user import User
+        from app.services.level_service import (
+            award_first_discovery_xp,
+            award_site_discover_xp,
+        )
+
+        user = session.get(User, user_id)
+        if user is not None:
+            award_site_discover_xp(user)
+            if is_first_discovery:
+                award_first_discovery_xp(user)
+            session.add(user)
 
     if should_notify:
         notification = UserNotification(

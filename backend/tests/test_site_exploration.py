@@ -232,6 +232,9 @@ def test_documentation_completes_and_freezes(session: Session) -> None:
         )
     ).first()
     assert doc_role is not None
+    assert doc_role.was_first is True
+    assert summaries[0].viewer_was_first_documentation is True
+    assert summaries[0].documented_at is not None
     assert profile.skill_breakdown["site_stewardship"]["site_documentation"] == 100
     assert profile.skill_breakdown["site_stewardship"]["first_documentation"] == 100
 
@@ -316,6 +319,14 @@ def test_second_documenter_skips_first_documentation_xp(session: Session) -> Non
     assert "first_documentation" not in (
         second.skill_breakdown.get("site_stewardship") or {}
     )
+    second_doc = session.exec(
+        select(UserSite).where(
+            col(UserSite.user_id) == second.id,
+            col(UserSite.site_id) == site.site_id,
+            col(UserSite.role) == "documenter",
+        )
+    ).one()
+    assert second_doc.was_first is False
 
 
 def test_apply_site_exploration_update_monotonic_resume(session: Session) -> None:

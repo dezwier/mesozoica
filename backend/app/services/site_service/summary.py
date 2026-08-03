@@ -32,6 +32,9 @@ class SiteRow:
     viewer_has_documented: bool | None = None
     discovered_at: datetime | None = None
     discovering_session_id: int | None = None
+    viewer_was_first_discovery: bool | None = None
+    documented_at: datetime | None = None
+    viewer_was_first_documentation: bool | None = None
     explored_distance_m: float | None = None
     documented: bool | None = None
 
@@ -112,6 +115,9 @@ def site_row_to_summary(
         status=row.status,
         discovered_at=row.discovered_at,
         discovering_session_id=row.discovering_session_id,
+        viewer_was_first_discovery=row.viewer_was_first_discovery,
+        documented_at=row.documented_at,
+        viewer_was_first_documentation=row.viewer_was_first_documentation,
         odd_dino_count=site.odd_dino_count if include_exact_odds else None,
         odd_fossil_count=site.odd_fossil_count if include_exact_odds else None,
         odd_completeness=site.odd_completeness if include_exact_odds else None,
@@ -153,21 +159,22 @@ def enrich_site_rows_for_viewer(
     ).all()
 
     discover_by_site: dict[int, UserSite] = {}
-    documented_ids: set[int] = set()
+    document_by_site: dict[int, UserSite] = {}
     for link in link_rows:
         site_id = int(link.site_id)
         if link.role == USER_SITE_ROLE_DISCOVERER:
             discover_by_site[site_id] = link
         elif link.role == USER_SITE_ROLE_DOCUMENTER:
-            documented_ids.add(site_id)
+            document_by_site[site_id] = link
 
     enriched: list[SiteRow] = []
     for row in rows:
         site_id = int(row.site.site_id)
         discover = discover_by_site.get(site_id)
+        document = document_by_site.get(site_id)
         has_documented = row.viewer_has_documented
         if has_documented is None:
-            has_documented = site_id in documented_ids
+            has_documented = document is not None
         discoverer_documented = (
             bool(discover.documented) if discover is not None else None
         )
@@ -182,6 +189,15 @@ def enrich_site_rows_for_viewer(
                     int(discover.source_session_id)
                     if discover is not None and discover.source_session_id is not None
                     else None
+                ),
+                viewer_was_first_discovery=(
+                    bool(discover.was_first) if discover is not None else None
+                ),
+                documented_at=(
+                    document.timestamp if document is not None else None
+                ),
+                viewer_was_first_documentation=(
+                    bool(document.was_first) if document is not None else None
                 ),
                 explored_distance_m=(
                     float(discover.explored_distance_m or 0.0)

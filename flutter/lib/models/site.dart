@@ -50,6 +50,9 @@ class SiteSummary {
     this.viewerHasDocumented,
     this.discoveredAt,
     this.discoveringSessionId,
+    this.viewerWasFirstDiscovery,
+    this.documentedAt,
+    this.viewerWasFirstDocumentation,
     this.oddDinoCount,
     this.oddFossilCount,
     this.oddCompleteness,
@@ -87,6 +90,12 @@ class SiteSummary {
   final DateTime? discoveredAt;
   /// Aerial session that discovered this site for the viewer.
   final int? discoveringSessionId;
+  /// True when the viewer was the first discoverer of this site.
+  final bool? viewerWasFirstDiscovery;
+  /// When the viewing user completed documentation (documenter user_site).
+  final DateTime? documentedAt;
+  /// True when the viewer was the first to fully document this site.
+  final bool? viewerWasFirstDocumentation;
   final double? oddDinoCount;
   final double? oddFossilCount;
   final double? oddCompleteness;
@@ -263,6 +272,10 @@ class SiteSummary {
       viewerHasDocumented: json['viewer_has_documented'] as bool?,
       discoveredAt: _parseSiteDate(json['discovered_at']),
       discoveringSessionId: json['discovering_session_id'] as int?,
+      viewerWasFirstDiscovery: json['viewer_was_first_discovery'] as bool?,
+      documentedAt: _parseSiteDate(json['documented_at']),
+      viewerWasFirstDocumentation:
+          json['viewer_was_first_documentation'] as bool?,
       oddDinoCount: (json['odd_dino_count'] as num?)?.toDouble(),
       oddFossilCount: (json['odd_fossil_count'] as num?)?.toDouble(),
       oddCompleteness: (json['odd_completeness'] as num?)?.toDouble(),
@@ -295,6 +308,9 @@ class SiteSummary {
     String? mainImageUrl,
     DateTime? discoveredAt,
     int? discoveringSessionId,
+    bool? viewerWasFirstDiscovery,
+    DateTime? documentedAt,
+    bool? viewerWasFirstDocumentation,
     String? howDiscovered,
     double? exploredDistanceM,
     bool? documented,
@@ -324,6 +340,11 @@ class SiteSummary {
       discoveredAt: discoveredAt ?? this.discoveredAt,
       discoveringSessionId:
           discoveringSessionId ?? this.discoveringSessionId,
+      viewerWasFirstDiscovery:
+          viewerWasFirstDiscovery ?? this.viewerWasFirstDiscovery,
+      documentedAt: documentedAt ?? this.documentedAt,
+      viewerWasFirstDocumentation:
+          viewerWasFirstDocumentation ?? this.viewerWasFirstDocumentation,
       oddDinoCount: oddDinoCount,
       oddFossilCount: oddFossilCount,
       oddCompleteness: oddCompleteness,

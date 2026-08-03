@@ -35,7 +35,7 @@ def _monotonic(previous: float, reported: float) -> float:
 
 
 def _upsert_documenter(
-    session: Session, *, user_id: int, site_id: int
+    session: Session, *, user_id: int, site_id: int, was_first: bool
 ) -> UserSite:
     """Record documenter role so site status becomes documented."""
     from datetime import datetime, timezone
@@ -54,10 +54,13 @@ def _upsert_documenter(
             site_id=site_id,
             role=USER_SITE_ROLE_DOCUMENTER,
             timestamp=now,
+            was_first=was_first,
         )
         session.add(row)
         return row
     existing.timestamp = now
+    if was_first and not bool(existing.was_first):
+        existing.was_first = True
     session.add(existing)
     return existing
 
@@ -107,7 +110,10 @@ def _maybe_complete_documentation(
     link.documented = True
     session.add(link)
     _upsert_documenter(
-        session, user_id=int(user.id), site_id=int(link.site_id)
+        session,
+        user_id=int(user.id),
+        site_id=int(link.site_id),
+        was_first=is_first_documentation,
     )
     return True
 

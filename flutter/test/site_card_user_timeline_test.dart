@@ -21,6 +21,38 @@ void main() {
     expect(entries.single.onHowTap, isNull);
   });
 
+  test('timeline appends First on same discovery line', () {
+    final site = SiteSummary(
+      siteId: 4,
+      howDiscovered: SiteSummary.howDiscoveredWalk,
+      discoveredAt: DateTime.utc(2026, 7, 1, 12),
+      viewerWasFirstDiscovery: true,
+    );
+    final entries = SiteCardUserTimeline.entriesFor(site);
+    expect(entries, hasLength(1));
+    expect(entries.single.moment, 'Discovered');
+    expect(entries.single.howLabel, 'Walk');
+    expect(entries.single.wasFirst, isTrue);
+  });
+
+  test('timeline appends First on same documented line', () {
+    final site = SiteSummary(
+      siteId: 5,
+      howDiscovered: SiteSummary.howDiscoveredWalk,
+      discoveredAt: DateTime.utc(2026, 7, 1, 12),
+      viewerWasFirstDiscovery: true,
+      documented: true,
+      documentedAt: DateTime.utc(2026, 7, 2, 12),
+      viewerWasFirstDocumentation: true,
+    );
+    final entries = SiteCardUserTimeline.entriesFor(site);
+    expect(entries.map((e) => e.moment), ['Discovered', 'Documented']);
+    expect(entries[0].howLabel, 'Walk');
+    expect(entries[0].wasFirst, isTrue);
+    expect(entries[1].howLabel, 'First');
+    expect(entries[1].wasFirst, isTrue);
+  });
+
   test('SiteSummary parses explored_distance_m', () {
     final site = SiteSummary.fromJson({
       'site_id': 11,
@@ -53,9 +85,15 @@ void main() {
       'how_discovered': 'aerial_recon',
       'discovered_at': '2026-07-01T12:00:00',
       'discovering_session_id': 42,
+      'viewer_was_first_discovery': true,
+      'documented_at': '2026-07-02T12:00:00',
+      'viewer_was_first_documentation': true,
     });
     expect(site.howDiscovered, SiteSummary.howDiscoveredAerialRecon);
     expect(site.discoveringSessionId, 42);
     expect(site.discoveredAt?.toUtc(), DateTime.utc(2026, 7, 1, 12));
+    expect(site.viewerWasFirstDiscovery, isTrue);
+    expect(site.documentedAt?.toUtc(), DateTime.utc(2026, 7, 2, 12));
+    expect(site.viewerWasFirstDocumentation, isTrue);
   });
 }
