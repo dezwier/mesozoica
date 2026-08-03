@@ -136,10 +136,29 @@ class _SiteCardFossilsState extends State<SiteCardFossils> {
         final fossils = snapshot.data ?? const <SiteFossilThumb>[];
         if (fossils.isEmpty) {
           return Center(
-            child: Text(
-              'No fossil occurrences',
-              textAlign: TextAlign.center,
-              style: cardTheme.bodyStyle(fontSize: 10),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.location_searching,
+                    size: 16,
+                    color: cardTheme.cardTextMuted.withValues(alpha: 0.75),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'No fossils located yet',
+                    textAlign: TextAlign.center,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: cardTheme.bodyStyle(fontSize: 9).copyWith(
+                          color: cardTheme.cardTextMuted,
+                          height: 1.15,
+                        ),
+                  ),
+                ],
+              ),
             ),
           );
         }

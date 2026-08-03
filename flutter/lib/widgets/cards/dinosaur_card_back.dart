@@ -4,13 +4,13 @@ import '../../models/dinosaur.dart';
 import '../../theme/dino_card_theme.dart';
 import '../dino/dinosaur_article_drawer.dart';
 import 'card_back_backdrop.dart';
+import 'card_geologic_timeline_panel.dart';
 import 'card_section_panel.dart';
 import 'cladogram_strip.dart';
 import 'dinosaur_card_edge_facts.dart';
 import 'dinosaur_card_fossil_map.dart';
 import 'dinosaur_card_header.dart';
 import 'dinosaur_card_image.dart';
-import 'geologic_timeline.dart';
 
 class DinosaurCardBack extends StatelessWidget {
   const DinosaurCardBack({
@@ -82,17 +82,10 @@ class DinosaurCardBack extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                CardSectionPanel(
-                  padding: const EdgeInsets.fromLTRB(10, 8, 10, 4),
-                  child: SizedBox(
-                    height: 78,
-                    child: GeologicTimeline(
-                      birth: dinosaur.birth,
-                      death: dinosaur.death,
-                      axis: GeologicTimelineAxis.horizontal,
-                      scale: _contentScale,
-                    ),
-                  ),
+                CardGeologicTimelinePanel(
+                  birth: dinosaur.birth,
+                  death: dinosaur.death,
+                  scale: _contentScale,
                 ),
                 const SizedBox(height: 10),
                 Expanded(

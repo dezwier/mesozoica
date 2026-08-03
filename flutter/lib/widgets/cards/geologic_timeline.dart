@@ -264,10 +264,21 @@ class _HorizontalTimeline extends StatelessWidget {
   static const _boundaryMas = [252.0, 201.0, 145.0, 66.0];
 
   double get _horizontalInset => 14.0 * scale;
-  double get _barTop => 30.0 * scale;
+  double get _periodLabelHeight => 12.0 * scale;
+  double get _labelToBarGap => 4.0 * scale;
   double get _barHeight => 6.0 * scale;
-  double get _minRangeWidth => 12.0 * scale;
   double get _rangeIndicatorHeight => 14.0 * scale;
+  double get _barToMaGap => 4.0 * scale;
+  double get _maLabelHeight => 11.0 * scale;
+  double get _minRangeWidth => 12.0 * scale;
+
+  /// Full visual stack height (period labels → bar → Ma labels).
+  double get _contentHeight =>
+      _periodLabelHeight +
+      _labelToBarGap +
+      _rangeIndicatorHeight +
+      _barToMaGap +
+      _maLabelHeight;
 
   double _xForMa(double ma, double trackWidth) {
     final pos = positionForMa(ma)!;
@@ -277,6 +288,12 @@ class _HorizontalTimeline extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final trackWidth = width - _horizontalInset * 2;
+    final y0 = ((height - _contentHeight) / 2).clamp(0.0, height);
+    final periodTop = y0;
+    final barBandTop = y0 + _periodLabelHeight + _labelToBarGap;
+    final barTop =
+        barBandTop + (_rangeIndicatorHeight - _barHeight) / 2;
+    final maTop = barBandTop + _rangeIndicatorHeight + _barToMaGap;
 
     return SizedBox(
       width: width,
@@ -287,7 +304,7 @@ class _HorizontalTimeline extends StatelessWidget {
           for (var i = 0; i < GeologicTimeline._periods.length; i++)
             Positioned(
               left: _xForMa(GeologicTimeline._periods[i].startMa, trackWidth),
-              top: _barTop,
+              top: barTop,
               width: _xForMa(GeologicTimeline._periods[i].endMa, trackWidth) -
                   _xForMa(GeologicTimeline._periods[i].startMa, trackWidth),
               child: Container(
@@ -309,7 +326,7 @@ class _HorizontalTimeline extends StatelessWidget {
               left: _horizontalInset +
                   (1 - startPos!.clamp(0.0, 1.0)) * trackWidth -
                   _minRangeWidth / 2,
-              top: _barTop - (_rangeIndicatorHeight - _barHeight) / 2,
+              top: barBandTop,
               width: _minRangeWidth,
               child: Container(
                 height: _rangeIndicatorHeight,
@@ -326,7 +343,7 @@ class _HorizontalTimeline extends StatelessWidget {
             Positioned(
               left: _horizontalInset +
                   (1 - startPos!.clamp(0.0, 1.0)) * trackWidth,
-              top: _barTop - (_rangeIndicatorHeight - _barHeight) / 2,
+              top: barBandTop,
               width: ((startPos! - endPos!).clamp(0.0, 1.0)) * trackWidth,
               child: Container(
                 height: _rangeIndicatorHeight,
@@ -344,7 +361,7 @@ class _HorizontalTimeline extends StatelessWidget {
               left: _horizontalInset +
                   (1 - startPos!.clamp(0.0, 1.0)) * trackWidth -
                   5 * scale,
-              top: _barTop - (_rangeIndicatorHeight - _barHeight) / 2,
+              top: barBandTop,
               child: _TimelineDot(
                 scale: scale,
                 color: cardTheme.cardTextPrimary,
@@ -359,7 +376,7 @@ class _HorizontalTimeline extends StatelessWidget {
                       ? null
                       : _xForMa(ma, trackWidth) - 24 * scale,
               right: ma == maxMa ? _horizontalInset - 2 * scale : null,
-              top: _barTop + _barHeight + 4 * scale,
+              top: maTop,
               width: ma == minMa || ma == maxMa ? null : 48 * scale,
               child: Text(
                 '${ma.round()} Ma',
@@ -373,18 +390,23 @@ class _HorizontalTimeline extends StatelessWidget {
                 style: TextStyle(
                   color: cardTheme.timelineAnnotationColor(),
                   fontSize: 9 * scale,
+                  height: 1.1,
                 ),
               ),
             ),
           for (final period in GeologicTimeline._periods)
             Positioned(
               left: _xForMa(period.midMa, trackWidth) - 32 * scale,
-              top: 8 * scale,
+              top: periodTop,
               width: 64 * scale,
-              child: _HorizontalPeriodLabel(
-                name: period.name,
-                cardTheme: cardTheme,
-                fontSize: 10 * scale,
+              height: _periodLabelHeight,
+              child: Align(
+                alignment: Alignment.bottomCenter,
+                child: _HorizontalPeriodLabel(
+                  name: period.name,
+                  cardTheme: cardTheme,
+                  fontSize: 10 * scale,
+                ),
               ),
             ),
         ],

@@ -10,6 +10,7 @@ class CardSectionPanel extends StatelessWidget {
     required this.child,
     this.expandChild = false,
     this.padding = const EdgeInsets.fromLTRB(10, 8, 10, 8),
+    this.labelGap = 6,
     this.clipChild = false,
   });
 
@@ -17,6 +18,7 @@ class CardSectionPanel extends StatelessWidget {
   final Widget child;
   final bool expandChild;
   final EdgeInsetsGeometry padding;
+  final double labelGap;
   final bool clipChild;
 
   @override
@@ -33,7 +35,7 @@ class CardSectionPanel extends StatelessWidget {
               label!.toUpperCase(),
               style: cardTheme.sectionLabelStyle(fontSize: 9),
             ),
-            const SizedBox(height: 6),
+            SizedBox(height: labelGap),
           ],
           if (expandChild) Expanded(child: child) else child,
         ],

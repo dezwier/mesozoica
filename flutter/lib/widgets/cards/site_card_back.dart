@@ -3,9 +3,9 @@ import 'package:flutter/material.dart';
 import '../../models/site.dart';
 import '../../theme/dino_card_theme.dart';
 import 'card_back_backdrop.dart';
+import 'card_geologic_timeline_panel.dart';
 import 'card_section_panel.dart';
 import 'card_world_map.dart';
-import 'geologic_timeline.dart';
 import 'site_card_dimensions.dart';
 import 'site_card_header.dart';
 import 'site_card_image.dart';
@@ -56,22 +56,15 @@ class SiteCardBack extends StatelessWidget {
           Positioned(
             left: 18,
             right: 18,
-            top: 96,
+            top: 72,
             bottom: 14,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                CardSectionPanel(
-                  padding: const EdgeInsets.fromLTRB(10, 8, 10, 4),
-                  child: SizedBox(
-                    height: 70,
-                    child: GeologicTimeline.fromAgeRange(
-                      minAgeMa: site.minAgeMa,
-                      maxAgeMa: site.maxAgeMa,
-                      axis: GeologicTimelineAxis.horizontal,
-                      scale: _contentScale,
-                    ),
-                  ),
+                CardGeologicTimelinePanel(
+                  minAgeMa: site.minAgeMa,
+                  maxAgeMa: site.maxAgeMa,
+                  scale: _contentScale,
                 ),
                 const SizedBox(height: 6),
                 SiteCardDimensions(site: site),

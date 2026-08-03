@@ -82,11 +82,12 @@ class SiteCardUserTimeline extends StatelessWidget {
 
     return CardSectionPanel(
       label: 'Timeline',
-      padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
+      padding: const EdgeInsets.fromLTRB(10, 6, 10, 6),
+      labelGap: 3,
       child: Column(
         children: [
           _HeaderRow(style: cardTheme.sectionLabelStyle(fontSize: 8)),
-          const SizedBox(height: 4),
+          const SizedBox(height: 2),
           for (var i = 0; i < entries.length; i++) ...[
             if (i > 0) const SizedBox(height: 4),
             _EntryRow(entry: entries[i]),

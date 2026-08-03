@@ -4,12 +4,11 @@ import '../../models/fossil.dart';
 import '../../theme/dino_card_theme.dart';
 import '../fossil/fossil_record_drawer.dart';
 import 'card_back_backdrop.dart';
-import 'card_section_panel.dart';
+import 'card_geologic_timeline_panel.dart';
 import 'fossil_card_edge_facts.dart';
 import 'fossil_card_header.dart';
 import 'fossil_card_image.dart';
 import 'fossil_related_thumbs.dart';
-import 'geologic_timeline.dart';
 
 class FossilCardBack extends StatelessWidget {
   const FossilCardBack({
@@ -81,17 +80,10 @@ class FossilCardBack extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                CardSectionPanel(
-                  padding: const EdgeInsets.fromLTRB(10, 8, 10, 4),
-                  child: SizedBox(
-                    height: 78,
-                    child: GeologicTimeline.fromAgeRange(
-                      minAgeMa: fossil.minAgeMa,
-                      maxAgeMa: fossil.maxAgeMa,
-                      axis: GeologicTimelineAxis.horizontal,
-                      scale: _contentScale,
-                    ),
-                  ),
+                CardGeologicTimelinePanel(
+                  minAgeMa: fossil.minAgeMa,
+                  maxAgeMa: fossil.maxAgeMa,
+                  scale: _contentScale,
                 ),
                 const SizedBox(height: 10),
                 FossilCardEdgeFacts(fossil: fossil),
