@@ -578,6 +578,7 @@ class SiteStewardshipConfig {
     required this.qualityWeights,
     required this.levelModifiers,
     required this.oddNoise,
+    required this.accuracyNoise,
     this.weatherTimeModifiers = const {},
     this.weatherTypeModifiers = const {},
   });
@@ -594,6 +595,7 @@ class SiteStewardshipConfig {
   final Map<String, Map<String, List<ParamModifier>>> weatherTimeModifiers;
   final Map<String, Map<String, List<ParamModifier>>> weatherTypeModifiers;
   final FossilOddNoiseConfig oddNoise;
+  final AccuracyNoiseConfig accuracyNoise;
 
   /// Back-compat aliases.
   List<DinoCountThreshold> get dinoCountThresholds => dinoCount;
@@ -649,6 +651,7 @@ class SiteStewardshipConfig {
         yaml['weather_type_modifiers'],
       ),
       oddNoise: FossilOddNoiseConfig.fromYaml(yaml['odd_noise']),
+      accuracyNoise: AccuracyNoiseConfig.fromYaml(yaml['accuracy_noise']),
     );
   }
 }
@@ -728,6 +731,33 @@ class FossilOddNoiseConfig {
       completeness: shared,
       quality: shared,
       depth: shared,
+    );
+  }
+}
+
+/// Per-axis jitter around skill baseline accuracy (display-only; not a main_param).
+class AccuracyNoiseConfig {
+  const AccuracyNoiseConfig({
+    required this.relative,
+    required this.minAbs,
+  });
+
+  /// Half-amplitude as a fraction of baseline (± relative).
+  final double relative;
+
+  /// Floor amplitude so near-zero baselines still vary a little.
+  final double minAbs;
+
+  static const AccuracyNoiseConfig defaults = AccuracyNoiseConfig(
+    relative: 0.30,
+    minAbs: 0.03,
+  );
+
+  factory AccuracyNoiseConfig.fromYaml(Object? raw) {
+    if (raw is! Map) return AccuracyNoiseConfig.defaults;
+    return AccuracyNoiseConfig(
+      relative: _asDouble(raw['relative'], defaults.relative),
+      minAbs: _asDouble(raw['min_abs'], defaults.minAbs),
     );
   }
 }

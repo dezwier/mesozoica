@@ -555,6 +555,24 @@ class FossilOddNoiseConfig(BaseModel):
         return value
 
 
+class AccuracyNoiseConfig(BaseModel):
+    """Stable per-axis jitter around skill baseline accuracy (display-only)."""
+
+    model_config = {"frozen": True}
+
+    # Half-amplitude as a fraction of baseline (± relative).
+    relative: float = 0.30
+    # Floor amplitude so near-zero baselines still vary a little.
+    min_abs: float = 0.03
+
+    @field_validator("relative", "min_abs")
+    @classmethod
+    def _validate_non_negative(cls, value: float) -> float:
+        if value < 0.0:
+            raise ValueError("accuracy_noise values must be >= 0")
+        return value
+
+
 class SiteStewardshipMainParams(BaseModel):
     """Player-facing accuracy knobs (level / weather / tool resolvable)."""
 
@@ -670,6 +688,7 @@ class SiteStewardshipConfig(BaseModel):
     weather_time_modifiers: WeatherTimeModifiers = Field(default_factory=dict)
     weather_type_modifiers: WeatherTypeModifiers = Field(default_factory=dict)
     odd_noise: FossilOddNoiseConfig = Field(default_factory=FossilOddNoiseConfig)
+    accuracy_noise: AccuracyNoiseConfig = Field(default_factory=AccuracyNoiseConfig)
     defaults: FossilGenerationDefaults = Field(
         default_factory=FossilGenerationDefaults
     )

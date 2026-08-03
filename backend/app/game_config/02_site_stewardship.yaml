@@ -307,6 +307,12 @@ odd_noise:
   quality: 0.3
   depth: 0.3
 
+# Per-axis jitter around skill baseline accuracy on the site card (not a main_param;
+# not level/tool resolvable). relative = ± fraction of baseline; min_abs = floor.
+accuracy_noise:
+  relative: 0.30
+  min_abs: 0.03
+
 # Fallback attributes when distributions are empty.
 defaults:
   subcategory: teeth

@@ -17,10 +17,6 @@ _MAX_BLUR_SIGMA = 16.0
 _DEPTH_PRECISE_EPSILON = 1e-9
 # +1% accuracy per meter walked inside site_visibility_m (additive, capped).
 EXPLORATION_ACCURACY_PER_M = 0.01
-# Per-dimension noise around skill baseline (± relative, with a floor).
-# Keep in sync with Flutter site_dimension_display.dart
-_ACCURACY_NOISE_RELATIVE = 0.30
-_ACCURACY_NOISE_MIN_ABS = 0.03
 
 
 class SiteDimensionKey(IntEnum):
@@ -57,15 +53,17 @@ def apply_dimension_accuracy_noise(
     """Stable per-site / per-axis jitter around the skill baseline accuracy.
 
     Applied after level (and before tools / exploration boost). Same seed →
-    same offset for a given site axis. Keep in sync with Flutter
+    same offset for a given site axis. Amplitude from
+    ``site_stewardship.accuracy_noise`` (YAML). Keep in sync with Flutter
     ``applyDimensionAccuracyNoise``.
     """
     base = min(1.0, max(0.0, float(baseline_accuracy)))
+    noise = get_game_config().site_stewardship.accuracy_noise
     seed_material = f"{int(site_id)}:{int(dimension)}:acc".encode()
     digest = hashlib.md5(seed_material).digest()
     # [0, 1) from first 4 bytes — must match Flutter Endian.big Uint32 / 2^32.
     unit = int.from_bytes(digest[:4], "big") / 0x100000000
-    amplitude = max(_ACCURACY_NOISE_MIN_ABS, abs(base) * _ACCURACY_NOISE_RELATIVE)
+    amplitude = max(float(noise.min_abs), abs(base) * float(noise.relative))
     jitter = (unit * 2.0 - 1.0) * amplitude
     return min(1.0, max(0.0, base + jitter))
 

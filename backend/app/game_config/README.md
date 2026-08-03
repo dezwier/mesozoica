@@ -123,9 +123,9 @@ resolvable):
 
 Accuracy params are display-only on the site card for now. Stack per axis:
 skill baseline (base 1% × level → L50 ≈ 50%) → stable per-site / per-dimension
-noise (±30% of baseline, min ±3%) → tool `modifies_main_params` (none yet) →
-exploration (+1% per meter walked inside `site_visibility_m`, additive, capped
-at 100%).
+noise (`accuracy_noise` in `02_site_stewardship.yaml`) → tool
+`modifies_main_params` (none yet) → exploration (+1% per meter walked inside
+`site_visibility_m`, additive, capped at 100%).
 
 `rival_discovery` is multiplied by skill level (×1.0 at L1 → ×0.5 at L99,
 linear; all sites). Site-scoped tools (Brush Scrim / Blackout Cover) multiply
@@ -142,8 +142,11 @@ multipliers):
 | `completeness_weights` | Completeness tier CDF (YAML; not archive) |
 | `quality_weights` | Preservation quality tier CDF (YAML; not archive) |
 
-Subcategory is still archive-weighted. `odd_noise` / `defaults` also sit
-beside `main_params`.
+Subcategory is still archive-weighted. `odd_noise`, `accuracy_noise`, and
+`defaults` also sit beside `main_params` (fixed; not level/tool resolvable).
+
+`accuracy_noise.relative` / `min_abs` control per-axis jitter around skill
+baseline accuracy on the site card (± fraction of baseline, with a floor).
 
 ### Tool modifiers (`tool_actions.yaml`)
 

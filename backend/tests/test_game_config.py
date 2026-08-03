@@ -89,6 +89,8 @@ def test_load_game_config_matches_current_defaults() -> None:
     assert config.site_stewardship.odd_noise.completeness == 0.3
     assert config.site_stewardship.odd_noise.quality == 0.3
     assert config.site_stewardship.odd_noise.depth == 0.3
+    assert config.site_stewardship.accuracy_noise.relative == 0.30
+    assert config.site_stewardship.accuracy_noise.min_abs == 0.03
     assert [(t.max_odd, t.count) for t in config.site_stewardship.dino_count] == [
         (0.10, 0),
         (0.60, 1),

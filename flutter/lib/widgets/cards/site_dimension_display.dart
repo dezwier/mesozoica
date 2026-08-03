@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'dart:typed_data';
 
 import 'package:crypto/crypto.dart';
+import 'package:mesozoica/config/game_config.dart';
 
 /// Keys for the five site odd_* axes shown on the site card.
 enum SiteDimensionKey {
@@ -60,31 +61,26 @@ const double kSiteDimensionDepthPreciseEpsilon = 1e-9;
 /// +1% accuracy per meter walked inside site_visibility_m (additive, capped).
 const double kExplorationAccuracyPerM = 0.01;
 
-/// Relative half-amplitude of per-dimension accuracy noise (±30% of baseline).
-const double kSiteDimensionAccuracyNoiseRel = 0.30;
-
-/// Floor so near-zero baselines still vary a little.
-const double kSiteDimensionAccuracyNoiseMinAbs = 0.03;
-
 /// Deterministic per-site / per-dimension accuracy noise after skill baseline.
 ///
 /// Must match [apply_dimension_accuracy_noise] in the backend
 /// (`dimension_display.py`). Seed uses [SiteDimensionKey.index].
+/// Amplitude from [AccuracyNoiseConfig] in site stewardship YAML.
 double applyDimensionAccuracyNoise({
   required double baseAccuracy,
   required int siteId,
   required SiteDimensionKey dimension,
 }) {
   final base = baseAccuracy.clamp(0.0, 1.0);
+  final noise = GameConfig.isLoaded
+      ? GameConfig.instance.siteStewardship.accuracyNoise
+      : AccuracyNoiseConfig.defaults;
   final digest =
       md5.convert(utf8.encode('$siteId:${dimension.index}:acc')).bytes;
   final unit =
       ByteData.sublistView(Uint8List.fromList(digest)).getUint32(0, Endian.big) /
           0x100000000;
-  final amp = math.max(
-    kSiteDimensionAccuracyNoiseMinAbs,
-    base.abs() * kSiteDimensionAccuracyNoiseRel,
-  );
+  final amp = math.max(noise.minAbs, base.abs() * noise.relative);
   final delta = (unit * 2.0 - 1.0) * amp;
   return (base + delta).clamp(0.0, 1.0);
 }
