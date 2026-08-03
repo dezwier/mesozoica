@@ -504,9 +504,11 @@ class _AppShellState extends State<AppShell>
           context.read<MainParamBuffController>().restoreActiveSession().then((_) {
             if (!mounted) return;
             final weather = context.read<WeatherController>();
-            return context
-                .read<MainParamBuffController>()
-                .stopIfPeriodLeft(weather.weatherTime);
+            unawaited(
+              context
+                  .read<MainParamBuffController>()
+                  .stopIfPeriodLeft(weather.weatherTime),
+            );
           }),
         );
         unawaited(

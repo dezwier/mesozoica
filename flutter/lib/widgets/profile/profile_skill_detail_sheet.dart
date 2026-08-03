@@ -291,7 +291,6 @@ class _SkillDetailDrawer extends StatelessWidget {
                                 ),
                                 scheme: scheme,
                                 totalText: '${xpRows[i].totalXp} XP',
-                                valueColumnWidth: _xpValueColumnWidth,
                                 totalColumnWidth: _xpTotalColumnWidth,
                               ),
                             ],
@@ -326,9 +325,9 @@ class _XpSourceMergedRow {
   final List<_ParamFactor> factors;
 }
 
-const _xpValueColumnWidth = 76.0;
 const _xpTotalColumnWidth = 72.0;
-const _xpColumnGap = 16.0;
+const _xpColumnGap = 12.0;
+const _breakdownTooltipWidth = 240.0;
 
 class _XpSourceHeader extends StatelessWidget {
   const _XpSourceHeader();
@@ -343,10 +342,7 @@ class _XpSourceHeader extends StatelessWidget {
     return Row(
       children: [
         const Expanded(child: SizedBox.shrink()),
-        SizedBox(
-          width: _xpValueColumnWidth,
-          child: Text('Value', textAlign: TextAlign.right, style: style),
-        ),
+        Text('Value', style: style),
         const SizedBox(width: _xpColumnGap),
         SizedBox(
           width: _xpTotalColumnWidth,
@@ -713,7 +709,6 @@ class _MainParamRow extends StatefulWidget {
     required this.row,
     required this.scheme,
     this.totalText,
-    this.valueColumnWidth,
     this.totalColumnWidth,
   });
 
@@ -722,7 +717,6 @@ class _MainParamRow extends StatefulWidget {
 
   /// When set, shows a second numeric column (XP Sources total).
   final String? totalText;
-  final double? valueColumnWidth;
   final double? totalColumnWidth;
 
   @override
@@ -754,7 +748,6 @@ class _MainParamRowState extends State<_MainParamRow> {
 
     final overlay = Overlay.of(context);
     final scheme = widget.scheme;
-    final media = MediaQuery.of(context);
 
     _overlay = OverlayEntry(
       builder: (context) {
@@ -777,10 +770,8 @@ class _MainParamRowState extends State<_MainParamRow> {
                 color: scheme.surfaceContainerHigh,
                 shadowColor: scheme.shadow.withValues(alpha: 0.35),
                 borderRadius: BorderRadius.circular(10),
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(
-                    maxWidth: (media.size.width - 48).clamp(180.0, 280.0),
-                  ),
+                child: SizedBox(
+                  width: _breakdownTooltipWidth,
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
                     child: Column(
@@ -843,63 +834,71 @@ class _MainParamRowState extends State<_MainParamRow> {
       color: scheme.primary,
       fontWeight: FontWeight.w600,
     );
-    final deltaPct = row.overallDeltaPct;
-    final showDelta = deltaPct != null && row.factors.isNotEmpty;
-    final positive = (deltaPct ?? 0) >= 0;
+    final deltaPct = row.overallDeltaPct ?? 0.0;
+    final showBadge = row.factors.isNotEmpty;
+    final rounded = deltaPct.round();
+    final isZero = rounded == 0;
     const positiveColor = Color(0xFF2E7D32);
     const negativeColor = Color(0xFFC62828);
-    final badgeColor = positive ? positiveColor : negativeColor;
+    final badgeColor = isZero
+        ? scheme.onSurfaceVariant
+        : (rounded > 0 ? positiveColor : negativeColor);
 
-    final valueCell = Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(row.effectiveValue, style: valueStyle),
-        if (showDelta) ...[
-          const SizedBox(width: 8),
-          CompositedTransformTarget(
-            link: _link,
-            child: Material(
-              color: Colors.transparent,
-              child: InkWell(
-                onTap: _toggleBreakdown,
+    Widget? deltaBadge;
+    if (showBadge) {
+      deltaBadge = CompositedTransformTarget(
+        link: _link,
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: _toggleBreakdown,
+            borderRadius: BorderRadius.circular(999),
+            child: Ink(
+              decoration: BoxDecoration(
+                color: badgeColor.withValues(alpha: isZero ? 0.08 : 0.12),
                 borderRadius: BorderRadius.circular(999),
-                child: Ink(
-                  decoration: BoxDecoration(
-                    color: badgeColor.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(999),
-                    border: Border.all(
-                      color: badgeColor.withValues(alpha: 0.35),
-                      width: 0.75,
+                border: Border.all(
+                  color: badgeColor.withValues(alpha: isZero ? 0.22 : 0.35),
+                  width: 0.75,
+                ),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(8, 3, 6, 3),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      _formatSignedPctNumber(deltaPct),
+                      style:
+                          Theme.of(context).textTheme.labelSmall?.copyWith(
+                                color: badgeColor,
+                                fontWeight: FontWeight.w700,
+                                height: 1.1,
+                                letterSpacing: 0.1,
+                              ),
                     ),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(8, 3, 6, 3),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          _formatSignedPctNumber(deltaPct),
-                          style:
-                              Theme.of(context).textTheme.labelSmall?.copyWith(
-                                    color: badgeColor,
-                                    fontWeight: FontWeight.w700,
-                                    height: 1.1,
-                                    letterSpacing: 0.1,
-                                  ),
-                        ),
-                        const SizedBox(width: 2),
-                        Icon(
-                          Icons.expand_more,
-                          size: 14,
-                          color: badgeColor.withValues(alpha: 0.85),
-                        ),
-                      ],
+                    const SizedBox(width: 2),
+                    Icon(
+                      Icons.expand_more,
+                      size: 14,
+                      color: badgeColor.withValues(alpha: 0.85),
                     ),
-                  ),
+                  ],
                 ),
               ),
             ),
           ),
+        ),
+      );
+    }
+
+    final valueWithBadge = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(row.effectiveValue, style: valueStyle),
+        if (deltaBadge != null) ...[
+          const SizedBox(width: 8),
+          deltaBadge,
         ],
       ],
     );
@@ -909,23 +908,18 @@ class _MainParamRowState extends State<_MainParamRow> {
       return Row(
         children: [
           Expanded(child: Text(row.label, style: body)),
-          valueCell,
+          valueWithBadge,
         ],
       );
     }
 
-    final valueWidth = widget.valueColumnWidth ?? _xpValueColumnWidth;
+    // Size value+badge to content so the badge stays tappable (a fixed-width
+    // column was clipping hit-tests when the badge overflowed).
     final totalWidth = widget.totalColumnWidth ?? _xpTotalColumnWidth;
     return Row(
       children: [
         Expanded(child: Text(row.label, style: body)),
-        SizedBox(
-          width: valueWidth,
-          child: Align(
-            alignment: Alignment.centerRight,
-            child: valueCell,
-          ),
-        ),
+        valueWithBadge,
         const SizedBox(width: _xpColumnGap),
         SizedBox(
           width: totalWidth,
@@ -942,6 +936,14 @@ class _MainParamRowState extends State<_MainParamRow> {
 
 Color _deltaColor(String deltaText, ColorScheme scheme) {
   final trimmed = deltaText.trimLeft();
+  if (trimmed.startsWith('x') || trimmed.startsWith('×')) {
+    final mult = double.tryParse(trimmed.substring(1));
+    if (mult != null) {
+      if (mult > 1.0 + 1e-12) return const Color(0xFF2E7D32);
+      if (mult < 1.0 - 1e-12) return const Color(0xFFC62828);
+    }
+    return scheme.onSurfaceVariant;
+  }
   if (trimmed.startsWith('+')) return const Color(0xFF2E7D32);
   if (trimmed.startsWith('-') && !trimmed.startsWith('→')) {
     return const Color(0xFFC62828);
@@ -1372,7 +1374,7 @@ _MainParamDisplay _resolveScalarParam({
     value = _applyModifier(value, mod);
     changeFactors.add(
       _ParamFactor(
-        label: factorLabel,
+        label: _factorLabel(factorLabel, mod),
         deltaText: _formatStepDelta(
           before: before,
           after: value,
@@ -1401,25 +1403,22 @@ _MainParamDisplay _resolveScalarParam({
     paramKey: paramKey,
     toolBindings: toolBindings,
   )) {
-    applyStep('${toolMod.toolName} (${toolMod.whenLabel})', toolMod.mod);
+    applyStep(toolMod.toolName, toolMod.mod);
   }
 
   if (clampUnit) {
     value = value.clamp(0.0, 1.0);
   }
 
-  final factors = <_ParamFactor>[];
-  if (changeFactors.isNotEmpty) {
-    factors.add(
-      _ParamFactor(
-        label: 'Base (level $skillLevel)',
-        deltaText: _formatScalar(levelBase, format),
-      ),
-    );
-    factors.addAll(changeFactors);
-  }
+  final factors = <_ParamFactor>[
+    _ParamFactor(
+      label: 'Base (level $skillLevel)',
+      deltaText: _formatScalar(levelBase, format),
+    ),
+    ...changeFactors,
+  ];
 
-  double? overallDeltaPct;
+  var overallDeltaPct = 0.0;
   if ((value - levelBase).abs() > 1e-12 && levelBase.abs() > 1e-12) {
     overallDeltaPct = ((value - levelBase) / levelBase) * 100.0;
   }
@@ -1433,21 +1432,37 @@ _MainParamDisplay _resolveScalarParam({
   );
 }
 
+String _modOp(Object mod) =>
+    mod is ParamModifier ? mod.op : (mod as LevelModifierEntry).op;
+
+double _modValue(Object mod) =>
+    mod is ParamModifier ? mod.value : (mod as LevelModifierEntry).value;
+
+String _factorLabel(String baseLabel, Object mod) {
+  if (_modOp(mod) == 'multiply') return '$baseLabel multiplier';
+  return baseLabel;
+}
+
+/// e.g. 0.6 → `x0.6`, 1.5 → `x1.5`, 2 → `x2`.
+String _formatMultiplyFactor(double value) {
+  if (value == value.roundToDouble()) return 'x${value.toStringAsFixed(0)}';
+  var s = value.toStringAsFixed(2);
+  s = s.replaceFirst(RegExp(r'0+$'), '');
+  s = s.replaceFirst(RegExp(r'\.$'), '');
+  return 'x$s';
+}
+
 String _formatStepDelta({
   required double before,
   required double after,
   required Object mod,
   required _ParamFormat format,
 }) {
-  final op = mod is ParamModifier
-      ? mod.op
-      : (mod as LevelModifierEntry).op;
-  final modValue = mod is ParamModifier
-      ? mod.value
-      : (mod as LevelModifierEntry).value;
+  final op = _modOp(mod);
+  final modValue = _modValue(mod);
 
   if (op == 'multiply') {
-    return WeatherDisplay.formatModifierShort(op: op, value: modValue);
+    return _formatMultiplyFactor(modValue);
   }
   if (op == 'replace') {
     return '→ ${_formatScalar(after, format)}';
@@ -1527,12 +1542,8 @@ double _applyModifier(double base, Object mod) {
 }
 
 String _formatModifierShort(Object mod, _ParamFormat format) {
-  final op = mod is ParamModifier
-      ? mod.op
-      : (mod as LevelModifierEntry).op;
-  final value = mod is ParamModifier
-      ? mod.value
-      : (mod as LevelModifierEntry).value;
+  final op = _modOp(mod);
+  final value = _modValue(mod);
   switch (op) {
     case 'replace':
       return '→ ${_formatScalar(value, format)}';
@@ -1540,7 +1551,7 @@ String _formatModifierShort(Object mod, _ParamFormat format) {
       final formatted = _formatScalar(value.abs(), format);
       return value >= 0 ? '+$formatted' : '-$formatted';
     case 'multiply':
-      return WeatherDisplay.formatModifierShort(op: op, value: value);
+      return _formatMultiplyFactor(value);
     default:
       return '$op ${_formatScalar(value, format)}';
   }
