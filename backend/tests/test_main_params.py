@@ -39,6 +39,41 @@ def test_resolve_site_discovery_tool_replace() -> None:
     assert resolved["discovery_chance"] == 0.9
 
 
+def test_resolve_site_discovery_weather_time_visibility() -> None:
+    get_game_config.cache_clear()
+    cfg = get_game_config().site_discovery
+    base = cfg.visibility_distance_m
+
+    day = resolve_site_discovery_main_params(skill_level=1, weather_time="day")
+    assert day["visibility_distance_m"] == pytest.approx(base)
+
+    dusk = resolve_site_discovery_main_params(skill_level=1, weather_time="dusk")
+    assert dusk["visibility_distance_m"] == pytest.approx(base * 0.8)
+
+    dawn = resolve_site_discovery_main_params(skill_level=1, weather_time="dawn")
+    assert dawn["visibility_distance_m"] == pytest.approx(base * 0.8)
+
+    night = resolve_site_discovery_main_params(
+        skill_level=1, weather_time="night"
+    )
+    assert night["visibility_distance_m"] == pytest.approx(base * 0.5)
+
+
+def test_weather_time_applies_before_tools() -> None:
+    get_game_config.cache_clear()
+    cfg = get_game_config().site_discovery
+    base = cfg.visibility_distance_m
+    resolved = resolve_site_discovery_main_params(
+        skill_level=1,
+        weather_time="night",
+        tool_mods={
+            "visibility_distance_m": ParamModifier(op="add", value=20),
+        },
+    )
+    # base * 0.5 + 20 (weather before tools)
+    assert resolved["visibility_distance_m"] == pytest.approx(base * 0.5 + 20)
+
+
 def test_level_modifier_entry_shape() -> None:
     entry = LevelModifierEntry(level=10, op="add", value=0.05)
     assert entry.level == 10

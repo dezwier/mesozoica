@@ -1,4 +1,4 @@
-"""Resolve effective site-discovery params (baseline + level + tool boosts)."""
+"""Resolve effective site-discovery params (baseline + level + weather + tool boosts)."""
 
 from __future__ import annotations
 
@@ -17,6 +17,7 @@ from app.services.level_service.skills import get_skill_xp
 from app.services.level_service.xp_table import level_for_xp
 from app.services.site_common.geo_utils import haversine_km
 from app.services.site_service.nearby import list_discoverable_sites_in_radius
+from app.services.weather_service.solar import period_at
 
 
 @dataclass(frozen=True)
@@ -78,7 +79,7 @@ def resolve_site_discovery_params(
     lat: float | None = None,
     lon: float | None = None,
 ) -> ResolvedSiteDiscoveryParams:
-    """Baseline main_params + level modifiers; active tools may boost.
+    """Baseline main_params + level + weather_time; active tools may boost.
 
     Ridge Glass ``modifies_main_params.using`` applies globally to every site
     while the session is active. Guidance tools still replace discovery chance
@@ -122,8 +123,13 @@ def resolve_site_discovery_params(
             if nearest_id is not None and int(site.site_id) == nearest_id:
                 tool_mods = using_mods
 
+    weather_time = None
+    if lat is not None and lon is not None:
+        weather_time = period_at(latitude=lat, longitude=lon)
+
     resolved = resolve_site_discovery_main_params(
         skill_level=skill_level,
+        weather_time=weather_time,
         tool_mods=tool_mods,
     )
     return ResolvedSiteDiscoveryParams(

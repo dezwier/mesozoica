@@ -1,4 +1,4 @@
-"""Resolve skill main_params: base → level_modifiers → tool modifiers."""
+"""Resolve skill main_params: base → level → weather_time → tool modifiers."""
 
 from __future__ import annotations
 
@@ -38,6 +38,19 @@ def apply_level_modifiers(
     return apply_modifier(base, best)
 
 
+def apply_weather_time_modifiers(
+    base: float,
+    entries: list[ParamModifier] | None,
+) -> float:
+    """Apply all weather_time entries for the current period in order."""
+    value = float(base)
+    if not entries:
+        return value
+    for mod in entries:
+        value = apply_modifier(value, mod)
+    return value
+
+
 def apply_tool_modifier(base: float, mod: ParamModifier | None) -> float:
     if mod is None:
         return float(base)
@@ -49,10 +62,12 @@ def resolve_scalar_main_param(
     base: float,
     level_entries: list[LevelModifierEntry] | None,
     skill_level: int,
+    weather_time_entries: list[ParamModifier] | None = None,
     tool_mod: ParamModifier | None = None,
     clamp_unit: bool = False,
 ) -> float:
     value = apply_level_modifiers(base, level_entries, skill_level=skill_level)
+    value = apply_weather_time_modifiers(value, weather_time_entries)
     value = apply_tool_modifier(value, tool_mod)
     if clamp_unit:
         return min(1.0, max(0.0, value))
@@ -65,12 +80,24 @@ def site_discovery_level_entries(
     return list(cfg.level_modifiers.get(param, []))
 
 
+def site_discovery_weather_time_entries(
+    cfg: SiteDiscoveryConfig,
+    param: str,
+    weather_time: str | None,
+) -> list[ParamModifier]:
+    if not weather_time:
+        return []
+    periods = cfg.weather_time_modifiers.get(param) or {}
+    return list(periods.get(weather_time, []))
+
+
 def resolve_site_discovery_main_params(
     *,
     skill_level: int = 1,
+    weather_time: str | None = None,
     tool_mods: Mapping[str, ParamModifier] | None = None,
 ) -> dict[str, float]:
-    """Effective site_discovery main_params after level + tool modifiers."""
+    """Effective site_discovery main_params after level + weather_time + tool modifiers."""
     cfg = get_game_config().site_discovery
     mods = tool_mods or {}
     return {
@@ -80,12 +107,18 @@ def resolve_site_discovery_main_params(
                 cfg, "visibility_distance_m"
             ),
             skill_level=skill_level,
+            weather_time_entries=site_discovery_weather_time_entries(
+                cfg, "visibility_distance_m", weather_time
+            ),
             tool_mod=mods.get("visibility_distance_m"),
         ),
         "discovery_chance": resolve_scalar_main_param(
             base=cfg.discovery_chance,
             level_entries=site_discovery_level_entries(cfg, "discovery_chance"),
             skill_level=skill_level,
+            weather_time_entries=site_discovery_weather_time_entries(
+                cfg, "discovery_chance", weather_time
+            ),
             tool_mod=mods.get("discovery_chance"),
             clamp_unit=True,
         ),
@@ -95,6 +128,9 @@ def resolve_site_discovery_main_params(
                 cfg, "max_discovery_speed_kmh"
             ),
             skill_level=skill_level,
+            weather_time_entries=site_discovery_weather_time_entries(
+                cfg, "max_discovery_speed_kmh", weather_time
+            ),
             tool_mod=mods.get("max_discovery_speed_kmh"),
         ),
     }

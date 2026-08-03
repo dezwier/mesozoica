@@ -309,6 +309,9 @@ class AppConfig {
   static Uri toolSessionCancelUri(int sessionId) =>
       ApiEndpoints.toolSessionCancelUri(sessionId);
 
+  static Uri weatherUri({required double lat, required double lon}) =>
+      ApiEndpoints.weatherUri(lat: lat, lon: lon);
+
   static Future<bool> checkApiHealth() async {
     try {
       final response = await http

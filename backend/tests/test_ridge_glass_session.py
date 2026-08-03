@@ -27,10 +27,13 @@ from app.models.tool_type import ToolType
 from app.models.user import User
 from app.models.user_tool import USER_TOOL_ACTION_OWNED, UserTool
 from app.services.site_common.discovery_params import resolve_site_discovery_params
+from app.services.level_service.main_params import resolve_site_discovery_main_params
 from app.services.tool_action_service.tool_session import (
     get_active_timed_session,
     start_timed_session,
 )
+from app.services.weather_service.solar import period_at
+from app.core.game_config import ParamModifier
 
 
 def _auth_headers(user: User) -> dict[str, str]:
@@ -216,9 +219,17 @@ def test_ridge_glass_boosts_all_sites_globally(session: Session) -> None:
     far = _site(session, site_id=93002, lat=40.01, lon=-100.0)
 
     start_timed_session(session, user_id=int(user.id), tool_id=int(ridge.id))
-    cfg = get_game_config().site_discovery
-    expected_visibility = cfg.visibility_distance_m + 20.0
-    expected_chance = min(1.0, cfg.discovery_chance + 0.1)
+    weather_time = period_at(latitude=40.0, longitude=-100.0)
+    expected = resolve_site_discovery_main_params(
+        skill_level=1,
+        weather_time=weather_time,
+        tool_mods={
+            "visibility_distance_m": ParamModifier(op="add", value=20),
+            "discovery_chance": ParamModifier(op="add", value=0.1),
+        },
+    )
+    expected_visibility = expected["visibility_distance_m"]
+    expected_chance = expected["discovery_chance"]
 
     near_params = resolve_site_discovery_params(
         session,
@@ -277,7 +288,10 @@ def test_expired_ridge_glass_session_ignored(session: Session) -> None:
     )
     session.commit()
 
-    baseline = get_game_config().site_discovery
+    baseline = resolve_site_discovery_main_params(
+        skill_level=1,
+        weather_time=period_at(latitude=42.0, longitude=-102.0),
+    )
     params = resolve_site_discovery_params(
         session,
         user_id=int(user.id),
@@ -285,8 +299,8 @@ def test_expired_ridge_glass_session_ignored(session: Session) -> None:
         lat=42.0,
         lon=-102.0,
     )
-    assert params.visibility_distance_m == baseline.visibility_distance_m
-    assert params.discovery_chance == baseline.discovery_chance
+    assert params.visibility_distance_m == baseline["visibility_distance_m"]
+    assert params.discovery_chance == baseline["discovery_chance"]
     assert (
         get_active_timed_session(
             session,

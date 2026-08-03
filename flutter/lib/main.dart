@@ -29,6 +29,7 @@ import 'controllers/notification_controller.dart';
 import 'controllers/splash_hold_controller.dart';
 import 'controllers/theme_controller.dart';
 import 'controllers/walk_distance_controller.dart';
+import 'controllers/weather_controller.dart';
 import 'firebase_options.dart';
 import 'services/location_service.dart';
 import 'services/map_tile_cache.dart';
@@ -120,6 +121,11 @@ class MesozoicaApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => NotificationController()),
         ChangeNotifierProvider(create: (_) => DinosaurCatalogController()),
         ChangeNotifierProvider(create: (_) => LocationService()),
+        ChangeNotifierProvider(
+          create: (context) => WeatherController(
+            locationService: context.read<LocationService>(),
+          ),
+        ),
         ChangeNotifierProvider(
           create: (context) => FossilCatalogController(
             catalogModeController: context.read<CatalogModeController>(),

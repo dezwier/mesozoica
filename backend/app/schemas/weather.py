@@ -1,0 +1,21 @@
+"""Weather status response models."""
+
+from datetime import datetime
+
+from pydantic import BaseModel, Field
+
+
+class WeatherCellInfo(BaseModel):
+    i: int
+    j: int
+    center_lat: float
+    center_lon: float
+
+
+class WeatherStatusResponse(BaseModel):
+    weather_type: str
+    temperature_c: float
+    weather_time: str
+    observed_at: datetime
+    cell: WeatherCellInfo
+    wmo_code: int = Field(description="Upstream Open-Meteo WMO weather code")

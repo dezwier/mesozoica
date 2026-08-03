@@ -7,6 +7,7 @@ import '../../controllers/auth_controller.dart';
 import '../../controllers/guidance_session_controller.dart';
 import '../../controllers/ridge_glass_controller.dart';
 import '../../controllers/tool_catalog_controller.dart';
+import '../../controllers/weather_controller.dart';
 import '../../models/guidance_tool_kind.dart';
 import '../../models/profile.dart';
 import '../../models/ridge_glass_kind.dart';
@@ -161,6 +162,7 @@ class _SkillDetailDrawer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthController>();
+    final weatherTime = context.watch<WeatherController>().weatherTime;
     final liveSkill = _liveSkill(auth.currentUser);
     final liveBreakdown = _liveBreakdown(auth.currentUser);
     final showAdminUi = auth.showAdminUi;
@@ -179,6 +181,7 @@ class _SkillDetailDrawer extends StatelessWidget {
       liveSkill,
       ownedActionKeys: ownedActionKeys,
       activeActionKey: activeActionKey,
+      weatherTime: weatherTime,
     );
 
     return LayoutBuilder(
@@ -676,6 +679,7 @@ List<_MainParamDisplay> _mainParamRowsForSkill(
   SkillState skill, {
   required Set<String> ownedActionKeys,
   required String? activeActionKey,
+  String? weatherTime,
 }) {
   if (!GameConfig.isLoaded) return const [];
   final domain = GameConfig.instance.skillDomain(skill.id);
@@ -685,6 +689,7 @@ List<_MainParamDisplay> _mainParamRowsForSkill(
       skill.level,
       ownedActionKeys: ownedActionKeys,
       activeActionKey: activeActionKey,
+      weatherTime: weatherTime,
     );
   }
   if (domain is SiteSurveyConfig) {
@@ -693,6 +698,7 @@ List<_MainParamDisplay> _mainParamRowsForSkill(
       skill.level,
       ownedActionKeys: ownedActionKeys,
       activeActionKey: activeActionKey,
+      weatherTime: weatherTime,
     );
   }
   if (domain is SkillStubConfig) {
@@ -713,6 +719,7 @@ List<_MainParamDisplay> _siteDiscoveryRows(
   int skillLevel, {
   required Set<String> ownedActionKeys,
   required String? activeActionKey,
+  String? weatherTime,
 }) {
   return [
     _resolveScalarParam(
@@ -721,6 +728,8 @@ List<_MainParamDisplay> _siteDiscoveryRows(
       skillId: 'site_discovery',
       base: cfg.visibilityDistanceM,
       levelEntries: cfg.levelModifiers['visibility_distance_m'],
+      weatherTimeMods: cfg.weatherTimeModifiers['visibility_distance_m'],
+      weatherTime: weatherTime,
       skillLevel: skillLevel,
       format: _ParamFormat.meters,
       clampUnit: false,
@@ -733,6 +742,8 @@ List<_MainParamDisplay> _siteDiscoveryRows(
       skillId: 'site_discovery',
       base: cfg.discoveryChance,
       levelEntries: cfg.levelModifiers['discovery_chance'],
+      weatherTimeMods: cfg.weatherTimeModifiers['discovery_chance'],
+      weatherTime: weatherTime,
       skillLevel: skillLevel,
       format: _ParamFormat.chance,
       clampUnit: true,
@@ -745,6 +756,8 @@ List<_MainParamDisplay> _siteDiscoveryRows(
       skillId: 'site_discovery',
       base: cfg.maxDiscoverySpeedKmh,
       levelEntries: cfg.levelModifiers['max_discovery_speed_kmh'],
+      weatherTimeMods: cfg.weatherTimeModifiers['max_discovery_speed_kmh'],
+      weatherTime: weatherTime,
       skillLevel: skillLevel,
       format: _ParamFormat.kmh,
       clampUnit: false,
@@ -759,6 +772,7 @@ List<_MainParamDisplay> _siteSurveyRows(
   int skillLevel, {
   required Set<String> ownedActionKeys,
   required String? activeActionKey,
+  String? weatherTime,
 }) {
   final mp = cfg.mainParams;
   // Accuracy scalars first (level/tool resolvable), then distribution tables.
@@ -769,6 +783,8 @@ List<_MainParamDisplay> _siteSurveyRows(
       skillId: 'site_survey',
       base: mp.dinoAccuracy,
       levelEntries: cfg.levelModifiers['dino_accuracy'],
+      weatherTimeMods: cfg.weatherTimeModifiers['dino_accuracy'],
+      weatherTime: weatherTime,
       skillLevel: skillLevel,
       format: _ParamFormat.chance,
       clampUnit: true,
@@ -781,6 +797,8 @@ List<_MainParamDisplay> _siteSurveyRows(
       skillId: 'site_survey',
       base: mp.fossilAccuracy,
       levelEntries: cfg.levelModifiers['fossil_accuracy'],
+      weatherTimeMods: cfg.weatherTimeModifiers['fossil_accuracy'],
+      weatherTime: weatherTime,
       skillLevel: skillLevel,
       format: _ParamFormat.chance,
       clampUnit: true,
@@ -793,6 +811,8 @@ List<_MainParamDisplay> _siteSurveyRows(
       skillId: 'site_survey',
       base: mp.completenessAccuracy,
       levelEntries: cfg.levelModifiers['completeness_accuracy'],
+      weatherTimeMods: cfg.weatherTimeModifiers['completeness_accuracy'],
+      weatherTime: weatherTime,
       skillLevel: skillLevel,
       format: _ParamFormat.chance,
       clampUnit: true,
@@ -805,6 +825,8 @@ List<_MainParamDisplay> _siteSurveyRows(
       skillId: 'site_survey',
       base: mp.qualityAccuracy,
       levelEntries: cfg.levelModifiers['quality_accuracy'],
+      weatherTimeMods: cfg.weatherTimeModifiers['quality_accuracy'],
+      weatherTime: weatherTime,
       skillLevel: skillLevel,
       format: _ParamFormat.chance,
       clampUnit: true,
@@ -817,6 +839,8 @@ List<_MainParamDisplay> _siteSurveyRows(
       skillId: 'site_survey',
       base: mp.depthAccuracy,
       levelEntries: cfg.levelModifiers['depth_accuracy'],
+      weatherTimeMods: cfg.weatherTimeModifiers['depth_accuracy'],
+      weatherTime: weatherTime,
       skillLevel: skillLevel,
       format: _ParamFormat.chance,
       clampUnit: true,
@@ -911,6 +935,8 @@ _MainParamDisplay _resolveScalarParam({
   required String skillId,
   required double base,
   required List<LevelModifierEntry>? levelEntries,
+  Map<String, List<ParamModifier>>? weatherTimeMods,
+  String? weatherTime,
   required int skillLevel,
   required _ParamFormat format,
   required bool clampUnit,
@@ -926,6 +952,14 @@ _MainParamDisplay _resolveScalarParam({
     value = _applyModifier(value, levelMod);
     parts.add('level ${_formatModifierShort(levelMod, format)}');
     affected = true;
+  }
+
+  if (weatherTime != null && weatherTimeMods != null) {
+    for (final mod in weatherTimeMods[weatherTime] ?? const <ParamModifier>[]) {
+      value = _applyModifier(value, mod);
+      parts.add('$weatherTime ${_formatModifierShort(mod, format)}');
+      affected = true;
+    }
   }
 
   for (final toolMod in _activeToolModsForParam(

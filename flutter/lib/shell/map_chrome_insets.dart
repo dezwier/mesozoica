@@ -7,6 +7,9 @@ class MapChromeInsets {
   /// Height of the top control row (below the status bar).
   static const double topRowHeight = 84;
 
+  /// Compact weather chip under the profile HUD (+ gap).
+  static const double weatherChipHeight = 32;
+
   /// Icon size in the bottom bar (bar height stays fixed).
   static const double bottomIconSize = 40;
 
@@ -20,7 +23,7 @@ class MapChromeInsets {
   static const double fabChromeGap = 20;
 
   static double top(BuildContext context) =>
-      MediaQuery.paddingOf(context).top + topRowHeight;
+      MediaQuery.paddingOf(context).top + topRowHeight + weatherChipHeight;
 
   /// Full bottom chrome clearance (bar + home indicator).
   static double bottom(BuildContext context) =>

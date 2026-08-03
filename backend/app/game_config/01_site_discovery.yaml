@@ -17,6 +17,16 @@ level_modifiers:
   discovery_chance: []
   max_discovery_speed_kmh: []
 
+# Ambient solar period (dawn|day|dusk|night). Applied after level, before tools.
+weather_time_modifiers:
+  visibility_distance_m:
+    day: []
+    dawn: [{ op: multiply, value: 0.8 }]
+    dusk: [{ op: multiply, value: 0.8 }]
+    night: [{ op: multiply, value: 0.5 }]
+  discovery_chance: {}
+  max_discovery_speed_kmh: {}
+
 # Flutter auto-discover + nearby-discoverable cache.
 client:
   auto_discover_radius_m: 20.0

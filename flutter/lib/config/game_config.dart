@@ -256,12 +256,15 @@ class SiteDiscoveryConfig {
     required this.skillId,
     required this.mainParams,
     required this.levelModifiers,
+    required this.weatherTimeModifiers,
     required this.client,
   });
 
   final String skillId;
   final SiteDiscoveryMainParams mainParams;
   final Map<String, List<LevelModifierEntry>> levelModifiers;
+  /// param → period (dawn|day|dusk|night) → ordered modifiers.
+  final Map<String, Map<String, List<ParamModifier>>> weatherTimeModifiers;
   final SiteDiscoveryClientConfig client;
 
   double get visibilityDistanceM => mainParams.visibilityDistanceM;
@@ -277,6 +280,9 @@ class SiteDiscoveryConfig {
       skillId: yaml['skill_id'] as String? ?? 'site_discovery',
       mainParams: SiteDiscoveryMainParams.fromYaml(main),
       levelModifiers: LevelModifierEntry.mapFromYaml(yaml['level_modifiers']),
+      weatherTimeModifiers: weatherTimeModifiersFromYaml(
+        yaml['weather_time_modifiers'],
+      ),
       client: SiteDiscoveryClientConfig.fromYaml(
         GameConfig._asMap(yaml['client']),
       ),
@@ -354,6 +360,35 @@ class ParamModifier {
       value: _asDouble(yaml['value'], 0),
     );
   }
+}
+
+/// Parse ``weather_time_modifiers``: param → period → ordered [ParamModifier]s.
+Map<String, Map<String, List<ParamModifier>>> weatherTimeModifiersFromYaml(
+  Object? raw,
+) {
+  if (raw is! Map) return const {};
+  final out = <String, Map<String, List<ParamModifier>>>{};
+  for (final paramEntry in raw.entries) {
+    final periods = <String, List<ParamModifier>>{};
+    final periodRaw = paramEntry.value;
+    if (periodRaw is Map) {
+      for (final periodEntry in periodRaw.entries) {
+        final list = <ParamModifier>[];
+        if (periodEntry.value is List) {
+          for (final item in periodEntry.value as List) {
+            if (item is Map) {
+              list.add(
+                ParamModifier.fromYaml(Map<String, dynamic>.from(item)),
+              );
+            }
+          }
+        }
+        periods[periodEntry.key.toString()] = list;
+      }
+    }
+    out[paramEntry.key.toString()] = periods;
+  }
+  return out;
 }
 
 class ModifiesMainParams {
@@ -448,12 +483,14 @@ class SkillStubConfig {
     required this.enabled,
     required this.mainParams,
     required this.levelModifiers,
+    this.weatherTimeModifiers = const {},
   });
 
   final String skillId;
   final bool enabled;
   final Map<String, dynamic> mainParams;
   final Map<String, List<LevelModifierEntry>> levelModifiers;
+  final Map<String, Map<String, List<ParamModifier>>> weatherTimeModifiers;
 
   bool get hasMainParams => mainParams.isNotEmpty;
 
@@ -463,6 +500,9 @@ class SkillStubConfig {
       enabled: yaml['enabled'] == true,
       mainParams: GameConfig._asMap(yaml['main_params']),
       levelModifiers: LevelModifierEntry.mapFromYaml(yaml['level_modifiers']),
+      weatherTimeModifiers: weatherTimeModifiersFromYaml(
+        yaml['weather_time_modifiers'],
+      ),
     );
   }
 }
@@ -502,11 +542,13 @@ class SiteSurveyConfig {
     required this.mainParams,
     required this.levelModifiers,
     required this.oddNoise,
+    this.weatherTimeModifiers = const {},
   });
 
   final String skillId;
   final SiteSurveyMainParams mainParams;
   final Map<String, List<LevelModifierEntry>> levelModifiers;
+  final Map<String, Map<String, List<ParamModifier>>> weatherTimeModifiers;
   final FossilOddNoiseConfig oddNoise;
 
   List<DinoCountThreshold> get dinoCount => mainParams.dinoCount;
@@ -526,6 +568,9 @@ class SiteSurveyConfig {
       skillId: yaml['skill_id'] as String? ?? 'site_survey',
       mainParams: SiteSurveyMainParams.fromYaml(main),
       levelModifiers: LevelModifierEntry.mapFromYaml(yaml['level_modifiers']),
+      weatherTimeModifiers: weatherTimeModifiersFromYaml(
+        yaml['weather_time_modifiers'],
+      ),
       oddNoise: FossilOddNoiseConfig.fromYaml(yaml['odd_noise']),
     );
   }

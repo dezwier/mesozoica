@@ -437,4 +437,11 @@ class ApiEndpoints {
   static Uri toolSessionCancelUri(int sessionId) =>
       Uri.parse('${AppConfig.baseApiUrl}/api/v1/tools/sessions/$sessionId/cancel');
 
+  static Uri weatherUri({required double lat, required double lon}) =>
+      Uri.parse('${AppConfig.baseApiUrl}/api/v1/weather').replace(
+        queryParameters: {
+          'lat': lat.toString(),
+          'lon': lon.toString(),
+        },
+      );
 }

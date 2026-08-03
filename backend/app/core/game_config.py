@@ -83,6 +83,47 @@ class ParamModifier(BaseModel):
     value: float
 
 
+WeatherTimePeriod = Literal["dawn", "day", "dusk", "night"]
+VALID_WEATHER_TIMES = frozenset({"dawn", "day", "dusk", "night"})
+
+# param_name → period → ordered modifier list
+WeatherTimeModifiers = dict[str, dict[str, list[ParamModifier]]]
+
+
+def coerce_weather_time_modifiers(value: object) -> WeatherTimeModifiers:
+    """Parse ``weather_time_modifiers`` YAML into param → period → mods."""
+    if value is None:
+        return {}
+    if not isinstance(value, dict):
+        raise ValueError("weather_time_modifiers must be a mapping")
+    out: WeatherTimeModifiers = {}
+    for param, periods in value.items():
+        if periods is None:
+            out[str(param)] = {}
+            continue
+        if not isinstance(periods, dict):
+            raise ValueError(
+                f"weather_time_modifiers[{param}] must be a mapping of periods"
+            )
+        period_map: dict[str, list[ParamModifier]] = {}
+        for period, entries in periods.items():
+            key = str(period).strip().lower()
+            if key not in VALID_WEATHER_TIMES:
+                raise ValueError(f"unknown weather_time period: {period!r}")
+            if entries is None:
+                period_map[key] = []
+            elif isinstance(entries, list):
+                period_map[key] = [
+                    ParamModifier.model_validate(item) for item in entries
+                ]
+            else:
+                raise ValueError(
+                    f"weather_time_modifiers[{param}][{period}] must be a list"
+                )
+        out[str(param)] = period_map
+    return out
+
+
 ModifierWhen = Literal["using", "owning"]
 
 # skill_id → param_name → modifier
@@ -210,6 +251,7 @@ class SkillStubConfig(BaseModel):
     enabled: bool = False
     main_params: dict[str, Any] = Field(default_factory=dict)
     level_modifiers: dict[str, list[LevelModifierEntry]] = Field(default_factory=dict)
+    weather_time_modifiers: WeatherTimeModifiers = Field(default_factory=dict)
 
     @field_validator("level_modifiers", mode="before")
     @classmethod
@@ -219,6 +261,11 @@ class SkillStubConfig(BaseModel):
         if not isinstance(value, dict):
             raise ValueError("level_modifiers must be a mapping")
         return {str(k): (v if isinstance(v, list) else []) for k, v in value.items()}
+
+    @field_validator("weather_time_modifiers", mode="before")
+    @classmethod
+    def _coerce_weather_time_modifiers(cls, value: object) -> WeatherTimeModifiers:
+        return coerce_weather_time_modifiers(value)
 
 
 # ---------------------------------------------------------------------------
@@ -336,6 +383,7 @@ class SiteDiscoveryConfig(BaseModel):
         default_factory=SiteDiscoveryMainParams
     )
     level_modifiers: dict[str, list[LevelModifierEntry]] = Field(default_factory=dict)
+    weather_time_modifiers: WeatherTimeModifiers = Field(default_factory=dict)
     client: SiteDiscoveryClientConfig = Field(
         default_factory=SiteDiscoveryClientConfig
     )
@@ -348,6 +396,11 @@ class SiteDiscoveryConfig(BaseModel):
         if not isinstance(value, dict):
             raise ValueError("level_modifiers must be a mapping")
         return {str(k): (v if isinstance(v, list) else []) for k, v in value.items()}
+
+    @field_validator("weather_time_modifiers", mode="before")
+    @classmethod
+    def _coerce_weather_time_modifiers(cls, value: object) -> WeatherTimeModifiers:
+        return coerce_weather_time_modifiers(value)
 
     @property
     def visibility_distance_m(self) -> float:
@@ -555,6 +608,7 @@ class SiteSurveyConfig(BaseModel):
     skill_id: str = "site_survey"
     main_params: SiteSurveyMainParams = Field(default_factory=SiteSurveyMainParams)
     level_modifiers: dict[str, list[LevelModifierEntry]] = Field(default_factory=dict)
+    weather_time_modifiers: WeatherTimeModifiers = Field(default_factory=dict)
     odd_noise: FossilOddNoiseConfig = Field(default_factory=FossilOddNoiseConfig)
     defaults: FossilGenerationDefaults = Field(
         default_factory=FossilGenerationDefaults
@@ -568,6 +622,11 @@ class SiteSurveyConfig(BaseModel):
         if not isinstance(value, dict):
             raise ValueError("level_modifiers must be a mapping")
         return {str(k): (v if isinstance(v, list) else []) for k, v in value.items()}
+
+    @field_validator("weather_time_modifiers", mode="before")
+    @classmethod
+    def _coerce_weather_time_modifiers(cls, value: object) -> WeatherTimeModifiers:
+        return coerce_weather_time_modifiers(value)
 
     @property
     def dino_count(self) -> list[DinoCountThreshold]:

@@ -2,7 +2,7 @@ import '../models/guidance_tool_kind.dart';
 import '../models/ridge_glass_kind.dart';
 import 'game_config.dart';
 
-/// Apply a level or tool modifier to [base].
+/// Apply a level, weather_time, or tool modifier to [base].
 double applyMainParamModifier(
   double base, {
   required String op,
@@ -34,10 +34,21 @@ LevelModifierEntry? applicableLevelModifier(
   return best;
 }
 
+/// Ordered weather_time modifiers for [paramKey] at [weatherTime] (or empty).
+List<ParamModifier> weatherTimeModsForParam({
+  required Map<String, Map<String, List<ParamModifier>>> weatherTimeModifiers,
+  required String paramKey,
+  String? weatherTime,
+}) {
+  if (weatherTime == null || weatherTime.isEmpty) return const [];
+  return weatherTimeModifiers[paramKey]?[weatherTime] ?? const [];
+}
+
 double resolveScalarMainParam({
   required double base,
   required List<LevelModifierEntry>? levelEntries,
   required int skillLevel,
+  List<ParamModifier>? weatherTimeMods,
   ParamModifier? toolMod,
   bool clampUnit = false,
 }) {
@@ -49,6 +60,9 @@ double resolveScalarMainParam({
       op: levelMod.op,
       value: levelMod.value,
     );
+  }
+  for (final mod in weatherTimeMods ?? const <ParamModifier>[]) {
+    value = applyMainParamModifier(value, op: mod.op, value: mod.value);
   }
   if (toolMod != null) {
     value = applyMainParamModifier(
@@ -111,9 +125,10 @@ List<ParamModifier> siteDiscoveryToolModsForParam({
   return out;
 }
 
-/// Effective walk-in / dwell discover radius after level + tool modifiers.
+/// Effective walk-in / dwell discover radius after level + weather_time + tools.
 double resolveSiteDiscoveryVisibilityDistanceM({
   required int skillLevel,
+  String? weatherTime,
   Set<String> ownedActionKeys = const {},
   String? activeActionKey,
 }) {
@@ -123,6 +138,11 @@ double resolveSiteDiscoveryVisibilityDistanceM({
     base: cfg.visibilityDistanceM,
     levelEntries: cfg.levelModifiers['visibility_distance_m'],
     skillLevel: skillLevel,
+    weatherTimeMods: weatherTimeModsForParam(
+      weatherTimeModifiers: cfg.weatherTimeModifiers,
+      paramKey: 'visibility_distance_m',
+      weatherTime: weatherTime,
+    ),
   );
   for (final mod in siteDiscoveryToolModsForParam(
     paramKey: 'visibility_distance_m',
@@ -134,12 +154,13 @@ double resolveSiteDiscoveryVisibilityDistanceM({
   return value;
 }
 
-/// Effective site-survey accuracy params: base → level → optional tool mods.
+/// Effective site-survey accuracy params: base → level → weather_time → tools.
 ///
 /// Keys: `dino_accuracy`, `fossil_accuracy`, `completeness_accuracy`,
 /// `quality_accuracy`, `depth_accuracy`.
 Map<String, double> resolveSiteSurveyAccuracies({
   required int skillLevel,
+  String? weatherTime,
   Map<String, ParamModifier>? toolMods,
 }) {
   const keys = <String>[
@@ -169,6 +190,11 @@ Map<String, double> resolveSiteSurveyAccuracies({
         base: bases[key]!,
         levelEntries: cfg.levelModifiers[key],
         skillLevel: skillLevel,
+        weatherTimeMods: weatherTimeModsForParam(
+          weatherTimeModifiers: cfg.weatherTimeModifiers,
+          paramKey: key,
+          weatherTime: weatherTime,
+        ),
         toolMod: mods[key],
         clampUnit: true,
       ),

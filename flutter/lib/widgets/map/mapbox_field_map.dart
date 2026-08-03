@@ -21,6 +21,7 @@ import '../../controllers/orbit_survey_controller.dart';
 import '../../controllers/ridge_glass_controller.dart';
 import '../../controllers/terrain_echo_controller.dart';
 import '../../controllers/tool_catalog_controller.dart';
+import '../../controllers/weather_controller.dart';
 import '../../models/guidance_tool_kind.dart';
 import '../../models/ridge_glass_kind.dart';
 import '../../models/site.dart';
@@ -174,6 +175,7 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
   ToolCatalogController? _toolCatalog;
   GuidanceSessionController? _guidance;
   RidgeGlassController? _ridgeGlass;
+  WeatherController? _weather;
   VoidCallback? _visibilityListener;
 
   LatLng? get _effectiveLocation =>
@@ -279,11 +281,13 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
     ToolCatalogController? tools;
     GuidanceSessionController? guidance;
     RidgeGlassController? ridgeGlass;
+    WeatherController? weather;
     try {
       auth = context.read<AuthController>();
       tools = context.read<ToolCatalogController>();
       guidance = context.read<GuidanceSessionController>();
       ridgeGlass = context.read<RidgeGlassController>();
+      weather = context.read<WeatherController>();
     } on ProviderNotFoundException {
       return;
     }
@@ -308,6 +312,11 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
       _ridgeGlass?.removeListener(_visibilityListener!);
       _ridgeGlass = ridgeGlass;
       _ridgeGlass?.addListener(_visibilityListener!);
+    }
+    if (!identical(_weather, weather)) {
+      _weather?.removeListener(_visibilityListener!);
+      _weather = weather;
+      _weather?.addListener(_visibilityListener!);
     }
     _syncDiscoveryPulse();
   }
@@ -358,6 +367,7 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
     final inputs = _visibilityInputs();
     return resolveSiteDiscoveryVisibilityDistanceM(
       skillLevel: inputs.skillLevel,
+      weatherTime: _weather?.weatherTime,
       ownedActionKeys: inputs.owned,
       activeActionKey: ignoreActiveTool ? null : inputs.activeKey,
     );
@@ -429,6 +439,7 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
       _toolCatalog?.removeListener(_visibilityListener!);
       _guidance?.removeListener(_visibilityListener!);
       _ridgeGlass?.removeListener(_visibilityListener!);
+      _weather?.removeListener(_visibilityListener!);
     }
     widget.locationListenable?.removeListener(_onLocationListenable);
     widget.aerialRecon?.removeListener(_onAerialReconChanged);

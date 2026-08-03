@@ -27,6 +27,9 @@ skill_id: site_discovery
 main_params: { ... }          # global defaults (player-facing)
 level_modifiers:              # identity in v1; tune later
   discovery_chance: []        # entries: { level, op: add|multiply|replace, value }
+weather_time_modifiers:       # keyed by solar period; identity if omitted/empty
+  visibility_distance_m:
+    night: [{ op: multiply, value: 0.5 }]
 client: { ... }               # non-main implementation knobs (optional)
 ```
 
@@ -35,11 +38,13 @@ Effective values resolve as:
 ```text
 base main_params
   → level_modifiers(skill level)
+  → weather_time_modifiers(solar period)
   → owning tool modifies_main_params (when: owning)
   → active/using tool modifies_main_params (when: using)
 ```
 
-Ops (same for `level_modifiers` and tool `modifies_main_params`):
+Ops (same for `level_modifiers`, `weather_time_modifiers`, and tool
+`modifies_main_params`):
 
 | op | Meaning | Example |
 |----|---------|---------|
@@ -48,6 +53,21 @@ Ops (same for `level_modifiers` and tool `modifies_main_params`):
 | `add` | Offset the base | `{ op: add, value: 50 }` → +50 m |
 
 Chance params are clamped to 0..1 after modifiers.
+
+### Ambient weather
+
+Three status dimensions drive HUD + future gameplay knobs:
+
+| Dimension | Source | Values |
+|-----------|--------|--------|
+| `weather_time` | Local solar math (lat/lon/UTC; no API) | `dawn`, `day`, `dusk`, `night` |
+| `weather_type` | Open-Meteo via backend, 5 km grid cache | `sunny`, `cloudy`, `overcast`, … |
+| `temperature_c` | Same Open-Meteo fetch | degrees Celsius |
+
+`weather_time_modifiers` are keyed by period name under each main_param. All
+list entries for the current period apply in order (empty / missing = identity).
+`weather_type_modifiers` are reserved for a later pass (same op shape; not
+applied yet).
 
 ### Site Discovery (`01_site_discovery.yaml`)
 
@@ -62,8 +82,10 @@ re-rolls while staying inside the discover radius (default 10). Walk-in still
 rolls immediately; app-open already inside does not (dwell timer starts).
 
 The location-puck pulse max radius is the effective `visibility_distance_m`
-(base → level → owning/using tool mods), converted to screen pixels at the
-current map zoom so the ring matches the real discover range.
+(base → level → weather_time → owning/using tool mods), converted to screen
+pixels at the current map zoom so the ring matches the real discover range.
+Visibility is unimpacted during `day`, −20% at `dawn`/`dusk`, and −50% at
+`night` (see `weather_time_modifiers` in this YAML).
 
 ### Site Survey (`02_site_survey.yaml`)
 
