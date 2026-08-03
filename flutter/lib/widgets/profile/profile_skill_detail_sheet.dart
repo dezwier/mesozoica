@@ -162,7 +162,9 @@ class _SkillDetailDrawer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthController>();
-    final weatherTime = context.watch<WeatherController>().weatherTime;
+    final weather = context.watch<WeatherController>();
+    final weatherTime = weather.weatherTime;
+    final weatherType = weather.status?.weatherType;
     final liveSkill = _liveSkill(auth.currentUser);
     final liveBreakdown = _liveBreakdown(auth.currentUser);
     final showAdminUi = auth.showAdminUi;
@@ -182,6 +184,7 @@ class _SkillDetailDrawer extends StatelessWidget {
       ownedActionKeys: ownedActionKeys,
       activeActionKey: activeActionKey,
       weatherTime: weatherTime,
+      weatherType: weatherType,
     );
 
     return LayoutBuilder(
@@ -680,6 +683,7 @@ List<_MainParamDisplay> _mainParamRowsForSkill(
   required Set<String> ownedActionKeys,
   required String? activeActionKey,
   String? weatherTime,
+  String? weatherType,
 }) {
   if (!GameConfig.isLoaded) return const [];
   final domain = GameConfig.instance.skillDomain(skill.id);
@@ -690,6 +694,7 @@ List<_MainParamDisplay> _mainParamRowsForSkill(
       ownedActionKeys: ownedActionKeys,
       activeActionKey: activeActionKey,
       weatherTime: weatherTime,
+      weatherType: weatherType,
     );
   }
   if (domain is SiteSurveyConfig) {
@@ -699,6 +704,7 @@ List<_MainParamDisplay> _mainParamRowsForSkill(
       ownedActionKeys: ownedActionKeys,
       activeActionKey: activeActionKey,
       weatherTime: weatherTime,
+      weatherType: weatherType,
     );
   }
   if (domain is SkillStubConfig) {
@@ -720,6 +726,7 @@ List<_MainParamDisplay> _siteDiscoveryRows(
   required Set<String> ownedActionKeys,
   required String? activeActionKey,
   String? weatherTime,
+  String? weatherType,
 }) {
   return [
     _resolveScalarParam(
@@ -730,6 +737,8 @@ List<_MainParamDisplay> _siteDiscoveryRows(
       levelEntries: cfg.levelModifiers['visibility_distance_m'],
       weatherTimeMods: cfg.weatherTimeModifiers['visibility_distance_m'],
       weatherTime: weatherTime,
+      weatherTypeMods: cfg.weatherTypeModifiers['visibility_distance_m'],
+      weatherType: weatherType,
       skillLevel: skillLevel,
       format: _ParamFormat.meters,
       clampUnit: false,
@@ -744,6 +753,8 @@ List<_MainParamDisplay> _siteDiscoveryRows(
       levelEntries: cfg.levelModifiers['discovery_chance'],
       weatherTimeMods: cfg.weatherTimeModifiers['discovery_chance'],
       weatherTime: weatherTime,
+      weatherTypeMods: cfg.weatherTypeModifiers['discovery_chance'],
+      weatherType: weatherType,
       skillLevel: skillLevel,
       format: _ParamFormat.chance,
       clampUnit: true,
@@ -758,6 +769,8 @@ List<_MainParamDisplay> _siteDiscoveryRows(
       levelEntries: cfg.levelModifiers['max_discovery_speed_kmh'],
       weatherTimeMods: cfg.weatherTimeModifiers['max_discovery_speed_kmh'],
       weatherTime: weatherTime,
+      weatherTypeMods: cfg.weatherTypeModifiers['max_discovery_speed_kmh'],
+      weatherType: weatherType,
       skillLevel: skillLevel,
       format: _ParamFormat.kmh,
       clampUnit: false,
@@ -773,6 +786,7 @@ List<_MainParamDisplay> _siteSurveyRows(
   required Set<String> ownedActionKeys,
   required String? activeActionKey,
   String? weatherTime,
+  String? weatherType,
 }) {
   final mp = cfg.mainParams;
   // Accuracy scalars first (level/tool resolvable), then distribution tables.
@@ -785,6 +799,8 @@ List<_MainParamDisplay> _siteSurveyRows(
       levelEntries: cfg.levelModifiers['dino_accuracy'],
       weatherTimeMods: cfg.weatherTimeModifiers['dino_accuracy'],
       weatherTime: weatherTime,
+      weatherTypeMods: cfg.weatherTypeModifiers['dino_accuracy'],
+      weatherType: weatherType,
       skillLevel: skillLevel,
       format: _ParamFormat.chance,
       clampUnit: true,
@@ -799,6 +815,8 @@ List<_MainParamDisplay> _siteSurveyRows(
       levelEntries: cfg.levelModifiers['fossil_accuracy'],
       weatherTimeMods: cfg.weatherTimeModifiers['fossil_accuracy'],
       weatherTime: weatherTime,
+      weatherTypeMods: cfg.weatherTypeModifiers['fossil_accuracy'],
+      weatherType: weatherType,
       skillLevel: skillLevel,
       format: _ParamFormat.chance,
       clampUnit: true,
@@ -813,6 +831,8 @@ List<_MainParamDisplay> _siteSurveyRows(
       levelEntries: cfg.levelModifiers['completeness_accuracy'],
       weatherTimeMods: cfg.weatherTimeModifiers['completeness_accuracy'],
       weatherTime: weatherTime,
+      weatherTypeMods: cfg.weatherTypeModifiers['completeness_accuracy'],
+      weatherType: weatherType,
       skillLevel: skillLevel,
       format: _ParamFormat.chance,
       clampUnit: true,
@@ -827,6 +847,8 @@ List<_MainParamDisplay> _siteSurveyRows(
       levelEntries: cfg.levelModifiers['quality_accuracy'],
       weatherTimeMods: cfg.weatherTimeModifiers['quality_accuracy'],
       weatherTime: weatherTime,
+      weatherTypeMods: cfg.weatherTypeModifiers['quality_accuracy'],
+      weatherType: weatherType,
       skillLevel: skillLevel,
       format: _ParamFormat.chance,
       clampUnit: true,
@@ -841,6 +863,8 @@ List<_MainParamDisplay> _siteSurveyRows(
       levelEntries: cfg.levelModifiers['depth_accuracy'],
       weatherTimeMods: cfg.weatherTimeModifiers['depth_accuracy'],
       weatherTime: weatherTime,
+      weatherTypeMods: cfg.weatherTypeModifiers['depth_accuracy'],
+      weatherType: weatherType,
       skillLevel: skillLevel,
       format: _ParamFormat.chance,
       clampUnit: true,
@@ -937,6 +961,8 @@ _MainParamDisplay _resolveScalarParam({
   required List<LevelModifierEntry>? levelEntries,
   Map<String, List<ParamModifier>>? weatherTimeMods,
   String? weatherTime,
+  Map<String, List<ParamModifier>>? weatherTypeMods,
+  String? weatherType,
   required int skillLevel,
   required _ParamFormat format,
   required bool clampUnit,
@@ -958,6 +984,15 @@ _MainParamDisplay _resolveScalarParam({
     for (final mod in weatherTimeMods[weatherTime] ?? const <ParamModifier>[]) {
       value = _applyModifier(value, mod);
       parts.add('$weatherTime ${_formatModifierShort(mod, format)}');
+      affected = true;
+    }
+  }
+
+  final typeKey = weatherType == 'sunny' ? 'clear' : weatherType;
+  if (typeKey != null && weatherTypeMods != null) {
+    for (final mod in weatherTypeMods[typeKey] ?? const <ParamModifier>[]) {
+      value = _applyModifier(value, mod);
+      parts.add('$typeKey ${_formatModifierShort(mod, format)}');
       affected = true;
     }
   }

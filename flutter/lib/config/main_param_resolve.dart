@@ -2,7 +2,7 @@ import '../models/guidance_tool_kind.dart';
 import '../models/ridge_glass_kind.dart';
 import 'game_config.dart';
 
-/// Apply a level, weather_time, or tool modifier to [base].
+/// Apply a level, ambient, or tool modifier to [base].
 double applyMainParamModifier(
   double base, {
   required String op,
@@ -34,21 +34,46 @@ LevelModifierEntry? applicableLevelModifier(
   return best;
 }
 
+/// Ordered ambient modifiers for [paramKey] at [key] (or empty).
+List<ParamModifier> ambientModsForParam({
+  required Map<String, Map<String, List<ParamModifier>>> modifiers,
+  required String paramKey,
+  String? key,
+}) {
+  if (key == null || key.isEmpty) return const [];
+  final normalized = key == 'sunny' ? 'clear' : key;
+  return modifiers[paramKey]?[normalized] ?? const [];
+}
+
 /// Ordered weather_time modifiers for [paramKey] at [weatherTime] (or empty).
 List<ParamModifier> weatherTimeModsForParam({
   required Map<String, Map<String, List<ParamModifier>>> weatherTimeModifiers,
   required String paramKey,
   String? weatherTime,
-}) {
-  if (weatherTime == null || weatherTime.isEmpty) return const [];
-  return weatherTimeModifiers[paramKey]?[weatherTime] ?? const [];
-}
+}) =>
+    ambientModsForParam(
+      modifiers: weatherTimeModifiers,
+      paramKey: paramKey,
+      key: weatherTime,
+    );
+
+List<ParamModifier> weatherTypeModsForParam({
+  required Map<String, Map<String, List<ParamModifier>>> weatherTypeModifiers,
+  required String paramKey,
+  String? weatherType,
+}) =>
+    ambientModsForParam(
+      modifiers: weatherTypeModifiers,
+      paramKey: paramKey,
+      key: weatherType,
+    );
 
 double resolveScalarMainParam({
   required double base,
   required List<LevelModifierEntry>? levelEntries,
   required int skillLevel,
   List<ParamModifier>? weatherTimeMods,
+  List<ParamModifier>? weatherTypeMods,
   ParamModifier? toolMod,
   bool clampUnit = false,
 }) {
@@ -62,6 +87,9 @@ double resolveScalarMainParam({
     );
   }
   for (final mod in weatherTimeMods ?? const <ParamModifier>[]) {
+    value = applyMainParamModifier(value, op: mod.op, value: mod.value);
+  }
+  for (final mod in weatherTypeMods ?? const <ParamModifier>[]) {
     value = applyMainParamModifier(value, op: mod.op, value: mod.value);
   }
   if (toolMod != null) {
@@ -125,10 +153,11 @@ List<ParamModifier> siteDiscoveryToolModsForParam({
   return out;
 }
 
-/// Effective walk-in / dwell discover radius after level + weather_time + tools.
+/// Effective walk-in / dwell discover radius after level + ambient + tools.
 double resolveSiteDiscoveryVisibilityDistanceM({
   required int skillLevel,
   String? weatherTime,
+  String? weatherType,
   Set<String> ownedActionKeys = const {},
   String? activeActionKey,
 }) {
@@ -143,6 +172,11 @@ double resolveSiteDiscoveryVisibilityDistanceM({
       paramKey: 'visibility_distance_m',
       weatherTime: weatherTime,
     ),
+    weatherTypeMods: weatherTypeModsForParam(
+      weatherTypeModifiers: cfg.weatherTypeModifiers,
+      paramKey: 'visibility_distance_m',
+      weatherType: weatherType,
+    ),
   );
   for (final mod in siteDiscoveryToolModsForParam(
     paramKey: 'visibility_distance_m',
@@ -154,13 +188,14 @@ double resolveSiteDiscoveryVisibilityDistanceM({
   return value;
 }
 
-/// Effective site-survey accuracy params: base → level → weather_time → tools.
+/// Effective site-survey accuracy params: base → level → ambient → tools.
 ///
 /// Keys: `dino_accuracy`, `fossil_accuracy`, `completeness_accuracy`,
 /// `quality_accuracy`, `depth_accuracy`.
 Map<String, double> resolveSiteSurveyAccuracies({
   required int skillLevel,
   String? weatherTime,
+  String? weatherType,
   Map<String, ParamModifier>? toolMods,
 }) {
   const keys = <String>[
@@ -194,6 +229,11 @@ Map<String, double> resolveSiteSurveyAccuracies({
           weatherTimeModifiers: cfg.weatherTimeModifiers,
           paramKey: key,
           weatherTime: weatherTime,
+        ),
+        weatherTypeMods: weatherTypeModsForParam(
+          weatherTypeModifiers: cfg.weatherTypeModifiers,
+          paramKey: key,
+          weatherType: weatherType,
         ),
         toolMod: mods[key],
         clampUnit: true,

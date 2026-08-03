@@ -74,6 +74,7 @@ flutter:
     - assets/images/chrome/nav/
     - assets/images/chrome/skills/
     - assets/images/splash/
+    - assets/images/weather/
     - assets/game_config/site_generation.yaml
     - assets/game_config/01_site_discovery.yaml
     - assets/game_config/02_site_survey.yaml

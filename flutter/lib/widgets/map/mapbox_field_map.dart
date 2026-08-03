@@ -368,6 +368,7 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
     return resolveSiteDiscoveryVisibilityDistanceM(
       skillLevel: inputs.skillLevel,
       weatherTime: _weather?.weatherTime,
+      weatherType: _weather?.status?.weatherType,
       ownedActionKeys: inputs.owned,
       activeActionKey: ignoreActiveTool ? null : inputs.activeKey,
     );

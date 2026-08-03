@@ -124,12 +124,20 @@ def resolve_site_discovery_params(
                 tool_mods = using_mods
 
     weather_time = None
+    weather_type = None
     if lat is not None and lon is not None:
         weather_time = period_at(latitude=lat, longitude=lon)
+        try:
+            from app.services.weather_service import get_weather
+
+            weather_type = get_weather(lat=lat, lon=lon).weather_type
+        except Exception:
+            weather_type = None
 
     resolved = resolve_site_discovery_main_params(
         skill_level=skill_level,
         weather_time=weather_time,
+        weather_type=weather_type,
         tool_mods=tool_mods,
     )
     return ResolvedSiteDiscoveryParams(

@@ -32,8 +32,25 @@ from app.services.tool_action_service.tool_session import (
     get_active_timed_session,
     start_timed_session,
 )
+from app.services.weather_service.service import WeatherSnapshot, cell_for
 from app.services.weather_service.solar import period_at
 from app.core.game_config import ParamModifier
+
+
+def _stub_overcast_weather(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Avoid live Open-Meteo; overcast is identity for discovery multipliers."""
+
+    def _fake(*, lat: float, lon: float) -> WeatherSnapshot:
+        return WeatherSnapshot(
+            weather_type="overcast",
+            temperature_c=15.0,
+            weather_time=period_at(latitude=lat, longitude=lon),
+            observed_at=datetime.now(),
+            cell=cell_for(lat, lon),
+            wmo_code=3,
+        )
+
+    monkeypatch.setattr("app.services.weather_service.get_weather", _fake)
 
 
 def _auth_headers(user: User) -> dict[str, str]:
@@ -209,8 +226,11 @@ def test_cancel_and_restore_ridge_glass(client, session: Session) -> None:
     assert missing.json()["items"] == []
 
 
-def test_ridge_glass_boosts_all_sites_globally(session: Session) -> None:
+def test_ridge_glass_boosts_all_sites_globally(
+    session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
     get_game_config.cache_clear()
+    _stub_overcast_weather(monkeypatch)
     user = _user(session, username="boost")
     ridge = _tool(session, name="Ridge Glass")
     _grant(session, user_id=int(user.id), tool_id=int(ridge.id))
@@ -223,6 +243,7 @@ def test_ridge_glass_boosts_all_sites_globally(session: Session) -> None:
     expected = resolve_site_discovery_main_params(
         skill_level=1,
         weather_time=weather_time,
+        weather_type="overcast",
         tool_mods={
             "visibility_distance_m": ParamModifier(op="add", value=20),
             "discovery_chance": ParamModifier(op="add", value=0.1),
@@ -251,8 +272,11 @@ def test_ridge_glass_boosts_all_sites_globally(session: Session) -> None:
     assert far_params.discovery_chance == expected_chance
 
 
-def test_expired_ridge_glass_session_ignored(session: Session) -> None:
+def test_expired_ridge_glass_session_ignored(
+    session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
     get_game_config.cache_clear()
+    _stub_overcast_weather(monkeypatch)
     user = _user(session, username="expired")
     ridge = _tool(session, name="Ridge Glass")
     instance = _grant(session, user_id=int(user.id), tool_id=int(ridge.id))
@@ -291,6 +315,7 @@ def test_expired_ridge_glass_session_ignored(session: Session) -> None:
     baseline = resolve_site_discovery_main_params(
         skill_level=1,
         weather_time=period_at(latitude=42.0, longitude=-102.0),
+        weather_type="overcast",
     )
     params = resolve_site_discovery_params(
         session,

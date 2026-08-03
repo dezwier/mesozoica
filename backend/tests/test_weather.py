@@ -13,8 +13,9 @@ from app.services.weather_service.solar import elevation_degrees, period_at
 
 
 def test_weather_type_from_wmo_mapping() -> None:
-    assert weather_type_from_wmo(0) == "sunny"
-    assert weather_type_from_wmo(2) == "cloudy"
+    assert weather_type_from_wmo(0) == "clear"
+    assert weather_type_from_wmo(1) == "clear"  # mainly clear
+    assert weather_type_from_wmo(2) == "cloudy"  # partly cloudy (UI label)
     assert weather_type_from_wmo(3) == "overcast"
     assert weather_type_from_wmo(45) == "fog"
     assert weather_type_from_wmo(51) == "drizzle"

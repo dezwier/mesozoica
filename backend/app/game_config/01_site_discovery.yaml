@@ -17,14 +17,29 @@ level_modifiers:
   discovery_chance: []
   max_discovery_speed_kmh: []
 
-# Ambient solar period (dawn|day|dusk|night). Applied after level, before tools.
+# Ambient solar period (dawn|day|dusk|night). After level, before weather_type + tools.
 weather_time_modifiers:
-  visibility_distance_m:
-    day: []
-    dawn: [{ op: multiply, value: 0.8 }]
-    dusk: [{ op: multiply, value: 0.8 }]
-    night: [{ op: multiply, value: 0.5 }]
-  discovery_chance: {}
+  visibility_distance_m: &site_discovery_weather_time
+    day: [{ op: multiply, value: 1.1 }]
+    dawn: []
+    dusk: []
+    night: [{ op: multiply, value: 0.6 }]
+  discovery_chance: *site_discovery_weather_time
+  max_discovery_speed_kmh: {}
+
+# Ambient weather type (clear|cloudy|…). After weather_time, before tools.
+weather_type_modifiers:
+  visibility_distance_m: &site_discovery_weather_type
+    clear: [{ op: multiply, value: 1.1 }]
+    cloudy: [{ op: multiply, value: 1.05 }]
+    overcast: []
+    drizzle: [{ op: multiply, value: 0.95 }]
+    rain: [{ op: multiply, value: 0.9 }]
+    hail: [{ op: multiply, value: 0.9 }]
+    fog: [{ op: multiply, value: 0.85 }]
+    thunderstorm: [{ op: multiply, value: 0.8 }]
+    snow: []
+  discovery_chance: *site_discovery_weather_type
   max_discovery_speed_kmh: {}
 
 # Flutter auto-discover + nearby-discoverable cache.

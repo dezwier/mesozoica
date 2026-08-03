@@ -28,8 +28,10 @@ class WeatherStatus {
   }
 
   factory WeatherStatus.fromJson(Map<String, dynamic> json) {
+    var type = json['weather_type'] as String? ?? 'unknown';
+    if (type == 'sunny') type = 'clear';
     return WeatherStatus(
-      weatherType: json['weather_type'] as String? ?? 'unknown',
+      weatherType: type,
       temperatureC: (json['temperature_c'] as num?)?.toDouble() ?? 0,
       weatherTime: json['weather_time'] as String? ?? 'day',
       observedAt: json['observed_at'] != null

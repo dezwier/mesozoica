@@ -75,7 +75,7 @@ void main() {
     expect(boosted, closeTo(base + 20, 1e-9));
   });
 
-  test('weather_time night halves visibility before tools', () async {
+  test('weather_time and weather_type stack before tools', () async {
     await loadGameConfigForTest();
     final base = GameConfig.instance.siteDiscovery.visibilityDistanceM;
     expect(
@@ -83,37 +83,52 @@ void main() {
         skillLevel: 1,
         weatherTime: 'day',
       ),
-      closeTo(base, 1e-9),
+      closeTo(base * 1.1, 1e-9),
     );
     expect(
       resolveSiteDiscoveryVisibilityDistanceM(
         skillLevel: 1,
         weatherTime: 'dusk',
       ),
-      closeTo(base * 0.8, 1e-9),
+      closeTo(base, 1e-9),
     );
     expect(
       resolveSiteDiscoveryVisibilityDistanceM(
         skillLevel: 1,
         weatherTime: 'dawn',
       ),
+      closeTo(base, 1e-9),
+    );
+    expect(
+      resolveSiteDiscoveryVisibilityDistanceM(
+        skillLevel: 1,
+        weatherTime: 'night',
+      ),
+      closeTo(base * 0.6, 1e-9),
+    );
+    expect(
+      resolveSiteDiscoveryVisibilityDistanceM(
+        skillLevel: 1,
+        weatherType: 'clear',
+      ),
+      closeTo(base * 1.1, 1e-9),
+    );
+    expect(
+      resolveSiteDiscoveryVisibilityDistanceM(
+        skillLevel: 1,
+        weatherType: 'thunderstorm',
+      ),
       closeTo(base * 0.8, 1e-9),
     );
+    // ambient before tools: night *0.6 * thunderstorm *0.8 then ridge +20
     expect(
       resolveSiteDiscoveryVisibilityDistanceM(
         skillLevel: 1,
         weatherTime: 'night',
-      ),
-      closeTo(base * 0.5, 1e-9),
-    );
-    // weather_time before tools: night *0.5 then ridge +20
-    expect(
-      resolveSiteDiscoveryVisibilityDistanceM(
-        skillLevel: 1,
-        weatherTime: 'night',
+        weatherType: 'thunderstorm',
         activeActionKey: 'ridge_glass',
       ),
-      closeTo(base * 0.5 + 20, 1e-9),
+      closeTo(base * 0.6 * 0.8 + 20, 1e-9),
     );
   });
 }

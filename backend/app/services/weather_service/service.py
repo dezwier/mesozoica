@@ -17,7 +17,7 @@ from app.services.weather_service.solar import period_at
 logger = logging.getLogger(__name__)
 
 WeatherType = Literal[
-    "sunny",
+    "clear",
     "cloudy",
     "overcast",
     "fog",
@@ -69,10 +69,14 @@ def cell_for(lat: float, lon: float) -> WeatherCell:
 
 
 def weather_type_from_wmo(code: int) -> WeatherType:
-    """Map Open-Meteo WMO weather interpretation codes to game types."""
-    if code == 0:
-        return "sunny"
-    if code in (1, 2):
+    """Map Open-Meteo WMO weather interpretation codes to game types.
+
+    ``cloudy`` is WMO partly cloudy (2); mainly clear (1) folds into ``clear``.
+    UI labels ``cloudy`` as \"Partly cloudy\".
+    """
+    if code in (0, 1):
+        return "clear"
+    if code == 2:
         return "cloudy"
     if code == 3:
         return "overcast"
