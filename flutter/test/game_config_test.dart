@@ -135,8 +135,24 @@ void main() {
     );
 
     expect(config.toolActions.ridgeGlass.durationMinutes, 60);
-    expect(config.toolActions.ridgeGlass.addedVisibilityRangeM, 20.0);
-    expect(config.toolActions.ridgeGlass.addedDiscoveryRate, 0.1);
+    expect(
+      config.toolActions.ridgeGlass
+          .siteDiscoveryMod('visibility_distance_m')
+          ?.op,
+      'multiply',
+    );
+    expect(
+      config.toolActions.ridgeGlass
+          .siteDiscoveryMod('visibility_distance_m')
+          ?.value,
+      1.3,
+    );
+    expect(
+      config.toolActions.ridgeGlass.siteDiscoveryMod('discovery_chance')?.value,
+      1.3,
+    );
+    expect(config.toolActions.ridgeGlass.addedVisibilityRangeM, isNull);
+    expect(config.toolActions.ridgeGlass.addedDiscoveryRate, isNull);
     expect(
       config.toolActions.ridgeGlass.modifiesMainParams
           ?.affectsSkill('site_discovery'),

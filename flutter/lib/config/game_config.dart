@@ -1319,17 +1319,20 @@ class RidgeGlassActionConfig {
   final String statsExplanation;
 
   double? get addedVisibilityRangeM {
-    final mod =
-        modifiesMainParams?.paramsFor('using', 'site_discovery')['visibility_distance_m'];
+    final mod = siteDiscoveryMod('visibility_distance_m');
     if (mod == null || mod.op != 'add') return null;
     return mod.value;
   }
 
   double? get addedDiscoveryRate {
-    final mod =
-        modifiesMainParams?.paramsFor('using', 'site_discovery')['discovery_chance'];
+    final mod = siteDiscoveryMod('discovery_chance');
     if (mod == null || mod.op != 'add') return null;
     return mod.value;
+  }
+
+  /// Active `using` / `site_discovery` modifier for [paramKey], if any.
+  ParamModifier? siteDiscoveryMod(String paramKey) {
+    return modifiesMainParams?.paramsFor('using', 'site_discovery')[paramKey];
   }
 
   Map<String, dynamic> toParamsJson() {
@@ -1367,14 +1370,15 @@ class RidgeGlassActionConfig {
           modifiesMainParams: const ModifiesMainParams(
             using: {
               'site_discovery': {
-                'visibility_distance_m': ParamModifier(op: 'add', value: 20),
-                'discovery_chance': ParamModifier(op: 'add', value: 0.1),
+                'visibility_distance_m':
+                    ParamModifier(op: 'multiply', value: 1.3),
+                'discovery_chance': ParamModifier(op: 'multiply', value: 1.3),
               },
             },
           ),
           statsExplanation:
-              'While active, adds 20 m to site visibility range and '
-              '+10 percentage points to walk-in discovery chance for all sites.',
+              'While active, multiplies site visibility range and walk-in '
+              'discovery chance by 1.3 for all sites.',
         );
     ModifiesMainParams? mods = d.modifiesMainParams;
     final rawMods = yaml['modifies_main_params'];

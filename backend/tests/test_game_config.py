@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 
 from app.core.game_config import (
+    ParamModifier,
     get_game_config,
     load_game_config,
     resolve_game_config_dir,
@@ -107,8 +108,14 @@ def test_load_game_config_matches_current_defaults() -> None:
 
     ridge = config.tool_actions.ridge_glass
     assert ridge.duration_minutes == 60
-    assert ridge.added_visibility_range_m == 20.0
-    assert ridge.added_discovery_rate == 0.1
+    assert ridge.site_discovery_mod("visibility_distance_m") == ParamModifier(
+        op="multiply", value=1.3
+    )
+    assert ridge.site_discovery_mod("discovery_chance") == ParamModifier(
+        op="multiply", value=1.3
+    )
+    assert ridge.added_visibility_range_m is None
+    assert ridge.added_discovery_rate is None
     ridge_mods = ridge.modifies_main_params
     assert ridge_mods is not None
     assert ridge_mods.affects_skill("site_discovery")

@@ -159,5 +159,5 @@ ridge_glass:
         discovery_chance: { op: multiply, value: 1.3 }
   stats_explanation: >-
     Duration is this card's lifetime battery; each use runs until you stop
-    or time runs out. While active, adds 20 m to site visibility range and
-    +10 percentage points to walk-in discovery chance for all sites.
+    or time runs out. While active, multiplies site visibility range and
+    walk-in discovery chance by 1.3 for all sites.

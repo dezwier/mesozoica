@@ -3,8 +3,11 @@ import 'package:flutter/material.dart';
 import '../../config/game_config.dart';
 import '../../theme/dino_card_theme.dart';
 import '../tools/tool_stat_row.dart';
+import '../weather/weather_display.dart';
 
 /// Stats panel for Ridge Glass.
+///
+/// Buff rows come from [modifies_main_params] (tool params, else game config).
 class RidgeGlassToolStats extends StatelessWidget {
   const RidgeGlassToolStats({
     super.key,
@@ -21,21 +24,24 @@ class RidgeGlassToolStats extends StatelessWidget {
     final p = params;
     final durationMinutes =
         (p?['duration_minutes'] as num?)?.toInt() ?? cfg.durationMinutes;
-    final visibilityAdd =
-        _modValue(p, 'visibility_distance_m') ?? cfg.addedVisibilityRangeM;
-    final discoveryAdd =
-        _modValue(p, 'discovery_chance') ?? cfg.addedDiscoveryRate;
+    final visibilityMod = _siteDiscoveryMod(p, 'visibility_distance_m') ??
+        cfg.siteDiscoveryMod('visibility_distance_m');
+    final discoveryMod = _siteDiscoveryMod(p, 'discovery_chance') ??
+        cfg.siteDiscoveryMod('discovery_chance');
     final explanation =
         p?['stats_explanation'] as String? ?? cfg.statsExplanation;
 
     final pairs = <ToolStatPair>[
       ToolStatPair('Duration', '$durationMinutes min'),
-      if (visibilityAdd != null)
-        ToolStatPair('Visibility', '+${visibilityAdd.round()} m'),
-      if (discoveryAdd != null)
+      if (visibilityMod != null)
+        ToolStatPair(
+          'Visibility',
+          _formatMod(visibilityMod, meters: true),
+        ),
+      if (discoveryMod != null)
         ToolStatPair(
           'Discovery rate',
-          '+${(discoveryAdd * 100).round()}%',
+          _formatMod(discoveryMod, chance: true),
         ),
     ];
 
@@ -64,7 +70,10 @@ class RidgeGlassToolStats extends StatelessWidget {
     );
   }
 
-  static double? _modValue(Map<String, dynamic>? params, String paramKey) {
+  static ParamModifier? _siteDiscoveryMod(
+    Map<String, dynamic>? params,
+    String paramKey,
+  ) {
     final raw = params?['modifies_main_params'];
     if (raw is! Map) return null;
     final using = raw['using'];
@@ -73,9 +82,33 @@ class RidgeGlassToolStats extends StatelessWidget {
     if (skill is! Map) return null;
     final entry = skill[paramKey];
     if (entry is! Map) return null;
-    if (entry['op'] != 'add') return null;
+    final op = entry['op'];
     final value = entry['value'];
-    if (value is num) return value.toDouble();
-    return null;
+    if (op is! String || value is! num) return null;
+    return ParamModifier(op: op, value: value.toDouble());
+  }
+
+  static String _formatMod(
+    ParamModifier mod, {
+    bool meters = false,
+    bool chance = false,
+  }) {
+    switch (mod.op) {
+      case 'add':
+        if (chance) {
+          final pct = (mod.value * 100).round();
+          return pct >= 0 ? '+$pct%' : '$pct%';
+        }
+        if (meters) {
+          final m = mod.value.round();
+          return m >= 0 ? '+$m m' : '$m m';
+        }
+        break;
+      case 'replace':
+        if (chance) return '→ ${(mod.value * 100).round()}%';
+        if (meters) return '→ ${mod.value.round()} m';
+        break;
+    }
+    return WeatherDisplay.formatModifierShort(op: mod.op, value: mod.value);
   }
 }

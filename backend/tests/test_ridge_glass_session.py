@@ -148,8 +148,12 @@ def test_tool_actions_yaml_loads_ridge_glass_knobs() -> None:
     get_game_config.cache_clear()
     cfg = get_game_config().tool_actions.ridge_glass
     assert cfg.duration_minutes == 60
-    assert cfg.added_visibility_range_m == 20.0
-    assert cfg.added_discovery_rate == 0.1
+    vis = cfg.site_discovery_mod("visibility_distance_m")
+    chance = cfg.site_discovery_mod("discovery_chance")
+    assert vis == ParamModifier(op="multiply", value=1.3)
+    assert chance == ParamModifier(op="multiply", value=1.3)
+    assert cfg.added_visibility_range_m is None  # multiply, not add
+    assert cfg.added_discovery_rate is None
     mods = cfg.modifies_main_params
     assert mods is not None
     assert mods.affects_skill("site_discovery")
@@ -175,8 +179,8 @@ def test_start_ridge_glass_session_snapshots_and_replaces(
     assert body["status"] == SESSION_STATUS_ACTIVE
     assert body["params"]["duration_minutes"] == 60
     mods = body["params"]["modifies_main_params"]["using"]["site_discovery"]
-    assert mods["visibility_distance_m"] == {"op": "add", "value": 20.0}
-    assert mods["discovery_chance"] == {"op": "add", "value": 0.1}
+    assert mods["visibility_distance_m"] == {"op": "multiply", "value": 1.3}
+    assert mods["discovery_chance"] == {"op": "multiply", "value": 1.3}
 
     second = client.post(
         f"/api/v1/tools/{ridge.id}/sessions",
@@ -240,14 +244,16 @@ def test_ridge_glass_boosts_all_sites_globally(
 
     start_timed_session(session, user_id=int(user.id), tool_id=int(ridge.id))
     weather_time = period_at(latitude=40.0, longitude=-100.0)
+    ridge_cfg = get_game_config().tool_actions.ridge_glass
+    assert ridge_cfg.modifies_main_params is not None
+    tool_mods = ridge_cfg.modifies_main_params.params_for(
+        "using", "site_discovery"
+    )
     expected = resolve_site_discovery_main_params(
         skill_level=1,
         weather_time=weather_time,
         weather_type="overcast",
-        tool_mods={
-            "visibility_distance_m": ParamModifier(op="add", value=20),
-            "discovery_chance": ParamModifier(op="add", value=0.1),
-        },
+        tool_mods=tool_mods,
     )
     expected_visibility = expected["visibility_distance_m"]
     expected_chance = expected["discovery_chance"]

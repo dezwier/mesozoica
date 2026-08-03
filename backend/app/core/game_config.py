@@ -1055,6 +1055,10 @@ class RidgeGlassActionConfig(BaseModel):
             return None
         return mods.params_for("using", "site_discovery").get(param)
 
+    def site_discovery_mod(self, param: str) -> ParamModifier | None:
+        """Active ``using`` / ``site_discovery`` modifier for ``param``, if any."""
+        return self._using_site_discovery_mod(param)
+
     @property
     def added_visibility_range_m(self) -> float | None:
         mod = self._using_site_discovery_mod("visibility_distance_m")
@@ -1262,15 +1266,17 @@ class ToolActionsConfig(BaseModel):
                 using={
                     "site_discovery": {
                         "visibility_distance_m": ParamModifier(
-                            op="add", value=20.0
+                            op="multiply", value=1.3
                         ),
-                        "discovery_chance": ParamModifier(op="add", value=0.1),
+                        "discovery_chance": ParamModifier(
+                            op="multiply", value=1.3
+                        ),
                     }
                 },
             ),
             stats_explanation=(
-                "While active, adds 20 m to site visibility range and "
-                "+10 percentage points to walk-in discovery chance for all sites."
+                "While active, multiplies site visibility range and walk-in "
+                "discovery chance by 1.3 for all sites."
             ),
         )
     )

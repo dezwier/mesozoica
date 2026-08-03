@@ -72,7 +72,7 @@ void main() {
       skillLevel: 1,
       activeActionKey: 'ridge_glass',
     );
-    expect(boosted, closeTo(base + 20, 1e-9));
+    expect(boosted, closeTo(base * 1.3, 1e-9));
   });
 
   test('weather_time and weather_type stack before tools', () async {
@@ -120,7 +120,7 @@ void main() {
       ),
       closeTo(base * 0.8, 1e-9),
     );
-    // ambient before tools: night *0.6 * thunderstorm *0.8 then ridge +20
+    // ambient before tools: night *0.6 * thunderstorm *0.8 then ridge ×1.3
     expect(
       resolveSiteDiscoveryVisibilityDistanceM(
         skillLevel: 1,
@@ -128,7 +128,7 @@ void main() {
         weatherType: 'thunderstorm',
         activeActionKey: 'ridge_glass',
       ),
-      closeTo(base * 0.6 * 0.8 + 20, 1e-9),
+      closeTo(base * 0.6 * 0.8 * 1.3, 1e-9),
     );
   });
 }
