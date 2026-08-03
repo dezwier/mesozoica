@@ -4,12 +4,14 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../controllers/aerial_session_controller.dart';
+import '../controllers/expedition_drivetrain_controller.dart';
 import '../controllers/formation_map_controller.dart';
 import '../controllers/orbit_survey_controller.dart';
 import '../controllers/guidance_session_controller.dart';
 import '../controllers/ridge_glass_controller.dart';
 import '../controllers/terrain_echo_controller.dart';
 import '../models/aerial_action_kind.dart';
+import '../models/expedition_drivetrain_kind.dart';
 import '../models/formation_map_kind.dart';
 import '../models/orbit_survey_kind.dart';
 import '../models/guidance_tool_kind.dart';
@@ -32,6 +34,7 @@ class ToolActionRouter {
     _startFormationMap,
     _startTerrainEcho,
     _startRidgeGlass,
+    _startExpeditionDrivetrain,
   ];
 
   static void start(BuildContext context, ToolSummary tool) {
@@ -95,6 +98,11 @@ class ToolActionRouter {
       return ridge.tool?.name ?? RidgeGlassKind.toolName;
     }
 
+    final drive = context.read<ExpeditionDrivetrainController>();
+    if (drive.isActive) {
+      return drive.tool?.name ?? ExpeditionDrivetrainKind.toolName;
+    }
+
     return null;
   }
 
@@ -113,6 +121,9 @@ class ToolActionRouter {
             : null) ??
         (session.actionKey == RidgeGlassKind.actionKey
             ? RidgeGlassKind.toolName
+            : null) ??
+        (session.actionKey == ExpeditionDrivetrainKind.actionKey
+            ? ExpeditionDrivetrainKind.toolName
             : null);
   }
 
@@ -149,6 +160,12 @@ class ToolActionRouter {
   static bool _startRidgeGlass(BuildContext context, ToolSummary tool) {
     if (!RidgeGlassKind.matchesToolName(tool.name)) return false;
     unawaited(context.read<RidgeGlassController>().activate(tool));
+    return true;
+  }
+
+  static bool _startExpeditionDrivetrain(BuildContext context, ToolSummary tool) {
+    if (!ExpeditionDrivetrainKind.matchesToolName(tool.name)) return false;
+    unawaited(context.read<ExpeditionDrivetrainController>().activate(tool));
     return true;
   }
 }

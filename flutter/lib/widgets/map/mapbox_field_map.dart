@@ -20,9 +20,11 @@ import '../../controllers/formation_map_controller.dart';
 import '../../controllers/guidance_session_controller.dart';
 import '../../controllers/orbit_survey_controller.dart';
 import '../../controllers/ridge_glass_controller.dart';
+import '../../controllers/expedition_drivetrain_controller.dart';
 import '../../controllers/terrain_echo_controller.dart';
 import '../../controllers/tool_catalog_controller.dart';
 import '../../controllers/weather_controller.dart';
+import '../../models/expedition_drivetrain_kind.dart';
 import '../../models/ridge_glass_kind.dart';
 import '../../models/site.dart';
 import '../../models/tool.dart';
@@ -176,6 +178,7 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
   ToolCatalogController? _toolCatalog;
   GuidanceSessionController? _guidance;
   RidgeGlassController? _ridgeGlass;
+  ExpeditionDrivetrainController? _expeditionDrivetrain;
   WeatherController? _weather;
   VoidCallback? _visibilityListener;
 
@@ -282,12 +285,14 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
     ToolCatalogController? tools;
     GuidanceSessionController? guidance;
     RidgeGlassController? ridgeGlass;
+    ExpeditionDrivetrainController? expeditionDrivetrain;
     WeatherController? weather;
     try {
       auth = context.read<AuthController>();
       tools = context.read<ToolCatalogController>();
       guidance = context.read<GuidanceSessionController>();
       ridgeGlass = context.read<RidgeGlassController>();
+      expeditionDrivetrain = context.read<ExpeditionDrivetrainController>();
       weather = context.read<WeatherController>();
     } on ProviderNotFoundException {
       return;
@@ -313,6 +318,11 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
       _ridgeGlass?.removeListener(_visibilityListener!);
       _ridgeGlass = ridgeGlass;
       _ridgeGlass?.addListener(_visibilityListener!);
+    }
+    if (!identical(_expeditionDrivetrain, expeditionDrivetrain)) {
+      _expeditionDrivetrain?.removeListener(_visibilityListener!);
+      _expeditionDrivetrain = expeditionDrivetrain;
+      _expeditionDrivetrain?.addListener(_visibilityListener!);
     }
     if (!identical(_weather, weather)) {
       _weather?.removeListener(_visibilityListener!);
@@ -347,15 +357,24 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
       activeActionKey = ridge.session?.actionKey ?? RidgeGlassKind.actionKey;
       activeToolName = ridge.tool?.name ?? RidgeGlassKind.toolName;
     } else {
-      final guidance = _guidance;
-      if (guidance != null && guidance.isActive) {
-        activeSession = guidance.session;
+      final drive = _expeditionDrivetrain;
+      if (drive != null && drive.isActive) {
+        activeSession = drive.session;
         activeActionKey =
-            guidance.kind?.actionKey ?? guidance.session?.actionKey;
-        activeToolName = guidance.tool?.name ??
-            (activeActionKey != null
-                ? toolNameForActionKey(activeActionKey)
-                : null);
+            drive.session?.actionKey ?? ExpeditionDrivetrainKind.actionKey;
+        activeToolName =
+            drive.tool?.name ?? ExpeditionDrivetrainKind.toolName;
+      } else {
+        final guidance = _guidance;
+        if (guidance != null && guidance.isActive) {
+          activeSession = guidance.session;
+          activeActionKey =
+              guidance.kind?.actionKey ?? guidance.session?.actionKey;
+          activeToolName = guidance.tool?.name ??
+              (activeActionKey != null
+                  ? toolNameForActionKey(activeActionKey)
+                  : null);
+        }
       }
     }
 
@@ -456,6 +475,7 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
       _toolCatalog?.removeListener(_visibilityListener!);
       _guidance?.removeListener(_visibilityListener!);
       _ridgeGlass?.removeListener(_visibilityListener!);
+      _expeditionDrivetrain?.removeListener(_visibilityListener!);
       _weather?.removeListener(_visibilityListener!);
     }
     widget.locationListenable?.removeListener(_onLocationListenable);

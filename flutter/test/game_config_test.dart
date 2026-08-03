@@ -17,7 +17,7 @@ void main() {
     expect(config.siteDiscovery.visibilityDistanceM, 20.0);
     expect(config.siteDiscovery.maxDistanceM, 20.0);
     expect(config.siteDiscovery.discoveryChance, 0.1);
-    expect(config.siteDiscovery.maxDiscoverySpeedKmh, 15.0);
+    expect(config.siteDiscovery.maxDiscoverySpeedKmh, 10.0);
     expect(config.siteDiscovery.siteDiscoveryXp, 10.0);
     expect(config.siteDiscovery.activeKmXp, 30.0);
     expect(config.siteDiscovery.passiveKmXp, 5.0);
@@ -158,12 +158,25 @@ void main() {
       config.toolActions.ridgeGlass
           .siteDiscoveryMod('max_discovery_speed_kmh')
           ?.value,
-      1.3,
+      0.7,
     );
     expect(config.toolActions.ridgeGlass.addedVisibilityRangeM, isNull);
     expect(config.toolActions.ridgeGlass.addedDiscoveryRate, isNull);
     expect(
       config.toolActions.ridgeGlass.modifiesMainParams
+          ?.affectsSkill('site_discovery'),
+      isTrue,
+    );
+
+    expect(config.toolActions.expeditionDrivetrain.durationMinutes, 60);
+    expect(
+      config.toolActions.expeditionDrivetrain
+          .siteDiscoveryMod('max_discovery_speed_kmh')
+          ?.value,
+      2.5,
+    );
+    expect(
+      config.toolActions.expeditionDrivetrain.modifiesMainParams
           ?.affectsSkill('site_discovery'),
       isTrue,
     );

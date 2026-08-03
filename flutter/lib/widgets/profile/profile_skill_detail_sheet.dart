@@ -5,10 +5,12 @@ import 'package:provider/provider.dart';
 import '../../config/game_config.dart';
 import '../../config/tool_instance_params.dart';
 import '../../controllers/auth_controller.dart';
+import '../../controllers/expedition_drivetrain_controller.dart';
 import '../../controllers/guidance_session_controller.dart';
 import '../../controllers/ridge_glass_controller.dart';
 import '../../controllers/tool_catalog_controller.dart';
 import '../../controllers/weather_controller.dart';
+import '../../models/expedition_drivetrain_kind.dart';
 import '../../models/profile.dart';
 import '../../models/tool.dart';
 import '../../models/tool_session.dart';
@@ -175,12 +177,14 @@ class _SkillDetailDrawer extends StatelessWidget {
             )
             .toList() ??
         const <(String, int)>[];
-    final paramRows = _mainParamRowsForSkill(
+    final paramGroups = _mainParamRowsForSkill(
       liveSkill,
       toolBindings: toolBindings,
       weatherTime: weatherTime,
       weatherType: weatherType,
     );
+    final xpSourceRows = paramGroups.xpSources;
+    final skillParamRows = paramGroups.skillParams;
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -214,10 +218,58 @@ class _SkillDetailDrawer extends StatelessWidget {
                           : null,
                     ),
                     const SizedBox(height: 16),
-                    if (xpRows.isNotEmpty) ...[
+                    _SkillSectionCard(
+                      icon: Icons.tune,
+                      title: 'Skill parameters',
+                      child: skillParamRows.isEmpty
+                          ? Text(
+                              'No global params yet',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodyMedium
+                                  ?.copyWith(
+                                    color: scheme.onSurfaceVariant,
+                                  ),
+                            )
+                          : Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                for (var i = 0;
+                                    i < skillParamRows.length;
+                                    i++) ...[
+                                  if (i > 0) const SizedBox(height: 14),
+                                  _MainParamRow(
+                                    row: skillParamRows[i],
+                                    scheme: scheme,
+                                  ),
+                                ],
+                              ],
+                            ),
+                    ),
+                    if (xpSourceRows.isNotEmpty) ...[
+                      const SizedBox(height: 5),
                       _SkillSectionCard(
                         icon: Icons.bolt_outlined,
                         title: 'XP sources',
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            for (var i = 0; i < xpSourceRows.length; i++) ...[
+                              if (i > 0) const SizedBox(height: 14),
+                              _MainParamRow(
+                                row: xpSourceRows[i],
+                                scheme: scheme,
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ],
+                    if (xpRows.isNotEmpty) ...[
+                      const SizedBox(height: 5),
+                      _SkillSectionCard(
+                        icon: Icons.pie_chart_outline,
+                        title: 'XP breakdown',
                         child: Column(
                           children: [
                             for (var i = 0; i < xpRows.length; i++) ...[
@@ -248,34 +300,7 @@ class _SkillDetailDrawer extends StatelessWidget {
                           ],
                         ),
                       ),
-                      const SizedBox(height: 5),
                     ],
-                    _SkillSectionCard(
-                      icon: Icons.tune,
-                      title: 'Skill parameters',
-                      child: paramRows.isEmpty
-                          ? Text(
-                              'No global params yet',
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .bodyMedium
-                                  ?.copyWith(
-                                    color: scheme.onSurfaceVariant,
-                                  ),
-                            )
-                          : Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                for (var i = 0; i < paramRows.length; i++) ...[
-                                  if (i > 0) const SizedBox(height: 14),
-                                  _MainParamRow(
-                                    row: paramRows[i],
-                                    scheme: scheme,
-                                  ),
-                                ],
-                              ],
-                            ),
-                    ),
                   ],
                 ),
               ),
@@ -543,12 +568,20 @@ List<ToolModBinding> _toolModBindings(BuildContext context) {
       activeActionKey = ridge.session?.actionKey ?? 'ridge_glass';
       activeToolName = ridge.tool?.name;
     } else {
-      final guidance = context.read<GuidanceSessionController>();
-      if (guidance.isActive) {
-        activeSession = guidance.session;
+      final drive = context.read<ExpeditionDrivetrainController>();
+      if (drive.isActive) {
+        activeSession = drive.session;
         activeActionKey =
-            guidance.kind?.actionKey ?? guidance.session?.actionKey;
-        activeToolName = guidance.tool?.name;
+            drive.session?.actionKey ?? ExpeditionDrivetrainKind.actionKey;
+        activeToolName = drive.tool?.name;
+      } else {
+        final guidance = context.read<GuidanceSessionController>();
+        if (guidance.isActive) {
+          activeSession = guidance.session;
+          activeActionKey =
+              guidance.kind?.actionKey ?? guidance.session?.actionKey;
+          activeToolName = guidance.tool?.name;
+        }
       }
     }
 
@@ -563,100 +596,238 @@ List<ToolModBinding> _toolModBindings(BuildContext context) {
   }
 }
 
-class _DistEntry {
-  const _DistEntry({required this.label, required this.value});
+class _ParamFactor {
+  const _ParamFactor({
+    required this.label,
+    required this.deltaText,
+  });
 
   final String label;
-  final String value;
+  final String deltaText;
 }
 
 class _MainParamDisplay {
   const _MainParamDisplay({
     required this.label,
-    this.effectiveValue,
-    this.calculation,
-    this.distribution,
-  }) : assert(effectiveValue != null || distribution != null);
+    required this.effectiveValue,
+    this.overallDeltaPct,
+    this.factors = const [],
+  });
 
   final String label;
 
-  /// Scalar params: the resolved value shown on the right.
-  final String? effectiveValue;
+  /// The resolved value shown on the right.
+  final String effectiveValue;
 
-  /// Small-print breakdown when tools/levels affect the value; null if base-only.
-  final String? calculation;
+  /// Overall change vs base as a percent (null when unmodified or base is 0).
+  final double? overallDeltaPct;
 
-  /// Distribution params: stacked label/value rows under the title.
-  final List<_DistEntry>? distribution;
+  /// Per-factor lines for the tap breakdown tooltip.
+  final List<_ParamFactor> factors;
 }
 
-class _MainParamRow extends StatelessWidget {
+class _MainParamRow extends StatefulWidget {
   const _MainParamRow({required this.row, required this.scheme});
 
   final _MainParamDisplay row;
   final ColorScheme scheme;
 
   @override
-  Widget build(BuildContext context) {
-    final body = Theme.of(context).textTheme.bodyMedium;
-    final small = Theme.of(context).textTheme.bodySmall?.copyWith(
-          color: scheme.onSurfaceVariant,
-          height: 1.35,
+  State<_MainParamRow> createState() => _MainParamRowState();
+}
+
+class _MainParamRowState extends State<_MainParamRow> {
+  final LayerLink _link = LayerLink();
+  OverlayEntry? _overlay;
+
+  @override
+  void dispose() {
+    _removeOverlay();
+    super.dispose();
+  }
+
+  void _removeOverlay() {
+    _overlay?.remove();
+    _overlay = null;
+  }
+
+  void _toggleBreakdown() {
+    if (_overlay != null) {
+      _removeOverlay();
+      return;
+    }
+    final factors = widget.row.factors;
+    if (factors.isEmpty) return;
+
+    final overlay = Overlay.of(context);
+    final scheme = widget.scheme;
+    final media = MediaQuery.of(context);
+
+    _overlay = OverlayEntry(
+      builder: (context) {
+        return Stack(
+          children: [
+            Positioned.fill(
+              child: GestureDetector(
+                behavior: HitTestBehavior.translucent,
+                onTap: _removeOverlay,
+              ),
+            ),
+            CompositedTransformFollower(
+              link: _link,
+              showWhenUnlinked: false,
+              targetAnchor: Alignment.bottomRight,
+              followerAnchor: Alignment.topRight,
+              offset: const Offset(0, 6),
+              child: Material(
+                elevation: 6,
+                color: scheme.surfaceContainerHigh,
+                shadowColor: scheme.shadow.withValues(alpha: 0.35),
+                borderRadius: BorderRadius.circular(10),
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    maxWidth: (media.size.width - 48).clamp(180.0, 280.0),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        for (var i = 0; i < factors.length; i++) ...[
+                          if (i > 0) const SizedBox(height: 6),
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  factors[i].label,
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .bodySmall
+                                      ?.copyWith(
+                                        color: scheme.onSurface,
+                                        height: 1.3,
+                                      ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Text(
+                                factors[i].deltaText,
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .bodySmall
+                                    ?.copyWith(
+                                      color: _deltaColor(
+                                        factors[i].deltaText,
+                                        scheme,
+                                      ),
+                                      fontWeight: FontWeight.w700,
+                                      height: 1.3,
+                                    ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
         );
+      },
+    );
+    overlay.insert(_overlay!);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final row = widget.row;
+    final scheme = widget.scheme;
+    final body = Theme.of(context).textTheme.bodyMedium;
     final valueStyle = body?.copyWith(
       color: scheme.primary,
       fontWeight: FontWeight.w600,
     );
-    final distValueStyle = Theme.of(context).textTheme.bodySmall?.copyWith(
-          color: scheme.primary,
-          fontWeight: FontWeight.w600,
-          height: 1.35,
-        );
+    final deltaPct = row.overallDeltaPct;
+    final showDelta = deltaPct != null && row.factors.isNotEmpty;
+    final positive = (deltaPct ?? 0) >= 0;
+    const positiveColor = Color(0xFF2E7D32);
+    const negativeColor = Color(0xFFC62828);
+    final badgeColor = positive ? positiveColor : negativeColor;
 
-    final dist = row.distribution;
-    if (dist != null) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text(row.label, style: body?.copyWith(fontWeight: FontWeight.w600)),
-          const SizedBox(height: 6),
-          for (final entry in dist)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 3),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.baseline,
-                textBaseline: TextBaseline.alphabetic,
-                children: [
-                  Expanded(child: Text(entry.label, style: small)),
-                  const SizedBox(width: 12),
-                  Text(entry.value, style: distValueStyle),
-                ],
+    return Row(
+      children: [
+        Expanded(child: Text(row.label, style: body)),
+        Text(row.effectiveValue, style: valueStyle),
+        if (showDelta) ...[
+          const SizedBox(width: 8),
+          CompositedTransformTarget(
+            link: _link,
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: _toggleBreakdown,
+                borderRadius: BorderRadius.circular(999),
+                child: Ink(
+                  decoration: BoxDecoration(
+                    color: badgeColor.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(999),
+                    border: Border.all(
+                      color: badgeColor.withValues(alpha: 0.35),
+                      width: 0.75,
+                    ),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(8, 3, 6, 3),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          _formatSignedPctNumber(deltaPct),
+                          style: Theme.of(context)
+                              .textTheme
+                              .labelSmall
+                              ?.copyWith(
+                                color: badgeColor,
+                                fontWeight: FontWeight.w700,
+                                height: 1.1,
+                                letterSpacing: 0.1,
+                              ),
+                        ),
+                        const SizedBox(width: 2),
+                        Icon(
+                          Icons.expand_more,
+                          size: 14,
+                          color: badgeColor.withValues(alpha: 0.85),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               ),
             ),
-          if (row.calculation != null) ...[
-            const SizedBox(height: 4),
-            Text(row.calculation!, style: small),
-          ],
-        ],
-      );
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Row(
-          children: [
-            Expanded(child: Text(row.label, style: body)),
-            Text(row.effectiveValue!, style: valueStyle),
-          ],
-        ),
-        if (row.calculation != null) ...[
-          const SizedBox(height: 4),
-          Text(row.calculation!, style: small),
+          ),
         ],
       ],
     );
   }
+}
+
+Color _deltaColor(String deltaText, ColorScheme scheme) {
+  final trimmed = deltaText.trimLeft();
+  if (trimmed.startsWith('+')) return const Color(0xFF2E7D32);
+  if (trimmed.startsWith('-') && !trimmed.startsWith('→')) {
+    return const Color(0xFFC62828);
+  }
+  return scheme.onSurfaceVariant;
+}
+
+String _formatSignedPctNumber(double pct) {
+  final rounded = pct.round();
+  if (rounded == 0) return '±0%';
+  return rounded > 0 ? '+$rounded%' : '$rounded%';
 }
 
 class _ActiveToolMod {
@@ -671,13 +842,23 @@ class _ActiveToolMod {
   final ParamModifier mod;
 }
 
-List<_MainParamDisplay> _mainParamRowsForSkill(
+class _SkillParamGroups {
+  const _SkillParamGroups({
+    this.xpSources = const [],
+    this.skillParams = const [],
+  });
+
+  final List<_MainParamDisplay> xpSources;
+  final List<_MainParamDisplay> skillParams;
+}
+
+_SkillParamGroups _mainParamRowsForSkill(
   SkillState skill, {
   required List<ToolModBinding> toolBindings,
   String? weatherTime,
   String? weatherType,
 }) {
-  if (!GameConfig.isLoaded) return const [];
+  if (!GameConfig.isLoaded) return const _SkillParamGroups();
   final domain = GameConfig.instance.skillDomain(skill.id);
   if (domain is SiteDiscoveryConfig) {
     return _siteDiscoveryRows(
@@ -689,145 +870,157 @@ List<_MainParamDisplay> _mainParamRowsForSkill(
     );
   }
   if (domain is SiteStewardshipConfig) {
-    return _siteStewardshipRows(
-      domain,
-      skill.level,
-      toolBindings: toolBindings,
-      weatherTime: weatherTime,
-      weatherType: weatherType,
+    return _SkillParamGroups(
+      skillParams: _siteStewardshipRows(
+        domain,
+        skill.level,
+        toolBindings: toolBindings,
+        weatherTime: weatherTime,
+        weatherType: weatherType,
+      ),
     );
   }
   if (domain is SkillStubConfig) {
-    if (!domain.hasMainParams) return const [];
-    return [
-      for (final entry in domain.mainParams.entries)
-        if (entry.value is num)
-          _resolveScalarParam(
-            label: _mainParamLabels[entry.key] ?? entry.key,
-            paramKey: entry.key,
-            skillId: domain.skillId,
-            base: (entry.value as num).toDouble(),
-            levelEntries: domain.levelModifiers[entry.key],
-            weatherTimeMods: domain.weatherTimeModifiers[entry.key],
-            weatherTime: weatherTime,
-            weatherTypeMods: domain.weatherTypeModifiers[entry.key],
-            weatherType: weatherType,
-            skillLevel: skill.level,
-            format: entry.key.endsWith('_xp')
-                ? _ParamFormat.xp
-                : _ParamFormat.plain,
-            clampUnit: false,
-            toolBindings: toolBindings,
-          )
-        else
-          _MainParamDisplay(
-            label: _mainParamLabels[entry.key] ?? entry.key,
-            effectiveValue: entry.value.toString(),
-          ),
-    ];
+    if (!domain.hasMainParams) return const _SkillParamGroups();
+    final xpSources = <_MainParamDisplay>[];
+    final skillParams = <_MainParamDisplay>[];
+    for (final entry in domain.mainParams.entries) {
+      final row = entry.value is num
+          ? _resolveScalarParam(
+              label: _mainParamLabels[entry.key] ?? entry.key,
+              paramKey: entry.key,
+              skillId: domain.skillId,
+              base: (entry.value as num).toDouble(),
+              levelEntries: domain.levelModifiers[entry.key],
+              weatherTimeMods: domain.weatherTimeModifiers[entry.key],
+              weatherTime: weatherTime,
+              weatherTypeMods: domain.weatherTypeModifiers[entry.key],
+              weatherType: weatherType,
+              skillLevel: skill.level,
+              format: entry.key.endsWith('_xp')
+                  ? _ParamFormat.xp
+                  : _ParamFormat.plain,
+              clampUnit: false,
+              toolBindings: toolBindings,
+            )
+          : _MainParamDisplay(
+              label: _mainParamLabels[entry.key] ?? entry.key,
+              effectiveValue: entry.value.toString(),
+            );
+      if (entry.key.endsWith('_xp')) {
+        xpSources.add(row);
+      } else {
+        skillParams.add(row);
+      }
+    }
+    return _SkillParamGroups(xpSources: xpSources, skillParams: skillParams);
   }
-  return const [];
+  return const _SkillParamGroups();
 }
 
-List<_MainParamDisplay> _siteDiscoveryRows(
+_SkillParamGroups _siteDiscoveryRows(
   SiteDiscoveryConfig cfg,
   int skillLevel, {
   required List<ToolModBinding> toolBindings,
   String? weatherTime,
   String? weatherType,
 }) {
-  return [
-    _resolveScalarParam(
-      label: 'Visibility distance',
-      paramKey: 'visibility_distance_m',
-      skillId: 'site_discovery',
-      base: cfg.visibilityDistanceM,
-      levelEntries: cfg.levelModifiers['visibility_distance_m'],
-      weatherTimeMods: cfg.weatherTimeModifiers['visibility_distance_m'],
-      weatherTime: weatherTime,
-      weatherTypeMods: cfg.weatherTypeModifiers['visibility_distance_m'],
-      weatherType: weatherType,
-      skillLevel: skillLevel,
-      format: _ParamFormat.meters,
-      clampUnit: false,
-      toolBindings: toolBindings,
-    ),
-    _resolveScalarParam(
-      label: 'Discovery chance',
-      paramKey: 'discovery_chance',
-      skillId: 'site_discovery',
-      base: cfg.discoveryChance,
-      levelEntries: cfg.levelModifiers['discovery_chance'],
-      weatherTimeMods: cfg.weatherTimeModifiers['discovery_chance'],
-      weatherTime: weatherTime,
-      weatherTypeMods: cfg.weatherTypeModifiers['discovery_chance'],
-      weatherType: weatherType,
-      skillLevel: skillLevel,
-      format: _ParamFormat.chance,
-      clampUnit: true,
-      toolBindings: toolBindings,
-    ),
-    _resolveScalarParam(
-      label: 'Max discovery speed',
-      paramKey: 'max_discovery_speed_kmh',
-      skillId: 'site_discovery',
-      base: cfg.maxDiscoverySpeedKmh,
-      levelEntries: cfg.levelModifiers['max_discovery_speed_kmh'],
-      weatherTimeMods: cfg.weatherTimeModifiers['max_discovery_speed_kmh'],
-      weatherTime: weatherTime,
-      weatherTypeMods: cfg.weatherTypeModifiers['max_discovery_speed_kmh'],
-      weatherType: weatherType,
-      skillLevel: skillLevel,
-      format: _ParamFormat.kmh,
-      clampUnit: false,
-      toolBindings: toolBindings,
-    ),
-    _resolveScalarParam(
-      label: 'Site discovery XP',
-      paramKey: 'site_discovery_xp',
-      skillId: 'site_discovery',
-      base: cfg.siteDiscoveryXp,
-      levelEntries: cfg.levelModifiers['site_discovery_xp'],
-      weatherTimeMods: cfg.weatherTimeModifiers['site_discovery_xp'],
-      weatherTime: weatherTime,
-      weatherTypeMods: cfg.weatherTypeModifiers['site_discovery_xp'],
-      weatherType: weatherType,
-      skillLevel: skillLevel,
-      format: _ParamFormat.xp,
-      clampUnit: false,
-      toolBindings: toolBindings,
-    ),
-    _resolveScalarParam(
-      label: 'Active km XP',
-      paramKey: 'active_km_xp',
-      skillId: 'site_discovery',
-      base: cfg.activeKmXp,
-      levelEntries: cfg.levelModifiers['active_km_xp'],
-      weatherTimeMods: cfg.weatherTimeModifiers['active_km_xp'],
-      weatherTime: weatherTime,
-      weatherTypeMods: cfg.weatherTypeModifiers['active_km_xp'],
-      weatherType: weatherType,
-      skillLevel: skillLevel,
-      format: _ParamFormat.xp,
-      clampUnit: false,
-      toolBindings: toolBindings,
-    ),
-    _resolveScalarParam(
-      label: 'Passive km XP',
-      paramKey: 'passive_km_xp',
-      skillId: 'site_discovery',
-      base: cfg.passiveKmXp,
-      levelEntries: cfg.levelModifiers['passive_km_xp'],
-      weatherTimeMods: cfg.weatherTimeModifiers['passive_km_xp'],
-      weatherTime: weatherTime,
-      weatherTypeMods: cfg.weatherTypeModifiers['passive_km_xp'],
-      weatherType: weatherType,
-      skillLevel: skillLevel,
-      format: _ParamFormat.xp,
-      clampUnit: false,
-      toolBindings: toolBindings,
-    ),
-  ];
+  return _SkillParamGroups(
+    skillParams: [
+      _resolveScalarParam(
+        label: 'Visibility distance',
+        paramKey: 'visibility_distance_m',
+        skillId: 'site_discovery',
+        base: cfg.visibilityDistanceM,
+        levelEntries: cfg.levelModifiers['visibility_distance_m'],
+        weatherTimeMods: cfg.weatherTimeModifiers['visibility_distance_m'],
+        weatherTime: weatherTime,
+        weatherTypeMods: cfg.weatherTypeModifiers['visibility_distance_m'],
+        weatherType: weatherType,
+        skillLevel: skillLevel,
+        format: _ParamFormat.meters,
+        clampUnit: false,
+        toolBindings: toolBindings,
+      ),
+      _resolveScalarParam(
+        label: 'Discovery chance',
+        paramKey: 'discovery_chance',
+        skillId: 'site_discovery',
+        base: cfg.discoveryChance,
+        levelEntries: cfg.levelModifiers['discovery_chance'],
+        weatherTimeMods: cfg.weatherTimeModifiers['discovery_chance'],
+        weatherTime: weatherTime,
+        weatherTypeMods: cfg.weatherTypeModifiers['discovery_chance'],
+        weatherType: weatherType,
+        skillLevel: skillLevel,
+        format: _ParamFormat.chance,
+        clampUnit: true,
+        toolBindings: toolBindings,
+      ),
+      _resolveScalarParam(
+        label: 'Max discovery speed',
+        paramKey: 'max_discovery_speed_kmh',
+        skillId: 'site_discovery',
+        base: cfg.maxDiscoverySpeedKmh,
+        levelEntries: cfg.levelModifiers['max_discovery_speed_kmh'],
+        weatherTimeMods: cfg.weatherTimeModifiers['max_discovery_speed_kmh'],
+        weatherTime: weatherTime,
+        weatherTypeMods: cfg.weatherTypeModifiers['max_discovery_speed_kmh'],
+        weatherType: weatherType,
+        skillLevel: skillLevel,
+        format: _ParamFormat.kmh,
+        clampUnit: false,
+        toolBindings: toolBindings,
+      ),
+    ],
+    xpSources: [
+      _resolveScalarParam(
+        label: 'Site discovery XP',
+        paramKey: 'site_discovery_xp',
+        skillId: 'site_discovery',
+        base: cfg.siteDiscoveryXp,
+        levelEntries: cfg.levelModifiers['site_discovery_xp'],
+        weatherTimeMods: cfg.weatherTimeModifiers['site_discovery_xp'],
+        weatherTime: weatherTime,
+        weatherTypeMods: cfg.weatherTypeModifiers['site_discovery_xp'],
+        weatherType: weatherType,
+        skillLevel: skillLevel,
+        format: _ParamFormat.xp,
+        clampUnit: false,
+        toolBindings: toolBindings,
+      ),
+      _resolveScalarParam(
+        label: 'Active km XP',
+        paramKey: 'active_km_xp',
+        skillId: 'site_discovery',
+        base: cfg.activeKmXp,
+        levelEntries: cfg.levelModifiers['active_km_xp'],
+        weatherTimeMods: cfg.weatherTimeModifiers['active_km_xp'],
+        weatherTime: weatherTime,
+        weatherTypeMods: cfg.weatherTypeModifiers['active_km_xp'],
+        weatherType: weatherType,
+        skillLevel: skillLevel,
+        format: _ParamFormat.xp,
+        clampUnit: false,
+        toolBindings: toolBindings,
+      ),
+      _resolveScalarParam(
+        label: 'Passive km XP',
+        paramKey: 'passive_km_xp',
+        skillId: 'site_discovery',
+        base: cfg.passiveKmXp,
+        levelEntries: cfg.levelModifiers['passive_km_xp'],
+        weatherTimeMods: cfg.weatherTimeModifiers['passive_km_xp'],
+        weatherTime: weatherTime,
+        weatherTypeMods: cfg.weatherTypeModifiers['passive_km_xp'],
+        weatherType: weatherType,
+        skillLevel: skillLevel,
+        format: _ParamFormat.xp,
+        clampUnit: false,
+        toolBindings: toolBindings,
+      ),
+    ],
+  );
 }
 
 List<_MainParamDisplay> _siteStewardshipRows(
@@ -838,8 +1031,6 @@ List<_MainParamDisplay> _siteStewardshipRows(
   String? weatherType,
 }) {
   final mp = cfg.mainParams;
-  // Accuracy scalars first (level/tool resolvable), then fixed global
-  // distribution tables (not subject to multipliers).
   return [
     _resolveScalarParam(
       label: 'Dinosaur accuracy',
@@ -916,86 +1107,7 @@ List<_MainParamDisplay> _siteStewardshipRows(
       clampUnit: true,
       toolBindings: toolBindings,
     ),
-    _MainParamDisplay(
-      label: 'Dino count',
-      distribution: _dinoCountEntries(cfg.dinoCount),
-    ),
-    _MainParamDisplay(
-      label: 'Fossil count',
-      distribution: [
-        for (final e in cfg.fossilCount.entries)
-          _DistEntry(label: '${e.key}', value: _formatChance(e.value)),
-      ],
-    ),
-    _MainParamDisplay(
-      label: 'Depth',
-      distribution: [
-        for (final b in cfg.depthWeights)
-          _DistEntry(
-            label: _formatDepthRange(b.minCm, b.maxCm),
-            value: _formatChance(b.weight),
-          ),
-      ],
-    ),
-    _MainParamDisplay(
-      label: 'Completeness',
-      distribution: [
-        for (final e in cfg.completenessWeights.entries)
-          _DistEntry(
-            label: _humanizeKey(e.key),
-            value: _formatChance(e.value),
-          ),
-      ],
-    ),
-    _MainParamDisplay(
-      label: 'Quality',
-      distribution: [
-        for (final e in cfg.qualityWeights.entries)
-          _DistEntry(
-            label: _humanizeKey(e.key),
-            value: _formatChance(e.value),
-          ),
-      ],
-    ),
   ];
-}
-
-List<_DistEntry> _dinoCountEntries(List<DinoCountThreshold> tiers) {
-  final out = <_DistEntry>[];
-  var prev = 0.0;
-  for (final tier in tiers) {
-    final lo = prev;
-    final hi = tier.maxOdd;
-    out.add(
-      _DistEntry(
-        label: _formatOddRange(lo, hi),
-        value: '${tier.count}',
-      ),
-    );
-    prev = hi;
-  }
-  return out;
-}
-
-String _formatOddRange(double lo, double hi) {
-  final loPct = _formatChance(lo);
-  final hiPct = _formatChance(hi);
-  if (lo <= 0) return '≤ $hiPct';
-  return '$loPct – $hiPct';
-}
-
-String _formatDepthRange(int minCm, int maxCm) {
-  if (minCm == 0 && maxCm == 0) return 'Surface';
-  if (minCm == maxCm) return '$minCm cm';
-  return '$minCm–$maxCm cm';
-}
-
-String _humanizeKey(String key) {
-  return key
-      .split('_')
-      .where((part) => part.isNotEmpty)
-      .map((part) => '${part[0].toUpperCase()}${part.substring(1)}')
-      .join(' ');
 }
 
 _MainParamDisplay _resolveScalarParam({
@@ -1013,31 +1125,40 @@ _MainParamDisplay _resolveScalarParam({
   required bool clampUnit,
   required List<ToolModBinding> toolBindings,
 }) {
-  final parts = <String>['base ${_formatScalar(base, format)}'];
+  final factors = <_ParamFactor>[];
   var value = base;
-  var affected = false;
+
+  void applyStep(String factorLabel, Object mod) {
+    final before = value;
+    value = _applyModifier(value, mod);
+    factors.add(
+      _ParamFactor(
+        label: factorLabel,
+        deltaText: _formatStepDelta(
+          before: before,
+          after: value,
+          mod: mod,
+          format: format,
+        ),
+      ),
+    );
+  }
 
   final levelMod = _applicableLevelModifier(levelEntries, skillLevel);
   if (levelMod != null) {
-    value = _applyModifier(value, levelMod);
-    parts.add('level ${_formatModifierShort(levelMod, format)}');
-    affected = true;
+    applyStep('Level', levelMod);
   }
 
   if (weatherTime != null && weatherTimeMods != null) {
     for (final mod in weatherTimeMods[weatherTime] ?? const <ParamModifier>[]) {
-      value = _applyModifier(value, mod);
-      parts.add('$weatherTime ${_formatModifierShort(mod, format)}');
-      affected = true;
+      applyStep(WeatherDisplay.timeLabel(weatherTime), mod);
     }
   }
 
   final typeKey = weatherType == 'sunny' ? 'clear' : weatherType;
   if (typeKey != null && weatherTypeMods != null) {
     for (final mod in weatherTypeMods[typeKey] ?? const <ParamModifier>[]) {
-      value = _applyModifier(value, mod);
-      parts.add('$typeKey ${_formatModifierShort(mod, format)}');
-      affected = true;
+      applyStep(WeatherDisplay.weatherLabel(typeKey), mod);
     }
   }
 
@@ -1046,23 +1167,49 @@ _MainParamDisplay _resolveScalarParam({
     paramKey: paramKey,
     toolBindings: toolBindings,
   )) {
-    value = _applyModifier(value, toolMod.mod);
-    parts.add(
-      '${toolMod.toolName} (${toolMod.whenLabel}) '
-      '${_formatModifierShort(toolMod.mod, format)}',
-    );
-    affected = true;
+    applyStep('${toolMod.toolName} (${toolMod.whenLabel})', toolMod.mod);
   }
 
   if (clampUnit) {
     value = value.clamp(0.0, 1.0);
   }
 
+  double? overallDeltaPct;
+  if (factors.isNotEmpty && base.abs() > 1e-12) {
+    overallDeltaPct = ((value - base) / base) * 100.0;
+  }
+
   return _MainParamDisplay(
     label: label,
     effectiveValue: _formatScalar(value, format),
-    calculation: affected ? parts.join(' · ') : null,
+    overallDeltaPct: overallDeltaPct,
+    factors: factors,
   );
+}
+
+String _formatStepDelta({
+  required double before,
+  required double after,
+  required Object mod,
+  required _ParamFormat format,
+}) {
+  final op = mod is ParamModifier
+      ? mod.op
+      : (mod as LevelModifierEntry).op;
+  final modValue = mod is ParamModifier
+      ? mod.value
+      : (mod as LevelModifierEntry).value;
+
+  if (op == 'multiply') {
+    return WeatherDisplay.formatModifierShort(op: op, value: modValue);
+  }
+  if (op == 'replace') {
+    return '→ ${_formatScalar(after, format)}';
+  }
+  if (before.abs() > 1e-12) {
+    return _formatSignedPctNumber(((after - before) / before) * 100.0);
+  }
+  return _formatModifierShort(mod, format);
 }
 
 List<_ActiveToolMod> _activeToolModsForParam({

@@ -397,7 +397,7 @@ class SiteDiscoveryMainParams(BaseModel):
 
     visibility_distance_m: float = 20.0
     discovery_chance: float = 0.1
-    max_discovery_speed_kmh: float = 15.0
+    max_discovery_speed_kmh: float = 10.0
     site_discovery_xp: float = 10.0
     active_km_xp: float = 30.0
     passive_km_xp: float = 5.0
@@ -1265,14 +1265,33 @@ class ToolActionsConfig(BaseModel):
                             op="multiply", value=1.3
                         ),
                         "max_discovery_speed_kmh": ParamModifier(
-                            op="multiply", value=1.3
+                            op="multiply", value=0.7
                         ),
                     }
                 },
             ),
             stats_explanation=(
-                "While active, multiplies site visibility range, walk-in "
-                "discovery chance, and max discovery speed by 1.3 for all sites."
+                "While active, boosts site visibility range and walk-in "
+                "discovery chance, and decreases max discovery speed for all sites."
+            ),
+        )
+    )
+    # Same shape as Ridge Glass (duration + modifies_main_params).
+    expedition_drivetrain: RidgeGlassActionConfig = Field(
+        default_factory=lambda: RidgeGlassActionConfig(
+            duration_minutes=60,
+            modifies_main_params=ModifiesMainParams(
+                using={
+                    "site_discovery": {
+                        "max_discovery_speed_kmh": ParamModifier(
+                            op="multiply", value=2.5
+                        ),
+                    }
+                },
+            ),
+            stats_explanation=(
+                "While active, raises max discovery speed by 150% so bicycle "
+                "travel still counts toward discovery distance."
             ),
         )
     )
@@ -1296,6 +1315,7 @@ class ToolActionsConfig(BaseModel):
             ("proximity_scanner", self.proximity_scanner),
             ("site_navigator", self.site_navigator),
             ("ridge_glass", self.ridge_glass),
+            ("expedition_drivetrain", self.expedition_drivetrain),
         ):
             mods = cfg.modifies_main_params
             if mods is not None and mods.affects_skill(skill_id):

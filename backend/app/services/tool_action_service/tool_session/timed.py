@@ -10,6 +10,7 @@ from sqlmodel import Session, col, select
 from app.core.exceptions import NotFoundError, ValidationError
 from app.core.game_config import get_game_config
 from app.models.tool_session import (
+    ACTION_KEY_EXPEDITION_DRIVETRAIN,
     ACTION_KEY_FORMATION_MAP,
     ACTION_KEY_ORBIT_SURVEY,
     ACTION_KEY_RIDGE_GLASS,
@@ -48,6 +49,7 @@ TOOL_NAME_ORBIT_SURVEY = "Orbit Survey"
 TOOL_NAME_FORMATION_MAP = "Formation Map"
 TOOL_NAME_TERRAIN_ECHO = "Terrain Echo"
 TOOL_NAME_RIDGE_GLASS = "Ridge Glass"
+TOOL_NAME_EXPEDITION_DRIVETRAIN = "Expedition Drivetrain"
 
 
 def _utcnow() -> datetime:
@@ -63,6 +65,8 @@ def _action_key_for_tool_name(tool_name: str) -> str:
         return ACTION_KEY_TERRAIN_ECHO
     if tool_name == TOOL_NAME_RIDGE_GLASS:
         return ACTION_KEY_RIDGE_GLASS
+    if tool_name == TOOL_NAME_EXPEDITION_DRIVETRAIN:
+        return ACTION_KEY_EXPEDITION_DRIVETRAIN
     return guidance_kind_for_tool_name(tool_name).action_key
 
 
@@ -162,13 +166,13 @@ def _terrain_params(
     }
 
 
-def _ridge_glass_params(
+def _main_param_buff_params(
     *,
     cfg: Any,
     inst_p: dict[str, Any],
     duration_minutes: int,
 ) -> dict[str, Any]:
-    """Snapshot duration + site_discovery buffs for an active Ridge Glass use."""
+    """Snapshot duration + site_discovery buffs for an active timed buff tool."""
     raw_mods = inst_p.get("modifies_main_params")
     if raw_mods is None:
         mods = getattr(cfg, "modifies_main_params", None)
@@ -179,6 +183,10 @@ def _ridge_glass_params(
     if raw_mods is not None:
         params["modifies_main_params"] = raw_mods
     return params
+
+
+# Back-compat alias used by Ridge Glass tests / callers.
+_ridge_glass_params = _main_param_buff_params
 
 
 def _place_formation_center(
@@ -400,7 +408,16 @@ def start_timed_session(
         if tool_type.name != TOOL_NAME_RIDGE_GLASS:
             raise ValidationError("This action is only available for Ridge Glass")
         cfg = game.tool_actions.ridge_glass
-        params = _ridge_glass_params(
+        params = _main_param_buff_params(
+            cfg=cfg, inst_p=inst_p, duration_minutes=eff_duration
+        )
+    elif action_key == ACTION_KEY_EXPEDITION_DRIVETRAIN:
+        if tool_type.name != TOOL_NAME_EXPEDITION_DRIVETRAIN:
+            raise ValidationError(
+                "This action is only available for Expedition Drivetrain"
+            )
+        cfg = game.tool_actions.expedition_drivetrain
+        params = _main_param_buff_params(
             cfg=cfg, inst_p=inst_p, duration_minutes=eff_duration
         )
     else:

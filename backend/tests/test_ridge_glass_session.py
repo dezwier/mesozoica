@@ -16,6 +16,7 @@ from app.models.site import Site
 from app.models.site_type import SiteType
 from app.models.tool import Tool
 from app.models.tool_session import (
+    ACTION_KEY_EXPEDITION_DRIVETRAIN,
     ACTION_KEY_ORBIT_SURVEY,
     ACTION_KEY_RIDGE_GLASS,
     SESSION_STATUS_ACTIVE,
@@ -153,7 +154,7 @@ def test_tool_actions_yaml_loads_ridge_glass_knobs() -> None:
     speed = cfg.site_discovery_mod("max_discovery_speed_kmh")
     assert vis == ParamModifier(op="multiply", value=1.3)
     assert chance == ParamModifier(op="multiply", value=1.3)
-    assert speed == ParamModifier(op="multiply", value=1.3)
+    assert speed == ParamModifier(op="multiply", value=0.7)
     assert cfg.added_visibility_range_m is None  # multiply, not add
     assert cfg.added_discovery_rate is None
     mods = cfg.modifies_main_params
@@ -366,3 +367,33 @@ def test_rejects_when_orbit_survey_already_in_use(session: Session) -> None:
 
     with pytest.raises(ValidationError, match="Orbit Survey is already in use"):
         start_timed_session(session, user_id=int(user.id), tool_id=int(ridge.id))
+
+
+def test_start_expedition_drivetrain_session(client, session: Session) -> None:
+    user = _user(session)
+    drive = _tool(session, name="Expedition Drivetrain", action="Ride")
+    _grant(session, user_id=int(user.id), tool_id=int(drive.id))
+    headers = _auth_headers(user)
+
+    first = client.post(
+        f"/api/v1/tools/{drive.id}/sessions",
+        headers=headers,
+    )
+    assert first.status_code in (201, 202), first.text
+    body = first.json()
+    assert body["action_key"] == ACTION_KEY_EXPEDITION_DRIVETRAIN
+    assert body["status"] == SESSION_STATUS_ACTIVE
+    mods = body["params"]["modifies_main_params"]["using"]["site_discovery"]
+    assert mods["max_discovery_speed_kmh"] == {"op": "multiply", "value": 2.5}
+    assert "visibility_distance_m" not in mods
+
+
+def test_tool_actions_yaml_loads_expedition_drivetrain_knobs() -> None:
+    get_game_config.cache_clear()
+    cfg = get_game_config().tool_actions.expedition_drivetrain
+    assert cfg.duration_minutes == 60
+    speed = cfg.site_discovery_mod("max_discovery_speed_kmh")
+    assert speed == ParamModifier(op="multiply", value=2.5)
+    mods = cfg.modifies_main_params
+    assert mods is not None
+    assert mods.affects_skill("site_discovery")

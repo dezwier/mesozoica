@@ -43,6 +43,13 @@ class WalkDistanceController extends ChangeNotifier {
     }
   }
 
+  /// Update the GPS speed filter when a tool buffs max discovery speed.
+  void updateMaxDiscoverySpeedKmh(double kmh) {
+    final mps = kmh * 1000.0 / 3600.0;
+    if ((_odometer.maxSpeedMps - mps).abs() < 0.01) return;
+    _odometer.maxSpeedMps = mps;
+  }
+
   static const _prefsPrefix = 'walk_distance_v2';
   static const _keyActive = '${_prefsPrefix}_active_m';
   static const _keyActiveWeekly = '${_prefsPrefix}_active_weekly_m';

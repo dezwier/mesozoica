@@ -162,3 +162,14 @@ ridge_glass:
     Duration is this card's lifetime battery; each use runs until you stop
     or time runs out. While active, boosts site visibility range and
     walk-in discovery chance, and decreases max discovery speed for all sites.
+
+expedition_drivetrain:
+  duration_minutes: 60
+  modifies_main_params:
+    using:
+      site_discovery:
+        max_discovery_speed_kmh: { op: multiply, value: 2.5 }
+  stats_explanation: >-
+    Duration is this card's lifetime battery; each use runs until you stop
+    or time runs out. While active, raises max discovery speed by 150% so
+    bicycle travel still counts toward discovery distance.

@@ -23,6 +23,7 @@ def yaml_defaults_for_tool_type(tool_type: ToolType) -> dict[str, Any]:
         "Formation Map": cfg.formation_map.model_dump(mode="json"),
         "Terrain Echo": cfg.terrain_echo.model_dump(mode="json"),
         "Ridge Glass": cfg.ridge_glass.model_dump(mode="json"),
+        "Expedition Drivetrain": cfg.expedition_drivetrain.model_dump(mode="json"),
     }
     payload = by_name.get(tool_type.name, _EMPTY)
     return dict(payload)

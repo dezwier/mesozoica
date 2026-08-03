@@ -7,6 +7,7 @@ import '../../config/game_config.dart';
 import '../../config/tool_params_edit.dart';
 import '../../controllers/aerial_session_controller.dart';
 import '../../controllers/auth_controller.dart';
+import '../../controllers/expedition_drivetrain_controller.dart';
 import '../../controllers/formation_map_controller.dart';
 import '../../controllers/guidance_session_controller.dart';
 import '../../controllers/orbit_survey_controller.dart';
@@ -180,6 +181,7 @@ class _ToolTurnableCardState extends State<ToolTurnableCard> {
     required FormationMapController formation,
     required TerrainEchoController terrain,
     required RidgeGlassController ridge,
+    required ExpeditionDrivetrainController drive,
   }) {
     final toolId = widget.tool.id;
     final parts = <String>[];
@@ -206,6 +208,7 @@ class _ToolTurnableCardState extends State<ToolTurnableCard> {
     addTimed('f', formation.session, formation.tool);
     addTimed('t', terrain.session, terrain.tool);
     addTimed('r', ridge.session, ridge.tool);
+    addTimed('d', drive.session, drive.tool);
     return parts.join('|');
   }
 
@@ -216,6 +219,7 @@ class _ToolTurnableCardState extends State<ToolTurnableCard> {
     required FormationMapController formation,
     required TerrainEchoController terrain,
     required RidgeGlassController ridge,
+    required ExpeditionDrivetrainController drive,
   }) {
     if (!_canLoadHistory) return;
     final fingerprint = _sessionFingerprint(
@@ -225,6 +229,7 @@ class _ToolTurnableCardState extends State<ToolTurnableCard> {
       formation: formation,
       terrain: terrain,
       ridge: ridge,
+      drive: drive,
     );
     if (fingerprint == _lastSessionFingerprint) {
       if (_loadedForToolId != widget.tool.id && !_historyLoading) {
@@ -297,6 +302,7 @@ class _ToolTurnableCardState extends State<ToolTurnableCard> {
     required FormationMapController formation,
     required TerrainEchoController terrain,
     required RidgeGlassController ridge,
+    required ExpeditionDrivetrainController drive,
   }) {
     final total = _totalDurationS ?? widget.tool.totalDurationS;
     final fallback = _remainingDurationS ?? widget.tool.remainingDurationS;
@@ -319,6 +325,7 @@ class _ToolTurnableCardState extends State<ToolTurnableCard> {
     upsert(formation.session);
     upsert(terrain.session);
     upsert(ridge.session);
+    upsert(drive.session);
 
     if (byId.isEmpty) return fallback;
 
@@ -357,6 +364,7 @@ class _ToolTurnableCardState extends State<ToolTurnableCard> {
     required FormationMapController formation,
     required TerrainEchoController terrain,
     required RidgeGlassController ridge,
+    required ExpeditionDrivetrainController drive,
   }) {
     final toolId = widget.tool.id;
     if (aerial.sessions.any((s) => s.toolId == toolId && s.isActive)) {
@@ -376,6 +384,9 @@ class _ToolTurnableCardState extends State<ToolTurnableCard> {
       return true;
     }
     if (ridge.isActive && _matchesTool(ridge.session, ridge.tool)) {
+      return true;
+    }
+    if (drive.isActive && _matchesTool(drive.session, drive.tool)) {
       return true;
     }
     return _sessions.any((s) => s.isActive);
@@ -421,6 +432,7 @@ class _ToolTurnableCardState extends State<ToolTurnableCard> {
     final formation = context.watch<FormationMapController>();
     final terrain = context.watch<TerrainEchoController>();
     final ridge = context.watch<RidgeGlassController>();
+    final drive = context.watch<ExpeditionDrivetrainController>();
 
     if (inventoryMode && _canLoadHistory && !_sessionSyncQueued) {
       _sessionSyncQueued = true;
@@ -434,6 +446,7 @@ class _ToolTurnableCardState extends State<ToolTurnableCard> {
           formation: formation,
           terrain: terrain,
           ridge: ridge,
+          drive: drive,
         );
       });
     }
@@ -448,6 +461,7 @@ class _ToolTurnableCardState extends State<ToolTurnableCard> {
       formation: formation,
       terrain: terrain,
       ridge: ridge,
+      drive: drive,
     );
     _syncRemainingTick(inUse: inUse);
     final remaining = _liveRemainingS(
@@ -457,6 +471,7 @@ class _ToolTurnableCardState extends State<ToolTurnableCard> {
       formation: formation,
       terrain: terrain,
       ridge: ridge,
+      drive: drive,
     );
 
     final back = ToolCardBack(

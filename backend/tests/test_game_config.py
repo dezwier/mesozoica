@@ -41,7 +41,7 @@ def test_load_game_config_matches_current_defaults() -> None:
     assert config.site_discovery.visibility_distance_m == 20.0
     assert config.site_discovery.max_distance_m == 20.0
     assert config.site_discovery.discovery_chance == 0.1
-    assert config.site_discovery.max_discovery_speed_kmh == 15.0
+    assert config.site_discovery.max_discovery_speed_kmh == 10.0
     assert config.site_discovery.site_discovery_xp == 10.0
     assert config.site_discovery.active_km_xp == 30.0
     assert config.site_discovery.passive_km_xp == 5.0
@@ -127,17 +127,28 @@ def test_load_game_config_matches_current_defaults() -> None:
         op="multiply", value=1.3
     )
     assert ridge.site_discovery_mod("max_discovery_speed_kmh") == ParamModifier(
-        op="multiply", value=1.3
+        op="multiply", value=0.7
     )
     assert ridge.added_visibility_range_m is None
     assert ridge.added_discovery_rate is None
     ridge_mods = ridge.modifies_main_params
     assert ridge_mods is not None
     assert ridge_mods.affects_skill("site_discovery")
+
+    drive = config.tool_actions.expedition_drivetrain
+    assert drive.duration_minutes == 60
+    assert drive.site_discovery_mod("max_discovery_speed_kmh") == ParamModifier(
+        op="multiply", value=2.5
+    )
+    drive_mods = drive.modifies_main_params
+    assert drive_mods is not None
+    assert drive_mods.affects_skill("site_discovery")
+
     modifying = [
         key for key, _ in config.tool_actions.tools_modifying_skill("site_discovery")
     ]
     assert "ridge_glass" in modifying
+    assert "expedition_drivetrain" in modifying
 
     assert len(config.leveling.skills) == 12
     assert len(config.leveling.career_titles) == 99

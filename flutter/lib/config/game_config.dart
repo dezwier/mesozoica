@@ -323,7 +323,7 @@ class SiteDiscoveryMainParams {
         20.0,
       ),
       discoveryChance: _asDouble(yaml['discovery_chance'], 0.1),
-      maxDiscoverySpeedKmh: _asDouble(yaml['max_discovery_speed_kmh'], 15.0),
+      maxDiscoverySpeedKmh: _asDouble(yaml['max_discovery_speed_kmh'], 10.0),
       siteDiscoveryXp: _asDouble(yaml['site_discovery_xp'], 10.0),
       activeKmXp: _asDouble(yaml['active_km_xp'], 30.0),
       passiveKmXp: _asDouble(yaml['passive_km_xp'], 5.0),
@@ -753,6 +753,7 @@ class ToolActionsConfig {
     required this.formationMap,
     required this.terrainEcho,
     required this.ridgeGlass,
+    required this.expeditionDrivetrain,
   });
 
   final AerialActionConfig aerialRecon;
@@ -764,6 +765,7 @@ class ToolActionsConfig {
   final FormationMapActionConfig formationMap;
   final TerrainEchoActionConfig terrainEcho;
   final RidgeGlassActionConfig ridgeGlass;
+  final RidgeGlassActionConfig expeditionDrivetrain;
 
   AerialActionConfig configFor(String actionKey) {
     switch (actionKey) {
@@ -808,6 +810,8 @@ class ToolActionsConfig {
         return terrainEcho.toParamsJson();
       case 'Ridge Glass':
         return ridgeGlass.toParamsJson();
+      case 'Expedition Drivetrain':
+        return expeditionDrivetrain.toParamsJson();
       default:
         return const {};
     }
@@ -898,6 +902,23 @@ class ToolActionsConfig {
       ),
       ridgeGlass: RidgeGlassActionConfig.fromYaml(
         GameConfig._asMap(yaml['ridge_glass']),
+      ),
+      expeditionDrivetrain: RidgeGlassActionConfig.fromYaml(
+        GameConfig._asMap(yaml['expedition_drivetrain']),
+        defaults: const RidgeGlassActionConfig(
+          durationMinutes: 60,
+          modifiesMainParams: ModifiesMainParams(
+            using: {
+              'site_discovery': {
+                'max_discovery_speed_kmh':
+                    ParamModifier(op: 'multiply', value: 2.5),
+              },
+            },
+          ),
+          statsExplanation:
+              'While active, raises max discovery speed by 150% so bicycle '
+              'travel still counts toward discovery distance.',
+        ),
       ),
     );
   }
@@ -1350,13 +1371,13 @@ class RidgeGlassActionConfig {
                     ParamModifier(op: 'multiply', value: 1.3),
                 'discovery_chance': ParamModifier(op: 'multiply', value: 1.3),
                 'max_discovery_speed_kmh':
-                    ParamModifier(op: 'multiply', value: 1.3),
+                    ParamModifier(op: 'multiply', value: 0.7),
               },
             },
           ),
           statsExplanation:
-              'While active, multiplies site visibility range, walk-in '
-              'discovery chance, and max discovery speed by 1.3 for all sites.',
+              'While active, boosts site visibility range and walk-in '
+              'discovery chance, and decreases max discovery speed for all sites.',
         );
     ModifiesMainParams? mods = d.modifiesMainParams;
     final rawMods = yaml['modifies_main_params'];

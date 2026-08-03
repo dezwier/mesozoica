@@ -8,6 +8,14 @@
     "action": "Launch"
   },
   {
+    "name": "Expedition Drivetrain",
+    "category": "1 site_discovery",
+    "scientific_tool": "bicycle drivetrain",
+    "description": "Fits a field bicycle so you can survey terrain at cycling pace instead of walking speed.",
+    "rarity": 2,
+    "action": "Ride"
+  },
+  {
     "name": "Aerial Recon",
     "category": "1 site_discovery",
     "scientific_tool": "helicopter-supported aerial reconnaissance",

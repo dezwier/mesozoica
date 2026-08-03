@@ -78,7 +78,7 @@ name under each main_param. All list entries for the current key apply in order
 |------------|---------|
 | `visibility_distance_m` | Walk-in discover radius (was `max_distance_m`) |
 | `discovery_chance` | P(success) per attempt (enter or dwell re-roll) |
-| `max_discovery_speed_kmh` | GPS odometer speed cap for walk XP |
+| `max_discovery_speed_kmh` | Max GPS speed for walk XP credit and discovery dice rolls |
 | `site_discovery_xp` | XP awarded when a site is discovered |
 | `active_km_xp` | XP per whole active kilometer walked |
 | `passive_km_xp` | XP per whole passive kilometer walked |

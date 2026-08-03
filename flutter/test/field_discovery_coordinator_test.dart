@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:latlong2/latlong.dart';
@@ -15,15 +16,41 @@ import 'package:mesozoica/services/site_service.dart';
 import 'helpers/game_config_test_helpers.dart';
 
 class _FakeLocationService extends LocationService {
-  _FakeLocationService(this._location);
+  _FakeLocationService(this._location, {double? speedMps})
+      : _speedMps = speedMps;
 
   LatLng? _location;
+  double? _speedMps;
 
   @override
   LatLng? get currentLocation => _location;
 
-  void setLocation(LatLng location) {
+  @override
+  Position? get lastPosition {
+    final loc = _location;
+    if (loc == null) return null;
+    return Position(
+      latitude: loc.latitude,
+      longitude: loc.longitude,
+      timestamp: DateTime.fromMillisecondsSinceEpoch(0),
+      accuracy: 1,
+      altitude: 0,
+      altitudeAccuracy: 0,
+      heading: 0,
+      headingAccuracy: 0,
+      speed: _speedMps ?? -1,
+      speedAccuracy: 0,
+    );
+  }
+
+  void setLocation(LatLng location, {double? speedMps}) {
     _location = location;
+    if (speedMps != null) _speedMps = speedMps;
+    notifyListeners();
+  }
+
+  void setSpeedMps(double? speedMps) {
+    _speedMps = speedMps;
     notifyListeners();
   }
 
@@ -209,6 +236,58 @@ void main() {
     await Future<void>.delayed(_shortReroll + const Duration(milliseconds: 40));
     expect(discoverCalls, [1]);
     expect(coordinator.pendingCelebration?.site.siteId, 1);
+
+    coordinator.dispose();
+  });
+
+  test('skips discovery rolls while faster than max discovery speed', () async {
+    final discoverCalls = <int>[];
+    final coordinator = FieldDiscoveryCoordinator(
+      siteService: SiteService(
+        client: MockClient((request) async {
+          if (request.url.path.contains('nearby-discoverable')) {
+            return http.Response(
+              jsonEncode({
+                'items': [
+                  _siteJson(siteId: 1, lat: 51.0000, lon: 4.0000),
+                ],
+                'total': 1,
+                'generated': 0,
+                'radius_km': 1.0,
+              }),
+              200,
+            );
+          }
+          if (request.method == 'POST' &&
+              request.url.path.contains('/discover')) {
+            final siteId = int.parse(request.url.pathSegments[3]);
+            discoverCalls.add(siteId);
+            return http.Response(
+              jsonEncode(
+                _discoverResponseJson(siteId: siteId, lat: 51.0, lon: 4.0),
+              ),
+              200,
+            );
+          }
+          return http.Response('{}', 404);
+        }),
+      ),
+    );
+
+    // 15 m/s ≈ 54 km/h — above the 10 km/h default gate.
+    final locationService =
+        _FakeLocationService(_outside, speedMps: 15.0);
+    coordinator.bind(locationService: locationService);
+    await pumpUntilIdle();
+
+    locationService.setLocation(_inside, speedMps: 15.0);
+    await pumpUntilIdle();
+    expect(discoverCalls, isEmpty);
+
+    // Slow to walking pace → roll proceeds.
+    locationService.setLocation(const LatLng(51.00002, 4.0000), speedMps: 1.5);
+    await pumpUntilIdle();
+    expect(discoverCalls, [1]);
 
     coordinator.dispose();
   });

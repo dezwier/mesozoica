@@ -8,8 +8,8 @@ main_params:
   visibility_distance_m: 20.0
   # P(success) per discover attempt (walk-in enter or dwell re-roll).
   discovery_chance: 0.1
-  # Max GPS speed credited toward discovery / walk XP (Pokémon GO style filter).
-  max_discovery_speed_kmh: 15.0
+  # Max GPS speed for walk XP credit and walk-in / dwell discovery rolls.
+  max_discovery_speed_kmh: 10.0
   # XP awarded when a site is discovered.
   site_discovery_xp: 10
   # XP per whole active kilometer walked.

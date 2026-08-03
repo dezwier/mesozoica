@@ -1,3 +1,4 @@
+import '../models/expedition_drivetrain_kind.dart';
 import '../models/guidance_tool_kind.dart';
 import '../models/ridge_glass_kind.dart';
 import '../models/tool.dart';
@@ -38,6 +39,9 @@ String? actionKeyForToolName(String name) {
   final guidance = GuidanceToolKind.tryParseToolName(name);
   if (guidance != null) return guidance.actionKey;
   if (RidgeGlassKind.matchesToolName(name)) return RidgeGlassKind.actionKey;
+  if (ExpeditionDrivetrainKind.matchesToolName(name)) {
+    return ExpeditionDrivetrainKind.actionKey;
+  }
   return null;
 }
 
@@ -45,6 +49,9 @@ String toolNameForActionKey(String actionKey) {
   final guidance = GuidanceToolKind.tryParseActionKey(actionKey);
   if (guidance != null) return guidance.toolName;
   if (actionKey == RidgeGlassKind.actionKey) return RidgeGlassKind.toolName;
+  if (actionKey == ExpeditionDrivetrainKind.actionKey) {
+    return ExpeditionDrivetrainKind.toolName;
+  }
   return actionKey;
 }
 

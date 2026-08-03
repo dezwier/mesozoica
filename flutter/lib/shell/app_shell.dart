@@ -6,9 +6,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
+import '../config/game_config.dart';
+import '../config/main_param_resolve.dart';
+import '../config/tool_instance_params.dart';
 import '../controllers/aerial_session_controller.dart';
 import '../controllers/auth_controller.dart';
 import '../controllers/catalog_mode_controller.dart';
+import '../controllers/expedition_drivetrain_controller.dart';
 import '../controllers/field_discovery_coordinator.dart';
 import '../controllers/field_session_coordinator.dart';
 import '../controllers/formation_map_controller.dart';
@@ -76,6 +80,7 @@ class _AppShellState extends State<AppShell>
   FormationMapController? _formationMap;
   TerrainEchoController? _terrainEcho;
   RidgeGlassController? _ridgeGlass;
+  ExpeditionDrivetrainController? _expeditionDrivetrain;
   StreamSubscription<RemoteMessage>? _foregroundPushSub;
   StreamSubscription<RemoteMessage>? _openedPushSub;
   /// Cached so aerial session list refreshes do not rebuild the shell.
@@ -156,7 +161,17 @@ class _AppShellState extends State<AppShell>
       final ridgeGlass = context.read<RidgeGlassController>();
       _ridgeGlass = ridgeGlass;
       ridgeGlass.addListener(_onRidgeGlassChanged);
-      unawaited(ridgeGlass.restoreActiveSession());
+
+      final expeditionDrivetrain =
+          context.read<ExpeditionDrivetrainController>();
+      _expeditionDrivetrain = expeditionDrivetrain;
+      expeditionDrivetrain.addListener(_onExpeditionDrivetrainChanged);
+
+      unawaited(() async {
+        await ridgeGlass.restoreActiveSession();
+        await expeditionDrivetrain.restoreActiveSession();
+        if (mounted) _syncMaxDiscoverySpeed();
+      }());
 
       context.read<FieldSessionCoordinator>().bind(
             locationService: context.read<LocationService>(),
@@ -255,6 +270,56 @@ class _AppShellState extends State<AppShell>
     if (ridge.requestShowOnMap && _anyOverlayOpen) {
       setState(_clearOverlayFlags);
     }
+    _syncMaxDiscoverySpeed();
+  }
+
+  void _onExpeditionDrivetrainChanged() {
+    if (!mounted) return;
+    final drive = _expeditionDrivetrain;
+    if (drive == null) return;
+    if (drive.requestShowOnMap && _anyOverlayOpen) {
+      setState(_clearOverlayFlags);
+    }
+    _syncMaxDiscoverySpeed();
+  }
+
+  /// Apply active tool buffs to the GPS odometer + discovery speed gate.
+  void _syncMaxDiscoverySpeed() {
+    if (!mounted) return;
+    final walk = context.read<WalkDistanceController>();
+    final discovery = context.read<FieldDiscoveryCoordinator>();
+    final base = (() {
+      try {
+        return GameConfig.instance.siteDiscovery.maxDiscoverySpeedKmh;
+      } catch (_) {
+        return 10.0;
+      }
+    })();
+
+    ParamModifier? speedMod;
+    final ridge = _ridgeGlass;
+    if (ridge != null && ridge.isActive) {
+      final mods = modifiesMainParamsFromParams(ridge.session?.params);
+      speedMod =
+          mods?.paramsFor('using', 'site_discovery')['max_discovery_speed_kmh'];
+    }
+    final drive = _expeditionDrivetrain;
+    if (drive != null && drive.isActive) {
+      final mods = modifiesMainParamsFromParams(drive.session?.params);
+      speedMod =
+          mods?.paramsFor('using', 'site_discovery')['max_discovery_speed_kmh'];
+    }
+
+    final effective = resolveScalarMainParam(
+      base: base,
+      levelEntries: const [],
+      skillLevel: 1,
+      weatherTimeMods: const [],
+      weatherTypeMods: const [],
+      toolMod: speedMod,
+    );
+    walk.updateMaxDiscoverySpeedKmh(effective);
+    discovery.setMaxDiscoverySpeedKmh(effective);
   }
 
   void _onCardDetailOverlayChanged() {
@@ -361,6 +426,7 @@ class _AppShellState extends State<AppShell>
     _formationMap?.removeListener(_onFormationMapChanged);
     _terrainEcho?.removeListener(_onTerrainEchoChanged);
     _ridgeGlass?.removeListener(_onRidgeGlassChanged);
+    _expeditionDrivetrain?.removeListener(_onExpeditionDrivetrainChanged);
     _catalogModeController?.removeListener(_onCatalogModeChanged);
     _discoveryRefreshTimer?.cancel();
     unawaited(_foregroundPushSub?.cancel() ?? Future<void>.value());
@@ -397,6 +463,9 @@ class _AppShellState extends State<AppShell>
         );
         unawaited(
           context.read<RidgeGlassController>().restoreActiveSession(),
+        );
+        unawaited(
+          context.read<ExpeditionDrivetrainController>().restoreActiveSession(),
         );
         final auth = context.read<AuthController>();
         final userId = auth.currentUser?.id;
@@ -462,6 +531,9 @@ class _AppShellState extends State<AppShell>
     unawaited(
       context.read<RidgeGlassController>().stop(notifyServer: false),
     );
+    unawaited(
+      context.read<ExpeditionDrivetrainController>().stop(notifyServer: false),
+    );
     context.read<SiteCatalogController>().load(force: true);
     context.read<ToolCatalogController>().load(force: true);
 
@@ -495,6 +567,10 @@ class _AppShellState extends State<AppShell>
       await context.read<TerrainEchoController>().restoreActiveSession();
       if (!mounted || _previousUserId != userId) return;
       await context.read<RidgeGlassController>().restoreActiveSession();
+      if (!mounted || _previousUserId != userId) return;
+      await context.read<ExpeditionDrivetrainController>().restoreActiveSession();
+      if (!mounted || _previousUserId != userId) return;
+      _syncMaxDiscoverySpeed();
     });
   }
 

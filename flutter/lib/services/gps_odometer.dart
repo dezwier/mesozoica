@@ -48,7 +48,9 @@ class GpsOdometer {
   final double minDtSeconds;
   final double maxDtSeconds;
   final double maxSegmentMeters;
-  final double maxSpeedMps;
+
+  /// Max credited travel speed (m/s). Mutable so tool buffs can raise it.
+  double maxSpeedMps;
 
   GpsFix? _previous;
 
