@@ -189,11 +189,13 @@ class AuthController extends ChangeNotifier {
     required bool sites,
     required bool fossils,
     required bool dinosaurs,
+    required bool xp,
   }) =>
       _authService.deleteData(
         sites: sites,
         fossils: fossils,
         dinosaurs: dinosaurs,
+        xp: xp,
       );
 
   Future<Map<String, dynamic>> deleteAccount() => _authService.deleteAccount();

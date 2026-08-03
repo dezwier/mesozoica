@@ -177,12 +177,14 @@ async def delete_data(
         sites=body.sites,
         fossils=body.fossils,
         dinosaurs=body.dinosaurs,
+        xp=body.xp,
     )
     session.refresh(current_user)
     return DeleteUserDataResponse(
         deleted_sites=deleted["deleted_sites"],
         deleted_fossils=deleted["deleted_fossils"],
         deleted_dinosaurs=deleted["deleted_dinosaurs"],
+        cleared_xp=deleted["cleared_xp"],
         user=user_to_profile_response(session, current_user),
         message="Selected progress data deleted successfully",
     )

@@ -8,13 +8,15 @@ class DeleteDataSelection {
     required this.sites,
     required this.fossils,
     required this.dinosaurs,
+    required this.xp,
   });
 
   final bool sites;
   final bool fossils;
   final bool dinosaurs;
+  final bool xp;
 
-  bool get hasAny => sites || fossils || dinosaurs;
+  bool get hasAny => sites || fossils || dinosaurs || xp;
 }
 
 /// Confirmation dialog with checkboxes for progress categories to wipe.
@@ -31,8 +33,9 @@ class _DeleteDataDialogState extends State<DeleteDataDialog> {
   bool _sites = true;
   bool _fossils = true;
   bool _dinosaurs = true;
+  bool _xp = true;
 
-  bool get _canConfirm => _sites || _fossils || _dinosaurs;
+  bool get _canConfirm => _sites || _fossils || _dinosaurs || _xp;
 
   @override
   Widget build(BuildContext context) {
@@ -40,6 +43,8 @@ class _DeleteDataDialogState extends State<DeleteDataDialog> {
     final sitesCount = widget.profile.actualSitesCount;
     final fossilsCount = widget.profile.actualFossilsCount;
     final dinosaursCount = widget.profile.actualDinosaursCount;
+    final totalXp = widget.profile.xp;
+    final careerLevel = widget.profile.level;
 
     return AlertDialog(
       title: const Text('Delete data?'),
@@ -78,6 +83,16 @@ class _DeleteDataDialogState extends State<DeleteDataDialog> {
               subtitle: const Text('All dinosaurs linked to your account'),
               controlAffinity: ListTileControlAffinity.leading,
             ),
+            CheckboxListTile(
+              contentPadding: EdgeInsets.zero,
+              value: _xp,
+              onChanged: (value) => setState(() => _xp = value ?? false),
+              title: Text('All skill XP (career Lv $careerLevel · $totalXp XP)'),
+              subtitle: const Text(
+                'Reset every skill and career level to zero XP',
+              ),
+              controlAffinity: ListTileControlAffinity.leading,
+            ),
           ],
         ),
       ),
@@ -94,6 +109,7 @@ class _DeleteDataDialogState extends State<DeleteDataDialog> {
                       sites: _sites,
                       fossils: _fossils,
                       dinosaurs: _dinosaurs,
+                      xp: _xp,
                     ),
                   )
               : null,

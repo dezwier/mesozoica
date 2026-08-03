@@ -294,7 +294,7 @@ def test_delete_data_requires_selection(client: TestClient):
     response = client.post(
         "/api/v1/auth/delete-data",
         headers={"Authorization": f"Bearer {registered['access_token']}"},
-        json={"sites": False, "fossils": False, "dinosaurs": False},
+        json={"sites": False, "fossils": False, "dinosaurs": False, "xp": False},
     )
     assert response.status_code == 400
     assert "at least one" in response.json()["detail"].lower()
@@ -477,3 +477,52 @@ def test_delete_data_selective_and_scoped(client: TestClient, session: Session):
     assert again.json()["deleted_sites"] == 0
     assert again.json()["deleted_fossils"] == 0
     assert again.json()["deleted_dinosaurs"] == 0
+
+
+def test_delete_data_clears_skill_xp(client: TestClient, session: Session):
+    from app.services.level_service import set_skill_xp, sync_career_from_skills
+    from app.services.level_service.skills import get_skill_xp, total_skill_xp
+
+    registered = _register_user(client, "wipe_xp", "wipe_xp@example.com")
+    user_id = registered["user"]["id"]
+    token = registered["access_token"]
+
+    user = session.get(User, user_id)
+    assert user is not None
+    set_skill_xp(user, "site_discovery", 120)
+    set_skill_xp(user, "site_stewardship", 80)
+    sync_career_from_skills(user)
+    session.add(user)
+    session.commit()
+    session.refresh(user)
+    before = total_skill_xp(user)
+    assert before == 200
+    assert user.level > 1
+
+    wipe = client.post(
+        "/api/v1/auth/delete-data",
+        headers={"Authorization": f"Bearer {token}"},
+        json={
+            "sites": False,
+            "fossils": False,
+            "dinosaurs": False,
+            "xp": True,
+        },
+    )
+    assert wipe.status_code == 200
+    body = wipe.json()
+    assert body["cleared_xp"] == 200
+    assert body["deleted_sites"] == 0
+    assert body["user"]["xp"] == 0
+    assert body["user"]["level"] == 1
+    for skill in body["user"]["skills"]:
+        assert skill["xp"] == 0
+        assert skill["level"] == 1
+
+    session.refresh(user)
+    assert total_skill_xp(user) == 0
+    assert get_skill_xp(user, "site_discovery") == 0
+    assert get_skill_xp(user, "site_stewardship") == 0
+    assert user.skill_breakdown == {}
+    assert user.xp == 0
+    assert user.level == 1

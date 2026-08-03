@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from sqlalchemy import delete, func
+from sqlalchemy.orm.attributes import flag_modified
 from sqlmodel import Session, col, select
 
 from app.core.exceptions import ValidationError
@@ -11,6 +12,8 @@ from app.models.user_dinosaur import UserDinosaur
 from app.models.user_fossil import UserFossil
 from app.models.user_site import UserSite
 from app.schemas.auth import UserListEntry, UserProfileResponse, UserResponse
+from app.services.level_service import sync_career_from_skills
+from app.services.level_service.skills import empty_skill_xp, total_skill_xp
 
 
 def collection_counts(session: Session, user_id: int) -> dict[str, int]:
@@ -51,14 +54,16 @@ def delete_user_progress(
     sites: bool,
     fossils: bool,
     dinosaurs: bool,
+    xp: bool = False,
 ) -> dict[str, int]:
     """Bulk-delete selected progress rows for one user. Idempotent."""
-    if not (sites or fossils or dinosaurs):
+    if not (sites or fossils or dinosaurs or xp):
         raise ValidationError("Select at least one data category to delete")
 
     deleted_sites = 0
     deleted_fossils = 0
     deleted_dinosaurs = 0
+    cleared_xp = 0
 
     if sites:
         deleted_sites = _count_rows(session, UserSite, user_id)
@@ -69,12 +74,22 @@ def delete_user_progress(
     if dinosaurs:
         deleted_dinosaurs = _count_rows(session, UserDinosaur, user_id)
         session.exec(delete(UserDinosaur).where(col(UserDinosaur.user_id) == user_id))
+    if xp:
+        user = session.get(User, user_id)
+        if user is not None:
+            cleared_xp = total_skill_xp(user)
+            user.skill_xp = empty_skill_xp()
+            user.skill_breakdown = {}
+            flag_modified(user, "skill_xp")
+            flag_modified(user, "skill_breakdown")
+            sync_career_from_skills(user)
 
     session.commit()
     return {
         "deleted_sites": deleted_sites,
         "deleted_fossils": deleted_fossils,
         "deleted_dinosaurs": deleted_dinosaurs,
+        "cleared_xp": cleared_xp,
     }
 
 

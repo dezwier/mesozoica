@@ -304,6 +304,7 @@ class AuthService {
     required bool sites,
     required bool fossils,
     required bool dinosaurs,
+    required bool xp,
   }) async {
     try {
       final response = await ApiClient.instance.post(
@@ -312,6 +313,7 @@ class AuthService {
           'sites': sites,
           'fossils': fossils,
           'dinosaurs': dinosaurs,
+          'xp': xp,
         },
       );
       final userJson = response['user'] as Map<String, dynamic>?;
@@ -325,6 +327,7 @@ class AuthService {
         'deleted_sites': response['deleted_sites'] as int? ?? 0,
         'deleted_fossils': response['deleted_fossils'] as int? ?? 0,
         'deleted_dinosaurs': response['deleted_dinosaurs'] as int? ?? 0,
+        'cleared_xp': response['cleared_xp'] as int? ?? 0,
         'message': response['message'] as String? ?? 'Data deleted',
       };
     } on ApiException catch (error) {

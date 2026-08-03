@@ -172,11 +172,13 @@ class DeleteUserDataRequest(BaseModel):
     sites: bool = False
     fossils: bool = False
     dinosaurs: bool = False
+    xp: bool = False
 
 
 class DeleteUserDataResponse(BaseModel):
     deleted_sites: int = 0
     deleted_fossils: int = 0
     deleted_dinosaurs: int = 0
+    cleared_xp: int = 0
     user: UserProfileResponse
     message: str

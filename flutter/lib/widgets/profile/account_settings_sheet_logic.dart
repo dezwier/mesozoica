@@ -277,6 +277,7 @@ mixin _AccountSettingsSheetLogicMixin on State<AccountSettingsSheet> {
       sites: selection.sites,
       fossils: selection.fossils,
       dinosaurs: selection.dinosaurs,
+      xp: selection.xp,
     );
     if (!mounted) return;
 
