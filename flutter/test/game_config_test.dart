@@ -32,6 +32,8 @@ void main() {
     expect(config.siteStewardship.mainParams.completenessAccuracy, 0.01);
     expect(config.siteStewardship.mainParams.qualityAccuracy, 0.01);
     expect(config.siteStewardship.mainParams.depthAccuracy, 0.01);
+    expect(config.siteStewardship.mainParams.siteVisibilityM, 50.0);
+    expect(config.siteStewardship.mainParams.siteExplorationXp, 20.0);
     final dinoAccMods = config.siteStewardship.levelModifiers['dino_accuracy']!;
     expect(dinoAccMods.length, 99);
     expect(dinoAccMods.first.level, 1);

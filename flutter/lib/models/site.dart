@@ -60,6 +60,7 @@ class SiteSummary {
     this.oddCompletenessBand,
     this.oddQualityBand,
     this.oddDepthBand,
+    this.exploredDistanceM,
     this.version = 'Original',
   });
 
@@ -94,6 +95,8 @@ class SiteSummary {
   final SiteDimensionBand? oddCompletenessBand;
   final SiteDimensionBand? oddQualityBand;
   final SiteDimensionBand? oddDepthBand;
+  /// Meters walked inside site visibility (discoverer progress).
+  final double? exploredDistanceM;
   /// Curated site-type image version folder for this occurrence.
   final String version;
 
@@ -266,6 +269,7 @@ class SiteSummary {
       oddCompletenessBand: _bandFromJson(json['odd_completeness_band']),
       oddQualityBand: _bandFromJson(json['odd_quality_band']),
       oddDepthBand: _bandFromJson(json['odd_depth_band']),
+      exploredDistanceM: (json['explored_distance_m'] as num?)?.toDouble(),
       version: (json['version'] as String?)?.trim().isNotEmpty == true
           ? (json['version'] as String).trim()
           : 'Original',
@@ -287,6 +291,12 @@ class SiteSummary {
     DateTime? discoveredAt,
     int? discoveringSessionId,
     String? howDiscovered,
+    double? exploredDistanceM,
+    SiteDimensionBand? oddDinoBand,
+    SiteDimensionBand? oddFossilBand,
+    SiteDimensionBand? oddCompletenessBand,
+    SiteDimensionBand? oddQualityBand,
+    SiteDimensionBand? oddDepthBand,
   }) {
     return SiteSummary(
       siteId: siteId,
@@ -313,11 +323,12 @@ class SiteSummary {
       oddCompleteness: oddCompleteness,
       oddQuality: oddQuality,
       oddDepth: oddDepth,
-      oddDinoBand: oddDinoBand,
-      oddFossilBand: oddFossilBand,
-      oddCompletenessBand: oddCompletenessBand,
-      oddQualityBand: oddQualityBand,
-      oddDepthBand: oddDepthBand,
+      oddDinoBand: oddDinoBand ?? this.oddDinoBand,
+      oddFossilBand: oddFossilBand ?? this.oddFossilBand,
+      oddCompletenessBand: oddCompletenessBand ?? this.oddCompletenessBand,
+      oddQualityBand: oddQualityBand ?? this.oddQualityBand,
+      oddDepthBand: oddDepthBand ?? this.oddDepthBand,
+      exploredDistanceM: exploredDistanceM ?? this.exploredDistanceM,
       version: version,
     );
   }

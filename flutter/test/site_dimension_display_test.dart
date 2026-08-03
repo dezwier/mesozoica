@@ -132,4 +132,13 @@ void main() {
       expect(result.isPrecise, isFalse);
     });
   });
+
+  group('applyExplorationAccuracyBoost', () {
+    test('adds 1% per meter and caps at 1.0', () {
+      expect(applyExplorationAccuracyBoost(0.01, 0), closeTo(0.01, 1e-9));
+      expect(applyExplorationAccuracyBoost(0.01, 10), closeTo(0.11, 1e-9));
+      expect(applyExplorationAccuracyBoost(0.5, 100), 1.0);
+      expect(applyExplorationAccuracyBoost(0.99, 5), 1.0);
+    });
+  });
 }

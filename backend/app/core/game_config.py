@@ -569,8 +569,12 @@ class SiteStewardshipMainParams(BaseModel):
     depth_accuracy: float = 0.01
     # Multiplier on discovery_chance for rivals on sites you discovered.
     rival_discovery: float = 1.0
+    # Radius around a discovered site where walking accrues exploration meters.
+    site_visibility_m: float = 50.0
     # XP when a rival discovery roll would hit but your disguise blocked it.
     successful_site_disguise_xp: float = 50.0
+    # XP to site_stewardship per 20 m walked inside site_visibility_m.
+    site_exploration_xp: float = 20.0
 
     @field_validator(
         "dino_accuracy",
@@ -590,11 +594,18 @@ class SiteStewardshipMainParams(BaseModel):
             raise ValueError("rival_discovery must be >= 0")
         return value
 
-    @field_validator("successful_site_disguise_xp")
+    @field_validator("site_visibility_m")
     @classmethod
-    def _validate_disguise_xp(cls, value: float) -> float:
+    def _validate_site_visibility(cls, value: float) -> float:
         if value < 0.0:
-            raise ValueError("successful_site_disguise_xp must be >= 0")
+            raise ValueError("site_visibility_m must be >= 0")
+        return value
+
+    @field_validator("successful_site_disguise_xp", "site_exploration_xp")
+    @classmethod
+    def _validate_xp(cls, value: float) -> float:
+        if value < 0.0:
+            raise ValueError("XP main_params must be >= 0")
         return value
 
 
@@ -735,6 +746,14 @@ class SiteStewardshipConfig(BaseModel):
     @property
     def successful_site_disguise_xp(self) -> float:
         return float(self.main_params.successful_site_disguise_xp)
+
+    @property
+    def site_exploration_xp(self) -> float:
+        return float(self.main_params.site_exploration_xp)
+
+    @property
+    def site_visibility_m(self) -> float:
+        return float(self.main_params.site_visibility_m)
 
     @property
     def rival_discovery(self) -> float:

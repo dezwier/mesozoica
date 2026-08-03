@@ -1,6 +1,7 @@
 """User profile and directory endpoints."""
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from pydantic import BaseModel, Field
 from sqlmodel import Session, select
 
 from app.core.database import get_session
@@ -12,12 +13,19 @@ from app.schemas.auth import (
     UserListResponse,
     UserProfileResponse,
 )
+from app.schemas.site import SiteExplorationUpdateRequest, SiteSummary
 from app.services.level_service import set_skill_xp, sync_career_from_skills
 from app.services.level_service.skills import skill_by_id
+from app.services.site_exploration_service import apply_site_exploration_update
 from app.services.user_service import user_to_list_entry, user_to_profile_response
 from app.services.walk_distance_service import apply_distance_update
 
 router = APIRouter(prefix="/users", tags=["users"])
+
+
+class SiteExplorationUpdateResponse(BaseModel):
+    profile: UserProfileResponse
+    sites: list[SiteSummary] = Field(default_factory=list)
 
 
 @router.get("/me", response_model=UserProfileResponse)
@@ -39,6 +47,19 @@ async def update_my_distance(
     if user is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
     return apply_distance_update(session, user, payload)
+
+
+@router.patch("/me/site-exploration", response_model=SiteExplorationUpdateResponse)
+async def update_my_site_exploration(
+    payload: SiteExplorationUpdateRequest,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
+    user = session.get(User, current_user.id)
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    profile, sites = apply_site_exploration_update(session, user, payload)
+    return SiteExplorationUpdateResponse(profile=profile, sites=sites)
 
 
 @router.patch("/me/skills/{skill_id}/xp", response_model=UserProfileResponse)

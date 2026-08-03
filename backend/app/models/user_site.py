@@ -106,6 +106,12 @@ class UserSite(SQLModel, table=True):
         ),
         description="Tool session that granted this role (e.g. aerial discover)",
     )
+    explored_distance_m: float = Field(
+        default=0.0,
+        description=(
+            "Meters walked inside site_visibility_m (discoverer row only)"
+        ),
+    )
     timestamp: datetime = Field(
         default_factory=_utc_now,
         sa_column=Column(

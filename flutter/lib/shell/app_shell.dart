@@ -28,6 +28,7 @@ import '../controllers/fossil_catalog_controller.dart';
 import '../controllers/splash_hold_controller.dart';
 import '../controllers/tool_catalog_controller.dart';
 import '../controllers/walk_distance_controller.dart';
+import '../controllers/site_exploration_controller.dart';
 import '../models/fossil.dart';
 import '../models/site.dart';
 import '../models/user_notification.dart';
@@ -197,6 +198,28 @@ class _AppShellState extends State<AppShell>
               context.read<LocationService>(),
             ),
       );
+      unawaited(
+        context.read<SiteExplorationController>().bind(
+              context.read<LocationService>(),
+              discoveredSitesProvider: () {
+                final map = context.read<MapController>();
+                return map.geoSites
+                    .where(
+                      (s) =>
+                          s.discoveredAt != null ||
+                          (s.status != null && s.status != 'hidden'),
+                    )
+                    .toList();
+              },
+              onProfileUpdated: (profile) async {
+                await context.read<AuthController>().applyUser(profile);
+              },
+              onSiteUpdated: (site) {
+                context.read<MapController>().upsertSite(site);
+                context.read<SiteCatalogController>().upsertSite(site);
+              },
+            ),
+      );
       _setupPushHandling();
     });
   }
@@ -224,6 +247,7 @@ class _AppShellState extends State<AppShell>
     final map = _mapController;
     if (map == null) return;
     _discoveryCoordinator?.ingestMapSites(map.geoSites);
+    context.read<SiteExplorationController>().ingestSites(map.geoSites);
 
     // Card map taps queue a focus request; close overlays so MapScreen can pan.
     if (map.pendingFocusSite != null && _anyOverlayOpen) {
@@ -304,6 +328,7 @@ class _AppShellState extends State<AppShell>
   void _syncMaxDiscoverySpeed() {
     if (!mounted) return;
     final walk = context.read<WalkDistanceController>();
+    final exploration = context.read<SiteExplorationController>();
     final discovery = context.read<FieldDiscoveryCoordinator>();
     final base = (() {
       try {
@@ -336,6 +361,7 @@ class _AppShellState extends State<AppShell>
       toolMod: speedMod,
     );
     walk.updateMaxDiscoverySpeedKmh(effective);
+    exploration.updateMaxDiscoverySpeedKmh(effective);
     discovery.setMaxDiscoverySpeedKmh(effective);
   }
 
@@ -500,6 +526,7 @@ class _AppShellState extends State<AppShell>
                 profile: auth.currentUser,
               ),
         );
+        context.read<SiteExplorationController>().onAppResumed();
         _showPendingCelebrationIfAny();
       case AppLifecycleState.inactive:
         // Transient (Control Center, call banner, switcher). Keep GPS running
@@ -511,10 +538,16 @@ class _AppShellState extends State<AppShell>
         _appInForeground = false;
         fieldSession.onBackground();
         unawaited(context.read<WalkDistanceController>().onAppBackgrounded());
+        unawaited(
+          context.read<SiteExplorationController>().onAppBackgrounded(),
+        );
       case AppLifecycleState.detached:
         _appInForeground = false;
         fieldSession.onLifecycle(state);
         unawaited(context.read<WalkDistanceController>().onAppBackgrounded());
+        unawaited(
+          context.read<SiteExplorationController>().onAppBackgrounded(),
+        );
     }
   }
 

@@ -661,7 +661,9 @@ class SiteStewardshipMainParams {
     required this.qualityAccuracy,
     required this.depthAccuracy,
     required this.rivalDiscovery,
+    required this.siteVisibilityM,
     required this.successfulSiteDisguiseXp,
+    required this.siteExplorationXp,
   });
 
   final double dinoAccuracy;
@@ -670,7 +672,9 @@ class SiteStewardshipMainParams {
   final double qualityAccuracy;
   final double depthAccuracy;
   final double rivalDiscovery;
+  final double siteVisibilityM;
   final double successfulSiteDisguiseXp;
+  final double siteExplorationXp;
 
   factory SiteStewardshipMainParams.fromYaml(Map<String, dynamic> yaml) {
     return SiteStewardshipMainParams(
@@ -680,8 +684,10 @@ class SiteStewardshipMainParams {
       qualityAccuracy: _asDouble(yaml['quality_accuracy'], 0.01),
       depthAccuracy: _asDouble(yaml['depth_accuracy'], 0.01),
       rivalDiscovery: _asDouble(yaml['rival_discovery'], 1),
+      siteVisibilityM: _asDouble(yaml['site_visibility_m'], 50),
       successfulSiteDisguiseXp:
           _asDouble(yaml['successful_site_disguise_xp'], 50),
+      siteExplorationXp: _asDouble(yaml['site_exploration_xp'], 20),
     );
   }
 }

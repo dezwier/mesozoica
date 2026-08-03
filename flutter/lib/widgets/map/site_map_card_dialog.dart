@@ -39,11 +39,20 @@ class _SiteMapCardState extends State<_SiteMapCard> {
     context.read<map_data.MapController>().upsertSite(updated);
   }
 
+  SiteSummary _resolvedSite(map_data.MapController map) {
+    for (final site in map.geoSites) {
+      if (site.siteId == _site.siteId) return site;
+    }
+    return _site;
+  }
+
   @override
   Widget build(BuildContext context) {
+    final map = context.watch<map_data.MapController>();
+    final site = _resolvedSite(map);
     return CardDetailSheetContent(
       child: SiteTurnableCard(
-        site: _site,
+        site: site,
         onSiteUpdated: _onSiteUpdated,
       ),
     );

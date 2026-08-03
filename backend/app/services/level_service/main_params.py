@@ -289,9 +289,16 @@ def resolve_site_stewardship_main_params(
         "rival_discovery": _resolve(
             "rival_discovery", base=float(mp.rival_discovery)
         ),
+        "site_visibility_m": _resolve(
+            "site_visibility_m", base=float(mp.site_visibility_m)
+        ),
         "successful_site_disguise_xp": _resolve(
             "successful_site_disguise_xp",
             base=float(mp.successful_site_disguise_xp),
+        ),
+        "site_exploration_xp": _resolve(
+            "site_exploration_xp",
+            base=float(mp.site_exploration_xp),
         ),
     }
 

@@ -66,6 +66,10 @@ def test_load_game_config_matches_current_defaults() -> None:
     assert config.site_stewardship.main_params.completeness_accuracy == 0.01
     assert config.site_stewardship.main_params.quality_accuracy == 0.01
     assert config.site_stewardship.main_params.depth_accuracy == 0.01
+    assert config.site_stewardship.main_params.site_visibility_m == 50.0
+    assert config.site_stewardship.main_params.site_exploration_xp == 20.0
+    assert config.site_stewardship.site_visibility_m == 50.0
+    assert config.site_stewardship.site_exploration_xp == 20.0
     dino_acc_mods = config.site_stewardship.level_modifiers["dino_accuracy"]
     assert len(dino_acc_mods) == 99
     assert dino_acc_mods[0].level == 1 and dino_acc_mods[0].op == "multiply"

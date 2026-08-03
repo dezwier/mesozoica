@@ -32,6 +32,7 @@ class SiteRow:
     viewer_has_surveyed: bool | None = None
     discovered_at: datetime | None = None
     discovering_session_id: int | None = None
+    explored_distance_m: float | None = None
 
 
 def _site_card_image_url(site: Site, site_type: SiteType | None) -> str | None:
@@ -81,6 +82,7 @@ def site_row_to_summary(
         odd_quality=site.odd_quality,
         odd_depth=site.odd_depth,
         skill_level=survey_skill_level,
+        explored_distance_m=float(row.explored_distance_m or 0.0),
     )
     return SiteSummary(
         site_id=site.site_id,
@@ -120,6 +122,7 @@ def site_row_to_summary(
         odd_completeness_band=_band_schema(bands[SiteDimensionKey.COMPLETENESS]),
         odd_quality_band=_band_schema(bands[SiteDimensionKey.QUALITY]),
         odd_depth_band=_band_schema(bands[SiteDimensionKey.DEPTH]),
+        explored_distance_m=row.explored_distance_m,
         version=site.version or ORIGINAL_VERSION,
     )
 
@@ -173,6 +176,11 @@ def enrich_site_rows_for_viewer(
                 discovering_session_id=(
                     int(discover.source_session_id)
                     if discover is not None and discover.source_session_id is not None
+                    else None
+                ),
+                explored_distance_m=(
+                    float(discover.explored_distance_m or 0.0)
+                    if discover is not None
                     else None
                 ),
             )

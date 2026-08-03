@@ -30,7 +30,13 @@ class SiteCardDimensions extends StatelessWidget {
       // Widget tests / previews without AuthController.
     }
     final skillLevel = _siteStewardshipLevel(context);
-    final accuracies = resolveSiteStewardshipAccuracies(skillLevel: skillLevel);
+    final baseAccuracies =
+        resolveSiteStewardshipAccuracies(skillLevel: skillLevel);
+    final exploredM = site.exploredDistanceM ?? 0.0;
+    final accuracies = {
+      for (final e in baseAccuracies.entries)
+        e.key: applyExplorationAccuracyBoost(e.value, exploredM),
+    };
 
     final horizontal =
         <(SiteDimensionKey, String, String, double?, SiteDimensionBand?)>[

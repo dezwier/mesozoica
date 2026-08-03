@@ -83,6 +83,8 @@ class SiteSummary(BaseModel):
     odd_completeness_band: SiteDimensionBand | None = None
     odd_quality_band: SiteDimensionBand | None = None
     odd_depth_band: SiteDimensionBand | None = None
+    # Viewer meters walked inside site_visibility_m (discoverer progress).
+    explored_distance_m: float | None = None
     version: str = "Original"
 
 
@@ -203,6 +205,15 @@ class FieldEnsureRequest(BaseModel):
 class DiscoverSiteRequest(BaseModel):
     lat: float = Field(ge=-90, le=90)
     lon: float = Field(ge=-180, le=180)
+
+
+class SiteExplorationEntry(BaseModel):
+    site_id: int
+    explored_distance_m: float = Field(..., ge=0)
+
+
+class SiteExplorationUpdateRequest(BaseModel):
+    sites: list[SiteExplorationEntry] = Field(default_factory=list)
 
 
 class SetSiteStatusRequest(BaseModel):

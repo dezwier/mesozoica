@@ -117,11 +117,15 @@ resolvable):
 | `quality_accuracy` | Fossil quality estimation (base 1% × skill level) |
 | `depth_accuracy` | Depth estimation (base 1% × skill level; depth 0 always exact) |
 | `rival_discovery` | Multiplier on discovery_chance for rivals on your sites (×1 at L1 → ×0.5 at L99) |
+| `site_visibility_m` | Radius around a discovered site where walking accrues exploration meters |
 | `successful_site_disguise_xp` | XP when a rival discovery roll would hit but your active disguise blocks it |
+| `site_exploration_xp` | XP to site_stewardship per 20 m walked inside `site_visibility_m` |
 
 Accuracy params are display-only on the site card for now. Base is 1%; each
 site_stewardship level multiplies by the level (level 1 → 1%, level 50 → 50%,
-level 99 → 99%), then tool `modifies_main_params` (none yet).
+level 99 → 99%), then tool `modifies_main_params` (none yet). Per-site
+exploration adds +1% accuracy per meter walked inside `site_visibility_m`
+(additive, capped at 100%).
 
 `rival_discovery` is multiplied by skill level (×1.0 at L1 → ×0.5 at L99,
 linear; all sites). Site-scoped tools (Brush Scrim / Blackout Cover) multiply

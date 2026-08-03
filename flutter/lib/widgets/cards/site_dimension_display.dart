@@ -53,6 +53,19 @@ const double kSiteDimensionMaxBlurSigma = 16.0;
 /// Depth values at/near surface are always shown precisely (in situ).
 const double kSiteDimensionDepthPreciseEpsilon = 1e-9;
 
+/// +1% accuracy per meter walked inside site_visibility_m (additive, capped).
+const double kExplorationAccuracyPerM = 0.01;
+
+/// Additive boost: skill accuracy + 1% per explored meter, capped at 1.0.
+double applyExplorationAccuracyBoost(
+  double skillAccuracy,
+  double exploredDistanceM,
+) {
+  final boost = exploredDistanceM.clamp(0.0, double.infinity) *
+      kExplorationAccuracyPerM;
+  return (skillAccuracy + boost).clamp(0.0, 1.0);
+}
+
 /// Compute a stable, accuracy-aware blurry range for one site dimension.
 ///
 /// - [accuracy] 0 → nearly full-axis wide band + heavy blur (true value obscured)

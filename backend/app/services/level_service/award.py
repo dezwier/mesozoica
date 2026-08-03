@@ -130,6 +130,47 @@ def award_successful_site_disguise_xp(
     )
 
 
+SITE_EXPLORATION_BATCH_M = 20
+
+
+def exploration_batch_count(meters: float) -> int:
+    """Whole 20 m batches completed for the given explored distance."""
+    return max(0, int(meters) // SITE_EXPLORATION_BATCH_M)
+
+
+def award_site_exploration_xp(
+    user: User,
+    *,
+    previous_explored_m: float,
+    new_explored_m: float,
+    weather_time: str | None = None,
+    weather_type: str | None = None,
+    tool_mods: Mapping[str, ParamModifier] | None = None,
+) -> int:
+    """Award site_stewardship XP for whole 20 m exploration floor increases."""
+    batch_delta = exploration_batch_count(new_explored_m) - exploration_batch_count(
+        previous_explored_m
+    )
+    if batch_delta <= 0:
+        return 0
+    skill_level = level_for_xp(get_skill_xp(user, "site_stewardship"))
+    resolved = resolve_site_stewardship_main_params(
+        skill_level=skill_level,
+        weather_time=weather_time,
+        weather_type=weather_type,
+        tool_mods=tool_mods,
+    )
+    total = batch_delta * _xp_int(resolved["site_exploration_xp"])
+    if total <= 0:
+        return 0
+    return award_skill_xp(
+        user,
+        "site_stewardship",
+        amount=total,
+        breakdown_delta={"site_exploration": total},
+    )
+
+
 def award_distance_km_xp(
     user: User,
     *,

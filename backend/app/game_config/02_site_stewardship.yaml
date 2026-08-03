@@ -18,9 +18,13 @@ main_params:
   # Multiplier on discovery_chance for other users on sites you discovered.
   # Level multiplies ×1.0 → ×0.5 from L1 → L99; tools multiply further on a covered site.
   rival_discovery: 1
+  # Radius around a discovered site where walking accrues exploration meters.
+  site_visibility_m: 50.0
   # XP when a rival discovery roll would have hit but your disguise blocked it
   # (Brush Scrim / Blackout Cover). Blackout still rolls; effective odds are 0.
   successful_site_disguise_xp: 50
+  # XP to site_stewardship per 20 m walked inside site_visibility_m.
+  site_exploration_xp: 20
 
 # Fixed global distribution tables (not subject to level/tool multipliers).
 
@@ -87,6 +91,8 @@ quality_weights:
 # Accuracy: +0.01 per level (1..99).
 level_modifiers:
   successful_site_disguise_xp: []
+  site_visibility_m: []
+  site_exploration_xp: []
   # Rival discovery: ×1.0 at L1 → ×0.5 at L99 (linear; all sites).
   rival_discovery:
     - { level: 1, op: multiply, value: 1 }
