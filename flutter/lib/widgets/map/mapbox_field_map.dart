@@ -1331,6 +1331,9 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
     final zoom = data.cameraState.zoom;
     final zoomChanged = (zoom - _lastKnownZoom).abs() > 0.01;
     _lastKnownZoom = zoom;
+    // Drive Flutter map overlays (Ridge Glass pulse, etc.) with the camera —
+    // not a 200ms poll — so rings stay locked while panning.
+    widget.camera.notifyCameraMotion();
     if (zoomChanged) {
       _syncDiscoveryPulse();
     }

@@ -44,11 +44,9 @@ class _RidgeGlassPulseOverlayState extends State<RidgeGlassPulseOverlay>
   static const _rimSamples = 64;
 
   late final AnimationController _pulse;
-  Timer? _projectTimer;
   int _projectSeq = 0;
   bool _projectInFlight = false;
   bool _projectQueued = false;
-  int _framesSinceProject = 0;
 
   Offset? _centerPx;
   double _innerRadiusPx = 0;
@@ -59,6 +57,9 @@ class _RidgeGlassPulseOverlayState extends State<RidgeGlassPulseOverlay>
   double? _calibOuterPx;
   double? _calibInnerPx;
 
+  LocationService? _location;
+  VoidCallback? _locationListener;
+
   @override
   void initState() {
     super.initState();
@@ -67,28 +68,29 @@ class _RidgeGlassPulseOverlayState extends State<RidgeGlassPulseOverlay>
       duration: RidgeGlassPulseOverlay.pulsePeriod,
     )..addListener(_onPulseTick);
     _pulse.repeat();
+    widget.camera.cameraMotionEpoch.addListener(_onCameraMotion);
   }
 
   void _onPulseTick() {
-    if (widget.rotateWithHeading) {
-      _framesSinceProject++;
-      if (_framesSinceProject >= 2) {
-        _framesSinceProject = 0;
-        _requestReproject();
-      }
-    }
     if (mounted) setState(() {});
   }
+
+  void _onCameraMotion() => _requestReproject();
+
+  void _onLocationMoved() => _requestReproject();
 
   @override
   void didUpdateWidget(covariant RidgeGlassPulseOverlay oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (!identical(oldWidget.camera, widget.camera)) {
+      oldWidget.camera.cameraMotionEpoch.removeListener(_onCameraMotion);
+      widget.camera.cameraMotionEpoch.addListener(_onCameraMotion);
+    }
     final rangeChanged =
         oldWidget.baseVisibilityM != widget.baseVisibilityM ||
             oldWidget.fullVisibilityM != widget.fullVisibilityM;
     if (oldWidget.rotateWithHeading != widget.rotateWithHeading ||
         rangeChanged) {
-      _restartProjectSchedule();
       _requestReproject();
     } else if (oldWidget.zoom != widget.zoom && _calibZoom != null) {
       _applyCalibratedGeometry(zoom: widget.zoom);
@@ -99,28 +101,28 @@ class _RidgeGlassPulseOverlayState extends State<RidgeGlassPulseOverlay>
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    _restartProjectSchedule();
+    LocationService? location;
+    try {
+      location = context.read<LocationService>();
+    } on ProviderNotFoundException {
+      location = null;
+    }
+    if (!identical(_location, location)) {
+      _location?.locationListenable.removeListener(_locationListener ?? () {});
+      _location = location;
+      _locationListener = _onLocationMoved;
+      _location?.locationListenable.addListener(_locationListener!);
+    }
     _requestReproject();
   }
 
   @override
   void dispose() {
-    _projectTimer?.cancel();
+    widget.camera.cameraMotionEpoch.removeListener(_onCameraMotion);
+    _location?.locationListenable.removeListener(_locationListener ?? () {});
     _pulse.removeListener(_onPulseTick);
     _pulse.dispose();
     super.dispose();
-  }
-
-  void _restartProjectSchedule() {
-    _projectTimer?.cancel();
-    _projectTimer = null;
-    // Rotate mode reprojects from the animation tick; north-fixed uses a timer.
-    if (!widget.rotateWithHeading) {
-      _projectTimer = Timer.periodic(
-        const Duration(milliseconds: 200),
-        (_) => _requestReproject(),
-      );
-    }
   }
 
   void _requestReproject() {
@@ -145,16 +147,18 @@ class _RidgeGlassPulseOverlayState extends State<RidgeGlassPulseOverlay>
       if (loc == null) return;
 
       final zoomAtProbe = widget.zoom;
-      final attitude = await widget.camera.currentAttitude();
-      if (!mounted || seq != _projectSeq) return;
-
-      final bearingDeg =
-          widget.rotateWithHeading ? (attitude?.bearing ?? 0.0) : 0.0;
-      final pitchDeg =
-          widget.rotateWithHeading ? (attitude?.pitch ?? 0.0) : 0.0;
-      final bearing = bearingDeg * math.pi / 180.0;
-      final foreshorten =
-          math.cos(pitchDeg * math.pi / 180.0).clamp(0.2, 1.0);
+      // North-fixed is flat / north-up — skip attitude IPC so pan stays snappy.
+      double bearing = 0;
+      double foreshorten = 1;
+      if (widget.rotateWithHeading) {
+        final attitude = await widget.camera.currentAttitude();
+        if (!mounted || seq != _projectSeq) return;
+        final bearingDeg = attitude?.bearing ?? 0.0;
+        final pitchDeg = attitude?.pitch ?? 0.0;
+        bearing = bearingDeg * math.pi / 180.0;
+        foreshorten =
+            math.cos(pitchDeg * math.pi / 180.0).clamp(0.2, 1.0);
+      }
 
       // Lateral probe (screen-right) — same calibration as Terrain Echo / puck.
       final rangeM = widget.fullVisibilityM;

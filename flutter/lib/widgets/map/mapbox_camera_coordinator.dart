@@ -52,6 +52,14 @@ class MapboxCameraCoordinator {
   Uint8List? _puckBearingImage;
   Uint8List? _puckShadowImage;
 
+  /// Bumped on every Mapbox camera frame so Flutter overlays can reproject
+  /// in lockstep with pan / FollowPuck (without a slow polling timer).
+  final ValueNotifier<int> cameraMotionEpoch = ValueNotifier<int>(0);
+
+  void notifyCameraMotion() {
+    cameraMotionEpoch.value++;
+  }
+
   void attach(MapboxMap map) {
     _map = map;
   }
