@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from sqlalchemy import delete, func, update
+from sqlalchemy.orm.attributes import flag_modified
 from sqlmodel import Session, col, select
 
 from app.models.data_source import DATA_SOURCE_FIELD
@@ -14,8 +15,11 @@ from app.models.fossil import Fossil
 from app.models.site import Site
 from app.models.tool_session import ToolSession
 from app.models.tool_session_event import ToolSessionEvent
+from app.models.user import User
 from app.models.user_fossil import UserFossil
 from app.models.user_site import UserSite
+from app.services.level_service import sync_career_from_skills
+from app.services.level_service.skills import empty_skill_xp, total_skill_xp
 
 
 @dataclass(frozen=True)
@@ -28,6 +32,8 @@ class FieldDataPurgeResult:
     ensure_jobs_deleted: int
     session_events_deleted: int
     sessions_deleted: int
+    users_xp_cleared: int = 0
+    cleared_xp: int = 0
 
 
 def purge_all_field_data(
@@ -39,12 +45,15 @@ def purge_all_field_data(
     fossils: bool = True,
     session_events: bool = True,
     sessions: bool = True,
+    xp: bool = False,
 ) -> FieldDataPurgeResult:
     """Delete selected field scopes.
 
     Bulk SQL deletes do not reliably fire ORM cascades (esp. SQLite tests),
     so linked user_site / user_fossil / tool_session_event rows are removed
     when their parents are deleted even if those checkboxes were left unchecked.
+
+    When [xp] is true, every user's skill XP / career levels are zeroed.
     """
     field_fossil_ids = list(
         session.exec(
@@ -130,6 +139,19 @@ def purge_all_field_data(
         if ensure_jobs_deleted:
             session.exec(delete(FieldEnsureJob))
 
+    users_xp_cleared = 0
+    cleared_xp = 0
+    if xp:
+        for user in session.exec(select(User)).all():
+            cleared_xp += total_skill_xp(user)
+            users_xp_cleared += 1
+            user.skill_xp = empty_skill_xp()
+            user.skill_breakdown = {}
+            flag_modified(user, "skill_xp")
+            flag_modified(user, "skill_breakdown")
+            sync_career_from_skills(user)
+            session.add(user)
+
     session.commit()
     return FieldDataPurgeResult(
         user_sites_deleted=user_sites_deleted,
@@ -140,6 +162,8 @@ def purge_all_field_data(
         ensure_jobs_deleted=ensure_jobs_deleted,
         session_events_deleted=session_events_deleted,
         sessions_deleted=sessions_deleted,
+        users_xp_cleared=users_xp_cleared,
+        cleared_xp=cleared_xp,
     )
 
 

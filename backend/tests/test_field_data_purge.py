@@ -357,6 +357,39 @@ def test_purge_field_data_api_rejects_empty_scope(client, session: Session):
             "fossils": "false",
             "session_events": "false",
             "sessions": "false",
+            "xp": "false",
         },
     )
     assert response.status_code == 400
+
+
+def test_purge_clears_all_users_skill_xp(session: Session):
+    from app.services.level_service import set_skill_xp, sync_career_from_skills
+    from app.services.level_service.skills import get_skill_xp, total_skill_xp
+
+    _field, _fossil, user = _seed_field_world(session)
+    set_skill_xp(user, "site_discovery", 150)
+    sync_career_from_skills(user)
+    session.add(user)
+    session.commit()
+    session.refresh(user)
+    assert total_skill_xp(user) == 150
+
+    result = purge_all_field_data(
+        session,
+        user_sites=False,
+        user_fossils=False,
+        sites=False,
+        fossils=False,
+        session_events=False,
+        sessions=False,
+        xp=True,
+    )
+    assert result.users_xp_cleared >= 1
+    assert result.cleared_xp >= 150
+    session.refresh(user)
+    assert total_skill_xp(user) == 0
+    assert get_skill_xp(user, "site_discovery") == 0
+    assert user.skill_breakdown == {}
+    assert user.xp == 0
+    assert user.level == 1

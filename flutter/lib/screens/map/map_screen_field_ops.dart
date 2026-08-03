@@ -201,11 +201,15 @@ mixin _MapScreenFieldOpsMixin on State<MapScreen>, _MapScreenCameraMixin {
         fossils: selection.fossils,
         sessionEvents: selection.sessionEvents,
         sessions: selection.sessions,
+        xp: selection.xp,
       );
       if (!mounted) return;
       context.read<FieldDiscoveryCoordinator>().clearForUserChange();
       if (selection.userSites) {
         await context.read<SiteExplorationController>().clearAllProgress();
+      }
+      if (selection.xp) {
+        await context.read<AuthController>().refreshProfile();
       }
       context.read<map_data.MapController>().load(force: true);
       context.read<SiteCatalogController>().load(force: true);
@@ -230,7 +234,9 @@ mixin _MapScreenFieldOpsMixin on State<MapScreen>, _MapScreenCameraMixin {
         '${result.sitesDeleted} sites · '
         '${result.fossilsDeleted} fossils · '
         '${result.sessionEventsDeleted} session events · '
-        '${result.sessionsDeleted} sessions',
+        '${result.sessionsDeleted} sessions · '
+        '${result.usersXpCleared} users XP '
+        '(${result.clearedXp} XP)',
       );
     } on SiteServiceException catch (error) {
       if (!mounted) return;

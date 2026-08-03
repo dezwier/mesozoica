@@ -392,10 +392,14 @@ def delete_all_field_data(
         default=True,
         description="Delete tool_session rows (and remaining events)",
     ),
+    xp: bool = Query(
+        default=True,
+        description="Reset all users' skill XP and career levels",
+    ),
 ) -> FieldDataPurgeResponse:
     """Admin-only: selectively wipe field progress, sites, and/or fossils."""
     if not any(
-        (user_sites, user_fossils, sites, fossils, session_events, sessions)
+        (user_sites, user_fossils, sites, fossils, session_events, sessions, xp)
     ):
         raise ValidationError("Select at least one purge scope")
     result = purge_all_field_data(
@@ -406,6 +410,7 @@ def delete_all_field_data(
         fossils=fossils,
         session_events=session_events,
         sessions=sessions,
+        xp=xp,
     )
     log_field_event(
         "field_data_purged",
@@ -418,6 +423,8 @@ def delete_all_field_data(
         ensure_jobs_deleted=result.ensure_jobs_deleted,
         session_events_deleted=result.session_events_deleted,
         sessions_deleted=result.sessions_deleted,
+        users_xp_cleared=result.users_xp_cleared,
+        cleared_xp=result.cleared_xp,
     )
     return FieldDataPurgeResponse(
         user_sites_deleted=result.user_sites_deleted,
@@ -428,6 +435,8 @@ def delete_all_field_data(
         ensure_jobs_deleted=result.ensure_jobs_deleted,
         session_events_deleted=result.session_events_deleted,
         sessions_deleted=result.sessions_deleted,
+        users_xp_cleared=result.users_xp_cleared,
+        cleared_xp=result.cleared_xp,
     )
 
 

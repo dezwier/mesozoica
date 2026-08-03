@@ -145,6 +145,8 @@ class FieldDataPurgeResponse(BaseModel):
     ensure_jobs_deleted: int
     session_events_deleted: int = 0
     sessions_deleted: int = 0
+    users_xp_cleared: int = 0
+    cleared_xp: int = 0
 
 
 class FieldDiscoverResponse(BaseModel):

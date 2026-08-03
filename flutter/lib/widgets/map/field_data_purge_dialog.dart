@@ -9,6 +9,7 @@ class FieldDataPurgeSelection {
     this.fossils = true,
     this.sessionEvents = true,
     this.sessions = true,
+    this.xp = true,
   });
 
   final bool userSites;
@@ -17,6 +18,7 @@ class FieldDataPurgeSelection {
   final bool fossils;
   final bool sessionEvents;
   final bool sessions;
+  final bool xp;
 
   bool get hasAny =>
       userSites ||
@@ -24,7 +26,8 @@ class FieldDataPurgeSelection {
       sites ||
       fossils ||
       sessionEvents ||
-      sessions;
+      sessions ||
+      xp;
 
   FieldDataPurgeSelection copyWith({
     bool? userSites,
@@ -33,6 +36,7 @@ class FieldDataPurgeSelection {
     bool? fossils,
     bool? sessionEvents,
     bool? sessions,
+    bool? xp,
   }) {
     return FieldDataPurgeSelection(
       userSites: userSites ?? this.userSites,
@@ -41,6 +45,7 @@ class FieldDataPurgeSelection {
       fossils: fossils ?? this.fossils,
       sessionEvents: sessionEvents ?? this.sessionEvents,
       sessions: sessions ?? this.sessions,
+      xp: xp ?? this.xp,
     );
   }
 }
@@ -143,6 +148,17 @@ class _FieldDataPurgeDialogState extends State<FieldDataPurgeDialog> {
               }),
               title: const Text('Tool sessions'),
               subtitle: const Text('tool_session'),
+              controlAffinity: ListTileControlAffinity.leading,
+            ),
+            CheckboxListTile(
+              contentPadding: EdgeInsets.zero,
+              dense: true,
+              value: _selection.xp,
+              onChanged: (value) => setState(() {
+                _selection = _selection.copyWith(xp: value ?? false);
+              }),
+              title: const Text('All skill XP / levels'),
+              subtitle: const Text('skill_xp + career for every user'),
               controlAffinity: ListTileControlAffinity.leading,
             ),
           ],

@@ -185,6 +185,7 @@ class AppConfig {
     bool fossils = true,
     bool sessionEvents = true,
     bool sessions = true,
+    bool xp = true,
   }) =>
       ApiEndpoints.fieldDataPurgeUri(
         userSites: userSites,
@@ -193,6 +194,7 @@ class AppConfig {
         fossils: fossils,
         sessionEvents: sessionEvents,
         sessions: sessions,
+        xp: xp,
       );
 
   static Uri siteTypesUri({

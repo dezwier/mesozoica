@@ -249,6 +249,7 @@ class ApiEndpoints {
     bool fossils = true,
     bool sessionEvents = true,
     bool sessions = true,
+    bool xp = true,
   }) => Uri.parse('${AppConfig.baseApiUrl}/api/v1/sites/field').replace(
     queryParameters: {
       'user_sites': '$userSites',
@@ -257,6 +258,7 @@ class ApiEndpoints {
       'fossils': '$fossils',
       'session_events': '$sessionEvents',
       'sessions': '$sessions',
+      'xp': '$xp',
     },
   );
 
