@@ -53,9 +53,12 @@ Three status dimensions drive HUD + gameplay knobs:
 
 | Dimension | Source | Values |
 |-----------|--------|--------|
-| `weather_time` | Local solar math (lat/lon/UTC; no API) | `dawn`, `day`, `dusk`, `night` |
+| `weather_time` | Local solar math (lat/lon/UTC; no API) | `dawn`, `day`, `dusk`, `golden_hour`, `night` |
 | `weather_type` | Open-Meteo via backend, 5 km grid cache | `clear` (WMO 0–1), `cloudy` (WMO 2; UI: Partly cloudy), `overcast` (WMO 3), … (time-agnostic; UI picks day/night art from `weather_time`) |
 | `temperature_c` | Same Open-Meteo fetch | degrees Celsius |
+
+Solar elevation bands: `day` ≥ 6°, `golden_hour` 0–6°, `dawn`/`dusk` −6–0°
+(civil twilight; morning vs afternoon), `night` < −6°.
 
 Effective values resolve as:
 
@@ -84,7 +87,9 @@ name under each main_param. All list entries for the current key apply in order
 | `active_km_xp` | XP per whole active kilometer walked |
 | `passive_km_xp` | XP per whole passive kilometer walked |
 
-XP params share solar-period multipliers: day +0%, dawn/dusk +20%, night +50%.
+`site_discovery_xp` solar-period multipliers: day +0%, golden hour +10%, dawn/dusk +20%, night +50%.
+`first_discovery_xp`, `active_km_xp`, and `passive_km_xp` are not affected by time of day.
+Visibility / discovery chance: day +10%, golden hour +30%, dawn/dusk +0%, night −40%.
 
 Client-only (not main params): `discovery_reroll_interval_s` — seconds between
 re-rolls while staying inside the discover radius (default 10). Walk-in still
@@ -102,8 +107,8 @@ multipliers (see `weather_time_modifiers` / `weather_type_modifiers` in this YAM
 |------------|---------|
 | `fossil_discovery_xp` | XP awarded when a fossil is discovered / granted in situ |
 
-Same solar-period XP multipliers as site discovery (day +0%, dawn/dusk +20%,
-night +50%).
+Same solar-period XP multipliers as site discovery (day +0%, golden hour +10%,
+dawn/dusk +20%, night +50%).
 
 ### Site Stewardship (`02_site_stewardship.yaml`)
 
@@ -123,6 +128,10 @@ resolvable):
 | `site_exploration_xp` | XP to site_stewardship per 20 m walked inside `site_visibility_m` |
 | `site_documentation_xp` | XP when all five site-dimension accuracies reach 100% (freezes further exploration) |
 | `first_documentation_xp` | Bonus XP when you are the first user to fully document a site |
+
+`site_visibility_m` uses the same solar-period multipliers as site discovery
+`visibility_distance_m`. `site_exploration_xp` uses the same multipliers as
+`site_discovery_xp`.
 
 Accuracy params are display-only on the site card for now. Stack per axis:
 skill baseline (base 1% × level → L50 ≈ 50%) → stable per-site / per-dimension

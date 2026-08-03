@@ -9,7 +9,7 @@ class WeatherStatus {
 
   final String weatherType;
   final double temperatureC;
-  /// Solar period: dawn | day | dusk | night.
+  /// Solar period: dawn | day | dusk | golden_hour | night.
   final String weatherTime;
   final DateTime? observedAt;
 

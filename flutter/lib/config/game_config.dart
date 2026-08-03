@@ -264,7 +264,7 @@ class SiteDiscoveryConfig {
   final String skillId;
   final SiteDiscoveryMainParams mainParams;
   final Map<String, List<LevelModifierEntry>> levelModifiers;
-  /// param → period (dawn|day|dusk|night) → ordered modifiers.
+  /// param → period (dawn|day|dusk|golden_hour|night) → ordered modifiers.
   final Map<String, Map<String, List<ParamModifier>>> weatherTimeModifiers;
   /// param → weather type (clear|cloudy|…) → ordered modifiers.
   final Map<String, Map<String, List<ParamModifier>>> weatherTypeModifiers;

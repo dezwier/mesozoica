@@ -1,13 +1,14 @@
 import 'dart:math' as math;
 
-/// Daylight phase from solar elevation (civil twilight).
+/// Daylight phase from solar elevation (civil twilight + golden hour).
 ///
-/// Thresholds match common outdoor perception and Mapbox Standard
-/// `lightPreset` names:
-/// - [day]: sun at or above the horizon
+/// Thresholds match outdoor perception and Mapbox Standard `lightPreset`
+/// names (golden hour maps to day for Mapbox):
+/// - [day]: sun elevation ≥ 6°
+/// - [golden_hour]: 0° ≤ elevation < 6°
 /// - [dawn] / [dusk]: civil twilight (−6° ≤ elevation < 0°)
 /// - [night]: sun below −6°
-enum SolarPeriod { dawn, day, dusk, night }
+enum SolarPeriod { dawn, day, dusk, golden_hour, night }
 
 /// Sunrise / sunset / civil-twilight times for a calendar day (UTC instants).
 ///
@@ -36,6 +37,9 @@ class Solar {
   /// Civil twilight lower bound (degrees above horizon).
   static const double civilTwilightElevationDeg = -6.0;
 
+  /// Upper bound of golden hour (degrees above horizon).
+  static const double goldenHourElevationDeg = 6.0;
+
   /// Geometric sunrise/sunset (refraction + solar disc), degrees.
   static const double sunriseElevationDeg = -0.833;
 
@@ -57,7 +61,7 @@ class Solar {
     return 90.0 - zenith;
   }
 
-  /// Dawn / day / dusk / night at a point in time.
+  /// Dawn / day / dusk / golden_hour / night at a point in time.
   static SolarPeriod periodAt({
     required double latitude,
     required double longitude,
@@ -69,7 +73,8 @@ class Solar {
       longitude: longitude,
       at: when,
     );
-    if (elev >= 0) return SolarPeriod.day;
+    if (elev >= goldenHourElevationDeg) return SolarPeriod.day;
+    if (elev >= 0) return SolarPeriod.golden_hour;
     if (elev >= civilTwilightElevationDeg) {
       final noon = solarNoonUtc(longitude: longitude, day: when.toUtc());
       return when.toUtc().isBefore(noon) ? SolarPeriod.dawn : SolarPeriod.dusk;
@@ -78,12 +83,15 @@ class Solar {
   }
 
   /// Mapbox Standard `lightPreset` string for [periodAt].
+  ///
+  /// Mapbox only supports dawn/day/dusk/night; golden hour uses day.
   static String lightPresetAt({
     required double latitude,
     required double longitude,
     DateTime? at,
   }) {
-    return periodAt(latitude: latitude, longitude: longitude, at: at).name;
+    final period = periodAt(latitude: latitude, longitude: longitude, at: at);
+    return period == SolarPeriod.golden_hour ? 'day' : period.name;
   }
 
   /// Solar noon (sun on local meridian) for the UTC calendar day of [day].

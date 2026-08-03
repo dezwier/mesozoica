@@ -22,7 +22,7 @@ abstract final class WeatherDisplay {
     'hail',
   ];
 
-  /// Night-side art for dusk + night; day-side art for dawn + day.
+  /// Night-side art for dusk + night; day-side art for dawn / day / golden hour.
   static bool usesNightArt(String weatherTime) {
     return weatherTime == 'night' || weatherTime == 'dusk';
   }
@@ -118,6 +118,8 @@ abstract final class WeatherDisplay {
         return 'Dawn';
       case 'dusk':
         return 'Dusk';
+      case 'golden_hour':
+        return 'Golden hour';
       case 'night':
         return 'Nighttime';
       case 'day':

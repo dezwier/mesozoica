@@ -109,6 +109,13 @@ void main() {
     expect(
       resolveSiteDiscoveryVisibilityDistanceM(
         skillLevel: 1,
+        weatherTime: 'golden_hour',
+      ),
+      closeTo(base * 1.3, 1e-9),
+    );
+    expect(
+      resolveSiteDiscoveryVisibilityDistanceM(
+        skillLevel: 1,
         weatherTime: 'dusk',
       ),
       closeTo(base, 1e-9),

@@ -83,8 +83,8 @@ class ParamModifier(BaseModel):
     value: float
 
 
-WeatherTimePeriod = Literal["dawn", "day", "dusk", "night"]
-VALID_WEATHER_TIMES = frozenset({"dawn", "day", "dusk", "night"})
+WeatherTimePeriod = Literal["dawn", "day", "dusk", "golden_hour", "night"]
+VALID_WEATHER_TIMES = frozenset({"dawn", "day", "dusk", "golden_hour", "night"})
 VALID_WEATHER_TYPES = frozenset(
     {
         "clear",

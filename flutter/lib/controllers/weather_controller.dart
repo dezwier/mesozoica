@@ -42,7 +42,7 @@ class WeatherController extends ChangeNotifier with WidgetsBindingObserver {
 
   WeatherStatus? get status => _status;
 
-  /// Current solar period name (dawn|day|dusk|night), or null if no GPS yet.
+  /// Current solar period name (dawn|day|dusk|golden_hour|night), or null if no GPS yet.
   String? get weatherTime => _status?.weatherTime;
 
   String? get error => _error;

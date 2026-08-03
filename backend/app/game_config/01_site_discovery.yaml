@@ -30,24 +30,26 @@ level_modifiers:
   active_km_xp: []
   passive_km_xp: []
 
-# Ambient solar period (dawn|day|dusk|night). After level, before weather_type + tools.
+# Ambient solar period (dawn|day|dusk|golden_hour|night). After level, before weather_type + tools.
 weather_time_modifiers:
   visibility_distance_m: &site_discovery_weather_time
     day: [{ op: multiply, value: 1.1 }]
+    golden_hour: [{ op: multiply, value: 1.3 }]
     dawn: []
     dusk: []
     night: [{ op: multiply, value: 0.6 }]
   discovery_chance: *site_discovery_weather_time
   max_discovery_speed_kmh: {}
-  # XP: day +0%, dawn/dusk +20%, night +50%.
-  site_discovery_xp: &site_discovery_xp_weather_time
+  # XP: day +0%, golden_hour +10%, dawn/dusk +20%, night +50%.
+  site_discovery_xp:
     day: []
+    golden_hour: [{ op: multiply, value: 1.1 }]
     dawn: [{ op: multiply, value: 1.2 }]
     dusk: [{ op: multiply, value: 1.2 }]
     night: [{ op: multiply, value: 1.5 }]
-  first_discovery_xp: *site_discovery_xp_weather_time
-  active_km_xp: *site_discovery_xp_weather_time
-  passive_km_xp: *site_discovery_xp_weather_time
+  first_discovery_xp: {}
+  active_km_xp: {}
+  passive_km_xp: {}
 
 # Ambient weather type (clear|cloudy|…). After weather_time, before tools.
 weather_type_modifiers:

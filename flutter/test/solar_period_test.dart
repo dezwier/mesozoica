@@ -29,7 +29,7 @@ void main() {
 
   group('Solar.periodAt', () {
     test('summer evening still day in Brussels', () {
-      // 18:00 CEST = 16:00 UTC — sun still well up in July
+      // 18:00 CEST = 16:00 UTC — sun still well up in July (≥ 6°)
       expect(
         Solar.periodAt(
           latitude: lat,
@@ -48,15 +48,15 @@ void main() {
       );
     });
 
-    test('summer late evening is dusk then night', () {
-      // ~civil dusk around 21:30–22:00 CEST in July
+    test('summer late evening is golden hour then dusk then night', () {
+      // Near sunset elevation band (0–6°) then civil dusk then night
       expect(
         Solar.periodAt(
           latitude: lat,
           longitude: lng,
           at: DateTime.utc(2026, 7, 20, 19, 45),
         ),
-        anyOf(SolarPeriod.day, SolarPeriod.dusk),
+        anyOf(SolarPeriod.day, SolarPeriod.golden_hour, SolarPeriod.dusk),
       );
       expect(
         Solar.periodAt(
@@ -65,6 +65,34 @@ void main() {
           at: DateTime.utc(2026, 7, 20, 22),
         ),
         SolarPeriod.night,
+      );
+    });
+
+    test('golden hour maps lightPreset to day', () {
+      DateTime? sample;
+      for (var hour = 17; hour <= 20; hour++) {
+        for (final minute in [0, 15, 30, 45]) {
+          final when = DateTime.utc(2026, 7, 20, hour, minute);
+          final elev = Solar.elevationDegrees(
+            latitude: lat,
+            longitude: lng,
+            at: when,
+          );
+          if (elev >= 0 && elev < 6) {
+            sample = when;
+            break;
+          }
+        }
+        if (sample != null) break;
+      }
+      expect(sample, isNotNull);
+      expect(
+        Solar.periodAt(latitude: lat, longitude: lng, at: sample!),
+        SolarPeriod.golden_hour,
+      );
+      expect(
+        Solar.lightPresetAt(latitude: lat, longitude: lng, at: sample),
+        'day',
       );
     });
 

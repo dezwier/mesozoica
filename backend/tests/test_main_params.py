@@ -50,25 +50,31 @@ def test_resolve_site_discovery_xp_weather_time() -> None:
 
     day = resolve_site_discovery_main_params(skill_level=1, weather_time="day")
     assert day["site_discovery_xp"] == pytest.approx(base)
-    assert day["first_discovery_xp"] == pytest.approx(cfg.first_discovery_xp)
-    assert day["active_km_xp"] == pytest.approx(cfg.active_km_xp)
-    assert day["passive_km_xp"] == pytest.approx(cfg.passive_km_xp)
+
+    golden = resolve_site_discovery_main_params(
+        skill_level=1, weather_time="golden_hour"
+    )
+    assert golden["site_discovery_xp"] == pytest.approx(base * 1.1)
 
     dusk = resolve_site_discovery_main_params(skill_level=1, weather_time="dusk")
     assert dusk["site_discovery_xp"] == pytest.approx(base * 1.2)
-    assert dusk["first_discovery_xp"] == pytest.approx(cfg.first_discovery_xp * 1.2)
-    assert dusk["active_km_xp"] == pytest.approx(cfg.active_km_xp * 1.2)
 
     dawn = resolve_site_discovery_main_params(skill_level=1, weather_time="dawn")
-    assert dawn["passive_km_xp"] == pytest.approx(cfg.passive_km_xp * 1.2)
+    assert dawn["site_discovery_xp"] == pytest.approx(base * 1.2)
 
     night = resolve_site_discovery_main_params(
         skill_level=1, weather_time="night"
     )
     assert night["site_discovery_xp"] == pytest.approx(base * 1.5)
-    assert night["first_discovery_xp"] == pytest.approx(cfg.first_discovery_xp * 1.5)
-    assert night["active_km_xp"] == pytest.approx(cfg.active_km_xp * 1.5)
-    assert night["passive_km_xp"] == pytest.approx(cfg.passive_km_xp * 1.5)
+
+    # first_discovery / walk km XP are time-invariant.
+    for period in ("day", "golden_hour", "dawn", "dusk", "night"):
+        resolved = resolve_site_discovery_main_params(
+            skill_level=1, weather_time=period
+        )
+        assert resolved["first_discovery_xp"] == pytest.approx(cfg.first_discovery_xp)
+        assert resolved["active_km_xp"] == pytest.approx(cfg.active_km_xp)
+        assert resolved["passive_km_xp"] == pytest.approx(cfg.passive_km_xp)
 
 
 def test_resolve_fossil_detection_xp_weather_time() -> None:
@@ -97,6 +103,12 @@ def test_resolve_site_discovery_weather_time_visibility() -> None:
     assert day["visibility_distance_m"] == pytest.approx(base * 1.1)
     assert day["discovery_chance"] == pytest.approx(cfg.discovery_chance * 1.1)
 
+    golden = resolve_site_discovery_main_params(
+        skill_level=1, weather_time="golden_hour"
+    )
+    assert golden["visibility_distance_m"] == pytest.approx(base * 1.3)
+    assert golden["discovery_chance"] == pytest.approx(cfg.discovery_chance * 1.3)
+
     dusk = resolve_site_discovery_main_params(skill_level=1, weather_time="dusk")
     assert dusk["visibility_distance_m"] == pytest.approx(base)
 
@@ -108,6 +120,39 @@ def test_resolve_site_discovery_weather_time_visibility() -> None:
     )
     assert night["visibility_distance_m"] == pytest.approx(base * 0.6)
     assert night["discovery_chance"] == pytest.approx(cfg.discovery_chance * 0.6)
+
+
+def test_resolve_site_stewardship_weather_time_mirrors_discovery() -> None:
+    get_game_config.cache_clear()
+    from app.services.level_service.main_params import (
+        resolve_site_stewardship_main_params,
+    )
+
+    cfg = get_game_config().site_stewardship.main_params
+    vis = float(cfg.site_visibility_m)
+    xp = float(cfg.site_exploration_xp)
+
+    day = resolve_site_stewardship_main_params(skill_level=1, weather_time="day")
+    assert day["site_visibility_m"] == pytest.approx(vis * 1.1)
+    assert day["site_exploration_xp"] == pytest.approx(xp)
+
+    golden = resolve_site_stewardship_main_params(
+        skill_level=1, weather_time="golden_hour"
+    )
+    assert golden["site_visibility_m"] == pytest.approx(vis * 1.3)
+    assert golden["site_exploration_xp"] == pytest.approx(xp * 1.1)
+
+    dusk = resolve_site_stewardship_main_params(
+        skill_level=1, weather_time="dusk"
+    )
+    assert dusk["site_visibility_m"] == pytest.approx(vis)
+    assert dusk["site_exploration_xp"] == pytest.approx(xp * 1.2)
+
+    night = resolve_site_stewardship_main_params(
+        skill_level=1, weather_time="night"
+    )
+    assert night["site_visibility_m"] == pytest.approx(vis * 0.6)
+    assert night["site_exploration_xp"] == pytest.approx(xp * 1.5)
 
 
 def test_resolve_site_discovery_weather_type_visibility() -> None:

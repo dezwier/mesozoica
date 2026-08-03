@@ -11,11 +11,12 @@ main_params:
 level_modifiers:
   fossil_discovery_xp: []
 
-# Ambient solar period (dawn|day|dusk|night). After level, before weather_type + tools.
+# Ambient solar period (dawn|day|dusk|golden_hour|night). After level, before weather_type + tools.
 weather_time_modifiers:
-  # XP: day +0%, dawn/dusk +20%, night +50%.
+  # XP: day +0%, golden_hour +10%, dawn/dusk +20%, night +50%.
   fossil_discovery_xp:
     day: []
+    golden_hour: [{ op: multiply, value: 1.1 }]
     dawn: [{ op: multiply, value: 1.2 }]
     dusk: [{ op: multiply, value: 1.2 }]
     night: [{ op: multiply, value: 1.5 }]

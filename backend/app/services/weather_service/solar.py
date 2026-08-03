@@ -1,6 +1,7 @@
 """Location-aware solar period (NOAA formulas; mirrors Flutter Solar).
 
-No network — given lat/lon/UTC, returns dawn|day|dusk|night from sun elevation.
+No network — given lat/lon/UTC, returns dawn|day|dusk|golden_hour|night
+from sun elevation.
 """
 
 from __future__ import annotations
@@ -9,9 +10,10 @@ import math
 from datetime import datetime, timedelta, timezone
 from typing import Literal
 
-WeatherTime = Literal["dawn", "day", "dusk", "night"]
+WeatherTime = Literal["dawn", "day", "dusk", "golden_hour", "night"]
 
 CIVIL_TWILIGHT_ELEVATION_DEG = -6.0
+GOLDEN_HOUR_ELEVATION_DEG = 6.0
 
 
 def _julian_day(utc: datetime) -> float:
@@ -180,12 +182,21 @@ def period_at(
     longitude: float,
     at: datetime | None = None,
 ) -> WeatherTime:
-    """Dawn / day / dusk / night at a point in time (civil twilight)."""
+    """Dawn / day / dusk / golden_hour / night at a point in time.
+
+    Thresholds (sun elevation above horizon):
+    - day: ≥ 6°
+    - golden_hour: 0° ≤ elev < 6°
+    - dawn / dusk: −6° ≤ elev < 0° (civil twilight; morning vs afternoon)
+    - night: < −6°
+    """
     when = at or datetime.now(timezone.utc)
     utc = when.astimezone(timezone.utc) if when.tzinfo else when.replace(tzinfo=timezone.utc)
     elev = elevation_degrees(latitude=latitude, longitude=longitude, at=utc)
-    if elev >= 0:
+    if elev >= GOLDEN_HOUR_ELEVATION_DEG:
         return "day"
+    if elev >= 0:
+        return "golden_hour"
     if elev >= CIVIL_TWILIGHT_ELEVATION_DEG:
         noon = solar_noon_utc(longitude=longitude, day=utc)
         return "dawn" if utc < noon else "dusk"

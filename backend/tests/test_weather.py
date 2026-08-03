@@ -35,11 +35,11 @@ def test_cell_for_same_neighborhood() -> None:
 
 
 def test_period_at_brussels_noon_summer_is_day() -> None:
-    # Midday UTC in Brussels summer — sun well above horizon.
+    # Midday UTC in Brussels summer — sun well above horizon (≥ 6°).
     noon = datetime(2024, 6, 21, 12, 0, tzinfo=timezone.utc)
     assert period_at(latitude=50.85, longitude=4.35, at=noon) == "day"
     elev = elevation_degrees(latitude=50.85, longitude=4.35, at=noon)
-    assert elev > 0
+    assert elev > 6
 
 
 def test_period_at_brussels_midnight_is_night() -> None:
@@ -47,6 +47,23 @@ def test_period_at_brussels_midnight_is_night() -> None:
     assert period_at(latitude=50.85, longitude=4.35, at=midnight) == "night"
     elev = elevation_degrees(latitude=50.85, longitude=4.35, at=midnight)
     assert elev < -6
+
+
+def test_period_at_golden_hour_near_sunset() -> None:
+    # Brussels mid-July: find a UTC instant with 0° ≤ elev < 6°.
+    lat, lon = 50.85, 4.35
+    found = None
+    for hour in range(17, 21):
+        for minute in (0, 15, 30, 45):
+            when = datetime(2024, 7, 20, hour, minute, tzinfo=timezone.utc)
+            elev = elevation_degrees(latitude=lat, longitude=lon, at=when)
+            if 0 <= elev < 6:
+                found = when
+                break
+        if found is not None:
+            break
+    assert found is not None, "expected a golden-hour sample in Brussels July evening"
+    assert period_at(latitude=lat, longitude=lon, at=found) == "golden_hour"
 
 
 def test_period_at_varies_by_longitude() -> None:
