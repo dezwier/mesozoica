@@ -128,15 +128,19 @@ class DisguiseSessionController extends ChangeNotifier {
     _syncRemaining();
     _tickTimer = Timer.periodic(const Duration(milliseconds: 250), (_) {
       if (_syncRemaining()) return;
-      unawaited(stop(notifyServer: false));
+      if (!isActive) {
+        unawaited(stop(notifyServer: false));
+      }
     });
   }
 
-  /// Returns true while still active.
+  /// Returns true when the session expired and local cleanup was started.
   bool _syncRemaining() {
-    final next = timedSessionRemaining(_session);
-    remainingListenable.value = next;
-    return next != null && next > Duration.zero;
+    return syncTimedSessionRemaining(
+      session: _session,
+      remainingListenable: remainingListenable,
+      onExpired: () => unawaited(stop(notifyServer: false)),
+    );
   }
 
   @override
