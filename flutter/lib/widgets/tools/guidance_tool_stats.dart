@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 
 import '../../config/game_config.dart';
+import '../../config/tool_instance_params.dart';
 import '../../theme/dino_card_theme.dart';
 import '../tools/tool_stat_row.dart';
+import '../weather/weather_display.dart';
 
 /// Stats panel for site-guidance tools (compass / proximity / navigator).
 class GuidanceToolStats extends StatelessWidget {
@@ -29,8 +31,11 @@ class GuidanceToolStats extends StatelessWidget {
         (p?['direction_exactness'] as num?)?.toDouble();
     final distanceExactness =
         (p?['distance_exactness'] as num?)?.toDouble();
-    final discoveryChance =
-        (p?['discovery_chance'] as num?)?.toDouble() ?? cfg.discoveryChance;
+    final discoveryMod = modifiesMainParamsFromParams(p)
+        ?.paramsFor('using', 'site_discovery')['discovery_chance'];
+    final discoveryChance = (p?['discovery_chance'] as num?)?.toDouble() ??
+        (discoveryMod?.op == 'replace' ? discoveryMod?.value : null) ??
+        cfg.discoveryChance;
     final explanation = p?['stats_explanation'] as String? ?? cfg.statsExplanation;
     final pairs = <ToolStatPair>[
       ToolStatPair('Duration', '$durationMinutes min'),
@@ -54,7 +59,17 @@ class GuidanceToolStats extends StatelessWidget {
             'Distance',
             _formatExactness(distanceExactness ?? exactness ?? cfg.resolvedDistanceExactness),
           ),
-          if (discoveryChance != null)
+          if (discoveryMod != null)
+            ToolStatPair(
+              'Discovery chance',
+              discoveryMod.op == 'replace'
+                  ? '→ ${_formatChance(discoveryMod.value)}'
+                  : WeatherDisplay.formatModifierShort(
+                      op: discoveryMod.op,
+                      value: discoveryMod.value,
+                    ),
+            )
+          else if (discoveryChance != null)
             ToolStatPair(
               'Discovery chance',
               _formatChance(discoveryChance),
@@ -67,7 +82,17 @@ class GuidanceToolStats extends StatelessWidget {
             'Exactness',
             _formatExactness(directionExactness ?? exactness ?? cfg.resolvedDirectionExactness),
           ),
-          if (discoveryChance != null)
+          if (discoveryMod != null)
+            ToolStatPair(
+              'Discovery chance',
+              discoveryMod.op == 'replace'
+                  ? '→ ${_formatChance(discoveryMod.value)}'
+                  : WeatherDisplay.formatModifierShort(
+                      op: discoveryMod.op,
+                      value: discoveryMod.value,
+                    ),
+            )
+          else if (discoveryChance != null)
             ToolStatPair(
               'Discovery chance',
               _formatChance(discoveryChance),

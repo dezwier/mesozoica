@@ -14,6 +14,7 @@ import '../../models/tool.dart';
 import '../../models/tool_session.dart';
 import '../../services/api_client.dart';
 import '../common/draggable_sheet_wrapper.dart';
+import '../weather/weather_display.dart';
 import 'profile_skill_icons.dart';
 
 const _breakdownLabels = <String, String>{
@@ -1080,10 +1081,7 @@ String _formatModifierShort(Object mod, _ParamFormat format) {
       final formatted = _formatScalar(value.abs(), format);
       return value >= 0 ? '+$formatted' : '-$formatted';
     case 'multiply':
-      if (value == value.roundToDouble()) {
-        return '×${value.toStringAsFixed(0)}';
-      }
-      return '×${value.toStringAsFixed(2)}';
+      return WeatherDisplay.formatModifierShort(op: op, value: value);
     default:
       return '$op ${_formatScalar(value, format)}';
   }

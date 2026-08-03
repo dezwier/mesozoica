@@ -73,13 +73,27 @@ def _guidance_params(
     inst_p: dict[str, Any],
     duration_minutes: int,
 ) -> dict[str, Any]:
-    mods = getattr(cfg, "modifies_main_params", None)
-    raw_chance = inst_p.get("discovery_chance", cfg.discovery_chance)
-    discovery_chance = (
-        float(raw_chance)
-        if kind.has_discovery_boost and raw_chance is not None
-        else None
-    )
+    raw_mods = inst_p.get("modifies_main_params")
+    if raw_mods is None:
+        mods = getattr(cfg, "modifies_main_params", None)
+        raw_mods = (
+            mods.model_dump() if mods is not None and hasattr(mods, "model_dump") else mods
+        )
+
+    discovery_chance = None
+    if kind.has_discovery_boost:
+        raw_chance = inst_p.get("discovery_chance")
+        if raw_chance is None and isinstance(raw_mods, dict):
+            using = raw_mods.get("using") or {}
+            skill = using.get("site_discovery") or {}
+            entry = skill.get("discovery_chance") or {}
+            if isinstance(entry, dict) and entry.get("op") == "replace":
+                raw_chance = entry.get("value")
+        if raw_chance is None:
+            raw_chance = cfg.discovery_chance
+        if raw_chance is not None:
+            discovery_chance = float(raw_chance)
+
     direction_raw = (
         inst_p.get("direction_exactness")
         if inst_p.get("direction_exactness") is not None
@@ -111,10 +125,8 @@ def _guidance_params(
     params: dict[str, Any] = {"duration_minutes": duration_minutes}
     if discovery_chance is not None:
         params["discovery_chance"] = discovery_chance
-    if mods is not None:
-        params["modifies_main_params"] = (
-            mods.model_dump() if hasattr(mods, "model_dump") else mods
-        )
+    if raw_mods is not None:
+        params["modifies_main_params"] = raw_mods
     if direction_exactness is not None:
         params["direction_exactness"] = direction_exactness
     if distance_exactness is not None:

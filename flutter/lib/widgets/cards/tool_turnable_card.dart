@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../config/game_config.dart';
+import '../../config/tool_params_edit.dart';
 import '../../controllers/aerial_session_controller.dart';
 import '../../controllers/auth_controller.dart';
 import '../../controllers/formation_map_controller.dart';
@@ -75,17 +76,26 @@ class _ToolTurnableCardState extends State<ToolTurnableCard> {
         GameConfig.instance.toolActions.defaultsForToolName(tool.name);
     final fromTool =
         tool.params.isNotEmpty ? tool.params : tool.baseParams;
-    if (fromTool.isEmpty) return Map<String, dynamic>.from(defaults);
-    if (defaults.isEmpty) return Map<String, dynamic>.from(fromTool);
-    return {...defaults, ...fromTool};
+    return ToolParamsEdit.mergeDefaults(
+      Map<String, dynamic>.from(defaults),
+      Map<String, dynamic>.from(fromTool),
+    );
   }
 
   List<String> _editableKeysForBackStats(ToolSummary tool) {
+    final params = _paramsForEdit(tool);
     final extension = ToolCardExtensions.forTool(tool);
-    if (extension != null) {
-      return extension.editableParamKeys(tool);
-    }
-    return _paramsForEdit(tool).keys.toList(growable: false);
+    final toolKeys = extension?.editableParamKeys(tool) ??
+        [
+          for (final key in params.keys)
+            if (key != 'stats_explanation' && key != 'modifies_main_params')
+              key,
+        ];
+    return ToolParamsEdit.editableKeys(toolKeys: toolKeys, params: params);
+  }
+
+  Map<String, String> _editableLabelsFor(ToolSummary tool) {
+    return ToolParamsEdit.editableLabels(keys: _editableKeysForBackStats(tool));
   }
 
   Future<void> _onAction() async {
@@ -239,13 +249,16 @@ class _ToolTurnableCardState extends State<ToolTurnableCard> {
       context,
       params: paramsForEdit,
       editableKeys: editableKeys,
+      labels: _editableLabelsFor(widget.tool),
       onSave: (updatedParams) async {
         if (_updateParamsBusy) return;
         setState(() => _updateParamsBusy = true);
         try {
+          final payload =
+              ToolParamsEdit.syncLegacyDiscoveryChance(updatedParams);
           final updatedTool = await ToolService().updateToolParams(
             widget.tool.id,
-            updatedParams,
+            payload,
           );
           if (!mounted) return;
           context.read<ToolCatalogController>().replaceToolSummary(updatedTool);

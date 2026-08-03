@@ -168,10 +168,11 @@ abstract final class WeatherDisplay {
             : abs.toStringAsFixed(2);
         return value >= 0 ? '+$formatted' : '-$formatted';
       case 'multiply':
-        if (value == value.roundToDouble()) {
-          return '×${value.toStringAsFixed(0)}';
-        }
-        return '×${value.toStringAsFixed(2)}';
+        // Relative to identity (×1.0): 1.3 → +30%, 0.9 → -10%.
+        final deltaPct = (value - 1.0) * 100;
+        final rounded = deltaPct.round();
+        if (rounded == 0) return '±0%';
+        return rounded > 0 ? '+$rounded%' : '$rounded%';
       default:
         return '$op $value';
     }

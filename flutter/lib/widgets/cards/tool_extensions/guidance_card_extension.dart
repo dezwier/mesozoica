@@ -21,7 +21,6 @@ class GuidanceCardExtension implements ToolCardExtension {
       GuidanceToolKind.geoCompass => const [
           'duration_minutes',
           'exactness',
-          'discovery_chance',
         ],
       GuidanceToolKind.proximityScanner => const [
           'duration_minutes',
@@ -31,7 +30,6 @@ class GuidanceCardExtension implements ToolCardExtension {
           'duration_minutes',
           'direction_exactness',
           'distance_exactness',
-          'discovery_chance',
         ],
     };
   }
