@@ -2,9 +2,18 @@
 
 Single source of truth for Mesozoica game-mechanics knobs.
 
-- **Backend** loads these YAML files via `app.core.game_config`.
-- **Flutter** loads the same files via the symlink
-  `flutter/assets/game_config` → `backend/app/game_config`.
+- **Backend** loads these YAML files via `app.core.game_config` and serves them
+  at `GET /api/v1/game-config` (`app.services.game_config_service`).
+- **Flutter** fetches that endpoint at startup via `GameConfigService`, falling
+  back to an on-device cache and then the bundled YAML (symlink
+  `flutter/assets/game_config` → `backend/app/game_config`).
+
+> Delivery architecture and the roadmap toward a DB-backed, live-editable single
+> source of truth (incl. the planned admin web tool) live in
+> [`../../../docs/game-config.md`](../../../docs/game-config.md). Until the Dart
+> parser is generated from the backend schema (Phase 2), schema changes still
+> require updating both `app/core/game_config.py` and
+> `flutter/lib/config/game_config.dart` — see "Adding a new domain" below.
 
 ## Domains
 

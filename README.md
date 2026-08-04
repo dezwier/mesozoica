@@ -38,7 +38,7 @@ mesozoica/
 └── railway.toml             # Monorepo deploy (backend root)
 ```
 
-**Shared game config:** YAML under [`backend/app/game_config/`](backend/app/game_config/) is linked into Flutter assets. Typed loaders live on both sides (`core/game_config.py` and `lib/config/game_config.dart`).
+**Shared game config:** YAML under [`backend/app/game_config/`](backend/app/game_config/) is the game-mechanics control board. The backend serves it at `GET /api/v1/game-config`, and the Flutter client fetches it at startup (falling back to an on-device cache, then the bundled YAML) so tuning ships without an app release. Typed loaders live on both sides (`core/game_config.py` and `lib/config/game_config.dart`). See [`docs/game-config.md`](docs/game-config.md) for the delivery architecture and the roadmap toward a DB-backed, live-editable single source of truth.
 
 ## Architecture notes
 
