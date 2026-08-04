@@ -164,6 +164,7 @@ class _SiteIdentifySheetState extends State<SiteIdentifySheet> {
       _error = null;
     });
 
+    final started = DateTime.now();
     try {
       final result = await _service.submitIdentifyGuess(
         siteId: widget.site.siteId,
@@ -178,21 +179,32 @@ class _SiteIdentifySheetState extends State<SiteIdentifySheet> {
         // Tests / previews without AuthController.
       }
 
-      // Hold green for a beat even if the network was fast.
-      await Future<void>.delayed(const Duration(seconds: 1));
+      if (result.identified) {
+        await _holdSuccessAtLeast(started);
+        if (!mounted) return;
+        Navigator.of(context).pop(result.site);
+        return;
+      }
+
+      // Prefetch next step while keeping period correct feedback visible.
+      // No spinner between questions — swap when ready, after ≥1s.
+      final next = await _service.fetchIdentifyOptions(widget.site.siteId);
+      await _holdSuccessAtLeast(started);
       if (!mounted) return;
 
-      if (result.identified) {
+      if (next.identified) {
         Navigator.of(context).pop(result.site);
         return;
       }
 
       setState(() {
+        _options = next;
         _submitting = false;
         _successGuess = null;
         _disabled.clear();
+        _loading = false;
+        _error = null;
       });
-      await _loadOptions();
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -200,6 +212,14 @@ class _SiteIdentifySheetState extends State<SiteIdentifySheet> {
         _successGuess = null;
         _error = e.toString();
       });
+    }
+  }
+
+  Future<void> _holdSuccessAtLeast(DateTime started) async {
+    const minHold = Duration(seconds: 1);
+    final elapsed = DateTime.now().difference(started);
+    if (elapsed < minHold) {
+      await Future<void>.delayed(minHold - elapsed);
     }
   }
 
@@ -320,18 +340,38 @@ class _SiteIdentifySheetState extends State<SiteIdentifySheet> {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  Text(
-                    toTitleCase(_periodForSlider(_periodSlider)),
-                    textAlign: TextAlign.center,
-                    style: textTheme.headlineSmall?.copyWith(
-                      color: _successGuess != null
-                          ? const Color(0xFF2E7D32)
-                          : _disabled.contains(
-                                  _periodForSlider(_periodSlider))
-                              ? scheme.onSurface.withValues(alpha: 0.38)
-                              : scheme.onSurface,
-                      fontWeight: FontWeight.w800,
-                    ),
+                  Builder(
+                    builder: (context) {
+                      final period = _periodForSlider(_periodSlider);
+                      final isWrong = _disabled.contains(period);
+                      final isSuccess = _successGuess != null;
+                      return Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            toTitleCase(period),
+                            textAlign: TextAlign.center,
+                            style: textTheme.headlineSmall?.copyWith(
+                              color: isSuccess
+                                  ? const Color(0xFF2E7D32)
+                                  : isWrong
+                                      ? scheme.onSurface.withValues(alpha: 0.45)
+                                      : scheme.onSurface,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          if (isWrong && !isSuccess) ...[
+                            const SizedBox(width: 8),
+                            Icon(
+                              Icons.close_rounded,
+                              size: 22,
+                              color: scheme.error.withValues(alpha: 0.55),
+                            ),
+                          ],
+                        ],
+                      );
+                    },
                   ),
                   Padding(
                     padding: const EdgeInsets.fromLTRB(20, 18, 20, 28),
@@ -391,6 +431,7 @@ class _SiteIdentifySheetState extends State<SiteIdentifySheet> {
                               _submitting ||
                               (_successGuess != null && !isSuccess),
                           correct: isSuccess,
+                          wrong: _disabled.contains(choice),
                           onPressed: () => _onGuess(choice),
                         );
                       },
@@ -415,6 +456,57 @@ String _periodForSlider(double t) {
   if (age > 201) return 'triassic';
   if (age > 145) return 'jurassic';
   return 'cretaceous';
+}
+
+class _PeriodLabel extends StatelessWidget {
+  const _PeriodLabel({
+    required this.label,
+    required this.muted,
+    required this.highlighted,
+    required this.wrong,
+  });
+
+  final String label;
+  final Color muted;
+  final bool highlighted;
+  final bool wrong;
+
+  static const _successGreen = Color(0xFF2E7D32);
+
+  @override
+  Widget build(BuildContext context) {
+    final color = highlighted
+        ? _successGreen
+        : wrong
+            ? muted.withValues(alpha: 0.45)
+            : muted;
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Flexible(
+          child: Text(
+            label,
+            textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: color,
+            ),
+          ),
+        ),
+        if (wrong) ...[
+          const SizedBox(width: 2),
+          Icon(
+            Icons.close_rounded,
+            size: 12,
+            color: Theme.of(context).colorScheme.error.withValues(alpha: 0.5),
+          ),
+        ],
+      ],
+    );
+  }
 }
 
 class _PeriodTimelineSlider extends StatelessWidget {
@@ -472,22 +564,14 @@ class _PeriodTimelineSlider extends StatelessWidget {
                 Positioned(
                   left: sidePad +
                       _tForMa((period.start + period.end) / 2) * trackWidth -
-                      40,
-                  top: 4,
-                  width: 80,
-                  child: Text(
-                    period.label,
-                    textAlign: TextAlign.center,
-                    maxLines: 1,
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: highlightPeriod == period.key
-                          ? _successGreen
-                          : disabledPeriods.contains(period.key)
-                              ? muted.withValues(alpha: 0.35)
-                              : muted,
-                    ),
+                      44,
+                  top: 2,
+                  width: 88,
+                  child: _PeriodLabel(
+                    label: period.label,
+                    muted: muted,
+                    highlighted: highlightPeriod == period.key,
+                    wrong: disabledPeriods.contains(period.key),
                   ),
                 ),
               // Ma-proportional period track.
@@ -626,12 +710,14 @@ class _IdentifyRockTile extends StatelessWidget {
     required this.onPressed,
     this.imageUrl,
     this.correct = false,
+    this.wrong = false,
   });
 
   final String label;
   final String? imageUrl;
   final bool disabled;
   final bool correct;
+  final bool wrong;
   final VoidCallback onPressed;
 
   @override
@@ -749,6 +835,23 @@ class _IdentifyRockTile extends StatelessWidget {
                     color: Colors.white,
                     size: 48,
                     shadows: [
+                      Shadow(
+                        color: Color(0x99000000),
+                        blurRadius: 8,
+                      ),
+                    ],
+                  ),
+                ),
+              ] else if (wrong) ...[
+                ColoredBox(
+                  color: scheme.error.withValues(alpha: 0.16),
+                ),
+                Center(
+                  child: Icon(
+                    Icons.close_rounded,
+                    size: 44,
+                    color: Colors.white.withValues(alpha: 0.82),
+                    shadows: const [
                       Shadow(
                         color: Color(0x99000000),
                         blurRadius: 8,
