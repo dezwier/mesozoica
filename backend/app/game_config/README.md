@@ -10,10 +10,13 @@ Single source of truth for Mesozoica game-mechanics knobs.
 
 > Delivery architecture and the roadmap toward a DB-backed, live-editable single
 > source of truth (incl. the planned admin web tool) live in
-> [`../../../docs/game-config.md`](../../../docs/game-config.md). Until the Dart
-> parser is generated from the backend schema (Phase 2), schema changes still
-> require updating both `app/core/game_config.py` and
-> `flutter/lib/config/game_config.dart` — see "Adding a new domain" below.
+> [`../../../docs/game-config.md`](../../../docs/game-config.md). The backend is
+> authoritative: it serves the validated config and the client's bundled snapshot
+> (`flutter/assets/game_config.json`) is generated from it and drift-checked in
+> CI. The Dart parser is a bespoke *client projection* (a subset with different
+> ergonomics), so it is kept hand-written; schema changes still touch both
+> `app/core/game_config.py` and `flutter/lib/config/game_config.dart` — see
+> "Adding a new domain" below.
 
 ## Domains
 
@@ -251,6 +254,10 @@ thresholds). Subcategory remains a pure archive weighted sample.
 
 1. Add `<domain>.yaml` here (skill domains: `NN_skill_id.yaml`).
 2. Add a pydantic section in `app/core/game_config.py`.
-3. Add a matching Dart section in `flutter/lib/config/game_config.dart`.
+3. Add a matching Dart section in `flutter/lib/config/game_config.dart`
+   (and parse it in `GameConfig.fromSections` / `loadFromYamlStrings`).
 4. Point the service/coordinator at the new section.
-5. List the asset in `flutter/pubspec.yaml`.
+5. List the source YAML asset in `flutter/pubspec.yaml`.
+6. Regenerate the client snapshot:
+   `cd backend && .venv/bin/python -m scripts.export_bundled_game_config`
+   (CI's `test_game_config_bundled_snapshot.py` fails until you do).
