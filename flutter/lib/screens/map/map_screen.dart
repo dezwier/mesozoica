@@ -34,6 +34,7 @@ import '../../services/auth_service.dart';
 import '../../services/location_service.dart';
 import '../../services/site_service.dart';
 import '../../shell/map_chrome_insets.dart';
+import '../../shell/map_top_chrome.dart';
 import '../../widgets/common/chrome_fab.dart';
 import '../../widgets/dino/dinosaur_filter_fab.dart';
 import '../../widgets/map/aerial_draw_overlay.dart';
@@ -291,7 +292,12 @@ class _MapScreenState extends State<MapScreen>
                   ),
                 ),
               ),
-            // Tool HUDs: above map overlays/markers, below chrome + FABs.
+            // Fade under tool HUDs so chips can slide over the scrim.
+            if (widget.isActive &&
+                !aerialDrawMode &&
+                widget.showControls)
+              const MapTopFade(),
+            // Tool HUDs: above map + fade, below shell chrome (profile / bar).
             if (widget.isActive && !aerialDrawMode && aerialRecon.hudSession != null)
               const AerialHud(),
             if (widget.isActive && !aerialDrawMode && guidance.isActive)

@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import '../models/profile.dart';
 import '../services/auth_service.dart';
 import '../services/push_notification_service.dart';
+import 'xp_award_controller.dart';
 
 class AuthController extends ChangeNotifier {
   AuthController({AuthService? authService})
@@ -14,6 +15,7 @@ class AuthController extends ChangeNotifier {
   bool _isLoading = false;
   bool _isInitializing = true;
   bool _adminModeEnabled = false;
+  XpAwardController? _xpAwards;
 
   Profile? get currentUser => _currentUser;
   bool get isLoggedIn => _currentUser != null;
@@ -22,6 +24,11 @@ class AuthController extends ChangeNotifier {
   bool get isAdmin => _currentUser?.isAdmin ?? false;
   bool get adminModeEnabled => _adminModeEnabled;
   bool get showAdminUi => isAdmin && _adminModeEnabled;
+
+  /// Wire the global XP badge queue (from [AppShell]).
+  void bindXpAwards(XpAwardController controller) {
+    _xpAwards = controller;
+  }
 
   void setAdminModeEnabled(bool value) {
     if (_adminModeEnabled == value) return;
@@ -106,18 +113,30 @@ class AuthController extends ChangeNotifier {
     return result;
   }
 
-  Future<void> refreshProfile() async {
+  /// Reload profile from the server.
+  ///
+  /// Pass [announceXp] true after actions known to award skill XP so the
+  /// global badge can show positive skill deltas. Login / pull-to-refresh /
+  /// purge paths leave it false.
+  Future<void> refreshProfile({bool announceXp = false}) async {
     if (_currentUser == null) return;
     try {
-      _currentUser = await _authService.refreshProfile();
-      if (!isAdmin) _resetAdminMode();
-      notifyListeners();
+      final next = await _authService.refreshProfile();
+      await applyUser(next, announceXp: announceXp);
     } catch (_) {
       // Leave the existing profile in place on transient failures.
     }
   }
 
-  Future<void> applyUser(Profile user) async {
+  /// Replace the local profile.
+  ///
+  /// When [announceXp] is true, positive per-skill XP deltas are enqueued on
+  /// the bound [XpAwardController] for the global earned badge.
+  Future<void> applyUser(Profile user, {bool announceXp = true}) async {
+    if (announceXp) {
+      final awards = _diffSkillXp(_currentUser, user);
+      _xpAwards?.enqueueAll(awards);
+    }
     _currentUser = user;
     if (!isAdmin) _resetAdminMode();
     notifyListeners();
@@ -128,15 +147,39 @@ class AuthController extends ChangeNotifier {
     required int xp,
   }) async {
     final user = await _authService.setSkillXp(skillId: skillId, xp: xp);
-    await applyUser(user);
+    // Absolute admin set — not an "earned" award.
+    await applyUser(user, announceXp: false);
     return user;
   }
 
   Future<void> logout() async {
     await _authService.clearStoredAuth();
     _currentUser = null;
+    _xpAwards?.clear();
     _resetAdminMode();
     notifyListeners();
+  }
+
+  static List<XpAward> _diffSkillXp(Profile? before, Profile after) {
+    if (before == null) return const [];
+    final prevById = <String, SkillState>{
+      for (final skill in before.skills) skill.id: skill,
+    };
+    final awards = <XpAward>[];
+    for (final skill in after.skills) {
+      final prevXp = prevById[skill.id]?.xp ?? 0;
+      final delta = skill.xp - prevXp;
+      if (delta > 0) {
+        awards.add(
+          XpAward(
+            skillId: skill.id,
+            skillName: skill.name,
+            amount: delta,
+          ),
+        );
+      }
+    }
+    return awards;
   }
 
   Future<Map<String, dynamic>> sendPasswordResetEmail(String email) =>

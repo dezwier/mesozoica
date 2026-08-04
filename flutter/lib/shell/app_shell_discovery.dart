@@ -65,7 +65,7 @@ mixin _AppShellDiscoveryMixin on State<AppShell> {
     }
     unawaited(context.read<FossilCatalogController>().load(force: true));
     final auth = context.read<AuthController>();
-    unawaited(auth.refreshProfile());
+    unawaited(auth.refreshProfile(announceXp: true));
     final userId = auth.currentUser?.id;
     if (userId != null) {
       context
@@ -84,7 +84,7 @@ mixin _AppShellDiscoveryMixin on State<AppShell> {
     // show on the card back without waiting for the debounced refetch.
     context.read<MapController>().upsertSite(pending.site);
     context.read<SiteCatalogController>().upsertSite(pending.site);
-    unawaited(context.read<AuthController>().refreshProfile());
+    unawaited(context.read<AuthController>().refreshProfile(announceXp: true));
 
     // Always refresh map/catalog/inbox; push already covers background UX.
     _scheduleDiscoveryRefresh(siteId: pending.site.siteId);
@@ -102,7 +102,7 @@ mixin _AppShellDiscoveryMixin on State<AppShell> {
 
     context.read<MapController>().upsertSite(pending);
     context.read<SiteCatalogController>().upsertSite(pending);
-    unawaited(context.read<AuthController>().refreshProfile());
+    unawaited(context.read<AuthController>().refreshProfile(announceXp: true));
     _scheduleDiscoveryRefresh(siteId: pending.siteId);
 
     if (!_appInForeground) return;

@@ -33,13 +33,16 @@ import 'controllers/splash_hold_controller.dart';
 import 'controllers/theme_controller.dart';
 import 'controllers/walk_distance_controller.dart';
 import 'controllers/weather_controller.dart';
+import 'controllers/xp_award_controller.dart';
 import 'firebase_options.dart';
 import 'services/location_service.dart';
 import 'services/map_tile_cache.dart';
 import 'services/push_notification_runtime.dart';
+import 'shell/app_navigator.dart';
 import 'shell/app_shell.dart';
 import 'theme/mesozoica_theme.dart';
 import 'widgets/common/app_splash_screen.dart';
+import 'widgets/xp/xp_award_overlay.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -164,15 +167,28 @@ class MesozoicaApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => FieldDiscoveryCoordinator()),
         ChangeNotifierProvider(create: (_) => WalkDistanceController()),
         ChangeNotifierProvider(create: (_) => SiteExplorationController()),
+        ChangeNotifierProvider(create: (_) => XpAwardController()),
       ],
       child: Consumer<ThemeController>(
         builder: (context, themeController, _) {
           return MaterialApp(
             title: 'Mesozoica',
+            navigatorKey: appNavigatorKey,
             debugShowCheckedModeBanner: AppConfig.isDebugMode,
             theme: MesozoicaTheme.light,
             darkTheme: MesozoicaTheme.dark,
             themeMode: themeController.themeMode,
+            builder: (context, child) {
+              // Above the root Navigator so drawers / sheets / dialogs
+              // never cover the XP badge.
+              return Stack(
+                fit: StackFit.expand,
+                children: [
+                  ?child,
+                  const XpAwardOverlay(),
+                ],
+              );
+            },
             home: const AppShell(),
           );
         },

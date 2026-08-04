@@ -22,6 +22,13 @@ class MapChromeInsets {
   /// Gap between FABs and the top of the bottom chrome row.
   static const double fabChromeGap = 20;
 
+  /// Horizontal inset for the bottom leather bar (and tool HUD default).
+  static const double bottomBarSidePad = 16;
+
+  /// Bottom edge of the profile HUD row (below status bar).
+  static double profileHudBottom(BuildContext context) =>
+      MediaQuery.paddingOf(context).top + topRowHeight;
+
   static double top(BuildContext context) =>
       MediaQuery.paddingOf(context).top + topRowHeight + weatherChipHeight;
 

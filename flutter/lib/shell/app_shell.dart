@@ -29,6 +29,7 @@ import '../controllers/tool_catalog_controller.dart';
 import '../controllers/walk_distance_controller.dart';
 import '../controllers/weather_controller.dart';
 import '../controllers/site_exploration_controller.dart';
+import '../controllers/xp_award_controller.dart';
 import '../models/fossil.dart';
 import '../models/site.dart';
 import '../models/user_notification.dart';
@@ -114,6 +115,9 @@ class _AppShellState extends State<AppShell>
     CardDetailSheet.openCount.addListener(_onCardDetailOverlayChanged);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
+      context.read<AuthController>().bindXpAwards(
+            context.read<XpAwardController>(),
+          );
       _attachCatalogModeListener();
       final discovery = context.read<FieldDiscoveryCoordinator>();
       _discoveryCoordinator = discovery;
@@ -198,6 +202,9 @@ class _AppShellState extends State<AppShell>
       unawaited(
         context.read<WalkDistanceController>().bind(
               context.read<LocationService>(),
+              onProfileUpdated: (profile) async {
+                await context.read<AuthController>().applyUser(profile);
+              },
             ),
       );
       unawaited(
@@ -751,6 +758,12 @@ class _AppShellState extends State<AppShell>
 
   @override
   Widget build(BuildContext context) {
+    final hudVisible = !_hideChrome;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      context.read<XpAwardController>().setHudVisible(hudVisible);
+    });
+
     return Consumer2<AuthController, SplashHoldController>(
       builder: (context, auth, splashHold, _) {
         WidgetsBinding.instance.addPostFrameCallback((_) {

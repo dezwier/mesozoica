@@ -51,8 +51,13 @@ class MapBottomChrome extends StatelessWidget {
           SafeArea(
             top: false,
             child: Padding(
-              // Match FAB side inset (map FABs use right: 12); sit closer to bottom.
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 2),
+              // Align with tool HUD side inset; sit closer to bottom.
+              padding: const EdgeInsets.fromLTRB(
+                MapChromeInsets.bottomBarSidePad,
+                0,
+                MapChromeInsets.bottomBarSidePad,
+                2,
+              ),
               child: SizedBox(
                 height: MapChromeInsets.bottomRowHeight - 2,
                 child: DecoratedBox(

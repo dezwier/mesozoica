@@ -1,6 +1,10 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 
 import '../../shell/map_chrome_insets.dart';
+import '../../theme/map_chrome_decorations.dart';
 import 'vintage_guidance_compass.dart';
 
 /// Draggable brass map chip chrome shared by timed-tool and aerial HUDs.
@@ -22,48 +26,79 @@ class VintageMapHudChip extends StatefulWidget {
 }
 
 class _VintageMapHudChipState extends State<VintageMapHudChip> {
+  static const _edgeGap = 8.0;
+  static const _sidePad = MapChromeInsets.bottomBarSidePad;
+
+  /// Drag delta from the default lower-left anchor (screen coords: +y down).
   Offset _dragOffset = Offset.zero;
+  Size _chipSize = const Size(160, 40);
+
+  void _onChipSize(Size size) {
+    if (size == _chipSize) return;
+    setState(() => _chipSize = size);
+  }
+
+  void _onPanUpdate(DragUpdateDetails details) {
+    final size = MediaQuery.sizeOf(context);
+    // Stop just under the profile HUD; chip paints over the top fade.
+    final topMin = MapChromeInsets.profileHudBottom(context) + _edgeGap;
+    final bottomClearance = MapChromeInsets.bottom(context) + _edgeGap;
+    final bottomMaxY = size.height - bottomClearance;
+    final leftMin = _sidePad;
+    final rightMax = size.width - _sidePad;
+
+    // Default: chip bottom-left sits just above the bottom bar.
+    final defaultTop = bottomMaxY - _chipSize.height;
+    final defaultLeft = leftMin;
+    final maxTop = math.max(topMin, bottomMaxY - _chipSize.height);
+    final maxLeft = math.max(leftMin, rightMax - _chipSize.width);
+
+    final next = _dragOffset + details.delta;
+    final top = (defaultTop + next.dy).clamp(topMin, maxTop);
+    final left = (defaultLeft + next.dx).clamp(leftMin, maxLeft);
+
+    setState(() {
+      _dragOffset = Offset(left - defaultLeft, top - defaultTop);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
-    final top = MapChromeInsets.top(context) + 8;
-    return Positioned.fill(
-      child: Padding(
-        padding: EdgeInsets.only(top: top),
-        child: Align(
-          alignment: Alignment.topCenter,
-          child: Transform.translate(
-            offset: _dragOffset,
-            child: GestureDetector(
-              onTap: widget.onTap,
-              onPanUpdate: (details) {
-                setState(() => _dragOffset += details.delta);
-              },
-              child: Material(
-                color: Colors.transparent,
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: VintageInstrumentStyle.dialFace.withValues(alpha: 0.72),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(
-                      color: VintageInstrumentStyle.brassRim,
-                      width: 1.2,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.35),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(maxWidth: widget.maxWidth),
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(10, 6, 10, 7),
-                      child: widget.child,
-                    ),
-                  ),
+    final size = MediaQuery.sizeOf(context);
+    final bottomClearance = MapChromeInsets.bottom(context) + _edgeGap;
+    final topMin = MapChromeInsets.profileHudBottom(context) + _edgeGap;
+    final maxBottom = math.max(
+      bottomClearance,
+      size.height - topMin - _chipSize.height,
+    );
+    final maxLeft = math.max(
+      _sidePad,
+      size.width - _sidePad - _chipSize.width,
+    );
+
+    final left = (_sidePad + _dragOffset.dx).clamp(_sidePad, maxLeft);
+    final bottom =
+        (bottomClearance - _dragOffset.dy).clamp(bottomClearance, maxBottom);
+
+    return Positioned(
+      left: left.toDouble(),
+      bottom: bottom.toDouble(),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        onPanUpdate: _onPanUpdate,
+        child: _SizeReporter(
+          onSize: _onChipSize,
+          child: Material(
+            color: Colors.transparent,
+            child: DecoratedBox(
+              decoration: MapChromeDecorations.leatherPanel(
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(maxWidth: widget.maxWidth),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(10, 6, 10, 7),
+                  child: widget.child,
                 ),
               ),
             ),
@@ -74,9 +109,44 @@ class _VintageMapHudChipState extends State<VintageMapHudChip> {
   }
 }
 
+/// Reports child layout size without scheduling work every frame.
+class _SizeReporter extends SingleChildRenderObjectWidget {
+  const _SizeReporter({required this.onSize, required super.child});
+
+  final ValueChanged<Size> onSize;
+
+  @override
+  RenderObject createRenderObject(BuildContext context) =>
+      _RenderSizeReporter(onSize);
+
+  @override
+  void updateRenderObject(
+    BuildContext context,
+    covariant _RenderSizeReporter renderObject,
+  ) {
+    renderObject.onSize = onSize;
+  }
+}
+
+class _RenderSizeReporter extends RenderProxyBox {
+  _RenderSizeReporter(this.onSize);
+
+  ValueChanged<Size> onSize;
+  Size? _last;
+
+  @override
+  void performLayout() {
+    super.performLayout();
+    final s = size;
+    if (_last == s) return;
+    _last = s;
+    WidgetsBinding.instance.addPostFrameCallback((_) => onSize(s));
+  }
+}
+
 /// Shared draggable map chip for timed tool sessions (duration + STOP).
 ///
-/// Defaults to center-top under archive/field chrome; drag anywhere on screen.
+/// Defaults to lower-left above the bottom bar; drag stays between top/bottom chrome.
 /// Optional [body] holds tool-specific extras (legends, etc.).
 class ActiveToolHudShell extends StatelessWidget {
   const ActiveToolHudShell({

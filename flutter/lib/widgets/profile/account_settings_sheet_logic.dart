@@ -288,7 +288,7 @@ mixin _AccountSettingsSheetLogicMixin on State<AccountSettingsSheet> {
 
     final updated = result['user'] as Profile?;
     if (updated != null) {
-      await auth.applyUser(updated);
+      await auth.applyUser(updated, announceXp: false);
     } else {
       await auth.refreshProfile();
     }

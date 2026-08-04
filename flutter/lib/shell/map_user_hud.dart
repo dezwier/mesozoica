@@ -17,6 +17,9 @@ class MapUserHud extends StatelessWidget {
 
   final VoidCallback onTap;
 
+  /// Target for the XP-earned magic-string animation.
+  static final GlobalKey xpBarKey = GlobalKey(debugLabel: 'mapUserHudXpBar');
+
   static final _xpFormat = NumberFormat('#,###');
 
   @override
@@ -95,6 +98,7 @@ class MapUserHud extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         SizedBox(
+                          key: xpBarKey,
                           width: 72,
                           child: DecoratedBox(
                             decoration: BoxDecoration(

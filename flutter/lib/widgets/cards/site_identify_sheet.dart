@@ -267,29 +267,67 @@ class _SiteIdentifySheetState extends State<SiteIdentifySheet> {
       clipBehavior: Clip.antiAlias,
       child: Column(
         children: [
-          const SizedBox(height: 10),
-          Center(
-            child: Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: scheme.onSurface.withValues(alpha: 0.3),
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-          ),
           Expanded(
             child: ListView(
               controller: widget.scrollController,
               padding: EdgeInsets.zero,
               children: [
-                const SizedBox(height: 10),
-                AspectRatio(
-                  aspectRatio: 1,
-                  child: SiteCardImage(imageUrl: widget.site.mainImageUrl),
+                // Image flush to the top; drawer handle overlays the photo.
+                Stack(
+                  children: [
+                    AspectRatio(
+                      aspectRatio: 1,
+                      child: SiteCardImage(imageUrl: widget.site.mainImageUrl),
+                    ),
+                    // Short fade into the question; soft edge, not a long wash.
+                    Positioned(
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      height: 48,
+                      child: IgnorePointer(
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [
+                                scheme.surface.withValues(alpha: 0),
+                                scheme.surface.withValues(alpha: 0.45),
+                                scheme.surface,
+                              ],
+                              stops: const [0.0, 0.55, 1.0],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      top: 10,
+                      left: 0,
+                      right: 0,
+                      child: Center(
+                        child: Container(
+                          width: 40,
+                          height: 4,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.85),
+                            borderRadius: BorderRadius.circular(2),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.35),
+                                blurRadius: 4,
+                                offset: const Offset(0, 1),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 18, 20, 8),
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
                   child: Text(
                     _question,
                     textAlign: TextAlign.center,
@@ -419,7 +457,7 @@ class _SiteIdentifySheetState extends State<SiteIdentifySheet> {
                         crossAxisCount: 2,
                         crossAxisSpacing: 10,
                         mainAxisSpacing: 10,
-                        childAspectRatio: 1.05,
+                        childAspectRatio: 1.55,
                       ),
                       itemBuilder: (context, index) {
                         final choice = options.choices[index];

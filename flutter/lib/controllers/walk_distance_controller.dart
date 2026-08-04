@@ -69,6 +69,7 @@ class WalkDistanceController extends ChangeNotifier {
 
   LocationService? _location;
   VoidCallback? _locationListener;
+  Future<void> Function(Profile profile)? _onProfileUpdated;
   bool _loaded = false;
   /// After a one-time weekly schema heal, push reset_weekly on the next sync.
   bool _pendingWeeklyReset = false;
@@ -107,7 +108,11 @@ class WalkDistanceController extends ChangeNotifier {
       ? _activeWeeklyMeters
       : _weeklyMeters;
 
-  Future<void> bind(LocationService locationService) async {
+  Future<void> bind(
+    LocationService locationService, {
+    Future<void> Function(Profile profile)? onProfileUpdated,
+  }) async {
+    _onProfileUpdated = onProfileUpdated;
     if (_location == locationService) return;
     await _ensureLoaded();
     notifyListeners();
@@ -430,6 +435,19 @@ class WalkDistanceController extends ChangeNotifier {
       }
       await _persistLocal();
       notifyListeners();
+
+      // Distance sync returns a full profile (may include km XP awards).
+      try {
+        final profile = Profile.fromJson(response);
+        final onUpdated = _onProfileUpdated;
+        if (onUpdated != null) {
+          await onUpdated(profile);
+        }
+      } catch (error) {
+        if (kDebugMode) {
+          debugPrint('WalkDistanceController.profile: $error');
+        }
+      }
     } catch (error) {
       if (kDebugMode) {
         debugPrint('WalkDistanceController.sync: $error');
