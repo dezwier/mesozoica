@@ -20,6 +20,7 @@ Future<void> showFossilDiscoveryCelebration(
 }) {
   return CardDetailSheet.show<void>(
     context,
+    clearTopForXpBadges: false,
     builder: (context) => _FossilDiscoveryCelebrationSheet(
       fossil: fossil,
       xpAwards: xpAwards,
@@ -103,11 +104,12 @@ class _FossilDiscoveryCelebrationSheetState
     return ScaleTransition(
       scale: _scale,
       child: CardDetailSheetContent(
+        clearTopForXpBadges: false,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             CelebrationTitleBadge(
-              title: 'Fossil discovered!',
+              title: CelebrationTitles.fossilDiscovered,
               xpAwards: widget.xpAwards,
             ),
             const SizedBox(height: 14),

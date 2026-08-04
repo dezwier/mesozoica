@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
@@ -6,11 +8,21 @@ import '../../theme/map_chrome_decorations.dart';
 import '../../theme/map_chrome_theme.dart';
 import '../xp/xp_skill_avatar.dart';
 
-/// Compact plaque for celebration headlines ("Site discovered!", etc.).
+/// Sentence-style headlines for celebration plaques.
+abstract final class CelebrationTitles {
+  static const siteDiscovered = 'You discovered an excavation site!';
+  static const siteDocumented =
+      'You documented what there is to know about this excavation site';
+  static const siteIdentified = 'You identified this excavation site!';
+  static const fossilDiscovered = 'You discovered a fossil!';
+}
+
+/// Compact plaque for celebration headlines.
 ///
 /// Big-event XP is **embedded here** (not as a floating badge): optional
 /// [xpAwards] rows under the title rule show skill avatar + source + amount
-/// for every XP line claimed for this celebration.
+/// for every XP line claimed for this celebration. XP rows share a left edge
+/// while the block stays centered in the wider plaque.
 ///
 /// Same chrome family as the XP award badge / HUD bar, but flatter and more
 /// label-like — neutral cream type on soft leather, no shouty display size.
@@ -31,92 +43,100 @@ class CelebrationTitleBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final label = _formatTitle(title);
     final hasXp = xpAwards.isNotEmpty;
-    return DecoratedBox(
-      decoration: MapChromeDecorations.leatherPanel(
-        borderRadius: BorderRadius.circular(_radius),
-        soft: true,
-        compact: true,
-      ).copyWith(
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.38),
-            blurRadius: 12,
-            offset: const Offset(0, 3),
-          ),
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.16),
-            blurRadius: 3,
-            offset: const Offset(0, 1),
-          ),
-        ],
-      ),
-      child: Padding(
-        padding: EdgeInsets.fromLTRB(hasXp ? 12 : 16, 9, hasXp ? 14 : 16, 9),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              label,
-              textAlign: TextAlign.center,
-              maxLines: 1,
-              softWrap: false,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontFamily: MapChromeTheme.serifFont,
-                color: MapChromeTheme.cream.withValues(alpha: 0.94),
-                fontSize: 14.5,
-                fontWeight: FontWeight.w600,
-                height: 1.05,
-                letterSpacing: 0.85,
-                decoration: TextDecoration.none,
-                shadows: const [
-                  Shadow(
-                    color: Color(0x88000000),
-                    blurRadius: 3,
-                    offset: Offset(0, 1),
-                  ),
-                ],
-              ),
+    final screenW = MediaQuery.sizeOf(context).width;
+    // Wider than the old shrink-wrap plaque so sentence titles + XP fit.
+    final plaqueWidth = math.min(screenW - 32, 400.0);
+
+    return SizedBox(
+      width: plaqueWidth,
+      child: DecoratedBox(
+        decoration: MapChromeDecorations.leatherPanel(
+          borderRadius: BorderRadius.circular(_radius),
+          soft: true,
+          compact: true,
+        ).copyWith(
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.38),
+              blurRadius: 12,
+              offset: const Offset(0, 3),
             ),
-            const SizedBox(height: 6),
-            SizedBox(
-              width: 36,
-              height: 1.25,
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(1),
-                  gradient: LinearGradient(
-                    colors: [
-                      MapChromeTheme.brassMid.withValues(alpha: 0.0),
-                      MapChromeTheme.mutedGold.withValues(alpha: 0.75),
-                      MapChromeTheme.brassMid.withValues(alpha: 0.0),
-                    ],
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.16),
+              blurRadius: 3,
+              offset: const Offset(0, 1),
+            ),
+          ],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(18, 12, 18, 12),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                title.trim(),
+                textAlign: TextAlign.center,
+                maxLines: 3,
+                softWrap: true,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontFamily: MapChromeTheme.serifFont,
+                  color: MapChromeTheme.cream.withValues(alpha: 0.94),
+                  fontSize: 14.5,
+                  fontWeight: FontWeight.w600,
+                  height: 1.25,
+                  letterSpacing: 0.35,
+                  decoration: TextDecoration.none,
+                  shadows: const [
+                    Shadow(
+                      color: Color(0x88000000),
+                      blurRadius: 3,
+                      offset: Offset(0, 1),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 8),
+              SizedBox(
+                width: 36,
+                height: 1.25,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(1),
+                    gradient: LinearGradient(
+                      colors: [
+                        MapChromeTheme.brassMid.withValues(alpha: 0.0),
+                        MapChromeTheme.mutedGold.withValues(alpha: 0.75),
+                        MapChromeTheme.brassMid.withValues(alpha: 0.0),
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ),
-            if (hasXp) ...[
-              const SizedBox(height: 10),
-              for (var i = 0; i < xpAwards.length; i++) ...[
-                if (i > 0) const SizedBox(height: 8),
-                _CelebrationXpRow(award: xpAwards[i]),
+              if (hasXp) ...[
+                const SizedBox(height: 12),
+                // IntrinsicWidth + start alignment: rows share a left edge;
+                // Center keeps the XP block centered in the plaque.
+                Center(
+                  child: IntrinsicWidth(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        for (var i = 0; i < xpAwards.length; i++) ...[
+                          if (i > 0) const SizedBox(height: 8),
+                          _CelebrationXpRow(award: xpAwards[i]),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
               ],
             ],
-          ],
+          ),
         ),
       ),
     );
-  }
-
-  /// Softens shouty punctuation and trims whitespace for a calmer plaque.
-  static String _formatTitle(String raw) {
-    var t = raw.trim();
-    while (t.endsWith('!')) {
-      t = t.substring(0, t.length - 1).trimRight();
-    }
-    return t;
   }
 }
 
@@ -131,7 +151,7 @@ class _CelebrationXpRow extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         XpSkillAvatar(skillId: award.skillId, size: 28),
-        const SizedBox(width: 8),
+        const SizedBox(width: 10),
         Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,

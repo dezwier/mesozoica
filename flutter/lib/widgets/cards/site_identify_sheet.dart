@@ -22,7 +22,7 @@ import 'site_discovery_celebration.dart';
 /// Bottom sheet: period then rock-type identification quiz for a field site.
 ///
 /// On a successful full identification, dismisses any underlying [CardDetailSheet]
-/// site card, then shows the "Site identified!" celebration.
+/// site card, then shows the site-identified celebration.
 Future<SiteSummary?> showSiteIdentifySheet(
   BuildContext context, {
   required SiteSummary site,

@@ -21,7 +21,7 @@ Future<void> showSiteDiscoveryCelebration(
   SiteSummary? site,
   int? siteId,
   SiteService? siteService,
-  String title = 'Site discovered!',
+  String title = CelebrationTitles.siteDiscovered,
   List<XpAward>? xpAwards,
 }) {
   assert(site != null || siteId != null);
@@ -32,6 +32,7 @@ Future<void> showSiteDiscoveryCelebration(
       );
   return CardDetailSheet.show<void>(
     context,
+    clearTopForXpBadges: false,
     builder: (context) => _SiteDiscoveryCelebrationSheet(
       site: site,
       siteId: siteId,
@@ -60,7 +61,7 @@ Future<void> showSiteDocumentationCelebration(
     site: site,
     siteId: siteId,
     siteService: siteService,
-    title: 'Site documented!',
+    title: CelebrationTitles.siteDocumented,
     xpAwards: awards,
   );
 }
@@ -84,7 +85,7 @@ Future<void> showSiteIdentifiedCelebration(
     site: site,
     siteId: siteId,
     siteService: siteService,
-    title: 'Site identified!',
+    title: CelebrationTitles.siteIdentified,
     xpAwards: awards,
   );
 }
@@ -203,6 +204,7 @@ class _SiteDiscoveryCelebrationSheetState
         return ScaleTransition(
           scale: _scale,
           child: CardDetailSheetContent(
+            clearTopForXpBadges: false,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [

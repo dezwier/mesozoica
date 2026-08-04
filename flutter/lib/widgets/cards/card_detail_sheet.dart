@@ -19,24 +19,35 @@ class CardDetailSheet {
 
   static bool get isOpen => openCount.value > 0;
 
-  /// Top inset so floating XP-award badges clear celebration / marker cards.
+  /// Top inset so floating XP-award badges clear marker / tool cards.
+  /// Celebrations omit this — XP lives in the plaque, so content is centered
+  /// between the dismiss chrome and the top of the safe area.
   static const double topBreathingRoom = 68;
 
   /// Cap content like the catalog Cover Flow middle card (~72% of the band
   /// above the dismiss chrome), with headroom for celebration titles.
-  static double maxContentHeight(BuildContext context) {
+  static double maxContentHeight(
+    BuildContext context, {
+    bool clearTopForXpBadges = true,
+  }) {
     final size = MediaQuery.sizeOf(context);
     final padding = MediaQuery.paddingOf(context);
+    final topClearance = clearTopForXpBadges ? topBreathingRoom : 0.0;
     final available = size.height -
         padding.top -
-        topBreathingRoom -
+        topClearance -
         ShellOverlayPanel.bottomChromeHeight(context);
     return available * 0.85;
   }
 
+  /// Show a card overlay.
+  ///
+  /// Set [clearTopForXpBadges] false for celebrations so the full stack
+  /// (plaque + card) is vertically centered between dismiss and top of screen.
   static Future<T?> show<T>(
     BuildContext context, {
     required WidgetBuilder builder,
+    bool clearTopForXpBadges = true,
   }) {
     final barrierLabel =
         MaterialLocalizations.of(context).modalBarrierDismissLabel;
@@ -50,7 +61,10 @@ class CardDetailSheet {
       barrierColor: Colors.transparent,
       transitionDuration: const Duration(milliseconds: 280),
       pageBuilder: (context, animation, secondaryAnimation) {
-        return CardDetailSheetShell(child: builder(context));
+        return CardDetailSheetShell(
+          clearTopForXpBadges: clearTopForXpBadges,
+          child: builder(context),
+        );
       },
       transitionBuilder: (context, animation, secondaryAnimation, child) {
         final curved = CurvedAnimation(
@@ -72,20 +86,29 @@ class CardDetailSheet {
 }
 
 class CardDetailSheetShell extends StatelessWidget {
-  const CardDetailSheetShell({super.key, required this.child});
+  const CardDetailSheetShell({
+    super.key,
+    required this.child,
+    this.clearTopForXpBadges = true,
+  });
 
   final Widget child;
 
+  /// When true, reserves [CardDetailSheet.topBreathingRoom] under the status
+  /// bar for floating XP badges. Celebrations leave this false.
+  final bool clearTopForXpBadges;
+
   @override
   Widget build(BuildContext context) {
+    final topPad = clearTopForXpBadges ? CardDetailSheet.topBreathingRoom : 0.0;
     return ShellOverlayPanel(
       opaque: false,
       onClose: () => Navigator.of(context).maybePop(),
       child: Padding(
-        // Center in the band above the dismiss row (same as inventory), with
-        // top clearance for the global XP-award badge.
+        // Center in the band above the dismiss row. Marker cards keep top
+        // clearance for floating XP badges; celebrations use the full band.
         padding: EdgeInsets.only(
-          top: CardDetailSheet.topBreathingRoom,
+          top: topPad,
           bottom: ShellOverlayPanel.bottomChromeHeight(context),
         ),
         child: _PullDownToDismiss(
@@ -166,15 +189,25 @@ class _PullDownToDismissState extends State<_PullDownToDismiss> {
 /// No inner scroll view — fixed-aspect turnable cards fit. Celebration titles
 /// still fit on small phones.
 class CardDetailSheetContent extends StatelessWidget {
-  const CardDetailSheetContent({super.key, required this.child});
+  const CardDetailSheetContent({
+    super.key,
+    required this.child,
+    this.clearTopForXpBadges = true,
+  });
 
   final Widget child;
+
+  /// Match [CardDetailSheet.show] / shell so height math uses the same band.
+  final bool clearTopForXpBadges;
 
   @override
   Widget build(BuildContext context) {
     return ConstrainedBox(
       constraints: BoxConstraints(
-        maxHeight: CardDetailSheet.maxContentHeight(context),
+        maxHeight: CardDetailSheet.maxContentHeight(
+          context,
+          clearTopForXpBadges: clearTopForXpBadges,
+        ),
       ),
       child: child,
     );

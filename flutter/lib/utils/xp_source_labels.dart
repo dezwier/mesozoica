@@ -39,7 +39,7 @@ const kCelebrationXpSourceKeys = <String>{
   'site_identification',
 };
 
-/// Keys claimed by the "Site discovered!" celebration.
+/// Keys claimed by the site-discovered celebration.
 const kSiteDiscoveryCelebrationXpKeys = <String>{
   'sites',
   'first_discovery',
@@ -50,13 +50,13 @@ const kFossilDiscoveryCelebrationXpKeys = <String>{
   'fossils',
 };
 
-/// Keys claimed by the "Site documented!" celebration.
+/// Keys claimed by the site-documented celebration.
 const kSiteDocumentationCelebrationXpKeys = <String>{
   'site_documentation',
   'first_documentation',
 };
 
-/// Keys claimed by the "Site identified!" celebration.
+/// Keys claimed by the site-identified celebration.
 const kSiteIdentificationCelebrationXpKeys = <String>{
   'site_identification',
 };
