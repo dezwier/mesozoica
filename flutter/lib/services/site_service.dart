@@ -246,6 +246,59 @@ class SiteService {
     }
   }
 
+  Future<SiteIdentifyOptions> fetchIdentifyOptions(int siteId) async {
+    final uri = AppConfig.siteIdentifyOptionsUri(siteId);
+    if (kDebugMode) {
+      debugPrint('SiteService GET $uri');
+    }
+    final response = await ApiClient.instance
+        .sendGet(uri, client: _client, headers: await _headers())
+        .timeout(const Duration(seconds: 15));
+
+    if (response.statusCode != 200) {
+      final detail = _errorDetail(response.body);
+      throw SiteServiceException(
+        detail ?? 'Failed to load identify options (${response.statusCode})',
+      );
+    }
+    final decoded = jsonDecode(response.body);
+    if (decoded is! Map<String, dynamic>) {
+      throw const SiteServiceException('Invalid identify options response');
+    }
+    return SiteIdentifyOptions.fromJson(decoded);
+  }
+
+  Future<SiteIdentifyResult> submitIdentifyGuess({
+    required int siteId,
+    required String step,
+    required String guess,
+  }) async {
+    final uri = AppConfig.siteIdentifyUri(siteId);
+    if (kDebugMode) {
+      debugPrint('SiteService POST $uri step=$step guess=$guess');
+    }
+    final response = await ApiClient.instance
+        .sendPost(
+          uri,
+          client: _client,
+          headers: await _headers(jsonBody: true),
+          body: jsonEncode({'step': step, 'guess': guess}),
+        )
+        .timeout(const Duration(seconds: 15));
+
+    if (response.statusCode != 200) {
+      final detail = _errorDetail(response.body);
+      throw SiteServiceException(
+        detail ?? 'Failed to submit identification (${response.statusCode})',
+      );
+    }
+    final decoded = jsonDecode(response.body);
+    if (decoded is! Map<String, dynamic>) {
+      throw const SiteServiceException('Invalid identify response');
+    }
+    return SiteIdentifyResult.fromJson(decoded);
+  }
+
   /// Like [setSiteStatus], but returns fossil onboard metadata when discovering.
   Future<FieldDiscoverResponse> setSiteStatusDetailed({
     required int siteId,

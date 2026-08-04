@@ -98,7 +98,10 @@ class _SiteTurnableCardState extends State<SiteTurnableCard> {
             widget.site.viewerWasFirstDiscovery ||
         oldWidget.site.viewerWasFirstDocumentation !=
             widget.site.viewerWasFirstDocumentation ||
+        oldWidget.site.viewerHasIdentified !=
+            widget.site.viewerHasIdentified ||
         oldWidget.site.exploredDistanceM != widget.site.exploredDistanceM ||
+        oldWidget.site.siteTypePeriod != widget.site.siteTypePeriod ||
         oldWidget.site.oddDinoBand?.effectiveAccuracy !=
             widget.site.oddDinoBand?.effectiveAccuracy) {
       _site = widget.site;
@@ -167,6 +170,11 @@ class _SiteTurnableCardState extends State<SiteTurnableCard> {
     widget.onSiteUpdated?.call(updated);
   }
 
+  void _onSiteIdentified(SiteSummary updated) {
+    setState(() => _site = updated);
+    widget.onSiteUpdated?.call(updated);
+  }
+
   @override
   Widget build(BuildContext context) {
     final displaySite = _displaySite;
@@ -204,6 +212,7 @@ class _SiteTurnableCardState extends State<SiteTurnableCard> {
         titleFontSize: widget.titleFontSize,
         subtitleFontSize: widget.subtitleFontSize,
         mapTileLayerBuilder: widget.mapTileLayerBuilder,
+        onSiteUpdated: _onSiteIdentified,
       ),
     );
   }

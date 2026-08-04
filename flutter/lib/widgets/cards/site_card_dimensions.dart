@@ -24,6 +24,7 @@ class SiteCardDimensions extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cardTheme = DinoCardTheme.of(context);
+    final emptyDims = site.needsIdentification;
     var showExactMarker = false;
     try {
       showExactMarker = context.watch<AuthController>().showAdminUi;
@@ -33,7 +34,8 @@ class SiteCardDimensions extends StatelessWidget {
     final skillLevel = _siteStewardshipLevel(context);
     final baseAccuracies =
         resolveSiteStewardshipAccuracies(skillLevel: skillLevel);
-    final exploredM = _resolvedExploredMeters(context, site);
+    final exploredM =
+        emptyDims ? 0.0 : _resolvedExploredMeters(context, site);
     // Stack: skill baseline → per-dimension noise → exploration (tools later).
     const dimByAccuracyKey = <String, SiteDimensionKey>{
       'dino_accuracy': SiteDimensionKey.dino,
@@ -42,17 +44,21 @@ class SiteCardDimensions extends StatelessWidget {
       'quality_accuracy': SiteDimensionKey.quality,
       'depth_accuracy': SiteDimensionKey.depth,
     };
-    final accuracies = {
-      for (final e in baseAccuracies.entries)
-        e.key: applyExplorationAccuracyBoost(
-          applyDimensionAccuracyNoise(
-            baseAccuracy: e.value,
-            siteId: site.siteId,
-            dimension: dimByAccuracyKey[e.key]!,
-          ),
-          exploredM,
-        ),
-    };
+    final accuracies = emptyDims
+        ? <String, double>{
+            for (final key in dimByAccuracyKey.keys) key: 0.0,
+          }
+        : {
+            for (final e in baseAccuracies.entries)
+              e.key: applyExplorationAccuracyBoost(
+                applyDimensionAccuracyNoise(
+                  baseAccuracy: e.value,
+                  siteId: site.siteId,
+                  dimension: dimByAccuracyKey[e.key]!,
+                ),
+                exploredM,
+              ),
+          };
 
     final horizontal =
         <(SiteDimensionKey, String, String, double?, SiteDimensionBand?)>[
@@ -60,29 +66,29 @@ class SiteCardDimensions extends StatelessWidget {
         SiteDimensionKey.dino,
         'Genera presence',
         'dino_accuracy',
-        site.oddDinoCount,
-        site.oddDinoBand,
+        emptyDims ? null : site.oddDinoCount,
+        emptyDims ? null : site.oddDinoBand,
       ),
       (
         SiteDimensionKey.fossil,
         'Fossil presence',
         'fossil_accuracy',
-        site.oddFossilCount,
-        site.oddFossilBand,
+        emptyDims ? null : site.oddFossilCount,
+        emptyDims ? null : site.oddFossilBand,
       ),
       (
         SiteDimensionKey.completeness,
         'Completeness',
         'completeness_accuracy',
-        site.oddCompleteness,
-        site.oddCompletenessBand,
+        emptyDims ? null : site.oddCompleteness,
+        emptyDims ? null : site.oddCompletenessBand,
       ),
       (
         SiteDimensionKey.quality,
         'Preservation',
         'quality_accuracy',
-        site.oddQuality,
-        site.oddQualityBand,
+        emptyDims ? null : site.oddQuality,
+        emptyDims ? null : site.oddQualityBand,
       ),
     ];
 
@@ -91,41 +97,49 @@ class SiteCardDimensions extends StatelessWidget {
       for (final entry in horizontal)
         (
           entry.$2,
-          _displayFor(
-            site: site,
-            key: entry.$1,
-            trueValue: entry.$4,
-            band: entry.$5,
-            accuracy: accuracies[entry.$3] ?? 0,
-            showExactMarker: showExactMarker,
-          ),
-          accuracies[entry.$3] ?? 0,
+          emptyDims
+              ? null
+              : _displayFor(
+                  site: site,
+                  key: entry.$1,
+                  trueValue: entry.$4,
+                  band: entry.$5,
+                  accuracy: accuracies[entry.$3] ?? 0,
+                  showExactMarker: showExactMarker,
+                ),
+          emptyDims ? 0.0 : (accuracies[entry.$3] ?? 0),
         ),
     ];
-    final depthAccuracy = accuracies['depth_accuracy'] ?? 0;
-    final depthDisplay = _displayFor(
-      site: site,
-      key: SiteDimensionKey.depth,
-      trueValue: site.oddDepth,
-      band: site.oddDepthBand,
-      accuracy: depthAccuracy,
-      showExactMarker: showExactMarker,
-    );
+    final depthAccuracy = emptyDims ? 0.0 : (accuracies['depth_accuracy'] ?? 0);
+    final depthDisplay = emptyDims
+        ? null
+        : _displayFor(
+            site: site,
+            key: SiteDimensionKey.depth,
+            trueValue: site.oddDepth,
+            band: site.oddDepthBand,
+            accuracy: depthAccuracy,
+            showExactMarker: showExactMarker,
+          );
 
     final dimensionAccuracies = <double>[
       for (final entry in horizontalDisplays)
         entry.$2?.effectiveAccuracy ?? entry.$3,
       depthDisplay?.effectiveAccuracy ?? depthAccuracy,
     ];
-    final avgDocumentedPct = ((dimensionAccuracies.reduce((a, b) => a + b) /
-                dimensionAccuracies.length)
-            .clamp(0.0, 1.0) *
-        100)
-        .round();
+    final avgDocumentedPct = emptyDims
+        ? 0
+        : ((dimensionAccuracies.reduce((a, b) => a + b) /
+                    dimensionAccuracies.length)
+                .clamp(0.0, 1.0) *
+            100)
+            .round();
 
     return CardSectionPanel(
       labelWidget: Text(
-        'Documented $avgDocumentedPct% · Explored ${exploredM.floor()} m',
+        emptyDims
+            ? 'Identify site to begin documentation'
+            : 'Documented $avgDocumentedPct% · Explored ${exploredM.floor()} m',
         textAlign: TextAlign.center,
         style: cardTheme.sectionLabelStyle(fontSize: 13).copyWith(
               fontWeight: FontWeight.w700,
@@ -150,7 +164,7 @@ class SiteCardDimensions extends StatelessWidget {
                         accuracy: horizontalDisplays[i].$3,
                         display: horizontalDisplays[i].$2,
                         cardTheme: cardTheme,
-                        showExactMarker: showExactMarker,
+                        showExactMarker: showExactMarker && !emptyDims,
                       ),
                     ),
                   ],
@@ -164,7 +178,7 @@ class SiteCardDimensions extends StatelessWidget {
                 display: depthDisplay,
                 accuracy: depthAccuracy,
                 cardTheme: cardTheme,
-                showExactMarker: showExactMarker,
+                showExactMarker: showExactMarker && !emptyDims,
               ),
             ),
           ],

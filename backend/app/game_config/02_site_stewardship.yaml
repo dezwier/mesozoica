@@ -31,6 +31,9 @@ main_params:
   # Bonus XP when you are the first user to fully document a site (all dimensions
   # at 100% accuracy). Later documenters still get site_documentation_xp only.
   first_documentation_xp: 100
+  # XP per identification quiz step (period, then rock type). Scaled by attempt:
+  # first try 100%, second 50%, third 0%. Exploration meters start after both.
+  site_identification_xp: 40
 
 # Ambient solar period (dawn|day|dusk|golden_hour|night). After level, before weather_type + tools.
 # site_visibility_m mirrors site_discovery visibility_distance_m;

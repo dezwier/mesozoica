@@ -673,6 +673,7 @@ class SiteStewardshipMainParams {
     required this.siteExplorationXp,
     required this.siteDocumentationXp,
     required this.firstDocumentationXp,
+    required this.siteIdentificationXp,
   });
 
   final double dinoAccuracy;
@@ -686,6 +687,7 @@ class SiteStewardshipMainParams {
   final double siteExplorationXp;
   final double siteDocumentationXp;
   final double firstDocumentationXp;
+  final double siteIdentificationXp;
 
   factory SiteStewardshipMainParams.fromYaml(Map<String, dynamic> yaml) {
     return SiteStewardshipMainParams(
@@ -701,6 +703,7 @@ class SiteStewardshipMainParams {
       siteExplorationXp: _asDouble(yaml['site_exploration_xp'], 20),
       siteDocumentationXp: _asDouble(yaml['site_documentation_xp'], 100),
       firstDocumentationXp: _asDouble(yaml['first_documentation_xp'], 100),
+      siteIdentificationXp: _asDouble(yaml['site_identification_xp'], 40),
     );
   }
 }

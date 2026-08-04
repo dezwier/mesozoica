@@ -11,7 +11,11 @@ from app.models.data_source import DATA_SOURCE_FIELD
 from app.models.site import Site
 from app.models.site_type import SiteType
 from app.models.user import User
-from app.models.user_site import USER_SITE_ROLE_DISCOVERER, UserSite
+from app.models.user_site import (
+    USER_SITE_ROLE_DISCOVERER,
+    USER_SITE_ROLE_IDENTIFIER,
+    UserSite,
+)
 from app.schemas.site import SiteExplorationEntry, SiteExplorationUpdateRequest
 from app.services.level_service import (
     award_site_exploration_xp,
@@ -74,6 +78,35 @@ def _seed_field_site(session: Session, *, site_id: int = 1_000_000_701) -> Site:
     session.commit()
     session.refresh(site)
     return site
+
+
+def _discovered_identified(
+    session: Session,
+    *,
+    user_id: int,
+    site_id: int,
+    explored_distance_m: float = 0.0,
+) -> UserSite:
+    """Discoverer row with identification complete (exploration unlocked)."""
+    link = UserSite(
+        user_id=user_id,
+        site_id=site_id,
+        role=USER_SITE_ROLE_DISCOVERER,
+        explored_distance_m=explored_distance_m,
+        period_identified=True,
+        rock_identified=True,
+    )
+    session.add(link)
+    session.add(
+        UserSite(
+            user_id=user_id,
+            site_id=site_id,
+            role=USER_SITE_ROLE_IDENTIFIER,
+        )
+    )
+    session.commit()
+    session.refresh(link)
+    return link
 
 
 def test_exploration_batch_count() -> None:
@@ -208,14 +241,9 @@ def test_documentation_completes_and_freezes(
     session.refresh(user)
 
     site = _seed_field_site(session, site_id=1_000_000_777)
-    link = UserSite(
-        user_id=user.id,
-        site_id=site.site_id,
-        role=USER_SITE_ROLE_DISCOVERER,
-        explored_distance_m=0.0,
+    link = _discovered_identified(
+        session, user_id=user.id, site_id=site.site_id
     )
-    session.add(link)
-    session.commit()
 
     # Plenty of meters to clear ±30 pt noise even from a low roll.
     profile, summaries = apply_site_exploration_update(
@@ -321,15 +349,9 @@ def test_second_documenter_skips_first_documentation_xp(
 
     site = _seed_field_site(session, site_id=1_000_000_778)
     for user in (first, second):
-        session.add(
-            UserSite(
-                user_id=user.id,
-                site_id=site.site_id,
-                role=USER_SITE_ROLE_DISCOVERER,
-                explored_distance_m=0.0,
-            )
+        _discovered_identified(
+            session, user_id=user.id, site_id=site.site_id
         )
-    session.commit()
 
     apply_site_exploration_update(
         session,
@@ -375,14 +397,12 @@ def test_second_documenter_skips_first_documentation_xp(
 def test_apply_site_exploration_update_monotonic_resume(session: Session) -> None:
     user = _make_user(session, username="resume", email="resume@example.com")
     site = _seed_field_site(session)
-    link = UserSite(
+    link = _discovered_identified(
+        session,
         user_id=user.id,
         site_id=site.site_id,
-        role=USER_SITE_ROLE_DISCOVERER,
         explored_distance_m=30.0,
     )
-    session.add(link)
-    session.commit()
 
     profile, summaries = apply_site_exploration_update(
         session,
@@ -443,14 +463,7 @@ def test_patch_site_exploration_api(
     headers = {"Authorization": f"Bearer {registered['access_token']}"}
     user_id = registered["user"]["id"]
     site = _seed_field_site(session, site_id=1_000_000_702)
-    session.add(
-        UserSite(
-            user_id=user_id,
-            site_id=site.site_id,
-            role=USER_SITE_ROLE_DISCOVERER,
-        )
-    )
-    session.commit()
+    _discovered_identified(session, user_id=user_id, site_id=site.site_id)
 
     response = client.patch(
         "/api/v1/users/me/site-exploration",

@@ -224,6 +224,7 @@ void main() {
       status: 'discovered',
       howDiscovered: SiteSummary.howDiscoveredWalk,
       discoveredAt: DateTime.utc(2026, 7, 1, 12),
+      viewerHasIdentified: true,
       exploredDistanceM: 30,
       oddDinoCount: 0.42,
       oddFossilCount: 0.55,
@@ -276,6 +277,7 @@ void main() {
       maxAgeMa: 68,
       version: 'Original',
       discoveredAt: DateTime.now().toUtc().subtract(const Duration(hours: 3)),
+      viewerHasIdentified: true,
     );
 
     await tester.pumpWidget(

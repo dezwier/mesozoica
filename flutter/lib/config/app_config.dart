@@ -223,6 +223,12 @@ class AppConfig {
   static Uri siteDiscardUri(int id) =>
       ApiEndpoints.siteDiscardUri(id);
 
+  static Uri siteIdentifyOptionsUri(int id) =>
+      ApiEndpoints.siteIdentifyOptionsUri(id);
+
+  static Uri siteIdentifyUri(int id) =>
+      ApiEndpoints.siteIdentifyUri(id);
+
   static Uri fieldSurveyJobUri(int jobId) =>
       ApiEndpoints.fieldSurveyJobUri(jobId);
 

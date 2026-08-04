@@ -12,6 +12,7 @@ const siteStatusOptions = <String>[
 ];
 
 const sitePeriodOptions = <String>[
+  'unknown',
   'triassic',
   'jurassic',
   'cretaceous',
@@ -19,6 +20,7 @@ const sitePeriodOptions = <String>[
 
 /// Mirrors backend `ROCK_TYPES` in site_service/rules.py.
 const siteRockTypeOptions = <String>[
+  'unknown',
   'sandstone',
   'mudstone',
   'claystone',
@@ -54,6 +56,8 @@ String siteFilterOptionLabel(String value) {
       return 'Aerial recon';
     case 'aerial_scout':
       return 'Aerial scout';
+    case 'unknown':
+      return 'Unknown';
     default:
       return capitalizeLeadingLetter(value);
   }
@@ -283,7 +287,8 @@ class SiteMapFilters {
     if (periods.length != sitePeriodOptions.length) {
       if (periods.isEmpty) return false;
       final period = site.effectivePeriod?.trim().toLowerCase();
-      if (period == null || period.isEmpty || !periods.contains(period)) {
+      final key = (period == null || period.isEmpty) ? 'unknown' : period;
+      if (!periods.contains(key)) {
         return false;
       }
     }
@@ -292,7 +297,8 @@ class SiteMapFilters {
       if (rockTypes.isEmpty) return false;
       final rock =
           (site.rockType ?? site.siteTypeRockType)?.trim().toLowerCase();
-      if (rock == null || rock.isEmpty || !rockTypes.contains(rock)) {
+      final key = (rock == null || rock.isEmpty) ? 'unknown' : rock;
+      if (!rockTypes.contains(key)) {
         return false;
       }
     }

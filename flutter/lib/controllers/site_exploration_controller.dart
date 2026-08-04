@@ -277,6 +277,9 @@ class SiteExplorationController extends ChangeNotifier {
           (site.status == null || site.status == 'hidden')) {
         continue;
       }
+      if (site.needsIdentification) {
+        continue;
+      }
       final distance = Geolocator.distanceBetween(
         position.latitude,
         position.longitude,

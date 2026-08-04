@@ -24,6 +24,9 @@ from app.schemas.site import (
     FieldEnsureRequest,
     FieldEnsureResponse,
     FieldSurveyJobResponse,
+    IdentifyGuessResponse,
+    IdentifyOptionsResponse,
+    IdentifySiteRequest,
     SetSiteStatusRequest,
     SiteDinosaurThumbListResponse,
     SiteDinoFossilGroupListResponse,
@@ -59,6 +62,10 @@ from app.services.site_service import (
     load_site_types_by_period,
     set_site_status,
     site_row_to_summary,
+)
+from app.services.site_service.identify import (
+    get_identify_options,
+    submit_identify_guess,
 )
 from app.services.site_service.summary import SiteRow
 from app.services.level_service.skills import get_skill_xp
@@ -550,6 +557,53 @@ def post_discard_site(
         user_id=int(current_user.id),
     )
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.get("/{site_id}/identify-options", response_model=IdentifyOptionsResponse)
+def get_site_identify_options(
+    site_id: int,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+) -> IdentifyOptionsResponse:
+    result = get_identify_options(
+        session, site_id=site_id, user_id=int(current_user.id)
+    )
+    return IdentifyOptionsResponse(
+        step=result.step,
+        choices=result.choices,
+        period_identified=result.period_identified,
+        rock_identified=result.rock_identified,
+        identified=result.identified,
+        disabled_guesses=result.disabled_guesses,
+    )
+
+
+@router.post("/{site_id}/identify", response_model=IdentifyGuessResponse)
+def post_identify_site(
+    site_id: int,
+    body: IdentifySiteRequest,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+) -> IdentifyGuessResponse:
+    result = submit_identify_guess(
+        session,
+        site_id=site_id,
+        user=current_user,
+        step=body.step,
+        guess=body.guess,
+    )
+    return IdentifyGuessResponse(
+        correct=result.correct,
+        step=result.step,
+        message=result.message,
+        disabled_guesses=result.disabled_guesses,
+        xp_awarded=result.xp_awarded,
+        period_identified=result.period_identified,
+        rock_identified=result.rock_identified,
+        identified=result.identified,
+        site=result.site,
+        profile=result.profile,
+    )
 
 
 @router.get("/{site_id}", response_model=SiteSummary)

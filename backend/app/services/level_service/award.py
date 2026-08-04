@@ -255,6 +255,50 @@ def award_first_documentation_xp(
     )
 
 
+# Attempt index (1 = first try, 2 = second, 3 = third) → XP fraction.
+_IDENTIFICATION_ATTEMPT_SCALE: dict[int, float] = {
+    1: 1.0,
+    2: 0.5,
+    3: 0.0,
+}
+
+
+def identification_xp_for_attempt(*, base_xp: int, attempt: int) -> int:
+    """Scale identification XP by attempt number (1..3)."""
+    scale = _IDENTIFICATION_ATTEMPT_SCALE.get(max(1, min(3, int(attempt))), 0.0)
+    return int(round(base_xp * scale))
+
+
+def award_site_identification_xp(
+    user: User,
+    *,
+    attempt: int,
+    amount: int | None = None,
+    weather_time: str | None = None,
+    weather_type: str | None = None,
+    tool_mods: Mapping[str, ParamModifier] | None = None,
+) -> int:
+    """Award site_stewardship XP for a correct identification quiz step."""
+    if amount is None:
+        skill_level = level_for_xp(get_skill_xp(user, "site_stewardship"))
+        resolved = resolve_site_stewardship_main_params(
+            skill_level=skill_level,
+            weather_time=weather_time,
+            weather_type=weather_type,
+            tool_mods=tool_mods,
+        )
+        base = _xp_int(resolved["site_identification_xp"])
+        amount = identification_xp_for_attempt(base_xp=base, attempt=attempt)
+    if amount <= 0:
+        return 0
+    return award_skill_xp(
+        user,
+        "site_stewardship",
+        amount=amount,
+        breakdown_delta={"site_identification": amount},
+    )
+
+
 def award_distance_km_xp(
     user: User,
     *,

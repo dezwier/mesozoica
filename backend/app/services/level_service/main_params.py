@@ -311,6 +311,10 @@ def resolve_site_stewardship_main_params(
             "first_documentation_xp",
             base=float(mp.first_documentation_xp),
         ),
+        "site_identification_xp": _resolve(
+            "site_identification_xp",
+            base=float(mp.site_identification_xp),
+        ),
     }
 
 

@@ -11,6 +11,7 @@ from app.models.user_notification import UserNotification, UserNotificationType
 from app.models.user_site import (
     USER_SITE_ROLE_DISCOVERER,
     USER_SITE_ROLE_DOCUMENTER,
+    USER_SITE_ROLE_IDENTIFIER,
     UserSite,
 )
 from app.schemas.auth import UserProfileResponse
@@ -31,6 +32,21 @@ from app.services.user_service import user_to_profile_response
 
 # Cap reported growth vs last value (~50 km/day per site) to blunt trivial tampering.
 _MAX_METERS_PER_DAY = 50_000.0
+
+
+def _viewer_has_identified(
+    session: Session, *, user_id: int, site_id: int, link: UserSite
+) -> bool:
+    if bool(link.period_identified and link.rock_identified):
+        return True
+    row = session.exec(
+        select(UserSite.id).where(
+            col(UserSite.user_id) == user_id,
+            col(UserSite.site_id) == site_id,
+            col(UserSite.role) == USER_SITE_ROLE_IDENTIFIER,
+        )
+    ).first()
+    return row is not None
 
 
 def _monotonic(previous: float, reported: float) -> float:
@@ -164,6 +180,16 @@ def apply_site_exploration_update(
 
         if bool(link.documented):
             # Frozen: still return summary so clients sync the documented flag.
+            updated_ids.append(int(entry.site_id))
+            continue
+
+        if not _viewer_has_identified(
+            session,
+            user_id=int(user.id),
+            site_id=int(entry.site_id),
+            link=link,
+        ):
+            # Identification required before exploration meters accrue.
             updated_ids.append(int(entry.site_id))
             continue
 

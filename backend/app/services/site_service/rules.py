@@ -188,3 +188,11 @@ def period_for_ages(
     if mid >= Decimal("66"):
         return "cretaceous"
     return None
+
+
+# Full-period age bounds as (younger_ma, older_ma) for timeline display.
+PERIOD_AGE_BOUNDS_MA: dict[str, tuple[float, float]] = {
+    "triassic": (201.0, 252.0),
+    "jurassic": (145.0, 201.0),
+    "cretaceous": (66.0, 145.0),
+}

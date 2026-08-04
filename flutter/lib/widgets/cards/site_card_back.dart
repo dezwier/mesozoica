@@ -12,6 +12,7 @@ import 'site_card_image.dart';
 import 'site_card_location_map.dart';
 import 'site_card_related_lists.dart';
 import 'site_card_user_timeline.dart';
+import 'site_identify_sheet.dart';
 
 class SiteCardBack extends StatelessWidget {
   const SiteCardBack({
@@ -20,18 +21,29 @@ class SiteCardBack extends StatelessWidget {
     this.titleFontSize = 36,
     this.subtitleFontSize = 10,
     this.mapTileLayerBuilder = CardWorldMap.defaultTileLayerBuilder,
+    this.onSiteUpdated,
   });
 
   final SiteSummary site;
   final double titleFontSize;
   final double subtitleFontSize;
   final Widget Function() mapTileLayerBuilder;
+  final ValueChanged<SiteSummary>? onSiteUpdated;
 
   static const _contentScale = 1.15;
   static const _bottomRowHeight = 78.0;
 
+  Future<void> _openIdentify(BuildContext context) async {
+    final updated = await showSiteIdentifySheet(context, site: site);
+    if (updated != null) {
+      onSiteUpdated?.call(updated);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final showIdentify = site.canIdentify;
+
     return AspectRatio(
       aspectRatio: DinoCardTheme.cardAspectRatio,
       child: Stack(
@@ -42,7 +54,7 @@ class SiteCardBack extends StatelessWidget {
           ),
           Positioned(
             left: 18,
-            right: 18,
+            right: showIdentify ? 52 : 18,
             top: 20,
             child: SiteCardHeader(
               site: site,
@@ -53,6 +65,26 @@ class SiteCardBack extends StatelessWidget {
               showSubtitle: false,
             ),
           ),
+          if (showIdentify)
+            Positioned(
+              top: 14,
+              right: 10,
+              child: TextButton(
+                onPressed: () => _openIdentify(context),
+                style: TextButton.styleFrom(
+                  foregroundColor: const Color(0xE6F5F0E8),
+                  backgroundColor: const Color(0x66000000),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  visualDensity: VisualDensity.compact,
+                ),
+                child: const Text(
+                  'Identify',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+                ),
+              ),
+            ),
           Positioned(
             left: 18,
             right: 18,
@@ -62,8 +94,8 @@ class SiteCardBack extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 CardGeologicTimelinePanel(
-                  minAgeMa: site.minAgeMa,
-                  maxAgeMa: site.maxAgeMa,
+                  minAgeMa: site.needsIdentification ? null : site.minAgeMa,
+                  maxAgeMa: site.needsIdentification ? null : site.maxAgeMa,
                   scale: _contentScale,
                 ),
                 const SizedBox(height: 6),

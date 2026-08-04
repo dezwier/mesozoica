@@ -128,10 +128,15 @@ resolvable):
 | `site_exploration_xp` | XP to site_stewardship per 20 m walked inside `site_visibility_m` |
 | `site_documentation_xp` | XP when all five site-dimension accuracies reach 100% (freezes further exploration) |
 | `first_documentation_xp` | Bonus XP when you are the first user to fully document a site |
+| `site_identification_xp` | XP per period/rock identification quiz step (100% / 50% / 0% by attempt). Exploration meters start only after both steps succeed |
 
 `site_visibility_m` uses the same solar-period multipliers as site discovery
 `visibility_distance_m`. `site_exploration_xp` uses the same multipliers as
 `site_discovery_xp`.
+
+After discovery, the site shows as "Excavation Site" until the viewer completes
+the identification quiz (period, then rock type). Only then do dimension bands
+and exploration meters unlock.
 
 Accuracy params are display-only on the site card for now. Stack per axis:
 skill baseline (base 1% × level → L50 ≈ 50%) → stable per-site / per-dimension

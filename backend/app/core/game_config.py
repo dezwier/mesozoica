@@ -602,6 +602,8 @@ class SiteStewardshipMainParams(BaseModel):
     site_documentation_xp: float = 100.0
     # Bonus XP when you are the first user to fully document a site.
     first_documentation_xp: float = 100.0
+    # XP per identification quiz step (period / rock), attempt-scaled.
+    site_identification_xp: float = 40.0
 
     @field_validator(
         "dino_accuracy",
@@ -633,6 +635,7 @@ class SiteStewardshipMainParams(BaseModel):
         "site_exploration_xp",
         "site_documentation_xp",
         "first_documentation_xp",
+        "site_identification_xp",
     )
     @classmethod
     def _validate_xp(cls, value: float) -> float:
@@ -791,6 +794,10 @@ class SiteStewardshipConfig(BaseModel):
     @property
     def first_documentation_xp(self) -> float:
         return float(self.main_params.first_documentation_xp)
+
+    @property
+    def site_identification_xp(self) -> float:
+        return float(self.main_params.site_identification_xp)
 
     @property
     def site_visibility_m(self) -> float:

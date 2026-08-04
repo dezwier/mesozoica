@@ -1,4 +1,5 @@
 import 'fossil.dart';
+import 'profile.dart';
 import 'site.dart' show SiteSummary;
 
 class FieldEnsureResponse {
@@ -109,6 +110,89 @@ class FieldDiscoverResponse {
       generated: json['generated'] as bool? ?? false,
       fossilsReady: json['fossils_ready'] as bool? ?? false,
       surfaceFossils: fossils,
+    );
+  }
+}
+
+class SiteIdentifyOptions {
+  const SiteIdentifyOptions({
+    required this.step,
+    required this.choices,
+    this.periodIdentified = false,
+    this.rockIdentified = false,
+    this.identified = false,
+    this.disabledGuesses = const [],
+  });
+
+  final String step;
+  final List<String> choices;
+  final bool periodIdentified;
+  final bool rockIdentified;
+  final bool identified;
+  final List<String> disabledGuesses;
+
+  factory SiteIdentifyOptions.fromJson(Map<String, dynamic> json) {
+    final raw = json['choices'];
+    return SiteIdentifyOptions(
+      step: json['step'] as String? ?? 'period',
+      choices: raw is List
+          ? raw.whereType<String>().map((e) => e.toLowerCase()).toList()
+          : const [],
+      periodIdentified: json['period_identified'] as bool? ?? false,
+      rockIdentified: json['rock_identified'] as bool? ?? false,
+      identified: json['identified'] as bool? ?? false,
+      disabledGuesses: (json['disabled_guesses'] is List)
+          ? (json['disabled_guesses'] as List)
+              .whereType<String>()
+              .map((e) => e.toLowerCase())
+              .toList()
+          : const [],
+    );
+  }
+}
+
+class SiteIdentifyResult {
+  const SiteIdentifyResult({
+    required this.correct,
+    required this.step,
+    required this.site,
+    required this.profile,
+    this.message,
+    this.disabledGuesses = const [],
+    this.xpAwarded = 0,
+    this.periodIdentified = false,
+    this.rockIdentified = false,
+    this.identified = false,
+  });
+
+  final bool correct;
+  final String step;
+  final String? message;
+  final List<String> disabledGuesses;
+  final int xpAwarded;
+  final bool periodIdentified;
+  final bool rockIdentified;
+  final bool identified;
+  final SiteSummary site;
+  final Profile profile;
+
+  factory SiteIdentifyResult.fromJson(Map<String, dynamic> json) {
+    return SiteIdentifyResult(
+      correct: json['correct'] as bool? ?? false,
+      step: json['step'] as String? ?? 'period',
+      message: json['message'] as String?,
+      disabledGuesses: (json['disabled_guesses'] is List)
+          ? (json['disabled_guesses'] as List)
+              .whereType<String>()
+              .map((e) => e.toLowerCase())
+              .toList()
+          : const [],
+      xpAwarded: json['xp_awarded'] as int? ?? 0,
+      periodIdentified: json['period_identified'] as bool? ?? false,
+      rockIdentified: json['rock_identified'] as bool? ?? false,
+      identified: json['identified'] as bool? ?? false,
+      site: SiteSummary.fromJson(json['site'] as Map<String, dynamic>),
+      profile: Profile.fromJson(json['profile'] as Map<String, dynamic>),
     );
   }
 }

@@ -48,6 +48,7 @@ class SiteSummary {
     this.howDiscovered,
     this.status,
     this.viewerHasDocumented,
+    this.viewerHasIdentified,
     this.discoveredAt,
     this.discoveringSessionId,
     this.viewerWasFirstDiscovery,
@@ -86,6 +87,9 @@ class SiteSummary {
   final String? status;
   /// True when the viewing user has a documenter role on this site.
   final bool? viewerHasDocumented;
+  /// True when the viewer finished period+rock identification (field sites).
+  /// Archive sites are always treated as identified.
+  final bool? viewerHasIdentified;
   /// When the viewing user became discoverer (from user_site).
   final DateTime? discoveredAt;
   /// Aerial session that discovered this site for the viewer.
@@ -140,6 +144,9 @@ class SiteSummary {
   }
 
   String get displayTitle {
+    if (needsIdentification) {
+      return 'Excavation Site';
+    }
     final period = effectivePeriod;
     final rock = (rockType ?? siteTypeRockType)?.trim();
     final parts = <String>[];
@@ -154,6 +161,15 @@ class SiteSummary {
     }
     return displaySiteNumber;
   }
+
+  /// Field site discovered by the viewer but period/rock not yet identified.
+  bool get needsIdentification =>
+      isFieldOccurrence &&
+      discoveredAt != null &&
+      viewerHasIdentified != true;
+
+  /// Identify quiz is available on the card back.
+  bool get canIdentify => needsIdentification;
 
   /// Card-back subtitle when the viewer has discovered this site.
   /// Id and version are shown separately as [OccurrenceIdBadge] on the front.
@@ -270,6 +286,7 @@ class SiteSummary {
       howDiscovered: json['how_discovered'] as String?,
       status: json['status'] as String?,
       viewerHasDocumented: json['viewer_has_documented'] as bool?,
+      viewerHasIdentified: json['viewer_has_identified'] as bool?,
       discoveredAt: _parseSiteDate(json['discovered_at']),
       discoveringSessionId: json['discovering_session_id'] as int?,
       viewerWasFirstDiscovery: json['viewer_was_first_discovery'] as bool?,
@@ -305,6 +322,7 @@ class SiteSummary {
   SiteSummary copyWith({
     String? status,
     bool? viewerHasDocumented,
+    bool? viewerHasIdentified,
     String? mainImageUrl,
     DateTime? discoveredAt,
     int? discoveringSessionId,
@@ -314,6 +332,11 @@ class SiteSummary {
     String? howDiscovered,
     double? exploredDistanceM,
     bool? documented,
+    String? rockType,
+    String? siteTypePeriod,
+    String? siteTypeRockType,
+    double? minAgeMa,
+    double? maxAgeMa,
     SiteDimensionBand? oddDinoBand,
     SiteDimensionBand? oddFossilBand,
     SiteDimensionBand? oddCompletenessBand,
@@ -326,17 +349,18 @@ class SiteSummary {
       longitude: longitude,
       countryCode: countryCode,
       state: state,
-      rockType: rockType,
+      rockType: rockType ?? this.rockType,
       formation: formation,
-      minAgeMa: minAgeMa,
-      maxAgeMa: maxAgeMa,
+      minAgeMa: minAgeMa ?? this.minAgeMa,
+      maxAgeMa: maxAgeMa ?? this.maxAgeMa,
       siteTypeId: siteTypeId,
-      siteTypePeriod: siteTypePeriod,
-      siteTypeRockType: siteTypeRockType,
+      siteTypePeriod: siteTypePeriod ?? this.siteTypePeriod,
+      siteTypeRockType: siteTypeRockType ?? this.siteTypeRockType,
       mainImageUrl: mainImageUrl ?? this.mainImageUrl,
       howDiscovered: howDiscovered ?? this.howDiscovered,
       status: status ?? this.status,
       viewerHasDocumented: viewerHasDocumented ?? this.viewerHasDocumented,
+      viewerHasIdentified: viewerHasIdentified ?? this.viewerHasIdentified,
       discoveredAt: discoveredAt ?? this.discoveredAt,
       discoveringSessionId:
           discoveringSessionId ?? this.discoveringSessionId,

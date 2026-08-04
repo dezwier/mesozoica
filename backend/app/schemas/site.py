@@ -6,6 +6,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.schemas.auth import UserProfileResponse
 from app.schemas.fossil import FossilSummary
 
 
@@ -94,6 +95,9 @@ class SiteSummary(BaseModel):
     documented: bool | None = None
     # True when the viewer has a documenter role on this site.
     viewer_has_documented: bool | None = None
+    # True when the viewer has completed period+rock identification (field)
+    # or always true for archive sites.
+    viewer_has_identified: bool | None = None
     version: str = "Original"
 
 
@@ -222,3 +226,30 @@ class SetSiteStatusRequest(BaseModel):
     status: str = Field(min_length=1, max_length=32)
     lat: float | None = Field(default=None, ge=-90, le=90)
     lon: float | None = Field(default=None, ge=-180, le=180)
+
+
+class IdentifySiteRequest(BaseModel):
+    step: str = Field(min_length=1, max_length=32)
+    guess: str = Field(min_length=1, max_length=64)
+
+
+class IdentifyOptionsResponse(BaseModel):
+    step: str
+    choices: list[str]
+    period_identified: bool = False
+    rock_identified: bool = False
+    identified: bool = False
+    disabled_guesses: list[str] = Field(default_factory=list)
+
+
+class IdentifyGuessResponse(BaseModel):
+    correct: bool
+    step: str
+    message: str | None = None
+    disabled_guesses: list[str] = Field(default_factory=list)
+    xp_awarded: int = 0
+    period_identified: bool = False
+    rock_identified: bool = False
+    identified: bool = False
+    site: SiteSummary
+    profile: UserProfileResponse

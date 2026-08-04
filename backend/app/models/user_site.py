@@ -14,6 +14,7 @@ USER_SITE_ROLE_EXCAVATOR = "excavator"
 USER_SITE_ROLE_EXHAUSTER = "exhauster"
 USER_SITE_ROLE_PROTECTOR = "protector"
 USER_SITE_ROLE_DISGUISER = "disguiser"
+USER_SITE_ROLE_IDENTIFIER = "identifier"
 
 # Roles that participate in global site status (latest timestamp wins).
 STATUS_ROLES: tuple[str, ...] = (
@@ -27,6 +28,7 @@ STATUS_ROLES: tuple[str, ...] = (
 USER_SITE_ROLES: tuple[str, ...] = (
     *STATUS_ROLES,
     USER_SITE_ROLE_DISGUISER,
+    USER_SITE_ROLE_IDENTIFIER,
 )
 
 SITE_STATUS_HIDDEN = "hidden"
@@ -93,7 +95,8 @@ class UserSite(SQLModel, table=True):
     role: str = Field(
         max_length=16,
         description=(
-            "discoverer, documenter, excavator, exhauster, protector, or disguiser"
+            "discoverer, documenter, excavator, exhauster, protector, "
+            "disguiser, or identifier"
         ),
     )
     source_session_id: Optional[int] = Field(
@@ -118,6 +121,22 @@ class UserSite(SQLModel, table=True):
             "True when all five dimension accuracies reached 100%; "
             "exploration meters are frozen"
         ),
+    )
+    identify_period_wrongs: int = Field(
+        default=0,
+        description="Wrong period guesses before correct (discoverer row only)",
+    )
+    identify_rock_wrongs: int = Field(
+        default=0,
+        description="Wrong rock-type guesses before correct (discoverer row only)",
+    )
+    period_identified: bool = Field(
+        default=False,
+        description="True when the viewer correctly identified the period",
+    )
+    rock_identified: bool = Field(
+        default=False,
+        description="True when the viewer correctly identified the rock type",
     )
     was_first: bool = Field(
         default=False,
