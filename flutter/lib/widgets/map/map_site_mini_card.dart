@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../config/map_config.dart';
 import '../../models/site.dart';
+import '../../models/site_map_filters.dart';
 import '../../theme/map_chrome_decorations.dart';
 import '../../theme/map_chrome_theme.dart';
 import '../cards/site_card_image.dart';
@@ -34,6 +35,8 @@ class MapSiteMiniCard extends StatelessWidget {
   static const double _triangleW = 14;
   static const double _dot = 5;
   static const double _labelOverlap = 14;
+  /// Cream label width relative to photo — wide enough for `999 m · Documented`.
+  static const double _labelWidthFactor = 2.45;
 
   /// Total pin height from top of photo to bottom of ground dot.
   static double heightForWidth(double width) {
@@ -44,7 +47,7 @@ class MapSiteMiniCard extends StatelessWidget {
 
   /// Horizontal span including the cream label to the right of the photo.
   static double layoutWidthFor(double photoWidth) =>
-      photoWidth - _labelOverlap + photoWidth * 1.85;
+      photoWidth - _labelOverlap + photoWidth * _labelWidthFactor;
 
   /// Offset from layout left to the ground-dot center (photo center).
   static double anchorXFor(double photoWidth) => photoWidth / 2;
@@ -59,6 +62,24 @@ class MapSiteMiniCard extends StatelessWidget {
     return '${km.round()} km';
   }
 
+  /// Distance and/or live site status for the cream label subtitle.
+  static String? subtitleFor({
+    double? distanceM,
+    String? status,
+  }) {
+    final trimmed = status?.trim();
+    final statusLabel = (trimmed == null ||
+            trimmed.isEmpty ||
+            trimmed.toLowerCase() == 'hidden')
+        ? null
+        : siteFilterOptionLabel(trimmed);
+    if (distanceM != null && statusLabel != null) {
+      return '${formatDistance(distanceM)} · $statusLabel';
+    }
+    if (distanceM != null) return formatDistance(distanceM);
+    return statusLabel;
+  }
+
   @override
   Widget build(BuildContext context) {
     final photo = width;
@@ -68,10 +89,11 @@ class MapSiteMiniCard extends StatelessWidget {
             ? MapSiteMiniCard.disguisedLabelGold
             : Colors.white;
     final triangleTop = photo - _triangleH * 0.4;
-    final labelMaxWidth = photo * 1.85;
+    final labelMaxWidth = photo * _labelWidthFactor;
     final titleColor = disguised
         ? MapSiteMiniCard.disguisedLabelGold
         : MapChromeTheme.brownText;
+    final subtitle = subtitleFor(distanceM: distanceM, status: site.status);
 
     return SizedBox(
       width: layoutWidthFor(photo),
@@ -159,10 +181,13 @@ class MapSiteMiniCard extends StatelessWidget {
                                   height: 1.15,
                                 ),
                               ),
-                              if (distanceM != null) ...[
+                              if (subtitle != null) ...[
                                 const SizedBox(height: 1),
                                 Text(
-                                  formatDistance(distanceM!),
+                                  subtitle,
+                                  maxLines: 1,
+                                  softWrap: false,
+                                  overflow: TextOverflow.ellipsis,
                                   style: const TextStyle(
                                     color: MapChromeTheme.labelMuted,
                                     fontSize: 9.5,

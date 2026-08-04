@@ -62,12 +62,19 @@ class MapScreen extends StatefulWidget {
     super.key,
     this.isActive = false,
     this.showControls = true,
+    this.highPrecisionGps = false,
   });
 
   final bool isActive;
 
   /// When false, hides zoom / location / filter FABs (e.g. Catalog/Tools overlay).
   final bool showControls;
+
+  /// Keep map-grade GPS (tight distance filter) even when [isActive] is false.
+  ///
+  /// Used while a site card is open over the map so exploration meters on the
+  /// card back update as often as they do on the live map.
+  final bool highPrecisionGps;
 
   @override
   State<MapScreen> createState() => _MapScreenState();
@@ -95,9 +102,10 @@ class _MapScreenState extends State<MapScreen>
   void didUpdateWidget(covariant MapScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
     // Parent rebuilds (shell setState, auth, splash) recreate MapScreen; only
-    // react when map foreground actually changes — otherwise startTracking
-    // would refetch /api/.../sessions/active on every notify.
-    if (oldWidget.isActive != widget.isActive) {
+    // react when map foreground / GPS preference actually changes — otherwise
+    // startTracking would refetch /api/.../sessions/active on every notify.
+    if (oldWidget.isActive != widget.isActive ||
+        oldWidget.highPrecisionGps != widget.highPrecisionGps) {
       _activateIfNeeded();
     }
   }

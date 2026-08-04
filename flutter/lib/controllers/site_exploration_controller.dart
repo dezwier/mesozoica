@@ -12,6 +12,7 @@ import '../services/api_client.dart';
 import '../services/gps_odometer.dart';
 import '../services/location_service.dart';
 import '../utils/discovery_haptic.dart';
+import '../widgets/cards/site_dimension_display.dart';
 
 /// Accrues path meters walked inside [siteVisibilityM] of discovered sites.
 class SiteExplorationController extends ChangeNotifier {
@@ -33,6 +34,7 @@ class SiteExplorationController extends ChangeNotifier {
   LocationService? _location;
   VoidCallback? _locationListener;
   List<SiteSummary> Function()? _discoveredSitesProvider;
+  int Function()? _skillLevelProvider;
   Future<void> Function(Profile profile)? _onProfileUpdated;
   void Function(SiteSummary site)? _onSiteUpdated;
 
@@ -41,6 +43,7 @@ class SiteExplorationController extends ChangeNotifier {
   final Set<int> _documentedSiteIds = {};
   final Set<int> _dirtySiteIds = {};
   DateTime? _lastSyncAttemptAt;
+  bool _syncInFlight = false;
   bool _appForeground = true;
   bool _loaded = false;
 
@@ -111,10 +114,12 @@ class SiteExplorationController extends ChangeNotifier {
   Future<void> bind(
     LocationService location, {
     required List<SiteSummary> Function() discoveredSitesProvider,
+    int Function()? skillLevelProvider,
     Future<void> Function(Profile profile)? onProfileUpdated,
     void Function(SiteSummary site)? onSiteUpdated,
   }) async {
     _discoveredSitesProvider = discoveredSitesProvider;
+    _skillLevelProvider = skillLevelProvider;
     _onProfileUpdated = onProfileUpdated;
     _onSiteUpdated = onSiteUpdated;
     if (_location != null) return;
@@ -268,7 +273,9 @@ class SiteExplorationController extends ChangeNotifier {
     if (sites.isEmpty) return;
 
     final radius = siteVisibilityM;
+    final skillLevel = _skillLevelProvider?.call() ?? 1;
     var credited = false;
+    var documentationReady = false;
     for (final site in sites) {
       final lat = site.latitude;
       final lon = site.longitude;
@@ -293,14 +300,29 @@ class SiteExplorationController extends ChangeNotifier {
       }
       final previous =
           _exploredBySite[site.siteId] ?? site.exploredDistanceM ?? 0.0;
-      _exploredBySite[site.siteId] = previous + result.acceptedMeters;
+      final next = previous + result.acceptedMeters;
+      _exploredBySite[site.siteId] = next;
       _dirtySiteIds.add(site.siteId);
       credited = true;
+      if (siteIsFullyDocumented(
+        siteId: site.siteId,
+        oddDinoCount: site.oddDinoCount,
+        oddFossilCount: site.oddFossilCount,
+        oddCompleteness: site.oddCompleteness,
+        oddQuality: site.oddQuality,
+        oddDepth: site.oddDepth,
+        skillLevel: skillLevel,
+        exploredDistanceM: next,
+      )) {
+        documentationReady = true;
+      }
     }
     if (!credited) return;
     await _persistLocal();
     notifyListeners();
-    unawaited(_syncToBackend());
+    // Force sync as soon as local meters would complete documentation so
+    // celebration / XP / status don't wait on the 30s interval.
+    unawaited(_syncToBackend(force: documentationReady));
   }
 
   Future<void> _syncToBackend({bool force = false}) async {
@@ -310,29 +332,41 @@ class SiteExplorationController extends ChangeNotifier {
         now.difference(_lastSyncAttemptAt!) < _syncInterval) {
       return;
     }
-    if (_dirtySiteIds.isEmpty) return;
+    if (_dirtySiteIds.isEmpty || _syncInFlight) return;
     _lastSyncAttemptAt = now;
+    _syncInFlight = true;
 
     final toSync = _dirtySiteIds.toList();
+    final reportedMeters = <int, double>{
+      for (final siteId in toSync)
+        if (_exploredBySite.containsKey(siteId))
+          siteId: _exploredBySite[siteId]!,
+    };
     final body = {
       'sites': [
-        for (final siteId in toSync)
-          if (_exploredBySite.containsKey(siteId))
-            {
-              'site_id': siteId,
-              'explored_distance_m': _exploredBySite[siteId],
-            },
+        for (final entry in reportedMeters.entries)
+          {
+            'site_id': entry.key,
+            'explored_distance_m': entry.value,
+          },
       ],
     };
-    if ((body['sites'] as List).isEmpty) return;
+    if ((body['sites'] as List).isEmpty) {
+      _syncInFlight = false;
+      return;
+    }
 
+    var succeeded = false;
     try {
       final response = await _api.patch(
         '/api/v1/users/me/site-exploration',
         body: body,
       );
-      for (final siteId in toSync) {
-        _dirtySiteIds.remove(siteId);
+      for (final entry in reportedMeters.entries) {
+        final local = _exploredBySite[entry.key];
+        // Keep dirty when meters accrued while this request was in flight.
+        if (local != null && local > entry.value + 1e-6) continue;
+        _dirtySiteIds.remove(entry.key);
       }
       final profileJson = response['profile'];
       if (profileJson is Map<String, dynamic> && _onProfileUpdated != null) {
@@ -352,18 +386,27 @@ class SiteExplorationController extends ChangeNotifier {
             newlyDocumented = site;
           }
         }
-        ingestSites(synced);
+        // Set pending celebration before ingestSites notifyListeners so the
+        // AppShell listener can see it on the first notify.
         if (newlyDocumented != null) {
           _pendingDocumentationCelebration = newlyDocumented;
           _documentationCelebrationConsumed = false;
           playDiscoveryHapticFireAndForget();
         }
+        ingestSites(synced);
       }
       await _persistLocal();
       notifyListeners();
+      succeeded = true;
     } catch (error) {
       if (kDebugMode) {
         debugPrint('SiteExplorationController.sync: $error');
+      }
+    } finally {
+      _syncInFlight = false;
+      // Flush meters accrued during the request (not on failure — avoid loops).
+      if (succeeded && _dirtySiteIds.isNotEmpty) {
+        unawaited(_syncToBackend(force: force));
       }
     }
   }

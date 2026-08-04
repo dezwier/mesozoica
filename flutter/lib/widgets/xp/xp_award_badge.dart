@@ -6,7 +6,7 @@ import '../../theme/map_chrome_decorations.dart';
 import '../../theme/map_chrome_theme.dart';
 import '../profile/profile_skill_icons.dart';
 
-/// XP-earned badge: skill avatar + skill name + "+N XP".
+/// XP-earned badge: skill avatar + XP source label + "+N XP".
 class XpAwardBadge extends StatelessWidget {
   const XpAwardBadge({
     super.key,
@@ -51,7 +51,7 @@ class XpAwardBadge extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  award.skillName,
+                  award.sourceLabel,
                   maxLines: 1,
                   softWrap: false,
                   overflow: TextOverflow.ellipsis,

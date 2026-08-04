@@ -15,22 +15,10 @@ import '../../models/profile.dart';
 import '../../models/tool.dart';
 import '../../models/tool_session.dart';
 import '../../services/api_client.dart';
+import '../../utils/xp_source_labels.dart';
 import '../common/draggable_sheet_wrapper.dart';
 import '../weather/weather_display.dart';
 import 'profile_skill_icons.dart';
-
-const _breakdownLabels = <String, String>{
-  'sites': 'Sites discovered',
-  'fossils': 'Fossils discovered',
-  'active_distance': 'Active distance',
-  'passive_distance': 'Passive distance',
-  'disguise': 'Site disguise',
-  'site_exploration': 'Site exploration',
-  'site_documentation': 'Site documentation',
-  'site_identification': 'Site identification',
-  'first_discovery': 'First discovery',
-  'first_documentation': 'First documentation',
-};
 
 /// Maps XP-source main_param keys → skill_breakdown keys.
 const _xpSourceBreakdownKeys = <String, String>{
@@ -477,7 +465,7 @@ List<_XpSourceMergedRow> _mergedXpSourceRows({
   for (final entry in leftovers) {
     rows.add(
       _XpSourceMergedRow(
-        label: _breakdownLabels[entry.key] ?? entry.key,
+        label: xpSourceLabel(entry.key),
         valueText: '—',
         totalXp: entry.value,
       ),

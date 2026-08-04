@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import '../models/profile.dart';
 import '../services/auth_service.dart';
 import '../services/push_notification_service.dart';
+import '../utils/xp_source_labels.dart';
 import 'xp_award_controller.dart';
 
 class AuthController extends ChangeNotifier {
@@ -116,7 +117,7 @@ class AuthController extends ChangeNotifier {
   /// Reload profile from the server.
   ///
   /// Pass [announceXp] true after actions known to award skill XP so the
-  /// global badge can show positive skill deltas. Login / pull-to-refresh /
+  /// global badge can show positive XP-source deltas. Login / pull-to-refresh /
   /// purge paths leave it false.
   Future<void> refreshProfile({bool announceXp = false}) async {
     if (_currentUser == null) return;
@@ -130,11 +131,11 @@ class AuthController extends ChangeNotifier {
 
   /// Replace the local profile.
   ///
-  /// When [announceXp] is true, positive per-skill XP deltas are enqueued on
+  /// When [announceXp] is true, positive per-source XP deltas are enqueued on
   /// the bound [XpAwardController] for the global earned badge.
   Future<void> applyUser(Profile user, {bool announceXp = true}) async {
     if (announceXp) {
-      final awards = _diffSkillXp(_currentUser, user);
+      final awards = _diffXpAwards(_currentUser, user);
       _xpAwards?.enqueueAll(awards);
     }
     _currentUser = user;
@@ -160,7 +161,13 @@ class AuthController extends ChangeNotifier {
     notifyListeners();
   }
 
-  static List<XpAward> _diffSkillXp(Profile? before, Profile after) {
+  /// Emit one badge per skill_breakdown source increase; fall back to skill
+  /// total when breakdown does not explain the XP delta.
+  @visibleForTesting
+  static List<XpAward> debugDiffXpAwards(Profile? before, Profile after) =>
+      _diffXpAwards(before, after);
+
+  static List<XpAward> _diffXpAwards(Profile? before, Profile after) {
     if (before == null) return const [];
     final prevById = <String, SkillState>{
       for (final skill in before.skills) skill.id: skill,
@@ -168,13 +175,36 @@ class AuthController extends ChangeNotifier {
     final awards = <XpAward>[];
     for (final skill in after.skills) {
       final prevXp = prevById[skill.id]?.xp ?? 0;
-      final delta = skill.xp - prevXp;
-      if (delta > 0) {
+      final skillDelta = skill.xp - prevXp;
+      if (skillDelta <= 0) continue;
+
+      final prevBreakdown = before.skillBreakdown[skill.id] ?? const {};
+      final nextBreakdown = after.skillBreakdown[skill.id] ?? const {};
+      var accounted = 0;
+      for (final entry in nextBreakdown.entries) {
+        final prev = prevBreakdown[entry.key] ?? 0;
+        final delta = entry.value - prev;
+        if (delta <= 0) continue;
+        accounted += delta;
         awards.add(
           XpAward(
+            id: 0,
             skillId: skill.id,
             skillName: skill.name,
+            sourceLabel: xpSourceLabel(entry.key),
             amount: delta,
+          ),
+        );
+      }
+      final remainder = skillDelta - accounted;
+      if (remainder > 0) {
+        awards.add(
+          XpAward(
+            id: 0,
+            skillId: skill.id,
+            skillName: skill.name,
+            sourceLabel: skill.name,
+            amount: remainder,
           ),
         );
       }

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
@@ -219,6 +220,17 @@ class _AppShellState extends State<AppShell>
                           (s.status != null && s.status != 'hidden'),
                     )
                     .toList();
+              },
+              skillLevelProvider: () {
+                final profile = context.read<AuthController>().currentUser;
+                if (profile != null) {
+                  for (final skill in profile.skills) {
+                    if (skill.id == 'site_stewardship') {
+                      return skill.level.clamp(1, 99);
+                    }
+                  }
+                }
+                return 1;
               },
               onProfileUpdated: (profile) async {
                 await context.read<AuthController>().applyUser(profile);
@@ -788,6 +800,9 @@ class _AppShellState extends State<AppShell>
                 children: [
                   MapScreen(
                     isActive: !_anyOverlayOpen && !_cardDetailOpen,
+                    // Site cards freeze map chrome/Mapbox, but keep high GPS so
+                    // exploration meters on the card back stay live.
+                    highPrecisionGps: !_anyOverlayOpen,
                     showControls:
                         !_anyCatalogOpen && !_toolsOpen && !_cardDetailOpen,
                   ),

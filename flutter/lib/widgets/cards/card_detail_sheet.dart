@@ -8,8 +8,9 @@ import '../../shell/shell_overlay_panel.dart';
 /// floating overlays that appear in front of the map / other tabs.
 ///
 /// Layout matches [ShellOverlayPanel] catalog screens: card centered in the
-/// band above the dismiss chrome. [openCount] lets [AppShell] freeze the map
-/// and hide chrome while any card dialog is up.
+/// band above the dismiss chrome. [openCount] lets [AppShell] freeze map chrome
+/// / Mapbox while any card dialog is up (GPS stays map-grade via
+/// [MapScreen.highPrecisionGps]).
 class CardDetailSheet {
   CardDetailSheet._();
 

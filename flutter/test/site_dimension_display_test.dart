@@ -1,7 +1,14 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mesozoica/config/game_config.dart';
 import 'package:mesozoica/widgets/cards/site_dimension_display.dart';
 
+import 'helpers/game_config_test_helpers.dart';
+
 void main() {
+  tearDown(() {
+    GameConfig.debugReset();
+  });
+
   group('resolveSiteDimensionDisplay', () {
     test('accuracy 1 collapses to a precise point with no blur', () {
       final result = resolveSiteDimensionDisplay(
@@ -139,6 +146,55 @@ void main() {
       expect(applyExplorationAccuracyBoost(0.01, 10), closeTo(0.11, 1e-9));
       expect(applyExplorationAccuracyBoost(0.5, 100), 1.0);
       expect(applyExplorationAccuracyBoost(0.99, 5), 1.0);
+    });
+  });
+
+  group('siteIsFullyDocumented', () {
+    test('false with missing odd values or low meters', () async {
+      await loadGameConfigForTest();
+      expect(
+        siteIsFullyDocumented(
+          siteId: 42,
+          oddDinoCount: 0.5,
+          oddFossilCount: 0.5,
+          oddCompleteness: 0.5,
+          oddQuality: 0.5,
+          oddDepth: null,
+          skillLevel: 1,
+          exploredDistanceM: 200,
+        ),
+        isFalse,
+      );
+      expect(
+        siteIsFullyDocumented(
+          siteId: 42,
+          oddDinoCount: 0.5,
+          oddFossilCount: 0.5,
+          oddCompleteness: 0.5,
+          oddQuality: 0.5,
+          oddDepth: 0.5,
+          skillLevel: 1,
+          exploredDistanceM: 0,
+        ),
+        isFalse,
+      );
+    });
+
+    test('true once exploration boost reaches 100% on all axes', () async {
+      await loadGameConfigForTest();
+      expect(
+        siteIsFullyDocumented(
+          siteId: 42,
+          oddDinoCount: 0.5,
+          oddFossilCount: 0.5,
+          oddCompleteness: 0.5,
+          oddQuality: 0.5,
+          oddDepth: 0.5,
+          skillLevel: 1,
+          exploredDistanceM: 200,
+        ),
+        isTrue,
+      );
     });
   });
 

@@ -4,6 +4,7 @@ import 'dart:typed_data';
 
 import 'package:crypto/crypto.dart';
 import 'package:mesozoica/config/game_config.dart';
+import 'package:mesozoica/config/main_param_resolve.dart';
 
 /// Keys for the five site odd_* axes shown on the site card.
 enum SiteDimensionKey {
@@ -93,6 +94,59 @@ double applyExplorationAccuracyBoost(
   final boost = exploredDistanceM.clamp(0.0, double.infinity) *
       kExplorationAccuracyPerM;
   return (skillAccuracy + boost).clamp(0.0, 1.0);
+}
+
+/// True when all five display accuracies are at 100%.
+///
+/// Mirrors backend [site_is_fully_documented] so the client can force-sync
+/// the moment local meters would complete documentation.
+bool siteIsFullyDocumented({
+  required int siteId,
+  required double? oddDinoCount,
+  required double? oddFossilCount,
+  required double? oddCompleteness,
+  required double? oddQuality,
+  required double? oddDepth,
+  required int skillLevel,
+  required double exploredDistanceM,
+}) {
+  const accuracyKeys = <SiteDimensionKey, String>{
+    SiteDimensionKey.dino: 'dino_accuracy',
+    SiteDimensionKey.fossil: 'fossil_accuracy',
+    SiteDimensionKey.completeness: 'completeness_accuracy',
+    SiteDimensionKey.quality: 'quality_accuracy',
+    SiteDimensionKey.depth: 'depth_accuracy',
+  };
+  final values = <SiteDimensionKey, double?>{
+    SiteDimensionKey.dino: oddDinoCount,
+    SiteDimensionKey.fossil: oddFossilCount,
+    SiteDimensionKey.completeness: oddCompleteness,
+    SiteDimensionKey.quality: oddQuality,
+    SiteDimensionKey.depth: oddDepth,
+  };
+  if (values.values.any((v) => v == null)) return false;
+
+  final baseAccuracies =
+      resolveSiteStewardshipAccuracies(skillLevel: skillLevel);
+  for (final entry in values.entries) {
+    final skillAcc = baseAccuracies[accuracyKeys[entry.key]!] ?? 0.0;
+    final boosted = applyExplorationAccuracyBoost(
+      applyDimensionAccuracyNoise(
+        baseAccuracy: skillAcc,
+        siteId: siteId,
+        dimension: entry.key,
+      ),
+      exploredDistanceM,
+    );
+    final band = resolveSiteDimensionDisplay(
+      dimension: entry.key,
+      trueValue: entry.value!,
+      accuracy: boosted,
+      siteId: siteId,
+    );
+    if (band.effectiveAccuracy < 1.0 - 1e-9) return false;
+  }
+  return true;
 }
 
 /// Compute a stable, accuracy-aware blurry range for one site dimension.

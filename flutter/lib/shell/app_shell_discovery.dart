@@ -100,6 +100,8 @@ mixin _AppShellDiscoveryMixin on State<AppShell> {
     final pending = exploration.pendingDocumentationCelebration;
     if (pending == null) return;
 
+    // Apply sync payload immediately so XP / timeline / status badge update
+    // before the celebration (and without waiting on the debounced refetch).
     context.read<MapController>().upsertSite(pending);
     context.read<SiteCatalogController>().upsertSite(pending);
     unawaited(context.read<AuthController>().refreshProfile(announceXp: true));
@@ -168,6 +170,13 @@ mixin _AppShellDiscoveryMixin on State<AppShell> {
     if (site == null && siteId == null) return;
     _celebrationShowing = true;
     try {
+      // Close any open site card so celebration isn't stacked on it
+      // (same pattern as identification).
+      if (CardDetailSheet.isOpen) {
+        Navigator.of(context, rootNavigator: true).pop();
+        await SchedulerBinding.instance.endOfFrame;
+        if (!mounted) return;
+      }
       await showSiteDocumentationCelebration(
         context,
         site: site,

@@ -4,33 +4,44 @@ import 'package:flutter/foundation.dart';
 ///
 /// Any backend action that awards skill XP must return an updated profile that
 /// the client applies via [AuthController.applyUser] (or
-/// `refreshProfile(announceXp: true)`). The global badge is driven only from
-/// positive skill XP deltas.
+/// `refreshProfile(announceXp: true)`). Badges are driven from positive
+/// skill_breakdown (XP source) deltas when available.
 class XpAward {
   const XpAward({
+    required this.id,
     required this.skillId,
     required this.skillName,
+    required this.sourceLabel,
     required this.amount,
   });
 
+  /// Stable id for overlay lifecycle / dismiss.
+  final int id;
+
   final String skillId;
+
+  /// Skill display name (skill sheet / fallback).
   final String skillName;
+
+  /// XP source / parameter label shown on the badge.
+  final String sourceLabel;
+
   final int amount;
 }
 
-/// Sequential queue of XP-earned badges for the global overlay.
+/// Concurrent stack of XP-earned badges for the global overlay.
 class XpAwardController extends ChangeNotifier {
-  final List<XpAward> _queue = [];
-  XpAward? _current;
+  final List<XpAward> _active = [];
   bool _hudVisible = true;
+  int _nextId = 1;
 
-  /// Award currently being shown, if any.
-  XpAward? get current => _current;
+  /// Awards currently on-screen (oldest first — stack top to bottom).
+  List<XpAward> get activeAwards => List.unmodifiable(_active);
 
   /// Whether the map profile HUD is on-screen (magic-string target).
   bool get hudVisible => _hudVisible;
 
-  bool get hasPending => _current != null || _queue.isNotEmpty;
+  bool get hasPending => _active.isNotEmpty;
 
   void setHudVisible(bool visible) {
     if (_hudVisible == visible) return;
@@ -39,39 +50,37 @@ class XpAwardController extends ChangeNotifier {
   }
 
   void enqueue(XpAward award) {
-    if (award.amount <= 0) return;
-    _queue.add(award);
-    _promoteIfIdle();
+    enqueueAll([award]);
   }
 
   void enqueueAll(Iterable<XpAward> awards) {
     var added = false;
     for (final award in awards) {
       if (award.amount <= 0) continue;
-      _queue.add(award);
+      _active.add(
+        XpAward(
+          id: _nextId++,
+          skillId: award.skillId,
+          skillName: award.skillName,
+          sourceLabel: award.sourceLabel,
+          amount: award.amount,
+        ),
+      );
       added = true;
     }
-    if (added) _promoteIfIdle();
+    if (added) notifyListeners();
   }
 
-  /// Called by the overlay when the current badge animation finishes.
-  void onDismissed() {
-    if (_current == null) return;
-    _current = null;
-    _promoteIfIdle();
-    if (_current == null) notifyListeners();
+  /// Called by the overlay when a badge finishes its exit animation.
+  void dismiss(int id) {
+    final before = _active.length;
+    _active.removeWhere((award) => award.id == id);
+    if (_active.length != before) notifyListeners();
   }
 
   void clear() {
-    _queue.clear();
-    if (_current == null) return;
-    _current = null;
-    notifyListeners();
-  }
-
-  void _promoteIfIdle() {
-    if (_current != null || _queue.isEmpty) return;
-    _current = _queue.removeAt(0);
+    if (_active.isEmpty) return;
+    _active.clear();
     notifyListeners();
   }
 }
