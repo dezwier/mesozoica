@@ -146,7 +146,6 @@ class _SiteIdentifySheetState extends State<SiteIdentifySheet> {
     }
     setState(() {
       _submitting = true;
-      _message = null;
       _error = null;
     });
     try {
@@ -307,31 +306,16 @@ class _SiteIdentifySheetState extends State<SiteIdentifySheet> {
                       fontWeight: FontWeight.w800,
                     ),
                   ),
-                  if (_successGuess != null) ...[
-                    const SizedBox(height: 10),
-                    const _IdentifySuccessBanner(),
-                  ] else if (_message != null) ...[
-                    const SizedBox(height: 8),
-                    Text(
-                      _message!,
-                      textAlign: TextAlign.center,
-                      style: textTheme.bodyMedium?.copyWith(
-                        color: scheme.tertiary,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
                   Padding(
                     padding: const EdgeInsets.fromLTRB(20, 18, 20, 28),
                     child: FilledButton(
-                      onPressed: _successGuess != null
-                          ? () {}
-                          : _submitting ||
-                                  _disabled.contains(
-                                      _periodForSlider(_periodSlider))
-                              ? null
-                              : () =>
-                                  _onGuess(_periodForSlider(_periodSlider)),
+                      onPressed: _successGuess != null ||
+                              _submitting ||
+                              _disabled.contains(
+                                  _periodForSlider(_periodSlider))
+                          ? null
+                          : () =>
+                              _onGuess(_periodForSlider(_periodSlider)),
                       style: FilledButton.styleFrom(
                         minimumSize: const Size.fromHeight(48),
                         backgroundColor: _successGuess != null
@@ -339,6 +323,9 @@ class _SiteIdentifySheetState extends State<SiteIdentifySheet> {
                             : null,
                         disabledBackgroundColor: _successGuess != null
                             ? const Color(0xFF2E7D32)
+                            : null,
+                        disabledForegroundColor: _successGuess != null
+                            ? Colors.white
                             : null,
                         foregroundColor: _successGuess != null
                             ? Colors.white
@@ -386,25 +373,7 @@ class _SiteIdentifySheetState extends State<SiteIdentifySheet> {
                       },
                     ),
                   ),
-                  if (_successGuess != null)
-                    const Padding(
-                      padding: EdgeInsets.fromLTRB(20, 4, 20, 20),
-                      child: _IdentifySuccessBanner(),
-                    )
-                  else if (_message != null)
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
-                      child: Text(
-                        _message!,
-                        textAlign: TextAlign.center,
-                        style: textTheme.bodyMedium?.copyWith(
-                          color: scheme.tertiary,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    )
-                  else
-                    const SizedBox(height: 16),
+                  const SizedBox(height: 16),
                 ],
               ],
             ),
@@ -460,7 +429,7 @@ class _PeriodTimelineSlider extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         const sidePad = 16.0;
-        const thumbSize = 56.0;
+        const thumbSize = 36.0;
         const barHeight = 10.0;
         const barTop = 36.0;
         final trackWidth = constraints.maxWidth - sidePad * 2;
@@ -584,7 +553,7 @@ class _PeriodTimelineSlider extends StatelessWidget {
                   child: const SizedBox.expand(),
                 ),
               ),
-              // Big comfy thumb.
+              // Drag thumb (sized to avoid covering period / Ma labels).
               Positioned(
                 left: thumbLeft,
                 top: barTop + barHeight / 2 - thumbSize / 2,
@@ -595,18 +564,18 @@ class _PeriodTimelineSlider extends StatelessWidget {
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       color: scheme.surface,
-                      border: Border.all(color: scheme.primary, width: 3.5),
+                      border: Border.all(color: scheme.primary, width: 3),
                       boxShadow: [
                         BoxShadow(
-                          color: scheme.shadow.withValues(alpha: 0.28),
-                          blurRadius: 10,
-                          offset: const Offset(0, 4),
+                          color: scheme.shadow.withValues(alpha: 0.24),
+                          blurRadius: 6,
+                          offset: const Offset(0, 2),
                         ),
                       ],
                     ),
                     child: Icon(
                       Icons.drag_indicator,
-                      size: 28,
+                      size: 18,
                       color: scheme.primary,
                     ),
                   ),
@@ -616,33 +585,6 @@ class _PeriodTimelineSlider extends StatelessWidget {
           ),
         );
       },
-    );
-  }
-}
-
-class _IdentifySuccessBanner extends StatelessWidget {
-  const _IdentifySuccessBanner();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Icon(
-          Icons.check_circle_rounded,
-          color: Color(0xFF2E7D32),
-          size: 22,
-        ),
-        SizedBox(width: 8),
-        Text(
-          'Correct!',
-          style: TextStyle(
-            color: Color(0xFF2E7D32),
-            fontWeight: FontWeight.w800,
-            fontSize: 16,
-          ),
-        ),
-      ],
     );
   }
 }
@@ -744,17 +686,17 @@ class _IdentifyRockTile extends StatelessWidget {
                 right: 10,
                 bottom: 10,
                 child: Text(
-                  label,
+                  correct ? 'Correct!' : label,
                   textAlign: TextAlign.center,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color: correct ? const Color(0xFFB9F6CA) : Colors.white,
                     fontWeight: FontWeight.w800,
-                    fontSize: 15,
+                    fontSize: correct ? 17 : 15,
                     height: 1.15,
                     letterSpacing: 0.15,
-                    shadows: [
+                    shadows: const [
                       Shadow(
                         color: Color(0xE6000000),
                         blurRadius: 8,
@@ -769,22 +711,9 @@ class _IdentifyRockTile extends StatelessWidget {
                   ),
                 ),
               ),
-              if (correct) ...[
-                const ColoredBox(color: Color(0x552E7D32)),
-                const Center(
-                  child: Icon(
-                    Icons.check_circle_rounded,
-                    color: Colors.white,
-                    size: 48,
-                    shadows: [
-                      Shadow(
-                        color: Color(0x99000000),
-                        blurRadius: 8,
-                      ),
-                    ],
-                  ),
-                ),
-              ] else if (disabled)
+              if (correct)
+                const ColoredBox(color: Color(0x402E7D32))
+              else if (disabled)
                 ColoredBox(
                   color: scheme.surface.withValues(alpha: 0.28),
                 ),
