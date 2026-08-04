@@ -71,10 +71,7 @@ class NotificationController extends ChangeNotifier {
                 (entry) =>
                     UserNotificationItem.fromJson(entry as Map<String, dynamic>),
               )
-              .where(
-                (item) =>
-                    item.isFriendRequestRelated || item.isSiteDiscovered,
-              ),
+              .where((item) => item.isInAppBellItem),
         );
       notifyListeners();
       _syncAppBadge();
@@ -140,9 +137,7 @@ class NotificationController extends ChangeNotifier {
       _items
         ..clear()
         ..addAll(
-          result.items.where(
-            (item) => item.isFriendRequestRelated || item.isSiteDiscovered,
-          ),
+          result.items.where((item) => item.isInAppBellItem),
         );
       await _persistItems();
       _syncAppBadge();

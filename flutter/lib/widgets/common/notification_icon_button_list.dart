@@ -14,9 +14,7 @@ class _NotificationListContent extends StatelessWidget {
   static const double _listMaxHeight = 320.0;
 
   List<UserNotificationItem> _visibleItems() {
-    final items = store.items
-        .where((item) => item.isFriendRequestRelated || item.isSiteDiscovered)
-        .toList()
+    final items = store.items.where((item) => item.isInAppBellItem).toList()
       ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
     return items;
   }

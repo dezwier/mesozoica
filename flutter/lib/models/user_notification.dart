@@ -26,6 +26,10 @@ class UserNotificationItem {
   bool get isSiteDiscovered => type == 'site_discovered';
   bool get isSiteDocumented => type == 'site_documented';
 
+  /// Types shown in the in-app notification bell.
+  bool get isInAppBellItem =>
+      isFriendRequestRelated || isSiteDiscovered || isSiteDocumented;
+
   Map<String, dynamic> toJson() {
     return {
       'id': id,

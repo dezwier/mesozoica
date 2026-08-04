@@ -16,9 +16,7 @@ class NotificationService {
       final items = list
           .map((entry) =>
               UserNotificationItem.fromJson(entry as Map<String, dynamic>))
-          .where(
-            (item) => item.isFriendRequestRelated || item.isSiteDiscovered,
-          )
+          .where((item) => item.isInAppBellItem)
           .toList();
       return NotificationsResult(items: items);
     } catch (_) {
