@@ -59,6 +59,8 @@ Future<SiteSummary?> applySiteStatusSelection(
             );
       }
       if (!context.mounted) return updated;
+      await context.read<AuthController>().refreshProfile(announceXp: true);
+      if (!context.mounted) return updated;
       await showSiteDiscoveryCelebration(context, site: updated);
       if (!context.mounted) return updated;
 

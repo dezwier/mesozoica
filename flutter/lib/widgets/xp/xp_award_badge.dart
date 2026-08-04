@@ -4,9 +4,12 @@ import 'package:intl/intl.dart';
 import '../../controllers/xp_award_controller.dart';
 import '../../theme/map_chrome_decorations.dart';
 import '../../theme/map_chrome_theme.dart';
-import '../profile/profile_skill_icons.dart';
+import 'xp_skill_avatar.dart';
 
-/// XP-earned badge: skill avatar + XP source label + "+N XP".
+/// XP-earned **badge** for small / ongoing events (not celebrations).
+///
+/// Skill avatar + XP source label + "+N XP". Big-event XP is embedded in
+/// celebration plaques instead — see `xp_source_labels.dart`.
 class XpAwardBadge extends StatelessWidget {
   const XpAwardBadge({
     super.key,
@@ -44,7 +47,7 @@ class XpAwardBadge extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            _SkillAvatar(skillId: award.skillId),
+            XpSkillAvatar(skillId: award.skillId),
             const SizedBox(width: 10),
             Column(
               mainAxisSize: MainAxisSize.min,
@@ -97,52 +100,6 @@ class XpAwardBadge extends StatelessWidget {
               ],
             ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-class _SkillAvatar extends StatelessWidget {
-  const _SkillAvatar({required this.skillId});
-
-  final String skillId;
-
-  static const double _size = 38;
-  static const double _radius = 8;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: _size,
-      height: _size,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(_radius),
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            MapChromeTheme.leatherSoftHighlight,
-            MapChromeTheme.dialFaceDeep,
-          ],
-        ),
-        border: Border.all(
-          color: MapChromeTheme.brassRim.withValues(alpha: 0.65),
-          width: 1,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.28),
-            blurRadius: 3,
-            offset: const Offset(0, 1),
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(_radius - 1),
-        child: Padding(
-          padding: const EdgeInsets.all(3),
-          child: SkillIcon(skillId: skillId, size: _size - 8),
         ),
       ),
     );

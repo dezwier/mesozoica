@@ -16,6 +16,19 @@ Single source of truth for Mesozoica game-mechanics knobs.
 | `leveling.yaml` | Skill list + 99 career titles (XP amounts live on skill `main_params`) |
 | `period_colors.yaml` / `rock_type_colors.yaml` | Overlay / marker palettes |
 
+## XP presentation (Flutter)
+
+Every announced skill XP gain is shown in **exactly one** of two ways:
+
+| Presentation | When | Breakdown keys (examples) |
+|--------------|------|---------------------------|
+| **Celebration plaque** | Big events — XP embedded under the celebration title (all XP for that event) | `sites`, `first_discovery`, `fossils`, `site_documentation`, `first_documentation`, `site_identification` |
+| **Floating XP badge** | Small / ongoing events | `active_distance`, `passive_distance`, `disguise`, `site_exploration` |
+
+Client routing lives in `flutter/lib/utils/xp_source_labels.dart` and
+`XpAwardController.announceAwards`. Backend award amounts are unchanged by
+this split — only the UI path differs.
+
 Skill YAML files use the `NN_skill_id.yaml` convention so they sort in skill order.
 
 ## Skill `main_params`

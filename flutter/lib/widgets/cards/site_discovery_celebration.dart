@@ -1,23 +1,35 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../../config/discovery_config.dart';
+import '../../controllers/xp_award_controller.dart';
 import '../../models/catalog_data_source.dart';
 import '../../models/site.dart';
 import '../../services/site_service.dart';
+import '../../utils/xp_source_labels.dart';
 import 'card_detail_sheet.dart';
 import 'celebration_title_badge.dart';
 import 'site_turnable_card.dart';
 
 /// Celebration overlay after proximity (or notification-tap) discovery /
-/// documentation.
+/// documentation / identification.
+///
+/// Big-event XP for this celebration is claimed from [XpAwardController] and
+/// embedded in the title plaque (not shown as a floating badge).
 Future<void> showSiteDiscoveryCelebration(
   BuildContext context, {
   SiteSummary? site,
   int? siteId,
   SiteService? siteService,
   String title = 'Site discovered!',
+  List<XpAward>? xpAwards,
 }) {
   assert(site != null || siteId != null);
+  final awards = xpAwards ??
+      _claimCelebrationXp(
+        context,
+        kSiteDiscoveryCelebrationXpKeys,
+      );
   return CardDetailSheet.show<void>(
     context,
     builder: (context) => _SiteDiscoveryCelebrationSheet(
@@ -25,6 +37,7 @@ Future<void> showSiteDiscoveryCelebration(
       siteId: siteId,
       siteService: siteService,
       title: title,
+      xpAwards: awards,
     ),
   );
 }
@@ -35,13 +48,20 @@ Future<void> showSiteDocumentationCelebration(
   SiteSummary? site,
   int? siteId,
   SiteService? siteService,
+  List<XpAward>? xpAwards,
 }) {
+  final awards = xpAwards ??
+      _claimCelebrationXp(
+        context,
+        kSiteDocumentationCelebrationXpKeys,
+      );
   return showSiteDiscoveryCelebration(
     context,
     site: site,
     siteId: siteId,
     siteService: siteService,
     title: 'Site documented!',
+    xpAwards: awards,
   );
 }
 
@@ -51,14 +71,37 @@ Future<void> showSiteIdentifiedCelebration(
   SiteSummary? site,
   int? siteId,
   SiteService? siteService,
+  List<XpAward>? xpAwards,
 }) {
+  final awards = xpAwards ??
+      _claimCelebrationXp(
+        context,
+        kSiteIdentificationCelebrationXpKeys,
+        mergeSameKey: true,
+      );
   return showSiteDiscoveryCelebration(
     context,
     site: site,
     siteId: siteId,
     siteService: siteService,
     title: 'Site identified!',
+    xpAwards: awards,
   );
+}
+
+List<XpAward> _claimCelebrationXp(
+  BuildContext context,
+  Set<String> keys, {
+  bool mergeSameKey = false,
+}) {
+  try {
+    return context.read<XpAwardController>().claimCelebrationAwards(
+          keys,
+          mergeSameKey: mergeSameKey,
+        );
+  } on ProviderNotFoundException {
+    return const [];
+  }
 }
 
 class _SiteDiscoveryCelebrationSheet extends StatefulWidget {
@@ -67,12 +110,14 @@ class _SiteDiscoveryCelebrationSheet extends StatefulWidget {
     this.siteId,
     this.siteService,
     required this.title,
+    this.xpAwards = const [],
   });
 
   final SiteSummary? site;
   final int? siteId;
   final SiteService? siteService;
   final String title;
+  final List<XpAward> xpAwards;
 
   @override
   State<_SiteDiscoveryCelebrationSheet> createState() =>
@@ -161,7 +206,10 @@ class _SiteDiscoveryCelebrationSheetState
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                CelebrationTitleBadge(title: widget.title),
+                CelebrationTitleBadge(
+                  title: widget.title,
+                  xpAwards: widget.xpAwards,
+                ),
                 const SizedBox(height: 14),
                 SiteTurnableCard(
                   site: snapshot.data!,

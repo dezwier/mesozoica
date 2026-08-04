@@ -82,9 +82,10 @@ mixin _AppShellDiscoveryMixin on State<AppShell> {
 
     // Apply discover response immediately so timeline / first-discovery flags
     // show on the card back without waiting for the debounced refetch.
+    // Profile XP refresh is awaited inside [_showCelebration] so awards are
+    // stashed before the plaque claims them.
     context.read<MapController>().upsertSite(pending.site);
     context.read<SiteCatalogController>().upsertSite(pending.site);
-    unawaited(context.read<AuthController>().refreshProfile(announceXp: true));
 
     // Always refresh map/catalog/inbox; push already covers background UX.
     _scheduleDiscoveryRefresh(siteId: pending.site.siteId);
@@ -100,11 +101,11 @@ mixin _AppShellDiscoveryMixin on State<AppShell> {
     final pending = exploration.pendingDocumentationCelebration;
     if (pending == null) return;
 
-    // Apply sync payload immediately so XP / timeline / status badge update
-    // before the celebration (and without waiting on the debounced refetch).
+    // Apply sync payload immediately so timeline / status badge update before
+    // the celebration. Profile XP refresh is awaited inside
+    // [_showDocumentationCelebration].
     context.read<MapController>().upsertSite(pending);
     context.read<SiteCatalogController>().upsertSite(pending);
-    unawaited(context.read<AuthController>().refreshProfile(announceXp: true));
     _scheduleDiscoveryRefresh(siteId: pending.siteId);
 
     if (!_appInForeground) return;
@@ -142,6 +143,9 @@ mixin _AppShellDiscoveryMixin on State<AppShell> {
     if (resolvedSite == null && siteId == null) return;
     _celebrationShowing = true;
     try {
+      // Await XP announce so celebration plaques can claim stashed awards.
+      await context.read<AuthController>().refreshProfile(announceXp: true);
+      if (!mounted) return;
       await showSiteDiscoveryCelebration(
         context,
         site: resolvedSite,
@@ -177,6 +181,8 @@ mixin _AppShellDiscoveryMixin on State<AppShell> {
         await SchedulerBinding.instance.endOfFrame;
         if (!mounted) return;
       }
+      await context.read<AuthController>().refreshProfile(announceXp: true);
+      if (!mounted) return;
       await showSiteDocumentationCelebration(
         context,
         site: site,

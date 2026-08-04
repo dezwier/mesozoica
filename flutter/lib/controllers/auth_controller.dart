@@ -26,7 +26,7 @@ class AuthController extends ChangeNotifier {
   bool get adminModeEnabled => _adminModeEnabled;
   bool get showAdminUi => isAdmin && _adminModeEnabled;
 
-  /// Wire the global XP badge queue (from [AppShell]).
+  /// Wire the XP presentation queue (badges + celebration stash) from [AppShell].
   void bindXpAwards(XpAwardController controller) {
     _xpAwards = controller;
   }
@@ -116,9 +116,10 @@ class AuthController extends ChangeNotifier {
 
   /// Reload profile from the server.
   ///
-  /// Pass [announceXp] true after actions known to award skill XP so the
-  /// global badge can show positive XP-source deltas. Login / pull-to-refresh /
-  /// purge paths leave it false.
+  /// Pass [announceXp] true after actions known to award skill XP so each
+  /// positive XP-source delta is presented exactly once: embedded in a
+  /// celebration (big events) or as a floating XP badge (small events).
+  /// Login / pull-to-refresh / purge paths leave it false.
   Future<void> refreshProfile({bool announceXp = false}) async {
     if (_currentUser == null) return;
     try {
@@ -131,12 +132,13 @@ class AuthController extends ChangeNotifier {
 
   /// Replace the local profile.
   ///
-  /// When [announceXp] is true, positive per-source XP deltas are enqueued on
-  /// the bound [XpAwardController] for the global earned badge.
+  /// When [announceXp] is true, positive per-source XP deltas are announced on
+  /// the bound [XpAwardController]: celebration sources are stashed for the
+  /// matching plaque; all other sources become floating XP badges.
   Future<void> applyUser(Profile user, {bool announceXp = true}) async {
     if (announceXp) {
       final awards = _diffXpAwards(_currentUser, user);
-      _xpAwards?.enqueueAll(awards);
+      _xpAwards?.announceAwards(awards);
     }
     _currentUser = user;
     if (!isAdmin) _resetAdminMode();
@@ -161,8 +163,9 @@ class AuthController extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Emit one badge per skill_breakdown source increase; fall back to skill
-  /// total when breakdown does not explain the XP delta.
+  /// Emit one [XpAward] per skill_breakdown source increase; fall back to skill
+  /// total when breakdown does not explain the XP delta. Callers route each
+  /// award to a celebration or a badge via [XpAwardController.announceAwards].
   @visibleForTesting
   static List<XpAward> debugDiffXpAwards(Profile? before, Profile after) =>
       _diffXpAwards(before, after);
@@ -193,6 +196,7 @@ class AuthController extends ChangeNotifier {
             skillName: skill.name,
             sourceLabel: xpSourceLabel(entry.key),
             amount: delta,
+            sourceKey: entry.key,
           ),
         );
       }
@@ -205,6 +209,7 @@ class AuthController extends ChangeNotifier {
             skillName: skill.name,
             sourceLabel: skill.name,
             amount: remainder,
+            sourceKey: '',
           ),
         );
       }

@@ -13,7 +13,10 @@ import '../profile/profile_skill_detail_sheet.dart';
 import 'xp_award_badge.dart';
 import 'xp_magic_string_painter.dart';
 
-/// Global XP-earned overlay: stacked badges under (or at) the profile HUD.
+/// Global overlay for **small-event** XP badges (distance, disguise, exploration).
+///
+/// Big-event XP is not shown here — it is embedded in celebration plaques.
+/// See `xp_source_labels.dart` library doc.
 ///
 /// Mounted above the root [Navigator] (via [MaterialApp.builder]) so it paints
 /// in front of drawers, sheets, and dialogs. Multiple awards stack vertically;
