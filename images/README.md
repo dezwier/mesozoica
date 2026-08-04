@@ -16,4 +16,6 @@ Album-grid thumbs live beside full art as `{version}/album/{stem}.webp` (max 384
 
 Catalog cards (dinosaur/tool types) always resolve the `Original` folder. Occurrences store a `version` string and resolve that folder. New occurrences get the newest version by `meta.yaml` `run_date`.
 
+`run_date` is also copied into `backend/app/data/curated_version_meta/` (Docker image) so workers without the curated-image volume still stamp the correct version. After editing a version `meta.yaml`, run `make sync-bundled-version-meta`.
+
 On Railway, mount one volume at `/data` and set `CURATED_IMAGES_DATA_ROOT=/data`. Storage then resolves to `/data/images/...`.

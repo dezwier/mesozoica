@@ -11,8 +11,11 @@ from app.services.curated_image_service.versions import (
     BACKFILL_RUN_DATE,
     ORIGINAL_VERSION,
     SUMMER_26_VERSION,
+    bundled_version_meta_dir,
     ensure_version_meta,
+    latest_site_type_image_version,
     latest_version_by_run_date,
+    latest_version_name_with_bundled,
     load_image_versions,
     migrate_flat_images_to_version,
     normalize_version_name,
@@ -116,6 +119,39 @@ def test_latest_version_by_run_date(tmp_path: Path):
     )
     latest = latest_version_by_run_date(tmp_path)
     assert latest is not None and latest.name == SUMMER_26_VERSION
+
+
+def test_latest_version_name_with_bundled_when_storage_empty(tmp_path: Path):
+    """Workers without a curated-image volume still resolve Summer 26."""
+    empty = tmp_path / "missing-volume"
+    assert latest_version_name_with_bundled(empty, kind="site-types") == SUMMER_26_VERSION
+
+
+def test_bundled_site_type_run_dates_match_images_repo():
+    """Bundled metas must stay in sync with images/site-types/*/meta.yaml."""
+    import yaml
+
+    # tests/ → backend/ → repo root
+    repo_images = Path(__file__).resolve().parents[2] / "images" / "site-types"
+    if not repo_images.is_dir():
+        pytest.skip("repo images/site-types not present")
+    bundled = bundled_version_meta_dir("site-types")
+    for version_dir in sorted(repo_images.iterdir(), key=lambda p: p.name.lower()):
+        meta = version_dir / "meta.yaml"
+        if not meta.is_file():
+            continue
+        src = yaml.safe_load(meta.read_text(encoding="utf-8")) or {}
+        dest_meta = bundled / version_dir.name / "meta.yaml"
+        assert dest_meta.is_file(), (
+            f"missing bundled meta for {version_dir.name}; "
+            "run: make sync-bundled-version-meta"
+        )
+        dest = yaml.safe_load(dest_meta.read_text(encoding="utf-8")) or {}
+        assert str(dest.get("run_date")) == str(src.get("run_date"))
+
+
+def test_latest_site_type_image_version_prefers_summer_26():
+    assert latest_site_type_image_version() == SUMMER_26_VERSION
 
 
 def test_resolve_versioned_image_path_by_name(tmp_path: Path):

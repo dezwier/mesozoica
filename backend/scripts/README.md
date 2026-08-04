@@ -12,6 +12,7 @@ Scripts that touch production data use the **Railway Postgres database** and Rai
 | [`sync_fossil_images.py`](sync_fossil_images.py) | Upload curated fossil card images from `images/fossils/<version>/` to Railway volume and set `main_image_url` |
 | [`sync_site_type_images.py`](sync_site_type_images.py) | Upload curated site-type card images from `images/site-types/<version>/` to Railway volume and set `main_image_url` |
 | [`sync_tool_images.py`](sync_tool_images.py) | Upload curated tool card images from `images/tools/<version>/` to Railway volume and set `main_image_url` |
+| [`sync_bundled_version_meta.py`](sync_bundled_version_meta.py) | Copy `run_date` from `images/*/meta.yaml` into `app/data/curated_version_meta/` (Docker bundle for workers) |
 | [`migrate_image_versions_to_v1.py`](migrate_image_versions_to_v1.py) | Move flat site-type/tool/dinosaur images into `Original/` and write retroactive `meta.yaml` |
 | [`migrate_named_image_versions.py`](migrate_named_image_versions.py) | Rename `v1`→`Original`, `v2`→`Summer 26`; migrate flat fossils into `Original/` |
 | [`backfill_user_levels.py`](backfill_user_levels.py) | Recompute user exploration/career XP from discoveries + distance using `leveling.yaml` rewards |

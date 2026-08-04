@@ -43,6 +43,8 @@ Sites are committed in batches of **25** (`WRITE_BATCH_SIZE`) *during* generatio
 
 Jobs are deduped by `cell_key` (`{ix}:{iy}:{cell_size_m}` on the fixed density grid). The API enqueues without counting; the worker re-counts density in that square before generating.
 
+New field sites get `site.version` from `latest_site_type_image_version()`, which merges the (optional) curated-image volume with **bundled** `app/data/curated_version_meta/site-types/*/meta.yaml` run_dates. The worker does **not** need `CURATED_IMAGES_DATA_ROOT` / site-type PNGs — Railway volumes are not shared with the API. After changing `images/site-types/*/meta.yaml`, run `make sync-bundled-version-meta` and redeploy.
+
 ## Ops verification checklist
 
 After deploy, confirm in field-generate logs:

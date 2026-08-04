@@ -6,7 +6,7 @@ RAILWAY_SERVICE ?=
 RAILWAY_SERVICE_FLAG = $(if $(RAILWAY_SERVICE),--service $(RAILWAY_SERVICE),)
 CRON_EXTRA ?=
 
-.PHONY: help backend-install backend-test run-backend flutter-test run-flutter test-all run-cron run-field-ensure-worker fetch-coordinate-masks upload-coordinate-masks-railway run-field-site-coordinate-prune run-dinosaur-wiki-sync run-dinosaur-llm-enrich run-fossil-pbdb-sync run-fossil-llm-enrich run-site-sync run-site-type-sync run-tool-sync run-dinosaur-image-generate run-fossil-image-generate run-site-type-image-generate run-tool-image-generate run-tool-image-generate-local sync-dinosaur-images sync-fossil-images sync-site-type-images sync-tool-images rename-site-type-images migrate-image-versions-to-v1 migrate-named-image-versions backfill-user-levels
+.PHONY: help backend-install backend-test run-backend flutter-test run-flutter test-all run-cron run-field-ensure-worker fetch-coordinate-masks upload-coordinate-masks-railway run-field-site-coordinate-prune run-dinosaur-wiki-sync run-dinosaur-llm-enrich run-fossil-pbdb-sync run-fossil-llm-enrich run-site-sync run-site-type-sync run-tool-sync run-dinosaur-image-generate run-fossil-image-generate run-site-type-image-generate run-tool-image-generate run-tool-image-generate-local sync-dinosaur-images sync-fossil-images sync-site-type-images sync-tool-images sync-bundled-version-meta rename-site-type-images migrate-image-versions-to-v1 migrate-named-image-versions backfill-user-levels
 
 help:
 	@echo "Available targets:"
@@ -34,6 +34,7 @@ help:
 	@echo "  sync-fossil-images           Upload curated fossil card images to Railway volume + DB"
 	@echo "  sync-site-type-images        Upload curated site-type card images to Railway volume + DB"
 	@echo "  sync-tool-images             Upload curated tool card images to Railway volume + DB"
+	@echo "  sync-bundled-version-meta    Copy images/*/meta.yaml run_dates into backend Docker bundle"
 	@echo "  backfill-user-levels         Recompute skill XP from discoveries + distance (leveling.yaml)"
 	@echo "  rename-site-type-images      Rename legacy numeric site-type image files to period_rocktype"
 	@echo "  migrate-image-versions-to-v1 Move flat images into Original/ + write meta.yaml"
@@ -60,6 +61,7 @@ help:
 	@echo "  make run-site-type-image-generate CRON_EXTRA='--version \"Summer 26\" --site-types 5 18 20'"
 	@echo "  make run-tool-image-generate-local CRON_EXTRA='--version \"Summer 26\" --max-items 3'"
 	@echo "  make migrate-named-image-versions"
+	@echo "  make sync-bundled-version-meta"
 
 backend-install:
 	cd backend && python3 -m pip install --upgrade pip && pip install -r requirements.txt -r requirements-dev.txt
@@ -138,6 +140,9 @@ sync-site-type-images:
 
 sync-tool-images:
 	cd backend && RAILWAY_RUN=1 railway run $(RAILWAY_SERVICE_FLAG) python -m scripts.sync_tool_images $(CRON_EXTRA)
+
+sync-bundled-version-meta:
+	cd backend && python -m scripts.sync_bundled_version_meta $(CRON_EXTRA)
 
 backfill-user-levels:
 	cd backend && RAILWAY_RUN=1 railway run $(RAILWAY_SERVICE_FLAG) python -m scripts.backfill_user_levels $(CRON_EXTRA)

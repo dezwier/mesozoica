@@ -198,22 +198,57 @@ def load_image_versions(root: Path) -> list[ImageVersionInfo]:
     return versions
 
 
+def bundled_version_meta_root() -> Path:
+    """``app/data/curated_version_meta`` — run_date metas shipped in the Docker image."""
+    return Path(__file__).resolve().parents[2] / "data" / "curated_version_meta"
+
+
+def bundled_version_meta_dir(kind: str) -> Path:
+    """Bundled meta root for one curated kind (``site-types``, ``tools``, …)."""
+    return bundled_version_meta_root() / kind
+
+
+def merge_image_versions(*roots: Path) -> list[ImageVersionInfo]:
+    """Union version folders from multiple roots; newer ``run_date`` wins per name."""
+    by_name: dict[str, ImageVersionInfo] = {}
+    for root in roots:
+        for version in load_image_versions(root):
+            existing = by_name.get(version.name)
+            if existing is None:
+                by_name[version.name] = version
+                continue
+            existing_date = existing.run_date
+            new_date = version.run_date
+            if new_date is not None and (
+                existing_date is None or new_date > existing_date
+            ):
+                by_name[version.name] = version
+    return list(by_name.values())
+
+
 def latest_version_by_run_date(root: Path) -> ImageVersionInfo | None:
     """Newest version by meta ``run_date`` (undated last). Used when creating occurrences."""
-    versions = load_image_versions(root)
+    return pick_latest_version(load_image_versions(root))
+
+
+def pick_latest_version(versions: list[ImageVersionInfo]) -> ImageVersionInfo | None:
+    """Newest version by ``run_date``, then name; undated versions sort last."""
     if not versions:
         return None
     dated = [v for v in versions if v.run_date is not None]
     if dated:
         return max(
             dated,
-            key=lambda v: (v.run_date or datetime.min.replace(tzinfo=timezone.utc), v.name),
+            key=lambda v: (
+                v.run_date or datetime.min.replace(tzinfo=timezone.utc),
+                v.name,
+            ),
         )
     # Prefer Original when nothing is dated, else last by name.
     by_name = {v.name: v for v in versions}
     if ORIGINAL_VERSION in by_name:
         return by_name[ORIGINAL_VERSION]
-    return versions[-1]
+    return sorted(versions, key=lambda v: v.name.lower())[-1]
 
 
 def latest_version_name(root: Path, *, default: str = ORIGINAL_VERSION) -> str:
@@ -222,28 +257,53 @@ def latest_version_name(root: Path, *, default: str = ORIGINAL_VERSION) -> str:
     return latest.name if latest is not None else default
 
 
+def latest_version_name_with_bundled(
+    storage_root: Path,
+    *,
+    kind: str,
+    default: str = ORIGINAL_VERSION,
+) -> str:
+    """Newest version using storage metas merged with bundled run_dates.
+
+    Workers (e.g. field-generate) often lack the curated-image volume. Bundled
+    ``app/data/curated_version_meta/<kind>/`` ships run_dates in the image so
+    occurrence version assignment still follows ``images/*/meta.yaml``.
+    """
+    versions = merge_image_versions(storage_root, bundled_version_meta_dir(kind))
+    latest = pick_latest_version(versions)
+    return latest.name if latest is not None else default
+
+
 def latest_tool_image_version() -> str:
     from app.core.config import settings
 
-    return latest_version_name(settings.resolved_tool_images_dir)
+    return latest_version_name_with_bundled(
+        settings.resolved_tool_images_dir, kind="tools"
+    )
 
 
 def latest_site_type_image_version() -> str:
     from app.core.config import settings
 
-    return latest_version_name(settings.resolved_site_type_images_dir)
+    return latest_version_name_with_bundled(
+        settings.resolved_site_type_images_dir, kind="site-types"
+    )
 
 
 def latest_fossil_image_version() -> str:
     from app.core.config import settings
 
-    return latest_version_name(settings.resolved_fossil_images_dir)
+    return latest_version_name_with_bundled(
+        settings.resolved_fossil_images_dir, kind="fossils"
+    )
 
 
 def latest_dinosaur_image_version() -> str:
     from app.core.config import settings
 
-    return latest_version_name(settings.resolved_dinosaur_images_dir)
+    return latest_version_name_with_bundled(
+        settings.resolved_dinosaur_images_dir, kind="dinosaurs"
+    )
 
 
 def scan_versioned_image_files(root: Path) -> list[VersionedImageFile]:
@@ -525,8 +585,17 @@ __all__ = [
     "version_dir",
     "ensure_version_meta",
     "load_image_versions",
+    "merge_image_versions",
+    "pick_latest_version",
     "latest_version_by_run_date",
     "latest_version_name",
+    "latest_version_name_with_bundled",
+    "bundled_version_meta_root",
+    "bundled_version_meta_dir",
+    "latest_tool_image_version",
+    "latest_site_type_image_version",
+    "latest_fossil_image_version",
+    "latest_dinosaur_image_version",
     "scan_versioned_image_files",
     "find_image_in_version",
     "resolve_versioned_image_path",
