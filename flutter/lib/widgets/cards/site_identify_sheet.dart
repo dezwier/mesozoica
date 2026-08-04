@@ -1,10 +1,13 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../../config/geologic_timeline_constants.dart';
 import '../../controllers/auth_controller.dart';
+import '../../controllers/site_catalog_controller.dart';
+import '../../controllers/map_controller.dart' as map_data;
 import '../../models/site.dart';
 import '../../services/site_service.dart';
 import '../../utils/curated_image_url.dart';
@@ -12,17 +15,19 @@ import '../../utils/display_text.dart';
 import '../../utils/network_image_mem_cache.dart';
 import '../common/draggable_sheet_wrapper.dart';
 import '../common/drawer_sheet_sizes.dart';
+import 'card_detail_sheet.dart';
 import 'site_card_image.dart';
 import 'site_discovery_celebration.dart';
 
 /// Bottom sheet: period then rock-type identification quiz for a field site.
 ///
-/// On a successful full identification, shows the "Site identified!" celebration
-/// before returning the updated site.
+/// On a successful full identification, dismisses any underlying [CardDetailSheet]
+/// site card, then shows the "Site identified!" celebration.
 Future<SiteSummary?> showSiteIdentifySheet(
   BuildContext context, {
   required SiteSummary site,
 }) async {
+  final rootNav = Navigator.of(context, rootNavigator: true);
   final updated = await showModalBottomSheet<SiteSummary>(
     context: context,
     isScrollControlled: true,
@@ -37,10 +42,34 @@ Future<SiteSummary?> showSiteIdentifySheet(
       ),
     ),
   );
-  if (updated != null && context.mounted) {
+  if (updated == null) return null;
+
+  // Close the site card under the quiz so celebration isn't stacked on it.
+  if (context.mounted && CardDetailSheet.isOpen) {
+    _syncIdentifiedSite(context, updated);
+    rootNav.pop();
+    await SchedulerBinding.instance.endOfFrame;
+  }
+
+  if (rootNav.mounted) {
+    await showSiteIdentifiedCelebration(rootNav.context, site: updated);
+  } else if (context.mounted) {
     await showSiteIdentifiedCelebration(context, site: updated);
   }
   return updated;
+}
+
+void _syncIdentifiedSite(BuildContext context, SiteSummary updated) {
+  try {
+    context.read<map_data.MapController>().upsertSite(updated);
+  } on ProviderNotFoundException {
+    // Not under the map.
+  }
+  try {
+    context.read<SiteCatalogController>().upsertSite(updated);
+  } on ProviderNotFoundException {
+    // Not under the catalog.
+  }
 }
 
 class SiteIdentifySheet extends StatefulWidget {
@@ -61,10 +90,12 @@ class _SiteIdentifySheetState extends State<SiteIdentifySheet> {
   final _service = SiteService();
   SiteIdentifyOptions? _options;
   final Set<String> _disabled = {};
-  String? _message;
   bool _loading = true;
   bool _submitting = false;
   String? _error;
+
+  /// Brief positive flash after a correct guess (period or rock).
+  String? _successGuess;
 
   /// 0 = oldest (252 Ma / Triassic left), 1 = youngest (66 Ma / Cretaceous right).
   double _periodSlider = 0.5;
@@ -79,7 +110,6 @@ class _SiteIdentifySheetState extends State<SiteIdentifySheet> {
     setState(() {
       _loading = true;
       _error = null;
-      _message = null;
       _disabled.clear();
     });
     try {
@@ -108,7 +138,12 @@ class _SiteIdentifySheetState extends State<SiteIdentifySheet> {
 
   Future<void> _onGuess(String guess) async {
     final options = _options;
-    if (options == null || _submitting || _disabled.contains(guess)) return;
+    if (options == null ||
+        _submitting ||
+        _successGuess != null ||
+        _disabled.contains(guess)) {
+      return;
+    }
     setState(() {
       _submitting = true;
       _message = null;
@@ -132,27 +167,33 @@ class _SiteIdentifySheetState extends State<SiteIdentifySheet> {
         setState(() {
           _submitting = false;
           _disabled.addAll(result.disabledGuesses);
-          _message = result.message ?? "That doesn't look quite right";
         });
         return;
       }
 
+      HapticFeedback.mediumImpact();
+      setState(() {
+        _submitting = false;
+        _successGuess = guess;
+      });
+      await Future<void>.delayed(const Duration(seconds: 1));
+      if (!mounted) return;
+
       if (result.identified) {
-        if (!mounted) return;
         Navigator.of(context).pop(result.site);
         return;
       }
 
       setState(() {
-        _submitting = false;
+        _successGuess = null;
         _disabled.clear();
-        _message = null;
       });
       await _loadOptions();
     } catch (e) {
       if (!mounted) return;
       setState(() {
         _submitting = false;
+        _successGuess = null;
         _error = e.toString();
       });
     }
@@ -238,14 +279,13 @@ class _SiteIdentifySheetState extends State<SiteIdentifySheet> {
                     child: _PeriodTimelineSlider(
                       value: _periodSlider,
                       disabledPeriods: _disabled,
-                      onChanged: _submitting
+                      onChanged: (_submitting || _successGuess != null)
                           ? null
                           : (v) {
                               final prev = _periodForSlider(_periodSlider);
                               final next = _periodForSlider(v);
                               setState(() {
                                 _periodSlider = v;
-                                _message = null;
                               });
                               if (prev != next) {
                                 HapticFeedback.selectionClick();
@@ -258,13 +298,19 @@ class _SiteIdentifySheetState extends State<SiteIdentifySheet> {
                     toTitleCase(_periodForSlider(_periodSlider)),
                     textAlign: TextAlign.center,
                     style: textTheme.headlineSmall?.copyWith(
-                      color: _disabled.contains(_periodForSlider(_periodSlider))
-                          ? scheme.onSurface.withValues(alpha: 0.38)
-                          : scheme.onSurface,
+                      color: _successGuess != null
+                          ? const Color(0xFF2E7D32)
+                          : _disabled.contains(
+                                  _periodForSlider(_periodSlider))
+                              ? scheme.onSurface.withValues(alpha: 0.38)
+                              : scheme.onSurface,
                       fontWeight: FontWeight.w800,
                     ),
                   ),
-                  if (_message != null) ...[
+                  if (_successGuess != null) ...[
+                    const SizedBox(height: 10),
+                    const _IdentifySuccessBanner(),
+                  ] else if (_message != null) ...[
                     const SizedBox(height: 8),
                     Text(
                       _message!,
@@ -278,42 +324,74 @@ class _SiteIdentifySheetState extends State<SiteIdentifySheet> {
                   Padding(
                     padding: const EdgeInsets.fromLTRB(20, 18, 20, 28),
                     child: FilledButton(
-                      onPressed: _submitting ||
-                              _disabled.contains(_periodForSlider(_periodSlider))
-                          ? null
-                          : () => _onGuess(_periodForSlider(_periodSlider)),
+                      onPressed: _successGuess != null
+                          ? () {}
+                          : _submitting ||
+                                  _disabled.contains(
+                                      _periodForSlider(_periodSlider))
+                              ? null
+                              : () =>
+                                  _onGuess(_periodForSlider(_periodSlider)),
                       style: FilledButton.styleFrom(
                         minimumSize: const Size.fromHeight(48),
+                        backgroundColor: _successGuess != null
+                            ? const Color(0xFF2E7D32)
+                            : null,
+                        disabledBackgroundColor: _successGuess != null
+                            ? const Color(0xFF2E7D32)
+                            : null,
+                        foregroundColor: _successGuess != null
+                            ? Colors.white
+                            : null,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
                       ),
                       child: Text(
-                        _submitting ? 'Checking…' : 'Confirm period',
+                        _successGuess != null
+                            ? 'Correct!'
+                            : _submitting
+                                ? 'Checking…'
+                                : 'Confirm period',
                         style: const TextStyle(fontWeight: FontWeight.w700),
                       ),
                     ),
                   ),
                 ] else if (options != null) ...[
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
-                    child: Column(
-                      children: [
-                        for (final choice in options.choices)
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 8),
-                            child: _IdentifyChoiceButton(
-                              label: toTitleCase(choice),
-                              imageUrl: options.choiceImages[choice],
-                              disabled:
-                                  _disabled.contains(choice) || _submitting,
-                              onPressed: () => _onGuess(choice),
-                            ),
-                          ),
-                      ],
+                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+                    child: GridView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: options.choices.length,
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 2,
+                        crossAxisSpacing: 10,
+                        mainAxisSpacing: 10,
+                        childAspectRatio: 1.05,
+                      ),
+                      itemBuilder: (context, index) {
+                        final choice = options.choices[index];
+                        return _IdentifyRockTile(
+                          label: toTitleCase(choice),
+                          imageUrl: options.choiceImages[choice],
+                          disabled: _disabled.contains(choice) ||
+                              _submitting ||
+                              (_successGuess != null &&
+                                  _successGuess != choice),
+                          correct: _successGuess == choice,
+                          onPressed: () => _onGuess(choice),
+                        );
+                      },
                     ),
                   ),
-                  if (_message != null)
+                  if (_successGuess != null)
+                    const Padding(
+                      padding: EdgeInsets.fromLTRB(20, 4, 20, 20),
+                      child: _IdentifySuccessBanner(),
+                    )
+                  else if (_message != null)
                     Padding(
                       padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
                       child: Text(
@@ -542,110 +620,192 @@ class _PeriodTimelineSlider extends StatelessWidget {
   }
 }
 
-class _IdentifyChoiceButton extends StatelessWidget {
-  const _IdentifyChoiceButton({
+class _IdentifySuccessBanner extends StatelessWidget {
+  const _IdentifySuccessBanner();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(
+          Icons.check_circle_rounded,
+          color: Color(0xFF2E7D32),
+          size: 22,
+        ),
+        SizedBox(width: 8),
+        Text(
+          'Correct!',
+          style: TextStyle(
+            color: Color(0xFF2E7D32),
+            fontWeight: FontWeight.w800,
+            fontSize: 16,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _IdentifyRockTile extends StatelessWidget {
+  const _IdentifyRockTile({
     required this.label,
     required this.disabled,
     required this.onPressed,
     this.imageUrl,
+    this.correct = false,
   });
 
   final String label;
   final String? imageUrl;
   final bool disabled;
+  final bool correct;
   final VoidCallback onPressed;
 
-  static const _avatarSize = 52.0;
-
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final albumUrl = albumImageUrlFromCurated(imageUrl) ?? imageUrl;
-    return OutlinedButton(
-      onPressed: disabled ? null : onPressed,
-      style: OutlinedButton.styleFrom(
-        foregroundColor: scheme.onSurface,
-        disabledForegroundColor: scheme.onSurface.withValues(alpha: 0.38),
-        backgroundColor: scheme.surfaceContainerHighest.withValues(alpha: 0.45),
-        disabledBackgroundColor:
-            scheme.surfaceContainerHighest.withValues(alpha: 0.2),
-        side: BorderSide(
-          color: disabled
-              ? scheme.outlineVariant
-              : scheme.outline.withValues(alpha: 0.7),
-        ),
-        padding: const EdgeInsets.fromLTRB(10, 10, 16, 10),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-      ),
-      child: Row(
-        children: [
-          Opacity(
-            opacity: disabled ? 0.4 : 1,
-            child: _RockChoiceAvatar(
-              imageUrl: albumUrl,
-              size: _avatarSize,
-            ),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Text(
-              label,
-              style: const TextStyle(
-                fontWeight: FontWeight.w700,
-                fontSize: 16,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _RockChoiceAvatar extends StatelessWidget {
-  const _RockChoiceAvatar({
-    required this.imageUrl,
-    required this.size,
-  });
-
-  final String? imageUrl;
-  final double size;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final placeholder = ColoredBox(
-      color: scheme.surfaceContainerHighest,
-      child: Icon(
-        Icons.landscape_outlined,
-        size: size * 0.42,
-        color: scheme.onSurfaceVariant.withValues(alpha: 0.55),
-      ),
-    );
-
-    Widget child;
+    // Prefer full Original image so the tile fill stays sharp.
     final url = imageUrl?.trim();
-    if (url == null || url.isEmpty || !isCuratedSiteTypeImageUrl(url)) {
-      child = placeholder;
-    } else {
-      final dpr = MediaQuery.devicePixelRatioOf(context);
-      child = CachedNetworkImage(
-        imageUrl: url,
-        fit: BoxFit.cover,
-        fadeInDuration: Duration.zero,
-        memCacheWidth: networkImageMemCacheExtent(size, dpr),
-        memCacheHeight: networkImageMemCacheExtent(size, dpr),
-        httpHeaders: const {
-          'User-Agent': 'Mesozoica/1.0 (mobile app; site identify)',
-        },
-        placeholder: (context, _) => placeholder,
-        errorWidget: (context, _, error) => placeholder,
-      );
-    }
+    final hasImage =
+        url != null && url.isNotEmpty && isCuratedSiteTypeImageUrl(url);
 
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(12),
-      child: SizedBox(width: size, height: size, child: child),
+    return Material(
+      color: scheme.surfaceContainerHighest,
+      borderRadius: BorderRadius.circular(14),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: disabled || correct ? null : onPressed,
+        child: Opacity(
+          opacity: disabled && !correct ? 0.42 : 1,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              if (hasImage)
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    final dpr = MediaQuery.devicePixelRatioOf(context);
+                    return CachedNetworkImage(
+                      imageUrl: url,
+                      fit: BoxFit.cover,
+                      fadeInDuration: Duration.zero,
+                      memCacheWidth: networkImageMemCacheExtent(
+                        constraints.maxWidth,
+                        dpr,
+                      ),
+                      memCacheHeight: networkImageMemCacheExtent(
+                        constraints.maxHeight,
+                        dpr,
+                      ),
+                      httpHeaders: const {
+                        'User-Agent':
+                            'Mesozoica/1.0 (mobile app; site identify)',
+                      },
+                      placeholder: (context, _) => ColoredBox(
+                        color: scheme.surfaceContainerHighest,
+                      ),
+                      errorWidget: (context, _, error) => ColoredBox(
+                        color: scheme.surfaceContainerHighest,
+                        child: Icon(
+                          Icons.landscape_outlined,
+                          color: scheme.onSurfaceVariant
+                              .withValues(alpha: 0.45),
+                        ),
+                      ),
+                    );
+                  },
+                )
+              else
+                ColoredBox(
+                  color: scheme.surfaceContainerHighest,
+                  child: Icon(
+                    Icons.landscape_outlined,
+                    size: 36,
+                    color: scheme.onSurfaceVariant.withValues(alpha: 0.45),
+                  ),
+                ),
+              // Bottom scrim so the name stays readable on any photo.
+              const DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Color(0x00000000),
+                      Color(0x66000000),
+                      Color(0xCC000000),
+                    ],
+                    stops: [0.35, 0.7, 1],
+                  ),
+                ),
+              ),
+              Positioned(
+                left: 10,
+                right: 10,
+                bottom: 10,
+                child: Text(
+                  label,
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 15,
+                    height: 1.15,
+                    letterSpacing: 0.15,
+                    shadows: [
+                      Shadow(
+                        color: Color(0xE6000000),
+                        blurRadius: 8,
+                        offset: Offset(0, 1),
+                      ),
+                      Shadow(
+                        color: Color(0x99000000),
+                        blurRadius: 2,
+                        offset: Offset(0, 1),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              if (correct) ...[
+                const ColoredBox(color: Color(0x552E7D32)),
+                const Center(
+                  child: Icon(
+                    Icons.check_circle_rounded,
+                    color: Colors.white,
+                    size: 48,
+                    shadows: [
+                      Shadow(
+                        color: Color(0x99000000),
+                        blurRadius: 8,
+                      ),
+                    ],
+                  ),
+                ),
+              ] else if (disabled)
+                ColoredBox(
+                  color: scheme.surface.withValues(alpha: 0.28),
+                ),
+              if (correct)
+                Positioned.fill(
+                  child: IgnorePointer(
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
+                          color: const Color(0xFF2E7D32),
+                          width: 3,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

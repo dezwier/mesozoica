@@ -35,7 +35,7 @@ class SiteCardBack extends StatelessWidget {
 
   Future<void> _openIdentify(BuildContext context) async {
     final updated = await showSiteIdentifySheet(context, site: site);
-    if (updated != null) {
+    if (updated != null && context.mounted) {
       onSiteUpdated?.call(updated);
     }
   }
