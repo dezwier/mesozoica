@@ -211,11 +211,11 @@ class _AppShellState extends State<AppShell>
                       exploredSinceLastVisitM: gap,
                     );
               },
-            ).then((_) {
+            ).then((_) async {
               if (!mounted) return;
               // Cold start never gets a resumed lifecycle transition — credit
               // any closed-app Health gap and surface the visit XP badge.
-              return context.read<WalkDistanceController>().onAppResumed(
+              await context.read<WalkDistanceController>().onAppResumed(
                     profile: context.read<AuthController>().currentUser,
                   );
             }),
