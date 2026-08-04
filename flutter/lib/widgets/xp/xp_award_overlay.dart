@@ -24,8 +24,9 @@ class XpAwardOverlay extends StatefulWidget {
 
 class _XpAwardOverlayState extends State<XpAwardOverlay>
     with TickerProviderStateMixin {
-  static const _holdDuration = Duration(milliseconds: 4500);
+  static const _holdDuration = Duration(milliseconds: 7500);
   static const _magicDuration = Duration(milliseconds: 900);
+  static const _tapDismissDelay = Duration(milliseconds: 1100);
   static const _dismissDragThreshold = 28.0;
   static const _dismissVelocity = -280.0;
 
@@ -34,6 +35,7 @@ class _XpAwardOverlayState extends State<XpAwardOverlay>
   XpAwardController? _awards;
   bool _pumping = false;
   bool _dismissRequested = false;
+  bool _skipMagic = false;
   double _dragDy = 0;
 
   AnimationController? _entrance;
@@ -127,6 +129,7 @@ class _XpAwardOverlayState extends State<XpAwardOverlay>
     _magic = null;
     _exit = null;
     _dismissRequested = false;
+    _skipMagic = false;
 
     setState(() {
       _playing = award;
@@ -148,7 +151,7 @@ class _XpAwardOverlayState extends State<XpAwardOverlay>
     await _waitHoldOrDismiss();
     if (!mounted) return;
 
-    if (!_dismissRequested && _hudVisible) {
+    if (!_dismissRequested && !_skipMagic && _hudVisible) {
       _captureEndpoints();
       final magic = AnimationController(
         vsync: this,
@@ -162,6 +165,10 @@ class _XpAwardOverlayState extends State<XpAwardOverlay>
       ]);
       if (!mounted) return;
       if (magic.isAnimating) magic.stop();
+    } else if (_skipMagic && !_dismissRequested) {
+      // Tap opened the skill sheet; linger until the delayed dismiss fires.
+      await _waitUntilDismissed();
+      if (!mounted) return;
     }
 
     // Drop magic paint before exit so it doesn't linger under the sheet.
@@ -211,12 +218,16 @@ class _XpAwardOverlayState extends State<XpAwardOverlay>
       progress: 0,
     );
 
-    _requestDismiss();
     showProfileSkillDetailSheet(
       navContext,
       skill: skill,
       breakdown: profile?.skillBreakdown[award.skillId],
     );
+    // Linger so the badge doesn't vanish the instant the sheet opens.
+    _skipMagic = true;
+    Future<void>.delayed(_tapDismissDelay, () {
+      if (mounted) _requestDismiss();
+    });
   }
 
   void _onVerticalDragUpdate(DragUpdateDetails details) {

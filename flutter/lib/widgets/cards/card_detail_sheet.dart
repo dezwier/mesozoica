@@ -18,13 +18,18 @@ class CardDetailSheet {
 
   static bool get isOpen => openCount.value > 0;
 
+  /// Top inset so floating XP-award badges clear celebration / marker cards.
+  static const double topBreathingRoom = 68;
+
   /// Cap content like the catalog Cover Flow middle card (~72% of the band
   /// above the dismiss chrome), with headroom for celebration titles.
   static double maxContentHeight(BuildContext context) {
     final size = MediaQuery.sizeOf(context);
     final padding = MediaQuery.paddingOf(context);
-    final available =
-        size.height - padding.top - ShellOverlayPanel.bottomChromeHeight(context);
+    final available = size.height -
+        padding.top -
+        topBreathingRoom -
+        ShellOverlayPanel.bottomChromeHeight(context);
     return available * 0.85;
   }
 
@@ -76,8 +81,10 @@ class CardDetailSheetShell extends StatelessWidget {
       opaque: false,
       onClose: () => Navigator.of(context).maybePop(),
       child: Padding(
-        // Center in the band above the dismiss row (same as inventory).
+        // Center in the band above the dismiss row (same as inventory), with
+        // top clearance for the global XP-award badge.
         padding: EdgeInsets.only(
+          top: CardDetailSheet.topBreathingRoom,
           bottom: ShellOverlayPanel.bottomChromeHeight(context),
         ),
         child: _PullDownToDismiss(

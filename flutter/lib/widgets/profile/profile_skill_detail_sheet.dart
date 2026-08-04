@@ -275,31 +275,7 @@ class _SkillDetailDrawer extends StatelessWidget {
                     ),
                     if (xpRows.isNotEmpty) ...[
                       const SizedBox(height: 5),
-                      _SkillSectionCard(
-                        icon: Icons.bolt_outlined,
-                        title: 'XP sources',
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            const _XpSourceHeader(),
-                            const SizedBox(height: 8),
-                            for (var i = 0; i < xpRows.length; i++) ...[
-                              if (i > 0) const SizedBox(height: 12),
-                              _MainParamRow(
-                                row: _MainParamDisplay(
-                                  label: xpRows[i].label,
-                                  effectiveValue: xpRows[i].valueText,
-                                  overallDeltaPct: xpRows[i].overallDeltaPct,
-                                  factors: xpRows[i].factors,
-                                ),
-                                scheme: scheme,
-                                totalText: '${xpRows[i].totalXp} XP',
-                                totalColumnWidth: _xpTotalColumnWidth,
-                              ),
-                            ],
-                          ],
-                        ),
-                      ),
+                      _XpSourcesSection(rows: xpRows, scheme: scheme),
                     ],
                   ],
                 ),
@@ -328,30 +304,142 @@ class _XpSourceMergedRow {
   final List<_ParamFactor> factors;
 }
 
-const _xpTotalColumnWidth = 72.0;
-const _xpColumnGap = 12.0;
 const _breakdownTooltipWidth = 240.0;
 
-class _XpSourceHeader extends StatelessWidget {
-  const _XpSourceHeader();
+enum _XpSourceColumn { value, total }
+
+class _XpSourcesSection extends StatefulWidget {
+  const _XpSourcesSection({
+    required this.rows,
+    required this.scheme,
+  });
+
+  final List<_XpSourceMergedRow> rows;
+  final ColorScheme scheme;
+
+  @override
+  State<_XpSourcesSection> createState() => _XpSourcesSectionState();
+}
+
+class _XpSourcesSectionState extends State<_XpSourcesSection> {
+  _XpSourceColumn _column = _XpSourceColumn.value;
 
   @override
   Widget build(BuildContext context) {
-    final style = Theme.of(context).textTheme.labelSmall?.copyWith(
-          color: Theme.of(context).colorScheme.onSurfaceVariant,
-          fontWeight: FontWeight.w700,
-          letterSpacing: 0.3,
-        );
-    return Row(
-      children: [
-        const Expanded(child: SizedBox.shrink()),
-        Text('Value', style: style),
-        const SizedBox(width: _xpColumnGap),
-        SizedBox(
-          width: _xpTotalColumnWidth,
-          child: Text('Total', textAlign: TextAlign.right, style: style),
+    final showValue = _column == _XpSourceColumn.value;
+    return _SkillSectionCard(
+      icon: Icons.bolt_outlined,
+      title: 'XP sources',
+      titleTrailing: _XpSourceColumnToggle(
+        selected: _column,
+        onChanged: (column) => setState(() => _column = column),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          for (var i = 0; i < widget.rows.length; i++) ...[
+            if (i > 0) const SizedBox(height: 14),
+            _MainParamRow(
+              row: _MainParamDisplay(
+                label: widget.rows[i].label,
+                effectiveValue: showValue
+                    ? widget.rows[i].valueText
+                    : '${widget.rows[i].totalXp} XP',
+                overallDeltaPct:
+                    showValue ? widget.rows[i].overallDeltaPct : null,
+                factors: showValue ? widget.rows[i].factors : const [],
+              ),
+              scheme: widget.scheme,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _XpSourceColumnToggle extends StatelessWidget {
+  const _XpSourceColumnToggle({
+    required this.selected,
+    required this.onChanged,
+  });
+
+  final _XpSourceColumn selected;
+  final ValueChanged<_XpSourceColumn> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.all(2),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerHighest.withValues(alpha: 0.85),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _XpSourceToggleSegment(
+            label: 'Value',
+            selected: selected == _XpSourceColumn.value,
+            onTap: () => onChanged(_XpSourceColumn.value),
+          ),
+          _XpSourceToggleSegment(
+            label: 'Total',
+            selected: selected == _XpSourceColumn.total,
+            onTap: () => onChanged(_XpSourceColumn.total),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _XpSourceToggleSegment extends StatelessWidget {
+  const _XpSourceToggleSegment({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 140),
+        curve: Curves.easeOut,
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        decoration: BoxDecoration(
+          color: selected ? scheme.surface : Colors.transparent,
+          borderRadius: BorderRadius.circular(6),
+          boxShadow: selected
+              ? [
+                  BoxShadow(
+                    color: scheme.shadow.withValues(alpha: 0.12),
+                    blurRadius: 2,
+                    offset: const Offset(0, 1),
+                  ),
+                ]
+              : null,
         ),
-      ],
+        child: Text(
+          label,
+          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                color: selected
+                    ? scheme.onSurface
+                    : scheme.onSurfaceVariant,
+                fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                height: 1.1,
+              ),
+        ),
+      ),
     );
   }
 }
@@ -596,11 +684,13 @@ class _SkillSectionCard extends StatelessWidget {
     required this.icon,
     required this.title,
     required this.child,
+    this.titleTrailing,
   });
 
   final IconData icon;
   final String title;
   final Widget child;
+  final Widget? titleTrailing;
 
   @override
   Widget build(BuildContext context) {
@@ -624,12 +714,18 @@ class _SkillSectionCard extends StatelessWidget {
               children: [
                 Icon(icon, color: scheme.primary, size: 20),
                 const SizedBox(width: 8),
-                Text(
-                  title,
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
+                Expanded(
+                  child: Text(
+                    title,
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                  ),
                 ),
+                if (titleTrailing != null) ...[
+                  const SizedBox(width: 8),
+                  titleTrailing!,
+                ],
               ],
             ),
             const SizedBox(height: 12),
@@ -711,16 +807,10 @@ class _MainParamRow extends StatefulWidget {
   const _MainParamRow({
     required this.row,
     required this.scheme,
-    this.totalText,
-    this.totalColumnWidth,
   });
 
   final _MainParamDisplay row;
   final ColorScheme scheme;
-
-  /// When set, shows a second numeric column (XP Sources total).
-  final String? totalText;
-  final double? totalColumnWidth;
 
   @override
   State<_MainParamRow> createState() => _MainParamRowState();
@@ -895,43 +985,14 @@ class _MainParamRowState extends State<_MainParamRow> {
       );
     }
 
-    final valueWithBadge = Row(
-      mainAxisSize: MainAxisSize.min,
+    return Row(
       children: [
+        Expanded(child: Text(row.label, style: body)),
         Text(row.effectiveValue, style: valueStyle),
         if (deltaBadge != null) ...[
           const SizedBox(width: 8),
           deltaBadge,
         ],
-      ],
-    );
-
-    final totalText = widget.totalText;
-    if (totalText == null) {
-      return Row(
-        children: [
-          Expanded(child: Text(row.label, style: body)),
-          valueWithBadge,
-        ],
-      );
-    }
-
-    // Size value+badge to content so the badge stays tappable (a fixed-width
-    // column was clipping hit-tests when the badge overflowed).
-    final totalWidth = widget.totalColumnWidth ?? _xpTotalColumnWidth;
-    return Row(
-      children: [
-        Expanded(child: Text(row.label, style: body)),
-        valueWithBadge,
-        const SizedBox(width: _xpColumnGap),
-        SizedBox(
-          width: totalWidth,
-          child: Text(
-            totalText,
-            textAlign: TextAlign.right,
-            style: valueStyle,
-          ),
-        ),
       ],
     );
   }

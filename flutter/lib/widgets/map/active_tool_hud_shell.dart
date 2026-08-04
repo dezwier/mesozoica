@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 
 import '../../shell/map_chrome_insets.dart';
-import '../../theme/map_chrome_decorations.dart';
 import 'vintage_guidance_compass.dart';
 
 /// Draggable brass map chip chrome shared by timed-tool and aerial HUDs.
@@ -26,7 +25,9 @@ class VintageMapHudChip extends StatefulWidget {
 }
 
 class _VintageMapHudChipState extends State<VintageMapHudChip> {
-  static const _edgeGap = 8.0;
+  static const _topGap = 8.0;
+  /// Clearance above the bottom leather bar (roomier than side inset).
+  static const _bottomGap = 12.0;
   static const _sidePad = MapChromeInsets.bottomBarSidePad;
 
   /// Drag delta from the default lower-left anchor (screen coords: +y down).
@@ -41,8 +42,8 @@ class _VintageMapHudChipState extends State<VintageMapHudChip> {
   void _onPanUpdate(DragUpdateDetails details) {
     final size = MediaQuery.sizeOf(context);
     // Stop just under the profile HUD; chip paints over the top fade.
-    final topMin = MapChromeInsets.profileHudBottom(context) + _edgeGap;
-    final bottomClearance = MapChromeInsets.bottom(context) + _edgeGap;
+    final topMin = MapChromeInsets.profileHudBottom(context) + _topGap;
+    final bottomClearance = MapChromeInsets.bottom(context) + _bottomGap;
     final bottomMaxY = size.height - bottomClearance;
     final leftMin = _sidePad;
     final rightMax = size.width - _sidePad;
@@ -65,8 +66,8 @@ class _VintageMapHudChipState extends State<VintageMapHudChip> {
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.sizeOf(context);
-    final bottomClearance = MapChromeInsets.bottom(context) + _edgeGap;
-    final topMin = MapChromeInsets.profileHudBottom(context) + _edgeGap;
+    final bottomClearance = MapChromeInsets.bottom(context) + _bottomGap;
+    final topMin = MapChromeInsets.profileHudBottom(context) + _topGap;
     final maxBottom = math.max(
       bottomClearance,
       size.height - topMin - _chipSize.height,
@@ -91,8 +92,20 @@ class _VintageMapHudChipState extends State<VintageMapHudChip> {
           child: Material(
             color: Colors.transparent,
             child: DecoratedBox(
-              decoration: MapChromeDecorations.leatherPanel(
+              decoration: BoxDecoration(
+                color: VintageInstrumentStyle.dialFace.withValues(alpha: 0.72),
                 borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: VintageInstrumentStyle.brassRim,
+                  width: 1.2,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.35),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
               ),
               child: ConstrainedBox(
                 constraints: BoxConstraints(maxWidth: widget.maxWidth),

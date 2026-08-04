@@ -39,10 +39,14 @@ abstract final class MapChromeDecorations {
   }
 
   /// Dark leather / oxidized metal fill for bars and pills.
+  ///
+  /// [compact] keeps the same palette but biases toward the mid/highlight band
+  /// so short chips match the visual tone of the taller bottom bar.
   static BoxDecoration leatherPanel({
     required BorderRadius borderRadius,
     double borderWidth = MapChromeTheme.chromeBorderWidth,
     bool soft = false,
+    bool compact = false,
   }) {
     final highlight =
         soft ? MapChromeTheme.leatherSoftHighlight : MapChromeTheme.leatherHighlight;
@@ -53,7 +57,9 @@ abstract final class MapChromeDecorations {
       gradient: LinearGradient(
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
-        colors: [highlight, mid, base],
+        colors: compact
+            ? [highlight, mid, mid]
+            : [highlight, mid, base],
         stops: const [0.0, 0.4, 1.0],
       ),
       border: Border.all(
