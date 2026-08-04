@@ -1,0 +1,4113 @@
+{
+  "config": {
+    "academic_publishing": {
+      "enabled": false,
+      "level_modifiers": {},
+      "main_params": {},
+      "skill_id": "academic_publishing",
+      "weather_time_modifiers": {},
+      "weather_type_modifiers": {}
+    },
+    "dinosaur_modelling": {
+      "enabled": false,
+      "level_modifiers": {},
+      "main_params": {},
+      "skill_id": "dinosaur_modelling",
+      "weather_time_modifiers": {},
+      "weather_type_modifiers": {}
+    },
+    "dinosaur_mounting": {
+      "enabled": false,
+      "level_modifiers": {},
+      "main_params": {},
+      "skill_id": "dinosaur_mounting",
+      "weather_time_modifiers": {},
+      "weather_type_modifiers": {}
+    },
+    "fossil_analysis": {
+      "enabled": false,
+      "level_modifiers": {},
+      "main_params": {},
+      "skill_id": "fossil_analysis",
+      "weather_time_modifiers": {},
+      "weather_type_modifiers": {}
+    },
+    "fossil_curation": {
+      "enabled": false,
+      "level_modifiers": {},
+      "main_params": {},
+      "skill_id": "fossil_curation",
+      "weather_time_modifiers": {},
+      "weather_type_modifiers": {}
+    },
+    "fossil_detection": {
+      "enabled": false,
+      "level_modifiers": {
+        "fossil_discovery_xp": []
+      },
+      "main_params": {
+        "fossil_discovery_xp": 5
+      },
+      "skill_id": "fossil_detection",
+      "weather_time_modifiers": {
+        "fossil_discovery_xp": {
+          "dawn": [
+            {
+              "op": "multiply",
+              "value": 1.2
+            }
+          ],
+          "day": [],
+          "dusk": [
+            {
+              "op": "multiply",
+              "value": 1.2
+            }
+          ],
+          "golden_hour": [
+            {
+              "op": "multiply",
+              "value": 1.1
+            }
+          ],
+          "night": [
+            {
+              "op": "multiply",
+              "value": 1.5
+            }
+          ]
+        }
+      },
+      "weather_type_modifiers": {
+        "fossil_discovery_xp": {}
+      }
+    },
+    "fossil_excavation": {
+      "enabled": false,
+      "level_modifiers": {},
+      "main_params": {},
+      "skill_id": "fossil_excavation",
+      "weather_time_modifiers": {},
+      "weather_type_modifiers": {}
+    },
+    "fossil_preparation": {
+      "enabled": false,
+      "level_modifiers": {},
+      "main_params": {},
+      "skill_id": "fossil_preparation",
+      "weather_time_modifiers": {},
+      "weather_type_modifiers": {}
+    },
+    "fossil_transport": {
+      "enabled": false,
+      "level_modifiers": {},
+      "main_params": {},
+      "skill_id": "fossil_transport",
+      "weather_time_modifiers": {},
+      "weather_type_modifiers": {}
+    },
+    "leveling": {
+      "career_titles": [
+        "Curious Wanderer",
+        "Weekend Fossil Fan",
+        "Trail Scout",
+        "Rock Hound",
+        "Field Novice",
+        "Map Reader",
+        "Dirt Sifter",
+        "Outcrop Spotter",
+        "Hill Walker",
+        "Stream Bed Picker",
+        "Field Assistant",
+        "Site Scout",
+        "Brush Carrier",
+        "Notebook Keeper",
+        "Quarry Hand",
+        "Grid Walker",
+        "Compass Follower",
+        "Bedrock Watcher",
+        "Talus Turner",
+        "Gully Searcher",
+        "Junior Prospector",
+        "Formation Tracker",
+        "Layer Reader",
+        "Sediment Sorter",
+        "Bone Spotter",
+        "Field Technician",
+        "Survey Aide",
+        "Trench Digger",
+        "Screen Washer",
+        "Specimen Tagger",
+        "Camp Hand",
+        "Route Planner",
+        "Outcrop Mapper",
+        "Fossil Finder",
+        "Trail Veteran",
+        "Field Naturalist",
+        "Site Recorder",
+        "Grid Surveyor",
+        "Exposure Hunter",
+        "Valley Prospector",
+        "Field Geologist",
+        "Stratigrapher",
+        "Taphonomy Student",
+        "Bone Bed Seeker",
+        "Quarry Lead",
+        "Expedition Member",
+        "Terrain Reader",
+        "Fossil Prospector",
+        "Landscape Decoder",
+        "Ridge Walker",
+        "Field Researcher",
+        "Site Documenter",
+        "Excavation Crew",
+        "Matrix Sifter",
+        "Lab Courier",
+        "Field Supervisor",
+        "Lead Surveyor",
+        "Exposure Specialist",
+        "Bone Hunter",
+        "Formation Expert",
+        "Senior Prospector",
+        "Terrain Analyst",
+        "Fossil Scout",
+        "Landscape Archaeologist",
+        "Ridge Master",
+        "Field Scientist",
+        "Site Director",
+        "Excavation Lead",
+        "Preparator Trainee",
+        "Collection Manager",
+        "Expedition Scientist",
+        "Terrain Specialist",
+        "Fossil Expert",
+        "Landscape Reader",
+        "Ridge Veteran",
+        "Principal Researcher",
+        "Site Authority",
+        "Excavation Master",
+        "Preparation Expert",
+        "Collection Curator",
+        "Expedition Lead",
+        "Terrain Master",
+        "Fossil Authority",
+        "Landscape Scholar",
+        "Ridge Legend",
+        "Chief Paleontologist",
+        "Site Master",
+        "Excavation Director",
+        "Preparation Master",
+        "Collection Director",
+        "Expedition Director",
+        "Terrain Sage",
+        "Fossil Sage",
+        "Landscape Master",
+        "Ridge Oracle",
+        "World-Renowned Paleontologist",
+        "Legend of the Field",
+        "Master of the Mesozoic",
+        "Keeper of Deep Time"
+      ],
+      "skills": [
+        {
+          "id": "site_discovery",
+          "name": "Site Discovery"
+        },
+        {
+          "id": "site_stewardship",
+          "name": "Site Stewardship"
+        },
+        {
+          "id": "site_clearing",
+          "name": "Site Clearing"
+        },
+        {
+          "id": "fossil_detection",
+          "name": "Fossil Detection"
+        },
+        {
+          "id": "fossil_excavation",
+          "name": "Fossil Excavation"
+        },
+        {
+          "id": "fossil_transport",
+          "name": "Fossil Transport"
+        },
+        {
+          "id": "fossil_curation",
+          "name": "Fossil Curation"
+        },
+        {
+          "id": "fossil_preparation",
+          "name": "Fossil Preparation"
+        },
+        {
+          "id": "fossil_analysis",
+          "name": "Fossil Analysis"
+        },
+        {
+          "id": "dinosaur_modelling",
+          "name": "Dinosaur Modelling"
+        },
+        {
+          "id": "dinosaur_mounting",
+          "name": "Dinosaur Mounting"
+        },
+        {
+          "id": "academic_publishing",
+          "name": "Academic Publishing"
+        }
+      ]
+    },
+    "period_colors": {
+      "orbit_survey": {
+        "cretaceous": [
+          168,
+          107,
+          69
+        ],
+        "jurassic": [
+          53,
+          104,
+          72
+        ],
+        "triassic": [
+          221,
+          133,
+          0
+        ]
+      },
+      "site_markers": {
+        "cretaceous": [
+          141,
+          110,
+          99
+        ],
+        "jurassic": [
+          79,
+          143,
+          104
+        ],
+        "triassic": [
+          221,
+          133,
+          0
+        ]
+      }
+    },
+    "rock_type_colors": {
+      "formation_map": {
+        "carbonate": [
+          222,
+          208,
+          184
+        ],
+        "chalk": [
+          245,
+          240,
+          230
+        ],
+        "chert": [
+          110,
+          139,
+          122
+        ],
+        "claystone": [
+          122,
+          106,
+          90
+        ],
+        "coal": [
+          44,
+          44,
+          44
+        ],
+        "conglomerate": [
+          160,
+          82,
+          45
+        ],
+        "evaporite": [
+          224,
+          205,
+          168
+        ],
+        "gravel": [
+          154,
+          139,
+          122
+        ],
+        "ironstone": [
+          183,
+          65,
+          14
+        ],
+        "lignite": [
+          74,
+          55,
+          40
+        ],
+        "lime mudstone": [
+          210,
+          196,
+          168
+        ],
+        "limestone": [
+          232,
+          213,
+          183
+        ],
+        "marl": [
+          156,
+          175,
+          136
+        ],
+        "mudstone": [
+          139,
+          115,
+          85
+        ],
+        "other": [
+          136,
+          136,
+          136
+        ],
+        "phosphorite": [
+          107,
+          142,
+          107
+        ],
+        "sandstone": [
+          212,
+          160,
+          23
+        ],
+        "shale": [
+          92,
+          107,
+          74
+        ],
+        "siliciclastic": [
+          168,
+          144,
+          112
+        ],
+        "siltstone": [
+          196,
+          165,
+          116
+        ],
+        "tuff": [
+          139,
+          123,
+          139
+        ],
+        "volcanic_ash": [
+          184,
+          160,
+          200
+        ],
+        "wackestone": [
+          201,
+          184,
+          150
+        ]
+      }
+    },
+    "site_clearing": {
+      "enabled": false,
+      "level_modifiers": {},
+      "main_params": {},
+      "skill_id": "site_clearing",
+      "weather_time_modifiers": {},
+      "weather_type_modifiers": {}
+    },
+    "site_discovery": {
+      "client": {
+        "auto_discover_radius_m": 20.0,
+        "cache_radius_km": 1.0,
+        "cache_refresh_move_threshold_m": 500.0,
+        "discover_fail_retry_s": 20,
+        "discovery_reroll_interval_s": 10
+      },
+      "level_modifiers": {
+        "active_km_xp": [],
+        "discovery_chance": [],
+        "first_discovery_xp": [],
+        "max_discovery_speed_kmh": [],
+        "passive_km_xp": [],
+        "site_discovery_xp": [],
+        "visibility_distance_m": []
+      },
+      "main_params": {
+        "active_km_xp": 30.0,
+        "discovery_chance": 0.1,
+        "first_discovery_xp": 20.0,
+        "max_discovery_speed_kmh": 10.0,
+        "passive_km_xp": 5.0,
+        "site_discovery_xp": 20.0,
+        "visibility_distance_m": 20.0
+      },
+      "skill_id": "site_discovery",
+      "weather_time_modifiers": {
+        "active_km_xp": {},
+        "discovery_chance": {
+          "dawn": [],
+          "day": [
+            {
+              "op": "multiply",
+              "value": 1.1
+            }
+          ],
+          "dusk": [],
+          "golden_hour": [
+            {
+              "op": "multiply",
+              "value": 1.3
+            }
+          ],
+          "night": [
+            {
+              "op": "multiply",
+              "value": 0.6
+            }
+          ]
+        },
+        "first_discovery_xp": {},
+        "max_discovery_speed_kmh": {},
+        "passive_km_xp": {},
+        "site_discovery_xp": {
+          "dawn": [
+            {
+              "op": "multiply",
+              "value": 1.2
+            }
+          ],
+          "day": [],
+          "dusk": [
+            {
+              "op": "multiply",
+              "value": 1.2
+            }
+          ],
+          "golden_hour": [
+            {
+              "op": "multiply",
+              "value": 1.1
+            }
+          ],
+          "night": [
+            {
+              "op": "multiply",
+              "value": 1.5
+            }
+          ]
+        },
+        "visibility_distance_m": {
+          "dawn": [],
+          "day": [
+            {
+              "op": "multiply",
+              "value": 1.1
+            }
+          ],
+          "dusk": [],
+          "golden_hour": [
+            {
+              "op": "multiply",
+              "value": 1.3
+            }
+          ],
+          "night": [
+            {
+              "op": "multiply",
+              "value": 0.6
+            }
+          ]
+        }
+      },
+      "weather_type_modifiers": {
+        "active_km_xp": {},
+        "discovery_chance": {
+          "clear": [
+            {
+              "op": "multiply",
+              "value": 1.1
+            }
+          ],
+          "cloudy": [
+            {
+              "op": "multiply",
+              "value": 1.05
+            }
+          ],
+          "drizzle": [
+            {
+              "op": "multiply",
+              "value": 0.95
+            }
+          ],
+          "fog": [
+            {
+              "op": "multiply",
+              "value": 0.85
+            }
+          ],
+          "hail": [
+            {
+              "op": "multiply",
+              "value": 0.9
+            }
+          ],
+          "overcast": [],
+          "rain": [
+            {
+              "op": "multiply",
+              "value": 0.9
+            }
+          ],
+          "snow": [],
+          "thunderstorm": [
+            {
+              "op": "multiply",
+              "value": 0.8
+            }
+          ]
+        },
+        "first_discovery_xp": {},
+        "max_discovery_speed_kmh": {},
+        "passive_km_xp": {},
+        "site_discovery_xp": {},
+        "visibility_distance_m": {
+          "clear": [
+            {
+              "op": "multiply",
+              "value": 1.1
+            }
+          ],
+          "cloudy": [
+            {
+              "op": "multiply",
+              "value": 1.05
+            }
+          ],
+          "drizzle": [
+            {
+              "op": "multiply",
+              "value": 0.95
+            }
+          ],
+          "fog": [
+            {
+              "op": "multiply",
+              "value": 0.85
+            }
+          ],
+          "hail": [
+            {
+              "op": "multiply",
+              "value": 0.9
+            }
+          ],
+          "overcast": [],
+          "rain": [
+            {
+              "op": "multiply",
+              "value": 0.9
+            }
+          ],
+          "snow": [],
+          "thunderstorm": [
+            {
+              "op": "multiply",
+              "value": 0.8
+            }
+          ]
+        }
+      }
+    },
+    "site_generation": {
+      "bulk": {
+        "closest_neighbor_count": 10,
+        "max_coordinate_attempts": 200,
+        "max_items": 200,
+        "min_separation_km": 0.03,
+        "nearby_radius_km": 1000.0,
+        "weight_closest": 0.34,
+        "weight_global": 0.33,
+        "weight_nearby": 0.33
+      },
+      "client": {
+        "nearby_radius_km": 0.5
+      },
+      "lazy": {
+        "cell_size_m": 500.0,
+        "closest_neighbor_count": 10,
+        "max_coordinate_attempts": 200,
+        "max_sites_per_cell": 50,
+        "min_separation_km": 0.03,
+        "nearby_radius_km": 2000.0,
+        "weight_closest": 0.34,
+        "weight_global": 0.33,
+        "weight_nearby": 0.33
+      }
+    },
+    "site_stewardship": {
+      "accuracy_noise": {
+        "max_delta": 0.3
+      },
+      "completeness_weights": {
+        "fragmentary": 0.3,
+        "isolated_element": 0.2,
+        "nearly_complete": 0.05,
+        "partial": 0.25,
+        "substantial": 0.15,
+        "trace_only": 0.05
+      },
+      "defaults": {
+        "completeness": "fragmentary",
+        "quality": "moderate",
+        "subcategory": "teeth"
+      },
+      "depth_weights": [
+        {
+          "max_cm": 0,
+          "min_cm": 0,
+          "weight": 0.1
+        },
+        {
+          "max_cm": 50,
+          "min_cm": 1,
+          "weight": 0.3
+        },
+        {
+          "max_cm": 200,
+          "min_cm": 51,
+          "weight": 0.3
+        },
+        {
+          "max_cm": 500,
+          "min_cm": 201,
+          "weight": 0.2
+        },
+        {
+          "max_cm": 1000,
+          "min_cm": 501,
+          "weight": 0.1
+        }
+      ],
+      "dino_count": [
+        {
+          "count": 0,
+          "max_odd": 0.1
+        },
+        {
+          "count": 1,
+          "max_odd": 0.6
+        },
+        {
+          "count": 2,
+          "max_odd": 0.8
+        },
+        {
+          "count": 3,
+          "max_odd": 0.9
+        },
+        {
+          "count": 4,
+          "max_odd": 0.95
+        },
+        {
+          "count": 5,
+          "max_odd": 1.0
+        }
+      ],
+      "fossil_count": {
+        "1": 0.25,
+        "2": 0.25,
+        "3": 0.2,
+        "4": 0.15,
+        "5": 0.1,
+        "6": 0.05
+      },
+      "level_modifiers": {
+        "completeness_accuracy": [
+          {
+            "level": 1,
+            "op": "multiply",
+            "value": 1.0
+          },
+          {
+            "level": 2,
+            "op": "multiply",
+            "value": 2.0
+          },
+          {
+            "level": 3,
+            "op": "multiply",
+            "value": 3.0
+          },
+          {
+            "level": 4,
+            "op": "multiply",
+            "value": 4.0
+          },
+          {
+            "level": 5,
+            "op": "multiply",
+            "value": 5.0
+          },
+          {
+            "level": 6,
+            "op": "multiply",
+            "value": 6.0
+          },
+          {
+            "level": 7,
+            "op": "multiply",
+            "value": 7.0
+          },
+          {
+            "level": 8,
+            "op": "multiply",
+            "value": 8.0
+          },
+          {
+            "level": 9,
+            "op": "multiply",
+            "value": 9.0
+          },
+          {
+            "level": 10,
+            "op": "multiply",
+            "value": 10.0
+          },
+          {
+            "level": 11,
+            "op": "multiply",
+            "value": 11.0
+          },
+          {
+            "level": 12,
+            "op": "multiply",
+            "value": 12.0
+          },
+          {
+            "level": 13,
+            "op": "multiply",
+            "value": 13.0
+          },
+          {
+            "level": 14,
+            "op": "multiply",
+            "value": 14.0
+          },
+          {
+            "level": 15,
+            "op": "multiply",
+            "value": 15.0
+          },
+          {
+            "level": 16,
+            "op": "multiply",
+            "value": 16.0
+          },
+          {
+            "level": 17,
+            "op": "multiply",
+            "value": 17.0
+          },
+          {
+            "level": 18,
+            "op": "multiply",
+            "value": 18.0
+          },
+          {
+            "level": 19,
+            "op": "multiply",
+            "value": 19.0
+          },
+          {
+            "level": 20,
+            "op": "multiply",
+            "value": 20.0
+          },
+          {
+            "level": 21,
+            "op": "multiply",
+            "value": 21.0
+          },
+          {
+            "level": 22,
+            "op": "multiply",
+            "value": 22.0
+          },
+          {
+            "level": 23,
+            "op": "multiply",
+            "value": 23.0
+          },
+          {
+            "level": 24,
+            "op": "multiply",
+            "value": 24.0
+          },
+          {
+            "level": 25,
+            "op": "multiply",
+            "value": 25.0
+          },
+          {
+            "level": 26,
+            "op": "multiply",
+            "value": 26.0
+          },
+          {
+            "level": 27,
+            "op": "multiply",
+            "value": 27.0
+          },
+          {
+            "level": 28,
+            "op": "multiply",
+            "value": 28.0
+          },
+          {
+            "level": 29,
+            "op": "multiply",
+            "value": 29.0
+          },
+          {
+            "level": 30,
+            "op": "multiply",
+            "value": 30.0
+          },
+          {
+            "level": 31,
+            "op": "multiply",
+            "value": 31.0
+          },
+          {
+            "level": 32,
+            "op": "multiply",
+            "value": 32.0
+          },
+          {
+            "level": 33,
+            "op": "multiply",
+            "value": 33.0
+          },
+          {
+            "level": 34,
+            "op": "multiply",
+            "value": 34.0
+          },
+          {
+            "level": 35,
+            "op": "multiply",
+            "value": 35.0
+          },
+          {
+            "level": 36,
+            "op": "multiply",
+            "value": 36.0
+          },
+          {
+            "level": 37,
+            "op": "multiply",
+            "value": 37.0
+          },
+          {
+            "level": 38,
+            "op": "multiply",
+            "value": 38.0
+          },
+          {
+            "level": 39,
+            "op": "multiply",
+            "value": 39.0
+          },
+          {
+            "level": 40,
+            "op": "multiply",
+            "value": 40.0
+          },
+          {
+            "level": 41,
+            "op": "multiply",
+            "value": 41.0
+          },
+          {
+            "level": 42,
+            "op": "multiply",
+            "value": 42.0
+          },
+          {
+            "level": 43,
+            "op": "multiply",
+            "value": 43.0
+          },
+          {
+            "level": 44,
+            "op": "multiply",
+            "value": 44.0
+          },
+          {
+            "level": 45,
+            "op": "multiply",
+            "value": 45.0
+          },
+          {
+            "level": 46,
+            "op": "multiply",
+            "value": 46.0
+          },
+          {
+            "level": 47,
+            "op": "multiply",
+            "value": 47.0
+          },
+          {
+            "level": 48,
+            "op": "multiply",
+            "value": 48.0
+          },
+          {
+            "level": 49,
+            "op": "multiply",
+            "value": 49.0
+          },
+          {
+            "level": 50,
+            "op": "multiply",
+            "value": 50.0
+          },
+          {
+            "level": 51,
+            "op": "multiply",
+            "value": 51.0
+          },
+          {
+            "level": 52,
+            "op": "multiply",
+            "value": 52.0
+          },
+          {
+            "level": 53,
+            "op": "multiply",
+            "value": 53.0
+          },
+          {
+            "level": 54,
+            "op": "multiply",
+            "value": 54.0
+          },
+          {
+            "level": 55,
+            "op": "multiply",
+            "value": 55.0
+          },
+          {
+            "level": 56,
+            "op": "multiply",
+            "value": 56.0
+          },
+          {
+            "level": 57,
+            "op": "multiply",
+            "value": 57.0
+          },
+          {
+            "level": 58,
+            "op": "multiply",
+            "value": 58.0
+          },
+          {
+            "level": 59,
+            "op": "multiply",
+            "value": 59.0
+          },
+          {
+            "level": 60,
+            "op": "multiply",
+            "value": 60.0
+          },
+          {
+            "level": 61,
+            "op": "multiply",
+            "value": 61.0
+          },
+          {
+            "level": 62,
+            "op": "multiply",
+            "value": 62.0
+          },
+          {
+            "level": 63,
+            "op": "multiply",
+            "value": 63.0
+          },
+          {
+            "level": 64,
+            "op": "multiply",
+            "value": 64.0
+          },
+          {
+            "level": 65,
+            "op": "multiply",
+            "value": 65.0
+          },
+          {
+            "level": 66,
+            "op": "multiply",
+            "value": 66.0
+          },
+          {
+            "level": 67,
+            "op": "multiply",
+            "value": 67.0
+          },
+          {
+            "level": 68,
+            "op": "multiply",
+            "value": 68.0
+          },
+          {
+            "level": 69,
+            "op": "multiply",
+            "value": 69.0
+          },
+          {
+            "level": 70,
+            "op": "multiply",
+            "value": 70.0
+          },
+          {
+            "level": 71,
+            "op": "multiply",
+            "value": 71.0
+          },
+          {
+            "level": 72,
+            "op": "multiply",
+            "value": 72.0
+          },
+          {
+            "level": 73,
+            "op": "multiply",
+            "value": 73.0
+          },
+          {
+            "level": 74,
+            "op": "multiply",
+            "value": 74.0
+          },
+          {
+            "level": 75,
+            "op": "multiply",
+            "value": 75.0
+          },
+          {
+            "level": 76,
+            "op": "multiply",
+            "value": 76.0
+          },
+          {
+            "level": 77,
+            "op": "multiply",
+            "value": 77.0
+          },
+          {
+            "level": 78,
+            "op": "multiply",
+            "value": 78.0
+          },
+          {
+            "level": 79,
+            "op": "multiply",
+            "value": 79.0
+          },
+          {
+            "level": 80,
+            "op": "multiply",
+            "value": 80.0
+          },
+          {
+            "level": 81,
+            "op": "multiply",
+            "value": 81.0
+          },
+          {
+            "level": 82,
+            "op": "multiply",
+            "value": 82.0
+          },
+          {
+            "level": 83,
+            "op": "multiply",
+            "value": 83.0
+          },
+          {
+            "level": 84,
+            "op": "multiply",
+            "value": 84.0
+          },
+          {
+            "level": 85,
+            "op": "multiply",
+            "value": 85.0
+          },
+          {
+            "level": 86,
+            "op": "multiply",
+            "value": 86.0
+          },
+          {
+            "level": 87,
+            "op": "multiply",
+            "value": 87.0
+          },
+          {
+            "level": 88,
+            "op": "multiply",
+            "value": 88.0
+          },
+          {
+            "level": 89,
+            "op": "multiply",
+            "value": 89.0
+          },
+          {
+            "level": 90,
+            "op": "multiply",
+            "value": 90.0
+          },
+          {
+            "level": 91,
+            "op": "multiply",
+            "value": 91.0
+          },
+          {
+            "level": 92,
+            "op": "multiply",
+            "value": 92.0
+          },
+          {
+            "level": 93,
+            "op": "multiply",
+            "value": 93.0
+          },
+          {
+            "level": 94,
+            "op": "multiply",
+            "value": 94.0
+          },
+          {
+            "level": 95,
+            "op": "multiply",
+            "value": 95.0
+          },
+          {
+            "level": 96,
+            "op": "multiply",
+            "value": 96.0
+          },
+          {
+            "level": 97,
+            "op": "multiply",
+            "value": 97.0
+          },
+          {
+            "level": 98,
+            "op": "multiply",
+            "value": 98.0
+          },
+          {
+            "level": 99,
+            "op": "multiply",
+            "value": 99.0
+          }
+        ],
+        "depth_accuracy": [
+          {
+            "level": 1,
+            "op": "multiply",
+            "value": 1.0
+          },
+          {
+            "level": 2,
+            "op": "multiply",
+            "value": 2.0
+          },
+          {
+            "level": 3,
+            "op": "multiply",
+            "value": 3.0
+          },
+          {
+            "level": 4,
+            "op": "multiply",
+            "value": 4.0
+          },
+          {
+            "level": 5,
+            "op": "multiply",
+            "value": 5.0
+          },
+          {
+            "level": 6,
+            "op": "multiply",
+            "value": 6.0
+          },
+          {
+            "level": 7,
+            "op": "multiply",
+            "value": 7.0
+          },
+          {
+            "level": 8,
+            "op": "multiply",
+            "value": 8.0
+          },
+          {
+            "level": 9,
+            "op": "multiply",
+            "value": 9.0
+          },
+          {
+            "level": 10,
+            "op": "multiply",
+            "value": 10.0
+          },
+          {
+            "level": 11,
+            "op": "multiply",
+            "value": 11.0
+          },
+          {
+            "level": 12,
+            "op": "multiply",
+            "value": 12.0
+          },
+          {
+            "level": 13,
+            "op": "multiply",
+            "value": 13.0
+          },
+          {
+            "level": 14,
+            "op": "multiply",
+            "value": 14.0
+          },
+          {
+            "level": 15,
+            "op": "multiply",
+            "value": 15.0
+          },
+          {
+            "level": 16,
+            "op": "multiply",
+            "value": 16.0
+          },
+          {
+            "level": 17,
+            "op": "multiply",
+            "value": 17.0
+          },
+          {
+            "level": 18,
+            "op": "multiply",
+            "value": 18.0
+          },
+          {
+            "level": 19,
+            "op": "multiply",
+            "value": 19.0
+          },
+          {
+            "level": 20,
+            "op": "multiply",
+            "value": 20.0
+          },
+          {
+            "level": 21,
+            "op": "multiply",
+            "value": 21.0
+          },
+          {
+            "level": 22,
+            "op": "multiply",
+            "value": 22.0
+          },
+          {
+            "level": 23,
+            "op": "multiply",
+            "value": 23.0
+          },
+          {
+            "level": 24,
+            "op": "multiply",
+            "value": 24.0
+          },
+          {
+            "level": 25,
+            "op": "multiply",
+            "value": 25.0
+          },
+          {
+            "level": 26,
+            "op": "multiply",
+            "value": 26.0
+          },
+          {
+            "level": 27,
+            "op": "multiply",
+            "value": 27.0
+          },
+          {
+            "level": 28,
+            "op": "multiply",
+            "value": 28.0
+          },
+          {
+            "level": 29,
+            "op": "multiply",
+            "value": 29.0
+          },
+          {
+            "level": 30,
+            "op": "multiply",
+            "value": 30.0
+          },
+          {
+            "level": 31,
+            "op": "multiply",
+            "value": 31.0
+          },
+          {
+            "level": 32,
+            "op": "multiply",
+            "value": 32.0
+          },
+          {
+            "level": 33,
+            "op": "multiply",
+            "value": 33.0
+          },
+          {
+            "level": 34,
+            "op": "multiply",
+            "value": 34.0
+          },
+          {
+            "level": 35,
+            "op": "multiply",
+            "value": 35.0
+          },
+          {
+            "level": 36,
+            "op": "multiply",
+            "value": 36.0
+          },
+          {
+            "level": 37,
+            "op": "multiply",
+            "value": 37.0
+          },
+          {
+            "level": 38,
+            "op": "multiply",
+            "value": 38.0
+          },
+          {
+            "level": 39,
+            "op": "multiply",
+            "value": 39.0
+          },
+          {
+            "level": 40,
+            "op": "multiply",
+            "value": 40.0
+          },
+          {
+            "level": 41,
+            "op": "multiply",
+            "value": 41.0
+          },
+          {
+            "level": 42,
+            "op": "multiply",
+            "value": 42.0
+          },
+          {
+            "level": 43,
+            "op": "multiply",
+            "value": 43.0
+          },
+          {
+            "level": 44,
+            "op": "multiply",
+            "value": 44.0
+          },
+          {
+            "level": 45,
+            "op": "multiply",
+            "value": 45.0
+          },
+          {
+            "level": 46,
+            "op": "multiply",
+            "value": 46.0
+          },
+          {
+            "level": 47,
+            "op": "multiply",
+            "value": 47.0
+          },
+          {
+            "level": 48,
+            "op": "multiply",
+            "value": 48.0
+          },
+          {
+            "level": 49,
+            "op": "multiply",
+            "value": 49.0
+          },
+          {
+            "level": 50,
+            "op": "multiply",
+            "value": 50.0
+          },
+          {
+            "level": 51,
+            "op": "multiply",
+            "value": 51.0
+          },
+          {
+            "level": 52,
+            "op": "multiply",
+            "value": 52.0
+          },
+          {
+            "level": 53,
+            "op": "multiply",
+            "value": 53.0
+          },
+          {
+            "level": 54,
+            "op": "multiply",
+            "value": 54.0
+          },
+          {
+            "level": 55,
+            "op": "multiply",
+            "value": 55.0
+          },
+          {
+            "level": 56,
+            "op": "multiply",
+            "value": 56.0
+          },
+          {
+            "level": 57,
+            "op": "multiply",
+            "value": 57.0
+          },
+          {
+            "level": 58,
+            "op": "multiply",
+            "value": 58.0
+          },
+          {
+            "level": 59,
+            "op": "multiply",
+            "value": 59.0
+          },
+          {
+            "level": 60,
+            "op": "multiply",
+            "value": 60.0
+          },
+          {
+            "level": 61,
+            "op": "multiply",
+            "value": 61.0
+          },
+          {
+            "level": 62,
+            "op": "multiply",
+            "value": 62.0
+          },
+          {
+            "level": 63,
+            "op": "multiply",
+            "value": 63.0
+          },
+          {
+            "level": 64,
+            "op": "multiply",
+            "value": 64.0
+          },
+          {
+            "level": 65,
+            "op": "multiply",
+            "value": 65.0
+          },
+          {
+            "level": 66,
+            "op": "multiply",
+            "value": 66.0
+          },
+          {
+            "level": 67,
+            "op": "multiply",
+            "value": 67.0
+          },
+          {
+            "level": 68,
+            "op": "multiply",
+            "value": 68.0
+          },
+          {
+            "level": 69,
+            "op": "multiply",
+            "value": 69.0
+          },
+          {
+            "level": 70,
+            "op": "multiply",
+            "value": 70.0
+          },
+          {
+            "level": 71,
+            "op": "multiply",
+            "value": 71.0
+          },
+          {
+            "level": 72,
+            "op": "multiply",
+            "value": 72.0
+          },
+          {
+            "level": 73,
+            "op": "multiply",
+            "value": 73.0
+          },
+          {
+            "level": 74,
+            "op": "multiply",
+            "value": 74.0
+          },
+          {
+            "level": 75,
+            "op": "multiply",
+            "value": 75.0
+          },
+          {
+            "level": 76,
+            "op": "multiply",
+            "value": 76.0
+          },
+          {
+            "level": 77,
+            "op": "multiply",
+            "value": 77.0
+          },
+          {
+            "level": 78,
+            "op": "multiply",
+            "value": 78.0
+          },
+          {
+            "level": 79,
+            "op": "multiply",
+            "value": 79.0
+          },
+          {
+            "level": 80,
+            "op": "multiply",
+            "value": 80.0
+          },
+          {
+            "level": 81,
+            "op": "multiply",
+            "value": 81.0
+          },
+          {
+            "level": 82,
+            "op": "multiply",
+            "value": 82.0
+          },
+          {
+            "level": 83,
+            "op": "multiply",
+            "value": 83.0
+          },
+          {
+            "level": 84,
+            "op": "multiply",
+            "value": 84.0
+          },
+          {
+            "level": 85,
+            "op": "multiply",
+            "value": 85.0
+          },
+          {
+            "level": 86,
+            "op": "multiply",
+            "value": 86.0
+          },
+          {
+            "level": 87,
+            "op": "multiply",
+            "value": 87.0
+          },
+          {
+            "level": 88,
+            "op": "multiply",
+            "value": 88.0
+          },
+          {
+            "level": 89,
+            "op": "multiply",
+            "value": 89.0
+          },
+          {
+            "level": 90,
+            "op": "multiply",
+            "value": 90.0
+          },
+          {
+            "level": 91,
+            "op": "multiply",
+            "value": 91.0
+          },
+          {
+            "level": 92,
+            "op": "multiply",
+            "value": 92.0
+          },
+          {
+            "level": 93,
+            "op": "multiply",
+            "value": 93.0
+          },
+          {
+            "level": 94,
+            "op": "multiply",
+            "value": 94.0
+          },
+          {
+            "level": 95,
+            "op": "multiply",
+            "value": 95.0
+          },
+          {
+            "level": 96,
+            "op": "multiply",
+            "value": 96.0
+          },
+          {
+            "level": 97,
+            "op": "multiply",
+            "value": 97.0
+          },
+          {
+            "level": 98,
+            "op": "multiply",
+            "value": 98.0
+          },
+          {
+            "level": 99,
+            "op": "multiply",
+            "value": 99.0
+          }
+        ],
+        "dino_accuracy": [
+          {
+            "level": 1,
+            "op": "multiply",
+            "value": 1.0
+          },
+          {
+            "level": 2,
+            "op": "multiply",
+            "value": 2.0
+          },
+          {
+            "level": 3,
+            "op": "multiply",
+            "value": 3.0
+          },
+          {
+            "level": 4,
+            "op": "multiply",
+            "value": 4.0
+          },
+          {
+            "level": 5,
+            "op": "multiply",
+            "value": 5.0
+          },
+          {
+            "level": 6,
+            "op": "multiply",
+            "value": 6.0
+          },
+          {
+            "level": 7,
+            "op": "multiply",
+            "value": 7.0
+          },
+          {
+            "level": 8,
+            "op": "multiply",
+            "value": 8.0
+          },
+          {
+            "level": 9,
+            "op": "multiply",
+            "value": 9.0
+          },
+          {
+            "level": 10,
+            "op": "multiply",
+            "value": 10.0
+          },
+          {
+            "level": 11,
+            "op": "multiply",
+            "value": 11.0
+          },
+          {
+            "level": 12,
+            "op": "multiply",
+            "value": 12.0
+          },
+          {
+            "level": 13,
+            "op": "multiply",
+            "value": 13.0
+          },
+          {
+            "level": 14,
+            "op": "multiply",
+            "value": 14.0
+          },
+          {
+            "level": 15,
+            "op": "multiply",
+            "value": 15.0
+          },
+          {
+            "level": 16,
+            "op": "multiply",
+            "value": 16.0
+          },
+          {
+            "level": 17,
+            "op": "multiply",
+            "value": 17.0
+          },
+          {
+            "level": 18,
+            "op": "multiply",
+            "value": 18.0
+          },
+          {
+            "level": 19,
+            "op": "multiply",
+            "value": 19.0
+          },
+          {
+            "level": 20,
+            "op": "multiply",
+            "value": 20.0
+          },
+          {
+            "level": 21,
+            "op": "multiply",
+            "value": 21.0
+          },
+          {
+            "level": 22,
+            "op": "multiply",
+            "value": 22.0
+          },
+          {
+            "level": 23,
+            "op": "multiply",
+            "value": 23.0
+          },
+          {
+            "level": 24,
+            "op": "multiply",
+            "value": 24.0
+          },
+          {
+            "level": 25,
+            "op": "multiply",
+            "value": 25.0
+          },
+          {
+            "level": 26,
+            "op": "multiply",
+            "value": 26.0
+          },
+          {
+            "level": 27,
+            "op": "multiply",
+            "value": 27.0
+          },
+          {
+            "level": 28,
+            "op": "multiply",
+            "value": 28.0
+          },
+          {
+            "level": 29,
+            "op": "multiply",
+            "value": 29.0
+          },
+          {
+            "level": 30,
+            "op": "multiply",
+            "value": 30.0
+          },
+          {
+            "level": 31,
+            "op": "multiply",
+            "value": 31.0
+          },
+          {
+            "level": 32,
+            "op": "multiply",
+            "value": 32.0
+          },
+          {
+            "level": 33,
+            "op": "multiply",
+            "value": 33.0
+          },
+          {
+            "level": 34,
+            "op": "multiply",
+            "value": 34.0
+          },
+          {
+            "level": 35,
+            "op": "multiply",
+            "value": 35.0
+          },
+          {
+            "level": 36,
+            "op": "multiply",
+            "value": 36.0
+          },
+          {
+            "level": 37,
+            "op": "multiply",
+            "value": 37.0
+          },
+          {
+            "level": 38,
+            "op": "multiply",
+            "value": 38.0
+          },
+          {
+            "level": 39,
+            "op": "multiply",
+            "value": 39.0
+          },
+          {
+            "level": 40,
+            "op": "multiply",
+            "value": 40.0
+          },
+          {
+            "level": 41,
+            "op": "multiply",
+            "value": 41.0
+          },
+          {
+            "level": 42,
+            "op": "multiply",
+            "value": 42.0
+          },
+          {
+            "level": 43,
+            "op": "multiply",
+            "value": 43.0
+          },
+          {
+            "level": 44,
+            "op": "multiply",
+            "value": 44.0
+          },
+          {
+            "level": 45,
+            "op": "multiply",
+            "value": 45.0
+          },
+          {
+            "level": 46,
+            "op": "multiply",
+            "value": 46.0
+          },
+          {
+            "level": 47,
+            "op": "multiply",
+            "value": 47.0
+          },
+          {
+            "level": 48,
+            "op": "multiply",
+            "value": 48.0
+          },
+          {
+            "level": 49,
+            "op": "multiply",
+            "value": 49.0
+          },
+          {
+            "level": 50,
+            "op": "multiply",
+            "value": 50.0
+          },
+          {
+            "level": 51,
+            "op": "multiply",
+            "value": 51.0
+          },
+          {
+            "level": 52,
+            "op": "multiply",
+            "value": 52.0
+          },
+          {
+            "level": 53,
+            "op": "multiply",
+            "value": 53.0
+          },
+          {
+            "level": 54,
+            "op": "multiply",
+            "value": 54.0
+          },
+          {
+            "level": 55,
+            "op": "multiply",
+            "value": 55.0
+          },
+          {
+            "level": 56,
+            "op": "multiply",
+            "value": 56.0
+          },
+          {
+            "level": 57,
+            "op": "multiply",
+            "value": 57.0
+          },
+          {
+            "level": 58,
+            "op": "multiply",
+            "value": 58.0
+          },
+          {
+            "level": 59,
+            "op": "multiply",
+            "value": 59.0
+          },
+          {
+            "level": 60,
+            "op": "multiply",
+            "value": 60.0
+          },
+          {
+            "level": 61,
+            "op": "multiply",
+            "value": 61.0
+          },
+          {
+            "level": 62,
+            "op": "multiply",
+            "value": 62.0
+          },
+          {
+            "level": 63,
+            "op": "multiply",
+            "value": 63.0
+          },
+          {
+            "level": 64,
+            "op": "multiply",
+            "value": 64.0
+          },
+          {
+            "level": 65,
+            "op": "multiply",
+            "value": 65.0
+          },
+          {
+            "level": 66,
+            "op": "multiply",
+            "value": 66.0
+          },
+          {
+            "level": 67,
+            "op": "multiply",
+            "value": 67.0
+          },
+          {
+            "level": 68,
+            "op": "multiply",
+            "value": 68.0
+          },
+          {
+            "level": 69,
+            "op": "multiply",
+            "value": 69.0
+          },
+          {
+            "level": 70,
+            "op": "multiply",
+            "value": 70.0
+          },
+          {
+            "level": 71,
+            "op": "multiply",
+            "value": 71.0
+          },
+          {
+            "level": 72,
+            "op": "multiply",
+            "value": 72.0
+          },
+          {
+            "level": 73,
+            "op": "multiply",
+            "value": 73.0
+          },
+          {
+            "level": 74,
+            "op": "multiply",
+            "value": 74.0
+          },
+          {
+            "level": 75,
+            "op": "multiply",
+            "value": 75.0
+          },
+          {
+            "level": 76,
+            "op": "multiply",
+            "value": 76.0
+          },
+          {
+            "level": 77,
+            "op": "multiply",
+            "value": 77.0
+          },
+          {
+            "level": 78,
+            "op": "multiply",
+            "value": 78.0
+          },
+          {
+            "level": 79,
+            "op": "multiply",
+            "value": 79.0
+          },
+          {
+            "level": 80,
+            "op": "multiply",
+            "value": 80.0
+          },
+          {
+            "level": 81,
+            "op": "multiply",
+            "value": 81.0
+          },
+          {
+            "level": 82,
+            "op": "multiply",
+            "value": 82.0
+          },
+          {
+            "level": 83,
+            "op": "multiply",
+            "value": 83.0
+          },
+          {
+            "level": 84,
+            "op": "multiply",
+            "value": 84.0
+          },
+          {
+            "level": 85,
+            "op": "multiply",
+            "value": 85.0
+          },
+          {
+            "level": 86,
+            "op": "multiply",
+            "value": 86.0
+          },
+          {
+            "level": 87,
+            "op": "multiply",
+            "value": 87.0
+          },
+          {
+            "level": 88,
+            "op": "multiply",
+            "value": 88.0
+          },
+          {
+            "level": 89,
+            "op": "multiply",
+            "value": 89.0
+          },
+          {
+            "level": 90,
+            "op": "multiply",
+            "value": 90.0
+          },
+          {
+            "level": 91,
+            "op": "multiply",
+            "value": 91.0
+          },
+          {
+            "level": 92,
+            "op": "multiply",
+            "value": 92.0
+          },
+          {
+            "level": 93,
+            "op": "multiply",
+            "value": 93.0
+          },
+          {
+            "level": 94,
+            "op": "multiply",
+            "value": 94.0
+          },
+          {
+            "level": 95,
+            "op": "multiply",
+            "value": 95.0
+          },
+          {
+            "level": 96,
+            "op": "multiply",
+            "value": 96.0
+          },
+          {
+            "level": 97,
+            "op": "multiply",
+            "value": 97.0
+          },
+          {
+            "level": 98,
+            "op": "multiply",
+            "value": 98.0
+          },
+          {
+            "level": 99,
+            "op": "multiply",
+            "value": 99.0
+          }
+        ],
+        "first_documentation_xp": [],
+        "fossil_accuracy": [
+          {
+            "level": 1,
+            "op": "multiply",
+            "value": 1.0
+          },
+          {
+            "level": 2,
+            "op": "multiply",
+            "value": 2.0
+          },
+          {
+            "level": 3,
+            "op": "multiply",
+            "value": 3.0
+          },
+          {
+            "level": 4,
+            "op": "multiply",
+            "value": 4.0
+          },
+          {
+            "level": 5,
+            "op": "multiply",
+            "value": 5.0
+          },
+          {
+            "level": 6,
+            "op": "multiply",
+            "value": 6.0
+          },
+          {
+            "level": 7,
+            "op": "multiply",
+            "value": 7.0
+          },
+          {
+            "level": 8,
+            "op": "multiply",
+            "value": 8.0
+          },
+          {
+            "level": 9,
+            "op": "multiply",
+            "value": 9.0
+          },
+          {
+            "level": 10,
+            "op": "multiply",
+            "value": 10.0
+          },
+          {
+            "level": 11,
+            "op": "multiply",
+            "value": 11.0
+          },
+          {
+            "level": 12,
+            "op": "multiply",
+            "value": 12.0
+          },
+          {
+            "level": 13,
+            "op": "multiply",
+            "value": 13.0
+          },
+          {
+            "level": 14,
+            "op": "multiply",
+            "value": 14.0
+          },
+          {
+            "level": 15,
+            "op": "multiply",
+            "value": 15.0
+          },
+          {
+            "level": 16,
+            "op": "multiply",
+            "value": 16.0
+          },
+          {
+            "level": 17,
+            "op": "multiply",
+            "value": 17.0
+          },
+          {
+            "level": 18,
+            "op": "multiply",
+            "value": 18.0
+          },
+          {
+            "level": 19,
+            "op": "multiply",
+            "value": 19.0
+          },
+          {
+            "level": 20,
+            "op": "multiply",
+            "value": 20.0
+          },
+          {
+            "level": 21,
+            "op": "multiply",
+            "value": 21.0
+          },
+          {
+            "level": 22,
+            "op": "multiply",
+            "value": 22.0
+          },
+          {
+            "level": 23,
+            "op": "multiply",
+            "value": 23.0
+          },
+          {
+            "level": 24,
+            "op": "multiply",
+            "value": 24.0
+          },
+          {
+            "level": 25,
+            "op": "multiply",
+            "value": 25.0
+          },
+          {
+            "level": 26,
+            "op": "multiply",
+            "value": 26.0
+          },
+          {
+            "level": 27,
+            "op": "multiply",
+            "value": 27.0
+          },
+          {
+            "level": 28,
+            "op": "multiply",
+            "value": 28.0
+          },
+          {
+            "level": 29,
+            "op": "multiply",
+            "value": 29.0
+          },
+          {
+            "level": 30,
+            "op": "multiply",
+            "value": 30.0
+          },
+          {
+            "level": 31,
+            "op": "multiply",
+            "value": 31.0
+          },
+          {
+            "level": 32,
+            "op": "multiply",
+            "value": 32.0
+          },
+          {
+            "level": 33,
+            "op": "multiply",
+            "value": 33.0
+          },
+          {
+            "level": 34,
+            "op": "multiply",
+            "value": 34.0
+          },
+          {
+            "level": 35,
+            "op": "multiply",
+            "value": 35.0
+          },
+          {
+            "level": 36,
+            "op": "multiply",
+            "value": 36.0
+          },
+          {
+            "level": 37,
+            "op": "multiply",
+            "value": 37.0
+          },
+          {
+            "level": 38,
+            "op": "multiply",
+            "value": 38.0
+          },
+          {
+            "level": 39,
+            "op": "multiply",
+            "value": 39.0
+          },
+          {
+            "level": 40,
+            "op": "multiply",
+            "value": 40.0
+          },
+          {
+            "level": 41,
+            "op": "multiply",
+            "value": 41.0
+          },
+          {
+            "level": 42,
+            "op": "multiply",
+            "value": 42.0
+          },
+          {
+            "level": 43,
+            "op": "multiply",
+            "value": 43.0
+          },
+          {
+            "level": 44,
+            "op": "multiply",
+            "value": 44.0
+          },
+          {
+            "level": 45,
+            "op": "multiply",
+            "value": 45.0
+          },
+          {
+            "level": 46,
+            "op": "multiply",
+            "value": 46.0
+          },
+          {
+            "level": 47,
+            "op": "multiply",
+            "value": 47.0
+          },
+          {
+            "level": 48,
+            "op": "multiply",
+            "value": 48.0
+          },
+          {
+            "level": 49,
+            "op": "multiply",
+            "value": 49.0
+          },
+          {
+            "level": 50,
+            "op": "multiply",
+            "value": 50.0
+          },
+          {
+            "level": 51,
+            "op": "multiply",
+            "value": 51.0
+          },
+          {
+            "level": 52,
+            "op": "multiply",
+            "value": 52.0
+          },
+          {
+            "level": 53,
+            "op": "multiply",
+            "value": 53.0
+          },
+          {
+            "level": 54,
+            "op": "multiply",
+            "value": 54.0
+          },
+          {
+            "level": 55,
+            "op": "multiply",
+            "value": 55.0
+          },
+          {
+            "level": 56,
+            "op": "multiply",
+            "value": 56.0
+          },
+          {
+            "level": 57,
+            "op": "multiply",
+            "value": 57.0
+          },
+          {
+            "level": 58,
+            "op": "multiply",
+            "value": 58.0
+          },
+          {
+            "level": 59,
+            "op": "multiply",
+            "value": 59.0
+          },
+          {
+            "level": 60,
+            "op": "multiply",
+            "value": 60.0
+          },
+          {
+            "level": 61,
+            "op": "multiply",
+            "value": 61.0
+          },
+          {
+            "level": 62,
+            "op": "multiply",
+            "value": 62.0
+          },
+          {
+            "level": 63,
+            "op": "multiply",
+            "value": 63.0
+          },
+          {
+            "level": 64,
+            "op": "multiply",
+            "value": 64.0
+          },
+          {
+            "level": 65,
+            "op": "multiply",
+            "value": 65.0
+          },
+          {
+            "level": 66,
+            "op": "multiply",
+            "value": 66.0
+          },
+          {
+            "level": 67,
+            "op": "multiply",
+            "value": 67.0
+          },
+          {
+            "level": 68,
+            "op": "multiply",
+            "value": 68.0
+          },
+          {
+            "level": 69,
+            "op": "multiply",
+            "value": 69.0
+          },
+          {
+            "level": 70,
+            "op": "multiply",
+            "value": 70.0
+          },
+          {
+            "level": 71,
+            "op": "multiply",
+            "value": 71.0
+          },
+          {
+            "level": 72,
+            "op": "multiply",
+            "value": 72.0
+          },
+          {
+            "level": 73,
+            "op": "multiply",
+            "value": 73.0
+          },
+          {
+            "level": 74,
+            "op": "multiply",
+            "value": 74.0
+          },
+          {
+            "level": 75,
+            "op": "multiply",
+            "value": 75.0
+          },
+          {
+            "level": 76,
+            "op": "multiply",
+            "value": 76.0
+          },
+          {
+            "level": 77,
+            "op": "multiply",
+            "value": 77.0
+          },
+          {
+            "level": 78,
+            "op": "multiply",
+            "value": 78.0
+          },
+          {
+            "level": 79,
+            "op": "multiply",
+            "value": 79.0
+          },
+          {
+            "level": 80,
+            "op": "multiply",
+            "value": 80.0
+          },
+          {
+            "level": 81,
+            "op": "multiply",
+            "value": 81.0
+          },
+          {
+            "level": 82,
+            "op": "multiply",
+            "value": 82.0
+          },
+          {
+            "level": 83,
+            "op": "multiply",
+            "value": 83.0
+          },
+          {
+            "level": 84,
+            "op": "multiply",
+            "value": 84.0
+          },
+          {
+            "level": 85,
+            "op": "multiply",
+            "value": 85.0
+          },
+          {
+            "level": 86,
+            "op": "multiply",
+            "value": 86.0
+          },
+          {
+            "level": 87,
+            "op": "multiply",
+            "value": 87.0
+          },
+          {
+            "level": 88,
+            "op": "multiply",
+            "value": 88.0
+          },
+          {
+            "level": 89,
+            "op": "multiply",
+            "value": 89.0
+          },
+          {
+            "level": 90,
+            "op": "multiply",
+            "value": 90.0
+          },
+          {
+            "level": 91,
+            "op": "multiply",
+            "value": 91.0
+          },
+          {
+            "level": 92,
+            "op": "multiply",
+            "value": 92.0
+          },
+          {
+            "level": 93,
+            "op": "multiply",
+            "value": 93.0
+          },
+          {
+            "level": 94,
+            "op": "multiply",
+            "value": 94.0
+          },
+          {
+            "level": 95,
+            "op": "multiply",
+            "value": 95.0
+          },
+          {
+            "level": 96,
+            "op": "multiply",
+            "value": 96.0
+          },
+          {
+            "level": 97,
+            "op": "multiply",
+            "value": 97.0
+          },
+          {
+            "level": 98,
+            "op": "multiply",
+            "value": 98.0
+          },
+          {
+            "level": 99,
+            "op": "multiply",
+            "value": 99.0
+          }
+        ],
+        "quality_accuracy": [
+          {
+            "level": 1,
+            "op": "multiply",
+            "value": 1.0
+          },
+          {
+            "level": 2,
+            "op": "multiply",
+            "value": 2.0
+          },
+          {
+            "level": 3,
+            "op": "multiply",
+            "value": 3.0
+          },
+          {
+            "level": 4,
+            "op": "multiply",
+            "value": 4.0
+          },
+          {
+            "level": 5,
+            "op": "multiply",
+            "value": 5.0
+          },
+          {
+            "level": 6,
+            "op": "multiply",
+            "value": 6.0
+          },
+          {
+            "level": 7,
+            "op": "multiply",
+            "value": 7.0
+          },
+          {
+            "level": 8,
+            "op": "multiply",
+            "value": 8.0
+          },
+          {
+            "level": 9,
+            "op": "multiply",
+            "value": 9.0
+          },
+          {
+            "level": 10,
+            "op": "multiply",
+            "value": 10.0
+          },
+          {
+            "level": 11,
+            "op": "multiply",
+            "value": 11.0
+          },
+          {
+            "level": 12,
+            "op": "multiply",
+            "value": 12.0
+          },
+          {
+            "level": 13,
+            "op": "multiply",
+            "value": 13.0
+          },
+          {
+            "level": 14,
+            "op": "multiply",
+            "value": 14.0
+          },
+          {
+            "level": 15,
+            "op": "multiply",
+            "value": 15.0
+          },
+          {
+            "level": 16,
+            "op": "multiply",
+            "value": 16.0
+          },
+          {
+            "level": 17,
+            "op": "multiply",
+            "value": 17.0
+          },
+          {
+            "level": 18,
+            "op": "multiply",
+            "value": 18.0
+          },
+          {
+            "level": 19,
+            "op": "multiply",
+            "value": 19.0
+          },
+          {
+            "level": 20,
+            "op": "multiply",
+            "value": 20.0
+          },
+          {
+            "level": 21,
+            "op": "multiply",
+            "value": 21.0
+          },
+          {
+            "level": 22,
+            "op": "multiply",
+            "value": 22.0
+          },
+          {
+            "level": 23,
+            "op": "multiply",
+            "value": 23.0
+          },
+          {
+            "level": 24,
+            "op": "multiply",
+            "value": 24.0
+          },
+          {
+            "level": 25,
+            "op": "multiply",
+            "value": 25.0
+          },
+          {
+            "level": 26,
+            "op": "multiply",
+            "value": 26.0
+          },
+          {
+            "level": 27,
+            "op": "multiply",
+            "value": 27.0
+          },
+          {
+            "level": 28,
+            "op": "multiply",
+            "value": 28.0
+          },
+          {
+            "level": 29,
+            "op": "multiply",
+            "value": 29.0
+          },
+          {
+            "level": 30,
+            "op": "multiply",
+            "value": 30.0
+          },
+          {
+            "level": 31,
+            "op": "multiply",
+            "value": 31.0
+          },
+          {
+            "level": 32,
+            "op": "multiply",
+            "value": 32.0
+          },
+          {
+            "level": 33,
+            "op": "multiply",
+            "value": 33.0
+          },
+          {
+            "level": 34,
+            "op": "multiply",
+            "value": 34.0
+          },
+          {
+            "level": 35,
+            "op": "multiply",
+            "value": 35.0
+          },
+          {
+            "level": 36,
+            "op": "multiply",
+            "value": 36.0
+          },
+          {
+            "level": 37,
+            "op": "multiply",
+            "value": 37.0
+          },
+          {
+            "level": 38,
+            "op": "multiply",
+            "value": 38.0
+          },
+          {
+            "level": 39,
+            "op": "multiply",
+            "value": 39.0
+          },
+          {
+            "level": 40,
+            "op": "multiply",
+            "value": 40.0
+          },
+          {
+            "level": 41,
+            "op": "multiply",
+            "value": 41.0
+          },
+          {
+            "level": 42,
+            "op": "multiply",
+            "value": 42.0
+          },
+          {
+            "level": 43,
+            "op": "multiply",
+            "value": 43.0
+          },
+          {
+            "level": 44,
+            "op": "multiply",
+            "value": 44.0
+          },
+          {
+            "level": 45,
+            "op": "multiply",
+            "value": 45.0
+          },
+          {
+            "level": 46,
+            "op": "multiply",
+            "value": 46.0
+          },
+          {
+            "level": 47,
+            "op": "multiply",
+            "value": 47.0
+          },
+          {
+            "level": 48,
+            "op": "multiply",
+            "value": 48.0
+          },
+          {
+            "level": 49,
+            "op": "multiply",
+            "value": 49.0
+          },
+          {
+            "level": 50,
+            "op": "multiply",
+            "value": 50.0
+          },
+          {
+            "level": 51,
+            "op": "multiply",
+            "value": 51.0
+          },
+          {
+            "level": 52,
+            "op": "multiply",
+            "value": 52.0
+          },
+          {
+            "level": 53,
+            "op": "multiply",
+            "value": 53.0
+          },
+          {
+            "level": 54,
+            "op": "multiply",
+            "value": 54.0
+          },
+          {
+            "level": 55,
+            "op": "multiply",
+            "value": 55.0
+          },
+          {
+            "level": 56,
+            "op": "multiply",
+            "value": 56.0
+          },
+          {
+            "level": 57,
+            "op": "multiply",
+            "value": 57.0
+          },
+          {
+            "level": 58,
+            "op": "multiply",
+            "value": 58.0
+          },
+          {
+            "level": 59,
+            "op": "multiply",
+            "value": 59.0
+          },
+          {
+            "level": 60,
+            "op": "multiply",
+            "value": 60.0
+          },
+          {
+            "level": 61,
+            "op": "multiply",
+            "value": 61.0
+          },
+          {
+            "level": 62,
+            "op": "multiply",
+            "value": 62.0
+          },
+          {
+            "level": 63,
+            "op": "multiply",
+            "value": 63.0
+          },
+          {
+            "level": 64,
+            "op": "multiply",
+            "value": 64.0
+          },
+          {
+            "level": 65,
+            "op": "multiply",
+            "value": 65.0
+          },
+          {
+            "level": 66,
+            "op": "multiply",
+            "value": 66.0
+          },
+          {
+            "level": 67,
+            "op": "multiply",
+            "value": 67.0
+          },
+          {
+            "level": 68,
+            "op": "multiply",
+            "value": 68.0
+          },
+          {
+            "level": 69,
+            "op": "multiply",
+            "value": 69.0
+          },
+          {
+            "level": 70,
+            "op": "multiply",
+            "value": 70.0
+          },
+          {
+            "level": 71,
+            "op": "multiply",
+            "value": 71.0
+          },
+          {
+            "level": 72,
+            "op": "multiply",
+            "value": 72.0
+          },
+          {
+            "level": 73,
+            "op": "multiply",
+            "value": 73.0
+          },
+          {
+            "level": 74,
+            "op": "multiply",
+            "value": 74.0
+          },
+          {
+            "level": 75,
+            "op": "multiply",
+            "value": 75.0
+          },
+          {
+            "level": 76,
+            "op": "multiply",
+            "value": 76.0
+          },
+          {
+            "level": 77,
+            "op": "multiply",
+            "value": 77.0
+          },
+          {
+            "level": 78,
+            "op": "multiply",
+            "value": 78.0
+          },
+          {
+            "level": 79,
+            "op": "multiply",
+            "value": 79.0
+          },
+          {
+            "level": 80,
+            "op": "multiply",
+            "value": 80.0
+          },
+          {
+            "level": 81,
+            "op": "multiply",
+            "value": 81.0
+          },
+          {
+            "level": 82,
+            "op": "multiply",
+            "value": 82.0
+          },
+          {
+            "level": 83,
+            "op": "multiply",
+            "value": 83.0
+          },
+          {
+            "level": 84,
+            "op": "multiply",
+            "value": 84.0
+          },
+          {
+            "level": 85,
+            "op": "multiply",
+            "value": 85.0
+          },
+          {
+            "level": 86,
+            "op": "multiply",
+            "value": 86.0
+          },
+          {
+            "level": 87,
+            "op": "multiply",
+            "value": 87.0
+          },
+          {
+            "level": 88,
+            "op": "multiply",
+            "value": 88.0
+          },
+          {
+            "level": 89,
+            "op": "multiply",
+            "value": 89.0
+          },
+          {
+            "level": 90,
+            "op": "multiply",
+            "value": 90.0
+          },
+          {
+            "level": 91,
+            "op": "multiply",
+            "value": 91.0
+          },
+          {
+            "level": 92,
+            "op": "multiply",
+            "value": 92.0
+          },
+          {
+            "level": 93,
+            "op": "multiply",
+            "value": 93.0
+          },
+          {
+            "level": 94,
+            "op": "multiply",
+            "value": 94.0
+          },
+          {
+            "level": 95,
+            "op": "multiply",
+            "value": 95.0
+          },
+          {
+            "level": 96,
+            "op": "multiply",
+            "value": 96.0
+          },
+          {
+            "level": 97,
+            "op": "multiply",
+            "value": 97.0
+          },
+          {
+            "level": 98,
+            "op": "multiply",
+            "value": 98.0
+          },
+          {
+            "level": 99,
+            "op": "multiply",
+            "value": 99.0
+          }
+        ],
+        "rival_discovery": [
+          {
+            "level": 1,
+            "op": "multiply",
+            "value": 1.0
+          },
+          {
+            "level": 2,
+            "op": "multiply",
+            "value": 0.994898
+          },
+          {
+            "level": 3,
+            "op": "multiply",
+            "value": 0.989796
+          },
+          {
+            "level": 4,
+            "op": "multiply",
+            "value": 0.984694
+          },
+          {
+            "level": 5,
+            "op": "multiply",
+            "value": 0.979592
+          },
+          {
+            "level": 6,
+            "op": "multiply",
+            "value": 0.97449
+          },
+          {
+            "level": 7,
+            "op": "multiply",
+            "value": 0.969388
+          },
+          {
+            "level": 8,
+            "op": "multiply",
+            "value": 0.964286
+          },
+          {
+            "level": 9,
+            "op": "multiply",
+            "value": 0.959184
+          },
+          {
+            "level": 10,
+            "op": "multiply",
+            "value": 0.954082
+          },
+          {
+            "level": 11,
+            "op": "multiply",
+            "value": 0.94898
+          },
+          {
+            "level": 12,
+            "op": "multiply",
+            "value": 0.943878
+          },
+          {
+            "level": 13,
+            "op": "multiply",
+            "value": 0.938776
+          },
+          {
+            "level": 14,
+            "op": "multiply",
+            "value": 0.933673
+          },
+          {
+            "level": 15,
+            "op": "multiply",
+            "value": 0.928571
+          },
+          {
+            "level": 16,
+            "op": "multiply",
+            "value": 0.923469
+          },
+          {
+            "level": 17,
+            "op": "multiply",
+            "value": 0.918367
+          },
+          {
+            "level": 18,
+            "op": "multiply",
+            "value": 0.913265
+          },
+          {
+            "level": 19,
+            "op": "multiply",
+            "value": 0.908163
+          },
+          {
+            "level": 20,
+            "op": "multiply",
+            "value": 0.903061
+          },
+          {
+            "level": 21,
+            "op": "multiply",
+            "value": 0.897959
+          },
+          {
+            "level": 22,
+            "op": "multiply",
+            "value": 0.892857
+          },
+          {
+            "level": 23,
+            "op": "multiply",
+            "value": 0.887755
+          },
+          {
+            "level": 24,
+            "op": "multiply",
+            "value": 0.882653
+          },
+          {
+            "level": 25,
+            "op": "multiply",
+            "value": 0.877551
+          },
+          {
+            "level": 26,
+            "op": "multiply",
+            "value": 0.872449
+          },
+          {
+            "level": 27,
+            "op": "multiply",
+            "value": 0.867347
+          },
+          {
+            "level": 28,
+            "op": "multiply",
+            "value": 0.862245
+          },
+          {
+            "level": 29,
+            "op": "multiply",
+            "value": 0.857143
+          },
+          {
+            "level": 30,
+            "op": "multiply",
+            "value": 0.852041
+          },
+          {
+            "level": 31,
+            "op": "multiply",
+            "value": 0.846939
+          },
+          {
+            "level": 32,
+            "op": "multiply",
+            "value": 0.841837
+          },
+          {
+            "level": 33,
+            "op": "multiply",
+            "value": 0.836735
+          },
+          {
+            "level": 34,
+            "op": "multiply",
+            "value": 0.831633
+          },
+          {
+            "level": 35,
+            "op": "multiply",
+            "value": 0.826531
+          },
+          {
+            "level": 36,
+            "op": "multiply",
+            "value": 0.821429
+          },
+          {
+            "level": 37,
+            "op": "multiply",
+            "value": 0.816327
+          },
+          {
+            "level": 38,
+            "op": "multiply",
+            "value": 0.811224
+          },
+          {
+            "level": 39,
+            "op": "multiply",
+            "value": 0.806122
+          },
+          {
+            "level": 40,
+            "op": "multiply",
+            "value": 0.80102
+          },
+          {
+            "level": 41,
+            "op": "multiply",
+            "value": 0.795918
+          },
+          {
+            "level": 42,
+            "op": "multiply",
+            "value": 0.790816
+          },
+          {
+            "level": 43,
+            "op": "multiply",
+            "value": 0.785714
+          },
+          {
+            "level": 44,
+            "op": "multiply",
+            "value": 0.780612
+          },
+          {
+            "level": 45,
+            "op": "multiply",
+            "value": 0.77551
+          },
+          {
+            "level": 46,
+            "op": "multiply",
+            "value": 0.770408
+          },
+          {
+            "level": 47,
+            "op": "multiply",
+            "value": 0.765306
+          },
+          {
+            "level": 48,
+            "op": "multiply",
+            "value": 0.760204
+          },
+          {
+            "level": 49,
+            "op": "multiply",
+            "value": 0.755102
+          },
+          {
+            "level": 50,
+            "op": "multiply",
+            "value": 0.75
+          },
+          {
+            "level": 51,
+            "op": "multiply",
+            "value": 0.744898
+          },
+          {
+            "level": 52,
+            "op": "multiply",
+            "value": 0.739796
+          },
+          {
+            "level": 53,
+            "op": "multiply",
+            "value": 0.734694
+          },
+          {
+            "level": 54,
+            "op": "multiply",
+            "value": 0.729592
+          },
+          {
+            "level": 55,
+            "op": "multiply",
+            "value": 0.72449
+          },
+          {
+            "level": 56,
+            "op": "multiply",
+            "value": 0.719388
+          },
+          {
+            "level": 57,
+            "op": "multiply",
+            "value": 0.714286
+          },
+          {
+            "level": 58,
+            "op": "multiply",
+            "value": 0.709184
+          },
+          {
+            "level": 59,
+            "op": "multiply",
+            "value": 0.704082
+          },
+          {
+            "level": 60,
+            "op": "multiply",
+            "value": 0.69898
+          },
+          {
+            "level": 61,
+            "op": "multiply",
+            "value": 0.693878
+          },
+          {
+            "level": 62,
+            "op": "multiply",
+            "value": 0.688776
+          },
+          {
+            "level": 63,
+            "op": "multiply",
+            "value": 0.683673
+          },
+          {
+            "level": 64,
+            "op": "multiply",
+            "value": 0.678571
+          },
+          {
+            "level": 65,
+            "op": "multiply",
+            "value": 0.673469
+          },
+          {
+            "level": 66,
+            "op": "multiply",
+            "value": 0.668367
+          },
+          {
+            "level": 67,
+            "op": "multiply",
+            "value": 0.663265
+          },
+          {
+            "level": 68,
+            "op": "multiply",
+            "value": 0.658163
+          },
+          {
+            "level": 69,
+            "op": "multiply",
+            "value": 0.653061
+          },
+          {
+            "level": 70,
+            "op": "multiply",
+            "value": 0.647959
+          },
+          {
+            "level": 71,
+            "op": "multiply",
+            "value": 0.642857
+          },
+          {
+            "level": 72,
+            "op": "multiply",
+            "value": 0.637755
+          },
+          {
+            "level": 73,
+            "op": "multiply",
+            "value": 0.632653
+          },
+          {
+            "level": 74,
+            "op": "multiply",
+            "value": 0.627551
+          },
+          {
+            "level": 75,
+            "op": "multiply",
+            "value": 0.622449
+          },
+          {
+            "level": 76,
+            "op": "multiply",
+            "value": 0.617347
+          },
+          {
+            "level": 77,
+            "op": "multiply",
+            "value": 0.612245
+          },
+          {
+            "level": 78,
+            "op": "multiply",
+            "value": 0.607143
+          },
+          {
+            "level": 79,
+            "op": "multiply",
+            "value": 0.602041
+          },
+          {
+            "level": 80,
+            "op": "multiply",
+            "value": 0.596939
+          },
+          {
+            "level": 81,
+            "op": "multiply",
+            "value": 0.591837
+          },
+          {
+            "level": 82,
+            "op": "multiply",
+            "value": 0.586735
+          },
+          {
+            "level": 83,
+            "op": "multiply",
+            "value": 0.581633
+          },
+          {
+            "level": 84,
+            "op": "multiply",
+            "value": 0.576531
+          },
+          {
+            "level": 85,
+            "op": "multiply",
+            "value": 0.571429
+          },
+          {
+            "level": 86,
+            "op": "multiply",
+            "value": 0.566327
+          },
+          {
+            "level": 87,
+            "op": "multiply",
+            "value": 0.561224
+          },
+          {
+            "level": 88,
+            "op": "multiply",
+            "value": 0.556122
+          },
+          {
+            "level": 89,
+            "op": "multiply",
+            "value": 0.55102
+          },
+          {
+            "level": 90,
+            "op": "multiply",
+            "value": 0.545918
+          },
+          {
+            "level": 91,
+            "op": "multiply",
+            "value": 0.540816
+          },
+          {
+            "level": 92,
+            "op": "multiply",
+            "value": 0.535714
+          },
+          {
+            "level": 93,
+            "op": "multiply",
+            "value": 0.530612
+          },
+          {
+            "level": 94,
+            "op": "multiply",
+            "value": 0.52551
+          },
+          {
+            "level": 95,
+            "op": "multiply",
+            "value": 0.520408
+          },
+          {
+            "level": 96,
+            "op": "multiply",
+            "value": 0.515306
+          },
+          {
+            "level": 97,
+            "op": "multiply",
+            "value": 0.510204
+          },
+          {
+            "level": 98,
+            "op": "multiply",
+            "value": 0.505102
+          },
+          {
+            "level": 99,
+            "op": "multiply",
+            "value": 0.5
+          }
+        ],
+        "site_documentation_xp": [],
+        "site_exploration_xp": [],
+        "site_visibility_m": [],
+        "successful_site_disguise_xp": []
+      },
+      "main_params": {
+        "completeness_accuracy": 0.01,
+        "depth_accuracy": 0.01,
+        "dino_accuracy": 0.01,
+        "first_documentation_xp": 100.0,
+        "fossil_accuracy": 0.01,
+        "quality_accuracy": 0.01,
+        "rival_discovery": 1.0,
+        "site_documentation_xp": 100.0,
+        "site_exploration_xp": 20.0,
+        "site_identification_xp": 40.0,
+        "site_visibility_m": 50.0,
+        "successful_site_disguise_xp": 50.0
+      },
+      "odd_noise": {
+        "completeness": 0.3,
+        "depth": 0.3,
+        "dino_count": 0.0,
+        "fossil_count": 0.5,
+        "quality": 0.3
+      },
+      "quality_weights": {
+        "excellent": 0.15,
+        "exceptional": 0.05,
+        "good": 0.25,
+        "moderate": 0.35,
+        "poor": 0.15,
+        "very_poor": 0.05
+      },
+      "skill_id": "site_stewardship",
+      "weather_time_modifiers": {
+        "site_exploration_xp": {
+          "dawn": [
+            {
+              "op": "multiply",
+              "value": 1.2
+            }
+          ],
+          "day": [],
+          "dusk": [
+            {
+              "op": "multiply",
+              "value": 1.2
+            }
+          ],
+          "golden_hour": [
+            {
+              "op": "multiply",
+              "value": 1.1
+            }
+          ],
+          "night": [
+            {
+              "op": "multiply",
+              "value": 1.5
+            }
+          ]
+        },
+        "site_visibility_m": {
+          "dawn": [],
+          "day": [
+            {
+              "op": "multiply",
+              "value": 1.1
+            }
+          ],
+          "dusk": [],
+          "golden_hour": [
+            {
+              "op": "multiply",
+              "value": 1.3
+            }
+          ],
+          "night": [
+            {
+              "op": "multiply",
+              "value": 0.6
+            }
+          ]
+        }
+      },
+      "weather_type_modifiers": {}
+    },
+    "tool_actions": {
+      "aerial_recon": {
+        "duration_minutes": 60,
+        "ensure_timeout_s": 600,
+        "flight_discovery_chance": 0.01,
+        "flight_discovery_distance_m": 200.0,
+        "flight_speed_kmh": 50.0,
+        "loop_endpoint_tolerance_m": 75.0,
+        "short_route_warn_fraction": 0.7,
+        "stats_explanation": "Duration is this card's lifetime battery. Remaining time caps how far you can draw (speed × remaining). Flight time is drawn length ÷ speed. Sites within flight discovery distance are rolled at the listed chance."
+      },
+      "aerial_scout": {
+        "duration_minutes": 10,
+        "ensure_timeout_s": 600,
+        "flight_discovery_chance": 0.008,
+        "flight_discovery_distance_m": 50.0,
+        "flight_speed_kmh": 35.0,
+        "loop_endpoint_tolerance_m": 75.0,
+        "short_route_warn_fraction": 0.7,
+        "stats_explanation": "Duration is this card's lifetime battery. Remaining time caps how far you can draw (speed × remaining). Flight time is drawn length ÷ speed. Sites within flight discovery distance are rolled at the listed chance."
+      },
+      "blackout_cover": {
+        "duration_minutes": 60,
+        "modifies_main_params": {
+          "owning": {},
+          "using": {
+            "site_stewardship": {
+              "rival_discovery": {
+                "op": "multiply",
+                "value": 0.5
+              }
+            }
+          }
+        },
+        "stats_explanation": "Duration is this card's lifetime battery; each use covers one discovered site until you stop or time runs out. While active, multiplies rival_discovery by 0.5 (halves other players' discovery chance on that site). You gain successful site disguise XP only when a rival's roll would have discovered the site without this cover, but the cover stops them — not when they miss anyway, and not when they discover it despite the cover. One disguise at a time."
+      },
+      "brush_scrim": {
+        "duration_minutes": 60,
+        "modifies_main_params": {
+          "owning": {},
+          "using": {
+            "site_stewardship": {
+              "rival_discovery": {
+                "op": "multiply",
+                "value": 0.0
+              }
+            }
+          }
+        },
+        "stats_explanation": "Duration is this card's lifetime battery; each use covers one discovered site until you stop or time runs out. While active, multiplies rival_discovery by 0 (camouflages the site so rivals cannot discover it). Discovery rolls still run so that a would-have-hit awards you successful site disguise XP; you get nothing if their roll would have missed without the cover. One disguise at a time."
+      },
+      "canyon_throttle": {
+        "active_weather_times": null,
+        "duration_minutes": 60,
+        "modifies_main_params": {
+          "owning": {},
+          "using": {
+            "site_discovery": {
+              "discovery_chance": {
+                "op": "multiply",
+                "value": 0.85
+              },
+              "max_discovery_speed_kmh": {
+                "op": "multiply",
+                "value": 4.0
+              },
+              "visibility_distance_m": {
+                "op": "multiply",
+                "value": 0.85
+              }
+            },
+            "site_stewardship": {
+              "site_visibility_m": {
+                "op": "multiply",
+                "value": 0.85
+              }
+            }
+          }
+        },
+        "stats_explanation": "Duration is this card's lifetime battery; each use runs until you stop or time runs out. While active, raises max discovery speed by 300% so motorcycle travel still counts toward discovery distance, but discover visibility, walk-in chance, and site exploration radius drop 15%."
+      },
+      "expedition_drivetrain": {
+        "active_weather_times": null,
+        "duration_minutes": 60,
+        "modifies_main_params": {
+          "owning": {},
+          "using": {
+            "site_discovery": {
+              "discovery_chance": {
+                "op": "multiply",
+                "value": 0.9
+              },
+              "max_discovery_speed_kmh": {
+                "op": "multiply",
+                "value": 3.0
+              },
+              "visibility_distance_m": {
+                "op": "multiply",
+                "value": 0.9
+              }
+            },
+            "site_stewardship": {
+              "site_visibility_m": {
+                "op": "multiply",
+                "value": 0.9
+              }
+            }
+          }
+        },
+        "stats_explanation": "Duration is this card's lifetime battery; each use runs until you stop or time runs out. While active, raises max discovery speed by 200% so bicycle travel still counts toward discovery distance, but discover visibility, walk-in chance, and site exploration radius drop 10%."
+      },
+      "formation_map": {
+        "accuracy": 0.75,
+        "base_alpha": 0.48,
+        "boundary_blur": 1.0,
+        "cell_size_m": 500.0,
+        "duration_minutes": 10,
+        "max_wideness_m": 2000.0,
+        "min_wideness_m": 500.0,
+        "range_fade": 0.0,
+        "stats_explanation": "Duration is this card's lifetime battery; each use runs until you stop or time runs out. Colors a fixed square of the map by rock type. Higher accuracy sharpens rock-type boundaries; the outer edge has a slight fixed soft fade. Wideness sets the side length (500 m–2 km) on the same 500 m grid used for field sites, locked to this tool occurrence.",
+        "wideness_m": 500.0
+      },
+      "geo_compass": {
+        "direction_exactness": null,
+        "direction_hint_period_s": 3.0,
+        "distance_exactness": null,
+        "duration_minutes": 15,
+        "exactness": 0.0,
+        "max_direction_range_deg": 180.0,
+        "min_direction_range_deg": 4.0,
+        "modifies_main_params": {
+          "owning": {},
+          "using": {
+            "site_discovery": {
+              "discovery_chance": {
+                "op": "replace",
+                "value": 0.9
+              }
+            }
+          }
+        },
+        "stats_explanation": "Duration is this card's lifetime battery; each use runs until you stop or time runs out. Shows a direction range toward the nearest undiscovered site; lower exactness widens the glow. Walk-in discovery of that nearest site uses the listed chance instead of the base rate."
+      },
+      "nocturne_lens": {
+        "active_weather_times": [
+          "night"
+        ],
+        "duration_minutes": 60,
+        "modifies_main_params": {
+          "owning": {},
+          "using": {
+            "site_discovery": {
+              "discovery_chance": {
+                "op": "multiply",
+                "value": 1.4
+              },
+              "visibility_distance_m": {
+                "op": "multiply",
+                "value": 1.4
+              }
+            }
+          }
+        },
+        "stats_explanation": "Lifetime battery; only starts and runs at night. Boosts visibility range and walk-in discovery chance by 40%. Stops automatically when night ends (dawn / day / dusk)."
+      },
+      "orbit_survey": {
+        "accuracy": 0.75,
+        "base_alpha": 0.48,
+        "boundary_blur": 1.0,
+        "duration_minutes": 10,
+        "max_range_m": 2000.0,
+        "min_range_m": 200.0,
+        "range": 0.35,
+        "range_fade": 0.85,
+        "stats_explanation": "Duration is this card's lifetime battery; each use runs until you stop or time runs out. Colors the map by the period of nearby undiscovered field sites. Higher accuracy sharpens boundaries; higher range widens the circle (200 m–2 km)."
+      },
+      "overland_chassis": {
+        "active_weather_times": null,
+        "duration_minutes": 60,
+        "modifies_main_params": {
+          "owning": {},
+          "using": {
+            "site_discovery": {
+              "discovery_chance": {
+                "op": "multiply",
+                "value": 0.8
+              },
+              "max_discovery_speed_kmh": {
+                "op": "multiply",
+                "value": 5.0
+              },
+              "visibility_distance_m": {
+                "op": "multiply",
+                "value": 0.8
+              }
+            },
+            "site_stewardship": {
+              "site_visibility_m": {
+                "op": "multiply",
+                "value": 0.8
+              }
+            }
+          }
+        },
+        "stats_explanation": "Duration is this card's lifetime battery; each use runs until you stop or time runs out. While active, raises max discovery speed by 400% so 4x4 travel still counts toward discovery distance, but discover visibility, walk-in chance, and site exploration radius drop 20%."
+      },
+      "proximity_scanner": {
+        "direction_exactness": null,
+        "direction_hint_period_s": 3.0,
+        "distance_exactness": null,
+        "duration_minutes": 15,
+        "exactness": 0.0,
+        "max_direction_range_deg": 180.0,
+        "min_direction_range_deg": 4.0,
+        "modifies_main_params": null,
+        "stats_explanation": "Duration is this card's lifetime battery; each use runs until you stop or time runs out. Shows distance to the nearest undiscovered site as meter bands; lower exactness uses coarser rounding (up to 200 m), higher is finer (down to 1 m)."
+      },
+      "ridge_glass": {
+        "active_weather_times": null,
+        "duration_minutes": 60,
+        "modifies_main_params": {
+          "owning": {},
+          "using": {
+            "site_discovery": {
+              "discovery_chance": {
+                "op": "multiply",
+                "value": 1.3
+              },
+              "max_discovery_speed_kmh": {
+                "op": "multiply",
+                "value": 0.7
+              },
+              "visibility_distance_m": {
+                "op": "multiply",
+                "value": 1.3
+              }
+            }
+          }
+        },
+        "stats_explanation": "Duration is this card's lifetime battery; each use runs until you stop or time runs out. While active, boosts site visibility range and walk-in discovery chance, and decreases max discovery speed for all sites."
+      },
+      "site_navigator": {
+        "direction_exactness": 0.0,
+        "direction_hint_period_s": 3.0,
+        "distance_exactness": 0.0,
+        "duration_minutes": 15,
+        "exactness": null,
+        "max_direction_range_deg": 180.0,
+        "min_direction_range_deg": 4.0,
+        "modifies_main_params": {
+          "owning": {},
+          "using": {
+            "site_discovery": {
+              "discovery_chance": {
+                "op": "replace",
+                "value": 0.9
+              }
+            }
+          }
+        },
+        "stats_explanation": "Duration is this card's lifetime battery; each use runs until you stop or time runs out. Combines a direction-range glow and distance bands for the nearest undiscovered site, with the listed walk-in discovery chance for that site."
+      },
+      "terrain_echo": {
+        "accuracy": 0.0,
+        "duration_minutes": 5,
+        "max_duration_minutes": 20,
+        "max_range_m": 200.0,
+        "min_duration_minutes": 5,
+        "min_range_m": 20.0,
+        "range_m": 20.0,
+        "ring_increment_m": 20.0,
+        "stats_explanation": "Duration is this card's lifetime battery (editable within min/max); each use runs on whatever time remains until you stop or it runs out. Rotating survey pulse around your position. Blips mark nearby sites you have not discovered yet. Higher accuracy tightens blips; range sets pulse radius (20–200 m).",
+        "sweep_period_s": 4.0
+      },
+      "trail_striders": {
+        "active_weather_times": null,
+        "duration_minutes": 60,
+        "modifies_main_params": {
+          "owning": {},
+          "using": {
+            "site_discovery": {
+              "discovery_chance": {
+                "op": "multiply",
+                "value": 0.95
+              },
+              "max_discovery_speed_kmh": {
+                "op": "multiply",
+                "value": 2.0
+              },
+              "visibility_distance_m": {
+                "op": "multiply",
+                "value": 0.95
+              }
+            },
+            "site_stewardship": {
+              "site_visibility_m": {
+                "op": "multiply",
+                "value": 0.95
+              }
+            }
+          }
+        },
+        "stats_explanation": "Duration is this card's lifetime battery; each use runs until you stop or time runs out. While active, raises max discovery speed by 100% so a fast jog still counts toward discovery distance, but discover visibility, walk-in chance, and site exploration radius drop 5%."
+      }
+    }
+  },
+  "version": "23ef46a287989945"
+}

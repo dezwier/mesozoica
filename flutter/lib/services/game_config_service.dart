@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -13,18 +14,21 @@ import '../config/game_config.dart';
 /// order (first that succeeds wins):
 ///   1. Backend API — current, live config.
 ///   2. Last-good copy cached on device — survives offline / backend-down launches.
-///   3. Bundled YAML assets — shipped with the app; always present.
+///   3. Bundled canonical snapshot (`assets/game_config.json`) — generated from
+///      the backend control board by `scripts/export_bundled_game_config`.
+///   4. Bundled YAML control board — last-resort belt-and-suspenders fallback.
 ///
-/// Because the bundled assets are the final fallback, the worst case matches the
-/// app's previous behaviour (config loaded from assets), so a backend outage can
-/// never block startup. The parsed result is exposed through the unchanged
-/// [GameConfig.instance] accessor, so no call sites change.
+/// Because a bundled fallback is always present, the worst case still yields a
+/// working config, so a backend outage can never block startup. The parsed
+/// result is exposed through the unchanged [GameConfig.instance] accessor, so no
+/// call sites change.
 class GameConfigService {
   GameConfigService._();
 
   static final GameConfigService instance = GameConfigService._();
 
   static const String _cacheKey = 'game_config_payload_v1';
+  static const String _bundledSnapshotAsset = 'assets/game_config.json';
   static const Duration _fetchTimeout = Duration(seconds: 8);
 
   String? _loadedVersion;
@@ -36,15 +40,16 @@ class GameConfigService {
   /// Where the active config came from: `api`, `cache`, or `bundled`.
   String? get loadedSource => _loadedSource;
 
-  /// Resolve config from network → device cache → bundled assets.
+  /// Resolve config from network → device cache → bundled snapshot → YAML.
   Future<void> initialize() async {
     if (await _loadFromNetwork()) return;
     if (await _loadFromCache()) return;
-    await GameConfig.load(); // bundled YAML fallback (guaranteed to exist)
+    if (await _loadFromBundledSnapshot()) return;
+    await GameConfig.load(); // last-resort YAML control board
     _loadedVersion = null;
-    _loadedSource = 'bundled';
+    _loadedSource = 'bundled-yaml';
     if (kDebugMode) {
-      debugPrint('GameConfig: loaded from bundled assets (fallback)');
+      debugPrint('GameConfig: loaded from bundled YAML (last-resort fallback)');
     }
   }
 
@@ -80,6 +85,24 @@ class GameConfigService {
       return true;
     } catch (error) {
       if (kDebugMode) debugPrint('GameConfig: cache load failed: $error');
+      return false;
+    }
+  }
+
+  Future<bool> _loadFromBundledSnapshot() async {
+    try {
+      final raw = await rootBundle.loadString(_bundledSnapshotAsset);
+      if (!_applyPayloadJson(raw)) return false;
+      _loadedSource = 'bundled-snapshot';
+      if (kDebugMode) {
+        debugPrint('GameConfig: loaded from bundled snapshot '
+            '(version=$_loadedVersion)');
+      }
+      return true;
+    } catch (error) {
+      if (kDebugMode) {
+        debugPrint('GameConfig: bundled snapshot load failed: $error');
+      }
       return false;
     }
   }
