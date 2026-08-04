@@ -62,11 +62,10 @@ def set_site_status(
     ``lat``/``lon`` are optional for non-hidden statuses.
     """
     normalized = (status or "").strip().lower()
-    if normalized not in SITE_STATUSES or normalized == SITE_STATUS_IDENTIFIED:
+    settable = tuple(s for s in SITE_STATUSES if s != SITE_STATUS_IDENTIFIED)
+    if normalized not in settable:
         raise ValidationError(
-            f"status must be one of: {', '.join(
-                s for s in SITE_STATUSES if s != SITE_STATUS_IDENTIFIED
-            )}"
+            f"status must be one of: {', '.join(settable)}"
         )
 
     site = session.get(Site, site_id)
