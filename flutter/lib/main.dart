@@ -7,7 +7,6 @@ import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 import 'package:provider/provider.dart';
 
 import 'config/app_config.dart';
-import 'config/game_config.dart';
 import 'config/map_config.dart';
 import 'controllers/auth_controller.dart';
 import 'controllers/aerial_session_controller.dart';
@@ -35,6 +34,7 @@ import 'controllers/walk_distance_controller.dart';
 import 'controllers/weather_controller.dart';
 import 'controllers/xp_award_controller.dart';
 import 'firebase_options.dart';
+import 'services/game_config_service.dart';
 import 'services/location_service.dart';
 import 'services/map_tile_cache.dart';
 import 'services/push_notification_runtime.dart';
@@ -48,7 +48,9 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   // Use the native-picked splash dinosaur so system + Flutter match.
   await AppSplashScreen.prepare();
-  await GameConfig.load();
+  // Fetch the shared control board from the backend (falls back to device cache,
+  // then bundled YAML). See GameConfigService.
+  await GameConfigService.instance.initialize();
   await _configureMapboxAccessToken();
   try {
     await Firebase.initializeApp(

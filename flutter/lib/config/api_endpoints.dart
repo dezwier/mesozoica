@@ -5,6 +5,10 @@ import 'app_config.dart';
 class ApiEndpoints {
   ApiEndpoints._();
 
+  /// Shared game-config control board (fetched at startup; see GameConfigService).
+  static Uri gameConfigUri() =>
+      Uri.parse('${AppConfig.baseApiUrl}/api/v1/game-config');
+
   static Uri dinosaursUri({
     int limit = 200,
     int offset = 0,

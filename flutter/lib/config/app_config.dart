@@ -63,6 +63,9 @@ class AppConfig {
 
   static Uri get healthUri => Uri.parse('$baseApiUrl/health');
 
+  /// Shared game-config control board (see GameConfigService).
+  static Uri get gameConfigUri => ApiEndpoints.gameConfigUri();
+
   static Uri dinosaursUri({
     int limit = 200,
     int offset = 0,

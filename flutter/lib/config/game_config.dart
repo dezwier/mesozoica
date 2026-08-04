@@ -130,6 +130,41 @@ class GameConfig {
     return config;
   }
 
+  /// Build the config from decoded JSON sections.
+  ///
+  /// Used for the runtime config fetched from the backend
+  /// (`GET /api/v1/game-config`) and its on-device cache. Each section is a plain
+  /// JSON map with the same shape as the corresponding YAML file, so the existing
+  /// per-section `fromYaml` parsers are reused unchanged.
+  static GameConfig fromSections(Map<String, dynamic> data) {
+    Map<String, dynamic> section(String key) => _asMap(data[key]);
+    final config = GameConfig(
+      siteGeneration: SiteGenerationConfig.fromYaml(section('site_generation')),
+      siteDiscovery: SiteDiscoveryConfig.fromYaml(section('site_discovery')),
+      siteStewardship:
+          SiteStewardshipConfig.fromYaml(section('site_stewardship')),
+      siteClearing: SkillStubConfig.fromYaml(section('site_clearing')),
+      fossilDetection: SkillStubConfig.fromYaml(section('fossil_detection')),
+      fossilExcavation: SkillStubConfig.fromYaml(section('fossil_excavation')),
+      fossilTransport: SkillStubConfig.fromYaml(section('fossil_transport')),
+      fossilCuration: SkillStubConfig.fromYaml(section('fossil_curation')),
+      fossilPreparation:
+          SkillStubConfig.fromYaml(section('fossil_preparation')),
+      fossilAnalysis: SkillStubConfig.fromYaml(section('fossil_analysis')),
+      dinosaurModelling:
+          SkillStubConfig.fromYaml(section('dinosaur_modelling')),
+      dinosaurMounting: SkillStubConfig.fromYaml(section('dinosaur_mounting')),
+      academicPublishing:
+          SkillStubConfig.fromYaml(section('academic_publishing')),
+      toolActions: ToolActionsConfig.fromYaml(section('tool_actions')),
+      periodColors: PeriodColorsConfig.fromYaml(section('period_colors')),
+      rockTypeColors: RockTypeColorsConfig.fromYaml(section('rock_type_colors')),
+      leveling: LevelingConfig.fromYaml(section('leveling')),
+    );
+    _instance = config;
+    return config;
+  }
+
   /// Parse domain YAML strings (also used by unit tests).
   static GameConfig loadFromYamlStrings({
     required String siteGenerationYaml,
