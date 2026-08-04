@@ -27,14 +27,20 @@ from app.models.user import User
 from app.models.user_site import (
     USER_SITE_ROLE_DISCOVERER,
     USER_SITE_ROLE_DISGUISER,
+    USER_SITE_ROLE_DOCUMENTER,
     UserSite,
     role_to_status,
 )
 from app.models.user_tool import USER_TOOL_ACTION_OWNED, UserTool
-from app.services.level_service.skills import get_skill_xp
+from app.services.level_service.main_params import resolve_site_stewardship_main_params
+from app.services.level_service.skills import get_skill_xp, set_skill_xp
+from app.services.level_service.xp_table import SKILL_THRESHOLDS
 from app.services.site_common.discovery_params import resolve_site_discovery_params
 from app.services.site_service.discover import discover_site
 from app.services.site_service.status_join import latest_user_sites_for_ids
+from app.services.tool_action_service.disguise_session import (
+    rival_discovery_multiplier,
+)
 from app.services.tool_action_service.tool_session import (
     cancel_timed_session,
     start_timed_session,
@@ -569,3 +575,78 @@ def test_expiry_clears_disguiser(session: Session) -> None:
         )
     ).first()
     assert link is None
+
+
+def test_passive_rival_discovery_from_steward_skill(
+    session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """High stewardship skill lowers rival chance with no disguise tool."""
+    _stub_overcast_weather(monkeypatch)
+    owner = _user(session, username="owner_passive")
+    rival = _user(session, username="rival_passive")
+    site = _site(session, site_id=91010)
+    _link_discoverer(session, user_id=int(owner.id), site_id=int(site.site_id))
+    set_skill_xp(owner, "site_stewardship", SKILL_THRESHOLDS[99])
+    session.add(owner)
+    session.commit()
+
+    expected_mult = float(
+        resolve_site_stewardship_main_params(skill_level=99)["rival_discovery"]
+    )
+    assert expected_mult == pytest.approx(0.5, abs=1e-6)
+
+    mult = rival_discovery_multiplier(
+        session, site_id=int(site.site_id), rolling_user_id=int(rival.id)
+    )
+    assert mult == pytest.approx(expected_mult, rel=1e-6)
+
+    base = resolve_site_discovery_params(
+        session,
+        user_id=int(owner.id),
+        site=site,
+        lat=50.0,
+        lon=4.0,
+    ).discovery_chance
+    rival_params = resolve_site_discovery_params(
+        session,
+        user_id=int(rival.id),
+        site=site,
+        lat=50.0,
+        lon=4.0,
+    )
+    assert rival_params.discovery_chance == pytest.approx(
+        base * expected_mult, rel=1e-6
+    )
+
+
+def test_documenter_status_applies_rival_discovery(
+    session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Any status above hidden (e.g. documenter) applies rival_discovery."""
+    _stub_overcast_weather(monkeypatch)
+    owner = _user(session, username="owner_doc")
+    rival = _user(session, username="rival_doc")
+    site = _site(session, site_id=91011)
+    session.add(
+        UserSite(
+            user_id=int(owner.id),
+            site_id=int(site.site_id),
+            role=USER_SITE_ROLE_DOCUMENTER,
+        )
+    )
+    set_skill_xp(owner, "site_stewardship", SKILL_THRESHOLDS[99])
+    session.add(owner)
+    session.commit()
+
+    mult = rival_discovery_multiplier(
+        session, site_id=int(site.site_id), rolling_user_id=int(rival.id)
+    )
+    assert mult == pytest.approx(0.5, abs=1e-6)
+
+    # Rolling user with status above hidden is unaffected.
+    assert (
+        rival_discovery_multiplier(
+            session, site_id=int(site.site_id), rolling_user_id=int(owner.id)
+        )
+        == 1.0
+    )

@@ -589,7 +589,8 @@ class SiteStewardshipMainParams(BaseModel):
     completeness_accuracy: float = 0.01
     quality_accuracy: float = 0.01
     depth_accuracy: float = 0.01
-    # Multiplier on discovery_chance for rivals on sites you discovered.
+    # Multiplier on discovery_chance for rivals on sites where you have any
+    # status above hidden (discovered, documented, excavated, …).
     rival_discovery: float = 1.0
     # Radius around a discovered site where walking accrues exploration meters.
     site_visibility_m: float = 50.0

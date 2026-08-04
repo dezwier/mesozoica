@@ -15,7 +15,8 @@ main_params:
   completeness_accuracy: 0.01
   quality_accuracy: 0.01
   depth_accuracy: 0.01
-  # Multiplier on discovery_chance for other users on sites you discovered.
+  # Multiplier on discovery_chance for other users on sites where you have any
+  # status above hidden (discovered, documented, excavated, …).
   # Level multiplies ×1.0 → ×0.5 from L1 → L99; tools multiply further on a covered site.
   rival_discovery: 1
   # Radius around a discovered site where walking accrues exploration meters.
@@ -117,7 +118,7 @@ level_modifiers:
   site_exploration_xp: []
   site_documentation_xp: []
   first_documentation_xp: []
-  # Rival discovery: ×1.0 at L1 → ×0.5 at L99 (linear; all sites).
+  # Rival discovery: ×1.0 at L1 → ×0.5 at L99 (linear; all sites above hidden).
   rival_discovery:
     - { level: 1, op: multiply, value: 1 }
     - { level: 2, op: multiply, value: 0.994898 }

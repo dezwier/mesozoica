@@ -26,6 +26,7 @@ from app.models.tool_session import (
 from app.models.tool_type import ToolType
 from app.models.user import User
 from app.models.user_site import (
+    STATUS_ROLES,
     USER_SITE_ROLE_DISCOVERER,
     USER_SITE_ROLE_DISGUISER,
     UserSite,
@@ -293,6 +294,13 @@ def list_active_disguises_for_site(
     return out
 
 
+def _stewardship_skill_level(session: Session, user_id: int) -> int:
+    user = session.get(User, user_id)
+    if user is None:
+        return 1
+    return level_for_xp(get_skill_xp(user, "site_stewardship"))
+
+
 def _resolve_cover_rival_discovery(
     session: Session,
     *,
@@ -300,10 +308,6 @@ def _resolve_cover_rival_discovery(
     params: dict,
 ) -> float:
     """Effective ``rival_discovery`` for one active cover session."""
-    user = session.get(User, user_id)
-    skill_level = 1
-    if user is not None:
-        skill_level = level_for_xp(get_skill_xp(user, "site_stewardship"))
     tool_mods = tool_mods_from_session_params(
         params, when="using", skill_id="site_stewardship"
     )
@@ -322,10 +326,34 @@ def _resolve_cover_rival_discovery(
             ),
         }
     resolved = resolve_site_stewardship_main_params(
-        skill_level=skill_level,
+        skill_level=_stewardship_skill_level(session, user_id),
         tool_mods=tool_mods,
     )
     return max(0.0, float(resolved["rival_discovery"]))
+
+
+def _resolve_skill_rival_discovery(session: Session, *, user_id: int) -> float:
+    """Skill-only ``rival_discovery`` for a steward (no tool cover)."""
+    resolved = resolve_site_stewardship_main_params(
+        skill_level=_stewardship_skill_level(session, user_id),
+    )
+    return max(0.0, float(resolved["rival_discovery"]))
+
+
+def _user_has_status_above_hidden(
+    session: Session, *, user_id: int, site_id: int
+) -> bool:
+    """True when the user has any site status role (not hidden)."""
+    return (
+        session.exec(
+            select(UserSite.id).where(
+                col(UserSite.user_id) == user_id,
+                col(UserSite.site_id) == site_id,
+                col(UserSite.role).in_(STATUS_ROLES),
+            )
+        ).first()
+        is not None
+    )
 
 
 def rival_discovery_multiplier(
@@ -336,32 +364,39 @@ def rival_discovery_multiplier(
 ) -> float:
     """Effective ``rival_discovery`` for ``rolling_user_id`` on ``site_id``.
 
-    Discoverers are unaffected (1.0). With active rival covers, returns the
-    strongest (minimum) resolved ``rival_discovery``. Otherwise the skill
-    baseline (default 1).
+    Users with any status above hidden on the site are unaffected (1.0).
+    Otherwise returns the strongest (minimum) resolved ``rival_discovery``
+    from active rival covers (skill + tool) and other users with status above
+    hidden (skill only). Default 1.0 when nobody has claimed the site.
     """
-    has_discoverer = (
-        session.exec(
-            select(UserSite).where(
-                col(UserSite.user_id) == rolling_user_id,
-                col(UserSite.site_id) == site_id,
-                col(UserSite.role) == USER_SITE_ROLE_DISCOVERER,
-            )
-        ).first()
-        is not None
-    )
-    if has_discoverer:
+    if _user_has_status_above_hidden(
+        session, user_id=rolling_user_id, site_id=site_id
+    ):
         return 1.0
 
     disguises = list_active_disguises_for_site(session, site_id=site_id)
     others = [d for d in disguises if d.user_id != rolling_user_id]
-    if others:
-        return min(d.rival_discovery for d in others)
+    values = [d.rival_discovery for d in others]
+    covered_user_ids = {d.user_id for d in others}
 
-    return max(
-        0.0,
-        float(resolve_site_stewardship_main_params()["rival_discovery"]),
-    )
+    steward_ids = session.exec(
+        select(UserSite.user_id)
+        .where(
+            col(UserSite.site_id) == site_id,
+            col(UserSite.role).in_(STATUS_ROLES),
+            col(UserSite.user_id) != rolling_user_id,
+        )
+        .distinct()
+    ).all()
+    for steward_id in steward_ids:
+        uid = int(steward_id)
+        if uid in covered_user_ids:
+            continue
+        values.append(_resolve_skill_rival_discovery(session, user_id=uid))
+
+    if not values:
+        return 1.0
+    return max(0.0, min(values))
 
 
 # Back-compat alias.

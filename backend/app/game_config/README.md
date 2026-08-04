@@ -122,7 +122,7 @@ resolvable):
 | `completeness_accuracy` | Completeness estimation (base 1% × skill level) |
 | `quality_accuracy` | Fossil quality estimation (base 1% × skill level) |
 | `depth_accuracy` | Depth estimation (base 1% × skill level; depth 0 always exact) |
-| `rival_discovery` | Multiplier on discovery_chance for rivals on your sites (×1 at L1 → ×0.5 at L99) |
+| `rival_discovery` | Multiplier on discovery_chance for rivals on sites where you have any status above hidden (×1 at L1 → ×0.5 at L99) |
 | `site_visibility_m` | Radius around a discovered site where walking accrues exploration meters |
 | `successful_site_disguise_xp` | XP when a rival discovery roll would hit but your active disguise blocks it |
 | `site_exploration_xp` | XP to site_stewardship per 20 m walked inside `site_visibility_m` |
@@ -142,8 +142,8 @@ noise (`accuracy_noise` in `02_site_stewardship.yaml`) → tool
 The first user to complete documentation also receives `first_documentation_xp`.
 
 `rival_discovery` is multiplied by skill level (×1.0 at L1 → ×0.5 at L99,
-linear; all sites). Site-scoped tools (Brush Scrim / Blackout Cover) multiply
-further on the covered site only.
+linear) on every site where you have any status above hidden. Site-scoped tools
+(Brush Scrim / Blackout Cover) multiply further on the covered site only.
 
 Fixed global distribution tables (beside `main_params`; not subject to
 multipliers):
