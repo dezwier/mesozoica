@@ -179,7 +179,7 @@ class _AppShellState extends State<AppShell>
         await disguise.restoreActiveSession();
         if (mounted) {
           await mainParamBuff.stopIfPeriodLeft(weather.weatherTime);
-          _syncMaxDiscoverySpeed();
+          _syncMainParamBuffEffects();
         }
       }());
 
@@ -306,15 +306,17 @@ class _AppShellState extends State<AppShell>
     if (buff.requestShowOnMap && _anyOverlayOpen) {
       setState(_clearOverlayFlags);
     }
-    _syncMaxDiscoverySpeed();
+    _syncMainParamBuffEffects();
   }
 
   void _onWeatherChanged() {
     if (!mounted) return;
     final buff = _mainParamBuff;
     final weather = _weather;
-    if (buff == null || weather == null) return;
-    unawaited(buff.stopIfPeriodLeft(weather.weatherTime));
+    if (buff != null && weather != null) {
+      unawaited(buff.stopIfPeriodLeft(weather.weatherTime));
+    }
+    _syncMainParamBuffEffects();
   }
 
   void _onDisguiseChanged() {
@@ -327,8 +329,8 @@ class _AppShellState extends State<AppShell>
     }
   }
 
-  /// Apply active tool buffs to the GPS odometer + discovery speed gate.
-  void _syncMaxDiscoverySpeed() {
+  /// Apply active tool buffs to speed gates + site exploration radius.
+  void _syncMainParamBuffEffects() {
     if (!mounted) return;
     final walk = context.read<WalkDistanceController>();
     final exploration = context.read<SiteExplorationController>();
@@ -343,12 +345,26 @@ class _AppShellState extends State<AppShell>
 
     ParamModifier? speedMod;
     final buff = _mainParamBuff;
+    final weatherTime = _weather?.weatherTime;
+    List<ToolModBinding> siteVisBindings = const [];
     if (buff != null &&
         buff.isActive &&
-        buff.isLiveForWeatherTime(_weather?.weatherTime)) {
+        buff.isLiveForWeatherTime(weatherTime)) {
       final mods = modifiesMainParamsFromParams(buff.session?.params);
       speedMod =
           mods?.paramsFor('using', 'site_discovery')['max_discovery_speed_kmh'];
+      if (mods != null) {
+        siteVisBindings = [
+          ToolModBinding(
+            actionKey: buff.kind?.actionKey ?? buff.session?.actionKey ?? '',
+            toolName: buff.tool?.name ?? buff.kind?.toolName ?? '',
+            mods: mods,
+            applyOwning: false,
+            applyUsing: true,
+            activeWeatherTimes: buff.activeWeatherTimes,
+          ),
+        ];
+      }
     }
 
     final effective = resolveScalarMainParam(
@@ -362,6 +378,15 @@ class _AppShellState extends State<AppShell>
     walk.updateMaxDiscoverySpeedKmh(effective);
     exploration.updateMaxDiscoverySpeedKmh(effective);
     discovery.setMaxDiscoverySpeedKmh(effective);
+
+    exploration.updateSiteVisibilityM(
+      resolveSiteStewardshipSiteVisibilityM(
+        skillLevel: 1,
+        weatherTime: weatherTime,
+        weatherType: _weather?.status?.weatherType,
+        toolBindings: siteVisBindings,
+      ),
+    );
   }
 
   void _onCardDetailOverlayChanged() {
@@ -640,7 +665,7 @@ class _AppShellState extends State<AppShell>
       if (!mounted || _previousUserId != userId) return;
       await context.read<DisguiseSessionController>().restoreActiveSession();
       if (!mounted || _previousUserId != userId) return;
-      _syncMaxDiscoverySpeed();
+      _syncMainParamBuffEffects();
     });
   }
 

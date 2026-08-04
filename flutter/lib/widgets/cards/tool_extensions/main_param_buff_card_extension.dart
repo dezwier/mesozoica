@@ -24,12 +24,9 @@ class MainParamBuffCardExtension extends ToolCardExtension {
   @override
   Widget? buildDeployStats(BuildContext context, ToolSummary tool) {
     final kind = MainParamBuffKind.tryParseToolName(tool.name);
-    final cfg = switch (kind?.actionKey) {
-      'expedition_drivetrain' =>
-        GameConfig.instance.toolActions.expeditionDrivetrain,
-      'nocturne_lens' => GameConfig.instance.toolActions.nocturneLens,
-      _ => GameConfig.instance.toolActions.ridgeGlass,
-    };
+    final cfg = GameConfig.instance.toolActions.mainParamBuffConfigFor(
+      kind?.actionKey ?? 'ridge_glass',
+    );
     final params = ownedToolInstanceParams(tool);
     return MainParamBuffToolStats(
       params: params.isEmpty ? cfg.toParamsJson() : params,

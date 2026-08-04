@@ -84,7 +84,7 @@ def resolve_site_discovery_params(
 ) -> ResolvedSiteDiscoveryParams:
     """Baseline main_params + level + weather_time; active tools may boost.
 
-    Global buff tools (Ridge Glass, Expedition Drivetrain, Nocturne Lens) apply
+    Global buff tools (Ridge Glass, mobility tools, Nocturne Lens) apply
     ``modifies_main_params.using`` to every site while active. Period-gated
     buffs auto-stop when solar time leaves ``active_weather_times``. Guidance
     tools still replace discovery chance only for the nearest still-discoverable

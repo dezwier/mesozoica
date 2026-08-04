@@ -800,7 +800,10 @@ class ToolActionsConfig {
     required this.formationMap,
     required this.terrainEcho,
     required this.ridgeGlass,
+    required this.trailStriders,
     required this.expeditionDrivetrain,
+    required this.canyonThrottle,
+    required this.overlandChassis,
     required this.nocturneLens,
     required this.brushScrim,
     required this.blackoutCover,
@@ -815,7 +818,10 @@ class ToolActionsConfig {
   final FormationMapActionConfig formationMap;
   final TerrainEchoActionConfig terrainEcho;
   final MainParamBuffActionConfig ridgeGlass;
+  final MainParamBuffActionConfig trailStriders;
   final MainParamBuffActionConfig expeditionDrivetrain;
+  final MainParamBuffActionConfig canyonThrottle;
+  final MainParamBuffActionConfig overlandChassis;
   final MainParamBuffActionConfig nocturneLens;
   final DisguiseActionConfig brushScrim;
   final DisguiseActionConfig blackoutCover;
@@ -852,6 +858,24 @@ class ToolActionsConfig {
     }
   }
 
+  MainParamBuffActionConfig mainParamBuffConfigFor(String actionKey) {
+    switch (actionKey) {
+      case 'trail_striders':
+        return trailStriders;
+      case 'expedition_drivetrain':
+        return expeditionDrivetrain;
+      case 'canyon_throttle':
+        return canyonThrottle;
+      case 'overland_chassis':
+        return overlandChassis;
+      case 'nocturne_lens':
+        return nocturneLens;
+      case 'ridge_glass':
+      default:
+        return ridgeGlass;
+    }
+  }
+
   /// YAML / game-config defaults keyed like API `params` / `base_params`.
   Map<String, dynamic> defaultsForToolName(String name) {
     switch (name) {
@@ -873,8 +897,14 @@ class ToolActionsConfig {
         return terrainEcho.toParamsJson();
       case 'Ridge Glass':
         return ridgeGlass.toParamsJson();
+      case 'Trail Striders':
+        return trailStriders.toParamsJson();
       case 'Expedition Drivetrain':
         return expeditionDrivetrain.toParamsJson();
+      case 'Canyon Throttle':
+        return canyonThrottle.toParamsJson();
+      case 'Overland Chassis':
+        return overlandChassis.toParamsJson();
       case 'Nocturne Lens':
         return nocturneLens.toParamsJson();
       case 'Brush Scrim':
@@ -972,6 +1002,30 @@ class ToolActionsConfig {
       ridgeGlass: MainParamBuffActionConfig.fromYaml(
         GameConfig._asMap(yaml['ridge_glass']),
       ),
+      trailStriders: MainParamBuffActionConfig.fromYaml(
+        GameConfig._asMap(yaml['trail_striders']),
+        defaults: const MainParamBuffActionConfig(
+          durationMinutes: 60,
+          modifiesMainParams: ModifiesMainParams(
+            using: {
+              'site_discovery': {
+                'visibility_distance_m':
+                    ParamModifier(op: 'multiply', value: 0.95),
+                'discovery_chance': ParamModifier(op: 'multiply', value: 0.95),
+                'max_discovery_speed_kmh':
+                    ParamModifier(op: 'multiply', value: 2.0),
+              },
+              'site_stewardship': {
+                'site_visibility_m': ParamModifier(op: 'multiply', value: 0.95),
+              },
+            },
+          ),
+          statsExplanation:
+              'While active, raises max discovery speed by 100% so a fast jog '
+              'still counts toward discovery distance, but discover '
+              'visibility, walk-in chance, and site exploration radius drop 5%.',
+        ),
+      ),
       expeditionDrivetrain: MainParamBuffActionConfig.fromYaml(
         GameConfig._asMap(yaml['expedition_drivetrain']),
         defaults: const MainParamBuffActionConfig(
@@ -979,14 +1033,69 @@ class ToolActionsConfig {
           modifiesMainParams: ModifiesMainParams(
             using: {
               'site_discovery': {
+                'visibility_distance_m':
+                    ParamModifier(op: 'multiply', value: 0.9),
+                'discovery_chance': ParamModifier(op: 'multiply', value: 0.9),
                 'max_discovery_speed_kmh':
-                    ParamModifier(op: 'multiply', value: 2.5),
+                    ParamModifier(op: 'multiply', value: 3.0),
+              },
+              'site_stewardship': {
+                'site_visibility_m': ParamModifier(op: 'multiply', value: 0.9),
               },
             },
           ),
           statsExplanation:
-              'While active, raises max discovery speed by 150% so bicycle '
-              'travel still counts toward discovery distance.',
+              'While active, raises max discovery speed by 200% so bicycle '
+              'travel still counts toward discovery distance, but discover '
+              'visibility, walk-in chance, and site exploration radius drop 10%.',
+        ),
+      ),
+      canyonThrottle: MainParamBuffActionConfig.fromYaml(
+        GameConfig._asMap(yaml['canyon_throttle']),
+        defaults: const MainParamBuffActionConfig(
+          durationMinutes: 60,
+          modifiesMainParams: ModifiesMainParams(
+            using: {
+              'site_discovery': {
+                'visibility_distance_m':
+                    ParamModifier(op: 'multiply', value: 0.85),
+                'discovery_chance': ParamModifier(op: 'multiply', value: 0.85),
+                'max_discovery_speed_kmh':
+                    ParamModifier(op: 'multiply', value: 4.0),
+              },
+              'site_stewardship': {
+                'site_visibility_m': ParamModifier(op: 'multiply', value: 0.85),
+              },
+            },
+          ),
+          statsExplanation:
+              'While active, raises max discovery speed by 300% so motorcycle '
+              'travel still counts toward discovery distance, but discover '
+              'visibility, walk-in chance, and site exploration radius drop 15%.',
+        ),
+      ),
+      overlandChassis: MainParamBuffActionConfig.fromYaml(
+        GameConfig._asMap(yaml['overland_chassis']),
+        defaults: const MainParamBuffActionConfig(
+          durationMinutes: 60,
+          modifiesMainParams: ModifiesMainParams(
+            using: {
+              'site_discovery': {
+                'visibility_distance_m':
+                    ParamModifier(op: 'multiply', value: 0.8),
+                'discovery_chance': ParamModifier(op: 'multiply', value: 0.8),
+                'max_discovery_speed_kmh':
+                    ParamModifier(op: 'multiply', value: 5.0),
+              },
+              'site_stewardship': {
+                'site_visibility_m': ParamModifier(op: 'multiply', value: 0.8),
+              },
+            },
+          ),
+          statsExplanation:
+              'While active, raises max discovery speed by 400% so 4x4 travel '
+              'still counts toward discovery distance, but discover '
+              'visibility, walk-in chance, and site exploration radius drop 20%.',
         ),
       ),
       nocturneLens: MainParamBuffActionConfig.fromYaml(

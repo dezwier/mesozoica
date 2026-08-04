@@ -1,4 +1,4 @@
-"""Registry of global main-param buff tools (Ridge Glass, Drivetrain, Nocturne, …)."""
+"""Registry of global main-param buff tools (Ridge Glass, mobility, Nocturne, …)."""
 
 from __future__ import annotations
 
@@ -11,9 +11,12 @@ from app.core.game_config import (
     get_game_config,
 )
 from app.models.tool_session import (
+    ACTION_KEY_CANYON_THROTTLE,
     ACTION_KEY_EXPEDITION_DRIVETRAIN,
     ACTION_KEY_NOCTURNE_LENS,
+    ACTION_KEY_OVERLAND_CHASSIS,
     ACTION_KEY_RIDGE_GLASS,
+    ACTION_KEY_TRAIL_STRIDERS,
     GLOBAL_BUFF_ACTION_KEYS,
 )
 
@@ -32,9 +35,24 @@ MAIN_PARAM_BUFF_KINDS: tuple[MainParamBuffKind, ...] = (
         display_label="Ridge Glass",
     ),
     MainParamBuffKind(
+        action_key=ACTION_KEY_TRAIL_STRIDERS,
+        tool_name="Trail Striders",
+        display_label="Trail Striders",
+    ),
+    MainParamBuffKind(
         action_key=ACTION_KEY_EXPEDITION_DRIVETRAIN,
         tool_name="Expedition Drivetrain",
         display_label="Expedition Drivetrain",
+    ),
+    MainParamBuffKind(
+        action_key=ACTION_KEY_CANYON_THROTTLE,
+        tool_name="Canyon Throttle",
+        display_label="Canyon Throttle",
+    ),
+    MainParamBuffKind(
+        action_key=ACTION_KEY_OVERLAND_CHASSIS,
+        tool_name="Overland Chassis",
+        display_label="Overland Chassis",
     ),
     MainParamBuffKind(
         action_key=ACTION_KEY_NOCTURNE_LENS,
@@ -81,13 +99,12 @@ def config_for_action_key(
 ) -> MainParamBuffActionConfig:
     """Return snapshotted knobs for [action_key] from game config."""
     actions = tool_actions if tool_actions is not None else get_game_config().tool_actions
-    if action_key == ACTION_KEY_RIDGE_GLASS:
-        return actions.ridge_glass
-    if action_key == ACTION_KEY_EXPEDITION_DRIVETRAIN:
-        return actions.expedition_drivetrain
-    if action_key == ACTION_KEY_NOCTURNE_LENS:
-        return actions.nocturne_lens
-    raise ValidationError(f"Unknown main-param buff action_key: {action_key}")
+    try:
+        return actions.main_param_buff_config_for(action_key)
+    except KeyError as exc:
+        raise ValidationError(
+            f"Unknown main-param buff action_key: {action_key}"
+        ) from exc
 
 
 __all__ = [

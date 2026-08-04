@@ -36,6 +36,8 @@ class MainParamBuffToolStats extends StatelessWidget {
         mods?.paramsFor('using', 'site_discovery')['discovery_chance'];
     final speedMod =
         mods?.paramsFor('using', 'site_discovery')['max_discovery_speed_kmh'];
+    final siteVisibilityMod =
+        mods?.paramsFor('using', 'site_stewardship')['site_visibility_m'];
     final explanation =
         (p?['stats_explanation'] as String?)?.trim().isNotEmpty == true
             ? p!['stats_explanation'] as String
@@ -59,6 +61,11 @@ class MainParamBuffToolStats extends StatelessWidget {
         ToolStatPair(
           'Discovery rate',
           _formatMod(discoveryMod, chance: true),
+        ),
+      if (siteVisibilityMod != null)
+        ToolStatPair(
+          'Site visibility',
+          _formatMod(siteVisibilityMod, meters: true),
         ),
       if (speedMod != null)
         ToolStatPair(

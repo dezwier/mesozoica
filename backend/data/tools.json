@@ -8,12 +8,36 @@
     "action": "Launch"
   },
   {
+    "name": "Trail Striders",
+    "category": "1 site_discovery",
+    "scientific_tool": "rugged trail running shoes",
+    "description": "Laces up hardened trailrunners so you can cover ground at a fast jog while still surveying on foot.",
+    "rarity": 1,
+    "action": "Run"
+  },
+  {
     "name": "Expedition Drivetrain",
     "category": "1 site_discovery",
     "scientific_tool": "bicycle drivetrain",
     "description": "Fits a field bicycle so you can survey terrain at cycling pace instead of walking speed.",
     "rarity": 2,
     "action": "Ride"
+  },
+  {
+    "name": "Canyon Throttle",
+    "category": "1 site_discovery",
+    "scientific_tool": "field dirt motorcycle",
+    "description": "Mounts a dirt bike so you can rip between outcrops at road-and-trail pace.",
+    "rarity": 3,
+    "action": "Throttle"
+  },
+  {
+    "name": "Overland Chassis",
+    "category": "1 site_discovery",
+    "scientific_tool": "four-wheel-drive expedition vehicle",
+    "description": "Puts you in a 4x4 jeep so remote ridges and rough tracks stay within survey range.",
+    "rarity": 4,
+    "action": "Drive"
   },
   {
     "name": "Aerial Recon",

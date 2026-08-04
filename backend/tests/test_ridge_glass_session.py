@@ -384,9 +384,62 @@ def test_start_expedition_drivetrain_session(client, session: Session) -> None:
     assert body["action_key"] == ACTION_KEY_EXPEDITION_DRIVETRAIN
     assert body["status"] == SESSION_STATUS_ACTIVE
     mods = body["params"]["modifies_main_params"]["using"]["site_discovery"]
-    assert mods["max_discovery_speed_kmh"] == {"op": "multiply", "value": 2.5}
+    assert mods["max_discovery_speed_kmh"] == {"op": "multiply", "value": 3.0}
+    assert mods["visibility_distance_m"] == {"op": "multiply", "value": 0.9}
+    assert mods["discovery_chance"] == {"op": "multiply", "value": 0.9}
+    stewardship = body["params"]["modifies_main_params"]["using"][
+        "site_stewardship"
+    ]
+    assert stewardship["site_visibility_m"] == {"op": "multiply", "value": 0.9}
+
+
+def test_start_trail_striders_session(client, session: Session) -> None:
+    user = _user(session)
+    tool = _tool(session, name="Trail Striders", action="Run")
+    _grant(session, user_id=int(user.id), tool_id=int(tool.id))
+    headers = _auth_headers(user)
+
+    res = client.post(f"/api/v1/tools/{tool.id}/sessions", headers=headers)
+    assert res.status_code in (201, 202), res.text
+    body = res.json()
+    assert body["action_key"] == "trail_striders"
+    mods = body["params"]["modifies_main_params"]["using"]["site_discovery"]
+    assert mods["max_discovery_speed_kmh"] == {"op": "multiply", "value": 2.0}
     assert mods["visibility_distance_m"] == {"op": "multiply", "value": 0.95}
-    assert mods["discovery_chance"] == {"op": "multiply", "value": 0.95}
+    stewardship = body["params"]["modifies_main_params"]["using"][
+        "site_stewardship"
+    ]
+    assert stewardship["site_visibility_m"] == {"op": "multiply", "value": 0.95}
+
+
+def test_start_canyon_throttle_session(client, session: Session) -> None:
+    user = _user(session)
+    tool = _tool(session, name="Canyon Throttle", action="Throttle")
+    _grant(session, user_id=int(user.id), tool_id=int(tool.id))
+    headers = _auth_headers(user)
+
+    res = client.post(f"/api/v1/tools/{tool.id}/sessions", headers=headers)
+    assert res.status_code in (201, 202), res.text
+    body = res.json()
+    assert body["action_key"] == "canyon_throttle"
+    mods = body["params"]["modifies_main_params"]["using"]["site_discovery"]
+    assert mods["max_discovery_speed_kmh"] == {"op": "multiply", "value": 4.0}
+    assert mods["visibility_distance_m"] == {"op": "multiply", "value": 0.85}
+
+
+def test_start_overland_chassis_session(client, session: Session) -> None:
+    user = _user(session)
+    tool = _tool(session, name="Overland Chassis", action="Drive")
+    _grant(session, user_id=int(user.id), tool_id=int(tool.id))
+    headers = _auth_headers(user)
+
+    res = client.post(f"/api/v1/tools/{tool.id}/sessions", headers=headers)
+    assert res.status_code in (201, 202), res.text
+    body = res.json()
+    assert body["action_key"] == "overland_chassis"
+    mods = body["params"]["modifies_main_params"]["using"]["site_discovery"]
+    assert mods["max_discovery_speed_kmh"] == {"op": "multiply", "value": 5.0}
+    assert mods["visibility_distance_m"] == {"op": "multiply", "value": 0.8}
 
 
 def test_tool_actions_yaml_loads_expedition_drivetrain_knobs() -> None:
@@ -394,13 +447,17 @@ def test_tool_actions_yaml_loads_expedition_drivetrain_knobs() -> None:
     cfg = get_game_config().tool_actions.expedition_drivetrain
     assert cfg.duration_minutes == 60
     speed = cfg.site_discovery_mod("max_discovery_speed_kmh")
-    assert speed == ParamModifier(op="multiply", value=2.5)
+    assert speed == ParamModifier(op="multiply", value=3.0)
     assert cfg.site_discovery_mod("visibility_distance_m") == ParamModifier(
-        op="multiply", value=0.95
+        op="multiply", value=0.9
     )
     assert cfg.site_discovery_mod("discovery_chance") == ParamModifier(
-        op="multiply", value=0.95
+        op="multiply", value=0.9
     )
     mods = cfg.modifies_main_params
     assert mods is not None
     assert mods.affects_skill("site_discovery")
+    assert mods.affects_skill("site_stewardship")
+    assert mods.params_for("using", "site_stewardship")[
+        "site_visibility_m"
+    ] == ParamModifier(op="multiply", value=0.9)

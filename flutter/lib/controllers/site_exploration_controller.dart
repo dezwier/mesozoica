@@ -82,7 +82,10 @@ class SiteExplorationController extends ChangeNotifier {
     }
   }
 
+  double? _siteVisibilityMOverride;
+
   double get siteVisibilityM {
+    if (_siteVisibilityMOverride != null) return _siteVisibilityMOverride!;
     try {
       if (!GameConfig.isLoaded) return 50.0;
       return GameConfig.instance.siteStewardship.mainParams.siteVisibilityM;
@@ -95,6 +98,14 @@ class SiteExplorationController extends ChangeNotifier {
     final mps = kmh * 1000.0 / 3600.0;
     if ((_odometer.maxSpeedMps - mps).abs() < 0.01) return;
     _odometer.maxSpeedMps = mps;
+  }
+
+  void updateSiteVisibilityM(double meters) {
+    if (_siteVisibilityMOverride != null &&
+        (_siteVisibilityMOverride! - meters).abs() < 0.01) {
+      return;
+    }
+    _siteVisibilityMOverride = meters;
   }
 
   Future<void> bind(

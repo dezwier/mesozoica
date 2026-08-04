@@ -184,7 +184,8 @@ some_tool:
 Either bucket / skill may be omitted. Guidance tools today only set
 `using.site_discovery.discovery_chance`.
 
-Global buff tools (Ridge Glass, Expedition Drivetrain, Nocturne Lens) set
+Global buff tools (Ridge Glass, Trail Striders, Expedition Drivetrain,
+Canyon Throttle, Overland Chassis, Nocturne Lens) set
 `using.site_discovery` multipliers while a timed session is active. Optional
 `active_weather_times` (e.g. `[night]` on Nocturne Lens) means:
 

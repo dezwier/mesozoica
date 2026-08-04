@@ -155,17 +155,48 @@ def test_load_game_config_matches_current_defaults() -> None:
     drive = config.tool_actions.expedition_drivetrain
     assert drive.duration_minutes == 60
     assert drive.site_discovery_mod("max_discovery_speed_kmh") == ParamModifier(
-        op="multiply", value=2.5
+        op="multiply", value=3.0
     )
     assert drive.site_discovery_mod("visibility_distance_m") == ParamModifier(
-        op="multiply", value=0.95
+        op="multiply", value=0.9
     )
     assert drive.site_discovery_mod("discovery_chance") == ParamModifier(
-        op="multiply", value=0.95
+        op="multiply", value=0.9
     )
     drive_mods = drive.modifies_main_params
     assert drive_mods is not None
     assert drive_mods.affects_skill("site_discovery")
+    assert drive_mods.affects_skill("site_stewardship")
+    assert drive_mods.params_for("using", "site_stewardship")[
+        "site_visibility_m"
+    ] == ParamModifier(op="multiply", value=0.9)
+
+    trail = config.tool_actions.trail_striders
+    assert trail.site_discovery_mod("max_discovery_speed_kmh") == ParamModifier(
+        op="multiply", value=2.0
+    )
+    assert trail.modifies_main_params is not None
+    assert trail.modifies_main_params.params_for("using", "site_stewardship")[
+        "site_visibility_m"
+    ] == ParamModifier(op="multiply", value=0.95)
+
+    canyon = config.tool_actions.canyon_throttle
+    assert canyon.site_discovery_mod("max_discovery_speed_kmh") == ParamModifier(
+        op="multiply", value=4.0
+    )
+    assert canyon.modifies_main_params is not None
+    assert canyon.modifies_main_params.params_for("using", "site_stewardship")[
+        "site_visibility_m"
+    ] == ParamModifier(op="multiply", value=0.85)
+
+    overland = config.tool_actions.overland_chassis
+    assert overland.site_discovery_mod("max_discovery_speed_kmh") == ParamModifier(
+        op="multiply", value=5.0
+    )
+    assert overland.modifies_main_params is not None
+    assert overland.modifies_main_params.params_for("using", "site_stewardship")[
+        "site_visibility_m"
+    ] == ParamModifier(op="multiply", value=0.8)
 
     nocturne = config.tool_actions.nocturne_lens
     assert nocturne.duration_minutes == 60
@@ -182,8 +213,20 @@ def test_load_game_config_matches_current_defaults() -> None:
         key for key, _ in config.tool_actions.tools_modifying_skill("site_discovery")
     ]
     assert "ridge_glass" in modifying
+    assert "trail_striders" in modifying
     assert "expedition_drivetrain" in modifying
+    assert "canyon_throttle" in modifying
+    assert "overland_chassis" in modifying
     assert "nocturne_lens" in modifying
+
+    stewardship_modifying = [
+        key
+        for key, _ in config.tool_actions.tools_modifying_skill("site_stewardship")
+    ]
+    assert "trail_striders" in stewardship_modifying
+    assert "expedition_drivetrain" in stewardship_modifying
+    assert "canyon_throttle" in stewardship_modifying
+    assert "overland_chassis" in stewardship_modifying
 
     assert len(config.leveling.skills) == 12
     assert len(config.leveling.career_titles) == 99

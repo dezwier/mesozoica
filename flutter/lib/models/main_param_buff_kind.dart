@@ -16,10 +16,28 @@ class MainParamBuffKind {
     hudLabel: 'SCOUT',
   );
 
+  static const trailStriders = MainParamBuffKind(
+    actionKey: 'trail_striders',
+    toolName: 'Trail Striders',
+    hudLabel: 'RUN',
+  );
+
   static const expeditionDrivetrain = MainParamBuffKind(
     actionKey: 'expedition_drivetrain',
     toolName: 'Expedition Drivetrain',
     hudLabel: 'RIDE',
+  );
+
+  static const canyonThrottle = MainParamBuffKind(
+    actionKey: 'canyon_throttle',
+    toolName: 'Canyon Throttle',
+    hudLabel: 'REV',
+  );
+
+  static const overlandChassis = MainParamBuffKind(
+    actionKey: 'overland_chassis',
+    toolName: 'Overland Chassis',
+    hudLabel: 'DRIVE',
   );
 
   static const nocturneLens = MainParamBuffKind(
@@ -30,13 +48,19 @@ class MainParamBuffKind {
 
   static const all = <MainParamBuffKind>[
     ridgeGlass,
+    trailStriders,
     expeditionDrivetrain,
+    canyonThrottle,
+    overlandChassis,
     nocturneLens,
   ];
 
   static const actionKeys = <String>[
     'ridge_glass',
+    'trail_striders',
     'expedition_drivetrain',
+    'canyon_throttle',
+    'overland_chassis',
     'nocturne_lens',
   ];
 

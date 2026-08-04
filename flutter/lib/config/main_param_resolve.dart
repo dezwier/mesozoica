@@ -160,6 +160,41 @@ double resolveSiteDiscoveryVisibilityDistanceM({
   return value;
 }
 
+/// Effective site exploration radius after level + ambient + tools.
+double resolveSiteStewardshipSiteVisibilityM({
+  required int skillLevel,
+  String? weatherTime,
+  String? weatherType,
+  List<ToolModBinding> toolBindings = const [],
+}) {
+  if (!GameConfig.isLoaded) return 50.0;
+  final cfg = GameConfig.instance.siteStewardship;
+  var value = resolveScalarMainParam(
+    base: cfg.mainParams.siteVisibilityM,
+    levelEntries: cfg.levelModifiers['site_visibility_m'],
+    skillLevel: skillLevel,
+    weatherTimeMods: weatherTimeModsForParam(
+      weatherTimeModifiers: cfg.weatherTimeModifiers,
+      paramKey: 'site_visibility_m',
+      weatherTime: weatherTime,
+    ),
+    weatherTypeMods: weatherTypeModsForParam(
+      weatherTypeModifiers: cfg.weatherTypeModifiers,
+      paramKey: 'site_visibility_m',
+      weatherType: weatherType,
+    ),
+  );
+  for (final mod in siteDiscoveryToolModsForParam(
+    paramKey: 'site_visibility_m',
+    skillId: 'site_stewardship',
+    toolBindings: toolBindings,
+    weatherTime: weatherTime,
+  )) {
+    value = applyMainParamModifier(value, op: mod.op, value: mod.value);
+  }
+  return value;
+}
+
 /// Effective site-dimension accuracy params: base → level → ambient → tools.
 ///
 /// Keys: `dino_accuracy`, `fossil_accuracy`, `completeness_accuracy`,

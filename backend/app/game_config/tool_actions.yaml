@@ -163,19 +163,69 @@ ridge_glass:
     or time runs out. While active, boosts site visibility range and
     walk-in discovery chance, and decreases max discovery speed for all sites.
 
-expedition_drivetrain:
+trail_striders:
   duration_minutes: 60
   modifies_main_params:
     using:
       site_discovery:
         visibility_distance_m: { op: multiply, value: 0.95 }
         discovery_chance: { op: multiply, value: 0.95 }
-        max_discovery_speed_kmh: { op: multiply, value: 2.5 }
+        max_discovery_speed_kmh: { op: multiply, value: 2.0 }
+      site_stewardship:
+        site_visibility_m: { op: multiply, value: 0.95 }
   stats_explanation: >-
     Duration is this card's lifetime battery; each use runs until you stop
-    or time runs out. While active, raises max discovery speed by 150% so
-    bicycle travel still counts toward discovery distance, but visibility
-    range and walk-in discovery chance drop 5% (you see less while riding).
+    or time runs out. While active, raises max discovery speed by 100% so a
+    fast jog still counts toward discovery distance, but discover visibility,
+    walk-in chance, and site exploration radius drop 5%.
+
+expedition_drivetrain:
+  duration_minutes: 60
+  modifies_main_params:
+    using:
+      site_discovery:
+        visibility_distance_m: { op: multiply, value: 0.9 }
+        discovery_chance: { op: multiply, value: 0.9 }
+        max_discovery_speed_kmh: { op: multiply, value: 3.0 }
+      site_stewardship:
+        site_visibility_m: { op: multiply, value: 0.9 }
+  stats_explanation: >-
+    Duration is this card's lifetime battery; each use runs until you stop
+    or time runs out. While active, raises max discovery speed by 200% so
+    bicycle travel still counts toward discovery distance, but discover
+    visibility, walk-in chance, and site exploration radius drop 10%.
+
+canyon_throttle:
+  duration_minutes: 60
+  modifies_main_params:
+    using:
+      site_discovery:
+        visibility_distance_m: { op: multiply, value: 0.85 }
+        discovery_chance: { op: multiply, value: 0.85 }
+        max_discovery_speed_kmh: { op: multiply, value: 4.0 }
+      site_stewardship:
+        site_visibility_m: { op: multiply, value: 0.85 }
+  stats_explanation: >-
+    Duration is this card's lifetime battery; each use runs until you stop
+    or time runs out. While active, raises max discovery speed by 300% so
+    motorcycle travel still counts toward discovery distance, but discover
+    visibility, walk-in chance, and site exploration radius drop 15%.
+
+overland_chassis:
+  duration_minutes: 60
+  modifies_main_params:
+    using:
+      site_discovery:
+        visibility_distance_m: { op: multiply, value: 0.8 }
+        discovery_chance: { op: multiply, value: 0.8 }
+        max_discovery_speed_kmh: { op: multiply, value: 5.0 }
+      site_stewardship:
+        site_visibility_m: { op: multiply, value: 0.8 }
+  stats_explanation: >-
+    Duration is this card's lifetime battery; each use runs until you stop
+    or time runs out. While active, raises max discovery speed by 400% so
+    4x4 travel still counts toward discovery distance, but discover
+    visibility, walk-in chance, and site exploration radius drop 20%.
 
 nocturne_lens:
   duration_minutes: 60

@@ -38,6 +38,27 @@ ToolModBinding _nocturneUsing({required double multiply}) {
   );
 }
 
+ToolModBinding _mobilityUsing({required double multiply}) {
+  return ToolModBinding(
+    actionKey: 'expedition_drivetrain',
+    toolName: 'Expedition Drivetrain',
+    mods: ModifiesMainParams(
+      using: {
+        'site_discovery': {
+          'visibility_distance_m': ParamModifier(op: 'multiply', value: multiply),
+          'discovery_chance': ParamModifier(op: 'multiply', value: multiply),
+          'max_discovery_speed_kmh':
+              ParamModifier(op: 'multiply', value: 3.0),
+        },
+        'site_stewardship': {
+          'site_visibility_m': ParamModifier(op: 'multiply', value: multiply),
+        },
+      },
+    ),
+    applyUsing: true,
+  );
+}
+
 void main() {
   tearDown(() {
     GameConfig.debugReset();
@@ -220,6 +241,30 @@ void main() {
         toolBindings: bindings,
       ),
       closeTo(base * 1.1, 1e-9),
+    );
+  });
+
+  test('mobility tools reduce site stewardship visibility', () async {
+    await loadGameConfigForTest();
+    final base = GameConfig.instance.siteStewardship.mainParams.siteVisibilityM;
+    expect(
+      resolveSiteStewardshipSiteVisibilityM(skillLevel: 1),
+      closeTo(base, 1e-9),
+    );
+    expect(
+      resolveSiteStewardshipSiteVisibilityM(
+        skillLevel: 1,
+        toolBindings: [_mobilityUsing(multiply: 0.9)],
+      ),
+      closeTo(base * 0.9, 1e-9),
+    );
+    expect(
+      resolveSiteStewardshipSiteVisibilityM(
+        skillLevel: 1,
+        weatherTime: 'day',
+        toolBindings: [_mobilityUsing(multiply: 0.9)],
+      ),
+      closeTo(base * 1.1 * 0.9, 1e-9),
     );
   });
 }

@@ -1430,8 +1430,7 @@ class ToolActionsConfig(BaseModel):
             ),
         )
     )
-    # Same shape as Ridge Glass (duration + modifies_main_params).
-    expedition_drivetrain: MainParamBuffActionConfig = Field(
+    trail_striders: MainParamBuffActionConfig = Field(
         default_factory=lambda: MainParamBuffActionConfig(
             duration_minutes=60,
             modifies_main_params=ModifiesMainParams(
@@ -1444,15 +1443,111 @@ class ToolActionsConfig(BaseModel):
                             op="multiply", value=0.95
                         ),
                         "max_discovery_speed_kmh": ParamModifier(
-                            op="multiply", value=2.5
+                            op="multiply", value=2.0
                         ),
-                    }
+                    },
+                    "site_stewardship": {
+                        "site_visibility_m": ParamModifier(
+                            op="multiply", value=0.95
+                        ),
+                    },
                 },
             ),
             stats_explanation=(
-                "While active, raises max discovery speed by 150% so bicycle "
-                "travel still counts toward discovery distance, but visibility "
-                "range and walk-in discovery chance drop 5%."
+                "While active, raises max discovery speed by 100% so a fast jog "
+                "still counts toward discovery distance, but discover "
+                "visibility, walk-in chance, and site exploration radius drop 5%."
+            ),
+        )
+    )
+    # Same shape as Ridge Glass (duration + modifies_main_params).
+    expedition_drivetrain: MainParamBuffActionConfig = Field(
+        default_factory=lambda: MainParamBuffActionConfig(
+            duration_minutes=60,
+            modifies_main_params=ModifiesMainParams(
+                using={
+                    "site_discovery": {
+                        "visibility_distance_m": ParamModifier(
+                            op="multiply", value=0.9
+                        ),
+                        "discovery_chance": ParamModifier(
+                            op="multiply", value=0.9
+                        ),
+                        "max_discovery_speed_kmh": ParamModifier(
+                            op="multiply", value=3.0
+                        ),
+                    },
+                    "site_stewardship": {
+                        "site_visibility_m": ParamModifier(
+                            op="multiply", value=0.9
+                        ),
+                    },
+                },
+            ),
+            stats_explanation=(
+                "While active, raises max discovery speed by 200% so bicycle "
+                "travel still counts toward discovery distance, but discover "
+                "visibility, walk-in chance, and site exploration radius drop 10%."
+            ),
+        )
+    )
+    canyon_throttle: MainParamBuffActionConfig = Field(
+        default_factory=lambda: MainParamBuffActionConfig(
+            duration_minutes=60,
+            modifies_main_params=ModifiesMainParams(
+                using={
+                    "site_discovery": {
+                        "visibility_distance_m": ParamModifier(
+                            op="multiply", value=0.85
+                        ),
+                        "discovery_chance": ParamModifier(
+                            op="multiply", value=0.85
+                        ),
+                        "max_discovery_speed_kmh": ParamModifier(
+                            op="multiply", value=4.0
+                        ),
+                    },
+                    "site_stewardship": {
+                        "site_visibility_m": ParamModifier(
+                            op="multiply", value=0.85
+                        ),
+                    },
+                },
+            ),
+            stats_explanation=(
+                "While active, raises max discovery speed by 300% so motorcycle "
+                "travel still counts toward discovery distance, but discover "
+                "visibility, walk-in chance, and site exploration radius drop 15%."
+            ),
+        )
+    )
+    overland_chassis: MainParamBuffActionConfig = Field(
+        default_factory=lambda: MainParamBuffActionConfig(
+            duration_minutes=60,
+            modifies_main_params=ModifiesMainParams(
+                using={
+                    "site_discovery": {
+                        "visibility_distance_m": ParamModifier(
+                            op="multiply", value=0.8
+                        ),
+                        "discovery_chance": ParamModifier(
+                            op="multiply", value=0.8
+                        ),
+                        "max_discovery_speed_kmh": ParamModifier(
+                            op="multiply", value=5.0
+                        ),
+                    },
+                    "site_stewardship": {
+                        "site_visibility_m": ParamModifier(
+                            op="multiply", value=0.8
+                        ),
+                    },
+                },
+            ),
+            stats_explanation=(
+                "While active, raises max discovery speed by 400% so 4x4 travel "
+                "still counts toward discovery distance, but discover "
+                "visibility, walk-in chance, and site exploration radius drop 20%."
             ),
         )
     )
@@ -1536,7 +1631,10 @@ class ToolActionsConfig(BaseModel):
     def main_param_buff_config_for(self, action_key: str) -> MainParamBuffActionConfig:
         mapping = {
             "ridge_glass": self.ridge_glass,
+            "trail_striders": self.trail_striders,
             "expedition_drivetrain": self.expedition_drivetrain,
+            "canyon_throttle": self.canyon_throttle,
+            "overland_chassis": self.overland_chassis,
             "nocturne_lens": self.nocturne_lens,
         }
         try:
@@ -1552,7 +1650,10 @@ class ToolActionsConfig(BaseModel):
             ("proximity_scanner", self.proximity_scanner),
             ("site_navigator", self.site_navigator),
             ("ridge_glass", self.ridge_glass),
+            ("trail_striders", self.trail_striders),
             ("expedition_drivetrain", self.expedition_drivetrain),
+            ("canyon_throttle", self.canyon_throttle),
+            ("overland_chassis", self.overland_chassis),
             ("nocturne_lens", self.nocturne_lens),
             ("brush_scrim", self.brush_scrim),
             ("blackout_cover", self.blackout_cover),

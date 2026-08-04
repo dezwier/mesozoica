@@ -186,24 +186,54 @@ void main() {
       config.toolActions.expeditionDrivetrain
           .siteDiscoveryMod('max_discovery_speed_kmh')
           ?.value,
-      2.5,
+      3.0,
     );
     expect(
       config.toolActions.expeditionDrivetrain
           .siteDiscoveryMod('visibility_distance_m')
           ?.value,
-      0.95,
+      0.9,
     );
     expect(
       config.toolActions.expeditionDrivetrain
           .siteDiscoveryMod('discovery_chance')
           ?.value,
-      0.95,
+      0.9,
     );
     expect(
       config.toolActions.expeditionDrivetrain.modifiesMainParams
           ?.affectsSkill('site_discovery'),
       isTrue,
+    );
+    expect(
+      config.toolActions.expeditionDrivetrain.modifiesMainParams
+          ?.affectsSkill('site_stewardship'),
+      isTrue,
+    );
+    expect(
+      config.toolActions.expeditionDrivetrain.modifiesMainParams
+          ?.paramsFor('using', 'site_stewardship')['site_visibility_m']
+          ?.value,
+      0.9,
+    );
+
+    expect(
+      config.toolActions.trailStriders
+          .siteDiscoveryMod('max_discovery_speed_kmh')
+          ?.value,
+      2.0,
+    );
+    expect(
+      config.toolActions.canyonThrottle
+          .siteDiscoveryMod('max_discovery_speed_kmh')
+          ?.value,
+      4.0,
+    );
+    expect(
+      config.toolActions.overlandChassis
+          .siteDiscoveryMod('max_discovery_speed_kmh')
+          ?.value,
+      5.0,
     );
 
     expect(config.toolActions.nocturneLens.durationMinutes, 60);

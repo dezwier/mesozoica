@@ -34,8 +34,17 @@ class MainParamBuffHud extends StatelessWidget {
   }
 
   Widget _iconForKind(MainParamBuffKind kind) {
+    if (kind.actionKey == MainParamBuffKind.trailStriders.actionKey) {
+      return const _TrailStridersIcon(size: 26);
+    }
     if (kind.actionKey == MainParamBuffKind.expeditionDrivetrain.actionKey) {
       return const _DrivetrainIcon(size: 26);
+    }
+    if (kind.actionKey == MainParamBuffKind.canyonThrottle.actionKey) {
+      return const _CanyonThrottleIcon(size: 26);
+    }
+    if (kind.actionKey == MainParamBuffKind.overlandChassis.actionKey) {
+      return const _OverlandChassisIcon(size: 26);
     }
     if (kind.actionKey == MainParamBuffKind.nocturneLens.actionKey) {
       return const _NocturneIcon(size: 26);
@@ -149,6 +158,199 @@ class _DrivetrainIconPainter extends CustomPainter {
         spoke,
       );
     }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+class _TrailStridersIcon extends StatelessWidget {
+  const _TrailStridersIcon({required this.size});
+
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: size,
+      height: size,
+      child: CustomPaint(painter: _TrailStridersIconPainter()),
+    );
+  }
+}
+
+class _TrailStridersIconPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final r = size.width * 0.34;
+    final rim = Paint()
+      ..color = VintageInstrumentStyle.brassRim
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.4;
+    final fill = Paint()..color = const Color(0x662A3A48);
+    canvas.drawCircle(center, r, fill);
+    canvas.drawCircle(center, r, rim);
+
+    final sole = Paint()
+      ..color = VintageInstrumentStyle.brassRim
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.3
+      ..strokeCap = StrokeCap.round;
+    final path = Path()
+      ..moveTo(center.dx - r * 0.45, center.dy + r * 0.35)
+      ..quadraticBezierTo(
+        center.dx - r * 0.55,
+        center.dy - r * 0.1,
+        center.dx - r * 0.15,
+        center.dy - r * 0.45,
+      )
+      ..quadraticBezierTo(
+        center.dx + r * 0.35,
+        center.dy - r * 0.35,
+        center.dx + r * 0.4,
+        center.dy + r * 0.15,
+      )
+      ..quadraticBezierTo(
+        center.dx + r * 0.15,
+        center.dy + r * 0.45,
+        center.dx - r * 0.45,
+        center.dy + r * 0.35,
+      );
+    canvas.drawPath(path, sole);
+    canvas.drawLine(
+      Offset(center.dx - r * 0.25, center.dy + r * 0.05),
+      Offset(center.dx + r * 0.2, center.dy - r * 0.05),
+      sole,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+class _CanyonThrottleIcon extends StatelessWidget {
+  const _CanyonThrottleIcon({required this.size});
+
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: size,
+      height: size,
+      child: CustomPaint(painter: _CanyonThrottleIconPainter()),
+    );
+  }
+}
+
+class _CanyonThrottleIconPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final r = size.width * 0.34;
+    final rim = Paint()
+      ..color = VintageInstrumentStyle.brassRim
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.4;
+    final fill = Paint()..color = const Color(0x662A3A48);
+    canvas.drawCircle(center, r, fill);
+    canvas.drawCircle(center, r, rim);
+
+    final stroke = Paint()
+      ..color = VintageInstrumentStyle.brassRim
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.3
+      ..strokeCap = StrokeCap.round;
+    // Two small wheels + frame triangle.
+    canvas.drawCircle(
+      Offset(center.dx - r * 0.35, center.dy + r * 0.25),
+      r * 0.28,
+      stroke,
+    );
+    canvas.drawCircle(
+      Offset(center.dx + r * 0.35, center.dy + r * 0.25),
+      r * 0.28,
+      stroke,
+    );
+    canvas.drawLine(
+      Offset(center.dx - r * 0.35, center.dy + r * 0.25),
+      Offset(center.dx, center.dy - r * 0.35),
+      stroke,
+    );
+    canvas.drawLine(
+      Offset(center.dx + r * 0.35, center.dy + r * 0.25),
+      Offset(center.dx, center.dy - r * 0.35),
+      stroke,
+    );
+    canvas.drawLine(
+      Offset(center.dx - r * 0.35, center.dy + r * 0.25),
+      Offset(center.dx + r * 0.35, center.dy + r * 0.25),
+      stroke,
+    );
+    canvas.drawLine(
+      Offset(center.dx, center.dy - r * 0.35),
+      Offset(center.dx + r * 0.45, center.dy - r * 0.55),
+      stroke,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+class _OverlandChassisIcon extends StatelessWidget {
+  const _OverlandChassisIcon({required this.size});
+
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: size,
+      height: size,
+      child: CustomPaint(painter: _OverlandChassisIconPainter()),
+    );
+  }
+}
+
+class _OverlandChassisIconPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final r = size.width * 0.34;
+    final rim = Paint()
+      ..color = VintageInstrumentStyle.brassRim
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.4;
+    final fill = Paint()..color = const Color(0x662A3A48);
+    canvas.drawCircle(center, r, fill);
+    canvas.drawCircle(center, r, rim);
+
+    final stroke = Paint()
+      ..color = VintageInstrumentStyle.brassRim
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.3
+      ..strokeCap = StrokeCap.round;
+    final body = RRect.fromRectAndRadius(
+      Rect.fromCenter(
+        center: Offset(center.dx, center.dy - r * 0.05),
+        width: r * 1.35,
+        height: r * 0.7,
+      ),
+      const Radius.circular(2),
+    );
+    canvas.drawRRect(body, stroke);
+    canvas.drawCircle(
+      Offset(center.dx - r * 0.4, center.dy + r * 0.4),
+      r * 0.22,
+      stroke,
+    );
+    canvas.drawCircle(
+      Offset(center.dx + r * 0.4, center.dy + r * 0.4),
+      r * 0.22,
+      stroke,
+    );
   }
 
   @override
