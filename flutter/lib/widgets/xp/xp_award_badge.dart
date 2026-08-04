@@ -75,28 +75,30 @@ class XpAwardBadge extends StatelessWidget {
                     ],
                   ),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  '+${_xpFormat.format(award.amount)} XP',
-                  maxLines: 1,
-                  softWrap: false,
-                  style: const TextStyle(
-                    fontFamily: MapChromeTheme.serifFont,
-                    color: MapChromeTheme.mutedGold,
-                    fontSize: 14.5,
-                    fontWeight: FontWeight.w700,
-                    height: 1.0,
-                    letterSpacing: 0.35,
-                    decoration: TextDecoration.none,
-                    shadows: [
-                      Shadow(
-                        color: Color(0x66000000),
-                        blurRadius: 3,
-                        offset: Offset(0, 1),
-                      ),
-                    ],
+                if (award.amount > 0) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    '+${_xpFormat.format(award.amount)} XP',
+                    maxLines: 1,
+                    softWrap: false,
+                    style: const TextStyle(
+                      fontFamily: MapChromeTheme.serifFont,
+                      color: MapChromeTheme.mutedGold,
+                      fontSize: 14.5,
+                      fontWeight: FontWeight.w700,
+                      height: 1.0,
+                      letterSpacing: 0.35,
+                      decoration: TextDecoration.none,
+                      shadows: [
+                        Shadow(
+                          color: Color(0x66000000),
+                          blurRadius: 3,
+                          offset: Offset(0, 1),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
+                ],
               ],
             ),
           ],

@@ -276,7 +276,7 @@ class SiteDiscoveryConfig {
   double get maxDiscoverySpeedKmh => mainParams.maxDiscoverySpeedKmh;
   double get siteDiscoveryXp => mainParams.siteDiscoveryXp;
   double get firstDiscoveryXp => mainParams.firstDiscoveryXp;
-  double get activeKmXp => mainParams.activeKmXp;
+  double get active100mXp => mainParams.active100mXp;
   double get passiveKmXp => mainParams.passiveKmXp;
 
   /// Back-compat alias.
@@ -308,7 +308,7 @@ class SiteDiscoveryMainParams {
     required this.maxDiscoverySpeedKmh,
     required this.siteDiscoveryXp,
     required this.firstDiscoveryXp,
-    required this.activeKmXp,
+    required this.active100mXp,
     required this.passiveKmXp,
   });
 
@@ -317,7 +317,7 @@ class SiteDiscoveryMainParams {
   final double maxDiscoverySpeedKmh;
   final double siteDiscoveryXp;
   final double firstDiscoveryXp;
-  final double activeKmXp;
+  final double active100mXp;
   final double passiveKmXp;
 
   factory SiteDiscoveryMainParams.fromYaml(Map<String, dynamic> yaml) {
@@ -330,8 +330,8 @@ class SiteDiscoveryMainParams {
       maxDiscoverySpeedKmh: _asDouble(yaml['max_discovery_speed_kmh'], 10.0),
       siteDiscoveryXp: _asDouble(yaml['site_discovery_xp'], 20.0),
       firstDiscoveryXp: _asDouble(yaml['first_discovery_xp'], 20.0),
-      activeKmXp: _asDouble(yaml['active_km_xp'], 30.0),
-      passiveKmXp: _asDouble(yaml['passive_km_xp'], 5.0),
+      active100mXp: _asDouble(yaml['active_100m_xp'], 20.0),
+      passiveKmXp: _asDouble(yaml['passive_km_xp'], 100.0),
     );
   }
 }

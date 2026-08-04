@@ -204,9 +204,21 @@ class _AppShellState extends State<AppShell>
         context.read<WalkDistanceController>().bind(
               context.read<LocationService>(),
               onProfileUpdated: (profile) async {
-                await context.read<AuthController>().applyUser(profile);
+                final walk = context.read<WalkDistanceController>();
+                final gap = walk.takePendingVisitGapMeters();
+                await context.read<AuthController>().applyUser(
+                      profile,
+                      exploredSinceLastVisitM: gap,
+                    );
               },
-            ),
+            ).then((_) {
+              if (!mounted) return;
+              // Cold start never gets a resumed lifecycle transition — credit
+              // any closed-app Health gap and surface the visit XP badge.
+              return context.read<WalkDistanceController>().onAppResumed(
+                    profile: context.read<AuthController>().currentUser,
+                  );
+            }),
       );
       unawaited(
         context.read<SiteExplorationController>().bind(

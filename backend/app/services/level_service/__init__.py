@@ -1,7 +1,7 @@
 """Career / skill leveling helpers."""
 
 from app.services.level_service.award import (
-    award_distance_km_xp,
+    award_distance_xp,
     award_first_discovery_xp,
     award_first_documentation_xp,
     award_fossil_discover_xp,
@@ -15,6 +15,7 @@ from app.services.level_service.award import (
     identification_xp_for_attempt,
     passive_meters,
     sync_career_from_skills,
+    whole_100m,
     whole_km,
 )
 from app.services.level_service.backfill import backfill_all_users, backfill_user_levels
@@ -47,7 +48,7 @@ __all__ = [
     "SKILL_MAX_LEVEL",
     "SKILL_THRESHOLDS",
     "all_skill_states",
-    "award_distance_km_xp",
+    "award_distance_xp",
     "award_first_discovery_xp",
     "award_first_documentation_xp",
     "award_fossil_discover_xp",
@@ -75,6 +76,7 @@ __all__ = [
     "skill_state",
     "sync_career_from_skills",
     "total_skill_xp",
+    "whole_100m",
     "whole_km",
     "xp_for_level",
     "xp_to_next_level",

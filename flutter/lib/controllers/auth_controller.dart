@@ -135,10 +135,25 @@ class AuthController extends ChangeNotifier {
   /// When [announceXp] is true, positive per-source XP deltas are announced on
   /// the bound [XpAwardController]: celebration sources are stashed for the
   /// matching plaque; all other sources become floating XP badges.
-  Future<void> applyUser(Profile user, {bool announceXp = true}) async {
+  ///
+  /// When [exploredSinceLastVisitM] is &gt; 0 (Health gap credited on reopen),
+  /// distance awards are merged into one "Explored … since last visit" badge.
+  Future<void> applyUser(
+    Profile user, {
+    bool announceXp = true,
+    double? exploredSinceLastVisitM,
+  }) async {
     if (announceXp) {
       final awards = _diffXpAwards(_currentUser, user);
-      _xpAwards?.announceAwards(awards);
+      final gap = exploredSinceLastVisitM ?? 0;
+      if (gap > 0) {
+        _xpAwards?.announceAwardsAfterVisit(
+          awards: awards,
+          exploredMeters: gap,
+        );
+      } else {
+        _xpAwards?.announceAwards(awards);
+      }
     }
     _currentUser = user;
     if (!isAdmin) _resetAdminMode();

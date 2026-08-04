@@ -122,8 +122,8 @@ def test_load_game_config_matches_current_defaults() -> None:
     assert config.site_discovery.max_discovery_speed_kmh == 10.0
     assert config.site_discovery.site_discovery_xp == 20.0
     assert config.site_discovery.first_discovery_xp == 20.0
-    assert config.site_discovery.active_km_xp == 30.0
-    assert config.site_discovery.passive_km_xp == 5.0
+    assert config.site_discovery.active_100m_xp == 20.0
+    assert config.site_discovery.passive_km_xp == 100.0
     assert config.site_discovery.client.auto_discover_radius_m == 20.0
     assert config.site_discovery.client.cache_radius_km == 1.0
     assert config.site_discovery.client.cache_refresh_move_threshold_m == 500.0

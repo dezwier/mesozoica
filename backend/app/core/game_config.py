@@ -414,8 +414,8 @@ class SiteDiscoveryMainParams(BaseModel):
     max_discovery_speed_kmh: float = 10.0
     site_discovery_xp: float = 20.0
     first_discovery_xp: float = 20.0
-    active_km_xp: float = 30.0
-    passive_km_xp: float = 5.0
+    active_100m_xp: float = 20.0
+    passive_km_xp: float = 100.0
 
     @field_validator("discovery_chance")
     @classmethod
@@ -427,7 +427,7 @@ class SiteDiscoveryMainParams(BaseModel):
         "max_discovery_speed_kmh",
         "site_discovery_xp",
         "first_discovery_xp",
-        "active_km_xp",
+        "active_100m_xp",
         "passive_km_xp",
     )
     @classmethod
@@ -491,8 +491,8 @@ class SiteDiscoveryConfig(BaseModel):
         return float(self.main_params.first_discovery_xp)
 
     @property
-    def active_km_xp(self) -> float:
-        return float(self.main_params.active_km_xp)
+    def active_100m_xp(self) -> float:
+        return float(self.main_params.active_100m_xp)
 
     @property
     def passive_km_xp(self) -> float:

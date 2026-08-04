@@ -79,3 +79,26 @@ String xpSourceLabel(String breakdownKey) {
       .map((part) => '${part[0].toUpperCase()}${part.substring(1)}')
       .join(' ');
 }
+
+/// Format meters as `N m` / `N.N km` / `N km` (matches profile exploration).
+String formatExplorationDistance(double meters) {
+  if (meters < 1000) {
+    return '${meters.round()} m';
+  }
+  final km = meters / 1000.0;
+  if (km < 10) {
+    return '${km.toStringAsFixed(1)} km';
+  }
+  return '${km.round()} km';
+}
+
+/// Badge label after a closed-app walk gap is credited on reopen.
+String exploredSinceLastVisitLabel(double meters) {
+  return 'Explored ${formatExplorationDistance(meters)} since last visit';
+}
+
+/// Breakdown keys for walk-distance XP (active GPS / passive Health).
+const kDistanceXpSourceKeys = <String>{
+  'active_distance',
+  'passive_distance',
+};

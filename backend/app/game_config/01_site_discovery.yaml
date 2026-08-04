@@ -15,10 +15,10 @@ main_params:
   # Bonus XP when you are the first user to discover a site (others still get
   # site_discovery_xp later, but not this reward).
   first_discovery_xp: 20
-  # XP per whole active kilometer walked.
-  active_km_xp: 30
-  # XP per whole passive kilometer walked.
-  passive_km_xp: 5
+  # XP per whole 100 m of active walking.
+  active_100m_xp: 20
+  # XP per whole passive kilometer (Health credits; awarded on cold restart).
+  passive_km_xp: 100
 
 # Identity for v1 — tune later. Each list entry: { level, op: add|multiply|replace, value }.
 level_modifiers:
@@ -27,7 +27,7 @@ level_modifiers:
   max_discovery_speed_kmh: []
   site_discovery_xp: []
   first_discovery_xp: []
-  active_km_xp: []
+  active_100m_xp: []
   passive_km_xp: []
 
 # Ambient solar period (dawn|day|dusk|golden_hour|night). After level, before weather_type + tools.
@@ -48,7 +48,7 @@ weather_time_modifiers:
     dusk: [{ op: multiply, value: 1.2 }]
     night: [{ op: multiply, value: 1.5 }]
   first_discovery_xp: {}
-  active_km_xp: {}
+  active_100m_xp: {}
   passive_km_xp: {}
 
 # Ambient weather type (clear|cloudy|…). After weather_time, before tools.
@@ -67,7 +67,7 @@ weather_type_modifiers:
   max_discovery_speed_kmh: {}
   site_discovery_xp: {}
   first_discovery_xp: {}
-  active_km_xp: {}
+  active_100m_xp: {}
   passive_km_xp: {}
 
 # Flutter auto-discover + nearby-discoverable cache.

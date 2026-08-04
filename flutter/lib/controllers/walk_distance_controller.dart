@@ -90,6 +90,9 @@ class WalkDistanceController extends ChangeNotifier {
   bool _loading = false;
   String? _error;
   Future<void>? _inFlightRefresh;
+  /// Meters credited from Health for the most recent closed-app gap (consumed
+  /// once by the profile-update callback for the visit XP badge).
+  double? _pendingVisitGapMeters;
 
   double get activeMeters => _activeMeters;
   double get activeWeeklyMeters => _activeWeeklyMeters;
@@ -100,6 +103,13 @@ class WalkDistanceController extends ChangeNotifier {
   DateTime? get lastSyncedAt => _lastSyncedAt;
   bool get loading => _loading;
   String? get error => _error;
+
+  /// Take and clear meters walked while the app was closed (for visit badge).
+  double? takePendingVisitGapMeters() {
+    final gap = _pendingVisitGapMeters;
+    _pendingVisitGapMeters = null;
+    return gap;
+  }
 
   double get displayTotalMeters =>
       _mode == ExploringDistanceMode.active ? _activeMeters : _totalMeters;
@@ -319,6 +329,7 @@ class WalkDistanceController extends ChangeNotifier {
     _closedSince = null;
     if (gap == null || gap <= 0) return;
 
+    _pendingVisitGapMeters = gap;
     _totalMeters += gap;
     final weekStart = localWeekStartMonday(now);
     if (!closedSince.isBefore(weekStart)) {
@@ -436,7 +447,7 @@ class WalkDistanceController extends ChangeNotifier {
       await _persistLocal();
       notifyListeners();
 
-      // Distance sync returns a full profile (may include km XP awards).
+      // Distance sync returns a full profile (may include walk XP awards).
       try {
         final profile = Profile.fromJson(response);
         final onUpdated = _onProfileUpdated;

@@ -28,7 +28,7 @@ def test_resolve_site_discovery_identity_level() -> None:
     assert resolved["max_discovery_speed_kmh"] == cfg.max_discovery_speed_kmh
     assert resolved["site_discovery_xp"] == cfg.site_discovery_xp
     assert resolved["first_discovery_xp"] == cfg.first_discovery_xp
-    assert resolved["active_km_xp"] == cfg.active_km_xp
+    assert resolved["active_100m_xp"] == cfg.active_100m_xp
     assert resolved["passive_km_xp"] == cfg.passive_km_xp
 
 
@@ -73,7 +73,7 @@ def test_resolve_site_discovery_xp_weather_time() -> None:
             skill_level=1, weather_time=period
         )
         assert resolved["first_discovery_xp"] == pytest.approx(cfg.first_discovery_xp)
-        assert resolved["active_km_xp"] == pytest.approx(cfg.active_km_xp)
+        assert resolved["active_100m_xp"] == pytest.approx(cfg.active_100m_xp)
         assert resolved["passive_km_xp"] == pytest.approx(cfg.passive_km_xp)
 
 

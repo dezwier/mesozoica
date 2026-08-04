@@ -20,8 +20,8 @@ void main() {
     expect(config.siteDiscovery.maxDiscoverySpeedKmh, 10.0);
     expect(config.siteDiscovery.siteDiscoveryXp, 20.0);
     expect(config.siteDiscovery.firstDiscoveryXp, 20.0);
-    expect(config.siteDiscovery.activeKmXp, 30.0);
-    expect(config.siteDiscovery.passiveKmXp, 5.0);
+    expect(config.siteDiscovery.active100mXp, 20.0);
+    expect(config.siteDiscovery.passiveKmXp, 100.0);
     expect(config.siteDiscovery.client.autoDiscoverRadiusM, 20.0);
     expect(config.siteDiscovery.client.cacheRadiusKm, 1.0);
     expect(config.siteDiscovery.client.cacheRefreshMoveThresholdM, 500.0);

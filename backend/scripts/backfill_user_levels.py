@@ -43,10 +43,10 @@ def main() -> int:
     site_cfg = get_game_config().site_discovery
     fossil_cfg = get_game_config().fossil_detection
     logger.info(
-        "xp site_discovery=%s fossil_discovery=%s active_km=%s passive_km=%s",
+        "xp site_discovery=%s fossil_discovery=%s active_100m=%s passive_km=%s",
         site_cfg.site_discovery_xp,
         fossil_cfg.main_params.get("fossil_discovery_xp"),
-        site_cfg.active_km_xp,
+        site_cfg.active_100m_xp,
         site_cfg.passive_km_xp,
     )
 

@@ -13,6 +13,7 @@ from app.models.user_site import USER_SITE_ROLE_DISCOVERER, UserSite
 from app.services.level_service.award import (
     passive_meters,
     sync_career_from_skills,
+    whole_100m,
     whole_km,
 )
 from app.services.level_service.skills import empty_skill_xp, skill_ids
@@ -52,13 +53,13 @@ def compute_skill_xp_from_history(
     fossil_xp = int(
         round(float(fossil_cfg.main_params.get("fossil_discovery_xp", 5)))
     )
-    active_xp = int(round(float(site_cfg.active_km_xp)))
+    active_xp = int(round(float(site_cfg.active_100m_xp)))
     passive_xp = int(round(float(site_cfg.passive_km_xp)))
     from_sites = int(site_count) * site_xp
     from_fossils = int(fossil_count) * fossil_xp
-    active_km = whole_km(active_distance_m)
+    active_batches = whole_100m(active_distance_m)
     passive_km = whole_km(passive_meters(total_distance_m, active_distance_m))
-    from_active = active_km * active_xp
+    from_active = active_batches * active_xp
     from_passive = passive_km * passive_xp
 
     skill_xp = empty_skill_xp()

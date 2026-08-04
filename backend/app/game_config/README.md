@@ -97,11 +97,11 @@ name under each main_param. All list entries for the current key apply in order
 | `max_discovery_speed_kmh` | Max GPS speed for walk XP credit and discovery dice rolls |
 | `site_discovery_xp` | XP awarded when a site is discovered |
 | `first_discovery_xp` | Bonus XP when you are the first user to discover a site |
-| `active_km_xp` | XP per whole active kilometer walked |
+| `active_100m_xp` | XP per whole 100 m of active walking |
 | `passive_km_xp` | XP per whole passive kilometer walked |
 
 `site_discovery_xp` solar-period multipliers: day +0%, golden hour +10%, dawn/dusk +20%, night +50%.
-`first_discovery_xp`, `active_km_xp`, and `passive_km_xp` are not affected by time of day.
+`first_discovery_xp`, `active_100m_xp`, and `passive_km_xp` are not affected by time of day.
 Visibility / discovery chance: day +10%, golden hour +30%, dawn/dusk +0%, night −40%.
 
 Client-only (not main params): `discovery_reroll_interval_s` — seconds between

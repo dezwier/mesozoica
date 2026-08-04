@@ -133,7 +133,11 @@ void main() {
         award(sourceKey: 'sites', amount: 20),
         award(sourceKey: 'first_discovery', amount: 20),
         award(sourceKey: 'active_distance', amount: 30),
-        award(sourceKey: 'site_exploration', amount: 20, skillId: 'site_stewardship'),
+        award(
+          sourceKey: 'site_exploration',
+          amount: 20,
+          skillId: 'site_stewardship',
+        ),
       ]);
 
       expect(controller.activeAwards, hasLength(2));
@@ -199,6 +203,56 @@ void main() {
       expect(controller.celebrationStash, isEmpty);
     });
 
+    test('visit announce merges distance into explored-since-last-visit badge',
+        () {
+      final controller = XpAwardController();
+      controller.announceAwardsAfterVisit(
+        awards: [
+          award(sourceKey: 'passive_distance', amount: 100),
+          award(sourceKey: 'active_distance', amount: 40),
+          award(sourceKey: 'disguise', amount: 10),
+        ],
+        exploredMeters: 1500,
+      );
+
+      expect(controller.activeAwards, hasLength(2));
+      final visit = controller.activeAwards.firstWhere(
+        (a) => a.sourceLabel.startsWith('Explored '),
+      );
+      expect(visit.sourceLabel, 'Explored 1.5 km since last visit');
+      expect(visit.amount, 140);
+      expect(
+        controller.activeAwards.any((a) => a.sourceKey == 'disguise'),
+        isTrue,
+      );
+    });
+
+    test('visit announce shows distance-only badge when XP is 0', () {
+      final controller = XpAwardController();
+      controller.announceAwardsAfterVisit(
+        awards: const [],
+        exploredMeters: 250,
+      );
+
+      expect(controller.activeAwards, hasLength(1));
+      expect(
+        controller.activeAwards.single.sourceLabel,
+        'Explored 250 m since last visit',
+      );
+      expect(controller.activeAwards.single.amount, 0);
+    });
+
+    test('visit announce with 0 meters falls back to normal announce', () {
+      final controller = XpAwardController();
+      controller.announceAwardsAfterVisit(
+        awards: [award(sourceKey: 'passive_distance', amount: 100)],
+        exploredMeters: 0,
+      );
+
+      expect(controller.activeAwards, hasLength(1));
+      expect(controller.activeAwards.single.sourceLabel, 'Passive distance');
+    });
+
     test('clear empties active badges and celebration stash', () {
       final controller = XpAwardController();
       controller.announceAwards([
@@ -208,6 +262,18 @@ void main() {
       controller.clear();
       expect(controller.activeAwards, isEmpty);
       expect(controller.celebrationStash, isEmpty);
+    });
+  });
+
+  group('explored since last visit labels', () {
+    test('formats meters and km', () {
+      expect(formatExplorationDistance(42), '42 m');
+      expect(formatExplorationDistance(1500), '1.5 km');
+      expect(formatExplorationDistance(12500), '13 km');
+      expect(
+        exploredSinceLastVisitLabel(800),
+        'Explored 800 m since last visit',
+      );
     });
   });
 }

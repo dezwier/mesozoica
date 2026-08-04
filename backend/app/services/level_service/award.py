@@ -299,16 +299,16 @@ def award_site_identification_xp(
     )
 
 
-def award_distance_km_xp(
+def award_distance_xp(
     user: User,
     *,
-    active_km_delta: int,
+    active_100m_delta: int,
     passive_km_delta: int,
     weather_time: str | None = None,
     weather_type: str | None = None,
     tool_mods: Mapping[str, ParamModifier] | None = None,
 ) -> int:
-    """Award site-discovery XP for whole-kilometer floor increases."""
+    """Award site-discovery XP for active 100 m / passive km floor increases."""
     skill_level = level_for_xp(get_skill_xp(user, "site_discovery"))
     resolved = resolve_site_discovery_main_params(
         skill_level=skill_level,
@@ -316,7 +316,9 @@ def award_distance_km_xp(
         weather_type=weather_type,
         tool_mods=tool_mods,
     )
-    active_add = max(0, int(active_km_delta)) * _xp_int(resolved["active_km_xp"])
+    active_add = max(0, int(active_100m_delta)) * _xp_int(
+        resolved["active_100m_xp"]
+    )
     passive_add = max(0, int(passive_km_delta)) * _xp_int(resolved["passive_km_xp"])
     total = active_add + passive_add
     if total <= 0:
@@ -332,6 +334,10 @@ def award_distance_km_xp(
         amount=total,
         breakdown_delta=breakdown,
     )
+
+
+def whole_100m(meters: float) -> int:
+    return max(0, int(meters) // 100)
 
 
 def whole_km(meters: float) -> int:

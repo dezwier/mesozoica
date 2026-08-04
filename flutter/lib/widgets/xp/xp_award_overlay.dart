@@ -97,6 +97,8 @@ class _XpAwardOverlayState extends State<XpAwardOverlay>
 
   Future<void> _play(XpAward award) async {
     final playing = _PlayingBadge(award: award);
+    // Distance-only visit chip (0 XP) — no magic-string to the XP bar.
+    if (award.amount <= 0) playing.skipMagic = true;
     _playing[award.id] = playing;
     if (mounted) setState(() {});
 

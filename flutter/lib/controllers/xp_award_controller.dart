@@ -126,6 +126,76 @@ class XpAwardController extends ChangeNotifier {
     stashCelebrationAwards(celebration);
   }
 
+  /// Like [announceAwards], but distance XP from a closed-app gap is merged into
+  /// one badge titled "Explored … since last visit".
+  ///
+  /// Shown whenever [exploredMeters] &gt; 0 (even if XP is 0). When meters are
+  /// 0, behaves like [announceAwards].
+  void announceAwardsAfterVisit({
+    required Iterable<XpAward> awards,
+    required double exploredMeters,
+  }) {
+    if (exploredMeters <= 0) {
+      announceAwards(awards);
+      return;
+    }
+
+    final distance = <XpAward>[];
+    final celebration = <XpAward>[];
+    final otherBadge = <XpAward>[];
+    for (final award in awards) {
+      if (award.amount <= 0) continue;
+      if (kDistanceXpSourceKeys.contains(award.sourceKey)) {
+        distance.add(award);
+      } else if (isCelebrationXpSource(award.sourceKey)) {
+        celebration.add(award);
+      } else {
+        otherBadge.add(award);
+      }
+    }
+
+    final xp = distance.fold<int>(0, (sum, a) => sum + a.amount);
+    final template = distance.isNotEmpty
+        ? distance.first
+        : const XpAward(
+            id: 0,
+            skillId: 'site_discovery',
+            skillName: 'Site Discovery',
+            sourceLabel: '',
+            amount: 0,
+            sourceKey: 'passive_distance',
+          );
+
+    _enqueueVisitAware([
+      ...otherBadge,
+      XpAward(
+        id: 0,
+        skillId: template.skillId,
+        skillName: template.skillName,
+        sourceLabel: exploredSinceLastVisitLabel(exploredMeters),
+        amount: xp,
+        sourceKey: template.sourceKey,
+      ),
+    ]);
+    stashCelebrationAwards(celebration);
+  }
+
+  void _enqueueVisitAware(Iterable<XpAward> awards) {
+    var added = false;
+    for (final award in awards) {
+      if (isCelebrationXpSource(award.sourceKey)) continue;
+      // Allow amount == 0 for the visit distance chip only.
+      if (award.amount < 0) continue;
+      if (award.amount == 0 &&
+          !award.sourceLabel.startsWith('Explored ')) {
+        continue;
+      }
+      _active.add(award.copyWith(id: _nextId++));
+      added = true;
+    }
+    if (added) notifyListeners();
+  }
+
   /// Remove and return stashed awards whose [sourceKey] is in [keys].
   ///
   /// Celebrations call this when opening so the plaque embeds every XP line

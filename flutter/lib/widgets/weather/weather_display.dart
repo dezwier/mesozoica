@@ -151,7 +151,7 @@ abstract final class WeatherDisplay {
       'site_documentation_xp': 'Site documentation',
       'site_identification_xp': 'Site identification',
       'first_documentation_xp': 'First documentation',
-      'active_km_xp': 'Active km XP',
+      'active_100m_xp': 'Active 100m XP',
       'passive_km_xp': 'Passive km XP',
       'fossil_discovery_xp': 'Fossil discovery XP',
       'dino_accuracy': 'Dinosaur count estimation',

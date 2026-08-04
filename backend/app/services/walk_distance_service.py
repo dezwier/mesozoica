@@ -85,18 +85,19 @@ def apply_distance_update(
     user.distance_synced_at = now
 
     from app.services.level_service import (
-        award_distance_km_xp,
+        award_distance_xp,
         passive_meters,
+        whole_100m,
         whole_km,
     )
 
-    prev_active_km = whole_km(previous_active)
-    new_active_km = whole_km(new_active)
+    prev_active_batches = whole_100m(previous_active)
+    new_active_batches = whole_100m(new_active)
     prev_passive_km = whole_km(passive_meters(previous_total, previous_active))
     new_passive_km = whole_km(passive_meters(new_total, new_active))
-    award_distance_km_xp(
+    award_distance_xp(
         user,
-        active_km_delta=new_active_km - prev_active_km,
+        active_100m_delta=new_active_batches - prev_active_batches,
         passive_km_delta=new_passive_km - prev_passive_km,
     )
 

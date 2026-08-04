@@ -31,7 +31,7 @@ skills:
     name: Academic Publishing
 
 # XP reward amounts live on skill domain main_params
-# (site_discovery_xp / active_km_xp / passive_km_xp / fossil_discovery_xp).
+# (site_discovery_xp / active_100m_xp / passive_km_xp / fossil_discovery_xp).
 
 career_titles:
   - Curious Wanderer

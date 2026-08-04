@@ -153,7 +153,7 @@ def resolve_site_discovery_main_params(
         "first_discovery_xp": _resolve(
             "first_discovery_xp", base=cfg.first_discovery_xp
         ),
-        "active_km_xp": _resolve("active_km_xp", base=cfg.active_km_xp),
+        "active_100m_xp": _resolve("active_100m_xp", base=cfg.active_100m_xp),
         "passive_km_xp": _resolve("passive_km_xp", base=cfg.passive_km_xp),
     }
 
