@@ -245,23 +245,26 @@ brush_scrim:
   modifies_main_params:
     using:
       site_stewardship:
-        rival_discovery: { op: multiply, value: 0.5 }
+        rival_discovery: { op: multiply, value: 0 }
   stats_explanation: >-
     Duration is this card's lifetime battery; each use covers one discovered
-    site until you stop or time runs out. While active on that site, multiplies
-    rival_discovery by 0.5 so other players' discovery chance is halved.
-    Discovery rolls still happen: when a rival's roll would have succeeded but
-    the cover blocks it, you gain successful site disguise XP. One disguise
-    at a time.
+    site until you stop or time runs out. While active, multiplies
+    rival_discovery by 0 (camouflages the site so rivals cannot discover it).
+    Discovery rolls still run so that a would-have-hit awards you successful
+    site disguise XP; you get nothing if their roll would have missed without
+    the cover. One disguise at a time.
 
 blackout_cover:
   duration_minutes: 60
   modifies_main_params:
     using:
       site_stewardship:
-        rival_discovery: { op: multiply, value: 0 }
+        rival_discovery: { op: multiply, value: 0.5 }
   stats_explanation: >-
     Duration is this card's lifetime battery; each use covers one discovered
-    site until you stop or time runs out. While active on that site, multiplies
-    rival_discovery by 0. Discovery rolls still run so a would-be hit awards
-    you successful site disguise XP. One disguise at a time.
+    site until you stop or time runs out. While active, multiplies
+    rival_discovery by 0.5 (halves other players' discovery chance on that
+    site). You gain successful site disguise XP only when a rival's roll
+    would have discovered the site without this cover, but the cover stops
+    them — not when they miss anyway, and not when they discover it despite
+    the cover. One disguise at a time.

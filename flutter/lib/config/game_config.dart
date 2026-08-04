@@ -1124,12 +1124,14 @@ class ToolActionsConfig {
           modifiesMainParams: ModifiesMainParams(
             using: {
               'site_stewardship': {
-                'rival_discovery': ParamModifier(op: 'multiply', value: 0.5),
+                'rival_discovery': ParamModifier(op: 'multiply', value: 0),
               },
             },
           ),
           statsExplanation:
-              'Covers one discovered site; multiplies rival_discovery by 0.5.',
+              'Covers one discovered site; multiplies rival_discovery by 0. '
+              'Successful site disguise XP only when a rival would have '
+              'discovered the site without the cover.',
         ),
       ),
       blackoutCover: DisguiseActionConfig.fromYaml(
@@ -1139,12 +1141,14 @@ class ToolActionsConfig {
           modifiesMainParams: ModifiesMainParams(
             using: {
               'site_stewardship': {
-                'rival_discovery': ParamModifier(op: 'multiply', value: 0),
+                'rival_discovery': ParamModifier(op: 'multiply', value: 0.5),
               },
             },
           ),
           statsExplanation:
-              'Covers one discovered site; multiplies rival_discovery by 0.',
+              'Covers one discovered site; multiplies rival_discovery by 0.5. '
+              'Successful site disguise XP only when a rival would have '
+              'discovered the site without the cover but the cover stops them.',
         ),
       ),
     );

@@ -418,7 +418,7 @@ def roll_discovery_with_disguise(
 
     - ``hit``: roll clears the disguised (effective) chance → rival discovers.
     - ``blocked``: roll would have cleared base chance, but disguise stopped it
-      (including Blackout Cover at ×0). Awards stewardship XP to disguisers.
+      (including Brush Scrim at ×0). Awards stewardship XP to disguisers.
     - ``miss``: roll misses even the undisguised base chance.
     """
     base = max(0.0, min(1.0, float(base_chance)))

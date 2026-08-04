@@ -173,10 +173,10 @@ def test_tool_actions_yaml_loads_disguise_knobs() -> None:
     assert scrim.duration_minutes == 60
     assert scrim.rival_discovery_mod is not None
     assert scrim.rival_discovery_mod.op == "multiply"
-    assert scrim.rival_discovery_mod.value == 0.5
+    assert scrim.rival_discovery_mod.value == 0.0
     assert cover.rival_discovery_mod is not None
     assert cover.rival_discovery_mod.op == "multiply"
-    assert cover.rival_discovery_mod.value == 0.0
+    assert cover.rival_discovery_mod.value == 0.5
     assert get_game_config().site_stewardship.rival_discovery == 1.0
     assert get_game_config().site_stewardship.successful_site_disguise_xp == 50.0
 
@@ -220,7 +220,7 @@ def test_deploy_creates_disguiser_and_ignores_status(
     assert body["state"]["site_id"] == site.site_id
     assert body["params"]["modifies_main_params"]["using"]["site_stewardship"][
         "rival_discovery"
-    ] == {"op": "multiply", "value": 0.5}
+    ] == {"op": "multiply", "value": 0.0}
 
     disguiser = session.exec(
         select(UserSite).where(
@@ -300,13 +300,13 @@ def test_rival_chance_halved_discoverer_unaffected(
     rival = _user(session, username="rival4")
     site = _site(session, site_id=91005)
     _link_discoverer(session, user_id=int(owner.id), site_id=int(site.site_id))
-    scrim = _tool(session, name="Brush Scrim")
-    _grant(session, user_id=int(owner.id), tool_id=int(scrim.id))
+    cover = _tool(session, name="Blackout Cover", action="Shroud")
+    _grant(session, user_id=int(owner.id), tool_id=int(cover.id))
 
     start_timed_session(
         session,
         user_id=int(owner.id),
-        tool_id=int(scrim.id),
+        tool_id=int(cover.id),
         site_id=int(site.site_id),
     )
 
@@ -329,7 +329,7 @@ def test_rival_chance_halved_discoverer_unaffected(
     )
 
 
-def test_blackout_zeros_rival_chance(
+def test_brush_scrim_zeros_rival_chance(
     session: Session, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     _stub_overcast_weather(monkeypatch)
@@ -337,13 +337,13 @@ def test_blackout_zeros_rival_chance(
     rival = _user(session, username="rival5")
     site = _site(session, site_id=91006)
     _link_discoverer(session, user_id=int(owner.id), site_id=int(site.site_id))
-    cover = _tool(session, name="Blackout Cover", action="Shroud")
-    _grant(session, user_id=int(owner.id), tool_id=int(cover.id))
+    scrim = _tool(session, name="Brush Scrim")
+    _grant(session, user_id=int(owner.id), tool_id=int(scrim.id))
 
     start_timed_session(
         session,
         user_id=int(owner.id),
-        tool_id=int(cover.id),
+        tool_id=int(scrim.id),
         site_id=int(site.site_id),
     )
 
@@ -360,7 +360,7 @@ def test_blackout_zeros_rival_chance(
 def test_rival_blocked_roll_awards_stewardship_xp(
     session: Session, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Blackout (×0) still rolls; a would-be hit is blocked and awards XP."""
+    """Brush Scrim (×0) still rolls; a would-be hit is blocked and awards XP."""
     _stub_overcast_weather(monkeypatch)
     from app.core.exceptions import DiscoveryChanceMissError
     from app.services.field_service.field_coordinate_enrich import (
@@ -384,13 +384,13 @@ def test_rival_blocked_roll_awards_stewardship_xp(
     rival = _user(session, username="rival6")
     site = _site(session, site_id=91007)
     _link_discoverer(session, user_id=int(owner.id), site_id=int(site.site_id))
-    cover = _tool(session, name="Blackout Cover", action="Shroud")
-    _grant(session, user_id=int(owner.id), tool_id=int(cover.id))
+    scrim = _tool(session, name="Brush Scrim")
+    _grant(session, user_id=int(owner.id), tool_id=int(scrim.id))
 
     start_timed_session(
         session,
         user_id=int(owner.id),
-        tool_id=int(cover.id),
+        tool_id=int(scrim.id),
         site_id=int(site.site_id),
     )
     session.refresh(owner)
@@ -415,10 +415,10 @@ def test_rival_blocked_roll_awards_stewardship_xp(
     assert after == before + 50
 
 
-def test_brush_scrim_blocked_band_awards_stewardship_xp(
+def test_blackout_cover_blocked_band_awards_stewardship_xp(
     session: Session, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Brush Scrim: rolls in (effective, base] are blocked and award XP."""
+    """Blackout Cover: rolls in (effective, base] are blocked and award XP."""
     _stub_overcast_weather(monkeypatch)
     from app.core.exceptions import DiscoveryChanceMissError
     from app.services.field_service.field_coordinate_enrich import (
@@ -442,13 +442,13 @@ def test_brush_scrim_blocked_band_awards_stewardship_xp(
     rival = _user(session, username="rival6b")
     site = _site(session, site_id=91008)
     _link_discoverer(session, user_id=int(owner.id), site_id=int(site.site_id))
-    scrim = _tool(session, name="Brush Scrim")
-    _grant(session, user_id=int(owner.id), tool_id=int(scrim.id))
+    cover = _tool(session, name="Blackout Cover", action="Shroud")
+    _grant(session, user_id=int(owner.id), tool_id=int(cover.id))
 
     start_timed_session(
         session,
         user_id=int(owner.id),
-        tool_id=int(scrim.id),
+        tool_id=int(cover.id),
         site_id=int(site.site_id),
     )
 
@@ -494,12 +494,12 @@ def test_stop_clears_disguiser_and_restores_chance(
     rival = _user(session, username="rival7")
     site = _site(session, site_id=91008)
     _link_discoverer(session, user_id=int(owner.id), site_id=int(site.site_id))
-    cover = _tool(session, name="Blackout Cover", action="Shroud")
-    _grant(session, user_id=int(owner.id), tool_id=int(cover.id))
+    scrim = _tool(session, name="Brush Scrim")
+    _grant(session, user_id=int(owner.id), tool_id=int(scrim.id))
     headers = _auth_headers(owner)
 
     started = client.post(
-        f"/api/v1/tools/{cover.id}/sessions",
+        f"/api/v1/tools/{scrim.id}/sessions",
         headers=headers,
         json={"site_id": site.site_id},
     )

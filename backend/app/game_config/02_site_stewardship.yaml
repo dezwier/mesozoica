@@ -22,7 +22,7 @@ main_params:
   # Radius around a discovered site where walking accrues exploration meters.
   site_visibility_m: 50.0
   # XP when a rival discovery roll would have hit but your disguise blocked it
-  # (Brush Scrim / Blackout Cover). Blackout still rolls; effective odds are 0.
+  # (Brush Scrim / Blackout Cover). Scrim still rolls; effective odds are 0.
   successful_site_disguise_xp: 50
   # XP to site_stewardship per 20 m walked inside site_visibility_m.
   site_exploration_xp: 20

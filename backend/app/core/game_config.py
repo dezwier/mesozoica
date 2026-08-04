@@ -1581,13 +1581,14 @@ class ToolActionsConfig(BaseModel):
             modifies_main_params=ModifiesMainParams(
                 using={
                     "site_stewardship": {
-                        "rival_discovery": ParamModifier(op="multiply", value=0.5),
+                        "rival_discovery": ParamModifier(op="multiply", value=0.0),
                     },
                 },
             ),
             stats_explanation=(
                 "Covers one discovered site; multiplies rival_discovery by "
-                "0.5 while active on that site."
+                "0. Successful site disguise XP only when a rival would "
+                "have discovered the site without the cover."
             ),
         )
     )
@@ -1597,13 +1598,15 @@ class ToolActionsConfig(BaseModel):
             modifies_main_params=ModifiesMainParams(
                 using={
                     "site_stewardship": {
-                        "rival_discovery": ParamModifier(op="multiply", value=0.0),
+                        "rival_discovery": ParamModifier(op="multiply", value=0.5),
                     },
                 },
             ),
             stats_explanation=(
                 "Covers one discovered site; multiplies rival_discovery by "
-                "0 while active on that site."
+                "0.5. Successful site disguise XP only when a rival would "
+                "have discovered the site without the cover but the cover "
+                "stops them."
             ),
         )
     )
