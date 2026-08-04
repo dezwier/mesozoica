@@ -1,7 +1,10 @@
-"""Tests for the shared game-config control board endpoint (Phase 1 delivery)."""
+"""Tests for the shared game-config control board endpoint."""
 
-from app.core.game_config import load_game_config_raw
-from app.services.game_config_service import get_game_config_version
+from app.core.game_config import GameConfig
+from app.services.game_config_service import (
+    build_canonical_config,
+    get_game_config_version,
+)
 
 
 def test_game_config_returns_version_and_all_sections(client):
@@ -12,20 +15,17 @@ def test_game_config_returns_version_and_all_sections(client):
     assert body["version"] == get_game_config_version()
     assert response.headers.get("ETag") == f'"{body["version"]}"'
 
-    # The served sections must match the raw control board the client would
-    # otherwise parse from its bundled YAML fallback.
-    assert body["config"].keys() == load_game_config_raw().keys()
+    # Served config is the canonical, validated projection of the control board.
+    assert body["config"].keys() == build_canonical_config().keys()
     assert "site_discovery" in body["config"]
     assert "main_params" in body["config"]["site_discovery"]
 
 
-def test_game_config_values_match_control_board(client):
+def test_game_config_serves_canonical_validated_config(client):
     body = client.get("/api/v1/game-config").json()
-    raw = load_game_config_raw()
-    assert (
-        body["config"]["site_discovery"]["main_params"]["discovery_chance"]
-        == raw["site_discovery"]["main_params"]["discovery_chance"]
-    )
+    # The served config round-trips back through the schema unchanged.
+    assert body["config"] == build_canonical_config()
+    GameConfig.model_validate(body["config"])
 
 
 def test_game_config_conditional_request_returns_304(client):
