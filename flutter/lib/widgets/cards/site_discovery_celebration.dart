@@ -45,6 +45,22 @@ Future<void> showSiteDocumentationCelebration(
   );
 }
 
+/// Same card celebration used when the identification quiz is completed.
+Future<void> showSiteIdentifiedCelebration(
+  BuildContext context, {
+  SiteSummary? site,
+  int? siteId,
+  SiteService? siteService,
+}) {
+  return showSiteDiscoveryCelebration(
+    context,
+    site: site,
+    siteId: siteId,
+    siteService: siteService,
+    title: 'Site identified!',
+  );
+}
+
 class _SiteDiscoveryCelebrationSheet extends StatefulWidget {
   const _SiteDiscoveryCelebrationSheet({
     this.site,

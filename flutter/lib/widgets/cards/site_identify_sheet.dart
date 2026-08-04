@@ -1,34 +1,57 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
+import '../../config/geologic_timeline_constants.dart';
 import '../../controllers/auth_controller.dart';
 import '../../models/site.dart';
-import '../../models/site_field.dart';
 import '../../services/site_service.dart';
+import '../../utils/curated_image_url.dart';
 import '../../utils/display_text.dart';
+import '../../utils/network_image_mem_cache.dart';
+import '../common/draggable_sheet_wrapper.dart';
+import '../common/drawer_sheet_sizes.dart';
 import 'site_card_image.dart';
+import 'site_discovery_celebration.dart';
 
 /// Bottom sheet: period then rock-type identification quiz for a field site.
+///
+/// On a successful full identification, shows the "Site identified!" celebration
+/// before returning the updated site.
 Future<SiteSummary?> showSiteIdentifySheet(
   BuildContext context, {
   required SiteSummary site,
-}) {
-  final scheme = Theme.of(context).colorScheme;
-  return showModalBottomSheet<SiteSummary>(
+}) async {
+  final updated = await showModalBottomSheet<SiteSummary>(
     context: context,
     isScrollControlled: true,
-    backgroundColor: scheme.surface,
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+    backgroundColor: Colors.transparent,
+    builder: (context) => DraggableSheetWrapper(
+      initialChildSize: DrawerSheetSizes.initialChildSize,
+      minChildSize: DrawerSheetSizes.minChildSize,
+      maxChildSize: DrawerSheetSizes.maxChildSize,
+      childBuilder: (scrollController) => SiteIdentifySheet(
+        site: site,
+        scrollController: scrollController,
+      ),
     ),
-    builder: (context) => SiteIdentifySheet(site: site),
   );
+  if (updated != null && context.mounted) {
+    await showSiteIdentifiedCelebration(context, site: updated);
+  }
+  return updated;
 }
 
 class SiteIdentifySheet extends StatefulWidget {
-  const SiteIdentifySheet({super.key, required this.site});
+  const SiteIdentifySheet({
+    super.key,
+    required this.site,
+    required this.scrollController,
+  });
 
   final SiteSummary site;
+  final ScrollController scrollController;
 
   @override
   State<SiteIdentifySheet> createState() => _SiteIdentifySheetState();
@@ -42,12 +65,13 @@ class _SiteIdentifySheetState extends State<SiteIdentifySheet> {
   bool _loading = true;
   bool _submitting = false;
   String? _error;
-  SiteSummary? _latestSite;
+
+  /// 0 = oldest (252 Ma / Triassic left), 1 = youngest (66 Ma / Cretaceous right).
+  double _periodSlider = 0.5;
 
   @override
   void initState() {
     super.initState();
-    _latestSite = widget.site;
     _loadOptions();
   }
 
@@ -62,12 +86,16 @@ class _SiteIdentifySheetState extends State<SiteIdentifySheet> {
       final options = await _service.fetchIdentifyOptions(widget.site.siteId);
       if (!mounted) return;
       if (options.identified) {
-        Navigator.of(context).pop(_latestSite);
+        // Nothing left to do; do not trigger the post-quiz celebration.
+        Navigator.of(context).pop();
         return;
       }
       setState(() {
         _options = options;
         _loading = false;
+        if (options.step == 'period') {
+          _periodSlider = 0.5;
+        }
       });
     } catch (e) {
       if (!mounted) return;
@@ -109,15 +137,12 @@ class _SiteIdentifySheetState extends State<SiteIdentifySheet> {
         return;
       }
 
-      _latestSite = result.site;
-
       if (result.identified) {
         if (!mounted) return;
         Navigator.of(context).pop(result.site);
         return;
       }
 
-      // Advance to rock-type step.
       setState(() {
         _submitting = false;
         _disabled.clear();
@@ -143,97 +168,376 @@ class _SiteIdentifySheetState extends State<SiteIdentifySheet> {
 
   @override
   Widget build(BuildContext context) {
-    final bottom = MediaQuery.viewInsetsOf(context).bottom;
     final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
     final options = _options;
-    final maxHeight = MediaQuery.sizeOf(context).height * 0.88;
+    final isPeriod = options?.step == 'period';
 
-    return SafeArea(
-      top: false,
-      child: ConstrainedBox(
-        constraints: BoxConstraints(maxHeight: maxHeight),
-        child: Padding(
-          padding: EdgeInsets.fromLTRB(20, 10, 20, 16 + bottom),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Center(
-                child: Container(
-                  width: 36,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: scheme.onSurfaceVariant.withValues(alpha: 0.35),
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
+    return Container(
+      decoration: BoxDecoration(
+        color: scheme.surface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        children: [
+          const SizedBox(height: 10),
+          Center(
+            child: Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: scheme.onSurface.withValues(alpha: 0.3),
+                borderRadius: BorderRadius.circular(2),
               ),
-              const SizedBox(height: 14),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(14),
-                child: AspectRatio(
-                  aspectRatio: 4 / 3,
+            ),
+          ),
+          Expanded(
+            child: ListView(
+              controller: widget.scrollController,
+              padding: EdgeInsets.zero,
+              children: [
+                const SizedBox(height: 10),
+                AspectRatio(
+                  aspectRatio: 1,
                   child: SiteCardImage(imageUrl: widget.site.mainImageUrl),
                 ),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                _question,
-                textAlign: TextAlign.center,
-                style: textTheme.titleMedium?.copyWith(
-                  color: scheme.onSurface,
-                  fontWeight: FontWeight.w700,
-                  height: 1.25,
-                ),
-              ),
-              const SizedBox(height: 14),
-              if (_loading)
                 Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 28),
-                  child: Center(
-                    child: CircularProgressIndicator(color: scheme.primary),
-                  ),
-                )
-              else if (_error != null)
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  padding: const EdgeInsets.fromLTRB(20, 18, 20, 8),
                   child: Text(
-                    _error!,
+                    _question,
                     textAlign: TextAlign.center,
-                    style: textTheme.bodyMedium?.copyWith(
-                      color: scheme.error,
+                    style: textTheme.titleMedium?.copyWith(
+                      color: scheme.onSurface,
+                      fontWeight: FontWeight.w700,
+                      height: 1.25,
                     ),
-                  ),
-                )
-              else if (options != null)
-                for (final choice in options.choices) ...[
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: _IdentifyChoiceButton(
-                      label: toTitleCase(choice),
-                      disabled: _disabled.contains(choice) || _submitting,
-                      onPressed: () => _onGuess(choice),
-                    ),
-                  ),
-                ],
-              if (_message != null) ...[
-                const SizedBox(height: 4),
-                Text(
-                  _message!,
-                  textAlign: TextAlign.center,
-                  style: textTheme.bodyMedium?.copyWith(
-                    color: _message!.startsWith('Correct')
-                        ? scheme.primary
-                        : scheme.tertiary,
-                    fontWeight: FontWeight.w600,
                   ),
                 ),
+                if (_loading)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 36),
+                    child: Center(
+                      child: CircularProgressIndicator(color: scheme.primary),
+                    ),
+                  )
+                else if (_error != null)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+                    child: Text(
+                      _error!,
+                      textAlign: TextAlign.center,
+                      style: textTheme.bodyMedium?.copyWith(
+                        color: scheme.error,
+                      ),
+                    ),
+                  )
+                else if (options != null && isPeriod) ...[
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+                    child: _PeriodTimelineSlider(
+                      value: _periodSlider,
+                      disabledPeriods: _disabled,
+                      onChanged: _submitting
+                          ? null
+                          : (v) {
+                              final prev = _periodForSlider(_periodSlider);
+                              final next = _periodForSlider(v);
+                              setState(() {
+                                _periodSlider = v;
+                                _message = null;
+                              });
+                              if (prev != next) {
+                                HapticFeedback.selectionClick();
+                              }
+                            },
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    toTitleCase(_periodForSlider(_periodSlider)),
+                    textAlign: TextAlign.center,
+                    style: textTheme.headlineSmall?.copyWith(
+                      color: _disabled.contains(_periodForSlider(_periodSlider))
+                          ? scheme.onSurface.withValues(alpha: 0.38)
+                          : scheme.onSurface,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  if (_message != null) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      _message!,
+                      textAlign: TextAlign.center,
+                      style: textTheme.bodyMedium?.copyWith(
+                        color: scheme.tertiary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 18, 20, 28),
+                    child: FilledButton(
+                      onPressed: _submitting ||
+                              _disabled.contains(_periodForSlider(_periodSlider))
+                          ? null
+                          : () => _onGuess(_periodForSlider(_periodSlider)),
+                      style: FilledButton.styleFrom(
+                        minimumSize: const Size.fromHeight(48),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: Text(
+                        _submitting ? 'Checking…' : 'Confirm period',
+                        style: const TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                  ),
+                ] else if (options != null) ...[
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
+                    child: Column(
+                      children: [
+                        for (final choice in options.choices)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 8),
+                            child: _IdentifyChoiceButton(
+                              label: toTitleCase(choice),
+                              imageUrl: options.choiceImages[choice],
+                              disabled:
+                                  _disabled.contains(choice) || _submitting,
+                              onPressed: () => _onGuess(choice),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  if (_message != null)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+                      child: Text(
+                        _message!,
+                        textAlign: TextAlign.center,
+                        style: textTheme.bodyMedium?.copyWith(
+                          color: scheme.tertiary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    )
+                  else
+                    const SizedBox(height: 16),
+                ],
               ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Maps slider 0→1 (left older → right younger) to a Mesozoic period key.
+String _periodForSlider(double t) {
+  // Left (t=0) = 252 Ma, right (t=1) = 66 Ma.
+  final age = mesozoicOlderMa -
+      t.clamp(0.0, 1.0) * (mesozoicOlderMa - mesozoicYoungerMa);
+  if (age > 201) return 'triassic';
+  if (age > 145) return 'jurassic';
+  return 'cretaceous';
+}
+
+class _PeriodTimelineSlider extends StatelessWidget {
+  const _PeriodTimelineSlider({
+    required this.value,
+    required this.disabledPeriods,
+    required this.onChanged,
+  });
+
+  final double value;
+  final Set<String> disabledPeriods;
+  final ValueChanged<double>? onChanged;
+
+  static const _boundaries = [252.0, 201.0, 145.0, 66.0];
+  static const _periods = [
+    (key: 'triassic', label: 'Triassic', start: 252.0, end: 201.0),
+    (key: 'jurassic', label: 'Jurassic', start: 201.0, end: 145.0),
+    (key: 'cretaceous', label: 'Cretaceous', start: 145.0, end: 66.0),
+  ];
+
+  /// Slider t: 0 = oldest (252 Ma, left), 1 = youngest (66 Ma, right).
+  double _tForMa(double ma) =>
+      (mesozoicOlderMa - ma) / (mesozoicOlderMa - mesozoicYoungerMa);
+
+  void _setFromLocalDx(double dx, double sidePad, double trackWidth) {
+    if (onChanged == null || trackWidth <= 0) return;
+    onChanged!(((dx - sidePad) / trackWidth).clamp(0.0, 1.0));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final muted = scheme.onSurfaceVariant;
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        const sidePad = 16.0;
+        const thumbSize = 56.0;
+        const barHeight = 10.0;
+        const barTop = 36.0;
+        final trackWidth = constraints.maxWidth - sidePad * 2;
+        final t = value.clamp(0.0, 1.0);
+        final thumbLeft = sidePad + t * trackWidth - thumbSize / 2;
+
+        return SizedBox(
+          height: 118,
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              // Period labels above the bar (timeline style).
+              for (final period in _periods)
+                Positioned(
+                  left: sidePad +
+                      _tForMa((period.start + period.end) / 2) * trackWidth -
+                      40,
+                  top: 4,
+                  width: 80,
+                  child: Text(
+                    period.label,
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: disabledPeriods.contains(period.key)
+                          ? muted.withValues(alpha: 0.35)
+                          : muted,
+                    ),
+                  ),
+                ),
+              // Ma-proportional period track.
+              for (var i = 0; i < _periods.length; i++)
+                Positioned(
+                  left: sidePad + _tForMa(_periods[i].start) * trackWidth,
+                  top: barTop,
+                  width: (_tForMa(_periods[i].end) - _tForMa(_periods[i].start)) *
+                      trackWidth,
+                  height: barHeight,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: disabledPeriods.contains(_periods[i].key)
+                          ? scheme.outlineVariant.withValues(alpha: 0.35)
+                          : scheme.primary.withValues(alpha: 0.22 + i * 0.14),
+                      borderRadius: BorderRadius.horizontal(
+                        left: i == 0 ? const Radius.circular(5) : Radius.zero,
+                        right: i == _periods.length - 1
+                            ? const Radius.circular(5)
+                            : Radius.zero,
+                      ),
+                    ),
+                  ),
+                ),
+              // Boundary markers (ticks between periods + ends).
+              for (final ma in _boundaries)
+                Positioned(
+                  left: sidePad + _tForMa(ma) * trackWidth - 1,
+                  top: barTop - 5,
+                  child: Container(
+                    width: 2,
+                    height: barHeight + 10,
+                    decoration: BoxDecoration(
+                      color: muted.withValues(alpha: 0.65),
+                      borderRadius: BorderRadius.circular(1),
+                    ),
+                  ),
+                ),
+              // Ma labels under the bar.
+              for (final ma in _boundaries)
+                Positioned(
+                  left: ma == mesozoicOlderMa
+                      ? sidePad - 2
+                      : ma == mesozoicYoungerMa
+                          ? null
+                          : sidePad + _tForMa(ma) * trackWidth - 22,
+                  right: ma == mesozoicYoungerMa ? sidePad - 2 : null,
+                  top: barTop + barHeight + 10,
+                  width: ma == mesozoicOlderMa || ma == mesozoicYoungerMa
+                      ? null
+                      : 44,
+                  child: Text(
+                    '${ma.round()} Ma',
+                    textAlign: ma == mesozoicYoungerMa
+                        ? TextAlign.right
+                        : ma == mesozoicOlderMa
+                            ? TextAlign.left
+                            : TextAlign.center,
+                    maxLines: 1,
+                    style: TextStyle(
+                      fontSize: 10,
+                      height: 1.1,
+                      color: muted.withValues(alpha: 0.85),
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              // Full-area drag hit target.
+              Positioned.fill(
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onHorizontalDragUpdate: onChanged == null
+                      ? null
+                      : (details) {
+                          final box = context.findRenderObject() as RenderBox?;
+                          if (box == null) return;
+                          final local =
+                              box.globalToLocal(details.globalPosition);
+                          _setFromLocalDx(local.dx, sidePad, trackWidth);
+                        },
+                  onTapDown: onChanged == null
+                      ? null
+                      : (details) {
+                          _setFromLocalDx(
+                            details.localPosition.dx,
+                            sidePad,
+                            trackWidth,
+                          );
+                          HapticFeedback.selectionClick();
+                        },
+                  child: const SizedBox.expand(),
+                ),
+              ),
+              // Big comfy thumb.
+              Positioned(
+                left: thumbLeft,
+                top: barTop + barHeight / 2 - thumbSize / 2,
+                child: IgnorePointer(
+                  child: Container(
+                    width: thumbSize,
+                    height: thumbSize,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: scheme.surface,
+                      border: Border.all(color: scheme.primary, width: 3.5),
+                      boxShadow: [
+                        BoxShadow(
+                          color: scheme.shadow.withValues(alpha: 0.28),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Icon(
+                      Icons.drag_indicator,
+                      size: 28,
+                      color: scheme.primary,
+                    ),
+                  ),
+                ),
+              ),
             ],
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }
@@ -243,15 +547,20 @@ class _IdentifyChoiceButton extends StatelessWidget {
     required this.label,
     required this.disabled,
     required this.onPressed,
+    this.imageUrl,
   });
 
   final String label;
+  final String? imageUrl;
   final bool disabled;
   final VoidCallback onPressed;
+
+  static const _avatarSize = 52.0;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final albumUrl = albumImageUrlFromCurated(imageUrl) ?? imageUrl;
     return OutlinedButton(
       onPressed: disabled ? null : onPressed,
       style: OutlinedButton.styleFrom(
@@ -265,13 +574,78 @@ class _IdentifyChoiceButton extends StatelessWidget {
               ? scheme.outlineVariant
               : scheme.outline.withValues(alpha: 0.7),
         ),
-        padding: const EdgeInsets.symmetric(vertical: 14),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        padding: const EdgeInsets.fromLTRB(10, 10, 16, 10),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       ),
-      child: Text(
-        label,
-        style: const TextStyle(fontWeight: FontWeight.w600),
+      child: Row(
+        children: [
+          Opacity(
+            opacity: disabled ? 0.4 : 1,
+            child: _RockChoiceAvatar(
+              imageUrl: albumUrl,
+              size: _avatarSize,
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontWeight: FontWeight.w700,
+                fontSize: 16,
+              ),
+            ),
+          ),
+        ],
       ),
+    );
+  }
+}
+
+class _RockChoiceAvatar extends StatelessWidget {
+  const _RockChoiceAvatar({
+    required this.imageUrl,
+    required this.size,
+  });
+
+  final String? imageUrl;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final placeholder = ColoredBox(
+      color: scheme.surfaceContainerHighest,
+      child: Icon(
+        Icons.landscape_outlined,
+        size: size * 0.42,
+        color: scheme.onSurfaceVariant.withValues(alpha: 0.55),
+      ),
+    );
+
+    Widget child;
+    final url = imageUrl?.trim();
+    if (url == null || url.isEmpty || !isCuratedSiteTypeImageUrl(url)) {
+      child = placeholder;
+    } else {
+      final dpr = MediaQuery.devicePixelRatioOf(context);
+      child = CachedNetworkImage(
+        imageUrl: url,
+        fit: BoxFit.cover,
+        fadeInDuration: Duration.zero,
+        memCacheWidth: networkImageMemCacheExtent(size, dpr),
+        memCacheHeight: networkImageMemCacheExtent(size, dpr),
+        httpHeaders: const {
+          'User-Agent': 'Mesozoica/1.0 (mobile app; site identify)',
+        },
+        placeholder: (context, _) => placeholder,
+        errorWidget: (context, _, error) => placeholder,
+      );
+    }
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(12),
+      child: SizedBox(width: size, height: size, child: child),
     );
   }
 }

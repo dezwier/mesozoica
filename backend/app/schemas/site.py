@@ -242,6 +242,10 @@ class IdentifyOptionsResponse(BaseModel):
     rock_identified: bool = False
     identified: bool = False
     disabled_guesses: list[str] = Field(default_factory=list)
+    choice_images: dict[str, str] = Field(
+        default_factory=dict,
+        description="Original-folder site-type image URL keyed by rock_type choice",
+    )
 
 
 class IdentifyGuessResponse(BaseModel):

@@ -122,6 +122,7 @@ class SiteIdentifyOptions {
     this.rockIdentified = false,
     this.identified = false,
     this.disabledGuesses = const [],
+    this.choiceImages = const {},
   });
 
   final String step;
@@ -131,8 +132,25 @@ class SiteIdentifyOptions {
   final bool identified;
   final List<String> disabledGuesses;
 
+  /// Original-folder site-type image URLs keyed by rock_type choice.
+  final Map<String, String> choiceImages;
+
   factory SiteIdentifyOptions.fromJson(Map<String, dynamic> json) {
     final raw = json['choices'];
+    final rawImages = json['choice_images'];
+    final images = <String, String>{};
+    if (rawImages is Map) {
+      for (final entry in rawImages.entries) {
+        final key = entry.key?.toString().toLowerCase();
+        final value = entry.value?.toString().trim();
+        if (key != null &&
+            key.isNotEmpty &&
+            value != null &&
+            value.isNotEmpty) {
+          images[key] = value;
+        }
+      }
+    }
     return SiteIdentifyOptions(
       step: json['step'] as String? ?? 'period',
       choices: raw is List
@@ -147,6 +165,7 @@ class SiteIdentifyOptions {
               .map((e) => e.toLowerCase())
               .toList()
           : const [],
+      choiceImages: images,
     );
   }
 }

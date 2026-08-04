@@ -196,7 +196,8 @@ def test_identify_wrong_then_right_awards_scaled_xp(session: Session) -> None:
     )
     assert rock_opts.step == IDENTIFY_STEP_ROCK
     assert "sandstone" in rock_opts.choices
-    assert len(rock_opts.choices) == 3
+    assert len(rock_opts.choices) == 5
+    assert len(set(rock_opts.choices)) == 5
 
     done = submit_identify_guess(
         session,

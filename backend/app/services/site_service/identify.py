@@ -54,6 +54,7 @@ class IdentifyOptionsResult:
     rock_identified: bool
     identified: bool
     disabled_guesses: list[str]
+    choice_images: dict[str, str]
 
 
 @dataclass(frozen=True)
@@ -155,6 +156,43 @@ def _seeded_rng(*, user_id: int, site_id: int, salt: str) -> random.Random:
     return random.Random(int(digest[:16], 16))
 
 
+def _original_rock_image_url(*, period: str, rock_type: str) -> str | None:
+    """Original-folder site-type image for period+rock, if present on disk/CDN."""
+    from app.services.curated_image_service.resolve import (
+        resolve_site_type_card_image_url,
+    )
+    from app.services.curated_image_service.versions import ORIGINAL_VERSION
+
+    return resolve_site_type_card_image_url(
+        period=period,
+        rock_type=rock_type,
+        version=ORIGINAL_VERSION,
+    )
+
+
+def _rock_image_url_for_choice(
+    session: Session,
+    *,
+    period: str,
+    rock_type: str,
+) -> str | None:
+    """Prefer Original image for the site's period; else any period for that rock."""
+    direct = _original_rock_image_url(period=period, rock_type=rock_type)
+    if direct:
+        return direct
+    rows = session.exec(
+        select(SiteType.period).where(col(SiteType.rock_type) == rock_type)
+    ).all()
+    for other_period in rows:
+        p = (other_period or "").strip().lower()
+        if not p or p == period:
+            continue
+        url = _original_rock_image_url(period=p, rock_type=rock_type)
+        if url:
+            return url
+    return None
+
+
 def _rock_choices_for_period(
     session: Session,
     *,
@@ -162,31 +200,38 @@ def _rock_choices_for_period(
     correct_rock: str,
     user_id: int,
     site_id: int,
-) -> list[str]:
-    rocks = session.exec(
-        select(SiteType.rock_type).where(col(SiteType.period) == period)
-    ).all()
-    unique = sorted({(r or "").strip().lower() for r in rocks if r})
-    if correct_rock not in unique:
-        unique.append(correct_rock)
-    others = [r for r in unique if r != correct_rock]
-    rng = _seeded_rng(user_id=user_id, site_id=site_id, salt=f"rock:{period}")
-    rng.shuffle(others)
-    picked = others[:2]
-    while len(picked) < 2:
-        # Pad from remaining ROCK_TYPES-like values if period has <3 rocks.
-        from app.services.site_service.rules import ROCK_TYPES
+    count: int = 5,
+) -> tuple[list[str], dict[str, str]]:
+    """Return ``count`` rock types (incl. correct) and Original image URLs."""
+    from app.services.site_service.rules import ROCK_TYPES
 
-        for candidate in ROCK_TYPES:
-            c = candidate.lower()
-            if c != correct_rock and c not in picked and c not in unique:
-                picked.append(c)
-            if len(picked) >= 2:
-                break
-        break
-    choices = [correct_rock, *picked[:2]]
+    pool = sorted({(r or "").strip().lower() for r in ROCK_TYPES if r})
+    if correct_rock not in pool:
+        pool.append(correct_rock)
+
+    others = [r for r in pool if r != correct_rock]
+    with_image: list[str] = []
+    without_image: list[str] = []
+    for rock in others:
+        if _rock_image_url_for_choice(session, period=period, rock_type=rock):
+            with_image.append(rock)
+        else:
+            without_image.append(rock)
+
+    rng = _seeded_rng(user_id=user_id, site_id=site_id, salt=f"rock:{period}")
+    rng.shuffle(with_image)
+    rng.shuffle(without_image)
+    need = max(0, count - 1)
+    picked = (with_image + without_image)[:need]
+    choices = [correct_rock, *picked]
     rng.shuffle(choices)
-    return choices
+
+    images: dict[str, str] = {}
+    for rock in choices:
+        url = _rock_image_url_for_choice(session, period=period, rock_type=rock)
+        if url:
+            images[rock] = url
+    return choices, images
 
 
 def get_identify_options(
@@ -213,9 +258,10 @@ def get_identify_options(
             rock_identified=False,
             identified=identified,
             disabled_guesses=[],
+            choice_images={},
         )
 
-    choices = _rock_choices_for_period(
+    choices, images = _rock_choices_for_period(
         session,
         period=period,
         correct_rock=rock,
@@ -229,6 +275,7 @@ def get_identify_options(
         rock_identified=bool(link.rock_identified),
         identified=identified,
         disabled_guesses=[],
+        choice_images=images,
     )
 
 
@@ -288,11 +335,10 @@ def submit_identify_guess(
         correct_value = rock
         wrongs = int(link.identify_rock_wrongs or 0)
 
-    if wrongs >= 3:
+    options = get_identify_options(session, site_id=site_id, user_id=user_id)
+    if wrongs >= len(options.choices):
         raise ValidationError("No attempts remaining for this step")
 
-    # Validate guess is among offered choices (anti-spam / consistency).
-    options = get_identify_options(session, site_id=site_id, user_id=user_id)
     if normalized_guess not in {c.lower() for c in options.choices}:
         raise ValidationError("guess is not a valid option for this step")
 

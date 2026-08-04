@@ -575,6 +575,7 @@ def get_site_identify_options(
         rock_identified=result.rock_identified,
         identified=result.identified,
         disabled_guesses=result.disabled_guesses,
+        choice_images=result.choice_images,
     )
 
 
