@@ -150,61 +150,62 @@ class GameConfig {
     required String rockTypeColorsYaml,
     required String levelingYaml,
   }) {
-    final config = GameConfig(
-      siteGeneration: SiteGenerationConfig.fromYaml(
-        _asMap(loadYaml(siteGenerationYaml)),
-      ),
-      siteDiscovery: SiteDiscoveryConfig.fromYaml(
-        _asMap(loadYaml(siteDiscoveryYaml)),
-      ),
-      siteStewardship: SiteStewardshipConfig.fromYaml(
-        _asMap(loadYaml(siteStewardshipYaml)),
-      ),
-      siteClearing: SkillStubConfig.fromYaml(
-        _asMap(loadYaml(siteClearingYaml)),
-      ),
-      fossilDetection: SkillStubConfig.fromYaml(
-        _asMap(loadYaml(fossilDetectionYaml)),
-      ),
-      fossilExcavation: SkillStubConfig.fromYaml(
-        _asMap(loadYaml(fossilExcavationYaml)),
-      ),
-      fossilTransport: SkillStubConfig.fromYaml(
-        _asMap(loadYaml(fossilTransportYaml)),
-      ),
-      fossilCuration: SkillStubConfig.fromYaml(
-        _asMap(loadYaml(fossilCurationYaml)),
-      ),
-      fossilPreparation: SkillStubConfig.fromYaml(
-        _asMap(loadYaml(fossilPreparationYaml)),
-      ),
-      fossilAnalysis: SkillStubConfig.fromYaml(
-        _asMap(loadYaml(fossilAnalysisYaml)),
-      ),
-      dinosaurModelling: SkillStubConfig.fromYaml(
-        _asMap(loadYaml(dinosaurModellingYaml)),
-      ),
-      dinosaurMounting: SkillStubConfig.fromYaml(
-        _asMap(loadYaml(dinosaurMountingYaml)),
-      ),
-      academicPublishing: SkillStubConfig.fromYaml(
-        _asMap(loadYaml(academicPublishingYaml)),
-      ),
-      toolActions: ToolActionsConfig.fromYaml(
-        _asMap(loadYaml(toolActionsYaml)),
-      ),
-      periodColors: PeriodColorsConfig.fromYaml(
-        _asMap(loadYaml(periodColorsYaml)),
-      ),
-      rockTypeColors: RockTypeColorsConfig.fromYaml(
-        _asMap(loadYaml(rockTypeColorsYaml)),
-      ),
-      leveling: LevelingConfig.fromYaml(
-        _asMap(loadYaml(levelingYaml)),
-      ),
-    );
+    final config = fromDocuments(<String, dynamic>{
+      'site_generation': loadYaml(siteGenerationYaml),
+      'site_discovery': loadYaml(siteDiscoveryYaml),
+      'site_stewardship': loadYaml(siteStewardshipYaml),
+      'site_clearing': loadYaml(siteClearingYaml),
+      'fossil_detection': loadYaml(fossilDetectionYaml),
+      'fossil_excavation': loadYaml(fossilExcavationYaml),
+      'fossil_transport': loadYaml(fossilTransportYaml),
+      'fossil_curation': loadYaml(fossilCurationYaml),
+      'fossil_preparation': loadYaml(fossilPreparationYaml),
+      'fossil_analysis': loadYaml(fossilAnalysisYaml),
+      'dinosaur_modelling': loadYaml(dinosaurModellingYaml),
+      'dinosaur_mounting': loadYaml(dinosaurMountingYaml),
+      'academic_publishing': loadYaml(academicPublishingYaml),
+      'tool_actions': loadYaml(toolActionsYaml),
+      'period_colors': loadYaml(periodColorsYaml),
+      'rock_type_colors': loadYaml(rockTypeColorsYaml),
+      'leveling': loadYaml(levelingYaml),
+    });
     _instance = config;
     return config;
+  }
+
+  /// Build from raw document maps keyed by document id.
+  ///
+  /// Accepts either YAML-decoded (`YamlMap`) or JSON-decoded (`Map`) values —
+  /// every `fromYaml` factory below duck-types on `Map` / `List`. This is the
+  /// shared seam for the bundled assets, the local cache, and the config API.
+  /// Does not set the singleton.
+  static GameConfig fromDocuments(Map<String, dynamic> documents) {
+    Map<String, dynamic> doc(String id) {
+      if (!documents.containsKey(id)) {
+        throw FormatException('Missing game config document: $id');
+      }
+      return _asMap(documents[id]);
+    }
+
+    return GameConfig(
+      siteGeneration: SiteGenerationConfig.fromYaml(doc('site_generation')),
+      siteDiscovery: SiteDiscoveryConfig.fromYaml(doc('site_discovery')),
+      siteStewardship: SiteStewardshipConfig.fromYaml(doc('site_stewardship')),
+      siteClearing: SkillStubConfig.fromYaml(doc('site_clearing')),
+      fossilDetection: SkillStubConfig.fromYaml(doc('fossil_detection')),
+      fossilExcavation: SkillStubConfig.fromYaml(doc('fossil_excavation')),
+      fossilTransport: SkillStubConfig.fromYaml(doc('fossil_transport')),
+      fossilCuration: SkillStubConfig.fromYaml(doc('fossil_curation')),
+      fossilPreparation: SkillStubConfig.fromYaml(doc('fossil_preparation')),
+      fossilAnalysis: SkillStubConfig.fromYaml(doc('fossil_analysis')),
+      dinosaurModelling: SkillStubConfig.fromYaml(doc('dinosaur_modelling')),
+      dinosaurMounting: SkillStubConfig.fromYaml(doc('dinosaur_mounting')),
+      academicPublishing: SkillStubConfig.fromYaml(doc('academic_publishing')),
+      toolActions: ToolActionsConfig.fromYaml(doc('tool_actions')),
+      periodColors: PeriodColorsConfig.fromYaml(doc('period_colors')),
+      rockTypeColors: RockTypeColorsConfig.fromYaml(doc('rock_type_colors')),
+      leveling: LevelingConfig.fromYaml(doc('leveling')),
+    );
   }
 
   static Map<String, dynamic> _asMap(dynamic raw) {

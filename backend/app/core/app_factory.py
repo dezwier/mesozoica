@@ -1,5 +1,6 @@
 import logging
 import os
+import time
 import traceback
 from contextlib import asynccontextmanager
 
@@ -27,7 +28,22 @@ async def lifespan(app: FastAPI):
 
     _configure_logger()
     init_db()
+    _ensure_game_config_seeded()
     yield
+
+
+def _ensure_game_config_seeded() -> None:
+    """Publish the bundled control board on a fresh database.
+
+    Never fatal: the provider falls back to the bundled YAML, so a seed failure
+    degrades config editing, not the API.
+    """
+    from app.services.game_config_service import ensure_seeded
+
+    try:
+        ensure_seeded()
+    except Exception:  # noqa: BLE001 - startup must not depend on this
+        logger.exception("game_config seed on startup failed; serving bundled YAML")
 
 
 def _register_exception_handlers(app: FastAPI) -> None:
@@ -130,6 +146,48 @@ def _register_exception_handlers(app: FastAPI) -> None:
         )
 
 
+GAME_CONFIG_VERSION_HEADER = "X-Game-Config-Version"
+_DIVERGENCE_LOG_INTERVAL_S = 60.0
+_last_divergence_log_at = 0.0
+
+
+def _register_game_config_version_header(app: FastAPI) -> None:
+    """Stamp the active config version on API responses and log client drift.
+
+    The server is authoritative for every gameplay outcome, so a stale client
+    only affects display and prediction. This is visibility, not enforcement —
+    acting on divergence is deliberately left for later.
+    """
+
+    @app.middleware("http")
+    async def game_config_version_header(request: Request, call_next):
+        response = await call_next(request)
+        if not request.url.path.startswith(settings.api_v1_prefix):
+            return response
+        try:
+            from app.core.game_config_provider import get_active_snapshot
+
+            active = get_active_snapshot().version
+        except Exception:  # noqa: BLE001 - never break a response over a header
+            return response
+
+        response.headers[GAME_CONFIG_VERSION_HEADER] = str(active)
+
+        sent = request.headers.get(GAME_CONFIG_VERSION_HEADER)
+        if sent and sent.isdigit() and int(sent) != active:
+            global _last_divergence_log_at
+            now = time.monotonic()
+            if now - _last_divergence_log_at > _DIVERGENCE_LOG_INTERVAL_S:
+                _last_divergence_log_at = now
+                logger.info(
+                    "game_config client version drift: client=%s active=%s path=%s",
+                    sent,
+                    active,
+                    request.url.path,
+                )
+        return response
+
+
 def create_app() -> FastAPI:
     app = FastAPI(
         title="Mesozoica API",
@@ -146,6 +204,8 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+    _register_game_config_version_header(app)
 
     @app.get("/")
     async def root():

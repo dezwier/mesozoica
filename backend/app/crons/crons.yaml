@@ -88,3 +88,13 @@ jobs:
     schedule: "0 11 * * 0"
     params:
       dry_run: false
+
+  # Manual only. The database is the source of truth once seeded; force
+  # republishes the repo YAML and overwrites admin edits.
+  - id: game_config_seed
+    enabled: false
+    schedule: "0 12 * * 0"
+    params:
+      dry_run: false
+      force: false
+      prune: false

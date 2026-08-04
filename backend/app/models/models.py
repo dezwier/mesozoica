@@ -10,6 +10,8 @@ from app.models.dinosaur_type_revision import DinosaurTypeRevision
 from app.models.field_ensure_job import FieldEnsureJob
 from app.models.field_survey_job import FieldSurveyJob
 from app.models.fossil import Fossil
+from app.models.game_config_release import GameConfigRelease
+from app.models.game_config_revision import GameConfigRevision
 from app.models.site import Site
 from app.models.site_type import SiteType
 from app.models.tool import Tool
@@ -33,6 +35,8 @@ __all__ = [
     "FieldEnsureJob",
     "FieldSurveyJob",
     "Fossil",
+    "GameConfigRelease",
+    "GameConfigRevision",
     "Site",
     "SiteType",
     "Tool",

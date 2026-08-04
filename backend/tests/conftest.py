@@ -7,6 +7,9 @@ if os.environ.get("USE_POSTGRES_FOR_TESTS", "") != "1":
     os.environ.setdefault("DATABASE_URL", "sqlite:///:memory:")
 os.environ.setdefault("SECRET_KEY", "test-secret-key-for-pytest")
 os.environ.setdefault("ENVIRONMENT", "development")
+# Default the suite to the bundled YAML control board so tests stay independent
+# of what happens to be seeded. The stored-config tests opt into "db" per test.
+os.environ.setdefault("GAME_CONFIG_SOURCE", "yaml")
 
 import app.core.config as _config  # noqa: E402
 
@@ -54,6 +57,16 @@ def _reset_db_between_tests():
     SQLModel.metadata.drop_all(engine)
     init_db()
     yield
+
+
+@pytest.fixture(autouse=True)
+def _reset_game_config_cache():
+    """Drop the cached snapshot so config never leaks across tests."""
+    from app.core.game_config_provider import invalidate_game_config_cache
+
+    invalidate_game_config_cache()
+    yield
+    invalidate_game_config_cache()
 
 
 @pytest.fixture

@@ -2,16 +2,82 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import pytest
 
 from app.core.game_config import (
+    DOCUMENT_FILES,
+    DOCUMENT_IDS,
+    SKILL_YAML_FILES,
     ParamModifier,
+    build_game_config,
+    canonical_checksum,
     get_game_config,
     load_game_config,
+    load_yaml_documents,
     resolve_game_config_dir,
 )
+
+# SKILL_YAML_FILES is derived from DOCUMENT_FILES; skill ids are keys inside
+# User.skill_xp, so this tuple must not drift.
+EXPECTED_SKILL_YAML_FILES = (
+    ("site_discovery", "01_site_discovery.yaml"),
+    ("site_stewardship", "02_site_stewardship.yaml"),
+    ("site_clearing", "03_site_clearing.yaml"),
+    ("fossil_detection", "04_fossil_detection.yaml"),
+    ("fossil_excavation", "05_fossil_excavation.yaml"),
+    ("fossil_transport", "06_fossil_transport.yaml"),
+    ("fossil_curation", "07_fossil_curation.yaml"),
+    ("fossil_preparation", "08_fossil_preparation.yaml"),
+    ("fossil_analysis", "09_fossil_analysis.yaml"),
+    ("dinosaur_modelling", "10_dinosaur_modelling.yaml"),
+    ("dinosaur_mounting", "11_dinosaur_mounting.yaml"),
+    ("academic_publishing", "12_academic_publishing.yaml"),
+)
+
+
+def test_skill_yaml_files_unchanged() -> None:
+    assert SKILL_YAML_FILES == EXPECTED_SKILL_YAML_FILES
+
+
+def test_document_files_cover_the_control_board() -> None:
+    directory = resolve_game_config_dir()
+    on_disk = {path.name for path in directory.glob("*.yaml")}
+    assert {filename for _, filename in DOCUMENT_FILES} == on_disk
+    assert len(DOCUMENT_IDS) == len(set(DOCUMENT_IDS)) == len(DOCUMENT_FILES)
+
+
+def test_build_game_config_from_documents_matches_file_load() -> None:
+    documents = load_yaml_documents()
+    assert build_game_config(documents) == load_game_config()
+
+
+def test_build_game_config_survives_json_round_trip() -> None:
+    """The DB stores, and the API serves, JSON — parsing it back must not drift.
+
+    Pins the known quirk that ``fossil_count`` integer keys become strings.
+    """
+    documents = load_yaml_documents()
+    round_tripped = json.loads(json.dumps(documents, default=str))
+    assert build_game_config(round_tripped) == load_game_config()
+
+
+def test_canonical_checksum_is_stable_and_content_sensitive() -> None:
+    documents = load_yaml_documents()
+    assert canonical_checksum(documents) == canonical_checksum(load_yaml_documents())
+
+    mutated = json.loads(json.dumps(documents, default=str))
+    mutated["site_discovery"]["main_params"]["discovery_chance"] = 0.42
+    assert canonical_checksum(mutated) != canonical_checksum(documents)
+
+
+def test_build_game_config_rejects_missing_document() -> None:
+    documents = load_yaml_documents()
+    del documents["leveling"]
+    with pytest.raises(ValueError, match="Missing game config documents: leveling"):
+        build_game_config(documents)
 
 
 def test_resolve_default_game_config_dir() -> None:

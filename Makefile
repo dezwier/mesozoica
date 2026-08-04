@@ -6,7 +6,7 @@ RAILWAY_SERVICE ?=
 RAILWAY_SERVICE_FLAG = $(if $(RAILWAY_SERVICE),--service $(RAILWAY_SERVICE),)
 CRON_EXTRA ?=
 
-.PHONY: help backend-install backend-test run-backend flutter-test run-flutter test-all run-cron run-field-ensure-worker fetch-coordinate-masks upload-coordinate-masks-railway run-field-site-coordinate-prune run-dinosaur-wiki-sync run-dinosaur-llm-enrich run-fossil-pbdb-sync run-fossil-llm-enrich run-site-sync run-site-type-sync run-tool-sync run-dinosaur-image-generate run-fossil-image-generate run-site-type-image-generate run-tool-image-generate run-tool-image-generate-local sync-dinosaur-images sync-fossil-images sync-site-type-images sync-tool-images sync-bundled-version-meta rename-site-type-images migrate-image-versions-to-v1 migrate-named-image-versions backfill-user-levels
+.PHONY: help backend-install backend-test run-backend flutter-test run-flutter test-all run-cron run-game-config-seed run-field-ensure-worker fetch-coordinate-masks upload-coordinate-masks-railway run-field-site-coordinate-prune run-dinosaur-wiki-sync run-dinosaur-llm-enrich run-fossil-pbdb-sync run-fossil-llm-enrich run-site-sync run-site-type-sync run-tool-sync run-dinosaur-image-generate run-fossil-image-generate run-site-type-image-generate run-tool-image-generate run-tool-image-generate-local sync-dinosaur-images sync-fossil-images sync-site-type-images sync-tool-images sync-bundled-version-meta rename-site-type-images migrate-image-versions-to-v1 migrate-named-image-versions backfill-user-levels
 
 help:
 	@echo "Available targets:"
@@ -25,6 +25,7 @@ help:
 	@echo "  run-site-sync                site_sync on Railway"
 	@echo "  run-site-type-sync           site_type_sync on Railway"
 	@echo "  run-tool-sync                tool_sync on Railway"
+	@echo "  run-game-config-seed         Publish backend/app/game_config/*.yaml into the DB"
 	@echo "  run-dinosaur-image-generate  dinosaur_image_generate on Railway"
 	@echo "  run-fossil-image-generate    fossil_image_generate on Railway"
 	@echo "  run-site-type-image-generate site_type_image_generate on Railway"
@@ -111,6 +112,9 @@ run-site-type-sync:
 
 run-tool-sync:
 	cd backend && RAILWAY_RUN=1 railway run $(RAILWAY_SERVICE_FLAG) python -m app.crons.runner --job tool_sync $(CRON_EXTRA)
+
+run-game-config-seed:
+	cd backend && RAILWAY_RUN=1 railway run $(RAILWAY_SERVICE_FLAG) python -m app.crons.runner --job game_config_seed $(CRON_EXTRA)
 
 run-dinosaur-image-generate:
 	cd backend && RAILWAY_RUN=1 railway run $(RAILWAY_SERVICE_FLAG) python -m app.crons.runner --job dinosaur_image_generate $(CRON_EXTRA)

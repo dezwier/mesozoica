@@ -27,6 +27,7 @@ from app.crons.jobs import (
     dinosaur_image_generate,
     dinosaur_llm_enrich,
     field_site_coordinate_prune,
+    game_config_seed,
     site_sync,
     site_type_sync,
     fossil_image_generate,
@@ -189,6 +190,15 @@ def _run_tool_sync(params: dict[str, Any]) -> int:
     )
 
 
+def _run_game_config_seed(params: dict[str, Any]) -> int:
+    return game_config_seed.run_seed_job(
+        dry_run=bool(params.get("dry_run", False)),
+        force=bool(params.get("force", False)),
+        prune=bool(params.get("prune", False)),
+        note=str(params.get("note", "") or ""),
+    )
+
+
 def _run_field_site_coordinate_prune(params: dict[str, Any]) -> int:
     return field_site_coordinate_prune.run_prune_job(
         dry_run=bool(params.get("dry_run", False)),
@@ -217,6 +227,7 @@ _JOB_HANDLERS: dict[str, Callable[[dict[str, Any]], int]] = {
     "tool_sync": _run_tool_sync,
     "tool_image_generate": _run_tool_image_generate,
     "field_site_coordinate_prune": _run_field_site_coordinate_prune,
+    "game_config_seed": _run_game_config_seed,
 }
 
 _IMAGE_GENERATE_JOBS = frozenset(
@@ -360,7 +371,14 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--prune",
         action="store_true",
-        help="Remove DB tool rows whose name is no longer in tools.json (tool_sync).",
+        help="Remove DB tool rows whose name is no longer in tools.json (tool_sync); "
+        "trim old revisions (game_config_seed).",
+    )
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Publish the repo YAML as a new revision even when one already "
+        "exists, overwriting admin edits (game_config_seed).",
     )
     parser.add_argument(
         "--dry-run",
@@ -393,6 +411,8 @@ def main(argv: list[str] | None = None) -> int:
         overrides["version"] = args.version
     if args.prune:
         overrides["prune"] = True
+    if args.force:
+        overrides["force"] = True
     if args.dry_run:
         overrides["dry_run"] = True
 

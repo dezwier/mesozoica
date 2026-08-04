@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 import os
-from functools import lru_cache
 from pathlib import Path
 from typing import Any, Literal
 
@@ -13,8 +14,15 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 _PACKAGE_DIR = Path(__file__).resolve().parent
 _DEFAULT_CONFIG_DIR = _PACKAGE_DIR.parent / "game_config"
 
-# Numbered skill-domain YAML files (order matches leveling.yaml skills).
-SKILL_YAML_FILES: tuple[tuple[str, str], ...] = (
+# Raw parsed YAML mappings keyed by document id. This is the wire shape the
+# config API serves and the storage shape in the database, so the Pydantic
+# models below stay the single validation path for every source.
+RawDocuments = dict[str, dict[str, Any]]
+
+# Every control board document, in load order. Numbered files are skill domains
+# (order matches leveling.yaml skills); the rest are non-skill domains.
+DOCUMENT_FILES: tuple[tuple[str, str], ...] = (
+    ("site_generation", "site_generation.yaml"),
     ("site_discovery", "01_site_discovery.yaml"),
     ("site_stewardship", "02_site_stewardship.yaml"),
     ("site_clearing", "03_site_clearing.yaml"),
@@ -27,6 +35,19 @@ SKILL_YAML_FILES: tuple[tuple[str, str], ...] = (
     ("dinosaur_modelling", "10_dinosaur_modelling.yaml"),
     ("dinosaur_mounting", "11_dinosaur_mounting.yaml"),
     ("academic_publishing", "12_academic_publishing.yaml"),
+    ("tool_actions", "tool_actions.yaml"),
+    ("period_colors", "period_colors.yaml"),
+    ("rock_type_colors", "rock_type_colors.yaml"),
+    ("leveling", "leveling.yaml"),
+)
+
+DOCUMENT_IDS: tuple[str, ...] = tuple(doc_id for doc_id, _ in DOCUMENT_FILES)
+
+# Numbered skill-domain YAML files (order matches leveling.yaml skills).
+SKILL_YAML_FILES: tuple[tuple[str, str], ...] = tuple(
+    (doc_id, filename)
+    for doc_id, filename in DOCUMENT_FILES
+    if filename[0].isdigit()
 )
 
 ModifierOp = Literal["add", "multiply", "replace"]
@@ -1734,64 +1755,108 @@ def resolve_game_config_dir() -> Path:
     return _DEFAULT_CONFIG_DIR
 
 
-def load_game_config(config_dir: Path | None = None) -> GameConfig:
-    """Load and validate all domain YAML files from the control board directory."""
+def load_yaml_documents(config_dir: Path | None = None) -> RawDocuments:
+    """Read the control board YAML files into raw mappings, keyed by document id."""
     directory = config_dir or resolve_game_config_dir()
     if not directory.is_dir():
         raise FileNotFoundError(f"Missing game config directory: {directory}")
 
-    skill_raw: dict[str, dict[str, Any]] = {}
-    for skill_id, filename in SKILL_YAML_FILES:
-        skill_raw[skill_id] = _load_yaml(directory / filename)
+    return {
+        doc_id: _load_yaml(directory / filename)
+        for doc_id, filename in DOCUMENT_FILES
+    }
+
+
+def build_game_config(documents: RawDocuments) -> GameConfig:
+    """Validate raw document mappings into the frozen model tree.
+
+    The mappings are the parsed YAML shape (also what the config API serves), so
+    this is the single validation path for both file and database sources.
+    Raises ``pydantic.ValidationError`` on bad values.
+    """
+    missing = [doc_id for doc_id in DOCUMENT_IDS if doc_id not in documents]
+    if missing:
+        raise ValueError(f"Missing game config documents: {', '.join(missing)}")
 
     return GameConfig(
         site_generation=SiteGenerationConfig.model_validate(
-            _load_yaml(directory / "site_generation.yaml")
+            documents["site_generation"]
         ),
         site_discovery=SiteDiscoveryConfig.model_validate(
-            skill_raw["site_discovery"]
+            documents["site_discovery"]
         ),
-        site_stewardship=SiteStewardshipConfig.model_validate(skill_raw["site_stewardship"]),
-        site_clearing=SkillStubConfig.model_validate(skill_raw["site_clearing"]),
+        site_stewardship=SiteStewardshipConfig.model_validate(documents["site_stewardship"]),
+        site_clearing=SkillStubConfig.model_validate(documents["site_clearing"]),
         fossil_detection=SkillStubConfig.model_validate(
-            skill_raw["fossil_detection"]
+            documents["fossil_detection"]
         ),
         fossil_excavation=SkillStubConfig.model_validate(
-            skill_raw["fossil_excavation"]
+            documents["fossil_excavation"]
         ),
         fossil_transport=SkillStubConfig.model_validate(
-            skill_raw["fossil_transport"]
+            documents["fossil_transport"]
         ),
-        fossil_curation=SkillStubConfig.model_validate(skill_raw["fossil_curation"]),
+        fossil_curation=SkillStubConfig.model_validate(documents["fossil_curation"]),
         fossil_preparation=SkillStubConfig.model_validate(
-            skill_raw["fossil_preparation"]
+            documents["fossil_preparation"]
         ),
-        fossil_analysis=SkillStubConfig.model_validate(skill_raw["fossil_analysis"]),
+        fossil_analysis=SkillStubConfig.model_validate(documents["fossil_analysis"]),
         dinosaur_modelling=SkillStubConfig.model_validate(
-            skill_raw["dinosaur_modelling"]
+            documents["dinosaur_modelling"]
         ),
         dinosaur_mounting=SkillStubConfig.model_validate(
-            skill_raw["dinosaur_mounting"]
+            documents["dinosaur_mounting"]
         ),
         academic_publishing=SkillStubConfig.model_validate(
-            skill_raw["academic_publishing"]
+            documents["academic_publishing"]
         ),
         tool_actions=ToolActionsConfig.model_validate(
-            _load_yaml(directory / "tool_actions.yaml")
+            documents["tool_actions"]
         ),
         period_colors=PeriodColorsConfig.model_validate(
-            _load_yaml(directory / "period_colors.yaml")
+            documents["period_colors"]
         ),
         rock_type_colors=RockTypeColorsConfig.model_validate(
-            _load_yaml(directory / "rock_type_colors.yaml")
+            documents["rock_type_colors"]
         ),
         leveling=LevelingConfig.model_validate(
-            _load_yaml(directory / "leveling.yaml")
+            documents["leveling"]
         ),
     )
 
 
-@lru_cache(maxsize=1)
+def canonical_checksum(documents: RawDocuments) -> str:
+    """Stable sha256 over the document set; identical content always hashes equal."""
+    payload = json.dumps(
+        documents, sort_keys=True, separators=(",", ":"), default=str
+    )
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+def load_game_config(config_dir: Path | None = None) -> GameConfig:
+    """Load and validate all domain YAML files from the control board directory."""
+    return build_game_config(load_yaml_documents(config_dir))
+
+
+def _clear_game_config_cache() -> None:
+    from app.core.game_config_provider import invalidate_game_config_cache
+
+    invalidate_game_config_cache()
+
+
 def get_game_config() -> GameConfig:
-    """Process-wide singleton; clear with ``get_game_config.cache_clear()`` in tests."""
-    return load_game_config()
+    """Process-wide config.
+
+    Source depends on ``GAME_CONFIG_SOURCE`` (``db`` by default, ``yaml`` as the
+    break-glass path). Clear with ``get_game_config.cache_clear()`` in tests.
+
+    The import is deferred so this module never pulls in the database layer —
+    the minimal-settings worker and the DB-free tests rely on that.
+    """
+    from app.core.game_config_provider import get_active_snapshot
+
+    return get_active_snapshot().config
+
+
+# Back-compat: callers and ~5 test modules already use the lru_cache API.
+get_game_config.cache_clear = _clear_game_config_cache  # type: ignore[attr-defined]
