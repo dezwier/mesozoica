@@ -31,13 +31,13 @@ class MainParamBuffToolStats extends StatelessWidget {
     // Instance params only — never fall back to live YAML for buffs.
     final mods = modifiesMainParamsFromParams(p);
     final visibilityMod =
-        mods?.paramsFor('using', 'site_discovery')['visibility_distance_m'];
+        mods?.paramsFor('using', 'field_survey')['visibility_distance_m'];
     final discoveryMod =
-        mods?.paramsFor('using', 'site_discovery')['discovery_chance'];
+        mods?.paramsFor('using', 'field_survey')['discovery_chance'];
     final speedMod =
-        mods?.paramsFor('using', 'site_discovery')['max_discovery_speed_kmh'];
+        mods?.paramsFor('using', 'field_survey')['max_discovery_speed_kmh'];
     final siteVisibilityMod =
-        mods?.paramsFor('using', 'site_stewardship')['site_visibility_m'];
+        mods?.paramsFor('using', 'field_survey')['site_visibility_m'];
     final explanation =
         (p?['stats_explanation'] as String?)?.trim().isNotEmpty == true
             ? p!['stats_explanation'] as String

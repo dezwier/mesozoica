@@ -64,9 +64,8 @@ void main() {
     expect(config.siteStewardship.completenessWeights.isNotEmpty, isTrue);
     expect(config.siteStewardship.qualityWeights.isNotEmpty, isTrue);
 
-    expect(config.fossilDetection.enabled, isFalse);
-    expect(config.fossilExcavation.enabled, isFalse);
-    expect(config.siteClearing.enabled, isFalse);
+    expect(config.boneQuarry.enabled, isTrue);
+    expect(config.scienceHall.enabled, isFalse);
 
     expect(config.toolActions.aerialRecon.durationMinutes, 60);
     expect(config.toolActions.aerialRecon.flightSpeedKmh, 50.0);
@@ -92,19 +91,19 @@ void main() {
     expect(config.toolActions.geoCompass.discoveryChance, 0.9);
     expect(
       config.toolActions.geoCompass.modifiesMainParams
-          ?.affectsSkill('site_discovery'),
+          ?.affectsSkill('field_survey'),
       isTrue,
     );
     expect(
       config.toolActions.geoCompass.modifiesMainParams
-          ?.paramsFor('using', 'site_discovery')
+          ?.paramsFor('using', 'field_survey')
           .containsKey('discovery_chance'),
       isTrue,
     );
     expect(config.toolActions.geoCompass.modifiesMainParams?.owning, isEmpty);
     expect(
       config.toolActions.siteNavigator.modifiesMainParams
-          ?.paramsFor('using', 'site_discovery')
+          ?.paramsFor('using', 'field_survey')
           .containsKey('discovery_chance'),
       isTrue,
     );
@@ -177,63 +176,39 @@ void main() {
     expect(config.toolActions.ridgeGlass.addedDiscoveryRate, isNull);
     expect(
       config.toolActions.ridgeGlass.modifiesMainParams
-          ?.affectsSkill('site_discovery'),
+          ?.affectsSkill('field_survey'),
       isTrue,
     );
 
     expect(config.toolActions.expeditionDrivetrain.durationMinutes, 60);
     expect(
-      config.toolActions.expeditionDrivetrain
-          .siteDiscoveryMod('max_discovery_speed_kmh')
-          ?.value,
-      3.0,
-    );
-    expect(
-      config.toolActions.expeditionDrivetrain
-          .siteDiscoveryMod('visibility_distance_m')
-          ?.value,
-      0.9,
-    );
-    expect(
-      config.toolActions.expeditionDrivetrain
-          .siteDiscoveryMod('discovery_chance')
-          ?.value,
-      0.9,
-    );
-    expect(
       config.toolActions.expeditionDrivetrain.modifiesMainParams
-          ?.affectsSkill('site_discovery'),
+          ?.affectsSkill('field_survey'),
       isTrue,
     );
     expect(
       config.toolActions.expeditionDrivetrain.modifiesMainParams
-          ?.affectsSkill('site_stewardship'),
-      isTrue,
-    );
-    expect(
-      config.toolActions.expeditionDrivetrain.modifiesMainParams
-          ?.paramsFor('using', 'site_stewardship')['site_visibility_m']
+          ?.paramsFor('using', 'field_survey')['site_visibility_m']
           ?.value,
       0.9,
     );
-
     expect(
-      config.toolActions.trailStriders
-          .siteDiscoveryMod('max_discovery_speed_kmh')
+      config.toolActions.trailStriders.modifiesMainParams
+          ?.paramsFor('using', 'field_survey')['site_visibility_m']
           ?.value,
-      2.0,
+      0.95,
     );
     expect(
-      config.toolActions.canyonThrottle
-          .siteDiscoveryMod('max_discovery_speed_kmh')
+      config.toolActions.canyonThrottle.modifiesMainParams
+          ?.paramsFor('using', 'field_survey')['site_visibility_m']
           ?.value,
-      4.0,
+      0.85,
     );
     expect(
-      config.toolActions.overlandChassis
-          .siteDiscoveryMod('max_discovery_speed_kmh')
+      config.toolActions.overlandChassis.modifiesMainParams
+          ?.paramsFor('using', 'field_survey')['site_visibility_m']
           ?.value,
-      5.0,
+      0.8,
     );
 
     expect(config.toolActions.nocturneLens.durationMinutes, 60);
@@ -254,9 +229,8 @@ void main() {
       isNull,
     );
 
-    expect(config.fossilDetection.mainParams['fossil_discovery_xp'], 5);
-    expect(config.leveling.skills.length, 12);
-    expect(config.leveling.skills.length, 12);
+    expect(config.boneQuarry.mainParams['fossil_discovery_xp'], 5);
+    expect(config.leveling.skills.length, 3);
     expect(config.leveling.careerTitles.length, 99);
 
     expect(GameConfig.isLoaded, isTrue);

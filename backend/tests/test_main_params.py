@@ -225,30 +225,30 @@ def test_modifies_main_params_multi_skill() -> None:
     mods = ModifiesMainParams.model_validate(
         {
             "owning": {
-                "site_discovery": {
-                    "discovery_chance": {"op": "add", "value": 0.05}
-                },
-                "site_stewardship": {
-                    "dino_accuracy": {"op": "add", "value": 0.1}
+                "field_survey": {
+                    "discovery_chance": {"op": "add", "value": 0.05},
+                    "dino_accuracy": {"op": "add", "value": 0.1},
                 },
             },
             "using": {
-                "site_discovery": {
+                "field_survey": {
                     "discovery_chance": {"op": "replace", "value": 0.9}
                 },
-                "fossil_detection": {
+                "bone_quarry": {
                     "visibility_distance_m": {"op": "add", "value": 5}
                 },
             },
         }
     )
-    assert mods.affects_skill("site_discovery")
-    assert mods.affects_skill("site_stewardship")
-    assert mods.affects_skill("fossil_detection")
-    assert mods.params_for("owning", "site_discovery")[
+    assert mods.affects_skill("field_survey")
+    assert mods.affects_skill("bone_quarry")
+    assert mods.params_for("owning", "field_survey")[
         "discovery_chance"
     ].value == pytest.approx(0.05)
-    assert mods.params_for("using", "fossil_detection")[
+    assert mods.params_for("owning", "field_survey")[
+        "dino_accuracy"
+    ].value == pytest.approx(0.1)
+    assert mods.params_for("using", "bone_quarry")[
         "visibility_distance_m"
     ].value == 5
 
@@ -258,8 +258,8 @@ def test_modifies_main_params_single_skill_shorthand() -> None:
 
     mods = ModifiesMainParams.model_validate(
         {
-            "skill": "site_discovery",
+            "skill": "field_survey",
             "using": {"discovery_chance": {"op": "replace", "value": 0.9}},
         }
     )
-    assert "discovery_chance" in mods.params_for("using", "site_discovery")
+    assert "discovery_chance" in mods.params_for("using", "field_survey")

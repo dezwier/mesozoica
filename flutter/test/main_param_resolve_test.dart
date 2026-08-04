@@ -11,7 +11,7 @@ ToolModBinding _ridgeUsing({required double multiply}) {
     toolName: 'Ridge Glass',
     mods: ModifiesMainParams(
       using: {
-        'site_discovery': {
+        'field_survey': {
           'visibility_distance_m': ParamModifier(op: 'multiply', value: multiply),
           'discovery_chance': ParamModifier(op: 'multiply', value: multiply),
         },
@@ -27,7 +27,7 @@ ToolModBinding _nocturneUsing({required double multiply}) {
     toolName: 'Nocturne Lens',
     mods: ModifiesMainParams(
       using: {
-        'site_discovery': {
+        'field_survey': {
           'visibility_distance_m': ParamModifier(op: 'multiply', value: multiply),
           'discovery_chance': ParamModifier(op: 'multiply', value: multiply),
         },
@@ -44,13 +44,11 @@ ToolModBinding _mobilityUsing({required double multiply}) {
     toolName: 'Expedition Drivetrain',
     mods: ModifiesMainParams(
       using: {
-        'site_discovery': {
+        'field_survey': {
           'visibility_distance_m': ParamModifier(op: 'multiply', value: multiply),
           'discovery_chance': ParamModifier(op: 'multiply', value: multiply),
           'max_discovery_speed_kmh':
               ParamModifier(op: 'multiply', value: 3.0),
-        },
-        'site_stewardship': {
           'site_visibility_m': ParamModifier(op: 'multiply', value: multiply),
         },
       },
@@ -201,7 +199,7 @@ void main() {
     final mods = modifiesMainParamsFromParams({
       'modifies_main_params': {
         'using': {
-          'site_discovery': {
+          'field_survey': {
             'visibility_distance_m': {'op': 'multiply', 'value': 1.4},
           },
         },
@@ -209,7 +207,7 @@ void main() {
     });
     expect(mods, isNotNull);
     expect(
-      mods!.paramsFor('using', 'site_discovery')['visibility_distance_m']?.value,
+      mods!.paramsFor('using', 'field_survey')['visibility_distance_m']?.value,
       1.4,
     );
   });

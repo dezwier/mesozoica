@@ -2,18 +2,9 @@ import 'package:flutter/material.dart';
 
 /// Asset paths for palaeontology skill tile / detail-sheet logos.
 const skillIconAssets = <String, String>{
-  'site_discovery': 'assets/images/chrome/skills/site_discovery.png',
-  'site_stewardship': 'assets/images/chrome/skills/site_stewardship.png',
-  'site_clearing': 'assets/images/chrome/skills/site_clearing.png',
-  'fossil_detection': 'assets/images/chrome/skills/fossil_detection.png',
-  'fossil_excavation': 'assets/images/chrome/skills/fossil_excavation.png',
-  'fossil_transport': 'assets/images/chrome/skills/fossil_transport.png',
-  'fossil_curation': 'assets/images/chrome/skills/fossil_curation.png',
-  'fossil_preparation': 'assets/images/chrome/skills/fossil_preparation.png',
-  'fossil_analysis': 'assets/images/chrome/skills/fossil_analysis.png',
-  'dinosaur_modelling': 'assets/images/chrome/skills/dinosaur_modelling.png',
-  'dinosaur_mounting': 'assets/images/chrome/skills/dinosaur_mounting.png',
-  'academic_publishing': 'assets/images/chrome/skills/academic_publishing.png',
+  'field_survey': 'assets/images/chrome/skills/site_discovery.png',
+  'bone_quarry': 'assets/images/chrome/skills/fossil_detection.png',
+  'science_hall': 'assets/images/chrome/skills/dinosaur_mounting.png',
 };
 
 String? skillIconAssetFor(String skillId) => skillIconAssets[skillId];

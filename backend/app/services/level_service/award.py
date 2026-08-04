@@ -7,7 +7,7 @@ from typing import Mapping
 from app.core.game_config import ParamModifier
 from app.models.user import User
 from app.services.level_service.main_params import (
-    resolve_fossil_detection_main_params,
+    resolve_bone_quarry_main_params,
     resolve_site_discovery_main_params,
     resolve_site_stewardship_main_params,
 )
@@ -59,7 +59,7 @@ def award_site_discover_xp(
     tool_mods: Mapping[str, ParamModifier] | None = None,
 ) -> int:
     if amount is None:
-        skill_level = level_for_xp(get_skill_xp(user, "site_discovery"))
+        skill_level = level_for_xp(get_skill_xp(user, "field_survey"))
         resolved = resolve_site_discovery_main_params(
             skill_level=skill_level,
             weather_time=weather_time,
@@ -69,7 +69,7 @@ def award_site_discover_xp(
         amount = _xp_int(resolved["site_discovery_xp"])
     return award_skill_xp(
         user,
-        "site_discovery",
+        "field_survey",
         amount=amount,
         breakdown_delta={"sites": amount},
     )
@@ -85,7 +85,7 @@ def award_first_discovery_xp(
 ) -> int:
     """Award site_discovery XP for being the first user to discover a site."""
     if amount is None:
-        skill_level = level_for_xp(get_skill_xp(user, "site_discovery"))
+        skill_level = level_for_xp(get_skill_xp(user, "field_survey"))
         resolved = resolve_site_discovery_main_params(
             skill_level=skill_level,
             weather_time=weather_time,
@@ -97,7 +97,7 @@ def award_first_discovery_xp(
         return 0
     return award_skill_xp(
         user,
-        "site_discovery",
+        "field_survey",
         amount=amount,
         breakdown_delta={"first_discovery": amount},
     )
@@ -115,8 +115,8 @@ def award_fossil_discover_xp(
     if count <= 0:
         return 0
     if amount_per is None:
-        skill_level = level_for_xp(get_skill_xp(user, "fossil_detection"))
-        resolved = resolve_fossil_detection_main_params(
+        skill_level = level_for_xp(get_skill_xp(user, "bone_quarry"))
+        resolved = resolve_bone_quarry_main_params(
             skill_level=skill_level,
             weather_time=weather_time,
             weather_type=weather_type,
@@ -126,7 +126,7 @@ def award_fossil_discover_xp(
     total = amount_per * int(count)
     return award_skill_xp(
         user,
-        "fossil_detection",
+        "bone_quarry",
         amount=total,
         breakdown_delta={"fossils": total},
     )
@@ -142,7 +142,7 @@ def award_successful_site_disguise_xp(
 ) -> int:
     """Award site_stewardship XP when a disguise blocks a would-be rival discovery."""
     if amount is None:
-        skill_level = level_for_xp(get_skill_xp(user, "site_stewardship"))
+        skill_level = level_for_xp(get_skill_xp(user, "field_survey"))
         resolved = resolve_site_stewardship_main_params(
             skill_level=skill_level,
             weather_time=weather_time,
@@ -152,7 +152,7 @@ def award_successful_site_disguise_xp(
         amount = _xp_int(resolved["successful_site_disguise_xp"])
     return award_skill_xp(
         user,
-        "site_stewardship",
+        "field_survey",
         amount=amount,
         breakdown_delta={"disguise": amount},
     )
@@ -181,7 +181,7 @@ def award_site_exploration_xp(
     )
     if batch_delta <= 0:
         return 0
-    skill_level = level_for_xp(get_skill_xp(user, "site_stewardship"))
+    skill_level = level_for_xp(get_skill_xp(user, "field_survey"))
     resolved = resolve_site_stewardship_main_params(
         skill_level=skill_level,
         weather_time=weather_time,
@@ -193,7 +193,7 @@ def award_site_exploration_xp(
         return 0
     return award_skill_xp(
         user,
-        "site_stewardship",
+        "field_survey",
         amount=total,
         breakdown_delta={"site_exploration": total},
     )
@@ -209,7 +209,7 @@ def award_site_documentation_xp(
 ) -> int:
     """Award site_stewardship XP when all five dimension accuracies hit 100%."""
     if amount is None:
-        skill_level = level_for_xp(get_skill_xp(user, "site_stewardship"))
+        skill_level = level_for_xp(get_skill_xp(user, "field_survey"))
         resolved = resolve_site_stewardship_main_params(
             skill_level=skill_level,
             weather_time=weather_time,
@@ -221,7 +221,7 @@ def award_site_documentation_xp(
         return 0
     return award_skill_xp(
         user,
-        "site_stewardship",
+        "field_survey",
         amount=amount,
         breakdown_delta={"site_documentation": amount},
     )
@@ -237,7 +237,7 @@ def award_first_documentation_xp(
 ) -> int:
     """Award site_stewardship XP for being the first to fully document a site."""
     if amount is None:
-        skill_level = level_for_xp(get_skill_xp(user, "site_stewardship"))
+        skill_level = level_for_xp(get_skill_xp(user, "field_survey"))
         resolved = resolve_site_stewardship_main_params(
             skill_level=skill_level,
             weather_time=weather_time,
@@ -249,7 +249,7 @@ def award_first_documentation_xp(
         return 0
     return award_skill_xp(
         user,
-        "site_stewardship",
+        "field_survey",
         amount=amount,
         breakdown_delta={"first_documentation": amount},
     )
@@ -280,7 +280,7 @@ def award_site_identification_xp(
 ) -> int:
     """Award site_stewardship XP for a correct identification quiz step."""
     if amount is None:
-        skill_level = level_for_xp(get_skill_xp(user, "site_stewardship"))
+        skill_level = level_for_xp(get_skill_xp(user, "field_survey"))
         resolved = resolve_site_stewardship_main_params(
             skill_level=skill_level,
             weather_time=weather_time,
@@ -293,7 +293,7 @@ def award_site_identification_xp(
         return 0
     return award_skill_xp(
         user,
-        "site_stewardship",
+        "field_survey",
         amount=amount,
         breakdown_delta={"site_identification": amount},
     )
@@ -309,7 +309,7 @@ def award_distance_xp(
     tool_mods: Mapping[str, ParamModifier] | None = None,
 ) -> int:
     """Award site-discovery XP for active 100 m / passive km floor increases."""
-    skill_level = level_for_xp(get_skill_xp(user, "site_discovery"))
+    skill_level = level_for_xp(get_skill_xp(user, "field_survey"))
     resolved = resolve_site_discovery_main_params(
         skill_level=skill_level,
         weather_time=weather_time,
@@ -330,7 +330,7 @@ def award_distance_xp(
         breakdown["passive_distance"] = passive_add
     return award_skill_xp(
         user,
-        "site_discovery",
+        "field_survey",
         amount=total,
         breakdown_delta=breakdown,
     )

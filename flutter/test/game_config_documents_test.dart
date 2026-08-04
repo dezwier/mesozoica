@@ -13,8 +13,8 @@ void main() {
   tearDown(GameConfig.debugReset);
 
   test('document ids cover the whole control board', () {
-    expect(kGameConfigDocumentFiles.length, 17);
-    expect(kGameConfigDocumentIds.toSet().length, 17);
+    expect(kGameConfigDocumentFiles.length, 8);
+    expect(kGameConfigDocumentIds.toSet().length, 8);
     expect(gameConfigDocumentsForTest().keys.toSet(),
         kGameConfigDocumentFiles.keys.toSet());
   });

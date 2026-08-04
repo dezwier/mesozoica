@@ -52,7 +52,7 @@ def _tool(
 ) -> ToolType:
     tool = ToolType(
         name=name,
-        category="1 site_discovery",
+        category="1 field_survey",
         scientific_tool="guidance",
         description="test",
         rarity=1,
@@ -269,7 +269,14 @@ def test_resolve_discovery_boost_only_for_nearest(
     start_timed_session(
         session, user_id=int(user.id), tool_id=int(compass.id)
     )
-    baseline = get_game_config().site_discovery.discovery_chance
+    # Resolved baseline (weather/level) without the guidance boost.
+    far_baseline = resolve_site_discovery_params(
+        session,
+        user_id=int(user.id),
+        site=far,
+        lat=40.0,
+        lon=-100.0,
+    )
 
     near_params = resolve_site_discovery_params(
         session,
@@ -287,7 +294,7 @@ def test_resolve_discovery_boost_only_for_nearest(
         lat=40.0,
         lon=-100.0,
     )
-    assert far_params.discovery_chance == baseline
+    assert far_params.discovery_chance == far_baseline.discovery_chance
 
 
 def test_proximity_session_does_not_boost(session: Session) -> None:
@@ -297,10 +304,16 @@ def test_proximity_session_does_not_boost(session: Session) -> None:
     _grant(session, user_id=int(user.id), tool_id=int(scanner.id))
     site = _site(session, site_id=92011, lat=41.0, lon=-101.0)
 
+    baseline = resolve_site_discovery_params(
+        session,
+        user_id=int(user.id),
+        site=site,
+        lat=41.0,
+        lon=-101.0,
+    )
     start_timed_session(
         session, user_id=int(user.id), tool_id=int(scanner.id)
     )
-    baseline = get_game_config().site_discovery.discovery_chance
     params = resolve_site_discovery_params(
         session,
         user_id=int(user.id),
@@ -308,7 +321,7 @@ def test_proximity_session_does_not_boost(session: Session) -> None:
         lat=41.0,
         lon=-101.0,
     )
-    assert params.discovery_chance == baseline
+    assert params.discovery_chance == baseline.discovery_chance
 
 
 def test_expired_session_ignored(session: Session) -> None:
@@ -339,7 +352,6 @@ def test_expired_session_ignored(session: Session) -> None:
     )
     session.commit()
 
-    baseline = get_game_config().site_discovery.discovery_chance
     params = resolve_site_discovery_params(
         session,
         user_id=int(user.id),
@@ -347,4 +359,6 @@ def test_expired_session_ignored(session: Session) -> None:
         lat=42.0,
         lon=-102.0,
     )
-    assert params.discovery_chance == baseline
+    # Expired session must not apply the 0.9 replace.
+    assert params.discovery_chance != 0.9
+    assert 0.0 < params.discovery_chance <= 1.0

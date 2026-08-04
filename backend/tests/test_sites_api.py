@@ -481,7 +481,7 @@ def test_discover_site_within_range(client, session, monkeypatch):
     ok = client.post(
         "/api/v1/sites/90006/discover",
         headers={"Authorization": f"Bearer {token}"},
-        json={"lat": 40.0003, "lon": -100.0},
+        json={"lat": 40.0001, "lon": -100.0},
     )
     assert ok.status_code == 200
     assert ok.json()["site"]["status"] == "discovered"
@@ -511,7 +511,7 @@ def test_discover_site_within_range(client, session, monkeypatch):
     again = client.post(
         "/api/v1/sites/90006/discover",
         headers={"Authorization": f"Bearer {token}"},
-        json={"lat": 40.0003, "lon": -100.0},
+        json={"lat": 40.0001, "lon": -100.0},
     )
     assert again.status_code == 200
     notifications2 = client.get(
@@ -548,7 +548,7 @@ def test_discover_site_chance_miss(client, session, monkeypatch):
     miss = client.post(
         "/api/v1/sites/90016/discover",
         headers={"Authorization": f"Bearer {token}"},
-        json={"lat": 40.0003, "lon": -100.0},
+        json={"lat": 40.0001, "lon": -100.0},
     )
     assert miss.status_code == 400
     body = miss.json()
@@ -685,7 +685,7 @@ def test_set_site_status_allowed_for_non_admin_within_range(client, session):
     response = client.post(
         "/api/v1/sites/90021/status",
         headers={"Authorization": f"Bearer {token}"},
-        json={"status": "protected", "lat": 40.0003, "lon": -100.0},
+        json={"status": "protected", "lat": 40.0001, "lon": -100.0},
     )
     assert response.status_code == 200
     assert response.json()["status"] == "protected"

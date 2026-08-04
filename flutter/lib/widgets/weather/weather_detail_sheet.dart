@@ -124,8 +124,7 @@ class WeatherDetailDrawer extends StatelessWidget {
     if (!GameConfig.isLoaded) return const [];
     final game = GameConfig.instance;
     return _ambientImpactRows(period, [
-      ('site_discovery', game.siteDiscovery.weatherTimeModifiers),
-      ('site_stewardship', game.siteStewardship.weatherTimeModifiers),
+      ('field_survey', game.fieldSurvey.weatherTimeModifiers),
       for (final stub in _skillStubs(game))
         (stub.skillId, stub.weatherTimeModifiers),
     ]);
@@ -137,24 +136,15 @@ class WeatherDetailDrawer extends StatelessWidget {
     final key = weatherType == 'sunny' ? 'clear' : weatherType;
     final game = GameConfig.instance;
     return _ambientImpactRows(key, [
-      ('site_discovery', game.siteDiscovery.weatherTypeModifiers),
-      ('site_stewardship', game.siteStewardship.weatherTypeModifiers),
+      ('field_survey', game.fieldSurvey.weatherTypeModifiers),
       for (final stub in _skillStubs(game))
         (stub.skillId, stub.weatherTypeModifiers),
     ]);
   }
 
   static List<SkillStubConfig> _skillStubs(GameConfig game) => [
-        game.siteClearing,
-        game.fossilDetection,
-        game.fossilExcavation,
-        game.fossilTransport,
-        game.fossilCuration,
-        game.fossilPreparation,
-        game.fossilAnalysis,
-        game.dinosaurModelling,
-        game.dinosaurMounting,
-        game.academicPublishing,
+        game.boneQuarry,
+        game.scienceHall,
       ];
 
   static List<_ImpactRow> _ambientImpactRows(

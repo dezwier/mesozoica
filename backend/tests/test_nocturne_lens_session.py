@@ -63,7 +63,7 @@ def _user(session: Session, *, username: str = "nocturne") -> User:
 def _tool(session: Session, *, name: str = "Nocturne Lens") -> ToolType:
     tool = ToolType(
         name=name,
-        category="1 site_discovery",
+        category="1 field_survey",
         scientific_tool="night-vision goggles",
         description="test",
         rarity=2,
@@ -191,7 +191,7 @@ def test_start_nocturne_at_night_snapshots_gate(
     assert body["action_key"] == ACTION_KEY_NOCTURNE_LENS
     assert body["status"] == SESSION_STATUS_ACTIVE
     assert body["params"]["active_weather_times"] == ["night"]
-    mods = body["params"]["modifies_main_params"]["using"]["site_discovery"]
+    mods = body["params"]["modifies_main_params"]["using"]["field_survey"]
     assert mods["visibility_distance_m"] == {"op": "multiply", "value": 1.4}
     assert mods["discovery_chance"] == {"op": "multiply", "value": 1.4}
 

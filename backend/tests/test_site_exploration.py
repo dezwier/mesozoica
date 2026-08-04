@@ -129,8 +129,8 @@ def test_award_site_exploration_xp_batches(session: Session) -> None:
     session.refresh(user)
     # floor(45/20) - floor(0/20) = 2 batches × 20 XP
     assert awarded == 40
-    assert get_skill_xp(user, "site_stewardship") == 40
-    assert user.skill_breakdown["site_stewardship"]["site_exploration"] == 40
+    assert get_skill_xp(user, "field_survey") == 40
+    assert user.skill_breakdown["field_survey"]["site_exploration"] == 40
 
     awarded2 = award_site_exploration_xp(
         user,
@@ -142,7 +142,7 @@ def test_award_site_exploration_xp_batches(session: Session) -> None:
     session.refresh(user)
     # floor(55/20) - floor(45/20) = 2 - 2 = 0
     assert awarded2 == 0
-    assert get_skill_xp(user, "site_stewardship") == 40
+    assert get_skill_xp(user, "field_survey") == 40
 
     awarded3 = award_site_exploration_xp(
         user,
@@ -153,7 +153,7 @@ def test_award_site_exploration_xp_batches(session: Session) -> None:
     session.commit()
     session.refresh(user)
     assert awarded3 == 20
-    assert get_skill_xp(user, "site_stewardship") == 60
+    assert get_skill_xp(user, "field_survey") == 60
 
 
 def test_apply_exploration_accuracy_boost() -> None:
@@ -235,7 +235,7 @@ def test_documentation_completes_and_freezes(
 
     user = _make_user(session, username="doc", email="doc@example.com")
     # High stewardship level so less walking is needed to hit 100%.
-    set_skill_xp(user, "site_stewardship", SKILL_THRESHOLDS[90])
+    set_skill_xp(user, "field_survey", SKILL_THRESHOLDS[90])
     session.add(user)
     session.commit()
     session.refresh(user)
@@ -275,8 +275,8 @@ def test_documentation_completes_and_freezes(
     assert doc_role.was_first is True
     assert summaries[0].viewer_was_first_documentation is True
     assert summaries[0].documented_at is not None
-    assert profile.skill_breakdown["site_stewardship"]["site_documentation"] == 80
-    assert profile.skill_breakdown["site_stewardship"]["first_documentation"] == 20
+    assert profile.skill_breakdown["field_survey"]["site_documentation"] == 80
+    assert profile.skill_breakdown["field_survey"]["first_documentation"] == 20
 
     from app.models.user_notification import UserNotification, UserNotificationType
 
@@ -292,7 +292,7 @@ def test_documentation_completes_and_freezes(
     assert pushes[0]["site_id"] == site.site_id
     assert pushes[0]["notification_id"] == notif.id
 
-    xp_after = get_skill_xp(user, "site_stewardship")
+    xp_after = get_skill_xp(user, "field_survey")
     apply_site_exploration_update(
         session,
         user,
@@ -307,12 +307,12 @@ def test_documentation_completes_and_freezes(
     )
     session.refresh(link)
     assert link.explored_distance_m == 80.0
-    assert get_skill_xp(user, "site_stewardship") == xp_after
+    assert get_skill_xp(user, "field_survey") == xp_after
     assert (
-        user.skill_breakdown["site_stewardship"]["site_documentation"] == 80
+        user.skill_breakdown["field_survey"]["site_documentation"] == 80
     )
     assert (
-        user.skill_breakdown["site_stewardship"]["first_documentation"] == 20
+        user.skill_breakdown["field_survey"]["first_documentation"] == 20
     )
     # Frozen re-sync does not create another notification/push.
     assert len(pushes) == 1
@@ -339,8 +339,8 @@ def test_second_documenter_skips_first_documentation_xp(
 
     first = _make_user(session, username="doc1", email="doc1@example.com")
     second = _make_user(session, username="doc2", email="doc2@example.com")
-    set_skill_xp(first, "site_stewardship", SKILL_THRESHOLDS[90])
-    set_skill_xp(second, "site_stewardship", SKILL_THRESHOLDS[90])
+    set_skill_xp(first, "field_survey", SKILL_THRESHOLDS[90])
+    set_skill_xp(second, "field_survey", SKILL_THRESHOLDS[90])
     session.add(first)
     session.add(second)
     session.commit()
@@ -365,8 +365,8 @@ def test_second_documenter_skips_first_documentation_xp(
             ]
         ),
     )
-    assert first.skill_breakdown["site_stewardship"]["site_documentation"] == 80
-    assert first.skill_breakdown["site_stewardship"]["first_documentation"] == 20
+    assert first.skill_breakdown["field_survey"]["site_documentation"] == 80
+    assert first.skill_breakdown["field_survey"]["first_documentation"] == 20
 
     apply_site_exploration_update(
         session,
@@ -380,9 +380,9 @@ def test_second_documenter_skips_first_documentation_xp(
             ]
         ),
     )
-    assert second.skill_breakdown["site_stewardship"]["site_documentation"] == 80
+    assert second.skill_breakdown["field_survey"]["site_documentation"] == 80
     assert "first_documentation" not in (
-        second.skill_breakdown.get("site_stewardship") or {}
+        second.skill_breakdown.get("field_survey") or {}
     )
     second_doc = session.exec(
         select(UserSite).where(
@@ -419,10 +419,10 @@ def test_apply_site_exploration_update_monotonic_resume(session: Session) -> Non
     session.refresh(link)
     assert link.explored_distance_m == 50.0
     # floor(50/20) - floor(30/20) = 2 - 1 = 1 batch × 20
-    assert get_skill_xp(user, "site_stewardship") == 20
+    assert get_skill_xp(user, "field_survey") == 20
     assert len(summaries) == 1
     assert summaries[0].explored_distance_m == 50.0
-    assert profile.skill_breakdown["site_stewardship"]["site_exploration"] == 20
+    assert profile.skill_breakdown["field_survey"]["site_exploration"] == 20
 
     # Downward report ignored; no extra XP.
     apply_site_exploration_update(
@@ -439,7 +439,7 @@ def test_apply_site_exploration_update_monotonic_resume(session: Session) -> Non
     )
     session.refresh(link)
     assert link.explored_distance_m == 50.0
-    assert get_skill_xp(user, "site_stewardship") == 20
+    assert get_skill_xp(user, "field_survey") == 20
 
 
 def _register_user(client: TestClient, username: str, email: str) -> dict:
@@ -476,7 +476,7 @@ def test_patch_site_exploration_api(
     )
     assert response.status_code == 200
     body = response.json()
-    assert body["profile"]["skill_breakdown"]["site_stewardship"][
+    assert body["profile"]["skill_breakdown"]["field_survey"][
         "site_exploration"
     ] == 20
     assert len(body["sites"]) == 1

@@ -285,7 +285,7 @@ def get_identify_options(
 def _site_summary_for_user(
     session: Session, *, site_id: int, user: User
 ) -> SiteSummary:
-    skill_level = level_for_xp(get_skill_xp(user, "site_stewardship"))
+    skill_level = level_for_xp(get_skill_xp(user, "field_survey"))
     row = get_site_by_id(
         session,
         site_id,
@@ -394,7 +394,7 @@ def submit_identify_guess(
     enriched = enrich_site_rows_for_viewer(
         session, [enriched_row], viewer_user_id=user_id
     )[0]
-    skill_level = level_for_xp(get_skill_xp(user, "site_stewardship"))
+    skill_level = level_for_xp(get_skill_xp(user, "field_survey"))
     types_by_period = load_site_types_by_period(session)
     summary = site_row_to_summary(
         enriched,

@@ -5,30 +5,12 @@
 # career_titles: 99 rich career ranks indexed by career level 1..99 (120 reuses last).
 
 skills:
-  - id: site_discovery
-    name: Site Discovery
-  - id: site_stewardship
-    name: Site Stewardship
-  - id: site_clearing
-    name: Site Clearing
-  - id: fossil_detection
-    name: Fossil Detection
-  - id: fossil_excavation
-    name: Fossil Excavation
-  - id: fossil_transport
-    name: Fossil Transport
-  - id: fossil_curation
-    name: Fossil Curation
-  - id: fossil_preparation
-    name: Fossil Preparation
-  - id: fossil_analysis
-    name: Fossil Analysis
-  - id: dinosaur_modelling
-    name: Dinosaur Modelling
-  - id: dinosaur_mounting
-    name: Dinosaur Mounting
-  - id: academic_publishing
-    name: Academic Publishing
+  - id: field_survey
+    name: Field Survey
+  - id: bone_quarry
+    name: Bone Quarry
+  - id: science_hall
+    name: Science Hall
 
 # XP reward amounts live on skill domain main_params
 # (site_discovery_xp / active_100m_xp / passive_km_xp / fossil_discovery_xp).

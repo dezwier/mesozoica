@@ -135,7 +135,7 @@ def _guidance_params(
         raw_chance = inst_p.get("discovery_chance")
         if raw_chance is None and isinstance(raw_mods, dict):
             using = raw_mods.get("using") or {}
-            skill = using.get("site_discovery") or {}
+            skill = using.get("field_survey") or {}
             entry = skill.get("discovery_chance") or {}
             if isinstance(entry, dict) and entry.get("op") == "replace":
                 raw_chance = entry.get("value")

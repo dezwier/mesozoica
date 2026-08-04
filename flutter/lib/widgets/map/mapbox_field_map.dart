@@ -333,7 +333,7 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
     final profile = _auth?.currentUser;
     if (profile != null) {
       for (final skill in profile.skills) {
-        if (skill.id == 'site_discovery') {
+        if (skill.id == 'field_survey') {
           skillLevel = skill.level.clamp(1, 99);
           break;
         }

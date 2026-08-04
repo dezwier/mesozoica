@@ -11,7 +11,9 @@ Single source of truth for Mesozoica game-mechanics knobs.
 | File | Purpose |
 |------|---------|
 | `site_generation.yaml` | Field site density, spacing, geology blend, client ensure triggers (not a skill) |
-| `01_site_discovery.yaml` … `12_academic_publishing.yaml` | Numbered skill domains (order matches `leveling.yaml`) |
+| `01_field_survey.yaml` | Field Survey — discovery, stewardship, clearing + field fossil spawn tables |
+| `02_bone_quarry.yaml` | Bone Quarry — fossil localization / excavation / transport / curation |
+| `03_science_hall.yaml` | Science Hall — prep, analysis, modelling, mounting, publishing (stub) |
 | `tool_actions.yaml` | Per-tool action knobs + `modifies_main_params` |
 | `leveling.yaml` | Skill list + 99 career titles (XP amounts live on skill `main_params`) |
 | `period_colors.yaml` / `rock_type_colors.yaml` | Overlay / marker palettes |

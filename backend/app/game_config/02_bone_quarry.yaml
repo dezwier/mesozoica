@@ -1,8 +1,8 @@
-# Skill 4 — Fossil Detection
-# Fossil proximity discovery (not fully implemented yet).
+# Skill 2 — Bone Quarry
+# Fossil localization, excavation, transport, and curation.
 
-skill_id: fossil_detection
-enabled: false
+skill_id: bone_quarry
+enabled: true
 
 main_params:
   # XP awarded when a fossil is discovered / granted in situ.
@@ -23,10 +23,3 @@ weather_time_modifiers:
 
 weather_type_modifiers:
   fossil_discovery_xp: {}
-
-# Future knobs (examples):
-# main_params:
-#   visibility_distance_m: 10.0
-# client:
-#   auto_discover_radius_m: 10.0
-#   cache_radius_km: 0.5

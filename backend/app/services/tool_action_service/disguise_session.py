@@ -203,7 +203,7 @@ def prepare_disguise_start(
         # Legacy instance knobs still accepted until catalogs are re-seeded.
         params["modifies_main_params"] = {
             "using": {
-                "site_stewardship": {
+                "field_survey": {
                     "rival_discovery": {
                         "op": "multiply",
                         "value": float(inst_p["discovery_chance_multiplier"]),
@@ -298,7 +298,7 @@ def _stewardship_skill_level(session: Session, user_id: int) -> int:
     user = session.get(User, user_id)
     if user is None:
         return 1
-    return level_for_xp(get_skill_xp(user, "site_stewardship"))
+    return level_for_xp(get_skill_xp(user, "field_survey"))
 
 
 def _resolve_cover_rival_discovery(
@@ -309,7 +309,7 @@ def _resolve_cover_rival_discovery(
 ) -> float:
     """Effective ``rival_discovery`` for one active cover session."""
     tool_mods = tool_mods_from_session_params(
-        params, when="using", skill_id="site_stewardship"
+        params, when="using", skill_id="field_survey"
     )
     # Legacy snapshot: bare discovery_chance_multiplier.
     if (

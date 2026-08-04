@@ -79,7 +79,7 @@ def _tool(
 ) -> ToolType:
     tool = ToolType(
         name=name,
-        category="4 fossil_detection",
+        category="2 bone_quarry",
         scientific_tool="binoculars",
         description="test",
         rarity=1,
@@ -159,10 +159,10 @@ def test_tool_actions_yaml_loads_ridge_glass_knobs() -> None:
     assert cfg.added_discovery_rate is None
     mods = cfg.modifies_main_params
     assert mods is not None
-    assert mods.affects_skill("site_discovery")
-    assert "visibility_distance_m" in mods.params_for("using", "site_discovery")
-    assert "discovery_chance" in mods.params_for("using", "site_discovery")
-    assert "max_discovery_speed_kmh" in mods.params_for("using", "site_discovery")
+    assert mods.affects_skill("field_survey")
+    assert "visibility_distance_m" in mods.params_for("using", "field_survey")
+    assert "discovery_chance" in mods.params_for("using", "field_survey")
+    assert "max_discovery_speed_kmh" in mods.params_for("using", "field_survey")
 
 
 def test_start_ridge_glass_session_snapshots_and_replaces(
@@ -182,7 +182,7 @@ def test_start_ridge_glass_session_snapshots_and_replaces(
     assert body["action_key"] == ACTION_KEY_RIDGE_GLASS
     assert body["status"] == SESSION_STATUS_ACTIVE
     assert body["params"]["duration_minutes"] == 60
-    mods = body["params"]["modifies_main_params"]["using"]["site_discovery"]
+    mods = body["params"]["modifies_main_params"]["using"]["field_survey"]
     assert mods["visibility_distance_m"] == {"op": "multiply", "value": 1.3}
     assert mods["discovery_chance"] == {"op": "multiply", "value": 1.3}
 
@@ -251,7 +251,7 @@ def test_ridge_glass_boosts_all_sites_globally(
     ridge_cfg = get_game_config().tool_actions.ridge_glass
     assert ridge_cfg.modifies_main_params is not None
     tool_mods = ridge_cfg.modifies_main_params.params_for(
-        "using", "site_discovery"
+        "using", "field_survey"
     )
     expected = resolve_site_discovery_main_params(
         skill_level=1,
@@ -305,7 +305,7 @@ def test_expired_ridge_glass_session_ignored(
                 "duration_minutes": 60,
                 "modifies_main_params": {
                     "using": {
-                        "site_discovery": {
+                        "field_survey": {
                             "visibility_distance_m": {
                                 "op": "add",
                                 "value": 20.0,
@@ -383,12 +383,12 @@ def test_start_expedition_drivetrain_session(client, session: Session) -> None:
     body = first.json()
     assert body["action_key"] == ACTION_KEY_EXPEDITION_DRIVETRAIN
     assert body["status"] == SESSION_STATUS_ACTIVE
-    mods = body["params"]["modifies_main_params"]["using"]["site_discovery"]
+    mods = body["params"]["modifies_main_params"]["using"]["field_survey"]
     assert mods["max_discovery_speed_kmh"] == {"op": "multiply", "value": 3.0}
     assert mods["visibility_distance_m"] == {"op": "multiply", "value": 0.9}
     assert mods["discovery_chance"] == {"op": "multiply", "value": 0.9}
     stewardship = body["params"]["modifies_main_params"]["using"][
-        "site_stewardship"
+        "field_survey"
     ]
     assert stewardship["site_visibility_m"] == {"op": "multiply", "value": 0.9}
 
@@ -403,11 +403,11 @@ def test_start_trail_striders_session(client, session: Session) -> None:
     assert res.status_code in (201, 202), res.text
     body = res.json()
     assert body["action_key"] == "trail_striders"
-    mods = body["params"]["modifies_main_params"]["using"]["site_discovery"]
+    mods = body["params"]["modifies_main_params"]["using"]["field_survey"]
     assert mods["max_discovery_speed_kmh"] == {"op": "multiply", "value": 2.0}
     assert mods["visibility_distance_m"] == {"op": "multiply", "value": 0.95}
     stewardship = body["params"]["modifies_main_params"]["using"][
-        "site_stewardship"
+        "field_survey"
     ]
     assert stewardship["site_visibility_m"] == {"op": "multiply", "value": 0.95}
 
@@ -422,7 +422,7 @@ def test_start_canyon_throttle_session(client, session: Session) -> None:
     assert res.status_code in (201, 202), res.text
     body = res.json()
     assert body["action_key"] == "canyon_throttle"
-    mods = body["params"]["modifies_main_params"]["using"]["site_discovery"]
+    mods = body["params"]["modifies_main_params"]["using"]["field_survey"]
     assert mods["max_discovery_speed_kmh"] == {"op": "multiply", "value": 4.0}
     assert mods["visibility_distance_m"] == {"op": "multiply", "value": 0.85}
 
@@ -437,7 +437,7 @@ def test_start_overland_chassis_session(client, session: Session) -> None:
     assert res.status_code in (201, 202), res.text
     body = res.json()
     assert body["action_key"] == "overland_chassis"
-    mods = body["params"]["modifies_main_params"]["using"]["site_discovery"]
+    mods = body["params"]["modifies_main_params"]["using"]["field_survey"]
     assert mods["max_discovery_speed_kmh"] == {"op": "multiply", "value": 5.0}
     assert mods["visibility_distance_m"] == {"op": "multiply", "value": 0.8}
 
@@ -456,8 +456,8 @@ def test_tool_actions_yaml_loads_expedition_drivetrain_knobs() -> None:
     )
     mods = cfg.modifies_main_params
     assert mods is not None
-    assert mods.affects_skill("site_discovery")
-    assert mods.affects_skill("site_stewardship")
-    assert mods.params_for("using", "site_stewardship")[
+    assert mods.affects_skill("field_survey")
+    assert mods.affects_skill("field_survey")
+    assert mods.params_for("using", "field_survey")[
         "site_visibility_m"
     ] == ParamModifier(op="multiply", value=0.9)

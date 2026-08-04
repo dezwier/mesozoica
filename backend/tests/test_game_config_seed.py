@@ -61,20 +61,20 @@ def test_reseed_reports_drift_without_writing(session) -> None:
     seed_from_yaml(session)
 
     documents = copy.deepcopy(load_yaml_documents())
-    documents["site_discovery"]["main_params"]["discovery_chance"] = 0.42
+    documents["field_survey"]["main_params"]["discovery_chance"] = 0.42
     publish_documents(session, documents=documents, base_version=1, note="tweak")
 
     summary = seed_from_yaml(session)
     assert summary.created is False
     assert summary.version == 2
-    assert summary.changed_doc_ids == ["site_discovery"]
+    assert summary.changed_doc_ids == ["field_survey"]
 
 
 def test_force_reseed_publishes_a_new_revision(session) -> None:
     seed_from_yaml(session)
 
     documents = copy.deepcopy(load_yaml_documents())
-    documents["site_discovery"]["main_params"]["discovery_chance"] = 0.42
+    documents["field_survey"]["main_params"]["discovery_chance"] = 0.42
     publish_documents(session, documents=documents, base_version=1, note="tweak")
 
     summary = seed_from_yaml(session, force=True)
@@ -98,7 +98,7 @@ def test_dry_run_writes_nothing(session) -> None:
 def test_publish_bumps_version_by_one(session) -> None:
     seed_from_yaml(session)
     documents = copy.deepcopy(load_yaml_documents())
-    documents["site_discovery"]["main_params"]["discovery_chance"] = 0.5
+    documents["field_survey"]["main_params"]["discovery_chance"] = 0.5
 
     stored = publish_documents(session, documents=documents, base_version=1)
 
@@ -113,10 +113,10 @@ def test_publish_bumps_version_by_one(session) -> None:
 def test_stale_base_version_conflicts(session) -> None:
     seed_from_yaml(session)
     documents = copy.deepcopy(load_yaml_documents())
-    documents["site_discovery"]["main_params"]["discovery_chance"] = 0.5
+    documents["field_survey"]["main_params"]["discovery_chance"] = 0.5
     publish_documents(session, documents=documents, base_version=1)
 
-    documents["site_discovery"]["main_params"]["discovery_chance"] = 0.6
+    documents["field_survey"]["main_params"]["discovery_chance"] = 0.6
     with pytest.raises(GameConfigConflict):
         publish_documents(session, documents=documents, base_version=1)
 
@@ -194,7 +194,7 @@ def test_rollback_creates_a_forward_revision(session) -> None:
     assert v1 is not None
 
     documents = copy.deepcopy(load_yaml_documents())
-    documents["site_discovery"]["main_params"]["discovery_chance"] = 0.5
+    documents["field_survey"]["main_params"]["discovery_chance"] = 0.5
     publish_documents(session, documents=documents, base_version=1)
 
     restored = rollback_to_version(session, to_version=1)
@@ -215,7 +215,7 @@ def test_prune_keeps_newest_and_active(session) -> None:
     seed_from_yaml(session)
     documents = copy.deepcopy(load_yaml_documents())
     for index in range(4):
-        documents["site_discovery"]["main_params"]["discovery_chance"] = 0.1 + index / 100
+        documents["field_survey"]["main_params"]["discovery_chance"] = 0.1 + index / 100
         publish_documents(session, documents=documents, base_version=1 + index)
 
     assert len(list_revisions(session)) == 5

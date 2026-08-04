@@ -142,5 +142,5 @@ def test_sync_tools_prune(session: Session, tmp_path: Path):
 def test_default_tools_json_exists():
     assert DEFAULT_TOOLS_JSON.is_file()
     entries = json.loads(DEFAULT_TOOLS_JSON.read_text(encoding="utf-8"))
-    assert len(entries) == 56
+    assert len(entries) == 63
     assert all("action" in entry and entry["action"] for entry in entries)

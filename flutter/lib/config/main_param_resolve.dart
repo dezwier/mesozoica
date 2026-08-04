@@ -106,7 +106,7 @@ double resolveScalarMainParam({
 List<ParamModifier> siteDiscoveryToolModsForParam({
   required String paramKey,
   List<ToolModBinding> toolBindings = const [],
-  String skillId = 'site_discovery',
+  String skillId = 'field_survey',
   String? weatherTime,
 }) {
   final out = <ParamModifier>[];
@@ -186,7 +186,7 @@ double resolveSiteStewardshipSiteVisibilityM({
   );
   for (final mod in siteDiscoveryToolModsForParam(
     paramKey: 'site_visibility_m',
-    skillId: 'site_stewardship',
+    skillId: 'field_survey',
     toolBindings: toolBindings,
     weatherTime: weatherTime,
   )) {

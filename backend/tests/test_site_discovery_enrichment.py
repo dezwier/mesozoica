@@ -144,8 +144,8 @@ def test_discover_site_sets_walk_and_enriches(session: Session, monkeypatch):
     assert site.how_discovered == HOW_DISCOVERED_WALK
     assert site.country_code == "US"
     assert site.state == "Kansas"
-    assert user.skill_breakdown["site_discovery"]["sites"] == 20
-    assert user.skill_breakdown["site_discovery"]["first_discovery"] == 20
+    assert user.skill_breakdown["field_survey"]["sites"] == 20
+    assert user.skill_breakdown["field_survey"]["first_discovery"] == 20
     from sqlmodel import col, select
 
     from app.models.user_site import USER_SITE_ROLE_DISCOVERER, UserSite
@@ -207,9 +207,9 @@ def test_second_discoverer_skips_first_discovery_xp(session: Session, monkeypatc
     )
     session.refresh(first)
     session.refresh(second)
-    assert first.skill_breakdown["site_discovery"]["first_discovery"] == 20
-    assert second.skill_breakdown["site_discovery"]["sites"] == 20
-    assert "first_discovery" not in (second.skill_breakdown.get("site_discovery") or {})
+    assert first.skill_breakdown["field_survey"]["first_discovery"] == 20
+    assert second.skill_breakdown["field_survey"]["sites"] == 20
+    assert "first_discovery" not in (second.skill_breakdown.get("field_survey") or {})
 
     from sqlmodel import col, select
 
@@ -267,7 +267,7 @@ def test_orphan_how_discovered_does_not_block_first_xp(session: Session, monkeyp
         lon=-100.0,
     )
     session.refresh(user)
-    assert user.skill_breakdown["site_discovery"]["first_discovery"] == 20
+    assert user.skill_breakdown["field_survey"]["first_discovery"] == 20
 
     from sqlmodel import col, select
 
@@ -300,7 +300,7 @@ def test_aerial_discover_sets_aerial_recon(session: Session, monkeypatch):
     user = _user(session, username="pilot")
     tool_type = ToolType(
         name="Aerial Recon",
-        category="1 site_discovery",
+        category="1 field_survey",
         scientific_tool="helicopter",
         description="Scout",
         rarity=5,
@@ -387,7 +387,7 @@ def test_aerial_discover_sets_aerial_scout(session: Session, monkeypatch):
     user = _user(session, username="drone_pilot")
     tool_type = ToolType(
         name="Aerial Scout",
-        category="1 site_discovery",
+        category="1 field_survey",
         scientific_tool="drone",
         description="Drone loop",
         rarity=2,
@@ -467,7 +467,7 @@ def test_site_summary_includes_viewer_discovery(session: Session):
     user = _user(session, username="viewer")
     tool_type = ToolType(
         name="Aerial Recon",
-        category="1 site_discovery",
+        category="1 field_survey",
         scientific_tool="helicopter",
         description="Scout",
         rarity=5,

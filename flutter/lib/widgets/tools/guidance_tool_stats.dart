@@ -32,7 +32,7 @@ class GuidanceToolStats extends StatelessWidget {
     final distanceExactness =
         (p?['distance_exactness'] as num?)?.toDouble();
     final discoveryMod = modifiesMainParamsFromParams(p)
-        ?.paramsFor('using', 'site_discovery')['discovery_chance'];
+        ?.paramsFor('using', 'field_survey')['discovery_chance'];
     final discoveryChance = (p?['discovery_chance'] as num?)?.toDouble() ??
         (discoveryMod?.op == 'replace' ? discoveryMod?.value : null) ??
         cfg.discoveryChance;

@@ -63,8 +63,8 @@ def compute_skill_xp_from_history(
     from_passive = passive_km * passive_xp
 
     skill_xp = empty_skill_xp()
-    skill_xp["site_discovery"] = from_sites + from_active + from_passive
-    skill_xp["fossil_detection"] = from_fossils
+    skill_xp["field_survey"] = from_sites + from_active + from_passive
+    skill_xp["bone_quarry"] = from_fossils
 
     breakdown: dict[str, dict[str, int]] = {}
     site_breakdown: dict[str, int] = {}
@@ -75,9 +75,9 @@ def compute_skill_xp_from_history(
     if from_passive:
         site_breakdown["passive_distance"] = from_passive
     if site_breakdown:
-        breakdown["site_discovery"] = site_breakdown
+        breakdown["field_survey"] = site_breakdown
     if from_fossils:
-        breakdown["fossil_detection"] = {"fossils": from_fossils}
+        breakdown["bone_quarry"] = {"fossils": from_fossils}
 
     return skill_xp, breakdown
 

@@ -159,8 +159,8 @@ class XpAwardController extends ChangeNotifier {
         ? distance.first
         : const XpAward(
             id: 0,
-            skillId: 'site_discovery',
-            skillName: 'Site Discovery',
+            skillId: 'field_survey',
+            skillName: 'Field Survey',
             sourceLabel: '',
             amount: 0,
             sourceKey: 'passive_distance',

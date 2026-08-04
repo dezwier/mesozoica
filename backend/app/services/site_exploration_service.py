@@ -167,7 +167,7 @@ def apply_site_exploration_update(
     ).all()
     by_site = {int(link.site_id): link for link in links}
 
-    skill_level = level_for_xp(get_skill_xp(user, "site_stewardship"))
+    skill_level = level_for_xp(get_skill_xp(user, "field_survey"))
     updated_ids: list[int] = []
     pending_doc_notifications: list[tuple[int, UserNotification]] = []
     for entry in payload.sites:
@@ -215,7 +215,7 @@ def apply_site_exploration_update(
             session.add(link)
 
         # Recompute skill level after possible exploration XP.
-        skill_level = level_for_xp(get_skill_xp(user, "site_stewardship"))
+        skill_level = level_for_xp(get_skill_xp(user, "field_survey"))
         notification = _maybe_complete_documentation(
             session, user, link, skill_level=skill_level
         )
@@ -245,7 +245,7 @@ def apply_site_exploration_update(
             site_label=site_display_title(row.site),
         )
 
-    skill_level = level_for_xp(get_skill_xp(user, "site_stewardship"))
+    skill_level = level_for_xp(get_skill_xp(user, "field_survey"))
     summaries: list[SiteSummary] = []
     for site_id in updated_ids:
         row = get_site_by_id(

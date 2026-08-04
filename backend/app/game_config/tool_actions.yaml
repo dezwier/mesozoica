@@ -10,37 +10,19 @@
 #     replace  — set absolute value (e.g. discovery_chance → 0.9)
 #     multiply — scale base (e.g. 1.1 = +10%)
 #     add      — offset base (e.g. visibility_distance_m + 50)
-# Example:
-#   owning:
-#     site_discovery:
-#       visibility_distance_m: { op: add, value: 50 }        # +50 m
-#       discovery_chance: { op: multiply, value: 1.1 }       # +10%
-#     site_stewardship:
-#       dino_accuracy: { op: add, value: 0.1 }
-#   using:
-#     site_discovery:
-#       discovery_chance: { op: replace, value: 0.9 }        # set to 90%
-# Guidance tools (compass / navigator) use `using` / site_discovery today.
+# Guidance tools (compass / navigator) use `using` / field_survey today.
 
 aerial_recon:
-  # Lifetime battery; max route km = flight_speed_kmh × remaining_minutes / 60.
-  # Actual flight time after deploy = drawn_route_km / flight_speed_kmh.
   duration_minutes: 60
-  # start/end must be within this of the player's GPS origin
   loop_endpoint_tolerance_m: 75
   flight_speed_kmh: 50
   flight_discovery_chance: 0.01
   flight_discovery_distance_m: 200
-  # promote ensuring → flying even if some ensure jobs are still pending
   ensure_timeout_s: 600
-  # warn on confirm when drawn length is below this fraction of max route
   short_route_warn_fraction: 0.7
-  # One-line blurb shown on the tool card stats panel
-  stats_explanation: >-
-    Duration is this card's lifetime battery. Remaining time caps how far
-    you can draw (speed × remaining). Flight time is drawn length ÷ speed.
-    Sites within flight discovery distance are rolled at the listed chance.
-
+  stats_explanation: Duration is this card's lifetime battery. Remaining time caps how far
+    you can draw (speed × remaining). Flight time is drawn length ÷ speed. Sites within flight
+    discovery distance are rolled at the listed chance.
 aerial_scout:
   duration_minutes: 10
   loop_endpoint_tolerance_m: 75
@@ -49,11 +31,9 @@ aerial_scout:
   flight_discovery_distance_m: 50
   ensure_timeout_s: 600
   short_route_warn_fraction: 0.7
-  stats_explanation: >-
-    Duration is this card's lifetime battery. Remaining time caps how far
-    you can draw (speed × remaining). Flight time is drawn length ÷ speed.
-    Sites within flight discovery distance are rolled at the listed chance.
-
+  stats_explanation: Duration is this card's lifetime battery. Remaining time caps how far
+    you can draw (speed × remaining). Flight time is drawn length ÷ speed. Sites within flight
+    discovery distance are rolled at the listed chance.
 geo_compass:
   exactness: 0.0
   duration_minutes: 15
@@ -62,23 +42,18 @@ geo_compass:
   min_direction_range_deg: 4
   modifies_main_params:
     using:
-      site_discovery:
+      field_survey:
         discovery_chance: { op: replace, value: 0.9 }
-  stats_explanation: >-
-    Duration is this card's lifetime battery; each use runs until you stop
-    or time runs out. Shows a direction range toward the nearest undiscovered
-    site; lower exactness widens the glow. Walk-in discovery of that nearest
-    site uses the listed chance instead of the base rate.
-
+  stats_explanation: Duration is this card's lifetime battery; each use runs until you stop
+    or time runs out. Shows a direction range toward the nearest undiscovered site; lower
+    exactness widens the glow. Walk-in discovery of that nearest site uses the listed chance
+    instead of the base rate.
 proximity_scanner:
   exactness: 0.0
   duration_minutes: 15
-  stats_explanation: >-
-    Duration is this card's lifetime battery; each use runs until you stop
-    or time runs out. Shows distance to the nearest undiscovered site as
-    meter bands; lower exactness uses coarser rounding (up to 200 m), higher
-    is finer (down to 1 m).
-
+  stats_explanation: Duration is this card's lifetime battery; each use runs until you stop
+    or time runs out. Shows distance to the nearest undiscovered site as meter bands; lower
+    exactness uses coarser rounding (up to 200 m), higher is finer (down to 1 m).
 site_navigator:
   direction_exactness: 0.0
   distance_exactness: 0.0
@@ -88,51 +63,37 @@ site_navigator:
   min_direction_range_deg: 4
   modifies_main_params:
     using:
-      site_discovery:
+      field_survey:
         discovery_chance: { op: replace, value: 0.9 }
-  stats_explanation: >-
-    Duration is this card's lifetime battery; each use runs until you stop
-    or time runs out. Combines a direction-range glow and distance bands for
-    the nearest undiscovered site, with the listed walk-in discovery chance
-    for that site.
-
+  stats_explanation: Duration is this card's lifetime battery; each use runs until you stop
+    or time runs out. Combines a direction-range glow and distance bands for the nearest undiscovered
+    site, with the listed walk-in discovery chance for that site.
 orbit_survey:
   duration_minutes: 10
   accuracy: 0.75
   range: 0.35
   min_range_m: 200
   max_range_m: 2000
-  # Overlay look (client raster)
   base_alpha: 0.48
-  # Outer fraction of the circle that fades to transparent (0=hard edge, 1=fade from center)
   range_fade: 0.85
-  # Softness of period color borders (0=sharp, 1=very soft); accuracy still sharpens further
   boundary_blur: 1
-  stats_explanation: >-
-    Duration is this card's lifetime battery; each use runs until you stop
-    or time runs out. Colors the map by the period of nearby undiscovered
-    field sites. Higher accuracy sharpens boundaries; higher range widens
-    the circle (200 m–2 km).
-
+  stats_explanation: Duration is this card's lifetime battery; each use runs until you stop
+    or time runs out. Colors the map by the period of nearby undiscovered field sites. Higher
+    accuracy sharpens boundaries; higher range widens the circle (200 m–2 km).
 formation_map:
   duration_minutes: 10
   accuracy: 0.75
-  # Uses the same fixed 500 m grid as site_generation.lazy.cell_size_m
   wideness_m: 500
   min_wideness_m: 500
   max_wideness_m: 2000
   cell_size_m: 500
   base_alpha: 0.48
-  # Outer rectangle edge uses a fixed soft fade in the client raster (not this knob).
   range_fade: 0
   boundary_blur: 1
-  stats_explanation: >-
-    Duration is this card's lifetime battery; each use runs until you stop
-    or time runs out. Colors a fixed square of the map by rock type. Higher
-    accuracy sharpens rock-type boundaries; the outer edge has a slight fixed
-    soft fade. Wideness sets the side length (500 m–2 km) on the same 500 m
-    grid used for field sites, locked to this tool occurrence.
-
+  stats_explanation: Duration is this card's lifetime battery; each use runs until you stop
+    or time runs out. Colors a fixed square of the map by rock type. Higher accuracy sharpens
+    rock-type boundaries; the outer edge has a slight fixed soft fade. Wideness sets the side
+    length (500 m–2 km) on the same 500 m grid used for field sites, locked to this tool occurrence.
 terrain_echo:
   accuracy: 0.0
   range_m: 20
@@ -143,128 +104,105 @@ terrain_echo:
   max_duration_minutes: 20
   ring_increment_m: 20
   sweep_period_s: 4
-  stats_explanation: >-
-    Duration is this card's lifetime battery (editable within min/max); each
-    use runs on whatever time remains until you stop or it runs out. Rotating
-    survey pulse around your position. Blips mark nearby sites you have not
-    discovered yet. Higher accuracy tightens blips; range sets pulse radius
-    (20–200 m).
-
+  stats_explanation: Duration is this card's lifetime battery (editable within min/max); each
+    use runs on whatever time remains until you stop or it runs out. Rotating survey pulse
+    around your position. Blips mark nearby sites you have not discovered yet. Higher accuracy
+    tightens blips; range sets pulse radius (20–200 m).
 ridge_glass:
   duration_minutes: 60
   modifies_main_params:
     using:
-      site_discovery:
+      field_survey:
         visibility_distance_m: { op: multiply, value: 1.3 }
         discovery_chance: { op: multiply, value: 1.3 }
         max_discovery_speed_kmh: { op: multiply, value: 0.7 }
-  stats_explanation: >-
-    Duration is this card's lifetime battery; each use runs until you stop
-    or time runs out. While active, boosts site visibility range and
-    walk-in discovery chance, and decreases max discovery speed for all sites.
-
+  stats_explanation: Duration is this card's lifetime battery; each use runs until you stop
+    or time runs out. While active, boosts site visibility range and walk-in discovery chance,
+    and decreases max discovery speed for all sites.
 trail_striders:
   duration_minutes: 60
   modifies_main_params:
     using:
-      site_discovery:
+      field_survey:
         visibility_distance_m: { op: multiply, value: 0.95 }
         discovery_chance: { op: multiply, value: 0.95 }
         max_discovery_speed_kmh: { op: multiply, value: 2.0 }
-      site_stewardship:
         site_visibility_m: { op: multiply, value: 0.95 }
-  stats_explanation: >-
-    Duration is this card's lifetime battery; each use runs until you stop
-    or time runs out. While active, raises max discovery speed by 100% so a
-    fast jog still counts toward discovery distance, but discover visibility,
-    walk-in chance, and site exploration radius drop 5%.
-
+  stats_explanation: Duration is this card's lifetime battery; each use runs until you stop
+    or time runs out. While active, raises max discovery speed by 100% so a fast jog still
+    counts toward discovery distance, but discover visibility, walk-in chance, and site exploration
+    radius drop 5%.
 expedition_drivetrain:
   duration_minutes: 60
   modifies_main_params:
     using:
-      site_discovery:
+      field_survey:
         visibility_distance_m: { op: multiply, value: 0.9 }
         discovery_chance: { op: multiply, value: 0.9 }
         max_discovery_speed_kmh: { op: multiply, value: 3.0 }
-      site_stewardship:
         site_visibility_m: { op: multiply, value: 0.9 }
-  stats_explanation: >-
-    Duration is this card's lifetime battery; each use runs until you stop
-    or time runs out. While active, raises max discovery speed by 200% so
-    bicycle travel still counts toward discovery distance, but discover
-    visibility, walk-in chance, and site exploration radius drop 10%.
-
+  stats_explanation: Duration is this card's lifetime battery; each use runs until you stop
+    or time runs out. While active, raises max discovery speed by 200% so bicycle travel still
+    counts toward discovery distance, but discover visibility, walk-in chance, and site exploration
+    radius drop 10%.
 canyon_throttle:
   duration_minutes: 60
   modifies_main_params:
     using:
-      site_discovery:
+      field_survey:
         visibility_distance_m: { op: multiply, value: 0.85 }
         discovery_chance: { op: multiply, value: 0.85 }
         max_discovery_speed_kmh: { op: multiply, value: 4.0 }
-      site_stewardship:
         site_visibility_m: { op: multiply, value: 0.85 }
-  stats_explanation: >-
-    Duration is this card's lifetime battery; each use runs until you stop
-    or time runs out. While active, raises max discovery speed by 300% so
-    motorcycle travel still counts toward discovery distance, but discover
-    visibility, walk-in chance, and site exploration radius drop 15%.
-
+  stats_explanation: Duration is this card's lifetime battery; each use runs until you stop
+    or time runs out. While active, raises max discovery speed by 300% so motorcycle travel
+    still counts toward discovery distance, but discover visibility, walk-in chance, and site
+    exploration radius drop 15%.
 overland_chassis:
   duration_minutes: 60
   modifies_main_params:
     using:
-      site_discovery:
+      field_survey:
         visibility_distance_m: { op: multiply, value: 0.8 }
         discovery_chance: { op: multiply, value: 0.8 }
         max_discovery_speed_kmh: { op: multiply, value: 5.0 }
-      site_stewardship:
         site_visibility_m: { op: multiply, value: 0.8 }
-  stats_explanation: >-
-    Duration is this card's lifetime battery; each use runs until you stop
-    or time runs out. While active, raises max discovery speed by 400% so
-    4x4 travel still counts toward discovery distance, but discover
-    visibility, walk-in chance, and site exploration radius drop 20%.
-
+  stats_explanation: Duration is this card's lifetime battery; each use runs until you stop
+    or time runs out. While active, raises max discovery speed by 400% so 4x4 travel still
+    counts toward discovery distance, but discover visibility, walk-in chance, and site exploration
+    radius drop 20%.
 nocturne_lens:
   duration_minutes: 60
-  active_weather_times: [night]
+  active_weather_times:
+  - night
   modifies_main_params:
     using:
-      site_discovery:
+      field_survey:
         visibility_distance_m: { op: multiply, value: 1.4 }
         discovery_chance: { op: multiply, value: 1.4 }
-  stats_explanation: >-
-    Lifetime battery; only starts and runs at night. Boosts visibility
-    range and walk-in discovery chance by 40%. Stops automatically when
-    night ends (dawn / day / dusk).
-
+  stats_explanation: Lifetime battery; only starts and runs at night. Boosts visibility range
+    and walk-in discovery chance by 40%. Stops automatically when night ends (dawn / day /
+    dusk).
 brush_scrim:
   duration_minutes: 60
   modifies_main_params:
     using:
-      site_stewardship:
+      field_survey:
         rival_discovery: { op: multiply, value: 0 }
-  stats_explanation: >-
-    Duration is this card's lifetime battery; each use covers one discovered
-    site until you stop or time runs out. While active, multiplies
-    rival_discovery by 0 (camouflages the site so rivals cannot discover it).
-    Discovery rolls still run so that a would-have-hit awards you successful
-    site disguise XP; you get nothing if their roll would have missed without
-    the cover. One disguise at a time.
-
+  stats_explanation: Duration is this card's lifetime battery; each use covers one discovered
+    site until you stop or time runs out. While active, multiplies rival_discovery by 0 (camouflages
+    the site so rivals cannot discover it). Discovery rolls still run so that a would-have-hit
+    awards you successful site disguise XP; you get nothing if their roll would have missed
+    without the cover. One disguise at a time.
 blackout_cover:
   duration_minutes: 60
   modifies_main_params:
     using:
-      site_stewardship:
+      field_survey:
         rival_discovery: { op: multiply, value: 0.5 }
-  stats_explanation: >-
-    Duration is this card's lifetime battery; each use covers one discovered
-    site until you stop or time runs out. While active, multiplies
-    rival_discovery by 0.5 (halves other players' discovery chance on that
-    site). You gain successful site disguise XP only when a rival's roll
-    would have discovered the site without this cover, but the cover stops
-    them — not when they miss anyway, and not when they discover it despite
-    the cover. One disguise at a time.
+  stats_explanation: Duration is this card's lifetime battery; each use covers one discovered
+    site until you stop or time runs out. While active, multiplies rival_discovery by 0.5
+    (halves other players' discovery chance on that site). You gain successful site disguise
+    XP only when a rival's roll would have discovered the site without this cover, but the
+    cover stops them — not when they miss anyway, and not when they discover it despite the
+    cover. One disguise at a time.

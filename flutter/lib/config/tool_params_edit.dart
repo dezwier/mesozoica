@@ -27,7 +27,7 @@ abstract final class ToolParamsEdit {
     Map<String, dynamic> params,
   ) {
     final mods = modifiesMainParamsFromParams(params);
-    final mod = mods?.paramsFor('using', 'site_discovery')['discovery_chance'];
+    final mod = mods?.paramsFor('using', 'field_survey')['discovery_chance'];
     if (mod == null || mod.op != 'replace') return params;
     final out = _deepCopy(params);
     out['discovery_chance'] = mod.value;

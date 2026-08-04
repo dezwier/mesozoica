@@ -153,23 +153,23 @@ class _SkillDetailDrawer extends StatelessWidget {
 
     try {
       await context.read<AuthController>().setSkillXp(
-            skillId: skill.id,
-            xp: xp,
-          );
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${skill.name} XP set to $xp')),
+        skillId: skill.id,
+        xp: xp,
       );
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('${skill.name} XP set to $xp')));
     } on ApiException catch (error) {
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.message)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.message)));
     } catch (error) {
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to set skill XP: $error')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to set skill XP: $error')));
     }
   }
 
@@ -207,8 +207,7 @@ class _SkillDetailDrawer extends StatelessWidget {
           height: constraints.maxHeight,
           decoration: BoxDecoration(
             color: scheme.surface,
-            borderRadius:
-                const BorderRadius.vertical(top: Radius.circular(20)),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
           ),
           child: Column(
             children: [
@@ -239,19 +238,17 @@ class _SkillDetailDrawer extends StatelessWidget {
                       child: skillParamRows.isEmpty
                           ? Text(
                               'No global params yet',
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .bodyMedium
-                                  ?.copyWith(
-                                    color: scheme.onSurfaceVariant,
-                                  ),
+                              style: Theme.of(context).textTheme.bodyMedium
+                                  ?.copyWith(color: scheme.onSurfaceVariant),
                             )
                           : Column(
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
-                                for (var i = 0;
-                                    i < skillParamRows.length;
-                                    i++) ...[
+                                for (
+                                  var i = 0;
+                                  i < skillParamRows.length;
+                                  i++
+                                ) ...[
                                   if (i > 0) const SizedBox(height: 14),
                                   _MainParamRow(
                                     row: skillParamRows[i],
@@ -297,10 +294,7 @@ const _breakdownTooltipWidth = 240.0;
 enum _XpSourceColumn { value, total }
 
 class _XpSourcesSection extends StatefulWidget {
-  const _XpSourcesSection({
-    required this.rows,
-    required this.scheme,
-  });
+  const _XpSourcesSection({required this.rows, required this.scheme});
 
   final List<_XpSourceMergedRow> rows;
   final ColorScheme scheme;
@@ -333,8 +327,9 @@ class _XpSourcesSectionState extends State<_XpSourcesSection> {
                 effectiveValue: showValue
                     ? widget.rows[i].valueText
                     : '${widget.rows[i].totalXp} XP',
-                overallDeltaPct:
-                    showValue ? widget.rows[i].overallDeltaPct : null,
+                overallDeltaPct: showValue
+                    ? widget.rows[i].overallDeltaPct
+                    : null,
                 factors: showValue ? widget.rows[i].factors : const [],
               ),
               scheme: widget.scheme,
@@ -420,12 +415,10 @@ class _XpSourceToggleSegment extends StatelessWidget {
         child: Text(
           label,
           style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                color: selected
-                    ? scheme.onSurface
-                    : scheme.onSurfaceVariant,
-                fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                height: 1.1,
-              ),
+            color: selected ? scheme.onSurface : scheme.onSurfaceVariant,
+            fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+            height: 1.1,
+          ),
         ),
       ),
     );
@@ -458,10 +451,11 @@ List<_XpSourceMergedRow> _mergedXpSourceRows({
   }
 
   // Orphan breakdown totals with no matching XP-source param.
-  final leftovers = breakdownTotals.entries
-      .where((e) => !usedBreakdownKeys.contains(e.key))
-      .toList()
-    ..sort((a, b) => a.key.compareTo(b.key));
+  final leftovers =
+      breakdownTotals.entries
+          .where((e) => !usedBreakdownKeys.contains(e.key))
+          .toList()
+        ..sort((a, b) => a.key.compareTo(b.key));
   for (final entry in leftovers) {
     rows.add(
       _XpSourceMergedRow(
@@ -476,10 +470,7 @@ List<_XpSourceMergedRow> _mergedXpSourceRows({
 
 /// Big skill mark + title / level / dual progress — profile analogue of map HUD.
 class _SkillHud extends StatelessWidget {
-  const _SkillHud({
-    required this.skill,
-    this.onEditXp,
-  });
+  const _SkillHud({required this.skill, this.onEditXp});
 
   final SkillState skill;
   final VoidCallback? onEditXp;
@@ -521,10 +512,7 @@ class _SkillHud extends StatelessWidget {
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     color: scheme.primary,
-                    border: Border.all(
-                      color: scheme.surface,
-                      width: 2,
-                    ),
+                    border: Border.all(color: scheme.surface, width: 2),
                     boxShadow: [
                       BoxShadow(
                         color: scheme.shadow.withValues(alpha: 0.25),
@@ -559,11 +547,10 @@ class _SkillHud extends StatelessWidget {
                       skill.name,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style:
-                          Theme.of(context).textTheme.titleMedium?.copyWith(
-                                fontWeight: FontWeight.w700,
-                                height: 1.15,
-                              ),
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                        height: 1.15,
+                      ),
                     ),
                   ),
                   if (onEditXp != null)
@@ -586,17 +573,17 @@ class _SkillHud extends StatelessWidget {
                   Text(
                     'Level',
                     style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                          color: muted,
-                          fontWeight: FontWeight.w500,
-                        ),
+                      color: muted,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                   const Spacer(),
                   Text(
                     '${skill.level}/99',
                     style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                          color: scheme.primary,
-                          fontWeight: FontWeight.w700,
-                        ),
+                      color: scheme.primary,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ],
               ),
@@ -609,17 +596,17 @@ class _SkillHud extends StatelessWidget {
                     child: Text(
                       '${_formatXp(skill.xp)} / ${_formatXp(skill.nextLevelXp)} XP',
                       style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                            color: muted,
-                            fontWeight: FontWeight.w500,
-                            letterSpacing: 0.1,
-                          ),
+                        color: muted,
+                        fontWeight: FontWeight.w500,
+                        letterSpacing: 0.1,
+                      ),
                     ),
                   ),
                   Text(
                     '${_formatXp(skill.xpToNext)} left',
                     style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          color: muted.withValues(alpha: 0.75),
-                        ),
+                      color: muted.withValues(alpha: 0.75),
+                    ),
                   ),
                 ],
               ),
@@ -634,10 +621,7 @@ class _SkillHud extends StatelessWidget {
 }
 
 class _HudProgressBar extends StatelessWidget {
-  const _HudProgressBar({
-    required this.progress,
-    required this.emphasized,
-  });
+  const _HudProgressBar({required this.progress, required this.emphasized});
 
   final double progress;
   final bool emphasized;
@@ -706,8 +690,8 @@ class _SkillSectionCard extends StatelessWidget {
                   child: Text(
                     title,
                     style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
                 if (titleTrailing != null) ...[
@@ -735,8 +719,7 @@ List<ToolModBinding> _toolModBindings(BuildContext context) {
     final buff = context.read<MainParamBuffController>();
     if (buff.isActive) {
       activeSession = buff.session;
-      activeActionKey =
-          buff.session?.actionKey ?? buff.kind?.actionKey;
+      activeActionKey = buff.session?.actionKey ?? buff.kind?.actionKey;
       activeToolName = buff.tool?.name ?? buff.kind?.toolName;
     } else {
       final guidance = context.read<GuidanceSessionController>();
@@ -760,10 +743,7 @@ List<ToolModBinding> _toolModBindings(BuildContext context) {
 }
 
 class _ParamFactor {
-  const _ParamFactor({
-    required this.label,
-    required this.deltaText,
-  });
+  const _ParamFactor({required this.label, required this.deltaText});
 
   final String label;
   final String deltaText;
@@ -792,10 +772,7 @@ class _MainParamDisplay {
 }
 
 class _MainParamRow extends StatefulWidget {
-  const _MainParamRow({
-    required this.row,
-    required this.scheme,
-  });
+  const _MainParamRow({required this.row, required this.scheme});
 
   final _MainParamDisplay row;
   final ColorScheme scheme;
@@ -866,9 +843,7 @@ class _MainParamRowState extends State<_MainParamRow> {
                               Expanded(
                                 child: Text(
                                   factors[i].label,
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .bodySmall
+                                  style: Theme.of(context).textTheme.bodySmall
                                       ?.copyWith(
                                         color: scheme.onSurface,
                                         height: 1.3,
@@ -878,9 +853,7 @@ class _MainParamRowState extends State<_MainParamRow> {
                               const SizedBox(width: 12),
                               Text(
                                 factors[i].deltaText,
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .bodySmall
+                                style: Theme.of(context).textTheme.bodySmall
                                     ?.copyWith(
                                       color: _deltaColor(
                                         factors[i].deltaText,
@@ -950,13 +923,12 @@ class _MainParamRowState extends State<_MainParamRow> {
                   children: [
                     Text(
                       _formatSignedPctNumber(deltaPct),
-                      style:
-                          Theme.of(context).textTheme.labelSmall?.copyWith(
-                                color: badgeColor,
-                                fontWeight: FontWeight.w700,
-                                height: 1.1,
-                                letterSpacing: 0.1,
-                              ),
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: badgeColor,
+                        fontWeight: FontWeight.w700,
+                        height: 1.1,
+                        letterSpacing: 0.1,
+                      ),
                     ),
                     const SizedBox(width: 2),
                     Icon(
@@ -977,10 +949,7 @@ class _MainParamRowState extends State<_MainParamRow> {
       children: [
         Expanded(child: Text(row.label, style: body)),
         Text(row.effectiveValue, style: valueStyle),
-        if (deltaBadge != null) ...[
-          const SizedBox(width: 8),
-          deltaBadge,
-        ],
+        if (deltaBadge != null) ...[const SizedBox(width: 8), deltaBadge],
       ],
     );
   }
@@ -1039,17 +1008,8 @@ _SkillParamGroups _mainParamRowsForSkill(
 }) {
   if (!GameConfig.isLoaded) return const _SkillParamGroups();
   final domain = GameConfig.instance.skillDomain(skill.id);
-  if (domain is SiteDiscoveryConfig) {
-    return _siteDiscoveryRows(
-      domain,
-      skill.level,
-      toolBindings: toolBindings,
-      weatherTime: weatherTime,
-      weatherType: weatherType,
-    );
-  }
-  if (domain is SiteStewardshipConfig) {
-    return _siteStewardshipRows(
+  if (domain is FieldSurveyConfig) {
+    return _fieldSurveyRows(
       domain,
       skill.level,
       toolBindings: toolBindings,
@@ -1095,19 +1055,20 @@ _SkillParamGroups _mainParamRowsForSkill(
   return const _SkillParamGroups();
 }
 
-_SkillParamGroups _siteDiscoveryRows(
-  SiteDiscoveryConfig cfg,
+_SkillParamGroups _fieldSurveyRows(
+  FieldSurveyConfig cfg,
   int skillLevel, {
   required List<ToolModBinding> toolBindings,
   String? weatherTime,
   String? weatherType,
 }) {
+  final mp = cfg.mainParams;
   return _SkillParamGroups(
     skillParams: [
       _resolveScalarParam(
         label: 'Visibility distance',
         paramKey: 'visibility_distance_m',
-        skillId: 'site_discovery',
+        skillId: 'field_survey',
         base: cfg.visibilityDistanceM,
         levelEntries: cfg.levelModifiers['visibility_distance_m'],
         weatherTimeMods: cfg.weatherTimeModifiers['visibility_distance_m'],
@@ -1122,7 +1083,7 @@ _SkillParamGroups _siteDiscoveryRows(
       _resolveScalarParam(
         label: 'Discovery chance',
         paramKey: 'discovery_chance',
-        skillId: 'site_discovery',
+        skillId: 'field_survey',
         base: cfg.discoveryChance,
         levelEntries: cfg.levelModifiers['discovery_chance'],
         weatherTimeMods: cfg.weatherTimeModifiers['discovery_chance'],
@@ -1137,7 +1098,7 @@ _SkillParamGroups _siteDiscoveryRows(
       _resolveScalarParam(
         label: 'Max discovery speed',
         paramKey: 'max_discovery_speed_kmh',
-        skillId: 'site_discovery',
+        skillId: 'field_survey',
         base: cfg.maxDiscoverySpeedKmh,
         levelEntries: cfg.levelModifiers['max_discovery_speed_kmh'],
         weatherTimeMods: cfg.weatherTimeModifiers['max_discovery_speed_kmh'],
@@ -1149,163 +1110,10 @@ _SkillParamGroups _siteDiscoveryRows(
         clampUnit: false,
         toolBindings: toolBindings,
       ),
-    ],
-    xpSources: [
-      _resolveScalarParam(
-        label: 'Site discovery',
-        paramKey: 'site_discovery_xp',
-        skillId: 'site_discovery',
-        base: cfg.siteDiscoveryXp,
-        levelEntries: cfg.levelModifiers['site_discovery_xp'],
-        weatherTimeMods: cfg.weatherTimeModifiers['site_discovery_xp'],
-        weatherTime: weatherTime,
-        weatherTypeMods: cfg.weatherTypeModifiers['site_discovery_xp'],
-        weatherType: weatherType,
-        skillLevel: skillLevel,
-        format: _ParamFormat.xp,
-        clampUnit: false,
-        toolBindings: toolBindings,
-      ),
-      _resolveScalarParam(
-        label: 'First discovery',
-        paramKey: 'first_discovery_xp',
-        skillId: 'site_discovery',
-        base: cfg.firstDiscoveryXp,
-        levelEntries: cfg.levelModifiers['first_discovery_xp'],
-        weatherTimeMods: cfg.weatherTimeModifiers['first_discovery_xp'],
-        weatherTime: weatherTime,
-        weatherTypeMods: cfg.weatherTypeModifiers['first_discovery_xp'],
-        weatherType: weatherType,
-        skillLevel: skillLevel,
-        format: _ParamFormat.xp,
-        clampUnit: false,
-        toolBindings: toolBindings,
-      ),
-      _resolveScalarParam(
-        label: 'Active 100m',
-        paramKey: 'active_100m_xp',
-        skillId: 'site_discovery',
-        base: cfg.active100mXp,
-        levelEntries: cfg.levelModifiers['active_100m_xp'],
-        weatherTimeMods: cfg.weatherTimeModifiers['active_100m_xp'],
-        weatherTime: weatherTime,
-        weatherTypeMods: cfg.weatherTypeModifiers['active_100m_xp'],
-        weatherType: weatherType,
-        skillLevel: skillLevel,
-        format: _ParamFormat.xp,
-        clampUnit: false,
-        toolBindings: toolBindings,
-      ),
-      _resolveScalarParam(
-        label: 'Passive km',
-        paramKey: 'passive_km_xp',
-        skillId: 'site_discovery',
-        base: cfg.passiveKmXp,
-        levelEntries: cfg.levelModifiers['passive_km_xp'],
-        weatherTimeMods: cfg.weatherTimeModifiers['passive_km_xp'],
-        weatherTime: weatherTime,
-        weatherTypeMods: cfg.weatherTypeModifiers['passive_km_xp'],
-        weatherType: weatherType,
-        skillLevel: skillLevel,
-        format: _ParamFormat.xp,
-        clampUnit: false,
-        toolBindings: toolBindings,
-      ),
-    ],
-  );
-}
-
-_SkillParamGroups _siteStewardshipRows(
-  SiteStewardshipConfig cfg,
-  int skillLevel, {
-  required List<ToolModBinding> toolBindings,
-  String? weatherTime,
-  String? weatherType,
-}) {
-  final mp = cfg.mainParams;
-  return _SkillParamGroups(
-    xpSources: [
-      _resolveScalarParam(
-        label: 'Site identification',
-        paramKey: 'site_identification_xp',
-        skillId: 'site_stewardship',
-        base: mp.siteIdentificationXp,
-        levelEntries: cfg.levelModifiers['site_identification_xp'],
-        weatherTimeMods: cfg.weatherTimeModifiers['site_identification_xp'],
-        weatherTime: weatherTime,
-        weatherTypeMods: cfg.weatherTypeModifiers['site_identification_xp'],
-        weatherType: weatherType,
-        skillLevel: skillLevel,
-        format: _ParamFormat.xp,
-        clampUnit: false,
-        toolBindings: toolBindings,
-      ),
-      _resolveScalarParam(
-        label: 'Site exploration (20m)',
-        paramKey: 'site_exploration_xp',
-        skillId: 'site_stewardship',
-        base: mp.siteExplorationXp,
-        levelEntries: cfg.levelModifiers['site_exploration_xp'],
-        weatherTimeMods: cfg.weatherTimeModifiers['site_exploration_xp'],
-        weatherTime: weatherTime,
-        weatherTypeMods: cfg.weatherTypeModifiers['site_exploration_xp'],
-        weatherType: weatherType,
-        skillLevel: skillLevel,
-        format: _ParamFormat.xp,
-        clampUnit: false,
-        toolBindings: toolBindings,
-      ),
-      _resolveScalarParam(
-        label: 'Site documentation',
-        paramKey: 'site_documentation_xp',
-        skillId: 'site_stewardship',
-        base: mp.siteDocumentationXp,
-        levelEntries: cfg.levelModifiers['site_documentation_xp'],
-        weatherTimeMods: cfg.weatherTimeModifiers['site_documentation_xp'],
-        weatherTime: weatherTime,
-        weatherTypeMods: cfg.weatherTypeModifiers['site_documentation_xp'],
-        weatherType: weatherType,
-        skillLevel: skillLevel,
-        format: _ParamFormat.xp,
-        clampUnit: false,
-        toolBindings: toolBindings,
-      ),
-      _resolveScalarParam(
-        label: 'First documentation',
-        paramKey: 'first_documentation_xp',
-        skillId: 'site_stewardship',
-        base: mp.firstDocumentationXp,
-        levelEntries: cfg.levelModifiers['first_documentation_xp'],
-        weatherTimeMods: cfg.weatherTimeModifiers['first_documentation_xp'],
-        weatherTime: weatherTime,
-        weatherTypeMods: cfg.weatherTypeModifiers['first_documentation_xp'],
-        weatherType: weatherType,
-        skillLevel: skillLevel,
-        format: _ParamFormat.xp,
-        clampUnit: false,
-        toolBindings: toolBindings,
-      ),
-      _resolveScalarParam(
-        label: 'Site disguise',
-        paramKey: 'successful_site_disguise_xp',
-        skillId: 'site_stewardship',
-        base: mp.successfulSiteDisguiseXp,
-        levelEntries: cfg.levelModifiers['successful_site_disguise_xp'],
-        weatherTimeMods: cfg.weatherTimeModifiers['successful_site_disguise_xp'],
-        weatherTime: weatherTime,
-        weatherTypeMods: cfg.weatherTypeModifiers['successful_site_disguise_xp'],
-        weatherType: weatherType,
-        skillLevel: skillLevel,
-        format: _ParamFormat.xp,
-        clampUnit: false,
-        toolBindings: toolBindings,
-      ),
-    ],
-    skillParams: [
       _resolveScalarParam(
         label: 'Site visibility',
         paramKey: 'site_visibility_m',
-        skillId: 'site_stewardship',
+        skillId: 'field_survey',
         base: mp.siteVisibilityM,
         levelEntries: cfg.levelModifiers['site_visibility_m'],
         weatherTimeMods: cfg.weatherTimeModifiers['site_visibility_m'],
@@ -1320,7 +1128,7 @@ _SkillParamGroups _siteStewardshipRows(
       _resolveScalarParam(
         label: 'Rival discovery',
         paramKey: 'rival_discovery',
-        skillId: 'site_stewardship',
+        skillId: 'field_survey',
         base: mp.rivalDiscovery,
         levelEntries: cfg.levelModifiers['rival_discovery'],
         weatherTimeMods: cfg.weatherTimeModifiers['rival_discovery'],
@@ -1335,7 +1143,7 @@ _SkillParamGroups _siteStewardshipRows(
       _resolveScalarParam(
         label: 'Dinosaur count estimation',
         paramKey: 'dino_accuracy',
-        skillId: 'site_stewardship',
+        skillId: 'field_survey',
         base: mp.dinoAccuracy,
         levelEntries: cfg.levelModifiers['dino_accuracy'],
         weatherTimeMods: cfg.weatherTimeModifiers['dino_accuracy'],
@@ -1350,7 +1158,7 @@ _SkillParamGroups _siteStewardshipRows(
       _resolveScalarParam(
         label: 'Fossil count estimation',
         paramKey: 'fossil_accuracy',
-        skillId: 'site_stewardship',
+        skillId: 'field_survey',
         base: mp.fossilAccuracy,
         levelEntries: cfg.levelModifiers['fossil_accuracy'],
         weatherTimeMods: cfg.weatherTimeModifiers['fossil_accuracy'],
@@ -1365,7 +1173,7 @@ _SkillParamGroups _siteStewardshipRows(
       _resolveScalarParam(
         label: 'Completeness estimation',
         paramKey: 'completeness_accuracy',
-        skillId: 'site_stewardship',
+        skillId: 'field_survey',
         base: mp.completenessAccuracy,
         levelEntries: cfg.levelModifiers['completeness_accuracy'],
         weatherTimeMods: cfg.weatherTimeModifiers['completeness_accuracy'],
@@ -1380,7 +1188,7 @@ _SkillParamGroups _siteStewardshipRows(
       _resolveScalarParam(
         label: 'Fossil quality estimation',
         paramKey: 'quality_accuracy',
-        skillId: 'site_stewardship',
+        skillId: 'field_survey',
         base: mp.qualityAccuracy,
         levelEntries: cfg.levelModifiers['quality_accuracy'],
         weatherTimeMods: cfg.weatherTimeModifiers['quality_accuracy'],
@@ -1395,7 +1203,7 @@ _SkillParamGroups _siteStewardshipRows(
       _resolveScalarParam(
         label: 'Depth estimation',
         paramKey: 'depth_accuracy',
-        skillId: 'site_stewardship',
+        skillId: 'field_survey',
         base: mp.depthAccuracy,
         levelEntries: cfg.levelModifiers['depth_accuracy'],
         weatherTimeMods: cfg.weatherTimeModifiers['depth_accuracy'],
@@ -1405,6 +1213,145 @@ _SkillParamGroups _siteStewardshipRows(
         skillLevel: skillLevel,
         format: _ParamFormat.chance,
         clampUnit: true,
+        toolBindings: toolBindings,
+      ),
+    ],
+    xpSources: [
+      _resolveScalarParam(
+        label: 'Site discovery',
+        paramKey: 'site_discovery_xp',
+        skillId: 'field_survey',
+        base: cfg.siteDiscoveryXp,
+        levelEntries: cfg.levelModifiers['site_discovery_xp'],
+        weatherTimeMods: cfg.weatherTimeModifiers['site_discovery_xp'],
+        weatherTime: weatherTime,
+        weatherTypeMods: cfg.weatherTypeModifiers['site_discovery_xp'],
+        weatherType: weatherType,
+        skillLevel: skillLevel,
+        format: _ParamFormat.xp,
+        clampUnit: false,
+        toolBindings: toolBindings,
+      ),
+      _resolveScalarParam(
+        label: 'First discovery',
+        paramKey: 'first_discovery_xp',
+        skillId: 'field_survey',
+        base: cfg.firstDiscoveryXp,
+        levelEntries: cfg.levelModifiers['first_discovery_xp'],
+        weatherTimeMods: cfg.weatherTimeModifiers['first_discovery_xp'],
+        weatherTime: weatherTime,
+        weatherTypeMods: cfg.weatherTypeModifiers['first_discovery_xp'],
+        weatherType: weatherType,
+        skillLevel: skillLevel,
+        format: _ParamFormat.xp,
+        clampUnit: false,
+        toolBindings: toolBindings,
+      ),
+      _resolveScalarParam(
+        label: 'Active 100m',
+        paramKey: 'active_100m_xp',
+        skillId: 'field_survey',
+        base: cfg.active100mXp,
+        levelEntries: cfg.levelModifiers['active_100m_xp'],
+        weatherTimeMods: cfg.weatherTimeModifiers['active_100m_xp'],
+        weatherTime: weatherTime,
+        weatherTypeMods: cfg.weatherTypeModifiers['active_100m_xp'],
+        weatherType: weatherType,
+        skillLevel: skillLevel,
+        format: _ParamFormat.xp,
+        clampUnit: false,
+        toolBindings: toolBindings,
+      ),
+      _resolveScalarParam(
+        label: 'Passive km',
+        paramKey: 'passive_km_xp',
+        skillId: 'field_survey',
+        base: cfg.passiveKmXp,
+        levelEntries: cfg.levelModifiers['passive_km_xp'],
+        weatherTimeMods: cfg.weatherTimeModifiers['passive_km_xp'],
+        weatherTime: weatherTime,
+        weatherTypeMods: cfg.weatherTypeModifiers['passive_km_xp'],
+        weatherType: weatherType,
+        skillLevel: skillLevel,
+        format: _ParamFormat.xp,
+        clampUnit: false,
+        toolBindings: toolBindings,
+      ),
+      _resolveScalarParam(
+        label: 'Site identification',
+        paramKey: 'site_identification_xp',
+        skillId: 'field_survey',
+        base: mp.siteIdentificationXp,
+        levelEntries: cfg.levelModifiers['site_identification_xp'],
+        weatherTimeMods: cfg.weatherTimeModifiers['site_identification_xp'],
+        weatherTime: weatherTime,
+        weatherTypeMods: cfg.weatherTypeModifiers['site_identification_xp'],
+        weatherType: weatherType,
+        skillLevel: skillLevel,
+        format: _ParamFormat.xp,
+        clampUnit: false,
+        toolBindings: toolBindings,
+      ),
+      _resolveScalarParam(
+        label: 'Site exploration (20m)',
+        paramKey: 'site_exploration_xp',
+        skillId: 'field_survey',
+        base: mp.siteExplorationXp,
+        levelEntries: cfg.levelModifiers['site_exploration_xp'],
+        weatherTimeMods: cfg.weatherTimeModifiers['site_exploration_xp'],
+        weatherTime: weatherTime,
+        weatherTypeMods: cfg.weatherTypeModifiers['site_exploration_xp'],
+        weatherType: weatherType,
+        skillLevel: skillLevel,
+        format: _ParamFormat.xp,
+        clampUnit: false,
+        toolBindings: toolBindings,
+      ),
+      _resolveScalarParam(
+        label: 'Site documentation',
+        paramKey: 'site_documentation_xp',
+        skillId: 'field_survey',
+        base: mp.siteDocumentationXp,
+        levelEntries: cfg.levelModifiers['site_documentation_xp'],
+        weatherTimeMods: cfg.weatherTimeModifiers['site_documentation_xp'],
+        weatherTime: weatherTime,
+        weatherTypeMods: cfg.weatherTypeModifiers['site_documentation_xp'],
+        weatherType: weatherType,
+        skillLevel: skillLevel,
+        format: _ParamFormat.xp,
+        clampUnit: false,
+        toolBindings: toolBindings,
+      ),
+      _resolveScalarParam(
+        label: 'First documentation',
+        paramKey: 'first_documentation_xp',
+        skillId: 'field_survey',
+        base: mp.firstDocumentationXp,
+        levelEntries: cfg.levelModifiers['first_documentation_xp'],
+        weatherTimeMods: cfg.weatherTimeModifiers['first_documentation_xp'],
+        weatherTime: weatherTime,
+        weatherTypeMods: cfg.weatherTypeModifiers['first_documentation_xp'],
+        weatherType: weatherType,
+        skillLevel: skillLevel,
+        format: _ParamFormat.xp,
+        clampUnit: false,
+        toolBindings: toolBindings,
+      ),
+      _resolveScalarParam(
+        label: 'Site disguise',
+        paramKey: 'successful_site_disguise_xp',
+        skillId: 'field_survey',
+        base: mp.successfulSiteDisguiseXp,
+        levelEntries: cfg.levelModifiers['successful_site_disguise_xp'],
+        weatherTimeMods:
+            cfg.weatherTimeModifiers['successful_site_disguise_xp'],
+        weatherTime: weatherTime,
+        weatherTypeMods:
+            cfg.weatherTypeModifiers['successful_site_disguise_xp'],
+        weatherType: weatherType,
+        skillLevel: skillLevel,
+        format: _ParamFormat.xp,
+        clampUnit: false,
         toolBindings: toolBindings,
       ),
     ],
@@ -1590,9 +1537,7 @@ LevelModifierEntry? _applicableLevelModifier(
 }
 
 double _applyModifier(double base, Object mod) {
-  final op = mod is ParamModifier
-      ? mod.op
-      : (mod as LevelModifierEntry).op;
+  final op = mod is ParamModifier ? mod.op : (mod as LevelModifierEntry).op;
   final value = mod is ParamModifier
       ? mod.value
       : (mod as LevelModifierEntry).value;
@@ -1633,7 +1578,8 @@ String _formatScalar(double value, _ParamFormat format) {
     case _ParamFormat.kmh:
       return _formatKmh(value);
     case _ParamFormat.xp:
-      if (value == value.roundToDouble()) return '${value.toStringAsFixed(0)} XP';
+      if (value == value.roundToDouble())
+        return '${value.toStringAsFixed(0)} XP';
       return '${value.toStringAsFixed(1)} XP';
     case _ParamFormat.plain:
       if (value == value.roundToDouble()) return value.toStringAsFixed(0);

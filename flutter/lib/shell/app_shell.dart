@@ -237,7 +237,7 @@ class _AppShellState extends State<AppShell>
                 final profile = context.read<AuthController>().currentUser;
                 if (profile != null) {
                   for (final skill in profile.skills) {
-                    if (skill.id == 'site_stewardship') {
+                    if (skill.id == 'field_survey') {
                       return skill.level.clamp(1, 99);
                     }
                   }
@@ -383,7 +383,7 @@ class _AppShellState extends State<AppShell>
         buff.isLiveForWeatherTime(weatherTime)) {
       final mods = modifiesMainParamsFromParams(buff.session?.params);
       speedMod =
-          mods?.paramsFor('using', 'site_discovery')['max_discovery_speed_kmh'];
+          mods?.paramsFor('using', 'field_survey')['max_discovery_speed_kmh'];
       if (mods != null) {
         siteVisBindings = [
           ToolModBinding(

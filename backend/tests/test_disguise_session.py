@@ -88,7 +88,7 @@ def _tool(
 ) -> ToolType:
     tool = ToolType(
         name=name,
-        category="2 site_stewardship",
+        category="1 field_survey",
         scientific_tool="camouflage netting",
         description="test",
         rarity=2,
@@ -218,7 +218,7 @@ def test_deploy_creates_disguiser_and_ignores_status(
     assert body["action_key"] == ACTION_KEY_BRUSH_SCRIM
     assert body["status"] == SESSION_STATUS_ACTIVE
     assert body["state"]["site_id"] == site.site_id
-    assert body["params"]["modifies_main_params"]["using"]["site_stewardship"][
+    assert body["params"]["modifies_main_params"]["using"]["field_survey"][
         "rival_discovery"
     ] == {"op": "multiply", "value": 0.0}
 
@@ -394,7 +394,7 @@ def test_rival_blocked_roll_awards_stewardship_xp(
         site_id=int(site.site_id),
     )
     session.refresh(owner)
-    before = get_skill_xp(owner, "site_stewardship")
+    before = get_skill_xp(owner, "field_survey")
 
     class WouldHaveHit:
         def random(self) -> float:
@@ -411,7 +411,7 @@ def test_rival_blocked_roll_awards_stewardship_xp(
         )
 
     session.refresh(owner)
-    after = get_skill_xp(owner, "site_stewardship")
+    after = get_skill_xp(owner, "field_survey")
     assert after == before + 40
 
 
@@ -466,7 +466,7 @@ def test_blackout_cover_blocked_band_awards_stewardship_xp(
     assert rival_params.discovery_chance < blocked_u < rival_params.base_discovery_chance
 
     session.refresh(owner)
-    before = get_skill_xp(owner, "site_stewardship")
+    before = get_skill_xp(owner, "field_survey")
 
     class BlockedBand:
         def random(self) -> float:
@@ -483,7 +483,7 @@ def test_blackout_cover_blocked_band_awards_stewardship_xp(
         )
 
     session.refresh(owner)
-    assert get_skill_xp(owner, "site_stewardship") == before + 40
+    assert get_skill_xp(owner, "field_survey") == before + 40
 
 
 def test_stop_clears_disguiser_and_restores_chance(
@@ -586,7 +586,7 @@ def test_passive_rival_discovery_from_steward_skill(
     rival = _user(session, username="rival_passive")
     site = _site(session, site_id=91010)
     _link_discoverer(session, user_id=int(owner.id), site_id=int(site.site_id))
-    set_skill_xp(owner, "site_stewardship", SKILL_THRESHOLDS[99])
+    set_skill_xp(owner, "field_survey", SKILL_THRESHOLDS[99])
     session.add(owner)
     session.commit()
 
@@ -634,7 +634,7 @@ def test_documenter_status_applies_rival_discovery(
             role=USER_SITE_ROLE_DOCUMENTER,
         )
     )
-    set_skill_xp(owner, "site_stewardship", SKILL_THRESHOLDS[99])
+    set_skill_xp(owner, "field_survey", SKILL_THRESHOLDS[99])
     session.add(owner)
     session.commit()
 

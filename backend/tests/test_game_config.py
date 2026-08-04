@@ -25,18 +25,9 @@ from app.core.game_config import (
 # admin API refuses such an edit; this pins the ids themselves as a tripwire for
 # anyone changing leveling.yaml directly or seeding with --force.
 EXPECTED_SKILL_IDS = (
-    "site_discovery",
-    "site_stewardship",
-    "site_clearing",
-    "fossil_detection",
-    "fossil_excavation",
-    "fossil_transport",
-    "fossil_curation",
-    "fossil_preparation",
-    "fossil_analysis",
-    "dinosaur_modelling",
-    "dinosaur_mounting",
-    "academic_publishing",
+    "field_survey",
+    "bone_quarry",
+    "science_hall",
 )
 
 
@@ -81,7 +72,7 @@ def test_canonical_checksum_is_stable_and_content_sensitive() -> None:
     assert canonical_checksum(documents) == canonical_checksum(load_yaml_documents())
 
     mutated = json.loads(json.dumps(documents, default=str))
-    mutated["site_discovery"]["main_params"]["discovery_chance"] = 0.42
+    mutated["field_survey"]["main_params"]["discovery_chance"] = 0.42
     assert canonical_checksum(mutated) != canonical_checksum(documents)
 
 
@@ -96,9 +87,9 @@ def test_resolve_default_game_config_dir() -> None:
     directory = resolve_game_config_dir()
     assert directory.is_dir()
     assert (directory / "site_generation.yaml").is_file()
-    assert (directory / "01_site_discovery.yaml").is_file()
-    assert (directory / "02_site_stewardship.yaml").is_file()
-    assert (directory / "04_fossil_detection.yaml").is_file()
+    assert (directory / "01_field_survey.yaml").is_file()
+    assert (directory / "02_bone_quarry.yaml").is_file()
+    assert (directory / "03_science_hall.yaml").is_file()
     assert (directory / "leveling.yaml").is_file()
 
 
@@ -197,19 +188,20 @@ def test_load_game_config_matches_current_defaults() -> None:
 
     # Back-compat aliases
     assert config.fossil_generation is config.site_stewardship
-    assert config.fossil_detection.enabled is False
-    assert config.fossil_excavation.enabled is False
-    assert config.site_clearing.enabled is False
+    assert config.fossil_detection is config.bone_quarry
+    assert config.bone_quarry.enabled is True
+    assert config.science_hall.enabled is False
+    assert config.field_survey.skill_id == "field_survey"
 
     assert config.tool_actions.geo_compass.discovery_chance == 0.9
     assert config.tool_actions.geo_compass.modifies_main_params is not None
     geo_mods = config.tool_actions.geo_compass.modifies_main_params
-    assert geo_mods.affects_skill("site_discovery")
-    assert "discovery_chance" in geo_mods.params_for("using", "site_discovery")
+    assert geo_mods.affects_skill("field_survey")
+    assert "discovery_chance" in geo_mods.params_for("using", "field_survey")
     assert geo_mods.owning == {}
     nav_mods = config.tool_actions.site_navigator.modifies_main_params
     assert nav_mods is not None
-    assert "discovery_chance" in nav_mods.params_for("using", "site_discovery")
+    assert "discovery_chance" in nav_mods.params_for("using", "field_survey")
     assert config.tool_actions.aerial_recon.flight_discovery_chance == 0.01
     assert config.tool_actions.aerial_scout.flight_discovery_distance_m == 50
 
@@ -228,7 +220,7 @@ def test_load_game_config_matches_current_defaults() -> None:
     assert ridge.added_discovery_rate is None
     ridge_mods = ridge.modifies_main_params
     assert ridge_mods is not None
-    assert ridge_mods.affects_skill("site_discovery")
+    assert ridge_mods.affects_skill("field_survey")
 
     drive = config.tool_actions.expedition_drivetrain
     assert drive.duration_minutes == 60
@@ -243,9 +235,9 @@ def test_load_game_config_matches_current_defaults() -> None:
     )
     drive_mods = drive.modifies_main_params
     assert drive_mods is not None
-    assert drive_mods.affects_skill("site_discovery")
-    assert drive_mods.affects_skill("site_stewardship")
-    assert drive_mods.params_for("using", "site_stewardship")[
+    assert drive_mods.affects_skill("field_survey")
+    assert drive_mods.affects_skill("field_survey")
+    assert drive_mods.params_for("using", "field_survey")[
         "site_visibility_m"
     ] == ParamModifier(op="multiply", value=0.9)
 
@@ -254,7 +246,7 @@ def test_load_game_config_matches_current_defaults() -> None:
         op="multiply", value=2.0
     )
     assert trail.modifies_main_params is not None
-    assert trail.modifies_main_params.params_for("using", "site_stewardship")[
+    assert trail.modifies_main_params.params_for("using", "field_survey")[
         "site_visibility_m"
     ] == ParamModifier(op="multiply", value=0.95)
 
@@ -263,7 +255,7 @@ def test_load_game_config_matches_current_defaults() -> None:
         op="multiply", value=4.0
     )
     assert canyon.modifies_main_params is not None
-    assert canyon.modifies_main_params.params_for("using", "site_stewardship")[
+    assert canyon.modifies_main_params.params_for("using", "field_survey")[
         "site_visibility_m"
     ] == ParamModifier(op="multiply", value=0.85)
 
@@ -272,7 +264,7 @@ def test_load_game_config_matches_current_defaults() -> None:
         op="multiply", value=5.0
     )
     assert overland.modifies_main_params is not None
-    assert overland.modifies_main_params.params_for("using", "site_stewardship")[
+    assert overland.modifies_main_params.params_for("using", "field_survey")[
         "site_visibility_m"
     ] == ParamModifier(op="multiply", value=0.8)
 
@@ -288,7 +280,7 @@ def test_load_game_config_matches_current_defaults() -> None:
     assert nocturne.site_discovery_mod("max_discovery_speed_kmh") is None
 
     modifying = [
-        key for key, _ in config.tool_actions.tools_modifying_skill("site_discovery")
+        key for key, _ in config.tool_actions.tools_modifying_skill("field_survey")
     ]
     assert "ridge_glass" in modifying
     assert "trail_striders" in modifying
@@ -299,14 +291,14 @@ def test_load_game_config_matches_current_defaults() -> None:
 
     stewardship_modifying = [
         key
-        for key, _ in config.tool_actions.tools_modifying_skill("site_stewardship")
+        for key, _ in config.tool_actions.tools_modifying_skill("field_survey")
     ]
     assert "trail_striders" in stewardship_modifying
     assert "expedition_drivetrain" in stewardship_modifying
     assert "canyon_throttle" in stewardship_modifying
     assert "overland_chassis" in stewardship_modifying
 
-    assert len(config.leveling.skills) == 12
+    assert len(config.leveling.skills) == 3
     assert len(config.leveling.career_titles) == 99
 
 

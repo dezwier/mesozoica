@@ -23,18 +23,9 @@ RawDocuments = dict[str, dict[str, Any]]
 # (order matches leveling.yaml skills); the rest are non-skill domains.
 DOCUMENT_FILES: tuple[tuple[str, str], ...] = (
     ("site_generation", "site_generation.yaml"),
-    ("site_discovery", "01_site_discovery.yaml"),
-    ("site_stewardship", "02_site_stewardship.yaml"),
-    ("site_clearing", "03_site_clearing.yaml"),
-    ("fossil_detection", "04_fossil_detection.yaml"),
-    ("fossil_excavation", "05_fossil_excavation.yaml"),
-    ("fossil_transport", "06_fossil_transport.yaml"),
-    ("fossil_curation", "07_fossil_curation.yaml"),
-    ("fossil_preparation", "08_fossil_preparation.yaml"),
-    ("fossil_analysis", "09_fossil_analysis.yaml"),
-    ("dinosaur_modelling", "10_dinosaur_modelling.yaml"),
-    ("dinosaur_mounting", "11_dinosaur_mounting.yaml"),
-    ("academic_publishing", "12_academic_publishing.yaml"),
+    ("field_survey", "01_field_survey.yaml"),
+    ("bone_quarry", "02_bone_quarry.yaml"),
+    ("science_hall", "03_science_hall.yaml"),
     ("tool_actions", "tool_actions.yaml"),
     ("period_colors", "period_colors.yaml"),
     ("rock_type_colors", "rock_type_colors.yaml"),
@@ -392,11 +383,11 @@ class SiteGenerationConfig(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# Skill 1 — Site Discovery
+# Skill 1 — Field Survey (discovery + stewardship + clearing)
 # ---------------------------------------------------------------------------
 
 
-class SiteDiscoveryClientConfig(BaseModel):
+class FieldSurveyClientConfig(BaseModel):
     model_config = {"frozen": True}
 
     auto_discover_radius_m: float = 20.0
@@ -406,9 +397,12 @@ class SiteDiscoveryClientConfig(BaseModel):
     discovery_reroll_interval_s: int = 10
 
 
-class SiteDiscoveryMainParams(BaseModel):
+class FieldSurveyMainParams(BaseModel):
+    """Player-facing Field Survey knobs (level / weather / tool resolvable)."""
+
     model_config = {"frozen": True}
 
+    # Discovery
     visibility_distance_m: float = 20.0
     discovery_chance: float = 0.1
     max_discovery_speed_kmh: float = 10.0
@@ -416,6 +410,19 @@ class SiteDiscoveryMainParams(BaseModel):
     first_discovery_xp: float = 20.0
     active_100m_xp: float = 20.0
     passive_km_xp: float = 100.0
+    # Stewardship / documentation
+    dino_accuracy: float = 0.01
+    fossil_accuracy: float = 0.01
+    completeness_accuracy: float = 0.01
+    quality_accuracy: float = 0.01
+    depth_accuracy: float = 0.01
+    rival_discovery: float = 1.0
+    site_visibility_m: float = 50.0
+    successful_site_disguise_xp: float = 40.0
+    site_exploration_xp: float = 20.0
+    site_documentation_xp: float = 80.0
+    first_documentation_xp: float = 20.0
+    site_identification_xp: float = 40.0
 
     @field_validator("discovery_chance")
     @classmethod
@@ -436,76 +443,53 @@ class SiteDiscoveryMainParams(BaseModel):
             raise ValueError("must be > 0")
         return value
 
-
-class SiteDiscoveryConfig(BaseModel):
-    model_config = {"frozen": True}
-
-    skill_id: str = "site_discovery"
-    main_params: SiteDiscoveryMainParams = Field(
-        default_factory=SiteDiscoveryMainParams
+    @field_validator(
+        "dino_accuracy",
+        "fossil_accuracy",
+        "completeness_accuracy",
+        "quality_accuracy",
+        "depth_accuracy",
     )
-    level_modifiers: dict[str, list[LevelModifierEntry]] = Field(default_factory=dict)
-    weather_time_modifiers: WeatherTimeModifiers = Field(default_factory=dict)
-    weather_type_modifiers: WeatherTypeModifiers = Field(default_factory=dict)
-    client: SiteDiscoveryClientConfig = Field(
-        default_factory=SiteDiscoveryClientConfig
+    @classmethod
+    def _validate_accuracy(cls, value: float) -> float:
+        return _clamp_unit_interval(value, label="accuracy")
+
+    @field_validator("rival_discovery")
+    @classmethod
+    def _validate_rival_discovery(cls, value: float) -> float:
+        if value < 0.0:
+            raise ValueError("rival_discovery must be >= 0")
+        return value
+
+    @field_validator("site_visibility_m")
+    @classmethod
+    def _validate_site_visibility(cls, value: float) -> float:
+        if value < 0.0:
+            raise ValueError("site_visibility_m must be >= 0")
+        return value
+
+    @field_validator(
+        "successful_site_disguise_xp",
+        "site_exploration_xp",
+        "site_documentation_xp",
+        "first_documentation_xp",
+        "site_identification_xp",
     )
-
-    @field_validator("level_modifiers", mode="before")
     @classmethod
-    def _coerce_level_modifiers(cls, value: object) -> dict[str, list]:
-        if value is None:
-            return {}
-        if not isinstance(value, dict):
-            raise ValueError("level_modifiers must be a mapping")
-        return {str(k): (v if isinstance(v, list) else []) for k, v in value.items()}
+    def _validate_xp(cls, value: float) -> float:
+        if value < 0.0:
+            raise ValueError("XP main_params must be >= 0")
+        return value
 
-    @field_validator("weather_time_modifiers", mode="before")
-    @classmethod
-    def _coerce_weather_time_modifiers(cls, value: object) -> WeatherTimeModifiers:
-        return coerce_weather_time_modifiers(value)
 
-    @field_validator("weather_type_modifiers", mode="before")
-    @classmethod
-    def _coerce_weather_type_modifiers(cls, value: object) -> WeatherTypeModifiers:
-        return coerce_weather_type_modifiers(value)
-
-    @property
-    def visibility_distance_m(self) -> float:
-        return float(self.main_params.visibility_distance_m)
-
-    @property
-    def discovery_chance(self) -> float:
-        return float(self.main_params.discovery_chance)
-
-    @property
-    def max_discovery_speed_kmh(self) -> float:
-        return float(self.main_params.max_discovery_speed_kmh)
-
-    @property
-    def site_discovery_xp(self) -> float:
-        return float(self.main_params.site_discovery_xp)
-
-    @property
-    def first_discovery_xp(self) -> float:
-        return float(self.main_params.first_discovery_xp)
-
-    @property
-    def active_100m_xp(self) -> float:
-        return float(self.main_params.active_100m_xp)
-
-    @property
-    def passive_km_xp(self) -> float:
-        return float(self.main_params.passive_km_xp)
-
-    # Back-compat alias used by older call sites / tests.
-    @property
-    def max_distance_m(self) -> float:
-        return self.visibility_distance_m
+# Back-compat aliases for param/client types.
+SiteDiscoveryClientConfig = FieldSurveyClientConfig
+SiteDiscoveryMainParams = FieldSurveyMainParams
+SiteStewardshipMainParams = FieldSurveyMainParams
 
 
 # ---------------------------------------------------------------------------
-# Skill 2 — Site Stewardship (field fossil generation)
+# Field fossil generation helpers (tables live on Field Survey)
 # ---------------------------------------------------------------------------
 
 
@@ -591,80 +575,14 @@ class AccuracyNoiseConfig(BaseModel):
         return value
 
 
-class SiteStewardshipMainParams(BaseModel):
-    """Player-facing accuracy knobs (level / weather / tool resolvable)."""
+class FieldSurveyConfig(BaseModel):
+    """Field Survey skill: discovery, stewardship, and field fossil spawn tables."""
 
     model_config = {"frozen": True}
 
-    # Site-card display estimation for each odd_* axis (0 = blurry/jittered, 1 = exact).
-    # Base 1%; level multiplies by skill level (clamped to unit interval).
-    dino_accuracy: float = 0.01
-    fossil_accuracy: float = 0.01
-    completeness_accuracy: float = 0.01
-    quality_accuracy: float = 0.01
-    depth_accuracy: float = 0.01
-    # Multiplier on discovery_chance for rivals on sites where you have any
-    # status above hidden (discovered, documented, excavated, …).
-    rival_discovery: float = 1.0
-    # Radius around a discovered site where walking accrues exploration meters.
-    site_visibility_m: float = 50.0
-    # XP when a rival discovery roll would hit but your disguise blocked it.
-    successful_site_disguise_xp: float = 40.0
-    # XP to site_stewardship per 20 m walked inside site_visibility_m.
-    site_exploration_xp: float = 20.0
-    # XP when all five site-dimension accuracies reach 100%.
-    site_documentation_xp: float = 80.0
-    # Bonus XP when you are the first user to fully document a site.
-    first_documentation_xp: float = 20.0
-    # XP per identification quiz step (period / rock), attempt-scaled.
-    site_identification_xp: float = 40.0
-
-    @field_validator(
-        "dino_accuracy",
-        "fossil_accuracy",
-        "completeness_accuracy",
-        "quality_accuracy",
-        "depth_accuracy",
-    )
-    @classmethod
-    def _validate_accuracy(cls, value: float) -> float:
-        return _clamp_unit_interval(value, label="accuracy")
-
-    @field_validator("rival_discovery")
-    @classmethod
-    def _validate_rival_discovery(cls, value: float) -> float:
-        if value < 0.0:
-            raise ValueError("rival_discovery must be >= 0")
-        return value
-
-    @field_validator("site_visibility_m")
-    @classmethod
-    def _validate_site_visibility(cls, value: float) -> float:
-        if value < 0.0:
-            raise ValueError("site_visibility_m must be >= 0")
-        return value
-
-    @field_validator(
-        "successful_site_disguise_xp",
-        "site_exploration_xp",
-        "site_documentation_xp",
-        "first_documentation_xp",
-        "site_identification_xp",
-    )
-    @classmethod
-    def _validate_xp(cls, value: float) -> float:
-        if value < 0.0:
-            raise ValueError("XP main_params must be >= 0")
-        return value
-
-
-class SiteStewardshipConfig(BaseModel):
-    """Field fossil spawn knobs for the Site Stewardship skill."""
-
-    model_config = {"frozen": True}
-
-    skill_id: str = "site_stewardship"
-    main_params: SiteStewardshipMainParams = Field(default_factory=SiteStewardshipMainParams)
+    skill_id: str = "field_survey"
+    main_params: FieldSurveyMainParams = Field(default_factory=FieldSurveyMainParams)
+    client: FieldSurveyClientConfig = Field(default_factory=FieldSurveyClientConfig)
     # Fixed global distribution tables (not subject to level/tool multipliers).
     dino_count: list[DinoCountThreshold] = Field(
         default_factory=lambda: [
@@ -739,7 +657,7 @@ class SiteStewardshipConfig(BaseModel):
         return {str(k): float(v) for k, v in value.items()}
 
     @model_validator(mode="after")
-    def _validate_distributions(self) -> SiteStewardshipConfig:
+    def _validate_distributions(self) -> FieldSurveyConfig:
         if not self.dino_count:
             raise ValueError("dino_count must not be empty")
         prev = -1.0
@@ -780,7 +698,6 @@ class SiteStewardshipConfig(BaseModel):
     def _coerce_weather_type_modifiers(cls, value: object) -> WeatherTypeModifiers:
         return coerce_weather_type_modifiers(value)
 
-    # Back-compat aliases for call sites / tests during migration.
     @property
     def dino_count_thresholds(self) -> list[DinoCountThreshold]:
         return list(self.dino_count)
@@ -792,6 +709,38 @@ class SiteStewardshipConfig(BaseModel):
     @property
     def depth_buckets(self) -> list[FossilDepthBucket]:
         return list(self.depth_weights)
+
+    @property
+    def visibility_distance_m(self) -> float:
+        return float(self.main_params.visibility_distance_m)
+
+    @property
+    def discovery_chance(self) -> float:
+        return float(self.main_params.discovery_chance)
+
+    @property
+    def max_discovery_speed_kmh(self) -> float:
+        return float(self.main_params.max_discovery_speed_kmh)
+
+    @property
+    def site_discovery_xp(self) -> float:
+        return float(self.main_params.site_discovery_xp)
+
+    @property
+    def first_discovery_xp(self) -> float:
+        return float(self.main_params.first_discovery_xp)
+
+    @property
+    def active_100m_xp(self) -> float:
+        return float(self.main_params.active_100m_xp)
+
+    @property
+    def passive_km_xp(self) -> float:
+        return float(self.main_params.passive_km_xp)
+
+    @property
+    def max_distance_m(self) -> float:
+        return self.visibility_distance_m
 
     @property
     def successful_site_disguise_xp(self) -> float:
@@ -822,8 +771,10 @@ class SiteStewardshipConfig(BaseModel):
         return float(self.main_params.rival_discovery)
 
 
-# Back-compat alias.
-FossilGenerationConfig = SiteStewardshipConfig
+# Back-compat aliases.
+SiteDiscoveryConfig = FieldSurveyConfig
+SiteStewardshipConfig = FieldSurveyConfig
+FossilGenerationConfig = FieldSurveyConfig
 
 
 # ---------------------------------------------------------------------------
@@ -925,7 +876,7 @@ class GuidanceActionConfig(BaseModel):
         mods = self.modifies_main_params
         if mods is None:
             return None
-        mod = mods.params_for("using", "site_discovery").get("discovery_chance")
+        mod = mods.params_for("using", "field_survey").get("discovery_chance")
         if mod is None:
             return None
         return float(mod.value)
@@ -1192,10 +1143,10 @@ class MainParamBuffActionConfig(BaseModel):
         mods = self.modifies_main_params
         if mods is None:
             return None
-        return mods.params_for("using", "site_discovery").get(param)
+        return mods.params_for("using", "field_survey").get(param)
 
     def site_discovery_mod(self, param: str) -> ParamModifier | None:
-        """Active ``using`` / ``site_discovery`` modifier for ``param``, if any."""
+        """Active ``using`` / ``field_survey`` modifier for ``param``, if any."""
         return self._using_site_discovery_mod(param)
 
     def is_active_for_weather_time(self, weather_time: str | None) -> bool:
@@ -1246,7 +1197,7 @@ class DisguiseActionConfig(BaseModel):
         mods = self.modifies_main_params
         if mods is None:
             return None
-        return mods.params_for("using", "site_stewardship").get(param)
+        return mods.params_for("using", "field_survey").get(param)
 
     @property
     def rival_discovery_mod(self) -> ParamModifier | None:
@@ -1335,7 +1286,7 @@ class ToolActionsConfig(BaseModel):
             duration_minutes=15,
             modifies_main_params=ModifiesMainParams(
                 using={
-                    "site_discovery": {
+                    "field_survey": {
                         "discovery_chance": ParamModifier(op="replace", value=0.9),
                     }
                 },
@@ -1363,7 +1314,7 @@ class ToolActionsConfig(BaseModel):
             duration_minutes=15,
             modifies_main_params=ModifiesMainParams(
                 using={
-                    "site_discovery": {
+                    "field_survey": {
                         "discovery_chance": ParamModifier(op="replace", value=0.9),
                     }
                 },
@@ -1433,7 +1384,7 @@ class ToolActionsConfig(BaseModel):
             duration_minutes=60,
             modifies_main_params=ModifiesMainParams(
                 using={
-                    "site_discovery": {
+                    "field_survey": {
                         "visibility_distance_m": ParamModifier(
                             op="multiply", value=1.3
                         ),
@@ -1457,8 +1408,8 @@ class ToolActionsConfig(BaseModel):
             duration_minutes=60,
             modifies_main_params=ModifiesMainParams(
                 using={
-                    "site_discovery": {
-                        "visibility_distance_m": ParamModifier(
+                    "field_survey": {
+"visibility_distance_m": ParamModifier(
                             op="multiply", value=0.95
                         ),
                         "discovery_chance": ParamModifier(
@@ -1467,9 +1418,7 @@ class ToolActionsConfig(BaseModel):
                         "max_discovery_speed_kmh": ParamModifier(
                             op="multiply", value=2.0
                         ),
-                    },
-                    "site_stewardship": {
-                        "site_visibility_m": ParamModifier(
+"site_visibility_m": ParamModifier(
                             op="multiply", value=0.95
                         ),
                     },
@@ -1488,8 +1437,8 @@ class ToolActionsConfig(BaseModel):
             duration_minutes=60,
             modifies_main_params=ModifiesMainParams(
                 using={
-                    "site_discovery": {
-                        "visibility_distance_m": ParamModifier(
+                    "field_survey": {
+"visibility_distance_m": ParamModifier(
                             op="multiply", value=0.9
                         ),
                         "discovery_chance": ParamModifier(
@@ -1498,9 +1447,7 @@ class ToolActionsConfig(BaseModel):
                         "max_discovery_speed_kmh": ParamModifier(
                             op="multiply", value=3.0
                         ),
-                    },
-                    "site_stewardship": {
-                        "site_visibility_m": ParamModifier(
+"site_visibility_m": ParamModifier(
                             op="multiply", value=0.9
                         ),
                     },
@@ -1518,8 +1465,8 @@ class ToolActionsConfig(BaseModel):
             duration_minutes=60,
             modifies_main_params=ModifiesMainParams(
                 using={
-                    "site_discovery": {
-                        "visibility_distance_m": ParamModifier(
+                    "field_survey": {
+"visibility_distance_m": ParamModifier(
                             op="multiply", value=0.85
                         ),
                         "discovery_chance": ParamModifier(
@@ -1528,9 +1475,7 @@ class ToolActionsConfig(BaseModel):
                         "max_discovery_speed_kmh": ParamModifier(
                             op="multiply", value=4.0
                         ),
-                    },
-                    "site_stewardship": {
-                        "site_visibility_m": ParamModifier(
+"site_visibility_m": ParamModifier(
                             op="multiply", value=0.85
                         ),
                     },
@@ -1548,8 +1493,8 @@ class ToolActionsConfig(BaseModel):
             duration_minutes=60,
             modifies_main_params=ModifiesMainParams(
                 using={
-                    "site_discovery": {
-                        "visibility_distance_m": ParamModifier(
+                    "field_survey": {
+"visibility_distance_m": ParamModifier(
                             op="multiply", value=0.8
                         ),
                         "discovery_chance": ParamModifier(
@@ -1558,9 +1503,7 @@ class ToolActionsConfig(BaseModel):
                         "max_discovery_speed_kmh": ParamModifier(
                             op="multiply", value=5.0
                         ),
-                    },
-                    "site_stewardship": {
-                        "site_visibility_m": ParamModifier(
+"site_visibility_m": ParamModifier(
                             op="multiply", value=0.8
                         ),
                     },
@@ -1579,7 +1522,7 @@ class ToolActionsConfig(BaseModel):
             active_weather_times=("night",),
             modifies_main_params=ModifiesMainParams(
                 using={
-                    "site_discovery": {
+                    "field_survey": {
                         "visibility_distance_m": ParamModifier(
                             op="multiply", value=1.4
                         ),
@@ -1601,7 +1544,7 @@ class ToolActionsConfig(BaseModel):
             duration_minutes=60,
             modifies_main_params=ModifiesMainParams(
                 using={
-                    "site_stewardship": {
+                    "field_survey": {
                         "rival_discovery": ParamModifier(op="multiply", value=0.0),
                     },
                 },
@@ -1618,7 +1561,7 @@ class ToolActionsConfig(BaseModel):
             duration_minutes=60,
             modifies_main_params=ModifiesMainParams(
                 using={
-                    "site_stewardship": {
+                    "field_survey": {
                         "rival_discovery": ParamModifier(op="multiply", value=0.5),
                     },
                 },
@@ -1693,47 +1636,51 @@ class GameConfig(BaseModel):
     model_config = {"frozen": True}
 
     site_generation: SiteGenerationConfig
-    site_discovery: SiteDiscoveryConfig
-    site_stewardship: SiteStewardshipConfig
-    site_clearing: SkillStubConfig
-    fossil_detection: SkillStubConfig
-    fossil_excavation: SkillStubConfig
-    fossil_transport: SkillStubConfig
-    fossil_curation: SkillStubConfig
-    fossil_preparation: SkillStubConfig
-    fossil_analysis: SkillStubConfig
-    dinosaur_modelling: SkillStubConfig
-    dinosaur_mounting: SkillStubConfig
-    academic_publishing: SkillStubConfig
+    field_survey: FieldSurveyConfig
+    bone_quarry: SkillStubConfig
+    science_hall: SkillStubConfig
     tool_actions: ToolActionsConfig
     period_colors: PeriodColorsConfig
     rock_type_colors: RockTypeColorsConfig
     leveling: LevelingConfig
 
-    # Back-compat aliases.
+    # Back-compat aliases for call sites during migration.
     @property
-    def fossil_generation(self) -> SiteStewardshipConfig:
-        return self.site_stewardship
+    def site_discovery(self) -> FieldSurveyConfig:
+        return self.field_survey
 
     @property
-    def fossil_discovery(self) -> SkillStubConfig:
-        return self.fossil_detection
+    def site_stewardship(self) -> FieldSurveyConfig:
+        return self.field_survey
+
+    @property
+    def fossil_generation(self) -> FieldSurveyConfig:
+        return self.field_survey
+
+    @property
+    def fossil_detection(self) -> SkillStubConfig:
+        return self.bone_quarry
 
     def skill_domain(self, skill_id: str) -> Any:
         """Return the config object for a skill id (rich or stub)."""
         mapping: dict[str, Any] = {
-            "site_discovery": self.site_discovery,
-            "site_stewardship": self.site_stewardship,
-            "site_clearing": self.site_clearing,
-            "fossil_detection": self.fossil_detection,
-            "fossil_excavation": self.fossil_excavation,
-            "fossil_transport": self.fossil_transport,
-            "fossil_curation": self.fossil_curation,
-            "fossil_preparation": self.fossil_preparation,
-            "fossil_analysis": self.fossil_analysis,
-            "dinosaur_modelling": self.dinosaur_modelling,
-            "dinosaur_mounting": self.dinosaur_mounting,
-            "academic_publishing": self.academic_publishing,
+            "field_survey": self.field_survey,
+            "bone_quarry": self.bone_quarry,
+            "science_hall": self.science_hall,
+            # Legacy ids redirect to merged skills.
+            "site_discovery": self.field_survey,
+            "site_stewardship": self.field_survey,
+            "site_clearing": self.field_survey,
+            "fossil_detection": self.bone_quarry,
+            "fossil_excavation": self.bone_quarry,
+            "fossil_transport": self.bone_quarry,
+            "fossil_curation": self.bone_quarry,
+            "fossil_preparation": self.science_hall,
+            "fossil_analysis": self.science_hall,
+            "dinosaur_modelling": self.science_hall,
+            "dinosaur_mounting": self.science_hall,
+            "academic_publishing": self.science_hall,
+            "fossil_discovery": self.bone_quarry,
         }
         try:
             return mapping[skill_id]
@@ -1775,34 +1722,9 @@ def build_game_config(documents: RawDocuments) -> GameConfig:
         site_generation=SiteGenerationConfig.model_validate(
             documents["site_generation"]
         ),
-        site_discovery=SiteDiscoveryConfig.model_validate(
-            documents["site_discovery"]
-        ),
-        site_stewardship=SiteStewardshipConfig.model_validate(documents["site_stewardship"]),
-        site_clearing=SkillStubConfig.model_validate(documents["site_clearing"]),
-        fossil_detection=SkillStubConfig.model_validate(
-            documents["fossil_detection"]
-        ),
-        fossil_excavation=SkillStubConfig.model_validate(
-            documents["fossil_excavation"]
-        ),
-        fossil_transport=SkillStubConfig.model_validate(
-            documents["fossil_transport"]
-        ),
-        fossil_curation=SkillStubConfig.model_validate(documents["fossil_curation"]),
-        fossil_preparation=SkillStubConfig.model_validate(
-            documents["fossil_preparation"]
-        ),
-        fossil_analysis=SkillStubConfig.model_validate(documents["fossil_analysis"]),
-        dinosaur_modelling=SkillStubConfig.model_validate(
-            documents["dinosaur_modelling"]
-        ),
-        dinosaur_mounting=SkillStubConfig.model_validate(
-            documents["dinosaur_mounting"]
-        ),
-        academic_publishing=SkillStubConfig.model_validate(
-            documents["academic_publishing"]
-        ),
+        field_survey=FieldSurveyConfig.model_validate(documents["field_survey"]),
+        bone_quarry=SkillStubConfig.model_validate(documents["bone_quarry"]),
+        science_hall=SkillStubConfig.model_validate(documents["science_hall"]),
         tool_actions=ToolActionsConfig.model_validate(
             documents["tool_actions"]
         ),

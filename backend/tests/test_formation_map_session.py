@@ -53,7 +53,7 @@ def _tool(
 ) -> ToolType:
     tool = ToolType(
         name=name,
-        category="1 site_discovery",
+        category="1 field_survey",
         scientific_tool="geological map",
         description="test",
         rarity=1,

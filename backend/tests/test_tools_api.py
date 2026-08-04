@@ -12,7 +12,7 @@ from app.models.user_tool import USER_TOOL_ACTION_OWNED, UserTool
 def _seed_tool(session: Session, *, name: str = "Orbit Survey") -> ToolType:
     row = ToolType(
         name=name,
-        category="1 site_discovery",
+        category="1 field_survey",
         scientific_tool="satellite imagery",
         description="Identifies exposed formations.",
         rarity=2,
@@ -209,7 +209,7 @@ def test_list_tools_returns_summary_fields(client, session):
     assert item["id"] == row.id
     assert item["name"] == "Orbit Survey"
     assert item["scientific_tool"] == "satellite imagery"
-    assert item["category"] == "1 site_discovery"
+    assert item["category"] == "1 field_survey"
     assert item["rarity"] == 2
     assert item["description"] == "Identifies exposed formations."
     assert item["action"] == "Use"

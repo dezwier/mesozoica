@@ -117,7 +117,7 @@ def _require_admin_flag(flag: bool, *, name: str, current_user: User | None) -> 
 def _stewardship_skill_level(current_user: User | None) -> int:
     if current_user is None:
         return 1
-    return level_for_xp(get_skill_xp(current_user, "site_stewardship"))
+    return level_for_xp(get_skill_xp(current_user, "field_survey"))
 
 
 def _to_summary(

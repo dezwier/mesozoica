@@ -153,7 +153,7 @@ def test_exploration_blocked_before_identification(session: Session) -> None:
     )
     session.refresh(link)
     assert link.explored_distance_m == 0.0
-    assert get_skill_xp(user, "site_stewardship") == 0
+    assert get_skill_xp(user, "field_survey") == 0
 
 
 def test_identify_wrong_then_right_awards_scaled_xp(session: Session) -> None:
@@ -177,7 +177,7 @@ def test_identify_wrong_then_right_awards_scaled_xp(session: Session) -> None:
     )
     assert wrong.correct is False
     assert wrong.message == "That doesn't look quite right"
-    assert get_skill_xp(user, "site_stewardship") == 0
+    assert get_skill_xp(user, "field_survey") == 0
 
     right = submit_identify_guess(
         session,
@@ -190,7 +190,7 @@ def test_identify_wrong_then_right_awards_scaled_xp(session: Session) -> None:
     assert right.xp_awarded == 20  # second attempt → 50%
     assert right.period_identified is True
     assert right.identified is False
-    assert get_skill_xp(user, "site_stewardship") == 20
+    assert get_skill_xp(user, "field_survey") == 20
 
     rock_opts = get_identify_options(
         session, site_id=site.site_id, user_id=user.id
@@ -228,7 +228,7 @@ def test_identify_wrong_then_right_awards_scaled_xp(session: Session) -> None:
         )
     ).first()
     assert identifier is not None
-    assert get_skill_xp(user, "site_stewardship") == 60
+    assert get_skill_xp(user, "field_survey") == 60
 
 
 def test_identify_api_endpoints(client: TestClient, session: Session) -> None:

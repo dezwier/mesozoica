@@ -489,8 +489,8 @@ def test_delete_data_clears_skill_xp(client: TestClient, session: Session):
 
     user = session.get(User, user_id)
     assert user is not None
-    set_skill_xp(user, "site_discovery", 120)
-    set_skill_xp(user, "site_stewardship", 80)
+    set_skill_xp(user, "field_survey", 120)
+    set_skill_xp(user, "bone_quarry", 80)
     sync_career_from_skills(user)
     session.add(user)
     session.commit()
@@ -521,8 +521,8 @@ def test_delete_data_clears_skill_xp(client: TestClient, session: Session):
 
     session.refresh(user)
     assert total_skill_xp(user) == 0
-    assert get_skill_xp(user, "site_discovery") == 0
-    assert get_skill_xp(user, "site_stewardship") == 0
+    assert get_skill_xp(user, "field_survey") == 0
+    assert get_skill_xp(user, "field_survey") == 0
     assert user.skill_breakdown == {}
     assert user.xp == 0
     assert user.level == 1

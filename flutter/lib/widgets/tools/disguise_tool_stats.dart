@@ -27,7 +27,7 @@ class DisguiseToolStats extends StatelessWidget {
     final durationMinutes =
         (p?['duration_minutes'] as num?)?.toInt() ?? cfg.durationMinutes;
     final mods = modifiesMainParamsFromParams(p) ?? cfg.modifiesMainParams;
-    final rivalMod = mods?.paramsFor('using', 'site_stewardship')['rival_discovery'];
+    final rivalMod = mods?.paramsFor('using', 'field_survey')['rival_discovery'];
     // Prefer game-config copy so clarification updates aren't stuck behind
     // stale per-instance params snapshots.
     final explanation = cfg.statsExplanation.trim().isNotEmpty

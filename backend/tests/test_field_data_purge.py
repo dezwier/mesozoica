@@ -376,7 +376,7 @@ def test_purge_clears_all_users_skill_xp(session: Session):
     from app.services.level_service.skills import get_skill_xp, total_skill_xp
 
     _field, _fossil, user = _seed_field_world(session)
-    set_skill_xp(user, "site_discovery", 150)
+    set_skill_xp(user, "field_survey", 150)
     sync_career_from_skills(user)
     session.add(user)
     session.commit()
@@ -397,7 +397,7 @@ def test_purge_clears_all_users_skill_xp(session: Session):
     assert result.cleared_xp >= 150
     session.refresh(user)
     assert total_skill_xp(user) == 0
-    assert get_skill_xp(user, "site_discovery") == 0
+    assert get_skill_xp(user, "field_survey") == 0
     assert user.skill_breakdown == {}
     assert user.xp == 0
     assert user.level == 1

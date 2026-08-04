@@ -126,7 +126,7 @@ def test_discard_tool_removes_from_inventory_and_cancels_live_session(
 ):
     tool_type = ToolType(
         name="Orbit Survey",
-        category="1 site_discovery",
+        category="1 field_survey",
         scientific_tool="satellite",
         description="desc",
         rarity=2,

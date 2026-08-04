@@ -54,9 +54,9 @@ def main() -> int:
         users = list(session.exec(select(User)).all())
         logger.info("users=%s dry_run=%s", len(users), args.dry_run)
         for user in users:
-            before = int((user.skill_xp or {}).get("site_discovery", 0))
+            before = int((user.skill_xp or {}).get("field_survey", 0))
             backfill_user_levels(session, user)
-            after = int((user.skill_xp or {}).get("site_discovery", 0))
+            after = int((user.skill_xp or {}).get("field_survey", 0))
             logger.info(
                 "user id=%s username=%s site_discovery_xp %s -> %s (level %s)",
                 user.id,

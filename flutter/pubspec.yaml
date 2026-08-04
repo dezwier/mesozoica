@@ -76,18 +76,9 @@ flutter:
     - assets/images/splash/
     - assets/images/weather/
     - assets/game_config/site_generation.yaml
-    - assets/game_config/01_site_discovery.yaml
-    - assets/game_config/02_site_stewardship.yaml
-    - assets/game_config/03_site_clearing.yaml
-    - assets/game_config/04_fossil_detection.yaml
-    - assets/game_config/05_fossil_excavation.yaml
-    - assets/game_config/06_fossil_transport.yaml
-    - assets/game_config/07_fossil_curation.yaml
-    - assets/game_config/08_fossil_preparation.yaml
-    - assets/game_config/09_fossil_analysis.yaml
-    - assets/game_config/10_dinosaur_modelling.yaml
-    - assets/game_config/11_dinosaur_mounting.yaml
-    - assets/game_config/12_academic_publishing.yaml
+    - assets/game_config/01_field_survey.yaml
+    - assets/game_config/02_bone_quarry.yaml
+    - assets/game_config/03_science_hall.yaml
     - assets/game_config/tool_actions.yaml
     - assets/game_config/period_colors.yaml
     - assets/game_config/rock_type_colors.yaml

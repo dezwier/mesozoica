@@ -67,7 +67,7 @@ def _aerial_tool(
 ) -> ToolType:
     tool = ToolType(
         name=name,
-        category="1 site_discovery",
+        category="1 field_survey",
         scientific_tool=scientific_tool,
         description="Aerial loop",
         rarity=rarity,

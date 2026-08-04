@@ -33,8 +33,6 @@ class ProfileContent extends StatelessWidget {
         const SizedBox(height: 5),
         _buildLevelsCard(context, scheme),
         const SizedBox(height: 5),
-        _buildStatsGrid(context, scheme),
-        const SizedBox(height: 5),
         _buildDistanceCard(context, scheme),
         const SizedBox(height: 5),
         _buildProfessionalCard(context, scheme),
@@ -195,6 +193,10 @@ class ProfileContent extends StatelessWidget {
               const SizedBox(height: 12),
               _SkillGrid(
                 skills: profile.skills,
+                cardCounts: {
+                  for (final skill in profile.skills)
+                    skill.id: _cardCountForSkill(skill.id),
+                },
                 onSkillTap: (skill) => showProfileSkillDetailSheet(
                   context,
                   skill: skill,
@@ -208,85 +210,17 @@ class ProfileContent extends StatelessWidget {
     );
   }
 
-  Widget _buildStatsGrid(BuildContext context, ColorScheme scheme) {
-    const avatarSize = 36.0;
-    final stats = [
-      (
-        'Sites',
-        'assets/images/cards/site_card_front_placeholder.png',
-        profile.actualSitesCount,
-      ),
-      (
-        'Fossils',
-        'assets/images/cards/fossil_card_front_placeholder.png',
-        profile.actualFossilsCount,
-      ),
-      (
-        'Dinosaurs',
-        'assets/images/cards/dinosaur_card_front_placeholder.png',
-        profile.actualDinosaursCount,
-      ),
-    ];
-    return Row(
-      children: [
-        for (var i = 0; i < stats.length; i++) ...[
-          if (i > 0) const SizedBox(width: 5),
-          Expanded(
-            child: Card(
-              elevation: 1,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(_cardRadius),
-              ),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: scheme.surfaceContainerHighest.withValues(alpha: 0.3),
-                  borderRadius: BorderRadius.circular(_cardRadius),
-                ),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-                child: Column(
-                  children: [
-                    Text(
-                      '${stats[i].$3}',
-                      style:
-                          Theme.of(context).textTheme.headlineSmall?.copyWith(
-                                fontWeight: FontWeight.bold,
-                              ),
-                    ),
-                    const SizedBox(height: 8),
-                    Container(
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white, width: 2),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.18),
-                            blurRadius: 4,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: CircleAvatar(
-                        radius: avatarSize / 2,
-                        backgroundColor: scheme.surfaceContainerHighest,
-                        backgroundImage: AssetImage(stats[i].$2),
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      stats[i].$1,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: scheme.onSurfaceVariant,
-                          ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ],
-      ],
-    );
+  int _cardCountForSkill(String skillId) {
+    switch (skillId) {
+      case 'field_survey':
+        return profile.actualSitesCount;
+      case 'bone_quarry':
+        return profile.actualFossilsCount;
+      case 'science_hall':
+        return profile.actualDinosaursCount;
+      default:
+        return 0;
+    }
   }
 
   Widget _buildDistanceCard(BuildContext context, ColorScheme scheme) {
@@ -591,21 +525,21 @@ class _LevelProgressRow extends StatelessWidget {
 class _SkillGrid extends StatelessWidget {
   const _SkillGrid({
     required this.skills,
+    required this.cardCounts,
     required this.onSkillTap,
   });
 
   final List<SkillState> skills;
+  final Map<String, int> cardCounts;
   final ValueChanged<SkillState> onSkillTap;
 
   static const _crossAxisCount = 3;
   static const _spacing = 6.0;
-  static const _tileHeight = 56.0;
+  static const _avatarSize = 72.0;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    const avatarPad = 4.0;
-    const avatarSize = _tileHeight - avatarPad * 2;
     return GridView.builder(
       shrinkWrap: true,
       primary: false,
@@ -616,10 +550,11 @@ class _SkillGrid extends StatelessWidget {
         crossAxisCount: _crossAxisCount,
         crossAxisSpacing: _spacing,
         mainAxisSpacing: _spacing,
-        mainAxisExtent: _tileHeight,
+        childAspectRatio: 0.72,
       ),
       itemBuilder: (context, index) {
         final skill = skills[index];
+        final count = cardCounts[skill.id] ?? 0;
         return Material(
           color: Colors.transparent,
           child: InkWell(
@@ -630,27 +565,40 @@ class _SkillGrid extends StatelessWidget {
                 borderRadius: BorderRadius.circular(8),
                 color: scheme.onSurface.withValues(alpha: 0.04),
               ),
-              child: Row(
+              padding: const EdgeInsets.fromLTRB(6, 10, 6, 8),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Padding(
-                    padding: const EdgeInsets.all(avatarPad),
-                    child: SizedBox(
-                      width: avatarSize,
-                      height: avatarSize,
-                      child: SkillIcon(
-                        skillId: skill.id,
-                        circular: true,
-                      ),
+                  SizedBox(
+                    width: _avatarSize,
+                    height: _avatarSize,
+                    child: SkillIcon(
+                      skillId: skill.id,
+                      circular: true,
                     ),
                   ),
-                  Expanded(
-                    child: Align(
-                      alignment: Alignment.centerLeft,
-                      child: _SkillLevelBadge(
-                        level: skill.level,
-                        color: scheme.onSurfaceVariant,
-                      ),
-                    ),
+                  const SizedBox(height: 8),
+                  Text(
+                    skill.name,
+                    textAlign: TextAlign.center,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                          height: 1.15,
+                        ),
+                  ),
+                  const SizedBox(height: 4),
+                  _SkillLevelBadge(
+                    level: skill.level,
+                    color: scheme.onSurfaceVariant,
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    '$count',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
                   ),
                 ],
               ),

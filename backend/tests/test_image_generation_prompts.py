@@ -256,7 +256,7 @@ def test_build_tool_image_prompt_carries_night_description():
     prompt = build_tool_image_prompt(
         {
             "name": "Nocturne Lens",
-            "category": "1 site_discovery",
+            "category": "1 field_survey",
             "scientific_tool": "night-vision goggles",
             "description": (
                 "Night-only field optics: worn after dark to amplify low-light "

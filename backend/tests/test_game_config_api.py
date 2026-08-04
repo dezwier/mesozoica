@@ -46,7 +46,7 @@ def _headers(session, *, username: str, is_admin: bool) -> dict[str, str]:
 
 def _tweaked(chance: float) -> dict:
     documents = copy.deepcopy(load_yaml_documents())
-    documents["site_discovery"]["main_params"]["discovery_chance"] = chance
+    documents["field_survey"]["main_params"]["discovery_chance"] = chance
     return documents
 
 
@@ -127,7 +127,7 @@ def test_public_config_reflects_a_publish(client, session, db_source) -> None:
     assert second.json()["version"] == 2
     assert second.headers["ETag"] != first.headers["ETag"]
     assert (
-        second.json()["documents"]["site_discovery"]["main_params"]["discovery_chance"]
+        second.json()["documents"]["field_survey"]["main_params"]["discovery_chance"]
         == 0.77
     )
 
@@ -232,7 +232,7 @@ def test_admin_schema_lists_documents_and_locked_paths(client, session) -> None:
     assert "period_colors" in body["locked_paths"]
     assert "tool_actions/*/stats_explanation" in body["locked_paths"]
     skills = {doc["doc_id"] for doc in body["documents"] if doc["is_skill"]}
-    assert "site_discovery" in skills
+    assert "field_survey" in skills
     assert "leveling" not in skills
 
 
@@ -268,7 +268,7 @@ def test_admin_reads_a_single_revision(client, session) -> None:
 
     assert body["version"] == 1
     assert (
-        body["documents"]["site_discovery"]["main_params"]["discovery_chance"]
+        body["documents"]["field_survey"]["main_params"]["discovery_chance"]
         != 0.6
     )
 
@@ -404,11 +404,11 @@ def test_publish_rejects_an_invalid_value(client, session) -> None:
 def test_patch_document_carries_the_others_over(client, session) -> None:
     seed_from_yaml(session)
     headers = _headers(session, username="cfg_admin_patch", is_admin=True)
-    document = copy.deepcopy(load_yaml_documents()["site_discovery"])
+    document = copy.deepcopy(load_yaml_documents()["field_survey"])
     document["main_params"]["discovery_chance"] = 0.66
 
     response = client.patch(
-        f"{ADMIN}/documents/site_discovery",
+        f"{ADMIN}/documents/field_survey",
         headers=headers,
         json={"data": document, "base_version": 1},
     )
@@ -416,24 +416,24 @@ def test_patch_document_carries_the_others_over(client, session) -> None:
     assert response.status_code == 200
     body = response.json()
     assert body["version"] == 2
-    assert body["documents"]["site_discovery"]["main_params"]["discovery_chance"] == 0.66
+    assert body["documents"]["field_survey"]["main_params"]["discovery_chance"] == 0.66
     assert body["documents"]["leveling"] == load_yaml_documents()["leveling"]
 
 
 def test_patch_document_defaults_the_note(client, session) -> None:
     seed_from_yaml(session)
     headers = _headers(session, username="cfg_admin_patchnote", is_admin=True)
-    document = copy.deepcopy(load_yaml_documents()["site_discovery"])
+    document = copy.deepcopy(load_yaml_documents()["field_survey"])
     document["main_params"]["discovery_chance"] = 0.44
 
     client.patch(
-        f"{ADMIN}/documents/site_discovery",
+        f"{ADMIN}/documents/field_survey",
         headers=headers,
         json={"data": document, "base_version": 1},
     )
 
     latest = client.get(f"{ADMIN}/revisions", headers=headers).json()[0]
-    assert latest["note"] == "edit site_discovery"
+    assert latest["note"] == "edit field_survey"
 
 
 def test_patch_unknown_document_404s(client, session) -> None:
@@ -467,7 +467,7 @@ def test_patch_before_seeding_404s(client, session) -> None:
     headers = _headers(session, username="cfg_admin_patchempty", is_admin=True)
 
     response = client.patch(
-        f"{ADMIN}/documents/site_discovery", headers=headers, json={"data": {}}
+        f"{ADMIN}/documents/field_survey", headers=headers, json={"data": {}}
     )
 
     assert response.status_code == 404
@@ -480,7 +480,7 @@ def test_patch_before_seeding_404s(client, session) -> None:
 
 def test_rollback_republishes_old_content_as_a_new_version(client, session) -> None:
     seed_from_yaml(session)
-    baseline = load_yaml_documents()["site_discovery"]["main_params"][
+    baseline = load_yaml_documents()["field_survey"]["main_params"][
         "discovery_chance"
     ]
     publish_documents(session, documents=_tweaked(0.95), base_version=1)
@@ -494,7 +494,7 @@ def test_rollback_republishes_old_content_as_a_new_version(client, session) -> N
     body = response.json()
     assert body["version"] == 3
     assert (
-        body["documents"]["site_discovery"]["main_params"]["discovery_chance"]
+        body["documents"]["field_survey"]["main_params"]["discovery_chance"]
         == baseline
     )
 
@@ -531,5 +531,5 @@ def test_admin_publish_is_visible_to_the_public_endpoint(
     body = client.get(PUBLIC).json()
     assert body["version"] == 2
     assert (
-        body["documents"]["site_discovery"]["main_params"]["discovery_chance"] == 0.73
+        body["documents"]["field_survey"]["main_params"]["discovery_chance"] == 0.73
     )

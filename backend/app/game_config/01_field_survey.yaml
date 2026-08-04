@@ -1,13 +1,26 @@
-# Skill 2 — Site Stewardship
-# Field fossils spawn when a site is discovered (once per site, global).
-#
-# Each field site has five odd_* scores Uniform(0,1). On discovery, attributes use
-# score = clamp(odd + Uniform(-noise, +noise), 0, 1) then pick a tier.
-# See README.md in this directory for the full mechanics.
+# Skill 1 — Field Survey
+# Site discovery, stewardship, and clearing (merged).
 
-skill_id: site_stewardship
+skill_id: field_survey
 
 main_params:
+  # --- discovery ---
+  # Server enforces this on POST /sites/{id}/discover (and set-status).
+  visibility_distance_m: 20.0
+  # P(success) per discover attempt (walk-in enter or dwell re-roll).
+  discovery_chance: 0.1
+  # Max GPS speed for walk XP credit and walk-in / dwell discovery rolls.
+  max_discovery_speed_kmh: 10.0
+  # XP awarded when a site is discovered.
+  site_discovery_xp: 20
+  # Bonus XP when you are the first user to discover a site (others still get
+  # site_discovery_xp later, but not this reward).
+  first_discovery_xp: 20
+  # XP per whole 100 m of active walking.
+  active_100m_xp: 20
+  # XP per whole passive kilometer (Health credits; awarded on cold restart).
+  passive_km_xp: 100
+  # --- stewardship ---
   # Card display estimation for each odd_* axis (0 = full-axis blur/jitter, 1 = exact).
   # Base 1%; level multiplies by skill level (L50 → 50%). Display-only for now.
   dino_accuracy: 0.01
@@ -24,7 +37,7 @@ main_params:
   # XP when a rival discovery roll would have hit but your disguise blocked it
   # (Brush Scrim / Blackout Cover). Scrim still rolls; effective odds are 0.
   successful_site_disguise_xp: 40
-  # XP to site_stewardship per 20 m walked inside site_visibility_m.
+  # XP to field_survey per 20 m walked inside site_visibility_m.
   site_exploration_xp: 20
   # XP when all five site-dimension accuracies reach 100% (documentation complete).
   site_documentation_xp: 80
@@ -35,87 +48,15 @@ main_params:
   # first try 100%, second 50%, third 0%. Exploration meters start after both.
   site_identification_xp: 40
 
-# Ambient solar period (dawn|day|dusk|golden_hour|night). After level, before weather_type + tools.
-# site_visibility_m mirrors site_discovery visibility_distance_m;
-# site_exploration_xp mirrors site_discovery site_discovery_xp.
-weather_time_modifiers:
-  site_visibility_m:
-    day: [{ op: multiply, value: 1.1 }]
-    golden_hour: [{ op: multiply, value: 1.3 }]
-    dawn: []
-    dusk: []
-    night: [{ op: multiply, value: 0.6 }]
-  site_exploration_xp:
-    day: []
-    golden_hour: [{ op: multiply, value: 1.1 }]
-    dawn: [{ op: multiply, value: 1.2 }]
-    dusk: [{ op: multiply, value: 1.2 }]
-    night: [{ op: multiply, value: 1.5 }]
-
-# Fixed global distribution tables (not subject to level/tool multipliers).
-
-# How many distinct dinosaurs to sample for the site (from clamp(odd_dino_count)).
-dino_count:
-  - max_odd: 0.10
-    count: 0
-  - max_odd: 0.60
-    count: 1
-  - max_odd: 0.80
-    count: 2
-  - max_odd: 0.90
-    count: 3
-  - max_odd: 0.95
-    count: 4
-  - max_odd: 1.00
-    count: 5
-
-# How many fossil cards per sampled dinosaur (CDF masses; inverse-CDF via odd_fossil_count).
-fossil_count:
-  1: 0.25
-  2: 0.25
-  3: 0.20
-  4: 0.15
-  5: 0.10
-  6: 0.05
-
-# Burial depth buckets (weights = CDF masses via odd_depth). Sample uniform in [min_cm, max_cm].
-depth_weights:
-  - weight: 0.10
-    min_cm: 0
-    max_cm: 0
-  - weight: 0.30
-    min_cm: 1
-    max_cm: 50
-  - weight: 0.30
-    min_cm: 51
-    max_cm: 200
-  - weight: 0.20
-    min_cm: 201
-    max_cm: 500
-  - weight: 0.10
-    min_cm: 501
-    max_cm: 1000
-
-# Completeness tiers worst→best (CDF masses via odd_completeness). Replaces archive CDFs.
-completeness_weights:
-  trace_only: 0.05
-  isolated_element: 0.20
-  fragmentary: 0.30
-  partial: 0.25
-  substantial: 0.15
-  nearly_complete: 0.05
-
-# Preservation quality tiers worst→best (CDF masses via odd_quality). Replaces archive CDFs.
-quality_weights:
-  very_poor: 0.05
-  poor: 0.15
-  moderate: 0.35
-  good: 0.25
-  excellent: 0.15
-  exceptional: 0.05
-
-# Accuracy: +0.01 per level (1..99).
+# Identity for v1 — tune later. Each list entry: { level, op: add|multiply|replace, value }.
 level_modifiers:
+  visibility_distance_m: []
+  discovery_chance: []
+  max_discovery_speed_kmh: []
+  site_discovery_xp: []
+  first_discovery_xp: []
+  active_100m_xp: []
+  passive_km_xp: []
   successful_site_disguise_xp: []
   site_visibility_m: []
   site_exploration_xp: []
@@ -328,6 +269,129 @@ level_modifiers:
   completeness_accuracy: *site_stewardship_estimation_levels
   quality_accuracy: *site_stewardship_estimation_levels
   depth_accuracy: *site_stewardship_estimation_levels
+# Ambient solar period (dawn|day|dusk|golden_hour|night). After level, before weather_type + tools.
+weather_time_modifiers:
+  visibility_distance_m: &field_survey_weather_time
+    day: [{ op: multiply, value: 1.1 }]
+    golden_hour: [{ op: multiply, value: 1.3 }]
+    dawn: []
+    dusk: []
+    night: [{ op: multiply, value: 0.6 }]
+  discovery_chance: *field_survey_weather_time
+  max_discovery_speed_kmh: {}
+  # XP: day +0%, golden_hour +10%, dawn/dusk +20%, night +50%.
+  site_discovery_xp:
+    day: []
+    golden_hour: [{ op: multiply, value: 1.1 }]
+    dawn: [{ op: multiply, value: 1.2 }]
+    dusk: [{ op: multiply, value: 1.2 }]
+    night: [{ op: multiply, value: 1.5 }]
+  first_discovery_xp: {}
+  active_100m_xp: {}
+  passive_km_xp: {}
+  site_visibility_m:
+    day: [{ op: multiply, value: 1.1 }]
+    golden_hour: [{ op: multiply, value: 1.3 }]
+    dawn: []
+    dusk: []
+    night: [{ op: multiply, value: 0.6 }]
+  site_exploration_xp:
+    day: []
+    golden_hour: [{ op: multiply, value: 1.1 }]
+    dawn: [{ op: multiply, value: 1.2 }]
+    dusk: [{ op: multiply, value: 1.2 }]
+    night: [{ op: multiply, value: 1.5 }]
+
+# Ambient weather type (clear|cloudy|…). After weather_time, before tools.
+weather_type_modifiers:
+  visibility_distance_m: &field_survey_weather_type
+    clear: [{ op: multiply, value: 1.1 }]
+    cloudy: [{ op: multiply, value: 1.05 }]
+    overcast: []
+    drizzle: [{ op: multiply, value: 0.95 }]
+    rain: [{ op: multiply, value: 0.9 }]
+    hail: [{ op: multiply, value: 0.9 }]
+    fog: [{ op: multiply, value: 0.85 }]
+    thunderstorm: [{ op: multiply, value: 0.8 }]
+    snow: []
+  discovery_chance: *field_survey_weather_type
+  max_discovery_speed_kmh: {}
+  site_discovery_xp: {}
+  first_discovery_xp: {}
+  active_100m_xp: {}
+  passive_km_xp: {}
+
+# Flutter auto-discover + nearby-discoverable cache.
+client:
+  auto_discover_radius_m: 20.0
+  cache_radius_km: 1.0
+  cache_refresh_move_threshold_m: 500.0
+  discover_fail_retry_s: 20
+  # Re-roll while staying inside auto_discover_radius_m (not a main_param).
+  # Walk-in still rolls immediately; app-open already inside does not (timer starts).
+  discovery_reroll_interval_s: 10
+
+# Fixed global distribution tables (not subject to level/tool multipliers).
+dino_count:
+  - max_odd: 0.10
+    count: 0
+  - max_odd: 0.60
+    count: 1
+  - max_odd: 0.80
+    count: 2
+  - max_odd: 0.90
+    count: 3
+  - max_odd: 0.95
+    count: 4
+  - max_odd: 1.00
+    count: 5
+
+# How many fossil cards per sampled dinosaur (CDF masses; inverse-CDF via odd_fossil_count).
+fossil_count:
+  1: 0.25
+  2: 0.25
+  3: 0.20
+  4: 0.15
+  5: 0.10
+  6: 0.05
+
+# Burial depth buckets (weights = CDF masses via odd_depth). Sample uniform in [min_cm, max_cm].
+depth_weights:
+  - weight: 0.10
+    min_cm: 0
+    max_cm: 0
+  - weight: 0.30
+    min_cm: 1
+    max_cm: 50
+  - weight: 0.30
+    min_cm: 51
+    max_cm: 200
+  - weight: 0.20
+    min_cm: 201
+    max_cm: 500
+  - weight: 0.10
+    min_cm: 501
+    max_cm: 1000
+
+# Completeness tiers worst→best (CDF masses via odd_completeness). Replaces archive CDFs.
+completeness_weights:
+  trace_only: 0.05
+  isolated_element: 0.20
+  fragmentary: 0.30
+  partial: 0.25
+  substantial: 0.15
+  nearly_complete: 0.05
+
+# Preservation quality tiers worst→best (CDF masses via odd_quality). Replaces archive CDFs.
+quality_weights:
+  very_poor: 0.05
+  poor: 0.15
+  moderate: 0.35
+  good: 0.25
+  excellent: 0.15
+  exceptional: 0.05
+
+# Accuracy: +0.01 per level (1..99).
 odd_noise:
   dino_count: 0
   fossil_count: 0.5

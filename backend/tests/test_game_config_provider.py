@@ -22,7 +22,7 @@ def db_source(monkeypatch):
 
 def _tweaked_documents(chance: float) -> dict:
     documents = copy.deepcopy(load_yaml_documents())
-    documents["site_discovery"]["main_params"]["discovery_chance"] = chance
+    documents["field_survey"]["main_params"]["discovery_chance"] = chance
     return documents
 
 

@@ -71,7 +71,7 @@ def _skill_level_for_user(session: Session, user_id: int) -> int:
     user = session.get(User, user_id)
     if user is None:
         return 1
-    return level_for_xp(get_skill_xp(user, "site_discovery"))
+    return level_for_xp(get_skill_xp(user, "field_survey"))
 
 
 def resolve_site_discovery_params(
@@ -126,7 +126,7 @@ def resolve_site_discovery_params(
             buff_mods = tool_mods_from_session_params(
                 buff.params_json or {},
                 when="using",
-                skill_id="site_discovery",
+                skill_id="field_survey",
             )
             if buff_mods:
                 tool_mods = buff_mods
@@ -137,7 +137,7 @@ def resolve_site_discovery_params(
         params = (guidance.params_json if guidance is not None else None) or {}
         # Active session → apply `using` / site_discovery only.
         using_mods = tool_mods_from_session_params(
-            params, when="using", skill_id="site_discovery"
+            params, when="using", skill_id="field_survey"
         )
         if guidance is not None and using_mods:
             nearest_id = nearest_discoverable_site_id(
