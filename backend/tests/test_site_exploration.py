@@ -275,8 +275,8 @@ def test_documentation_completes_and_freezes(
     assert doc_role.was_first is True
     assert summaries[0].viewer_was_first_documentation is True
     assert summaries[0].documented_at is not None
-    assert profile.skill_breakdown["site_stewardship"]["site_documentation"] == 100
-    assert profile.skill_breakdown["site_stewardship"]["first_documentation"] == 100
+    assert profile.skill_breakdown["site_stewardship"]["site_documentation"] == 80
+    assert profile.skill_breakdown["site_stewardship"]["first_documentation"] == 20
 
     from app.models.user_notification import UserNotification, UserNotificationType
 
@@ -309,10 +309,10 @@ def test_documentation_completes_and_freezes(
     assert link.explored_distance_m == 80.0
     assert get_skill_xp(user, "site_stewardship") == xp_after
     assert (
-        user.skill_breakdown["site_stewardship"]["site_documentation"] == 100
+        user.skill_breakdown["site_stewardship"]["site_documentation"] == 80
     )
     assert (
-        user.skill_breakdown["site_stewardship"]["first_documentation"] == 100
+        user.skill_breakdown["site_stewardship"]["first_documentation"] == 20
     )
     # Frozen re-sync does not create another notification/push.
     assert len(pushes) == 1
@@ -365,8 +365,8 @@ def test_second_documenter_skips_first_documentation_xp(
             ]
         ),
     )
-    assert first.skill_breakdown["site_stewardship"]["site_documentation"] == 100
-    assert first.skill_breakdown["site_stewardship"]["first_documentation"] == 100
+    assert first.skill_breakdown["site_stewardship"]["site_documentation"] == 80
+    assert first.skill_breakdown["site_stewardship"]["first_documentation"] == 20
 
     apply_site_exploration_update(
         session,
@@ -380,7 +380,7 @@ def test_second_documenter_skips_first_documentation_xp(
             ]
         ),
     )
-    assert second.skill_breakdown["site_stewardship"]["site_documentation"] == 100
+    assert second.skill_breakdown["site_stewardship"]["site_documentation"] == 80
     assert "first_documentation" not in (
         second.skill_breakdown.get("site_stewardship") or {}
     )

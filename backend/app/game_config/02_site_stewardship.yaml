@@ -23,14 +23,14 @@ main_params:
   site_visibility_m: 50.0
   # XP when a rival discovery roll would have hit but your disguise blocked it
   # (Brush Scrim / Blackout Cover). Scrim still rolls; effective odds are 0.
-  successful_site_disguise_xp: 50
+  successful_site_disguise_xp: 40
   # XP to site_stewardship per 20 m walked inside site_visibility_m.
   site_exploration_xp: 20
   # XP when all five site-dimension accuracies reach 100% (documentation complete).
-  site_documentation_xp: 100
+  site_documentation_xp: 80
   # Bonus XP when you are the first user to fully document a site (all dimensions
   # at 100% accuracy). Later documenters still get site_documentation_xp only.
-  first_documentation_xp: 100
+  first_documentation_xp: 20
   # XP per identification quiz step (period, then rock type). Scaled by attempt:
   # first try 100%, second 50%, third 0%. Exploration meters start after both.
   site_identification_xp: 40

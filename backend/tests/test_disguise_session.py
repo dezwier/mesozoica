@@ -178,7 +178,7 @@ def test_tool_actions_yaml_loads_disguise_knobs() -> None:
     assert cover.rival_discovery_mod.op == "multiply"
     assert cover.rival_discovery_mod.value == 0.5
     assert get_game_config().site_stewardship.rival_discovery == 1.0
-    assert get_game_config().site_stewardship.successful_site_disguise_xp == 50.0
+    assert get_game_config().site_stewardship.successful_site_disguise_xp == 40.0
 
 
 def test_deploy_requires_discoverer(client, session: Session) -> None:
@@ -412,7 +412,7 @@ def test_rival_blocked_roll_awards_stewardship_xp(
 
     session.refresh(owner)
     after = get_skill_xp(owner, "site_stewardship")
-    assert after == before + 50
+    assert after == before + 40
 
 
 def test_blackout_cover_blocked_band_awards_stewardship_xp(
@@ -483,7 +483,7 @@ def test_blackout_cover_blocked_band_awards_stewardship_xp(
         )
 
     session.refresh(owner)
-    assert get_skill_xp(owner, "site_stewardship") == before + 50
+    assert get_skill_xp(owner, "site_stewardship") == before + 40
 
 
 def test_stop_clears_disguiser_and_restores_chance(

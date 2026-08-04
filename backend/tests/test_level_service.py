@@ -136,9 +136,9 @@ def test_award_first_documentation_xp(session: Session) -> None:
     session.add(user)
     session.commit()
     session.refresh(user)
-    assert get_skill_xp(user, "site_stewardship") == 200
-    assert user.skill_breakdown["site_stewardship"]["site_documentation"] == 100
-    assert user.skill_breakdown["site_stewardship"]["first_documentation"] == 100
+    assert get_skill_xp(user, "site_stewardship") == 100
+    assert user.skill_breakdown["site_stewardship"]["site_documentation"] == 80
+    assert user.skill_breakdown["site_stewardship"]["first_documentation"] == 20
 
 
 def test_award_distance_km_xp(session: Session) -> None:

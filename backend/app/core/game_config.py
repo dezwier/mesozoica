@@ -595,13 +595,13 @@ class SiteStewardshipMainParams(BaseModel):
     # Radius around a discovered site where walking accrues exploration meters.
     site_visibility_m: float = 50.0
     # XP when a rival discovery roll would hit but your disguise blocked it.
-    successful_site_disguise_xp: float = 50.0
+    successful_site_disguise_xp: float = 40.0
     # XP to site_stewardship per 20 m walked inside site_visibility_m.
     site_exploration_xp: float = 20.0
     # XP when all five site-dimension accuracies reach 100%.
-    site_documentation_xp: float = 100.0
+    site_documentation_xp: float = 80.0
     # Bonus XP when you are the first user to fully document a site.
-    first_documentation_xp: float = 100.0
+    first_documentation_xp: float = 20.0
     # XP per identification quiz step (period / rock), attempt-scaled.
     site_identification_xp: float = 40.0
 

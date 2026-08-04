@@ -699,10 +699,10 @@ class SiteStewardshipMainParams {
       rivalDiscovery: _asDouble(yaml['rival_discovery'], 1),
       siteVisibilityM: _asDouble(yaml['site_visibility_m'], 50),
       successfulSiteDisguiseXp:
-          _asDouble(yaml['successful_site_disguise_xp'], 50),
+          _asDouble(yaml['successful_site_disguise_xp'], 40),
       siteExplorationXp: _asDouble(yaml['site_exploration_xp'], 20),
-      siteDocumentationXp: _asDouble(yaml['site_documentation_xp'], 100),
-      firstDocumentationXp: _asDouble(yaml['first_documentation_xp'], 100),
+      siteDocumentationXp: _asDouble(yaml['site_documentation_xp'], 80),
+      firstDocumentationXp: _asDouble(yaml['first_documentation_xp'], 20),
       siteIdentificationXp: _asDouble(yaml['site_identification_xp'], 40),
     );
   }
