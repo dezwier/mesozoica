@@ -190,18 +190,16 @@ void main() {
     expect(find.text('#50001, 46.88, -110.36, Montana, US'), findsNothing);
     expect(find.textContaining('Discovered'), findsNothing);
     expect(find.text('SITE DIMENSIONS'), findsNothing);
-    expect(
-      find.text('Site dimensions · Documented 0 m'),
-      findsOneWidget,
-    );
+    expect(find.textContaining('Site dimensions'), findsNothing);
+    expect(find.textContaining(RegExp(r'Documented \d+% · Explored 0 m')), findsOneWidget);
     expect(find.text('COORDINATES'), findsNothing);
     expect(find.text('COUNTRY'), findsNothing);
     expect(find.text('PERIOD'), findsNothing);
     expect(find.text('ROCK TYPE'), findsNothing);
-    expect(find.textContaining('DINO COUNT'), findsOneWidget);
-    expect(find.textContaining('FOSSILS COUNT'), findsOneWidget);
+    expect(find.textContaining('GENERA PRESENCE'), findsOneWidget);
+    expect(find.textContaining('FOSSIL PRESENCE'), findsOneWidget);
     expect(find.textContaining('COMPLETENESS'), findsOneWidget);
-    expect(find.textContaining('QUALITY'), findsOneWidget);
+    expect(find.textContaining('PRESERVATION'), findsOneWidget);
     expect(find.textContaining('DEPTH'), findsOneWidget);
     // Skill L1 + absolute noise (±30 pts) → inline % labels, not a fixed 1%.
     expect(find.textContaining('%'), findsWidgets);
@@ -212,7 +210,7 @@ void main() {
     expect(find.text('0.55'), findsNothing);
   });
 
-  testWidgets('SiteCardBack timeline shows Documented meters when discovered',
+  testWidgets('SiteCardBack timeline shows Explored meters when discovered',
       (tester) async {
     final discovered = SiteSummary(
       siteId: 1000000067,
@@ -254,7 +252,7 @@ void main() {
     expect(find.textContaining(' · '), findsWidgets);
     expect(find.text('Mapped 30m'), findsNothing);
     expect(
-      find.text('Site dimensions · Documented 30 m'),
+      find.textContaining(RegExp(r'Documented \d+% · Explored 30 m')),
       findsOneWidget,
     );
     expect(find.text('MOMENT'), findsNothing);
@@ -303,7 +301,10 @@ void main() {
     expect(find.text('Original - Discovered 3h ago'), findsNothing);
     expect(find.text('#67'), findsNothing);
     expect(find.text('#67 · Original'), findsNothing);
-    expect(find.textContaining('Site dimensions · Documented'), findsOneWidget);
+    expect(
+      find.textContaining(RegExp(r'Documented \d+% · Explored')),
+      findsOneWidget,
+    );
   });
 
   testWidgets('SiteTurnableCard composes front and back', (tester) async {

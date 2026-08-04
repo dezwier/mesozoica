@@ -58,14 +58,14 @@ class SiteCardDimensions extends StatelessWidget {
         <(SiteDimensionKey, String, String, double?, SiteDimensionBand?)>[
       (
         SiteDimensionKey.dino,
-        'Dino count',
+        'Genera presence',
         'dino_accuracy',
         site.oddDinoCount,
         site.oddDinoBand,
       ),
       (
         SiteDimensionKey.fossil,
-        'Fossils count',
+        'Fossil presence',
         'fossil_accuracy',
         site.oddFossilCount,
         site.oddFossilBand,
@@ -79,7 +79,7 @@ class SiteCardDimensions extends StatelessWidget {
       ),
       (
         SiteDimensionKey.quality,
-        'Quality',
+        'Preservation',
         'quality_accuracy',
         site.oddQuality,
         site.oddQualityBand,
@@ -112,56 +112,62 @@ class SiteCardDimensions extends StatelessWidget {
       showExactMarker: showExactMarker,
     );
 
+    final dimensionAccuracies = <double>[
+      for (final entry in horizontalDisplays)
+        entry.$2?.effectiveAccuracy ?? entry.$3,
+      depthDisplay?.effectiveAccuracy ?? depthAccuracy,
+    ];
+    final avgDocumentedPct = ((dimensionAccuracies.reduce((a, b) => a + b) /
+                dimensionAccuracies.length)
+            .clamp(0.0, 1.0) *
+        100)
+        .round();
+
     return CardSectionPanel(
       labelWidget: Text(
-        'Site dimensions · Documented ${exploredM.floor()} m',
+        'Documented $avgDocumentedPct% · Explored ${exploredM.floor()} m',
         textAlign: TextAlign.center,
         style: cardTheme.sectionLabelStyle(fontSize: 13).copyWith(
               fontWeight: FontWeight.w700,
               letterSpacing: 0.15,
             ),
       ),
-      padding: const EdgeInsets.fromLTRB(10, 10, 6, 10),
+      padding: const EdgeInsets.fromLTRB(4, 10, 6, 10),
       labelGap: 8,
-      child: Center(
-        child: FractionallySizedBox(
-          widthFactor: 0.98,
-          child: SizedBox(
-            height: 104,
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Expanded(
-                  child: Column(
-                    children: [
-                      for (var i = 0; i < horizontalDisplays.length; i++) ...[
-                        if (i > 0) const SizedBox(height: 5),
-                        Expanded(
-                          child: _HorizontalDimensionRow(
-                            label: horizontalDisplays[i].$1,
-                            accuracy: horizontalDisplays[i].$3,
-                            display: horizontalDisplays[i].$2,
-                            cardTheme: cardTheme,
-                            showExactMarker: showExactMarker,
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 8),
-                SizedBox(
-                  width: 40,
-                  child: _VerticalDepthAxis(
-                    display: depthDisplay,
-                    accuracy: depthAccuracy,
-                    cardTheme: cardTheme,
-                    showExactMarker: showExactMarker,
-                  ),
-                ),
-              ],
+      child: SizedBox(
+        height: 112,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(
+              child: Column(
+                children: [
+                  for (var i = 0; i < horizontalDisplays.length; i++) ...[
+                    if (i > 0) const SizedBox(height: 5),
+                    Expanded(
+                      child: _HorizontalDimensionRow(
+                        label: horizontalDisplays[i].$1,
+                        accuracy: horizontalDisplays[i].$3,
+                        display: horizontalDisplays[i].$2,
+                        cardTheme: cardTheme,
+                        showExactMarker: showExactMarker,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
             ),
-          ),
+            const SizedBox(width: 8),
+            SizedBox(
+              width: 42,
+              child: _VerticalDepthAxis(
+                display: depthDisplay,
+                accuracy: depthAccuracy,
+                cardTheme: cardTheme,
+                showExactMarker: showExactMarker,
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -286,23 +292,24 @@ class _HorizontalDimensionRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final labelStyle = cardTheme.statLabelStyle(fontSize: 7);
+    final labelStyle = cardTheme.statLabelStyle(fontSize: 8.5);
     final accuracyStyle = labelStyle.copyWith(
       color: cardTheme.cardAccent,
       fontWeight: FontWeight.w700,
+      letterSpacing: 0.25,
     );
     // Prefer live effective accuracy from the display when present.
     final shownAccuracy = display?.effectiveAccuracy ?? accuracy;
     return Row(
       children: [
         SizedBox(
-          width: 98,
+          width: 128,
           child: Text.rich(
             TextSpan(
               children: [
                 TextSpan(
                   text: '${label.toUpperCase()} ',
-                  style: labelStyle,
+                  style: labelStyle.copyWith(letterSpacing: 0.3),
                 ),
                 TextSpan(
                   text: SiteCardDimensions.accuracyPercentLabel(shownAccuracy),
@@ -315,7 +322,7 @@ class _HorizontalDimensionRow extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
           ),
         ),
-        const SizedBox(width: 6),
+        const SizedBox(width: 5),
         Expanded(
           child: display == null
               ? _AxisTrackPlaceholder(cardTheme: cardTheme)
@@ -324,7 +331,6 @@ class _HorizontalDimensionRow extends StatelessWidget {
                     rangeStart: display!.rangeStart,
                     rangeEnd: display!.rangeEnd,
                     trueValue: display!.trueValue,
-                    blurSigma: display!.blurSigma,
                     accuracy: display!.effectiveAccuracy,
                     showExactMarker: showExactMarker,
                     trackColor: cardTheme.cardTextMuted.withValues(alpha: 0.28),
@@ -353,10 +359,11 @@ class _VerticalDepthAxis extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final labelStyle = cardTheme.statLabelStyle(fontSize: 7);
+    final labelStyle = cardTheme.statLabelStyle(fontSize: 8.5);
     final accuracyStyle = labelStyle.copyWith(
       color: cardTheme.cardAccent,
       fontWeight: FontWeight.w700,
+      letterSpacing: 0.2,
     );
     final shownAccuracy = display?.effectiveAccuracy ?? accuracy;
     return Column(
@@ -366,12 +373,13 @@ class _VerticalDepthAxis extends StatelessWidget {
           textAlign: TextAlign.center,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: labelStyle,
+          style: labelStyle.copyWith(letterSpacing: 0.3),
         ),
         Text(
           SiteCardDimensions.accuracyPercentLabel(shownAccuracy),
           textAlign: TextAlign.center,
           maxLines: 1,
+          overflow: TextOverflow.ellipsis,
           style: accuracyStyle,
         ),
         const SizedBox(height: 2),
@@ -383,7 +391,6 @@ class _VerticalDepthAxis extends StatelessWidget {
                     rangeStart: display!.rangeStart,
                     rangeEnd: display!.rangeEnd,
                     trueValue: display!.trueValue,
-                    blurSigma: display!.blurSigma,
                     accuracy: display!.effectiveAccuracy,
                     showExactMarker: showExactMarker,
                     trackColor: cardTheme.cardTextMuted.withValues(alpha: 0.28),
@@ -414,7 +421,6 @@ class _AxisTrackPlaceholder extends StatelessWidget {
               rangeStart: null,
               rangeEnd: null,
               trueValue: null,
-              blurSigma: 0,
               accuracy: 0,
               showExactMarker: false,
               trackColor: cardTheme.cardTextMuted.withValues(alpha: 0.22),
@@ -425,7 +431,6 @@ class _AxisTrackPlaceholder extends StatelessWidget {
               rangeStart: null,
               rangeEnd: null,
               trueValue: null,
-              blurSigma: 0,
               accuracy: 0,
               showExactMarker: false,
               trackColor: cardTheme.cardTextMuted.withValues(alpha: 0.22),
@@ -441,7 +446,6 @@ class _HorizontalAxisPainter extends CustomPainter {
     required this.rangeStart,
     required this.rangeEnd,
     required this.trueValue,
-    required this.blurSigma,
     required this.accuracy,
     required this.showExactMarker,
     required this.trackColor,
@@ -452,7 +456,6 @@ class _HorizontalAxisPainter extends CustomPainter {
   final double? rangeStart;
   final double? rangeEnd;
   final double? trueValue;
-  final double blurSigma;
   final double accuracy;
   final bool showExactMarker;
   final Color trackColor;
@@ -477,9 +480,8 @@ class _HorizontalAxisPainter extends CustomPainter {
       return;
     }
 
-    final uncertainty = (1.0 - accuracy).clamp(0.0, 1.0);
-    final bandH = (6.0 + blurSigma * 0.75).clamp(6.0, 16.0);
-    _paintUncertaintyBand(
+    const bandH = 14.0;
+    _paintRangeBand(
       canvas,
       Rect.fromLTRB(
         x0,
@@ -488,9 +490,6 @@ class _HorizontalAxisPainter extends CustomPainter {
         cy + bandH / 2,
       ),
       color: bandColor,
-      blurSigma: blurSigma,
-      uncertainty: uncertainty,
-      vertical: false,
     );
 
     if (showExactMarker && trueValue != null) {
@@ -500,7 +499,7 @@ class _HorizontalAxisPainter extends CustomPainter {
   }
 
   void _paintHorizontalTrack(Canvas canvas, Size size, double cy) {
-    const trackH = 3.5;
+    const trackH = 5.0;
     // Soft trough behind the rail.
     canvas.drawRRect(
       RRect.fromLTRBR(
@@ -542,7 +541,6 @@ class _HorizontalAxisPainter extends CustomPainter {
     return oldDelegate.rangeStart != rangeStart ||
         oldDelegate.rangeEnd != rangeEnd ||
         oldDelegate.trueValue != trueValue ||
-        oldDelegate.blurSigma != blurSigma ||
         oldDelegate.accuracy != accuracy ||
         oldDelegate.showExactMarker != showExactMarker ||
         oldDelegate.trackColor != trackColor ||
@@ -556,7 +554,6 @@ class _VerticalAxisPainter extends CustomPainter {
     required this.rangeStart,
     required this.rangeEnd,
     required this.trueValue,
-    required this.blurSigma,
     required this.accuracy,
     required this.showExactMarker,
     required this.trackColor,
@@ -567,7 +564,6 @@ class _VerticalAxisPainter extends CustomPainter {
   final double? rangeStart;
   final double? rangeEnd;
   final double? trueValue;
-  final double blurSigma;
   final double accuracy;
   final bool showExactMarker;
   final Color trackColor;
@@ -593,9 +589,8 @@ class _VerticalAxisPainter extends CustomPainter {
       return;
     }
 
-    final uncertainty = (1.0 - accuracy).clamp(0.0, 1.0);
-    final bandW = (6.0 + blurSigma * 0.75).clamp(6.0, 16.0);
-    _paintUncertaintyBand(
+    const bandW = 14.0;
+    _paintRangeBand(
       canvas,
       Rect.fromLTRB(
         cx - bandW / 2,
@@ -604,9 +599,6 @@ class _VerticalAxisPainter extends CustomPainter {
         math.max(y1, y0 + 2.5),
       ),
       color: bandColor,
-      blurSigma: blurSigma,
-      uncertainty: uncertainty,
-      vertical: true,
     );
 
     if (showExactMarker && trueValue != null) {
@@ -616,7 +608,7 @@ class _VerticalAxisPainter extends CustomPainter {
   }
 
   void _paintVerticalTrack(Canvas canvas, Size size, double cx) {
-    const trackW = 3.5;
+    const trackW = 5.0;
     canvas.drawRRect(
       RRect.fromLTRBR(
         cx - trackW,
@@ -656,7 +648,6 @@ class _VerticalAxisPainter extends CustomPainter {
     return oldDelegate.rangeStart != rangeStart ||
         oldDelegate.rangeEnd != rangeEnd ||
         oldDelegate.trueValue != trueValue ||
-        oldDelegate.blurSigma != blurSigma ||
         oldDelegate.accuracy != accuracy ||
         oldDelegate.showExactMarker != showExactMarker ||
         oldDelegate.trackColor != trackColor ||
@@ -721,65 +712,22 @@ void _paintPreciseMarker(
   }
 }
 
-void _paintUncertaintyBand(
+/// Timeline-style range band: solid fill + border, no blur haze.
+void _paintRangeBand(
   Canvas canvas,
   Rect rect, {
   required Color color,
-  required double blurSigma,
-  required double uncertainty,
-  required bool vertical,
 }) {
-  final radius = math.min(rect.shortestSide / 2, 8.0);
-  final rrect = RRect.fromRectAndRadius(rect, Radius.circular(radius));
-  final sigma = math.max(blurSigma, 1.0);
-
-  // Wide atmospheric fog — dominates at accuracy 0.
+  final rrect = RRect.fromRectAndRadius(rect, const Radius.circular(3));
   canvas.drawRRect(
-    rrect.inflate(sigma * 1.15),
-    Paint()
-      ..color = color.withValues(alpha: 0.12 + uncertainty * 0.18)
-      ..maskFilter = ui.MaskFilter.blur(ui.BlurStyle.normal, sigma * 1.35),
+    rrect,
+    Paint()..color = color.withValues(alpha: 0.2),
   );
-  canvas.drawRRect(
-    rrect.inflate(sigma * 0.55),
-    Paint()
-      ..color = color.withValues(alpha: 0.18 + uncertainty * 0.22)
-      ..maskFilter = ui.MaskFilter.blur(ui.BlurStyle.normal, sigma * 0.9),
-  );
-
-  // Soft gradient core (not a hard bar) so the true value stays obscured.
-  final shaderRect = vertical
-      ? Rect.fromLTWH(rect.left, rect.top, rect.width, rect.height)
-      : Rect.fromLTWH(rect.left, rect.top, rect.width, rect.height);
-  final mid = color.withValues(alpha: 0.28 + (1.0 - uncertainty) * 0.35);
-  final edge = color.withValues(alpha: 0.06 + (1.0 - uncertainty) * 0.12);
   canvas.drawRRect(
     rrect,
     Paint()
-      ..shader = ui.Gradient.linear(
-        vertical ? shaderRect.topCenter : shaderRect.centerLeft,
-        vertical ? shaderRect.bottomCenter : shaderRect.centerRight,
-        [edge, mid, edge],
-        const [0.0, 0.5, 1.0],
-      )
-      ..maskFilter = ui.MaskFilter.blur(
-        ui.BlurStyle.normal,
-        sigma * (0.25 + uncertainty * 0.45),
-      ),
+      ..color = color.withValues(alpha: 0.55)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1,
   );
-
-  // Faint inner streak only when somewhat accurate — still soft.
-  if (uncertainty < 0.65) {
-    final inset = uncertainty * 1.8;
-    final core = rrect.deflate(inset);
-    canvas.drawRRect(
-      core,
-      Paint()
-        ..color = color.withValues(alpha: 0.35 * (1.0 - uncertainty))
-        ..maskFilter = ui.MaskFilter.blur(
-          ui.BlurStyle.normal,
-          1.2 + uncertainty * 2.5,
-        ),
-    );
-  }
 }
