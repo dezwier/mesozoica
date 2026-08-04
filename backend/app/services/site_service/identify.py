@@ -200,7 +200,7 @@ def _rock_choices_for_period(
     correct_rock: str,
     user_id: int,
     site_id: int,
-    count: int = 6,
+    count: int = 4,
 ) -> tuple[list[str], dict[str, str]]:
     """Return ``count`` rock types (incl. correct) and Original image URLs."""
     from app.services.site_service.rules import ROCK_TYPES
