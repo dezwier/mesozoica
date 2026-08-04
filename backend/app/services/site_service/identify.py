@@ -50,6 +50,7 @@ WRONG_MESSAGE = "That doesn't look quite right"
 class IdentifyOptionsResult:
     step: str
     choices: list[str]
+    answer: str
     period_identified: bool
     rock_identified: bool
     identified: bool
@@ -254,6 +255,7 @@ def get_identify_options(
         return IdentifyOptionsResult(
             step=IDENTIFY_STEP_PERIOD,
             choices=list(MESOZOIC_PERIODS),
+            answer=period,
             period_identified=False,
             rock_identified=False,
             identified=identified,
@@ -271,6 +273,7 @@ def get_identify_options(
     return IdentifyOptionsResult(
         step=IDENTIFY_STEP_ROCK,
         choices=choices,
+        answer=rock,
         period_identified=True,
         rock_identified=bool(link.rock_identified),
         identified=identified,
@@ -336,17 +339,16 @@ def submit_identify_guess(
         wrongs = int(link.identify_rock_wrongs or 0)
 
     options = get_identify_options(session, site_id=site_id, user_id=user_id)
-    if wrongs >= len(options.choices):
-        raise ValidationError("No attempts remaining for this step")
-
     if normalized_guess not in {c.lower() for c in options.choices}:
         raise ValidationError("guess is not a valid option for this step")
 
     if normalized_guess != correct_value:
+        # Count unique wrongs only enough for XP scaling; never block further tries.
+        next_wrongs = min(wrongs + 1, max(len(options.choices) - 1, 1))
         if normalized_step == IDENTIFY_STEP_PERIOD:
-            link.identify_period_wrongs = wrongs + 1
+            link.identify_period_wrongs = next_wrongs
         else:
-            link.identify_rock_wrongs = wrongs + 1
+            link.identify_rock_wrongs = next_wrongs
         session.add(link)
         session.commit()
         session.refresh(link)

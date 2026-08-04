@@ -94,7 +94,7 @@ class _SiteIdentifySheetState extends State<SiteIdentifySheet> {
   bool _submitting = false;
   String? _error;
 
-  /// Brief positive flash after a correct guess (period or rock).
+  /// Instant local correct flash (answer comes with options).
   String? _successGuess;
 
   /// 0 = oldest (252 Ma / Triassic left), 1 = youngest (66 Ma / Cretaceous right).
@@ -111,6 +111,7 @@ class _SiteIdentifySheetState extends State<SiteIdentifySheet> {
       _loading = true;
       _error = null;
       _disabled.clear();
+      _successGuess = null;
     });
     try {
       final options = await _service.fetchIdentifyOptions(widget.site.siteId);
@@ -141,13 +142,28 @@ class _SiteIdentifySheetState extends State<SiteIdentifySheet> {
     if (options == null ||
         _submitting ||
         _successGuess != null ||
-        _disabled.contains(guess)) {
+        _disabled.contains(guess) ||
+        options.answer.isEmpty) {
       return;
     }
+
+    final correct = guess == options.answer;
+
+    if (!correct) {
+      HapticFeedback.selectionClick();
+      setState(() => _disabled.add(guess));
+      await _recordGuess(options: options, guess: guess);
+      return;
+    }
+
+    // Instant green feedback from local answer, then confirm with API.
+    HapticFeedback.mediumImpact();
     setState(() {
       _submitting = true;
+      _successGuess = guess;
       _error = null;
     });
+
     try {
       final result = await _service.submitIdentifyGuess(
         siteId: widget.site.siteId,
@@ -162,19 +178,7 @@ class _SiteIdentifySheetState extends State<SiteIdentifySheet> {
         // Tests / previews without AuthController.
       }
 
-      if (!result.correct) {
-        setState(() {
-          _submitting = false;
-          _disabled.addAll(result.disabledGuesses);
-        });
-        return;
-      }
-
-      HapticFeedback.mediumImpact();
-      setState(() {
-        _submitting = false;
-        _successGuess = guess;
-      });
+      // Hold green for a beat even if the network was fast.
       await Future<void>.delayed(const Duration(seconds: 1));
       if (!mounted) return;
 
@@ -184,6 +188,7 @@ class _SiteIdentifySheetState extends State<SiteIdentifySheet> {
       }
 
       setState(() {
+        _submitting = false;
         _successGuess = null;
         _disabled.clear();
       });
@@ -195,6 +200,27 @@ class _SiteIdentifySheetState extends State<SiteIdentifySheet> {
         _successGuess = null;
         _error = e.toString();
       });
+    }
+  }
+
+  Future<void> _recordGuess({
+    required SiteIdentifyOptions options,
+    required String guess,
+  }) async {
+    try {
+      final result = await _service.submitIdentifyGuess(
+        siteId: widget.site.siteId,
+        step: options.step,
+        guess: guess,
+      );
+      if (!mounted) return;
+      try {
+        context.read<AuthController>().applyUser(result.profile);
+      } on ProviderNotFoundException {
+        // Tests / previews without AuthController.
+      }
+    } catch (_) {
+      // Local disable already applied; server sync is best-effort for wrongs.
     }
   }
 
@@ -278,6 +304,7 @@ class _SiteIdentifySheetState extends State<SiteIdentifySheet> {
                     child: _PeriodTimelineSlider(
                       value: _periodSlider,
                       disabledPeriods: _disabled,
+                      highlightPeriod: _successGuess,
                       onChanged: (_submitting || _successGuess != null)
                           ? null
                           : (v) {
@@ -335,11 +362,7 @@ class _SiteIdentifySheetState extends State<SiteIdentifySheet> {
                         ),
                       ),
                       child: Text(
-                        _successGuess != null
-                            ? 'Correct!'
-                            : _submitting
-                                ? 'Checking…'
-                                : 'Confirm period',
+                        _successGuess != null ? 'Correct!' : 'Confirm period',
                         style: const TextStyle(fontWeight: FontWeight.w700),
                       ),
                     ),
@@ -360,14 +383,14 @@ class _SiteIdentifySheetState extends State<SiteIdentifySheet> {
                       ),
                       itemBuilder: (context, index) {
                         final choice = options.choices[index];
+                        final isSuccess = _successGuess == choice;
                         return _IdentifyRockTile(
                           label: toTitleCase(choice),
                           imageUrl: options.choiceImages[choice],
                           disabled: _disabled.contains(choice) ||
                               _submitting ||
-                              (_successGuess != null &&
-                                  _successGuess != choice),
-                          correct: _successGuess == choice,
+                              (_successGuess != null && !isSuccess),
+                          correct: isSuccess,
                           onPressed: () => _onGuess(choice),
                         );
                       },
@@ -399,11 +422,13 @@ class _PeriodTimelineSlider extends StatelessWidget {
     required this.value,
     required this.disabledPeriods,
     required this.onChanged,
+    this.highlightPeriod,
   });
 
   final double value;
   final Set<String> disabledPeriods;
   final ValueChanged<double>? onChanged;
+  final String? highlightPeriod;
 
   static const _boundaries = [252.0, 201.0, 145.0, 66.0];
   static const _periods = [
@@ -411,6 +436,7 @@ class _PeriodTimelineSlider extends StatelessWidget {
     (key: 'jurassic', label: 'Jurassic', start: 201.0, end: 145.0),
     (key: 'cretaceous', label: 'Cretaceous', start: 145.0, end: 66.0),
   ];
+  static const _successGreen = Color(0xFF2E7D32);
 
   /// Slider t: 0 = oldest (252 Ma, left), 1 = youngest (66 Ma, right).
   double _tForMa(double ma) =>
@@ -456,9 +482,11 @@ class _PeriodTimelineSlider extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
-                      color: disabledPeriods.contains(period.key)
-                          ? muted.withValues(alpha: 0.35)
-                          : muted,
+                      color: highlightPeriod == period.key
+                          ? _successGreen
+                          : disabledPeriods.contains(period.key)
+                              ? muted.withValues(alpha: 0.35)
+                              : muted,
                     ),
                   ),
                 ),
@@ -472,9 +500,11 @@ class _PeriodTimelineSlider extends StatelessWidget {
                   height: barHeight,
                   child: DecoratedBox(
                     decoration: BoxDecoration(
-                      color: disabledPeriods.contains(_periods[i].key)
-                          ? scheme.outlineVariant.withValues(alpha: 0.35)
-                          : scheme.primary.withValues(alpha: 0.22 + i * 0.14),
+                      color: highlightPeriod == _periods[i].key
+                          ? _successGreen
+                          : disabledPeriods.contains(_periods[i].key)
+                              ? scheme.outlineVariant.withValues(alpha: 0.35)
+                              : scheme.primary.withValues(alpha: 0.22 + i * 0.14),
                       borderRadius: BorderRadius.horizontal(
                         left: i == 0 ? const Radius.circular(5) : Radius.zero,
                         right: i == _periods.length - 1
@@ -711,9 +741,22 @@ class _IdentifyRockTile extends StatelessWidget {
                   ),
                 ),
               ),
-              if (correct)
-                const ColoredBox(color: Color(0x402E7D32))
-              else if (disabled)
+              if (correct) ...[
+                const ColoredBox(color: Color(0x552E7D32)),
+                const Center(
+                  child: Icon(
+                    Icons.check_circle_rounded,
+                    color: Colors.white,
+                    size: 48,
+                    shadows: [
+                      Shadow(
+                        color: Color(0x99000000),
+                        blurRadius: 8,
+                      ),
+                    ],
+                  ),
+                ),
+              ] else if (disabled)
                 ColoredBox(
                   color: scheme.surface.withValues(alpha: 0.28),
                 ),

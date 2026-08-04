@@ -118,6 +118,7 @@ class SiteIdentifyOptions {
   const SiteIdentifyOptions({
     required this.step,
     required this.choices,
+    required this.answer,
     this.periodIdentified = false,
     this.rockIdentified = false,
     this.identified = false,
@@ -127,6 +128,9 @@ class SiteIdentifyOptions {
 
   final String step;
   final List<String> choices;
+
+  /// Correct choice for this step (for instant local feedback).
+  final String answer;
   final bool periodIdentified;
   final bool rockIdentified;
   final bool identified;
@@ -151,11 +155,14 @@ class SiteIdentifyOptions {
         }
       }
     }
+    final choices = raw is List
+        ? raw.whereType<String>().map((e) => e.toLowerCase()).toList()
+        : const <String>[];
+    final answer = (json['answer'] as String?)?.trim().toLowerCase() ?? '';
     return SiteIdentifyOptions(
       step: json['step'] as String? ?? 'period',
-      choices: raw is List
-          ? raw.whereType<String>().map((e) => e.toLowerCase()).toList()
-          : const [],
+      choices: choices,
+      answer: answer,
       periodIdentified: json['period_identified'] as bool? ?? false,
       rockIdentified: json['rock_identified'] as bool? ?? false,
       identified: json['identified'] as bool? ?? false,

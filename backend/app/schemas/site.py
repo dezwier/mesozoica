@@ -238,6 +238,9 @@ class IdentifySiteRequest(BaseModel):
 class IdentifyOptionsResponse(BaseModel):
     step: str
     choices: list[str]
+    answer: str = Field(
+        description="Correct choice for this step so the client can give instant feedback",
+    )
     period_identified: bool = False
     rock_identified: bool = False
     identified: bool = False

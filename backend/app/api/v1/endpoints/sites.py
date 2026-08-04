@@ -571,6 +571,7 @@ def get_site_identify_options(
     return IdentifyOptionsResponse(
         step=result.step,
         choices=result.choices,
+        answer=result.answer,
         period_identified=result.period_identified,
         rock_identified=result.rock_identified,
         identified=result.identified,

@@ -166,6 +166,7 @@ def test_identify_wrong_then_right_awards_scaled_xp(session: Session) -> None:
     )
     assert options.step == IDENTIFY_STEP_PERIOD
     assert set(options.choices) == {"triassic", "jurassic", "cretaceous"}
+    assert options.answer == "cretaceous"
 
     wrong = submit_identify_guess(
         session,
@@ -196,6 +197,7 @@ def test_identify_wrong_then_right_awards_scaled_xp(session: Session) -> None:
     )
     assert rock_opts.step == IDENTIFY_STEP_ROCK
     assert "sandstone" in rock_opts.choices
+    assert rock_opts.answer == "sandstone"
     assert len(rock_opts.choices) == 4
     assert len(set(rock_opts.choices)) == 4
 
