@@ -10,6 +10,7 @@ from app.api.v1.endpoints import (
     dinosaurs,
     fossil_images,
     fossils,
+    game_config,
     notifications,
     root,
     site_type_images,
@@ -24,6 +25,7 @@ from app.api.v1.endpoints import (
 
 api_router = APIRouter()
 api_router.include_router(root.router)
+api_router.include_router(game_config.router)
 api_router.include_router(dinosaurs.router)
 api_router.include_router(fossils.router)
 api_router.include_router(sites.router)

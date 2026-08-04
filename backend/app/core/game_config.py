@@ -1791,6 +1791,32 @@ def load_game_config(config_dir: Path | None = None) -> GameConfig:
     )
 
 
+def load_game_config_raw(config_dir: Path | None = None) -> dict[str, Any]:
+    """Return the raw (pre-validation) control-board sections as a plain dict.
+
+    Keys mirror the YAML files and the field names on :class:`GameConfig`
+    (``site_generation``, each skill id, ``tool_actions``, ``period_colors``,
+    ``rock_type_colors``, ``leveling``). This is the exact structure served to
+    clients over the API so they parse the same shape they would from the
+    bundled YAML fallback. Validation is done separately via
+    :func:`load_game_config`.
+    """
+    directory = config_dir or resolve_game_config_dir()
+    if not directory.is_dir():
+        raise FileNotFoundError(f"Missing game config directory: {directory}")
+
+    sections: dict[str, Any] = {
+        "site_generation": _load_yaml(directory / "site_generation.yaml"),
+    }
+    for skill_id, filename in SKILL_YAML_FILES:
+        sections[skill_id] = _load_yaml(directory / filename)
+    sections["tool_actions"] = _load_yaml(directory / "tool_actions.yaml")
+    sections["period_colors"] = _load_yaml(directory / "period_colors.yaml")
+    sections["rock_type_colors"] = _load_yaml(directory / "rock_type_colors.yaml")
+    sections["leveling"] = _load_yaml(directory / "leveling.yaml")
+    return sections
+
+
 @lru_cache(maxsize=1)
 def get_game_config() -> GameConfig:
     """Process-wide singleton; clear with ``get_game_config.cache_clear()`` in tests."""
