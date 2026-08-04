@@ -18,6 +18,7 @@ from app.models.user_site import (
     ROLE_TO_STATUS,
     SITE_STATUS_DISCOVERED,
     SITE_STATUS_HIDDEN,
+    SITE_STATUS_IDENTIFIED,
     SITE_STATUSES,
     USER_SITE_ROLE_DISCOVERER,
     UserSite,
@@ -61,9 +62,11 @@ def set_site_status(
     ``lat``/``lon`` are optional for non-hidden statuses.
     """
     normalized = (status or "").strip().lower()
-    if normalized not in SITE_STATUSES:
+    if normalized not in SITE_STATUSES or normalized == SITE_STATUS_IDENTIFIED:
         raise ValidationError(
-            f"status must be one of: {', '.join(SITE_STATUSES)}"
+            f"status must be one of: {', '.join(
+                s for s in SITE_STATUSES if s != SITE_STATUS_IDENTIFIED
+            )}"
         )
 
     site = session.get(Site, site_id)

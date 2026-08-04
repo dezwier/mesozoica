@@ -19,6 +19,7 @@ class SiteCardHeader extends StatelessWidget {
     this.showSubtitle = true,
     this.subtitleOverride,
     this.titleMaxLines = 1,
+    this.titleTrailing,
   });
 
   final SiteSummary site;
@@ -31,6 +32,8 @@ class SiteCardHeader extends StatelessWidget {
   /// When set, shown as the subtitle instead of the collection line.
   final String? subtitleOverride;
   final int titleMaxLines;
+  /// Optional widget shown inline after the title (e.g. Identify button).
+  final Widget? titleTrailing;
 
   @override
   Widget build(BuildContext context) {
@@ -48,28 +51,30 @@ class SiteCardHeader extends StatelessWidget {
           );
     final subtitle = subtitleOverride ??
         site.displaySubtitle(distanceMeters: _distanceMeters(context));
+    final trailing = titleTrailing;
+    final titleText = CardAdaptiveTitleText(
+      text: site.displayTitle,
+      style: titleStyle,
+      textAlign: centered ? TextAlign.center : TextAlign.start,
+      maxLines: titleMaxLines,
+    );
+    final titleRow = trailing == null
+        ? (centered
+            ? SizedBox(width: double.infinity, child: titleText)
+            : titleText)
+        : Row(
+            children: [
+              Expanded(child: titleText),
+              const SizedBox(width: 8),
+              trailing,
+            ],
+          );
 
     return Column(
       crossAxisAlignment:
           centered ? CrossAxisAlignment.center : CrossAxisAlignment.start,
       children: [
-        if (centered)
-          SizedBox(
-            width: double.infinity,
-            child: CardAdaptiveTitleText(
-              text: site.displayTitle,
-              style: titleStyle,
-              textAlign: TextAlign.center,
-              maxLines: titleMaxLines,
-            ),
-          )
-        else
-          CardAdaptiveTitleText(
-            text: site.displayTitle,
-            style: titleStyle,
-            textAlign: TextAlign.start,
-            maxLines: titleMaxLines,
-          ),
+        titleRow,
         if (showSubtitle && subtitle.isNotEmpty) ...[
           const SizedBox(height: 8),
           Text(

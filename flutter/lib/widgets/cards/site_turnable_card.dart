@@ -100,6 +100,7 @@ class _SiteTurnableCardState extends State<SiteTurnableCard> {
             widget.site.viewerWasFirstDocumentation ||
         oldWidget.site.viewerHasIdentified !=
             widget.site.viewerHasIdentified ||
+        oldWidget.site.identifiedAt != widget.site.identifiedAt ||
         oldWidget.site.exploredDistanceM != widget.site.exploredDistanceM ||
         oldWidget.site.siteTypePeriod != widget.site.siteTypePeriod ||
         oldWidget.site.oddDinoBand?.effectiveAccuracy !=
@@ -206,6 +207,7 @@ class _SiteTurnableCardState extends State<SiteTurnableCard> {
         subtitleFontSize: widget.subtitleFontSize,
         overlayHeightFactor: widget.overlayHeightFactor,
         onStatusSelected: hasStatus && showAdminUi ? _onStatusSelected : null,
+        onSiteUpdated: _onSiteIdentified,
       ),
       back: SiteCardBack(
         site: displaySite,

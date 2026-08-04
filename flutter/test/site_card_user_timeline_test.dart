@@ -35,6 +35,25 @@ void main() {
     expect(entries.single.wasFirst, isTrue);
   });
 
+  test('timeline shows identified between discovered and documented', () {
+    final site = SiteSummary(
+      siteId: 6,
+      howDiscovered: SiteSummary.howDiscoveredWalk,
+      discoveredAt: DateTime.utc(2026, 7, 1, 12),
+      viewerHasIdentified: true,
+      identifiedAt: DateTime.utc(2026, 7, 1, 13),
+      status: 'identified',
+      documented: true,
+      documentedAt: DateTime.utc(2026, 7, 2, 12),
+    );
+    final entries = SiteCardUserTimeline.entriesFor(site);
+    expect(
+      entries.map((e) => e.moment),
+      ['Discovered', 'Identified', 'Documented'],
+    );
+    expect(entries[1].whenLabel, isNot(equals('—')));
+  });
+
   test('timeline appends First on same documented line', () {
     final site = SiteSummary(
       siteId: 5,

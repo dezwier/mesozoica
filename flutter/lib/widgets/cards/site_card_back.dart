@@ -54,7 +54,7 @@ class SiteCardBack extends StatelessWidget {
           ),
           Positioned(
             left: 18,
-            right: showIdentify ? 52 : 18,
+            right: 18,
             top: 20,
             child: SiteCardHeader(
               site: site,
@@ -63,28 +63,13 @@ class SiteCardBack extends StatelessWidget {
               centered: true,
               overlayOnImage: true,
               showSubtitle: false,
+              titleTrailing: showIdentify
+                  ? SiteIdentifyTitleButton(
+                      onPressed: () => _openIdentify(context),
+                    )
+                  : null,
             ),
           ),
-          if (showIdentify)
-            Positioned(
-              top: 14,
-              right: 10,
-              child: TextButton(
-                onPressed: () => _openIdentify(context),
-                style: TextButton.styleFrom(
-                  foregroundColor: const Color(0xE6F5F0E8),
-                  backgroundColor: const Color(0x66000000),
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  minimumSize: Size.zero,
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  visualDensity: VisualDensity.compact,
-                ),
-                child: const Text(
-                  'Identify',
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
-                ),
-              ),
-            ),
           Positioned(
             left: 18,
             right: 18,

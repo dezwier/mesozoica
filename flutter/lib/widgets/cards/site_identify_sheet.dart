@@ -6,16 +6,18 @@ import '../../models/site.dart';
 import '../../models/site_field.dart';
 import '../../services/site_service.dart';
 import '../../utils/display_text.dart';
+import 'site_card_image.dart';
 
 /// Bottom sheet: period then rock-type identification quiz for a field site.
 Future<SiteSummary?> showSiteIdentifySheet(
   BuildContext context, {
   required SiteSummary site,
 }) {
+  final scheme = Theme.of(context).colorScheme;
   return showModalBottomSheet<SiteSummary>(
     context: context,
     isScrollControlled: true,
-    backgroundColor: const Color(0xFF2A2620),
+    backgroundColor: scheme.surface,
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
     ),
@@ -41,7 +43,6 @@ class _SiteIdentifySheetState extends State<SiteIdentifySheet> {
   bool _submitting = false;
   String? _error;
   SiteSummary? _latestSite;
-  int _totalXp = 0;
 
   @override
   void initState() {
@@ -108,7 +109,6 @@ class _SiteIdentifySheetState extends State<SiteIdentifySheet> {
         return;
       }
 
-      _totalXp += result.xpAwarded;
       _latestSite = result.site;
 
       if (result.identified) {
@@ -121,9 +121,7 @@ class _SiteIdentifySheetState extends State<SiteIdentifySheet> {
       setState(() {
         _submitting = false;
         _disabled.clear();
-        _message = result.xpAwarded > 0
-            ? 'Correct! +${result.xpAwarded} XP'
-            : 'Correct!';
+        _message = null;
       });
       await _loadOptions();
     } catch (e) {
@@ -135,100 +133,106 @@ class _SiteIdentifySheetState extends State<SiteIdentifySheet> {
     }
   }
 
+  String get _question {
+    final step = _options?.step;
+    if (step == 'rock_type') {
+      return 'Which rock type do you see?';
+    }
+    return 'From which period would you say this site is?';
+  }
+
   @override
   Widget build(BuildContext context) {
     final bottom = MediaQuery.viewInsetsOf(context).bottom;
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
     final options = _options;
-    final stepLabel = options?.step == 'rock_type'
-        ? 'What rock type is this site?'
-        : 'Which period is this site from?';
+    final maxHeight = MediaQuery.sizeOf(context).height * 0.88;
 
-    return Padding(
-      padding: EdgeInsets.fromLTRB(20, 16, 20, 20 + bottom),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Center(
-            child: Container(
-              width: 36,
-              height: 4,
-              decoration: BoxDecoration(
-                color: const Color(0x66F5F0E8),
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-          ),
-          const SizedBox(height: 14),
-          Text(
-            'Identify site',
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  color: const Color(0xFFF5F0E8),
-                  fontWeight: FontWeight.w700,
-                ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            stepLabel,
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: const Color(0xCCF5F0E8),
-                ),
-          ),
-          if (_totalXp > 0) ...[
-            const SizedBox(height: 4),
-            Text(
-              'XP earned: $_totalXp',
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: const Color(0xFFB8D4A8),
+    return SafeArea(
+      top: false,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxHeight: maxHeight),
+        child: Padding(
+          padding: EdgeInsets.fromLTRB(20, 10, 20, 16 + bottom),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Center(
+                child: Container(
+                  width: 36,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: scheme.onSurfaceVariant.withValues(alpha: 0.35),
+                    borderRadius: BorderRadius.circular(2),
                   ),
-            ),
-          ],
-          const SizedBox(height: 16),
-          if (_loading)
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 24),
-              child: Center(
-                child: CircularProgressIndicator(color: Color(0xFFF5F0E8)),
-              ),
-            )
-          else if (_error != null)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              child: Text(
-                _error!,
-                textAlign: TextAlign.center,
-                style: const TextStyle(color: Color(0xFFE8A0A0)),
-              ),
-            )
-          else if (options != null)
-            for (final choice in options.choices) ...[
-              Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: _IdentifyChoiceButton(
-                  label: toTitleCase(choice),
-                  disabled: _disabled.contains(choice) || _submitting,
-                  onPressed: () => _onGuess(choice),
                 ),
               ),
-            ],
-          if (_message != null) ...[
-            const SizedBox(height: 4),
-            Text(
-              _message!,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: _message!.startsWith('Correct')
-                    ? const Color(0xFFB8D4A8)
-                    : const Color(0xFFE8C49A),
-                fontWeight: FontWeight.w600,
+              const SizedBox(height: 14),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(14),
+                child: AspectRatio(
+                  aspectRatio: 4 / 3,
+                  child: SiteCardImage(imageUrl: widget.site.mainImageUrl),
+                ),
               ),
-            ),
-          ],
-          const SizedBox(height: 8),
-        ],
+              const SizedBox(height: 16),
+              Text(
+                _question,
+                textAlign: TextAlign.center,
+                style: textTheme.titleMedium?.copyWith(
+                  color: scheme.onSurface,
+                  fontWeight: FontWeight.w700,
+                  height: 1.25,
+                ),
+              ),
+              const SizedBox(height: 14),
+              if (_loading)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 28),
+                  child: Center(
+                    child: CircularProgressIndicator(color: scheme.primary),
+                  ),
+                )
+              else if (_error != null)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  child: Text(
+                    _error!,
+                    textAlign: TextAlign.center,
+                    style: textTheme.bodyMedium?.copyWith(
+                      color: scheme.error,
+                    ),
+                  ),
+                )
+              else if (options != null)
+                for (final choice in options.choices) ...[
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: _IdentifyChoiceButton(
+                      label: toTitleCase(choice),
+                      disabled: _disabled.contains(choice) || _submitting,
+                      onPressed: () => _onGuess(choice),
+                    ),
+                  ),
+                ],
+              if (_message != null) ...[
+                const SizedBox(height: 4),
+                Text(
+                  _message!,
+                  textAlign: TextAlign.center,
+                  style: textTheme.bodyMedium?.copyWith(
+                    color: _message!.startsWith('Correct')
+                        ? scheme.primary
+                        : scheme.tertiary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -247,19 +251,70 @@ class _IdentifyChoiceButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return OutlinedButton(
       onPressed: disabled ? null : onPressed,
       style: OutlinedButton.styleFrom(
-        foregroundColor: const Color(0xFFF5F0E8),
-        disabledForegroundColor: const Color(0x66F5F0E8),
+        foregroundColor: scheme.onSurface,
+        disabledForegroundColor: scheme.onSurface.withValues(alpha: 0.38),
+        backgroundColor: scheme.surfaceContainerHighest.withValues(alpha: 0.45),
+        disabledBackgroundColor:
+            scheme.surfaceContainerHighest.withValues(alpha: 0.2),
         side: BorderSide(
           color: disabled
-              ? const Color(0x33F5F0E8)
-              : const Color(0x99F5F0E8),
+              ? scheme.outlineVariant
+              : scheme.outline.withValues(alpha: 0.7),
         ),
         padding: const EdgeInsets.symmetric(vertical: 14),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
-      child: Text(label),
+      child: Text(
+        label,
+        style: const TextStyle(fontWeight: FontWeight.w600),
+      ),
+    );
+  }
+}
+
+/// Compact cream chip used next to the card title on front and back.
+class SiteIdentifyTitleButton extends StatelessWidget {
+  const SiteIdentifyTitleButton({super.key, required this.onPressed});
+
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: const Color(0xE6F5F0E8),
+      borderRadius: BorderRadius.circular(16),
+      elevation: 1,
+      child: InkWell(
+        onTap: onPressed,
+        borderRadius: BorderRadius.circular(16),
+        child: const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.travel_explore,
+                size: 15,
+                color: Color(0xFF2A2620),
+              ),
+              SizedBox(width: 5),
+              Text(
+                'Identify',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF2A2620),
+                  height: 1.1,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

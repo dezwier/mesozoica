@@ -52,6 +52,7 @@ class SiteSummary {
     this.discoveredAt,
     this.discoveringSessionId,
     this.viewerWasFirstDiscovery,
+    this.identifiedAt,
     this.documentedAt,
     this.viewerWasFirstDocumentation,
     this.oddDinoCount,
@@ -96,6 +97,8 @@ class SiteSummary {
   final int? discoveringSessionId;
   /// True when the viewer was the first discoverer of this site.
   final bool? viewerWasFirstDiscovery;
+  /// When the viewing user completed period+rock identification.
+  final DateTime? identifiedAt;
   /// When the viewing user completed documentation (documenter user_site).
   final DateTime? documentedAt;
   /// True when the viewer was the first to fully document this site.
@@ -290,6 +293,7 @@ class SiteSummary {
       discoveredAt: _parseSiteDate(json['discovered_at']),
       discoveringSessionId: json['discovering_session_id'] as int?,
       viewerWasFirstDiscovery: json['viewer_was_first_discovery'] as bool?,
+      identifiedAt: _parseSiteDate(json['identified_at']),
       documentedAt: _parseSiteDate(json['documented_at']),
       viewerWasFirstDocumentation:
           json['viewer_was_first_documentation'] as bool?,
@@ -327,6 +331,7 @@ class SiteSummary {
     DateTime? discoveredAt,
     int? discoveringSessionId,
     bool? viewerWasFirstDiscovery,
+    DateTime? identifiedAt,
     DateTime? documentedAt,
     bool? viewerWasFirstDocumentation,
     String? howDiscovered,
@@ -366,6 +371,7 @@ class SiteSummary {
           discoveringSessionId ?? this.discoveringSessionId,
       viewerWasFirstDiscovery:
           viewerWasFirstDiscovery ?? this.viewerWasFirstDiscovery,
+      identifiedAt: identifiedAt ?? this.identifiedAt,
       documentedAt: documentedAt ?? this.documentedAt,
       viewerWasFirstDocumentation:
           viewerWasFirstDocumentation ?? this.viewerWasFirstDocumentation,

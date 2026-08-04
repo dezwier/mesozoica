@@ -74,6 +74,8 @@ class SiteSummary(BaseModel):
     discovering_session_id: int | None = None
     # True when the viewer's discoverer row was the site's first discovery.
     viewer_was_first_discovery: bool | None = None
+    # When the viewing user completed period+rock identification.
+    identified_at: datetime | None = None
     # Viewer's documenter UserSite timestamp (when authenticated and linked).
     documented_at: datetime | None = None
     # True when the viewer's documenter row was the site's first documentation.

@@ -149,6 +149,7 @@ abstract final class WeatherDisplay {
       'successful_site_disguise_xp': 'Site disguise',
       'site_exploration_xp': 'Site exploration XP',
       'site_documentation_xp': 'Site documentation',
+      'site_identification_xp': 'Site identification',
       'first_documentation_xp': 'First documentation',
       'active_km_xp': 'Active km XP',
       'passive_km_xp': 'Passive km XP',

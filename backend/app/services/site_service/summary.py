@@ -12,6 +12,8 @@ from app.models.data_source import DATA_SOURCE_FIELD
 from app.models.site import Site
 from app.models.site_type import SiteType
 from app.models.user_site import (
+    SITE_STATUS_DISCOVERED,
+    SITE_STATUS_IDENTIFIED,
     USER_SITE_ROLE_DISCOVERER,
     USER_SITE_ROLE_DOCUMENTER,
     USER_SITE_ROLE_IDENTIFIER,
@@ -37,6 +39,7 @@ class SiteRow:
     discovered_at: datetime | None = None
     discovering_session_id: int | None = None
     viewer_was_first_discovery: bool | None = None
+    identified_at: datetime | None = None
     documented_at: datetime | None = None
     viewer_was_first_documentation: bool | None = None
     explored_distance_m: float | None = None
@@ -140,6 +143,15 @@ def site_row_to_summary(
         if max_age is None:
             max_age = period_max
 
+    # Viewer-facing status: discovered → identified after the quiz.
+    display_status = row.status
+    if (
+        is_field
+        and viewer_identified
+        and display_status == SITE_STATUS_DISCOVERED
+    ):
+        display_status = SITE_STATUS_IDENTIFIED
+
     return SiteSummary(
         site_id=site.site_id,
         latitude=_decimal_to_float(site.latitude),
@@ -156,10 +168,11 @@ def site_row_to_summary(
         main_image_url=_site_card_image_url(site, site_type),
         data_source=site.data_source,
         how_discovered=site.how_discovered,
-        status=row.status,
+        status=display_status,
         discovered_at=row.discovered_at,
         discovering_session_id=row.discovering_session_id,
         viewer_was_first_discovery=row.viewer_was_first_discovery,
+        identified_at=row.identified_at,
         documented_at=row.documented_at,
         viewer_was_first_documentation=row.viewer_was_first_documentation,
         odd_dino_count=(
@@ -233,7 +246,7 @@ def enrich_site_rows_for_viewer(
 
     discover_by_site: dict[int, UserSite] = {}
     document_by_site: dict[int, UserSite] = {}
-    identified_sites: set[int] = set()
+    identify_by_site: dict[int, UserSite] = {}
     for link in link_rows:
         site_id = int(link.site_id)
         if link.role == USER_SITE_ROLE_DISCOVERER:
@@ -241,13 +254,14 @@ def enrich_site_rows_for_viewer(
         elif link.role == USER_SITE_ROLE_DOCUMENTER:
             document_by_site[site_id] = link
         elif link.role == USER_SITE_ROLE_IDENTIFIER:
-            identified_sites.add(site_id)
+            identify_by_site[site_id] = link
 
     enriched: list[SiteRow] = []
     for row in rows:
         site_id = int(row.site.site_id)
         discover = discover_by_site.get(site_id)
         document = document_by_site.get(site_id)
+        identify = identify_by_site.get(site_id)
         has_documented = row.viewer_has_documented
         if has_documented is None:
             has_documented = document is not None
@@ -255,11 +269,12 @@ def enrich_site_rows_for_viewer(
             bool(discover.documented) if discover is not None else None
         )
         # Identifier role, or both quiz steps done on discoverer row.
-        has_identified = site_id in identified_sites
+        has_identified = identify is not None
         if not has_identified and discover is not None:
             has_identified = bool(
                 discover.period_identified and discover.rock_identified
             )
+        identified_at = identify.timestamp if identify is not None else None
         enriched.append(
             SiteRow(
                 site=row.site,
@@ -276,6 +291,7 @@ def enrich_site_rows_for_viewer(
                 viewer_was_first_discovery=(
                     bool(discover.was_first) if discover is not None else None
                 ),
+                identified_at=identified_at,
                 documented_at=(
                     document.timestamp if document is not None else None
                 ),

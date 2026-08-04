@@ -209,6 +209,8 @@ def test_identify_wrong_then_right_awards_scaled_xp(session: Session) -> None:
     assert done.xp_awarded == 40  # first rock attempt
     assert done.identified is True
     assert done.site.viewer_has_identified is True
+    assert done.site.status == "identified"
+    assert done.site.identified_at is not None
     assert done.site.site_type_period == "cretaceous"
     assert done.site.rock_type == "sandstone"
     assert done.site.min_age_ma == 66.0
@@ -276,4 +278,6 @@ def test_identify_api_endpoints(client: TestClient, session: Session) -> None:
     payload = rock.json()
     assert payload["identified"] is True
     assert payload["site"]["viewer_has_identified"] is True
+    assert payload["site"]["status"] == "identified"
+    assert payload["site"]["identified_at"] is not None
     assert payload["site"]["site_type_period"] == "cretaceous"

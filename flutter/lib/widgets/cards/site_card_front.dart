@@ -7,6 +7,7 @@ import '../../theme/dino_card_theme.dart';
 import 'occurrence_id_badge.dart';
 import 'site_card_header.dart';
 import 'site_card_image.dart';
+import 'site_identify_sheet.dart';
 import 'site_period_rock_type_lines.dart';
 import 'site_status_badge.dart';
 
@@ -23,6 +24,7 @@ class SiteCardFront extends StatelessWidget {
     this.titleMaxLines = 1,
     this.usePeriodRockTypeLines = false,
     this.onStatusSelected,
+    this.onSiteUpdated,
   });
 
   final SiteSummary site;
@@ -35,6 +37,14 @@ class SiteCardFront extends StatelessWidget {
   final int titleMaxLines;
   final bool usePeriodRockTypeLines;
   final ValueChanged<String>? onStatusSelected;
+  final ValueChanged<SiteSummary>? onSiteUpdated;
+
+  Future<void> _openIdentify(BuildContext context) async {
+    final updated = await showSiteIdentifySheet(context, site: site);
+    if (updated != null) {
+      onSiteUpdated?.call(updated);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -43,6 +53,7 @@ class SiteCardFront extends StatelessWidget {
     final showIdBadge = site.isFieldOccurrence;
     final showStatus =
         showStatusBadge && status != null && status.isNotEmpty;
+    final showIdentify = site.canIdentify;
 
     return AspectRatio(
       aspectRatio: DinoCardTheme.cardAspectRatio,
@@ -104,6 +115,11 @@ class SiteCardFront extends StatelessWidget {
                     overlayOnImage: true,
                     showSubtitle: showSubtitle,
                     titleMaxLines: titleMaxLines,
+                    titleTrailing: showIdentify
+                        ? SiteIdentifyTitleButton(
+                            onPressed: () => _openIdentify(context),
+                          )
+                        : null,
                   ),
           ),
         ],
