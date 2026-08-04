@@ -234,3 +234,31 @@ def send_site_discovered_push(
     )
     if invalid:
         remove_tokens(session, invalid)
+
+
+def send_site_documented_push(
+    session: Session,
+    *,
+    user_id: int,
+    site_id: int,
+    notification_id: int,
+    site_label: str,
+) -> None:
+    """Send FCM when a site is fully documented."""
+    tokens = get_device_tokens(session, user_id)
+    if not tokens:
+        return
+    badge_count = _get_unread_notification_badge_count(session, user_id)
+    invalid = send_push_to_tokens(
+        tokens,
+        title="Mesozoica",
+        body=f"Site documented: {site_label}",
+        data={
+            "type": "site_documented",
+            "site_id": str(site_id),
+            "notification_id": str(notification_id),
+        },
+        badge_count=badge_count,
+    )
+    if invalid:
+        remove_tokens(session, invalid)

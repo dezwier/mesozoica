@@ -8,12 +8,14 @@ import '../../theme/dino_card_theme.dart';
 import 'card_detail_sheet.dart';
 import 'site_turnable_card.dart';
 
-/// Celebration overlay after proximity (or notification-tap) discovery.
+/// Celebration overlay after proximity (or notification-tap) discovery /
+/// documentation.
 Future<void> showSiteDiscoveryCelebration(
   BuildContext context, {
   SiteSummary? site,
   int? siteId,
   SiteService? siteService,
+  String title = 'Site discovered!',
 }) {
   assert(site != null || siteId != null);
   return CardDetailSheet.show<void>(
@@ -22,7 +24,24 @@ Future<void> showSiteDiscoveryCelebration(
       site: site,
       siteId: siteId,
       siteService: siteService,
+      title: title,
     ),
+  );
+}
+
+/// Same card celebration used when a site becomes fully documented.
+Future<void> showSiteDocumentationCelebration(
+  BuildContext context, {
+  SiteSummary? site,
+  int? siteId,
+  SiteService? siteService,
+}) {
+  return showSiteDiscoveryCelebration(
+    context,
+    site: site,
+    siteId: siteId,
+    siteService: siteService,
+    title: 'Site documented!',
   );
 }
 
@@ -31,11 +50,13 @@ class _SiteDiscoveryCelebrationSheet extends StatefulWidget {
     this.site,
     this.siteId,
     this.siteService,
+    required this.title,
   });
 
   final SiteSummary? site;
   final int? siteId;
   final SiteService? siteService;
+  final String title;
 
   @override
   State<_SiteDiscoveryCelebrationSheet> createState() =>
@@ -124,12 +145,12 @@ class _SiteDiscoveryCelebrationSheetState
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Padding(
-                  padding: EdgeInsets.fromLTRB(20, 8, 20, 4),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 4),
                   child: Text(
-                    'Site discovered!',
+                    widget.title,
                     textAlign: TextAlign.center,
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontFamily: DinoCardTheme.titleFontFamily,
                       fontSize: 34,
                       fontWeight: FontWeight.w700,

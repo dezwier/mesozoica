@@ -184,9 +184,21 @@ def test_site_row_to_summary_includes_explored_distance() -> None:
     assert summary.documented is None
 
 
-def test_documentation_completes_and_freezes(session: Session) -> None:
+def test_documentation_completes_and_freezes(
+    session: Session, monkeypatch
+) -> None:
     from app.services.level_service.skills import set_skill_xp
     from app.services.level_service.xp_table import SKILL_THRESHOLDS
+
+    pushes: list[dict] = []
+
+    def _fake_push(session, **kwargs):
+        pushes.append(kwargs)
+
+    monkeypatch.setattr(
+        "app.services.site_exploration_service.send_site_documented_push",
+        _fake_push,
+    )
 
     user = _make_user(session, username="doc", email="doc@example.com")
     # High stewardship level so less walking is needed to hit 100%.
@@ -238,6 +250,20 @@ def test_documentation_completes_and_freezes(session: Session) -> None:
     assert profile.skill_breakdown["site_stewardship"]["site_documentation"] == 100
     assert profile.skill_breakdown["site_stewardship"]["first_documentation"] == 100
 
+    from app.models.user_notification import UserNotification, UserNotificationType
+
+    notif = session.exec(
+        select(UserNotification).where(
+            col(UserNotification.user_id) == user.id,
+            col(UserNotification.type) == UserNotificationType.SITE_DOCUMENTED,
+            col(UserNotification.site_id) == site.site_id,
+        )
+    ).first()
+    assert notif is not None
+    assert len(pushes) == 1
+    assert pushes[0]["site_id"] == site.site_id
+    assert pushes[0]["notification_id"] == notif.id
+
     xp_after = get_skill_xp(user, "site_stewardship")
     apply_site_exploration_update(
         session,
@@ -260,11 +286,28 @@ def test_documentation_completes_and_freezes(session: Session) -> None:
     assert (
         user.skill_breakdown["site_stewardship"]["first_documentation"] == 100
     )
+    # Frozen re-sync does not create another notification/push.
+    assert len(pushes) == 1
+    notif_count = session.exec(
+        select(UserNotification).where(
+            col(UserNotification.user_id) == user.id,
+            col(UserNotification.type) == UserNotificationType.SITE_DOCUMENTED,
+            col(UserNotification.site_id) == site.site_id,
+        )
+    ).all()
+    assert len(notif_count) == 1
 
 
-def test_second_documenter_skips_first_documentation_xp(session: Session) -> None:
+def test_second_documenter_skips_first_documentation_xp(
+    session: Session, monkeypatch
+) -> None:
     from app.services.level_service.skills import set_skill_xp
     from app.services.level_service.xp_table import SKILL_THRESHOLDS
+
+    monkeypatch.setattr(
+        "app.services.site_exploration_service.send_site_documented_push",
+        lambda *args, **kwargs: None,
+    )
 
     first = _make_user(session, username="doc1", email="doc1@example.com")
     second = _make_user(session, username="doc2", email="doc2@example.com")

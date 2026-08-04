@@ -94,13 +94,40 @@ mixin _AppShellDiscoveryMixin on State<AppShell> {
     _showPendingCelebrationIfAny();
   }
 
+  void _onExplorationChanged() {
+    if (!mounted) return;
+    final exploration = context.read<SiteExplorationController>();
+    final pending = exploration.pendingDocumentationCelebration;
+    if (pending == null) return;
+
+    context.read<MapController>().upsertSite(pending);
+    context.read<SiteCatalogController>().upsertSite(pending);
+    unawaited(context.read<AuthController>().refreshProfile());
+    _scheduleDiscoveryRefresh(siteId: pending.siteId);
+
+    if (!_appInForeground) return;
+    _showPendingDocumentationCelebrationIfAny();
+  }
+
   void _showPendingCelebrationIfAny() {
     if (!mounted) return;
     final discovery = context.read<FieldDiscoveryCoordinator>();
     final pending = discovery.pendingCelebration;
+    if (pending != null) {
+      discovery.consumeCelebration();
+      unawaited(_showCelebration(discover: pending));
+      return;
+    }
+    _showPendingDocumentationCelebrationIfAny();
+  }
+
+  void _showPendingDocumentationCelebrationIfAny() {
+    if (!mounted) return;
+    final exploration = context.read<SiteExplorationController>();
+    final pending = exploration.pendingDocumentationCelebration;
     if (pending == null) return;
-    discovery.consumeCelebration();
-    unawaited(_showCelebration(discover: pending));
+    exploration.consumeDocumentationCelebration();
+    unawaited(_showDocumentationCelebration(site: pending));
   }
 
   Future<void> _showCelebration({
@@ -124,6 +151,28 @@ mixin _AppShellDiscoveryMixin on State<AppShell> {
       await showFossilDiscoveryCelebrations(context, fossils: fossils);
       if (!mounted) return;
       unawaited(context.read<FossilCatalogController>().load(force: true));
+    } finally {
+      _celebrationShowing = false;
+      // Chain documentation celebration if it arrived while discovery was up.
+      if (mounted && _appInForeground) {
+        _showPendingDocumentationCelebrationIfAny();
+      }
+    }
+  }
+
+  Future<void> _showDocumentationCelebration({
+    SiteSummary? site,
+    int? siteId,
+  }) async {
+    if (!mounted || _celebrationShowing) return;
+    if (site == null && siteId == null) return;
+    _celebrationShowing = true;
+    try {
+      await showSiteDocumentationCelebration(
+        context,
+        site: site,
+        siteId: siteId,
+      );
     } finally {
       _celebrationShowing = false;
     }

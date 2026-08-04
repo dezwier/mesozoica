@@ -7,6 +7,7 @@ from sqlmodel import Session, col, select
 
 from app.models.data_source import DATA_SOURCE_FIELD
 from app.models.user import User
+from app.models.user_notification import UserNotification, UserNotificationType
 from app.models.user_site import (
     USER_SITE_ROLE_DISCOVERER,
     USER_SITE_ROLE_DOCUMENTER,
@@ -21,6 +22,8 @@ from app.services.level_service import (
     get_skill_xp,
     level_for_xp,
 )
+from app.services.push_service import send_site_documented_push
+from app.services.site_common.labels import site_display_title
 from app.services.site_service.dimension_display import site_is_fully_documented
 from app.services.site_service.list import get_site_by_id
 from app.services.site_service.summary import site_row_to_summary
@@ -71,13 +74,14 @@ def _maybe_complete_documentation(
     link: UserSite,
     *,
     skill_level: int,
-) -> bool:
+) -> UserNotification | None:
     """Award documentation XP and freeze the site when all dims hit 100%.
 
-    Returns True when the site is documented after this call.
+    Returns a new inbox notification when documentation was completed in this
+    call; otherwise None.
     """
     if bool(link.documented):
-        return True
+        return None
     row = get_site_by_id(
         session,
         int(link.site_id),
@@ -96,7 +100,7 @@ def _maybe_complete_documentation(
         skill_level=skill_level,
         explored_distance_m=explored,
     ):
-        return False
+        return None
     existing_documenter = session.exec(
         select(UserSite).where(
             col(UserSite.site_id) == int(link.site_id),
@@ -115,7 +119,13 @@ def _maybe_complete_documentation(
         site_id=int(link.site_id),
         was_first=is_first_documentation,
     )
-    return True
+    notification = UserNotification(
+        user_id=int(user.id),
+        type=UserNotificationType.SITE_DOCUMENTED,
+        site_id=int(link.site_id),
+    )
+    session.add(notification)
+    return notification
 
 
 def apply_site_exploration_update(
@@ -143,6 +153,7 @@ def apply_site_exploration_update(
 
     skill_level = level_for_xp(get_skill_xp(user, "site_stewardship"))
     updated_ids: list[int] = []
+    pending_doc_notifications: list[tuple[int, UserNotification]] = []
     for entry in payload.sites:
         link = by_site.get(int(entry.site_id))
         if link is None:
@@ -179,14 +190,34 @@ def apply_site_exploration_update(
 
         # Recompute skill level after possible exploration XP.
         skill_level = level_for_xp(get_skill_xp(user, "site_stewardship"))
-        _maybe_complete_documentation(
+        notification = _maybe_complete_documentation(
             session, user, link, skill_level=skill_level
         )
+        if notification is not None:
+            pending_doc_notifications.append((int(link.site_id), notification))
         updated_ids.append(int(entry.site_id))
 
     session.add(user)
     session.commit()
     session.refresh(user)
+
+    for site_id, notification in pending_doc_notifications:
+        session.refresh(notification)
+        if notification.id is None:
+            continue
+        row = get_site_by_id(
+            session,
+            site_id,
+            data_source=DATA_SOURCE_FIELD,
+            viewer_user_id=int(user.id),
+        )
+        send_site_documented_push(
+            session,
+            user_id=int(user.id),
+            site_id=site_id,
+            notification_id=notification.id,
+            site_label=site_display_title(row.site),
+        )
 
     skill_level = level_for_xp(get_skill_xp(user, "site_stewardship"))
     summaries: list[SiteSummary] = []

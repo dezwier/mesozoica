@@ -75,6 +75,7 @@ class _AppShellState extends State<AppShell>
   CatalogDataSource? _previousCatalogDataSource;
   CatalogModeController? _catalogModeController;
   FieldDiscoveryCoordinator? _discoveryCoordinator;
+  SiteExplorationController? _explorationController;
   MapController? _mapController;
   AerialSessionController? _aerialRecon;
   GuidanceSessionController? _guidance;
@@ -221,6 +222,9 @@ class _AppShellState extends State<AppShell>
               },
             ),
       );
+      final exploration = context.read<SiteExplorationController>();
+      _explorationController = exploration;
+      exploration.addListener(_onExplorationChanged);
       _setupPushHandling();
     });
   }
@@ -408,12 +412,13 @@ class _AppShellState extends State<AppShell>
       _foregroundPushSub = FirebaseMessaging.onMessage.listen((msg) {
         final type = msg.data['type']?.toString() ?? '';
         if (type != 'site_discovered' &&
+            type != 'site_documented' &&
             type != 'friend_request_received' &&
             type != 'friend_request_accepted') {
           return;
         }
         if (!mounted) return;
-        if (type == 'site_discovered') {
+        if (type == 'site_discovered' || type == 'site_documented') {
           final rawSiteId = msg.data['site_id'];
           final siteId =
               rawSiteId != null ? int.tryParse(rawSiteId.toString()) : null;
@@ -444,19 +449,26 @@ class _AppShellState extends State<AppShell>
 
   void _handlePushOpen(RemoteMessage msg) {
     final type = msg.data['type']?.toString() ?? '';
-    if (type != 'site_discovered') return;
     final rawSiteId = msg.data['site_id'];
     final siteId =
         rawSiteId != null ? int.tryParse(rawSiteId.toString()) : null;
     if (siteId == null) return;
-    _scheduleDiscoveryRefresh(siteId: siteId);
-    unawaited(_showCelebration(siteId: siteId));
+    if (type == 'site_discovered') {
+      _scheduleDiscoveryRefresh(siteId: siteId);
+      unawaited(_showCelebration(siteId: siteId));
+      return;
+    }
+    if (type == 'site_documented') {
+      _scheduleDiscoveryRefresh(siteId: siteId);
+      unawaited(_showDocumentationCelebration(siteId: siteId));
+    }
   }
 
   @override
   void dispose() {
     CardDetailSheet.openCount.removeListener(_onCardDetailOverlayChanged);
     _discoveryCoordinator?.removeListener(_onDiscoveryChanged);
+    _explorationController?.removeListener(_onExplorationChanged);
     _mapController?.removeListener(_onMapSitesChanged);
     _aerialRecon?.removeListener(_onAerialReconChanged);
     _guidance?.removeListener(_onGuidanceChanged);
@@ -694,6 +706,13 @@ class _AppShellState extends State<AppShell>
       if (siteId == null) return;
       _scheduleDiscoveryRefresh(siteId: siteId);
       unawaited(_showCelebration(siteId: siteId));
+      return;
+    }
+    if (item.isSiteDocumented) {
+      final siteId = item.siteId;
+      if (siteId == null) return;
+      _scheduleDiscoveryRefresh(siteId: siteId);
+      unawaited(_showDocumentationCelebration(siteId: siteId));
       return;
     }
     final actorUserId = item.actorUserId;

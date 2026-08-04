@@ -163,6 +163,49 @@ class _NotificationListContent extends StatelessWidget {
       );
     }
 
+    if (item.isSiteDocumented) {
+      final label =
+          item.siteLabel.isNotEmpty ? item.siteLabel : 'a field site';
+      return ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+        leading: Column(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.menu_book_outlined,
+              color: item.read
+                  ? colorScheme.onSurfaceVariant
+                  : colorScheme.primary,
+            ),
+            const SizedBox(height: 2),
+            Text(
+              timeText,
+              style: textTheme.labelSmall?.copyWith(
+                color: colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ),
+        title: Text(
+          'You documented $label',
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: textTheme.bodyMedium?.copyWith(
+            fontWeight: item.read ? FontWeight.normal : FontWeight.w600,
+            color: colorScheme.onSurface,
+          ),
+        ),
+        subtitle: Text(
+          'Tap to view card',
+          style: textTheme.bodySmall?.copyWith(
+            color: colorScheme.onSurfaceVariant,
+          ),
+        ),
+        onTap: () => onTap(item),
+      );
+    }
+
     final actor = item.actorUsername.isNotEmpty ? item.actorUsername : 'Someone';
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),

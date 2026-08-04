@@ -24,6 +24,7 @@ class UserNotificationItem {
   bool get isFriendRequestRelated =>
       isFriendRequestReceived || isFriendRequestAccepted;
   bool get isSiteDiscovered => type == 'site_discovered';
+  bool get isSiteDocumented => type == 'site_documented';
 
   Map<String, dynamic> toJson() {
     return {

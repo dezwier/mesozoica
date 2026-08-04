@@ -11,6 +11,7 @@ import '../models/site.dart';
 import '../services/api_client.dart';
 import '../services/gps_odometer.dart';
 import '../services/location_service.dart';
+import '../utils/discovery_haptic.dart';
 
 /// Accrues path meters walked inside [siteVisibilityM] of discovered sites.
 class SiteExplorationController extends ChangeNotifier {
@@ -43,9 +44,23 @@ class SiteExplorationController extends ChangeNotifier {
   bool _appForeground = true;
   bool _loaded = false;
 
+  SiteSummary? _pendingDocumentationCelebration;
+  bool _documentationCelebrationConsumed = false;
+
   Map<int, double> get exploredBySite => Map.unmodifiable(_exploredBySite);
 
   bool isDocumented(int siteId) => _documentedSiteIds.contains(siteId);
+
+  SiteSummary? get pendingDocumentationCelebration =>
+      _documentationCelebrationConsumed
+          ? null
+          : _pendingDocumentationCelebration;
+
+  void consumeDocumentationCelebration() {
+    _documentationCelebrationConsumed = true;
+    _pendingDocumentationCelebration = null;
+    notifyListeners();
+  }
 
   /// Best-known explored meters for [siteId] (local buffer wins when ahead).
   /// Documented sites stay frozen at the known value (no local overshoot).
@@ -312,13 +327,23 @@ class SiteExplorationController extends ChangeNotifier {
       final sitesJson = response['sites'];
       if (sitesJson is List) {
         final synced = <SiteSummary>[];
+        SiteSummary? newlyDocumented;
         for (final raw in sitesJson) {
           if (raw is! Map<String, dynamic>) continue;
           final site = SiteSummary.fromJson(raw);
           synced.add(site);
           _onSiteUpdated?.call(site);
+          final wasDocumented = _documentedSiteIds.contains(site.siteId);
+          if (site.documented == true && !wasDocumented) {
+            newlyDocumented = site;
+          }
         }
         ingestSites(synced);
+        if (newlyDocumented != null) {
+          _pendingDocumentationCelebration = newlyDocumented;
+          _documentationCelebrationConsumed = false;
+          playDiscoveryHapticFireAndForget();
+        }
       }
       await _persistLocal();
       notifyListeners();
