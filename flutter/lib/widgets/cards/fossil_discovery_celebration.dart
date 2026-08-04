@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../../config/discovery_config.dart';
 import '../../models/fossil.dart';
-import '../../theme/dino_card_theme.dart';
 import 'card_detail_sheet.dart';
+import 'celebration_title_badge.dart';
 import 'fossil_turnable_card.dart';
 
 /// Celebration overlay after a surface fossil is discovered with a site.
@@ -72,33 +72,8 @@ class _FossilDiscoveryCelebrationSheetState
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Padding(
-              padding: EdgeInsets.fromLTRB(20, 8, 20, 4),
-              child: Text(
-                'Fossil discovered!',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontFamily: DinoCardTheme.titleFontFamily,
-                  fontSize: 34,
-                  fontWeight: FontWeight.w700,
-                  height: 1.15,
-                  letterSpacing: 0.2,
-                  color: Colors.white,
-                  shadows: [
-                    Shadow(
-                      color: Color(0xCC000000),
-                      blurRadius: 14,
-                      offset: Offset(0, 2),
-                    ),
-                    Shadow(
-                      color: Color(0x99000000),
-                      blurRadius: 4,
-                      offset: Offset(0, 1),
-                    ),
-                  ],
-                ),
-              ),
-            ),
+            const CelebrationTitleBadge(title: 'Fossil discovered!'),
+            const SizedBox(height: 14),
             FossilTurnableCard(
               fossil: widget.fossil,
               autoFlipOnce: true,

@@ -4,8 +4,8 @@ import '../../config/discovery_config.dart';
 import '../../models/catalog_data_source.dart';
 import '../../models/site.dart';
 import '../../services/site_service.dart';
-import '../../theme/dino_card_theme.dart';
 import 'card_detail_sheet.dart';
+import 'celebration_title_badge.dart';
 import 'site_turnable_card.dart';
 
 /// Celebration overlay after proximity (or notification-tap) discovery /
@@ -161,33 +161,8 @@ class _SiteDiscoveryCelebrationSheetState
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 4),
-                  child: Text(
-                    widget.title,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      fontFamily: DinoCardTheme.titleFontFamily,
-                      fontSize: 34,
-                      fontWeight: FontWeight.w700,
-                      height: 1.15,
-                      letterSpacing: 0.2,
-                      color: Colors.white,
-                      shadows: [
-                        Shadow(
-                          color: Color(0xCC000000),
-                          blurRadius: 14,
-                          offset: Offset(0, 2),
-                        ),
-                        Shadow(
-                          color: Color(0x99000000),
-                          blurRadius: 4,
-                          offset: Offset(0, 1),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
+                CelebrationTitleBadge(title: widget.title),
+                const SizedBox(height: 14),
                 SiteTurnableCard(
                   site: snapshot.data!,
                   autoFlipOnce: true,
