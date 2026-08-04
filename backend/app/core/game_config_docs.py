@@ -34,16 +34,12 @@ DOCUMENT_SPECS: tuple[GameConfigDocSpec, ...] = tuple(
     for doc_id, filename in DOCUMENT_FILES
 )
 
-DOCUMENT_SPECS_BY_ID: dict[str, GameConfigDocSpec] = {
-    spec.doc_id: spec for spec in DOCUMENT_SPECS
-}
-
 # Slash-separated paths the admin write API refuses to change. '*' matches one
 # path segment. Classification is path-level, not document-level, because
 # leveling.yaml and tool_actions.yaml both mix tunable knobs with content.
 LOCKED_PATHS: tuple[str, ...] = (
-    # Skill ids are keys inside User.skill_xp / User.skill_breakdown JSON and in
-    # SKILL_YAML_FILES. Renaming one silently orphans every player's XP.
+    # Skill ids are keys inside User.skill_xp / User.skill_breakdown JSON.
+    # Renaming one silently orphans every player's XP.
     "leveling/skills",
     # 99 content strings, not knobs.
     "leveling/career_titles",

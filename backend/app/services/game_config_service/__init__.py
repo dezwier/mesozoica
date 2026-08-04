@@ -1,17 +1,17 @@
-"""Stored game config: revision history, active release, seeding."""
+"""Stored game config: revision history, active release, seeding.
 
-from app.services.game_config_service.locked_paths import (
-    GameConfigLocked,
-    assert_locked_paths_unchanged,
-    locked_path_violations,
-)
+Exports the public surface only — the callable operations plus the types they
+return. Internal plumbing (locked-path matching, document normalization, the
+release row accessor) stays reachable from its own module.
+"""
+
+from app.services.game_config_service.locked_paths import GameConfigLocked
 from app.services.game_config_service.read import (
     RevisionMeta,
     StoredConfig,
     list_revisions,
     read_active_config,
     read_active_version,
-    read_release,
     read_revision,
 )
 from app.services.game_config_service.seed import (
@@ -21,7 +21,6 @@ from app.services.game_config_service.seed import (
 )
 from app.services.game_config_service.write import (
     GameConfigConflict,
-    normalize_documents,
     publish_documents,
     rollback_to_version,
     validate_documents,
@@ -33,15 +32,11 @@ __all__ = [
     "RevisionMeta",
     "SeedSummary",
     "StoredConfig",
-    "assert_locked_paths_unchanged",
     "ensure_seeded",
     "list_revisions",
-    "locked_path_violations",
-    "normalize_documents",
     "publish_documents",
     "read_active_config",
     "read_active_version",
-    "read_release",
     "read_revision",
     "rollback_to_version",
     "seed_from_yaml",

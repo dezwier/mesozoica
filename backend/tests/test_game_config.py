@@ -10,7 +10,6 @@ import pytest
 from app.core.game_config import (
     DOCUMENT_FILES,
     DOCUMENT_IDS,
-    SKILL_YAML_FILES,
     ParamModifier,
     build_game_config,
     canonical_checksum,
@@ -20,26 +19,39 @@ from app.core.game_config import (
     resolve_game_config_dir,
 )
 
-# SKILL_YAML_FILES is derived from DOCUMENT_FILES; skill ids are keys inside
-# User.skill_xp, so this tuple must not drift.
-EXPECTED_SKILL_YAML_FILES = (
-    ("site_discovery", "01_site_discovery.yaml"),
-    ("site_stewardship", "02_site_stewardship.yaml"),
-    ("site_clearing", "03_site_clearing.yaml"),
-    ("fossil_detection", "04_fossil_detection.yaml"),
-    ("fossil_excavation", "05_fossil_excavation.yaml"),
-    ("fossil_transport", "06_fossil_transport.yaml"),
-    ("fossil_curation", "07_fossil_curation.yaml"),
-    ("fossil_preparation", "08_fossil_preparation.yaml"),
-    ("fossil_analysis", "09_fossil_analysis.yaml"),
-    ("dinosaur_modelling", "10_dinosaur_modelling.yaml"),
-    ("dinosaur_mounting", "11_dinosaur_mounting.yaml"),
-    ("academic_publishing", "12_academic_publishing.yaml"),
+# These ids are the literal keys inside User.skill_xp and User.skill_breakdown.
+# Renaming one orphans every player's XP for that skill, silently — no error, the
+# old key is simply never read again. 'leveling/skills' is in LOCKED_PATHS so the
+# admin API refuses such an edit; this pins the ids themselves as a tripwire for
+# anyone changing leveling.yaml directly or seeding with --force.
+EXPECTED_SKILL_IDS = (
+    "site_discovery",
+    "site_stewardship",
+    "site_clearing",
+    "fossil_detection",
+    "fossil_excavation",
+    "fossil_transport",
+    "fossil_curation",
+    "fossil_preparation",
+    "fossil_analysis",
+    "dinosaur_modelling",
+    "dinosaur_mounting",
+    "academic_publishing",
 )
 
 
-def test_skill_yaml_files_unchanged() -> None:
-    assert SKILL_YAML_FILES == EXPECTED_SKILL_YAML_FILES
+def test_skill_ids_unchanged() -> None:
+    skills = load_game_config().leveling.skills
+    assert tuple(skill.id for skill in skills) == EXPECTED_SKILL_IDS
+
+
+def test_every_skill_has_its_own_document() -> None:
+    """A skill without a config document has no tunable parameters at all."""
+    skills = {skill.id for skill in load_game_config().leveling.skills}
+    numbered = {
+        doc_id for doc_id, filename in DOCUMENT_FILES if filename[0].isdigit()
+    }
+    assert skills == numbered
 
 
 def test_document_files_cover_the_control_board() -> None:

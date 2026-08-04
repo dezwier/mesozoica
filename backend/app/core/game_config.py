@@ -43,13 +43,6 @@ DOCUMENT_FILES: tuple[tuple[str, str], ...] = (
 
 DOCUMENT_IDS: tuple[str, ...] = tuple(doc_id for doc_id, _ in DOCUMENT_FILES)
 
-# Numbered skill-domain YAML files (order matches leveling.yaml skills).
-SKILL_YAML_FILES: tuple[tuple[str, str], ...] = tuple(
-    (doc_id, filename)
-    for doc_id, filename in DOCUMENT_FILES
-    if filename[0].isdigit()
-)
-
 ModifierOp = Literal["add", "multiply", "replace"]
 
 

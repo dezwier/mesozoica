@@ -192,7 +192,3 @@ def invalidate_game_config_cache() -> None:
         _snapshot = None
         _checked_at = 0.0
         _last_error_log_at = 0.0
-
-
-def get_active_documents() -> RawDocuments:
-    return get_active_snapshot().documents
