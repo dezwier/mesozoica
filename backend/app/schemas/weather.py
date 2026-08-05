@@ -19,3 +19,17 @@ class WeatherStatusResponse(BaseModel):
     observed_at: datetime
     cell: WeatherCellInfo
     wmo_code: int = Field(description="Upstream Open-Meteo WMO weather code")
+
+
+class WeatherHourPoint(BaseModel):
+    valid_at: datetime
+    weather_type: str
+    temperature_c: float
+    wmo_code: int
+    is_forecast: bool
+    fetched_at: datetime
+
+
+class WeatherForecastResponse(BaseModel):
+    cell: WeatherCellInfo
+    hours: list[WeatherHourPoint]

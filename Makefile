@@ -6,7 +6,7 @@ RAILWAY_SERVICE ?=
 RAILWAY_SERVICE_FLAG = $(if $(RAILWAY_SERVICE),--service $(RAILWAY_SERVICE),)
 CRON_EXTRA ?=
 
-.PHONY: help backend-install backend-test run-backend flutter-test run-flutter test-all run-cron run-game-config-seed run-field-ensure-worker fetch-coordinate-masks upload-coordinate-masks-railway run-field-site-coordinate-prune run-dinosaur-wiki-sync run-dinosaur-llm-enrich run-fossil-pbdb-sync run-fossil-llm-enrich run-site-sync run-site-type-sync run-tool-sync run-dinosaur-image-generate run-fossil-image-generate run-site-type-image-generate run-tool-image-generate run-tool-image-generate-local sync-dinosaur-images sync-fossil-images sync-site-type-images sync-tool-images sync-bundled-version-meta rename-site-type-images migrate-image-versions-to-v1 migrate-named-image-versions backfill-user-levels
+.PHONY: help backend-install backend-test run-backend flutter-test run-flutter test-all run-cron run-game-config-seed run-field-ensure-worker fetch-coordinate-masks upload-coordinate-masks-railway run-field-site-coordinate-prune run-weather-sync run-dinosaur-wiki-sync run-dinosaur-llm-enrich run-fossil-pbdb-sync run-fossil-llm-enrich run-site-sync run-site-type-sync run-tool-sync run-dinosaur-image-generate run-fossil-image-generate run-site-type-image-generate run-tool-image-generate run-tool-image-generate-local sync-dinosaur-images sync-fossil-images sync-site-type-images sync-tool-images sync-bundled-version-meta rename-site-type-images migrate-image-versions-to-v1 migrate-named-image-versions backfill-user-levels
 
 help:
 	@echo "Available targets:"
@@ -18,6 +18,7 @@ help:
 	@echo "  fetch-coordinate-masks       Download OSM land/water polygon shapefiles (local dev)"
 	@echo "  upload-coordinate-masks-railway  Upload local OSM masks to Railway /data volume"
 	@echo "  run-field-site-coordinate-prune  Delete field sites failing coordinate filters (needs local OSM masks; make fetch-coordinate-masks)"
+	@echo "  run-weather-sync             weather_sync on Railway (hourly past+forecast per active cell)"
 	@echo "  run-dinosaur-wiki-sync       dinosaur_wiki_sync on Railway"
 	@echo "  run-dinosaur-llm-enrich      dinosaur_llm_enrich on Railway"
 	@echo "  run-fossil-pbdb-sync         fossil_pbdb_sync on Railway"
@@ -91,6 +92,9 @@ upload-coordinate-masks-railway:
 
 run-field-site-coordinate-prune:
 	cd backend && RAILWAY_RUN=1 railway run $(RAILWAY_SERVICE_FLAG) python -m app.crons.runner --job field_site_coordinate_prune $(CRON_EXTRA)
+
+run-weather-sync:
+	cd backend && RAILWAY_RUN=1 railway run $(RAILWAY_SERVICE_FLAG) python -m app.crons.runner --job weather_sync $(CRON_EXTRA)
 
 run-dinosaur-wiki-sync:
 	cd backend && RAILWAY_RUN=1 railway run $(RAILWAY_SERVICE_FLAG) python -m app.crons.runner --job dinosaur_wiki_sync $(CRON_EXTRA)

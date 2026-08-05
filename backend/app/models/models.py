@@ -27,6 +27,7 @@ from app.models.user_notification import UserNotification
 from app.models.user_site import UserSite
 from app.models.user_tool import UserTool
 from app.models.user_user import UserUser
+from app.models.weather import Weather
 
 __all__ = [
     "Dinosaur",
@@ -52,4 +53,5 @@ __all__ = [
     "UserSite",
     "UserTool",
     "UserUser",
+    "Weather",
 ]

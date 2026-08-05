@@ -1,4 +1,4 @@
-"""Open-Meteo weather fetch with 5 km grid-cell TTL cache."""
+"""Open-Meteo weather fetch with DB-backed hourly cache (~5 km cells)."""
 
 from __future__ import annotations
 
@@ -7,11 +7,14 @@ import math
 import threading
 import time
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Literal
 
 import httpx
+from sqlmodel import Session, col, select
 
+from app.core.database import engine
+from app.models.weather import Weather
 from app.services.weather_service.solar import period_at
 
 logger = logging.getLogger(__name__)
@@ -33,6 +36,7 @@ WeatherType = Literal[
 _CELL_KM = 5.0
 _LAT_DEG = _CELL_KM / 111.32
 _CACHE_TTL_S = 20 * 60
+_STALE_AFTER = timedelta(hours=2)
 _OPEN_METEO_URL = "https://api.open-meteo.com/v1/forecast"
 
 _cache_lock = threading.Lock()
@@ -116,14 +120,135 @@ def _fetch_open_meteo(lat: float, lon: float) -> tuple[WeatherType, float, int]:
     return weather_type_from_wmo(code), temp, code
 
 
+def _as_utc(value: datetime) -> datetime:
+    if value.tzinfo is None:
+        return value.replace(tzinfo=timezone.utc)
+    return value.astimezone(timezone.utc)
+
+
+def _hour_floor(when: datetime) -> datetime:
+    when = _as_utc(when)
+    return when.replace(minute=0, second=0, microsecond=0)
+
+
+def _row_to_snapshot(
+    row: Weather,
+    *,
+    lat: float,
+    lon: float,
+    when: datetime,
+) -> WeatherSnapshot:
+    weather_type = weather_type_from_wmo(row.wmo_code)
+    if row.weather_type in (
+        "clear",
+        "cloudy",
+        "overcast",
+        "fog",
+        "drizzle",
+        "rain",
+        "snow",
+        "thunderstorm",
+        "hail",
+        "unknown",
+    ):
+        weather_type = row.weather_type  # type: ignore[assignment]
+    cell = WeatherCell(
+        i=row.cell_i,
+        j=row.cell_j,
+        center_lat=row.center_lat,
+        center_lon=row.center_lon,
+    )
+    return WeatherSnapshot(
+        weather_type=weather_type,
+        temperature_c=float(row.temperature_c),
+        weather_time=period_at(latitude=lat, longitude=lon, at=when),
+        observed_at=_as_utc(row.valid_at),
+        cell=cell,
+        wmo_code=int(row.wmo_code),
+    )
+
+
+def _latest_db_row(
+    session: Session,
+    cell: WeatherCell,
+    *,
+    when: datetime,
+) -> Weather | None:
+    return session.exec(
+        select(Weather)
+        .where(
+            col(Weather.cell_i) == cell.i,
+            col(Weather.cell_j) == cell.j,
+            col(Weather.valid_at) <= when,
+        )
+        .order_by(col(Weather.valid_at).desc())
+        .limit(1)
+    ).first()
+
+
+def _write_through_current(
+    session: Session,
+    cell: WeatherCell,
+    *,
+    weather_type: WeatherType,
+    temperature_c: float,
+    wmo_code: int,
+    when: datetime,
+) -> None:
+    """Upsert the current hour from a live Open-Meteo current fetch."""
+    valid_at = _hour_floor(when)
+    existing = session.exec(
+        select(Weather).where(
+            col(Weather.cell_i) == cell.i,
+            col(Weather.cell_j) == cell.j,
+            col(Weather.valid_at) == valid_at,
+        )
+    ).first()
+    if existing is None:
+        session.add(
+            Weather(
+                cell_i=cell.i,
+                cell_j=cell.j,
+                center_lat=cell.center_lat,
+                center_lon=cell.center_lon,
+                valid_at=valid_at,
+                is_forecast=False,
+                weather_type=weather_type,
+                temperature_c=temperature_c,
+                wmo_code=wmo_code,
+                fetched_at=_as_utc(when),
+            )
+        )
+    else:
+        existing.center_lat = cell.center_lat
+        existing.center_lon = cell.center_lon
+        existing.is_forecast = False
+        existing.weather_type = weather_type
+        existing.temperature_c = temperature_c
+        existing.wmo_code = wmo_code
+        existing.fetched_at = _as_utc(when)
+        session.add(existing)
+    try:
+        session.commit()
+    except Exception:
+        session.rollback()
+        logger.exception("Weather write-through failed for cell %s,%s", cell.i, cell.j)
+
+
 def get_weather(
     *,
     lat: float,
     lon: float,
     now: datetime | None = None,
+    session: Session | None = None,
 ) -> WeatherSnapshot:
-    """Return cached or freshly fetched weather for the 5 km cell containing lat/lon."""
+    """Return weather for the 5 km cell containing lat/lon.
+
+    Prefers the latest stored hourly row (``valid_at <= now``). Falls back to
+    live Open-Meteo ``current`` when missing or older than two hours.
+    """
     when = now or datetime.now(timezone.utc)
+    when = _as_utc(when)
     cell = cell_for(lat, lon)
     key = (cell.i, cell.j)
     now_mono = time.monotonic()
@@ -133,7 +258,6 @@ def get_weather(
         if hit is not None:
             expires_at, snap = hit
             if now_mono < expires_at:
-                # Refresh weather_time for the caller's exact location/time.
                 return WeatherSnapshot(
                     weather_type=snap.weather_type,
                     temperature_c=snap.temperature_c,
@@ -145,17 +269,45 @@ def get_weather(
                     wmo_code=snap.wmo_code,
                 )
 
+    owns_session = session is None
+    db = session or Session(engine)
+    try:
+        row = _latest_db_row(db, cell, when=when)
+        if row is not None and _as_utc(row.valid_at) >= when - _STALE_AFTER:
+            snap = _row_to_snapshot(row, lat=lat, lon=lon, when=when)
+            with _cache_lock:
+                _cache[key] = (now_mono + _CACHE_TTL_S, snap)
+            return snap
+    finally:
+        if owns_session:
+            db.close()
+
     weather_type, temp_c, wmo = _fetch_open_meteo(cell.center_lat, cell.center_lon)
     snap = WeatherSnapshot(
         weather_type=weather_type,
         temperature_c=temp_c,
         weather_time=period_at(latitude=lat, longitude=lon, at=when),
-        observed_at=when.astimezone(timezone.utc),
+        observed_at=when,
         cell=cell,
         wmo_code=wmo,
     )
     with _cache_lock:
         _cache[key] = (now_mono + _CACHE_TTL_S, snap)
+
+    # Best-effort warm the table for this cell (does not fail the request).
+    try:
+        with Session(engine) as write_session:
+            _write_through_current(
+                write_session,
+                cell,
+                weather_type=weather_type,
+                temperature_c=temp_c,
+                wmo_code=wmo,
+                when=when,
+            )
+    except Exception:
+        logger.exception("Weather write-through session failed")
+
     return snap
 
 

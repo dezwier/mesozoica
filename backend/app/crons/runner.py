@@ -37,6 +37,7 @@ from app.crons.jobs import (
     tool_image_generate,
     tool_sync,
     dinosaur_wiki_sync,
+    weather_sync,
 )
 from app.crons.logging_config import configure_cron_logging
 from app.crons.railway_guard import require_railway_database
@@ -205,6 +206,16 @@ def _run_field_site_coordinate_prune(params: dict[str, Any]) -> int:
     )
 
 
+def _run_weather_sync(params: dict[str, Any]) -> int:
+    return weather_sync.run_sync_job(
+        dry_run=bool(params.get("dry_run", False)),
+        past_days=int(params.get("past_days", 2)),
+        forecast_days=int(params.get("forecast_days", 3)),
+        batch_size=int(params.get("batch_size", 50)),
+        prune_days=int(params.get("prune_days", 7)),
+    )
+
+
 def _run_tool_image_generate(params: dict[str, Any]) -> int:
     return tool_image_generate.run_generate_job(
         dry_run=bool(params.get("dry_run", False)),
@@ -228,6 +239,7 @@ _JOB_HANDLERS: dict[str, Callable[[dict[str, Any]], int]] = {
     "tool_image_generate": _run_tool_image_generate,
     "field_site_coordinate_prune": _run_field_site_coordinate_prune,
     "game_config_seed": _run_game_config_seed,
+    "weather_sync": _run_weather_sync,
 }
 
 _IMAGE_GENERATE_JOBS = frozenset(
@@ -384,7 +396,7 @@ def main(argv: list[str] | None = None) -> int:
         "--dry-run",
         action="store_true",
         help="Preview work without writing (image generation jobs, site_sync, site_type_sync, "
-        "field_site_coordinate_prune).",
+        "field_site_coordinate_prune, weather_sync).",
     )
     args = parser.parse_args(argv)
 

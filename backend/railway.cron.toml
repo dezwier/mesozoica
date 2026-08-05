@@ -10,5 +10,5 @@ dockerfilePath = "Dockerfile"
 
 [deploy]
 startCommand = "python -m app.crons.runner"
-cronSchedule = "0 * * * *"
+cronSchedule = "*/10 * * * *"
 restartPolicyType = "NEVER"
