@@ -535,7 +535,8 @@ class _SkillGrid extends StatelessWidget {
 
   static const _crossAxisCount = 3;
   static const _spacing = 6.0;
-  static const _avatarSize = 72.0;
+  static const _avatarSize = 58.0;
+  static const _tileHeight = 220.0;
 
   @override
   Widget build(BuildContext context) {
@@ -550,7 +551,7 @@ class _SkillGrid extends StatelessWidget {
         crossAxisCount: _crossAxisCount,
         crossAxisSpacing: _spacing,
         mainAxisSpacing: _spacing,
-        childAspectRatio: 0.72,
+        mainAxisExtent: _tileHeight,
       ),
       itemBuilder: (context, index) {
         final skill = skills[index];
@@ -567,7 +568,6 @@ class _SkillGrid extends StatelessWidget {
               ),
               padding: const EdgeInsets.fromLTRB(6, 10, 6, 8),
               child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   SizedBox(
                     width: _avatarSize,
@@ -577,7 +577,7 @@ class _SkillGrid extends StatelessWidget {
                       circular: true,
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 6),
                   Text(
                     skill.name,
                     textAlign: TextAlign.center,
@@ -588,17 +588,24 @@ class _SkillGrid extends StatelessWidget {
                           height: 1.15,
                         ),
                   ),
-                  const SizedBox(height: 4),
-                  _SkillLevelBadge(
-                    level: skill.level,
-                    color: scheme.onSurfaceVariant,
+                  const Spacer(),
+                  _SkillStatBox(
+                    label: 'Level',
+                    child: _SkillLevelBadge(
+                      level: skill.level,
+                      color: scheme.onSurface,
+                    ),
                   ),
-                  const SizedBox(height: 6),
-                  Text(
-                    '$count',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
+                  const SizedBox(height: 4),
+                  _SkillStatBox(
+                    label: 'Cards',
+                    child: Text(
+                      '$count',
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                            fontWeight: FontWeight.w700,
+                            height: 1,
+                          ),
+                    ),
                   ),
                 ],
               ),
@@ -606,6 +613,47 @@ class _SkillGrid extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+}
+
+class _SkillStatBox extends StatelessWidget {
+  const _SkillStatBox({
+    required this.label,
+    required this.child,
+  });
+
+  final String label;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(8, 5, 8, 5),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(7),
+        color: scheme.surface.withValues(alpha: 0.55),
+        border: Border.all(
+          color: scheme.onSurface.withValues(alpha: 0.08),
+        ),
+      ),
+      child: Row(
+        children: [
+          Text(
+            label,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: scheme.onSurfaceVariant,
+                  fontSize: 10,
+                  letterSpacing: 0.2,
+                  height: 1,
+                ),
+          ),
+          const Spacer(),
+          SizedBox(height: 28, child: Center(child: child)),
+        ],
+      ),
     );
   }
 }
@@ -620,7 +668,7 @@ class _SkillLevelBadge extends StatelessWidget {
   final int level;
   final Color color;
 
-  static const _size = Size(34, 34);
+  static const _size = Size(30, 28);
 
   @override
   Widget build(BuildContext context) {
@@ -636,9 +684,9 @@ class _SkillLevelBadge extends StatelessWidget {
             ),
           ),
           Positioned(
-            top: 1,
+            top: 0,
             left: 0,
-            width: 18,
+            width: 16,
             child: Text(
               '$level',
               textAlign: TextAlign.center,
@@ -648,15 +696,15 @@ class _SkillLevelBadge extends StatelessWidget {
               style: TextStyle(
                 color: color,
                 fontWeight: FontWeight.w700,
-                fontSize: 13,
+                fontSize: 12,
                 height: 1,
               ),
             ),
           ),
           Positioned(
             right: 0,
-            bottom: 1,
-            width: 16,
+            bottom: 0,
+            width: 14,
             child: Text(
               '99',
               textAlign: TextAlign.center,
@@ -665,7 +713,7 @@ class _SkillLevelBadge extends StatelessWidget {
               style: TextStyle(
                 color: color.withValues(alpha: 0.5),
                 fontWeight: FontWeight.w500,
-                fontSize: 10.5,
+                fontSize: 9.5,
                 height: 1,
               ),
             ),
@@ -688,7 +736,6 @@ class _DiagonalSlashPainter extends CustomPainter {
       ..strokeWidth = 1
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round;
-    // Shorter diagonal leaves room for centered 2-digit levels.
     canvas.drawLine(
       Offset(size.width * 0.78, size.height * 0.22),
       Offset(size.width * 0.22, size.height * 0.78),

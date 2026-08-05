@@ -35,26 +35,26 @@ const _xpSourceBreakdownKeys = <String, String>{
 };
 
 const _mainParamLabels = <String, String>{
-  'visibility_distance_m': 'Visibility distance',
+  'visibility_distance_m': 'Discovery distance',
   'discovery_chance': 'Discovery chance',
-  'max_discovery_speed_kmh': 'Max discovery speed',
-  'site_discovery_xp': 'Site discovery',
-  'first_discovery_xp': 'First discovery',
-  'active_100m_xp': 'Active 100m',
-  'passive_km_xp': 'Passive km',
-  'fossil_discovery_xp': 'Fossil discovery',
-  'successful_site_disguise_xp': 'Site disguise',
-  'site_exploration_xp': 'Site exploration (20m)',
-  'site_documentation_xp': 'Site documentation',
-  'site_identification_xp': 'Site identification',
-  'first_documentation_xp': 'First documentation',
-  'rival_discovery': 'Rival discovery',
-  'site_visibility_m': 'Site visibility',
-  'dino_accuracy': 'Dinosaur count estimation',
-  'fossil_accuracy': 'Fossil count estimation',
-  'completeness_accuracy': 'Completeness estimation',
-  'quality_accuracy': 'Fossil quality estimation',
-  'depth_accuracy': 'Depth estimation',
+  'max_discovery_speed_kmh': 'Discovery max speed',
+  'site_discovery_xp': 'Discover site',
+  'first_discovery_xp': 'Discover site as first',
+  'active_100m_xp': 'Explore 100m actively',
+  'passive_km_xp': 'Explore 1km passively',
+  'fossil_discovery_xp': 'Locate fossil in situ',
+  'successful_site_disguise_xp': 'Disguise of site',
+  'site_exploration_xp': 'Document progress',
+  'site_documentation_xp': 'Document site',
+  'site_identification_xp': 'Identify site',
+  'first_documentation_xp': 'Document site as first',
+  'rival_discovery': 'Rival discovery chance',
+  'site_visibility_m': 'Documentation distance',
+  'dino_accuracy': 'Documentation genera',
+  'fossil_accuracy': 'Documentation fossil',
+  'completeness_accuracy': 'Documentation completeness',
+  'quality_accuracy': 'Documentation preservation',
+  'depth_accuracy': 'Documentation depth',
 };
 
 const _cardRadius = 10.0;
@@ -1066,7 +1066,7 @@ _SkillParamGroups _fieldSurveyRows(
   return _SkillParamGroups(
     skillParams: [
       _resolveScalarParam(
-        label: 'Visibility distance',
+        label: 'Discovery distance',
         paramKey: 'visibility_distance_m',
         skillId: 'field_survey',
         base: cfg.visibilityDistanceM,
@@ -1096,7 +1096,7 @@ _SkillParamGroups _fieldSurveyRows(
         toolBindings: toolBindings,
       ),
       _resolveScalarParam(
-        label: 'Max discovery speed',
+        label: 'Discovery max speed',
         paramKey: 'max_discovery_speed_kmh',
         skillId: 'field_survey',
         base: cfg.maxDiscoverySpeedKmh,
@@ -1111,7 +1111,7 @@ _SkillParamGroups _fieldSurveyRows(
         toolBindings: toolBindings,
       ),
       _resolveScalarParam(
-        label: 'Site visibility',
+        label: 'Documentation distance',
         paramKey: 'site_visibility_m',
         skillId: 'field_survey',
         base: mp.siteVisibilityM,
@@ -1126,7 +1126,7 @@ _SkillParamGroups _fieldSurveyRows(
         toolBindings: toolBindings,
       ),
       _resolveScalarParam(
-        label: 'Rival discovery',
+        label: 'Rival discovery chance',
         paramKey: 'rival_discovery',
         skillId: 'field_survey',
         base: mp.rivalDiscovery,
@@ -1141,7 +1141,7 @@ _SkillParamGroups _fieldSurveyRows(
         toolBindings: toolBindings,
       ),
       _resolveScalarParam(
-        label: 'Dinosaur count estimation',
+        label: 'Documentation genera',
         paramKey: 'dino_accuracy',
         skillId: 'field_survey',
         base: mp.dinoAccuracy,
@@ -1156,7 +1156,7 @@ _SkillParamGroups _fieldSurveyRows(
         toolBindings: toolBindings,
       ),
       _resolveScalarParam(
-        label: 'Fossil count estimation',
+        label: 'Documentation fossil',
         paramKey: 'fossil_accuracy',
         skillId: 'field_survey',
         base: mp.fossilAccuracy,
@@ -1171,7 +1171,7 @@ _SkillParamGroups _fieldSurveyRows(
         toolBindings: toolBindings,
       ),
       _resolveScalarParam(
-        label: 'Completeness estimation',
+        label: 'Documentation completeness',
         paramKey: 'completeness_accuracy',
         skillId: 'field_survey',
         base: mp.completenessAccuracy,
@@ -1186,7 +1186,7 @@ _SkillParamGroups _fieldSurveyRows(
         toolBindings: toolBindings,
       ),
       _resolveScalarParam(
-        label: 'Fossil quality estimation',
+        label: 'Documentation preservation',
         paramKey: 'quality_accuracy',
         skillId: 'field_survey',
         base: mp.qualityAccuracy,
@@ -1201,7 +1201,7 @@ _SkillParamGroups _fieldSurveyRows(
         toolBindings: toolBindings,
       ),
       _resolveScalarParam(
-        label: 'Depth estimation',
+        label: 'Documentation depth',
         paramKey: 'depth_accuracy',
         skillId: 'field_survey',
         base: mp.depthAccuracy,
@@ -1218,7 +1218,7 @@ _SkillParamGroups _fieldSurveyRows(
     ],
     xpSources: [
       _resolveScalarParam(
-        label: 'Site discovery',
+        label: 'Discover site',
         paramKey: 'site_discovery_xp',
         skillId: 'field_survey',
         base: cfg.siteDiscoveryXp,
@@ -1233,7 +1233,7 @@ _SkillParamGroups _fieldSurveyRows(
         toolBindings: toolBindings,
       ),
       _resolveScalarParam(
-        label: 'First discovery',
+        label: 'Discover site as first',
         paramKey: 'first_discovery_xp',
         skillId: 'field_survey',
         base: cfg.firstDiscoveryXp,
@@ -1248,7 +1248,7 @@ _SkillParamGroups _fieldSurveyRows(
         toolBindings: toolBindings,
       ),
       _resolveScalarParam(
-        label: 'Active 100m',
+        label: 'Explore 100m actively',
         paramKey: 'active_100m_xp',
         skillId: 'field_survey',
         base: cfg.active100mXp,
@@ -1263,7 +1263,7 @@ _SkillParamGroups _fieldSurveyRows(
         toolBindings: toolBindings,
       ),
       _resolveScalarParam(
-        label: 'Passive km',
+        label: 'Explore 1km passively',
         paramKey: 'passive_km_xp',
         skillId: 'field_survey',
         base: cfg.passiveKmXp,
@@ -1278,7 +1278,7 @@ _SkillParamGroups _fieldSurveyRows(
         toolBindings: toolBindings,
       ),
       _resolveScalarParam(
-        label: 'Site identification',
+        label: 'Identify site',
         paramKey: 'site_identification_xp',
         skillId: 'field_survey',
         base: mp.siteIdentificationXp,
@@ -1293,7 +1293,7 @@ _SkillParamGroups _fieldSurveyRows(
         toolBindings: toolBindings,
       ),
       _resolveScalarParam(
-        label: 'Site exploration (20m)',
+        label: 'Document progress',
         paramKey: 'site_exploration_xp',
         skillId: 'field_survey',
         base: mp.siteExplorationXp,
@@ -1308,7 +1308,7 @@ _SkillParamGroups _fieldSurveyRows(
         toolBindings: toolBindings,
       ),
       _resolveScalarParam(
-        label: 'Site documentation',
+        label: 'Document site',
         paramKey: 'site_documentation_xp',
         skillId: 'field_survey',
         base: mp.siteDocumentationXp,
@@ -1323,7 +1323,7 @@ _SkillParamGroups _fieldSurveyRows(
         toolBindings: toolBindings,
       ),
       _resolveScalarParam(
-        label: 'First documentation',
+        label: 'Document site as first',
         paramKey: 'first_documentation_xp',
         skillId: 'field_survey',
         base: mp.firstDocumentationXp,
@@ -1338,7 +1338,7 @@ _SkillParamGroups _fieldSurveyRows(
         toolBindings: toolBindings,
       ),
       _resolveScalarParam(
-        label: 'Site disguise',
+        label: 'Disguise of site',
         paramKey: 'successful_site_disguise_xp',
         skillId: 'field_survey',
         base: mp.successfulSiteDisguiseXp,

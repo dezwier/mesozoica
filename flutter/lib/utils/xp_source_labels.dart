@@ -15,16 +15,16 @@ library xp_source_labels;
 
 /// Human labels for skill_breakdown keys (XP sources / main_param awards).
 const kXpBreakdownLabels = <String, String>{
-  'sites': 'Sites discovered',
-  'fossils': 'Fossils discovered',
-  'active_distance': 'Active distance',
-  'passive_distance': 'Passive distance',
-  'disguise': 'Site disguise',
-  'site_exploration': 'Site exploration',
-  'site_documentation': 'Site documentation',
-  'site_identification': 'Site identification',
-  'first_discovery': 'First discovery',
-  'first_documentation': 'First documentation',
+  'sites': 'Discover site',
+  'fossils': 'Locate fossil in situ',
+  'active_distance': 'Explore 100m actively',
+  'passive_distance': 'Explore 1km passively',
+  'disguise': 'Disguise of site',
+  'site_exploration': 'Document progress',
+  'site_documentation': 'Document site',
+  'site_identification': 'Identify site',
+  'first_discovery': 'Discover site as first',
+  'first_documentation': 'Document site as first',
 };
 
 /// Breakdown keys for **big-event celebrations** (embedded in the plaque).

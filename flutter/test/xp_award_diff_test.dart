@@ -7,9 +7,9 @@ import 'package:mesozoica/utils/xp_source_labels.dart';
 void main() {
   group('xpSourceLabel', () {
     test('maps known breakdown keys', () {
-      expect(xpSourceLabel('site_documentation'), 'Site documentation');
-      expect(xpSourceLabel('first_documentation'), 'First documentation');
-      expect(xpSourceLabel('site_exploration'), 'Site exploration');
+      expect(xpSourceLabel('site_documentation'), 'Document site');
+      expect(xpSourceLabel('first_documentation'), 'Document site as first');
+      expect(xpSourceLabel('site_exploration'), 'Document progress');
     });
 
     test('humanizes unknown keys', () {
@@ -89,8 +89,8 @@ void main() {
         'first_documentation',
       ]);
       expect(awards.map((a) => a.sourceLabel).toList(), [
-        'Site documentation',
-        'First documentation',
+        'Document site',
+        'Document site as first',
       ]);
       expect(awards.map((a) => a.amount).toList(), [100, 100]);
       expect(awards.every((a) => a.skillId == 'site_stewardship'), isTrue);
@@ -250,7 +250,7 @@ void main() {
       );
 
       expect(controller.activeAwards, hasLength(1));
-      expect(controller.activeAwards.single.sourceLabel, 'Passive distance');
+      expect(controller.activeAwards.single.sourceLabel, 'Explore 1km passively');
     });
 
     test('clear empties active badges and celebration stash', () {

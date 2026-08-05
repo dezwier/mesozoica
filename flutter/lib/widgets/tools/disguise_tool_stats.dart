@@ -37,7 +37,7 @@ class DisguiseToolStats extends StatelessWidget {
     final pairs = <ToolStatPair>[
       ToolStatPair('Duration', '$durationMinutes min'),
       if (rivalMod != null)
-        ToolStatPair('Rival discovery', _formatRivalMod(rivalMod)),
+        ToolStatPair('Rival discovery chance', _formatRivalMod(rivalMod)),
     ];
 
     if (compact) {

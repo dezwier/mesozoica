@@ -94,9 +94,9 @@ name under each main_param. All list entries for the current key apply in order
 
 | main_param | Meaning |
 |------------|---------|
-| `visibility_distance_m` | Walk-in discover radius (was `max_distance_m`) |
+| `visibility_distance_m` | Discovery distance — walk-in discover radius (was `max_distance_m`) |
 | `discovery_chance` | P(success) per attempt (enter or dwell re-roll) |
-| `max_discovery_speed_kmh` | Max GPS speed for walk XP credit and discovery dice rolls |
+| `max_discovery_speed_kmh` | Discovery max speed — GPS speed cap for walk XP credit and discovery dice rolls |
 | `site_discovery_xp` | XP awarded when a site is discovered |
 | `first_discovery_xp` | Bonus XP when you are the first user to discover a site |
 | `active_100m_xp` | XP per whole 100 m of active walking |
@@ -132,13 +132,13 @@ resolvable):
 
 | Key | Meaning |
 |-----|---------|
-| `dino_accuracy` | Dinosaur count estimation (base 1% × skill level) |
-| `fossil_accuracy` | Fossil count estimation (base 1% × skill level) |
-| `completeness_accuracy` | Completeness estimation (base 1% × skill level) |
-| `quality_accuracy` | Fossil quality estimation (base 1% × skill level) |
-| `depth_accuracy` | Depth estimation (base 1% × skill level; depth 0 always exact) |
-| `rival_discovery` | Multiplier on discovery_chance for rivals on sites where you have any status above hidden (×1 at L1 → ×0.5 at L99) |
-| `site_visibility_m` | Radius around a discovered site where walking accrues exploration meters |
+| `dino_accuracy` | Documentation genera (base 1% × skill level) |
+| `fossil_accuracy` | Documentation fossil (base 1% × skill level) |
+| `completeness_accuracy` | Documentation completeness (base 1% × skill level) |
+| `quality_accuracy` | Documentation preservation (base 1% × skill level) |
+| `depth_accuracy` | Documentation depth (base 1% × skill level; depth 0 always exact) |
+| `rival_discovery` | Rival discovery chance — multiplier on discovery_chance for rivals on sites where you have any status above hidden (×1 at L1 → ×0.5 at L99) |
+| `site_visibility_m` | Documentation distance — radius around a discovered site where walking accrues exploration meters |
 | `successful_site_disguise_xp` | XP when a rival discovery roll would hit but your active disguise blocks it |
 | `site_exploration_xp` | XP to site_stewardship per 20 m walked inside `site_visibility_m` |
 | `site_documentation_xp` | XP when all five site-dimension accuracies reach 100% (freezes further exploration) |

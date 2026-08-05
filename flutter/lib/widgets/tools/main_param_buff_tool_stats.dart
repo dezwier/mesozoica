@@ -54,22 +54,22 @@ class MainParamBuffToolStats extends StatelessWidget {
         ),
       if (visibilityMod != null)
         ToolStatPair(
-          'Visibility',
+          'Discovery distance',
           _formatMod(visibilityMod, meters: true),
         ),
       if (discoveryMod != null)
         ToolStatPair(
-          'Discovery rate',
+          'Discovery chance',
           _formatMod(discoveryMod, chance: true),
         ),
       if (siteVisibilityMod != null)
         ToolStatPair(
-          'Site visibility',
+          'Documentation distance',
           _formatMod(siteVisibilityMod, meters: true),
         ),
       if (speedMod != null)
         ToolStatPair(
-          'Max speed',
+          'Discovery max speed',
           _formatMod(speedMod),
         ),
     ];
