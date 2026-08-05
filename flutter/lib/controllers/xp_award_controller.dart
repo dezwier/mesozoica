@@ -163,7 +163,7 @@ class XpAwardController extends ChangeNotifier {
             skillName: 'Field Survey',
             sourceLabel: '',
             amount: 0,
-            sourceKey: 'passive_distance',
+            sourceKey: 'explore_1km_passively',
           );
 
     _enqueueVisitAware([

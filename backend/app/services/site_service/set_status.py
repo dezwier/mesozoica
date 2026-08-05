@@ -113,7 +113,7 @@ def set_site_status(
         )
     ).first()
     is_new_role = existing is None
-    is_first_discovery = False
+    is_discover_site_as_first = False
     if is_new_role and role == USER_SITE_ROLE_DISCOVERER:
         prior_discoverer = session.exec(
             select(UserSite).where(
@@ -122,7 +122,7 @@ def set_site_status(
             )
         ).first()
         # Source of truth for firstness is live discoverer rows.
-        is_first_discovery = prior_discoverer is None
+        is_discover_site_as_first = prior_discoverer is None
     if existing is None:
         session.add(
             UserSite(
@@ -130,7 +130,7 @@ def set_site_status(
                 site_id=site_id,
                 role=role,
                 timestamp=now,
-                was_first=is_first_discovery,
+                was_first=is_discover_site_as_first,
             )
         )
     else:
@@ -155,15 +155,15 @@ def set_site_status(
     if is_new_role and role == USER_SITE_ROLE_DISCOVERER:
         from app.models.user import User
         from app.services.level_service import (
-            award_first_discovery_xp,
+            award_discover_site_as_first_xp,
             award_site_discover_xp,
         )
 
         user = session.get(User, user_id)
         if user is not None:
             award_site_discover_xp(user)
-            if is_first_discovery:
-                award_first_discovery_xp(user)
+            if is_discover_site_as_first:
+                award_discover_site_as_first_xp(user)
             session.add(user)
 
     if should_notify:

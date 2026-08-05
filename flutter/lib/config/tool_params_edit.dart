@@ -106,16 +106,16 @@ abstract final class ToolParamsEdit {
   static String _paramLabel(String key) {
     // Prefer shared labels when available.
     const known = <String, String>{
-      'visibility_distance_m': 'Discovery distance',
+      'discovery_distance_m': 'Discovery distance',
       'discovery_chance': 'Discovery chance',
-      'max_discovery_speed_kmh': 'Discovery max speed',
-      'site_visibility_m': 'Documentation distance',
-      'dino_accuracy': 'Documentation genera',
-      'fossil_accuracy': 'Documentation fossil',
-      'completeness_accuracy': 'Documentation completeness',
-      'quality_accuracy': 'Documentation preservation',
-      'depth_accuracy': 'Documentation depth',
-      'rival_discovery': 'Rival discovery chance',
+      'discovery_max_speed_kmh': 'Discovery max speed',
+      'documentation_distance_m': 'Documentation distance',
+      'documentation_genera': 'Documentation genera',
+      'documentation_fossil': 'Documentation fossil',
+      'documentation_completeness': 'Documentation completeness',
+      'documentation_preservation': 'Documentation preservation',
+      'documentation_depth': 'Documentation depth',
+      'rival_discovery_chance': 'Rival discovery chance',
     };
     return known[key] ?? _humanizeKey(key);
   }

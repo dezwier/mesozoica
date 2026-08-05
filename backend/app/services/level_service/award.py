@@ -66,16 +66,16 @@ def award_site_discover_xp(
             weather_type=weather_type,
             tool_mods=tool_mods,
         )
-        amount = _xp_int(resolved["site_discovery_xp"])
+        amount = _xp_int(resolved["discover_site_xp"])
     return award_skill_xp(
         user,
         "field_survey",
         amount=amount,
-        breakdown_delta={"sites": amount},
+        breakdown_delta={"discover_site": amount},
     )
 
 
-def award_first_discovery_xp(
+def award_discover_site_as_first_xp(
     user: User,
     *,
     amount: int | None = None,
@@ -92,14 +92,14 @@ def award_first_discovery_xp(
             weather_type=weather_type,
             tool_mods=tool_mods,
         )
-        amount = _xp_int(resolved["first_discovery_xp"])
+        amount = _xp_int(resolved["discover_site_as_first_xp"])
     if amount <= 0:
         return 0
     return award_skill_xp(
         user,
         "field_survey",
         amount=amount,
-        breakdown_delta={"first_discovery": amount},
+        breakdown_delta={"discover_site_as_first": amount},
     )
 
 
@@ -122,17 +122,17 @@ def award_fossil_discover_xp(
             weather_type=weather_type,
             tool_mods=tool_mods,
         )
-        amount_per = _xp_int(resolved["fossil_discovery_xp"])
+        amount_per = _xp_int(resolved["locate_fossil_in_situ_xp"])
     total = amount_per * int(count)
     return award_skill_xp(
         user,
         "bone_quarry",
         amount=total,
-        breakdown_delta={"fossils": total},
+        breakdown_delta={"locate_fossil_in_situ": total},
     )
 
 
-def award_successful_site_disguise_xp(
+def award_disguise_of_site_xp(
     user: User,
     *,
     amount: int | None = None,
@@ -149,12 +149,12 @@ def award_successful_site_disguise_xp(
             weather_type=weather_type,
             tool_mods=tool_mods,
         )
-        amount = _xp_int(resolved["successful_site_disguise_xp"])
+        amount = _xp_int(resolved["disguise_of_site_xp"])
     return award_skill_xp(
         user,
         "field_survey",
         amount=amount,
-        breakdown_delta={"disguise": amount},
+        breakdown_delta={"disguise_of_site": amount},
     )
 
 
@@ -166,7 +166,7 @@ def exploration_batch_count(meters: float) -> int:
     return max(0, int(meters) // SITE_EXPLORATION_BATCH_M)
 
 
-def award_site_exploration_xp(
+def award_document_progress_xp(
     user: User,
     *,
     previous_explored_m: float,
@@ -188,18 +188,18 @@ def award_site_exploration_xp(
         weather_type=weather_type,
         tool_mods=tool_mods,
     )
-    total = batch_delta * _xp_int(resolved["site_exploration_xp"])
+    total = batch_delta * _xp_int(resolved["document_progress_xp"])
     if total <= 0:
         return 0
     return award_skill_xp(
         user,
         "field_survey",
         amount=total,
-        breakdown_delta={"site_exploration": total},
+        breakdown_delta={"document_progress": total},
     )
 
 
-def award_site_documentation_xp(
+def award_document_site_xp(
     user: User,
     *,
     amount: int | None = None,
@@ -216,18 +216,18 @@ def award_site_documentation_xp(
             weather_type=weather_type,
             tool_mods=tool_mods,
         )
-        amount = _xp_int(resolved["site_documentation_xp"])
+        amount = _xp_int(resolved["document_site_xp"])
     if amount <= 0:
         return 0
     return award_skill_xp(
         user,
         "field_survey",
         amount=amount,
-        breakdown_delta={"site_documentation": amount},
+        breakdown_delta={"document_site": amount},
     )
 
 
-def award_first_documentation_xp(
+def award_document_site_as_first_xp(
     user: User,
     *,
     amount: int | None = None,
@@ -244,14 +244,14 @@ def award_first_documentation_xp(
             weather_type=weather_type,
             tool_mods=tool_mods,
         )
-        amount = _xp_int(resolved["first_documentation_xp"])
+        amount = _xp_int(resolved["document_site_as_first_xp"])
     if amount <= 0:
         return 0
     return award_skill_xp(
         user,
         "field_survey",
         amount=amount,
-        breakdown_delta={"first_documentation": amount},
+        breakdown_delta={"document_site_as_first": amount},
     )
 
 
@@ -269,7 +269,7 @@ def identification_xp_for_attempt(*, base_xp: int, attempt: int) -> int:
     return int(round(base_xp * scale))
 
 
-def award_site_identification_xp(
+def award_identify_site_xp(
     user: User,
     *,
     attempt: int,
@@ -287,7 +287,7 @@ def award_site_identification_xp(
             weather_type=weather_type,
             tool_mods=tool_mods,
         )
-        base = _xp_int(resolved["site_identification_xp"])
+        base = _xp_int(resolved["identify_site_xp"])
         amount = identification_xp_for_attempt(base_xp=base, attempt=attempt)
     if amount <= 0:
         return 0
@@ -295,7 +295,7 @@ def award_site_identification_xp(
         user,
         "field_survey",
         amount=amount,
-        breakdown_delta={"site_identification": amount},
+        breakdown_delta={"identify_site": amount},
     )
 
 
@@ -317,17 +317,17 @@ def award_distance_xp(
         tool_mods=tool_mods,
     )
     active_add = max(0, int(active_100m_delta)) * _xp_int(
-        resolved["active_100m_xp"]
+        resolved["explore_100m_actively_xp"]
     )
-    passive_add = max(0, int(passive_km_delta)) * _xp_int(resolved["passive_km_xp"])
+    passive_add = max(0, int(passive_km_delta)) * _xp_int(resolved["explore_1km_passively_xp"])
     total = active_add + passive_add
     if total <= 0:
         return 0
     breakdown: dict[str, int] = {}
     if active_add:
-        breakdown["active_distance"] = active_add
+        breakdown["explore_100m_actively"] = active_add
     if passive_add:
-        breakdown["passive_distance"] = passive_add
+        breakdown["explore_1km_passively"] = passive_add
     return award_skill_xp(
         user,
         "field_survey",

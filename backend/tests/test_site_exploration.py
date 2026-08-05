@@ -18,7 +18,7 @@ from app.models.user_site import (
 )
 from app.schemas.site import SiteExplorationEntry, SiteExplorationUpdateRequest
 from app.services.level_service import (
-    award_site_exploration_xp,
+    award_document_progress_xp,
     exploration_batch_count,
     get_skill_xp,
 )
@@ -117,9 +117,9 @@ def test_exploration_batch_count() -> None:
     assert exploration_batch_count(40) == 2
 
 
-def test_award_site_exploration_xp_batches(session: Session) -> None:
+def test_award_document_progress_xp_batches(session: Session) -> None:
     user = _make_user(session)
-    awarded = award_site_exploration_xp(
+    awarded = award_document_progress_xp(
         user,
         previous_explored_m=0,
         new_explored_m=45,
@@ -130,9 +130,9 @@ def test_award_site_exploration_xp_batches(session: Session) -> None:
     # floor(45/20) - floor(0/20) = 2 batches × 20 XP
     assert awarded == 40
     assert get_skill_xp(user, "field_survey") == 40
-    assert user.skill_breakdown["field_survey"]["site_exploration"] == 40
+    assert user.skill_breakdown["field_survey"]["document_progress"] == 40
 
-    awarded2 = award_site_exploration_xp(
+    awarded2 = award_document_progress_xp(
         user,
         previous_explored_m=45,
         new_explored_m=55,
@@ -144,7 +144,7 @@ def test_award_site_exploration_xp_batches(session: Session) -> None:
     assert awarded2 == 0
     assert get_skill_xp(user, "field_survey") == 40
 
-    awarded3 = award_site_exploration_xp(
+    awarded3 = award_document_progress_xp(
         user,
         previous_explored_m=55,
         new_explored_m=60,
@@ -275,8 +275,8 @@ def test_documentation_completes_and_freezes(
     assert doc_role.was_first is True
     assert summaries[0].viewer_was_first_documentation is True
     assert summaries[0].documented_at is not None
-    assert profile.skill_breakdown["field_survey"]["site_documentation"] == 80
-    assert profile.skill_breakdown["field_survey"]["first_documentation"] == 20
+    assert profile.skill_breakdown["field_survey"]["document_site"] == 80
+    assert profile.skill_breakdown["field_survey"]["document_site_as_first"] == 20
 
     from app.models.user_notification import UserNotification, UserNotificationType
 
@@ -309,10 +309,10 @@ def test_documentation_completes_and_freezes(
     assert link.explored_distance_m == 80.0
     assert get_skill_xp(user, "field_survey") == xp_after
     assert (
-        user.skill_breakdown["field_survey"]["site_documentation"] == 80
+        user.skill_breakdown["field_survey"]["document_site"] == 80
     )
     assert (
-        user.skill_breakdown["field_survey"]["first_documentation"] == 20
+        user.skill_breakdown["field_survey"]["document_site_as_first"] == 20
     )
     # Frozen re-sync does not create another notification/push.
     assert len(pushes) == 1
@@ -326,7 +326,7 @@ def test_documentation_completes_and_freezes(
     assert len(notif_count) == 1
 
 
-def test_second_documenter_skips_first_documentation_xp(
+def test_second_documenter_skips_document_site_as_first_xp(
     session: Session, monkeypatch
 ) -> None:
     from app.services.level_service.skills import set_skill_xp
@@ -365,8 +365,8 @@ def test_second_documenter_skips_first_documentation_xp(
             ]
         ),
     )
-    assert first.skill_breakdown["field_survey"]["site_documentation"] == 80
-    assert first.skill_breakdown["field_survey"]["first_documentation"] == 20
+    assert first.skill_breakdown["field_survey"]["document_site"] == 80
+    assert first.skill_breakdown["field_survey"]["document_site_as_first"] == 20
 
     apply_site_exploration_update(
         session,
@@ -380,8 +380,8 @@ def test_second_documenter_skips_first_documentation_xp(
             ]
         ),
     )
-    assert second.skill_breakdown["field_survey"]["site_documentation"] == 80
-    assert "first_documentation" not in (
+    assert second.skill_breakdown["field_survey"]["document_site"] == 80
+    assert "document_site_as_first" not in (
         second.skill_breakdown.get("field_survey") or {}
     )
     second_doc = session.exec(
@@ -422,7 +422,7 @@ def test_apply_site_exploration_update_monotonic_resume(session: Session) -> Non
     assert get_skill_xp(user, "field_survey") == 20
     assert len(summaries) == 1
     assert summaries[0].explored_distance_m == 50.0
-    assert profile.skill_breakdown["field_survey"]["site_exploration"] == 20
+    assert profile.skill_breakdown["field_survey"]["document_progress"] == 20
 
     # Downward report ignored; no extra XP.
     apply_site_exploration_update(
@@ -456,7 +456,7 @@ def _register_user(client: TestClient, username: str, email: str) -> dict:
     return response.json()
 
 
-def test_patch_site_exploration_api(
+def test_patch_document_progress_api(
     client: TestClient, session: Session
 ) -> None:
     registered = _register_user(client, "api_explore", "api_explore@example.com")
@@ -477,7 +477,7 @@ def test_patch_site_exploration_api(
     assert response.status_code == 200
     body = response.json()
     assert body["profile"]["skill_breakdown"]["field_survey"][
-        "site_exploration"
+        "document_progress"
     ] == 20
     assert len(body["sites"]) == 1
     assert body["sites"][0]["explored_distance_m"] == 25.0

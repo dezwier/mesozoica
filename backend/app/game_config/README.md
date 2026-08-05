@@ -24,8 +24,8 @@ Every announced skill XP gain is shown in **exactly one** of two ways:
 
 | Presentation | When | Breakdown keys (examples) |
 |--------------|------|---------------------------|
-| **Celebration plaque** | Big events — XP embedded under the celebration title (all XP for that event) | `sites`, `first_discovery`, `fossils`, `site_documentation`, `first_documentation`, `site_identification` |
-| **Floating XP badge** | Small / ongoing events | `active_distance`, `passive_distance`, `disguise`, `site_exploration` |
+| **Celebration plaque** | Big events — XP embedded under the celebration title (all XP for that event) | `sites`, `discover_site_as_first`, `fossils`, `document_site`, `document_site_as_first`, `identify_site` |
+| **Floating XP badge** | Small / ongoing events | `explore_100m_actively`, `explore_1km_passively`, `disguise_of_site`, `document_progress` |
 
 Client routing lives in `flutter/lib/utils/xp_source_labels.dart` and
 `XpAwardController.announceAwards`. Backend award amounts are unchanged by
@@ -43,10 +43,10 @@ main_params: { ... }          # global defaults (player-facing)
 level_modifiers:              # identity in v1; tune later
   discovery_chance: []        # entries: { level, op: add|multiply|replace, value }
 weather_time_modifiers:       # keyed by solar period; identity if omitted/empty
-  visibility_distance_m:
+  discovery_distance_m:
     day: [{ op: multiply, value: 1.1 }]
 weather_type_modifiers:       # keyed by weather type; identity if omitted/empty
-  visibility_distance_m:
+  discovery_distance_m:
     clear: [{ op: multiply, value: 1.1 }]
 client: { ... }               # non-main implementation knobs (optional)
 ```
@@ -94,23 +94,23 @@ name under each main_param. All list entries for the current key apply in order
 
 | main_param | Meaning |
 |------------|---------|
-| `visibility_distance_m` | Discovery distance — walk-in discover radius (was `max_distance_m`) |
+| `discovery_distance_m` | Discovery distance — walk-in discover radius (was `max_distance_m`) |
 | `discovery_chance` | P(success) per attempt (enter or dwell re-roll) |
-| `max_discovery_speed_kmh` | Discovery max speed — GPS speed cap for walk XP credit and discovery dice rolls |
-| `site_discovery_xp` | XP awarded when a site is discovered |
-| `first_discovery_xp` | Bonus XP when you are the first user to discover a site |
-| `active_100m_xp` | XP per whole 100 m of active walking |
-| `passive_km_xp` | XP per whole passive kilometer walked |
+| `discovery_max_speed_kmh` | Discovery max speed — GPS speed cap for walk XP credit and discovery dice rolls |
+| `discover_site_xp` | XP awarded when a site is discovered |
+| `discover_site_as_first_xp` | Bonus XP when you are the first user to discover a site |
+| `explore_100m_actively_xp` | XP per whole 100 m of active walking |
+| `explore_1km_passively_xp` | XP per whole passive kilometer walked |
 
-`site_discovery_xp` solar-period multipliers: day +0%, golden hour +10%, dawn/dusk +20%, night +50%.
-`first_discovery_xp`, `active_100m_xp`, and `passive_km_xp` are not affected by time of day.
+`discover_site_xp` solar-period multipliers: day +0%, golden hour +10%, dawn/dusk +20%, night +50%.
+`discover_site_as_first_xp`, `explore_100m_actively_xp`, and `explore_1km_passively_xp` are not affected by time of day.
 Visibility / discovery chance: day +10%, golden hour +30%, dawn/dusk +0%, night −40%.
 
 Client-only (not main params): `discovery_reroll_interval_s` — seconds between
 re-rolls while staying inside the discover radius (default 10). Walk-in still
 rolls immediately; app-open already inside does not (dwell timer starts).
 
-The location-puck pulse max radius is the effective `visibility_distance_m`
+The location-puck pulse max radius is the effective `discovery_distance_m`
 (base → level → weather_time → weather_type → owning/using tool mods), converted
 to screen pixels at the current map zoom so the ring matches the real discover
 range. Site Discovery visibility and discovery chance share the same ambient
@@ -120,7 +120,7 @@ multipliers (see `weather_time_modifiers` / `weather_type_modifiers` in this YAM
 
 | main_param | Meaning |
 |------------|---------|
-| `fossil_discovery_xp` | XP awarded when a fossil is discovered / granted in situ |
+| `locate_fossil_in_situ_xp` | XP awarded when a fossil is discovered / granted in situ |
 
 Same solar-period XP multipliers as site discovery (day +0%, golden hour +10%,
 dawn/dusk +20%, night +50%).
@@ -132,22 +132,22 @@ resolvable):
 
 | Key | Meaning |
 |-----|---------|
-| `dino_accuracy` | Documentation genera (base 1% × skill level) |
-| `fossil_accuracy` | Documentation fossil (base 1% × skill level) |
-| `completeness_accuracy` | Documentation completeness (base 1% × skill level) |
-| `quality_accuracy` | Documentation preservation (base 1% × skill level) |
-| `depth_accuracy` | Documentation depth (base 1% × skill level; depth 0 always exact) |
-| `rival_discovery` | Rival discovery chance — multiplier on discovery_chance for rivals on sites where you have any status above hidden (×1 at L1 → ×0.5 at L99) |
-| `site_visibility_m` | Documentation distance — radius around a discovered site where walking accrues exploration meters |
-| `successful_site_disguise_xp` | XP when a rival discovery roll would hit but your active disguise blocks it |
-| `site_exploration_xp` | XP to site_stewardship per 20 m walked inside `site_visibility_m` |
-| `site_documentation_xp` | XP when all five site-dimension accuracies reach 100% (freezes further exploration) |
-| `first_documentation_xp` | Bonus XP when you are the first user to fully document a site |
-| `site_identification_xp` | XP per period/rock identification quiz step (100% / 50% / 0% by attempt). Exploration meters start only after both steps succeed |
+| `documentation_genera` | Documentation genera (base 1% × skill level) |
+| `documentation_fossil` | Documentation fossil (base 1% × skill level) |
+| `documentation_completeness` | Documentation completeness (base 1% × skill level) |
+| `documentation_preservation` | Documentation preservation (base 1% × skill level) |
+| `documentation_depth` | Documentation depth (base 1% × skill level; depth 0 always exact) |
+| `rival_discovery_chance` | Rival discovery chance — multiplier on discovery_chance for rivals on sites where you have any status above hidden (×1 at L1 → ×0.5 at L99) |
+| `documentation_distance_m` | Documentation distance — radius around a discovered site where walking accrues exploration meters |
+| `disguise_of_site_xp` | XP when a rival discovery roll would hit but your active disguise blocks it |
+| `document_progress_xp` | XP to field_survey per 20 m walked inside `documentation_distance_m` |
+| `document_site_xp` | XP when all five site-dimension accuracies reach 100% (freezes further exploration) |
+| `document_site_as_first_xp` | Bonus XP when you are the first user to fully document a site |
+| `identify_site_xp` | XP per period/rock identification quiz step (100% / 50% / 0% by attempt). Exploration meters start only after both steps succeed |
 
-`site_visibility_m` uses the same solar-period multipliers as site discovery
-`visibility_distance_m`. `site_exploration_xp` uses the same multipliers as
-`site_discovery_xp`.
+`documentation_distance_m` uses the same solar-period multipliers as site discovery
+`discovery_distance_m`. `document_progress_xp` uses the same multipliers as
+`discover_site_xp`.
 
 After discovery, the site shows as "Excavation Site" until the viewer completes
 the identification quiz (period, then rock type). Only then do dimension bands
@@ -157,11 +157,11 @@ Accuracy params are display-only on the site card for now. Stack per axis:
 skill baseline (base 1% × level → L50 ≈ 50%) → stable per-site / per-dimension
 noise (`accuracy_noise` in `02_site_stewardship.yaml`) → tool
 `modifies_main_params` (none yet) → exploration (+1% per meter walked inside
-`site_visibility_m`, additive, capped at 100%). When all five axes reach 100%,
-`site_documentation_xp` is awarded once and further exploration is frozen.
-The first user to complete documentation also receives `first_documentation_xp`.
+`documentation_distance_m`, additive, capped at 100%). When all five axes reach 100%,
+`document_site_xp` is awarded once and further exploration is frozen.
+The first user to complete documentation also receives `document_site_as_first_xp`.
 
-`rival_discovery` is multiplied by skill level (×1.0 at L1 → ×0.5 at L99,
+`rival_discovery_chance` is multiplied by skill level (×1.0 at L1 → ×0.5 at L99,
 linear) on every site where you have any status above hidden. Site-scoped tools
 (Brush Scrim / Blackout Cover) multiply further on the covered site only.
 
@@ -193,12 +193,12 @@ some_tool:
       site_discovery:
         discovery_chance: { op: add, value: 0.05 }
       site_stewardship:
-        dino_accuracy: { op: add, value: 0.1 }
+        documentation_genera: { op: add, value: 0.1 }
     using:
       site_discovery:
         discovery_chance: { op: replace, value: 0.9 }
       fossil_detection:
-        visibility_distance_m: { op: add, value: 5 }
+        discovery_distance_m: { op: add, value: 5 }
 ```
 
 Either bucket / skill may be omitted. Guidance tools today only set

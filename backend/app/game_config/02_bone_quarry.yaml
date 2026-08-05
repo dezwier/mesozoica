@@ -6,15 +6,15 @@ enabled: true
 
 main_params:
   # XP awarded when a fossil is discovered / granted in situ.
-  fossil_discovery_xp: 5
+  locate_fossil_in_situ_xp: 5
 
 level_modifiers:
-  fossil_discovery_xp: []
+  locate_fossil_in_situ_xp: []
 
 # Ambient solar period (dawn|day|dusk|golden_hour|night). After level, before weather_type + tools.
 weather_time_modifiers:
   # XP: day +0%, golden_hour +10%, dawn/dusk +20%, night +50%.
-  fossil_discovery_xp:
+  locate_fossil_in_situ_xp:
     day: []
     golden_hour: [{ op: multiply, value: 1.1 }]
     dawn: [{ op: multiply, value: 1.2 }]
@@ -22,4 +22,4 @@ weather_time_modifiers:
     night: [{ op: multiply, value: 1.5 }]
 
 weather_type_modifiers:
-  fossil_discovery_xp: {}
+  locate_fossil_in_situ_xp: {}

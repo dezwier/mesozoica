@@ -1,4 +1,4 @@
-"""Site exploration distance sync (meters inside site_visibility_m)."""
+"""Site exploration distance sync (meters inside documentation_distance_m)."""
 
 from __future__ import annotations
 
@@ -17,9 +17,9 @@ from app.models.user_site import (
 from app.schemas.auth import UserProfileResponse
 from app.schemas.site import SiteExplorationUpdateRequest, SiteSummary
 from app.services.level_service import (
-    award_first_documentation_xp,
-    award_site_documentation_xp,
-    award_site_exploration_xp,
+    award_document_site_as_first_xp,
+    award_document_site_xp,
+    award_document_progress_xp,
     get_skill_xp,
     level_for_xp,
 )
@@ -123,17 +123,17 @@ def _maybe_complete_documentation(
             col(UserSite.role) == USER_SITE_ROLE_DOCUMENTER,
         )
     ).first()
-    is_first_documentation = existing_documenter is None
-    award_site_documentation_xp(user)
-    if is_first_documentation:
-        award_first_documentation_xp(user)
+    is_document_site_as_first = existing_documenter is None
+    award_document_site_xp(user)
+    if is_document_site_as_first:
+        award_document_site_as_first_xp(user)
     link.documented = True
     session.add(link)
     _upsert_documenter(
         session,
         user_id=int(user.id),
         site_id=int(link.site_id),
-        was_first=is_first_documentation,
+        was_first=is_document_site_as_first,
     )
     notification = UserNotification(
         user_id=int(user.id),
@@ -152,7 +152,7 @@ def apply_site_exploration_update(
     """Monotonically update discoverer explored_distance_m and award XP batches.
 
     Documented sites refuse further meter growth. Crossing 100% accuracy on all
-    five dimensions awards site_documentation_xp once and freezes the site.
+    five dimensions awards document_site_xp once and freezes the site.
     """
     if not payload.sites:
         return user_to_profile_response(session, user), []
@@ -206,7 +206,7 @@ def apply_site_exploration_update(
                 ),
             )
         if delta > 0:
-            award_site_exploration_xp(
+            award_document_progress_xp(
                 user,
                 previous_explored_m=previous,
                 new_explored_m=new_value,

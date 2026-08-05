@@ -44,10 +44,10 @@ def main() -> int:
     fossil_cfg = get_game_config().fossil_detection
     logger.info(
         "xp site_discovery=%s fossil_discovery=%s active_100m=%s passive_km=%s",
-        site_cfg.site_discovery_xp,
-        fossil_cfg.main_params.get("fossil_discovery_xp"),
-        site_cfg.active_100m_xp,
-        site_cfg.passive_km_xp,
+        site_cfg.discover_site_xp,
+        fossil_cfg.main_params.get("locate_fossil_in_situ_xp"),
+        site_cfg.explore_100m_actively_xp,
+        site_cfg.explore_1km_passively_xp,
     )
 
     with Session(engine) as session:
@@ -58,7 +58,7 @@ def main() -> int:
             backfill_user_levels(session, user)
             after = int((user.skill_xp or {}).get("field_survey", 0))
             logger.info(
-                "user id=%s username=%s site_discovery_xp %s -> %s (level %s)",
+                "user id=%s username=%s discover_site_xp %s -> %s (level %s)",
                 user.id,
                 user.username,
                 before,

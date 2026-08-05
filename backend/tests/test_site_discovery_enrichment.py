@@ -118,8 +118,8 @@ def test_discover_site_sets_walk_and_enriches(session: Session, monkeypatch):
                 "max_distance_m": 500.0,
                 "discovery_chance": 1.0,
                 "base_discovery_chance": 1.0,
-                "site_discovery_xp": 20.0,
-                "first_discovery_xp": 20.0,
+                "discover_site_xp": 20.0,
+                "discover_site_as_first_xp": 20.0,
             },
         )(),
     )
@@ -144,8 +144,8 @@ def test_discover_site_sets_walk_and_enriches(session: Session, monkeypatch):
     assert site.how_discovered == HOW_DISCOVERED_WALK
     assert site.country_code == "US"
     assert site.state == "Kansas"
-    assert user.skill_breakdown["field_survey"]["sites"] == 20
-    assert user.skill_breakdown["field_survey"]["first_discovery"] == 20
+    assert user.skill_breakdown["field_survey"]["discover_site"] == 20
+    assert user.skill_breakdown["field_survey"]["discover_site_as_first"] == 20
     from sqlmodel import col, select
 
     from app.models.user_site import USER_SITE_ROLE_DISCOVERER, UserSite
@@ -160,7 +160,7 @@ def test_discover_site_sets_walk_and_enriches(session: Session, monkeypatch):
     assert link.was_first is True
 
 
-def test_second_discoverer_skips_first_discovery_xp(session: Session, monkeypatch):
+def test_second_discoverer_skips_discover_site_as_first_xp(session: Session, monkeypatch):
     site = _field_site(session, site_id=2_000_000_091)
     first = _user(session, username="first_finder")
     second = _user(session, username="second_finder")
@@ -177,8 +177,8 @@ def test_second_discoverer_skips_first_discovery_xp(session: Session, monkeypatc
                 "max_distance_m": 500.0,
                 "discovery_chance": 1.0,
                 "base_discovery_chance": 1.0,
-                "site_discovery_xp": 20.0,
-                "first_discovery_xp": 20.0,
+                "discover_site_xp": 20.0,
+                "discover_site_as_first_xp": 20.0,
             },
         )(),
     )
@@ -207,9 +207,9 @@ def test_second_discoverer_skips_first_discovery_xp(session: Session, monkeypatc
     )
     session.refresh(first)
     session.refresh(second)
-    assert first.skill_breakdown["field_survey"]["first_discovery"] == 20
-    assert second.skill_breakdown["field_survey"]["sites"] == 20
-    assert "first_discovery" not in (second.skill_breakdown.get("field_survey") or {})
+    assert first.skill_breakdown["field_survey"]["discover_site_as_first"] == 20
+    assert second.skill_breakdown["field_survey"]["discover_site"] == 20
+    assert "discover_site_as_first" not in (second.skill_breakdown.get("field_survey") or {})
 
     from sqlmodel import col, select
 
@@ -245,8 +245,8 @@ def test_orphan_how_discovered_does_not_block_first_xp(session: Session, monkeyp
                 "max_distance_m": 500.0,
                 "discovery_chance": 1.0,
                 "base_discovery_chance": 1.0,
-                "site_discovery_xp": 20.0,
-                "first_discovery_xp": 20.0,
+                "discover_site_xp": 20.0,
+                "discover_site_as_first_xp": 20.0,
             },
         )(),
     )
@@ -267,7 +267,7 @@ def test_orphan_how_discovered_does_not_block_first_xp(session: Session, monkeyp
         lon=-100.0,
     )
     session.refresh(user)
-    assert user.skill_breakdown["field_survey"]["first_discovery"] == 20
+    assert user.skill_breakdown["field_survey"]["discover_site_as_first"] == 20
 
     from sqlmodel import col, select
 

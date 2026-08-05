@@ -230,23 +230,23 @@ class FieldSurveyConfig {
   final AccuracyNoiseConfig accuracyNoise;
   final FossilGenerationDefaults defaults;
 
-  double get visibilityDistanceM => mainParams.visibilityDistanceM;
+  double get discoveryDistanceM => mainParams.discoveryDistanceM;
   double get discoveryChance => mainParams.discoveryChance;
-  double get maxDiscoverySpeedKmh => mainParams.maxDiscoverySpeedKmh;
-  double get siteDiscoveryXp => mainParams.siteDiscoveryXp;
-  double get firstDiscoveryXp => mainParams.firstDiscoveryXp;
-  double get active100mXp => mainParams.active100mXp;
-  double get passiveKmXp => mainParams.passiveKmXp;
-  double get successfulSiteDisguiseXp => mainParams.successfulSiteDisguiseXp;
-  double get siteExplorationXp => mainParams.siteExplorationXp;
-  double get siteDocumentationXp => mainParams.siteDocumentationXp;
-  double get firstDocumentationXp => mainParams.firstDocumentationXp;
-  double get siteIdentificationXp => mainParams.siteIdentificationXp;
-  double get siteVisibilityM => mainParams.siteVisibilityM;
-  double get rivalDiscovery => mainParams.rivalDiscovery;
+  double get discoveryMaxSpeedKmh => mainParams.discoveryMaxSpeedKmh;
+  double get discoverSiteXp => mainParams.discoverSiteXp;
+  double get discoverSiteAsFirstXp => mainParams.discoverSiteAsFirstXp;
+  double get explore100mActivelyXp => mainParams.explore100mActivelyXp;
+  double get explore1kmPassivelyXp => mainParams.explore1kmPassivelyXp;
+  double get disguiseOfSiteXp => mainParams.disguiseOfSiteXp;
+  double get documentProgressXp => mainParams.documentProgressXp;
+  double get documentSiteXp => mainParams.documentSiteXp;
+  double get documentSiteAsFirstXp => mainParams.documentSiteAsFirstXp;
+  double get identifySiteXp => mainParams.identifySiteXp;
+  double get documentationDistanceM => mainParams.documentationDistanceM;
+  double get rivalDiscoveryChance => mainParams.rivalDiscoveryChance;
 
   /// Back-compat alias.
-  double get maxDistanceM => visibilityDistanceM;
+  double get maxDistanceM => discoveryDistanceM;
 
   /// Back-compat aliases for distribution tables.
   List<DinoCountThreshold> get dinoCountThresholds => dinoCount;
@@ -313,74 +313,74 @@ class FieldSurveyConfig {
 
 class FieldSurveyMainParams {
   const FieldSurveyMainParams({
-    required this.visibilityDistanceM,
+    required this.discoveryDistanceM,
     required this.discoveryChance,
-    required this.maxDiscoverySpeedKmh,
-    required this.siteDiscoveryXp,
-    required this.firstDiscoveryXp,
-    required this.active100mXp,
-    required this.passiveKmXp,
-    required this.dinoAccuracy,
-    required this.fossilAccuracy,
-    required this.completenessAccuracy,
-    required this.qualityAccuracy,
-    required this.depthAccuracy,
-    required this.rivalDiscovery,
-    required this.siteVisibilityM,
-    required this.successfulSiteDisguiseXp,
-    required this.siteExplorationXp,
-    required this.siteDocumentationXp,
-    required this.firstDocumentationXp,
-    required this.siteIdentificationXp,
+    required this.discoveryMaxSpeedKmh,
+    required this.discoverSiteXp,
+    required this.discoverSiteAsFirstXp,
+    required this.explore100mActivelyXp,
+    required this.explore1kmPassivelyXp,
+    required this.documentationGenera,
+    required this.documentationFossil,
+    required this.documentationCompleteness,
+    required this.documentationPreservation,
+    required this.documentationDepth,
+    required this.rivalDiscoveryChance,
+    required this.documentationDistanceM,
+    required this.disguiseOfSiteXp,
+    required this.documentProgressXp,
+    required this.documentSiteXp,
+    required this.documentSiteAsFirstXp,
+    required this.identifySiteXp,
   });
 
-  final double visibilityDistanceM;
+  final double discoveryDistanceM;
   final double discoveryChance;
-  final double maxDiscoverySpeedKmh;
-  final double siteDiscoveryXp;
-  final double firstDiscoveryXp;
-  final double active100mXp;
-  final double passiveKmXp;
-  final double dinoAccuracy;
-  final double fossilAccuracy;
-  final double completenessAccuracy;
-  final double qualityAccuracy;
-  final double depthAccuracy;
-  final double rivalDiscovery;
-  final double siteVisibilityM;
-  final double successfulSiteDisguiseXp;
-  final double siteExplorationXp;
-  final double siteDocumentationXp;
-  final double firstDocumentationXp;
-  final double siteIdentificationXp;
+  final double discoveryMaxSpeedKmh;
+  final double discoverSiteXp;
+  final double discoverSiteAsFirstXp;
+  final double explore100mActivelyXp;
+  final double explore1kmPassivelyXp;
+  final double documentationGenera;
+  final double documentationFossil;
+  final double documentationCompleteness;
+  final double documentationPreservation;
+  final double documentationDepth;
+  final double rivalDiscoveryChance;
+  final double documentationDistanceM;
+  final double disguiseOfSiteXp;
+  final double documentProgressXp;
+  final double documentSiteXp;
+  final double documentSiteAsFirstXp;
+  final double identifySiteXp;
 
   factory FieldSurveyMainParams.fromYaml(Map<String, dynamic> yaml) {
     return FieldSurveyMainParams(
-      visibilityDistanceM: _asDouble(
-        yaml['visibility_distance_m'] ?? yaml['max_distance_m'],
+      discoveryDistanceM: _asDouble(
+        yaml['discovery_distance_m'] ?? yaml['max_distance_m'],
         20.0,
       ),
       discoveryChance: _asDouble(yaml['discovery_chance'], 0.1),
-      maxDiscoverySpeedKmh: _asDouble(yaml['max_discovery_speed_kmh'], 10.0),
-      siteDiscoveryXp: _asDouble(yaml['site_discovery_xp'], 20.0),
-      firstDiscoveryXp: _asDouble(yaml['first_discovery_xp'], 20.0),
-      active100mXp: _asDouble(yaml['active_100m_xp'], 20.0),
-      passiveKmXp: _asDouble(yaml['passive_km_xp'], 100.0),
-      dinoAccuracy: _asDouble(yaml['dino_accuracy'], 0.01),
-      fossilAccuracy: _asDouble(yaml['fossil_accuracy'], 0.01),
-      completenessAccuracy: _asDouble(yaml['completeness_accuracy'], 0.01),
-      qualityAccuracy: _asDouble(yaml['quality_accuracy'], 0.01),
-      depthAccuracy: _asDouble(yaml['depth_accuracy'], 0.01),
-      rivalDiscovery: _asDouble(yaml['rival_discovery'], 1),
-      siteVisibilityM: _asDouble(yaml['site_visibility_m'], 50),
-      successfulSiteDisguiseXp: _asDouble(
-        yaml['successful_site_disguise_xp'],
+      discoveryMaxSpeedKmh: _asDouble(yaml['discovery_max_speed_kmh'], 10.0),
+      discoverSiteXp: _asDouble(yaml['discover_site_xp'], 20.0),
+      discoverSiteAsFirstXp: _asDouble(yaml['discover_site_as_first_xp'], 20.0),
+      explore100mActivelyXp: _asDouble(yaml['explore_100m_actively_xp'], 20.0),
+      explore1kmPassivelyXp: _asDouble(yaml['explore_1km_passively_xp'], 100.0),
+      documentationGenera: _asDouble(yaml['documentation_genera'], 0.01),
+      documentationFossil: _asDouble(yaml['documentation_fossil'], 0.01),
+      documentationCompleteness: _asDouble(yaml['documentation_completeness'], 0.01),
+      documentationPreservation: _asDouble(yaml['documentation_preservation'], 0.01),
+      documentationDepth: _asDouble(yaml['documentation_depth'], 0.01),
+      rivalDiscoveryChance: _asDouble(yaml['rival_discovery_chance'], 1),
+      documentationDistanceM: _asDouble(yaml['documentation_distance_m'], 50),
+      disguiseOfSiteXp: _asDouble(
+        yaml['disguise_of_site_xp'],
         40,
       ),
-      siteExplorationXp: _asDouble(yaml['site_exploration_xp'], 20),
-      siteDocumentationXp: _asDouble(yaml['site_documentation_xp'], 80),
-      firstDocumentationXp: _asDouble(yaml['first_documentation_xp'], 20),
-      siteIdentificationXp: _asDouble(yaml['site_identification_xp'], 40),
+      documentProgressXp: _asDouble(yaml['document_progress_xp'], 20),
+      documentSiteXp: _asDouble(yaml['document_site_xp'], 80),
+      documentSiteAsFirstXp: _asDouble(yaml['document_site_as_first_xp'], 20),
+      identifySiteXp: _asDouble(yaml['identify_site_xp'], 40),
     );
   }
 }
@@ -945,7 +945,7 @@ class ToolActionsConfig {
           modifiesMainParams: ModifiesMainParams(
             using: {
               'field_survey': {
-                'site_visibility_m': ParamModifier(op: 'multiply', value: 0.95),
+                'documentation_distance_m': ParamModifier(op: 'multiply', value: 0.95),
               },
             },
           ),
@@ -962,7 +962,7 @@ class ToolActionsConfig {
           modifiesMainParams: ModifiesMainParams(
             using: {
               'field_survey': {
-                'site_visibility_m': ParamModifier(op: 'multiply', value: 0.9),
+                'documentation_distance_m': ParamModifier(op: 'multiply', value: 0.9),
               },
             },
           ),
@@ -979,7 +979,7 @@ class ToolActionsConfig {
           modifiesMainParams: ModifiesMainParams(
             using: {
               'field_survey': {
-                'site_visibility_m': ParamModifier(op: 'multiply', value: 0.85),
+                'documentation_distance_m': ParamModifier(op: 'multiply', value: 0.85),
               },
             },
           ),
@@ -996,7 +996,7 @@ class ToolActionsConfig {
           modifiesMainParams: ModifiesMainParams(
             using: {
               'field_survey': {
-                'site_visibility_m': ParamModifier(op: 'multiply', value: 0.8),
+                'documentation_distance_m': ParamModifier(op: 'multiply', value: 0.8),
               },
             },
           ),
@@ -1014,7 +1014,7 @@ class ToolActionsConfig {
           modifiesMainParams: ModifiesMainParams(
             using: {
               'field_survey': {
-                'visibility_distance_m': ParamModifier(
+                'discovery_distance_m': ParamModifier(
                   op: 'multiply',
                   value: 1.4,
                 ),
@@ -1034,12 +1034,12 @@ class ToolActionsConfig {
           modifiesMainParams: ModifiesMainParams(
             using: {
               'field_survey': {
-                'rival_discovery': ParamModifier(op: 'multiply', value: 0),
+                'rival_discovery_chance': ParamModifier(op: 'multiply', value: 0),
               },
             },
           ),
           statsExplanation:
-              'Covers one discovered site; multiplies rival_discovery by 0. '
+              'Covers one discovered site; multiplies rival_discovery_chance by 0. '
               'Successful site disguise XP only when a rival would have '
               'discovered the site without the cover.',
         ),
@@ -1051,12 +1051,12 @@ class ToolActionsConfig {
           modifiesMainParams: ModifiesMainParams(
             using: {
               'field_survey': {
-                'rival_discovery': ParamModifier(op: 'multiply', value: 0.5),
+                'rival_discovery_chance': ParamModifier(op: 'multiply', value: 0.5),
               },
             },
           ),
           statsExplanation:
-              'Covers one discovered site; multiplies rival_discovery by 0.5. '
+              'Covers one discovered site; multiplies rival_discovery_chance by 0.5. '
               'Successful site disguise XP only when a rival would have '
               'discovered the site without the cover but the cover stops them.',
         ),
@@ -1471,8 +1471,8 @@ class MainParamBuffActionConfig {
   final List<String>? activeWeatherTimes;
   final String statsExplanation;
 
-  double? get addedVisibilityRangeM {
-    final mod = siteDiscoveryMod('visibility_distance_m');
+  double? get addedDiscoveryDistanceM {
+    final mod = siteDiscoveryMod('discovery_distance_m');
     if (mod == null || mod.op != 'add') return null;
     return mod.value;
   }
@@ -1537,12 +1537,12 @@ class MainParamBuffActionConfig {
           modifiesMainParams: ModifiesMainParams(
             using: {
               'field_survey': {
-                'visibility_distance_m': ParamModifier(
+                'discovery_distance_m': ParamModifier(
                   op: 'multiply',
                   value: 1.3,
                 ),
                 'discovery_chance': ParamModifier(op: 'multiply', value: 1.3),
-                'max_discovery_speed_kmh': ParamModifier(
+                'discovery_max_speed_kmh': ParamModifier(
                   op: 'multiply',
                   value: 0.7,
                 ),
@@ -1595,7 +1595,7 @@ class DisguiseActionConfig {
         mods.paramsFor('using', 'site_stewardship')[paramKey];
   }
 
-  ParamModifier? get rivalDiscoveryMod => siteStewardshipMod('rival_discovery');
+  ParamModifier? get rivalDiscoveryChanceMod => siteStewardshipMod('rival_discovery_chance');
 
   Map<String, dynamic> toParamsJson() {
     final out = <String, dynamic>{
@@ -1632,7 +1632,7 @@ class DisguiseActionConfig {
           modifiesMainParams: ModifiesMainParams(
             using: {
               'field_survey': {
-                'rival_discovery': ParamModifier(op: 'multiply', value: 0.5),
+                'rival_discovery_chance': ParamModifier(op: 'multiply', value: 0.5),
               },
             },
           ),
@@ -1643,12 +1643,12 @@ class DisguiseActionConfig {
     if (rawMods is Map) {
       mods = ModifiesMainParams.fromYaml(GameConfig._asMap(rawMods));
     } else if (yaml.containsKey('discovery_chance_multiplier')) {
-      // Legacy bare multiplier → formalize as rival_discovery multiply.
+      // Legacy bare multiplier → formalize as rival_discovery_chance multiply.
       final value = _asDouble(yaml['discovery_chance_multiplier'], 0.5);
       mods = ModifiesMainParams(
         using: {
           'field_survey': {
-            'rival_discovery': ParamModifier(op: 'multiply', value: value),
+            'rival_discovery_chance': ParamModifier(op: 'multiply', value: value),
           },
         },
       );

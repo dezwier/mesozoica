@@ -31,7 +31,7 @@ from app.models.user_site import (
     USER_SITE_ROLE_DISGUISER,
     UserSite,
 )
-from app.services.level_service import award_successful_site_disguise_xp
+from app.services.level_service import award_disguise_of_site_xp
 from app.services.level_service.main_params import (
     resolve_site_stewardship_main_params,
     tool_mods_from_session_params,
@@ -75,7 +75,7 @@ class ActiveDisguise:
     user_id: int
     site_id: int
     session_id: int
-    rival_discovery: float
+    rival_discovery_chance: float
     params_json: dict
 
 
@@ -204,7 +204,7 @@ def prepare_disguise_start(
         params["modifies_main_params"] = {
             "using": {
                 "field_survey": {
-                    "rival_discovery": {
+                    "rival_discovery_chance": {
                         "op": "multiply",
                         "value": float(inst_p["discovery_chance_multiplier"]),
                     }
@@ -285,7 +285,7 @@ def list_active_disguises_for_site(
                 user_id=int(link.user_id),
                 site_id=int(site_id),
                 session_id=int(row.id),
-                rival_discovery=_resolve_cover_rival_discovery(
+                rival_discovery_chance=_resolve_cover_rival_discovery(
                     session, user_id=int(link.user_id), params=params
                 ),
                 params_json=params,
@@ -307,20 +307,20 @@ def _resolve_cover_rival_discovery(
     user_id: int,
     params: dict,
 ) -> float:
-    """Effective ``rival_discovery`` for one active cover session."""
+    """Effective ``rival_discovery_chance`` for one active cover session."""
     tool_mods = tool_mods_from_session_params(
         params, when="using", skill_id="field_survey"
     )
     # Legacy snapshot: bare discovery_chance_multiplier.
     if (
-        "rival_discovery" not in tool_mods
+        "rival_discovery_chance" not in tool_mods
         and params.get("discovery_chance_multiplier") is not None
     ):
         from app.core.game_config import ParamModifier
 
         tool_mods = {
             **tool_mods,
-            "rival_discovery": ParamModifier(
+            "rival_discovery_chance": ParamModifier(
                 op="multiply",
                 value=float(params["discovery_chance_multiplier"]),
             ),
@@ -329,15 +329,15 @@ def _resolve_cover_rival_discovery(
         skill_level=_stewardship_skill_level(session, user_id),
         tool_mods=tool_mods,
     )
-    return max(0.0, float(resolved["rival_discovery"]))
+    return max(0.0, float(resolved["rival_discovery_chance"]))
 
 
 def _resolve_skill_rival_discovery(session: Session, *, user_id: int) -> float:
-    """Skill-only ``rival_discovery`` for a steward (no tool cover)."""
+    """Skill-only ``rival_discovery_chance`` for a steward (no tool cover)."""
     resolved = resolve_site_stewardship_main_params(
         skill_level=_stewardship_skill_level(session, user_id),
     )
-    return max(0.0, float(resolved["rival_discovery"]))
+    return max(0.0, float(resolved["rival_discovery_chance"]))
 
 
 def _user_has_status_above_hidden(
@@ -362,10 +362,10 @@ def rival_discovery_multiplier(
     site_id: int,
     rolling_user_id: int,
 ) -> float:
-    """Effective ``rival_discovery`` for ``rolling_user_id`` on ``site_id``.
+    """Effective ``rival_discovery_chance`` for ``rolling_user_id`` on ``site_id``.
 
     Users with any status above hidden on the site are unaffected (1.0).
-    Otherwise returns the strongest (minimum) resolved ``rival_discovery``
+    Otherwise returns the strongest (minimum) resolved ``rival_discovery_chance``
     from active rival covers (skill + tool) and other users with status above
     hidden (skill only). Default 1.0 when nobody has claimed the site.
     """
@@ -376,7 +376,7 @@ def rival_discovery_multiplier(
 
     disguises = list_active_disguises_for_site(session, site_id=site_id)
     others = [d for d in disguises if d.user_id != rolling_user_id]
-    values = [d.rival_discovery for d in others]
+    values = [d.rival_discovery_chance for d in others]
     covered_user_ids = {d.user_id for d in others}
 
     steward_ids = session.exec(
@@ -414,7 +414,7 @@ def roll_discovery_with_disguise(
     base_chance: float,
     rng: random.Random | None = None,
 ) -> DisguiseDiscoveryRoll:
-    """Single Uniform roll against base chance, reduced by rival_discovery.
+    """Single Uniform roll against base chance, reduced by rival_discovery_chance.
 
     - ``hit``: roll clears the disguised (effective) chance → rival discovers.
     - ``blocked``: roll would have cleared base chance, but disguise stopped it
@@ -453,7 +453,7 @@ def award_disguise_xp_on_rival_blocked(
         user = session.get(User, cover.user_id)
         if user is None:
             continue
-        total += award_successful_site_disguise_xp(user)
+        total += award_disguise_of_site_xp(user)
         session.add(user)
     return total
 

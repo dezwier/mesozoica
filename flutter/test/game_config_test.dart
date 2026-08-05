@@ -14,43 +14,43 @@ void main() {
     expect(config.siteGeneration.cellSizeM, 500.0);
     expect(config.siteGeneration.client.nearbyRadiusKm, 0.5);
 
-    expect(config.siteDiscovery.visibilityDistanceM, 20.0);
+    expect(config.siteDiscovery.discoveryDistanceM, 20.0);
     expect(config.siteDiscovery.maxDistanceM, 20.0);
     expect(config.siteDiscovery.discoveryChance, 0.1);
-    expect(config.siteDiscovery.maxDiscoverySpeedKmh, 10.0);
-    expect(config.siteDiscovery.siteDiscoveryXp, 20.0);
-    expect(config.siteDiscovery.firstDiscoveryXp, 20.0);
-    expect(config.siteDiscovery.active100mXp, 20.0);
-    expect(config.siteDiscovery.passiveKmXp, 100.0);
+    expect(config.siteDiscovery.discoveryMaxSpeedKmh, 10.0);
+    expect(config.siteDiscovery.discoverSiteXp, 20.0);
+    expect(config.siteDiscovery.discoverSiteAsFirstXp, 20.0);
+    expect(config.siteDiscovery.explore100mActivelyXp, 20.0);
+    expect(config.siteDiscovery.explore1kmPassivelyXp, 100.0);
     expect(config.siteDiscovery.client.autoDiscoverRadiusM, 20.0);
     expect(config.siteDiscovery.client.cacheRadiusKm, 1.0);
     expect(config.siteDiscovery.client.cacheRefreshMoveThresholdM, 500.0);
     expect(config.siteDiscovery.client.discoverFailRetryS, 20);
     expect(config.siteDiscovery.client.discoveryRerollIntervalS, 10);
 
-    expect(config.siteStewardship.mainParams.dinoAccuracy, 0.01);
-    expect(config.siteStewardship.mainParams.fossilAccuracy, 0.01);
-    expect(config.siteStewardship.mainParams.completenessAccuracy, 0.01);
-    expect(config.siteStewardship.mainParams.qualityAccuracy, 0.01);
-    expect(config.siteStewardship.mainParams.depthAccuracy, 0.01);
-    expect(config.siteStewardship.mainParams.siteVisibilityM, 50.0);
-    expect(config.siteStewardship.mainParams.siteExplorationXp, 20.0);
-    expect(config.siteStewardship.mainParams.siteDocumentationXp, 80.0);
-    expect(config.siteStewardship.mainParams.firstDocumentationXp, 20.0);
-    final dinoAccMods = config.siteStewardship.levelModifiers['dino_accuracy']!;
+    expect(config.siteStewardship.mainParams.documentationGenera, 0.01);
+    expect(config.siteStewardship.mainParams.documentationFossil, 0.01);
+    expect(config.siteStewardship.mainParams.documentationCompleteness, 0.01);
+    expect(config.siteStewardship.mainParams.documentationPreservation, 0.01);
+    expect(config.siteStewardship.mainParams.documentationDepth, 0.01);
+    expect(config.siteStewardship.mainParams.documentationDistanceM, 50.0);
+    expect(config.siteStewardship.mainParams.documentProgressXp, 20.0);
+    expect(config.siteStewardship.mainParams.documentSiteXp, 80.0);
+    expect(config.siteStewardship.mainParams.documentSiteAsFirstXp, 20.0);
+    final dinoAccMods = config.siteStewardship.levelModifiers['documentation_genera']!;
     expect(dinoAccMods.length, 99);
     expect(dinoAccMods.first.level, 1);
     expect(dinoAccMods.first.op, 'multiply');
     expect(dinoAccMods.first.value, 1);
     expect(dinoAccMods.last.level, 99);
     expect(dinoAccMods.last.value, 99);
-    final rivalMods = config.siteStewardship.levelModifiers['rival_discovery']!;
+    final rivalMods = config.siteStewardship.levelModifiers['rival_discovery_chance']!;
     expect(rivalMods.length, 99);
     expect(rivalMods.first.op, 'multiply');
     expect(rivalMods.first.value, 1);
     expect(rivalMods.last.op, 'multiply');
     expect(rivalMods.last.value, 0.5);
-    expect(config.siteStewardship.levelModifiers['fossil_accuracy']!.length, 99);
+    expect(config.siteStewardship.levelModifiers['documentation_fossil']!.length, 99);
     expect(config.siteStewardship.oddNoise.dinoCount, 0.0);
     expect(config.siteStewardship.oddNoise.fossilCount, 0.5);
     expect(config.siteStewardship.oddNoise.completeness, 0.3);
@@ -152,13 +152,13 @@ void main() {
     expect(config.toolActions.ridgeGlass.durationMinutes, 60);
     expect(
       config.toolActions.ridgeGlass
-          .siteDiscoveryMod('visibility_distance_m')
+          .siteDiscoveryMod('discovery_distance_m')
           ?.op,
       'multiply',
     );
     expect(
       config.toolActions.ridgeGlass
-          .siteDiscoveryMod('visibility_distance_m')
+          .siteDiscoveryMod('discovery_distance_m')
           ?.value,
       1.3,
     );
@@ -168,11 +168,11 @@ void main() {
     );
     expect(
       config.toolActions.ridgeGlass
-          .siteDiscoveryMod('max_discovery_speed_kmh')
+          .siteDiscoveryMod('discovery_max_speed_kmh')
           ?.value,
       0.7,
     );
-    expect(config.toolActions.ridgeGlass.addedVisibilityRangeM, isNull);
+    expect(config.toolActions.ridgeGlass.addedDiscoveryDistanceM, isNull);
     expect(config.toolActions.ridgeGlass.addedDiscoveryRate, isNull);
     expect(
       config.toolActions.ridgeGlass.modifiesMainParams
@@ -188,25 +188,25 @@ void main() {
     );
     expect(
       config.toolActions.expeditionDrivetrain.modifiesMainParams
-          ?.paramsFor('using', 'field_survey')['site_visibility_m']
+          ?.paramsFor('using', 'field_survey')['documentation_distance_m']
           ?.value,
       0.9,
     );
     expect(
       config.toolActions.trailStriders.modifiesMainParams
-          ?.paramsFor('using', 'field_survey')['site_visibility_m']
+          ?.paramsFor('using', 'field_survey')['documentation_distance_m']
           ?.value,
       0.95,
     );
     expect(
       config.toolActions.canyonThrottle.modifiesMainParams
-          ?.paramsFor('using', 'field_survey')['site_visibility_m']
+          ?.paramsFor('using', 'field_survey')['documentation_distance_m']
           ?.value,
       0.85,
     );
     expect(
       config.toolActions.overlandChassis.modifiesMainParams
-          ?.paramsFor('using', 'field_survey')['site_visibility_m']
+          ?.paramsFor('using', 'field_survey')['documentation_distance_m']
           ?.value,
       0.8,
     );
@@ -215,7 +215,7 @@ void main() {
     expect(config.toolActions.nocturneLens.activeWeatherTimes, ['night']);
     expect(
       config.toolActions.nocturneLens
-          .siteDiscoveryMod('visibility_distance_m')
+          .siteDiscoveryMod('discovery_distance_m')
           ?.value,
       1.4,
     );
@@ -225,11 +225,11 @@ void main() {
     );
     expect(
       config.toolActions.nocturneLens
-          .siteDiscoveryMod('max_discovery_speed_kmh'),
+          .siteDiscoveryMod('discovery_max_speed_kmh'),
       isNull,
     );
 
-    expect(config.boneQuarry.mainParams['fossil_discovery_xp'], 5);
+    expect(config.boneQuarry.mainParams['locate_fossil_in_situ_xp'], 5);
     expect(config.leveling.skills.length, 3);
     expect(config.leveling.careerTitles.length, 99);
 

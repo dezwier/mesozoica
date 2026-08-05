@@ -368,7 +368,7 @@ class _AppShellState extends State<AppShell>
     final discovery = context.read<FieldDiscoveryCoordinator>();
     final base = (() {
       try {
-        return GameConfig.instance.siteDiscovery.maxDiscoverySpeedKmh;
+        return GameConfig.instance.siteDiscovery.discoveryMaxSpeedKmh;
       } catch (_) {
         return 10.0;
       }
@@ -383,7 +383,7 @@ class _AppShellState extends State<AppShell>
         buff.isLiveForWeatherTime(weatherTime)) {
       final mods = modifiesMainParamsFromParams(buff.session?.params);
       speedMod =
-          mods?.paramsFor('using', 'field_survey')['max_discovery_speed_kmh'];
+          mods?.paramsFor('using', 'field_survey')['discovery_max_speed_kmh'];
       if (mods != null) {
         siteVisBindings = [
           ToolModBinding(

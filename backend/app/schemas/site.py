@@ -91,7 +91,7 @@ class SiteSummary(BaseModel):
     odd_completeness_band: SiteDimensionBand | None = None
     odd_quality_band: SiteDimensionBand | None = None
     odd_depth_band: SiteDimensionBand | None = None
-    # Viewer meters walked inside site_visibility_m (discoverer progress).
+    # Viewer meters walked inside documentation_distance_m (discoverer progress).
     explored_distance_m: float | None = None
     # True when all five dimension accuracies reached 100% (meters frozen).
     documented: bool | None = None

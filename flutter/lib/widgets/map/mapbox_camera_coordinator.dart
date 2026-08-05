@@ -432,12 +432,12 @@ class MapboxCameraCoordinator {
 
   /// Avatar puck with ground shadow, white heading arrow, and brown pulse.
   ///
-  /// [visibilityDistanceM] is the effective site-discovery radius (main param
+  /// [discoveryDistanceM] is the effective site-discovery radius (main param
   /// after level/tool boosts). The pulse max radius is that ground distance
   /// projected to screen pixels at [center].
   Future<void> enableLocationPuck({
     String? avatarImageUrl,
-    double? visibilityDistanceM,
+    double? discoveryDistanceM,
     LatLng? center,
     double? latitudeDeg,
     double? zoom,
@@ -477,7 +477,7 @@ class MapboxCameraCoordinator {
     _puckShadowImage = shadowImage;
 
     final pulsePx = await _resolvePulseRadiusPx(
-      visibilityDistanceM: visibilityDistanceM,
+      discoveryDistanceM: discoveryDistanceM,
       center: center,
       latitudeDeg: latitudeDeg,
       zoom: zoom,
@@ -500,7 +500,7 @@ class MapboxCameraCoordinator {
   /// Always re-applies the cached avatar puck: Mapbox Flutter replaces a null
   /// [LocationComponentSettings.locationPuck] with the blue default 2D puck.
   Future<void> syncLocationPuckPulse({
-    double? visibilityDistanceM,
+    double? discoveryDistanceM,
     LatLng? center,
     double? latitudeDeg,
     double? zoom,
@@ -510,7 +510,7 @@ class MapboxCameraCoordinator {
     final map = _map;
     if (map == null || _puckTopImage == null) return;
     final pulsePx = await _resolvePulseRadiusPx(
-      visibilityDistanceM: visibilityDistanceM,
+      discoveryDistanceM: discoveryDistanceM,
       center: center,
       latitudeDeg: latitudeDeg,
       zoom: zoom,
@@ -571,13 +571,13 @@ class MapboxCameraCoordinator {
 
   /// Prefer Mapbox projection (same approach as terrain-echo); Mercator fallback.
   Future<double> _resolvePulseRadiusPx({
-    double? visibilityDistanceM,
+    double? discoveryDistanceM,
     LatLng? center,
     double? latitudeDeg,
     double? zoom,
   }) async {
-    if (visibilityDistanceM != null && visibilityDistanceM > 0) {
-      _pulseVisibilityDistanceM = visibilityDistanceM;
+    if (discoveryDistanceM != null && discoveryDistanceM > 0) {
+      _pulseVisibilityDistanceM = discoveryDistanceM;
     }
     if (zoom != null) {
       _pulseZoom = zoom;

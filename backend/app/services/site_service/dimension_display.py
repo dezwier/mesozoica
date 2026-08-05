@@ -15,7 +15,7 @@ _MAX_RANGE_WIDTH = 1.0
 _MAX_CENTER_JITTER = 0.45
 _MAX_BLUR_SIGMA = 16.0
 _DEPTH_PRECISE_EPSILON = 1e-9
-# +1% accuracy per meter walked inside site_visibility_m (additive, capped).
+# +1% accuracy per meter walked inside documentation_distance_m (additive, capped).
 EXPLORATION_ACCURACY_PER_M = 0.01
 
 
@@ -36,11 +36,11 @@ class SiteDimensionBand:
 
 
 _ACCURACY_KEYS: dict[SiteDimensionKey, str] = {
-    SiteDimensionKey.DINO: "dino_accuracy",
-    SiteDimensionKey.FOSSIL: "fossil_accuracy",
-    SiteDimensionKey.COMPLETENESS: "completeness_accuracy",
-    SiteDimensionKey.QUALITY: "quality_accuracy",
-    SiteDimensionKey.DEPTH: "depth_accuracy",
+    SiteDimensionKey.DINO: "documentation_genera",
+    SiteDimensionKey.FOSSIL: "documentation_fossil",
+    SiteDimensionKey.COMPLETENESS: "documentation_completeness",
+    SiteDimensionKey.QUALITY: "documentation_preservation",
+    SiteDimensionKey.DEPTH: "documentation_depth",
 }
 
 
@@ -110,11 +110,11 @@ def resolve_site_stewardship_accuracies(*, skill_level: int = 1) -> dict[str, fl
     cfg = get_game_config().site_stewardship
     mp = cfg.main_params
     bases = {
-        "dino_accuracy": float(mp.dino_accuracy),
-        "fossil_accuracy": float(mp.fossil_accuracy),
-        "completeness_accuracy": float(mp.completeness_accuracy),
-        "quality_accuracy": float(mp.quality_accuracy),
-        "depth_accuracy": float(mp.depth_accuracy),
+        "documentation_genera": float(mp.documentation_genera),
+        "documentation_fossil": float(mp.documentation_fossil),
+        "documentation_completeness": float(mp.documentation_completeness),
+        "documentation_preservation": float(mp.documentation_preservation),
+        "documentation_depth": float(mp.documentation_depth),
     }
     return {
         key: resolve_scalar_main_param(

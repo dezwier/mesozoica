@@ -418,7 +418,7 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
       widget.camera.syncLocationPuckPulse(
         // While Ridge Glass draws both rings itself, keep the native pulse off
         // so timing stays locked to the overlay animation.
-        visibilityDistanceM: ridgePulse ? fullM : pulseM,
+        discoveryDistanceM: ridgePulse ? fullM : pulseM,
         center: loc,
         zoom: _lastKnownZoom,
         pulseColor: locationPuckPulseBrown,
@@ -442,7 +442,7 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
     final loc = _effectiveLocation ?? widget.initialCenter;
     await widget.camera.enableLocationPuck(
       avatarImageUrl: widget.avatarImageUrl,
-      visibilityDistanceM: ridgePulse ? fullM : pulseM,
+      discoveryDistanceM: ridgePulse ? fullM : pulseM,
       center: loc,
       zoom: _lastKnownZoom,
       pulseColor: locationPuckPulseBrown,

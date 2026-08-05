@@ -27,19 +27,19 @@ def test_merge_skill_xp_sums_sources() -> None:
 def test_merge_skill_breakdown_unions_buckets() -> None:
     merged = merge_skill_breakdown(
         {
-            "site_discovery": {"sites": 40, "active_distance": 100},
-            "site_stewardship": {"disguise": 40, "site_exploration": 20},
-            "fossil_detection": {"fossils": 15},
+            "site_discovery": {"discover_site": 40, "explore_100m_actively": 100},
+            "site_stewardship": {"disguise_of_site": 40, "document_progress": 20},
+            "fossil_detection": {"locate_fossil_in_situ": 15},
         }
     )
     assert merged == {
         "field_survey": {
-            "sites": 40,
-            "active_distance": 100,
-            "disguise": 40,
-            "site_exploration": 20,
+            "discover_site": 40,
+            "explore_100m_actively": 100,
+            "disguise_of_site": 40,
+            "document_progress": 20,
         },
-        "bone_quarry": {"fossils": 15},
+        "bone_quarry": {"locate_fossil_in_situ": 15},
     }
 
 

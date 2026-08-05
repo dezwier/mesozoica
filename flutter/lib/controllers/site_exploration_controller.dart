@@ -14,7 +14,7 @@ import '../services/location_service.dart';
 import '../utils/discovery_haptic.dart';
 import '../widgets/cards/site_dimension_display.dart';
 
-/// Accrues path meters walked inside [siteVisibilityM] of discovered sites.
+/// Accrues path meters walked inside [documentationDistanceM] of discovered sites.
 class SiteExplorationController extends ChangeNotifier {
   SiteExplorationController({
     ApiClient? apiClient,
@@ -78,20 +78,20 @@ class SiteExplorationController extends ChangeNotifier {
 
   static double _maxDiscoverySpeedMps() {
     try {
-      final kmh = GameConfig.instance.siteDiscovery.maxDiscoverySpeedKmh;
+      final kmh = GameConfig.instance.siteDiscovery.discoveryMaxSpeedKmh;
       return kmh * 1000.0 / 3600.0;
     } catch (_) {
       return 5.56;
     }
   }
 
-  double? _siteVisibilityMOverride;
+  double? _documentationDistanceMOverride;
 
-  double get siteVisibilityM {
-    if (_siteVisibilityMOverride != null) return _siteVisibilityMOverride!;
+  double get documentationDistanceM {
+    if (_documentationDistanceMOverride != null) return _documentationDistanceMOverride!;
     try {
       if (!GameConfig.isLoaded) return 50.0;
-      return GameConfig.instance.siteStewardship.mainParams.siteVisibilityM;
+      return GameConfig.instance.siteStewardship.mainParams.documentationDistanceM;
     } catch (_) {
       return 50.0;
     }
@@ -104,11 +104,11 @@ class SiteExplorationController extends ChangeNotifier {
   }
 
   void updateSiteVisibilityM(double meters) {
-    if (_siteVisibilityMOverride != null &&
-        (_siteVisibilityMOverride! - meters).abs() < 0.01) {
+    if (_documentationDistanceMOverride != null &&
+        (_documentationDistanceMOverride! - meters).abs() < 0.01) {
       return;
     }
-    _siteVisibilityMOverride = meters;
+    _documentationDistanceMOverride = meters;
   }
 
   Future<void> bind(
@@ -272,7 +272,7 @@ class SiteExplorationController extends ChangeNotifier {
     final sites = _discoveredSitesProvider?.call() ?? const <SiteSummary>[];
     if (sites.isEmpty) return;
 
-    final radius = siteVisibilityM;
+    final radius = documentationDistanceM;
     final skillLevel = _skillLevelProvider?.call() ?? 1;
     var credited = false;
     var documentationReady = false;

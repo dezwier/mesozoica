@@ -31,13 +31,13 @@ class MainParamBuffToolStats extends StatelessWidget {
     // Instance params only — never fall back to live YAML for buffs.
     final mods = modifiesMainParamsFromParams(p);
     final visibilityMod =
-        mods?.paramsFor('using', 'field_survey')['visibility_distance_m'];
+        mods?.paramsFor('using', 'field_survey')['discovery_distance_m'];
     final discoveryMod =
         mods?.paramsFor('using', 'field_survey')['discovery_chance'];
     final speedMod =
-        mods?.paramsFor('using', 'field_survey')['max_discovery_speed_kmh'];
-    final siteVisibilityMod =
-        mods?.paramsFor('using', 'field_survey')['site_visibility_m'];
+        mods?.paramsFor('using', 'field_survey')['discovery_max_speed_kmh'];
+    final documentationDistanceMod =
+        mods?.paramsFor('using', 'field_survey')['documentation_distance_m'];
     final explanation =
         (p?['stats_explanation'] as String?)?.trim().isNotEmpty == true
             ? p!['stats_explanation'] as String
@@ -62,10 +62,10 @@ class MainParamBuffToolStats extends StatelessWidget {
           'Discovery chance',
           _formatMod(discoveryMod, chance: true),
         ),
-      if (siteVisibilityMod != null)
+      if (documentationDistanceMod != null)
         ToolStatPair(
           'Documentation distance',
-          _formatMod(siteVisibilityMod, meters: true),
+          _formatMod(documentationDistanceMod, meters: true),
         ),
       if (speedMod != null)
         ToolStatPair(

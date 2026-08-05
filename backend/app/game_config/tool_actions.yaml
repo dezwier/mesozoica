@@ -9,7 +9,7 @@
 #   Ops:
 #     replace  — set absolute value (e.g. discovery_chance → 0.9)
 #     multiply — scale base (e.g. 1.1 = +10%)
-#     add      — offset base (e.g. visibility_distance_m + 50)
+#     add      — offset base (e.g. discovery_distance_m + 50)
 # Guidance tools (compass / navigator) use `using` / field_survey today.
 
 aerial_recon:
@@ -113,9 +113,9 @@ ridge_glass:
   modifies_main_params:
     using:
       field_survey:
-        visibility_distance_m: { op: multiply, value: 1.3 }
+        discovery_distance_m: { op: multiply, value: 1.3 }
         discovery_chance: { op: multiply, value: 1.3 }
-        max_discovery_speed_kmh: { op: multiply, value: 0.7 }
+        discovery_max_speed_kmh: { op: multiply, value: 0.7 }
   stats_explanation: Duration is this card's lifetime battery; each use runs until you stop
     or time runs out. While active, boosts site visibility range and walk-in discovery chance,
     and decreases max discovery speed for all sites.
@@ -124,10 +124,10 @@ trail_striders:
   modifies_main_params:
     using:
       field_survey:
-        visibility_distance_m: { op: multiply, value: 0.95 }
+        discovery_distance_m: { op: multiply, value: 0.95 }
         discovery_chance: { op: multiply, value: 0.95 }
-        max_discovery_speed_kmh: { op: multiply, value: 2.0 }
-        site_visibility_m: { op: multiply, value: 0.95 }
+        discovery_max_speed_kmh: { op: multiply, value: 2.0 }
+        documentation_distance_m: { op: multiply, value: 0.95 }
   stats_explanation: Duration is this card's lifetime battery; each use runs until you stop
     or time runs out. While active, raises max discovery speed by 100% so a fast jog still
     counts toward discovery distance, but discover visibility, walk-in chance, and site exploration
@@ -137,10 +137,10 @@ expedition_drivetrain:
   modifies_main_params:
     using:
       field_survey:
-        visibility_distance_m: { op: multiply, value: 0.9 }
+        discovery_distance_m: { op: multiply, value: 0.9 }
         discovery_chance: { op: multiply, value: 0.9 }
-        max_discovery_speed_kmh: { op: multiply, value: 3.0 }
-        site_visibility_m: { op: multiply, value: 0.9 }
+        discovery_max_speed_kmh: { op: multiply, value: 3.0 }
+        documentation_distance_m: { op: multiply, value: 0.9 }
   stats_explanation: Duration is this card's lifetime battery; each use runs until you stop
     or time runs out. While active, raises max discovery speed by 200% so bicycle travel still
     counts toward discovery distance, but discover visibility, walk-in chance, and site exploration
@@ -150,10 +150,10 @@ canyon_throttle:
   modifies_main_params:
     using:
       field_survey:
-        visibility_distance_m: { op: multiply, value: 0.85 }
+        discovery_distance_m: { op: multiply, value: 0.85 }
         discovery_chance: { op: multiply, value: 0.85 }
-        max_discovery_speed_kmh: { op: multiply, value: 4.0 }
-        site_visibility_m: { op: multiply, value: 0.85 }
+        discovery_max_speed_kmh: { op: multiply, value: 4.0 }
+        documentation_distance_m: { op: multiply, value: 0.85 }
   stats_explanation: Duration is this card's lifetime battery; each use runs until you stop
     or time runs out. While active, raises max discovery speed by 300% so motorcycle travel
     still counts toward discovery distance, but discover visibility, walk-in chance, and site
@@ -163,10 +163,10 @@ overland_chassis:
   modifies_main_params:
     using:
       field_survey:
-        visibility_distance_m: { op: multiply, value: 0.8 }
+        discovery_distance_m: { op: multiply, value: 0.8 }
         discovery_chance: { op: multiply, value: 0.8 }
-        max_discovery_speed_kmh: { op: multiply, value: 5.0 }
-        site_visibility_m: { op: multiply, value: 0.8 }
+        discovery_max_speed_kmh: { op: multiply, value: 5.0 }
+        documentation_distance_m: { op: multiply, value: 0.8 }
   stats_explanation: Duration is this card's lifetime battery; each use runs until you stop
     or time runs out. While active, raises max discovery speed by 400% so 4x4 travel still
     counts toward discovery distance, but discover visibility, walk-in chance, and site exploration
@@ -178,7 +178,7 @@ nocturne_lens:
   modifies_main_params:
     using:
       field_survey:
-        visibility_distance_m: { op: multiply, value: 1.4 }
+        discovery_distance_m: { op: multiply, value: 1.4 }
         discovery_chance: { op: multiply, value: 1.4 }
   stats_explanation: Lifetime battery; only starts and runs at night. Boosts visibility range
     and walk-in discovery chance by 40%. Stops automatically when night ends (dawn / day /
@@ -188,9 +188,9 @@ brush_scrim:
   modifies_main_params:
     using:
       field_survey:
-        rival_discovery: { op: multiply, value: 0 }
+        rival_discovery_chance: { op: multiply, value: 0 }
   stats_explanation: Duration is this card's lifetime battery; each use covers one discovered
-    site until you stop or time runs out. While active, multiplies rival_discovery by 0 (camouflages
+    site until you stop or time runs out. While active, multiplies rival_discovery_chance by 0 (camouflages
     the site so rivals cannot discover it). Discovery rolls still run so that a would-have-hit
     awards you successful site disguise XP; you get nothing if their roll would have missed
     without the cover. One disguise at a time.
@@ -199,9 +199,9 @@ blackout_cover:
   modifies_main_params:
     using:
       field_survey:
-        rival_discovery: { op: multiply, value: 0.5 }
+        rival_discovery_chance: { op: multiply, value: 0.5 }
   stats_explanation: Duration is this card's lifetime battery; each use covers one discovered
-    site until you stop or time runs out. While active, multiplies rival_discovery by 0.5
+    site until you stop or time runs out. While active, multiplies rival_discovery_chance by 0.5
     (halves other players' discovery chance on that site). You gain successful site disguise
     XP only when a rival's roll would have discovered the site without this cover, but the
     cover stops them — not when they miss anyway, and not when they discover it despite the

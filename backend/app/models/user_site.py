@@ -114,7 +114,7 @@ class UserSite(SQLModel, table=True):
     explored_distance_m: float = Field(
         default=0.0,
         description=(
-            "Meters walked inside site_visibility_m (discoverer row only)"
+            "Meters walked inside documentation_distance_m (discoverer row only)"
         ),
     )
     documented: bool = Field(

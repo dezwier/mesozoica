@@ -134,13 +134,13 @@ def test_tool_actions_yaml_loads_nocturne_lens_knobs() -> None:
     cfg = get_game_config().tool_actions.nocturne_lens
     assert cfg.duration_minutes == 60
     assert cfg.active_weather_times == ("night",)
-    assert cfg.site_discovery_mod("visibility_distance_m") == ParamModifier(
+    assert cfg.site_discovery_mod("discovery_distance_m") == ParamModifier(
         op="multiply", value=1.4
     )
     assert cfg.site_discovery_mod("discovery_chance") == ParamModifier(
         op="multiply", value=1.4
     )
-    assert cfg.site_discovery_mod("max_discovery_speed_kmh") is None
+    assert cfg.site_discovery_mod("discovery_max_speed_kmh") is None
     assert cfg.is_active_for_weather_time("night")
     assert not cfg.is_active_for_weather_time("dusk")
     assert not cfg.is_active_for_weather_time("day")
@@ -192,7 +192,7 @@ def test_start_nocturne_at_night_snapshots_gate(
     assert body["status"] == SESSION_STATUS_ACTIVE
     assert body["params"]["active_weather_times"] == ["night"]
     mods = body["params"]["modifies_main_params"]["using"]["field_survey"]
-    assert mods["visibility_distance_m"] == {"op": "multiply", "value": 1.4}
+    assert mods["discovery_distance_m"] == {"op": "multiply", "value": 1.4}
     assert mods["discovery_chance"] == {"op": "multiply", "value": 1.4}
 
 
@@ -232,7 +232,7 @@ def test_nocturne_boosts_at_night_and_autostops_at_dusk(
         lon=4.0,
     )
     # Base 20 × night 0.6 × nocturne 1.4 = 16.8
-    assert night_params.visibility_distance_m == pytest.approx(20.0 * 0.6 * 1.4)
+    assert night_params.discovery_distance_m == pytest.approx(20.0 * 0.6 * 1.4)
     # Base 0.1 × night 0.6 × nocturne 1.4 = 0.084
     assert night_params.base_discovery_chance == pytest.approx(0.1 * 0.6 * 1.4)
 
@@ -250,7 +250,7 @@ def test_nocturne_boosts_at_night_and_autostops_at_dusk(
     session.refresh(row)
     assert row.status == SESSION_STATUS_CANCELLED
     # Dusk has identity weather_time mods; tool gone → base values.
-    assert dusk_params.visibility_distance_m == pytest.approx(20.0)
+    assert dusk_params.discovery_distance_m == pytest.approx(20.0)
     assert dusk_params.base_discovery_chance == pytest.approx(0.1)
 
     rows = session.exec(select(ToolSession)).all()

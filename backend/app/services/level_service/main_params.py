@@ -161,65 +161,65 @@ def resolve_field_survey_main_params(
         )
 
     return {
-        "visibility_distance_m": _resolve(
-            "visibility_distance_m", base=float(mp.visibility_distance_m)
+        "discovery_distance_m": _resolve(
+            "discovery_distance_m", base=float(mp.discovery_distance_m)
         ),
         "discovery_chance": _resolve(
             "discovery_chance", base=float(mp.discovery_chance), clamp_unit=True
         ),
-        "max_discovery_speed_kmh": _resolve(
-            "max_discovery_speed_kmh", base=float(mp.max_discovery_speed_kmh)
+        "discovery_max_speed_kmh": _resolve(
+            "discovery_max_speed_kmh", base=float(mp.discovery_max_speed_kmh)
         ),
-        "site_discovery_xp": _resolve(
-            "site_discovery_xp", base=float(mp.site_discovery_xp)
+        "discover_site_xp": _resolve(
+            "discover_site_xp", base=float(mp.discover_site_xp)
         ),
-        "first_discovery_xp": _resolve(
-            "first_discovery_xp", base=float(mp.first_discovery_xp)
+        "discover_site_as_first_xp": _resolve(
+            "discover_site_as_first_xp", base=float(mp.discover_site_as_first_xp)
         ),
-        "active_100m_xp": _resolve("active_100m_xp", base=float(mp.active_100m_xp)),
-        "passive_km_xp": _resolve("passive_km_xp", base=float(mp.passive_km_xp)),
-        "dino_accuracy": _resolve(
-            "dino_accuracy", base=float(mp.dino_accuracy), clamp_unit=True
+        "explore_100m_actively_xp": _resolve("explore_100m_actively_xp", base=float(mp.explore_100m_actively_xp)),
+        "explore_1km_passively_xp": _resolve("explore_1km_passively_xp", base=float(mp.explore_1km_passively_xp)),
+        "documentation_genera": _resolve(
+            "documentation_genera", base=float(mp.documentation_genera), clamp_unit=True
         ),
-        "fossil_accuracy": _resolve(
-            "fossil_accuracy", base=float(mp.fossil_accuracy), clamp_unit=True
+        "documentation_fossil": _resolve(
+            "documentation_fossil", base=float(mp.documentation_fossil), clamp_unit=True
         ),
-        "completeness_accuracy": _resolve(
-            "completeness_accuracy",
-            base=float(mp.completeness_accuracy),
+        "documentation_completeness": _resolve(
+            "documentation_completeness",
+            base=float(mp.documentation_completeness),
             clamp_unit=True,
         ),
-        "quality_accuracy": _resolve(
-            "quality_accuracy", base=float(mp.quality_accuracy), clamp_unit=True
+        "documentation_preservation": _resolve(
+            "documentation_preservation", base=float(mp.documentation_preservation), clamp_unit=True
         ),
-        "depth_accuracy": _resolve(
-            "depth_accuracy", base=float(mp.depth_accuracy), clamp_unit=True
+        "documentation_depth": _resolve(
+            "documentation_depth", base=float(mp.documentation_depth), clamp_unit=True
         ),
-        "rival_discovery": _resolve(
-            "rival_discovery", base=float(mp.rival_discovery)
+        "rival_discovery_chance": _resolve(
+            "rival_discovery_chance", base=float(mp.rival_discovery_chance)
         ),
-        "site_visibility_m": _resolve(
-            "site_visibility_m", base=float(mp.site_visibility_m)
+        "documentation_distance_m": _resolve(
+            "documentation_distance_m", base=float(mp.documentation_distance_m)
         ),
-        "successful_site_disguise_xp": _resolve(
-            "successful_site_disguise_xp",
-            base=float(mp.successful_site_disguise_xp),
+        "disguise_of_site_xp": _resolve(
+            "disguise_of_site_xp",
+            base=float(mp.disguise_of_site_xp),
         ),
-        "site_exploration_xp": _resolve(
-            "site_exploration_xp",
-            base=float(mp.site_exploration_xp),
+        "document_progress_xp": _resolve(
+            "document_progress_xp",
+            base=float(mp.document_progress_xp),
         ),
-        "site_documentation_xp": _resolve(
-            "site_documentation_xp",
-            base=float(mp.site_documentation_xp),
+        "document_site_xp": _resolve(
+            "document_site_xp",
+            base=float(mp.document_site_xp),
         ),
-        "first_documentation_xp": _resolve(
-            "first_documentation_xp",
-            base=float(mp.first_documentation_xp),
+        "document_site_as_first_xp": _resolve(
+            "document_site_as_first_xp",
+            base=float(mp.document_site_as_first_xp),
         ),
-        "site_identification_xp": _resolve(
-            "site_identification_xp",
-            base=float(mp.site_identification_xp),
+        "identify_site_xp": _resolve(
+            "identify_site_xp",
+            base=float(mp.identify_site_xp),
         ),
     }
 
@@ -239,13 +239,13 @@ def resolve_site_discovery_main_params(
         tool_mods=tool_mods,
     )
     keys = (
-        "visibility_distance_m",
+        "discovery_distance_m",
         "discovery_chance",
-        "max_discovery_speed_kmh",
-        "site_discovery_xp",
-        "first_discovery_xp",
-        "active_100m_xp",
-        "passive_km_xp",
+        "discovery_max_speed_kmh",
+        "discover_site_xp",
+        "discover_site_as_first_xp",
+        "explore_100m_actively_xp",
+        "explore_1km_passively_xp",
     )
     return {k: full[k] for k in keys}
 
@@ -264,18 +264,18 @@ def resolve_site_stewardship_main_params(
         tool_mods=tool_mods,
     )
     keys = (
-        "dino_accuracy",
-        "fossil_accuracy",
-        "completeness_accuracy",
-        "quality_accuracy",
-        "depth_accuracy",
-        "rival_discovery",
-        "site_visibility_m",
-        "successful_site_disguise_xp",
-        "site_exploration_xp",
-        "site_documentation_xp",
-        "first_documentation_xp",
-        "site_identification_xp",
+        "documentation_genera",
+        "documentation_fossil",
+        "documentation_completeness",
+        "documentation_preservation",
+        "documentation_depth",
+        "rival_discovery_chance",
+        "documentation_distance_m",
+        "disguise_of_site_xp",
+        "document_progress_xp",
+        "document_site_xp",
+        "document_site_as_first_xp",
+        "identify_site_xp",
     )
     return {k: full[k] for k in keys}
 
@@ -325,20 +325,20 @@ def resolve_bone_quarry_main_params(
     """Effective bone_quarry scalar main_params after modifiers."""
     cfg = get_game_config().bone_quarry
     mods = tool_mods or {}
-    raw = cfg.main_params.get("fossil_discovery_xp", 5)
+    raw = cfg.main_params.get("locate_fossil_in_situ_xp", 5)
     base = float(raw)
     return {
-        "fossil_discovery_xp": resolve_scalar_main_param(
+        "locate_fossil_in_situ_xp": resolve_scalar_main_param(
             base=base,
-            level_entries=_stub_level_entries(cfg, "fossil_discovery_xp"),
+            level_entries=_stub_level_entries(cfg, "locate_fossil_in_situ_xp"),
             skill_level=skill_level,
             weather_time_entries=_stub_weather_time_entries(
-                cfg, "fossil_discovery_xp", weather_time
+                cfg, "locate_fossil_in_situ_xp", weather_time
             ),
             weather_type_entries=_stub_weather_type_entries(
-                cfg, "fossil_discovery_xp", weather_type
+                cfg, "locate_fossil_in_situ_xp", weather_type
             ),
-            tool_mod=mods.get("fossil_discovery_xp"),
+            tool_mod=mods.get("locate_fossil_in_situ_xp"),
         ),
     }
 

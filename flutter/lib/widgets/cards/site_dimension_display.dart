@@ -59,7 +59,7 @@ const double kSiteDimensionMaxBlurSigma = 16.0;
 /// Depth values at/near surface are always shown precisely (in situ).
 const double kSiteDimensionDepthPreciseEpsilon = 1e-9;
 
-/// +1% accuracy per meter walked inside site_visibility_m (additive, capped).
+/// +1% accuracy per meter walked inside documentation_distance_m (additive, capped).
 const double kExplorationAccuracyPerM = 0.01;
 
 /// Deterministic per-site / per-dimension accuracy noise after skill baseline.
@@ -111,11 +111,11 @@ bool siteIsFullyDocumented({
   required double exploredDistanceM,
 }) {
   const accuracyKeys = <SiteDimensionKey, String>{
-    SiteDimensionKey.dino: 'dino_accuracy',
-    SiteDimensionKey.fossil: 'fossil_accuracy',
-    SiteDimensionKey.completeness: 'completeness_accuracy',
-    SiteDimensionKey.quality: 'quality_accuracy',
-    SiteDimensionKey.depth: 'depth_accuracy',
+    SiteDimensionKey.dino: 'documentation_genera',
+    SiteDimensionKey.fossil: 'documentation_fossil',
+    SiteDimensionKey.completeness: 'documentation_completeness',
+    SiteDimensionKey.quality: 'documentation_preservation',
+    SiteDimensionKey.depth: 'documentation_depth',
   };
   final values = <SiteDimensionKey, double?>{
     SiteDimensionKey.dino: oddDinoCount,

@@ -202,7 +202,7 @@ class ModifiesMainParams(BaseModel):
 
         owning:
           site_discovery: { discovery_chance: { op: add, value: 0.05 } }
-          site_stewardship: { dino_accuracy: { op: add, value: 0.1 } }
+          site_stewardship: { documentation_genera: { op: add, value: 0.1 } }
         using:
           site_discovery: { discovery_chance: { op: replace, value: 0.9 } }
 
@@ -403,26 +403,26 @@ class FieldSurveyMainParams(BaseModel):
     model_config = {"frozen": True}
 
     # Discovery
-    visibility_distance_m: float = 20.0
+    discovery_distance_m: float = 20.0
     discovery_chance: float = 0.1
-    max_discovery_speed_kmh: float = 10.0
-    site_discovery_xp: float = 20.0
-    first_discovery_xp: float = 20.0
-    active_100m_xp: float = 20.0
-    passive_km_xp: float = 100.0
+    discovery_max_speed_kmh: float = 10.0
+    discover_site_xp: float = 20.0
+    discover_site_as_first_xp: float = 20.0
+    explore_100m_actively_xp: float = 20.0
+    explore_1km_passively_xp: float = 100.0
     # Stewardship / documentation
-    dino_accuracy: float = 0.01
-    fossil_accuracy: float = 0.01
-    completeness_accuracy: float = 0.01
-    quality_accuracy: float = 0.01
-    depth_accuracy: float = 0.01
-    rival_discovery: float = 1.0
-    site_visibility_m: float = 50.0
-    successful_site_disguise_xp: float = 40.0
-    site_exploration_xp: float = 20.0
-    site_documentation_xp: float = 80.0
-    first_documentation_xp: float = 20.0
-    site_identification_xp: float = 40.0
+    documentation_genera: float = 0.01
+    documentation_fossil: float = 0.01
+    documentation_completeness: float = 0.01
+    documentation_preservation: float = 0.01
+    documentation_depth: float = 0.01
+    rival_discovery_chance: float = 1.0
+    documentation_distance_m: float = 50.0
+    disguise_of_site_xp: float = 40.0
+    document_progress_xp: float = 20.0
+    document_site_xp: float = 80.0
+    document_site_as_first_xp: float = 20.0
+    identify_site_xp: float = 40.0
 
     @field_validator("discovery_chance")
     @classmethod
@@ -430,12 +430,12 @@ class FieldSurveyMainParams(BaseModel):
         return _clamp_unit_interval(value, label="discovery_chance")
 
     @field_validator(
-        "visibility_distance_m",
-        "max_discovery_speed_kmh",
-        "site_discovery_xp",
-        "first_discovery_xp",
-        "active_100m_xp",
-        "passive_km_xp",
+        "discovery_distance_m",
+        "discovery_max_speed_kmh",
+        "discover_site_xp",
+        "discover_site_as_first_xp",
+        "explore_100m_actively_xp",
+        "explore_1km_passively_xp",
     )
     @classmethod
     def _validate_positive(cls, value: float) -> float:
@@ -444,36 +444,36 @@ class FieldSurveyMainParams(BaseModel):
         return value
 
     @field_validator(
-        "dino_accuracy",
-        "fossil_accuracy",
-        "completeness_accuracy",
-        "quality_accuracy",
-        "depth_accuracy",
+        "documentation_genera",
+        "documentation_fossil",
+        "documentation_completeness",
+        "documentation_preservation",
+        "documentation_depth",
     )
     @classmethod
     def _validate_accuracy(cls, value: float) -> float:
         return _clamp_unit_interval(value, label="accuracy")
 
-    @field_validator("rival_discovery")
+    @field_validator("rival_discovery_chance")
     @classmethod
     def _validate_rival_discovery(cls, value: float) -> float:
         if value < 0.0:
-            raise ValueError("rival_discovery must be >= 0")
+            raise ValueError("rival_discovery_chance must be >= 0")
         return value
 
-    @field_validator("site_visibility_m")
+    @field_validator("documentation_distance_m")
     @classmethod
-    def _validate_site_visibility(cls, value: float) -> float:
+    def _validate_documentation_distance(cls, value: float) -> float:
         if value < 0.0:
-            raise ValueError("site_visibility_m must be >= 0")
+            raise ValueError("documentation_distance_m must be >= 0")
         return value
 
     @field_validator(
-        "successful_site_disguise_xp",
-        "site_exploration_xp",
-        "site_documentation_xp",
-        "first_documentation_xp",
-        "site_identification_xp",
+        "disguise_of_site_xp",
+        "document_progress_xp",
+        "document_site_xp",
+        "document_site_as_first_xp",
+        "identify_site_xp",
     )
     @classmethod
     def _validate_xp(cls, value: float) -> float:
@@ -711,64 +711,64 @@ class FieldSurveyConfig(BaseModel):
         return list(self.depth_weights)
 
     @property
-    def visibility_distance_m(self) -> float:
-        return float(self.main_params.visibility_distance_m)
+    def discovery_distance_m(self) -> float:
+        return float(self.main_params.discovery_distance_m)
 
     @property
     def discovery_chance(self) -> float:
         return float(self.main_params.discovery_chance)
 
     @property
-    def max_discovery_speed_kmh(self) -> float:
-        return float(self.main_params.max_discovery_speed_kmh)
+    def discovery_max_speed_kmh(self) -> float:
+        return float(self.main_params.discovery_max_speed_kmh)
 
     @property
-    def site_discovery_xp(self) -> float:
-        return float(self.main_params.site_discovery_xp)
+    def discover_site_xp(self) -> float:
+        return float(self.main_params.discover_site_xp)
 
     @property
-    def first_discovery_xp(self) -> float:
-        return float(self.main_params.first_discovery_xp)
+    def discover_site_as_first_xp(self) -> float:
+        return float(self.main_params.discover_site_as_first_xp)
 
     @property
-    def active_100m_xp(self) -> float:
-        return float(self.main_params.active_100m_xp)
+    def explore_100m_actively_xp(self) -> float:
+        return float(self.main_params.explore_100m_actively_xp)
 
     @property
-    def passive_km_xp(self) -> float:
-        return float(self.main_params.passive_km_xp)
+    def explore_1km_passively_xp(self) -> float:
+        return float(self.main_params.explore_1km_passively_xp)
 
     @property
     def max_distance_m(self) -> float:
-        return self.visibility_distance_m
+        return self.discovery_distance_m
 
     @property
-    def successful_site_disguise_xp(self) -> float:
-        return float(self.main_params.successful_site_disguise_xp)
+    def disguise_of_site_xp(self) -> float:
+        return float(self.main_params.disguise_of_site_xp)
 
     @property
-    def site_exploration_xp(self) -> float:
-        return float(self.main_params.site_exploration_xp)
+    def document_progress_xp(self) -> float:
+        return float(self.main_params.document_progress_xp)
 
     @property
-    def site_documentation_xp(self) -> float:
-        return float(self.main_params.site_documentation_xp)
+    def document_site_xp(self) -> float:
+        return float(self.main_params.document_site_xp)
 
     @property
-    def first_documentation_xp(self) -> float:
-        return float(self.main_params.first_documentation_xp)
+    def document_site_as_first_xp(self) -> float:
+        return float(self.main_params.document_site_as_first_xp)
 
     @property
-    def site_identification_xp(self) -> float:
-        return float(self.main_params.site_identification_xp)
+    def identify_site_xp(self) -> float:
+        return float(self.main_params.identify_site_xp)
 
     @property
-    def site_visibility_m(self) -> float:
-        return float(self.main_params.site_visibility_m)
+    def documentation_distance_m(self) -> float:
+        return float(self.main_params.documentation_distance_m)
 
     @property
-    def rival_discovery(self) -> float:
-        return float(self.main_params.rival_discovery)
+    def rival_discovery_chance(self) -> float:
+        return float(self.main_params.rival_discovery_chance)
 
 
 # Back-compat aliases.
@@ -1160,7 +1160,7 @@ class MainParamBuffActionConfig(BaseModel):
 
     @property
     def added_visibility_range_m(self) -> float | None:
-        mod = self._using_site_discovery_mod("visibility_distance_m")
+        mod = self._using_site_discovery_mod("discovery_distance_m")
         if mod is None or mod.op != "add":
             return None
         return float(mod.value)
@@ -1201,7 +1201,7 @@ class DisguiseActionConfig(BaseModel):
 
     @property
     def rival_discovery_mod(self) -> ParamModifier | None:
-        return self.site_stewardship_mod("rival_discovery")
+        return self.site_stewardship_mod("rival_discovery_chance")
 
 
 def _parse_rgb_color(value: object) -> tuple[int, int, int]:
@@ -1385,13 +1385,13 @@ class ToolActionsConfig(BaseModel):
             modifies_main_params=ModifiesMainParams(
                 using={
                     "field_survey": {
-                        "visibility_distance_m": ParamModifier(
+                        "discovery_distance_m": ParamModifier(
                             op="multiply", value=1.3
                         ),
                         "discovery_chance": ParamModifier(
                             op="multiply", value=1.3
                         ),
-                        "max_discovery_speed_kmh": ParamModifier(
+                        "discovery_max_speed_kmh": ParamModifier(
                             op="multiply", value=0.7
                         ),
                     }
@@ -1409,16 +1409,16 @@ class ToolActionsConfig(BaseModel):
             modifies_main_params=ModifiesMainParams(
                 using={
                     "field_survey": {
-"visibility_distance_m": ParamModifier(
+"discovery_distance_m": ParamModifier(
                             op="multiply", value=0.95
                         ),
                         "discovery_chance": ParamModifier(
                             op="multiply", value=0.95
                         ),
-                        "max_discovery_speed_kmh": ParamModifier(
+                        "discovery_max_speed_kmh": ParamModifier(
                             op="multiply", value=2.0
                         ),
-"site_visibility_m": ParamModifier(
+"documentation_distance_m": ParamModifier(
                             op="multiply", value=0.95
                         ),
                     },
@@ -1438,16 +1438,16 @@ class ToolActionsConfig(BaseModel):
             modifies_main_params=ModifiesMainParams(
                 using={
                     "field_survey": {
-"visibility_distance_m": ParamModifier(
+"discovery_distance_m": ParamModifier(
                             op="multiply", value=0.9
                         ),
                         "discovery_chance": ParamModifier(
                             op="multiply", value=0.9
                         ),
-                        "max_discovery_speed_kmh": ParamModifier(
+                        "discovery_max_speed_kmh": ParamModifier(
                             op="multiply", value=3.0
                         ),
-"site_visibility_m": ParamModifier(
+"documentation_distance_m": ParamModifier(
                             op="multiply", value=0.9
                         ),
                     },
@@ -1466,16 +1466,16 @@ class ToolActionsConfig(BaseModel):
             modifies_main_params=ModifiesMainParams(
                 using={
                     "field_survey": {
-"visibility_distance_m": ParamModifier(
+"discovery_distance_m": ParamModifier(
                             op="multiply", value=0.85
                         ),
                         "discovery_chance": ParamModifier(
                             op="multiply", value=0.85
                         ),
-                        "max_discovery_speed_kmh": ParamModifier(
+                        "discovery_max_speed_kmh": ParamModifier(
                             op="multiply", value=4.0
                         ),
-"site_visibility_m": ParamModifier(
+"documentation_distance_m": ParamModifier(
                             op="multiply", value=0.85
                         ),
                     },
@@ -1494,16 +1494,16 @@ class ToolActionsConfig(BaseModel):
             modifies_main_params=ModifiesMainParams(
                 using={
                     "field_survey": {
-"visibility_distance_m": ParamModifier(
+"discovery_distance_m": ParamModifier(
                             op="multiply", value=0.8
                         ),
                         "discovery_chance": ParamModifier(
                             op="multiply", value=0.8
                         ),
-                        "max_discovery_speed_kmh": ParamModifier(
+                        "discovery_max_speed_kmh": ParamModifier(
                             op="multiply", value=5.0
                         ),
-"site_visibility_m": ParamModifier(
+"documentation_distance_m": ParamModifier(
                             op="multiply", value=0.8
                         ),
                     },
@@ -1523,7 +1523,7 @@ class ToolActionsConfig(BaseModel):
             modifies_main_params=ModifiesMainParams(
                 using={
                     "field_survey": {
-                        "visibility_distance_m": ParamModifier(
+                        "discovery_distance_m": ParamModifier(
                             op="multiply", value=1.4
                         ),
                         "discovery_chance": ParamModifier(
@@ -1545,12 +1545,12 @@ class ToolActionsConfig(BaseModel):
             modifies_main_params=ModifiesMainParams(
                 using={
                     "field_survey": {
-                        "rival_discovery": ParamModifier(op="multiply", value=0.0),
+                        "rival_discovery_chance": ParamModifier(op="multiply", value=0.0),
                     },
                 },
             ),
             stats_explanation=(
-                "Covers one discovered site; multiplies rival_discovery by "
+                "Covers one discovered site; multiplies rival_discovery_chance by "
                 "0. Successful site disguise XP only when a rival would "
                 "have discovered the site without the cover."
             ),
@@ -1562,12 +1562,12 @@ class ToolActionsConfig(BaseModel):
             modifies_main_params=ModifiesMainParams(
                 using={
                     "field_survey": {
-                        "rival_discovery": ParamModifier(op="multiply", value=0.5),
+                        "rival_discovery_chance": ParamModifier(op="multiply", value=0.5),
                     },
                 },
             ),
             stats_explanation=(
-                "Covers one discovered site; multiplies rival_discovery by "
+                "Covers one discovered site; multiplies rival_discovery_chance by "
                 "0.5. Successful site disguise XP only when a rival would "
                 "have discovered the site without the cover but the cover "
                 "stops them."

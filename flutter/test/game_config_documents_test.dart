@@ -27,20 +27,20 @@ void main() {
     expect(fromJson.siteGeneration.client.nearbyRadiusKm,
         fromYaml.siteGeneration.client.nearbyRadiusKm);
 
-    expect(fromJson.siteDiscovery.visibilityDistanceM,
-        fromYaml.siteDiscovery.visibilityDistanceM);
+    expect(fromJson.siteDiscovery.discoveryDistanceM,
+        fromYaml.siteDiscovery.discoveryDistanceM);
     expect(fromJson.siteDiscovery.discoveryChance,
         fromYaml.siteDiscovery.discoveryChance);
-    expect(fromJson.siteDiscovery.siteDiscoveryXp,
-        fromYaml.siteDiscovery.siteDiscoveryXp);
+    expect(fromJson.siteDiscovery.discoverSiteXp,
+        fromYaml.siteDiscovery.discoverSiteXp);
     expect(fromJson.siteDiscovery.client.discoveryRerollIntervalS,
         fromYaml.siteDiscovery.client.discoveryRerollIntervalS);
 
     // Weather modifier tables survive the round trip (nested maps + lists).
     final jsonNight =
-        fromJson.siteDiscovery.weatherTimeModifiers['site_discovery_xp']!['night']!;
+        fromJson.siteDiscovery.weatherTimeModifiers['discover_site_xp']!['night']!;
     final yamlNight =
-        fromYaml.siteDiscovery.weatherTimeModifiers['site_discovery_xp']!['night']!;
+        fromYaml.siteDiscovery.weatherTimeModifiers['discover_site_xp']!['night']!;
     expect(jsonNight.length, yamlNight.length);
     expect(jsonNight.first.op, yamlNight.first.op);
     expect(jsonNight.first.value, yamlNight.first.value);
@@ -49,8 +49,8 @@ void main() {
     expect(fromJson.siteStewardship.fossilCount,
         fromYaml.siteStewardship.fossilCount);
     expect(fromJson.siteStewardship.fossilCount.keys, isNotEmpty);
-    expect(fromJson.siteStewardship.levelModifiers['dino_accuracy']!.length,
-        fromYaml.siteStewardship.levelModifiers['dino_accuracy']!.length);
+    expect(fromJson.siteStewardship.levelModifiers['documentation_genera']!.length,
+        fromYaml.siteStewardship.levelModifiers['documentation_genera']!.length);
 
     expect(fromJson.leveling.skills.length, fromYaml.leveling.skills.length);
     expect(fromJson.leveling.careerTitles, fromYaml.leveling.careerTitles);

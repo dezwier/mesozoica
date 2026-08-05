@@ -22,7 +22,7 @@ from app.models.user_site import (
 from app.schemas.auth import UserProfileResponse
 from app.schemas.site import SiteSummary
 from app.services.level_service import (
-    award_site_identification_xp,
+    award_identify_site_xp,
     get_skill_xp,
     level_for_xp,
 )
@@ -367,7 +367,7 @@ def submit_identify_guess(
         )
 
     attempt = wrongs + 1
-    xp = award_site_identification_xp(user, attempt=attempt)
+    xp = award_identify_site_xp(user, attempt=attempt)
     if normalized_step == IDENTIFY_STEP_PERIOD:
         link.period_identified = True
     else:

@@ -36,7 +36,7 @@ class WalkDistanceController extends ChangeNotifier {
   static double _maxDiscoverySpeedMps() {
     try {
       final kmh =
-          GameConfig.instance.siteDiscovery.maxDiscoverySpeedKmh;
+          GameConfig.instance.siteDiscovery.discoveryMaxSpeedKmh;
       return kmh * 1000.0 / 3600.0;
     } catch (_) {
       return 5.56; // 20 km/h fallback before GameConfig.load

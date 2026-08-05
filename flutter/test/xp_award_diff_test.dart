@@ -7,9 +7,9 @@ import 'package:mesozoica/utils/xp_source_labels.dart';
 void main() {
   group('xpSourceLabel', () {
     test('maps known breakdown keys', () {
-      expect(xpSourceLabel('site_documentation'), 'Document site');
-      expect(xpSourceLabel('first_documentation'), 'Document site as first');
-      expect(xpSourceLabel('site_exploration'), 'Document progress');
+      expect(xpSourceLabel('document_site'), 'Document site');
+      expect(xpSourceLabel('document_site_as_first'), 'Document site as first');
+      expect(xpSourceLabel('document_progress'), 'Document progress');
     });
 
     test('humanizes unknown keys', () {
@@ -19,19 +19,19 @@ void main() {
 
   group('celebration vs badge classification', () {
     test('marks celebration-bound keys', () {
-      expect(isCelebrationXpSource('sites'), isTrue);
-      expect(isCelebrationXpSource('first_discovery'), isTrue);
-      expect(isCelebrationXpSource('fossils'), isTrue);
-      expect(isCelebrationXpSource('site_documentation'), isTrue);
-      expect(isCelebrationXpSource('first_documentation'), isTrue);
-      expect(isCelebrationXpSource('site_identification'), isTrue);
+      expect(isCelebrationXpSource('discover_site'), isTrue);
+      expect(isCelebrationXpSource('discover_site_as_first'), isTrue);
+      expect(isCelebrationXpSource('locate_fossil_in_situ'), isTrue);
+      expect(isCelebrationXpSource('document_site'), isTrue);
+      expect(isCelebrationXpSource('document_site_as_first'), isTrue);
+      expect(isCelebrationXpSource('identify_site'), isTrue);
     });
 
     test('marks badge-only keys', () {
-      expect(isCelebrationXpSource('active_distance'), isFalse);
-      expect(isCelebrationXpSource('passive_distance'), isFalse);
-      expect(isCelebrationXpSource('disguise'), isFalse);
-      expect(isCelebrationXpSource('site_exploration'), isFalse);
+      expect(isCelebrationXpSource('explore_100m_actively'), isFalse);
+      expect(isCelebrationXpSource('explore_1km_passively'), isFalse);
+      expect(isCelebrationXpSource('disguise_of_site'), isFalse);
+      expect(isCelebrationXpSource('document_progress'), isFalse);
       expect(isCelebrationXpSource(''), isFalse);
       expect(isCelebrationXpSource(null), isFalse);
     });
@@ -71,22 +71,22 @@ void main() {
     test('emits one award per breakdown source with sourceKey', () {
       final before = profile(
         xp: 100,
-        breakdown: const {'site_exploration': 40},
+        breakdown: const {'document_progress': 40},
       );
       final after = profile(
         xp: 300,
         breakdown: const {
-          'site_exploration': 40,
-          'site_documentation': 100,
-          'first_documentation': 100,
+          'document_progress': 40,
+          'document_site': 100,
+          'document_site_as_first': 100,
         },
       );
 
       final awards = AuthController.debugDiffXpAwards(before, after);
       expect(awards, hasLength(2));
       expect(awards.map((a) => a.sourceKey).toList(), [
-        'site_documentation',
-        'first_documentation',
+        'document_site',
+        'document_site_as_first',
       ]);
       expect(awards.map((a) => a.sourceLabel).toList(), [
         'Document site',
@@ -130,11 +130,11 @@ void main() {
       // Every announced award goes to exactly one path: celebration or badge.
       final controller = XpAwardController();
       controller.announceAwards([
-        award(sourceKey: 'sites', amount: 20),
-        award(sourceKey: 'first_discovery', amount: 20),
-        award(sourceKey: 'active_distance', amount: 30),
+        award(sourceKey: 'discover_site', amount: 20),
+        award(sourceKey: 'discover_site_as_first', amount: 20),
+        award(sourceKey: 'explore_100m_actively', amount: 30),
         award(
-          sourceKey: 'site_exploration',
+          sourceKey: 'document_progress',
           amount: 20,
           skillId: 'site_stewardship',
         ),
@@ -143,32 +143,32 @@ void main() {
       expect(controller.activeAwards, hasLength(2));
       expect(
         controller.activeAwards.map((a) => a.sourceKey).toSet(),
-        {'active_distance', 'site_exploration'},
+        {'explore_100m_actively', 'document_progress'},
       );
       expect(controller.celebrationStash, hasLength(2));
       expect(
         controller.celebrationStash.map((a) => a.sourceKey).toSet(),
-        {'sites', 'first_discovery'},
+        {'discover_site', 'discover_site_as_first'},
       );
     });
 
     test('claim consumes matching keys and leaves others', () {
       final controller = XpAwardController();
       controller.announceAwards([
-        award(sourceKey: 'sites', amount: 20),
-        award(sourceKey: 'fossils', amount: 15, skillId: 'fossil_detection'),
-        award(sourceKey: 'first_discovery', amount: 20),
+        award(sourceKey: 'discover_site', amount: 20),
+        award(sourceKey: 'locate_fossil_in_situ', amount: 15, skillId: 'fossil_detection'),
+        award(sourceKey: 'discover_site_as_first', amount: 20),
       ]);
 
       final claimed = controller.claimCelebrationAwards(
         kSiteDiscoveryCelebrationXpKeys,
       );
       expect(claimed.map((a) => a.sourceKey).toList(), [
-        'sites',
-        'first_discovery',
+        'discover_site',
+        'discover_site_as_first',
       ]);
       expect(controller.celebrationStash, hasLength(1));
-      expect(controller.celebrationStash.single.sourceKey, 'fossils');
+      expect(controller.celebrationStash.single.sourceKey, 'locate_fossil_in_situ');
 
       final fossils = controller.claimCelebrationAwards(
         kFossilDiscoveryCelebrationXpKeys,
@@ -178,16 +178,16 @@ void main() {
       expect(controller.celebrationStash, isEmpty);
     });
 
-    test('identification merge sums multiple site_identification awards', () {
+    test('identification merge sums multiple identify_site awards', () {
       final controller = XpAwardController();
       controller.announceAwards([
         award(
-          sourceKey: 'site_identification',
+          sourceKey: 'identify_site',
           amount: 40,
           skillId: 'site_stewardship',
         ),
         award(
-          sourceKey: 'site_identification',
+          sourceKey: 'identify_site',
           amount: 20,
           skillId: 'site_stewardship',
         ),
@@ -198,7 +198,7 @@ void main() {
         mergeSameKey: true,
       );
       expect(claimed, hasLength(1));
-      expect(claimed.single.sourceKey, 'site_identification');
+      expect(claimed.single.sourceKey, 'identify_site');
       expect(claimed.single.amount, 60);
       expect(controller.celebrationStash, isEmpty);
     });
@@ -208,9 +208,9 @@ void main() {
       final controller = XpAwardController();
       controller.announceAwardsAfterVisit(
         awards: [
-          award(sourceKey: 'passive_distance', amount: 100),
-          award(sourceKey: 'active_distance', amount: 40),
-          award(sourceKey: 'disguise', amount: 10),
+          award(sourceKey: 'explore_1km_passively', amount: 100),
+          award(sourceKey: 'explore_100m_actively', amount: 40),
+          award(sourceKey: 'disguise_of_site', amount: 10),
         ],
         exploredMeters: 1500,
       );
@@ -222,7 +222,7 @@ void main() {
       expect(visit.sourceLabel, 'Explored 1.5 km since last visit');
       expect(visit.amount, 140);
       expect(
-        controller.activeAwards.any((a) => a.sourceKey == 'disguise'),
+        controller.activeAwards.any((a) => a.sourceKey == 'disguise_of_site'),
         isTrue,
       );
     });
@@ -245,7 +245,7 @@ void main() {
     test('visit announce with 0 meters falls back to normal announce', () {
       final controller = XpAwardController();
       controller.announceAwardsAfterVisit(
-        awards: [award(sourceKey: 'passive_distance', amount: 100)],
+        awards: [award(sourceKey: 'explore_1km_passively', amount: 100)],
         exploredMeters: 0,
       );
 
@@ -256,8 +256,8 @@ void main() {
     test('clear empties active badges and celebration stash', () {
       final controller = XpAwardController();
       controller.announceAwards([
-        award(sourceKey: 'sites', amount: 20),
-        award(sourceKey: 'disguise', amount: 50, skillId: 'site_stewardship'),
+        award(sourceKey: 'discover_site', amount: 20),
+        award(sourceKey: 'disguise_of_site', amount: 50, skillId: 'site_stewardship'),
       ]);
       controller.clear();
       expect(controller.activeAwards, isEmpty);

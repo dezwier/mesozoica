@@ -13,7 +13,7 @@ skills:
     name: Science Hall
 
 # XP reward amounts live on skill domain main_params
-# (site_discovery_xp / active_100m_xp / passive_km_xp / fossil_discovery_xp).
+# (discover_site_xp / explore_100m_actively_xp / explore_1km_passively_xp / locate_fossil_in_situ_xp).
 
 career_titles:
   - Curious Wanderer

@@ -44,8 +44,8 @@ void main() {
       },
       'skills': [
         {
-          'id': 'site_discovery',
-          'name': 'Site Discovery',
+          'id': 'field_survey',
+          'name': 'Field Survey',
           'xp': 75,
           'level': 1,
           'next_level_xp': 83,
@@ -53,8 +53,8 @@ void main() {
           'progress': 0.9,
         },
         {
-          'id': 'fossil_detection',
-          'name': 'Fossil Detection',
+          'id': 'bone_quarry',
+          'name': 'Bone Quarry',
           'xp': 55,
           'level': 1,
           'next_level_xp': 83,
@@ -63,12 +63,12 @@ void main() {
         },
       ],
       'skill_breakdown': {
-        'site_discovery': {
-          'sites': 20,
-          'active_distance': 30,
-          'passive_distance': 25,
+        'field_survey': {
+          'discover_site': 20,
+          'explore_100m_actively': 30,
+          'explore_1km_passively': 25,
         },
-        'fossil_detection': {'fossils': 55},
+        'bone_quarry': {'locate_fossil_in_situ': 55},
       },
       'xp': 130,
       'level': 1,
@@ -78,8 +78,8 @@ void main() {
     expect(profile.effectiveCareer.progress, 0.2);
     expect(profile.careerTitle, 'Curious Wanderer');
     expect(profile.skills.length, 2);
-    expect(profile.skills.first.id, 'site_discovery');
-    expect(profile.skillBreakdown['site_discovery']?['sites'], 20);
-    expect(profile.skillBreakdown['fossil_detection']?['fossils'], 55);
+    expect(profile.skills.first.id, 'field_survey');
+    expect(profile.skillBreakdown['field_survey']?['discover_site'], 20);
+    expect(profile.skillBreakdown['bone_quarry']?['locate_fossil_in_situ'], 55);
   });
 }

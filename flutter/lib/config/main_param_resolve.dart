@@ -136,22 +136,22 @@ double resolveSiteDiscoveryVisibilityDistanceM({
   if (!GameConfig.isLoaded) return 20.0;
   final cfg = GameConfig.instance.siteDiscovery;
   var value = resolveScalarMainParam(
-    base: cfg.visibilityDistanceM,
-    levelEntries: cfg.levelModifiers['visibility_distance_m'],
+    base: cfg.discoveryDistanceM,
+    levelEntries: cfg.levelModifiers['discovery_distance_m'],
     skillLevel: skillLevel,
     weatherTimeMods: weatherTimeModsForParam(
       weatherTimeModifiers: cfg.weatherTimeModifiers,
-      paramKey: 'visibility_distance_m',
+      paramKey: 'discovery_distance_m',
       weatherTime: weatherTime,
     ),
     weatherTypeMods: weatherTypeModsForParam(
       weatherTypeModifiers: cfg.weatherTypeModifiers,
-      paramKey: 'visibility_distance_m',
+      paramKey: 'discovery_distance_m',
       weatherType: weatherType,
     ),
   );
   for (final mod in siteDiscoveryToolModsForParam(
-    paramKey: 'visibility_distance_m',
+    paramKey: 'discovery_distance_m',
     toolBindings: toolBindings,
     weatherTime: weatherTime,
   )) {
@@ -170,22 +170,22 @@ double resolveSiteStewardshipSiteVisibilityM({
   if (!GameConfig.isLoaded) return 50.0;
   final cfg = GameConfig.instance.siteStewardship;
   var value = resolveScalarMainParam(
-    base: cfg.mainParams.siteVisibilityM,
-    levelEntries: cfg.levelModifiers['site_visibility_m'],
+    base: cfg.mainParams.documentationDistanceM,
+    levelEntries: cfg.levelModifiers['documentation_distance_m'],
     skillLevel: skillLevel,
     weatherTimeMods: weatherTimeModsForParam(
       weatherTimeModifiers: cfg.weatherTimeModifiers,
-      paramKey: 'site_visibility_m',
+      paramKey: 'documentation_distance_m',
       weatherTime: weatherTime,
     ),
     weatherTypeMods: weatherTypeModsForParam(
       weatherTypeModifiers: cfg.weatherTypeModifiers,
-      paramKey: 'site_visibility_m',
+      paramKey: 'documentation_distance_m',
       weatherType: weatherType,
     ),
   );
   for (final mod in siteDiscoveryToolModsForParam(
-    paramKey: 'site_visibility_m',
+    paramKey: 'documentation_distance_m',
     skillId: 'field_survey',
     toolBindings: toolBindings,
     weatherTime: weatherTime,
@@ -197,8 +197,8 @@ double resolveSiteStewardshipSiteVisibilityM({
 
 /// Effective site-dimension accuracy params: base → level → ambient → tools.
 ///
-/// Keys: `dino_accuracy`, `fossil_accuracy`, `completeness_accuracy`,
-/// `quality_accuracy`, `depth_accuracy`.
+/// Keys: `documentation_genera`, `documentation_fossil`, `documentation_completeness`,
+/// `documentation_preservation`, `documentation_depth`.
 Map<String, double> resolveSiteStewardshipAccuracies({
   required int skillLevel,
   String? weatherTime,
@@ -206,11 +206,11 @@ Map<String, double> resolveSiteStewardshipAccuracies({
   Map<String, ParamModifier>? toolMods,
 }) {
   const keys = <String>[
-    'dino_accuracy',
-    'fossil_accuracy',
-    'completeness_accuracy',
-    'quality_accuracy',
-    'depth_accuracy',
+    'documentation_genera',
+    'documentation_fossil',
+    'documentation_completeness',
+    'documentation_preservation',
+    'documentation_depth',
   ];
   if (!GameConfig.isLoaded) {
     return {for (final key in keys) key: 0.0};
@@ -219,11 +219,11 @@ Map<String, double> resolveSiteStewardshipAccuracies({
   final mp = cfg.mainParams;
   final mods = toolMods ?? const <String, ParamModifier>{};
   final bases = <String, double>{
-    'dino_accuracy': mp.dinoAccuracy,
-    'fossil_accuracy': mp.fossilAccuracy,
-    'completeness_accuracy': mp.completenessAccuracy,
-    'quality_accuracy': mp.qualityAccuracy,
-    'depth_accuracy': mp.depthAccuracy,
+    'documentation_genera': mp.documentationGenera,
+    'documentation_fossil': mp.documentationFossil,
+    'documentation_completeness': mp.documentationCompleteness,
+    'documentation_preservation': mp.documentationPreservation,
+    'documentation_depth': mp.documentationDepth,
   };
 
   return {

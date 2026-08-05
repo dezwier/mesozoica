@@ -12,7 +12,7 @@ ToolModBinding _ridgeUsing({required double multiply}) {
     mods: ModifiesMainParams(
       using: {
         'field_survey': {
-          'visibility_distance_m': ParamModifier(op: 'multiply', value: multiply),
+          'discovery_distance_m': ParamModifier(op: 'multiply', value: multiply),
           'discovery_chance': ParamModifier(op: 'multiply', value: multiply),
         },
       },
@@ -28,7 +28,7 @@ ToolModBinding _nocturneUsing({required double multiply}) {
     mods: ModifiesMainParams(
       using: {
         'field_survey': {
-          'visibility_distance_m': ParamModifier(op: 'multiply', value: multiply),
+          'discovery_distance_m': ParamModifier(op: 'multiply', value: multiply),
           'discovery_chance': ParamModifier(op: 'multiply', value: multiply),
         },
       },
@@ -45,11 +45,11 @@ ToolModBinding _mobilityUsing({required double multiply}) {
     mods: ModifiesMainParams(
       using: {
         'field_survey': {
-          'visibility_distance_m': ParamModifier(op: 'multiply', value: multiply),
+          'discovery_distance_m': ParamModifier(op: 'multiply', value: multiply),
           'discovery_chance': ParamModifier(op: 'multiply', value: multiply),
-          'max_discovery_speed_kmh':
+          'discovery_max_speed_kmh':
               ParamModifier(op: 'multiply', value: 3.0),
-          'site_visibility_m': ParamModifier(op: 'multiply', value: multiply),
+          'documentation_distance_m': ParamModifier(op: 'multiply', value: multiply),
         },
       },
     ),
@@ -70,11 +70,11 @@ void main() {
     final level99 = resolveSiteStewardshipAccuracies(skillLevel: 99);
 
     for (final key in [
-      'dino_accuracy',
-      'fossil_accuracy',
-      'completeness_accuracy',
-      'quality_accuracy',
-      'depth_accuracy',
+      'documentation_genera',
+      'documentation_fossil',
+      'documentation_completeness',
+      'documentation_preservation',
+      'documentation_depth',
     ]) {
       expect(level1[key], closeTo(0.01, 1e-9), reason: key);
       expect(level10[key], closeTo(0.10, 1e-9), reason: key);
@@ -88,17 +88,17 @@ void main() {
     final result = resolveSiteStewardshipAccuracies(
       skillLevel: 10,
       toolMods: {
-        'dino_accuracy': const ParamModifier(op: 'add', value: 0.05),
+        'documentation_genera': const ParamModifier(op: 'add', value: 0.05),
       },
     );
 
-    expect(result['dino_accuracy'], closeTo(0.15, 1e-9));
-    expect(result['fossil_accuracy'], closeTo(0.10, 1e-9));
+    expect(result['documentation_genera'], closeTo(0.15, 1e-9));
+    expect(result['documentation_fossil'], closeTo(0.10, 1e-9));
   });
 
   test('site discovery visibility defaults to main param', () async {
     await loadGameConfigForTest();
-    final base = GameConfig.instance.siteDiscovery.visibilityDistanceM;
+    final base = GameConfig.instance.siteDiscovery.discoveryDistanceM;
     expect(
       resolveSiteDiscoveryVisibilityDistanceM(skillLevel: 1),
       closeTo(base, 1e-9),
@@ -118,7 +118,7 @@ void main() {
 
   test('ridge glass using mods come from instance bindings not yaml', () async {
     await loadGameConfigForTest();
-    final base = GameConfig.instance.siteDiscovery.visibilityDistanceM;
+    final base = GameConfig.instance.siteDiscovery.discoveryDistanceM;
     // Instance is 1.4 even if YAML baseline differs.
     final boosted = resolveSiteDiscoveryVisibilityDistanceM(
       skillLevel: 1,
@@ -134,7 +134,7 @@ void main() {
 
   test('weather_time and weather_type stack before tools', () async {
     await loadGameConfigForTest();
-    final base = GameConfig.instance.siteDiscovery.visibilityDistanceM;
+    final base = GameConfig.instance.siteDiscovery.discoveryDistanceM;
     expect(
       resolveSiteDiscoveryVisibilityDistanceM(
         skillLevel: 1,
@@ -200,21 +200,21 @@ void main() {
       'modifies_main_params': {
         'using': {
           'field_survey': {
-            'visibility_distance_m': {'op': 'multiply', 'value': 1.4},
+            'discovery_distance_m': {'op': 'multiply', 'value': 1.4},
           },
         },
       },
     });
     expect(mods, isNotNull);
     expect(
-      mods!.paramsFor('using', 'field_survey')['visibility_distance_m']?.value,
+      mods!.paramsFor('using', 'field_survey')['discovery_distance_m']?.value,
       1.4,
     );
   });
 
   test('nocturne using mods apply only at night', () async {
     await loadGameConfigForTest();
-    final base = GameConfig.instance.siteDiscovery.visibilityDistanceM;
+    final base = GameConfig.instance.siteDiscovery.discoveryDistanceM;
     final bindings = [_nocturneUsing(multiply: 1.4)];
     expect(
       resolveSiteDiscoveryVisibilityDistanceM(
@@ -244,7 +244,7 @@ void main() {
 
   test('mobility tools reduce site stewardship visibility', () async {
     await loadGameConfigForTest();
-    final base = GameConfig.instance.siteStewardship.mainParams.siteVisibilityM;
+    final base = GameConfig.instance.siteStewardship.mainParams.documentationDistanceM;
     expect(
       resolveSiteStewardshipSiteVisibilityM(skillLevel: 1),
       closeTo(base, 1e-9),

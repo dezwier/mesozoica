@@ -49,12 +49,12 @@ def compute_skill_xp_from_history(
     """Return (skill_xp, skill_breakdown) from historical activity."""
     site_cfg = get_game_config().site_discovery
     fossil_cfg = get_game_config().fossil_detection
-    site_xp = int(round(float(site_cfg.site_discovery_xp)))
+    site_xp = int(round(float(site_cfg.discover_site_xp)))
     fossil_xp = int(
-        round(float(fossil_cfg.main_params.get("fossil_discovery_xp", 5)))
+        round(float(fossil_cfg.main_params.get("locate_fossil_in_situ_xp", 5)))
     )
-    active_xp = int(round(float(site_cfg.active_100m_xp)))
-    passive_xp = int(round(float(site_cfg.passive_km_xp)))
+    active_xp = int(round(float(site_cfg.explore_100m_actively_xp)))
+    passive_xp = int(round(float(site_cfg.explore_1km_passively_xp)))
     from_sites = int(site_count) * site_xp
     from_fossils = int(fossil_count) * fossil_xp
     active_batches = whole_100m(active_distance_m)
@@ -69,15 +69,15 @@ def compute_skill_xp_from_history(
     breakdown: dict[str, dict[str, int]] = {}
     site_breakdown: dict[str, int] = {}
     if from_sites:
-        site_breakdown["sites"] = from_sites
+        site_breakdown["discover_site"] = from_sites
     if from_active:
-        site_breakdown["active_distance"] = from_active
+        site_breakdown["explore_100m_actively"] = from_active
     if from_passive:
-        site_breakdown["passive_distance"] = from_passive
+        site_breakdown["explore_1km_passively"] = from_passive
     if site_breakdown:
         breakdown["field_survey"] = site_breakdown
     if from_fossils:
-        breakdown["bone_quarry"] = {"fossils": from_fossils}
+        breakdown["bone_quarry"] = {"locate_fossil_in_situ": from_fossils}
 
     return skill_xp, breakdown
 

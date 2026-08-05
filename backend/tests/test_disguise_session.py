@@ -68,7 +68,7 @@ def _auth_headers(user: User) -> dict[str, str]:
     return {"Authorization": f"Bearer {token}"}
 
 
-def _user(session: Session, *, username: str = "disguise") -> User:
+def _user(session: Session, *, username: str = "disguise_of_site") -> User:
     user = User(
         username=username,
         email=f"{username}@example.com",
@@ -177,8 +177,8 @@ def test_tool_actions_yaml_loads_disguise_knobs() -> None:
     assert cover.rival_discovery_mod is not None
     assert cover.rival_discovery_mod.op == "multiply"
     assert cover.rival_discovery_mod.value == 0.5
-    assert get_game_config().site_stewardship.rival_discovery == 1.0
-    assert get_game_config().site_stewardship.successful_site_disguise_xp == 40.0
+    assert get_game_config().site_stewardship.rival_discovery_chance == 1.0
+    assert get_game_config().site_stewardship.disguise_of_site_xp == 40.0
 
 
 def test_deploy_requires_discoverer(client, session: Session) -> None:
@@ -219,7 +219,7 @@ def test_deploy_creates_disguiser_and_ignores_status(
     assert body["status"] == SESSION_STATUS_ACTIVE
     assert body["state"]["site_id"] == site.site_id
     assert body["params"]["modifies_main_params"]["using"]["field_survey"][
-        "rival_discovery"
+        "rival_discovery_chance"
     ] == {"op": "multiply", "value": 0.0}
 
     disguiser = session.exec(
@@ -591,7 +591,7 @@ def test_passive_rival_discovery_from_steward_skill(
     session.commit()
 
     expected_mult = float(
-        resolve_site_stewardship_main_params(skill_level=99)["rival_discovery"]
+        resolve_site_stewardship_main_params(skill_level=99)["rival_discovery_chance"]
     )
     assert expected_mult == pytest.approx(0.5, abs=1e-6)
 
@@ -622,7 +622,7 @@ def test_passive_rival_discovery_from_steward_skill(
 def test_documenter_status_applies_rival_discovery(
     session: Session, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Any status above hidden (e.g. documenter) applies rival_discovery."""
+    """Any status above hidden (e.g. documenter) applies rival_discovery_chance."""
     _stub_overcast_weather(monkeypatch)
     owner = _user(session, username="owner_doc")
     rival = _user(session, username="rival_doc")

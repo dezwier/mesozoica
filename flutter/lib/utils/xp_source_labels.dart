@@ -15,50 +15,50 @@ library xp_source_labels;
 
 /// Human labels for skill_breakdown keys (XP sources / main_param awards).
 const kXpBreakdownLabels = <String, String>{
-  'sites': 'Discover site',
-  'fossils': 'Locate fossil in situ',
-  'active_distance': 'Explore 100m actively',
-  'passive_distance': 'Explore 1km passively',
-  'disguise': 'Disguise of site',
-  'site_exploration': 'Document progress',
-  'site_documentation': 'Document site',
-  'site_identification': 'Identify site',
-  'first_discovery': 'Discover site as first',
-  'first_documentation': 'Document site as first',
+  'discover_site': 'Discover site',
+  'locate_fossil_in_situ': 'Locate fossil in situ',
+  'explore_100m_actively': 'Explore 100m actively',
+  'explore_1km_passively': 'Explore 1km passively',
+  'disguise_of_site': 'Disguise of site',
+  'document_progress': 'Document progress',
+  'document_site': 'Document site',
+  'identify_site': 'Identify site',
+  'discover_site_as_first': 'Discover site as first',
+  'document_site_as_first': 'Document site as first',
 };
 
 /// Breakdown keys for **big-event celebrations** (embedded in the plaque).
 ///
 /// Not shown as floating XP badges. See library doc on this file.
 const kCelebrationXpSourceKeys = <String>{
-  'sites',
-  'first_discovery',
-  'fossils',
-  'site_documentation',
-  'first_documentation',
-  'site_identification',
+  'discover_site',
+  'discover_site_as_first',
+  'locate_fossil_in_situ',
+  'document_site',
+  'document_site_as_first',
+  'identify_site',
 };
 
 /// Keys claimed by the site-discovered celebration.
 const kSiteDiscoveryCelebrationXpKeys = <String>{
-  'sites',
-  'first_discovery',
+  'discover_site',
+  'discover_site_as_first',
 };
 
 /// Keys claimed by fossil discovery celebrations.
 const kFossilDiscoveryCelebrationXpKeys = <String>{
-  'fossils',
+  'locate_fossil_in_situ',
 };
 
 /// Keys claimed by the site-documented celebration.
 const kSiteDocumentationCelebrationXpKeys = <String>{
-  'site_documentation',
-  'first_documentation',
+  'document_site',
+  'document_site_as_first',
 };
 
 /// Keys claimed by the site-identified celebration.
 const kSiteIdentificationCelebrationXpKeys = <String>{
-  'site_identification',
+  'identify_site',
 };
 
 /// True → celebrate (embed XP); false → floating XP badge.
@@ -99,6 +99,6 @@ String exploredSinceLastVisitLabel(double meters) {
 
 /// Breakdown keys for walk-distance XP (active GPS / passive Health).
 const kDistanceXpSourceKeys = <String>{
-  'active_distance',
-  'passive_distance',
+  'explore_100m_actively',
+  'explore_1km_passively',
 };

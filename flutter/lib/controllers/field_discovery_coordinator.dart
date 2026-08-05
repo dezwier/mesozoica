@@ -19,7 +19,7 @@ import '../utils/discovery_haptic.dart';
 /// After a chance miss (or while dwelling from baseline), re-rolls every
 /// [discoveryRerollInterval] while the user stays inside.
 ///
-/// Rolls are skipped while GPS speed exceeds [maxDiscoverySpeedKmh]
+/// Rolls are skipped while GPS speed exceeds [discoveryMaxSpeedKmh]
 /// (raised by tools like Expedition Drivetrain).
 class FieldDiscoveryCoordinator extends ChangeNotifier {
   FieldDiscoveryCoordinator({
@@ -48,7 +48,7 @@ class FieldDiscoveryCoordinator extends ChangeNotifier {
   /// Effective visibility distance (main param + level/tool). Null → YAML.
   double? _discoverRadiusOverrideM;
   /// Effective max discovery speed (main param + tool). Null → YAML.
-  double? _maxDiscoverySpeedKmhOverride;
+  double? _discoveryMaxSpeedKmhOverride;
 
   Duration get discoveryRerollInterval =>
       _discoveryRerollIntervalOverride ?? discoveryRerollIntervalDefault;
@@ -58,17 +58,17 @@ class FieldDiscoveryCoordinator extends ChangeNotifier {
     final override = _discoverRadiusOverrideM;
     if (override != null && override > 0) return override;
     if (GameConfig.isLoaded) {
-      return GameConfig.instance.siteDiscovery.visibilityDistanceM;
+      return GameConfig.instance.siteDiscovery.discoveryDistanceM;
     }
     return autoDiscoverRadiusM;
   }
 
   /// Max GPS speed (km/h) at which discovery dice may roll.
-  double get maxDiscoverySpeedKmh {
-    final override = _maxDiscoverySpeedKmhOverride;
+  double get discoveryMaxSpeedKmh {
+    final override = _discoveryMaxSpeedKmhOverride;
     if (override != null && override > 0) return override;
     if (GameConfig.isLoaded) {
-      return GameConfig.instance.siteDiscovery.maxDiscoverySpeedKmh;
+      return GameConfig.instance.siteDiscovery.discoveryMaxSpeedKmh;
     }
     return 10.0;
   }
@@ -83,8 +83,8 @@ class FieldDiscoveryCoordinator extends ChangeNotifier {
   /// Keep discovery speed gate aligned with walk XP / tool buffs.
   void setMaxDiscoverySpeedKmh(double kmh) {
     if (kmh <= 0) return;
-    if (_maxDiscoverySpeedKmhOverride == kmh) return;
-    _maxDiscoverySpeedKmhOverride = kmh;
+    if (_discoveryMaxSpeedKmhOverride == kmh) return;
+    _discoveryMaxSpeedKmhOverride = kmh;
   }
 
   LocationService? _locationService;
@@ -214,7 +214,7 @@ class FieldDiscoveryCoordinator extends ChangeNotifier {
     _lastHandledLocation = null;
     _cacheRadiusOverrideKm = null;
     _discoverRadiusOverrideM = null;
-    _maxDiscoverySpeedKmhOverride = null;
+    _discoveryMaxSpeedKmhOverride = null;
     _insideRadiusSiteIds.clear();
     _seenOutsideSiteIds.clear();
     _inFlightSiteIds.clear();
@@ -460,12 +460,12 @@ class FieldDiscoveryCoordinator extends ChangeNotifier {
     });
   }
 
-  /// True when GPS speed is unknown or at/under [maxDiscoverySpeedKmh].
+  /// True when GPS speed is unknown or at/under [discoveryMaxSpeedKmh].
   bool _isWithinMaxDiscoverySpeed() {
     final speedMps = _locationService?.lastPosition?.speed;
     // Geolocator uses < 0 when speed is unavailable.
     if (speedMps == null || speedMps < 0) return true;
-    final maxMps = maxDiscoverySpeedKmh * 1000.0 / 3600.0;
+    final maxMps = discoveryMaxSpeedKmh * 1000.0 / 3600.0;
     return speedMps <= maxMps;
   }
 

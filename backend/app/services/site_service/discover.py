@@ -34,7 +34,7 @@ def discover_max_distance_m() -> float:
     """Server-side max distance (meters) to discover / change site status."""
     from app.core.game_config import get_game_config
 
-    return get_game_config().site_discovery.visibility_distance_m
+    return get_game_config().site_discovery.discovery_distance_m
 
 
 def _site_label(site: Site) -> str:
@@ -119,13 +119,13 @@ def discover_site(
     ).first()
     # Source of truth for firstness is live discoverer rows, not site.how_discovered
     # (that column is only the denormalized discovery method for filters/UI).
-    is_first_discovery = prior_discoverer is None
+    is_discover_site_as_first = prior_discoverer is None
     session.add(
         UserSite(
             user_id=user_id,
             site_id=site_id,
             role=USER_SITE_ROLE_DISCOVERER,
-            was_first=is_first_discovery,
+            was_first=is_discover_site_as_first,
         )
     )
     apply_site_discovery_enrichment(
@@ -140,16 +140,16 @@ def discover_site(
 
     from app.models.user import User
     from app.services.level_service import (
-        award_first_discovery_xp,
+        award_discover_site_as_first_xp,
         award_site_discover_xp,
     )
 
     user = session.get(User, user_id)
     if user is not None:
-        award_site_discover_xp(user, amount=int(round(params.site_discovery_xp)))
-        if is_first_discovery:
-            award_first_discovery_xp(
-                user, amount=int(round(params.first_discovery_xp))
+        award_site_discover_xp(user, amount=int(round(params.discover_site_xp)))
+        if is_discover_site_as_first:
+            award_discover_site_as_first_xp(
+                user, amount=int(round(params.discover_site_as_first_xp))
             )
         session.add(user)
 

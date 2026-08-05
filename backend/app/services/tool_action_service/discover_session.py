@@ -108,14 +108,14 @@ def discover_site_from_aerial(
         )
     ).first()
     # Source of truth for firstness is live discoverer rows, not site.how_discovered.
-    is_first_discovery = prior_discoverer is None
+    is_discover_site_as_first = prior_discoverer is None
     session.add(
         UserSite(
             user_id=user_id,
             site_id=site_id,
             role=USER_SITE_ROLE_DISCOVERER,
             source_session_id=session_id,
-            was_first=is_first_discovery,
+            was_first=is_discover_site_as_first,
         )
     )
     apply_site_discovery_enrichment(
@@ -130,7 +130,7 @@ def discover_site_from_aerial(
 
     from app.models.user import User
     from app.services.level_service import (
-        award_first_discovery_xp,
+        award_discover_site_as_first_xp,
         award_site_discover_xp,
     )
     from app.services.weather_service.solar import period_at
@@ -148,8 +148,8 @@ def discover_site_from_aerial(
         award_site_discover_xp(
             user, weather_time=weather_time, weather_type=weather_type
         )
-        if is_first_discovery:
-            award_first_discovery_xp(
+        if is_discover_site_as_first:
+            award_discover_site_as_first_xp(
                 user, weather_time=weather_time, weather_type=weather_type
             )
         session.add(user)
