@@ -10,7 +10,6 @@ import pytest
 from app.core.game_config import (
     DOCUMENT_FILES,
     DOCUMENT_IDS,
-    ParamModifier,
     build_game_config,
     canonical_checksum,
     get_game_config,
@@ -93,101 +92,71 @@ def test_resolve_default_game_config_dir() -> None:
     assert (directory / "leveling.yaml").is_file()
 
 
-def test_load_game_config_matches_current_defaults() -> None:
+def test_load_game_config_structure() -> None:
+    """Smoke-load the control board: shape and wiring, not knob values.
+
+    Tunable floats (XP, distances, weather multipliers, tool mods) live in YAML
+    and change often — pin structure/invariants here instead.
+    """
     get_game_config.cache_clear()
     config = load_game_config()
 
-    assert config.site_generation.lazy.max_sites_per_cell == 50
-    assert config.site_generation.lazy.cell_size_m == 500.0
-    assert config.site_generation.lazy.min_separation_km == 0.03
-    assert config.site_generation.lazy.weight_global == 0.33
-    assert config.site_generation.lazy.weight_nearby == 0.33
-    assert config.site_generation.lazy.weight_closest == 0.34
+    lazy = config.site_generation.lazy
+    assert lazy.max_sites_per_cell > 0
+    assert lazy.cell_size_m > 0
+    assert lazy.min_separation_km > 0
+    assert (
+        abs(lazy.weight_global + lazy.weight_nearby + lazy.weight_closest - 1.0)
+        < 1e-6
+    )
+    assert config.site_generation.bulk.max_items > 0
+    assert config.site_generation.client.nearby_radius_km > 0
 
-    assert config.site_generation.bulk.max_items == 200
-    assert config.site_generation.client.nearby_radius_km == 0.5
-
-    assert config.site_discovery.discovery_distance_m == 20.0
-    assert config.site_discovery.max_distance_m == 20.0
-    assert config.site_discovery.discovery_chance == 0.1
-    assert config.site_discovery.discovery_max_speed_kmh == 10.0
-    assert config.site_discovery.discover_site_xp == 20.0
-    assert config.site_discovery.discover_site_as_first_xp == 20.0
-    assert config.site_discovery.explore_100m_actively_xp == 20.0
-    assert config.site_discovery.explore_100m_passively_xp == 10.0
-    assert config.site_discovery.client.auto_discover_radius_m == 20.0
-    assert config.site_discovery.client.cache_radius_km == 1.0
-    assert config.site_discovery.client.cache_refresh_move_threshold_m == 500.0
-    assert config.site_discovery.client.discover_fail_retry_s == 20
-    assert config.site_discovery.client.discovery_reroll_interval_s == 10
-    assert config.site_discovery.level_modifiers["discovery_max_speed_kmh"] == []
-    reach_mods = config.site_discovery.level_modifiers["discovery_chance"]
-    assert len(reach_mods) == 2
-    assert reach_mods[0].level == 1 and reach_mods[0].value == 1
-    assert reach_mods[-1].level == 99 and reach_mods[-1].value == 1.5
-    assert config.site_discovery.level_modifiers["discovery_distance_m"] == reach_mods
+    disc = config.site_discovery
+    assert disc.discovery_distance_m > 0
+    assert disc.max_distance_m == disc.discovery_distance_m
+    assert 0 < disc.discovery_chance <= 1
+    assert disc.discovery_max_speed_kmh > 0
+    assert disc.discover_site_xp > 0
+    assert disc.client.auto_discover_radius_m > 0
+    assert disc.level_modifiers["discovery_max_speed_kmh"] == []
+    for key in ("discovery_chance", "discovery_distance_m"):
+        mods = disc.level_modifiers[key]
+        assert len(mods) >= 2
+        assert mods[0].level <= mods[-1].level
+    assert (
+        disc.level_modifiers["discovery_distance_m"]
+        == disc.level_modifiers["discovery_chance"]
+    )
     assert (
         config.site_stewardship.level_modifiers["documentation_distance_m"]
-        == reach_mods
+        == disc.level_modifiers["discovery_chance"]
     )
-    assert float(config.fossil_detection.main_params["locate_fossil_in_situ_xp"]) == 20.0
-    night_xp = config.site_discovery.weather_time_modifiers["discover_site_xp"][
-        "night"
-    ]
-    assert night_xp[0].op == "multiply" and night_xp[0].value == 1.2
-    dawn_xp = config.fossil_detection.weather_time_modifiers["locate_fossil_in_situ_xp"][
-        "dawn"
-    ]
-    assert dawn_xp[0].op == "multiply" and dawn_xp[0].value == 1.1
+    assert "locate_fossil_in_situ_xp" in config.fossil_detection.main_params
+    assert "night" in disc.weather_time_modifiers.get("discover_site_xp", {})
+    assert "dawn" in config.fossil_detection.weather_time_modifiers.get(
+        "locate_fossil_in_situ_xp", {}
+    )
 
-    assert config.site_stewardship.main_params.documentation_accuracy == 0.01
-    assert config.site_stewardship.main_params.documentation_distance_m == 50.0
-    assert config.site_stewardship.main_params.document_progress_xp == 20.0
-    assert config.site_stewardship.main_params.document_site_xp == 80.0
-    assert config.site_stewardship.main_params.document_site_as_first_xp == 20.0
-    assert config.site_stewardship.documentation_distance_m == 50.0
-    assert config.site_stewardship.document_progress_xp == 20.0
-    assert config.site_stewardship.document_site_xp == 80.0
-    assert config.site_stewardship.document_site_as_first_xp == 20.0
-    acc_mods = config.site_stewardship.level_modifiers["documentation_accuracy"]
-    assert len(acc_mods) == 2
-    assert acc_mods[0].level == 1 and acc_mods[0].op == "multiply"
-    assert acc_mods[0].value == 1
-    assert acc_mods[-1].level == 99 and acc_mods[-1].value == 99
-    rival_mods = config.site_stewardship.level_modifiers["rival_discovery_chance"]
-    assert len(rival_mods) == 2
-    assert rival_mods[0].level == 1 and rival_mods[0].op == "multiply"
-    assert rival_mods[0].value == 1
-    assert rival_mods[-1].level == 99 and rival_mods[-1].op == "multiply"
-    assert rival_mods[-1].value == 0.5
-    assert "documentation_genera" not in config.site_stewardship.level_modifiers
-    assert config.site_stewardship.odd_noise.dino_count == 0.0
-    assert config.site_stewardship.odd_noise.fossil_count == 0.5
-    assert config.site_stewardship.odd_noise.completeness == 0.3
-    assert config.site_stewardship.odd_noise.quality == 0.3
-    assert config.site_stewardship.odd_noise.depth == 0.3
-    assert config.site_stewardship.accuracy_noise.max_delta == 0.30
-    assert [(t.max_odd, t.count) for t in config.site_stewardship.dino_count] == [
-        (0.10, 0),
-        (0.60, 1),
-        (0.80, 2),
-        (0.90, 3),
-        (0.95, 4),
-        (1.00, 5),
-    ]
-    assert config.site_stewardship.fossil_count[1] == 0.25
-    assert config.site_stewardship.fossil_count[6] == 0.05
-    assert config.site_stewardship.defaults.subcategory == "teeth"
-    assert config.site_stewardship.defaults.completeness == "fragmentary"
-    assert config.site_stewardship.defaults.quality == "moderate"
-    assert len(config.site_stewardship.depth_weights) == 5
-    assert config.site_stewardship.depth_weights[0].min_cm == 0
-    assert config.site_stewardship.depth_weights[0].max_cm == 0
-    assert config.site_stewardship.depth_weights[0].weight == 0.10
-    assert config.site_stewardship.depth_weights[-1].min_cm == 501
-    assert config.site_stewardship.depth_weights[-1].max_cm == 1000
-    assert abs(sum(config.site_stewardship.completeness_weights.values()) - 1.0) < 1e-6
-    assert abs(sum(config.site_stewardship.quality_weights.values()) - 1.0) < 1e-6
+    stew = config.site_stewardship
+    assert 0 < stew.main_params.documentation_accuracy <= 1
+    assert stew.main_params.documentation_distance_m > 0
+    assert stew.documentation_distance_m == stew.main_params.documentation_distance_m
+    assert stew.document_progress_xp == stew.main_params.document_progress_xp
+    acc_mods = stew.level_modifiers["documentation_accuracy"]
+    assert len(acc_mods) >= 2 and acc_mods[0].op == "multiply"
+    rival_mods = stew.level_modifiers["rival_discovery_chance"]
+    assert len(rival_mods) >= 2 and rival_mods[0].op == "multiply"
+    assert "documentation_genera" not in stew.level_modifiers
+    assert stew.accuracy_noise.max_delta > 0
+    assert len(stew.dino_count) >= 2
+    assert stew.dino_count[0].count == 0
+    assert stew.dino_count[-1].count >= stew.dino_count[0].count
+    assert stew.fossil_count
+    assert stew.defaults.subcategory
+    assert len(stew.depth_weights) >= 2
+    assert abs(sum(stew.completeness_weights.values()) - 1.0) < 1e-6
+    assert abs(sum(stew.quality_weights.values()) - 1.0) < 1e-6
 
     # Back-compat aliases
     assert config.fossil_generation is config.site_stewardship
@@ -196,110 +165,59 @@ def test_load_game_config_matches_current_defaults() -> None:
     assert config.science_hall.enabled is False
     assert config.field_survey.skill_id == "field_survey"
 
-    assert config.tool_actions.geo_compass.discovery_chance == 0.9
-    assert config.tool_actions.geo_compass.modifies_main_params is not None
-    geo_mods = config.tool_actions.geo_compass.modifies_main_params
+    tools = config.tool_actions
+    assert tools.geo_compass.modifies_main_params is not None
+    geo_mods = tools.geo_compass.modifies_main_params
     assert geo_mods.affects_skill("field_survey")
     assert "discovery_chance" in geo_mods.params_for("using", "field_survey")
     assert geo_mods.owning == {}
-    nav_mods = config.tool_actions.site_navigator.modifies_main_params
+    nav_mods = tools.site_navigator.modifies_main_params
     assert nav_mods is not None
     assert "discovery_chance" in nav_mods.params_for("using", "field_survey")
-    assert config.tool_actions.aerial_recon.flight_discovery_chance == 0.01
-    assert config.tool_actions.aerial_scout.flight_discovery_distance_m == 50
+    assert tools.aerial_recon.flight_discovery_chance > 0
+    assert tools.aerial_scout.flight_discovery_distance_m > 0
 
-    ridge = config.tool_actions.ridge_glass
-    assert ridge.duration_minutes == 60
-    assert ridge.site_discovery_mod("discovery_distance_m") == ParamModifier(
-        op="multiply", value=1.3
-    )
-    assert ridge.site_discovery_mod("discovery_chance") == ParamModifier(
-        op="multiply", value=1.3
-    )
-    assert ridge.site_discovery_mod("discovery_max_speed_kmh") == ParamModifier(
-        op="multiply", value=0.7
-    )
+    ridge = tools.ridge_glass
+    assert ridge.duration_minutes > 0
+    assert ridge.site_discovery_mod("discovery_distance_m") is not None
+    assert ridge.site_discovery_mod("discovery_chance") is not None
+    assert ridge.site_discovery_mod("discovery_max_speed_kmh") is not None
     assert ridge.added_visibility_range_m is None
     assert ridge.added_discovery_rate is None
-    ridge_mods = ridge.modifies_main_params
-    assert ridge_mods is not None
-    assert ridge_mods.affects_skill("field_survey")
+    assert ridge.modifies_main_params is not None
+    assert ridge.modifies_main_params.affects_skill("field_survey")
 
-    drive = config.tool_actions.expedition_drivetrain
-    assert drive.duration_minutes == 60
-    assert drive.site_discovery_mod("discovery_max_speed_kmh") == ParamModifier(
-        op="multiply", value=3.0
-    )
-    assert drive.site_discovery_mod("discovery_distance_m") == ParamModifier(
-        op="multiply", value=0.9
-    )
-    assert drive.site_discovery_mod("discovery_chance") == ParamModifier(
-        op="multiply", value=0.9
-    )
-    drive_mods = drive.modifies_main_params
-    assert drive_mods is not None
-    assert drive_mods.affects_skill("field_survey")
-    assert drive_mods.affects_skill("field_survey")
-    assert drive_mods.params_for("using", "field_survey")[
-        "documentation_distance_m"
-    ] == ParamModifier(op="multiply", value=0.9)
+    for key in (
+        "expedition_drivetrain",
+        "trail_striders",
+        "canyon_throttle",
+        "overland_chassis",
+    ):
+        action = getattr(tools, key)
+        assert action.site_discovery_mod("discovery_max_speed_kmh") is not None
+        assert action.modifies_main_params is not None
+        assert "documentation_distance_m" in action.modifies_main_params.params_for(
+            "using", "field_survey"
+        )
 
-    trail = config.tool_actions.trail_striders
-    assert trail.site_discovery_mod("discovery_max_speed_kmh") == ParamModifier(
-        op="multiply", value=2.0
-    )
-    assert trail.modifies_main_params is not None
-    assert trail.modifies_main_params.params_for("using", "field_survey")[
-        "documentation_distance_m"
-    ] == ParamModifier(op="multiply", value=0.95)
-
-    canyon = config.tool_actions.canyon_throttle
-    assert canyon.site_discovery_mod("discovery_max_speed_kmh") == ParamModifier(
-        op="multiply", value=4.0
-    )
-    assert canyon.modifies_main_params is not None
-    assert canyon.modifies_main_params.params_for("using", "field_survey")[
-        "documentation_distance_m"
-    ] == ParamModifier(op="multiply", value=0.85)
-
-    overland = config.tool_actions.overland_chassis
-    assert overland.site_discovery_mod("discovery_max_speed_kmh") == ParamModifier(
-        op="multiply", value=5.0
-    )
-    assert overland.modifies_main_params is not None
-    assert overland.modifies_main_params.params_for("using", "field_survey")[
-        "documentation_distance_m"
-    ] == ParamModifier(op="multiply", value=0.8)
-
-    nocturne = config.tool_actions.nocturne_lens
-    assert nocturne.duration_minutes == 60
+    nocturne = tools.nocturne_lens
+    assert nocturne.duration_minutes > 0
     assert nocturne.active_weather_times == ("night",)
-    assert nocturne.site_discovery_mod("discovery_distance_m") == ParamModifier(
-        op="multiply", value=1.4
-    )
-    assert nocturne.site_discovery_mod("discovery_chance") == ParamModifier(
-        op="multiply", value=1.4
-    )
+    assert nocturne.site_discovery_mod("discovery_distance_m") is not None
+    assert nocturne.site_discovery_mod("discovery_chance") is not None
     assert nocturne.site_discovery_mod("discovery_max_speed_kmh") is None
 
-    modifying = [
-        key for key, _ in config.tool_actions.tools_modifying_skill("field_survey")
-    ]
-    assert "ridge_glass" in modifying
-    assert "trail_striders" in modifying
-    assert "expedition_drivetrain" in modifying
-    assert "canyon_throttle" in modifying
-    assert "overland_chassis" in modifying
-    assert "nocturne_lens" in modifying
-
-    stewardship_modifying = [
-        key
-        for key, _ in config.tool_actions.tools_modifying_skill("field_survey")
-    ]
-    assert "trail_striders" in stewardship_modifying
-    assert "expedition_drivetrain" in stewardship_modifying
-    assert "canyon_throttle" in stewardship_modifying
-    assert "overland_chassis" in stewardship_modifying
+    modifying = {
+        key for key, _ in tools.tools_modifying_skill("field_survey")
+    }
+    assert {
+        "ridge_glass",
+        "trail_striders",
+        "expedition_drivetrain",
+        "canyon_throttle",
+        "overland_chassis",
+        "nocturne_lens",
+    } <= modifying
 
     assert len(config.leveling.skills) == 3
     assert len(config.leveling.career_titles) == 99

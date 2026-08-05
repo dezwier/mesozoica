@@ -72,29 +72,43 @@ void main() {
     expect(applyLevelModifiers(1.0, entries, 99), closeTo(0.5, 1e-9));
   });
 
-  test('site stewardship estimation is base 1% times skill level', () async {
+  test('site stewardship estimation follows level modifiers', () async {
     await loadGameConfigForTest();
+    final cfg = GameConfig.instance.siteStewardship;
+    final base = cfg.mainParams.documentationAccuracy;
+    final entries = cfg.levelModifiers['documentation_accuracy'];
 
-    final level1 = resolveSiteStewardshipAccuracies(skillLevel: 1);
-    final level10 = resolveSiteStewardshipAccuracies(skillLevel: 10);
-    final level99 = resolveSiteStewardshipAccuracies(skillLevel: 99);
-
-    expect(level1['documentation_accuracy'], closeTo(0.01, 1e-9));
-    expect(level10['documentation_accuracy'], closeTo(0.10, 1e-9));
-    expect(level99['documentation_accuracy'], closeTo(0.99, 1e-9));
+    for (final level in [1, 10, 99]) {
+      final resolved = resolveSiteStewardshipAccuracies(skillLevel: level);
+      expect(
+        resolved['documentation_accuracy'],
+        closeTo(
+          applyLevelModifiers(base, entries, level).clamp(0.0, 1.0),
+          1e-9,
+        ),
+      );
+    }
   });
 
   test('tool mods apply after level on site stewardship accuracies', () async {
     await loadGameConfigForTest();
+    final cfg = GameConfig.instance.siteStewardship;
+    final base = cfg.mainParams.documentationAccuracy;
+    final entries = cfg.levelModifiers['documentation_accuracy'];
+    const toolAdd = 0.05;
+    final at10 = applyLevelModifiers(base, entries, 10);
 
     final result = resolveSiteStewardshipAccuracies(
       skillLevel: 10,
       toolMods: {
-        'documentation_accuracy': const ParamModifier(op: 'add', value: 0.05),
+        'documentation_accuracy': const ParamModifier(op: 'add', value: toolAdd),
       },
     );
 
-    expect(result['documentation_accuracy'], closeTo(0.15, 1e-9));
+    expect(
+      result['documentation_accuracy'],
+      closeTo((at10 + toolAdd).clamp(0.0, 1.0), 1e-9),
+    );
   });
 
   test('site discovery visibility defaults to main param', () async {
@@ -135,65 +149,86 @@ void main() {
 
   test('weather_time and weather_type stack before tools', () async {
     await loadGameConfigForTest();
-    final base = GameConfig.instance.siteDiscovery.discoveryDistanceM;
-    expect(
-      resolveSiteDiscoveryVisibilityDistanceM(
+    final disc = GameConfig.instance.siteDiscovery;
+    final base = disc.discoveryDistanceM;
+
+    double expected({
+      String? weatherTime,
+      String? weatherType,
+      List<ToolModBinding> toolBindings = const [],
+    }) {
+      return resolveSiteDiscoveryVisibilityDistanceM(
         skillLevel: 1,
-        weatherTime: 'day',
-      ),
-      closeTo(base * 1.1, 1e-9),
+        weatherTime: weatherTime,
+        weatherType: weatherType,
+        toolBindings: toolBindings,
+      );
+    }
+
+    // Sanity: identity path when no ambient key.
+    expect(expected(), closeTo(base, 1e-9));
+
+    for (final period in ['day', 'golden_hour', 'dusk', 'dawn', 'night']) {
+      expect(
+        expected(weatherTime: period),
+        closeTo(
+          resolveScalarMainParam(
+            base: base,
+            levelEntries: const [],
+            skillLevel: 1,
+            weatherTimeMods: weatherTimeModsForParam(
+              weatherTimeModifiers: disc.weatherTimeModifiers,
+              paramKey: 'discovery_distance_m',
+              weatherTime: period,
+            ),
+          ),
+          1e-9,
+        ),
+      );
+    }
+
+    for (final type in ['clear', 'thunderstorm']) {
+      expect(
+        expected(weatherType: type),
+        closeTo(
+          resolveScalarMainParam(
+            base: base,
+            levelEntries: const [],
+            skillLevel: 1,
+            weatherTypeMods: weatherTypeModsForParam(
+              weatherTypeModifiers: disc.weatherTypeModifiers,
+              paramKey: 'discovery_distance_m',
+              weatherType: type,
+            ),
+          ),
+          1e-9,
+        ),
+      );
+    }
+
+    // Ambient before tools: stacked resolve matches helper.
+    final stacked = expected(
+      weatherTime: 'night',
+      weatherType: 'thunderstorm',
+      toolBindings: [_ridgeUsing(multiply: 1.3)],
     );
-    expect(
-      resolveSiteDiscoveryVisibilityDistanceM(
-        skillLevel: 1,
-        weatherTime: 'golden_hour',
-      ),
-      closeTo(base * 1.3, 1e-9),
-    );
-    expect(
-      resolveSiteDiscoveryVisibilityDistanceM(
-        skillLevel: 1,
-        weatherTime: 'dusk',
-      ),
-      closeTo(base, 1e-9),
-    );
-    expect(
-      resolveSiteDiscoveryVisibilityDistanceM(
-        skillLevel: 1,
-        weatherTime: 'dawn',
-      ),
-      closeTo(base, 1e-9),
-    );
-    expect(
-      resolveSiteDiscoveryVisibilityDistanceM(
-        skillLevel: 1,
+    var manual = resolveScalarMainParam(
+      base: base,
+      levelEntries: const [],
+      skillLevel: 1,
+      weatherTimeMods: weatherTimeModsForParam(
+        weatherTimeModifiers: disc.weatherTimeModifiers,
+        paramKey: 'discovery_distance_m',
         weatherTime: 'night',
       ),
-      closeTo(base * 0.6, 1e-9),
-    );
-    expect(
-      resolveSiteDiscoveryVisibilityDistanceM(
-        skillLevel: 1,
-        weatherType: 'clear',
-      ),
-      closeTo(base * 1.1, 1e-9),
-    );
-    expect(
-      resolveSiteDiscoveryVisibilityDistanceM(
-        skillLevel: 1,
+      weatherTypeMods: weatherTypeModsForParam(
+        weatherTypeModifiers: disc.weatherTypeModifiers,
+        paramKey: 'discovery_distance_m',
         weatherType: 'thunderstorm',
       ),
-      closeTo(base * 0.8, 1e-9),
     );
-    expect(
-      resolveSiteDiscoveryVisibilityDistanceM(
-        skillLevel: 1,
-        weatherTime: 'night',
-        weatherType: 'thunderstorm',
-        toolBindings: [_ridgeUsing(multiply: 1.3)],
-      ),
-      closeTo(base * 0.6 * 0.8 * 1.3, 1e-9),
-    );
+    manual = applyMainParamModifier(manual, op: 'multiply', value: 1.3);
+    expect(stacked, closeTo(manual, 1e-9));
   });
 
   test('modifiesMainParamsFromParams parses instance payload', () {
@@ -215,37 +250,37 @@ void main() {
 
   test('nocturne using mods apply only at night', () async {
     await loadGameConfigForTest();
-    final base = GameConfig.instance.siteDiscovery.discoveryDistanceM;
+    final disc = GameConfig.instance.siteDiscovery;
+    final base = disc.discoveryDistanceM;
     final bindings = [_nocturneUsing(multiply: 1.4)];
-    expect(
-      resolveSiteDiscoveryVisibilityDistanceM(
+
+    for (final period in ['night', 'dusk', 'day']) {
+      final got = resolveSiteDiscoveryVisibilityDistanceM(
         skillLevel: 1,
-        weatherTime: 'night',
+        weatherTime: period,
         toolBindings: bindings,
-      ),
-      closeTo(base * 0.6 * 1.4, 1e-9),
-    );
-    expect(
-      resolveSiteDiscoveryVisibilityDistanceM(
+      );
+      var expected = resolveScalarMainParam(
+        base: base,
+        levelEntries: const [],
         skillLevel: 1,
-        weatherTime: 'dusk',
-        toolBindings: bindings,
-      ),
-      closeTo(base, 1e-9),
-    );
-    expect(
-      resolveSiteDiscoveryVisibilityDistanceM(
-        skillLevel: 1,
-        weatherTime: 'day',
-        toolBindings: bindings,
-      ),
-      closeTo(base * 1.1, 1e-9),
-    );
+        weatherTimeMods: weatherTimeModsForParam(
+          weatherTimeModifiers: disc.weatherTimeModifiers,
+          paramKey: 'discovery_distance_m',
+          weatherTime: period,
+        ),
+      );
+      if (period == 'night') {
+        expected = applyMainParamModifier(expected, op: 'multiply', value: 1.4);
+      }
+      expect(got, closeTo(expected, 1e-9));
+    }
   });
 
   test('mobility tools reduce site stewardship visibility', () async {
     await loadGameConfigForTest();
-    final base = GameConfig.instance.siteStewardship.mainParams.documentationDistanceM;
+    final stew = GameConfig.instance.siteStewardship;
+    final base = stew.mainParams.documentationDistanceM;
     expect(
       resolveSiteStewardshipSiteVisibilityM(skillLevel: 1),
       closeTo(base, 1e-9),
@@ -257,13 +292,22 @@ void main() {
       ),
       closeTo(base * 0.9, 1e-9),
     );
-    expect(
-      resolveSiteStewardshipSiteVisibilityM(
-        skillLevel: 1,
-        weatherTime: 'day',
-        toolBindings: [_mobilityUsing(multiply: 0.9)],
-      ),
-      closeTo(base * 1.1 * 0.9, 1e-9),
+
+    final withDay = resolveSiteStewardshipSiteVisibilityM(
+      skillLevel: 1,
+      weatherTime: 'day',
+      toolBindings: [_mobilityUsing(multiply: 0.9)],
     );
+    final ambient = resolveScalarMainParam(
+      base: base,
+      levelEntries: const [],
+      skillLevel: 1,
+      weatherTimeMods: weatherTimeModsForParam(
+        weatherTimeModifiers: stew.weatherTimeModifiers,
+        paramKey: 'documentation_distance_m',
+        weatherTime: 'day',
+      ),
+    );
+    expect(withDay, closeTo(ambient * 0.9, 1e-9));
   });
 }
