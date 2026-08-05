@@ -214,8 +214,8 @@ class _AppShellState extends State<AppShell>
               },
             ).then((_) async {
               if (!mounted) return;
-              // Cold start never gets a resumed lifecycle transition — credit
-              // any closed-app Health gap and surface the visit XP badge.
+              // Cold start never gets a resumed lifecycle transition — reconcile
+              // Health passive distance and surface the visit XP badge.
               await context.read<WalkDistanceController>().onAppResumed(
                     profile: context.read<AuthController>().currentUser,
                   );
@@ -551,6 +551,9 @@ class _AppShellState extends State<AppShell>
     switch (state) {
       case AppLifecycleState.resumed:
         _appInForeground = true;
+        // Flush any document-progress / active-explore XP held while away
+        // before resume syncs announce more awards.
+        context.read<XpAwardController>().setAppForeground(true);
         fieldSession.onForeground();
         unawaited(
           context
@@ -605,6 +608,8 @@ class _AppShellState extends State<AppShell>
       case AppLifecycleState.paused:
       case AppLifecycleState.hidden:
         _appInForeground = false;
+        // Hold bundlable XP (document progress / active explore) until resume.
+        context.read<XpAwardController>().setAppForeground(false);
         fieldSession.onBackground();
         unawaited(context.read<WalkDistanceController>().onAppBackgrounded());
         unawaited(
@@ -612,6 +617,7 @@ class _AppShellState extends State<AppShell>
         );
       case AppLifecycleState.detached:
         _appInForeground = false;
+        context.read<XpAwardController>().setAppForeground(false);
         fieldSession.onLifecycle(state);
         unawaited(context.read<WalkDistanceController>().onAppBackgrounded());
         unawaited(

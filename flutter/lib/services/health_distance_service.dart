@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:health/health.dart';
@@ -118,6 +119,10 @@ class HealthDistanceService {
   }
 
   /// Sum of walking+running distance in meters for [[start], [end]).
+  ///
+  /// Prefers HealthKit/Connect **statistics** (same merge as the Health app)
+  /// so iPhone + Watch overlapping samples are not double-counted. Falls back
+  /// to raw samples only if the statistics query fails.
   Future<double?> distanceMeters({
     required DateTime start,
     required DateTime end,
@@ -130,14 +135,34 @@ class HealthDistanceService {
         final available = await _health.isHealthConnectAvailable();
         if (!available) return null;
       }
-      final points = await _health.getHealthDataFromTypes(
+
+      final fromStats = await _distanceFromStatistics(start: start, end: end);
+      if (fromStats != null) return fromStats;
+
+      return _distanceFromSamples(start: start, end: end);
+    } catch (error) {
+      if (kDebugMode) {
+        debugPrint('HealthDistanceService.distanceMeters: $error');
+      }
+      return null;
+    }
+  }
+
+  /// HKStatisticsCollectionQuery / interval aggregate (deduped sources).
+  Future<double?> _distanceFromStatistics({
+    required DateTime start,
+    required DateTime end,
+  }) async {
+    try {
+      final seconds = math.max(1, end.difference(start).inSeconds);
+      final points = await _health.getHealthIntervalDataFromTypes(
+        startDate: start,
+        endDate: end,
         types: _types,
-        startTime: start,
-        endTime: end,
+        interval: seconds,
       );
-      final unique = _health.removeDuplicates(points);
       var total = 0.0;
-      for (final point in unique) {
+      for (final point in points) {
         final value = point.value;
         if (value is NumericHealthValue) {
           total += value.numericValue.toDouble();
@@ -146,9 +171,32 @@ class HealthDistanceService {
       return total;
     } catch (error) {
       if (kDebugMode) {
-        debugPrint('HealthDistanceService.distanceMeters: $error');
+        debugPrint('HealthDistanceService.statistics: $error');
       }
       return null;
     }
+  }
+
+  Future<double?> _distanceFromSamples({
+    required DateTime start,
+    required DateTime end,
+  }) async {
+    final points = await _health.getHealthDataFromTypes(
+      types: _types,
+      startTime: start,
+      endTime: end,
+    );
+    final unique = _health.removeDuplicates(points);
+    // Prefer a single source when phone + watch both reported the same walks
+    // (statistics query unavailable). Pick the source with the largest sum.
+    final bySource = <String, double>{};
+    for (final point in unique) {
+      final value = point.value;
+      if (value is! NumericHealthValue) continue;
+      final key = point.sourceId.isNotEmpty ? point.sourceId : point.sourceName;
+      bySource[key] = (bySource[key] ?? 0) + value.numericValue.toDouble();
+    }
+    if (bySource.isEmpty) return 0;
+    return bySource.values.reduce(math.max);
   }
 }

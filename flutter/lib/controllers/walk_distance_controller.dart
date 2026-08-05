@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
@@ -20,7 +21,11 @@ enum ExploringDistanceMode {
   total,
 }
 
-/// Hybrid walk distance: GPS while open, Health for closed gaps (PoGo-style).
+/// Hybrid walk distance: GPS while open, Health weekly floor on resume.
+///
+/// Passive: `weekly = max(activeWeekly, Health(Monday→now))` so
+/// passive ≈ Health − active. Health uses statistics queries (not raw sample
+/// sums) to match the Health app when phone + watch both record.
 class WalkDistanceController extends ChangeNotifier {
   WalkDistanceController({
     HealthDistanceService? healthService,
@@ -56,17 +61,21 @@ class WalkDistanceController extends ChangeNotifier {
   static const _keyTotal = '${_prefsPrefix}_total_m';
   static const _keyWeekly = '${_prefsPrefix}_weekly_m';
   static const _keyWeekStart = '${_prefsPrefix}_week_start';
+  /// Legacy gap stamp; migrated once into [_keyLastHealthAt].
   static const _keyClosedSince = '${_prefsPrefix}_closed_since';
+  static const _keyLastHealthAt = '${_prefsPrefix}_last_health_at';
+  static const _keyActiveAtLastHealth =
+      '${_prefsPrefix}_active_at_last_health';
   static const _keyBootstrapped = '${_prefsPrefix}_bootstrapped';
   static const _keyMode = '${_prefsPrefix}_mode_v3';
   /// Bumped when weekly seeding logic changes; triggers a one-time weekly reset.
   static const _keyWeeklySchema = '${_prefsPrefix}_weekly_schema';
   static const _weeklySchemaVersion = 1;
 
-  /// Health gap older than this is ignored (only last N days count).
+  /// Health lookback cap (only last N days count).
   static const maxPassiveGap = Duration(days: 7);
 
-  /// Below this, no visit badge and server grants 0 passive XP for the slice.
+  /// Below this, no visit badge (server also grants 0 XP below 10 m batches).
   static const minPassiveBadgeMeters = 10.0;
 
   final HealthDistanceService _health;
@@ -85,7 +94,8 @@ class WalkDistanceController extends ChangeNotifier {
   double _totalMeters = 0;
   double _weeklyMeters = 0;
   String _weekStartIso = weekStartIso();
-  DateTime? _closedSince;
+  DateTime? _lastHealthAt;
+  double _activeAtLastHealth = 0;
   bool _bootstrappedFromHealth = false;
   ExploringDistanceMode _mode = ExploringDistanceMode.total;
 
@@ -96,13 +106,14 @@ class WalkDistanceController extends ChangeNotifier {
   bool _loading = false;
   String? _error;
   Future<void>? _inFlightRefresh;
-  /// Meters credited from Health for the most recent closed-app gap (consumed
-  /// once by the profile-update callback for the visit XP badge).
+  /// Meters credited from Health on the most recent reconcile (consumed once
+  /// by the profile-update callback for the visit XP badge).
   double? _pendingVisitGapMeters;
   /// Set when backgrounded while GPS is still covering distance (Explore in
-  /// background). In-memory only — survives brief pause/resume, cleared on
-  /// process death so a cold start can Health-credit the killed gap.
+  /// background). In-memory only — skip Health on same-process resume.
   bool _gpsCoveringClosedGap = false;
+  /// When true, this resume/refresh should not run Health reconcile.
+  bool _skipHealthReconcile = false;
 
   double get activeMeters => _activeMeters;
   double get activeWeeklyMeters => _activeWeeklyMeters;
@@ -111,10 +122,12 @@ class WalkDistanceController extends ChangeNotifier {
   ExploringDistanceMode get mode => _mode;
   HealthDistancePermission get permission => _permission;
   DateTime? get lastSyncedAt => _lastSyncedAt;
+  DateTime? get lastHealthAt => _lastHealthAt;
+  double get activeAtLastHealth => _activeAtLastHealth;
   bool get loading => _loading;
   String? get error => _error;
 
-  /// Take and clear meters walked while the app was closed (for visit badge).
+  /// Take and clear meters credited on the last Health reconcile (visit badge).
   double? takePendingVisitGapMeters() {
     final gap = _pendingVisitGapMeters;
     _pendingVisitGapMeters = null;
@@ -176,10 +189,6 @@ class WalkDistanceController extends ChangeNotifier {
 
   Future<void> onAppBackgrounded() async {
     final exploring = _location?.isBackgroundExploring ?? false;
-    // Always stamp so a later force-quit / cold start can Health-credit from
-    // this moment. When GPS keeps running in background, resume clears the
-    // stamp without crediting (see onAppResumed).
-    _closedSince = DateTime.now();
     if (exploring) {
       _gpsCoveringClosedGap = true;
       await _persistLocal();
@@ -195,16 +204,18 @@ class WalkDistanceController extends ChangeNotifier {
   Future<void> onAppResumed({Profile? profile}) async {
     final exploring = _location?.isBackgroundExploring ?? false;
     if (exploring && _gpsCoveringClosedGap) {
-      // Same process kept GPS warm — do not also credit Health for that window.
-      _closedSince = null;
+      // Same process kept GPS warm — skip Health this time; weekly already
+      // includes GPS meters so a later floor reconcile will not double-count.
       _gpsCoveringClosedGap = false;
-      await _persistLocal();
+      _skipHealthReconcile = true;
     } else if (!exploring) {
       _odometer.reset();
       _gpsCoveringClosedGap = false;
+      _skipHealthReconcile = false;
+    } else {
+      // Cold start with BG explore enabled: GPS was not covering after kill.
+      _skipHealthReconcile = false;
     }
-    // Cold start after kill: _gpsCoveringClosedGap is false (memory cleared)
-    // but _closedSince may still be in prefs → Health gap runs in refresh.
     await refresh(
       profile: profile,
       requestPermissionIfNeeded: false,
@@ -254,11 +265,15 @@ class WalkDistanceController extends ChangeNotifier {
       }
       _permission = status;
 
+      final skip = _skipHealthReconcile;
+      _skipHealthReconcile = false;
+
       // iOS HealthKit never discloses read grant status (hasPermissions →
-      // null → unknown). Still attempt the gap read; empty/denied yields 0.
-      if (status == HealthDistancePermission.granted ||
-          status == HealthDistancePermission.unknown) {
-        await _creditHealthGap(profile: profile);
+      // null → unknown). Still attempt the read; empty/denied yields 0.
+      if (!skip &&
+          (status == HealthDistancePermission.granted ||
+              status == HealthDistancePermission.unknown)) {
+        await _reconcileHealthPassive();
       }
 
       await _persistLocal();
@@ -320,73 +335,47 @@ class WalkDistanceController extends ChangeNotifier {
     }
   }
 
-  Future<void> _creditHealthGap({Profile? profile}) async {
+  /// Align weekly total with Health: `weekly = max(activeWeekly, Health(week))`.
+  ///
+  /// Passive this week = Health − active (floored at 0). Raises or heals weekly
+  /// when a prior reconcile over-counted; uses [reset_weekly] on sync when
+  /// lowering. Lifetime total moves by the same delta (clamped ≥ active).
+  Future<void> _reconcileHealthPassive() async {
     final now = DateTime.now();
-    final closedSince = _closedSince;
+    final weekStart = localWeekStartMonday(now);
     final earliest = now.subtract(maxPassiveGap);
+    // Never look back more than 7 days (and not before this Monday).
+    final start = weekStart.isBefore(earliest) ? earliest : weekStart;
+    if (!now.isAfter(start)) return;
 
-    if (!_bootstrappedFromHealth &&
-        _totalMeters <= 0 &&
-        profile?.createdAt != null) {
-      // First-time seed: only last 7 days (not full account history).
-      final seedStart = profile!.createdAt!.isBefore(earliest)
-          ? earliest
-          : profile.createdAt!;
-      final seeded = await _health.distanceMeters(
-        start: seedStart,
-        end: now,
-      );
-      if (seeded == null) {
-        // Keep closedSince / bootstrap flag so a later resume can retry.
-        return;
-      }
-      if (seeded > 0) {
-        _totalMeters = seeded;
-        final weekStart = localWeekStartMonday(now);
-        final weekly = await _health.distanceMeters(start: weekStart, end: now);
-        if (weekly != null) {
-          _weeklyMeters = weekly;
-        }
-        _bootstrappedFromHealth = true;
-        _closedSince = null;
-        _permission = HealthDistancePermission.granted;
-        if (seeded >= minPassiveBadgeMeters) {
-          _pendingVisitGapMeters = seeded;
-        }
-        return;
-      }
-    }
+    final health = await _health.distanceMeters(start: start, end: now);
+    if (health == null) return;
 
-    if (closedSince == null) return;
-    if (!now.isAfter(closedSince)) {
-      _closedSince = null;
+    // User model: passive = Health − active; weekly total = active + passive.
+    final targetWeekly = math.max(_activeWeeklyMeters, health);
+    final delta = targetWeekly - _weeklyMeters;
+    if (delta.abs() < 0.5) {
+      _lastHealthAt = now;
+      _activeAtLastHealth = _activeMeters;
+      _bootstrappedFromHealth = true;
+      _permission = HealthDistancePermission.granted;
       return;
     }
 
-    final gapStart =
-        closedSince.isBefore(earliest) ? earliest : closedSince;
-    final gap = await _health.distanceMeters(start: gapStart, end: now);
-    // Keep the stamp when the query fails so the next open can retry.
-    if (gap == null) return;
-    _closedSince = null;
-    if (gap <= 0) return;
-
-    _totalMeters += gap;
-    final weekStart = localWeekStartMonday(now);
-    if (!gapStart.isBefore(weekStart)) {
-      _weeklyMeters += gap;
-    } else if (now.isAfter(weekStart)) {
-      final weekGap = await _health.distanceMeters(start: weekStart, end: now);
-      if (weekGap != null && weekGap > 0) {
-        _weeklyMeters += weekGap;
-      }
+    _weeklyMeters = targetWeekly;
+    _totalMeters = math.max(_activeMeters, _totalMeters + delta);
+    if (delta < 0) {
+      // Heal an over-credit; force server to take the corrected weekly.
+      _pendingWeeklyReset = true;
     }
+    if (delta >= minPassiveBadgeMeters) {
+      _pendingVisitGapMeters = delta;
+    }
+
+    _lastHealthAt = now;
+    _activeAtLastHealth = _activeMeters;
     _bootstrappedFromHealth = true;
     _permission = HealthDistancePermission.granted;
-    // Visit badge + XP only from 10 m up (1 XP at base rate).
-    if (gap >= minPassiveBadgeMeters) {
-      _pendingVisitGapMeters = gap;
-    }
   }
 
   void _rolloverWeekIfNeeded() {
@@ -410,10 +399,24 @@ class WalkDistanceController extends ChangeNotifier {
     _weeklyMeters = prefs.getDouble(_keyWeekly) ?? 0;
     _weekStartIso = prefs.getString(_keyWeekStart) ?? weekStartIso();
     _bootstrappedFromHealth = prefs.getBool(_keyBootstrapped) ?? false;
-    final closed = prefs.getString(_keyClosedSince);
-    if (closed != null) {
-      _closedSince = DateTime.tryParse(closed);
+    _activeAtLastHealth =
+        prefs.getDouble(_keyActiveAtLastHealth) ?? _activeMeters;
+
+    final lastHealth = prefs.getString(_keyLastHealthAt);
+    if (lastHealth != null) {
+      _lastHealthAt = DateTime.tryParse(lastHealth);
     }
+
+    // One-time migrate: old closed_since → lastHealthAt watermark.
+    final closed = prefs.getString(_keyClosedSince);
+    if (_lastHealthAt == null && closed != null) {
+      _lastHealthAt = DateTime.tryParse(closed);
+      _activeAtLastHealth = _activeMeters;
+      await prefs.remove(_keyClosedSince);
+    } else if (closed != null) {
+      await prefs.remove(_keyClosedSince);
+    }
+
     final modeName = prefs.getString(_keyMode);
     if (modeName == ExploringDistanceMode.active.name) {
       _mode = ExploringDistanceMode.active;
@@ -446,14 +449,17 @@ class WalkDistanceController extends ChangeNotifier {
     await prefs.setDouble(_keyWeekly, _weeklyMeters);
     await prefs.setString(_keyWeekStart, _weekStartIso);
     await prefs.setBool(_keyBootstrapped, _bootstrappedFromHealth);
-    if (_closedSince != null) {
+    await prefs.setDouble(_keyActiveAtLastHealth, _activeAtLastHealth);
+    if (_lastHealthAt != null) {
       await prefs.setString(
-        _keyClosedSince,
-        _closedSince!.toIso8601String(),
+        _keyLastHealthAt,
+        _lastHealthAt!.toIso8601String(),
       );
     } else {
-      await prefs.remove(_keyClosedSince);
+      await prefs.remove(_keyLastHealthAt);
     }
+    // Legacy key should stay gone after migrate.
+    await prefs.remove(_keyClosedSince);
   }
 
   Future<void> _syncToBackend({bool force = false}) async {

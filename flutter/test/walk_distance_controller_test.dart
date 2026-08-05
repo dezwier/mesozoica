@@ -8,13 +8,11 @@ import 'package:shared_preferences/shared_preferences.dart';
 class _FakeHealth extends HealthDistanceService {
   _FakeHealth({
     this.gapMeters = 0,
-    this.bootstrapMeters,
     this.permission = HealthDistancePermission.granted,
     this.failQueries = false,
   });
 
   double gapMeters;
-  double? bootstrapMeters;
   HealthDistancePermission permission;
   bool failQueries;
   final List<(DateTime, DateTime)> queries = [];
@@ -35,9 +33,6 @@ class _FakeHealth extends HealthDistanceService {
   }) async {
     queries.add((start, end));
     if (failQueries) return null;
-    if (bootstrapMeters != null && queries.length == 1) {
-      return bootstrapMeters;
-    }
     return gapMeters;
   }
 }
@@ -51,11 +46,6 @@ void main() {
 
   test('GPS meters credit both active and total', () async {
     final walk = WalkDistanceController(odometer: GpsOdometer());
-    // Simulate internal credit via odometer path by using reflection-free
-    // public surface: feed through a tiny subclass hook isn't available, so
-    // verify mode display + setMode persistence instead and odometer unit
-    // tests cover GPS. Here we seed via applyProfile-like local sync response
-    // by calling refresh with denied health after manual prefs.
     await walk.setMode(ExploringDistanceMode.active);
     expect(walk.mode, ExploringDistanceMode.active);
     expect(walk.displayTotalMeters, walk.activeMeters);
@@ -64,42 +54,76 @@ void main() {
     expect(walk.displayTotalMeters, walk.totalMeters);
   });
 
-  test('Health closed gap adds to total only', () async {
+  test('weekly = max(activeWeekly, Health) credits Health − active as passive',
+      () async {
+    // 3.4 km active, only 3.5 km total weekly; Health says 15.4 km this week.
     SharedPreferences.setMockInitialValues({
-      'walk_distance_v2_active_m': 1000.0,
-      'walk_distance_v2_active_weekly_m': 200.0,
-      'walk_distance_v2_total_m': 1000.0,
-      'walk_distance_v2_weekly_m': 200.0,
+      'walk_distance_v2_active_m': 3400.0,
+      'walk_distance_v2_active_weekly_m': 3400.0,
+      'walk_distance_v2_total_m': 3500.0,
+      'walk_distance_v2_weekly_m': 3500.0,
       'walk_distance_v2_week_start': weekStartIso(),
       'walk_distance_v2_weekly_schema': 1,
-      'walk_distance_v2_bootstrapped': true,
-      'walk_distance_v2_closed_since':
-          DateTime.now().subtract(const Duration(hours: 1)).toIso8601String(),
     });
 
-    final health = _FakeHealth(gapMeters: 500);
+    final health = _FakeHealth(gapMeters: 15400);
     final walk = WalkDistanceController(healthService: health);
     await walk.refresh(profile: null, force: true);
 
-    expect(walk.activeMeters, 1000);
-    expect(walk.activeWeeklyMeters, 200);
-    expect(walk.totalMeters, 1500);
-    expect(walk.weeklyMeters, 700);
-    expect(health.queries, isNotEmpty);
+    expect(walk.activeWeeklyMeters, 3400);
+    expect(walk.weeklyMeters, 15400); // max(3400, 15400)
+    expect(walk.totalMeters, 15400); // +11900 passive
+    expect(walk.takePendingVisitGapMeters(), 11900);
+    expect(health.queries.first.$1, localWeekStartMonday());
   });
 
-  test('iOS unknown Health permission still credits closed gap', () async {
-    // HealthKit never reports READ as granted — cold start must still query.
+  test('heals over-credited weekly down to Health floor', () async {
+    // Bug state: weekly 28 km from double-counted samples; Health is 15.4 km.
     SharedPreferences.setMockInitialValues({
-      'walk_distance_v2_active_m': 1000.0,
-      'walk_distance_v2_active_weekly_m': 200.0,
-      'walk_distance_v2_total_m': 1000.0,
-      'walk_distance_v2_weekly_m': 200.0,
+      'walk_distance_v2_active_m': 3400.0,
+      'walk_distance_v2_active_weekly_m': 3400.0,
+      'walk_distance_v2_total_m': 28000.0,
+      'walk_distance_v2_weekly_m': 28000.0,
       'walk_distance_v2_week_start': weekStartIso(),
       'walk_distance_v2_weekly_schema': 1,
-      'walk_distance_v2_bootstrapped': true,
-      'walk_distance_v2_closed_since':
-          DateTime.now().subtract(const Duration(hours: 2)).toIso8601String(),
+    });
+
+    final health = _FakeHealth(gapMeters: 15400);
+    final walk = WalkDistanceController(healthService: health);
+    await walk.refresh(profile: null, force: true);
+
+    expect(walk.weeklyMeters, 15400);
+    expect(walk.totalMeters, 15400); // 28000 + (15400 − 28000)
+    expect(walk.takePendingVisitGapMeters(), isNull); // delta negative
+  });
+
+  test('Health below active leaves weekly at active (passive 0)', () async {
+    SharedPreferences.setMockInitialValues({
+      'walk_distance_v2_active_m': 5000.0,
+      'walk_distance_v2_active_weekly_m': 5000.0,
+      'walk_distance_v2_total_m': 5000.0,
+      'walk_distance_v2_weekly_m': 5000.0,
+      'walk_distance_v2_week_start': weekStartIso(),
+      'walk_distance_v2_weekly_schema': 1,
+    });
+
+    final health = _FakeHealth(gapMeters: 3000);
+    final walk = WalkDistanceController(healthService: health);
+    await walk.refresh(profile: null, force: true);
+
+    expect(walk.weeklyMeters, 5000);
+    expect(walk.totalMeters, 5000);
+    expect(walk.takePendingVisitGapMeters(), isNull);
+  });
+
+  test('iOS unknown Health permission still reconciles', () async {
+    SharedPreferences.setMockInitialValues({
+      'walk_distance_v2_active_m': 1000.0,
+      'walk_distance_v2_active_weekly_m': 1000.0,
+      'walk_distance_v2_total_m': 1000.0,
+      'walk_distance_v2_weekly_m': 1000.0,
+      'walk_distance_v2_week_start': weekStartIso(),
+      'walk_distance_v2_weekly_schema': 1,
     });
 
     final health = _FakeHealth(
@@ -109,85 +133,47 @@ void main() {
     final walk = WalkDistanceController(healthService: health);
     await walk.refresh(profile: null, force: true);
 
-    expect(walk.activeMeters, 1000);
-    expect(walk.totalMeters, 8000);
-    expect(walk.takePendingVisitGapMeters(), 7000);
-    expect(health.queries, isNotEmpty);
+    expect(walk.weeklyMeters, 7000);
+    expect(walk.takePendingVisitGapMeters(), 6000);
   });
 
-  test('Health gap under 10 m credits total but no visit badge', () async {
+  test('credit under 10 m updates totals but no visit badge', () async {
     SharedPreferences.setMockInitialValues({
       'walk_distance_v2_active_m': 1000.0,
-      'walk_distance_v2_active_weekly_m': 200.0,
+      'walk_distance_v2_active_weekly_m': 1000.0,
       'walk_distance_v2_total_m': 1000.0,
-      'walk_distance_v2_weekly_m': 200.0,
+      'walk_distance_v2_weekly_m': 1000.0,
       'walk_distance_v2_week_start': weekStartIso(),
       'walk_distance_v2_weekly_schema': 1,
-      'walk_distance_v2_bootstrapped': true,
-      'walk_distance_v2_closed_since':
-          DateTime.now().subtract(const Duration(hours: 1)).toIso8601String(),
     });
 
-    final health = _FakeHealth(gapMeters: 9);
+    final health = _FakeHealth(gapMeters: 1009);
     final walk = WalkDistanceController(healthService: health);
     await walk.refresh(profile: null, force: true);
 
-    expect(walk.totalMeters, 1009);
+    expect(walk.weeklyMeters, 1009);
     expect(walk.takePendingVisitGapMeters(), isNull);
   });
 
-  test('Health gap start is clamped to last 7 days', () async {
+  test('failed Health query leaves weekly unchanged for retry', () async {
     SharedPreferences.setMockInitialValues({
       'walk_distance_v2_active_m': 1000.0,
-      'walk_distance_v2_active_weekly_m': 200.0,
+      'walk_distance_v2_active_weekly_m': 1000.0,
       'walk_distance_v2_total_m': 1000.0,
-      'walk_distance_v2_weekly_m': 200.0,
+      'walk_distance_v2_weekly_m': 1000.0,
       'walk_distance_v2_week_start': weekStartIso(),
       'walk_distance_v2_weekly_schema': 1,
-      'walk_distance_v2_bootstrapped': true,
-      'walk_distance_v2_closed_since':
-          DateTime.now().subtract(const Duration(days: 40)).toIso8601String(),
-    });
-
-    final health = _FakeHealth(gapMeters: 500);
-    final walk = WalkDistanceController(healthService: health);
-    final before = DateTime.now();
-    await walk.refresh(profile: null, force: true);
-    final after = DateTime.now();
-
-    expect(health.queries, isNotEmpty);
-    final start = health.queries.first.$1;
-    final earliestBefore = before.subtract(WalkDistanceController.maxPassiveGap);
-    final earliestAfter = after.subtract(WalkDistanceController.maxPassiveGap);
-    expect(start.isBefore(earliestBefore.subtract(const Duration(seconds: 2))), isFalse);
-    expect(start.isAfter(earliestAfter.add(const Duration(seconds: 2))), isFalse);
-    expect(walk.totalMeters, 1500);
-  });
-
-  test('failed Health query keeps closed_since for retry', () async {
-    final closed = DateTime.now().subtract(const Duration(hours: 3));
-    SharedPreferences.setMockInitialValues({
-      'walk_distance_v2_active_m': 1000.0,
-      'walk_distance_v2_active_weekly_m': 200.0,
-      'walk_distance_v2_total_m': 1000.0,
-      'walk_distance_v2_weekly_m': 200.0,
-      'walk_distance_v2_week_start': weekStartIso(),
-      'walk_distance_v2_weekly_schema': 1,
-      'walk_distance_v2_bootstrapped': true,
-      'walk_distance_v2_closed_since': closed.toIso8601String(),
     });
 
     final health = _FakeHealth(failQueries: true);
     final walk = WalkDistanceController(healthService: health);
     await walk.refresh(profile: null, force: true);
+    expect(walk.weeklyMeters, 1000);
 
-    expect(walk.totalMeters, 1000);
-
-    // Second open with Health available should still find the stamp.
     health.failQueries = false;
-    health.gapMeters = 500;
+    health.gapMeters = 2500;
     await walk.refresh(profile: null, force: true);
-    expect(walk.totalMeters, 1500);
+    expect(walk.weeklyMeters, 2500);
   });
 
   test('applyProfile does not reseed weekly from prior week', () async {
@@ -198,13 +184,11 @@ void main() {
       'walk_distance_v2_weekly_m': 0.0,
       'walk_distance_v2_week_start': weekStartIso(),
       'walk_distance_v2_weekly_schema': 1,
-      'walk_distance_v2_bootstrapped': true,
     });
 
     final walk = WalkDistanceController(healthService: _FakeHealth());
     await walk.refresh(profile: null, force: true);
 
-    // Stale profile still carrying last week's weekly under an old Monday.
     final lastWeek = localWeekStartMonday(
       DateTime.now().subtract(const Duration(days: 7)),
     );
@@ -253,7 +237,9 @@ void main() {
       'walk_distance_v2_bootstrapped': true,
     });
 
-    final walk = WalkDistanceController(healthService: _FakeHealth());
+    final walk = WalkDistanceController(
+      healthService: _FakeHealth(gapMeters: 0),
+    );
     await walk.refresh(profile: null, force: true);
 
     expect(walk.activeWeeklyMeters, 0);

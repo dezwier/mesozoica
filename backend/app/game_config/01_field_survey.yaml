@@ -19,7 +19,9 @@ main_params:
   # XP per whole 100 m of active walking.
   explore_100m_actively_xp: 20
   # Passive rate: XP per 100 m (pro-rata per 10 m; e.g. 10 → 1 XP / 10 m).
-  # Health credits on reopen; gaps under 10 m grant nothing. Max Health window 7 days.
+  # Credited on cold start / resume: weekly = max(activeWeekly, Health Monday→now)
+  # so passive ≈ Health − active. Health uses statistics (not raw sample sums).
+  # Gaps under 10 m grant nothing. Max lookback 7 days.
   explore_100m_passively_xp: 10
   # --- stewardship ---
   # Card display estimation baseline for all odd_* axes (0 = full-axis blur,

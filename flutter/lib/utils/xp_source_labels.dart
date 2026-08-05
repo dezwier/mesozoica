@@ -102,3 +102,19 @@ const kDistanceXpSourceKeys = <String>{
   'explore_100m_actively',
   'explore_100m_passively',
 };
+
+/// Badge sources that accrue in the background as many small batches (~20 XP).
+///
+/// While the app is backgrounded these are held and flushed as one badge per
+/// source (summed amount) when the player returns — see
+/// [XpAwardController.setAppForeground].
+const kBackgroundBundleXpSourceKeys = <String>{
+  'document_progress',
+  'explore_100m_actively',
+};
+
+/// True for sources that should be bundled across a background session.
+bool isBackgroundBundleXpSource(String? sourceKey) {
+  if (sourceKey == null || sourceKey.isEmpty) return false;
+  return kBackgroundBundleXpSourceKeys.contains(sourceKey);
+}

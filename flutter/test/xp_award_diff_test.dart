@@ -270,6 +270,58 @@ void main() {
       expect(controller.activeAwards, isEmpty);
       expect(controller.celebrationStash, isEmpty);
     });
+
+    test('background holds document progress and active explore, flushes merged',
+        () {
+      final controller = XpAwardController();
+      controller.setAppForeground(false);
+
+      controller.announceAwards([
+        award(sourceKey: 'document_progress', amount: 20),
+        award(sourceKey: 'explore_100m_actively', amount: 20),
+      ]);
+      controller.announceAwards([
+        award(sourceKey: 'document_progress', amount: 20),
+        award(sourceKey: 'explore_100m_actively', amount: 20),
+        award(sourceKey: 'document_progress', amount: 20),
+      ]);
+      // Non-bundlable badge sources still show immediately.
+      controller.announceAwards([
+        award(
+          sourceKey: 'disguise_of_site',
+          amount: 10,
+          skillId: 'site_stewardship',
+        ),
+      ]);
+
+      expect(controller.activeAwards, hasLength(1));
+      expect(controller.activeAwards.single.sourceKey, 'disguise_of_site');
+      expect(controller.backgroundBundle, hasLength(2));
+
+      controller.setAppForeground(true);
+
+      expect(controller.backgroundBundle, isEmpty);
+      expect(controller.activeAwards, hasLength(3));
+      final byKey = {
+        for (final a in controller.activeAwards) a.sourceKey: a.amount,
+      };
+      expect(byKey['disguise_of_site'], 10);
+      expect(byKey['document_progress'], 60);
+      expect(byKey['explore_100m_actively'], 40);
+    });
+
+    test('foreground still shows each batch immediately', () {
+      final controller = XpAwardController();
+      controller.announceAwards([
+        award(sourceKey: 'document_progress', amount: 20),
+      ]);
+      controller.announceAwards([
+        award(sourceKey: 'document_progress', amount: 20),
+      ]);
+
+      expect(controller.activeAwards, hasLength(2));
+      expect(controller.backgroundBundle, isEmpty);
+    });
   });
 
   group('explored since last visit labels', () {

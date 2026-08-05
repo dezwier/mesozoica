@@ -57,11 +57,18 @@ class XpAward {
 ///   the matching celebration so all XP for that event appears in the plaque.
 /// - **Floating badge overlay** — small events (distance, disguise, exploration).
 ///
+/// While the app is backgrounded, [kBackgroundBundleXpSourceKeys] (document
+/// progress, active explore) are held and flushed as one badge per source on
+/// resume — so a walk that earned many ~20 XP batches shows one total each.
+///
 /// See [xp_source_labels.dart] for the source-key split.
 class XpAwardController extends ChangeNotifier {
   final List<XpAward> _active = [];
   final List<XpAward> _celebrationStash = [];
+  /// Bundlable badge awards accrued while backgrounded, keyed by sourceKey.
+  final Map<String, XpAward> _backgroundBundle = {};
   bool _hudVisible = true;
+  bool _appForeground = true;
   int _nextId = 1;
 
   /// Floating-badge awards currently on-screen (oldest first).
@@ -71,10 +78,15 @@ class XpAwardController extends ChangeNotifier {
   @visibleForTesting
   List<XpAward> get celebrationStash => List.unmodifiable(_celebrationStash);
 
+  /// Held bundlable awards waiting for resume (oldest sourceKey first).
+  @visibleForTesting
+  List<XpAward> get backgroundBundle =>
+      List.unmodifiable(_backgroundBundle.values);
+
   /// Whether the map profile HUD is on-screen (magic-string target).
   bool get hudVisible => _hudVisible;
 
-  bool get hasPending => _active.isNotEmpty;
+  bool get hasPending => _active.isNotEmpty || _backgroundBundle.isNotEmpty;
 
   void setHudVisible(bool visible) {
     if (_hudVisible == visible) return;
@@ -82,16 +94,60 @@ class XpAwardController extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Track app foreground so bundlable XP can accumulate while away.
+  ///
+  /// On resume, flushes [_backgroundBundle] into floating badges (one per
+  /// source, summed amounts).
+  void setAppForeground(bool foreground) {
+    if (_appForeground == foreground) return;
+    _appForeground = foreground;
+    if (foreground) {
+      _flushBackgroundBundle();
+    }
+  }
+
   void enqueue(XpAward award) {
     enqueueAll([award]);
   }
 
   /// Enqueue **badge-only** awards (celebration sources are ignored).
+  ///
+  /// While backgrounded, [isBackgroundBundleXpSource] awards are held and
+  /// merged by [sourceKey] until [setAppForeground] (true).
   void enqueueAll(Iterable<XpAward> awards) {
     var added = false;
     for (final award in awards) {
       if (award.amount <= 0) continue;
       if (isCelebrationXpSource(award.sourceKey)) continue;
+      if (!_appForeground && isBackgroundBundleXpSource(award.sourceKey)) {
+        _accumulateBackground(award);
+        continue;
+      }
+      _active.add(award.copyWith(id: _nextId++));
+      added = true;
+    }
+    if (added) notifyListeners();
+  }
+
+  void _accumulateBackground(XpAward award) {
+    final key = award.sourceKey;
+    final existing = _backgroundBundle[key];
+    if (existing == null) {
+      _backgroundBundle[key] = award.copyWith(id: 0);
+    } else {
+      _backgroundBundle[key] = existing.copyWith(
+        amount: existing.amount + award.amount,
+      );
+    }
+  }
+
+  void _flushBackgroundBundle() {
+    if (_backgroundBundle.isEmpty) return;
+    final pending = List<XpAward>.from(_backgroundBundle.values);
+    _backgroundBundle.clear();
+    var added = false;
+    for (final award in pending) {
+      if (award.amount <= 0) continue;
       _active.add(award.copyWith(id: _nextId++));
       added = true;
     }
@@ -252,9 +308,12 @@ class XpAwardController extends ChangeNotifier {
   }
 
   void clear() {
-    final had = _active.isNotEmpty || _celebrationStash.isNotEmpty;
+    final had = _active.isNotEmpty ||
+        _celebrationStash.isNotEmpty ||
+        _backgroundBundle.isNotEmpty;
     _active.clear();
     _celebrationStash.clear();
+    _backgroundBundle.clear();
     if (had) notifyListeners();
   }
 }
