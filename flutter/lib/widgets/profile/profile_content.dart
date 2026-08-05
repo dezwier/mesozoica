@@ -535,82 +535,98 @@ class _SkillGrid extends StatelessWidget {
 
   static const _crossAxisCount = 3;
   static const _spacing = 6.0;
-  static const _avatarSize = 58.0;
-  static const _tileHeight = 220.0;
+  static const _tilePadH = 8.0;
+  static const _tilePadTop = 8.0;
+  static const _tilePadBottom = 8.0;
+  // Name (~2 lines) + gap + Level box + gap + Cards box.
+  static const _belowAvatarExtent = 118.0;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return GridView.builder(
-      shrinkWrap: true,
-      primary: false,
-      padding: EdgeInsets.zero,
-      physics: const NeverScrollableScrollPhysics(),
-      itemCount: skills.length,
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: _crossAxisCount,
-        crossAxisSpacing: _spacing,
-        mainAxisSpacing: _spacing,
-        mainAxisExtent: _tileHeight,
-      ),
-      itemBuilder: (context, index) {
-        final skill = skills[index];
-        final count = cardCounts[skill.id] ?? 0;
-        return Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: () => onSkillTap(skill),
-            borderRadius: BorderRadius.circular(8),
-            child: Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(8),
-                color: scheme.onSurface.withValues(alpha: 0.04),
-              ),
-              padding: const EdgeInsets.fromLTRB(6, 10, 6, 8),
-              child: Column(
-                children: [
-                  SizedBox(
-                    width: _avatarSize,
-                    height: _avatarSize,
-                    child: SkillIcon(
-                      skillId: skill.id,
-                      circular: true,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    skill.name,
-                    textAlign: TextAlign.center,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                          fontWeight: FontWeight.w600,
-                          height: 1.15,
-                        ),
-                  ),
-                  const Spacer(),
-                  _SkillStatBox(
-                    label: 'Level',
-                    child: _SkillLevelBadge(
-                      level: skill.level,
-                      color: scheme.onSurface,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  _SkillStatBox(
-                    label: 'Cards',
-                    child: Text(
-                      '$count',
-                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                            fontWeight: FontWeight.w700,
-                            height: 1,
-                          ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final tileWidth =
+            (constraints.maxWidth - _spacing * (_crossAxisCount - 1)) /
+                _crossAxisCount;
+        final avatarSize = tileWidth - (_tilePadH * 2);
+        final tileHeight =
+            _tilePadTop + avatarSize + _belowAvatarExtent + _tilePadBottom;
+        return GridView.builder(
+          shrinkWrap: true,
+          primary: false,
+          padding: EdgeInsets.zero,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: skills.length,
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: _crossAxisCount,
+            crossAxisSpacing: _spacing,
+            mainAxisSpacing: _spacing,
+            mainAxisExtent: tileHeight,
           ),
+          itemBuilder: (context, index) {
+            final skill = skills[index];
+            final count = cardCounts[skill.id] ?? 0;
+            return Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () => onSkillTap(skill),
+                borderRadius: BorderRadius.circular(8),
+                child: Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(8),
+                    color: scheme.onSurface.withValues(alpha: 0.04),
+                  ),
+                  padding: const EdgeInsets.fromLTRB(
+                    _tilePadH,
+                    _tilePadTop,
+                    _tilePadH,
+                    _tilePadBottom,
+                  ),
+                  child: Column(
+                    children: [
+                      SkillIcon(
+                        skillId: skill.id,
+                        circular: true,
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        skill.name,
+                        textAlign: TextAlign.center,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style:
+                            Theme.of(context).textTheme.labelMedium?.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                  height: 1.15,
+                                ),
+                      ),
+                      const SizedBox(height: 12),
+                      _SkillStatBox(
+                        label: 'Level',
+                        child: _SkillLevelBadge(
+                          level: skill.level,
+                          color: scheme.onSurface,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      _SkillStatBox(
+                        label: 'Cards',
+                        child: Text(
+                          '$count',
+                          style:
+                              Theme.of(context).textTheme.titleSmall?.copyWith(
+                                    fontWeight: FontWeight.w700,
+                                    height: 1,
+                                  ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
         );
       },
     );
