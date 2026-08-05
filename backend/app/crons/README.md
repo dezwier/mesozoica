@@ -21,11 +21,11 @@ Image **generation** writes local PNGs to repo folders; **image sync** (`make sy
 | `site_type_sync` | `30 9 * * 0` (Sun 09:30) | Upsert `site_type` rows and assign `site.site_type_id` (no deletes) |
 | `tool_sync` | `0 10 * * 0` (Sun 10:00) | Upsert tool catalog from [`backend/data/tools.json`](../data/tools.json) |
 | `tool_image_generate` | `30 10 * * 0` (Sun 10:30) | Generate tool card images via Gemini Imagen |
-| `weather_sync` | `*/10 * * * *` | Upsert Open-Meteo hourly past+forecast into `weather` for active cells |
+| `weather_sync` | `*/15 * * * *` | Upsert Open-Meteo 15-minute past+forecast into `weather` for active cells |
 
 Most jobs are `enabled: false` in `crons.yaml` by default — enable individually in YAML, via `CRON_<JOB_ID>_ENABLED`, or run manually with `--job`. `weather_sync` is enabled by default.
 
-Railway `cronSchedule` must fire at least as often as the finest job granularity (use `*/10 * * * *` so `weather_sync` can run).
+Railway `cronSchedule` must fire at least as often as the finest job granularity (use `*/15 * * * *` so `weather_sync` can run).
 
 ## Make targets (recommended)
 

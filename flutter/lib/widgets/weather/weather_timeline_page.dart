@@ -7,7 +7,7 @@ import 'package:intl/intl.dart';
 import '../../models/weather_forecast.dart';
 import 'weather_display.dart';
 
-/// Past or forecast hourly timeline: temp curve + weather-type icons on the axis.
+/// Past or forecast timeline (15-min samples): temp curve + weather icons.
 ///
 /// Horizontal drag / tap scrubs the series (page swipes are disabled on the
 /// parent [PageView] so gestures stay with the chart).
@@ -380,7 +380,8 @@ class _WeatherTimelinePainter extends CustomPainter {
     final tp = TextPainter(textDirection: ui.TextDirection.ltr);
     for (var i = 0; i < hours.length; i++) {
       final local = hours[i].validAt.toLocal();
-      if (local.hour != 0) continue;
+      // Only the :00 slot — 15-min series has four points in hour 0.
+      if (local.hour != 0 || local.minute != 0) continue;
       final x = hours.length == 1
           ? chart.center.dx
           : chart.left + (i / (hours.length - 1)) * chart.width;

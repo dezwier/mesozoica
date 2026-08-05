@@ -1,4 +1,4 @@
-"""Open-Meteo weather fetch with DB-backed hourly cache (~5 km cells)."""
+"""Open-Meteo weather fetch with DB-backed 15-minute cache (~5 km cells)."""
 
 from __future__ import annotations
 
@@ -35,7 +35,8 @@ WeatherType = Literal[
 # ~5 km in latitude degrees (1° lat ≈ 111.32 km).
 _CELL_KM = 5.0
 _LAT_DEG = _CELL_KM / 111.32
-_CACHE_TTL_S = 20 * 60
+# Align with weather_sync + Flutter poll so skill impacts see new 15-min rows.
+_CACHE_TTL_S = 15 * 60
 _STALE_AFTER = timedelta(hours=2)
 _OPEN_METEO_URL = "https://api.open-meteo.com/v1/forecast"
 
@@ -126,9 +127,10 @@ def _as_utc(value: datetime) -> datetime:
     return value.astimezone(timezone.utc)
 
 
-def _hour_floor(when: datetime) -> datetime:
+def _quarter_hour_floor(when: datetime) -> datetime:
+    """Floor to the enclosing 15-minute UTC slot (matches Open-Meteo minutely_15)."""
     when = _as_utc(when)
-    return when.replace(minute=0, second=0, microsecond=0)
+    return when.replace(minute=(when.minute // 15) * 15, second=0, microsecond=0)
 
 
 def _row_to_snapshot(
@@ -195,8 +197,8 @@ def _write_through_current(
     wmo_code: int,
     when: datetime,
 ) -> None:
-    """Upsert the current hour from a live Open-Meteo current fetch."""
-    valid_at = _hour_floor(when)
+    """Upsert the current 15-minute slot from a live Open-Meteo current fetch."""
+    valid_at = _quarter_hour_floor(when)
     existing = session.exec(
         select(Weather).where(
             col(Weather.cell_i) == cell.i,
@@ -244,7 +246,7 @@ def get_weather(
 ) -> WeatherSnapshot:
     """Return weather for the 5 km cell containing lat/lon.
 
-    Prefers the latest stored hourly row (``valid_at <= now``). Falls back to
+    Prefers the latest stored 15-minute row (``valid_at <= now``). Falls back to
     live Open-Meteo ``current`` when missing or older than two hours.
     """
     when = now or datetime.now(timezone.utc)

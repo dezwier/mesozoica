@@ -1,5 +1,5 @@
 """
-Sync past + forecast weather for cells with active field sites.
+Sync 15-minute past + forecast weather for cells with active field sites.
 
 Run manually:
   python -m app.crons.runner --job weather_sync

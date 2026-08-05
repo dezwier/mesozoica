@@ -1,4 +1,4 @@
-"""Persist Open-Meteo hourly series into the weather table."""
+"""Persist Open-Meteo 15-minute series into the weather table."""
 
 from __future__ import annotations
 
@@ -41,11 +41,15 @@ _LatestUserSite = aliased(UserSite)
 
 
 @dataclass(frozen=True)
-class HourlySample:
+class WeatherSample:
     valid_at: datetime
     weather_type: str
     temperature_c: float
     wmo_code: int
+
+
+# Back-compat alias for tests / callers.
+HourlySample = WeatherSample
 
 
 @dataclass(frozen=True)
@@ -100,12 +104,13 @@ def _parse_valid_at(raw: str) -> datetime:
     return parsed.astimezone(timezone.utc)
 
 
-def _hourly_from_payload(payload: dict[str, Any]) -> list[HourlySample]:
-    hourly = payload.get("hourly") or {}
-    times = hourly.get("time") or []
-    temps = hourly.get("temperature_2m") or []
-    codes = hourly.get("weather_code") or []
-    samples: list[HourlySample] = []
+def _samples_from_payload(payload: dict[str, Any]) -> list[WeatherSample]:
+    """Prefer ``minutely_15``; fall back to ``hourly`` for older fixtures."""
+    block = payload.get("minutely_15") or payload.get("hourly") or {}
+    times = block.get("time") or []
+    temps = block.get("temperature_2m") or []
+    codes = block.get("weather_code") or []
+    samples: list[WeatherSample] = []
     for idx, raw_time in enumerate(times):
         if idx >= len(temps) or idx >= len(codes):
             break
@@ -115,7 +120,7 @@ def _hourly_from_payload(payload: dict[str, Any]) -> list[HourlySample]:
             continue
         code = int(code_raw)
         samples.append(
-            HourlySample(
+            WeatherSample(
                 valid_at=_parse_valid_at(raw_time),
                 weather_type=weather_type_from_wmo(code),
                 temperature_c=float(temp_raw),
@@ -125,14 +130,14 @@ def _hourly_from_payload(payload: dict[str, Any]) -> list[HourlySample]:
     return samples
 
 
-def fetch_hourly_for_cells(
+def fetch_minutely_for_cells(
     cells: list[WeatherCell],
     *,
     past_days: int = _DEFAULT_PAST_DAYS,
     forecast_days: int = _DEFAULT_FORECAST_DAYS,
     client: httpx.Client | None = None,
-) -> dict[tuple[int, int], list[HourlySample]]:
-    """Fetch hourly past+forecast for each cell; returns map keyed by (i, j)."""
+) -> dict[tuple[int, int], list[WeatherSample]]:
+    """Fetch 15-minute past+forecast for each cell; keyed by (i, j)."""
     if not cells:
         return {}
 
@@ -143,7 +148,7 @@ def fetch_hourly_for_cells(
         params = {
             "latitude": ",".join(f"{c.center_lat:.6f}" for c in cells),
             "longitude": ",".join(f"{c.center_lon:.6f}" for c in cells),
-            "hourly": "temperature_2m,weather_code",
+            "minutely_15": "temperature_2m,weather_code",
             "past_days": past_days,
             "forecast_days": forecast_days,
             "timezone": "UTC",
@@ -162,22 +167,26 @@ def fetch_hourly_for_cells(
     else:
         payloads = [payload]
 
-    out: dict[tuple[int, int], list[HourlySample]] = {}
+    out: dict[tuple[int, int], list[WeatherSample]] = {}
     for cell, item in zip(cells, payloads, strict=False):
         if not isinstance(item, dict):
             continue
-        out[(cell.i, cell.j)] = _hourly_from_payload(item)
+        out[(cell.i, cell.j)] = _samples_from_payload(item)
     return out
 
 
-def upsert_hourly_samples(
+# Back-compat name used by tests / monkeypatches.
+fetch_hourly_for_cells = fetch_minutely_for_cells
+
+
+def upsert_weather_samples(
     session: Session,
     cell: WeatherCell,
-    samples: list[HourlySample],
+    samples: list[WeatherSample],
     *,
     fetched_at: datetime | None = None,
 ) -> int:
-    """Upsert hourly samples for one cell. Returns number of rows written."""
+    """Upsert weather samples for one cell. Returns number of rows written."""
     when = fetched_at or datetime.now(timezone.utc)
     if when.tzinfo is None:
         when = when.replace(tzinfo=timezone.utc)
@@ -188,6 +197,7 @@ def upsert_hourly_samples(
         return 0
 
     valid_times = [s.valid_at for s in samples]
+
     def _aware(dt: datetime) -> datetime:
         if dt.tzinfo is None:
             return dt.replace(tzinfo=timezone.utc)
@@ -235,6 +245,9 @@ def upsert_hourly_samples(
     return written
 
 
+upsert_hourly_samples = upsert_weather_samples
+
+
 def prune_old_weather(
     session: Session,
     *,
@@ -271,7 +284,7 @@ def recent_weather(
     hours: int = 24,
     now: datetime | None = None,
 ) -> list[Weather]:
-    """Return recent hourly rows for the cell containing lat/lon (oldest first)."""
+    """Return recent weather rows for the cell containing lat/lon (oldest first)."""
     when = now or datetime.now(timezone.utc)
     if when.tzinfo is None:
         when = when.replace(tzinfo=timezone.utc)
@@ -299,7 +312,7 @@ def weather_series(
     forecast_hours: int = 72,
     now: datetime | None = None,
 ) -> list[Weather]:
-    """Past + forecast hourly rows for the cell containing lat/lon."""
+    """Past + forecast weather rows for the cell containing lat/lon."""
     when = now or datetime.now(timezone.utc)
     if when.tzinfo is None:
         when = when.replace(tzinfo=timezone.utc)
@@ -329,7 +342,7 @@ def sync_weather_for_active_cells(
     dry_run: bool = False,
     client: httpx.Client | None = None,
 ) -> WeatherSyncSummary:
-    """Fetch and upsert weather for all active cells; prune stale rows."""
+    """Fetch and upsert 15-minute weather for all active cells; prune stale rows."""
     cells = list_active_weather_cells(session)
     upserted = 0
     errors = 0
@@ -342,7 +355,7 @@ def sync_weather_for_active_cells(
         for start in range(0, len(cells), max(batch_size, 1)):
             batch = cells[start : start + max(batch_size, 1)]
             try:
-                by_cell = fetch_hourly_for_cells(
+                by_cell = fetch_minutely_for_cells(
                     batch,
                     past_days=past_days,
                     forecast_days=forecast_days,
@@ -361,7 +374,7 @@ def sync_weather_for_active_cells(
                 continue
             for cell in batch:
                 samples = by_cell.get((cell.i, cell.j), [])
-                upserted += upsert_hourly_samples(
+                upserted += upsert_weather_samples(
                     session, cell, samples, fetched_at=fetched_at
                 )
             session.commit()

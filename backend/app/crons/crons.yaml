@@ -99,11 +99,11 @@ jobs:
       force: false
       prune: false
 
-  # Hourly past+forecast for ~5 km cells with non-hidden/non-exhausted field sites.
-  # Railway cronSchedule must be */10 (or finer) for this job to fire.
+  # 15-minute past+forecast for ~5 km cells with non-hidden/non-exhausted field sites.
+  # Railway cronSchedule must be */15 (or finer) for this job to fire.
   - id: weather_sync
     enabled: true
-    schedule: "*/10 * * * *"
+    schedule: "*/15 * * * *"
     params:
       dry_run: false
       past_days: 2

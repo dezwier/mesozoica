@@ -212,15 +212,16 @@ def test_upsert_hourly_samples_is_idempotent(session: Session):
 def test_get_weather_prefers_db_over_live_api(session: Session, monkeypatch):
     clear_weather_cache()
     cell = cell_for(50.85, 4.35)
+    # Prefer the later 15-min slot within the hour when both exist.
     now = datetime(2026, 8, 5, 12, 30, tzinfo=timezone.utc)
-    hour = datetime(2026, 8, 5, 12, 0, tzinfo=timezone.utc)
+    slot = datetime(2026, 8, 5, 12, 15, tzinfo=timezone.utc)
     session.add(
         Weather(
             cell_i=cell.i,
             cell_j=cell.j,
             center_lat=cell.center_lat,
             center_lon=cell.center_lon,
-            valid_at=hour,
+            valid_at=slot,
             is_forecast=False,
             weather_type="snow",
             temperature_c=-2.0,
@@ -273,11 +274,11 @@ def test_get_weather_falls_back_when_stale(session: Session, monkeypatch):
     assert snap.temperature_c == 18.0
 
 
-def test_fetch_hourly_for_cells_parses_open_meteo_payload(monkeypatch):
+def test_fetch_minutely_for_cells_parses_open_meteo_payload(monkeypatch):
     cell = cell_for(50.85, 4.35)
     payload = {
-        "hourly": {
-            "time": ["2026-08-05T10:00", "2026-08-05T11:00"],
+        "minutely_15": {
+            "time": ["2026-08-05T10:00", "2026-08-05T10:15"],
             "temperature_2m": [10.0, 11.5],
             "weather_code": [0, 61],
         }
@@ -299,6 +300,13 @@ def test_fetch_hourly_for_cells_parses_open_meteo_payload(monkeypatch):
     assert samples[0].weather_type == "clear"
     assert samples[1].weather_type == "rain"
     assert samples[1].temperature_c == 11.5
+    assert samples[1].valid_at.minute == 15
+    # Request should ask for minutely_15, not hourly.
+    params = client.get.call_args.kwargs.get("params") or client.get.call_args[1].get(
+        "params"
+    )
+    assert "minutely_15" in params
+    assert "hourly" not in params
 
 
 def test_sync_weather_dry_run_does_not_write(session: Session, monkeypatch):
@@ -332,7 +340,7 @@ def test_sync_weather_dry_run_does_not_write(session: Session, monkeypatch):
         }
 
     monkeypatch.setattr(
-        "app.services.weather_service.persist.fetch_hourly_for_cells",
+        "app.services.weather_service.persist.fetch_minutely_for_cells",
         _fake_fetch,
     )
     summary = sync_weather_for_active_cells(session, dry_run=True)

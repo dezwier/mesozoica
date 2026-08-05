@@ -1,4 +1,4 @@
-"""Persisted hourly weather observations and forecasts per ~5 km cell."""
+"""Persisted 15-minute weather observations and forecasts per ~5 km cell."""
 
 from __future__ import annotations
 
@@ -14,7 +14,7 @@ def _utc_now() -> datetime:
 
 
 class Weather(SQLModel, table=True):
-    """One hourly weather sample for a weather grid cell."""
+    """One 15-minute weather sample for a weather grid cell."""
 
     __tablename__ = "weather"
     __table_args__ = (
@@ -28,7 +28,7 @@ class Weather(SQLModel, table=True):
     center_lon: float
     valid_at: datetime = Field(
         sa_column=Column(DateTime(timezone=True), nullable=False, index=True),
-        description="UTC hour this row describes",
+        description="UTC 15-minute slot this row describes",
     )
     is_forecast: bool = Field(
         default=False,

@@ -29,8 +29,8 @@ async def get_weather_status(
 ):
     """Current weather type, temperature, and solar period for a location.
 
-    Prefers the latest hourly row in ``weather`` for the ~5 km cell; falls back
-    to live Open-Meteo when missing or stale. ``weather_time`` is computed
+    Prefers the latest 15-minute row in ``weather`` for the ~5 km cell; falls
+    back to live Open-Meteo when missing or stale. ``weather_time`` is computed
     locally from lat/lon/UTC.
     """
     _ = current_user
@@ -65,7 +65,7 @@ async def get_weather_forecast(
     current_user: User = Depends(get_current_user),
     session: Session = Depends(get_session),
 ):
-    """Hourly past + forecast weather for the ~5 km cell containing lat/lon.
+    """15-minute past + forecast weather for the ~5 km cell containing lat/lon.
 
     Returns rows already stored by the weather_sync cron (or live write-through).
     Does not call Open-Meteo on the request path.
