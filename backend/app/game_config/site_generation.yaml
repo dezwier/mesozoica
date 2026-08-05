@@ -10,9 +10,9 @@ lazy:
   # Archive geology blend window around each new site (not density geometry)
   nearby_radius_km: 2000.0
   closest_neighbor_count: 10
-  weight_global: 0.33
-  weight_nearby: 0.33
-  weight_closest: 0.34
+  weight_global: 0.1
+  weight_nearby: 0.45
+  weight_closest: 0.45
   max_coordinate_attempts: 200
 
 bulk:
@@ -20,9 +20,9 @@ bulk:
   min_separation_km: 0.030
   nearby_radius_km: 1000.0
   closest_neighbor_count: 10
-  weight_global: 0.33
-  weight_nearby: 0.33
-  weight_closest: 0.34
+  weight_global: 0.1
+  weight_nearby: 0.45
+  weight_closest: 0.45
   max_coordinate_attempts: 200
 
 # Flutter session triggers for POST /sites/field/ensure.
