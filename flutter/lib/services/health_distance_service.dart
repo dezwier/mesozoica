@@ -61,6 +61,8 @@ class HealthDistanceService {
           return HealthDistancePermission.unavailable;
         }
       }
+      // On iOS, HealthKit never discloses READ grant status — hasPermissions
+      // returns null → unknown. Callers must still attempt reads when unknown.
       final granted = await _health.hasPermissions(_types);
       if (granted == true) {
         return HealthDistancePermission.granted;

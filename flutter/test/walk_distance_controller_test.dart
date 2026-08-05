@@ -6,18 +6,24 @@ import 'package:mesozoica/services/health_distance_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class _FakeHealth extends HealthDistanceService {
-  _FakeHealth({this.gapMeters = 0, this.bootstrapMeters});
+  _FakeHealth({
+    this.gapMeters = 0,
+    this.bootstrapMeters,
+    this.permission = HealthDistancePermission.granted,
+    this.failQueries = false,
+  });
 
   double gapMeters;
   double? bootstrapMeters;
+  HealthDistancePermission permission;
+  bool failQueries;
   final List<(DateTime, DateTime)> queries = [];
 
   @override
   bool get isSupportedPlatform => true;
 
   @override
-  Future<HealthDistancePermission> checkPermission() async =>
-      HealthDistancePermission.granted;
+  Future<HealthDistancePermission> checkPermission() async => permission;
 
   @override
   Future<bool> requestAuthorization() async => true;
@@ -28,6 +34,7 @@ class _FakeHealth extends HealthDistanceService {
     required DateTime end,
   }) async {
     queries.add((start, end));
+    if (failQueries) return null;
     if (bootstrapMeters != null && queries.length == 1) {
       return bootstrapMeters;
     }
@@ -79,6 +86,59 @@ void main() {
     expect(walk.totalMeters, 1500);
     expect(walk.weeklyMeters, 700);
     expect(health.queries, isNotEmpty);
+  });
+
+  test('iOS unknown Health permission still credits closed gap', () async {
+    // HealthKit never reports READ as granted — cold start must still query.
+    SharedPreferences.setMockInitialValues({
+      'walk_distance_v2_active_m': 1000.0,
+      'walk_distance_v2_active_weekly_m': 200.0,
+      'walk_distance_v2_total_m': 1000.0,
+      'walk_distance_v2_weekly_m': 200.0,
+      'walk_distance_v2_week_start': weekStartIso(),
+      'walk_distance_v2_weekly_schema': 1,
+      'walk_distance_v2_bootstrapped': true,
+      'walk_distance_v2_closed_since':
+          DateTime.now().subtract(const Duration(hours: 2)).toIso8601String(),
+    });
+
+    final health = _FakeHealth(
+      gapMeters: 7000,
+      permission: HealthDistancePermission.unknown,
+    );
+    final walk = WalkDistanceController(healthService: health);
+    await walk.refresh(profile: null, force: true);
+
+    expect(walk.activeMeters, 1000);
+    expect(walk.totalMeters, 8000);
+    expect(walk.takePendingVisitGapMeters(), 7000);
+    expect(health.queries, isNotEmpty);
+  });
+
+  test('failed Health query keeps closed_since for retry', () async {
+    final closed = DateTime.now().subtract(const Duration(hours: 3));
+    SharedPreferences.setMockInitialValues({
+      'walk_distance_v2_active_m': 1000.0,
+      'walk_distance_v2_active_weekly_m': 200.0,
+      'walk_distance_v2_total_m': 1000.0,
+      'walk_distance_v2_weekly_m': 200.0,
+      'walk_distance_v2_week_start': weekStartIso(),
+      'walk_distance_v2_weekly_schema': 1,
+      'walk_distance_v2_bootstrapped': true,
+      'walk_distance_v2_closed_since': closed.toIso8601String(),
+    });
+
+    final health = _FakeHealth(failQueries: true);
+    final walk = WalkDistanceController(healthService: health);
+    await walk.refresh(profile: null, force: true);
+
+    expect(walk.totalMeters, 1000);
+
+    // Second open with Health available should still find the stamp.
+    health.failQueries = false;
+    health.gapMeters = 500;
+    await walk.refresh(profile: null, force: true);
+    expect(walk.totalMeters, 1500);
   });
 
   test('applyProfile does not reseed weekly from prior week', () async {

@@ -93,6 +93,10 @@ class WalkDistanceController extends ChangeNotifier {
   /// Meters credited from Health for the most recent closed-app gap (consumed
   /// once by the profile-update callback for the visit XP badge).
   double? _pendingVisitGapMeters;
+  /// Set when backgrounded while GPS is still covering distance (Explore in
+  /// background). In-memory only — survives brief pause/resume, cleared on
+  /// process death so a cold start can Health-credit the killed gap.
+  bool _gpsCoveringClosedGap = false;
 
   double get activeMeters => _activeMeters;
   double get activeWeeklyMeters => _activeWeeklyMeters;
@@ -166,23 +170,35 @@ class WalkDistanceController extends ChangeNotifier {
 
   Future<void> onAppBackgrounded() async {
     final exploring = _location?.isBackgroundExploring ?? false;
+    // Always stamp so a later force-quit / cold start can Health-credit from
+    // this moment. When GPS keeps running in background, resume clears the
+    // stamp without crediting (see onAppResumed).
+    _closedSince = DateTime.now();
     if (exploring) {
-      // Keep the GPS odometer warm — active meters continue in background.
+      _gpsCoveringClosedGap = true;
       await _persistLocal();
       await _syncToBackend(force: true);
       return;
     }
+    _gpsCoveringClosedGap = false;
     _odometer.reset();
-    _closedSince = DateTime.now();
     await _persistLocal();
     await _syncToBackend(force: true);
   }
 
   Future<void> onAppResumed({Profile? profile}) async {
     final exploring = _location?.isBackgroundExploring ?? false;
-    if (!exploring) {
+    if (exploring && _gpsCoveringClosedGap) {
+      // Same process kept GPS warm — do not also credit Health for that window.
+      _closedSince = null;
+      _gpsCoveringClosedGap = false;
+      await _persistLocal();
+    } else if (!exploring) {
       _odometer.reset();
+      _gpsCoveringClosedGap = false;
     }
+    // Cold start after kill: _gpsCoveringClosedGap is false (memory cleared)
+    // but _closedSince may still be in prefs → Health gap runs in refresh.
     await refresh(
       profile: profile,
       requestPermissionIfNeeded: false,
@@ -232,7 +248,10 @@ class WalkDistanceController extends ChangeNotifier {
       }
       _permission = status;
 
-      if (status == HealthDistancePermission.granted) {
+      // iOS HealthKit never discloses read grant status (hasPermissions →
+      // null → unknown). Still attempt the gap read; empty/denied yields 0.
+      if (status == HealthDistancePermission.granted ||
+          status == HealthDistancePermission.unknown) {
         await _creditHealthGap(profile: profile);
       }
 
@@ -306,7 +325,11 @@ class WalkDistanceController extends ChangeNotifier {
         start: profile!.createdAt!,
         end: now,
       );
-      if (seeded != null && seeded > 0) {
+      if (seeded == null) {
+        // Keep closedSince / bootstrap flag so a later resume can retry.
+        return;
+      }
+      if (seeded > 0) {
         _totalMeters = seeded;
         final weekStart = localWeekStartMonday(now);
         final weekly = await _health.distanceMeters(start: weekStart, end: now);
@@ -315,6 +338,7 @@ class WalkDistanceController extends ChangeNotifier {
         }
         _bootstrappedFromHealth = true;
         _closedSince = null;
+        _permission = HealthDistancePermission.granted;
         return;
       }
     }
@@ -326,8 +350,10 @@ class WalkDistanceController extends ChangeNotifier {
     }
 
     final gap = await _health.distanceMeters(start: closedSince, end: now);
+    // Keep the stamp when the query fails so the next open can retry.
+    if (gap == null) return;
     _closedSince = null;
-    if (gap == null || gap <= 0) return;
+    if (gap <= 0) return;
 
     _pendingVisitGapMeters = gap;
     _totalMeters += gap;
@@ -341,6 +367,7 @@ class WalkDistanceController extends ChangeNotifier {
       }
     }
     _bootstrappedFromHealth = true;
+    _permission = HealthDistancePermission.granted;
   }
 
   void _rolloverWeekIfNeeded() {
