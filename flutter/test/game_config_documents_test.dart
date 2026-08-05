@@ -49,8 +49,8 @@ void main() {
     expect(fromJson.siteStewardship.fossilCount,
         fromYaml.siteStewardship.fossilCount);
     expect(fromJson.siteStewardship.fossilCount.keys, isNotEmpty);
-    expect(fromJson.siteStewardship.levelModifiers['documentation_genera']!.length,
-        fromYaml.siteStewardship.levelModifiers['documentation_genera']!.length);
+    expect(fromJson.siteStewardship.levelModifiers['documentation_accuracy']!.length,
+        fromYaml.siteStewardship.levelModifiers['documentation_accuracy']!.length);
 
     expect(fromJson.leveling.skills.length, fromYaml.leveling.skills.length);
     expect(fromJson.leveling.careerTitles, fromYaml.leveling.careerTitles);

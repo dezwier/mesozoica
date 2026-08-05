@@ -110,11 +110,7 @@ abstract final class ToolParamsEdit {
       'discovery_chance': 'Discovery chance',
       'discovery_max_speed_kmh': 'Discovery max speed',
       'documentation_distance_m': 'Documentation distance',
-      'documentation_genera': 'Documentation genera',
-      'documentation_fossil': 'Documentation fossil',
-      'documentation_completeness': 'Documentation completeness',
-      'documentation_preservation': 'Documentation preservation',
-      'documentation_depth': 'Documentation depth',
+      'documentation_accuracy': 'Documentation accuracy',
       'rival_discovery_chance': 'Rival discovery chance',
     };
     return known[key] ?? _humanizeKey(key);

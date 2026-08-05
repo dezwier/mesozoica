@@ -72,24 +72,16 @@ void main() {
     expect(applyLevelModifiers(1.0, entries, 99), closeTo(0.5, 1e-9));
   });
 
-  test('site stewardship estimations are base 1% times skill level', () async {
+  test('site stewardship estimation is base 1% times skill level', () async {
     await loadGameConfigForTest();
 
     final level1 = resolveSiteStewardshipAccuracies(skillLevel: 1);
     final level10 = resolveSiteStewardshipAccuracies(skillLevel: 10);
     final level99 = resolveSiteStewardshipAccuracies(skillLevel: 99);
 
-    for (final key in [
-      'documentation_genera',
-      'documentation_fossil',
-      'documentation_completeness',
-      'documentation_preservation',
-      'documentation_depth',
-    ]) {
-      expect(level1[key], closeTo(0.01, 1e-9), reason: key);
-      expect(level10[key], closeTo(0.10, 1e-9), reason: key);
-      expect(level99[key], closeTo(0.99, 1e-9), reason: key);
-    }
+    expect(level1['documentation_accuracy'], closeTo(0.01, 1e-9));
+    expect(level10['documentation_accuracy'], closeTo(0.10, 1e-9));
+    expect(level99['documentation_accuracy'], closeTo(0.99, 1e-9));
   });
 
   test('tool mods apply after level on site stewardship accuracies', () async {
@@ -98,12 +90,11 @@ void main() {
     final result = resolveSiteStewardshipAccuracies(
       skillLevel: 10,
       toolMods: {
-        'documentation_genera': const ParamModifier(op: 'add', value: 0.05),
+        'documentation_accuracy': const ParamModifier(op: 'add', value: 0.05),
       },
     );
 
-    expect(result['documentation_genera'], closeTo(0.15, 1e-9));
-    expect(result['documentation_fossil'], closeTo(0.10, 1e-9));
+    expect(result['documentation_accuracy'], closeTo(0.15, 1e-9));
   });
 
   test('site discovery visibility defaults to main param', () async {

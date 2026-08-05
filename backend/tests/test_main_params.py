@@ -38,9 +38,9 @@ def test_field_survey_estimation_and_rival_from_sparse_keyframes() -> None:
     l1 = resolve_site_stewardship_main_params(skill_level=1)
     l50 = resolve_site_stewardship_main_params(skill_level=50)
     l99 = resolve_site_stewardship_main_params(skill_level=99)
-    assert l1["documentation_genera"] == pytest.approx(0.01)
-    assert l50["documentation_genera"] == pytest.approx(0.50)
-    assert l99["documentation_genera"] == pytest.approx(0.99)
+    assert l1["documentation_accuracy"] == pytest.approx(0.01)
+    assert l50["documentation_accuracy"] == pytest.approx(0.50)
+    assert l99["documentation_accuracy"] == pytest.approx(0.99)
     assert l1["rival_discovery_chance"] == pytest.approx(1.0)
     assert l50["rival_discovery_chance"] == pytest.approx(0.75)
     assert l99["rival_discovery_chance"] == pytest.approx(0.5)
@@ -267,7 +267,7 @@ def test_modifies_main_params_multi_skill() -> None:
             "owning": {
                 "field_survey": {
                     "discovery_chance": {"op": "add", "value": 0.05},
-                    "documentation_genera": {"op": "add", "value": 0.1},
+                    "documentation_accuracy": {"op": "add", "value": 0.1},
                 },
             },
             "using": {
@@ -286,7 +286,7 @@ def test_modifies_main_params_multi_skill() -> None:
         "discovery_chance"
     ].value == pytest.approx(0.05)
     assert mods.params_for("owning", "field_survey")[
-        "documentation_genera"
+        "documentation_accuracy"
     ].value == pytest.approx(0.1)
     assert mods.params_for("using", "bone_quarry")[
         "discovery_distance_m"

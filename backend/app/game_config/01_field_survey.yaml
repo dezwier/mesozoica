@@ -22,13 +22,10 @@ main_params:
   # Health credits on reopen; gaps under 10 m grant nothing. Max Health window 7 days.
   explore_100m_passively_xp: 10
   # --- stewardship ---
-  # Card display estimation for each odd_* axis (0 = full-axis blur/jitter, 1 = exact).
-  # Base 1%; level multiplies by skill level (L50 → 50%). Display-only for now.
-  documentation_genera: 0.01
-  documentation_fossil: 0.01
-  documentation_completeness: 0.01
-  documentation_preservation: 0.01
-  documentation_depth: 0.01
+  # Card display estimation baseline for all odd_* axes (0 = full-axis blur,
+  # 1 = exact). Base 1%; level multiplies (L50 → 50%). Per-axis noise stays
+  # separate via accuracy_noise.
+  documentation_accuracy: 0.01
   # Multiplier on discovery_chance for other users on sites where you have any
   # status above hidden (discovered, documented, excavated, …).
   # Level multiplies ×1.0 → ×0.5 from L1 → L99; tools multiply further on a covered site.
@@ -73,13 +70,9 @@ level_modifiers:
     - { level: 99, op: multiply, value: 0.5 }
 
   # Estimation: base 0.01 × skill level (L1 → 1%, L50 → 50%, L99 → 99%).
-  documentation_genera: &site_stewardship_estimation_levels
+  documentation_accuracy:
     - { level: 1, op: multiply, value: 1 }
     - { level: 99, op: multiply, value: 99 }
-  documentation_fossil: *site_stewardship_estimation_levels
-  documentation_completeness: *site_stewardship_estimation_levels
-  documentation_preservation: *site_stewardship_estimation_levels
-  documentation_depth: *site_stewardship_estimation_levels
 # Ambient solar period (dawn|day|dusk|golden_hour|night). After level, before weather_type + tools.
 weather_time_modifiers:
   discovery_distance_m: &field_survey_weather_time

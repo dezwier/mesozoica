@@ -140,11 +140,7 @@ def test_load_game_config_matches_current_defaults() -> None:
     ]
     assert dawn_xp[0].op == "multiply" and dawn_xp[0].value == 1.2
 
-    assert config.site_stewardship.main_params.documentation_genera == 0.01
-    assert config.site_stewardship.main_params.documentation_fossil == 0.01
-    assert config.site_stewardship.main_params.documentation_completeness == 0.01
-    assert config.site_stewardship.main_params.documentation_preservation == 0.01
-    assert config.site_stewardship.main_params.documentation_depth == 0.01
+    assert config.site_stewardship.main_params.documentation_accuracy == 0.01
     assert config.site_stewardship.main_params.documentation_distance_m == 50.0
     assert config.site_stewardship.main_params.document_progress_xp == 20.0
     assert config.site_stewardship.main_params.document_site_xp == 80.0
@@ -153,20 +149,18 @@ def test_load_game_config_matches_current_defaults() -> None:
     assert config.site_stewardship.document_progress_xp == 20.0
     assert config.site_stewardship.document_site_xp == 80.0
     assert config.site_stewardship.document_site_as_first_xp == 20.0
-    dino_acc_mods = config.site_stewardship.level_modifiers["documentation_genera"]
-    assert len(dino_acc_mods) == 2
-    assert dino_acc_mods[0].level == 1 and dino_acc_mods[0].op == "multiply"
-    assert dino_acc_mods[0].value == 1
-    assert dino_acc_mods[-1].level == 99 and dino_acc_mods[-1].value == 99
+    acc_mods = config.site_stewardship.level_modifiers["documentation_accuracy"]
+    assert len(acc_mods) == 2
+    assert acc_mods[0].level == 1 and acc_mods[0].op == "multiply"
+    assert acc_mods[0].value == 1
+    assert acc_mods[-1].level == 99 and acc_mods[-1].value == 99
     rival_mods = config.site_stewardship.level_modifiers["rival_discovery_chance"]
     assert len(rival_mods) == 2
     assert rival_mods[0].level == 1 and rival_mods[0].op == "multiply"
     assert rival_mods[0].value == 1
     assert rival_mods[-1].level == 99 and rival_mods[-1].op == "multiply"
     assert rival_mods[-1].value == 0.5
-    assert (
-        len(config.site_stewardship.level_modifiers["documentation_fossil"]) == 2
-    )
+    assert "documentation_genera" not in config.site_stewardship.level_modifiers
     assert config.site_stewardship.odd_noise.dino_count == 0.0
     assert config.site_stewardship.odd_noise.fossil_count == 0.5
     assert config.site_stewardship.odd_noise.completeness == 0.3

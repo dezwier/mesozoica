@@ -235,55 +235,41 @@ double resolveSiteStewardshipSiteVisibilityM({
   return value;
 }
 
-/// Effective site-dimension accuracy params: base → level → ambient → tools.
+/// Effective documentation accuracy: base → level → ambient → tools.
 ///
-/// Keys: `documentation_genera`, `documentation_fossil`, `documentation_completeness`,
-/// `documentation_preservation`, `documentation_depth`.
+/// Single skill baseline (`documentation_accuracy`). Cards apply per-axis
+/// [accuracy_noise] separately.
 Map<String, double> resolveSiteStewardshipAccuracies({
   required int skillLevel,
   String? weatherTime,
   String? weatherType,
   Map<String, ParamModifier>? toolMods,
 }) {
-  const keys = <String>[
-    'documentation_genera',
-    'documentation_fossil',
-    'documentation_completeness',
-    'documentation_preservation',
-    'documentation_depth',
-  ];
+  const key = 'documentation_accuracy';
   if (!GameConfig.isLoaded) {
-    return {for (final key in keys) key: 0.0};
+    return {key: 0.0};
   }
   final cfg = GameConfig.instance.siteStewardship;
   final mp = cfg.mainParams;
   final mods = toolMods ?? const <String, ParamModifier>{};
-  final bases = <String, double>{
-    'documentation_genera': mp.documentationGenera,
-    'documentation_fossil': mp.documentationFossil,
-    'documentation_completeness': mp.documentationCompleteness,
-    'documentation_preservation': mp.documentationPreservation,
-    'documentation_depth': mp.documentationDepth,
-  };
 
   return {
-    for (final key in keys)
-      key: resolveScalarMainParam(
-        base: bases[key]!,
-        levelEntries: cfg.levelModifiers[key],
-        skillLevel: skillLevel,
-        weatherTimeMods: weatherTimeModsForParam(
-          weatherTimeModifiers: cfg.weatherTimeModifiers,
-          paramKey: key,
-          weatherTime: weatherTime,
-        ),
-        weatherTypeMods: weatherTypeModsForParam(
-          weatherTypeModifiers: cfg.weatherTypeModifiers,
-          paramKey: key,
-          weatherType: weatherType,
-        ),
-        toolMod: mods[key],
-        clampUnit: true,
+    key: resolveScalarMainParam(
+      base: mp.documentationAccuracy,
+      levelEntries: cfg.levelModifiers[key],
+      skillLevel: skillLevel,
+      weatherTimeMods: weatherTimeModsForParam(
+        weatherTimeModifiers: cfg.weatherTimeModifiers,
+        paramKey: key,
+        weatherTime: weatherTime,
       ),
+      weatherTypeMods: weatherTypeModsForParam(
+        weatherTypeModifiers: cfg.weatherTypeModifiers,
+        paramKey: key,
+        weatherType: weatherType,
+      ),
+      toolMod: mods[key],
+      clampUnit: true,
+    ),
   };
 }

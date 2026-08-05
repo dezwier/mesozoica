@@ -194,22 +194,10 @@ def resolve_field_survey_main_params(
         ),
         "explore_100m_actively_xp": _resolve("explore_100m_actively_xp", base=float(mp.explore_100m_actively_xp)),
         "explore_100m_passively_xp": _resolve("explore_100m_passively_xp", base=float(mp.explore_100m_passively_xp)),
-        "documentation_genera": _resolve(
-            "documentation_genera", base=float(mp.documentation_genera), clamp_unit=True
-        ),
-        "documentation_fossil": _resolve(
-            "documentation_fossil", base=float(mp.documentation_fossil), clamp_unit=True
-        ),
-        "documentation_completeness": _resolve(
-            "documentation_completeness",
-            base=float(mp.documentation_completeness),
+        "documentation_accuracy": _resolve(
+            "documentation_accuracy",
+            base=float(mp.documentation_accuracy),
             clamp_unit=True,
-        ),
-        "documentation_preservation": _resolve(
-            "documentation_preservation", base=float(mp.documentation_preservation), clamp_unit=True
-        ),
-        "documentation_depth": _resolve(
-            "documentation_depth", base=float(mp.documentation_depth), clamp_unit=True
         ),
         "rival_discovery_chance": _resolve(
             "rival_discovery_chance", base=float(mp.rival_discovery_chance)
@@ -280,11 +268,7 @@ def resolve_site_stewardship_main_params(
         tool_mods=tool_mods,
     )
     keys = (
-        "documentation_genera",
-        "documentation_fossil",
-        "documentation_completeness",
-        "documentation_preservation",
-        "documentation_depth",
+        "documentation_accuracy",
         "rival_discovery_chance",
         "documentation_distance_m",
         "disguise_of_site_xp",

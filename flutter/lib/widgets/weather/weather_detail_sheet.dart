@@ -5,6 +5,7 @@ import '../../config/game_config.dart';
 import '../../controllers/weather_controller.dart';
 import '../../models/weather_status.dart';
 import '../common/draggable_sheet_wrapper.dart';
+import '../profile/profile_skill_icons.dart';
 import 'weather_display.dart';
 
 /// Opens the ambient weather report drawer (same height as skill / profile sheets).
@@ -20,8 +21,12 @@ void showWeatherDetailSheet(BuildContext context) {
   );
 }
 
+enum _ImpactView { skillParams, xpSources }
+
+enum _AmbientAxis { timeOfDay, temperature, weather }
+
 /// Full weather report + gameplay impact boxes for time, temperature, weather.
-class WeatherDetailDrawer extends StatelessWidget {
+class WeatherDetailDrawer extends StatefulWidget {
   const WeatherDetailDrawer({
     super.key,
     required this.scrollController,
@@ -32,9 +37,34 @@ class WeatherDetailDrawer extends StatelessWidget {
   static const double _cardRadius = 10;
 
   @override
+  State<WeatherDetailDrawer> createState() => _WeatherDetailDrawerState();
+}
+
+class _WeatherDetailDrawerState extends State<WeatherDetailDrawer> {
+  String? _selectedSkillId;
+  _AmbientAxis _axis = _AmbientAxis.timeOfDay;
+
+  List<LevelingSkillConfig> get _skills {
+    if (!GameConfig.isLoaded) return const [];
+    return GameConfig.instance.leveling.skills;
+  }
+
+  String get _skillId {
+    final skills = _skills;
+    if (skills.isEmpty) return 'field_survey';
+    final selected = _selectedSkillId;
+    if (selected != null && skills.any((s) => s.id == selected)) {
+      return selected;
+    }
+    return skills.first.id;
+  }
+
+  @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final status = context.watch<WeatherController>().status;
+    final skills = _skills;
+    final skillId = _skillId;
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -68,44 +98,28 @@ class WeatherDetailDrawer extends StatelessWidget {
                         ),
                       )
                     : ListView(
-                        controller: scrollController,
+                        controller: widget.scrollController,
                         padding: const EdgeInsets.fromLTRB(16, 20, 16, 32),
                         children: [
                           _WeatherHero(status: status),
+                          if (skills.isNotEmpty) ...[
+                            const SizedBox(height: 16),
+                            _SkillTabs(
+                              skills: skills,
+                              selectedId: skillId,
+                              onChanged: (id) =>
+                                  setState(() => _selectedSkillId = id),
+                            ),
+                          ],
+                          const SizedBox(height: 8),
+                          _AmbientAxisTabs(
+                            selected: _axis,
+                            weatherType: status.weatherType,
+                            onChanged: (axis) =>
+                                setState(() => _axis = axis),
+                          ),
                           const SizedBox(height: 16),
-                          _ImpactSectionCard(
-                            icon: Icons.schedule,
-                            title: 'Time of day',
-                            subtitle: WeatherDisplay.timeLabelWithClock(
-                              status.weatherTime,
-                            ),
-                            groups: _weatherTimeImpactGroups(
-                              status.weatherTime,
-                            ),
-                          ),
-                          const SizedBox(height: 5),
-                          _ImpactSectionCard(
-                            icon: Icons.thermostat_outlined,
-                            title: 'Temperature',
-                            subtitle: _tempSubtitle(status),
-                            groups: const _ImpactGroups(),
-                            emptyLabel:
-                                'No temperature parameter impacts yet',
-                          ),
-                          const SizedBox(height: 5),
-                          _ImpactSectionCard(
-                            icon: WeatherDisplay.weatherIcon(
-                              status.weatherType,
-                            ),
-                            title: 'Weather',
-                            subtitle: WeatherDisplay.weatherLabel(
-                              status.weatherType,
-                            ),
-                            groups: _weatherTypeImpactGroups(
-                              status.weatherType,
-                            ),
-                            emptyLabel: 'No weather-type parameter impacts',
-                          ),
+                          _selectedImpactCard(status, skillId),
                         ],
                       ),
               ),
@@ -116,6 +130,40 @@ class WeatherDetailDrawer extends StatelessWidget {
     );
   }
 
+  Widget _selectedImpactCard(WeatherStatus status, String skillId) {
+    switch (_axis) {
+      case _AmbientAxis.timeOfDay:
+        return _ImpactSectionCard(
+          icon: Icons.schedule,
+          title: 'Time of day',
+          subtitle: WeatherDisplay.timeLabelWithClock(status.weatherTime),
+          groups: _impactGroupsForSkill(
+            skillId,
+            _weatherTimeImpactBySkill(status.weatherTime),
+          ),
+        );
+      case _AmbientAxis.temperature:
+        return _ImpactSectionCard(
+          icon: Icons.thermostat_outlined,
+          title: 'Temperature',
+          subtitle: _tempSubtitle(status),
+          groups: const _ImpactGroups(),
+          emptyLabel: 'No temperature parameter impacts yet',
+        );
+      case _AmbientAxis.weather:
+        return _ImpactSectionCard(
+          icon: WeatherDisplay.weatherIcon(status.weatherType),
+          title: 'Weather',
+          subtitle: WeatherDisplay.weatherLabel(status.weatherType),
+          groups: _impactGroupsForSkill(
+            skillId,
+            _weatherTypeImpactBySkill(status.weatherType),
+          ),
+          emptyLabel: 'No weather-type parameter impacts',
+        );
+    }
+  }
+
   static String _tempSubtitle(WeatherStatus status) {
     if (status.weatherType == 'unknown' && status.observedAt == null) {
       return '—';
@@ -123,11 +171,17 @@ class WeatherDetailDrawer extends StatelessWidget {
     return '${status.temperatureC.round()}°C';
   }
 
-  /// All skill/XP params for [period] across domains (drawer order; ±0% if none).
-  static _ImpactGroups _weatherTimeImpactGroups(String period) {
-    if (!GameConfig.isLoaded) return const _ImpactGroups();
+  static _ImpactGroups _impactGroupsForSkill(
+    String skillId,
+    Map<String, _ImpactGroups> bySkill,
+  ) =>
+      bySkill[skillId] ?? const _ImpactGroups();
+
+  /// Skill → param groups for [period] (drawer order; ±0% if none).
+  static Map<String, _ImpactGroups> _weatherTimeImpactBySkill(String period) {
+    if (!GameConfig.isLoaded) return const {};
     final game = GameConfig.instance;
-    return _ambientImpactGroups(period, [
+    return _ambientImpactBySkill(period, [
       (
         'field_survey',
         game.fieldSurvey.weatherTimeModifiers,
@@ -144,12 +198,14 @@ class WeatherDetailDrawer extends StatelessWidget {
     ]);
   }
 
-  /// All skill/XP params for [weatherType] across domains (drawer order; ±0% if none).
-  static _ImpactGroups _weatherTypeImpactGroups(String weatherType) {
-    if (!GameConfig.isLoaded) return const _ImpactGroups();
+  /// Skill → param groups for [weatherType] (drawer order; ±0% if none).
+  static Map<String, _ImpactGroups> _weatherTypeImpactBySkill(
+    String weatherType,
+  ) {
+    if (!GameConfig.isLoaded) return const {};
     final key = weatherType == 'sunny' ? 'clear' : weatherType;
     final game = GameConfig.instance;
-    return _ambientImpactGroups(key, [
+    return _ambientImpactBySkill(key, [
       (
         'field_survey',
         game.fieldSurvey.weatherTypeModifiers,
@@ -181,7 +237,7 @@ class WeatherDetailDrawer extends StatelessWidget {
           if (key.endsWith('_xp')) key,
       ];
 
-  static _ImpactGroups _ambientImpactGroups(
+  static Map<String, _ImpactGroups> _ambientImpactBySkill(
     String key,
     List<
         (
@@ -191,38 +247,30 @@ class WeatherDetailDrawer extends StatelessWidget {
           List<String>,
         )> sources,
   ) {
-    final skillNames = {
-      for (final skill in GameConfig.instance.leveling.skills)
-        skill.id: skill.name,
-    };
-    final skillParams = <_ImpactRow>[];
-    final xpSources = <_ImpactRow>[];
+    final out = <String, _ImpactGroups>{};
     for (final (skillId, modifiers, skillKeys, xpKeys) in sources) {
-      final skillName = skillNames[skillId] ?? skillId;
-      for (final paramKey in skillKeys) {
-        skillParams.add(
-          _ImpactRow(
-            skillName: skillName,
-            paramLabel: WeatherDisplay.paramLabel(paramKey),
-            effect: _formatAmbientEffect(
-              modifiers[paramKey]?[key] ?? const <ParamModifier>[],
+      out[skillId] = _ImpactGroups(
+        skillParams: [
+          for (final paramKey in skillKeys)
+            _ImpactRow(
+              paramLabel: WeatherDisplay.paramLabel(paramKey),
+              effect: _formatAmbientEffect(
+                modifiers[paramKey]?[key] ?? const <ParamModifier>[],
+              ),
             ),
-          ),
-        );
-      }
-      for (final paramKey in xpKeys) {
-        xpSources.add(
-          _ImpactRow(
-            skillName: skillName,
-            paramLabel: WeatherDisplay.paramLabel(paramKey),
-            effect: _formatAmbientEffect(
-              modifiers[paramKey]?[key] ?? const <ParamModifier>[],
+        ],
+        xpSources: [
+          for (final paramKey in xpKeys)
+            _ImpactRow(
+              paramLabel: WeatherDisplay.paramLabel(paramKey),
+              effect: _formatAmbientEffect(
+                modifiers[paramKey]?[key] ?? const <ParamModifier>[],
+              ),
             ),
-          ),
-        );
-      }
+        ],
+      );
     }
-    return _ImpactGroups(skillParams: skillParams, xpSources: xpSources);
+    return out;
   }
 
   static String _formatAmbientEffect(List<ParamModifier> mods) {
@@ -232,6 +280,177 @@ class WeatherDetailDrawer extends StatelessWidget {
           (m) => WeatherDisplay.formatModifierShort(op: m.op, value: m.value),
         )
         .join(' · ');
+  }
+}
+
+class _SkillTabs extends StatelessWidget {
+  const _SkillTabs({
+    required this.skills,
+    required this.selectedId,
+    required this.onChanged,
+  });
+
+  final List<LevelingSkillConfig> skills;
+  final String selectedId;
+  final ValueChanged<String> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.all(3),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerHighest.withValues(alpha: 0.85),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          for (final skill in skills)
+            Expanded(
+              child: _SegmentTab(
+                selected: skill.id == selectedId,
+                onTap: () => onChanged(skill.id),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    SkillIcon(skillId: skill.id, size: 18),
+                    const SizedBox(width: 6),
+                    Flexible(
+                      child: Text(
+                        skill.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                              color: skill.id == selectedId
+                                  ? scheme.onSurface
+                                  : scheme.onSurfaceVariant,
+                              fontWeight: skill.id == selectedId
+                                  ? FontWeight.w700
+                                  : FontWeight.w500,
+                              height: 1.1,
+                            ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AmbientAxisTabs extends StatelessWidget {
+  const _AmbientAxisTabs({
+    required this.selected,
+    required this.weatherType,
+    required this.onChanged,
+  });
+
+  final _AmbientAxis selected;
+  final String weatherType;
+  final ValueChanged<_AmbientAxis> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final entries = <(_AmbientAxis, IconData, String)>[
+      (_AmbientAxis.timeOfDay, Icons.schedule, 'Time'),
+      (_AmbientAxis.temperature, Icons.thermostat_outlined, 'Temp'),
+      (
+        _AmbientAxis.weather,
+        WeatherDisplay.weatherIcon(weatherType),
+        'Weather',
+      ),
+    ];
+    return Container(
+      padding: const EdgeInsets.all(3),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerHighest.withValues(alpha: 0.85),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          for (final (axis, icon, label) in entries)
+            Expanded(
+              child: _SegmentTab(
+                selected: axis == selected,
+                onTap: () => onChanged(axis),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      icon,
+                      size: 16,
+                      color: axis == selected
+                          ? scheme.primary
+                          : scheme.onSurfaceVariant,
+                    ),
+                    const SizedBox(width: 6),
+                    Flexible(
+                      child: Text(
+                        label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                              color: axis == selected
+                                  ? scheme.onSurface
+                                  : scheme.onSurfaceVariant,
+                              fontWeight: axis == selected
+                                  ? FontWeight.w700
+                                  : FontWeight.w500,
+                              height: 1.1,
+                            ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SegmentTab extends StatelessWidget {
+  const _SegmentTab({
+    required this.selected,
+    required this.onTap,
+    required this.child,
+  });
+
+  final bool selected;
+  final VoidCallback onTap;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 140),
+        curve: Curves.easeOut,
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+        decoration: BoxDecoration(
+          color: selected ? scheme.surface : Colors.transparent,
+          borderRadius: BorderRadius.circular(9),
+          boxShadow: selected
+              ? [
+                  BoxShadow(
+                    color: scheme.shadow.withValues(alpha: 0.12),
+                    blurRadius: 2,
+                    offset: const Offset(0, 1),
+                  ),
+                ]
+              : null,
+        ),
+        child: child,
+      ),
+    );
   }
 }
 
@@ -249,12 +468,10 @@ class _ImpactGroups {
 
 class _ImpactRow {
   const _ImpactRow({
-    required this.skillName,
     required this.paramLabel,
     required this.effect,
   });
 
-  final String skillName;
   final String paramLabel;
   final String effect;
 }
@@ -397,7 +614,7 @@ class _WeatherHero extends StatelessWidget {
 }
 
 /// Profile-style section card listing parameter impacts for one weather axis.
-class _ImpactSectionCard extends StatelessWidget {
+class _ImpactSectionCard extends StatefulWidget {
   const _ImpactSectionCard({
     required this.icon,
     required this.title,
@@ -413,8 +630,28 @@ class _ImpactSectionCard extends StatelessWidget {
   final String emptyLabel;
 
   @override
+  State<_ImpactSectionCard> createState() => _ImpactSectionCardState();
+}
+
+class _ImpactSectionCardState extends State<_ImpactSectionCard> {
+  _ImpactView _view = _ImpactView.skillParams;
+
+  @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final groups = widget.groups;
+    final hasSkill = groups.skillParams.isNotEmpty;
+    final hasXp = groups.xpSources.isNotEmpty;
+    final canToggle = hasSkill && hasXp;
+    final view = !canToggle
+        ? (hasXp && !hasSkill
+            ? _ImpactView.xpSources
+            : _ImpactView.skillParams)
+        : _view;
+    final rows = view == _ImpactView.xpSources
+        ? groups.xpSources
+        : groups.skillParams;
+
     return Card(
       elevation: 1,
       shape: RoundedRectangleBorder(
@@ -433,18 +670,18 @@ class _ImpactSectionCard extends StatelessWidget {
           children: [
             Row(
               children: [
-                Icon(icon, color: scheme.primary, size: 20),
+                Icon(widget.icon, color: scheme.primary, size: 20),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    title,
+                    widget.title,
                     style: Theme.of(context).textTheme.titleSmall?.copyWith(
                           fontWeight: FontWeight.w600,
                         ),
                   ),
                 ),
                 Text(
-                  subtitle,
+                  widget.subtitle,
                   style: Theme.of(context).textTheme.titleSmall?.copyWith(
                         color: scheme.primary,
                         fontWeight: FontWeight.w700,
@@ -452,29 +689,49 @@ class _ImpactSectionCard extends StatelessWidget {
                 ),
               ],
             ),
+            if (canToggle) ...[
+              const SizedBox(height: 10),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: _ImpactViewToggle(
+                  selected: view,
+                  onChanged: (next) => setState(() => _view = next),
+                ),
+              ),
+            ],
             const SizedBox(height: 12),
-            if (groups.isEmpty)
+            if (groups.isEmpty || rows.isEmpty)
               Text(
-                emptyLabel,
+                widget.emptyLabel,
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       color: scheme.onSurfaceVariant,
                     ),
               )
-            else ...[
-              if (groups.skillParams.isNotEmpty)
-                _ImpactParamBlock(
-                  title: 'Skill parameters',
-                  rows: groups.skillParams,
+            else
+              for (var i = 0; i < rows.length; i++) ...[
+                if (i > 0) const SizedBox(height: 10),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        rows[i].paramLabel,
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      rows[i].effect,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: rows[i].effect == '±0%'
+                                ? scheme.onSurfaceVariant
+                                : scheme.primary,
+                            fontWeight: FontWeight.w600,
+                          ),
+                    ),
+                  ],
                 ),
-              if (groups.skillParams.isNotEmpty &&
-                  groups.xpSources.isNotEmpty)
-                const SizedBox(height: 14),
-              if (groups.xpSources.isNotEmpty)
-                _ImpactParamBlock(
-                  title: 'XP sources',
-                  rows: groups.xpSources,
-                ),
-            ],
+              ],
           ],
         ),
       ),
@@ -482,54 +739,86 @@ class _ImpactSectionCard extends StatelessWidget {
   }
 }
 
-class _ImpactParamBlock extends StatelessWidget {
-  const _ImpactParamBlock({
-    required this.title,
-    required this.rows,
+class _ImpactViewToggle extends StatelessWidget {
+  const _ImpactViewToggle({
+    required this.selected,
+    required this.onChanged,
   });
 
-  final String title;
-  final List<_ImpactRow> rows;
+  final _ImpactView selected;
+  final ValueChanged<_ImpactView> onChanged;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Text(
-          title,
-          style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                color: scheme.onSurfaceVariant,
-                fontWeight: FontWeight.w600,
-              ),
-        ),
-        const SizedBox(height: 8),
-        for (var i = 0; i < rows.length; i++) ...[
-          if (i > 0) const SizedBox(height: 10),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Text(
-                  '${rows[i].skillName} · ${rows[i].paramLabel}',
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                rows[i].effect,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: rows[i].effect == '±0%'
-                          ? scheme.onSurfaceVariant
-                          : scheme.primary,
-                      fontWeight: FontWeight.w600,
-                    ),
-              ),
-            ],
+    return Container(
+      padding: const EdgeInsets.all(2),
+      decoration: BoxDecoration(
+        color: scheme.surface.withValues(alpha: 0.9),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _ImpactToggleSegment(
+            label: 'Params',
+            selected: selected == _ImpactView.skillParams,
+            onTap: () => onChanged(_ImpactView.skillParams),
+          ),
+          _ImpactToggleSegment(
+            label: 'XP',
+            selected: selected == _ImpactView.xpSources,
+            onTap: () => onChanged(_ImpactView.xpSources),
           ),
         ],
-      ],
+      ),
+    );
+  }
+}
+
+class _ImpactToggleSegment extends StatelessWidget {
+  const _ImpactToggleSegment({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 140),
+        curve: Curves.easeOut,
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        decoration: BoxDecoration(
+          color: selected ? scheme.surfaceContainerHighest : Colors.transparent,
+          borderRadius: BorderRadius.circular(6),
+          boxShadow: selected
+              ? [
+                  BoxShadow(
+                    color: scheme.shadow.withValues(alpha: 0.12),
+                    blurRadius: 2,
+                    offset: const Offset(0, 1),
+                  ),
+                ]
+              : null,
+        ),
+        child: Text(
+          label,
+          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                color: selected ? scheme.onSurface : scheme.onSurfaceVariant,
+                fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                height: 1.1,
+              ),
+        ),
+      ),
     );
   }
 }

@@ -140,11 +140,7 @@ resolvable):
 
 | Key | Meaning |
 |-----|---------|
-| `documentation_genera` | Documentation genera (base 1% × skill level) |
-| `documentation_fossil` | Documentation fossil (base 1% × skill level) |
-| `documentation_completeness` | Documentation completeness (base 1% × skill level) |
-| `documentation_preservation` | Documentation preservation (base 1% × skill level) |
-| `documentation_depth` | Documentation depth (base 1% × skill level; depth 0 always exact) |
+| `documentation_accuracy` | Documentation accuracy — shared skill baseline for all five odd_* axes (base 1% × skill level; depth 0 always exact). Per-axis jitter stays in `accuracy_noise` |
 | `rival_discovery_chance` | Rival discovery chance — multiplier on discovery_chance for rivals on sites where you have any status above hidden (×1 at L1 → ×0.5 at L99) |
 | `documentation_distance_m` | Documentation distance — radius around a discovered site where walking accrues exploration meters |
 | `disguise_of_site_xp` | XP when a rival discovery roll would hit but your active disguise blocks it |
@@ -161,9 +157,9 @@ After discovery, the site shows as "Excavation Site" until the viewer completes
 the identification quiz (period, then rock type). Only then do dimension bands
 and exploration meters unlock.
 
-Accuracy params are display-only on the site card for now. Stack per axis:
-skill baseline (base 1% × level → L50 ≈ 50%) → stable per-site / per-dimension
-noise (`accuracy_noise` in `02_site_stewardship.yaml`) → tool
+Accuracy is display-only on the site card for now. Stack per axis:
+shared skill baseline (`documentation_accuracy`, base 1% × level → L50 ≈ 50%) →
+stable per-site / per-dimension noise (`accuracy_noise`) → tool
 `modifies_main_params` (none yet) → exploration (+1% per meter walked inside
 `documentation_distance_m`, additive, capped at 100%). When all five axes reach 100%,
 `document_site_xp` is awarded once and further exploration is frozen.
@@ -201,7 +197,7 @@ some_tool:
       site_discovery:
         discovery_chance: { op: add, value: 0.05 }
       site_stewardship:
-        documentation_genera: { op: add, value: 0.1 }
+        documentation_accuracy: { op: add, value: 0.1 }
     using:
       site_discovery:
         discovery_chance: { op: replace, value: 0.9 }

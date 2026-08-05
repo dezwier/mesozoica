@@ -320,11 +320,7 @@ class FieldSurveyMainParams {
     required this.discoverSiteAsFirstXp,
     required this.explore100mActivelyXp,
     required this.explore100mPassivelyXp,
-    required this.documentationGenera,
-    required this.documentationFossil,
-    required this.documentationCompleteness,
-    required this.documentationPreservation,
-    required this.documentationDepth,
+    required this.documentationAccuracy,
     required this.rivalDiscoveryChance,
     required this.documentationDistanceM,
     required this.disguiseOfSiteXp,
@@ -341,11 +337,7 @@ class FieldSurveyMainParams {
   final double discoverSiteAsFirstXp;
   final double explore100mActivelyXp;
   final double explore100mPassivelyXp;
-  final double documentationGenera;
-  final double documentationFossil;
-  final double documentationCompleteness;
-  final double documentationPreservation;
-  final double documentationDepth;
+  final double documentationAccuracy;
   final double rivalDiscoveryChance;
   final double documentationDistanceM;
   final double disguiseOfSiteXp;
@@ -366,11 +358,7 @@ class FieldSurveyMainParams {
       discoverSiteAsFirstXp: _asDouble(yaml['discover_site_as_first_xp'], 20.0),
       explore100mActivelyXp: _asDouble(yaml['explore_100m_actively_xp'], 20.0),
       explore100mPassivelyXp: _asDouble(yaml['explore_100m_passively_xp'], 10.0),
-      documentationGenera: _asDouble(yaml['documentation_genera'], 0.01),
-      documentationFossil: _asDouble(yaml['documentation_fossil'], 0.01),
-      documentationCompleteness: _asDouble(yaml['documentation_completeness'], 0.01),
-      documentationPreservation: _asDouble(yaml['documentation_preservation'], 0.01),
-      documentationDepth: _asDouble(yaml['documentation_depth'], 0.01),
+      documentationAccuracy: _asDouble(yaml['documentation_accuracy'], 0.01),
       rivalDiscoveryChance: _asDouble(yaml['rival_discovery_chance'], 1),
       documentationDistanceM: _asDouble(yaml['documentation_distance_m'], 50),
       disguiseOfSiteXp: _asDouble(

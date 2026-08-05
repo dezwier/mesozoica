@@ -34,59 +34,47 @@ class SiteCardDimensions extends StatelessWidget {
     final skillLevel = _fieldSurveyLevel(context);
     final baseAccuracies =
         resolveSiteStewardshipAccuracies(skillLevel: skillLevel);
+    final baseAccuracy = baseAccuracies['documentation_accuracy'] ?? 0.0;
     final exploredM =
         emptyDims ? 0.0 : _resolvedExploredMeters(context, site);
-    // Stack: skill baseline → per-dimension noise → exploration (tools later).
-    const dimByAccuracyKey = <String, SiteDimensionKey>{
-      'documentation_genera': SiteDimensionKey.dino,
-      'documentation_fossil': SiteDimensionKey.fossil,
-      'documentation_completeness': SiteDimensionKey.completeness,
-      'documentation_preservation': SiteDimensionKey.quality,
-      'documentation_depth': SiteDimensionKey.depth,
-    };
-    final accuracies = emptyDims
-        ? <String, double>{
-            for (final key in dimByAccuracyKey.keys) key: 0.0,
-          }
-        : {
-            for (final e in baseAccuracies.entries)
-              e.key: applyExplorationAccuracyBoost(
+    // Stack: shared skill baseline → per-dimension noise → exploration.
+    final accuracies = <SiteDimensionKey, double>{
+      for (final dim in SiteDimensionKey.values)
+        dim: emptyDims
+            ? 0.0
+            : applyExplorationAccuracyBoost(
                 applyDimensionAccuracyNoise(
-                  baseAccuracy: e.value,
+                  baseAccuracy: baseAccuracy,
                   siteId: site.siteId,
-                  dimension: dimByAccuracyKey[e.key]!,
+                  dimension: dim,
                 ),
                 exploredM,
               ),
-          };
+    };
 
     final horizontal =
-        <(SiteDimensionKey, String, String, double?, SiteDimensionBand?)>[
+        <(SiteDimensionKey, String, double?, SiteDimensionBand?)>[
       (
         SiteDimensionKey.dino,
         'Genera presence',
-        'documentation_genera',
         emptyDims ? null : site.oddDinoCount,
         emptyDims ? null : site.oddDinoBand,
       ),
       (
         SiteDimensionKey.fossil,
         'Fossil presence',
-        'documentation_fossil',
         emptyDims ? null : site.oddFossilCount,
         emptyDims ? null : site.oddFossilBand,
       ),
       (
         SiteDimensionKey.completeness,
         'Completeness',
-        'documentation_completeness',
         emptyDims ? null : site.oddCompleteness,
         emptyDims ? null : site.oddCompletenessBand,
       ),
       (
         SiteDimensionKey.quality,
         'Preservation',
-        'documentation_preservation',
         emptyDims ? null : site.oddQuality,
         emptyDims ? null : site.oddQualityBand,
       ),
@@ -102,15 +90,16 @@ class SiteCardDimensions extends StatelessWidget {
               : _displayFor(
                   site: site,
                   key: entry.$1,
-                  trueValue: entry.$4,
-                  band: entry.$5,
-                  accuracy: accuracies[entry.$3] ?? 0,
+                  trueValue: entry.$3,
+                  band: entry.$4,
+                  accuracy: accuracies[entry.$1] ?? 0,
                   showExactMarker: showExactMarker,
                 ),
-          emptyDims ? 0.0 : (accuracies[entry.$3] ?? 0),
+          emptyDims ? 0.0 : (accuracies[entry.$1] ?? 0),
         ),
     ];
-    final documentationDepth = emptyDims ? 0.0 : (accuracies['documentation_depth'] ?? 0);
+    final documentationDepth =
+        emptyDims ? 0.0 : (accuracies[SiteDimensionKey.depth] ?? 0);
     final depthDisplay = emptyDims
         ? null
         : _displayFor(

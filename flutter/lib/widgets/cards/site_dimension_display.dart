@@ -110,13 +110,7 @@ bool siteIsFullyDocumented({
   required int skillLevel,
   required double exploredDistanceM,
 }) {
-  const accuracyKeys = <SiteDimensionKey, String>{
-    SiteDimensionKey.dino: 'documentation_genera',
-    SiteDimensionKey.fossil: 'documentation_fossil',
-    SiteDimensionKey.completeness: 'documentation_completeness',
-    SiteDimensionKey.quality: 'documentation_preservation',
-    SiteDimensionKey.depth: 'documentation_depth',
-  };
+  const accuracyParam = 'documentation_accuracy';
   final values = <SiteDimensionKey, double?>{
     SiteDimensionKey.dino: oddDinoCount,
     SiteDimensionKey.fossil: oddFossilCount,
@@ -128,8 +122,8 @@ bool siteIsFullyDocumented({
 
   final baseAccuracies =
       resolveSiteStewardshipAccuracies(skillLevel: skillLevel);
+  final skillAcc = baseAccuracies[accuracyParam] ?? 0.0;
   for (final entry in values.entries) {
-    final skillAcc = baseAccuracies[accuracyKeys[entry.key]!] ?? 0.0;
     final boosted = applyExplorationAccuracyBoost(
       applyDimensionAccuracyNoise(
         baseAccuracy: skillAcc,

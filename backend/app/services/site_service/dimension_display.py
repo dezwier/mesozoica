@@ -35,13 +35,7 @@ class SiteDimensionBand:
     effective_accuracy: float
 
 
-_ACCURACY_KEYS: dict[SiteDimensionKey, str] = {
-    SiteDimensionKey.DINO: "documentation_genera",
-    SiteDimensionKey.FOSSIL: "documentation_fossil",
-    SiteDimensionKey.COMPLETENESS: "documentation_completeness",
-    SiteDimensionKey.QUALITY: "documentation_preservation",
-    SiteDimensionKey.DEPTH: "documentation_depth",
-}
+_ACCURACY_PARAM = "documentation_accuracy"
 
 
 def apply_dimension_accuracy_noise(
@@ -106,25 +100,18 @@ def site_is_fully_documented(
 
 
 def resolve_site_stewardship_accuracies(*, skill_level: int = 1) -> dict[str, float]:
-    """Effective site-dimension accuracy params: base → level modifiers."""
+    """Effective documentation accuracy: base → level modifiers.
+
+    Single skill baseline; cards apply per-axis ``accuracy_noise`` separately.
+    """
     cfg = get_game_config().site_stewardship
-    mp = cfg.main_params
-    bases = {
-        "documentation_genera": float(mp.documentation_genera),
-        "documentation_fossil": float(mp.documentation_fossil),
-        "documentation_completeness": float(mp.documentation_completeness),
-        "documentation_preservation": float(mp.documentation_preservation),
-        "documentation_depth": float(mp.documentation_depth),
-    }
-    return {
-        key: resolve_scalar_main_param(
-            base=base,
-            level_entries=list(cfg.level_modifiers.get(key, [])),
-            skill_level=skill_level,
-            clamp_unit=True,
-        )
-        for key, base in bases.items()
-    }
+    value = resolve_scalar_main_param(
+        base=float(cfg.main_params.documentation_accuracy),
+        level_entries=list(cfg.level_modifiers.get(_ACCURACY_PARAM, [])),
+        skill_level=skill_level,
+        clamp_unit=True,
+    )
+    return {_ACCURACY_PARAM: value}
 
 
 def resolve_site_dimension_band(
@@ -202,7 +189,7 @@ def build_site_dimension_bands(
         if true_value is None:
             out[key] = None
             continue
-        accuracy_key = _ACCURACY_KEYS[key]
+        accuracy_key = _ACCURACY_PARAM
         skill_acc = accuracies.get(accuracy_key, 0.0)
         noisy_acc = apply_dimension_accuracy_noise(
             skill_acc, site_id=site_id, dimension=key

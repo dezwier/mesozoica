@@ -154,11 +154,7 @@ abstract final class WeatherDisplay {
       'explore_100m_actively_xp': 'Explore 100m actively',
       'explore_100m_passively_xp': 'Explore 100m passively',
       'locate_fossil_in_situ_xp': 'Locate fossil in situ',
-      'documentation_genera': 'Documentation genera',
-      'documentation_fossil': 'Documentation fossil',
-      'documentation_completeness': 'Documentation completeness',
-      'documentation_preservation': 'Documentation preservation',
-      'documentation_depth': 'Documentation depth',
+      'documentation_accuracy': 'Documentation accuracy',
     };
     return labels[paramKey] ??
         paramKey
@@ -174,11 +170,7 @@ abstract final class WeatherDisplay {
     'discovery_chance',
     'discovery_max_speed_kmh',
     'documentation_distance_m',
-    'documentation_genera',
-    'documentation_fossil',
-    'documentation_completeness',
-    'documentation_preservation',
-    'documentation_depth',
+    'documentation_accuracy',
     'rival_discovery_chance',
   ];
 

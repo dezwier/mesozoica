@@ -208,7 +208,7 @@ class ModifiesMainParams(BaseModel):
 
         owning:
           site_discovery: { discovery_chance: { op: add, value: 0.05 } }
-          site_stewardship: { documentation_genera: { op: add, value: 0.1 } }
+          site_stewardship: { documentation_accuracy: { op: add, value: 0.1 } }
         using:
           site_discovery: { discovery_chance: { op: replace, value: 0.9 } }
 
@@ -417,11 +417,7 @@ class FieldSurveyMainParams(BaseModel):
     explore_100m_actively_xp: float = 20.0
     explore_100m_passively_xp: float = 10.0
     # Stewardship / documentation
-    documentation_genera: float = 0.01
-    documentation_fossil: float = 0.01
-    documentation_completeness: float = 0.01
-    documentation_preservation: float = 0.01
-    documentation_depth: float = 0.01
+    documentation_accuracy: float = 0.01
     rival_discovery_chance: float = 1.0
     documentation_distance_m: float = 50.0
     disguise_of_site_xp: float = 40.0
@@ -449,16 +445,10 @@ class FieldSurveyMainParams(BaseModel):
             raise ValueError("must be > 0")
         return value
 
-    @field_validator(
-        "documentation_genera",
-        "documentation_fossil",
-        "documentation_completeness",
-        "documentation_preservation",
-        "documentation_depth",
-    )
+    @field_validator("documentation_accuracy")
     @classmethod
     def _validate_accuracy(cls, value: float) -> float:
-        return _clamp_unit_interval(value, label="accuracy")
+        return _clamp_unit_interval(value, label="documentation_accuracy")
 
     @field_validator("rival_discovery_chance")
     @classmethod
