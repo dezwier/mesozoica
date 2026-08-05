@@ -66,7 +66,7 @@ void main() {
         'field_survey': {
           'discover_site': 20,
           'explore_100m_actively': 30,
-          'explore_1km_passively': 25,
+          'explore_100m_passively': 25,
         },
         'bone_quarry': {'locate_fossil_in_situ': 55},
       },

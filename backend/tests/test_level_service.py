@@ -72,7 +72,7 @@ def test_leveling_yaml_loaded() -> None:
     assert site.discover_site_xp == 20
     assert site.discover_site_as_first_xp == 20
     assert site.explore_100m_actively_xp == 20
-    assert site.explore_1km_passively_xp == 100
+    assert site.explore_100m_passively_xp == 10
     assert float(fossil.main_params["locate_fossil_in_situ_xp"]) == 20
     assert len(cfg.skills) == 3
     assert cfg.skills[0].id == "field_survey"
@@ -135,14 +135,27 @@ def test_award_document_site_as_first_xp(session: Session) -> None:
 
 def test_award_distance_xp(session: Session) -> None:
     user = _make_user(session)
-    award_distance_xp(user, active_100m_delta=2, passive_km_delta=3)
+    award_distance_xp(user, active_100m_delta=2, passive_10m_delta=300)
     session.add(user)
     session.commit()
     session.refresh(user)
     breakdown = user.skill_breakdown["field_survey"]
     assert breakdown["explore_100m_actively"] == 40
-    assert breakdown["explore_1km_passively"] == 300
+    # 300 × 10 m at 10 XP/100 m → 300 XP
+    assert breakdown["explore_100m_passively"] == 300
     assert get_skill_xp(user, "field_survey") == 340
+
+
+def test_award_distance_xp_pro_rata_10m(session: Session) -> None:
+    user = _make_user(session)
+    # 10 m → 1 XP; 100 m → 10 XP
+    award_distance_xp(user, active_100m_delta=0, passive_10m_delta=1)
+    award_distance_xp(user, active_100m_delta=0, passive_10m_delta=10)
+    session.add(user)
+    session.commit()
+    session.refresh(user)
+    assert user.skill_breakdown["field_survey"]["explore_100m_passively"] == 11
+    assert get_skill_xp(user, "field_survey") == 11
 
 
 def test_distance_update_awards_active_100m_and_passive_km(session: Session) -> None:
@@ -160,10 +173,10 @@ def test_distance_update_awards_active_100m_and_passive_km(session: Session) -> 
     )
     session.refresh(user)
     breakdown = user.skill_breakdown["field_survey"]
-    # 12 × 100 m active × 20 XP + 1 passive km × 100 XP
+    # 12 × 100 m active × 20 XP + 1300 m passive × 0.1 XP/m = 130 XP
     assert breakdown["explore_100m_actively"] == 240
-    assert breakdown["explore_1km_passively"] == 100
-    assert get_skill_xp(user, "field_survey") == 340
+    assert breakdown["explore_100m_passively"] == 130
+    assert get_skill_xp(user, "field_survey") == 370
 
     apply_distance_update(
         session,
@@ -178,10 +191,10 @@ def test_distance_update_awards_active_100m_and_passive_km(session: Session) -> 
     )
     session.refresh(user)
     breakdown = user.skill_breakdown["field_survey"]
-    # +10 active 100 m batches; passive still 1 km
+    # +10 active 100 m batches; passive still 1300 m
     assert breakdown["explore_100m_actively"] == 440
-    assert breakdown["explore_1km_passively"] == 100
-    assert get_skill_xp(user, "field_survey") == 540
+    assert breakdown["explore_100m_passively"] == 130
+    assert get_skill_xp(user, "field_survey") == 570
 
 
 def test_backfill_from_history(session: Session) -> None:
@@ -218,7 +231,7 @@ def test_backfill_from_history(session: Session) -> None:
     assert user.skill_breakdown["field_survey"]["discover_site"] == 40
     assert user.skill_breakdown["bone_quarry"]["locate_fossil_in_situ"] == 20
     assert user.skill_breakdown["field_survey"]["explore_100m_actively"] == 400
-    assert user.skill_breakdown["field_survey"]["explore_1km_passively"] == 300
+    assert user.skill_breakdown["field_survey"]["explore_100m_passively"] == 300
     assert get_skill_xp(user, "bone_quarry") == 20
 
 

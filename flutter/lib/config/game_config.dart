@@ -236,7 +236,7 @@ class FieldSurveyConfig {
   double get discoverSiteXp => mainParams.discoverSiteXp;
   double get discoverSiteAsFirstXp => mainParams.discoverSiteAsFirstXp;
   double get explore100mActivelyXp => mainParams.explore100mActivelyXp;
-  double get explore1kmPassivelyXp => mainParams.explore1kmPassivelyXp;
+  double get explore100mPassivelyXp => mainParams.explore100mPassivelyXp;
   double get disguiseOfSiteXp => mainParams.disguiseOfSiteXp;
   double get documentProgressXp => mainParams.documentProgressXp;
   double get documentSiteXp => mainParams.documentSiteXp;
@@ -319,7 +319,7 @@ class FieldSurveyMainParams {
     required this.discoverSiteXp,
     required this.discoverSiteAsFirstXp,
     required this.explore100mActivelyXp,
-    required this.explore1kmPassivelyXp,
+    required this.explore100mPassivelyXp,
     required this.documentationGenera,
     required this.documentationFossil,
     required this.documentationCompleteness,
@@ -340,7 +340,7 @@ class FieldSurveyMainParams {
   final double discoverSiteXp;
   final double discoverSiteAsFirstXp;
   final double explore100mActivelyXp;
-  final double explore1kmPassivelyXp;
+  final double explore100mPassivelyXp;
   final double documentationGenera;
   final double documentationFossil;
   final double documentationCompleteness;
@@ -365,7 +365,7 @@ class FieldSurveyMainParams {
       discoverSiteXp: _asDouble(yaml['discover_site_xp'], 20.0),
       discoverSiteAsFirstXp: _asDouble(yaml['discover_site_as_first_xp'], 20.0),
       explore100mActivelyXp: _asDouble(yaml['explore_100m_actively_xp'], 20.0),
-      explore1kmPassivelyXp: _asDouble(yaml['explore_1km_passively_xp'], 100.0),
+      explore100mPassivelyXp: _asDouble(yaml['explore_100m_passively_xp'], 10.0),
       documentationGenera: _asDouble(yaml['documentation_genera'], 0.01),
       documentationFossil: _asDouble(yaml['documentation_fossil'], 0.01),
       documentationCompleteness: _asDouble(yaml['documentation_completeness'], 0.01),

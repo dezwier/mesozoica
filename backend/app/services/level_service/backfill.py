@@ -14,7 +14,7 @@ from app.services.level_service.award import (
     passive_meters,
     sync_career_from_skills,
     whole_100m,
-    whole_km,
+    whole_10m,
 )
 from app.services.level_service.skills import empty_skill_xp, skill_ids
 
@@ -54,13 +54,14 @@ def compute_skill_xp_from_history(
         round(float(fossil_cfg.main_params.get("locate_fossil_in_situ_xp", 20)))
     )
     active_xp = int(round(float(site_cfg.explore_100m_actively_xp)))
-    passive_xp = int(round(float(site_cfg.explore_1km_passively_xp)))
+    passive_xp_per_100m = float(site_cfg.explore_100m_passively_xp)
     from_sites = int(site_count) * site_xp
     from_fossils = int(fossil_count) * fossil_xp
     active_batches = whole_100m(active_distance_m)
-    passive_km = whole_km(passive_meters(total_distance_m, active_distance_m))
+    # Pro-rata: XP/10 m = rate_per_100m / 10 (10 XP/100 m → 1 XP per 10 m).
+    passive_10m = whole_10m(passive_meters(total_distance_m, active_distance_m))
     from_active = active_batches * active_xp
-    from_passive = passive_km * passive_xp
+    from_passive = int(round(passive_10m * (passive_xp_per_100m / 10.0)))
 
     skill_xp = empty_skill_xp()
     skill_xp["field_survey"] = from_sites + from_active + from_passive
@@ -73,7 +74,7 @@ def compute_skill_xp_from_history(
     if from_active:
         site_breakdown["explore_100m_actively"] = from_active
     if from_passive:
-        site_breakdown["explore_1km_passively"] = from_passive
+        site_breakdown["explore_100m_passively"] = from_passive
     if site_breakdown:
         breakdown["field_survey"] = site_breakdown
     if from_fossils:

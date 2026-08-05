@@ -21,7 +21,7 @@ void main() {
     expect(config.siteDiscovery.discoverSiteXp, 20.0);
     expect(config.siteDiscovery.discoverSiteAsFirstXp, 20.0);
     expect(config.siteDiscovery.explore100mActivelyXp, 20.0);
-    expect(config.siteDiscovery.explore1kmPassivelyXp, 100.0);
+    expect(config.siteDiscovery.explore100mPassivelyXp, 10.0);
     expect(config.siteDiscovery.client.autoDiscoverRadiusM, 20.0);
     expect(config.siteDiscovery.client.cacheRadiusKm, 1.0);
     expect(config.siteDiscovery.client.cacheRefreshMoveThresholdM, 500.0);

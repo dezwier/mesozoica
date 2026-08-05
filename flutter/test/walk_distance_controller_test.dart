@@ -115,6 +115,55 @@ void main() {
     expect(health.queries, isNotEmpty);
   });
 
+  test('Health gap under 10 m credits total but no visit badge', () async {
+    SharedPreferences.setMockInitialValues({
+      'walk_distance_v2_active_m': 1000.0,
+      'walk_distance_v2_active_weekly_m': 200.0,
+      'walk_distance_v2_total_m': 1000.0,
+      'walk_distance_v2_weekly_m': 200.0,
+      'walk_distance_v2_week_start': weekStartIso(),
+      'walk_distance_v2_weekly_schema': 1,
+      'walk_distance_v2_bootstrapped': true,
+      'walk_distance_v2_closed_since':
+          DateTime.now().subtract(const Duration(hours: 1)).toIso8601String(),
+    });
+
+    final health = _FakeHealth(gapMeters: 9);
+    final walk = WalkDistanceController(healthService: health);
+    await walk.refresh(profile: null, force: true);
+
+    expect(walk.totalMeters, 1009);
+    expect(walk.takePendingVisitGapMeters(), isNull);
+  });
+
+  test('Health gap start is clamped to last 7 days', () async {
+    SharedPreferences.setMockInitialValues({
+      'walk_distance_v2_active_m': 1000.0,
+      'walk_distance_v2_active_weekly_m': 200.0,
+      'walk_distance_v2_total_m': 1000.0,
+      'walk_distance_v2_weekly_m': 200.0,
+      'walk_distance_v2_week_start': weekStartIso(),
+      'walk_distance_v2_weekly_schema': 1,
+      'walk_distance_v2_bootstrapped': true,
+      'walk_distance_v2_closed_since':
+          DateTime.now().subtract(const Duration(days: 40)).toIso8601String(),
+    });
+
+    final health = _FakeHealth(gapMeters: 500);
+    final walk = WalkDistanceController(healthService: health);
+    final before = DateTime.now();
+    await walk.refresh(profile: null, force: true);
+    final after = DateTime.now();
+
+    expect(health.queries, isNotEmpty);
+    final start = health.queries.first.$1;
+    final earliestBefore = before.subtract(WalkDistanceController.maxPassiveGap);
+    final earliestAfter = after.subtract(WalkDistanceController.maxPassiveGap);
+    expect(start.isBefore(earliestBefore.subtract(const Duration(seconds: 2))), isFalse);
+    expect(start.isAfter(earliestAfter.add(const Duration(seconds: 2))), isFalse);
+    expect(walk.totalMeters, 1500);
+  });
+
   test('failed Health query keeps closed_since for retry', () async {
     final closed = DateTime.now().subtract(const Duration(hours: 3));
     SharedPreferences.setMockInitialValues({

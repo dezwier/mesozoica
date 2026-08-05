@@ -409,7 +409,7 @@ class FieldSurveyMainParams(BaseModel):
     discover_site_xp: float = 20.0
     discover_site_as_first_xp: float = 20.0
     explore_100m_actively_xp: float = 20.0
-    explore_1km_passively_xp: float = 100.0
+    explore_100m_passively_xp: float = 10.0
     # Stewardship / documentation
     documentation_genera: float = 0.01
     documentation_fossil: float = 0.01
@@ -435,7 +435,7 @@ class FieldSurveyMainParams(BaseModel):
         "discover_site_xp",
         "discover_site_as_first_xp",
         "explore_100m_actively_xp",
-        "explore_1km_passively_xp",
+        "explore_100m_passively_xp",
     )
     @classmethod
     def _validate_positive(cls, value: float) -> float:
@@ -735,8 +735,8 @@ class FieldSurveyConfig(BaseModel):
         return float(self.main_params.explore_100m_actively_xp)
 
     @property
-    def explore_1km_passively_xp(self) -> float:
-        return float(self.main_params.explore_1km_passively_xp)
+    def explore_100m_passively_xp(self) -> float:
+        return float(self.main_params.explore_100m_passively_xp)
 
     @property
     def max_distance_m(self) -> float:

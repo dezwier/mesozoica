@@ -25,7 +25,7 @@ Every announced skill XP gain is shown in **exactly one** of two ways:
 | Presentation | When | Breakdown keys (examples) |
 |--------------|------|---------------------------|
 | **Celebration plaque** | Big events — XP embedded under the celebration title (all XP for that event) | `sites`, `discover_site_as_first`, `fossils`, `document_site`, `document_site_as_first`, `identify_site` |
-| **Floating XP badge** | Small / ongoing events | `explore_100m_actively`, `explore_1km_passively`, `disguise_of_site`, `document_progress` |
+| **Floating XP badge** | Small / ongoing events | `explore_100m_actively`, `explore_100m_passively`, `disguise_of_site`, `document_progress` |
 
 Client routing lives in `flutter/lib/utils/xp_source_labels.dart` and
 `XpAwardController.announceAwards`. Backend award amounts are unchanged by
@@ -100,10 +100,10 @@ name under each main_param. All list entries for the current key apply in order
 | `discover_site_xp` | XP awarded when a site is discovered |
 | `discover_site_as_first_xp` | Bonus XP when you are the first user to discover a site |
 | `explore_100m_actively_xp` | XP per whole 100 m of active walking |
-| `explore_1km_passively_xp` | XP per whole passive kilometer walked |
+| `explore_100m_passively_xp` | Passive rate: XP per 100 m (pro-rata per 10 m) |
 
 `discover_site_xp` solar-period multipliers: day +0%, golden hour +10%, dawn/dusk +20%, night +50%.
-`discover_site_as_first_xp`, `explore_100m_actively_xp`, and `explore_1km_passively_xp` are not affected by time of day.
+`discover_site_as_first_xp`, `explore_100m_actively_xp`, and `explore_100m_passively_xp` are not affected by time of day.
 Visibility / discovery chance: day +10%, golden hour +30%, dawn/dusk +0%, night −40%.
 
 Client-only (not main params): `discovery_reroll_interval_s` — seconds between

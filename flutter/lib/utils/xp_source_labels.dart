@@ -18,7 +18,7 @@ const kXpBreakdownLabels = <String, String>{
   'discover_site': 'Discover site',
   'locate_fossil_in_situ': 'Locate fossil in situ',
   'explore_100m_actively': 'Explore 100m actively',
-  'explore_1km_passively': 'Explore 1km passively',
+  'explore_100m_passively': 'Explore 100m passively',
   'disguise_of_site': 'Disguise of site',
   'document_progress': 'Document progress',
   'document_site': 'Document site',
@@ -100,5 +100,5 @@ String exploredSinceLastVisitLabel(double meters) {
 /// Breakdown keys for walk-distance XP (active GPS / passive Health).
 const kDistanceXpSourceKeys = <String>{
   'explore_100m_actively',
-  'explore_1km_passively',
+  'explore_100m_passively',
 };

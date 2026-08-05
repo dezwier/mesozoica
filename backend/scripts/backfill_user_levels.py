@@ -47,7 +47,7 @@ def main() -> int:
         site_cfg.discover_site_xp,
         fossil_cfg.main_params.get("locate_fossil_in_situ_xp"),
         site_cfg.explore_100m_actively_xp,
-        site_cfg.explore_1km_passively_xp,
+        site_cfg.explore_100m_passively_xp,
     )
 
     with Session(engine) as session:

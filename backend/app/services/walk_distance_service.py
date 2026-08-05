@@ -88,17 +88,17 @@ def apply_distance_update(
         award_distance_xp,
         passive_meters,
         whole_100m,
-        whole_km,
+        whole_10m,
     )
 
     prev_active_batches = whole_100m(previous_active)
     new_active_batches = whole_100m(new_active)
-    prev_passive_km = whole_km(passive_meters(previous_total, previous_active))
-    new_passive_km = whole_km(passive_meters(new_total, new_active))
+    prev_passive_10m = whole_10m(passive_meters(previous_total, previous_active))
+    new_passive_10m = whole_10m(passive_meters(new_total, new_active))
     award_distance_xp(
         user,
         active_100m_delta=new_active_batches - prev_active_batches,
-        passive_km_delta=new_passive_km - prev_passive_km,
+        passive_10m_delta=new_passive_10m - prev_passive_10m,
     )
 
     session.add(user)

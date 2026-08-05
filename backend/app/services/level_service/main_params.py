@@ -177,7 +177,7 @@ def resolve_field_survey_main_params(
             "discover_site_as_first_xp", base=float(mp.discover_site_as_first_xp)
         ),
         "explore_100m_actively_xp": _resolve("explore_100m_actively_xp", base=float(mp.explore_100m_actively_xp)),
-        "explore_1km_passively_xp": _resolve("explore_1km_passively_xp", base=float(mp.explore_1km_passively_xp)),
+        "explore_100m_passively_xp": _resolve("explore_100m_passively_xp", base=float(mp.explore_100m_passively_xp)),
         "documentation_genera": _resolve(
             "documentation_genera", base=float(mp.documentation_genera), clamp_unit=True
         ),
@@ -245,7 +245,7 @@ def resolve_site_discovery_main_params(
         "discover_site_xp",
         "discover_site_as_first_xp",
         "explore_100m_actively_xp",
-        "explore_1km_passively_xp",
+        "explore_100m_passively_xp",
     )
     return {k: full[k] for k in keys}
 

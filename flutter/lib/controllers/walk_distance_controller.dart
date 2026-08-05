@@ -63,6 +63,12 @@ class WalkDistanceController extends ChangeNotifier {
   static const _keyWeeklySchema = '${_prefsPrefix}_weekly_schema';
   static const _weeklySchemaVersion = 1;
 
+  /// Health gap older than this is ignored (only last N days count).
+  static const maxPassiveGap = Duration(days: 7);
+
+  /// Below this, no visit badge and server grants 0 passive XP for the slice.
+  static const minPassiveBadgeMeters = 10.0;
+
   final HealthDistanceService _health;
   final ApiClient _api;
   final GpsOdometer _odometer;
@@ -317,12 +323,17 @@ class WalkDistanceController extends ChangeNotifier {
   Future<void> _creditHealthGap({Profile? profile}) async {
     final now = DateTime.now();
     final closedSince = _closedSince;
+    final earliest = now.subtract(maxPassiveGap);
 
     if (!_bootstrappedFromHealth &&
         _totalMeters <= 0 &&
         profile?.createdAt != null) {
+      // First-time seed: only last 7 days (not full account history).
+      final seedStart = profile!.createdAt!.isBefore(earliest)
+          ? earliest
+          : profile.createdAt!;
       final seeded = await _health.distanceMeters(
-        start: profile!.createdAt!,
+        start: seedStart,
         end: now,
       );
       if (seeded == null) {
@@ -339,6 +350,9 @@ class WalkDistanceController extends ChangeNotifier {
         _bootstrappedFromHealth = true;
         _closedSince = null;
         _permission = HealthDistancePermission.granted;
+        if (seeded >= minPassiveBadgeMeters) {
+          _pendingVisitGapMeters = seeded;
+        }
         return;
       }
     }
@@ -349,16 +363,17 @@ class WalkDistanceController extends ChangeNotifier {
       return;
     }
 
-    final gap = await _health.distanceMeters(start: closedSince, end: now);
+    final gapStart =
+        closedSince.isBefore(earliest) ? earliest : closedSince;
+    final gap = await _health.distanceMeters(start: gapStart, end: now);
     // Keep the stamp when the query fails so the next open can retry.
     if (gap == null) return;
     _closedSince = null;
     if (gap <= 0) return;
 
-    _pendingVisitGapMeters = gap;
     _totalMeters += gap;
     final weekStart = localWeekStartMonday(now);
-    if (!closedSince.isBefore(weekStart)) {
+    if (!gapStart.isBefore(weekStart)) {
       _weeklyMeters += gap;
     } else if (now.isAfter(weekStart)) {
       final weekGap = await _health.distanceMeters(start: weekStart, end: now);
@@ -368,6 +383,10 @@ class WalkDistanceController extends ChangeNotifier {
     }
     _bootstrappedFromHealth = true;
     _permission = HealthDistancePermission.granted;
+    // Visit badge + XP only from 10 m up (1 XP at base rate).
+    if (gap >= minPassiveBadgeMeters) {
+      _pendingVisitGapMeters = gap;
+    }
   }
 
   void _rolloverWeekIfNeeded() {

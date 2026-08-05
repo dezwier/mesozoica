@@ -303,12 +303,16 @@ def award_distance_xp(
     user: User,
     *,
     active_100m_delta: int,
-    passive_km_delta: int,
+    passive_10m_delta: int,
     weather_time: str | None = None,
     weather_type: str | None = None,
     tool_mods: Mapping[str, ParamModifier] | None = None,
 ) -> int:
-    """Award site-discovery XP for active 100 m / passive km floor increases."""
+    """Award site-discovery XP for active 100 m / passive 10 m floor increases.
+
+    Passive rate is [explore_100m_passively_xp] per 100 m → XP/10 m = rate / 10
+    (e.g. 10 XP/100 m → 1 XP per 10 m). Gaps under 10 m grant nothing.
+    """
     skill_level = level_for_xp(get_skill_xp(user, "field_survey"))
     resolved = resolve_site_discovery_main_params(
         skill_level=skill_level,
@@ -319,7 +323,9 @@ def award_distance_xp(
     active_add = max(0, int(active_100m_delta)) * _xp_int(
         resolved["explore_100m_actively_xp"]
     )
-    passive_add = max(0, int(passive_km_delta)) * _xp_int(resolved["explore_1km_passively_xp"])
+    # Pro-rata: explore_100m_passively_xp is XP per 100 m → per 10 m unit.
+    xp_per_10m = float(resolved["explore_100m_passively_xp"]) / 10.0
+    passive_add = int(round(max(0, int(passive_10m_delta)) * xp_per_10m))
     total = active_add + passive_add
     if total <= 0:
         return 0
@@ -327,7 +333,7 @@ def award_distance_xp(
     if active_add:
         breakdown["explore_100m_actively"] = active_add
     if passive_add:
-        breakdown["explore_1km_passively"] = passive_add
+        breakdown["explore_100m_passively"] = passive_add
     return award_skill_xp(
         user,
         "field_survey",
@@ -338,6 +344,11 @@ def award_distance_xp(
 
 def whole_100m(meters: float) -> int:
     return max(0, int(meters) // 100)
+
+
+def whole_10m(meters: float) -> int:
+    """Whole 10 m batches (passive XP unit; &lt; 10 m → 0)."""
+    return max(0, int(meters) // 10)
 
 
 def whole_km(meters: float) -> int:

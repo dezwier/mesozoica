@@ -29,7 +29,7 @@ def test_resolve_site_discovery_identity_level() -> None:
     assert resolved["discover_site_xp"] == cfg.discover_site_xp
     assert resolved["discover_site_as_first_xp"] == cfg.discover_site_as_first_xp
     assert resolved["explore_100m_actively_xp"] == cfg.explore_100m_actively_xp
-    assert resolved["explore_1km_passively_xp"] == cfg.explore_1km_passively_xp
+    assert resolved["explore_100m_passively_xp"] == cfg.explore_100m_passively_xp
 
 
 def test_resolve_site_discovery_tool_replace() -> None:
@@ -74,7 +74,7 @@ def test_resolve_discover_site_xp_weather_time() -> None:
         )
         assert resolved["discover_site_as_first_xp"] == pytest.approx(cfg.discover_site_as_first_xp)
         assert resolved["explore_100m_actively_xp"] == pytest.approx(cfg.explore_100m_actively_xp)
-        assert resolved["explore_1km_passively_xp"] == pytest.approx(cfg.explore_1km_passively_xp)
+        assert resolved["explore_100m_passively_xp"] == pytest.approx(cfg.explore_100m_passively_xp)
 
 
 def test_resolve_fossil_detection_xp_weather_time() -> None:

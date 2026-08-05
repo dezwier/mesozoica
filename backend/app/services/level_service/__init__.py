@@ -16,6 +16,7 @@ from app.services.level_service.award import (
     passive_meters,
     sync_career_from_skills,
     whole_100m,
+    whole_10m,
     whole_km,
 )
 from app.services.level_service.backfill import backfill_all_users, backfill_user_levels
@@ -77,6 +78,7 @@ __all__ = [
     "sync_career_from_skills",
     "total_skill_xp",
     "whole_100m",
+    "whole_10m",
     "whole_km",
     "xp_for_level",
     "xp_to_next_level",

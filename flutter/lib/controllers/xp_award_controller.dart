@@ -129,13 +129,13 @@ class XpAwardController extends ChangeNotifier {
   /// Like [announceAwards], but distance XP from a closed-app gap is merged into
   /// one badge titled "Explored … since last visit".
   ///
-  /// Shown whenever [exploredMeters] &gt; 0 (even if XP is 0). When meters are
-  /// 0, behaves like [announceAwards].
+  /// Shown when [exploredMeters] ≥ 10 (even if XP is 0). Smaller gaps fall
+  /// through to normal announce (no visit chip).
   void announceAwardsAfterVisit({
     required Iterable<XpAward> awards,
     required double exploredMeters,
   }) {
-    if (exploredMeters <= 0) {
+    if (exploredMeters < 10) {
       announceAwards(awards);
       return;
     }
@@ -163,7 +163,7 @@ class XpAwardController extends ChangeNotifier {
             skillName: 'Field Survey',
             sourceLabel: '',
             amount: 0,
-            sourceKey: 'explore_1km_passively',
+            sourceKey: 'explore_100m_passively',
           );
 
     _enqueueVisitAware([

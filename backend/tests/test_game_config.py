@@ -114,7 +114,7 @@ def test_load_game_config_matches_current_defaults() -> None:
     assert config.site_discovery.discover_site_xp == 20.0
     assert config.site_discovery.discover_site_as_first_xp == 20.0
     assert config.site_discovery.explore_100m_actively_xp == 20.0
-    assert config.site_discovery.explore_1km_passively_xp == 100.0
+    assert config.site_discovery.explore_100m_passively_xp == 10.0
     assert config.site_discovery.client.auto_discover_radius_m == 20.0
     assert config.site_discovery.client.cache_radius_km == 1.0
     assert config.site_discovery.client.cache_refresh_move_threshold_m == 500.0

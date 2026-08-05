@@ -152,7 +152,7 @@ abstract final class WeatherDisplay {
       'identify_site_xp': 'Identify site',
       'document_site_as_first_xp': 'Document site as first',
       'explore_100m_actively_xp': 'Explore 100m actively',
-      'explore_1km_passively_xp': 'Explore 1km passively',
+      'explore_100m_passively_xp': 'Explore 100m passively',
       'locate_fossil_in_situ_xp': 'Locate fossil in situ',
       'documentation_genera': 'Documentation genera',
       'documentation_fossil': 'Documentation fossil',

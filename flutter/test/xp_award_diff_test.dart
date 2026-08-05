@@ -29,7 +29,7 @@ void main() {
 
     test('marks badge-only keys', () {
       expect(isCelebrationXpSource('explore_100m_actively'), isFalse);
-      expect(isCelebrationXpSource('explore_1km_passively'), isFalse);
+      expect(isCelebrationXpSource('explore_100m_passively'), isFalse);
       expect(isCelebrationXpSource('disguise_of_site'), isFalse);
       expect(isCelebrationXpSource('document_progress'), isFalse);
       expect(isCelebrationXpSource(''), isFalse);
@@ -203,7 +203,7 @@ void main() {
       final controller = XpAwardController();
       controller.announceAwardsAfterVisit(
         awards: [
-          award(sourceKey: 'explore_1km_passively', amount: 100),
+          award(sourceKey: 'explore_100m_passively', amount: 100),
           award(sourceKey: 'explore_100m_actively', amount: 40),
           award(sourceKey: 'disguise_of_site', amount: 10),
         ],
@@ -237,15 +237,27 @@ void main() {
       expect(controller.activeAwards.single.amount, 0);
     });
 
+    test('visit announce with under 10 m falls back to normal announce', () {
+      final controller = XpAwardController();
+      controller.announceAwardsAfterVisit(
+        awards: [award(sourceKey: 'explore_100m_passively', amount: 1)],
+        exploredMeters: 9,
+      );
+
+      expect(controller.activeAwards, hasLength(1));
+      expect(controller.activeAwards.single.sourceLabel, 'Explore 100m passively');
+      expect(controller.activeAwards.single.amount, 1);
+    });
+
     test('visit announce with 0 meters falls back to normal announce', () {
       final controller = XpAwardController();
       controller.announceAwardsAfterVisit(
-        awards: [award(sourceKey: 'explore_1km_passively', amount: 100)],
+        awards: [award(sourceKey: 'explore_100m_passively', amount: 100)],
         exploredMeters: 0,
       );
 
       expect(controller.activeAwards, hasLength(1));
-      expect(controller.activeAwards.single.sourceLabel, 'Explore 1km passively');
+      expect(controller.activeAwards.single.sourceLabel, 'Explore 100m passively');
     });
 
     test('clear empties active badges and celebration stash', () {
