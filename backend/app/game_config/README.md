@@ -110,7 +110,7 @@ name under each main_param. All list entries for the current key apply in order
 | `explore_100m_actively_xp` | XP per whole 100 m of active walking |
 | `explore_100m_passively_xp` | Passive rate: XP per 100 m (pro-rata per 10 m) |
 
-`discover_site_xp` solar-period multipliers: day +0%, golden hour +10%, dawn/dusk +20%, night +50%.
+`discover_site_xp` solar-period multipliers: day +0%, golden hour +30%, dawn/dusk +10%, night +20%.
 `discover_site_as_first_xp`, `explore_100m_actively_xp`, and `explore_100m_passively_xp` are not affected by time of day.
 Visibility / discovery chance: day +10%, golden hour +30%, dawn/dusk +0%, night −40%.
 
@@ -130,8 +130,8 @@ multipliers (see `weather_time_modifiers` / `weather_type_modifiers` in this YAM
 |------------|---------|
 | `locate_fossil_in_situ_xp` | XP awarded when a fossil is discovered / granted in situ |
 
-Same solar-period XP multipliers as site discovery (day +0%, golden hour +10%,
-dawn/dusk +20%, night +50%).
+Same solar-period XP multipliers as site discovery (day +0%, golden hour +30%,
+dawn/dusk +10%, night +20%).
 
 ### Site Stewardship (`02_site_stewardship.yaml`)
 

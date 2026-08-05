@@ -94,18 +94,18 @@ def test_resolve_discover_site_xp_weather_time() -> None:
     golden = resolve_site_discovery_main_params(
         skill_level=1, weather_time="golden_hour"
     )
-    assert golden["discover_site_xp"] == pytest.approx(base * 1.1)
+    assert golden["discover_site_xp"] == pytest.approx(base * 1.3)
 
     dusk = resolve_site_discovery_main_params(skill_level=1, weather_time="dusk")
-    assert dusk["discover_site_xp"] == pytest.approx(base * 1.2)
+    assert dusk["discover_site_xp"] == pytest.approx(base * 1.1)
 
     dawn = resolve_site_discovery_main_params(skill_level=1, weather_time="dawn")
-    assert dawn["discover_site_xp"] == pytest.approx(base * 1.2)
+    assert dawn["discover_site_xp"] == pytest.approx(base * 1.1)
 
     night = resolve_site_discovery_main_params(
         skill_level=1, weather_time="night"
     )
-    assert night["discover_site_xp"] == pytest.approx(base * 1.5)
+    assert night["discover_site_xp"] == pytest.approx(base * 1.2)
 
     # discover_site_as_first / walk km XP are time-invariant.
     for period in ("day", "golden_hour", "dawn", "dusk", "night"):
@@ -131,7 +131,7 @@ def test_resolve_fossil_detection_xp_weather_time() -> None:
     night = resolve_fossil_detection_main_params(
         skill_level=1, weather_time="night"
     )
-    assert night["locate_fossil_in_situ_xp"] == pytest.approx(base * 1.5)
+    assert night["locate_fossil_in_situ_xp"] == pytest.approx(base * 1.2)
 
 
 def test_resolve_site_discovery_weather_time_visibility() -> None:
@@ -180,19 +180,19 @@ def test_resolve_site_stewardship_weather_time_mirrors_discovery() -> None:
         skill_level=1, weather_time="golden_hour"
     )
     assert golden["documentation_distance_m"] == pytest.approx(vis * 1.3)
-    assert golden["document_progress_xp"] == pytest.approx(xp * 1.1)
+    assert golden["document_progress_xp"] == pytest.approx(xp * 1.3)
 
     dusk = resolve_site_stewardship_main_params(
         skill_level=1, weather_time="dusk"
     )
     assert dusk["documentation_distance_m"] == pytest.approx(vis)
-    assert dusk["document_progress_xp"] == pytest.approx(xp * 1.2)
+    assert dusk["document_progress_xp"] == pytest.approx(xp * 1.1)
 
     night = resolve_site_stewardship_main_params(
         skill_level=1, weather_time="night"
     )
     assert night["documentation_distance_m"] == pytest.approx(vis * 0.6)
-    assert night["document_progress_xp"] == pytest.approx(xp * 1.5)
+    assert night["document_progress_xp"] == pytest.approx(xp * 1.2)
 
 
 def test_resolve_site_discovery_weather_type_visibility() -> None:

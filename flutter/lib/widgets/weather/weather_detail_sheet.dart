@@ -21,8 +21,6 @@ void showWeatherDetailSheet(BuildContext context) {
   );
 }
 
-enum _ImpactView { skillParams, xpSources }
-
 enum _AmbientAxis { timeOfDay, temperature, weather }
 
 /// Full weather report + gameplay impact boxes for time, temperature, weather.
@@ -43,10 +41,16 @@ class WeatherDetailDrawer extends StatefulWidget {
 class _WeatherDetailDrawerState extends State<WeatherDetailDrawer> {
   String? _selectedSkillId;
   _AmbientAxis _axis = _AmbientAxis.timeOfDay;
+  String? _previewTime;
+  String? _previewWeather;
 
   List<LevelingSkillConfig> get _skills {
     if (!GameConfig.isLoaded) return const [];
-    return GameConfig.instance.leveling.skills;
+    // Science Hall has no weather/time impacts — omit from this report.
+    return [
+      for (final skill in GameConfig.instance.leveling.skills)
+        if (skill.id != 'science_hall') skill,
+    ];
   }
 
   String get _skillId {
@@ -57,6 +61,28 @@ class _WeatherDetailDrawerState extends State<WeatherDetailDrawer> {
       return selected;
     }
     return skills.first.id;
+  }
+
+  String _selectedTime(WeatherStatus status) {
+    final preview = _previewTime;
+    if (preview != null && WeatherDisplay.weatherTimes.contains(preview)) {
+      return preview;
+    }
+    return status.weatherTime;
+  }
+
+  String _selectedWeather(WeatherStatus status) {
+    final preview = _previewWeather;
+    final normalized = preview == 'sunny' ? 'clear' : preview;
+    if (normalized != null &&
+        WeatherDisplay.weatherTypes.contains(normalized)) {
+      return normalized;
+    }
+    final current =
+        status.weatherType == 'sunny' ? 'clear' : status.weatherType;
+    return WeatherDisplay.weatherTypes.contains(current)
+        ? current
+        : WeatherDisplay.weatherTypes.first;
   }
 
   @override
@@ -133,14 +159,21 @@ class _WeatherDetailDrawerState extends State<WeatherDetailDrawer> {
   Widget _selectedImpactCard(WeatherStatus status, String skillId) {
     switch (_axis) {
       case _AmbientAxis.timeOfDay:
+        final selected = _selectedTime(status);
         return _ImpactSectionCard(
           icon: Icons.schedule,
           title: 'Time of day',
-          subtitle: WeatherDisplay.timeLabelWithClock(status.weatherTime),
           groups: _impactGroupsForSkill(
             skillId,
-            _weatherTimeImpactBySkill(status.weatherTime),
+            _weatherTimeImpactBySkill(selected),
           ),
+          optionKeys: WeatherDisplay.optionsWithCurrentFirst(
+            WeatherDisplay.weatherTimes,
+            status.weatherTime,
+          ),
+          selectedOption: selected,
+          optionLabel: WeatherDisplay.timeLabel,
+          onOptionChanged: (key) => setState(() => _previewTime = key),
         );
       case _AmbientAxis.temperature:
         return _ImpactSectionCard(
@@ -151,14 +184,22 @@ class _WeatherDetailDrawerState extends State<WeatherDetailDrawer> {
           emptyLabel: 'No temperature parameter impacts yet',
         );
       case _AmbientAxis.weather:
+        final selected = _selectedWeather(status);
         return _ImpactSectionCard(
-          icon: WeatherDisplay.weatherIcon(status.weatherType),
+          icon: WeatherDisplay.weatherIcon(selected),
           title: 'Weather',
-          subtitle: WeatherDisplay.weatherLabel(status.weatherType),
           groups: _impactGroupsForSkill(
             skillId,
-            _weatherTypeImpactBySkill(status.weatherType),
+            _weatherTypeImpactBySkill(selected),
           ),
+          optionKeys: WeatherDisplay.optionsWithCurrentFirst(
+            WeatherDisplay.weatherTypes,
+            status.weatherType == 'sunny' ? 'clear' : status.weatherType,
+          ),
+          selectedOption: selected,
+          optionLabel: WeatherDisplay.weatherLabel,
+          optionIcon: WeatherDisplay.weatherIcon,
+          onOptionChanged: (key) => setState(() => _previewWeather = key),
           emptyLabel: 'No weather-type parameter impacts',
         );
     }
@@ -177,54 +218,61 @@ class _WeatherDetailDrawerState extends State<WeatherDetailDrawer> {
   ) =>
       bySkill[skillId] ?? const _ImpactGroups();
 
-  /// Skill → param groups for [period] (drawer order; ±0% if none).
+  /// Skill → param groups for [period] (only params affected by some period).
   static Map<String, _ImpactGroups> _weatherTimeImpactBySkill(String period) {
     if (!GameConfig.isLoaded) return const {};
     final game = GameConfig.instance;
-    return _ambientImpactBySkill(period, [
-      (
-        'field_survey',
-        game.fieldSurvey.weatherTimeModifiers,
-        WeatherDisplay.fieldSurveySkillParamKeys,
-        WeatherDisplay.fieldSurveyXpParamKeys,
-      ),
-      for (final stub in _skillStubs(game))
+    return _ambientImpactBySkill(
+      period,
+      WeatherDisplay.weatherTimes,
+      [
         (
-          stub.skillId,
-          stub.weatherTimeModifiers,
-          _stubSkillParamKeys(stub),
-          _stubXpParamKeys(stub),
+          'field_survey',
+          game.fieldSurvey.weatherTimeModifiers,
+          WeatherDisplay.fieldSurveySkillParamKeys,
+          WeatherDisplay.fieldSurveyXpParamKeys,
         ),
-    ]);
+        for (final stub in _skillStubs(game))
+          (
+            stub.skillId,
+            stub.weatherTimeModifiers,
+            _stubSkillParamKeys(stub),
+            _stubXpParamKeys(stub),
+          ),
+      ],
+    );
   }
 
-  /// Skill → param groups for [weatherType] (drawer order; ±0% if none).
+  /// Skill → param groups for [weatherType] (only params affected by some type).
   static Map<String, _ImpactGroups> _weatherTypeImpactBySkill(
     String weatherType,
   ) {
     if (!GameConfig.isLoaded) return const {};
     final key = weatherType == 'sunny' ? 'clear' : weatherType;
     final game = GameConfig.instance;
-    return _ambientImpactBySkill(key, [
-      (
-        'field_survey',
-        game.fieldSurvey.weatherTypeModifiers,
-        WeatherDisplay.fieldSurveySkillParamKeys,
-        WeatherDisplay.fieldSurveyXpParamKeys,
-      ),
-      for (final stub in _skillStubs(game))
+    return _ambientImpactBySkill(
+      key,
+      WeatherDisplay.weatherTypes,
+      [
         (
-          stub.skillId,
-          stub.weatherTypeModifiers,
-          _stubSkillParamKeys(stub),
-          _stubXpParamKeys(stub),
+          'field_survey',
+          game.fieldSurvey.weatherTypeModifiers,
+          WeatherDisplay.fieldSurveySkillParamKeys,
+          WeatherDisplay.fieldSurveyXpParamKeys,
         ),
-    ]);
+        for (final stub in _skillStubs(game))
+          (
+            stub.skillId,
+            stub.weatherTypeModifiers,
+            _stubSkillParamKeys(stub),
+            _stubXpParamKeys(stub),
+          ),
+      ],
+    );
   }
 
   static List<SkillStubConfig> _skillStubs(GameConfig game) => [
         game.boneQuarry,
-        game.scienceHall,
       ];
 
   static List<String> _stubSkillParamKeys(SkillStubConfig stub) => [
@@ -237,8 +285,34 @@ class _WeatherDetailDrawerState extends State<WeatherDetailDrawer> {
           if (key.endsWith('_xp')) key,
       ];
 
+  static bool _modsHaveEffect(List<ParamModifier> mods) {
+    if (mods.isEmpty) return false;
+    for (final mod in mods) {
+      if (mod.op == 'multiply' && (mod.value - 1.0).abs() < 1e-9) continue;
+      if (mod.op == 'add' && mod.value.abs() < 1e-9) continue;
+      return true;
+    }
+    return false;
+  }
+
+  static bool _paramAffectedByAny(
+    Map<String, Map<String, List<ParamModifier>>> modifiers,
+    String paramKey,
+    List<String> optionKeys,
+  ) {
+    final byOption = modifiers[paramKey];
+    if (byOption == null || byOption.isEmpty) return false;
+    for (final option in optionKeys) {
+      if (_modsHaveEffect(byOption[option] ?? const <ParamModifier>[])) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   static Map<String, _ImpactGroups> _ambientImpactBySkill(
     String key,
+    List<String> allOptionKeys,
     List<
         (
           String,
@@ -249,9 +323,19 @@ class _WeatherDetailDrawerState extends State<WeatherDetailDrawer> {
   ) {
     final out = <String, _ImpactGroups>{};
     for (final (skillId, modifiers, skillKeys, xpKeys) in sources) {
+      final activeSkillKeys = [
+        for (final paramKey in skillKeys)
+          if (_paramAffectedByAny(modifiers, paramKey, allOptionKeys))
+            paramKey,
+      ];
+      final activeXpKeys = [
+        for (final paramKey in xpKeys)
+          if (_paramAffectedByAny(modifiers, paramKey, allOptionKeys))
+            paramKey,
+      ];
       out[skillId] = _ImpactGroups(
         skillParams: [
-          for (final paramKey in skillKeys)
+          for (final paramKey in activeSkillKeys)
             _ImpactRow(
               paramLabel: WeatherDisplay.paramLabel(paramKey),
               effect: _formatAmbientEffect(
@@ -260,7 +344,7 @@ class _WeatherDetailDrawerState extends State<WeatherDetailDrawer> {
             ),
         ],
         xpSources: [
-          for (final paramKey in xpKeys)
+          for (final paramKey in activeXpKeys)
             _ImpactRow(
               paramLabel: WeatherDisplay.paramLabel(paramKey),
               effect: _formatAmbientEffect(
@@ -614,43 +698,42 @@ class _WeatherHero extends StatelessWidget {
 }
 
 /// Profile-style section card listing parameter impacts for one weather axis.
-class _ImpactSectionCard extends StatefulWidget {
+class _ImpactSectionCard extends StatelessWidget {
   const _ImpactSectionCard({
     required this.icon,
     required this.title,
-    required this.subtitle,
     required this.groups,
+    this.subtitle,
     this.emptyLabel = 'No impacts right now',
+    this.optionKeys,
+    this.selectedOption,
+    this.optionLabel,
+    this.optionIcon,
+    this.onOptionChanged,
   });
 
   final IconData icon;
   final String title;
-  final String subtitle;
+  final String? subtitle;
   final _ImpactGroups groups;
   final String emptyLabel;
-
-  @override
-  State<_ImpactSectionCard> createState() => _ImpactSectionCardState();
-}
-
-class _ImpactSectionCardState extends State<_ImpactSectionCard> {
-  _ImpactView _view = _ImpactView.skillParams;
+  final List<String>? optionKeys;
+  final String? selectedOption;
+  final String Function(String key)? optionLabel;
+  final IconData Function(String key)? optionIcon;
+  final ValueChanged<String>? onOptionChanged;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final groups = widget.groups;
     final hasSkill = groups.skillParams.isNotEmpty;
     final hasXp = groups.xpSources.isNotEmpty;
-    final canToggle = hasSkill && hasXp;
-    final view = !canToggle
-        ? (hasXp && !hasSkill
-            ? _ImpactView.xpSources
-            : _ImpactView.skillParams)
-        : _view;
-    final rows = view == _ImpactView.xpSources
-        ? groups.xpSources
-        : groups.skillParams;
+    final optionKeys = this.optionKeys;
+    final hasOptions = optionKeys != null &&
+        optionKeys.isNotEmpty &&
+        selectedOption != null &&
+        optionLabel != null &&
+        onOptionChanged != null;
 
     return Card(
       elevation: 1,
@@ -670,68 +753,63 @@ class _ImpactSectionCardState extends State<_ImpactSectionCard> {
           children: [
             Row(
               children: [
-                Icon(widget.icon, color: scheme.primary, size: 20),
+                Icon(icon, color: scheme.primary, size: 20),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    widget.title,
+                    title,
                     style: Theme.of(context).textTheme.titleSmall?.copyWith(
                           fontWeight: FontWeight.w600,
                         ),
                   ),
                 ),
-                Text(
-                  widget.subtitle,
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        color: scheme.primary,
-                        fontWeight: FontWeight.w700,
-                      ),
-                ),
+                if (hasOptions)
+                  _OptionDropdown(
+                    keys: optionKeys,
+                    selected: selectedOption!,
+                    labelOf: optionLabel!,
+                    iconOf: optionIcon,
+                    onChanged: onOptionChanged!,
+                  )
+                else if (subtitle != null)
+                  Text(
+                    subtitle!,
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          color: scheme.primary,
+                          fontWeight: FontWeight.w700,
+                        ),
+                  ),
               ],
             ),
-            if (canToggle) ...[
-              const SizedBox(height: 10),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: _ImpactViewToggle(
-                  selected: view,
-                  onChanged: (next) => setState(() => _view = next),
-                ),
-              ),
-            ],
             const SizedBox(height: 12),
-            if (groups.isEmpty || rows.isEmpty)
+            if (!hasSkill && !hasXp)
               Text(
-                widget.emptyLabel,
+                emptyLabel,
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       color: scheme.onSurfaceVariant,
                     ),
               )
-            else
-              for (var i = 0; i < rows.length; i++) ...[
-                if (i > 0) const SizedBox(height: 10),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: Text(
-                        rows[i].paramLabel,
-                        style: Theme.of(context).textTheme.bodyMedium,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      rows[i].effect,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: rows[i].effect == '±0%'
-                                ? scheme.onSurfaceVariant
-                                : scheme.primary,
-                            fontWeight: FontWeight.w600,
-                          ),
-                    ),
-                  ],
+            else ...[
+              if (hasSkill)
+                _ImpactParamBlock(
+                  title: 'Skill parameters',
+                  rows: groups.skillParams,
                 ),
+              if (hasSkill && hasXp) ...[
+                const SizedBox(height: 12),
+                Divider(
+                  height: 1,
+                  thickness: 1,
+                  color: scheme.outlineVariant.withValues(alpha: 0.55),
+                ),
+                const SizedBox(height: 12),
               ],
+              if (hasXp)
+                _ImpactParamBlock(
+                  title: 'XP sources',
+                  rows: groups.xpSources,
+                ),
+            ],
           ],
         ),
       ),
@@ -739,86 +817,139 @@ class _ImpactSectionCardState extends State<_ImpactSectionCard> {
   }
 }
 
-class _ImpactViewToggle extends StatelessWidget {
-  const _ImpactViewToggle({
-    required this.selected,
-    required this.onChanged,
+class _ImpactParamBlock extends StatelessWidget {
+  const _ImpactParamBlock({
+    required this.title,
+    required this.rows,
   });
 
-  final _ImpactView selected;
-  final ValueChanged<_ImpactView> onChanged;
+  final String title;
+  final List<_ImpactRow> rows;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return Container(
-      padding: const EdgeInsets.all(2),
-      decoration: BoxDecoration(
-        color: scheme.surface.withValues(alpha: 0.9),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _ImpactToggleSegment(
-            label: 'Params',
-            selected: selected == _ImpactView.skillParams,
-            onTap: () => onChanged(_ImpactView.skillParams),
-          ),
-          _ImpactToggleSegment(
-            label: 'XP',
-            selected: selected == _ImpactView.xpSources,
-            onTap: () => onChanged(_ImpactView.xpSources),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ImpactToggleSegment extends StatelessWidget {
-  const _ImpactToggleSegment({
-    required this.label,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 140),
-        curve: Curves.easeOut,
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-        decoration: BoxDecoration(
-          color: selected ? scheme.surfaceContainerHighest : Colors.transparent,
-          borderRadius: BorderRadius.circular(6),
-          boxShadow: selected
-              ? [
-                  BoxShadow(
-                    color: scheme.shadow.withValues(alpha: 0.12),
-                    blurRadius: 2,
-                    offset: const Offset(0, 1),
-                  ),
-                ]
-              : null,
-        ),
-        child: Text(
-          label,
-          style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                color: selected ? scheme.onSurface : scheme.onSurfaceVariant,
-                fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                height: 1.1,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          title,
+          style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                color: scheme.onSurfaceVariant,
+                fontWeight: FontWeight.w600,
               ),
         ),
+        const SizedBox(height: 8),
+        for (var i = 0; i < rows.length; i++) ...[
+          if (i > 0) const SizedBox(height: 10),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Text(
+                  rows[i].paramLabel,
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                rows[i].effect,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: rows[i].effect == '±0%'
+                          ? scheme.onSurfaceVariant
+                          : scheme.primary,
+                      fontWeight: FontWeight.w600,
+                    ),
+              ),
+            ],
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _OptionDropdown extends StatelessWidget {
+  const _OptionDropdown({
+    required this.keys,
+    required this.selected,
+    required this.labelOf,
+    required this.onChanged,
+    this.iconOf,
+  });
+
+  final List<String> keys;
+  final String selected;
+  final String Function(String key) labelOf;
+  final IconData Function(String key)? iconOf;
+  final ValueChanged<String> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return DropdownButtonHideUnderline(
+      child: DropdownButton<String>(
+        value: selected,
+        isDense: true,
+        borderRadius: BorderRadius.circular(10),
+        icon: Icon(
+          Icons.expand_more,
+          size: 18,
+          color: scheme.primary,
+        ),
+        style: Theme.of(context).textTheme.titleSmall?.copyWith(
+              color: scheme.primary,
+              fontWeight: FontWeight.w700,
+            ),
+        selectedItemBuilder: (context) => [
+          for (final key in keys)
+            Align(
+              alignment: Alignment.centerRight,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (iconOf != null) ...[
+                    Icon(iconOf!(key), size: 16, color: scheme.primary),
+                    const SizedBox(width: 6),
+                  ],
+                  Text(labelOf(key)),
+                ],
+              ),
+            ),
+        ],
+        items: [
+          for (final key in keys)
+            DropdownMenuItem<String>(
+              value: key,
+              child: Row(
+                children: [
+                  if (iconOf != null) ...[
+                    Icon(
+                      iconOf!(key),
+                      size: 16,
+                      color: key == selected
+                          ? scheme.primary
+                          : scheme.onSurfaceVariant,
+                    ),
+                    const SizedBox(width: 8),
+                  ],
+                  Text(
+                    labelOf(key),
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          fontWeight: key == selected
+                              ? FontWeight.w700
+                              : FontWeight.w500,
+                        ),
+                  ),
+                ],
+              ),
+            ),
+        ],
+        onChanged: (value) {
+          if (value != null) onChanged(value);
+        },
       ),
     );
   }
 }
+

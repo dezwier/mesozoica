@@ -134,11 +134,11 @@ def test_load_game_config_matches_current_defaults() -> None:
     night_xp = config.site_discovery.weather_time_modifiers["discover_site_xp"][
         "night"
     ]
-    assert night_xp[0].op == "multiply" and night_xp[0].value == 1.5
+    assert night_xp[0].op == "multiply" and night_xp[0].value == 1.2
     dawn_xp = config.fossil_detection.weather_time_modifiers["locate_fossil_in_situ_xp"][
         "dawn"
     ]
-    assert dawn_xp[0].op == "multiply" and dawn_xp[0].value == 1.2
+    assert dawn_xp[0].op == "multiply" and dawn_xp[0].value == 1.1
 
     assert config.site_stewardship.main_params.documentation_accuracy == 0.01
     assert config.site_stewardship.main_params.documentation_distance_m == 50.0

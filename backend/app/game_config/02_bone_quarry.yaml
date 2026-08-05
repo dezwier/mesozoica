@@ -13,13 +13,22 @@ level_modifiers:
 
 # Ambient solar period (dawn|day|dusk|golden_hour|night). After level, before weather_type + tools.
 weather_time_modifiers:
-  # XP: day +0%, golden_hour +10%, dawn/dusk +20%, night +50%.
+  # XP: day +0%, golden_hour +30%, dawn/dusk +10%, night +20%.
   locate_fossil_in_situ_xp:
     day: []
-    golden_hour: [{ op: multiply, value: 1.1 }]
-    dawn: [{ op: multiply, value: 1.2 }]
-    dusk: [{ op: multiply, value: 1.2 }]
-    night: [{ op: multiply, value: 1.5 }]
+    golden_hour: [{ op: multiply, value: 1.3 }]
+    dawn: [{ op: multiply, value: 1.1 }]
+    dusk: [{ op: multiply, value: 1.1 }]
+    night: [{ op: multiply, value: 1.2 }]
 
 weather_type_modifiers:
-  locate_fossil_in_situ_xp: {}
+  locate_fossil_in_situ_xp:
+    clear: []
+    cloudy: []
+    overcast: []
+    drizzle: [{ op: multiply, value: 1.1 }]
+    rain: [{ op: multiply, value: 1.2 }]
+    hail: [{ op: multiply, value: 1.3 }]
+    fog: [{ op: multiply, value: 1.4 }]
+    thunderstorm: [{ op: multiply, value: 1.1 }]
+    snow: [{ op: multiply, value: 1.5 }]

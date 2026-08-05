@@ -22,6 +22,29 @@ abstract final class WeatherDisplay {
     'hail',
   ];
 
+  /// Solar periods in preferred chrome order (current value is pinned first in UI).
+  static const weatherTimes = <String>[
+    'day',
+    'night',
+    'golden_hour',
+    'dusk',
+    'dawn',
+  ];
+
+  /// [current] first, then remaining [all] keys in their given order.
+  static List<String> optionsWithCurrentFirst(
+    List<String> all,
+    String current,
+  ) {
+    final normalized = current == 'sunny' ? 'clear' : current;
+    final rest = <String>[
+      for (final key in all)
+        if (key != normalized) key,
+    ];
+    if (all.contains(normalized)) return [normalized, ...rest];
+    return List<String>.from(all);
+  }
+
   /// Night-side art for dusk + night; day-side art for dawn / day / golden hour.
   static bool usesNightArt(String weatherTime) {
     return weatherTime == 'night' || weatherTime == 'dusk';
