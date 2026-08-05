@@ -168,6 +168,33 @@ abstract final class WeatherDisplay {
             .join(' ');
   }
 
+  /// Field Survey skill params in skill-drawer order.
+  static const fieldSurveySkillParamKeys = <String>[
+    'discovery_distance_m',
+    'discovery_chance',
+    'discovery_max_speed_kmh',
+    'documentation_distance_m',
+    'documentation_genera',
+    'documentation_fossil',
+    'documentation_completeness',
+    'documentation_preservation',
+    'documentation_depth',
+    'rival_discovery_chance',
+  ];
+
+  /// Field Survey XP sources in skill-drawer order.
+  static const fieldSurveyXpParamKeys = <String>[
+    'explore_100m_actively_xp',
+    'explore_100m_passively_xp',
+    'discover_site_xp',
+    'discover_site_as_first_xp',
+    'identify_site_xp',
+    'document_progress_xp',
+    'document_site_xp',
+    'document_site_as_first_xp',
+    'disguise_of_site_xp',
+  ];
+
   static String formatModifierShort({
     required String op,
     required double value,

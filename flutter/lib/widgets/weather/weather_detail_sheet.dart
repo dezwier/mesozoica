@@ -79,14 +79,16 @@ class WeatherDetailDrawer extends StatelessWidget {
                             subtitle: WeatherDisplay.timeLabelWithClock(
                               status.weatherTime,
                             ),
-                            rows: _weatherTimeImpactRows(status.weatherTime),
+                            groups: _weatherTimeImpactGroups(
+                              status.weatherTime,
+                            ),
                           ),
                           const SizedBox(height: 5),
                           _ImpactSectionCard(
                             icon: Icons.thermostat_outlined,
                             title: 'Temperature',
                             subtitle: _tempSubtitle(status),
-                            rows: const [],
+                            groups: const _ImpactGroups(),
                             emptyLabel:
                                 'No temperature parameter impacts yet',
                           ),
@@ -99,7 +101,9 @@ class WeatherDetailDrawer extends StatelessWidget {
                             subtitle: WeatherDisplay.weatherLabel(
                               status.weatherType,
                             ),
-                            rows: _weatherTypeImpactRows(status.weatherType),
+                            groups: _weatherTypeImpactGroups(
+                              status.weatherType,
+                            ),
                             emptyLabel: 'No weather-type parameter impacts',
                           ),
                         ],
@@ -119,26 +123,46 @@ class WeatherDetailDrawer extends StatelessWidget {
     return '${status.temperatureC.round()}°C';
   }
 
-  /// Active [weather_time_modifiers] for [period] across all skill domains.
-  static List<_ImpactRow> _weatherTimeImpactRows(String period) {
-    if (!GameConfig.isLoaded) return const [];
+  /// All skill/XP params for [period] across domains (drawer order; ±0% if none).
+  static _ImpactGroups _weatherTimeImpactGroups(String period) {
+    if (!GameConfig.isLoaded) return const _ImpactGroups();
     final game = GameConfig.instance;
-    return _ambientImpactRows(period, [
-      ('field_survey', game.fieldSurvey.weatherTimeModifiers),
+    return _ambientImpactGroups(period, [
+      (
+        'field_survey',
+        game.fieldSurvey.weatherTimeModifiers,
+        WeatherDisplay.fieldSurveySkillParamKeys,
+        WeatherDisplay.fieldSurveyXpParamKeys,
+      ),
       for (final stub in _skillStubs(game))
-        (stub.skillId, stub.weatherTimeModifiers),
+        (
+          stub.skillId,
+          stub.weatherTimeModifiers,
+          _stubSkillParamKeys(stub),
+          _stubXpParamKeys(stub),
+        ),
     ]);
   }
 
-  /// Active [weather_type_modifiers] for [weatherType] across all skill domains.
-  static List<_ImpactRow> _weatherTypeImpactRows(String weatherType) {
-    if (!GameConfig.isLoaded) return const [];
+  /// All skill/XP params for [weatherType] across domains (drawer order; ±0% if none).
+  static _ImpactGroups _weatherTypeImpactGroups(String weatherType) {
+    if (!GameConfig.isLoaded) return const _ImpactGroups();
     final key = weatherType == 'sunny' ? 'clear' : weatherType;
     final game = GameConfig.instance;
-    return _ambientImpactRows(key, [
-      ('field_survey', game.fieldSurvey.weatherTypeModifiers),
+    return _ambientImpactGroups(key, [
+      (
+        'field_survey',
+        game.fieldSurvey.weatherTypeModifiers,
+        WeatherDisplay.fieldSurveySkillParamKeys,
+        WeatherDisplay.fieldSurveyXpParamKeys,
+      ),
       for (final stub in _skillStubs(game))
-        (stub.skillId, stub.weatherTypeModifiers),
+        (
+          stub.skillId,
+          stub.weatherTypeModifiers,
+          _stubSkillParamKeys(stub),
+          _stubXpParamKeys(stub),
+        ),
     ]);
   }
 
@@ -147,33 +171,80 @@ class WeatherDetailDrawer extends StatelessWidget {
         game.scienceHall,
       ];
 
-  static List<_ImpactRow> _ambientImpactRows(
+  static List<String> _stubSkillParamKeys(SkillStubConfig stub) => [
+        for (final key in stub.mainParams.keys)
+          if (!key.endsWith('_xp')) key,
+      ];
+
+  static List<String> _stubXpParamKeys(SkillStubConfig stub) => [
+        for (final key in stub.mainParams.keys)
+          if (key.endsWith('_xp')) key,
+      ];
+
+  static _ImpactGroups _ambientImpactGroups(
     String key,
-    List<(String, Map<String, Map<String, List<ParamModifier>>>)> sources,
+    List<
+        (
+          String,
+          Map<String, Map<String, List<ParamModifier>>>,
+          List<String>,
+          List<String>,
+        )> sources,
   ) {
     final skillNames = {
-      for (final skill in GameConfig.instance.leveling.skills) skill.id: skill.name,
+      for (final skill in GameConfig.instance.leveling.skills)
+        skill.id: skill.name,
     };
-    final out = <_ImpactRow>[];
-    for (final (skillId, modifiers) in sources) {
+    final skillParams = <_ImpactRow>[];
+    final xpSources = <_ImpactRow>[];
+    for (final (skillId, modifiers, skillKeys, xpKeys) in sources) {
       final skillName = skillNames[skillId] ?? skillId;
-      for (final paramEntry in modifiers.entries) {
-        for (final mod in paramEntry.value[key] ?? const <ParamModifier>[]) {
-          out.add(
-            _ImpactRow(
-              skillName: skillName,
-              paramLabel: WeatherDisplay.paramLabel(paramEntry.key),
-              effect: WeatherDisplay.formatModifierShort(
-                op: mod.op,
-                value: mod.value,
-              ),
+      for (final paramKey in skillKeys) {
+        skillParams.add(
+          _ImpactRow(
+            skillName: skillName,
+            paramLabel: WeatherDisplay.paramLabel(paramKey),
+            effect: _formatAmbientEffect(
+              modifiers[paramKey]?[key] ?? const <ParamModifier>[],
             ),
-          );
-        }
+          ),
+        );
+      }
+      for (final paramKey in xpKeys) {
+        xpSources.add(
+          _ImpactRow(
+            skillName: skillName,
+            paramLabel: WeatherDisplay.paramLabel(paramKey),
+            effect: _formatAmbientEffect(
+              modifiers[paramKey]?[key] ?? const <ParamModifier>[],
+            ),
+          ),
+        );
       }
     }
-    return out;
+    return _ImpactGroups(skillParams: skillParams, xpSources: xpSources);
   }
+
+  static String _formatAmbientEffect(List<ParamModifier> mods) {
+    if (mods.isEmpty) return '±0%';
+    return mods
+        .map(
+          (m) => WeatherDisplay.formatModifierShort(op: m.op, value: m.value),
+        )
+        .join(' · ');
+  }
+}
+
+class _ImpactGroups {
+  const _ImpactGroups({
+    this.skillParams = const [],
+    this.xpSources = const [],
+  });
+
+  final List<_ImpactRow> skillParams;
+  final List<_ImpactRow> xpSources;
+
+  bool get isEmpty => skillParams.isEmpty && xpSources.isEmpty;
 }
 
 class _ImpactRow {
@@ -331,14 +402,14 @@ class _ImpactSectionCard extends StatelessWidget {
     required this.icon,
     required this.title,
     required this.subtitle,
-    required this.rows,
+    required this.groups,
     this.emptyLabel = 'No impacts right now',
   });
 
   final IconData icon;
   final String title;
   final String subtitle;
-  final List<_ImpactRow> rows;
+  final _ImpactGroups groups;
   final String emptyLabel;
 
   @override
@@ -382,39 +453,83 @@ class _ImpactSectionCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 12),
-            if (rows.isEmpty)
+            if (groups.isEmpty)
               Text(
                 emptyLabel,
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       color: scheme.onSurfaceVariant,
                     ),
               )
-            else
-              for (var i = 0; i < rows.length; i++) ...[
-                if (i > 0) const SizedBox(height: 10),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: Text(
-                        '${rows[i].skillName} · ${rows[i].paramLabel}',
-                        style: Theme.of(context).textTheme.bodyMedium,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      rows[i].effect,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: scheme.primary,
-                            fontWeight: FontWeight.w600,
-                          ),
-                    ),
-                  ],
+            else ...[
+              if (groups.skillParams.isNotEmpty)
+                _ImpactParamBlock(
+                  title: 'Skill parameters',
+                  rows: groups.skillParams,
                 ),
-              ],
+              if (groups.skillParams.isNotEmpty &&
+                  groups.xpSources.isNotEmpty)
+                const SizedBox(height: 14),
+              if (groups.xpSources.isNotEmpty)
+                _ImpactParamBlock(
+                  title: 'XP sources',
+                  rows: groups.xpSources,
+                ),
+            ],
           ],
         ),
       ),
+    );
+  }
+}
+
+class _ImpactParamBlock extends StatelessWidget {
+  const _ImpactParamBlock({
+    required this.title,
+    required this.rows,
+  });
+
+  final String title;
+  final List<_ImpactRow> rows;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          title,
+          style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                color: scheme.onSurfaceVariant,
+                fontWeight: FontWeight.w600,
+              ),
+        ),
+        const SizedBox(height: 8),
+        for (var i = 0; i < rows.length; i++) ...[
+          if (i > 0) const SizedBox(height: 10),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Text(
+                  '${rows[i].skillName} · ${rows[i].paramLabel}',
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                rows[i].effect,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: rows[i].effect == '±0%'
+                          ? scheme.onSurfaceVariant
+                          : scheme.primary,
+                      fontWeight: FontWeight.w600,
+                    ),
+              ),
+            ],
+          ),
+        ],
+      ],
     );
   }
 }
