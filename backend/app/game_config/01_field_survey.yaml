@@ -36,17 +36,17 @@ main_params:
   documentation_distance_m: 50.0
   # XP when a rival discovery roll would have hit but your disguise blocked it
   # (Brush Scrim / Blackout Cover). Scrim still rolls; effective odds are 0.
-  disguise_of_site_xp: 40
+  disguise_of_site_xp: 20
   # XP to field_survey per 20 m walked inside documentation_distance_m.
   document_progress_xp: 20
   # XP when all five site-dimension accuracies reach 100% (documentation complete).
-  document_site_xp: 80
+  document_site_xp: 20
   # Bonus XP when you are the first user to fully document a site (all dimensions
   # at 100% accuracy). Later documenters still get document_site_xp only.
   document_site_as_first_xp: 20
   # XP per identification quiz step (period, then rock type). Scaled by attempt:
   # first try 100%, second 50%, third 0%. Exploration meters start after both.
-  identify_site_xp: 40
+  identify_site_xp: 20
 
 # Keyframes: { level, op: add|multiply|replace, value }. Values lerp linearly
 # between adjacent entries (endpoints alone are enough for a straight ramp).
