@@ -56,15 +56,6 @@ level_modifiers:
   discovery_chance: *field_survey_reach_levels
   documentation_distance_m: *field_survey_reach_levels
   discovery_max_speed_kmh: []
-  discover_site_xp: []
-  discover_site_as_first_xp: []
-  explore_100m_actively_xp: []
-  explore_100m_passively_xp: []
-  disguise_of_site_xp: []
-  document_progress_xp: []
-  document_site_xp: []
-  document_site_as_first_xp: []
-  # Rival discovery: ×1.0 at L1 → ×0.5 at L99 (all sites above hidden).
   rival_discovery_chance:
     - { level: 1, op: multiply, value: 1 }
     - { level: 99, op: multiply, value: 0.5 }
@@ -73,10 +64,20 @@ level_modifiers:
   documentation_accuracy:
     - { level: 1, op: multiply, value: 1 }
     - { level: 99, op: multiply, value: 99 }
+
+  # XP multipliers
+  explore_100m_actively_xp: []
+  explore_100m_passively_xp: []
+  discover_site_xp: []
+  discover_site_as_first_xp: []
+  disguise_of_site_xp: []
+  document_progress_xp: []
+  document_site_xp: []
+  document_site_as_first_xp: []
+  # Rival discovery: ×1.0 at L1 → ×0.5 at L99 (all sites above hidden).
+
 # Ambient solar period (dawn|day|dusk|golden_hour|night). After level, before weather_type + tools.
 weather_time_modifiers:
-  explore_100m_actively_xp: {}
-  explore_100m_passively_xp: {}
   discovery_distance_m: &field_survey_weather_time
     day: [{ op: multiply, value: 1.1 }]
     golden_hour: [{ op: multiply, value: 1.3 }]
@@ -88,20 +89,20 @@ weather_time_modifiers:
   documentation_distance_m: *field_survey_weather_time
 
   # XP: day +0%, golden_hour +30%, dawn/dusk +10%, night +20%.  
-  discover_site_xp: &field_survey_weather_time_xp
+  explore_100m_actively_xp: &field_survey_weather_time_xp
     day: []
     golden_hour: [{ op: multiply, value: 1.3 }]
     dawn: [{ op: multiply, value: 1.1 }]
     dusk: [{ op: multiply, value: 1.1 }]
     night: [{ op: multiply, value: 1.2 }]
+  explore_100m_passively_xp: {}
+  discover_site_xp: *field_survey_weather_time_xp
   discover_site_as_first_xp: {}
   document_progress_xp: *field_survey_weather_time_xp
   document_site_xp: *field_survey_weather_time_xp
 
 # Ambient weather type (clear|cloudy|…). After weather_time, before tools.
 weather_type_modifiers:
-  explore_100m_actively_xp: {}
-  explore_100m_passively_xp: {}
   discovery_distance_m: &field_survey_weather_type
     clear: [{ op: multiply, value: 1.1 }]
     cloudy: [{ op: multiply, value: 1.05 }]
@@ -116,7 +117,8 @@ weather_type_modifiers:
   discovery_max_speed_kmh: {}
   documentation_distance_m: *field_survey_weather_type
 
-  discover_site_xp: &field_survey_weather_type_xp
+  # XP multipliers
+  explore_100m_actively_xp: &field_survey_weather_type_xp
     clear: []
     cloudy: []
     overcast: []
@@ -126,6 +128,8 @@ weather_type_modifiers:
     fog: [{ op: multiply, value: 1.4 }]
     thunderstorm: [{ op: multiply, value: 1.1 }]
     snow: [{ op: multiply, value: 1.5 }]
+  explore_100m_passively_xp: {}
+  discover_site_xp: *field_survey_weather_type_xp
   discover_site_as_first_xp: {}
   document_progress_xp: *field_survey_weather_type_xp
   document_site_xp: *field_survey_weather_type_xp
