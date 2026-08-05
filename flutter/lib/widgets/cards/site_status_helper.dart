@@ -9,7 +9,6 @@ import '../../services/location_service.dart';
 import '../../services/site_service.dart';
 import '../../utils/discovery_haptic.dart';
 import '../common/app_toast.dart';
-import 'fossil_discovery_celebration.dart';
 import 'site_discovery_celebration.dart';
 
 /// Apply a status chosen from the admin badge dropdown.
@@ -59,26 +58,21 @@ Future<SiteSummary?> applySiteStatusSelection(
             );
       }
       if (!context.mounted) return updated;
-      await context.read<AuthController>().refreshProfile(announceXp: true);
-      if (!context.mounted) return updated;
-      await showSiteDiscoveryCelebration(context, site: updated);
-      if (!context.mounted) return updated;
-
-      var fossils = result.surfaceFossils;
+      // Wait for surface fossils so locate-in-situ XP lands on the site plaque.
       if (!result.fossilsReady && result.jobId != null) {
         final job = await service.waitForFieldSurveyJob(result.jobId!);
         if (job.isDone && location != null) {
-          final refreshed = await service.discoverSite(
+          await service.discoverSite(
             siteId: site.siteId,
             lat: location.latitude,
             lon: location.longitude,
           );
-          fossils = refreshed.surfaceFossils;
         }
       }
-      if (context.mounted && fossils.isNotEmpty) {
-        await showFossilDiscoveryCelebrations(context, fossils: fossils);
-      }
+      if (!context.mounted) return updated;
+      await context.read<AuthController>().refreshProfile(announceXp: true);
+      if (!context.mounted) return updated;
+      await showSiteDiscoveryCelebration(context, site: updated);
     } else {
       AppToast.success(
         context,

@@ -43,12 +43,12 @@ const kCelebrationXpSourceKeys = <String>{
 const kSiteDiscoveryCelebrationXpKeys = <String>{
   'discover_site',
   'discover_site_as_first',
-};
-
-/// Keys claimed by fossil discovery celebrations.
-const kFossilDiscoveryCelebrationXpKeys = <String>{
   'locate_fossil_in_situ',
 };
+
+/// Keys claimed by fossil discovery celebrations (none — locate XP is on the
+/// site discovery plaque).
+const kFossilDiscoveryCelebrationXpKeys = <String>{};
 
 /// Keys claimed by the site-documented celebration.
 const kSiteDocumentationCelebrationXpKeys = <String>{

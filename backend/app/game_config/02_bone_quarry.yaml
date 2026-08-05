@@ -5,8 +5,8 @@ skill_id: bone_quarry
 enabled: true
 
 main_params:
-  # XP awarded when a fossil is discovered / granted in situ.
-  locate_fossil_in_situ_xp: 5
+  # XP awarded per depth-0 fossil located at site discovery.
+  locate_fossil_in_situ_xp: 20
 
 level_modifiers:
   locate_fossil_in_situ_xp: []

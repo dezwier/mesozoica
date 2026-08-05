@@ -156,8 +156,9 @@ void main() {
       final controller = XpAwardController();
       controller.announceAwards([
         award(sourceKey: 'discover_site', amount: 20),
-        award(sourceKey: 'locate_fossil_in_situ', amount: 15, skillId: 'fossil_detection'),
+        award(sourceKey: 'locate_fossil_in_situ', amount: 40, skillId: 'bone_quarry'),
         award(sourceKey: 'discover_site_as_first', amount: 20),
+        award(sourceKey: 'document_site', amount: 80, skillId: 'site_stewardship'),
       ]);
 
       final claimed = controller.claimCelebrationAwards(
@@ -165,17 +166,11 @@ void main() {
       );
       expect(claimed.map((a) => a.sourceKey).toList(), [
         'discover_site',
+        'locate_fossil_in_situ',
         'discover_site_as_first',
       ]);
       expect(controller.celebrationStash, hasLength(1));
-      expect(controller.celebrationStash.single.sourceKey, 'locate_fossil_in_situ');
-
-      final fossils = controller.claimCelebrationAwards(
-        kFossilDiscoveryCelebrationXpKeys,
-      );
-      expect(fossils, hasLength(1));
-      expect(fossils.single.amount, 15);
-      expect(controller.celebrationStash, isEmpty);
+      expect(controller.celebrationStash.single.sourceKey, 'document_site');
     });
 
     test('identification merge sums multiple identify_site awards', () {

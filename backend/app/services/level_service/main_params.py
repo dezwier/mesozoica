@@ -325,7 +325,7 @@ def resolve_bone_quarry_main_params(
     """Effective bone_quarry scalar main_params after modifiers."""
     cfg = get_game_config().bone_quarry
     mods = tool_mods or {}
-    raw = cfg.main_params.get("locate_fossil_in_situ_xp", 5)
+    raw = cfg.main_params.get("locate_fossil_in_situ_xp", 20)
     base = float(raw)
     return {
         "locate_fossil_in_situ_xp": resolve_scalar_main_param(

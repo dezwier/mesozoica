@@ -52,7 +52,8 @@ def discover_site(
 ) -> DiscoverFossilOnboardResult:
     """Link the user as discoverer when within range and the chance roll succeeds.
 
-    Also ensures global field fossils for the site (once) and grants surface finds.
+    Also ensures global field fossils for the site (once) and awards locate-in-situ
+    XP for depth-0 fossils (without creating ``user_fossil`` collection links).
     """
     site = session.get(Site, site_id)
     if site is None or site.data_source != DATA_SOURCE_FIELD:
@@ -86,7 +87,7 @@ def discover_site(
         )
     ).first()
     if existing is not None:
-        # Idempotent re-hit: still onboard fossils / surface grants if needed.
+        # Idempotent re-hit: still onboard fossils / locate XP if needed.
         return ensure_fossils_on_site_discovery(
             session, site_id=site_id, user_id=user_id
         )

@@ -143,6 +143,10 @@ mixin _AppShellDiscoveryMixin on State<AppShell> {
     if (resolvedSite == null && siteId == null) return;
     _celebrationShowing = true;
     try {
+      // Wait for surface fossils when a survey job is pending so locate-in-situ
+      // XP is awarded before the site discovery plaque claims it.
+      await _resolveSurfaceFossils(discover);
+      if (!mounted) return;
       // Await XP announce so celebration plaques can claim stashed awards.
       await context.read<AuthController>().refreshProfile(announceXp: true);
       if (!mounted) return;
@@ -151,12 +155,6 @@ mixin _AppShellDiscoveryMixin on State<AppShell> {
         site: resolvedSite,
         siteId: siteId,
       );
-      if (!mounted) return;
-      final fossils = await _resolveSurfaceFossils(discover);
-      if (!mounted || fossils.isEmpty) return;
-      await showFossilDiscoveryCelebrations(context, fossils: fossils);
-      if (!mounted) return;
-      unawaited(context.read<FossilCatalogController>().load(force: true));
     } finally {
       _celebrationShowing = false;
       // Chain documentation celebration if it arrived while discovery was up.

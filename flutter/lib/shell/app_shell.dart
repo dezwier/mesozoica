@@ -39,7 +39,6 @@ import '../services/location_service.dart';
 import '../services/push_notification_service.dart';
 import '../services/site_service.dart';
 import '../widgets/cards/card_detail_sheet.dart';
-import '../widgets/cards/fossil_discovery_celebration.dart';
 import '../widgets/cards/site_discovery_celebration.dart';
 import '../widgets/common/app_splash_screen.dart';
 import '../widgets/profile/community_drawer.dart';

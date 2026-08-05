@@ -51,7 +51,7 @@ def compute_skill_xp_from_history(
     fossil_cfg = get_game_config().fossil_detection
     site_xp = int(round(float(site_cfg.discover_site_xp)))
     fossil_xp = int(
-        round(float(fossil_cfg.main_params.get("locate_fossil_in_situ_xp", 5)))
+        round(float(fossil_cfg.main_params.get("locate_fossil_in_situ_xp", 20)))
     )
     active_xp = int(round(float(site_cfg.explore_100m_actively_xp)))
     passive_xp = int(round(float(site_cfg.explore_1km_passively_xp)))

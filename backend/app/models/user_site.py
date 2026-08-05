@@ -147,6 +147,13 @@ class UserSite(SQLModel, table=True):
             "(first discoverer / first documenter)"
         ),
     )
+    locate_in_situ_awarded: bool = Field(
+        default=False,
+        description=(
+            "True when locate-fossil-in-situ XP was awarded for depth-0 "
+            "fossils on this site (discoverer row only)"
+        ),
+    )
     timestamp: datetime = Field(
         default_factory=_utc_now,
         sa_column=Column(

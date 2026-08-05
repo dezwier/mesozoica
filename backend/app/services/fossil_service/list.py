@@ -327,6 +327,7 @@ def fossil_row_to_summary(
     from app.models.user_fossil import (
         FOSSIL_STATUS_DISCOVERED,
         FOSSIL_STATUS_HIDDEN,
+        FOSSIL_STATUS_IN_SITU,
         USER_FOSSIL_ROLE_IN_SITU,
         UserFossil,
         role_to_status,
@@ -374,6 +375,20 @@ def fossil_row_to_summary(
                 if link.role == USER_FOSSIL_ROLE_IN_SITU:
                     discovered_at = link.timestamp
                     break
+        elif fossil.depth_cm == 0 and fossil.site_id is not None:
+            # Depth-0 fossils are in situ for site discoverers without a
+            # user_fossil link (collection link is created on extraction).
+            from app.models.user_site import USER_SITE_ROLE_DISCOVERER, UserSite
+
+            discoverer = session.exec(
+                select(UserSite.id).where(
+                    col(UserSite.user_id) == viewer_user_id,
+                    col(UserSite.site_id) == fossil.site_id,
+                    col(UserSite.role) == USER_SITE_ROLE_DISCOVERER,
+                )
+            ).first()
+            if discoverer is not None:
+                status = FOSSIL_STATUS_IN_SITU
     payload["status"] = status
     payload["discovered_at"] = discovered_at
     payload["version"] = fossil.version or ORIGINAL_VERSION

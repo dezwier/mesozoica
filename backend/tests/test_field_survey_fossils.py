@@ -342,13 +342,38 @@ def test_discover_multi_user_lazy_once(session: Session, monkeypatch):
                 col(UserFossil.role) == USER_FOSSIL_ROLE_IN_SITU,
             )
         ).all()
-        assert {link.fossil_id for link in links} == surface_ids
+        # Discovery no longer creates user_fossil; extraction does that later.
+        assert links == []
+        discoverer = session.exec(
+            select(UserSite).where(
+                col(UserSite.user_id) == user.id,
+                col(UserSite.site_id) == field_site.site_id,
+                col(UserSite.role) == USER_SITE_ROLE_DISCOVERER,
+            )
+        ).one()
+        session.refresh(user)
+        if surface_ids:
+            assert discoverer.locate_in_situ_awarded is True
+            expected_xp = 20 * len(surface_ids)
+            assert (
+                user.skill_breakdown["bone_quarry"]["locate_fossil_in_situ"]
+                == expected_xp
+            )
+        else:
+            assert discoverer.locate_in_situ_awarded is False
 
     third = ensure_fossils_on_site_discovery(
         session, site_id=field_site.site_id, user_id=user_a.id
     )
     assert third.fossils_ready is True
     assert third.generated is False
+    assert set(third.surface_fossil_ids) == surface_ids
+    # Idempotent: XP not awarded twice.
+    if surface_ids:
+        session.refresh(user_a)
+        assert user_a.skill_breakdown["bone_quarry"]["locate_fossil_in_situ"] == (
+            20 * len(surface_ids)
+        )
 
 
 def test_enqueue_onboards_active_job(session: Session):
@@ -436,19 +461,18 @@ def test_discover_api_and_visibility(client, session: Session, monkeypatch):
         headers=headers,
     )
     assert fossils.status_code == 200
-    # Non-admin only sees discovered (surface) fossils.
+    # Discoverer sees depth-0 in-situ fossils without a user_fossil link.
     assert len(fossils.json()["items"]) == len(again_body["surface_fossils"])
+    assert all(item["status"] == "in_situ" for item in fossils.json()["items"])
 
+    # Collection catalog stays empty until the user extracts (user_fossil).
     catalog = client.get(
         "/api/v1/fossils",
         params={"data_source": "field"},
         headers=headers,
     )
     assert catalog.status_code == 200
-    assert catalog.json()["total"] == len(again_body["surface_fossils"])
-    for item in catalog.json()["items"]:
-        assert item["status"] == "in_situ"
-        assert item["depth_cm"] == 0
+    assert catalog.json()["total"] == 0
 
     admin_catalog = client.get(
         "/api/v1/fossils",
@@ -464,8 +488,8 @@ def test_discover_api_and_visibility(client, session: Session, monkeypatch):
         headers=admin_headers,
     )
     assert admin_site.status_code == 200
-    # Without include_hidden, admins only see linked fossils (same as players).
-    assert len(admin_site.json()["items"]) == len(fossils.json()["items"])
+    # Admin without discoverer link / user_fossil sees nothing without include_hidden.
+    assert len(admin_site.json()["items"]) == 0
 
     admin_peek = client.get(
         f"/api/v1/sites/{field_site.site_id}/fossils",

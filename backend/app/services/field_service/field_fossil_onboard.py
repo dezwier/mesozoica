@@ -1,9 +1,8 @@
-"""Ensure field fossils on site discovery and grant surface (depth 0) discoveries."""
+"""Ensure field fossils on site discovery and award surface (depth 0) locate XP."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timezone
 
 from sqlmodel import Session, col, select
 
@@ -11,7 +10,6 @@ from app.models.data_source import DATA_SOURCE_FIELD
 from app.models.field_survey_job import FieldSurveyJob
 from app.models.fossil import Fossil
 from app.models.site import Site
-from app.models.user_fossil import USER_FOSSIL_ROLE_IN_SITU, UserFossil
 from app.models.user_site import USER_SITE_ROLE_DISCOVERER, UserSite
 from app.services.field_service.field_fossil_generate import count_field_fossils_for_site
 from app.services.field_service.field_survey_queue import (
@@ -35,16 +33,28 @@ class DiscoverFossilOnboardResult:
     surface_fossil_ids: tuple[int, ...]
 
 
+def _surface_fossil_ids(session: Session, *, site_id: int) -> tuple[int, ...]:
+    rows = session.exec(
+        select(Fossil.id).where(
+            col(Fossil.site_id) == site_id,
+            col(Fossil.data_source) == DATA_SOURCE_FIELD,
+            col(Fossil.depth_cm) == 0,
+        )
+    ).all()
+    return tuple(int(fid) for fid in rows)
+
+
 def ensure_fossils_on_site_discovery(
     session: Session,
     *,
     site_id: int,
     user_id: int,
 ) -> DiscoverFossilOnboardResult:
-    """Enqueue/onboard global field fossil generation and grant surface finds.
+    """Enqueue/onboard global field fossil generation and award surface locate XP.
 
-    Ground-truth fossils are global (once per site). Every discoverer gets
-    ``user_fossil`` in_situ rows for depth_cm == 0 when fossils are ready.
+    Ground-truth fossils are global (once per site). Depth-0 fossils stay in situ
+    on the site card for discoverers; ``user_fossil`` is created only when the
+    user later extracts them via site actions.
     """
     site = session.get(Site, site_id)
     if site is None or site.data_source != DATA_SOURCE_FIELD:
@@ -85,7 +95,7 @@ def ensure_fossils_on_site_discovery(
 
     fossil_count = count_field_fossils_for_site(session, site_id)
     if fossil_count > 0:
-        surface_ids = grant_surface_fossils_to_user(
+        surface_ids = award_surface_locate_to_user(
             session, site_id=site_id, user_id=user_id
         )
         job = session.exec(
@@ -134,7 +144,7 @@ def ensure_fossils_on_site_discovery(
     )
     surface_ids: tuple[int, ...] = ()
     if fossils_ready and live_fossil_count > 0:
-        surface_ids = grant_surface_fossils_to_user(
+        surface_ids = award_surface_locate_to_user(
             session, site_id=site_id, user_id=user_id
         )
 
@@ -155,52 +165,32 @@ def ensure_fossils_on_site_discovery(
     )
 
 
-def grant_surface_fossils_to_user(
+def award_surface_locate_to_user(
     session: Session,
     *,
     site_id: int,
     user_id: int,
 ) -> tuple[int, ...]:
-    """Insert in_situ roles for depth_cm == 0 field fossils; return fossil ids."""
-    surface = session.exec(
-        select(Fossil.id).where(
-            col(Fossil.site_id) == site_id,
-            col(Fossil.data_source) == DATA_SOURCE_FIELD,
-            col(Fossil.depth_cm) == 0,
-        )
-    ).all()
-    if not surface:
+    """Award locate-in-situ XP for depth_cm == 0 fossils; return those fossil ids.
+
+    Does not create ``user_fossil`` rows — extraction happens later via site actions.
+    XP is idempotent per discoverer via ``UserSite.locate_in_situ_awarded``.
+    """
+    surface_ids = _surface_fossil_ids(session, site_id=site_id)
+    if not surface_ids:
         return ()
 
-    existing = set(
-        session.exec(
-            select(UserFossil.fossil_id).where(
-                col(UserFossil.user_id) == user_id,
-                col(UserFossil.fossil_id).in_(list(surface)),
-                col(UserFossil.role) == USER_FOSSIL_ROLE_IN_SITU,
-            )
-        ).all()
-    )
-    now = datetime.now(timezone.utc)
-    granted: list[int] = []
-    newly_granted = 0
-    for fossil_id in surface:
-        fid = int(fossil_id)
-        if fid in existing:
-            granted.append(fid)
-            continue
-        session.add(
-            UserFossil(
-                user_id=user_id,
-                fossil_id=fid,
-                role=USER_FOSSIL_ROLE_IN_SITU,
-                timestamp=now,
-            )
+    discoverer = session.exec(
+        select(UserSite).where(
+            col(UserSite.user_id) == user_id,
+            col(UserSite.site_id) == site_id,
+            col(UserSite.role) == USER_SITE_ROLE_DISCOVERER,
         )
-        newly_granted += 1
-        granted.append(fid)
+    ).first()
+    if discoverer is None:
+        return surface_ids
 
-    if newly_granted > 0:
+    if not discoverer.locate_in_situ_awarded:
         from app.models.user import User
         from app.services.level_service import award_fossil_discover_xp
 
@@ -227,22 +217,24 @@ def grant_surface_fossils_to_user(
                     weather_type = None
             award_fossil_discover_xp(
                 user,
-                count=newly_granted,
+                count=len(surface_ids),
                 weather_time=weather_time,
                 weather_type=weather_type,
             )
             session.add(user)
+        discoverer.locate_in_situ_awarded = True
+        session.add(discoverer)
 
     session.commit()
-    return tuple(granted)
+    return surface_ids
 
 
-def grant_surface_fossils_to_site_discoverers(
+def award_surface_locate_to_site_discoverers(
     session: Session,
     *,
     site_id: int,
 ) -> int:
-    """After generation, grant depth-0 fossils to all current site discoverers."""
+    """After generation, award depth-0 locate XP to all current site discoverers."""
     discoverer_ids = session.exec(
         select(UserSite.user_id).where(
             col(UserSite.site_id) == site_id,
@@ -251,11 +243,16 @@ def grant_surface_fossils_to_site_discoverers(
     ).all()
     total = 0
     for user_id in discoverer_ids:
-        granted = grant_surface_fossils_to_user(
+        awarded = award_surface_locate_to_user(
             session, site_id=site_id, user_id=int(user_id)
         )
-        total += len(granted)
+        total += len(awarded)
     return total
+
+
+# Back-compat aliases for older call sites / imports.
+grant_surface_fossils_to_user = award_surface_locate_to_user
+grant_surface_fossils_to_site_discoverers = award_surface_locate_to_site_discoverers
 
 
 def surface_fossil_summaries(
@@ -291,6 +288,8 @@ def surface_fossil_summaries(
 
 __all__ = [
     "DiscoverFossilOnboardResult",
+    "award_surface_locate_to_site_discoverers",
+    "award_surface_locate_to_user",
     "ensure_fossils_on_site_discovery",
     "get_field_survey_job",
     "grant_surface_fossils_to_site_discoverers",

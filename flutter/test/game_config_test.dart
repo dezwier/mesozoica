@@ -229,7 +229,7 @@ void main() {
       isNull,
     );
 
-    expect(config.boneQuarry.mainParams['locate_fossil_in_situ_xp'], 5);
+    expect(config.boneQuarry.mainParams['locate_fossil_in_situ_xp'], 20);
     expect(config.leveling.skills.length, 3);
     expect(config.leveling.careerTitles.length, 99);
 

@@ -121,7 +121,7 @@ def test_load_game_config_matches_current_defaults() -> None:
     assert config.site_discovery.client.discover_fail_retry_s == 20
     assert config.site_discovery.client.discovery_reroll_interval_s == 10
     assert config.site_discovery.level_modifiers["discovery_chance"] == []
-    assert float(config.fossil_detection.main_params["locate_fossil_in_situ_xp"]) == 5.0
+    assert float(config.fossil_detection.main_params["locate_fossil_in_situ_xp"]) == 20.0
     night_xp = config.site_discovery.weather_time_modifiers["discover_site_xp"][
         "night"
     ]

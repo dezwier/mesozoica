@@ -73,7 +73,7 @@ def test_leveling_yaml_loaded() -> None:
     assert site.discover_site_as_first_xp == 20
     assert site.explore_100m_actively_xp == 20
     assert site.explore_1km_passively_xp == 100
-    assert float(fossil.main_params["locate_fossil_in_situ_xp"]) == 5
+    assert float(fossil.main_params["locate_fossil_in_situ_xp"]) == 20
     assert len(cfg.skills) == 3
     assert cfg.skills[0].id == "field_survey"
     assert cfg.skills[1].id == "bone_quarry"
@@ -113,11 +113,11 @@ def test_award_site_and_fossil_xp(session: Session) -> None:
     session.commit()
     session.refresh(user)
     assert get_skill_xp(user, "field_survey") == 40
-    assert get_skill_xp(user, "bone_quarry") == 10
+    assert get_skill_xp(user, "bone_quarry") == 40
     assert user.skill_breakdown["field_survey"]["discover_site"] == 20
     assert user.skill_breakdown["field_survey"]["discover_site_as_first"] == 20
-    assert user.skill_breakdown["bone_quarry"]["locate_fossil_in_situ"] == 10
-    assert user.xp == 50
+    assert user.skill_breakdown["bone_quarry"]["locate_fossil_in_situ"] == 40
+    assert user.xp == 80
     assert user.level == level_for_xp(user.xp, career=True)
 
 
@@ -216,10 +216,10 @@ def test_backfill_from_history(session: Session) -> None:
     assert user.skill_xp["field_survey"] == skill_xp["field_survey"]
     assert user.skill_xp["bone_quarry"] == skill_xp["bone_quarry"]
     assert user.skill_breakdown["field_survey"]["discover_site"] == 40
-    assert user.skill_breakdown["bone_quarry"]["locate_fossil_in_situ"] == 5
+    assert user.skill_breakdown["bone_quarry"]["locate_fossil_in_situ"] == 20
     assert user.skill_breakdown["field_survey"]["explore_100m_actively"] == 400
     assert user.skill_breakdown["field_survey"]["explore_1km_passively"] == 300
-    assert get_skill_xp(user, "bone_quarry") == 5
+    assert get_skill_xp(user, "bone_quarry") == 20
 
 
 def test_profile_response_includes_skill_fields(session: Session) -> None:
