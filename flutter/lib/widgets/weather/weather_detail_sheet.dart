@@ -47,6 +47,9 @@ class WeatherDetailDrawer extends StatefulWidget {
 
   static const double _cardRadius = 10;
 
+  /// Gap: carousel → tabs, between tab rows, and tabs → impact card.
+  static const double _stackGap = 12;
+
   @override
   State<WeatherDetailDrawer> createState() => _WeatherDetailDrawerState();
 }
@@ -118,6 +121,7 @@ class _WeatherDetailDrawerState extends State<WeatherDetailDrawer> {
     }
 
     return ListView(
+      clipBehavior: Clip.none,
       physics: const AlwaysScrollableScrollPhysics(),
       padding: EdgeInsets.fromLTRB(
         16,
@@ -128,20 +132,20 @@ class _WeatherDetailDrawerState extends State<WeatherDetailDrawer> {
       children: [
         const _WeatherReportCarousel(),
         if (skills.isNotEmpty) ...[
-          const SizedBox(height: 16),
+          const SizedBox(height: WeatherDetailDrawer._stackGap),
           _SkillTabs(
             skills: skills,
             selectedId: skillId,
             onChanged: (id) => setState(() => _selectedSkillId = id),
           ),
         ],
-        const SizedBox(height: 8),
+        const SizedBox(height: WeatherDetailDrawer._stackGap),
         _AmbientAxisTabs(
           selected: _axis,
           weatherType: status.weatherType,
           onChanged: (axis) => setState(() => _axis = axis),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: WeatherDetailDrawer._stackGap),
         _selectedImpactCard(status, skillId),
       ],
     );
@@ -372,12 +376,7 @@ class _SkillTabs extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return Container(
-      padding: const EdgeInsets.all(3),
-      decoration: BoxDecoration(
-        color: scheme.surfaceContainerHighest.withValues(alpha: 0.85),
-        borderRadius: BorderRadius.circular(12),
-      ),
+    return _TabBarCard(
       child: Row(
         children: [
           for (final skill in skills)
@@ -439,12 +438,7 @@ class _AmbientAxisTabs extends StatelessWidget {
         'Weather',
       ),
     ];
-    return Container(
-      padding: const EdgeInsets.all(3),
-      decoration: BoxDecoration(
-        color: scheme.surfaceContainerHighest.withValues(alpha: 0.85),
-        borderRadius: BorderRadius.circular(12),
-      ),
+    return _TabBarCard(
       child: Row(
         children: [
           for (final (axis, icon, label) in entries)
@@ -489,6 +483,33 @@ class _AmbientAxisTabs extends StatelessWidget {
   }
 }
 
+/// Same surface / radius / elevation as [_ImpactSectionCard].
+class _TabBarCard extends StatelessWidget {
+  const _TabBarCard({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final radius = BorderRadius.circular(WeatherDetailDrawer._cardRadius);
+    return Card(
+      elevation: 1,
+      margin: EdgeInsets.zero,
+      shape: RoundedRectangleBorder(borderRadius: radius),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(3),
+        decoration: BoxDecoration(
+          color: scheme.surfaceContainerHighest.withValues(alpha: 0.5),
+          borderRadius: radius,
+        ),
+        child: child,
+      ),
+    );
+  }
+}
+
 class _SegmentTab extends StatelessWidget {
   const _SegmentTab({
     required this.selected,
@@ -503,6 +524,10 @@ class _SegmentTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    // Animate to zero-alpha *surface*, not Colors.transparent (transparent
+    // black) — Color.lerp otherwise flashes dark on deselect.
+    final selectedFill = scheme.surface.withValues(alpha: 0.92);
+    final idleFill = scheme.surface.withValues(alpha: 0);
     return GestureDetector(
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
@@ -511,17 +536,15 @@ class _SegmentTab extends StatelessWidget {
         curve: Curves.easeOut,
         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
         decoration: BoxDecoration(
-          color: selected ? scheme.surface : Colors.transparent,
-          borderRadius: BorderRadius.circular(9),
-          boxShadow: selected
-              ? [
-                  BoxShadow(
-                    color: scheme.shadow.withValues(alpha: 0.12),
-                    blurRadius: 2,
-                    offset: const Offset(0, 1),
-                  ),
-                ]
-              : null,
+          color: selected ? selectedFill : idleFill,
+          borderRadius: BorderRadius.circular(7),
+          boxShadow: [
+            BoxShadow(
+              color: scheme.shadow.withValues(alpha: selected ? 0.08 : 0),
+              blurRadius: selected ? 2 : 0,
+              offset: selected ? const Offset(0, 1) : Offset.zero,
+            ),
+          ],
         ),
         child: child,
       ),
@@ -559,12 +582,12 @@ class _WeatherReportCarousel extends StatefulWidget {
 }
 
 class _WeatherReportCarouselState extends State<_WeatherReportCarousel> {
-  static const _railWidth = 36.0;
   static const _pagePast = 0;
   static const _pageNow = 1;
   static const _pageForecast = 2;
 
   late final PageController _pageController;
+  int _page = _pageNow;
 
   @override
   void initState() {
@@ -579,6 +602,8 @@ class _WeatherReportCarouselState extends State<_WeatherReportCarousel> {
   }
 
   void _goTo(int page) {
+    if (page == _page) return;
+    setState(() => _page = page);
     _pageController.animateToPage(
       page,
       duration: const Duration(milliseconds: 320),
@@ -598,141 +623,96 @@ class _WeatherReportCarouselState extends State<_WeatherReportCarousel> {
     final emptyHint = weather.forecastError != null
         ? 'Field notes unavailable'
         : 'Gathering field notes…';
+    final sharedRange = WeatherTimelinePage.sharedTempRange([past, future]);
+    final sharedMin = sharedRange?.$1;
+    final sharedMax = sharedRange?.$2;
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        // Keep the Now hero square; rails sit beside it.
-        final heroSide =
-            (constraints.maxWidth - _railWidth * 2 - 16).clamp(0.0, 10000.0);
-        return SizedBox(
-          height: heroSide,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _ReportPeriodTabs(
+          selected: _page,
+          onChanged: _goTo,
+        ),
+        const SizedBox(height: WeatherDetailDrawer._stackGap),
+        AspectRatio(
+          aspectRatio: 1,
           child: PageView(
+            clipBehavior: Clip.none,
             controller: _pageController,
             physics: const NeverScrollableScrollPhysics(),
             children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Expanded(
-                    child: WeatherTimelinePage(
-                      title: 'Past 48 hours',
-                      hours: past,
-                      loading: loading,
-                      emptyHint: emptyHint,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  _SideRailButton(
-                    label: 'Now',
-                    icon: Icons.chevron_right,
-                    iconTrailing: true,
-                    onTap: () => _goTo(_pageNow),
-                  ),
-                ],
+              WeatherTimelinePage(
+                title: 'Past 48 hours',
+                hours: past,
+                loading: loading,
+                emptyHint: emptyHint,
+                tempMin: sharedMin,
+                tempMax: sharedMax,
               ),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  _SideRailButton(
-                    label: 'Past',
-                    icon: Icons.chevron_left,
-                    onTap: () => _goTo(_pagePast),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(child: _WeatherHero(status: status)),
-                  const SizedBox(width: 8),
-                  _SideRailButton(
-                    label: 'Forecast',
-                    icon: Icons.chevron_right,
-                    iconTrailing: true,
-                    onTap: () => _goTo(_pageForecast),
-                  ),
-                ],
-              ),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  _SideRailButton(
-                    label: 'Now',
-                    icon: Icons.chevron_left,
-                    onTap: () => _goTo(_pageNow),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: WeatherTimelinePage(
-                      title: 'Next 3 days',
-                      hours: future,
-                      loading: loading,
-                      emptyHint: emptyHint,
-                    ),
-                  ),
-                ],
+              _WeatherHero(status: status),
+              WeatherTimelinePage(
+                title: 'Next 3 days',
+                hours: future,
+                loading: loading,
+                emptyHint: emptyHint,
+                tempMin: sharedMin,
+                tempMax: sharedMax,
               ),
             ],
           ),
-        );
-      },
+        ),
+      ],
     );
   }
 }
 
-/// Tall, narrow rail for switching Past / Now / Forecast.
-class _SideRailButton extends StatelessWidget {
-  const _SideRailButton({
-    required this.label,
-    required this.icon,
-    required this.onTap,
-    this.iconTrailing = false,
+class _ReportPeriodTabs extends StatelessWidget {
+  const _ReportPeriodTabs({
+    required this.selected,
+    required this.onChanged,
   });
 
-  final String label;
-  final IconData icon;
-  final VoidCallback onTap;
-  final bool iconTrailing;
+  final int selected;
+  final ValueChanged<int> onChanged;
 
-  static const _width = _WeatherReportCarouselState._railWidth;
+  static const _entries = <(int, String)>[
+    (_WeatherReportCarouselState._pagePast, 'Past'),
+    (_WeatherReportCarouselState._pageNow, 'Current'),
+    (_WeatherReportCarouselState._pageForecast, 'Forecast'),
+  ];
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final muted = scheme.onSurface.withValues(alpha: 0.45);
-    final fill = scheme.surfaceContainerHighest.withValues(alpha: 0.55);
-    final border = scheme.outlineVariant.withValues(alpha: 0.55);
-
-    return Material(
-      color: fill,
-      borderRadius: BorderRadius.circular(10),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(10),
-        child: Ink(
-          width: _width,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: border, width: 1),
-          ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              if (!iconTrailing) Icon(icon, size: 16, color: muted),
-              if (!iconTrailing) const SizedBox(height: 8),
-              RotatedBox(
-                quarterTurns: iconTrailing ? 1 : 3,
-                child: Text(
-                  label,
-                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w500,
-                        letterSpacing: 0.2,
-                        color: scheme.onSurface.withValues(alpha: 0.62),
-                      ),
+    return _TabBarCard(
+      child: Row(
+        children: [
+          for (final (page, label) in _entries)
+            Expanded(
+              child: _SegmentTab(
+                selected: page == selected,
+                onTap: () => onChanged(page),
+                child: Center(
+                  child: Text(
+                    label,
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                          color: page == selected
+                              ? scheme.onSurface
+                              : scheme.onSurfaceVariant,
+                          fontWeight: page == selected
+                              ? FontWeight.w700
+                              : FontWeight.w500,
+                          height: 1.1,
+                        ),
+                  ),
                 ),
               ),
-              if (iconTrailing) const SizedBox(height: 8),
-              if (iconTrailing) Icon(icon, size: 16, color: muted),
-            ],
-          ),
-        ),
+            ),
+        ],
       ),
     );
   }
@@ -914,17 +894,16 @@ class _ImpactSectionCard extends StatelessWidget {
         optionLabel != null &&
         onOptionChanged != null;
 
+    final radius = BorderRadius.circular(WeatherDetailDrawer._cardRadius);
     return Card(
       elevation: 1,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(WeatherDetailDrawer._cardRadius),
-      ),
+      margin: EdgeInsets.zero,
+      shape: RoundedRectangleBorder(borderRadius: radius),
       child: Container(
         width: double.infinity,
         decoration: BoxDecoration(
           color: scheme.surfaceContainerHighest.withValues(alpha: 0.5),
-          borderRadius:
-              BorderRadius.circular(WeatherDetailDrawer._cardRadius),
+          borderRadius: radius,
         ),
         padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
         child: Column(

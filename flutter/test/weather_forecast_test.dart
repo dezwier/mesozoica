@@ -90,6 +90,31 @@ void main() {
     });
   });
 
+  test('sharedTempRange spans past and forecast', () {
+    final past = [
+      WeatherHourPoint(
+        validAt: DateTime.utc(2026, 8, 5, 10),
+        weatherType: 'clear',
+        temperatureC: 5,
+        wmoCode: 0,
+        isForecast: false,
+      ),
+    ];
+    final future = [
+      WeatherHourPoint(
+        validAt: DateTime.utc(2026, 8, 6, 10),
+        weatherType: 'rain',
+        temperatureC: 25,
+        wmoCode: 61,
+        isForecast: true,
+      ),
+    ];
+    final range = WeatherTimelinePage.sharedTempRange([past, future]);
+    expect(range, isNotNull);
+    expect(range!.$1, lessThan(5));
+    expect(range.$2, greaterThan(25));
+  });
+
   testWidgets('WeatherTimelinePage shows title without scrub footer',
       (tester) async {
     final hours = [
@@ -125,12 +150,13 @@ void main() {
     );
 
     expect(find.text('Past 48 hours'), findsOneWidget);
-    // Scrub footer (weather label chip) must not appear on chart pages.
-    expect(find.text('Rain'), findsNothing);
-    expect(find.text('Clear'), findsNothing);
+    // Default selection is the latest past hour (clear) until the user scrubs.
+    expect(find.textContaining('Clear'), findsOneWidget);
+    expect(find.textContaining('14°'), findsOneWidget);
   });
 
-  testWidgets('WeatherDetailDrawer builds side rails on Now', (tester) async {
+  testWidgets('WeatherDetailDrawer period tabs switch Past / Current / Forecast',
+      (tester) async {
     final location = LocationService();
     final seeded = _SeededWeatherController(locationService: location);
 
@@ -149,14 +175,17 @@ void main() {
     await tester.pump();
 
     expect(find.text('Past'), findsOneWidget);
+    expect(find.text('Current'), findsOneWidget);
     expect(find.text('Forecast'), findsOneWidget);
-    expect(find.text('Now'), findsNothing);
     expect(find.text('Clear'), findsWidgets);
 
     await tester.tap(find.text('Past'));
     await tester.pumpAndSettle();
     expect(find.text('Past 48 hours'), findsOneWidget);
-    expect(find.text('Now'), findsOneWidget);
+
+    await tester.tap(find.text('Forecast'));
+    await tester.pumpAndSettle();
+    expect(find.text('Next 3 days'), findsOneWidget);
 
     seeded.dispose();
     location.dispose();

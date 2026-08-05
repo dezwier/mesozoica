@@ -5,10 +5,9 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../../models/weather_forecast.dart';
-import '../../theme/map_chrome_theme.dart';
 import 'weather_display.dart';
 
-/// Past or forecast hourly timeline: temp curve + weather-type ticks on parchment.
+/// Past or forecast hourly timeline: temp curve + weather-type icons on the axis.
 ///
 /// Horizontal drag / tap scrubs the series (page swipes are disabled on the
 /// parent [PageView] so gestures stay with the chart).
@@ -19,12 +18,47 @@ class WeatherTimelinePage extends StatefulWidget {
     required this.hours,
     required this.loading,
     this.emptyHint = 'Gathering field notes…',
+    this.tempMin,
+    this.tempMax,
   });
 
   final String title;
   final List<WeatherHourPoint> hours;
   final bool loading;
   final String emptyHint;
+
+  /// Shared Y-axis floor/ceiling (e.g. spanning past + forecast). When null,
+  /// the range is derived from [hours] alone.
+  final double? tempMin;
+  final double? tempMax;
+
+  /// Inclusive temp range covering every sample in [series], or null if empty.
+  static (double, double)? sharedTempRange(
+    Iterable<List<WeatherHourPoint>> series,
+  ) {
+    var hasAny = false;
+    var minT = 0.0;
+    var maxT = 0.0;
+    for (final hours in series) {
+      for (final h in hours) {
+        if (!hasAny) {
+          minT = h.temperatureC;
+          maxT = h.temperatureC;
+          hasAny = true;
+        } else {
+          minT = math.min(minT, h.temperatureC);
+          maxT = math.max(maxT, h.temperatureC);
+        }
+      }
+    }
+    if (!hasAny) return null;
+    if ((maxT - minT).abs() < 1) {
+      minT -= 1;
+      maxT += 1;
+    }
+    final pad = (maxT - minT) * 0.12;
+    return (minT - pad, maxT + pad);
+  }
 
   @override
   State<WeatherTimelinePage> createState() => _WeatherTimelinePageState();
@@ -34,11 +68,29 @@ class _WeatherTimelinePageState extends State<WeatherTimelinePage> {
   int? _hoverIndex;
 
   @override
+  void initState() {
+    super.initState();
+    _hoverIndex = _defaultIndex(widget.hours, widget.title);
+  }
+
+  @override
   void didUpdateWidget(covariant WeatherTimelinePage oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.hours != widget.hours) {
-      _hoverIndex = null;
+    if (oldWidget.hours != widget.hours || oldWidget.title != widget.title) {
+      // Keep scrub position when possible; otherwise snap to default "now".
+      if (_hoverIndex == null ||
+          _hoverIndex! >= widget.hours.length ||
+          oldWidget.hours != widget.hours) {
+        _hoverIndex = _defaultIndex(widget.hours, widget.title);
+      }
     }
+  }
+
+  /// Past → latest hour; forecast → soonest upcoming hour.
+  static int? _defaultIndex(List<WeatherHourPoint> hours, String title) {
+    if (hours.isEmpty) return null;
+    final isPast = title.toLowerCase().contains('past');
+    return isPast ? hours.length - 1 : 0;
   }
 
   void _selectFromDx(double dx, double width) {
@@ -57,63 +109,85 @@ class _WeatherTimelinePageState extends State<WeatherTimelinePage> {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     final hours = widget.hours;
+    final muted = scheme.onSurface.withValues(alpha: 0.55);
     final bodyStyle = Theme.of(context).textTheme.bodyMedium?.copyWith(
-          color: MapChromeTheme.labelMuted,
+          color: muted,
           fontSize: 14,
         );
     final titleStyle = Theme.of(context).textTheme.titleSmall?.copyWith(
-          color: MapChromeTheme.brownText,
+          color: scheme.onSurface.withValues(alpha: 0.82),
           fontWeight: FontWeight.w600,
           fontSize: 15,
         );
-    final hovered =
+    final selectedIndex =
         (_hoverIndex != null && _hoverIndex! < hours.length)
-            ? hours[_hoverIndex!]
-            : null;
+            ? _hoverIndex!
+            : _defaultIndex(hours, widget.title);
+    final hovered =
+        selectedIndex != null ? hours[selectedIndex] : null;
 
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: MapChromeTheme.parchment,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: MapChromeTheme.chromeBorder,
-          width: MapChromeTheme.chromeBorderWidth,
+    final radius = BorderRadius.circular(10);
+    return Card(
+      elevation: 1,
+      margin: EdgeInsets.zero,
+      clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(borderRadius: radius),
+      child: Container(
+        decoration: BoxDecoration(
+          color: scheme.surfaceContainerHighest.withValues(alpha: 0.5),
+          borderRadius: radius,
         ),
-        boxShadow: [
-          BoxShadow(
-            color: MapChromeTheme.leather.withValues(alpha: 0.12),
-            blurRadius: 10,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
-      child: Padding(
         padding: const EdgeInsets.fromLTRB(10, 10, 10, 8),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Row(
+              crossAxisAlignment: CrossAxisAlignment.baseline,
+              textBaseline: TextBaseline.alphabetic,
               children: [
-                Expanded(child: Text(widget.title, style: titleStyle)),
-                if (hovered != null)
-                  Flexible(
-                    child: Text(
-                      '${WeatherDisplay.weatherLabel(hovered.weatherType)}'
-                      ' · ${hovered.temperatureC.round()}°'
-                      ' · ${DateFormat('EEE HH:mm').format(hovered.validAt.toLocal())}',
-                      textAlign: TextAlign.right,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                            color: MapChromeTheme.labelMuted,
-                            fontWeight: FontWeight.w500,
+                Text(widget.title, style: titleStyle),
+                if (hovered != null) ...[
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerRight,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            WeatherDisplay.weatherIcon(hovered.weatherType),
+                            size: 15,
+                            color: WeatherDisplay.weatherIconColor(
+                              hovered.weatherType,
+                            ),
                           ),
+                          const SizedBox(width: 5),
+                          Text(
+                            '${WeatherDisplay.weatherLabel(hovered.weatherType)}'
+                            ' · ${hovered.temperatureC.round()}°'
+                            ' · ${DateFormat('EEE HH:mm').format(hovered.validAt.toLocal())}',
+                            maxLines: 1,
+                            softWrap: false,
+                            style: Theme.of(context)
+                                .textTheme
+                                .bodySmall
+                                ?.copyWith(
+                                  color: scheme.onSurface
+                                      .withValues(alpha: 0.72),
+                                  fontWeight: FontWeight.w500,
+                                ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
+                ],
               ],
             ),
-            const SizedBox(height: 6),
+            const SizedBox(height: 8),
             Expanded(
               child: widget.loading && hours.isEmpty
                   ? Center(child: Text(widget.emptyHint, style: bodyStyle))
@@ -148,7 +222,23 @@ class _WeatherTimelinePageState extends State<WeatherTimelinePage> {
                                 ),
                                 painter: _WeatherTimelinePainter(
                                   hours: hours,
-                                  selectedIndex: _hoverIndex,
+                                  selectedIndex: selectedIndex,
+                                  tempMin: widget.tempMin,
+                                  tempMax: widget.tempMax,
+                                  lineColor: scheme.onSurface
+                                      .withValues(alpha: 0.55),
+                                  fillTop: scheme.onSurface
+                                      .withValues(alpha: 0.12),
+                                  fillBottom: scheme.onSurface
+                                      .withValues(alpha: 0.0),
+                                  gridColor: scheme.outlineVariant
+                                      .withValues(alpha: 0.55),
+                                  axisColor: scheme.onSurface
+                                      .withValues(alpha: 0.45),
+                                  midnightColor: scheme.onSurface
+                                      .withValues(alpha: 0.28),
+                                  selectionColor: scheme.onSurface
+                                      .withValues(alpha: 0.55),
                                 ),
                               ),
                             );
@@ -165,16 +255,35 @@ class _WeatherTimelinePageState extends State<WeatherTimelinePage> {
 class _WeatherTimelinePainter extends CustomPainter {
   _WeatherTimelinePainter({
     required this.hours,
+    required this.lineColor,
+    required this.fillTop,
+    required this.fillBottom,
+    required this.gridColor,
+    required this.axisColor,
+    required this.midnightColor,
+    required this.selectionColor,
     this.selectedIndex,
+    this.tempMin,
+    this.tempMax,
   });
 
   final List<WeatherHourPoint> hours;
   final int? selectedIndex;
+  final double? tempMin;
+  final double? tempMax;
+  final Color lineColor;
+  final Color fillTop;
+  final Color fillBottom;
+  final Color gridColor;
+  final Color axisColor;
+  final Color midnightColor;
+  final Color selectionColor;
 
   static const leftPad = 30.0;
   static const rightPad = 8.0;
-  static const _topPad = 10.0;
-  static const _bottomPad = 24.0;
+  static const _topPad = 8.0;
+  /// Room for weather icons + time labels under the plot.
+  static const _bottomPad = 40.0;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -188,27 +297,37 @@ class _WeatherTimelinePainter extends CustomPainter {
     );
     if (chart.width <= 0 || chart.height <= 0) return;
 
-    var minT = hours.first.temperatureC;
-    var maxT = hours.first.temperatureC;
-    for (final h in hours) {
-      minT = math.min(minT, h.temperatureC);
-      maxT = math.max(maxT, h.temperatureC);
+    double minT;
+    double maxT;
+    final sharedMin = tempMin;
+    final sharedMax = tempMax;
+    if (sharedMin != null && sharedMax != null && sharedMax > sharedMin) {
+      minT = sharedMin;
+      maxT = sharedMax;
+    } else {
+      minT = hours.first.temperatureC;
+      maxT = hours.first.temperatureC;
+      for (final h in hours) {
+        minT = math.min(minT, h.temperatureC);
+        maxT = math.max(maxT, h.temperatureC);
+      }
+      if ((maxT - minT).abs() < 1) {
+        minT -= 1;
+        maxT += 1;
+      }
+      final pad = (maxT - minT) * 0.12;
+      minT -= pad;
+      maxT += pad;
     }
-    if ((maxT - minT).abs() < 1) {
-      minT -= 1;
-      maxT += 1;
-    }
-    final pad = (maxT - minT) * 0.12;
-    minT -= pad;
-    maxT += pad;
 
     _drawGrid(canvas, chart);
+    _drawMidnightMarkers(canvas, chart);
     _drawTempFillAndLine(canvas, chart, minT, maxT);
-    _drawWeatherTicks(canvas, chart, minT, maxT);
     if (selectedIndex != null) {
       _drawSelection(canvas, chart, minT, maxT, selectedIndex!);
     }
-    _drawAxes(canvas, chart, minT, maxT);
+    _drawYAxis(canvas, chart, minT, maxT);
+    _drawXAxisIconsAndLabels(canvas, chart);
   }
 
   Offset _pointAt(int i, Rect chart, double minT, double maxT) {
@@ -221,13 +340,63 @@ class _WeatherTimelinePainter extends CustomPainter {
     return Offset(x, y);
   }
 
+  Path _smoothPath(List<Offset> points) {
+    final path = Path();
+    if (points.isEmpty) return path;
+    path.moveTo(points.first.dx, points.first.dy);
+    if (points.length == 1) return path;
+    if (points.length == 2) {
+      path.lineTo(points[1].dx, points[1].dy);
+      return path;
+    }
+    for (var i = 0; i < points.length - 1; i++) {
+      final p0 = points[i];
+      final p1 = points[i + 1];
+      final midX = (p0.dx + p1.dx) / 2;
+      path.cubicTo(midX, p0.dy, midX, p1.dy, p1.dx, p1.dy);
+    }
+    return path;
+  }
+
   void _drawGrid(Canvas canvas, Rect chart) {
     final paint = Paint()
-      ..color = MapChromeTheme.parchmentEdge.withValues(alpha: 0.55)
+      ..color = gridColor
       ..strokeWidth = 1;
     for (var i = 0; i <= 3; i++) {
       final y = chart.top + chart.height * i / 3;
       canvas.drawLine(Offset(chart.left, y), Offset(chart.right, y), paint);
+    }
+  }
+
+  void _drawMidnightMarkers(Canvas canvas, Rect chart) {
+    final paint = Paint()
+      ..color = midnightColor
+      ..strokeWidth = 1.1;
+    final labelStyle = TextStyle(
+      fontSize: 9,
+      color: axisColor,
+      fontWeight: FontWeight.w600,
+    );
+    final tp = TextPainter(textDirection: ui.TextDirection.ltr);
+    for (var i = 0; i < hours.length; i++) {
+      final local = hours[i].validAt.toLocal();
+      if (local.hour != 0) continue;
+      final x = hours.length == 1
+          ? chart.center.dx
+          : chart.left + (i / (hours.length - 1)) * chart.width;
+      // Dashed vertical midnight line.
+      const dash = 4.0;
+      const gap = 3.0;
+      var y = chart.top;
+      while (y < chart.bottom) {
+        final y2 = math.min(y + dash, chart.bottom);
+        canvas.drawLine(Offset(x, y), Offset(x, y2), paint);
+        y = y2 + gap;
+      }
+      final day = DateFormat('E').format(local);
+      tp.text = TextSpan(text: day, style: labelStyle);
+      tp.layout();
+      tp.paint(canvas, Offset(x + 3, chart.top + 2));
     }
   }
 
@@ -237,19 +406,13 @@ class _WeatherTimelinePainter extends CustomPainter {
     double minT,
     double maxT,
   ) {
-    final path = Path();
-    for (var i = 0; i < hours.length; i++) {
-      final p = _pointAt(i, chart, minT, maxT);
-      if (i == 0) {
-        path.moveTo(p.dx, p.dy);
-      } else {
-        path.lineTo(p.dx, p.dy);
-      }
-    }
-
-    final fill = Path.from(path)
-      ..lineTo(_pointAt(hours.length - 1, chart, minT, maxT).dx, chart.bottom)
-      ..lineTo(_pointAt(0, chart, minT, maxT).dx, chart.bottom)
+    final points = [
+      for (var i = 0; i < hours.length; i++) _pointAt(i, chart, minT, maxT),
+    ];
+    final line = _smoothPath(points);
+    final fill = Path.from(line)
+      ..lineTo(points.last.dx, chart.bottom)
+      ..lineTo(points.first.dx, chart.bottom)
       ..close();
 
     canvas.drawPath(
@@ -258,59 +421,20 @@ class _WeatherTimelinePainter extends CustomPainter {
         ..shader = ui.Gradient.linear(
           Offset(chart.center.dx, chart.top),
           Offset(chart.center.dx, chart.bottom),
-          [
-            MapChromeTheme.gold.withValues(alpha: 0.28),
-            MapChromeTheme.gold.withValues(alpha: 0.02),
-          ],
+          [fillTop, fillBottom],
         ),
     );
 
     canvas.drawPath(
-      path,
+      line,
       Paint()
-        ..color = MapChromeTheme.gold
+        ..color = lineColor
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 2.4
+        ..strokeWidth = 2.2
         ..strokeCap = StrokeCap.round
-        ..strokeJoin = StrokeJoin.round,
+        ..strokeJoin = StrokeJoin.round
+        ..isAntiAlias = true,
     );
-  }
-
-  void _drawWeatherTicks(
-    Canvas canvas,
-    Rect chart,
-    double minT,
-    double maxT,
-  ) {
-    final step = hours.length > 24
-        ? 3
-        : hours.length > 12
-            ? 2
-            : 1;
-    final tp = TextPainter(textDirection: ui.TextDirection.ltr);
-    for (var i = 0; i < hours.length; i += step) {
-      final p = _pointAt(i, chart, minT, maxT);
-      final type = hours[i].weatherType;
-      final icon = WeatherDisplay.weatherIcon(type);
-      final color = WeatherDisplay.weatherIconColor(type);
-      canvas.drawCircle(
-        Offset(p.dx, chart.bottom + 2),
-        3.5,
-        Paint()..color = color.withValues(alpha: 0.85),
-      );
-      tp.text = TextSpan(
-        text: String.fromCharCode(icon.codePoint),
-        style: TextStyle(
-          fontSize: 11,
-          fontFamily: icon.fontFamily,
-          package: icon.fontPackage,
-          color: MapChromeTheme.brownText.withValues(alpha: 0.75),
-        ),
-      );
-      tp.layout();
-      final iconY = math.max(chart.top + 2, p.dy - 16);
-      tp.paint(canvas, Offset(p.dx - tp.width / 2, iconY));
-    }
   }
 
   void _drawSelection(
@@ -326,18 +450,26 @@ class _WeatherTimelinePainter extends CustomPainter {
       Offset(p.dx, chart.top),
       Offset(p.dx, chart.bottom),
       Paint()
-        ..color = MapChromeTheme.brassMid.withValues(alpha: 0.5)
+        ..color = selectionColor.withValues(alpha: 0.45)
         ..strokeWidth = 1.2,
     );
-    canvas.drawCircle(p, 5.5, Paint()..color = MapChromeTheme.creamCard);
-    canvas.drawCircle(p, 4, Paint()..color = MapChromeTheme.goldBright);
+    canvas.drawCircle(
+      p,
+      5,
+      Paint()..color = const Color(0xFFFFFFFF),
+    );
+    canvas.drawCircle(
+      p,
+      3.5,
+      Paint()..color = selectionColor,
+    );
   }
 
-  void _drawAxes(Canvas canvas, Rect chart, double minT, double maxT) {
+  void _drawYAxis(Canvas canvas, Rect chart, double minT, double maxT) {
     final tp = TextPainter(textDirection: ui.TextDirection.ltr);
-    const yLabelStyle = TextStyle(
+    final yLabelStyle = TextStyle(
       fontSize: 10,
-      color: MapChromeTheme.labelMuted,
+      color: axisColor,
       fontWeight: FontWeight.w500,
     );
     for (var i = 0; i <= 3; i++) {
@@ -347,12 +479,45 @@ class _WeatherTimelinePainter extends CustomPainter {
       tp.layout();
       tp.paint(canvas, Offset(chart.left - tp.width - 4, y - tp.height / 2));
     }
+  }
 
-    const xLabelStyle = TextStyle(
-      fontSize: 10,
-      color: MapChromeTheme.labelMuted,
+  void _drawXAxisIconsAndLabels(Canvas canvas, Rect chart) {
+    final tp = TextPainter(textDirection: ui.TextDirection.ltr);
+    final xLabelStyle = TextStyle(
+      fontSize: 9,
+      color: axisColor,
       fontWeight: FontWeight.w500,
     );
+
+    // Colored weather icons replace the old dots — sit on the axis, not the line.
+    final iconStep = hours.length > 36
+        ? 4
+        : hours.length > 24
+            ? 3
+            : hours.length > 12
+                ? 2
+                : 1;
+    for (var i = 0; i < hours.length; i += iconStep) {
+      final x = hours.length == 1
+          ? chart.center.dx
+          : chart.left + (i / (hours.length - 1)) * chart.width;
+      final type = hours[i].weatherType;
+      final icon = WeatherDisplay.weatherIcon(type);
+      final color = WeatherDisplay.weatherIconColor(type);
+      tp.text = TextSpan(
+        text: String.fromCharCode(icon.codePoint),
+        style: TextStyle(
+          fontSize: 13,
+          fontFamily: icon.fontFamily,
+          package: icon.fontPackage,
+          color: color,
+        ),
+      );
+      tp.layout();
+      tp.paint(canvas, Offset(x - tp.width / 2, chart.bottom + 3));
+    }
+
+    // Time labels under the icon row.
     final span = hours.last.validAt.difference(hours.first.validAt);
     final multiDay = span.inHours >= 30;
     final labelCount = math.min(5, hours.length);
@@ -369,13 +534,18 @@ class _WeatherTimelinePainter extends CustomPainter {
           : chart.left + (index / (hours.length - 1)) * chart.width;
       tp.text = TextSpan(text: label, style: xLabelStyle);
       tp.layout();
-      tp.paint(canvas, Offset(x - tp.width / 2, chart.bottom + 6));
+      tp.paint(canvas, Offset(x - tp.width / 2, chart.bottom + 20));
     }
   }
 
   @override
   bool shouldRepaint(covariant _WeatherTimelinePainter oldDelegate) {
     return oldDelegate.hours != hours ||
-        oldDelegate.selectedIndex != selectedIndex;
+        oldDelegate.selectedIndex != selectedIndex ||
+        oldDelegate.tempMin != tempMin ||
+        oldDelegate.tempMax != tempMax ||
+        oldDelegate.lineColor != lineColor ||
+        oldDelegate.fillTop != fillTop ||
+        oldDelegate.gridColor != gridColor;
   }
 }

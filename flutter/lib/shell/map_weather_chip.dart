@@ -15,13 +15,8 @@ class MapWeatherChip extends StatelessWidget {
 
   static const _textShadows = <Shadow>[
     Shadow(
-      color: Color(0xCC000000),
-      blurRadius: 10,
-      offset: Offset(0, 1),
-    ),
-    Shadow(
-      color: Color(0x99000000),
-      blurRadius: 3,
+      color: Color(0x66000000),
+      blurRadius: 4,
       offset: Offset(0, 1),
     ),
   ];

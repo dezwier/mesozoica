@@ -63,24 +63,24 @@ abstract final class WeatherDisplay {
   static IconData weatherIcon(String type) {
     switch (type == 'sunny' ? 'clear' : type) {
       case 'clear':
-        return Icons.wb_sunny_outlined;
+        return Icons.wb_sunny;
       case 'cloudy':
-        return Icons.wb_cloudy_outlined;
+        return Icons.wb_cloudy;
       case 'overcast':
-        return Icons.cloud_outlined;
+        return Icons.cloud;
       case 'fog':
-        return Icons.blur_on;
+        return Icons.foggy;
       case 'drizzle':
         return Icons.grain;
       case 'rain':
-        return Icons.water_drop_outlined;
+        return Icons.water_drop;
       case 'snow':
       case 'hail':
         return Icons.ac_unit;
       case 'thunderstorm':
-        return Icons.flash_on_outlined;
+        return Icons.flash_on;
       default:
-        return Icons.thermostat_outlined;
+        return Icons.thermostat;
     }
   }
 
