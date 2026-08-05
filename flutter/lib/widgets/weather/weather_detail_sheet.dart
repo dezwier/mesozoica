@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../config/game_config.dart';
 import '../../controllers/weather_controller.dart';
 import '../../models/weather_status.dart';
+import '../../services/location_service.dart';
 import '../../shell/shell_overlay_panel.dart';
 import '../profile/profile_skill_icons.dart';
 import 'weather_display.dart';
@@ -11,10 +12,14 @@ import 'weather_timeline_page.dart';
 
 /// Opens the ambient weather report as a fullscreen overlay (same chrome as
 /// Profile: dismiss button; content scrolls under it).
+///
+/// [openCount] lets [AppShell] freeze Mapbox / map chrome while the report is
+/// up (same pattern as [CardDetailSheet] / Profile).
 void showWeatherDetailSheet(BuildContext context) {
   context.read<WeatherController>().ensureForecastLoaded();
   final barrierLabel =
       MaterialLocalizations.of(context).modalBarrierDismissLabel;
+  WeatherDetailSheet.openCount.value += 1;
   showGeneralDialog<void>(
     context: context,
     useRootNavigator: true,
@@ -36,7 +41,20 @@ void showWeatherDetailSheet(BuildContext context) {
       );
       return FadeTransition(opacity: curved, child: child);
     },
-  );
+  ).whenComplete(() {
+    if (WeatherDetailSheet.openCount.value > 0) {
+      WeatherDetailSheet.openCount.value -= 1;
+    }
+  });
+}
+
+/// Lifecycle hooks for the weather fullscreen report (map freeze).
+abstract final class WeatherDetailSheet {
+  WeatherDetailSheet._();
+
+  static final ValueNotifier<int> openCount = ValueNotifier<int>(0);
+
+  static bool get isOpen => openCount.value > 0;
 }
 
 enum _AmbientAxis { timeOfDay, temperature, weather }
@@ -143,6 +161,7 @@ class _WeatherDetailDrawerState extends State<WeatherDetailDrawer> {
         _AmbientAxisTabs(
           selected: _axis,
           weatherType: status.weatherType,
+          weatherTime: status.weatherTime,
           onChanged: (axis) => setState(() => _axis = axis),
         ),
         const SizedBox(height: WeatherDetailDrawer._stackGap),
@@ -181,7 +200,10 @@ class _WeatherDetailDrawerState extends State<WeatherDetailDrawer> {
       case _AmbientAxis.weather:
         final selected = _selectedWeather(status);
         return _ImpactSectionCard(
-          icon: WeatherDisplay.weatherIcon(selected),
+          icon: WeatherDisplay.weatherIcon(
+            selected,
+            weatherTime: status.weatherTime,
+          ),
           title: 'Weather',
           groups: _impactGroupsForSkill(
             skillId,
@@ -193,7 +215,10 @@ class _WeatherDetailDrawerState extends State<WeatherDetailDrawer> {
           ),
           selectedOption: selected,
           optionLabel: WeatherDisplay.weatherLabel,
-          optionIcon: WeatherDisplay.weatherIcon,
+          optionIcon: (key) => WeatherDisplay.weatherIcon(
+            key,
+            weatherTime: status.weatherTime,
+          ),
           onOptionChanged: (key) => setState(() => _previewWeather = key),
           emptyLabel: 'No weather-type parameter impacts',
         );
@@ -419,11 +444,13 @@ class _AmbientAxisTabs extends StatelessWidget {
   const _AmbientAxisTabs({
     required this.selected,
     required this.weatherType,
+    required this.weatherTime,
     required this.onChanged,
   });
 
   final _AmbientAxis selected;
   final String weatherType;
+  final String weatherTime;
   final ValueChanged<_AmbientAxis> onChanged;
 
   @override
@@ -434,7 +461,10 @@ class _AmbientAxisTabs extends StatelessWidget {
       (_AmbientAxis.temperature, Icons.thermostat_outlined, 'Temp'),
       (
         _AmbientAxis.weather,
-        WeatherDisplay.weatherIcon(weatherType),
+        WeatherDisplay.weatherIcon(
+          weatherType,
+          weatherTime: weatherTime,
+        ),
         'Weather',
       ),
     ];
@@ -626,6 +656,10 @@ class _WeatherReportCarouselState extends State<_WeatherReportCarousel> {
     final sharedRange = WeatherTimelinePage.sharedTempRange([past, future]);
     final sharedMin = sharedRange?.$1;
     final sharedMax = sharedRange?.$2;
+    final loc = context.read<LocationService>().currentLocation;
+    final cell = weather.forecast?.cell;
+    final lat = loc?.latitude ?? cell?.centerLat;
+    final lon = loc?.longitude ?? cell?.centerLon;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -649,6 +683,8 @@ class _WeatherReportCarouselState extends State<_WeatherReportCarousel> {
                 emptyHint: emptyHint,
                 tempMin: sharedMin,
                 tempMax: sharedMax,
+                latitude: lat,
+                longitude: lon,
               ),
               _WeatherHero(status: status),
               WeatherTimelinePage(
@@ -658,6 +694,8 @@ class _WeatherReportCarouselState extends State<_WeatherReportCarousel> {
                 emptyHint: emptyHint,
                 tempMin: sharedMin,
                 tempMax: sharedMax,
+                latitude: lat,
+                longitude: lon,
               ),
             ],
           ),
@@ -764,7 +802,10 @@ class _WeatherHero extends StatelessWidget {
                 color: Theme.of(context).colorScheme.surfaceContainerHighest,
                 child: Center(
                   child: Icon(
-                    WeatherDisplay.weatherIcon(status.weatherType),
+                    WeatherDisplay.weatherIcon(
+                      status.weatherType,
+                      weatherTime: status.weatherTime,
+                    ),
                     size: 56,
                     color: Theme.of(context).colorScheme.primary,
                   ),
@@ -776,7 +817,10 @@ class _WeatherHero extends StatelessWidget {
               color: Theme.of(context).colorScheme.surfaceContainerHighest,
               child: Center(
                 child: Icon(
-                  WeatherDisplay.weatherIcon(status.weatherType),
+                  WeatherDisplay.weatherIcon(
+                    status.weatherType,
+                    weatherTime: status.weatherTime,
+                  ),
                   size: 56,
                   color: Theme.of(context).colorScheme.primary,
                 ),

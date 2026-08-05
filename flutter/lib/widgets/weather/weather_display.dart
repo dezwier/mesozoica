@@ -60,10 +60,12 @@ abstract final class WeatherDisplay {
     return '$_assetDir/weather_${normalized}_${artPeriod(weatherTime)}.png';
   }
 
-  static IconData weatherIcon(String type) {
+  static IconData weatherIcon(String type, {String? weatherTime}) {
     switch (type == 'sunny' ? 'clear' : type) {
       case 'clear':
-        return Icons.wb_sunny;
+        return (weatherTime != null && usesNightArt(weatherTime))
+            ? Icons.nightlight_round
+            : Icons.wb_sunny;
       case 'cloudy':
         return Icons.wb_cloudy;
       case 'overcast':
@@ -85,10 +87,12 @@ abstract final class WeatherDisplay {
   }
 
   /// Accent color for weather-type icons on the map chrome.
-  static Color weatherIconColor(String type) {
+  static Color weatherIconColor(String type, {String? weatherTime}) {
     switch (type == 'sunny' ? 'clear' : type) {
       case 'clear':
-        return const Color(0xFFFFC107);
+        return (weatherTime != null && usesNightArt(weatherTime))
+            ? const Color(0xFFC5CAE9)
+            : const Color(0xFFFFC107);
       case 'cloudy':
         return const Color(0xFFB0BEC5);
       case 'overcast':

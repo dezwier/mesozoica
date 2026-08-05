@@ -45,7 +45,10 @@ class _WeatherChipBody extends StatelessWidget {
         status.weatherType == 'unknown' && status.observedAt == null
             ? '—'
             : '$temp°';
-    final iconColor = WeatherDisplay.weatherIconColor(status.weatherType);
+    final iconColor = WeatherDisplay.weatherIconColor(
+      status.weatherType,
+      weatherTime: status.weatherTime,
+    );
 
     return Material(
       color: Colors.transparent,
@@ -62,7 +65,10 @@ class _WeatherChipBody extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Icon(
-                    WeatherDisplay.weatherIcon(status.weatherType),
+                    WeatherDisplay.weatherIcon(
+                      status.weatherType,
+                      weatherTime: status.weatherTime,
+                    ),
                     size: 18,
                     color: iconColor,
                     shadows: MapWeatherChip._textShadows,

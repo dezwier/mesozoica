@@ -42,6 +42,7 @@ import '../widgets/cards/card_detail_sheet.dart';
 import '../widgets/cards/site_discovery_celebration.dart';
 import '../widgets/common/app_splash_screen.dart';
 import '../widgets/profile/community_drawer.dart';
+import '../widgets/weather/weather_detail_sheet.dart';
 import '../screens/dino/dino_screen.dart';
 import '../screens/fossil/fossil_screen.dart';
 import '../screens/map/map_screen.dart';
@@ -93,8 +94,9 @@ class _AppShellState extends State<AppShell>
 
   bool get _anyCatalogOpen =>
       _sitesOpen || _fossilsOpen || _dinosaursOpen;
+  bool get _weatherOpen => WeatherDetailSheet.isOpen;
   bool get _anyOverlayOpen =>
-      _profileOpen || _anyCatalogOpen || _toolsOpen;
+      _profileOpen || _anyCatalogOpen || _toolsOpen || _weatherOpen;
   bool get _cardDetailOpen => CardDetailSheet.isOpen;
   /// Bottom / top chrome hide while any overlay / card dialog is open (or aerial draw).
   bool get _hideChrome =>
@@ -113,6 +115,7 @@ class _AppShellState extends State<AppShell>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     CardDetailSheet.openCount.addListener(_onCardDetailOverlayChanged);
+    WeatherDetailSheet.openCount.addListener(_onWeatherOverlayChanged);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       context.read<AuthController>().bindXpAwards(
@@ -426,6 +429,11 @@ class _AppShellState extends State<AppShell>
     setState(() {});
   }
 
+  void _onWeatherOverlayChanged() {
+    if (!mounted) return;
+    setState(() {});
+  }
+
   void _onAerialReconChanged() {
     if (!mounted) return;
     final aerial = _aerialRecon;
@@ -524,6 +532,7 @@ class _AppShellState extends State<AppShell>
   @override
   void dispose() {
     CardDetailSheet.openCount.removeListener(_onCardDetailOverlayChanged);
+    WeatherDetailSheet.openCount.removeListener(_onWeatherOverlayChanged);
     _discoveryCoordinator?.removeListener(_onDiscoveryChanged);
     _explorationController?.removeListener(_onExplorationChanged);
     _mapController?.removeListener(_onMapSitesChanged);

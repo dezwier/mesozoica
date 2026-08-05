@@ -91,10 +91,14 @@ class _WeatherSceneState extends State<WeatherScene>
         fit: widget.circular ? BoxFit.cover : BoxFit.contain,
         errorBuilder: (context, error, stackTrace) => _FallbackGlyph(
           weatherType: widget.weatherType,
+          weatherTime: widget.weatherTime,
         ),
       );
     } else {
-      image = _FallbackGlyph(weatherType: widget.weatherType);
+      image = _FallbackGlyph(
+        weatherType: widget.weatherType,
+        weatherTime: widget.weatherTime,
+      );
     }
 
     final scene = Stack(
@@ -145,16 +149,23 @@ class _WeatherSceneState extends State<WeatherScene>
 }
 
 class _FallbackGlyph extends StatelessWidget {
-  const _FallbackGlyph({required this.weatherType});
+  const _FallbackGlyph({
+    required this.weatherType,
+    required this.weatherTime,
+  });
 
   final String weatherType;
+  final String weatherTime;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return Center(
       child: Icon(
-        WeatherDisplay.weatherIcon(weatherType),
+        WeatherDisplay.weatherIcon(
+          weatherType,
+          weatherTime: weatherTime,
+        ),
         size: 72,
         color: scheme.primary,
       ),

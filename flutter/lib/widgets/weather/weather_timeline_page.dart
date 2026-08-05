@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../../models/weather_forecast.dart';
+import '../map/solar_period.dart';
 import 'weather_display.dart';
 
 /// Past or forecast timeline (15-min samples): temp curve + weather icons.
@@ -20,6 +21,8 @@ class WeatherTimelinePage extends StatefulWidget {
     this.emptyHint = 'Gathering field notes…',
     this.tempMin,
     this.tempMax,
+    this.latitude,
+    this.longitude,
   });
 
   final String title;
@@ -31,6 +34,10 @@ class WeatherTimelinePage extends StatefulWidget {
   /// the range is derived from [hours] alone.
   final double? tempMin;
   final double? tempMax;
+
+  /// Used to pick sun vs moon icons per sample (clear + night/dusk → moon).
+  final double? latitude;
+  final double? longitude;
 
   /// Inclusive temp range covering every sample in [series], or null if empty.
   static (double, double)? sharedTempRange(
@@ -107,6 +114,14 @@ class _WeatherTimelinePageState extends State<WeatherTimelinePage> {
     }
   }
 
+  /// Solar period name for icon day/night, or null when lat/lon missing.
+  String? _periodAt(DateTime at) {
+    final lat = widget.latitude;
+    final lon = widget.longitude;
+    if (lat == null || lon == null) return null;
+    return Solar.periodAt(latitude: lat, longitude: lon, at: at).name;
+  }
+
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
@@ -127,6 +142,8 @@ class _WeatherTimelinePageState extends State<WeatherTimelinePage> {
             : _defaultIndex(hours, widget.title);
     final hovered =
         selectedIndex != null ? hours[selectedIndex] : null;
+    final hoveredPeriod =
+        hovered != null ? _periodAt(hovered.validAt) : null;
 
     final radius = BorderRadius.circular(10);
     return Card(
@@ -158,10 +175,14 @@ class _WeatherTimelinePageState extends State<WeatherTimelinePage> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Icon(
-                            WeatherDisplay.weatherIcon(hovered.weatherType),
+                            WeatherDisplay.weatherIcon(
+                              hovered.weatherType,
+                              weatherTime: hoveredPeriod,
+                            ),
                             size: 15,
                             color: WeatherDisplay.weatherIconColor(
                               hovered.weatherType,
+                              weatherTime: hoveredPeriod,
                             ),
                           ),
                           const SizedBox(width: 5),
@@ -225,6 +246,8 @@ class _WeatherTimelinePageState extends State<WeatherTimelinePage> {
                                   selectedIndex: selectedIndex,
                                   tempMin: widget.tempMin,
                                   tempMax: widget.tempMax,
+                                  latitude: widget.latitude,
+                                  longitude: widget.longitude,
                                   lineColor: scheme.onSurface
                                       .withValues(alpha: 0.55),
                                   fillTop: scheme.onSurface
@@ -265,12 +288,16 @@ class _WeatherTimelinePainter extends CustomPainter {
     this.selectedIndex,
     this.tempMin,
     this.tempMax,
+    this.latitude,
+    this.longitude,
   });
 
   final List<WeatherHourPoint> hours;
   final int? selectedIndex;
   final double? tempMin;
   final double? tempMax;
+  final double? latitude;
+  final double? longitude;
   final Color lineColor;
   final Color fillTop;
   final Color fillBottom;
@@ -330,16 +357,38 @@ class _WeatherTimelinePainter extends CustomPainter {
     _drawXAxisIconsAndLabels(canvas, chart);
   }
 
-  Offset _pointAt(int i, Rect chart, double minT, double maxT) {
+  Offset _pointAt(int i, Rect chart, double minT, double maxT, [double? tempC]) {
     final x = hours.length == 1
         ? chart.center.dx
         : chart.left + (i / (hours.length - 1)) * chart.width;
-    final t = hours[i].temperatureC;
+    final t = tempC ?? hours[i].temperatureC;
     final yNorm = (t - minT) / (maxT - minT);
     final y = chart.bottom - yNorm * chart.height;
     return Offset(x, y);
   }
 
+  /// Light moving average so the 15-min series doesn't look jagged.
+  List<double> _smoothedTemps() {
+    final raw = [for (final h in hours) h.temperatureC];
+    if (raw.length < 5) return raw;
+    const radius = 2; // 5-sample window (~1h at 15-min cadence)
+    return [
+      for (var i = 0; i < raw.length; i++)
+        () {
+          var sum = 0.0;
+          var n = 0;
+          for (var j = i - radius; j <= i + radius; j++) {
+            if (j >= 0 && j < raw.length) {
+              sum += raw[j];
+              n++;
+            }
+          }
+          return sum / n;
+        }(),
+    ];
+  }
+
+  /// Catmull-Rom spline through [points] (smoother than mid-point cubics).
   Path _smoothPath(List<Offset> points) {
     final path = Path();
     if (points.isEmpty) return path;
@@ -350,10 +399,19 @@ class _WeatherTimelinePainter extends CustomPainter {
       return path;
     }
     for (var i = 0; i < points.length - 1; i++) {
-      final p0 = points[i];
-      final p1 = points[i + 1];
-      final midX = (p0.dx + p1.dx) / 2;
-      path.cubicTo(midX, p0.dy, midX, p1.dy, p1.dx, p1.dy);
+      final p0 = points[i == 0 ? 0 : i - 1];
+      final p1 = points[i];
+      final p2 = points[i + 1];
+      final p3 = points[i + 2 < points.length ? i + 2 : i + 1];
+      final cp1 = Offset(
+        p1.dx + (p2.dx - p0.dx) / 6,
+        p1.dy + (p2.dy - p0.dy) / 6,
+      );
+      final cp2 = Offset(
+        p2.dx - (p3.dx - p1.dx) / 6,
+        p2.dy - (p3.dy - p1.dy) / 6,
+      );
+      path.cubicTo(cp1.dx, cp1.dy, cp2.dx, cp2.dy, p2.dx, p2.dy);
     }
     return path;
   }
@@ -407,8 +465,10 @@ class _WeatherTimelinePainter extends CustomPainter {
     double minT,
     double maxT,
   ) {
+    final temps = _smoothedTemps();
     final points = [
-      for (var i = 0; i < hours.length; i++) _pointAt(i, chart, minT, maxT),
+      for (var i = 0; i < hours.length; i++)
+        _pointAt(i, chart, minT, maxT, temps[i]),
     ];
     final line = _smoothPath(points);
     final fill = Path.from(line)
@@ -490,21 +550,25 @@ class _WeatherTimelinePainter extends CustomPainter {
       fontWeight: FontWeight.w500,
     );
 
-    // Colored weather icons replace the old dots — sit on the axis, not the line.
-    final iconStep = hours.length > 36
-        ? 4
-        : hours.length > 24
-            ? 3
-            : hours.length > 12
-                ? 2
-                : 1;
-    for (var i = 0; i < hours.length; i += iconStep) {
+    // Icons every 3 clock hours (15-min series would otherwise be too dense).
+    for (var i = 0; i < hours.length; i++) {
+      final local = hours[i].validAt.toLocal();
+      if (local.minute != 0 || local.hour % 3 != 0) continue;
       final x = hours.length == 1
           ? chart.center.dx
           : chart.left + (i / (hours.length - 1)) * chart.width;
       final type = hours[i].weatherType;
-      final icon = WeatherDisplay.weatherIcon(type);
-      final color = WeatherDisplay.weatherIconColor(type);
+      final lat = latitude;
+      final lon = longitude;
+      final period = (lat != null && lon != null)
+          ? Solar.periodAt(
+              latitude: lat,
+              longitude: lon,
+              at: hours[i].validAt,
+            ).name
+          : null;
+      final icon = WeatherDisplay.weatherIcon(type, weatherTime: period);
+      final color = WeatherDisplay.weatherIconColor(type, weatherTime: period);
       tp.text = TextSpan(
         text: String.fromCharCode(icon.codePoint),
         style: TextStyle(
@@ -545,6 +609,8 @@ class _WeatherTimelinePainter extends CustomPainter {
         oldDelegate.selectedIndex != selectedIndex ||
         oldDelegate.tempMin != tempMin ||
         oldDelegate.tempMax != tempMax ||
+        oldDelegate.latitude != latitude ||
+        oldDelegate.longitude != longitude ||
         oldDelegate.lineColor != lineColor ||
         oldDelegate.fillTop != fillTop ||
         oldDelegate.gridColor != gridColor;
