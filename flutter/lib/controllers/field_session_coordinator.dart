@@ -37,6 +37,12 @@ class FieldSessionCoordinator extends ChangeNotifier {
   String? _pendingEnsureReason;
   VoidCallback? _locationListener;
   bool _openedEnsureDone = false;
+  /// True once a resume/startup ensure POST succeeded this foreground period.
+  /// Cleared on each [onForeground] so a late GPS fix can still enqueue.
+  bool _resumeEnsurePosted = false;
+  /// True while [_runResumeEnsure] owns the startup ensure (blocks the
+  /// location listener from double-posting during sync/GPS startup).
+  bool _resumeEnsureInProgress = false;
   /// Bumped on each foreground/background transition so a stale async
   /// `_enterBackground` cannot stop GPS after a later resume.
   int _lifecycleEpoch = 0;
@@ -66,21 +72,30 @@ class FieldSessionCoordinator extends ChangeNotifier {
     _locationListener ??= () => _onLocationChanged(locationService);
     locationService.removeListener(_locationListener!);
     locationService.addListener(_locationListener!);
+    // Do not sync/GPS here — that notifies the listener before resume is
+    // marked in-progress and double-posts ensure. [onForeground] owns sync.
     if (_lifecycle == AppLifecycleState.resumed) {
-      await _runResumeEnsure(_lifecycleEpoch);
+      onForeground();
     } else {
       await _syncSession();
     }
   }
 
   Future<void> _runResumeEnsure(int epoch) async {
-    await _syncSession();
     if (epoch != _lifecycleEpoch) return;
-    await _locationService?.onAppResumed();
-    if (epoch != _lifecycleEpoch) return;
-    await _maybeEnsure(force: true, reason: reasonResume);
-    if (epoch != _lifecycleEpoch) return;
-    _openedEnsureDone = true;
+    _resumeEnsureInProgress = true;
+    try {
+      await _syncSession();
+      if (epoch != _lifecycleEpoch) return;
+      await _locationService?.onAppResumed();
+      if (epoch != _lifecycleEpoch) return;
+      await _maybeEnsure(force: true, reason: reasonResume);
+    } finally {
+      _resumeEnsureInProgress = false;
+      if (epoch == _lifecycleEpoch) {
+        _openedEnsureDone = true;
+      }
+    }
   }
 
   void _onLocationChanged(LocationService locationService) {
@@ -89,15 +104,23 @@ class FieldSessionCoordinator extends ChangeNotifier {
         _lifecycle != AppLifecycleState.detached;
     if (_lifecycle != AppLifecycleState.resumed && !allowBackground) return;
 
+    final location = locationService.currentLocation;
     final pending = _pendingEnsureReason;
-    if (pending != null && locationService.currentLocation != null) {
+    if (pending != null && location != null) {
       _pendingEnsureReason = null;
       unawaited(_maybeEnsure(force: true, reason: pending));
       return;
     }
 
-    final location = locationService.currentLocation;
     if (location == null) return;
+
+    // Startup ensure never posted (epoch abort, or GPS arrived after defer)
+    // and no resume is currently driving it — force enqueue now.
+    if (!_resumeEnsurePosted && !_resumeEnsureInProgress) {
+      unawaited(_maybeEnsure(force: true, reason: reasonResume));
+      return;
+    }
+
     if (!_openedEnsureDone) return;
     unawaited(_maybeEnsure(position: location, reason: reasonMove500m));
   }
@@ -113,6 +136,7 @@ class FieldSessionCoordinator extends ChangeNotifier {
 
   void onForeground() {
     _lifecycle = AppLifecycleState.resumed;
+    _resumeEnsurePosted = false;
     final epoch = ++_lifecycleEpoch;
     unawaited(_runResumeEnsure(epoch));
   }
@@ -226,6 +250,9 @@ class FieldSessionCoordinator extends ChangeNotifier {
       // can retry on the next GPS tick once the cell is still new.
       if (reason != reasonScan) {
         _lastEnsureCell = cell;
+      }
+      if (reason == reasonResume) {
+        _resumeEnsurePosted = true;
       }
       _logEnsure(
         'enqueued reason=$reason accepted=${response.accepted} '

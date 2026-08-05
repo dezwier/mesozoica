@@ -918,4 +918,68 @@ void main() {
 
     controller.dispose();
   });
+
+  test('scheduleFieldPollAfterEnsure reloads show-all viewport', () async {
+    final catalogMode = CatalogModeController();
+    await catalogMode.initialize();
+    await catalogMode.setDataSource(CatalogDataSource.field);
+
+    var showAllCalls = 0;
+    final service = SiteService(
+      client: MockClient((request) async {
+        final showAll = request.url.queryParameters['show_all'] == 'true';
+        if (showAll) {
+          showAllCalls++;
+          final items = showAllCalls == 1
+              ? <Map<String, dynamic>>[]
+              : [
+                  siteJson(
+                    siteId: 55,
+                    latitude: 51.02,
+                    longitude: 4.02,
+                    status: 'hidden',
+                  ),
+                ];
+          return http.Response(
+            jsonEncode({
+              'items': items,
+              'total': items.length,
+              'limit': 500,
+              'offset': 0,
+              'has_next': false,
+            }),
+            200,
+          );
+        }
+        return http.Response(
+          jsonEncode({
+            'items': <Map<String, dynamic>>[],
+            'total': 0,
+            'limit': 500,
+            'offset': 0,
+            'has_next': false,
+          }),
+          200,
+        );
+      }),
+    );
+
+    final controller = MapController(
+      service: service,
+      catalogModeController: catalogMode,
+    );
+    controller.setShowAllFieldSites(true);
+    await controller.loadShowAllInBounds(
+      LatLngBounds(const LatLng(51.0, 4.0), const LatLng(51.05, 4.05)),
+    );
+    expect(showAllCalls, 1);
+    expect(controller.geoSites, isEmpty);
+
+    controller.scheduleFieldPollAfterEnsure();
+    await pumpUntilIdle();
+    expect(showAllCalls, greaterThanOrEqualTo(2));
+    expect(controller.geoSites.single.siteId, 55);
+
+    controller.dispose();
+  });
 }

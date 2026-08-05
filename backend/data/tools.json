@@ -145,7 +145,7 @@
   },
   {
     "name": "Ridge Glass",
-    "category": "2 bone_quarry",
+    "category": "1 field_survey",
     "scientific_tool": "binoculars",
     "description": "Scans distant cliffs and slopes for exposed bones, unusual textures and promising fossil-bearing layers.",
     "rarity": 1,

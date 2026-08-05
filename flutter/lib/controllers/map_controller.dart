@@ -496,6 +496,26 @@ class MapController extends ChangeNotifier {
       // Ensure may run while viewing archive; poll when user returns to field.
       return;
     }
+    // Show-all ignores linked polling — burst-reload the viewport so sites
+    // written by the ensure worker appear without a manual pan/re-toggle.
+    if (_showAllFieldSites) {
+      void reloadShowAll() {
+        if (seq != _fieldPollBackoffSeq ||
+            !_isFieldMode ||
+            !_showAllFieldSites) {
+          return;
+        }
+        final bounds = _showAllBounds ?? _pendingShowAllBounds;
+        if (bounds == null) return;
+        unawaited(loadShowAllInBounds(bounds, force: true));
+      }
+
+      reloadShowAll();
+      for (final delay in _fieldPollBurstDelays) {
+        Future<void>.delayed(delay, reloadShowAll);
+      }
+      return;
+    }
     unawaited(_pollNewFieldSites(seq));
     for (final delay in _fieldPollBurstDelays) {
       Future<void>.delayed(delay, () {

@@ -15,7 +15,7 @@ import 'package:mesozoica/utils/survey_grid.dart';
 import 'helpers/game_config_test_helpers.dart';
 
 class _FakeLocationService extends LocationService {
-  _FakeLocationService(this._location);
+  _FakeLocationService([this._location]);
 
   LatLng? _location;
 
@@ -27,6 +27,11 @@ class _FakeLocationService extends LocationService {
 
   void setLocation(LatLng location) {
     _location = location;
+    notifyListeners();
+  }
+
+  void clearLocation() {
+    _location = null;
     notifyListeners();
   }
 

@@ -436,7 +436,8 @@ class SiteService {
           headers: await _headers(jsonBody: true),
           body: jsonEncode(body),
         )
-        .timeout(const Duration(seconds: 3));
+        // Enqueue is cheap; allow cold TLS / radio wake on app open.
+        .timeout(const Duration(seconds: 15));
 
     if (response.statusCode != 202) {
       throw SiteServiceException(

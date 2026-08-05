@@ -187,6 +187,9 @@ class _AppShellState extends State<AppShell>
         }
       }());
 
+      // bind → _startSession → onForeground (startup ensure). Do not call
+      // onForeground again here — a second epoch aborts the first resume
+      // mid-GPS and can leave ensure never POSTed until a cell move.
       context.read<FieldSessionCoordinator>().bind(
             locationService: context.read<LocationService>(),
             onEnsureScheduled: () {
@@ -198,7 +201,6 @@ class _AppShellState extends State<AppShell>
               );
             },
           );
-      context.read<FieldSessionCoordinator>().onForeground();
       unawaited(
         context.read<WalkDistanceController>().bind(
               context.read<LocationService>(),
