@@ -65,7 +65,13 @@ def _clamp_unit_interval(value: float, *, label: str) -> float:
 
 
 class LevelModifierEntry(BaseModel):
-    """Apply when skill level >= ``level`` (highest matching entry wins per param)."""
+    """Keyframe for skill-level scaling.
+
+    Resolution linearly interpolates ``value`` between adjacent keyframes
+    (same ``op``). Below the first keyframe is identity; at/above the last
+    uses that entry. Sparse endpoints (e.g. L1 + L99) are enough for a
+    linear ramp.
+    """
 
     model_config = {"frozen": True}
 

@@ -120,7 +120,16 @@ def test_load_game_config_matches_current_defaults() -> None:
     assert config.site_discovery.client.cache_refresh_move_threshold_m == 500.0
     assert config.site_discovery.client.discover_fail_retry_s == 20
     assert config.site_discovery.client.discovery_reroll_interval_s == 10
-    assert config.site_discovery.level_modifiers["discovery_chance"] == []
+    assert config.site_discovery.level_modifiers["discovery_max_speed_kmh"] == []
+    reach_mods = config.site_discovery.level_modifiers["discovery_chance"]
+    assert len(reach_mods) == 2
+    assert reach_mods[0].level == 1 and reach_mods[0].value == 1
+    assert reach_mods[-1].level == 99 and reach_mods[-1].value == 1.5
+    assert config.site_discovery.level_modifiers["discovery_distance_m"] == reach_mods
+    assert (
+        config.site_stewardship.level_modifiers["documentation_distance_m"]
+        == reach_mods
+    )
     assert float(config.fossil_detection.main_params["locate_fossil_in_situ_xp"]) == 20.0
     night_xp = config.site_discovery.weather_time_modifiers["discover_site_xp"][
         "night"
@@ -145,18 +154,18 @@ def test_load_game_config_matches_current_defaults() -> None:
     assert config.site_stewardship.document_site_xp == 80.0
     assert config.site_stewardship.document_site_as_first_xp == 20.0
     dino_acc_mods = config.site_stewardship.level_modifiers["documentation_genera"]
-    assert len(dino_acc_mods) == 99
+    assert len(dino_acc_mods) == 2
     assert dino_acc_mods[0].level == 1 and dino_acc_mods[0].op == "multiply"
     assert dino_acc_mods[0].value == 1
     assert dino_acc_mods[-1].level == 99 and dino_acc_mods[-1].value == 99
     rival_mods = config.site_stewardship.level_modifiers["rival_discovery_chance"]
-    assert len(rival_mods) == 99
+    assert len(rival_mods) == 2
     assert rival_mods[0].level == 1 and rival_mods[0].op == "multiply"
     assert rival_mods[0].value == 1
     assert rival_mods[-1].level == 99 and rival_mods[-1].op == "multiply"
     assert rival_mods[-1].value == 0.5
     assert (
-        len(config.site_stewardship.level_modifiers["documentation_fossil"]) == 99
+        len(config.site_stewardship.level_modifiers["documentation_fossil"]) == 2
     )
     assert config.site_stewardship.odd_noise.dino_count == 0.0
     assert config.site_stewardship.odd_noise.fossil_count == 0.5

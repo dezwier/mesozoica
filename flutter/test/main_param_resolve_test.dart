@@ -62,6 +62,16 @@ void main() {
     GameConfig.debugReset();
   });
 
+  test('applyLevelModifiers lerps between sparse endpoints', () {
+    const entries = [
+      LevelModifierEntry(level: 1, op: 'multiply', value: 1),
+      LevelModifierEntry(level: 99, op: 'multiply', value: 0.5),
+    ];
+    expect(applyLevelModifiers(1.0, entries, 1), closeTo(1.0, 1e-9));
+    expect(applyLevelModifiers(1.0, entries, 50), closeTo(0.75, 1e-9));
+    expect(applyLevelModifiers(1.0, entries, 99), closeTo(0.5, 1e-9));
+  });
+
   test('site stewardship estimations are base 1% times skill level', () async {
     await loadGameConfigForTest();
 

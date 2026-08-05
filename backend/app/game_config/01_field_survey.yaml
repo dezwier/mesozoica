@@ -49,222 +49,32 @@ main_params:
   # first try 100%, second 50%, third 0%. Exploration meters start after both.
   identify_site_xp: 40
 
-# Identity for v1 — tune later. Each list entry: { level, op: add|multiply|replace, value }.
+# Keyframes: { level, op: add|multiply|replace, value }. Values lerp linearly
+# between adjacent entries (endpoints alone are enough for a straight ramp).
 level_modifiers:
-  discovery_distance_m: []
-  discovery_chance: []
+  # Reach / chance: ×1.0 at L1 → ×1.5 at L99.
+  discovery_distance_m: &field_survey_reach_levels
+    - { level: 1, op: multiply, value: 1 }
+    - { level: 99, op: multiply, value: 1.5 }
+  discovery_chance: *field_survey_reach_levels
+  documentation_distance_m: *field_survey_reach_levels
   discovery_max_speed_kmh: []
   discover_site_xp: []
   discover_site_as_first_xp: []
   explore_100m_actively_xp: []
   explore_100m_passively_xp: []
   disguise_of_site_xp: []
-  documentation_distance_m: []
   document_progress_xp: []
   document_site_xp: []
   document_site_as_first_xp: []
-  # Rival discovery: ×1.0 at L1 → ×0.5 at L99 (linear; all sites above hidden).
+  # Rival discovery: ×1.0 at L1 → ×0.5 at L99 (all sites above hidden).
   rival_discovery_chance:
     - { level: 1, op: multiply, value: 1 }
-    - { level: 2, op: multiply, value: 0.994898 }
-    - { level: 3, op: multiply, value: 0.989796 }
-    - { level: 4, op: multiply, value: 0.984694 }
-    - { level: 5, op: multiply, value: 0.979592 }
-    - { level: 6, op: multiply, value: 0.97449 }
-    - { level: 7, op: multiply, value: 0.969388 }
-    - { level: 8, op: multiply, value: 0.964286 }
-    - { level: 9, op: multiply, value: 0.959184 }
-    - { level: 10, op: multiply, value: 0.954082 }
-    - { level: 11, op: multiply, value: 0.94898 }
-    - { level: 12, op: multiply, value: 0.943878 }
-    - { level: 13, op: multiply, value: 0.938776 }
-    - { level: 14, op: multiply, value: 0.933673 }
-    - { level: 15, op: multiply, value: 0.928571 }
-    - { level: 16, op: multiply, value: 0.923469 }
-    - { level: 17, op: multiply, value: 0.918367 }
-    - { level: 18, op: multiply, value: 0.913265 }
-    - { level: 19, op: multiply, value: 0.908163 }
-    - { level: 20, op: multiply, value: 0.903061 }
-    - { level: 21, op: multiply, value: 0.897959 }
-    - { level: 22, op: multiply, value: 0.892857 }
-    - { level: 23, op: multiply, value: 0.887755 }
-    - { level: 24, op: multiply, value: 0.882653 }
-    - { level: 25, op: multiply, value: 0.877551 }
-    - { level: 26, op: multiply, value: 0.872449 }
-    - { level: 27, op: multiply, value: 0.867347 }
-    - { level: 28, op: multiply, value: 0.862245 }
-    - { level: 29, op: multiply, value: 0.857143 }
-    - { level: 30, op: multiply, value: 0.852041 }
-    - { level: 31, op: multiply, value: 0.846939 }
-    - { level: 32, op: multiply, value: 0.841837 }
-    - { level: 33, op: multiply, value: 0.836735 }
-    - { level: 34, op: multiply, value: 0.831633 }
-    - { level: 35, op: multiply, value: 0.826531 }
-    - { level: 36, op: multiply, value: 0.821429 }
-    - { level: 37, op: multiply, value: 0.816327 }
-    - { level: 38, op: multiply, value: 0.811224 }
-    - { level: 39, op: multiply, value: 0.806122 }
-    - { level: 40, op: multiply, value: 0.80102 }
-    - { level: 41, op: multiply, value: 0.795918 }
-    - { level: 42, op: multiply, value: 0.790816 }
-    - { level: 43, op: multiply, value: 0.785714 }
-    - { level: 44, op: multiply, value: 0.780612 }
-    - { level: 45, op: multiply, value: 0.77551 }
-    - { level: 46, op: multiply, value: 0.770408 }
-    - { level: 47, op: multiply, value: 0.765306 }
-    - { level: 48, op: multiply, value: 0.760204 }
-    - { level: 49, op: multiply, value: 0.755102 }
-    - { level: 50, op: multiply, value: 0.75 }
-    - { level: 51, op: multiply, value: 0.744898 }
-    - { level: 52, op: multiply, value: 0.739796 }
-    - { level: 53, op: multiply, value: 0.734694 }
-    - { level: 54, op: multiply, value: 0.729592 }
-    - { level: 55, op: multiply, value: 0.72449 }
-    - { level: 56, op: multiply, value: 0.719388 }
-    - { level: 57, op: multiply, value: 0.714286 }
-    - { level: 58, op: multiply, value: 0.709184 }
-    - { level: 59, op: multiply, value: 0.704082 }
-    - { level: 60, op: multiply, value: 0.69898 }
-    - { level: 61, op: multiply, value: 0.693878 }
-    - { level: 62, op: multiply, value: 0.688776 }
-    - { level: 63, op: multiply, value: 0.683673 }
-    - { level: 64, op: multiply, value: 0.678571 }
-    - { level: 65, op: multiply, value: 0.673469 }
-    - { level: 66, op: multiply, value: 0.668367 }
-    - { level: 67, op: multiply, value: 0.663265 }
-    - { level: 68, op: multiply, value: 0.658163 }
-    - { level: 69, op: multiply, value: 0.653061 }
-    - { level: 70, op: multiply, value: 0.647959 }
-    - { level: 71, op: multiply, value: 0.642857 }
-    - { level: 72, op: multiply, value: 0.637755 }
-    - { level: 73, op: multiply, value: 0.632653 }
-    - { level: 74, op: multiply, value: 0.627551 }
-    - { level: 75, op: multiply, value: 0.622449 }
-    - { level: 76, op: multiply, value: 0.617347 }
-    - { level: 77, op: multiply, value: 0.612245 }
-    - { level: 78, op: multiply, value: 0.607143 }
-    - { level: 79, op: multiply, value: 0.602041 }
-    - { level: 80, op: multiply, value: 0.596939 }
-    - { level: 81, op: multiply, value: 0.591837 }
-    - { level: 82, op: multiply, value: 0.586735 }
-    - { level: 83, op: multiply, value: 0.581633 }
-    - { level: 84, op: multiply, value: 0.576531 }
-    - { level: 85, op: multiply, value: 0.571429 }
-    - { level: 86, op: multiply, value: 0.566327 }
-    - { level: 87, op: multiply, value: 0.561224 }
-    - { level: 88, op: multiply, value: 0.556122 }
-    - { level: 89, op: multiply, value: 0.55102 }
-    - { level: 90, op: multiply, value: 0.545918 }
-    - { level: 91, op: multiply, value: 0.540816 }
-    - { level: 92, op: multiply, value: 0.535714 }
-    - { level: 93, op: multiply, value: 0.530612 }
-    - { level: 94, op: multiply, value: 0.52551 }
-    - { level: 95, op: multiply, value: 0.520408 }
-    - { level: 96, op: multiply, value: 0.515306 }
-    - { level: 97, op: multiply, value: 0.510204 }
-    - { level: 98, op: multiply, value: 0.505102 }
     - { level: 99, op: multiply, value: 0.5 }
 
   # Estimation: base 0.01 × skill level (L1 → 1%, L50 → 50%, L99 → 99%).
   documentation_genera: &site_stewardship_estimation_levels
     - { level: 1, op: multiply, value: 1 }
-    - { level: 2, op: multiply, value: 2 }
-    - { level: 3, op: multiply, value: 3 }
-    - { level: 4, op: multiply, value: 4 }
-    - { level: 5, op: multiply, value: 5 }
-    - { level: 6, op: multiply, value: 6 }
-    - { level: 7, op: multiply, value: 7 }
-    - { level: 8, op: multiply, value: 8 }
-    - { level: 9, op: multiply, value: 9 }
-    - { level: 10, op: multiply, value: 10 }
-    - { level: 11, op: multiply, value: 11 }
-    - { level: 12, op: multiply, value: 12 }
-    - { level: 13, op: multiply, value: 13 }
-    - { level: 14, op: multiply, value: 14 }
-    - { level: 15, op: multiply, value: 15 }
-    - { level: 16, op: multiply, value: 16 }
-    - { level: 17, op: multiply, value: 17 }
-    - { level: 18, op: multiply, value: 18 }
-    - { level: 19, op: multiply, value: 19 }
-    - { level: 20, op: multiply, value: 20 }
-    - { level: 21, op: multiply, value: 21 }
-    - { level: 22, op: multiply, value: 22 }
-    - { level: 23, op: multiply, value: 23 }
-    - { level: 24, op: multiply, value: 24 }
-    - { level: 25, op: multiply, value: 25 }
-    - { level: 26, op: multiply, value: 26 }
-    - { level: 27, op: multiply, value: 27 }
-    - { level: 28, op: multiply, value: 28 }
-    - { level: 29, op: multiply, value: 29 }
-    - { level: 30, op: multiply, value: 30 }
-    - { level: 31, op: multiply, value: 31 }
-    - { level: 32, op: multiply, value: 32 }
-    - { level: 33, op: multiply, value: 33 }
-    - { level: 34, op: multiply, value: 34 }
-    - { level: 35, op: multiply, value: 35 }
-    - { level: 36, op: multiply, value: 36 }
-    - { level: 37, op: multiply, value: 37 }
-    - { level: 38, op: multiply, value: 38 }
-    - { level: 39, op: multiply, value: 39 }
-    - { level: 40, op: multiply, value: 40 }
-    - { level: 41, op: multiply, value: 41 }
-    - { level: 42, op: multiply, value: 42 }
-    - { level: 43, op: multiply, value: 43 }
-    - { level: 44, op: multiply, value: 44 }
-    - { level: 45, op: multiply, value: 45 }
-    - { level: 46, op: multiply, value: 46 }
-    - { level: 47, op: multiply, value: 47 }
-    - { level: 48, op: multiply, value: 48 }
-    - { level: 49, op: multiply, value: 49 }
-    - { level: 50, op: multiply, value: 50 }
-    - { level: 51, op: multiply, value: 51 }
-    - { level: 52, op: multiply, value: 52 }
-    - { level: 53, op: multiply, value: 53 }
-    - { level: 54, op: multiply, value: 54 }
-    - { level: 55, op: multiply, value: 55 }
-    - { level: 56, op: multiply, value: 56 }
-    - { level: 57, op: multiply, value: 57 }
-    - { level: 58, op: multiply, value: 58 }
-    - { level: 59, op: multiply, value: 59 }
-    - { level: 60, op: multiply, value: 60 }
-    - { level: 61, op: multiply, value: 61 }
-    - { level: 62, op: multiply, value: 62 }
-    - { level: 63, op: multiply, value: 63 }
-    - { level: 64, op: multiply, value: 64 }
-    - { level: 65, op: multiply, value: 65 }
-    - { level: 66, op: multiply, value: 66 }
-    - { level: 67, op: multiply, value: 67 }
-    - { level: 68, op: multiply, value: 68 }
-    - { level: 69, op: multiply, value: 69 }
-    - { level: 70, op: multiply, value: 70 }
-    - { level: 71, op: multiply, value: 71 }
-    - { level: 72, op: multiply, value: 72 }
-    - { level: 73, op: multiply, value: 73 }
-    - { level: 74, op: multiply, value: 74 }
-    - { level: 75, op: multiply, value: 75 }
-    - { level: 76, op: multiply, value: 76 }
-    - { level: 77, op: multiply, value: 77 }
-    - { level: 78, op: multiply, value: 78 }
-    - { level: 79, op: multiply, value: 79 }
-    - { level: 80, op: multiply, value: 80 }
-    - { level: 81, op: multiply, value: 81 }
-    - { level: 82, op: multiply, value: 82 }
-    - { level: 83, op: multiply, value: 83 }
-    - { level: 84, op: multiply, value: 84 }
-    - { level: 85, op: multiply, value: 85 }
-    - { level: 86, op: multiply, value: 86 }
-    - { level: 87, op: multiply, value: 87 }
-    - { level: 88, op: multiply, value: 88 }
-    - { level: 89, op: multiply, value: 89 }
-    - { level: 90, op: multiply, value: 90 }
-    - { level: 91, op: multiply, value: 91 }
-    - { level: 92, op: multiply, value: 92 }
-    - { level: 93, op: multiply, value: 93 }
-    - { level: 94, op: multiply, value: 94 }
-    - { level: 95, op: multiply, value: 95 }
-    - { level: 96, op: multiply, value: 96 }
-    - { level: 97, op: multiply, value: 97 }
-    - { level: 98, op: multiply, value: 98 }
     - { level: 99, op: multiply, value: 99 }
   documentation_fossil: *site_stewardship_estimation_levels
   documentation_completeness: *site_stewardship_estimation_levels
@@ -290,12 +100,7 @@ weather_time_modifiers:
   discover_site_as_first_xp: {}
   explore_100m_actively_xp: {}
   explore_100m_passively_xp: {}
-  documentation_distance_m:
-    day: [{ op: multiply, value: 1.1 }]
-    golden_hour: [{ op: multiply, value: 1.3 }]
-    dawn: []
-    dusk: []
-    night: [{ op: multiply, value: 0.6 }]
+  documentation_distance_m: *field_survey_weather_time
   document_progress_xp:
     day: []
     golden_hour: [{ op: multiply, value: 1.1 }]
@@ -321,6 +126,7 @@ weather_type_modifiers:
   discover_site_as_first_xp: {}
   explore_100m_actively_xp: {}
   explore_100m_passively_xp: {}
+  documentation_distance_m: *field_survey_weather_type
 
 # Flutter auto-discover + nearby-discoverable cache.
 client:

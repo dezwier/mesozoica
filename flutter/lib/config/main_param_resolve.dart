@@ -19,18 +19,65 @@ double applyMainParamModifier(
   }
 }
 
-/// Highest entry with `level <= skillLevel` wins (identity if none).
+/// Apply level keyframes with linear value interpolation between them.
+///
+/// Below the first keyframe → [base] unchanged. At/above the last → that
+/// entry. Between two keyframes → lerp `value` (uses the lower keyframe's
+/// `op`). Sparse endpoints (e.g. L1 + L99) are enough for a straight ramp.
+double applyLevelModifiers(
+  double base,
+  List<LevelModifierEntry>? entries,
+  int skillLevel,
+) {
+  if (entries == null || entries.isEmpty) return base;
+  final ordered = [...entries]..sort((a, b) => a.level.compareTo(b.level));
+  if (skillLevel < ordered.first.level) return base;
+  if (skillLevel >= ordered.last.level) {
+    return applyMainParamModifier(
+      base,
+      op: ordered.last.op,
+      value: ordered.last.value,
+    );
+  }
+  for (var i = 0; i < ordered.length - 1; i++) {
+    final lo = ordered[i];
+    final hi = ordered[i + 1];
+    if (skillLevel > hi.level) continue;
+    if (skillLevel == lo.level || hi.level == lo.level) {
+      return applyMainParamModifier(base, op: lo.op, value: lo.value);
+    }
+    final t = (skillLevel - lo.level) / (hi.level - lo.level);
+    final value = lo.value + t * (hi.value - lo.value);
+    return applyMainParamModifier(base, op: lo.op, value: value);
+  }
+  return base;
+}
+
+/// Interpolated level modifier at [skillLevel], or null if identity.
+///
+/// Prefer [applyLevelModifiers] when you only need the resolved float.
 LevelModifierEntry? applicableLevelModifier(
   List<LevelModifierEntry>? entries,
   int skillLevel,
 ) {
   if (entries == null || entries.isEmpty) return null;
-  LevelModifierEntry? best;
-  for (final entry in entries) {
-    if (entry.level > skillLevel) continue;
-    if (best == null || entry.level > best.level) best = entry;
+  final ordered = [...entries]..sort((a, b) => a.level.compareTo(b.level));
+  if (skillLevel < ordered.first.level) return null;
+  if (skillLevel >= ordered.last.level) return ordered.last;
+  for (var i = 0; i < ordered.length - 1; i++) {
+    final lo = ordered[i];
+    final hi = ordered[i + 1];
+    if (skillLevel > hi.level) continue;
+    if (skillLevel == lo.level || hi.level == lo.level) return lo;
+    if (skillLevel == hi.level) return hi;
+    final t = (skillLevel - lo.level) / (hi.level - lo.level);
+    return LevelModifierEntry(
+      level: skillLevel,
+      op: lo.op,
+      value: lo.value + t * (hi.value - lo.value),
+    );
   }
-  return best;
+  return null;
 }
 
 /// Ordered ambient modifiers for [paramKey] at [key] (or empty).
@@ -77,14 +124,7 @@ double resolveScalarMainParam({
   bool clampUnit = false,
 }) {
   var value = base;
-  final levelMod = applicableLevelModifier(levelEntries, skillLevel);
-  if (levelMod != null) {
-    value = applyMainParamModifier(
-      value,
-      op: levelMod.op,
-      value: levelMod.value,
-    );
-  }
+  value = applyLevelModifiers(value, levelEntries, skillLevel);
   for (final mod in weatherTimeMods ?? const <ParamModifier>[]) {
     value = applyMainParamModifier(value, op: mod.op, value: mod.value);
   }

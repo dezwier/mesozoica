@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../../config/game_config.dart';
+import '../../config/main_param_resolve.dart';
 import '../../config/tool_instance_params.dart';
 import '../../controllers/auth_controller.dart';
 import '../../controllers/guidance_session_controller.dart';
@@ -1374,11 +1375,7 @@ _MainParamDisplay _resolveScalarParam({
   required List<ToolModBinding> toolBindings,
 }) {
   // YAML base + level → skill "base level" shown in the drawer / tooltip.
-  var levelBase = base;
-  final levelMod = _applicableLevelModifier(levelEntries, skillLevel);
-  if (levelMod != null) {
-    levelBase = _applyModifier(levelBase, levelMod);
-  }
+  final levelBase = applyLevelModifiers(base, levelEntries, skillLevel);
 
   final changeFactors = <_ParamFactor>[];
   var value = levelBase;
@@ -1524,16 +1521,6 @@ List<_ActiveToolMod> _activeToolModsForParam({
     }
   }
   return out;
-}
-
-LevelModifierEntry? _applicableLevelModifier(
-  List<LevelModifierEntry>? entries,
-  int skillLevel,
-) {
-  if (entries == null || entries.isEmpty) return null;
-  final applicable = entries.where((e) => e.level <= skillLevel).toList();
-  if (applicable.isEmpty) return null;
-  return applicable.reduce((a, b) => a.level > b.level ? a : b);
 }
 
 double _applyModifier(double base, Object mod) {

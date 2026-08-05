@@ -29,14 +29,30 @@ def apply_level_modifiers(
     *,
     skill_level: int,
 ) -> float:
-    """Apply the highest level entry with ``level <= skill_level`` (identity if none)."""
+    """Apply level keyframes with linear value interpolation between them.
+
+    Below the first keyframe → identity. At/above the last → that entry.
+    Between two keyframes → lerp ``value`` (uses the lower keyframe's ``op``).
+    """
     if not entries:
         return float(base)
-    applicable = [e for e in entries if e.level <= skill_level]
-    if not applicable:
+    ordered = sorted(entries, key=lambda e: e.level)
+    if skill_level < ordered[0].level:
         return float(base)
-    best = max(applicable, key=lambda e: e.level)
-    return apply_modifier(base, best)
+    if skill_level >= ordered[-1].level:
+        return apply_modifier(base, ordered[-1])
+    for lo, hi in zip(ordered, ordered[1:]):
+        if skill_level > hi.level:
+            continue
+        if skill_level == lo.level or hi.level == lo.level:
+            return apply_modifier(base, lo)
+        t = (skill_level - lo.level) / (hi.level - lo.level)
+        value = lo.value + t * (hi.value - lo.value)
+        return apply_modifier(
+            base,
+            LevelModifierEntry(level=skill_level, op=lo.op, value=value),
+        )
+    return float(base)
 
 
 def apply_ambient_modifiers(

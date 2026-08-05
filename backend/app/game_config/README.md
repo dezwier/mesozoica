@@ -40,8 +40,11 @@ Each skill domain YAML has:
 ```yaml
 skill_id: site_discovery
 main_params: { ... }          # global defaults (player-facing)
-level_modifiers:              # identity in v1; tune later
+level_modifiers:              # keyframes; values lerp between levels
   discovery_chance: []        # entries: { level, op: add|multiply|replace, value }
+  rival_discovery_chance:     # endpoints alone → linear ramp L1→L99
+    - { level: 1, op: multiply, value: 1 }
+    - { level: 99, op: multiply, value: 0.5 }
 weather_time_modifiers:       # keyed by solar period; identity if omitted/empty
   discovery_distance_m:
     day: [{ op: multiply, value: 1.1 }]
@@ -50,6 +53,11 @@ weather_type_modifiers:       # keyed by weather type; identity if omitted/empty
     clear: [{ op: multiply, value: 1.1 }]
 client: { ... }               # non-main implementation knobs (optional)
 ```
+
+`level_modifiers` are keyframes: `value` is linearly interpolated between
+adjacent entries (same `op`). Below the first keyframe is identity; at/above
+the last uses that entry. Two endpoints are enough for a straight L1→L99 ramp;
+add midpoints only for non-linear curves.
 
 Ops (same for `level_modifiers`, ambient weather modifiers, and tool
 `modifies_main_params`):

@@ -6,8 +6,10 @@ import pytest
 
 from app.core.game_config import LevelModifierEntry, ParamModifier, get_game_config
 from app.services.level_service.main_params import (
+    apply_level_modifiers,
     apply_modifier,
     resolve_site_discovery_main_params,
+    resolve_site_stewardship_main_params,
 )
 
 
@@ -19,17 +21,55 @@ def test_apply_modifier_ops() -> None:
     assert apply_modifier(0.1, ParamModifier(op="multiply", value=2.0)) == 0.2
 
 
-def test_resolve_site_discovery_identity_level() -> None:
+def test_apply_level_modifiers_lerps_between_endpoints() -> None:
+    entries = [
+        LevelModifierEntry(level=1, op="multiply", value=1.0),
+        LevelModifierEntry(level=99, op="multiply", value=0.5),
+    ]
+    assert apply_level_modifiers(1.0, entries, skill_level=1) == pytest.approx(1.0)
+    assert apply_level_modifiers(1.0, entries, skill_level=50) == pytest.approx(0.75)
+    assert apply_level_modifiers(1.0, entries, skill_level=99) == pytest.approx(0.5)
+    # Below first keyframe → identity.
+    assert apply_level_modifiers(1.0, entries, skill_level=0) == pytest.approx(1.0)
+
+
+def test_field_survey_estimation_and_rival_from_sparse_keyframes() -> None:
+    get_game_config.cache_clear()
+    l1 = resolve_site_stewardship_main_params(skill_level=1)
+    l50 = resolve_site_stewardship_main_params(skill_level=50)
+    l99 = resolve_site_stewardship_main_params(skill_level=99)
+    assert l1["documentation_genera"] == pytest.approx(0.01)
+    assert l50["documentation_genera"] == pytest.approx(0.50)
+    assert l99["documentation_genera"] == pytest.approx(0.99)
+    assert l1["rival_discovery_chance"] == pytest.approx(1.0)
+    assert l50["rival_discovery_chance"] == pytest.approx(0.75)
+    assert l99["rival_discovery_chance"] == pytest.approx(0.5)
+
+
+def test_resolve_site_discovery_reach_scales_with_level() -> None:
     get_game_config.cache_clear()
     cfg = get_game_config().site_discovery
-    resolved = resolve_site_discovery_main_params(skill_level=50)
-    assert resolved["discovery_distance_m"] == cfg.discovery_distance_m
-    assert resolved["discovery_chance"] == cfg.discovery_chance
-    assert resolved["discovery_max_speed_kmh"] == cfg.discovery_max_speed_kmh
-    assert resolved["discover_site_xp"] == cfg.discover_site_xp
-    assert resolved["discover_site_as_first_xp"] == cfg.discover_site_as_first_xp
-    assert resolved["explore_100m_actively_xp"] == cfg.explore_100m_actively_xp
-    assert resolved["explore_100m_passively_xp"] == cfg.explore_100m_passively_xp
+    l1 = resolve_site_discovery_main_params(skill_level=1)
+    l50 = resolve_site_discovery_main_params(skill_level=50)
+    l99 = resolve_site_discovery_main_params(skill_level=99)
+    # ×1.0 at L1 → ×1.5 at L99 (lerp; L50 ≈ ×1.25).
+    assert l1["discovery_distance_m"] == pytest.approx(cfg.discovery_distance_m)
+    assert l1["discovery_chance"] == pytest.approx(cfg.discovery_chance)
+    assert l50["discovery_distance_m"] == pytest.approx(cfg.discovery_distance_m * 1.25)
+    assert l50["discovery_chance"] == pytest.approx(cfg.discovery_chance * 1.25)
+    assert l99["discovery_distance_m"] == pytest.approx(cfg.discovery_distance_m * 1.5)
+    assert l99["discovery_chance"] == pytest.approx(cfg.discovery_chance * 1.5)
+    # XP params stay identity.
+    assert l50["discover_site_xp"] == cfg.discover_site_xp
+    assert l50["discover_site_as_first_xp"] == cfg.discover_site_as_first_xp
+    assert l50["explore_100m_actively_xp"] == cfg.explore_100m_actively_xp
+    assert l50["explore_100m_passively_xp"] == cfg.explore_100m_passively_xp
+    assert l50["discovery_max_speed_kmh"] == cfg.discovery_max_speed_kmh
+
+    stew = resolve_site_stewardship_main_params(skill_level=99)
+    assert stew["documentation_distance_m"] == pytest.approx(
+        get_game_config().site_stewardship.documentation_distance_m * 1.5
+    )
 
 
 def test_resolve_site_discovery_tool_replace() -> None:
