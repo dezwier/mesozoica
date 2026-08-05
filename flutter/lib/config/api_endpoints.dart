@@ -449,4 +449,19 @@ class ApiEndpoints {
           'lon': lon.toString(),
         },
       );
+
+  static Uri weatherForecastUri({
+    required double lat,
+    required double lon,
+    int pastHours = 48,
+    int forecastHours = 72,
+  }) =>
+      Uri.parse('${AppConfig.baseApiUrl}/api/v1/weather/forecast').replace(
+        queryParameters: {
+          'lat': lat.toString(),
+          'lon': lon.toString(),
+          'past_hours': pastHours.toString(),
+          'forecast_hours': forecastHours.toString(),
+        },
+      );
 }

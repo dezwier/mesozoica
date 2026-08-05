@@ -4,20 +4,38 @@ import 'package:provider/provider.dart';
 import '../../config/game_config.dart';
 import '../../controllers/weather_controller.dart';
 import '../../models/weather_status.dart';
-import '../common/draggable_sheet_wrapper.dart';
+import '../../shell/shell_overlay_panel.dart';
 import '../profile/profile_skill_icons.dart';
 import 'weather_display.dart';
+import 'weather_timeline_page.dart';
 
-/// Opens the ambient weather report drawer (same height as skill / profile sheets).
+/// Opens the ambient weather report as a fullscreen overlay (same chrome as
+/// Profile: dismiss button; content scrolls under it).
 void showWeatherDetailSheet(BuildContext context) {
-  showModalBottomSheet<void>(
+  context.read<WeatherController>().ensureForecastLoaded();
+  final barrierLabel =
+      MaterialLocalizations.of(context).modalBarrierDismissLabel;
+  showGeneralDialog<void>(
     context: context,
-    isScrollControlled: true,
-    backgroundColor: Colors.transparent,
-    builder: (_) => DraggableSheetWrapper(
-      childBuilder: (scrollController) =>
-          WeatherDetailDrawer(scrollController: scrollController),
-    ),
+    useRootNavigator: true,
+    barrierDismissible: false,
+    barrierLabel: barrierLabel,
+    barrierColor: Colors.transparent,
+    transitionDuration: const Duration(milliseconds: 280),
+    pageBuilder: (context, animation, secondaryAnimation) {
+      return ShellOverlayPanel(
+        onClose: () => Navigator.of(context).maybePop(),
+        child: const WeatherDetailDrawer(),
+      );
+    },
+    transitionBuilder: (context, animation, secondaryAnimation, child) {
+      final curved = CurvedAnimation(
+        parent: animation,
+        curve: Curves.easeOutCubic,
+        reverseCurve: Curves.easeInCubic,
+      );
+      return FadeTransition(opacity: curved, child: child);
+    },
   );
 }
 
@@ -25,12 +43,7 @@ enum _AmbientAxis { timeOfDay, temperature, weather }
 
 /// Full weather report + gameplay impact boxes for time, temperature, weather.
 class WeatherDetailDrawer extends StatefulWidget {
-  const WeatherDetailDrawer({
-    super.key,
-    required this.scrollController,
-  });
-
-  final ScrollController scrollController;
+  const WeatherDetailDrawer({super.key});
 
   static const double _cardRadius = 10;
 
@@ -92,67 +105,45 @@ class _WeatherDetailDrawerState extends State<WeatherDetailDrawer> {
     final skills = _skills;
     final skillId = _skillId;
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        return Container(
-          height: constraints.maxHeight,
-          decoration: BoxDecoration(
-            color: scheme.surface,
-            borderRadius:
-                const BorderRadius.vertical(top: Radius.circular(20)),
+    if (status == null) {
+      return Center(
+        child: Text(
+          'Waiting for location…',
+          style: Theme.of(context)
+              .textTheme
+              .bodyMedium
+              ?.copyWith(color: scheme.onSurfaceVariant),
+        ),
+      );
+    }
+
+    return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: EdgeInsets.fromLTRB(
+        16,
+        8,
+        16,
+        ShellOverlayPanel.contentBottomInset(context),
+      ),
+      children: [
+        const _WeatherReportCarousel(),
+        if (skills.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          _SkillTabs(
+            skills: skills,
+            selectedId: skillId,
+            onChanged: (id) => setState(() => _selectedSkillId = id),
           ),
-          child: Column(
-            children: [
-              const SizedBox(height: 12),
-              Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: scheme.onSurface.withValues(alpha: 0.3),
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              Expanded(
-                child: status == null
-                    ? Center(
-                        child: Text(
-                          'Waiting for location…',
-                          style: Theme.of(context)
-                              .textTheme
-                              .bodyMedium
-                              ?.copyWith(color: scheme.onSurfaceVariant),
-                        ),
-                      )
-                    : ListView(
-                        controller: widget.scrollController,
-                        padding: const EdgeInsets.fromLTRB(16, 20, 16, 32),
-                        children: [
-                          _WeatherHero(status: status),
-                          if (skills.isNotEmpty) ...[
-                            const SizedBox(height: 16),
-                            _SkillTabs(
-                              skills: skills,
-                              selectedId: skillId,
-                              onChanged: (id) =>
-                                  setState(() => _selectedSkillId = id),
-                            ),
-                          ],
-                          const SizedBox(height: 8),
-                          _AmbientAxisTabs(
-                            selected: _axis,
-                            weatherType: status.weatherType,
-                            onChanged: (axis) =>
-                                setState(() => _axis = axis),
-                          ),
-                          const SizedBox(height: 16),
-                          _selectedImpactCard(status, skillId),
-                        ],
-                      ),
-              ),
-            ],
-          ),
-        );
-      },
+        ],
+        const SizedBox(height: 8),
+        _AmbientAxisTabs(
+          selected: _axis,
+          weatherType: status.weatherType,
+          onChanged: (axis) => setState(() => _axis = axis),
+        ),
+        const SizedBox(height: 16),
+        _selectedImpactCard(status, skillId),
+      ],
     );
   }
 
@@ -560,6 +551,193 @@ class _ImpactRow {
   final String effect;
 }
 
+class _WeatherReportCarousel extends StatefulWidget {
+  const _WeatherReportCarousel();
+
+  @override
+  State<_WeatherReportCarousel> createState() => _WeatherReportCarouselState();
+}
+
+class _WeatherReportCarouselState extends State<_WeatherReportCarousel> {
+  static const _railWidth = 36.0;
+  static const _pagePast = 0;
+  static const _pageNow = 1;
+  static const _pageForecast = 2;
+
+  late final PageController _pageController;
+
+  @override
+  void initState() {
+    super.initState();
+    _pageController = PageController(initialPage: _pageNow);
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  void _goTo(int page) {
+    _pageController.animateToPage(
+      page,
+      duration: const Duration(milliseconds: 320),
+      curve: Curves.easeOutCubic,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final weather = context.watch<WeatherController>();
+    final status = weather.status;
+    if (status == null) return const SizedBox.shrink();
+
+    final past = weather.pastHours();
+    final future = weather.forecastHours();
+    final loading = weather.isForecastLoading;
+    final emptyHint = weather.forecastError != null
+        ? 'Field notes unavailable'
+        : 'Gathering field notes…';
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // Keep the Now hero square; rails sit beside it.
+        final heroSide =
+            (constraints.maxWidth - _railWidth * 2 - 16).clamp(0.0, 10000.0);
+        return SizedBox(
+          height: heroSide,
+          child: PageView(
+            controller: _pageController,
+            physics: const NeverScrollableScrollPhysics(),
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(
+                    child: WeatherTimelinePage(
+                      title: 'Past 48 hours',
+                      hours: past,
+                      loading: loading,
+                      emptyHint: emptyHint,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  _SideRailButton(
+                    label: 'Now',
+                    icon: Icons.chevron_right,
+                    iconTrailing: true,
+                    onTap: () => _goTo(_pageNow),
+                  ),
+                ],
+              ),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _SideRailButton(
+                    label: 'Past',
+                    icon: Icons.chevron_left,
+                    onTap: () => _goTo(_pagePast),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(child: _WeatherHero(status: status)),
+                  const SizedBox(width: 8),
+                  _SideRailButton(
+                    label: 'Forecast',
+                    icon: Icons.chevron_right,
+                    iconTrailing: true,
+                    onTap: () => _goTo(_pageForecast),
+                  ),
+                ],
+              ),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _SideRailButton(
+                    label: 'Now',
+                    icon: Icons.chevron_left,
+                    onTap: () => _goTo(_pageNow),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: WeatherTimelinePage(
+                      title: 'Next 3 days',
+                      hours: future,
+                      loading: loading,
+                      emptyHint: emptyHint,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// Tall, narrow rail for switching Past / Now / Forecast.
+class _SideRailButton extends StatelessWidget {
+  const _SideRailButton({
+    required this.label,
+    required this.icon,
+    required this.onTap,
+    this.iconTrailing = false,
+  });
+
+  final String label;
+  final IconData icon;
+  final VoidCallback onTap;
+  final bool iconTrailing;
+
+  static const _width = _WeatherReportCarouselState._railWidth;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final muted = scheme.onSurface.withValues(alpha: 0.45);
+    final fill = scheme.surfaceContainerHighest.withValues(alpha: 0.55);
+    final border = scheme.outlineVariant.withValues(alpha: 0.55);
+
+    return Material(
+      color: fill,
+      borderRadius: BorderRadius.circular(10),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(10),
+        child: Ink(
+          width: _width,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: border, width: 1),
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              if (!iconTrailing) Icon(icon, size: 16, color: muted),
+              if (!iconTrailing) const SizedBox(height: 8),
+              RotatedBox(
+                quarterTurns: iconTrailing ? 1 : 3,
+                child: Text(
+                  label,
+                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                        letterSpacing: 0.2,
+                        color: scheme.onSurface.withValues(alpha: 0.62),
+                      ),
+                ),
+              ),
+              if (iconTrailing) const SizedBox(height: 8),
+              if (iconTrailing) Icon(icon, size: 16, color: muted),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _WeatherHero extends StatelessWidget {
   const _WeatherHero({required this.status});
 
@@ -592,106 +770,107 @@ class _WeatherHero extends StatelessWidget {
 
     return Card(
       elevation: 1,
+      margin: EdgeInsets.zero,
       clipBehavior: Clip.antiAlias,
       shape: RoundedRectangleBorder(borderRadius: radius),
-      child: AspectRatio(
-        aspectRatio: 1,
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            if (asset != null)
-              Image.asset(
-                asset,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) => ColoredBox(
-                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                  child: Center(
-                    child: Icon(
-                      WeatherDisplay.weatherIcon(status.weatherType),
-                      size: 64,
-                      color: Theme.of(context).colorScheme.primary,
-                    ),
-                  ),
-                ),
-              )
-            else
-              ColoredBox(
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          if (asset != null)
+            Image.asset(
+              asset,
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) => ColoredBox(
                 color: Theme.of(context).colorScheme.surfaceContainerHighest,
                 child: Center(
                   child: Icon(
                     WeatherDisplay.weatherIcon(status.weatherType),
-                    size: 64,
+                    size: 56,
                     color: Theme.of(context).colorScheme.primary,
                   ),
                 ),
               ),
-            const DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Color(0x00000000),
-                    Color(0x33000000),
-                    Color(0xB8000000),
-                  ],
-                  stops: [0.42, 0.68, 1.0],
+            )
+          else
+            ColoredBox(
+              color: Theme.of(context).colorScheme.surfaceContainerHighest,
+              child: Center(
+                child: Icon(
+                  WeatherDisplay.weatherIcon(status.weatherType),
+                  size: 56,
+                  color: Theme.of(context).colorScheme.primary,
                 ),
               ),
             ),
-            Positioned(
-              left: 16,
-              right: 16,
-              bottom: 16,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    WeatherDisplay.weatherLabel(status.weatherType),
-                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w800,
-                          height: 1.1,
-                          shadows: _overlayShadows,
-                        ),
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Text(
-                        tempText,
-                        style:
-                            Theme.of(context).textTheme.headlineMedium?.copyWith(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w700,
-                                  height: 1,
-                                  shadows: _overlayShadows,
-                                ),
+          const DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Color(0x00000000),
+                  Color(0x33000000),
+                  Color(0xB8000000),
+                ],
+                stops: [0.42, 0.68, 1.0],
+              ),
+            ),
+          ),
+          Positioned(
+            left: 14,
+            right: 14,
+            bottom: 14,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  WeatherDisplay.weatherLabel(status.weatherType),
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w800,
+                        height: 1.1,
+                        shadows: _overlayShadows,
                       ),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                        child: Container(
-                          width: 1,
-                          height: 22,
-                          color: Colors.white.withValues(alpha: 0.45),
-                        ),
+                ),
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    Text(
+                      tempText,
+                      style:
+                          Theme.of(context).textTheme.headlineSmall?.copyWith(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w700,
+                                height: 1,
+                                shadows: _overlayShadows,
+                              ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 10),
+                      child: Container(
+                        width: 1,
+                        height: 20,
+                        color: Colors.white.withValues(alpha: 0.45),
                       ),
-                      Text(
+                    ),
+                    Flexible(
+                      child: Text(
                         WeatherDisplay.timeLabelWithClock(status.weatherTime),
                         style:
-                            Theme.of(context).textTheme.titleMedium?.copyWith(
+                            Theme.of(context).textTheme.titleSmall?.copyWith(
                                   color: Colors.white.withValues(alpha: 0.95),
                                   fontWeight: FontWeight.w600,
                                   shadows: _overlayShadows,
                                 ),
+                        overflow: TextOverflow.ellipsis,
                       ),
-                    ],
-                  ),
-                ],
-              ),
+                    ),
+                  ],
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

@@ -4,6 +4,7 @@ import 'package:flutter/widgets.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 
+import '../models/weather_forecast.dart';
 import '../models/weather_status.dart';
 import '../services/api_client.dart';
 import '../services/location_service.dart';
@@ -14,12 +15,15 @@ import '../utils/solar_period.dart';
 /// - [weatherTime] updates locally via [Solar.periodAt] (~60s / on move).
 /// - Type + temperature refresh from backend every [pollInterval] or after
 ///   [moveRefreshThresholdM] (half of a 5 km weather cell).
+/// - Hourly past/forecast series loads with current weather and on demand.
 class WeatherController extends ChangeNotifier with WidgetsBindingObserver {
   WeatherController({
     required LocationService locationService,
     this.pollInterval = const Duration(minutes: 15),
     this.moveRefreshThresholdM = 2500,
     this.solarTickInterval = const Duration(seconds: 60),
+    this.forecastPastHours = 48,
+    this.forecastFutureHours = 72,
   }) : _location = locationService {
     _location.addListener(_onLocationChanged);
     WidgetsBinding.instance.addObserver(this);
@@ -31,16 +35,37 @@ class WeatherController extends ChangeNotifier with WidgetsBindingObserver {
   final Duration pollInterval;
   final double moveRefreshThresholdM;
   final Duration solarTickInterval;
+  final int forecastPastHours;
+  final int forecastFutureHours;
 
   WeatherStatus? _status;
+  WeatherForecast? _forecast;
   LatLng? _lastFetchAt;
   DateTime? _lastFetchTime;
+  DateTime? _lastForecastFetchTime;
+  LatLng? _lastForecastAt;
   bool _fetching = false;
+  bool _fetchingForecast = false;
   bool _appForeground = true;
   Timer? _solarTimer;
   String? _error;
+  String? _forecastError;
 
   WeatherStatus? get status => _status;
+
+  WeatherForecast? get forecast => _forecast;
+
+  bool get isForecastLoading => _fetchingForecast;
+
+  String? get forecastError => _forecastError;
+
+  /// Hours at or before now from the cached series.
+  List<WeatherHourPoint> pastHours([DateTime? now]) =>
+      forecast?.pastHours(now) ?? const [];
+
+  /// Hours after now from the cached series.
+  List<WeatherHourPoint> forecastHours([DateTime? now]) =>
+      forecast?.forecastHours(now) ?? const [];
 
   /// Current solar period name (dawn|day|dusk|golden_hour|night), or null if no GPS yet.
   String? get weatherTime => _status?.weatherTime;
@@ -111,6 +136,7 @@ class WeatherController extends ChangeNotifier with WidgetsBindingObserver {
       _lastFetchTime = now;
       _error = null;
       notifyListeners();
+      unawaited(_fetchForecast(loc, force: force));
     } catch (e) {
       _error = e.toString();
       // Keep last known status; still refresh solar.
@@ -118,6 +144,57 @@ class WeatherController extends ChangeNotifier with WidgetsBindingObserver {
     } finally {
       _fetching = false;
     }
+  }
+
+  Future<void> _fetchForecast(LatLng loc, {bool force = false}) async {
+    if (_fetchingForecast) return;
+    final now = DateTime.now();
+    if (!force &&
+        _forecast != null &&
+        _lastForecastFetchTime != null &&
+        _lastForecastAt != null) {
+      final age = now.difference(_lastForecastFetchTime!);
+      final movedM = Geolocator.distanceBetween(
+        _lastForecastAt!.latitude,
+        _lastForecastAt!.longitude,
+        loc.latitude,
+        loc.longitude,
+      );
+      if (age < pollInterval && movedM < moveRefreshThresholdM) return;
+    }
+
+    _fetchingForecast = true;
+    notifyListeners();
+    try {
+      final json = await ApiClient.instance.get(
+        '/api/v1/weather/forecast',
+        query: {
+          'lat': loc.latitude.toString(),
+          'lon': loc.longitude.toString(),
+          'past_hours': forecastPastHours.toString(),
+          'forecast_hours': forecastFutureHours.toString(),
+        },
+      );
+      _forecast = WeatherForecast.fromJson(json);
+      _lastForecastAt = loc;
+      _lastForecastFetchTime = now;
+      _forecastError = null;
+      notifyListeners();
+    } catch (e) {
+      _forecastError = e.toString();
+      // Keep last known series.
+      notifyListeners();
+    } finally {
+      _fetchingForecast = false;
+      notifyListeners();
+    }
+  }
+
+  /// Ensure forecast is loaded (e.g. when opening the weather drawer).
+  Future<void> ensureForecastLoaded({bool force = false}) async {
+    final loc = _location.currentLocation;
+    if (loc == null) return;
+    await _fetchForecast(loc, force: force);
   }
 
   /// Force a weather API refresh (e.g. pull-to-refresh / debug).
