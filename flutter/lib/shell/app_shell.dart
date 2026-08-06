@@ -560,8 +560,7 @@ class _AppShellState extends State<AppShell>
     switch (state) {
       case AppLifecycleState.resumed:
         _appInForeground = true;
-        // Flush any document-progress / active-explore XP held while away
-        // before resume syncs announce more awards.
+        // Flush any badge XP held while away before resume syncs announce more.
         context.read<XpAwardController>().setAppForeground(true);
         fieldSession.onForeground();
         unawaited(
@@ -617,7 +616,7 @@ class _AppShellState extends State<AppShell>
       case AppLifecycleState.paused:
       case AppLifecycleState.hidden:
         _appInForeground = false;
-        // Hold bundlable XP (document progress / active explore) until resume.
+        // Hold all floating-badge XP until resume (one merged badge per source).
         context.read<XpAwardController>().setAppForeground(false);
         fieldSession.onBackground();
         unawaited(context.read<WalkDistanceController>().onAppBackgrounded());

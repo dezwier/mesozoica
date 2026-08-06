@@ -79,6 +79,7 @@ Future<void> showSiteIdentifiedCelebration(
         context,
         kSiteIdentificationCelebrationXpKeys,
         mergeSameKey: true,
+        oneEvent: false,
       );
   return showSiteDiscoveryCelebration(
     context,
@@ -94,11 +95,13 @@ List<XpAward> _claimCelebrationXp(
   BuildContext context,
   Set<String> keys, {
   bool mergeSameKey = false,
+  bool oneEvent = true,
 }) {
   try {
     return context.read<XpAwardController>().claimCelebrationAwards(
           keys,
           mergeSameKey: mergeSameKey,
+          oneEvent: oneEvent,
         );
   } on ProviderNotFoundException {
     return const [];

@@ -210,6 +210,36 @@ void main() {
       expect(controller.celebrationStash.single.sourceKey, 'document_site');
     });
 
+    test('claim oneEvent takes only the oldest award per key', () {
+      final controller = XpAwardController();
+      controller.announceAwards([
+        award(sourceKey: 'discover_site', amount: 40),
+        award(sourceKey: 'discover_site_as_first', amount: 20),
+      ]);
+      controller.announceAwards([
+        award(sourceKey: 'discover_site', amount: 40),
+      ]);
+
+      final first = controller.claimCelebrationAwards(
+        kSiteDiscoveryCelebrationXpKeys,
+        oneEvent: true,
+      );
+      expect(first.map((a) => a.sourceKey).toList(), [
+        'discover_site',
+        'discover_site_as_first',
+      ]);
+      expect(first.map((a) => a.amount).toList(), [40, 20]);
+
+      final second = controller.claimCelebrationAwards(
+        kSiteDiscoveryCelebrationXpKeys,
+        oneEvent: true,
+      );
+      expect(second, hasLength(1));
+      expect(second.single.sourceKey, 'discover_site');
+      expect(second.single.amount, 40);
+      expect(controller.celebrationStash, isEmpty);
+    });
+
     test('identification merge sums multiple identify_site awards', () {
       final controller = XpAwardController();
       controller.announceAwards([
@@ -331,8 +361,7 @@ void main() {
       expect(controller.celebrationStash, isEmpty);
     });
 
-    test('background holds document progress and active explore, flushes merged',
-        () {
+    test('background holds all badge sources and flushes merged', () {
       final controller = XpAwardController();
       controller.setAppForeground(false);
 
@@ -344,19 +373,28 @@ void main() {
         award(sourceKey: 'document_progress', amount: 20),
         award(sourceKey: 'explore_100m_actively', amount: 20),
         award(sourceKey: 'document_progress', amount: 20),
-      ]);
-      // Non-bundlable badge sources still show immediately.
-      controller.announceAwards([
         award(
           sourceKey: 'disguise_of_site',
           amount: 10,
           skillId: 'site_stewardship',
         ),
       ]);
+      controller.announceAwards([
+        award(
+          sourceKey: 'disguise_of_site',
+          amount: 15,
+          skillId: 'site_stewardship',
+        ),
+      ]);
+      // Celebrations still stash immediately (not badge-bundled).
+      controller.announceAwards([
+        award(sourceKey: 'discover_site', amount: 40),
+        award(sourceKey: 'discover_site', amount: 40),
+      ]);
 
-      expect(controller.activeAwards, hasLength(1));
-      expect(controller.activeAwards.single.sourceKey, 'disguise_of_site');
-      expect(controller.backgroundBundle, hasLength(2));
+      expect(controller.activeAwards, isEmpty);
+      expect(controller.backgroundBundle, hasLength(3));
+      expect(controller.celebrationStash, hasLength(2));
 
       controller.setAppForeground(true);
 
@@ -365,9 +403,16 @@ void main() {
       final byKey = {
         for (final a in controller.activeAwards) a.sourceKey: a.amount,
       };
-      expect(byKey['disguise_of_site'], 10);
+      expect(byKey['disguise_of_site'], 25);
       expect(byKey['document_progress'], 60);
       expect(byKey['explore_100m_actively'], 40);
+      expect(
+        controller.activeAwards
+            .firstWhere((a) => a.sourceKey == 'explore_100m_actively')
+            .sourceLabel,
+        'Explore 200 m actively',
+      );
+      expect(controller.celebrationStash, hasLength(2));
     });
 
     test('foreground still shows each batch immediately', () {

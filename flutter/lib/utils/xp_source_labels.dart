@@ -161,18 +161,24 @@ const kDistanceXpSourceKeys = <String>{
   'explore_100m_passively',
 };
 
-/// Badge sources that accrue in the background as many small batches (~20 XP).
+/// Badge sources that accrue in the background as many small batches.
 ///
-/// While the app is backgrounded these are held and flushed as one badge per
-/// source (summed amount) when the player returns — see
-/// [XpAwardController.setAppForeground].
+/// While the app is backgrounded, **all** floating-badge XP sources are held
+/// and flushed as one badge per source (summed amount, refreshed distance
+/// labels) when the player returns — see [XpAwardController.setAppForeground].
+/// Celebration sources are never bundled; they stay stashed for separate plaques.
 const kBackgroundBundleXpSourceKeys = <String>{
+  // Kept for docs/tests; runtime bundling is any non-celebration badge source.
   'document_progress',
   'explore_100m_actively',
+  'explore_100m_passively',
+  'disguise_of_site',
 };
 
-/// True for sources that should be bundled across a background session.
+/// True for floating-badge sources that should merge across a background session.
+///
+/// Celebration keys return false (plaques stay separate). Unknown / remainder
+/// fallbacks (empty key) are treated as badges and do bundle.
 bool isBackgroundBundleXpSource(String? sourceKey) {
-  if (sourceKey == null || sourceKey.isEmpty) return false;
-  return kBackgroundBundleXpSourceKeys.contains(sourceKey);
+  return !isCelebrationXpSource(sourceKey);
 }

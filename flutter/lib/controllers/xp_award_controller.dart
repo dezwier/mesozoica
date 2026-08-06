@@ -57,9 +57,10 @@ class XpAward {
 ///   the matching celebration so all XP for that event appears in the plaque.
 /// - **Floating badge overlay** — small events (distance, disguise, exploration).
 ///
-/// While the app is backgrounded, [kBackgroundBundleXpSourceKeys] (document
-/// progress, active explore) are held and flushed as one badge per source on
-/// resume — so a walk that earned many ~20 XP batches shows one total each.
+/// While the app is backgrounded, every floating-badge source is held and
+/// flushed as one badge per source on resume (summed amount; distance labels
+/// refresh from the total). Celebrations are never merged — each plaque claims
+/// one event via [claimCelebrationAwards] (`oneEvent: true`).
 ///
 /// See [xp_source_labels.dart] for the source-key split.
 class XpAwardController extends ChangeNotifier {
@@ -112,8 +113,8 @@ class XpAwardController extends ChangeNotifier {
 
   /// Enqueue **badge-only** awards (celebration sources are ignored).
   ///
-  /// While backgrounded, [isBackgroundBundleXpSource] awards are held and
-  /// merged by [sourceKey] until [setAppForeground] (true).
+  /// While backgrounded, all badge awards are held and merged by [sourceKey]
+  /// until [setAppForeground] (true).
   void enqueueAll(Iterable<XpAward> awards) {
     var added = false;
     for (final award in awards) {
@@ -268,22 +269,39 @@ class XpAwardController extends ChangeNotifier {
 
   /// Remove and return stashed awards whose [sourceKey] is in [keys].
   ///
-  /// Celebrations call this when opening so the plaque embeds every XP line
-  /// for that event. When [mergeSameKey] is true, multiple awards with the
-  /// same source key (e.g. two identification quiz steps) become one row.
+  /// Celebrations call this when opening so the plaque embeds XP for that
+  /// event. When [oneEvent] is true (default for discovery/documentation), at
+  /// most one award per key is claimed (oldest first) so two background
+  /// discoveries each get their own plaque instead of one merged total.
+  /// When [mergeSameKey] is true, multiple awards with the same source key
+  /// (e.g. two identification quiz steps) become one row.
   List<XpAward> claimCelebrationAwards(
     Set<String> keys, {
     bool mergeSameKey = false,
+    bool oneEvent = false,
   }) {
     if (keys.isEmpty || _celebrationStash.isEmpty) return const [];
 
     final claimed = <XpAward>[];
     final remaining = <XpAward>[];
-    for (final award in _celebrationStash) {
-      if (keys.contains(award.sourceKey)) {
-        claimed.add(award);
-      } else {
-        remaining.add(award);
+    if (oneEvent) {
+      final takenKeys = <String>{};
+      for (final award in _celebrationStash) {
+        if (keys.contains(award.sourceKey) &&
+            !takenKeys.contains(award.sourceKey)) {
+          claimed.add(award);
+          takenKeys.add(award.sourceKey);
+        } else {
+          remaining.add(award);
+        }
+      }
+    } else {
+      for (final award in _celebrationStash) {
+        if (keys.contains(award.sourceKey)) {
+          claimed.add(award);
+        } else {
+          remaining.add(award);
+        }
       }
     }
     if (claimed.isEmpty) return const [];

@@ -103,12 +103,23 @@ class FieldDiscoveryCoordinator extends ChangeNotifier {
   final Map<int, DateTime> _nextDiscoverAtBySiteId = {};
   Timer? _dwellTimer;
   Future<void>? _cacheRefreshFuture;
-  FieldDiscoverResponse? _pendingCelebration;
-  bool _celebrationConsumed = false;
+  /// FIFO of discoveries waiting for celebration UI (keeps each site separate).
+  final List<FieldDiscoverResponse> _celebrationQueue = [];
 
-  /// Latest auto-discovered site waiting for celebration UI (if any).
+  /// Next auto-discovered site waiting for celebration UI (if any).
   FieldDiscoverResponse? get pendingCelebration =>
-      _celebrationConsumed ? null : _pendingCelebration;
+      _celebrationQueue.isEmpty ? null : _celebrationQueue.first;
+
+  /// How many discovery celebrations are waiting (including the current head).
+  int get pendingCelebrationCount => _celebrationQueue.length;
+
+  /// Most recently enqueued discovery (for listener side-effects on notify).
+  FieldDiscoverResponse? get latestQueuedCelebration =>
+      _celebrationQueue.isEmpty ? null : _celebrationQueue.last;
+
+  /// Snapshot of the celebration queue (oldest first).
+  List<FieldDiscoverResponse> get celebrationQueue =>
+      List.unmodifiable(_celebrationQueue);
 
   /// Read-only snapshot of nearby discoverable (unlinked) field sites.
   List<SiteSummary> get discoverableCache =>
@@ -200,8 +211,8 @@ class FieldDiscoveryCoordinator extends ChangeNotifier {
   }
 
   void consumeCelebration() {
-    _celebrationConsumed = true;
-    _pendingCelebration = null;
+    if (_celebrationQueue.isEmpty) return;
+    _celebrationQueue.removeAt(0);
     notifyListeners();
   }
 
@@ -219,8 +230,7 @@ class FieldDiscoveryCoordinator extends ChangeNotifier {
     _seenOutsideSiteIds.clear();
     _inFlightSiteIds.clear();
     _nextDiscoverAtBySiteId.clear();
-    _pendingCelebration = null;
-    _celebrationConsumed = false;
+    _celebrationQueue.clear();
     _cacheRefreshFuture = null;
     _log('cleared for user change');
     notifyListeners();
@@ -410,8 +420,7 @@ class FieldDiscoveryCoordinator extends ChangeNotifier {
         _nextDiscoverAtBySiteId.remove(site.siteId);
         _discoverableCache.removeWhere((s) => s.siteId == site.siteId);
         _insideRadiusSiteIds.remove(site.siteId);
-        _pendingCelebration = updated;
-        _celebrationConsumed = false;
+        _celebrationQueue.add(updated);
         playDiscoveryHapticFireAndForget();
         _log('discovered site_id=${site.siteId} distance_m=${distanceM.round()}');
         notifyListeners();

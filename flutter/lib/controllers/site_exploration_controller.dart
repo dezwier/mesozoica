@@ -47,21 +47,28 @@ class SiteExplorationController extends ChangeNotifier {
   bool _appForeground = true;
   bool _loaded = false;
 
-  SiteSummary? _pendingDocumentationCelebration;
-  bool _documentationCelebrationConsumed = false;
+  /// FIFO of documentation celebrations (keeps each site separate).
+  final List<SiteSummary> _documentationCelebrationQueue = [];
 
   Map<int, double> get exploredBySite => Map.unmodifiable(_exploredBySite);
 
   bool isDocumented(int siteId) => _documentedSiteIds.contains(siteId);
 
   SiteSummary? get pendingDocumentationCelebration =>
-      _documentationCelebrationConsumed
+      _documentationCelebrationQueue.isEmpty
           ? null
-          : _pendingDocumentationCelebration;
+          : _documentationCelebrationQueue.first;
+
+  int get pendingDocumentationCelebrationCount =>
+      _documentationCelebrationQueue.length;
+
+  /// Snapshot of documentation celebrations waiting (oldest first).
+  List<SiteSummary> get documentationCelebrationQueue =>
+      List.unmodifiable(_documentationCelebrationQueue);
 
   void consumeDocumentationCelebration() {
-    _documentationCelebrationConsumed = true;
-    _pendingDocumentationCelebration = null;
+    if (_documentationCelebrationQueue.isEmpty) return;
+    _documentationCelebrationQueue.removeAt(0);
     notifyListeners();
   }
 
@@ -188,12 +195,14 @@ class SiteExplorationController extends ChangeNotifier {
   Future<void> clearAllProgress() async {
     if (_exploredBySite.isEmpty &&
         _documentedSiteIds.isEmpty &&
-        _dirtySiteIds.isEmpty) {
+        _dirtySiteIds.isEmpty &&
+        _documentationCelebrationQueue.isEmpty) {
       return;
     }
     _exploredBySite.clear();
     _documentedSiteIds.clear();
     _dirtySiteIds.clear();
+    _documentationCelebrationQueue.clear();
     await _persistLocal();
     notifyListeners();
   }
@@ -375,7 +384,7 @@ class SiteExplorationController extends ChangeNotifier {
       final sitesJson = response['sites'];
       if (sitesJson is List) {
         final synced = <SiteSummary>[];
-        SiteSummary? newlyDocumented;
+        final newlyDocumented = <SiteSummary>[];
         for (final raw in sitesJson) {
           if (raw is! Map<String, dynamic>) continue;
           final site = SiteSummary.fromJson(raw);
@@ -383,14 +392,13 @@ class SiteExplorationController extends ChangeNotifier {
           _onSiteUpdated?.call(site);
           final wasDocumented = _documentedSiteIds.contains(site.siteId);
           if (site.documented == true && !wasDocumented) {
-            newlyDocumented = site;
+            newlyDocumented.add(site);
           }
         }
-        // Set pending celebration before ingestSites notifyListeners so the
-        // AppShell listener can see it on the first notify.
-        if (newlyDocumented != null) {
-          _pendingDocumentationCelebration = newlyDocumented;
-          _documentationCelebrationConsumed = false;
+        // Queue celebrations before ingestSites notifyListeners so the
+        // AppShell listener can see them on the first notify.
+        if (newlyDocumented.isNotEmpty) {
+          _documentationCelebrationQueue.addAll(newlyDocumented);
           playDiscoveryHapticFireAndForget();
         }
         ingestSites(synced);

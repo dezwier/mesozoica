@@ -7,6 +7,13 @@ mixin _AppShellDiscoveryMixin on State<AppShell> {
   Timer? _discoveryRefreshTimer;
   bool _celebrationShowing = false;
   bool _appInForeground = true;
+  /// Serializes per-discovery profile refreshes so each site's XP is stashed
+  /// separately (avoids one merged discover_site award for N background finds).
+  Future<void> _discoveryXpChain = Future<void>.value();
+  /// Tracks celebration queue length so we only side-effect on newly enqueued
+  /// discoveries (not when one is consumed).
+  int _lastDiscoveryQueueSeen = 0;
+  int _lastDocumentationQueueSeen = 0;
 
   void _ingestAerialDiscoveredSites(Iterable<int> siteIds) {
     final newIds = <int>[];
@@ -64,8 +71,10 @@ mixin _AppShellDiscoveryMixin on State<AppShell> {
       context.read<SiteCatalogController>().load(force: true);
     }
     unawaited(context.read<FossilCatalogController>().load(force: true));
+    // XP is announced per discovery via [_enqueueDiscoveryXpAnnounce]; keep
+    // this path for catalog/inbox only.
     final auth = context.read<AuthController>();
-    unawaited(auth.refreshProfile(announceXp: true));
+    unawaited(auth.refreshProfile(announceXp: false));
     final userId = auth.currentUser?.id;
     if (userId != null) {
       context
@@ -74,46 +83,61 @@ mixin _AppShellDiscoveryMixin on State<AppShell> {
     }
   }
 
+  /// Stash this discovery's XP before another discover can merge the delta.
+  void _enqueueDiscoveryXpAnnounce() {
+    _discoveryXpChain = _discoveryXpChain.then((_) async {
+      if (!mounted) return;
+      await context.read<AuthController>().refreshProfile(announceXp: true);
+    });
+  }
+
   void _onDiscoveryChanged() {
     if (!mounted) return;
     final discovery = context.read<FieldDiscoveryCoordinator>();
-    final pending = discovery.pendingCelebration;
-    if (pending == null) return;
+    final queue = discovery.celebrationQueue;
+    final grew = queue.length > _lastDiscoveryQueueSeen;
+    if (grew) {
+      for (var i = _lastDiscoveryQueueSeen; i < queue.length; i++) {
+        final newest = queue[i];
+        // Apply discover response immediately so timeline / first-discovery
+        // flags show on the card back without waiting for the debounced refetch.
+        context.read<MapController>().upsertSite(newest.site);
+        context.read<SiteCatalogController>().upsertSite(newest.site);
 
-    // Apply discover response immediately so timeline / first-discovery flags
-    // show on the card back without waiting for the debounced refetch.
-    // Profile XP refresh is awaited inside [_showCelebration] so awards are
-    // stashed before the plaque claims them.
-    context.read<MapController>().upsertSite(pending.site);
-    context.read<SiteCatalogController>().upsertSite(pending.site);
+        // Announce XP for this discovery now (serialized) so multiple
+        // background finds each stash their own celebration awards.
+        _enqueueDiscoveryXpAnnounce();
+        _scheduleDiscoveryRefresh(siteId: newest.site.siteId);
+      }
+    }
+    _lastDiscoveryQueueSeen = queue.length;
 
-    // Always refresh map/catalog/inbox; push already covers background UX.
-    _scheduleDiscoveryRefresh(siteId: pending.site.siteId);
-
-    // Defer the in-app celebration dialog until the app is foregrounded.
-    if (!_appInForeground) return;
+    // Only start UI when the queue grew (not when a celebration was consumed).
+    if (!grew || !_appInForeground) return;
     _showPendingCelebrationIfAny();
   }
 
   void _onExplorationChanged() {
     if (!mounted) return;
     final exploration = context.read<SiteExplorationController>();
-    final pending = exploration.pendingDocumentationCelebration;
-    if (pending == null) return;
+    final queue = exploration.documentationCelebrationQueue;
+    final grew = queue.length > _lastDocumentationQueueSeen;
+    if (grew) {
+      for (var i = _lastDocumentationQueueSeen; i < queue.length; i++) {
+        final site = queue[i];
+        context.read<MapController>().upsertSite(site);
+        context.read<SiteCatalogController>().upsertSite(site);
+        _scheduleDiscoveryRefresh(siteId: site.siteId);
+      }
+    }
+    _lastDocumentationQueueSeen = queue.length;
 
-    // Apply sync payload immediately so timeline / status badge update before
-    // the celebration. Profile XP refresh is awaited inside
-    // [_showDocumentationCelebration].
-    context.read<MapController>().upsertSite(pending);
-    context.read<SiteCatalogController>().upsertSite(pending);
-    _scheduleDiscoveryRefresh(siteId: pending.siteId);
-
-    if (!_appInForeground) return;
-    _showPendingDocumentationCelebrationIfAny();
+    if (!grew || !_appInForeground) return;
+    _showPendingCelebrationIfAny();
   }
 
   void _showPendingCelebrationIfAny() {
-    if (!mounted) return;
+    if (!mounted || _celebrationShowing) return;
     final discovery = context.read<FieldDiscoveryCoordinator>();
     final pending = discovery.pendingCelebration;
     if (pending != null) {
@@ -125,7 +149,7 @@ mixin _AppShellDiscoveryMixin on State<AppShell> {
   }
 
   void _showPendingDocumentationCelebrationIfAny() {
-    if (!mounted) return;
+    if (!mounted || _celebrationShowing) return;
     final exploration = context.read<SiteExplorationController>();
     final pending = exploration.pendingDocumentationCelebration;
     if (pending == null) return;
@@ -147,7 +171,9 @@ mixin _AppShellDiscoveryMixin on State<AppShell> {
       // XP is awarded before the site discovery plaque claims it.
       await _resolveSurfaceFossils(discover);
       if (!mounted) return;
-      // Await XP announce so celebration plaques can claim stashed awards.
+      // Await any in-flight per-discovery XP announce, then pick up locate XP.
+      await _discoveryXpChain;
+      if (!mounted) return;
       await context.read<AuthController>().refreshProfile(announceXp: true);
       if (!mounted) return;
       await showSiteDiscoveryCelebration(
@@ -157,9 +183,9 @@ mixin _AppShellDiscoveryMixin on State<AppShell> {
       );
     } finally {
       _celebrationShowing = false;
-      // Chain documentation celebration if it arrived while discovery was up.
+      // Chain the next discovery or documentation celebration.
       if (mounted && _appInForeground) {
-        _showPendingDocumentationCelebrationIfAny();
+        _showPendingCelebrationIfAny();
       }
     }
   }
@@ -188,6 +214,9 @@ mixin _AppShellDiscoveryMixin on State<AppShell> {
       );
     } finally {
       _celebrationShowing = false;
+      if (mounted && _appInForeground) {
+        _showPendingCelebrationIfAny();
+      }
     }
   }
 
