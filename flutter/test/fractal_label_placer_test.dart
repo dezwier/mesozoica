@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mesozoica/models/dinosaur.dart';
 import 'package:mesozoica/models/phylo_tree.dart';
-import 'package:mesozoica/utils/fractal_label_placer.dart';
-import 'package:mesozoica/utils/fractal_tree_layout.dart';
+import 'package:mesozoica/widgets/tree/fractal_label_placer.dart';
+import 'package:mesozoica/widgets/tree/fractal_tree_layout.dart';
 
 FractalLayoutNode _node({
   required String name,

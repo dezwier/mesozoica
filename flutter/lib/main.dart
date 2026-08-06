@@ -18,7 +18,6 @@ import 'controllers/fossil_catalog_controller.dart';
 import 'controllers/field_session_coordinator.dart';
 import 'controllers/formation_map_controller.dart';
 import 'controllers/orbit_survey_controller.dart';
-import 'controllers/ridge_glass_controller.dart';
 import 'controllers/disguise_session_controller.dart';
 import 'controllers/main_param_buff_controller.dart';
 import 'controllers/terrain_echo_controller.dart';

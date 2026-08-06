@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
 
+import '../config/api_endpoints.dart';
 import '../config/app_config.dart';
 import '../models/tool.dart';
 import '../models/tool_session.dart';
@@ -42,7 +43,7 @@ class ToolService {
     bool hasCustomImage = false,
     bool showAll = false,
   }) async {
-    final uri = AppConfig.toolsUri(
+    final uri = ApiEndpoints.toolsUri(
       limit: limit,
       offset: offset,
       sort: sort,
@@ -77,7 +78,7 @@ class ToolService {
     bool showAll = false,
     String mode = 'inventory',
   }) async {
-    final uri = AppConfig.toolCategoriesUri(showAll: showAll, mode: mode);
+    final uri = ApiEndpoints.toolCategoriesUri(showAll: showAll, mode: mode);
     if (kDebugMode) {
       debugPrint('ToolService GET $uri');
     }
@@ -105,7 +106,7 @@ class ToolService {
   }
 
   Future<ToolSummary> fetchToolById(int id) async {
-    final uri = AppConfig.toolUri(id);
+    final uri = ApiEndpoints.toolUri(id);
     if (kDebugMode) {
       debugPrint('ToolService GET $uri');
     }
@@ -130,7 +131,7 @@ class ToolService {
   }
 
   Future<List<String>> listToolImageVersions() async {
-    final uri = AppConfig.toolImageVersionsUri();
+    final uri = ApiEndpoints.toolImageVersionsUri();
     if (kDebugMode) {
       debugPrint('ToolService GET $uri');
     }
@@ -165,7 +166,7 @@ class ToolService {
   }
 
   Future<ToolSummary> collectTool(int id, {required String version}) async {
-    final uri = AppConfig.toolCollectUri(id);
+    final uri = ApiEndpoints.toolCollectUri(id);
     if (kDebugMode) {
       debugPrint('ToolService POST $uri version=$version');
     }
@@ -192,7 +193,7 @@ class ToolService {
   }
 
   Future<void> discardTool(int toolId) async {
-    final uri = AppConfig.toolDiscardUri(toolId);
+    final uri = ApiEndpoints.toolDiscardUri(toolId);
     if (kDebugMode) {
       debugPrint('ToolService POST $uri');
     }
@@ -212,7 +213,7 @@ class ToolService {
   }
 
   Future<ToolSessionListResponse> fetchToolSessions(int toolId) async {
-    final uri = AppConfig.toolSessionsUri(toolId);
+    final uri = ApiEndpoints.toolSessionsUri(toolId);
     if (kDebugMode) debugPrint('ToolService GET $uri');
     final response = await ApiClient.instance
         .sendGet(uri, client: _client, headers: await _headers())
@@ -265,7 +266,7 @@ class ToolService {
     double? lon,
     int? siteId,
   }) async {
-    final uri = AppConfig.toolSessionsUri(toolId);
+    final uri = ApiEndpoints.toolSessionsUri(toolId);
     final body = <String, dynamic>{};
     if (route != null) {
       body['route'] = [
@@ -307,7 +308,7 @@ class ToolService {
   }
 
   Future<List<ToolSession>> fetchActiveSessions({String? actionKey}) async {
-    final uri = AppConfig.activeToolSessionsUri(actionKey: actionKey);
+    final uri = ApiEndpoints.activeToolSessionsUri(actionKey: actionKey);
     if (kDebugMode) {
       debugPrint('ToolService GET $uri');
     }
@@ -337,7 +338,7 @@ class ToolService {
   }
 
   Future<ToolSession> fetchSession(int sessionId) async {
-    final uri = AppConfig.toolSessionUri(sessionId);
+    final uri = ApiEndpoints.toolSessionUri(sessionId);
     if (kDebugMode) {
       debugPrint('ToolService GET $uri');
     }
@@ -360,7 +361,7 @@ class ToolService {
   }
 
   Future<ToolSession> cancelSession(int sessionId) async {
-    final uri = AppConfig.toolSessionCancelUri(sessionId);
+    final uri = ApiEndpoints.toolSessionCancelUri(sessionId);
     if (kDebugMode) {
       debugPrint('ToolService POST $uri');
     }

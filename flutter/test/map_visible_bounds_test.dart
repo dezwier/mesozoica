@@ -1,7 +1,7 @@
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:mesozoica/widgets/map/map_visible_bounds.dart';
+import 'package:mesozoica/utils/map_visible_bounds.dart';
 
 void main() {
   test('clampBoundsForSitesApi returns null for full-world unwrapped span', () {

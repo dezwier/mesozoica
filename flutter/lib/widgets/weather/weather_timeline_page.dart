@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../../models/weather_forecast.dart';
-import '../map/solar_period.dart';
+import '../../utils/solar_period.dart';
 import 'weather_display.dart';
 
 /// Past or forecast timeline (15-min samples): temp curve + weather icons.

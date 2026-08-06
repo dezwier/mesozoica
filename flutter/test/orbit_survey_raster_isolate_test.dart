@@ -1,7 +1,7 @@
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mesozoica/utils/orbit_survey_raster.dart';
+import 'package:mesozoica/widgets/map/orbit_survey_raster.dart';
 
 void main() {
   test('isolate payload round-trips and PNG has signature', () {

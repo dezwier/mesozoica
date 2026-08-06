@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
-import '../config/app_config.dart';
+import '../config/api_endpoints.dart';
 import '../models/catalog_data_source.dart';
 import '../models/fossil.dart';
 import 'api_client.dart';
@@ -44,7 +44,7 @@ class FossilService {
     CatalogDataSource dataSource = CatalogDataSource.archive,
     bool includeHidden = false,
   }) async {
-    final uri = AppConfig.fossilsUri(
+    final uri = ApiEndpoints.fossilsUri(
       limit: limit,
       offset: offset,
       sort: sort,
@@ -103,7 +103,7 @@ class FossilService {
     int id, {
     CatalogDataSource dataSource = CatalogDataSource.archive,
   }) async {
-    final uri = AppConfig.fossilUri(id, dataSource: dataSource);
+    final uri = ApiEndpoints.fossilUri(id, dataSource: dataSource);
     if (kDebugMode) {
       debugPrint('FossilService GET $uri');
     }
@@ -131,7 +131,7 @@ class FossilService {
     required int fossilId,
     required String status,
   }) async {
-    final uri = AppConfig.fossilStatusUri(fossilId);
+    final uri = ApiEndpoints.fossilStatusUri(fossilId);
     if (kDebugMode) {
       debugPrint('FossilService POST $uri status=$status');
     }
@@ -161,7 +161,7 @@ class FossilService {
   }
 
   Future<void> discardFossil(int fossilId) async {
-    final uri = AppConfig.fossilDiscardUri(fossilId);
+    final uri = ApiEndpoints.fossilDiscardUri(fossilId);
     if (kDebugMode) {
       debugPrint('FossilService POST $uri');
     }

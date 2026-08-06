@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:mesozoica/utils/orbit_survey_raster.dart';
+import 'package:mesozoica/widgets/map/orbit_survey_raster.dart';
 
 import 'helpers/game_config_test_helpers.dart';
 import 'package:mesozoica/config/game_config.dart';

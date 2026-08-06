@@ -47,7 +47,7 @@ import '../../widgets/map/terrain_echo_hud.dart';
 import '../../widgets/map/guidance_overlay.dart';
 import '../../widgets/map/map_control_buttons.dart';
 import '../../widgets/map/map_perf_hud.dart';
-import '../../widgets/map/map_visible_bounds.dart';
+import '../../utils/map_visible_bounds.dart';
 import '../../widgets/map/mapbox_camera_coordinator.dart';
 import '../../widgets/map/mapbox_field_map.dart';
 import '../../widgets/map/mapbox_site_annotations.dart';

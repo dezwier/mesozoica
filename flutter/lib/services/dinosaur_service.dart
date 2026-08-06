@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
-import '../config/app_config.dart';
+import '../config/api_endpoints.dart';
 import '../models/dinosaur.dart';
 import '../models/dinosaur_article.dart';
 import 'api_client.dart';
@@ -47,7 +47,7 @@ class DinosaurService {
     double? massKgMax,
     String mode = 'inventory',
   }) async {
-    final uri = AppConfig.dinosaursUri(
+    final uri = ApiEndpoints.dinosaursUri(
       limit: limit,
       offset: offset,
       sort: sort,
@@ -85,7 +85,7 @@ class DinosaurService {
   }
 
   Future<DinosaurSummary> fetchDinosaurById(int id) async {
-    final uri = AppConfig.dinosaurUri(id);
+    final uri = ApiEndpoints.dinosaurUri(id);
     if (kDebugMode) {
       debugPrint('DinosaurService GET $uri');
     }
@@ -110,7 +110,7 @@ class DinosaurService {
   }
 
   Future<DinosaurArticle> fetchDinosaurArticle(int id) async {
-    final uri = AppConfig.dinosaurArticleUri(id);
+    final uri = ApiEndpoints.dinosaurArticleUri(id);
     final response = await ApiClient.instance
         .sendGet(uri, client: _client, headers: await _headers())
         .timeout(const Duration(seconds: 20));
@@ -132,7 +132,7 @@ class DinosaurService {
   }
 
   Future<List<String>> listDinosaurImageVersions() async {
-    final uri = AppConfig.dinosaurImageVersionsUri();
+    final uri = ApiEndpoints.dinosaurImageVersionsUri();
     if (kDebugMode) {
       debugPrint('DinosaurService GET $uri');
     }
@@ -175,7 +175,7 @@ class DinosaurService {
     required String status,
     required String version,
   }) async {
-    final uri = AppConfig.dinosaurCollectUri(dinosaurTypeId);
+    final uri = ApiEndpoints.dinosaurCollectUri(dinosaurTypeId);
     if (kDebugMode) {
       debugPrint(
         'DinosaurService POST $uri status=$status version=$version',
@@ -204,7 +204,7 @@ class DinosaurService {
   }
 
   Future<void> discardDinosaur(int dinosaurId) async {
-    final uri = AppConfig.dinosaurDiscardUri(dinosaurId);
+    final uri = ApiEndpoints.dinosaurDiscardUri(dinosaurId);
     if (kDebugMode) {
       debugPrint('DinosaurService POST $uri');
     }

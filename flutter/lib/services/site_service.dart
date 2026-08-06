@@ -4,7 +4,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
-import '../config/app_config.dart';
+import '../config/api_endpoints.dart';
 import '../models/catalog_data_source.dart';
 import '../models/site.dart';
 import '../models/site_type.dart';
@@ -55,7 +55,7 @@ class SiteService {
     double? maxLon,
     bool includeExactOdds = false,
   }) async {
-    final uri = AppConfig.sitesUri(
+    final uri = ApiEndpoints.sitesUri(
       limit: limit,
       offset: offset,
       sort: sort,
@@ -112,7 +112,7 @@ class SiteService {
     int limit = 200,
     int offset = 0,
   }) async {
-    final uri = AppConfig.siteTypesUri(limit: limit, offset: offset);
+    final uri = ApiEndpoints.siteTypesUri(limit: limit, offset: offset);
     if (kDebugMode) {
       debugPrint('SiteService GET $uri');
     }
@@ -148,7 +148,7 @@ class SiteService {
     CatalogDataSource dataSource = CatalogDataSource.archive,
     bool includeExactOdds = false,
   }) async {
-    final uri = AppConfig.siteUri(
+    final uri = ApiEndpoints.siteUri(
       id,
       dataSource: dataSource,
       includeExactOdds: includeExactOdds,
@@ -181,7 +181,7 @@ class SiteService {
     required double lat,
     required double lon,
   }) async {
-    final uri = AppConfig.siteDiscoverUri(siteId);
+    final uri = ApiEndpoints.siteDiscoverUri(siteId);
     if (kDebugMode) {
       debugPrint('SiteService POST $uri');
     }
@@ -226,7 +226,7 @@ class SiteService {
   }
 
   Future<void> discardSite(int siteId) async {
-    final uri = AppConfig.siteDiscardUri(siteId);
+    final uri = ApiEndpoints.siteDiscardUri(siteId);
     if (kDebugMode) {
       debugPrint('SiteService POST $uri');
     }
@@ -247,7 +247,7 @@ class SiteService {
   }
 
   Future<SiteIdentifyOptions> fetchIdentifyOptions(int siteId) async {
-    final uri = AppConfig.siteIdentifyOptionsUri(siteId);
+    final uri = ApiEndpoints.siteIdentifyOptionsUri(siteId);
     if (kDebugMode) {
       debugPrint('SiteService GET $uri');
     }
@@ -273,7 +273,7 @@ class SiteService {
     required String step,
     required String guess,
   }) async {
-    final uri = AppConfig.siteIdentifyUri(siteId);
+    final uri = ApiEndpoints.siteIdentifyUri(siteId);
     if (kDebugMode) {
       debugPrint('SiteService POST $uri step=$step guess=$guess');
     }
@@ -306,7 +306,7 @@ class SiteService {
     double? lat,
     double? lon,
   }) async {
-    final uri = AppConfig.siteStatusUri(siteId);
+    final uri = ApiEndpoints.siteStatusUri(siteId);
     if (kDebugMode) {
       debugPrint('SiteService POST $uri status=$status');
     }
@@ -351,7 +351,7 @@ class SiteService {
     bool showAll = false,
     bool includeExactOdds = false,
   }) async {
-    final uri = AppConfig.sitesNearbyUri(
+    final uri = ApiEndpoints.sitesNearbyUri(
       lat: lat,
       lon: lon,
       radiusKm: radiusKm,
@@ -385,7 +385,7 @@ class SiteService {
     double radiusKm = 1.0,
     bool includeExactOdds = false,
   }) async {
-    final uri = AppConfig.sitesNearbyDiscoverableUri(
+    final uri = ApiEndpoints.sitesNearbyDiscoverableUri(
       lat: lat,
       lon: lon,
       radiusKm: radiusKm,
@@ -417,7 +417,7 @@ class SiteService {
     double radiusKm = 1.0,
     String? reason,
   }) async {
-    final uri = AppConfig.fieldSiteEnsureUri();
+    final uri = ApiEndpoints.fieldSiteEnsureUri();
     if (kDebugMode) {
       debugPrint('SiteService POST $uri reason=${reason ?? '-'}');
     }
@@ -453,7 +453,7 @@ class SiteService {
   }
 
   Future<FieldEnsureJobStatus> fetchFieldEnsureJobStatus(int jobId) async {
-    final uri = AppConfig.fieldSiteEnsureJobUri(jobId);
+    final uri = ApiEndpoints.fieldSiteEnsureJobUri(jobId);
     if (kDebugMode) {
       debugPrint('SiteService GET $uri');
     }
@@ -506,7 +506,7 @@ class SiteService {
     bool sessions = true,
     bool xp = true,
   }) async {
-    final uri = AppConfig.fieldDataPurgeUri(
+    final uri = ApiEndpoints.fieldDataPurgeUri(
       userSites: userSites,
       userFossils: userFossils,
       sites: sites,
@@ -537,7 +537,7 @@ class SiteService {
   }
 
   Future<FieldSurveyJobStatus> fetchFieldSurveyJobStatus(int jobId) async {
-    final uri = AppConfig.fieldSurveyJobUri(jobId);
+    final uri = ApiEndpoints.fieldSurveyJobUri(jobId);
     if (kDebugMode) {
       debugPrint('SiteService GET $uri');
     }
@@ -583,7 +583,7 @@ class SiteService {
     int siteId, {
     bool includeHidden = false,
   }) async {
-    final uri = AppConfig.siteFossilsUri(siteId, includeHidden: includeHidden);
+    final uri = ApiEndpoints.siteFossilsUri(siteId, includeHidden: includeHidden);
     if (kDebugMode) {
       debugPrint('SiteService GET $uri');
     }
@@ -605,7 +605,7 @@ class SiteService {
   }
 
   Future<List<SiteDinosaurThumb>> fetchDinosaursForSite(int siteId) async {
-    final uri = AppConfig.siteDinosaursUri(siteId);
+    final uri = ApiEndpoints.siteDinosaursUri(siteId);
     if (kDebugMode) {
       debugPrint('SiteService GET $uri');
     }
@@ -629,7 +629,7 @@ class SiteService {
   Future<List<SiteDinoFossilGroup>> fetchDinoFossilGroupsForSite(
     int siteId,
   ) async {
-    final uri = AppConfig.siteGroupsUri(siteId);
+    final uri = ApiEndpoints.siteGroupsUri(siteId);
     if (kDebugMode) {
       debugPrint('SiteService GET $uri');
     }
