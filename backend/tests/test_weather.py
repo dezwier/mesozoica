@@ -390,7 +390,7 @@ def test_prune_old_weather(session: Session):
     assert rows[0].weather_type == "rain"
 
 
-def test_weather_forecast_api(client, session: Session):
+def test_weather_forecast_api(client, session: Session, monkeypatch):
     user = _seed_user(session, "wx_api")
     cell = cell_for(50.85, 4.35)
     now = datetime(2026, 8, 5, 12, 0, tzinfo=timezone.utc)
@@ -416,6 +416,11 @@ def test_weather_forecast_api(client, session: Session):
             )
         )
     session.commit()
+
+    def _series(session, **kwargs):
+        return weather_series(session, **kwargs, now=now)
+
+    monkeypatch.setattr("app.api.v1.endpoints.weather.weather_series", _series)
 
     response = client.get(
         "/api/v1/weather/forecast",

@@ -286,7 +286,7 @@ def test_delete_data_requires_auth(client: TestClient):
         "/api/v1/auth/delete-data",
         json={"sites": True, "fossils": True, "dinosaurs": True},
     )
-    assert response.status_code == 401
+    assert response.status_code == 403
 
 
 def test_delete_data_requires_selection(client: TestClient):

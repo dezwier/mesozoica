@@ -152,12 +152,16 @@ def test_resolve_discover_site_xp_weather_time() -> None:
         assert resolved["discover_site_xp"] == pytest.approx(
             _expected_ambient(base, list(mods.get(period, [])))
         )
-        # Time-invariant XP sources stay at base.
+        # discover_site_as_first_xp has no weather_time modifiers.
         assert resolved["discover_site_as_first_xp"] == pytest.approx(
             cfg.discover_site_as_first_xp
         )
+        active_xp_mods = cfg.weather_time_modifiers.get("explore_100m_actively_xp") or {}
         assert resolved["explore_100m_actively_xp"] == pytest.approx(
-            cfg.explore_100m_actively_xp
+            _expected_ambient(
+                cfg.explore_100m_actively_xp,
+                list(active_xp_mods.get(period, [])),
+            )
         )
         assert resolved["explore_100m_passively_xp"] == pytest.approx(
             cfg.explore_100m_passively_xp

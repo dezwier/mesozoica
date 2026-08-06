@@ -1,5 +1,6 @@
 """Tests for site read API."""
 
+from datetime import datetime
 from decimal import Decimal
 
 from sqlmodel import Session
@@ -15,6 +16,24 @@ from app.models.user_site import (
 )
 from app.models.user import User
 from app.core.security import create_access_token
+from app.services.weather_service.service import WeatherSnapshot, cell_for
+from app.services.weather_service.solar import period_at
+
+
+def _stub_overcast_weather(monkeypatch) -> None:
+    """Neutral weather/time so discovery_distance_m stays at YAML base (20 m)."""
+
+    def _fake(*, lat: float, lon: float) -> WeatherSnapshot:
+        return WeatherSnapshot(
+            weather_type="overcast",
+            temperature_c=15.0,
+            weather_time=period_at(latitude=lat, longitude=lon),
+            observed_at=datetime.now(),
+            cell=cell_for(lat, lon),
+            wmo_code=3,
+        )
+
+    monkeypatch.setattr("app.services.weather_service.get_weather", _fake)
 
 
 def _seed_site_type(session: Session) -> SiteType:
@@ -447,7 +466,8 @@ def test_list_field_sites_linked_only_by_default(client, session):
 
 
 def test_discover_site_within_range(client, session, monkeypatch):
-    # Force chance roll to succeed (YAML discovery_chance is 0.3).
+    _stub_overcast_weather(monkeypatch)
+    # Force chance roll to succeed (YAML discovery_chance is 0.1).
     monkeypatch.setattr(
         "app.services.site_service.discover.random.random",
         lambda: 0.0,
@@ -522,6 +542,7 @@ def test_discover_site_within_range(client, session, monkeypatch):
 
 
 def test_discover_site_chance_miss(client, session, monkeypatch):
+    _stub_overcast_weather(monkeypatch)
     monkeypatch.setattr(
         "app.services.site_service.discover.random.random",
         lambda: 0.99,

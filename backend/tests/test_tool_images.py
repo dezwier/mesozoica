@@ -14,7 +14,7 @@ from app.services.tool_image_service.sync import (
 def test_build_curated_image_url():
     assert (
         build_curated_image_url("https://example.com", "Orbit Survey.png")
-        == "https://example.com/media/tools/Orbit Survey.png"
+        == "https://example.com/media/tools/Orbit%20Survey.png"
     )
 
 

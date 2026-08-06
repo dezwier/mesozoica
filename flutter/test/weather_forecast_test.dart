@@ -163,6 +163,7 @@ void main() {
     await tester.pumpWidget(
       MultiProvider(
         providers: [
+          ChangeNotifierProvider<LocationService>.value(value: location),
           ChangeNotifierProvider<WeatherController>.value(value: seeded),
         ],
         child: MaterialApp(

@@ -178,7 +178,7 @@ def test_tool_actions_yaml_loads_disguise_knobs() -> None:
     assert cover.rival_discovery_mod.op == "multiply"
     assert cover.rival_discovery_mod.value == 0.5
     assert get_game_config().site_stewardship.rival_discovery_chance == 1.0
-    assert get_game_config().site_stewardship.disguise_of_site_xp == 40.0
+    assert get_game_config().site_stewardship.disguise_of_site_xp == 20.0
 
 
 def test_deploy_requires_discoverer(client, session: Session) -> None:
@@ -412,7 +412,7 @@ def test_rival_blocked_roll_awards_stewardship_xp(
 
     session.refresh(owner)
     after = get_skill_xp(owner, "field_survey")
-    assert after == before + 40
+    assert after == before + 20
 
 
 def test_blackout_cover_blocked_band_awards_stewardship_xp(
@@ -483,7 +483,7 @@ def test_blackout_cover_blocked_band_awards_stewardship_xp(
         )
 
     session.refresh(owner)
-    assert get_skill_xp(owner, "field_survey") == before + 40
+    assert get_skill_xp(owner, "field_survey") == before + 20
 
 
 def test_stop_clears_disguiser_and_restores_chance(
@@ -600,13 +600,6 @@ def test_passive_rival_discovery_from_steward_skill(
     )
     assert mult == pytest.approx(expected_mult, rel=1e-6)
 
-    base = resolve_site_discovery_params(
-        session,
-        user_id=int(owner.id),
-        site=site,
-        lat=50.0,
-        lon=4.0,
-    ).discovery_chance
     rival_params = resolve_site_discovery_params(
         session,
         user_id=int(rival.id),
@@ -615,7 +608,7 @@ def test_passive_rival_discovery_from_steward_skill(
         lon=4.0,
     )
     assert rival_params.discovery_chance == pytest.approx(
-        base * expected_mult, rel=1e-6
+        rival_params.base_discovery_chance * expected_mult, rel=1e-6
     )
 
 

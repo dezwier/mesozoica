@@ -187,10 +187,10 @@ def test_identify_wrong_then_right_awards_scaled_xp(session: Session) -> None:
         guess="cretaceous",
     )
     assert right.correct is True
-    assert right.xp_awarded == 20  # second attempt → 50%
+    assert right.xp_awarded == 10  # second attempt → 50%
     assert right.period_identified is True
     assert right.identified is False
-    assert get_skill_xp(user, "field_survey") == 20
+    assert get_skill_xp(user, "field_survey") == 10
 
     rock_opts = get_identify_options(
         session, site_id=site.site_id, user_id=user.id
@@ -209,7 +209,7 @@ def test_identify_wrong_then_right_awards_scaled_xp(session: Session) -> None:
         guess="sandstone",
     )
     assert done.correct is True
-    assert done.xp_awarded == 40  # first rock attempt
+    assert done.xp_awarded == 20  # first rock attempt
     assert done.identified is True
     assert done.site.viewer_has_identified is True
     assert done.site.status == "identified"
@@ -228,7 +228,7 @@ def test_identify_wrong_then_right_awards_scaled_xp(session: Session) -> None:
         )
     ).first()
     assert identifier is not None
-    assert get_skill_xp(user, "field_survey") == 60
+    assert get_skill_xp(user, "field_survey") == 30
 
 
 def test_identify_api_endpoints(client: TestClient, session: Session) -> None:
@@ -270,7 +270,7 @@ def test_identify_api_endpoints(client: TestClient, session: Session) -> None:
     )
     assert right.status_code == 200
     assert right.json()["correct"] is True
-    assert right.json()["xp_awarded"] == 20
+    assert right.json()["xp_awarded"] == 10
 
     rock = client.post(
         f"/api/v1/sites/{site.site_id}/identify",

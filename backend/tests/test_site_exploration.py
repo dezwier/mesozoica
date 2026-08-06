@@ -275,7 +275,7 @@ def test_documentation_completes_and_freezes(
     assert doc_role.was_first is True
     assert summaries[0].viewer_was_first_documentation is True
     assert summaries[0].documented_at is not None
-    assert profile.skill_breakdown["field_survey"]["document_site"] == 80
+    assert profile.skill_breakdown["field_survey"]["document_site"] == 20
     assert profile.skill_breakdown["field_survey"]["document_site_as_first"] == 20
 
     from app.models.user_notification import UserNotification, UserNotificationType
@@ -309,7 +309,7 @@ def test_documentation_completes_and_freezes(
     assert link.explored_distance_m == 80.0
     assert get_skill_xp(user, "field_survey") == xp_after
     assert (
-        user.skill_breakdown["field_survey"]["document_site"] == 80
+        user.skill_breakdown["field_survey"]["document_site"] == 20
     )
     assert (
         user.skill_breakdown["field_survey"]["document_site_as_first"] == 20
@@ -365,7 +365,7 @@ def test_second_documenter_skips_document_site_as_first_xp(
             ]
         ),
     )
-    assert first.skill_breakdown["field_survey"]["document_site"] == 80
+    assert first.skill_breakdown["field_survey"]["document_site"] == 20
     assert first.skill_breakdown["field_survey"]["document_site_as_first"] == 20
 
     apply_site_exploration_update(
@@ -380,7 +380,7 @@ def test_second_documenter_skips_document_site_as_first_xp(
             ]
         ),
     )
-    assert second.skill_breakdown["field_survey"]["document_site"] == 80
+    assert second.skill_breakdown["field_survey"]["document_site"] == 20
     assert "document_site_as_first" not in (
         second.skill_breakdown.get("field_survey") or {}
     )

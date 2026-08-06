@@ -128,8 +128,8 @@ def test_award_document_site_as_first_xp(session: Session) -> None:
     session.add(user)
     session.commit()
     session.refresh(user)
-    assert get_skill_xp(user, "field_survey") == 100
-    assert user.skill_breakdown["field_survey"]["document_site"] == 80
+    assert get_skill_xp(user, "field_survey") == 40
+    assert user.skill_breakdown["field_survey"]["document_site"] == 20
     assert user.skill_breakdown["field_survey"]["document_site_as_first"] == 20
 
 

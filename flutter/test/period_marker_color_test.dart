@@ -21,7 +21,10 @@ void main() {
     expect(periodMarkerColor('jurassic'), rgb(markers.jurassic));
     expect(periodMarkerColor('triassic'), rgb(markers.triassic));
     expect(periodMarkerColor('Cretaceous'), rgb(markers.cretaceous));
-    expect(periodMarkerColor(null), rgb(markers.cretaceous));
+    // Unidentified sites use a neutral gray, not the Cretaceous pin color.
+    expect(periodMarkerColor(null), const Color(0xFF8A867C));
+    expect(periodMarkerColor(''), const Color(0xFF8A867C));
+    expect(periodMarkerColor('unknown'), const Color(0xFF8A867C));
     expect(mapMarkerPrimaryColor(), rgb(markers.cretaceous));
   });
 }
