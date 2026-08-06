@@ -55,10 +55,7 @@ class XpMagicStringPainter extends CustomPainter {
         ],
         const [0.0, 0.55, 1.0],
       );
-    canvas.drawPath(
-      metric.extractPath(trailStart, head),
-      ribbon,
-    );
+    canvas.drawPath(metric.extractPath(trailStart, head), ribbon);
 
     final rng = math.Random(seed);
     const particleCount = 18;
@@ -95,15 +92,16 @@ class XpMagicStringPainter extends CustomPainter {
     if (progress > 0.82) {
       final burst = ((progress - 0.82) / 0.18).clamp(0.0, 1.0);
       final burstPaint = Paint()
-        ..color = MapChromeTheme.goldBright.withValues(alpha: 0.55 * (1 - burst))
+        ..color = MapChromeTheme.goldBright.withValues(
+          alpha: 0.55 * (1 - burst),
+        )
         ..style = PaintingStyle.stroke
         ..strokeWidth = 1.5;
       canvas.drawCircle(to, 4 + burst * 14, burstPaint);
       canvas.drawCircle(
         to,
         2 + burst * 6,
-        Paint()
-          ..color = Colors.white.withValues(alpha: 0.7 * (1 - burst)),
+        Paint()..color = Colors.white.withValues(alpha: 0.7 * (1 - burst)),
       );
     }
   }

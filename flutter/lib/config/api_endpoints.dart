@@ -58,7 +58,9 @@ class ApiEndpoints {
       if (trimmed.isEmpty) continue;
       parts.add('diet=${Uri.encodeQueryComponent(trimmed)}');
     }
-    return Uri.parse('${AppConfig.baseApiUrl}/api/v1/dinosaurs?${parts.join('&')}');
+    return Uri.parse(
+      '${AppConfig.baseApiUrl}/api/v1/dinosaurs?${parts.join('&')}',
+    );
   }
 
   static Uri dinosaurArticleUri(int id) =>
@@ -239,8 +241,9 @@ class ApiEndpoints {
   static Uri fieldSiteEnsureUri() =>
       Uri.parse('${AppConfig.baseApiUrl}/api/v1/sites/field/ensure');
 
-  static Uri fieldSiteEnsureJobUri(int jobId) =>
-      Uri.parse('${AppConfig.baseApiUrl}/api/v1/sites/field/ensure/jobs/$jobId');
+  static Uri fieldSiteEnsureJobUri(int jobId) => Uri.parse(
+    '${AppConfig.baseApiUrl}/api/v1/sites/field/ensure/jobs/$jobId',
+  );
 
   static Uri fieldDataPurgeUri({
     bool userSites = true,
@@ -267,9 +270,7 @@ class ApiEndpoints {
     CatalogDataSource dataSource = CatalogDataSource.archive,
     bool includeExactOdds = false,
   }) {
-    final params = <String, String>{
-      'data_source': dataSource.apiValue,
-    };
+    final params = <String, String>{'data_source': dataSource.apiValue};
     if (includeExactOdds) {
       params['include_exact_odds'] = 'true';
     }
@@ -341,7 +342,9 @@ class ApiEndpoints {
   }
 
   static Uri siteFossilsUri(int siteId, {bool includeHidden = false}) {
-    final uri = Uri.parse('${AppConfig.baseApiUrl}/api/v1/sites/$siteId/fossils');
+    final uri = Uri.parse(
+      '${AppConfig.baseApiUrl}/api/v1/sites/$siteId/fossils',
+    );
     if (!includeHidden) return uri;
     return uri.replace(queryParameters: {'include_hidden': 'true'});
   }
@@ -352,16 +355,9 @@ class ApiEndpoints {
   static Uri siteGroupsUri(int siteId) =>
       Uri.parse('${AppConfig.baseApiUrl}/api/v1/sites/$siteId/groups');
 
-  static Uri siteTypesUri({
-    int limit = 200,
-    int offset = 0,
-  }) =>
-      Uri.parse('${AppConfig.baseApiUrl}/api/v1/site-types').replace(
-        queryParameters: {
-          'limit': '$limit',
-          'offset': '$offset',
-        },
-      );
+  static Uri siteTypesUri({int limit = 200, int offset = 0}) => Uri.parse(
+    '${AppConfig.baseApiUrl}/api/v1/site-types',
+  ).replace(queryParameters: {'limit': '$limit', 'offset': '$offset'});
 
   static Uri toolsUri({
     int limit = 200,
@@ -409,10 +405,13 @@ class ApiEndpoints {
     if (showAll) {
       parts.add('show_all=true');
     }
-    return Uri.parse('${AppConfig.baseApiUrl}/api/v1/tools/categories?${parts.join('&')}');
+    return Uri.parse(
+      '${AppConfig.baseApiUrl}/api/v1/tools/categories?${parts.join('&')}',
+    );
   }
 
-  static Uri toolUri(int id) => Uri.parse('${AppConfig.baseApiUrl}/api/v1/tools/$id');
+  static Uri toolUri(int id) =>
+      Uri.parse('${AppConfig.baseApiUrl}/api/v1/tools/$id');
 
   static Uri toolCollectUri(int id) =>
       Uri.parse('${AppConfig.baseApiUrl}/api/v1/tools/$id/collect');
@@ -431,23 +430,19 @@ class ApiEndpoints {
     if (actionKey == null || actionKey.isEmpty) {
       return Uri.parse(base);
     }
-    return Uri.parse(
-      '$base?action_key=${Uri.encodeQueryComponent(actionKey)}',
-    );
+    return Uri.parse('$base?action_key=${Uri.encodeQueryComponent(actionKey)}');
   }
 
   static Uri toolSessionUri(int sessionId) =>
       Uri.parse('${AppConfig.baseApiUrl}/api/v1/tools/sessions/$sessionId');
 
-  static Uri toolSessionCancelUri(int sessionId) =>
-      Uri.parse('${AppConfig.baseApiUrl}/api/v1/tools/sessions/$sessionId/cancel');
+  static Uri toolSessionCancelUri(int sessionId) => Uri.parse(
+    '${AppConfig.baseApiUrl}/api/v1/tools/sessions/$sessionId/cancel',
+  );
 
   static Uri weatherUri({required double lat, required double lon}) =>
       Uri.parse('${AppConfig.baseApiUrl}/api/v1/weather').replace(
-        queryParameters: {
-          'lat': lat.toString(),
-          'lon': lon.toString(),
-        },
+        queryParameters: {'lat': lat.toString(), 'lon': lon.toString()},
       );
 
   static Uri weatherForecastUri({
@@ -455,13 +450,12 @@ class ApiEndpoints {
     required double lon,
     int pastHours = 48,
     int forecastHours = 72,
-  }) =>
-      Uri.parse('${AppConfig.baseApiUrl}/api/v1/weather/forecast').replace(
-        queryParameters: {
-          'lat': lat.toString(),
-          'lon': lon.toString(),
-          'past_hours': pastHours.toString(),
-          'forecast_hours': forecastHours.toString(),
-        },
-      );
+  }) => Uri.parse('${AppConfig.baseApiUrl}/api/v1/weather/forecast').replace(
+    queryParameters: {
+      'lat': lat.toString(),
+      'lon': lon.toString(),
+      'past_hours': pastHours.toString(),
+      'forecast_hours': forecastHours.toString(),
+    },
+  );
 }

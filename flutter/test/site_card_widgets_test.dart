@@ -51,10 +51,7 @@ void main() {
   });
 
   test('SiteCardImage detects curated URLs', () {
-    expect(
-      SiteCardImage.isCuratedCardImageUrl(_fixture.mainImageUrl),
-      isTrue,
-    );
+    expect(SiteCardImage.isCuratedCardImageUrl(_fixture.mainImageUrl), isTrue);
     expect(SiteCardImage.isCuratedCardImageUrl(null), isFalse);
     expect(
       SiteCardImage.isCuratedCardImageUrl('https://example.com/image.png'),
@@ -62,25 +59,22 @@ void main() {
     );
   });
 
-  testWidgets('SiteCardHeader renders period-rock title and collection subtitle',
-      (tester) async {
-    await tester.pumpWidget(
-      const MaterialApp(
-        home: Scaffold(
-          body: SiteCardHeader(site: _fixture),
+  testWidgets(
+    'SiteCardHeader renders period-rock title and collection subtitle',
+    (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(body: SiteCardHeader(site: _fixture)),
         ),
-      ),
-    );
+      );
 
-    expect(find.text('Cretaceous Sandstone'), findsOneWidget);
-    expect(find.text('#50001, 46.88, -110.36, Montana, US'), findsOneWidget);
-  });
+      expect(find.text('Cretaceous Sandstone'), findsOneWidget);
+      expect(find.text('#50001, 46.88, -110.36, Montana, US'), findsOneWidget);
+    },
+  );
 
   test('SiteSummary.displaySubtitle formats id comma and distance', () {
-    expect(
-      _fixture.displaySubtitle(),
-      '#50001, 46.88, -110.36, Montana, US',
-    );
+    expect(_fixture.displaySubtitle(), '#50001, 46.88, -110.36, Montana, US');
     expect(
       _fixture.displaySubtitle(distanceMeters: 450),
       '#50001, 46.88, -110.36, Montana, US, 450m',
@@ -93,16 +87,14 @@ void main() {
     expect(SiteSummary.formatSiteDistance(1000), '1.00km');
   });
 
-  testWidgets('SiteCardFront renders image, title, and collection id',
-      (tester) async {
+  testWidgets('SiteCardFront renders image, title, and collection id', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       const MaterialApp(
         home: Scaffold(
           body: Center(
-            child: SizedBox(
-              width: 800,
-              child: SiteCardFront(site: _fixture),
-            ),
+            child: SizedBox(width: 800, child: SiteCardFront(site: _fixture)),
           ),
         ),
       ),
@@ -116,7 +108,9 @@ void main() {
     expect(find.text('ROCK TYPE'), findsNothing);
   });
 
-  testWidgets('SiteCardFront renders status badge for field sites', (tester) async {
+  testWidgets('SiteCardFront renders status badge for field sites', (
+    tester,
+  ) async {
     const fieldSite = SiteSummary(
       siteId: 1000000001,
       latitude: 40,
@@ -130,10 +124,7 @@ void main() {
       const MaterialApp(
         home: Scaffold(
           body: Center(
-            child: SizedBox(
-              width: 800,
-              child: SiteCardFront(site: fieldSite),
-            ),
+            child: SizedBox(width: 800, child: SiteCardFront(site: fieldSite)),
           ),
         ),
       ),
@@ -144,15 +135,14 @@ void main() {
     expect(find.text('40.00, -100.00'), findsOneWidget);
   });
 
-  testWidgets('SiteCardFront omits status badge when status is null', (tester) async {
+  testWidgets('SiteCardFront omits status badge when status is null', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       const MaterialApp(
         home: Scaffold(
           body: Center(
-            child: SizedBox(
-              width: 800,
-              child: SiteCardFront(site: _fixture),
-            ),
+            child: SizedBox(width: 800, child: SiteCardFront(site: _fixture)),
           ),
         ),
       ),
@@ -162,8 +152,9 @@ void main() {
     expect(find.text('Protected'), findsNothing);
   });
 
-  testWidgets('SiteCardBack renders timeline, dimensions, map, and fossils',
-      (tester) async {
+  testWidgets('SiteCardBack renders timeline, dimensions, map, and fossils', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
@@ -191,7 +182,10 @@ void main() {
     expect(find.textContaining('Discovered'), findsNothing);
     expect(find.text('SITE DIMENSIONS'), findsNothing);
     expect(find.textContaining('Site dimensions'), findsNothing);
-    expect(find.textContaining(RegExp(r'Documented \d+% · Explored 0 m')), findsOneWidget);
+    expect(
+      find.textContaining(RegExp(r'Documented \d+% · Explored 0 m')),
+      findsOneWidget,
+    );
     expect(find.text('COORDINATES'), findsNothing);
     expect(find.text('COUNTRY'), findsNothing);
     expect(find.text('PERIOD'), findsNothing);
@@ -210,8 +204,9 @@ void main() {
     expect(find.text('0.55'), findsNothing);
   });
 
-  testWidgets('SiteCardBack timeline shows Explored meters when discovered',
-      (tester) async {
+  testWidgets('SiteCardBack timeline shows Explored meters when discovered', (
+    tester,
+  ) async {
     final discovered = SiteSummary(
       siteId: 1000000067,
       latitude: 46.8797,
@@ -262,52 +257,54 @@ void main() {
     expect(find.textContaining('DEPTH'), findsOneWidget);
   });
 
-  testWidgets('SiteCardBack omits Discovered subtitle when discoveredAt is set',
-      (tester) async {
-    final discovered = SiteSummary(
-      siteId: 1000000067,
-      latitude: 46.8797,
-      longitude: -110.3626,
-      countryCode: 'US',
-      state: 'Montana',
-      rockType: 'sandstone',
-      siteTypePeriod: 'cretaceous',
-      siteTypeRockType: 'sandstone',
-      minAgeMa: 66,
-      maxAgeMa: 68,
-      version: 'Original',
-      discoveredAt: DateTime.now().toUtc().subtract(const Duration(hours: 3)),
-      viewerHasIdentified: true,
-    );
+  testWidgets(
+    'SiteCardBack omits Discovered subtitle when discoveredAt is set',
+    (tester) async {
+      final discovered = SiteSummary(
+        siteId: 1000000067,
+        latitude: 46.8797,
+        longitude: -110.3626,
+        countryCode: 'US',
+        state: 'Montana',
+        rockType: 'sandstone',
+        siteTypePeriod: 'cretaceous',
+        siteTypeRockType: 'sandstone',
+        minAgeMa: 66,
+        maxAgeMa: 68,
+        version: 'Original',
+        discoveredAt: DateTime.now().toUtc().subtract(const Duration(hours: 3)),
+        viewerHasIdentified: true,
+      );
 
-    await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: Center(
-            child: SizedBox(
-              width: 800,
-              child: SiteCardBack(
-                site: discovered,
-                mapTileLayerBuilder: () => const SizedBox.shrink(),
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Center(
+              child: SizedBox(
+                width: 800,
+                child: SiteCardBack(
+                  site: discovered,
+                  mapTileLayerBuilder: () => const SizedBox.shrink(),
+                ),
               ),
             ),
           ),
         ),
-      ),
-    );
+      );
 
-    await tester.pump();
+      await tester.pump();
 
-    // Header subtitle is suppressed; discovery still appears in the Timeline.
-    expect(find.text('Discovered 3h ago'), findsNothing);
-    expect(find.text('Original - Discovered 3h ago'), findsNothing);
-    expect(find.text('#67'), findsNothing);
-    expect(find.text('#67 · Original'), findsNothing);
-    expect(
-      find.textContaining(RegExp(r'Documented \d+% · Explored')),
-      findsOneWidget,
-    );
-  });
+      // Header subtitle is suppressed; discovery still appears in the Timeline.
+      expect(find.text('Discovered 3h ago'), findsNothing);
+      expect(find.text('Original - Discovered 3h ago'), findsNothing);
+      expect(find.text('#67'), findsNothing);
+      expect(find.text('#67 · Original'), findsNothing);
+      expect(
+        find.textContaining(RegExp(r'Documented \d+% · Explored')),
+        findsOneWidget,
+      );
+    },
+  );
 
   testWidgets('SiteTurnableCard composes front and back', (tester) async {
     await tester.pumpWidget(
@@ -336,8 +333,9 @@ void main() {
     expect(find.byType(SiteCardBack), findsOneWidget);
   });
 
-  testWidgets('SiteCardLocationMap shows site marker when coordinates exist',
-      (tester) async {
+  testWidgets('SiteCardLocationMap shows site marker when coordinates exist', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(

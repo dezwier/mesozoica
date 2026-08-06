@@ -5,10 +5,7 @@ import '../../utils/display_text.dart';
 
 /// Field-fossil status options shown in the badge dropdown.
 class FossilStatusOption {
-  const FossilStatusOption({
-    required this.apiStatus,
-    required this.label,
-  });
+  const FossilStatusOption({required this.apiStatus, required this.label});
 
   final String apiStatus;
   final String label;

@@ -28,10 +28,13 @@ class MapConfig {
   MapConfig._();
 
   static const double initialZoom = 3.0;
+
   /// How far the map / zoom slider can pull out (world view).
   static const double minZoom = 2.0;
+
   /// Default zoom for mini maps on card backs (dino fossil world map).
   static const double cardMapZoom = 1.0;
+
   /// Slightly tighter zoom for a single site location on the site card back.
   static const double siteCardMapZoom = 2.5;
   static const double maxZoom = 18.0;
@@ -151,8 +154,10 @@ class MapConfig {
     required double latitudeDeg,
     required double zoom,
   }) {
-    final cosLat =
-        math.cos(latitudeDeg * math.pi / 180.0).abs().clamp(0.01, 1.0);
+    final cosLat = math
+        .cos(latitudeDeg * math.pi / 180.0)
+        .abs()
+        .clamp(0.01, 1.0);
     return mapboxMetersPerPixelAtZoom0 * cosLat / math.pow(2.0, zoom);
   }
 

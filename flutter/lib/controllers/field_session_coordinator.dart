@@ -14,7 +14,7 @@ import '../utils/survey_grid.dart';
 /// Orchestrates field-site ensure calls across app lifecycle.
 class FieldSessionCoordinator extends ChangeNotifier {
   FieldSessionCoordinator({SiteService? siteService})
-      : _siteService = siteService ?? SiteService();
+    : _siteService = siteService ?? SiteService();
 
   /// Density square size; walk ensure fires on entering a new cell.
   static double get ensureCellSizeM =>
@@ -37,12 +37,15 @@ class FieldSessionCoordinator extends ChangeNotifier {
   String? _pendingEnsureReason;
   VoidCallback? _locationListener;
   bool _openedEnsureDone = false;
+
   /// True once a resume/startup ensure POST succeeded this foreground period.
   /// Cleared on each [onForeground] so a late GPS fix can still enqueue.
   bool _resumeEnsurePosted = false;
+
   /// True while [_runResumeEnsure] owns the startup ensure (blocks the
   /// location listener from double-posting during sync/GPS startup).
   bool _resumeEnsureInProgress = false;
+
   /// Bumped on each foreground/background transition so a stale async
   /// `_enterBackground` cannot stop GPS after a later resume.
   int _lifecycleEpoch = 0;
@@ -100,7 +103,8 @@ class FieldSessionCoordinator extends ChangeNotifier {
 
   void _onLocationChanged(LocationService locationService) {
     if (!_sessionActive) return;
-    final allowBackground = locationService.isBackgroundExploring &&
+    final allowBackground =
+        locationService.isBackgroundExploring &&
         _lifecycle != AppLifecycleState.detached;
     if (_lifecycle != AppLifecycleState.resumed && !allowBackground) return;
 

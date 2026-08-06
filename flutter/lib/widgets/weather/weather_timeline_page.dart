@@ -127,23 +127,19 @@ class _WeatherTimelinePageState extends State<WeatherTimelinePage> {
     final scheme = Theme.of(context).colorScheme;
     final hours = widget.hours;
     final muted = scheme.onSurface.withValues(alpha: 0.55);
-    final bodyStyle = Theme.of(context).textTheme.bodyMedium?.copyWith(
-          color: muted,
-          fontSize: 14,
-        );
+    final bodyStyle = Theme.of(
+      context,
+    ).textTheme.bodyMedium?.copyWith(color: muted, fontSize: 14);
     final titleStyle = Theme.of(context).textTheme.titleSmall?.copyWith(
-          color: scheme.onSurface.withValues(alpha: 0.82),
-          fontWeight: FontWeight.w600,
-          fontSize: 15,
-        );
-    final selectedIndex =
-        (_hoverIndex != null && _hoverIndex! < hours.length)
-            ? _hoverIndex!
-            : _defaultIndex(hours, widget.title);
-    final hovered =
-        selectedIndex != null ? hours[selectedIndex] : null;
-    final hoveredPeriod =
-        hovered != null ? _periodAt(hovered.validAt) : null;
+      color: scheme.onSurface.withValues(alpha: 0.82),
+      fontWeight: FontWeight.w600,
+      fontSize: 15,
+    );
+    final selectedIndex = (_hoverIndex != null && _hoverIndex! < hours.length)
+        ? _hoverIndex!
+        : _defaultIndex(hours, widget.title);
+    final hovered = selectedIndex != null ? hours[selectedIndex] : null;
+    final hoveredPeriod = hovered != null ? _periodAt(hovered.validAt) : null;
 
     final radius = BorderRadius.circular(10);
     return Card(
@@ -192,12 +188,11 @@ class _WeatherTimelinePageState extends State<WeatherTimelinePage> {
                             ' · ${DateFormat('EEE HH:mm').format(hovered.validAt.toLocal())}',
                             maxLines: 1,
                             softWrap: false,
-                            style: Theme.of(context)
-                                .textTheme
-                                .bodySmall
+                            style: Theme.of(context).textTheme.bodySmall
                                 ?.copyWith(
-                                  color: scheme.onSurface
-                                      .withValues(alpha: 0.72),
+                                  color: scheme.onSurface.withValues(
+                                    alpha: 0.72,
+                                  ),
                                   fontWeight: FontWeight.w500,
                                 ),
                           ),
@@ -213,60 +208,65 @@ class _WeatherTimelinePageState extends State<WeatherTimelinePage> {
               child: widget.loading && hours.isEmpty
                   ? Center(child: Text(widget.emptyHint, style: bodyStyle))
                   : hours.isEmpty
-                      ? Center(
-                          child: Text(
-                            widget.emptyHint,
-                            textAlign: TextAlign.center,
-                            style: bodyStyle,
+                  ? Center(
+                      child: Text(
+                        widget.emptyHint,
+                        textAlign: TextAlign.center,
+                        style: bodyStyle,
+                      ),
+                    )
+                  : LayoutBuilder(
+                      builder: (context, constraints) {
+                        return GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTapDown: (d) => _selectFromDx(
+                            d.localPosition.dx,
+                            constraints.maxWidth,
                           ),
-                        )
-                      : LayoutBuilder(
-                          builder: (context, constraints) {
-                            return GestureDetector(
-                              behavior: HitTestBehavior.opaque,
-                              onTapDown: (d) => _selectFromDx(
-                                d.localPosition.dx,
-                                constraints.maxWidth,
+                          onHorizontalDragStart: (d) => _selectFromDx(
+                            d.localPosition.dx,
+                            constraints.maxWidth,
+                          ),
+                          onHorizontalDragUpdate: (d) => _selectFromDx(
+                            d.localPosition.dx,
+                            constraints.maxWidth,
+                          ),
+                          child: CustomPaint(
+                            size: Size(
+                              constraints.maxWidth,
+                              constraints.maxHeight,
+                            ),
+                            painter: _WeatherTimelinePainter(
+                              hours: hours,
+                              selectedIndex: selectedIndex,
+                              tempMin: widget.tempMin,
+                              tempMax: widget.tempMax,
+                              latitude: widget.latitude,
+                              longitude: widget.longitude,
+                              lineColor: scheme.onSurface.withValues(
+                                alpha: 0.55,
                               ),
-                              onHorizontalDragStart: (d) => _selectFromDx(
-                                d.localPosition.dx,
-                                constraints.maxWidth,
+                              fillTop: scheme.onSurface.withValues(alpha: 0.12),
+                              fillBottom: scheme.onSurface.withValues(
+                                alpha: 0.0,
                               ),
-                              onHorizontalDragUpdate: (d) => _selectFromDx(
-                                d.localPosition.dx,
-                                constraints.maxWidth,
+                              gridColor: scheme.outlineVariant.withValues(
+                                alpha: 0.55,
                               ),
-                              child: CustomPaint(
-                                size: Size(
-                                  constraints.maxWidth,
-                                  constraints.maxHeight,
-                                ),
-                                painter: _WeatherTimelinePainter(
-                                  hours: hours,
-                                  selectedIndex: selectedIndex,
-                                  tempMin: widget.tempMin,
-                                  tempMax: widget.tempMax,
-                                  latitude: widget.latitude,
-                                  longitude: widget.longitude,
-                                  lineColor: scheme.onSurface
-                                      .withValues(alpha: 0.55),
-                                  fillTop: scheme.onSurface
-                                      .withValues(alpha: 0.12),
-                                  fillBottom: scheme.onSurface
-                                      .withValues(alpha: 0.0),
-                                  gridColor: scheme.outlineVariant
-                                      .withValues(alpha: 0.55),
-                                  axisColor: scheme.onSurface
-                                      .withValues(alpha: 0.45),
-                                  midnightColor: scheme.onSurface
-                                      .withValues(alpha: 0.28),
-                                  selectionColor: scheme.onSurface
-                                      .withValues(alpha: 0.55),
-                                ),
+                              axisColor: scheme.onSurface.withValues(
+                                alpha: 0.45,
                               ),
-                            );
-                          },
-                        ),
+                              midnightColor: scheme.onSurface.withValues(
+                                alpha: 0.28,
+                              ),
+                              selectionColor: scheme.onSurface.withValues(
+                                alpha: 0.55,
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
             ),
           ],
         ),
@@ -309,6 +309,7 @@ class _WeatherTimelinePainter extends CustomPainter {
   static const leftPad = 30.0;
   static const rightPad = 8.0;
   static const _topPad = 8.0;
+
   /// Room for weather icons + time labels under the plot.
   static const _bottomPad = 40.0;
 
@@ -357,7 +358,13 @@ class _WeatherTimelinePainter extends CustomPainter {
     _drawXAxisIconsAndLabels(canvas, chart);
   }
 
-  Offset _pointAt(int i, Rect chart, double minT, double maxT, [double? tempC]) {
+  Offset _pointAt(
+    int i,
+    Rect chart,
+    double minT,
+    double maxT, [
+    double? tempC,
+  ]) {
     final x = hours.length == 1
         ? chart.center.dx
         : chart.left + (i / (hours.length - 1)) * chart.width;
@@ -514,16 +521,8 @@ class _WeatherTimelinePainter extends CustomPainter {
         ..color = selectionColor.withValues(alpha: 0.45)
         ..strokeWidth = 1.2,
     );
-    canvas.drawCircle(
-      p,
-      5,
-      Paint()..color = const Color(0xFFFFFFFF),
-    );
-    canvas.drawCircle(
-      p,
-      3.5,
-      Paint()..color = selectionColor,
-    );
+    canvas.drawCircle(p, 5, Paint()..color = const Color(0xFFFFFFFF));
+    canvas.drawCircle(p, 3.5, Paint()..color = selectionColor);
   }
 
   void _drawYAxis(Canvas canvas, Rect chart, double minT, double maxT) {

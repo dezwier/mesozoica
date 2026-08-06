@@ -52,7 +52,8 @@ class FormationMapRasterRequest {
       'baseAlpha': baseAlpha,
       'boundaryBlur': boundaryBlur,
       'colors': {
-        for (final e in colors.entries) e.key: [e.value.$1, e.value.$2, e.value.$3],
+        for (final e in colors.entries)
+          e.key: [e.value.$1, e.value.$2, e.value.$3],
       },
       'sites': [
         for (final site in sites) [site.lat, site.lon, site.rockType],
@@ -118,11 +119,11 @@ class FormationMapRasterResult {
   final Uint8List? pngBytes;
 
   List<List<double>> get coordinates => [
-        [west, north],
-        [east, north],
-        [east, south],
-        [west, south],
-      ];
+    [west, north],
+    [east, north],
+    [east, south],
+    [west, south],
+  ];
 }
 
 Map<String, dynamic> buildFormationMapPngIsolate(Map<String, dynamic> payload) {
@@ -253,8 +254,9 @@ FormationMapRasterResult buildFormationMapRaster(
         nearest.add((site, d));
       }
       nearest.sort((a, b) => a.$2.compareTo(b.$2));
-      final take =
-          nearest.length < neighborCount ? nearest.length : neighborCount;
+      final take = nearest.length < neighborCount
+          ? nearest.length
+          : neighborCount;
       var wSum = 0.0;
       var rAcc = 0.0;
       var gAcc = 0.0;

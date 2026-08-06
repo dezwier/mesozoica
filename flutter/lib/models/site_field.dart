@@ -168,9 +168,9 @@ class SiteIdentifyOptions {
       identified: json['identified'] as bool? ?? false,
       disabledGuesses: (json['disabled_guesses'] is List)
           ? (json['disabled_guesses'] as List)
-              .whereType<String>()
-              .map((e) => e.toLowerCase())
-              .toList()
+                .whereType<String>()
+                .map((e) => e.toLowerCase())
+                .toList()
           : const [],
       choiceImages: images,
     );
@@ -209,9 +209,9 @@ class SiteIdentifyResult {
       message: json['message'] as String?,
       disabledGuesses: (json['disabled_guesses'] is List)
           ? (json['disabled_guesses'] as List)
-              .whereType<String>()
-              .map((e) => e.toLowerCase())
-              .toList()
+                .whereType<String>()
+                .map((e) => e.toLowerCase())
+                .toList()
           : const [],
       xpAwarded: json['xp_awarded'] as int? ?? 0,
       periodIdentified: json['period_identified'] as bool? ?? false,
@@ -312,9 +312,9 @@ class SiteNearbyResponse {
     return SiteNearbyResponse(
       items: rawItems is List
           ? rawItems
-              .whereType<Map<String, dynamic>>()
-              .map(SiteSummary.fromJson)
-              .toList()
+                .whereType<Map<String, dynamic>>()
+                .map(SiteSummary.fromJson)
+                .toList()
           : const [],
       total: json['total'] as int? ?? 0,
       generated: json['generated'] as int? ?? 0,

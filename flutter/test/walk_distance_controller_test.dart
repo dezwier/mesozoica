@@ -54,28 +54,30 @@ void main() {
     expect(walk.displayTotalMeters, walk.totalMeters);
   });
 
-  test('weekly = max(activeWeekly, Health) credits Health − active as passive',
-      () async {
-    // 3.4 km active, only 3.5 km total weekly; Health says 15.4 km this week.
-    SharedPreferences.setMockInitialValues({
-      'walk_distance_v2_active_m': 3400.0,
-      'walk_distance_v2_active_weekly_m': 3400.0,
-      'walk_distance_v2_total_m': 3500.0,
-      'walk_distance_v2_weekly_m': 3500.0,
-      'walk_distance_v2_week_start': weekStartIso(),
-      'walk_distance_v2_weekly_schema': 1,
-    });
+  test(
+    'weekly = max(activeWeekly, Health) credits Health − active as passive',
+    () async {
+      // 3.4 km active, only 3.5 km total weekly; Health says 15.4 km this week.
+      SharedPreferences.setMockInitialValues({
+        'walk_distance_v2_active_m': 3400.0,
+        'walk_distance_v2_active_weekly_m': 3400.0,
+        'walk_distance_v2_total_m': 3500.0,
+        'walk_distance_v2_weekly_m': 3500.0,
+        'walk_distance_v2_week_start': weekStartIso(),
+        'walk_distance_v2_weekly_schema': 1,
+      });
 
-    final health = _FakeHealth(gapMeters: 15400);
-    final walk = WalkDistanceController(healthService: health);
-    await walk.refresh(profile: null, force: true);
+      final health = _FakeHealth(gapMeters: 15400);
+      final walk = WalkDistanceController(healthService: health);
+      await walk.refresh(profile: null, force: true);
 
-    expect(walk.activeWeeklyMeters, 3400);
-    expect(walk.weeklyMeters, 15400); // max(3400, 15400)
-    expect(walk.totalMeters, 15400); // +11900 passive
-    expect(walk.takePendingVisitGapMeters(), 11900);
-    expect(health.queries.first.$1, localWeekStartMonday());
-  });
+      expect(walk.activeWeeklyMeters, 3400);
+      expect(walk.weeklyMeters, 15400); // max(3400, 15400)
+      expect(walk.totalMeters, 15400); // +11900 passive
+      expect(walk.takePendingVisitGapMeters(), 11900);
+      expect(health.queries.first.$1, localWeekStartMonday());
+    },
+  );
 
   test('heals over-credited weekly down to Health floor', () async {
     // Bug state: weekly 28 km from double-counted samples; Health is 15.4 km.

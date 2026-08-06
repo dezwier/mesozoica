@@ -7,11 +7,7 @@ import 'zoom_slider.dart';
 /// 1. North-fixed, not following → center on user
 /// 2. North-fixed, following → enter rotate mode
 /// 3. Rotate mode → north-fixed, following
-enum MapLocationFabMode {
-  center,
-  enterRotate,
-  exitRotate,
-}
+enum MapLocationFabMode { center, enterRotate, exitRotate }
 
 class MapControlButtons extends StatelessWidget {
   const MapControlButtons({
@@ -40,18 +36,12 @@ class MapControlButtons extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final (IconData icon, String tooltip) = switch (locationFabMode) {
-      MapLocationFabMode.center => (
-          Icons.my_location,
-          'Center on my location',
-        ),
+      MapLocationFabMode.center => (Icons.my_location, 'Center on my location'),
       MapLocationFabMode.enterRotate => (
-          Icons.explore_outlined,
-          'Rotate map with phone orientation',
-        ),
-      MapLocationFabMode.exitRotate => (
-          Icons.explore,
-          'North-fixed map',
-        ),
+        Icons.explore_outlined,
+        'Rotate map with phone orientation',
+      ),
+      MapLocationFabMode.exitRotate => (Icons.explore, 'North-fixed map'),
     };
 
     return Positioned(
@@ -63,10 +53,7 @@ class MapControlButtons extends StatelessWidget {
         children: [
           ...leadingActions,
           if (!_rotateMap) ...[
-            ZoomSlider(
-              currentZoom: currentZoom,
-              onZoomChanged: onZoomChanged,
-            ),
+            ZoomSlider(currentZoom: currentZoom, onZoomChanged: onZoomChanged),
             const SizedBox(height: 8),
           ],
           ChromeFab(

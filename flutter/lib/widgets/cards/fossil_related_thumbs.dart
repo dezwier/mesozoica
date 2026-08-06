@@ -13,10 +13,7 @@ import 'site_card_image.dart';
 
 /// Site and dinosaur thumbnails on the fossil card back.
 class FossilRelatedThumbs extends StatelessWidget {
-  const FossilRelatedThumbs({
-    super.key,
-    required this.fossil,
-  });
+  const FossilRelatedThumbs({super.key, required this.fossil});
 
   final FossilSummary fossil;
 
@@ -38,9 +35,7 @@ class FossilRelatedThumbs extends StatelessWidget {
     if (siteId != null && siteId >= SiteSummary.fieldSiteIdBase) {
       return CatalogDataSource.field;
     }
-    return fossil.isField
-        ? CatalogDataSource.field
-        : CatalogDataSource.archive;
+    return fossil.isField ? CatalogDataSource.field : CatalogDataSource.archive;
   }
 
   @override
@@ -59,7 +54,8 @@ class FossilRelatedThumbs extends StatelessWidget {
         final totalWidth = thumbCount * thumbWidth + (thumbCount - 1) * _gap;
 
         if (totalWidth > maxWidth) {
-          thumbHeight = (maxWidth - (thumbCount - 1) * _gap) / (thumbCount * aspectRatio);
+          thumbHeight =
+              (maxWidth - (thumbCount - 1) * _gap) / (thumbCount * aspectRatio);
           thumbWidth = thumbHeight * aspectRatio;
         }
 

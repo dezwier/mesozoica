@@ -14,5 +14,6 @@ const Map<String, String> kGameConfigDocumentFiles = <String, String>{
 };
 
 /// Document ids in load order.
-final List<String> kGameConfigDocumentIds =
-    List<String>.unmodifiable(kGameConfigDocumentFiles.keys);
+final List<String> kGameConfigDocumentIds = List<String>.unmodifiable(
+  kGameConfigDocumentFiles.keys,
+);

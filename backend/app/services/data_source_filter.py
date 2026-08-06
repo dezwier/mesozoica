@@ -1,15 +1,7 @@
-"""Validate data_source query parameters."""
+"""Transitional alias for the feature-owned implementation."""
 
-from __future__ import annotations
+import sys
 
-from app.core.exceptions import ValidationError
-from app.models.data_source import DATA_SOURCE_ARCHIVE, DATA_SOURCES
+from app.shared import data_sources as _implementation
 
-
-def normalize_data_source(value: str | None, *, default: str = DATA_SOURCE_ARCHIVE) -> str:
-    """Return a validated data_source label."""
-    normalized = (value or default).strip().lower()
-    if normalized not in DATA_SOURCES:
-        allowed = ", ".join(sorted(DATA_SOURCES))
-        raise ValidationError(f"data_source must be one of: {allowed}")
-    return normalized
+sys.modules[__name__] = _implementation

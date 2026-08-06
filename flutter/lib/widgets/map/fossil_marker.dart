@@ -16,6 +16,7 @@ class FossilMarker extends StatelessWidget {
   final bool selected;
   final bool showIcon;
   final Color color;
+
   /// When true, opacity/border ease with selection.
   final bool animateSelection;
 
@@ -28,11 +29,17 @@ class FossilMarker extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final opacity = selected ? 1.0 : 0.85;
-    final rimColor = Color.lerp(color, const Color(0xFF1A120E), 0.42)!
-        .withValues(alpha: opacity);
+    final rimColor = Color.lerp(
+      color,
+      const Color(0xFF1A120E),
+      0.42,
+    )!.withValues(alpha: opacity);
     final fillColor = color.withValues(alpha: opacity);
-    final highlightColor = Color.lerp(color, Colors.white, 0.55)!
-        .withValues(alpha: 0.55 * opacity);
+    final highlightColor = Color.lerp(
+      color,
+      Colors.white,
+      0.55,
+    )!.withValues(alpha: 0.55 * opacity);
     // Keep the outer footprint at [size]; rim/fill/highlight scale inward.
     final fillSize = size / 1.12;
     final highlightSize = fillSize * 0.52;
@@ -65,10 +72,7 @@ class FossilMarker extends StatelessWidget {
           Container(
             width: size,
             height: size,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: rimColor,
-            ),
+            decoration: BoxDecoration(shape: BoxShape.circle, color: rimColor),
           ),
           // Period fill with white bevel.
           Container(
@@ -92,10 +96,7 @@ class FossilMarker extends StatelessWidget {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 gradient: RadialGradient(
-                  colors: [
-                    highlightColor,
-                    highlightColor.withValues(alpha: 0),
-                  ],
+                  colors: [highlightColor, highlightColor.withValues(alpha: 0)],
                 ),
               ),
             ),

@@ -1,0 +1,47 @@
+"""
+Fossil LLM enrichment job. Feature-owned implementation.
+
+Run manually:
+  python -m app.crons.runner --job fossil_llm_enrich
+  python -m app.crons.runner --job fossil_llm_enrich --overwrite
+  python -m app.crons.runner --job fossil_llm_enrich --dinos Tyrannosaurus --overwrite
+"""
+
+from __future__ import annotations
+
+import os
+
+from sqlmodel import Session
+
+from app.core.config import settings
+from app.core.database import engine
+from app.features.ingestion.application.fossil_enrichment.sync import enrich_exit_code, enrich_fossils
+
+
+def run_enrich_job(
+    *,
+    dry_run: bool = False,
+    overwrite: bool = False,
+    max_records: int | None = None,
+    dinos: list[str] | None = None,
+) -> int:
+    _require_gemini_key_in_production()
+    with Session(engine) as session:
+        summary = enrich_fossils(
+            session,
+            dry_run=dry_run,
+            overwrite=overwrite,
+            max_records=max_records,
+            dinos=dinos,
+        )
+    return enrich_exit_code(summary)
+
+
+def _require_gemini_key_in_production() -> None:
+    env = os.getenv("ENVIRONMENT", "production").strip().lower()
+    is_production = env not in ("development", "dev", "local")
+    if is_production and not settings.google_gemini_api_key.strip():
+        raise RuntimeError(
+            "GOOGLE_GEMINI_API_KEY environment variable is required in production "
+            "for fossil LLM enrichment."
+        )

@@ -63,7 +63,8 @@ class DefaultFirebaseOptions {
     messagingSenderId: '349946200961',
     projectId: 'mesozoica-f7ea0',
     storageBucket: 'mesozoica-f7ea0.firebasestorage.app',
-    iosClientId: '349946200961-fduc7bsj1rlsuu9d5jl5mqo8vlmm6tpc.apps.googleusercontent.com',
+    iosClientId:
+        '349946200961-fduc7bsj1rlsuu9d5jl5mqo8vlmm6tpc.apps.googleusercontent.com',
     iosBundleId: 'com.desiredewaele.mesozoica',
   );
   static const FirebaseOptions macos = FirebaseOptions(
@@ -72,7 +73,8 @@ class DefaultFirebaseOptions {
     messagingSenderId: '349946200961',
     projectId: 'mesozoica-f7ea0',
     storageBucket: 'mesozoica-f7ea0.firebasestorage.app',
-    iosClientId: '349946200961-ab0s37sp2mnf0346fnmjcpscf9ittase.apps.googleusercontent.com',
+    iosClientId:
+        '349946200961-ab0s37sp2mnf0346fnmjcpscf9ittase.apps.googleusercontent.com',
     iosBundleId: 'com.desiredewaele.mesozoica',
   );
 

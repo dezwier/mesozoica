@@ -34,9 +34,9 @@ class _SignInTab extends StatelessWidget {
           const SizedBox(height: 6),
           Text(
             'Welcome back',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 12),
           Card(
@@ -44,10 +44,9 @@ class _SignInTab extends StatelessWidget {
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(10),
               side: BorderSide(
-                color: Theme.of(context)
-                    .colorScheme
-                    .outline
-                    .withValues(alpha: 0.2),
+                color: Theme.of(
+                  context,
+                ).colorScheme.outline.withValues(alpha: 0.2),
                 width: 1,
               ),
             ),
@@ -81,8 +80,10 @@ class _SignInTab extends StatelessWidget {
             child: TextButton(
               onPressed: onSwitchToSignUp,
               style: TextButton.styleFrom(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
                 minimumSize: Size.zero,
                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
               ),
@@ -94,23 +95,21 @@ class _SignInTab extends StatelessWidget {
           ),
           if (onFillDebugTestAccount != null) ...[
             const SizedBox(height: 16),
-            Text(
-              'Debug',
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
+            Text('Debug', style: Theme.of(context).textTheme.bodySmall),
             const SizedBox(height: 8),
             OutlinedButton.icon(
               onPressed: isLoading ? null : onFillDebugTestAccount,
               icon: const Icon(Icons.bug_report_outlined, size: 18),
               label: const Text('Fill test account'),
               style: OutlinedButton.styleFrom(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
                 side: BorderSide(
-                  color: Theme.of(context)
-                      .colorScheme
-                      .primary
-                      .withValues(alpha: 0.5),
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.primary.withValues(alpha: 0.5),
                 ),
               ),
             ),
@@ -189,9 +188,9 @@ class _SignUpTab extends StatelessWidget {
           const SizedBox(height: 6),
           Text(
             'Create an account',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 12),
           Card(
@@ -199,10 +198,9 @@ class _SignUpTab extends StatelessWidget {
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(10),
               side: BorderSide(
-                color: Theme.of(context)
-                    .colorScheme
-                    .outline
-                    .withValues(alpha: 0.2),
+                color: Theme.of(
+                  context,
+                ).colorScheme.outline.withValues(alpha: 0.2),
                 width: 1,
               ),
             ),
@@ -230,8 +228,10 @@ class _SignUpTab extends StatelessWidget {
             child: TextButton(
               onPressed: onSwitchToSignIn,
               style: TextButton.styleFrom(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
                 minimumSize: Size.zero,
                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
               ),
@@ -243,23 +243,21 @@ class _SignUpTab extends StatelessWidget {
           ),
           if (onFillDebugTestAccount != null) ...[
             const SizedBox(height: 16),
-            Text(
-              'Debug',
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
+            Text('Debug', style: Theme.of(context).textTheme.bodySmall),
             const SizedBox(height: 8),
             OutlinedButton.icon(
               onPressed: isLoading ? null : onFillDebugTestAccount,
               icon: const Icon(Icons.bug_report_outlined, size: 18),
               label: const Text('Fill test account'),
               style: OutlinedButton.styleFrom(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
                 side: BorderSide(
-                  color: Theme.of(context)
-                      .colorScheme
-                      .primary
-                      .withValues(alpha: 0.5),
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.primary.withValues(alpha: 0.5),
                 ),
               ),
             ),
@@ -330,8 +328,10 @@ class _SignUpTab extends StatelessWidget {
         filled: true,
         fillColor: scheme.surface,
         prefixIcon: Icon(prefixIcon, color: scheme.primary),
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 12,
+          vertical: 10,
+        ),
       );
     }
 
@@ -411,8 +411,8 @@ class _SignUpTab extends StatelessWidget {
                 : Text(
                     'Create account',
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
           ),
         ),

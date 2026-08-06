@@ -80,15 +80,11 @@ class _DinosaurWikipediaViewState extends State<DinosaurWikipediaView> {
   var _usedLiveFallback = false;
   var _injectStatusOnNextFinish = false;
 
-  Uri get _pageUri => wikipediaMobileArticleUri(
-        widget.wikipediaTitle,
-        oldId: _oldId,
-      );
+  Uri get _pageUri =>
+      wikipediaMobileArticleUri(widget.wikipediaTitle, oldId: _oldId);
 
-  Uri get _desktopUri => wikipediaArticleUri(
-        widget.wikipediaTitle,
-        oldId: _oldId,
-      );
+  Uri get _desktopUri =>
+      wikipediaArticleUri(widget.wikipediaTitle, oldId: _oldId);
 
   String? get _statusBannerText {
     if (widget.asOf == null && !_usedLiveFallback) return null;
@@ -331,10 +327,7 @@ $darkJs
   }
 
   Future<void> _openInBrowser() async {
-    await launchUrl(
-      _desktopUri,
-      mode: LaunchMode.externalApplication,
-    );
+    await launchUrl(_desktopUri, mode: LaunchMode.externalApplication);
   }
 
   @override

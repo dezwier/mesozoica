@@ -31,7 +31,8 @@ class PhyloTreePanelState extends State<PhyloTreePanel> {
   @override
   Widget build(BuildContext context) {
     return Consumer<PhyloTreeController>(
-      builder: (context, treeController, _) => _buildBody(context, treeController),
+      builder: (context, treeController, _) =>
+          _buildBody(context, treeController),
     );
   }
 
@@ -72,7 +73,8 @@ class PhyloTreePanelState extends State<PhyloTreePanel> {
 
     final layout = treeController.layout;
     if (layout == null ||
-        (layout.root.children.isEmpty && layout.root.treeNode.dinosaurs.isEmpty)) {
+        (layout.root.children.isEmpty &&
+            layout.root.treeNode.dinosaurs.isEmpty)) {
       return Center(
         child: Text(
           treeController.hasActiveFilters
@@ -83,9 +85,6 @@ class PhyloTreePanelState extends State<PhyloTreePanel> {
       );
     }
 
-    return FractalFernView(
-      key: _fernViewKey,
-      layout: layout,
-    );
+    return FractalFernView(key: _fernViewKey, layout: layout);
   }
 }

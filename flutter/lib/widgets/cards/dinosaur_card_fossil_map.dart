@@ -158,9 +158,9 @@ List<FossilSummary> geolocatedFossils(List<FossilSummary> fossils) {
 }
 
 List<LatLng> latLngPointsForFossils(List<FossilSummary> fossils) {
-  return geolocatedFossils(fossils)
-      .map((fossil) => LatLng(fossil.latitude!, fossil.longitude!))
-      .toList();
+  return geolocatedFossils(
+    fossils,
+  ).map((fossil) => LatLng(fossil.latitude!, fossil.longitude!)).toList();
 }
 
 LatLngBounds? boundsForFossils(List<FossilSummary> fossils) {

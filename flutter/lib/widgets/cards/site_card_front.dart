@@ -51,8 +51,7 @@ class SiteCardFront extends StatelessWidget {
     final cardTheme = DinoCardTheme.of(context);
     final status = site.status?.trim();
     final showIdBadge = site.isFieldOccurrence;
-    final showStatus =
-        showStatusBadge && status != null && status.isNotEmpty;
+    final showStatus = showStatusBadge && status != null && status.isNotEmpty;
     final showIdentify = site.canIdentify;
 
     return AspectRatio(
@@ -99,14 +98,11 @@ class SiteCardFront extends StatelessWidget {
                   (usePeriodRockTypeLines
                       ? 0.28
                       : titleMaxLines > 1
-                          ? 0.35
-                          : 0.45),
+                      ? 0.35
+                      : 0.45),
             ),
             child: usePeriodRockTypeLines
-                ? SitePeriodRockTypeLines(
-                    site: site,
-                    fontSize: titleFontSize,
-                  )
+                ? SitePeriodRockTypeLines(site: site, fontSize: titleFontSize)
                 : SiteCardHeader(
                     site: site,
                     titleFontSize: titleFontSize,

@@ -50,14 +50,16 @@ class _CommunityDrawerState extends State<CommunityDrawer> {
     super.initState();
     _friendsSearchController.addListener(() {
       setState(() {
-        _friendsSearchQuery =
-            _friendsSearchController.text.trim().toLowerCase();
+        _friendsSearchQuery = _friendsSearchController.text
+            .trim()
+            .toLowerCase();
       });
     });
     _paleontologistsSearchController.addListener(() {
       setState(() {
-        _paleontologistsSearchQuery =
-            _paleontologistsSearchController.text.trim().toLowerCase();
+        _paleontologistsSearchQuery = _paleontologistsSearchController.text
+            .trim()
+            .toLowerCase();
       });
     });
     _loadFriends();
@@ -160,12 +162,14 @@ class _CommunityDrawerState extends State<CommunityDrawer> {
         isDense: true,
         isCollapsed: true,
         prefixIcon: const Icon(Icons.search, size: 20),
-        prefixIconConstraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+        prefixIconConstraints: const BoxConstraints(
+          minWidth: 32,
+          minHeight: 32,
+        ),
         filled: true,
-        fillColor: Theme.of(context)
-            .colorScheme
-            .surfaceContainerHighest
-            .withValues(alpha: 0.45),
+        fillColor: Theme.of(
+          context,
+        ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.45),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
           borderSide: BorderSide.none,
@@ -200,9 +204,9 @@ class _CommunityDrawerState extends State<CommunityDrawer> {
           Expanded(
             child: Text(
               title,
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
             ),
           ),
           const SizedBox(width: 10),
@@ -219,11 +223,13 @@ class _CommunityDrawerState extends State<CommunityDrawer> {
   }
 
   Widget _buildFriendsSection() {
-    final filteredEntries =
-        _friends.where((entry) => _matches(entry, _friendsSearchQuery)).toList();
+    final filteredEntries = _friends
+        .where((entry) => _matches(entry, _friendsSearchQuery))
+        .toList();
     final isSearching = _friendsSearchQuery.isNotEmpty;
-    final noResultsMessage =
-        isSearching ? 'No friends match your search' : 'No friends yet';
+    final noResultsMessage = isSearching
+        ? 'No friends match your search'
+        : 'No friends yet';
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -240,11 +246,10 @@ class _CommunityDrawerState extends State<CommunityDrawer> {
             child: Text(
               noResultsMessage,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context)
-                        .colorScheme
-                        .onSurface
-                        .withValues(alpha: 0.6),
-                  ),
+                color: Theme.of(
+                  context,
+                ).colorScheme.onSurface.withValues(alpha: 0.6),
+              ),
             ),
           )
         else
@@ -259,10 +264,7 @@ class _CommunityDrawerState extends State<CommunityDrawer> {
             isLoadingMore: isSearching ? false : _loadingMoreFriends,
             showVerticalTitle: false,
             itemBuilder: (context, entry, index) {
-              return UserListItem(
-                entry: entry,
-                onTap: () => _openUser(entry),
-              );
+              return UserListItem(entry: entry, onTap: () => _openUser(entry));
             },
           ),
       ],
@@ -293,11 +295,10 @@ class _CommunityDrawerState extends State<CommunityDrawer> {
             child: Text(
               noResultsMessage,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context)
-                        .colorScheme
-                        .onSurface
-                        .withValues(alpha: 0.6),
-                  ),
+                color: Theme.of(
+                  context,
+                ).colorScheme.onSurface.withValues(alpha: 0.6),
+              ),
             ),
           )
         else
@@ -308,16 +309,13 @@ class _CommunityDrawerState extends State<CommunityDrawer> {
             isLoading: _loadingPaleontologists,
             initialVisibleCount: _pageSize,
             total: isSearching ? filteredEntries.length : _paleontologistsTotal,
-            onLoadMore:
-                isSearching ? null : () => _loadPaleontologists(loadMore: true),
-            isLoadingMore:
-                isSearching ? false : _loadingMorePaleontologists,
+            onLoadMore: isSearching
+                ? null
+                : () => _loadPaleontologists(loadMore: true),
+            isLoadingMore: isSearching ? false : _loadingMorePaleontologists,
             showVerticalTitle: false,
             itemBuilder: (context, entry, index) {
-              return UserListItem(
-                entry: entry,
-                onTap: () => _openUser(entry),
-              );
+              return UserListItem(entry: entry, onTap: () => _openUser(entry));
             },
           ),
       ],
@@ -331,7 +329,7 @@ class _CommunityDrawerState extends State<CommunityDrawer> {
         final height = widget.scrollController != null
             ? constraints.maxHeight
             : MediaQuery.of(context).size.height *
-                DrawerSheetSizes.initialChildSize;
+                  DrawerSheetSizes.initialChildSize;
 
         return GestureDetector(
           behavior: HitTestBehavior.translucent,
@@ -348,8 +346,9 @@ class _CommunityDrawerState extends State<CommunityDrawer> {
               height: height,
               decoration: BoxDecoration(
                 color: Theme.of(context).colorScheme.surface,
-                borderRadius:
-                    const BorderRadius.vertical(top: Radius.circular(20)),
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(20),
+                ),
               ),
               child: Column(
                 children: [
@@ -358,10 +357,9 @@ class _CommunityDrawerState extends State<CommunityDrawer> {
                     width: 40,
                     height: 4,
                     decoration: BoxDecoration(
-                      color: Theme.of(context)
-                          .colorScheme
-                          .onSurface
-                          .withValues(alpha: 0.3),
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.onSurface.withValues(alpha: 0.3),
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
@@ -371,10 +369,8 @@ class _CommunityDrawerState extends State<CommunityDrawer> {
                       children: [
                         Text(
                           'Community',
-                          style:
-                              Theme.of(context).textTheme.titleLarge?.copyWith(
-                                    fontWeight: FontWeight.bold,
-                                  ),
+                          style: Theme.of(context).textTheme.titleLarge
+                              ?.copyWith(fontWeight: FontWeight.bold),
                         ),
                         const Spacer(),
                         IconButton(

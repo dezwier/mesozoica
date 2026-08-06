@@ -46,9 +46,9 @@ class SiteTypeSummary {
       mainImageUrl: json['main_image_url'] as String?,
       ownedOccurrences: rawOwned is List
           ? rawOwned
-              .whereType<Map<String, dynamic>>()
-              .map(OwnedOccurrenceThumb.fromJson)
-              .toList()
+                .whereType<Map<String, dynamic>>()
+                .map(OwnedOccurrenceThumb.fromJson)
+                .toList()
           : const [],
     );
   }
@@ -76,9 +76,9 @@ class SiteTypeListResponse {
     return SiteTypeListResponse(
       items: rawItems is List
           ? rawItems
-              .whereType<Map<String, dynamic>>()
-              .map(SiteTypeSummary.fromJson)
-              .toList()
+                .whereType<Map<String, dynamic>>()
+                .map(SiteTypeSummary.fromJson)
+                .toList()
           : const [],
       total: json['total'] as int? ?? 0,
       limit: json['limit'] as int? ?? 0,

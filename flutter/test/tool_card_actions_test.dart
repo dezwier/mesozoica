@@ -41,8 +41,9 @@ void main() {
     expect(catalog.isToolInstance, isFalse);
   });
 
-  testWidgets('ToolCardBack shows centered action and remaining, no Info',
-      (tester) async {
+  testWidgets('ToolCardBack shows centered action and remaining, no Info', (
+    tester,
+  ) async {
     const owned = ToolSummary(
       id: 1,
       name: 'Aerial Recon',
@@ -88,45 +89,44 @@ void main() {
     expect(tapped, isTrue);
   });
 
-  testWidgets('ToolCardBack shows scientific subtitle and filled rarity stars',
-      (tester) async {
-    final owned = ToolSummary(
-      id: 10,
-      toolTypeId: 1,
-      name: 'Aerial Recon',
-      category: '1 site_discovery',
-      scientificTool: 'helicopter',
-      description: 'Scout loop',
-      rarity: 3,
-      action: 'Deploy',
-      level: 1,
-      version: 'Original',
-      spawnDate: DateTime.now().toUtc().subtract(const Duration(minutes: 45)),
-    );
+  testWidgets(
+    'ToolCardBack shows scientific subtitle and filled rarity stars',
+    (tester) async {
+      final owned = ToolSummary(
+        id: 10,
+        toolTypeId: 1,
+        name: 'Aerial Recon',
+        category: '1 site_discovery',
+        scientificTool: 'helicopter',
+        description: 'Scout loop',
+        rarity: 3,
+        action: 'Deploy',
+        level: 1,
+        version: 'Original',
+        spawnDate: DateTime.now().toUtc().subtract(const Duration(minutes: 45)),
+      );
 
-    await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: Center(
-            child: SizedBox(
-              width: 320,
-              child: ToolCardBack(
-                tool: owned,
-                onAction: () {},
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Center(
+              child: SizedBox(
+                width: 320,
+                child: ToolCardBack(tool: owned, onAction: () {}),
               ),
             ),
           ),
         ),
-      ),
-    );
+      );
 
-    expect(find.text('Helicopter'), findsOneWidget);
-    expect(find.textContaining('Site Discovery'), findsNothing);
-    expect(find.textContaining('Obtained'), findsNothing);
-    expect(find.byIcon(Icons.star_rounded), findsNWidgets(3));
-    expect(find.byIcon(Icons.star_border), findsNothing);
-    expect(find.text('Rarity'), findsNothing);
-  });
+      expect(find.text('Helicopter'), findsOneWidget);
+      expect(find.textContaining('Site Discovery'), findsNothing);
+      expect(find.textContaining('Obtained'), findsNothing);
+      expect(find.byIcon(Icons.star_rounded), findsNWidgets(3));
+      expect(find.byIcon(Icons.star_border), findsNothing);
+      expect(find.text('Rarity'), findsNothing);
+    },
+  );
 
   testWidgets('ToolCardBack lists compact history', (tester) async {
     const owned = ToolSummary(
@@ -139,10 +139,8 @@ void main() {
       action: 'Deploy',
       level: 1,
     );
-    final started =
-        DateTime.now().toUtc().subtract(const Duration(hours: 2));
-    final obtained =
-        DateTime.now().toUtc().subtract(const Duration(days: 3));
+    final started = DateTime.now().toUtc().subtract(const Duration(hours: 2));
+    final obtained = DateTime.now().toUtc().subtract(const Duration(days: 3));
     final history = [
       ToolHistoryEntry(
         kind: 'session',
@@ -164,11 +162,7 @@ void main() {
           ),
         ),
       ),
-      ToolHistoryEntry(
-        kind: 'role',
-        at: obtained,
-        roleAction: 'owned',
-      ),
+      ToolHistoryEntry(kind: 'role', at: obtained, roleAction: 'owned'),
     ];
 
     await tester.pumpWidget(
@@ -226,8 +220,9 @@ void main() {
     expect(deploy.onPressed, isNull);
   });
 
-  testWidgets('ToolCardBack shows In use and disables action when inUse',
-      (tester) async {
+  testWidgets('ToolCardBack shows In use and disables action when inUse', (
+    tester,
+  ) async {
     const owned = ToolSummary(
       id: 1,
       name: 'Aerial Recon',
@@ -266,8 +261,9 @@ void main() {
     expect(action.onPressed, isNull);
   });
 
-  testWidgets('ToolCardBack disables action when remaining is zero',
-      (tester) async {
+  testWidgets('ToolCardBack disables action when remaining is zero', (
+    tester,
+  ) async {
     const owned = ToolSummary(
       id: 1,
       name: 'Geo Compass',

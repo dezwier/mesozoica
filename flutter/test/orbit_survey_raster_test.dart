@@ -31,16 +31,8 @@ void main() {
         gridSize: 64,
         colors: palette,
         sites: const [
-          OrbitSurveySiteSample(
-            lat: 40.001,
-            lon: -100.0,
-            period: 'triassic',
-          ),
-          OrbitSurveySiteSample(
-            lat: 39.999,
-            lon: -100.0,
-            period: 'jurassic',
-          ),
+          OrbitSurveySiteSample(lat: 40.001, lon: -100.0, period: 'triassic'),
+          OrbitSurveySiteSample(lat: 39.999, lon: -100.0, period: 'jurassic'),
         ],
       ),
     );
@@ -136,11 +128,7 @@ void main() {
       sharp.rgba[mid + 1],
       sharp.rgba[mid + 2],
     );
-    final softRgb = (
-      soft.rgba[mid],
-      soft.rgba[mid + 1],
-      soft.rgba[mid + 2],
-    );
+    final softRgb = (soft.rgba[mid], soft.rgba[mid + 1], soft.rgba[mid + 2]);
     expect(soft.rgba[mid + 3], greaterThan(0));
     // Soft IDW should not match pure nearest-only mid color for these sites.
     expect(softRgb == sharpRgb, isFalse);

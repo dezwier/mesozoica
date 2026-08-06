@@ -103,7 +103,9 @@ class VintageGuidanceCompass extends StatelessWidget {
                   ),
                 ],
                 border: Border.all(
-                  color: VintageInstrumentStyle.brassRim.withValues(alpha: 0.85),
+                  color: VintageInstrumentStyle.brassRim.withValues(
+                    alpha: 0.85,
+                  ),
                   width: 1.3,
                 ),
               ),
@@ -136,10 +138,7 @@ class VintageGuidanceCompass extends StatelessWidget {
           ),
           if (onStop != null) ...[
             const SizedBox(height: 6),
-            _CompassSessionStrip(
-              timeLabel: time,
-              onStop: onStop!,
-            ),
+            _CompassSessionStrip(timeLabel: time, onStop: onStop!),
           ],
         ],
       ),
@@ -177,10 +176,7 @@ class VintageGuidanceCompass extends StatelessWidget {
 }
 
 class _CompassSessionStrip extends StatelessWidget {
-  const _CompassSessionStrip({
-    required this.timeLabel,
-    required this.onStop,
-  });
+  const _CompassSessionStrip({required this.timeLabel, required this.onStop});
 
   final String timeLabel;
   final VoidCallback onStop;
@@ -199,10 +195,7 @@ class _CompassSessionStrip extends StatelessWidget {
             VintageInstrumentStyle.brassDark,
           ],
         ),
-        border: Border.all(
-          color: VintageInstrumentStyle.brassRim,
-          width: 1.1,
-        ),
+        border: Border.all(color: VintageInstrumentStyle.brassRim, width: 1.1),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.35),
@@ -229,8 +222,7 @@ class _CompassSessionStrip extends StatelessWidget {
                 color: VintageInstrumentStyle.live.withValues(alpha: 0.85),
                 boxShadow: [
                   BoxShadow(
-                    color:
-                        VintageInstrumentStyle.live.withValues(alpha: 0.55),
+                    color: VintageInstrumentStyle.live.withValues(alpha: 0.55),
                     blurRadius: 6,
                   ),
                 ],
@@ -307,10 +299,7 @@ class _VintageCompassPainter extends CustomPainter {
         ..shader = RadialGradient(
           center: const Alignment(-0.4, -0.55),
           radius: 0.9,
-          colors: [
-            Colors.white.withValues(alpha: 0.07),
-            Colors.transparent,
-          ],
+          colors: [Colors.white.withValues(alpha: 0.07), Colors.transparent],
         ).createShader(Rect.fromCircle(center: c, radius: faceR)),
     );
 
@@ -336,7 +325,13 @@ class _VintageCompassPainter extends CustomPainter {
       final isCardinal = i % 18 == 0;
       final isMajor = i % 6 == 0;
       final inner =
-          faceR - (isCardinal ? 14.0 : isMajor ? 10.0 : 6.0) * s;
+          faceR -
+          (isCardinal
+                  ? 14.0
+                  : isMajor
+                  ? 10.0
+                  : 6.0) *
+              s;
       final outer = faceR - 2 * s;
       final paint = isMajor ? major : minor;
       canvas.drawLine(
@@ -353,10 +348,7 @@ class _VintageCompassPainter extends CustomPainter {
     for (var i = 0; i < 4; i++) {
       final rad = _screenRad(angles[i] + northDeg);
       final r = faceR - 26 * s;
-      final pos = Offset(
-        c.dx + r * math.cos(rad),
-        c.dy + r * math.sin(rad),
-      );
+      final pos = Offset(c.dx + r * math.cos(rad), c.dy + r * math.sin(rad));
       final isNorth = labels[i] == 'N';
       final tp = TextPainter(
         text: TextSpan(
@@ -382,8 +374,8 @@ class _VintageCompassPainter extends CustomPainter {
     final sweepRad = width * math.pi / 180;
     final rect = Rect.fromCircle(center: c, radius: radius);
 
-    final glowAlpha =
-        (0.14 + 0.3 * (1.0 - (width / 180).clamp(0.0, 1.0))).clamp(0.14, 0.44);
+    final glowAlpha = (0.14 + 0.3 * (1.0 - (width / 180).clamp(0.0, 1.0)))
+        .clamp(0.14, 0.44);
     final glowStroke = (12.0 + 10.0 * (width / 180).clamp(0.0, 1.0)) * s;
     canvas.drawArc(
       rect,
@@ -398,8 +390,8 @@ class _VintageCompassPainter extends CustomPainter {
         ..maskFilter = MaskFilter.blur(BlurStyle.normal, 2 * s),
     );
 
-    final coreAlpha =
-        (0.6 + 0.35 * (1.0 - (width / 180).clamp(0.0, 1.0))).clamp(0.6, 0.95);
+    final coreAlpha = (0.6 + 0.35 * (1.0 - (width / 180).clamp(0.0, 1.0)))
+        .clamp(0.6, 0.95);
     final coreStroke = (3.5 + 3.5 * (1.0 - (width / 180).clamp(0.0, 1.0))) * s;
     canvas.drawArc(
       rect,
@@ -420,11 +412,7 @@ class _VintageCompassPainter extends CustomPainter {
       c.dy + radius * math.sin(tipRad),
     );
     final tipR = 3.5 * s;
-    canvas.drawCircle(
-      tip,
-      tipR,
-      Paint()..color = VintageInstrumentStyle.gold,
-    );
+    canvas.drawCircle(tip, tipR, Paint()..color = VintageInstrumentStyle.gold);
     canvas.drawCircle(
       tip,
       tipR,
@@ -442,8 +430,9 @@ class _VintageCompassPainter extends CustomPainter {
       canvas.drawPath(
         wedge,
         Paint()
-          ..color = VintageInstrumentStyle.gold
-              .withValues(alpha: 0.07 + 0.05 * (width / 180))
+          ..color = VintageInstrumentStyle.gold.withValues(
+            alpha: 0.07 + 0.05 * (width / 180),
+          )
           ..style = PaintingStyle.fill,
       );
     }

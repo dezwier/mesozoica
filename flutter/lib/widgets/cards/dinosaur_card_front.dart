@@ -31,9 +31,9 @@ class DinosaurCardFront extends StatelessWidget {
 
   String get _description =>
       dinosaur.shortDescription != null &&
-              dinosaur.shortDescription!.trim().isNotEmpty
-          ? dinosaur.shortDescription!.trim()
-          : '—';
+          dinosaur.shortDescription!.trim().isNotEmpty
+      ? dinosaur.shortDescription!.trim()
+      : '—';
 
   @override
   Widget build(BuildContext context) {
@@ -65,9 +65,7 @@ class DinosaurCardFront extends StatelessWidget {
             Positioned(
               top: 14,
               left: 14,
-              child: OccurrenceIdBadge(
-                label: dinosaur.occurrenceIdBadgeLabel,
-              ),
+              child: OccurrenceIdBadge(label: dinosaur.occurrenceIdBadgeLabel),
             ),
           if (showBadges && showStatus && status.isNotEmpty)
             Positioned(

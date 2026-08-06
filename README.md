@@ -8,50 +8,50 @@ Location-based paleontology game — FastAPI backend + Flutter client monorepo.
 mesozoica/
 ├── backend/                 # FastAPI + SQLModel + PostgreSQL (Railway)
 │   ├── app/
-│   │   ├── api/v1/          # HTTP routers (thin; call services)
-│   │   ├── schemas/         # Pydantic request/response DTOs
-│   │   ├── services/        # Domain logic
-│   │   │   ├── site_service/      # Site catalog / discover / status
-│   │   │   ├── field_service/     # Field generation, ensure queue, purge
-│   │   │   ├── site_common/       # Shared geo / labels / discovery params
-│   │   │   ├── tool_service/      # Tool catalog
-│   │   │   ├── tool_action_service/  # Aerial, guidance, formation actions
-│   │   │   └── …                # Enrichment, images, auth, etc.
-│   │   ├── models/          # SQLModel tables
-│   │   ├── crons/           # Scheduled jobs (Railway cron service)
-│   │   ├── workers/         # Long-running field-ensure worker
+│   │   ├── features/        # Feature-owned API/application/domain/infrastructure
+│   │   ├── core/            # App, DB/session, security, settings, errors
+│   │   ├── shared/          # Deliberate cross-feature value primitives
+│   │   ├── api/v1/          # Transitional route compatibility exports
+│   │   ├── services/        # Transitional import compatibility exports
+│   │   ├── crons/           # Thin scheduled-job entrypoints
+│   │   ├── workers/         # Thin worker entrypoints
 │   │   └── game_config/     # Shared YAML game mechanics
 │   ├── alembic/             # DB migrations
 │   └── tests/
 ├── flutter/                 # Flutter app (iOS, Android, web/desktop targets)
 │   └── lib/
-│       ├── config/          # AppConfig, ApiEndpoints, GameConfig
-│       ├── controllers/     # Provider ChangeNotifiers
-│       ├── services/        # HTTP + device services
-│       ├── models/          # Client DTOs
-│       ├── screens/         # Feature screens
-│       ├── shell/           # App chrome / overlays
-│       └── widgets/         # UI (map, cards, tools, tree, …)
+│       ├── features/        # Feature data/domain/presentation packages
+│       ├── core/            # Networking, persistence, DI, routing primitives
+│       ├── shell/           # Root navigation and overlay hosting
+│       └── controllers|services|models|widgets/ # Transitional exports/UI
 ├── images/                  # Curated card / user images (v1/v2 dirs)
 ├── prd.md                   # Product requirements
 ├── Makefile                 # Dev / test / cron entrypoints
 └── railway.toml             # Monorepo deploy (backend root)
 ```
 
-**Shared game config:** YAML under [`backend/app/game_config/`](backend/app/game_config/) is linked into Flutter assets. Typed loaders live on both sides (`core/game_config.py` and `lib/config/game_config.dart`).
+**Shared game config:** YAML under [`backend/app/game_config/`](backend/app/game_config/) is linked into Flutter assets. Typed document parsers live in each side's `features/game_config` package; compatibility facades preserve the old access API.
 
 ## Architecture notes
 
-- **Endpoints stay thin** — parse HTTP, call a service, return a schema. Domain SQL lives in services.
-- **Prefer service packages** with `__init__.py` facades (`site_service`, `field_service`, `tool_service`, …). Import public entry points from the package when possible; deep submodule imports are for internal use.
-- **Field vs site:** playable field generation/ensure lives in `field_service`; catalog list/nearby/related stays in `site_service`; shared helpers in `site_common`.
-- **Flutter layering:** `widget → controller → service`. Controllers should not import widgets for pure helpers (see `lib/utils/`).
+The enforceable dependency rules and compatibility contracts live in
+[`ARCHITECTURE.md`](ARCHITECTURE.md). Run `make architecture-check` when moving
+code between features.
+
+- Backend features expose cross-feature capabilities only through `public.py`.
+- Backend dependency direction is `api/entrypoint → application → domain`; providers and SQL adapters live under infrastructure.
+- Flutter dependency direction is `presentation → domain`; data repositories implement domain-facing contracts and share one injected API transport.
+- Compatibility modules preserve internal import paths for scripts and tests, but new consumers must use feature surfaces.
 
 ## Local development
 
 There is **no local database**. The API can run on your machine for debugging, but **cron jobs always run on Railway** (scheduled service or `make run-*` via `railway run`).
 
 ### Backend API (optional local)
+
+Python 3.10 or newer is required. The Make targets reject an existing
+`backend/.venv` created with an older interpreter instead of silently reusing
+it; recreate that environment with a supported Python when prompted.
 
 ```bash
 make backend-install
@@ -111,7 +111,11 @@ flutter run --dart-define=USE_LOCAL_API=true --dart-define=API_BASE_URL=http://1
 make test-all
 # or separately:
 make backend-test
+make flutter-analyze
 make flutter-test
+
+# Full structural quality gate:
+make quality
 ```
 
 ## Railway deployment

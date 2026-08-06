@@ -15,18 +15,16 @@ class OrbitSurveyCardExtension implements ToolCardExtension {
 
   @override
   List<String> editableParamKeys(ToolSummary tool) => const [
-        'duration_minutes',
-        'accuracy',
-        'range',
-      ];
+    'duration_minutes',
+    'accuracy',
+    'range',
+  ];
 
   @override
   Widget? buildDeployStats(BuildContext context, ToolSummary tool) {
     final params = tool.isOwned && tool.params.isNotEmpty
         ? tool.params
         : tool.baseParams;
-    return CardSectionPanel(
-      child: OrbitSurveyToolStats(params: params),
-    );
+    return CardSectionPanel(child: OrbitSurveyToolStats(params: params));
   }
 }

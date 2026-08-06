@@ -23,8 +23,7 @@ const _fixture = DinosaurSummary(
   length: '~12 – 13 m',
   mass: '~6 – 9 tonnes',
   location: 'Hell Creek Formation, Montana, USA',
-  shortDescription:
-      'One of the largest terrestrial predators of all time.',
+  shortDescription: 'One of the largest terrestrial predators of all time.',
   cladogram: {
     'clade': 'Dinosauria',
     'clade_2': 'Theropoda',
@@ -39,69 +38,69 @@ Widget _wrapDinoCard(Widget child) {
       ChangeNotifierProvider(create: (_) => CatalogModeController()),
       ChangeNotifierProvider(create: (_) => AuthController()),
     ],
-    child: MaterialApp(home: Scaffold(body: Center(child: child))),
+    child: MaterialApp(
+      home: Scaffold(body: Center(child: child)),
+    ),
   );
 }
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  testWidgets('DinosaurCardFront renders art, title, and description at bottom',
-      (tester) async {
-    await tester.pumpWidget(
-      const MaterialApp(
-        home: Scaffold(
-          body: Center(
-            child: SizedBox(
-              width: 800,
-              child: DinosaurCardFront(dinosaur: _fixture),
-            ),
-          ),
-        ),
-      ),
-    );
-
-    expect(find.byType(DinosaurCardImage), findsOneWidget);
-    expect(find.byIcon(Icons.info_outline), findsNothing);
-    expect(find.text('Tyrannosaurus rex'), findsOneWidget);
-    expect(
-      find.textContaining('largest terrestrial predators'),
-      findsOneWidget,
-    );
-    expect(find.byType(DinosaurCardEdgeFacts), findsNothing);
-    expect(find.textContaining('Hell Creek Formation'), findsNothing);
-    expect(find.textContaining('Late Cretaceous'), findsNothing);
-    expect(find.text('LOCATION'), findsNothing);
-    expect(find.text('PERIOD'), findsNothing);
-  });
-
-  testWidgets('DinosaurCardFront hides description when showFacts is false',
-      (tester) async {
-    await tester.pumpWidget(
-      const MaterialApp(
-        home: Scaffold(
-          body: Center(
-            child: SizedBox(
-              width: 800,
-              child: DinosaurCardFront(
-                dinosaur: _fixture,
-                showFacts: false,
+  testWidgets(
+    'DinosaurCardFront renders art, title, and description at bottom',
+    (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: Center(
+              child: SizedBox(
+                width: 800,
+                child: DinosaurCardFront(dinosaur: _fixture),
               ),
             ),
           ),
         ),
+      );
+
+      expect(find.byType(DinosaurCardImage), findsOneWidget);
+      expect(find.byIcon(Icons.info_outline), findsNothing);
+      expect(find.text('Tyrannosaurus rex'), findsOneWidget);
+      expect(
+        find.textContaining('largest terrestrial predators'),
+        findsOneWidget,
+      );
+      expect(find.byType(DinosaurCardEdgeFacts), findsNothing);
+      expect(find.textContaining('Hell Creek Formation'), findsNothing);
+      expect(find.textContaining('Late Cretaceous'), findsNothing);
+      expect(find.text('LOCATION'), findsNothing);
+      expect(find.text('PERIOD'), findsNothing);
+    },
+  );
+
+  testWidgets('DinosaurCardFront hides description when showFacts is false', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: SizedBox(
+              width: 800,
+              child: DinosaurCardFront(dinosaur: _fixture, showFacts: false),
+            ),
+          ),
+        ),
       ),
     );
 
     expect(find.byType(DinosaurCardEdgeFacts), findsNothing);
-    expect(
-      find.textContaining('largest terrestrial predators'),
-      findsNothing,
-    );
+    expect(find.textContaining('largest terrestrial predators'), findsNothing);
   });
 
-  testWidgets('DinosaurCardImage uses network image for curated URL',
-      (tester) async {
+  testWidgets('DinosaurCardImage uses network image for curated URL', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       const MaterialApp(
         home: Scaffold(
@@ -116,8 +115,9 @@ void main() {
     expect(find.byType(CachedNetworkImage), findsOneWidget);
   });
 
-  testWidgets('DinosaurCardImage uses placeholder for Wikipedia URL',
-      (tester) async {
+  testWidgets('DinosaurCardImage uses placeholder for Wikipedia URL', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       const MaterialApp(
         home: Scaffold(
@@ -133,13 +133,12 @@ void main() {
     expect(find.byType(Image), findsOneWidget);
   });
 
-  testWidgets('DinosaurCardImage uses placeholder when URL is null',
-      (tester) async {
+  testWidgets('DinosaurCardImage uses placeholder when URL is null', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       const MaterialApp(
-        home: Scaffold(
-          body: DinosaurCardImage(imageUrl: null),
-        ),
+        home: Scaffold(body: DinosaurCardImage(imageUrl: null)),
       ),
     );
 
@@ -147,45 +146,48 @@ void main() {
     expect(find.byType(Image), findsOneWidget);
   });
 
-  testWidgets('DinosaurCardBack renders horizontal timeline, map, and cladogram',
-      (tester) async {
-    await tester.pumpWidget(
-      _wrapDinoCard(
-        const SizedBox(
-          width: 320,
-          child: DinosaurCardBack(dinosaur: _fixture),
+  testWidgets(
+    'DinosaurCardBack renders horizontal timeline, map, and cladogram',
+    (tester) async {
+      await tester.pumpWidget(
+        _wrapDinoCard(
+          const SizedBox(
+            width: 320,
+            child: DinosaurCardBack(dinosaur: _fixture),
+          ),
         ),
-      ),
-    );
+      );
 
-    expect(find.text('Tyrannosaurus rex'), findsOneWidget);
-    expect(find.byIcon(Icons.info_outline), findsOneWidget);
-    expect(find.text('LOCATION'), findsNothing);
-    expect(find.text('PERIOD'), findsOneWidget);
-    expect(find.text('DIET'), findsOneWidget);
-    expect(find.text('MASS'), findsOneWidget);
-    expect(find.text('LENGTH'), findsOneWidget);
-    expect(find.text('TIME'), findsNothing);
-    expect(find.text('CLADOGRAM'), findsOneWidget);
-    expect(find.text('FOSSIL RECORD'), findsNothing);
-    expect(find.text('Triassic'), findsOneWidget);
-    expect(find.text('Jurassic'), findsOneWidget);
-    expect(find.text('Cretaceous'), findsOneWidget);
-    expect(find.text('252 Ma'), findsOneWidget);
-    expect(find.text('66 Ma'), findsOneWidget);
-    expect(find.text('CLADE'), findsNWidgets(2));
-    expect(find.text('FAMILY'), findsOneWidget);
-    expect(find.text('GENUS'), findsOneWidget);
-    expect(
-      find.textContaining('largest terrestrial predators'),
-      findsNothing,
-    );
-    expect(find.byType(DinosaurCardFossilMap), findsOneWidget);
-    expect(find.byType(CircularProgressIndicator), findsOneWidget);
-  });
+      expect(find.text('Tyrannosaurus rex'), findsOneWidget);
+      expect(find.byIcon(Icons.info_outline), findsOneWidget);
+      expect(find.text('LOCATION'), findsNothing);
+      expect(find.text('PERIOD'), findsOneWidget);
+      expect(find.text('DIET'), findsOneWidget);
+      expect(find.text('MASS'), findsOneWidget);
+      expect(find.text('LENGTH'), findsOneWidget);
+      expect(find.text('TIME'), findsNothing);
+      expect(find.text('CLADOGRAM'), findsOneWidget);
+      expect(find.text('FOSSIL RECORD'), findsNothing);
+      expect(find.text('Triassic'), findsOneWidget);
+      expect(find.text('Jurassic'), findsOneWidget);
+      expect(find.text('Cretaceous'), findsOneWidget);
+      expect(find.text('252 Ma'), findsOneWidget);
+      expect(find.text('66 Ma'), findsOneWidget);
+      expect(find.text('CLADE'), findsNWidgets(2));
+      expect(find.text('FAMILY'), findsOneWidget);
+      expect(find.text('GENUS'), findsOneWidget);
+      expect(
+        find.textContaining('largest terrestrial predators'),
+        findsNothing,
+      );
+      expect(find.byType(DinosaurCardFossilMap), findsOneWidget);
+      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    },
+  );
 
-  testWidgets('DinosaurCardBack shows Reconstructed subtitle for inventory',
-      (tester) async {
+  testWidgets('DinosaurCardBack shows Reconstructed subtitle for inventory', (
+    tester,
+  ) async {
     final inventory = DinosaurSummary(
       id: 99,
       dinosaurTypeId: 1,
@@ -200,10 +202,7 @@ void main() {
 
     await tester.pumpWidget(
       _wrapDinoCard(
-        SizedBox(
-          width: 320,
-          child: DinosaurCardBack(dinosaur: inventory),
-        ),
+        SizedBox(width: 320, child: DinosaurCardBack(dinosaur: inventory)),
       ),
     );
 

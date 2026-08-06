@@ -1,15 +1,9 @@
-"""Fossil card image generation (Imagen)."""
+"""Transitional facade for the media-owned package."""
 
-from app.services.fossil_image_generation_service.generate import (
-    generate_fossil_images,
-)
-from app.services.image_generation_service.batch_types import (
-    GenerateCounters,
-    GenerateSummary,
-)
+from app.features.media.application.fossil_generation import *  # noqa: F403
+from app.features.media.application.fossil_generation import __all__
+from app.features.media.application import fossil_generation as _implementation
 
-__all__ = [
-    "GenerateCounters",
-    "GenerateSummary",
-    "generate_fossil_images",
-]
+
+def __getattr__(name: str):
+    return getattr(_implementation, name)

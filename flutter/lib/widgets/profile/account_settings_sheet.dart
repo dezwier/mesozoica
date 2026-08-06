@@ -143,8 +143,9 @@ class _AccountSettingsSheetState extends State<AccountSettingsSheet>
               label: Text(buttonLabel),
               style: FilledButton.styleFrom(
                 visualDensity: VisualDensity.compact,
-                foregroundColor:
-                    isLinked ? colorScheme.error : colorScheme.primary,
+                foregroundColor: isLinked
+                    ? colorScheme.error
+                    : colorScheme.primary,
                 backgroundColor: isLinked
                     ? colorScheme.errorContainer.withValues(alpha: 0.45)
                     : colorScheme.primaryContainer.withValues(alpha: 0.5),
@@ -168,7 +169,7 @@ class _AccountSettingsSheetState extends State<AccountSettingsSheet>
         final height = widget.scrollController != null
             ? constraints.maxHeight
             : MediaQuery.of(context).size.height *
-                DrawerSheetSizes.initialChildSize;
+                  DrawerSheetSizes.initialChildSize;
 
         return Container(
           height: height,
@@ -184,10 +185,9 @@ class _AccountSettingsSheetState extends State<AccountSettingsSheet>
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: Theme.of(context)
-                      .colorScheme
-                      .onSurface
-                      .withValues(alpha: 0.3),
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.onSurface.withValues(alpha: 0.3),
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -198,8 +198,8 @@ class _AccountSettingsSheetState extends State<AccountSettingsSheet>
                     Text(
                       'Settings',
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     const Spacer(),
                     IconButton(
@@ -214,10 +214,9 @@ class _AccountSettingsSheetState extends State<AccountSettingsSheet>
               TabBar(
                 controller: controller,
                 labelColor: Theme.of(context).colorScheme.primary,
-                unselectedLabelColor: Theme.of(context)
-                    .colorScheme
-                    .onSurface
-                    .withValues(alpha: 0.6),
+                unselectedLabelColor: Theme.of(
+                  context,
+                ).colorScheme.onSurface.withValues(alpha: 0.6),
                 tabs: const [
                   Tab(text: 'App'),
                   Tab(text: 'Profile'),
@@ -252,7 +251,8 @@ class _AccountSettingsSheetState extends State<AccountSettingsSheet>
                           if (value == null || value.trim().isEmpty) {
                             return 'Email is required';
                           }
-                          if (!value.contains('@')) return 'Enter a valid email';
+                          if (!value.contains('@'))
+                            return 'Enter a valid email';
                           return null;
                         },
                         newPasswordValidator: (value) {
@@ -298,8 +298,9 @@ class _AccountSettingsSheetState extends State<AccountSettingsSheet>
                         children: [
                           Expanded(
                             child: OutlinedButton(
-                              onPressed:
-                                  _isSaving ? null : () => Navigator.pop(context),
+                              onPressed: _isSaving
+                                  ? null
+                                  : () => Navigator.pop(context),
                               child: const Text('Cancel'),
                             ),
                           ),

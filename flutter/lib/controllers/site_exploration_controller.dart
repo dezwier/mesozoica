@@ -12,18 +12,13 @@ import '../services/api_client.dart';
 import '../services/gps_odometer.dart';
 import '../services/location_service.dart';
 import '../utils/discovery_haptic.dart';
-import '../widgets/cards/site_dimension_display.dart';
+import '../features/discovery/domain/site_dimension_display.dart';
 
 /// Accrues path meters walked inside [documentationDistanceM] of discovered sites.
 class SiteExplorationController extends ChangeNotifier {
-  SiteExplorationController({
-    ApiClient? apiClient,
-    GpsOdometer? odometer,
-  })  : _api = apiClient ?? ApiClient.instance,
-        _odometer = odometer ??
-            GpsOdometer(
-              maxSpeedMps: _maxDiscoverySpeedMps(),
-            );
+  SiteExplorationController({ApiClient? apiClient, GpsOdometer? odometer})
+    : _api = apiClient ?? ApiClient.instance,
+      _odometer = odometer ?? GpsOdometer(maxSpeedMps: _maxDiscoverySpeedMps());
 
   static const _prefsKey = 'site_exploration_v1';
   static const _syncInterval = Duration(seconds: 30);
@@ -56,8 +51,8 @@ class SiteExplorationController extends ChangeNotifier {
 
   SiteSummary? get pendingDocumentationCelebration =>
       _documentationCelebrationQueue.isEmpty
-          ? null
-          : _documentationCelebrationQueue.first;
+      ? null
+      : _documentationCelebrationQueue.first;
 
   int get pendingDocumentationCelebrationCount =>
       _documentationCelebrationQueue.length;
@@ -95,10 +90,15 @@ class SiteExplorationController extends ChangeNotifier {
   double? _documentationDistanceMOverride;
 
   double get documentationDistanceM {
-    if (_documentationDistanceMOverride != null) return _documentationDistanceMOverride!;
+    if (_documentationDistanceMOverride != null)
+      return _documentationDistanceMOverride!;
     try {
       if (!GameConfig.isLoaded) return 50.0;
-      return GameConfig.instance.siteStewardship.mainParams.documentationDistanceM;
+      return GameConfig
+          .instance
+          .siteStewardship
+          .mainParams
+          .documentationDistanceM;
     } catch (_) {
       return 50.0;
     }
@@ -139,8 +139,7 @@ class SiteExplorationController extends ChangeNotifier {
     }
     _location = location;
     _locationListener = () {
-      final allow =
-          location.isAppForeground || location.isBackgroundExploring;
+      final allow = location.isAppForeground || location.isBackgroundExploring;
       if (!allow) return;
       unawaited(_ingestPosition(location.lastPosition));
     };
@@ -262,8 +261,7 @@ class SiteExplorationController extends ChangeNotifier {
 
   Future<void> _ingestPosition(Position? position) async {
     if (position == null) return;
-    final allow = _appForeground ||
-        (_location?.isBackgroundExploring ?? false);
+    final allow = _appForeground || (_location?.isBackgroundExploring ?? false);
     if (!allow) return;
     final accuracy = position.accuracy;
     final speed = position.speed;
@@ -303,8 +301,7 @@ class SiteExplorationController extends ChangeNotifier {
         lon,
       );
       if (distance > radius) continue;
-      if (site.documented == true ||
-          _documentedSiteIds.contains(site.siteId)) {
+      if (site.documented == true || _documentedSiteIds.contains(site.siteId)) {
         continue;
       }
       final previous =
@@ -354,10 +351,7 @@ class SiteExplorationController extends ChangeNotifier {
     final body = {
       'sites': [
         for (final entry in reportedMeters.entries)
-          {
-            'site_id': entry.key,
-            'explored_distance_m': entry.value,
-          },
+          {'site_id': entry.key, 'explored_distance_m': entry.value},
       ],
     };
     if ((body['sites'] as List).isEmpty) {

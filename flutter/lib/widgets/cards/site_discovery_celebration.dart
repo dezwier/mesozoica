@@ -25,11 +25,8 @@ Future<void> showSiteDiscoveryCelebration(
   List<XpAward>? xpAwards,
 }) {
   assert(site != null || siteId != null);
-  final awards = xpAwards ??
-      _claimCelebrationXp(
-        context,
-        kSiteDiscoveryCelebrationXpKeys,
-      );
+  final awards =
+      xpAwards ?? _claimCelebrationXp(context, kSiteDiscoveryCelebrationXpKeys);
   return CardDetailSheet.show<void>(
     context,
     clearTopForXpBadges: false,
@@ -51,11 +48,9 @@ Future<void> showSiteDocumentationCelebration(
   SiteService? siteService,
   List<XpAward>? xpAwards,
 }) {
-  final awards = xpAwards ??
-      _claimCelebrationXp(
-        context,
-        kSiteDocumentationCelebrationXpKeys,
-      );
+  final awards =
+      xpAwards ??
+      _claimCelebrationXp(context, kSiteDocumentationCelebrationXpKeys);
   return showSiteDiscoveryCelebration(
     context,
     site: site,
@@ -74,7 +69,8 @@ Future<void> showSiteIdentifiedCelebration(
   SiteService? siteService,
   List<XpAward>? xpAwards,
 }) {
-  final awards = xpAwards ??
+  final awards =
+      xpAwards ??
       _claimCelebrationXp(
         context,
         kSiteIdentificationCelebrationXpKeys,
@@ -99,10 +95,10 @@ List<XpAward> _claimCelebrationXp(
 }) {
   try {
     return context.read<XpAwardController>().claimCelebrationAwards(
-          keys,
-          mergeSameKey: mergeSameKey,
-          oneEvent: oneEvent,
-        );
+      keys,
+      mergeSameKey: mergeSameKey,
+      oneEvent: oneEvent,
+    );
   } on ProviderNotFoundException {
     return const [];
   }

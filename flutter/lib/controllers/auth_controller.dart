@@ -9,7 +9,7 @@ import 'xp_award_controller.dart';
 
 class AuthController extends ChangeNotifier {
   AuthController({AuthService? authService})
-      : _authService = authService ?? AuthService() {
+    : _authService = authService ?? AuthService() {
     ApiClient.instance.onUnauthorized = _authService.trySilentRefresh;
   }
 
@@ -191,10 +191,7 @@ class AuthController extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<Profile> setSkillXp({
-    required String skillId,
-    required int xp,
-  }) async {
+  Future<Profile> setSkillXp({required String skillId, required int xp}) async {
     final user = await _authService.setSkillXp(skillId: skillId, xp: xp);
     // Absolute admin set — not an "earned" award.
     await applyUser(user, announceXp: false);
@@ -288,31 +285,28 @@ class AuthController extends ChangeNotifier {
     String? fullName,
     String? currentPassword,
     String? password,
-  }) =>
-      _authService.updateProfile(
-        username: username,
-        email: email,
-        fullName: fullName,
-        currentPassword: currentPassword,
-        password: password,
-      );
+  }) => _authService.updateProfile(
+    username: username,
+    email: email,
+    fullName: fullName,
+    currentPassword: currentPassword,
+    password: password,
+  );
 
   Future<Map<String, dynamic>> linkGoogle({
     required String idToken,
     String? accessToken,
-  }) =>
-      _authService.linkGoogle(idToken: idToken, accessToken: accessToken);
+  }) => _authService.linkGoogle(idToken: idToken, accessToken: accessToken);
 
   Future<Map<String, dynamic>> linkApple({
     required String idToken,
     required String rawNonce,
     String? authorizationCode,
-  }) =>
-      _authService.linkApple(
-        idToken: idToken,
-        rawNonce: rawNonce,
-        authorizationCode: authorizationCode,
-      );
+  }) => _authService.linkApple(
+    idToken: idToken,
+    rawNonce: rawNonce,
+    authorizationCode: authorizationCode,
+  );
 
   Future<Map<String, dynamic>> unlinkProvider(String provider) =>
       _authService.unlinkProvider(provider);
@@ -322,13 +316,12 @@ class AuthController extends ChangeNotifier {
     required bool fossils,
     required bool dinosaurs,
     required bool xp,
-  }) =>
-      _authService.deleteData(
-        sites: sites,
-        fossils: fossils,
-        dinosaurs: dinosaurs,
-        xp: xp,
-      );
+  }) => _authService.deleteData(
+    sites: sites,
+    fossils: fossils,
+    dinosaurs: dinosaurs,
+    xp: xp,
+  );
 
   Future<Map<String, dynamic>> deleteAccount() => _authService.deleteAccount();
 

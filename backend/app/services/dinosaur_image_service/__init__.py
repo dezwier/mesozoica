@@ -1,13 +1,9 @@
-"""Dinosaur curated-image sync helpers."""
+"""Transitional facade for the media-owned package."""
 
-from app.services.dinosaur_image_service.sync import (
-    build_curated_image_url,
-    is_curated_image_url,
-    resolve_local_source_dir_for_sync,
-)
+from app.features.media.application.dinosaur_images import *  # noqa: F403
+from app.features.media.application.dinosaur_images import __all__
+from app.features.media.application import dinosaur_images as _implementation
 
-__all__ = [
-    "build_curated_image_url",
-    "is_curated_image_url",
-    "resolve_local_source_dir_for_sync",
-]
+
+def __getattr__(name: str):
+    return getattr(_implementation, name)

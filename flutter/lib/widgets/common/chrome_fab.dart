@@ -49,9 +49,7 @@ class ChromeFab extends StatelessWidget {
       height: layoutSize,
       child: Center(
         child: DecoratedBox(
-          decoration: MapChromeDecorations.brassCircle(
-            dialFace: dial,
-          ),
+          decoration: MapChromeDecorations.brassCircle(dialFace: dial),
           child: Material(
             color: Colors.transparent,
             shape: const CircleBorder(),
@@ -99,17 +97,11 @@ class ChromeFab extends StatelessWidget {
     }
     switch (tone) {
       case ChromeFabTone.glass:
-        return active
-            ? MapChromeTheme.dialFaceWarm
-            : MapChromeTheme.dialFace;
+        return active ? MapChromeTheme.dialFaceWarm : MapChromeTheme.dialFace;
       case ChromeFabTone.warm:
-        return active
-            ? MapChromeTheme.warmFab
-            : MapChromeTheme.dialFaceWarm;
+        return active ? MapChromeTheme.warmFab : MapChromeTheme.dialFaceWarm;
       case ChromeFabTone.grey:
-        return active
-            ? MapChromeTheme.dialFaceGrey
-            : const Color(0xFF5A544C);
+        return active ? MapChromeTheme.dialFaceGrey : const Color(0xFF5A544C);
     }
   }
 }

@@ -14,10 +14,7 @@ import 'site_dimension_display.dart';
 
 /// Site card panel: four horizontal odd_* axes + vertical depth.
 class SiteCardDimensions extends StatelessWidget {
-  const SiteCardDimensions({
-    super.key,
-    required this.site,
-  });
+  const SiteCardDimensions({super.key, required this.site});
 
   final SiteSummary site;
 
@@ -32,11 +29,11 @@ class SiteCardDimensions extends StatelessWidget {
       // Widget tests / previews without AuthController.
     }
     final skillLevel = _fieldSurveyLevel(context);
-    final baseAccuracies =
-        resolveSiteStewardshipAccuracies(skillLevel: skillLevel);
+    final baseAccuracies = resolveSiteStewardshipAccuracies(
+      skillLevel: skillLevel,
+    );
     final baseAccuracy = baseAccuracies['documentation_accuracy'] ?? 0.0;
-    final exploredM =
-        emptyDims ? 0.0 : _resolvedExploredMeters(context, site);
+    final exploredM = emptyDims ? 0.0 : _resolvedExploredMeters(context, site);
     // Stack: shared skill baseline → per-dimension noise → exploration.
     final accuracies = <SiteDimensionKey, double>{
       for (final dim in SiteDimensionKey.values)
@@ -54,34 +51,33 @@ class SiteCardDimensions extends StatelessWidget {
 
     final horizontal =
         <(SiteDimensionKey, String, double?, SiteDimensionBand?)>[
-      (
-        SiteDimensionKey.dino,
-        'Genera presence',
-        emptyDims ? null : site.oddDinoCount,
-        emptyDims ? null : site.oddDinoBand,
-      ),
-      (
-        SiteDimensionKey.fossil,
-        'Fossil presence',
-        emptyDims ? null : site.oddFossilCount,
-        emptyDims ? null : site.oddFossilBand,
-      ),
-      (
-        SiteDimensionKey.completeness,
-        'Completeness',
-        emptyDims ? null : site.oddCompleteness,
-        emptyDims ? null : site.oddCompletenessBand,
-      ),
-      (
-        SiteDimensionKey.quality,
-        'Preservation',
-        emptyDims ? null : site.oddQuality,
-        emptyDims ? null : site.oddQualityBand,
-      ),
-    ];
+          (
+            SiteDimensionKey.dino,
+            'Genera presence',
+            emptyDims ? null : site.oddDinoCount,
+            emptyDims ? null : site.oddDinoBand,
+          ),
+          (
+            SiteDimensionKey.fossil,
+            'Fossil presence',
+            emptyDims ? null : site.oddFossilCount,
+            emptyDims ? null : site.oddFossilBand,
+          ),
+          (
+            SiteDimensionKey.completeness,
+            'Completeness',
+            emptyDims ? null : site.oddCompleteness,
+            emptyDims ? null : site.oddCompletenessBand,
+          ),
+          (
+            SiteDimensionKey.quality,
+            'Preservation',
+            emptyDims ? null : site.oddQuality,
+            emptyDims ? null : site.oddQualityBand,
+          ),
+        ];
 
-    final horizontalDisplays =
-        <(String, SiteDimensionDisplay?, double)>[
+    final horizontalDisplays = <(String, SiteDimensionDisplay?, double)>[
       for (final entry in horizontal)
         (
           entry.$2,
@@ -98,8 +94,9 @@ class SiteCardDimensions extends StatelessWidget {
           emptyDims ? 0.0 : (accuracies[entry.$1] ?? 0),
         ),
     ];
-    final documentationDepth =
-        emptyDims ? 0.0 : (accuracies[SiteDimensionKey.depth] ?? 0);
+    final documentationDepth = emptyDims
+        ? 0.0
+        : (accuracies[SiteDimensionKey.depth] ?? 0);
     final depthDisplay = emptyDims
         ? null
         : _displayFor(
@@ -119,10 +116,10 @@ class SiteCardDimensions extends StatelessWidget {
     final avgDocumentedPct = emptyDims
         ? 0
         : ((dimensionAccuracies.reduce((a, b) => a + b) /
-                    dimensionAccuracies.length)
-                .clamp(0.0, 1.0) *
-            100)
-            .round();
+                          dimensionAccuracies.length)
+                      .clamp(0.0, 1.0) *
+                  100)
+              .round();
 
     return CardSectionPanel(
       labelWidget: Text(
@@ -130,10 +127,9 @@ class SiteCardDimensions extends StatelessWidget {
             ? 'Identify site to begin documentation'
             : 'Documented $avgDocumentedPct% · Explored ${exploredM.floor()} m',
         textAlign: TextAlign.center,
-        style: cardTheme.sectionLabelStyle(fontSize: 13).copyWith(
-              fontWeight: FontWeight.w700,
-              letterSpacing: 0.15,
-            ),
+        style: cardTheme
+            .sectionLabelStyle(fontSize: 13)
+            .copyWith(fontWeight: FontWeight.w700, letterSpacing: 0.15),
       ),
       padding: const EdgeInsets.fromLTRB(4, 10, 6, 10),
       labelGap: 8,
@@ -182,9 +178,10 @@ class SiteCardDimensions extends StatelessWidget {
   ) {
     final server = site.exploredDistanceM ?? 0.0;
     try {
-      return context
-          .watch<SiteExplorationController>()
-          .exploredMetersFor(site.siteId, fallback: server);
+      return context.watch<SiteExplorationController>().exploredMetersFor(
+        site.siteId,
+        fallback: server,
+      );
     } on ProviderNotFoundException {
       return server;
     }
@@ -264,8 +261,9 @@ class SiteCardDimensions extends StatelessWidget {
     }
     final oldUncertainty = (1.0 - oldAcc).clamp(0.0, 1.0);
     final newUncertainty = 1.0 - newAcc;
-    final scale =
-        oldUncertainty > 1e-9 ? (newUncertainty / oldUncertainty) : 0.0;
+    final scale = oldUncertainty > 1e-9
+        ? (newUncertainty / oldUncertainty)
+        : 0.0;
     final mid = (band.rangeStart + band.rangeEnd) / 2.0;
     final half = ((band.rangeEnd - band.rangeStart) / 2.0) * scale;
     return SiteDimensionDisplay(
@@ -408,10 +406,7 @@ class _VerticalDepthAxis extends StatelessWidget {
 }
 
 class _AxisTrackPlaceholder extends StatelessWidget {
-  const _AxisTrackPlaceholder({
-    required this.cardTheme,
-    this.vertical = false,
-  });
+  const _AxisTrackPlaceholder({required this.cardTheme, this.vertical = false});
 
   final DinoCardTheme cardTheme;
   final bool vertical;
@@ -486,12 +481,7 @@ class _HorizontalAxisPainter extends CustomPainter {
     const bandH = 14.0;
     _paintRangeBand(
       canvas,
-      Rect.fromLTRB(
-        x0,
-        cy - bandH / 2,
-        math.max(x1, x0 + 2.5),
-        cy + bandH / 2,
-      ),
+      Rect.fromLTRB(x0, cy - bandH / 2, math.max(x1, x0 + 2.5), cy + bandH / 2),
       color: bandColor,
     );
 
@@ -595,12 +585,7 @@ class _VerticalAxisPainter extends CustomPainter {
     const bandW = 14.0;
     _paintRangeBand(
       canvas,
-      Rect.fromLTRB(
-        cx - bandW / 2,
-        y0,
-        cx + bandW / 2,
-        math.max(y1, y0 + 2.5),
-      ),
+      Rect.fromLTRB(cx - bandW / 2, y0, cx + bandW / 2, math.max(y1, y0 + 2.5)),
       color: bandColor,
     );
 
@@ -716,16 +701,9 @@ void _paintPreciseMarker(
 }
 
 /// Timeline-style range band: solid fill + border, no blur haze.
-void _paintRangeBand(
-  Canvas canvas,
-  Rect rect, {
-  required Color color,
-}) {
+void _paintRangeBand(Canvas canvas, Rect rect, {required Color color}) {
   final rrect = RRect.fromRectAndRadius(rect, const Radius.circular(3));
-  canvas.drawRRect(
-    rrect,
-    Paint()..color = color.withValues(alpha: 0.2),
-  );
+  canvas.drawRRect(rrect, Paint()..color = color.withValues(alpha: 0.2));
   canvas.drawRRect(
     rrect,
     Paint()

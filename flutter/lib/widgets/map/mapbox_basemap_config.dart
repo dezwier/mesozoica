@@ -27,8 +27,7 @@ class MapboxBasemapConfig {
   }) {
     return {
       'theme': (theme ?? MapConfig.mapboxBasemapTheme).value,
-      'lightPreset':
-          lightPreset ?? lightPresetForBrightness(brightness),
+      'lightPreset': lightPreset ?? lightPresetForBrightness(brightness),
       'show3dObjects': show3dObjects,
       'showPlaceLabels': false,
       'showRoadLabels': false,

@@ -21,9 +21,8 @@ class DinosaurCatalogDrawer {
   static Future<void> show(BuildContext context) {
     return CatalogAlbumDrawer.show(
       context,
-      builder: (scrollController) => _DinosaurCatalogAlbumBody(
-        scrollController: scrollController,
-      ),
+      builder: (scrollController) =>
+          _DinosaurCatalogAlbumBody(scrollController: scrollController),
     );
   }
 }
@@ -109,7 +108,9 @@ class _DinosaurCatalogAlbumBodyState extends State<_DinosaurCatalogAlbumBody> {
         sort: 'name',
         mode: 'catalog',
         q: hasSearch ? filters.searchQuery.trim() : null,
-        maYounger: !hasSearch && filters.hasTimeFilter ? filters.maYounger : null,
+        maYounger: !hasSearch && filters.hasTimeFilter
+            ? filters.maYounger
+            : null,
         maOlder: !hasSearch && filters.hasTimeFilter ? filters.maOlder : null,
         diets: filters.diets,
         lengthMMin: filters.hasLengthFilter ? filters.lengthMMin : null,
@@ -175,8 +176,9 @@ class _DinosaurCatalogAlbumBodyState extends State<_DinosaurCatalogAlbumBody> {
     final catalog = context.watch<DinosaurCatalogController>();
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    final headerColor =
-        isDark ? MapChromeTheme.cream : MapChromeTheme.brownText;
+    final headerColor = isDark
+        ? MapChromeTheme.cream
+        : MapChromeTheme.brownText;
     final hasActive = catalog.hasActiveFilters;
 
     return CatalogAlbumDrawer(

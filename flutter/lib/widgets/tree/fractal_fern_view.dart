@@ -10,11 +10,7 @@ import '../cards/dinosaur_turnable_card.dart';
 import 'fractal_fern_painter.dart';
 
 class FractalFernView extends StatefulWidget {
-  const FractalFernView({
-    super.key,
-    required this.layout,
-    this.onGenusTap,
-  });
+  const FractalFernView({super.key, required this.layout, this.onGenusTap});
 
   final FractalTreeLayout layout;
   final ValueChanged<DinosaurSummary>? onGenusTap;
@@ -144,8 +140,7 @@ class FractalFernViewState extends State<FractalFernView>
     if (_viewportSize.isEmpty) return false;
     final screen = _treeToScreen(node.position, widget.layout.bounds);
     final center = Offset(_viewportSize.width / 2, _viewportSize.height / 2);
-    return _zoomScale >= targetScale - 0.25 &&
-        (screen - center).distance < 56;
+    return _zoomScale >= targetScale - 0.25 && (screen - center).distance < 56;
   }
 
   void _revealFlyTargetCard() {
@@ -290,10 +285,7 @@ class FractalFernViewState extends State<FractalFernView>
   }
 
   Offset _treeToScreen(Offset treePoint, Rect bounds) {
-    final local = Offset(
-      treePoint.dx - bounds.left,
-      treePoint.dy - bounds.top,
-    );
+    final local = Offset(treePoint.dx - bounds.left, treePoint.dy - bounds.top);
     return MatrixUtils.transformPoint(_transform, local);
   }
 
@@ -301,7 +293,8 @@ class FractalFernViewState extends State<FractalFernView>
     List<PlacedGenusCard> cards,
     Set<FractalLayoutNode> cardNodes,
     List<Rect> cardTreeRects,
-  }) _layoutGenusCards() {
+  })
+  _layoutGenusCards() {
     final cardCandidates = _labelPlacer.collectGenusCardCandidates(
       root: widget.layout.root,
       visibleTreeRect: _visibleTreeRect,
@@ -325,7 +318,8 @@ class FractalFernViewState extends State<FractalFernView>
     List<PlacedGenusCard> cards,
     Set<FractalLayoutNode> cardNodes,
     List<Rect> cardTreeRects,
-  }) _displayedGenusCards() {
+  })
+  _displayedGenusCards() {
     final zoomCards = _layoutGenusCards();
     final tapNode = _tapRevealedNode;
     if (tapNode == null ||
@@ -369,7 +363,6 @@ class FractalFernViewState extends State<FractalFernView>
     for (final entry in _trackedCards.entries) {
       final desired = desiredByKey[entry.key];
       if (desired != null) {
-        final node = desired.candidate.node;
         final wasExiting = entry.value.isExiting;
         next[entry.key] = entry.value.copyWith(
           card: desired,
@@ -407,7 +400,8 @@ class FractalFernViewState extends State<FractalFernView>
     List<PlacedGenusCard> cards,
     Set<FractalLayoutNode> cardNodes,
     List<Rect> cardTreeRects,
-  }) _cardPaintState(double zoomScale) {
+  })
+  _cardPaintState(double zoomScale) {
     final cards = _trackedCards.values
         .map((tracked) => tracked.card)
         .toList(growable: false);
@@ -619,7 +613,8 @@ class _FadingInlineGenusCardLayer extends StatefulWidget {
       _FadingInlineGenusCardLayerState();
 }
 
-class _FadingInlineGenusCardLayerState extends State<_FadingInlineGenusCardLayer>
+class _FadingInlineGenusCardLayerState
+    extends State<_FadingInlineGenusCardLayer>
     with SingleTickerProviderStateMixin {
   static const _fadeDuration = Duration(milliseconds: 350);
 
@@ -716,13 +711,16 @@ class _FadingInlineGenusCardLayerState extends State<_FadingInlineGenusCardLayer
           showFrontBadges: showFacts,
           showArticleButton: showFacts,
           turnable: showFacts,
-          titleFontSize:
-              FractalLodPolicy.genusCardTitleFontSize(widget.zoomScale),
-          subtitleFontSize:
-              FractalLodPolicy.genusCardSubtitleFontSize(widget.zoomScale),
-          overlayHeightFactor: FractalLodPolicy.genusCardFrontOverlayHeightFactor(
+          titleFontSize: FractalLodPolicy.genusCardTitleFontSize(
             widget.zoomScale,
           ),
+          subtitleFontSize: FractalLodPolicy.genusCardSubtitleFontSize(
+            widget.zoomScale,
+          ),
+          overlayHeightFactor:
+              FractalLodPolicy.genusCardFrontOverlayHeightFactor(
+                widget.zoomScale,
+              ),
         ),
       ),
     );

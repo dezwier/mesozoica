@@ -60,8 +60,10 @@ class OrbitSurveyRasterRequest {
   final List<OrbitSurveySiteSample> sites;
   final int gridSize;
   final double baseAlpha;
+
   /// Outer fraction of the circle that fades to transparent (0–1).
   final double rangeFade;
+
   /// Softness of period borders (0–1); accuracy still sharpens further.
   final double boundaryBlur;
   final OrbitSurveyRasterColors colors;
@@ -94,10 +96,10 @@ class OrbitSurveyRasterRequest {
     Map<String, dynamic> payload,
   ) {
     (int, int, int) rgb(List<dynamic> raw) => (
-          (raw[0] as num).toInt(),
-          (raw[1] as num).toInt(),
-          (raw[2] as num).toInt(),
-        );
+      (raw[0] as num).toInt(),
+      (raw[1] as num).toInt(),
+      (raw[2] as num).toInt(),
+    );
     final sitesRaw = payload['sites'] as List<dynamic>? ?? const [];
     return OrbitSurveyRasterRequest(
       originLat: (payload['originLat'] as num).toDouble(),
@@ -139,22 +141,24 @@ class OrbitSurveyRasterResult {
 
   final int width;
   final int height;
+
   /// Straight (non-premultiplied) RGBA — encode to PNG before Mapbox update.
   final Uint8List rgba;
   final double west;
   final double east;
   final double south;
   final double north;
+
   /// Pre-encoded PNG when built via [buildOrbitSurveyPngIsolate].
   final Uint8List? pngBytes;
 
   /// ImageSource corner order: top-left, top-right, bottom-right, bottom-left.
   List<List<double>> get coordinates => [
-        [west, north],
-        [east, north],
-        [east, south],
-        [west, south],
-      ];
+    [west, north],
+    [east, north],
+    [east, south],
+    [west, south],
+  ];
 }
 
 /// Isolate entry: IDW raster + PNG encode off the UI thread.
@@ -321,8 +325,9 @@ OrbitSurveyRasterResult buildOrbitSurveyRaster(
         nearest.add((site, d));
       }
       nearest.sort((a, b) => a.$2.compareTo(b.$2));
-      final take =
-          nearest.length < neighborCount ? nearest.length : neighborCount;
+      final take = nearest.length < neighborCount
+          ? nearest.length
+          : neighborCount;
       var wSum = 0.0;
       var rAcc = 0.0;
       var gAcc = 0.0;

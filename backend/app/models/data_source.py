@@ -1,6 +1,9 @@
-"""Provenance labels for site and fossil rows."""
+"""Transitional compatibility export for shared provenance identifiers."""
 
-DATA_SOURCE_ARCHIVE = "archive"
-DATA_SOURCE_FIELD = "field"
+from app.shared.data_sources import (  # noqa: F401
+    DATA_SOURCE_ARCHIVE,
+    DATA_SOURCE_FIELD,
+    DATA_SOURCES,
+)
 
-DATA_SOURCES: frozenset[str] = frozenset({DATA_SOURCE_ARCHIVE, DATA_SOURCE_FIELD})
+__all__ = ["DATA_SOURCE_ARCHIVE", "DATA_SOURCE_FIELD", "DATA_SOURCES"]

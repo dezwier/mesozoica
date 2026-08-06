@@ -79,8 +79,7 @@ mixin _AccountSettingsSheetLogicMixin on State<AccountSettingsSheet> {
       _usernameError = null;
     });
     _usernameCheckTimer = Timer(const Duration(milliseconds: 500), () async {
-      final result =
-          await context.read<AuthController>().checkUsername(value);
+      final result = await context.read<AuthController>().checkUsername(value);
       if (!mounted) return;
       setState(() {
         _isCheckingUsername = false;
@@ -100,8 +99,9 @@ mixin _AccountSettingsSheetLogicMixin on State<AccountSettingsSheet> {
     if (picked == null) return;
     setState(() => _isUploadingImage = true);
     final bytes = await picked.readAsBytes();
-    final result =
-        await context.read<AuthController>().uploadProfileImage(bytes);
+    final result = await context.read<AuthController>().uploadProfileImage(
+      bytes,
+    );
     if (!mounted) return;
     setState(() => _isUploadingImage = false);
     if (result['success'] == true) {
@@ -139,16 +139,16 @@ mixin _AccountSettingsSheetLogicMixin on State<AccountSettingsSheet> {
     });
 
     final result = await context.read<AuthController>().updateProfile(
-          username: _usernameController.text.trim(),
-          email: _emailController.text.trim(),
-          fullName: _fullNameController.text.trim(),
-          currentPassword: _currentPasswordController.text.isEmpty
-              ? null
-              : _currentPasswordController.text,
-          password: _newPasswordController.text.isEmpty
-              ? null
-              : _newPasswordController.text,
-        );
+      username: _usernameController.text.trim(),
+      email: _emailController.text.trim(),
+      fullName: _fullNameController.text.trim(),
+      currentPassword: _currentPasswordController.text.isEmpty
+          ? null
+          : _currentPasswordController.text,
+      password: _newPasswordController.text.isEmpty
+          ? null
+          : _newPasswordController.text,
+    );
     if (!mounted) return;
     setState(() => _isSaving = false);
     if (result['success'] == true) {
@@ -156,7 +156,9 @@ mixin _AccountSettingsSheetLogicMixin on State<AccountSettingsSheet> {
       _showSuccess('Settings saved');
       Navigator.of(context).pop();
     } else {
-      setState(() => _saveError = result['message'] as String? ?? 'Save failed');
+      setState(
+        () => _saveError = result['message'] as String? ?? 'Save failed',
+      );
     }
   }
 
@@ -170,9 +172,9 @@ mixin _AccountSettingsSheetLogicMixin on State<AccountSettingsSheet> {
         return;
       }
       final result = await context.read<AuthController>().linkGoogle(
-            idToken: google.idToken,
-            accessToken: google.accessToken,
-          );
+        idToken: google.idToken,
+        accessToken: google.accessToken,
+      );
       if (!mounted) return;
       setState(() => _activeLinkedProviderAction = null);
       if (result['success'] == true) {
@@ -201,10 +203,10 @@ mixin _AccountSettingsSheetLogicMixin on State<AccountSettingsSheet> {
         return;
       }
       final result = await context.read<AuthController>().linkApple(
-            idToken: apple!.idToken!,
-            rawNonce: apple.rawNonce,
-            authorizationCode: apple.authorizationCode,
-          );
+        idToken: apple!.idToken!,
+        rawNonce: apple.rawNonce,
+        authorizationCode: apple.authorizationCode,
+      );
       if (!mounted) return;
       setState(() => _activeLinkedProviderAction = null);
       if (result['success'] == true) {
@@ -246,12 +248,15 @@ mixin _AccountSettingsSheetLogicMixin on State<AccountSettingsSheet> {
     );
     if (confirmed != true || !mounted) return;
     setState(() => _activeLinkedProviderAction = provider);
-    final result =
-        await context.read<AuthController>().unlinkProvider(provider);
+    final result = await context.read<AuthController>().unlinkProvider(
+      provider,
+    );
     if (!mounted) return;
     setState(() => _activeLinkedProviderAction = null);
     if (result['success'] == true) {
-      setState(() => _linkedProviders = (result['providers'] as List).cast<String>());
+      setState(
+        () => _linkedProviders = (result['providers'] as List).cast<String>(),
+      );
     } else {
       _showError(result['message'] as String? ?? 'Unlink failed');
     }
@@ -303,9 +308,9 @@ mixin _AccountSettingsSheetLogicMixin on State<AccountSettingsSheet> {
     context.read<ToolCatalogController>().onUserChanged(isAdmin: isAdmin);
     context.read<FieldDiscoveryCoordinator>().clearForUserChange();
     unawaited(
-      context
-          .read<FieldDiscoveryCoordinator>()
-          .refreshDiscoverableCache(force: true),
+      context.read<FieldDiscoveryCoordinator>().refreshDiscoverableCache(
+        force: true,
+      ),
     );
     context.read<SiteCatalogController>().load(force: true);
     context.read<ToolCatalogController>().load(force: true);

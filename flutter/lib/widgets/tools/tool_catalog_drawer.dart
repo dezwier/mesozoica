@@ -23,9 +23,8 @@ class ToolCatalogDrawer {
   static Future<void> show(BuildContext context) {
     return CatalogAlbumDrawer.show(
       context,
-      builder: (scrollController) => _ToolCatalogAlbumBody(
-        scrollController: scrollController,
-      ),
+      builder: (scrollController) =>
+          _ToolCatalogAlbumBody(scrollController: scrollController),
     );
   }
 }
@@ -194,10 +193,12 @@ class _ToolCatalogAlbumBodyState extends State<_ToolCatalogAlbumBody> {
     final catalog = context.watch<ToolCatalogController>();
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    final headerColor =
-        isDark ? MapChromeTheme.cream : MapChromeTheme.brownText;
-    final hasActive =
-        catalog.filters.hasActiveFiltersFor(ToolScreenMode.catalog);
+    final headerColor = isDark
+        ? MapChromeTheme.cream
+        : MapChromeTheme.brownText;
+    final hasActive = catalog.filters.hasActiveFiltersFor(
+      ToolScreenMode.catalog,
+    );
 
     return CatalogAlbumDrawer(
       scrollController: widget.scrollController,

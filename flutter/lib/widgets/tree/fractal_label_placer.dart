@@ -25,10 +25,7 @@ class FractalGenusCardCandidate {
 
 /// A genus card positioned in screen pixels relative to its anchor.
 class PlacedGenusCard {
-  const PlacedGenusCard({
-    required this.candidate,
-    required this.screenOffset,
-  });
+  const PlacedGenusCard({required this.candidate, required this.screenOffset});
 
   final FractalGenusCardCandidate candidate;
   final Offset screenOffset;
@@ -63,10 +60,7 @@ class FractalLabelCandidate {
 
 /// A label positioned in screen pixels relative to its anchor.
 class PlacedLabel {
-  const PlacedLabel({
-    required this.candidate,
-    required this.screenOffset,
-  });
+  const PlacedLabel({required this.candidate, required this.screenOffset});
 
   final FractalLabelCandidate candidate;
   final Offset screenOffset;
@@ -85,9 +79,7 @@ class PlacedLabel {
 
 /// Picks and places labels for the visible viewport without overlap.
 class FractalLabelPlacer {
-  const FractalLabelPlacer({
-    this.labelPadding = 3,
-  });
+  const FractalLabelPlacer({this.labelPadding = 3});
 
   final double labelPadding;
 
@@ -106,7 +98,10 @@ class FractalLabelPlacer {
     double maxSize = 22,
   }) {
     final z = zoomScale.clamp(0.08, 50);
-    return (baseFontSize * math.pow(z, labelZoomExponent)).clamp(minSize, maxSize);
+    return (baseFontSize * math.pow(z, labelZoomExponent)).clamp(
+      minSize,
+      maxSize,
+    );
   }
 
   static double genusScreenFontSizeFor(double zoomScale) =>
@@ -140,8 +135,9 @@ class FractalLabelPlacer {
   }) {
     final candidates = <FractalLabelCandidate>[];
     final minScreenLen = minScreenLengthForLabel(zoomScale);
-    final expandedVisible =
-        visibleTreeRect.inflate(visibleTreeRect.shortestSide * 0.15);
+    final expandedVisible = visibleTreeRect.inflate(
+      visibleTreeRect.shortestSide * 0.15,
+    );
 
     void walk(FractalLayoutNode node, {required bool parentExpanded}) {
       if (node.parentPosition != null) {
@@ -169,10 +165,7 @@ class FractalLabelPlacer {
                 textDirection: TextDirection.ltr,
               )..layout();
 
-              final priority = _priority(
-                node: node,
-                screenLen: screenLen,
-              );
+              final priority = _priority(node: node, screenLen: screenLen);
 
               candidates.add(
                 FractalLabelCandidate(
@@ -206,10 +199,7 @@ class FractalLabelPlacer {
     // Root label when visible.
     if (expandedVisible.contains(root.position)) {
       final textPainter = TextPainter(
-        text: TextSpan(
-          text: displayTaxonName(root.label),
-          style: cladeStyle,
-        ),
+        text: TextSpan(text: displayTaxonName(root.label), style: cladeStyle),
         textDirection: TextDirection.ltr,
       )..layout();
       candidates.add(
@@ -241,10 +231,13 @@ class FractalLabelPlacer {
     required double viewportWidth,
   }) {
     final candidates = <FractalGenusCardCandidate>[];
-    final cardSize =
-        FractalLodPolicy.genusCardScreenSize(viewportWidth, zoomScale);
-    final expandedVisible =
-        visibleTreeRect.inflate(visibleTreeRect.shortestSide * 0.15);
+    final cardSize = FractalLodPolicy.genusCardScreenSize(
+      viewportWidth,
+      zoomScale,
+    );
+    final expandedVisible = visibleTreeRect.inflate(
+      visibleTreeRect.shortestSide * 0.15,
+    );
 
     void walk(FractalLayoutNode node) {
       if (node.parentPosition != null) {
@@ -337,8 +330,10 @@ class FractalLabelPlacer {
     required double viewportWidth,
     required double zoomScale,
   }) {
-    final cardSize =
-        FractalLodPolicy.genusCardScreenSize(viewportWidth, zoomScale);
+    final cardSize = FractalLodPolicy.genusCardScreenSize(
+      viewportWidth,
+      zoomScale,
+    );
     final halfW = cardSize.width / 2;
     final halfH = cardSize.height / 2;
     return PlacedGenusCard(
@@ -390,9 +385,7 @@ class FractalLabelPlacer {
         candidate.textPainter.height / z,
       );
       placed.add(treeRect.inflate(padTree));
-      result.add(
-        PlacedLabel(candidate: candidate, screenOffset: screenOffset),
-      );
+      result.add(PlacedLabel(candidate: candidate, screenOffset: screenOffset));
     }
     return result;
   }
@@ -412,24 +405,24 @@ class FractalLabelPlacer {
     final offsets = isRoot
         ? [const Offset(0, 12)]
         : candidate.isGenus
-            ? [
-                Offset(-w / 2, -20 - h),
-                Offset(-w / 2, 14),
-                Offset(-w - 12, -h / 2),
-                Offset(14, -h / 2),
-                Offset(-w / 2, -32 - h),
-                Offset(-w / 2, 26),
-              ]
-            : [
-                Offset(-w / 2, -18 - h),
-                Offset(-w / 2, 10),
-                Offset(-w - 8, -h / 2),
-                Offset(8, -h / 2),
-                Offset(-w / 2, -28 - h),
-                Offset(-w / 2, 22),
-                Offset(-w / 2 - 12, -18 - h),
-                Offset(w / 2 + 12, -18 - h),
-              ];
+        ? [
+            Offset(-w / 2, -20 - h),
+            Offset(-w / 2, 14),
+            Offset(-w - 12, -h / 2),
+            Offset(14, -h / 2),
+            Offset(-w / 2, -32 - h),
+            Offset(-w / 2, 26),
+          ]
+        : [
+            Offset(-w / 2, -18 - h),
+            Offset(-w / 2, 10),
+            Offset(-w - 8, -h / 2),
+            Offset(8, -h / 2),
+            Offset(-w / 2, -28 - h),
+            Offset(-w / 2, 22),
+            Offset(-w / 2 - 12, -18 - h),
+            Offset(w / 2 + 12, -18 - h),
+          ];
 
     for (final screenOffset in offsets) {
       final treeRect = Rect.fromLTWH(

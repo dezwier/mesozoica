@@ -48,9 +48,9 @@ class SettingsAccountTab extends StatelessWidget {
           const SizedBox(height: 24),
           Text(
             'Subscription status',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 12),
           Row(
@@ -77,9 +77,9 @@ class SettingsAccountTab extends StatelessWidget {
           const SizedBox(height: 22),
           Text(
             'Email and password',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 16),
           TextFormField(
@@ -123,9 +123,9 @@ class SettingsAccountTab extends StatelessWidget {
           const SizedBox(height: 24),
           Text(
             'Sign-in methods',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
           if (isLoadingLinked)
@@ -139,9 +139,9 @@ class SettingsAccountTab extends StatelessWidget {
           Text(
             'Delete',
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: Theme.of(context).colorScheme.error,
-                ),
+              fontWeight: FontWeight.bold,
+              color: Theme.of(context).colorScheme.error,
+            ),
           ),
           const SizedBox(height: 12),
           Row(
@@ -216,18 +216,14 @@ class _SubscriptionChip extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            icon,
-            size: 20,
-            color: isSelected ? primary : outline,
-          ),
+          Icon(icon, size: 20, color: isSelected ? primary : outline),
           const SizedBox(width: 8),
           Text(
             label,
             style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                  color: isSelected ? primary : outline,
-                ),
+              fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+              color: isSelected ? primary : outline,
+            ),
           ),
         ],
       ),

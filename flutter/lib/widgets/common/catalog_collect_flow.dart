@@ -110,10 +110,7 @@ class CatalogCollectFlow {
       final version = await pickImageVersion(context, versions);
       if (!context.mounted || version == null) return null;
 
-      final created = await service.collectTool(
-        toolTypeId,
-        version: version,
-      );
+      final created = await service.collectTool(toolTypeId, version: version);
       if (!context.mounted) return created;
       AppToast.success(context, 'Added to your collection');
       return created;

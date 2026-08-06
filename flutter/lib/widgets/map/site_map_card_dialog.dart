@@ -6,10 +6,7 @@ import '../../models/site.dart';
 import '../cards/card_detail_sheet.dart';
 import '../cards/site_turnable_card.dart';
 
-Future<void> showSiteMapCardDialog(
-  BuildContext context,
-  SiteSummary site,
-) {
+Future<void> showSiteMapCardDialog(BuildContext context, SiteSummary site) {
   return CardDetailSheet.show<void>(
     context,
     builder: (context) => _SiteMapCard(site: site),
@@ -51,10 +48,7 @@ class _SiteMapCardState extends State<_SiteMapCard> {
     final map = context.watch<map_data.MapController>();
     final site = _resolvedSite(map);
     return CardDetailSheetContent(
-      child: SiteTurnableCard(
-        site: site,
-        onSiteUpdated: _onSiteUpdated,
-      ),
+      child: SiteTurnableCard(site: site, onSiteUpdated: _onSiteUpdated),
     );
   }
 }

@@ -156,10 +156,7 @@ abstract final class WeatherDisplay {
   }
 
   /// Period label with local clock time, e.g. `Daytime · 14:32`.
-  static String timeLabelWithClock(
-    String period, {
-    DateTime? at,
-  }) {
+  static String timeLabelWithClock(String period, {DateTime? at}) {
     final clock = DateFormat.Hm().format((at ?? DateTime.now()).toLocal());
     return '${timeLabel(period)} · $clock';
   }

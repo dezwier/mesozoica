@@ -61,6 +61,7 @@ class ToolSummary {
 
   /// True when the viewer owns at least one occurrence of this catalog type.
   bool get isCatalogOwned => ownedOccurrences.isNotEmpty;
+
   /// True when this card represents a specific owned tool occurrence (inventory).
   ///
   /// Prefer [spawnDate] over `id != toolTypeId`: the first occurrence of the
@@ -201,9 +202,9 @@ class ToolSummary {
     final rawOwned = json['owned_occurrences'];
     final owned = rawOwned is List
         ? rawOwned
-            .whereType<Map<String, dynamic>>()
-            .map(OwnedOccurrenceThumb.fromJson)
-            .toList()
+              .whereType<Map<String, dynamic>>()
+              .map(OwnedOccurrenceThumb.fromJson)
+              .toList()
         : const <OwnedOccurrenceThumb>[];
     return ToolSummary(
       id: json['id'] as int,

@@ -40,16 +40,22 @@ class _NotificationListContent extends StatelessWidget {
                   onPressed: onMarkAllRead,
                   style: TextButton.styleFrom(
                     minimumSize: Size.zero,
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
                     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    foregroundColor:
-                        colorScheme.onSurfaceVariant.withValues(alpha: 0.8),
+                    foregroundColor: colorScheme.onSurfaceVariant.withValues(
+                      alpha: 0.8,
+                    ),
                   ),
                   child: Text(
                     'Mark all as read',
                     style: textTheme.labelMedium?.copyWith(
                       fontWeight: FontWeight.w500,
-                      color: colorScheme.onSurfaceVariant.withValues(alpha: 0.8),
+                      color: colorScheme.onSurfaceVariant.withValues(
+                        alpha: 0.8,
+                      ),
                     ),
                   ),
                 ),
@@ -97,11 +103,8 @@ class _NotificationListContent extends StatelessWidget {
                 indent: 56,
                 endIndent: 16,
               ),
-              itemBuilder: (context, index) => _buildTile(
-                context,
-                items[index],
-                onTapNotification,
-              ),
+              itemBuilder: (context, index) =>
+                  _buildTile(context, items[index], onTapNotification),
             ),
           ),
         const SizedBox(height: 12),
@@ -119,8 +122,7 @@ class _NotificationListContent extends StatelessWidget {
     final timeText = DateFormat.Hm().format(item.createdAt.toLocal());
 
     if (item.isSiteDiscovered) {
-      final label =
-          item.siteLabel.isNotEmpty ? item.siteLabel : 'a field site';
+      final label = item.siteLabel.isNotEmpty ? item.siteLabel : 'a field site';
       return ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
         leading: Column(
@@ -162,8 +164,7 @@ class _NotificationListContent extends StatelessWidget {
     }
 
     if (item.isSiteDocumented) {
-      final label =
-          item.siteLabel.isNotEmpty ? item.siteLabel : 'a field site';
+      final label = item.siteLabel.isNotEmpty ? item.siteLabel : 'a field site';
       return ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
         leading: Column(
@@ -204,7 +205,9 @@ class _NotificationListContent extends StatelessWidget {
       );
     }
 
-    final actor = item.actorUsername.isNotEmpty ? item.actorUsername : 'Someone';
+    final actor = item.actorUsername.isNotEmpty
+        ? item.actorUsername
+        : 'Someone';
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
       leading: Column(

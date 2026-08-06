@@ -17,11 +17,9 @@ import 'timed_session_remaining.dart';
 
 /// Active timed Terrain Echo session (vintage radar overlay).
 class TerrainEchoController extends ChangeNotifier {
-  TerrainEchoController({
-    ToolService? toolService,
-    SiteService? siteService,
-  })  : _toolService = toolService ?? ToolService(),
-        _siteService = siteService ?? SiteService();
+  TerrainEchoController({ToolService? toolService, SiteService? siteService})
+    : _toolService = toolService ?? ToolService(),
+      _siteService = siteService ?? SiteService();
 
   final ToolService _toolService;
   final SiteService _siteService;
@@ -41,8 +39,9 @@ class TerrainEchoController extends ChangeNotifier {
   int _sitesRevision = 0;
 
   /// Countdown for HUD / tool cards — does not trigger [notifyListeners].
-  final ValueNotifier<Duration?> remainingListenable =
-      ValueNotifier<Duration?>(null);
+  final ValueNotifier<Duration?> remainingListenable = ValueNotifier<Duration?>(
+    null,
+  );
 
   bool get isActive =>
       _session != null && _session!.isActive && !_session!.isExpired;
@@ -140,8 +139,7 @@ class TerrainEchoController extends ChangeNotifier {
     _message = null;
     notifyListeners();
     try {
-      final session =
-          await _toolService.startToolSession(toolId: tool.id);
+      final session = await _toolService.startToolSession(toolId: tool.id);
       _session = session;
       _tool = tool;
       _requestShowOnMap = true;
@@ -226,8 +224,7 @@ class TerrainEchoController extends ChangeNotifier {
   Future<void> _ensureFieldSites() async {
     final loc = _location?.currentLocation;
     if (loc == null) return;
-    final radiusKm =
-        GameConfig.instance.siteGeneration.client.nearbyRadiusKm;
+    final radiusKm = GameConfig.instance.siteGeneration.client.nearbyRadiusKm;
     try {
       await _siteService.requestFieldSiteEnsure(
         lat: loc.latitude,

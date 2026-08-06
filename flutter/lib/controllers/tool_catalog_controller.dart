@@ -115,9 +115,9 @@ class ToolCatalogController extends CatalogController<ToolSummary> {
   void setMode(ToolScreenMode mode) {
     if (_mode == mode) return;
     _mode = mode;
-    _filters = ToolCatalogFilters.defaultsFor(mode).copyWith(
-      showAll: mode == ToolScreenMode.catalog,
-    );
+    _filters = ToolCatalogFilters.defaultsFor(
+      mode,
+    ).copyWith(showAll: mode == ToolScreenMode.catalog);
     _availableCategories = [];
     _categoriesShowAll = null;
     load(force: true);
@@ -125,7 +125,6 @@ class ToolCatalogController extends CatalogController<ToolSummary> {
 
   /// Kept for shell auth wiring; catalog is available to all users.
   void onUserChanged({required bool isAdmin}) {}
-
 
   Future<void> load({bool force = false}) async {
     final seq = beginLoadSequence(force: force);
@@ -247,9 +246,9 @@ class ToolCatalogController extends CatalogController<ToolSummary> {
   }
 
   Future<void> clearFilters() async {
-    _filters = ToolCatalogFilters.defaultsFor(_mode).copyWith(
-      showAll: _mode == ToolScreenMode.catalog,
-    );
+    _filters = ToolCatalogFilters.defaultsFor(
+      _mode,
+    ).copyWith(showAll: _mode == ToolScreenMode.catalog);
     _availableCategories = [];
     _categoriesShowAll = null;
     await load(force: true);

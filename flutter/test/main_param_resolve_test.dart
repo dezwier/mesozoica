@@ -12,7 +12,10 @@ ToolModBinding _ridgeUsing({required double multiply}) {
     mods: ModifiesMainParams(
       using: {
         'field_survey': {
-          'discovery_distance_m': ParamModifier(op: 'multiply', value: multiply),
+          'discovery_distance_m': ParamModifier(
+            op: 'multiply',
+            value: multiply,
+          ),
           'discovery_chance': ParamModifier(op: 'multiply', value: multiply),
         },
       },
@@ -28,7 +31,10 @@ ToolModBinding _nocturneUsing({required double multiply}) {
     mods: ModifiesMainParams(
       using: {
         'field_survey': {
-          'discovery_distance_m': ParamModifier(op: 'multiply', value: multiply),
+          'discovery_distance_m': ParamModifier(
+            op: 'multiply',
+            value: multiply,
+          ),
           'discovery_chance': ParamModifier(op: 'multiply', value: multiply),
         },
       },
@@ -45,11 +51,16 @@ ToolModBinding _mobilityUsing({required double multiply}) {
     mods: ModifiesMainParams(
       using: {
         'field_survey': {
-          'discovery_distance_m': ParamModifier(op: 'multiply', value: multiply),
+          'discovery_distance_m': ParamModifier(
+            op: 'multiply',
+            value: multiply,
+          ),
           'discovery_chance': ParamModifier(op: 'multiply', value: multiply),
-          'discovery_max_speed_kmh':
-              ParamModifier(op: 'multiply', value: 3.0),
-          'documentation_distance_m': ParamModifier(op: 'multiply', value: multiply),
+          'discovery_max_speed_kmh': ParamModifier(op: 'multiply', value: 3.0),
+          'documentation_distance_m': ParamModifier(
+            op: 'multiply',
+            value: multiply,
+          ),
         },
       },
     ),
@@ -101,7 +112,10 @@ void main() {
     final result = resolveSiteStewardshipAccuracies(
       skillLevel: 10,
       toolMods: {
-        'documentation_accuracy': const ParamModifier(op: 'add', value: toolAdd),
+        'documentation_accuracy': const ParamModifier(
+          op: 'add',
+          value: toolAdd,
+        ),
       },
     );
 

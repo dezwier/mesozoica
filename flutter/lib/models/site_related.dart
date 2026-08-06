@@ -63,9 +63,9 @@ class SiteFossilThumbListResponse {
     return SiteFossilThumbListResponse(
       items: rawItems is List
           ? rawItems
-              .whereType<Map<String, dynamic>>()
-              .map(SiteFossilThumb.fromJson)
-              .toList()
+                .whereType<Map<String, dynamic>>()
+                .map(SiteFossilThumb.fromJson)
+                .toList()
           : const [],
     );
   }
@@ -81,19 +81,16 @@ class SiteDinosaurThumbListResponse {
     return SiteDinosaurThumbListResponse(
       items: rawItems is List
           ? rawItems
-              .whereType<Map<String, dynamic>>()
-              .map(SiteDinosaurThumb.fromJson)
-              .toList()
+                .whereType<Map<String, dynamic>>()
+                .map(SiteDinosaurThumb.fromJson)
+                .toList()
           : const [],
     );
   }
 }
 
 class SiteDinoFossilGroup {
-  const SiteDinoFossilGroup({
-    required this.dinosaur,
-    required this.fossils,
-  });
+  const SiteDinoFossilGroup({required this.dinosaur, required this.fossils});
 
   final SiteDinosaurThumb dinosaur;
   final List<SiteFossilThumb> fossils;
@@ -106,9 +103,9 @@ class SiteDinoFossilGroup {
       ),
       fossils: rawFossils is List
           ? rawFossils
-              .whereType<Map<String, dynamic>>()
-              .map(SiteFossilThumb.fromJson)
-              .toList()
+                .whereType<Map<String, dynamic>>()
+                .map(SiteFossilThumb.fromJson)
+                .toList()
           : const [],
     );
   }
@@ -124,9 +121,9 @@ class SiteDinoFossilGroupListResponse {
     return SiteDinoFossilGroupListResponse(
       items: rawItems is List
           ? rawItems
-              .whereType<Map<String, dynamic>>()
-              .map(SiteDinoFossilGroup.fromJson)
-              .toList()
+                .whereType<Map<String, dynamic>>()
+                .map(SiteDinoFossilGroup.fromJson)
+                .toList()
           : const [],
     );
   }

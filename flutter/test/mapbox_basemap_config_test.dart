@@ -22,9 +22,7 @@ void main() {
 
   group('MapboxBasemapConfig.styleConfig', () {
     test('defaults to monochrome theme and all labels off', () {
-      final config = MapboxBasemapConfig.styleConfig(
-        lightPreset: 'dusk',
-      );
+      final config = MapboxBasemapConfig.styleConfig(lightPreset: 'dusk');
       expect(config['theme'], 'monochrome');
       expect(config['theme'], MapConfig.mapboxBasemapTheme.value);
       expect(config['lightPreset'], 'dusk');
@@ -38,11 +36,15 @@ void main() {
 
     test('derives lightPreset from brightness when omitted', () {
       expect(
-        MapboxBasemapConfig.styleConfig(brightness: Brightness.dark)['lightPreset'],
+        MapboxBasemapConfig.styleConfig(
+          brightness: Brightness.dark,
+        )['lightPreset'],
         'dusk',
       );
       expect(
-        MapboxBasemapConfig.styleConfig(brightness: Brightness.light)['lightPreset'],
+        MapboxBasemapConfig.styleConfig(
+          brightness: Brightness.light,
+        )['lightPreset'],
         'day',
       );
     });
@@ -56,10 +58,7 @@ void main() {
     });
 
     test('3D objects are off by default (north-fixed is flat)', () {
-      expect(
-        MapboxBasemapConfig.styleConfig()['show3dObjects'],
-        false,
-      );
+      expect(MapboxBasemapConfig.styleConfig()['show3dObjects'], false);
     });
 
     test('3D objects opt-in for rotate / AR mode', () {

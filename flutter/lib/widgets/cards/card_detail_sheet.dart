@@ -33,7 +33,8 @@ class CardDetailSheet {
     final size = MediaQuery.sizeOf(context);
     final padding = MediaQuery.paddingOf(context);
     final topClearance = clearTopForXpBadges ? topBreathingRoom : 0.0;
-    final available = size.height -
+    final available =
+        size.height -
         padding.top -
         topClearance -
         ShellOverlayPanel.bottomChromeHeight(context);
@@ -49,8 +50,9 @@ class CardDetailSheet {
     required WidgetBuilder builder,
     bool clearTopForXpBadges = true,
   }) {
-    final barrierLabel =
-        MaterialLocalizations.of(context).modalBarrierDismissLabel;
+    final barrierLabel = MaterialLocalizations.of(
+      context,
+    ).modalBarrierDismissLabel;
     openCount.value += 1;
     return showGeneralDialog<T>(
       context: context,
@@ -72,10 +74,7 @@ class CardDetailSheet {
           curve: Curves.easeOutCubic,
           reverseCurve: Curves.easeInCubic,
         );
-        return FadeTransition(
-          opacity: curved,
-          child: child,
-        );
+        return FadeTransition(opacity: curved, child: child);
       },
     ).whenComplete(() {
       if (openCount.value > 0) {
@@ -114,10 +113,7 @@ class CardDetailSheetShell extends StatelessWidget {
         child: _PullDownToDismiss(
           onDismiss: () => Navigator.of(context).maybePop(),
           child: Center(
-            child: Material(
-              color: Colors.transparent,
-              child: child,
-            ),
+            child: Material(color: Colors.transparent, child: child),
           ),
         ),
       ),
@@ -128,10 +124,7 @@ class CardDetailSheetShell extends StatelessWidget {
 /// Vertical drag-down on a dialog card dismisses the sheet (mirrors inventory
 /// first-card pull-to-close). Horizontal drags stay free for card flip.
 class _PullDownToDismiss extends StatefulWidget {
-  const _PullDownToDismiss({
-    required this.onDismiss,
-    required this.child,
-  });
+  const _PullDownToDismiss({required this.onDismiss, required this.child});
 
   final VoidCallback onDismiss;
   final Widget child;
@@ -155,8 +148,7 @@ class _PullDownToDismissState extends State<_PullDownToDismiss> {
 
   void _onEnd(DragEndDetails details) {
     final vy = details.velocity.pixelsPerSecond.dy;
-    if (_drag >= _dismissThreshold ||
-        (vy > _flingVelocity && _drag > 24)) {
+    if (_drag >= _dismissThreshold || (vy > _flingVelocity && _drag > 24)) {
       widget.onDismiss();
       return;
     }

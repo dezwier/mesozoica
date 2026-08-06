@@ -14,7 +14,7 @@ import '../utils/route_geometry.dart';
 /// Client state for aerial session draw mode, submit, and map tracking.
 class AerialSessionController extends ChangeNotifier {
   AerialSessionController({ToolService? toolService})
-      : _toolService = toolService ?? ToolService();
+    : _toolService = toolService ?? ToolService();
 
   final ToolService _toolService;
   final Distance _distance = const Distance();
@@ -28,14 +28,17 @@ class AerialSessionController extends ChangeNotifier {
 
   List<ToolSession> _sessions = const [];
   bool _sessionsLoading = false;
+
   /// True while the map tab wants session tracking (see [startTracking]).
   bool _mapTracking = false;
   Timer? _refreshTimer;
   Timer? _progressTimer;
+
   /// Bumps only after a successful sessions list fetch (not progress ticks).
   int _sessionsFetchGeneration = 0;
   ToolSession? _focusedSession;
   ToolSession? _pendingFocusSession;
+
   /// One-shot: MapScreen should fit the viewport to [maxRouteKm] on draw entry.
   bool _pendingDrawCamera = false;
 
@@ -84,8 +87,9 @@ class AerialSessionController extends ChangeNotifier {
   final ValueNotifier<int> progressTickListenable = ValueNotifier<int>(0);
 
   /// Remaining flight time for [hudSession] (null while pending / unknown).
-  final ValueNotifier<Duration?> remainingListenable =
-      ValueNotifier<Duration?>(null);
+  final ValueNotifier<Duration?> remainingListenable = ValueNotifier<Duration?>(
+    null,
+  );
 
   /// Increments when sessions are reloaded from the server.
   int get sessionsFetchGeneration => _sessionsFetchGeneration;
@@ -93,8 +97,7 @@ class AerialSessionController extends ChangeNotifier {
   AerialActionKind get drawKind =>
       AerialActionKind.tryParseToolName(_tool?.name) ?? AerialActionKind.recon;
 
-  AerialActionConfig get _cfg =>
-      drawKind.config(GameConfig.instance);
+  AerialActionConfig get _cfg => drawKind.config(GameConfig.instance);
 
   Map<String, dynamic> get _toolParams {
     final tool = _tool;
@@ -545,8 +548,7 @@ class AerialSessionController extends ChangeNotifier {
   }
 
   bool get _hasActiveSession =>
-      _sessions.any((s) => s.isActive) ||
-      (_focusedSession?.isActive ?? false);
+      _sessions.any((s) => s.isActive) || (_focusedSession?.isActive ?? false);
 
   void _syncSessionTimers() {
     _syncRefreshTimer();
@@ -588,7 +590,8 @@ class AerialSessionController extends ChangeNotifier {
   }
 
   void _syncProgressTimer() {
-    final needsTick = _sessions.any((s) => s.isInFlight) ||
+    final needsTick =
+        _sessions.any((s) => s.isInFlight) ||
         (_focusedSession?.isInFlight ?? false);
     if (needsTick) {
       // ~4 Hz keeps the scout puck moving smoothly without thrashing Mapbox.

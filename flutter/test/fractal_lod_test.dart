@@ -38,18 +38,12 @@ void main() {
 
     test('shows labels only at sufficient zoom', () {
       expect(
-        FractalLodPolicy.shouldShowLabel(
-          branchLength: 80,
-          zoomScale: 0.1,
-        ),
+        FractalLodPolicy.shouldShowLabel(branchLength: 80, zoomScale: 0.1),
         isFalse,
       );
 
       expect(
-        FractalLodPolicy.shouldShowLabel(
-          branchLength: 80,
-          zoomScale: 0.3,
-        ),
+        FractalLodPolicy.shouldShowLabel(branchLength: 80, zoomScale: 0.3),
         isTrue,
       );
     });
@@ -133,7 +127,10 @@ void main() {
       );
       final mid = FractalLodPolicy.genusCardScreenSize(390, 8.0);
       final full = FractalLodPolicy.genusCardScreenSize(390, 14.0);
-      expect(compact.width, closeTo(390 * FractalLodPolicy.genusCardScale, 0.1));
+      expect(
+        compact.width,
+        closeTo(390 * FractalLodPolicy.genusCardScale, 0.1),
+      );
       expect(full.width, closeTo(390, 0.1));
       expect(mid.width, lessThan(full.width * 0.65));
       expect(full.width, greaterThan(compact.width));
@@ -188,7 +185,10 @@ void main() {
     test('fitFractalTransform centers layout bounds in viewport', () {
       const bounds = Rect.fromLTWH(10, 20, 400, 300);
       const viewport = Size(390, 844);
-      final matrix = fitFractalTransform(bounds: bounds, viewportSize: viewport);
+      final matrix = fitFractalTransform(
+        bounds: bounds,
+        viewportSize: viewport,
+      );
       final local = Offset(
         bounds.center.dx - bounds.left,
         bounds.center.dy - bounds.top,

@@ -57,19 +57,21 @@ class _SectionCardState<T> extends State<SectionCard<T>> {
 
     final initialCount = widget.initialVisibleCount ?? 0;
     final total = widget.total ?? 0;
-    final hasMore = _useServerShowMore &&
+    final hasMore =
+        _useServerShowMore &&
         total > 0 &&
         widget.items.length < total &&
         !widget.isLoadingMore;
-    final showExpandCollapse = !_useServerShowMore &&
+    final showExpandCollapse =
+        !_useServerShowMore &&
         widget.initialVisibleCount != null &&
         widget.items.length > initialCount;
     final showMoreButton = hasMore || showExpandCollapse;
     final displayItems = _useServerShowMore
         ? widget.items
         : (showExpandCollapse && !_showAll
-            ? widget.items.take(initialCount).toList()
-            : widget.items);
+              ? widget.items.take(initialCount).toList()
+              : widget.items);
 
     return Card(
       margin: EdgeInsets.only(bottom: cardBottomMargin),
@@ -144,7 +146,9 @@ class _SectionCardState<T> extends State<SectionCard<T>> {
                                   : Text(
                                       hasMore
                                           ? 'Show more'
-                                          : (_showAll ? 'Show less' : 'Show more'),
+                                          : (_showAll
+                                                ? 'Show less'
+                                                : 'Show more'),
                                       style: Theme.of(context)
                                           .textTheme
                                           .bodySmall
@@ -177,17 +181,15 @@ class _SectionCardState<T> extends State<SectionCard<T>> {
       child: Text(
         title.toUpperCase(),
         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: Theme.of(context)
-                  .colorScheme
-                  .onSurface
-                  .withValues(alpha: 0.6),
-              fontWeight: FontWeight.w500,
-              letterSpacing: 0.5,
-            ),
+          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+          fontWeight: FontWeight.w500,
+          letterSpacing: 0.5,
+        ),
       ),
     );
-    final iconColor =
-        Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6);
+    final iconColor = Theme.of(
+      context,
+    ).colorScheme.onSurface.withValues(alpha: 0.6);
     if (widget.titleIcon != null) {
       return Column(
         mainAxisSize: MainAxisSize.min,

@@ -89,6 +89,7 @@ class _SiteFilterSheetState extends State<SiteFilterSheet> {
   late bool _pendingShowPastReconRoutes;
   late final DateTime _windowStart;
   late final DateTime _windowEnd;
+
   /// Calendar days from earliest → today. `0` = same day (no range slider).
   late final int _dayCount;
   late final bool _hasDiscoveryDates;
@@ -96,8 +97,7 @@ class _SiteFilterSheetState extends State<SiteFilterSheet> {
 
   static final _dayLabel = DateFormat('MMM d, yyyy');
 
-  bool get _canSlideDiscoveryDays =>
-      _hasDiscoveryDates && _dayCount >= 1;
+  bool get _canSlideDiscoveryDays => _hasDiscoveryDates && _dayCount >= 1;
 
   @override
   void initState() {
@@ -166,14 +166,15 @@ class _SiteFilterSheetState extends State<SiteFilterSheet> {
     final after = !widget.showDiscoveryTimeSection
         ? widget.initialFilters.discoveredAfter
         : (_discoveryTimeIsFullSpan
-            ? null
-            : _dateAtDay(_pendingDiscoveryDays.start));
+              ? null
+              : _dateAtDay(_pendingDiscoveryDays.start));
     final before = !widget.showDiscoveryTimeSection
         ? widget.initialFilters.discoveredBefore
         : (_discoveryTimeIsFullSpan
-            ? null
-            : _dateAtDay(_pendingDiscoveryDays.end)
-                .add(const Duration(hours: 23, minutes: 59, seconds: 59)));
+              ? null
+              : _dateAtDay(
+                  _pendingDiscoveryDays.end,
+                ).add(const Duration(hours: 23, minutes: 59, seconds: 59)));
     return SiteMapFilters(
       statuses: widget.showStatusSection
           ? _pendingStatuses
@@ -185,9 +186,7 @@ class _SiteFilterSheetState extends State<SiteFilterSheet> {
           : widget.initialFilters.howDiscovered,
       discoveredAfter: after,
       discoveredBefore: before,
-      sort: widget.showSortSection
-          ? _pendingSort
-          : widget.initialFilters.sort,
+      sort: widget.showSortSection ? _pendingSort : widget.initialFilters.sort,
       filterByStatus: widget.showStatusSection
           ? true
           : widget.initialFilters.filterByStatus,
@@ -304,7 +303,8 @@ class _SiteFilterSheetState extends State<SiteFilterSheet> {
                       for (final sort in SiteCatalogSort.values)
                         DensePopupEntry(
                           value: sort,
-                          enabled: sort != SiteCatalogSort.distance ||
+                          enabled:
+                              sort != SiteCatalogSort.distance ||
                               widget.canSortByDistance,
                           child: Text(
                             sort.label,
@@ -404,10 +404,8 @@ class _SiteFilterSheetState extends State<SiteFilterSheet> {
                   selected: _pendingStatuses,
                   onToggle: (value, selected) =>
                       _toggle(_pendingStatuses, value, selected),
-                  onSelectOnly: (value) => _selectOnly(
-                    (next) => _pendingStatuses = next,
-                    value,
-                  ),
+                  onSelectOnly: (value) =>
+                      _selectOnly((next) => _pendingStatuses = next, value),
                 ),
               ],
               const SizedBox(height: 20),
@@ -420,10 +418,8 @@ class _SiteFilterSheetState extends State<SiteFilterSheet> {
                 selected: _pendingPeriods,
                 onToggle: (value, selected) =>
                     _toggle(_pendingPeriods, value, selected),
-                onSelectOnly: (value) => _selectOnly(
-                  (next) => _pendingPeriods = next,
-                  value,
-                ),
+                onSelectOnly: (value) =>
+                    _selectOnly((next) => _pendingPeriods = next, value),
               ),
               if (widget.showHowDiscoveredSection) ...[
                 const SizedBox(height: 20),
@@ -452,10 +448,8 @@ class _SiteFilterSheetState extends State<SiteFilterSheet> {
                 selected: _pendingRockTypes,
                 onToggle: (value, selected) =>
                     _toggle(_pendingRockTypes, value, selected),
-                onSelectOnly: (value) => _selectOnly(
-                  (next) => _pendingRockTypes = next,
-                  value,
-                ),
+                onSelectOnly: (value) =>
+                    _selectOnly((next) => _pendingRockTypes = next, value),
               ),
               if (widget.showReconRoutesSection) ...[
                 const SizedBox(height: 28),

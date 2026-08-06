@@ -10,11 +10,8 @@ const _mPerDegLat = 111320.0;
 LatLng _northOf(LatLng origin, double metres) =>
     LatLng(origin.latitude + metres / _mPerDegLat, origin.longitude);
 
-SiteSummary _site(int id, LatLng at) => SiteSummary(
-      siteId: id,
-      latitude: at.latitude,
-      longitude: at.longitude,
-    );
+SiteSummary _site(int id, LatLng at) =>
+    SiteSummary(siteId: id, latitude: at.latitude, longitude: at.longitude);
 
 void main() {
   const origin = LatLng(51.0, 4.0);
@@ -29,8 +26,11 @@ void main() {
         _site(4, _northOf(origin, 5000)),
       ];
 
-      final result = RotateCandidateCache()
-          .resolve(sites: sites, center: origin, datasetKey: 'field:linked');
+      final result = RotateCandidateCache().resolve(
+        sites: sites,
+        center: origin,
+        datasetKey: 'field:linked',
+      );
 
       expect(result.map((c) => c.site.siteId), [1, 2, 3]);
       expect(result.first.distanceM, lessThan(result.last.distanceM));
@@ -65,8 +65,11 @@ void main() {
         datasetKey: 'field:linked',
       );
       final moved = _northOf(origin, RotateCandidateCache.recullMoveM + 10);
-      final second =
-          cache.resolve(sites: sites, center: moved, datasetKey: 'field:linked');
+      final second = cache.resolve(
+        sites: sites,
+        center: moved,
+        datasetKey: 'field:linked',
+      );
 
       expect(identical(first, second), isFalse);
       // Walked toward the site, so the recorded distance must have shrunk.
@@ -81,7 +84,10 @@ void main() {
         datasetKey: 'field:linked',
       );
       final second = cache.resolve(
-        sites: [_site(1, _northOf(origin, 100)), _site(2, _northOf(origin, 200))],
+        sites: [
+          _site(1, _northOf(origin, 100)),
+          _site(2, _northOf(origin, 200)),
+        ],
         center: origin,
         datasetKey: 'field:linked',
       );
@@ -130,8 +136,11 @@ void main() {
           _site(i, _northOf(origin, 10.0 * (i + 1))),
       ];
 
-      final result = RotateCandidateCache()
-          .resolve(sites: sites, center: origin, datasetKey: 'field:linked');
+      final result = RotateCandidateCache().resolve(
+        sites: sites,
+        center: origin,
+        datasetKey: 'field:linked',
+      );
 
       expect(result, hasLength(MapConfig.rotateMaxVisibleCards * 2));
       // Capping must keep the nearest sites, not an arbitrary slice.

@@ -17,6 +17,7 @@ class CardSectionPanel extends StatelessWidget {
   });
 
   final String? label;
+
   /// When set, replaces the default uppercased [label] text.
   final Widget? labelWidget;
   final Widget child;
@@ -29,7 +30,8 @@ class CardSectionPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cardTheme = DinoCardTheme.of(context);
-    final resolvedLabel = labelWidget ??
+    final resolvedLabel =
+        labelWidget ??
         (label != null && label!.isNotEmpty
             ? Text(
                 label!.toUpperCase(),
@@ -53,8 +55,9 @@ class CardSectionPanel extends StatelessWidget {
 
     if (clipChild) {
       content = ClipRRect(
-        borderRadius:
-            BorderRadius.circular(DinoCardTheme.factPanelBorderRadius),
+        borderRadius: BorderRadius.circular(
+          DinoCardTheme.factPanelBorderRadius,
+        ),
         child: content,
       );
     }

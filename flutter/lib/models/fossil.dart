@@ -212,8 +212,10 @@ class FossilSummary {
   final String dataSource;
   final int? depthCm;
   final String? status;
+
   /// Curated fossil image version folder for this occurrence.
   final String version;
+
   /// When the viewing user discovered this field fossil (from user_fossil).
   final DateTime? discoveredAt;
 
@@ -228,8 +230,9 @@ class FossilSummary {
 
   /// Short occurrence number for UI (`#67`, not `#1000000067`).
   static String formatFossilNumber(int fossilId) {
-    final n =
-        fossilId >= fieldFossilIdBase ? fossilId - fieldFossilIdBase : fossilId;
+    final n = fossilId >= fieldFossilIdBase
+        ? fossilId - fieldFossilIdBase
+        : fossilId;
     return '#$n';
   }
 
@@ -339,7 +342,8 @@ class FossilSummary {
       llmImpRockType: json['llm_imp_rock_type'] as String?,
       llmImpCategory: json['llm_imp_category'] as String?,
       llmImpSubcategory: json['llm_imp_subcategory'] as String?,
-      llmImpPreservationQuality: json['llm_imp_preservation_quality'] as String?,
+      llmImpPreservationQuality:
+          json['llm_imp_preservation_quality'] as String?,
       llmImpCompleteness: json['llm_imp_completeness'] as String?,
       dinosaurMainImageUrl: json['dinosaur_main_image_url'] as String?,
       siteId: json['site_id'] as int?,
@@ -476,7 +480,10 @@ class FossilSummary {
         value: displayFactValue(llmDescription),
         maxValueLines: 4,
       ),
-      FossilStoredField(label: 'LLM category', value: displayFactValue(llmCategory)),
+      FossilStoredField(
+        label: 'LLM category',
+        value: displayFactValue(llmCategory),
+      ),
       FossilStoredField(
         label: 'LLM subcategory',
         value: displayFactValue(llmSubcategory),
@@ -489,8 +496,14 @@ class FossilSummary {
         label: 'LLM completeness',
         value: displayFactValue(llmCompleteness),
       ),
-      FossilStoredField(label: 'LLM rock type', value: displayFactValue(llmRockType)),
-      FossilStoredField(label: 'Dinosaur', value: displayFactValue(dinosaurName)),
+      FossilStoredField(
+        label: 'LLM rock type',
+        value: displayFactValue(llmRockType),
+      ),
+      FossilStoredField(
+        label: 'Dinosaur',
+        value: displayFactValue(dinosaurName),
+      ),
       FossilStoredField(
         label: 'Identified name',
         value: displayFactValue(identifiedName),
@@ -503,10 +516,7 @@ class FossilSummary {
         label: 'Accepted name',
         value: displayFactValue(acceptedName),
       ),
-      FossilStoredField(
-        label: 'Accepted no',
-        value: _displayInt(acceptedNo),
-      ),
+      FossilStoredField(label: 'Accepted no', value: _displayInt(acceptedNo)),
       FossilStoredField(
         label: 'Accepted rank',
         value: displayFactValue(acceptedRank),
@@ -517,59 +527,122 @@ class FossilSummary {
       ),
       FossilStoredField(label: 'Genus', value: displayFactValue(genus)),
       FossilStoredField(label: 'Family', value: displayFactValue(family)),
-      FossilStoredField(label: 'Taxon order', value: displayFactValue(taxonOrder)),
-      FossilStoredField(label: 'Taxon class', value: displayFactValue(taxonClass)),
+      FossilStoredField(
+        label: 'Taxon order',
+        value: displayFactValue(taxonOrder),
+      ),
+      FossilStoredField(
+        label: 'Taxon class',
+        value: displayFactValue(taxonClass),
+      ),
       FossilStoredField(label: 'Phylum', value: displayFactValue(phylum)),
-      FossilStoredField(label: 'Country code', value: displayFactValue(countryCode)),
+      FossilStoredField(
+        label: 'Country code',
+        value: displayFactValue(countryCode),
+      ),
       FossilStoredField(label: 'State', value: displayFactValue(state)),
       FossilStoredField(
         label: 'Geography comments',
         value: displayFactValue(geogcomments),
         maxValueLines: 4,
       ),
-      FossilStoredField(label: 'Geography scale', value: displayFactValue(geogscale)),
+      FossilStoredField(
+        label: 'Geography scale',
+        value: displayFactValue(geogscale),
+      ),
       FossilStoredField(label: 'Geoplate', value: _displayInt(geoplate)),
-      FossilStoredField(label: 'Latlng basis', value: displayFactValue(latlngBasis)),
+      FossilStoredField(
+        label: 'Latlng basis',
+        value: displayFactValue(latlngBasis),
+      ),
       FossilStoredField(
         label: 'Latlng precision',
         value: _displayInt(latlngPrecision),
       ),
-      FossilStoredField(label: 'Latitude', value: _displayDecimal(latitude, decimals: 6)),
-      FossilStoredField(label: 'Longitude', value: _displayDecimal(longitude, decimals: 6)),
-      FossilStoredField(label: 'Paleolat', value: _displayDecimal(paleolat, decimals: 6)),
-      FossilStoredField(label: 'Paleolng', value: _displayDecimal(paleolng, decimals: 6)),
-      FossilStoredField(label: 'Paleomodel', value: displayFactValue(paleomodel)),
+      FossilStoredField(
+        label: 'Latitude',
+        value: _displayDecimal(latitude, decimals: 6),
+      ),
+      FossilStoredField(
+        label: 'Longitude',
+        value: _displayDecimal(longitude, decimals: 6),
+      ),
+      FossilStoredField(
+        label: 'Paleolat',
+        value: _displayDecimal(paleolat, decimals: 6),
+      ),
+      FossilStoredField(
+        label: 'Paleolng',
+        value: _displayDecimal(paleolng, decimals: 6),
+      ),
+      FossilStoredField(
+        label: 'Paleomodel',
+        value: displayFactValue(paleomodel),
+      ),
       FossilStoredField(label: 'Paleoage', value: displayFactValue(paleoage)),
       FossilStoredField(
         label: 'Geological formation',
         value: displayFactValue(geologicalFormation),
       ),
-      FossilStoredField(label: 'Early interval', value: displayFactValue(earlyInterval)),
-      FossilStoredField(label: 'Min age (Ma)', value: _displayDecimal(minAgeMa)),
-      FossilStoredField(label: 'Max age (Ma)', value: _displayDecimal(maxAgeMa)),
+      FossilStoredField(
+        label: 'Early interval',
+        value: displayFactValue(earlyInterval),
+      ),
+      FossilStoredField(
+        label: 'Min age (Ma)',
+        value: _displayDecimal(minAgeMa),
+      ),
+      FossilStoredField(
+        label: 'Max age (Ma)',
+        value: _displayDecimal(maxAgeMa),
+      ),
       FossilStoredField(
         label: 'Stratigraphy comments',
         value: displayFactValue(stratcomments),
         maxValueLines: 4,
       ),
-      FossilStoredField(label: 'Stratigraphy scale', value: displayFactValue(stratscale)),
+      FossilStoredField(
+        label: 'Stratigraphy scale',
+        value: displayFactValue(stratscale),
+      ),
       FossilStoredField(
         label: 'Lithology',
         value: displayFactValue(lithdescript),
         maxValueLines: 4,
       ),
-      FossilStoredField(label: 'Lithology 1', value: displayFactValue(lithology1)),
+      FossilStoredField(
+        label: 'Lithology 1',
+        value: displayFactValue(lithology1),
+      ),
       FossilStoredField(label: 'Lith adj 1', value: displayFactValue(lithadj1)),
-      FossilStoredField(label: 'Concentration', value: displayFactValue(concentration)),
+      FossilStoredField(
+        label: 'Concentration',
+        value: displayFactValue(concentration),
+      ),
       FossilStoredField(
         label: 'Temporal resolution',
         value: displayFactValue(temporalResolution),
       ),
-      FossilStoredField(label: 'Collection name', value: displayFactValue(collectionName)),
-      FossilStoredField(label: 'Collection aka', value: displayFactValue(collectionAka)),
-      FossilStoredField(label: 'Collection no', value: _displayInt(collectionNo)),
-      FossilStoredField(label: 'Collection dates', value: displayFactValue(collectionDates)),
-      FossilStoredField(label: 'Collection type', value: displayFactValue(collectionType)),
+      FossilStoredField(
+        label: 'Collection name',
+        value: displayFactValue(collectionName),
+      ),
+      FossilStoredField(
+        label: 'Collection aka',
+        value: displayFactValue(collectionAka),
+      ),
+      FossilStoredField(
+        label: 'Collection no',
+        value: _displayInt(collectionNo),
+      ),
+      FossilStoredField(
+        label: 'Collection dates',
+        value: displayFactValue(collectionDates),
+      ),
+      FossilStoredField(
+        label: 'Collection type',
+        value: displayFactValue(collectionType),
+      ),
       FossilStoredField(
         label: 'Collection methods',
         value: displayFactValue(collectionMethods),
@@ -580,26 +653,56 @@ class FossilSummary {
         value: displayFactValue(occurrenceComments),
         maxValueLines: 4,
       ),
-      FossilStoredField(label: 'Composition', value: displayFactValue(composition)),
-      FossilStoredField(label: 'Architecture', value: displayFactValue(architecture)),
-      FossilStoredField(label: 'Fragmentation', value: displayFactValue(fragmentation)),
+      FossilStoredField(
+        label: 'Composition',
+        value: displayFactValue(composition),
+      ),
+      FossilStoredField(
+        label: 'Architecture',
+        value: displayFactValue(architecture),
+      ),
+      FossilStoredField(
+        label: 'Fragmentation',
+        value: displayFactValue(fragmentation),
+      ),
       FossilStoredField(
         label: 'Collectors',
         value: displayFactValue(collectors),
         maxValueLines: 3,
       ),
       FossilStoredField(label: 'Museum', value: displayFactValue(museum)),
-      FossilStoredField(label: 'Research group', value: displayFactValue(researchGroup)),
-      FossilStoredField(label: 'Preservation mode', value: displayFactValue(presMode)),
+      FossilStoredField(
+        label: 'Research group',
+        value: displayFactValue(researchGroup),
+      ),
+      FossilStoredField(
+        label: 'Preservation mode',
+        value: displayFactValue(presMode),
+      ),
       FossilStoredField(
         label: 'Preservation quality',
         value: displayFactValue(preservationQuality),
       ),
-      FossilStoredField(label: 'Abundance value', value: _displayInt(abundValue)),
-      FossilStoredField(label: 'Abundance unit', value: displayFactValue(abundUnit)),
-      FossilStoredField(label: 'Fossils from 1', value: displayFactValue(fossilsfrom1)),
-      FossilStoredField(label: 'Size classes', value: displayFactValue(sizeClasses)),
-      FossilStoredField(label: 'Record type', value: displayFactValue(recordType)),
+      FossilStoredField(
+        label: 'Abundance value',
+        value: _displayInt(abundValue),
+      ),
+      FossilStoredField(
+        label: 'Abundance unit',
+        value: displayFactValue(abundUnit),
+      ),
+      FossilStoredField(
+        label: 'Fossils from 1',
+        value: displayFactValue(fossilsfrom1),
+      ),
+      FossilStoredField(
+        label: 'Size classes',
+        value: displayFactValue(sizeClasses),
+      ),
+      FossilStoredField(
+        label: 'Record type',
+        value: displayFactValue(recordType),
+      ),
       FossilStoredField(
         label: 'Common body parts',
         value: displayFactValue(commonBodyParts),
@@ -627,17 +730,29 @@ class FossilSummary {
         maxValueLines: 4,
       ),
       FossilStoredField(label: 'Diet', value: displayFactValue(diet)),
-      FossilStoredField(label: 'Environment', value: displayFactValue(environment)),
+      FossilStoredField(
+        label: 'Environment',
+        value: displayFactValue(environment),
+      ),
       FossilStoredField(
         label: 'Taxon environment',
         value: displayFactValue(taxonEnvironment),
       ),
-      FossilStoredField(label: 'Life habit', value: displayFactValue(lifeHabit)),
+      FossilStoredField(
+        label: 'Life habit',
+        value: displayFactValue(lifeHabit),
+      ),
       FossilStoredField(label: 'Motility', value: displayFactValue(motility)),
-      FossilStoredField(label: 'Reproduction', value: displayFactValue(reproduction)),
+      FossilStoredField(
+        label: 'Reproduction',
+        value: displayFactValue(reproduction),
+      ),
       FossilStoredField(label: 'Ontogeny', value: displayFactValue(ontogeny)),
       FossilStoredField(label: 'Reference no', value: _displayInt(referenceNo)),
-      FossilStoredField(label: 'Ref author', value: displayFactValue(refAuthor)),
+      FossilStoredField(
+        label: 'Ref author',
+        value: displayFactValue(refAuthor),
+      ),
       FossilStoredField(label: 'Ref pubyr', value: _displayInt(refPubyear)),
       FossilStoredField(label: 'Reid no', value: _displayInt(reidNo)),
       FossilStoredField(

@@ -79,9 +79,7 @@ class _Segment extends StatelessWidget {
             if (showFootprint && selected) ...[
               CustomPaint(
                 size: const Size(12, 12),
-                painter: _DinoFootprintPainter(
-                  color: MapChromeTheme.brownText,
-                ),
+                painter: _DinoFootprintPainter(color: MapChromeTheme.brownText),
               ),
               const SizedBox(width: 4),
             ],
@@ -139,12 +137,7 @@ class _DinoFootprintPainter extends CustomPainter {
       );
       final path = Path()
         ..moveTo(cx + math.sin(angle) * w * 0.08, cy - h * 0.08)
-        ..quadraticBezierTo(
-          tip.dx,
-          tip.dy + h * 0.08,
-          tip.dx,
-          tip.dy,
-        )
+        ..quadraticBezierTo(tip.dx, tip.dy + h * 0.08, tip.dx, tip.dy)
         ..quadraticBezierTo(
           tip.dx + math.cos(angle) * w * 0.1,
           tip.dy + h * 0.12,

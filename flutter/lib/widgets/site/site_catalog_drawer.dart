@@ -23,9 +23,8 @@ class SiteCatalogDrawer {
   static Future<void> show(BuildContext context) {
     return CatalogAlbumDrawer.show(
       context,
-      builder: (scrollController) => _SiteCatalogAlbumBody(
-        scrollController: scrollController,
-      ),
+      builder: (scrollController) =>
+          _SiteCatalogAlbumBody(scrollController: scrollController),
     );
   }
 }
@@ -139,9 +138,7 @@ class _SiteCatalogAlbumBodyState extends State<_SiteCatalogAlbumBody> {
     }
   }
 
-  Future<void> _fetchNextMatchingPage({
-    required SiteMapFilters filters,
-  }) async {
+  Future<void> _fetchNextMatchingPage({required SiteMapFilters filters}) async {
     // When filters are active, skip empty filtered pages until we get matches.
     while (mounted && _hasMore) {
       final response = await _service.fetchSiteTypes(
@@ -201,8 +198,9 @@ class _SiteCatalogAlbumBodyState extends State<_SiteCatalogAlbumBody> {
     final catalog = context.watch<SiteCatalogController>();
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    final headerColor =
-        isDark ? MapChromeTheme.cream : MapChromeTheme.brownText;
+    final headerColor = isDark
+        ? MapChromeTheme.cream
+        : MapChromeTheme.brownText;
     final hasActive = catalog.filters.hasActiveCatalogFilters;
 
     return CatalogAlbumDrawer(

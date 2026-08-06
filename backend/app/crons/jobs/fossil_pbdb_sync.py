@@ -1,43 +1,5 @@
-"""
-PBDB fossil occurrence sync job.
+"""Compatibility alias for the feature-owned scheduled job."""
 
-With --overwrite, fossils_insert_time is cleared first for the target dinosaurs
-(or all if --dinos is omitted). Each genus is stamped only after it finishes, so
-an interrupted run can be resumed without --overwrite.
-
-Run manually:
-  python -m app.crons.runner --job fossil_pbdb_sync
-  python -m app.crons.runner --job fossil_pbdb_sync --overwrite
-  python -m app.crons.runner --job fossil_pbdb_sync --stale-days 7
-  python -m app.crons.runner --job fossil_pbdb_sync --dinos Tyrannosaurus Giganotosaurus
-  python -m app.crons.runner --job fossil_pbdb_sync --dinos Tyrannosaurus --overwrite
-"""
-
-from __future__ import annotations
-
-from datetime import datetime
-
-from sqlmodel import Session
-
-from app.core.database import engine
-from app.services.pbdb_service.sync import sync_exit_code, sync_fossils
-
-
-def run_sync_job(
-    *,
-    dry_run: bool = False,
-    overwrite: bool = False,
-    dinos: list[str] | None = None,
-    since: datetime | None = None,
-    stale_days: int | None = None,
-) -> int:
-    with Session(engine) as session:
-        summary = sync_fossils(
-            session,
-            dry_run=dry_run,
-            overwrite=overwrite,
-            dinos=dinos,
-            since=since,
-            stale_days=stale_days,
-        )
-    return sync_exit_code(summary)
+import sys
+from app.features.ingestion.jobs import fossil_pbdb_sync as _implementation
+sys.modules[__name__] = _implementation

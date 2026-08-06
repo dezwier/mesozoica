@@ -76,7 +76,8 @@ class RotateCandidateCache {
       return const [];
     }
     final previousCenter = _center;
-    final reusable = previousCenter != null &&
+    final reusable =
+        previousCenter != null &&
         identical(_sites, sites) &&
         _datasetKey == datasetKey &&
         Geolocator.distanceBetween(
@@ -143,9 +144,7 @@ Future<List<MapRotateVisibleSite>> projectRotateVisibleSites({
   final entries = capped;
   final points = <Point>[
     for (final entry in entries)
-      Point(
-        coordinates: Position(entry.site.longitude!, entry.site.latitude!),
-      ),
+      Point(coordinates: Position(entry.site.longitude!, entry.site.latitude!)),
   ];
 
   List<ScreenCoordinate?> pixels;
@@ -274,9 +273,7 @@ class _MiniCardTapTarget extends StatelessWidget {
 
 /// Frame-synced projection driver for pin overlays.
 class MapRotateOverlayController {
-  MapRotateOverlayController({
-    required this.onVisibleSitesChanged,
-  });
+  MapRotateOverlayController({required this.onVisibleSitesChanged});
 
   final ValueChanged<List<MapRotateVisibleSite>> onVisibleSitesChanged;
 

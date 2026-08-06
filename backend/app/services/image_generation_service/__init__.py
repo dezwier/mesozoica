@@ -1,17 +1,9 @@
-"""Gemini Imagen image generation helpers for curated card images."""
+"""Transitional facade for the media-owned package."""
 
-from app.services.image_generation_service.client import (
-    IMAGEN_ULTRA_COST_USD_PER_IMAGE,
-    generate_image_with_gemini,
-)
-from app.services.image_generation_service.prompting import (
-    build_dinosaur_image_prompt,
-    build_fossil_image_prompt,
-)
+from app.features.media.infrastructure.image_generation import *  # noqa: F403
+from app.features.media.infrastructure.image_generation import __all__
+from app.features.media.infrastructure import image_generation as _implementation
 
-__all__ = [
-    "IMAGEN_ULTRA_COST_USD_PER_IMAGE",
-    "build_dinosaur_image_prompt",
-    "build_fossil_image_prompt",
-    "generate_image_with_gemini",
-]
+
+def __getattr__(name: str):
+    return getattr(_implementation, name)

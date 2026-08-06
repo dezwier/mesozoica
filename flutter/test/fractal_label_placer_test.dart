@@ -76,10 +76,11 @@ void main() {
     );
 
     const placer = FractalLabelPlacer(labelPadding: 4);
-    final placed = placer.placeWithoutOverlap(
-      [candidate, candidate, candidate],
-      zoomScale: 1,
-    );
+    final placed = placer.placeWithoutOverlap([
+      candidate,
+      candidate,
+      candidate,
+    ], zoomScale: 1);
 
     expect(placed, hasLength(1));
   });
@@ -146,53 +147,56 @@ void main() {
     expect(placed.screenOffset.dy, lessThan(0));
   });
 
-  test('collectCandidates is stable for the same viewport at different pans', () {
-    const style = TextStyle(fontSize: 12);
-    final child = FractalLayoutNode(
-      treeNode: PhyloTreeNode(name: 'Child', rankKey: 'clade', depth: 1),
-      position: const Offset(120, 120),
-      parentPosition: const Offset(100, 100),
-      branchPath: null,
-      branchLength: 80,
-      strokeWidth: 4,
-      depth: 1,
-      isGenus: false,
-      children: const [],
-    );
-    final root = FractalLayoutNode(
-      treeNode: PhyloTreeNode(name: 'Root', rankKey: 'clade', depth: 0),
-      position: const Offset(100, 100),
-      parentPosition: null,
-      branchPath: null,
-      branchLength: 0,
-      strokeWidth: 4,
-      depth: 0,
-      isGenus: false,
-      children: [child],
-    );
+  test(
+    'collectCandidates is stable for the same viewport at different pans',
+    () {
+      const style = TextStyle(fontSize: 12);
+      final child = FractalLayoutNode(
+        treeNode: PhyloTreeNode(name: 'Child', rankKey: 'clade', depth: 1),
+        position: const Offset(120, 120),
+        parentPosition: const Offset(100, 100),
+        branchPath: null,
+        branchLength: 80,
+        strokeWidth: 4,
+        depth: 1,
+        isGenus: false,
+        children: const [],
+      );
+      final root = FractalLayoutNode(
+        treeNode: PhyloTreeNode(name: 'Root', rankKey: 'clade', depth: 0),
+        position: const Offset(100, 100),
+        parentPosition: null,
+        branchPath: null,
+        branchLength: 0,
+        strokeWidth: 4,
+        depth: 0,
+        isGenus: false,
+        children: [child],
+      );
 
-    const placer = FractalLabelPlacer();
-    const visible = Rect.fromLTWH(80, 80, 80, 80);
-    const zoom = 1.0;
+      const placer = FractalLabelPlacer();
+      const visible = Rect.fromLTWH(80, 80, 80, 80);
+      const zoom = 1.0;
 
-    final first = placer.collectCandidates(
-      root: root,
-      visibleTreeRect: visible,
-      zoomScale: zoom,
-      genusStyle: style,
-      cladeStyle: style,
-    );
-    final second = placer.collectCandidates(
-      root: root,
-      visibleTreeRect: visible,
-      zoomScale: zoom,
-      genusStyle: style,
-      cladeStyle: style,
-    );
+      final first = placer.collectCandidates(
+        root: root,
+        visibleTreeRect: visible,
+        zoomScale: zoom,
+        genusStyle: style,
+        cladeStyle: style,
+      );
+      final second = placer.collectCandidates(
+        root: root,
+        visibleTreeRect: visible,
+        zoomScale: zoom,
+        genusStyle: style,
+        cladeStyle: style,
+      );
 
-    expect(
-      first.map((candidate) => candidate.anchor).toList(),
-      second.map((candidate) => candidate.anchor).toList(),
-    );
-  });
+      expect(
+        first.map((candidate) => candidate.anchor).toList(),
+        second.map((candidate) => candidate.anchor).toList(),
+      );
+    },
+  );
 }

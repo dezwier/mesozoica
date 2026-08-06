@@ -45,12 +45,11 @@ class LoginForm extends StatelessWidget {
             focusedBorder: focusedBorder,
             filled: true,
             fillColor: scheme.surface,
-            prefixIcon: Icon(
-              Icons.person_outline,
-              color: scheme.primary,
+            prefixIcon: Icon(Icons.person_outline, color: scheme.primary),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 10,
             ),
-            contentPadding:
-                const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           ),
           enabled: !isLoading,
           style: Theme.of(context).textTheme.bodyLarge,
@@ -66,12 +65,11 @@ class LoginForm extends StatelessWidget {
             focusedBorder: focusedBorder,
             filled: true,
             fillColor: scheme.surface,
-            prefixIcon: Icon(
-              Icons.lock_outline,
-              color: scheme.primary,
+            prefixIcon: Icon(Icons.lock_outline, color: scheme.primary),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 10,
             ),
-            contentPadding:
-                const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           ),
           obscureText: true,
           enabled: !isLoading,
@@ -115,8 +113,8 @@ class LoginForm extends StatelessWidget {
                 : Text(
                     'Sign in',
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
           ),
         ),

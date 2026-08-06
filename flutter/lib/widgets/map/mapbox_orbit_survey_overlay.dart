@@ -35,20 +35,15 @@ class MapboxOrbitSurveyOverlay {
     }
   }
 
-  Future<void> sync({
-    required OrbitSurveyRasterResult raster,
-  }) async {
+  Future<void> sync({required OrbitSurveyRasterResult raster}) async {
     final map = _map;
     if (map == null) return;
     final seq = ++_syncSeq;
 
     // Prefer isolate-preencoded PNG; fall back to UI-thread encode.
-    final Uint8List pngBytes = raster.pngBytes ??
-        await _rgbaToPng(
-          raster.rgba,
-          raster.width,
-          raster.height,
-        );
+    final Uint8List pngBytes =
+        raster.pngBytes ??
+        await _rgbaToPng(raster.rgba, raster.width, raster.height);
     if (seq != _syncSeq) return;
 
     final image = MbxImage(
@@ -65,18 +60,12 @@ class MapboxOrbitSurveyOverlay {
       if (!hasSource) {
         // Match Mapbox ImageSource example order: source → layer → image.
         await map.style.addSource(
-          ImageSource(
-            id: orbitSurveySourceId,
-            coordinates: coords,
-          ),
+          ImageSource(id: orbitSurveySourceId, coordinates: coords),
         );
         if (seq != _syncSeq) return;
         await _ensureLayer(map);
         if (seq != _syncSeq) return;
-        await map.style.updateStyleImageSourceImage(
-          orbitSurveySourceId,
-          image,
-        );
+        await map.style.updateStyleImageSourceImage(orbitSurveySourceId, image);
         developer.log(
           'Orbit survey installed '
           '${raster.width}x${raster.height} png=${pngBytes.length}B',
@@ -93,10 +82,7 @@ class MapboxOrbitSurveyOverlay {
       if (seq != _syncSeq) return;
       await _ensureLayer(map);
       if (seq != _syncSeq) return;
-      await map.style.updateStyleImageSourceImage(
-        orbitSurveySourceId,
-        image,
-      );
+      await map.style.updateStyleImageSourceImage(orbitSurveySourceId, image);
     } catch (error, stack) {
       developer.log(
         'Orbit survey sync failed: $error\n$stack',

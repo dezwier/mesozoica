@@ -15,14 +15,17 @@ import '../services/notification_service.dart';
 class NotificationController extends ChangeNotifier {
   NotificationController({
     NotificationService? notificationService,
+    ResponseCache? responseCache,
     Future<void> Function(int count)? setAppBadgeCount,
-  })  : _notificationService = notificationService ?? NotificationService(),
-        _setAppBadgeCount = setAppBadgeCount ?? AppBadgeService.setBadgeCount;
+  }) : _notificationService = notificationService ?? NotificationService(),
+       _responseCache = responseCache ?? ApiResponseCache.instance,
+       _setAppBadgeCount = setAppBadgeCount ?? AppBadgeService.setBadgeCount;
 
   static const String _cacheKey = 'notifications_v1';
   static const Duration _cacheTtl = Duration(days: 365);
 
   final NotificationService _notificationService;
+  final ResponseCache _responseCache;
   final Future<void> Function(int count) _setAppBadgeCount;
   final List<UserNotificationItem> _items = [];
   int? _activeUserId;
@@ -54,11 +57,7 @@ class NotificationController extends ChangeNotifier {
       _activeUserId = userId;
     }
     try {
-      final raw = await ApiResponseCache.instance.get(
-        _cacheKey,
-        userId,
-        ttl: _cacheTtl,
-      );
+      final raw = await _responseCache.get(_cacheKey, userId, ttl: _cacheTtl);
       if (raw == null) return;
       final decoded = jsonDecode(raw);
       if (decoded is! Map<String, dynamic>) return;
@@ -68,8 +67,9 @@ class NotificationController extends ChangeNotifier {
         ..addAll(
           list
               .map(
-                (entry) =>
-                    UserNotificationItem.fromJson(entry as Map<String, dynamic>),
+                (entry) => UserNotificationItem.fromJson(
+                  entry as Map<String, dynamic>,
+                ),
               )
               .where((item) => item.isInAppBellItem),
         );
@@ -111,9 +111,7 @@ class NotificationController extends ChangeNotifier {
       notifyListeners();
       if (_refreshQueued) {
         _refreshQueued = false;
-        unawaited(
-          refreshInBackground(authenticatedUserId: _activeUserId),
-        );
+        unawaited(refreshInBackground(authenticatedUserId: _activeUserId));
       }
     });
     return _inFlightRefresh!;
@@ -136,9 +134,7 @@ class NotificationController extends ChangeNotifier {
       final result = await _notificationService.getNotifications();
       _items
         ..clear()
-        ..addAll(
-          result.items.where((item) => item.isInAppBellItem),
-        );
+        ..addAll(result.items.where((item) => item.isInAppBellItem));
       await _persistItems();
       _syncAppBadge();
     } catch (error, stackTrace) {
@@ -150,13 +146,9 @@ class NotificationController extends ChangeNotifier {
     final userId = _activeUserId;
     if (userId == null) return;
     try {
-      await ApiResponseCache.instance.set(
-        _cacheKey,
-        userId,
-        {
-          'notifications': _items.map((item) => item.toJson()).toList(),
-        },
-      );
+      await _responseCache.set(_cacheKey, userId, {
+        'notifications': _items.map((item) => item.toJson()).toList(),
+      });
     } catch (error, stackTrace) {
       debugPrint('NotificationController._persistItems: $error\n$stackTrace');
     }
@@ -175,8 +167,9 @@ class NotificationController extends ChangeNotifier {
   }
 
   Future<void> markAllRead() async {
-    final unreadIds =
-        _items.where((item) => !item.read && item.id > 0).map((item) => item.id);
+    final unreadIds = _items
+        .where((item) => !item.read && item.id > 0)
+        .map((item) => item.id);
     for (final id in unreadIds) {
       await markRead(id);
     }

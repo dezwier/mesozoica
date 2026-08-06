@@ -15,18 +15,16 @@ class TerrainEchoCardExtension implements ToolCardExtension {
 
   @override
   List<String> editableParamKeys(ToolSummary tool) => const [
-        'duration_minutes',
-        'accuracy',
-        'range_m',
-      ];
+    'duration_minutes',
+    'accuracy',
+    'range_m',
+  ];
 
   @override
   Widget? buildDeployStats(BuildContext context, ToolSummary tool) {
     final params = tool.isOwned && tool.params.isNotEmpty
         ? tool.params
         : tool.baseParams;
-    return CardSectionPanel(
-      child: TerrainEchoToolStats(params: params),
-    );
+    return CardSectionPanel(child: TerrainEchoToolStats(params: params));
   }
 }

@@ -96,8 +96,9 @@ class MapboxAerialAnnotations {
     Uint8List? puckImage;
     final needsScout = visible.any((m) => m.isInFlight || m.isPending);
     if (needsScout) {
-      final scoutSession =
-          visible.firstWhere((m) => m.isInFlight || m.isPending);
+      final scoutSession = visible.firstWhere(
+        (m) => m.isInFlight || m.isPending,
+      );
       final imageUrl = AuthService.imageUrl(scoutSession.toolImageUrl);
       final accent = AerialActionKind.fromActionKey(
         scoutSession.actionKey,
@@ -344,7 +345,10 @@ Future<Uint8List> _renderScoutPuckPng({
   required Color accent,
 }) async {
   const pixelRatio = _scoutPuckPixelRatio;
-  final circleSpan = (_scoutPuckLogicalSize * pixelRatio).round().clamp(48, 160);
+  final circleSpan = (_scoutPuckLogicalSize * pixelRatio).round().clamp(
+    48,
+    160,
+  );
   final radius = circleSpan / 2 - pixelRatio * 2;
   final outerPad = radius * 0.55;
   final dim = (circleSpan + 2 * outerPad).round();

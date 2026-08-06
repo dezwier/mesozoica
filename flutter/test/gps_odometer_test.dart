@@ -50,11 +50,7 @@ void main() {
     // ~42 m in 3 s ≈ 14 m/s (~50 km/h) but also over max segment if too far;
     // use ~14 m in 1 s ≈ 14 m/s.
     final result = odometer.addFix(
-      fix(
-        lat: 51.000126,
-        lon: 4.0,
-        at: t0.add(const Duration(seconds: 1)),
-      ),
+      fix(lat: 51.000126, lon: 4.0, at: t0.add(const Duration(seconds: 1))),
     );
     expect(result.accepted, isFalse);
     expect(result.rejectReason, 'speed');
@@ -79,11 +75,7 @@ void main() {
     final t0 = DateTime(2026, 7, 22, 10, 0, 0);
     odometer.addFix(fix(lat: 51.0, lon: 4.0, at: t0));
     final result = odometer.addFix(
-      fix(
-        lat: 51.002,
-        lon: 4.0,
-        at: t0.add(const Duration(seconds: 5)),
-      ),
+      fix(lat: 51.002, lon: 4.0, at: t0.add(const Duration(seconds: 5))),
     );
     expect(result.accepted, isFalse);
     expect(result.rejectReason, 'jump');
@@ -109,11 +101,7 @@ void main() {
     odometer.addFix(fix(lat: 51.0, lon: 4.0, at: t0));
     odometer.reset();
     final result = odometer.addFix(
-      fix(
-        lat: 51.0001,
-        lon: 4.0,
-        at: t0.add(const Duration(seconds: 5)),
-      ),
+      fix(lat: 51.0001, lon: 4.0, at: t0.add(const Duration(seconds: 5))),
     );
     expect(result.accepted, isFalse);
     expect(result.acceptedMeters, 0);

@@ -18,19 +18,16 @@ class GuidanceCardExtension implements ToolCardExtension {
   List<String> editableParamKeys(ToolSummary tool) {
     final guidance = GuidanceToolKind.requireToolName(tool.name);
     return switch (guidance) {
-      GuidanceToolKind.geoCompass => const [
-          'duration_minutes',
-          'exactness',
-        ],
+      GuidanceToolKind.geoCompass => const ['duration_minutes', 'exactness'],
       GuidanceToolKind.proximityScanner => const [
-          'duration_minutes',
-          'exactness',
-        ],
+        'duration_minutes',
+        'exactness',
+      ],
       GuidanceToolKind.siteNavigator => const [
-          'duration_minutes',
-          'direction_exactness',
-          'distance_exactness',
-        ],
+        'duration_minutes',
+        'direction_exactness',
+        'distance_exactness',
+      ],
     };
   }
 

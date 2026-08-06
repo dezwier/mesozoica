@@ -4,10 +4,7 @@ import '../../theme/dino_card_theme.dart';
 
 /// Top-left chip showing occurrence id and image version (e.g. `#67 · Original`).
 class OccurrenceIdBadge extends StatelessWidget {
-  const OccurrenceIdBadge({
-    super.key,
-    required this.label,
-  });
+  const OccurrenceIdBadge({super.key, required this.label});
 
   final String label;
 

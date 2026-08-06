@@ -44,10 +44,7 @@ class CardGeologicTimelinePanel extends StatelessWidget {
 
     return CardSectionPanel(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      child: SizedBox(
-        height: height,
-        child: timeline,
-      ),
+      child: SizedBox(height: height, child: timeline),
     );
   }
 }

@@ -36,9 +36,9 @@ const double mapboxMarkerSelectionDotScale = 0.38;
 /// Endpoints stay ~4 (zoomed out) and ~8 (zoomed in). Mid zooms stay closer
 /// to the small size via a strong ease-in, so markers only grow near max.
 double mapboxMarkerRadiusForZoom(double zoom) {
-  final t = ((zoom - MapConfig.minZoom) /
-          (MapConfig.maxZoom - MapConfig.minZoom))
-      .clamp(0.0, 1.0);
+  final t =
+      ((zoom - MapConfig.minZoom) / (MapConfig.maxZoom - MapConfig.minZoom))
+          .clamp(0.0, 1.0);
   // t^3 keeps mid-range small; t=0 and t=1 unchanged.
   final eased = t * t * t;
   return ui.lerpDouble(4.0, 8.0, eased)!;

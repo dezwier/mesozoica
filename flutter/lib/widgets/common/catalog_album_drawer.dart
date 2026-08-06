@@ -48,8 +48,9 @@ class CatalogAlbumDrawer extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    final headerColor =
-        isDark ? MapChromeTheme.cream : MapChromeTheme.brownText;
+    final headerColor = isDark
+        ? MapChromeTheme.cream
+        : MapChromeTheme.brownText;
     final dividerColor = isDark
         ? MapChromeTheme.leather.withValues(alpha: 0.85)
         : MapChromeTheme.parchmentEdge.withValues(alpha: 0.85);
@@ -77,10 +78,7 @@ class CatalogAlbumDrawer extends StatelessWidget {
                     ),
                   ),
                   if (leading != null)
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: leading!,
-                    ),
+                    Align(alignment: Alignment.centerLeft, child: leading!),
                   Align(
                     alignment: Alignment.centerRight,
                     child: IconButton(
@@ -96,11 +94,7 @@ class CatalogAlbumDrawer extends StatelessWidget {
               ),
             ),
           ),
-          Divider(
-            height: 1,
-            thickness: 1,
-            color: dividerColor,
-          ),
+          Divider(height: 1, thickness: 1, color: dividerColor),
           Expanded(child: body),
         ],
       ),
@@ -161,17 +155,13 @@ class CatalogAlbumGrid extends StatelessWidget {
       return ListView(
         controller: scrollController,
         padding: const EdgeInsets.all(24),
-        children: [
-          Text(emptyMessage, textAlign: TextAlign.center),
-        ],
+        children: [Text(emptyMessage, textAlign: TextAlign.center)],
       );
     }
 
     return NotificationListener<ScrollNotification>(
       onNotification: (notification) {
-        if (notification.metrics.extentAfter < 400 &&
-            hasMore &&
-            !isLoading) {
+        if (notification.metrics.extentAfter < 400 && hasMore && !isLoading) {
           onLoadMore();
         }
         return false;

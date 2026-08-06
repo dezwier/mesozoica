@@ -14,18 +14,13 @@ Future<void> showFossilCardDialog(
 }) {
   return CardDetailSheet.show<void>(
     context,
-    builder: (context) => _FossilCardSheet(
-      fossilId: fossilId,
-      fossilService: fossilService,
-    ),
+    builder: (context) =>
+        _FossilCardSheet(fossilId: fossilId, fossilService: fossilService),
   );
 }
 
 class _FossilCardSheet extends StatefulWidget {
-  const _FossilCardSheet({
-    required this.fossilId,
-    this.fossilService,
-  });
+  const _FossilCardSheet({required this.fossilId, this.fossilService});
 
   final int fossilId;
   final FossilService? fossilService;

@@ -7,12 +7,21 @@ const String _keyPrefix = 'api_cache_';
 const Duration _defaultTtl = Duration(hours: 24);
 
 /// Persistent cache for API responses (cold start / stale-while-revalidate).
-class ApiResponseCache {
+abstract interface class ResponseCache {
+  Future<String?> get(String name, int? userId, {Duration ttl = _defaultTtl});
+
+  Future<void> set(String name, int? userId, Object payload);
+
+  Future<void> clearForUser(int? userId);
+}
+
+class ApiResponseCache implements ResponseCache {
   ApiResponseCache._();
   static final ApiResponseCache instance = ApiResponseCache._();
 
   String _key(String name, int? userId) => '$_keyPrefix${name}_${userId ?? 0}';
 
+  @override
   Future<String?> get(
     String name,
     int? userId, {
@@ -38,20 +47,19 @@ class ApiResponseCache {
     }
   }
 
+  @override
   Future<void> set(String name, int? userId, Object payload) async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final dataJson = payload is String ? payload : jsonEncode(payload);
-      final entry = {
-        'data': dataJson,
-        'ts': DateTime.now().toIso8601String(),
-      };
+      final entry = {'data': dataJson, 'ts': DateTime.now().toIso8601String()};
       await prefs.setString(_key(name, userId), jsonEncode(entry));
     } catch (error, stackTrace) {
       debugPrint('ApiResponseCache.set failed for $name: $error\n$stackTrace');
     }
   }
 
+  @override
   Future<void> clearForUser(int? userId) async {
     try {
       final prefs = await SharedPreferences.getInstance();

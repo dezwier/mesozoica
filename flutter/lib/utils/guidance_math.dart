@@ -86,9 +86,7 @@ class GuidanceMath {
     required double deviceHeadingDeg,
     required double centerOffsetDeg,
   }) {
-    return _normalizeDeg(
-      trueBearingDeg + centerOffsetDeg - deviceHeadingDeg,
-    );
+    return _normalizeDeg(trueBearingDeg + centerOffsetDeg - deviceHeadingDeg);
   }
 
   static double _normalizeDeg(double deg) {
@@ -117,9 +115,7 @@ class GuidanceMath {
   static String _formatMeters(double meters) {
     if (meters >= 1000) {
       final km = meters / 1000;
-      final label = km >= 10
-          ? km.toStringAsFixed(0)
-          : km.toStringAsFixed(1);
+      final label = km >= 10 ? km.toStringAsFixed(0) : km.toStringAsFixed(1);
       return '$label km';
     }
     return '${meters.round()} m';

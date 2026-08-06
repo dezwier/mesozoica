@@ -3,7 +3,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mesozoica/widgets/cards/card_adaptive_title_text.dart';
 
 void main() {
-  testWidgets('CardAdaptiveTitleText keeps full size when title fits', (tester) async {
+  testWidgets('CardAdaptiveTitleText keeps full size when title fits', (
+    tester,
+  ) async {
     const style = TextStyle(fontSize: 36);
 
     await tester.pumpWidget(
@@ -12,10 +14,7 @@ void main() {
           body: Center(
             child: SizedBox(
               width: 320,
-              child: CardAdaptiveTitleText(
-                text: 'T. rex',
-                style: style,
-              ),
+              child: CardAdaptiveTitleText(text: 'T. rex', style: style),
             ),
           ),
         ),
@@ -27,8 +26,9 @@ void main() {
     expect(find.byType(FittedBox), findsOneWidget);
   });
 
-  testWidgets('CardAdaptiveTitleText scales down long titles to one line',
-      (tester) async {
+  testWidgets('CardAdaptiveTitleText scales down long titles to one line', (
+    tester,
+  ) async {
     const style = TextStyle(fontSize: 36);
     const longName =
         'Supercalifragilisticexpialidocus maximus longissimus namus';
@@ -39,10 +39,7 @@ void main() {
           body: Center(
             child: SizedBox(
               width: 280,
-              child: CardAdaptiveTitleText(
-                text: longName,
-                style: style,
-              ),
+              child: CardAdaptiveTitleText(text: longName, style: style),
             ),
           ),
         ),

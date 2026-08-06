@@ -17,11 +17,9 @@ import 'timed_session_remaining.dart';
 
 /// Active timed Orbit Survey session (period mosaic overlay).
 class OrbitSurveyController extends ChangeNotifier {
-  OrbitSurveyController({
-    ToolService? toolService,
-    SiteService? siteService,
-  })  : _toolService = toolService ?? ToolService(),
-        _siteService = siteService ?? SiteService();
+  OrbitSurveyController({ToolService? toolService, SiteService? siteService})
+    : _toolService = toolService ?? ToolService(),
+      _siteService = siteService ?? SiteService();
 
   final ToolService _toolService;
   final SiteService _siteService;
@@ -41,8 +39,9 @@ class OrbitSurveyController extends ChangeNotifier {
   int _sitesRevision = 0;
 
   /// Countdown for HUD / tool cards — does not trigger [notifyListeners].
-  final ValueNotifier<Duration?> remainingListenable =
-      ValueNotifier<Duration?>(null);
+  final ValueNotifier<Duration?> remainingListenable = ValueNotifier<Duration?>(
+    null,
+  );
 
   bool get isActive =>
       _session != null && _session!.isActive && !_session!.isExpired;
@@ -134,8 +133,7 @@ class OrbitSurveyController extends ChangeNotifier {
     _message = null;
     notifyListeners();
     try {
-      final session =
-          await _toolService.startToolSession(toolId: tool.id);
+      final session = await _toolService.startToolSession(toolId: tool.id);
       _session = session;
       _tool = tool;
       _requestShowOnMap = true;
@@ -222,8 +220,7 @@ class OrbitSurveyController extends ChangeNotifier {
     if (loc == null) return;
     // Server ignores client radius and uses YAML square density; send the
     // global nearby hint for logging/compat only.
-    final radiusKm =
-        GameConfig.instance.siteGeneration.client.nearbyRadiusKm;
+    final radiusKm = GameConfig.instance.siteGeneration.client.nearbyRadiusKm;
     try {
       await _siteService.requestFieldSiteEnsure(
         lat: loc.latitude,

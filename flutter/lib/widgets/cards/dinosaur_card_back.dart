@@ -59,19 +59,14 @@ class DinosaurCardBack extends StatelessWidget {
               top: 14,
               right: 10,
               child: IconButton(
-                onPressed: () => DinosaurArticleDrawer.show(
-                  context,
-                  dinosaur: dinosaur,
-                ),
+                onPressed: () =>
+                    DinosaurArticleDrawer.show(context, dinosaur: dinosaur),
                 icon: const Icon(Icons.info_outline, size: 18),
                 color: const Color(0xE6F5F0E8),
                 tooltip: 'Read article',
                 visualDensity: VisualDensity.compact,
                 padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(
-                  minWidth: 28,
-                  minHeight: 28,
-                ),
+                constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
               ),
             ),
           Positioned(

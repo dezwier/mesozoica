@@ -21,10 +21,8 @@ class DinosaurTreeSheet {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (_) => SizedBox(
-        height: sheetHeight,
-        child: const _DinosaurTreeSheetBody(),
-      ),
+      builder: (_) =>
+          SizedBox(height: sheetHeight, child: const _DinosaurTreeSheetBody()),
     );
   }
 }

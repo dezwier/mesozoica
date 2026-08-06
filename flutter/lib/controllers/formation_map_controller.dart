@@ -21,11 +21,9 @@ import 'timed_session_remaining.dart';
 /// ([SiteGenerationConfig.cellSizeM]). Ensure tops up every cell in the
 /// footprint (server also enqueues on session start).
 class FormationMapController extends ChangeNotifier {
-  FormationMapController({
-    ToolService? toolService,
-    SiteService? siteService,
-  })  : _toolService = toolService ?? ToolService(),
-        _siteService = siteService ?? SiteService();
+  FormationMapController({ToolService? toolService, SiteService? siteService})
+    : _toolService = toolService ?? ToolService(),
+      _siteService = siteService ?? SiteService();
 
   final ToolService _toolService;
   final SiteService _siteService;
@@ -42,8 +40,9 @@ class FormationMapController extends ChangeNotifier {
   Timer? _tickTimer;
   int _sitesRevision = 0;
 
-  final ValueNotifier<Duration?> remainingListenable =
-      ValueNotifier<Duration?>(null);
+  final ValueNotifier<Duration?> remainingListenable = ValueNotifier<Duration?>(
+    null,
+  );
 
   bool get isActive =>
       _session != null && _session!.isActive && !_session!.isExpired;
@@ -219,8 +218,7 @@ class FormationMapController extends ChangeNotifier {
   Future<void> _ensureFieldSitesAtMapCenter() async {
     final fp = footprint;
     if (fp == null) return;
-    final radiusKm =
-        GameConfig.instance.siteGeneration.client.nearbyRadiusKm;
+    final radiusKm = GameConfig.instance.siteGeneration.client.nearbyRadiusKm;
     try {
       for (final center in fp.cellCenters()) {
         await _siteService.requestFieldSiteEnsure(

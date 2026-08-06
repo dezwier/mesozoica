@@ -44,10 +44,7 @@ SiteService _mockService({
     client: MockClient((request) async {
       final includeHidden =
           request.url.queryParameters['include_hidden'] == 'true';
-      final items = [
-        ...visibleItems,
-        if (includeHidden) ...hiddenItems,
-      ];
+      final items = [...visibleItems, if (includeHidden) ...hiddenItems];
       return http.Response(jsonEncode({'items': items}), 200);
     }),
   );
@@ -60,22 +57,25 @@ void main() {
     SharedPreferences.setMockInitialValues({});
   });
 
-  testWidgets('SiteCardFossils renders horizontal fossil thumbnails',
-      (tester) async {
-    final service = _mockService(visibleItems: [
-      {
-        'id': 100001,
-        'main_image_url': _curatedFossilImageUrl,
-        'identified_name': 'Tyrannosaurus rex',
-        'status': 'discovered',
-      },
-      {
-        'id': 100002,
-        'identified_name': 'Triceratops horridus',
-        'status': 'in_situ',
-      },
-      {'id': 100003, 'status': 'discovered'},
-    ]);
+  testWidgets('SiteCardFossils renders horizontal fossil thumbnails', (
+    tester,
+  ) async {
+    final service = _mockService(
+      visibleItems: [
+        {
+          'id': 100001,
+          'main_image_url': _curatedFossilImageUrl,
+          'identified_name': 'Tyrannosaurus rex',
+          'status': 'discovered',
+        },
+        {
+          'id': 100002,
+          'identified_name': 'Triceratops horridus',
+          'status': 'in_situ',
+        },
+        {'id': 100003, 'status': 'discovered'},
+      ],
+    );
 
     await tester.pumpWidget(
       MaterialApp(
@@ -84,10 +84,7 @@ void main() {
             child: SizedBox(
               width: 220,
               height: 80,
-              child: SiteCardFossils(
-                siteId: 50001,
-                siteService: service,
-              ),
+              child: SiteCardFossils(siteId: 50001, siteService: service),
             ),
           ),
         ),
@@ -111,22 +108,15 @@ void main() {
     expect(thumbBoxes.length, greaterThanOrEqualTo(3));
   });
 
-  testWidgets('SiteCardFossils hides hidden fossils outside admin mode',
-      (tester) async {
+  testWidgets('SiteCardFossils hides hidden fossils outside admin mode', (
+    tester,
+  ) async {
     final service = _mockService(
       visibleItems: [
-        {
-          'id': 1,
-          'identified_name': 'Visible Fossil',
-          'status': 'discovered',
-        },
+        {'id': 1, 'identified_name': 'Visible Fossil', 'status': 'discovered'},
       ],
       hiddenItems: [
-        {
-          'id': 2,
-          'identified_name': 'Hidden Fossil',
-          'status': 'hidden',
-        },
+        {'id': 2, 'identified_name': 'Hidden Fossil', 'status': 'hidden'},
       ],
     );
     final auth = AuthController();
@@ -140,10 +130,7 @@ void main() {
             body: SizedBox(
               width: 220,
               height: 80,
-              child: SiteCardFossils(
-                siteId: 50001,
-                siteService: service,
-              ),
+              child: SiteCardFossils(siteId: 50001, siteService: service),
             ),
           ),
         ),
@@ -156,22 +143,15 @@ void main() {
     expect(find.byType(CardRecordThumb), findsOneWidget);
   });
 
-  testWidgets('SiteCardFossils shows faded hidden fossils in admin mode',
-      (tester) async {
+  testWidgets('SiteCardFossils shows faded hidden fossils in admin mode', (
+    tester,
+  ) async {
     final service = _mockService(
       visibleItems: [
-        {
-          'id': 1,
-          'identified_name': 'Visible Fossil',
-          'status': 'discovered',
-        },
+        {'id': 1, 'identified_name': 'Visible Fossil', 'status': 'discovered'},
       ],
       hiddenItems: [
-        {
-          'id': 2,
-          'identified_name': 'Hidden Fossil',
-          'status': 'hidden',
-        },
+        {'id': 2, 'identified_name': 'Hidden Fossil', 'status': 'hidden'},
       ],
     );
     final auth = AuthController();
@@ -186,10 +166,7 @@ void main() {
             body: SizedBox(
               width: 220,
               height: 80,
-              child: SiteCardFossils(
-                siteId: 50001,
-                siteService: service,
-              ),
+              child: SiteCardFossils(siteId: 50001, siteService: service),
             ),
           ),
         ),

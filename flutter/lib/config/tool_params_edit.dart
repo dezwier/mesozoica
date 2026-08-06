@@ -5,10 +5,7 @@ import 'tool_instance_params.dart';
 abstract final class ToolParamsEdit {
   ToolParamsEdit._();
 
-  static const _skipTopLevel = {
-    'stats_explanation',
-    'modifies_main_params',
-  };
+  static const _skipTopLevel = {'stats_explanation', 'modifies_main_params'};
 
   /// Deep-merge YAML defaults under instance params (instance wins at leaves).
   static Map<String, dynamic> mergeDefaults(
@@ -39,10 +36,7 @@ abstract final class ToolParamsEdit {
     final mods = modifiesMainParamsFromParams(params);
     if (mods == null) return const [];
     final out = <String>[];
-    void walk(
-      String when,
-      Map<String, Map<String, ParamModifier>> bucket,
-    ) {
+    void walk(String when, Map<String, Map<String, ParamModifier>> bucket) {
       for (final skillEntry in bucket.entries) {
         for (final paramEntry in skillEntry.value.entries) {
           final base =
@@ -97,7 +91,8 @@ abstract final class ToolParamsEdit {
     final impactLabels = impactEditLabels(keys);
     return {
       for (final key in keys)
-        key: toolLabels[key] ??
+        key:
+            toolLabels[key] ??
             impactLabels[key] ??
             _humanizeKey(key.contains('.') ? key.split('.').last : key),
     };
@@ -168,9 +163,7 @@ abstract final class ToolParamsEdit {
             : Map<String, dynamic>.from(prev);
         _deepMergeInto(
           merged,
-          next is Map<String, dynamic>
-              ? next
-              : Map<String, dynamic>.from(next),
+          next is Map<String, dynamic> ? next : Map<String, dynamic>.from(next),
         );
         target[key] = merged;
       } else if (next is Map<String, dynamic>) {

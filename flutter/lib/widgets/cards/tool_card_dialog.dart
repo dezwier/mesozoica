@@ -13,18 +13,12 @@ Future<void> showToolCardDialog(
   assert(tool != null || toolId != null, 'Provide tool or toolId');
   return CardDetailSheet.show<void>(
     context,
-    builder: (context) => _ToolCardSheet(
-      toolId: toolId,
-      tool: tool,
-    ),
+    builder: (context) => _ToolCardSheet(toolId: toolId, tool: tool),
   );
 }
 
 class _ToolCardSheet extends StatefulWidget {
-  const _ToolCardSheet({
-    this.toolId,
-    this.tool,
-  });
+  const _ToolCardSheet({this.toolId, this.tool});
 
   final int? toolId;
   final ToolSummary? tool;

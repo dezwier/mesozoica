@@ -47,7 +47,10 @@ void main() {
 
     expect(config.toolActions.aerialRecon.durationMinutes, greaterThan(0));
     expect(config.toolActions.aerialRecon.flightSpeedKmh, greaterThan(0));
-    expect(config.toolActions.aerialRecon.flightDiscoveryChance, greaterThan(0));
+    expect(
+      config.toolActions.aerialRecon.flightDiscoveryChance,
+      greaterThan(0),
+    );
     expect(
       config.toolActions.aerialRecon.statsExplanation,
       contains('Flight time'),
@@ -59,8 +62,9 @@ void main() {
     );
 
     expect(
-      config.toolActions.geoCompass.modifiesMainParams
-          ?.affectsSkill('field_survey'),
+      config.toolActions.geoCompass.modifiesMainParams?.affectsSkill(
+        'field_survey',
+      ),
       isTrue,
     );
     expect(
@@ -97,10 +101,7 @@ void main() {
       config.toolActions.formationMap.cellSizeM,
       config.siteGeneration.cellSizeM,
     );
-    expect(
-      config.rockTypeColors.forRockType('sandstone'),
-      isNotNull,
-    );
+    expect(config.rockTypeColors.forRockType('sandstone'), isNotNull);
 
     expect(config.toolActions.ridgeGlass.durationMinutes, greaterThan(0));
     expect(
@@ -118,8 +119,9 @@ void main() {
     expect(config.toolActions.ridgeGlass.addedDiscoveryDistanceM, isNull);
     expect(config.toolActions.ridgeGlass.addedDiscoveryRate, isNull);
     expect(
-      config.toolActions.ridgeGlass.modifiesMainParams
-          ?.affectsSkill('field_survey'),
+      config.toolActions.ridgeGlass.modifiesMainParams?.affectsSkill(
+        'field_survey',
+      ),
       isTrue,
     );
 
@@ -129,10 +131,7 @@ void main() {
       config.toolActions.canyonThrottle,
       config.toolActions.overlandChassis,
     ]) {
-      expect(
-        action.modifiesMainParams?.affectsSkill('field_survey'),
-        isTrue,
-      );
+      expect(action.modifiesMainParams?.affectsSkill('field_survey'), isTrue);
       expect(
         action.modifiesMainParams
             ?.paramsFor('using', 'field_survey')
@@ -152,7 +151,9 @@ void main() {
       isNotNull,
     );
     expect(
-      config.toolActions.nocturneLens.siteDiscoveryMod('discovery_max_speed_kmh'),
+      config.toolActions.nocturneLens.siteDiscoveryMod(
+        'discovery_max_speed_kmh',
+      ),
       isNull,
     );
 

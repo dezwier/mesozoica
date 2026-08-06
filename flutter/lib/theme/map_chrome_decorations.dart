@@ -24,10 +24,7 @@ abstract final class MapChromeDecorations {
         ],
         stops: const [0.0, 0.55, 1.0],
       ),
-      border: Border.all(
-        color: MapChromeTheme.chromeBorder,
-        width: rimWidth,
-      ),
+      border: Border.all(color: MapChromeTheme.chromeBorder, width: rimWidth),
       boxShadow: [
         BoxShadow(
           color: Colors.black.withValues(alpha: 0.28),
@@ -48,18 +45,19 @@ abstract final class MapChromeDecorations {
     bool soft = false,
     bool compact = false,
   }) {
-    final highlight =
-        soft ? MapChromeTheme.leatherSoftHighlight : MapChromeTheme.leatherHighlight;
-    final mid = soft ? MapChromeTheme.leatherSoftMid : MapChromeTheme.leatherMid;
+    final highlight = soft
+        ? MapChromeTheme.leatherSoftHighlight
+        : MapChromeTheme.leatherHighlight;
+    final mid = soft
+        ? MapChromeTheme.leatherSoftMid
+        : MapChromeTheme.leatherMid;
     final base = soft ? MapChromeTheme.leatherSoft : MapChromeTheme.leather;
     return BoxDecoration(
       borderRadius: borderRadius,
       gradient: LinearGradient(
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
-        colors: compact
-            ? [highlight, mid, mid]
-            : [highlight, mid, base],
+        colors: compact ? [highlight, mid, mid] : [highlight, mid, base],
         stops: const [0.0, 0.4, 1.0],
       ),
       border: Border.all(
@@ -77,19 +75,14 @@ abstract final class MapChromeDecorations {
   }
 
   /// Soft parchment fill for labels and selected toggle segments.
-  static BoxDecoration parchmentPanel({
-    required BorderRadius borderRadius,
-  }) {
+  static BoxDecoration parchmentPanel({required BorderRadius borderRadius}) {
     return BoxDecoration(
       borderRadius: borderRadius,
       // Near-flat: only a whisper of top→bottom warmth.
       gradient: const LinearGradient(
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
-        colors: [
-          MapChromeTheme.creamCard,
-          MapChromeTheme.parchment,
-        ],
+        colors: [MapChromeTheme.creamCard, MapChromeTheme.parchment],
       ),
       border: Border.all(
         color: MapChromeTheme.parchmentEdge.withValues(alpha: 0.45),

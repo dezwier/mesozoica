@@ -25,8 +25,8 @@ class FieldDiscoveryCoordinator extends ChangeNotifier {
   FieldDiscoveryCoordinator({
     SiteService? siteService,
     Duration? discoveryRerollIntervalOverride,
-  })  : _siteService = siteService ?? SiteService(),
-        _discoveryRerollIntervalOverride = discoveryRerollIntervalOverride;
+  }) : _siteService = siteService ?? SiteService(),
+       _discoveryRerollIntervalOverride = discoveryRerollIntervalOverride;
 
   /// YAML client fallback (kept for tests / pre-boost default).
   static double get autoDiscoverRadiusM =>
@@ -36,17 +36,18 @@ class FieldDiscoveryCoordinator extends ChangeNotifier {
   static double get cacheRefreshMoveThresholdM =>
       GameConfig.instance.siteDiscovery.client.cacheRefreshMoveThresholdM;
   static Duration get discoverFailRetry => Duration(
-        seconds: GameConfig.instance.siteDiscovery.client.discoverFailRetryS,
-      );
+    seconds: GameConfig.instance.siteDiscovery.client.discoverFailRetryS,
+  );
   static Duration get discoveryRerollIntervalDefault => Duration(
-        seconds:
-            GameConfig.instance.siteDiscovery.client.discoveryRerollIntervalS,
-      );
+    seconds: GameConfig.instance.siteDiscovery.client.discoveryRerollIntervalS,
+  );
 
   final SiteService _siteService;
   final Duration? _discoveryRerollIntervalOverride;
+
   /// Effective visibility distance (main param + level/tool). Null → YAML.
   double? _discoverRadiusOverrideM;
+
   /// Effective max discovery speed (main param + tool). Null → YAML.
   double? _discoveryMaxSpeedKmhOverride;
 
@@ -95,14 +96,17 @@ class FieldDiscoveryCoordinator extends ChangeNotifier {
   LatLng? _lastHandledLocation;
   double? _cacheRadiusOverrideKm;
   final Set<int> _insideRadiusSiteIds = {};
+
   /// Sites observed while the user was outside their discover radius.
   /// Required before an inside fix can count as an immediate walk-in roll.
   final Set<int> _seenOutsideSiteIds = {};
   final Set<int> _inFlightSiteIds = {};
+
   /// Earliest time a discover attempt may run for a site (dwell / network retry).
   final Map<int, DateTime> _nextDiscoverAtBySiteId = {};
   Timer? _dwellTimer;
   Future<void>? _cacheRefreshFuture;
+
   /// FIFO of discoveries waiting for celebration UI (keeps each site separate).
   final List<FieldDiscoverResponse> _celebrationQueue = [];
 
@@ -125,8 +129,7 @@ class FieldDiscoveryCoordinator extends ChangeNotifier {
   List<SiteSummary> get discoverableCache =>
       List<SiteSummary>.unmodifiable(_discoverableCache);
 
-  double get effectiveCacheRadiusKm =>
-      _cacheRadiusOverrideKm ?? cacheRadiusKm;
+  double get effectiveCacheRadiusKm => _cacheRadiusOverrideKm ?? cacheRadiusKm;
 
   /// Widen/narrow the nearby-discoverable fetch radius (e.g. Orbit Survey).
   /// Pass null to restore the YAML default.
@@ -195,7 +198,9 @@ class FieldDiscoveryCoordinator extends ChangeNotifier {
       added++;
     }
     if (added == 0) return;
-    _log('ingested $added hidden map sites; cache=${_discoverableCache.length}');
+    _log(
+      'ingested $added hidden map sites; cache=${_discoverableCache.length}',
+    );
   }
 
   /// Call when the user manually sets a site back to hidden.
@@ -258,7 +263,8 @@ class FieldDiscoveryCoordinator extends ChangeNotifier {
 
   Future<void> _ensureDiscoverableCache(LatLng location) async {
     // Empty cache must always be retried — sites often appear after ensure/poll.
-    final needsRefresh = _discoverableCache.isEmpty ||
+    final needsRefresh =
+        _discoverableCache.isEmpty ||
         _lastCachePosition == null ||
         _distanceM(_lastCachePosition!, location) >= cacheRefreshMoveThresholdM;
     if (!needsRefresh) return;
@@ -274,7 +280,8 @@ class FieldDiscoveryCoordinator extends ChangeNotifier {
   }) async {
     if (!force &&
         _lastCachePosition != null &&
-        _distanceM(_lastCachePosition!, location) < cacheRefreshMoveThresholdM &&
+        _distanceM(_lastCachePosition!, location) <
+            cacheRefreshMoveThresholdM &&
         _discoverableCache.isNotEmpty) {
       return;
     }
@@ -316,8 +323,10 @@ class FieldDiscoveryCoordinator extends ChangeNotifier {
         }
         // If the API returns empty (generation lag), keep any map-ingested sites.
         _lastCachePosition = location;
-        _log('cache refreshed api=${response.items.length} '
-            'cache=${_discoverableCache.length}');
+        _log(
+          'cache refreshed api=${response.items.length} '
+          'cache=${_discoverableCache.length}',
+        );
         notifyListeners();
       } catch (error) {
         _log('cache refresh failed error=$error');
@@ -359,9 +368,7 @@ class FieldDiscoveryCoordinator extends ChangeNotifier {
       if (!inside) {
         _seenOutsideSiteIds.add(site.siteId);
         if (_insideRadiusSiteIds.remove(site.siteId)) {
-          _log(
-            'exited site_id=${site.siteId} distance_m=${distanceM.round()}',
-          );
+          _log('exited site_id=${site.siteId} distance_m=${distanceM.round()}');
         }
         _nextDiscoverAtBySiteId.remove(site.siteId);
         if (kDebugMode && distanceM <= radiusM * 2) {
@@ -400,8 +407,9 @@ class FieldDiscoveryCoordinator extends ChangeNotifier {
 
       if (!_isWithinMaxDiscoverySpeed()) {
         // Too fast for a roll — retry shortly (avoid zero-delay dwell loops).
-        _nextDiscoverAtBySiteId[site.siteId] =
-            now.add(const Duration(seconds: 1));
+        _nextDiscoverAtBySiteId[site.siteId] = now.add(
+          const Duration(seconds: 1),
+        );
         _log(
           'speed gate skip site_id=${site.siteId} '
           'distance_m=${distanceM.round()}',
@@ -422,25 +430,30 @@ class FieldDiscoveryCoordinator extends ChangeNotifier {
         _insideRadiusSiteIds.remove(site.siteId);
         _celebrationQueue.add(updated);
         playDiscoveryHapticFireAndForget();
-        _log('discovered site_id=${site.siteId} distance_m=${distanceM.round()}');
+        _log(
+          'discovered site_id=${site.siteId} distance_m=${distanceM.round()}',
+        );
         notifyListeners();
       } on SiteServiceException catch (error) {
         if (error.isDiscoveryChanceMiss) {
-          _nextDiscoverAtBySiteId[site.siteId] =
-              clock.now().add(discoveryRerollInterval);
+          _nextDiscoverAtBySiteId[site.siteId] = clock.now().add(
+            discoveryRerollInterval,
+          );
           _log(
             'chance miss site_id=${site.siteId} '
             'distance_m=${distanceM.round()} — dwell '
             '${discoveryRerollInterval.inMilliseconds}ms',
           );
         } else {
-          _nextDiscoverAtBySiteId[site.siteId] =
-              clock.now().add(discoverFailRetry);
+          _nextDiscoverAtBySiteId[site.siteId] = clock.now().add(
+            discoverFailRetry,
+          );
           _log('discover failed site_id=${site.siteId} error=$error');
         }
       } catch (error) {
-        _nextDiscoverAtBySiteId[site.siteId] =
-            clock.now().add(discoverFailRetry);
+        _nextDiscoverAtBySiteId[site.siteId] = clock.now().add(
+          discoverFailRetry,
+        );
         _log('discover failed site_id=${site.siteId} error=$error');
       } finally {
         _inFlightSiteIds.remove(site.siteId);
@@ -488,10 +501,7 @@ class FieldDiscoveryCoordinator extends ChangeNotifier {
   }
 
   void _log(String message) {
-    developer.log(
-      'field_discovery action=$message',
-      name: 'field_discovery',
-    );
+    developer.log('field_discovery action=$message', name: 'field_discovery');
     if (kDebugMode) {
       debugPrint('FieldDiscoveryCoordinator: $message');
     }

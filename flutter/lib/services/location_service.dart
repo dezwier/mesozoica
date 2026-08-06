@@ -71,6 +71,7 @@ class LocationService extends ChangeNotifier {
   bool _backgroundExploring = false;
   bool _prefsLoaded = false;
   GpsProfile _activeProfile = GpsProfile.fieldForeground;
+
   /// FlutterCompass only when rotate mode or guidance needle needs heading.
   bool _headingWanted = false;
 
@@ -78,7 +79,9 @@ class LocationService extends ChangeNotifier {
   final ValueNotifier<double> headingListenable = ValueNotifier<double>(0);
 
   /// GPS fixes without forcing map-screen rebuilds — map listens directly.
-  final ValueNotifier<LatLng?> locationListenable = ValueNotifier<LatLng?>(null);
+  final ValueNotifier<LatLng?> locationListenable = ValueNotifier<LatLng?>(
+    null,
+  );
 
   // Perf HUD counters (monotonic; HUD diffs over a window).
   int _gpsUpdateCount = 0;
@@ -110,10 +113,10 @@ class LocationService extends ChangeNotifier {
   /// True when a GPS stream should be running.
   @visibleForTesting
   bool get isLocationStreamDesired => shouldTrackLocation(
-        wantsLocation: _mapForeground || _fieldSession,
-        appForeground: _appForeground,
-        backgroundExploring: _backgroundExploring,
-      );
+    wantsLocation: _mapForeground || _fieldSession,
+    appForeground: _appForeground,
+    backgroundExploring: _backgroundExploring,
+  );
 
   /// Age of the last GPS fix, or null if never fixed.
   Duration? get gpsFixAge {
@@ -152,7 +155,8 @@ class LocationService extends ChangeNotifier {
     if (enabled) {
       final permitted = await _ensureAlwaysPermission();
       if (!permitted) {
-        _error ??= 'Always location permission is required for background '
+        _error ??=
+            'Always location permission is required for background '
             'exploring.';
         notifyListeners();
         return false;
@@ -189,9 +193,7 @@ class LocationService extends ChangeNotifier {
     await _reconcileHeadingOnly();
   }
 
-  Future<void> setFieldSession({
-    required bool active,
-  }) async {
+  Future<void> setFieldSession({required bool active}) async {
     final settingsChanged = _fieldSession != active;
     _fieldSession = active;
     await _reconcileTracking(forceRestartLocation: settingsChanged);
@@ -248,21 +250,18 @@ class LocationService extends ChangeNotifier {
       _stationaryCheckTimer = null;
       return;
     }
-    _stationaryCheckTimer ??= Timer.periodic(
-      const Duration(seconds: 15),
-      (_) {
-        if (!_backgroundExploring || _appForeground) return;
-        final want = resolveGpsProfile(
-          mapForeground: _mapForeground,
-          appForeground: _appForeground,
-          backgroundExploring: _backgroundExploring,
-          stationary: isStationary,
-        );
-        if (want != _activeProfile) {
-          unawaited(_reconcileTracking(forceRestartLocation: true));
-        }
-      },
-    );
+    _stationaryCheckTimer ??= Timer.periodic(const Duration(seconds: 15), (_) {
+      if (!_backgroundExploring || _appForeground) return;
+      final want = resolveGpsProfile(
+        mapForeground: _mapForeground,
+        appForeground: _appForeground,
+        backgroundExploring: _backgroundExploring,
+        stationary: isStationary,
+      );
+      if (want != _activeProfile) {
+        unawaited(_reconcileTracking(forceRestartLocation: true));
+      }
+    });
   }
 
   Future<void> _reconcileHeadingOnly() async {
@@ -310,26 +309,23 @@ class LocationService extends ChangeNotifier {
         .where((event) => event.heading != null)
         .map((event) => (event.heading! + 360) % 360)
         .listen(
-      (heading) {
-        _headingSampleCount++;
-        _headingDeg = heading;
-        // Coalesce compass spam to ~60 Hz for listeners that opt in.
-        _headingNotifyTimer ??= Timer(
-          const Duration(milliseconds: 16),
-          () {
-            _headingNotifyTimer = null;
-            _headingNotifyCount++;
-            headingListenable.value = _headingDeg;
-            // Do NOT call notifyListeners() — heading must not rebuild the map.
+          (heading) {
+            _headingSampleCount++;
+            _headingDeg = heading;
+            // Coalesce compass spam to ~60 Hz for listeners that opt in.
+            _headingNotifyTimer ??= Timer(const Duration(milliseconds: 16), () {
+              _headingNotifyTimer = null;
+              _headingNotifyCount++;
+              headingListenable.value = _headingDeg;
+              // Do NOT call notifyListeners() — heading must not rebuild the map.
+            });
+          },
+          onError: (Object error) {
+            if (kDebugMode) {
+              debugPrint('LocationService heading stream error: $error');
+            }
           },
         );
-      },
-      onError: (Object error) {
-        if (kDebugMode) {
-          debugPrint('LocationService heading stream error: $error');
-        }
-      },
-    );
   }
 
   Future<bool> _ensurePermission() async {
@@ -371,33 +367,30 @@ class LocationService extends ChangeNotifier {
       return true;
     }
 
-    _error = 'Always location permission is required for background exploring. '
+    _error =
+        'Always location permission is required for background exploring. '
         'You can enable it in system Settings.';
     return false;
   }
 
   LocationSettings _locationSettings({required GpsProfile profile}) {
     final (accuracy, distanceFilter, interval) = switch (profile) {
-      GpsProfile.high => (
-          LocationAccuracy.high,
-          5,
-          const Duration(seconds: 1),
-        ),
+      GpsProfile.high => (LocationAccuracy.high, 5, const Duration(seconds: 1)),
       GpsProfile.fieldForeground => (
-          LocationAccuracy.medium,
-          10,
-          const Duration(seconds: 2),
-        ),
+        LocationAccuracy.medium,
+        10,
+        const Duration(seconds: 2),
+      ),
       GpsProfile.fieldBackground => (
-          LocationAccuracy.medium,
-          15,
-          const Duration(seconds: 5),
-        ),
+        LocationAccuracy.medium,
+        15,
+        const Duration(seconds: 5),
+      ),
       GpsProfile.idleBackground => (
-          LocationAccuracy.low,
-          75,
-          const Duration(seconds: 30),
-        ),
+        LocationAccuracy.low,
+        75,
+        const Duration(seconds: 30),
+      ),
     };
 
     final allowBackground = _backgroundExploring && !_appForeground;
@@ -432,10 +425,7 @@ class LocationService extends ChangeNotifier {
       );
     }
 
-    return LocationSettings(
-      accuracy: accuracy,
-      distanceFilter: distanceFilter,
-    );
+    return LocationSettings(accuracy: accuracy, distanceFilter: distanceFilter);
   }
 
   Future<void> _startLocationStream({
@@ -476,16 +466,15 @@ class LocationService extends ChangeNotifier {
       _applyPosition(position);
 
       _locationSub?.cancel();
-      _locationSub = Geolocator.getPositionStream(
-        locationSettings: settings,
-      ).listen(
-        _applyPosition,
-        onError: (Object error) {
-          if (kDebugMode) {
-            debugPrint('LocationService stream error: $error');
-          }
-        },
-      );
+      _locationSub = Geolocator.getPositionStream(locationSettings: settings)
+          .listen(
+            _applyPosition,
+            onError: (Object error) {
+              if (kDebugMode) {
+                debugPrint('LocationService stream error: $error');
+              }
+            },
+          );
     } catch (error) {
       _error = 'Could not get your location.';
       if (kDebugMode) {

@@ -5,10 +5,7 @@ import 'card_fact_badge.dart';
 
 /// Attribute panel for the fossil card back.
 class FossilCardEdgeFacts extends StatelessWidget {
-  const FossilCardEdgeFacts({
-    super.key,
-    required this.fossil,
-  });
+  const FossilCardEdgeFacts({super.key, required this.fossil});
 
   final FossilSummary fossil;
 

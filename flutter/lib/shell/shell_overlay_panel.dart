@@ -56,10 +56,7 @@ class ShellOverlayPanel extends StatelessWidget {
               const Positioned.fill(
                 child: ColoredBox(color: Color(0x8A000000)), // ~black54
               ),
-            SafeArea(
-              bottom: false,
-              child: child,
-            ),
+            SafeArea(bottom: false, child: child),
             if (showDismiss)
               OverlayBottomChrome(
                 child: OverlayChromeButton(

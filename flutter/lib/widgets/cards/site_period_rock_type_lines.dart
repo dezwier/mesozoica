@@ -26,8 +26,8 @@ class SitePeriodRockTypeLines extends StatelessWidget {
     final style = mapMarker
         ? cardTheme.mapMarkerLabelStyle(fontSize: fontSize)
         : overlayOnImage
-            ? cardTheme.frontOverlayTitleStyle(fontSize: fontSize)
-            : cardTheme.frontTitleStyle(fontSize: fontSize);
+        ? cardTheme.frontOverlayTitleStyle(fontSize: fontSize)
+        : cardTheme.frontTitleStyle(fontSize: fontSize);
 
     final periodRaw = site.effectivePeriod;
     final periodLine = (periodRaw != null && periodRaw.isNotEmpty)
@@ -35,8 +35,9 @@ class SitePeriodRockTypeLines extends StatelessWidget {
         : site.displaySiteNumber;
 
     final rockRaw = (site.rockType ?? site.siteTypeRockType)?.trim();
-    final rockLine =
-        (rockRaw != null && rockRaw.isNotEmpty) ? toTitleCase(rockRaw) : null;
+    final rockLine = (rockRaw != null && rockRaw.isNotEmpty)
+        ? toTitleCase(rockRaw)
+        : null;
 
     return Column(
       mainAxisSize: MainAxisSize.min,

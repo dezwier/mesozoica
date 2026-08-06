@@ -146,8 +146,9 @@ class _CardFactCell extends StatelessWidget {
       children: [
         Row(
           mainAxisSize: centered ? MainAxisSize.max : MainAxisSize.min,
-          mainAxisAlignment:
-              centered ? MainAxisAlignment.center : MainAxisAlignment.start,
+          mainAxisAlignment: centered
+              ? MainAxisAlignment.center
+              : MainAxisAlignment.start,
           children: [
             SvgPicture.asset(
               iconAsset,
@@ -173,10 +174,9 @@ class _CardFactCell extends StatelessWidget {
         const SizedBox(height: 3),
         Text(
           value,
-          style: cardTheme.statValueStyle(fontSize: 11.5).copyWith(
-            fontWeight: FontWeight.w600,
-            height: 1.15,
-          ),
+          style: cardTheme
+              .statValueStyle(fontSize: 11.5)
+              .copyWith(fontWeight: FontWeight.w600, height: 1.15),
           maxLines: maxValueLines,
           overflow: TextOverflow.ellipsis,
           softWrap: true,

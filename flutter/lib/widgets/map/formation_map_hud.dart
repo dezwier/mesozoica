@@ -40,8 +40,7 @@ class FormationMapHud extends StatelessWidget {
 
     // Most common rocks first; fall back to palette A–Z when none are loaded.
     final keys = counts.isNotEmpty
-        ? (counts.keys.toList()
-          ..sort((a, b) {
+        ? (counts.keys.toList()..sort((a, b) {
             final byCount = counts[b]!.compareTo(counts[a]!);
             if (byCount != 0) return byCount;
             return a.compareTo(b);

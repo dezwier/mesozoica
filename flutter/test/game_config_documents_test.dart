@@ -15,51 +15,78 @@ void main() {
   test('document ids cover the whole control board', () {
     expect(kGameConfigDocumentFiles.length, 8);
     expect(kGameConfigDocumentIds.toSet().length, 8);
-    expect(gameConfigDocumentsForTest().keys.toSet(),
-        kGameConfigDocumentFiles.keys.toSet());
+    expect(
+      gameConfigDocumentsForTest().keys.toSet(),
+      kGameConfigDocumentFiles.keys.toSet(),
+    );
   });
 
   test('fromDocuments over JSON matches the YAML string loader', () async {
     final fromYaml = await loadGameConfigForTest();
     final fromJson = GameConfig.fromDocuments(gameConfigApiShapeForTest());
 
-    expect(fromJson.siteGeneration.cellSizeM, fromYaml.siteGeneration.cellSizeM);
-    expect(fromJson.siteGeneration.client.nearbyRadiusKm,
-        fromYaml.siteGeneration.client.nearbyRadiusKm);
+    expect(
+      fromJson.siteGeneration.cellSizeM,
+      fromYaml.siteGeneration.cellSizeM,
+    );
+    expect(
+      fromJson.siteGeneration.client.nearbyRadiusKm,
+      fromYaml.siteGeneration.client.nearbyRadiusKm,
+    );
 
-    expect(fromJson.siteDiscovery.discoveryDistanceM,
-        fromYaml.siteDiscovery.discoveryDistanceM);
-    expect(fromJson.siteDiscovery.discoveryChance,
-        fromYaml.siteDiscovery.discoveryChance);
-    expect(fromJson.siteDiscovery.discoverSiteXp,
-        fromYaml.siteDiscovery.discoverSiteXp);
-    expect(fromJson.siteDiscovery.client.discoveryRerollIntervalS,
-        fromYaml.siteDiscovery.client.discoveryRerollIntervalS);
+    expect(
+      fromJson.siteDiscovery.discoveryDistanceM,
+      fromYaml.siteDiscovery.discoveryDistanceM,
+    );
+    expect(
+      fromJson.siteDiscovery.discoveryChance,
+      fromYaml.siteDiscovery.discoveryChance,
+    );
+    expect(
+      fromJson.siteDiscovery.discoverSiteXp,
+      fromYaml.siteDiscovery.discoverSiteXp,
+    );
+    expect(
+      fromJson.siteDiscovery.client.discoveryRerollIntervalS,
+      fromYaml.siteDiscovery.client.discoveryRerollIntervalS,
+    );
 
     // Weather modifier tables survive the round trip (nested maps + lists).
-    final jsonNight =
-        fromJson.siteDiscovery.weatherTimeModifiers['discover_site_xp']!['night']!;
-    final yamlNight =
-        fromYaml.siteDiscovery.weatherTimeModifiers['discover_site_xp']!['night']!;
+    final jsonNight = fromJson
+        .siteDiscovery
+        .weatherTimeModifiers['discover_site_xp']!['night']!;
+    final yamlNight = fromYaml
+        .siteDiscovery
+        .weatherTimeModifiers['discover_site_xp']!['night']!;
     expect(jsonNight.length, yamlNight.length);
     expect(jsonNight.first.op, yamlNight.first.op);
     expect(jsonNight.first.value, yamlNight.first.value);
 
     // The int-key quirk: JSON stringifies these keys.
-    expect(fromJson.siteStewardship.fossilCount,
-        fromYaml.siteStewardship.fossilCount);
+    expect(
+      fromJson.siteStewardship.fossilCount,
+      fromYaml.siteStewardship.fossilCount,
+    );
     expect(fromJson.siteStewardship.fossilCount.keys, isNotEmpty);
-    expect(fromJson.siteStewardship.levelModifiers['documentation_accuracy']!.length,
-        fromYaml.siteStewardship.levelModifiers['documentation_accuracy']!.length);
+    expect(
+      fromJson.siteStewardship.levelModifiers['documentation_accuracy']!.length,
+      fromYaml.siteStewardship.levelModifiers['documentation_accuracy']!.length,
+    );
 
     expect(fromJson.leveling.skills.length, fromYaml.leveling.skills.length);
     expect(fromJson.leveling.careerTitles, fromYaml.leveling.careerTitles);
-    expect(fromJson.periodColors.siteMarkers.cretaceous,
-        fromYaml.periodColors.siteMarkers.cretaceous);
-    expect(fromJson.periodColors.orbitSurvey.triassic,
-        fromYaml.periodColors.orbitSurvey.triassic);
-    expect(fromJson.rockTypeColors.formationMap,
-        fromYaml.rockTypeColors.formationMap);
+    expect(
+      fromJson.periodColors.siteMarkers.cretaceous,
+      fromYaml.periodColors.siteMarkers.cretaceous,
+    );
+    expect(
+      fromJson.periodColors.orbitSurvey.triassic,
+      fromYaml.periodColors.orbitSurvey.triassic,
+    );
+    expect(
+      fromJson.rockTypeColors.formationMap,
+      fromYaml.rockTypeColors.formationMap,
+    );
   });
 
   test('fromDocuments does not set the singleton', () {

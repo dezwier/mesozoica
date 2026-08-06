@@ -221,8 +221,7 @@ class _FossilFilterSheetState extends State<FossilFilterSheet> {
               SettingsFormStyles.settingsRow(
                 context: context,
                 label: 'Enriched',
-                description:
-                    'Only show fossils with LLM enrichment completed.',
+                description: 'Only show fossils with LLM enrichment completed.',
                 controlWidth: 168,
                 control: SettingsFormStyles.densePopupField<bool>(
                   context: context,

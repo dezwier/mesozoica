@@ -83,24 +83,33 @@ class SiteSummary {
   final String? siteTypePeriod;
   final String? siteTypeRockType;
   final String? mainImageUrl;
+
   /// First discovery method: walk, aerial_recon, aerial_scout, or manual.
   final String? howDiscovered;
   final String? status;
+
   /// True when the viewing user has a documenter role on this site.
   final bool? viewerHasDocumented;
+
   /// True when the viewer finished period+rock identification (field sites).
   /// Archive sites are always treated as identified.
   final bool? viewerHasIdentified;
+
   /// When the viewing user became discoverer (from user_site).
   final DateTime? discoveredAt;
+
   /// Aerial session that discovered this site for the viewer.
   final int? discoveringSessionId;
+
   /// True when the viewer was the first discoverer of this site.
   final bool? viewerWasFirstDiscovery;
+
   /// When the viewing user completed period+rock identification.
   final DateTime? identifiedAt;
+
   /// When the viewing user completed documentation (documenter user_site).
   final DateTime? documentedAt;
+
   /// True when the viewer was the first to fully document this site.
   final bool? viewerWasFirstDocumentation;
   final double? oddDinoCount;
@@ -113,10 +122,13 @@ class SiteSummary {
   final SiteDimensionBand? oddCompletenessBand;
   final SiteDimensionBand? oddQualityBand;
   final SiteDimensionBand? oddDepthBand;
+
   /// Meters walked inside site visibility (discoverer progress).
   final double? exploredDistanceM;
+
   /// True when all five dimension accuracies reached 100% (meters frozen).
   final bool? documented;
+
   /// Curated site-type image version folder for this occurrence.
   final String version;
 
@@ -167,9 +179,7 @@ class SiteSummary {
 
   /// Field site discovered by the viewer but period/rock not yet identified.
   bool get needsIdentification =>
-      isFieldOccurrence &&
-      discoveredAt != null &&
-      viewerHasIdentified != true;
+      isFieldOccurrence && discoveredAt != null && viewerHasIdentified != true;
 
   /// Identify quiz is available on the card back.
   bool get canIdentify => needsIdentification;
@@ -367,8 +377,7 @@ class SiteSummary {
       viewerHasDocumented: viewerHasDocumented ?? this.viewerHasDocumented,
       viewerHasIdentified: viewerHasIdentified ?? this.viewerHasIdentified,
       discoveredAt: discoveredAt ?? this.discoveredAt,
-      discoveringSessionId:
-          discoveringSessionId ?? this.discoveringSessionId,
+      discoveringSessionId: discoveringSessionId ?? this.discoveringSessionId,
       viewerWasFirstDiscovery:
           viewerWasFirstDiscovery ?? this.viewerWasFirstDiscovery,
       identifiedAt: identifiedAt ?? this.identifiedAt,
@@ -414,9 +423,9 @@ class SiteListResponse {
     return SiteListResponse(
       items: rawItems is List
           ? rawItems
-              .whereType<Map<String, dynamic>>()
-              .map(SiteSummary.fromJson)
-              .toList()
+                .whereType<Map<String, dynamic>>()
+                .map(SiteSummary.fromJson)
+                .toList()
           : const [],
       total: json['total'] as int? ?? 0,
       limit: json['limit'] as int? ?? 0,

@@ -12,15 +12,13 @@ void main() {
     expect(periodForAges(null, null), isNull);
   });
 
-  test('SiteSummary.displayPeriod infers period from ages when site type missing',
-      () {
-    const site = SiteSummary(
-      siteId: 1,
-      minAgeMa: 72,
-      maxAgeMa: 84,
-    );
+  test(
+    'SiteSummary.displayPeriod infers period from ages when site type missing',
+    () {
+      const site = SiteSummary(siteId: 1, minAgeMa: 72, maxAgeMa: 84);
 
-    expect(site.effectivePeriod, 'cretaceous');
-    expect(site.displayPeriod, 'Cretaceous, 72 – 84 Ma');
-  });
+      expect(site.effectivePeriod, 'cretaceous');
+      expect(site.displayPeriod, 'Cretaceous, 72 – 84 Ma');
+    },
+  );
 }

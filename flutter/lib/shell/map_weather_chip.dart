@@ -14,11 +14,7 @@ class MapWeatherChip extends StatelessWidget {
   static const double height = 40;
 
   static const _textShadows = <Shadow>[
-    Shadow(
-      color: Color(0x66000000),
-      blurRadius: 4,
-      offset: Offset(0, 1),
-    ),
+    Shadow(color: Color(0x66000000), blurRadius: 4, offset: Offset(0, 1)),
   ];
 
   @override
@@ -43,8 +39,8 @@ class _WeatherChipBody extends StatelessWidget {
     final temp = status.temperatureC.round();
     final tempLabel =
         status.weatherType == 'unknown' && status.observedAt == null
-            ? '—'
-            : '$temp°';
+        ? '—'
+        : '$temp°';
     final iconColor = WeatherDisplay.weatherIconColor(
       status.weatherType,
       weatherTime: status.weatherTime,

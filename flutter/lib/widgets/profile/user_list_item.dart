@@ -6,11 +6,7 @@ import '../../services/auth_service.dart';
 
 /// User row for community section cards (Archipelago layout).
 class UserListItem extends StatelessWidget {
-  const UserListItem({
-    super.key,
-    required this.entry,
-    required this.onTap,
-  });
+  const UserListItem({super.key, required this.entry, required this.onTap});
 
   final UserListEntry entry;
   final VoidCallback onTap;
@@ -63,18 +59,17 @@ class UserListItem extends StatelessWidget {
                   Text(
                     displayName,
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w500,
-                        ),
+                      fontWeight: FontWeight.w500,
+                    ),
                     overflow: TextOverflow.ellipsis,
                   ),
                   Text(
                     '@${entry.username}',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(context)
-                              .colorScheme
-                              .onSurface
-                              .withValues(alpha: 0.6),
-                        ),
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.onSurface.withValues(alpha: 0.6),
+                    ),
                   ),
                 ],
               ),

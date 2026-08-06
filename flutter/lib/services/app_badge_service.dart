@@ -14,10 +14,7 @@ class AppBadgeService {
     if (kIsWeb) return;
     if (!(Platform.isIOS || Platform.isAndroid)) return;
     try {
-      await _channel.invokeMethod<void>(
-        'setBadgeCount',
-        count < 0 ? 0 : count,
-      );
+      await _channel.invokeMethod<void>('setBadgeCount', count < 0 ? 0 : count);
     } catch (_) {
       // Native channel unavailable (e.g. tests / unsupported platform).
     }

@@ -21,14 +21,8 @@ class OrbitSurveyHud extends StatelessWidget {
         label: 'Cret',
         color: surveyRgbColor(colors.cretaceous),
       ),
-      SurveyLegendEntry(
-        label: 'Jur',
-        color: surveyRgbColor(colors.jurassic),
-      ),
-      SurveyLegendEntry(
-        label: 'Tri',
-        color: surveyRgbColor(colors.triassic),
-      ),
+      SurveyLegendEntry(label: 'Jur', color: surveyRgbColor(colors.jurassic)),
+      SurveyLegendEntry(label: 'Tri', color: surveyRgbColor(colors.triassic)),
     ];
 
     return SurveyMapHudShell(
@@ -50,9 +44,7 @@ class _VintageMapIcon extends StatelessWidget {
     return SizedBox(
       width: size,
       height: size,
-      child: CustomPaint(
-        painter: _VintageMapIconPainter(),
-      ),
+      child: CustomPaint(painter: _VintageMapIconPainter()),
     );
   }
 }
@@ -82,22 +74,10 @@ class _VintageMapIconPainter extends CustomPainter {
       ..style = PaintingStyle.stroke;
     final path = Path()
       ..moveTo(inset.left + inset.width * 0.22, inset.top + inset.height * 0.28)
-      ..lineTo(
-        inset.left + inset.width * 0.48,
-        inset.top + inset.height * 0.55,
-      )
-      ..lineTo(
-        inset.left + inset.width * 0.78,
-        inset.top + inset.height * 0.32,
-      )
-      ..lineTo(
-        inset.left + inset.width * 0.62,
-        inset.top + inset.height * 0.78,
-      )
-      ..lineTo(
-        inset.left + inset.width * 0.28,
-        inset.top + inset.height * 0.72,
-      )
+      ..lineTo(inset.left + inset.width * 0.48, inset.top + inset.height * 0.55)
+      ..lineTo(inset.left + inset.width * 0.78, inset.top + inset.height * 0.32)
+      ..lineTo(inset.left + inset.width * 0.62, inset.top + inset.height * 0.78)
+      ..lineTo(inset.left + inset.width * 0.28, inset.top + inset.height * 0.72)
       ..close();
     canvas.drawPath(path, fold);
 

@@ -132,8 +132,7 @@ class _FieldDataPurgeDialogState extends State<FieldDataPurgeDialog> {
               dense: true,
               value: _selection.sessionEvents,
               onChanged: (value) => setState(() {
-                _selection =
-                    _selection.copyWith(sessionEvents: value ?? false);
+                _selection = _selection.copyWith(sessionEvents: value ?? false);
               }),
               title: const Text('Session events'),
               subtitle: const Text('tool_session_event'),

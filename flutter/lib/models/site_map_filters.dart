@@ -77,16 +77,16 @@ enum SiteCatalogSort {
   discoveredAtAsc;
 
   String get label => switch (this) {
-        SiteCatalogSort.distance => 'Nearest',
-        SiteCatalogSort.discoveredAtDesc => 'Discovered (newest)',
-        SiteCatalogSort.discoveredAtAsc => 'Discovered (oldest)',
-      };
+    SiteCatalogSort.distance => 'Nearest',
+    SiteCatalogSort.discoveredAtDesc => 'Discovered (newest)',
+    SiteCatalogSort.discoveredAtAsc => 'Discovered (oldest)',
+  };
 
   String get apiValue => switch (this) {
-        SiteCatalogSort.distance => 'distance',
-        SiteCatalogSort.discoveredAtDesc => 'discovered_at_desc',
-        SiteCatalogSort.discoveredAtAsc => 'discovered_at',
-      };
+    SiteCatalogSort.distance => 'distance',
+    SiteCatalogSort.discoveredAtDesc => 'discovered_at_desc',
+    SiteCatalogSort.discoveredAtAsc => 'discovered_at',
+  };
 
   static SiteCatalogSort fromApiValue(String value) {
     return switch (value) {
@@ -122,10 +122,7 @@ DateTime discoveryDateOnlyUtc(DateTime value) {
 /// Inclusive calendar-day distance from window start → end.
 ///
 /// `0` means earliest and today are the same day (no meaningful day range).
-int discoveryTimeNaturalDaySpan({
-  DateTime? now,
-  DateTime? earliestDiscovery,
-}) {
+int discoveryTimeNaturalDaySpan({DateTime? now, DateTime? earliestDiscovery}) {
   final bounds = discoveryTimeWindowBounds(
     now: now,
     earliestDiscovery: earliestDiscovery,
@@ -155,11 +152,11 @@ class SiteMapFilters {
     this.sort = SiteCatalogSort.distance,
     this.filterByStatus = false,
     this.showPastAerialRoutes = true,
-  })  : statuses = statuses ?? Set<String>.from(siteStatusOptions),
-        periods = periods ?? Set<String>.from(sitePeriodOptions),
-        rockTypes = rockTypes ?? Set<String>.from(siteRockTypeOptions),
-        howDiscovered =
-            howDiscovered ?? Set<String>.from(siteHowDiscoveredOptions);
+  }) : statuses = statuses ?? Set<String>.from(siteStatusOptions),
+       periods = periods ?? Set<String>.from(sitePeriodOptions),
+       rockTypes = rockTypes ?? Set<String>.from(siteRockTypeOptions),
+       howDiscovered =
+           howDiscovered ?? Set<String>.from(siteHowDiscoveredOptions);
 
   final Set<String> statuses;
   final Set<String> periods;
@@ -265,8 +262,9 @@ class SiteMapFilters {
       periods: periods ?? this.periods,
       rockTypes: rockTypes ?? this.rockTypes,
       howDiscovered: howDiscovered ?? this.howDiscovered,
-      discoveredAfter:
-          clearDiscoveryTime ? null : (discoveredAfter ?? this.discoveredAfter),
+      discoveredAfter: clearDiscoveryTime
+          ? null
+          : (discoveredAfter ?? this.discoveredAfter),
       discoveredBefore: clearDiscoveryTime
           ? null
           : (discoveredBefore ?? this.discoveredBefore),
@@ -296,8 +294,9 @@ class SiteMapFilters {
 
     if (rockTypes.length != siteRockTypeOptions.length) {
       if (rockTypes.isEmpty) return false;
-      final rock =
-          (site.rockType ?? site.siteTypeRockType)?.trim().toLowerCase();
+      final rock = (site.rockType ?? site.siteTypeRockType)
+          ?.trim()
+          .toLowerCase();
       final key = (rock == null || rock.isEmpty) ? 'unknown' : rock;
       if (!rockTypes.contains(key)) {
         return false;
@@ -325,10 +324,7 @@ class SiteMapFilters {
   }
 
   /// Period / rock matching for site-type catalog rows.
-  bool matchesSiteType({
-    required String period,
-    required String rockType,
-  }) {
+  bool matchesSiteType({required String period, required String rockType}) {
     if (periods.length != sitePeriodOptions.length) {
       if (periods.isEmpty) return false;
       final value = period.trim().toLowerCase();

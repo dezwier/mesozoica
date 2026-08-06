@@ -12,14 +12,14 @@ void main() {
         const LatLng(40.1, -99.9),
       ];
       expect(RouteGeometry.pointAtFraction(route, 0).latitude, 40.0);
-      expect(RouteGeometry.pointAtFraction(route, 1).longitude, closeTo(-99.9, 1e-9));
+      expect(
+        RouteGeometry.pointAtFraction(route, 1).longitude,
+        closeTo(-99.9, 1e-9),
+      );
     });
 
     test('midpoint is roughly halfway along arc', () {
-      final route = [
-        const LatLng(40.0, -100.0),
-        const LatLng(40.1, -100.0),
-      ];
+      final route = [const LatLng(40.0, -100.0), const LatLng(40.1, -100.0)];
       final mid = RouteGeometry.pointAtFraction(route, 0.5);
       expect(mid.latitude, closeTo(40.05, 0.001));
       expect(mid.longitude, closeTo(-100.0, 1e-6));
@@ -38,10 +38,7 @@ void main() {
     });
 
     test('prefix and suffix meet at midpoint fraction', () {
-      final route = [
-        const LatLng(40.0, -100.0),
-        const LatLng(40.1, -100.0),
-      ];
+      final route = [const LatLng(40.0, -100.0), const LatLng(40.1, -100.0)];
       final prefix = RouteGeometry.prefixUpToFraction(route, 0.5);
       final suffix = RouteGeometry.suffixFromFraction(route, 0.5);
       expect(prefix.length, greaterThanOrEqualTo(2));
@@ -76,8 +73,9 @@ void main() {
           'flight_duration_s': durationS,
           if (started != null) 'flight_started_at': started.toIso8601String(),
           if (started != null)
-            'flight_ends_at':
-                started.add(Duration(seconds: durationS)).toIso8601String(),
+            'flight_ends_at': started
+                .add(Duration(seconds: durationS))
+                .toIso8601String(),
         },
       );
     }

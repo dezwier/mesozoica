@@ -52,9 +52,7 @@ void main() {
                   longitude: 20.0,
                   siteTypePeriod: 'cretaceous',
                 ),
-                siteJson(
-                  siteId: 2,
-                ),
+                siteJson(siteId: 2),
               ],
               'total': 3,
               'limit': 500,
@@ -114,13 +112,7 @@ void main() {
         if (offset == 0) {
           return http.Response(
             jsonEncode({
-              'items': [
-                siteJson(
-                  siteId: 1,
-                  latitude: 1.0,
-                  longitude: 1.0,
-                ),
-              ],
+              'items': [siteJson(siteId: 1, latitude: 1.0, longitude: 1.0)],
               'total': 2,
               'limit': 500,
               'offset': 0,
@@ -131,13 +123,7 @@ void main() {
         }
         return http.Response(
           jsonEncode({
-            'items': [
-              siteJson(
-                siteId: 2,
-                latitude: 2.0,
-                longitude: 2.0,
-              ),
-            ],
+            'items': [siteJson(siteId: 2, latitude: 2.0, longitude: 2.0)],
             'total': 2,
             'limit': 500,
             'offset': 1,
@@ -168,13 +154,7 @@ void main() {
         callCount++;
         return http.Response(
           jsonEncode({
-            'items': [
-              siteJson(
-                siteId: 1,
-                latitude: 0.0,
-                longitude: 0.0,
-              ),
-            ],
+            'items': [siteJson(siteId: 1, latitude: 0.0, longitude: 0.0)],
             'total': 1,
             'limit': 500,
             'offset': 0,
@@ -202,13 +182,7 @@ void main() {
         callCount++;
         return http.Response(
           jsonEncode({
-            'items': [
-              siteJson(
-                siteId: 1,
-                latitude: 0.0,
-                longitude: 0.0,
-              ),
-            ],
+            'items': [siteJson(siteId: 1, latitude: 0.0, longitude: 0.0)],
             'total': 1,
             'limit': 500,
             'offset': 0,
@@ -231,21 +205,13 @@ void main() {
   });
 
   test('pause cancels in-flight pagination and load resumes', () async {
-    var callCount = 0;
     final service = SiteService(
       client: MockClient((request) async {
-        callCount++;
         final offset = int.parse(request.url.queryParameters['offset'] ?? '0');
         if (offset == 0) {
           return http.Response(
             jsonEncode({
-              'items': [
-                siteJson(
-                  siteId: 1,
-                  latitude: 1.0,
-                  longitude: 1.0,
-                ),
-              ],
+              'items': [siteJson(siteId: 1, latitude: 1.0, longitude: 1.0)],
               'total': 3,
               'limit': 500,
               'offset': 0,
@@ -257,13 +223,7 @@ void main() {
         await Future<void>.delayed(const Duration(milliseconds: 50));
         return http.Response(
           jsonEncode({
-            'items': [
-              siteJson(
-                siteId: 2,
-                latitude: 2.0,
-                longitude: 2.0,
-              ),
-            ],
+            'items': [siteJson(siteId: 2, latitude: 2.0, longitude: 2.0)],
             'total': 3,
             'limit': 500,
             'offset': 1,
@@ -312,13 +272,7 @@ void main() {
         }
         return http.Response(
           jsonEncode({
-            'items': [
-              siteJson(
-                siteId: 1,
-                latitude: 10.0,
-                longitude: 20.0,
-              ),
-            ],
+            'items': [siteJson(siteId: 1, latitude: 10.0, longitude: 20.0)],
             'total': 1,
             'limit': 500,
             'offset': 0,
@@ -335,7 +289,9 @@ void main() {
 
     expect(controller.geoSites.single.formation, isNull);
 
-    final displaySite = await controller.siteForDisplay(controller.geoSites.single);
+    final displaySite = await controller.siteForDisplay(
+      controller.geoSites.single,
+    );
     expect(detailCalls, 1);
     expect(displaySite.formation, 'Hell Creek Formation');
     expect(controller.geoSites.single.formation, 'Hell Creek Formation');
@@ -343,40 +299,43 @@ void main() {
     controller.dispose();
   });
 
-  test('load sends data_source query param from catalog mode in archive mode', () async {
-    final requests = <Uri>[];
-    final catalogMode = CatalogModeController();
-    await catalogMode.initialize();
-    await catalogMode.setDataSource(CatalogDataSource.archive);
+  test(
+    'load sends data_source query param from catalog mode in archive mode',
+    () async {
+      final requests = <Uri>[];
+      final catalogMode = CatalogModeController();
+      await catalogMode.initialize();
+      await catalogMode.setDataSource(CatalogDataSource.archive);
 
-    final service = SiteService(
-      client: MockClient((request) async {
-        requests.add(request.url);
-        return http.Response(
-          jsonEncode({
-            'items': [],
-            'total': 0,
-            'limit': 500,
-            'offset': 0,
-            'has_next': false,
-          }),
-          200,
-        );
-      }),
-    );
+      final service = SiteService(
+        client: MockClient((request) async {
+          requests.add(request.url);
+          return http.Response(
+            jsonEncode({
+              'items': [],
+              'total': 0,
+              'limit': 500,
+              'offset': 0,
+              'has_next': false,
+            }),
+            200,
+          );
+        }),
+      );
 
-    final controller = MapController(
-      service: service,
-      catalogModeController: catalogMode,
-    );
-    controller.load();
-    await pumpUntilIdle();
+      final controller = MapController(
+        service: service,
+        catalogModeController: catalogMode,
+      );
+      controller.load();
+      await pumpUntilIdle();
 
-    expect(requests, isNotEmpty);
-    expect(requests.first.queryParameters['data_source'], 'archive');
+      expect(requests, isNotEmpty);
+      expect(requests.first.queryParameters['data_source'], 'archive');
 
-    controller.dispose();
-  });
+      controller.dispose();
+    },
+  );
 
   test('field mode load paginates all field sites', () async {
     var listCalls = 0;
@@ -393,11 +352,7 @@ void main() {
           return http.Response(
             jsonEncode({
               'items': [
-                siteJson(
-                  siteId: 1000000001,
-                  latitude: 51.0,
-                  longitude: 4.0,
-                ),
+                siteJson(siteId: 1000000001, latitude: 51.0, longitude: 4.0),
               ],
               'total': 1,
               'limit': 500,
@@ -421,10 +376,7 @@ void main() {
     expect(listCalls, 1);
     expect(controller.loadingComplete, isTrue);
     expect(controller.geoSites.length, 1);
-    expect(
-      controller.geoSites.single.siteId,
-      1000000001,
-    );
+    expect(controller.geoSites.single.siteId, 1000000001);
 
     controller.dispose();
   });
@@ -440,13 +392,7 @@ void main() {
         requests.add(request.url);
         return http.Response(
           jsonEncode({
-            'items': [
-              siteJson(
-                siteId: 42,
-                latitude: 51.02,
-                longitude: 4.02,
-              ),
-            ],
+            'items': [siteJson(siteId: 42, latitude: 51.02, longitude: 4.02)],
             'total': 1,
             'limit': 500,
             'offset': 0,
@@ -492,9 +438,7 @@ void main() {
         requests.add(request.url);
         return http.Response(
           jsonEncode({
-            'items': [
-              siteJson(siteId: 42, latitude: 51.0, longitude: 4.0),
-            ],
+            'items': [siteJson(siteId: 42, latitude: 51.0, longitude: 4.0)],
             'total': 1,
             'limit': 500,
             'offset': 0,
@@ -540,9 +484,7 @@ void main() {
       client: MockClient((request) async {
         return http.Response(
           jsonEncode({
-            'items': [
-              siteJson(siteId: 42, latitude: 51.02, longitude: 4.02),
-            ],
+            'items': [siteJson(siteId: 42, latitude: 51.02, longitude: 4.02)],
             'total': 1001,
             'limit': 500,
             'offset': 0,
@@ -656,14 +598,8 @@ void main() {
 
     expect(showAllCalls, 1);
     expect(controller.filteredGeoSites.length, 2);
-    expect(
-      controller.filteredGeoSites.map((s) => s.siteId).toSet(),
-      {7, 99},
-    );
-    expect(
-      controller.mapMarkerDatasetKey(isFieldMode: true),
-      'field:all|all',
-    );
+    expect(controller.filteredGeoSites.map((s) => s.siteId).toSet(), {7, 99});
+    expect(controller.mapMarkerDatasetKey(isFieldMode: true), 'field:all|all');
 
     // Re-enable clears show-all and requires a fresh API load.
     controller.setShowAllFieldSites(false);
@@ -677,10 +613,7 @@ void main() {
     );
     await Future<void>.delayed(const Duration(milliseconds: 80));
     expect(showAllCalls, 2);
-    expect(
-      controller.mapMarkerDatasetKey(isFieldMode: true),
-      'field:all|all',
-    );
+    expect(controller.mapMarkerDatasetKey(isFieldMode: true), 'field:all|all');
 
     controller.dispose();
   });
@@ -694,8 +627,7 @@ void main() {
     final service = SiteService(
       client: MockClient((request) async {
         requests.add(request.url);
-        final offset =
-            int.parse(request.url.queryParameters['offset'] ?? '0');
+        final offset = int.parse(request.url.queryParameters['offset'] ?? '0');
         final siteId = offset == 0 ? 42 : 43;
         final hasNext = offset == 0;
         return http.Response(
@@ -731,10 +663,7 @@ void main() {
       requests.where((u) => u.queryParameters['show_all'] == 'true').length,
       2,
     );
-    expect(
-      controller.geoSites.map((s) => s.siteId).toSet(),
-      {42, 43},
-    );
+    expect(controller.geoSites.map((s) => s.siteId).toSet(), {42, 43});
     expect(controller.totalCatalog, 2);
 
     controller.dispose();
@@ -778,15 +707,16 @@ void main() {
     await pumpUntilIdle();
     expect(controller.geoSites.single.siteId, 7);
 
-    final bounds =
-        LatLngBounds(const LatLng(51.0, 4.0), const LatLng(51.05, 4.05));
+    final bounds = LatLngBounds(
+      const LatLng(51.0, 4.0),
+      const LatLng(51.05, 4.05),
+    );
     controller.setShowAllFieldSites(true);
     controller.loadShowAllInBounds(bounds);
     await pumpUntilIdle();
     expect(controller.filteredGeoSites.single.siteId, 42);
-    final showAllRequests = () => requests
-        .where((u) => u.queryParameters['show_all'] == 'true')
-        .length;
+    final showAllRequests = () =>
+        requests.where((u) => u.queryParameters['show_all'] == 'true').length;
     expect(showAllRequests(), 1);
 
     controller.setShowAllFieldSites(false);
@@ -804,10 +734,7 @@ void main() {
     await pumpUntilIdle();
     expect(showAllRequests(), 2);
     expect(controller.filteredGeoSites.single.siteId, 42);
-    expect(
-      controller.mapMarkerDatasetKey(isFieldMode: true),
-      'field:all|all',
-    );
+    expect(controller.mapMarkerDatasetKey(isFieldMode: true), 'field:all|all');
 
     controller.dispose();
   });
@@ -870,54 +797,54 @@ void main() {
     controller.dispose();
   });
 
-  test('show-all ignores client filters so hidden sites stay visible', () async {
-    final catalogMode = CatalogModeController();
-    await catalogMode.initialize();
-    await catalogMode.setDataSource(CatalogDataSource.field);
+  test(
+    'show-all ignores client filters so hidden sites stay visible',
+    () async {
+      final catalogMode = CatalogModeController();
+      await catalogMode.initialize();
+      await catalogMode.setDataSource(CatalogDataSource.field);
 
-    final service = SiteService(
-      client: MockClient((request) async {
-        return http.Response(
-          jsonEncode({
-            'items': [
-              siteJson(
-                siteId: 42,
-                latitude: 51.02,
-                longitude: 4.02,
-                status: 'hidden',
-              ),
-            ],
-            'total': 1,
-            'limit': 500,
-            'offset': 0,
-            'has_next': false,
-          }),
-          200,
-        );
-      }),
-    );
+      final service = SiteService(
+        client: MockClient((request) async {
+          return http.Response(
+            jsonEncode({
+              'items': [
+                siteJson(
+                  siteId: 42,
+                  latitude: 51.02,
+                  longitude: 4.02,
+                  status: 'hidden',
+                ),
+              ],
+              'total': 1,
+              'limit': 500,
+              'offset': 0,
+              'has_next': false,
+            }),
+            200,
+          );
+        }),
+      );
 
-    final controller = MapController(
-      service: service,
-      catalogModeController: catalogMode,
-    );
-    controller.applyFilters(
-      SiteMapFilters(
-        filterByStatus: true,
-        statuses: {'discovered'},
-      ),
-    );
-    controller.setShowAllFieldSites(true);
-    controller.loadShowAllInBounds(
-      LatLngBounds(const LatLng(51.0, 4.0), const LatLng(51.05, 4.05)),
-    );
-    await pumpUntilIdle();
+      final controller = MapController(
+        service: service,
+        catalogModeController: catalogMode,
+      );
+      controller.applyFilters(
+        SiteMapFilters(filterByStatus: true, statuses: {'discovered'}),
+      );
+      controller.setShowAllFieldSites(true);
+      controller.loadShowAllInBounds(
+        LatLngBounds(const LatLng(51.0, 4.0), const LatLng(51.05, 4.05)),
+      );
+      await pumpUntilIdle();
 
-    expect(controller.filteredGeoSites.single.siteId, 42);
-    expect(controller.filteredGeoSites.single.status, 'hidden');
+      expect(controller.filteredGeoSites.single.siteId, 42);
+      expect(controller.filteredGeoSites.single.status, 'hidden');
 
-    controller.dispose();
-  });
+      controller.dispose();
+    },
+  );
 
   test('scheduleFieldPollAfterEnsure reloads show-all viewport', () async {
     final catalogMode = CatalogModeController();

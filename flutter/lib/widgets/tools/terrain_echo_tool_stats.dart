@@ -6,11 +6,7 @@ import '../tools/tool_stat_row.dart';
 
 /// Stats panel for Terrain Echo.
 class TerrainEchoToolStats extends StatelessWidget {
-  const TerrainEchoToolStats({
-    super.key,
-    this.params,
-    this.compact = false,
-  });
+  const TerrainEchoToolStats({super.key, this.params, this.compact = false});
 
   final Map<String, dynamic>? params;
   final bool compact;
@@ -32,9 +28,7 @@ class TerrainEchoToolStats extends StatelessWidget {
       ToolStatPair('Duration', '$durationMinutes min'),
       ToolStatPair(
         'Accuracy',
-        accuracy.toStringAsFixed(
-          accuracy == accuracy.roundToDouble() ? 0 : 2,
-        ),
+        accuracy.toStringAsFixed(accuracy == accuracy.roundToDouble() ? 0 : 2),
       ),
       ToolStatPair('Range', rangeLabel),
     ];
@@ -47,9 +41,9 @@ class TerrainEchoToolStats extends StatelessWidget {
     }
 
     final cardTheme = DinoCardTheme.of(context);
-    final mutedStyle = cardTheme.bodyStyle(fontSize: 11).copyWith(
-          color: cardTheme.cardTextMuted,
-        );
+    final mutedStyle = cardTheme
+        .bodyStyle(fontSize: 11)
+        .copyWith(color: cardTheme.cardTextMuted);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [

@@ -18,7 +18,7 @@ from sqlmodel import SQLModel
 
 from app.core.config import settings
 from app.core.database import engine
-from app.models import models  # noqa: F401
+from app import model_registry  # noqa: F401
 
 config = context.config
 

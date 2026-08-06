@@ -41,8 +41,7 @@ class _DinosaurArticleDrawerState extends State<DinosaurArticleDrawer> {
   DateTime? _asOf;
   var _resolvingAsOf = false;
 
-  int get _typeId =>
-      widget.dinosaur.dinosaurTypeId ?? widget.dinosaur.id;
+  int get _typeId => widget.dinosaur.dinosaurTypeId ?? widget.dinosaur.id;
 
   @override
   void initState() {
@@ -83,31 +82,27 @@ class _DinosaurArticleDrawerState extends State<DinosaurArticleDrawer> {
     // Fixed height (not DraggableScrollableSheet) so the WebView owns
     // vertical scroll gestures instead of competing with sheet dragging.
     return SizedBox(
-      height: MediaQuery.sizeOf(context).height *
-          DrawerSheetSizes.initialChildSize,
+      height:
+          MediaQuery.sizeOf(context).height * DrawerSheetSizes.initialChildSize,
       child: title.isEmpty
           ? const _MessagePane(
               icon: Icons.article_outlined,
-              message:
-                  'No Wikipedia article is linked for this dinosaur yet.',
+              message: 'No Wikipedia article is linked for this dinosaur yet.',
             )
           : _resolvingAsOf && _asOf == null
-              ? const Center(child: CircularProgressIndicator())
-              : DinosaurWikipediaView(
-                  key: ValueKey(_asOf?.toIso8601String() ?? 'live'),
-                  wikipediaTitle: title,
-                  asOf: _asOf,
-                  preferDark: theme.brightness == Brightness.dark,
-                ),
+          ? const Center(child: CircularProgressIndicator())
+          : DinosaurWikipediaView(
+              key: ValueKey(_asOf?.toIso8601String() ?? 'live'),
+              wikipediaTitle: title,
+              asOf: _asOf,
+              preferDark: theme.brightness == Brightness.dark,
+            ),
     );
   }
 }
 
 class _MessagePane extends StatelessWidget {
-  const _MessagePane({
-    required this.icon,
-    required this.message,
-  });
+  const _MessagePane({required this.icon, required this.message});
 
   final IconData icon;
   final String message;

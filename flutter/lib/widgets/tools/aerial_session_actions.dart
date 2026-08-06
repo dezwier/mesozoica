@@ -89,16 +89,13 @@ class AerialSessionActions extends StatelessWidget {
     );
     if (confirmed != true || !context.mounted) return;
 
-    final ok = await context
-        .read<AerialSessionController>()
-        .cancelSession(session.sessionId);
+    final ok = await context.read<AerialSessionController>().cancelSession(
+      session.sessionId,
+    );
     if (!context.mounted) return;
     if (!ok) {
       final message = context.read<AerialSessionController>().message;
-      AppToast.error(
-        context,
-        message ?? 'Failed to abort ${kind.toolName}',
-      );
+      AppToast.error(context, message ?? 'Failed to abort ${kind.toolName}');
     }
   }
 }

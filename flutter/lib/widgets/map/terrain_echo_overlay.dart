@@ -86,10 +86,7 @@ class _TerrainEchoOverlayState extends State<TerrainEchoOverlay>
       _requestReproject();
     } else if (oldWidget.zoom != widget.zoom && _calibZoom != null) {
       // Instant mercator scale — no round-trip to Mapbox.
-      _applyCalibratedGeometry(
-        center: _centerPx,
-        zoom: widget.zoom,
-      );
+      _applyCalibratedGeometry(center: _centerPx, zoom: widget.zoom);
       // Coalesced probe to correct center if the zoom focal point shifted it.
       _requestReproject();
     }
@@ -213,8 +210,7 @@ class _TerrainEchoOverlayState extends State<TerrainEchoOverlay>
     final calibRadius = _calibRadiusPx;
     if (center == null || calibZoom == null || calibRadius == null) return;
 
-    final radiusPx =
-        calibRadius * math.pow(2.0, zoom - calibZoom).toDouble();
+    final radiusPx = calibRadius * math.pow(2.0, zoom - calibZoom).toDouble();
     if (radiusPx < 4) return;
 
     final bearing = bearingRad ?? _calibBearing;
@@ -354,23 +350,18 @@ class _TerrainEchoOverlayState extends State<TerrainEchoOverlay>
     if (!mounted || seq != _projectSeq) return;
 
     // North-fixed is locked north-up / pitch-0. Rotate uses live camera.
-    final bearingDeg =
-        widget.rotateWithHeading ? (attitude?.bearing ?? 0.0) : 0.0;
-    final pitchDeg =
-        widget.rotateWithHeading ? (attitude?.pitch ?? 0.0) : 0.0;
+    final bearingDeg = widget.rotateWithHeading
+        ? (attitude?.bearing ?? 0.0)
+        : 0.0;
+    final pitchDeg = widget.rotateWithHeading ? (attitude?.pitch ?? 0.0) : 0.0;
     final bearing = bearingDeg * math.pi / 180.0;
-    final foreshorten =
-        math.cos(pitchDeg * math.pi / 180.0).clamp(0.2, 1.0);
+    final foreshorten = math.cos(pitchDeg * math.pi / 180.0).clamp(0.2, 1.0);
 
     // Lateral probe (screen-right) — stays near the puck at any zoom/pitch.
     final probeM = math.min(8.0, rangeM * 0.1).clamp(2.0, 8.0);
     final rightEast = math.cos(bearing) * probeM;
     final rightNorth = -math.sin(bearing) * probeM;
-    final probe = _offsetMeters(
-      origin,
-      eastM: rightEast,
-      northM: rightNorth,
-    );
+    final probe = _offsetMeters(origin, eastM: rightEast, northM: rightNorth);
 
     final pixels = await widget.camera.pixelsForCoordinates([origin, probe]);
     if (!mounted || seq != _projectSeq) return;
@@ -440,10 +431,7 @@ class _TerrainEchoOverlayState extends State<TerrainEchoOverlay>
         (eastM * math.cos(bearingRad) - northM * math.sin(bearingRad)) * scale;
     final forward =
         (eastM * math.sin(bearingRad) + northM * math.cos(bearingRad)) * scale;
-    return Offset(
-      center.dx + right,
-      center.dy - forward * foreshorten,
-    );
+    return Offset(center.dx + right, center.dy - forward * foreshorten);
   }
 
   static List<Offset> _tiltedRing({
@@ -600,9 +588,7 @@ class _TerrainEchoPainter extends CustomPainter {
   }
 
   Path _scaledRingPath(double unit) {
-    return _pathFrom([
-      for (final p in rimPx) Offset.lerp(center, p, unit)!,
-    ]);
+    return _pathFrom([for (final p in rimPx) Offset.lerp(center, p, unit)!]);
   }
 
   Offset _rimAtFrac(double angleFrac) {
@@ -690,8 +676,7 @@ class _TerrainEchoPainter extends CustomPainter {
     // Always a soft blur — never a hard marker. 0 = diffuse/wide; 1 = tighter.
     final acc = accuracy.clamp(0.0, 1.0);
     final blurSigma = ui.lerpDouble(16.0, 5.0, acc)!;
-    final glowRadius =
-        ui.lerpDouble((span * 0.1).clamp(18.0, 42.0), 8.0, acc)!;
+    final glowRadius = ui.lerpDouble((span * 0.1).clamp(18.0, 42.0), 8.0, acc)!;
     final glowAlpha = ui.lerpDouble(0.5, 0.65, acc)!;
     for (final blip in blips) {
       final alpha = blipAlphas[blip.siteId] ?? 0.0;

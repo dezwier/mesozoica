@@ -11,10 +11,7 @@ import 'xp_skill_avatar.dart';
 /// Skill avatar + XP source label + "+N XP". Big-event XP is embedded in
 /// celebration plaques instead — see `xp_source_labels.dart`.
 class XpAwardBadge extends StatelessWidget {
-  const XpAwardBadge({
-    super.key,
-    required this.award,
-  });
+  const XpAwardBadge({super.key, required this.award});
 
   final XpAward award;
 
@@ -24,23 +21,24 @@ class XpAwardBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DecoratedBox(
-      decoration: MapChromeDecorations.leatherPanel(
-        borderRadius: BorderRadius.circular(_radius),
-        soft: true,
-      ).copyWith(
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.42),
-            blurRadius: 14,
-            offset: const Offset(0, 4),
+      decoration:
+          MapChromeDecorations.leatherPanel(
+            borderRadius: BorderRadius.circular(_radius),
+            soft: true,
+          ).copyWith(
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.42),
+                blurRadius: 14,
+                offset: const Offset(0, 4),
+              ),
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.18),
+                blurRadius: 4,
+                offset: const Offset(0, 1),
+              ),
+            ],
           ),
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.18),
-            blurRadius: 4,
-            offset: const Offset(0, 1),
-          ),
-        ],
-      ),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(8, 8, 14, 8),
         child: Row(

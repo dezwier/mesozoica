@@ -18,7 +18,7 @@ import 'timed_session_remaining.dart';
 /// Active timed site-guidance session (direction range / distance overlays).
 class GuidanceSessionController extends ChangeNotifier {
   GuidanceSessionController({ToolService? toolService})
-      : _toolService = toolService ?? ToolService();
+    : _toolService = toolService ?? ToolService();
 
   final ToolService _toolService;
   final math.Random _random = math.Random();
@@ -50,8 +50,9 @@ class GuidanceSessionController extends ChangeNotifier {
   Timer? _tickTimer;
 
   /// Countdown for HUD / tool cards — does not trigger [notifyListeners].
-  final ValueNotifier<Duration?> remainingListenable =
-      ValueNotifier<Duration?>(null);
+  final ValueNotifier<Duration?> remainingListenable = ValueNotifier<Duration?>(
+    null,
+  );
 
   /// Needle / distance chrome animation tick — does not trigger [notifyListeners].
   final ValueNotifier<int> displayTickListenable = ValueNotifier<int>(0);
@@ -63,6 +64,7 @@ class GuidanceSessionController extends ChangeNotifier {
   ToolSummary? get tool => _tool;
   bool get isActivating => _activating;
   String? get message => _message;
+
   /// True once after [activate] until the map consumes it (close overlays + follow).
   bool get requestShowOnMap => _requestShowOnMap;
 
@@ -80,9 +82,8 @@ class GuidanceSessionController extends ChangeNotifier {
   /// Full arc width in degrees for the direction glow.
   double get rangeWidthDeg {
     final cfg = _kind?.config(GameConfig.instance);
-    final exactness = _session?.directionExactness ??
-        cfg?.resolvedDirectionExactness ??
-        0.0;
+    final exactness =
+        _session?.directionExactness ?? cfg?.resolvedDirectionExactness ?? 0.0;
     return GuidanceMath.directionRangeWidthDeg(
       exactness: exactness,
       maxDeg: cfg?.maxDirectionRangeDeg ?? 180,
@@ -95,8 +96,7 @@ class GuidanceSessionController extends ChangeNotifier {
   /// In rotate mode, up is device forward so [rotateWithHeading] subtracts
   /// heading. In north-fixed mode, up is north — pass false.
   double rangeCenterScreenDeg({required bool rotateWithHeading}) {
-    final heading =
-        rotateWithHeading ? (_location?.headingDeg ?? 0.0) : 0.0;
+    final heading = rotateWithHeading ? (_location?.headingDeg ?? 0.0) : 0.0;
     return GuidanceMath.rangeCenterScreenDeg(
       trueBearingDeg: _trueBearingDeg,
       deviceHeadingDeg: heading,
@@ -338,9 +338,7 @@ class GuidanceSessionController extends ChangeNotifier {
 
     _updateHintInterpolation();
 
-    if (announceRetarget &&
-        previousId != null &&
-        previousId != site.siteId) {
+    if (announceRetarget && previousId != null && previousId != site.siteId) {
       _flashRetargetBadge();
     }
     notifyListeners();

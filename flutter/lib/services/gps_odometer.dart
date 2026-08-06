@@ -77,8 +77,8 @@ class GpsOdometer {
       );
     }
 
-    final dt = fix.timestamp.difference(previous.timestamp).inMilliseconds /
-        1000.0;
+    final dt =
+        fix.timestamp.difference(previous.timestamp).inMilliseconds / 1000.0;
     if (dt < minDtSeconds || dt > maxDtSeconds) {
       return GpsOdometerResult(
         acceptedMeters: 0,
@@ -126,16 +126,12 @@ class GpsOdometer {
 }
 
 /// Great-circle distance in meters between two WGS84 points.
-double haversineMeters(
-  double lat1,
-  double lon1,
-  double lat2,
-  double lon2,
-) {
+double haversineMeters(double lat1, double lon1, double lat2, double lon2) {
   const earthRadiusM = 6371000.0;
   final dLat = _toRad(lat2 - lat1);
   final dLon = _toRad(lon2 - lon1);
-  final a = math.sin(dLat / 2) * math.sin(dLat / 2) +
+  final a =
+      math.sin(dLat / 2) * math.sin(dLat / 2) +
       math.cos(_toRad(lat1)) *
           math.cos(_toRad(lat2)) *
           math.sin(dLon / 2) *

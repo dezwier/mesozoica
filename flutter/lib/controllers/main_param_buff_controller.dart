@@ -14,7 +14,7 @@ import 'timed_session_remaining.dart';
 /// members of the buff family.
 class MainParamBuffController extends ChangeNotifier {
   MainParamBuffController({ToolService? toolService})
-      : _toolService = toolService ?? ToolService();
+    : _toolService = toolService ?? ToolService();
 
   final ToolService _toolService;
 
@@ -27,8 +27,9 @@ class MainParamBuffController extends ChangeNotifier {
   Timer? _tickTimer;
 
   /// Countdown for HUD / tool cards — does not trigger [notifyListeners].
-  final ValueNotifier<Duration?> remainingListenable =
-      ValueNotifier<Duration?>(null);
+  final ValueNotifier<Duration?> remainingListenable = ValueNotifier<Duration?>(
+    null,
+  );
 
   bool get isActive =>
       _session != null && _session!.isActive && !_session!.isExpired;
@@ -107,11 +108,7 @@ class MainParamBuffController extends ChangeNotifier {
     _requestShowOnMap = false;
   }
 
-  Future<void> activate(
-    ToolSummary tool, {
-    double? lat,
-    double? lon,
-  }) async {
+  Future<void> activate(ToolSummary tool, {double? lat, double? lon}) async {
     if (!tool.isOwned) return;
     final kind = MainParamBuffKind.tryParseToolName(tool.name);
     if (kind == null) return;

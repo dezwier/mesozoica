@@ -35,9 +35,9 @@ class AppSplashScreen extends StatelessWidget {
     final dpr = dispatcher.views.isNotEmpty
         ? dispatcher.views.first.devicePixelRatio
         : dispatcher.implicitView?.devicePixelRatio ?? 1.0;
-    final stream = imageProvider.resolve(ImageConfiguration(
-      devicePixelRatio: dpr,
-    ));
+    final stream = imageProvider.resolve(
+      ImageConfiguration(devicePixelRatio: dpr),
+    );
     final completer = Completer<void>();
     late final ImageStreamListener listener;
     listener = ImageStreamListener(

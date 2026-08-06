@@ -57,19 +57,14 @@ class FossilCardBack extends StatelessWidget {
               top: 14,
               right: 10,
               child: IconButton(
-                onPressed: () => FossilRecordDrawer.show(
-                  context,
-                  fossil: fossil,
-                ),
+                onPressed: () =>
+                    FossilRecordDrawer.show(context, fossil: fossil),
                 icon: const Icon(Icons.info_outline, size: 18),
                 color: const Color(0xE6F5F0E8),
                 tooltip: 'Record details',
                 visualDensity: VisualDensity.compact,
                 padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(
-                  minWidth: 28,
-                  minHeight: 28,
-                ),
+                constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
               ),
             ),
           Positioned(
@@ -88,9 +83,7 @@ class FossilCardBack extends StatelessWidget {
                 const SizedBox(height: 10),
                 FossilCardEdgeFacts(fossil: fossil),
                 const SizedBox(height: 10),
-                Expanded(
-                  child: FossilRelatedThumbs(fossil: fossil),
-                ),
+                Expanded(child: FossilRelatedThumbs(fossil: fossil)),
               ],
             ),
           ),

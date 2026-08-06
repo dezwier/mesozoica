@@ -1,0 +1,249 @@
+"""Orchestrate Gemini enrichment of dinosaur content revisions."""
+
+from __future__ import annotations
+
+import logging
+import time
+
+from sqlalchemy import case, update
+from sqlmodel import Session, col, func, select
+
+from app.core.config import settings
+from app.models.dinosaur_type import DinosaurType
+from app.models.dinosaur_type_revision import DinosaurTypeRevision
+from app.features.ingestion.application.dinosaur_enrichment.prompt import build_enrichment_prompt
+from app.features.ingestion.application.dinosaur_enrichment.validate import validate_llm_enrichment
+from app.features.media.public import DINOSAUR_CURATED_MEDIA_PATH as CURATED_MEDIA_PATH
+from app.features.ingestion.public import dino_name_match_clause
+from app.features.ingestion.application.enrichment_common import (
+    EnrichCounters,
+    EnrichSummary,
+    enrich_exit_code as shared_enrich_exit_code,
+)
+from app.features.ingestion.infrastructure.llm.client import call_gemini_api
+
+logger = logging.getLogger("dinosaur_enrich")
+
+# Small JSON payload; disable Gemini 2.5 thinking so output tokens are not consumed
+# by internal reasoning (which caused truncated JSON at the old 2048 cap).
+_DINOSAUR_ENRICH_MAX_OUTPUT_TOKENS = 4096
+
+# Re-export for callers/tests that import from this module.
+__all__ = [
+    "EnrichCounters",
+    "EnrichSummary",
+    "enrich_dinosaurs",
+    "enrich_exit_code",
+    "reset_llm_enriched_flags",
+]
+
+
+def reset_llm_enriched_flags(
+    session: Session,
+    *,
+    dinos: list[str] | None = None,
+    dry_run: bool = False,
+) -> int:
+    """Clear llm_enriched so an interrupted overwrite run can resume without --overwrite."""
+    if dry_run:
+        stmt = (
+            select(func.count())
+            .select_from(DinosaurTypeRevision)
+            .join(
+                DinosaurType,
+                col(DinosaurTypeRevision.dinosaur_type_id) == col(DinosaurType.id),
+            )
+            .where(
+                DinosaurTypeRevision.llm_enriched.is_(True),  # type: ignore[attr-defined]
+                DinosaurTypeRevision.article.is_not(None),  # type: ignore[union-attr]
+            )
+        )
+        if dinos:
+            stmt = stmt.where(dino_name_match_clause(dinos))
+        return int(session.exec(stmt).one())
+
+    if dinos:
+        type_ids = select(DinosaurType.id).where(dino_name_match_clause(dinos))
+        stmt = (
+            update(DinosaurTypeRevision)
+            .values(llm_enriched=False)
+            .where(
+                DinosaurTypeRevision.llm_enriched.is_(True),  # type: ignore[attr-defined]
+                DinosaurTypeRevision.article.is_not(None),  # type: ignore[union-attr]
+                col(DinosaurTypeRevision.dinosaur_type_id).in_(type_ids),
+            )
+        )
+    else:
+        stmt = (
+            update(DinosaurTypeRevision)
+            .values(llm_enriched=False)
+            .where(
+                DinosaurTypeRevision.llm_enriched.is_(True),  # type: ignore[attr-defined]
+                DinosaurTypeRevision.article.is_not(None),  # type: ignore[union-attr]
+            )
+        )
+    result = session.exec(stmt)
+    session.commit()
+    return int(result.rowcount or 0)
+
+
+def _select_candidates(
+    session: Session,
+    *,
+    include_enriched: bool,
+    max_records: int | None,
+    dinos: list[str] | None = None,
+) -> list[tuple[DinosaurTypeRevision, DinosaurType]]:
+    """Any revision with article that still needs enrichment (not only current)."""
+    stmt = (
+        select(DinosaurTypeRevision, DinosaurType)
+        .join(
+            DinosaurType,
+            col(DinosaurTypeRevision.dinosaur_type_id) == col(DinosaurType.id),
+        )
+        .where(DinosaurTypeRevision.article.is_not(None))  # type: ignore[union-attr]
+    )
+    if not include_enriched:
+        stmt = stmt.where(DinosaurTypeRevision.llm_enriched.is_(False))  # type: ignore[attr-defined]
+    if dinos:
+        stmt = stmt.where(dino_name_match_clause(dinos))
+    custom_image_priority = case(
+        (
+            col(DinosaurType.main_image_url).is_not(None)
+            & col(DinosaurType.main_image_url).contains(CURATED_MEDIA_PATH),
+            0,
+        ),
+        else_=1,
+    )
+    stmt = stmt.order_by(
+        custom_image_priority,
+        DinosaurTypeRevision.id,  # type: ignore[arg-type]
+    )
+    if max_records is not None:
+        stmt = stmt.limit(max_records)
+    return list(session.exec(stmt).all())
+
+
+def _apply_enrichment(revision: DinosaurTypeRevision, raw: dict) -> None:
+    validated = validate_llm_enrichment(raw)
+    revision.length = validated.length
+    revision.mass = validated.mass
+    revision.location = validated.location
+    revision.diet_type = validated.diet_type
+    revision.short_description = validated.short_description
+    revision.llm_enriched = True
+
+
+def enrich_dinosaurs(
+    session: Session,
+    *,
+    dry_run: bool = False,
+    overwrite: bool = False,
+    max_records: int | None = None,
+    dinos: list[str] | None = None,
+) -> EnrichSummary:
+    """Enrich dinosaur content revisions via Gemini API."""
+    if not settings.google_gemini_api_key:
+        raise RuntimeError("GOOGLE_GEMINI_API_KEY is required for dinosaur enrichment")
+
+    cap = max_records if max_records is not None else settings.dinosaur_enrich_max_records
+    delay_s = settings.dinosaur_enrich_request_delay_ms / 1000.0
+
+    start = time.monotonic()
+    counters = EnrichCounters()
+
+    if overwrite and not dry_run:
+        reset_count = reset_llm_enriched_flags(session, dinos=dinos)
+        logger.info(
+            "dinosaur_enrich: reset llm_enriched count=%d dinos=%s",
+            reset_count,
+            dinos,
+        )
+
+    candidates = _select_candidates(
+        session,
+        include_enriched=overwrite and dry_run,
+        max_records=cap,
+        dinos=dinos,
+    )
+    total = len(candidates)
+
+    logger.info(
+        "dinosaur_enrich: starting total_candidates=%d overwrite=%s dinos=%s",
+        total,
+        overwrite,
+        dinos,
+    )
+
+    for index, (revision, dino_type) in enumerate(candidates, start=1):
+        prefix = (
+            f"dinosaur_enrich: [{index}/{total}] {dino_type.name} "
+            f"revision={revision.id}"
+        )
+        try:
+            if not revision.article:
+                counters.skipped += 1
+                logger.info("%s action=skip reason=no_article", prefix)
+                continue
+
+            system_instruction, user_prompt = build_enrichment_prompt(
+                name=dino_type.name,
+                article=revision.article,
+            )
+            raw, _usage = call_gemini_api(
+                user_prompt,
+                system_instruction=system_instruction,
+                response_mime_type_json=True,
+                max_output_tokens=_DINOSAUR_ENRICH_MAX_OUTPUT_TOKENS,
+                thinking_budget=0,
+                timeout_seconds=120,
+                log_context=f"{dino_type.name}#{revision.id}",
+            )
+
+            if dry_run:
+                validate_llm_enrichment(raw)
+                counters.enriched += 1
+                logger.info("%s action=enrich reason=dry_run", prefix)
+            else:
+                _apply_enrichment(revision, raw)
+                session.add(revision)
+                session.commit()
+                counters.enriched += 1
+                reason = "overwrite" if overwrite else "new"
+                logger.info("%s action=enrich reason=%s", prefix, reason)
+
+        except Exception as exc:
+            counters.failed += 1
+            logger.error("%s action=failed error=%s", prefix, exc)
+            session.rollback()
+
+        if index < total and delay_s > 0:
+            time.sleep(delay_s)
+
+    elapsed = time.monotonic() - start
+    summary = EnrichSummary(
+        total_candidates=total,
+        counters=counters,
+        dry_run=dry_run,
+        overwrite=overwrite,
+        elapsed_s=elapsed,
+    )
+    logger.info(
+        "dinosaur_enrich: finished enriched=%d skipped=%d failed=%d "
+        "overwrite=%s dry_run=%s elapsed_s=%.1f",
+        counters.enriched,
+        counters.skipped,
+        counters.failed,
+        overwrite,
+        dry_run,
+        elapsed,
+    )
+    return summary
+
+
+def enrich_exit_code(summary: EnrichSummary) -> int:
+    """Return non-zero if failure rate exceeds configured threshold."""
+    return shared_enrich_exit_code(
+        summary,
+        failure_threshold=settings.dinosaur_enrich_failure_threshold,
+    )

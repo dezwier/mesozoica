@@ -36,9 +36,7 @@ class _FakeLocationService extends LocationService {
   }
 
   @override
-  Future<void> setFieldSession({
-    required bool active,
-  }) async {
+  Future<void> setFieldSession({required bool active}) async {
     final delay = setFieldSessionDelay;
     if (delay != null) {
       await delay();
@@ -167,37 +165,39 @@ void main() {
     coordinator.dispose();
   });
 
-  test('background lifecycle notifies LocationService via onAppBackgrounded',
-      () async {
-    final coordinator = FieldSessionCoordinator(
-      siteService: SiteService(
-        client: MockClient((request) async {
-          return http.Response(
-            jsonEncode({
-              'accepted': true,
-              'existing_in_radius': 0,
-              'missing': 0,
-              'radius_km': 1.0,
-            }),
-            202,
-          );
-        }),
-      ),
-    );
+  test(
+    'background lifecycle notifies LocationService via onAppBackgrounded',
+    () async {
+      final coordinator = FieldSessionCoordinator(
+        siteService: SiteService(
+          client: MockClient((request) async {
+            return http.Response(
+              jsonEncode({
+                'accepted': true,
+                'existing_in_radius': 0,
+                'missing': 0,
+                'radius_km': 1.0,
+              }),
+              202,
+            );
+          }),
+        ),
+      );
 
-    final locationService = _FakeLocationService(const LatLng(51.0, 4.0));
-    coordinator.bind(locationService: locationService);
-    coordinator.onForeground();
-    await pumpUntilIdle();
-    expect(locationService.backgroundedCalls, 0);
+      final locationService = _FakeLocationService(const LatLng(51.0, 4.0));
+      coordinator.bind(locationService: locationService);
+      coordinator.onForeground();
+      await pumpUntilIdle();
+      expect(locationService.backgroundedCalls, 0);
 
-    coordinator.onBackground();
-    await pumpUntilIdle();
-    expect(locationService.backgroundedCalls, 1);
-    expect(coordinator.isSessionActive, isTrue);
+      coordinator.onBackground();
+      await pumpUntilIdle();
+      expect(locationService.backgroundedCalls, 1);
+      expect(coordinator.isSessionActive, isTrue);
 
-    coordinator.dispose();
-  });
+      coordinator.dispose();
+    },
+  );
 
   test('background exploring still ensures on new 500m cell', () async {
     final bodies = <Map<String, dynamic>>[];
@@ -381,7 +381,12 @@ void main() {
     );
     expect(scanBody['lat'], 52.5);
     expect(scanBody['lon'], 5.5);
-    expect(bodies.where((b) => b['reason'] == FieldSessionCoordinator.reasonScan).length, 1);
+    expect(
+      bodies
+          .where((b) => b['reason'] == FieldSessionCoordinator.reasonScan)
+          .length,
+      1,
+    );
 
     coordinator.dispose();
   });

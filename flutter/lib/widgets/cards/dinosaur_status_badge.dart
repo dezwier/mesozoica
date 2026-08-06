@@ -5,10 +5,7 @@ import '../../utils/display_text.dart';
 
 /// Non-interactive status chip for inventory dinosaur occurrence cards.
 class DinosaurStatusBadge extends StatelessWidget {
-  const DinosaurStatusBadge({
-    super.key,
-    required this.status,
-  });
+  const DinosaurStatusBadge({super.key, required this.status});
 
   final String status;
 

@@ -1,0 +1,2 @@
+"""Curated-image media feature."""
+

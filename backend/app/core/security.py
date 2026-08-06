@@ -14,7 +14,7 @@ from app.core.config import settings
 from app.core.database import get_session
 from app.models.user import User
 
-security = HTTPBearer()
+security = HTTPBearer(auto_error=False)
 
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
@@ -37,9 +37,16 @@ def verify_token(token: str) -> dict | None:
 
 
 async def get_current_user(
-    credentials: HTTPAuthorizationCredentials = Depends(security),
+    credentials: HTTPAuthorizationCredentials | None = Depends(security),
     session: Session = Depends(get_session),
 ) -> User:
+    if credentials is None:
+        # Preserve the API's established missing-auth contract across FastAPI /
+        # Starlette versions. Invalid supplied credentials remain a 401 below.
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authenticated",
+        )
     payload = verify_token(credentials.credentials)
     if payload is None:
         raise HTTPException(

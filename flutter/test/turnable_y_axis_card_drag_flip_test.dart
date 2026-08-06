@@ -47,8 +47,9 @@ void main() {
     return opacity.opacity > 0.5;
   }
 
-  testWidgets('tap left half flips when enableDragFlip is false',
-      (tester) async {
+  testWidgets('tap left half flips when enableDragFlip is false', (
+    tester,
+  ) async {
     await tester.pumpWidget(card(enableDragFlip: false));
     await tester.pumpAndSettle();
 
@@ -63,8 +64,9 @@ void main() {
     expect(_faceVisible(tester, 'FRONT'), isFalse);
   });
 
-  testWidgets('horizontal drag does not flip when enableDragFlip is false',
-      (tester) async {
+  testWidgets('horizontal drag does not flip when enableDragFlip is false', (
+    tester,
+  ) async {
     await tester.pumpWidget(card(enableDragFlip: false));
     await tester.pumpAndSettle();
 
@@ -76,8 +78,9 @@ void main() {
     expect(_faceVisible(tester, 'BACK'), isFalse);
   });
 
-  testWidgets('horizontal drag flips when enableDragFlip is true',
-      (tester) async {
+  testWidgets('horizontal drag flips when enableDragFlip is true', (
+    tester,
+  ) async {
     await tester.pumpWidget(card(enableDragFlip: true));
     await tester.pumpAndSettle();
 

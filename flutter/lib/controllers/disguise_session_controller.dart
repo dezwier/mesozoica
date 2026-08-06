@@ -11,7 +11,7 @@ import 'timed_session_remaining.dart';
 /// Active timed disguise cover, or map pick-mode before deploy.
 class DisguiseSessionController extends ChangeNotifier {
   DisguiseSessionController({ToolService? toolService})
-      : _toolService = toolService ?? ToolService();
+    : _toolService = toolService ?? ToolService();
 
   final ToolService _toolService;
 
@@ -24,8 +24,9 @@ class DisguiseSessionController extends ChangeNotifier {
   String? _message;
   Timer? _tickTimer;
 
-  final ValueNotifier<Duration?> remainingListenable =
-      ValueNotifier<Duration?>(null);
+  final ValueNotifier<Duration?> remainingListenable = ValueNotifier<Duration?>(
+    null,
+  );
 
   bool get isActive =>
       _session != null && _session!.isActive && !_session!.isExpired;

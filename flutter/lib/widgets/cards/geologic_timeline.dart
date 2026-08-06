@@ -26,12 +26,12 @@ class GeologicTimeline extends StatelessWidget {
     double maxMa = mesozoicYoungerMa,
     GeologicTimelineAxis axis = GeologicTimelineAxis.vertical,
     double scale = 1.0,
-  })  : birth = maxAgeMa,
-        death = minAgeMa,
-        minMa = minMa,
-        maxMa = maxMa,
-        axis = axis,
-        scale = scale;
+  }) : birth = maxAgeMa,
+       death = minAgeMa,
+       minMa = minMa,
+       maxMa = maxMa,
+       axis = axis,
+       scale = scale;
 
   static const double mesozoicOlderMa = timeline_constants.mesozoicOlderMa;
   static const double mesozoicYoungerMa = timeline_constants.mesozoicYoungerMa;
@@ -148,8 +148,9 @@ class _VerticalTimeline extends StatelessWidget {
               child: Container(
                 width: _barWidth,
                 decoration: BoxDecoration(
-                  color: cardTheme.cardAccent
-                      .withValues(alpha: 0.28 + i * 0.12),
+                  color: cardTheme.cardAccent.withValues(
+                    alpha: 0.28 + i * 0.12,
+                  ),
                   borderRadius: BorderRadius.vertical(
                     top: i == 0 ? const Radius.circular(2) : Radius.zero,
                     bottom: i == GeologicTimeline._periods.length - 1
@@ -162,7 +163,9 @@ class _VerticalTimeline extends StatelessWidget {
           if (sameMa && startPos != null)
             Positioned(
               left: _axisLeft - (_rangeWidth - _barWidth) / 2,
-              top: (1 - startPos!.clamp(0.0, 1.0)) * height - _minRangeExtent / 2,
+              top:
+                  (1 - startPos!.clamp(0.0, 1.0)) * height -
+                  _minRangeExtent / 2,
               child: Container(
                 width: _rangeWidth,
                 height: _minRangeExtent,
@@ -291,8 +294,7 @@ class _HorizontalTimeline extends StatelessWidget {
     final y0 = ((height - _contentHeight) / 2).clamp(0.0, height);
     final periodTop = y0;
     final barBandTop = y0 + _periodLabelHeight + _labelToBarGap;
-    final barTop =
-        barBandTop + (_rangeIndicatorHeight - _barHeight) / 2;
+    final barTop = barBandTop + (_rangeIndicatorHeight - _barHeight) / 2;
     final maTop = barBandTop + _rangeIndicatorHeight + _barToMaGap;
 
     return SizedBox(
@@ -305,13 +307,15 @@ class _HorizontalTimeline extends StatelessWidget {
             Positioned(
               left: _xForMa(GeologicTimeline._periods[i].startMa, trackWidth),
               top: barTop,
-              width: _xForMa(GeologicTimeline._periods[i].endMa, trackWidth) -
+              width:
+                  _xForMa(GeologicTimeline._periods[i].endMa, trackWidth) -
                   _xForMa(GeologicTimeline._periods[i].startMa, trackWidth),
               child: Container(
                 height: _barHeight,
                 decoration: BoxDecoration(
-                  color: cardTheme.cardAccent
-                      .withValues(alpha: 0.28 + i * 0.12),
+                  color: cardTheme.cardAccent.withValues(
+                    alpha: 0.28 + i * 0.12,
+                  ),
                   borderRadius: BorderRadius.horizontal(
                     left: i == 0 ? const Radius.circular(2) : Radius.zero,
                     right: i == GeologicTimeline._periods.length - 1
@@ -323,7 +327,8 @@ class _HorizontalTimeline extends StatelessWidget {
             ),
           if (sameMa && startPos != null)
             Positioned(
-              left: _horizontalInset +
+              left:
+                  _horizontalInset +
                   (1 - startPos!.clamp(0.0, 1.0)) * trackWidth -
                   _minRangeWidth / 2,
               top: barBandTop,
@@ -341,7 +346,8 @@ class _HorizontalTimeline extends StatelessWidget {
             )
           else if (startPos != null && endPos != null)
             Positioned(
-              left: _horizontalInset +
+              left:
+                  _horizontalInset +
                   (1 - startPos!.clamp(0.0, 1.0)) * trackWidth,
               top: barBandTop,
               width: ((startPos! - endPos!).clamp(0.0, 1.0)) * trackWidth,
@@ -358,7 +364,8 @@ class _HorizontalTimeline extends StatelessWidget {
             )
           else if (startPos != null)
             Positioned(
-              left: _horizontalInset +
+              left:
+                  _horizontalInset +
                   (1 - startPos!.clamp(0.0, 1.0)) * trackWidth -
                   5 * scale,
               top: barBandTop,
@@ -373,8 +380,8 @@ class _HorizontalTimeline extends StatelessWidget {
               left: ma == minMa
                   ? _horizontalInset - 2 * scale
                   : ma == maxMa
-                      ? null
-                      : _xForMa(ma, trackWidth) - 24 * scale,
+                  ? null
+                  : _xForMa(ma, trackWidth) - 24 * scale,
               right: ma == maxMa ? _horizontalInset - 2 * scale : null,
               top: maTop,
               width: ma == minMa || ma == maxMa ? null : 48 * scale,
@@ -383,8 +390,8 @@ class _HorizontalTimeline extends StatelessWidget {
                 textAlign: ma == maxMa
                     ? TextAlign.right
                     : ma == minMa
-                        ? TextAlign.left
-                        : TextAlign.center,
+                    ? TextAlign.left
+                    : TextAlign.center,
                 maxLines: 1,
                 softWrap: false,
                 style: TextStyle(

@@ -9,9 +9,11 @@ import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 
 class OAuthSignInService {
   OAuthSignInService({GoogleSignIn? googleSignIn})
-      : _googleSignIn = googleSignIn ?? _createGoogleSignIn();
+    : _googleSignIn = googleSignIn ?? _createGoogleSignIn();
 
-  static const String _webClientId = String.fromEnvironment('GOOGLE_WEB_CLIENT_ID');
+  static const String _webClientId = String.fromEnvironment(
+    'GOOGLE_WEB_CLIENT_ID',
+  );
 
   final GoogleSignIn _googleSignIn;
 
@@ -25,7 +27,9 @@ class OAuthSignInService {
     return GoogleSignIn(scopes: const ['email']);
   }
 
-  Future<OAuthGoogleResult?> signInWithGoogle({bool forceAccountPicker = false}) async {
+  Future<OAuthGoogleResult?> signInWithGoogle({
+    bool forceAccountPicker = false,
+  }) async {
     if (kIsWeb) {
       return null;
     }
@@ -41,10 +45,7 @@ class OAuthSignInService {
       final auth = await googleUser.authentication;
       final idToken = auth.idToken;
       if (idToken == null || idToken.isEmpty) return null;
-      return OAuthGoogleResult(
-        idToken: idToken,
-        accessToken: auth.accessToken,
-      );
+      return OAuthGoogleResult(idToken: idToken, accessToken: auth.accessToken);
     } catch (_) {
       return null;
     }
@@ -152,7 +153,9 @@ class OAuthSignInService {
     return [given, family].whereType<String>().join(' ').trim();
   }
 
-  String _appleAuthorizationMessage(SignInWithAppleAuthorizationException error) {
+  String _appleAuthorizationMessage(
+    SignInWithAppleAuthorizationException error,
+  ) {
     switch (error.code) {
       case AuthorizationErrorCode.failed:
         return 'Apple sign-in failed. Try again.';
@@ -173,8 +176,10 @@ class OAuthSignInService {
     const charset =
         '0123456789ABCDEFGHIJKLMNOPQRSTUVXYZabcdefghijklmnopqrstuvwxyz-._';
     final random = Random.secure();
-    return List.generate(length, (_) => charset[random.nextInt(charset.length)])
-        .join();
+    return List.generate(
+      length,
+      (_) => charset[random.nextInt(charset.length)],
+    ).join();
   }
 
   String _sha256ofString(String input) {
@@ -185,10 +190,7 @@ class OAuthSignInService {
 }
 
 class OAuthGoogleResult {
-  const OAuthGoogleResult({
-    required this.idToken,
-    this.accessToken,
-  });
+  const OAuthGoogleResult({required this.idToken, this.accessToken});
 
   final String idToken;
   final String? accessToken;

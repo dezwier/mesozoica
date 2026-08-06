@@ -13,21 +13,11 @@ void main() {
 
   test('snapWidenessM steps by 500', () {
     expect(
-      snapWidenessM(
-        500,
-        cellSizeM: 500,
-        minWidenessM: 500,
-        maxWidenessM: 2000,
-      ),
+      snapWidenessM(500, cellSizeM: 500, minWidenessM: 500, maxWidenessM: 2000),
       500,
     );
     expect(
-      snapWidenessM(
-        750,
-        cellSizeM: 500,
-        minWidenessM: 500,
-        maxWidenessM: 2000,
-      ),
+      snapWidenessM(750, cellSizeM: 500, minWidenessM: 500, maxWidenessM: 2000),
       1000,
     );
   });

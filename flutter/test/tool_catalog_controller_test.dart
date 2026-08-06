@@ -68,10 +68,7 @@ void main() {
 
     final controller = ToolCatalogController(service: service);
     await controller.applyFilters(
-      const ToolCatalogFilters(
-        searchQuery: 'air',
-        sort: ToolCatalogSort.name,
-      ),
+      const ToolCatalogFilters(searchQuery: 'air', sort: ToolCatalogSort.name),
     );
 
     expect(capturedUri, isNotNull);
@@ -129,9 +126,7 @@ void main() {
   });
 
   test('default mode is inventory and catalog is allowed', () async {
-    final service = ToolService(
-      client: _mockClient(onToolsRequest: (_) {}),
-    );
+    final service = ToolService(client: _mockClient(onToolsRequest: (_) {}));
 
     final controller = ToolCatalogController(service: service);
     expect(controller.mode, ToolScreenMode.inventory);

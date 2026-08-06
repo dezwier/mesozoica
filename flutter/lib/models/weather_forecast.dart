@@ -20,7 +20,8 @@ class WeatherHourPoint {
     var type = json['weather_type'] as String? ?? 'unknown';
     if (type == 'sunny') type = 'clear';
     return WeatherHourPoint(
-      validAt: DateTime.tryParse(json['valid_at'] as String? ?? '') ??
+      validAt:
+          DateTime.tryParse(json['valid_at'] as String? ?? '') ??
           DateTime.fromMillisecondsSinceEpoch(0, isUtc: true),
       weatherType: type,
       temperatureC: (json['temperature_c'] as num?)?.toDouble() ?? 0,
@@ -57,10 +58,7 @@ class WeatherForecastCell {
 }
 
 class WeatherForecast {
-  const WeatherForecast({
-    required this.cell,
-    required this.hours,
-  });
+  const WeatherForecast({required this.cell, required this.hours});
 
   final WeatherForecastCell cell;
   final List<WeatherHourPoint> hours;

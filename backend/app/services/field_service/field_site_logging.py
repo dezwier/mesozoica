@@ -1,66 +1,7 @@
-"""Structured logging helpers for field-site ensure/generate."""
+"""Transitional alias for the feature-owned implementation."""
 
-from __future__ import annotations
-
-import logging
 import sys
-from typing import Any
 
-logger = logging.getLogger("field_site_generate")
+from app.features.field.application import field_site_logging as _implementation
 
-FIELD_ENSURE_REASONS = frozenset(
-    {
-        "resume",
-        "move_500m",
-        "scan",
-        "orbit_survey",
-        "formation_map",
-        "aerial_recon",
-        "aerial_scout",
-    }
-)
-
-_configured = False
-
-
-def _configure_logger() -> None:
-    global _configured
-    if _configured:
-        return
-    logger.setLevel(logging.INFO)
-    if not any(isinstance(handler, logging.StreamHandler) for handler in logger.handlers):
-        handler = logging.StreamHandler()
-        handler.setLevel(logging.INFO)
-        handler.setFormatter(logging.Formatter("%(levelname)s %(message)s"))
-        logger.addHandler(handler)
-    logger.propagate = False
-    _configured = True
-
-
-_configure_logger()
-
-
-def normalize_reason(reason: str | None) -> str | None:
-    if reason is None:
-        return None
-    trimmed = reason.strip()
-    if not trimmed:
-        return None
-    if trimmed in FIELD_ENSURE_REASONS:
-        return trimmed
-    return trimmed[:32]
-
-
-def log_field_event(action: str, **fields: Any) -> None:
-    """Emit a single grep-friendly log line: field_site_generate action=… k=v …"""
-    parts = [f"field_site_generate action={action}"]
-    for key, value in fields.items():
-        if value is None:
-            continue
-        parts.append(f"{key}={value}")
-    message = " ".join(parts)
-    logger.info(message)
-    for handler in logger.handlers:
-        if hasattr(handler, "flush"):
-            handler.flush()
-    sys.stderr.flush()
+sys.modules[__name__] = _implementation

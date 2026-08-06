@@ -42,11 +42,10 @@ class FractalFernPainter extends CustomPainter {
   static const _genusDotScreenRadius = 5.5;
   static const _rootGlowScreenRadius = 56.0;
 
-  double _treeUnits(double screenPixels) =>
-      FractalLodPolicy.treeUnitsWithBoost(
-        screenPixels: screenPixels,
-        zoomScale: zoomScale,
-      );
+  double _treeUnits(double screenPixels) => FractalLodPolicy.treeUnitsWithBoost(
+    screenPixels: screenPixels,
+    zoomScale: zoomScale,
+  );
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -66,16 +65,14 @@ class FractalFernPainter extends CustomPainter {
   void _paintRootGlow(Canvas canvas, FractalLayoutNode root) {
     if (!visibleTreeRect.inflate(80).contains(root.position)) return;
 
-    final glowRadius = _treeUnits(_rootGlowScreenRadius + layout.maxStrokeWidth);
+    final glowRadius = _treeUnits(
+      _rootGlowScreenRadius + layout.maxStrokeWidth,
+    );
     final paint = Paint()
-      ..shader = ui.Gradient.radial(
-        root.position,
-        glowRadius,
-        [
-          rootGlowColor.withValues(alpha: 0.28),
-          rootGlowColor.withValues(alpha: 0),
-        ],
-      );
+      ..shader = ui.Gradient.radial(root.position, glowRadius, [
+        rootGlowColor.withValues(alpha: 0.28),
+        rootGlowColor.withValues(alpha: 0),
+      ]);
     canvas.drawCircle(root.position, glowRadius, paint);
   }
 
@@ -121,9 +118,8 @@ class FractalFernPainter extends CustomPainter {
     final parent = node.parentPosition!;
     final clip = visibleTreeRect.inflate(24);
     if (clip.contains(node.position) || clip.contains(parent)) return true;
-    return clip.intersect(
-      Rect.fromPoints(parent, node.position),
-    ).isEmpty == false;
+    return clip.intersect(Rect.fromPoints(parent, node.position)).isEmpty ==
+        false;
   }
 
   void _paintBranch(Canvas canvas, FractalLayoutNode node) {
@@ -291,10 +287,7 @@ Matrix4 focusFractalTransform({
 }) {
   if (bounds.isEmpty || viewportSize.isEmpty) return Matrix4.identity();
 
-  final local = Offset(
-    treePoint.dx - bounds.left,
-    treePoint.dy - bounds.top,
-  );
+  final local = Offset(treePoint.dx - bounds.left, treePoint.dy - bounds.top);
 
   return Matrix4.identity()
     ..translate(viewportSize.width / 2, viewportSize.height / 2)
@@ -330,10 +323,7 @@ Matrix4 lerpFractalFocusTransform({
   );
   final focalLocal = Offset.lerp(startCenterLocal, endLocal, t)!;
   return focusFractalTransform(
-    treePoint: Offset(
-      focalLocal.dx + bounds.left,
-      focalLocal.dy + bounds.top,
-    ),
+    treePoint: Offset(focalLocal.dx + bounds.left, focalLocal.dy + bounds.top),
     bounds: bounds,
     viewportSize: viewportSize,
     scale: scale,

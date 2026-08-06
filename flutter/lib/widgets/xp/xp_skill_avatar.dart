@@ -5,11 +5,7 @@ import '../profile/profile_skill_icons.dart';
 
 /// Brass-framed skill icon used on XP badges and celebration plaque rows.
 class XpSkillAvatar extends StatelessWidget {
-  const XpSkillAvatar({
-    super.key,
-    required this.skillId,
-    this.size = 38,
-  });
+  const XpSkillAvatar({super.key, required this.skillId, this.size = 38});
 
   final String skillId;
   final double size;

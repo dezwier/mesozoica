@@ -1,6 +1,9 @@
+import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mesozoica/controllers/notification_controller.dart';
 import 'package:mesozoica/models/user_notification.dart';
+import 'package:mesozoica/services/api_response_cache.dart';
 import 'package:mesozoica/services/notification_service.dart';
 
 UserNotificationItem _item({
@@ -36,6 +39,34 @@ class _SeededNotificationService extends NotificationService {
   }
 }
 
+class _MemoryResponseCache implements ResponseCache {
+  final Map<String, Object> _values = {};
+
+  String _key(String name, int? userId) => '$name:${userId ?? 0}';
+
+  @override
+  Future<void> clearForUser(int? userId) async {
+    final suffix = ':${userId ?? 0}';
+    _values.removeWhere((key, _) => key.endsWith(suffix));
+  }
+
+  @override
+  Future<String?> get(
+    String name,
+    int? userId, {
+    Duration ttl = const Duration(hours: 24),
+  }) async {
+    return _values[_key(name, userId)] as String?;
+  }
+
+  @override
+  Future<void> set(String name, int? userId, Object payload) async {
+    _values[_key(name, userId)] = payload is String
+        ? payload
+        : jsonEncode(payload);
+  }
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -46,6 +77,7 @@ void main() {
     );
     final controller = NotificationController(
       notificationService: service,
+      responseCache: _MemoryResponseCache(),
       setAppBadgeCount: (count) async => badgeCounts.add(count),
     );
 
@@ -66,6 +98,7 @@ void main() {
     );
     final controller = NotificationController(
       notificationService: service,
+      responseCache: _MemoryResponseCache(),
       setAppBadgeCount: (count) async => badgeCounts.add(count),
     );
 
@@ -82,6 +115,7 @@ void main() {
     final service = _SeededNotificationService(items: [_item(id: 3)]);
     final controller = NotificationController(
       notificationService: service,
+      responseCache: _MemoryResponseCache(),
       setAppBadgeCount: (count) async => badgeCounts.add(count),
     );
 

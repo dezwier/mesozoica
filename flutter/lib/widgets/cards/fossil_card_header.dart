@@ -25,6 +25,7 @@ class FossilCardHeader extends StatelessWidget {
   final bool useFrontTitleStyle;
   final bool overlayOnImage;
   final bool showOccurrenceSubtitle;
+
   /// When set, shown as the subtitle instead of [FossilSummary.displaySubtitle].
   final String? subtitleOverride;
   final bool wrapTitle;
@@ -35,22 +36,26 @@ class FossilCardHeader extends StatelessWidget {
     final titleStyle = overlayOnImage
         ? cardTheme.frontOverlayTitleStyle(fontSize: titleFontSize)
         : useFrontTitleStyle
-            ? cardTheme.frontTitleStyle(fontSize: titleFontSize)
-            : cardTheme.titleStyle(fontSize: titleFontSize);
+        ? cardTheme.frontTitleStyle(fontSize: titleFontSize)
+        : cardTheme.titleStyle(fontSize: titleFontSize);
     final subtitleStyle = overlayOnImage
         ? (fossil.isField
-            ? cardTheme.frontOverlaySubtitleStyle(fontSize: subtitleFontSize)
-            : cardTheme.frontOverlayBodyStyle(fontSize: 13))
-        : cardTheme.subtitleStyle(fontSize: subtitleFontSize).copyWith(
-            color: cardTheme.cardTextMuted,
-            fontWeight: FontWeight.w500,
-          );
-    final subtitle = subtitleOverride ??
+              ? cardTheme.frontOverlaySubtitleStyle(fontSize: subtitleFontSize)
+              : cardTheme.frontOverlayBodyStyle(fontSize: 13))
+        : cardTheme
+              .subtitleStyle(fontSize: subtitleFontSize)
+              .copyWith(
+                color: cardTheme.cardTextMuted,
+                fontWeight: FontWeight.w500,
+              );
+    final subtitle =
+        subtitleOverride ??
         (showOccurrenceSubtitle ? fossil.displaySubtitle : null);
 
     return Column(
-      crossAxisAlignment:
-          centered ? CrossAxisAlignment.center : CrossAxisAlignment.start,
+      crossAxisAlignment: centered
+          ? CrossAxisAlignment.center
+          : CrossAxisAlignment.start,
       children: [
         if (overlayOnImage && centered && !wrapTitle)
           SizedBox(

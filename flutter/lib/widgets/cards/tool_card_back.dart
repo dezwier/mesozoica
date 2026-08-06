@@ -51,7 +51,8 @@ class ToolCardBack extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final remaining = remainingDurationS ?? tool.remainingDurationS;
-    final actionEnabled = !inUse &&
+    final actionEnabled =
+        !inUse &&
         tool.isOwned &&
         onAction != null &&
         (remaining == null || remaining > 0);
@@ -63,10 +64,7 @@ class ToolCardBack extends StatelessWidget {
             icon: const Icon(Icons.settings, size: 18),
             tooltip: 'Edit parameters',
             visualDensity: VisualDensity.compact,
-            constraints: const BoxConstraints(
-              minWidth: 28,
-              minHeight: 28,
-            ),
+            constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
           );
 
     return AspectRatio(
@@ -101,11 +99,7 @@ class ToolCardBack extends StatelessWidget {
                     children: [
                       statsChild!,
                       if (editButton != null)
-                        Positioned(
-                          top: 2,
-                          right: 2,
-                          child: editButton,
-                        ),
+                        Positioned(top: 2, right: 2, child: editButton),
                     ],
                   ),
                   const SizedBox(height: 8),
@@ -123,8 +117,7 @@ class ToolCardBack extends StatelessWidget {
                           children: [
                             CardSectionPanel(
                               label: 'History',
-                              padding:
-                                  const EdgeInsets.fromLTRB(10, 8, 10, 6),
+                              padding: const EdgeInsets.fromLTRB(10, 8, 10, 6),
                               child: _HistoryList(
                                 history: history,
                                 loading: historyLoading,
@@ -132,11 +125,7 @@ class ToolCardBack extends StatelessWidget {
                               ),
                             ),
                             if (statsChild == null && editButton != null)
-                              Positioned(
-                                top: 2,
-                                right: 2,
-                                child: editButton,
-                              ),
+                              Positioned(top: 2, right: 2, child: editButton),
                           ],
                         ),
                       );
@@ -229,9 +218,9 @@ class _HistoryList extends StatelessWidget {
     if (history.isEmpty) {
       return Text(
         'No history yet',
-        style: cardTheme.bodyStyle(fontSize: 12).copyWith(
-              color: cardTheme.cardTextMuted,
-            ),
+        style: cardTheme
+            .bodyStyle(fontSize: 12)
+            .copyWith(color: cardTheme.cardTextMuted),
       );
     }
 
@@ -387,4 +376,3 @@ class _HistoryRow extends StatelessWidget {
     return '${h}h ${m}m';
   }
 }
-

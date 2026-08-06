@@ -31,23 +31,21 @@ class MapboxFormationMapOverlay {
         await map.style.removeStyleSource(formationMapSourceId);
       }
     } catch (error) {
-      developer.log('Formation map clear failed: $error', name: 'formation_map');
+      developer.log(
+        'Formation map clear failed: $error',
+        name: 'formation_map',
+      );
     }
   }
 
-  Future<void> sync({
-    required FormationMapRasterResult raster,
-  }) async {
+  Future<void> sync({required FormationMapRasterResult raster}) async {
     final map = _map;
     if (map == null) return;
     final seq = ++_syncSeq;
 
-    final Uint8List pngBytes = raster.pngBytes ??
-        await _rgbaToPng(
-          raster.rgba,
-          raster.width,
-          raster.height,
-        );
+    final Uint8List pngBytes =
+        raster.pngBytes ??
+        await _rgbaToPng(raster.rgba, raster.width, raster.height);
     if (seq != _syncSeq) return;
 
     final image = MbxImage(
@@ -63,10 +61,7 @@ class MapboxFormationMapOverlay {
 
       if (!hasSource) {
         await map.style.addSource(
-          ImageSource(
-            id: formationMapSourceId,
-            coordinates: coords,
-          ),
+          ImageSource(id: formationMapSourceId, coordinates: coords),
         );
         if (seq != _syncSeq) return;
         await _ensureLayer(map);
@@ -86,10 +81,7 @@ class MapboxFormationMapOverlay {
       if (seq != _syncSeq) return;
       await _ensureLayer(map);
       if (seq != _syncSeq) return;
-      await map.style.updateStyleImageSourceImage(
-        formationMapSourceId,
-        image,
-      );
+      await map.style.updateStyleImageSourceImage(formationMapSourceId, image);
     } catch (error, stack) {
       developer.log(
         'Formation map sync failed: $error\n$stack',

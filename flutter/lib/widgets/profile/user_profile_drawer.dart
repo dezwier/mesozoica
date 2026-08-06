@@ -101,9 +101,9 @@ class _UserProfileDrawerState extends State<UserProfileDrawer> {
   Future<void> _refreshNotifications() async {
     final userId = _currentUserId;
     if (userId == null || !mounted) return;
-    await context
-        .read<NotificationController>()
-        .refreshInBackground(authenticatedUserId: userId);
+    await context.read<NotificationController>().refreshInBackground(
+      authenticatedUserId: userId,
+    );
   }
 
   Future<void> _handleFriendAction() async {
@@ -111,12 +111,14 @@ class _UserProfileDrawerState extends State<UserProfileDrawer> {
     setState(() => _friendBusy = true);
     try {
       if (_relationshipType == 'none') {
-        _relationship =
-            await _relationshipService.sendFriendRequest(widget.userId);
+        _relationship = await _relationshipService.sendFriendRequest(
+          widget.userId,
+        );
         await _refreshNotifications();
       } else if (_isOutgoingPending) {
-        _relationship = await _relationshipService
-            .cancelFriendRequest(widget.userId);
+        _relationship = await _relationshipService.cancelFriendRequest(
+          widget.userId,
+        );
       } else if (_relationshipType == 'friend') {
         final confirmed = await showDialog<bool>(
           context: context,
@@ -135,8 +137,9 @@ class _UserProfileDrawerState extends State<UserProfileDrawer> {
           ),
         );
         if (confirmed == true) {
-          _relationship =
-              await _relationshipService.removeFriend(widget.userId);
+          _relationship = await _relationshipService.removeFriend(
+            widget.userId,
+          );
         }
       }
       if (mounted) setState(() {});
@@ -149,8 +152,9 @@ class _UserProfileDrawerState extends State<UserProfileDrawer> {
     if (_friendDecisionBusy) return;
     setState(() => _friendDecisionBusy = true);
     try {
-      _relationship =
-          await _relationshipService.acceptFriendRequest(widget.userId);
+      _relationship = await _relationshipService.acceptFriendRequest(
+        widget.userId,
+      );
       await _refreshNotifications();
       if (mounted) setState(() {});
     } finally {
@@ -162,8 +166,9 @@ class _UserProfileDrawerState extends State<UserProfileDrawer> {
     if (_friendDecisionBusy) return;
     setState(() => _friendDecisionBusy = true);
     try {
-      _relationship =
-          await _relationshipService.rejectFriendRequest(widget.userId);
+      _relationship = await _relationshipService.rejectFriendRequest(
+        widget.userId,
+      );
       await _refreshNotifications();
       if (mounted) Navigator.of(context).pop();
     } finally {
@@ -189,14 +194,13 @@ class _UserProfileDrawerState extends State<UserProfileDrawer> {
         final height = widget.scrollController != null
             ? constraints.maxHeight
             : MediaQuery.of(context).size.height *
-                DrawerSheetSizes.initialChildSize;
+                  DrawerSheetSizes.initialChildSize;
 
         return Container(
           height: height,
           decoration: BoxDecoration(
             color: Theme.of(context).colorScheme.surface,
-            borderRadius:
-                const BorderRadius.vertical(top: Radius.circular(20)),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
           ),
           child: Column(
             children: [
@@ -205,10 +209,9 @@ class _UserProfileDrawerState extends State<UserProfileDrawer> {
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: Theme.of(context)
-                      .colorScheme
-                      .onSurface
-                      .withValues(alpha: 0.3),
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.onSurface.withValues(alpha: 0.3),
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -242,14 +245,18 @@ class _UserProfileDrawerState extends State<UserProfileDrawer> {
               children: [
                 Expanded(
                   child: OutlinedButton(
-                    onPressed: _friendDecisionBusy ? null : _rejectFriendRequest,
+                    onPressed: _friendDecisionBusy
+                        ? null
+                        : _rejectFriendRequest,
                     child: const Text('Decline'),
                   ),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: FilledButton(
-                    onPressed: _friendDecisionBusy ? null : _acceptFriendRequest,
+                    onPressed: _friendDecisionBusy
+                        ? null
+                        : _acceptFriendRequest,
                     child: _friendDecisionBusy
                         ? const SizedBox(
                             width: 18,
@@ -264,20 +271,21 @@ class _UserProfileDrawerState extends State<UserProfileDrawer> {
           ),
         ProfileContent(
           profile: _profile!,
-          headerActions: _relationshipType == 'self' || _showIncomingFriendRequestActions
+          headerActions:
+              _relationshipType == 'self' || _showIncomingFriendRequestActions
               ? null
               : (_relationshipType == 'friend_pending' && !_isOutgoingPending)
-                  ? null
-                  : IconButton(
-                      onPressed: _friendBusy ? null : _handleFriendAction,
-                      icon: _friendBusy
-                          ? const SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : Icon(_friendIcon()),
-                    ),
+              ? null
+              : IconButton(
+                  onPressed: _friendBusy ? null : _handleFriendAction,
+                  icon: _friendBusy
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : Icon(_friendIcon()),
+                ),
         ),
       ],
     );

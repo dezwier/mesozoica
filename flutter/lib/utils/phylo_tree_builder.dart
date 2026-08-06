@@ -7,11 +7,7 @@ class PhyloTreeBuilder {
   const PhyloTreeBuilder();
 
   PhyloTreeBuildResult build(List<DinosaurSummary> dinosaurs) {
-    final root = PhyloTreeNode(
-      name: 'Dinosauria',
-      rankKey: 'clade',
-      depth: 0,
-    );
+    final root = PhyloTreeNode(name: 'Dinosauria', rankKey: 'clade', depth: 0);
 
     var placedCount = 0;
     var unplacedCount = 0;

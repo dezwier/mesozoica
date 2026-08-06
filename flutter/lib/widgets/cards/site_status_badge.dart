@@ -5,10 +5,7 @@ import '../../utils/display_text.dart';
 
 /// Field-site status options shown in the badge dropdown.
 class SiteStatusOption {
-  const SiteStatusOption({
-    required this.apiStatus,
-    required this.label,
-  });
+  const SiteStatusOption({required this.apiStatus, required this.label});
 
   final String apiStatus;
   final String label;

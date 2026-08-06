@@ -14,9 +14,7 @@ Widget _wrap(Widget child) {
     create: (_) => AuthController(),
     child: MaterialApp(
       home: Scaffold(
-        body: Center(
-          child: SizedBox(width: 120, child: child),
-        ),
+        body: Center(child: SizedBox(width: 120, child: child)),
       ),
     ),
   );
@@ -69,7 +67,8 @@ void main() {
         {
           'id': 20,
           'version': 'Original',
-          'main_image_url': 'https://example.com/media/tools/Orbit%20Survey.png',
+          'main_image_url':
+              'https://example.com/media/tools/Orbit%20Survey.png',
           'spawn_date': '2026-07-01T00:00:00Z',
         },
       ],

@@ -16,11 +16,11 @@ class AerialSessionCardExtension implements ToolCardExtension {
 
   @override
   List<String> editableParamKeys(ToolSummary tool) => const [
-        'flight_speed_kmh',
-        'duration_minutes',
-        'flight_discovery_chance',
-        'flight_discovery_distance_m',
-      ];
+    'flight_speed_kmh',
+    'duration_minutes',
+    'flight_discovery_chance',
+    'flight_discovery_distance_m',
+  ];
 
   @override
   Widget? buildDeployStats(BuildContext context, ToolSummary tool) {

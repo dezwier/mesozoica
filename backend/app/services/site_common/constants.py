@@ -1,6 +1,7 @@
-"""Shared site/field constants (no service dependencies)."""
+"""Transitional alias for the feature-owned implementation."""
 
-from __future__ import annotations
+import sys
 
-# Field sites use IDs at or above this threshold (archive sites are below).
-FIELD_SITE_ID_START = 1_000_000_000
+from app.features.sites.domain import constants as _implementation
+
+sys.modules[__name__] = _implementation

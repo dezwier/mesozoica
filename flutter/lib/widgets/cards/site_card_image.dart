@@ -7,10 +7,7 @@ import '../../utils/network_image_mem_cache.dart';
 
 /// Card-front illustration: curated site-type image or bundled placeholder.
 class SiteCardImage extends StatelessWidget {
-  const SiteCardImage({
-    super.key,
-    required this.imageUrl,
-  });
+  const SiteCardImage({super.key, required this.imageUrl});
 
   final String? imageUrl;
 
@@ -21,7 +18,9 @@ class SiteCardImage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final curatedUrl = isCuratedCardImageUrl(imageUrl) ? imageUrl!.trim() : null;
+    final curatedUrl = isCuratedCardImageUrl(imageUrl)
+        ? imageUrl!.trim()
+        : null;
 
     if (curatedUrl == null) {
       return const _FadingPlaceholderImage();
@@ -37,7 +36,10 @@ class SiteCardImage extends StatelessWidget {
           fadeInCurve: Curves.easeIn,
           placeholderFadeInDuration: Duration.zero,
           memCacheWidth: networkImageMemCacheExtent(constraints.maxWidth, dpr),
-          memCacheHeight: networkImageMemCacheExtent(constraints.maxHeight, dpr),
+          memCacheHeight: networkImageMemCacheExtent(
+            constraints.maxHeight,
+            dpr,
+          ),
           httpHeaders: const {
             'User-Agent': 'Mesozoica/1.0 (mobile app; site catalog)',
           },
@@ -74,10 +76,7 @@ class _FadingPlaceholderImageState extends State<_FadingPlaceholderImage>
   Widget build(BuildContext context) {
     return FadeTransition(
       opacity: CurvedAnimation(parent: _controller, curve: Curves.easeIn),
-      child: Image.asset(
-        DinoCardTheme.sitePlaceholderAsset,
-        fit: BoxFit.cover,
-      ),
+      child: Image.asset(DinoCardTheme.sitePlaceholderAsset, fit: BoxFit.cover),
     );
   }
 }

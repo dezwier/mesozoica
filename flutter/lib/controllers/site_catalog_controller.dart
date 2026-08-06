@@ -15,9 +15,9 @@ class SiteCatalogController extends CatalogController<SiteSummary> {
     SiteService? service,
     CatalogModeController? catalogModeController,
     LocationService? locationService,
-  })  : _service = service ?? SiteService(),
-        _catalogModeController = catalogModeController,
-        _locationService = locationService;
+  }) : _service = service ?? SiteService(),
+       _catalogModeController = catalogModeController,
+       _locationService = locationService;
 
   static const pageSize = 20;
 
@@ -44,7 +44,8 @@ class SiteCatalogController extends CatalogController<SiteSummary> {
   bool get _needsClientMatch {
     final periodActive = _filters.periods.length != sitePeriodOptions.length;
     final rockActive = _filters.rockTypes.length != siteRockTypeOptions.length;
-    final statusActive = _filters.filterByStatus &&
+    final statusActive =
+        _filters.filterByStatus &&
         _filters.statuses.length != siteStatusOptions.length;
     return periodActive ||
         rockActive ||
@@ -87,8 +88,10 @@ class SiteCatalogController extends CatalogController<SiteSummary> {
       );
       loadedOk = true;
       if (kDebugMode) {
-        final preview =
-            catalogItems.take(5).map((s) => s.displayTitle).join(', ');
+        final preview = catalogItems
+            .take(5)
+            .map((s) => s.displayTitle)
+            .join(', ');
         debugPrint(
           'SiteCatalogController: loaded ${catalogItems.length}/$total sites '
           '(sort=${_filters.sort.apiValue}) → $preview',
@@ -172,8 +175,7 @@ class SiteCatalogController extends CatalogController<SiteSummary> {
   }
 
   void replaceSite(SiteSummary site) {
-    final index =
-        catalogItems.indexWhere((item) => item.siteId == site.siteId);
+    final index = catalogItems.indexWhere((item) => item.siteId == site.siteId);
     if (index < 0) return;
     final updated = [...catalogItems];
     updated[index] = site;
@@ -192,8 +194,7 @@ class SiteCatalogController extends CatalogController<SiteSummary> {
 
   /// Insert or replace a site after discovery without a full catalog reload.
   void upsertSite(SiteSummary site) {
-    final index =
-        catalogItems.indexWhere((item) => item.siteId == site.siteId);
+    final index = catalogItems.indexWhere((item) => item.siteId == site.siteId);
     if (index < 0) {
       catalogItems = [site, ...catalogItems];
       catalogTotal = catalogTotal + 1;

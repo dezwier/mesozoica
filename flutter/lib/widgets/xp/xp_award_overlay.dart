@@ -120,16 +120,10 @@ class _XpAwardOverlayState extends State<XpAwardOverlay>
         _hudVisible &&
         isLastVisible) {
       _captureEndpoints(playing);
-      final magic = AnimationController(
-        vsync: this,
-        duration: _magicDuration,
-      );
+      final magic = AnimationController(vsync: this, duration: _magicDuration);
       playing.magic = magic;
       magic.addListener(_tick);
-      await Future.any([
-        magic.forward(),
-        _waitUntilDismissed(playing),
-      ]);
+      await Future.any([magic.forward(), _waitUntilDismissed(playing)]);
       if (!mounted) return;
       if (magic.isAnimating) magic.stop();
     } else if (playing.skipMagic && !playing.dismissRequested) {
@@ -144,10 +138,7 @@ class _XpAwardOverlayState extends State<XpAwardOverlay>
       playing.to = null;
     }
 
-    final exit = AnimationController(
-      vsync: this,
-      duration: _exitDuration,
-    );
+    final exit = AnimationController(vsync: this, duration: _exitDuration);
     playing.exit = exit;
     exit.addListener(_tick);
     await exit.forward();
@@ -171,8 +162,9 @@ class _XpAwardOverlayState extends State<XpAwardOverlay>
 
   Future<void> _waitHoldOrDismiss(_PlayingBadge playing) async {
     final end = DateTime.now().add(_holdDuration);
-    while (
-        mounted && !playing.dismissRequested && DateTime.now().isBefore(end)) {
+    while (mounted &&
+        !playing.dismissRequested &&
+        DateTime.now().isBefore(end)) {
       await Future<void>.delayed(const Duration(milliseconds: 40));
     }
   }
@@ -242,8 +234,8 @@ class _XpAwardOverlayState extends State<XpAwardOverlay>
 
     final badgeBox =
         playing.badgeKey.currentContext?.findRenderObject() as RenderBox?;
-    final barBox = MapUserHud.xpBarKey.currentContext?.findRenderObject()
-        as RenderBox?;
+    final barBox =
+        MapUserHud.xpBarKey.currentContext?.findRenderObject() as RenderBox?;
 
     Offset from;
     if (badgeBox != null && badgeBox.hasSize) {
@@ -255,17 +247,15 @@ class _XpAwardOverlayState extends State<XpAwardOverlay>
       final topPad = MediaQuery.paddingOf(context).top;
       from = Offset(
         48,
-        _hudVisible
-            ? topPad + MapChromeInsets.topRowHeight + 28
-            : topPad + 36,
+        _hudVisible ? topPad + MapChromeInsets.topRowHeight + 28 : topPad + 36,
       );
     }
 
     Offset to;
     if (barBox != null && barBox.hasSize) {
       final auth = context.read<AuthController>();
-      final progress =
-          (auth.currentUser?.effectiveCareer.progress ?? 0.5).clamp(0.0, 1.0);
+      final progress = (auth.currentUser?.effectiveCareer.progress ?? 0.5)
+          .clamp(0.0, 1.0);
       final global = barBox.localToGlobal(
         Offset(barBox.size.width * progress, barBox.size.height * 0.5),
       );
@@ -291,7 +281,8 @@ class _XpAwardOverlayState extends State<XpAwardOverlay>
         : topPad + 8;
 
     // Preserve enqueue order for stable stacking (oldest on top).
-    final ordered = _awards?.activeAwards
+    final ordered =
+        _awards?.activeAwards
             .where((award) => _playing.containsKey(award.id))
             .map((award) => _playing[award.id]!)
             .toList() ??
@@ -312,8 +303,9 @@ class _XpAwardOverlayState extends State<XpAwardOverlay>
                     painter: XpMagicStringPainter(
                       from: playing.from!,
                       to: playing.to!,
-                      progress: Curves.easeInOutCubic
-                          .transform(playing.magic!.value),
+                      progress: Curves.easeInOutCubic.transform(
+                        playing.magic!.value,
+                      ),
                       seed: playing.seed,
                     ),
                   ),
@@ -324,8 +316,9 @@ class _XpAwardOverlayState extends State<XpAwardOverlay>
             left: _hudVisible ? 12 : 0,
             right: _hudVisible ? null : 0,
             child: Align(
-              alignment:
-                  _hudVisible ? Alignment.centerLeft : Alignment.topCenter,
+              alignment: _hudVisible
+                  ? Alignment.centerLeft
+                  : Alignment.topCenter,
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: _hudVisible

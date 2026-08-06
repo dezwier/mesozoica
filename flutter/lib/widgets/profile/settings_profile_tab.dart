@@ -91,24 +91,24 @@ class SettingsProfileTab extends StatelessWidget {
                                 ),
                               )
                             : imageUrl.isNotEmpty
-                                ? ClipOval(
-                                    child: CachedNetworkImage(
-                                      imageUrl: imageUrl,
-                                      width: 64,
-                                      height: 64,
-                                      fit: BoxFit.cover,
-                                      errorWidget: (context, url, error) => Icon(
-                                        Icons.person,
-                                        size: 64,
-                                        color: scheme.primary,
-                                      ),
-                                    ),
-                                  )
-                                : Icon(
+                            ? ClipOval(
+                                child: CachedNetworkImage(
+                                  imageUrl: imageUrl,
+                                  width: 64,
+                                  height: 64,
+                                  fit: BoxFit.cover,
+                                  errorWidget: (context, url, error) => Icon(
                                     Icons.person,
                                     size: 64,
                                     color: scheme.primary,
                                   ),
+                                ),
+                              )
+                            : Icon(
+                                Icons.person,
+                                size: 64,
+                                color: scheme.primary,
+                              ),
                       ),
                     );
                   },
@@ -131,10 +131,10 @@ class SettingsProfileTab extends StatelessWidget {
                         ),
                       )
                     : usernameAvailable == true
-                        ? const Icon(Icons.check_circle, color: Colors.green)
-                        : usernameAvailable == false
-                            ? const Icon(Icons.cancel, color: Colors.red)
-                            : null,
+                    ? const Icon(Icons.check_circle, color: Colors.green)
+                    : usernameAvailable == false
+                    ? const Icon(Icons.cancel, color: Colors.red)
+                    : null,
                 errorText: usernameError,
               ),
             ),

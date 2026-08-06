@@ -19,8 +19,7 @@ class FossilTurnableCard extends StatefulWidget {
     this.enableLongPressActions = false,
     this.autoFlipOnce = false,
     this.autoFlipHoldOnBack = Duration.zero,
-    this.outerPadding =
-        const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+    this.outerPadding = const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
     this.fixedFaceHeight,
     this.titleFontSize = 36,
     this.subtitleFontSize = 10,
@@ -91,10 +90,9 @@ class _FossilTurnableCardState extends State<FossilTurnableCard> {
       enableLongPressActions: widget.enableLongPressActions,
       onSettingsPressed: widget.enableLongPressActions
           ? () => openInventoryCardSettings(
-                context: context,
-                onThrowAway: () =>
-                    discardFossilFromInventory(context, _fossil),
-              )
+              context: context,
+              onThrowAway: () => discardFossilFromInventory(context, _fossil),
+            )
           : null,
       autoFlipOnce: widget.autoFlipOnce,
       autoFlipHoldOnBack: widget.autoFlipHoldOnBack,

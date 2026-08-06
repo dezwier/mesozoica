@@ -166,10 +166,10 @@ class ToolActionRouter {
     final loc = context.read<LocationService>().currentLocation;
     unawaited(
       context.read<MainParamBuffController>().activate(
-            tool,
-            lat: loc?.latitude,
-            lon: loc?.longitude,
-          ),
+        tool,
+        lat: loc?.latitude,
+        lon: loc?.longitude,
+      ),
     );
     return true;
   }

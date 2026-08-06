@@ -36,10 +36,8 @@ Future<SiteSummary?> showSiteIdentifySheet(
       initialChildSize: DrawerSheetSizes.initialChildSize,
       minChildSize: DrawerSheetSizes.minChildSize,
       maxChildSize: DrawerSheetSizes.maxChildSize,
-      childBuilder: (scrollController) => SiteIdentifySheet(
-        site: site,
-        scrollController: scrollController,
-      ),
+      childBuilder: (scrollController) =>
+          SiteIdentifySheet(site: site, scrollController: scrollController),
     ),
   );
   if (updated == null) return null;
@@ -394,8 +392,8 @@ class _SiteIdentifySheetState extends State<SiteIdentifySheet> {
                               color: isSuccess
                                   ? const Color(0xFF2E7D32)
                                   : isWrong
-                                      ? scheme.onSurface.withValues(alpha: 0.45)
-                                      : scheme.onSurface,
+                                  ? scheme.onSurface.withValues(alpha: 0.45)
+                                  : scheme.onSurface,
                               fontWeight: FontWeight.w800,
                             ),
                           ),
@@ -414,13 +412,14 @@ class _SiteIdentifySheetState extends State<SiteIdentifySheet> {
                   Padding(
                     padding: const EdgeInsets.fromLTRB(20, 18, 20, 28),
                     child: FilledButton(
-                      onPressed: _successGuess != null ||
+                      onPressed:
+                          _successGuess != null ||
                               _submitting ||
                               _disabled.contains(
-                                  _periodForSlider(_periodSlider))
+                                _periodForSlider(_periodSlider),
+                              )
                           ? null
-                          : () =>
-                              _onGuess(_periodForSlider(_periodSlider)),
+                          : () => _onGuess(_periodForSlider(_periodSlider)),
                       style: FilledButton.styleFrom(
                         minimumSize: const Size.fromHeight(48),
                         backgroundColor: _successGuess != null
@@ -454,18 +453,19 @@ class _SiteIdentifySheetState extends State<SiteIdentifySheet> {
                       itemCount: options.choices.length,
                       gridDelegate:
                           const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 2,
-                        crossAxisSpacing: 10,
-                        mainAxisSpacing: 10,
-                        childAspectRatio: 1.55,
-                      ),
+                            crossAxisCount: 2,
+                            crossAxisSpacing: 10,
+                            mainAxisSpacing: 10,
+                            childAspectRatio: 1.55,
+                          ),
                       itemBuilder: (context, index) {
                         final choice = options.choices[index];
                         final isSuccess = _successGuess == choice;
                         return _IdentifyRockTile(
                           label: toTitleCase(choice),
                           imageUrl: options.choiceImages[choice],
-                          disabled: _disabled.contains(choice) ||
+                          disabled:
+                              _disabled.contains(choice) ||
                               _submitting ||
                               (_successGuess != null && !isSuccess),
                           correct: isSuccess,
@@ -489,7 +489,8 @@ class _SiteIdentifySheetState extends State<SiteIdentifySheet> {
 /// Maps slider 0→1 (left older → right younger) to a Mesozoic period key.
 String _periodForSlider(double t) {
   // Left (t=0) = 252 Ma, right (t=1) = 66 Ma.
-  final age = mesozoicOlderMa -
+  final age =
+      mesozoicOlderMa -
       t.clamp(0.0, 1.0) * (mesozoicOlderMa - mesozoicYoungerMa);
   if (age > 201) return 'triassic';
   if (age > 145) return 'jurassic';
@@ -516,8 +517,8 @@ class _PeriodLabel extends StatelessWidget {
     final color = highlighted
         ? _successGreen
         : wrong
-            ? muted.withValues(alpha: 0.45)
-            : muted;
+        ? muted.withValues(alpha: 0.45)
+        : muted;
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
@@ -600,7 +601,8 @@ class _PeriodTimelineSlider extends StatelessWidget {
               // Period labels above the bar (timeline style).
               for (final period in _periods)
                 Positioned(
-                  left: sidePad +
+                  left:
+                      sidePad +
                       _tForMa((period.start + period.end) / 2) * trackWidth -
                       44,
                   top: 2,
@@ -617,7 +619,8 @@ class _PeriodTimelineSlider extends StatelessWidget {
                 Positioned(
                   left: sidePad + _tForMa(_periods[i].start) * trackWidth,
                   top: barTop,
-                  width: (_tForMa(_periods[i].end) - _tForMa(_periods[i].start)) *
+                  width:
+                      (_tForMa(_periods[i].end) - _tForMa(_periods[i].start)) *
                       trackWidth,
                   height: barHeight,
                   child: DecoratedBox(
@@ -625,8 +628,8 @@ class _PeriodTimelineSlider extends StatelessWidget {
                       color: highlightPeriod == _periods[i].key
                           ? _successGreen
                           : disabledPeriods.contains(_periods[i].key)
-                              ? scheme.outlineVariant.withValues(alpha: 0.35)
-                              : scheme.primary.withValues(alpha: 0.22 + i * 0.14),
+                          ? scheme.outlineVariant.withValues(alpha: 0.35)
+                          : scheme.primary.withValues(alpha: 0.22 + i * 0.14),
                       borderRadius: BorderRadius.horizontal(
                         left: i == 0 ? const Radius.circular(5) : Radius.zero,
                         right: i == _periods.length - 1
@@ -656,8 +659,8 @@ class _PeriodTimelineSlider extends StatelessWidget {
                   left: ma == mesozoicOlderMa
                       ? sidePad - 2
                       : ma == mesozoicYoungerMa
-                          ? null
-                          : sidePad + _tForMa(ma) * trackWidth - 22,
+                      ? null
+                      : sidePad + _tForMa(ma) * trackWidth - 22,
                   right: ma == mesozoicYoungerMa ? sidePad - 2 : null,
                   top: barTop + barHeight + 10,
                   width: ma == mesozoicOlderMa || ma == mesozoicYoungerMa
@@ -668,8 +671,8 @@ class _PeriodTimelineSlider extends StatelessWidget {
                     textAlign: ma == mesozoicYoungerMa
                         ? TextAlign.right
                         : ma == mesozoicOlderMa
-                            ? TextAlign.left
-                            : TextAlign.center,
+                        ? TextAlign.left
+                        : TextAlign.center,
                     maxLines: 1,
                     style: TextStyle(
                       fontSize: 10,
@@ -688,8 +691,9 @@ class _PeriodTimelineSlider extends StatelessWidget {
                       : (details) {
                           final box = context.findRenderObject() as RenderBox?;
                           if (box == null) return;
-                          final local =
-                              box.globalToLocal(details.globalPosition);
+                          final local = box.globalToLocal(
+                            details.globalPosition,
+                          );
                           _setFromLocalDx(local.dx, sidePad, trackWidth);
                         },
                   onTapDown: onChanged == null
@@ -797,15 +801,15 @@ class _IdentifyRockTile extends StatelessWidget {
                         'User-Agent':
                             'Mesozoica/1.0 (mobile app; site identify)',
                       },
-                      placeholder: (context, _) => ColoredBox(
-                        color: scheme.surfaceContainerHighest,
-                      ),
+                      placeholder: (context, _) =>
+                          ColoredBox(color: scheme.surfaceContainerHighest),
                       errorWidget: (context, _, error) => ColoredBox(
                         color: scheme.surfaceContainerHighest,
                         child: Icon(
                           Icons.landscape_outlined,
-                          color: scheme.onSurfaceVariant
-                              .withValues(alpha: 0.45),
+                          color: scheme.onSurfaceVariant.withValues(
+                            alpha: 0.45,
+                          ),
                         ),
                       ),
                     );
@@ -872,35 +876,23 @@ class _IdentifyRockTile extends StatelessWidget {
                     Icons.check_circle_rounded,
                     color: Colors.white,
                     size: 48,
-                    shadows: [
-                      Shadow(
-                        color: Color(0x99000000),
-                        blurRadius: 8,
-                      ),
-                    ],
+                    shadows: [Shadow(color: Color(0x99000000), blurRadius: 8)],
                   ),
                 ),
               ] else if (wrong) ...[
-                ColoredBox(
-                  color: scheme.error.withValues(alpha: 0.16),
-                ),
+                ColoredBox(color: scheme.error.withValues(alpha: 0.16)),
                 Center(
                   child: Icon(
                     Icons.close_rounded,
                     size: 44,
                     color: Colors.white.withValues(alpha: 0.82),
                     shadows: const [
-                      Shadow(
-                        color: Color(0x99000000),
-                        blurRadius: 8,
-                      ),
+                      Shadow(color: Color(0x99000000), blurRadius: 8),
                     ],
                   ),
                 ),
               ] else if (disabled)
-                ColoredBox(
-                  color: scheme.surface.withValues(alpha: 0.28),
-                ),
+                ColoredBox(color: scheme.surface.withValues(alpha: 0.28)),
               if (correct)
                 Positioned.fill(
                   child: IgnorePointer(
@@ -943,11 +935,7 @@ class SiteIdentifyTitleButton extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(
-                Icons.travel_explore,
-                size: 15,
-                color: Color(0xFF2A2620),
-              ),
+              Icon(Icons.travel_explore, size: 15, color: Color(0xFF2A2620)),
               SizedBox(width: 5),
               Text(
                 'Identify',

@@ -19,7 +19,8 @@ class UserListEntry {
     return UserListEntry(
       id: json['id'] as int,
       username: json['username'] as String,
-      displayName: json['display_name'] as String? ??
+      displayName:
+          json['display_name'] as String? ??
           json['displayName'] as String? ??
           json['username'] as String,
       fullName: json['full_name'] as String? ?? json['fullName'] as String?,

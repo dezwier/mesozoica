@@ -91,18 +91,12 @@ void main() {
       _dino(
         id: 1,
         name: 'Mystery',
-        cladogram: {
-          'kingdom': 'Animalia',
-          'phylum': 'Chordata',
-        },
+        cladogram: {'kingdom': 'Animalia', 'phylum': 'Chordata'},
       ),
       _dino(
         id: 2,
         name: 'Tyrannosaurus',
-        cladogram: {
-          'clade': 'Dinosauria',
-          'genus': 'Tyrannosaurus',
-        },
+        cladogram: {'clade': 'Dinosauria', 'genus': 'Tyrannosaurus'},
       ),
     ]);
 
@@ -119,18 +113,12 @@ void main() {
       _dino(
         id: 1,
         name: 'Tyrannosaurus',
-        cladogram: {
-          'clade': 'Dinosauria',
-          'genus': 'Tyrannosaurus',
-        },
+        cladogram: {'clade': 'Dinosauria', 'genus': 'Tyrannosaurus'},
       ),
       _dino(
         id: 2,
         name: 'Tyrannosaurus (alt)',
-        cladogram: {
-          'clade': 'Dinosauria',
-          'genus': 'Tyrannosaurus',
-        },
+        cladogram: {'clade': 'Dinosauria', 'genus': 'Tyrannosaurus'},
       ),
     ]);
 
@@ -220,10 +208,11 @@ void main() {
 
     expect(result.root.name, 'Theropoda');
     expect(result.root.children, hasLength(3));
-    expect(
-      result.root.children.map((child) => child.name).toList(),
-      ['Allosaurus', 'Zuniceratops', 'Coelurosauria'],
-    );
+    expect(result.root.children.map((child) => child.name).toList(), [
+      'Allosaurus',
+      'Zuniceratops',
+      'Coelurosauria',
+    ]);
   });
 
   test('orders branches with shallower nesting before deeper ones', () {
@@ -282,9 +271,9 @@ void main() {
     ]);
 
     expect(result.root.name, 'Theropoda');
-    expect(
-      result.root.children.map((child) => child.name).toList(),
-      ['Allosaurus', 'Zuniceratops'],
-    );
+    expect(result.root.children.map((child) => child.name).toList(), [
+      'Allosaurus',
+      'Zuniceratops',
+    ]);
   });
 }

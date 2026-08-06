@@ -11,23 +11,20 @@ class FormationMapCardExtension implements ToolCardExtension {
   String get actionKey => FormationMapKind.actionKey;
 
   @override
-  bool matches(ToolSummary tool) =>
-      FormationMapKind.matchesToolName(tool.name);
+  bool matches(ToolSummary tool) => FormationMapKind.matchesToolName(tool.name);
 
   @override
   List<String> editableParamKeys(ToolSummary tool) => const [
-        'duration_minutes',
-        'accuracy',
-        'wideness_m',
-      ];
+    'duration_minutes',
+    'accuracy',
+    'wideness_m',
+  ];
 
   @override
   Widget? buildDeployStats(BuildContext context, ToolSummary tool) {
     final params = tool.isOwned && tool.params.isNotEmpty
         ? tool.params
         : tool.baseParams;
-    return CardSectionPanel(
-      child: FormationMapToolStats(params: params),
-    );
+    return CardSectionPanel(child: FormationMapToolStats(params: params));
   }
 }

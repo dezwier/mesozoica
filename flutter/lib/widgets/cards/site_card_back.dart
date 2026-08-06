@@ -49,9 +49,7 @@ class SiteCardBack extends StatelessWidget {
       child: Stack(
         fit: StackFit.expand,
         children: [
-          CardBackBackdrop(
-            image: SiteCardImage(imageUrl: site.mainImageUrl),
-          ),
+          CardBackBackdrop(image: SiteCardImage(imageUrl: site.mainImageUrl)),
           Positioned(
             left: 18,
             right: 18,

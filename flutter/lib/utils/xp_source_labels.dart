@@ -62,9 +62,7 @@ const kSiteDocumentationCelebrationXpKeys = <String>{
 };
 
 /// Keys claimed by the site-identified celebration.
-const kSiteIdentificationCelebrationXpKeys = <String>{
-  'identify_site',
-};
+const kSiteIdentificationCelebrationXpKeys = <String>{'identify_site'};
 
 /// True → celebrate (embed XP); false → floating XP badge.
 ///

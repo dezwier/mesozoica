@@ -25,9 +25,7 @@ class ZoomSlider extends StatelessWidget {
       decoration: BoxDecoration(
         color: MapChromeTheme.darkGlassSoft,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: Colors.white.withValues(alpha: 0.18),
-        ),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.35),

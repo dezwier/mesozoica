@@ -45,10 +45,7 @@ class _GuidanceOverlayState extends State<GuidanceOverlay>
       duration: _kOrientationTransition,
       value: widget.rotateWithHeading ? 1.0 : 0.0,
     );
-    _rotateT = CurvedAnimation(
-      parent: _modeAnim,
-      curve: Curves.easeInOutCubic,
-    );
+    _rotateT = CurvedAnimation(parent: _modeAnim, curve: Curves.easeInOutCubic);
   }
 
   @override
@@ -87,7 +84,8 @@ class _GuidanceOverlayState extends State<GuidanceOverlay>
         final showDistance =
             guidance.showDistance && guidance.distanceLabel != null;
         // Keep compass visible during exit animation even if follow flickers.
-        final showCompass = guidance.showNeedle &&
+        final showCompass =
+            guidance.showNeedle &&
             guidance.targetSite != null &&
             (widget.rotateWithHeading ||
                 widget.followUser ||
@@ -99,8 +97,11 @@ class _GuidanceOverlayState extends State<GuidanceOverlay>
         return LayoutBuilder(
           builder: (context, constraints) {
             final compassSession = !sessionOnProximity;
-            final compassH = VintageGuidanceCompass.size +
-                (compassSession ? VintageGuidanceCompass.sessionStripHeight : 0);
+            final compassH =
+                VintageGuidanceCompass.size +
+                (compassSession
+                    ? VintageGuidanceCompass.sessionStripHeight
+                    : 0);
             final heading = location.headingDeg;
             const compassTitle = 'COMPASS';
             final centerNorth = guidance.rangeCenterScreenDeg(
@@ -139,8 +140,7 @@ class _GuidanceOverlayState extends State<GuidanceOverlay>
                           rangeWidthDeg: guidance.rangeWidthDeg,
                           northDeg: northDeg,
                           remaining: compassSession ? remaining : null,
-                          onStop:
-                              compassSession ? () => guidance.stop() : null,
+                          onStop: compassSession ? () => guidance.stop() : null,
                           title: compassTitle,
                         ),
                       );
@@ -155,7 +155,8 @@ class _GuidanceOverlayState extends State<GuidanceOverlay>
                   ),
                 if (guidance.showRetargetBadge)
                   Positioned(
-                    top: topInset +
+                    top:
+                        topInset +
                         8 +
                         (showDistance
                             ? ProximityScannerDisplay.mapHeightEstimate + 8
@@ -196,9 +197,9 @@ class _RetargetBadge extends StatelessWidget {
         child: Text(
           'Closer site sensed',
           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: scheme.onPrimaryContainer,
-                fontWeight: FontWeight.w600,
-              ),
+            color: scheme.onPrimaryContainer,
+            fontWeight: FontWeight.w600,
+          ),
         ),
       ),
     );

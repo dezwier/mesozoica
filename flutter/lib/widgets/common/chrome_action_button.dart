@@ -52,8 +52,8 @@ class ChromeActionButton extends StatelessWidget {
           color: !enabled
               ? const Color(0x22FFFFFF)
               : selected
-                  ? const Color(0xCCFFFFFF)
-                  : const Color(0x40FFFFFF),
+              ? const Color(0xCCFFFFFF)
+              : const Color(0x40FFFFFF),
           width: selected && enabled ? 2 : 0.5,
         ),
         boxShadow: enabled
@@ -85,8 +85,9 @@ class ChromeActionButton extends StatelessWidget {
               style: TextStyle(
                 color: enabled ? _label : _labelDisabled,
                 fontSize: 14,
-                fontWeight:
-                    selected && enabled ? FontWeight.w700 : FontWeight.w600,
+                fontWeight: selected && enabled
+                    ? FontWeight.w700
+                    : FontWeight.w600,
                 letterSpacing: 0.3,
               ),
             ),

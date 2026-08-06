@@ -16,18 +16,13 @@ Future<void> showDinosaurCardDialog(
   );
   return CardDetailSheet.show<void>(
     context,
-    builder: (context) => _DinosaurCardSheet(
-      dinosaurId: dinosaurId,
-      dinosaur: dinosaur,
-    ),
+    builder: (context) =>
+        _DinosaurCardSheet(dinosaurId: dinosaurId, dinosaur: dinosaur),
   );
 }
 
 class _DinosaurCardSheet extends StatefulWidget {
-  const _DinosaurCardSheet({
-    this.dinosaurId,
-    this.dinosaur,
-  });
+  const _DinosaurCardSheet({this.dinosaurId, this.dinosaur});
 
   final int? dinosaurId;
   final DinosaurSummary? dinosaur;

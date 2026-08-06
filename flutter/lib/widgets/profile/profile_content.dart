@@ -13,11 +13,7 @@ import '../../theme/dino_card_theme.dart';
 import '../common/app_card.dart';
 
 class ProfileContent extends StatelessWidget {
-  const ProfileContent({
-    super.key,
-    required this.profile,
-    this.headerActions,
-  });
+  const ProfileContent({super.key, required this.profile, this.headerActions});
 
   final Profile profile;
   final Widget? headerActions;
@@ -99,8 +95,10 @@ class ProfileContent extends StatelessWidget {
                   bottom: 0,
                   right: 0,
                   child: Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 0,
+                    ),
                     decoration: BoxDecoration(
                       color: scheme.primary,
                       borderRadius: BorderRadius.circular(12),
@@ -122,18 +120,18 @@ class ProfileContent extends StatelessWidget {
               profile.fullName?.trim().isNotEmpty == true
                   ? profile.fullName!.trim()
                   : profile.displayName,
-              style: DinoCardTheme.of(context).titleStyle(fontSize: 24).copyWith(
-                    color: scheme.onSurface,
-                  ),
+              style: DinoCardTheme.of(
+                context,
+              ).titleStyle(fontSize: 24).copyWith(color: scheme.onSurface),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 4),
             Text(
               profile.careerTitle,
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: scheme.primary,
-                    fontWeight: FontWeight.w600,
-                  ),
+                color: scheme.primary,
+                fontWeight: FontWeight.w600,
+              ),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 12),
@@ -149,12 +147,17 @@ class ProfileContent extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.location_on,
-                    size: 16, color: scheme.onSurfaceVariant),
+                Icon(
+                  Icons.location_on,
+                  size: 16,
+                  color: scheme.onSurfaceVariant,
+                ),
                 const SizedBox(width: 4),
-                Text(profile.currentLocation.isEmpty
-                    ? 'Unknown location'
-                    : profile.currentLocation),
+                Text(
+                  profile.currentLocation.isEmpty
+                      ? 'Unknown location'
+                      : profile.currentLocation,
+                ),
               ],
             ),
           ],
@@ -229,10 +232,8 @@ class ProfileContent extends StatelessWidget {
         final weekLabel = _explorationDistanceLabel(walk.displayWeeklyMeters);
         final totalLabel = _explorationDistanceLabel(walk.displayTotalMeters);
         final isActive = walk.mode == ExploringDistanceMode.active;
-        final weekStatLabel =
-            isActive ? 'This week (active)' : 'This week';
-        final allTimeStatLabel =
-            isActive ? 'All time (active)' : 'All time';
+        final weekStatLabel = isActive ? 'This week (active)' : 'This week';
+        final allTimeStatLabel = isActive ? 'All time (active)' : 'All time';
         return AppCard.profile(
           borderRadius: _cardRadius,
           child: Material(
@@ -252,8 +253,7 @@ class ProfileContent extends StatelessWidget {
               child: Container(
                 width: double.infinity,
                 decoration: BoxDecoration(
-                  color:
-                      scheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                  color: scheme.surfaceContainerHighest.withValues(alpha: 0.5),
                   borderRadius: BorderRadius.circular(_cardRadius),
                 ),
                 padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
@@ -270,10 +270,8 @@ class ProfileContent extends StatelessWidget {
                         const SizedBox(width: 8),
                         Text(
                           'Exploration',
-                          style:
-                              Theme.of(context).textTheme.titleSmall?.copyWith(
-                                    fontWeight: FontWeight.w600,
-                                  ),
+                          style: Theme.of(context).textTheme.titleSmall
+                              ?.copyWith(fontWeight: FontWeight.w600),
                         ),
                         if (walk.loading) ...[
                           const SizedBox(width: 8),
@@ -332,17 +330,17 @@ class ProfileContent extends StatelessWidget {
         Text(
           value,
           textAlign: TextAlign.center,
-          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
+          style: Theme.of(
+            context,
+          ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 4),
         Text(
           label,
           textAlign: TextAlign.center,
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: scheme.onSurfaceVariant,
-              ),
+          style: Theme.of(
+            context,
+          ).textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
         ),
       ],
     );
@@ -380,22 +378,33 @@ class ProfileContent extends StatelessWidget {
               children: [
                 Icon(Icons.work, color: scheme.primary, size: 20),
                 const SizedBox(width: 8),
-                Text('Professional Details',
-                    style: Theme.of(context)
-                        .textTheme
-                        .titleMedium
-                        ?.copyWith(fontWeight: FontWeight.bold)),
+                Text(
+                  'Professional Details',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: 16),
-            _detailRow(context, scheme, 'Experience',
-                '${profile.yearsOfExperience} years'),
-            _detailRow(context, scheme, 'Notable Discovery',
-                profile.notableDiscovery.isEmpty
-                    ? '—'
-                    : profile.notableDiscovery),
-            _detailRow(context, scheme, 'Favorite Era',
-                profile.favoriteEra.isEmpty ? '—' : profile.favoriteEra),
+            _detailRow(
+              context,
+              scheme,
+              'Experience',
+              '${profile.yearsOfExperience} years',
+            ),
+            _detailRow(
+              context,
+              scheme,
+              'Notable Discovery',
+              profile.notableDiscovery.isEmpty ? '—' : profile.notableDiscovery,
+            ),
+            _detailRow(
+              context,
+              scheme,
+              'Favorite Era',
+              profile.favoriteEra.isEmpty ? '—' : profile.favoriteEra,
+            ),
           ],
         ),
       ),
@@ -415,11 +424,13 @@ class ProfileContent extends StatelessWidget {
         children: [
           SizedBox(
             width: 130,
-            child: Text(label,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: scheme.onSurfaceVariant,
-                      fontWeight: FontWeight.w500,
-                    )),
+            child: Text(
+              label,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: scheme.onSurfaceVariant,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
           ),
           Expanded(
             child: Text(value, style: Theme.of(context).textTheme.bodyMedium),
@@ -464,22 +475,22 @@ class _LevelProgressRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final titleStyle = emphasized
-        ? Theme.of(context).textTheme.titleSmall?.copyWith(
-              fontWeight: FontWeight.w700,
-            )
+        ? Theme.of(
+            context,
+          ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700)
         : Theme.of(context).textTheme.bodyMedium?.copyWith(
-              fontWeight: FontWeight.w500,
-              color: scheme.onSurfaceVariant,
-            );
+            fontWeight: FontWeight.w500,
+            color: scheme.onSurfaceVariant,
+          );
     final levelStyle = emphasized
         ? Theme.of(context).textTheme.titleSmall?.copyWith(
-              color: scheme.primary,
-              fontWeight: FontWeight.w700,
-            )
+            color: scheme.primary,
+            fontWeight: FontWeight.w700,
+          )
         : Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: scheme.onSurfaceVariant.withValues(alpha: 0.85),
-              fontWeight: FontWeight.w600,
-            );
+            color: scheme.onSurfaceVariant.withValues(alpha: 0.85),
+            fontWeight: FontWeight.w600,
+          );
     final muted = scheme.onSurfaceVariant.withValues(
       alpha: emphasized ? 0.9 : 0.7,
     );
@@ -488,9 +499,7 @@ class _LevelProgressRow extends StatelessWidget {
       children: [
         Row(
           children: [
-            Expanded(
-              child: Text(name, style: titleStyle),
-            ),
+            Expanded(child: Text(name, style: titleStyle)),
             Text('$level/$maxLevel', style: levelStyle),
           ],
         ),
@@ -510,11 +519,11 @@ class _LevelProgressRow extends StatelessWidget {
         Text(
           '${_formatXp(xp)} / ${_formatXp(nextLevelXp)} xp',
           style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                color: muted,
-                fontWeight: emphasized ? FontWeight.w500 : FontWeight.w400,
-                letterSpacing: 0.15,
-                fontSize: emphasized ? null : 11,
-              ),
+            color: muted,
+            fontWeight: emphasized ? FontWeight.w500 : FontWeight.w400,
+            letterSpacing: 0.15,
+            fontSize: emphasized ? null : 11,
+          ),
         ),
       ],
     );
@@ -548,7 +557,7 @@ class _SkillGrid extends StatelessWidget {
       builder: (context, constraints) {
         final tileWidth =
             (constraints.maxWidth - _spacing * (_crossAxisCount - 1)) /
-                _crossAxisCount;
+            _crossAxisCount;
         final avatarSize = tileWidth - (_tilePadH * 2);
         final tileHeight =
             _tilePadTop + avatarSize + _belowAvatarExtent + _tilePadBottom;
@@ -585,21 +594,18 @@ class _SkillGrid extends StatelessWidget {
                   ),
                   child: Column(
                     children: [
-                      SkillIcon(
-                        skillId: skill.id,
-                        circular: true,
-                      ),
+                      SkillIcon(skillId: skill.id, circular: true),
                       const SizedBox(height: 6),
                       Text(
                         skill.name,
                         textAlign: TextAlign.center,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style:
-                            Theme.of(context).textTheme.labelMedium?.copyWith(
-                                  fontWeight: FontWeight.w600,
-                                  height: 1.15,
-                                ),
+                        style: Theme.of(context).textTheme.labelMedium
+                            ?.copyWith(
+                              fontWeight: FontWeight.w600,
+                              height: 1.15,
+                            ),
                       ),
                       const SizedBox(height: 12),
                       _SkillStatBox(
@@ -614,11 +620,11 @@ class _SkillGrid extends StatelessWidget {
                         label: 'Cards',
                         child: Text(
                           '$count',
-                          style:
-                              Theme.of(context).textTheme.titleSmall?.copyWith(
-                                    fontWeight: FontWeight.w700,
-                                    height: 1,
-                                  ),
+                          style: Theme.of(context).textTheme.titleSmall
+                              ?.copyWith(
+                                fontWeight: FontWeight.w700,
+                                height: 1,
+                              ),
                         ),
                       ),
                     ],
@@ -634,10 +640,7 @@ class _SkillGrid extends StatelessWidget {
 }
 
 class _SkillStatBox extends StatelessWidget {
-  const _SkillStatBox({
-    required this.label,
-    required this.child,
-  });
+  const _SkillStatBox({required this.label, required this.child});
 
   final String label;
   final Widget child;
@@ -651,20 +654,18 @@ class _SkillStatBox extends StatelessWidget {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(7),
         color: scheme.surface.withValues(alpha: 0.55),
-        border: Border.all(
-          color: scheme.onSurface.withValues(alpha: 0.08),
-        ),
+        border: Border.all(color: scheme.onSurface.withValues(alpha: 0.08)),
       ),
       child: Row(
         children: [
           Text(
             label,
             style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: scheme.onSurfaceVariant,
-                  fontSize: 10,
-                  letterSpacing: 0.2,
-                  height: 1,
-                ),
+              color: scheme.onSurfaceVariant,
+              fontSize: 10,
+              letterSpacing: 0.2,
+              height: 1,
+            ),
           ),
           const Spacer(),
           SizedBox(height: 28, child: Center(child: child)),
@@ -676,10 +677,7 @@ class _SkillStatBox extends StatelessWidget {
 
 /// Level badge: current level top-left, 99 bottom-right, diagonal slash between.
 class _SkillLevelBadge extends StatelessWidget {
-  const _SkillLevelBadge({
-    required this.level,
-    required this.color,
-  });
+  const _SkillLevelBadge({required this.level, required this.color});
 
   final int level;
   final Color color;

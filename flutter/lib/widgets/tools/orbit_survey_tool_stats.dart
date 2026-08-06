@@ -6,11 +6,7 @@ import '../tools/tool_stat_row.dart';
 
 /// Stats panel for Orbit Survey.
 class OrbitSurveyToolStats extends StatelessWidget {
-  const OrbitSurveyToolStats({
-    super.key,
-    this.params,
-    this.compact = false,
-  });
+  const OrbitSurveyToolStats({super.key, this.params, this.compact = false});
 
   final Map<String, dynamic>? params;
   final bool compact;
@@ -25,7 +21,8 @@ class OrbitSurveyToolStats extends StatelessWidget {
     final range = (p?['range'] as num?)?.toDouble() ?? cfg.range;
     final minRangeM = (p?['min_range_m'] as num?)?.toDouble() ?? cfg.minRangeM;
     final maxRangeM = (p?['max_range_m'] as num?)?.toDouble() ?? cfg.maxRangeM;
-    final explanation = p?['stats_explanation'] as String? ?? cfg.statsExplanation;
+    final explanation =
+        p?['stats_explanation'] as String? ?? cfg.statsExplanation;
     final rangeM = minRangeM + range * (maxRangeM - minRangeM);
     final rangeLabel = rangeM >= 1000
         ? '${(rangeM / 1000).toStringAsFixed(1)} km'
@@ -34,9 +31,7 @@ class OrbitSurveyToolStats extends StatelessWidget {
       ToolStatPair('Duration', '$durationMinutes min'),
       ToolStatPair(
         'Accuracy',
-        accuracy.toStringAsFixed(
-          accuracy == accuracy.roundToDouble() ? 0 : 2,
-        ),
+        accuracy.toStringAsFixed(accuracy == accuracy.roundToDouble() ? 0 : 2),
       ),
       ToolStatPair('Range', rangeLabel),
     ];
@@ -49,9 +44,9 @@ class OrbitSurveyToolStats extends StatelessWidget {
     }
 
     final cardTheme = DinoCardTheme.of(context);
-    final mutedStyle = cardTheme.bodyStyle(fontSize: 11).copyWith(
-          color: cardTheme.cardTextMuted,
-        );
+    final mutedStyle = cardTheme
+        .bodyStyle(fontSize: 11)
+        .copyWith(color: cardTheme.cardTextMuted);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [

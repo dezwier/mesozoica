@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/services.dart';
-import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
@@ -17,7 +16,7 @@ import 'helpers/game_config_test_helpers.dart';
 
 class _FakeLocationService extends LocationService {
   _FakeLocationService(this._location, {double? speedMps})
-      : _speedMps = speedMps;
+    : _speedMps = speedMps;
 
   LatLng? _location;
   double? _speedMps;
@@ -55,9 +54,7 @@ class _FakeLocationService extends LocationService {
   }
 
   @override
-  Future<void> setFieldSession({
-    required bool active,
-  }) async {
+  Future<void> setFieldSession({required bool active}) async {
     notifyListeners();
   }
 
@@ -90,12 +87,7 @@ Map<String, dynamic> _discoverResponseJson({
   required double lon,
 }) {
   return {
-    'site': _siteJson(
-      siteId: siteId,
-      lat: lat,
-      lon: lon,
-      status: 'discovered',
-    ),
+    'site': _siteJson(siteId: siteId, lat: lat, lon: lon, status: 'discovered'),
     'status': 'done',
     'onboarded': true,
     'generated': false,
@@ -130,9 +122,9 @@ void main() {
   setUpAll(() {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(
-      SystemChannels.platform,
-      (call) async => null,
-    );
+          SystemChannels.platform,
+          (call) async => null,
+        );
   });
 
   setUp(() async {
@@ -143,55 +135,55 @@ void main() {
     await Future<void>.delayed(const Duration(milliseconds: 40));
   }
 
-  test('does not discover immediately when opening already inside radius',
-      () async {
-    final discoverCalls = <int>[];
-    final coordinator = FieldDiscoveryCoordinator(
-      discoveryRerollIntervalOverride: const Duration(seconds: 60),
-      siteService: SiteService(
-        client: MockClient((request) async {
-          if (request.url.path.contains('nearby-discoverable')) {
-            return http.Response(
-              jsonEncode({
-                'items': [
-                  _siteJson(siteId: 1, lat: 51.0000, lon: 4.0000),
-                ],
-                'total': 1,
-                'generated': 0,
-                'radius_km': 1.0,
-              }),
-              200,
-            );
-          }
-          if (request.method == 'POST' &&
-              request.url.path.contains('/discover')) {
-            discoverCalls.add(int.parse(request.url.pathSegments[3]));
-            return http.Response(
-              jsonEncode(
-                _discoverResponseJson(siteId: 1, lat: 51.0, lon: 4.0),
-              ),
-              200,
-            );
-          }
-          return http.Response('{}', 404);
-        }),
-      ),
-    );
+  test(
+    'does not discover immediately when opening already inside radius',
+    () async {
+      final discoverCalls = <int>[];
+      final coordinator = FieldDiscoveryCoordinator(
+        discoveryRerollIntervalOverride: const Duration(seconds: 60),
+        siteService: SiteService(
+          client: MockClient((request) async {
+            if (request.url.path.contains('nearby-discoverable')) {
+              return http.Response(
+                jsonEncode({
+                  'items': [_siteJson(siteId: 1, lat: 51.0000, lon: 4.0000)],
+                  'total': 1,
+                  'generated': 0,
+                  'radius_km': 1.0,
+                }),
+                200,
+              );
+            }
+            if (request.method == 'POST' &&
+                request.url.path.contains('/discover')) {
+              discoverCalls.add(int.parse(request.url.pathSegments[3]));
+              return http.Response(
+                jsonEncode(
+                  _discoverResponseJson(siteId: 1, lat: 51.0, lon: 4.0),
+                ),
+                200,
+              );
+            }
+            return http.Response('{}', 404);
+          }),
+        ),
+      );
 
-    final locationService = _FakeLocationService(_inside);
-    coordinator.bind(locationService: locationService);
-    await pumpUntilIdle();
+      final locationService = _FakeLocationService(_inside);
+      coordinator.bind(locationService: locationService);
+      await pumpUntilIdle();
 
-    expect(discoverCalls, isEmpty);
-    expect(coordinator.pendingCelebration, isNull);
+      expect(discoverCalls, isEmpty);
+      expect(coordinator.pendingCelebration, isNull);
 
-    // Small move still inside — still not an immediate free roll.
-    locationService.setLocation(const LatLng(51.00005, 4.0000));
-    await pumpUntilIdle();
-    expect(discoverCalls, isEmpty);
+      // Small move still inside — still not an immediate free roll.
+      locationService.setLocation(const LatLng(51.00005, 4.0000));
+      await pumpUntilIdle();
+      expect(discoverCalls, isEmpty);
 
-    coordinator.dispose();
-  });
+      coordinator.dispose();
+    },
+  );
 
   test('baseline inside discovers after dwell interval', () async {
     final discoverCalls = <int>[];
@@ -202,9 +194,7 @@ void main() {
           if (request.url.path.contains('nearby-discoverable')) {
             return http.Response(
               jsonEncode({
-                'items': [
-                  _siteJson(siteId: 1, lat: 51.0000, lon: 4.0000),
-                ],
+                'items': [_siteJson(siteId: 1, lat: 51.0000, lon: 4.0000)],
                 'total': 1,
                 'generated': 0,
                 'radius_km': 1.0,
@@ -216,9 +206,7 @@ void main() {
               request.url.path.contains('/discover')) {
             discoverCalls.add(int.parse(request.url.pathSegments[3]));
             return http.Response(
-              jsonEncode(
-                _discoverResponseJson(siteId: 1, lat: 51.0, lon: 4.0),
-              ),
+              jsonEncode(_discoverResponseJson(siteId: 1, lat: 51.0, lon: 4.0)),
               200,
             );
           }
@@ -247,9 +235,7 @@ void main() {
           if (request.url.path.contains('nearby-discoverable')) {
             return http.Response(
               jsonEncode({
-                'items': [
-                  _siteJson(siteId: 1, lat: 51.0000, lon: 4.0000),
-                ],
+                'items': [_siteJson(siteId: 1, lat: 51.0000, lon: 4.0000)],
                 'total': 1,
                 'generated': 0,
                 'radius_km': 1.0,
@@ -274,8 +260,7 @@ void main() {
     );
 
     // 15 m/s ≈ 54 km/h — above the 10 km/h default gate.
-    final locationService =
-        _FakeLocationService(_outside, speedMps: 15.0);
+    final locationService = _FakeLocationService(_outside, speedMps: 15.0);
     coordinator.bind(locationService: locationService);
     await pumpUntilIdle();
 
@@ -340,54 +325,55 @@ void main() {
     coordinator.dispose();
   });
 
-  test('does not re-attempt while still inside after successful enter', () async {
-    var discoverCount = 0;
-    final coordinator = FieldDiscoveryCoordinator(
-      siteService: SiteService(
-        client: MockClient((request) async {
-          if (request.url.path.contains('nearby-discoverable')) {
-            return http.Response(
-              jsonEncode({
-                'items': [
-                  _siteJson(siteId: 7, lat: 51.0000, lon: 4.0000),
-                ],
-                'total': 1,
-                'generated': 0,
-                'radius_km': 1.0,
-              }),
-              200,
-            );
-          }
-          if (request.method == 'POST' &&
-              request.url.path.contains('/discover')) {
-            discoverCount++;
-            return http.Response(
-              jsonEncode(
-                _discoverResponseJson(siteId: 7, lat: 51.0, lon: 4.0),
-              ),
-              200,
-            );
-          }
-          return http.Response('{}', 404);
-        }),
-      ),
-    );
+  test(
+    'does not re-attempt while still inside after successful enter',
+    () async {
+      var discoverCount = 0;
+      final coordinator = FieldDiscoveryCoordinator(
+        siteService: SiteService(
+          client: MockClient((request) async {
+            if (request.url.path.contains('nearby-discoverable')) {
+              return http.Response(
+                jsonEncode({
+                  'items': [_siteJson(siteId: 7, lat: 51.0000, lon: 4.0000)],
+                  'total': 1,
+                  'generated': 0,
+                  'radius_km': 1.0,
+                }),
+                200,
+              );
+            }
+            if (request.method == 'POST' &&
+                request.url.path.contains('/discover')) {
+              discoverCount++;
+              return http.Response(
+                jsonEncode(
+                  _discoverResponseJson(siteId: 7, lat: 51.0, lon: 4.0),
+                ),
+                200,
+              );
+            }
+            return http.Response('{}', 404);
+          }),
+        ),
+      );
 
-    final locationService = _FakeLocationService(_outside);
-    coordinator.bind(locationService: locationService);
-    await pumpUntilIdle();
+      final locationService = _FakeLocationService(_outside);
+      coordinator.bind(locationService: locationService);
+      await pumpUntilIdle();
 
-    locationService.setLocation(_inside);
-    await pumpUntilIdle();
-    expect(discoverCount, 1);
+      locationService.setLocation(_inside);
+      await pumpUntilIdle();
+      expect(discoverCount, 1);
 
-    coordinator.consumeCelebration();
-    locationService.setLocation(const LatLng(51.00005, 4.0000));
-    await pumpUntilIdle();
-    expect(discoverCount, 1);
+      coordinator.consumeCelebration();
+      locationService.setLocation(const LatLng(51.00005, 4.0000));
+      await pumpUntilIdle();
+      expect(discoverCount, 1);
 
-    coordinator.dispose();
-  });
+      coordinator.dispose();
+    },
+  );
 
   test('re-attempts after exit beyond radius then re-enter', () async {
     var discoverCount = 0;
@@ -398,9 +384,7 @@ void main() {
           if (request.url.path.contains('nearby-discoverable')) {
             return http.Response(
               jsonEncode({
-                'items': [
-                  _siteJson(siteId: 9, lat: 51.0000, lon: 4.0000),
-                ],
+                'items': [_siteJson(siteId: 9, lat: 51.0000, lon: 4.0000)],
                 'total': 1,
                 'generated': 0,
                 'radius_km': 1.0,
@@ -416,9 +400,7 @@ void main() {
               return _chanceMissResponse();
             }
             return http.Response(
-              jsonEncode(
-                _discoverResponseJson(siteId: 9, lat: 51.0, lon: 4.0),
-              ),
+              jsonEncode(_discoverResponseJson(siteId: 9, lat: 51.0, lon: 4.0)),
               200,
             );
           }
@@ -449,64 +431,66 @@ void main() {
     coordinator.dispose();
   });
 
-  test('chance miss re-rolls after dwell interval while staying inside',
-      () async {
-    var discoverCount = 0;
-    final coordinator = FieldDiscoveryCoordinator(
-      discoveryRerollIntervalOverride: _shortReroll,
-      siteService: SiteService(
-        client: MockClient((request) async {
-          if (request.url.path.contains('nearby-discoverable')) {
-            return http.Response(
-              jsonEncode({
-                'items': [
-                  _siteJson(siteId: 3, lat: 51.0000, lon: 4.0000),
-                ],
-                'total': 1,
-                'generated': 0,
-                'radius_km': 1.0,
-              }),
-              200,
-            );
-          }
-          if (request.method == 'POST' &&
-              request.url.path.contains('/discover')) {
-            discoverCount++;
-            if (discoverCount == 1) {
-              return _chanceMissResponse();
+  test(
+    'chance miss re-rolls after dwell interval while staying inside',
+    () async {
+      var discoverCount = 0;
+      final coordinator = FieldDiscoveryCoordinator(
+        discoveryRerollIntervalOverride: _shortReroll,
+        siteService: SiteService(
+          client: MockClient((request) async {
+            if (request.url.path.contains('nearby-discoverable')) {
+              return http.Response(
+                jsonEncode({
+                  'items': [_siteJson(siteId: 3, lat: 51.0000, lon: 4.0000)],
+                  'total': 1,
+                  'generated': 0,
+                  'radius_km': 1.0,
+                }),
+                200,
+              );
             }
-            return http.Response(
-              jsonEncode(
-                _discoverResponseJson(siteId: 3, lat: 51.0, lon: 4.0),
-              ),
-              200,
-            );
-          }
-          return http.Response('{}', 404);
-        }),
-      ),
-    );
+            if (request.method == 'POST' &&
+                request.url.path.contains('/discover')) {
+              discoverCount++;
+              if (discoverCount == 1) {
+                return _chanceMissResponse();
+              }
+              return http.Response(
+                jsonEncode(
+                  _discoverResponseJson(siteId: 3, lat: 51.0, lon: 4.0),
+                ),
+                200,
+              );
+            }
+            return http.Response('{}', 404);
+          }),
+        ),
+      );
 
-    final locationService = _FakeLocationService(_outside);
-    coordinator.bind(locationService: locationService);
-    await pumpUntilIdle();
+      final locationService = _FakeLocationService(_outside);
+      coordinator.bind(locationService: locationService);
+      await pumpUntilIdle();
 
-    locationService.setLocation(_inside);
-    await pumpUntilIdle();
-    expect(discoverCount, 1);
-    expect(coordinator.pendingCelebration, isNull);
+      locationService.setLocation(_inside);
+      await pumpUntilIdle();
+      expect(discoverCount, 1);
+      expect(coordinator.pendingCelebration, isNull);
 
-    // GPS nudge before interval — no re-roll yet.
-    locationService.setLocation(const LatLng(51.00008, 4.0000));
-    await pumpUntilIdle();
-    expect(discoverCount, 1);
+      // GPS nudge before interval — no re-roll yet.
+      locationService.setLocation(const LatLng(51.00008, 4.0000));
+      await pumpUntilIdle();
+      expect(discoverCount, 1);
 
-    await Future<void>.delayed(_shortReroll + const Duration(milliseconds: 40));
-    expect(discoverCount, 2);
-    expect(coordinator.pendingCelebration?.site.siteId, 3);
+      await Future<void>.delayed(
+        _shortReroll + const Duration(milliseconds: 40),
+      );
+      expect(discoverCount, 2);
+      expect(coordinator.pendingCelebration?.site.siteId, 3);
 
-    coordinator.dispose();
-  });
+      coordinator.dispose();
+    },
+  );
 
   test('discovers map-ingested site when API cache was empty', () async {
     final discoverCalls = <int>[];
@@ -575,9 +559,7 @@ void main() {
           if (request.url.path.contains('nearby-discoverable')) {
             return http.Response(
               jsonEncode({
-                'items': [
-                  _siteJson(siteId: 5, lat: 51.0000, lon: 4.0000),
-                ],
+                'items': [_siteJson(siteId: 5, lat: 51.0000, lon: 4.0000)],
                 'total': 1,
                 'generated': 0,
                 'radius_km': 1.0,

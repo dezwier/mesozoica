@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:developer' as developer;
 import 'dart:io';
 
 import 'package:firebase_core/firebase_core.dart';
@@ -15,7 +14,9 @@ import '../firebase_options.dart';
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   WidgetsFlutterBinding.ensureInitialized();
   try {
-    await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
   } catch (_) {
     // If Firebase can't initialize, don't crash the background isolate.
   }
@@ -32,7 +33,9 @@ class PushNotificationRuntime {
     }
 
     if (Firebase.apps.isEmpty) {
-      await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+      await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
     }
 
     FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
@@ -54,11 +57,12 @@ class PushNotificationRuntime {
   static Future<void> _configureIosForegroundPresentation() async {
     if (kIsWeb || !Platform.isIOS) return;
     try {
-      await FirebaseMessaging.instance.setForegroundNotificationPresentationOptions(
-        alert: false,
-        badge: false,
-        sound: false,
-      );
+      await FirebaseMessaging.instance
+          .setForegroundNotificationPresentationOptions(
+            alert: false,
+            badge: false,
+            sound: false,
+          );
     } catch (_) {}
   }
 }

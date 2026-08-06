@@ -14,10 +14,7 @@ part 'notification_icon_button_list.dart';
 class NotificationIconButton extends StatelessWidget {
   static bool _notificationTapScheduled = false;
 
-  const NotificationIconButton({
-    super.key,
-    required this.onTapNotification,
-  });
+  const NotificationIconButton({super.key, required this.onTapNotification});
 
   final void Function(UserNotificationItem item) onTapNotification;
 
@@ -86,8 +83,10 @@ class NotificationIconButton extends StatelessWidget {
     BuildContext context,
     NotificationController store,
   ) {
-    final userId =
-        Provider.of<AuthController>(context, listen: false).currentUser?.id;
+    final userId = Provider.of<AuthController>(
+      context,
+      listen: false,
+    ).currentUser?.id;
     store.refreshInBackground(authenticatedUserId: userId);
     store.markCurrentAsSeenForBadge();
     if (!context.mounted) return;
@@ -99,8 +98,10 @@ class NotificationIconButton extends StatelessWidget {
     const padding = 8.0;
     const maxHeight = 400.0;
     final top = position.dy + size.height + 4;
-    final left =
-        (position.dx + size.width / 2 - 160.0).clamp(padding, media.width - 320 - padding);
+    final left = (position.dx + size.width / 2 - 160.0).clamp(
+      padding,
+      media.width - 320 - padding,
+    );
 
     final overlay = Overlay.of(context);
     late OverlayEntry entry;
@@ -111,10 +112,7 @@ class NotificationIconButton extends StatelessWidget {
     entry = OverlayEntry(
       builder: (context) => Stack(
         children: [
-          GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTap: remove,
-          ),
+          GestureDetector(behavior: HitTestBehavior.opaque, onTap: remove),
           Positioned(
             left: left,
             top: top,
@@ -126,8 +124,10 @@ class NotificationIconButton extends StatelessWidget {
                 alignment: Alignment.topCenter,
                 child: ConstrainedBox(
                   constraints: BoxConstraints(
-                    maxHeight:
-                        (media.height - top - padding).clamp(200.0, maxHeight),
+                    maxHeight: (media.height - top - padding).clamp(
+                      200.0,
+                      maxHeight,
+                    ),
                   ),
                   child: Consumer<NotificationController>(
                     builder: (context, store, _) => _NotificationListContent(

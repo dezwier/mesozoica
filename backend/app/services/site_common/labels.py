@@ -1,18 +1,7 @@
-"""Shared display labels for sites (match Flutter SiteSummary.displayTitle)."""
+"""Transitional alias for the feature-owned implementation."""
 
-from __future__ import annotations
+import sys
 
-from app.models.site import Site
-from app.services.site_common.constants import FIELD_SITE_ID_START
+from app.features.sites.domain import labels as _implementation
 
-
-def site_display_title(site: Site | None) -> str:
-    """Card-style title: formation when set, else short field site number (#n)."""
-    if site is None:
-        return ""
-    formation = (site.formation or "").strip()
-    if formation:
-        return formation
-    site_id = site.site_id
-    n = site_id - FIELD_SITE_ID_START if site_id >= FIELD_SITE_ID_START else site_id
-    return f"#{n}"
+sys.modules[__name__] = _implementation

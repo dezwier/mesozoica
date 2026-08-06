@@ -22,10 +22,7 @@ Future<void> openInventoryCardSettings({
   required BuildContext context,
   required Future<void> Function() onThrowAway,
 }) {
-  return showCardSettingsDrawer(
-    context,
-    onThrowAway: onThrowAway,
-  );
+  return showCardSettingsDrawer(context, onThrowAway: onThrowAway);
 }
 
 Future<void> discardDinosaurFromInventory(
@@ -83,9 +80,9 @@ Future<void> discardSiteFromInventory(
     await service.discardSite(site.siteId);
     if (!context.mounted) return;
     context.read<SiteCatalogController>().removeSite(site.siteId);
-    context
-        .read<FieldDiscoveryCoordinator>()
-        .siteBecameHidden(site.copyWith(status: 'hidden'));
+    context.read<FieldDiscoveryCoordinator>().siteBecameHidden(
+      site.copyWith(status: 'hidden'),
+    );
   } catch (e) {
     if (!context.mounted) return;
     AppToast.show(

@@ -8,11 +8,7 @@ import '../map/fossil_marker.dart';
 import '../map/map_tile_layer.dart';
 
 class CardMapMarker {
-  const CardMapMarker({
-    required this.point,
-    this.onTap,
-    this.opacity = 1.0,
-  });
+  const CardMapMarker({required this.point, this.onTap, this.opacity = 1.0});
 
   final LatLng point;
   final VoidCallback? onTap;
@@ -35,6 +31,7 @@ class CardWorldMap extends StatefulWidget {
   final List<CardMapMarker> markers;
   final LatLng center;
   final double zoom;
+
   /// When false, the map behaves like a static image (no pan/zoom).
   final bool interactive;
   final VoidCallback? onTap;
@@ -86,19 +83,16 @@ class _CardWorldMapState extends State<CardWorldMap> {
         maxZoom: widget.interactive ? MapConfig.maxZoom : widget.zoom,
         backgroundColor: cardTheme.cardBackground,
         cameraConstraint: CameraConstraint.contain(
-          bounds: LatLngBounds(
-            const LatLng(-85, -180),
-            const LatLng(85, 180),
-          ),
+          bounds: LatLngBounds(const LatLng(-85, -180), const LatLng(85, 180)),
         ),
         onMapReady: _onMapReady,
         onTap: widget.onTap == null ? null : (_, _) => widget.onTap!(),
         interactionOptions: InteractionOptions(
           flags: widget.interactive
               ? InteractiveFlag.drag |
-                  InteractiveFlag.pinchZoom |
-                  InteractiveFlag.doubleTapZoom |
-                  InteractiveFlag.flingAnimation
+                    InteractiveFlag.pinchZoom |
+                    InteractiveFlag.doubleTapZoom |
+                    InteractiveFlag.flingAnimation
               : InteractiveFlag.none,
         ),
       ),

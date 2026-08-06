@@ -77,8 +77,7 @@ class _DeleteDataDialogState extends State<DeleteDataDialog> {
             CheckboxListTile(
               contentPadding: EdgeInsets.zero,
               value: _dinosaurs,
-              onChanged: (value) =>
-                  setState(() => _dinosaurs = value ?? false),
+              onChanged: (value) => setState(() => _dinosaurs = value ?? false),
               title: Text('Dino progress ($dinosaursCount)'),
               subtitle: const Text('All dinosaurs linked to your account'),
               controlAffinity: ListTileControlAffinity.leading,
@@ -87,7 +86,9 @@ class _DeleteDataDialogState extends State<DeleteDataDialog> {
               contentPadding: EdgeInsets.zero,
               value: _xp,
               onChanged: (value) => setState(() => _xp = value ?? false),
-              title: Text('All skill XP (career Lv $careerLevel · $totalXp XP)'),
+              title: Text(
+                'All skill XP (career Lv $careerLevel · $totalXp XP)',
+              ),
               subtitle: const Text(
                 'Reset every skill and career level to zero XP',
               ),
@@ -104,19 +105,21 @@ class _DeleteDataDialogState extends State<DeleteDataDialog> {
         TextButton(
           onPressed: _canConfirm
               ? () => Navigator.pop(
-                    context,
-                    DeleteDataSelection(
-                      sites: _sites,
-                      fossils: _fossils,
-                      dinosaurs: _dinosaurs,
-                      xp: _xp,
-                    ),
-                  )
+                  context,
+                  DeleteDataSelection(
+                    sites: _sites,
+                    fossils: _fossils,
+                    dinosaurs: _dinosaurs,
+                    xp: _xp,
+                  ),
+                )
               : null,
           child: Text(
             'Delete data',
             style: TextStyle(
-              color: _canConfirm ? errorColor : errorColor.withValues(alpha: 0.4),
+              color: _canConfirm
+                  ? errorColor
+                  : errorColor.withValues(alpha: 0.4),
             ),
           ),
         ),

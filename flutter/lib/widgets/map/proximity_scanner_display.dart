@@ -93,10 +93,7 @@ class ProximityScannerDisplay extends StatelessWidget {
               ),
               const SizedBox(height: 5),
               if (showSessionControls)
-                _SessionFooter(
-                  remaining: remaining,
-                  onStop: onStop!,
-                )
+                _SessionFooter(remaining: remaining, onStop: onStop!)
               else
                 _StatusFooter(compact: compact),
             ],
@@ -154,10 +151,7 @@ class _DraggableProximityScannerState extends State<DraggableProximityScanner> {
 }
 
 class _SessionFooter extends StatelessWidget {
-  const _SessionFooter({
-    required this.remaining,
-    required this.onStop,
-  });
+  const _SessionFooter({required this.remaining, required this.onStop});
 
   final Duration? remaining;
   final VoidCallback onStop;
@@ -167,10 +161,7 @@ class _SessionFooter extends StatelessWidget {
     final time = formatActiveToolHudRemaining(remaining);
     return Row(
       children: [
-        Text(
-          time,
-          style: VintageInstrumentStyle.mono.copyWith(fontSize: 11),
-        ),
+        Text(time, style: VintageInstrumentStyle.mono.copyWith(fontSize: 11)),
         const Spacer(),
         Container(
           width: 7,
@@ -264,16 +255,16 @@ class _Rivets extends StatelessWidget {
   Widget build(BuildContext context) {
     final size = compact ? 4.5 : 5.0;
     Widget rivet() => Container(
-          width: size,
-          height: size,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: const RadialGradient(
-              colors: [Color(0xFFB0A690), Color(0xFF5A5346)],
-            ),
-            border: Border.all(color: const Color(0xFF2A261F), width: 0.5),
-          ),
-        );
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: const RadialGradient(
+          colors: [Color(0xFFB0A690), Color(0xFF5A5346)],
+        ),
+        border: Border.all(color: const Color(0xFF2A261F), width: 0.5),
+      ),
+    );
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -386,10 +377,7 @@ class _CrtScreen extends StatelessWidget {
               child: DecoratedBox(
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(compact ? 4 : 6),
-                  border: Border.all(
-                    color: const Color(0xFF1A3A1E),
-                    width: 2,
-                  ),
+                  border: Border.all(color: const Color(0xFF1A3A1E), width: 2),
                   gradient: RadialGradient(
                     center: Alignment.center,
                     radius: 0.95,

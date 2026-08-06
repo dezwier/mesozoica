@@ -96,16 +96,13 @@ class HealthDistanceService {
       if (granted && Platform.isAndroid) {
         // Needed to read walking distance older than ~30 days.
         try {
-          final historyAvailable =
-              await _health.isHealthDataHistoryAvailable();
+          final historyAvailable = await _health.isHealthDataHistoryAvailable();
           if (historyAvailable) {
             await _health.requestHealthDataHistoryAuthorization();
           }
         } catch (error) {
           if (kDebugMode) {
-            debugPrint(
-              'HealthDistanceService.historyAuthorization: $error',
-            );
+            debugPrint('HealthDistanceService.historyAuthorization: $error');
           }
         }
       }

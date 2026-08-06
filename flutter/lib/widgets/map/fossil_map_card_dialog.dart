@@ -10,8 +10,7 @@ Future<void> showFossilMapCardDialog(
 ) {
   return CardDetailSheet.show<void>(
     context,
-    builder: (context) => CardDetailSheetContent(
-      child: FossilTurnableCard(fossil: fossil),
-    ),
+    builder: (context) =>
+        CardDetailSheetContent(child: FossilTurnableCard(fossil: fossil)),
   );
 }

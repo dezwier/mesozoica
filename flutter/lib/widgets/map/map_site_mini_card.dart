@@ -20,6 +20,7 @@ class MapSiteMiniCard extends StatelessWidget {
 
   final SiteSummary site;
   final bool selected;
+
   /// Active disguise cover on this site (subtle light-gold title).
   final bool disguised;
   final double width;
@@ -35,6 +36,7 @@ class MapSiteMiniCard extends StatelessWidget {
   static const double _triangleW = 14;
   static const double _dot = 5;
   static const double _labelOverlap = 14;
+
   /// Cream label width relative to photo — wide enough for `999 m · Documented`.
   static const double _labelWidthFactor = 2.45;
 
@@ -63,12 +65,10 @@ class MapSiteMiniCard extends StatelessWidget {
   }
 
   /// Distance and/or live site status for the cream label subtitle.
-  static String? subtitleFor({
-    double? distanceM,
-    String? status,
-  }) {
+  static String? subtitleFor({double? distanceM, String? status}) {
     final trimmed = status?.trim();
-    final statusLabel = (trimmed == null ||
+    final statusLabel =
+        (trimmed == null ||
             trimmed.isEmpty ||
             trimmed.toLowerCase() == 'hidden')
         ? null
@@ -86,8 +86,8 @@ class MapSiteMiniCard extends StatelessWidget {
     final borderColor = selected
         ? MapChromeTheme.gold
         : disguised
-            ? MapSiteMiniCard.disguisedLabelGold
-            : Colors.white;
+        ? MapSiteMiniCard.disguisedLabelGold
+        : Colors.white;
     final triangleTop = photo - _triangleH * 0.4;
     final labelMaxWidth = photo * _labelWidthFactor;
     final titleColor = disguised
@@ -123,8 +123,8 @@ class MapSiteMiniCard extends StatelessWidget {
                 color: selected
                     ? MapChromeTheme.goldBright
                     : disguised
-                        ? MapSiteMiniCard.disguisedLabelGold
-                        : Colors.white,
+                    ? MapSiteMiniCard.disguisedLabelGold
+                    : Colors.white,
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withValues(alpha: 0.35),

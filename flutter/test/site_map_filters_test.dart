@@ -3,11 +3,7 @@ import 'package:mesozoica/models/site.dart';
 import 'package:mesozoica/models/site_map_filters.dart';
 
 void main() {
-  SiteSummary site({
-    String? status,
-    String? period,
-    String? rockType,
-  }) {
+  SiteSummary site({String? status, String? period, String? rockType}) {
     return SiteSummary(
       siteId: 1,
       latitude: 1,
@@ -91,15 +87,24 @@ void main() {
 
   test('empty checkbox group matches nothing', () {
     final filters = SiteMapFilters(periods: {});
-    expect(filters.matches(site(period: 'jurassic', rockType: 'sandstone')), isFalse);
+    expect(
+      filters.matches(site(period: 'jurassic', rockType: 'sandstone')),
+      isFalse,
+    );
   });
 
-  test('hiding past aerial routes counts as active filter but not marker key', () {
-    final filters = SiteMapFilters(showPastAerialRoutes: false);
-    expect(filters.hasActiveFilters, isTrue);
-    expect(filters.markerFilterKey, 'all');
-    expect(filters.copyWith(showPastAerialRoutes: true).hasActiveFilters, isFalse);
-  });
+  test(
+    'hiding past aerial routes counts as active filter but not marker key',
+    () {
+      final filters = SiteMapFilters(showPastAerialRoutes: false);
+      expect(filters.hasActiveFilters, isTrue);
+      expect(filters.markerFilterKey, 'all');
+      expect(
+        filters.copyWith(showPastAerialRoutes: true).hasActiveFilters,
+        isFalse,
+      );
+    },
+  );
 
   test('howDiscovered filter narrows matches', () {
     final filters = SiteMapFilters(howDiscovered: {'walk'});
@@ -206,11 +211,7 @@ void main() {
         longitude: 1,
         discoveredAt: DateTime.utc(2026, 1, 15),
       ),
-      SiteSummary(
-        siteId: 3,
-        latitude: 1,
-        longitude: 1,
-      ),
+      SiteSummary(siteId: 3, latitude: 1, longitude: 1),
     ]);
     expect(earliest, DateTime.utc(2026, 1, 15));
   });

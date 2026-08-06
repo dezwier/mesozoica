@@ -47,10 +47,11 @@ void main() {
       documentedAt: DateTime.utc(2026, 7, 2, 12),
     );
     final entries = SiteCardUserTimeline.entriesFor(site);
-    expect(
-      entries.map((e) => e.moment),
-      ['Discovered', 'Identified', 'Documented'],
-    );
+    expect(entries.map((e) => e.moment), [
+      'Discovered',
+      'Identified',
+      'Documented',
+    ]);
     expect(entries[1].whenLabel, isNot(equals('—')));
   });
 

@@ -1,26 +1,9 @@
-"""Tool catalog services."""
+"""Transitional facade for the feature-owned package."""
 
-from app.services.tool_service.collect import collect_tool_for_user
-from app.services.tool_service.discard import discard_tool_for_user
-from app.services.tool_service.list import (
-    ToolListRow,
-    get_tool_by_id,
-    list_tool_categories,
-    list_tools,
-    tool_to_summary,
-)
-from app.services.tool_service.sync import sync_tools, tool_sync_exit_code
-from app.services.tool_service.update_params import update_tool_instance_params
+from app.features.tools.application.catalog import *  # noqa: F403
+from app.features.tools.application.catalog import __all__
+from app.features.tools.application import catalog as _implementation
 
-__all__ = [
-    "ToolListRow",
-    "collect_tool_for_user",
-    "discard_tool_for_user",
-    "get_tool_by_id",
-    "list_tool_categories",
-    "list_tools",
-    "sync_tools",
-    "tool_sync_exit_code",
-    "tool_to_summary",
-    "update_tool_instance_params",
-]
+
+def __getattr__(name: str):
+    return getattr(_implementation, name)

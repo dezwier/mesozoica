@@ -1,12 +1,9 @@
-"""Fossil read / status services."""
+"""Transitional facade for the feature-owned package."""
 
-from app.services.fossil_service.discard import discard_fossil_for_user
-from app.services.fossil_service.list import get_fossil_by_id, list_fossils
-from app.services.fossil_service.set_status import set_fossil_status
+from app.features.specimens.application.fossils import *  # noqa: F403
+from app.features.specimens.application.fossils import __all__
+from app.features.specimens.application import fossils as _implementation
 
-__all__ = [
-    "discard_fossil_for_user",
-    "get_fossil_by_id",
-    "list_fossils",
-    "set_fossil_status",
-]
+
+def __getattr__(name: str):
+    return getattr(_implementation, name)

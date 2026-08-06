@@ -15,7 +15,9 @@ String toTitleCase(String value) {
       .replaceAll('_', ' ')
       .split(RegExp(r'\s+'))
       .where((word) => word.isNotEmpty)
-      .map((word) => '${word[0].toUpperCase()}${word.substring(1).toLowerCase()}')
+      .map(
+        (word) => '${word[0].toUpperCase()}${word.substring(1).toLowerCase()}',
+      )
       .join(' ');
 }
 
@@ -28,10 +30,7 @@ String canonicalTaxonName(String value) {
   text = text.replaceAll(RegExp(r'[†‡×✕✖⨯]'), '');
   text = text.replaceAll(RegExp(r'\s*\(\?\)\s*$'), '');
   text = text.replaceAll(RegExp(r'\s*\(\s*\?\s*\)\s*$'), '');
-  text = text.replaceAll(
-    RegExp(r'\s*\([^)]*\b\d{3,4}\b[^)]*\)\s*$'),
-    '',
-  );
+  text = text.replaceAll(RegExp(r'\s*\([^)]*\b\d{3,4}\b[^)]*\)\s*$'), '');
   text = text.replaceAll(RegExp(r'\s*\([^)]*\?\s*[^)]*\)\s*$'), '');
   text = _stripTaxonomicAuthority(text);
   text = text.replaceAll(RegExp(r'\s+'), ' ').trim();

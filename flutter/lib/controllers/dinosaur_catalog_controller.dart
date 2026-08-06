@@ -95,7 +95,7 @@ class DinosaurCatalogFilters {
 
 class DinosaurCatalogController extends CatalogController<DinosaurSummary> {
   DinosaurCatalogController({DinosaurService? service})
-      : _service = service ?? DinosaurService();
+    : _service = service ?? DinosaurService();
 
   static const pageSize = 20;
 
@@ -161,8 +161,7 @@ class DinosaurCatalogController extends CatalogController<DinosaurSummary> {
   @override
   Future<void> loadMore() async {
     if (!beginLoadMore(
-      canProceed: () =>
-          _filters.searchQuery.trim().isNotEmpty || _seed != null,
+      canProceed: () => _filters.searchQuery.trim().isNotEmpty || _seed != null,
     )) {
       return;
     }
@@ -211,8 +210,9 @@ class DinosaurCatalogController extends CatalogController<DinosaurSummary> {
       sort: hasSearch ? 'name' : 'random',
       seed: hasSearch ? null : seed,
       q: hasSearch ? _filters.searchQuery.trim() : null,
-      maYounger:
-          !hasSearch && _filters.hasTimeFilter ? _filters.maYounger : null,
+      maYounger: !hasSearch && _filters.hasTimeFilter
+          ? _filters.maYounger
+          : null,
       maOlder: !hasSearch && _filters.hasTimeFilter ? _filters.maOlder : null,
       diets: _filters.diets,
       lengthMMin: _filters.hasLengthFilter ? _filters.lengthMMin : null,

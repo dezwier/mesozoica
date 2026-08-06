@@ -76,7 +76,10 @@ class SettingsAppTab extends StatelessWidget {
                 for (final option in MapboxBasemapTheme.values)
                   DensePopupEntry(
                     value: option,
-                    child: Text(option.label, style: theme.textTheme.bodyMedium),
+                    child: Text(
+                      option.label,
+                      style: theme.textTheme.bodyMedium,
+                    ),
                   ),
               ],
               onSelected: (value) {
@@ -96,8 +99,7 @@ class SettingsAppTab extends StatelessWidget {
             control: Switch.adaptive(
               value: locationService.isBackgroundExploring,
               onChanged: (value) async {
-                final ok =
-                    await locationService.setBackgroundExploring(value);
+                final ok = await locationService.setBackgroundExploring(value);
                 if (!context.mounted) return;
                 if (value && !ok) {
                   ScaffoldMessenger.of(context).showSnackBar(
@@ -105,7 +107,7 @@ class SettingsAppTab extends StatelessWidget {
                       content: Text(
                         locationService.error ??
                             'Always location permission is required. '
-                            'Enable it in system Settings.',
+                                'Enable it in system Settings.',
                       ),
                     ),
                   );

@@ -19,9 +19,7 @@ void main() {
   });
 
   test('initialize restores persisted field mode', () async {
-    SharedPreferences.setMockInitialValues({
-      'catalog_data_source': 'field',
-    });
+    SharedPreferences.setMockInitialValues({'catalog_data_source': 'field'});
 
     final controller = CatalogModeController();
     await controller.initialize();

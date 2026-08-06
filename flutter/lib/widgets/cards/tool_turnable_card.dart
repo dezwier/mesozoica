@@ -35,8 +35,7 @@ class ToolTurnableCard extends StatefulWidget {
     this.turnable = true,
     this.enableDragFlip = true,
     this.enableLongPressActions = false,
-    this.outerPadding =
-        const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+    this.outerPadding = const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
     this.fixedFaceHeight,
     this.titleFontSize = 36,
     this.subtitleFontSize = 10,
@@ -73,10 +72,10 @@ class _ToolTurnableCardState extends State<ToolTurnableCard> {
 
   /// Params shown/edited: instance → base → game-config YAML defaults.
   Map<String, dynamic> _paramsForEdit(ToolSummary tool) {
-    final defaults =
-        GameConfig.instance.toolActions.defaultsForToolName(tool.name);
-    final fromTool =
-        tool.params.isNotEmpty ? tool.params : tool.baseParams;
+    final defaults = GameConfig.instance.toolActions.defaultsForToolName(
+      tool.name,
+    );
+    final fromTool = tool.params.isNotEmpty ? tool.params : tool.baseParams;
     return ToolParamsEdit.mergeDefaults(
       Map<String, dynamic>.from(defaults),
       Map<String, dynamic>.from(fromTool),
@@ -86,7 +85,8 @@ class _ToolTurnableCardState extends State<ToolTurnableCard> {
   List<String> _editableKeysForBackStats(ToolSummary tool) {
     final params = _paramsForEdit(tool);
     final extension = ToolCardExtensions.forTool(tool);
-    final toolKeys = extension?.editableParamKeys(tool) ??
+    final toolKeys =
+        extension?.editableParamKeys(tool) ??
         [
           for (final key in params.keys)
             if (key != 'stats_explanation' && key != 'modifies_main_params')
@@ -103,8 +103,7 @@ class _ToolTurnableCardState extends State<ToolTurnableCard> {
     ToolActionRouter.start(context, widget.tool);
   }
 
-  bool get _canLoadHistory =>
-      widget.tool.isOwned && widget.tool.isToolInstance;
+  bool get _canLoadHistory => widget.tool.isOwned && widget.tool.isToolInstance;
 
   Future<void> _refreshHistory({bool showSpinner = false}) async {
     final tool = widget.tool;
@@ -143,9 +142,9 @@ class _ToolTurnableCardState extends State<ToolTurnableCard> {
       // Prefer the catalog's current row over [widget.tool] so a concurrent
       // params update is not overwritten by this duration-only refresh.
       final catalog = context.read<ToolCatalogController>();
-      final index =
-          catalog.catalogItems.indexWhere((item) => item.id == tool.id);
-      final base = index >= 0 ? catalog.catalogItems[index] : tool;
+      final items = catalog.items;
+      final index = items.indexWhere((item) => item.id == tool.id);
+      final base = index >= 0 ? items[index] : tool;
       catalog.replaceToolSummary(
         base.copyWith(
           remainingDurationS: response.remainingDurationS,
@@ -259,8 +258,9 @@ class _ToolTurnableCardState extends State<ToolTurnableCard> {
         if (_updateParamsBusy) return;
         setState(() => _updateParamsBusy = true);
         try {
-          final payload =
-              ToolParamsEdit.syncLegacyDiscoveryChance(updatedParams);
+          final payload = ToolParamsEdit.syncLegacyDiscoveryChance(
+            updatedParams,
+          );
           final updatedTool = await ToolService().updateToolParams(
             widget.tool.id,
             payload,
@@ -376,8 +376,7 @@ class _ToolTurnableCardState extends State<ToolTurnableCard> {
     if (orbit.isActive && _matchesTool(orbit.session, orbit.tool)) {
       return true;
     }
-    if (formation.isActive &&
-        _matchesTool(formation.session, formation.tool)) {
+    if (formation.isActive && _matchesTool(formation.session, formation.tool)) {
       return true;
     }
     if (terrain.isActive && _matchesTool(terrain.session, terrain.tool)) {
@@ -480,7 +479,8 @@ class _ToolTurnableCardState extends State<ToolTurnableCard> {
       tool: widget.tool,
       titleFontSize: widget.titleFontSize,
       subtitleFontSize: widget.subtitleFontSize,
-      onAction: inventoryMode &&
+      onAction:
+          inventoryMode &&
               widget.tool.isOwned &&
               !inUse &&
               (remaining == null || remaining > 0)
@@ -507,10 +507,9 @@ class _ToolTurnableCardState extends State<ToolTurnableCard> {
       enableLongPressActions: widget.enableLongPressActions,
       onSettingsPressed: widget.enableLongPressActions
           ? () => openInventoryCardSettings(
-                context: context,
-                onThrowAway: () =>
-                    discardToolFromInventory(context, widget.tool),
-              )
+              context: context,
+              onThrowAway: () => discardToolFromInventory(context, widget.tool),
+            )
           : null,
       front: ToolCardFront(
         tool: widget.tool,

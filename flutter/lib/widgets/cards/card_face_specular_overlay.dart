@@ -74,10 +74,7 @@ class _CardFaceSpecularPainter extends CustomPainter {
     final rect = Offset.zero & size;
     switch (clip) {
       case SpecularOverlayClip.fullRoundedRect:
-        return RRect.fromRectAndRadius(
-          rect,
-          Radius.circular(rounded),
-        );
+        return RRect.fromRectAndRadius(rect, Radius.circular(rounded));
       case SpecularOverlayClip.roundedTopStrip:
         return RRect.fromRectAndCorners(
           rect,
@@ -100,8 +97,11 @@ class _CardFaceSpecularPainter extends CustomPainter {
     final strength = rawFace.clamp(0.22, 1.0);
     final peakAlpha = strength * 0.2;
 
-    final hi = Color.lerp(Colors.white, const Color(0xFFB8D9FF), 0.12)!
-        .withValues(alpha: peakAlpha);
+    final hi = Color.lerp(
+      Colors.white,
+      const Color(0xFFB8D9FF),
+      0.12,
+    )!.withValues(alpha: peakAlpha);
 
     canvas.save();
     canvas.clipRRect(rrect);
@@ -119,7 +119,8 @@ class _CardFaceSpecularPainter extends CustomPainter {
   }) {
     final cx =
         size.width * (_kGlareAnchorX + math.sin(motionRadians) * _kMainSweepX);
-    final cy = size.height *
+    final cy =
+        size.height *
         (_kGlareAnchorY + math.cos(motionRadians * 1.05) * _kMainSweepY);
 
     canvas.save();

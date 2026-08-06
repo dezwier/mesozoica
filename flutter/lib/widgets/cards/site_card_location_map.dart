@@ -35,9 +35,7 @@ class SiteCardLocationMap extends StatelessWidget {
     final point = _sitePoint(site);
 
     return CardWorldMap(
-      markers: point == null
-          ? const []
-          : [CardMapMarker(point: point)],
+      markers: point == null ? const [] : [CardMapMarker(point: point)],
       center: point ?? MapConfig.defaultCenter,
       zoom: MapConfig.siteCardMapZoom,
       interactive: false,

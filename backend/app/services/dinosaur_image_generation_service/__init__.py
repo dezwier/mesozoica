@@ -1,15 +1,9 @@
-"""Dinosaur card image generation (Imagen)."""
+"""Transitional facade for the media-owned package."""
 
-from app.services.dinosaur_image_generation_service.generate import (
-    generate_dinosaur_images,
-)
-from app.services.image_generation_service.batch_types import (
-    GenerateCounters,
-    GenerateSummary,
-)
+from app.features.media.application.dinosaur_generation import *  # noqa: F403
+from app.features.media.application.dinosaur_generation import __all__
+from app.features.media.application import dinosaur_generation as _implementation
 
-__all__ = [
-    "GenerateCounters",
-    "GenerateSummary",
-    "generate_dinosaur_images",
-]
+
+def __getattr__(name: str):
+    return getattr(_implementation, name)

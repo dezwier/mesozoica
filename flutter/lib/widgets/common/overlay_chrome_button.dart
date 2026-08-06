@@ -51,11 +51,7 @@ class OverlayChromeButton extends StatelessWidget {
         child: SizedBox(
           width: buttonSize,
           height: buttonSize,
-          child: Icon(
-            icon,
-            size: 28,
-            color: MapChromeTheme.brownText,
-          ),
+          child: Icon(icon, size: 28, color: MapChromeTheme.brownText),
         ),
       ),
     );
@@ -113,12 +109,7 @@ class OverlayChromeButton extends StatelessWidget {
               fontFamily: MapChromeTheme.serifFont,
               letterSpacing: 0.45,
               height: 1.1,
-              shadows: [
-                Shadow(
-                  blurRadius: 5,
-                  color: Color(0xA6000000),
-                ),
-              ],
+              shadows: [Shadow(blurRadius: 5, color: Color(0xA6000000))],
             ),
           ),
         ),

@@ -24,9 +24,7 @@ const int mapboxMarkerBatchSize = 500;
 /// - Rotate mode only hides circles (opacity 0); sync keeps them warm so
 ///   exiting to north-fixed is instant.
 class MapboxSiteAnnotations {
-  MapboxSiteAnnotations({
-    required this.onSiteTap,
-  });
+  MapboxSiteAnnotations({required this.onSiteTap});
 
   ValueChangedSite onSiteTap;
 
@@ -45,6 +43,7 @@ class MapboxSiteAnnotations {
   final Map<int, CircleAnnotation> _highlightBySiteId = {};
   CircleAnnotation? _selectionDot;
   int? _selectedSiteId;
+
   /// Bumped only on wipe ([beginDatasetSwitch] / [clearAllMarkers]) so an
   /// in-flight create/prune can abort cleanly without page-notify races.
   int _syncSeq = 0;
@@ -207,8 +206,7 @@ class MapboxSiteAnnotations {
 
   double get _rimRadius => _baseRadius * mapboxMarkerRimRadiusScale;
 
-  double get _highlightRadius =>
-      _baseRadius * mapboxMarkerHighlightRadiusScale;
+  double get _highlightRadius => _baseRadius * mapboxMarkerHighlightRadiusScale;
 
   double get _dotRadius => _baseRadius * mapboxMarkerSelectionDotScale;
 
@@ -368,10 +366,7 @@ class MapboxSiteAnnotations {
           coordinates: Position(site.longitude!, site.latitude!),
         );
         shadowOptions.add(
-          CircleAnnotationOptions(
-            geometry: point,
-            circleSortKey: sortKey,
-          ),
+          CircleAnnotationOptions(geometry: point, circleSortKey: sortKey),
         );
         rimOptions.add(
           CircleAnnotationOptions(

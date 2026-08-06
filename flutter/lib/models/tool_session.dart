@@ -33,10 +33,10 @@ class ToolSession {
   final String? toolImageUrl;
 
   /// Live aerial (`pending` / `active`) or timed overlay (`active`).
-  bool get isActive =>
-      status == 'pending' || status == 'active';
+  bool get isActive => status == 'pending' || status == 'active';
 
   bool get isPending => status == 'pending';
+
   /// Aerial session currently in flight (`status == active`).
   bool get isInFlight => status == 'active';
   bool get isPast =>
@@ -71,8 +71,7 @@ class ToolSession {
   double get routeLengthKm =>
       (state['route_length_km'] as num?)?.toDouble() ?? 0;
 
-  int get flightDurationS =>
-      (state['flight_duration_s'] as num?)?.toInt() ?? 0;
+  int get flightDurationS => (state['flight_duration_s'] as num?)?.toInt() ?? 0;
 
   DateTime? get flightStartedAt => parseSessionDate(state['flight_started_at']);
 
@@ -100,8 +99,7 @@ class ToolSession {
 
   double? get discoveryDistanceM => flightDiscoveryDistanceM;
 
-  int get durationMinutes =>
-      (params['duration_minutes'] as num?)?.toInt() ?? 0;
+  int get durationMinutes => (params['duration_minutes'] as num?)?.toInt() ?? 0;
 
   double? get directionExactness =>
       (params['direction_exactness'] as num?)?.toDouble();
@@ -234,7 +232,8 @@ class ToolSessionEventsSummary {
     }
     return ToolSessionEventsSummary(
       discoveredSiteIds: ids,
-      discoveredCount: (json['discovered_count'] as num?)?.toInt() ?? ids.length,
+      discoveredCount:
+          (json['discovered_count'] as num?)?.toInt() ?? ids.length,
       pendingCount: (json['pending_count'] as num?)?.toInt() ?? 0,
       missCount: (json['miss_count'] as num?)?.toInt() ?? 0,
       doneCount: (json['done_count'] as num?)?.toInt() ?? 0,
@@ -261,11 +260,15 @@ class ToolHistoryEntry {
 
   factory ToolHistoryEntry.fromJson(Map<String, dynamic> json) {
     final role = json['role'];
-    final roleMap = role is Map ? _asStringKeyedMap(role) : const <String, dynamic>{};
+    final roleMap = role is Map
+        ? _asStringKeyedMap(role)
+        : const <String, dynamic>{};
     final sessionRaw = json['session'];
     return ToolHistoryEntry(
       kind: json['kind'] as String? ?? 'session',
-      at: parseSessionDate(json['at']) ?? DateTime.fromMillisecondsSinceEpoch(0),
+      at:
+          parseSessionDate(json['at']) ??
+          DateTime.fromMillisecondsSinceEpoch(0),
       session: sessionRaw is Map
           ? ToolSession.fromJson(_asStringKeyedMap(sessionRaw))
           : null,
@@ -296,15 +299,15 @@ class ToolSessionListResponse {
     final rawHistory = json['history'];
     final items = raw is List
         ? raw
-            .whereType<Map>()
-            .map((e) => ToolSession.fromJson(_asStringKeyedMap(e)))
-            .toList(growable: false)
+              .whereType<Map>()
+              .map((e) => ToolSession.fromJson(_asStringKeyedMap(e)))
+              .toList(growable: false)
         : const <ToolSession>[];
     final history = rawHistory is List
         ? rawHistory
-            .whereType<Map>()
-            .map((e) => ToolHistoryEntry.fromJson(_asStringKeyedMap(e)))
-            .toList(growable: false)
+              .whereType<Map>()
+              .map((e) => ToolHistoryEntry.fromJson(_asStringKeyedMap(e)))
+              .toList(growable: false)
         : const <ToolHistoryEntry>[];
     return ToolSessionListResponse(
       toolId: (json['tool_id'] as num?)?.toInt(),

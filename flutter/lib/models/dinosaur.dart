@@ -78,11 +78,9 @@ class DinosaurSummary {
 
   /// True for owned/reconstructed dinosaur cards (not catalog types).
   bool get isInventoryOccurrence =>
-      createdAt != null ||
-      (dinosaurTypeId != null && dinosaurTypeId != id);
+      createdAt != null || (dinosaurTypeId != null && dinosaurTypeId != id);
 
-  bool get isHidden =>
-      (status ?? 'hidden').trim().toLowerCase() == 'hidden';
+  bool get isHidden => (status ?? 'hidden').trim().toLowerCase() == 'hidden';
 
   String get displayOccurrenceNumber => '#$id';
 
@@ -164,9 +162,9 @@ class DinosaurSummary {
     final rawOwned = json['owned_occurrences'];
     final owned = rawOwned is List
         ? rawOwned
-            .whereType<Map<String, dynamic>>()
-            .map(OwnedOccurrenceThumb.fromJson)
-            .toList()
+              .whereType<Map<String, dynamic>>()
+              .map(OwnedOccurrenceThumb.fromJson)
+              .toList()
         : const <OwnedOccurrenceThumb>[];
     return DinosaurSummary(
       id: json['id'] as int,
@@ -292,8 +290,8 @@ class DinosaurListResponse {
     final total = json['total'] as int? ?? rawItems.length;
     final limit = json['limit'] as int? ?? rawItems.length;
     final offset = json['offset'] as int? ?? 0;
-    final hasNext = json['has_next'] as bool? ??
-        (offset + items.length < total);
+    final hasNext =
+        json['has_next'] as bool? ?? (offset + items.length < total);
     return DinosaurListResponse(
       items: items,
       total: total,

@@ -5,12 +5,18 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 
 import '../firebase_options.dart';
+import '../core/networking/api_transport.dart';
 import 'api_client.dart';
 import 'token_storage.dart';
 
 /// FCM push: register device token with backend when the user is logged in.
 class PushNotificationService {
   static bool _initialized = false;
+  static ApiTransport transport = ApiClient.instance;
+
+  static void debugSetTransport(ApiTransport value) {
+    transport = value;
+  }
 
   static Future<void> init() async {
     if (_initialized) return;
@@ -59,7 +65,7 @@ class PushNotificationService {
 
   static Future<void> registerTokenWithBackend(String fcmToken) async {
     try {
-      await ApiClient.instance.post(
+      await transport.post(
         '/api/v1/auth/device-token',
         body: {'token': fcmToken, 'platform': _getPlatform()},
       );

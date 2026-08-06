@@ -34,11 +34,7 @@ Map<String, dynamic> _fossilJson({
   };
 }
 
-FossilSummary _fossil({
-  required int id,
-  double? latitude,
-  double? longitude,
-}) {
+FossilSummary _fossil({required int id, double? latitude, double? longitude}) {
   return FossilSummary.fromJson(
     _fossilJson(id: id, latitude: latitude, longitude: longitude),
   );
@@ -93,10 +89,7 @@ void main() {
         _fossil(id: 2, latitude: 35.0, longitude: 139.0),
       ]);
 
-      expect(points, [
-        const LatLng(46.8, -104.0),
-        const LatLng(35.0, 139.0),
-      ]);
+      expect(points, [const LatLng(46.8, -104.0), const LatLng(35.0, 139.0)]);
     });
 
     test('centerForFossils returns point for single fossil', () {
@@ -109,8 +102,9 @@ void main() {
     });
   });
 
-  testWidgets('DinosaurCardFossilMap renders markers for geolocated fossils',
-      (tester) async {
+  testWidgets('DinosaurCardFossilMap renders markers for geolocated fossils', (
+    tester,
+  ) async {
     final service = FossilService(
       client: MockClient((request) async {
         expect(request.url.queryParameters['dinosaur_id'], '1');
@@ -156,15 +150,14 @@ void main() {
     expect(find.byType(FossilMarker), findsNWidgets(2));
   });
 
-  testWidgets('DinosaurCardFossilMap shows empty state without coordinates',
-      (tester) async {
+  testWidgets('DinosaurCardFossilMap shows empty state without coordinates', (
+    tester,
+  ) async {
     final service = FossilService(
       client: MockClient((request) async {
         return http.Response(
           jsonEncode({
-            'items': [
-              _fossilJson(id: 100001),
-            ],
+            'items': [_fossilJson(id: 100001)],
             'total': 1,
             'limit': 200,
             'offset': 0,
@@ -200,15 +193,14 @@ void main() {
     expect(find.byType(FossilMarker), findsNothing);
   });
 
-  testWidgets('DinosaurCardFossilMap opens fossil card dialog on marker tap',
-      (tester) async {
+  testWidgets('DinosaurCardFossilMap opens fossil card dialog on marker tap', (
+    tester,
+  ) async {
     final service = FossilService(
       client: MockClient((request) async {
         return http.Response(
           jsonEncode({
-            'items': [
-              _fossilJson(id: 100001, latitude: 20.0, longitude: 0.0),
-            ],
+            'items': [_fossilJson(id: 100001, latitude: 20.0, longitude: 0.0)],
             'total': 1,
             'limit': 200,
             'offset': 0,

@@ -7,10 +7,7 @@ import '../../theme/dino_card_theme.dart';
 
 /// Blurred card illustration + subtle wash and brushed-metal grain.
 class CardBackBackdrop extends StatelessWidget {
-  const CardBackBackdrop({
-    super.key,
-    required this.image,
-  });
+  const CardBackBackdrop({super.key, required this.image});
 
   final Widget image;
 
@@ -31,10 +28,7 @@ class CardBackBackdrop extends StatelessWidget {
               sigmaY: blurSigma,
               tileMode: TileMode.clamp,
             ),
-            child: Transform.scale(
-              scale: 1.12,
-              child: image,
-            ),
+            child: Transform.scale(scale: 1.12, child: image),
           ),
         ),
         DecoratedBox(
@@ -43,7 +37,9 @@ class CardBackBackdrop extends StatelessWidget {
           ),
         ),
         DecoratedBox(
-          decoration: BoxDecoration(gradient: cardTheme.backFaceSheenGradient()),
+          decoration: BoxDecoration(
+            gradient: cardTheme.backFaceSheenGradient(),
+          ),
         ),
         const CustomPaint(painter: _BrushedMetalPainter()),
       ],

@@ -29,16 +29,7 @@ void main() {
     expect(raster.pngBytes, isNotNull);
     expect(raster.pngBytes!.length, greaterThan(8));
     // PNG signature
-    expect(raster.pngBytes!.sublist(0, 8), [
-      137,
-      80,
-      78,
-      71,
-      13,
-      10,
-      26,
-      10,
-    ]);
+    expect(raster.pngBytes!.sublist(0, 8), [137, 80, 78, 71, 13, 10, 26, 10]);
   });
 
   test('encodeRgbaToPng produces valid signature for empty pixels', () {

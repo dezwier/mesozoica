@@ -42,10 +42,9 @@ class _ToolStatRowWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     final cardTheme = DinoCardTheme.of(context);
     final labelStyle = cardTheme.sectionLabelStyle(fontSize: 7);
-    final valueStyle = cardTheme.bodyStyle(fontSize: 11).copyWith(
-          fontWeight: FontWeight.w600,
-          height: 1.15,
-        );
+    final valueStyle = cardTheme
+        .bodyStyle(fontSize: 11)
+        .copyWith(fontWeight: FontWeight.w600, height: 1.15);
     // Pad to 4 to keep equal widths.
     final padded = [...pairs];
     while (padded.length < 4) {

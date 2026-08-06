@@ -27,8 +27,9 @@ class ThemeController extends ChangeNotifier {
     } else if (stored == 'system') {
       _themeMode = ThemeMode.system;
     }
-    _mapBasemapTheme =
-        MapboxBasemapTheme.fromStored(prefs.getString(_mapBasemapThemeKey));
+    _mapBasemapTheme = MapboxBasemapTheme.fromStored(
+      prefs.getString(_mapBasemapThemeKey),
+    );
     notifyListeners();
   }
 

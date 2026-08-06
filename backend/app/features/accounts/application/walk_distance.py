@@ -1,0 +1,107 @@
+"""Walk-distance sync helpers (GPS open + Health closed → user profile)."""
+
+from __future__ import annotations
+
+from datetime import datetime, timezone
+
+from fastapi import HTTPException, status
+from sqlmodel import Session
+
+from app.models.user import User
+from app.schemas.auth import UpdateDistanceRequest, UserProfileResponse
+from app.features.accounts.application.users import user_to_profile_response
+
+# Cap reported growth vs last sync (~200 km/day) to blunt trivial tampering.
+_MAX_METERS_PER_DAY = 200_000.0
+
+
+def _monotonic(previous: float, reported: float) -> float:
+    return previous if reported < previous else reported
+
+
+def apply_distance_update(
+    session: Session,
+    user: User,
+    payload: UpdateDistanceRequest,
+) -> UserProfileResponse:
+    now = datetime.now(timezone.utc)
+    previous_total = float(user.total_distance_m or 0.0)
+    previous_weekly = float(user.weekly_distance_m or 0.0)
+    previous_active = float(user.active_distance_m or 0.0)
+    previous_active_weekly = float(user.active_weekly_distance_m or 0.0)
+    previous_week_start = user.distance_week_start
+    previous_synced = user.distance_synced_at
+
+    week_start = payload.week_start
+    new_total = _monotonic(previous_total, float(payload.total_distance_m))
+    new_active = _monotonic(previous_active, float(payload.active_distance_m))
+
+    delta_total = new_total - previous_total
+    if previous_synced is not None and delta_total > 0:
+        synced = previous_synced
+        if synced.tzinfo is None:
+            synced = synced.replace(tzinfo=timezone.utc)
+        elapsed_days = max((now - synced).total_seconds() / 86400.0, 1.0 / 24.0)
+        max_delta = _MAX_METERS_PER_DAY * elapsed_days
+        if delta_total > max_delta:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=(
+                    "Distance increase exceeds the allowed rate "
+                    f"({delta_total:.0f}m in {elapsed_days:.2f} days)."
+                ),
+            )
+
+    reported_weekly = float(payload.weekly_distance_m)
+    reported_active_weekly = float(payload.active_weekly_distance_m)
+
+    if previous_week_start is None or week_start > previous_week_start:
+        # New week (or first sync): take the client's window totals.
+        new_weekly = reported_weekly
+        new_active_weekly = reported_active_weekly
+        stored_week_start = week_start
+    elif week_start < previous_week_start:
+        # Stale client still on an older Monday — keep the server window.
+        new_weekly = previous_weekly
+        new_active_weekly = previous_active_weekly
+        stored_week_start = previous_week_start
+    elif payload.reset_weekly:
+        # Explicit heal after a bad Monday seed (client rolled over then
+        # re-applied last week's totals under the new week_start).
+        new_weekly = reported_weekly
+        new_active_weekly = reported_active_weekly
+        stored_week_start = week_start
+    else:
+        # Same week: keep the max across devices.
+        new_weekly = _monotonic(previous_weekly, reported_weekly)
+        new_active_weekly = _monotonic(previous_active_weekly, reported_active_weekly)
+        stored_week_start = week_start
+
+    user.total_distance_m = new_total
+    user.weekly_distance_m = new_weekly
+    user.active_distance_m = new_active
+    user.active_weekly_distance_m = new_active_weekly
+    user.distance_week_start = stored_week_start
+    user.distance_synced_at = now
+
+    from app.features.progression.public import (
+        award_distance_xp,
+        passive_meters,
+        whole_100m,
+        whole_10m,
+    )
+
+    prev_active_batches = whole_100m(previous_active)
+    new_active_batches = whole_100m(new_active)
+    prev_passive_10m = whole_10m(passive_meters(previous_total, previous_active))
+    new_passive_10m = whole_10m(passive_meters(new_total, new_active))
+    award_distance_xp(
+        user,
+        active_100m_delta=new_active_batches - prev_active_batches,
+        passive_10m_delta=new_passive_10m - prev_passive_10m,
+    )
+
+    session.add(user)
+    session.commit()
+    session.refresh(user)
+    return user_to_profile_response(session, user)

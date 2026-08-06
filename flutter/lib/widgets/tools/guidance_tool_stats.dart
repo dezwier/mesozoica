@@ -25,18 +25,18 @@ class GuidanceToolStats extends StatelessWidget {
     final p = params;
     final durationMinutes =
         (p?['duration_minutes'] as num?)?.toInt() ?? cfg.durationMinutes;
-    final exactness =
-        (p?['exactness'] as num?)?.toDouble();
-    final directionExactness =
-        (p?['direction_exactness'] as num?)?.toDouble();
-    final distanceExactness =
-        (p?['distance_exactness'] as num?)?.toDouble();
-    final discoveryMod = modifiesMainParamsFromParams(p)
-        ?.paramsFor('using', 'field_survey')['discovery_chance'];
-    final discoveryChance = (p?['discovery_chance'] as num?)?.toDouble() ??
+    final exactness = (p?['exactness'] as num?)?.toDouble();
+    final directionExactness = (p?['direction_exactness'] as num?)?.toDouble();
+    final distanceExactness = (p?['distance_exactness'] as num?)?.toDouble();
+    final discoveryMod = modifiesMainParamsFromParams(
+      p,
+    )?.paramsFor('using', 'field_survey')['discovery_chance'];
+    final discoveryChance =
+        (p?['discovery_chance'] as num?)?.toDouble() ??
         (discoveryMod?.op == 'replace' ? discoveryMod?.value : null) ??
         cfg.discoveryChance;
-    final explanation = p?['stats_explanation'] as String? ?? cfg.statsExplanation;
+    final explanation =
+        p?['stats_explanation'] as String? ?? cfg.statsExplanation;
     final pairs = <ToolStatPair>[
       ToolStatPair('Duration', '$durationMinutes min'),
     ];
@@ -46,18 +46,24 @@ class GuidanceToolStats extends StatelessWidget {
         pairs.add(
           ToolStatPair(
             'Exactness',
-            _formatExactness(distanceExactness ?? exactness ?? cfg.resolvedDistanceExactness),
+            _formatExactness(
+              distanceExactness ?? exactness ?? cfg.resolvedDistanceExactness,
+            ),
           ),
         );
       case 'site_navigator':
         pairs.addAll([
           ToolStatPair(
             'Direction',
-            _formatExactness(directionExactness ?? exactness ?? cfg.resolvedDirectionExactness),
+            _formatExactness(
+              directionExactness ?? exactness ?? cfg.resolvedDirectionExactness,
+            ),
           ),
           ToolStatPair(
             'Distance',
-            _formatExactness(distanceExactness ?? exactness ?? cfg.resolvedDistanceExactness),
+            _formatExactness(
+              distanceExactness ?? exactness ?? cfg.resolvedDistanceExactness,
+            ),
           ),
           if (discoveryMod != null)
             ToolStatPair(
@@ -70,17 +76,16 @@ class GuidanceToolStats extends StatelessWidget {
                     ),
             )
           else if (discoveryChance != null)
-            ToolStatPair(
-              'Discovery chance',
-              _formatChance(discoveryChance),
-            ),
+            ToolStatPair('Discovery chance', _formatChance(discoveryChance)),
         ]);
       case 'geo_compass':
       default:
         pairs.addAll([
           ToolStatPair(
             'Exactness',
-            _formatExactness(directionExactness ?? exactness ?? cfg.resolvedDirectionExactness),
+            _formatExactness(
+              directionExactness ?? exactness ?? cfg.resolvedDirectionExactness,
+            ),
           ),
           if (discoveryMod != null)
             ToolStatPair(
@@ -93,10 +98,7 @@ class GuidanceToolStats extends StatelessWidget {
                     ),
             )
           else if (discoveryChance != null)
-            ToolStatPair(
-              'Discovery chance',
-              _formatChance(discoveryChance),
-            ),
+            ToolStatPair('Discovery chance', _formatChance(discoveryChance)),
         ]);
     }
 
@@ -108,9 +110,9 @@ class GuidanceToolStats extends StatelessWidget {
     }
 
     final cardTheme = DinoCardTheme.of(context);
-    final mutedStyle = cardTheme.bodyStyle(fontSize: 11).copyWith(
-          color: cardTheme.cardTextMuted,
-        );
+    final mutedStyle = cardTheme
+        .bodyStyle(fontSize: 11)
+        .copyWith(color: cardTheme.cardTextMuted);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [

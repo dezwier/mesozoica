@@ -118,10 +118,8 @@ void main() {
       expect(events.sunrise, isNotNull);
       final midTwilight = events.civilDawn!.add(
         Duration(
-          milliseconds: events.sunrise!
-                  .difference(events.civilDawn!)
-                  .inMilliseconds ~/
-              2,
+          milliseconds:
+              events.sunrise!.difference(events.civilDawn!).inMilliseconds ~/ 2,
         ),
       );
       expect(

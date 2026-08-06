@@ -47,15 +47,14 @@ Future<SiteSummary?> applySiteStatusSelection(
       context.read<FieldDiscoveryCoordinator>().siteBecameHidden(updated);
     }
 
-    final wasHiddenToDiscover =
-        previous == 'hidden' && next == 'discovered';
+    final wasHiddenToDiscover = previous == 'hidden' && next == 'discovered';
     if (wasHiddenToDiscover) {
       playDiscoveryHapticFireAndForget();
       final userId = context.read<AuthController>().currentUser?.id;
       if (userId != null) {
         await context.read<NotificationController>().refreshAndWait(
-              authenticatedUserId: userId,
-            );
+          authenticatedUserId: userId,
+        );
       }
       if (!context.mounted) return updated;
       // Wait for surface fossils so locate-in-situ XP lands on the site plaque.
@@ -74,10 +73,7 @@ Future<SiteSummary?> applySiteStatusSelection(
       if (!context.mounted) return updated;
       await showSiteDiscoveryCelebration(context, site: updated);
     } else {
-      AppToast.success(
-        context,
-        'Status updated to ${updated.status ?? next}.',
-      );
+      AppToast.success(context, 'Status updated to ${updated.status ?? next}.');
     }
     return updated;
   } on SiteServiceException catch (error) {

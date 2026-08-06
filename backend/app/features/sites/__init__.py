@@ -1,0 +1,2 @@
+"""Excavation-site feature."""
+

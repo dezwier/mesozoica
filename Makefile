@@ -5,12 +5,14 @@ SHELL := /bin/bash
 RAILWAY_SERVICE ?=
 RAILWAY_SERVICE_FLAG = $(if $(RAILWAY_SERVICE),--service $(RAILWAY_SERVICE),)
 CRON_EXTRA ?=
+PYTHON ?= python3
 
-.PHONY: help backend-install backend-test run-backend flutter-test run-flutter test-all run-cron run-game-config-seed run-field-ensure-worker fetch-coordinate-masks upload-coordinate-masks-railway run-field-site-coordinate-prune run-weather-sync run-dinosaur-wiki-sync run-dinosaur-llm-enrich run-fossil-pbdb-sync run-fossil-llm-enrich run-site-sync run-site-type-sync run-tool-sync run-dinosaur-image-generate run-fossil-image-generate run-site-type-image-generate run-tool-image-generate run-tool-image-generate-local sync-dinosaur-images sync-fossil-images sync-site-type-images sync-tool-images sync-bundled-version-meta rename-site-type-images migrate-image-versions-to-v1 migrate-named-image-versions backfill-user-levels
+.PHONY: help architecture-check architecture-report backend-runtime-check backend-install backend-test run-backend flutter-analyze flutter-test run-flutter test-all quality run-cron run-game-config-seed run-field-ensure-worker fetch-coordinate-masks upload-coordinate-masks-railway run-field-site-coordinate-prune run-weather-sync run-dinosaur-wiki-sync run-dinosaur-llm-enrich run-fossil-pbdb-sync run-fossil-llm-enrich run-site-sync run-site-type-sync run-tool-sync run-dinosaur-image-generate run-fossil-image-generate run-site-type-image-generate run-tool-image-generate run-tool-image-generate-local sync-dinosaur-images sync-fossil-images sync-site-type-images sync-tool-images sync-bundled-version-meta rename-site-type-images migrate-image-versions-to-v1 migrate-named-image-versions backfill-user-levels
 
 help:
 	@echo "Available targets:"
 	@echo "  backend-install              Install backend Python dependencies"
+	@echo "  backend-runtime-check        Require Python 3.10+ (including backend/.venv)"
 	@echo "  backend-test                 Run backend pytest suite"
 	@echo "  run-backend                  Start FastAPI dev server (reads backend/.env)"
 	@echo "  run-cron                     Run due cron jobs on Railway"
@@ -42,6 +44,8 @@ help:
 	@echo "  migrate-image-versions-to-v1 Move flat images into Original/ + write meta.yaml"
 	@echo "  migrate-named-image-versions Rename v1/v2 -> Original/Summer 26; migrate flat fossils"
 	@echo "  flutter-test                 Run Flutter tests"
+	@echo "  flutter-analyze              Analyze; informational baseline is non-fatal"
+	@echo "  quality                      Run architecture, analysis, and all tests"
 	@echo "  run-flutter                  Start Flutter app"
 	@echo "  test-all                     Run backend and Flutter tests"
 	@echo ""
@@ -65,11 +69,22 @@ help:
 	@echo "  make migrate-named-image-versions"
 	@echo "  make sync-bundled-version-meta"
 
-backend-install:
-	cd backend && python3 -m pip install --upgrade pip && pip install -r requirements.txt -r requirements-dev.txt
+backend-runtime-check:
+	@if [ -x backend/.venv/bin/python ]; then backend/.venv/bin/python -c 'import sys; assert sys.version_info >= (3, 10), "backend/.venv uses Python %s; recreate it with Python 3.10+" % sys.version.split()[0]'; else $(PYTHON) -c 'import sys; assert sys.version_info >= (3, 10), "Python 3.10+ required; current interpreter is %s" % sys.version.split()[0]'; fi
 
-backend-test:
-	cd backend && pytest tests/ -v
+backend-install: backend-runtime-check
+	@if [ ! -x backend/.venv/bin/python ]; then $(PYTHON) -m venv backend/.venv; fi
+	backend/.venv/bin/python -m pip install --upgrade pip
+	backend/.venv/bin/python -m pip install -r backend/requirements.txt -r backend/requirements-dev.txt
+
+backend-test: backend-runtime-check
+	cd backend && .venv/bin/python -m pytest tests/ -v
+
+architecture-check:
+	python3 backend/scripts/check_architecture.py
+
+architecture-report:
+	python3 backend/scripts/report_structure.py
 
 run-backend:
 	cd backend && uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
@@ -167,7 +182,12 @@ migrate-named-image-versions:
 flutter-test:
 	cd flutter && flutter test
 
+flutter-analyze:
+	cd flutter && flutter analyze --no-fatal-infos
+
 run-flutter:
 	cd flutter && flutter run
 
 test-all: backend-test flutter-test
+
+quality: architecture-check backend-test flutter-analyze flutter-test

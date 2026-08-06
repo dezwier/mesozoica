@@ -51,24 +51,25 @@ class CelebrationTitleBadge extends StatelessWidget {
     return SizedBox(
       width: plaqueWidth,
       child: DecoratedBox(
-        decoration: MapChromeDecorations.leatherPanel(
-          borderRadius: BorderRadius.circular(_radius),
-          soft: true,
-          compact: true,
-        ).copyWith(
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.38),
-              blurRadius: 12,
-              offset: const Offset(0, 3),
+        decoration:
+            MapChromeDecorations.leatherPanel(
+              borderRadius: BorderRadius.circular(_radius),
+              soft: true,
+              compact: true,
+            ).copyWith(
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.38),
+                  blurRadius: 12,
+                  offset: const Offset(0, 3),
+                ),
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.16),
+                  blurRadius: 3,
+                  offset: const Offset(0, 1),
+                ),
+              ],
             ),
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.16),
-              blurRadius: 3,
-              offset: const Offset(0, 1),
-            ),
-          ],
-        ),
         child: Padding(
           padding: const EdgeInsets.fromLTRB(18, 12, 18, 12),
           child: Column(

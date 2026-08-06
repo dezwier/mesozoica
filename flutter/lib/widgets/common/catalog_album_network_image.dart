@@ -20,7 +20,7 @@ class CatalogAlbumNetworkImage extends StatelessWidget {
   final Widget placeholder;
   final Widget errorWidget;
   final Widget Function(BuildContext context, ImageProvider provider)?
-      imageBuilder;
+  imageBuilder;
 
   @override
   Widget build(BuildContext context) {

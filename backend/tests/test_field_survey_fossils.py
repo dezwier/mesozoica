@@ -324,6 +324,13 @@ def test_discover_multi_user_lazy_once(session: Session, monkeypatch):
     assert len(jobs) == 1
     assert jobs[0].status == STATUS_PENDING
 
+    # Freeze weather modifiers: this test characterizes multi-user worker
+    # onboarding, not the wall-clock-dependent XP multiplier matrix.
+    monkeypatch.setattr("app.features.weather.public.period_at", lambda **_: None)
+    monkeypatch.setattr(
+        "app.features.weather.public.get_weather",
+        lambda **_: (_ for _ in ()).throw(RuntimeError("weather unavailable")),
+    )
     assert process_one_survey_job(worker_id="test-worker") is True
 
     fossils = session.exec(
@@ -351,6 +358,9 @@ def test_discover_multi_user_lazy_once(session: Session, monkeypatch):
                 col(UserSite.role) == USER_SITE_ROLE_DISCOVERER,
             )
         ).one()
+        # The worker commits through its own Session; refresh the identity-map
+        # row before checking the persisted award flag.
+        session.refresh(discoverer)
         session.refresh(user)
         if surface_ids:
             assert discoverer.locate_in_situ_awarded is True

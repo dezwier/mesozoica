@@ -33,7 +33,8 @@ class CatalogListScreen<C extends CatalogController<T>, T>
     T item, {
     required bool isFocused,
     required double? fixedFaceHeight,
-  }) itemBuilder;
+  })
+  itemBuilder;
   final String Function(BuildContext context, C catalog) emptyMessageBuilder;
 
   /// Full-screen spinner condition. Defaults to
@@ -42,7 +43,7 @@ class CatalogListScreen<C extends CatalogController<T>, T>
 
   /// Leading bottom-chrome actions (Close is appended on the right).
   final List<Widget> Function(BuildContext context, C catalog)?
-      floatingActionsBuilder;
+  floatingActionsBuilder;
 
   @override
   State<CatalogListScreen<C, T>> createState() =>
@@ -102,9 +103,7 @@ class CatalogListScreenState<C extends CatalogController<T>, T>
           children: [
             Positioned.fill(child: _buildBody(context, catalog)),
             if (widget.isActive)
-              OverlayBottomChrome(
-                child: _buildBottomChrome(context, catalog),
-              ),
+              OverlayBottomChrome(child: _buildBottomChrome(context, catalog)),
           ],
         );
       },
@@ -119,10 +118,7 @@ class CatalogListScreenState<C extends CatalogController<T>, T>
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        for (final action in actions) ...[
-          action,
-          const SizedBox(width: 8),
-        ],
+        for (final action in actions) ...[action, const SizedBox(width: 8)],
         if (scope != null)
           OverlayChromeButton(
             onPressed: scope.onClose,
@@ -145,12 +141,13 @@ class CatalogListScreenState<C extends CatalogController<T>, T>
   }
 
   Widget _buildBodyContent(BuildContext context, C catalog) {
-    final isInitialLoading = widget.isInitialLoading?.call(catalog) ??
+    final isInitialLoading =
+        widget.isInitialLoading?.call(catalog) ??
         (catalog.loading && catalog.items.isEmpty);
     // Light copy for readability on the dimmed map scrim.
-    final overlayTextStyle = Theme.of(context).textTheme.bodyLarge?.copyWith(
-          color: const Color(0xFFF5F5F5),
-        );
+    final overlayTextStyle = Theme.of(
+      context,
+    ).textTheme.bodyLarge?.copyWith(color: const Color(0xFFF5F5F5));
 
     if (isInitialLoading) {
       return const Center(child: CircularProgressIndicator());
@@ -203,12 +200,13 @@ class CatalogListScreenState<C extends CatalogController<T>, T>
         // chrome never letterboxes beside the art.
         const horizontalInset = 16.0 * 2;
         const verticalInset = 8.0 * 2;
-        final maxFaceWidth =
-            (constraints.maxWidth - horizontalInset).clamp(120.0, 2000.0);
+        final maxFaceWidth = (constraints.maxWidth - horizontalInset).clamp(
+          120.0,
+          2000.0,
+        );
         final maxFaceHeight = (constraints.maxHeight * 0.72 - verticalInset)
             .clamp(120.0, 2000.0);
-        final heightFromWidth =
-            maxFaceWidth / DinoCardTheme.cardAspectRatio;
+        final heightFromWidth = maxFaceWidth / DinoCardTheme.cardAspectRatio;
         final double faceHeight;
         if (heightFromWidth <= maxFaceHeight) {
           faceHeight = heightFromWidth;
@@ -216,13 +214,14 @@ class CatalogListScreenState<C extends CatalogController<T>, T>
           faceHeight = maxFaceHeight;
         }
         final slotHeight = faceHeight + verticalInset;
-        final viewportFraction =
-            (slotHeight / constraints.maxHeight).clamp(0.55, 0.85);
+        final viewportFraction = (slotHeight / constraints.maxHeight).clamp(
+          0.55,
+          0.85,
+        );
 
         return CoverFlowCarousel(
           key: _coverFlowKey,
-          itemCount: catalog.items.length +
-              (catalog.isLoadingMore ? 1 : 0),
+          itemCount: catalog.items.length + (catalog.isLoadingMore ? 1 : 0),
           viewportFraction: viewportFraction,
           onPageChanged: (page) => _onPageChanged(page, catalog),
           onPullDismiss: ShellOverlayScope.maybeOf(context)?.onClose,

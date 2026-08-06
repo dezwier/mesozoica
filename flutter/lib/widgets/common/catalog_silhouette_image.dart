@@ -41,10 +41,26 @@ class CatalogSilhouetteImage extends StatelessWidget {
 
   /// True grayscale, moderately crushed (less midtone / color left).
   static const List<double> _obscureMono = <double>[
-    0.128, 0.429, 0.043, 0, 0,
-    0.128, 0.429, 0.043, 0, 0,
-    0.128, 0.429, 0.043, 0, 0,
-    0, 0, 0, 1, 0,
+    0.128,
+    0.429,
+    0.043,
+    0,
+    0,
+    0.128,
+    0.429,
+    0.043,
+    0,
+    0,
+    0.128,
+    0.429,
+    0.043,
+    0,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
   ];
 
   /// Theme-aware wash: dark brown in dark mode, light grey in light mode.
@@ -83,10 +99,7 @@ class CatalogSilhouetteImage extends StatelessWidget {
 }
 
 class _SilhouetteLayer extends StatelessWidget {
-  const _SilhouetteLayer({
-    required this.child,
-    required this.wash,
-  });
+  const _SilhouetteLayer({required this.child, required this.wash});
 
   final Widget child;
   final Color wash;

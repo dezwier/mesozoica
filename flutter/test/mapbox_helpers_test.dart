@@ -41,20 +41,14 @@ void main() {
   group('mapboxMarkerImageKey', () {
     test('includes period and size', () {
       expect(
-        mapboxMarkerImageKey(
-          period: 'Jurassic',
-          sizeBucket: 18,
-        ),
+        mapboxMarkerImageKey(period: 'Jurassic', sizeBucket: 18),
         'jurassic|dot|18',
       );
     });
 
     test('defaults missing period', () {
       expect(
-        mapboxMarkerImageKey(
-          period: null,
-          sizeBucket: 12,
-        ),
+        mapboxMarkerImageKey(period: null, sizeBucket: 12),
         'default|dot|12',
       );
     });
@@ -79,8 +73,7 @@ void main() {
     test('mid zoom stays closer to the small end', () {
       final far = mapboxMarkerRadiusForZoom(MapConfig.minZoom);
       final near = mapboxMarkerRadiusForZoom(MapConfig.maxZoom);
-      final midZoom =
-          (MapConfig.minZoom + MapConfig.maxZoom) / 2;
+      final midZoom = (MapConfig.minZoom + MapConfig.maxZoom) / 2;
       final mid = mapboxMarkerRadiusForZoom(midZoom);
       final linearMid = (far + near) / 2;
       expect(mid, lessThan(linearMid));
@@ -94,12 +87,18 @@ void main() {
       final rim = mapboxMarkerRimColor(fill);
       final highlight = mapboxMarkerHighlightColor(fill);
       expect(rim.computeLuminance(), lessThan(fill.computeLuminance()));
-      expect(highlight.computeLuminance(), greaterThan(fill.computeLuminance()));
+      expect(
+        highlight.computeLuminance(),
+        greaterThan(fill.computeLuminance()),
+      );
     });
 
     test('layer radius scales keep rim outside fill and highlight inside', () {
       expect(mapboxMarkerRimRadiusScale, greaterThan(1.0));
-      expect(mapboxMarkerShadowRadiusScale, greaterThan(mapboxMarkerRimRadiusScale));
+      expect(
+        mapboxMarkerShadowRadiusScale,
+        greaterThan(mapboxMarkerRimRadiusScale),
+      );
       expect(mapboxMarkerHighlightRadiusScale, lessThan(1.0));
       expect(
         mapboxMarkerSelectionDotScale,

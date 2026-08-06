@@ -44,8 +44,9 @@ Map<String, dynamic> gameConfigApiShapeForTest() {
   }
 
   return jsonDecode(
-    jsonEncode(gameConfigDocumentsForTest(), toEncodable: toEncodable),
-  ) as Map<String, dynamic>;
+        jsonEncode(gameConfigDocumentsForTest(), toEncodable: toEncodable),
+      )
+      as Map<String, dynamic>;
 }
 
 /// Loads the shared YAML control board from the asset symlink (or backend path).

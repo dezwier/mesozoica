@@ -23,9 +23,8 @@ class SkillState {
       name: json['name'] as String? ?? '',
       xp: json['xp'] as int? ?? 0,
       level: json['level'] as int? ?? 1,
-      nextLevelXp: json['next_level_xp'] as int? ??
-          json['nextLevelXp'] as int? ??
-          0,
+      nextLevelXp:
+          json['next_level_xp'] as int? ?? json['nextLevelXp'] as int? ?? 0,
       xpToNext: json['xp_to_next'] as int? ?? json['xpToNext'] as int? ?? 0,
       progress: (json['progress'] as num?)?.toDouble() ?? 0,
     );
@@ -54,9 +53,8 @@ class CareerState {
       xp: json['xp'] as int? ?? 0,
       level: json['level'] as int? ?? 1,
       title: json['title'] as String? ?? 'Curious Wanderer',
-      nextLevelXp: json['next_level_xp'] as int? ??
-          json['nextLevelXp'] as int? ??
-          0,
+      nextLevelXp:
+          json['next_level_xp'] as int? ?? json['nextLevelXp'] as int? ?? 0,
       xpToNext: json['xp_to_next'] as int? ?? json['xpToNext'] as int? ?? 0,
       progress: (json['progress'] as num?)?.toDouble() ?? 0,
     );
@@ -88,6 +86,7 @@ class Profile {
   final double weeklyDistanceM;
   final double activeDistanceM;
   final double activeWeeklyDistanceM;
+
   /// Local Monday (yyyy-MM-dd) the weekly counters belong to, if known.
   final String? distanceWeekStart;
 
@@ -149,32 +148,39 @@ class Profile {
 
     return Profile(
       id: json['id'] as int? ?? 0,
-      displayName: json['display_name'] as String? ??
+      displayName:
+          json['display_name'] as String? ??
           json['displayName'] as String? ??
           'Unknown User',
       username: json['username'] as String?,
       xp: career?.xp ?? json['xp'] as int? ?? 0,
-      specialization:
-          json['specialization'] as String? ?? 'Paleontologist',
-      yearsOfExperience: json['years_of_experience'] as int? ??
+      specialization: json['specialization'] as String? ?? 'Paleontologist',
+      yearsOfExperience:
+          json['years_of_experience'] as int? ??
           json['yearsOfExperience'] as int? ??
           0,
-      notableDiscovery: json['notable_discovery'] as String? ??
+      notableDiscovery:
+          json['notable_discovery'] as String? ??
           json['notableDiscovery'] as String? ??
           '',
       favoriteEra:
-          json['favorite_era'] as String? ?? json['favoriteEra'] as String? ?? '',
+          json['favorite_era'] as String? ??
+          json['favoriteEra'] as String? ??
+          '',
       level: career?.level ?? json['level'] as int? ?? 1,
-      achievements: (json['achievements'] as List<dynamic>?)
+      achievements:
+          (json['achievements'] as List<dynamic>?)
               ?.map((item) => item.toString())
               .toList() ??
           const [],
-      profileImage: json['profile_image_url'] as String? ??
+      profileImage:
+          json['profile_image_url'] as String? ??
           json['image_url'] as String? ??
           json['profileImage'] as String? ??
           '',
       bio: json['bio'] as String? ?? '',
-      currentLocation: json['current_location'] as String? ??
+      currentLocation:
+          json['current_location'] as String? ??
           json['currentLocation'] as String? ??
           '',
       actualDinosaursCount: json['actual_dinosaurs_count'] as int? ?? 0,
@@ -182,33 +188,34 @@ class Profile {
       actualSitesCount: json['actual_sites_count'] as int? ?? 0,
       email: json['email'] as String? ?? '',
       fullName: json['full_name'] as String? ?? json['fullName'] as String?,
-      isAdmin: json['is_admin'] as bool? ??
-          json['isAdmin'] as bool? ??
-          false,
-      createdAt: _parseDateTime(
-        json['created_at'] ?? json['createdAt'],
-      ),
-      totalDistanceM: (json['total_distance_m'] as num?)?.toDouble() ??
+      isAdmin: json['is_admin'] as bool? ?? json['isAdmin'] as bool? ?? false,
+      createdAt: _parseDateTime(json['created_at'] ?? json['createdAt']),
+      totalDistanceM:
+          (json['total_distance_m'] as num?)?.toDouble() ??
           (json['totalDistanceM'] as num?)?.toDouble() ??
           0,
-      weeklyDistanceM: (json['weekly_distance_m'] as num?)?.toDouble() ??
+      weeklyDistanceM:
+          (json['weekly_distance_m'] as num?)?.toDouble() ??
           (json['weeklyDistanceM'] as num?)?.toDouble() ??
           0,
-      activeDistanceM: (json['active_distance_m'] as num?)?.toDouble() ??
+      activeDistanceM:
+          (json['active_distance_m'] as num?)?.toDouble() ??
           (json['activeDistanceM'] as num?)?.toDouble() ??
           0,
       activeWeeklyDistanceM:
           (json['active_weekly_distance_m'] as num?)?.toDouble() ??
-              (json['activeWeeklyDistanceM'] as num?)?.toDouble() ??
-              0,
+          (json['activeWeeklyDistanceM'] as num?)?.toDouble() ??
+          0,
       distanceWeekStart: _parseDateOnly(
         json['distance_week_start'] ?? json['distanceWeekStart'],
       ),
-      careerTitle: career?.title ??
+      careerTitle:
+          career?.title ??
           json['career_title'] as String? ??
           json['careerTitle'] as String? ??
           'Curious Wanderer',
-      skills: skillsRaw
+      skills:
+          skillsRaw
               ?.whereType<Map<String, dynamic>>()
               .map(SkillState.fromJson)
               .toList() ??
@@ -259,55 +266,55 @@ class Profile {
   }
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'displayName': displayName,
-        'username': username,
-        'xp': xp,
-        'specialization': specialization,
-        'yearsOfExperience': yearsOfExperience,
-        'notableDiscovery': notableDiscovery,
-        'favoriteEra': favoriteEra,
-        'level': level,
-        'achievements': achievements,
-        'profileImage': profileImage,
-        'bio': bio,
-        'currentLocation': currentLocation,
-        'actualDinosaursCount': actualDinosaursCount,
-        'actualFossilsCount': actualFossilsCount,
-        'actualSitesCount': actualSitesCount,
-        'email': email,
-        'fullName': fullName,
-        'isAdmin': isAdmin,
-        'createdAt': createdAt?.toIso8601String(),
-        'totalDistanceM': totalDistanceM,
-        'weeklyDistanceM': weeklyDistanceM,
-        'activeDistanceM': activeDistanceM,
-        'activeWeeklyDistanceM': activeWeeklyDistanceM,
-        'distanceWeekStart': distanceWeekStart,
-        'careerTitle': careerTitle,
-        'skills': skills
-            .map(
-              (s) => {
-                'id': s.id,
-                'name': s.name,
-                'xp': s.xp,
-                'level': s.level,
-                'nextLevelXp': s.nextLevelXp,
-                'xpToNext': s.xpToNext,
-                'progress': s.progress,
-              },
-            )
-            .toList(),
-        'career': {
-          'xp': effectiveCareer.xp,
-          'level': effectiveCareer.level,
-          'title': effectiveCareer.title,
-          'nextLevelXp': effectiveCareer.nextLevelXp,
-          'xpToNext': effectiveCareer.xpToNext,
-          'progress': effectiveCareer.progress,
-        },
-        'skillBreakdown': skillBreakdown,
-      };
+    'id': id,
+    'displayName': displayName,
+    'username': username,
+    'xp': xp,
+    'specialization': specialization,
+    'yearsOfExperience': yearsOfExperience,
+    'notableDiscovery': notableDiscovery,
+    'favoriteEra': favoriteEra,
+    'level': level,
+    'achievements': achievements,
+    'profileImage': profileImage,
+    'bio': bio,
+    'currentLocation': currentLocation,
+    'actualDinosaursCount': actualDinosaursCount,
+    'actualFossilsCount': actualFossilsCount,
+    'actualSitesCount': actualSitesCount,
+    'email': email,
+    'fullName': fullName,
+    'isAdmin': isAdmin,
+    'createdAt': createdAt?.toIso8601String(),
+    'totalDistanceM': totalDistanceM,
+    'weeklyDistanceM': weeklyDistanceM,
+    'activeDistanceM': activeDistanceM,
+    'activeWeeklyDistanceM': activeWeeklyDistanceM,
+    'distanceWeekStart': distanceWeekStart,
+    'careerTitle': careerTitle,
+    'skills': skills
+        .map(
+          (s) => {
+            'id': s.id,
+            'name': s.name,
+            'xp': s.xp,
+            'level': s.level,
+            'nextLevelXp': s.nextLevelXp,
+            'xpToNext': s.xpToNext,
+            'progress': s.progress,
+          },
+        )
+        .toList(),
+    'career': {
+      'xp': effectiveCareer.xp,
+      'level': effectiveCareer.level,
+      'title': effectiveCareer.title,
+      'nextLevelXp': effectiveCareer.nextLevelXp,
+      'xpToNext': effectiveCareer.xpToNext,
+      'progress': effectiveCareer.progress,
+    },
+    'skillBreakdown': skillBreakdown,
+  };
 
   Profile copyWith({
     String? displayName,

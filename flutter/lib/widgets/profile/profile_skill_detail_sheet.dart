@@ -11,9 +11,7 @@ import '../../controllers/main_param_buff_controller.dart';
 import '../../controllers/tool_catalog_controller.dart';
 import '../../controllers/weather_controller.dart';
 import '../../models/disguise_tool_kind.dart';
-import '../../models/main_param_buff_kind.dart';
 import '../../models/profile.dart';
-import '../../models/tool.dart';
 import '../../models/tool_session.dart';
 import '../../services/api_client.dart';
 import '../../utils/xp_source_labels.dart';
@@ -1280,11 +1278,9 @@ _SkillParamGroups _fieldSurveyRows(
         skillId: 'field_survey',
         base: mp.disguiseOfSiteXp,
         levelEntries: cfg.levelModifiers['disguise_of_site_xp'],
-        weatherTimeMods:
-            cfg.weatherTimeModifiers['disguise_of_site_xp'],
+        weatherTimeMods: cfg.weatherTimeModifiers['disguise_of_site_xp'],
         weatherTime: weatherTime,
-        weatherTypeMods:
-            cfg.weatherTypeModifiers['disguise_of_site_xp'],
+        weatherTypeMods: cfg.weatherTypeModifiers['disguise_of_site_xp'],
         weatherType: weatherType,
         skillLevel: skillLevel,
         format: _ParamFormat.xp,

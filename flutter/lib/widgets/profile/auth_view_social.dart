@@ -17,10 +17,7 @@ class _SocialButtonData {
 }
 
 class _SocialSignInButton extends StatelessWidget {
-  const _SocialSignInButton({
-    required this.data,
-    required this.isLoading,
-  });
+  const _SocialSignInButton({required this.data, required this.isLoading});
 
   final _SocialButtonData data;
   final bool isLoading;
@@ -42,12 +39,10 @@ class _SocialSignInButton extends StatelessWidget {
         style: OutlinedButton.styleFrom(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           side: BorderSide(color: colorScheme.outline.withValues(alpha: 0.5)),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
-          ),
-          textStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          textStyle: Theme.of(
+            context,
+          ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
         ),
       ),
     );
@@ -74,11 +69,8 @@ class _NetworkLogo extends StatelessWidget {
       width: size,
       height: size,
       fit: BoxFit.contain,
-      errorBuilder: (context, error, stackTrace) => Icon(
-        fallbackIcon,
-        size: size,
-        color: fallbackColor,
-      ),
+      errorBuilder: (context, error, stackTrace) =>
+          Icon(fallbackIcon, size: size, color: fallbackColor),
       loadingBuilder: (context, child, loadingProgress) {
         if (loadingProgress == null) return child;
         return SizedBox(
@@ -100,7 +92,9 @@ class _NetworkLogo extends StatelessWidget {
 class _OrContinueWithDivider extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    final outline = Theme.of(context).colorScheme.outline.withValues(alpha: 0.5);
+    final outline = Theme.of(
+      context,
+    ).colorScheme.outline.withValues(alpha: 0.5);
     return Row(
       children: [
         Expanded(child: Divider(color: outline)),

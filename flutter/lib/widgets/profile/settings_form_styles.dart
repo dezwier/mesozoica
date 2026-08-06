@@ -53,11 +53,8 @@ class SettingsFormStyles {
 
   static TextStyle? finePrintStyle(BuildContext context) {
     return Theme.of(context).textTheme.bodySmall?.copyWith(
-          color: Theme.of(context)
-              .colorScheme
-              .onSurface
-              .withValues(alpha: 0.7),
-        );
+      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+    );
   }
 
   static Widget settingsRow({
@@ -263,15 +260,15 @@ class _MultiSelectMenuRow extends StatelessWidget {
                     value: selected,
                     onChanged: enabled ? (_) {} : null,
                     materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    visualDensity:
-                        const VisualDensity(horizontal: -4, vertical: -4),
+                    visualDensity: const VisualDensity(
+                      horizontal: -4,
+                      vertical: -4,
+                    ),
                   ),
                 ),
               ),
               const SizedBox(width: 4),
-              Expanded(
-                child: Text(label, style: labelStyle),
-              ),
+              Expanded(child: Text(label, style: labelStyle)),
             ],
           ),
         ),

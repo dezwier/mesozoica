@@ -25,33 +25,40 @@ class MainParamBuffToolStats extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = params;
     final fallback = yamlFallback ?? const <String, dynamic>{};
-    final durationMinutes = (p?['duration_minutes'] as num?)?.toInt() ??
+    final durationMinutes =
+        (p?['duration_minutes'] as num?)?.toInt() ??
         (fallback['duration_minutes'] as num?)?.toInt() ??
         60;
     // Instance params only — never fall back to live YAML for buffs.
     final mods = modifiesMainParamsFromParams(p);
-    final visibilityMod =
-        mods?.paramsFor('using', 'field_survey')['discovery_distance_m'];
-    final discoveryMod =
-        mods?.paramsFor('using', 'field_survey')['discovery_chance'];
-    final speedMod =
-        mods?.paramsFor('using', 'field_survey')['discovery_max_speed_kmh'];
-    final documentationDistanceMod =
-        mods?.paramsFor('using', 'field_survey')['documentation_distance_m'];
+    final visibilityMod = mods?.paramsFor(
+      'using',
+      'field_survey',
+    )['discovery_distance_m'];
+    final discoveryMod = mods?.paramsFor(
+      'using',
+      'field_survey',
+    )['discovery_chance'];
+    final speedMod = mods?.paramsFor(
+      'using',
+      'field_survey',
+    )['discovery_max_speed_kmh'];
+    final documentationDistanceMod = mods?.paramsFor(
+      'using',
+      'field_survey',
+    )['documentation_distance_m'];
     final explanation =
         (p?['stats_explanation'] as String?)?.trim().isNotEmpty == true
-            ? p!['stats_explanation'] as String
-            : (fallback['stats_explanation'] as String? ?? '');
-    final activeTimes = p?['active_weather_times'] as List? ??
+        ? p!['stats_explanation'] as String
+        : (fallback['stats_explanation'] as String? ?? '');
+    final activeTimes =
+        p?['active_weather_times'] as List? ??
         fallback['active_weather_times'] as List?;
 
     final pairs = <ToolStatPair>[
       ToolStatPair('Duration', '$durationMinutes min'),
       if (activeTimes != null && activeTimes.isNotEmpty)
-        ToolStatPair(
-          'Active',
-          activeTimes.map((e) => e.toString()).join(', '),
-        ),
+        ToolStatPair('Active', activeTimes.map((e) => e.toString()).join(', ')),
       if (visibilityMod != null)
         ToolStatPair(
           'Discovery distance',
@@ -68,10 +75,7 @@ class MainParamBuffToolStats extends StatelessWidget {
           _formatMod(documentationDistanceMod, meters: true),
         ),
       if (speedMod != null)
-        ToolStatPair(
-          'Discovery max speed',
-          _formatMod(speedMod),
-        ),
+        ToolStatPair('Discovery max speed', _formatMod(speedMod)),
     ];
 
     if (compact) {
@@ -82,9 +86,9 @@ class MainParamBuffToolStats extends StatelessWidget {
     }
 
     final cardTheme = DinoCardTheme.of(context);
-    final mutedStyle = cardTheme.bodyStyle(fontSize: 11).copyWith(
-          color: cardTheme.cardTextMuted,
-        );
+    final mutedStyle = cardTheme
+        .bodyStyle(fontSize: 11)
+        .copyWith(color: cardTheme.cardTextMuted);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [

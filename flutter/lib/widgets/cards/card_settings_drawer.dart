@@ -32,10 +32,9 @@ Future<void> showCardSettingsDrawer(
                     height: 4,
                     margin: const EdgeInsets.only(bottom: 12),
                     decoration: BoxDecoration(
-                      color: Theme.of(sheetContext)
-                          .colorScheme
-                          .onSurfaceVariant
-                          .withValues(alpha: 0.35),
+                      color: Theme.of(
+                        sheetContext,
+                      ).colorScheme.onSurfaceVariant.withValues(alpha: 0.35),
                       borderRadius: BorderRadius.circular(999),
                     ),
                   ),
@@ -70,8 +69,9 @@ Future<void> showCardSettingsDrawer(
                               onPressed: () =>
                                   Navigator.of(dialogContext).pop(true),
                               style: TextButton.styleFrom(
-                                foregroundColor:
-                                    Theme.of(dialogContext).colorScheme.error,
+                                foregroundColor: Theme.of(
+                                  dialogContext,
+                                ).colorScheme.error,
                               ),
                               child: const Text('Throw away'),
                             ),

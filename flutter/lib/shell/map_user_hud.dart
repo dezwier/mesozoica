@@ -10,10 +10,7 @@ import '../theme/map_chrome_theme.dart';
 
 /// Top-left map profile chip: avatar, level, name, title, XP bar.
 class MapUserHud extends StatelessWidget {
-  const MapUserHud({
-    super.key,
-    required this.onTap,
-  });
+  const MapUserHud({super.key, required this.onTap});
 
   final VoidCallback onTap;
 
@@ -27,8 +24,9 @@ class MapUserHud extends StatelessWidget {
     return Consumer<AuthController>(
       builder: (context, auth, _) {
         final profile = auth.currentUser;
-        final imageUrl =
-            profile != null ? AuthService.imageUrl(profile.profileImage) : '';
+        final imageUrl = profile != null
+            ? AuthService.imageUrl(profile.profileImage)
+            : '';
         final name = _displayName(profile?.username, profile?.displayName);
         final career = profile?.effectiveCareer;
         final level = career?.level ?? profile?.level ?? 1;
@@ -44,10 +42,7 @@ class MapUserHud extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              _AvatarWithLevel(
-                imageUrl: imageUrl,
-                level: level,
-              ),
+              _AvatarWithLevel(imageUrl: imageUrl, level: level),
               const SizedBox(width: 10),
               Flexible(
                 child: Column(
@@ -147,9 +142,7 @@ class MapUserHud extends StatelessWidget {
                               ),
                               const TextSpan(
                                 text: ' XP',
-                                style: TextStyle(
-                                  color: MapChromeTheme.gold,
-                                ),
+                                style: TextStyle(color: MapChromeTheme.gold),
                               ),
                             ],
                           ),
@@ -182,10 +175,7 @@ class MapUserHud extends StatelessWidget {
 }
 
 class _AvatarWithLevel extends StatelessWidget {
-  const _AvatarWithLevel({
-    required this.imageUrl,
-    required this.level,
-  });
+  const _AvatarWithLevel({required this.imageUrl, required this.level});
 
   final String imageUrl;
   final int level;
@@ -261,10 +251,7 @@ class _AvatarWithLevel extends StatelessWidget {
                     MapChromeTheme.brassDark,
                   ],
                 ),
-                border: Border.all(
-                  color: MapChromeTheme.brassRim,
-                  width: 1.25,
-                ),
+                border: Border.all(color: MapChromeTheme.brassRim, width: 1.25),
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withValues(alpha: 0.4),
@@ -280,12 +267,7 @@ class _AvatarWithLevel extends StatelessWidget {
                   fontSize: 11,
                   fontWeight: FontWeight.w700,
                   height: 1,
-                  shadows: [
-                    Shadow(
-                      color: Color(0x88000000),
-                      blurRadius: 2,
-                    ),
-                  ],
+                  shadows: [Shadow(color: Color(0x88000000), blurRadius: 2)],
                 ),
               ),
             ),
@@ -296,9 +278,6 @@ class _AvatarWithLevel extends StatelessWidget {
   }
 
   Widget _fallback() {
-    return Image.asset(
-      'assets/images/logo.png',
-      fit: BoxFit.cover,
-    );
+    return Image.asset('assets/images/logo.png', fit: BoxFit.cover);
   }
 }

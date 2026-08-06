@@ -1,19 +1,7 @@
-"""Shared geospatial helpers for site services."""
+"""Transitional alias for the feature-owned implementation."""
 
-from __future__ import annotations
+import sys
 
-import math
+from app.features.sites.domain import geo_utils as _implementation
 
-
-def haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
-    """Return great-circle distance in kilometers between two WGS84 points."""
-    radius_km = 6371.0
-    dlat = math.radians(lat2 - lat1)
-    dlon = math.radians(lon2 - lon1)
-    a = (
-        math.sin(dlat / 2) ** 2
-        + math.cos(math.radians(lat1))
-        * math.cos(math.radians(lat2))
-        * math.sin(dlon / 2) ** 2
-    )
-    return radius_km * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+sys.modules[__name__] = _implementation

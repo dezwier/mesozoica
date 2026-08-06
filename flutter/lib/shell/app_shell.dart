@@ -89,18 +89,18 @@ class _AppShellState extends State<AppShell>
   WeatherController? _weather;
   StreamSubscription<RemoteMessage>? _foregroundPushSub;
   StreamSubscription<RemoteMessage>? _openedPushSub;
+
   /// Cached so aerial session list refreshes do not rebuild the shell.
   bool _aerialDrawMode = false;
 
-  bool get _anyCatalogOpen =>
-      _sitesOpen || _fossilsOpen || _dinosaursOpen;
+  bool get _anyCatalogOpen => _sitesOpen || _fossilsOpen || _dinosaursOpen;
   bool get _weatherOpen => WeatherDetailSheet.isOpen;
   bool get _anyOverlayOpen =>
       _profileOpen || _anyCatalogOpen || _toolsOpen || _weatherOpen;
   bool get _cardDetailOpen => CardDetailSheet.isOpen;
+
   /// Bottom / top chrome hide while any overlay / card dialog is open (or aerial draw).
-  bool get _hideChrome =>
-      _anyOverlayOpen || _aerialDrawMode || _cardDetailOpen;
+  bool get _hideChrome => _anyOverlayOpen || _aerialDrawMode || _cardDetailOpen;
 
   void _clearOverlayFlags() {
     _profileOpen = false;
@@ -119,8 +119,8 @@ class _AppShellState extends State<AppShell>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       context.read<AuthController>().bindXpAwards(
-            context.read<XpAwardController>(),
-          );
+        context.read<XpAwardController>(),
+      );
       _attachCatalogModeListener();
       final discovery = context.read<FieldDiscoveryCoordinator>();
       _discoveryCoordinator = discovery;
@@ -194,68 +194,71 @@ class _AppShellState extends State<AppShell>
       // onForeground again here — a second epoch aborts the first resume
       // mid-GPS and can leave ensure never POSTed until a cell move.
       context.read<FieldSessionCoordinator>().bind(
-            locationService: context.read<LocationService>(),
-            onEnsureScheduled: () {
-              context.read<MapController>().scheduleFieldPollAfterEnsure();
-              unawaited(
-                context
-                    .read<FieldDiscoveryCoordinator>()
-                    .refreshDiscoverableCache(force: true),
-              );
-            },
+        locationService: context.read<LocationService>(),
+        onEnsureScheduled: () {
+          context.read<MapController>().scheduleFieldPollAfterEnsure();
+          unawaited(
+            context.read<FieldDiscoveryCoordinator>().refreshDiscoverableCache(
+              force: true,
+            ),
           );
+        },
+      );
       unawaited(
-        context.read<WalkDistanceController>().bind(
+        context
+            .read<WalkDistanceController>()
+            .bind(
               context.read<LocationService>(),
               onProfileUpdated: (profile) async {
                 final walk = context.read<WalkDistanceController>();
                 final gap = walk.takePendingVisitGapMeters();
                 await context.read<AuthController>().applyUser(
-                      profile,
-                      exploredSinceLastVisitM: gap,
-                    );
+                  profile,
+                  exploredSinceLastVisitM: gap,
+                );
               },
-            ).then((_) async {
+            )
+            .then((_) async {
               if (!mounted) return;
               // Cold start never gets a resumed lifecycle transition — reconcile
               // Health passive distance and surface the visit XP badge.
               await context.read<WalkDistanceController>().onAppResumed(
-                    profile: context.read<AuthController>().currentUser,
-                  );
+                profile: context.read<AuthController>().currentUser,
+              );
             }),
       );
       unawaited(
         context.read<SiteExplorationController>().bind(
-              context.read<LocationService>(),
-              discoveredSitesProvider: () {
-                final map = context.read<MapController>();
-                return map.geoSites
-                    .where(
-                      (s) =>
-                          s.discoveredAt != null ||
-                          (s.status != null && s.status != 'hidden'),
-                    )
-                    .toList();
-              },
-              skillLevelProvider: () {
-                final profile = context.read<AuthController>().currentUser;
-                if (profile != null) {
-                  for (final skill in profile.skills) {
-                    if (skill.id == 'field_survey') {
-                      return skill.level.clamp(1, 99);
-                    }
-                  }
+          context.read<LocationService>(),
+          discoveredSitesProvider: () {
+            final map = context.read<MapController>();
+            return map.geoSites
+                .where(
+                  (s) =>
+                      s.discoveredAt != null ||
+                      (s.status != null && s.status != 'hidden'),
+                )
+                .toList();
+          },
+          skillLevelProvider: () {
+            final profile = context.read<AuthController>().currentUser;
+            if (profile != null) {
+              for (final skill in profile.skills) {
+                if (skill.id == 'field_survey') {
+                  return skill.level.clamp(1, 99);
                 }
-                return 1;
-              },
-              onProfileUpdated: (profile) async {
-                await context.read<AuthController>().applyUser(profile);
-              },
-              onSiteUpdated: (site) {
-                context.read<MapController>().upsertSite(site);
-                context.read<SiteCatalogController>().upsertSite(site);
-              },
-            ),
+              }
+            }
+            return 1;
+          },
+          onProfileUpdated: (profile) async {
+            await context.read<AuthController>().applyUser(profile);
+          },
+          onSiteUpdated: (site) {
+            context.read<MapController>().upsertSite(site);
+            context.read<SiteCatalogController>().upsertSite(site);
+          },
+        ),
       );
       final exploration = context.read<SiteExplorationController>();
       _explorationController = exploration;
@@ -358,8 +361,7 @@ class _AppShellState extends State<AppShell>
     if (!mounted) return;
     final disguise = _disguise;
     if (disguise == null) return;
-    if ((disguise.requestShowOnMap || disguise.isPickMode) &&
-        _anyOverlayOpen) {
+    if ((disguise.requestShowOnMap || disguise.isPickMode) && _anyOverlayOpen) {
       setState(_clearOverlayFlags);
     }
   }
@@ -386,8 +388,10 @@ class _AppShellState extends State<AppShell>
         buff.isActive &&
         buff.isLiveForWeatherTime(weatherTime)) {
       final mods = modifiesMainParamsFromParams(buff.session?.params);
-      speedMod =
-          mods?.paramsFor('using', 'field_survey')['discovery_max_speed_kmh'];
+      speedMod = mods?.paramsFor(
+        'using',
+        'field_survey',
+      )['discovery_max_speed_kmh'];
       if (mods != null) {
         siteVisBindings = [
           ToolModBinding(
@@ -485,16 +489,17 @@ class _AppShellState extends State<AppShell>
         if (!mounted) return;
         if (type == 'site_discovered' || type == 'site_documented') {
           final rawSiteId = msg.data['site_id'];
-          final siteId =
-              rawSiteId != null ? int.tryParse(rawSiteId.toString()) : null;
+          final siteId = rawSiteId != null
+              ? int.tryParse(rawSiteId.toString())
+              : null;
           _scheduleDiscoveryRefresh(siteId: siteId);
           return;
         }
         final uid = context.read<AuthController>().currentUser?.id;
         if (uid == null) return;
-        context
-            .read<NotificationController>()
-            .refreshInBackground(authenticatedUserId: uid);
+        context.read<NotificationController>().refreshInBackground(
+          authenticatedUserId: uid,
+        );
       });
 
       unawaited(
@@ -515,8 +520,9 @@ class _AppShellState extends State<AppShell>
   void _handlePushOpen(RemoteMessage msg) {
     final type = msg.data['type']?.toString() ?? '';
     final rawSiteId = msg.data['site_id'];
-    final siteId =
-        rawSiteId != null ? int.tryParse(rawSiteId.toString()) : null;
+    final siteId = rawSiteId != null
+        ? int.tryParse(rawSiteId.toString())
+        : null;
     if (siteId == null) return;
     if (type == 'site_discovered') {
       _scheduleDiscoveryRefresh(siteId: siteId);
@@ -564,30 +570,28 @@ class _AppShellState extends State<AppShell>
         context.read<XpAwardController>().setAppForeground(true);
         fieldSession.onForeground();
         unawaited(
-          context
-              .read<FieldDiscoveryCoordinator>()
-              .refreshDiscoverableCache(force: true),
+          context.read<FieldDiscoveryCoordinator>().refreshDiscoverableCache(
+            force: true,
+          ),
         );
         unawaited(
           context.read<GuidanceSessionController>().restoreActiveSession(),
         );
-        unawaited(
-          context.read<OrbitSurveyController>().restoreActiveSession(),
-        );
+        unawaited(context.read<OrbitSurveyController>().restoreActiveSession());
         unawaited(
           context.read<FormationMapController>().restoreActiveSession(),
         );
+        unawaited(context.read<TerrainEchoController>().restoreActiveSession());
         unawaited(
-          context.read<TerrainEchoController>().restoreActiveSession(),
-        );
-        unawaited(
-          context.read<MainParamBuffController>().restoreActiveSession().then((_) {
+          context.read<MainParamBuffController>().restoreActiveSession().then((
+            _,
+          ) {
             if (!mounted) return;
             final weather = context.read<WeatherController>();
             unawaited(
-              context
-                  .read<MainParamBuffController>()
-                  .stopIfPeriodLeft(weather.weatherTime),
+              context.read<MainParamBuffController>().stopIfPeriodLeft(
+                weather.weatherTime,
+              ),
             );
           }),
         );
@@ -597,14 +601,14 @@ class _AppShellState extends State<AppShell>
         final auth = context.read<AuthController>();
         final userId = auth.currentUser?.id;
         if (userId != null) {
-          context
-              .read<NotificationController>()
-              .refreshInBackground(authenticatedUserId: userId);
+          context.read<NotificationController>().refreshInBackground(
+            authenticatedUserId: userId,
+          );
         }
         unawaited(
           context.read<WalkDistanceController>().onAppResumed(
-                profile: auth.currentUser,
-              ),
+            profile: auth.currentUser,
+          ),
         );
         context.read<SiteExplorationController>().onAppResumed();
         _showPendingCelebrationIfAny();
@@ -656,15 +660,9 @@ class _AppShellState extends State<AppShell>
     unawaited(
       context.read<GuidanceSessionController>().stop(notifyServer: false),
     );
-    unawaited(
-      context.read<OrbitSurveyController>().stop(notifyServer: false),
-    );
-    unawaited(
-      context.read<FormationMapController>().stop(notifyServer: false),
-    );
-    unawaited(
-      context.read<TerrainEchoController>().stop(notifyServer: false),
-    );
+    unawaited(context.read<OrbitSurveyController>().stop(notifyServer: false));
+    unawaited(context.read<FormationMapController>().stop(notifyServer: false));
+    unawaited(context.read<TerrainEchoController>().stop(notifyServer: false));
     unawaited(
       context.read<MainParamBuffController>().stop(notifyServer: false),
     );
@@ -690,9 +688,9 @@ class _AppShellState extends State<AppShell>
       await PushNotificationService.registerTokenIfLoggedIn();
       if (!mounted || _previousUserId != userId) return;
       unawaited(
-        context
-            .read<FieldDiscoveryCoordinator>()
-            .refreshDiscoverableCache(force: true),
+        context.read<FieldDiscoveryCoordinator>().refreshDiscoverableCache(
+          force: true,
+        ),
       );
       if (!mounted || _previousUserId != userId) return;
       await context.read<GuidanceSessionController>().restoreActiveSession();
@@ -706,8 +704,8 @@ class _AppShellState extends State<AppShell>
       await context.read<MainParamBuffController>().restoreActiveSession();
       if (!mounted || _previousUserId != userId) return;
       await context.read<MainParamBuffController>().stopIfPeriodLeft(
-            context.read<WeatherController>().weatherTime,
-          );
+        context.read<WeatherController>().weatherTime,
+      );
       if (!mounted || _previousUserId != userId) return;
       await context.read<DisguiseSessionController>().restoreActiveSession();
       if (!mounted || _previousUserId != userId) return;
@@ -818,8 +816,8 @@ class _AppShellState extends State<AppShell>
           child: AnnotatedRegion<SystemUiOverlayStyle>(
             value: _anyOverlayOpen
                 ? (Theme.of(context).brightness == Brightness.dark
-                    ? SystemUiOverlayStyle.light
-                    : SystemUiOverlayStyle.dark)
+                      ? SystemUiOverlayStyle.light
+                      : SystemUiOverlayStyle.dark)
                 : SystemUiOverlayStyle.light,
             child: Scaffold(
               body: Stack(

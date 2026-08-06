@@ -66,6 +66,7 @@ class XpAward {
 class XpAwardController extends ChangeNotifier {
   final List<XpAward> _active = [];
   final List<XpAward> _celebrationStash = [];
+
   /// Bundlable badge awards accrued while backgrounded, keyed by sourceKey.
   final Map<String, XpAward> _backgroundBundle = {};
   bool _hudVisible = true;
@@ -228,9 +229,11 @@ class XpAwardController extends ChangeNotifier {
 
     // Prefer "Explore {m} passively/actively" when the gap is a single distance
     // source; mixed active+passive keeps the visit wording.
-    final onlyPassive = distance.isNotEmpty &&
+    final onlyPassive =
+        distance.isNotEmpty &&
         distance.every((a) => a.sourceKey == 'explore_100m_passively');
-    final onlyActive = distance.isNotEmpty &&
+    final onlyActive =
+        distance.isNotEmpty &&
         distance.every((a) => a.sourceKey == 'explore_100m_actively');
     final visitLabel = onlyPassive || onlyActive
         ? exploreDistanceXpLabel(template.sourceKey, exploredMeters)
@@ -340,7 +343,8 @@ class XpAwardController extends ChangeNotifier {
   }
 
   void clear() {
-    final had = _active.isNotEmpty ||
+    final had =
+        _active.isNotEmpty ||
         _celebrationStash.isNotEmpty ||
         _backgroundBundle.isNotEmpty;
     _active.clear();

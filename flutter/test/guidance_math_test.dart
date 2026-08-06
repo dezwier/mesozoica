@@ -69,14 +69,8 @@ void main() {
 
   group('GuidanceMath.directionRangeWidthDeg', () {
     test('180 at exactness 0 and min at exactness 1', () {
-      expect(
-        GuidanceMath.directionRangeWidthDeg(exactness: 0, minDeg: 4),
-        180,
-      );
-      expect(
-        GuidanceMath.directionRangeWidthDeg(exactness: 1, minDeg: 4),
-        4,
-      );
+      expect(GuidanceMath.directionRangeWidthDeg(exactness: 0, minDeg: 4), 180);
+      expect(GuidanceMath.directionRangeWidthDeg(exactness: 1, minDeg: 4), 4);
       expect(
         GuidanceMath.directionRangeWidthDeg(exactness: 0.5, minDeg: 4),
         92,
@@ -95,10 +89,7 @@ void main() {
         expect(sample, inInclusiveRange(-90, 90));
       }
       expect(
-        GuidanceMath.sampleRangeCenterOffsetDeg(
-          halfWidthDeg: 0,
-          random: rng,
-        ),
+        GuidanceMath.sampleRangeCenterOffsetDeg(halfWidthDeg: 0, random: rng),
         0,
       );
     });

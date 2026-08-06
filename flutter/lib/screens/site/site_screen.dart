@@ -12,10 +12,7 @@ import '../../widgets/map/site_filter_sheet.dart';
 import '../../widgets/site/site_catalog_drawer.dart';
 
 class SiteScreen extends StatefulWidget {
-  const SiteScreen({
-    super.key,
-    this.isActive = true,
-  });
+  const SiteScreen({super.key, this.isActive = true});
 
   final bool isActive;
 
@@ -34,8 +31,7 @@ class SiteScreenState extends State<SiteScreen> {
     SiteCatalogController catalog,
     bool isFieldMode,
   ) {
-    final hasLocation =
-        context.read<LocationService>().currentLocation != null;
+    final hasLocation = context.read<LocationService>().currentLocation != null;
     SiteFilterSheet.show(
       context,
       initialFilters: catalog.filters.copyWith(filterByStatus: isFieldMode),
@@ -55,14 +51,17 @@ class SiteScreenState extends State<SiteScreen> {
       isActive: widget.isActive,
       isInitialLoading: (catalog) =>
           (catalog.loading || catalog.isLoadingMore) && catalog.items.isEmpty,
-      itemBuilder: (context, site, {required isFocused, required fixedFaceHeight}) =>
-          SiteTurnableCard(
-            site: site,
-            turnable: isFocused,
-            enableLongPressActions: isFocused && isFieldMode,
-            fixedFaceHeight: fixedFaceHeight,
-            onSiteUpdated: context.read<SiteCatalogController>().replaceSite,
-          ),
+      itemBuilder:
+          (context, site, {required isFocused, required fixedFaceHeight}) =>
+              SiteTurnableCard(
+                site: site,
+                turnable: isFocused,
+                enableLongPressActions: isFocused && isFieldMode,
+                fixedFaceHeight: fixedFaceHeight,
+                onSiteUpdated: context
+                    .read<SiteCatalogController>()
+                    .replaceSite,
+              ),
       emptyMessageBuilder: (context, catalog) {
         final isField = context.watch<CatalogModeController>().isField;
         if (catalog.hasActiveFilters) return 'No sites match these filters.';

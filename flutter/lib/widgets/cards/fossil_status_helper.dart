@@ -25,10 +25,7 @@ Future<FossilSummary?> applyFossilStatusSelection(
       status: next,
     );
     if (context.mounted) {
-      AppToast.success(
-        context,
-        'Status updated to ${updated.status ?? next}.',
-      );
+      AppToast.success(context, 'Status updated to ${updated.status ?? next}.');
     }
     return updated;
   } on FossilServiceException catch (error) {

@@ -54,8 +54,9 @@ void main() {
     expect(siteFilterOptionLabel('unknown'), 'Unknown');
   });
 
-  testWidgets('unidentified site shows empty dimensions and Identify button',
-      (tester) async {
+  testWidgets('unidentified site shows empty dimensions and Identify button', (
+    tester,
+  ) async {
     final site = SiteSummary(
       siteId: 1000000067,
       latitude: 46.8797,

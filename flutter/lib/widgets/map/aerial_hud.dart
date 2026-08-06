@@ -29,7 +29,8 @@ class AerialHud extends StatelessWidget {
       remainingListenable: aerial.remainingListenable,
       stopLabel: 'ABORT',
       onStop: () => AerialSessionActions.confirmAbort(context, session),
-      onTap: () => context.read<AerialSessionController>().focusSession(session),
+      onTap: () =>
+          context.read<AerialSessionController>().focusSession(session),
       body: ListenableBuilder(
         listenable: aerial.progressTickListenable,
         builder: (context, _) => _AerialHudBody(session: session, kind: kind),
@@ -39,10 +40,7 @@ class AerialHud extends StatelessWidget {
 }
 
 class _AerialHudBody extends StatelessWidget {
-  const _AerialHudBody({
-    required this.session,
-    required this.kind,
-  });
+  const _AerialHudBody({required this.session, required this.kind});
 
   final ToolSession session;
   final AerialActionKind kind;
@@ -59,9 +57,10 @@ class _AerialHudBody extends StatelessWidget {
     final status = session.isPending
         ? 'PREP'
         : session.isInFlight
-            ? 'LIVE'
-            : session.status.toUpperCase();
-    final length = session.routeLengthKm == session.routeLengthKm.roundToDouble()
+        ? 'LIVE'
+        : session.status.toUpperCase();
+    final length =
+        session.routeLengthKm == session.routeLengthKm.roundToDouble()
         ? session.routeLengthKm.toStringAsFixed(0)
         : session.routeLengthKm.toStringAsFixed(1);
 
@@ -148,9 +147,7 @@ class _AerialHudIcon extends StatelessWidget {
       width: size,
       height: size,
       child: CustomPaint(
-        painter: _AerialHudIconPainter(
-          accent: kind.activeRouteColor,
-        ),
+        painter: _AerialHudIconPainter(accent: kind.activeRouteColor),
       ),
     );
   }

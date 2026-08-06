@@ -11,10 +11,7 @@ import '../../widgets/dino/dinosaur_filter_sheet.dart';
 import '../../widgets/dino/dinosaur_tree_sheet.dart';
 
 class DinoScreen extends StatefulWidget {
-  const DinoScreen({
-    super.key,
-    this.isActive = true,
-  });
+  const DinoScreen({super.key, this.isActive = true});
 
   final bool isActive;
 
@@ -23,8 +20,10 @@ class DinoScreen extends StatefulWidget {
 }
 
 class DinoScreenState extends State<DinoScreen> {
-  final _listKey = GlobalKey<
-      CatalogListScreenState<DinosaurCatalogController, DinosaurSummary>>();
+  final _listKey =
+      GlobalKey<
+        CatalogListScreenState<DinosaurCatalogController, DinosaurSummary>
+      >();
 
   void scrollToTop() => _listKey.currentState?.scrollToTop();
 
@@ -54,14 +53,14 @@ class DinoScreenState extends State<DinoScreen> {
     return CatalogListScreen<DinosaurCatalogController, DinosaurSummary>(
       key: _listKey,
       isActive: widget.isActive,
-      itemBuilder: (context, dinosaur,
-              {required isFocused, required fixedFaceHeight}) =>
-          DinosaurTurnableCard(
-            dinosaur: dinosaur,
-            turnable: isFocused,
-            enableLongPressActions: isFocused,
-            fixedFaceHeight: fixedFaceHeight,
-          ),
+      itemBuilder:
+          (context, dinosaur, {required isFocused, required fixedFaceHeight}) =>
+              DinosaurTurnableCard(
+                dinosaur: dinosaur,
+                turnable: isFocused,
+                enableLongPressActions: isFocused,
+                fixedFaceHeight: fixedFaceHeight,
+              ),
       emptyMessageBuilder: (context, catalog) {
         return catalog.hasActiveFilters
             ? 'No dinosaurs match these filters.'

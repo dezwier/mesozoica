@@ -18,8 +18,7 @@ class OverlayBottomChrome extends StatelessWidget {
       MediaQuery.paddingOf(context).bottom + rowHeight;
 
   /// Gradient band height (fade + row + home indicator).
-  static double fadeHeight(BuildContext context) =>
-      height(context) + fadeExtra;
+  static double fadeHeight(BuildContext context) => height(context) + fadeExtra;
 
   @override
   Widget build(BuildContext context) {

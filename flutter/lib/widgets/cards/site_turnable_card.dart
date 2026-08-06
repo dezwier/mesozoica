@@ -98,8 +98,7 @@ class _SiteTurnableCardState extends State<SiteTurnableCard> {
             widget.site.viewerWasFirstDiscovery ||
         oldWidget.site.viewerWasFirstDocumentation !=
             widget.site.viewerWasFirstDocumentation ||
-        oldWidget.site.viewerHasIdentified !=
-            widget.site.viewerHasIdentified ||
+        oldWidget.site.viewerHasIdentified != widget.site.viewerHasIdentified ||
         oldWidget.site.identifiedAt != widget.site.identifiedAt ||
         oldWidget.site.exploredDistanceM != widget.site.exploredDistanceM ||
         oldWidget.site.siteTypePeriod != widget.site.siteTypePeriod ||
@@ -194,10 +193,9 @@ class _SiteTurnableCardState extends State<SiteTurnableCard> {
       enableLongPressActions: widget.enableLongPressActions,
       onSettingsPressed: widget.enableLongPressActions
           ? () => openInventoryCardSettings(
-                context: context,
-                onThrowAway: () =>
-                    discardSiteFromInventory(context, displaySite),
-              )
+              context: context,
+              onThrowAway: () => discardSiteFromInventory(context, displaySite),
+            )
           : null,
       autoFlipOnce: widget.autoFlipOnce,
       autoFlipHoldOnBack: widget.autoFlipHoldOnBack,

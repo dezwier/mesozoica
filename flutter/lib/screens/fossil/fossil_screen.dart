@@ -10,10 +10,7 @@ import '../../widgets/common/overlay_chrome_button.dart';
 import '../../widgets/fossil/fossil_filter_sheet.dart';
 
 class FossilScreen extends StatefulWidget {
-  const FossilScreen({
-    super.key,
-    this.isActive = true,
-  });
+  const FossilScreen({super.key, this.isActive = true});
 
   final bool isActive;
 
@@ -22,15 +19,14 @@ class FossilScreen extends StatefulWidget {
 }
 
 class FossilScreenState extends State<FossilScreen> {
-  final _listKey = GlobalKey<
-      CatalogListScreenState<FossilCatalogController, FossilSummary>>();
+  final _listKey =
+      GlobalKey<
+        CatalogListScreenState<FossilCatalogController, FossilSummary>
+      >();
 
   void scrollToTop() => _listKey.currentState?.scrollToTop();
 
-  void _openFilterSheet(
-    BuildContext context,
-    FossilCatalogController catalog,
-  ) {
+  void _openFilterSheet(BuildContext context, FossilCatalogController catalog) {
     final isField = context.read<CatalogModeController>().isField;
     FossilFilterSheet.show(
       context,
@@ -47,16 +43,18 @@ class FossilScreenState extends State<FossilScreen> {
     return CatalogListScreen<FossilCatalogController, FossilSummary>(
       key: _listKey,
       isActive: widget.isActive,
-      itemBuilder: (context, fossil, {required isFocused, required fixedFaceHeight}) =>
-          FossilTurnableCard(
-            key: ValueKey<int>(fossil.id),
-            fossil: fossil,
-            turnable: isFocused,
-            enableLongPressActions: isFocused && isFieldMode,
-            fixedFaceHeight: fixedFaceHeight,
-            onFossilUpdated:
-                context.read<FossilCatalogController>().replaceFossil,
-          ),
+      itemBuilder:
+          (context, fossil, {required isFocused, required fixedFaceHeight}) =>
+              FossilTurnableCard(
+                key: ValueKey<int>(fossil.id),
+                fossil: fossil,
+                turnable: isFocused,
+                enableLongPressActions: isFocused && isFieldMode,
+                fixedFaceHeight: fixedFaceHeight,
+                onFossilUpdated: context
+                    .read<FossilCatalogController>()
+                    .replaceFossil,
+              ),
       emptyMessageBuilder: (context, catalog) => catalog.hasActiveFilters
           ? 'No fossils match these filters.'
           : 'No fossils in the catalog yet.',

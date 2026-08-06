@@ -88,7 +88,7 @@ class _RidgeGlassPulseOverlayState extends State<RidgeGlassPulseOverlay>
     }
     final rangeChanged =
         oldWidget.baseVisibilityM != widget.baseVisibilityM ||
-            oldWidget.fullVisibilityM != widget.fullVisibilityM;
+        oldWidget.fullVisibilityM != widget.fullVisibilityM;
     if (oldWidget.rotateWithHeading != widget.rotateWithHeading ||
         rangeChanged) {
       _requestReproject();
@@ -156,8 +156,7 @@ class _RidgeGlassPulseOverlayState extends State<RidgeGlassPulseOverlay>
         final bearingDeg = attitude?.bearing ?? 0.0;
         final pitchDeg = attitude?.pitch ?? 0.0;
         bearing = bearingDeg * math.pi / 180.0;
-        foreshorten =
-            math.cos(pitchDeg * math.pi / 180.0).clamp(0.2, 1.0);
+        foreshorten = math.cos(pitchDeg * math.pi / 180.0).clamp(0.2, 1.0);
       }
 
       // Lateral probe (screen-right) — same calibration as Terrain Echo / puck.
@@ -165,11 +164,7 @@ class _RidgeGlassPulseOverlayState extends State<RidgeGlassPulseOverlay>
       final probeM = math.min(8.0, rangeM * 0.1).clamp(2.0, 8.0);
       final rightEast = math.cos(bearing) * probeM;
       final rightNorth = -math.sin(bearing) * probeM;
-      final probe = _offsetMeters(
-        loc,
-        eastM: rightEast,
-        northM: rightNorth,
-      );
+      final probe = _offsetMeters(loc, eastM: rightEast, northM: rightNorth);
 
       final pixels = await widget.camera.pixelsForCoordinates([loc, probe]);
       if (!mounted || seq != _projectSeq) return;
@@ -183,8 +178,7 @@ class _RidgeGlassPulseOverlayState extends State<RidgeGlassPulseOverlay>
       // Far off-screen (or Mapbox's (0,0) sentinel mixed with a real probe)
       // yields a tiny/absurd probe scale and a mega-ring at the origin.
       final viewport = widget.camera.viewportSize;
-      if (viewport != null &&
-          !_isNearViewport(center!, size: viewport)) {
+      if (viewport != null && !_isNearViewport(center!, size: viewport)) {
         _clearGeometry();
         return;
       }
@@ -279,8 +273,7 @@ class _RidgeGlassPulseOverlayState extends State<RidgeGlassPulseOverlay>
     setState(() {
       _centerPx = c;
       _outerRadiusPx = (calibOuter * scale).clamp(8.0, 4096.0);
-      _innerRadiusPx =
-          (calibInner * scale).clamp(0.0, _outerRadiusPx * 0.98);
+      _innerRadiusPx = (calibInner * scale).clamp(0.0, _outerRadiusPx * 0.98);
       if (bearingRad != null) _bearingRad = bearingRad;
       if (foreshorten != null) _foreshorten = foreshorten;
     });
@@ -452,10 +445,7 @@ class _RidgeGlassPulsePainter extends CustomPainter {
         (eastM * math.cos(bearingRad) - northM * math.sin(bearingRad)) * scale;
     final forward =
         (eastM * math.sin(bearingRad) + northM * math.cos(bearingRad)) * scale;
-    return Offset(
-      center.dx + right,
-      center.dy - forward * foreshorten,
-    );
+    return Offset(center.dx + right, center.dy - forward * foreshorten);
   }
 
   @override

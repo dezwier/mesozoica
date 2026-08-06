@@ -1,85 +1,9 @@
-"""Career / skill leveling helpers."""
+"""Transitional facade for the feature-owned package."""
 
-from app.services.level_service.award import (
-    award_distance_xp,
-    award_discover_site_as_first_xp,
-    award_document_site_as_first_xp,
-    award_fossil_discover_xp,
-    award_site_discover_xp,
-    award_document_site_xp,
-    award_document_progress_xp,
-    award_identify_site_xp,
-    award_skill_xp,
-    award_disguise_of_site_xp,
-    exploration_batch_count,
-    identification_xp_for_attempt,
-    passive_meters,
-    sync_career_from_skills,
-    whole_100m,
-    whole_10m,
-    whole_km,
-)
-from app.services.level_service.backfill import backfill_all_users, backfill_user_levels
-from app.services.level_service.skills import (
-    all_skill_states,
-    career_state,
-    get_skill_xp,
-    set_skill_xp,
-    skill_count,
-    skill_state,
-    total_skill_xp,
-)
-from app.services.level_service.titles import career_title_for_level, career_title_for_user_xp
-from app.services.level_service.xp_table import (
-    CAREER_MAX_LEVEL,
-    CAREER_THRESHOLDS,
-    SKILL_MAX_LEVEL,
-    SKILL_THRESHOLDS,
-    get_career_thresholds,
-    level_for_xp,
-    next_level_xp,
-    progress_in_level,
-    xp_for_level,
-    xp_to_next_level,
-)
+from app.features.progression.application import *  # noqa: F403
+from app.features.progression.application import __all__
+from app.features.progression import application as _implementation
 
-__all__ = [
-    "CAREER_MAX_LEVEL",
-    "CAREER_THRESHOLDS",
-    "SKILL_MAX_LEVEL",
-    "SKILL_THRESHOLDS",
-    "all_skill_states",
-    "award_distance_xp",
-    "award_discover_site_as_first_xp",
-    "award_document_site_as_first_xp",
-    "award_fossil_discover_xp",
-    "award_site_discover_xp",
-    "award_document_site_xp",
-    "award_document_progress_xp",
-    "award_identify_site_xp",
-    "award_skill_xp",
-    "award_disguise_of_site_xp",
-    "backfill_all_users",
-    "backfill_user_levels",
-    "career_state",
-    "career_title_for_level",
-    "career_title_for_user_xp",
-    "exploration_batch_count",
-    "get_career_thresholds",
-    "get_skill_xp",
-    "identification_xp_for_attempt",
-    "level_for_xp",
-    "next_level_xp",
-    "passive_meters",
-    "progress_in_level",
-    "set_skill_xp",
-    "skill_count",
-    "skill_state",
-    "sync_career_from_skills",
-    "total_skill_xp",
-    "whole_100m",
-    "whole_10m",
-    "whole_km",
-    "xp_for_level",
-    "xp_to_next_level",
-]
+
+def __getattr__(name: str):
+    return getattr(_implementation, name)

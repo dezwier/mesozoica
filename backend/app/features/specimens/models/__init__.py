@@ -1,0 +1,1 @@
+"""Specimen persistence models."""

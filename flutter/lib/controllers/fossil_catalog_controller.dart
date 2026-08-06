@@ -65,8 +65,8 @@ class FossilCatalogController extends CatalogController<FossilSummary> {
   FossilCatalogController({
     FossilService? service,
     CatalogModeController? catalogModeController,
-  })  : _service = service ?? FossilService(),
-        _catalogModeController = catalogModeController;
+  }) : _service = service ?? FossilService(),
+       _catalogModeController = catalogModeController;
 
   static const pageSize = 20;
   static const _clientScanPageSize = 500;
@@ -121,8 +121,10 @@ class FossilCatalogController extends CatalogController<FossilSummary> {
         total: response.total,
       );
       if (kDebugMode) {
-        final preview =
-            catalogItems.take(5).map((f) => f.displayTitle).join(', ');
+        final preview = catalogItems
+            .take(5)
+            .map((f) => f.displayTitle)
+            .join(', ');
         debugPrint(
           'FossilCatalogController: loaded ${catalogItems.length}/$total fossils '
           '(sort=${hasSearch ? 'name' : 'random'}, seed=$_seed) → $preview',
@@ -199,8 +201,9 @@ class FossilCatalogController extends CatalogController<FossilSummary> {
       seed: hasSearch ? null : seed,
       dinoQ: hasSearch ? _filters.dinoSearchQuery.trim() : null,
       fossilQ: hasSearch ? _filters.fossilSearchQuery.trim() : null,
-      maYounger:
-          !hasSearch && _filters.hasTimeFilter ? _filters.maYounger : null,
+      maYounger: !hasSearch && _filters.hasTimeFilter
+          ? _filters.maYounger
+          : null,
       maOlder: !hasSearch && _filters.hasTimeFilter ? _filters.maOlder : null,
       hasCustomFossilImage: _filters.onlyCustomFossilImage,
       llmEnriched: _llmEnrichedQuery,
@@ -244,8 +247,9 @@ class FossilCatalogController extends CatalogController<FossilSummary> {
         seed: hasSearch ? null : seed,
         dinoQ: hasSearch ? _filters.dinoSearchQuery.trim() : null,
         fossilQ: hasSearch ? _filters.fossilSearchQuery.trim() : null,
-        maYounger:
-            !hasSearch && _filters.hasTimeFilter ? _filters.maYounger : null,
+        maYounger: !hasSearch && _filters.hasTimeFilter
+            ? _filters.maYounger
+            : null,
         maOlder: !hasSearch && _filters.hasTimeFilter ? _filters.maOlder : null,
         llmEnriched: _llmEnrichedQuery,
         dataSource: _dataSource,

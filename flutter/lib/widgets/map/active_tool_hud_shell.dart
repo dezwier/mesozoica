@@ -17,6 +17,7 @@ class VintageMapHudChip extends StatefulWidget {
 
   final Widget child;
   final double maxWidth;
+
   /// Fired on a tap that is not a drag (e.g. follow / re-center).
   final VoidCallback? onTap;
 
@@ -26,6 +27,7 @@ class VintageMapHudChip extends StatefulWidget {
 
 class _VintageMapHudChipState extends State<VintageMapHudChip> {
   static const _topGap = 8.0;
+
   /// Clearance above the bottom leather bar (roomier than side inset).
   static const _bottomGap = 12.0;
   static const _sidePad = MapChromeInsets.bottomBarSidePad;
@@ -72,14 +74,13 @@ class _VintageMapHudChipState extends State<VintageMapHudChip> {
       bottomClearance,
       size.height - topMin - _chipSize.height,
     );
-    final maxLeft = math.max(
-      _sidePad,
-      size.width - _sidePad - _chipSize.width,
-    );
+    final maxLeft = math.max(_sidePad, size.width - _sidePad - _chipSize.width);
 
     final left = (_sidePad + _dragOffset.dx).clamp(_sidePad, maxLeft);
-    final bottom =
-        (bottomClearance - _dragOffset.dy).clamp(bottomClearance, maxBottom);
+    final bottom = (bottomClearance - _dragOffset.dy).clamp(
+      bottomClearance,
+      maxBottom,
+    );
 
     return Positioned(
       left: left.toDouble(),
@@ -177,6 +178,7 @@ class ActiveToolHudShell extends StatelessWidget {
   final ValueNotifier<Duration?> remainingListenable;
   final VoidCallback onStop;
   final String stopLabel;
+
   /// Chip tap (not drag / not STOP) — e.g. follow an aerial scout.
   final VoidCallback? onTap;
   final Widget? body;
@@ -215,7 +217,10 @@ class ActiveToolHudShell extends StatelessWidget {
                 behavior: HitTestBehavior.opaque,
                 // Absorb so chip [onTap] (e.g. follow) does not also fire.
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 2, horizontal: 2),
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 2,
+                    horizontal: 2,
+                  ),
                   child: Text(
                     stopLabel,
                     style: VintageInstrumentStyle.mono.copyWith(
@@ -227,10 +232,7 @@ class ActiveToolHudShell extends StatelessWidget {
               ),
             ],
           ),
-          if (body != null) ...[
-            const SizedBox(height: 6),
-            body,
-          ],
+          if (body != null) ...[const SizedBox(height: 6), body],
         ],
       ),
     );
@@ -270,14 +272,12 @@ class SurveyMapHudShell extends StatelessWidget {
       body: legend.isEmpty
           ? null
           : collapseLegendToTwoLines
-              ? _CollapsibleLegend(entries: legend)
-              : Wrap(
-                  spacing: 6,
-                  runSpacing: 3,
-                  children: [
-                    for (final entry in legend) _LegendChip(entry: entry),
-                  ],
-                ),
+          ? _CollapsibleLegend(entries: legend)
+          : Wrap(
+              spacing: 6,
+              runSpacing: 3,
+              children: [for (final entry in legend) _LegendChip(entry: entry)],
+            ),
     );
   }
 }
@@ -315,10 +315,7 @@ class _CollapsibleLegendState extends State<_CollapsibleLegend> {
     }
   }
 
-  bool _sameLabels(
-    List<SurveyLegendEntry> a,
-    List<SurveyLegendEntry> b,
-  ) {
+  bool _sameLabels(List<SurveyLegendEntry> a, List<SurveyLegendEntry> b) {
     if (a.length != b.length) return false;
     for (var i = 0; i < a.length; i++) {
       if (a[i].label != b[i].label) return false;
@@ -339,9 +336,7 @@ class _CollapsibleLegendState extends State<_CollapsibleLegend> {
     return Wrap(
       spacing: 6,
       runSpacing: _runSpacing,
-      children: [
-        for (final entry in widget.entries) _LegendChip(entry: entry),
-      ],
+      children: [for (final entry in widget.entries) _LegendChip(entry: entry)],
     );
   }
 

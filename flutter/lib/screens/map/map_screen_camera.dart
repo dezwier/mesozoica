@@ -11,11 +11,14 @@ mixin _MapScreenCameraMixin on State<MapScreen> {
   double _zoomLevel = MapConfig.mapboxRotateZoom;
   bool _didInitialCenter = false;
   bool _followUser = true;
+
   /// Continuous camera follow of the focused aerial-recon scout.
   bool _followAerialScout = false;
+
   /// True while the one-shot fly-to-recon animation is running (suppresses
   /// continuous follow so setCamera does not fight flyTo).
   bool _aerialFocusAnimating = false;
+
   /// false = north-fixed Mapbox; true = map bearing follows phone.
   bool _rotateMap = true;
   LatLng? _lastFollowedLocation;
@@ -94,9 +97,7 @@ mixin _MapScreenCameraMixin on State<MapScreen> {
     if (!widget.isActive) {
       // Site cards freeze the map UI but still want map-grade GPS so live
       // exploration meters on the card back keep updating.
-      context
-          .read<LocationService>()
-          .setMapForeground(widget.highPrecisionGps);
+      context.read<LocationService>().setMapForeground(widget.highPrecisionGps);
       unawaited(context.read<LocationService>().setHeadingWanted(false));
       context.read<map_data.MapController>().pause();
       context.read<AerialSessionController>().stopTracking();
@@ -123,7 +124,8 @@ mixin _MapScreenCameraMixin on State<MapScreen> {
   void _syncHeadingWanted() {
     if (!mounted) return;
     final guidance = context.read<GuidanceSessionController>();
-    final wanted = widget.isActive &&
+    final wanted =
+        widget.isActive &&
         (_rotateMap || (guidance.isActive && guidance.showNeedle));
     unawaited(context.read<LocationService>().setHeadingWanted(wanted));
   }
@@ -135,13 +137,7 @@ mixin _MapScreenCameraMixin on State<MapScreen> {
     if (site == null) return;
     // Catalog backside map taps: select marker + slow pan, no card.
     mapData.selectSite(site);
-    unawaited(
-      _panToSite(
-        site,
-        durationMs: 1400,
-        exitRotateMode: true,
-      ),
-    );
+    unawaited(_panToSite(site, durationMs: 1400, exitRotateMode: true));
   }
 
   void _consumePendingAerialFocus() {
@@ -193,11 +189,7 @@ mixin _MapScreenCameraMixin on State<MapScreen> {
     final spanKm = recon.maxRouteKm;
     if (spanKm <= 0) return;
 
-    await _mapboxCamera.fitVerticalSpanKm(
-      location,
-      spanKm,
-      durationMs: 1200,
-    );
+    await _mapboxCamera.fitVerticalSpanKm(location, spanKm, durationMs: 1200);
     if (!mounted) return;
 
     final zoom = await _mapboxCamera.currentZoom();
@@ -242,7 +234,8 @@ mixin _MapScreenCameraMixin on State<MapScreen> {
       return;
     }
 
-    final target = recon.scoutPosition(session) ??
+    final target =
+        recon.scoutPosition(session) ??
         (session.route.isNotEmpty ? session.route.first : null);
     if (target == null) return;
 
@@ -288,12 +281,7 @@ mixin _MapScreenCameraMixin on State<MapScreen> {
     if (target == null) return;
     // Omit zoom so the slider can change level while we stay centered;
     // pan cancels follow via onFollowCancelled.
-    unawaited(
-      _mapboxCamera.followLocation(
-        target,
-        followUser: true,
-      ),
-    );
+    unawaited(_mapboxCamera.followLocation(target, followUser: true));
   }
 
   Future<void> _panToSite(
@@ -405,9 +393,7 @@ mixin _MapScreenCameraMixin on State<MapScreen> {
     unawaited(_centerOnLocation(context.read<LocationService>()));
   }
 
-  void _setInitialCamera({
-    required LocationService locationService,
-  }) {
+  void _setInitialCamera({required LocationService locationService}) {
     if (!_mapboxReady || _didInitialCenter) return;
     if (!locationService.hasLocation) return;
     final location = locationService.currentLocation!;
@@ -460,12 +446,7 @@ mixin _MapScreenCameraMixin on State<MapScreen> {
       return;
     }
     _lastFollowedLocation = location;
-    unawaited(
-      _mapboxCamera.followLocation(
-        location,
-        followUser: true,
-      ),
-    );
+    unawaited(_mapboxCamera.followLocation(location, followUser: true));
   }
 
   void _onZoomChanged(double zoom) {

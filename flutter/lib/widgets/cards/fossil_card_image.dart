@@ -7,10 +7,7 @@ import '../../utils/network_image_mem_cache.dart';
 
 /// Card-front illustration: curated Railway image or bundled placeholder.
 class FossilCardImage extends StatelessWidget {
-  const FossilCardImage({
-    super.key,
-    required this.imageUrl,
-  });
+  const FossilCardImage({super.key, required this.imageUrl});
 
   final String? imageUrl;
 
@@ -21,7 +18,9 @@ class FossilCardImage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final curatedUrl = isCuratedCardImageUrl(imageUrl) ? imageUrl!.trim() : null;
+    final curatedUrl = isCuratedCardImageUrl(imageUrl)
+        ? imageUrl!.trim()
+        : null;
 
     if (curatedUrl == null) {
       return const _FadingPlaceholderImage();
@@ -37,10 +36,14 @@ class FossilCardImage extends StatelessWidget {
             fadeInDuration: _fadeInDuration,
             fadeInCurve: Curves.easeIn,
             placeholderFadeInDuration: Duration.zero,
-            memCacheWidth:
-                networkImageMemCacheExtent(constraints.maxWidth, dpr),
-            memCacheHeight:
-                networkImageMemCacheExtent(constraints.maxHeight, dpr),
+            memCacheWidth: networkImageMemCacheExtent(
+              constraints.maxWidth,
+              dpr,
+            ),
+            memCacheHeight: networkImageMemCacheExtent(
+              constraints.maxHeight,
+              dpr,
+            ),
             httpHeaders: const {
               'User-Agent': 'Mesozoica/1.0 (mobile app; fossil catalog)',
             },

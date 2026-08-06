@@ -33,14 +33,16 @@ class AuthView extends StatefulWidget {
     required String email,
     required String password,
     String? fullName,
-  })? onRegister;
+  })?
+  onRegister;
   final void Function(String message)? onShowError;
 
   @override
   State<AuthView> createState() => AuthViewState();
 }
 
-class AuthViewState extends State<AuthView> with SingleTickerProviderStateMixin {
+class AuthViewState extends State<AuthView>
+    with SingleTickerProviderStateMixin {
   late final TabController _tabController;
   final _registerUsernameController = TextEditingController();
   final _registerEmailController = TextEditingController();
@@ -121,9 +123,9 @@ class AuthViewState extends State<AuthView> with SingleTickerProviderStateMixin 
                     Tab(text: 'Sign in'),
                     Tab(text: 'Sign up'),
                   ],
-                  labelStyle: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
+                  labelStyle: Theme.of(
+                    context,
+                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(height: 6),
                 Expanded(

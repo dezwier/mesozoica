@@ -7,9 +7,11 @@ mixin _AppShellDiscoveryMixin on State<AppShell> {
   Timer? _discoveryRefreshTimer;
   bool _celebrationShowing = false;
   bool _appInForeground = true;
+
   /// Serializes per-discovery profile refreshes so each site's XP is stashed
   /// separately (avoids one merged discover_site award for N background finds).
   Future<void> _discoveryXpChain = Future<void>.value();
+
   /// Tracks celebration queue length so we only side-effect on newly enqueued
   /// discoveries (not when one is consumed).
   int _lastDiscoveryQueueSeen = 0;
@@ -77,9 +79,9 @@ mixin _AppShellDiscoveryMixin on State<AppShell> {
     unawaited(auth.refreshProfile(announceXp: false));
     final userId = auth.currentUser?.id;
     if (userId != null) {
-      context
-          .read<NotificationController>()
-          .refreshInBackground(authenticatedUserId: userId);
+      context.read<NotificationController>().refreshInBackground(
+        authenticatedUserId: userId,
+      );
     }
   }
 

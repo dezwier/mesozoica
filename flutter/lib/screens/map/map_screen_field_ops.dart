@@ -36,9 +36,9 @@ mixin _MapScreenFieldOpsMixin on State<MapScreen>, _MapScreenCameraMixin {
       LatLngBounds? bounds;
       try {
         if (_mapboxReady) {
-          bounds = await _mapboxCamera
-              .visibleBounds()
-              .timeout(const Duration(seconds: 2));
+          bounds = await _mapboxCamera.visibleBounds().timeout(
+            const Duration(seconds: 2),
+          );
         }
       } catch (_) {
         // Fall through — null bounds → zoom-in prompt.
@@ -67,7 +67,8 @@ mixin _MapScreenFieldOpsMixin on State<MapScreen>, _MapScreenCameraMixin {
             'Showing ${mapData.filteredGeoSites.length} field sites in view',
           );
         case map_data.ShowAllLoadResult.tooMany:
-          final tooManyMessage = mapData.error ??
+          final tooManyMessage =
+              mapData.error ??
               'Too many sites in this view. Zoom in and try again.';
           mapData.setShowAllFieldSites(false);
           _showScanBanner(tooManyMessage);
@@ -75,10 +76,7 @@ mixin _MapScreenFieldOpsMixin on State<MapScreen>, _MapScreenCameraMixin {
           final failMessage =
               mapData.error ?? 'Could not load sites in view (unknown error)';
           mapData.setShowAllFieldSites(false);
-          _showScanBanner(
-            failMessage,
-            duration: const Duration(seconds: 10),
-          );
+          _showScanBanner(failMessage, duration: const Duration(seconds: 10));
         case map_data.ShowAllLoadResult.cancelled:
           if (!mapData.showAllFieldSites) {
             _clearScanBanner();
@@ -132,9 +130,9 @@ mixin _MapScreenFieldOpsMixin on State<MapScreen>, _MapScreenCameraMixin {
   Future<void> _runAdminFieldScan(LatLng center) async {
     final siteService = SiteService();
     try {
-      final response = await context
-          .read<FieldSessionCoordinator>()
-          .scanAt(center);
+      final response = await context.read<FieldSessionCoordinator>().scanAt(
+        center,
+      );
       if (!mounted) return;
       if (response == null) {
         _showScanBanner('Could not queue field site scan');
@@ -269,8 +267,7 @@ mixin _MapScreenFieldOpsMixin on State<MapScreen>, _MapScreenCameraMixin {
     final mapData = context.read<map_data.MapController>();
     // Keep selection after the card closes; only another tap replaces it.
     mapData.selectSite(site);
-    final includeExactOdds =
-        context.read<AuthController>().showAdminUi;
+    final includeExactOdds = context.read<AuthController>().showAdminUi;
     final displayFuture = mapData.siteForDisplay(
       site,
       includeExactOdds: includeExactOdds,
@@ -298,15 +295,15 @@ mixin _MapScreenFieldOpsMixin on State<MapScreen>, _MapScreenCameraMixin {
       unawaited(_panToSite(site));
     }
 
-    final action = kind == DisguiseToolKind.blackoutCover ? 'Shroud' : 'Conceal';
+    final action = kind == DisguiseToolKind.blackoutCover
+        ? 'Shroud'
+        : 'Conceal';
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) {
         return AlertDialog(
           title: Text('$action this site?'),
-          content: Text(
-            'Cover ${site.displayTitle} with ${kind.toolName}?',
-          ),
+          content: Text('Cover ${site.displayTitle} with ${kind.toolName}?'),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(false),

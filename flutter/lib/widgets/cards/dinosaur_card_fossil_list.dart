@@ -84,10 +84,7 @@ class _DinosaurCardFossilListState extends State<DinosaurCardFossilList> {
       child: CardRecordThumb(
         image: FossilCardImage(imageUrl: fossil.mainImageUrl),
         label: fossil.displayTitle,
-        onTap: () => showFossilCardDialog(
-          context,
-          fossilId: fossil.id,
-        ),
+        onTap: () => showFossilCardDialog(context, fossilId: fossil.id),
       ),
     );
     if (!fossil.isHidden) return thumb;

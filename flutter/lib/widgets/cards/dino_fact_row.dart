@@ -35,7 +35,8 @@ class DinoFactRow extends StatelessWidget {
     final iconSize = edge ? 13.0 : (compact ? 14.0 : 18.0);
     final labelSize = compact ? 8.0 : 10.0;
     final valueSize = edge ? 11.0 : (compact ? 11.0 : 13.0);
-    final effectiveRowPadding = rowPadding ?? (edge ? 8.0 : (compact ? 10.0 : 8.0));
+    final effectiveRowPadding =
+        rowPadding ?? (edge ? 8.0 : (compact ? 10.0 : 8.0));
     final valueLines =
         maxLines ?? (edge ? 2 : (compact ? (centered ? 3 : 2) : maxValueLines));
 
@@ -49,10 +50,12 @@ class DinoFactRow extends StatelessWidget {
               child: Text(
                 value,
                 textAlign: TextAlign.right,
-                style: cardTheme.statValueStyle(fontSize: valueSize).copyWith(
-                  color: cardTheme.cardTextPrimary.withValues(alpha: 0.78),
-                  fontWeight: FontWeight.w500,
-                ),
+                style: cardTheme
+                    .statValueStyle(fontSize: valueSize)
+                    .copyWith(
+                      color: cardTheme.cardTextPrimary.withValues(alpha: 0.78),
+                      fontWeight: FontWeight.w500,
+                    ),
                 maxLines: valueLines,
                 overflow: TextOverflow.ellipsis,
                 softWrap: true,
@@ -78,11 +81,7 @@ class DinoFactRow extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SvgPicture.asset(
-            iconAsset,
-            width: iconSize,
-            height: iconSize,
-          ),
+          SvgPicture.asset(iconAsset, width: iconSize, height: iconSize),
           const SizedBox(width: 10),
           Expanded(
             child: Column(
@@ -97,8 +96,9 @@ class DinoFactRow extends StatelessWidget {
                   value,
                   style: cardTheme.statValueStyle(fontSize: valueSize),
                   maxLines: wrapValue ? null : valueLines,
-                  overflow:
-                      wrapValue ? TextOverflow.visible : TextOverflow.ellipsis,
+                  overflow: wrapValue
+                      ? TextOverflow.visible
+                      : TextOverflow.ellipsis,
                   softWrap: true,
                 ),
               ],

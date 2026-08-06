@@ -4,12 +4,7 @@ import '../../theme/map_chrome_decorations.dart';
 import '../../theme/map_chrome_theme.dart';
 
 /// Visual tone for [AppToast] badges.
-enum AppToastTone {
-  info,
-  success,
-  warning,
-  error,
-}
+enum AppToastTone { info, success, warning, error }
 
 /// Floating leather badge toast — shared app-wide snackbar style.
 abstract final class AppToast {
@@ -60,11 +55,11 @@ abstract final class AppToast {
       show(context, message, tone: AppToastTone.error);
 
   static IconData _defaultIcon(AppToastTone tone) => switch (tone) {
-        AppToastTone.info => Icons.info_outline_rounded,
-        AppToastTone.success => Icons.check_circle_outline_rounded,
-        AppToastTone.warning => Icons.warning_amber_rounded,
-        AppToastTone.error => Icons.error_outline_rounded,
-      };
+    AppToastTone.info => Icons.info_outline_rounded,
+    AppToastTone.success => Icons.check_circle_outline_rounded,
+    AppToastTone.warning => Icons.warning_amber_rounded,
+    AppToastTone.error => Icons.error_outline_rounded,
+  };
 }
 
 class _AppToastBadge extends StatelessWidget {
@@ -79,11 +74,11 @@ class _AppToastBadge extends StatelessWidget {
   final IconData icon;
 
   Color get _accent => switch (tone) {
-        AppToastTone.info => MapChromeTheme.brassLight,
-        AppToastTone.success => const Color(0xFF8FBF8A),
-        AppToastTone.warning => const Color(0xFFE0B35A),
-        AppToastTone.error => const Color(0xFFE07060),
-      };
+    AppToastTone.info => MapChromeTheme.brassLight,
+    AppToastTone.success => const Color(0xFF8FBF8A),
+    AppToastTone.warning => const Color(0xFFE0B35A),
+    AppToastTone.error => const Color(0xFFE07060),
+  };
 
   @override
   Widget build(BuildContext context) {

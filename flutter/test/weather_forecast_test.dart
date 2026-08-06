@@ -13,12 +13,7 @@ void main() {
   group('WeatherForecast parsing', () {
     test('fromJson maps hours and normalizes sunny', () {
       final forecast = WeatherForecast.fromJson({
-        'cell': {
-          'i': 1,
-          'j': 2,
-          'center_lat': 50.85,
-          'center_lon': 4.35,
-        },
+        'cell': {'i': 1, 'j': 2, 'center_lat': 50.85, 'center_lon': 4.35},
         'hours': [
           {
             'valid_at': '2026-08-05T10:00:00Z',
@@ -50,12 +45,7 @@ void main() {
     test('pastHours and forecastHours split around now', () {
       final now = DateTime.utc(2026, 8, 5, 12);
       final forecast = WeatherForecast(
-        cell: const WeatherForecastCell(
-          i: 0,
-          j: 0,
-          centerLat: 0,
-          centerLon: 0,
-        ),
+        cell: const WeatherForecastCell(i: 0, j: 0, centerLat: 0, centerLon: 0),
         hours: [
           WeatherHourPoint(
             validAt: DateTime.utc(2026, 8, 5, 10),
@@ -115,8 +105,9 @@ void main() {
     expect(range.$2, greaterThan(25));
   });
 
-  testWidgets('WeatherTimelinePage shows title without scrub footer',
-      (tester) async {
+  testWidgets('WeatherTimelinePage shows title without scrub footer', (
+    tester,
+  ) async {
     final hours = [
       WeatherHourPoint(
         validAt: DateTime.utc(2026, 8, 5, 10),
@@ -155,42 +146,40 @@ void main() {
     expect(find.textContaining('14°'), findsOneWidget);
   });
 
-  testWidgets('WeatherDetailDrawer period tabs switch Past / Current / Forecast',
-      (tester) async {
-    final location = LocationService();
-    final seeded = _SeededWeatherController(locationService: location);
+  testWidgets(
+    'WeatherDetailDrawer period tabs switch Past / Current / Forecast',
+    (tester) async {
+      final location = LocationService();
+      final seeded = _SeededWeatherController(locationService: location);
 
-    await tester.pumpWidget(
-      MultiProvider(
-        providers: [
-          ChangeNotifierProvider<LocationService>.value(value: location),
-          ChangeNotifierProvider<WeatherController>.value(value: seeded),
-        ],
-        child: MaterialApp(
-          home: Scaffold(
-            body: const WeatherDetailDrawer(),
-          ),
+      await tester.pumpWidget(
+        MultiProvider(
+          providers: [
+            ChangeNotifierProvider<LocationService>.value(value: location),
+            ChangeNotifierProvider<WeatherController>.value(value: seeded),
+          ],
+          child: MaterialApp(home: Scaffold(body: const WeatherDetailDrawer())),
         ),
-      ),
-    );
-    await tester.pump();
+      );
+      await tester.pump();
 
-    expect(find.text('Past'), findsOneWidget);
-    expect(find.text('Current'), findsOneWidget);
-    expect(find.text('Forecast'), findsOneWidget);
-    expect(find.text('Clear'), findsWidgets);
+      expect(find.text('Past'), findsOneWidget);
+      expect(find.text('Current'), findsOneWidget);
+      expect(find.text('Forecast'), findsOneWidget);
+      expect(find.text('Clear'), findsWidgets);
 
-    await tester.tap(find.text('Past'));
-    await tester.pumpAndSettle();
-    expect(find.text('Past 48 hours'), findsOneWidget);
+      await tester.tap(find.text('Past'));
+      await tester.pumpAndSettle();
+      expect(find.text('Past 48 hours'), findsOneWidget);
 
-    await tester.tap(find.text('Forecast'));
-    await tester.pumpAndSettle();
-    expect(find.text('Next 3 days'), findsOneWidget);
+      await tester.tap(find.text('Forecast'));
+      await tester.pumpAndSettle();
+      expect(find.text('Next 3 days'), findsOneWidget);
 
-    seeded.dispose();
-    location.dispose();
-  });
+      seeded.dispose();
+      location.dispose();
+    },
+  );
 }
 
 class _SeededWeatherController extends WeatherController {
@@ -201,36 +190,36 @@ class _SeededWeatherController extends WeatherController {
 
   @override
   WeatherStatus? get status => const WeatherStatus(
-        weatherType: 'clear',
-        temperatureC: 19,
-        weatherTime: 'day',
-      );
+    weatherType: 'clear',
+    temperatureC: 19,
+    weatherTime: 'day',
+  );
 
   @override
   WeatherForecast? get forecast => WeatherForecast(
-        cell: const WeatherForecastCell(
-          i: 0,
-          j: 0,
-          centerLat: 50.85,
-          centerLon: 4.35,
-        ),
-        hours: [
-          WeatherHourPoint(
-            validAt: DateTime.now().toUtc().subtract(const Duration(hours: 2)),
-            weatherType: 'rain',
-            temperatureC: 15,
-            wmoCode: 61,
-            isForecast: false,
-          ),
-          WeatherHourPoint(
-            validAt: DateTime.now().toUtc().add(const Duration(hours: 2)),
-            weatherType: 'cloudy',
-            temperatureC: 17,
-            wmoCode: 2,
-            isForecast: true,
-          ),
-        ],
-      );
+    cell: const WeatherForecastCell(
+      i: 0,
+      j: 0,
+      centerLat: 50.85,
+      centerLon: 4.35,
+    ),
+    hours: [
+      WeatherHourPoint(
+        validAt: DateTime.now().toUtc().subtract(const Duration(hours: 2)),
+        weatherType: 'rain',
+        temperatureC: 15,
+        wmoCode: 61,
+        isForecast: false,
+      ),
+      WeatherHourPoint(
+        validAt: DateTime.now().toUtc().add(const Duration(hours: 2)),
+        weatherType: 'cloudy',
+        temperatureC: 17,
+        wmoCode: 2,
+        isForecast: true,
+      ),
+    ],
+  );
 
   @override
   bool get isForecastLoading => false;

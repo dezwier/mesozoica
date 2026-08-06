@@ -17,8 +17,9 @@ import 'weather_timeline_page.dart';
 /// up (same pattern as [CardDetailSheet] / Profile).
 void showWeatherDetailSheet(BuildContext context) {
   context.read<WeatherController>().ensureForecastLoaded();
-  final barrierLabel =
-      MaterialLocalizations.of(context).modalBarrierDismissLabel;
+  final barrierLabel = MaterialLocalizations.of(
+    context,
+  ).modalBarrierDismissLabel;
   WeatherDetailSheet.openCount.value += 1;
   showGeneralDialog<void>(
     context: context,
@@ -112,8 +113,9 @@ class _WeatherDetailDrawerState extends State<WeatherDetailDrawer> {
         WeatherDisplay.weatherTypes.contains(normalized)) {
       return normalized;
     }
-    final current =
-        status.weatherType == 'sunny' ? 'clear' : status.weatherType;
+    final current = status.weatherType == 'sunny'
+        ? 'clear'
+        : status.weatherType;
     return WeatherDisplay.weatherTypes.contains(current)
         ? current
         : WeatherDisplay.weatherTypes.first;
@@ -130,10 +132,9 @@ class _WeatherDetailDrawerState extends State<WeatherDetailDrawer> {
       return Center(
         child: Text(
           'Waiting for location…',
-          style: Theme.of(context)
-              .textTheme
-              .bodyMedium
-              ?.copyWith(color: scheme.onSurfaceVariant),
+          style: Theme.of(
+            context,
+          ).textTheme.bodyMedium?.copyWith(color: scheme.onSurfaceVariant),
         ),
       );
     }
@@ -215,10 +216,8 @@ class _WeatherDetailDrawerState extends State<WeatherDetailDrawer> {
           ),
           selectedOption: selected,
           optionLabel: WeatherDisplay.weatherLabel,
-          optionIcon: (key) => WeatherDisplay.weatherIcon(
-            key,
-            weatherTime: status.weatherTime,
-          ),
+          optionIcon: (key) =>
+              WeatherDisplay.weatherIcon(key, weatherTime: status.weatherTime),
           onOptionChanged: (key) => setState(() => _previewWeather = key),
           emptyLabel: 'No weather-type parameter impacts',
         );
@@ -235,32 +234,27 @@ class _WeatherDetailDrawerState extends State<WeatherDetailDrawer> {
   static _ImpactGroups _impactGroupsForSkill(
     String skillId,
     Map<String, _ImpactGroups> bySkill,
-  ) =>
-      bySkill[skillId] ?? const _ImpactGroups();
+  ) => bySkill[skillId] ?? const _ImpactGroups();
 
   /// Skill → param groups for [period] (only params affected by some period).
   static Map<String, _ImpactGroups> _weatherTimeImpactBySkill(String period) {
     if (!GameConfig.isLoaded) return const {};
     final game = GameConfig.instance;
-    return _ambientImpactBySkill(
-      period,
-      WeatherDisplay.weatherTimes,
-      [
+    return _ambientImpactBySkill(period, WeatherDisplay.weatherTimes, [
+      (
+        'field_survey',
+        game.fieldSurvey.weatherTimeModifiers,
+        WeatherDisplay.fieldSurveySkillParamKeys,
+        WeatherDisplay.fieldSurveyXpParamKeys,
+      ),
+      for (final stub in _skillStubs(game))
         (
-          'field_survey',
-          game.fieldSurvey.weatherTimeModifiers,
-          WeatherDisplay.fieldSurveySkillParamKeys,
-          WeatherDisplay.fieldSurveyXpParamKeys,
+          stub.skillId,
+          stub.weatherTimeModifiers,
+          _stubSkillParamKeys(stub),
+          _stubXpParamKeys(stub),
         ),
-        for (final stub in _skillStubs(game))
-          (
-            stub.skillId,
-            stub.weatherTimeModifiers,
-            _stubSkillParamKeys(stub),
-            _stubXpParamKeys(stub),
-          ),
-      ],
-    );
+    ]);
   }
 
   /// Skill → param groups for [weatherType] (only params affected by some type).
@@ -270,40 +264,36 @@ class _WeatherDetailDrawerState extends State<WeatherDetailDrawer> {
     if (!GameConfig.isLoaded) return const {};
     final key = weatherType == 'sunny' ? 'clear' : weatherType;
     final game = GameConfig.instance;
-    return _ambientImpactBySkill(
-      key,
-      WeatherDisplay.weatherTypes,
-      [
+    return _ambientImpactBySkill(key, WeatherDisplay.weatherTypes, [
+      (
+        'field_survey',
+        game.fieldSurvey.weatherTypeModifiers,
+        WeatherDisplay.fieldSurveySkillParamKeys,
+        WeatherDisplay.fieldSurveyXpParamKeys,
+      ),
+      for (final stub in _skillStubs(game))
         (
-          'field_survey',
-          game.fieldSurvey.weatherTypeModifiers,
-          WeatherDisplay.fieldSurveySkillParamKeys,
-          WeatherDisplay.fieldSurveyXpParamKeys,
+          stub.skillId,
+          stub.weatherTypeModifiers,
+          _stubSkillParamKeys(stub),
+          _stubXpParamKeys(stub),
         ),
-        for (final stub in _skillStubs(game))
-          (
-            stub.skillId,
-            stub.weatherTypeModifiers,
-            _stubSkillParamKeys(stub),
-            _stubXpParamKeys(stub),
-          ),
-      ],
-    );
+    ]);
   }
 
   static List<SkillStubConfig> _skillStubs(GameConfig game) => [
-        game.boneQuarry,
-      ];
+    game.boneQuarry,
+  ];
 
   static List<String> _stubSkillParamKeys(SkillStubConfig stub) => [
-        for (final key in stub.mainParams.keys)
-          if (!key.endsWith('_xp')) key,
-      ];
+    for (final key in stub.mainParams.keys)
+      if (!key.endsWith('_xp')) key,
+  ];
 
   static List<String> _stubXpParamKeys(SkillStubConfig stub) => [
-        for (final key in stub.mainParams.keys)
-          if (key.endsWith('_xp')) key,
-      ];
+    for (final key in stub.mainParams.keys)
+      if (key.endsWith('_xp')) key,
+  ];
 
   static bool _modsHaveEffect(List<ParamModifier> mods) {
     if (mods.isEmpty) return false;
@@ -334,24 +324,24 @@ class _WeatherDetailDrawerState extends State<WeatherDetailDrawer> {
     String key,
     List<String> allOptionKeys,
     List<
-        (
-          String,
-          Map<String, Map<String, List<ParamModifier>>>,
-          List<String>,
-          List<String>,
-        )> sources,
+      (
+        String,
+        Map<String, Map<String, List<ParamModifier>>>,
+        List<String>,
+        List<String>,
+      )
+    >
+    sources,
   ) {
     final out = <String, _ImpactGroups>{};
     for (final (skillId, modifiers, skillKeys, xpKeys) in sources) {
       final activeSkillKeys = [
         for (final paramKey in skillKeys)
-          if (_paramAffectedByAny(modifiers, paramKey, allOptionKeys))
-            paramKey,
+          if (_paramAffectedByAny(modifiers, paramKey, allOptionKeys)) paramKey,
       ];
       final activeXpKeys = [
         for (final paramKey in xpKeys)
-          if (_paramAffectedByAny(modifiers, paramKey, allOptionKeys))
-            paramKey,
+          if (_paramAffectedByAny(modifiers, paramKey, allOptionKeys)) paramKey,
       ];
       out[skillId] = _ImpactGroups(
         skillParams: [
@@ -419,7 +409,8 @@ class _SkillTabs extends StatelessWidget {
                         skill.name,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                        style: Theme.of(context).textTheme.labelMedium
+                            ?.copyWith(
                               color: skill.id == selectedId
                                   ? scheme.onSurface
                                   : scheme.onSurfaceVariant,
@@ -461,10 +452,7 @@ class _AmbientAxisTabs extends StatelessWidget {
       (_AmbientAxis.temperature, Icons.thermostat_outlined, 'Temp'),
       (
         _AmbientAxis.weather,
-        WeatherDisplay.weatherIcon(
-          weatherType,
-          weatherTime: weatherTime,
-        ),
+        WeatherDisplay.weatherIcon(weatherType, weatherTime: weatherTime),
         'Weather',
       ),
     ];
@@ -492,7 +480,8 @@ class _AmbientAxisTabs extends StatelessWidget {
                         label,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                        style: Theme.of(context).textTheme.labelMedium
+                            ?.copyWith(
                               color: axis == selected
                                   ? scheme.onSurface
                                   : scheme.onSurfaceVariant,
@@ -583,10 +572,7 @@ class _SegmentTab extends StatelessWidget {
 }
 
 class _ImpactGroups {
-  const _ImpactGroups({
-    this.skillParams = const [],
-    this.xpSources = const [],
-  });
+  const _ImpactGroups({this.skillParams = const [], this.xpSources = const []});
 
   final List<_ImpactRow> skillParams;
   final List<_ImpactRow> xpSources;
@@ -595,10 +581,7 @@ class _ImpactGroups {
 }
 
 class _ImpactRow {
-  const _ImpactRow({
-    required this.paramLabel,
-    required this.effect,
-  });
+  const _ImpactRow({required this.paramLabel, required this.effect});
 
   final String paramLabel;
   final String effect;
@@ -664,10 +647,7 @@ class _WeatherReportCarouselState extends State<_WeatherReportCarousel> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _ReportPeriodTabs(
-          selected: _page,
-          onChanged: _goTo,
-        ),
+        _ReportPeriodTabs(selected: _page, onChanged: _goTo),
         const SizedBox(height: WeatherDetailDrawer._stackGap),
         AspectRatio(
           aspectRatio: 1,
@@ -706,10 +686,7 @@ class _WeatherReportCarouselState extends State<_WeatherReportCarousel> {
 }
 
 class _ReportPeriodTabs extends StatelessWidget {
-  const _ReportPeriodTabs({
-    required this.selected,
-    required this.onChanged,
-  });
+  const _ReportPeriodTabs({required this.selected, required this.onChanged});
 
   final int selected;
   final ValueChanged<int> onChanged;
@@ -738,14 +715,14 @@ class _ReportPeriodTabs extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                          color: page == selected
-                              ? scheme.onSurface
-                              : scheme.onSurfaceVariant,
-                          fontWeight: page == selected
-                              ? FontWeight.w700
-                              : FontWeight.w500,
-                          height: 1.1,
-                        ),
+                      color: page == selected
+                          ? scheme.onSurface
+                          : scheme.onSurfaceVariant,
+                      fontWeight: page == selected
+                          ? FontWeight.w700
+                          : FontWeight.w500,
+                      height: 1.1,
+                    ),
                   ),
                 ),
               ),
@@ -762,24 +739,15 @@ class _WeatherHero extends StatelessWidget {
   final WeatherStatus status;
 
   static const _overlayShadows = <Shadow>[
-    Shadow(
-      color: Color(0xCC000000),
-      blurRadius: 14,
-      offset: Offset(0, 2),
-    ),
-    Shadow(
-      color: Color(0x99000000),
-      blurRadius: 4,
-      offset: Offset(0, 1),
-    ),
+    Shadow(color: Color(0xCC000000), blurRadius: 14, offset: Offset(0, 2)),
+    Shadow(color: Color(0x99000000), blurRadius: 4, offset: Offset(0, 1)),
   ];
 
   @override
   Widget build(BuildContext context) {
     final tempReady =
         !(status.weatherType == 'unknown' && status.observedAt == null);
-    final tempText =
-        tempReady ? '${status.temperatureC.round()}°' : '—';
+    final tempText = tempReady ? '${status.temperatureC.round()}°' : '—';
     final asset = WeatherDisplay.assetPath(
       status.weatherType,
       weatherTime: status.weatherTime,
@@ -850,24 +818,24 @@ class _WeatherHero extends StatelessWidget {
                 Text(
                   WeatherDisplay.weatherLabel(status.weatherType),
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w800,
-                        height: 1.1,
-                        shadows: _overlayShadows,
-                      ),
+                    color: Colors.white,
+                    fontWeight: FontWeight.w800,
+                    height: 1.1,
+                    shadows: _overlayShadows,
+                  ),
                 ),
                 const SizedBox(height: 6),
                 Row(
                   children: [
                     Text(
                       tempText,
-                      style:
-                          Theme.of(context).textTheme.headlineSmall?.copyWith(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w700,
-                                height: 1,
-                                shadows: _overlayShadows,
-                              ),
+                      style: Theme.of(context).textTheme.headlineSmall
+                          ?.copyWith(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w700,
+                            height: 1,
+                            shadows: _overlayShadows,
+                          ),
                     ),
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 10),
@@ -880,12 +848,11 @@ class _WeatherHero extends StatelessWidget {
                     Flexible(
                       child: Text(
                         WeatherDisplay.timeLabelWithClock(status.weatherTime),
-                        style:
-                            Theme.of(context).textTheme.titleSmall?.copyWith(
-                                  color: Colors.white.withValues(alpha: 0.95),
-                                  fontWeight: FontWeight.w600,
-                                  shadows: _overlayShadows,
-                                ),
+                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          color: Colors.white.withValues(alpha: 0.95),
+                          fontWeight: FontWeight.w600,
+                          shadows: _overlayShadows,
+                        ),
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
@@ -932,7 +899,8 @@ class _ImpactSectionCard extends StatelessWidget {
     final hasSkill = groups.skillParams.isNotEmpty;
     final hasXp = groups.xpSources.isNotEmpty;
     final optionKeys = this.optionKeys;
-    final hasOptions = optionKeys != null &&
+    final hasOptions =
+        optionKeys != null &&
         optionKeys.isNotEmpty &&
         selectedOption != null &&
         optionLabel != null &&
@@ -961,8 +929,8 @@ class _ImpactSectionCard extends StatelessWidget {
                   child: Text(
                     title,
                     style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
                 if (hasOptions)
@@ -977,9 +945,9 @@ class _ImpactSectionCard extends StatelessWidget {
                   Text(
                     subtitle!,
                     style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                          color: scheme.primary,
-                          fontWeight: FontWeight.w700,
-                        ),
+                      color: scheme.primary,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
               ],
             ),
@@ -988,8 +956,8 @@ class _ImpactSectionCard extends StatelessWidget {
               Text(
                 emptyLabel,
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: scheme.onSurfaceVariant,
-                    ),
+                  color: scheme.onSurfaceVariant,
+                ),
               )
             else ...[
               if (hasSkill)
@@ -1007,10 +975,7 @@ class _ImpactSectionCard extends StatelessWidget {
                 const SizedBox(height: 12),
               ],
               if (hasXp)
-                _ImpactParamBlock(
-                  title: 'XP sources',
-                  rows: groups.xpSources,
-                ),
+                _ImpactParamBlock(title: 'XP sources', rows: groups.xpSources),
             ],
           ],
         ),
@@ -1020,10 +985,7 @@ class _ImpactSectionCard extends StatelessWidget {
 }
 
 class _ImpactParamBlock extends StatelessWidget {
-  const _ImpactParamBlock({
-    required this.title,
-    required this.rows,
-  });
+  const _ImpactParamBlock({required this.title, required this.rows});
 
   final String title;
   final List<_ImpactRow> rows;
@@ -1037,9 +999,9 @@ class _ImpactParamBlock extends StatelessWidget {
         Text(
           title,
           style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                color: scheme.onSurfaceVariant,
-                fontWeight: FontWeight.w600,
-              ),
+            color: scheme.onSurfaceVariant,
+            fontWeight: FontWeight.w600,
+          ),
         ),
         const SizedBox(height: 8),
         for (var i = 0; i < rows.length; i++) ...[
@@ -1057,11 +1019,11 @@ class _ImpactParamBlock extends StatelessWidget {
               Text(
                 rows[i].effect,
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: rows[i].effect == '±0%'
-                          ? scheme.onSurfaceVariant
-                          : scheme.primary,
-                      fontWeight: FontWeight.w600,
-                    ),
+                  color: rows[i].effect == '±0%'
+                      ? scheme.onSurfaceVariant
+                      : scheme.primary,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ],
           ),
@@ -1094,15 +1056,11 @@ class _OptionDropdown extends StatelessWidget {
         value: selected,
         isDense: true,
         borderRadius: BorderRadius.circular(10),
-        icon: Icon(
-          Icons.expand_more,
-          size: 18,
-          color: scheme.primary,
-        ),
+        icon: Icon(Icons.expand_more, size: 18, color: scheme.primary),
         style: Theme.of(context).textTheme.titleSmall?.copyWith(
-              color: scheme.primary,
-              fontWeight: FontWeight.w700,
-            ),
+          color: scheme.primary,
+          fontWeight: FontWeight.w700,
+        ),
         selectedItemBuilder: (context) => [
           for (final key in keys)
             Align(
@@ -1138,10 +1096,10 @@ class _OptionDropdown extends StatelessWidget {
                   Text(
                     labelOf(key),
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          fontWeight: key == selected
-                              ? FontWeight.w700
-                              : FontWeight.w500,
-                        ),
+                      fontWeight: key == selected
+                          ? FontWeight.w700
+                          : FontWeight.w500,
+                    ),
                   ),
                 ],
               ),
@@ -1154,4 +1112,3 @@ class _OptionDropdown extends StatelessWidget {
     );
   }
 }
-

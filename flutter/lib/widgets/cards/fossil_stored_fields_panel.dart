@@ -1,15 +1,11 @@
 import 'package:flutter/material.dart';
 
 import '../../models/fossil.dart';
-import '../../theme/dino_card_theme.dart';
 import 'dino_fact_row.dart';
 
 /// Two-column scrollable panel of fossil stored fields for card backs.
 class FossilStoredFieldsPanel extends StatelessWidget {
-  const FossilStoredFieldsPanel({
-    super.key,
-    required this.fields,
-  });
+  const FossilStoredFieldsPanel({super.key, required this.fields});
 
   final List<FossilStoredField> fields;
 

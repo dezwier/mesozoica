@@ -11,13 +11,12 @@ class DisguiseCardExtension implements ToolCardExtension {
   String get actionKey => DisguiseToolKind.brushScrim.actionKey;
 
   @override
-  bool matches(ToolSummary tool) =>
-      DisguiseToolKind.matchesToolName(tool.name);
+  bool matches(ToolSummary tool) => DisguiseToolKind.matchesToolName(tool.name);
 
   @override
   List<String> editableParamKeys(ToolSummary tool) => const [
-        'duration_minutes',
-      ];
+    'duration_minutes',
+  ];
 
   @override
   Widget? buildDeployStats(BuildContext context, ToolSummary tool) {

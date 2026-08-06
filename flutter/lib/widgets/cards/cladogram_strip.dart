@@ -16,8 +16,7 @@ class _CladogramLayout {
   double get dotSize => 8 * scale;
   double get dotNameGap => 8 * scale;
 
-  double get contentBlockHeight =>
-      rankLineHeight + labelGap + nameLineHeight;
+  double get contentBlockHeight => rankLineHeight + labelGap + nameLineHeight;
 
   double get rowPaddingTop => (rowHeight - contentBlockHeight) / 2;
 
@@ -213,8 +212,8 @@ class _CladogramScrollFadeState extends State<_CladogramScrollFade> {
       height: widget.height,
       child: ShaderMask(
         shaderCallback: (bounds) {
-          final fadeFraction =
-              (_cladogramScrollFadeHeight / widget.height).clamp(0.0, 0.5);
+          final fadeFraction = (_cladogramScrollFadeHeight / widget.height)
+              .clamp(0.0, 0.5);
           return LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
@@ -224,12 +223,7 @@ class _CladogramScrollFadeState extends State<_CladogramScrollFade> {
               Colors.white,
               _showBottomFade ? Colors.transparent : Colors.white,
             ],
-            stops: [
-              0.0,
-              fadeFraction,
-              1.0 - fadeFraction,
-              1.0,
-            ],
+            stops: [0.0, fadeFraction, 1.0 - fadeFraction, 1.0],
           ).createShader(bounds);
         },
         blendMode: BlendMode.dstIn,
@@ -267,9 +261,7 @@ class _CladogramNodeRow extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: EdgeInsets.only(
-              left: layout.dotSize + layout.dotNameGap,
-            ),
+            padding: EdgeInsets.only(left: layout.dotSize + layout.dotNameGap),
             child: Text(
               node.rankLabel,
               style: cardTheme.rankLabelStyle(fontSize: 8 * layout.scale),
@@ -353,11 +345,7 @@ class _CladogramConnectorPainter extends CustomPainter {
       final parentY = layout.dotYForIndex(i);
       final childY = layout.dotYForIndex(i + 1);
 
-      canvas.drawLine(
-        Offset(x, parentY),
-        Offset(x, childY),
-        linePaint,
-      );
+      canvas.drawLine(Offset(x, parentY), Offset(x, childY), linePaint);
     }
   }
 

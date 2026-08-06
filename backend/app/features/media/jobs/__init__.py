@@ -1,0 +1,1 @@
+"""Curated media generation jobs."""

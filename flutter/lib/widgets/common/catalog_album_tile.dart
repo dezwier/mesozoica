@@ -66,7 +66,8 @@ class CatalogAlbumTileState extends State<CatalogAlbumTile> {
 
   void _handleTap() {
     if (!widget.owned) return;
-    final thumb = visibleOccurrence ??
+    final thumb =
+        visibleOccurrence ??
         (widget.ownedOccurrences.isNotEmpty
             ? widget.ownedOccurrences.first
             : null);
@@ -102,16 +103,14 @@ class CatalogAlbumTileState extends State<CatalogAlbumTile> {
         shadowColor: Colors.black26,
         shape: RoundedRectangleBorder(
           borderRadius: radius,
-          side: BorderSide(
-            color: borderColor,
-            width: 1,
-          ),
+          side: BorderSide(color: borderColor, width: 1),
         ),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
           onTap: widget.owned ? _handleTap : null,
-          onLongPress:
-              canAdminCollect && !_collectBusy ? _handleAdminCollect : null,
+          onLongPress: canAdminCollect && !_collectBusy
+              ? _handleAdminCollect
+              : null,
           child: Stack(
             fit: StackFit.expand,
             children: [
@@ -232,12 +231,12 @@ class _OwnedGallery extends StatelessWidget {
                       CardAdaptiveTitleText(
                         text: label,
                         textAlign: TextAlign.center,
-                        style: DinoCardTheme.dark.frontOverlayTitleStyle(
-                          fontSize: 13,
-                        ).copyWith(
-                          fontFamily: MapChromeTheme.serifFont,
-                          letterSpacing: 0.4,
-                        ),
+                        style: DinoCardTheme.dark
+                            .frontOverlayTitleStyle(fontSize: 13)
+                            .copyWith(
+                              fontFamily: MapChromeTheme.serifFont,
+                              letterSpacing: 0.4,
+                            ),
                       ),
                   ],
                 ),
@@ -299,8 +298,7 @@ class _ColorImage extends StatelessWidget {
     }
     return CatalogAlbumNetworkImage(
       fullUrl: curated,
-      placeholder:
-          ColoredBox(color: CatalogSilhouetteImage.groundFor(context)),
+      placeholder: ColoredBox(color: CatalogSilhouetteImage.groundFor(context)),
       errorWidget: Image.asset(placeholderAsset, fit: BoxFit.cover),
     );
   }

@@ -54,13 +54,19 @@ void main() {
     expect(capturedUri!.queryParameters.containsKey('q'), isFalse);
     expect(capturedUri!.queryParameters.containsKey('ma_younger'), isFalse);
     expect(capturedUri!.queryParameters.containsKey('ma_older'), isFalse);
-    expect(capturedUri!.queryParameters.containsKey('has_custom_image'), isFalse);
+    expect(
+      capturedUri!.queryParameters.containsKey('has_custom_image'),
+      isFalse,
+    );
     expect(capturedUri!.queryParameters.containsKey('llm_enriched'), isFalse);
     expect(capturedUri!.queryParameters.containsKey('diet'), isFalse);
     expect(capturedUri!.queryParameters.containsKey('length_m_min'), isFalse);
     expect(capturedUri!.queryParameters.containsKey('mass_kg_min'), isFalse);
     expect(capturedUri!.queryParameters['mode'], 'inventory');
-    expect(controller.items.map((d) => d.name), ['Velociraptor', 'Tyrannosaurus']);
+    expect(controller.items.map((d) => d.name), [
+      'Velociraptor',
+      'Tyrannosaurus',
+    ]);
     expect(controller.mode, DinoScreenMode.inventory);
 
     controller.dispose();
@@ -170,7 +176,10 @@ void main() {
     expect(capturedUris.length, 2);
     expect(capturedUris.first.queryParameters['q'], 'raptor');
     expect(capturedUris.last.queryParameters.containsKey('q'), isFalse);
-    expect(capturedUris.last.queryParameters.containsKey('ma_younger'), isFalse);
+    expect(
+      capturedUris.last.queryParameters.containsKey('ma_younger'),
+      isFalse,
+    );
     expect(capturedUris.last.queryParameters['sort'], 'random');
     expect(controller.hasActiveFilters, isFalse);
 
@@ -264,9 +273,7 @@ void main() {
     );
 
     final controller = DinosaurCatalogController(service: service);
-    await controller.applyFilters(
-      const DinosaurCatalogFilters(diets: {}),
-    );
+    await controller.applyFilters(const DinosaurCatalogFilters(diets: {}));
 
     expect(capturedUri!.queryParameters.containsKey('length_m_min'), isFalse);
     expect(capturedUri!.queryParameters.containsKey('mass_kg_min'), isFalse);

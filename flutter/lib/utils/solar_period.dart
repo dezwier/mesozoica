@@ -55,7 +55,8 @@ class Solar {
     final eqTime = _equationOfTimeMinutes(jc);
     final hourAngle = _hourAngleDegrees(utc, longitude, eqTime);
     final latRad = _rad(latitude);
-    final cosZenith = math.sin(latRad) * math.sin(decl) +
+    final cosZenith =
+        math.sin(latRad) * math.sin(decl) +
         math.cos(latRad) * math.cos(decl) * math.cos(_rad(hourAngle));
     final zenith = _deg(math.acos(cosZenith.clamp(-1.0, 1.0)));
     return 90.0 - zenith;
@@ -99,12 +100,18 @@ class Solar {
     required double longitude,
     required DateTime day,
   }) {
-    final utcDay = DateTime.utc(day.toUtc().year, day.toUtc().month, day.toUtc().day);
+    final utcDay = DateTime.utc(
+      day.toUtc().year,
+      day.toUtc().month,
+      day.toUtc().day,
+    );
     // First pass at 12:00 UTC, then refine with that day's equation of time.
     var jc = _julianCentury(_julianDay(utcDay.add(const Duration(hours: 12))));
     var eqTime = _equationOfTimeMinutes(jc);
     var noonMinutes = 720.0 - 4.0 * longitude - eqTime;
-    var noon = utcDay.add(Duration(milliseconds: (noonMinutes * 60000).round()));
+    var noon = utcDay.add(
+      Duration(milliseconds: (noonMinutes * 60000).round()),
+    );
     jc = _julianCentury(_julianDay(noon));
     eqTime = _equationOfTimeMinutes(jc);
     noonMinutes = 720.0 - 4.0 * longitude - eqTime;
@@ -117,7 +124,11 @@ class Solar {
     required double longitude,
     required DateTime day,
   }) {
-    final utcDay = DateTime.utc(day.toUtc().year, day.toUtc().month, day.toUtc().day);
+    final utcDay = DateTime.utc(
+      day.toUtc().year,
+      day.toUtc().month,
+      day.toUtc().day,
+    );
     final noon = solarNoonUtc(longitude: longitude, day: utcDay);
     final jc = _julianCentury(_julianDay(noon));
     final decl = _sunDeclinationRad(jc);
@@ -130,7 +141,8 @@ class Solar {
         elevationDeg: elevDeg,
       );
       if (ha == null) return null;
-      final minutes = 720.0 - 4.0 * longitude - eqTime + (morning ? -ha : ha) * 4.0;
+      final minutes =
+          720.0 - 4.0 * longitude - eqTime + (morning ? -ha : ha) * 4.0;
       return utcDay.add(Duration(milliseconds: (minutes * 60000).round()));
     }
 
@@ -147,7 +159,8 @@ class Solar {
   static double _julianDay(DateTime utc) {
     final y = utc.year;
     final m = utc.month;
-    final d = utc.day +
+    final d =
+        utc.day +
         (utc.hour +
                 utc.minute / 60.0 +
                 (utc.second + utc.millisecond / 1000.0) / 3600.0) /
@@ -173,20 +186,20 @@ class Solar {
   static double _sunDeclinationRad(double jc) {
     final geomMeanLong = _geomMeanLongSunDeg(jc);
     final geomMeanAnom = _geomMeanAnomalySunDeg(jc);
-    final sunEqOfCtr = math.sin(_rad(geomMeanAnom)) *
+    final sunEqOfCtr =
+        math.sin(_rad(geomMeanAnom)) *
             (1.914602 - jc * (0.004817 + 0.000014 * jc)) +
         math.sin(_rad(2 * geomMeanAnom)) * (0.019993 - 0.000101 * jc) +
         math.sin(_rad(3 * geomMeanAnom)) * 0.000289;
     final sunTrueLong = geomMeanLong + sunEqOfCtr;
-    final sunAppLong = sunTrueLong -
+    final sunAppLong =
+        sunTrueLong -
         0.00569 -
         0.00478 * math.sin(_rad(125.04 - 1934.136 * jc));
-    final meanObliq = 23.0 +
+    final meanObliq =
+        23.0 +
         (26.0 +
-                (21.448 -
-                        jc *
-                            (46.815 +
-                                jc * (0.00059 - jc * 0.001813))) /
+                (21.448 - jc * (46.815 + jc * (0.00059 - jc * 0.001813))) /
                     60.0) /
             60.0;
     final obliqCorr =
@@ -198,12 +211,10 @@ class Solar {
     final geomMeanLong = _geomMeanLongSunDeg(jc);
     final geomMeanAnom = _geomMeanAnomalySunDeg(jc);
     final eccentEarth = 0.016708634 - jc * (0.000042037 + 0.0000001267 * jc);
-    final meanObliq = 23.0 +
+    final meanObliq =
+        23.0 +
         (26.0 +
-                (21.448 -
-                        jc *
-                            (46.815 +
-                                jc * (0.00059 - jc * 0.001813))) /
+                (21.448 - jc * (46.815 + jc * (0.00059 - jc * 0.001813))) /
                     60.0) /
             60.0;
     final obliqCorr =
@@ -212,7 +223,8 @@ class Solar {
     final l0 = _rad(geomMeanLong);
     final e = eccentEarth;
     final m = _rad(geomMeanAnom);
-    final eqRad = y * math.sin(2 * l0) -
+    final eqRad =
+        y * math.sin(2 * l0) -
         2 * e * math.sin(m) +
         4 * e * y * math.sin(m) * math.cos(2 * l0) -
         0.5 * y * y * math.sin(4 * l0) -
@@ -234,14 +246,17 @@ class Solar {
     double longitude,
     double eqTimeMinutes,
   ) {
-    final minutes = utc.hour * 60.0 +
+    final minutes =
+        utc.hour * 60.0 +
         utc.minute +
         utc.second / 60.0 +
         utc.millisecond / 60000.0;
     var trueSolar = minutes + eqTimeMinutes + 4.0 * longitude;
     trueSolar = trueSolar % 1440.0;
     if (trueSolar < 0) trueSolar += 1440.0;
-    return trueSolar / 4.0 < 0 ? trueSolar / 4.0 + 180.0 : trueSolar / 4.0 - 180.0;
+    return trueSolar / 4.0 < 0
+        ? trueSolar / 4.0 + 180.0
+        : trueSolar / 4.0 - 180.0;
   }
 
   /// Absolute hour angle (degrees) when sun is at [elevationDeg], or null.
@@ -252,8 +267,8 @@ class Solar {
   }) {
     final latRad = _rad(latitude);
     final zenithRad = _rad(90.0 - elevationDeg);
-    final cosHa = (math.cos(zenithRad) /
-            (math.cos(latRad) * math.cos(declinationRad))) -
+    final cosHa =
+        (math.cos(zenithRad) / (math.cos(latRad) * math.cos(declinationRad))) -
         math.tan(latRad) * math.tan(declinationRad);
     if (cosHa < -1.0 || cosHa > 1.0) return null;
     return _deg(math.acos(cosHa.clamp(-1.0, 1.0)));

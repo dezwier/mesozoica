@@ -130,8 +130,9 @@ List<ToolModBinding> toolModBindingsFromInstances({
           mods: mods,
           applyOwning: false,
           applyUsing: true,
-          activeWeatherTimes:
-              activeWeatherTimesFromParams(activeSession.params),
+          activeWeatherTimes: activeWeatherTimesFromParams(
+            activeSession.params,
+          ),
         ),
       );
     }

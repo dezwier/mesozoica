@@ -17,8 +17,7 @@ class DinosaurTurnableCard extends StatefulWidget {
     this.turnable = true,
     this.enableDragFlip = true,
     this.enableLongPressActions = false,
-    this.outerPadding =
-        const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+    this.outerPadding = const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
     this.fixedFaceHeight,
     this.titleFontSize = 36,
     this.subtitleFontSize = 10,
@@ -66,7 +65,8 @@ class _DinosaurTurnableCardState extends State<DinosaurTurnableCard> {
   Widget build(BuildContext context) {
     final isCatalog = !_dinosaur.isInventoryOccurrence;
     final status = _dinosaur.status?.trim();
-    final showInventoryStatus = !isCatalog &&
+    final showInventoryStatus =
+        !isCatalog &&
         status != null &&
         status.isNotEmpty &&
         !_dinosaur.isHidden;
@@ -82,10 +82,10 @@ class _DinosaurTurnableCardState extends State<DinosaurTurnableCard> {
       enableLongPressActions: widget.enableLongPressActions,
       onSettingsPressed: widget.enableLongPressActions
           ? () => openInventoryCardSettings(
-                context: context,
-                onThrowAway: () =>
-                    discardDinosaurFromInventory(context, _dinosaur),
-              )
+              context: context,
+              onThrowAway: () =>
+                  discardDinosaurFromInventory(context, _dinosaur),
+            )
           : null,
       front: DinosaurCardFront(
         dinosaur: _dinosaur,

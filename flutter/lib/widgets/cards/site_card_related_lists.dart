@@ -46,10 +46,7 @@ class _SiteCardFossilsState extends State<SiteCardFossils> {
       child: CardRecordThumb(
         image: FossilCardImage(imageUrl: fossil.mainImageUrl),
         label: fossil.displayLabel,
-        onTap: () => showFossilCardDialog(
-          context,
-          fossilId: fossil.id,
-        ),
+        onTap: () => showFossilCardDialog(context, fossilId: fossil.id),
       ),
     );
     if (!fossil.isHidden) return thumb;
@@ -152,10 +149,9 @@ class _SiteCardFossilsState extends State<SiteCardFossils> {
                     textAlign: TextAlign.center,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: cardTheme.bodyStyle(fontSize: 9).copyWith(
-                          color: cardTheme.cardTextMuted,
-                          height: 1.15,
-                        ),
+                    style: cardTheme
+                        .bodyStyle(fontSize: 9)
+                        .copyWith(color: cardTheme.cardTextMuted, height: 1.15),
                   ),
                 ],
               ),

@@ -29,9 +29,11 @@ class SiteCardHeader extends StatelessWidget {
   final bool useFrontTitleStyle;
   final bool overlayOnImage;
   final bool showSubtitle;
+
   /// When set, shown as the subtitle instead of the collection line.
   final String? subtitleOverride;
   final int titleMaxLines;
+
   /// Optional widget shown inline after the title (e.g. Identify button).
   final Widget? titleTrailing;
 
@@ -41,15 +43,18 @@ class SiteCardHeader extends StatelessWidget {
     final titleStyle = overlayOnImage
         ? cardTheme.frontOverlayTitleStyle(fontSize: titleFontSize)
         : useFrontTitleStyle
-            ? cardTheme.frontTitleStyle(fontSize: titleFontSize)
-            : cardTheme.titleStyle(fontSize: titleFontSize);
+        ? cardTheme.frontTitleStyle(fontSize: titleFontSize)
+        : cardTheme.titleStyle(fontSize: titleFontSize);
     final subtitleStyle = overlayOnImage
         ? cardTheme.frontOverlaySubtitleStyle(fontSize: subtitleFontSize)
-        : cardTheme.subtitleStyle(fontSize: subtitleFontSize).copyWith(
-            color: cardTheme.cardTextMuted,
-            fontWeight: FontWeight.w500,
-          );
-    final subtitle = subtitleOverride ??
+        : cardTheme
+              .subtitleStyle(fontSize: subtitleFontSize)
+              .copyWith(
+                color: cardTheme.cardTextMuted,
+                fontWeight: FontWeight.w500,
+              );
+    final subtitle =
+        subtitleOverride ??
         site.displaySubtitle(distanceMeters: _distanceMeters(context));
     final trailing = titleTrailing;
     final titleText = CardAdaptiveTitleText(
@@ -60,8 +65,8 @@ class SiteCardHeader extends StatelessWidget {
     );
     final titleRow = trailing == null
         ? (centered
-            ? SizedBox(width: double.infinity, child: titleText)
-            : titleText)
+              ? SizedBox(width: double.infinity, child: titleText)
+              : titleText)
         : Row(
             children: [
               Expanded(child: titleText),
@@ -71,8 +76,9 @@ class SiteCardHeader extends StatelessWidget {
           );
 
     return Column(
-      crossAxisAlignment:
-          centered ? CrossAxisAlignment.center : CrossAxisAlignment.start,
+      crossAxisAlignment: centered
+          ? CrossAxisAlignment.center
+          : CrossAxisAlignment.start,
       children: [
         titleRow,
         if (showSubtitle && subtitle.isNotEmpty) ...[
@@ -93,14 +99,11 @@ class SiteCardHeader extends StatelessWidget {
     final lat = site.latitude;
     final lon = site.longitude;
     if (lat == null || lon == null) return null;
-    final user =
-        Provider.of<LocationService?>(context, listen: true)?.currentLocation;
+    final user = Provider.of<LocationService?>(
+      context,
+      listen: true,
+    )?.currentLocation;
     if (user == null) return null;
-    return Geolocator.distanceBetween(
-      user.latitude,
-      user.longitude,
-      lat,
-      lon,
-    );
+    return Geolocator.distanceBetween(user.latitude, user.longitude, lat, lon);
   }
 }

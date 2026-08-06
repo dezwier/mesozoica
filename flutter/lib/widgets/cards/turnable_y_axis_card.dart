@@ -39,11 +39,14 @@ class TurnableYAxisCard extends StatefulWidget {
   final bool prelayoutFacesForHeight;
   final BoxDecoration? decoration;
   final bool turnable;
+
   /// When false, only tap left/right halves flip.
   final bool enableDragFlip;
   final bool autoFlipOnce;
+
   /// After [autoFlipOnce] reaches the back, wait this long then flip to front.
   final Duration autoFlipHoldOnBack;
+
   /// When true, long-press shows a centered settings action overlay.
   final bool enableLongPressActions;
   final Future<void> Function()? onSettingsPressed;
@@ -82,14 +85,15 @@ class _TurnableYAxisCardState extends State<TurnableYAxisCard>
   void initState() {
     super.initState();
     _mountBack = widget.turnable;
-    _flipController = AnimationController.unbounded(
-      vsync: this,
-      value: 0,
-      duration: const Duration(milliseconds: 260),
-    )..addListener(() {
-        if (!mounted) return;
-        setState(() {});
-      });
+    _flipController =
+        AnimationController.unbounded(
+          vsync: this,
+          value: 0,
+          duration: const Duration(milliseconds: 260),
+        )..addListener(() {
+          if (!mounted) return;
+          setState(() {});
+        });
     if (widget.autoFlipOnce) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted || _didAutoFlip || !widget.turnable) return;
@@ -163,10 +167,7 @@ class _TurnableYAxisCardState extends State<TurnableYAxisCard>
     super.dispose();
   }
 
-  void _springSnapTo(
-    double targetAngle, {
-    double initialAngularVelocity = 0,
-  }) {
+  void _springSnapTo(double targetAngle, {double initialAngularVelocity = 0}) {
     final simulation = SpringSimulation(
       _flipSpring,
       _rotationAngle,
@@ -204,10 +205,7 @@ class _TurnableYAxisCardState extends State<TurnableYAxisCard>
     const flingScale = 0.52;
     final initialAngularVelocity =
         -((vx / width) * _swipeSensitivity) * _halfTurnRadians * flingScale;
-    _springSnapTo(
-      target,
-      initialAngularVelocity: initialAngularVelocity,
-    );
+    _springSnapTo(target, initialAngularVelocity: initialAngularVelocity);
   }
 
   void _onHorizontalDragCancel() {
@@ -230,8 +228,9 @@ class _TurnableYAxisCardState extends State<TurnableYAxisCard>
   }
 
   void _flipByOneFace({required bool turnLeft}) {
-    final baseAngle =
-        _flipController.isAnimating ? _lastTapTargetAngle : _rotationAngle;
+    final baseAngle = _flipController.isAnimating
+        ? _lastTapTargetAngle
+        : _rotationAngle;
     final snappedBase =
         (baseAngle / _halfTurnRadians).roundToDouble() * _halfTurnRadians;
     final target = turnLeft
@@ -312,15 +311,16 @@ class _TurnableYAxisCardState extends State<TurnableYAxisCard>
         }
         final measurementWidth =
             constraints.maxWidth.isFinite && constraints.maxWidth > 0
-                ? constraints.maxWidth
-                : _cardWidth;
+            ? constraints.maxWidth
+            : _cardWidth;
         final fixedH = widget.fixedFaceHeight;
         final angle = widget.turnable
             ? _normalizedSignedAngle(_rotationAngle)
             : 0.0;
         final normalizedAngle = _normalizedAngle(angle);
         final sideTilt = 0.01 * math.sin(angle);
-        final isBackVisible = normalizedAngle > (math.pi / 2) &&
+        final isBackVisible =
+            normalizedAngle > (math.pi / 2) &&
             normalizedAngle < (3 * math.pi / 2);
 
         final faces = _buildFaces(isBackVisible: isBackVisible);
@@ -336,14 +336,13 @@ class _TurnableYAxisCardState extends State<TurnableYAxisCard>
               )
             : faces;
 
-        final decoration = (widget.decoration ??
-                BoxDecoration(
-                  color: Theme.of(context).colorScheme.surface,
-                  borderRadius: BorderRadius.circular(r),
-                ))
-            .copyWith(
-          boxShadow: _boxShadowForAngle(angle),
-        );
+        final decoration =
+            (widget.decoration ??
+                    BoxDecoration(
+                      color: Theme.of(context).colorScheme.surface,
+                      borderRadius: BorderRadius.circular(r),
+                    ))
+                .copyWith(boxShadow: _boxShadowForAngle(angle));
 
         // Keep chrome + face at image aspect (width/height). A height-only
         // cap with full width leaves empty surface bands beside the art.
@@ -389,8 +388,7 @@ class _TurnableYAxisCardState extends State<TurnableYAxisCard>
       },
     );
 
-    final needsGestures =
-        widget.turnable || widget.enableLongPressActions;
+    final needsGestures = widget.turnable || widget.enableLongPressActions;
     final wrappedCard = needsGestures
         ? GestureDetector(
             behavior: HitTestBehavior.opaque,
@@ -405,8 +403,7 @@ class _TurnableYAxisCardState extends State<TurnableYAxisCard>
               final isLeftHalf = tapX <= (_cardWidth / 2);
               _flipByOneFace(turnLeft: isLeftHalf);
             },
-            onLongPress:
-                widget.enableLongPressActions ? _onLongPress : null,
+            onLongPress: widget.enableLongPressActions ? _onLongPress : null,
             onHorizontalDragStart: widget.turnable && widget.enableDragFlip
                 ? _onHorizontalDragStart
                 : null,
@@ -423,9 +420,6 @@ class _TurnableYAxisCardState extends State<TurnableYAxisCard>
           )
         : cardContent;
 
-    return Padding(
-      padding: widget.outerPadding,
-      child: wrappedCard,
-    );
+    return Padding(padding: widget.outerPadding, child: wrappedCard);
   }
 }

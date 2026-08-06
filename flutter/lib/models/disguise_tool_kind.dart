@@ -1,18 +1,9 @@
 /// Identity for Brush Scrim / Blackout Cover disguise tools.
 enum DisguiseToolKind {
-  brushScrim(
-    actionKey: 'brush_scrim',
-    toolName: 'Brush Scrim',
-  ),
-  blackoutCover(
-    actionKey: 'blackout_cover',
-    toolName: 'Blackout Cover',
-  );
+  brushScrim(actionKey: 'brush_scrim', toolName: 'Brush Scrim'),
+  blackoutCover(actionKey: 'blackout_cover', toolName: 'Blackout Cover');
 
-  const DisguiseToolKind({
-    required this.actionKey,
-    required this.toolName,
-  });
+  const DisguiseToolKind({required this.actionKey, required this.toolName});
 
   final String actionKey;
   final String toolName;

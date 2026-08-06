@@ -54,10 +54,7 @@ void main() {
       );
       expect(a.rangeWidth, greaterThan(0.0));
       expect(a.rangeWidth, lessThan(1.0));
-      expect(
-        a.rangeStart == b.rangeStart && a.rangeEnd == b.rangeEnd,
-        isFalse,
-      );
+      expect(a.rangeStart == b.rangeStart && a.rangeEnd == b.rangeEnd, isFalse);
     });
 
     test('same site + dimension is stable across calls', () {

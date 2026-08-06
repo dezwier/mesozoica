@@ -58,6 +58,7 @@ class _ToolFilterSheetState extends State<ToolFilterSheet> {
   late ToolCatalogSort _pendingSort;
   late Set<String> _pendingCategories;
   bool _applied = false;
+
   /// When opening catalog with inventory-only sort (obtain date), keep that
   /// sort on apply unless the user picks a catalog-visible sort.
   bool _preserveInventoryOnlySort = false;
@@ -284,7 +285,8 @@ class _ToolFilterSheetState extends State<ToolFilterSheet> {
               Row(
                 children: [
                   TextButton(
-                    onPressed: _buildPendingFilters().hasActiveFiltersFor(widget.mode)
+                    onPressed:
+                        _buildPendingFilters().hasActiveFiltersFor(widget.mode)
                         ? _clearPending
                         : null,
                     child: const Text('Clear'),

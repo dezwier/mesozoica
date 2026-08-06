@@ -125,16 +125,8 @@ class DinoCardTheme {
       letterSpacing: 1.0,
       height: 1.1,
       shadows: const [
-        Shadow(
-          color: Color(0x8C000000),
-          blurRadius: 8,
-          offset: Offset(0, 1),
-        ),
-        Shadow(
-          color: Color(0x59000000),
-          blurRadius: 14,
-          offset: Offset(0, 2),
-        ),
+        Shadow(color: Color(0x8C000000), blurRadius: 8, offset: Offset(0, 1)),
+        Shadow(color: Color(0x59000000), blurRadius: 14, offset: Offset(0, 2)),
       ],
     );
   }
@@ -149,16 +141,8 @@ class DinoCardTheme {
       letterSpacing: 0.3,
       height: 1.1,
       shadows: const [
-        Shadow(
-          color: Color(0xCC000000),
-          blurRadius: 6,
-          offset: Offset(0, 1),
-        ),
-        Shadow(
-          color: Color(0x99000000),
-          blurRadius: 3,
-          offset: Offset(0, 0),
-        ),
+        Shadow(color: Color(0xCC000000), blurRadius: 6, offset: Offset(0, 1)),
+        Shadow(color: Color(0x99000000), blurRadius: 3, offset: Offset(0, 0)),
       ],
     );
   }
@@ -172,11 +156,7 @@ class DinoCardTheme {
       letterSpacing: 0.8,
       height: 1.2,
       shadows: const [
-        Shadow(
-          color: Color(0x73000000),
-          blurRadius: 6,
-          offset: Offset(0, 1),
-        ),
+        Shadow(color: Color(0x73000000), blurRadius: 6, offset: Offset(0, 1)),
       ],
     );
   }
@@ -189,16 +169,8 @@ class DinoCardTheme {
       fontWeight: FontWeight.w500,
       height: 1.4,
       shadows: const [
-        Shadow(
-          color: Color(0x73000000),
-          blurRadius: 6,
-          offset: Offset(0, 1),
-        ),
-        Shadow(
-          color: Color(0x40000000),
-          blurRadius: 10,
-          offset: Offset(0, 2),
-        ),
+        Shadow(color: Color(0x73000000), blurRadius: 6, offset: Offset(0, 1)),
+        Shadow(color: Color(0x40000000), blurRadius: 10, offset: Offset(0, 2)),
       ],
     );
   }
@@ -296,11 +268,7 @@ class DinoCardTheme {
     return const LinearGradient(
       begin: Alignment.topCenter,
       end: Alignment.bottomCenter,
-      colors: [
-        Color(0xA64C4643),
-        Color(0x447E7671),
-        Color(0x33B4ADA7),
-      ],
+      colors: [Color(0xA64C4643), Color(0x447E7671), Color(0x33B4ADA7)],
       stops: [0.0, 0.28, 1.0],
     );
   }

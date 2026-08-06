@@ -11,10 +11,7 @@ void main() {
     GameConfig.debugReset();
   });
 
-  ToolSession session({
-    required int id,
-    required String status,
-  }) {
+  ToolSession session({required int id, required String status}) {
     return ToolSession(
       sessionId: id,
       toolId: 1,

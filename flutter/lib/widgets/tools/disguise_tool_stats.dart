@@ -22,12 +22,17 @@ class DisguiseToolStats extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cfg = GameConfig.instance.toolActions.disguiseConfigFor(kind.actionKey);
+    final cfg = GameConfig.instance.toolActions.disguiseConfigFor(
+      kind.actionKey,
+    );
     final p = params;
     final durationMinutes =
         (p?['duration_minutes'] as num?)?.toInt() ?? cfg.durationMinutes;
     final mods = modifiesMainParamsFromParams(p) ?? cfg.modifiesMainParams;
-    final rivalMod = mods?.paramsFor('using', 'field_survey')['rival_discovery_chance'];
+    final rivalMod = mods?.paramsFor(
+      'using',
+      'field_survey',
+    )['rival_discovery_chance'];
     // Prefer game-config copy so clarification updates aren't stuck behind
     // stale per-instance params snapshots.
     final explanation = cfg.statsExplanation.trim().isNotEmpty
@@ -48,9 +53,9 @@ class DisguiseToolStats extends StatelessWidget {
     }
 
     final cardTheme = DinoCardTheme.of(context);
-    final mutedStyle = cardTheme.bodyStyle(fontSize: 11).copyWith(
-          color: cardTheme.cardTextMuted,
-        );
+    final mutedStyle = cardTheme
+        .bodyStyle(fontSize: 11)
+        .copyWith(color: cardTheme.cardTextMuted);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -68,12 +73,16 @@ class DisguiseToolStats extends StatelessWidget {
   static String _formatRivalMod(ParamModifier mod) {
     if (mod.op == 'multiply') {
       final v = mod.value;
-      final text = v == 0 || v == 1 ? v.toStringAsFixed(0) : v.toStringAsFixed(1);
+      final text = v == 0 || v == 1
+          ? v.toStringAsFixed(0)
+          : v.toStringAsFixed(1);
       return '×$text';
     }
     if (mod.op == 'replace') {
       final v = mod.value;
-      final text = v == 0 || v == 1 ? v.toStringAsFixed(0) : v.toStringAsFixed(1);
+      final text = v == 0 || v == 1
+          ? v.toStringAsFixed(0)
+          : v.toStringAsFixed(1);
       return '→ ×$text';
     }
     return WeatherDisplay.formatModifierShort(op: mod.op, value: mod.value);

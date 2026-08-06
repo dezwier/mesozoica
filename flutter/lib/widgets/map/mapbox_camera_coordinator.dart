@@ -18,8 +18,10 @@ import 'mapbox_site_annotations.dart';
 const double _locationPuckLogicalSize = 32;
 const double _locationPuckPixelRatio = 3;
 const String _locationPuckFallbackAsset = 'assets/images/logo.png';
+
 /// Brown pulse matching map chrome earth tones.
 const Color locationPuckPulseBrown = Color(0xFF8D6E63);
+
 /// Golden pulse for Ridge Glass added visibility range.
 const Color locationPuckPulseGold = Color(0xFFD4AF37);
 
@@ -48,6 +50,7 @@ class MapboxCameraCoordinator {
   double _pulseVisibilityDistanceM = 20.0;
   double _pulseLatitudeDeg = 0.0;
   double _pulseZoom = MapConfig.mapboxFollowZoom;
+
   /// Cached so pulse-only updates do not fall back to Mapbox's blue default puck.
   Uint8List? _puckTopImage;
   Uint8List? _puckBearingImage;
@@ -108,9 +111,7 @@ class MapboxCameraCoordinator {
       final pixels = await map.pixelsForCoordinates(geo);
       return [
         for (final pixel in pixels)
-          pixel == null
-              ? null
-              : Offset(pixel.x.toDouble(), pixel.y.toDouble()),
+          pixel == null ? null : Offset(pixel.x.toDouble(), pixel.y.toDouble()),
       ];
     } catch (_) {
       return List<Offset?>.filled(points.length, null);
@@ -163,8 +164,7 @@ class MapboxCameraCoordinator {
     _pendingFollowZoom = null;
   }
 
-  double get _pitch =>
-      mapboxPitchForMode(rotateWithHeading: rotateWithHeading);
+  double get _pitch => mapboxPitchForMode(rotateWithHeading: rotateWithHeading);
 
   double _bearingForMode(double headingDeg) {
     if (!rotateWithHeading) return 0;
@@ -242,10 +242,7 @@ class MapboxCameraCoordinator {
       await map.setCamera(options);
       return;
     }
-    await map.flyTo(
-      options,
-      MapAnimationOptions(duration: durationMs),
-    );
+    await map.flyTo(options, MapAnimationOptions(duration: durationMs));
   }
 
   /// No-op: rotate mode uses FollowPuck; north-fixed keeps bearing at 0.
@@ -279,9 +276,7 @@ class MapboxCameraCoordinator {
         _lastFollowedLocation = next;
         await map.setCamera(
           CameraOptions(
-            center: Point(
-              coordinates: Position(next.longitude, next.latitude),
-            ),
+            center: Point(coordinates: Position(next.longitude, next.latitude)),
             zoom: nextZoom != null ? clampMapboxZoom(nextZoom) : null,
             pitch: _pitch,
             bearing: _bearingForMode(_lastHeadingDeg),
@@ -359,10 +354,7 @@ class MapboxCameraCoordinator {
         coords.lng.toDouble(),
       );
     }
-    await map.flyTo(
-      options,
-      MapAnimationOptions(duration: durationMs),
-    );
+    await map.flyTo(options, MapAnimationOptions(duration: durationMs));
   }
 
   /// Zoom so the visible map height is approximately [spanKm], centered on
@@ -403,10 +395,7 @@ class MapboxCameraCoordinator {
       null,
     );
     _lastFollowedLocation = center;
-    await map.flyTo(
-      options,
-      MapAnimationOptions(duration: durationMs),
-    );
+    await map.flyTo(options, MapAnimationOptions(duration: durationMs));
   }
 
   Future<LatLng?> currentCenter() async {
@@ -489,8 +478,7 @@ class MapboxCameraCoordinator {
       center: center,
       latitudeDeg: latitudeDeg,
       zoom: zoom,
-    ))
-        .roundToDouble();
+    )).roundToDouble();
     _lastPulseRadiusPx = pulsePx;
     _lastPulseColor = pulseColor ?? locationPuckPulseBrown;
     _lastPulsingEnabled = pulsingEnabled;
@@ -537,8 +525,7 @@ class MapboxCameraCoordinator {
     if (_map == null || _puckTopImage == null) return;
 
     final last = _lastPulseSyncAt;
-    final sinceLast =
-        last == null ? null : DateTime.now().difference(last);
+    final sinceLast = last == null ? null : DateTime.now().difference(last);
     if (_pulseSyncInFlight ||
         (sinceLast != null && sinceLast < pulseSyncMinInterval)) {
       // Coalesce: re-run once with the newest camera/location after the window.
@@ -612,8 +599,7 @@ class MapboxCameraCoordinator {
   Future<double?> projectGroundRadiusPx({
     required LatLng center,
     required double radiusM,
-  }) =>
-      _projectGroundRadiusPx(center: center, radiusM: radiusM);
+  }) => _projectGroundRadiusPx(center: center, radiusM: radiusM);
 
   LocationComponentSettings _locationPuckSettings({
     required double pulsePx,
@@ -652,8 +638,8 @@ class MapboxCameraCoordinator {
     if (zoom != null) {
       _pulseZoom = zoom;
     }
-    final origin = center ??
-        (latitudeDeg != null ? LatLng(latitudeDeg, 0) : null);
+    final origin =
+        center ?? (latitudeDeg != null ? LatLng(latitudeDeg, 0) : null);
     if (origin != null) {
       _pulseLatitudeDeg = origin.latitude;
     } else if (latitudeDeg != null) {
@@ -721,12 +707,9 @@ class MapboxCameraCoordinator {
   }
 }
 
-({
-  int dim,
-  Offset center,
-  double radius,
-  double borderWidth,
-}) _puckGeometry(double logicalSize) {
+({int dim, Offset center, double radius, double borderWidth}) _puckGeometry(
+  double logicalSize,
+) {
   const pixelRatio = _locationPuckPixelRatio;
   final dim = (logicalSize * pixelRatio * 1.6).round().clamp(64, 192);
   final center = Offset(dim / 2, dim / 2);
@@ -847,11 +830,7 @@ Future<Uint8List> _renderAvatarLocationPuckPng({
 
   final innerRadius = radius - borderWidth / 2;
 
-  canvas.drawCircle(
-    center,
-    innerRadius,
-    Paint()..color = Colors.white,
-  );
+  canvas.drawCircle(center, innerRadius, Paint()..color = Colors.white);
 
   canvas.save();
   canvas.clipPath(
@@ -882,9 +861,7 @@ Future<Uint8List> _renderAvatarLocationPuckPng({
 }
 
 /// Transparent PNG with a white heading arrow; Mapbox rotates this layer.
-Future<Uint8List> _renderHeadingArrowPng({
-  required double logicalSize,
-}) async {
+Future<Uint8List> _renderHeadingArrowPng({required double logicalSize}) async {
   const pixelRatio = _locationPuckPixelRatio;
   final geo = _puckGeometry(logicalSize);
   final dim = geo.dim;

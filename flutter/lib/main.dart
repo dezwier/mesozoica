@@ -7,34 +7,12 @@ import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 import 'package:provider/provider.dart';
 
 import 'config/app_config.dart';
-import 'config/game_config.dart';
 import 'config/map_config.dart';
-import 'controllers/auth_controller.dart';
-import 'controllers/aerial_session_controller.dart';
 import 'controllers/catalog_mode_controller.dart';
-import 'controllers/dinosaur_catalog_controller.dart';
-import 'controllers/field_discovery_coordinator.dart';
-import 'controllers/fossil_catalog_controller.dart';
-import 'controllers/field_session_coordinator.dart';
-import 'controllers/formation_map_controller.dart';
-import 'controllers/orbit_survey_controller.dart';
-import 'controllers/disguise_session_controller.dart';
-import 'controllers/main_param_buff_controller.dart';
-import 'controllers/terrain_echo_controller.dart';
-import 'controllers/guidance_session_controller.dart';
-import 'controllers/map_controller.dart';
-import 'controllers/phylo_tree_controller.dart';
-import 'controllers/site_catalog_controller.dart';
-import 'controllers/site_exploration_controller.dart';
-import 'controllers/tool_catalog_controller.dart';
-import 'controllers/notification_controller.dart';
-import 'controllers/splash_hold_controller.dart';
 import 'controllers/theme_controller.dart';
-import 'controllers/walk_distance_controller.dart';
-import 'controllers/weather_controller.dart';
-import 'controllers/xp_award_controller.dart';
+import 'core/di/app_providers.dart';
+import 'features/game_config/data/game_config_asset_loader.dart';
 import 'firebase_options.dart';
-import 'services/location_service.dart';
 import 'services/map_tile_cache.dart';
 import 'services/push_notification_runtime.dart';
 import 'shell/app_navigator.dart';
@@ -47,7 +25,7 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   // Use the native-picked splash dinosaur so system + Flutter match.
   await AppSplashScreen.prepare();
-  await GameConfig.load();
+  await GameConfigAssetLoader.load();
   await _configureMapboxAccessToken();
   try {
     await Firebase.initializeApp(
@@ -64,10 +42,12 @@ Future<void> main() async {
   final catalogModeController = CatalogModeController();
   await catalogModeController.initialize();
   await MapTileCache.initialize();
-  runApp(MesozoicaApp(
-    themeController: themeController,
-    catalogModeController: catalogModeController,
-  ));
+  runApp(
+    MesozoicaApp(
+      themeController: themeController,
+      catalogModeController: catalogModeController,
+    ),
+  );
 }
 
 /// [MapboxOptions.setAccessToken] is fire-and-forget async. Wait until the
@@ -116,58 +96,10 @@ class MesozoicaApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MultiProvider(
-      providers: [
-        ChangeNotifierProvider.value(value: themeController),
-        ChangeNotifierProvider.value(value: catalogModeController),
-        ChangeNotifierProvider(create: (_) => SplashHoldController()),
-        ChangeNotifierProvider(
-          create: (_) => AuthController()..initialize(),
-        ),
-        ChangeNotifierProvider(create: (_) => NotificationController()),
-        ChangeNotifierProvider(create: (_) => DinosaurCatalogController()),
-        ChangeNotifierProvider(
-          create: (_) => LocationService()..loadPreferences(),
-        ),
-        ChangeNotifierProvider(
-          create: (context) => WeatherController(
-            locationService: context.read<LocationService>(),
-          ),
-        ),
-        ChangeNotifierProvider(
-          create: (context) => FossilCatalogController(
-            catalogModeController: context.read<CatalogModeController>(),
-          ),
-        ),
-        ChangeNotifierProvider(
-          create: (context) => SiteCatalogController(
-            catalogModeController: context.read<CatalogModeController>(),
-            locationService: context.read<LocationService>(),
-          ),
-        ),
-        ChangeNotifierProvider(create: (_) => ToolCatalogController()),
-        ChangeNotifierProvider(create: (_) => AerialSessionController()),
-        ChangeNotifierProvider(create: (_) => GuidanceSessionController()),
-        ChangeNotifierProvider(create: (_) => OrbitSurveyController()),
-        ChangeNotifierProvider(create: (_) => FormationMapController()),
-        ChangeNotifierProvider(create: (_) => TerrainEchoController()),
-        ChangeNotifierProvider(create: (_) => MainParamBuffController()),
-        ChangeNotifierProvider(create: (_) => DisguiseSessionController()),
-        ChangeNotifierProvider(
-          create: (context) => PhyloTreeController(
-            catalogController: context.read<DinosaurCatalogController>(),
-          ),
-        ),
-        ChangeNotifierProvider(
-          create: (context) => MapController(
-            catalogModeController: context.read<CatalogModeController>(),
-          ),
-        ),
-        ChangeNotifierProvider(create: (_) => FieldSessionCoordinator()),
-        ChangeNotifierProvider(create: (_) => FieldDiscoveryCoordinator()),
-        ChangeNotifierProvider(create: (_) => WalkDistanceController()),
-        ChangeNotifierProvider(create: (_) => SiteExplorationController()),
-        ChangeNotifierProvider(create: (_) => XpAwardController()),
-      ],
+      providers: buildAppProviders(
+        themeController: themeController,
+        catalogModeController: catalogModeController,
+      ),
       child: Consumer<ThemeController>(
         builder: (context, themeController, _) {
           return MaterialApp(
@@ -182,10 +114,7 @@ class MesozoicaApp extends StatelessWidget {
               // never cover the XP badge.
               return Stack(
                 fit: StackFit.expand,
-                children: [
-                  ?child,
-                  const XpAwardOverlay(),
-                ],
+                children: [?child, const XpAwardOverlay()],
               );
             },
             home: const AppShell(),

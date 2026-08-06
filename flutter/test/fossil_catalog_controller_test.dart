@@ -26,56 +26,62 @@ void main() {
     };
   }
 
-  test('fetchFossils requests random sort with seed and llm_enriched default', () async {
-    Uri? capturedUri;
-    final service = FossilService(
-      client: MockClient((request) async {
-        capturedUri = request.url;
-        return http.Response(
-          jsonEncode({
-            'items': [
-              fossilJson(
-                id: 2,
-                identifiedName: 'Specimen B',
-                mainImageUrl: curatedFossilImageUrl,
-              ),
-              fossilJson(
-                id: 1,
-                identifiedName: 'Specimen A',
-                mainImageUrl: curatedFossilImageUrl,
-              ),
-            ],
-            'total': 2,
-            'limit': 20,
-            'offset': 0,
-            'has_next': false,
-          }),
-          200,
-        );
-      }),
-    );
+  test(
+    'fetchFossils requests random sort with seed and llm_enriched default',
+    () async {
+      Uri? capturedUri;
+      final service = FossilService(
+        client: MockClient((request) async {
+          capturedUri = request.url;
+          return http.Response(
+            jsonEncode({
+              'items': [
+                fossilJson(
+                  id: 2,
+                  identifiedName: 'Specimen B',
+                  mainImageUrl: curatedFossilImageUrl,
+                ),
+                fossilJson(
+                  id: 1,
+                  identifiedName: 'Specimen A',
+                  mainImageUrl: curatedFossilImageUrl,
+                ),
+              ],
+              'total': 2,
+              'limit': 20,
+              'offset': 0,
+              'has_next': false,
+            }),
+            200,
+          );
+        }),
+      );
 
-    final controller = FossilCatalogController(service: service);
-    await controller.load();
+      final controller = FossilCatalogController(service: service);
+      await controller.load();
 
-    expect(capturedUri, isNotNull);
-    expect(capturedUri!.queryParameters['sort'], 'random');
-    expect(capturedUri!.queryParameters['seed'], isNotEmpty);
-    expect(capturedUri!.queryParameters['limit'], '20');
-    expect(capturedUri!.queryParameters['offset'], '0');
-    expect(capturedUri!.queryParameters.containsKey('dino_q'), isFalse);
-    expect(capturedUri!.queryParameters.containsKey('fossil_q'), isFalse);
-    expect(capturedUri!.queryParameters.containsKey('ma_younger'), isFalse);
-    expect(capturedUri!.queryParameters.containsKey('ma_older'), isFalse);
-    expect(capturedUri!.queryParameters.containsKey('has_custom_fossil_image'), isFalse);
-    expect(capturedUri!.queryParameters['llm_enriched'], 'true');
-    expect(
-      controller.items.map((f) => f.identifiedName),
-      ['Specimen B', 'Specimen A'],
-    );
+      expect(capturedUri, isNotNull);
+      expect(capturedUri!.queryParameters['sort'], 'random');
+      expect(capturedUri!.queryParameters['seed'], isNotEmpty);
+      expect(capturedUri!.queryParameters['limit'], '20');
+      expect(capturedUri!.queryParameters['offset'], '0');
+      expect(capturedUri!.queryParameters.containsKey('dino_q'), isFalse);
+      expect(capturedUri!.queryParameters.containsKey('fossil_q'), isFalse);
+      expect(capturedUri!.queryParameters.containsKey('ma_younger'), isFalse);
+      expect(capturedUri!.queryParameters.containsKey('ma_older'), isFalse);
+      expect(
+        capturedUri!.queryParameters.containsKey('has_custom_fossil_image'),
+        isFalse,
+      );
+      expect(capturedUri!.queryParameters['llm_enriched'], 'true');
+      expect(controller.items.map((f) => f.identifiedName), [
+        'Specimen B',
+        'Specimen A',
+      ]);
 
-    controller.dispose();
-  });
+      controller.dispose();
+    },
+  );
 
   test('applyFilters uses name sort when searching dinosaur name', () async {
     Uri? capturedUri;

@@ -41,7 +41,8 @@ class SiteCardUserTimeline extends StatelessWidget {
     final hasDiscovery =
         discoveredAt != null || (how != null && how.isNotEmpty);
     if (hasDiscovery) {
-      final aerial = (how == SiteSummary.howDiscoveredAerialRecon ||
+      final aerial =
+          (how == SiteSummary.howDiscoveredAerialRecon ||
               how == SiteSummary.howDiscoveredAerialScout) &&
           site.discoveringSessionId != null;
       entries.add(
@@ -57,7 +58,8 @@ class SiteCardUserTimeline extends StatelessWidget {
       );
     }
 
-    final identified = site.viewerHasIdentified == true ||
+    final identified =
+        site.viewerHasIdentified == true ||
         site.identifiedAt != null ||
         site.status?.trim().toLowerCase() == 'identified';
     if (identified) {
@@ -73,7 +75,8 @@ class SiteCardUserTimeline extends StatelessWidget {
       );
     }
 
-    final documented = site.documented == true ||
+    final documented =
+        site.documented == true ||
         site.viewerHasDocumented == true ||
         site.documentedAt != null;
     if (documented) {

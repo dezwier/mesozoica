@@ -1,10 +1,7 @@
-"""Background field-site ensure jobs (DB queue enqueue only)."""
+"""Transitional alias for the feature-owned implementation."""
 
-from __future__ import annotations
+import sys
 
-from app.services.field_service.field_ensure_queue import (
-    enqueue_field_site_ensure,
-    schedule_field_site_ensure,
-)
+from app.features.field.application import field_ensure_background as _implementation
 
-__all__ = ["enqueue_field_site_ensure", "schedule_field_site_ensure"]
+sys.modules[__name__] = _implementation

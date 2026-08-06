@@ -47,70 +47,76 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   SharedPreferences.setMockInitialValues({});
 
-  testWidgets('DinosaurCardFossilList renders fossils and opens dialog on tap',
-      (tester) async {
-    final service = FossilService(
-      client: MockClient((request) async {
-        expect(request.url.queryParameters['dinosaur_id'], '1');
-        expect(request.url.queryParameters['data_source'], 'archive');
-        return http.Response(
-          jsonEncode({
-            'items': [
-              _fossilJson(id: 100001, mainImageUrl: _curatedFossilImageUrl),
-              _fossilJson(id: 100002, identifiedName: 'Tyrannosaurus sp.'),
-            ],
-            'total': 2,
-            'limit': 200,
-            'offset': 0,
-            'has_next': false,
-          }),
-          200,
-        );
-      }),
-    );
+  testWidgets(
+    'DinosaurCardFossilList renders fossils and opens dialog on tap',
+    (tester) async {
+      final service = FossilService(
+        client: MockClient((request) async {
+          expect(request.url.queryParameters['dinosaur_id'], '1');
+          expect(request.url.queryParameters['data_source'], 'archive');
+          return http.Response(
+            jsonEncode({
+              'items': [
+                _fossilJson(id: 100001, mainImageUrl: _curatedFossilImageUrl),
+                _fossilJson(id: 100002, identifiedName: 'Tyrannosaurus sp.'),
+              ],
+              'total': 2,
+              'limit': 200,
+              'offset': 0,
+              'has_next': false,
+            }),
+            200,
+          );
+        }),
+      );
 
-    await tester.pumpWidget(
-      _wrapWithCatalogMode(
-        Scaffold(
-          body: Center(
-            child: SizedBox(
-              width: 120,
-              height: 260,
-              child: DinosaurCardFossilList(
-                dinosaurId: 1,
-                fossilService: service,
+      await tester.pumpWidget(
+        _wrapWithCatalogMode(
+          Scaffold(
+            body: Center(
+              child: SizedBox(
+                width: 120,
+                height: 260,
+                child: DinosaurCardFossilList(
+                  dinosaurId: 1,
+                  fossilService: service,
+                ),
               ),
             ),
           ),
         ),
-      ),
-    );
+      );
 
-    await tester.pump(); // start FutureBuilder
-    await tester.pump(); // complete MockClient future
+      await tester.pump(); // start FutureBuilder
+      await tester.pump(); // complete MockClient future
 
-    expect(find.byType(CardRecordThumb), findsNWidgets(2));
-    expect(find.text('Tyrannosaurus rex'), findsOneWidget);
-    expect(find.text('Tyrannosaurus sp.'), findsOneWidget);
+      expect(find.byType(CardRecordThumb), findsNWidgets(2));
+      expect(find.text('Tyrannosaurus rex'), findsOneWidget);
+      expect(find.text('Tyrannosaurus sp.'), findsOneWidget);
 
-    final thumbBoxes = tester
-        .widgetList<SizedBox>(find.byType(SizedBox))
-        .where((box) => box.width != null && box.height != null)
-        .where((box) => box.width == box.height)
-        .toList();
-    expect(thumbBoxes, isNotEmpty);
-    for (final box in thumbBoxes) {
-      expect(box.width, box.height);
-    }
-  });
+      final thumbBoxes = tester
+          .widgetList<SizedBox>(find.byType(SizedBox))
+          .where((box) => box.width != null && box.height != null)
+          .where((box) => box.width == box.height)
+          .toList();
+      expect(thumbBoxes, isNotEmpty);
+      for (final box in thumbBoxes) {
+        expect(box.width, box.height);
+      }
+    },
+  );
 
-  testWidgets('showFossilCardDialog loads fossil card from API', (tester) async {
+  testWidgets('showFossilCardDialog loads fossil card from API', (
+    tester,
+  ) async {
     final service = FossilService(
       client: MockClient((request) async {
         expect(request.url.path, endsWith('/fossils/100001'));
         expect(request.url.queryParameters['data_source'], 'archive');
         return http.Response(
-          jsonEncode(_fossilJson(id: 100001, mainImageUrl: _curatedFossilImageUrl)),
+          jsonEncode(
+            _fossilJson(id: 100001, mainImageUrl: _curatedFossilImageUrl),
+          ),
           200,
         );
       }),

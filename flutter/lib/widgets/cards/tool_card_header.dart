@@ -30,10 +30,13 @@ class ToolCardHeader extends StatelessWidget {
   final bool centered;
   final bool overlayOnImage;
   final bool showScientificSubtitle;
+
   /// When set, shown as the subtitle instead of scientific name.
   final String? subtitleOverride;
+
   /// Top-right skill avatar (back side).
   final bool showSkillBadge;
+
   /// Filled rarity stars below the scientific subtitle (back side).
   final bool showRarityStars;
   final double skillBadgeSize;
@@ -46,12 +49,15 @@ class ToolCardHeader extends StatelessWidget {
         : cardTheme.titleStyle(fontSize: titleFontSize);
     final subtitleStyle = overlayOnImage
         ? cardTheme.frontOverlaySubtitleStyle(fontSize: subtitleFontSize)
-        : cardTheme.subtitleStyle(fontSize: subtitleFontSize).copyWith(
-            color: cardTheme.cardTextMuted,
-            fontWeight: FontWeight.w500,
-          );
+        : cardTheme
+              .subtitleStyle(fontSize: subtitleFontSize)
+              .copyWith(
+                color: cardTheme.cardTextMuted,
+                fontWeight: FontWeight.w500,
+              );
 
-    final subtitleText = subtitleOverride ??
+    final subtitleText =
+        subtitleOverride ??
         (showScientificSubtitle || showRarityStars
             ? tool.displayScientificTool
             : null);
@@ -65,8 +71,9 @@ class ToolCardHeader extends StatelessWidget {
     final centerInSpace = showSkillBadge || centered;
 
     final titleBlock = Column(
-      crossAxisAlignment:
-          centerInSpace ? CrossAxisAlignment.center : CrossAxisAlignment.start,
+      crossAxisAlignment: centerInSpace
+          ? CrossAxisAlignment.center
+          : CrossAxisAlignment.start,
       children: [
         SizedBox(
           width: double.infinity,
@@ -154,11 +161,7 @@ class ToolCardHeader extends StatelessWidget {
       progress: 0,
     );
 
-    showProfileSkillDetailSheet(
-      context,
-      skill: skill,
-      breakdown: breakdown,
-    );
+    showProfileSkillDetailSheet(context, skill: skill, breakdown: breakdown);
   }
 }
 

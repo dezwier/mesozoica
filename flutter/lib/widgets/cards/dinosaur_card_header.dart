@@ -25,6 +25,7 @@ class DinosaurCardHeader extends StatelessWidget {
   final bool useFrontTitleStyle;
   final bool overlayOnImage;
   final bool showArticleButton;
+
   /// When set, shown as the subtitle instead of the Wikipedia title.
   final String? subtitleOverride;
 
@@ -44,15 +45,16 @@ class DinosaurCardHeader extends StatelessWidget {
     final titleStyle = overlayOnImage
         ? cardTheme.frontOverlayTitleStyle(fontSize: titleFontSize)
         : useFrontTitleStyle
-            ? cardTheme.frontTitleStyle(fontSize: titleFontSize)
-            : cardTheme.titleStyle(fontSize: titleFontSize);
+        ? cardTheme.frontTitleStyle(fontSize: titleFontSize)
+        : cardTheme.titleStyle(fontSize: titleFontSize);
     final subtitleStyle = overlayOnImage
         ? cardTheme.frontOverlaySubtitleStyle(fontSize: subtitleFontSize)
         : cardTheme.subtitleStyle(fontSize: subtitleFontSize);
 
     return Column(
-      crossAxisAlignment:
-          centered ? CrossAxisAlignment.center : CrossAxisAlignment.start,
+      crossAxisAlignment: centered
+          ? CrossAxisAlignment.center
+          : CrossAxisAlignment.start,
       children: [
         if (overlayOnImage && centered)
           SizedBox(
@@ -73,13 +75,15 @@ class DinosaurCardHeader extends StatelessWidget {
                     ? CardAdaptiveTitleText(
                         text: dinosaur.name,
                         style: titleStyle,
-                        textAlign:
-                            centered ? TextAlign.center : TextAlign.start,
+                        textAlign: centered
+                            ? TextAlign.center
+                            : TextAlign.start,
                       )
                     : Text(
                         dinosaur.name,
-                        textAlign:
-                            centered ? TextAlign.center : TextAlign.start,
+                        textAlign: centered
+                            ? TextAlign.center
+                            : TextAlign.start,
                         style: titleStyle,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
@@ -88,10 +92,8 @@ class DinosaurCardHeader extends StatelessWidget {
               if (showArticleButton) ...[
                 const SizedBox(width: 2),
                 IconButton(
-                  onPressed: () => DinosaurArticleDrawer.show(
-                    context,
-                    dinosaur: dinosaur,
-                  ),
+                  onPressed: () =>
+                      DinosaurArticleDrawer.show(context, dinosaur: dinosaur),
                   icon: const Icon(Icons.info_outline, size: 16),
                   color: cardTheme.cardTextMuted,
                   tooltip: 'Read article',

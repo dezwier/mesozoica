@@ -10,9 +10,11 @@ class ToolParamsEditSheet extends StatefulWidget {
   });
 
   final Map<String, dynamic> params;
+
   /// When set, only these keys are shown/edited in the modal.
   /// Dotted paths (e.g. `a.b.c`) edit nested map values.
   final List<String>? editableKeys;
+
   /// Optional display labels keyed by editable key / path.
   final Map<String, String> labels;
   final ValueChanged<Map<String, dynamic>> onSave;
@@ -57,9 +59,7 @@ class _ToolParamsEditSheetState extends State<ToolParamsEditSheet> {
 
     for (final key in _editableKeys) {
       final value = _readPath(widget.params, key);
-      _controllers[key] = TextEditingController(
-        text: value?.toString() ?? '',
-      );
+      _controllers[key] = TextEditingController(text: value?.toString() ?? '');
     }
   }
 

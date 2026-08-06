@@ -47,6 +47,7 @@ class _AerialDrawOverlayState extends State<AerialDrawOverlay> {
   bool _pinchActive = false;
   double _pinchBaseZoom = 0;
   double? _pinchBaseSpan;
+
   /// Zoom last applied to [_screenPoints] (for live pinch scaling).
   double _screenZoom = 0;
 
@@ -421,7 +422,7 @@ class _AerialDrawOverlayState extends State<AerialDrawOverlay> {
                     Text(
                       recon.message ??
                           'Draw with one finger; pinch to zoom. '
-                          'The loop starts and ends at your location.',
+                              'The loop starts and ends at your location.',
                       style: VintageInstrumentStyle.mono.copyWith(
                         fontSize: 10,
                         letterSpacing: 0.4,
@@ -531,15 +532,15 @@ class _VintageDrawButton extends StatelessWidget {
     final border = danger
         ? VintageInstrumentStyle.stop
         : emphasized
-            ? VintageInstrumentStyle.gold
-            : VintageInstrumentStyle.brassRim;
+        ? VintageInstrumentStyle.gold
+        : VintageInstrumentStyle.brassRim;
     final fg = !enabled
         ? VintageInstrumentStyle.brassMuted.withValues(alpha: 0.45)
         : danger
-            ? VintageInstrumentStyle.stop
-            : emphasized
-                ? VintageInstrumentStyle.gold
-                : VintageInstrumentStyle.brassText;
+        ? VintageInstrumentStyle.stop
+        : emphasized
+        ? VintageInstrumentStyle.gold
+        : VintageInstrumentStyle.brassText;
 
     return Material(
       color: Colors.transparent,
@@ -550,7 +551,9 @@ class _VintageDrawButton extends StatelessWidget {
           decoration: BoxDecoration(
             color: VintageInstrumentStyle.dialFace.withValues(alpha: 0.92),
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: border.withValues(alpha: enabled ? 1 : 0.4)),
+            border: Border.all(
+              color: border.withValues(alpha: enabled ? 1 : 0.4),
+            ),
           ),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),

@@ -213,8 +213,8 @@ class _MapScreenState extends State<MapScreen>
 
         final startCenter =
             locationService.locationListenable.value ??
-                locationService.currentLocation ??
-                MapConfig.defaultCenter;
+            locationService.currentLocation ??
+            MapConfig.defaultCenter;
         final topInset = MapChromeInsets.top(context);
         final fabBottom = MapChromeInsets.fabBottom(context);
 
@@ -282,8 +282,9 @@ class _MapScreenState extends State<MapScreen>
                       }
                     },
                     onRotatePinchZoomOut: _exitToNorthFixedCentered,
-                    onLocationPuckTap:
-                        aerialDrawMode ? () {} : _enterRotationMode,
+                    onLocationPuckTap: aerialDrawMode
+                        ? () {}
+                        : _enterRotationMode,
                     onZoomChanged: _onMapboxZoomChanged,
                     onReadyChanged: (ready) {
                       if (!mounted) return;
@@ -301,12 +302,12 @@ class _MapScreenState extends State<MapScreen>
                 ),
               ),
             // Fade under tool HUDs so chips can slide over the scrim.
-            if (widget.isActive &&
-                !aerialDrawMode &&
-                widget.showControls)
+            if (widget.isActive && !aerialDrawMode && widget.showControls)
               const MapTopFade(),
             // Tool HUDs: above map + fade, below shell chrome (profile / bar).
-            if (widget.isActive && !aerialDrawMode && aerialRecon.hudSession != null)
+            if (widget.isActive &&
+                !aerialDrawMode &&
+                aerialRecon.hudSession != null)
               const AerialHud(),
             if (widget.isActive && !aerialDrawMode && guidance.isActive)
               GuidanceOverlay(
@@ -343,10 +344,9 @@ class _MapScreenState extends State<MapScreen>
                 left: 16,
                 right: 16,
                 child: Material(
-                  color: Theme.of(context)
-                      .colorScheme
-                      .errorContainer
-                      .withValues(alpha: 0.92),
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.errorContainer.withValues(alpha: 0.92),
                   borderRadius: BorderRadius.circular(12),
                   child: Padding(
                     padding: const EdgeInsets.symmetric(
@@ -378,10 +378,9 @@ class _MapScreenState extends State<MapScreen>
                 left: 16,
                 right: 16,
                 child: Material(
-                  color: Theme.of(context)
-                      .colorScheme
-                      .primaryContainer
-                      .withValues(alpha: 0.92),
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.primaryContainer.withValues(alpha: 0.92),
                   borderRadius: BorderRadius.circular(12),
                   child: Padding(
                     padding: const EdgeInsets.symmetric(
@@ -393,21 +392,19 @@ class _MapScreenState extends State<MapScreen>
                         Icon(
                           Icons.radar_outlined,
                           size: 18,
-                          color: Theme.of(context)
-                              .colorScheme
-                              .onPrimaryContainer,
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.onPrimaryContainer,
                         ),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
                             _scanBannerMessage!,
-                            style: Theme.of(context)
-                                .textTheme
-                                .bodySmall
+                            style: Theme.of(context).textTheme.bodySmall
                                 ?.copyWith(
-                                  color: Theme.of(context)
-                                      .colorScheme
-                                      .onPrimaryContainer,
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onPrimaryContainer,
                                 ),
                           ),
                         ),
@@ -422,10 +419,9 @@ class _MapScreenState extends State<MapScreen>
                 left: 16,
                 right: 16,
                 child: Material(
-                  color: Theme.of(context)
-                      .colorScheme
-                      .errorContainer
-                      .withValues(alpha: 0.92),
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.errorContainer.withValues(alpha: 0.92),
                   borderRadius: BorderRadius.circular(12),
                   child: Padding(
                     padding: const EdgeInsets.symmetric(
@@ -501,9 +497,7 @@ class _MapScreenState extends State<MapScreen>
                     ],
                     ChromeFab(
                       heroTag: 'admin_mode_toggle',
-                      tone: adminMode
-                          ? ChromeFabTone.warm
-                          : ChromeFabTone.grey,
+                      tone: adminMode ? ChromeFabTone.warm : ChromeFabTone.grey,
                       active: adminMode,
                       onPressed: auth.toggleAdminMode,
                       tooltip: adminMode
@@ -534,9 +528,7 @@ class _MapScreenState extends State<MapScreen>
                   left: 16,
                   right: 16,
                   child: Material(
-                    color: Theme.of(context)
-                        .colorScheme
-                        .surfaceContainerHighest
+                    color: Theme.of(context).colorScheme.surfaceContainerHighest
                         .withValues(alpha: 0.92),
                     borderRadius: BorderRadius.circular(12),
                     child: Padding(

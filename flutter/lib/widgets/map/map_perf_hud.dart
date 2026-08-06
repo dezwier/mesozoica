@@ -122,8 +122,7 @@ class _MapPerfHudState extends State<MapPerfHud> {
     final headingDelta = loc.headingNotifyCount - _prevHeadingNotify;
     final projectionDelta =
         MapPerfCounters.overlayProjections - _prevProjections;
-    final channelDelta =
-        MapPerfCounters.mapboxChannelCalls - _prevChannelCalls;
+    final channelDelta = MapPerfCounters.mapboxChannelCalls - _prevChannelCalls;
     _prevGpsCount = loc.gpsUpdateCount;
     _prevHeadingNotify = loc.headingNotifyCount;
     _prevProjections = MapPerfCounters.overlayProjections;
@@ -200,9 +199,7 @@ class _MapPerfHudState extends State<MapPerfHud> {
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
-                  children: [
-                    for (final line in lines) Text(line),
-                  ],
+                  children: [for (final line in lines) Text(line)],
                 );
               },
             ),

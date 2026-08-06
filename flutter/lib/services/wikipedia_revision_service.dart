@@ -5,7 +5,7 @@ import 'package:http/http.dart' as http;
 /// Looks up the Wikipedia revision id current as of [asOf].
 class WikipediaRevisionService {
   WikipediaRevisionService({http.Client? httpClient})
-      : _http = httpClient ?? http.Client();
+    : _http = httpClient ?? http.Client();
 
   final http.Client _http;
 
@@ -44,10 +44,7 @@ class WikipediaRevisionService {
 
     final response = await _http.get(
       uri,
-      headers: {
-        'User-Agent': _userAgent,
-        'Accept': 'application/json',
-      },
+      headers: {'User-Agent': _userAgent, 'Accept': 'application/json'},
     );
     if (response.statusCode < 200 || response.statusCode >= 300) {
       return null;

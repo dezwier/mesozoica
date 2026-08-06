@@ -5,7 +5,9 @@ import 'package:mesozoica/widgets/common/cover_flow_carousel.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  testWidgets('CoverFlowCarousel builds focused and side items', (tester) async {
+  testWidgets('CoverFlowCarousel builds focused and side items', (
+    tester,
+  ) async {
     final focused = <int>[];
     await tester.pumpWidget(
       MaterialApp(
@@ -34,8 +36,9 @@ void main() {
     expect(focused.contains(0), isTrue);
   });
 
-  testWidgets('CoverFlowCarousel onPageChanged fires after drag snap',
-      (tester) async {
+  testWidgets('CoverFlowCarousel onPageChanged fires after drag snap', (
+    tester,
+  ) async {
     final pages = <int>[];
     final key = GlobalKey<CoverFlowCarouselState>();
 
@@ -67,8 +70,9 @@ void main() {
     expect(find.text('card-2'), findsWidgets);
   });
 
-  testWidgets('CoverFlowCarousel animateToFirst returns to index 0',
-      (tester) async {
+  testWidgets('CoverFlowCarousel animateToFirst returns to index 0', (
+    tester,
+  ) async {
     final key = GlobalKey<CoverFlowCarouselState>();
 
     await tester.pumpWidget(
@@ -81,9 +85,7 @@ void main() {
               key: key,
               itemCount: 3,
               itemBuilder: (context, index, isFocused) {
-                return Text(
-                  isFocused ? 'focus-$index' : 'side-$index',
-                );
+                return Text(isFocused ? 'focus-$index' : 'side-$index');
               },
             ),
           ),

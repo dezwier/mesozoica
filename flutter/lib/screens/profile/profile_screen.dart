@@ -61,10 +61,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       final walk = context.read<WalkDistanceController>();
       walk.applyProfile(profile);
       unawaited(
-        walk.refresh(
-          profile: profile,
-          requestPermissionIfNeeded: true,
-        ),
+        walk.refresh(profile: profile, requestPermissionIfNeeded: true),
       );
     });
   }
@@ -80,8 +77,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       _showError('Please fill in all fields');
       return;
     }
-    final result =
-        await context.read<AuthController>().login(email, password);
+    final result = await context.read<AuthController>().login(email, password);
     if (result['success'] != true) {
       _showError(result['message'] as String? ?? 'Sign in failed');
     }
@@ -94,11 +90,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
     String? fullName,
   }) async {
     final result = await context.read<AuthController>().register(
-          username: username,
-          email: email,
-          password: password,
-          fullName: fullName,
-        );
+      username: username,
+      email: email,
+      password: password,
+      fullName: fullName,
+    );
     if (result['success'] != true) {
       _showError(result['message'] as String? ?? 'Registration failed');
     }
@@ -119,8 +115,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _showError('Google sign-in failed (no token).');
         return;
       }
-      final result =
-          await context.read<AuthController>().exchangeFirebaseToken(firebaseToken);
+      final result = await context.read<AuthController>().exchangeFirebaseToken(
+        firebaseToken,
+      );
       if (result['success'] != true) {
         final message = result['message'] as String? ?? 'Google sign-in failed';
         if (loginOnly && message.contains('not registered')) {
@@ -154,8 +151,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _showError('Apple sign-in failed (no token).');
         return;
       }
-      final result =
-          await context.read<AuthController>().exchangeFirebaseToken(firebaseToken);
+      final result = await context.read<AuthController>().exchangeFirebaseToken(
+        firebaseToken,
+      );
       if (result['success'] != true) {
         final message = result['message'] as String? ?? 'Apple sign-in failed';
         if (loginOnly && message.contains('not registered')) {
@@ -189,9 +187,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
       _showError('Enter your email first');
       return;
     }
-    final result = await context
-        .read<AuthController>()
-        .sendPasswordResetEmail(email);
+    final result = await context.read<AuthController>().sendPasswordResetEmail(
+      email,
+    );
     _showError(
       result['success'] == true
           ? (result['message'] as String? ?? 'Reset email sent')
@@ -223,19 +221,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) => DraggableSheetWrapper(
-        childBuilder: (scrollController) => CommunityDrawer(
-          scrollController: scrollController,
-        ),
+        childBuilder: (scrollController) =>
+            CommunityDrawer(scrollController: scrollController),
       ),
     );
   }
 
   Widget _buildActionRow(BuildContext context) {
     final color = Theme.of(context).colorScheme.primary;
-    final textStyle = Theme.of(context).textTheme.bodySmall?.copyWith(
-          color: color,
-          fontWeight: FontWeight.w500,
-        );
+    final textStyle = Theme.of(
+      context,
+    ).textTheme.bodySmall?.copyWith(color: color, fontWeight: FontWeight.w500);
 
     Widget button({
       required IconData icon,
@@ -272,11 +268,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           label: 'Community',
           onPressed: _showCommunity,
         ),
-        button(
-          icon: Icons.logout,
-          label: 'Logout',
-          onPressed: _handleLogout,
-        ),
+        button(icon: Icons.logout, label: 'Logout', onPressed: _handleLogout),
       ],
     );
   }
@@ -298,8 +290,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
             onLogin: _handleLogin,
             onForgotPassword: _handleForgotPassword,
             onSignInWithGoogle: _handleSignInWithGoogle,
-            onSignInWithApple:
-                AppConfig.enableAppleSignIn ? _handleSignInWithApple : null,
+            onSignInWithApple: AppConfig.enableAppleSignIn
+                ? _handleSignInWithApple
+                : null,
             onRegister: _handleRegister,
             onShowError: _showError,
           );
@@ -325,9 +318,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     16,
                     ShellOverlayPanel.contentBottomInset(context),
                   ),
-                  children: [
-                    ProfileContent(profile: profile),
-                  ],
+                  children: [ProfileContent(profile: profile)],
                 ),
               ),
             ),

@@ -18,8 +18,8 @@ class MainParamBuffCardExtension extends ToolCardExtension {
 
   @override
   List<String> editableParamKeys(ToolSummary tool) => const [
-        'duration_minutes',
-      ];
+    'duration_minutes',
+  ];
 
   @override
   Widget? buildDeployStats(BuildContext context, ToolSummary tool) {

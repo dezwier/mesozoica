@@ -31,17 +31,14 @@ class WalkDistanceController extends ChangeNotifier {
     HealthDistanceService? healthService,
     ApiClient? apiClient,
     GpsOdometer? odometer,
-  })  : _health = healthService ?? HealthDistanceService(),
-        _api = apiClient ?? ApiClient.instance,
-        _odometer = odometer ??
-            GpsOdometer(
-              maxSpeedMps: _maxDiscoverySpeedMps(),
-            );
+  }) : _health = healthService ?? HealthDistanceService(),
+       _api = apiClient ?? ApiClient.instance,
+       _odometer =
+           odometer ?? GpsOdometer(maxSpeedMps: _maxDiscoverySpeedMps());
 
   static double _maxDiscoverySpeedMps() {
     try {
-      final kmh =
-          GameConfig.instance.siteDiscovery.discoveryMaxSpeedKmh;
+      final kmh = GameConfig.instance.siteDiscovery.discoveryMaxSpeedKmh;
       return kmh * 1000.0 / 3600.0;
     } catch (_) {
       return 5.56; // 20 km/h fallback before GameConfig.load
@@ -61,13 +58,14 @@ class WalkDistanceController extends ChangeNotifier {
   static const _keyTotal = '${_prefsPrefix}_total_m';
   static const _keyWeekly = '${_prefsPrefix}_weekly_m';
   static const _keyWeekStart = '${_prefsPrefix}_week_start';
+
   /// Legacy gap stamp; migrated once into [_keyLastHealthAt].
   static const _keyClosedSince = '${_prefsPrefix}_closed_since';
   static const _keyLastHealthAt = '${_prefsPrefix}_last_health_at';
-  static const _keyActiveAtLastHealth =
-      '${_prefsPrefix}_active_at_last_health';
+  static const _keyActiveAtLastHealth = '${_prefsPrefix}_active_at_last_health';
   static const _keyBootstrapped = '${_prefsPrefix}_bootstrapped';
   static const _keyMode = '${_prefsPrefix}_mode_v3';
+
   /// Bumped when weekly seeding logic changes; triggers a one-time weekly reset.
   static const _keyWeeklySchema = '${_prefsPrefix}_weekly_schema';
   static const _weeklySchemaVersion = 1;
@@ -89,6 +87,7 @@ class WalkDistanceController extends ChangeNotifier {
   VoidCallback? _locationListener;
   Future<void> Function(Profile profile)? _onProfileUpdated;
   bool _loaded = false;
+
   /// After a one-time weekly schema heal, push reset_weekly on the next sync.
   bool _pendingWeeklyReset = false;
 
@@ -109,12 +108,15 @@ class WalkDistanceController extends ChangeNotifier {
   bool _loading = false;
   String? _error;
   Future<void>? _inFlightRefresh;
+
   /// Meters credited from Health on the most recent reconcile (consumed once
   /// by the profile-update callback for the visit XP badge).
   double? _pendingVisitGapMeters;
+
   /// Set when backgrounded while GPS is still covering distance (Explore in
   /// background). In-memory only — skip Health on same-process resume.
   bool _gpsCoveringClosedGap = false;
+
   /// When true, this resume/refresh should not run Health reconcile.
   bool _skipHealthReconcile = false;
 
@@ -219,10 +221,7 @@ class WalkDistanceController extends ChangeNotifier {
       // Cold start with BG explore enabled: GPS was not covering after kill.
       _skipHealthReconcile = false;
     }
-    await refresh(
-      profile: profile,
-      requestPermissionIfNeeded: false,
-    );
+    await refresh(profile: profile, requestPermissionIfNeeded: false);
   }
 
   Future<void> refresh({
@@ -263,8 +262,8 @@ class WalkDistanceController extends ChangeNotifier {
         status = granted
             ? HealthDistancePermission.granted
             : (status == HealthDistancePermission.unavailable
-                ? status
-                : HealthDistancePermission.denied);
+                  ? status
+                  : HealthDistancePermission.denied);
       }
       _permission = status;
 
@@ -457,10 +456,7 @@ class WalkDistanceController extends ChangeNotifier {
     await prefs.setBool(_keyBootstrapped, _bootstrappedFromHealth);
     await prefs.setDouble(_keyActiveAtLastHealth, _activeAtLastHealth);
     if (_lastHealthAt != null) {
-      await prefs.setString(
-        _keyLastHealthAt,
-        _lastHealthAt!.toIso8601String(),
-      );
+      await prefs.setString(_keyLastHealthAt, _lastHealthAt!.toIso8601String());
     } else {
       await prefs.remove(_keyLastHealthAt);
     }
@@ -494,8 +490,8 @@ class WalkDistanceController extends ChangeNotifier {
       final serverTotal = (response['total_distance_m'] as num?)?.toDouble();
       final serverWeekly = (response['weekly_distance_m'] as num?)?.toDouble();
       final serverActive = (response['active_distance_m'] as num?)?.toDouble();
-      final serverActiveWeekly =
-          (response['active_weekly_distance_m'] as num?)?.toDouble();
+      final serverActiveWeekly = (response['active_weekly_distance_m'] as num?)
+          ?.toDouble();
       if (serverTotal != null) _totalMeters = serverTotal;
       if (serverWeekly != null) _weeklyMeters = serverWeekly;
       if (serverActive != null) _activeMeters = serverActive;

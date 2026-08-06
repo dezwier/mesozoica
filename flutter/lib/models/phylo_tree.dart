@@ -9,8 +9,8 @@ class PhyloTreeNode {
     required this.depth,
     List<DinosaurSummary>? dinosaurs,
     List<PhyloTreeNode>? children,
-  })  : dinosaurs = dinosaurs ?? [],
-        children = children ?? [];
+  }) : dinosaurs = dinosaurs ?? [],
+       children = children ?? [];
 
   final String name;
   final String rankKey;

@@ -48,14 +48,17 @@ class AerialFlightStats extends StatelessWidget {
       key: key,
       flightSpeedKmh: speed,
       durationMinutes: duration,
-      discoveryChance: (params['flight_discovery_chance'] as num?)?.toDouble() ??
+      discoveryChance:
+          (params['flight_discovery_chance'] as num?)?.toDouble() ??
           (params['discovery_chance'] as num?)?.toDouble() ??
           0,
       discoveryDistanceM:
           (params['flight_discovery_distance_m'] as num?)?.toDouble() ??
-              (params['discovery_distance_m'] as num?)?.toDouble() ??
-              0,
-      explanation: includeExplanation ? params['stats_explanation'] as String? : null,
+          (params['discovery_distance_m'] as num?)?.toDouble() ??
+          0,
+      explanation: includeExplanation
+          ? params['stats_explanation'] as String?
+          : null,
       compact: compact,
     );
   }
@@ -107,10 +110,9 @@ class AerialFlightStats extends StatelessWidget {
     }
 
     final cardTheme = DinoCardTheme.of(context);
-    final mutedStyle = cardTheme.bodyStyle(fontSize: 11).copyWith(
-          color: cardTheme.cardTextMuted,
-          height: 1.3,
-        );
+    final mutedStyle = cardTheme
+        .bodyStyle(fontSize: 11)
+        .copyWith(color: cardTheme.cardTextMuted, height: 1.3);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -179,10 +181,7 @@ class AerialFlightStats extends StatelessWidget {
 
 /// Session summary: Length · Duration · Left/Ended · Sites (labeled, 4 per row).
 class AerialSessionSummaryLine extends StatelessWidget {
-  const AerialSessionSummaryLine({
-    super.key,
-    required this.session,
-  });
+  const AerialSessionSummaryLine({super.key, required this.session});
 
   final ToolSession session;
 
@@ -197,10 +196,7 @@ class AerialSessionSummaryLine extends StatelessWidget {
         ),
         ToolStatPair('Duration', _durationValue(session)),
         ToolStatPair(time.label, time.value),
-        ToolStatPair(
-          'Sites found',
-          '${session.discoveredSiteCount}',
-        ),
+        ToolStatPair('Sites found', '${session.discoveredSiteCount}'),
       ],
     );
   }
@@ -254,10 +250,9 @@ class AerialFlightStatRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final cardTheme = DinoCardTheme.of(context);
     final labelStyle = cardTheme.sectionLabelStyle(fontSize: 7);
-    final valueStyle = cardTheme.bodyStyle(fontSize: 11).copyWith(
-          fontWeight: FontWeight.w600,
-          height: 1.15,
-        );
+    final valueStyle = cardTheme
+        .bodyStyle(fontSize: 11)
+        .copyWith(fontWeight: FontWeight.w600, height: 1.15);
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
