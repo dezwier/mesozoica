@@ -62,6 +62,7 @@ class SiteExplorationController extends ChangeNotifier {
   Timer? _tickTimer;
   bool _syncInFlight = false;
   bool _appForeground = true;
+  bool _awaitingResumeFix = false;
   bool _loaded = false;
 
   /// FIFO of documentation celebrations (keeps each site separate).
@@ -196,6 +197,17 @@ class SiteExplorationController extends ChangeNotifier {
   @visibleForTesting
   Future<void> debugSync() => _syncToBackend(force: true);
 
+  @visibleForTesting
+  void debugSetVerifiedFix(Position position, DateTime at) {
+    _lastVerifiedPosition = position;
+    _lastVerifiedAt = at;
+  }
+
+  @visibleForTesting
+  Future<void> debugHandleFreshFix(Position position) {
+    return _processFreshFix(position, _now(), sync: false);
+  }
+
   Future<void> bind(
     LocationService location, {
     required List<SiteSummary> Function() discoveredSitesProvider,
@@ -294,19 +306,22 @@ class SiteExplorationController extends ChangeNotifier {
   }
 
   void onAppResumed() {
+    final wasBackgrounded = !_appForeground;
     _appForeground = true;
     _lastTickAt = _now();
-    _lastVerifiedAt = _lastTickAt;
-    _lastVerifiedPosition = _location?.lastPosition;
-    _lastHandledLocationFixAt = _location?.lastPositionAt;
+    // Preserve the background-entry/last-background fix until GPS publishes a
+    // fresh resume fix. If both endpoints are in range, that entire in-memory
+    // interval remains eligible. Process termination naturally drops it.
+    if (wasBackgrounded) _awaitingResumeFix = true;
     _refreshSitesInRange(_location?.lastPosition);
   }
 
   Future<void> onAppBackgrounded() async {
     _appForeground = false;
+    _awaitingResumeFix = false;
     _lastTickAt = _now();
     _lastVerifiedAt = _lastTickAt;
-    _lastVerifiedPosition = _location?.lastPosition;
+    _lastVerifiedPosition = _location?.lastPosition ?? _lastVerifiedPosition;
     await _syncToBackend(force: true);
   }
 
@@ -402,25 +417,39 @@ class SiteExplorationController extends ChangeNotifier {
       return;
     }
     _lastHandledLocationFixAt = fixAt;
-    final now = _now();
-    if (!_appForeground && location.isBackgroundExploring) {
-      final previousAt = _lastVerifiedAt;
-      final previousPosition = _lastVerifiedPosition;
+    unawaited(_processFreshFix(position, _now()));
+  }
+
+  Future<void> _processFreshFix(
+    Position position,
+    DateTime now, {
+    bool sync = true,
+  }) async {
+    final shouldCreditInterval =
+        (!_appForeground && (_location?.isBackgroundExploring ?? false)) ||
+        (_appForeground && _awaitingResumeFix);
+    final previousAt = _lastVerifiedAt;
+    final previousPosition = _lastVerifiedPosition;
+    final finishingResume = _appForeground && _awaitingResumeFix;
+    _lastVerifiedAt = now;
+    _lastVerifiedPosition = position;
+    if (finishingResume) {
+      _awaitingResumeFix = false;
+      _lastTickAt = now;
+    }
+    _refreshSitesInRange(position);
+    if (shouldCreditInterval) {
       if (previousAt != null &&
           previousPosition != null &&
           now.isAfter(previousAt)) {
-        unawaited(
-          _creditElapsed(
-            position,
-            now.difference(previousAt),
-            startPosition: previousPosition,
-          ),
+        await _creditElapsed(
+          position,
+          now.difference(previousAt),
+          startPosition: previousPosition,
+          sync: sync,
         );
       }
     }
-    _lastVerifiedAt = now;
-    _lastVerifiedPosition = position;
-    _refreshSitesInRange(position);
   }
 
   Future<void> _onTick() async {

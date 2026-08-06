@@ -124,6 +124,29 @@ void main() {
   });
 
   test(
+    'resume credits time spent backgrounded when both fixes are in range',
+    () async {
+      final site = _site(1, 50, 4);
+      var now = DateTime.utc(2026, 8, 6, 12);
+      final controller = SiteExplorationController(now: () => now);
+      controller.updateSiteVisibilityM(50);
+      controller.updateDiscoverySpeed(0.01);
+      await controller.debugInitializeForTest(
+        discoveredSitesProvider: () => [site],
+      );
+      controller.debugSetVerifiedFix(_position(50, 4), now);
+
+      await controller.onAppBackgrounded();
+      now = now.add(const Duration(seconds: 12));
+      controller.onAppResumed();
+      await controller.debugHandleFreshFix(_position(50.00001, 4.00001));
+
+      expect(controller.documentationProgressFor(1), closeTo(0.12, 1e-9));
+      controller.dispose();
+    },
+  );
+
+  test(
     'sync sends progress contract and queues completion celebration',
     () async {
       final site = _site(1, 50, 4);
