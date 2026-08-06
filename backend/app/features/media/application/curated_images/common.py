@@ -16,7 +16,17 @@ from app.core.config import settings
 
 ALLOWED_IMAGE_EXTENSIONS = frozenset({".webp", ".jpg", ".jpeg", ".png"})
 DEFAULT_PRODUCTION_BASE_URL = "https://mesozoica-production.up.railway.app"
-_BACKEND_DIR = Path(__file__).resolve().parents[3]
+
+
+def _resolve_backend_dir() -> Path:
+    """Directory that contains ``app/`` (repo ``backend/``), robust to file moves."""
+    for parent in Path(__file__).resolve().parents:
+        if (parent / "app" / "core" / "config.py").is_file():
+            return parent
+    raise RuntimeError("Could not locate backend directory from curated_images.common")
+
+
+_BACKEND_DIR = _resolve_backend_dir()
 
 # Pre-images/ volume layouts kept for Railway volumes that were never migrated.
 _LEGACY_DATA_SUBDIRS = {

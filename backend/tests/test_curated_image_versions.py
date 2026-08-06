@@ -11,6 +11,7 @@ from app.services.curated_image_service.versions import (
     BACKFILL_RUN_DATE,
     ORIGINAL_VERSION,
     SUMMER_26_VERSION,
+    AUGUST_2026_VERSION,
     bundled_version_meta_dir,
     ensure_version_meta,
     latest_site_type_image_version,
@@ -122,9 +123,9 @@ def test_latest_version_by_run_date(tmp_path: Path):
 
 
 def test_latest_version_name_with_bundled_when_storage_empty(tmp_path: Path):
-    """Workers without a curated-image volume still resolve Summer 26."""
+    """Workers without a curated-image volume still resolve August 2026."""
     empty = tmp_path / "missing-volume"
-    assert latest_version_name_with_bundled(empty, kind="site-types") == SUMMER_26_VERSION
+    assert latest_version_name_with_bundled(empty, kind="site-types") == AUGUST_2026_VERSION
 
 
 def test_bundled_site_type_run_dates_match_images_repo():
@@ -150,8 +151,8 @@ def test_bundled_site_type_run_dates_match_images_repo():
         assert str(dest.get("run_date")) == str(src.get("run_date"))
 
 
-def test_latest_site_type_image_version_prefers_summer_26():
-    assert latest_site_type_image_version() == SUMMER_26_VERSION
+def test_latest_site_type_image_version_prefers_august_2026():
+    assert latest_site_type_image_version() == AUGUST_2026_VERSION
 
 
 def test_resolve_versioned_image_path_by_name(tmp_path: Path):

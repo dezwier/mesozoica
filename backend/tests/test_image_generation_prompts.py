@@ -226,6 +226,8 @@ def test_build_site_type_image_prompt_includes_period_context_for_triassic():
     assert "claystone" in prompt
     assert "Triassic" in prompt
     assert "252" in prompt or "201" in prompt
+    assert "conifers" in prompt.lower() or "ferns" in prompt.lower()
+    assert "flowering plants" in prompt.lower() or "grasses" in prompt.lower()
 
 
 def test_build_tool_image_prompt_includes_full_record_and_style():

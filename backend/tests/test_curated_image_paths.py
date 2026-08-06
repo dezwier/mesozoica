@@ -223,6 +223,14 @@ def test_resolve_dino_source_ignores_server_storage_path(monkeypatch, tmp_path: 
     assert resolve_dino_source() == repo_images.resolve()
 
 
+def test_resolve_site_type_source_defaults_to_repo_images(monkeypatch):
+    """Generation writes into repo images/site-types, not backend/app/images."""
+    monkeypatch.delenv("SITE_TYPE_IMAGES_SOURCE_DIR", raising=False)
+    path = resolve_site_type_source()
+    repo_root = Path(__file__).resolve().parents[2]
+    assert path == (repo_root / "images" / "site-types").resolve()
+
+
 def test_resolve_site_type_source_uses_repo_subdir(monkeypatch, tmp_path: Path):
     repo_images = tmp_path / "images" / "site-types"
     repo_images.mkdir(parents=True)

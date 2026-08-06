@@ -23,6 +23,7 @@ logger = logging.getLogger(__name__)
 META_FILENAME = "meta.yaml"
 ORIGINAL_VERSION = "Original"
 SUMMER_26_VERSION = "Summer 26"
+AUGUST_2026_VERSION = "August 2026"
 BACKFILL_RUN_DATE = datetime(2026, 7, 29, 0, 0, 0, tzinfo=timezone.utc)
 
 # Legacy numeric folder names from before named versions.
@@ -576,6 +577,7 @@ def load_image_versions_cached(root: Path) -> list[ImageVersionInfo]:
 __all__ = [
     "ORIGINAL_VERSION",
     "SUMMER_26_VERSION",
+    "AUGUST_2026_VERSION",
     "BACKFILL_RUN_DATE",
     "META_FILENAME",
     "ImageVersionInfo",

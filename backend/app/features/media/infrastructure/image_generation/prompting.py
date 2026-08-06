@@ -54,16 +54,27 @@ _LLM_COMPLETENESS_GUIDANCE: dict[str, str] = {
 
 _PERIOD_CONTEXT: dict[str, str] = {
     "triassic": (
-        "Triassic period (~252–201 million years ago): arid to semi-arid early Mesozoic "
-        "landscapes, sparse conifers and ferns, red beds and evaporites common."
+        "Triassic period (~252–201 million years ago): early Mesozoic, often arid to "
+        "semi-arid with seasonal rains and open horizons. Period-true flora only: "
+        "sparse conifers (Voltzia-like), seed ferns, horsetails, cycadophytes, and "
+        "lycopsids — never dense modern forests, flowering plants, or grasses. "
+        "Red beds, playas, and evaporite-prone basins are common; light can be harsh "
+        "and open."
     ),
     "jurassic": (
-        "Jurassic period (~201–145 million years ago): warm humid climates, lush conifers "
-        "and cycads, coastal plains and shallow inland seas."
+        "Jurassic period (~201–145 million years ago): warm, often humid climates with "
+        "coastal plains, river floodplains, and shallow inland seas nearby. Lush "
+        "Mesozoic flora: tall conifers (Araucaria-like), cycads, bennettitaleans, "
+        "ginkgoes, ferns and tree ferns — no grasses, no modern broadleaf hardwood "
+        "forests. Atmosphere can feel wetter and greener than the Triassic."
     ),
     "cretaceous": (
-        "Cretaceous period (~145–66 million years ago): varied Mesozoic landscapes, "
-        "angiosperms emerging, chalk, sandstone, and claystone formations common."
+        "Cretaceous period (~145–66 million years ago): diverse climates from humid "
+        "coasts to seasonal interiors. Flora may mix early flowering plants "
+        "(angiosperms) with conifers, cycads, ferns, and ginkgoes — still no true "
+        "grasses as lawn-like groundcover. Landscapes vary: chalky coasts, sandstone "
+        "badlands, claystone slopes; vegetation should feel period-specific, not "
+        "modern parkland."
     ),
 }
 
