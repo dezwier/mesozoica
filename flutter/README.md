@@ -2,6 +2,11 @@
 
 Location-based paleontology game (Flutter + FastAPI).
 
+For repository-wide onboarding, architecture, domain flows, contracts, and
+testing, start at [`../AGENTS.md`](../AGENTS.md) and
+[`../docs/README.md`](../docs/README.md). This file is the canonical Flutter
+platform and Mapbox setup reference.
+
 ## Mapbox (field map)
 
 The main map tab uses **Mapbox Standard** for both modes:

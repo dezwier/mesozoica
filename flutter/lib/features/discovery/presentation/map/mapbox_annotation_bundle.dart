@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 
 import '../../../../widgets/map/mapbox_aerial_annotations.dart';
@@ -32,19 +33,33 @@ class MapboxAnnotationBundle {
       selectionDotManager: selectionDotManager,
     );
 
-    final lineManager = await map.annotations.createPolylineAnnotationManager();
-    final scoutManager = await map.annotations.createPointAnnotationManager();
-    final nextAerial = MapboxAerialAnnotations();
-    await nextAerial.attach(
-      lineManager: lineManager,
-      scoutManager: scoutManager,
-      onScoutTap: onScoutTap,
-    );
-
+    // Site markers are the primary map layer. Publish them as soon as their
+    // managers are ready so an optional expedition-overlay failure cannot
+    // leave a populated map with no site markers.
     site?.dispose();
-    aerial?.dispose();
     site = nextSite;
-    aerial = nextAerial;
+
+    try {
+      final lineManager = await map.annotations
+          .createPolylineAnnotationManager();
+      final scoutManager = await map.annotations.createPointAnnotationManager();
+      final nextAerial = MapboxAerialAnnotations();
+      await nextAerial.attach(
+        lineManager: lineManager,
+        scoutManager: scoutManager,
+        onScoutTap: onScoutTap,
+      );
+      aerial?.dispose();
+      aerial = nextAerial;
+    } catch (error, stack) {
+      // Aerial recon is optional. Keep the successfully attached site layer
+      // alive and let the map continue through gesture setup and marker sync.
+      aerial?.dispose();
+      aerial = null;
+      if (kDebugMode) {
+        debugPrint('Mapbox aerial annotation setup failed: $error\n$stack');
+      }
+    }
   }
 
   void dispose() {

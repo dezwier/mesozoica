@@ -11,6 +11,7 @@ import 'config/map_config.dart';
 import 'controllers/catalog_mode_controller.dart';
 import 'controllers/theme_controller.dart';
 import 'core/di/app_providers.dart';
+import 'core/networking/token_storage.dart';
 import 'features/game_config/data/game_config_asset_loader.dart';
 import 'firebase_options.dart';
 import 'services/map_tile_cache.dart';
@@ -26,6 +27,7 @@ Future<void> main() async {
   // Use the native-picked splash dinosaur so system + Flutter match.
   await AppSplashScreen.prepare();
   await GameConfigAssetLoader.load();
+  await TokenStorage.reloadToken();
   await _configureMapboxAccessToken();
   try {
     await Firebase.initializeApp(

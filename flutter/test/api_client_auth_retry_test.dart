@@ -13,12 +13,31 @@ void main() {
 
   setUp(() async {
     SharedPreferences.setMockInitialValues({'auth_token': 'stale-token'});
+    await TokenStorage.reloadToken();
     previousCallback = ApiClient.instance.onUnauthorized;
   });
 
   tearDown(() {
     ApiClient.instance.onUnauthorized = previousCallback;
   });
+
+  test(
+    'sendGet adds stored auth when caller supplies no auth header',
+    () async {
+      final client = MockClient((request) async {
+        expect(request.headers['Authorization'], 'Bearer stale-token');
+        return http.Response('{"ok":true}', 200);
+      });
+
+      final response = await ApiClient.instance.sendGet(
+        Uri.parse('https://example.test/api/v1/tools/image-versions'),
+        client: client,
+        headers: const {},
+      );
+
+      expect(response.statusCode, 200);
+    },
+  );
 
   test('sendGet refreshes token and retries once on 401', () async {
     var calls = 0;

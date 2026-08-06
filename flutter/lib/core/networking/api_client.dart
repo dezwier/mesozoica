@@ -217,10 +217,10 @@ class ApiClient implements ApiTransport {
     Map<String, String>? headers,
   ) async {
     final merged = <String, String>{...?headers};
-    final token = await TokenStorage.loadToken();
+    final token = TokenStorage.cachedToken;
     if (token != null && token.isNotEmpty) {
       merged['Authorization'] = 'Bearer $token';
-    } else {
+    } else if (!merged.containsKey('Authorization')) {
       merged.remove('Authorization');
     }
     return merged;
@@ -253,7 +253,13 @@ class ApiClient implements ApiTransport {
     required Duration? timeout,
     required Future<http.Response> Function(Map<String, String>? headers) send,
   }) async {
-    var response = await send(headers);
+    // Raw repository calls commonly supply only content headers. Authentication
+    // belongs to the transport, so merge the stored token on the first request
+    // as well as after a refresh. Missing auth is a 403 in the backend and
+    // therefore cannot rely on the 401 refresh path to repair the request.
+    var response = await send(
+      skipAuth ? headers : await _mergeAuthHeader(headers),
+    );
     if (response.statusCode == 401 && !skipAuth && await _tryRefreshToken()) {
       response = await send(await _mergeAuthHeader(headers));
     }

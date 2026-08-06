@@ -19,7 +19,7 @@ Image **generation** writes local PNGs to repo folders; **image sync** (`make sy
 | `site_type_image_generate` | `0 8 * * 0` (Sun 08:00) | Generate site-type card images via Gemini Imagen |
 | `site_sync` | `0 9 * * 0` (Sun 09:00) | Rebuild `site` derived table and link `fossil.site_id` |
 | `site_type_sync` | `30 9 * * 0` (Sun 09:30) | Upsert `site_type` rows and assign `site.site_type_id` (no deletes) |
-| `tool_sync` | `0 10 * * 0` (Sun 10:00) | Upsert tool catalog from [`backend/data/tools.json`](../data/tools.json) |
+| `tool_sync` | `0 10 * * 0` (Sun 10:00) | Upsert tool catalog from [`backend/data/tools.json`](../../data/tools.json) |
 | `tool_image_generate` | `30 10 * * 0` (Sun 10:30) | Generate tool card images via Gemini Imagen |
 | `weather_sync` | `*/15 * * * *` | Upsert Open-Meteo 15-minute past+forecast into `weather` for active cells |
 
@@ -195,7 +195,7 @@ Enrichment selects any `dinosaur_type_revision` with an article and `llm_enriche
 
 ### `tool_sync` behavior
 
-- Source of truth: [`backend/data/tools.json`](../data/tools.json).
+- Source of truth: [`backend/data/tools.json`](../../data/tools.json).
 - Upserts by branded `name`; updates `category`, `scientific_tool`, `description`, `rarity`.
 - Preserves existing `main_image_url` on update.
 - **`--prune`**: removes DB rows not present in JSON (off by default).

@@ -35,7 +35,7 @@ Sites are committed in batches of **25** (`WRITE_BATCH_SIZE`) *during* generatio
 
 ## Deploy
 
-1. Add a Railway service pointing at [`railway.worker.toml`](../railway.worker.toml).
+1. Add a Railway service pointing at [`railway.worker.toml`](../../railway.worker.toml).
 2. Share the same `DATABASE_URL` as the API service.
 3. Mount a volume at `/data` on **field-generate** and set `FIELD_COORDINATE_DATA_DIR=/data`.
 4. Set `OSM_SIMPLIFY_TOLERANCE=0.0001` and allocate **4 GB RAM**.

@@ -1,137 +1,102 @@
 # Mesozoica
 
-Location-based paleontology game — FastAPI backend + Flutter client monorepo.
+Mesozoica is a location-based paleontology game—Pokémon GO meets a scientifically grounded natural-history collection. The monorepo contains a FastAPI/SQLModel/PostgreSQL backend and a Flutter client, plus ingestion, media, scheduled-job, and field-generation tooling.
+
+## Start here
+
+- Coding agents: [`AGENTS.md`](AGENTS.md)
+- Documentation index: [`docs/README.md`](docs/README.md)
+- Domain and gameplay vocabulary: [`docs/DOMAIN.md`](docs/DOMAIN.md)
+- Architecture and boundaries: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
+- Development setup: [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md)
+- Production operations: [`docs/OPERATIONS.md`](docs/OPERATIONS.md)
+- Product direction: [`docs/PRODUCT.md`](docs/PRODUCT.md)
 
 ## Repository layout
 
-```
-mesozoica/
-├── backend/                 # FastAPI + SQLModel + PostgreSQL (Railway)
-│   ├── app/
-│   │   ├── features/        # Feature-owned API/application/domain/infrastructure
-│   │   ├── core/            # App, DB/session, security, settings, errors
-│   │   ├── shared/          # Deliberate cross-feature value primitives
-│   │   ├── api/v1/          # Transitional route compatibility exports
-│   │   ├── services/        # Transitional import compatibility exports
-│   │   ├── crons/           # Thin scheduled-job entrypoints
-│   │   ├── workers/         # Thin worker entrypoints
-│   │   └── game_config/     # Shared YAML game mechanics
-│   ├── alembic/             # DB migrations
-│   └── tests/
-├── flutter/                 # Flutter app (iOS, Android, web/desktop targets)
-│   └── lib/
-│       ├── features/        # Feature data/domain/presentation packages
-│       ├── core/            # Networking, persistence, DI, routing primitives
-│       ├── shell/           # Root navigation and overlay hosting
-│       └── controllers|services|models|widgets/ # Transitional exports/UI
-├── images/                  # Curated card / user images (v1/v2 dirs)
-├── prd.md                   # Product requirements
-├── Makefile                 # Dev / test / cron entrypoints
-└── railway.toml             # Monorepo deploy (backend root)
+```text
+backend/                 FastAPI API, feature modules, Alembic, jobs, workers, tests
+  app/features/          Feature-owned API/application/domain/infrastructure code
+  app/core/              App, settings, DB/session, security, shared errors
+  app/shared/            Deliberate cross-feature value primitives
+  app/game_config/       Canonical YAML gameplay control board
+flutter/                 Flutter application and tests
+  lib/features/          Feature data/domain/presentation packages
+  lib/core/              Transport, auth/session, persistence, DI, routing primitives
+  lib/shell/             Root navigation and overlays
+images/                  Versioned curated media source files
+docs/                    Engineering, contract, testing, and operations handbook
+Makefile                 Supported development and operational entrypoints
+railway.toml             Monorepo Railway service root
 ```
 
-**Shared game config:** YAML under [`backend/app/game_config/`](backend/app/game_config/) is linked into Flutter assets. Typed document parsers live in each side's `features/game_config` package; compatibility facades preserve the old access API.
+The system is a feature-first modular monolith. Backend features communicate through `public.py`; Flutter features use explicit public barrels. Import rules are checked automatically.
 
-## Architecture notes
+## Quick setup
 
-The enforceable dependency rules and compatibility contracts live in
-[`ARCHITECTURE.md`](ARCHITECTURE.md). Run `make architecture-check` when moving
-code between features.
-
-- Backend features expose cross-feature capabilities only through `public.py`.
-- Backend dependency direction is `api/entrypoint → application → domain`; providers and SQL adapters live under infrastructure.
-- Flutter dependency direction is `presentation → domain`; data repositories implement domain-facing contracts and share one injected API transport.
-- Compatibility modules preserve internal import paths for scripts and tests, but new consumers must use feature surfaces.
-
-## Local development
-
-There is **no local database**. The API can run on your machine for debugging, but **cron jobs always run on Railway** (scheduled service or `make run-*` via `railway run`).
-
-### Backend API (optional local)
-
-Python 3.10 or newer is required. The Make targets reject an existing
-`backend/.venv` created with an older interpreter instead of silently reusing
-it; recreate that environment with a supported Python when prompted.
+Requirements: Python 3.10+, a Flutter toolchain compatible with Dart `^3.10.4`, and a `DATABASE_URL` to start the API. Tests do not require a live database.
 
 ```bash
 make backend-install
 cp backend/.env.example backend/.env
-# Set DATABASE_URL to Railway Postgres public URL (*.proxy.rlwy.net) if testing API locally
+# Configure DATABASE_URL before starting FastAPI.
+
+cd flutter && flutter pub get
+cd ..
+```
+
+Run the backend:
+
+```bash
 make run-backend
 ```
 
-API docs: http://localhost:8000/docs  
-Health: http://localhost:8000/health
-
-### Cron jobs (Railway only)
-
-Install the [Railway CLI](https://docs.railway.app/develop/cli) and link your project:
+Run Flutter against the deployed API:
 
 ```bash
-cd backend && railway link
-```
-
-Run jobs against **Railway Postgres** (uses the linked service's `DATABASE_URL` and secrets):
-
-```bash
-make run-dinosaur-wiki-sync                        # weekly Wikipedia ingest
-make run-dinosaur-wiki-sync CRON_EXTRA='--overwrite' # force re-fetch all
-make run-dinosaur-llm-enrich                         # LLM enrichment
-make run-dinosaur-llm-enrich CRON_EXTRA='--overwrite'
-```
-
-Do **not** run `python -m app.crons.runner` directly — it is blocked unless executed on Railway or via `make run-*`.
-
-**Scheduled runs:** deploy a Railway **cron service** with config [`backend/railway.cron.toml`](backend/railway.cron.toml) (`cronSchedule = "0 * * * *"`). Jobs in [`backend/app/crons/crons.yaml`](backend/app/crons/crons.yaml) fire weekly (UTC).
-
-**Field ensure worker:** long-running process via [`backend/railway.worker.toml`](backend/railway.worker.toml) (`app.workers.field_ensure_worker`).
-
-Set on Railway (**backend**, **cron**, and **worker** services): `DATABASE_URL`, `SECRET_KEY`, `WIKIPEDIA_USER_AGENT`, `GOOGLE_GEMINI_API_KEY`, etc.
-
-### Flutter
-
-```bash
-cd flutter && flutter pub get
 make run-flutter
 ```
 
-By default the app uses the deployed Railway API (`https://mesozoica-production.up.railway.app`). For local backend dev:
+Run Flutter against the local backend:
 
 ```bash
-# iOS Simulator / macOS
+cd flutter
 flutter run --dart-define=USE_LOCAL_API=true
-
-# Android Emulator
-flutter run --dart-define=USE_LOCAL_API=true --dart-define=API_BASE_URL=http://10.0.2.2:8000
 ```
 
-### Tests
+Use `--dart-define=API_BASE_URL=http://10.0.2.2:8000` for an Android emulator or any explicit API override. Mapbox platform setup is documented in [`flutter/README.md`](flutter/README.md).
+
+## Quality
 
 ```bash
-make test-all
-# or separately:
+make quality                 # architecture, docs, backend, analyzer, Flutter tests
 make backend-test
-make flutter-analyze
 make flutter-test
-
-# Full structural quality gate:
-make quality
+make flutter-analyze
+make architecture-check
+make architecture-report
+make docs-check
 ```
 
-## Railway deployment
+See [`docs/TESTING.md`](docs/TESTING.md) for focused commands and the verification matrix.
 
-1. Create a Railway project and add a **PostgreSQL** database.
-2. Add a **backend** service with root directory `backend`.
-3. Link `DATABASE_URL` from the Postgres service to the backend service.
-4. Set service variables:
-   - `SECRET_KEY` — random secret for signing tokens
-   - `ENVIRONMENT=production`
-   - `CORS_ORIGINS` — comma-separated allowed origins (no `*` in production)
-5. Optionally add **cron** and **worker** services using `backend/railway.cron.toml` and `backend/railway.worker.toml`.
-6. Deploy. Railway runs migrations then starts uvicorn via the Dockerfile.
+## Runtime and deployment
 
-The root [`railway.toml`](railway.toml) declares the backend service root for monorepo deploys.
+Production runs on Railway as separate API, cron, worker, and PostgreSQL services. Curated media and coordinate masks use a mounted `/data` volume. API container startup applies Alembic migrations before uvicorn.
 
-## Status
+Cron jobs and most maintenance commands act on Railway data. Do not run them casually. Read these first:
 
-Full domain app: SQLModel models + Alembic migrations, field generation, tool actions (aerial / guidance / formation), catalogs, auth, and Flutter map/game screens. See [`prd.md`](prd.md) for product vision and checklist.
+- [`docs/OPERATIONS.md`](docs/OPERATIONS.md)
+- [`backend/app/crons/README.md`](backend/app/crons/README.md)
+- [`backend/app/workers/README.md`](backend/app/workers/README.md)
+- [`backend/scripts/README.md`](backend/scripts/README.md)
+
+## Key contracts
+
+Structural work must preserve HTTP/OpenAPI behavior, SQLModel metadata and Alembic history, YAML configuration meaning, Flutter model/repository semantics, navigation, visuals, map rendering rules, caching, polling, retry timing, and user-visible behavior. Read [`docs/CONTRACTS.md`](docs/CONTRACTS.md) before a cross-stack refactor.
+
+## Current capabilities
+
+The application includes authentication and profiles; archive and procedural field discovery; Mapbox site rendering; site identification/exploration; dinosaur, fossil, site, and tool catalogs; curated image versions; tool actions and persistent sessions; progression; relationships and notifications; weather; scientific ingestion; and Railway-operated background processing.
+
+Some compatibility modules and global Flutter presentation surfaces remain after the feature-first migration. New code belongs in the owning feature; [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) documents the intended direction and remaining transitional boundaries.

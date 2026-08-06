@@ -1,4 +1,11 @@
 # 🦖 Project Codex: DinoGo PRD
+
+> Product vision and historical milestone record. Some implementation-status
+> sections below describe an earlier phase and are not an authoritative
+> inventory of the current application. Agents should use
+> [`../AGENTS.md`](../AGENTS.md), [`DOMAIN.md`](DOMAIN.md), and the
+> code/tests for current behavior.
+
 ## 1. Overview & Vision
  * **Elevator Pitch:** A highly realistic, scientifically accurate, location-based AR/Map game (think *Pokémon GO* meets *Museum of Natural History*) where users discover, excavate, and assemble prehistoric life based on real-world paleontological data.
  * **Target Audience:** Adults, science enthusiasts, and history nerds. The tone is sophisticated, academic, and gritty—not cartoonish.
@@ -27,7 +34,7 @@ Four bottom tabs using an `IndexedStack` shell (mesosoica-style brown/sandstone 
 
 | Tab | Screen | v0 status |
 |-----|--------|-----------|
-| **Map** | Discovery map | Live Mapbox map (archive / field); marker UX contract in [`flutter/docs/map_site_markers.md`](flutter/docs/map_site_markers.md) |
+| **Map** | Discovery map | Live Mapbox map (archive / field); marker UX contract in [`../flutter/docs/map_site_markers.md`](../flutter/docs/map_site_markers.md) |
 | **Tree** | Tree of Life | Skeleton placeholder |
 | **Dino** | Dinosaur catalog | Scrollable turnable cards for every row in `dinosaur` table |
 | **Profile** | Account & settings | Skeleton placeholder |
@@ -59,7 +66,7 @@ These remain part of the long-term vision but are deferred until core catalog + 
  * **The Museum (Exhibition):** Personal dimly lit hall showcasing *user-owned* completed skeletons (distinct from the global Dino catalog browse tab).
 
 #### Map (current + future)
- * Live Mapbox discovery map with archive and field site markers. Paint rules: wipe only on Archive/Field or linked/show-all (or filter) toggles, then batches of 500 from cache; pan/zoom/scan keep markers and diff. Full contract: [`flutter/docs/map_site_markers.md`](flutter/docs/map_site_markers.md).
+ * Live Mapbox discovery map with archive and field site markers. Paint rules: wipe only on Archive/Field or linked/show-all (or filter) toggles, then batches of 500 from cache; pan/zoom/scan keep markers and diff. Full contract: [`../flutter/docs/map_site_markers.md`](../flutter/docs/map_site_markers.md).
  * Dark tactical satellite map with real-world geological boundaries and dig sites (future polish).
  * Proximity-based excavation nodes; check-in to begin a dig.
 
@@ -84,7 +91,7 @@ mesozoica/
 │   └── lib/          # config/, controllers/, models/, screens/, services/, shell/, theme/, widgets/
 ├── Makefile          # make run-backend, run-dinosaur-wiki-sync, test-all
 ├── railway.toml      # Monorepo Railway service roots
-└── prd.md
+└── docs/PRODUCT.md
 ```
 ### Backend
  * **Language/Framework:** FastAPI (Python) for rapid, high-performance asynchronous API endpoints and data parsing.
