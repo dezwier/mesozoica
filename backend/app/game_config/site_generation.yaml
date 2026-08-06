@@ -8,7 +8,7 @@ lazy:
   cell_size_m: 500
   min_separation_km: 0.030
   # Archive geology blend window around each new site (not density geometry)
-  nearby_radius_km: 2000.0
+  nearby_radius_km: 1000.0
   closest_neighbor_count: 10
   weight_global: 0.1
   weight_nearby: 0.45
