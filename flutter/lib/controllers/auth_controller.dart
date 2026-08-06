@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import '../models/profile.dart';
+import '../services/api_client.dart';
 import '../services/auth_service.dart';
 import '../services/push_notification_service.dart';
 import '../utils/xp_source_labels.dart';
@@ -8,7 +9,9 @@ import 'xp_award_controller.dart';
 
 class AuthController extends ChangeNotifier {
   AuthController({AuthService? authService})
-      : _authService = authService ?? AuthService();
+      : _authService = authService ?? AuthService() {
+    ApiClient.instance.onUnauthorized = _authService.trySilentRefresh;
+  }
 
   final AuthService _authService;
 
@@ -47,13 +50,14 @@ class AuthController extends ChangeNotifier {
     try {
       _currentUser = await _authService.loadStoredUser();
       if (_currentUser != null) {
-        try {
-          _currentUser = await _authService.refreshProfile();
-        } catch (_) {
-          // Keep the cached profile (including isAdmin) when /users/me fails
-          // due to transient API / DB pool errors — do not log the user out.
+        final profileOk = await _refreshProfileOrReauth();
+        if (!profileOk) {
+          _currentUser = null;
+          _resetAdminMode();
+          await _authService.clearStoredAuth();
+        } else {
+          await PushNotificationService.registerTokenIfLoggedIn();
         }
-        await PushNotificationService.registerTokenIfLoggedIn();
       }
     } catch (_) {
       _currentUser = null;
@@ -62,6 +66,33 @@ class AuthController extends ChangeNotifier {
     } finally {
       _isInitializing = false;
       notifyListeners();
+    }
+  }
+
+  /// Load `/users/me`. On 401, silently re-exchange Firebase → JWT once.
+  /// Returns false only when auth is definitively dead (caller should log out).
+  Future<bool> _refreshProfileOrReauth() async {
+    try {
+      _currentUser = await _authService.refreshProfile();
+      return true;
+    } on ApiException catch (error) {
+      if (error.statusCode != 401) {
+        // Transient API / DB errors — keep the cached profile.
+        return true;
+      }
+      final refreshed = await _authService.trySilentRefresh();
+      if (!refreshed) return false;
+      try {
+        _currentUser = await _authService.refreshProfile();
+        return true;
+      } on ApiException catch (retryError) {
+        return retryError.statusCode != 401;
+      } catch (_) {
+        return true;
+      }
+    } catch (_) {
+      // Keep the cached profile on non-API failures (parse, network, etc.).
+      return true;
     }
   }
 
@@ -176,6 +207,14 @@ class AuthController extends ChangeNotifier {
     _xpAwards?.clear();
     _resetAdminMode();
     notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    if (ApiClient.instance.onUnauthorized == _authService.trySilentRefresh) {
+      ApiClient.instance.onUnauthorized = null;
+    }
+    super.dispose();
   }
 
   /// Emit one [XpAward] per skill_breakdown source increase; fall back to skill

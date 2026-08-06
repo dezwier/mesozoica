@@ -103,6 +103,23 @@ class AuthService {
     }
   }
 
+  /// Quietly mint a new backend JWT from the persisted Firebase session.
+  ///
+  /// Used when the stored API token is invalid/expired but Firebase Auth is
+  /// still signed in — avoids forcing a full re-login.
+  Future<bool> trySilentRefresh() async {
+    try {
+      final firebaseUser = FirebaseAuth.instance.currentUser;
+      if (firebaseUser == null) return false;
+      final idToken = await firebaseUser.getIdToken(true);
+      if (idToken == null || idToken.isEmpty) return false;
+      final result = await _exchangeFirebaseToken(idToken);
+      return result['success'] == true;
+    } catch (_) {
+      return false;
+    }
+  }
+
   Future<Map<String, dynamic>> sendPasswordResetEmail(String email) async {
     try {
       await FirebaseAuth.instance.sendPasswordResetEmail(email: email.trim());

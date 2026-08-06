@@ -5,9 +5,16 @@ import 'package:http/http.dart' as http;
 import '../config/app_config.dart';
 import 'token_storage.dart';
 
+typedef TokenRefreshCallback = Future<bool> Function();
+
 class ApiClient {
   ApiClient._();
   static final ApiClient instance = ApiClient._();
+
+  /// Optional hook (wired by [AuthController]) to mint a fresh JWT via Firebase.
+  TokenRefreshCallback? onUnauthorized;
+
+  Future<bool>? _refreshInFlight;
 
   Future<Map<String, dynamic>> get(
     String path, {
@@ -15,7 +22,10 @@ class ApiClient {
     bool skipAuth = false,
   }) async {
     final uri = _uri(path, query);
-    final response = await http.get(uri, headers: await _headers(skipAuth));
+    final response = await _sendWithAuthRetry(
+      skipAuth: skipAuth,
+      send: (headers) => http.get(uri, headers: headers),
+    );
     return _decode(response);
   }
 
@@ -25,10 +35,13 @@ class ApiClient {
     bool skipAuth = false,
   }) async {
     final uri = _uri(path);
-    final response = await http.post(
-      uri,
-      headers: await _headers(skipAuth),
-      body: body == null ? null : jsonEncode(body),
+    final response = await _sendWithAuthRetry(
+      skipAuth: skipAuth,
+      send: (headers) => http.post(
+        uri,
+        headers: headers,
+        body: body == null ? null : jsonEncode(body),
+      ),
     );
     return _decode(response);
   }
@@ -38,17 +51,23 @@ class ApiClient {
     Map<String, dynamic>? body,
   }) async {
     final uri = _uri(path);
-    final response = await http.patch(
-      uri,
-      headers: await _headers(false),
-      body: body == null ? null : jsonEncode(body),
+    final response = await _sendWithAuthRetry(
+      skipAuth: false,
+      send: (headers) => http.patch(
+        uri,
+        headers: headers,
+        body: body == null ? null : jsonEncode(body),
+      ),
     );
     return _decode(response);
   }
 
   Future<Map<String, dynamic>> delete(String path) async {
     final uri = _uri(path);
-    final response = await http.delete(uri, headers: await _headers(false));
+    final response = await _sendWithAuthRetry(
+      skipAuth: false,
+      send: (headers) => http.delete(uri, headers: headers),
+    );
     return _decode(response);
   }
 
@@ -57,15 +76,24 @@ class ApiClient {
     List<int> bytes,
     String filename,
   ) async {
-    final uri = _uri(path);
-    final request = http.MultipartRequest('POST', uri);
+    Future<http.StreamedResponse> send(Map<String, String> headers) async {
+      final uri = _uri(path);
+      final request = http.MultipartRequest('POST', uri);
+      final requestHeaders = Map<String, String>.from(headers)
+        ..remove('Content-Type');
+      request.headers.addAll(requestHeaders);
+      request.files.add(
+        http.MultipartFile.fromBytes('file', bytes, filename: filename),
+      );
+      return request.send();
+    }
+
     final headers = await _headers(false);
-    headers.remove('Content-Type');
-    request.headers.addAll(headers);
-    request.files.add(
-      http.MultipartFile.fromBytes('file', bytes, filename: filename),
-    );
-    return request.send();
+    var streamed = await send(headers);
+    if (streamed.statusCode == 401 && await _tryRefreshToken()) {
+      streamed = await send(await _headers(false));
+    }
+    return streamed;
   }
 
   /// Sends a GET request to an already-built [uri] (e.g. from one of
@@ -78,11 +106,19 @@ class ApiClient {
     http.Client? client,
     Map<String, String>? headers,
     Duration? timeout,
+    bool skipAuth = false,
   }) {
-    final future = client != null
-        ? client.get(uri, headers: headers)
-        : http.get(uri, headers: headers);
-    return timeout == null ? future : future.timeout(timeout);
+    return _sendRawWithAuthRetry(
+      skipAuth: skipAuth,
+      headers: headers,
+      timeout: timeout,
+      send: (merged) {
+        final future = client != null
+            ? client.get(uri, headers: merged)
+            : http.get(uri, headers: merged);
+        return timeout == null ? future : future.timeout(timeout);
+      },
+    );
   }
 
   /// POST equivalent of [sendGet] for an already-built [uri].
@@ -92,11 +128,19 @@ class ApiClient {
     Map<String, String>? headers,
     Object? body,
     Duration? timeout,
+    bool skipAuth = false,
   }) {
-    final future = client != null
-        ? client.post(uri, headers: headers, body: body)
-        : http.post(uri, headers: headers, body: body);
-    return timeout == null ? future : future.timeout(timeout);
+    return _sendRawWithAuthRetry(
+      skipAuth: skipAuth,
+      headers: headers,
+      timeout: timeout,
+      send: (merged) {
+        final future = client != null
+            ? client.post(uri, headers: merged, body: body)
+            : http.post(uri, headers: merged, body: body);
+        return timeout == null ? future : future.timeout(timeout);
+      },
+    );
   }
 
   /// DELETE equivalent of [sendGet] for an already-built [uri].
@@ -105,11 +149,19 @@ class ApiClient {
     http.Client? client,
     Map<String, String>? headers,
     Duration? timeout,
+    bool skipAuth = false,
   }) {
-    final future = client != null
-        ? client.delete(uri, headers: headers)
-        : http.delete(uri, headers: headers);
-    return timeout == null ? future : future.timeout(timeout);
+    return _sendRawWithAuthRetry(
+      skipAuth: skipAuth,
+      headers: headers,
+      timeout: timeout,
+      send: (merged) {
+        final future = client != null
+            ? client.delete(uri, headers: merged)
+            : http.delete(uri, headers: merged);
+        return timeout == null ? future : future.timeout(timeout);
+      },
+    );
   }
 
   /// PATCH equivalent of [sendGet] for an already-built [uri].
@@ -119,11 +171,19 @@ class ApiClient {
     Map<String, String>? headers,
     Object? body,
     Duration? timeout,
+    bool skipAuth = false,
   }) {
-    final future = client != null
-        ? client.patch(uri, headers: headers, body: body)
-        : http.patch(uri, headers: headers, body: body);
-    return timeout == null ? future : future.timeout(timeout);
+    return _sendRawWithAuthRetry(
+      skipAuth: skipAuth,
+      headers: headers,
+      timeout: timeout,
+      send: (merged) {
+        final future = client != null
+            ? client.patch(uri, headers: merged, body: body)
+            : http.patch(uri, headers: merged, body: body);
+        return timeout == null ? future : future.timeout(timeout);
+      },
+    );
   }
 
   Uri _uri(String path, [Map<String, String>? query]) {
@@ -141,6 +201,53 @@ class ApiClient {
       }
     }
     return headers;
+  }
+
+  Future<Map<String, String>> _mergeAuthHeader(
+    Map<String, String>? headers,
+  ) async {
+    final merged = <String, String>{...?headers};
+    final token = await TokenStorage.loadToken();
+    if (token != null && token.isNotEmpty) {
+      merged['Authorization'] = 'Bearer $token';
+    } else {
+      merged.remove('Authorization');
+    }
+    return merged;
+  }
+
+  Future<bool> _tryRefreshToken() async {
+    final callback = onUnauthorized;
+    if (callback == null) return false;
+    if (_refreshInFlight != null) return _refreshInFlight!;
+    _refreshInFlight = callback().whenComplete(() {
+      _refreshInFlight = null;
+    });
+    return _refreshInFlight!;
+  }
+
+  Future<http.Response> _sendWithAuthRetry({
+    required bool skipAuth,
+    required Future<http.Response> Function(Map<String, String> headers) send,
+  }) async {
+    var response = await send(await _headers(skipAuth));
+    if (response.statusCode == 401 && !skipAuth && await _tryRefreshToken()) {
+      response = await send(await _headers(false));
+    }
+    return response;
+  }
+
+  Future<http.Response> _sendRawWithAuthRetry({
+    required bool skipAuth,
+    required Map<String, String>? headers,
+    required Duration? timeout,
+    required Future<http.Response> Function(Map<String, String>? headers) send,
+  }) async {
+    var response = await send(headers);
+    if (response.statusCode == 401 && !skipAuth && await _tryRefreshToken()) {
+      response = await send(await _mergeAuthHeader(headers));
+    }
+    return response;
   }
 
   Map<String, dynamic> _decode(http.Response response) {
