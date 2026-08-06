@@ -71,7 +71,7 @@ def test_resolve_site_discovery_params_boost_hook(
         "app.services.site_common.discovery_params.resolve_site_discovery_params",
         boosted,
     )
-    from app.services.site_service import discovery_params as mod
+    from app.services.site_common import discovery_params as mod
 
     params = mod.resolve_site_discovery_params(session, user_id=1, site=site)
     assert params.discovery_chance == min(1.0, base * 2.0)
