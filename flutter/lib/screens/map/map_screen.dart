@@ -72,7 +72,7 @@ class MapScreen extends StatefulWidget {
 
   /// Keep map-grade GPS (tight distance filter) even when [isActive] is false.
   ///
-  /// Used while a site card is open over the map so exploration meters on the
+  /// Used while a site card is open over the map so documentation progress on the
   /// card back update as often as they do on the live map.
   final bool highPrecisionGps;
 

@@ -100,7 +100,8 @@ class _SiteTurnableCardState extends State<SiteTurnableCard> {
             widget.site.viewerWasFirstDocumentation ||
         oldWidget.site.viewerHasIdentified != widget.site.viewerHasIdentified ||
         oldWidget.site.identifiedAt != widget.site.identifiedAt ||
-        oldWidget.site.exploredDistanceM != widget.site.exploredDistanceM ||
+        oldWidget.site.documentationProgress !=
+            widget.site.documentationProgress ||
         oldWidget.site.siteTypePeriod != widget.site.siteTypePeriod ||
         oldWidget.site.oddDinoBand?.effectiveAccuracy !=
             widget.site.oddDinoBand?.effectiveAccuracy) {

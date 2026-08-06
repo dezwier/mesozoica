@@ -15,10 +15,6 @@ _MAX_RANGE_WIDTH = 1.0
 _MAX_CENTER_JITTER = 0.45
 _MAX_BLUR_SIGMA = 16.0
 _DEPTH_PRECISE_EPSILON = 1e-9
-# +1% accuracy per meter walked inside documentation_distance_m (additive, capped).
-EXPLORATION_ACCURACY_PER_M = 0.01
-
-
 class SiteDimensionKey(IntEnum):
     DINO = 0
     FOSSIL = 1
@@ -62,12 +58,12 @@ def apply_dimension_accuracy_noise(
     return min(1.0, max(0.0, base + jitter))
 
 
-def apply_exploration_accuracy_boost(
+def apply_documentation_progress(
     skill_accuracy: float,
-    explored_distance_m: float,
+    documentation_progress: float,
 ) -> float:
-    """Additive boost: skill accuracy + 1% per explored meter, capped at 1.0."""
-    boost = max(0.0, float(explored_distance_m)) * EXPLORATION_ACCURACY_PER_M
+    """Add time-based documentation progress to skill accuracy, capped at 1."""
+    boost = min(1.0, max(0.0, float(documentation_progress)))
     return min(1.0, max(0.0, float(skill_accuracy) + boost))
 
 
@@ -80,7 +76,7 @@ def site_is_fully_documented(
     odd_quality: float | None,
     odd_depth: float | None,
     skill_level: int,
-    explored_distance_m: float,
+    documentation_progress: float,
 ) -> bool:
     """True when all five display accuracies are at 100%."""
     bands = build_site_dimension_bands(
@@ -91,7 +87,7 @@ def site_is_fully_documented(
         odd_quality=odd_quality,
         odd_depth=odd_depth,
         skill_level=skill_level,
-        explored_distance_m=explored_distance_m,
+        documentation_progress=documentation_progress,
     )
     present = [band for band in bands.values() if band is not None]
     if len(present) < len(SiteDimensionKey):
@@ -174,7 +170,7 @@ def build_site_dimension_bands(
     odd_quality: float | None,
     odd_depth: float | None,
     skill_level: int = 1,
-    explored_distance_m: float = 0.0,
+    documentation_progress: float = 0.0,
 ) -> dict[SiteDimensionKey, SiteDimensionBand | None]:
     accuracies = resolve_site_stewardship_accuracies(skill_level=skill_level)
     values = {
@@ -197,8 +193,8 @@ def build_site_dimension_bands(
         out[key] = resolve_site_dimension_band(
             dimension=key,
             true_value=float(true_value),
-            accuracy=apply_exploration_accuracy_boost(
-                noisy_acc, explored_distance_m
+            accuracy=apply_documentation_progress(
+                noisy_acc, documentation_progress
             ),
             site_id=site_id,
         )

@@ -52,11 +52,11 @@ class FieldSurveyConfig {
   double get explore100mActivelyXp => mainParams.explore100mActivelyXp;
   double get explore100mPassivelyXp => mainParams.explore100mPassivelyXp;
   double get disguiseOfSiteXp => mainParams.disguiseOfSiteXp;
-  double get documentProgressXp => mainParams.documentProgressXp;
   double get documentSiteXp => mainParams.documentSiteXp;
   double get documentSiteAsFirstXp => mainParams.documentSiteAsFirstXp;
   double get identifySiteXp => mainParams.identifySiteXp;
   double get documentationDistanceM => mainParams.documentationDistanceM;
+  double get discoverySpeed => mainParams.discoverySpeed;
   double get rivalDiscoveryChance => mainParams.rivalDiscoveryChance;
 
   /// Back-compat alias.
@@ -137,8 +137,8 @@ class FieldSurveyMainParams {
     required this.documentationAccuracy,
     required this.rivalDiscoveryChance,
     required this.documentationDistanceM,
+    required this.discoverySpeed,
     required this.disguiseOfSiteXp,
-    required this.documentProgressXp,
     required this.documentSiteXp,
     required this.documentSiteAsFirstXp,
     required this.identifySiteXp,
@@ -154,8 +154,8 @@ class FieldSurveyMainParams {
   final double documentationAccuracy;
   final double rivalDiscoveryChance;
   final double documentationDistanceM;
+  final double discoverySpeed;
   final double disguiseOfSiteXp;
-  final double documentProgressXp;
   final double documentSiteXp;
   final double documentSiteAsFirstXp;
   final double identifySiteXp;
@@ -193,8 +193,8 @@ class FieldSurveyMainParams {
         yaml['documentation_distance_m'],
         50,
       ),
+      discoverySpeed: configAsDouble(yaml['discovery_speed'], 0.01),
       disguiseOfSiteXp: configAsDouble(yaml['disguise_of_site_xp'], 40),
-      documentProgressXp: configAsDouble(yaml['document_progress_xp'], 20),
       documentSiteXp: configAsDouble(yaml['document_site_xp'], 80),
       documentSiteAsFirstXp: configAsDouble(
         yaml['document_site_as_first_xp'],

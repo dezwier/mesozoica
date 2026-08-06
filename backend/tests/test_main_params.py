@@ -214,9 +214,9 @@ def test_resolve_site_stewardship_weather_time_mirrors_config() -> None:
     cfg = get_game_config().site_stewardship
     mp = cfg.main_params
     vis = float(mp.documentation_distance_m)
-    xp = float(mp.document_progress_xp)
+    speed = float(mp.discovery_speed)
     vis_mods = cfg.weather_time_modifiers.get("documentation_distance_m") or {}
-    xp_mods = cfg.weather_time_modifiers.get("document_progress_xp") or {}
+    speed_mods = cfg.weather_time_modifiers.get("discovery_speed") or {}
 
     for period in ("day", "golden_hour", "dawn", "dusk", "night"):
         resolved = resolve_site_stewardship_main_params(
@@ -225,8 +225,8 @@ def test_resolve_site_stewardship_weather_time_mirrors_config() -> None:
         assert resolved["documentation_distance_m"] == pytest.approx(
             _expected_ambient(vis, list(vis_mods.get(period, [])))
         )
-        assert resolved["document_progress_xp"] == pytest.approx(
-            _expected_ambient(xp, list(xp_mods.get(period, [])))
+        assert resolved["discovery_speed"] == pytest.approx(
+            _expected_ambient(speed, list(speed_mods.get(period, [])))
         )
 
 

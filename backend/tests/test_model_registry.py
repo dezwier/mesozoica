@@ -1,4 +1,4 @@
-"""Persistence metadata registration remains explicit and schema-neutral."""
+"""Persistence metadata registration remains explicit and fingerprinted."""
 
 import hashlib
 import json
@@ -51,4 +51,4 @@ def test_sqlmodel_table_and_column_metadata_fingerprint() -> None:
     fingerprint = hashlib.sha256(
         json.dumps(payload, sort_keys=True).encode()
     ).hexdigest()
-    assert fingerprint == "c0daffb4ee44d81f8bf9767ee132965e3a13944a99e7b77c0e55dcc9389a0b1e"
+    assert fingerprint == "7aab7c4589502f1c1a9f2da2cf0ff038ae52a371170ebaa4520ff9efefe28323"

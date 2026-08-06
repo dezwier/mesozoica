@@ -1,4 +1,4 @@
-"""Site exploration XP, accuracy boost, and sync API."""
+"""Time-based site documentation progress and sync API."""
 
 from __future__ import annotations
 
@@ -17,14 +17,10 @@ from app.models.user_site import (
     UserSite,
 )
 from app.schemas.site import SiteExplorationEntry, SiteExplorationUpdateRequest
-from app.services.level_service import (
-    award_document_progress_xp,
-    exploration_batch_count,
-    get_skill_xp,
-)
+from app.services.level_service import get_skill_xp
 from app.services.site_exploration_service import apply_site_exploration_update
 from app.services.site_service.dimension_display import (
-    apply_exploration_accuracy_boost,
+    apply_documentation_progress,
     build_site_dimension_bands,
     SiteDimensionKey,
 )
@@ -85,14 +81,14 @@ def _discovered_identified(
     *,
     user_id: int,
     site_id: int,
-    explored_distance_m: float = 0.0,
+    documentation_progress: float = 0.0,
 ) -> UserSite:
-    """Discoverer row with identification complete (exploration unlocked)."""
+    """Discoverer row with identification complete."""
     link = UserSite(
         user_id=user_id,
         site_id=site_id,
         role=USER_SITE_ROLE_DISCOVERER,
-        explored_distance_m=explored_distance_m,
+        documentation_progress=documentation_progress,
         period_identified=True,
         rock_identified=True,
     )
@@ -109,61 +105,14 @@ def _discovered_identified(
     return link
 
 
-def test_exploration_batch_count() -> None:
-    assert exploration_batch_count(0) == 0
-    assert exploration_batch_count(19.9) == 0
-    assert exploration_batch_count(20) == 1
-    assert exploration_batch_count(39.9) == 1
-    assert exploration_batch_count(40) == 2
+def test_apply_documentation_progress() -> None:
+    assert apply_documentation_progress(0.01, 0) == 0.01
+    assert apply_documentation_progress(0.01, 0.1) == 0.11
+    assert apply_documentation_progress(0.5, 1) == 1.0
+    assert apply_documentation_progress(0.99, 0.05) == 1.0
 
 
-def test_award_document_progress_xp_batches(session: Session) -> None:
-    user = _make_user(session)
-    awarded = award_document_progress_xp(
-        user,
-        previous_explored_m=0,
-        new_explored_m=45,
-    )
-    session.add(user)
-    session.commit()
-    session.refresh(user)
-    # floor(45/20) - floor(0/20) = 2 batches × 20 XP
-    assert awarded == 40
-    assert get_skill_xp(user, "field_survey") == 40
-    assert user.skill_breakdown["field_survey"]["document_progress"] == 40
-
-    awarded2 = award_document_progress_xp(
-        user,
-        previous_explored_m=45,
-        new_explored_m=55,
-    )
-    session.add(user)
-    session.commit()
-    session.refresh(user)
-    # floor(55/20) - floor(45/20) = 2 - 2 = 0
-    assert awarded2 == 0
-    assert get_skill_xp(user, "field_survey") == 40
-
-    awarded3 = award_document_progress_xp(
-        user,
-        previous_explored_m=55,
-        new_explored_m=60,
-    )
-    session.add(user)
-    session.commit()
-    session.refresh(user)
-    assert awarded3 == 20
-    assert get_skill_xp(user, "field_survey") == 60
-
-
-def test_apply_exploration_accuracy_boost() -> None:
-    assert apply_exploration_accuracy_boost(0.01, 0) == 0.01
-    assert apply_exploration_accuracy_boost(0.01, 10) == 0.11
-    assert apply_exploration_accuracy_boost(0.5, 100) == 1.0
-    assert apply_exploration_accuracy_boost(0.99, 5) == 1.0
-
-
-def test_build_bands_apply_explored_boost() -> None:
+def test_build_bands_apply_documentation_progress() -> None:
     baseline = build_site_dimension_bands(
         site_id=1,
         odd_dino_count=0.5,
@@ -172,7 +121,7 @@ def test_build_bands_apply_explored_boost() -> None:
         odd_quality=0.5,
         odd_depth=0.5,
         skill_level=1,
-        explored_distance_m=0.0,
+        documentation_progress=0.0,
     )
     boosted = build_site_dimension_bands(
         site_id=1,
@@ -182,7 +131,7 @@ def test_build_bands_apply_explored_boost() -> None:
         odd_quality=0.5,
         odd_depth=0.5,
         skill_level=1,
-        explored_distance_m=50.0,
+        documentation_progress=0.5,
     )
     assert baseline[SiteDimensionKey.DINO] is not None
     assert boosted[SiteDimensionKey.DINO] is not None
@@ -190,7 +139,7 @@ def test_build_bands_apply_explored_boost() -> None:
         boosted[SiteDimensionKey.DINO].effective_accuracy
         > baseline[SiteDimensionKey.DINO].effective_accuracy
     )
-    # Exploration adds a flat +0.50 regardless of per-axis noise.
+    # Documentation adds a flat +0.50 regardless of per-axis noise.
     assert abs(
         boosted[SiteDimensionKey.DINO].effective_accuracy
         - baseline[SiteDimensionKey.DINO].effective_accuracy
@@ -198,7 +147,7 @@ def test_build_bands_apply_explored_boost() -> None:
     ) < 1e-6
 
 
-def test_site_row_to_summary_includes_explored_distance() -> None:
+def test_site_row_to_summary_includes_documentation_progress() -> None:
     site = Site(
         site_id=900002,
         odd_dino_count=0.42,
@@ -208,11 +157,11 @@ def test_site_row_to_summary_includes_explored_distance() -> None:
         odd_depth=0.78,
     )
     summary = site_row_to_summary(
-        SiteRow(site=site, site_type=None, explored_distance_m=30.0)
+        SiteRow(site=site, site_type=None, documentation_progress=0.3)
     )
-    assert summary.explored_distance_m == 30.0
+    assert summary.documentation_progress == 0.3
     assert summary.odd_dino_band is not None
-    # L1 baseline (~0.01) ± noise + 0.30 exploration.
+    # L1 baseline (~0.01) ± noise + 0.30 documentation.
     assert 0.30 <= summary.odd_dino_band.effective_accuracy <= 0.61
     assert summary.documented is None
 
@@ -234,7 +183,7 @@ def test_documentation_completes_and_freezes(
     )
 
     user = _make_user(session, username="doc", email="doc@example.com")
-    # High stewardship level so less walking is needed to hit 100%.
+    # High stewardship level means less timed progress is needed to hit 100%.
     set_skill_xp(user, "field_survey", SKILL_THRESHOLDS[90])
     session.add(user)
     session.commit()
@@ -245,7 +194,7 @@ def test_documentation_completes_and_freezes(
         session, user_id=user.id, site_id=site.site_id
     )
 
-    # Plenty of meters to clear ±30 pt noise even from a low roll.
+    # Full progress clears ±30 pt noise even from a low roll.
     profile, summaries = apply_site_exploration_update(
         session,
         user,
@@ -253,14 +202,14 @@ def test_documentation_completes_and_freezes(
             sites=[
                 SiteExplorationEntry(
                     site_id=site.site_id,
-                    explored_distance_m=80.0,
+                    documentation_progress=1.0,
                 )
             ]
         ),
     )
     session.refresh(link)
     assert link.documented is True
-    assert link.explored_distance_m == 80.0
+    assert link.documentation_progress == 1.0
     assert summaries[0].documented is True
     assert summaries[0].viewer_has_documented is True
     assert summaries[0].status == "documented"
@@ -300,13 +249,13 @@ def test_documentation_completes_and_freezes(
             sites=[
                 SiteExplorationEntry(
                     site_id=site.site_id,
-                    explored_distance_m=200.0,
+                    documentation_progress=1.0,
                 )
             ]
         ),
     )
     session.refresh(link)
-    assert link.explored_distance_m == 80.0
+    assert link.documentation_progress == 1.0
     assert get_skill_xp(user, "field_survey") == xp_after
     assert (
         user.skill_breakdown["field_survey"]["document_site"] == 20
@@ -360,7 +309,7 @@ def test_second_documenter_skips_document_site_as_first_xp(
             sites=[
                 SiteExplorationEntry(
                     site_id=site.site_id,
-                    explored_distance_m=80.0,
+                    documentation_progress=1.0,
                 )
             ]
         ),
@@ -375,7 +324,7 @@ def test_second_documenter_skips_document_site_as_first_xp(
             sites=[
                 SiteExplorationEntry(
                     site_id=site.site_id,
-                    explored_distance_m=80.0,
+                    documentation_progress=1.0,
                 )
             ]
         ),
@@ -401,7 +350,7 @@ def test_apply_site_exploration_update_monotonic_resume(session: Session) -> Non
         session,
         user_id=user.id,
         site_id=site.site_id,
-        explored_distance_m=30.0,
+        documentation_progress=0.3,
     )
 
     profile, summaries = apply_site_exploration_update(
@@ -411,18 +360,19 @@ def test_apply_site_exploration_update_monotonic_resume(session: Session) -> Non
             sites=[
                 SiteExplorationEntry(
                     site_id=site.site_id,
-                    explored_distance_m=50.0,
+                    documentation_progress=0.5,
                 )
             ]
         ),
     )
     session.refresh(link)
-    assert link.explored_distance_m == 50.0
-    # floor(50/20) - floor(30/20) = 2 - 1 = 1 batch × 20
-    assert get_skill_xp(user, "field_survey") == 20
+    assert link.documentation_progress == 0.5
+    assert get_skill_xp(user, "field_survey") == 0
     assert len(summaries) == 1
-    assert summaries[0].explored_distance_m == 50.0
-    assert profile.skill_breakdown["field_survey"]["document_progress"] == 20
+    assert summaries[0].documentation_progress == 0.5
+    assert "document_progress" not in (
+        profile.skill_breakdown.get("field_survey") or {}
+    )
 
     # Downward report ignored; no extra XP.
     apply_site_exploration_update(
@@ -432,14 +382,14 @@ def test_apply_site_exploration_update_monotonic_resume(session: Session) -> Non
             sites=[
                 SiteExplorationEntry(
                     site_id=site.site_id,
-                    explored_distance_m=40.0,
+                    documentation_progress=0.4,
                 )
             ]
         ),
     )
     session.refresh(link)
-    assert link.explored_distance_m == 50.0
-    assert get_skill_xp(user, "field_survey") == 20
+    assert link.documentation_progress == 0.5
+    assert get_skill_xp(user, "field_survey") == 0
 
 
 def _register_user(client: TestClient, username: str, email: str) -> dict:
@@ -470,15 +420,15 @@ def test_patch_document_progress_api(
         headers=headers,
         json={
             "sites": [
-                {"site_id": site.site_id, "explored_distance_m": 25.0},
+                {"site_id": site.site_id, "documentation_progress": 0.25},
             ]
         },
     )
     assert response.status_code == 200
     body = response.json()
-    assert body["profile"]["skill_breakdown"]["field_survey"][
-        "document_progress"
-    ] == 20
+    assert "document_progress" not in (
+        body["profile"]["skill_breakdown"].get("field_survey") or {}
+    )
     assert len(body["sites"]) == 1
-    assert body["sites"][0]["explored_distance_m"] == 25.0
+    assert body["sites"][0]["documentation_progress"] == 0.25
     assert body["sites"][0]["odd_dino_band"] is not None

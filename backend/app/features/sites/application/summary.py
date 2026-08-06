@@ -42,7 +42,7 @@ class SiteRow:
     identified_at: datetime | None = None
     documented_at: datetime | None = None
     viewer_was_first_documentation: bool | None = None
-    explored_distance_m: float | None = None
+    documentation_progress: float | None = None
     documented: bool | None = None
 
 
@@ -119,7 +119,7 @@ def site_row_to_summary(
             odd_quality=site.odd_quality,
             odd_depth=site.odd_depth,
             skill_level=stewardship_skill_level,
-            explored_distance_m=float(row.explored_distance_m or 0.0),
+            documentation_progress=float(row.documentation_progress or 0.0),
         )
     )
 
@@ -205,7 +205,7 @@ def site_row_to_summary(
         odd_depth_band=(
             None if redact else _band_schema(bands.get(SiteDimensionKey.DEPTH))
         ),
-        explored_distance_m=row.explored_distance_m,
+        documentation_progress=row.documentation_progress,
         documented=row.documented,
         viewer_has_documented=row.viewer_has_documented,
         viewer_has_identified=(
@@ -298,8 +298,8 @@ def enrich_site_rows_for_viewer(
                 viewer_was_first_documentation=(
                     bool(document.was_first) if document is not None else None
                 ),
-                explored_distance_m=(
-                    float(discover.explored_distance_m or 0.0)
+                documentation_progress=(
+                    float(discover.documentation_progress or 0.0)
                     if discover is not None
                     else None
                 ),

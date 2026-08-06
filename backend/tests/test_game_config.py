@@ -142,7 +142,7 @@ def test_load_game_config_structure() -> None:
     assert 0 < stew.main_params.documentation_accuracy <= 1
     assert stew.main_params.documentation_distance_m > 0
     assert stew.documentation_distance_m == stew.main_params.documentation_distance_m
-    assert stew.document_progress_xp == stew.main_params.document_progress_xp
+    assert stew.discovery_speed == stew.main_params.discovery_speed == 0.01
     acc_mods = stew.level_modifiers["documentation_accuracy"]
     assert len(acc_mods) >= 2 and acc_mods[0].op == "multiply"
     rival_mods = stew.level_modifiers["rival_discovery_chance"]

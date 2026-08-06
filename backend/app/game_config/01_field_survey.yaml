@@ -32,20 +32,21 @@ main_params:
   # status above hidden (discovered, documented, excavated, …).
   # Level multiplies ×1.0 → ×0.5 from L1 → L99; tools multiply further on a covered site.
   rival_discovery_chance: 1
-  # Radius around a discovered site where walking accrues exploration meters.
+  # Radius around an identified site where time accrues documentation progress.
   documentation_distance_m: 50.0
+  # Unit-interval documentation progress added per eligible second in range.
+  # 0.01 = one percentage point per second.
+  discovery_speed: 0.01
   # XP when a rival discovery roll would have hit but your disguise blocked it
   # (Brush Scrim / Blackout Cover). Scrim still rolls; effective odds are 0.
   disguise_of_site_xp: 20
-  # XP to field_survey per 20 m walked inside documentation_distance_m.
-  document_progress_xp: 20
   # XP when all five site-dimension accuracies reach 100% (documentation complete).
   document_site_xp: 20
   # Bonus XP when you are the first user to fully document a site (all dimensions
   # at 100% accuracy). Later documenters still get document_site_xp only.
   document_site_as_first_xp: 20
   # XP per identification quiz step (period, then rock type). Scaled by attempt:
-  # first try 100%, second 50%, third 0%. Exploration meters start after both.
+  # first try 100%, second 50%, third 0%. Timed documentation starts after both.
   identify_site_xp: 20
 
 # Keyframes: { level, op: add|multiply|replace, value }. Values lerp linearly
@@ -57,6 +58,7 @@ level_modifiers:
     - { level: 99, op: multiply, value: 1.5 }
   discovery_chance: *field_survey_reach_levels
   documentation_distance_m: *field_survey_reach_levels
+  discovery_speed: []
   discovery_max_speed_kmh: []
   rival_discovery_chance:
     - { level: 1, op: multiply, value: 1 }
@@ -73,7 +75,6 @@ level_modifiers:
   discover_site_xp: []
   discover_site_as_first_xp: []
   disguise_of_site_xp: []
-  document_progress_xp: []
   document_site_xp: []
   document_site_as_first_xp: []
   # Rival discovery: ×1.0 at L1 → ×0.5 at L99 (all sites above hidden).
@@ -89,6 +90,7 @@ weather_time_modifiers:
   discovery_chance: *field_survey_weather_time
   discovery_max_speed_kmh: {}
   documentation_distance_m: *field_survey_weather_time
+  discovery_speed: {}
 
   # XP: day +0%, golden_hour +30%, dawn/dusk +10%, night +20%.  
   explore_100m_actively_xp: &field_survey_weather_time_xp
@@ -100,7 +102,6 @@ weather_time_modifiers:
   explore_100m_passively_xp: {}
   discover_site_xp: *field_survey_weather_time_xp
   discover_site_as_first_xp: {}
-  document_progress_xp: *field_survey_weather_time_xp
   document_site_xp: *field_survey_weather_time_xp
 
 # Ambient weather type (clear|cloudy|…). After weather_time, before tools.
@@ -118,6 +119,7 @@ weather_type_modifiers:
   discovery_chance: *field_survey_weather_type
   discovery_max_speed_kmh: {}
   documentation_distance_m: *field_survey_weather_type
+  discovery_speed: {}
 
   # XP multipliers
   explore_100m_actively_xp: &field_survey_weather_type_xp
@@ -133,7 +135,6 @@ weather_type_modifiers:
   explore_100m_passively_xp: {}
   discover_site_xp: *field_survey_weather_type_xp
   discover_site_as_first_xp: {}
-  document_progress_xp: *field_survey_weather_type_xp
   document_site_xp: *field_survey_weather_type_xp
 
 # Flutter auto-discover + nearby-discoverable cache.

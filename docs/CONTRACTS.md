@@ -20,6 +20,10 @@ FastAPI validation errors use `422` with `{"detail": [...]}`. Application valida
 
 The generated OpenAPI contract is guarded by `backend/tests/test_openapi_contract.py`. Refactors must not update its expected snapshot just to make a failure disappear.
 
+Site documentation sync uses `PATCH /api/v1/users/me/site-exploration` with
+`documentation_progress` in the unit interval for each site. Progress is
+monotonic, requires prior identification, and freezes after completion.
+
 ## Authentication and session transport
 
 Flutter's shared transport owns bearer-token application, cached-token startup behavior, token retry/refresh behavior, game-config version headers, timeout, decoding, and typed failures. Repositories must not reproduce these policies.

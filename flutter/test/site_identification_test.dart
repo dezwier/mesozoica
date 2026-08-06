@@ -86,9 +86,6 @@ void main() {
     expect(find.text('Excavation Site'), findsOneWidget);
     expect(find.text('Identify'), findsOneWidget);
     expect(find.text('Identify site to begin documentation'), findsOneWidget);
-    expect(
-      find.textContaining(RegExp(r'Documented \d+% · Explored')),
-      findsNothing,
-    );
+    expect(find.text('Move within range to continue'), findsNothing);
   });
 }

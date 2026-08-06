@@ -5,9 +5,9 @@ import '../../controllers/catalog_mode_controller.dart';
 import '../../controllers/field_discovery_coordinator.dart';
 import '../../controllers/field_session_coordinator.dart';
 import '../../controllers/map_controller.dart';
-import '../../controllers/site_exploration_controller.dart';
 import '../../controllers/weather_controller.dart';
 import '../../services/location_service.dart';
+import 'presentation/controllers/site_exploration_controller.dart';
 
 List<SingleChildWidget> buildDiscoveryProviders() => [
   ChangeNotifierProvider(

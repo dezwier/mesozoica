@@ -1,4 +1,4 @@
-"""Site exploration distance sync (meters inside documentation_distance_m)."""
+"""Time-based site documentation progress sync."""
 
 from __future__ import annotations
 
@@ -19,7 +19,6 @@ from app.schemas.site import SiteExplorationUpdateRequest, SiteSummary
 from app.features.progression.public import (
     award_document_site_as_first_xp,
     award_document_site_xp,
-    award_document_progress_xp,
     get_skill_xp,
     level_for_xp,
 )
@@ -31,10 +30,6 @@ from app.features.sites.domain.labels import site_display_title
 from app.features.sites.application.dimension_display import site_is_fully_documented
 from app.features.sites.application.list import get_site_by_id
 from app.features.sites.application.summary import site_row_to_summary
-
-# Cap reported growth vs last value (~50 km/day per site) to blunt trivial tampering.
-_MAX_METERS_PER_DAY = 50_000.0
-
 
 def _viewer_has_identified(
     session: Session, *, user_id: int, site_id: int, link: UserSite
@@ -107,7 +102,7 @@ def _maybe_complete_documentation(
         viewer_user_id=int(user.id),
     )
     site = row.site
-    explored = float(link.explored_distance_m or 0.0)
+    progress = float(link.documentation_progress or 0.0)
     if not site_is_fully_documented(
         site_id=int(site.site_id),
         odd_dino_count=site.odd_dino_count,
@@ -116,7 +111,7 @@ def _maybe_complete_documentation(
         odd_quality=site.odd_quality,
         odd_depth=site.odd_depth,
         skill_level=skill_level,
-        explored_distance_m=explored,
+        documentation_progress=progress,
     ):
         return None
     existing_documenter = session.exec(
@@ -151,9 +146,9 @@ def apply_site_exploration_update(
     user: User,
     payload: SiteExplorationUpdateRequest,
 ) -> tuple[UserProfileResponse, list[SiteSummary]]:
-    """Monotonically update discoverer explored_distance_m and award XP batches.
+    """Monotonically update discoverer documentation progress.
 
-    Documented sites refuse further meter growth. Crossing 100% accuracy on all
+    Documented sites refuse further progress. Crossing 100% accuracy on all
     five dimensions awards document_site_xp once and freezes the site.
     """
     if not payload.sites:
@@ -191,33 +186,17 @@ def apply_site_exploration_update(
             site_id=int(entry.site_id),
             link=link,
         ):
-            # Identification required before exploration meters accrue.
+            # Identification is required before documentation can accrue.
             updated_ids.append(int(entry.site_id))
             continue
 
-        previous = float(link.explored_distance_m or 0.0)
-        reported = float(entry.explored_distance_m)
-        new_value = _monotonic(previous, reported)
-        delta = new_value - previous
-        if delta > _MAX_METERS_PER_DAY:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=(
-                    "Explored distance increase exceeds the allowed rate "
-                    f"({delta:.0f}m for site {entry.site_id})."
-                ),
-            )
-        if delta > 0:
-            award_document_progress_xp(
-                user,
-                previous_explored_m=previous,
-                new_explored_m=new_value,
-            )
-            link.explored_distance_m = new_value
+        previous = float(link.documentation_progress or 0.0)
+        reported = float(entry.documentation_progress)
+        new_value = min(1.0, _monotonic(previous, reported))
+        if new_value > previous:
+            link.documentation_progress = new_value
             session.add(link)
 
-        # Recompute skill level after possible exploration XP.
-        skill_level = level_for_xp(get_skill_xp(user, "field_survey"))
         notification = _maybe_complete_documentation(
             session, user, link, skill_level=skill_level
         )

@@ -27,6 +27,7 @@ const _xpSourceBreakdownKeys = <String, String>{
   'explore_100m_passively_xp': 'explore_100m_passively',
   'locate_fossil_in_situ_xp': 'locate_fossil_in_situ',
   'disguise_of_site_xp': 'disguise_of_site',
+  // Legacy breakdown key retained so historical awards remain readable.
   'document_progress_xp': 'document_progress',
   'document_site_xp': 'document_site',
   'identify_site_xp': 'identify_site',
@@ -50,11 +51,12 @@ const _mainParamLabels = <String, String>{
   'rival_discovery_chance': 'Rival discovery chance',
   'documentation_distance_m': 'Documentation distance',
   'documentation_accuracy': 'Documentation accuracy',
+  'discovery_speed': 'Discovery speed',
 };
 
 const _cardRadius = 10.0;
 
-enum _ParamFormat { chance, meters, kmh, xp, plain }
+enum _ParamFormat { chance, percentagePerSecond, meters, kmh, xp, plain }
 
 void showProfileSkillDetailSheet(
   BuildContext context, {
@@ -1136,6 +1138,21 @@ _SkillParamGroups _fieldSurveyRows(
         toolBindings: toolBindings,
       ),
       _resolveScalarParam(
+        label: 'Discovery speed',
+        paramKey: 'discovery_speed',
+        skillId: 'field_survey',
+        base: mp.discoverySpeed,
+        levelEntries: cfg.levelModifiers['discovery_speed'],
+        weatherTimeMods: cfg.weatherTimeModifiers['discovery_speed'],
+        weatherTime: weatherTime,
+        weatherTypeMods: cfg.weatherTypeModifiers['discovery_speed'],
+        weatherType: weatherType,
+        skillLevel: skillLevel,
+        format: _ParamFormat.percentagePerSecond,
+        clampUnit: false,
+        toolBindings: toolBindings,
+      ),
+      _resolveScalarParam(
         label: 'Rival discovery chance',
         paramKey: 'rival_discovery_chance',
         skillId: 'field_survey',
@@ -1221,21 +1238,6 @@ _SkillParamGroups _fieldSurveyRows(
         weatherTimeMods: cfg.weatherTimeModifiers['identify_site_xp'],
         weatherTime: weatherTime,
         weatherTypeMods: cfg.weatherTypeModifiers['identify_site_xp'],
-        weatherType: weatherType,
-        skillLevel: skillLevel,
-        format: _ParamFormat.xp,
-        clampUnit: false,
-        toolBindings: toolBindings,
-      ),
-      _resolveScalarParam(
-        label: 'Document progress',
-        paramKey: 'document_progress_xp',
-        skillId: 'field_survey',
-        base: mp.documentProgressXp,
-        levelEntries: cfg.levelModifiers['document_progress_xp'],
-        weatherTimeMods: cfg.weatherTimeModifiers['document_progress_xp'],
-        weatherTime: weatherTime,
-        weatherTypeMods: cfg.weatherTypeModifiers['document_progress_xp'],
         weatherType: weatherType,
         skillLevel: skillLevel,
         format: _ParamFormat.xp,
@@ -1492,6 +1494,8 @@ String _formatScalar(double value, _ParamFormat format) {
   switch (format) {
     case _ParamFormat.chance:
       return _formatChance(value);
+    case _ParamFormat.percentagePerSecond:
+      return '${_formatChance(value)}/s';
     case _ParamFormat.meters:
       return _formatMeters(value);
     case _ParamFormat.kmh:

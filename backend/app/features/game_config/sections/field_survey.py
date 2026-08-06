@@ -44,8 +44,8 @@ class FieldSurveyMainParams(BaseModel):
     documentation_accuracy: float = 0.01
     rival_discovery_chance: float = 1.0
     documentation_distance_m: float = 50.0
+    discovery_speed: float = 0.01
     disguise_of_site_xp: float = 40.0
-    document_progress_xp: float = 20.0
     document_site_xp: float = 80.0
     document_site_as_first_xp: float = 20.0
     identify_site_xp: float = 40.0
@@ -81,16 +81,15 @@ class FieldSurveyMainParams(BaseModel):
             raise ValueError("rival_discovery_chance must be >= 0")
         return value
 
-    @field_validator("documentation_distance_m")
+    @field_validator("documentation_distance_m", "discovery_speed")
     @classmethod
     def _validate_documentation_distance(cls, value: float) -> float:
         if value < 0.0:
-            raise ValueError("documentation_distance_m must be >= 0")
+            raise ValueError("documentation parameters must be >= 0")
         return value
 
     @field_validator(
         "disguise_of_site_xp",
-        "document_progress_xp",
         "document_site_xp",
         "document_site_as_first_xp",
         "identify_site_xp",
@@ -367,10 +366,6 @@ class FieldSurveyConfig(BaseModel):
         return float(self.main_params.disguise_of_site_xp)
 
     @property
-    def document_progress_xp(self) -> float:
-        return float(self.main_params.document_progress_xp)
-
-    @property
     def document_site_xp(self) -> float:
         return float(self.main_params.document_site_xp)
 
@@ -387,6 +382,10 @@ class FieldSurveyConfig(BaseModel):
         return float(self.main_params.documentation_distance_m)
 
     @property
+    def discovery_speed(self) -> float:
+        return float(self.main_params.discovery_speed)
+
+    @property
     def rival_discovery_chance(self) -> float:
         return float(self.main_params.rival_discovery_chance)
 
@@ -400,5 +399,4 @@ FossilGenerationConfig = FieldSurveyConfig
 # ---------------------------------------------------------------------------
 # Tool actions
 # ---------------------------------------------------------------------------
-
 

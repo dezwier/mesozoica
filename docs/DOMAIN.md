@@ -33,6 +33,12 @@ A site is a geographic excavation location with coordinates, geological dimensio
 
 Site state is partly global and partly user-specific. Discovery, identification, documentation/exploration progress, linking, discard state, and visibility must not be inferred from the base site row alone; application services join the latest ownership/status record.
 
+After identifying a site, the viewer documents it by remaining inside the
+configurable documentation radius. Each eligible second adds the configured
+`discovery_speed` to every dimension's accuracy; the server records monotonic
+unit-interval progress and completes documentation when the average reaches
+100% (equivalently, every capped dimension is at 100%).
+
 The Flutter map can show archive, field, linked, and show-all datasets. These are modes and caches, not synonyms. A server count, a catalog card, and a rendered marker each prove a different stage of the pipeline.
 
 ### Site types and dimensions

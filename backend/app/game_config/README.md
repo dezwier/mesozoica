@@ -25,7 +25,7 @@ Every announced skill XP gain is shown in **exactly one** of two ways:
 | Presentation | When | Breakdown keys (examples) |
 |--------------|------|---------------------------|
 | **Celebration plaque** | Big events — XP embedded under the celebration title (all XP for that event) | `sites`, `discover_site_as_first`, `fossils`, `document_site`, `document_site_as_first`, `identify_site` |
-| **Floating XP badge** | Small / ongoing events | `explore_100m_actively`, `explore_100m_passively`, `disguise_of_site`, `document_progress` |
+| **Floating XP badge** | Small / ongoing events | `explore_100m_actively`, `explore_100m_passively`, `disguise_of_site` |
 
 Client routing lives in `flutter/lib/utils/xp_source_labels.dart` and
 `XpAwardController.announceAwards`. Backend award amounts are unchanged by
@@ -142,27 +142,28 @@ resolvable):
 |-----|---------|
 | `documentation_accuracy` | Documentation accuracy — shared skill baseline for all five odd_* axes (base 1% × skill level; depth 0 always exact). Per-axis jitter stays in `accuracy_noise` |
 | `rival_discovery_chance` | Rival discovery chance — multiplier on discovery_chance for rivals on sites where you have any status above hidden (×1 at L1 → ×0.5 at L99) |
-| `documentation_distance_m` | Documentation distance — radius around a discovered site where walking accrues exploration meters |
+| `documentation_distance_m` | Documentation distance — radius around an identified site where time accrues documentation progress |
+| `discovery_speed` | Unit-interval documentation progress added per eligible second in range (`0.01` = one percentage point per second) |
 | `disguise_of_site_xp` | XP when a rival discovery roll would hit but your active disguise blocks it |
-| `document_progress_xp` | XP to field_survey per 20 m walked inside `documentation_distance_m` |
-| `document_site_xp` | XP when all five site-dimension accuracies reach 100% (freezes further exploration) |
+| `document_site_xp` | XP when all five site-dimension accuracies reach 100% (freezes further documentation) |
 | `document_site_as_first_xp` | Bonus XP when you are the first user to fully document a site |
-| `identify_site_xp` | XP per period/rock identification quiz step (100% / 50% / 0% by attempt). Exploration meters start only after both steps succeed |
+| `identify_site_xp` | XP per period/rock identification quiz step (100% / 50% / 0% by attempt). Timed documentation starts only after both steps succeed |
 
 `documentation_distance_m` uses the same solar-period multipliers as site discovery
-`discovery_distance_m`. `document_progress_xp` uses the same multipliers as
-`discover_site_xp`.
+`discovery_distance_m`. `discovery_speed` is wired through the standard level,
+weather, and tool resolver pipeline, but currently has no modifiers.
 
 After discovery, the site shows as "Excavation Site" until the viewer completes
 the identification quiz (period, then rock type). Only then do dimension bands
-and exploration meters unlock.
+and time-based documentation unlocks.
 
 Accuracy is display-only on the site card for now. Stack per axis:
 shared skill baseline (`documentation_accuracy`, base 1% × level → L50 ≈ 50%) →
 stable per-site / per-dimension noise (`accuracy_noise`) → tool
-`modifies_main_params` (none yet) → exploration (+1% per meter walked inside
-`documentation_distance_m`, additive, capped at 100%). When all five axes reach 100%,
-`document_site_xp` is awarded once and further exploration is frozen.
+`modifies_main_params` (none yet) → timed documentation (`discovery_speed` per
+eligible second inside `documentation_distance_m`, additive, capped at 100%).
+When all five axes reach 100%, `document_site_xp` is awarded once and further
+documentation is frozen. There is no intermediate documentation-progress XP.
 The first user to complete documentation also receives `document_site_as_first_xp`.
 
 `rival_discovery_chance` is multiplied by skill level (×1.0 at L1 → ×0.5 at L99,

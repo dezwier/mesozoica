@@ -73,12 +73,12 @@ void main() {
     expect(entries[1].wasFirst, isTrue);
   });
 
-  test('SiteSummary parses explored_distance_m', () {
+  test('SiteSummary parses documentation_progress', () {
     final site = SiteSummary.fromJson({
       'site_id': 11,
-      'explored_distance_m': 42.5,
+      'documentation_progress': 0.425,
     });
-    expect(site.exploredDistanceM, 42.5);
+    expect(site.documentationProgress, 0.425);
   });
 
   test('timeline aerial row is tappable when session id present', () {

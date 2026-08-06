@@ -146,13 +146,13 @@ def test_exploration_blocked_before_identification(session: Session) -> None:
             sites=[
                 SiteExplorationEntry(
                     site_id=site.site_id,
-                    explored_distance_m=40.0,
+                    documentation_progress=0.4,
                 )
             ]
         ),
     )
     session.refresh(link)
-    assert link.explored_distance_m == 0.0
+    assert link.documentation_progress == 0.0
     assert get_skill_xp(user, "field_survey") == 0
 
 

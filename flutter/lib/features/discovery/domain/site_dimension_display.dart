@@ -52,9 +52,6 @@ const double kSiteDimensionMaxBlurSigma = 16.0;
 /// Depth values at/near surface are always shown precisely (in situ).
 const double kSiteDimensionDepthPreciseEpsilon = 1e-9;
 
-/// +1% accuracy per meter walked inside documentation_distance_m (additive, capped).
-const double kExplorationAccuracyPerM = 0.01;
-
 /// Deterministic per-site / per-dimension accuracy noise after skill baseline.
 ///
 /// Must match [apply_dimension_accuracy_noise] in the backend
@@ -82,20 +79,19 @@ double applyDimensionAccuracyNoise({
   return (base + delta).clamp(0.0, 1.0);
 }
 
-/// Additive boost: skill accuracy + 1% per explored meter, capped at 1.0.
-double applyExplorationAccuracyBoost(
+/// Add time-based documentation progress to skill accuracy, capped at 1.0.
+double applyDocumentationProgress(
   double skillAccuracy,
-  double exploredDistanceM,
+  double documentationProgress,
 ) {
-  final boost =
-      exploredDistanceM.clamp(0.0, double.infinity) * kExplorationAccuracyPerM;
+  final boost = documentationProgress.clamp(0.0, 1.0);
   return (skillAccuracy + boost).clamp(0.0, 1.0);
 }
 
 /// True when all five display accuracies are at 100%.
 ///
 /// Mirrors backend [site_is_fully_documented] so the client can force-sync
-/// the moment local meters would complete documentation.
+/// the moment local progress would complete documentation.
 bool siteIsFullyDocumented({
   required int siteId,
   required double? oddDinoCount,
@@ -104,7 +100,7 @@ bool siteIsFullyDocumented({
   required double? oddQuality,
   required double? oddDepth,
   required int skillLevel,
-  required double exploredDistanceM,
+  required double documentationProgress,
 }) {
   const accuracyParam = 'documentation_accuracy';
   final values = <SiteDimensionKey, double?>{
@@ -121,13 +117,13 @@ bool siteIsFullyDocumented({
   );
   final skillAcc = baseAccuracies[accuracyParam] ?? 0.0;
   for (final entry in values.entries) {
-    final boosted = applyExplorationAccuracyBoost(
+    final boosted = applyDocumentationProgress(
       applyDimensionAccuracyNoise(
         baseAccuracy: skillAcc,
         siteId: siteId,
         dimension: entry.key,
       ),
-      exploredDistanceM,
+      documentationProgress,
     );
     final band = resolveSiteDimensionDisplay(
       dimension: entry.key,

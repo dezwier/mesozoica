@@ -65,7 +65,7 @@ class SiteSummary {
     this.oddCompletenessBand,
     this.oddQualityBand,
     this.oddDepthBand,
-    this.exploredDistanceM,
+    this.documentationProgress,
     this.documented,
     this.version = 'Original',
   });
@@ -123,8 +123,8 @@ class SiteSummary {
   final SiteDimensionBand? oddQualityBand;
   final SiteDimensionBand? oddDepthBand;
 
-  /// Meters walked inside site visibility (discoverer progress).
-  final double? exploredDistanceM;
+  /// Time-based documentation contribution in the unit interval.
+  final double? documentationProgress;
 
   /// True when all five dimension accuracies reached 100% (meters frozen).
   final bool? documented;
@@ -317,7 +317,8 @@ class SiteSummary {
       oddCompletenessBand: _bandFromJson(json['odd_completeness_band']),
       oddQualityBand: _bandFromJson(json['odd_quality_band']),
       oddDepthBand: _bandFromJson(json['odd_depth_band']),
-      exploredDistanceM: (json['explored_distance_m'] as num?)?.toDouble(),
+      documentationProgress: (json['documentation_progress'] as num?)
+          ?.toDouble(),
       documented: json['documented'] as bool?,
       version: (json['version'] as String?)?.trim().isNotEmpty == true
           ? (json['version'] as String).trim()
@@ -345,7 +346,7 @@ class SiteSummary {
     DateTime? documentedAt,
     bool? viewerWasFirstDocumentation,
     String? howDiscovered,
-    double? exploredDistanceM,
+    double? documentationProgress,
     bool? documented,
     String? rockType,
     String? siteTypePeriod,
@@ -394,7 +395,8 @@ class SiteSummary {
       oddCompletenessBand: oddCompletenessBand ?? this.oddCompletenessBand,
       oddQualityBand: oddQualityBand ?? this.oddQualityBand,
       oddDepthBand: oddDepthBand ?? this.oddDepthBand,
-      exploredDistanceM: exploredDistanceM ?? this.exploredDistanceM,
+      documentationProgress:
+          documentationProgress ?? this.documentationProgress,
       documented: documented ?? this.documented,
       version: version,
     );

@@ -137,17 +137,17 @@ void main() {
     });
   });
 
-  group('applyExplorationAccuracyBoost', () {
-    test('adds 1% per meter and caps at 1.0', () {
-      expect(applyExplorationAccuracyBoost(0.01, 0), closeTo(0.01, 1e-9));
-      expect(applyExplorationAccuracyBoost(0.01, 10), closeTo(0.11, 1e-9));
-      expect(applyExplorationAccuracyBoost(0.5, 100), 1.0);
-      expect(applyExplorationAccuracyBoost(0.99, 5), 1.0);
+  group('applyDocumentationProgress', () {
+    test('adds unit-interval progress and caps at 1.0', () {
+      expect(applyDocumentationProgress(0.01, 0), closeTo(0.01, 1e-9));
+      expect(applyDocumentationProgress(0.01, 0.10), closeTo(0.11, 1e-9));
+      expect(applyDocumentationProgress(0.5, 1), 1.0);
+      expect(applyDocumentationProgress(0.99, 0.05), 1.0);
     });
   });
 
   group('siteIsFullyDocumented', () {
-    test('false with missing odd values or low meters', () async {
+    test('false with missing odd values or low progress', () async {
       await loadGameConfigForTest();
       expect(
         siteIsFullyDocumented(
@@ -158,7 +158,7 @@ void main() {
           oddQuality: 0.5,
           oddDepth: null,
           skillLevel: 1,
-          exploredDistanceM: 200,
+          documentationProgress: 1,
         ),
         isFalse,
       );
@@ -171,13 +171,13 @@ void main() {
           oddQuality: 0.5,
           oddDepth: 0.5,
           skillLevel: 1,
-          exploredDistanceM: 0,
+          documentationProgress: 0,
         ),
         isFalse,
       );
     });
 
-    test('true once exploration boost reaches 100% on all axes', () async {
+    test('true once documentation progress reaches all axes', () async {
       await loadGameConfigForTest();
       expect(
         siteIsFullyDocumented(
@@ -188,7 +188,7 @@ void main() {
           oddQuality: 0.5,
           oddDepth: 0.5,
           skillLevel: 1,
-          exploredDistanceM: 200,
+          documentationProgress: 1,
         ),
         isTrue,
       );

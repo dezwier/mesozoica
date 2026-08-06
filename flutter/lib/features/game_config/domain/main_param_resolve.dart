@@ -229,6 +229,41 @@ double resolveSiteStewardshipSiteVisibilityM({
   return value;
 }
 
+/// Effective unit-interval documentation progress added per eligible second.
+double resolveSiteStewardshipDiscoverySpeed({
+  required int skillLevel,
+  String? weatherTime,
+  String? weatherType,
+  List<ToolModBinding> toolBindings = const [],
+}) {
+  if (!GameConfig.isLoaded) return 0.01;
+  final cfg = GameConfig.instance.siteStewardship;
+  var value = resolveScalarMainParam(
+    base: cfg.mainParams.discoverySpeed,
+    levelEntries: cfg.levelModifiers['discovery_speed'],
+    skillLevel: skillLevel,
+    weatherTimeMods: weatherTimeModsForParam(
+      weatherTimeModifiers: cfg.weatherTimeModifiers,
+      paramKey: 'discovery_speed',
+      weatherTime: weatherTime,
+    ),
+    weatherTypeMods: weatherTypeModsForParam(
+      weatherTypeModifiers: cfg.weatherTypeModifiers,
+      paramKey: 'discovery_speed',
+      weatherType: weatherType,
+    ),
+  );
+  for (final mod in siteDiscoveryToolModsForParam(
+    paramKey: 'discovery_speed',
+    skillId: 'field_survey',
+    toolBindings: toolBindings,
+    weatherTime: weatherTime,
+  )) {
+    value = applyMainParamModifier(value, op: mod.op, value: mod.value);
+  }
+  return value.clamp(0.0, double.infinity);
+}
+
 /// Effective documentation accuracy: base → level → ambient → tools.
 ///
 /// Single skill baseline (`documentation_accuracy`). Cards apply per-axis

@@ -205,13 +205,12 @@ def resolve_field_survey_main_params(
         "documentation_distance_m": _resolve(
             "documentation_distance_m", base=float(mp.documentation_distance_m)
         ),
+        "discovery_speed": _resolve(
+            "discovery_speed", base=float(mp.discovery_speed)
+        ),
         "disguise_of_site_xp": _resolve(
             "disguise_of_site_xp",
             base=float(mp.disguise_of_site_xp),
-        ),
-        "document_progress_xp": _resolve(
-            "document_progress_xp",
-            base=float(mp.document_progress_xp),
         ),
         "document_site_xp": _resolve(
             "document_site_xp",
@@ -271,8 +270,8 @@ def resolve_site_stewardship_main_params(
         "documentation_accuracy",
         "rival_discovery_chance",
         "documentation_distance_m",
+        "discovery_speed",
         "disguise_of_site_xp",
-        "document_progress_xp",
         "document_site_xp",
         "document_site_as_first_xp",
         "identify_site_xp",

@@ -96,7 +96,7 @@ mixin _MapScreenCameraMixin on State<MapScreen> {
   void _activateIfNeeded() {
     if (!widget.isActive) {
       // Site cards freeze the map UI but still want map-grade GPS so live
-      // exploration meters on the card back keep updating.
+      // documentation progress on the card back keeps updating.
       context.read<LocationService>().setMapForeground(widget.highPrecisionGps);
       unawaited(context.read<LocationService>().setHeadingWanted(false));
       context.read<map_data.MapController>().pause();

@@ -91,9 +91,9 @@ class SiteSummary(BaseModel):
     odd_completeness_band: SiteDimensionBand | None = None
     odd_quality_band: SiteDimensionBand | None = None
     odd_depth_band: SiteDimensionBand | None = None
-    # Viewer meters walked inside documentation_distance_m (discoverer progress).
-    explored_distance_m: float | None = None
-    # True when all five dimension accuracies reached 100% (meters frozen).
+    # Viewer time-based documentation contribution in the unit interval.
+    documentation_progress: float | None = None
+    # True when all five dimension accuracies reached 100% (progress frozen).
     documented: bool | None = None
     # True when the viewer has a documenter role on this site.
     viewer_has_documented: bool | None = None
@@ -217,7 +217,7 @@ class DiscoverSiteRequest(BaseModel):
 
 class SiteExplorationEntry(BaseModel):
     site_id: int
-    explored_distance_m: float = Field(..., ge=0)
+    documentation_progress: float = Field(..., ge=0, le=1)
 
 
 class SiteExplorationUpdateRequest(BaseModel):

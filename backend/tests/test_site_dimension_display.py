@@ -47,7 +47,7 @@ def test_build_bands_apply_noise_before_exploration():
         odd_quality=0.5,
         odd_depth=0.5,
         skill_level=50,
-        explored_distance_m=0.0,
+        documentation_progress=0.0,
     )
     accs = {
         k: bands[k].effective_accuracy

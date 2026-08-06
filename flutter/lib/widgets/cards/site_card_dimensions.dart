@@ -6,11 +6,9 @@ import 'package:provider/provider.dart';
 
 import '../../config/main_param_resolve.dart';
 import '../../controllers/auth_controller.dart';
-import '../../controllers/site_exploration_controller.dart';
-import '../../models/site.dart';
+import '../../features/discovery/discovery.dart';
 import '../../theme/dino_card_theme.dart';
 import 'card_section_panel.dart';
-import 'site_dimension_display.dart';
 
 /// Site card panel: four horizontal odd_* axes + vertical depth.
 class SiteCardDimensions extends StatelessWidget {
@@ -33,19 +31,20 @@ class SiteCardDimensions extends StatelessWidget {
       skillLevel: skillLevel,
     );
     final baseAccuracy = baseAccuracies['documentation_accuracy'] ?? 0.0;
-    final exploredM = emptyDims ? 0.0 : _resolvedExploredMeters(context, site);
-    // Stack: shared skill baseline → per-dimension noise → exploration.
+    final progress = emptyDims ? 0.0 : _resolvedProgress(context, site);
+    final inRange = !emptyDims && _isInRange(context, site.siteId);
+    // Stack: shared skill baseline → per-dimension noise → documentation.
     final accuracies = <SiteDimensionKey, double>{
       for (final dim in SiteDimensionKey.values)
         dim: emptyDims
             ? 0.0
-            : applyExplorationAccuracyBoost(
+            : applyDocumentationProgress(
                 applyDimensionAccuracyNoise(
                   baseAccuracy: baseAccuracy,
                   siteId: site.siteId,
                   dimension: dim,
                 ),
-                exploredM,
+                progress,
               ),
     };
 
@@ -113,23 +112,25 @@ class SiteCardDimensions extends StatelessWidget {
         entry.$2?.effectiveAccuracy ?? entry.$3,
       depthDisplay?.effectiveAccuracy ?? documentationDepth,
     ];
-    final avgDocumentedPct = emptyDims
-        ? 0
-        : ((dimensionAccuracies.reduce((a, b) => a + b) /
-                          dimensionAccuracies.length)
-                      .clamp(0.0, 1.0) *
-                  100)
-              .round();
+    final averageDocumentation = emptyDims
+        ? 0.0
+        : (dimensionAccuracies.reduce((a, b) => a + b) /
+                  dimensionAccuracies.length)
+              .clamp(0.0, 1.0);
 
     return CardSectionPanel(
-      labelWidget: Text(
-        emptyDims
+      labelWidget: SiteDocumentationProgressHeader(
+        progress: averageDocumentation,
+        message: emptyDims
             ? 'Identify site to begin documentation'
-            : 'Documented $avgDocumentedPct% · Explored ${exploredM.floor()} m',
-        textAlign: TextAlign.center,
-        style: cardTheme
-            .sectionLabelStyle(fontSize: 13)
-            .copyWith(fontWeight: FontWeight.w700, letterSpacing: 0.15),
+            : site.documented == true || averageDocumentation >= 1.0
+            ? 'Site documented'
+            : inRange
+            ? 'Documenting site'
+            : 'Move within range to continue',
+        active: inRange,
+        complete: site.documented == true || averageDocumentation >= 1.0,
+        cardTheme: cardTheme,
       ),
       padding: const EdgeInsets.fromLTRB(4, 10, 6, 10),
       labelGap: 8,
@@ -172,18 +173,24 @@ class SiteCardDimensions extends StatelessWidget {
     );
   }
 
-  static double _resolvedExploredMeters(
-    BuildContext context,
-    SiteSummary site,
-  ) {
-    final server = site.exploredDistanceM ?? 0.0;
+  static double _resolvedProgress(BuildContext context, SiteSummary site) {
+    final server = site.documentationProgress ?? 0.0;
     try {
-      return context.watch<SiteExplorationController>().exploredMetersFor(
-        site.siteId,
-        fallback: server,
-      );
+      return context
+          .watch<SiteExplorationController>()
+          .documentationProgressFor(site.siteId, fallback: server);
     } on ProviderNotFoundException {
       return server;
+    }
+  }
+
+  static bool _isInRange(BuildContext context, int siteId) {
+    try {
+      return context.watch<SiteExplorationController>().isInDocumentationRange(
+        siteId,
+      );
+    } on ProviderNotFoundException {
+      return false;
     }
   }
 

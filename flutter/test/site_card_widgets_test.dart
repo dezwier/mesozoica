@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:mesozoica/config/game_config.dart';
 import 'package:mesozoica/controllers/auth_controller.dart';
+import 'package:mesozoica/controllers/site_exploration_controller.dart';
 import 'package:mesozoica/models/site.dart';
 import 'package:mesozoica/widgets/cards/geologic_timeline.dart';
 import 'package:mesozoica/widgets/cards/site_card_back.dart';
@@ -14,6 +16,7 @@ import 'package:mesozoica/widgets/cards/site_card_related_lists.dart';
 import 'package:mesozoica/widgets/cards/site_turnable_card.dart';
 import 'package:mesozoica/widgets/map/fossil_marker.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'helpers/game_config_test_helpers.dart';
 
@@ -43,7 +46,67 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   setUp(() async {
+    SharedPreferences.setMockInitialValues({});
     await loadGameConfigForTest();
+  });
+
+  testWidgets('Site dimensions shows active documenting progress', (
+    tester,
+  ) async {
+    final site = _fixture.copyWith(
+      status: 'identified',
+      viewerHasIdentified: true,
+      discoveredAt: DateTime.utc(2026, 8, 6),
+      documentationProgress: 0,
+    );
+    final controller = SiteExplorationController();
+    await controller.debugInitializeForTest(
+      discoveredSitesProvider: () => [site],
+    );
+    await controller.debugCreditElapsed(
+      position: Position(
+        latitude: site.latitude!,
+        longitude: site.longitude!,
+        timestamp: DateTime.utc(2026, 8, 6),
+        accuracy: 1,
+        altitude: 0,
+        altitudeAccuracy: 0,
+        heading: 0,
+        headingAccuracy: 0,
+        speed: 0,
+        speedAccuracy: 0,
+      ),
+      elapsed: const Duration(seconds: 1),
+    );
+
+    await tester.pumpWidget(
+      ChangeNotifierProvider.value(
+        value: controller,
+        child: MaterialApp(
+          home: Scaffold(body: SiteCardDimensions(site: site)),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('Documenting site'), findsOneWidget);
+    expect(find.text('Explored'), findsNothing);
+    controller.dispose();
+  });
+
+  testWidgets('Site dimensions shows completed documentation state', (
+    tester,
+  ) async {
+    final site = _fixture.copyWith(documented: true, documentationProgress: 1);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(body: SiteCardDimensions(site: site)),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('Site documented'), findsOneWidget);
+    expect(find.text('100%'), findsWidgets);
   });
 
   tearDown(() {
@@ -182,10 +245,7 @@ void main() {
     expect(find.textContaining('Discovered'), findsNothing);
     expect(find.text('SITE DIMENSIONS'), findsNothing);
     expect(find.textContaining('Site dimensions'), findsNothing);
-    expect(
-      find.textContaining(RegExp(r'Documented \d+% · Explored 0 m')),
-      findsOneWidget,
-    );
+    expect(find.text('Move within range to continue'), findsOneWidget);
     expect(find.text('COORDINATES'), findsNothing);
     expect(find.text('COUNTRY'), findsNothing);
     expect(find.text('PERIOD'), findsNothing);
@@ -204,7 +264,7 @@ void main() {
     expect(find.text('0.55'), findsNothing);
   });
 
-  testWidgets('SiteCardBack timeline shows Explored meters when discovered', (
+  testWidgets('SiteCardBack shows documentation progress when discovered', (
     tester,
   ) async {
     final discovered = SiteSummary(
@@ -220,7 +280,7 @@ void main() {
       howDiscovered: SiteSummary.howDiscoveredWalk,
       discoveredAt: DateTime.utc(2026, 7, 1, 12),
       viewerHasIdentified: true,
-      exploredDistanceM: 30,
+      documentationProgress: 0.30,
       oddDinoCount: 0.42,
       oddFossilCount: 0.55,
       oddCompleteness: 0.61,
@@ -247,10 +307,7 @@ void main() {
     expect(find.textContaining('Discovered'), findsOneWidget);
     expect(find.textContaining(' · '), findsWidgets);
     expect(find.text('Mapped 30m'), findsNothing);
-    expect(
-      find.textContaining(RegExp(r'Documented \d+% · Explored 30 m')),
-      findsOneWidget,
-    );
+    expect(find.text('Move within range to continue'), findsOneWidget);
     expect(find.text('MOMENT'), findsNothing);
     // Skill + noise + 30m exploration → inline % labels (not a fixed 31%).
     expect(find.textContaining('%'), findsWidgets);
@@ -299,10 +356,7 @@ void main() {
       expect(find.text('Original - Discovered 3h ago'), findsNothing);
       expect(find.text('#67'), findsNothing);
       expect(find.text('#67 · Original'), findsNothing);
-      expect(
-        find.textContaining(RegExp(r'Documented \d+% · Explored')),
-        findsOneWidget,
-      );
+      expect(find.text('Move within range to continue'), findsOneWidget);
     },
   );
 

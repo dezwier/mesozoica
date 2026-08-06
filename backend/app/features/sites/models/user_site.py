@@ -111,17 +111,17 @@ class UserSite(SQLModel, table=True):
         ),
         description="Tool session that granted this role (e.g. aerial discover)",
     )
-    explored_distance_m: float = Field(
+    documentation_progress: float = Field(
         default=0.0,
         description=(
-            "Meters walked inside documentation_distance_m (discoverer row only)"
+            "Unit-interval time-based documentation progress (discoverer row only)"
         ),
     )
     documented: bool = Field(
         default=False,
         description=(
             "True when all five dimension accuracies reached 100%; "
-            "exploration meters are frozen"
+            "documentation progress is frozen"
         ),
     )
     identify_period_wrongs: int = Field(

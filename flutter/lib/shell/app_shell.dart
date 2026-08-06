@@ -415,11 +415,18 @@ class _AppShellState extends State<AppShell>
       toolMod: speedMod,
     );
     walk.updateMaxDiscoverySpeedKmh(effective);
-    exploration.updateMaxDiscoverySpeedKmh(effective);
     discovery.setMaxDiscoverySpeedKmh(effective);
 
     exploration.updateSiteVisibilityM(
       resolveSiteStewardshipSiteVisibilityM(
+        skillLevel: 1,
+        weatherTime: weatherTime,
+        weatherType: _weather?.status?.weatherType,
+        toolBindings: siteVisBindings,
+      ),
+    );
+    exploration.updateDiscoverySpeed(
+      resolveSiteStewardshipDiscoverySpeed(
         skillLevel: 1,
         weatherTime: weatherTime,
         weatherType: _weather?.status?.weatherType,
@@ -826,7 +833,7 @@ class _AppShellState extends State<AppShell>
                   MapScreen(
                     isActive: !_anyOverlayOpen && !_cardDetailOpen,
                     // Site cards freeze map chrome/Mapbox, but keep high GPS so
-                    // exploration meters on the card back stay live.
+                    // documentation progress on the card back stays live.
                     highPrecisionGps: !_anyOverlayOpen,
                     showControls:
                         !_anyCatalogOpen && !_toolsOpen && !_cardDetailOpen,

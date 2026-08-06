@@ -27,7 +27,7 @@ void main() {
     expect(stew.mainParams.documentationAccuracy, greaterThan(0));
     expect(stew.mainParams.documentationAccuracy, lessThanOrEqualTo(1));
     expect(stew.mainParams.documentationDistanceM, greaterThan(0));
-    expect(stew.mainParams.documentProgressXp, greaterThan(0));
+    expect(stew.mainParams.discoverySpeed, 0.01);
     final accMods = stew.levelModifiers['documentation_accuracy']!;
     expect(accMods.length, greaterThanOrEqualTo(2));
     expect(accMods.first.op, 'multiply');
