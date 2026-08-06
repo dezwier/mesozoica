@@ -38,13 +38,13 @@ class XpAward {
   /// skill_breakdown key (empty for remainder / skill-name fallback → badge).
   final String sourceKey;
 
-  /// Copy with a new [id] (and optionally merged [amount]).
-  XpAward copyWith({int? id, int? amount}) {
+  /// Copy with a new [id] (and optionally merged [amount] / [sourceLabel]).
+  XpAward copyWith({int? id, int? amount, String? sourceLabel}) {
     return XpAward(
       id: id ?? this.id,
       skillId: skillId,
       skillName: skillName,
-      sourceLabel: sourceLabel,
+      sourceLabel: sourceLabel ?? this.sourceLabel,
       amount: amount ?? this.amount,
       sourceKey: sourceKey,
     );
@@ -135,8 +135,10 @@ class XpAwardController extends ChangeNotifier {
     if (existing == null) {
       _backgroundBundle[key] = award.copyWith(id: 0);
     } else {
+      final mergedAmount = existing.amount + award.amount;
       _backgroundBundle[key] = existing.copyWith(
-        amount: existing.amount + award.amount,
+        amount: mergedAmount,
+        sourceLabel: xpSourceLabelForAward(key, mergedAmount),
       );
     }
   }
@@ -183,7 +185,8 @@ class XpAwardController extends ChangeNotifier {
   }
 
   /// Like [announceAwards], but distance XP from a closed-app gap is merged into
-  /// one badge titled "Explored … since last visit".
+  /// one badge. Pure passive/active gaps use "Explore {m} …"; mixed gaps use
+  /// "Explored … since last visit".
   ///
   /// Shown when [exploredMeters] ≥ 10 (even if XP is 0). Smaller gaps fall
   /// through to normal announce (no visit chip).
@@ -222,13 +225,23 @@ class XpAwardController extends ChangeNotifier {
             sourceKey: 'explore_100m_passively',
           );
 
+    // Prefer "Explore {m} passively/actively" when the gap is a single distance
+    // source; mixed active+passive keeps the visit wording.
+    final onlyPassive = distance.isNotEmpty &&
+        distance.every((a) => a.sourceKey == 'explore_100m_passively');
+    final onlyActive = distance.isNotEmpty &&
+        distance.every((a) => a.sourceKey == 'explore_100m_actively');
+    final visitLabel = onlyPassive || onlyActive
+        ? exploreDistanceXpLabel(template.sourceKey, exploredMeters)
+        : exploredSinceLastVisitLabel(exploredMeters);
+
     _enqueueVisitAware([
       ...otherBadge,
       XpAward(
         id: 0,
         skillId: template.skillId,
         skillName: template.skillName,
-        sourceLabel: exploredSinceLastVisitLabel(exploredMeters),
+        sourceLabel: visitLabel,
         amount: xp,
         sourceKey: template.sourceKey,
       ),
@@ -243,7 +256,8 @@ class XpAwardController extends ChangeNotifier {
       // Allow amount == 0 for the visit distance chip only.
       if (award.amount < 0) continue;
       if (award.amount == 0 &&
-          !award.sourceLabel.startsWith('Explored ')) {
+          !award.sourceLabel.startsWith('Explored ') &&
+          !award.sourceLabel.startsWith('Explore ')) {
         continue;
       }
       _active.add(award.copyWith(id: _nextId++));

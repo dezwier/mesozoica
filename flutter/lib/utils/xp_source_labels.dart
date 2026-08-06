@@ -13,7 +13,12 @@
 /// everything else). Unknown / remainder fallbacks use a badge.
 library xp_source_labels;
 
+import '../config/game_config.dart';
+
 /// Human labels for skill_breakdown keys (XP sources / main_param awards).
+///
+/// Distance keys use a 100 m placeholder; prefer [xpSourceLabelForAward] when
+/// the XP amount (or meters) is known so the badge shows the real distance.
 const kXpBreakdownLabels = <String, String>{
   'discover_site': 'Discover site',
   'locate_fossil_in_situ': 'Locate fossil in situ',
@@ -90,6 +95,59 @@ String formatExplorationDistance(double meters) {
     return '${km.toStringAsFixed(1)} km';
   }
   return '${km.round()} km';
+}
+
+/// Walk-distance badge label with the meters that earned the XP.
+String exploreDistanceXpLabel(String sourceKey, double meters) {
+  final formatted = formatExplorationDistance(meters);
+  switch (sourceKey) {
+    case 'explore_100m_passively':
+      return 'Explore $formatted passively';
+    case 'explore_100m_actively':
+      return 'Explore $formatted actively';
+    default:
+      return xpSourceLabel(sourceKey);
+  }
+}
+
+/// Infer meters from a distance-XP amount using the base XP-per-100 m rate.
+double? metersForDistanceXp(
+  String sourceKey,
+  int xpAmount, {
+  double? xpPer100m,
+}) {
+  if (xpAmount <= 0) return null;
+  final rate = xpPer100m ?? _xpPer100mForSource(sourceKey);
+  if (rate == null || rate <= 0) return null;
+  return (xpAmount / rate) * 100.0;
+}
+
+double? _xpPer100mForSource(String sourceKey) {
+  switch (sourceKey) {
+    case 'explore_100m_passively':
+      if (GameConfig.isLoaded) {
+        return GameConfig.instance.fieldSurvey.explore100mPassivelyXp;
+      }
+      return 10.0;
+    case 'explore_100m_actively':
+      if (GameConfig.isLoaded) {
+        return GameConfig.instance.fieldSurvey.explore100mActivelyXp;
+      }
+      return 20.0;
+    default:
+      return null;
+  }
+}
+
+/// Badge/plaque label for an award; distance sources include earned meters.
+String xpSourceLabelForAward(String breakdownKey, int amount) {
+  if (kDistanceXpSourceKeys.contains(breakdownKey)) {
+    final meters = metersForDistanceXp(breakdownKey, amount);
+    if (meters != null) {
+      return exploreDistanceXpLabel(breakdownKey, meters);
+    }
+  }
+  return xpSourceLabel(breakdownKey);
 }
 
 /// Badge label after a closed-app walk gap is credited on reopen.

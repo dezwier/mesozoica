@@ -15,6 +15,21 @@ void main() {
     test('humanizes unknown keys', () {
       expect(xpSourceLabel('custom_source'), 'Custom Source');
     });
+
+    test('distance awards use meters inferred from XP amount', () {
+      expect(
+        xpSourceLabelForAward('explore_100m_passively', 10),
+        'Explore 100 m passively',
+      );
+      expect(
+        xpSourceLabelForAward('explore_100m_passively', 50),
+        'Explore 500 m passively',
+      );
+      expect(
+        xpSourceLabelForAward('explore_100m_actively', 40),
+        'Explore 200 m actively',
+      );
+    });
   });
 
   group('celebration vs badge classification', () {
@@ -106,6 +121,26 @@ void main() {
       expect(awards.single.sourceKey, '');
       expect(awards.single.amount, 50);
     });
+
+    test('distance award labels include meters inferred from XP', () {
+      final before = profile(
+        xp: 0,
+        breakdown: const {},
+        skillId: 'field_survey',
+        skillName: 'Field Survey',
+      );
+      final after = profile(
+        xp: 50,
+        breakdown: const {'explore_100m_passively': 50},
+        skillId: 'field_survey',
+        skillName: 'Field Survey',
+      );
+
+      final awards = AuthController.debugDiffXpAwards(before, after);
+      expect(awards, hasLength(1));
+      expect(awards.single.sourceLabel, 'Explore 500 m passively');
+      expect(awards.single.amount, 50);
+    });
   });
 
   group('XpAwardController announce / claim', () {
@@ -119,7 +154,9 @@ void main() {
         id: 0,
         skillId: skillId,
         skillName: skillName,
-        sourceLabel: xpSourceLabel(sourceKey.isEmpty ? skillName : sourceKey),
+        sourceLabel: sourceKey.isEmpty
+            ? skillName
+            : xpSourceLabelForAward(sourceKey, amount),
         amount: amount,
         sourceKey: sourceKey,
       );
@@ -222,6 +259,23 @@ void main() {
       );
     });
 
+    test('visit announce with only passive uses explore-distance label', () {
+      final controller = XpAwardController();
+      controller.announceAwardsAfterVisit(
+        awards: [
+          award(sourceKey: 'explore_100m_passively', amount: 100),
+        ],
+        exploredMeters: 1500,
+      );
+
+      expect(controller.activeAwards, hasLength(1));
+      expect(
+        controller.activeAwards.single.sourceLabel,
+        'Explore 1.5 km passively',
+      );
+      expect(controller.activeAwards.single.amount, 100);
+    });
+
     test('visit announce shows distance-only badge when XP is 0', () {
       final controller = XpAwardController();
       controller.announceAwardsAfterVisit(
@@ -245,7 +299,10 @@ void main() {
       );
 
       expect(controller.activeAwards, hasLength(1));
-      expect(controller.activeAwards.single.sourceLabel, 'Explore 100m passively');
+      expect(
+        controller.activeAwards.single.sourceLabel,
+        'Explore 10 m passively',
+      );
       expect(controller.activeAwards.single.amount, 1);
     });
 
@@ -257,7 +314,10 @@ void main() {
       );
 
       expect(controller.activeAwards, hasLength(1));
-      expect(controller.activeAwards.single.sourceLabel, 'Explore 100m passively');
+      expect(
+        controller.activeAwards.single.sourceLabel,
+        'Explore 1.0 km passively',
+      );
     });
 
     test('clear empties active badges and celebration stash', () {

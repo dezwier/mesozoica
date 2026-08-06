@@ -248,7 +248,7 @@ class AuthController extends ChangeNotifier {
             id: 0,
             skillId: skill.id,
             skillName: skill.name,
-            sourceLabel: xpSourceLabel(entry.key),
+            sourceLabel: xpSourceLabelForAward(entry.key, delta),
             amount: delta,
             sourceKey: entry.key,
           ),
