@@ -12,6 +12,7 @@ import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 
 import '../../config/map_config.dart';
 import '../../services/token_storage.dart';
+import 'map_perf_counters.dart';
 import 'mapbox_site_annotations.dart';
 
 const double _locationPuckLogicalSize = 32;
@@ -69,6 +70,10 @@ class MapboxCameraCoordinator {
     _lastFollowedLocation = null;
     _pendingFollowLocation = null;
     _pendingFollowZoom = null;
+    _pulseSyncTrailing?.cancel();
+    _pulseSyncTrailing = null;
+    _lastPulseSyncAt = null;
+    _probeCache = null;
     _lastPulseRadiusPx = null;
     _puckTopImage = null;
     _puckBearingImage = null;
@@ -99,6 +104,7 @@ class MapboxCameraCoordinator {
         Point(coordinates: Position(p.longitude, p.latitude)),
     ];
     try {
+      MapPerfCounters.countChannelCall();
       final pixels = await map.pixelsForCoordinates(geo);
       return [
         for (final pixel in pixels)
@@ -476,15 +482,19 @@ class MapboxCameraCoordinator {
     _puckBearingImage = bearingImage;
     _puckShadowImage = shadowImage;
 
-    final pulsePx = await _resolvePulseRadiusPx(
+    // Quantised like [syncLocationPuckPulse] so the epsilon check that guards
+    // later pushes compares against the same baseline.
+    final pulsePx = (await _resolvePulseRadiusPx(
       discoveryDistanceM: discoveryDistanceM,
       center: center,
       latitudeDeg: latitudeDeg,
       zoom: zoom,
-    );
+    ))
+        .roundToDouble();
     _lastPulseRadiusPx = pulsePx;
     _lastPulseColor = pulseColor ?? locationPuckPulseBrown;
     _lastPulsingEnabled = pulsingEnabled;
+    _lastPulseSyncAt = DateTime.now();
 
     await map.location.updateSettings(
       _locationPuckSettings(
@@ -495,10 +505,27 @@ class MapboxCameraCoordinator {
     );
   }
 
+  /// Smallest pulse-radius change worth a settings push, in logical pixels.
+  ///
+  /// Every push re-serialises the three puck PNGs across the platform channel
+  /// and forces a native texture re-upload, so sub-pixel GPS jitter must not
+  /// trigger one. The pulse is a soft translucent ring — 2 px is invisible.
+  static const double pulseRadiusEpsilonPx = 2.0;
+
+  /// Fastest cadence for pulse-only settings pushes.
+  static const Duration pulseSyncMinInterval = Duration(milliseconds: 250);
+
+  DateTime? _lastPulseSyncAt;
+  Timer? _pulseSyncTrailing;
+  bool _pulseSyncInFlight = false;
+
   /// Update the discovery pulse radius (zoom / visibility / location).
   ///
   /// Always re-applies the cached avatar puck: Mapbox Flutter replaces a null
   /// [LocationComponentSettings.locationPuck] with the blue default 2D puck.
+  ///
+  /// Rate-limited to [pulseSyncMinInterval] with a trailing call, so a
+  /// pinch-zoom produces a handful of pushes rather than one per camera frame.
   Future<void> syncLocationPuckPulse({
     double? discoveryDistanceM,
     LatLng? center,
@@ -507,35 +534,78 @@ class MapboxCameraCoordinator {
     Color? pulseColor,
     bool? pulsingEnabled,
   }) async {
-    final map = _map;
-    if (map == null || _puckTopImage == null) return;
-    final pulsePx = await _resolvePulseRadiusPx(
-      discoveryDistanceM: discoveryDistanceM,
-      center: center,
-      latitudeDeg: latitudeDeg,
-      zoom: zoom,
-    );
-    final color = pulseColor ?? locationPuckPulseBrown;
-    final enabled = pulsingEnabled ?? _lastPulsingEnabled;
-    final previous = _lastPulseRadiusPx;
-    final colorChanged = color.toARGB32() != _lastPulseColor.toARGB32();
-    final enabledChanged = enabled != _lastPulsingEnabled;
-    if (previous != null &&
-        (pulsePx - previous).abs() < 0.5 &&
-        !colorChanged &&
-        !enabledChanged) {
+    if (_map == null || _puckTopImage == null) return;
+
+    final last = _lastPulseSyncAt;
+    final sinceLast =
+        last == null ? null : DateTime.now().difference(last);
+    if (_pulseSyncInFlight ||
+        (sinceLast != null && sinceLast < pulseSyncMinInterval)) {
+      // Coalesce: re-run once with the newest camera/location after the window.
+      // Floor the delay — a call arriving while one is in flight can already be
+      // past the window, and a zero/negative timer would spin.
+      final remaining = sinceLast == null
+          ? pulseSyncMinInterval
+          : pulseSyncMinInterval - sinceLast;
+      _pulseSyncTrailing?.cancel();
+      _pulseSyncTrailing = Timer(
+        remaining < const Duration(milliseconds: 16)
+            ? const Duration(milliseconds: 16)
+            : remaining,
+        () {
+          _pulseSyncTrailing = null;
+          unawaited(
+            syncLocationPuckPulse(
+              discoveryDistanceM: discoveryDistanceM,
+              center: center,
+              latitudeDeg: latitudeDeg,
+              zoom: zoom,
+              pulseColor: pulseColor,
+              pulsingEnabled: pulsingEnabled,
+            ),
+          );
+        },
+      );
       return;
     }
-    _lastPulseRadiusPx = pulsePx;
-    _lastPulseColor = color;
-    _lastPulsingEnabled = enabled;
-    await map.location.updateSettings(
-      _locationPuckSettings(
-        pulsePx: pulsePx,
-        pulseColor: color,
-        pulsingEnabled: enabled,
-      ),
-    );
+
+    _pulseSyncInFlight = true;
+    try {
+      final resolved = await _resolvePulseRadiusPx(
+        discoveryDistanceM: discoveryDistanceM,
+        center: center,
+        latitudeDeg: latitudeDeg,
+        zoom: zoom,
+      );
+      final map = _map;
+      if (map == null) return;
+      // Quantise so a drifting projection settles instead of oscillating.
+      final pulsePx = resolved.roundToDouble();
+      final color = pulseColor ?? locationPuckPulseBrown;
+      final enabled = pulsingEnabled ?? _lastPulsingEnabled;
+      final previous = _lastPulseRadiusPx;
+      final colorChanged = color.toARGB32() != _lastPulseColor.toARGB32();
+      final enabledChanged = enabled != _lastPulsingEnabled;
+      if (previous != null &&
+          (pulsePx - previous).abs() < pulseRadiusEpsilonPx &&
+          !colorChanged &&
+          !enabledChanged) {
+        return;
+      }
+      _lastPulseRadiusPx = pulsePx;
+      _lastPulseColor = color;
+      _lastPulsingEnabled = enabled;
+      _lastPulseSyncAt = DateTime.now();
+      await map.location.updateSettings(
+        _locationPuckSettings(
+          pulsePx: pulsePx,
+          pulseColor: color,
+          pulsingEnabled: enabled,
+        ),
+      );
+    } finally {
+      _pulseSyncInFlight = false;
+    }
   }
 
   /// Project a ground radius in meters to screen pixels at [center].
@@ -591,11 +661,29 @@ class MapboxCameraCoordinator {
     }
 
     if (origin != null && center != null) {
+      // The probe is a platform-channel round-trip; its result only depends on
+      // these three inputs, so an unchanged call can reuse the last answer.
+      final cached = _probeCache;
+      if (cached != null &&
+          cached.radiusM == _pulseVisibilityDistanceM &&
+          cached.zoom == _pulseZoom &&
+          cached.center.latitude == center.latitude &&
+          cached.center.longitude == center.longitude) {
+        return cached.px;
+      }
       final projected = await _projectGroundRadiusPx(
         center: center,
         radiusM: _pulseVisibilityDistanceM,
       );
-      if (projected != null) return projected;
+      if (projected != null) {
+        _probeCache = (
+          center: center,
+          zoom: _pulseZoom,
+          radiusM: _pulseVisibilityDistanceM,
+          px: projected,
+        );
+        return projected;
+      }
     }
 
     return MapConfig.groundRadiusToPulsePx(
@@ -604,6 +692,9 @@ class MapboxCameraCoordinator {
       zoom: _pulseZoom,
     );
   }
+
+  /// Last successful ground-radius probe, keyed by its inputs.
+  ({LatLng center, double zoom, double radiusM, double px})? _probeCache;
 
   /// Scale a short lateral probe to [radiusM] via Mapbox screen projection.
   Future<double?> _projectGroundRadiusPx({

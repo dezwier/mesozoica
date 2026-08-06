@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 
 import '../../controllers/map_controller.dart' as map_data;
 import '../../services/location_service.dart';
+import 'map_perf_counters.dart';
 
 /// Admin-only performance HUD for map thermal / battery diagnosis.
 ///
@@ -47,8 +48,12 @@ class _MapPerfHudState extends State<MapPerfHud> {
 
   int _prevGpsCount = 0;
   int _prevHeadingNotify = 0;
+  int _prevProjections = 0;
+  int _prevChannelCalls = 0;
   double _gpsHz = 0;
   double _compassHz = 0;
+  double _projectionHz = 0;
+  double _channelHz = 0;
 
   DateTime _windowStart = DateTime.now();
 
@@ -115,8 +120,14 @@ class _MapPerfHudState extends State<MapPerfHud> {
         now.difference(_windowStart).inMilliseconds.clamp(1, 60000) / 1000.0;
     final gpsDelta = loc.gpsUpdateCount - _prevGpsCount;
     final headingDelta = loc.headingNotifyCount - _prevHeadingNotify;
+    final projectionDelta =
+        MapPerfCounters.overlayProjections - _prevProjections;
+    final channelDelta =
+        MapPerfCounters.mapboxChannelCalls - _prevChannelCalls;
     _prevGpsCount = loc.gpsUpdateCount;
     _prevHeadingNotify = loc.headingNotifyCount;
+    _prevProjections = MapPerfCounters.overlayProjections;
+    _prevChannelCalls = MapPerfCounters.mapboxChannelCalls;
     _windowStart = now;
 
     setState(() {
@@ -126,6 +137,8 @@ class _MapPerfHudState extends State<MapPerfHud> {
       _jankCount = jank;
       _gpsHz = gpsDelta / elapsedSec;
       _compassHz = headingDelta / elapsedSec;
+      _projectionHz = projectionDelta / elapsedSec;
+      _channelHz = channelDelta / elapsedSec;
       _timings.clear();
     });
   }
@@ -172,6 +185,8 @@ class _MapPerfHudState extends State<MapPerfHud> {
                   'CMP ${_compassHz.toStringAsFixed(0)}Hz  '
                       'hdg${loc.headingDeg.toStringAsFixed(0)}°  '
                       '${loc.isHeadingStreamActive ? 'on' : 'off'}',
+                  'PRJ ${_projectionHz.toStringAsFixed(0)}/s  '
+                      'ipc${_channelHz.toStringAsFixed(0)}/s',
                   if (_expanded) ...[
                     'rot${widget.rotateMap ? '1' : '0'} '
                         'fol${widget.followUser ? '1' : '0'} '

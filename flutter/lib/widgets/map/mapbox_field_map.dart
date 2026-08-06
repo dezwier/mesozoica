@@ -159,6 +159,7 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
   Ticker? _rotateOverlayTicker;
   String? _appliedLightPreset;
   MapboxBasemapTheme? _appliedBasemapTheme;
+  bool? _appliedShow3dObjects;
   double? _layoutHeight;
   ui.Size? _viewportSize;
   List<MapRotateVisibleSite> _visibleRotateSites = const [];
@@ -166,6 +167,12 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
   /// North-fixed photo pins when zoomed in (hybrid with Mapbox dots).
   bool _detailPinsActive = false;
   double _lastKnownZoom = MapConfig.mapboxFollowZoom;
+  /// Latest camera pushed by Mapbox — avoids a `getCameraState()` per frame.
+  CameraState? _lastCameraState;
+  /// Set when the camera or GPS moved; the rotate ticker skips clean frames.
+  bool _rotateOverlayDirty = true;
+  /// Elapsed stamp of the last processed rotate tick (60 Hz gate).
+  Duration _lastRotateTick = Duration.zero;
 
   late final LatLng _seedCenter;
   late final double _seedZoom;
@@ -510,9 +517,9 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
       );
     }
     if (widget.rotateWithHeading && loc != null) {
-      _syncRotateOverlayFrame();
+      _markRotateOverlayDirty();
     } else if (_detailPinsActive && loc != null) {
-      _syncRotateOverlayFrame();
+      _markRotateOverlayDirty();
     }
     if (loc != null) {
       _syncDiscoveryPulse();
@@ -744,17 +751,28 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
     _onSiteTap(site);
   }
 
+  /// Longest gap between processed rotate ticks — 60 Hz even on ProMotion.
+  static const _rotateTickInterval = Duration(microseconds: 16000);
+
   void _onRotateOverlayTick(Duration elapsed) {
     if (!widget.rotateWithHeading || !widget.mapActive || !_ready) return;
+    // Nothing moved since the last projection — the pins are already correct.
+    if (!_rotateOverlayDirty) return;
+    if (elapsed - _lastRotateTick < _rotateTickInterval) return;
+    _lastRotateTick = elapsed;
+    _rotateOverlayDirty = false;
     _syncRotateOverlayFrame();
   }
 
   void _setRotateOverlayTickerActive(bool active) {
     if (active && widget.mapActive) {
       if (_rotateOverlayTicker == null) {
+        // A fresh ticker restarts elapsed at zero — a stale stamp from the
+        // previous ticker would gate every frame out.
+        _lastRotateTick = Duration.zero;
         _rotateOverlayTicker = createTicker(_onRotateOverlayTick)..start();
       }
-      _syncRotateOverlayFrame();
+      _markRotateOverlayDirty();
     } else {
       _rotateOverlayTicker?.dispose();
       _rotateOverlayTicker = null;
@@ -772,7 +790,7 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
     await _annotations?.setRotateModePaused(active);
     if (!mounted) return;
     if (active && widget.mapActive) {
-      _syncRotateOverlayFrame();
+      _markRotateOverlayDirty();
       setState(() {});
     } else {
       setState(() => _visibleRotateSites = const []);
@@ -799,7 +817,7 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
     await _annotations?.setRotateModePaused(wantPins);
     if (!mounted) return;
     if (wantPins && widget.mapActive) {
-      _syncRotateOverlayFrame();
+      _markRotateOverlayDirty();
       setState(() {});
     } else {
       setState(() => _visibleRotateSites = const []);
@@ -859,16 +877,36 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
     ]);
   }
 
+  /// Note that the overlay needs reprojecting.
+  ///
+  /// Rotate mode coalesces through the vsync ticker (which enforces the 60 Hz
+  /// gate). North-fixed detail pins have no ticker, so they project inline.
+  void _markRotateOverlayDirty() {
+    _rotateOverlayDirty = true;
+    if (_rotateOverlayTicker == null) _syncRotateOverlayFrame();
+  }
+
   void _syncRotateOverlayFrame() {
     if (!_pinOverlayActive || !widget.mapActive || !_ready) return;
     final size = _viewportSize;
     final map = _map;
     if (size == null || map == null) return;
+    // Before the first GPS fix, cull around the camera instead of dropping
+    // every pin (the projection used to fall back to getCameraState here).
+    final camera = _lastCameraState;
+    final cullCenter = _effectiveLocation ??
+        (camera == null
+            ? null
+            : LatLng(
+                camera.center.coordinates.lat.toDouble(),
+                camera.center.coordinates.lng.toDouble(),
+              ));
     _overlayController.syncFrame(
       map: map,
       sites: widget.sites,
       viewportSize: size,
-      cullCenter: _effectiveLocation,
+      cullCenter: cullCenter,
+      datasetKey: widget.markerDatasetKey,
     );
   }
 
@@ -932,6 +970,9 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
 
     if (oldWidget.rotateWithHeading != widget.rotateWithHeading) {
       widget.camera.rotateWithHeading = widget.rotateWithHeading;
+      // Orientation drives show3dObjects — memoised, so this is a no-op if the
+      // resolved config is unchanged.
+      unawaited(_applyBasemapLook());
       unawaited(_applyGestureMode());
       unawaited(_applyRotateMarkerMode(widget.rotateWithHeading));
       if (widget.rotateWithHeading) {
@@ -971,22 +1012,22 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
     }
     if (oldWidget.disguisedSiteId != widget.disguisedSiteId &&
         (widget.rotateWithHeading || _detailPinsActive)) {
-      _syncRotateOverlayFrame();
+      _markRotateOverlayDirty();
     }
     if (oldWidget.markerDatasetKey != widget.markerDatasetKey) {
       // Dataset / filter switch: wipe immediately, then paint — no debounce.
       // Keep circles warm under rotate (opacity 0) so north-fixed exit is instant.
       if (widget.rotateWithHeading) {
-        _syncRotateOverlayFrame();
+        _markRotateOverlayDirty();
       } else if (_detailPinsActive) {
-        _syncRotateOverlayFrame();
+        _markRotateOverlayDirty();
       }
       _annotationDebounce?.cancel();
       unawaited(_switchDatasetAndSync());
     } else if (oldWidget.sites != widget.sites) {
       // Same dataset: debounce circle sync; pin overlay updates immediately.
       if (widget.rotateWithHeading || _detailPinsActive) {
-        _syncRotateOverlayFrame();
+        _markRotateOverlayDirty();
       }
       _scheduleAnnotationSync();
     }
@@ -996,7 +1037,7 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
         widget.locationListenable == null &&
         oldWidget.currentLocation != widget.currentLocation) {
       _liveLocation = widget.currentLocation;
-      _syncRotateOverlayFrame();
+      _markRotateOverlayDirty();
     }
     if (oldWidget.locationListenable != widget.locationListenable) {
       oldWidget.locationListenable?.removeListener(_onLocationListenable);
@@ -1162,9 +1203,12 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
     final preset =
         MapboxBasemapConfig.lightPresetForBrightness(widget.brightness);
     final theme = widget.basemapTheme;
+    // 3D buildings only earn their GPU cost in the pitched AR view.
+    final show3d = widget.rotateWithHeading;
     if (!force &&
         preset == _appliedLightPreset &&
-        theme == _appliedBasemapTheme) {
+        theme == _appliedBasemapTheme &&
+        show3d == _appliedShow3dObjects) {
       return;
     }
     try {
@@ -1173,9 +1217,11 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
         lightPreset: preset,
         theme: theme,
         brightness: widget.brightness,
+        show3dObjects: show3d,
       );
       _appliedLightPreset = preset;
       _appliedBasemapTheme = theme;
+      _appliedShow3dObjects = show3d;
     } catch (error) {
       if (kDebugMode) {
         debugPrint('MapboxFieldMap basemap config failed: $error');
@@ -1307,6 +1353,10 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
 
   void _onCameraChange(CameraChangedEventData data) {
     if (!_ready || !widget.mapActive) return;
+    // Cache in both modes: this is the only camera read the pin overlay needs,
+    // and it arrives for free instead of a getCameraState() call per frame.
+    _lastCameraState = data.cameraState;
+    _rotateOverlayDirty = true;
     final zoom = data.cameraState.zoom;
     final zoomChanged = (zoom - _lastKnownZoom).abs() > 0.01;
     _lastKnownZoom = zoom;
@@ -1331,7 +1381,7 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
     if (wantPins != _detailPinsActive) {
       unawaited(_setDetailPinsActive(wantPins));
     } else if (_detailPinsActive) {
-      _syncRotateOverlayFrame();
+      _markRotateOverlayDirty();
     }
   }
 
@@ -1389,7 +1439,7 @@ class _MapboxFieldMapState extends State<MapboxFieldMap>
               _ready) {
             WidgetsBinding.instance.addPostFrameCallback((_) {
               if (!mounted) return;
-              _syncRotateOverlayFrame();
+              _markRotateOverlayDirty();
             });
           }
         }

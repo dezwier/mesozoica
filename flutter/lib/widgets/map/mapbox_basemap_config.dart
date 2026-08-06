@@ -15,15 +15,21 @@ class MapboxBasemapConfig {
   }
 
   /// Config properties applied to the Standard `basemap` import.
+  ///
+  /// [show3dObjects] is only worth paying for in rotate / AR mode: extruded
+  /// buildings and their shadows are invisible at pitch 0 but still cost
+  /// geometry and fragment work every frame.
   static Map<String, Object> styleConfig({
     String? lightPreset,
     MapboxBasemapTheme? theme,
     Brightness brightness = Brightness.light,
+    bool show3dObjects = false,
   }) {
     return {
       'theme': (theme ?? MapConfig.mapboxBasemapTheme).value,
       'lightPreset':
           lightPreset ?? lightPresetForBrightness(brightness),
+      'show3dObjects': show3dObjects,
       'showPlaceLabels': false,
       'showRoadLabels': false,
       'showPointOfInterestLabels': false,
@@ -39,6 +45,7 @@ class MapboxBasemapConfig {
     String? lightPreset,
     MapboxBasemapTheme? theme,
     Brightness brightness = Brightness.light,
+    bool show3dObjects = false,
   }) {
     return map.style.setStyleImportConfigProperties(
       importId,
@@ -46,6 +53,7 @@ class MapboxBasemapConfig {
         lightPreset: lightPreset,
         theme: theme,
         brightness: brightness,
+        show3dObjects: show3dObjects,
       ),
     );
   }

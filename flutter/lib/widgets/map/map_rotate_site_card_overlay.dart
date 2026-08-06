@@ -8,6 +8,7 @@ import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 
 import '../../config/map_config.dart';
 import '../../models/site.dart';
+import 'map_perf_counters.dart';
 import 'map_site_mini_card.dart';
 
 /// A site projected onto the map viewport for photo-pin overlays.
@@ -35,47 +36,102 @@ double rotateMiniCardWidthForDistance(double distanceM) {
   return MapConfig.rotateMiniCardWidth;
 }
 
-/// Projects and culls [sites] to those visible for the pin overlay.
+/// A site kept by the distance cull, with its distance from the cull centre.
+typedef RotateCandidate = ({SiteSummary site, double distanceM});
+
+/// Distance-culled, distance-sorted site shortlist for the pin overlay.
+///
+/// The cull only depends on the cull centre (user location) and the site list,
+/// neither of which changes per frame — recomputing it every vsync tick meant
+/// a Haversine over the whole loaded catalog at up to 120 Hz. This caches the
+/// shortlist and rebuilds it only when the inputs meaningfully change.
+class RotateCandidateCache {
+  /// Recompute once the cull centre has drifted this far (metres).
+  static const double recullMoveM = 25.0;
+
+  List<RotateCandidate> _candidates = const [];
+  LatLng? _center;
+  List<SiteSummary>? _sites;
+  String? _datasetKey;
+
+  /// Cached shortlist (nearest first), capped for projection.
+  List<RotateCandidate> get candidates => _candidates;
+
+  /// Drop the shortlist so the next [resolve] recomputes from scratch.
+  void invalidate() {
+    _center = null;
+    _sites = null;
+    _datasetKey = null;
+    _candidates = const [];
+  }
+
+  /// Cull [sites] around [center], reusing the previous result when possible.
+  List<RotateCandidate> resolve({
+    required List<SiteSummary> sites,
+    required LatLng? center,
+    String? datasetKey,
+  }) {
+    if (center == null) {
+      invalidate();
+      return const [];
+    }
+    final previousCenter = _center;
+    final reusable = previousCenter != null &&
+        identical(_sites, sites) &&
+        _datasetKey == datasetKey &&
+        Geolocator.distanceBetween(
+              previousCenter.latitude,
+              previousCenter.longitude,
+              center.latitude,
+              center.longitude,
+            ) <
+            recullMoveM;
+    if (reusable) return _candidates;
+
+    final candidates = <RotateCandidate>[];
+    for (final site in sites) {
+      final lat = site.latitude;
+      final lon = site.longitude;
+      if (lat == null || lon == null) continue;
+      final distanceM = Geolocator.distanceBetween(
+        center.latitude,
+        center.longitude,
+        lat,
+        lon,
+      );
+      // Widen by the re-cull threshold so a site cannot pop in between culls.
+      if (distanceM > MapConfig.rotateCardCullRadiusM + recullMoveM) continue;
+      candidates.add((site: site, distanceM: distanceM));
+    }
+    candidates.sort((a, b) => a.distanceM.compareTo(b.distanceM));
+
+    _center = center;
+    _sites = sites;
+    _datasetKey = datasetKey;
+    _candidates = candidates.length > MapConfig.rotateMaxVisibleCards * 2
+        ? candidates.sublist(0, MapConfig.rotateMaxVisibleCards * 2)
+        : candidates;
+    return _candidates;
+  }
+}
+
+/// Projects the culled [candidates] to those visible for the pin overlay.
+///
+/// [camera] is the last camera state pushed by Mapbox's camera-change event —
+/// [candidates] comes pre-culled and distance-sorted from
+/// [RotateCandidateCache], so the only per-frame cost here is one
+/// `pixelsForCoordinates` batch over at most `rotateMaxVisibleCards * 2` points.
 Future<List<MapRotateVisibleSite>> projectRotateVisibleSites({
   required MapboxMap map,
-  required List<SiteSummary> sites,
+  required List<RotateCandidate> candidates,
   required ui.Size viewportSize,
-  LatLng? cullCenter,
 }) async {
   if (viewportSize.width <= 0 || viewportSize.height <= 0) return const [];
-
-  CameraState camera;
-  try {
-    camera = await map.getCameraState();
-  } catch (_) {
-    return const [];
-  }
-
-  final center = cullCenter ??
-      LatLng(
-        camera.center.coordinates.lat.toDouble(),
-        camera.center.coordinates.lng.toDouble(),
-      );
-
-  final candidates = <({SiteSummary site, double distanceM})>[];
-  for (final site in sites) {
-    final lat = site.latitude;
-    final lon = site.longitude;
-    if (lat == null || lon == null) continue;
-    final distanceM = Geolocator.distanceBetween(
-      center.latitude,
-      center.longitude,
-      lat,
-      lon,
-    );
-    if (distanceM > MapConfig.rotateCardCullRadiusM) continue;
-    candidates.add((site: site, distanceM: distanceM));
-  }
-
   if (candidates.isEmpty) return const [];
 
-  candidates.sort((a, b) => a.distanceM.compareTo(b.distanceM));
-  final capped = candidates.take(MapConfig.rotateMaxVisibleCards * 2).toList();
+  final capped = candidates.length > MapConfig.rotateMaxVisibleCards * 2
+      ? candidates.sublist(0, MapConfig.rotateMaxVisibleCards * 2)
+      : candidates;
 
   final padX = viewportSize.width * MapConfig.rotateViewportPadding;
   final padY = viewportSize.height * MapConfig.rotateViewportPadding;
@@ -84,15 +140,13 @@ Future<List<MapRotateVisibleSite>> projectRotateVisibleSites({
   final minY = -padY;
   final maxY = viewportSize.height + padY;
 
-  final points = <Point>[];
-  final entries = <({SiteSummary site, double distanceM})>[];
-  for (final entry in capped) {
-    final site = entry.site;
-    points.add(
-      Point(coordinates: Position(site.longitude!, site.latitude!)),
-    );
-    entries.add(entry);
-  }
+  final entries = capped;
+  final points = <Point>[
+    for (final entry in entries)
+      Point(
+        coordinates: Position(entry.site.longitude!, entry.site.latitude!),
+      ),
+  ];
 
   List<ScreenCoordinate?> pixels;
   try {
@@ -226,32 +280,40 @@ class MapRotateOverlayController {
 
   final ValueChanged<List<MapRotateVisibleSite>> onVisibleSitesChanged;
 
+  final RotateCandidateCache _candidateCache = RotateCandidateCache();
+
   int _syncSeq = 0;
   bool _syncInFlight = false;
   bool _syncQueued = false;
+  List<SiteSummary> _queuedSites = const [];
+  ui.Size? _queuedViewportSize;
+  LatLng? _queuedCullCenter;
+  String? _queuedDatasetKey;
+
+  /// Projections actually run (perf HUD diffs this over a window).
+  int _projectionCount = 0;
+  int get projectionCount => _projectionCount;
+
+  /// Force a full re-cull on the next frame (dataset / filter switch).
+  void invalidateCandidates() => _candidateCache.invalidate();
 
   void syncFrame({
     required MapboxMap? map,
     required List<SiteSummary> sites,
     required ui.Size viewportSize,
     LatLng? cullCenter,
+    String? datasetKey,
   }) {
-    unawaited(
-      _sync(
-        map: map,
-        sites: sites,
-        viewportSize: viewportSize,
-        cullCenter: cullCenter,
-      ),
-    );
+    // Keep the newest inputs so a coalesced re-run projects current state
+    // rather than replaying the arguments of the call that was in flight.
+    _queuedSites = sites;
+    _queuedViewportSize = viewportSize;
+    _queuedCullCenter = cullCenter;
+    _queuedDatasetKey = datasetKey;
+    unawaited(_sync(map: map));
   }
 
-  Future<void> _sync({
-    required MapboxMap? map,
-    required List<SiteSummary> sites,
-    required ui.Size viewportSize,
-    LatLng? cullCenter,
-  }) async {
+  Future<void> _sync({required MapboxMap? map}) async {
     if (_syncInFlight) {
       _syncQueued = true;
       return;
@@ -261,15 +323,26 @@ class MapRotateOverlayController {
       do {
         _syncQueued = false;
         final seq = ++_syncSeq;
-        if (map == null) {
+        final viewportSize = _queuedViewportSize;
+        if (map == null || viewportSize == null) {
           onVisibleSitesChanged(const []);
           continue;
         }
+        final candidates = _candidateCache.resolve(
+          sites: _queuedSites,
+          center: _queuedCullCenter,
+          datasetKey: _queuedDatasetKey,
+        );
+        if (candidates.isEmpty) {
+          onVisibleSitesChanged(const []);
+          continue;
+        }
+        _projectionCount++;
+        MapPerfCounters.countOverlayProjection();
         final projected = await projectRotateVisibleSites(
           map: map,
-          sites: sites,
+          candidates: candidates,
           viewportSize: viewportSize,
-          cullCenter: cullCenter,
         );
         if (seq != _syncSeq) continue;
         onVisibleSitesChanged(projected);
@@ -281,6 +354,7 @@ class MapRotateOverlayController {
 
   void dispose() {
     _syncSeq++;
+    _candidateCache.invalidate();
   }
 }
 

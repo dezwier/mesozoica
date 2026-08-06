@@ -75,6 +75,9 @@ class WalkDistanceController extends ChangeNotifier {
   /// Health lookback cap (only last N days count).
   static const maxPassiveGap = Duration(days: 7);
 
+  /// Throttle for local counter writes while walking.
+  static const persistInterval = Duration(seconds: 20);
+
   /// Below this, no visit badge (server also grants 0 XP below 10 m batches).
   static const minPassiveBadgeMeters = 10.0;
 
@@ -324,8 +327,11 @@ class WalkDistanceController extends ChangeNotifier {
     notifyListeners();
 
     final now = DateTime.now();
+    // Each persist rewrites eight SharedPreferences keys. At 1 Hz GPS a 5 s
+    // throttle meant a disk write every five fixes for counters that are
+    // force-persisted on background anyway.
     if (_lastPersistAt == null ||
-        now.difference(_lastPersistAt!) > const Duration(seconds: 5)) {
+        now.difference(_lastPersistAt!) > persistInterval) {
       _lastPersistAt = now;
       await _persistLocal();
     }

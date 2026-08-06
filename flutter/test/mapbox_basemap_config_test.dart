@@ -54,5 +54,19 @@ void main() {
       );
       expect(config['theme'], 'faded');
     });
+
+    test('3D objects are off by default (north-fixed is flat)', () {
+      expect(
+        MapboxBasemapConfig.styleConfig()['show3dObjects'],
+        false,
+      );
+    });
+
+    test('3D objects opt-in for rotate / AR mode', () {
+      expect(
+        MapboxBasemapConfig.styleConfig(show3dObjects: true)['show3dObjects'],
+        true,
+      );
+    });
   });
 }
