@@ -761,7 +761,7 @@ class _IdentifyRockTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    // Prefer full Original image so the tile fill stays sharp.
+    // Keep native aspect ratio; letterbox within the tile instead of stretching.
     final url = imageUrl?.trim();
     final hasImage =
         url != null && url.isNotEmpty && isCuratedSiteTypeImageUrl(url);
@@ -783,7 +783,7 @@ class _IdentifyRockTile extends StatelessWidget {
                     final dpr = MediaQuery.devicePixelRatioOf(context);
                     return CachedNetworkImage(
                       imageUrl: url,
-                      fit: BoxFit.cover,
+                      fit: BoxFit.contain,
                       fadeInDuration: Duration.zero,
                       memCacheWidth: networkImageMemCacheExtent(
                         constraints.maxWidth,
