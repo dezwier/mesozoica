@@ -15,7 +15,8 @@ mixin _AppShellDiscoveryMixin on State<AppShell> {
   /// Tracks celebration queue length so we only side-effect on newly enqueued
   /// discoveries (not when one is consumed).
   int _lastDiscoveryQueueSeen = 0;
-  int _lastDocumentationQueueSeen = 0;
+  final List<int> _pendingDocumentationPushSiteIds = [];
+  final Set<int> _handledDocumentationCelebrationSiteIds = {};
 
   void _ingestAerialDiscoveredSites(Iterable<int> siteIds) {
     final newIds = <int>[];
@@ -123,19 +124,22 @@ mixin _AppShellDiscoveryMixin on State<AppShell> {
     if (!mounted) return;
     final exploration = context.read<SiteExplorationController>();
     final queue = exploration.documentationCelebrationQueue;
-    final grew = queue.length > _lastDocumentationQueueSeen;
-    if (grew) {
-      for (var i = _lastDocumentationQueueSeen; i < queue.length; i++) {
-        final site = queue[i];
-        context.read<MapController>().upsertSite(site);
-        context.read<SiteCatalogController>().upsertSite(site);
-        _scheduleDiscoveryRefresh(siteId: site.siteId);
-      }
+    for (final site in queue) {
+      context.read<MapController>().upsertSite(site);
+      context.read<SiteCatalogController>().upsertSite(site);
+      _scheduleDiscoveryRefresh(siteId: site.siteId);
     }
-    _lastDocumentationQueueSeen = queue.length;
-
-    if (!grew || !_appInForeground) return;
+    if (!_appInForeground || queue.isEmpty) return;
     _showPendingCelebrationIfAny();
+  }
+
+  void _queueDocumentationCelebrationSiteId(int siteId) {
+    if (_handledDocumentationCelebrationSiteIds.contains(siteId) ||
+        _pendingDocumentationPushSiteIds.contains(siteId)) {
+      return;
+    }
+    _pendingDocumentationPushSiteIds.add(siteId);
+    if (_appInForeground) _showPendingCelebrationIfAny();
   }
 
   void _showPendingCelebrationIfAny() {
@@ -153,10 +157,26 @@ mixin _AppShellDiscoveryMixin on State<AppShell> {
   void _showPendingDocumentationCelebrationIfAny() {
     if (!mounted || _celebrationShowing) return;
     final exploration = context.read<SiteExplorationController>();
-    final pending = exploration.pendingDocumentationCelebration;
-    if (pending == null) return;
-    exploration.consumeDocumentationCelebration();
-    unawaited(_showDocumentationCelebration(site: pending));
+    var pending = exploration.pendingDocumentationCelebration;
+    while (pending != null &&
+        _handledDocumentationCelebrationSiteIds.contains(pending.siteId)) {
+      exploration.consumeDocumentationCelebration();
+      pending = exploration.pendingDocumentationCelebration;
+    }
+    if (pending != null) {
+      exploration.consumeDocumentationCelebration();
+      unawaited(_showDocumentationCelebration(site: pending));
+      return;
+    }
+    while (_pendingDocumentationPushSiteIds.isNotEmpty &&
+        _handledDocumentationCelebrationSiteIds.contains(
+          _pendingDocumentationPushSiteIds.first,
+        )) {
+      _pendingDocumentationPushSiteIds.removeAt(0);
+    }
+    if (_pendingDocumentationPushSiteIds.isEmpty) return;
+    final siteId = _pendingDocumentationPushSiteIds.removeAt(0);
+    unawaited(_showDocumentationCelebration(siteId: siteId));
   }
 
   Future<void> _showCelebration({
@@ -198,6 +218,8 @@ mixin _AppShellDiscoveryMixin on State<AppShell> {
   }) async {
     if (!mounted || _celebrationShowing) return;
     if (site == null && siteId == null) return;
+    final resolvedSiteId = site?.siteId ?? siteId!;
+    if (!_handledDocumentationCelebrationSiteIds.add(resolvedSiteId)) return;
     _celebrationShowing = true;
     try {
       // Close any open site card so celebration isn't stacked on it

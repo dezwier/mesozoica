@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../../config/map_config.dart';
-import '../../models/site.dart';
-import '../../models/site_map_filters.dart';
+import '../../controllers/auth_controller.dart';
+import '../../features/discovery/discovery.dart';
 import '../../theme/map_chrome_decorations.dart';
 import '../../theme/map_chrome_theme.dart';
 import '../cards/site_card_image.dart';
@@ -83,11 +84,7 @@ class MapSiteMiniCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final photo = width;
-    final borderColor = selected
-        ? MapChromeTheme.gold
-        : disguised
-        ? MapSiteMiniCard.disguisedLabelGold
-        : Colors.white;
+    final documentation = _documentationAccuracy(context);
     final triangleTop = photo - _triangleH * 0.4;
     final labelMaxWidth = photo * _labelWidthFactor;
     final titleColor = disguised
@@ -216,7 +213,6 @@ class MapSiteMiniCard extends StatelessWidget {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: Colors.white,
-                border: Border.all(color: borderColor, width: _borderWidth),
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withValues(alpha: 0.35),
@@ -225,16 +221,60 @@ class MapSiteMiniCard extends StatelessWidget {
                   ),
                 ],
               ),
-              child: Padding(
-                padding: const EdgeInsets.all(_borderWidth),
-                child: ClipOval(
-                  child: SiteCardImage(imageUrl: site.mainImageUrl),
+              child: SiteDocumentationMarkerRing(
+                progress: documentation,
+                strokeWidth: _borderWidth,
+                progressColor: MapChromeTheme.gold,
+                child: Padding(
+                  padding: const EdgeInsets.all(_borderWidth),
+                  child: ClipOval(
+                    child: SiteCardImage(imageUrl: site.mainImageUrl),
+                  ),
                 ),
               ),
             ),
           ),
         ],
       ),
+    );
+  }
+
+  double _documentationAccuracy(BuildContext context) {
+    if (site.needsIdentification) return 0.0;
+    var progress = site.documentationProgress ?? 0.0;
+    var skillLevel = 1;
+    try {
+      progress = context
+          .watch<SiteExplorationController>()
+          .documentationProgressFor(site.siteId, fallback: progress);
+    } on ProviderNotFoundException {
+      // Static previews use the server snapshot.
+    }
+    try {
+      final profile = context.watch<AuthController>().currentUser;
+      for (final skill in profile?.skills ?? const []) {
+        if (skill.id == 'field_survey') {
+          skillLevel = skill.level.clamp(1, 99);
+          break;
+        }
+      }
+    } on ProviderNotFoundException {
+      // Static previews use level one.
+    }
+    if (site.documented == true) return 1.0;
+    return siteDocumentationAverageAccuracy(
+      siteId: site.siteId,
+      skillLevel: skillLevel,
+      documentationProgress: progress,
+      oddDepth: site.oddDepth,
+      serverAccuracies: {
+        SiteDimensionKey.dino: site.oddDinoBand?.effectiveAccuracy ?? 0.0,
+        SiteDimensionKey.fossil: site.oddFossilBand?.effectiveAccuracy ?? 0.0,
+        SiteDimensionKey.completeness:
+            site.oddCompletenessBand?.effectiveAccuracy ?? 0.0,
+        SiteDimensionKey.quality: site.oddQualityBand?.effectiveAccuracy ?? 0.0,
+        SiteDimensionKey.depth: site.oddDepthBand?.effectiveAccuracy ?? 0.0,
+      },
     );
   }
 }

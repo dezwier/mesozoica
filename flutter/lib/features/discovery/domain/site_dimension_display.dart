@@ -136,6 +136,41 @@ bool siteIsFullyDocumented({
   return true;
 }
 
+/// Aggregate live accuracy used by the documentation bar and map-marker ring.
+double siteDocumentationAverageAccuracy({
+  required int siteId,
+  required int skillLevel,
+  required double documentationProgress,
+  required double? oddDepth,
+  required Map<SiteDimensionKey, double> serverAccuracies,
+}) {
+  final skillAcc =
+      resolveSiteStewardshipAccuracies(
+        skillLevel: skillLevel,
+      )['documentation_accuracy'] ??
+      0.0;
+  var total = 0.0;
+  for (final dimension in SiteDimensionKey.values) {
+    var effective = applyDocumentationProgress(
+      applyDimensionAccuracyNoise(
+        baseAccuracy: skillAcc,
+        siteId: siteId,
+        dimension: dimension,
+      ),
+      documentationProgress,
+    );
+    final serverAccuracy = serverAccuracies[dimension] ?? 0.0;
+    if (serverAccuracy > effective) effective = serverAccuracy;
+    if (dimension == SiteDimensionKey.depth &&
+        oddDepth != null &&
+        oddDepth <= kSiteDimensionDepthPreciseEpsilon) {
+      effective = 1.0;
+    }
+    total += effective.clamp(0.0, 1.0);
+  }
+  return (total / SiteDimensionKey.values.length).clamp(0.0, 1.0);
+}
+
 /// Compute a stable, accuracy-aware blurry range for one site dimension.
 ///
 /// - [accuracy] 0 → nearly full-axis wide band + heavy blur (true value obscured)

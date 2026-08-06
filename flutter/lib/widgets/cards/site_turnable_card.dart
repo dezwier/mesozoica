@@ -4,9 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../controllers/auth_controller.dart';
+import '../../features/discovery/discovery.dart';
 import '../../models/catalog_data_source.dart';
-import '../../models/site.dart';
-import '../../services/site_service.dart';
 import '../../theme/dino_card_theme.dart';
 import 'card_discard_helper.dart';
 import 'card_world_map.dart';
@@ -178,7 +177,14 @@ class _SiteTurnableCardState extends State<SiteTurnableCard> {
 
   @override
   Widget build(BuildContext context) {
-    final displaySite = _displaySite;
+    var displaySite = _displaySite;
+    try {
+      displaySite = context.watch<SiteExplorationController>().resolveSite(
+        displaySite,
+      );
+    } on ProviderNotFoundException {
+      // Catalog previews and focused widget tests may omit discovery state.
+    }
     final hasStatus = (displaySite.status?.trim().isNotEmpty ?? false);
     final showAdminUi = context.watch<AuthController>().showAdminUi;
     _queueExactOddsPeek(showAdminUi: showAdminUi);

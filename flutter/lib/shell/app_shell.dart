@@ -500,6 +500,9 @@ class _AppShellState extends State<AppShell>
               ? int.tryParse(rawSiteId.toString())
               : null;
           _scheduleDiscoveryRefresh(siteId: siteId);
+          if (type == 'site_documented' && siteId != null) {
+            _queueDocumentationCelebrationSiteId(siteId);
+          }
           return;
         }
         final uid = context.read<AuthController>().currentUser?.id;
@@ -538,7 +541,7 @@ class _AppShellState extends State<AppShell>
     }
     if (type == 'site_documented') {
       _scheduleDiscoveryRefresh(siteId: siteId);
-      unawaited(_showDocumentationCelebration(siteId: siteId));
+      _queueDocumentationCelebrationSiteId(siteId);
     }
   }
 

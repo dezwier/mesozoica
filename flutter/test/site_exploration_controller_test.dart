@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:mesozoica/features/discovery/discovery.dart';
-import 'package:mesozoica/models/site.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 Position _position(double latitude, double longitude) {
@@ -149,6 +148,10 @@ void main() {
         elapsed: const Duration(seconds: 1),
       );
 
+      final locallyCompleted = controller.resolveSite(site);
+      expect(locallyCompleted.documented, isTrue);
+      expect(locallyCompleted.status, 'documented');
+
       await controller.debugSync();
 
       expect(sentBody, {
@@ -157,6 +160,8 @@ void main() {
         ],
       });
       expect(controller.pendingDocumentationCelebration?.siteId, 1);
+      controller.consumeDocumentationCelebration();
+      expect(controller.pendingDocumentationCelebration, isNull);
       controller.dispose();
     },
   );

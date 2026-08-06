@@ -51,6 +51,7 @@ class SiteExplorationController extends ChangeNotifier {
   /// Local unit-interval documentation contribution by site id (monotonic).
   final Map<int, double> _progressBySite = {};
   final Set<int> _documentedSiteIds = {};
+  final Set<int> _locallyCompletedSiteIds = {};
   final Set<int> _dirtySiteIds = {};
   final Set<int> _sitesInRange = {};
   DateTime? _lastSyncAttemptAt;
@@ -85,7 +86,6 @@ class SiteExplorationController extends ChangeNotifier {
   void consumeDocumentationCelebration() {
     if (_documentationCelebrationQueue.isEmpty) return;
     _documentationCelebrationQueue.removeAt(0);
-    notifyListeners();
   }
 
   /// Best-known documentation progress for [siteId].
@@ -96,6 +96,26 @@ class SiteExplorationController extends ChangeNotifier {
       return local;
     }
     return local > fallback ? local : fallback;
+  }
+
+  /// Merge live documentation state into a card snapshot that may have been
+  /// fetched before the completion sync finished.
+  SiteSummary resolveSite(SiteSummary fallback) {
+    final progress = documentationProgressFor(
+      fallback.siteId,
+      fallback: fallback.documentationProgress ?? 0.0,
+    );
+    if (!_documentedSiteIds.contains(fallback.siteId) &&
+        !_locallyCompletedSiteIds.contains(fallback.siteId)) {
+      if (progress == fallback.documentationProgress) return fallback;
+      return fallback.copyWith(documentationProgress: progress);
+    }
+    return fallback.copyWith(
+      status: 'documented',
+      viewerHasDocumented: true,
+      documentationProgress: progress,
+      documented: true,
+    );
   }
 
   bool isInDocumentationRange(int siteId) => _sitesInRange.contains(siteId);
@@ -224,12 +244,14 @@ class SiteExplorationController extends ChangeNotifier {
         // No discoverer link / progress for viewer — drop stale local buffer.
         if (_progressBySite.remove(site.siteId) != null) changed = true;
         if (_documentedSiteIds.remove(site.siteId)) changed = true;
+        if (_locallyCompletedSiteIds.remove(site.siteId)) changed = true;
         _dirtySiteIds.remove(site.siteId);
         continue;
       }
 
       if (site.documented == true) {
         if (_documentedSiteIds.add(site.siteId)) changed = true;
+        _locallyCompletedSiteIds.add(site.siteId);
         if ((_progressBySite[site.siteId] ?? -1) != server) {
           _progressBySite[site.siteId] = server;
           changed = true;
@@ -257,12 +279,14 @@ class SiteExplorationController extends ChangeNotifier {
   Future<void> clearAllProgress() async {
     if (_progressBySite.isEmpty &&
         _documentedSiteIds.isEmpty &&
+        _locallyCompletedSiteIds.isEmpty &&
         _dirtySiteIds.isEmpty &&
         _documentationCelebrationQueue.isEmpty) {
       return;
     }
     _progressBySite.clear();
     _documentedSiteIds.clear();
+    _locallyCompletedSiteIds.clear();
     _dirtySiteIds.clear();
     _documentationCelebrationQueue.clear();
     await _persistLocal();
@@ -440,10 +464,16 @@ class SiteExplorationController extends ChangeNotifier {
       _dirtySiteIds.add(site.siteId);
       credited = true;
       if (_isLocallyComplete(site, skillLevel: skillLevel, progress: next)) {
+        _locallyCompletedSiteIds.add(site.siteId);
         documentationReady = true;
       }
     }
-    if (!credited) return;
+    if (!credited) {
+      if (sync && _dirtySiteIds.isNotEmpty) {
+        unawaited(_syncToBackend());
+      }
+      return;
+    }
     await _persistLocal();
     notifyListeners();
     // Force sync as soon as local progress completes documentation so
