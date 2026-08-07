@@ -97,6 +97,6 @@ Structural work must preserve HTTP/OpenAPI behavior, SQLModel metadata and Alemb
 
 ## Current capabilities
 
-The application includes authentication and profiles; archive and procedural field discovery; Mapbox site rendering; site identification/exploration; dinosaur, fossil, site, and tool catalogs; curated image versions; tool actions and persistent sessions; progression; relationships and notifications; weather; scientific ingestion; and Railway-operated background processing.
+The application includes authentication and profiles; archive and procedural field discovery; Mapbox site rendering; site documentation/exploration and a retained optional identification quiz; dinosaur, fossil, site, and tool catalogs; curated image versions; tool actions and persistent sessions; progression; relationships and notifications; weather; scientific ingestion; and Railway-operated background processing.
 
 Some compatibility modules and global Flutter presentation surfaces remain after the feature-first migration. New code belongs in the owning feature; [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) documents the intended direction and remaining transitional boundaries.

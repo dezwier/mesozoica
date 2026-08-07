@@ -5,7 +5,7 @@ import 'package:mesozoica/models/site_map_filters.dart';
 import 'package:mesozoica/widgets/cards/site_card_back.dart';
 
 void main() {
-  test('field site needs identification shows Excavation Site title', () {
+  test('field site keeps title hidden until documentation', () {
     final site = SiteSummary(
       siteId: 1000000067,
       discoveredAt: DateTime.utc(2026, 8, 1),
@@ -17,7 +17,7 @@ void main() {
     expect(site.displayTitle, 'Excavation Site');
   });
 
-  test('identified field site uses period and rock title', () {
+  test('identification alone does not reveal field site title', () {
     final site = SiteSummary(
       siteId: 1000000067,
       discoveredAt: DateTime.utc(2026, 8, 1),
@@ -27,7 +27,45 @@ void main() {
       status: 'discovered',
     );
     expect(site.needsIdentification, isFalse);
+    expect(site.displayTitle, 'Excavation Site');
+  });
+
+  test('documentation reveals field site title and calculated stars', () {
+    const site = SiteSummary(
+      siteId: 1000000067,
+      documented: true,
+      siteTypePeriod: 'cretaceous',
+      rockType: 'sandstone',
+      oddDinoCount: 0.7,
+      oddFossilCount: 0.5,
+      oddCompleteness: 0.5,
+      oddQuality: 0.5,
+      oddDepth: 0.3,
+    );
     expect(site.displayTitle, 'Cretaceous Sandstone');
+    // (70 + 50 + 50 + 50 + reversed depth 70) / 5 = 58 → 3 stars.
+    expect(site.documentationStars, 3);
+  });
+
+  test('documentation stars use 20-point buckets and inverted depth', () {
+    SiteSummary siteAt(double score) => SiteSummary(
+      siteId: 1000000067,
+      documented: true,
+      oddDinoCount: score,
+      oddFossilCount: score,
+      oddCompleteness: score,
+      oddQuality: score,
+      oddDepth: 1 - score,
+    );
+
+    expect(siteAt(0.19).documentationStars, 1);
+    expect(siteAt(0.20).documentationStars, 2);
+    expect(siteAt(0.39).documentationStars, 2);
+    expect(siteAt(0.40).documentationStars, 3);
+    expect(siteAt(0.59).documentationStars, 3);
+    expect(siteAt(0.60).documentationStars, 4);
+    expect(siteAt(0.79).documentationStars, 4);
+    expect(siteAt(0.80).documentationStars, 5);
   });
 
   test('unknown period and rock filters match unidentified sites', () {
@@ -54,7 +92,7 @@ void main() {
     expect(siteFilterOptionLabel('unknown'), 'Unknown');
   });
 
-  testWidgets('unidentified site shows empty dimensions and Identify button', (
+  testWidgets('discovered site immediately shows documentation mode', (
     tester,
   ) async {
     final site = SiteSummary(
@@ -84,8 +122,8 @@ void main() {
     await tester.pump();
 
     expect(find.text('Excavation Site'), findsOneWidget);
-    expect(find.text('Identify'), findsOneWidget);
-    expect(find.text('Identify site to begin documentation'), findsOneWidget);
-    expect(find.text('Move within range to continue'), findsNothing);
+    expect(find.text('Identify'), findsNothing);
+    expect(find.text('Identify site to begin documentation'), findsNothing);
+    expect(find.text('Move within range to continue'), findsOneWidget);
   });
 }

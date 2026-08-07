@@ -74,7 +74,6 @@ class SiteCardHeader extends StatelessWidget {
               trailing,
             ],
           );
-
     return Column(
       crossAxisAlignment: centered
           ? CrossAxisAlignment.center
@@ -105,5 +104,44 @@ class SiteCardHeader extends StatelessWidget {
     )?.currentLocation;
     if (user == null) return null;
     return Geolocator.distanceBetween(user.latitude, user.longitude, lat, lon);
+  }
+}
+
+class SiteRatingStars extends StatelessWidget {
+  const SiteRatingStars({
+    super.key,
+    required this.stars,
+    required this.starSize,
+    required this.color,
+  });
+
+  final int stars;
+  final double starSize;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        for (var i = 0; i < stars; i++)
+          Padding(
+            padding: EdgeInsets.only(left: i == 0 ? 0 : 1),
+            child: Icon(
+              Icons.star_rounded,
+              size: starSize,
+              color: color,
+              shadows: const [
+                Shadow(
+                  color: Color(0x66000000),
+                  blurRadius: 3,
+                  offset: Offset(0, 1),
+                ),
+              ],
+            ),
+          ),
+      ],
+    );
   }
 }

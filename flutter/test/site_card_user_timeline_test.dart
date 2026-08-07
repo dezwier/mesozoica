@@ -35,7 +35,7 @@ void main() {
     expect(entries.single.wasFirst, isTrue);
   });
 
-  test('timeline shows identified between discovered and documented', () {
+  test('timeline omits legacy identification event', () {
     final site = SiteSummary(
       siteId: 6,
       howDiscovered: SiteSummary.howDiscoveredWalk,
@@ -47,12 +47,7 @@ void main() {
       documentedAt: DateTime.utc(2026, 7, 2, 12),
     );
     final entries = SiteCardUserTimeline.entriesFor(site);
-    expect(entries.map((e) => e.moment), [
-      'Discovered',
-      'Identified',
-      'Documented',
-    ]);
-    expect(entries[1].whenLabel, isNot(equals('—')));
+    expect(entries.map((e) => e.moment), ['Discovered', 'Documented']);
   });
 
   test('timeline appends First on same documented line', () {

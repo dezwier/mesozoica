@@ -7,6 +7,7 @@ import '../../features/discovery/discovery.dart';
 import '../../theme/map_chrome_decorations.dart';
 import '../../theme/map_chrome_theme.dart';
 import '../cards/site_card_image.dart';
+import '../cards/site_card_header.dart';
 
 /// Mockup site pin: photo circle, dark pointer behind image, cream label.
 class MapSiteMiniCard extends StatelessWidget {
@@ -91,6 +92,7 @@ class MapSiteMiniCard extends StatelessWidget {
         ? MapSiteMiniCard.disguisedLabelGold
         : MapChromeTheme.brownText;
     final subtitle = subtitleFor(distanceM: distanceM, status: site.status);
+    final stars = site.documentationStars;
 
     return SizedBox(
       width: layoutWidthFor(photo),
@@ -228,7 +230,25 @@ class MapSiteMiniCard extends StatelessWidget {
                 child: Padding(
                   padding: const EdgeInsets.all(_borderWidth),
                   child: ClipOval(
-                    child: SiteCardImage(imageUrl: site.mainImageUrl),
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        SiteCardImage(imageUrl: site.mainImageUrl),
+                        if (stars != null)
+                          Positioned(
+                            left: 0,
+                            right: 0,
+                            bottom: photo * 0.12,
+                            child: Center(
+                              child: SiteRatingStars(
+                                stars: stars,
+                                starSize: photo * 0.14,
+                                color: const Color(0xFFE6C35C),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -240,7 +260,6 @@ class MapSiteMiniCard extends StatelessWidget {
   }
 
   double _documentAccuracy(BuildContext context) {
-    if (site.needsIdentification) return 0.0;
     var progress = site.documentationProgress ?? 0.0;
     var skillLevel = 1;
     try {

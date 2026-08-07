@@ -13,7 +13,7 @@ import '../../../../services/location_service.dart';
 import '../../../notifications/notifications.dart';
 import '../../domain/site_dimension_display.dart';
 
-/// Accrues time-based documentation while identified sites are in range.
+/// Accrues time-based documentation while discovered sites are in range.
 class SiteExplorationController extends ChangeNotifier {
   SiteExplorationController({
     ApiClient? apiClient,
@@ -381,7 +381,6 @@ class SiteExplorationController extends ChangeNotifier {
         (site.status == null || site.status == 'hidden')) {
       return false;
     }
-    if (site.needsIdentification) return false;
     return site.documented != true && !_documentedSiteIds.contains(site.siteId);
   }
 

@@ -12,7 +12,6 @@ import 'site_card_image.dart';
 import 'site_card_location_map.dart';
 import 'site_card_related_lists.dart';
 import 'site_card_user_timeline.dart';
-import 'site_identify_sheet.dart';
 
 class SiteCardBack extends StatelessWidget {
   const SiteCardBack({
@@ -33,17 +32,8 @@ class SiteCardBack extends StatelessWidget {
   static const _contentScale = 1.15;
   static const _bottomRowHeight = 78.0;
 
-  Future<void> _openIdentify(BuildContext context) async {
-    final updated = await showSiteIdentifySheet(context, site: site);
-    if (updated != null && context.mounted) {
-      onSiteUpdated?.call(updated);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
-    final showIdentify = site.canIdentify;
-
     return AspectRatio(
       aspectRatio: DinoCardTheme.cardAspectRatio,
       child: Stack(
@@ -61,11 +51,6 @@ class SiteCardBack extends StatelessWidget {
               centered: true,
               overlayOnImage: true,
               showSubtitle: false,
-              titleTrailing: showIdentify
-                  ? SiteIdentifyTitleButton(
-                      onPressed: () => _openIdentify(context),
-                    )
-                  : null,
             ),
           ),
           Positioned(
@@ -77,8 +62,8 @@ class SiteCardBack extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 CardGeologicTimelinePanel(
-                  minAgeMa: site.needsIdentification ? null : site.minAgeMa,
-                  maxAgeMa: site.needsIdentification ? null : site.maxAgeMa,
+                  minAgeMa: site.minAgeMa,
+                  maxAgeMa: site.maxAgeMa,
                   scale: _contentScale,
                 ),
                 const SizedBox(height: 6),

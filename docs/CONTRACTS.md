@@ -22,7 +22,7 @@ The generated OpenAPI contract is guarded by `backend/tests/test_openapi_contrac
 
 Site documentation sync uses `PATCH /api/v1/users/me/site-exploration` with
 `documentation_progress` in the unit interval for each site. Progress is
-monotonic, requires prior identification, and freezes after completion.
+monotonic, starts after discovery, and freezes after completion.
 
 ## Authentication and session transport
 
@@ -81,7 +81,7 @@ The detailed marker rules live in [`../flutter/docs/map_site_markers.md`](../flu
 
 ### Celebration delivery
 
-Site discovery, identification, and documentation celebrations use one
+Site discovery, optional quiz identification, and documentation celebrations use one
 application-wide FIFO. The celebration host is above the root navigator, so it
 must remain visible over shell screens, drawers, dialogs, and card routes. A
 matching entity card is dismissed before its celebration; unrelated overlays

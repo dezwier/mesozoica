@@ -116,7 +116,7 @@ def test_identification_xp_for_attempt() -> None:
     assert identification_xp_for_attempt(base_xp=40, attempt=3) == 0
 
 
-def test_redacts_period_until_identified(session: Session) -> None:
+def test_discovered_site_exposes_dimensions_for_documentation(session: Session) -> None:
     user = _make_user(session)
     site = _seed_field_site(session)
     _discover(session, user_id=user.id, site_id=site.site_id)
@@ -130,12 +130,12 @@ def test_redacts_period_until_identified(session: Session) -> None:
     types = load_site_types_by_period(session)
     summary = site_row_to_summary(row, types_by_period=types)
     assert summary.viewer_has_identified is False
-    assert summary.site_type_period is None
-    assert summary.rock_type is None
-    assert summary.odd_dino_band is None
+    assert summary.site_type_period == "cretaceous"
+    assert summary.rock_type == "sandstone"
+    assert summary.odd_dino_band is not None
 
 
-def test_exploration_blocked_before_identification(session: Session) -> None:
+def test_exploration_starts_immediately_after_discovery(session: Session) -> None:
     user = _make_user(session, username="blocked", email="blocked@example.com")
     site = _seed_field_site(session, site_id=1_000_000_802)
     link = _discover(session, user_id=user.id, site_id=site.site_id)
@@ -153,7 +153,7 @@ def test_exploration_blocked_before_identification(session: Session) -> None:
         ),
     )
     session.refresh(link)
-    assert link.documentation_progress == 0.0
+    assert link.documentation_progress == 0.4
     assert get_skill_xp(user, "field_survey") == 0
 
 
@@ -213,7 +213,7 @@ def test_identify_wrong_then_right_awards_scaled_xp(session: Session) -> None:
     assert done.xp_awarded == 20  # first rock attempt
     assert done.identified is True
     assert done.site.viewer_has_identified is True
-    assert done.site.status == "identified"
+    assert done.site.status == "discovered"
     assert done.site.identified_at is not None
     assert done.site.site_type_period == "cretaceous"
     assert done.site.rock_type == "sandstone"
@@ -282,7 +282,7 @@ def test_identify_api_endpoints(client: TestClient, session: Session) -> None:
     payload = rock.json()
     assert payload["identified"] is True
     assert payload["site"]["viewer_has_identified"] is True
-    assert payload["site"]["status"] == "identified"
+    assert payload["site"]["status"] == "discovered"
     assert payload["site"]["identified_at"] is not None
     assert payload["site"]["site_type_period"] == "cretaceous"
     assert payload["celebration"] == {

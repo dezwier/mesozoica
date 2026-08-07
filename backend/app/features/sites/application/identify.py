@@ -406,7 +406,7 @@ def submit_identify_guess(
             site_label=site_display_title(site),
         )
 
-    # Re-enrich so redaction lifts after full identification.
+    # Re-enrich so the optional quiz result includes current viewer metadata.
     enriched_row = get_site_by_id(
         session,
         site_id,

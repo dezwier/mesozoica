@@ -19,7 +19,6 @@ class SiteCardDimensions extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cardTheme = DinoCardTheme.of(context);
-    final emptyDims = site.needsIdentification;
     var showExactMarker = false;
     try {
       showExactMarker = context.watch<AuthController>().showAdminUi;
@@ -31,21 +30,19 @@ class SiteCardDimensions extends StatelessWidget {
       skillLevel: skillLevel,
     );
     final baseAccuracy = baseAccuracies['document_accuracy'] ?? 0.0;
-    final progress = emptyDims ? 0.0 : _resolvedProgress(context, site);
-    final inRange = !emptyDims && _isInRange(context, site.siteId);
+    final progress = _resolvedProgress(context, site);
+    final inRange = _isInRange(context, site.siteId);
     // Stack: shared skill baseline → per-dimension noise → documentation.
     final accuracies = <SiteDimensionKey, double>{
       for (final dim in SiteDimensionKey.values)
-        dim: emptyDims
-            ? 0.0
-            : applyDocumentationProgress(
-                applyDimensionAccuracyNoise(
-                  baseAccuracy: baseAccuracy,
-                  siteId: site.siteId,
-                  dimension: dim,
-                ),
-                progress,
-              ),
+        dim: applyDocumentationProgress(
+          applyDimensionAccuracyNoise(
+            baseAccuracy: baseAccuracy,
+            siteId: site.siteId,
+            dimension: dim,
+          ),
+          progress,
+        ),
     };
 
     final horizontal =
@@ -53,26 +50,26 @@ class SiteCardDimensions extends StatelessWidget {
           (
             SiteDimensionKey.dino,
             'Genera presence',
-            emptyDims ? null : site.oddDinoCount,
-            emptyDims ? null : site.oddDinoBand,
+            site.oddDinoCount,
+            site.oddDinoBand,
           ),
           (
             SiteDimensionKey.fossil,
             'Fossil presence',
-            emptyDims ? null : site.oddFossilCount,
-            emptyDims ? null : site.oddFossilBand,
+            site.oddFossilCount,
+            site.oddFossilBand,
           ),
           (
             SiteDimensionKey.completeness,
             'Completeness',
-            emptyDims ? null : site.oddCompleteness,
-            emptyDims ? null : site.oddCompletenessBand,
+            site.oddCompleteness,
+            site.oddCompletenessBand,
           ),
           (
             SiteDimensionKey.quality,
             'Preservation',
-            emptyDims ? null : site.oddQuality,
-            emptyDims ? null : site.oddQualityBand,
+            site.oddQuality,
+            site.oddQualityBand,
           ),
         ];
 
@@ -80,50 +77,41 @@ class SiteCardDimensions extends StatelessWidget {
       for (final entry in horizontal)
         (
           entry.$2,
-          emptyDims
-              ? null
-              : _displayFor(
-                  site: site,
-                  key: entry.$1,
-                  trueValue: entry.$3,
-                  band: entry.$4,
-                  accuracy: accuracies[entry.$1] ?? 0,
-                  showExactMarker: showExactMarker,
-                ),
-          emptyDims ? 0.0 : (accuracies[entry.$1] ?? 0),
+          _displayFor(
+            site: site,
+            key: entry.$1,
+            trueValue: entry.$3,
+            band: entry.$4,
+            accuracy: accuracies[entry.$1] ?? 0,
+            showExactMarker: showExactMarker,
+          ),
+          accuracies[entry.$1] ?? 0,
         ),
     ];
-    final documentationDepth = emptyDims
-        ? 0.0
-        : (accuracies[SiteDimensionKey.depth] ?? 0);
-    final depthDisplay = emptyDims
-        ? null
-        : _displayFor(
-            site: site,
-            key: SiteDimensionKey.depth,
-            trueValue: site.oddDepth,
-            band: site.oddDepthBand,
-            accuracy: documentationDepth,
-            showExactMarker: showExactMarker,
-          );
+    final documentationDepth = accuracies[SiteDimensionKey.depth] ?? 0;
+    final depthDisplay = _displayFor(
+      site: site,
+      key: SiteDimensionKey.depth,
+      trueValue: site.oddDepth,
+      band: site.oddDepthBand,
+      accuracy: documentationDepth,
+      showExactMarker: showExactMarker,
+    );
 
     final dimensionAccuracies = <double>[
       for (final entry in horizontalDisplays)
         entry.$2?.effectiveAccuracy ?? entry.$3,
       depthDisplay?.effectiveAccuracy ?? documentationDepth,
     ];
-    final averageDocumentation = emptyDims
-        ? 0.0
-        : (dimensionAccuracies.reduce((a, b) => a + b) /
-                  dimensionAccuracies.length)
-              .clamp(0.0, 1.0);
+    final averageDocumentation =
+        (dimensionAccuracies.reduce((a, b) => a + b) /
+                dimensionAccuracies.length)
+            .clamp(0.0, 1.0);
 
     return CardSectionPanel(
       labelWidget: SiteDocumentationProgressHeader(
         progress: averageDocumentation,
-        message: emptyDims
-            ? 'Identify site to begin documentation'
-            : site.documented == true || averageDocumentation >= 1.0
+        message: site.documented == true || averageDocumentation >= 1.0
             ? 'Site documented'
             : inRange
             ? 'Documenting site'
@@ -150,7 +138,7 @@ class SiteCardDimensions extends StatelessWidget {
                         accuracy: horizontalDisplays[i].$3,
                         display: horizontalDisplays[i].$2,
                         cardTheme: cardTheme,
-                        showExactMarker: showExactMarker && !emptyDims,
+                        showExactMarker: showExactMarker,
                       ),
                     ),
                   ],
@@ -164,7 +152,7 @@ class SiteCardDimensions extends StatelessWidget {
                 display: depthDisplay,
                 accuracy: documentationDepth,
                 cardTheme: cardTheme,
-                showExactMarker: showExactMarker && !emptyDims,
+                showExactMarker: showExactMarker,
               ),
             ),
           ],

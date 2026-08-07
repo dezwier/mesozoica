@@ -75,4 +75,26 @@ void main() {
     expect(painter().progress, greaterThan(start));
     controller.dispose();
   });
+
+  testWidgets('documented site marker overlays rating stars on its image', (
+    tester,
+  ) async {
+    const site = SiteSummary(
+      siteId: 8,
+      documented: true,
+      oddDinoCount: 0.5,
+      oddFossilCount: 0.5,
+      oddCompleteness: 0.5,
+      oddQuality: 0.5,
+      oddDepth: 0.5,
+    );
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(body: MapSiteMiniCard(site: site, width: 64)),
+      ),
+    );
+
+    expect(find.byIcon(Icons.star_rounded), findsNWidgets(3));
+  });
 }

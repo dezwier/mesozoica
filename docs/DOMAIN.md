@@ -8,8 +8,8 @@ Mesozoica combines location discovery with a scientific paleontology collection 
 authenticate
   -> choose archive or field discovery
   -> find a site on the map
-  -> discover and identify the site
-  -> use exploration tools and sessions
+  -> discover and document the site
+  -> reveal its geology and use exploration tools and sessions
   -> surface or collect fossils
   -> grow catalogs and ownership records
   -> earn XP, levels, skill effects, and titles
@@ -31,14 +31,17 @@ A site is a geographic excavation location with coordinates, geological dimensio
 - Archive sites come from catalog/ingestion data and represent known paleontological locations.
 - Field sites are procedurally generated around survey cells and use a reserved ID range (`FIELD_SITE_ID_START` and above).
 
-Site state is partly global and partly user-specific. Discovery, identification, documentation/exploration progress, linking, discard state, and visibility must not be inferred from the base site row alone; application services join the latest ownership/status record.
+Site state is partly global and partly user-specific. Discovery, optional quiz identification, documentation/exploration progress, linking, discard state, and visibility must not be inferred from the base site row alone; application services join the latest ownership/status record.
 
-After identifying a site, the viewer documents it by remaining inside the
+After discovering a site, the viewer immediately documents it by remaining inside the
 configurable documentation radius. Each eligible second adds the configured
 `document_speed` to every dimension's accuracy; the server records monotonic
 unit-interval progress and completes documentation when the average reaches
 100% (equivalently, every capped dimension is at 100%).
-While an identified site is in range, the client holds a background-location
+The field site's geological title remains `Excavation Site` until documentation
+completes. Its resulting one-to-five-star rating is the average of the four
+positive dimensions and inverted depth, bucketed in 20-point increments.
+While a discovered site is in range, the client holds a background-location
 session so verified fixes continue documenting when the user switches apps or
 locks the device. Any suspension gap is reconciled on the first fresh resume
 fix when both endpoints remain inside the radius. A terminated process grants
@@ -84,7 +87,7 @@ The server's active version is authoritative. API responses carry `X-Game-Config
 
 Relationship actions and gameplay events can create notifications and push messages. Firebase-backed delivery is an infrastructure concern; persisted notification state remains the source the client can list and update.
 
-Major site events—discovery, identification, and completed documentation—also
+Major site events—discovery, optional quiz identification, and completed documentation—also
 produce celebrations. Their persisted notifications are the cross-lifecycle
 source of truth: foreground celebrations become read when shown, while events
 created in the background remain unread and queue for ordered presentation on

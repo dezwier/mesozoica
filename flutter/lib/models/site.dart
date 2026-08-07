@@ -159,7 +159,7 @@ class SiteSummary {
   }
 
   String get displayTitle {
-    if (needsIdentification) {
+    if (!titleIsRevealed) {
       return 'Excavation Site';
     }
     final period = effectivePeriod;
@@ -175,6 +175,48 @@ class SiteSummary {
       return parts.join(' ');
     }
     return displaySiteNumber;
+  }
+
+  /// Field-site geology stays hidden until the viewer finishes documentation.
+  bool get titleIsRevealed =>
+      !isFieldOccurrence || documented == true || viewerHasDocumented == true;
+
+  /// On-the-fly documented-site quality rating (1–5 stars).
+  ///
+  /// The four presence/quality axes reward higher values. Depth is inverted
+  /// because a shallow site is more desirable. Fully documented dimension
+  /// bands collapse to their exact value, so normal (non-admin) responses can
+  /// calculate the same rating without exposing exact odds early.
+  int? get documentationStars {
+    if (documented != true && viewerHasDocumented != true) return null;
+    final values = <double?>[
+      _documentedDimensionValue(oddDinoCount, oddDinoBand),
+      _documentedDimensionValue(oddFossilCount, oddFossilBand),
+      _documentedDimensionValue(oddCompleteness, oddCompletenessBand),
+      _documentedDimensionValue(oddQuality, oddQualityBand),
+      switch (_documentedDimensionValue(oddDepth, oddDepthBand)) {
+        final value? => 1.0 - value,
+        null => null,
+      },
+    ];
+    if (values.any((value) => value == null)) return null;
+    final average =
+        values.cast<double>().reduce((a, b) => a + b) / values.length;
+    const epsilon = 1e-9;
+    if (average + epsilon < 0.2) return 1;
+    if (average + epsilon < 0.4) return 2;
+    if (average + epsilon < 0.6) return 3;
+    if (average + epsilon < 0.8) return 4;
+    return 5;
+  }
+
+  static double? _documentedDimensionValue(
+    double? exact,
+    SiteDimensionBand? band,
+  ) {
+    if (exact != null) return exact.clamp(0.0, 1.0);
+    if (band == null) return null;
+    return ((band.rangeStart + band.rangeEnd) / 2.0).clamp(0.0, 1.0);
   }
 
   /// Field site discovered by the viewer but period/rock not yet identified.

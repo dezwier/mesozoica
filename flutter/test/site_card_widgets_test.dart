@@ -136,6 +136,40 @@ void main() {
     },
   );
 
+  testWidgets('site quality stars appear on front but not back', (
+    tester,
+  ) async {
+    final documented = _fixture.copyWith(
+      documented: true,
+      viewerHasDocumented: true,
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(body: SiteCardFront(site: documented)),
+      ),
+    );
+
+    // Fixture score is 42.6 after reversing depth, which yields three stars.
+    expect(find.byIcon(Icons.star_rounded), findsNWidgets(3));
+    expect(
+      tester.getCenter(find.byIcon(Icons.star_rounded).first).dy,
+      lessThan(tester.getTopLeft(find.text('Cretaceous Sandstone')).dy),
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SiteCardBack(
+            site: documented,
+            mapTileLayerBuilder: () => const SizedBox.shrink(),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    expect(find.byIcon(Icons.star_rounded), findsNothing);
+  });
+
   test('SiteSummary.displaySubtitle formats id comma and distance', () {
     expect(_fixture.displaySubtitle(), '#50001, 46.88, -110.36, Montana, US');
     expect(

@@ -58,23 +58,6 @@ class SiteCardUserTimeline extends StatelessWidget {
       );
     }
 
-    final identified =
-        site.viewerHasIdentified == true ||
-        site.identifiedAt != null ||
-        site.status?.trim().toLowerCase() == 'identified';
-    if (identified) {
-      final identifiedAt = site.identifiedAt;
-      entries.add(
-        SiteTimelineEntry(
-          moment: 'Identified',
-          whenLabel: identifiedAt != null
-              ? formatRelativeWhen(identifiedAt)
-              : '—',
-          howLabel: '—',
-        ),
-      );
-    }
-
     final documented =
         site.documented == true ||
         site.viewerHasDocumented == true ||

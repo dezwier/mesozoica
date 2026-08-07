@@ -13,7 +13,6 @@ from app.models.site import Site
 from app.models.site_type import SiteType
 from app.models.user_site import (
     SITE_STATUS_DISCOVERED,
-    SITE_STATUS_IDENTIFIED,
     USER_SITE_ROLE_DISCOVERER,
     USER_SITE_ROLE_DOCUMENTER,
     USER_SITE_ROLE_IDENTIFIER,
@@ -104,9 +103,10 @@ def site_row_to_summary(
         if not is_field
         else bool(row.viewer_has_identified)
     )
-    # Only redact after the viewer discovered the site but before identification.
+    # Documentation starts immediately after discovery. Geological dimensions
+    # must therefore be available before the optional identification quiz.
     viewer_discovered = row.discovered_at is not None
-    redact = is_field and viewer_discovered and not viewer_identified
+    redact = False
 
     bands = (
         {}
@@ -143,14 +143,15 @@ def site_row_to_summary(
         if max_age is None:
             max_age = period_max
 
-    # Viewer-facing status: discovered → identified after the quiz.
+    # Identification is an optional retained quiz, not a site-card state.
+    # Keep its identifier role from making the latest global status look hidden.
     display_status = row.status
     if (
         is_field
-        and viewer_identified
-        and display_status == SITE_STATUS_DISCOVERED
+        and viewer_discovered
+        and display_status in (None, "hidden", SITE_STATUS_DISCOVERED)
     ):
-        display_status = SITE_STATUS_IDENTIFIED
+        display_status = SITE_STATUS_DISCOVERED
 
     return SiteSummary(
         site_id=site.site_id,

@@ -7,7 +7,6 @@ import '../../theme/dino_card_theme.dart';
 import 'occurrence_id_badge.dart';
 import 'site_card_header.dart';
 import 'site_card_image.dart';
-import 'site_identify_sheet.dart';
 import 'site_period_rock_type_lines.dart';
 import 'site_status_badge.dart';
 
@@ -39,20 +38,33 @@ class SiteCardFront extends StatelessWidget {
   final ValueChanged<String>? onStatusSelected;
   final ValueChanged<SiteSummary>? onSiteUpdated;
 
-  Future<void> _openIdentify(BuildContext context) async {
-    final updated = await showSiteIdentifySheet(context, site: site);
-    if (updated != null && context.mounted) {
-      onSiteUpdated?.call(updated);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final cardTheme = DinoCardTheme.of(context);
     final status = site.status?.trim();
     final showIdBadge = site.isFieldOccurrence;
     final showStatus = showStatusBadge && status != null && status.isNotEmpty;
-    final showIdentify = site.canIdentify;
+    final stars = site.documentationStars;
+    final title = usePeriodRockTypeLines
+        ? (site.titleIsRevealed
+              ? SitePeriodRockTypeLines(site: site, fontSize: titleFontSize)
+              : SiteCardHeader(
+                  site: site,
+                  titleFontSize: titleFontSize,
+                  subtitleFontSize: subtitleFontSize,
+                  centered: true,
+                  overlayOnImage: true,
+                  showSubtitle: false,
+                ))
+        : SiteCardHeader(
+            site: site,
+            titleFontSize: titleFontSize,
+            subtitleFontSize: subtitleFontSize,
+            centered: true,
+            overlayOnImage: true,
+            showSubtitle: showSubtitle,
+            titleMaxLines: titleMaxLines,
+          );
 
     return AspectRatio(
       aspectRatio: DinoCardTheme.cardAspectRatio,
@@ -101,22 +113,23 @@ class SiteCardFront extends StatelessWidget {
                       ? 0.35
                       : 0.45),
             ),
-            child: usePeriodRockTypeLines
-                ? SitePeriodRockTypeLines(site: site, fontSize: titleFontSize)
-                : SiteCardHeader(
-                    site: site,
-                    titleFontSize: titleFontSize,
-                    subtitleFontSize: subtitleFontSize,
-                    centered: true,
-                    overlayOnImage: true,
-                    showSubtitle: showSubtitle,
-                    titleMaxLines: titleMaxLines,
-                    titleTrailing: showIdentify
-                        ? SiteIdentifyTitleButton(
-                            onPressed: () => _openIdentify(context),
-                          )
-                        : null,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (stars != null) ...[
+                  Center(
+                    child: SiteRatingStars(
+                      stars: stars,
+                      starSize: titleFontSize * 0.38,
+                      color: const Color(0xFFE6C35C),
+                    ),
                   ),
+                  const SizedBox(height: 2),
+                ],
+                title,
+              ],
+            ),
           ),
         ],
       ),

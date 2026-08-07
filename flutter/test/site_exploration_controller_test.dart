@@ -25,9 +25,9 @@ SiteSummary _site(int id, double latitude, double longitude) {
     siteId: id,
     latitude: latitude,
     longitude: longitude,
-    status: 'identified',
+    status: 'discovered',
     discoveredAt: DateTime.utc(2026, 8, 6),
-    viewerHasIdentified: true,
+    viewerHasIdentified: false,
     documentationProgress: 0,
     oddDinoCount: 0.5,
     oddFossilCount: 0.5,
@@ -214,7 +214,7 @@ void main() {
 
     final local = controller.resolveSite(site);
     expect(local.documented, isNot(true));
-    expect(local.status, 'identified');
+    expect(local.status, 'discovered');
     controller.dispose();
   });
 
@@ -225,9 +225,9 @@ void main() {
         siteId: 1,
         latitude: 50,
         longitude: 4,
-        status: 'identified',
+        status: 'discovered',
         discoveredAt: DateTime.utc(2026, 8, 6),
-        viewerHasIdentified: true,
+        viewerHasIdentified: false,
         documentationProgress: 0,
       );
       var calls = 0;
@@ -243,7 +243,7 @@ void main() {
             'sites': [
               {
                 'site_id': 1,
-                'status': documented ? 'documented' : 'identified',
+                'status': documented ? 'documented' : 'discovered',
                 'documentation_progress': progress,
                 'documented': documented,
               },

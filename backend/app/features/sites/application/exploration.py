@@ -11,7 +11,6 @@ from app.models.user_notification import UserNotification, UserNotificationType
 from app.models.user_site import (
     USER_SITE_ROLE_DISCOVERER,
     USER_SITE_ROLE_DOCUMENTER,
-    USER_SITE_ROLE_IDENTIFIER,
     UserSite,
 )
 from app.schemas.auth import UserProfileResponse
@@ -32,21 +31,6 @@ from app.features.sites.domain.labels import site_display_title
 from app.features.sites.application.dimension_display import site_is_fully_documented
 from app.features.sites.application.list import get_site_by_id
 from app.features.sites.application.summary import site_row_to_summary
-
-def _viewer_has_identified(
-    session: Session, *, user_id: int, site_id: int, link: UserSite
-) -> bool:
-    if bool(link.period_identified and link.rock_identified):
-        return True
-    row = session.exec(
-        select(UserSite.id).where(
-            col(UserSite.user_id) == user_id,
-            col(UserSite.site_id) == site_id,
-            col(UserSite.role) == USER_SITE_ROLE_IDENTIFIER,
-        )
-    ).first()
-    return row is not None
-
 
 def _monotonic(previous: float, reported: float) -> float:
     return previous if reported < previous else reported
@@ -181,16 +165,6 @@ def apply_site_exploration_update(
 
         if bool(link.documented):
             # Frozen: still return summary so clients sync the documented flag.
-            updated_ids.append(int(entry.site_id))
-            continue
-
-        if not _viewer_has_identified(
-            session,
-            user_id=int(user.id),
-            site_id=int(entry.site_id),
-            link=link,
-        ):
-            # Identification is required before documentation can accrue.
             updated_ids.append(int(entry.site_id))
             continue
 
