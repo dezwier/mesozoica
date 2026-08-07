@@ -287,8 +287,7 @@ void main() {
     await tester.tap(find.byType(SiteCardDimensions));
     await tester.pumpAndSettle();
 
-    expect(find.text('SITE DIMENSIONS'), findsNothing);
-    expect(find.textContaining('Site dimensions'), findsNothing);
+    expect(find.text('SITE DIMENSIONS'), findsOneWidget);
     expect(find.text('Move within range to continue'), findsOneWidget);
     expect(find.text('COORDINATES'), findsNothing);
     expect(find.text('COUNTRY'), findsNothing);

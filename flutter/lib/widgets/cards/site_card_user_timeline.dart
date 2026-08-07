@@ -112,20 +112,35 @@ class SiteCardUserTimeline extends StatelessWidget {
 
     final displayedEntries = isOpen ? entries : [entries.last];
 
+    final cardTheme = DinoCardTheme.of(context);
+    final titleStyle = cardTheme.sectionLabelStyle(fontSize: 8.5).copyWith(
+          color: cardTheme.cardTextSecondary,
+          letterSpacing: 0.8,
+          fontWeight: FontWeight.bold,
+        );
+
     return CardSectionPanel(
-      label: 'Timeline',
+      labelWidget: Text(
+        'Site history timeline'.toUpperCase(),
+        textAlign: TextAlign.center,
+        style: titleStyle,
+      ),
       padding: isOpen
           ? const EdgeInsets.fromLTRB(10, 6, 10, 6)
           : const EdgeInsets.fromLTRB(10, 5, 10, 5),
       labelGap: isOpen ? 6 : 3,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          for (var i = 0; i < displayedEntries.length; i++) ...[
-            if (i > 0) const SizedBox(height: 4),
-            _EntryRow(entry: displayedEntries[i]),
-          ],
-        ],
+      child: Center(
+        child: IntrinsicWidth(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              for (var i = 0; i < displayedEntries.length; i++) ...[
+                if (i > 0) const SizedBox(height: 4),
+                _EntryRow(entry: displayedEntries[i]),
+              ],
+            ],
+          ),
+        ),
       ),
     );
   }

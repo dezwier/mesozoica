@@ -114,16 +114,35 @@ class SiteCardDimensions extends StatelessWidget {
             .clamp(0.0, 1.0);
 
     return CardSectionPanel(
-      labelWidget: SiteDocumentationProgressHeader(
-        progress: averageDocumentation,
-        message: site.documented == true || averageDocumentation >= 1.0
-            ? 'Site documented'
-            : inRange
-            ? 'Documenting site'
-            : 'Move within range to continue',
-        active: inRange,
-        complete: site.documented == true || averageDocumentation >= 1.0,
-        cardTheme: cardTheme,
+      labelWidget: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            'Site dimensions'.toUpperCase(),
+            textAlign: TextAlign.center,
+            style: cardTheme.sectionLabelStyle(fontSize: 8.5).copyWith(
+                  color: cardTheme.cardTextSecondary,
+                  letterSpacing: 0.8,
+                  fontWeight: FontWeight.bold,
+                ),
+          ),
+          const SizedBox(height: 6),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: SiteDocumentationProgressHeader(
+              progress: averageDocumentation,
+              message: site.documented == true || averageDocumentation >= 1.0
+                  ? 'Site documented'
+                  : inRange
+                  ? 'Documenting site'
+                  : 'Move within range to continue',
+              active: inRange,
+              complete: site.documented == true || averageDocumentation >= 1.0,
+              cardTheme: cardTheme,
+            ),
+          ),
+        ],
       ),
       padding: isOpen
           ? const EdgeInsets.fromLTRB(4, 10, 6, 10)
@@ -133,7 +152,7 @@ class SiteCardDimensions extends StatelessWidget {
       child: isOpen
           ? FittedBox(
               fit: BoxFit.scaleDown,
-              alignment: Alignment.topCenter,
+              alignment: Alignment.center,
               child: SizedBox(
                 height: 112,
                 width: 340,
