@@ -76,6 +76,16 @@ class _SiteCardBackState extends State<SiteCardBack> with TickerProviderStateMix
     }
   }
 
+  double _lerpValue(int index, double start, double end, double t) {
+    if (index == _expandedIndex) {
+      return start + (end - start) * t;
+    } else if (index == _previousIndex) {
+      return end + (start - end) * t;
+    } else {
+      return start;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return AspectRatio(
@@ -106,6 +116,8 @@ class _SiteCardBackState extends State<SiteCardBack> with TickerProviderStateMix
               animation: _controller,
               builder: (context, child) {
                 final double curvedT = const Cubic(0.2, 0.0, 0.2, 1.0).transform(_controller.value);
+                final double thumbSize = _lerpValue(2, 44.0, 76.0, curvedT);
+                final double timelineHeight = _lerpValue(3, 18.0, 44.0, curvedT);
 
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -119,6 +131,8 @@ class _SiteCardBackState extends State<SiteCardBack> with TickerProviderStateMix
                         child: _PeriodRockTypeBox(
                           site: widget.site,
                           isOpen: _expandedIndex == 0,
+                          curvedT: curvedT,
+                          lerpFn: (start, end) => _lerpValue(0, start, end, curvedT),
                         ),
                       ),
                     ),
@@ -147,6 +161,7 @@ class _SiteCardBackState extends State<SiteCardBack> with TickerProviderStateMix
                         child: _FossilsBox(
                           siteId: widget.site.siteId,
                           isOpen: _expandedIndex == 2,
+                          thumbSize: thumbSize,
                         ),
                       ),
                     ),
@@ -161,6 +176,7 @@ class _SiteCardBackState extends State<SiteCardBack> with TickerProviderStateMix
                         child: SiteCardUserTimeline(
                           site: widget.site,
                           isOpen: _expandedIndex == 3,
+                          height: timelineHeight,
                         ),
                       ),
                     ),
@@ -179,10 +195,14 @@ class _PeriodRockTypeBox extends StatelessWidget {
   const _PeriodRockTypeBox({
     required this.site,
     required this.isOpen,
+    required this.curvedT,
+    required this.lerpFn,
   });
 
   final SiteSummary site;
   final bool isOpen;
+  final double curvedT;
+  final double Function(double start, double end) lerpFn;
 
   @override
   Widget build(BuildContext context) {
@@ -197,6 +217,7 @@ class _PeriodRockTypeBox extends StatelessWidget {
     final String rockText = rockPart.trim().isNotEmpty ? toTitleCase(rockPart.trim()) : '';
     final String periodPart = site.titleIsRevealed ? site.displayPeriod : 'Age Hidden';
     final String explanation = rockText.isNotEmpty ? '$periodPart · $rockText' : periodPart;
+    final double subboxHeight = lerpFn(18.0, 112.0);
 
     return CardSectionPanel(
       padding: EdgeInsets.zero,
@@ -236,30 +257,44 @@ class _PeriodRockTypeBox extends StatelessWidget {
                 ),
                 if (isOpen) ...[
                   const SizedBox(height: 6),
-                  Center(
-                    child: CardSectionPanel(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      clipChild: true,
-                      child: SizedBox(
-                        height: 52,
-                        width: 310,
-                        child: GeologicTimeline.fromAgeRange(
-                          minAgeMa: site.titleIsRevealed ? site.minAgeMa : null,
-                          maxAgeMa: site.titleIsRevealed ? site.maxAgeMa : null,
-                          axis: GeologicTimelineAxis.horizontal,
-                          scale: 0.85,
-                        ),
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.center,
+                    child: SizedBox(
+                      height: subboxHeight,
+                      width: 340,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Center(
+                            child: CardSectionPanel(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              clipChild: true,
+                              child: SizedBox(
+                                height: 52,
+                                width: 310,
+                                child: GeologicTimeline.fromAgeRange(
+                                  minAgeMa: site.titleIsRevealed ? site.minAgeMa : null,
+                                  maxAgeMa: site.titleIsRevealed ? site.maxAgeMa : null,
+                                  axis: GeologicTimelineAxis.horizontal,
+                                  scale: 0.85,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            explanation,
+                            textAlign: TextAlign.center,
+                            style: cardTheme.bodyStyle(fontSize: 10).copyWith(
+                                  color: Colors.white.withValues(alpha: 0.9),
+                                  fontWeight: FontWeight.w600,
+                                ),
+                          ),
+                        ],
                       ),
                     ),
-                  ),
-                  const Spacer(),
-                  Text(
-                    explanation,
-                    textAlign: TextAlign.center,
-                    style: cardTheme.bodyStyle(fontSize: 10).copyWith(
-                          color: Colors.white.withValues(alpha: 0.9),
-                          fontWeight: FontWeight.w600,
-                        ),
                   ),
                 ],
               ],
@@ -275,10 +310,12 @@ class _FossilsBox extends StatelessWidget {
   const _FossilsBox({
     required this.siteId,
     required this.isOpen,
+    required this.thumbSize,
   });
 
   final int siteId;
   final bool isOpen;
+  final double thumbSize;
 
   @override
   Widget build(BuildContext context) {
@@ -298,10 +335,18 @@ class _FossilsBox extends StatelessWidget {
       labelGap: 6,
       expandChild: true,
       padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
-      child: SiteCardFossils(
-        siteId: siteId,
-        thumbSize: isOpen ? 76 : 44,
-        tappable: isOpen,
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        alignment: Alignment.center,
+        child: SizedBox(
+          height: thumbSize,
+          width: 340,
+          child: SiteCardFossils(
+            siteId: siteId,
+            thumbSize: thumbSize,
+            tappable: isOpen,
+          ),
+        ),
       ),
     );
   }

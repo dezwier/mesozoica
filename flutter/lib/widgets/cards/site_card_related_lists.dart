@@ -137,23 +137,26 @@ class _SiteCardFossilsState extends State<SiteCardFossils> {
           return Center(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 4),
-              child: Column(
+              child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   Icon(
                     Icons.location_searching,
-                    size: 16,
+                    size: 14,
                     color: cardTheme.cardTextMuted.withValues(alpha: 0.75),
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'No fossils located yet',
-                    textAlign: TextAlign.center,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: cardTheme
-                        .bodyStyle(fontSize: 9)
-                        .copyWith(color: cardTheme.cardTextMuted, height: 1.15),
+                  const SizedBox(width: 5),
+                  Flexible(
+                    child: Text(
+                      'No fossils located yet',
+                      textAlign: TextAlign.start,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: cardTheme
+                          .bodyStyle(fontSize: 9.5)
+                          .copyWith(color: cardTheme.cardTextMuted, height: 1.15),
+                    ),
                   ),
                 ],
               ),
