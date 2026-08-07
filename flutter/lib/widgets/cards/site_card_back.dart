@@ -225,7 +225,7 @@ class _PeriodRockTypeBox extends StatelessWidget {
             ),
           ),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -235,7 +235,7 @@ class _PeriodRockTypeBox extends StatelessWidget {
                   style: titleStyle,
                 ),
                 if (isOpen) ...[
-                  const Spacer(),
+                  const SizedBox(height: 6),
                   Center(
                     child: CardSectionPanel(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -295,17 +295,13 @@ class _FossilsBox extends StatelessWidget {
         textAlign: TextAlign.center,
         style: titleStyle,
       ),
-      labelGap: isOpen ? 6 : 4,
+      labelGap: 6,
       expandChild: true,
-      padding: isOpen
-          ? const EdgeInsets.fromLTRB(10, 8, 10, 8)
-          : const EdgeInsets.fromLTRB(6, 6, 6, 6),
-      child: IgnorePointer(
-        ignoring: !isOpen,
-        child: SiteCardFossils(
-          siteId: siteId,
-          thumbSize: isOpen ? 76 : 44,
-        ),
+      padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
+      child: SiteCardFossils(
+        siteId: siteId,
+        thumbSize: isOpen ? 76 : 44,
+        tappable: isOpen,
       ),
     );
   }

@@ -14,7 +14,7 @@ class CardRecordThumb extends StatelessWidget {
 
   final Widget image;
   final String label;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
   final double labelFontSize;
 
   @override

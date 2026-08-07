@@ -145,10 +145,8 @@ class SiteCardDimensions extends StatelessWidget {
           ),
         ],
       ),
-      padding: isOpen
-          ? const EdgeInsets.fromLTRB(4, 10, 6, 10)
-          : const EdgeInsets.fromLTRB(4, 8, 6, 8),
-      labelGap: isOpen ? 8 : 0,
+      padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
+      labelGap: 6,
       expandChild: true,
       child: isOpen
           ? FittedBox(
