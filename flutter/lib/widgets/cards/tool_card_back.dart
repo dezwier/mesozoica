@@ -5,6 +5,7 @@ import '../../models/tool_session.dart';
 import '../../theme/dino_card_theme.dart';
 import '../../utils/relative_time.dart';
 import '../common/chrome_action_button.dart';
+import 'card_accordion_layout.dart';
 import 'card_back_backdrop.dart';
 import 'card_section_panel.dart';
 import 'tool_card_header.dart';
@@ -67,6 +68,13 @@ class ToolCardBack extends StatelessWidget {
             constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
           );
 
+    final cardTheme = DinoCardTheme.of(context);
+    final titleStyle = cardTheme.sectionLabelStyle(fontSize: 8.5).copyWith(
+          color: cardTheme.cardTextSecondary,
+          letterSpacing: 0.8,
+          fontWeight: FontWeight.bold,
+        );
+
     return AspectRatio(
       aspectRatio: DinoCardTheme.cardAspectRatio,
       child: Stack(
@@ -94,46 +102,84 @@ class ToolCardBack extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                if (statsChild != null) ...[
-                  Stack(
-                    children: [
-                      statsChild!,
-                      if (editButton != null)
-                        Positioned(top: 2, right: 2, child: editButton),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                ],
-                // Caps at remaining space; shrinks when history is short.
-                Flexible(
-                  fit: FlexFit.loose,
-                  child: LayoutBuilder(
-                    builder: (context, constraints) {
-                      return ConstrainedBox(
-                        constraints: BoxConstraints(
-                          maxHeight: constraints.maxHeight,
-                        ),
-                        child: Stack(
-                          children: [
-                            CardSectionPanel(
-                              label: 'History',
-                              padding: const EdgeInsets.fromLTRB(10, 8, 10, 6),
-                              child: _HistoryList(
-                                history: history,
-                                loading: historyLoading,
-                                onHistoryTap: onHistoryTap,
-                              ),
+                Expanded(
+                  child: CardAccordionLayout(
+                    initialIndex: 0,
+                    items: [
+                      // Element 0: Tool parameters
+                      CardAccordionItem(
+                        builder: (context, isOpen, curvedT, lerpFn) {
+                          return CardSectionPanel(
+                            labelWidget: Text(
+                              'Tool parameters'.toUpperCase(),
+                              textAlign: TextAlign.center,
+                              style: titleStyle,
                             ),
-                            if (statsChild == null && editButton != null)
-                              Positioned(top: 2, right: 2, child: editButton),
-                          ],
-                        ),
-                      );
-                    },
+                            labelGap: 6,
+                            expandChild: true,
+                            padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
+                            child: isOpen
+                                ? FittedBox(
+                                    fit: BoxFit.scaleDown,
+                                    alignment: Alignment.center,
+                                    child: SizedBox(
+                                      height: 112,
+                                      width: 340,
+                                      child: Stack(
+                                        children: [
+                                          Center(
+                                            child: statsChild ??
+                                                Text(
+                                                  'Standard settings',
+                                                  style: cardTheme.bodyStyle(fontSize: 12).copyWith(
+                                                        color: cardTheme.cardTextMuted,
+                                                      ),
+                                                ),
+                                          ),
+                                          if (editButton != null)
+                                            Positioned(top: 2, right: 2, child: editButton),
+                                        ],
+                                      ),
+                                    ),
+                                  )
+                                : const SizedBox.shrink(),
+                          );
+                        },
+                      ),
+                      // Element 1: Tool timeline history
+                      CardAccordionItem(
+                        builder: (context, isOpen, curvedT, lerpFn) {
+                          return CardSectionPanel(
+                            labelWidget: Text(
+                              'Tool timeline history'.toUpperCase(),
+                              textAlign: TextAlign.center,
+                              style: titleStyle,
+                            ),
+                            labelGap: 6,
+                            expandChild: true,
+                            padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
+                            child: isOpen
+                                ? FittedBox(
+                                    fit: BoxFit.scaleDown,
+                                    alignment: Alignment.center,
+                                    child: SizedBox(
+                                      height: 112,
+                                      width: 340,
+                                      child: _HistoryList(
+                                        history: history,
+                                        loading: historyLoading,
+                                        onHistoryTap: onHistoryTap,
+                                      ),
+                                    ),
+                                  )
+                                : const SizedBox.shrink(),
+                          );
+                        },
+                      ),
+                    ],
                   ),
                 ),
                 if (showActionButtons) ...[
-                  const Spacer(),
                   const SizedBox(height: 8),
                   SizedBox(
                     height: _actionHeight,
@@ -216,11 +262,13 @@ class _HistoryList extends StatelessWidget {
       );
     }
     if (history.isEmpty) {
-      return Text(
-        'No history yet',
-        style: cardTheme
-            .bodyStyle(fontSize: 12)
-            .copyWith(color: cardTheme.cardTextMuted),
+      return Center(
+        child: Text(
+          'No history yet',
+          style: cardTheme
+              .bodyStyle(fontSize: 12)
+              .copyWith(color: cardTheme.cardTextMuted),
+        ),
       );
     }
 
@@ -229,7 +277,6 @@ class _HistoryList extends StatelessWidget {
       thickness: 0.5,
       color: cardTheme.cardTextMuted.withValues(alpha: 0.22),
     );
-    // shrinkWrap: size to rows when short; parent maxHeight enables scroll.
     return ListView.separated(
       shrinkWrap: true,
       physics: const ClampingScrollPhysics(),

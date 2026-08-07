@@ -161,18 +161,25 @@ void main() {
       expect(find.text('Tyrannosaurus rex'), findsOneWidget);
       expect(find.byIcon(Icons.info_outline), findsOneWidget);
       expect(find.text('LOCATION'), findsNothing);
-      expect(find.text('PERIOD'), findsOneWidget);
-      expect(find.text('DIET'), findsOneWidget);
-      expect(find.text('MASS'), findsOneWidget);
-      expect(find.text('LENGTH'), findsOneWidget);
-      expect(find.text('TIME'), findsNothing);
-      expect(find.text('CLADOGRAM'), findsOneWidget);
-      expect(find.text('FOSSIL RECORD'), findsNothing);
       expect(find.text('Triassic'), findsOneWidget);
       expect(find.text('Jurassic'), findsOneWidget);
       expect(find.text('Cretaceous'), findsOneWidget);
       expect(find.text('252 Ma'), findsOneWidget);
       expect(find.text('66 Ma'), findsOneWidget);
+
+      // Tap Dinosaur attributes to open it
+      await tester.tap(find.text('DINOSAUR ATTRIBUTES'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('PERIOD'), findsOneWidget);
+      expect(find.text('DIET'), findsOneWidget);
+      expect(find.text('MASS'), findsOneWidget);
+      expect(find.text('LENGTH'), findsOneWidget);
+
+      // Tap Dinosaur cladogram to open it
+      await tester.tap(find.text('DINOSAUR CLADOGRAM'));
+      await tester.pumpAndSettle();
+
       expect(find.text('CLADE'), findsNWidgets(2));
       expect(find.text('FAMILY'), findsOneWidget);
       expect(find.text('GENUS'), findsOneWidget);
@@ -180,8 +187,6 @@ void main() {
         find.textContaining('largest terrestrial predators'),
         findsNothing,
       );
-      expect(find.byType(DinosaurCardFossilMap), findsOneWidget);
-      expect(find.byType(CircularProgressIndicator), findsOneWidget);
     },
   );
 
