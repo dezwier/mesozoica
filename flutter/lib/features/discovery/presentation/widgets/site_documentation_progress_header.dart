@@ -11,6 +11,7 @@ class SiteDocumentationProgressHeader extends StatelessWidget {
     required this.active,
     required this.complete,
     required this.cardTheme,
+    this.height = 30.0,
   });
 
   final double progress;
@@ -18,15 +19,19 @@ class SiteDocumentationProgressHeader extends StatelessWidget {
   final bool active;
   final bool complete;
   final DinoCardTheme cardTheme;
+  final double height;
 
   @override
   Widget build(BuildContext context) {
     final value = progress.clamp(0.0, 1.0);
     final accent = cardTheme.cardAccent;
+    final double fontSize = height < 26 ? 9.5 : 11;
+    final double iconSize = height < 26 ? 12 : 15;
+
     return ClipRRect(
-      borderRadius: BorderRadius.circular(9),
+      borderRadius: BorderRadius.circular(height * 0.3),
       child: SizedBox(
-        height: 30,
+        height: height,
         child: Stack(
           fit: StackFit.expand,
           children: [
@@ -51,7 +56,7 @@ class SiteDocumentationProgressHeader extends StatelessWidget {
               ),
             ),
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 10),
+              padding: EdgeInsets.symmetric(horizontal: height < 26 ? 8 : 10),
               child: Row(
                 children: [
                   Icon(
@@ -60,24 +65,24 @@ class SiteDocumentationProgressHeader extends StatelessWidget {
                         : active
                         ? Icons.auto_awesome_rounded
                         : Icons.location_on_outlined,
-                    size: 15,
+                    size: iconSize,
                     color: cardTheme.cardTextPrimary,
                   ),
-                  const SizedBox(width: 6),
+                  SizedBox(width: height < 26 ? 4 : 6),
                   Expanded(
                     child: Text(
                       message,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: cardTheme
-                          .sectionLabelStyle(fontSize: 11)
+                          .sectionLabelStyle(fontSize: fontSize)
                           .copyWith(fontWeight: FontWeight.w800),
                     ),
                   ),
                   Text(
                     '${(value * 100).round()}%',
                     style: cardTheme
-                        .sectionLabelStyle(fontSize: 11)
+                        .sectionLabelStyle(fontSize: fontSize)
                         .copyWith(fontWeight: FontWeight.w900),
                   ),
                 ],

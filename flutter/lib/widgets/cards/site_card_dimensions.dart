@@ -140,6 +140,7 @@ class SiteCardDimensions extends StatelessWidget {
               active: inRange,
               complete: site.documented == true || averageDocumentation >= 1.0,
               cardTheme: cardTheme,
+              height: 22.0,
             ),
           ),
         ],
