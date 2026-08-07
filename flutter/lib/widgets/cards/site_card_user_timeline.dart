@@ -27,9 +27,14 @@ class SiteTimelineEntry {
 
 /// Compact list of user moments for a site (discovery / documentation).
 class SiteCardUserTimeline extends StatelessWidget {
-  const SiteCardUserTimeline({super.key, required this.site});
+  const SiteCardUserTimeline({
+    super.key,
+    required this.site,
+    this.isOpen = true,
+  });
 
   final SiteSummary site;
+  final bool isOpen;
 
   static List<SiteTimelineEntry> entriesFor(
     SiteSummary site, {
@@ -105,16 +110,20 @@ class SiteCardUserTimeline extends StatelessWidget {
     );
     if (entries.isEmpty) return const SizedBox.shrink();
 
+    final displayedEntries = isOpen ? entries : [entries.last];
+
     return CardSectionPanel(
       label: 'Timeline',
-      padding: const EdgeInsets.fromLTRB(10, 6, 10, 6),
-      labelGap: 3,
+      padding: isOpen
+          ? const EdgeInsets.fromLTRB(10, 6, 10, 6)
+          : const EdgeInsets.fromLTRB(10, 5, 10, 5),
+      labelGap: isOpen ? 6 : 3,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          for (var i = 0; i < entries.length; i++) ...[
+          for (var i = 0; i < displayedEntries.length; i++) ...[
             if (i > 0) const SizedBox(height: 4),
-            _EntryRow(entry: entries[i]),
+            _EntryRow(entry: displayedEntries[i]),
           ],
         ],
       ),

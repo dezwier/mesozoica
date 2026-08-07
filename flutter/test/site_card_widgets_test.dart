@@ -270,7 +270,6 @@ void main() {
 
     await tester.pump();
 
-    expect(find.byType(SiteCardLocationMap), findsOneWidget);
     expect(find.byType(GeologicTimeline), findsOneWidget);
     final archiveTimeline = tester.widget<GeologicTimeline>(
       find.byType(GeologicTimeline),
@@ -283,6 +282,11 @@ void main() {
     expect(find.text('Cretaceous Sandstone'), findsOneWidget);
     expect(find.text('#50001, 46.88, -110.36, Montana, US'), findsNothing);
     expect(find.textContaining('Discovered'), findsNothing);
+
+    // Tap the site dimensions box to open it
+    await tester.tap(find.byType(SiteCardDimensions));
+    await tester.pumpAndSettle();
+
     expect(find.text('SITE DIMENSIONS'), findsNothing);
     expect(find.textContaining('Site dimensions'), findsNothing);
     expect(find.text('Move within range to continue'), findsOneWidget);
@@ -343,6 +347,10 @@ void main() {
       ),
     );
     await tester.pump();
+
+    // Tap the site dimensions box to open it so DEPTH is rendered
+    await tester.tap(find.byType(SiteCardDimensions));
+    await tester.pumpAndSettle();
 
     expect(find.textContaining('Discovered'), findsOneWidget);
     expect(find.textContaining(' · '), findsWidgets);
@@ -503,5 +511,41 @@ void main() {
 
     expect(find.byType(FossilMarker), findsOneWidget);
     expect(find.text('No location'), findsNothing);
+  });
+
+  testWidgets('SiteCardBack accordion expands and collapses sections on tap', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: SizedBox(
+              width: 800,
+              child: SiteCardBack(
+                site: _fixture,
+                mapTileLayerBuilder: () => const SizedBox.shrink(),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.pump();
+
+    // Initially, GeologicTimeline is open (inside PeriodRockTypeBox).
+    expect(find.byType(GeologicTimeline), findsOneWidget);
+    // Site dimensions bars should be hidden because SiteCardDimensions is closed.
+    expect(find.textContaining('GENERA PRESENCE'), findsNothing);
+
+    // Tap SiteCardDimensions to open it.
+    await tester.tap(find.byType(SiteCardDimensions));
+    await tester.pumpAndSettle();
+
+    // Now, SiteCardDimensions is open and shows dimension bars.
+    expect(find.textContaining('GENERA PRESENCE'), findsOneWidget);
+    // GeologicTimeline should be hidden since PeriodRockTypeBox is now closed.
+    expect(find.byType(GeologicTimeline), findsNothing);
   });
 }

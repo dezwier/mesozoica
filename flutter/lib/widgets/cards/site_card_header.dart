@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:provider/provider.dart';
 
+import '../../controllers/map_controller.dart';
 import '../../models/site.dart';
 import '../../services/location_service.dart';
 import '../../theme/dino_card_theme.dart';
@@ -53,9 +54,6 @@ class SiteCardHeader extends StatelessWidget {
                 color: cardTheme.cardTextMuted,
                 fontWeight: FontWeight.w500,
               );
-    final subtitle =
-        subtitleOverride ??
-        site.displaySubtitle(distanceMeters: _distanceMeters(context));
     final trailing = titleTrailing;
     final titleText = CardAdaptiveTitleText(
       text: site.displayTitle,
@@ -74,21 +72,83 @@ class SiteCardHeader extends StatelessWidget {
               trailing,
             ],
           );
+
+    Widget? subtitleWidget;
+    if (showSubtitle) {
+      if (subtitleOverride != null) {
+        if (subtitleOverride!.isNotEmpty) {
+          subtitleWidget = Text(
+            subtitleOverride!,
+            textAlign: centered ? TextAlign.center : TextAlign.start,
+            style: subtitleStyle,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          );
+        }
+      } else {
+        final dist = _distanceMeters(context);
+        final subtitleText = site.displaySubtitle(distanceMeters: dist);
+
+        if (subtitleText.isNotEmpty) {
+          final hasCoords = site.latitude != null && site.longitude != null;
+
+          final textWidget = Text(
+            subtitleText,
+            textAlign: centered ? TextAlign.center : TextAlign.start,
+            style: subtitleStyle,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          );
+
+          if (hasCoords) {
+            subtitleWidget = Row(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: centered ? MainAxisAlignment.center : MainAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Flexible(child: textWidget),
+                GestureDetector(
+                  onTap: () {
+                    try {
+                      context.read<MapController>().requestFocusOnSite(site);
+                      if (Navigator.of(context).canPop()) {
+                        Navigator.of(context).pop();
+                      }
+                    } catch (_) {
+                      // Fail-safe in widget tests or previews
+                    }
+                  },
+                  behavior: HitTestBehavior.opaque,
+                  child: MouseRegion(
+                    cursor: SystemMouseCursors.click,
+                    child: Padding(
+                      padding: const EdgeInsets.only(left: 4.0),
+                      child: Icon(
+                        Icons.location_on,
+                        size: subtitleFontSize * 1.4,
+                        color: subtitleStyle.color,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            );
+          } else {
+            subtitleWidget = textWidget;
+          }
+        }
+      }
+    }
+
     return Column(
       crossAxisAlignment: centered
           ? CrossAxisAlignment.center
           : CrossAxisAlignment.start,
       children: [
         titleRow,
-        if (showSubtitle && subtitle.isNotEmpty) ...[
+        if (subtitleWidget != null) ...[
           const SizedBox(height: 8),
-          Text(
-            subtitle,
-            textAlign: centered ? TextAlign.center : TextAlign.start,
-            style: subtitleStyle,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
+          subtitleWidget,
         ],
       ],
     );
