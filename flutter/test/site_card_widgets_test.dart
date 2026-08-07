@@ -106,7 +106,7 @@ void main() {
     await tester.pump();
 
     expect(find.text('Site documented'), findsOneWidget);
-    expect(find.text('100%'), findsWidgets);
+    expect(find.text('100%'), findsOneWidget);
   });
 
   tearDown(() {
@@ -149,8 +149,8 @@ void main() {
       ),
     );
 
-    // Fixture score is 42.6 after reversing depth, which yields three stars.
-    expect(find.byIcon(Icons.star_rounded), findsNWidgets(3));
+    // Fixture score is 42.6 after reversing depth, which yields two stars.
+    expect(find.byIcon(Icons.star_rounded), findsNWidgets(2));
     expect(
       tester.getCenter(find.byIcon(Icons.star_rounded).first).dy,
       lessThan(tester.getTopLeft(find.text('Cretaceous Sandstone')).dy),
@@ -295,8 +295,8 @@ void main() {
     expect(find.textContaining('COMPLETENESS'), findsOneWidget);
     expect(find.textContaining('PRESERVATION'), findsOneWidget);
     expect(find.textContaining('DEPTH'), findsOneWidget);
-    // Skill L1 + absolute noise (±30 pts) → inline % labels, not a fixed 1%.
-    expect(find.textContaining('%'), findsWidgets);
+    // Header shows aggregate documentation %; per-axis gold % labels are hidden.
+    expect(find.textContaining('%'), findsOneWidget);
     expect(find.text('MOMENT'), findsNothing);
     expect(find.text('WHEN'), findsNothing);
     expect(find.text('HOW'), findsNothing);
@@ -349,8 +349,8 @@ void main() {
     expect(find.text('Mapped 30m'), findsNothing);
     expect(find.text('Move within range to continue'), findsOneWidget);
     expect(find.text('MOMENT'), findsNothing);
-    // Skill + noise + 30m exploration → inline % labels (not a fixed 31%).
-    expect(find.textContaining('%'), findsWidgets);
+    // Header shows aggregate documentation %; per-axis gold % labels are hidden.
+    expect(find.textContaining('%'), findsOneWidget);
     expect(find.textContaining('DEPTH'), findsOneWidget);
   });
 

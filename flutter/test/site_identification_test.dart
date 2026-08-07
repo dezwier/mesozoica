@@ -43,11 +43,11 @@ void main() {
       oddDepth: 0.3,
     );
     expect(site.displayTitle, 'Cretaceous Sandstone');
-    // (70 + 50 + 50 + 50 + reversed depth 70) / 5 = 58 → 3 stars.
-    expect(site.documentationStars, 3);
+    // (70 + 50 + 50 + 50 + reversed depth 70) / 5 = 58 → 4 stars.
+    expect(site.documentationStars, 4);
   });
 
-  test('documentation stars use 20-point buckets and inverted depth', () {
+  test('documentation stars use 23/43/57/77 boundaries and inverted depth', () {
     SiteSummary siteAt(double score) => SiteSummary(
       siteId: 1000000067,
       documented: true,
@@ -58,14 +58,14 @@ void main() {
       oddDepth: 1 - score,
     );
 
-    expect(siteAt(0.19).documentationStars, 1);
-    expect(siteAt(0.20).documentationStars, 2);
-    expect(siteAt(0.39).documentationStars, 2);
-    expect(siteAt(0.40).documentationStars, 3);
-    expect(siteAt(0.59).documentationStars, 3);
-    expect(siteAt(0.60).documentationStars, 4);
-    expect(siteAt(0.79).documentationStars, 4);
-    expect(siteAt(0.80).documentationStars, 5);
+    expect(siteAt(0.22).documentationStars, 1);
+    expect(siteAt(0.23).documentationStars, 2);
+    expect(siteAt(0.42).documentationStars, 2);
+    expect(siteAt(0.43).documentationStars, 3);
+    expect(siteAt(0.56).documentationStars, 3);
+    expect(siteAt(0.57).documentationStars, 4);
+    expect(siteAt(0.76).documentationStars, 4);
+    expect(siteAt(0.77).documentationStars, 5);
   });
 
   test('unknown period and rock filters match unidentified sites', () {

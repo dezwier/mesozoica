@@ -40,7 +40,7 @@ unit-interval progress and completes documentation when the average reaches
 100% (equivalently, every capped dimension is at 100%).
 The field site's geological title remains `Excavation Site` until documentation
 completes. Its resulting one-to-five-star rating is the average of the four
-positive dimensions and inverted depth, bucketed in 20-point increments.
+positive dimensions and inverted depth, bucketed at 23 / 43 / 57 / 77.
 While a discovered site is in range, the client holds a background-location
 session so verified fixes continue documenting when the user switches apps or
 locks the device. Any suspension gap is reconciled on the first fresh resume

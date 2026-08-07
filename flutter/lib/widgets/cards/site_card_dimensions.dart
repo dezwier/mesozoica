@@ -135,7 +135,6 @@ class SiteCardDimensions extends StatelessWidget {
                     Expanded(
                       child: _HorizontalDimensionRow(
                         label: horizontalDisplays[i].$1,
-                        accuracy: horizontalDisplays[i].$3,
                         display: horizontalDisplays[i].$2,
                         cardTheme: cardTheme,
                         showExactMarker: showExactMarker,
@@ -150,7 +149,6 @@ class SiteCardDimensions extends StatelessWidget {
               width: 42,
               child: _VerticalDepthAxis(
                 display: depthDisplay,
-                accuracy: documentationDepth,
                 cardTheme: cardTheme,
                 showExactMarker: showExactMarker,
               ),
@@ -194,11 +192,6 @@ class SiteCardDimensions extends StatelessWidget {
       // Widget tests / previews without AuthController.
     }
     return 1;
-  }
-
-  static String accuracyPercentLabel(double accuracy) {
-    final pct = (accuracy.clamp(0.0, 1.0) * 100).round();
-    return '$pct%';
   }
 
   static SiteDimensionDisplay? _displayFor({
@@ -274,14 +267,12 @@ class SiteCardDimensions extends StatelessWidget {
 class _HorizontalDimensionRow extends StatelessWidget {
   const _HorizontalDimensionRow({
     required this.label,
-    required this.accuracy,
     required this.display,
     required this.cardTheme,
     required this.showExactMarker,
   });
 
   final String label;
-  final double accuracy;
   final SiteDimensionDisplay? display;
   final DinoCardTheme cardTheme;
   final bool showExactMarker;
@@ -289,36 +280,19 @@ class _HorizontalDimensionRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final labelStyle = cardTheme.statLabelStyle(fontSize: 8.5);
-    final accuracyStyle = labelStyle.copyWith(
-      color: cardTheme.cardAccent,
-      fontWeight: FontWeight.w700,
-      letterSpacing: 0.25,
-    );
-    // Prefer live effective accuracy from the display when present.
-    final shownAccuracy = display?.effectiveAccuracy ?? accuracy;
     return Row(
       children: [
         SizedBox(
-          width: 128,
-          child: Text.rich(
-            TextSpan(
-              children: [
-                TextSpan(
-                  text: '${label.toUpperCase()} ',
-                  style: labelStyle.copyWith(letterSpacing: 0.3),
-                ),
-                TextSpan(
-                  text: SiteCardDimensions.accuracyPercentLabel(shownAccuracy),
-                  style: accuracyStyle,
-                ),
-              ],
-            ),
+          width: 100,
+          child: Text(
+            label.toUpperCase(),
             textAlign: TextAlign.right,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
+            style: labelStyle.copyWith(letterSpacing: 0.3),
           ),
         ),
-        const SizedBox(width: 5),
+        const SizedBox(width: 9),
         Expanded(
           child: display == null
               ? _AxisTrackPlaceholder(cardTheme: cardTheme)
@@ -343,25 +317,17 @@ class _HorizontalDimensionRow extends StatelessWidget {
 class _VerticalDepthAxis extends StatelessWidget {
   const _VerticalDepthAxis({
     required this.display,
-    required this.accuracy,
     required this.cardTheme,
     required this.showExactMarker,
   });
 
   final SiteDimensionDisplay? display;
-  final double accuracy;
   final DinoCardTheme cardTheme;
   final bool showExactMarker;
 
   @override
   Widget build(BuildContext context) {
     final labelStyle = cardTheme.statLabelStyle(fontSize: 8.5);
-    final accuracyStyle = labelStyle.copyWith(
-      color: cardTheme.cardAccent,
-      fontWeight: FontWeight.w700,
-      letterSpacing: 0.2,
-    );
-    final shownAccuracy = display?.effectiveAccuracy ?? accuracy;
     return Column(
       children: [
         Text(
@@ -371,14 +337,7 @@ class _VerticalDepthAxis extends StatelessWidget {
           overflow: TextOverflow.ellipsis,
           style: labelStyle.copyWith(letterSpacing: 0.3),
         ),
-        Text(
-          SiteCardDimensions.accuracyPercentLabel(shownAccuracy),
-          textAlign: TextAlign.center,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: accuracyStyle,
-        ),
-        const SizedBox(height: 2),
+        const SizedBox(height: 7),
         Expanded(
           child: display == null
               ? _AxisTrackPlaceholder(cardTheme: cardTheme, vertical: true)

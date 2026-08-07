@@ -203,10 +203,10 @@ class SiteSummary {
     final average =
         values.cast<double>().reduce((a, b) => a + b) / values.length;
     const epsilon = 1e-9;
-    if (average + epsilon < 0.2) return 1;
-    if (average + epsilon < 0.4) return 2;
-    if (average + epsilon < 0.6) return 3;
-    if (average + epsilon < 0.8) return 4;
+    if (average + epsilon < 0.23) return 1;
+    if (average + epsilon < 0.43) return 2;
+    if (average + epsilon < 0.57) return 3;
+    if (average + epsilon < 0.77) return 4;
     return 5;
   }
 
