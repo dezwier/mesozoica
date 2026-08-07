@@ -125,10 +125,8 @@ class SiteCardUserTimeline extends StatelessWidget {
         textAlign: TextAlign.center,
         style: titleStyle,
       ),
-      padding: isOpen
-          ? const EdgeInsets.fromLTRB(10, 6, 10, 6)
-          : const EdgeInsets.fromLTRB(10, 5, 10, 5),
-      labelGap: isOpen ? 6 : 3,
+      padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
+      labelGap: 6,
       child: Center(
         child: IntrinsicWidth(
           child: Column(

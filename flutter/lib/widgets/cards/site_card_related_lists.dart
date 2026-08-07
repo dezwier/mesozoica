@@ -16,11 +16,13 @@ class SiteCardFossils extends StatefulWidget {
     required this.siteId,
     this.siteService,
     this.thumbSize = 56,
+    this.tappable = true,
   });
 
   final int siteId;
   final SiteService? siteService;
   final double thumbSize;
+  final bool tappable;
 
   @override
   State<SiteCardFossils> createState() => _SiteCardFossilsState();
@@ -46,7 +48,7 @@ class _SiteCardFossilsState extends State<SiteCardFossils> {
       child: CardRecordThumb(
         image: FossilCardImage(imageUrl: fossil.mainImageUrl),
         label: fossil.displayLabel,
-        onTap: () => showFossilCardDialog(context, fossilId: fossil.id),
+        onTap: widget.tappable ? () => showFossilCardDialog(context, fossilId: fossil.id) : null,
       ),
     );
     if (!fossil.isHidden) return thumb;
