@@ -12,9 +12,14 @@ import 'card_section_panel.dart';
 
 /// Site card panel: four horizontal odd_* axes + vertical depth.
 class SiteCardDimensions extends StatelessWidget {
-  const SiteCardDimensions({super.key, required this.site});
+  const SiteCardDimensions({
+    super.key,
+    required this.site,
+    this.isOpen = true,
+  });
 
   final SiteSummary site;
+  final bool isOpen;
 
   @override
   Widget build(BuildContext context) {
@@ -120,42 +125,52 @@ class SiteCardDimensions extends StatelessWidget {
         complete: site.documented == true || averageDocumentation >= 1.0,
         cardTheme: cardTheme,
       ),
-      padding: const EdgeInsets.fromLTRB(4, 10, 6, 10),
-      labelGap: 8,
-      child: SizedBox(
-        height: 112,
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Expanded(
-              child: Column(
-                children: [
-                  for (var i = 0; i < horizontalDisplays.length; i++) ...[
-                    if (i > 0) const SizedBox(height: 5),
+      padding: isOpen
+          ? const EdgeInsets.fromLTRB(4, 10, 6, 10)
+          : const EdgeInsets.fromLTRB(4, 8, 6, 8),
+      labelGap: isOpen ? 8 : 0,
+      expandChild: true,
+      child: isOpen
+          ? FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.topCenter,
+              child: SizedBox(
+                height: 112,
+                width: 340,
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
                     Expanded(
-                      child: _HorizontalDimensionRow(
-                        label: horizontalDisplays[i].$1,
-                        display: horizontalDisplays[i].$2,
+                      child: Column(
+                        children: [
+                          for (var i = 0; i < horizontalDisplays.length; i++) ...[
+                            if (i > 0) const SizedBox(height: 5),
+                            Expanded(
+                              child: _HorizontalDimensionRow(
+                                label: horizontalDisplays[i].$1,
+                                display: horizontalDisplays[i].$2,
+                                cardTheme: cardTheme,
+                                showExactMarker: showExactMarker,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    SizedBox(
+                      width: 42,
+                      child: _VerticalDepthAxis(
+                        display: depthDisplay,
                         cardTheme: cardTheme,
                         showExactMarker: showExactMarker,
                       ),
                     ),
                   ],
-                ],
+                ),
               ),
-            ),
-            const SizedBox(width: 8),
-            SizedBox(
-              width: 42,
-              child: _VerticalDepthAxis(
-                display: depthDisplay,
-                cardTheme: cardTheme,
-                showExactMarker: showExactMarker,
-              ),
-            ),
-          ],
-        ),
-      ),
+            )
+          : const SizedBox.shrink(),
     );
   }
 
