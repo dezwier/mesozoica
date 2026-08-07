@@ -235,14 +235,12 @@ class MapSiteMiniCard extends StatelessWidget {
                       children: [
                         SiteCardImage(imageUrl: site.mainImageUrl),
                         if (stars != null)
-                          Positioned(
-                            left: 0,
-                            right: 0,
-                            bottom: photo * 0.12,
-                            child: Center(
+                          Positioned.fill(
+                            child: Align(
+                              alignment: Alignment.center,
                               child: SiteRatingStars(
                                 stars: stars,
-                                starSize: photo * 0.14,
+                                starSize: photo * 0.16,
                                 color: const Color(0xFFE6C35C),
                               ),
                             ),

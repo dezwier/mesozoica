@@ -179,4 +179,48 @@ void main() {
       expect(second.single.site.siteId, 1);
     });
   });
+
+  test('overlay equality detects documented marker presentation changes', () {
+    const discovered = SiteSummary(
+      siteId: 1,
+      status: 'discovered',
+      siteTypePeriod: 'cretaceous',
+      rockType: 'sandstone',
+    );
+    const documented = SiteSummary(
+      siteId: 1,
+      status: 'documented',
+      documented: true,
+      viewerHasDocumented: true,
+      siteTypePeriod: 'cretaceous',
+      rockType: 'sandstone',
+      oddDinoCount: 0.5,
+      oddFossilCount: 0.5,
+      oddCompleteness: 0.5,
+      oddQuality: 0.5,
+      oddDepth: 0.5,
+    );
+    const geometry = (
+      screenX: 100.0,
+      screenY: 200.0,
+      distanceM: 20.0,
+      cardWidth: 52.0,
+    );
+    final before = MapRotateVisibleSite(
+      site: discovered,
+      screenX: geometry.screenX,
+      screenY: geometry.screenY,
+      distanceM: geometry.distanceM,
+      cardWidth: geometry.cardWidth,
+    );
+    final after = MapRotateVisibleSite(
+      site: documented,
+      screenX: geometry.screenX,
+      screenY: geometry.screenY,
+      distanceM: geometry.distanceM,
+      cardWidth: geometry.cardWidth,
+    );
+
+    expect(rotateOverlaySitesEqual([before], [after]), isFalse);
+  });
 }

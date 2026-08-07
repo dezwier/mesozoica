@@ -362,7 +362,7 @@ List<MapRotateVisibleSite> sortOverlayDepth(List<MapRotateVisibleSite> sites) {
   return copy;
 }
 
-/// Skip [setState] when overlay geometry is unchanged between frames.
+/// Skip [setState] when overlay geometry and visible site content are unchanged.
 bool rotateOverlaySitesEqual(
   List<MapRotateVisibleSite> a,
   List<MapRotateVisibleSite> b, {
@@ -374,9 +374,19 @@ bool rotateOverlaySitesEqual(
   for (final site in a) {
     final other = byId[site.site.siteId];
     if (other == null) return false;
+    if (!_markerPresentationEqual(site.site, other.site)) return false;
     if ((site.screenX - other.screenX).abs() > epsilon) return false;
     if ((site.screenY - other.screenY).abs() > epsilon) return false;
     if ((site.cardWidth - other.cardWidth).abs() > epsilon) return false;
   }
   return true;
+}
+
+bool _markerPresentationEqual(SiteSummary a, SiteSummary b) {
+  return a.displayTitle == b.displayTitle &&
+      a.status == b.status &&
+      a.documented == b.documented &&
+      a.viewerHasDocumented == b.viewerHasDocumented &&
+      a.documentationStars == b.documentationStars &&
+      a.mainImageUrl == b.mainImageUrl;
 }

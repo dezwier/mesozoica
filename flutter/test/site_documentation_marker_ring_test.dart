@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:mesozoica/features/discovery/discovery.dart';
+import 'package:mesozoica/widgets/cards/site_card_image.dart';
 import 'package:mesozoica/widgets/map/map_site_mini_card.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -82,11 +83,11 @@ void main() {
     const site = SiteSummary(
       siteId: 8,
       documented: true,
-      oddDinoCount: 0.5,
-      oddFossilCount: 0.5,
-      oddCompleteness: 0.5,
-      oddQuality: 0.5,
-      oddDepth: 0.5,
+      oddDinoCount: 0.9,
+      oddFossilCount: 0.9,
+      oddCompleteness: 0.9,
+      oddQuality: 0.9,
+      oddDepth: 0.1,
     );
 
     await tester.pumpWidget(
@@ -95,6 +96,13 @@ void main() {
       ),
     );
 
-    expect(find.byIcon(Icons.star_rounded), findsNWidgets(3));
+    final stars = find.byIcon(Icons.star_rounded);
+    expect(stars, findsNWidgets(5));
+    expect(
+      tester.getCenter(stars.first).dy,
+      closeTo(tester.getCenter(find.byType(SiteCardImage)).dy, 0.1),
+    );
+    expect(tester.widget<Icon>(stars.first).size, closeTo(10.24, 0.01));
+    expect(tester.takeException(), isNull);
   });
 }
