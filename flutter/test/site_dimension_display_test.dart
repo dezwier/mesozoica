@@ -2,8 +2,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mesozoica/config/game_config.dart';
 import 'package:mesozoica/widgets/cards/site_dimension_display.dart';
 
-import 'helpers/game_config_test_helpers.dart';
-
 void main() {
   tearDown(() {
     GameConfig.debugReset();
@@ -143,55 +141,6 @@ void main() {
       expect(applyDocumentationProgress(0.01, 0.10), closeTo(0.11, 1e-9));
       expect(applyDocumentationProgress(0.5, 1), 1.0);
       expect(applyDocumentationProgress(0.99, 0.05), 1.0);
-    });
-  });
-
-  group('siteIsFullyDocumented', () {
-    test('false with missing odd values or low progress', () async {
-      await loadGameConfigForTest();
-      expect(
-        siteIsFullyDocumented(
-          siteId: 42,
-          oddDinoCount: 0.5,
-          oddFossilCount: 0.5,
-          oddCompleteness: 0.5,
-          oddQuality: 0.5,
-          oddDepth: null,
-          skillLevel: 1,
-          documentationProgress: 1,
-        ),
-        isFalse,
-      );
-      expect(
-        siteIsFullyDocumented(
-          siteId: 42,
-          oddDinoCount: 0.5,
-          oddFossilCount: 0.5,
-          oddCompleteness: 0.5,
-          oddQuality: 0.5,
-          oddDepth: 0.5,
-          skillLevel: 1,
-          documentationProgress: 0,
-        ),
-        isFalse,
-      );
-    });
-
-    test('true once documentation progress reaches all axes', () async {
-      await loadGameConfigForTest();
-      expect(
-        siteIsFullyDocumented(
-          siteId: 42,
-          oddDinoCount: 0.5,
-          oddFossilCount: 0.5,
-          oddCompleteness: 0.5,
-          oddQuality: 0.5,
-          oddDepth: 0.5,
-          skillLevel: 1,
-          documentationProgress: 1,
-        ),
-        isTrue,
-      );
     });
   });
 

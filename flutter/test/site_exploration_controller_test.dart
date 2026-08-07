@@ -157,6 +157,9 @@ void main() {
           expect(path, '/api/v1/users/me/site-exploration');
           sentBody = body;
           return {
+            'celebrations': [
+              {'notification_id': 42, 'type': 'site_documented', 'site_id': 1},
+            ],
             'sites': [
               {
                 'site_id': 1,
@@ -185,6 +188,7 @@ void main() {
         ],
       });
       expect(controller.pendingDocumentationCelebration?.siteId, 1);
+      expect(controller.takeDocumentationNotificationId(1), 42);
       expect(updatedMarkerSite?.status, 'documented');
       final serverConfirmed = controller.resolveSite(site);
       expect(serverConfirmed.documented, isTrue);
@@ -213,6 +217,61 @@ void main() {
     expect(local.status, 'identified');
     controller.dispose();
   });
+
+  test(
+    'visible 100 percent forces sync when exact values are hidden',
+    () async {
+      final site = SiteSummary(
+        siteId: 1,
+        latitude: 50,
+        longitude: 4,
+        status: 'identified',
+        discoveredAt: DateTime.utc(2026, 8, 6),
+        viewerHasIdentified: true,
+        documentationProgress: 0,
+      );
+      var calls = 0;
+      final controller = SiteExplorationController(
+        patchRequest: (path, body) async {
+          calls++;
+          final progress =
+              ((body['sites'] as List).single
+                      as Map<String, dynamic>)['documentation_progress']
+                  as double;
+          final documented = progress >= 1.0;
+          return {
+            'sites': [
+              {
+                'site_id': 1,
+                'status': documented ? 'documented' : 'identified',
+                'documentation_progress': progress,
+                'documented': documented,
+              },
+            ],
+          };
+        },
+      );
+      controller.updateDiscoverySpeed(0.5);
+      await controller.debugInitializeForTest(
+        discoveredSitesProvider: () => [site],
+      );
+
+      await controller.debugCreditElapsed(
+        position: _position(50, 4),
+        elapsed: const Duration(milliseconds: 500),
+        sync: true,
+      );
+      await controller.debugCreditElapsed(
+        position: _position(50, 4),
+        elapsed: const Duration(seconds: 2),
+        sync: true,
+      );
+
+      expect(calls, 2);
+      expect(controller.pendingDocumentationCelebration?.siteId, 1);
+      controller.dispose();
+    },
+  );
 
   test(
     'locked app keeps documenting while background location is active',

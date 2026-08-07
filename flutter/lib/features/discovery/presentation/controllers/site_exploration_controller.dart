@@ -62,6 +62,7 @@ class SiteExplorationController extends ChangeNotifier {
   Timer? _tickTimer;
   bool _syncInFlight = false;
   bool _forceSyncPending = false;
+  Completer<void>? _pendingForcedSyncCompletion;
   bool _appForeground = true;
   bool _awaitingResumeFix = false;
   bool _loaded = false;
@@ -313,6 +314,11 @@ class SiteExplorationController extends ChangeNotifier {
     // interval remains eligible. Process termination naturally drops it.
     if (wasBackgrounded) _awaitingResumeFix = true;
     _refreshSitesInRange(_location?.lastPosition);
+    // A completion sync attempted while locked may have been suspended or
+    // failed. Retry immediately instead of waiting for the 30-second cadence.
+    if (_dirtySiteIds.isNotEmpty) {
+      unawaited(_syncToBackend(force: true));
+    }
   }
 
   Future<void> onAppBackgrounded() async {
@@ -510,22 +516,29 @@ class SiteExplorationController extends ChangeNotifier {
       _progressBySite[site.siteId] = next;
       _dirtySiteIds.add(site.siteId);
       credited = true;
-      if (siteIsFullyDocumented(
-        siteId: site.siteId,
-        oddDinoCount: site.oddDinoCount,
-        oddFossilCount: site.oddFossilCount,
-        oddCompleteness: site.oddCompleteness,
-        oddQuality: site.oddQuality,
-        oddDepth: site.oddDepth,
+      if (_displayedDocumentationComplete(
+        site,
         skillLevel: skillLevel,
-        documentationProgress: next,
+        progress: next,
       )) {
         documentationReady = true;
       }
     }
     if (!credited) {
       if (sync && _dirtySiteIds.isNotEmpty) {
-        unawaited(_syncToBackend());
+        final readyToComplete = sites.any(
+          (site) =>
+              _dirtySiteIds.contains(site.siteId) &&
+              _displayedDocumentationComplete(
+                site,
+                skillLevel: skillLevel,
+                progress:
+                    _progressBySite[site.siteId] ??
+                    site.documentationProgress ??
+                    0.0,
+              ),
+        );
+        unawaited(_syncToBackend(force: readyToComplete));
       }
       return;
     }
@@ -542,10 +555,35 @@ class SiteExplorationController extends ChangeNotifier {
     }
   }
 
+  bool _displayedDocumentationComplete(
+    SiteSummary site, {
+    required int skillLevel,
+    required double progress,
+  }) {
+    final accuracy = siteDocumentationAverageAccuracy(
+      siteId: site.siteId,
+      skillLevel: skillLevel,
+      documentationProgress: progress,
+      oddDepth: site.oddDepth,
+      serverAccuracies: {
+        SiteDimensionKey.dino: site.oddDinoBand?.effectiveAccuracy ?? 0.0,
+        SiteDimensionKey.fossil: site.oddFossilBand?.effectiveAccuracy ?? 0.0,
+        SiteDimensionKey.completeness:
+            site.oddCompletenessBand?.effectiveAccuracy ?? 0.0,
+        SiteDimensionKey.quality: site.oddQualityBand?.effectiveAccuracy ?? 0.0,
+        SiteDimensionKey.depth: site.oddDepthBand?.effectiveAccuracy ?? 0.0,
+      },
+    );
+    return accuracy >= 1.0 - 1e-9;
+  }
+
   Future<void> _syncToBackend({bool force = false}) async {
     final now = _now();
     if (_syncInFlight) {
-      if (force) _forceSyncPending = true;
+      if (force) {
+        _forceSyncPending = true;
+        return (_pendingForcedSyncCompletion ??= Completer<void>()).future;
+      }
       return;
     }
     if (!force &&
@@ -633,9 +671,19 @@ class SiteExplorationController extends ChangeNotifier {
       _syncInFlight = false;
       final forceAgain = _forceSyncPending;
       _forceSyncPending = false;
+      final pendingCompletion = _pendingForcedSyncCompletion;
+      _pendingForcedSyncCompletion = null;
       // Flush progress accrued during the request (not on failure — avoid loops).
       if (_dirtySiteIds.isNotEmpty && (succeeded || forceAgain)) {
-        unawaited(_syncToBackend(force: force || forceAgain));
+        final retry = _syncToBackend(force: force || forceAgain);
+        if (pendingCompletion != null) {
+          await retry;
+          if (!pendingCompletion.isCompleted) pendingCompletion.complete();
+        } else {
+          unawaited(retry);
+        }
+      } else if (pendingCompletion != null && !pendingCompletion.isCompleted) {
+        pendingCompletion.complete();
       }
     }
   }

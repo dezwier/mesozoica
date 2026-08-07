@@ -88,54 +88,6 @@ double applyDocumentationProgress(
   return (skillAccuracy + boost).clamp(0.0, 1.0);
 }
 
-/// True when all five display accuracies are at 100%.
-///
-/// Mirrors backend [site_is_fully_documented] so the client can force-sync
-/// the moment local progress would complete documentation.
-bool siteIsFullyDocumented({
-  required int siteId,
-  required double? oddDinoCount,
-  required double? oddFossilCount,
-  required double? oddCompleteness,
-  required double? oddQuality,
-  required double? oddDepth,
-  required int skillLevel,
-  required double documentationProgress,
-}) {
-  const accuracyParam = 'document_accuracy';
-  final values = <SiteDimensionKey, double?>{
-    SiteDimensionKey.dino: oddDinoCount,
-    SiteDimensionKey.fossil: oddFossilCount,
-    SiteDimensionKey.completeness: oddCompleteness,
-    SiteDimensionKey.quality: oddQuality,
-    SiteDimensionKey.depth: oddDepth,
-  };
-  if (values.values.any((v) => v == null)) return false;
-
-  final baseAccuracies = resolveSiteStewardshipAccuracies(
-    skillLevel: skillLevel,
-  );
-  final skillAcc = baseAccuracies[accuracyParam] ?? 0.0;
-  for (final entry in values.entries) {
-    final boosted = applyDocumentationProgress(
-      applyDimensionAccuracyNoise(
-        baseAccuracy: skillAcc,
-        siteId: siteId,
-        dimension: entry.key,
-      ),
-      documentationProgress,
-    );
-    final band = resolveSiteDimensionDisplay(
-      dimension: entry.key,
-      trueValue: entry.value!,
-      accuracy: boosted,
-      siteId: siteId,
-    );
-    if (band.effectiveAccuracy < 1.0 - 1e-9) return false;
-  }
-  return true;
-}
-
 /// Aggregate live accuracy used by the documentation bar and map-marker ring.
 double siteDocumentationAverageAccuracy({
   required int siteId,
