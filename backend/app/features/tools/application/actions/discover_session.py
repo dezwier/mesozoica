@@ -24,7 +24,6 @@ from app.models.user_site import (
 from app.features.accounts.public import (
     create_site_celebration_notification,
     deliver_site_celebration_notification,
-    send_site_discovered_push,
 )
 from app.features.field.public import (
     apply_site_discovery_enrichment,
@@ -165,13 +164,6 @@ def discover_site_from_aerial(
         session,
         notification,
         site_label=site_display_title(site),
-        push_sender=lambda session, **kwargs: send_site_discovered_push(
-            session,
-            user_id=kwargs["user_id"],
-            site_id=kwargs["site_id"],
-            notification_id=kwargs["notification_id"],
-            site_label=kwargs["site_label"],
-        ),
     )
 
     result = ensure_fossils_on_site_discovery(

@@ -113,13 +113,6 @@ class FieldDiscoveryCoordinator extends ChangeNotifier {
   FieldDiscoverResponse? get pendingCelebration =>
       _celebrationQueue.isEmpty ? null : _celebrationQueue.first;
 
-  /// How many discovery celebrations are waiting (including the current head).
-  int get pendingCelebrationCount => _celebrationQueue.length;
-
-  /// Most recently enqueued discovery (for listener side-effects on notify).
-  FieldDiscoverResponse? get latestQueuedCelebration =>
-      _celebrationQueue.isEmpty ? null : _celebrationQueue.last;
-
   /// Snapshot of the celebration queue (oldest first).
   List<FieldDiscoverResponse> get celebrationQueue =>
       List.unmodifiable(_celebrationQueue);

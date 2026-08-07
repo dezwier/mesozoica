@@ -78,9 +78,6 @@ class SiteExplorationController extends ChangeNotifier {
       ? null
       : _documentationCelebrationQueue.first;
 
-  int get pendingDocumentationCelebrationCount =>
-      _documentationCelebrationQueue.length;
-
   /// Snapshot of documentation celebrations waiting (oldest first).
   List<SiteSummary> get documentationCelebrationQueue =>
       List.unmodifiable(_documentationCelebrationQueue);

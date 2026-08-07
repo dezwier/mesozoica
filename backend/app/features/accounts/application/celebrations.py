@@ -3,8 +3,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Callable
-
 from sqlmodel import Session
 
 from app.features.accounts.infrastructure.push import send_site_celebration_push
@@ -54,7 +52,6 @@ def deliver_site_celebration_notification(
     notification: UserNotification,
     *,
     site_label: str,
-    push_sender: Callable[..., None] | None = None,
 ) -> CelebrationNotificationDescriptor | None:
     """Dispatch push after the caller committed and return the client descriptor."""
     if notification.id is None or notification.site_id is None:
@@ -64,8 +61,7 @@ def deliver_site_celebration_notification(
         type=notification.type,
         site_id=int(notification.site_id),
     )
-    sender = push_sender or send_site_celebration_push
-    sender(
+    send_site_celebration_push(
         session,
         user_id=int(notification.user_id),
         site_id=descriptor.site_id,

@@ -17,7 +17,7 @@ import '../common/draggable_sheet_wrapper.dart';
 import '../common/drawer_sheet_sizes.dart';
 import 'card_detail_sheet.dart';
 import 'site_card_image.dart';
-import 'site_discovery_celebration.dart';
+import '../../features/notifications/notifications.dart';
 
 /// Bottom sheet: period then rock-type identification quiz for a field site.
 ///
@@ -51,16 +51,22 @@ Future<SiteSummary?> showSiteIdentifySheet(
   }
 
   if (rootNav.mounted) {
-    await showSiteIdentifiedCelebration(
-      rootNav.context,
-      site: updated,
-      notificationId: completion.notificationId,
+    await rootNav.context.read<CelebrationController>().enqueue(
+      CelebrationEvent(
+        kind: CelebrationKind.siteIdentified,
+        siteId: updated.siteId,
+        site: updated,
+        notificationId: completion.notificationId,
+      ),
     );
   } else if (context.mounted) {
-    await showSiteIdentifiedCelebration(
-      context,
-      site: updated,
-      notificationId: completion.notificationId,
+    await context.read<CelebrationController>().enqueue(
+      CelebrationEvent(
+        kind: CelebrationKind.siteIdentified,
+        siteId: updated.siteId,
+        site: updated,
+        notificationId: completion.notificationId,
+      ),
     );
   }
   return updated;

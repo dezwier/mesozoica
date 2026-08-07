@@ -3,12 +3,11 @@ import 'package:provider/provider.dart';
 
 import '../../controllers/auth_controller.dart';
 import '../../controllers/field_discovery_coordinator.dart';
-import '../../controllers/notification_controller.dart';
+import '../../features/notifications/notifications.dart';
 import '../../models/site.dart';
 import '../../services/location_service.dart';
 import '../../services/site_service.dart';
 import '../common/app_toast.dart';
-import 'site_discovery_celebration.dart';
 
 /// Apply a status chosen from the admin badge dropdown.
 ///
@@ -69,11 +68,13 @@ Future<SiteSummary?> applySiteStatusSelection(
       if (!context.mounted) return updated;
       await context.read<AuthController>().refreshProfile(announceXp: true);
       if (!context.mounted) return updated;
-      await showSiteDiscoveryCelebration(
-        context,
-        site: updated,
-        notificationId: result.celebration?.notificationId,
-        discovery: result,
+      await context.read<CelebrationController>().enqueue(
+        CelebrationEvent(
+          kind: CelebrationKind.siteDiscovered,
+          siteId: updated.siteId,
+          site: updated,
+          notificationId: result.celebration?.notificationId,
+        ),
       );
     } else {
       AppToast.success(context, 'Status updated to ${updated.status ?? next}.');

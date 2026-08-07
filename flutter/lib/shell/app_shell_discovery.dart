@@ -180,12 +180,14 @@ mixin _AppShellDiscoveryMixin on State<AppShell> {
       if (!mounted) return;
       await context.read<AuthController>().refreshProfile(announceXp: true);
       if (!mounted) return;
-      await showSiteDiscoveryCelebration(
-        context,
-        site: resolvedSite,
-        siteId: siteId,
-        notificationId: notificationId ?? discover?.celebration?.notificationId,
-        discovery: discover,
+      await context.read<CelebrationController>().enqueue(
+        CelebrationEvent(
+          kind: CelebrationKind.siteDiscovered,
+          siteId: resolvedSite?.siteId ?? siteId!,
+          site: resolvedSite,
+          notificationId:
+              notificationId ?? discover?.celebration?.notificationId,
+        ),
       );
     } finally {
       _celebrationShowing = false;
@@ -216,15 +218,17 @@ mixin _AppShellDiscoveryMixin on State<AppShell> {
       }
       await context.read<AuthController>().refreshProfile(announceXp: true);
       if (!mounted) return;
-      await showSiteDocumentationCelebration(
-        context,
-        site: site,
-        siteId: siteId,
-        notificationId:
-            notificationId ??
-            context
-                .read<SiteExplorationController>()
-                .takeDocumentationNotificationId(resolvedSiteId),
+      await context.read<CelebrationController>().enqueue(
+        CelebrationEvent(
+          kind: CelebrationKind.siteDocumented,
+          siteId: resolvedSiteId,
+          site: site,
+          notificationId:
+              notificationId ??
+              context
+                  .read<SiteExplorationController>()
+                  .takeDocumentationNotificationId(resolvedSiteId),
+        ),
       );
     } finally {
       _celebrationShowing = false;

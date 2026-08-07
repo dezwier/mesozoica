@@ -38,7 +38,6 @@ import '../services/location_service.dart';
 import '../services/push_notification_service.dart';
 import '../services/site_service.dart';
 import '../widgets/cards/card_detail_sheet.dart';
-import '../widgets/cards/site_discovery_celebration.dart';
 import '../widgets/common/app_splash_screen.dart';
 import '../widgets/profile/community_drawer.dart';
 import '../widgets/weather/weather_detail_sheet.dart';
@@ -517,10 +516,12 @@ class _AppShellState extends State<AppShell>
             );
           } else if (type == 'site_identified' && siteId != null) {
             unawaited(
-              showSiteIdentifiedCelebration(
-                context,
-                siteId: siteId,
-                notificationId: notificationId,
+              context.read<CelebrationController>().enqueue(
+                CelebrationEvent(
+                  kind: CelebrationKind.siteIdentified,
+                  siteId: siteId,
+                  notificationId: notificationId,
+                ),
               ),
             );
           } else if (siteId != null) {
@@ -579,10 +580,12 @@ class _AppShellState extends State<AppShell>
     if (type == 'site_identified') {
       _scheduleDiscoveryRefresh(siteId: siteId);
       unawaited(
-        showSiteIdentifiedCelebration(
-          context,
-          siteId: siteId,
-          notificationId: notificationId,
+        context.read<CelebrationController>().enqueue(
+          CelebrationEvent(
+            kind: CelebrationKind.siteIdentified,
+            siteId: siteId,
+            notificationId: notificationId,
+          ),
         ),
       );
       return;
@@ -859,10 +862,12 @@ class _AppShellState extends State<AppShell>
       if (siteId == null) return;
       _scheduleDiscoveryRefresh(siteId: siteId);
       unawaited(
-        showSiteIdentifiedCelebration(
-          context,
-          siteId: siteId,
-          notificationId: item.id,
+        context.read<CelebrationController>().enqueue(
+          CelebrationEvent(
+            kind: CelebrationKind.siteIdentified,
+            siteId: siteId,
+            notificationId: item.id,
+          ),
         ),
       );
       return;

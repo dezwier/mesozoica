@@ -128,7 +128,7 @@ def test_discover_site_sets_walk_and_enriches(session: Session, monkeypatch):
         lambda session, site_id, user_id: None,
     )
     monkeypatch.setattr(
-        "app.services.site_service.discover.send_site_discovered_push",
+        "app.features.accounts.application.celebrations.send_site_celebration_push",
         lambda *args, **kwargs: None,
     )
 
@@ -187,7 +187,7 @@ def test_second_discoverer_skips_discover_site_as_first_xp(session: Session, mon
         lambda session, site_id, user_id: None,
     )
     monkeypatch.setattr(
-        "app.services.site_service.discover.send_site_discovered_push",
+        "app.features.accounts.application.celebrations.send_site_celebration_push",
         lambda *args, **kwargs: None,
     )
 
@@ -255,7 +255,7 @@ def test_orphan_how_discovered_does_not_block_first_xp(session: Session, monkeyp
         lambda session, site_id, user_id: None,
     )
     monkeypatch.setattr(
-        "app.services.site_service.discover.send_site_discovered_push",
+        "app.features.accounts.application.celebrations.send_site_celebration_push",
         lambda *args, **kwargs: None,
     )
 
@@ -342,7 +342,7 @@ def test_aerial_discover_sets_aerial_recon(session: Session, monkeypatch):
         lambda session, site_id, user_id: "ok",
     )
     monkeypatch.setattr(
-        "app.services.tool_action_service.discover_session.send_site_discovered_push",
+        "app.features.accounts.application.celebrations.send_site_celebration_push",
         lambda *args, **kwargs: None,
     )
 
@@ -429,7 +429,7 @@ def test_aerial_discover_sets_aerial_scout(session: Session, monkeypatch):
         lambda session, site_id, user_id: "ok",
     )
     monkeypatch.setattr(
-        "app.services.tool_action_service.discover_session.send_site_discovered_push",
+        "app.features.accounts.application.celebrations.send_site_celebration_push",
         lambda *args, **kwargs: None,
     )
 

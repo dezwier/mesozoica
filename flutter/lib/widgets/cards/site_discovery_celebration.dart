@@ -8,127 +8,9 @@ import '../../models/site.dart';
 import '../../services/site_service.dart';
 import '../../utils/xp_source_labels.dart';
 import '../../features/notifications/domain/celebration_event.dart';
-import '../../features/notifications/presentation/celebration_controller.dart';
 import 'card_detail_sheet.dart';
 import 'celebration_title_badge.dart';
 import 'site_turnable_card.dart';
-
-/// Celebration overlay after proximity (or notification-tap) discovery /
-/// documentation / identification.
-///
-/// Big-event XP for this celebration is claimed from [XpAwardController] and
-/// embedded in the title plaque (not shown as a floating badge).
-Future<void> showSiteDiscoveryCelebration(
-  BuildContext context, {
-  SiteSummary? site,
-  int? siteId,
-  SiteService? siteService,
-  String title = CelebrationTitles.siteDiscovered,
-  List<XpAward>? xpAwards,
-  int? notificationId,
-  FieldDiscoverResponse? discovery,
-}) {
-  assert(site != null || siteId != null);
-  try {
-    return context.read<CelebrationController>().enqueue(
-      CelebrationEvent(
-        kind: CelebrationKind.siteDiscovered,
-        siteId: site?.siteId ?? siteId!,
-        notificationId: notificationId,
-        site: site,
-        discovery: discovery,
-      ),
-    );
-  } on ProviderNotFoundException {
-    // Standalone previews/tests retain the direct dialog fallback.
-  }
-  final awards =
-      xpAwards ?? _claimCelebrationXp(context, kSiteDiscoveryCelebrationXpKeys);
-  return CardDetailSheet.show<void>(
-    context,
-    clearTopForXpBadges: false,
-    builder: (context) => _SiteDiscoveryCelebrationSheet(
-      site: site,
-      siteId: siteId,
-      siteService: siteService,
-      title: title,
-      xpAwards: awards,
-    ),
-  );
-}
-
-/// Same card celebration used when a site becomes fully documented.
-Future<void> showSiteDocumentationCelebration(
-  BuildContext context, {
-  SiteSummary? site,
-  int? siteId,
-  SiteService? siteService,
-  List<XpAward>? xpAwards,
-  int? notificationId,
-}) {
-  try {
-    return context.read<CelebrationController>().enqueue(
-      CelebrationEvent(
-        kind: CelebrationKind.siteDocumented,
-        siteId: site?.siteId ?? siteId!,
-        notificationId: notificationId,
-        site: site,
-      ),
-    );
-  } on ProviderNotFoundException {
-    // Standalone previews/tests retain the direct dialog fallback.
-  }
-  final awards =
-      xpAwards ??
-      _claimCelebrationXp(context, kSiteDocumentationCelebrationXpKeys);
-  return showSiteDiscoveryCelebration(
-    context,
-    site: site,
-    siteId: siteId,
-    siteService: siteService,
-    title: CelebrationTitles.siteDocumented,
-    xpAwards: awards,
-  );
-}
-
-/// Same card celebration used when the identification quiz is completed.
-Future<void> showSiteIdentifiedCelebration(
-  BuildContext context, {
-  SiteSummary? site,
-  int? siteId,
-  SiteService? siteService,
-  List<XpAward>? xpAwards,
-  int? notificationId,
-}) {
-  try {
-    return context.read<CelebrationController>().enqueue(
-      CelebrationEvent(
-        kind: CelebrationKind.siteIdentified,
-        siteId: site?.siteId ?? siteId!,
-        notificationId: notificationId,
-        site: site,
-      ),
-    );
-  } on ProviderNotFoundException {
-    // Standalone previews/tests retain the direct dialog fallback.
-  }
-  final awards =
-      xpAwards ??
-      _claimCelebrationXp(
-        context,
-        kSiteIdentificationCelebrationXpKeys,
-        mergeSameKey: true,
-        oneEvent: false,
-      );
-  return showSiteDiscoveryCelebration(
-    context,
-    site: site,
-    siteId: siteId,
-    siteService: siteService,
-    title: CelebrationTitles.siteIdentified,
-    xpAwards: awards,
-  );
-}
 
 List<XpAward> _claimCelebrationXp(
   BuildContext context,
@@ -199,14 +81,12 @@ class _SiteDiscoveryCelebrationSheet extends StatefulWidget {
   const _SiteDiscoveryCelebrationSheet({
     this.site,
     this.siteId,
-    this.siteService,
     required this.title,
     this.xpAwards = const [],
   });
 
   final SiteSummary? site;
   final int? siteId;
-  final SiteService? siteService;
   final String title;
   final List<XpAward> xpAwards;
 
@@ -219,7 +99,6 @@ class _SiteDiscoveryCelebrationSheetState
     extends State<_SiteDiscoveryCelebrationSheet>
     with SingleTickerProviderStateMixin {
   late final SiteService _service;
-  late final bool _ownsService;
   late final Future<SiteSummary> _siteFuture;
   late final AnimationController _scaleController;
   late final Animation<double> _scale;
@@ -227,8 +106,7 @@ class _SiteDiscoveryCelebrationSheetState
   @override
   void initState() {
     super.initState();
-    _ownsService = widget.siteService == null;
-    _service = widget.siteService ?? SiteService();
+    _service = SiteService();
     final existing = widget.site;
     if (existing != null) {
       _siteFuture = Future.value(existing);
@@ -252,9 +130,7 @@ class _SiteDiscoveryCelebrationSheetState
   @override
   void dispose() {
     _scaleController.dispose();
-    if (_ownsService) {
-      _service.dispose();
-    }
+    _service.dispose();
     super.dispose();
   }
 

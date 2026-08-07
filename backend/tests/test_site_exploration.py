@@ -178,7 +178,7 @@ def test_documentation_completes_and_freezes(
         pushes.append(kwargs)
 
     monkeypatch.setattr(
-        "app.services.site_exploration_service.send_site_documented_push",
+        "app.features.accounts.application.celebrations.send_site_celebration_push",
         _fake_push,
     )
 
@@ -288,7 +288,7 @@ def test_second_documenter_skips_document_site_as_first_xp(
     from app.services.level_service.xp_table import SKILL_THRESHOLDS
 
     monkeypatch.setattr(
-        "app.services.site_exploration_service.send_site_documented_push",
+        "app.features.accounts.application.celebrations.send_site_celebration_push",
         lambda *args, **kwargs: None,
     )
 

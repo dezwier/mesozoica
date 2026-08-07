@@ -368,7 +368,7 @@ def test_rival_blocked_roll_awards_stewardship_xp(
     )
 
     monkeypatch.setattr(
-        "app.services.site_service.discover.send_site_discovered_push",
+        "app.features.accounts.application.celebrations.send_site_celebration_push",
         lambda *args, **kwargs: None,
     )
     monkeypatch.setattr(
@@ -426,7 +426,7 @@ def test_blackout_cover_blocked_band_awards_stewardship_xp(
     )
 
     monkeypatch.setattr(
-        "app.services.site_service.discover.send_site_discovered_push",
+        "app.features.accounts.application.celebrations.send_site_celebration_push",
         lambda *args, **kwargs: None,
     )
     monkeypatch.setattr(

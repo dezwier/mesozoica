@@ -26,7 +26,6 @@ from app.features.accounts.public import (
     CelebrationNotificationDescriptor,
     create_site_celebration_notification,
     deliver_site_celebration_notification,
-    send_site_documented_push,
     user_to_profile_response,
 )
 from app.features.sites.domain.labels import site_display_title
@@ -228,13 +227,6 @@ def apply_site_exploration_update(
             session,
             notification,
             site_label=site_display_title(row.site),
-            push_sender=lambda session, **kwargs: send_site_documented_push(
-                session,
-                user_id=kwargs["user_id"],
-                site_id=kwargs["site_id"],
-                notification_id=kwargs["notification_id"],
-                site_label=kwargs["site_label"],
-            ),
         )
         if celebration is not None:
             celebrations.append(celebration)

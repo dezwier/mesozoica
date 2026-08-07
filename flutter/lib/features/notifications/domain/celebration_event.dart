@@ -10,14 +10,12 @@ class CelebrationEvent {
     required this.siteId,
     this.notificationId,
     this.site,
-    this.discovery,
   });
 
   final CelebrationKind kind;
   final int siteId;
   final int? notificationId;
   final SiteSummary? site;
-  final FieldDiscoverResponse? discovery;
 
   String get notificationType => switch (kind) {
     CelebrationKind.siteDiscovered => 'site_discovered',
@@ -34,14 +32,12 @@ class CelebrationEvent {
   factory CelebrationEvent.fromDescriptor(
     CelebrationDescriptor descriptor, {
     SiteSummary? site,
-    FieldDiscoverResponse? discovery,
   }) {
     return CelebrationEvent(
       kind: kindForNotificationType(descriptor.type)!,
       siteId: descriptor.siteId,
       notificationId: descriptor.notificationId,
       site: site,
-      discovery: discovery,
     );
   }
 
