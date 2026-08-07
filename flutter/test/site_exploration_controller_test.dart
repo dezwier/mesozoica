@@ -151,13 +151,19 @@ void main() {
     () async {
       final site = _site(1, 50, 4);
       Map<String, dynamic>? sentBody;
+      SiteSummary? updatedMarkerSite;
       final controller = SiteExplorationController(
         patchRequest: (path, body) async {
           expect(path, '/api/v1/users/me/site-exploration');
           sentBody = body;
           return {
             'sites': [
-              {'site_id': 1, 'documentation_progress': 1.0, 'documented': true},
+              {
+                'site_id': 1,
+                'status': 'documented',
+                'documentation_progress': 1.0,
+                'documented': true,
+              },
             ],
           };
         },
@@ -165,17 +171,13 @@ void main() {
       controller.updateDiscoverySpeed(1);
       await controller.debugInitializeForTest(
         discoveredSitesProvider: () => [site],
+        onSiteUpdated: (site) => updatedMarkerSite = site,
       );
       await controller.debugCreditElapsed(
         position: _position(50, 4),
         elapsed: const Duration(seconds: 1),
+        sync: true,
       );
-
-      final locallyCompleted = controller.resolveSite(site);
-      expect(locallyCompleted.documented, isTrue);
-      expect(locallyCompleted.status, 'documented');
-
-      await controller.debugSync();
 
       expect(sentBody, {
         'sites': [
@@ -183,8 +185,56 @@ void main() {
         ],
       });
       expect(controller.pendingDocumentationCelebration?.siteId, 1);
+      expect(updatedMarkerSite?.status, 'documented');
+      final serverConfirmed = controller.resolveSite(site);
+      expect(serverConfirmed.documented, isTrue);
+      expect(serverConfirmed.status, 'documented');
       controller.consumeDocumentationCelebration();
       expect(controller.pendingDocumentationCelebration, isNull);
+      controller.dispose();
+    },
+  );
+
+  test('local completion waits for server confirmation', () async {
+    final site = _site(1, 50, 4);
+    final controller = SiteExplorationController();
+    controller.updateDiscoverySpeed(1);
+    await controller.debugInitializeForTest(
+      discoveredSitesProvider: () => [site],
+    );
+
+    await controller.debugCreditElapsed(
+      position: _position(50, 4),
+      elapsed: const Duration(seconds: 1),
+    );
+
+    final local = controller.resolveSite(site);
+    expect(local.documented, isNot(true));
+    expect(local.status, 'identified');
+    controller.dispose();
+  });
+
+  test(
+    'locked app keeps documenting while background location is active',
+    () async {
+      final site = _site(1, 50, 4);
+      var now = DateTime.utc(2026, 8, 6, 12);
+      final controller = SiteExplorationController(
+        now: () => now,
+        backgroundLocationActive: () => true,
+      );
+      controller.updateSiteVisibilityM(50);
+      controller.updateDiscoverySpeed(0.01);
+      await controller.debugInitializeForTest(
+        discoveredSitesProvider: () => [site],
+      );
+      controller.debugSetVerifiedFix(_position(50, 4), now);
+
+      await controller.onAppBackgrounded();
+      now = now.add(const Duration(seconds: 12));
+      await controller.debugTick();
+
+      expect(controller.documentationProgressFor(1), closeTo(0.12, 1e-9));
       controller.dispose();
     },
   );

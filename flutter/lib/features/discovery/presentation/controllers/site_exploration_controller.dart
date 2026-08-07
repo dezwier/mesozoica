@@ -1,13 +1,11 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../../config/game_config.dart';
-import '../../../../config/main_param_resolve.dart';
 import '../../../../models/profile.dart';
 import '../../../../models/site.dart';
 import '../../../../services/api_client.dart';
@@ -25,9 +23,11 @@ class SiteExplorationController extends ChangeNotifier {
       Map<String, dynamic> body,
     )?
     patchRequest,
+    bool Function()? backgroundLocationActive,
   }) : _api = apiClient ?? ApiClient.instance,
        _now = now ?? DateTime.now,
-       _patchRequest = patchRequest;
+       _patchRequest = patchRequest,
+       _backgroundLocationActive = backgroundLocationActive;
 
   static const _prefsKey = 'site_documentation_v2';
   static const _legacyPrefsKey = 'site_exploration_v1';
@@ -40,6 +40,7 @@ class SiteExplorationController extends ChangeNotifier {
     Map<String, dynamic> body,
   )?
   _patchRequest;
+  final bool Function()? _backgroundLocationActive;
 
   LocationService? _location;
   VoidCallback? _locationListener;
@@ -51,7 +52,6 @@ class SiteExplorationController extends ChangeNotifier {
   /// Local unit-interval documentation contribution by site id (monotonic).
   final Map<int, double> _progressBySite = {};
   final Set<int> _documentedSiteIds = {};
-  final Set<int> _locallyCompletedSiteIds = {};
   final Set<int> _dirtySiteIds = {};
   final Set<int> _sitesInRange = {};
   DateTime? _lastSyncAttemptAt;
@@ -61,6 +61,7 @@ class SiteExplorationController extends ChangeNotifier {
   Position? _lastVerifiedPosition;
   Timer? _tickTimer;
   bool _syncInFlight = false;
+  bool _forceSyncPending = false;
   bool _appForeground = true;
   bool _awaitingResumeFix = false;
   bool _loaded = false;
@@ -107,8 +108,7 @@ class SiteExplorationController extends ChangeNotifier {
       fallback.siteId,
       fallback: fallback.documentationProgress ?? 0.0,
     );
-    if (!_documentedSiteIds.contains(fallback.siteId) &&
-        !_locallyCompletedSiteIds.contains(fallback.siteId)) {
+    if (!_documentedSiteIds.contains(fallback.siteId)) {
       if (progress == fallback.documentationProgress) return fallback;
       return fallback.copyWith(documentationProgress: progress);
     }
@@ -170,9 +170,11 @@ class SiteExplorationController extends ChangeNotifier {
   Future<void> debugInitializeForTest({
     required List<SiteSummary> Function() discoveredSitesProvider,
     int Function()? skillLevelProvider,
+    void Function(SiteSummary site)? onSiteUpdated,
   }) async {
     _discoveredSitesProvider = discoveredSitesProvider;
     _skillLevelProvider = skillLevelProvider;
+    _onSiteUpdated = onSiteUpdated;
     await _loadLocal();
   }
 
@@ -181,18 +183,22 @@ class SiteExplorationController extends ChangeNotifier {
     required Position position,
     required Duration elapsed,
     Position? startPosition,
+    bool sync = false,
   }) {
     _refreshSitesInRange(position);
     return _creditElapsed(
       position,
       elapsed,
       startPosition: startPosition,
-      sync: false,
+      sync: sync,
     );
   }
 
   @visibleForTesting
   Future<void> debugSync() => _syncToBackend(force: true);
+
+  @visibleForTesting
+  Future<void> debugTick() => _onTick();
 
   @visibleForTesting
   void debugSetVerifiedFix(Position position, DateTime at) {
@@ -253,14 +259,12 @@ class SiteExplorationController extends ChangeNotifier {
         // No discoverer link / progress for viewer — drop stale local buffer.
         if (_progressBySite.remove(site.siteId) != null) changed = true;
         if (_documentedSiteIds.remove(site.siteId)) changed = true;
-        if (_locallyCompletedSiteIds.remove(site.siteId)) changed = true;
         _dirtySiteIds.remove(site.siteId);
         continue;
       }
 
       if (site.documented == true) {
         if (_documentedSiteIds.add(site.siteId)) changed = true;
-        _locallyCompletedSiteIds.add(site.siteId);
         if ((_progressBySite[site.siteId] ?? -1) != server) {
           _progressBySite[site.siteId] = server;
           changed = true;
@@ -288,14 +292,12 @@ class SiteExplorationController extends ChangeNotifier {
   Future<void> clearAllProgress() async {
     if (_progressBySite.isEmpty &&
         _documentedSiteIds.isEmpty &&
-        _locallyCompletedSiteIds.isEmpty &&
         _dirtySiteIds.isEmpty &&
         _documentationCelebrationQueue.isEmpty) {
       return;
     }
     _progressBySite.clear();
     _documentedSiteIds.clear();
-    _locallyCompletedSiteIds.clear();
     _dirtySiteIds.clear();
     _documentationCelebrationQueue.clear();
     await _persistLocal();
@@ -459,9 +461,22 @@ class SiteExplorationController extends ChangeNotifier {
     final now = _now();
     final previous = _lastTickAt ?? now;
     _lastTickAt = now;
-    if (!_appForeground) return;
-    final position = _location?.lastPosition;
+    final position = _location?.lastPosition ?? _lastVerifiedPosition;
     if (position == null || !now.isAfter(previous)) return;
+    if (!_appForeground) {
+      final backgroundActive =
+          _backgroundLocationActive?.call() ??
+          (_location?.isBackgroundLocationActive ?? false);
+      if (!backgroundActive) return;
+      _lastVerifiedAt = now;
+      _lastVerifiedPosition = position;
+      await _creditElapsed(
+        position,
+        now.difference(previous),
+        startPosition: position,
+      );
+      return;
+    }
     _refreshSitesInRange(position);
     final elapsed = now.difference(previous);
     // A delayed foreground timer must not turn an app suspension into offline
@@ -495,8 +510,16 @@ class SiteExplorationController extends ChangeNotifier {
       _progressBySite[site.siteId] = next;
       _dirtySiteIds.add(site.siteId);
       credited = true;
-      if (_isLocallyComplete(site, skillLevel: skillLevel, progress: next)) {
-        _locallyCompletedSiteIds.add(site.siteId);
+      if (siteIsFullyDocumented(
+        siteId: site.siteId,
+        oddDinoCount: site.oddDinoCount,
+        oddFossilCount: site.oddFossilCount,
+        oddCompleteness: site.oddCompleteness,
+        oddQuality: site.oddQuality,
+        oddDepth: site.oddDepth,
+        skillLevel: skillLevel,
+        documentationProgress: next,
+      )) {
         documentationReady = true;
       }
     }
@@ -511,59 +534,26 @@ class SiteExplorationController extends ChangeNotifier {
     // Force sync as soon as local progress completes documentation so
     // celebration / XP / status don't wait on the 30s interval.
     if (sync) {
-      unawaited(_syncToBackend(force: documentationReady));
+      if (documentationReady) {
+        await _syncToBackend(force: true);
+      } else {
+        unawaited(_syncToBackend());
+      }
     }
-  }
-
-  bool _isLocallyComplete(
-    SiteSummary site, {
-    required int skillLevel,
-    required double progress,
-  }) {
-    final bands = <SiteDimensionKey, SiteDimensionBand?>{
-      SiteDimensionKey.dino: site.oddDinoBand,
-      SiteDimensionKey.fossil: site.oddFossilBand,
-      SiteDimensionKey.completeness: site.oddCompletenessBand,
-      SiteDimensionKey.quality: site.oddQualityBand,
-      SiteDimensionKey.depth: site.oddDepthBand,
-    };
-    final exactValues = <SiteDimensionKey, double?>{
-      SiteDimensionKey.dino: site.oddDinoCount,
-      SiteDimensionKey.fossil: site.oddFossilCount,
-      SiteDimensionKey.completeness: site.oddCompleteness,
-      SiteDimensionKey.quality: site.oddQuality,
-      SiteDimensionKey.depth: site.oddDepth,
-    };
-    final base =
-        resolveSiteStewardshipAccuracies(
-          skillLevel: skillLevel,
-        )['document_accuracy'] ??
-        0.0;
-    for (final dimension in SiteDimensionKey.values) {
-      final band = bands[dimension];
-      if (band == null && exactValues[dimension] == null) return false;
-      final localAccuracy = applyDocumentationProgress(
-        applyDimensionAccuracyNoise(
-          baseAccuracy: base,
-          siteId: site.siteId,
-          dimension: dimension,
-        ),
-        progress,
-      );
-      final effective = math.max(localAccuracy, band?.effectiveAccuracy ?? 0.0);
-      if (effective < 1.0 - 1e-9) return false;
-    }
-    return true;
   }
 
   Future<void> _syncToBackend({bool force = false}) async {
     final now = _now();
+    if (_syncInFlight) {
+      if (force) _forceSyncPending = true;
+      return;
+    }
     if (!force &&
         _lastSyncAttemptAt != null &&
         now.difference(_lastSyncAttemptAt!) < _syncInterval) {
       return;
     }
-    if (_dirtySiteIds.isEmpty || _syncInFlight) return;
+    if (_dirtySiteIds.isEmpty) return;
     _lastSyncAttemptAt = now;
     _syncInFlight = true;
 
@@ -641,9 +631,11 @@ class SiteExplorationController extends ChangeNotifier {
       }
     } finally {
       _syncInFlight = false;
+      final forceAgain = _forceSyncPending;
+      _forceSyncPending = false;
       // Flush progress accrued during the request (not on failure — avoid loops).
-      if (succeeded && _dirtySiteIds.isNotEmpty) {
-        unawaited(_syncToBackend(force: force));
+      if (_dirtySiteIds.isNotEmpty && (succeeded || forceAgain)) {
+        unawaited(_syncToBackend(force: force || forceAgain));
       }
     }
   }
