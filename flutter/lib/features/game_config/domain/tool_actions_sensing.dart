@@ -102,8 +102,8 @@ class MainParamBuffActionConfig {
   final List<String>? activeWeatherTimes;
   final String statsExplanation;
 
-  double? get addedDiscoveryDistanceM {
-    final mod = siteDiscoveryMod('discovery_distance_m');
+  double? get addedVisibilityDistanceM {
+    final mod = siteDiscoveryMod('visibility_distance_m');
     if (mod == null || mod.op != 'add') return null;
     return mod.value;
   }
@@ -168,7 +168,7 @@ class MainParamBuffActionConfig {
           modifiesMainParams: ModifiesMainParams(
             using: {
               'field_survey': {
-                'discovery_distance_m': ParamModifier(
+                'visibility_distance_m': ParamModifier(
                   op: 'multiply',
                   value: 1.3,
                 ),

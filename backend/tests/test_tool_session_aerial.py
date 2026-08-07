@@ -457,7 +457,7 @@ def test_due_events_discover_and_miss(session: Session):
             "flight_speed_kmh": 50.0,
             "max_route_km": 50.0,
             "discovery_chance": 0.5,
-            "discovery_distance_m": 100.0,
+            "visibility_distance_m": 100.0,
         },
         state_json={
             "route": [{"lat": 40.0, "lon": -100.0}, {"lat": 40.01, "lon": -100.0}],
@@ -650,7 +650,7 @@ def test_cancel_active_truncates_and_skips_pending(client, session: Session):
             "flight_speed_kmh": 50.0,
             "max_route_km": 50.0,
             "discovery_chance": 0.5,
-            "discovery_distance_m": 100.0,
+            "visibility_distance_m": 100.0,
         },
         state_json={
             "route": full_route,

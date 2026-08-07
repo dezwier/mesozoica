@@ -65,10 +65,10 @@ def test_field_survey_estimation_and_rival_follow_level_modifiers() -> None:
     mp = cfg.main_params
     for level in (1, 50, 99):
         resolved = resolve_site_stewardship_main_params(skill_level=level)
-        assert resolved["documentation_accuracy"] == pytest.approx(
+        assert resolved["document_accuracy"] == pytest.approx(
             _expected_from_level(
-                float(mp.documentation_accuracy),
-                list(cfg.level_modifiers.get("documentation_accuracy", [])),
+                float(mp.document_accuracy),
+                list(cfg.level_modifiers.get("document_accuracy", [])),
                 skill_level=level,
                 clamp_unit=True,
             )
@@ -88,10 +88,10 @@ def test_resolve_site_discovery_reach_scales_with_level() -> None:
     stew = get_game_config().site_stewardship
     for level in (1, 50, 99):
         resolved = resolve_site_discovery_main_params(skill_level=level)
-        assert resolved["discovery_distance_m"] == pytest.approx(
+        assert resolved["visibility_distance_m"] == pytest.approx(
             _expected_from_level(
-                float(cfg.discovery_distance_m),
-                list(cfg.level_modifiers.get("discovery_distance_m", [])),
+                float(cfg.visibility_distance_m),
+                list(cfg.level_modifiers.get("visibility_distance_m", [])),
                 skill_level=level,
             )
         )
@@ -119,10 +119,10 @@ def test_resolve_site_discovery_reach_scales_with_level() -> None:
         )
 
     stew99 = resolve_site_stewardship_main_params(skill_level=99)
-    assert stew99["documentation_distance_m"] == pytest.approx(
+    assert stew99["visibility_distance_m"] == pytest.approx(
         _expected_from_level(
-            float(stew.documentation_distance_m),
-            list(stew.level_modifiers.get("documentation_distance_m", [])),
+            float(stew.visibility_distance_m),
+            list(stew.level_modifiers.get("visibility_distance_m", [])),
             skill_level=99,
         )
     )
@@ -186,16 +186,16 @@ def test_resolve_fossil_detection_xp_weather_time() -> None:
 def test_resolve_site_discovery_weather_time_visibility() -> None:
     get_game_config.cache_clear()
     cfg = get_game_config().site_discovery
-    base = float(cfg.discovery_distance_m)
+    base = float(cfg.visibility_distance_m)
     chance = float(cfg.discovery_chance)
-    dist_mods = cfg.weather_time_modifiers.get("discovery_distance_m") or {}
+    dist_mods = cfg.weather_time_modifiers.get("visibility_distance_m") or {}
     chance_mods = cfg.weather_time_modifiers.get("discovery_chance") or {}
 
     for period in ("day", "golden_hour", "dawn", "dusk", "night"):
         resolved = resolve_site_discovery_main_params(
             skill_level=1, weather_time=period
         )
-        assert resolved["discovery_distance_m"] == pytest.approx(
+        assert resolved["visibility_distance_m"] == pytest.approx(
             _expected_ambient(base, list(dist_mods.get(period, [])))
         )
         assert resolved["discovery_chance"] == pytest.approx(
@@ -213,19 +213,19 @@ def test_resolve_site_stewardship_weather_time_mirrors_config() -> None:
     get_game_config.cache_clear()
     cfg = get_game_config().site_stewardship
     mp = cfg.main_params
-    vis = float(mp.documentation_distance_m)
-    speed = float(mp.discovery_speed)
-    vis_mods = cfg.weather_time_modifiers.get("documentation_distance_m") or {}
-    speed_mods = cfg.weather_time_modifiers.get("discovery_speed") or {}
+    vis = float(mp.visibility_distance_m)
+    speed = float(mp.document_speed)
+    vis_mods = cfg.weather_time_modifiers.get("visibility_distance_m") or {}
+    speed_mods = cfg.weather_time_modifiers.get("document_speed") or {}
 
     for period in ("day", "golden_hour", "dawn", "dusk", "night"):
         resolved = resolve_site_stewardship_main_params(
             skill_level=1, weather_time=period
         )
-        assert resolved["documentation_distance_m"] == pytest.approx(
+        assert resolved["visibility_distance_m"] == pytest.approx(
             _expected_ambient(vis, list(vis_mods.get(period, [])))
         )
-        assert resolved["discovery_speed"] == pytest.approx(
+        assert resolved["document_speed"] == pytest.approx(
             _expected_ambient(speed, list(speed_mods.get(period, [])))
         )
 
@@ -233,9 +233,9 @@ def test_resolve_site_stewardship_weather_time_mirrors_config() -> None:
 def test_resolve_site_discovery_weather_type_visibility() -> None:
     get_game_config.cache_clear()
     cfg = get_game_config().site_discovery
-    base = float(cfg.discovery_distance_m)
+    base = float(cfg.visibility_distance_m)
     chance = float(cfg.discovery_chance)
-    dist_mods = cfg.weather_type_modifiers.get("discovery_distance_m") or {}
+    dist_mods = cfg.weather_type_modifiers.get("visibility_distance_m") or {}
     chance_mods = cfg.weather_type_modifiers.get("discovery_chance") or {}
 
     for weather_type in (
@@ -252,7 +252,7 @@ def test_resolve_site_discovery_weather_type_visibility() -> None:
         resolved = resolve_site_discovery_main_params(
             skill_level=1, weather_type=weather_type
         )
-        assert resolved["discovery_distance_m"] == pytest.approx(
+        assert resolved["visibility_distance_m"] == pytest.approx(
             _expected_ambient(base, list(dist_mods.get(weather_type, [])))
         )
         assert resolved["discovery_chance"] == pytest.approx(
@@ -271,14 +271,14 @@ def test_resolve_site_discovery_weather_type_visibility() -> None:
 def test_weather_time_and_type_stack_before_tools() -> None:
     get_game_config.cache_clear()
     cfg = get_game_config().site_discovery
-    base = float(cfg.discovery_distance_m)
+    base = float(cfg.visibility_distance_m)
     time_mods = list(
-        (cfg.weather_time_modifiers.get("discovery_distance_m") or {}).get(
+        (cfg.weather_time_modifiers.get("visibility_distance_m") or {}).get(
             "night", []
         )
     )
     type_mods = list(
-        (cfg.weather_type_modifiers.get("discovery_distance_m") or {}).get(
+        (cfg.weather_type_modifiers.get("visibility_distance_m") or {}).get(
             "thunderstorm", []
         )
     )
@@ -291,10 +291,10 @@ def test_weather_time_and_type_stack_before_tools() -> None:
         weather_time="night",
         weather_type="thunderstorm",
         tool_mods={
-            "discovery_distance_m": ParamModifier(op="add", value=20),
+            "visibility_distance_m": ParamModifier(op="add", value=20),
         },
     )
-    assert resolved["discovery_distance_m"] == pytest.approx(expected)
+    assert resolved["visibility_distance_m"] == pytest.approx(expected)
 
 
 def test_level_modifier_entry_shape() -> None:
@@ -311,7 +311,7 @@ def test_modifies_main_params_multi_skill() -> None:
             "owning": {
                 "field_survey": {
                     "discovery_chance": {"op": "add", "value": 0.05},
-                    "documentation_accuracy": {"op": "add", "value": 0.1},
+                    "document_accuracy": {"op": "add", "value": 0.1},
                 },
             },
             "using": {
@@ -319,7 +319,7 @@ def test_modifies_main_params_multi_skill() -> None:
                     "discovery_chance": {"op": "replace", "value": 0.9}
                 },
                 "bone_quarry": {
-                    "discovery_distance_m": {"op": "add", "value": 5}
+                    "visibility_distance_m": {"op": "add", "value": 5}
                 },
             },
         }
@@ -330,10 +330,10 @@ def test_modifies_main_params_multi_skill() -> None:
         "discovery_chance"
     ].value == pytest.approx(0.05)
     assert mods.params_for("owning", "field_survey")[
-        "documentation_accuracy"
+        "document_accuracy"
     ].value == pytest.approx(0.1)
     assert mods.params_for("using", "bone_quarry")[
-        "discovery_distance_m"
+        "visibility_distance_m"
     ].value == 5
 
 

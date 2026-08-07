@@ -21,7 +21,7 @@ class ToolActionsConfig(BaseModel):
             flight_discovery_distance_m=50.0,
             stats_explanation=(
                 "Duration caps how far you can draw (speed × duration). Flight time is "
-                "drawn length ÷ speed. Sites within flight discovery distance are "
+                "drawn length ÷ speed. Sites within flight visibility distance are "
                 "rolled at the listed chance."
             ),
         )
@@ -131,7 +131,7 @@ class ToolActionsConfig(BaseModel):
             modifies_main_params=ModifiesMainParams(
                 using={
                     "field_survey": {
-                        "discovery_distance_m": ParamModifier(
+                        "visibility_distance_m": ParamModifier(
                             op="multiply", value=1.3
                         ),
                         "discovery_chance": ParamModifier(
@@ -155,7 +155,7 @@ class ToolActionsConfig(BaseModel):
             modifies_main_params=ModifiesMainParams(
                 using={
                     "field_survey": {
-"discovery_distance_m": ParamModifier(
+"visibility_distance_m": ParamModifier(
                             op="multiply", value=0.95
                         ),
                         "discovery_chance": ParamModifier(
@@ -164,15 +164,12 @@ class ToolActionsConfig(BaseModel):
                         "discovery_max_speed_kmh": ParamModifier(
                             op="multiply", value=2.0
                         ),
-"documentation_distance_m": ParamModifier(
-                            op="multiply", value=0.95
-                        ),
                     },
                 },
             ),
             stats_explanation=(
                 "While active, raises max discovery speed by 100% so a fast jog "
-                "still counts toward discovery distance, but discover "
+                "still counts toward visibility distance, but discover "
                 "visibility, walk-in chance, and site exploration radius drop 5%."
             ),
         )
@@ -184,7 +181,7 @@ class ToolActionsConfig(BaseModel):
             modifies_main_params=ModifiesMainParams(
                 using={
                     "field_survey": {
-"discovery_distance_m": ParamModifier(
+"visibility_distance_m": ParamModifier(
                             op="multiply", value=0.9
                         ),
                         "discovery_chance": ParamModifier(
@@ -193,15 +190,12 @@ class ToolActionsConfig(BaseModel):
                         "discovery_max_speed_kmh": ParamModifier(
                             op="multiply", value=3.0
                         ),
-"documentation_distance_m": ParamModifier(
-                            op="multiply", value=0.9
-                        ),
                     },
                 },
             ),
             stats_explanation=(
                 "While active, raises max discovery speed by 200% so bicycle "
-                "travel still counts toward discovery distance, but discover "
+                "travel still counts toward visibility distance, but discover "
                 "visibility, walk-in chance, and site exploration radius drop 10%."
             ),
         )
@@ -212,7 +206,7 @@ class ToolActionsConfig(BaseModel):
             modifies_main_params=ModifiesMainParams(
                 using={
                     "field_survey": {
-"discovery_distance_m": ParamModifier(
+"visibility_distance_m": ParamModifier(
                             op="multiply", value=0.85
                         ),
                         "discovery_chance": ParamModifier(
@@ -221,15 +215,12 @@ class ToolActionsConfig(BaseModel):
                         "discovery_max_speed_kmh": ParamModifier(
                             op="multiply", value=4.0
                         ),
-"documentation_distance_m": ParamModifier(
-                            op="multiply", value=0.85
-                        ),
                     },
                 },
             ),
             stats_explanation=(
                 "While active, raises max discovery speed by 300% so motorcycle "
-                "travel still counts toward discovery distance, but discover "
+                "travel still counts toward visibility distance, but discover "
                 "visibility, walk-in chance, and site exploration radius drop 15%."
             ),
         )
@@ -240,7 +231,7 @@ class ToolActionsConfig(BaseModel):
             modifies_main_params=ModifiesMainParams(
                 using={
                     "field_survey": {
-"discovery_distance_m": ParamModifier(
+"visibility_distance_m": ParamModifier(
                             op="multiply", value=0.8
                         ),
                         "discovery_chance": ParamModifier(
@@ -249,15 +240,12 @@ class ToolActionsConfig(BaseModel):
                         "discovery_max_speed_kmh": ParamModifier(
                             op="multiply", value=5.0
                         ),
-"documentation_distance_m": ParamModifier(
-                            op="multiply", value=0.8
-                        ),
                     },
                 },
             ),
             stats_explanation=(
                 "While active, raises max discovery speed by 400% so 4x4 travel "
-                "still counts toward discovery distance, but discover "
+                "still counts toward visibility distance, but discover "
                 "visibility, walk-in chance, and site exploration radius drop 20%."
             ),
         )
@@ -269,7 +257,7 @@ class ToolActionsConfig(BaseModel):
             modifies_main_params=ModifiesMainParams(
                 using={
                     "field_survey": {
-                        "discovery_distance_m": ParamModifier(
+                        "visibility_distance_m": ParamModifier(
                             op="multiply", value=1.4
                         ),
                         "discovery_chance": ParamModifier(
@@ -376,4 +364,3 @@ class ToolActionsConfig(BaseModel):
             if mods is not None and mods.affects_skill(skill_id):
                 out.append((key, mods))
         return out
-

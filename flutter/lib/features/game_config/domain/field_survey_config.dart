@@ -44,7 +44,7 @@ class FieldSurveyConfig {
   final AccuracyNoiseConfig accuracyNoise;
   final FossilGenerationDefaults defaults;
 
-  double get discoveryDistanceM => mainParams.discoveryDistanceM;
+  double get visibilityDistanceM => mainParams.visibilityDistanceM;
   double get discoveryChance => mainParams.discoveryChance;
   double get discoveryMaxSpeedKmh => mainParams.discoveryMaxSpeedKmh;
   double get discoverSiteXp => mainParams.discoverSiteXp;
@@ -55,12 +55,8 @@ class FieldSurveyConfig {
   double get documentSiteXp => mainParams.documentSiteXp;
   double get documentSiteAsFirstXp => mainParams.documentSiteAsFirstXp;
   double get identifySiteXp => mainParams.identifySiteXp;
-  double get documentationDistanceM => mainParams.documentationDistanceM;
-  double get discoverySpeed => mainParams.discoverySpeed;
+  double get documentSpeed => mainParams.documentSpeed;
   double get rivalDiscoveryChance => mainParams.rivalDiscoveryChance;
-
-  /// Back-compat alias.
-  double get maxDistanceM => discoveryDistanceM;
 
   /// Back-compat aliases for distribution tables.
   List<DinoCountThreshold> get dinoCountThresholds => dinoCount;
@@ -127,34 +123,32 @@ class FieldSurveyConfig {
 
 class FieldSurveyMainParams {
   const FieldSurveyMainParams({
-    required this.discoveryDistanceM,
+    required this.visibilityDistanceM,
     required this.discoveryChance,
     required this.discoveryMaxSpeedKmh,
     required this.discoverSiteXp,
     required this.discoverSiteAsFirstXp,
     required this.explore100mActivelyXp,
     required this.explore100mPassivelyXp,
-    required this.documentationAccuracy,
+    required this.documentAccuracy,
     required this.rivalDiscoveryChance,
-    required this.documentationDistanceM,
-    required this.discoverySpeed,
+    required this.documentSpeed,
     required this.disguiseOfSiteXp,
     required this.documentSiteXp,
     required this.documentSiteAsFirstXp,
     required this.identifySiteXp,
   });
 
-  final double discoveryDistanceM;
+  final double visibilityDistanceM;
   final double discoveryChance;
   final double discoveryMaxSpeedKmh;
   final double discoverSiteXp;
   final double discoverSiteAsFirstXp;
   final double explore100mActivelyXp;
   final double explore100mPassivelyXp;
-  final double documentationAccuracy;
+  final double documentAccuracy;
   final double rivalDiscoveryChance;
-  final double documentationDistanceM;
-  final double discoverySpeed;
+  final double documentSpeed;
   final double disguiseOfSiteXp;
   final double documentSiteXp;
   final double documentSiteAsFirstXp;
@@ -162,10 +156,7 @@ class FieldSurveyMainParams {
 
   factory FieldSurveyMainParams.fromYaml(Map<String, dynamic> yaml) {
     return FieldSurveyMainParams(
-      discoveryDistanceM: configAsDouble(
-        yaml['discovery_distance_m'] ?? yaml['max_distance_m'],
-        20.0,
-      ),
+      visibilityDistanceM: configAsDouble(yaml['visibility_distance_m'], 20.0),
       discoveryChance: configAsDouble(yaml['discovery_chance'], 0.1),
       discoveryMaxSpeedKmh: configAsDouble(
         yaml['discovery_max_speed_kmh'],
@@ -184,16 +175,9 @@ class FieldSurveyMainParams {
         yaml['explore_100m_passively_xp'],
         10.0,
       ),
-      documentationAccuracy: configAsDouble(
-        yaml['documentation_accuracy'],
-        0.01,
-      ),
+      documentAccuracy: configAsDouble(yaml['document_accuracy'], 0.01),
       rivalDiscoveryChance: configAsDouble(yaml['rival_discovery_chance'], 1),
-      documentationDistanceM: configAsDouble(
-        yaml['documentation_distance_m'],
-        50,
-      ),
-      discoverySpeed: configAsDouble(yaml['discovery_speed'], 0.01),
+      documentSpeed: configAsDouble(yaml['document_speed'], 0.01),
       disguiseOfSiteXp: configAsDouble(yaml['disguise_of_site_xp'], 40),
       documentSiteXp: configAsDouble(yaml['document_site_xp'], 80),
       documentSiteAsFirstXp: configAsDouble(

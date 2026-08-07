@@ -101,11 +101,11 @@ abstract final class ToolParamsEdit {
   static String _paramLabel(String key) {
     // Prefer shared labels when available.
     const known = <String, String>{
-      'discovery_distance_m': 'Discovery distance',
+      'visibility_distance_m': 'Visibility distance',
       'discovery_chance': 'Discovery chance',
       'discovery_max_speed_kmh': 'Discovery max speed',
-      'documentation_distance_m': 'Documentation distance',
-      'documentation_accuracy': 'Documentation accuracy',
+      'document_accuracy': 'Document accuracy',
+      'document_speed': 'Document speed',
       'rival_discovery_chance': 'Rival discovery chance',
     };
     return known[key] ?? _humanizeKey(key);

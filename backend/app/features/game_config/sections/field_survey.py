@@ -33,7 +33,7 @@ class FieldSurveyMainParams(BaseModel):
     model_config = {"frozen": True}
 
     # Discovery
-    discovery_distance_m: float = 20.0
+    visibility_distance_m: float = 20.0
     discovery_chance: float = 0.1
     discovery_max_speed_kmh: float = 10.0
     discover_site_xp: float = 20.0
@@ -41,10 +41,9 @@ class FieldSurveyMainParams(BaseModel):
     explore_100m_actively_xp: float = 20.0
     explore_100m_passively_xp: float = 10.0
     # Stewardship / documentation
-    documentation_accuracy: float = 0.01
+    document_accuracy: float = 0.01
     rival_discovery_chance: float = 1.0
-    documentation_distance_m: float = 50.0
-    discovery_speed: float = 0.01
+    document_speed: float = 0.01
     disguise_of_site_xp: float = 40.0
     document_site_xp: float = 80.0
     document_site_as_first_xp: float = 20.0
@@ -56,7 +55,7 @@ class FieldSurveyMainParams(BaseModel):
         return _clamp_unit_interval(value, label="discovery_chance")
 
     @field_validator(
-        "discovery_distance_m",
+        "visibility_distance_m",
         "discovery_max_speed_kmh",
         "discover_site_xp",
         "discover_site_as_first_xp",
@@ -69,10 +68,10 @@ class FieldSurveyMainParams(BaseModel):
             raise ValueError("must be > 0")
         return value
 
-    @field_validator("documentation_accuracy")
+    @field_validator("document_accuracy")
     @classmethod
     def _validate_accuracy(cls, value: float) -> float:
-        return _clamp_unit_interval(value, label="documentation_accuracy")
+        return _clamp_unit_interval(value, label="document_accuracy")
 
     @field_validator("rival_discovery_chance")
     @classmethod
@@ -81,7 +80,7 @@ class FieldSurveyMainParams(BaseModel):
             raise ValueError("rival_discovery_chance must be >= 0")
         return value
 
-    @field_validator("documentation_distance_m", "discovery_speed")
+    @field_validator("document_speed")
     @classmethod
     def _validate_documentation_distance(cls, value: float) -> float:
         if value < 0.0:
@@ -330,8 +329,8 @@ class FieldSurveyConfig(BaseModel):
         return list(self.depth_weights)
 
     @property
-    def discovery_distance_m(self) -> float:
-        return float(self.main_params.discovery_distance_m)
+    def visibility_distance_m(self) -> float:
+        return float(self.main_params.visibility_distance_m)
 
     @property
     def discovery_chance(self) -> float:
@@ -358,10 +357,6 @@ class FieldSurveyConfig(BaseModel):
         return float(self.main_params.explore_100m_passively_xp)
 
     @property
-    def max_distance_m(self) -> float:
-        return self.discovery_distance_m
-
-    @property
     def disguise_of_site_xp(self) -> float:
         return float(self.main_params.disguise_of_site_xp)
 
@@ -378,12 +373,8 @@ class FieldSurveyConfig(BaseModel):
         return float(self.main_params.identify_site_xp)
 
     @property
-    def documentation_distance_m(self) -> float:
-        return float(self.main_params.documentation_distance_m)
-
-    @property
-    def discovery_speed(self) -> float:
-        return float(self.main_params.discovery_speed)
+    def document_speed(self) -> float:
+        return float(self.main_params.document_speed)
 
     @property
     def rival_discovery_chance(self) -> float:
@@ -399,4 +390,3 @@ FossilGenerationConfig = FieldSurveyConfig
 # ---------------------------------------------------------------------------
 # Tool actions
 # ---------------------------------------------------------------------------
-

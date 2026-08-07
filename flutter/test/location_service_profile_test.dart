@@ -36,6 +36,18 @@ void main() {
       );
     });
 
+    test('keeps GPS when an in-range site is documenting', () {
+      expect(
+        shouldTrackLocation(
+          wantsLocation: true,
+          appForeground: false,
+          backgroundExploring: false,
+          documentationActive: true,
+        ),
+        isTrue,
+      );
+    });
+
     test('never tracks GPS without map or field session', () {
       expect(
         shouldTrackLocation(
@@ -94,6 +106,19 @@ void main() {
           stationary: true,
         ),
         GpsProfile.idleBackground,
+      );
+    });
+
+    test('uses background GPS profile for documentation while locked', () {
+      expect(
+        resolveGpsProfile(
+          mapForeground: false,
+          appForeground: false,
+          backgroundExploring: false,
+          documentationActive: true,
+          stationary: false,
+        ),
+        GpsProfile.fieldBackground,
       );
     });
   });

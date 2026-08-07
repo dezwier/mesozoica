@@ -169,7 +169,7 @@ class ModifiesMainParams(BaseModel):
 
         owning:
           site_discovery: { discovery_chance: { op: add, value: 0.05 } }
-          site_stewardship: { documentation_accuracy: { op: add, value: 0.1 } }
+          site_stewardship: { document_accuracy: { op: add, value: 0.1 } }
         using:
           site_discovery: { discovery_chance: { op: replace, value: 0.9 } }
 

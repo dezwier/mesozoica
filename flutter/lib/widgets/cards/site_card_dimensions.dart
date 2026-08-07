@@ -30,7 +30,7 @@ class SiteCardDimensions extends StatelessWidget {
     final baseAccuracies = resolveSiteStewardshipAccuracies(
       skillLevel: skillLevel,
     );
-    final baseAccuracy = baseAccuracies['documentation_accuracy'] ?? 0.0;
+    final baseAccuracy = baseAccuracies['document_accuracy'] ?? 0.0;
     final progress = emptyDims ? 0.0 : _resolvedProgress(context, site);
     final inRange = !emptyDims && _isInRange(context, site.siteId);
     // Stack: shared skill baseline → per-dimension noise → documentation.

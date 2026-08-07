@@ -34,7 +34,7 @@ class MainParamBuffToolStats extends StatelessWidget {
     final visibilityMod = mods?.paramsFor(
       'using',
       'field_survey',
-    )['discovery_distance_m'];
+    )['visibility_distance_m'];
     final discoveryMod = mods?.paramsFor(
       'using',
       'field_survey',
@@ -43,10 +43,6 @@ class MainParamBuffToolStats extends StatelessWidget {
       'using',
       'field_survey',
     )['discovery_max_speed_kmh'];
-    final documentationDistanceMod = mods?.paramsFor(
-      'using',
-      'field_survey',
-    )['documentation_distance_m'];
     final explanation =
         (p?['stats_explanation'] as String?)?.trim().isNotEmpty == true
         ? p!['stats_explanation'] as String
@@ -61,18 +57,13 @@ class MainParamBuffToolStats extends StatelessWidget {
         ToolStatPair('Active', activeTimes.map((e) => e.toString()).join(', ')),
       if (visibilityMod != null)
         ToolStatPair(
-          'Discovery distance',
+          'Visibility distance',
           _formatMod(visibilityMod, meters: true),
         ),
       if (discoveryMod != null)
         ToolStatPair(
           'Discovery chance',
           _formatMod(discoveryMod, chance: true),
-        ),
-      if (documentationDistanceMod != null)
-        ToolStatPair(
-          'Documentation distance',
-          _formatMod(documentationDistanceMod, meters: true),
         ),
       if (speedMod != null)
         ToolStatPair('Discovery max speed', _formatMod(speedMod)),

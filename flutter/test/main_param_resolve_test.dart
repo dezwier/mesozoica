@@ -12,7 +12,7 @@ ToolModBinding _ridgeUsing({required double multiply}) {
     mods: ModifiesMainParams(
       using: {
         'field_survey': {
-          'discovery_distance_m': ParamModifier(
+          'visibility_distance_m': ParamModifier(
             op: 'multiply',
             value: multiply,
           ),
@@ -31,7 +31,7 @@ ToolModBinding _nocturneUsing({required double multiply}) {
     mods: ModifiesMainParams(
       using: {
         'field_survey': {
-          'discovery_distance_m': ParamModifier(
+          'visibility_distance_m': ParamModifier(
             op: 'multiply',
             value: multiply,
           ),
@@ -51,16 +51,12 @@ ToolModBinding _mobilityUsing({required double multiply}) {
     mods: ModifiesMainParams(
       using: {
         'field_survey': {
-          'discovery_distance_m': ParamModifier(
+          'visibility_distance_m': ParamModifier(
             op: 'multiply',
             value: multiply,
           ),
           'discovery_chance': ParamModifier(op: 'multiply', value: multiply),
           'discovery_max_speed_kmh': ParamModifier(op: 'multiply', value: 3.0),
-          'documentation_distance_m': ParamModifier(
-            op: 'multiply',
-            value: multiply,
-          ),
         },
       },
     ),
@@ -86,13 +82,13 @@ void main() {
   test('site stewardship estimation follows level modifiers', () async {
     await loadGameConfigForTest();
     final cfg = GameConfig.instance.siteStewardship;
-    final base = cfg.mainParams.documentationAccuracy;
-    final entries = cfg.levelModifiers['documentation_accuracy'];
+    final base = cfg.mainParams.documentAccuracy;
+    final entries = cfg.levelModifiers['document_accuracy'];
 
     for (final level in [1, 10, 99]) {
       final resolved = resolveSiteStewardshipAccuracies(skillLevel: level);
       expect(
-        resolved['documentation_accuracy'],
+        resolved['document_accuracy'],
         closeTo(
           applyLevelModifiers(base, entries, level).clamp(0.0, 1.0),
           1e-9,
@@ -104,30 +100,27 @@ void main() {
   test('tool mods apply after level on site stewardship accuracies', () async {
     await loadGameConfigForTest();
     final cfg = GameConfig.instance.siteStewardship;
-    final base = cfg.mainParams.documentationAccuracy;
-    final entries = cfg.levelModifiers['documentation_accuracy'];
+    final base = cfg.mainParams.documentAccuracy;
+    final entries = cfg.levelModifiers['document_accuracy'];
     const toolAdd = 0.05;
     final at10 = applyLevelModifiers(base, entries, 10);
 
     final result = resolveSiteStewardshipAccuracies(
       skillLevel: 10,
       toolMods: {
-        'documentation_accuracy': const ParamModifier(
-          op: 'add',
-          value: toolAdd,
-        ),
+        'document_accuracy': const ParamModifier(op: 'add', value: toolAdd),
       },
     );
 
     expect(
-      result['documentation_accuracy'],
+      result['document_accuracy'],
       closeTo((at10 + toolAdd).clamp(0.0, 1.0), 1e-9),
     );
   });
 
   test('site discovery visibility defaults to main param', () async {
     await loadGameConfigForTest();
-    final base = GameConfig.instance.siteDiscovery.discoveryDistanceM;
+    final base = GameConfig.instance.siteDiscovery.visibilityDistanceM;
     expect(
       resolveSiteDiscoveryVisibilityDistanceM(skillLevel: 1),
       closeTo(base, 1e-9),
@@ -147,7 +140,7 @@ void main() {
 
   test('ridge glass using mods come from instance bindings not yaml', () async {
     await loadGameConfigForTest();
-    final base = GameConfig.instance.siteDiscovery.discoveryDistanceM;
+    final base = GameConfig.instance.siteDiscovery.visibilityDistanceM;
     // Instance is 1.4 even if YAML baseline differs.
     final boosted = resolveSiteDiscoveryVisibilityDistanceM(
       skillLevel: 1,
@@ -164,7 +157,7 @@ void main() {
   test('weather_time and weather_type stack before tools', () async {
     await loadGameConfigForTest();
     final disc = GameConfig.instance.siteDiscovery;
-    final base = disc.discoveryDistanceM;
+    final base = disc.visibilityDistanceM;
 
     double expected({
       String? weatherTime,
@@ -192,7 +185,7 @@ void main() {
             skillLevel: 1,
             weatherTimeMods: weatherTimeModsForParam(
               weatherTimeModifiers: disc.weatherTimeModifiers,
-              paramKey: 'discovery_distance_m',
+              paramKey: 'visibility_distance_m',
               weatherTime: period,
             ),
           ),
@@ -211,7 +204,7 @@ void main() {
             skillLevel: 1,
             weatherTypeMods: weatherTypeModsForParam(
               weatherTypeModifiers: disc.weatherTypeModifiers,
-              paramKey: 'discovery_distance_m',
+              paramKey: 'visibility_distance_m',
               weatherType: type,
             ),
           ),
@@ -232,12 +225,12 @@ void main() {
       skillLevel: 1,
       weatherTimeMods: weatherTimeModsForParam(
         weatherTimeModifiers: disc.weatherTimeModifiers,
-        paramKey: 'discovery_distance_m',
+        paramKey: 'visibility_distance_m',
         weatherTime: 'night',
       ),
       weatherTypeMods: weatherTypeModsForParam(
         weatherTypeModifiers: disc.weatherTypeModifiers,
-        paramKey: 'discovery_distance_m',
+        paramKey: 'visibility_distance_m',
         weatherType: 'thunderstorm',
       ),
     );
@@ -250,14 +243,14 @@ void main() {
       'modifies_main_params': {
         'using': {
           'field_survey': {
-            'discovery_distance_m': {'op': 'multiply', 'value': 1.4},
+            'visibility_distance_m': {'op': 'multiply', 'value': 1.4},
           },
         },
       },
     });
     expect(mods, isNotNull);
     expect(
-      mods!.paramsFor('using', 'field_survey')['discovery_distance_m']?.value,
+      mods!.paramsFor('using', 'field_survey')['visibility_distance_m']?.value,
       1.4,
     );
   });
@@ -265,7 +258,7 @@ void main() {
   test('nocturne using mods apply only at night', () async {
     await loadGameConfigForTest();
     final disc = GameConfig.instance.siteDiscovery;
-    final base = disc.discoveryDistanceM;
+    final base = disc.visibilityDistanceM;
     final bindings = [_nocturneUsing(multiply: 1.4)];
 
     for (final period in ['night', 'dusk', 'day']) {
@@ -280,7 +273,7 @@ void main() {
         skillLevel: 1,
         weatherTimeMods: weatherTimeModsForParam(
           weatherTimeModifiers: disc.weatherTimeModifiers,
-          paramKey: 'discovery_distance_m',
+          paramKey: 'visibility_distance_m',
           weatherTime: period,
         ),
       );
@@ -294,7 +287,7 @@ void main() {
   test('mobility tools reduce site stewardship visibility', () async {
     await loadGameConfigForTest();
     final stew = GameConfig.instance.siteStewardship;
-    final base = stew.mainParams.documentationDistanceM;
+    final base = stew.mainParams.visibilityDistanceM;
     expect(
       resolveSiteStewardshipSiteVisibilityM(skillLevel: 1),
       closeTo(base, 1e-9),
@@ -318,7 +311,7 @@ void main() {
       skillLevel: 1,
       weatherTimeMods: weatherTimeModsForParam(
         weatherTimeModifiers: stew.weatherTimeModifiers,
-        paramKey: 'documentation_distance_m',
+        paramKey: 'visibility_distance_m',
         weatherTime: 'day',
       ),
     );

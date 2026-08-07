@@ -427,12 +427,12 @@ class MapboxCameraCoordinator {
 
   /// Avatar puck with ground shadow, white heading arrow, and brown pulse.
   ///
-  /// [discoveryDistanceM] is the effective site-discovery radius (main param
+  /// [visibilityDistanceM] is the effective site-discovery radius (main param
   /// after level/tool boosts). The pulse max radius is that ground distance
   /// projected to screen pixels at [center].
   Future<void> enableLocationPuck({
     String? avatarImageUrl,
-    double? discoveryDistanceM,
+    double? visibilityDistanceM,
     LatLng? center,
     double? latitudeDeg,
     double? zoom,
@@ -474,7 +474,7 @@ class MapboxCameraCoordinator {
     // Quantised like [syncLocationPuckPulse] so the epsilon check that guards
     // later pushes compares against the same baseline.
     final pulsePx = (await _resolvePulseRadiusPx(
-      discoveryDistanceM: discoveryDistanceM,
+      visibilityDistanceM: visibilityDistanceM,
       center: center,
       latitudeDeg: latitudeDeg,
       zoom: zoom,
@@ -515,7 +515,7 @@ class MapboxCameraCoordinator {
   /// Rate-limited to [pulseSyncMinInterval] with a trailing call, so a
   /// pinch-zoom produces a handful of pushes rather than one per camera frame.
   Future<void> syncLocationPuckPulse({
-    double? discoveryDistanceM,
+    double? visibilityDistanceM,
     LatLng? center,
     double? latitudeDeg,
     double? zoom,
@@ -543,7 +543,7 @@ class MapboxCameraCoordinator {
           _pulseSyncTrailing = null;
           unawaited(
             syncLocationPuckPulse(
-              discoveryDistanceM: discoveryDistanceM,
+              visibilityDistanceM: visibilityDistanceM,
               center: center,
               latitudeDeg: latitudeDeg,
               zoom: zoom,
@@ -559,7 +559,7 @@ class MapboxCameraCoordinator {
     _pulseSyncInFlight = true;
     try {
       final resolved = await _resolvePulseRadiusPx(
-        discoveryDistanceM: discoveryDistanceM,
+        visibilityDistanceM: visibilityDistanceM,
         center: center,
         latitudeDeg: latitudeDeg,
         zoom: zoom,
@@ -627,13 +627,13 @@ class MapboxCameraCoordinator {
 
   /// Prefer Mapbox projection (same approach as terrain-echo); Mercator fallback.
   Future<double> _resolvePulseRadiusPx({
-    double? discoveryDistanceM,
+    double? visibilityDistanceM,
     LatLng? center,
     double? latitudeDeg,
     double? zoom,
   }) async {
-    if (discoveryDistanceM != null && discoveryDistanceM > 0) {
-      _pulseVisibilityDistanceM = discoveryDistanceM;
+    if (visibilityDistanceM != null && visibilityDistanceM > 0) {
+      _pulseVisibilityDistanceM = visibilityDistanceM;
     }
     if (zoom != null) {
       _pulseZoom = zoom;

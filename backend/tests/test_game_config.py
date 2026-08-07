@@ -113,23 +113,18 @@ def test_load_game_config_structure() -> None:
     assert config.site_generation.client.nearby_radius_km > 0
 
     disc = config.site_discovery
-    assert disc.discovery_distance_m > 0
-    assert disc.max_distance_m == disc.discovery_distance_m
+    assert disc.visibility_distance_m > 0
     assert 0 < disc.discovery_chance <= 1
     assert disc.discovery_max_speed_kmh > 0
     assert disc.discover_site_xp > 0
     assert disc.client.auto_discover_radius_m > 0
     assert disc.level_modifiers["discovery_max_speed_kmh"] == []
-    for key in ("discovery_chance", "discovery_distance_m"):
+    for key in ("discovery_chance", "visibility_distance_m"):
         mods = disc.level_modifiers[key]
         assert len(mods) >= 2
         assert mods[0].level <= mods[-1].level
     assert (
-        disc.level_modifiers["discovery_distance_m"]
-        == disc.level_modifiers["discovery_chance"]
-    )
-    assert (
-        config.site_stewardship.level_modifiers["documentation_distance_m"]
+        disc.level_modifiers["visibility_distance_m"]
         == disc.level_modifiers["discovery_chance"]
     )
     assert "locate_fossil_in_situ_xp" in config.fossil_detection.main_params
@@ -139,11 +134,11 @@ def test_load_game_config_structure() -> None:
     )
 
     stew = config.site_stewardship
-    assert 0 < stew.main_params.documentation_accuracy <= 1
-    assert stew.main_params.documentation_distance_m > 0
-    assert stew.documentation_distance_m == stew.main_params.documentation_distance_m
-    assert stew.discovery_speed == stew.main_params.discovery_speed == 0.01
-    acc_mods = stew.level_modifiers["documentation_accuracy"]
+    assert 0 < stew.main_params.document_accuracy <= 1
+    assert stew.main_params.visibility_distance_m > 0
+    assert stew.visibility_distance_m == stew.main_params.visibility_distance_m
+    assert stew.document_speed == stew.main_params.document_speed == 0.01
+    acc_mods = stew.level_modifiers["document_accuracy"]
     assert len(acc_mods) >= 2 and acc_mods[0].op == "multiply"
     rival_mods = stew.level_modifiers["rival_discovery_chance"]
     assert len(rival_mods) >= 2 and rival_mods[0].op == "multiply"
@@ -179,7 +174,7 @@ def test_load_game_config_structure() -> None:
 
     ridge = tools.ridge_glass
     assert ridge.duration_minutes > 0
-    assert ridge.site_discovery_mod("discovery_distance_m") is not None
+    assert ridge.site_discovery_mod("visibility_distance_m") is not None
     assert ridge.site_discovery_mod("discovery_chance") is not None
     assert ridge.site_discovery_mod("discovery_max_speed_kmh") is not None
     assert ridge.added_visibility_range_m is None
@@ -196,14 +191,14 @@ def test_load_game_config_structure() -> None:
         action = getattr(tools, key)
         assert action.site_discovery_mod("discovery_max_speed_kmh") is not None
         assert action.modifies_main_params is not None
-        assert "documentation_distance_m" in action.modifies_main_params.params_for(
+        assert "visibility_distance_m" in action.modifies_main_params.params_for(
             "using", "field_survey"
         )
 
     nocturne = tools.nocturne_lens
     assert nocturne.duration_minutes > 0
     assert nocturne.active_weather_times == ("night",)
-    assert nocturne.site_discovery_mod("discovery_distance_m") is not None
+    assert nocturne.site_discovery_mod("visibility_distance_m") is not None
     assert nocturne.site_discovery_mod("discovery_chance") is not None
     assert nocturne.site_discovery_mod("discovery_max_speed_kmh") is None
 

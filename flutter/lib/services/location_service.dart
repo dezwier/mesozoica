@@ -28,8 +28,10 @@ bool shouldTrackLocation({
   required bool wantsLocation,
   required bool appForeground,
   required bool backgroundExploring,
+  bool documentationActive = false,
 }) {
-  return wantsLocation && (appForeground || backgroundExploring);
+  return wantsLocation &&
+      (appForeground || backgroundExploring || documentationActive);
 }
 
 /// Resolve which GPS profile to use for the current UI / motion state.
@@ -38,11 +40,12 @@ GpsProfile resolveGpsProfile({
   required bool mapForeground,
   required bool appForeground,
   required bool backgroundExploring,
+  bool documentationActive = false,
   required bool stationary,
 }) {
   if (mapForeground && appForeground) return GpsProfile.high;
   if (appForeground) return GpsProfile.fieldForeground;
-  if (backgroundExploring) {
+  if (backgroundExploring || documentationActive) {
     return stationary ? GpsProfile.idleBackground : GpsProfile.fieldBackground;
   }
   return GpsProfile.fieldForeground;
@@ -69,6 +72,8 @@ class LocationService extends ChangeNotifier {
   bool _fieldSession = false;
   bool _appForeground = true;
   bool _backgroundExploring = false;
+  bool _documentationBackgroundWanted = false;
+  bool _documentationBackgroundActive = false;
   bool _prefsLoaded = false;
   GpsProfile _activeProfile = GpsProfile.fieldForeground;
 
@@ -99,6 +104,10 @@ class LocationService extends ChangeNotifier {
   bool get isMapForeground => _mapForeground;
   bool get isFieldSession => _fieldSession;
   bool get isBackgroundExploring => _backgroundExploring;
+  bool get isDocumentationBackgroundActive => _documentationBackgroundActive;
+  bool get isDocumentationBackgroundWanted => _documentationBackgroundWanted;
+  bool get isBackgroundLocationActive =>
+      _backgroundExploring || _documentationBackgroundActive;
   bool get isGpsStreamActive => _locationSub != null;
   bool get isHeadingStreamActive => _headingSub != null;
   bool get isHighPrecisionGps => _activeProfile == GpsProfile.high;
@@ -116,6 +125,7 @@ class LocationService extends ChangeNotifier {
     wantsLocation: _mapForeground || _fieldSession,
     appForeground: _appForeground,
     backgroundExploring: _backgroundExploring,
+    documentationActive: _documentationBackgroundActive,
   );
 
   /// Age of the last GPS fix, or null if never fixed.
@@ -177,6 +187,38 @@ class LocationService extends ChangeNotifier {
     return _backgroundExploring;
   }
 
+  /// Keep verified GPS fixes flowing while an identified in-range site is
+  /// actively documenting, independent of the broader exploration setting.
+  Future<bool> setDocumentationBackgroundActive(bool active) async {
+    if (active == _documentationBackgroundWanted) {
+      return _documentationBackgroundActive;
+    }
+    _documentationBackgroundWanted = active;
+    if (active) {
+      final permitted = await _ensureAlwaysPermission();
+      // The site may have left range while the permission request was open.
+      if (!_documentationBackgroundWanted) {
+        await _reconcileTracking(forceRestartLocation: true);
+        return false;
+      }
+      if (!permitted) {
+        _documentationBackgroundActive = false;
+        _error ??=
+            'Always location permission is required for documentation to '
+            'continue while the app is locked.';
+        notifyListeners();
+        await _reconcileTracking(forceRestartLocation: true);
+        return false;
+      }
+      _documentationBackgroundActive = true;
+    } else {
+      _documentationBackgroundActive = false;
+    }
+    notifyListeners();
+    await _reconcileTracking(forceRestartLocation: true);
+    return _documentationBackgroundActive;
+  }
+
   Future<void> setMapForeground(bool active) async {
     final changed = _mapForeground != active;
     _mapForeground = active;
@@ -202,6 +244,12 @@ class LocationService extends ChangeNotifier {
   Future<void> onAppResumed() async {
     final wasBackground = !_appForeground;
     _appForeground = true;
+    if (_documentationBackgroundWanted && !_documentationBackgroundActive) {
+      final permitted = await _ensureAlwaysPermission();
+      if (_documentationBackgroundWanted && permitted) {
+        _documentationBackgroundActive = true;
+      }
+    }
     if (!_mapForeground && !_fieldSession) return;
     await _reconcileTracking(forceRestartLocation: wasBackground);
   }
@@ -222,6 +270,7 @@ class LocationService extends ChangeNotifier {
       wantsLocation: wantsLocation,
       appForeground: _appForeground,
       backgroundExploring: _backgroundExploring,
+      documentationActive: _documentationBackgroundActive,
     )) {
       _stopStreams();
       _activeProfile = GpsProfile.fieldForeground;
@@ -235,6 +284,7 @@ class LocationService extends ChangeNotifier {
       mapForeground: _mapForeground,
       appForeground: _appForeground,
       backgroundExploring: _backgroundExploring,
+      documentationActive: _documentationBackgroundActive,
       stationary: isStationary,
     );
     final profileChanged = wantProfile != _activeProfile;
@@ -245,17 +295,18 @@ class LocationService extends ChangeNotifier {
   }
 
   void _scheduleStationaryCheck() {
-    if (!_backgroundExploring || _appForeground) {
+    if (!isBackgroundLocationActive || _appForeground) {
       _stationaryCheckTimer?.cancel();
       _stationaryCheckTimer = null;
       return;
     }
     _stationaryCheckTimer ??= Timer.periodic(const Duration(seconds: 15), (_) {
-      if (!_backgroundExploring || _appForeground) return;
+      if (!isBackgroundLocationActive || _appForeground) return;
       final want = resolveGpsProfile(
         mapForeground: _mapForeground,
         appForeground: _appForeground,
         backgroundExploring: _backgroundExploring,
+        documentationActive: _documentationBackgroundActive,
         stationary: isStationary,
       );
       if (want != _activeProfile) {
@@ -393,19 +444,23 @@ class LocationService extends ChangeNotifier {
       ),
     };
 
-    final allowBackground = _backgroundExploring && !_appForeground;
+    final allowBackground = isBackgroundLocationActive && !_appForeground;
 
     if (!kIsWeb && Platform.isAndroid) {
       return AndroidSettings(
         accuracy: accuracy,
         distanceFilter: distanceFilter,
         intervalDuration: interval,
-        foregroundNotificationConfig: _backgroundExploring
-            ? const ForegroundNotificationConfig(
-                notificationTitle: 'Exploring fossil sites',
-                notificationText:
-                    'Mesozoica is tracking your location for discoveries '
-                    'and walk XP. Turn off in Settings to stop.',
+        foregroundNotificationConfig: isBackgroundLocationActive
+            ? ForegroundNotificationConfig(
+                notificationTitle: _documentationBackgroundActive
+                    ? 'Documenting fossil site'
+                    : 'Exploring fossil sites',
+                notificationText: _documentationBackgroundActive
+                    ? 'Mesozoica is documenting an in-range site while the '
+                          'app is in the background.'
+                    : 'Mesozoica is tracking your location for discoveries '
+                          'and walk XP. Turn off in Settings to stop.',
                 notificationChannelName: 'Field exploring',
                 enableWakeLock: true,
                 setOngoing: true,
@@ -418,8 +473,9 @@ class LocationService extends ChangeNotifier {
       return AppleSettings(
         accuracy: accuracy,
         distanceFilter: distanceFilter,
-        allowBackgroundLocationUpdates: allowBackground || _backgroundExploring,
-        showBackgroundLocationIndicator: _backgroundExploring,
+        allowBackgroundLocationUpdates:
+            allowBackground || isBackgroundLocationActive,
+        showBackgroundLocationIndicator: isBackgroundLocationActive,
         pauseLocationUpdatesAutomatically: profile == GpsProfile.idleBackground,
         activityType: ActivityType.fitness,
       );
@@ -444,7 +500,7 @@ class LocationService extends ChangeNotifier {
       if (!permitted) {
         return;
       }
-      if (_backgroundExploring) {
+      if (isBackgroundLocationActive) {
         final alwaysOk = await _ensureAlwaysPermission();
         if (!alwaysOk && !_appForeground) {
           // Can't run background without Always — fall back to stopped.

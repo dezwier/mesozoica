@@ -31,7 +31,7 @@ class SiteDimensionBand:
     effective_accuracy: float
 
 
-_ACCURACY_PARAM = "documentation_accuracy"
+_ACCURACY_PARAM = "document_accuracy"
 
 
 def apply_dimension_accuracy_noise(
@@ -102,7 +102,7 @@ def resolve_site_stewardship_accuracies(*, skill_level: int = 1) -> dict[str, fl
     """
     cfg = get_game_config().site_stewardship
     value = resolve_scalar_main_param(
-        base=float(cfg.main_params.documentation_accuracy),
+        base=float(cfg.main_params.document_accuracy),
         level_entries=list(cfg.level_modifiers.get(_ACCURACY_PARAM, [])),
         skill_level=skill_level,
         clamp_unit=True,

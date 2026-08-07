@@ -15,8 +15,7 @@ void main() {
     expect(config.siteGeneration.client.nearbyRadiusKm, greaterThan(0));
 
     final disc = config.siteDiscovery;
-    expect(disc.discoveryDistanceM, greaterThan(0));
-    expect(disc.maxDistanceM, disc.discoveryDistanceM);
+    expect(disc.visibilityDistanceM, greaterThan(0));
     expect(disc.discoveryChance, greaterThan(0));
     expect(disc.discoveryChance, lessThanOrEqualTo(1));
     expect(disc.discoveryMaxSpeedKmh, greaterThan(0));
@@ -24,11 +23,11 @@ void main() {
     expect(disc.client.autoDiscoverRadiusM, greaterThan(0));
 
     final stew = config.siteStewardship;
-    expect(stew.mainParams.documentationAccuracy, greaterThan(0));
-    expect(stew.mainParams.documentationAccuracy, lessThanOrEqualTo(1));
-    expect(stew.mainParams.documentationDistanceM, greaterThan(0));
-    expect(stew.mainParams.discoverySpeed, 0.01);
-    final accMods = stew.levelModifiers['documentation_accuracy']!;
+    expect(stew.mainParams.documentAccuracy, greaterThan(0));
+    expect(stew.mainParams.documentAccuracy, lessThanOrEqualTo(1));
+    expect(stew.mainParams.visibilityDistanceM, greaterThan(0));
+    expect(stew.mainParams.documentSpeed, 0.01);
+    final accMods = stew.levelModifiers['document_accuracy']!;
     expect(accMods.length, greaterThanOrEqualTo(2));
     expect(accMods.first.op, 'multiply');
     final rivalMods = stew.levelModifiers['rival_discovery_chance']!;
@@ -105,7 +104,7 @@ void main() {
 
     expect(config.toolActions.ridgeGlass.durationMinutes, greaterThan(0));
     expect(
-      config.toolActions.ridgeGlass.siteDiscoveryMod('discovery_distance_m'),
+      config.toolActions.ridgeGlass.siteDiscoveryMod('visibility_distance_m'),
       isNotNull,
     );
     expect(
@@ -116,7 +115,7 @@ void main() {
       config.toolActions.ridgeGlass.siteDiscoveryMod('discovery_max_speed_kmh'),
       isNotNull,
     );
-    expect(config.toolActions.ridgeGlass.addedDiscoveryDistanceM, isNull);
+    expect(config.toolActions.ridgeGlass.addedVisibilityDistanceM, isNull);
     expect(config.toolActions.ridgeGlass.addedDiscoveryRate, isNull);
     expect(
       config.toolActions.ridgeGlass.modifiesMainParams?.affectsSkill(
@@ -135,7 +134,7 @@ void main() {
       expect(
         action.modifiesMainParams
             ?.paramsFor('using', 'field_survey')
-            .containsKey('documentation_distance_m'),
+            .containsKey('visibility_distance_m'),
         isTrue,
       );
     }
@@ -143,7 +142,7 @@ void main() {
     expect(config.toolActions.nocturneLens.durationMinutes, greaterThan(0));
     expect(config.toolActions.nocturneLens.activeWeatherTimes, ['night']);
     expect(
-      config.toolActions.nocturneLens.siteDiscoveryMod('discovery_distance_m'),
+      config.toolActions.nocturneLens.siteDiscoveryMod('visibility_distance_m'),
       isNotNull,
     );
     expect(
@@ -166,8 +165,8 @@ void main() {
 
     expect(GameConfig.isLoaded, isTrue);
     expect(
-      GameConfig.instance.siteDiscovery.maxDistanceM,
-      disc.discoveryDistanceM,
+      GameConfig.instance.siteDiscovery.visibilityDistanceM,
+      disc.visibilityDistanceM,
     );
   });
 

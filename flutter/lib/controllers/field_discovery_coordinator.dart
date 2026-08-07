@@ -59,7 +59,7 @@ class FieldDiscoveryCoordinator extends ChangeNotifier {
     final override = _discoverRadiusOverrideM;
     if (override != null && override > 0) return override;
     if (GameConfig.isLoaded) {
-      return GameConfig.instance.siteDiscovery.discoveryDistanceM;
+      return GameConfig.instance.siteDiscovery.visibilityDistanceM;
     }
     return autoDiscoverRadiusM;
   }

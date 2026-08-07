@@ -92,12 +92,12 @@ class ToolSession {
 
   double? get flightDiscoveryDistanceM =>
       (params['flight_discovery_distance_m'] as num?)?.toDouble() ??
-      (params['discovery_distance_m'] as num?)?.toDouble();
+      (params['visibility_distance_m'] as num?)?.toDouble();
 
   /// Back-compat aliases.
   double? get discoveryChance => flightDiscoveryChance;
 
-  double? get discoveryDistanceM => flightDiscoveryDistanceM;
+  double? get visibilityDistanceM => flightDiscoveryDistanceM;
 
   int get durationMinutes => (params['duration_minutes'] as num?)?.toInt() ?? 0;
 

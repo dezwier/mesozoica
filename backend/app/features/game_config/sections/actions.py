@@ -24,7 +24,7 @@ class AerialActionConfig(BaseModel):
     short_route_warn_fraction: float = 0.7
     stats_explanation: str = (
         "Duration caps how far you can draw (speed × duration). Flight time is "
-        "drawn length ÷ speed. Sites within flight discovery distance are rolled "
+        "drawn length ÷ speed. Sites within flight visibility distance are rolled "
         "at the listed chance."
     )
 
@@ -390,7 +390,7 @@ class MainParamBuffActionConfig(BaseModel):
 
     @property
     def added_visibility_range_m(self) -> float | None:
-        mod = self._using_site_discovery_mod("discovery_distance_m")
+        mod = self._using_site_discovery_mod("visibility_distance_m")
         if mod is None or mod.op != "add":
             return None
         return float(mod.value)

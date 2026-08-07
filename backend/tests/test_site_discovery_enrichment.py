@@ -115,7 +115,7 @@ def test_discover_site_sets_walk_and_enriches(session: Session, monkeypatch):
             "P",
             (),
             {
-                "max_distance_m": 500.0,
+                "visibility_distance_m": 500.0,
                 "discovery_chance": 1.0,
                 "base_discovery_chance": 1.0,
                 "discover_site_xp": 20.0,
@@ -174,7 +174,7 @@ def test_second_discoverer_skips_discover_site_as_first_xp(session: Session, mon
             "P",
             (),
             {
-                "max_distance_m": 500.0,
+                "visibility_distance_m": 500.0,
                 "discovery_chance": 1.0,
                 "base_discovery_chance": 1.0,
                 "discover_site_xp": 20.0,
@@ -242,7 +242,7 @@ def test_orphan_how_discovered_does_not_block_first_xp(session: Session, monkeyp
             "P",
             (),
             {
-                "max_distance_m": 500.0,
+                "visibility_distance_m": 500.0,
                 "discovery_chance": 1.0,
                 "base_discovery_chance": 1.0,
                 "discover_site_xp": 20.0,

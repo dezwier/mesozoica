@@ -134,7 +134,7 @@ def test_tool_actions_yaml_loads_nocturne_lens_knobs() -> None:
     cfg = get_game_config().tool_actions.nocturne_lens
     assert cfg.duration_minutes > 0
     assert cfg.active_weather_times == ("night",)
-    assert cfg.site_discovery_mod("discovery_distance_m") is not None
+    assert cfg.site_discovery_mod("visibility_distance_m") is not None
     assert cfg.site_discovery_mod("discovery_chance") is not None
     assert cfg.site_discovery_mod("discovery_max_speed_kmh") is None
     assert cfg.is_active_for_weather_time("night")
@@ -189,7 +189,7 @@ def test_start_nocturne_at_night_snapshots_gate(
     assert body["params"]["active_weather_times"] == ["night"]
     mods = body["params"]["modifies_main_params"]["using"]["field_survey"]
     cfg = get_game_config().tool_actions.nocturne_lens
-    for key in ("discovery_distance_m", "discovery_chance"):
+    for key in ("visibility_distance_m", "discovery_chance"):
         expected = cfg.site_discovery_mod(key)
         assert expected is not None
         assert mods[key] == {"op": expected.op, "value": expected.value}
@@ -239,18 +239,18 @@ def test_nocturne_boosts_at_night_and_autostops_at_dusk(
     disc = get_game_config().site_discovery
     nocturne = get_game_config().tool_actions.nocturne_lens
     night_dist_mods = list(
-        (disc.weather_time_modifiers.get("discovery_distance_m") or {}).get(
+        (disc.weather_time_modifiers.get("visibility_distance_m") or {}).get(
             "night", []
         )
     )
     night_chance_mods = list(
         (disc.weather_time_modifiers.get("discovery_chance") or {}).get("night", [])
     )
-    dist_tool = nocturne.site_discovery_mod("discovery_distance_m")
+    dist_tool = nocturne.site_discovery_mod("visibility_distance_m")
     chance_tool = nocturne.site_discovery_mod("discovery_chance")
     assert dist_tool is not None and chance_tool is not None
     expected_dist = apply_ambient_modifiers(
-        float(disc.discovery_distance_m), night_dist_mods
+        float(disc.visibility_distance_m), night_dist_mods
     )
     expected_dist = apply_modifier(expected_dist, dist_tool)
     expected_chance = apply_ambient_modifiers(
@@ -258,7 +258,7 @@ def test_nocturne_boosts_at_night_and_autostops_at_dusk(
     )
     expected_chance = apply_modifier(expected_chance, chance_tool)
     expected_chance = min(1.0, max(0.0, expected_chance))
-    assert night_params.discovery_distance_m == pytest.approx(expected_dist)
+    assert night_params.visibility_distance_m == pytest.approx(expected_dist)
     assert night_params.base_discovery_chance == pytest.approx(expected_chance)
 
     monkeypatch.setattr(
@@ -278,8 +278,8 @@ def test_nocturne_boosts_at_night_and_autostops_at_dusk(
     dusk_resolved = resolve_site_discovery_main_params(
         skill_level=1, weather_time="dusk"
     )
-    assert dusk_params.discovery_distance_m == pytest.approx(
-        dusk_resolved["discovery_distance_m"]
+    assert dusk_params.visibility_distance_m == pytest.approx(
+        dusk_resolved["visibility_distance_m"]
     )
     assert dusk_params.base_discovery_chance == pytest.approx(
         dusk_resolved["discovery_chance"]

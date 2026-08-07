@@ -150,7 +150,7 @@ class AerialActionConfig {
           statsExplanation:
               'Duration is this card\'s lifetime battery. Remaining time caps how far '
               'you can draw (speed × remaining). Flight time is drawn length ÷ speed. '
-              'Sites within flight discovery distance are rolled at the listed chance.',
+              'Sites within flight visibility distance are rolled at the listed chance.',
         );
     return AerialActionConfig(
       durationMinutes: configAsInt(yaml['duration_minutes'], d.durationMinutes),
@@ -167,7 +167,7 @@ class AerialActionConfig {
         d.flightDiscoveryChance,
       ),
       flightDiscoveryDistanceM: configAsDouble(
-        yaml['flight_discovery_distance_m'] ?? yaml['discovery_distance_m'],
+        yaml['flight_discovery_distance_m'] ?? yaml['visibility_distance_m'],
         d.flightDiscoveryDistanceM,
       ),
       ensureTimeoutS: configAsInt(yaml['ensure_timeout_s'], d.ensureTimeoutS),

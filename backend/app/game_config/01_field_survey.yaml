@@ -5,8 +5,9 @@ skill_id: field_survey
 
 main_params:
   # --- discovery ---
-  # Server enforces this on POST /sites/{id}/discover (and set-status).
-  discovery_distance_m: 20.0
+  # Shared discovery/documentation radius. The server enforces this on
+  # POST /sites/{id}/discover (and set-status).
+  visibility_distance_m: 20.0
   # P(success) per discover attempt (walk-in enter or dwell re-roll).
   discovery_chance: 0.1
   # Max GPS speed for walk XP credit and walk-in / dwell discovery rolls.
@@ -27,16 +28,14 @@ main_params:
   # Card display estimation baseline for all odd_* axes (0 = full-axis blur,
   # 1 = exact). Base 1%; level multiplies (L50 → 50%). Per-axis noise stays
   # separate via accuracy_noise.
-  documentation_accuracy: 0.01
+  document_accuracy: 0.01
   # Multiplier on discovery_chance for other users on sites where you have any
   # status above hidden (discovered, documented, excavated, …).
   # Level multiplies ×1.0 → ×0.5 from L1 → L99; tools multiply further on a covered site.
   rival_discovery_chance: 1
-  # Radius around an identified site where time accrues documentation progress.
-  documentation_distance_m: 50.0
   # Unit-interval documentation progress added per eligible second in range.
   # 0.01 = one percentage point per second.
-  discovery_speed: 0.01
+  document_speed: 0.01
   # XP when a rival discovery roll would have hit but your disguise blocked it
   # (Brush Scrim / Blackout Cover). Scrim still rolls; effective odds are 0.
   disguise_of_site_xp: 20
@@ -53,19 +52,18 @@ main_params:
 # between adjacent entries (endpoints alone are enough for a straight ramp).
 level_modifiers:
   # Reach / chance: ×1.0 at L1 → ×1.5 at L99.
-  discovery_distance_m: &field_survey_reach_levels
+  visibility_distance_m: &field_survey_reach_levels
     - { level: 1, op: multiply, value: 1 }
     - { level: 99, op: multiply, value: 1.5 }
   discovery_chance: *field_survey_reach_levels
-  documentation_distance_m: *field_survey_reach_levels
-  discovery_speed: []
+  document_speed: []
   discovery_max_speed_kmh: []
   rival_discovery_chance:
     - { level: 1, op: multiply, value: 1 }
     - { level: 99, op: multiply, value: 0.5 }
 
   # Estimation: base 0.01 × skill level (L1 → 1%, L50 → 50%, L99 → 99%).
-  documentation_accuracy:
+  document_accuracy:
     - { level: 1, op: multiply, value: 1 }
     - { level: 99, op: multiply, value: 99 }
 
@@ -81,7 +79,7 @@ level_modifiers:
 
 # Ambient solar period (dawn|day|dusk|golden_hour|night). After level, before weather_type + tools.
 weather_time_modifiers:
-  discovery_distance_m: &field_survey_weather_time
+  visibility_distance_m: &field_survey_weather_time
     day: [{ op: multiply, value: 1.1 }]
     golden_hour: [{ op: multiply, value: 1.3 }]
     dawn: []
@@ -89,8 +87,7 @@ weather_time_modifiers:
     night: [{ op: multiply, value: 0.6 }]
   discovery_chance: *field_survey_weather_time
   discovery_max_speed_kmh: {}
-  documentation_distance_m: *field_survey_weather_time
-  discovery_speed: {}
+  document_speed: {}
 
   # XP: day +0%, golden_hour +30%, dawn/dusk +10%, night +20%.  
   explore_100m_actively_xp: &field_survey_weather_time_xp
@@ -106,7 +103,7 @@ weather_time_modifiers:
 
 # Ambient weather type (clear|cloudy|…). After weather_time, before tools.
 weather_type_modifiers:
-  discovery_distance_m: &field_survey_weather_type
+  visibility_distance_m: &field_survey_weather_type
     clear: [{ op: multiply, value: 1.1 }]
     cloudy: [{ op: multiply, value: 1.05 }]
     overcast: []
@@ -118,8 +115,7 @@ weather_type_modifiers:
     snow: [{ op: multiply, value: 0.85 }]
   discovery_chance: *field_survey_weather_type
   discovery_max_speed_kmh: {}
-  documentation_distance_m: *field_survey_weather_type
-  discovery_speed: {}
+  document_speed: {}
 
   # XP multipliers
   explore_100m_actively_xp: &field_survey_weather_type_xp

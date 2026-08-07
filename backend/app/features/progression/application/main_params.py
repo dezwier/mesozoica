@@ -177,8 +177,8 @@ def resolve_field_survey_main_params(
         )
 
     return {
-        "discovery_distance_m": _resolve(
-            "discovery_distance_m", base=float(mp.discovery_distance_m)
+        "visibility_distance_m": _resolve(
+            "visibility_distance_m", base=float(mp.visibility_distance_m)
         ),
         "discovery_chance": _resolve(
             "discovery_chance", base=float(mp.discovery_chance), clamp_unit=True
@@ -194,19 +194,16 @@ def resolve_field_survey_main_params(
         ),
         "explore_100m_actively_xp": _resolve("explore_100m_actively_xp", base=float(mp.explore_100m_actively_xp)),
         "explore_100m_passively_xp": _resolve("explore_100m_passively_xp", base=float(mp.explore_100m_passively_xp)),
-        "documentation_accuracy": _resolve(
-            "documentation_accuracy",
-            base=float(mp.documentation_accuracy),
+        "document_accuracy": _resolve(
+            "document_accuracy",
+            base=float(mp.document_accuracy),
             clamp_unit=True,
         ),
         "rival_discovery_chance": _resolve(
             "rival_discovery_chance", base=float(mp.rival_discovery_chance)
         ),
-        "documentation_distance_m": _resolve(
-            "documentation_distance_m", base=float(mp.documentation_distance_m)
-        ),
-        "discovery_speed": _resolve(
-            "discovery_speed", base=float(mp.discovery_speed)
+        "document_speed": _resolve(
+            "document_speed", base=float(mp.document_speed)
         ),
         "disguise_of_site_xp": _resolve(
             "disguise_of_site_xp",
@@ -242,7 +239,7 @@ def resolve_site_discovery_main_params(
         tool_mods=tool_mods,
     )
     keys = (
-        "discovery_distance_m",
+        "visibility_distance_m",
         "discovery_chance",
         "discovery_max_speed_kmh",
         "discover_site_xp",
@@ -267,10 +264,10 @@ def resolve_site_stewardship_main_params(
         tool_mods=tool_mods,
     )
     keys = (
-        "documentation_accuracy",
+        "document_accuracy",
         "rival_discovery_chance",
-        "documentation_distance_m",
-        "discovery_speed",
+        "visibility_distance_m",
+        "document_speed",
         "disguise_of_site_xp",
         "document_site_xp",
         "document_site_as_first_xp",

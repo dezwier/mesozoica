@@ -40,8 +40,7 @@ def test_resolve_site_discovery_params_baseline(session: Session) -> None:
     site = _seed_site(session)
     params = resolve_site_discovery_params(session, user_id=1, site=site)
     cfg = get_game_config().site_discovery
-    assert params.discovery_distance_m == cfg.discovery_distance_m
-    assert params.max_distance_m == cfg.discovery_distance_m
+    assert params.visibility_distance_m == cfg.visibility_distance_m
     assert params.discovery_chance == cfg.discovery_chance
 
 
@@ -60,7 +59,7 @@ def test_resolve_site_discovery_params_boost_hook(
         # Example future boost: +period affinity
         chance = min(1.0, cfg.discovery_chance * 2.0)
         return ResolvedSiteDiscoveryParams(
-            discovery_distance_m=cfg.discovery_distance_m,
+            visibility_distance_m=cfg.visibility_distance_m,
             discovery_chance=chance,
             base_discovery_chance=chance,
             discover_site_xp=cfg.discover_site_xp,

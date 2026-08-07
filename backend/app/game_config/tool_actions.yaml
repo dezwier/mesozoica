@@ -9,7 +9,7 @@
 #   Ops:
 #     replace  — set absolute value (e.g. discovery_chance → 0.9)
 #     multiply — scale base (e.g. 1.1 = +10%)
-#     add      — offset base (e.g. discovery_distance_m + 50)
+#     add      — offset base (e.g. visibility_distance_m + 50)
 # Guidance tools (compass / navigator) use `using` / field_survey today.
 
 aerial_recon:
@@ -22,7 +22,7 @@ aerial_recon:
   short_route_warn_fraction: 0.7
   stats_explanation: Duration is this card's lifetime battery. Remaining time caps how far
     you can draw (speed × remaining). Flight time is drawn length ÷ speed. Sites within flight
-    discovery distance are rolled at the listed chance.
+    visibility distance are rolled at the listed chance.
 aerial_scout:
   duration_minutes: 10
   loop_endpoint_tolerance_m: 75
@@ -33,7 +33,7 @@ aerial_scout:
   short_route_warn_fraction: 0.7
   stats_explanation: Duration is this card's lifetime battery. Remaining time caps how far
     you can draw (speed × remaining). Flight time is drawn length ÷ speed. Sites within flight
-    discovery distance are rolled at the listed chance.
+    visibility distance are rolled at the listed chance.
 geo_compass:
   exactness: 0.0
   duration_minutes: 15
@@ -113,7 +113,7 @@ ridge_glass:
   modifies_main_params:
     using:
       field_survey:
-        discovery_distance_m: { op: multiply, value: 1.3 }
+        visibility_distance_m: { op: multiply, value: 1.3 }
         discovery_chance: { op: multiply, value: 1.3 }
         discovery_max_speed_kmh: { op: multiply, value: 0.7 }
   stats_explanation: Duration is this card's lifetime battery; each use runs until you stop
@@ -124,52 +124,48 @@ trail_striders:
   modifies_main_params:
     using:
       field_survey:
-        discovery_distance_m: { op: multiply, value: 0.95 }
+        visibility_distance_m: { op: multiply, value: 0.95 }
         discovery_chance: { op: multiply, value: 0.95 }
         discovery_max_speed_kmh: { op: multiply, value: 2.0 }
-        documentation_distance_m: { op: multiply, value: 0.95 }
   stats_explanation: Duration is this card's lifetime battery; each use runs until you stop
     or time runs out. While active, raises max discovery speed by 100% so a fast jog still
-    counts toward discovery distance, but discover visibility, walk-in chance, and site exploration
+    counts toward visibility distance, but discover visibility, walk-in chance, and site exploration
     radius drop 5%.
 expedition_drivetrain:
   duration_minutes: 60
   modifies_main_params:
     using:
       field_survey:
-        discovery_distance_m: { op: multiply, value: 0.9 }
+        visibility_distance_m: { op: multiply, value: 0.9 }
         discovery_chance: { op: multiply, value: 0.9 }
         discovery_max_speed_kmh: { op: multiply, value: 3.0 }
-        documentation_distance_m: { op: multiply, value: 0.9 }
   stats_explanation: Duration is this card's lifetime battery; each use runs until you stop
     or time runs out. While active, raises max discovery speed by 200% so bicycle travel still
-    counts toward discovery distance, but discover visibility, walk-in chance, and site exploration
+    counts toward visibility distance, but discover visibility, walk-in chance, and site exploration
     radius drop 10%.
 canyon_throttle:
   duration_minutes: 60
   modifies_main_params:
     using:
       field_survey:
-        discovery_distance_m: { op: multiply, value: 0.85 }
+        visibility_distance_m: { op: multiply, value: 0.85 }
         discovery_chance: { op: multiply, value: 0.85 }
         discovery_max_speed_kmh: { op: multiply, value: 4.0 }
-        documentation_distance_m: { op: multiply, value: 0.85 }
   stats_explanation: Duration is this card's lifetime battery; each use runs until you stop
     or time runs out. While active, raises max discovery speed by 300% so motorcycle travel
-    still counts toward discovery distance, but discover visibility, walk-in chance, and site
+    still counts toward visibility distance, but discover visibility, walk-in chance, and site
     exploration radius drop 15%.
 overland_chassis:
   duration_minutes: 60
   modifies_main_params:
     using:
       field_survey:
-        discovery_distance_m: { op: multiply, value: 0.8 }
+        visibility_distance_m: { op: multiply, value: 0.8 }
         discovery_chance: { op: multiply, value: 0.8 }
         discovery_max_speed_kmh: { op: multiply, value: 5.0 }
-        documentation_distance_m: { op: multiply, value: 0.8 }
   stats_explanation: Duration is this card's lifetime battery; each use runs until you stop
     or time runs out. While active, raises max discovery speed by 400% so 4x4 travel still
-    counts toward discovery distance, but discover visibility, walk-in chance, and site exploration
+    counts toward visibility distance, but discover visibility, walk-in chance, and site exploration
     radius drop 20%.
 nocturne_lens:
   duration_minutes: 60
@@ -178,7 +174,7 @@ nocturne_lens:
   modifies_main_params:
     using:
       field_survey:
-        discovery_distance_m: { op: multiply, value: 1.4 }
+        visibility_distance_m: { op: multiply, value: 1.4 }
         discovery_chance: { op: multiply, value: 1.4 }
   stats_explanation: Lifetime battery; only starts and runs at night. Boosts visibility range
     and walk-in discovery chance by 40%. Stops automatically when night ends (dawn / day /

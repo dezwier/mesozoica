@@ -426,7 +426,7 @@ class _AppShellState extends State<AppShell>
       ),
     );
     exploration.updateDiscoverySpeed(
-      resolveSiteStewardshipDiscoverySpeed(
+      resolveSiteStewardshipDocumentSpeed(
         skillLevel: 1,
         weatherTime: weatherTime,
         weatherType: _weather?.status?.weatherType,

@@ -21,7 +21,7 @@ from app.services.weather_service.solar import period_at
 
 
 def _stub_overcast_weather(monkeypatch) -> None:
-    """Neutral weather/time so discovery_distance_m stays at YAML base (20 m)."""
+    """Neutral weather/time so visibility_distance_m stays at YAML base (20 m)."""
 
     def _fake(*, lat: float, lon: float) -> WeatherSnapshot:
         return WeatherSnapshot(

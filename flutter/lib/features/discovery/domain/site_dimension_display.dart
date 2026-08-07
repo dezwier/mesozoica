@@ -102,7 +102,7 @@ bool siteIsFullyDocumented({
   required int skillLevel,
   required double documentationProgress,
 }) {
-  const accuracyParam = 'documentation_accuracy';
+  const accuracyParam = 'document_accuracy';
   final values = <SiteDimensionKey, double?>{
     SiteDimensionKey.dino: oddDinoCount,
     SiteDimensionKey.fossil: oddFossilCount,
@@ -147,7 +147,7 @@ double siteDocumentationAverageAccuracy({
   final skillAcc =
       resolveSiteStewardshipAccuracies(
         skillLevel: skillLevel,
-      )['documentation_accuracy'] ??
+      )['document_accuracy'] ??
       0.0;
   var total = 0.0;
   for (final dimension in SiteDimensionKey.values) {

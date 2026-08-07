@@ -24,7 +24,10 @@ from app.models.user_site import (
     UserSite,
 )
 from app.features.accounts.public import send_site_discovered_push
-from app.features.sites.application.discover import _site_label, discover_max_distance_m
+from app.features.sites.application.discover import (
+    _site_label,
+    discover_visibility_distance_m,
+)
 from app.features.field.public import (
     apply_site_discovery_enrichment,
     DiscoverFossilOnboardResult,
@@ -91,13 +94,13 @@ def set_site_status(
     if not skip_distance_check:
         if lat is None or lon is None:
             raise ValidationError("lat and lon are required to set this status")
-        max_distance_m = discover_max_distance_m()
+        visibility_distance_m = discover_visibility_distance_m()
         distance_km = haversine_km(
             lat, lon, float(site.latitude), float(site.longitude)
         )
-        if distance_km > max_distance_m / 1000.0:
+        if distance_km > visibility_distance_m / 1000.0:
             raise ValidationError(
-                f"Must be within {int(max_distance_m)} m of the site "
+                f"Must be within {int(visibility_distance_m)} m of the site "
                 f"to set status to {normalized}"
             )
 

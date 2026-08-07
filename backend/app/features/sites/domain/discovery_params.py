@@ -22,16 +22,11 @@ from app.features.weather.public import period_at
 
 @dataclass(frozen=True)
 class ResolvedSiteDiscoveryParams:
-    discovery_distance_m: float
+    visibility_distance_m: float
     discovery_chance: float  # effective (disguise-applied), clamped 0..1
     base_discovery_chance: float  # before rival disguise multiplier
     discover_site_xp: float
     discover_site_as_first_xp: float
-
-    # Back-compat alias.
-    @property
-    def max_distance_m(self) -> float:
-        return self.discovery_distance_m
 
 
 def nearest_discoverable_site_id(
@@ -168,7 +163,7 @@ def resolve_site_discovery_params(
         discovery_chance = max(0.0, min(1.0, base_chance * mult))
 
     return ResolvedSiteDiscoveryParams(
-        discovery_distance_m=float(resolved["discovery_distance_m"]),
+        visibility_distance_m=float(resolved["visibility_distance_m"]),
         discovery_chance=discovery_chance,
         base_discovery_chance=base_chance,
         discover_site_xp=float(resolved["discover_site_xp"]),

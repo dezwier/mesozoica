@@ -232,7 +232,7 @@ def start_aerial_session(
                 inst_p.get(
                     "flight_discovery_distance_m",
                     inst_p.get(
-                        "discovery_distance_m", cfg.flight_discovery_distance_m
+                        "visibility_distance_m", cfg.flight_discovery_distance_m
                     ),
                 )
             ),
@@ -432,7 +432,7 @@ def _promote_to_active(session: Session, row: ToolSession) -> None:
     distance_m = float(
         params.get(
             "flight_discovery_distance_m",
-            params.get("discovery_distance_m", cfg.flight_discovery_distance_m),
+            params.get("visibility_distance_m", cfg.flight_discovery_distance_m),
         )
     )
     max_dist_km = distance_m / 1000.0
@@ -556,7 +556,7 @@ def process_due_events(
             params.get(
                 "flight_discovery_distance_m",
                 params.get(
-                    "discovery_distance_m", cfg.flight_discovery_distance_m
+                    "visibility_distance_m", cfg.flight_discovery_distance_m
                 ),
             )
         )

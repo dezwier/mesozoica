@@ -12,7 +12,7 @@ class AerialFlightStats extends StatelessWidget {
     required this.flightSpeedKmh,
     required this.durationMinutes,
     required this.discoveryChance,
-    required this.discoveryDistanceM,
+    required this.visibilityDistanceM,
     this.explanation,
     this.compact = false,
   });
@@ -30,7 +30,7 @@ class AerialFlightStats extends StatelessWidget {
       flightSpeedKmh: cfg.flightSpeedKmh,
       durationMinutes: cfg.durationMinutes,
       discoveryChance: cfg.flightDiscoveryChance,
-      discoveryDistanceM: cfg.flightDiscoveryDistanceM,
+      visibilityDistanceM: cfg.flightDiscoveryDistanceM,
       explanation: includeExplanation ? cfg.statsExplanation : null,
       compact: compact,
     );
@@ -52,9 +52,9 @@ class AerialFlightStats extends StatelessWidget {
           (params['flight_discovery_chance'] as num?)?.toDouble() ??
           (params['discovery_chance'] as num?)?.toDouble() ??
           0,
-      discoveryDistanceM:
+      visibilityDistanceM:
           (params['flight_discovery_distance_m'] as num?)?.toDouble() ??
-          (params['discovery_distance_m'] as num?)?.toDouble() ??
+          (params['visibility_distance_m'] as num?)?.toDouble() ??
           0,
       explanation: includeExplanation
           ? params['stats_explanation'] as String?
@@ -80,7 +80,7 @@ class AerialFlightStats extends StatelessWidget {
       durationMinutes: _minutesFromFlightSeconds(session.flightDurationS),
       discoveryChance:
           session.flightDiscoveryChance ?? cfg.flightDiscoveryChance,
-      discoveryDistanceM:
+      visibilityDistanceM:
           session.flightDiscoveryDistanceM ?? cfg.flightDiscoveryDistanceM,
       compact: compact,
     );
@@ -89,7 +89,7 @@ class AerialFlightStats extends StatelessWidget {
   final double flightSpeedKmh;
   final int durationMinutes;
   final double discoveryChance;
-  final double discoveryDistanceM;
+  final double visibilityDistanceM;
   final String? explanation;
   final bool compact;
 
@@ -99,7 +99,7 @@ class AerialFlightStats extends StatelessWidget {
       AerialFlightStatPair('Speed', _formatKmh(flightSpeedKmh)),
       AerialFlightStatPair('Duration', _formatDuration(durationMinutes)),
       AerialFlightStatPair('Flight chance', _formatChance(discoveryChance)),
-      AerialFlightStatPair('Flight range', _formatMeters(discoveryDistanceM)),
+      AerialFlightStatPair('Flight range', _formatMeters(visibilityDistanceM)),
     ];
 
     if (compact) {

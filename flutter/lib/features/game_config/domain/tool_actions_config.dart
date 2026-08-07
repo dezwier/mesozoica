@@ -155,7 +155,7 @@ class ToolActionsConfig {
           statsExplanation:
               'Duration is this card\'s lifetime battery. Remaining time caps how far '
               'you can draw (speed × remaining). Flight time is drawn length ÷ speed. '
-              'Sites within flight discovery distance are rolled at the listed chance.',
+              'Sites within flight visibility distance are rolled at the listed chance.',
         ),
       ),
       geoCompass: GuidanceActionConfig.fromYaml(
@@ -230,7 +230,7 @@ class ToolActionsConfig {
           modifiesMainParams: ModifiesMainParams(
             using: {
               'field_survey': {
-                'documentation_distance_m': ParamModifier(
+                'visibility_distance_m': ParamModifier(
                   op: 'multiply',
                   value: 0.95,
                 ),
@@ -239,7 +239,7 @@ class ToolActionsConfig {
           ),
           statsExplanation:
               'While active, raises max discovery speed by 100% so a fast jog '
-              'still counts toward discovery distance, but discover '
+              'still counts toward visibility distance, but discover '
               'visibility, walk-in chance, and site exploration radius drop 5%.',
         ),
       ),
@@ -250,7 +250,7 @@ class ToolActionsConfig {
           modifiesMainParams: ModifiesMainParams(
             using: {
               'field_survey': {
-                'documentation_distance_m': ParamModifier(
+                'visibility_distance_m': ParamModifier(
                   op: 'multiply',
                   value: 0.9,
                 ),
@@ -259,7 +259,7 @@ class ToolActionsConfig {
           ),
           statsExplanation:
               'While active, raises max discovery speed by 200% so bicycle '
-              'travel still counts toward discovery distance, but discover '
+              'travel still counts toward visibility distance, but discover '
               'visibility, walk-in chance, and site exploration radius drop 10%.',
         ),
       ),
@@ -270,7 +270,7 @@ class ToolActionsConfig {
           modifiesMainParams: ModifiesMainParams(
             using: {
               'field_survey': {
-                'documentation_distance_m': ParamModifier(
+                'visibility_distance_m': ParamModifier(
                   op: 'multiply',
                   value: 0.85,
                 ),
@@ -279,7 +279,7 @@ class ToolActionsConfig {
           ),
           statsExplanation:
               'While active, raises max discovery speed by 300% so motorcycle '
-              'travel still counts toward discovery distance, but discover '
+              'travel still counts toward visibility distance, but discover '
               'visibility, walk-in chance, and site exploration radius drop 15%.',
         ),
       ),
@@ -290,7 +290,7 @@ class ToolActionsConfig {
           modifiesMainParams: ModifiesMainParams(
             using: {
               'field_survey': {
-                'documentation_distance_m': ParamModifier(
+                'visibility_distance_m': ParamModifier(
                   op: 'multiply',
                   value: 0.8,
                 ),
@@ -299,7 +299,7 @@ class ToolActionsConfig {
           ),
           statsExplanation:
               'While active, raises max discovery speed by 400% so 4x4 travel '
-              'still counts toward discovery distance, but discover '
+              'still counts toward visibility distance, but discover '
               'visibility, walk-in chance, and site exploration radius drop 20%.',
         ),
       ),
@@ -311,7 +311,7 @@ class ToolActionsConfig {
           modifiesMainParams: ModifiesMainParams(
             using: {
               'field_survey': {
-                'discovery_distance_m': ParamModifier(
+                'visibility_distance_m': ParamModifier(
                   op: 'multiply',
                   value: 1.4,
                 ),

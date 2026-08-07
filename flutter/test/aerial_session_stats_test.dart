@@ -14,7 +14,7 @@ void main() {
         'flight_speed_kmh': 50,
         'max_route_km': 100,
         'discovery_chance': 0.02,
-        'discovery_distance_m': 200,
+        'visibility_distance_m': 200,
       },
       'state': {
         'route': [
@@ -33,7 +33,7 @@ void main() {
     expect(session.flightSpeedKmh, 50);
     expect(session.maxRouteKm, 100);
     expect(session.discoveryChance, 0.02);
-    expect(session.discoveryDistanceM, 200);
+    expect(session.visibilityDistanceM, 200);
     expect(session.discoveredSiteCount, 3);
     expect(session.route, hasLength(2));
     expect(session.route.first, const LatLng(40.0, -100.0));

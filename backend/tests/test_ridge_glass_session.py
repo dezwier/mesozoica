@@ -149,7 +149,7 @@ def test_tool_actions_yaml_loads_ridge_glass_knobs() -> None:
     get_game_config.cache_clear()
     cfg = get_game_config().tool_actions.ridge_glass
     assert cfg.duration_minutes == 60
-    vis = cfg.site_discovery_mod("discovery_distance_m")
+    vis = cfg.site_discovery_mod("visibility_distance_m")
     chance = cfg.site_discovery_mod("discovery_chance")
     speed = cfg.site_discovery_mod("discovery_max_speed_kmh")
     assert vis == ParamModifier(op="multiply", value=1.3)
@@ -160,7 +160,7 @@ def test_tool_actions_yaml_loads_ridge_glass_knobs() -> None:
     mods = cfg.modifies_main_params
     assert mods is not None
     assert mods.affects_skill("field_survey")
-    assert "discovery_distance_m" in mods.params_for("using", "field_survey")
+    assert "visibility_distance_m" in mods.params_for("using", "field_survey")
     assert "discovery_chance" in mods.params_for("using", "field_survey")
     assert "discovery_max_speed_kmh" in mods.params_for("using", "field_survey")
 
@@ -183,7 +183,7 @@ def test_start_ridge_glass_session_snapshots_and_replaces(
     assert body["status"] == SESSION_STATUS_ACTIVE
     assert body["params"]["duration_minutes"] == 60
     mods = body["params"]["modifies_main_params"]["using"]["field_survey"]
-    assert mods["discovery_distance_m"] == {"op": "multiply", "value": 1.3}
+    assert mods["visibility_distance_m"] == {"op": "multiply", "value": 1.3}
     assert mods["discovery_chance"] == {"op": "multiply", "value": 1.3}
 
     second = client.post(
@@ -259,7 +259,7 @@ def test_ridge_glass_boosts_all_sites_globally(
         weather_type="overcast",
         tool_mods=tool_mods,
     )
-    expected_visibility = expected["discovery_distance_m"]
+    expected_visibility = expected["visibility_distance_m"]
     expected_chance = expected["discovery_chance"]
 
     near_params = resolve_site_discovery_params(
@@ -276,9 +276,9 @@ def test_ridge_glass_boosts_all_sites_globally(
         lat=40.0,
         lon=-100.0,
     )
-    assert near_params.discovery_distance_m == expected_visibility
+    assert near_params.visibility_distance_m == expected_visibility
     assert near_params.discovery_chance == expected_chance
-    assert far_params.discovery_distance_m == expected_visibility
+    assert far_params.visibility_distance_m == expected_visibility
     assert far_params.discovery_chance == expected_chance
 
 
@@ -306,7 +306,7 @@ def test_expired_ridge_glass_session_ignored(
                 "modifies_main_params": {
                     "using": {
                         "field_survey": {
-                            "discovery_distance_m": {
+                            "visibility_distance_m": {
                                 "op": "add",
                                 "value": 20.0,
                             },
@@ -334,7 +334,7 @@ def test_expired_ridge_glass_session_ignored(
         lat=42.0,
         lon=-102.0,
     )
-    assert params.discovery_distance_m == baseline["discovery_distance_m"]
+    assert params.visibility_distance_m == baseline["visibility_distance_m"]
     assert params.discovery_chance == baseline["discovery_chance"]
     assert (
         get_active_timed_session(
@@ -385,12 +385,8 @@ def test_start_expedition_drivetrain_session(client, session: Session) -> None:
     assert body["status"] == SESSION_STATUS_ACTIVE
     mods = body["params"]["modifies_main_params"]["using"]["field_survey"]
     assert mods["discovery_max_speed_kmh"] == {"op": "multiply", "value": 3.0}
-    assert mods["discovery_distance_m"] == {"op": "multiply", "value": 0.9}
+    assert mods["visibility_distance_m"] == {"op": "multiply", "value": 0.9}
     assert mods["discovery_chance"] == {"op": "multiply", "value": 0.9}
-    stewardship = body["params"]["modifies_main_params"]["using"][
-        "field_survey"
-    ]
-    assert stewardship["documentation_distance_m"] == {"op": "multiply", "value": 0.9}
 
 
 def test_start_trail_striders_session(client, session: Session) -> None:
@@ -405,11 +401,7 @@ def test_start_trail_striders_session(client, session: Session) -> None:
     assert body["action_key"] == "trail_striders"
     mods = body["params"]["modifies_main_params"]["using"]["field_survey"]
     assert mods["discovery_max_speed_kmh"] == {"op": "multiply", "value": 2.0}
-    assert mods["discovery_distance_m"] == {"op": "multiply", "value": 0.95}
-    stewardship = body["params"]["modifies_main_params"]["using"][
-        "field_survey"
-    ]
-    assert stewardship["documentation_distance_m"] == {"op": "multiply", "value": 0.95}
+    assert mods["visibility_distance_m"] == {"op": "multiply", "value": 0.95}
 
 
 def test_start_canyon_throttle_session(client, session: Session) -> None:
@@ -424,7 +416,7 @@ def test_start_canyon_throttle_session(client, session: Session) -> None:
     assert body["action_key"] == "canyon_throttle"
     mods = body["params"]["modifies_main_params"]["using"]["field_survey"]
     assert mods["discovery_max_speed_kmh"] == {"op": "multiply", "value": 4.0}
-    assert mods["discovery_distance_m"] == {"op": "multiply", "value": 0.85}
+    assert mods["visibility_distance_m"] == {"op": "multiply", "value": 0.85}
 
 
 def test_start_overland_chassis_session(client, session: Session) -> None:
@@ -439,7 +431,7 @@ def test_start_overland_chassis_session(client, session: Session) -> None:
     assert body["action_key"] == "overland_chassis"
     mods = body["params"]["modifies_main_params"]["using"]["field_survey"]
     assert mods["discovery_max_speed_kmh"] == {"op": "multiply", "value": 5.0}
-    assert mods["discovery_distance_m"] == {"op": "multiply", "value": 0.8}
+    assert mods["visibility_distance_m"] == {"op": "multiply", "value": 0.8}
 
 
 def test_tool_actions_yaml_loads_expedition_drivetrain_knobs() -> None:
@@ -448,7 +440,7 @@ def test_tool_actions_yaml_loads_expedition_drivetrain_knobs() -> None:
     assert cfg.duration_minutes == 60
     speed = cfg.site_discovery_mod("discovery_max_speed_kmh")
     assert speed == ParamModifier(op="multiply", value=3.0)
-    assert cfg.site_discovery_mod("discovery_distance_m") == ParamModifier(
+    assert cfg.site_discovery_mod("visibility_distance_m") == ParamModifier(
         op="multiply", value=0.9
     )
     assert cfg.site_discovery_mod("discovery_chance") == ParamModifier(
@@ -459,5 +451,5 @@ def test_tool_actions_yaml_loads_expedition_drivetrain_knobs() -> None:
     assert mods.affects_skill("field_survey")
     assert mods.affects_skill("field_survey")
     assert mods.params_for("using", "field_survey")[
-        "documentation_distance_m"
+        "visibility_distance_m"
     ] == ParamModifier(op="multiply", value=0.9)

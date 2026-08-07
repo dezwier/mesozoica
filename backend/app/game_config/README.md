@@ -46,10 +46,10 @@ level_modifiers:              # keyframes; values lerp between levels
     - { level: 1, op: multiply, value: 1 }
     - { level: 99, op: multiply, value: 0.5 }
 weather_time_modifiers:       # keyed by solar period; identity if omitted/empty
-  discovery_distance_m:
+  visibility_distance_m:
     day: [{ op: multiply, value: 1.1 }]
 weather_type_modifiers:       # keyed by weather type; identity if omitted/empty
-  discovery_distance_m:
+  visibility_distance_m:
     clear: [{ op: multiply, value: 1.1 }]
 client: { ... }               # non-main implementation knobs (optional)
 ```
@@ -102,7 +102,7 @@ name under each main_param. All list entries for the current key apply in order
 
 | main_param | Meaning |
 |------------|---------|
-| `discovery_distance_m` | Discovery distance — walk-in discover radius (was `max_distance_m`) |
+| `visibility_distance_m` | Visibility distance — shared walk-in discovery and identified-site documentation radius |
 | `discovery_chance` | P(success) per attempt (enter or dwell re-roll) |
 | `discovery_max_speed_kmh` | Discovery max speed — GPS speed cap for walk XP credit and discovery dice rolls |
 | `discover_site_xp` | XP awarded when a site is discovered |
@@ -118,7 +118,7 @@ Client-only (not main params): `discovery_reroll_interval_s` — seconds between
 re-rolls while staying inside the discover radius (default 10). Walk-in still
 rolls immediately; app-open already inside does not (dwell timer starts).
 
-The location-puck pulse max radius is the effective `discovery_distance_m`
+The location-puck pulse max radius is the effective `visibility_distance_m`
 (base → level → weather_time → weather_type → owning/using tool mods), converted
 to screen pixels at the current map zoom so the ring matches the real discover
 range. Site Discovery visibility and discovery chance share the same ambient
@@ -140,17 +140,17 @@ resolvable):
 
 | Key | Meaning |
 |-----|---------|
-| `documentation_accuracy` | Documentation accuracy — shared skill baseline for all five odd_* axes (base 1% × skill level; depth 0 always exact). Per-axis jitter stays in `accuracy_noise` |
+| `document_accuracy` | Document accuracy — shared skill baseline for all five odd_* axes (base 1% × skill level; depth 0 always exact). Per-axis jitter stays in `accuracy_noise` |
 | `rival_discovery_chance` | Rival discovery chance — multiplier on discovery_chance for rivals on sites where you have any status above hidden (×1 at L1 → ×0.5 at L99) |
-| `documentation_distance_m` | Documentation distance — radius around an identified site where time accrues documentation progress |
-| `discovery_speed` | Unit-interval documentation progress added per eligible second in range (`0.01` = one percentage point per second) |
+| `visibility_distance_m` | Visibility distance — the same shared radius used for discovery and documentation |
+| `document_speed` | Document speed — unit-interval documentation progress added per eligible second in range (`0.01` = one percentage point per second) |
 | `disguise_of_site_xp` | XP when a rival discovery roll would hit but your active disguise blocks it |
 | `document_site_xp` | XP when all five site-dimension accuracies reach 100% (freezes further documentation) |
 | `document_site_as_first_xp` | Bonus XP when you are the first user to fully document a site |
 | `identify_site_xp` | XP per period/rock identification quiz step (100% / 50% / 0% by attempt). Timed documentation starts only after both steps succeed |
 
-`documentation_distance_m` uses the same solar-period multipliers as site discovery
-`discovery_distance_m`. `discovery_speed` is wired through the standard level,
+`visibility_distance_m` uses one modifier pipeline for both site discovery and
+documentation. `document_speed` is wired through the standard level,
 weather, and tool resolver pipeline, but currently has no modifiers.
 
 After discovery, the site shows as "Excavation Site" until the viewer completes
@@ -158,10 +158,10 @@ the identification quiz (period, then rock type). Only then do dimension bands
 and time-based documentation unlocks.
 
 Accuracy is display-only on the site card for now. Stack per axis:
-shared skill baseline (`documentation_accuracy`, base 1% × level → L50 ≈ 50%) →
+shared skill baseline (`document_accuracy`, base 1% × level → L50 ≈ 50%) →
 stable per-site / per-dimension noise (`accuracy_noise`) → tool
-`modifies_main_params` (none yet) → timed documentation (`discovery_speed` per
-eligible second inside `documentation_distance_m`, additive, capped at 100%).
+`modifies_main_params` (none yet) → timed documentation (`document_speed` per
+eligible second inside `visibility_distance_m`, additive, capped at 100%).
 When all five axes reach 100%, `document_site_xp` is awarded once and further
 documentation is frozen. There is no intermediate documentation-progress XP.
 The first user to complete documentation also receives `document_site_as_first_xp`.
@@ -198,12 +198,12 @@ some_tool:
       site_discovery:
         discovery_chance: { op: add, value: 0.05 }
       site_stewardship:
-        documentation_accuracy: { op: add, value: 0.1 }
+        document_accuracy: { op: add, value: 0.1 }
     using:
       site_discovery:
         discovery_chance: { op: replace, value: 0.9 }
       fossil_detection:
-        discovery_distance_m: { op: add, value: 5 }
+        visibility_distance_m: { op: add, value: 5 }
 ```
 
 Either bucket / skill may be omitted. Guidance tools today only set

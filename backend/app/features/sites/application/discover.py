@@ -28,11 +28,11 @@ from app.features.sites.domain.labels import site_display_title
 from app.features.sites.application.list import get_site_by_id
 
 
-def discover_max_distance_m() -> float:
+def discover_visibility_distance_m() -> float:
     """Server-side max distance (meters) to discover / change site status."""
     from app.core.game_config import get_game_config
 
-    return get_game_config().site_discovery.discovery_distance_m
+    return get_game_config().site_discovery.visibility_distance_m
 
 
 def _site_label(site: Site) -> str:
@@ -65,9 +65,9 @@ def discover_site(
     distance_km = haversine_km(
         lat, lon, float(site.latitude), float(site.longitude)
     )
-    if distance_km > params.max_distance_m / 1000.0:
+    if distance_km > params.visibility_distance_m / 1000.0:
         raise ValidationError(
-            f"Must be within {int(params.max_distance_m)} m of the site to discover it"
+            f"Must be within {int(params.visibility_distance_m)} m of the site to discover it"
         )
 
     row = get_site_by_id(session, site_id, data_source=DATA_SOURCE_FIELD)

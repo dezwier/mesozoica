@@ -163,11 +163,10 @@ abstract final class WeatherDisplay {
 
   static String paramLabel(String paramKey) {
     const labels = <String, String>{
-      'discovery_distance_m': 'Discovery distance',
+      'visibility_distance_m': 'Visibility distance',
       'discovery_chance': 'Discovery chance',
       'rival_discovery_chance': 'Rival discovery chance',
-      'documentation_distance_m': 'Documentation distance',
-      'discovery_speed': 'Discovery speed',
+      'document_speed': 'Document speed',
       'discovery_max_speed_kmh': 'Discovery max speed',
       'discover_site_xp': 'Discover site',
       'discover_site_as_first_xp': 'Discover site as first',
@@ -178,7 +177,7 @@ abstract final class WeatherDisplay {
       'explore_100m_actively_xp': 'Explore 100m actively',
       'explore_100m_passively_xp': 'Explore 100m passively',
       'locate_fossil_in_situ_xp': 'Locate fossil in situ',
-      'documentation_accuracy': 'Documentation accuracy',
+      'document_accuracy': 'Document accuracy',
     };
     return labels[paramKey] ??
         paramKey
@@ -190,12 +189,11 @@ abstract final class WeatherDisplay {
 
   /// Field Survey skill params in skill-drawer order.
   static const fieldSurveySkillParamKeys = <String>[
-    'discovery_distance_m',
+    'visibility_distance_m',
     'discovery_chance',
     'discovery_max_speed_kmh',
-    'documentation_distance_m',
-    'discovery_speed',
-    'documentation_accuracy',
+    'document_speed',
+    'document_accuracy',
     'rival_discovery_chance',
   ];
 

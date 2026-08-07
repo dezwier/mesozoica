@@ -84,7 +84,7 @@ class MapSiteMiniCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final photo = width;
-    final documentation = _documentationAccuracy(context);
+    final documentation = _documentAccuracy(context);
     final triangleTop = photo - _triangleH * 0.4;
     final labelMaxWidth = photo * _labelWidthFactor;
     final titleColor = disguised
@@ -239,7 +239,7 @@ class MapSiteMiniCard extends StatelessWidget {
     );
   }
 
-  double _documentationAccuracy(BuildContext context) {
+  double _documentAccuracy(BuildContext context) {
     if (site.needsIdentification) return 0.0;
     var progress = site.documentationProgress ?? 0.0;
     var skillLevel = 1;

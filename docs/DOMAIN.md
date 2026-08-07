@@ -35,13 +35,14 @@ Site state is partly global and partly user-specific. Discovery, identification,
 
 After identifying a site, the viewer documents it by remaining inside the
 configurable documentation radius. Each eligible second adds the configured
-`discovery_speed` to every dimension's accuracy; the server records monotonic
+`document_speed` to every dimension's accuracy; the server records monotonic
 unit-interval progress and completes documentation when the average reaches
 100% (equivalently, every capped dimension is at 100%).
-Backgrounding the app preserves the current verified fix and time in memory;
-the first fresh fix after resume credits the intervening interval when both
-endpoints are inside the radius. A terminated process grants no retrospective
-documentation time.
+While an identified site is in range, the client holds a background-location
+session so verified fixes continue documenting when the user switches apps or
+locks the device. Any suspension gap is reconciled on the first fresh resume
+fix when both endpoints remain inside the radius. A terminated process grants
+no retrospective documentation time.
 
 The Flutter map can show archive, field, linked, and show-all datasets. These are modes and caches, not synonyms. A server count, a catalog card, and a rendered marker each prove a different stage of the pipeline.
 

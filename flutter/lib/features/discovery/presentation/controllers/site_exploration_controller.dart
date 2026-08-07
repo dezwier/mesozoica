@@ -121,40 +121,36 @@ class SiteExplorationController extends ChangeNotifier {
 
   bool isInDocumentationRange(int siteId) => _sitesInRange.contains(siteId);
 
-  double? _documentationDistanceMOverride;
-  double? _discoverySpeedOverride;
+  double? _visibilityDistanceMOverride;
+  double? _documentSpeedOverride;
 
-  double get documentationDistanceM {
-    final override = _documentationDistanceMOverride;
+  double get visibilityDistanceM {
+    final override = _visibilityDistanceMOverride;
     if (override != null) {
       return override;
     }
     try {
-      if (!GameConfig.isLoaded) return 50.0;
-      return GameConfig
-          .instance
-          .siteStewardship
-          .mainParams
-          .documentationDistanceM;
+      if (!GameConfig.isLoaded) return 20.0;
+      return GameConfig.instance.siteStewardship.mainParams.visibilityDistanceM;
     } catch (_) {
-      return 50.0;
+      return 20.0;
     }
   }
 
   void updateSiteVisibilityM(double meters) {
-    if (_documentationDistanceMOverride != null &&
-        (_documentationDistanceMOverride! - meters).abs() < 0.01) {
+    if (_visibilityDistanceMOverride != null &&
+        (_visibilityDistanceMOverride! - meters).abs() < 0.01) {
       return;
     }
-    _documentationDistanceMOverride = meters;
+    _visibilityDistanceMOverride = meters;
   }
 
-  double get discoverySpeed {
-    final override = _discoverySpeedOverride;
+  double get documentSpeed {
+    final override = _documentSpeedOverride;
     if (override != null) return override;
     try {
       if (!GameConfig.isLoaded) return 0.01;
-      return GameConfig.instance.siteStewardship.mainParams.discoverySpeed;
+      return GameConfig.instance.siteStewardship.mainParams.documentSpeed;
     } catch (_) {
       return 0.01;
     }
@@ -162,11 +158,11 @@ class SiteExplorationController extends ChangeNotifier {
 
   void updateDiscoverySpeed(double value) {
     final next = value.clamp(0.0, double.infinity);
-    if (_discoverySpeedOverride != null &&
-        (_discoverySpeedOverride! - next).abs() < 1e-9) {
+    if (_documentSpeedOverride != null &&
+        (_documentSpeedOverride! - next).abs() < 1e-9) {
       return;
     }
-    _discoverySpeedOverride = next;
+    _documentSpeedOverride = next;
   }
 
   @visibleForTesting
@@ -387,7 +383,7 @@ class SiteExplorationController extends ChangeNotifier {
           site.latitude!,
           site.longitude!,
         ) <=
-        documentationDistanceM;
+        visibilityDistanceM;
   }
 
   void _refreshSitesInRange(Position? position) {
@@ -399,6 +395,12 @@ class SiteExplorationController extends ChangeNotifier {
           next.add(site.siteId);
         }
       }
+    }
+    final location = _location;
+    final documentationActive = next.isNotEmpty;
+    if (location != null &&
+        location.isDocumentationBackgroundWanted != documentationActive) {
+      unawaited(location.setDocumentationBackgroundActive(documentationActive));
     }
     if (setEquals(next, _sitesInRange)) return;
     _sitesInRange
@@ -426,7 +428,7 @@ class SiteExplorationController extends ChangeNotifier {
     bool sync = true,
   }) async {
     final shouldCreditInterval =
-        (!_appForeground && (_location?.isBackgroundExploring ?? false)) ||
+        (!_appForeground && (_location?.isBackgroundLocationActive ?? false)) ||
         (_appForeground && _awaitingResumeFix);
     final previousAt = _lastVerifiedAt;
     final previousPosition = _lastVerifiedPosition;
@@ -476,7 +478,7 @@ class SiteExplorationController extends ChangeNotifier {
     bool sync = true,
   }) async {
     final seconds = elapsed.inMicroseconds / Duration.microsecondsPerSecond;
-    if (seconds <= 0 || discoverySpeed <= 0) return;
+    if (seconds <= 0 || documentSpeed <= 0) return;
     final sites = _discoveredSitesProvider?.call() ?? const <SiteSummary>[];
     if (sites.isEmpty) return;
     final skillLevel = _skillLevelProvider?.call() ?? 1;
@@ -487,7 +489,7 @@ class SiteExplorationController extends ChangeNotifier {
       if (startPosition != null && !_isWithin(startPosition, site)) continue;
       final previous =
           _progressBySite[site.siteId] ?? site.documentationProgress ?? 0.0;
-      final next = (previous + seconds * discoverySpeed).clamp(0.0, 1.0);
+      final next = (previous + seconds * documentSpeed).clamp(0.0, 1.0);
       if (next <= previous) continue;
       _progressBySite[site.siteId] = next;
       _dirtySiteIds.add(site.siteId);
@@ -534,7 +536,7 @@ class SiteExplorationController extends ChangeNotifier {
     final base =
         resolveSiteStewardshipAccuracies(
           skillLevel: skillLevel,
-        )['documentation_accuracy'] ??
+        )['document_accuracy'] ??
         0.0;
     for (final dimension in SiteDimensionKey.values) {
       final band = bands[dimension];
@@ -641,6 +643,7 @@ class SiteExplorationController extends ChangeNotifier {
       _location!.removeListener(_locationListener!);
     }
     _tickTimer?.cancel();
+    unawaited(_location?.setDocumentationBackgroundActive(false));
     super.dispose();
   }
 }

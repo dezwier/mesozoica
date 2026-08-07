@@ -35,8 +35,8 @@ void main() {
     );
 
     expect(
-      fromJson.siteDiscovery.discoveryDistanceM,
-      fromYaml.siteDiscovery.discoveryDistanceM,
+      fromJson.siteDiscovery.visibilityDistanceM,
+      fromYaml.siteDiscovery.visibilityDistanceM,
     );
     expect(
       fromJson.siteDiscovery.discoveryChance,
@@ -69,8 +69,8 @@ void main() {
     );
     expect(fromJson.siteStewardship.fossilCount.keys, isNotEmpty);
     expect(
-      fromJson.siteStewardship.levelModifiers['documentation_accuracy']!.length,
-      fromYaml.siteStewardship.levelModifiers['documentation_accuracy']!.length,
+      fromJson.siteStewardship.levelModifiers['document_accuracy']!.length,
+      fromYaml.siteStewardship.levelModifiers['document_accuracy']!.length,
     );
 
     expect(fromJson.leveling.skills.length, fromYaml.leveling.skills.length);
