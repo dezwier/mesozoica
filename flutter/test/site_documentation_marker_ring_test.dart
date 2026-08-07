@@ -74,6 +74,32 @@ void main() {
     await tester.pump();
 
     expect(painter().progress, greaterThan(start));
+    expect(find.byType(SiteDocumentationPulseOverlay), findsOneWidget);
+    expect(
+      tester
+          .widget<SiteDocumentationPulseOverlay>(
+            find.byType(SiteDocumentationPulseOverlay),
+          )
+          .active,
+      isTrue,
+    );
+
+    final before = tester
+        .widgetList<ColoredBox>(find.byType(ColoredBox))
+        .map((box) => box.color.a)
+        .where((a) => a > 0 && a < 1)
+        .toList();
+    expect(before, isNotEmpty);
+
+    await tester.pump(const Duration(milliseconds: 125));
+    final after = tester
+        .widgetList<ColoredBox>(find.byType(ColoredBox))
+        .map((box) => box.color.a)
+        .where((a) => a > 0 && a < 1)
+        .toList();
+    expect(after, isNotEmpty);
+    expect(after.first, isNot(closeTo(before.first, 0.001)));
+
     controller.dispose();
   });
 
@@ -103,6 +129,14 @@ void main() {
       closeTo(tester.getCenter(find.byType(SiteCardImage)).dy, 0.1),
     );
     expect(tester.widget<Icon>(stars.first).size, closeTo(10.24, 0.01));
+    expect(
+      tester
+          .widget<SiteDocumentationPulseOverlay>(
+            find.byType(SiteDocumentationPulseOverlay),
+          )
+          .active,
+      isFalse,
+    );
     expect(tester.takeException(), isNull);
   });
 }

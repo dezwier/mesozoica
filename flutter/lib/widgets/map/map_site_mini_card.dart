@@ -86,6 +86,7 @@ class MapSiteMiniCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final photo = width;
     final documentation = _documentAccuracy(context);
+    final documenting = _isActivelyDocumenting(context, documentation);
     final triangleTop = photo - _triangleH * 0.4;
     final labelMaxWidth = photo * _labelWidthFactor;
     final titleColor = disguised
@@ -234,6 +235,12 @@ class MapSiteMiniCard extends StatelessWidget {
                       fit: StackFit.expand,
                       children: [
                         SiteCardImage(imageUrl: site.mainImageUrl),
+                        Positioned.fill(
+                          child: SiteDocumentationPulseOverlay(
+                            active: documenting,
+                            color: const Color.fromARGB(255, 255, 255, 255),
+                          ),
+                        ),
                         if (stars != null)
                           Positioned.fill(
                             child: Align(
@@ -255,6 +262,17 @@ class MapSiteMiniCard extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  bool _isActivelyDocumenting(BuildContext context, double documentation) {
+    if (site.documented == true || documentation >= 1.0) return false;
+    try {
+      return context.watch<SiteExplorationController>().isInDocumentationRange(
+        site.siteId,
+      );
+    } on ProviderNotFoundException {
+      return false;
+    }
   }
 
   double _documentAccuracy(BuildContext context) {
