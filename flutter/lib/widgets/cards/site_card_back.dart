@@ -62,8 +62,8 @@ class SiteCardBack extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 CardGeologicTimelinePanel(
-                  minAgeMa: site.minAgeMa,
-                  maxAgeMa: site.maxAgeMa,
+                  minAgeMa: site.titleIsRevealed ? site.minAgeMa : null,
+                  maxAgeMa: site.titleIsRevealed ? site.maxAgeMa : null,
                   scale: _contentScale,
                 ),
                 const SizedBox(height: 6),

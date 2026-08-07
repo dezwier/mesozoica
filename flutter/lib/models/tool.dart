@@ -79,7 +79,7 @@ class ToolSummary {
     return '$displayOccurrenceNumber · $versionPart';
   }
 
-  /// Card-back subtitle: scientific name only (rarity stars are separate).
+  /// Card-back subtitle: scientific name only.
   String inventoryBackSubtitle() => displayScientificTool;
 
   /// Profile skill id inferred from [category] (`1 site_discovery` → `site_discovery`).

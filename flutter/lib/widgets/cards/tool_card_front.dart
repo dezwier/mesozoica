@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../../models/tool.dart';
 import '../../theme/dino_card_theme.dart';
 import 'occurrence_id_badge.dart';
+import 'site_card_header.dart';
 import 'tool_card_header.dart';
 import 'tool_card_image.dart';
 
@@ -29,6 +30,7 @@ class ToolCardFront extends StatelessWidget {
         ? tool.description.trim()
         : '—';
     final showIdBadge = tool.isToolInstance;
+    final stars = tool.rarity.clamp(0, 5);
 
     return AspectRatio(
       aspectRatio: DinoCardTheme.cardAspectRatio,
@@ -64,6 +66,14 @@ class ToolCardFront extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
+                if (stars > 0) ...[
+                  SiteRatingStars(
+                    stars: stars,
+                    starSize: titleFontSize * 0.52,
+                    color: const Color(0xFFE6C35C),
+                  ),
+                  const SizedBox(height: 2),
+                ],
                 ToolCardHeader(
                   tool: tool,
                   titleFontSize: titleFontSize,

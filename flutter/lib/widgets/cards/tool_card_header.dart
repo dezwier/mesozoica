@@ -20,7 +20,6 @@ class ToolCardHeader extends StatelessWidget {
     this.showScientificSubtitle = false,
     this.subtitleOverride,
     this.showSkillBadge = false,
-    this.showRarityStars = false,
     this.skillBadgeSize = 44,
   });
 
@@ -36,9 +35,6 @@ class ToolCardHeader extends StatelessWidget {
 
   /// Top-right skill avatar (back side).
   final bool showSkillBadge;
-
-  /// Filled rarity stars below the scientific subtitle (back side).
-  final bool showRarityStars;
   final double skillBadgeSize;
 
   @override
@@ -58,14 +54,8 @@ class ToolCardHeader extends StatelessWidget {
 
     final subtitleText =
         subtitleOverride ??
-        (showScientificSubtitle || showRarityStars
-            ? tool.displayScientificTool
-            : null);
+        (showScientificSubtitle ? tool.displayScientificTool : null);
     final hasSubtitle = subtitleText != null && subtitleText.isNotEmpty;
-    final rarity = showRarityStars ? tool.rarity.clamp(0, 5) : 0;
-    final starColor = overlayOnImage
-        ? const Color(0xFFE6C35C)
-        : cardTheme.cardAccent;
 
     // With a skill badge, title/subtitle center in the remaining width.
     final centerInSpace = showSkillBadge || centered;
@@ -94,14 +84,6 @@ class ToolCardHeader extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
               style: subtitleStyle,
             ),
-          ),
-        ],
-        if (rarity > 0) ...[
-          const SizedBox(height: 4),
-          _RarityStars(
-            rarity: rarity,
-            starSize: (subtitleStyle.fontSize ?? 10) + 3,
-            color: starColor,
           ),
         ],
       ],
@@ -162,43 +144,5 @@ class ToolCardHeader extends StatelessWidget {
     );
 
     showProfileSkillDetailSheet(context, skill: skill, breakdown: breakdown);
-  }
-}
-
-class _RarityStars extends StatelessWidget {
-  const _RarityStars({
-    required this.rarity,
-    required this.starSize,
-    required this.color,
-  });
-
-  final int rarity;
-  final double starSize;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        for (var i = 0; i < rarity; i++)
-          Padding(
-            padding: EdgeInsets.only(left: i == 0 ? 0 : 1),
-            child: Icon(
-              Icons.star_rounded,
-              size: starSize,
-              color: color,
-              shadows: const [
-                Shadow(
-                  color: Color(0x66000000),
-                  blurRadius: 3,
-                  offset: Offset(0, 1),
-                ),
-              ],
-            ),
-          ),
-      ],
-    );
   }
 }

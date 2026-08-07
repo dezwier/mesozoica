@@ -3,10 +3,40 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mesozoica/models/tool.dart';
 import 'package:mesozoica/models/tool_session.dart';
 import 'package:mesozoica/widgets/cards/tool_card_back.dart';
+import 'package:mesozoica/widgets/cards/tool_card_front.dart';
 import 'package:mesozoica/widgets/common/chrome_action_button.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+
+  testWidgets('ToolCardFront shows rarity stars above title', (tester) async {
+    const tool = ToolSummary(
+      id: 1,
+      name: 'Aerial Recon',
+      category: '1 site_discovery',
+      scientificTool: 'helicopter',
+      description: 'Scout loop',
+      rarity: 3,
+      action: 'Deploy',
+      level: 1,
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: SizedBox(width: 320, child: ToolCardFront(tool: tool)),
+          ),
+        ),
+      ),
+    );
+
+    expect(find.byIcon(Icons.star_rounded), findsNWidgets(3));
+    expect(
+      tester.getCenter(find.byIcon(Icons.star_rounded).first).dy,
+      lessThan(tester.getTopLeft(find.text('Aerial Recon')).dy),
+    );
+  });
 
   test('isToolInstance is true when occurrence id equals tool type id', () {
     final scout = ToolSummary(
@@ -82,7 +112,7 @@ void main() {
     expect(find.text('Helicopter'), findsOneWidget);
     expect(find.textContaining('Site Discovery'), findsNothing);
     expect(find.text('Rarity'), findsNothing);
-    expect(find.byIcon(Icons.star_rounded), findsNWidgets(5));
+    expect(find.byIcon(Icons.star_rounded), findsNothing);
 
     await tester.tap(find.text('Deploy'));
     await tester.pump();
@@ -90,7 +120,7 @@ void main() {
   });
 
   testWidgets(
-    'ToolCardBack shows scientific subtitle and filled rarity stars',
+    'ToolCardBack shows scientific subtitle without rarity stars',
     (tester) async {
       final owned = ToolSummary(
         id: 10,
@@ -122,7 +152,7 @@ void main() {
       expect(find.text('Helicopter'), findsOneWidget);
       expect(find.textContaining('Site Discovery'), findsNothing);
       expect(find.textContaining('Obtained'), findsNothing);
-      expect(find.byIcon(Icons.star_rounded), findsNWidgets(3));
+      expect(find.byIcon(Icons.star_rounded), findsNothing);
       expect(find.byIcon(Icons.star_border), findsNothing);
       expect(find.text('Rarity'), findsNothing);
     },

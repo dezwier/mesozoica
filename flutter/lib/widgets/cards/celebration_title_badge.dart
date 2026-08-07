@@ -11,8 +11,7 @@ import '../xp/xp_skill_avatar.dart';
 /// Sentence-style headlines for celebration plaques.
 abstract final class CelebrationTitles {
   static const siteDiscovered = 'You discovered an excavation site!';
-  static const siteDocumented =
-      'You documented what there is to know about this excavation site';
+  static const siteDocumented = 'You documented this excavation site!';
   static const siteIdentified = 'You identified this excavation site!';
   static const fossilDiscovered = 'You discovered a fossil!';
 }

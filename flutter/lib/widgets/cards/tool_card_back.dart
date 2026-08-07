@@ -83,7 +83,7 @@ class ToolCardBack extends StatelessWidget {
               subtitleFontSize: subtitleFontSize,
               overlayOnImage: true,
               showSkillBadge: true,
-              showRarityStars: true,
+              showScientificSubtitle: true,
             ),
           ),
           Positioned(

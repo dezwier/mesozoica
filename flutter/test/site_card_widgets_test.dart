@@ -272,6 +272,12 @@ void main() {
 
     expect(find.byType(SiteCardLocationMap), findsOneWidget);
     expect(find.byType(GeologicTimeline), findsOneWidget);
+    final archiveTimeline = tester.widget<GeologicTimeline>(
+      find.byType(GeologicTimeline),
+    );
+    // Archive sites reveal geology immediately, so the age band is shown.
+    expect(archiveTimeline.birth, 68);
+    expect(archiveTimeline.death, 66);
     expect(find.byType(SiteCardDimensions), findsOneWidget);
     expect(find.byType(SiteCardFossils), findsOneWidget);
     expect(find.text('Cretaceous Sandstone'), findsOneWidget);
@@ -385,12 +391,64 @@ void main() {
 
       await tester.pump();
 
+      final timeline = tester.widget<GeologicTimeline>(
+        find.byType(GeologicTimeline),
+      );
+      // Field geology (incl. age band) stays hidden until documented.
+      expect(timeline.birth, isNull);
+      expect(timeline.death, isNull);
+
       // Header subtitle is suppressed; discovery still appears in the Timeline.
       expect(find.text('Discovered 3h ago'), findsNothing);
       expect(find.text('Original - Discovered 3h ago'), findsNothing);
       expect(find.text('#67'), findsNothing);
       expect(find.text('#67 · Original'), findsNothing);
       expect(find.text('Move within range to continue'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'SiteCardBack shows geologic age band after documentation',
+    (tester) async {
+      final documented = SiteSummary(
+        siteId: 1000000067,
+        latitude: 46.8797,
+        longitude: -110.3626,
+        countryCode: 'US',
+        state: 'Montana',
+        rockType: 'sandstone',
+        siteTypePeriod: 'cretaceous',
+        siteTypeRockType: 'sandstone',
+        minAgeMa: 66,
+        maxAgeMa: 68,
+        documented: true,
+        viewerHasDocumented: true,
+        viewerHasIdentified: true,
+        discoveredAt: DateTime.utc(2026, 7, 1, 12),
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Center(
+              child: SizedBox(
+                width: 800,
+                child: SiteCardBack(
+                  site: documented,
+                  mapTileLayerBuilder: () => const SizedBox.shrink(),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      final timeline = tester.widget<GeologicTimeline>(
+        find.byType(GeologicTimeline),
+      );
+      expect(timeline.birth, 68);
+      expect(timeline.death, 66);
     },
   );
 

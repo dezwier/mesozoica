@@ -121,7 +121,7 @@ class SiteCardFront extends StatelessWidget {
                   Center(
                     child: SiteRatingStars(
                       stars: stars,
-                      starSize: titleFontSize * 0.38,
+                      starSize: titleFontSize * 0.52,
                       color: const Color(0xFFE6C35C),
                     ),
                   ),
