@@ -31,10 +31,12 @@ class SiteCardUserTimeline extends StatelessWidget {
     super.key,
     required this.site,
     this.isOpen = true,
+    this.height,
   });
 
   final SiteSummary site;
   final bool isOpen;
+  final double? height;
 
   static List<SiteTimelineEntry> entriesFor(
     SiteSummary site, {
@@ -119,6 +121,8 @@ class SiteCardUserTimeline extends StatelessWidget {
           fontWeight: FontWeight.bold,
         );
 
+    final double resolvedHeight = height ?? (isOpen ? 44.0 : 18.0);
+
     return CardSectionPanel(
       labelWidget: Text(
         'Site history timeline'.toUpperCase(),
@@ -127,16 +131,25 @@ class SiteCardUserTimeline extends StatelessWidget {
       ),
       padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
       labelGap: 6,
-      child: Center(
-        child: IntrinsicWidth(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              for (var i = 0; i < displayedEntries.length; i++) ...[
-                if (i > 0) const SizedBox(height: 4),
-                _EntryRow(entry: displayedEntries[i]),
-              ],
-            ],
+      expandChild: true,
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        alignment: Alignment.center,
+        child: SizedBox(
+          height: resolvedHeight,
+          width: 340,
+          child: Center(
+            child: IntrinsicWidth(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  for (var i = 0; i < displayedEntries.length; i++) ...[
+                    if (i > 0) const SizedBox(height: 4),
+                    _EntryRow(entry: displayedEntries[i]),
+                  ],
+                ],
+              ),
+            ),
           ),
         ),
       ),
