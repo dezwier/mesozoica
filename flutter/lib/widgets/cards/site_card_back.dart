@@ -205,8 +205,15 @@ class _PeriodRockTypeBox extends StatelessWidget {
       child: Stack(
         fit: StackFit.expand,
         children: [
+          // Background image centered, never stretched or squished vertically
           Positioned.fill(
-            child: SiteCardImage(imageUrl: site.mainImageUrl),
+            child: ClipRect(
+              child: OverflowBox(
+                minHeight: 220,
+                maxHeight: 220,
+                child: SiteCardImage(imageUrl: site.mainImageUrl),
+              ),
+            ),
           ),
           Container(
             decoration: const BoxDecoration(
@@ -228,23 +235,24 @@ class _PeriodRockTypeBox extends StatelessWidget {
                   style: titleStyle,
                 ),
                 if (isOpen) ...[
-                  const SizedBox(height: 6),
-                  Expanded(
+                  const Spacer(),
+                  Center(
                     child: CardSectionPanel(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       clipChild: true,
-                      expandChild: true,
-                      child: Center(
+                      child: SizedBox(
+                        height: 52,
+                        width: 310,
                         child: GeologicTimeline.fromAgeRange(
                           minAgeMa: site.titleIsRevealed ? site.minAgeMa : null,
                           maxAgeMa: site.titleIsRevealed ? site.maxAgeMa : null,
                           axis: GeologicTimelineAxis.horizontal,
-                          scale: 0.9,
+                          scale: 0.85,
                         ),
                       ),
                     ),
                   ),
-                  const SizedBox(height: 6),
+                  const Spacer(),
                   Text(
                     explanation,
                     textAlign: TextAlign.center,
