@@ -136,7 +136,25 @@ class ToolCardBack extends StatelessWidget {
                                       ),
                                     ),
                                   )
-                                : const SizedBox.shrink(),
+                                : FittedBox(
+                                    fit: BoxFit.scaleDown,
+                                    alignment: Alignment.center,
+                                    child: SizedBox(
+                                      height: 22,
+                                      width: 340,
+                                      child: Center(
+                                        child: Text(
+                                          history.isNotEmpty
+                                              ? _formatLatestHistoryEntry(history.first)
+                                              : 'No history yet',
+                                          style: cardTheme.bodyStyle(fontSize: 12.5).copyWith(
+                                                fontWeight: FontWeight.w600,
+                                                color: cardTheme.cardTextSecondary,
+                                              ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
                           );
                         },
                       ),
@@ -216,6 +234,21 @@ class ToolCardBack extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  static String _formatLatestHistoryEntry(ToolHistoryEntry entry) {
+    final when = formatRelativeWhen(entry.at);
+    if (entry.isRole) {
+      final label = entry.roleAction == 'owned' ? 'Obtained' : 'Role change';
+      return '$label · $when';
+    }
+    final session = entry.session;
+    if (session != null) {
+      final dur = _HistoryRow._formatDuration(session.durationS);
+      final status = _HistoryRow._statusLabel(session);
+      return 'Used · $when · $dur · $status';
+    }
+    return '—';
   }
 
   static String _formatRemaining(int seconds) {

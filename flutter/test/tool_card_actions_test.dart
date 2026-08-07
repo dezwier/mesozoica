@@ -113,7 +113,7 @@ void main() {
     await tester.tap(find.text('TOOL TIMELINE HISTORY'));
     await tester.pumpAndSettle();
 
-    expect(find.text('No history yet'), findsOneWidget);
+    expect(find.text('No history yet'), findsAtLeastNWidgets(1));
     expect(find.text('Helicopter'), findsNothing);
     expect(find.textContaining('Site Discovery'), findsNothing);
     expect(find.text('Rarity'), findsNothing);

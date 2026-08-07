@@ -93,7 +93,7 @@ class SiteCardBack extends StatelessWidget {
                 // Element 3: History timeline
                 CardAccordionItem(
                   builder: (context, isOpen, curvedT, lerpFn) {
-                    final timelineHeight = lerpFn(18.0, 44.0);
+                    final timelineHeight = lerpFn(22.0, 44.0);
                     return SiteCardUserTimeline(
                       site: site,
                       isOpen: isOpen,
@@ -166,57 +166,78 @@ class _PeriodRockTypeBox extends StatelessWidget {
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(
-                  'Site period and rock type'.toUpperCase(),
-                  textAlign: TextAlign.center,
-                  style: titleStyle,
-                ),
-                if (isOpen) ...[
-                  const SizedBox(height: 6),
-                  FittedBox(
-                    fit: BoxFit.scaleDown,
-                    alignment: Alignment.center,
-                    child: SizedBox(
-                      height: subboxHeight,
-                      width: 320,
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          Center(
-                            child: CardSectionPanel(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                              clipChild: true,
-                              child: SizedBox(
-                                height: 52,
-                                width: 310,
-                                child: GeologicTimeline.fromAgeRange(
-                                  minAgeMa: site.titleIsRevealed ? site.minAgeMa : null,
-                                  maxAgeMa: site.titleIsRevealed ? site.maxAgeMa : null,
-                                  axis: GeologicTimelineAxis.horizontal,
-                                  scale: 1.0,
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.center,
+              child: SizedBox(
+                width: 340,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(
+                      'Site period and rock type'.toUpperCase(),
+                      textAlign: TextAlign.center,
+                      style: titleStyle,
+                    ),
+                    if (isOpen) ...[
+                      const SizedBox(height: 6),
+                      Center(
+                        child: SizedBox(
+                          height: subboxHeight,
+                          width: 320,
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Center(
+                                child: CardSectionPanel(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  clipChild: true,
+                                  child: SizedBox(
+                                    height: 52,
+                                    width: 310,
+                                    child: GeologicTimeline.fromAgeRange(
+                                      minAgeMa: site.titleIsRevealed ? site.minAgeMa : null,
+                                      maxAgeMa: site.titleIsRevealed ? site.maxAgeMa : null,
+                                      axis: GeologicTimelineAxis.horizontal,
+                                      scale: 1.0,
+                                    ),
+                                  ),
                                 ),
                               ),
-                            ),
+                              const SizedBox(height: 12),
+                              Text(
+                                explanation,
+                                textAlign: TextAlign.center,
+                                style: cardTheme.bodyStyle(fontSize: 12).copyWith(
+                                      color: Colors.white.withValues(alpha: 0.9),
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                              ),
+                            ],
                           ),
-                          const SizedBox(height: 12),
-                          Text(
-                            explanation,
-                            textAlign: TextAlign.center,
-                            style: cardTheme.bodyStyle(fontSize: 12).copyWith(
-                                  color: Colors.white.withValues(alpha: 0.9),
-                                  fontWeight: FontWeight.w600,
-                                ),
-                          ),
-                        ],
+                        ),
                       ),
-                    ),
-                  ),
-                ],
-              ],
+                    ] else ...[
+                      const SizedBox(height: 4),
+                      Center(
+                        child: SizedBox(
+                          height: 16,
+                          width: 280,
+                          child: GeologicTimeline.fromAgeRange(
+                            minAgeMa: site.titleIsRevealed ? site.minAgeMa : null,
+                            maxAgeMa: site.titleIsRevealed ? site.maxAgeMa : null,
+                            axis: GeologicTimelineAxis.horizontal,
+                            scale: 0.65,
+                            showYearLabels: false,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
             ),
           ),
         ],

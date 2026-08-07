@@ -544,7 +544,8 @@ void main() {
 
     // Now, SiteCardDimensions is open and shows dimension bars.
     expect(find.textContaining('GENERA PRESENCE'), findsOneWidget);
-    // GeologicTimeline should be hidden since PeriodRockTypeBox is now closed.
-    expect(find.byType(GeologicTimeline), findsNothing);
+    // PeriodRockTypeBox is now closed, but it still shows the compact timeline (without year labels).
+    final timeline = tester.widget<GeologicTimeline>(find.byType(GeologicTimeline));
+    expect(timeline.showYearLabels, isFalse);
   });
 }

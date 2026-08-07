@@ -15,6 +15,7 @@ class GeologicTimeline extends StatelessWidget {
     this.maxMa = mesozoicYoungerMa,
     this.axis = GeologicTimelineAxis.vertical,
     this.scale = 1.0,
+    this.showYearLabels = true,
   });
 
   /// PBDB-style age bounds: [minAgeMa] is younger, [maxAgeMa] is older.
@@ -26,6 +27,7 @@ class GeologicTimeline extends StatelessWidget {
     double maxMa = mesozoicYoungerMa,
     GeologicTimelineAxis axis = GeologicTimelineAxis.vertical,
     double scale = 1.0,
+    this.showYearLabels = true,
   }) : birth = maxAgeMa,
        death = minAgeMa,
        minMa = minMa,
@@ -42,6 +44,7 @@ class GeologicTimeline extends StatelessWidget {
   final double maxMa;
   final GeologicTimelineAxis axis;
   final double scale;
+  final bool showYearLabels;
 
   static const _periods = [
     _PeriodRange('Triassic', startMa: 252, endMa: 201),
@@ -76,6 +79,7 @@ class GeologicTimeline extends StatelessWidget {
             minMa: minMa,
             maxMa: maxMa,
             positionForMa: _positionForMa,
+            showYearLabels: showYearLabels,
           );
         }
         return _VerticalTimeline(
@@ -251,6 +255,7 @@ class _HorizontalTimeline extends StatelessWidget {
     required this.minMa,
     required this.maxMa,
     required this.positionForMa,
+    required this.showYearLabels,
   });
 
   final DinoCardTheme cardTheme;
@@ -263,6 +268,7 @@ class _HorizontalTimeline extends StatelessWidget {
   final double minMa;
   final double maxMa;
   final double? Function(double ma) positionForMa;
+  final bool showYearLabels;
 
   static const _boundaryMas = [252.0, 201.0, 145.0, 66.0];
 
@@ -375,32 +381,33 @@ class _HorizontalTimeline extends StatelessWidget {
                 borderColor: cardTheme.cardTextPrimary,
               ),
             ),
-          for (final ma in _boundaryMas)
-            Positioned(
-              left: ma == minMa
-                  ? _horizontalInset - 2 * scale
-                  : ma == maxMa
-                  ? null
-                  : _xForMa(ma, trackWidth) - 24 * scale,
-              right: ma == maxMa ? _horizontalInset - 2 * scale : null,
-              top: maTop,
-              width: ma == minMa || ma == maxMa ? null : 48 * scale,
-              child: Text(
-                '${ma.round()} Ma',
-                textAlign: ma == maxMa
-                    ? TextAlign.right
-                    : ma == minMa
-                    ? TextAlign.left
-                    : TextAlign.center,
-                maxLines: 1,
-                softWrap: false,
-                style: TextStyle(
-                  color: cardTheme.timelineAnnotationColor(),
-                  fontSize: 9 * scale,
-                  height: 1.1,
+          if (showYearLabels)
+            for (final ma in _boundaryMas)
+              Positioned(
+                left: ma == minMa
+                    ? _horizontalInset - 2 * scale
+                    : ma == maxMa
+                    ? null
+                    : _xForMa(ma, trackWidth) - 24 * scale,
+                right: ma == maxMa ? _horizontalInset - 2 * scale : null,
+                top: maTop,
+                width: ma == minMa || ma == maxMa ? null : 48 * scale,
+                child: Text(
+                  '${ma.round()} Ma',
+                  textAlign: ma == maxMa
+                      ? TextAlign.right
+                      : ma == minMa
+                      ? TextAlign.left
+                      : TextAlign.center,
+                  maxLines: 1,
+                  softWrap: false,
+                  style: TextStyle(
+                    color: cardTheme.timelineAnnotationColor(),
+                    fontSize: 9 * scale,
+                    height: 1.1,
+                  ),
                 ),
               ),
-            ),
           for (final period in GeologicTimeline._periods)
             Positioned(
               left: _xForMa(period.midMa, trackWidth) - 32 * scale,
