@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../models/site.dart';
 import '../../theme/dino_card_theme.dart';
+import '../../utils/display_text.dart';
 import 'card_back_backdrop.dart';
 import 'card_section_panel.dart';
 import 'card_world_map.dart';
@@ -186,6 +187,17 @@ class _PeriodRockTypeBox extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cardTheme = DinoCardTheme.of(context);
+    final titleStyle = cardTheme.sectionLabelStyle(fontSize: 8.5).copyWith(
+          color: Colors.white.withValues(alpha: 0.9),
+          letterSpacing: 0.8,
+          fontWeight: FontWeight.bold,
+        );
+
+    final String rockPart = site.rockType ?? site.siteTypeRockType ?? '';
+    final String rockText = rockPart.trim().isNotEmpty ? toTitleCase(rockPart.trim()) : '';
+    final String periodPart = site.titleIsRevealed ? site.displayPeriod : 'Age Hidden';
+    final String explanation = rockText.isNotEmpty ? '$periodPart · $rockText' : periodPart;
+
     return CardSectionPanel(
       padding: EdgeInsets.zero,
       clipChild: true,
@@ -193,57 +205,58 @@ class _PeriodRockTypeBox extends StatelessWidget {
       child: Stack(
         fit: StackFit.expand,
         children: [
-          SiteCardImage(imageUrl: site.mainImageUrl),
+          Positioned.fill(
+            child: SiteCardImage(imageUrl: site.mainImageUrl),
+          ),
           Container(
-            decoration: BoxDecoration(
+            decoration: const BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
-                colors: isOpen
-                    ? [Colors.black54, Colors.black87]
-                  : [Colors.black45, Colors.black87],
+                colors: [Colors.black54, Colors.black87],
               ),
             ),
           ),
-          if (isOpen)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  'Site period and rock type'.toUpperCase(),
+                  textAlign: TextAlign.center,
+                  style: titleStyle,
+                ),
+                if (isOpen) ...[
+                  const SizedBox(height: 6),
                   Expanded(
-                    child: Center(
-                      child: GeologicTimeline.fromAgeRange(
-                        minAgeMa: site.titleIsRevealed ? site.minAgeMa : null,
-                        maxAgeMa: site.titleIsRevealed ? site.maxAgeMa : null,
-                        axis: GeologicTimelineAxis.horizontal,
-                        scale: 1.0,
+                    child: CardSectionPanel(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      clipChild: true,
+                      expandChild: true,
+                      child: Center(
+                        child: GeologicTimeline.fromAgeRange(
+                          minAgeMa: site.titleIsRevealed ? site.minAgeMa : null,
+                          maxAgeMa: site.titleIsRevealed ? site.maxAgeMa : null,
+                          axis: GeologicTimelineAxis.horizontal,
+                          scale: 0.9,
+                        ),
                       ),
                     ),
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    site.titleIsRevealed ? site.displayPeriod : 'Age Hidden',
+                    explanation,
                     textAlign: TextAlign.center,
                     style: cardTheme.bodyStyle(fontSize: 10).copyWith(
-                      color: Colors.white.withValues(alpha: 0.9),
-                      fontWeight: FontWeight.w600,
-                    ),
+                          color: Colors.white.withValues(alpha: 0.9),
+                          fontWeight: FontWeight.w600,
+                        ),
                   ),
                 ],
-              ),
-            )
-          else
-            Center(
-              child: Text(
-                'GEOLOGIC AGE',
-                style: cardTheme.sectionLabelStyle(fontSize: 9).copyWith(
-                  color: Colors.white.withValues(alpha: 0.9),
-                  letterSpacing: 1.2,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
+              ],
             ),
+          ),
         ],
       ),
     );
@@ -261,16 +274,30 @@ class _FossilsBox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cardTheme = DinoCardTheme.of(context);
+    final titleStyle = cardTheme.sectionLabelStyle(fontSize: 8.5).copyWith(
+          color: cardTheme.cardTextSecondary,
+          letterSpacing: 0.8,
+          fontWeight: FontWeight.bold,
+        );
+
     return CardSectionPanel(
-      label: isOpen ? 'Located Fossils' : null,
-      labelGap: isOpen ? 6 : 0,
+      labelWidget: Text(
+        'Site fossils'.toUpperCase(),
+        textAlign: TextAlign.center,
+        style: titleStyle,
+      ),
+      labelGap: isOpen ? 6 : 4,
       expandChild: true,
       padding: isOpen
           ? const EdgeInsets.fromLTRB(10, 8, 10, 8)
           : const EdgeInsets.fromLTRB(6, 6, 6, 6),
-      child: SiteCardFossils(
-        siteId: siteId,
-        thumbSize: isOpen ? 76 : 44,
+      child: IgnorePointer(
+        ignoring: !isOpen,
+        child: SiteCardFossils(
+          siteId: siteId,
+          thumbSize: isOpen ? 76 : 44,
+        ),
       ),
     );
   }
