@@ -16,6 +16,7 @@ class CardDetailSheet {
 
   /// Nested show/dismiss depth; AppShell listens to hide map chrome + freeze.
   static final ValueNotifier<int> openCount = ValueNotifier<int>(0);
+  static final Map<CardDetailIdentity, Route<dynamic>> _routes = {};
 
   static bool get isOpen => openCount.value > 0;
 
@@ -49,25 +50,25 @@ class CardDetailSheet {
     BuildContext context, {
     required WidgetBuilder builder,
     bool clearTopForXpBadges = true,
+    CardDetailIdentity? identity,
   }) {
     final barrierLabel = MaterialLocalizations.of(
       context,
     ).modalBarrierDismissLabel;
     openCount.value += 1;
-    return showGeneralDialog<T>(
-      context: context,
-      useRootNavigator: true,
-      barrierDismissible: false,
-      barrierLabel: barrierLabel,
-      // Scrim is painted by [ShellOverlayPanel] (same as catalog screens).
-      barrierColor: Colors.transparent,
-      transitionDuration: const Duration(milliseconds: 280),
+    final navigator = Navigator.of(context, rootNavigator: true);
+    final route = RawDialogRoute<T>(
       pageBuilder: (context, animation, secondaryAnimation) {
         return CardDetailSheetShell(
           clearTopForXpBadges: clearTopForXpBadges,
           child: builder(context),
         );
       },
+      barrierDismissible: false,
+      barrierLabel: barrierLabel,
+      // Scrim is painted by [ShellOverlayPanel] (same as catalog screens).
+      barrierColor: Colors.transparent,
+      transitionDuration: const Duration(milliseconds: 280),
       transitionBuilder: (context, animation, secondaryAnimation, child) {
         final curved = CurvedAnimation(
           parent: animation,
@@ -76,12 +77,42 @@ class CardDetailSheet {
         );
         return FadeTransition(opacity: curved, child: child);
       },
-    ).whenComplete(() {
+    );
+    if (identity != null) _routes[identity] = route;
+    return navigator.push<T>(route).whenComplete(() {
+      if (identity != null && identical(_routes[identity], route)) {
+        _routes.remove(identity);
+      }
       if (openCount.value > 0) {
         openCount.value -= 1;
       }
     });
   }
+
+  static void dismissMatching(CardDetailIdentity identity) {
+    final route = _routes.remove(identity);
+    final navigator = route?.navigator;
+    if (route != null && navigator != null && route.isActive) {
+      navigator.removeRoute(route);
+    }
+  }
+}
+
+class CardDetailIdentity {
+  const CardDetailIdentity(this.entityType, this.entityId);
+  const CardDetailIdentity.site(int siteId) : this('site', siteId);
+
+  final String entityType;
+  final int entityId;
+
+  @override
+  bool operator ==(Object other) =>
+      other is CardDetailIdentity &&
+      other.entityType == entityType &&
+      other.entityId == entityId;
+
+  @override
+  int get hashCode => Object.hash(entityType, entityId);
 }
 
 class CardDetailSheetShell extends StatelessWidget {
@@ -89,6 +120,7 @@ class CardDetailSheetShell extends StatelessWidget {
     super.key,
     required this.child,
     this.clearTopForXpBadges = true,
+    this.onClose,
   });
 
   final Widget child;
@@ -96,13 +128,14 @@ class CardDetailSheetShell extends StatelessWidget {
   /// When true, reserves [CardDetailSheet.topBreathingRoom] under the status
   /// bar for floating XP badges. Celebrations leave this false.
   final bool clearTopForXpBadges;
+  final VoidCallback? onClose;
 
   @override
   Widget build(BuildContext context) {
     final topPad = clearTopForXpBadges ? CardDetailSheet.topBreathingRoom : 0.0;
     return ShellOverlayPanel(
       opaque: false,
-      onClose: () => Navigator.of(context).maybePop(),
+      onClose: onClose ?? () => Navigator.of(context).maybePop(),
       child: Padding(
         // Center in the band above the dismiss row. Marker cards keep top
         // clearance for floating XP badges; celebrations use the full band.
@@ -111,7 +144,7 @@ class CardDetailSheetShell extends StatelessWidget {
           bottom: ShellOverlayPanel.bottomChromeHeight(context),
         ),
         child: _PullDownToDismiss(
-          onDismiss: () => Navigator.of(context).maybePop(),
+          onDismiss: onClose ?? () => Navigator.of(context).maybePop(),
           child: Center(
             child: Material(color: Colors.transparent, child: child),
           ),

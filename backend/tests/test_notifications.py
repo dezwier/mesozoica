@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from fastapi.testclient import TestClient
 
+from app.features.accounts.infrastructure import push
+
 
 def _register_user(client: TestClient, username: str, email: str) -> dict:
     response = client.post(
@@ -43,6 +45,53 @@ def test_mark_notification_read_not_found_returns_404(client: TestClient):
         headers={"Authorization": f"Bearer {registered['access_token']}"},
     )
     assert response.status_code == 404
+
+
+def test_site_identified_push_uses_standard_celebration_payload(monkeypatch):
+    sent: list[dict] = []
+    monkeypatch.setattr(push, "get_device_tokens", lambda session, user_id: ["token"])
+    monkeypatch.setattr(
+        push,
+        "_get_unread_notification_badge_count",
+        lambda session, user_id: 3,
+    )
+    monkeypatch.setattr(
+        push,
+        "send_push_to_tokens",
+        lambda tokens, title, body, data, badge_count: sent.append(
+            {
+                "tokens": tokens,
+                "title": title,
+                "body": body,
+                "data": data,
+                "badge_count": badge_count,
+            }
+        )
+        or [],
+    )
+
+    push.send_site_celebration_push(
+        object(),
+        user_id=7,
+        site_id=99,
+        notification_id=12,
+        notification_type="site_identified",
+        site_label="Morrison Formation",
+    )
+
+    assert sent == [
+        {
+            "tokens": ["token"],
+            "title": "Mesozoica",
+            "body": "Site identified: Morrison Formation",
+            "data": {
+                "type": "site_identified",
+                "site_id": "99",
+                "notification_id": "12",
+            },
+            "badge_count": 3,
+        }
+    ]
 
 
 def test_mark_notification_read_syncs_unread_badge(client: TestClient, monkeypatch):

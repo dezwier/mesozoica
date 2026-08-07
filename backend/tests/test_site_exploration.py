@@ -195,6 +195,7 @@ def test_documentation_completes_and_freezes(
     )
 
     # Full progress clears ±30 pt noise even from a low roll.
+    celebrations = []
     profile, summaries = apply_site_exploration_update(
         session,
         user,
@@ -206,6 +207,7 @@ def test_documentation_completes_and_freezes(
                 )
             ]
         ),
+        celebrations_out=celebrations,
     )
     session.refresh(link)
     assert link.documented is True
@@ -228,6 +230,10 @@ def test_documentation_completes_and_freezes(
     assert profile.skill_breakdown["field_survey"]["document_site_as_first"] == 20
 
     from app.models.user_notification import UserNotification, UserNotificationType
+
+    assert len(celebrations) == 1
+    assert celebrations[0].type == UserNotificationType.SITE_DOCUMENTED
+    assert celebrations[0].site_id == site.site_id
 
     notif = session.exec(
         select(UserNotification).where(
@@ -432,3 +438,4 @@ def test_patch_document_progress_api(
     assert len(body["sites"]) == 1
     assert body["sites"][0]["documentation_progress"] == 0.25
     assert body["sites"][0]["odd_dino_band"] is not None
+    assert body["celebrations"] == []

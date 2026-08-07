@@ -11,6 +11,7 @@ from app.models.data_source import DATA_SOURCE_FIELD
 from app.models.site import Site
 from app.models.site_type import SiteType
 from app.models.user import User
+from app.models.user_notification import UserNotification, UserNotificationType
 from app.models.user_site import (
     USER_SITE_ROLE_DISCOVERER,
     USER_SITE_ROLE_IDENTIFIER,
@@ -284,3 +285,14 @@ def test_identify_api_endpoints(client: TestClient, session: Session) -> None:
     assert payload["site"]["status"] == "identified"
     assert payload["site"]["identified_at"] is not None
     assert payload["site"]["site_type_period"] == "cretaceous"
+    assert payload["celebration"] == {
+        "notification_id": payload["celebration"]["notification_id"],
+        "type": "site_identified",
+        "site_id": site.site_id,
+    }
+    notification = session.get(
+        UserNotification, payload["celebration"]["notification_id"]
+    )
+    assert notification is not None
+    assert notification.type == UserNotificationType.SITE_IDENTIFIED
+    assert notification.read is False

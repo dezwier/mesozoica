@@ -9,6 +9,7 @@ import '../cards/site_turnable_card.dart';
 Future<void> showSiteMapCardDialog(BuildContext context, SiteSummary site) {
   return CardDetailSheet.show<void>(
     context,
+    identity: CardDetailIdentity.site(site.siteId),
     builder: (context) => _SiteMapCard(site: site),
   );
 }

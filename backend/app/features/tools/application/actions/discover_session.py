@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import random
+from dataclasses import replace
 
 from sqlmodel import Session, col, select
 
@@ -13,14 +14,18 @@ from app.models.site import (
     HOW_DISCOVERED_VALUES,
     Site,
 )
-from app.models.user_notification import UserNotification, UserNotificationType
+from app.models.user_notification import UserNotificationType
 from app.models.user_site import (
     SITE_STATUS_DISCOVERED,
     SITE_STATUS_HIDDEN,
     USER_SITE_ROLE_DISCOVERER,
     UserSite,
 )
-from app.features.accounts.public import send_site_discovered_push
+from app.features.accounts.public import (
+    create_site_celebration_notification,
+    deliver_site_celebration_notification,
+    send_site_discovered_push,
+)
 from app.features.field.public import (
     apply_site_discovery_enrichment,
 )
@@ -121,12 +126,12 @@ def discover_site_from_aerial(
     apply_site_discovery_enrichment(
         session, site, how_discovered=how_discovered
     )
-    notification = UserNotification(
+    notification = create_site_celebration_notification(
+        session,
         user_id=user_id,
-        type=UserNotificationType.SITE_DISCOVERED,
         site_id=site_id,
+        notification_type=UserNotificationType.SITE_DISCOVERED,
     )
-    session.add(notification)
 
     from app.models.user import User
     from app.features.progression.public import (
@@ -156,15 +161,22 @@ def discover_site_from_aerial(
 
     session.commit()
     session.refresh(notification)
-    if notification.id is not None:
-        send_site_discovered_push(
+    celebration = deliver_site_celebration_notification(
+        session,
+        notification,
+        site_label=site_display_title(site),
+        push_sender=lambda session, **kwargs: send_site_discovered_push(
             session,
-            user_id=user_id,
-            site_id=site_id,
-            notification_id=notification.id,
-            site_label=site_display_title(site),
-        )
+            user_id=kwargs["user_id"],
+            site_id=kwargs["site_id"],
+            notification_id=kwargs["notification_id"],
+            site_label=kwargs["site_label"],
+        ),
+    )
 
-    return ensure_fossils_on_site_discovery(
+    result = ensure_fossils_on_site_discovery(
         session, site_id=site_id, user_id=user_id
     )
+    if isinstance(result, DiscoverFossilOnboardResult):
+        return replace(result, celebration=celebration)
+    return result

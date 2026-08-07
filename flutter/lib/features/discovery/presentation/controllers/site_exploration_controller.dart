@@ -12,7 +12,7 @@ import '../../../../models/profile.dart';
 import '../../../../models/site.dart';
 import '../../../../services/api_client.dart';
 import '../../../../services/location_service.dart';
-import '../../../../utils/discovery_haptic.dart';
+import '../../../notifications/notifications.dart';
 import '../../domain/site_dimension_display.dart';
 
 /// Accrues time-based documentation while identified sites are in range.
@@ -67,6 +67,7 @@ class SiteExplorationController extends ChangeNotifier {
 
   /// FIFO of documentation celebrations (keeps each site separate).
   final List<SiteSummary> _documentationCelebrationQueue = [];
+  final Map<int, int> _documentationNotificationIds = {};
 
   Map<int, double> get progressBySite => Map.unmodifiable(_progressBySite);
 
@@ -88,6 +89,9 @@ class SiteExplorationController extends ChangeNotifier {
     if (_documentationCelebrationQueue.isEmpty) return;
     _documentationCelebrationQueue.removeAt(0);
   }
+
+  int? takeDocumentationNotificationId(int siteId) =>
+      _documentationNotificationIds.remove(siteId);
 
   /// Best-known documentation progress for [siteId].
   double documentationProgressFor(int siteId, {double fallback = 0.0}) {
@@ -600,6 +604,17 @@ class SiteExplorationController extends ChangeNotifier {
         await _onProfileUpdated!(Profile.fromJson(profileJson));
       }
       final sitesJson = response['sites'];
+      final celebrationsJson = response['celebrations'];
+      if (celebrationsJson is List) {
+        for (final raw in celebrationsJson) {
+          if (raw is! Map<String, dynamic>) continue;
+          final descriptor = CelebrationDescriptor.fromJson(raw);
+          if (descriptor.type == 'site_documented') {
+            _documentationNotificationIds[descriptor.siteId] =
+                descriptor.notificationId;
+          }
+        }
+      }
       if (sitesJson is List) {
         final synced = <SiteSummary>[];
         final newlyDocumented = <SiteSummary>[];
@@ -617,7 +632,6 @@ class SiteExplorationController extends ChangeNotifier {
         // AppShell listener can see them on the first notify.
         if (newlyDocumented.isNotEmpty) {
           _documentationCelebrationQueue.addAll(newlyDocumented);
-          playDiscoveryHapticFireAndForget();
         }
         ingestSites(synced);
       }

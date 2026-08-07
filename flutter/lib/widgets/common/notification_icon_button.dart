@@ -135,7 +135,9 @@ class NotificationIconButton extends StatelessWidget {
                       onTapNotification: (item) async {
                         if (_notificationTapScheduled) return;
                         _notificationTapScheduled = true;
-                        await store.markRead(item.id);
+                        if (!item.isCelebration) {
+                          await store.markRead(item.id);
+                        }
                         if (!context.mounted) return;
                         remove();
                         WidgetsBinding.instance.addPostFrameCallback((_) {

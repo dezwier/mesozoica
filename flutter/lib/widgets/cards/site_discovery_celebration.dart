@@ -7,6 +7,8 @@ import '../../models/catalog_data_source.dart';
 import '../../models/site.dart';
 import '../../services/site_service.dart';
 import '../../utils/xp_source_labels.dart';
+import '../../features/notifications/domain/celebration_event.dart';
+import '../../features/notifications/presentation/celebration_controller.dart';
 import 'card_detail_sheet.dart';
 import 'celebration_title_badge.dart';
 import 'site_turnable_card.dart';
@@ -23,8 +25,23 @@ Future<void> showSiteDiscoveryCelebration(
   SiteService? siteService,
   String title = CelebrationTitles.siteDiscovered,
   List<XpAward>? xpAwards,
+  int? notificationId,
+  FieldDiscoverResponse? discovery,
 }) {
   assert(site != null || siteId != null);
+  try {
+    return context.read<CelebrationController>().enqueue(
+      CelebrationEvent(
+        kind: CelebrationKind.siteDiscovered,
+        siteId: site?.siteId ?? siteId!,
+        notificationId: notificationId,
+        site: site,
+        discovery: discovery,
+      ),
+    );
+  } on ProviderNotFoundException {
+    // Standalone previews/tests retain the direct dialog fallback.
+  }
   final awards =
       xpAwards ?? _claimCelebrationXp(context, kSiteDiscoveryCelebrationXpKeys);
   return CardDetailSheet.show<void>(
@@ -47,7 +64,20 @@ Future<void> showSiteDocumentationCelebration(
   int? siteId,
   SiteService? siteService,
   List<XpAward>? xpAwards,
+  int? notificationId,
 }) {
+  try {
+    return context.read<CelebrationController>().enqueue(
+      CelebrationEvent(
+        kind: CelebrationKind.siteDocumented,
+        siteId: site?.siteId ?? siteId!,
+        notificationId: notificationId,
+        site: site,
+      ),
+    );
+  } on ProviderNotFoundException {
+    // Standalone previews/tests retain the direct dialog fallback.
+  }
   final awards =
       xpAwards ??
       _claimCelebrationXp(context, kSiteDocumentationCelebrationXpKeys);
@@ -68,7 +98,20 @@ Future<void> showSiteIdentifiedCelebration(
   int? siteId,
   SiteService? siteService,
   List<XpAward>? xpAwards,
+  int? notificationId,
 }) {
+  try {
+    return context.read<CelebrationController>().enqueue(
+      CelebrationEvent(
+        kind: CelebrationKind.siteIdentified,
+        siteId: site?.siteId ?? siteId!,
+        notificationId: notificationId,
+        site: site,
+      ),
+    );
+  } on ProviderNotFoundException {
+    // Standalone previews/tests retain the direct dialog fallback.
+  }
   final awards =
       xpAwards ??
       _claimCelebrationXp(
@@ -101,6 +144,54 @@ List<XpAward> _claimCelebrationXp(
     );
   } on ProviderNotFoundException {
     return const [];
+  }
+}
+
+List<XpAward> claimCelebrationXpForKind(
+  BuildContext context,
+  CelebrationKind kind,
+) {
+  return switch (kind) {
+    CelebrationKind.siteDiscovered => _claimCelebrationXp(
+      context,
+      kSiteDiscoveryCelebrationXpKeys,
+    ),
+    CelebrationKind.siteIdentified => _claimCelebrationXp(
+      context,
+      kSiteIdentificationCelebrationXpKeys,
+      mergeSameKey: true,
+      oneEvent: false,
+    ),
+    CelebrationKind.siteDocumented => _claimCelebrationXp(
+      context,
+      kSiteDocumentationCelebrationXpKeys,
+    ),
+  };
+}
+
+class SiteCelebrationCard extends StatelessWidget {
+  const SiteCelebrationCard({
+    super.key,
+    required this.event,
+    required this.xpAwards,
+  });
+
+  final CelebrationEvent event;
+  final List<XpAward> xpAwards;
+
+  @override
+  Widget build(BuildContext context) {
+    final title = switch (event.kind) {
+      CelebrationKind.siteDiscovered => CelebrationTitles.siteDiscovered,
+      CelebrationKind.siteIdentified => CelebrationTitles.siteIdentified,
+      CelebrationKind.siteDocumented => CelebrationTitles.siteDocumented,
+    };
+    return _SiteDiscoveryCelebrationSheet(
+      site: event.site,
+      siteId: event.siteId,
+      title: title,
+      xpAwards: xpAwards,
+    );
   }
 }
 

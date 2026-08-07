@@ -19,6 +19,7 @@ class UserNotificationType:
     FRIEND_REQUEST_RECEIVED = "friend_request_received"
     FRIEND_REQUEST_ACCEPTED = "friend_request_accepted"
     SITE_DISCOVERED = "site_discovered"
+    SITE_IDENTIFIED = "site_identified"
     SITE_DOCUMENTED = "site_documented"
 
 

@@ -34,6 +34,7 @@ class NotificationController extends ChangeNotifier {
   Future<void>? _inFlightRefresh;
   bool _refreshQueued = false;
   final Set<int> _seenForBadgeIds = {};
+  final Set<int> _pendingMarkReadIds = {};
 
   List<UserNotificationItem> get items => List.unmodifiable(_items);
   int get unreadCount => _items.where((item) => !item.read).length;
@@ -62,6 +63,14 @@ class NotificationController extends ChangeNotifier {
       final decoded = jsonDecode(raw);
       if (decoded is! Map<String, dynamic>) return;
       final list = decoded['notifications'] as List<dynamic>? ?? [];
+      final pendingRead = decoded['pending_mark_read_ids'];
+      _pendingMarkReadIds
+        ..clear()
+        ..addAll(
+          pendingRead is List
+              ? pendingRead.whereType<num>().map((id) => id.toInt())
+              : const <int>[],
+        );
       _items
         ..clear()
         ..addAll(
@@ -137,6 +146,9 @@ class NotificationController extends ChangeNotifier {
         ..addAll(result.items.where((item) => item.isInAppBellItem));
       await _persistItems();
       _syncAppBadge();
+      for (final id in _pendingMarkReadIds.toList()) {
+        unawaited(markRead(id));
+      }
     } catch (error, stackTrace) {
       debugPrint('NotificationController._fetchAndApply: $error\n$stackTrace');
     }
@@ -148,6 +160,7 @@ class NotificationController extends ChangeNotifier {
     try {
       await _responseCache.set(_cacheKey, userId, {
         'notifications': _items.map((item) => item.toJson()).toList(),
+        'pending_mark_read_ids': _pendingMarkReadIds.toList(),
       });
     } catch (error, stackTrace) {
       debugPrint('NotificationController._persistItems: $error\n$stackTrace');
@@ -157,6 +170,7 @@ class NotificationController extends ChangeNotifier {
   void clear() {
     _items.clear();
     _seenForBadgeIds.clear();
+    _pendingMarkReadIds.clear();
     _activeUserId = null;
     _inFlightRefresh = null;
     _refreshQueued = false;
@@ -177,10 +191,23 @@ class NotificationController extends ChangeNotifier {
 
   Future<void> markRead(int id) async {
     if (id <= 0) return;
+    _pendingMarkReadIds.add(id);
     final index = _items.indexWhere((item) => item.id == id);
-    if (index < 0) return;
+    if (index < 0) {
+      await _persistItems();
+      final ok = await _notificationService.markRead(id);
+      if (ok) {
+        _pendingMarkReadIds.remove(id);
+        await _persistItems();
+      }
+      return;
+    }
     final previous = _items[index];
-    if (previous.read) return;
+    if (previous.read) {
+      _pendingMarkReadIds.remove(id);
+      await _persistItems();
+      return;
+    }
 
     _items[index] = previous.copyWith(read: true);
     notifyListeners();
@@ -188,7 +215,10 @@ class NotificationController extends ChangeNotifier {
     await _persistItems();
 
     final ok = await _notificationService.markRead(id);
-    if (!ok) {
+    if (ok) {
+      _pendingMarkReadIds.remove(id);
+      await _persistItems();
+    } else {
       _items[index] = previous;
       notifyListeners();
       _syncAppBadge();

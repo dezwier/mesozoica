@@ -7,7 +7,6 @@ import '../../controllers/notification_controller.dart';
 import '../../models/site.dart';
 import '../../services/location_service.dart';
 import '../../services/site_service.dart';
-import '../../utils/discovery_haptic.dart';
 import '../common/app_toast.dart';
 import 'site_discovery_celebration.dart';
 
@@ -49,7 +48,6 @@ Future<SiteSummary?> applySiteStatusSelection(
 
     final wasHiddenToDiscover = previous == 'hidden' && next == 'discovered';
     if (wasHiddenToDiscover) {
-      playDiscoveryHapticFireAndForget();
       final userId = context.read<AuthController>().currentUser?.id;
       if (userId != null) {
         await context.read<NotificationController>().refreshAndWait(
@@ -71,7 +69,12 @@ Future<SiteSummary?> applySiteStatusSelection(
       if (!context.mounted) return updated;
       await context.read<AuthController>().refreshProfile(announceXp: true);
       if (!context.mounted) return updated;
-      await showSiteDiscoveryCelebration(context, site: updated);
+      await showSiteDiscoveryCelebration(
+        context,
+        site: updated,
+        notificationId: result.celebration?.notificationId,
+        discovery: result,
+      );
     } else {
       AppToast.success(context, 'Status updated to ${updated.status ?? next}.');
     }

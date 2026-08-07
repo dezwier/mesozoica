@@ -22,10 +22,11 @@ UserNotificationItem _item({
 }
 
 class _SeededNotificationService extends NotificationService {
-  _SeededNotificationService({required this.items});
+  _SeededNotificationService({required this.items, this.failuresRemaining = 0});
 
   final List<UserNotificationItem> items;
   final List<int> markedIds = [];
+  int failuresRemaining;
 
   @override
   Future<NotificationsResult> getNotifications() async {
@@ -35,6 +36,10 @@ class _SeededNotificationService extends NotificationService {
   @override
   Future<bool> markRead(int notificationId) async {
     markedIds.add(notificationId);
+    if (failuresRemaining > 0) {
+      failuresRemaining--;
+      return false;
+    }
     return true;
   }
 }
@@ -125,5 +130,26 @@ void main() {
     controller.clear();
     expect(controller.unreadCount, 0);
     expect(badgeCounts.last, 0);
+  });
+
+  test('failed celebration mark-read retries after refresh', () async {
+    final service = _SeededNotificationService(
+      items: [_item(id: 20)],
+      failuresRemaining: 1,
+    );
+    final controller = NotificationController(
+      notificationService: service,
+      responseCache: _MemoryResponseCache(),
+      setAppBadgeCount: (_) async {},
+    );
+
+    await controller.refreshAndWait(authenticatedUserId: 7);
+    await controller.markRead(20);
+    expect(controller.unreadCount, 1);
+
+    await controller.refreshAndWait(authenticatedUserId: 7);
+    await Future<void>.delayed(Duration.zero);
+    expect(service.markedIds, [20, 20]);
+    expect(controller.unreadCount, 0);
   });
 }

@@ -208,6 +208,45 @@ def sync_unread_badge(session: Session, user_id: int) -> None:
         remove_tokens(session, invalid)
 
 
+def send_site_celebration_push(
+    session: Session,
+    *,
+    user_id: int,
+    site_id: int,
+    notification_id: int,
+    notification_type: str,
+    site_label: str,
+) -> None:
+    """Send the standard FCM payload for a site celebration."""
+    from app.features.accounts.models.user_notification import UserNotificationType
+
+    labels = {
+        UserNotificationType.SITE_DISCOVERED: "discovered",
+        UserNotificationType.SITE_IDENTIFIED: "identified",
+        UserNotificationType.SITE_DOCUMENTED: "documented",
+    }
+    verb = labels.get(notification_type)
+    if verb is None:
+        raise ValueError(f"Unsupported site celebration type: {notification_type}")
+    tokens = get_device_tokens(session, user_id)
+    if not tokens:
+        return
+    badge_count = _get_unread_notification_badge_count(session, user_id)
+    invalid = send_push_to_tokens(
+        tokens,
+        title="Mesozoica",
+        body=f"Site {verb}: {site_label}",
+        data={
+            "type": notification_type,
+            "site_id": str(site_id),
+            "notification_id": str(notification_id),
+        },
+        badge_count=badge_count,
+    )
+    if invalid:
+        remove_tokens(session, invalid)
+
+
 def send_site_discovered_push(
     session: Session,
     *,
@@ -216,24 +255,15 @@ def send_site_discovered_push(
     notification_id: int,
     site_label: str,
 ) -> None:
-    """Send FCM for a newly discovered field site."""
-    tokens = get_device_tokens(session, user_id)
-    if not tokens:
-        return
-    badge_count = _get_unread_notification_badge_count(session, user_id)
-    invalid = send_push_to_tokens(
-        tokens,
-        title="Mesozoica",
-        body=f"Site discovered: {site_label}",
-        data={
-            "type": "site_discovered",
-            "site_id": str(site_id),
-            "notification_id": str(notification_id),
-        },
-        badge_count=badge_count,
+    """Compatibility wrapper for site-discovery callers."""
+    send_site_celebration_push(
+        session,
+        user_id=user_id,
+        site_id=site_id,
+        notification_id=notification_id,
+        notification_type="site_discovered",
+        site_label=site_label,
     )
-    if invalid:
-        remove_tokens(session, invalid)
 
 
 def send_site_documented_push(
@@ -244,21 +274,12 @@ def send_site_documented_push(
     notification_id: int,
     site_label: str,
 ) -> None:
-    """Send FCM when a site is fully documented."""
-    tokens = get_device_tokens(session, user_id)
-    if not tokens:
-        return
-    badge_count = _get_unread_notification_badge_count(session, user_id)
-    invalid = send_push_to_tokens(
-        tokens,
-        title="Mesozoica",
-        body=f"Site documented: {site_label}",
-        data={
-            "type": "site_documented",
-            "site_id": str(site_id),
-            "notification_id": str(notification_id),
-        },
-        badge_count=badge_count,
+    """Compatibility wrapper for site-documentation callers."""
+    send_site_celebration_push(
+        session,
+        user_id=user_id,
+        site_id=site_id,
+        notification_id=notification_id,
+        notification_type="site_documented",
+        site_label=site_label,
     )
-    if invalid:
-        remove_tokens(session, invalid)

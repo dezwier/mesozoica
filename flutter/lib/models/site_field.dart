@@ -1,6 +1,7 @@
 import 'fossil.dart';
 import 'profile.dart';
 import 'site.dart' show SiteSummary;
+import '../features/notifications/domain/celebration_descriptor.dart';
 
 class FieldEnsureResponse {
   const FieldEnsureResponse({
@@ -82,6 +83,7 @@ class FieldDiscoverResponse {
     this.generated = false,
     this.fossilsReady = false,
     this.surfaceFossils = const [],
+    this.celebration,
   });
 
   final SiteSummary site;
@@ -91,6 +93,7 @@ class FieldDiscoverResponse {
   final bool generated;
   final bool fossilsReady;
   final List<FossilSummary> surfaceFossils;
+  final CelebrationDescriptor? celebration;
 
   factory FieldDiscoverResponse.fromJson(Map<String, dynamic> json) {
     final rawFossils = json['surface_fossils'];
@@ -110,6 +113,11 @@ class FieldDiscoverResponse {
       generated: json['generated'] as bool? ?? false,
       fossilsReady: json['fossils_ready'] as bool? ?? false,
       surfaceFossils: fossils,
+      celebration: json['celebration'] is Map<String, dynamic>
+          ? CelebrationDescriptor.fromJson(
+              json['celebration'] as Map<String, dynamic>,
+            )
+          : null,
     );
   }
 }
@@ -189,6 +197,7 @@ class SiteIdentifyResult {
     this.periodIdentified = false,
     this.rockIdentified = false,
     this.identified = false,
+    this.celebration,
   });
 
   final bool correct;
@@ -201,6 +210,7 @@ class SiteIdentifyResult {
   final bool identified;
   final SiteSummary site;
   final Profile profile;
+  final CelebrationDescriptor? celebration;
 
   factory SiteIdentifyResult.fromJson(Map<String, dynamic> json) {
     return SiteIdentifyResult(
@@ -219,6 +229,11 @@ class SiteIdentifyResult {
       identified: json['identified'] as bool? ?? false,
       site: SiteSummary.fromJson(json['site'] as Map<String, dynamic>),
       profile: Profile.fromJson(json['profile'] as Map<String, dynamic>),
+      celebration: json['celebration'] is Map<String, dynamic>
+          ? CelebrationDescriptor.fromJson(
+              json['celebration'] as Map<String, dynamic>,
+            )
+          : null,
     );
   }
 }

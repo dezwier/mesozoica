@@ -17,6 +17,7 @@ from app.schemas.site import SiteExplorationUpdateRequest, SiteSummary
 from app.features.progression.public import set_skill_xp, sync_career_from_skills
 from app.features.progression.public import skill_by_id
 from app.features.sites.public import apply_site_exploration_update
+from app.features.accounts.application.celebrations import CelebrationNotificationDescriptor
 from app.features.accounts.application.users import user_to_list_entry, user_to_profile_response
 from app.features.accounts.application.walk_distance import apply_distance_update
 
@@ -26,6 +27,7 @@ router = APIRouter(prefix="/users", tags=["users"])
 class SiteExplorationUpdateResponse(BaseModel):
     profile: UserProfileResponse
     sites: list[SiteSummary] = Field(default_factory=list)
+    celebrations: list[CelebrationNotificationDescriptor] = Field(default_factory=list)
 
 
 @router.get("/me", response_model=UserProfileResponse)
@@ -58,8 +60,18 @@ async def update_my_site_exploration(
     user = session.get(User, current_user.id)
     if user is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
-    profile, sites = apply_site_exploration_update(session, user, payload)
-    return SiteExplorationUpdateResponse(profile=profile, sites=sites)
+    celebrations: list[CelebrationNotificationDescriptor] = []
+    profile, sites = apply_site_exploration_update(
+        session,
+        user,
+        payload,
+        celebrations_out=celebrations,
+    )
+    return SiteExplorationUpdateResponse(
+        profile=profile,
+        sites=sites,
+        celebrations=celebrations,
+    )
 
 
 @router.patch("/me/skills/{skill_id}/xp", response_model=UserProfileResponse)

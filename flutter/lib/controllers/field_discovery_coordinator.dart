@@ -10,7 +10,6 @@ import '../config/game_config.dart';
 import '../models/site.dart';
 import '../services/location_service.dart';
 import '../services/site_service.dart';
-import '../utils/discovery_haptic.dart';
 
 /// Auto-discovers nearby field sites inside [discoverRadiusM].
 ///
@@ -429,7 +428,6 @@ class FieldDiscoveryCoordinator extends ChangeNotifier {
         _discoverableCache.removeWhere((s) => s.siteId == site.siteId);
         _insideRadiusSiteIds.remove(site.siteId);
         _celebrationQueue.add(updated);
-        playDiscoveryHapticFireAndForget();
         _log(
           'discovered site_id=${site.siteId} distance_m=${distanceM.round()}',
         );

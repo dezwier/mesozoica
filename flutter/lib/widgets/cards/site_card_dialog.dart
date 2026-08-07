@@ -16,6 +16,7 @@ Future<void> showSiteCardDialog(
 }) {
   return CardDetailSheet.show<void>(
     context,
+    identity: CardDetailIdentity.site(siteId),
     builder: (context) => _SiteCardSheet(
       siteId: siteId,
       dataSource: dataSource,

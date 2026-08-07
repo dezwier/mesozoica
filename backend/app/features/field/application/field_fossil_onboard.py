@@ -30,6 +30,7 @@ class DiscoverFossilOnboardResult:
     generated: bool
     fossils_ready: bool
     surface_fossil_ids: tuple[int, ...]
+    celebration: object | None = None
 
 
 def _surface_fossil_ids(session: Session, *, site_id: int) -> tuple[int, ...]:

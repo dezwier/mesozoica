@@ -28,7 +28,7 @@ Future<SiteSummary?> showSiteIdentifySheet(
   required SiteSummary site,
 }) async {
   final rootNav = Navigator.of(context, rootNavigator: true);
-  final updated = await showModalBottomSheet<SiteSummary>(
+  final completion = await showModalBottomSheet<_IdentifyCompletion>(
     context: context,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
@@ -40,19 +40,28 @@ Future<SiteSummary?> showSiteIdentifySheet(
           SiteIdentifySheet(site: site, scrollController: scrollController),
     ),
   );
-  if (updated == null) return null;
+  if (completion == null) return null;
+  final updated = completion.site;
 
   // Close the site card under the quiz so celebration isn't stacked on it.
   if (context.mounted && CardDetailSheet.isOpen) {
     _syncIdentifiedSite(context, updated);
-    rootNav.pop();
+    CardDetailSheet.dismissMatching(CardDetailIdentity.site(updated.siteId));
     await SchedulerBinding.instance.endOfFrame;
   }
 
   if (rootNav.mounted) {
-    await showSiteIdentifiedCelebration(rootNav.context, site: updated);
+    await showSiteIdentifiedCelebration(
+      rootNav.context,
+      site: updated,
+      notificationId: completion.notificationId,
+    );
   } else if (context.mounted) {
-    await showSiteIdentifiedCelebration(context, site: updated);
+    await showSiteIdentifiedCelebration(
+      context,
+      site: updated,
+      notificationId: completion.notificationId,
+    );
   }
   return updated;
 }
@@ -180,7 +189,9 @@ class _SiteIdentifySheetState extends State<SiteIdentifySheet> {
       if (result.identified) {
         await _holdSuccessAtLeast(started);
         if (!mounted) return;
-        Navigator.of(context).pop(result.site);
+        Navigator.of(context).pop(
+          _IdentifyCompletion(result.site, result.celebration?.notificationId),
+        );
         return;
       }
 
@@ -191,7 +202,7 @@ class _SiteIdentifySheetState extends State<SiteIdentifySheet> {
       if (!mounted) return;
 
       if (next.identified) {
-        Navigator.of(context).pop(result.site);
+        Navigator.of(context).pop(_IdentifyCompletion(result.site, null));
         return;
       }
 
@@ -484,6 +495,12 @@ class _SiteIdentifySheetState extends State<SiteIdentifySheet> {
       ),
     );
   }
+}
+
+class _IdentifyCompletion {
+  const _IdentifyCompletion(this.site, this.notificationId);
+  final SiteSummary site;
+  final int? notificationId;
 }
 
 /// Maps slider 0→1 (left older → right younger) to a Mesozoic period key.

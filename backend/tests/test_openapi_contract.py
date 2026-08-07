@@ -6,7 +6,7 @@ import json
 from app.main import app
 
 
-OPENAPI_SHA256 = "92ea5028d9d16e1574b5f1112281f4a0fe42d7497e2f9fc495e21f08465584ad"
+OPENAPI_SHA256 = "003fb078c18e7711cc2d873ec1e744658f1825b62a60a1c0bd79ad4d6e366fa0"
 
 
 def test_openapi_contract_is_unchanged() -> None:

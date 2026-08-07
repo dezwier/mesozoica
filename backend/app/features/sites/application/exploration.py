@@ -23,6 +23,9 @@ from app.features.progression.public import (
     level_for_xp,
 )
 from app.features.accounts.public import (
+    CelebrationNotificationDescriptor,
+    create_site_celebration_notification,
+    deliver_site_celebration_notification,
     send_site_documented_push,
     user_to_profile_response,
 )
@@ -132,12 +135,12 @@ def _maybe_complete_documentation(
         site_id=int(link.site_id),
         was_first=is_document_site_as_first,
     )
-    notification = UserNotification(
+    notification = create_site_celebration_notification(
+        session,
         user_id=int(user.id),
-        type=UserNotificationType.SITE_DOCUMENTED,
         site_id=int(link.site_id),
+        notification_type=UserNotificationType.SITE_DOCUMENTED,
     )
-    session.add(notification)
     return notification
 
 
@@ -145,6 +148,8 @@ def apply_site_exploration_update(
     session: Session,
     user: User,
     payload: SiteExplorationUpdateRequest,
+    *,
+    celebrations_out: list[CelebrationNotificationDescriptor] | None = None,
 ) -> tuple[UserProfileResponse, list[SiteSummary]]:
     """Monotonically update discoverer documentation progress.
 
@@ -208,6 +213,7 @@ def apply_site_exploration_update(
     session.commit()
     session.refresh(user)
 
+    celebrations: list[CelebrationNotificationDescriptor] = []
     for site_id, notification in pending_doc_notifications:
         session.refresh(notification)
         if notification.id is None:
@@ -218,13 +224,20 @@ def apply_site_exploration_update(
             data_source=DATA_SOURCE_FIELD,
             viewer_user_id=int(user.id),
         )
-        send_site_documented_push(
+        celebration = deliver_site_celebration_notification(
             session,
-            user_id=int(user.id),
-            site_id=site_id,
-            notification_id=notification.id,
+            notification,
             site_label=site_display_title(row.site),
+            push_sender=lambda session, **kwargs: send_site_documented_push(
+                session,
+                user_id=kwargs["user_id"],
+                site_id=kwargs["site_id"],
+                notification_id=kwargs["notification_id"],
+                site_label=kwargs["site_label"],
+            ),
         )
+        if celebration is not None:
+            celebrations.append(celebration)
 
     skill_level = level_for_xp(get_skill_xp(user, "field_survey"))
     summaries: list[SiteSummary] = []
@@ -242,4 +255,6 @@ def apply_site_exploration_update(
             )
         )
 
+    if celebrations_out is not None:
+        celebrations_out.extend(celebrations)
     return user_to_profile_response(session, user), summaries

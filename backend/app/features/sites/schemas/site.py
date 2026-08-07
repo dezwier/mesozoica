@@ -8,6 +8,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from app.schemas.auth import UserProfileResponse
 from app.schemas.fossil import FossilSummary
+from app.features.accounts.public import CelebrationNotificationDescriptor
 
 
 class OwnedOccurrenceThumb(BaseModel):
@@ -171,6 +172,7 @@ class FieldDiscoverResponse(BaseModel):
     generated: bool = False
     fossils_ready: bool = False
     surface_fossils: list[FossilSummary] = Field(default_factory=list)
+    celebration: CelebrationNotificationDescriptor | None = None
 
 
 class SiteFossilThumb(BaseModel):
@@ -262,3 +264,4 @@ class IdentifyGuessResponse(BaseModel):
     identified: bool = False
     site: SiteSummary
     profile: UserProfileResponse
+    celebration: CelebrationNotificationDescriptor | None = None

@@ -79,6 +79,22 @@ For map presentation, preserve:
 
 The detailed marker rules live in [`../flutter/docs/map_site_markers.md`](../flutter/docs/map_site_markers.md).
 
+### Celebration delivery
+
+Site discovery, identification, and documentation celebrations use one
+application-wide FIFO. The celebration host is above the root navigator, so it
+must remain visible over shell screens, drawers, dialogs, and card routes. A
+matching entity card is dismissed before its celebration; unrelated overlays
+remain underneath. Haptic feedback and notification mark-read happen when the
+celebration becomes visible, not when it is queued.
+
+Every celebration has a durable user notification and a best-effort push.
+Foreground response descriptors and FCM payloads identify the notification by
+`notification_id`, `type`, and `site_id`. Background/terminated events remain
+unread and are replayed oldest-first on resume. Triggering API responses may
+add an optional `celebration` descriptor, or `celebrations` when one request can
+complete several events; existing response fields and paths remain stable.
+
 ## Background processing
 
 Cron and worker contracts include schedule interpretation, job names/CLI flags, idempotency, resume/overwrite semantics, batching, retry behavior, queue states, transaction boundaries, logs used in operations, and protection against accidental local production runs.

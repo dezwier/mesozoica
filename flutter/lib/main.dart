@@ -13,6 +13,7 @@ import 'controllers/theme_controller.dart';
 import 'core/di/app_providers.dart';
 import 'core/networking/token_storage.dart';
 import 'features/game_config/data/game_config_asset_loader.dart';
+import 'features/notifications/presentation/celebration_host.dart';
 import 'firebase_options.dart';
 import 'services/map_tile_cache.dart';
 import 'services/push_notification_runtime.dart';
@@ -114,9 +115,11 @@ class MesozoicaApp extends StatelessWidget {
             builder: (context, child) {
               // Above the root Navigator so drawers / sheets / dialogs
               // never cover the XP badge.
-              return Stack(
-                fit: StackFit.expand,
-                children: [?child, const XpAwardOverlay()],
+              return CelebrationHost(
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [?child, const XpAwardOverlay()],
+                ),
               );
             },
             home: const AppShell(),

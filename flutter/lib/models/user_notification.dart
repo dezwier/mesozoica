@@ -24,11 +24,13 @@ class UserNotificationItem {
   bool get isFriendRequestRelated =>
       isFriendRequestReceived || isFriendRequestAccepted;
   bool get isSiteDiscovered => type == 'site_discovered';
+  bool get isSiteIdentified => type == 'site_identified';
   bool get isSiteDocumented => type == 'site_documented';
+  bool get isCelebration =>
+      isSiteDiscovered || isSiteIdentified || isSiteDocumented;
 
   /// Types shown in the in-app notification bell.
-  bool get isInAppBellItem =>
-      isFriendRequestRelated || isSiteDiscovered || isSiteDocumented;
+  bool get isInAppBellItem => isFriendRequestRelated || isCelebration;
 
   Map<String, dynamic> toJson() {
     return {

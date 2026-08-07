@@ -496,6 +496,7 @@ def _discover_response(
             fossil_ids=result.surface_fossil_ids,
             viewer_user_id=int(current_user.id),
         ),
+        celebration=result.celebration,
     )
 
 
@@ -608,6 +609,7 @@ def post_identify_site(
         identified=result.identified,
         site=result.site,
         profile=result.profile,
+        celebration=result.celebration,
     )
 
 

@@ -14,6 +14,7 @@ from app.shared.data_sources import DATA_SOURCE_FIELD
 from app.models.site import Site
 from app.models.site_type import SiteType
 from app.models.user import User
+from app.models.user_notification import UserNotificationType
 from app.models.user_site import (
     USER_SITE_ROLE_DISCOVERER,
     USER_SITE_ROLE_IDENTIFIER,
@@ -35,7 +36,13 @@ from app.features.sites.application.site_type_fallback import (
     effective_site_type,
     load_site_types_by_period,
 )
-from app.features.accounts.public import user_to_profile_response
+from app.features.accounts.public import (
+    CelebrationNotificationDescriptor,
+    create_site_celebration_notification,
+    deliver_site_celebration_notification,
+    user_to_profile_response,
+)
+from app.features.sites.domain.labels import site_display_title
 
 IDENTIFY_STEP_PERIOD = "period"
 IDENTIFY_STEP_ROCK = "rock_type"
@@ -70,6 +77,7 @@ class IdentifyGuessResult:
     identified: bool
     site: SiteSummary
     profile: UserProfileResponse
+    celebration: CelebrationNotificationDescriptor | None = None
 
 
 def _utc_now() -> datetime:
@@ -375,13 +383,28 @@ def submit_identify_guess(
     session.add(link)
 
     fully = bool(link.period_identified and link.rock_identified)
+    notification = None
     if fully:
         _upsert_identifier(session, user_id=user_id, site_id=site_id)
+        notification = create_site_celebration_notification(
+            session,
+            user_id=user_id,
+            site_id=site_id,
+            notification_type=UserNotificationType.SITE_IDENTIFIED,
+        )
 
     session.add(user)
     session.commit()
     session.refresh(user)
     session.refresh(link)
+    celebration = None
+    if notification is not None:
+        session.refresh(notification)
+        celebration = deliver_site_celebration_notification(
+            session,
+            notification,
+            site_label=site_display_title(site),
+        )
 
     # Re-enrich so redaction lifts after full identification.
     enriched_row = get_site_by_id(
@@ -413,4 +436,5 @@ def submit_identify_guess(
         identified=fully,
         site=summary,
         profile=user_to_profile_response(session, user),
+        celebration=celebration,
     )

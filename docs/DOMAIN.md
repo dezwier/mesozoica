@@ -84,6 +84,12 @@ The server's active version is authoritative. API responses carry `X-Game-Config
 
 Relationship actions and gameplay events can create notifications and push messages. Firebase-backed delivery is an infrastructure concern; persisted notification state remains the source the client can list and update.
 
+Major site events—discovery, identification, and completed documentation—also
+produce celebrations. Their persisted notifications are the cross-lifecycle
+source of truth: foreground celebrations become read when shown, while events
+created in the background remain unread and queue for ordered presentation on
+the next resume.
+
 ## Important state distinctions
 
 | Similar-looking concepts | Difference |

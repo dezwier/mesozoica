@@ -22,7 +22,6 @@ import '../controllers/orbit_survey_controller.dart';
 import '../controllers/terrain_echo_controller.dart';
 import '../controllers/guidance_session_controller.dart';
 import '../controllers/map_controller.dart';
-import '../controllers/notification_controller.dart';
 import '../controllers/site_catalog_controller.dart';
 import '../controllers/fossil_catalog_controller.dart';
 import '../controllers/splash_hold_controller.dart';
@@ -31,9 +30,9 @@ import '../controllers/walk_distance_controller.dart';
 import '../controllers/weather_controller.dart';
 import '../controllers/site_exploration_controller.dart';
 import '../controllers/xp_award_controller.dart';
+import '../features/notifications/notifications.dart';
 import '../models/fossil.dart';
 import '../models/site.dart';
-import '../models/user_notification.dart';
 import '../services/api_response_cache.dart';
 import '../services/location_service.dart';
 import '../services/push_notification_service.dart';
@@ -78,6 +77,7 @@ class _AppShellState extends State<AppShell>
   CatalogModeController? _catalogModeController;
   FieldDiscoveryCoordinator? _discoveryCoordinator;
   SiteExplorationController? _explorationController;
+  NotificationController? _notificationController;
   MapController? _mapController;
   AerialSessionController? _aerialRecon;
   GuidanceSessionController? _guidance;
@@ -263,6 +263,9 @@ class _AppShellState extends State<AppShell>
       final exploration = context.read<SiteExplorationController>();
       _explorationController = exploration;
       exploration.addListener(_onExplorationChanged);
+      final notifications = context.read<NotificationController>();
+      _notificationController = notifications;
+      notifications.addListener(_onNotificationsChanged);
       _setupPushHandling();
     });
   }
@@ -488,20 +491,42 @@ class _AppShellState extends State<AppShell>
       _foregroundPushSub = FirebaseMessaging.onMessage.listen((msg) {
         final type = msg.data['type']?.toString() ?? '';
         if (type != 'site_discovered' &&
+            type != 'site_identified' &&
             type != 'site_documented' &&
             type != 'friend_request_received' &&
             type != 'friend_request_accepted') {
           return;
         }
         if (!mounted) return;
-        if (type == 'site_discovered' || type == 'site_documented') {
+        if (CelebrationEvent.kindForNotificationType(type) != null) {
           final rawSiteId = msg.data['site_id'];
           final siteId = rawSiteId != null
               ? int.tryParse(rawSiteId.toString())
               : null;
+          final rawNotificationId = msg.data['notification_id'];
+          final notificationId = rawNotificationId != null
+              ? int.tryParse(rawNotificationId.toString())
+              : null;
           _scheduleDiscoveryRefresh(siteId: siteId);
           if (type == 'site_documented' && siteId != null) {
-            _queueDocumentationCelebrationSiteId(siteId);
+            unawaited(
+              _showDocumentationCelebration(
+                siteId: siteId,
+                notificationId: notificationId,
+              ),
+            );
+          } else if (type == 'site_identified' && siteId != null) {
+            unawaited(
+              showSiteIdentifiedCelebration(
+                context,
+                siteId: siteId,
+                notificationId: notificationId,
+              ),
+            );
+          } else if (siteId != null) {
+            unawaited(
+              _showCelebration(siteId: siteId, notificationId: notificationId),
+            );
           }
           return;
         }
@@ -527,21 +552,49 @@ class _AppShellState extends State<AppShell>
     }
   }
 
+  void _onNotificationsChanged() {
+    if (!mounted || !_appInForeground) return;
+    final notifications = context.read<NotificationController>();
+    context.read<CelebrationController>().reconcileUnread(notifications.items);
+  }
+
   void _handlePushOpen(RemoteMessage msg) {
     final type = msg.data['type']?.toString() ?? '';
     final rawSiteId = msg.data['site_id'];
     final siteId = rawSiteId != null
         ? int.tryParse(rawSiteId.toString())
         : null;
+    final rawNotificationId = msg.data['notification_id'];
+    final notificationId = rawNotificationId != null
+        ? int.tryParse(rawNotificationId.toString())
+        : null;
     if (siteId == null) return;
     if (type == 'site_discovered') {
       _scheduleDiscoveryRefresh(siteId: siteId);
-      unawaited(_showCelebration(siteId: siteId));
+      unawaited(
+        _showCelebration(siteId: siteId, notificationId: notificationId),
+      );
+      return;
+    }
+    if (type == 'site_identified') {
+      _scheduleDiscoveryRefresh(siteId: siteId);
+      unawaited(
+        showSiteIdentifiedCelebration(
+          context,
+          siteId: siteId,
+          notificationId: notificationId,
+        ),
+      );
       return;
     }
     if (type == 'site_documented') {
       _scheduleDiscoveryRefresh(siteId: siteId);
-      _queueDocumentationCelebrationSiteId(siteId);
+      unawaited(
+        _showDocumentationCelebration(
+          siteId: siteId,
+          notificationId: notificationId,
+        ),
+      );
     }
   }
 
@@ -551,6 +604,7 @@ class _AppShellState extends State<AppShell>
     WeatherDetailSheet.openCount.removeListener(_onWeatherOverlayChanged);
     _discoveryCoordinator?.removeListener(_onDiscoveryChanged);
     _explorationController?.removeListener(_onExplorationChanged);
+    _notificationController?.removeListener(_onNotificationsChanged);
     _mapController?.removeListener(_onMapSitesChanged);
     _aerialRecon?.removeListener(_onAerialReconChanged);
     _guidance?.removeListener(_onGuidanceChanged);
@@ -576,6 +630,7 @@ class _AppShellState extends State<AppShell>
     switch (state) {
       case AppLifecycleState.resumed:
         _appInForeground = true;
+        context.read<CelebrationController>().setForeground(true);
         // Flush any badge XP held while away before resume syncs announce more.
         context.read<XpAwardController>().setAppForeground(true);
         fieldSession.onForeground();
@@ -630,6 +685,7 @@ class _AppShellState extends State<AppShell>
       case AppLifecycleState.paused:
       case AppLifecycleState.hidden:
         _appInForeground = false;
+        context.read<CelebrationController>().setForeground(false);
         // Hold all floating-badge XP until resume (one merged badge per source).
         context.read<XpAwardController>().setAppForeground(false);
         fieldSession.onBackground();
@@ -639,6 +695,7 @@ class _AppShellState extends State<AppShell>
         );
       case AppLifecycleState.detached:
         _appInForeground = false;
+        context.read<CelebrationController>().setForeground(false);
         context.read<XpAwardController>().setAppForeground(false);
         fieldSession.onLifecycle(state);
         unawaited(context.read<WalkDistanceController>().onAppBackgrounded());
@@ -684,6 +741,7 @@ class _AppShellState extends State<AppShell>
 
     if (userId == null) {
       notificationController.clear();
+      context.read<CelebrationController>().clear();
       return;
     }
 
@@ -691,8 +749,17 @@ class _AppShellState extends State<AppShell>
       if (!mounted || _previousUserId != userId) return;
       await notificationController.hydrate(userId);
       if (!mounted || _previousUserId != userId) return;
+      await context.read<CelebrationController>().bindUser(
+        userId,
+        notificationController.items,
+      );
+      if (!mounted || _previousUserId != userId) return;
       await notificationController.refreshInBackground(
         authenticatedUserId: userId,
+      );
+      if (!mounted || _previousUserId != userId) return;
+      context.read<CelebrationController>().reconcileUnread(
+        notificationController.items,
       );
       if (!mounted || _previousUserId != userId) return;
       await PushNotificationService.registerTokenIfLoggedIn();
@@ -784,14 +851,29 @@ class _AppShellState extends State<AppShell>
       final siteId = item.siteId;
       if (siteId == null) return;
       _scheduleDiscoveryRefresh(siteId: siteId);
-      unawaited(_showCelebration(siteId: siteId));
+      unawaited(_showCelebration(siteId: siteId, notificationId: item.id));
+      return;
+    }
+    if (item.isSiteIdentified) {
+      final siteId = item.siteId;
+      if (siteId == null) return;
+      _scheduleDiscoveryRefresh(siteId: siteId);
+      unawaited(
+        showSiteIdentifiedCelebration(
+          context,
+          siteId: siteId,
+          notificationId: item.id,
+        ),
+      );
       return;
     }
     if (item.isSiteDocumented) {
       final siteId = item.siteId;
       if (siteId == null) return;
       _scheduleDiscoveryRefresh(siteId: siteId);
-      unawaited(_showDocumentationCelebration(siteId: siteId));
+      unawaited(
+        _showDocumentationCelebration(siteId: siteId, notificationId: item.id),
+      );
       return;
     }
     final actorUserId = item.actorUserId;
