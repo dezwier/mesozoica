@@ -114,7 +114,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('No history yet'), findsOneWidget);
-    expect(find.text('Helicopter'), findsOneWidget);
+    expect(find.text('Helicopter'), findsNothing);
     expect(find.textContaining('Site Discovery'), findsNothing);
     expect(find.text('Rarity'), findsNothing);
     expect(find.byIcon(Icons.star_rounded), findsNothing);
@@ -154,7 +154,7 @@ void main() {
         ),
       );
 
-      expect(find.text('Helicopter'), findsOneWidget);
+      expect(find.text('Helicopter'), findsNothing);
       expect(find.textContaining('Site Discovery'), findsNothing);
       expect(find.textContaining('Obtained'), findsNothing);
       expect(find.byIcon(Icons.star_rounded), findsNothing);

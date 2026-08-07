@@ -181,7 +181,7 @@ class _PeriodRockTypeBox extends StatelessWidget {
                     alignment: Alignment.center,
                     child: SizedBox(
                       height: subboxHeight,
-                      width: 340,
+                      width: 320,
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -197,7 +197,7 @@ class _PeriodRockTypeBox extends StatelessWidget {
                                   minAgeMa: site.titleIsRevealed ? site.minAgeMa : null,
                                   maxAgeMa: site.titleIsRevealed ? site.maxAgeMa : null,
                                   axis: GeologicTimelineAxis.horizontal,
-                                  scale: 0.85,
+                                  scale: 1.0,
                                 ),
                               ),
                             ),
@@ -206,7 +206,7 @@ class _PeriodRockTypeBox extends StatelessWidget {
                           Text(
                             explanation,
                             textAlign: TextAlign.center,
-                            style: cardTheme.bodyStyle(fontSize: 10).copyWith(
+                            style: cardTheme.bodyStyle(fontSize: 12).copyWith(
                                   color: Colors.white.withValues(alpha: 0.9),
                                   fontWeight: FontWeight.w600,
                                 ),

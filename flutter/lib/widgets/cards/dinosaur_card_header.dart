@@ -107,7 +107,7 @@ class DinosaurCardHeader extends StatelessWidget {
               ],
             ],
           ),
-        if (subtitle != null) ...[
+        if (subtitle != null && subtitle.trim().isNotEmpty) ...[
           const SizedBox(height: 4),
           Text(
             subtitle,

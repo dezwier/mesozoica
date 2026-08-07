@@ -33,7 +33,6 @@ class DinosaurCardBack extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final nodes = dinosaur.cladogramNodes();
-    final reconstructedSubtitle = dinosaur.reconstructedSubtitle;
     final cardTheme = DinoCardTheme.of(context);
     final titleStyle = cardTheme.sectionLabelStyle(fontSize: 8.5).copyWith(
           color: cardTheme.cardTextSecondary,
@@ -59,7 +58,7 @@ class DinosaurCardBack extends StatelessWidget {
               subtitleFontSize: subtitleFontSize,
               centered: true,
               overlayOnImage: true,
-              subtitleOverride: reconstructedSubtitle,
+              subtitleOverride: "", // Drop subtitle for dinosaur cards on back
             ),
           ),
           if (showArticleButton)
@@ -80,7 +79,7 @@ class DinosaurCardBack extends StatelessWidget {
           Positioned(
             left: 18,
             right: 18,
-            top: 72,
+            top: 72, // Align the top offset of the accordion layout to exactly 72
             bottom: 14,
             child: CardAccordionLayout(
               initialIndex: 0,
@@ -242,7 +241,7 @@ class _DinosaurPeriodRockTypeBox extends StatelessWidget {
                     alignment: Alignment.center,
                     child: SizedBox(
                       height: subboxHeight,
-                      width: 340,
+                      width: 320,
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -258,7 +257,7 @@ class _DinosaurPeriodRockTypeBox extends StatelessWidget {
                                   birth: dinosaur.birth,
                                   death: dinosaur.death,
                                   axis: GeologicTimelineAxis.horizontal,
-                                  scale: 0.85,
+                                  scale: 1.0,
                                 ),
                               ),
                             ),
@@ -267,7 +266,7 @@ class _DinosaurPeriodRockTypeBox extends StatelessWidget {
                           Text(
                             explanation,
                             textAlign: TextAlign.center,
-                            style: cardTheme.bodyStyle(fontSize: 10).copyWith(
+                            style: cardTheme.bodyStyle(fontSize: 12).copyWith(
                                   color: Colors.white.withValues(alpha: 0.9),
                                   fontWeight: FontWeight.w600,
                                 ),

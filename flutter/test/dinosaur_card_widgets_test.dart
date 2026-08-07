@@ -211,7 +211,12 @@ void main() {
       ),
     );
 
-    expect(find.text('Reconstructed 2d ago'), findsOneWidget);
+    // Tap Dinosaur timeline history to expand it
+    await tester.tap(find.text('DINOSAUR TIMELINE HISTORY'));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('Reconstructed'), findsOneWidget);
+    expect(find.textContaining('2d ago'), findsOneWidget);
     expect(find.text('Original - Reconstructed 2d ago'), findsNothing);
     expect(find.text('#99'), findsNothing);
     expect(find.text('#99 · Original'), findsNothing);

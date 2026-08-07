@@ -91,13 +91,13 @@ class ToolCardBack extends StatelessWidget {
               subtitleFontSize: subtitleFontSize,
               overlayOnImage: true,
               showSkillBadge: true,
-              showScientificSubtitle: true,
+              showScientificSubtitle: false, // Drop subtitle for tool cards
             ),
           ),
           Positioned(
             left: 18,
             right: 18,
-            top: 108,
+            top: 72, // Align the top offset of the accordion layout to exactly 72
             bottom: 14,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -106,7 +106,7 @@ class ToolCardBack extends StatelessWidget {
                   child: CardAccordionLayout(
                     initialIndex: 0,
                     items: [
-                      // Element 0: Tool parameters
+                      // Element 0: Tool parameters (no inner cards, 3 column wrap)
                       CardAccordionItem(
                         builder: (context, isOpen, curvedT, lerpFn) {
                           return CardSectionPanel(
@@ -128,13 +128,7 @@ class ToolCardBack extends StatelessWidget {
                                       child: Stack(
                                         children: [
                                           Center(
-                                            child: statsChild ??
-                                                Text(
-                                                  'Standard settings',
-                                                  style: cardTheme.bodyStyle(fontSize: 12).copyWith(
-                                                        color: cardTheme.cardTextMuted,
-                                                      ),
-                                                ),
+                                            child: ToolParamGrid(tool: tool),
                                           ),
                                           if (editButton != null)
                                             Positioned(top: 2, right: 2, child: editButton),
@@ -421,5 +415,110 @@ class _HistoryRow extends StatelessWidget {
     final m = mins % 60;
     if (m == 0) return '${h}h';
     return '${h}h ${m}m';
+  }
+}
+
+class ToolParamGrid extends StatelessWidget {
+  const ToolParamGrid({
+    super.key,
+    required this.tool,
+  });
+
+  final ToolSummary tool;
+
+  Map<String, String> _formatToolParams(Map<String, dynamic> params) {
+    final out = <String, String>{};
+    for (final entry in params.entries) {
+      final key = entry.key;
+      if (key == 'stats_explanation' || key == 'modifies_main_params') continue;
+
+      final value = entry.value;
+      final label = _humanizeKey(key);
+
+      // Format value
+      String valueStr = '';
+      if (value is num) {
+        if (key.endsWith('_kmh')) {
+          valueStr = '${value.toStringAsFixed(0)} km/h';
+        } else if (key.endsWith('_m')) {
+          valueStr = '${value.toStringAsFixed(0)}m';
+        } else if (key.endsWith('_minutes')) {
+          valueStr = '$value min';
+        } else if (key.endsWith('_chance')) {
+          valueStr = '${(value * 100).toStringAsFixed(0)}%';
+        } else {
+          valueStr = value == value.roundToDouble() ? value.toStringAsFixed(0) : value.toStringAsFixed(1);
+        }
+      } else {
+        valueStr = value?.toString() ?? '—';
+      }
+      out[label] = valueStr;
+    }
+    return out;
+  }
+
+  String _humanizeKey(String key) {
+    return key
+        .split('_')
+        .where((p) => p.isNotEmpty)
+        .map((p) => '${p[0].toUpperCase()}${p.substring(1)}')
+        .join(' ');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final params = tool.isOwned && tool.params.isNotEmpty ? tool.params : tool.baseParams;
+    final formatted = _formatToolParams(params);
+
+    if (formatted.isEmpty) {
+      return Center(
+        child: Text(
+          'Standard settings',
+          style: DinoCardTheme.of(context).bodyStyle(fontSize: 12).copyWith(
+                color: DinoCardTheme.of(context).cardTextMuted,
+              ),
+        ),
+      );
+    }
+
+    return Wrap(
+      spacing: 8,
+      runSpacing: 10,
+      alignment: WrapAlignment.center,
+      crossAxisAlignment: WrapCrossAlignment.start,
+      children: [
+        for (final entry in formatted.entries)
+          SizedBox(
+            width: 102,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  entry.key.toUpperCase(),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                  style: DinoCardTheme.of(context).statLabelStyle(fontSize: 8.5).copyWith(
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 0.3,
+                      ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  entry.value,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                  style: DinoCardTheme.of(context).statValueStyle(fontSize: 13.0).copyWith(
+                        fontWeight: FontWeight.w700,
+                        color: DinoCardTheme.of(context).cardAccent,
+                      ),
+                ),
+              ],
+            ),
+          ),
+      ],
+    );
   }
 }
