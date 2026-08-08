@@ -1,7 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
-import '../../config/app_config.dart';
 import 'login_form.dart';
 
 part 'auth_view_social.dart';
@@ -86,18 +85,6 @@ class AuthViewState extends State<AuthView>
     );
   }
 
-  void _fillDebugTestAccount() {
-    if (_tabController.index == 0) {
-      widget.usernameController.text = AppConfig.debugTestEmail;
-      widget.passwordController.text = AppConfig.debugTestPassword;
-      return;
-    }
-    _registerUsernameController.text = AppConfig.debugTestUsername;
-    _registerEmailController.text = AppConfig.debugTestEmail;
-    _registerPasswordController.text = AppConfig.debugTestPassword;
-    _registerFullNameController.text = AppConfig.debugTestFullName;
-  }
-
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
@@ -141,9 +128,6 @@ class AuthViewState extends State<AuthView>
                         onSignInWithGoogle: widget.onSignInWithGoogle,
                         onSignInWithApple: widget.onSignInWithApple,
                         onSwitchToSignUp: switchToSignUpTab,
-                        onFillDebugTestAccount: AppConfig.showDebugTestAccount
-                            ? _fillDebugTestAccount
-                            : null,
                       ),
                       _SignUpTab(
                         registerUsernameController: _registerUsernameController,
@@ -155,9 +139,6 @@ class AuthViewState extends State<AuthView>
                         onSignInWithGoogle: widget.onSignInWithGoogle,
                         onSignInWithApple: widget.onSignInWithApple,
                         onSwitchToSignIn: () => _tabController.animateTo(0),
-                        onFillDebugTestAccount: AppConfig.showDebugTestAccount
-                            ? _fillDebugTestAccount
-                            : null,
                       ),
                     ],
                   ),
