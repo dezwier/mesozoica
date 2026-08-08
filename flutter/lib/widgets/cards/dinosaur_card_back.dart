@@ -9,6 +9,7 @@ import 'card_accordion_layout.dart';
 import 'card_attribute_grid.dart';
 import 'card_back_backdrop.dart';
 import 'card_section_panel.dart';
+import 'card_timeline_history.dart';
 import 'cladogram_strip.dart';
 import 'dinosaur_card_header.dart';
 import 'dinosaur_card_image.dart';
@@ -98,6 +99,12 @@ class DinosaurCardBack extends StatelessWidget {
                 // Element 1: Dinosaur attributes (generalized CardAttributeGrid)
                 CardAccordionItem(
                   builder: (context, isOpen, curvedT, lerpFn) {
+                    final attributesList = [
+                      CardAttributeItem('Period', dinosaur.displayPeriodName == '—' ? '—' : dinosaur.displayPeriodName),
+                      CardAttributeItem('Diet', dinosaur.dietType ?? '—'),
+                      CardAttributeItem('Mass', dinosaur.mass ?? '—'),
+                      CardAttributeItem('Length', dinosaur.length ?? '—'),
+                    ];
                     return CardSectionPanel(
                       labelWidget: Text(
                         'Dinosaur attributes'.toUpperCase(),
@@ -113,20 +120,23 @@ class DinosaurCardBack extends StatelessWidget {
                               alignment: Alignment.center,
                               child: SizedBox(
                                 height: 112,
-                                width: 340,
-                                child: Center(
-                                  child: CardAttributeGrid(
-                                    attributes: [
-                                      CardAttributeItem('Period', dinosaur.displayPeriodName == '—' ? '—' : dinosaur.displayPeriodName),
-                                      CardAttributeItem('Diet', dinosaur.dietType ?? '—'),
-                                      CardAttributeItem('Mass', dinosaur.mass ?? '—'),
-                                      CardAttributeItem('Length', dinosaur.length ?? '—'),
-                                    ],
-                                  ),
+                                child: CardAttributeGrid(
+                                  attributes: attributesList,
+                                  isOpen: isOpen,
                                 ),
                               ),
                             )
-                          : const SizedBox.shrink(),
+                          : FittedBox(
+                              fit: BoxFit.scaleDown,
+                              alignment: Alignment.center,
+                              child: SizedBox(
+                                height: 22,
+                                child: CardAttributeGrid(
+                                  attributes: attributesList,
+                                  isOpen: isOpen,
+                                ),
+                              ),
+                            ),
                     );
                   },
                 ),
@@ -148,7 +158,6 @@ class DinosaurCardBack extends StatelessWidget {
                               alignment: Alignment.center,
                               child: SizedBox(
                                 height: 112,
-                                width: 340,
                                 child: CladogramStrip(
                                   nodes: nodes,
                                   scale: _contentScale,
@@ -232,78 +241,71 @@ class _DinosaurPeriodRockTypeBox extends StatelessWidget {
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
-            child: FittedBox(
-              fit: BoxFit.scaleDown,
-              alignment: Alignment.center,
-              child: SizedBox(
-                width: 340,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Text(
-                      'Dinosaur period and rock type'.toUpperCase(),
-                      textAlign: TextAlign.center,
-                      style: titleStyle,
-                    ),
-                    if (isOpen) ...[
-                      const SizedBox(height: 6),
-                      Center(
-                        child: SizedBox(
-                          height: subboxHeight,
-                          width: 320,
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              Center(
-                                child: CardSectionPanel(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                  clipChild: true,
-                                  child: SizedBox(
-                                    height: 52,
-                                    width: 310,
-                                    child: GeologicTimeline(
-                                      birth: dinosaur.birth,
-                                      death: dinosaur.death,
-                                      axis: GeologicTimelineAxis.horizontal,
-                                      scale: 1.0,
-                                    ),
-                                  ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  'Dinosaur period and rock type'.toUpperCase(),
+                  textAlign: TextAlign.center,
+                  style: titleStyle,
+                ),
+                if (isOpen) ...[
+                  const SizedBox(height: 6),
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.center,
+                    child: SizedBox(
+                      height: subboxHeight,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Center(
+                            child: CardSectionPanel(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              clipChild: true,
+                              child: SizedBox(
+                                height: 52,
+                                width: 310,
+                                child: GeologicTimeline(
+                                  birth: dinosaur.birth,
+                                  death: dinosaur.death,
+                                  axis: GeologicTimelineAxis.horizontal,
+                                  scale: 1.0,
                                 ),
                               ),
-                              const SizedBox(height: 12),
-                              Text(
-                                explanation,
-                                textAlign: TextAlign.center,
-                                style: cardTheme.bodyStyle(fontSize: 12).copyWith(
-                                      color: Colors.white.withValues(alpha: 0.9),
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                              ),
-                            ],
+                            ),
                           ),
-                        ),
-                      ),
-                    ] else ...[
-                      const SizedBox(height: 4),
-                      Center(
-                        child: SizedBox(
-                          height: 16,
-                          width: 280,
-                          child: GeologicTimeline(
-                            birth: dinosaur.birth,
-                            death: dinosaur.death,
-                            axis: GeologicTimelineAxis.horizontal,
-                            scale: 0.65,
-                            showYearLabels: false,
+                          const SizedBox(height: 12),
+                          Text(
+                            explanation,
+                            textAlign: TextAlign.center,
+                            style: cardTheme.bodyStyle(fontSize: 12).copyWith(
+                                  color: Colors.white.withValues(alpha: 0.9),
+                                  fontWeight: FontWeight.w600,
+                                ),
                           ),
-                        ),
+                        ],
                       ),
-                    ],
-                  ],
-                ),
-              ),
+                    ),
+                  ),
+                ] else ...[
+                  const SizedBox(height: 4),
+                  Center(
+                    child: SizedBox(
+                      height: 16,
+                      width: 280,
+                      child: GeologicTimeline(
+                        birth: dinosaur.birth,
+                        death: dinosaur.death,
+                        axis: GeologicTimelineAxis.horizontal,
+                        scale: 0.65,
+                        showYearLabels: false,
+                      ),
+                    ),
+                  ),
+                ],
+              ],
             ),
           ),
         ],
@@ -335,7 +337,16 @@ class DinosaurCardUserTimeline extends StatelessWidget {
 
     final resolvedHeight = height ?? (isOpen ? 44.0 : 22.0);
     final at = dinosaur.createdAt;
-    final whenLabel = at != null ? formatRelativeWhen(at) : '—';
+
+    final events = [
+      if (at != null)
+        CardTimelineEvent(
+          status: 'Reconstructed',
+          when: formatRelativeWhen(at),
+          detail: 'Collection',
+          isHighlight: true,
+        ),
+    ];
 
     return CardSectionPanel(
       labelWidget: Text(
@@ -348,16 +359,12 @@ class DinosaurCardUserTimeline extends StatelessWidget {
       expandChild: true,
       child: SizedBox(
         height: resolvedHeight,
-        width: 340,
         child: FittedBox(
           fit: BoxFit.scaleDown,
           alignment: Alignment.center,
-          child: Text(
-            'Reconstructed · $whenLabel',
-            style: cardTheme.bodyStyle(fontSize: isOpen ? 12.0 : 12.5).copyWith(
-                  fontWeight: isOpen ? FontWeight.normal : FontWeight.w600,
-                  color: isOpen ? null : cardTheme.cardTextSecondary,
-                ),
+          child: CardTimelineHistory(
+            events: events,
+            isOpen: isOpen,
           ),
         ),
       ),

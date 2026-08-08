@@ -9,6 +9,7 @@ import 'card_accordion_layout.dart';
 import 'card_attribute_grid.dart';
 import 'card_back_backdrop.dart';
 import 'card_section_panel.dart';
+import 'card_timeline_history.dart';
 import 'fossil_card_header.dart';
 import 'fossil_card_image.dart';
 import 'fossil_related_thumbs.dart';
@@ -112,20 +113,33 @@ class FossilCardBack extends StatelessWidget {
                               alignment: Alignment.center,
                               child: SizedBox(
                                 height: 112,
-                                width: 340,
-                                child: Center(
-                                  child: CardAttributeGrid(
-                                    attributes: [
-                                      CardAttributeItem('Category', fossil.displayImpCategory),
-                                      CardAttributeItem('Sub category', fossil.displayImpSubcategory),
-                                      CardAttributeItem('Preservation quality', fossil.displayImpPreservationQuality),
-                                      CardAttributeItem('Completeness', fossil.displayImpCompleteness),
-                                    ],
-                                  ),
+                                child: CardAttributeGrid(
+                                  attributes: [
+                                    CardAttributeItem('Category', fossil.displayImpCategory),
+                                    CardAttributeItem('Sub category', fossil.displayImpSubcategory),
+                                    CardAttributeItem('Preservation quality', fossil.displayImpPreservationQuality),
+                                    CardAttributeItem('Completeness', fossil.displayImpCompleteness),
+                                  ],
+                                  isOpen: isOpen,
                                 ),
                               ),
                             )
-                          : const SizedBox.shrink(),
+                          : FittedBox(
+                              fit: BoxFit.scaleDown,
+                              alignment: Alignment.center,
+                              child: SizedBox(
+                                height: 22,
+                                child: CardAttributeGrid(
+                                  attributes: [
+                                    CardAttributeItem('Category', fossil.displayImpCategory),
+                                    CardAttributeItem('Sub category', fossil.displayImpSubcategory),
+                                    CardAttributeItem('Preservation quality', fossil.displayImpPreservationQuality),
+                                    CardAttributeItem('Completeness', fossil.displayImpCompleteness),
+                                  ],
+                                  isOpen: isOpen,
+                                ),
+                              ),
+                            ),
                     );
                   },
                 ),
@@ -147,7 +161,6 @@ class FossilCardBack extends StatelessWidget {
                               alignment: Alignment.center,
                               child: SizedBox(
                                 height: 112,
-                                width: 340,
                                 child: FossilRelatedThumbs(fossil: fossil),
                               ),
                             )
@@ -249,7 +262,6 @@ class _FossilPeriodRockTypeBox extends StatelessWidget {
                       Center(
                         child: SizedBox(
                           height: subboxHeight,
-                          width: 320,
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
                             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -288,7 +300,6 @@ class _FossilPeriodRockTypeBox extends StatelessWidget {
                       Center(
                         child: SizedBox(
                           height: 16,
-                          width: 280,
                           child: GeologicTimeline.fromAgeRange(
                             minAgeMa: fossil.minAgeMa,
                             maxAgeMa: fossil.maxAgeMa,
@@ -333,7 +344,16 @@ class FossilCardUserTimeline extends StatelessWidget {
 
     final resolvedHeight = height ?? (isOpen ? 44.0 : 22.0);
     final at = fossil.discoveredAt;
-    final whenLabel = at != null ? formatRelativeWhen(at) : '—';
+
+    final events = [
+      if (at != null)
+        CardTimelineEvent(
+          status: 'Discovered',
+          when: formatRelativeWhen(at),
+          detail: fossil.isField ? 'Field find' : 'Archive',
+          isHighlight: true,
+        ),
+    ];
 
     return CardSectionPanel(
       labelWidget: Text(
@@ -346,16 +366,12 @@ class FossilCardUserTimeline extends StatelessWidget {
       expandChild: true,
       child: SizedBox(
         height: resolvedHeight,
-        width: 340,
         child: FittedBox(
           fit: BoxFit.scaleDown,
           alignment: Alignment.center,
-          child: Text(
-            'Discovered · $whenLabel',
-            style: cardTheme.bodyStyle(fontSize: isOpen ? 12.0 : 12.5).copyWith(
-                  fontWeight: isOpen ? FontWeight.normal : FontWeight.w600,
-                  color: isOpen ? null : cardTheme.cardTextSecondary,
-                ),
+          child: CardTimelineHistory(
+            events: events,
+            isOpen: isOpen,
           ),
         ),
       ),

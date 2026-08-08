@@ -185,7 +185,6 @@ class _PeriodRockTypeBox extends StatelessWidget {
                       Center(
                         child: SizedBox(
                           height: subboxHeight,
-                          width: 320,
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
                             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -224,7 +223,6 @@ class _PeriodRockTypeBox extends StatelessWidget {
                       Center(
                         child: SizedBox(
                           height: 16,
-                          width: 280,
                           child: GeologicTimeline.fromAgeRange(
                             minAgeMa: site.titleIsRevealed ? site.minAgeMa : null,
                             maxAgeMa: site.titleIsRevealed ? site.maxAgeMa : null,
@@ -285,6 +283,7 @@ class _FossilsBox extends StatelessWidget {
             siteId: siteId,
             thumbSize: thumbSize,
             tappable: isOpen,
+            isOpen: isOpen,
           ),
         ),
       ),

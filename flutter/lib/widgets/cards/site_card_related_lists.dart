@@ -9,7 +9,7 @@ import 'card_record_thumb.dart';
 import 'fossil_card_dialog.dart';
 import 'fossil_card_image.dart';
 
-/// Horizontal scroll of small square fossil thumbs on the site card back.
+/// Horizontal scroll of fossil thumbs on the site card back, centralized and with custom ratio.
 class SiteCardFossils extends StatefulWidget {
   const SiteCardFossils({
     super.key,
@@ -17,12 +17,14 @@ class SiteCardFossils extends StatefulWidget {
     this.siteService,
     this.thumbSize = 56,
     this.tappable = true,
+    this.isOpen = true,
   });
 
   final int siteId;
   final SiteService? siteService;
   final double thumbSize;
   final bool tappable;
+  final bool isOpen;
 
   @override
   State<SiteCardFossils> createState() => _SiteCardFossilsState();
@@ -41,9 +43,10 @@ class _SiteCardFossilsState extends State<SiteCardFossils> {
     required BuildContext context,
     required SiteFossilThumb fossil,
     required double thumbSize,
+    required double aspectRatio,
   }) {
     final thumb = SizedBox(
-      width: thumbSize,
+      width: thumbSize * aspectRatio,
       height: thumbSize,
       child: CardRecordThumb(
         image: FossilCardImage(imageUrl: fossil.mainImageUrl),
@@ -165,19 +168,28 @@ class _SiteCardFossilsState extends State<SiteCardFossils> {
         }
 
         final thumbSize = widget.thumbSize;
-        return ListView.separated(
+        final aspectRatio = widget.isOpen ? 3 / 4 : 1.0;
+
+        final content = Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (var i = 0; i < fossils.length; i++) ...[
+              if (i > 0) const SizedBox(width: _gap),
+              _buildThumb(
+                context: context,
+                fossil: fossils[i],
+                thumbSize: thumbSize,
+                aspectRatio: aspectRatio,
+              ),
+            ],
+          ],
+        );
+
+        return SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           physics: const ClampingScrollPhysics(),
-          padding: EdgeInsets.zero,
-          itemCount: fossils.length,
-          separatorBuilder: (context, index) => const SizedBox(width: _gap),
-          itemBuilder: (context, index) {
-            return _buildThumb(
-              context: context,
-              fossil: fossils[index],
-              thumbSize: thumbSize,
-            );
-          },
+          child: Center(child: content),
         );
       },
     );

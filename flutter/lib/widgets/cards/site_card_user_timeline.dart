@@ -7,6 +7,7 @@ import '../../theme/dino_card_theme.dart';
 import '../../utils/relative_time.dart';
 import '../common/app_toast.dart';
 import 'card_section_panel.dart';
+import 'card_timeline_history.dart';
 
 /// A single moment on a site's user-relation timeline.
 class SiteTimelineEntry {
@@ -112,7 +113,16 @@ class SiteCardUserTimeline extends StatelessWidget {
     );
     if (entries.isEmpty) return const SizedBox.shrink();
 
-    final displayedEntries = isOpen ? entries : [entries.last];
+    // Reversing so latest is first
+    final events = [
+      for (final entry in entries.reversed)
+        CardTimelineEvent(
+          status: entry.moment,
+          when: entry.whenLabel,
+          detail: entry.howLabel != '—' ? entry.howLabel : null,
+          isHighlight: entry.moment == 'Documented',
+        ),
+    ];
 
     final cardTheme = DinoCardTheme.of(context);
     final titleStyle = cardTheme.sectionLabelStyle(fontSize: 8.5).copyWith(
@@ -134,24 +144,12 @@ class SiteCardUserTimeline extends StatelessWidget {
       expandChild: true,
       child: SizedBox(
         height: resolvedHeight,
-        width: 340,
         child: FittedBox(
           fit: BoxFit.scaleDown,
           alignment: Alignment.center,
-          child: IntrinsicWidth(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                for (var i = 0; i < displayedEntries.length; i++) ...[
-                  if (i > 0) const SizedBox(height: 4),
-                  _EntryRow(
-                    entry: displayedEntries[i],
-                    isClosed: !isOpen,
-                  ),
-                ],
-              ],
-            ),
+          child: CardTimelineHistory(
+            events: events,
+            isOpen: isOpen,
           ),
         ),
       ),
@@ -171,56 +169,5 @@ class SiteCardUserTimeline extends StatelessWidget {
     if (navigator.canPop()) {
       navigator.pop();
     }
-  }
-}
-
-class _EntryRow extends StatelessWidget {
-  const _EntryRow({required this.entry, this.isClosed = false});
-
-  final SiteTimelineEntry entry;
-  final bool isClosed;
-
-  @override
-  Widget build(BuildContext context) {
-    final cardTheme = DinoCardTheme.of(context);
-    final body = cardTheme.bodyStyle(fontSize: isClosed ? 12.5 : 11);
-    final howStyle = entry.onHowTap != null
-        ? body.copyWith(
-            color: Theme.of(context).colorScheme.primary,
-            fontWeight: FontWeight.w600,
-            decoration: TextDecoration.underline,
-            decorationColor: Theme.of(context).colorScheme.primary,
-          )
-        : body;
-
-    return Text.rich(
-      TextSpan(
-        style: body,
-        children: [
-          TextSpan(text: entry.moment),
-          const TextSpan(text: ' · '),
-          TextSpan(text: entry.whenLabel),
-          if (entry.wasFirst && entry.howLabel != 'First') ...[
-            const TextSpan(text: ' · '),
-            const TextSpan(text: 'First'),
-          ],
-          if (entry.howLabel.isNotEmpty) ...[
-            const TextSpan(text: ' · '),
-            if (entry.onHowTap == null)
-              TextSpan(text: entry.howLabel, style: howStyle)
-            else
-              WidgetSpan(
-                alignment: PlaceholderAlignment.baseline,
-                baseline: TextBaseline.alphabetic,
-                child: GestureDetector(
-                  onTap: entry.onHowTap,
-                  behavior: HitTestBehavior.opaque,
-                  child: Text(entry.howLabel, style: howStyle),
-                ),
-              ),
-          ],
-        ],
-      ),
-    );
   }
 }

@@ -6,8 +6,10 @@ import '../../theme/dino_card_theme.dart';
 import '../../utils/relative_time.dart';
 import '../common/chrome_action_button.dart';
 import 'card_accordion_layout.dart';
+import 'card_attribute_grid.dart';
 import 'card_back_backdrop.dart';
 import 'card_section_panel.dart';
+import 'card_timeline_history.dart';
 import 'tool_card_header.dart';
 import 'tool_card_image.dart';
 
@@ -106,9 +108,11 @@ class ToolCardBack extends StatelessWidget {
                   child: CardAccordionLayout(
                     initialIndex: 0,
                     items: [
-                      // Element 0: Tool parameters (no inner cards, 3 column wrap)
+                      // Element 0: Tool parameters (generalized CardAttributeGrid)
                       CardAccordionItem(
                         builder: (context, isOpen, curvedT, lerpFn) {
+                          final params = tool.isOwned && tool.params.isNotEmpty ? tool.params : tool.baseParams;
+                          final formatted = _formatToolParams(params);
                           return CardSectionPanel(
                             labelWidget: Text(
                               'Tool parameters'.toUpperCase(),
@@ -128,7 +132,13 @@ class ToolCardBack extends StatelessWidget {
                                       child: Stack(
                                         children: [
                                           Center(
-                                            child: ToolParamGrid(tool: tool),
+                                            child: CardAttributeGrid(
+                                              attributes: [
+                                                for (final entry in formatted.entries)
+                                                  CardAttributeItem(entry.key, entry.value),
+                                              ],
+                                              isOpen: isOpen,
+                                            ),
                                           ),
                                           if (editButton != null)
                                             Positioned(top: 2, right: 2, child: editButton),
@@ -142,25 +152,45 @@ class ToolCardBack extends StatelessWidget {
                                     child: SizedBox(
                                       height: 22,
                                       width: 340,
-                                      child: Center(
-                                        child: Text(
-                                          history.isNotEmpty
-                                              ? _formatLatestHistoryEntry(history.first)
-                                              : 'No history yet',
-                                          style: cardTheme.bodyStyle(fontSize: 12.5).copyWith(
-                                                fontWeight: FontWeight.w600,
-                                                color: cardTheme.cardTextSecondary,
-                                              ),
-                                        ),
+                                      child: Stack(
+                                        children: [
+                                          Center(
+                                            child: CardAttributeGrid(
+                                              attributes: [
+                                                for (final entry in formatted.entries)
+                                                  CardAttributeItem(entry.key, entry.value),
+                                              ],
+                                              isOpen: isOpen,
+                                            ),
+                                          ),
+                                          if (editButton != null)
+                                            Positioned(top: 2, right: 2, child: editButton),
+                                        ],
                                       ),
                                     ),
                                   ),
                           );
                         },
                       ),
-                      // Element 1: Tool timeline history
+                      // Element 1: Tool timeline history (generalized CardTimelineHistory)
                       CardAccordionItem(
                         builder: (context, isOpen, curvedT, lerpFn) {
+                          final events = [
+                            for (final entry in history)
+                              CardTimelineEvent(
+                                status: entry.isRole
+                                    ? (entry.roleAction == 'owned' ? 'Obtained' : 'Role change')
+                                    : 'Used',
+                                when: formatRelativeWhen(entry.at),
+                                detail: entry.isRole
+                                    ? null
+                                    : (entry.session != null
+                                        ? '${_HistoryRow._formatDuration(entry.session!.durationS)} · ${_HistoryRow._statusLabel(entry.session!)}'
+                                        : null),
+                                isHighlight: entry.isRole || (entry.session?.isActive == true),
+                              ),
+                          ];
+
                           return CardSectionPanel(
                             labelWidget: Text(
                               'Tool timeline history'.toUpperCase(),
@@ -170,21 +200,18 @@ class ToolCardBack extends StatelessWidget {
                             labelGap: 6,
                             expandChild: true,
                             padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
-                            child: isOpen
-                                ? FittedBox(
-                                    fit: BoxFit.scaleDown,
-                                    alignment: Alignment.center,
-                                    child: SizedBox(
-                                      height: 112,
-                                      width: 340,
-                                      child: _HistoryList(
-                                        history: history,
-                                        loading: historyLoading,
-                                        onHistoryTap: onHistoryTap,
-                                      ),
-                                    ),
-                                  )
-                                : const SizedBox.shrink(),
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              alignment: Alignment.center,
+                              child: SizedBox(
+                                height: isOpen ? 112 : 22,
+                                width: 340,
+                                child: CardTimelineHistory(
+                                  events: events,
+                                  isOpen: isOpen,
+                                ),
+                              ),
+                            ),
                           );
                         },
                       ),
@@ -236,21 +263,6 @@ class ToolCardBack extends StatelessWidget {
     );
   }
 
-  static String _formatLatestHistoryEntry(ToolHistoryEntry entry) {
-    final when = formatRelativeWhen(entry.at);
-    if (entry.isRole) {
-      final label = entry.roleAction == 'owned' ? 'Obtained' : 'Role change';
-      return '$label · $when';
-    }
-    final session = entry.session;
-    if (session != null) {
-      final dur = _HistoryRow._formatDuration(session.durationS);
-      final status = _HistoryRow._statusLabel(session);
-      return 'Used · $when · $dur · $status';
-    }
-    return '—';
-  }
-
   static String _formatRemaining(int seconds) {
     if (seconds <= 0) return '0s left';
     final h = seconds ~/ 3600;
@@ -260,206 +272,8 @@ class ToolCardBack extends StatelessWidget {
     if (m > 0) return '${m}m ${s}s left';
     return '${s}s left';
   }
-}
 
-class _HistoryList extends StatelessWidget {
-  const _HistoryList({
-    required this.history,
-    required this.loading,
-    this.onHistoryTap,
-  });
-
-  final List<ToolHistoryEntry> history;
-  final bool loading;
-  final ValueChanged<ToolSession>? onHistoryTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final cardTheme = DinoCardTheme.of(context);
-    if (loading && history.isEmpty) {
-      return const SizedBox(
-        height: 22,
-        child: Center(
-          child: SizedBox(
-            width: 18,
-            height: 18,
-            child: CircularProgressIndicator(strokeWidth: 2),
-          ),
-        ),
-      );
-    }
-    if (history.isEmpty) {
-      return Center(
-        child: Text(
-          'No history yet',
-          style: cardTheme
-              .bodyStyle(fontSize: 12)
-              .copyWith(color: cardTheme.cardTextMuted),
-        ),
-      );
-    }
-
-    final divider = Divider(
-      height: 1,
-      thickness: 0.5,
-      color: cardTheme.cardTextMuted.withValues(alpha: 0.22),
-    );
-    return ListView.separated(
-      shrinkWrap: true,
-      physics: const ClampingScrollPhysics(),
-      padding: EdgeInsets.zero,
-      itemCount: history.length,
-      separatorBuilder: (_, _) => divider,
-      itemBuilder: (context, i) {
-        return _HistoryRow(
-          entry: history[i],
-          onTap: onHistoryTap == null || history[i].session == null
-              ? null
-              : () => onHistoryTap!(history[i].session!),
-        );
-      },
-    );
-  }
-}
-
-class _HistoryRow extends StatelessWidget {
-  const _HistoryRow({required this.entry, this.onTap});
-
-  final ToolHistoryEntry entry;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final cardTheme = DinoCardTheme.of(context);
-    final primary = cardTheme.bodyStyle(fontSize: 11);
-    final muted = primary.copyWith(color: cardTheme.cardTextMuted);
-    final when = formatRelativeWhen(entry.at);
-
-    if (entry.isRole) {
-      final label = _roleLabel(entry.roleAction);
-      return SizedBox(
-        height: 22,
-        child: Row(
-          children: [
-            Text(when, style: muted, maxLines: 1),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 5),
-              child: Text('·', style: muted),
-            ),
-            Text(
-              label,
-              style: primary.copyWith(fontWeight: FontWeight.w600),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ],
-        ),
-      );
-    }
-
-    final session = entry.session;
-    if (session == null) return const SizedBox.shrink();
-
-    final dur = _formatDuration(session.durationS);
-    final status = _statusLabel(session);
-    final discovered = session.discoveredCount;
-    final result = discovered > 0
-        ? '$discovered site${discovered == 1 ? '' : 's'}'
-        : null;
-
-    final statusColor = session.isActive
-        ? cardTheme.cardAccent
-        : cardTheme.cardTextMuted;
-
-    final row = SizedBox(
-      height: 22,
-      child: Row(
-        children: [
-          Text(when, style: muted, maxLines: 1),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 5),
-            child: Text('·', style: muted),
-          ),
-          Text(dur, style: primary.copyWith(fontWeight: FontWeight.w600)),
-          if (result != null) ...[
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 5),
-              child: Text('·', style: muted),
-            ),
-            Flexible(
-              child: Text(
-                result,
-                style: muted,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ] else
-            const Spacer(),
-          const SizedBox(width: 8),
-          Text(
-            status,
-            style: muted.copyWith(
-              color: statusColor,
-              fontWeight: session.isActive ? FontWeight.w600 : FontWeight.w400,
-              fontSize: 10,
-              letterSpacing: 0.3,
-            ),
-            maxLines: 1,
-          ),
-        ],
-      ),
-    );
-
-    if (onTap == null) return row;
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(4),
-      child: row,
-    );
-  }
-
-  static String _roleLabel(String? action) {
-    switch (action) {
-      case 'owned':
-        return 'Obtained';
-      case null:
-      case '':
-        return 'Role change';
-      default:
-        if (action.isEmpty) return 'Role change';
-        return '${action[0].toUpperCase()}${action.substring(1)}';
-    }
-  }
-
-  static String _statusLabel(ToolSession session) {
-    if (session.isActive) return 'live';
-    if (session.isManualStop) return 'stopped';
-    if (session.isExhausted) return 'done';
-    if (session.stopReason == 'failed') return 'failed';
-    return session.status;
-  }
-
-  static String _formatDuration(int seconds) {
-    if (seconds < 60) return '${seconds}s';
-    final mins = (seconds / 60).round();
-    if (mins < 60) return '${mins}m';
-    final h = mins ~/ 60;
-    final m = mins % 60;
-    if (m == 0) return '${h}h';
-    return '${h}h ${m}m';
-  }
-}
-
-class ToolParamGrid extends StatelessWidget {
-  const ToolParamGrid({
-    super.key,
-    required this.tool,
-  });
-
-  final ToolSummary tool;
-
-  Map<String, String> _formatToolParams(Map<String, dynamic> params) {
+  static Map<String, String> _formatToolParams(Map<String, dynamic> params) {
     final out = <String, String>{};
     for (final entry in params.entries) {
       final key = entry.key;
@@ -490,68 +304,41 @@ class ToolParamGrid extends StatelessWidget {
     return out;
   }
 
-  String _humanizeKey(String key) {
+  static String _humanizeKey(String key) {
     return key
         .split('_')
         .where((p) => p.isNotEmpty)
         .map((p) => '${p[0].toUpperCase()}${p.substring(1)}')
         .join(' ');
   }
+}
+
+class _HistoryRow extends StatelessWidget {
+  const _HistoryRow({required this.entry, this.onTap});
+
+  final ToolHistoryEntry entry;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    final params = tool.isOwned && tool.params.isNotEmpty ? tool.params : tool.baseParams;
-    final formatted = _formatToolParams(params);
+    return const SizedBox.shrink(); // Legacy row not used anymore inside history, but kept for method accesses or backward compatibility
+  }
 
-    if (formatted.isEmpty) {
-      return Center(
-        child: Text(
-          'Standard settings',
-          style: DinoCardTheme.of(context).bodyStyle(fontSize: 12).copyWith(
-                color: DinoCardTheme.of(context).cardTextMuted,
-              ),
-        ),
-      );
-    }
+  static String _statusLabel(ToolSession session) {
+    if (session.isActive) return 'live';
+    if (session.isManualStop) return 'stopped';
+    if (session.isExhausted) return 'done';
+    if (session.stopReason == 'failed') return 'failed';
+    return session.status;
+  }
 
-    return Wrap(
-      spacing: 8,
-      runSpacing: 10,
-      alignment: WrapAlignment.center,
-      crossAxisAlignment: WrapCrossAlignment.start,
-      children: [
-        for (final entry in formatted.entries)
-          SizedBox(
-            width: 102,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  entry.key.toUpperCase(),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.center,
-                  style: DinoCardTheme.of(context).statLabelStyle(fontSize: 8.5).copyWith(
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 0.3,
-                      ),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  entry.value,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.center,
-                  style: DinoCardTheme.of(context).statValueStyle(fontSize: 13.0).copyWith(
-                        fontWeight: FontWeight.w700,
-                        color: DinoCardTheme.of(context).cardAccent,
-                      ),
-                ),
-              ],
-            ),
-          ),
-      ],
-    );
+  static String _formatDuration(int seconds) {
+    if (seconds < 60) return '${seconds}s';
+    final mins = (seconds / 60).round();
+    if (mins < 60) return '${mins}m';
+    final h = mins ~/ 60;
+    final m = mins % 60;
+    if (m == 0) return '${h}h';
+    return '${h}h ${m}m';
   }
 }
