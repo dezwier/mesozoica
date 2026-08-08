@@ -82,7 +82,8 @@ class SiteCardBack extends StatelessWidget {
                 // Element 2: Fossils
                 CardAccordionItem(
                   builder: (context, isOpen, curvedT, lerpFn) {
-                    final thumbSize = lerpFn(44.0, 76.0);
+                    // Closed state shows message, open state shows 2 rows of thumbnails
+                    final thumbSize = isOpen ? 60.0 : 22.0;
                     return _FossilsBox(
                       siteId: site.siteId,
                       isOpen: isOpen,
@@ -127,7 +128,7 @@ class _PeriodRockTypeBox extends StatelessWidget {
   Widget build(BuildContext context) {
     final cardTheme = DinoCardTheme.of(context);
     final titleStyle = cardTheme.sectionLabelStyle(fontSize: 8.5).copyWith(
-          color: Colors.white.withValues(alpha: 0.9),
+          color: cardTheme.cardTextSecondary,
           letterSpacing: 0.8,
           fontWeight: FontWeight.bold,
         );
@@ -136,109 +137,52 @@ class _PeriodRockTypeBox extends StatelessWidget {
     final String rockText = rockPart.trim().isNotEmpty ? toTitleCase(rockPart.trim()) : '';
     final String periodPart = site.titleIsRevealed ? site.displayPeriod : 'Age Hidden';
     final String explanation = rockText.isNotEmpty ? '$periodPart · $rockText' : periodPart;
-    final double subboxHeight = lerpFn(18.0, 112.0);
 
     return CardSectionPanel(
-      padding: EdgeInsets.zero,
-      clipChild: true,
+      labelWidget: Text(
+        'Site period and rock type'.toUpperCase(),
+        textAlign: TextAlign.center,
+        style: titleStyle,
+      ),
+      labelGap: 6,
       expandChild: true,
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          // Background image centered, never stretched or squished vertically
-          Positioned.fill(
-            child: ClipRect(
-              child: OverflowBox(
-                minHeight: 220,
-                maxHeight: 220,
-                child: SiteCardImage(imageUrl: site.mainImageUrl),
-              ),
-            ),
-          ),
-          Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [Colors.black54, Colors.black87],
-              ),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
-            child: FittedBox(
-              fit: BoxFit.scaleDown,
-              alignment: Alignment.center,
-              child: SizedBox(
-                width: 340,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Text(
-                      'Site period and rock type'.toUpperCase(),
-                      textAlign: TextAlign.center,
-                      style: titleStyle,
-                    ),
-                    if (isOpen) ...[
-                      const SizedBox(height: 6),
-                      Center(
-                        child: SizedBox(
-                          height: subboxHeight,
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              Center(
-                                child: CardSectionPanel(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                  clipChild: true,
-                                  child: SizedBox(
-                                    height: 52,
-                                    width: 310,
-                                    child: GeologicTimeline.fromAgeRange(
-                                      minAgeMa: site.titleIsRevealed ? site.minAgeMa : null,
-                                      maxAgeMa: site.titleIsRevealed ? site.maxAgeMa : null,
-                                      axis: GeologicTimelineAxis.horizontal,
-                                      scale: 1.0,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(height: 12),
-                              Text(
-                                explanation,
-                                textAlign: TextAlign.center,
-                                style: cardTheme.bodyStyle(fontSize: 12).copyWith(
-                                      color: Colors.white.withValues(alpha: 0.9),
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ] else ...[
-                      const SizedBox(height: 4),
-                      Center(
-                        child: SizedBox(
-                          height: 16,
-                          child: GeologicTimeline.fromAgeRange(
-                            minAgeMa: site.titleIsRevealed ? site.minAgeMa : null,
-                            maxAgeMa: site.titleIsRevealed ? site.maxAgeMa : null,
-                            axis: GeologicTimelineAxis.horizontal,
-                            scale: 0.65,
-                            showYearLabels: false,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ],
+      padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
+      child: FittedBox(
+        key: ValueKey(isOpen),
+        fit: BoxFit.scaleDown,
+        alignment: isOpen ? Alignment.topCenter : Alignment.center,
+        child: SizedBox(
+          width: 340,
+          child: Column(
+            mainAxisAlignment: isOpen ? MainAxisAlignment.start : MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const SizedBox(height: 4),
+              Center(
+                child: SizedBox(
+                  height: isOpen ? 52 : 24,
+                  child: GeologicTimeline.fromAgeRange(
+                    minAgeMa: site.titleIsRevealed ? site.minAgeMa : null,
+                    maxAgeMa: site.titleIsRevealed ? site.maxAgeMa : null,
+                    axis: GeologicTimelineAxis.horizontal,
+                    scale: 1.1,
+                    showYearLabels: isOpen,
+                  ),
                 ),
               ),
-            ),
+              const SizedBox(height: 8),
+              Text(
+                explanation,
+                textAlign: TextAlign.center,
+                style: cardTheme.bodyStyle(fontSize: 13.5).copyWith(
+                      color: cardTheme.cardTextPrimary,
+                      fontWeight: FontWeight.w600,
+                    ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -264,6 +208,10 @@ class _FossilsBox extends StatelessWidget {
           fontWeight: FontWeight.bold,
         );
 
+    // Height of the Box: closed message is single row (~22.0),
+    // open state with 2 rows is (2 * thumbSize + padding) = ~126.0
+    final resolvedHeight = isOpen ? 126.0 : 22.0;
+
     return CardSectionPanel(
       labelWidget: Text(
         'Site fossils'.toUpperCase(),
@@ -277,13 +225,14 @@ class _FossilsBox extends StatelessWidget {
         fit: BoxFit.scaleDown,
         alignment: Alignment.center,
         child: SizedBox(
-          height: thumbSize,
+          height: resolvedHeight,
           width: 340,
           child: SiteCardFossils(
             siteId: siteId,
             thumbSize: thumbSize,
             tappable: isOpen,
             isOpen: isOpen,
+            use2Rows: true,
           ),
         ),
       ),

@@ -18,6 +18,7 @@ class SiteCardFossils extends StatefulWidget {
     this.thumbSize = 56,
     this.tappable = true,
     this.isOpen = true,
+    this.use2Rows = false,
   });
 
   final int siteId;
@@ -25,6 +26,7 @@ class SiteCardFossils extends StatefulWidget {
   final double thumbSize;
   final bool tappable;
   final bool isOpen;
+  final bool use2Rows;
 
   @override
   State<SiteCardFossils> createState() => _SiteCardFossilsState();
@@ -146,10 +148,10 @@ class _SiteCardFossilsState extends State<SiteCardFossils> {
                 children: [
                   Icon(
                     Icons.location_searching,
-                    size: 14,
+                    size: 18,
                     color: cardTheme.cardTextMuted.withValues(alpha: 0.75),
                   ),
-                  const SizedBox(width: 5),
+                  const SizedBox(width: 6),
                   Flexible(
                     child: Text(
                       'No fossils located yet',
@@ -157,8 +159,12 @@ class _SiteCardFossilsState extends State<SiteCardFossils> {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: cardTheme
-                          .bodyStyle(fontSize: 9.5)
-                          .copyWith(color: cardTheme.cardTextMuted, height: 1.15),
+                          .bodyStyle(fontSize: 13.5)
+                          .copyWith(
+                            color: cardTheme.cardTextMuted,
+                            fontWeight: FontWeight.w600,
+                            height: 1.15,
+                          ),
                     ),
                   ),
                 ],
@@ -167,21 +173,108 @@ class _SiteCardFossilsState extends State<SiteCardFossils> {
           );
         }
 
-        final thumbSize = widget.thumbSize;
-        final aspectRatio = widget.isOpen ? 3 / 4 : 1.0;
+        if (!widget.use2Rows) {
+          // Render original horizontal scrollable list of square thumbs
+          final thumbSize = widget.thumbSize;
+          final aspectRatio = 1.0;
+          return ListView.builder(
+            scrollDirection: Axis.horizontal,
+            physics: const ClampingScrollPhysics(),
+            itemCount: fossils.length,
+            itemBuilder: (context, i) {
+              return Padding(
+                padding: EdgeInsets.only(right: i < fossils.length - 1 ? _gap : 0),
+                child: _buildThumb(
+                  context: context,
+                  fossil: fossils[i],
+                  thumbSize: thumbSize,
+                  aspectRatio: aspectRatio,
+                ),
+              );
+            },
+          );
+        }
 
-        final content = Row(
+        if (!widget.isOpen) {
+          // Closed state when there are fossils
+          final count = fossils.length;
+          final word = count == 1 ? 'Fossil' : 'Fossils';
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.explore,
+                    size: 18,
+                    color: cardTheme.cardAccent.withValues(alpha: 0.8),
+                  ),
+                  const SizedBox(width: 6),
+                  Flexible(
+                    child: Text(
+                      '$count $word Discovered',
+                      textAlign: TextAlign.start,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: cardTheme
+                          .bodyStyle(fontSize: 13.5)
+                          .copyWith(
+                            color: cardTheme.cardTextPrimary,
+                            fontWeight: FontWeight.w600,
+                            height: 1.15,
+                          ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+
+        // Open state: do 2 rows with cards (Grid / Column of Rows)
+        final thumbSize = widget.thumbSize;
+        final aspectRatio = 3 / 4;
+
+        final firstRow = <Widget>[];
+        final secondRow = <Widget>[];
+
+        for (var i = 0; i < fossils.length; i++) {
+          final thumb = _buildThumb(
+            context: context,
+            fossil: fossils[i],
+            thumbSize: thumbSize,
+            aspectRatio: aspectRatio,
+          );
+          if (i % 2 == 0) {
+            firstRow.add(thumb);
+          } else {
+            secondRow.add(thumb);
+          }
+        }
+
+        Widget rowContent(List<Widget> rowItems) {
+          return Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              for (var j = 0; j < rowItems.length; j++) ...[
+                if (j > 0) const SizedBox(width: _gap),
+                rowItems[j],
+              ],
+            ],
+          );
+        }
+
+        final content = Column(
           mainAxisAlignment: MainAxisAlignment.center,
           mainAxisSize: MainAxisSize.min,
           children: [
-            for (var i = 0; i < fossils.length; i++) ...[
-              if (i > 0) const SizedBox(width: _gap),
-              _buildThumb(
-                context: context,
-                fossil: fossils[i],
-                thumbSize: thumbSize,
-                aspectRatio: aspectRatio,
-              ),
+            rowContent(firstRow),
+            if (secondRow.isNotEmpty) ...[
+              const SizedBox(height: _gap),
+              rowContent(secondRow),
             ],
           ],
         );

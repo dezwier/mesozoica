@@ -142,15 +142,12 @@ class SiteCardUserTimeline extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
       labelGap: 6,
       expandChild: true,
-      child: SizedBox(
-        height: resolvedHeight,
-        child: FittedBox(
-          fit: BoxFit.scaleDown,
-          alignment: Alignment.center,
-          child: CardTimelineHistory(
-            events: events,
-            isOpen: isOpen,
-          ),
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        alignment: Alignment.center,
+        child: CardTimelineHistory(
+          events: events,
+          isOpen: isOpen,
         ),
       ),
     );

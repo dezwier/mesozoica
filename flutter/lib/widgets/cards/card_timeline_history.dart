@@ -30,32 +30,41 @@ class CardTimelineHistory extends StatelessWidget {
   Widget build(BuildContext context) {
     final cardTheme = DinoCardTheme.of(context);
     if (events.isEmpty) {
-      return Text(
-        'No history yet',
-        style: cardTheme.bodyStyle(fontSize: 13.0).copyWith(
-              color: cardTheme.cardTextMuted,
-            ),
+      return SizedBox(
+        width: 340,
+        child: Text(
+          'No history yet',
+          style: cardTheme.bodyStyle(fontSize: 13.0).copyWith(
+                color: cardTheme.cardTextMuted,
+              ),
+        ),
       );
     }
 
+    Widget content;
     if (!isOpen) {
       // Close mode: show latest status
       final latest = events.first;
-      return _EventRow(event: latest, isClosed: true);
+      content = _EventRow(event: latest, isClosed: true);
+    } else {
+      // Open mode: visual timeline sequence with dots per event, line connecting dots
+      content = Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          for (var i = 0; i < events.length; i++)
+            _TimelineItemWidget(
+              event: events[i],
+              isFirst: i == 0,
+              isLast: i == events.length - 1,
+            ),
+        ],
+      );
     }
 
-    // Open mode: visual timeline sequence with dots per event, line connecting dots
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        for (var i = 0; i < events.length; i++)
-          _TimelineItemWidget(
-            event: events[i],
-            isFirst: i == 0,
-            isLast: i == events.length - 1,
-          ),
-      ],
+    return SizedBox(
+      width: 340,
+      child: content,
     );
   }
 }
@@ -170,7 +179,7 @@ class _EventRow extends StatelessWidget {
             ),
           ),
           child: Text(
-            event.status.toUpperCase(),
+            event.status,
             style: cardTheme.statLabelStyle(fontSize: 8.5).copyWith(
                   fontWeight: FontWeight.bold,
                   color: event.isHighlight ? cardTheme.cardAccent : cardTheme.cardTextSecondary,
@@ -179,17 +188,34 @@ class _EventRow extends StatelessWidget {
         ),
         if (event.detail != null && event.detail!.isNotEmpty) ...[
           const SizedBox(width: 8),
-          Flexible(
-            child: Text(
-              event.detail!,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: cardTheme.bodyStyle(fontSize: fontSize).copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: cardTheme.cardTextPrimary,
-                  ),
+          if (event.detail!.contains(' · ')) ...[
+            for (final part in event.detail!.split(' · ')) ...[
+              const SizedBox(width: 4),
+              Flexible(
+                child: Text(
+                  part,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: cardTheme.bodyStyle(fontSize: fontSize).copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: cardTheme.cardTextPrimary,
+                      ),
+                ),
+              ),
+            ],
+          ] else ...[
+            Flexible(
+              child: Text(
+                event.detail!,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: cardTheme.bodyStyle(fontSize: fontSize).copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: cardTheme.cardTextPrimary,
+                    ),
+              ),
             ),
-          ),
+          ],
         ],
       ],
     );

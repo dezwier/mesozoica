@@ -185,7 +185,7 @@ class ToolCardBack extends StatelessWidget {
                                 detail: entry.isRole
                                     ? null
                                     : (entry.session != null
-                                        ? '${_HistoryRow._formatDuration(entry.session!.durationS)} · ${_HistoryRow._statusLabel(entry.session!)}'
+                                        ? '${_HistoryRow._formatDuration(entry.session!.durationS)} · ${_HistoryRow._statusLabel(entry.session!)}${entry.session!.discoveredCount > 0 ? ' · ${entry.session!.discoveredCount} ${entry.session!.discoveredCount == 1 ? 'site' : 'sites'}' : ''}'
                                         : null),
                                 isHighlight: entry.isRole || (entry.session?.isActive == true),
                               ),
