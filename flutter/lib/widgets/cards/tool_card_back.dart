@@ -9,7 +9,6 @@ import 'card_accordion_layout.dart';
 import 'card_attribute_grid.dart';
 import 'card_back_backdrop.dart';
 import 'card_section_panel.dart';
-import 'card_timeline_history.dart';
 import 'tool_card_header.dart';
 import 'tool_card_image.dart';
 
@@ -108,7 +107,7 @@ class ToolCardBack extends StatelessWidget {
                   child: CardAccordionLayout(
                     initialIndex: 0,
                     items: [
-                      // Element 0: Tool parameters (generalized CardAttributeGrid)
+                      // Element 0: Tool parameters (no inner cards, 3 column wrap)
                       CardAccordionItem(
                         builder: (context, isOpen, curvedT, lerpFn) {
                           final params = tool.isOwned && tool.params.isNotEmpty ? tool.params : tool.baseParams;
@@ -122,75 +121,35 @@ class ToolCardBack extends StatelessWidget {
                             labelGap: 6,
                             expandChild: true,
                             padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
-                            child: isOpen
-                                ? FittedBox(
-                                    fit: BoxFit.scaleDown,
-                                    alignment: Alignment.center,
-                                    child: SizedBox(
-                                      height: 112,
-                                      width: 340,
-                                      child: Stack(
-                                        children: [
-                                          Center(
-                                            child: CardAttributeGrid(
-                                              attributes: [
-                                                for (final entry in formatted.entries)
-                                                  CardAttributeItem(entry.key, entry.value),
-                                              ],
-                                              isOpen: isOpen,
-                                            ),
-                                          ),
-                                          if (editButton != null)
-                                            Positioned(top: 2, right: 2, child: editButton),
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              alignment: Alignment.center,
+                              child: SizedBox(
+                                height: isOpen ? 112.0 : 44.0,
+                                width: 340,
+                                child: Stack(
+                                  children: [
+                                    Center(
+                                      child: CardAttributeGrid(
+                                        attributes: [
+                                          for (final entry in formatted.entries)
+                                            CardAttributeItem(entry.key, entry.value),
                                         ],
+                                        isOpen: isOpen,
                                       ),
                                     ),
-                                  )
-                                : FittedBox(
-                                    fit: BoxFit.scaleDown,
-                                    alignment: Alignment.center,
-                                    child: SizedBox(
-                                      height: 22,
-                                      width: 340,
-                                      child: Stack(
-                                        children: [
-                                          Center(
-                                            child: CardAttributeGrid(
-                                              attributes: [
-                                                for (final entry in formatted.entries)
-                                                  CardAttributeItem(entry.key, entry.value),
-                                              ],
-                                              isOpen: isOpen,
-                                            ),
-                                          ),
-                                          if (editButton != null)
-                                            Positioned(top: 2, right: 2, child: editButton),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
+                                    if (editButton != null)
+                                      Positioned(top: 2, right: 2, child: editButton),
+                                  ],
+                                ),
+                              ),
+                            ),
                           );
                         },
                       ),
-                      // Element 1: Tool timeline history (generalized CardTimelineHistory)
+                      // Element 1: Tool timeline history
                       CardAccordionItem(
                         builder: (context, isOpen, curvedT, lerpFn) {
-                          final events = [
-                            for (final entry in history)
-                              CardTimelineEvent(
-                                status: entry.isRole
-                                    ? (entry.roleAction == 'owned' ? 'Obtained' : 'Role change')
-                                    : 'Used',
-                                when: formatRelativeWhen(entry.at),
-                                detail: entry.isRole
-                                    ? null
-                                    : (entry.session != null
-                                        ? '${_HistoryRow._formatDuration(entry.session!.durationS)} · ${_HistoryRow._statusLabel(entry.session!)}${entry.session!.discoveredCount > 0 ? ' · ${entry.session!.discoveredCount} ${entry.session!.discoveredCount == 1 ? 'site' : 'sites'}' : ''}'
-                                        : null),
-                                isHighlight: entry.isRole || (entry.session?.isActive == true),
-                              ),
-                          ];
-
                           return CardSectionPanel(
                             labelWidget: Text(
                               'Tool timeline history'.toUpperCase(),
@@ -200,18 +159,21 @@ class ToolCardBack extends StatelessWidget {
                             labelGap: 6,
                             expandChild: true,
                             padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
-                            child: FittedBox(
-                              fit: BoxFit.scaleDown,
-                              alignment: Alignment.center,
-                              child: SizedBox(
-                                height: isOpen ? 112 : 22,
-                                width: 340,
-                                child: CardTimelineHistory(
-                                  events: events,
-                                  isOpen: isOpen,
-                                ),
-                              ),
-                            ),
+                            child: isOpen
+                                ? FittedBox(
+                                    fit: BoxFit.scaleDown,
+                                    alignment: Alignment.center,
+                                    child: SizedBox(
+                                      height: 112,
+                                      width: 340,
+                                      child: _HistoryList(
+                                        history: history,
+                                        loading: historyLoading,
+                                        onHistoryTap: onHistoryTap,
+                                      ),
+                                    ),
+                                  )
+                                : const SizedBox.shrink(),
                           );
                         },
                       ),
@@ -263,14 +225,19 @@ class ToolCardBack extends StatelessWidget {
     );
   }
 
-  static String _formatRemaining(int seconds) {
-    if (seconds <= 0) return '0s left';
-    final h = seconds ~/ 3600;
-    final m = (seconds % 3600) ~/ 60;
-    final s = seconds % 60;
-    if (h > 0) return '${h}h ${m}m ${s}s left';
-    if (m > 0) return '${m}m ${s}s left';
-    return '${s}s left';
+  static String _formatLatestHistoryEntry(ToolHistoryEntry entry) {
+    final when = formatRelativeWhen(entry.at);
+    if (entry.isRole) {
+      final label = entry.roleAction == 'owned' ? 'Obtained' : 'Role change';
+      return '$label · $when';
+    }
+    final session = entry.session;
+    if (session != null) {
+      final dur = _HistoryRow._formatDuration(session.durationS);
+      final status = _HistoryRow._statusLabel(session);
+      return 'Used · $when · $dur · $status';
+    }
+    return '—';
   }
 
   static Map<String, String> _formatToolParams(Map<String, dynamic> params) {
@@ -311,6 +278,76 @@ class ToolCardBack extends StatelessWidget {
         .map((p) => '${p[0].toUpperCase()}${p.substring(1)}')
         .join(' ');
   }
+
+  static String _formatRemaining(int seconds) {
+    if (seconds <= 0) return '0s left';
+    final h = seconds ~/ 3600;
+    final m = (seconds % 3600) ~/ 60;
+    final s = seconds % 60;
+    if (h > 0) return '${h}h ${m}m ${s}s left';
+    if (m > 0) return '${m}m ${s}s left';
+    return '${s}s left';
+  }
+}
+
+class _HistoryList extends StatelessWidget {
+  const _HistoryList({
+    required this.history,
+    required this.loading,
+    this.onHistoryTap,
+  });
+
+  final List<ToolHistoryEntry> history;
+  final bool loading;
+  final ValueChanged<ToolSession>? onHistoryTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final cardTheme = DinoCardTheme.of(context);
+    if (loading && history.isEmpty) {
+      return const SizedBox(
+        height: 22,
+        child: Center(
+          child: SizedBox(
+            width: 18,
+            height: 18,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+        ),
+      );
+    }
+    if (history.isEmpty) {
+      return Center(
+        child: Text(
+          'No history yet',
+          style: cardTheme
+              .bodyStyle(fontSize: 12)
+              .copyWith(color: cardTheme.cardTextMuted),
+        ),
+      );
+    }
+
+    final divider = Divider(
+      height: 1,
+      thickness: 0.5,
+      color: cardTheme.cardTextMuted.withValues(alpha: 0.22),
+    );
+    return ListView.separated(
+      shrinkWrap: true,
+      physics: const ClampingScrollPhysics(),
+      padding: EdgeInsets.zero,
+      itemCount: history.length,
+      separatorBuilder: (_, _) => divider,
+      itemBuilder: (context, i) {
+        return _HistoryRow(
+          entry: history[i],
+          onTap: onHistoryTap == null || history[i].session == null
+              ? null
+              : () => onHistoryTap!(history[i].session!),
+        );
+      },
+    );
+  }
 }
 
 class _HistoryRow extends StatelessWidget {
@@ -321,7 +358,106 @@ class _HistoryRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const SizedBox.shrink(); // Legacy row not used anymore inside history, but kept for method accesses or backward compatibility
+    final cardTheme = DinoCardTheme.of(context);
+    final primary = cardTheme.bodyStyle(fontSize: 11);
+    final muted = primary.copyWith(color: cardTheme.cardTextMuted);
+    final when = formatRelativeWhen(entry.at);
+
+    if (entry.isRole) {
+      final label = _roleLabel(entry.roleAction);
+      return SizedBox(
+        height: 22,
+        child: Row(
+          children: [
+            Text(when, style: muted, maxLines: 1),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 5),
+              child: Text('·', style: muted),
+            ),
+            Text(
+              label,
+              style: primary.copyWith(fontWeight: FontWeight.w600),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+        ),
+      );
+    }
+
+    final session = entry.session;
+    if (session == null) return const SizedBox.shrink();
+
+    final dur = _formatDuration(session.durationS);
+    final status = _statusLabel(session);
+    final discovered = session.discoveredCount;
+    final result = discovered > 0
+        ? '$discovered site${discovered == 1 ? '' : 's'}'
+        : null;
+
+    final statusColor = session.isActive
+        ? cardTheme.cardAccent
+        : cardTheme.cardTextMuted;
+
+    final row = SizedBox(
+      height: 22,
+      child: Row(
+        children: [
+          Text(when, style: muted, maxLines: 1),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 5),
+            child: Text('·', style: muted),
+          ),
+          Text(dur, style: primary.copyWith(fontWeight: FontWeight.w600)),
+          if (result != null) ...[
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 5),
+              child: Text('·', style: muted),
+            ),
+            Flexible(
+              child: Text(
+                result,
+                style: muted,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ] else
+            const Spacer(),
+          const SizedBox(width: 8),
+          Text(
+            status,
+            style: muted.copyWith(
+              color: statusColor,
+              fontWeight: session.isActive ? FontWeight.w600 : FontWeight.w400,
+              fontSize: 10,
+              letterSpacing: 0.3,
+            ),
+            maxLines: 1,
+          ),
+        ],
+      ),
+    );
+
+    if (onTap == null) return row;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(4),
+      child: row,
+    );
+  }
+
+  static String _roleLabel(String? action) {
+    switch (action) {
+      case 'owned':
+        return 'Obtained';
+      case null:
+      case '':
+        return 'Role change';
+      default:
+        if (action.isEmpty) return 'Role change';
+        return '${action[0].toUpperCase()}${action.substring(1)}';
+    }
   }
 
   static String _statusLabel(ToolSession session) {

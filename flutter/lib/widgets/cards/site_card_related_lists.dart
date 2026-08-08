@@ -9,7 +9,7 @@ import 'card_record_thumb.dart';
 import 'fossil_card_dialog.dart';
 import 'fossil_card_image.dart';
 
-/// Horizontal scroll of fossil thumbs on the site card back, centralized and with custom ratio.
+/// Horizontal scroll of small square fossil thumbs on the site card back.
 class SiteCardFossils extends StatefulWidget {
   const SiteCardFossils({
     super.key,
@@ -177,19 +177,18 @@ class _SiteCardFossilsState extends State<SiteCardFossils> {
           // Render original horizontal scrollable list of square thumbs
           final thumbSize = widget.thumbSize;
           final aspectRatio = 1.0;
-          return ListView.builder(
+          return ListView.separated(
             scrollDirection: Axis.horizontal,
             physics: const ClampingScrollPhysics(),
+            padding: EdgeInsets.zero,
             itemCount: fossils.length,
-            itemBuilder: (context, i) {
-              return Padding(
-                padding: EdgeInsets.only(right: i < fossils.length - 1 ? _gap : 0),
-                child: _buildThumb(
-                  context: context,
-                  fossil: fossils[i],
-                  thumbSize: thumbSize,
-                  aspectRatio: aspectRatio,
-                ),
+            separatorBuilder: (context, index) => const SizedBox(width: _gap),
+            itemBuilder: (context, index) {
+              return _buildThumb(
+                context: context,
+                fossil: fossils[index],
+                thumbSize: thumbSize,
+                aspectRatio: aspectRatio,
               );
             },
           );
@@ -233,26 +232,11 @@ class _SiteCardFossilsState extends State<SiteCardFossils> {
           );
         }
 
-        // Open state: do 2 rows with cards (Grid / Column of Rows)
+        // Open state: show 3:4 ratio of cards when they fit (length <= 6), else 2 rows, centered
         final thumbSize = widget.thumbSize;
         final aspectRatio = 3 / 4;
-
-        final firstRow = <Widget>[];
-        final secondRow = <Widget>[];
-
-        for (var i = 0; i < fossils.length; i++) {
-          final thumb = _buildThumb(
-            context: context,
-            fossil: fossils[i],
-            thumbSize: thumbSize,
-            aspectRatio: aspectRatio,
-          );
-          if (i % 2 == 0) {
-            firstRow.add(thumb);
-          } else {
-            secondRow.add(thumb);
-          }
-        }
+        final count = fossils.length;
+        final use2RowsGrid = count > 6;
 
         Widget rowContent(List<Widget> rowItems) {
           return Row(
@@ -267,17 +251,46 @@ class _SiteCardFossilsState extends State<SiteCardFossils> {
           );
         }
 
-        final content = Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            rowContent(firstRow),
-            if (secondRow.isNotEmpty) ...[
-              const SizedBox(height: _gap),
-              rowContent(secondRow),
+        Widget content;
+        if (!use2RowsGrid) {
+          final rowItems = [
+            for (final f in fossils)
+              _buildThumb(
+                context: context,
+                fossil: f,
+                thumbSize: thumbSize,
+                aspectRatio: aspectRatio,
+              ),
+          ];
+          content = rowContent(rowItems);
+        } else {
+          final firstRow = <Widget>[];
+          final secondRow = <Widget>[];
+          for (var i = 0; i < count; i++) {
+            final thumb = _buildThumb(
+              context: context,
+              fossil: fossils[i],
+              thumbSize: thumbSize,
+              aspectRatio: aspectRatio,
+            );
+            if (i % 2 == 0) {
+              firstRow.add(thumb);
+            } else {
+              secondRow.add(thumb);
+            }
+          }
+          content = Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              rowContent(firstRow),
+              if (secondRow.isNotEmpty) ...[
+                const SizedBox(height: _gap),
+                rowContent(secondRow),
+              ],
             ],
-          ],
-        );
+          );
+        }
 
         return SingleChildScrollView(
           scrollDirection: Axis.horizontal,

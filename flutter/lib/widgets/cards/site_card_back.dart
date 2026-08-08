@@ -82,8 +82,7 @@ class SiteCardBack extends StatelessWidget {
                 // Element 2: Fossils
                 CardAccordionItem(
                   builder: (context, isOpen, curvedT, lerpFn) {
-                    // Closed state shows message, open state shows 2 rows of thumbnails
-                    final thumbSize = isOpen ? 60.0 : 22.0;
+                    final thumbSize = lerpFn(44.0, 76.0);
                     return _FossilsBox(
                       siteId: site.siteId,
                       isOpen: isOpen,
@@ -161,7 +160,7 @@ class _PeriodRockTypeBox extends StatelessWidget {
               const SizedBox(height: 4),
               Center(
                 child: SizedBox(
-                  height: isOpen ? 52 : 24,
+                  height: 52,
                   child: GeologicTimeline.fromAgeRange(
                     minAgeMa: site.titleIsRevealed ? site.minAgeMa : null,
                     maxAgeMa: site.titleIsRevealed ? site.maxAgeMa : null,
@@ -171,15 +170,17 @@ class _PeriodRockTypeBox extends StatelessWidget {
                   ),
                 ),
               ),
-              const SizedBox(height: 8),
-              Text(
-                explanation,
-                textAlign: TextAlign.center,
-                style: cardTheme.bodyStyle(fontSize: 13.5).copyWith(
-                      color: cardTheme.cardTextPrimary,
-                      fontWeight: FontWeight.w600,
-                    ),
-              ),
+              if (isOpen) ...[
+                const SizedBox(height: 8),
+                Text(
+                  explanation,
+                  textAlign: TextAlign.center,
+                  style: cardTheme.bodyStyle(fontSize: 13.5).copyWith(
+                        color: cardTheme.cardTextPrimary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                ),
+              ],
             ],
           ),
         ),
@@ -208,8 +209,6 @@ class _FossilsBox extends StatelessWidget {
           fontWeight: FontWeight.bold,
         );
 
-    // Height of the Box: closed message is single row (~22.0),
-    // open state with 2 rows is (2 * thumbSize + padding) = ~126.0
     final resolvedHeight = isOpen ? 126.0 : 22.0;
 
     return CardSectionPanel(

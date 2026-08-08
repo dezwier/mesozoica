@@ -101,31 +101,26 @@ class _CardAccordionLayoutState extends State<CardAccordionLayout> with TickerPr
       builder: (context, child) {
         final double curvedT = const Cubic(0.2, 0.0, 0.2, 1.0).transform(_controller.value);
 
-        return ExcludeSemantics(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              for (int i = 0; i < widget.items.length; i++) ...[
-                if (i > 0) const SizedBox(height: 6),
-                Expanded(
-                  flex: (_getWeight(i, curvedT) * 1000).round(),
-                  child: GestureDetector(
-                    onTap: _expandedIndex == i ? null : () => _onTapIndex(i),
-                    behavior: HitTestBehavior.opaque,
-                    child: KeyedSubtree(
-                      key: ValueKey(i),
-                      child: widget.items[i].builder(
-                        context,
-                        _expandedIndex == i,
-                        curvedT,
-                        (start, end) => _lerpValue(i, start, end, curvedT),
-                      ),
-                    ),
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (int i = 0; i < widget.items.length; i++) ...[
+              if (i > 0) const SizedBox(height: 6),
+              Expanded(
+                flex: (_getWeight(i, curvedT) * 1000).round(),
+                child: GestureDetector(
+                  onTap: _expandedIndex == i ? null : () => _onTapIndex(i),
+                  behavior: HitTestBehavior.opaque,
+                  child: widget.items[i].builder(
+                    context,
+                    _expandedIndex == i,
+                    curvedT,
+                    (start, end) => _lerpValue(i, start, end, curvedT),
                   ),
                 ),
-              ],
+              ),
             ],
-          ),
+          ],
         );
       },
     );

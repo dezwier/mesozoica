@@ -13,7 +13,7 @@ class CardAttributeGrid extends StatelessWidget {
   const CardAttributeGrid({
     super.key,
     required this.attributes,
-    required this.isOpen,
+    this.isOpen = false,
   });
 
   final List<CardAttributeItem> attributes;
@@ -25,33 +25,24 @@ class CardAttributeGrid extends StatelessWidget {
     final displayed = isOpen ? attributes : attributes.take(3).toList();
 
     return Wrap(
-      spacing: 6,
-      runSpacing: 6,
+      spacing: 8,
+      runSpacing: 10,
       alignment: WrapAlignment.center,
       crossAxisAlignment: WrapCrossAlignment.start,
       children: [
         for (final attr in displayed)
-          Container(
-            width: 104,
-            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
-            decoration: BoxDecoration(
-              color: cardTheme.cardTextSecondary.withValues(alpha: 0.05),
-              borderRadius: BorderRadius.circular(6),
-              border: Border.all(
-                color: cardTheme.cardTextSecondary.withValues(alpha: 0.15),
-                width: 0.5,
-              ),
-            ),
+          SizedBox(
+            width: 102,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.center,
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
                   attr.label.toUpperCase(),
-                  maxLines: 1,
+                  maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   textAlign: TextAlign.center,
-                  style: cardTheme.statLabelStyle(fontSize: 8.0).copyWith(
+                  style: cardTheme.statLabelStyle(fontSize: 8.5).copyWith(
                         fontWeight: FontWeight.bold,
                         letterSpacing: 0.3,
                         color: cardTheme.cardTextSecondary,
@@ -63,7 +54,7 @@ class CardAttributeGrid extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   textAlign: TextAlign.center,
-                  style: cardTheme.statValueStyle(fontSize: 12.0).copyWith(
+                  style: cardTheme.statValueStyle(fontSize: 13.0).copyWith(
                         fontWeight: FontWeight.w700,
                         color: cardTheme.cardAccent,
                       ),
