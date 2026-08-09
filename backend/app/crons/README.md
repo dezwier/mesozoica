@@ -10,6 +10,10 @@ Image **generation** writes local PNGs to repo folders; **image sync** (`make sy
 
 | ID | Schedule (UTC) | Description |
 |----|----------------|-------------|
+| `dinosaur_knowledge_acquire` | manual/disabled | Acquire sectioned Wikipedia and OpenAlex snapshots with resumable checkpoints |
+| `dinosaur_knowledge_index` | manual/disabled | Sync acquired snapshots into the generic Azure AI Search index |
+| `dinosaur_knowledge_status` | manual/disabled | Read-only acquisition/index checkpoint table |
+| `dinosaur_quiz_preview` | manual/disabled | Generate one non-persisted, structured four-option RAG quiz |
 | `dinosaur_wiki_sync` | `0 3 * * 0` (Sun 03:00) | Sync dinosaur types + append Wikipedia content revisions |
 | `dinosaur_llm_enrich` | `0 4 * * 0` (Sun 04:00) | LLM enrichment (Gemini) for dinosaurs |
 | `fossil_pbdb_sync` | `0 5 * * 0` (Sun 05:00) | Sync fossil occurrences from PBDB |
@@ -40,6 +44,10 @@ make run-cron
 # Run a single job
 make run-dinosaur-wiki-sync
 make run-dinosaur-llm-enrich
+make run-dinosaur-knowledge-acquire CRON_EXTRA='--dinos Tyrannosaurus --sources wikipedia openalex'
+make run-dinosaur-knowledge-index CRON_EXTRA='--dinos Tyrannosaurus'
+make run-dinosaur-knowledge-status CRON_EXTRA='--dinos Tyrannosaurus'
+make run-dinosaur-quiz-preview CRON_EXTRA='--dinos Tyrannosaurus'
 make run-fossil-pbdb-sync
 make run-fossil-llm-enrich
 make run-site-sync
@@ -120,6 +128,10 @@ RAILWAY_RUN=1 railway run python -m app.crons.runner
 # Single job
 RAILWAY_RUN=1 railway run python -m app.crons.runner --job dinosaur_wiki_sync
 RAILWAY_RUN=1 railway run python -m app.crons.runner --job dinosaur_llm_enrich
+RAILWAY_RUN=1 railway run python -m app.crons.runner --job dinosaur_knowledge_acquire --dinos Tyrannosaurus
+RAILWAY_RUN=1 railway run python -m app.crons.runner --job dinosaur_knowledge_index --dinos Tyrannosaurus
+RAILWAY_RUN=1 railway run python -m app.crons.runner --job dinosaur_knowledge_status --dinos Tyrannosaurus
+RAILWAY_RUN=1 railway run python -m app.crons.runner --job dinosaur_quiz_preview --dinos Tyrannosaurus
 RAILWAY_RUN=1 railway run python -m app.crons.runner --job fossil_pbdb_sync
 RAILWAY_RUN=1 railway run python -m app.crons.runner --job fossil_llm_enrich
 RAILWAY_RUN=1 railway run python -m app.crons.runner --job dinosaur_image_generate
@@ -142,17 +154,34 @@ RAILWAY_RUN=1 railway run python -m app.crons.runner --job tool_image_generate -
 | Flag | Effect |
 |------|--------|
 | `--job ID` | Run one job immediately (ignores schedule) |
-| `--overwrite` | Re-fetch / re-enrich even when already up to date. For `dinosaur_wiki_sync`, forces a Wikipedia fetch and appends a new `dinosaur_type_revision` only when content hash differs (prior revisions + their LLM fields are kept). For `fossil_pbdb_sync`, also clears `fossils_insert_time` first so an interrupted run can resume without `--overwrite`. For `dinosaur_llm_enrich` and `fossil_llm_enrich`, clears `llm_enriched` first so an interrupted overwrite can resume without `--overwrite`. |
+| `--overwrite` | Re-fetch / re-enrich even when already up to date. Knowledge acquisition preserves current indexing when content is unchanged and resets it to pending when content changes. Knowledge indexing resyncs selected snapshots. For `dinosaur_wiki_sync`, forces a Wikipedia fetch and appends a new `dinosaur_type_revision` only when content hash differs (prior revisions + their LLM fields are kept). For `fossil_pbdb_sync`, also clears `fossils_insert_time` first so an interrupted run can resume without `--overwrite`. For `dinosaur_llm_enrich` and `fossil_llm_enrich`, clears `llm_enriched` first so an interrupted overwrite can resume without `--overwrite`. |
 | `--dinos NAME …` | Limit to specific Wikipedia titles (space- or comma-separated) |
+| `--sources NAME …` | Knowledge acquisition/indexing: `wikipedia`, `openalex`, or both |
+| `--recreate-index` | Knowledge indexing only: explicitly delete/rebuild the configured Azure Search index and mark acquired snapshots pending |
 | `--category NAME` | `dinosaur_wiki_sync`: limit to one Wikipedia category |
 | `--stale-days N` | `fossil_pbdb_sync`: only genera with `fossils_insert_time` null or older than N days (ignored with `--overwrite`) |
 | `--since ISO8601` | `fossil_pbdb_sync`: only genera with `fossils_insert_time` null or before this UTC time (ignored with `--overwrite`) |
-| `--max-items N` | Image generation jobs: cap successful generations per run |
+| `--max-items N` | Knowledge or image generation jobs: cap selected/successful items per run |
 | `--site-types ID …` | `site_type_image_generate`: limit to specific `site_type.id` values |
 | `--version NAME` | **Required** for all four image generate jobs: named folder (e.g. `Original`, `Summer 26`) |
 | `--tools NAME …` | `tool_sync` / `tool_image_generate`: limit to specific branded tool names |
 | `--prune` | `tool_sync`: delete DB tool rows whose `name` is no longer in `tools.json` |
-| `--dry-run` | Image generation: list candidates without calling Imagen or writing files; `site_sync` / `site_type_sync` / `tool_sync`: compute without DB writes |
+| `--dry-run` | Knowledge acquisition/indexing: list selected work without external writes; image generation: list candidates without calling Imagen or writing files; `site_sync` / `site_type_sync` / `tool_sync`: compute without DB writes |
+
+### Dinosaur RAG knowledge workflow
+
+These four jobs are disabled by default. Configure the variables in [`../../rag/README.md`](../../rag/README.md), then acquire and index in separate resumable stages:
+
+```bash
+make run-dinosaur-knowledge-acquire CRON_EXTRA='--dinos Tyrannosaurus --sources wikipedia openalex'
+make run-dinosaur-knowledge-status  CRON_EXTRA='--dinos Tyrannosaurus'
+make run-dinosaur-knowledge-index   CRON_EXTRA='--dinos Tyrannosaurus'
+make run-dinosaur-quiz-preview      CRON_EXTRA='--dinos Tyrannosaurus'
+```
+
+Each dinosaur/source is committed independently in `rag_source_snapshot`. Successful unchanged acquisitions are skipped, failed/running states retry, content changes reset only that source's indexing checkpoint, and the read-only status job shows attempts, timestamps, and stage errors. `--overwrite` forces the selected stage while retaining those state rules.
+
+Normal indexing validates the existing schema and vector dimensions and never deletes the index. `--recreate-index` is intentionally destructive for the configured index; it is the only workflow path that recreates it and causes all successfully acquired snapshots to be reindexed.
 
 ### Procedural field sites (lazy, not a cron)
 

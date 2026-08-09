@@ -5,6 +5,10 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+COPY rag/pyproject.toml ./rag/pyproject.toml
+COPY rag/src/ ./rag/src/
+RUN pip install --no-cache-dir ./rag
+
 COPY app/ ./app/
 COPY scripts/ ./scripts/
 COPY alembic/ ./alembic/

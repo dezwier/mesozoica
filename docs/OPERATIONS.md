@@ -73,6 +73,7 @@ The Railway cron service wakes hourly; `backend/app/crons/crons.yaml` determines
 
 - game-config seed/publish support;
 - Wikipedia dinosaur sync and Gemini enrichment;
+- disabled/manual Wikipedia and OpenAlex RAG acquisition, Azure indexing, status, and quiz preview;
 - PBDB fossil sync and Gemini enrichment;
 - site, site-type, and tool catalog synchronization;
 - weather synchronization;
@@ -111,6 +112,10 @@ A working static URL does not prove the catalog/version API can authenticate.
 | Provider | Purpose | Failure posture |
 | --- | --- | --- |
 | Wikipedia/MediaWiki | dinosaur source snapshots and revisions | job logs/thresholds; resumable sync |
+| OpenAlex | abstract-bearing paper metadata for RAG snapshots | per-dinosaur/source checkpoint and retry |
+| Azure OpenAI | RAG embeddings and structured quiz generation | changed-only embedding; validated output |
+| Azure AI Search | generic hybrid/semantic knowledge retrieval | explicit schema validation; no automatic recreation |
+| Microsoft Foundry | optional cloud RAG evaluation | Entra ID/RBAC; evaluation/run IDs retained by caller |
 | PBDB | fossil occurrence data | resumable batches and validation |
 | Gemini | enrichment and image generation | bounded batches, failure thresholds, dry-run where supported |
 | Firebase | identity verification and push delivery | auth failures block protected calls; push is best effort |
@@ -119,6 +124,8 @@ A working static URL does not prove the catalog/version API can authenticate.
 | OSM masks/filesystem | land/water coordinate filtering | worker/prune requires correct volume data |
 
 Provider clients belong in feature infrastructure and must expose enough structured logging to distinguish upstream, validation, persistence, and retry failures.
+
+The RAG package configuration and local examples are documented in [`../backend/rag/README.md`](../backend/rag/README.md). Acquisition and indexing commit each dinosaur/source independently in `rag_source_snapshot`; failed or interrupted rows remain visible and resume on the next run. Index deletion is never implicit. Use `--recreate-index` only after verifying the configured Azure Search service/index because it deletes and rebuilds that exact index, then marks acquired snapshots pending.
 
 ## Incident triage
 

@@ -20,6 +20,7 @@ backend/                 FastAPI API, feature modules, Alembic, jobs, workers, t
   app/core/              App, settings, DB/session, security, shared errors
   app/shared/            Deliberate cross-feature value primitives
   app/game_config/       Canonical YAML gameplay control board
+  rag/                   Generic Azure OpenAI/Search RAG toolkit and examples
 flutter/                 Flutter application and tests
   lib/features/          Feature data/domain/presentation packages
   lib/core/              Transport, auth/session, persistence, DI, routing primitives

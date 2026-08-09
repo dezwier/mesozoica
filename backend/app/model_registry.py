@@ -12,6 +12,7 @@ from app.features.field.models.field_ensure_job import FieldEnsureJob
 from app.features.field.models.field_survey_job import FieldSurveyJob
 from app.features.game_config.models_release import GameConfigRelease
 from app.features.game_config.models_revision import GameConfigRevision
+from app.features.ingestion.models.rag_source_snapshot import RagSourceSnapshot
 from app.features.sites.models.site import Site
 from app.features.sites.models.site_type import SiteType
 from app.features.sites.models.user_site import UserSite
@@ -37,6 +38,7 @@ __all__ = [
     "Fossil",
     "GameConfigRelease",
     "GameConfigRevision",
+    "RagSourceSnapshot",
     "Site",
     "SiteType",
     "Tool",

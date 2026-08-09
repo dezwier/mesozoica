@@ -1,17 +1,24 @@
 [project]
 name = "mesozoica-ai"
-version = "0.1.0"
-requires-python = ">=3.11"
-
+version = "0.2.0"
+requires-python = ">=3.10"
 dependencies = [
-    "pydantic",
-    "requests",
-    "langchain-text-splitters",
-    "openai",
-    "python-dotenv",
-    "azure-search-documents",
-    "pydantic-settings",
+    "azure-search-documents>=11.6.0",
+    "httpx>=0.28.0",
+    "langchain-core>=1.0.0",
+    "langchain-openai>=1.0.1",
+    "langchain-text-splitters>=1.0.0",
+    "pydantic>=2.8.0",
+    "pydantic-settings>=2.6.0",
+    "python-dotenv>=1.0.1",
 ]
+
+[project.optional-dependencies]
+foundry = [
+    "azure-ai-projects>=2.2.0",
+    "azure-identity>=1.19.0",
+]
+test = ["pytest>=8.3.0"]
 
 [build-system]
 requires = ["setuptools>=68"]
@@ -19,3 +26,6 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

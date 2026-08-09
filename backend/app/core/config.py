@@ -72,6 +72,8 @@ class Settings(BaseSettings):
         default=0.10,
         validation_alias="WIKIPEDIA_SYNC_FAILURE_THRESHOLD",
     )
+    openalex_api_key: str = Field(default="", validation_alias="OPENALEX_API_KEY")
+    openalex_max_works: int = Field(default=10, validation_alias="OPENALEX_MAX_WORKS")
 
     google_gemini_api_key: str = Field(default="", validation_alias="GOOGLE_GEMINI_API_KEY")
     gemini_model: str = Field(default="gemini-2.5-flash", validation_alias="GEMINI_MODEL")

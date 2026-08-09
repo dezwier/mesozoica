@@ -24,6 +24,10 @@ from croniter import croniter
 from app.crons.config import CronJobDef, load_cron_config
 from app.features.ingestion.public import parse_dino_names
 from app.crons.jobs import (
+    dinosaur_knowledge_acquire,
+    dinosaur_knowledge_index,
+    dinosaur_knowledge_status,
+    dinosaur_quiz_preview,
     dinosaur_image_generate,
     dinosaur_llm_enrich,
     field_site_coordinate_prune,
@@ -63,6 +67,43 @@ def _run_dinosaur_wiki_sync(params: dict[str, Any]) -> int:
         category=params.get("category"),
         dinos=params.get("dinos"),
     )
+
+
+def _parse_knowledge_sources(raw: Any) -> list[str] | None:
+    if raw is None:
+        return None
+    values = raw if isinstance(raw, list) else str(raw).replace(",", " ").split()
+    normalized = [str(value).strip().casefold() for value in values if str(value).strip()]
+    return normalized or None
+
+
+def _run_dinosaur_knowledge_acquire(params: dict[str, Any]) -> int:
+    return dinosaur_knowledge_acquire.run_acquire_job(
+        dry_run=bool(params.get("dry_run", False)),
+        overwrite=bool(params.get("overwrite", False)),
+        max_items=_parse_max_items(params.get("max_items")),
+        dinos=params.get("dinos"),
+        sources=_parse_knowledge_sources(params.get("sources")),
+    )
+
+
+def _run_dinosaur_knowledge_index(params: dict[str, Any]) -> int:
+    return dinosaur_knowledge_index.run_index_job(
+        dry_run=bool(params.get("dry_run", False)),
+        overwrite=bool(params.get("overwrite", False)),
+        recreate_index=bool(params.get("recreate_index", False)),
+        max_items=_parse_max_items(params.get("max_items")),
+        dinos=params.get("dinos"),
+        sources=_parse_knowledge_sources(params.get("sources")),
+    )
+
+
+def _run_dinosaur_quiz_preview(params: dict[str, Any]) -> int:
+    return dinosaur_quiz_preview.run_preview_job(dinos=params.get("dinos"))
+
+
+def _run_dinosaur_knowledge_status(params: dict[str, Any]) -> int:
+    return dinosaur_knowledge_status.run_status_job(dinos=params.get("dinos"))
 
 
 def _run_dinosaur_llm_enrich(params: dict[str, Any]) -> int:
@@ -226,6 +267,10 @@ def _run_tool_image_generate(params: dict[str, Any]) -> int:
 
 
 _JOB_HANDLERS: dict[str, Callable[[dict[str, Any]], int]] = {
+    "dinosaur_knowledge_acquire": _run_dinosaur_knowledge_acquire,
+    "dinosaur_knowledge_index": _run_dinosaur_knowledge_index,
+    "dinosaur_knowledge_status": _run_dinosaur_knowledge_status,
+    "dinosaur_quiz_preview": _run_dinosaur_quiz_preview,
     "dinosaur_wiki_sync": _run_dinosaur_wiki_sync,
     "dinosaur_llm_enrich": _run_dinosaur_llm_enrich,
     "fossil_llm_enrich": _run_fossil_llm_enrich,
@@ -339,6 +384,17 @@ def main(argv: list[str] | None = None) -> int:
         "Pass multiple names or comma-separated names in one argument.",
     )
     parser.add_argument(
+        "--sources",
+        metavar="SOURCE",
+        nargs="+",
+        help="Limit dinosaur knowledge jobs to wikipedia and/or openalex.",
+    )
+    parser.add_argument(
+        "--recreate-index",
+        action="store_true",
+        help="Explicitly delete and recreate the configured Azure knowledge index, then reindex snapshots.",
+    )
+    parser.add_argument(
         "--stale-days",
         metavar="N",
         type=int,
@@ -408,6 +464,11 @@ def main(argv: list[str] | None = None) -> int:
     dinos = parse_dino_names(args.dinos)
     if dinos:
         overrides["dinos"] = dinos
+    sources = _parse_knowledge_sources(args.sources)
+    if sources:
+        overrides["sources"] = sources
+    if args.recreate_index:
+        overrides["recreate_index"] = True
     if args.stale_days is not None:
         overrides["stale_days"] = args.stale_days
     if args.since is not None:

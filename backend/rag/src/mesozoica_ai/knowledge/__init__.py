@@ -1,38 +1,51 @@
-from .index import AzureKnowledgeIndex
+from .base import KnowledgeBase
+from .chunking import RecursiveChunker
+from .embeddings import Embedder
 from .factory import (
     create_knowledge_base,
     create_knowledge_index,
     create_knowledge_inspector,
+    create_structured_rag,
 )
+from .index import AzureKnowledgeIndex
+from .inspection import KnowledgeInspector
 from .models import (
-    KnowledgeDocument,
-    KnowledgeChunk,
     EmbeddedChunk,
-    RetrievedChunk,
     IngestResult,
+    KnowledgeChunk,
+    KnowledgeDocument,
+    RagResult,
+    RetrievalRequest,
+    RetrievedChunk,
+    SearchMode,
+    SourceMetadata,
     SyncResult,
 )
-from .chunking import RecursiveChunker
-from .embeddings import Embedder
-from .store import (
-    KnowledgeStore,
-    AzureSearchKnowledgeStore,
-)
-from .base import KnowledgeBase
 from .settings import KnowledgeSettings
-from .factory import create_knowledge_base
+from .store import AzureSearchKnowledgeStore, KnowledgeStore, build_filter
 
 __all__ = [
-    "KnowledgeDocument",
-    "KnowledgeChunk",
-    "EmbeddedChunk",
-    "RecursiveChunker",
-    "Embedder",
-    "KnowledgeStore",
+    "AzureKnowledgeIndex",
     "AzureSearchKnowledgeStore",
+    "Embedder",
+    "EmbeddedChunk",
+    "IngestResult",
     "KnowledgeBase",
+    "KnowledgeChunk",
+    "KnowledgeDocument",
+    "KnowledgeInspector",
     "KnowledgeSettings",
-    "create_knowledge_base",
+    "KnowledgeStore",
+    "RagResult",
+    "RecursiveChunker",
+    "RetrievalRequest",
+    "RetrievedChunk",
+    "SearchMode",
+    "SourceMetadata",
     "SyncResult",
+    "build_filter",
+    "create_knowledge_base",
+    "create_knowledge_index",
     "create_knowledge_inspector",
+    "create_structured_rag",
 ]
