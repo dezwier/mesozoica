@@ -141,7 +141,9 @@ Embeds a search query for vector / hybrid retrieval.
 Searches Azure AI Search and returns grounded chunks (with optional diagnostics).
 
 - `filters`: usually `namespace` / `subject_id` / `source`
-- `mode`: keyword, vector, hybrid, or semantic_hybrid (default)
+- `mode`: keyword, vector, hybrid, or semantic_hybrid. Default comes from
+  `RAG_RETRIEVAL_MODE` (package default: `hybrid`). Use `semantic_hybrid` only when
+  Azure Search Semantic Ranker is enabled on the service.
 
 ### `prompt_rag(output_model, *, query, evidence, config, ...)`
 
@@ -180,6 +182,25 @@ answer = prompt_rag(
 
 One-shot: `embed_query` → `retrieve_chunks` → `prompt_rag`.
 
+### `answer_question(*, query, filters=..., config=...)`
+
+Cited free-form answer from the index with **no application context**.
+Optional `subject_id` adds a dinosaur scope filter.
+
+```python
+from mesozoica_ai.generate import answer_question
+
+result = answer_question(query="What did Abrosaurus eat?", subject_id=12)
+print(result.answer, result.source_chunk_ids)
+```
+
+CLI:
+
+```bash
+.venv/bin/python rag/scripts/04_answer_question.py \
+  --question "What did Abrosaurus eat?" --dinos Abrosaurus --show-chunks
+```
+
 ### `generate_quiz(*, subject=..., config=...)`
 
 Builds one cited four-option quiz about a subject from the live index.
@@ -192,6 +213,18 @@ from mesozoica_ai.generate import generate_quiz
 quiz = generate_quiz(subject_id=7, subject_name="Triceratops")
 print(quiz.model_dump_json(indent=2))
 ```
+
+CLI (exactly one `--dinos`):
+
+```bash
+.venv/bin/python rag/scripts/03_generate_quiz.py --dinos Triceratops --difficulty medium
+.venv/bin/python rag/scripts/03_generate_quiz.py --dinos Triceratops --chunks-only
+.venv/bin/python rag/scripts/03_generate_quiz.py --dinos Triceratops --show-chunks
+```
+
+`--chunks-only` prints the retrieval query/filters and each chunk with ranking
+scores plus provenance (`source`, `source_id`, `title`, `section`, `source_url`, …).
+`--show-chunks` includes that same `chunks` array next to the generated quiz.
 
 ---
 
@@ -310,8 +343,9 @@ python -m app.crons.runner --job dinosaur_knowledge --dinos Tyrannosaurus
 cd backend
 .venv/bin/python rag/scripts/01_acquire_dinosaur_knowledge.py --dinos Triceratops
 .venv/bin/python rag/scripts/02_index_dinosaur_knowledge.py --dinos Triceratops
-.venv/bin/python rag/scripts/03_generate_quiz.py
-.venv/bin/python rag/scripts/04_evaluate_retrieval.py
+.venv/bin/python rag/scripts/03_generate_quiz.py --dinos Triceratops
+.venv/bin/python rag/scripts/04_answer_question.py --question "What horns did Triceratops have?" --dinos Triceratops
+.venv/bin/python rag/scripts/05_evaluate_retrieval.py
 ```
 
 ---

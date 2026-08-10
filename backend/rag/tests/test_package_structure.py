@@ -79,7 +79,9 @@ def test_domain_packages_export_expected_helpers():
     index = importlib.import_module("mesozoica_ai.index")
     assert "index_knowledge" in index.__all__
     generate = importlib.import_module("mesozoica_ai.generate")
-    assert {"generate_quiz", "answer_from_index", "prompt_rag"} <= set(generate.__all__)
+    assert {"generate_quiz", "answer_from_index", "answer_question", "prompt_rag", "GroundedAnswer"} <= set(
+        generate.__all__
+    )
     evaluate = importlib.import_module("mesozoica_ai.evaluate")
     assert {"evaluate_knowledge", "evaluate_against_index", "prepare_retrieval_cases"} <= set(
         evaluate.__all__

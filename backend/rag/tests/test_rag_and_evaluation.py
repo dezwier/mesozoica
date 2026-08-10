@@ -172,3 +172,205 @@ def test_foundry_polling_reports_timeout_without_requesting_output_items():
     ).submit([RagEvaluationRecord(query="q", response="a", context="c")],
              name="timeout", max_wait_seconds=1)
     assert result.status == "queued" and result.timed_out is True
+
+
+def test_require_one_subject_and_quiz_question_validation():
+    from types import SimpleNamespace
+
+    from mesozoica_ai.generate import QuizQuestion, require_one_subject
+
+    subject = SimpleNamespace(id=12, name="Abrosaurus")
+    assert require_one_subject([subject], requested="Abrosaurus") is subject
+    with pytest.raises(ValueError, match="exactly one"):
+        require_one_subject([], requested="Abrosaurus")
+    with pytest.raises(ValueError, match="exactly one"):
+        require_one_subject([subject, subject], requested="Abrosaurus")
+
+    quiz = QuizQuestion(
+        question="Which clade includes Abrosaurus?",
+        topic="classification",
+        difficulty="medium",
+        options=("Sauropoda", "Theropoda", "Ornithopoda", "Ceratopsia"),
+        correct_index=0,
+        explanation="Abrosaurus is a sauropod.",
+        source_chunk_ids=["chunk-1"],
+    )
+    assert quiz.correct_index == 0
+    with pytest.raises(ValueError, match="unique"):
+        QuizQuestion(
+            question="Q?",
+            topic="t",
+            difficulty="easy",
+            options=("A", "A", "B", "C"),
+            correct_index=0,
+            explanation="because",
+            source_chunk_ids=["chunk-1"],
+        )
+
+
+def test_generate_quiz_wires_retrieve_filters_and_user_context(monkeypatch):
+    from types import SimpleNamespace
+
+    from mesozoica_ai.generate import QuizQuestion, QuizUserContext, generate_quiz
+    from mesozoica_ai.generate import answer as answer_mod
+
+    captured: dict = {}
+
+    def fake_answer_from_index(output_model, *, query, filters, config, application_context, instructions, mode=None):
+        captured.update(
+            {
+                "output_model": output_model,
+                "query": query,
+                "filters": filters,
+                "application_context": application_context,
+                "instructions": instructions,
+                "mode": mode,
+            }
+        )
+        return QuizQuestion(
+            question="Q?",
+            topic="anatomy",
+            difficulty="hard",
+            options=("a", "b", "c", "d"),
+            correct_index=1,
+            explanation="from evidence",
+            source_chunk_ids=["ev-1"],
+        )
+
+    monkeypatch.setattr(answer_mod, "answer_from_index", fake_answer_from_index)
+    monkeypatch.setattr(
+        "mesozoica_ai.generate.quiz.answer_from_index", fake_answer_from_index
+    )
+    context = QuizUserContext(
+        language="English",
+        knowledge_level="beginner",
+        preferred_difficulty="hard",
+    )
+    result = generate_quiz(
+        subject=SimpleNamespace(id=12, name="Abrosaurus"),
+        user_context=context,
+        config=_rag_config(),
+    )
+    assert result.topic == "anatomy"
+    assert captured["output_model"] is QuizQuestion
+    assert captured["filters"] == {
+        "namespace": "mesozoica",
+        "subject_id": "dinosaur:12",
+    }
+    assert captured["application_context"] is context
+    assert "Abrosaurus" in captured["query"]
+    assert "hard" in captured["query"]
+
+
+def test_retrieved_chunk_record_exposes_ranking_and_provenance():
+    from mesozoica_ai.common.models import RetrievedChunk, SourceMetadata
+    from mesozoica_ai.generate import quiz_retrieval_plan, retrieved_chunk_record
+
+    query, filters, instructions = quiz_retrieval_plan(
+        subject_id=12,
+        subject_name="Abrosaurus",
+    )
+    assert filters == {"namespace": "mesozoica", "subject_id": "dinosaur:12"}
+    assert "Abrosaurus" in query and "Abrosaurus" in instructions
+
+    record = retrieved_chunk_record(
+        RetrievedChunk(
+            id="chunk-1",
+            document_id="doc-1",
+            text="Abrosaurus was a sauropod.",
+            metadata=SourceMetadata(
+                source="openalex",
+                source_id="W123",
+                title="Paper title",
+                section="Abstract",
+                section_path=["Abstract"],
+                source_url="https://example.test/paper",
+                namespace="mesozoica",
+                subject_id="dinosaur:12",
+                subject_name="Abrosaurus",
+            ),
+            chunk_index=0,
+            score=12.5,
+            reranker_score=2.1,
+        )
+    )
+    assert record == {
+        "id": "chunk-1",
+        "document_id": "doc-1",
+        "chunk_index": 0,
+        "score": 12.5,
+        "reranker_score": 2.1,
+        "source": "openalex",
+        "source_id": "W123",
+        "title": "Paper title",
+        "section": "Abstract",
+        "section_path": ["Abstract"],
+        "source_url": "https://example.test/paper",
+        "namespace": "mesozoica",
+        "subject_id": "dinosaur:12",
+        "subject_name": "Abrosaurus",
+        "published_at": None,
+        "text": "Abrosaurus was a sauropod.",
+    }
+
+
+def test_format_chunk_log_lines_are_compact():
+    from mesozoica_ai.generate.quiz import format_chunk_log_lines
+
+    lines = format_chunk_log_lines(
+        [
+            {
+                "id": "abcdef0123456789",
+                "score": 0.03079839,
+                "reranker_score": None,
+                "source": "wikipedia",
+                "title": "Achelousaurus",
+                "section": "Skull",
+                "text": "The skull of Achelousaurus was heavily ornamented with bosses.",
+            }
+        ],
+        preview_chars=40,
+    )
+    assert lines[0] == "retrieved 1 chunk(s)"
+    assert lines[1] == "  [1] 0.031 wikipedia | Achelousaurus · Skull | abcdef0123"
+    assert lines[2] == "       The skull of Achelousaurus was heavily…"
+
+
+def test_answer_question_uses_evidence_only_without_application_context(monkeypatch):
+    from mesozoica_ai.generate import GroundedAnswer, answer_question
+    from mesozoica_ai.generate import answer as answer_mod
+
+    captured: dict = {}
+
+    def fake_answer_from_index(output_model, *, query, filters, config, application_context, instructions, mode=None):
+        captured.update(
+            {
+                "output_model": output_model,
+                "query": query,
+                "filters": filters,
+                "application_context": application_context,
+                "instructions": instructions,
+                "mode": mode,
+            }
+        )
+        return GroundedAnswer(
+            answer="Abrosaurus was a sauropod.",
+            source_chunk_ids=["ev-1"],
+        )
+
+    monkeypatch.setattr(answer_mod, "answer_from_index", fake_answer_from_index)
+    result = answer_question(
+        query="What was Abrosaurus?",
+        subject_id=12,
+        config=_rag_config(),
+        mode="hybrid",
+    )
+    assert result.answer.startswith("Abrosaurus")
+    assert captured["output_model"] is GroundedAnswer
+    assert captured["application_context"] is None
+    assert captured["filters"] == {
+        "namespace": "mesozoica",
+        "subject_id": "dinosaur:12",
+    }
+    assert captured["mode"] == "hybrid"
+    assert "only the supplied evidence" in captured["instructions"]

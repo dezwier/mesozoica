@@ -52,8 +52,10 @@ cd backend
 .venv/bin/python rag/scripts/01_acquire_dinosaur_knowledge.py
 .venv/bin/python rag/scripts/01_acquire_dinosaur_knowledge.py --dinos Tyrannosaurus
 .venv/bin/python rag/scripts/02_index_dinosaur_knowledge.py
-.venv/bin/python rag/scripts/03_generate_quiz.py
-.venv/bin/python rag/scripts/04_evaluate_retrieval.py
+.venv/bin/python rag/scripts/03_generate_quiz.py --dinos Triceratops
+.venv/bin/python rag/scripts/03_generate_quiz.py --dinos Triceratops --chunks-only
+.venv/bin/python rag/scripts/04_answer_question.py --question "What horns did Triceratops have?" --dinos Triceratops
+.venv/bin/python rag/scripts/05_evaluate_retrieval.py
 .venv/bin/python -m pytest rag/tests -q
 ```
 

@@ -10,7 +10,7 @@ the rest:
 | `common` | config, models, tokens, checkpoint/`store_documents` | nothing else in mesozoica_ai |
 | `sources` | `retrieve_wikipedia` / `retrieve_openalex` (+ http/helpers) | `common` |
 | `index` | chunk/embed/sync/retrieve + batch index | `common` |
-| `generate` | prompt_rag, answer_from_index, quiz | `common`, `index` |
+| `generate` | prompt_rag, answer_from_index, answer_question, quiz | `common`, `index` |
 | `evaluate` | offline/live metrics, status | `common`, `index` |
 
 ```text

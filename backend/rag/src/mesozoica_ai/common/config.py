@@ -58,6 +58,11 @@ class AiConfig(BaseSettings):
     semantic_configuration_name: str = Field(
         default="knowledge-semantic", validation_alias="RAG_SEMANTIC_CONFIGURATION"
     )
+    # Default hybrid: Semantic Ranker is not available on all Azure Search SKUs.
+    # Set RAG_RETRIEVAL_MODE=semantic_hybrid when the service has semantic enabled.
+    retrieval_mode: str = Field(
+        default="hybrid", validation_alias="RAG_RETRIEVAL_MODE"
+    )
 
     chunk_size: int = Field(default=500, gt=0, validation_alias="RAG_CHUNK_SIZE")
     chunk_overlap: int = Field(default=75, ge=0, validation_alias="RAG_CHUNK_OVERLAP")
@@ -126,6 +131,12 @@ class AiConfig(BaseSettings):
             problems.append("RAG_FETCH_K must be greater than or equal to RAG_TOP_K")
         if self.candidate_k < self.fetch_k:
             problems.append("RAG_CANDIDATE_K must be greater than or equal to RAG_FETCH_K")
+        allowed_modes = {"keyword", "vector", "hybrid", "semantic_hybrid"}
+        if self.retrieval_mode not in allowed_modes:
+            problems.append(
+                "RAG_RETRIEVAL_MODE must be one of: "
+                + ", ".join(sorted(allowed_modes))
+            )
         if self.chat_deployment.strip() and (
             self.max_completion_tokens + self.prompt_safety_margin >= self.max_prompt_tokens
         ):

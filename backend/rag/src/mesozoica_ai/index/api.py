@@ -268,7 +268,7 @@ def retrieve_chunks(
     *,
     query_embedding: list[float] | None,
     filters: dict[str, Any] | None = None,
-    mode: RetrievalMode = RetrievalMode.SEMANTIC_HYBRID,
+    mode: RetrievalMode | None = None,
     candidate_k: int | None = None,
     fetch_k: int | None = None,
     top_k: int | None = None,
@@ -284,7 +284,7 @@ def retrieve_chunks(
     *,
     query_embedding: list[float] | None,
     filters: dict[str, Any] | None = None,
-    mode: RetrievalMode = RetrievalMode.SEMANTIC_HYBRID,
+    mode: RetrievalMode | None = None,
     candidate_k: int | None = None,
     fetch_k: int | None = None,
     top_k: int | None = None,
@@ -299,7 +299,7 @@ def retrieve_chunks(
     *,
     query_embedding: list[float] | None,
     filters: dict[str, Any] | None = None,
-    mode: RetrievalMode = RetrievalMode.SEMANTIC_HYBRID,
+    mode: RetrievalMode | None = None,
     candidate_k: int | None = None,
     fetch_k: int | None = None,
     top_k: int | None = None,
@@ -308,44 +308,75 @@ def retrieve_chunks(
     config: KnowledgeConfig,
 ) -> list[RetrievedChunk] | RetrievalResult:
     """Retrieve guarded chunks, optionally including ranking diagnostics."""
+    from azure.core.exceptions import HttpResponseError
+
     started = time.perf_counter()
+    active_mode = mode or RetrievalMode(config.retrieval_mode)
     vector_modes = {
         RetrievalMode.VECTOR,
         RetrievalMode.HYBRID,
         RetrievalMode.SEMANTIC_HYBRID,
     }
-    if mode in vector_modes and query_embedding is None:
-        raise ValueError(f"{mode.value} retrieval requires an explicit query_embedding")
+    if active_mode in vector_modes and query_embedding is None:
+        raise ValueError(f"{active_mode.value} retrieval requires an explicit query_embedding")
     request = RetrievalRequest(
         query=query,
         filters=filters or {},
-        mode=mode,
+        mode=active_mode,
         candidate_k=config.candidate_k if candidate_k is None else candidate_k,
         fetch_k=config.fetch_k if fetch_k is None else fetch_k,
         top_k=config.top_k if top_k is None else top_k,
         evidence_policy=evidence_policy or EvidencePolicy(),
     )
-    raw = build_store(config, write_enabled=False).search(
-        request=request,
-        query_vector=query_embedding if mode in vector_modes else None,
-    )
+    store = build_store(config, write_enabled=False)
+    try:
+        raw = store.search(
+            request=request,
+            query_vector=query_embedding if active_mode in vector_modes else None,
+        )
+    except HttpResponseError as exc:
+        if (
+            active_mode is RetrievalMode.SEMANTIC_HYBRID
+            and _semantic_ranker_unavailable(exc)
+        ):
+            logger.warning(
+                "semantic ranker unavailable on this Azure Search service; "
+                "falling back to hybrid (set RAG_RETRIEVAL_MODE=hybrid to skip this)"
+            )
+            active_mode = RetrievalMode.HYBRID
+            request = request.model_copy(update={"mode": active_mode})
+            raw = store.search(
+                request=request,
+                query_vector=query_embedding,
+            )
+        else:
+            raise
     selected, rejected = _select_evidence(raw, request)
     result = RetrievalResult(
         chunks=selected,
         raw_result_count=len(raw),
         rejection_counts=rejected,
-        mode=mode,
+        mode=active_mode,
         duration_ms=(time.perf_counter() - started) * 1000,
         pipeline_fingerprint=pipeline_fingerprint(config=config),
     )
     logger.info("rag.retrieve", extra={"rag": {
-        "mode": mode.value,
+        "mode": active_mode.value,
         "raw_count": len(raw),
         "selected_count": len(selected),
         "duration_ms": result.duration_ms,
         "pipeline_fingerprint": result.pipeline_fingerprint,
     }})
     return result if include_diagnostics else result.chunks
+
+
+def _semantic_ranker_unavailable(exc: BaseException) -> bool:
+    text = str(exc)
+    return (
+        "SemanticQueriesNotAvailable" in text
+        or "Semantic search is not enabled" in text
+        or "FeatureNotSupportedInService" in text
+    )
 
 
 def _select_evidence(
@@ -376,9 +407,16 @@ def _select_evidence(
         if len(selected) >= request.top_k:
             break
     if len(selected) < policy.minimum_chunks:
+        if not raw:
+            raise InsufficientEvidenceError(
+                "Retrieval returned 0 chunks from Azure Search for this query/filter. "
+                "Acquire and index the subject first "
+                "(rag/scripts/01_acquire_dinosaur_knowledge.py then "
+                "02_index_dinosaur_knowledge.py)."
+            )
         raise InsufficientEvidenceError(
-            f"Retrieval selected {len(selected)} usable chunks; policy requires "
-            f"at least {policy.minimum_chunks}"
+            f"Retrieval selected {len(selected)} usable chunks from {len(raw)} raw "
+            f"hit(s); policy requires at least {policy.minimum_chunks}"
         )
     return selected, rejected
 
