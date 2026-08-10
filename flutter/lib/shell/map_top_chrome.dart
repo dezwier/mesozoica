@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../features/assistant/assistant.dart';
 import '../widgets/common/catalog_mode_toggle.dart';
 import '../widgets/common/notification_icon_button.dart';
 import '../models/user_notification.dart';
@@ -101,9 +102,20 @@ class MapTopChrome extends StatelessWidget {
                   ],
                 ),
               ),
-              const Align(
-                alignment: Alignment.centerRight,
-                child: MapWeatherChip(),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (showNotifications)
+                    const Expanded(
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: FieldAssistantChip(),
+                      ),
+                    )
+                  else
+                    const Spacer(),
+                  const MapWeatherChip(),
+                ],
               ),
             ],
           ),

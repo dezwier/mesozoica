@@ -4,6 +4,7 @@ from fastapi import APIRouter
 
 from app.api.v1.endpoints import root
 from app.features.accounts.api import routers as account_routers
+from app.features.assistant.api import routers as assistant_routers
 from app.features.game_config.api import routers as game_config_routers
 from app.features.media.api import routers as media_routers
 from app.features.sites.api import routers as site_routers
@@ -27,4 +28,6 @@ for router in account_routers:
 for router in weather_routers:
     api_router.include_router(router)
 for router in game_config_routers:
+    api_router.include_router(router)
+for router in assistant_routers:
     api_router.include_router(router)

@@ -123,7 +123,7 @@ Every API response under `/api/v1` is stamped with `X-Game-Config-Version`. The 
 
 `app/crons/runner.py` and `app/workers/field_ensure_worker.py` are process adapters. Cron schedule/CLI parsing belongs at the edge; scientific sync, media, weather, config, and field logic belongs to feature application/jobs code. External integrations live under infrastructure so tests can replace them.
 
-`backend/rag` is an independently packaged, source-agnostic Azure OpenAI/Search toolkit. It owns document/source models, section-aware chunking, index synchronization and retrieval, structured RAG, and evaluation primitives. Dinosaur selection, persisted acquisition/index checkpoints, and quiz-preview business rules remain owned by the ingestion and specimens features.
+`backend/rag` is an independently packaged, source-agnostic Azure OpenAI/Search toolkit. It owns document/source models, section-aware chunking, index synchronization and retrieval, structured RAG, and evaluation primitives. Dinosaur selection, persisted acquisition/index checkpoints, and quiz-preview business rules remain owned by the ingestion and specimens features. Player-facing field Q&A is served by the `assistant` feature over HTTP.
 
 It implements controlled two-step RAG: exact-token, fingerprinted ingestion followed by explicit keyword/vector/hybrid/semantic-hybrid retrieval and strict structured generation. LangChain owns model/splitter/prompt abstractions; Azure Search schema, synchronization, filtering, partial result handling, and index lifecycle use the Azure SDK directly. See [`../backend/rag/docs/ARCHITECTURE.md`](../backend/rag/docs/ARCHITECTURE.md) and [`../backend/rag/docs/USAGE.md`](../backend/rag/docs/USAGE.md).
 

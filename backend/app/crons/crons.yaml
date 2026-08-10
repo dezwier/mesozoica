@@ -7,7 +7,7 @@ jobs:
   # Build dinosaur knowledge: 01 acquire (SQL) then 02 index (Azure).
   # Enable after configuring Azure + OpenAlex credentials.
   - id: dinosaur_knowledge
-    enabled: false
+    enabled: true
     schedule: "0 1 * * *"
     params:
       dry_run: false

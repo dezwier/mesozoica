@@ -67,6 +67,7 @@ Backend feature ownership:
 | Feature | Owns |
 | --- | --- |
 | `accounts` | auth identities, users, profiles, relationships, notifications, devices, walking distance |
+| `assistant` | player field-assistant ask API wrapping `mesozoica_ai` Q&A (does not own acquire/index) |
 | `field` | procedural field sites, ensure/survey queues, field fossil generation, coordinate filtering |
 | `game_config` | typed YAML parsing, immutable snapshots, releases/revisions, active config |
 | `ingestion` | Wikipedia, PBDB, Gemini enrichment, and catalog synchronization workflows |
@@ -81,6 +82,7 @@ Flutter feature ownership:
 
 | Feature | Owns |
 | --- | --- |
+| `assistant` | field-assistant map HUD chip and ask repository |
 | `collection` | dinosaur, fossil, and tool repositories/catalog composition |
 | `discovery` | sites, discovery map, marker reconciliation, viewport, filters, selection, polling |
 | `expeditions` | tool action/session composition |
