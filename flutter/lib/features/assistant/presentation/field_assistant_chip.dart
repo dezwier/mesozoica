@@ -84,8 +84,8 @@ class _FieldAssistantChipState extends State<FieldAssistantChip> {
     }
   }
 
-  Future<void> _openPaper(PaperLink paper) async {
-    final uri = Uri.tryParse(paper.url);
+  Future<void> _openSource(SourceLink source) async {
+    final uri = Uri.tryParse(source.url);
     if (uri == null) return;
     await launchUrl(uri, mode: LaunchMode.externalApplication);
   }
@@ -295,10 +295,10 @@ class _FieldAssistantChipState extends State<FieldAssistantChip> {
                     ),
                   ),
                 ),
-                if (_answer!.papers.isNotEmpty) ...[
+                if (_answer!.sources.isNotEmpty) ...[
                   const SizedBox(height: 10),
                   const Text(
-                    'Relevant papers',
+                    'Sources',
                     style: TextStyle(
                       color: VintageInstrumentStyle.brassMuted,
                       fontSize: 11,
@@ -307,21 +307,23 @@ class _FieldAssistantChipState extends State<FieldAssistantChip> {
                     ),
                   ),
                   const SizedBox(height: 4),
-                  for (final paper in _answer!.papers)
+                  for (final source in _answer!.sources)
                     Padding(
                       padding: const EdgeInsets.only(bottom: 2),
                       child: InkWell(
-                        onTap: () => _openPaper(paper),
+                        onTap: () => _openSource(source),
                         borderRadius: BorderRadius.circular(4),
                         child: Padding(
                           padding: const EdgeInsets.symmetric(vertical: 3),
                           child: Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Padding(
-                                padding: EdgeInsets.only(top: 2),
+                              Padding(
+                                padding: const EdgeInsets.only(top: 2),
                                 child: Icon(
-                                  Icons.open_in_new,
+                                  source.isWikipedia
+                                      ? Icons.menu_book_outlined
+                                      : Icons.article_outlined,
                                   size: 12,
                                   color: VintageInstrumentStyle.gold,
                                 ),
@@ -329,7 +331,7 @@ class _FieldAssistantChipState extends State<FieldAssistantChip> {
                               const SizedBox(width: 6),
                               Expanded(
                                 child: Text(
-                                  paper.title,
+                                  source.title,
                                   style: const TextStyle(
                                     color: VintageInstrumentStyle.gold,
                                     fontSize: 12,

@@ -1,33 +1,39 @@
 /// Answer returned by the field assistant.
 class AssistantAnswer {
-  const AssistantAnswer({required this.answer, required this.papers});
+  const AssistantAnswer({required this.answer, required this.sources});
 
   final String answer;
-  final List<PaperLink> papers;
+  final List<SourceLink> sources;
 
   factory AssistantAnswer.fromJson(Map<String, dynamic> json) {
-    final raw = json['papers'] as List<dynamic>? ?? const [];
+    final raw = json['sources'] as List<dynamic>? ?? const [];
     return AssistantAnswer(
       answer: json['answer'] as String? ?? '',
-      papers: raw
+      sources: raw
           .whereType<Map<String, dynamic>>()
-          .map(PaperLink.fromJson)
-          .where((p) => p.title.isNotEmpty && p.url.isNotEmpty)
+          .map(SourceLink.fromJson)
+          .where((s) => s.title.isNotEmpty && s.url.isNotEmpty)
           .toList(),
     );
   }
 }
 
-class PaperLink {
-  const PaperLink({required this.title, required this.url});
+class SourceLink {
+  const SourceLink({required this.title, required this.url, required this.kind});
 
   final String title;
   final String url;
 
-  factory PaperLink.fromJson(Map<String, dynamic> json) {
-    return PaperLink(
+  /// `wikipedia`, `openalex`, or other source kind from the API.
+  final String kind;
+
+  bool get isWikipedia => kind == 'wikipedia';
+
+  factory SourceLink.fromJson(Map<String, dynamic> json) {
+    return SourceLink(
       title: (json['title'] as String? ?? '').trim(),
       url: (json['url'] as String? ?? '').trim(),
+      kind: (json['kind'] as String? ?? '').trim(),
     );
   }
 }

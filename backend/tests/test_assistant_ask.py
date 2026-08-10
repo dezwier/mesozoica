@@ -6,8 +6,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from app.features.assistant.application.ask import ask_question, select_papers
-from app.features.assistant.schemas import PaperLink
+from app.features.assistant.application.ask import ask_question, select_sources
+from app.features.assistant.schemas import SourceLink
 from mesozoica_ai.common.metadata import SourceMetadata
 from mesozoica_ai.common.models import RetrievedChunk
 from mesozoica_ai.generate import GroundedAnswer
@@ -20,6 +20,7 @@ def _chunk(
     source: str,
     title: str,
     source_url: str | None,
+    section: str | None = None,
     text: str = "evidence",
 ) -> RetrievedChunk:
     return RetrievedChunk(
@@ -30,19 +31,21 @@ def _chunk(
             source=source,
             source_id=f"{source}:{document_id}",
             title=title,
+            section=section,
             source_url=source_url,
         ),
         score=1.0,
     )
 
 
-def test_select_papers_prefers_openalex_and_dedupes() -> None:
+def test_select_sources_keeps_retrieval_order_mixed_wiki_and_papers() -> None:
     records = [
         {
             "document_id": "wiki-1",
             "source": "wikipedia",
             "title": "Abrosaurus",
-            "source_url": "https://en.wikipedia.org/wiki/Abrosaurus",
+            "section": "Paleobiology",
+            "source_url": "https://en.wikipedia.org/wiki/Abrosaurus#Paleobiology",
         },
         {
             "document_id": "oa-1",
@@ -57,6 +60,13 @@ def test_select_papers_prefers_openalex_and_dedupes() -> None:
             "source_url": "https://doi.org/10.1/a",
         },
         {
+            "document_id": "wiki-2",
+            "source": "wikipedia",
+            "title": "Abrosaurus",
+            "section": "Introduction",
+            "source_url": "https://en.wikipedia.org/wiki/Abrosaurus",
+        },
+        {
             "document_id": "oa-2",
             "source": "openalex",
             "title": "Paper B",
@@ -68,22 +78,24 @@ def test_select_papers_prefers_openalex_and_dedupes() -> None:
             "title": "Paper C",
             "source_url": "https://doi.org/10.1/c",
         },
-        {
-            "document_id": "oa-4",
-            "source": "openalex",
-            "title": "Paper D",
-            "source_url": "https://doi.org/10.1/d",
-        },
     ]
-    papers = select_papers(records)
-    assert papers == [
-        PaperLink(title="Paper A", url="https://doi.org/10.1/a"),
-        PaperLink(title="Paper B", url="https://doi.org/10.1/b"),
-        PaperLink(title="Paper C", url="https://doi.org/10.1/c"),
+    sources = select_sources(records)
+    assert sources == [
+        SourceLink(
+            title="Abrosaurus — Paleobiology",
+            url="https://en.wikipedia.org/wiki/Abrosaurus#Paleobiology",
+            kind="wikipedia",
+        ),
+        SourceLink(title="Paper A", url="https://doi.org/10.1/a", kind="openalex"),
+        SourceLink(
+            title="Abrosaurus",
+            url="https://en.wikipedia.org/wiki/Abrosaurus",
+            kind="wikipedia",
+        ),
     ]
 
 
-def test_select_papers_fills_from_other_sources() -> None:
+def test_select_sources_skips_blank_titles() -> None:
     records = [
         {
             "document_id": "oa-1",
@@ -92,22 +104,15 @@ def test_select_papers_fills_from_other_sources() -> None:
             "source_url": "https://doi.org/10.1/a",
         },
         {
-            "document_id": "wiki-1",
-            "source": "wikipedia",
-            "title": "Wiki Page",
-            "source_url": "https://en.wikipedia.org/wiki/X",
-        },
-        {
             "document_id": "wiki-2",
             "source": "wikipedia",
             "title": "",
             "source_url": "https://en.wikipedia.org/wiki/Empty",
         },
     ]
-    papers = select_papers(records)
-    assert papers == [
-        PaperLink(title="Only Paper", url="https://doi.org/10.1/a"),
-        PaperLink(title="Wiki Page", url="https://en.wikipedia.org/wiki/X"),
+    sources = select_sources(records)
+    assert sources == [
+        SourceLink(title="Only Paper", url="https://doi.org/10.1/a", kind="openalex"),
     ]
 
 
@@ -115,17 +120,18 @@ def test_ask_question_happy_path() -> None:
     chunks = [
         _chunk(
             chunk_id="c1",
+            document_id="wiki-1",
+            source="wikipedia",
+            title="Abrosaurus",
+            section="Diet",
+            source_url="https://en.wikipedia.org/wiki/Abrosaurus#Diet",
+        ),
+        _chunk(
+            chunk_id="c2",
             document_id="oa-1",
             source="openalex",
             title="Diet of Abrosaurus",
             source_url="https://doi.org/10.1/diet",
-        ),
-        _chunk(
-            chunk_id="c2",
-            document_id="wiki-1",
-            source="wikipedia",
-            title="Abrosaurus",
-            source_url="https://en.wikipedia.org/wiki/Abrosaurus",
         ),
     ]
     grounded = GroundedAnswer(answer="Abrosaurus was a herbivore.", source_chunk_ids=["c1"])
@@ -151,9 +157,17 @@ def test_ask_question_happy_path() -> None:
     retrieve.assert_called_once()
     prompt.assert_called_once()
     assert result.answer == "Abrosaurus was a herbivore."
-    assert result.papers == [
-        PaperLink(title="Diet of Abrosaurus", url="https://doi.org/10.1/diet"),
-        PaperLink(title="Abrosaurus", url="https://en.wikipedia.org/wiki/Abrosaurus"),
+    assert result.sources == [
+        SourceLink(
+            title="Abrosaurus — Diet",
+            url="https://en.wikipedia.org/wiki/Abrosaurus#Diet",
+            kind="wikipedia",
+        ),
+        SourceLink(
+            title="Diet of Abrosaurus",
+            url="https://doi.org/10.1/diet",
+            kind="openalex",
+        ),
     ]
 
 

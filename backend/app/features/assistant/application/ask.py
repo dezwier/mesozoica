@@ -13,24 +13,37 @@ from mesozoica_ai.generate import (
 )
 from mesozoica_ai.index import embed_query, retrieve_chunks
 
-from app.features.assistant.schemas import AskResponse, PaperLink
+from app.features.assistant.schemas import AskResponse, SourceLink
 
 ANSWER_INSTRUCTIONS = (
     "Answer the question using only the supplied evidence. "
     "Be concise and accurate. Cite every chunk that supports the answer."
 )
 
-_MAX_PAPERS = 3
+_MAX_SOURCES = 3
 
 
-def select_papers(chunk_records: list[dict[str, Any]], *, limit: int = _MAX_PAPERS) -> list[PaperLink]:
-    """Pick up to ``limit`` unique docs with title+URL; OpenAlex first."""
-    openalex: list[PaperLink] = []
-    others: list[PaperLink] = []
+def _display_title(record: dict[str, Any]) -> str:
+    title = (record.get("title") or "").strip()
+    if not title:
+        return ""
+    if record.get("source") != "wikipedia":
+        return title
+    section = (record.get("section") or "").strip()
+    if not section or section.casefold() == "introduction":
+        return title
+    return f"{title} — {section}"
+
+
+def select_sources(
+    chunk_records: list[dict[str, Any]], *, limit: int = _MAX_SOURCES
+) -> list[SourceLink]:
+    """Pick up to ``limit`` unique top-ranked sources (wiki sections or papers)."""
+    picked: list[SourceLink] = []
     seen: set[str] = set()
 
     for record in chunk_records:
-        title = (record.get("title") or "").strip()
+        title = _display_title(record)
         url = (record.get("source_url") or "").strip()
         if not title or not url:
             continue
@@ -38,23 +51,15 @@ def select_papers(chunk_records: list[dict[str, Any]], *, limit: int = _MAX_PAPE
         if key in seen:
             continue
         seen.add(key)
-        link = PaperLink(title=title, url=url)
-        if record.get("source") == "openalex":
-            openalex.append(link)
-        else:
-            others.append(link)
-
-    picked = openalex[:limit]
-    if len(picked) < limit:
-        for link in others:
-            if len(picked) >= limit:
-                break
-            picked.append(link)
+        kind = str(record.get("source") or "unknown")
+        picked.append(SourceLink(title=title, url=url, kind=kind))
+        if len(picked) >= limit:
+            break
     return picked
 
 
 def ask_question(question: str, *, config: AiConfig | None = None) -> AskResponse:
-    """Retrieve evidence, generate a grounded answer, and attach paper links."""
+    """Retrieve evidence, generate a grounded answer, and attach source links."""
     query = question.strip()
     if not query:
         raise ValueError("question must not be blank")
@@ -76,4 +81,4 @@ def ask_question(question: str, *, config: AiConfig | None = None) -> AskRespons
         config=cfg,
     )
     records = [retrieved_chunk_record(chunk) for chunk in chunks]
-    return AskResponse(answer=answer.answer, papers=select_papers(records))
+    return AskResponse(answer=answer.answer, sources=select_sources(records))
