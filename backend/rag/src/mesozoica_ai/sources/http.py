@@ -12,7 +12,7 @@ from typing import Any
 
 import httpx
 
-from .errors import SourceFetchError
+from mesozoica_ai.common.errors import SourceFetchError
 
 logger = logging.getLogger(__name__)
 RETRYABLE_STATUS_CODES = frozenset({429, 500, 502, 503, 504})

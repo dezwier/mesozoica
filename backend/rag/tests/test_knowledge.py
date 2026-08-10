@@ -1,13 +1,42 @@
 from types import SimpleNamespace
+from datetime import datetime, timezone
 
 import pytest
 
-from mesozoica_ai.knowledge import KnowledgeBaseSettings
-from mesozoica_ai.knowledge.errors import (
-    BatchWriteError, IndexCompatibilityError, InsufficientEvidenceError,
-    KnowledgeBaseConfigurationError,
+from mesozoica_ai.common import (
+    begin_indexing,
+    complete_indexing,
+    fail_indexing,
+    indexing_needed,
+    reset_indexing,
 )
-from mesozoica_ai.knowledge.models import (
+from mesozoica_ai.common.config import AiConfig as KnowledgeConfig
+from mesozoica_ai.common.errors import (
+    BatchWriteError,
+    IndexCompatibilityError,
+    InsufficientEvidenceError,
+)
+from mesozoica_ai.index import (
+    chunk_documents,
+    embed_chunks,
+    embed_query,
+    ensure_index,
+    index_chunks,
+    pipeline_fingerprint,
+    recreate_index,
+    retrieve_chunks,
+    sync_documents,
+)
+from mesozoica_ai.index import api as knowledge_api
+from mesozoica_ai.index.chunking import RecursiveChunker
+from mesozoica_ai.index.embeddings import Embedder
+from mesozoica_ai.index.schema import AzureKnowledgeIndex
+from mesozoica_ai.index.store import (
+    AzureSearchKnowledgeStore,
+    _payload_batches,
+    build_filter,
+)
+from mesozoica_ai.common.models import (
     ChunkState,
     EmbeddedChunk,
     EvidencePolicy,
@@ -16,16 +45,7 @@ from mesozoica_ai.knowledge.models import (
     RetrievalRequest,
     RetrievedChunk,
 )
-from mesozoica_ai.knowledge.tokens import TokenCounter, load_encoding
-from mesozoica_ai.knowledge.service import KnowledgeBase
-from mesozoica_ai.knowledge.chunking import RecursiveChunker
-from mesozoica_ai.knowledge.embeddings import Embedder
-from mesozoica_ai.knowledge.index import AzureKnowledgeIndex
-from mesozoica_ai.knowledge.store import (
-    AzureSearchKnowledgeStore,
-    _payload_batches,
-    build_filter,
-)
+from mesozoica_ai.common.tokens import TokenCounter, TokenizerError, load_encoding
 
 
 class CharacterEncoding:
@@ -40,6 +60,20 @@ class CharacterEncoding:
 
 def _counter():
     return TokenCounter("characters", encoding=CharacterEncoding())
+
+
+def _config(**overrides):
+    values = {
+        "openai_endpoint": "https://openai.test",
+        "openai_api_key": "secret",
+        "embedding_deployment": "embedding",
+        "embedding_dimensions": 2,
+        "search_endpoint": "https://search.test",
+        "search_query_key": "query",
+        "search_index": "knowledge",
+    }
+    values.update(overrides)
+    return KnowledgeConfig(_env_file=None, **values)
 
 
 class FakeEmbeddings:
@@ -125,21 +159,76 @@ def test_pipeline_fingerprint_changes_with_chunking_or_embedding_configuration()
     assert _chunker(chunk_size=50).pipeline_fingerprint != other.pipeline_fingerprint
 
 
+def test_index_checkpoint_helpers_explain_resume_and_pipeline_changes():
+    checkpoint = SimpleNamespace(
+        content_hash="content", indexed_hash=None,
+        indexed_pipeline_fingerprint=None, index_status="pending",
+        index_attempts=0, index_error=None, index_started_at=None,
+        index_finished_at=None, updated_at=datetime.now(timezone.utc),
+    )
+    assert indexing_needed(checkpoint, pipeline_fingerprint="v1") is True
+    begin_indexing(checkpoint)
+    assert checkpoint.index_status == "running" and checkpoint.index_attempts == 1
+    complete_indexing(checkpoint, pipeline_fingerprint="v1")
+    assert indexing_needed(checkpoint, pipeline_fingerprint="v1") is False
+    assert indexing_needed(checkpoint, pipeline_fingerprint="v2") is True
+    fail_indexing(checkpoint, RuntimeError("write failed"))
+    assert checkpoint.index_status == "failed"
+    reset_indexing(checkpoint)
+    assert checkpoint.index_status == "pending" and checkpoint.indexed_hash is None
+
+
+def test_flat_processing_embedding_and_index_functions_accept_structural_values(monkeypatch):
+    chunker = _chunker()
+    embeddings = FakeEmbeddings()
+    embedder = Embedder(embeddings, "embedding", 2)
+    store = FakeStore()
+
+    class Index:
+        def ensure(self):
+            self.ensured = True
+
+        def recreate(self):
+            self.recreated = True
+
+    index = Index()
+    monkeypatch.setattr(knowledge_api, "build_chunker", lambda config: chunker)
+    monkeypatch.setattr(knowledge_api, "build_embedder", lambda config: embedder)
+    monkeypatch.setattr(
+        knowledge_api, "build_store", lambda config, *, write_enabled: store
+    )
+    monkeypatch.setattr(knowledge_api, "build_index", lambda config: index)
+    config = _config(search_admin_key="admin")
+    source_document = _document("Structural input").model_dump(mode="json")
+
+    chunks = chunk_documents([source_document], config=config)
+    embedded = embed_chunks([chunks[0].model_dump(mode="json")], config=config)
+    result = index_chunks([embedded[0].model_dump(mode="json")], config=config)
+    ensure_index(config=config)
+    recreate_index(config=config)
+
+    assert result.chunk_ids == [chunks[0].id]
+    assert store.uploaded[0].embedding == [0.0, 1.0]
+    assert index.ensured is index.recreated is True
+    assert embed_query("query", config=config) == [9.0, 1.0]
+    assert pipeline_fingerprint(config=config) == chunker.pipeline_fingerprint
+
+
 def test_settings_validate_cross_field_constraints_and_tokenizer_load_errors():
     values = dict(
         openai_endpoint="https://openai.test", openai_api_key="secret",
         embedding_deployment="embedding", search_endpoint="https://search.test",
         search_query_key="query", search_index="knowledge",
     )
-    settings = KnowledgeBaseSettings(_env_file=None, **values)
-    assert settings.search_admin_key is None
+    config = KnowledgeConfig(_env_file=None, **values)
+    assert config.search_admin_key is None
     with pytest.raises(Exception, match="RAG_CHUNK_OVERLAP"):
-        KnowledgeBaseSettings(_env_file=None, **values, chunk_size=10, chunk_overlap=10)
-    with pytest.raises(KnowledgeBaseConfigurationError, match="Unable to load"):
+        KnowledgeConfig(_env_file=None, **values, chunk_size=10, chunk_overlap=10)
+    with pytest.raises(TokenizerError, match="Unable to load"):
         load_encoding("not-a-real-tiktoken-encoding")
 
 
-def test_sync_distinguishes_embedding_metadata_and_stale_changes_before_deletion():
+def test_sync_distinguishes_embedding_metadata_and_stale_changes_before_deletion(monkeypatch):
     chunker = _chunker()
     document = _document("Short text")
     current = chunker.split([document])[0]
@@ -149,17 +238,22 @@ def test_sync_distinguishes_embedding_metadata_and_stale_changes_before_deletion
         pipeline_fingerprint=current.pipeline_fingerprint,
     )
     store = FakeStore({current.id: state, "stale": ChunkState()})
-    knowledge = KnowledgeBase(
-        chunker=chunker, embedder=Embedder(FakeEmbeddings(), "embedding", 2), store=store,
+    embedder = Embedder(FakeEmbeddings(), "embedding", 2)
+    monkeypatch.setattr(knowledge_api, "build_chunker", lambda config: chunker)
+    monkeypatch.setattr(knowledge_api, "build_embedder", lambda config: embedder)
+    monkeypatch.setattr(
+        knowledge_api, "build_store", lambda config, *, write_enabled: store
     )
-    result = knowledge.sync([document], scope={"source": "test"})
+    result = sync_documents(
+        [document], scope={"source": "test"}, config=_config()
+    )
     assert result.embedded_count == 0
     assert result.metadata_updated_count == 1
     assert result.deleted_count == 1
     assert store.events == ["upsert", "merge", "delete"]
 
 
-def test_retrieval_modes_and_evidence_policy_deduplicate_and_cap_documents():
+def test_retrieval_modes_and_evidence_policy_deduplicate_and_cap_documents(monkeypatch):
     chunks = [
         RetrievedChunk(id="1", document_id="a", text="same", metadata={"source": "x", "source_id": "1", "title": "T"}, score=4),
         RetrievedChunk(id="2", document_id="b", text="same", metadata={"source": "x", "source_id": "2", "title": "T"}, score=3),
@@ -167,33 +261,45 @@ def test_retrieval_modes_and_evidence_policy_deduplicate_and_cap_documents():
         RetrievedChunk(id="4", document_id="a", text="third", metadata={"source": "x", "source_id": "1", "title": "T"}, score=1),
     ]
     store = FakeStore(results=chunks)
-    knowledge = KnowledgeBase(
-        chunker=_chunker(), embedder=Embedder(FakeEmbeddings(), "embedding", 2), store=store,
+    monkeypatch.setattr(
+        knowledge_api, "build_store", lambda config, *, write_enabled: store
     )
-    result = knowledge.retrieve(RetrievalRequest(
-        query="query", mode=RetrievalMode.SEMANTIC_HYBRID,
+    monkeypatch.setattr(
+        knowledge_api, "pipeline_fingerprint", lambda *, config: "fingerprint"
+    )
+    result = retrieve_chunks(
+        "query", query_embedding=[9.0, 1.0],
+        mode=RetrievalMode.SEMANTIC_HYBRID,
         candidate_k=50, fetch_k=24, top_k=3,
-    ))
+        include_diagnostics=True, config=_config(),
+    )
     assert [chunk.id for chunk in result.chunks] == ["1", "3"]
     assert result.rejection_counts.duplicate_content == 1
     assert result.rejection_counts.per_document_cap == 1
     assert store.query_vector == [9.0, 1.0]
 
+    chunks_only = retrieve_chunks(
+        "query", query_embedding=[9.0, 1.0], top_k=3, config=_config()
+    )
+    assert [chunk.id for chunk in chunks_only] == ["1", "3"]
 
-def test_optional_reranker_threshold_can_produce_insufficient_evidence():
+
+def test_optional_reranker_threshold_can_produce_insufficient_evidence(monkeypatch):
     store = FakeStore(results=[RetrievedChunk(
         id="1", document_id="a", text="evidence",
         metadata={"source": "x", "source_id": "1", "title": "T"},
         score=1, reranker_score=1.5,
     )])
-    knowledge = KnowledgeBase(
-        chunker=_chunker(), embedder=Embedder(FakeEmbeddings(), "embedding", 2), store=store,
+    monkeypatch.setattr(
+        knowledge_api, "build_store", lambda config, *, write_enabled: store
     )
     with pytest.raises(InsufficientEvidenceError):
-        knowledge.retrieve(RetrievalRequest(
-            query="query", candidate_k=50, fetch_k=8, top_k=8,
+        retrieve_chunks(
+            "query", query_embedding=[9.0, 1.0], candidate_k=50,
+            fetch_k=8, top_k=8,
             evidence_policy=EvidencePolicy(minimum_reranker_score=2),
-        ))
+            config=_config(),
+        )
 
 
 def test_filter_builder_escapes_strings_and_rejects_unknown_fields():

@@ -7,12 +7,12 @@ import uuid
 
 import pytest
 
-from mesozoica_ai.knowledge import (
-    KnowledgeBaseSettings,
-    KnowledgeDocument,
-    RetrievalRequest,
-    create_knowledge_base,
-    create_knowledge_index,
+from mesozoica_ai import (
+    AiConfig as KnowledgeConfig,
+    embed_query,
+    ensure_index,
+    retrieve_chunks,
+    sync_documents,
 )
 
 
@@ -27,24 +27,27 @@ pytestmark = [
 
 def test_live_index_sync_and_semantic_hybrid_retrieval() -> None:
     """Validate the deployed schema, embeddings, writes, and default retrieval end to end."""
-    settings = KnowledgeBaseSettings()
-    create_knowledge_index(settings).ensure()
-    knowledge = create_knowledge_base(settings)
+    config = KnowledgeConfig()
+    ensure_index(config=config)
     namespace = f"integration-{uuid.uuid4().hex}"
-    document = KnowledgeDocument(
-        id=f"{namespace}:document",
-        text="A quokka is a small marsupial native to Western Australia.",
-        metadata={
+    document = {
+        "id": f"{namespace}:document",
+        "text": "A quokka is a small marsupial native to Western Australia.",
+        "metadata": {
             "source": "integration", "source_id": namespace, "title": "Quokka",
             "section": "Introduction", "namespace": namespace, "subject_id": "quokka",
         },
-    )
+    }
     scope = {"namespace": namespace, "subject_id": "quokka", "source": "integration"}
     try:
-        knowledge.sync([document], scope=scope)
-        result = knowledge.retrieve(RetrievalRequest(
-            query="Where are quokkas native?", filters={"namespace": namespace},
-        ))
-        assert result.chunks and result.chunks[0].document_id == document.id
+        sync_documents([document], scope=scope, config=config)
+        query = "Where are quokkas native?"
+        chunks = retrieve_chunks(
+            query,
+            query_embedding=embed_query(query, config=config),
+            filters={"namespace": namespace},
+            config=config,
+        )
+        assert chunks and chunks[0].document_id == document["id"]
     finally:
-        knowledge.clear(scope)
+        sync_documents([], scope=scope, config=config)

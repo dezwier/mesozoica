@@ -22,8 +22,21 @@ make run-dinosaur-knowledge-evaluate CRON_EXTRA='--baseline-report baseline.json
 
 The default allows at most two absolute percentage points of regression in every aggregate metric. Tune a semantic reranker threshold only from these experiments and record it with the resulting fingerprint; the default remains disabled.
 
-## Foundry judges
+## Foundry judges (optional)
 
-Install `mesozoica-ai[foundry]` and configure an Azure AI Project plus a judge deployment. `FoundryRagEvaluator` uses current typed evaluation criteria for document retrieval, retrieval relevance, groundedness, response relevance, and optional response completeness. It uses `deployment_name`, bounds polling, reports terminal/timeout state, retrieves output items, and returns evaluation ID, run ID, and report URL.
+Install `mesozoica-ai[foundry]` and configure an Azure AI Project plus a judge
+deployment. Import the optional helper deeply:
 
-Foundry is complementary: local metrics make retrieval regressions deterministic; model judges assess the final response. Keep the input records and IDs so a run is auditable, and manually inspect low scores before changing prompts or thresholds.
+```python
+from mesozoica_ai.evaluate.foundry import FoundryRagEvaluator
+```
+
+`FoundryRagEvaluator` is not part of the root public API. It uses current typed
+evaluation criteria for document retrieval, retrieval relevance, groundedness,
+response relevance, and optional response completeness. It uses `deployment_name`,
+bounds polling, reports terminal/timeout state, retrieves output items, and returns
+evaluation ID, run ID, and report URL.
+
+Foundry is complementary: local metrics make retrieval regressions deterministic;
+model judges assess the final response. Keep the input records and IDs so a run is
+auditable, and manually inspect low scores before changing prompts or thresholds.

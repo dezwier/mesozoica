@@ -11,8 +11,8 @@ Core Azure access uses API keys by product decision. Store all keys as Railway s
 
 Rotate one credential at a time: add/activate the replacement, update the secret, restart consumers, verify, then revoke the old key. Key Vault-backed secret references avoid copying values into deployment configuration.
 
-The split mirrors runtime permissions: `KnowledgeBaseSettings` owns Search and
-embedding configuration; `RagSettings` owns only chat and prompt-budget settings.
+The split mirrors runtime permissions: `KnowledgeConfig` owns Search and embedding
+configuration; `RagConfig` owns only chat and prompt-budget settings.
 
 ## Cost controls
 

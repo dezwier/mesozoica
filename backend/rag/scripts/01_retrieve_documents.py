@@ -1,4 +1,4 @@
-"""Fetch Wikipedia sections and OpenAlex abstracts without database writes."""
+"""Fetch Wikipedia sections and OpenAlex abstracts."""
 
 from __future__ import annotations
 
@@ -7,22 +7,26 @@ import os
 
 from dotenv import load_dotenv
 
-from mesozoica_ai.sources import OpenAlexSource, WikipediaSource
+from mesozoica_ai import retrieve_openalex, retrieve_wikipedia
 
 
 def main(argv: list[str] | None = None) -> int:
-    """Run the source retrieval example."""
     parser = argparse.ArgumentParser()
     parser.add_argument("title", nargs="?", default="Triceratops")
     args = parser.parse_args(argv)
     load_dotenv()
     user_agent = os.environ["WIKIPEDIA_USER_AGENT"]
-    with WikipediaSource(user_agent=user_agent) as wikipedia, OpenAlexSource(
-        api_key=os.environ["OPENALEX_API_KEY"], user_agent=user_agent
-    ) as openalex:
-        documents = wikipedia.fetch(args.title) + openalex.search(args.title, limit=10)
-    for document in documents:
-        print(document.id, document.metadata.title, len(document.text))
+
+    wikipedia = retrieve_wikipedia(args.title, user_agent=user_agent)
+    openalex = retrieve_openalex(
+        args.title,
+        api_key=os.environ["OPENALEX_API_KEY"],
+        user_agent=user_agent,
+        limit=10,
+    )
+    for result in (wikipedia, openalex):
+        for document in result.documents:
+            print(result.source, document.id, document.metadata.title, len(document.text))
     return 0
 
 

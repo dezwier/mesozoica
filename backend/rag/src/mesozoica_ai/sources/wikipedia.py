@@ -1,90 +1,84 @@
-"""English Wikipedia section source with revision-level provenance."""
+"""English Wikipedia retrieval with revision-level provenance."""
 
 from __future__ import annotations
 
 import re
 from urllib.parse import quote
 
-from .errors import SourceFetchError
+from mesozoica_ai.common.errors import SourceFetchError
 from .http import RetryingJsonClient
-from .models import SourceDocument
+from mesozoica_ai.common.models import Document as SourceDocument
 
+API_URL = "https://en.wikipedia.org/w/api.php"
 _HEADING = re.compile(r"(?m)^(==+)\s*(.*?)\s*\1\s*$")
 _SKIPPED_SECTIONS = {
     "references", "external links", "see also", "notes", "further reading", "bibliography",
 }
 
 
-class WikipediaSource:
-    """Fetch one page as hierarchical section documents."""
+def retrieve_wikipedia_documents(
+    title: str, *, user_agent: str, timeout: float | None = None
+) -> list[SourceDocument]:
+    """Retrieve one Wikipedia page as normalized hierarchical section documents."""
+    if not user_agent.strip():
+        raise ValueError("Wikipedia requires a descriptive user agent")
+    client_options = {} if timeout is None else {
+        "connect_timeout_seconds": timeout,
+        "read_timeout_seconds": timeout,
+    }
+    with RetryingJsonClient(**client_options) as client:
+        return _retrieve(title, user_agent=user_agent, client=client)
 
-    API_URL = "https://en.wikipedia.org/w/api.php"
 
-    def __init__(self, *, user_agent: str, client: RetryingJsonClient | None = None) -> None:
-        if not user_agent.strip():
-            raise ValueError("Wikipedia requires a descriptive user agent")
-        self.user_agent = user_agent
-        self.client = client or RetryingJsonClient()
-        self._owns_client = client is None
-
-    def __enter__(self) -> "WikipediaSource":
-        return self
-
-    def __exit__(self, *_: object) -> None:
-        self.close()
-
-    def close(self) -> None:
-        """Close the internally-created HTTP client."""
-        if self._owns_client:
-            self.client.close()
-
-    def fetch(self, title: str) -> list[SourceDocument]:
-        """Fetch a page and preserve section depth, path, ordinal, anchor, and revision."""
-        if not title.strip():
-            raise ValueError("Wikipedia title must not be blank")
-        payload = self.client.get(
-            self.API_URL,
-            params={
-                "action": "query", "prop": "extracts|revisions", "explaintext": True,
-                "redirects": True, "titles": title.strip(), "rvprop": "ids|timestamp",
-                "format": "json", "formatversion": 2,
+def _retrieve(
+    title: str, *, user_agent: str, client: RetryingJsonClient
+) -> list[SourceDocument]:
+    if not title.strip():
+        raise ValueError("Wikipedia title must not be blank")
+    payload = client.get(
+        API_URL,
+        params={
+            "action": "query", "prop": "extracts|revisions", "explaintext": True,
+            "redirects": True, "titles": title.strip(), "rvprop": "ids|timestamp",
+            "format": "json", "formatversion": 2,
+        },
+        headers={"User-Agent": user_agent},
+        source="wikipedia",
+    )
+    pages = payload.get("query", {}).get("pages", [])
+    if not pages or pages[0].get("missing"):
+        raise SourceFetchError(f"Wikipedia page not found: {title}")
+    page = pages[0]
+    canonical_title = str(page["title"])
+    page_id = str(page["pageid"])
+    revision = (page.get("revisions") or [{}])[0]
+    revision_id = revision.get("revid")
+    revision_timestamp = revision.get("timestamp")
+    page_url = "https://en.wikipedia.org/wiki/" + quote(
+        canonical_title.replace(" ", "_"), safe="_()"
+    )
+    documents: list[SourceDocument] = []
+    sections = _parse_sections(str(page.get("extract") or ""))
+    for ordinal, (heading, depth, path, text) in enumerate(sections):
+        if not text or heading.casefold() in _SKIPPED_SECTIONS:
+            continue
+        anchor = quote(heading.replace(" ", "_"), safe="_()")
+        documents.append(SourceDocument(
+            id=f"wikipedia:{page_id}:section:{ordinal}:{_slug(heading)}",
+            text=text,
+            metadata={
+                "source": "wikipedia", "source_id": page_id, "title": canonical_title,
+                "section": heading, "section_path": path, "section_depth": depth,
+                "section_ordinal": ordinal, "section_anchor": anchor,
+                "source_url": f"{page_url}#{anchor}" if heading != "Introduction" else page_url,
+                "published_at": revision_timestamp, "updated_at": revision_timestamp,
+                "source_version": str(revision_id) if revision_id else None,
+                "license": "CC BY-SA 4.0", "provenance": "Wikimedia REST/API extract",
             },
-            headers={"User-Agent": self.user_agent},
-            source="wikipedia",
-        )
-        pages = payload.get("query", {}).get("pages", [])
-        if not pages or pages[0].get("missing"):
-            raise SourceFetchError(f"Wikipedia page not found: {title}")
-        page = pages[0]
-        canonical_title = str(page["title"])
-        page_id = str(page["pageid"])
-        revision = (page.get("revisions") or [{}])[0]
-        revision_id = revision.get("revid")
-        revision_timestamp = revision.get("timestamp")
-        page_url = "https://en.wikipedia.org/wiki/" + quote(
-            canonical_title.replace(" ", "_"), safe="_()"
-        )
-        documents: list[SourceDocument] = []
-        for ordinal, (heading, depth, path, text) in enumerate(_parse_sections(str(page.get("extract") or ""))):
-            if not text or heading.casefold() in _SKIPPED_SECTIONS:
-                continue
-            anchor = quote(heading.replace(" ", "_"), safe="_()")
-            documents.append(SourceDocument(
-                id=f"wikipedia:{page_id}:section:{ordinal}:{_slug(heading)}",
-                text=text,
-                metadata={
-                    "source": "wikipedia", "source_id": page_id, "title": canonical_title,
-                    "section": heading, "section_path": path, "section_depth": depth,
-                    "section_ordinal": ordinal, "section_anchor": anchor,
-                    "source_url": f"{page_url}#{anchor}" if heading != "Introduction" else page_url,
-                    "published_at": revision_timestamp, "updated_at": revision_timestamp,
-                    "source_version": str(revision_id) if revision_id else None,
-                    "license": "CC BY-SA 4.0", "provenance": "Wikimedia REST/API extract",
-                },
-            ))
-        if not documents:
-            raise SourceFetchError(f"Wikipedia page has no usable text: {title}")
-        return documents
+        ))
+    if not documents:
+        raise SourceFetchError(f"Wikipedia page has no usable text: {title}")
+    return documents
 
 
 def _parse_sections(extract: str) -> list[tuple[str, int, list[str], str]]:

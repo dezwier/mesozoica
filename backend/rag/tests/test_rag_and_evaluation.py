@@ -4,13 +4,19 @@ import pytest
 from langchain_core.runnables import RunnableLambda
 from pydantic import BaseModel
 
-from mesozoica_ai.rag import CitationError, CitedOutput, Evidence, Rag
-from mesozoica_ai.rag.evaluation import (
-    FoundryRagEvaluator, RagEvaluationRecord, RetrievalCase, compare_to_baseline,
+from mesozoica_ai.common.config import AiConfig as RagConfig
+from mesozoica_ai.common.errors import CitationError
+from mesozoica_ai.generate import prompt_rag
+from mesozoica_ai.generate import prompt as rag_prompt
+from mesozoica_ai.evaluate import (
+    RetrievalCase,
+    compare_to_baseline,
     evaluate_retrieval,
 )
-from mesozoica_ai.rag.generator import PromptBudget, pack_evidence, validate_citations
-from mesozoica_ai.rag.tokens import TokenCounter
+from mesozoica_ai.evaluate.foundry import FoundryRagEvaluator, RagEvaluationRecord
+from mesozoica_ai.common.models import CitedOutput, Evidence
+from mesozoica_ai.generate.prompt import _pack_evidence, _validate_citations
+from mesozoica_ai.common.tokens import TokenCounter
 
 
 class CharacterEncoding:
@@ -33,14 +39,14 @@ def _chunk(identifier, document_id, text="Evidence"):
 
 
 def test_prompt_budget_and_explicit_citation_validation():
-    evidence, included, omitted = pack_evidence(
+    evidence, included, omitted = _pack_evidence(
         [_chunk("one", "doc-1", "word " * 100), _chunk("two", "doc-2")],
         token_budget=180, token_counter=COUNTER,
     )
     assert "one" in evidence and included == ["one"] and omitted == ["two"]
-    validate_citations(["one"], ["one"])
+    _validate_citations(["one"], ["one"])
     with pytest.raises(CitationError, match="unknown evidence"):
-        validate_citations(["missing"], ["one"])
+        _validate_citations(["missing"], ["one"])
 
 
 def test_retrieval_metrics_and_baseline_regression_are_exact():
@@ -74,30 +80,46 @@ class FakeChat:
         })
 
 
-def test_rag_uses_strict_schema_budget_usage_callbacks_and_citations():
+def _rag_config():
+    return RagConfig(
+        _env_file=None,
+        openai_endpoint="https://openai.test",
+        openai_api_key="secret",
+        embedding_deployment="embedding",
+        search_endpoint="https://search.test",
+        search_query_key="query",
+        search_index="knowledge",
+        chat_deployment="chat",
+        max_prompt_tokens=3000,
+        max_completion_tokens=100,
+        prompt_safety_margin=50,
+    )
+
+
+def test_prompt_rag_uses_strict_schema_and_returns_model_directly(monkeypatch):
     chat = FakeChat(Quiz(question="Question?", source_chunk_ids=["one"]))
-    result = Rag(
-        llm=chat, token_counter=COUNTER,
-        max_prompt_tokens=3000, max_completion_tokens=100, safety_margin=50,
-    ).generate(
+    monkeypatch.setattr(rag_prompt, "ChatOpenAI", lambda **kwargs: chat)
+    monkeypatch.setattr(rag_prompt, "TokenCounter", lambda encoding: COUNTER)
+    result = prompt_rag(
         Quiz,
         query="Make a question",
         evidence=[_chunk("one", "doc-1")],
-        config={"tags": ["test"]},
+        trace_config={"tags": ["test"]},
+        config=_rag_config(),
     )
-    assert result.output.question == "Question?"
-    assert result.prompt_budget.included_evidence_ids == ["one"]
-    assert result.usage == {"input_tokens": 10}
+    assert result.question == "Question?"
     assert chat.kwargs["strict"] is True
 
 
-def test_magic_citation_field_is_not_validated_without_explicit_base_model():
+def test_magic_citation_field_is_not_validated_without_explicit_base_model(monkeypatch):
     output = UncitedQuiz(question="Question?", source_chunk_ids=["not-real"])
-    result = Rag(
-        llm=FakeChat(output), token_counter=COUNTER,
-        max_prompt_tokens=3000, max_completion_tokens=100, safety_margin=50,
-    ).generate(UncitedQuiz, query="Question", evidence=[_chunk("one", "doc-1")])
-    assert result.output.source_chunk_ids == ["not-real"]
+    monkeypatch.setattr(rag_prompt, "ChatOpenAI", lambda **kwargs: FakeChat(output))
+    monkeypatch.setattr(rag_prompt, "TokenCounter", lambda encoding: COUNTER)
+    result = prompt_rag(
+        UncitedQuiz, query="Question", evidence=[_chunk("one", "doc-1")],
+        config=_rag_config(),
+    )
+    assert result.source_chunk_ids == ["not-real"]
 
 
 class FakeOutputItems:
