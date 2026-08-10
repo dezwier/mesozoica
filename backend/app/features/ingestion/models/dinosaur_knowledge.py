@@ -1,4 +1,4 @@
-"""Durable acquisition and indexing checkpoint for generic RAG source snapshots."""
+"""Durable acquisition and indexing checkpoint for dinosaur knowledge sources."""
 
 from __future__ import annotations
 
@@ -8,15 +8,15 @@ from typing import Any
 from sqlalchemy import Column, DateTime, JSON, Text, UniqueConstraint, text
 from sqlmodel import Field, SQLModel
 
-RAG_STATUS_PENDING = "pending"
-RAG_STATUS_RUNNING = "running"
-RAG_STATUS_SUCCEEDED = "succeeded"
-RAG_STATUS_FAILED = "failed"
-RAG_STATUSES = (
-    RAG_STATUS_PENDING,
-    RAG_STATUS_RUNNING,
-    RAG_STATUS_SUCCEEDED,
-    RAG_STATUS_FAILED,
+KNOWLEDGE_STATUS_PENDING = "pending"
+KNOWLEDGE_STATUS_RUNNING = "running"
+KNOWLEDGE_STATUS_SUCCEEDED = "succeeded"
+KNOWLEDGE_STATUS_FAILED = "failed"
+KNOWLEDGE_STATUSES = (
+    KNOWLEDGE_STATUS_PENDING,
+    KNOWLEDGE_STATUS_RUNNING,
+    KNOWLEDGE_STATUS_SUCCEEDED,
+    KNOWLEDGE_STATUS_FAILED,
 )
 
 
@@ -24,14 +24,14 @@ def _utc_now() -> datetime:
     return datetime.now(timezone.utc)
 
 
-class RagSourceSnapshot(SQLModel, table=True):
-    __tablename__ = "rag_source_snapshot"
+class DinosaurKnowledge(SQLModel, table=True):
+    __tablename__ = "dinosaur_knowledge"
     __table_args__ = (
         UniqueConstraint(
             "subject_kind",
             "subject_id",
             "source",
-            name="uq_rag_source_snapshot_subject_source",
+            name="uq_dinosaur_knowledge_subject_source",
         ),
     )
 
@@ -48,8 +48,10 @@ class RagSourceSnapshot(SQLModel, table=True):
     content_hash: str | None = Field(default=None, max_length=64, index=True)
     indexed_hash: str | None = Field(default=None, max_length=64)
     indexed_pipeline_fingerprint: str | None = Field(default=None, max_length=64)
-    acquisition_status: str = Field(default=RAG_STATUS_PENDING, index=True, max_length=16)
-    index_status: str = Field(default=RAG_STATUS_PENDING, index=True, max_length=16)
+    acquisition_status: str = Field(
+        default=KNOWLEDGE_STATUS_PENDING, index=True, max_length=16
+    )
+    index_status: str = Field(default=KNOWLEDGE_STATUS_PENDING, index=True, max_length=16)
     acquisition_attempts: int = Field(default=0)
     index_attempts: int = Field(default=0)
     acquisition_error: str | None = Field(default=None, sa_column=Column(Text))

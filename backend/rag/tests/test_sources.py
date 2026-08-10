@@ -10,7 +10,6 @@ from mesozoica_ai.common import (
     fail_acquisition,
 )
 from mesozoica_ai import retrieve_wikipedia
-from mesozoica_ai.sources import RetrievedDocuments
 from mesozoica_ai.common.models import Document as SourceDocument
 from mesozoica_ai.sources.openalex import _retrieve as retrieve_openalex_with_client
 from mesozoica_ai.sources.openalex import reconstruct_abstract
@@ -115,8 +114,8 @@ def test_openalex_reconstructs_and_filters_abstracts():
     assert client.calls[0][1]["per_page"] == 10
 
 
-def test_retrieve_wikipedia_enriches_and_fingerprints(monkeypatch):
-    import mesozoica_ai.sources as sources_module
+def test_retrieve_wikipedia_enriches_metadata(monkeypatch):
+    import mesozoica_ai.sources.wikipedia as wikipedia_module
 
     document = retrieve_wikipedia_with_client(
         "Example animal",
@@ -129,22 +128,20 @@ def test_retrieve_wikipedia_enriches_and_fingerprints(monkeypatch):
         }]}}),
     )[0]
     monkeypatch.setattr(
-        sources_module,
+        wikipedia_module,
         "retrieve_wikipedia_documents",
         lambda *args, **kwargs: [document],
     )
 
-    result = retrieve_wikipedia(
+    documents = retrieve_wikipedia(
         "Example animal",
         user_agent="test@example.com",
         metadata={"namespace": "test", "subject_id": "animal:42"},
     )
 
-    assert result.source == "wikipedia"
-    assert result.documents[0].metadata.namespace == "test"
-    assert result.documents[0].metadata.subject_id == "animal:42"
-    assert result.source_version == "7"
-    assert len(result.content_hash) == len(result.source_hash) == 64
+    assert len(documents) == 1
+    assert documents[0].metadata.namespace == "test"
+    assert documents[0].metadata.subject_id == "animal:42"
 
 
 def test_acquisition_checkpoint_helpers_preserve_or_invalidate_index_state():
@@ -160,14 +157,15 @@ def test_acquisition_checkpoint_helpers_preserve_or_invalidate_index_state():
     assert checkpoint.acquisition_status == "running"
     assert checkpoint.acquisition_attempts == 1
 
-    first = RetrievedDocuments(
-        source="wikipedia",
-        documents=[SourceDocument(
-            id="doc", text="text",
-            metadata={"source": "wikipedia", "source_id": "1", "title": "T"},
-        )],
+    first = SimpleNamespace(
         content_hash="a" * 64,
         source_hash="b" * 64,
+        source_version=None,
+        serialized_documents=[{
+            "id": "doc",
+            "text": "text",
+            "metadata": {"source": "wikipedia", "source_id": "1", "title": "T"},
+        }],
     )
     assert complete_acquisition(checkpoint, first) is True
     assert checkpoint.index_status == "pending"

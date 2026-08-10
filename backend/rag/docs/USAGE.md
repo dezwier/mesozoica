@@ -10,7 +10,7 @@ Two stores, one pipeline:
 | Stage | Lives in |
 |---|---|
 | Fresh Wikipedia / OpenAlex text | Memory only (`Document` objects) |
-| Durable raw sources (optional) | PostgreSQL `rag_source_snapshot` |
+| Durable raw sources (optional) | PostgreSQL `dinosaur_knowledge` |
 | Searchable chunks + vectors | Azure AI Search |
 | Model answers | Memory only (your Pydantic type) |
 
@@ -18,7 +18,7 @@ Two stores, one pipeline:
 retrieve_wikipedia / retrieve_openalex
         │
         ▼
-   (optional) Postgres snapshot via acquire_knowledge
+   (optional) store_documents → Postgres dinosaur_knowledge
         │
         ▼
 ensure_index  →  sync_documents   (or chunk → embed → index_chunks)
@@ -43,23 +43,23 @@ Pass the same instance through a run so embeddings and search stay consistent.
 
 ### `retrieve_wikipedia(title, *, user_agent, metadata=None)`
 
-Fetches Wikipedia sections and returns fingerprinted documents **in memory**.
+Fetches Wikipedia sections and returns `list[Document]` **in memory**.
 Does **not** write Postgres or Azure.
 
 ```python
 from mesozoica_ai import retrieve_wikipedia
 
-wiki = retrieve_wikipedia(
+docs = retrieve_wikipedia(
     "Triceratops",
     user_agent=os.environ["WIKIPEDIA_USER_AGENT"],
 )
-for doc in wiki.documents:
+for doc in docs:
     print(doc.id, doc.metadata.title, len(doc.text))
 ```
 
 ### `retrieve_openalex(query, *, api_key, user_agent, limit=10, metadata=None)`
 
-Fetches OpenAlex works and returns fingerprinted documents **in memory**.
+Fetches OpenAlex works and returns `list[Document]` **in memory**.
 
 ```python
 from mesozoica_ai import retrieve_openalex
@@ -187,67 +187,37 @@ print(quiz.model_dump_json(indent=2))
 
 ---
 
-## Sources + durable acquire (`mesozoica_ai.sources`)
+## Sources (`mesozoica_ai.sources`)
 
-Use these when many subjects must be fetched with resume/retry into Postgres.
-
-### `bound_wikipedia` / `bound_openalex`
-
-Return per-source retrieve callables with credentials already bound.
-
-### `require_openalex_credentials(sources, *, api_key, dry_run=False)`
-
-Fails fast if OpenAlex is requested without an API key.
-
-### `SqlSnapshotStore(session, *, model=RagSourceSnapshot)`
-
-SQLModel adapter for the checkpoint table. The app owns the table class
-(`RagSourceSnapshot`); the library owns the store behavior.
-
-### `acquire_knowledge(*, subjects, retrievers, store, ...)`
-
-For each subject × source:
-
-1. load or create a Postgres checkpoint row
-2. skip if already succeeded (unless `overwrite`)
-3. call that source’s retriever
-4. save documents + content/source hashes on the row
-5. mark indexing pending when content changed
-
-Writes **Postgres only**, not Azure.
-
-`retrievers` maps source name → callable `(query, *, metadata=...) -> RetrievedDocuments`.
+| Function | Role |
+|---|---|
+| `retrieve_wikipedia` | Fetch Wikipedia sections → `list[Document]` |
+| `retrieve_openalex` | Fetch OpenAlex abstracts → `list[Document]` |
+| `store_documents` | Upsert one subject/source row in Postgres |
+| `acquire_knowledge` | Loop: retrieve + store for many subjects |
 
 ```python
-from mesozoica_ai.sources import (
-    SqlSnapshotStore,
-    acquire_knowledge,
-    bound_openalex,
-    bound_wikipedia,
-)
+from mesozoica_ai.sources import acquire_knowledge, retrieve_wikipedia, store_documents
 
-with Session(engine) as session:
-    summary = acquire_knowledge(
-        subjects=subjects,
-        retrievers={
-            "wikipedia": bound_wikipedia(user_agent=settings.wikipedia_user_agent),
-            "openalex": bound_openalex(
-                api_key=settings.openalex_api_key,
-                user_agent=settings.wikipedia_user_agent,
-            ),
-        },
-        store=SqlSnapshotStore(session, model=RagSourceSnapshot),
-        sources=["wikipedia", "openalex"],
-    ).print_exit()
+docs = retrieve_wikipedia(title, user_agent=..., metadata=...)
+store_documents(session, DinosaurKnowledge, subject=subject, source="wikipedia", documents=docs)
+
+acquire_knowledge(
+    session,
+    DinosaurKnowledge,
+    subjects=subjects,
+    user_agent=...,
+    openalex_api_key=...,
+)
 ```
 
 ---
 
 ## Batch index (`mesozoica_ai.index`)
 
-### `index_knowledge(*, store, names=None, sources=None, ...)`
+### `index_knowledge(*, session, model, names=None, sources=None, ...)`
 
-For each acquired Postgres snapshot eligible for indexing:
+For each acquired Postgres row eligible for indexing:
 
 1. optionally recreate the Azure index (`recreate_index=True`, full scope only)
 2. `ensure_index` unless just recreated
@@ -256,11 +226,11 @@ For each acquired Postgres snapshot eligible for indexing:
 
 ```python
 from mesozoica_ai.index import index_knowledge
-from mesozoica_ai.sources import SqlSnapshotStore
 
 with Session(engine) as session:
     index_knowledge(
-        store=SqlSnapshotStore(session, model=RagSourceSnapshot),
+        session=session,
+        model=DinosaurKnowledge,
         names=["Triceratops"],
     ).print_exit()
 ```
@@ -284,11 +254,11 @@ filters. Raises if labels are missing or stale.
 Runs local precision / recall / hit-rate / MRR / nDCG against the live Azure
 index. Optionally writes a report and compares a baseline.
 
-### `evaluate_knowledge(*, store, dataset_path, ...)`
+### `evaluate_knowledge(*, session, model, dataset_path, ...)`
 
-`prepare_retrieval_cases` + `evaluate_against_index` for store-backed snapshots.
+`prepare_retrieval_cases` + `evaluate_against_index` for table-backed snapshots.
 
-### `knowledge_status(store, *, names=None, ...)`
+### `knowledge_status(session, model, *, names=None, ...)`
 
 Prints a human-readable acquire/index status table for checkpoint rows.
 
@@ -304,31 +274,34 @@ Prints JSON and returns `0` / `1` for CLI jobs.
 
 ```python
 config = AiConfig()
-docs = retrieve_wikipedia(title, user_agent=..., metadata=...).documents
+docs = retrieve_wikipedia(title, user_agent=..., metadata=...)
 ensure_index(config=config)
 sync_documents(docs, scope=..., config=config)
 chunks = retrieve_chunks(q, query_embedding=embed_query(q, config=config), filters=..., config=config)
 answer = prompt_rag(MyModel, query=q, evidence=chunks, config=config)
 ```
 
-### B. Production dinosaur knowledge (app runner)
+### B. Production dinosaur knowledge (app cron)
 
 ```text
-acquire_knowledge   → Postgres snapshots
-index_knowledge     → Azure Search
-generate_quiz       → one cited quiz (optional)
-evaluate_knowledge  → golden metrics (optional)
-knowledge_status    → ops table
+acquire_knowledge  → Postgres dinosaur_knowledge
+index_knowledge    → Azure Search
 ```
+
+The app cron wires settings + the `DinosaurKnowledge` table; the library owns
+retrieve/store/index.
 
 ### C. Example scripts in this repo
 
 ```bash
 cd backend
-.venv/bin/python rag/scripts/01_retrieve_documents.py Triceratops
-.venv/bin/python rag/scripts/02_build_knowledge_base.py Triceratops --sync
-.venv/bin/python rag/scripts/03_generate_quiz.py Triceratops
+.venv/bin/python rag/scripts/01_retrieve_documents.py
+.venv/bin/python rag/scripts/02_build_knowledge_base.py
+.venv/bin/python rag/scripts/03_generate_quiz.py
+.venv/bin/python rag/scripts/04_evaluate_retrieval.py
 ```
+
+Edit the `TITLE` / dataset constants in each script to try another subject.
 
 ---
 

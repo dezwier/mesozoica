@@ -73,7 +73,7 @@ def test_feature_packages_only_depend_on_allowed_peers():
 
 def test_domain_packages_export_expected_helpers():
     sources = importlib.import_module("mesozoica_ai.sources")
-    assert {"acquire_knowledge", "SqlSnapshotStore", "retrieve_wikipedia", "retrieve_openalex"} <= set(
+    assert {"acquire_knowledge", "store_documents", "retrieve_wikipedia", "retrieve_openalex"} <= set(
         sources.__all__
     )
     index = importlib.import_module("mesozoica_ai.index")

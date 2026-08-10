@@ -8,14 +8,14 @@ the rest:
 | Package | Role | May import |
 |---|---|---|
 | `common` | config, models, tokens, checkpoint/resume | nothing else in mesozoica_ai |
-| `sources` | retrieve + acquire into Postgres snapshots | `common` |
+| `sources` | retrieve Wikipedia/OpenAlex + store_documents | `common` |
 | `index` | chunk/embed/sync/retrieve + batch index | `common` |
 | `generate` | prompt_rag, answer_from_index, quiz | `common`, `index` |
 | `evaluate` | offline/live metrics, status | `common`, `index` |
 
 ```text
-retrieve_wikipedia / retrieve_openalex
-  -> Postgres snapshot (acquire_knowledge)
+retrieve_* / acquire_knowledge
+  -> store_documents (Postgres)
   -> sync_documents / index_knowledge
   -> Azure AI Search
 

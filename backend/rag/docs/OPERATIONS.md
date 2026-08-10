@@ -20,7 +20,7 @@ Changed-only vectors, metadata-only merges, bounded batches, ten OpenAlex works,
 
 ## Fingerprints and resume behavior
 
-Each dinosaur/source is committed independently in `rag_source_snapshot`. A row is current only when both `indexed_hash == content_hash` and `indexed_pipeline_fingerprint` equals the active pipeline. Changing schema, chunking, tokenizer, embedding deployment, or dimensions therefore makes successful snapshots eligible for indexing without `--overwrite`.
+Each dinosaur/source is committed independently in `dinosaur_knowledge`. A row is current only when both `indexed_hash == content_hash` and `indexed_pipeline_fingerprint` equals the active pipeline. Changing schema, chunking, tokenizer, embedding deployment, or dimensions therefore makes successful snapshots eligible for indexing without `--overwrite`.
 
 Status shows abbreviated content/pipeline fingerprints and one reason: acquisition missing, content changed, pipeline changed, failed/running/pending, or current. Source acquisition failures and index failures remain visible and retry independently.
 
@@ -34,16 +34,16 @@ For the schema-v2 rollout in this revision:
 
 1. Apply the Alembic migration and replace `AZURE_SEARCH_API_KEY` with separate admin/query secrets.
 2. Run acquisition once with `--overwrite` for the ten golden genera so snapshots use hierarchical Wikipedia provenance.
-3. Run one unscoped `dinosaur_knowledge_index --recreate-index`; the former schema is intentionally incompatible.
+3. Run one unscoped `dinosaur_knowledge --recreate-index`; the former schema is intentionally incompatible.
 4. Let indexing finish/resume, inspect status until every selected row is current, then run the golden evaluation.
 
 External reads retry transport failures, HTTP 429, and retryable 5xx only. They honor numeric or HTTP-date `Retry-After` within a maximum delay. Normal 4xx failures are immediate. Azure batch writes inspect each document result, retain successful progress, and retry only transient failed keys. Stale deletion occurs after successful writes.
 
 Recovery sequence:
 
-1. Inspect `dinosaur_knowledge_status` and logs for the exact stage/source.
+1. Inspect `knowledge_status` (library helper) and logs for the exact stage/source.
 2. Correct credentials, schema, provider, or configuration.
-3. Rerun acquisition only for failed/stale sources; use `--overwrite` only to refresh successful source snapshots.
-4. Rerun indexing; fingerprint changes need no overwrite.
-5. Recreate only for an explicitly diagnosed incompatible index.
-6. Run the golden evaluation before production rollout.
+3. Rerun `dinosaur_knowledge` for failed/stale sources; use `--overwrite` only to refresh successful source snapshots.
+4. Fingerprint changes need no overwrite for indexing eligibility.
+5. Recreate only for an explicitly diagnosed incompatible index (`--recreate-index`).
+6. Run the golden evaluation (library scripts under `backend/rag/scripts/`) before production rollout.

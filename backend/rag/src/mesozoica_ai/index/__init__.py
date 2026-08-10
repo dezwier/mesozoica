@@ -114,7 +114,12 @@ def retrieve_chunks(
     )
 
 
-from .batch import index_knowledge, index_snapshots, require_full_recreate_scope
+from .batch import (
+    index_knowledge,
+    index_snapshots,
+    list_knowledge_rows,
+    require_full_recreate_scope,
+)
 
 __all__ = [
     "EmbeddedChunk",
@@ -132,6 +137,7 @@ __all__ = [
     "index_chunks",
     "index_knowledge",
     "index_snapshots",
+    "list_knowledge_rows",
     "pipeline_fingerprint",
     "recreate_index",
     "require_full_recreate_scope",

@@ -1,34 +1,23 @@
-"""Fetch Wikipedia sections and OpenAlex abstracts."""
+"""Fetch Wikipedia sections and OpenAlex abstracts for one title."""
 
-from __future__ import annotations
-
-import argparse
 import os
 
 from dotenv import load_dotenv
 
 from mesozoica_ai import retrieve_openalex, retrieve_wikipedia
 
+load_dotenv()
 
-def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser()
-    parser.add_argument("title", nargs="?", default="Triceratops")
-    args = parser.parse_args(argv)
-    load_dotenv()
-    user_agent = os.environ["WIKIPEDIA_USER_AGENT"]
+TITLE = "Triceratops"
+USER_AGENT = os.environ["WIKIPEDIA_USER_AGENT"]
 
-    wikipedia = retrieve_wikipedia(args.title, user_agent=user_agent)
-    openalex = retrieve_openalex(
-        args.title,
-        api_key=os.environ["OPENALEX_API_KEY"],
-        user_agent=user_agent,
-        limit=10,
-    )
-    for result in (wikipedia, openalex):
-        for document in result.documents:
-            print(result.source, document.id, document.metadata.title, len(document.text))
-    return 0
+wikipedia = retrieve_wikipedia(TITLE, user_agent=USER_AGENT)
+openalex = retrieve_openalex(
+    TITLE,
+    api_key=os.environ["OPENALEX_API_KEY"],
+    user_agent=USER_AGENT,
+)
 
-
-if __name__ == "__main__":
-    raise SystemExit(main())
+for source, documents in (("wikipedia", wikipedia), ("openalex", openalex)):
+    for document in documents:
+        print(source, document.id, document.metadata.title, len(document.text))

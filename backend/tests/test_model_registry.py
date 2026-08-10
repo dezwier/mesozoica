@@ -17,7 +17,7 @@ EXPECTED_TABLES = {
     "fossil",
     "game_config_release",
     "game_config_revision",
-    "rag_source_snapshot",
+    "dinosaur_knowledge",
     "site",
     "site_type",
     "tool",
@@ -52,4 +52,4 @@ def test_sqlmodel_table_and_column_metadata_fingerprint() -> None:
     fingerprint = hashlib.sha256(
         json.dumps(payload, sort_keys=True).encode()
     ).hexdigest()
-    assert fingerprint == "b1a595b5801cc95ab91b1ac8a643bfbd2bc9193024f189aff3ac6f193d787902"
+    assert fingerprint == "4ac3149b62cdf069da21b6a5bc5eba4f69db02eece319986da2e2eb21c1b7261"

@@ -125,7 +125,7 @@ A working static URL does not prove the catalog/version API can authenticate.
 
 Provider clients belong in feature infrastructure and must expose enough structured logging to distinguish upstream, validation, persistence, and retry failures.
 
-The RAG package configuration and usage are documented in [`../backend/rag/README.md`](../backend/rag/README.md) and [`../backend/rag/docs/USAGE.md`](../backend/rag/docs/USAGE.md), with detailed recovery in [`../backend/rag/docs/OPERATIONS.md`](../backend/rag/docs/OPERATIONS.md). Acquisition and indexing commit each dinosaur/source independently in `rag_source_snapshot`; failed or interrupted rows remain visible and resume on the next run. Content and pipeline fingerprints both gate currency. Index deletion is never implicit. Use `--recreate-index` only after verifying the configured Azure Search service/index because it causes downtime, deletes and rebuilds that exact index, then marks acquired snapshots pending.
+The RAG package configuration and usage are documented in [`../backend/rag/README.md`](../backend/rag/README.md) and [`../backend/rag/docs/USAGE.md`](../backend/rag/docs/USAGE.md), with detailed recovery in [`../backend/rag/docs/OPERATIONS.md`](../backend/rag/docs/OPERATIONS.md). The app runs a single `dinosaur_knowledge` cron that acquires and indexes each dinosaur/source independently in `dinosaur_knowledge`; failed or interrupted rows remain visible and resume on the next run. Content and pipeline fingerprints both gate currency. Index deletion is never implicit. Use `--recreate-index` only after verifying the configured Azure Search service/index because it causes downtime, deletes and rebuilds that exact index, then marks acquired rows pending.
 
 ## Incident triage
 

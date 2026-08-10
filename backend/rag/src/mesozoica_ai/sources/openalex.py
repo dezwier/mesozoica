@@ -2,15 +2,39 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from datetime import date, datetime, time, timezone
 from typing import Any
 
 from pydantic import SecretStr
 
-from .http import RetryingJsonClient
 from mesozoica_ai.common.models import Document as SourceDocument
+from mesozoica_ai.sources.documents import with_metadata
+from mesozoica_ai.sources.http import RetryingJsonClient
 
 API_URL = "https://api.openalex.org/works"
+
+
+def retrieve_openalex(
+    query: str,
+    *,
+    api_key: str | SecretStr,
+    user_agent: str,
+    limit: int = 10,
+    timeout: float | None = None,
+    metadata: Mapping[str, Any] | None = None,
+) -> list[SourceDocument]:
+    """Fetch OpenAlex works with abstracts as documents."""
+    return with_metadata(
+        retrieve_openalex_documents(
+            query,
+            api_key=api_key,
+            user_agent=user_agent,
+            limit=limit,
+            timeout=timeout,
+        ),
+        metadata,
+    )
 
 
 def retrieve_openalex_documents(

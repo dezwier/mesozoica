@@ -3,17 +3,34 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Mapping
+from typing import Any
 from urllib.parse import quote
 
 from mesozoica_ai.common.errors import SourceFetchError
-from .http import RetryingJsonClient
 from mesozoica_ai.common.models import Document as SourceDocument
+from mesozoica_ai.sources.documents import with_metadata
+from mesozoica_ai.sources.http import RetryingJsonClient
 
 API_URL = "https://en.wikipedia.org/w/api.php"
 _HEADING = re.compile(r"(?m)^(==+)\s*(.*?)\s*\1\s*$")
 _SKIPPED_SECTIONS = {
     "references", "external links", "see also", "notes", "further reading", "bibliography",
 }
+
+
+def retrieve_wikipedia(
+    title: str,
+    *,
+    user_agent: str,
+    timeout: float | None = None,
+    metadata: Mapping[str, Any] | None = None,
+) -> list[SourceDocument]:
+    """Fetch Wikipedia page sections as documents."""
+    return with_metadata(
+        retrieve_wikipedia_documents(title, user_agent=user_agent, timeout=timeout),
+        metadata,
+    )
 
 
 def retrieve_wikipedia_documents(

@@ -17,17 +17,14 @@ from __future__ import annotations
 import argparse
 import logging
 from datetime import datetime, timezone
-from pathlib import Path
 from typing import Any, Callable
 
 from croniter import croniter
-from sqlmodel import Session
 
-from app.core.config import settings
-from app.core.database import engine
 from app.crons.config import CronJobDef, load_cron_config
 from app.crons.jobs import (
     dinosaur_image_generate,
+    dinosaur_knowledge,
     dinosaur_llm_enrich,
     field_site_coordinate_prune,
     game_config_seed,
@@ -44,27 +41,9 @@ from app.crons.jobs import (
 )
 from app.crons.logging_config import configure_cron_logging
 from app.crons.railway_guard import require_railway_database
-from app.features.ingestion.models.rag_source_snapshot import RagSourceSnapshot
 from app.features.ingestion.public import parse_dino_names
-from app.features.specimens.public import list_dinosaur_knowledge_subjects
-from mesozoica_ai.evaluate import (
-    evaluate_knowledge,
-    evaluation_exit,
-    knowledge_status,
-)
-from mesozoica_ai.generate import generate_quiz, print_model, require_one_subject
-from mesozoica_ai.index import index_knowledge
-from mesozoica_ai.sources import (
-    SqlSnapshotStore,
-    acquire_knowledge,
-    bound_openalex,
-    bound_wikipedia,
-    require_openalex_credentials,
-)
 
 logger = logging.getLogger(__name__)
-
-_KNOWLEDGE_GOLDEN = Path(__file__).resolve().parent / "evaluation" / "dinosaur_retrieval_golden.jsonl"
 
 
 def cron_matches_now(schedule: str, now: datetime) -> bool:
@@ -95,80 +74,15 @@ def _parse_knowledge_sources(raw: Any) -> list[str] | None:
     return normalized or None
 
 
-def _run_dinosaur_knowledge_acquire(params: dict[str, Any]) -> int:
-    dry_run = bool(params.get("dry_run", False))
-    sources = _parse_knowledge_sources(params.get("sources"))
-    require_openalex_credentials(
-        sources, api_key=settings.openalex_api_key, dry_run=dry_run
+def _run_dinosaur_knowledge(params: dict[str, Any]) -> int:
+    return dinosaur_knowledge.run_knowledge_job(
+        dry_run=bool(params.get("dry_run", False)),
+        overwrite=bool(params.get("overwrite", False)),
+        recreate_index=bool(params.get("recreate_index", False)),
+        dinos=params.get("dinos"),
+        sources=_parse_knowledge_sources(params.get("sources")),
+        max_items=_parse_max_items(params.get("max_items")),
     )
-    with Session(engine) as session:
-        return acquire_knowledge(
-            subjects=list_dinosaur_knowledge_subjects(session, names=params.get("dinos")),
-            retrievers={
-                "wikipedia": bound_wikipedia(user_agent=settings.wikipedia_user_agent),
-                "openalex": bound_openalex(
-                    api_key=settings.openalex_api_key or "",
-                    user_agent=settings.wikipedia_user_agent,
-                    limit=settings.openalex_max_works,
-                ),
-            },
-            store=SqlSnapshotStore(session, model=RagSourceSnapshot),
-            sources=sources,
-            max_items=_parse_max_items(params.get("max_items")),
-            overwrite=bool(params.get("overwrite", False)),
-            dry_run=dry_run,
-        ).print_exit()
-
-
-def _run_dinosaur_knowledge_index(params: dict[str, Any]) -> int:
-    with Session(engine) as session:
-        return index_knowledge(
-            store=SqlSnapshotStore(session, model=RagSourceSnapshot),
-            names=params.get("dinos"),
-            sources=_parse_knowledge_sources(params.get("sources")),
-            max_items=_parse_max_items(params.get("max_items")),
-            overwrite=bool(params.get("overwrite", False)),
-            dry_run=bool(params.get("dry_run", False)),
-            recreate_index=bool(params.get("recreate_index", False)),
-        ).print_exit()
-
-
-def _run_dinosaur_knowledge_evaluate(params: dict[str, Any]) -> int:
-    with Session(engine) as session:
-        return evaluation_exit(
-            *evaluate_knowledge(
-                store=SqlSnapshotStore(session, model=RagSourceSnapshot),
-                dataset_path=params.get("dataset") or _KNOWLEDGE_GOLDEN,
-                mode=str(params.get("retrieval_mode", "semantic_hybrid")),
-                output_path=params.get("output_report"),
-                baseline_path=params.get("baseline_report"),
-                maximum_regression=float(params.get("maximum_regression", 0.02)),
-            )
-        )
-
-
-def _run_dinosaur_quiz_preview(params: dict[str, Any]) -> int:
-    dinos = params.get("dinos")
-    if not dinos or len(dinos) != 1:
-        raise ValueError("dinosaur_quiz_preview requires exactly one --dinos value")
-    with Session(engine) as session:
-        subject = require_one_subject(
-            list_dinosaur_knowledge_subjects(session, names=dinos),
-            requested=dinos[0],
-        )
-        return print_model(generate_quiz(subject=subject))
-
-
-def _run_dinosaur_knowledge_status(params: dict[str, Any]) -> int:
-    with Session(engine) as session:
-        print(
-            knowledge_status(
-                SqlSnapshotStore(session, model=RagSourceSnapshot),
-                names=params.get("dinos"),
-                subject_header="DINOSAUR",
-            )
-        )
-    return 0
 
 
 def _run_dinosaur_llm_enrich(params: dict[str, Any]) -> int:
@@ -332,11 +246,7 @@ def _run_tool_image_generate(params: dict[str, Any]) -> int:
 
 
 _JOB_HANDLERS: dict[str, Callable[[dict[str, Any]], int]] = {
-    "dinosaur_knowledge_acquire": _run_dinosaur_knowledge_acquire,
-    "dinosaur_knowledge_index": _run_dinosaur_knowledge_index,
-    "dinosaur_knowledge_evaluate": _run_dinosaur_knowledge_evaluate,
-    "dinosaur_knowledge_status": _run_dinosaur_knowledge_status,
-    "dinosaur_quiz_preview": _run_dinosaur_quiz_preview,
+    "dinosaur_knowledge": _run_dinosaur_knowledge,
     "dinosaur_wiki_sync": _run_dinosaur_wiki_sync,
     "dinosaur_llm_enrich": _run_dinosaur_llm_enrich,
     "fossil_llm_enrich": _run_fossil_llm_enrich,
@@ -453,24 +363,12 @@ def main(argv: list[str] | None = None) -> int:
         "--sources",
         metavar="SOURCE",
         nargs="+",
-        help="Limit dinosaur knowledge jobs to wikipedia and/or openalex.",
+        help="Limit dinosaur_knowledge to wikipedia and/or openalex.",
     )
     parser.add_argument(
         "--recreate-index",
         action="store_true",
-        help="Explicitly delete and recreate the configured Azure knowledge index, then reindex snapshots.",
-    )
-    parser.add_argument("--dataset", help="Retrieval-evaluation JSONL dataset path.")
-    parser.add_argument(
-        "--retrieval-mode",
-        choices=["keyword", "vector", "hybrid", "semantic_hybrid"],
-        help="Retrieval mode for dinosaur_knowledge_evaluate.",
-    )
-    parser.add_argument("--output-report", help="Write the retrieval evaluation JSON report.")
-    parser.add_argument("--baseline-report", help="Compare against a prior JSON report.")
-    parser.add_argument(
-        "--maximum-regression", type=float,
-        help="Maximum allowed absolute metric regression (default 0.02).",
+        help="Explicitly delete and recreate the configured Azure knowledge index, then reindex.",
     )
     parser.add_argument(
         "--stale-days",
@@ -529,8 +427,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--dry-run",
         action="store_true",
-        help="Preview work without writing (image generation jobs, site_sync, site_type_sync, "
-        "field_site_coordinate_prune, weather_sync).",
+        help="Preview work without writing (dinosaur_knowledge, image generation jobs, "
+        "site_sync, site_type_sync, field_site_coordinate_prune, weather_sync).",
     )
     args = parser.parse_args(argv)
 
@@ -547,16 +445,6 @@ def main(argv: list[str] | None = None) -> int:
         overrides["sources"] = sources
     if args.recreate_index:
         overrides["recreate_index"] = True
-    if args.dataset:
-        overrides["dataset"] = args.dataset
-    if args.retrieval_mode:
-        overrides["retrieval_mode"] = args.retrieval_mode
-    if args.output_report:
-        overrides["output_report"] = args.output_report
-    if args.baseline_report:
-        overrides["baseline_report"] = args.baseline_report
-    if args.maximum_regression is not None:
-        overrides["maximum_regression"] = args.maximum_regression
     if args.stale_days is not None:
         overrides["stale_days"] = args.stale_days
     if args.since is not None:

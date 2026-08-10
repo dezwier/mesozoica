@@ -75,7 +75,8 @@ def evaluate_against_index(
 
 def evaluate_knowledge(
     *,
-    store: Any,
+    session: Any,
+    model: type[Any],
     dataset_path: str | Any,
     config: AiConfig | None = None,
     mode: str = "semantic_hybrid",
@@ -83,12 +84,14 @@ def evaluate_knowledge(
     baseline_path: str | None = None,
     maximum_regression: float = 0.02,
 ) -> tuple[Any, Any]:
-    """Prepare golden cases against store hashes, then evaluate the live index."""
+    """Prepare golden cases against stored hashes, then evaluate the live index."""
+    from mesozoica_ai.index import list_knowledge_rows
+
     active = config or AiConfig()
     retrieval_mode = mode if isinstance(mode, str) else getattr(mode, "value", str(mode))
     cases = prepare_retrieval_cases(
         load_retrieval_cases(dataset_path),
-        store.list_succeeded(),
+        list_knowledge_rows(session, model, succeeded_only=True),
     )
     return evaluate_against_index(
         cases,

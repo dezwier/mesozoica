@@ -20,6 +20,7 @@ from mesozoica_ai.common.checkpoints import (
 )
 from mesozoica_ai.common.config import AiConfig
 from mesozoica_ai.common.resume import UnitOfWork, run_resumable_item
+from mesozoica_ai.common.store import SessionUnitOfWork
 from mesozoica_ai.index.api import (
     ensure_index,
     pipeline_fingerprint,
@@ -28,6 +29,7 @@ from mesozoica_ai.index.api import (
 )
 
 CheckpointT = TypeVar("CheckpointT")
+SUPPORTED_SOURCES = ("wikipedia", "openalex")
 
 
 def require_full_recreate_scope(
@@ -37,13 +39,13 @@ def require_full_recreate_scope(
     max_items: int | None,
 ) -> list[str]:
     """Reject partial recreate requests that would leave stale index scopes."""
-    values = ("wikipedia", "openalex") if sources is None else sources
+    values = SUPPORTED_SOURCES if sources is None else sources
     selected = list(
         dict.fromkeys(
             str(value).strip().casefold() for value in values if str(value).strip()
         )
     )
-    if names or max_items is not None or set(selected) != {"wikipedia", "openalex"}:
+    if names or max_items is not None or set(selected) != set(SUPPORTED_SOURCES):
         raise ValueError(
             "--recreate-index must run unscoped: omit --dinos/--max-items and include both sources"
         )
@@ -123,7 +125,8 @@ def index_snapshots(
 
 def index_knowledge(
     *,
-    store: Any,
+    session: Any,
+    model: type[Any],
     config: AiConfig | None = None,
     names: list[str] | None = None,
     sources: list[str] | None = None,
@@ -131,20 +134,115 @@ def index_knowledge(
     overwrite: bool = False,
     dry_run: bool = False,
     recreate_index: bool = False,
+    subject_kind: str = DEFAULT_SUBJECT_KIND,
 ) -> JobSummary:
-    """Index store snapshots through the standard sync workflow."""
+    """Index acquired checkpoint rows from ``model`` into Azure Search."""
     active = config or AiConfig()
     if recreate_index:
         require_full_recreate_scope(names=names, sources=sources, max_items=max_items)
+
+    def reload(row: Any) -> Any:
+        loaded = session.get(model, row.id)
+        if loaded is None:  # pragma: no cover - defensive
+            raise RuntimeError(f"Missing knowledge snapshot after failure: {row.id}")
+        return loaded
+
     return index_snapshots(
         config=active,
-        snapshots=store.list_indexable(
-            names=names, sources=sources, max_items=max_items
+        snapshots=_list_indexable(
+            session,
+            model,
+            names=names,
+            sources=sources,
+            max_items=max_items,
+            subject_kind=subject_kind,
         ),
-        work_unit=store.work_unit(),
-        reload=store.reload,
+        work_unit=SessionUnitOfWork(session),
+        reload=reload,
         overwrite=overwrite,
         dry_run=dry_run,
         recreate_index=recreate_index,
-        snapshots_to_reset=store.list_succeeded() if recreate_index else None,
+        snapshots_to_reset=(
+            _list_succeeded(session, model, subject_kind=subject_kind)
+            if recreate_index
+            else None
+        ),
+        subject_kind=subject_kind,
     )
+
+
+def list_knowledge_rows(
+    session: Any,
+    model: type[Any],
+    *,
+    names: list[str] | None = None,
+    succeeded_only: bool = False,
+    subject_kind: str = DEFAULT_SUBJECT_KIND,
+) -> list[Any]:
+    """List checkpoint rows for status or evaluation."""
+    from sqlmodel import col, select
+
+    statement = (
+        select(model)
+        .where(model.subject_kind == subject_kind)
+        .order_by(col(model.subject_name), col(model.source))
+    )
+    if succeeded_only:
+        statement = statement.where(model.acquisition_status == "succeeded")
+    rows = list(session.exec(statement).all())
+    return _filter_names(rows, names)
+
+
+def _list_indexable(
+    session: Any,
+    model: type[Any],
+    *,
+    names: list[str] | None,
+    sources: list[str] | None,
+    max_items: int | None,
+    subject_kind: str,
+) -> list[Any]:
+    from sqlmodel import col, select
+
+    selected = _normalize_sources(sources)
+    statement = (
+        select(model)
+        .where(
+            model.subject_kind == subject_kind,
+            model.acquisition_status == "succeeded",
+            col(model.source).in_(selected),
+        )
+        .order_by(col(model.subject_name), col(model.source))
+    )
+    return _filter_names(list(session.exec(statement).all()), names, max_items=max_items)
+
+
+def _list_succeeded(
+    session: Any, model: type[Any], *, subject_kind: str
+) -> list[Any]:
+    return list_knowledge_rows(
+        session, model, succeeded_only=True, subject_kind=subject_kind
+    )
+
+
+def _normalize_sources(sources: Sequence[str] | None) -> list[str]:
+    values = SUPPORTED_SOURCES if not sources else sources
+    normalized = [str(value).strip().casefold() for value in values if str(value).strip()]
+    unknown = sorted(set(normalized) - set(SUPPORTED_SOURCES))
+    if unknown:
+        raise ValueError(f"Unsupported knowledge sources: {', '.join(unknown)}")
+    return list(dict.fromkeys(normalized))
+
+
+def _filter_names(
+    rows: list[Any],
+    names: list[str] | None,
+    *,
+    max_items: int | None = None,
+) -> list[Any]:
+    if names:
+        wanted = {name.strip().casefold() for name in names if name.strip()}
+        rows = [row for row in rows if row.subject_name.casefold() in wanted]
+    if max_items is not None:
+        rows = rows[:max_items]
+    return rows

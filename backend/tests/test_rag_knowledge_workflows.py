@@ -1,49 +1,81 @@
-import hashlib
-import json
-import contextlib
 from types import SimpleNamespace
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 from sqlmodel import select
 
 from app.crons.config import load_cron_config
 from app.features.ingestion import runner as ingestion_runner
-from app.features.ingestion.models.rag_source_snapshot import (
-    RAG_STATUS_FAILED,
-    RAG_STATUS_PENDING,
-    RAG_STATUS_SUCCEEDED,
-    RagSourceSnapshot,
+from app.features.ingestion.models.dinosaur_knowledge import (
+    KNOWLEDGE_STATUS_FAILED,
+    KNOWLEDGE_STATUS_PENDING,
+    KNOWLEDGE_STATUS_SUCCEEDED,
+    DinosaurKnowledge,
 )
 from app.features.specimens.public import DinosaurKnowledgeSubject
 from mesozoica_ai.common import Document
 from mesozoica_ai.evaluate import RetrievalCase, load_retrieval_cases, prepare_retrieval_cases
 from mesozoica_ai.evaluate import format_checkpoint_status
 from mesozoica_ai.generate import QuizQuestion
-from mesozoica_ai.index import index_knowledge
-from mesozoica_ai.sources import SqlSnapshotStore, acquire_knowledge, RetrievedDocuments
+from mesozoica_ai.index import index_knowledge, list_knowledge_rows
+from mesozoica_ai.sources import acquire_knowledge
+import mesozoica_ai.sources.acquire as acquire_module
 
 
 SUBJECT = DinosaurKnowledgeSubject(id=7, name="Example", wikipedia_title="Example")
 
 
-def _store(session):
-    return SqlSnapshotStore(session, model=RagSourceSnapshot)
+def acquire_dinosaur_knowledge(
+    session,
+    *,
+    subjects,
+    retrievers,
+    sources=None,
+    overwrite=False,
+    dry_run=False,
+    max_items=None,
+):
+    """Test helper: wire fake retrievers into acquire_knowledge."""
 
+    def fake_wikipedia(query, *, user_agent, metadata=None, **_kwargs):
+        return retrievers["wikipedia"](query, metadata=metadata or {})
 
-def acquire_dinosaur_knowledge(session, **kwargs):
-    return acquire_knowledge(store=_store(session), **kwargs)
+    def fake_openalex(query, *, api_key, user_agent, limit=10, metadata=None, **_kwargs):
+        return retrievers["openalex"](query, metadata=metadata or {})
+
+    with (
+        patch.object(acquire_module, "retrieve_wikipedia", fake_wikipedia),
+        patch.object(acquire_module, "retrieve_openalex", fake_openalex),
+    ):
+        return acquire_knowledge(
+            session,
+            DinosaurKnowledge,
+            subjects=subjects,
+            user_agent="test@example.com",
+            openalex_api_key="test-key",
+            sources=sources,
+            max_items=max_items,
+            overwrite=overwrite,
+            dry_run=dry_run,
+        )
 
 
 def index_dinosaur_knowledge(session, *, config, dinosaur_names=None, **kwargs):
     return index_knowledge(
-        config=config, store=_store(session), names=dinosaur_names, **kwargs
+        session=session,
+        model=DinosaurKnowledge,
+        config=config,
+        names=dinosaur_names,
+        **kwargs,
     )
 
 
 def format_knowledge_status(session, **kwargs):
     return format_checkpoint_status(
-        _store(session).list_all(names=kwargs.pop("dinosaur_names", None)),
+        list_knowledge_rows(
+            session, DinosaurKnowledge, names=kwargs.pop("dinosaur_names", None)
+        ),
         subject_header="DINOSAUR",
         **kwargs,
     )
@@ -113,17 +145,7 @@ def _retrievers(*, wikipedia=None, openalex=None):
                         }
                     )
                 )
-            serialized = [document.model_dump(mode="json") for document in documents]
-            content_hash = hashlib.sha256(
-                json.dumps(serialized, sort_keys=True).encode()
-            ).hexdigest()
-            return RetrievedDocuments(
-                source=source,
-                documents=documents,
-                content_hash=content_hash,
-                source_hash=hashlib.sha256(source.encode()).hexdigest(),
-                source_version="3" if source == "wikipedia" else "2026-01-01",
-            )
+            return documents
 
         return retrieve
 
@@ -140,14 +162,14 @@ def test_acquisition_persists_independent_source_states_and_resumes(session):
         subjects=[SUBJECT],
         retrievers=_retrievers(wikipedia=wiki, openalex=FailingOpenAlex()),
     )
-    rows = list(session.exec(select(RagSourceSnapshot)).all())
+    rows = list(session.exec(select(DinosaurKnowledge)).all())
     by_source = {row.source: row for row in rows}
 
     assert summary.succeeded == 1
     assert summary.failed == 1
-    assert by_source["wikipedia"].acquisition_status == RAG_STATUS_SUCCEEDED
-    assert by_source["wikipedia"].index_status == RAG_STATUS_PENDING
-    assert by_source["openalex"].acquisition_status == RAG_STATUS_FAILED
+    assert by_source["wikipedia"].acquisition_status == KNOWLEDGE_STATUS_SUCCEEDED
+    assert by_source["wikipedia"].index_status == KNOWLEDGE_STATUS_PENDING
+    assert by_source["openalex"].acquisition_status == KNOWLEDGE_STATUS_FAILED
     assert by_source["wikipedia"].documents[0]["metadata"]["subject_id"] == "dinosaur:7"
 
     resumed = acquire_dinosaur_knowledge(
@@ -168,8 +190,8 @@ def test_changed_overwrite_marks_snapshot_for_reindex(session):
         retrievers=_retrievers(wikipedia=first),
         sources=["wikipedia"],
     )
-    snapshot = session.exec(select(RagSourceSnapshot)).one()
-    snapshot.index_status = RAG_STATUS_SUCCEEDED
+    snapshot = session.exec(select(DinosaurKnowledge)).one()
+    snapshot.index_status = KNOWLEDGE_STATUS_SUCCEEDED
     snapshot.indexed_hash = snapshot.content_hash
     session.add(snapshot)
     session.commit()
@@ -182,8 +204,8 @@ def test_changed_overwrite_marks_snapshot_for_reindex(session):
         overwrite=True,
     )
     session.expire_all()
-    changed = session.exec(select(RagSourceSnapshot)).one()
-    assert changed.index_status == RAG_STATUS_PENDING
+    changed = session.exec(select(DinosaurKnowledge)).one()
+    assert changed.index_status == KNOWLEDGE_STATUS_PENDING
     assert changed.indexed_hash is None
 
 
@@ -194,8 +216,8 @@ def test_unchanged_overwrite_preserves_index_checkpoint_and_records_source_hash(
         retrievers=_retrievers(wikipedia=FakeWikipedia("same")),
         sources=["wikipedia"],
     )
-    snapshot = session.exec(select(RagSourceSnapshot)).one()
-    snapshot.index_status = RAG_STATUS_SUCCEEDED
+    snapshot = session.exec(select(DinosaurKnowledge)).one()
+    snapshot.index_status = KNOWLEDGE_STATUS_SUCCEEDED
     snapshot.indexed_hash = snapshot.content_hash
     session.add(snapshot)
     session.commit()
@@ -208,9 +230,9 @@ def test_unchanged_overwrite_preserves_index_checkpoint_and_records_source_hash(
         overwrite=True,
     )
     session.expire_all()
-    unchanged = session.exec(select(RagSourceSnapshot)).one()
+    unchanged = session.exec(select(DinosaurKnowledge)).one()
     assert unchanged.source_hash
-    assert unchanged.index_status == RAG_STATUS_SUCCEEDED
+    assert unchanged.index_status == KNOWLEDGE_STATUS_SUCCEEDED
     assert unchanged.indexed_hash == unchanged.content_hash
 
 
@@ -221,7 +243,7 @@ def test_running_acquisition_is_retried_after_interruption(session):
         retrievers=_retrievers(wikipedia=FakeWikipedia()),
         sources=["wikipedia"],
     )
-    snapshot = session.exec(select(RagSourceSnapshot)).one()
+    snapshot = session.exec(select(DinosaurKnowledge)).one()
     snapshot.acquisition_status = "running"
     session.add(snapshot)
     session.commit()
@@ -248,7 +270,7 @@ def test_acquisition_dry_run_does_not_create_checkpoints(session):
 
     assert summary.candidates == 2
     assert summary.skipped == 2
-    assert list(session.exec(select(RagSourceSnapshot)).all()) == []
+    assert list(session.exec(select(DinosaurKnowledge)).all()) == []
 
 
 def _patch_indexing(monkeypatch, *, fingerprint="pipeline-v2", fail_source=None):
@@ -290,11 +312,11 @@ def test_indexing_uses_source_scope_and_recreate_resets_checkpoints(session, mon
         config=SimpleNamespace(),
         recreate_index=True,
     )
-    snapshot = session.exec(select(RagSourceSnapshot)).one()
+    snapshot = session.exec(select(DinosaurKnowledge)).one()
 
     assert summary.succeeded == 1
     assert calls["recreate"] == 1
-    assert snapshot.index_status == RAG_STATUS_SUCCEEDED
+    assert snapshot.index_status == KNOWLEDGE_STATUS_SUCCEEDED
     assert snapshot.indexed_hash == snapshot.content_hash
     assert snapshot.indexed_pipeline_fingerprint == "pipeline-v2"
     assert calls["sync"][0][1] == {
@@ -324,13 +346,13 @@ def test_indexing_continues_after_one_source_fails(session, monkeypatch):
         session,
         config=SimpleNamespace(),
     )
-    rows = list(session.exec(select(RagSourceSnapshot)).all())
+    rows = list(session.exec(select(DinosaurKnowledge)).all())
     by_source = {row.source: row for row in rows}
 
     assert summary.failed == 1
     assert summary.succeeded == 1
-    assert by_source["openalex"].index_status == RAG_STATUS_FAILED
-    assert by_source["wikipedia"].index_status == RAG_STATUS_SUCCEEDED
+    assert by_source["openalex"].index_status == KNOWLEDGE_STATUS_FAILED
+    assert by_source["wikipedia"].index_status == KNOWLEDGE_STATUS_SUCCEEDED
 
 
 def test_pipeline_change_reindexes_unchanged_content(session, monkeypatch):
@@ -346,7 +368,7 @@ def test_pipeline_change_reindexes_unchanged_content(session, monkeypatch):
     summary = index_dinosaur_knowledge(
         session, config=SimpleNamespace(), sources=["wikipedia"]
     )
-    snapshot = session.exec(select(RagSourceSnapshot)).one()
+    snapshot = session.exec(select(DinosaurKnowledge)).one()
     assert summary.succeeded == 1
     assert len(calls["sync"]) == 1
     assert snapshot.indexed_pipeline_fingerprint == "pipeline-v3"
@@ -376,21 +398,22 @@ def test_status_output_and_quiz_validation(session):
         )
 
 
-def test_manual_knowledge_jobs_are_registered_disabled():
+def test_manual_knowledge_job_is_registered_disabled():
     jobs = {job.id: job for job in load_cron_config().jobs}
-    for job_id in (
+    assert "dinosaur_knowledge" in jobs
+    assert jobs["dinosaur_knowledge"].enabled is False
+    for removed in (
         "dinosaur_knowledge_acquire",
         "dinosaur_knowledge_index",
         "dinosaur_knowledge_status",
         "dinosaur_knowledge_evaluate",
         "dinosaur_quiz_preview",
     ):
-        assert job_id in jobs
-        assert jobs[job_id].enabled is False
+        assert removed not in jobs
 
 
 def test_golden_dataset_has_three_cases_for_each_required_genus():
-    path = Path(__file__).parents[1] / "app/features/ingestion/evaluation/dinosaur_retrieval_golden.jsonl"
+    path = Path(__file__).parents[1] / "rag/evaluation/dinosaur_retrieval_golden.jsonl"
     cases = load_retrieval_cases(path)
     expected = {
         "Tyrannosaurus", "Triceratops", "Velociraptor", "Stegosaurus", "Brachiosaurus",
@@ -406,63 +429,38 @@ def test_golden_case_refuses_changed_snapshot_hash(session):
         session, subjects=[SUBJECT], retrievers=_retrievers(wikipedia=FakeWikipedia()),
         sources=["wikipedia"],
     )
-    snapshot = session.exec(select(RagSourceSnapshot)).one()
+    snapshot = session.exec(select(DinosaurKnowledge)).one()
     case = RetrievalCase(
         id="case", subject_name="Example", query="q",
         relevant_document_ids={"wiki:1:intro": 3},
         snapshot_hashes={"wikipedia": snapshot.source_hash},
     )
-    prepared = prepare_retrieval_cases([case], session.exec(select(RagSourceSnapshot)).all())
+    prepared = prepare_retrieval_cases([case], session.exec(select(DinosaurKnowledge)).all())
     assert prepared[0].filters["subject_id"] == "dinosaur:7"
     with pytest.raises(ValueError, match="stale"):
         prepare_retrieval_cases(
             [case.model_copy(update={"snapshot_hashes": {"wikipedia": "changed"}})],
-            session.exec(select(RagSourceSnapshot)).all(),
+            session.exec(select(DinosaurKnowledge)).all(),
         )
 
 
 def test_knowledge_runner_routes_scope_and_control_flags(monkeypatch):
     captured = {}
 
-    class _Summary:
-        def print_exit(self) -> int:
-            return 0
+    def fake_run(**kwargs):
+        captured.update(kwargs)
+        return 0
 
-    def fake_acquire(**kwargs):
-        captured.update(
-            {
-                "dinos": [subject.name for subject in kwargs["subjects"]],
-                "sources": kwargs["sources"],
-                "max_items": kwargs["max_items"],
-                "overwrite": kwargs["overwrite"],
-                "dry_run": kwargs["dry_run"],
-            }
-        )
-        return _Summary()
+    monkeypatch.setattr(ingestion_runner.dinosaur_knowledge, "run_knowledge_job", fake_run)
 
-    monkeypatch.setattr(ingestion_runner, "acquire_knowledge", fake_acquire)
-    monkeypatch.setattr(ingestion_runner, "require_openalex_credentials", lambda *a, **k: None)
-    monkeypatch.setattr(ingestion_runner, "bound_wikipedia", lambda **k: object())
-    monkeypatch.setattr(ingestion_runner, "bound_openalex", lambda **k: object())
-    monkeypatch.setattr(
-        ingestion_runner,
-        "list_dinosaur_knowledge_subjects",
-        lambda session, names=None: [SimpleNamespace(name=name) for name in (names or [])],
-    )
-    monkeypatch.setattr(
-        ingestion_runner,
-        "Session",
-        lambda _engine: contextlib.nullcontext(SimpleNamespace()),
-    )
-    monkeypatch.setattr(ingestion_runner, "SqlSnapshotStore", lambda session, **kwargs: object())
-
-    result = ingestion_runner._run_dinosaur_knowledge_acquire(
+    result = ingestion_runner._run_dinosaur_knowledge(
         {
             "dinos": ["Example"],
             "sources": "Wikipedia,OpenAlex",
             "max_items": "2",
             "overwrite": True,
             "dry_run": True,
+            "recreate_index": True,
         }
     )
 
@@ -473,41 +471,5 @@ def test_knowledge_runner_routes_scope_and_control_flags(monkeypatch):
         "max_items": 2,
         "overwrite": True,
         "dry_run": True,
-    }
-
-
-def test_evaluation_runner_routes_dataset_mode_and_regression(monkeypatch):
-    captured = {}
-
-    def fake_evaluate(**kwargs):
-        captured.update(
-            {
-                "dataset": str(kwargs["dataset_path"]),
-                "retrieval_mode": kwargs["mode"],
-                "output_report": kwargs["output_path"],
-                "baseline_report": kwargs["baseline_path"],
-                "maximum_regression": kwargs["maximum_regression"],
-            }
-        )
-        return object(), None
-
-    monkeypatch.setattr(ingestion_runner, "evaluate_knowledge", fake_evaluate)
-    monkeypatch.setattr(ingestion_runner, "evaluation_exit", lambda *args: 0)
-    monkeypatch.setattr(
-        ingestion_runner,
-        "Session",
-        lambda _engine: contextlib.nullcontext(SimpleNamespace()),
-    )
-    monkeypatch.setattr(ingestion_runner, "SqlSnapshotStore", lambda session, **kwargs: object())
-
-    result = ingestion_runner._run_dinosaur_knowledge_evaluate({
-        "dataset": "cases.jsonl", "retrieval_mode": "hybrid",
-        "output_report": "report.json", "baseline_report": "baseline.json",
-        "maximum_regression": "0.01",
-    })
-    assert result == 0
-    assert captured == {
-        "dataset": "cases.jsonl", "retrieval_mode": "hybrid",
-        "output_report": "report.json", "baseline_report": "baseline.json",
-        "maximum_regression": 0.01,
+        "recreate_index": True,
     }

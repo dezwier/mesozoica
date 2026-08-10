@@ -1,3 +1,3 @@
-from .rag_source_snapshot import RagSourceSnapshot
+from .dinosaur_knowledge import DinosaurKnowledge
 
-__all__ = ["RagSourceSnapshot"]
+__all__ = ["DinosaurKnowledge"]

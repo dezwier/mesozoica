@@ -48,7 +48,7 @@ from mesozoica_ai.common.models import (
     SyncResult,
 )
 from mesozoica_ai.common.resume import UnitOfWork, run_resumable_item
-from mesozoica_ai.common.store import SessionUnitOfWork, SnapshotStore
+from mesozoica_ai.common.store import SessionUnitOfWork
 from mesozoica_ai.common.tokens import Encoding, TokenCounter, TokenizerError, load_encoding
 
 __all__ = [
@@ -76,7 +76,6 @@ __all__ = [
     "RetrievalResult",
     "RetrievedChunk",
     "SessionUnitOfWork",
-    "SnapshotStore",
     "SourceDocument",
     "SourceFetchError",
     "SourceMetadata",

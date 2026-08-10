@@ -4,43 +4,17 @@
 # job granularity below. Use "0 * * * *" on the platform for weekly jobs.
 
 jobs:
-  # Manual-only staged RAG workflows. Enable deliberately after configuring
-  # Azure OpenAI, Azure AI Search, and OpenAlex credentials.
-  - id: dinosaur_knowledge_acquire
+  # Build dinosaur knowledge: acquire Wikipedia/OpenAlex snapshots, then index
+  # into Azure AI Search. Enable after configuring Azure + OpenAlex credentials.
+  - id: dinosaur_knowledge
     enabled: false
     schedule: "0 1 * * 0"
-    params:
-      dry_run: false
-      overwrite: false
-      max_items: null
-      sources: [wikipedia, openalex]
-
-  - id: dinosaur_knowledge_index
-    enabled: false
-    schedule: "0 2 * * 0"
     params:
       dry_run: false
       overwrite: false
       recreate_index: false
       max_items: null
       sources: [wikipedia, openalex]
-
-  - id: dinosaur_knowledge_status
-    enabled: false
-    schedule: "30 2 * * 0"
-    params: {}
-
-  - id: dinosaur_quiz_preview
-    enabled: false
-    schedule: "45 2 * * 0"
-    params: {}
-
-  - id: dinosaur_knowledge_evaluate
-    enabled: false
-    schedule: "0 3 * * 0"
-    params:
-      retrieval_mode: semantic_hybrid
-      maximum_regression: 0.02
 
   - id: dinosaur_wiki_sync
     enabled: false
