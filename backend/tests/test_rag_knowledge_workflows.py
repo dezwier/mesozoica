@@ -1,4 +1,5 @@
 from types import SimpleNamespace
+from pathlib import Path
 
 import pytest
 from sqlmodel import select
@@ -11,6 +12,7 @@ from app.features.ingestion.application.knowledge import (
     format_knowledge_status,
     index_dinosaur_knowledge,
 )
+from app.features.ingestion.application.knowledge.evaluation import _validate_and_prepare_cases
 from app.features.ingestion.models.rag_source_snapshot import (
     RAG_STATUS_FAILED,
     RAG_STATUS_PENDING,
@@ -18,7 +20,8 @@ from app.features.ingestion.models.rag_source_snapshot import (
     RagSourceSnapshot,
 )
 from app.features.specimens.public import DinosaurKnowledgeSubject
-from mesozoica_ai.knowledge import KnowledgeDocument
+from mesozoica_ai.rag.evaluation import RetrievalCase, load_retrieval_cases
+from mesozoica_ai.sources import SourceDocument
 
 
 SUBJECT = DinosaurKnowledgeSubject(id=7, name="Example", wikipedia_title="Example")
@@ -32,7 +35,7 @@ class FakeWikipedia:
     def fetch(self, title):
         self.calls += 1
         return [
-            KnowledgeDocument(
+            SourceDocument(
                 id="wiki:1:intro",
                 text=self.text,
                 metadata={
@@ -54,7 +57,7 @@ class FailingOpenAlex:
 class FakeOpenAlex:
     def search(self, query, *, limit=10):
         return [
-            KnowledgeDocument(
+            SourceDocument(
                 id="openalex:W1",
                 text="Paper abstract",
                 metadata={
@@ -210,6 +213,7 @@ class FakeIndex:
 class FakeKnowledge:
     def __init__(self):
         self.calls = []
+        self.pipeline_fingerprint = "pipeline-v2"
 
     def sync(self, documents, *, scope):
         self.calls.append((documents, scope))
@@ -229,7 +233,6 @@ def test_indexing_uses_source_scope_and_recreate_resets_checkpoints(session):
         session,
         knowledge=knowledge,
         index=index,
-        sources=["wikipedia"],
         recreate_index=True,
     )
     snapshot = session.exec(select(RagSourceSnapshot)).one()
@@ -238,11 +241,20 @@ def test_indexing_uses_source_scope_and_recreate_resets_checkpoints(session):
     assert index.recreated == 1
     assert snapshot.index_status == RAG_STATUS_SUCCEEDED
     assert snapshot.indexed_hash == snapshot.content_hash
+    assert snapshot.indexed_pipeline_fingerprint == "pipeline-v2"
     assert knowledge.calls[0][1] == {
         "namespace": "mesozoica",
         "subject_id": "dinosaur:7",
         "source": "wikipedia",
     }
+
+
+def test_recreate_index_rejects_partial_scope(session):
+    with pytest.raises(ValueError, match="unscoped"):
+        index_dinosaur_knowledge(
+            session, knowledge=FakeKnowledge(), index=FakeIndex(),
+            dinosaur_names=["Example"], recreate_index=True,
+        )
 
 
 def test_indexing_continues_after_one_source_fails(session):
@@ -271,6 +283,24 @@ def test_indexing_continues_after_one_source_fails(session):
     assert summary.succeeded == 1
     assert by_source["openalex"].index_status == RAG_STATUS_FAILED
     assert by_source["wikipedia"].index_status == RAG_STATUS_SUCCEEDED
+
+
+def test_pipeline_change_reindexes_unchanged_content(session):
+    acquire_dinosaur_knowledge(
+        session, subjects=[SUBJECT], wikipedia=FakeWikipedia(), openalex=None,
+        sources=["wikipedia"],
+    )
+    first = FakeKnowledge()
+    index_dinosaur_knowledge(session, knowledge=first, index=FakeIndex(), sources=["wikipedia"])
+    second = FakeKnowledge()
+    second.pipeline_fingerprint = "pipeline-v3"
+    summary = index_dinosaur_knowledge(
+        session, knowledge=second, index=FakeIndex(), sources=["wikipedia"]
+    )
+    snapshot = session.exec(select(RagSourceSnapshot)).one()
+    assert summary.succeeded == 1
+    assert len(second.calls) == 1
+    assert snapshot.indexed_pipeline_fingerprint == "pipeline-v3"
 
 
 def test_status_output_and_quiz_validation(session):
@@ -304,10 +334,42 @@ def test_manual_knowledge_jobs_are_registered_disabled():
         "dinosaur_knowledge_acquire",
         "dinosaur_knowledge_index",
         "dinosaur_knowledge_status",
+        "dinosaur_knowledge_evaluate",
         "dinosaur_quiz_preview",
     ):
         assert job_id in jobs
         assert jobs[job_id].enabled is False
+
+
+def test_golden_dataset_has_three_cases_for_each_required_genus():
+    path = Path(__file__).parents[1] / "app/features/ingestion/evaluation/dinosaur_retrieval_golden.jsonl"
+    cases = load_retrieval_cases(path)
+    expected = {
+        "Tyrannosaurus", "Triceratops", "Velociraptor", "Stegosaurus", "Brachiosaurus",
+        "Spinosaurus", "Ankylosaurus", "Allosaurus", "Diplodocus", "Iguanodon",
+    }
+    assert len(cases) == 30
+    assert {case.subject_name for case in cases} == expected
+    assert all(case.snapshot_hashes for case in cases)
+
+
+def test_golden_case_refuses_changed_snapshot_hash(session):
+    acquire_dinosaur_knowledge(
+        session, subjects=[SUBJECT], wikipedia=FakeWikipedia(), openalex=None,
+        sources=["wikipedia"],
+    )
+    snapshot = session.exec(select(RagSourceSnapshot)).one()
+    case = RetrievalCase(
+        id="case", subject_name="Example", query="q",
+        relevant_document_ids={"wiki:1:intro": 3},
+        snapshot_hashes={"wikipedia": snapshot.source_hash},
+    )
+    prepared = _validate_and_prepare_cases(session, [case])
+    assert prepared[0].filters["subject_id"] == "dinosaur:7"
+    with pytest.raises(ValueError, match="stale"):
+        _validate_and_prepare_cases(
+            session, [case.model_copy(update={"snapshot_hashes": {"wikipedia": "changed"}})]
+        )
 
 
 def test_knowledge_runner_routes_scope_and_control_flags(monkeypatch):
@@ -337,4 +399,24 @@ def test_knowledge_runner_routes_scope_and_control_flags(monkeypatch):
         "max_items": 2,
         "overwrite": True,
         "dry_run": True,
+    }
+
+
+def test_evaluation_runner_routes_dataset_mode_and_regression(monkeypatch):
+    captured = {}
+    monkeypatch.setattr(
+        ingestion_runner.dinosaur_knowledge_evaluate,
+        "run_evaluate_job",
+        lambda **kwargs: captured.update(kwargs) or 0,
+    )
+    result = ingestion_runner._run_dinosaur_knowledge_evaluate({
+        "dataset": "cases.jsonl", "retrieval_mode": "hybrid",
+        "output_report": "report.json", "baseline_report": "baseline.json",
+        "maximum_regression": "0.01",
+    })
+    assert result == 0
+    assert captured == {
+        "dataset": "cases.jsonl", "retrieval_mode": "hybrid",
+        "output_report": "report.json", "baseline_report": "baseline.json",
+        "maximum_regression": 0.01,
     }

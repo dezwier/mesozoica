@@ -7,7 +7,7 @@ from sqlmodel import Session
 from app.core.database import engine
 from app.features.ingestion.application.knowledge import index_dinosaur_knowledge
 from mesozoica_ai.knowledge import (
-    KnowledgeSettings,
+    KnowledgeBaseSettings,
     create_knowledge_base,
     create_knowledge_index,
 )
@@ -22,12 +22,12 @@ def run_index_job(
     dinos: list[str] | None = None,
     sources: list[str] | None = None,
 ) -> int:
-    rag_settings = KnowledgeSettings()
+    settings = KnowledgeBaseSettings()
     with Session(engine) as session:
         summary = index_dinosaur_knowledge(
             session,
-            knowledge=create_knowledge_base(rag_settings),
-            index=create_knowledge_index(rag_settings),
+            knowledge=create_knowledge_base(settings),
+            index=create_knowledge_index(settings),
             dinosaur_names=dinos,
             sources=sources,
             max_items=max_items,

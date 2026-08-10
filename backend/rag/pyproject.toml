@@ -1,6 +1,6 @@
 [project]
 name = "mesozoica-ai"
-version = "0.2.0"
+version = "0.4.0"
 requires-python = ">=3.10"
 dependencies = [
     "azure-search-documents>=11.6.0",
@@ -11,6 +11,7 @@ dependencies = [
     "pydantic>=2.8.0",
     "pydantic-settings>=2.6.0",
     "python-dotenv>=1.0.1",
+    "tiktoken>=0.8.0",
 ]
 
 [project.optional-dependencies]
@@ -27,5 +28,9 @@ build-backend = "setuptools.build_meta"
 [tool.setuptools.packages.find]
 where = ["src"]
 
+[tool.setuptools.package-data]
+mesozoica_ai = ["py.typed"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = ["live: opt-in tests that access disposable Azure resources"]

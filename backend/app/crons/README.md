@@ -131,6 +131,7 @@ RAILWAY_RUN=1 railway run python -m app.crons.runner --job dinosaur_llm_enrich
 RAILWAY_RUN=1 railway run python -m app.crons.runner --job dinosaur_knowledge_acquire --dinos Tyrannosaurus
 RAILWAY_RUN=1 railway run python -m app.crons.runner --job dinosaur_knowledge_index --dinos Tyrannosaurus
 RAILWAY_RUN=1 railway run python -m app.crons.runner --job dinosaur_knowledge_status --dinos Tyrannosaurus
+RAILWAY_RUN=1 railway run python -m app.crons.runner --job dinosaur_knowledge_evaluate
 RAILWAY_RUN=1 railway run python -m app.crons.runner --job dinosaur_quiz_preview --dinos Tyrannosaurus
 RAILWAY_RUN=1 railway run python -m app.crons.runner --job fossil_pbdb_sync
 RAILWAY_RUN=1 railway run python -m app.crons.runner --job fossil_llm_enrich
@@ -158,6 +159,11 @@ RAILWAY_RUN=1 railway run python -m app.crons.runner --job tool_image_generate -
 | `--dinos NAME …` | Limit to specific Wikipedia titles (space- or comma-separated) |
 | `--sources NAME …` | Knowledge acquisition/indexing: `wikipedia`, `openalex`, or both |
 | `--recreate-index` | Knowledge indexing only: explicitly delete/rebuild the configured Azure Search index and mark acquired snapshots pending |
+| `--dataset PATH` | Knowledge evaluation: override the 30-case JSONL dataset |
+| `--retrieval-mode MODE` | Knowledge evaluation: `keyword`, `vector`, `hybrid`, or `semantic_hybrid` |
+| `--output-report PATH` | Knowledge evaluation: write the JSON metrics report |
+| `--baseline-report PATH` | Knowledge evaluation: compare against an earlier report |
+| `--maximum-regression FLOAT` | Knowledge evaluation: allowed absolute loss per metric (default `0.02`) |
 | `--category NAME` | `dinosaur_wiki_sync`: limit to one Wikipedia category |
 | `--stale-days N` | `fossil_pbdb_sync`: only genera with `fossils_insert_time` null or older than N days (ignored with `--overwrite`) |
 | `--since ISO8601` | `fossil_pbdb_sync`: only genera with `fossils_insert_time` null or before this UTC time (ignored with `--overwrite`) |
@@ -170,18 +176,21 @@ RAILWAY_RUN=1 railway run python -m app.crons.runner --job tool_image_generate -
 
 ### Dinosaur RAG knowledge workflow
 
-These four jobs are disabled by default. Configure the variables in [`../../rag/README.md`](../../rag/README.md), then acquire and index in separate resumable stages:
+These five RAG jobs are disabled by default. Configure the variables in [`../../rag/README.md`](../../rag/README.md), then acquire and index in separate resumable stages:
 
 ```bash
 make run-dinosaur-knowledge-acquire CRON_EXTRA='--dinos Tyrannosaurus --sources wikipedia openalex'
 make run-dinosaur-knowledge-status  CRON_EXTRA='--dinos Tyrannosaurus'
 make run-dinosaur-knowledge-index   CRON_EXTRA='--dinos Tyrannosaurus'
+make run-dinosaur-knowledge-evaluate
 make run-dinosaur-quiz-preview      CRON_EXTRA='--dinos Tyrannosaurus'
 ```
 
-Each dinosaur/source is committed independently in `rag_source_snapshot`. Successful unchanged acquisitions are skipped, failed/running states retry, content changes reset only that source's indexing checkpoint, and the read-only status job shows attempts, timestamps, and stage errors. `--overwrite` forces the selected stage while retaining those state rules.
+Each dinosaur/source is committed independently in `rag_source_snapshot`. Successful unchanged acquisitions are skipped, failed/running states retry, content changes reset only that source's indexing checkpoint, and the read-only status job shows content/pipeline fingerprints, a reindex reason, attempts, and stage errors. A pipeline fingerprint change also makes a snapshot eligible for indexing without `--overwrite`.
 
 Normal indexing validates the existing schema and vector dimensions and never deletes the index. `--recreate-index` is intentionally destructive for the configured index; it is the only workflow path that recreates it and causes all successfully acquired snapshots to be reindexed.
+
+The evaluation job refuses cases whose pinned source hashes no longer match current snapshots. Acquire/index all ten labeled genera, then deliberately review and relabel a case when a source revision changes.
 
 ### Procedural field sites (lazy, not a cron)
 

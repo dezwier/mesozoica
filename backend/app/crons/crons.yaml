@@ -35,6 +35,13 @@ jobs:
     schedule: "45 2 * * 0"
     params: {}
 
+  - id: dinosaur_knowledge_evaluate
+    enabled: false
+    schedule: "0 3 * * 0"
+    params:
+      retrieval_mode: semantic_hybrid
+      maximum_regression: 0.02
+
   - id: dinosaur_wiki_sync
     enabled: false
     schedule: "0 3 * * 0"

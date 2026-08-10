@@ -9,6 +9,11 @@ COPY rag/pyproject.toml ./rag/pyproject.toml
 COPY rag/src/ ./rag/src/
 RUN pip install --no-cache-dir ./rag
 
+# tiktoken otherwise downloads encoding assets on first use. Cache every encoding
+# shipped by the installed version so any validated configuration is startup-safe.
+ENV TIKTOKEN_CACHE_DIR=/opt/tiktoken-cache
+RUN mkdir -p "$TIKTOKEN_CACHE_DIR" && python -c "import tiktoken; [tiktoken.get_encoding(name) for name in tiktoken.list_encoding_names()]"
+
 COPY app/ ./app/
 COPY scripts/ ./scripts/
 COPY alembic/ ./alembic/

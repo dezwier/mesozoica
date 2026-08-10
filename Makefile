@@ -7,7 +7,7 @@ RAILWAY_SERVICE_FLAG = $(if $(RAILWAY_SERVICE),--service $(RAILWAY_SERVICE),)
 CRON_EXTRA ?=
 PYTHON ?= python3
 
-.PHONY: help architecture-check architecture-report docs-check backend-runtime-check backend-install backend-test run-backend flutter-analyze flutter-test run-flutter test-all quality run-cron run-game-config-seed run-field-ensure-worker fetch-coordinate-masks upload-coordinate-masks-railway run-field-site-coordinate-prune run-weather-sync run-dinosaur-wiki-sync run-dinosaur-llm-enrich run-dinosaur-knowledge-acquire run-dinosaur-knowledge-index run-dinosaur-knowledge-status run-dinosaur-quiz-preview run-fossil-pbdb-sync run-fossil-llm-enrich run-site-sync run-site-type-sync run-tool-sync run-dinosaur-image-generate run-fossil-image-generate run-site-type-image-generate run-tool-image-generate run-tool-image-generate-local sync-dinosaur-images sync-fossil-images sync-site-type-images sync-tool-images sync-bundled-version-meta rename-site-type-images migrate-image-versions-to-v1 migrate-named-image-versions backfill-user-levels
+.PHONY: help architecture-check architecture-report docs-check backend-runtime-check backend-install backend-test run-backend flutter-analyze flutter-test run-flutter test-all quality run-cron run-game-config-seed run-field-ensure-worker fetch-coordinate-masks upload-coordinate-masks-railway run-field-site-coordinate-prune run-weather-sync run-dinosaur-wiki-sync run-dinosaur-llm-enrich run-dinosaur-knowledge-acquire run-dinosaur-knowledge-index run-dinosaur-knowledge-status run-dinosaur-knowledge-evaluate run-dinosaur-quiz-preview run-fossil-pbdb-sync run-fossil-llm-enrich run-site-sync run-site-type-sync run-tool-sync run-dinosaur-image-generate run-fossil-image-generate run-site-type-image-generate run-tool-image-generate run-tool-image-generate-local sync-dinosaur-images sync-fossil-images sync-site-type-images sync-tool-images sync-bundled-version-meta rename-site-type-images migrate-image-versions-to-v1 migrate-named-image-versions backfill-user-levels
 
 help:
 	@echo "Available targets:"
@@ -26,6 +26,7 @@ help:
 	@echo "  run-dinosaur-knowledge-acquire  resumable Wikipedia/OpenAlex acquisition"
 	@echo "  run-dinosaur-knowledge-index    sync acquired snapshots into Azure AI Search"
 	@echo "  run-dinosaur-knowledge-status   show acquisition/index checkpoints"
+	@echo "  run-dinosaur-knowledge-evaluate run golden retrieval metrics"
 	@echo "  run-dinosaur-quiz-preview       generate one structured RAG quiz preview"
 	@echo "  run-fossil-pbdb-sync         fossil_pbdb_sync on Railway"
 	@echo "  run-fossil-llm-enrich        fossil_llm_enrich on Railway"
@@ -137,6 +138,9 @@ run-dinosaur-knowledge-index:
 
 run-dinosaur-knowledge-status:
 	cd backend && RAILWAY_RUN=1 railway run $(RAILWAY_SERVICE_FLAG) python -m app.crons.runner --job dinosaur_knowledge_status $(CRON_EXTRA)
+
+run-dinosaur-knowledge-evaluate:
+	cd backend && RAILWAY_RUN=1 railway run $(RAILWAY_SERVICE_FLAG) python -m app.crons.runner --job dinosaur_knowledge_evaluate $(CRON_EXTRA)
 
 run-dinosaur-quiz-preview:
 	cd backend && RAILWAY_RUN=1 railway run $(RAILWAY_SERVICE_FLAG) python -m app.crons.runner --job dinosaur_quiz_preview $(CRON_EXTRA)

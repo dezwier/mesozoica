@@ -26,6 +26,7 @@ from app.features.ingestion.public import parse_dino_names
 from app.crons.jobs import (
     dinosaur_knowledge_acquire,
     dinosaur_knowledge_index,
+    dinosaur_knowledge_evaluate,
     dinosaur_knowledge_status,
     dinosaur_quiz_preview,
     dinosaur_image_generate,
@@ -95,6 +96,16 @@ def _run_dinosaur_knowledge_index(params: dict[str, Any]) -> int:
         max_items=_parse_max_items(params.get("max_items")),
         dinos=params.get("dinos"),
         sources=_parse_knowledge_sources(params.get("sources")),
+    )
+
+
+def _run_dinosaur_knowledge_evaluate(params: dict[str, Any]) -> int:
+    return dinosaur_knowledge_evaluate.run_evaluate_job(
+        dataset=params.get("dataset"),
+        retrieval_mode=str(params.get("retrieval_mode", "semantic_hybrid")),
+        output_report=params.get("output_report"),
+        baseline_report=params.get("baseline_report"),
+        maximum_regression=float(params.get("maximum_regression", 0.02)),
     )
 
 
@@ -269,6 +280,7 @@ def _run_tool_image_generate(params: dict[str, Any]) -> int:
 _JOB_HANDLERS: dict[str, Callable[[dict[str, Any]], int]] = {
     "dinosaur_knowledge_acquire": _run_dinosaur_knowledge_acquire,
     "dinosaur_knowledge_index": _run_dinosaur_knowledge_index,
+    "dinosaur_knowledge_evaluate": _run_dinosaur_knowledge_evaluate,
     "dinosaur_knowledge_status": _run_dinosaur_knowledge_status,
     "dinosaur_quiz_preview": _run_dinosaur_quiz_preview,
     "dinosaur_wiki_sync": _run_dinosaur_wiki_sync,
@@ -394,6 +406,18 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="Explicitly delete and recreate the configured Azure knowledge index, then reindex snapshots.",
     )
+    parser.add_argument("--dataset", help="Retrieval-evaluation JSONL dataset path.")
+    parser.add_argument(
+        "--retrieval-mode",
+        choices=["keyword", "vector", "hybrid", "semantic_hybrid"],
+        help="Retrieval mode for dinosaur_knowledge_evaluate.",
+    )
+    parser.add_argument("--output-report", help="Write the retrieval evaluation JSON report.")
+    parser.add_argument("--baseline-report", help="Compare against a prior JSON report.")
+    parser.add_argument(
+        "--maximum-regression", type=float,
+        help="Maximum allowed absolute metric regression (default 0.02).",
+    )
     parser.add_argument(
         "--stale-days",
         metavar="N",
@@ -411,8 +435,8 @@ def main(argv: list[str] | None = None) -> int:
         "--max-items",
         metavar="N",
         type=int,
-        help="Maximum successful image generations per run (dinosaur_image_generate, "
-        "fossil_image_generate, site_type_image_generate).",
+        help="Maximum selected knowledge snapshots/items or successful image generations "
+        "for jobs that support bounded runs.",
     )
     parser.add_argument(
         "--site-types",
@@ -469,6 +493,16 @@ def main(argv: list[str] | None = None) -> int:
         overrides["sources"] = sources
     if args.recreate_index:
         overrides["recreate_index"] = True
+    if args.dataset:
+        overrides["dataset"] = args.dataset
+    if args.retrieval_mode:
+        overrides["retrieval_mode"] = args.retrieval_mode
+    if args.output_report:
+        overrides["output_report"] = args.output_report
+    if args.baseline_report:
+        overrides["baseline_report"] = args.baseline_report
+    if args.maximum_regression is not None:
+        overrides["maximum_regression"] = args.maximum_regression
     if args.stale_days is not None:
         overrides["stale_days"] = args.stale_days
     if args.since is not None:

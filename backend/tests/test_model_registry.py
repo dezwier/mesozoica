@@ -52,4 +52,4 @@ def test_sqlmodel_table_and_column_metadata_fingerprint() -> None:
     fingerprint = hashlib.sha256(
         json.dumps(payload, sort_keys=True).encode()
     ).hexdigest()
-    assert fingerprint == "4d3a7c1a0b6b13689a1679a3d5b14dd27b28ad7604c3784e095dc144d22e6449"
+    assert fingerprint == "b1a595b5801cc95ab91b1ac8a643bfbd2bc9193024f189aff3ac6f193d787902"

@@ -16,7 +16,11 @@ from app.features.ingestion.models.rag_source_snapshot import (
     RAG_STATUS_SUCCEEDED,
     RagSourceSnapshot,
 )
-from mesozoica_ai.knowledge import AzureKnowledgeIndex, KnowledgeBase, KnowledgeDocument
+from mesozoica_ai.knowledge import (
+    AzureKnowledgeIndex,
+    KnowledgeBase,
+    KnowledgeDocument,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -34,6 +38,14 @@ def index_dinosaur_knowledge(
     recreate_index: bool = False,
 ) -> KnowledgeJobSummary:
     selected_sources = _normalize_sources(sources)
+    if recreate_index and (
+        dinosaur_names
+        or max_items is not None
+        or set(selected_sources) != {"wikipedia", "openalex"}
+    ):
+        raise ValueError(
+            "--recreate-index must run unscoped: omit --dinos/--max-items and include both sources"
+        )
     snapshots = _eligible_snapshots(
         session, dinosaur_names=dinosaur_names, sources=selected_sources
     )
@@ -53,6 +65,7 @@ def index_dinosaur_knowledge(
         for snapshot in acquired:
             snapshot.index_status = RAG_STATUS_PENDING
             snapshot.indexed_hash = None
+            snapshot.indexed_pipeline_fingerprint = None
             snapshot.index_error = None
             snapshot.updated_at = _utc_now()
             session.add(snapshot)
@@ -69,6 +82,7 @@ def index_dinosaur_knowledge(
         if (
             snapshot.index_status == RAG_STATUS_SUCCEEDED
             and snapshot.indexed_hash == snapshot.content_hash
+            and snapshot.indexed_pipeline_fingerprint == knowledge.pipeline_fingerprint
             and not overwrite
         ):
             summary.skipped += 1
@@ -93,6 +107,7 @@ def index_dinosaur_knowledge(
             )
             snapshot.index_status = RAG_STATUS_SUCCEEDED
             snapshot.indexed_hash = snapshot.content_hash
+            snapshot.indexed_pipeline_fingerprint = knowledge.pipeline_fingerprint
             snapshot.index_finished_at = _utc_now()
             snapshot.index_error = None
             summary.succeeded += 1

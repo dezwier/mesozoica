@@ -47,6 +47,7 @@ class RagSourceSnapshot(SQLModel, table=True):
     source_hash: str | None = Field(default=None, max_length=64)
     content_hash: str | None = Field(default=None, max_length=64, index=True)
     indexed_hash: str | None = Field(default=None, max_length=64)
+    indexed_pipeline_fingerprint: str | None = Field(default=None, max_length=64)
     acquisition_status: str = Field(default=RAG_STATUS_PENDING, index=True, max_length=16)
     index_status: str = Field(default=RAG_STATUS_PENDING, index=True, max_length=16)
     acquisition_attempts: int = Field(default=0)

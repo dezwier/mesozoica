@@ -4,8 +4,8 @@ from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
-from mesozoica_ai.generation import StructuredRag, validate_citations
-from mesozoica_ai.knowledge import RetrievalRequest
+from mesozoica_ai.knowledge import KnowledgeBase, RetrievalRequest
+from mesozoica_ai.rag import CitedOutput, Evidence, Rag
 
 
 class QuizUserContext(BaseModel):
@@ -15,14 +15,13 @@ class QuizUserContext(BaseModel):
     previous_topics: list[str] = Field(default_factory=list)
 
 
-class QuizQuestion(BaseModel):
+class QuizQuestion(CitedOutput):
     question: str = Field(min_length=1)
     topic: str = Field(min_length=1)
     difficulty: Literal["easy", "medium", "hard"]
     options: tuple[str, str, str, str]
     correct_index: Literal[0, 1, 2, 3]
     explanation: str = Field(min_length=1)
-    source_chunk_ids: list[str] = Field(min_length=1)
 
     @field_validator("question", "topic", "explanation")
     @classmethod
@@ -44,7 +43,8 @@ class QuizQuestion(BaseModel):
 
 def generate_quiz_preview(
     *,
-    rag: StructuredRag,
+    knowledge: KnowledgeBase,
+    rag: Rag,
     dinosaur_id: int,
     dinosaur_name: str,
     user_context: QuizUserContext | None = None,
@@ -54,9 +54,24 @@ def generate_quiz_preview(
         f"Interesting, distinctive, scientifically supported facts about {dinosaur_name} "
         f"for a {context.preferred_difficulty} multiple-choice quiz"
     )
+    retrieval = knowledge.retrieve(RetrievalRequest(
+        query=retrieval_query,
+        filters={"namespace": "mesozoica", "subject_id": f"dinosaur:{dinosaur_id}"},
+    ))
+    evidence = [
+        Evidence(
+            id=chunk.id,
+            document_id=chunk.document_id,
+            text=chunk.text,
+            source=chunk.metadata.source,
+            url=chunk.metadata.source_url,
+        )
+        for chunk in retrieval.chunks
+    ]
     result = rag.generate(
         QuizQuestion,
         query=retrieval_query,
+        evidence=evidence,
         application_context=context,
         instructions=(
             f"Create exactly one new multiple-choice question about {dinosaur_name}. "
@@ -64,10 +79,5 @@ def generate_quiz_preview(
             "language and difficulty, avoid previous topics, explain the answer briefly, "
             "and cite every chunk that supports the correct answer."
         ),
-        retrieval=RetrievalRequest(
-            query=retrieval_query,
-            filters={"namespace": "mesozoica", "subject_id": f"dinosaur:{dinosaur_id}"},
-        ),
     )
-    validate_citations(result.output.source_chunk_ids, result.chunks)
     return result.output

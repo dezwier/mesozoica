@@ -7,7 +7,8 @@ from sqlmodel import Session
 from app.core.database import engine
 from app.features.ingestion.application.knowledge import generate_quiz_preview
 from app.features.specimens.public import list_dinosaur_knowledge_subjects
-from mesozoica_ai.knowledge import KnowledgeSettings, create_structured_rag
+from mesozoica_ai.knowledge import KnowledgeBaseSettings, create_knowledge_base
+from mesozoica_ai.rag import RagSettings, create_rag
 
 
 def run_preview_job(*, dinos: list[str] | None = None) -> int:
@@ -19,7 +20,8 @@ def run_preview_job(*, dinos: list[str] | None = None) -> int:
         raise ValueError(f"Dinosaur not found: {dinos[0]}")
     subject = subjects[0]
     quiz = generate_quiz_preview(
-        rag=create_structured_rag(KnowledgeSettings()),
+        knowledge=create_knowledge_base(KnowledgeBaseSettings(), write_enabled=False),
+        rag=create_rag(RagSettings()),
         dinosaur_id=subject.id,
         dinosaur_name=subject.name,
     )

@@ -17,7 +17,7 @@ from app.features.ingestion.models.rag_source_snapshot import (
     RagSourceSnapshot,
 )
 from app.features.specimens.public import DinosaurKnowledgeSubject
-from mesozoica_ai.knowledge import KnowledgeDocument
+from mesozoica_ai.sources import SourceDocument
 
 logger = logging.getLogger(__name__)
 
@@ -25,11 +25,11 @@ SUPPORTED_KNOWLEDGE_SOURCES = ("wikipedia", "openalex")
 
 
 class WikipediaProvider(Protocol):
-    def fetch(self, title: str) -> list[KnowledgeDocument]: ...
+    def fetch(self, title: str) -> list[SourceDocument]: ...
 
 
 class OpenAlexProvider(Protocol):
-    def search(self, query: str, *, limit: int = 10) -> list[KnowledgeDocument]: ...
+    def search(self, query: str, *, limit: int = 10) -> list[SourceDocument]: ...
 
 
 class KnowledgeJobSummary(BaseModel):
@@ -101,6 +101,7 @@ def acquire_dinosaur_knowledge(
                 if changed:
                     snapshot.index_status = RAG_STATUS_PENDING
                     snapshot.indexed_hash = None
+                    snapshot.indexed_pipeline_fingerprint = None
                     snapshot.index_error = None
                 summary.succeeded += 1
             except Exception as exc:
@@ -143,37 +144,40 @@ def _get_or_create_snapshot(
 
 
 def _with_subject_metadata(
-    document: KnowledgeDocument, subject: DinosaurKnowledgeSubject
-) -> KnowledgeDocument:
-    metadata = document.metadata.copy()
+    document: SourceDocument, subject: DinosaurKnowledgeSubject
+) -> SourceDocument:
+    metadata = document.metadata.model_dump(mode="json", exclude_none=True)
     metadata.update(
         namespace="mesozoica",
         subject_id=f"dinosaur:{subject.id}",
         subject_name=subject.name,
     )
-    return document.model_copy(update={"metadata": metadata})
+    return SourceDocument.model_validate({
+        **document.model_dump(mode="json"),
+        "metadata": metadata,
+    })
 
 
-def _source_version(documents: list[KnowledgeDocument]) -> str | None:
+def _source_version(documents: list[SourceDocument]) -> str | None:
     versions = sorted(
         {
-            str(document.metadata["source_version"])
+            str(document.metadata.source_version)
             for document in documents
-            if document.metadata.get("source_version")
+            if document.metadata.source_version
         }
     )
     return ",".join(versions)[:255] or None
 
 
-def _source_hash(documents: list[KnowledgeDocument]) -> str:
+def _source_hash(documents: list[SourceDocument]) -> str:
     provenance = [
         {
             "id": document.id,
-            "source_id": document.metadata.get("source_id"),
-            "source_version": document.metadata.get("source_version"),
-            "source_url": document.metadata.get("source_url"),
-            "published_at": document.metadata.get("published_at"),
-            "updated_at": document.metadata.get("updated_at"),
+            "source_id": document.metadata.source_id,
+            "source_version": document.metadata.source_version,
+            "source_url": document.metadata.source_url,
+            "published_at": document.metadata.published_at,
+            "updated_at": document.metadata.updated_at,
         }
         for document in documents
     ]

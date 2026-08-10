@@ -1,15 +1,16 @@
 from __future__ import annotations
 
+from datetime import date, datetime, time, timezone
 from typing import Any
 
 from pydantic import SecretStr
 
-from mesozoica_ai.knowledge.models import KnowledgeDocument
-
 from .http import RetryingJsonClient
+from .models import SourceDocument
 
 
 class OpenAlexSource:
+    """Fetch non-retracted abstract-bearing scholarly works from OpenAlex."""
     API_URL = "https://api.openalex.org/works"
 
     def __init__(
@@ -27,8 +28,21 @@ class OpenAlexSource:
         self.api_key = key
         self.user_agent = user_agent
         self.client = client or RetryingJsonClient()
+        self._owns_client = client is None
 
-    def search(self, query: str, *, limit: int = 10) -> list[KnowledgeDocument]:
+    def __enter__(self) -> "OpenAlexSource":
+        return self
+
+    def __exit__(self, *_: object) -> None:
+        self.close()
+
+    def close(self) -> None:
+        """Close the internally-created HTTP client."""
+        if self._owns_client:
+            self.client.close()
+
+    def search(self, query: str, *, limit: int = 10) -> list[SourceDocument]:
+        """Return the highest-relevance usable articles and preprints."""
         if not query.strip():
             raise ValueError("OpenAlex query must not be blank")
         if not 1 <= limit <= 100:
@@ -43,8 +57,9 @@ class OpenAlexSource:
                 "sort": "relevance_score:desc",
             },
             headers={"User-Agent": self.user_agent},
+            source="openalex",
         )
-        documents: list[KnowledgeDocument] = []
+        documents: list[SourceDocument] = []
         for work in payload.get("results", []):
             abstract = reconstruct_abstract(work.get("abstract_inverted_index"))
             if work.get("is_retracted") or not abstract:
@@ -61,7 +76,7 @@ class OpenAlexSource:
             source = (work.get("primary_location") or {}).get("source") or {}
             best_location = work.get("best_oa_location") or {}
             documents.append(
-                KnowledgeDocument(
+                SourceDocument(
                     id=f"openalex:{work_id}",
                     text=abstract,
                     metadata={
@@ -70,8 +85,8 @@ class OpenAlexSource:
                         "title": title,
                         "section": "Abstract",
                         "source_url": work.get("doi") or work.get("id"),
-                        "published_at": work.get("publication_date"),
-                        "updated_at": work.get("updated_date"),
+                        "published_at": _as_datetime(work.get("publication_date")),
+                        "updated_at": _as_datetime(work.get("updated_date")),
                         "source_version": work.get("updated_date"),
                         "doi": work.get("doi"),
                         "authors": authors,
@@ -87,9 +102,24 @@ class OpenAlexSource:
 
 
 def reconstruct_abstract(inverted_index: dict[str, list[int]] | None) -> str:
+    """Reconstruct an abstract from OpenAlex's token-to-position representation."""
     if not inverted_index:
         return ""
     positioned: list[tuple[int, str]] = []
     for token, positions in inverted_index.items():
         positioned.extend((int(position), token) for position in positions)
     return " ".join(token for _, token in sorted(positioned)).strip()
+
+
+def _as_datetime(value: Any) -> datetime | None:
+    if not value:
+        return None
+    raw = str(value).replace("Z", "+00:00")
+    try:
+        parsed = datetime.fromisoformat(raw)
+    except ValueError:
+        try:
+            parsed = datetime.combine(date.fromisoformat(raw), time.min)
+        except ValueError:
+            return None
+    return parsed.replace(tzinfo=timezone.utc) if parsed.tzinfo is None else parsed
