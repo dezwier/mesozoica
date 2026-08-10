@@ -11,7 +11,7 @@ from mesozoica_ai.index import (
     retrieve_chunks,
     sync_documents,
 )
-from mesozoica_ai.sources import retrieve_openalex, retrieve_wikipedia
+from mesozoica_ai.sources import retrieve_openalex
 
 __all__ = [
     "AiConfig",
@@ -23,6 +23,5 @@ __all__ = [
     "prompt_rag",
     "retrieve_chunks",
     "retrieve_openalex",
-    "retrieve_wikipedia",
     "sync_documents",
 ]

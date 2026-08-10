@@ -1,9 +1,10 @@
-"""Acquire Wikipedia + OpenAlex into the dinosaur_knowledge SQL table.
+"""Acquire Wikipedia revisions + OpenAlex into the dinosaur_knowledge SQL table.
 
 Does not touch Azure Search — use 02_index_dinosaur_knowledge.py for that.
 
-OpenAlex keeps up to OPENALEX_MAX_WORKS (default 10) unique papers per dinosaur:
-already-stored works are skipped and gaps are topped up.
+Wikipedia text comes from the latest ``dinosaur_type_revision`` row (no live
+Wikipedia fetch). OpenAlex keeps up to OPENALEX_MAX_WORKS (default 10) unique
+papers per dinosaur: already-stored works are skipped and gaps are topped up.
 
   cd backend
   .venv/bin/python rag/scripts/01_acquire_dinosaur_knowledge.py
@@ -42,9 +43,15 @@ from sqlmodel import Session, select
 
 from app.core.config import settings
 from app.core.database import engine
+from app.features.ingestion.application.dinosaur_knowledge.wikipedia_documents import (
+    wikipedia_documents_from_article,
+)
 from app.features.ingestion.models.dinosaur_knowledge import DinosaurKnowledge
 from app.features.ingestion.public import parse_dino_names
-from app.features.specimens.public import list_dinosaur_knowledge_subjects
+from app.features.specimens.public import (
+    get_latest_dinosaur_wikipedia_article,
+    list_dinosaur_knowledge_subjects,
+)
 from mesozoica_ai.common import (
     DEFAULT_SUBJECT_KIND,
     Document,
@@ -54,9 +61,8 @@ from mesozoica_ai.common import (
     sql_knowledge_overview,
     store_documents,
     subject_metadata,
-    subject_query,
 )
-from mesozoica_ai.sources import retrieve_openalex, retrieve_wikipedia
+from mesozoica_ai.sources import retrieve_openalex
 from mesozoica_ai.sources.openalex import paper_inventory
 
 
@@ -96,7 +102,6 @@ def run(
                     summary=summary,
                     dry_run=dry_run,
                     overwrite=overwrite,
-                    user_agent=user_agent,
                 )
             if "openalex" in sources:
                 try:
@@ -132,7 +137,6 @@ def _acquire_wikipedia(
     summary: JobSummary,
     dry_run: bool,
     overwrite: bool,
-    user_agent: str,
 ) -> None:
     label = f"{subject.name}/wikipedia"
     if dry_run:
@@ -146,11 +150,26 @@ def _acquire_wikipedia(
         summary.skipped += 1
         return
 
-    logger.info("%s: fetching", label)
+    logger.info("%s: loading latest dinosaur_type_revision", label)
     try:
-        documents = retrieve_wikipedia(
-            subject_query(subject, "wikipedia"),
-            user_agent=user_agent,
+        article = get_latest_dinosaur_wikipedia_article(
+            session, dinosaur_type_id=int(subject.id)
+        )
+        if article is None:
+            raise RuntimeError(
+                f"No dinosaur_type_revision article for dinosaur_type_id={subject.id}"
+            )
+        source_version = (
+            str(article.wikipedia_revision_id)
+            if article.wikipedia_revision_id is not None
+            else article.content_hash
+        )
+        documents = wikipedia_documents_from_article(
+            article.article,
+            title=article.wikipedia_title,
+            page_id=article.wikipedia_page_id,
+            source_version=source_version,
+            published_at=article.article_date,
             metadata=subject_metadata(subject, "wikipedia"),
         )
         outcome = store_documents(
@@ -161,7 +180,13 @@ def _acquire_wikipedia(
             documents=documents,
             overwrite=overwrite,
         )
-        logger.info("%s: stored %s section(s) (%s)", label, len(documents), outcome)
+        logger.info(
+            "%s: stored %s section(s) from revision %s (%s)",
+            label,
+            len(documents),
+            article.revision_db_id,
+            outcome,
+        )
     except Exception as exc:
         logger.exception("%s: failed (%s)", label, exc)
         outcome = store_documents(
@@ -214,7 +239,7 @@ def _acquire_openalex(
 
     try:
         new_documents = retrieve_openalex(
-            subject_query(subject, "openalex"),
+            subject.name,
             user_agent=user_agent,
             api_key=settings.openalex_api_key or "",
             limit=need,
@@ -318,7 +343,6 @@ def _clean_title(title: str) -> str:
 def _log_papers(papers: list[tuple[str, str]]) -> None:
     for index, (work_id, title) in enumerate(papers, start=1):
         logger.info("  %2d. %s  %s", index, work_id, _clean_title(title))
-
 
 
 if __name__ == "__main__":

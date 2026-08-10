@@ -8,16 +8,16 @@ the rest:
 | Package | Role | May import |
 |---|---|---|
 | `common` | config, models, tokens, checkpoint/`store_documents` | nothing else in mesozoica_ai |
-| `sources` | `retrieve_wikipedia` / `retrieve_openalex` (+ http/helpers) | `common` |
+| `sources` | `retrieve_openalex` (+ http/helpers) | `common` |
 | `index` | chunk/embed/sync/retrieve + batch index | `common` |
 | `generate` | prompt_rag, answer_from_index, answer_question, quiz | `common`, `index` |
 | `evaluate` | offline/live metrics, status | `common`, `index` |
 
 ```text
-retrieve_wikipedia / retrieve_openalex
+dinosaur_type_revision (Wikipedia) / retrieve_openalex
   -> store_documents (Postgres; ingest script)
   -> sync_documents / index_knowledge
-  -> Azure AI Search
+  -> Azure Search
 
 embed_query
   -> retrieve_chunks

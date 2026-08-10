@@ -10,11 +10,8 @@ from mesozoica_ai.common import (
     complete_acquisition,
     fail_acquisition,
 )
-from mesozoica_ai import retrieve_wikipedia
 from mesozoica_ai.sources.openalex import _retrieve as retrieve_openalex_with_client
 from mesozoica_ai.sources.openalex import _retrieve_documents as retrieve_openalex_documents
-from mesozoica_ai.sources.wikipedia import _retrieve as retrieve_wikipedia_with_client
-from mesozoica_ai.sources.wikipedia import _retrieve_documents as retrieve_wikipedia_documents
 from mesozoica_ai.sources.http import RetryingJsonClient
 from mesozoica_ai.sources.http import _retry_after_seconds
 
@@ -66,49 +63,6 @@ SAMPLE_TEI = """<?xml version="1.0" encoding="UTF-8"?>
   </text>
 </TEI>
 """
-
-
-def test_wikipedia_returns_sections_with_revision_metadata():
-    client = StubJsonClient(
-        {
-            "query": {
-                "pages": [
-                    {
-                        "pageid": 42,
-                        "title": "Example animal",
-                        "extract": "Lead text.\n\n== Description ==\nBody text.\n\n== References ==\nIgnore me.",
-                        "revisions": [{"revid": 7, "timestamp": "2026-01-02T00:00:00Z"}],
-                    }
-                ]
-            }
-        }
-    )
-
-    documents = retrieve_wikipedia_with_client(
-        "Example animal", user_agent="test@example.com", client=client
-    )
-
-    assert [document.metadata.section for document in documents] == [
-        "Introduction",
-        "Description",
-    ]
-    assert documents[0].metadata.source_version == "7"
-    assert documents[1].id == "wikipedia:42:section:1:description"
-    assert documents[1].metadata.section_path == ["Description"]
-
-
-def test_wikipedia_duplicate_headings_have_unique_ids_and_hierarchical_paths():
-    client = StubJsonClient({"query": {"pages": [{
-        "pageid": 7, "title": "Repeated", "extract": "Lead\n== Anatomy ==\nA\n=== Skull ===\nB\n== Anatomy ==\nC",
-        "revisions": [{"revid": 1, "timestamp": "2026-01-02T00:00:00Z"}],
-    }]}})
-    documents = retrieve_wikipedia_with_client(
-        "Repeated", user_agent="test@example.com", client=client
-    )
-    anatomy = [item for item in documents if item.metadata.section == "Anatomy"]
-    skull = next(item for item in documents if item.metadata.section == "Skull")
-    assert len({item.id for item in anatomy}) == 2
-    assert skull.metadata.section_path == ["Anatomy", "Skull"]
 
 
 def test_openalex_fulltext_splits_tei_sections_and_preserves_paragraphs():
@@ -245,36 +199,6 @@ def test_http_get_text_decompresses_raw_gzip_bodies():
     assert "Hi" in text
 
 
-def test_retrieve_wikipedia_enriches_metadata(monkeypatch):
-    import mesozoica_ai.sources.wikipedia as wikipedia_module
-
-    document = retrieve_wikipedia_with_client(
-        "Example animal",
-        user_agent="test@example.com",
-        client=StubJsonClient({"query": {"pages": [{
-            "pageid": 42,
-            "title": "Example animal",
-            "extract": "Lead text.",
-            "revisions": [{"revid": 7, "timestamp": "2026-01-02T00:00:00Z"}],
-        }]}}),
-    )[0]
-    monkeypatch.setattr(
-        wikipedia_module,
-        "_retrieve_documents",
-        lambda *args, **kwargs: [document],
-    )
-
-    documents = retrieve_wikipedia(
-        "Example animal",
-        user_agent="test@example.com",
-        metadata={"namespace": "test", "subject_id": "animal:42"},
-    )
-
-    assert len(documents) == 1
-    assert documents[0].metadata.namespace == "test"
-    assert documents[0].metadata.subject_id == "animal:42"
-
-
 def test_acquisition_checkpoint_helpers_preserve_or_invalidate_index_state():
     checkpoint = SimpleNamespace(
         documents=[], source_version=None, source_hash=None, content_hash=None,
@@ -375,24 +299,7 @@ def test_http_context_manager_closes_only_owned_client(monkeypatch):
     assert closed == ["owned"]
 
 
-@pytest.mark.parametrize(
-    ("module_name", "function", "arguments"),
-    [
-        (
-            "mesozoica_ai.sources.wikipedia",
-            retrieve_wikipedia_documents,
-            ("Example",),
-        ),
-        (
-            "mesozoica_ai.sources.openalex",
-            retrieve_openalex_documents,
-            ("Example",),
-        ),
-    ],
-)
-def test_public_source_functions_own_and_close_clients(
-    monkeypatch, module_name, function, arguments
-):
+def test_public_openalex_owns_and_closes_client(monkeypatch):
     events = []
 
     class Client:
@@ -405,15 +312,19 @@ def test_public_source_functions_own_and_close_clients(
         def __exit__(self, *args):
             events.append(("closed", {}))
 
-    monkeypatch.setattr(f"{module_name}.RetryingJsonClient", Client)
-    private_name = "_retrieve"
+    monkeypatch.setattr("mesozoica_ai.sources.openalex.RetryingJsonClient", Client)
     monkeypatch.setattr(
-        f"{module_name}.{private_name}", lambda *args, **kwargs: []
+        "mesozoica_ai.sources.openalex._retrieve", lambda *args, **kwargs: []
     )
-    kwargs = {"user_agent": "test@example.com", "timeout": 3}
-    if function is retrieve_openalex_documents:
-        kwargs["api_key"] = "key"
-    assert function(*arguments, **kwargs) == []
+    assert (
+        retrieve_openalex_documents(
+            "Example",
+            user_agent="test@example.com",
+            timeout=3,
+            api_key="key",
+        )
+        == []
+    )
     assert events == [
         ("created", {"connect_timeout_seconds": 3, "read_timeout_seconds": 3}),
         ("closed", {}),

@@ -9,13 +9,13 @@ Two stores, one pipeline:
 
 | Stage | Lives in |
 |---|---|
-| Fresh Wikipedia / OpenAlex text | Memory only (`Document` objects) |
+| Wikipedia text (from `dinosaur_type_revision`) / OpenAlex | Memory only (`Document` objects) |
 | Durable raw sources (optional) | PostgreSQL `dinosaur_knowledge` |
 | Searchable chunks + vectors | Azure AI Search |
 | Model answers | Memory only (your Pydantic type) |
 
 ```text
-retrieve_wikipedia / retrieve_openalex
+dinosaur_type_revision / retrieve_openalex
         │
         ▼
    (optional) store_documents → Postgres dinosaur_knowledge
@@ -40,22 +40,6 @@ Import these from `mesozoica_ai`.
 
 Loads Azure / chunking / prompt settings from the process environment.
 Pass the same instance through a run so embeddings and search stay consistent.
-
-### `retrieve_wikipedia(title, *, user_agent, metadata=None)`
-
-Fetches Wikipedia sections and returns `list[Document]` **in memory**.
-Does **not** write Postgres or Azure.
-
-```python
-from mesozoica_ai import retrieve_wikipedia
-
-docs = retrieve_wikipedia(
-    "Triceratops",
-    user_agent=os.environ["WIKIPEDIA_USER_AGENT"],
-)
-for doc in docs:
-    print(doc.id, doc.metadata.title, len(doc.text))
-```
 
 ### `retrieve_openalex(query, *, api_key, user_agent, limit=10, exclude_work_ids=None, metadata=None)`
 
@@ -110,13 +94,14 @@ a scope; prefer `sync_documents` for production ingest.
 4. deletes Azure chunks that disappeared from this scope
 
 ```python
-from mesozoica_ai import AiConfig, ensure_index, retrieve_wikipedia, sync_documents
+from mesozoica_ai import AiConfig, ensure_index, retrieve_openalex, sync_documents
 
 config = AiConfig()
-docs = retrieve_wikipedia(
+docs = retrieve_openalex(
     "Triceratops",
     user_agent=os.environ["WIKIPEDIA_USER_AGENT"],
-    metadata={"namespace": "mesozoica", "subject_id": "animal:triceratops"},
+    api_key=os.environ["OPENALEX_API_KEY"],
+    metadata={"namespace": "mesozoica", "subject_id": "dinosaur:1"},
 )
 
 ensure_index(config=config)
@@ -124,8 +109,8 @@ result = sync_documents(
     docs,
     scope={
         "namespace": "mesozoica",
-        "subject_id": "animal:triceratops",
-        "source": "wikipedia",
+        "subject_id": "dinosaur:1",
+        "source": "openalex",
     },
     config=config,
 )
@@ -230,11 +215,11 @@ scores plus provenance (`source`, `source_id`, `title`, `section`, `source_url`,
 
 ## Sources (`mesozoica_ai.sources`)
 
-One module per source, same public shape: `retrieve_*(query, *, user_agent, …)`.
+OpenAlex remains a live external source. Wikipedia for dinosaur knowledge is
+loaded from `dinosaur_type_revision` by the acquire script (not by this package).
 
 | Function | Role |
 |---|---|
-| `retrieve_wikipedia` | Fetch Wikipedia sections → `list[Document]` |
 | `retrieve_openalex` | Fetch OpenAlex GROBID TEI sections → `list[Document]` |
 
 Helpers live beside them (`http.py`, `helpers.py`). Checkpoint helpers live in
@@ -244,10 +229,10 @@ only a CLI over that job.
 
 ```python
 from mesozoica_ai.common import store_documents
-from mesozoica_ai.sources import retrieve_wikipedia
+from mesozoica_ai.sources import retrieve_openalex
 
-docs = retrieve_wikipedia(title, user_agent=..., metadata=...)
-store_documents(session, DinosaurKnowledge, subject=subject, source="wikipedia", documents=docs)
+docs = retrieve_openalex(query, api_key=..., user_agent=..., metadata=...)
+store_documents(session, DinosaurKnowledge, subject=subject, source="openalex", documents=docs)
 ```
 
 ---
@@ -313,7 +298,7 @@ Prints JSON and returns `0` / `1` for CLI jobs.
 
 ```python
 config = AiConfig()
-docs = retrieve_wikipedia(title, user_agent=..., metadata=...)
+docs = retrieve_openalex(query, api_key=..., user_agent=..., metadata=...)
 ensure_index(config=config)
 sync_documents(docs, scope=..., config=config)
 chunks = retrieve_chunks(q, query_embedding=embed_query(q, config=config), filters=..., config=config)
@@ -323,8 +308,8 @@ answer = prompt_rag(MyModel, query=q, evidence=chunks, config=config)
 ### B. Production dinosaur knowledge
 
 ```text
-retrieve_* + store_documents  → Postgres dinosaur_knowledge
-index_knowledge               → Azure Search
+dinosaur_type_revision / retrieve_openalex + store_documents  → Postgres dinosaur_knowledge
+index_knowledge                                               → Azure Search
 ```
 
 Run via the script (all genera by default) or the app cron `dinosaur_knowledge`

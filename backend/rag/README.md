@@ -1,7 +1,8 @@
 # Mesozoica AI
 
-`mesozoica_ai` is a typed RAG toolkit for Mesozoica: fetch sources, sync into
-Azure AI Search, retrieve chunks, and generate cited structured answers.
+`mesozoica_ai` is a typed RAG toolkit for Mesozoica: ingest source documents,
+sync into Azure AI Search, retrieve chunks, and generate cited structured
+answers.
 
 ## Start here
 
@@ -20,7 +21,7 @@ Also:
 mesozoica_ai/
   __init__.py     pipeline verbs only
   common/         AiConfig, Document, checkpoints, store_documents
-  sources/        wikipedia.py, openalex.py, http.py, helpers.py
+  sources/        openalex.py, http.py, helpers.py
   index/          chunk / embed / sync / retrieve / index_knowledge
   generate/       prompt_rag, answer_from_index, generate_quiz
   evaluate/       offline + live metrics, knowledge_status
@@ -31,7 +32,6 @@ mesozoica_ai/
 ```python
 from mesozoica_ai import (
     AiConfig,
-    retrieve_wikipedia,
     retrieve_openalex,
     ensure_index,
     sync_documents,
@@ -59,5 +59,5 @@ cd backend
 .venv/bin/python -m pytest rag/tests -q
 ```
 
-1. **Acquire** — Wikipedia + OpenAlex → Postgres `dinosaur_knowledge`
+1. **Acquire** — latest `dinosaur_type_revision` Wikipedia article + OpenAlex → Postgres `dinosaur_knowledge`
 2. **Index** — SQL snapshots → chunk / embed / Azure Search
